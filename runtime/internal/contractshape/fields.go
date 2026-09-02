@@ -110,21 +110,35 @@ func HasPath(root reflect.Type, path string) error {
 	return nil
 }
 
-// GoPath resolves a dotted JSON path to the Go selector that reads it, so a
-// generator can emit `r.Artifact.Session.ID` for `artifact.session.id`.
-func GoPath(root reflect.Type, path string) (selector string, leaf Field, ok bool) {
+// PathFields resolves a dotted JSON path to each declared field it crosses.
+// Callers that project Go expressions need the full path because a pointer or
+// collection parent cannot be read by the same direct selector as a value struct.
+func PathFields(root reflect.Type, path string) ([]Field, bool) {
 	current := root
-	var parts []string
+	var fields []Field
 	for segment := range strings.SplitSeq(path, ".") {
 		field, found := LookupField(current, segment)
 		if !found {
-			return "", Field{}, false
+			return nil, false
 		}
-		parts = append(parts, field.GoName)
-		leaf = field
+		fields = append(fields, field)
 		current = Deref(field.Type)
 	}
-	return strings.Join(parts, "."), leaf, true
+	return fields, len(fields) > 0
+}
+
+// GoPath resolves a dotted JSON path to the Go selector that reads it, so a
+// generator can emit `r.Artifact.Session.ID` for `artifact.session.id`.
+func GoPath(root reflect.Type, path string) (selector string, leaf Field, ok bool) {
+	fields, ok := PathFields(root, path)
+	if !ok {
+		return "", Field{}, false
+	}
+	parts := make([]string, 0, len(fields))
+	for _, field := range fields {
+		parts = append(parts, field.GoName)
+	}
+	return strings.Join(parts, "."), fields[len(fields)-1], true
 }
 
 // Deref unwraps the pointers and slices around a value type, so a path segment

@@ -13,16 +13,33 @@ type allowedValuesListFixture struct {
 	Values []string `json:"values,omitempty"`
 }
 
+type constraintProjectionString string
+type constraintProjectionItems []string
+type constraintProjectionKey string
+type constraintProjectionProperties map[string]string
+
+type constraintProjectionParent struct {
+	Value string `json:"value"`
+}
+
 type constraintProjectionFixture struct {
-	RequiredPointer   *string             `json:"requiredPointer"`
-	OptionalPointer   *string             `json:"optionalPointer,omitempty"`
-	OptionalValue     string              `json:"optionalValue,omitempty"`
-	RequiredItems     []string            `json:"requiredItems"`
-	PointerItems      *[]string           `json:"pointerItems,omitempty"`
-	PointerProperties *map[string]string  `json:"pointerProperties,omitempty"`
-	PointerMinimum    *int                `json:"pointerMinimum,omitempty"`
-	ComparableItems   []string            `json:"comparableItems,omitempty"`
-	MapItems          []map[string]string `json:"mapItems,omitempty"`
+	RequiredPointer   *string                            `json:"requiredPointer"`
+	OptionalPointer   *string                            `json:"optionalPointer,omitempty"`
+	NamedPointer      *constraintProjectionString        `json:"namedPointer,omitempty"`
+	OptionalValue     string                             `json:"optionalValue,omitempty"`
+	RequiredItems     []string                           `json:"requiredItems"`
+	PointerItems      *[]string                          `json:"pointerItems,omitempty"`
+	PointerNamedItems *[]constraintProjectionString      `json:"pointerNamedItems,omitempty"`
+	NamedPointerItems *constraintProjectionItems         `json:"namedPointerItems,omitempty"`
+	PointerProperties *map[string]string                 `json:"pointerProperties,omitempty"`
+	NamedProperties   map[constraintProjectionKey]string `json:"namedProperties,omitempty"`
+	NamedMap          constraintProjectionProperties     `json:"namedMap,omitempty"`
+	PointerMinimum    *int                               `json:"pointerMinimum,omitempty"`
+	ComparableItems   []string                           `json:"comparableItems,omitempty"`
+	MapItems          []map[string]string                `json:"mapItems,omitempty"`
+	ValueParent       constraintProjectionParent         `json:"valueParent"`
+	PointerParent     *constraintProjectionParent        `json:"pointerParent,omitempty"`
+	ParentItems       []constraintProjectionParent       `json:"parentItems,omitempty"`
 }
 
 func TestShapeMetadataRejectsUnsupportedValidatorTargets(t *testing.T) {
@@ -164,6 +181,129 @@ func TestShapeMetadataKeepsSupportedValidatorTargets(t *testing.T) {
 		if err != nil {
 			t.Fatalf("validate %+v: %v", constraint, err)
 		}
+	}
+}
+
+func TestShapeMetadataRejectsUnassignableValidatorTargets(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		field       string
+		constraints []FieldConstraint
+		want        string
+	}{
+		{
+			name:  "named string pointer",
+			field: "namedPointer",
+			constraints: []FieldConstraint{
+				{Kind: ConstraintMaxLength, Limit: 16},
+				{Kind: ConstraintIdentity},
+				{Kind: ConstraintPrefix, Value: "id_"},
+				{Kind: ConstraintPattern, Value: `\S`},
+			},
+			want: "named string pointer",
+		},
+		{
+			name:  "named slice pointer",
+			field: "namedPointerItems",
+			constraints: []FieldConstraint{
+				{Kind: ConstraintMaxItems, Limit: 4},
+				{Kind: ConstraintMaxItemLength, Limit: 16},
+				{Kind: ConstraintPatternItems, Value: `\S`},
+				{Kind: ConstraintUniqueItems},
+			},
+			want: "named slice pointer",
+		},
+		{
+			name:  "named string map key",
+			field: "namedProperties",
+			constraints: []FieldConstraint{
+				{Kind: ConstraintNonEmptyProperties},
+				{Kind: ConstraintMaxPropertyNameLength, Limit: 16},
+				{Kind: ConstraintIdentityPropertyNames},
+			},
+			want: "builtin string keys",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			for _, constraint := range test.constraints {
+				constraint.Field = test.field
+				err := (FieldConstraintSpec{
+					GoType:      reflect.TypeFor[constraintProjectionFixture](),
+					Constraints: []FieldConstraint{constraint},
+				}).validate()
+				if err == nil || !strings.Contains(err.Error(), test.want) {
+					t.Fatalf("validate %+v error = %v, want %q", constraint, err, test.want)
+				}
+			}
+		})
+	}
+}
+
+func TestShapeMetadataKeepsAssignableNamedValidatorTargets(t *testing.T) {
+	t.Parallel()
+
+	for _, constraint := range []FieldConstraint{
+		{Field: "namedPointer", Kind: ConstraintNonEmpty},
+		{Field: "pointerNamedItems", Kind: ConstraintMaxItems, Limit: 4},
+		{Field: "pointerNamedItems", Kind: ConstraintMaxItemLength, Limit: 16},
+		{Field: "pointerNamedItems", Kind: ConstraintPatternItems, Value: `\S`},
+		{Field: "pointerNamedItems", Kind: ConstraintUniqueItems},
+		{Field: "namedMap", Kind: ConstraintNonEmptyProperties},
+		{Field: "namedMap", Kind: ConstraintMaxPropertyNameLength, Limit: 16},
+		{Field: "namedMap", Kind: ConstraintIdentityPropertyNames},
+	} {
+		err := (FieldConstraintSpec{
+			GoType:      reflect.TypeFor[constraintProjectionFixture](),
+			Constraints: []FieldConstraint{constraint},
+		}).validate()
+		if err != nil {
+			t.Fatalf("validate %+v: %v", constraint, err)
+		}
+	}
+}
+
+func TestShapeMetadataRejectsUnsafeConstraintPaths(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		field string
+		want  string
+	}{
+		{name: "pointer parent", field: "pointerParent.value", want: "pointer parent"},
+		{name: "slice parent", field: "parentItems.value", want: "slice parent"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			err := (FieldConstraintSpec{
+				GoType: reflect.TypeFor[constraintProjectionFixture](),
+				Constraints: []FieldConstraint{{
+					Field: test.field, Kind: ConstraintNonEmpty,
+				}},
+			}).validate()
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("validate error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestShapeMetadataKeepsDirectValueStructConstraintPath(t *testing.T) {
+	t.Parallel()
+
+	err := (FieldConstraintSpec{
+		GoType: reflect.TypeFor[constraintProjectionFixture](),
+		Constraints: []FieldConstraint{{
+			Field: "valueParent.value", Kind: ConstraintNonEmpty,
+		}},
+	}).validate()
+	if err != nil {
+		t.Fatalf("validate value struct path: %v", err)
 	}
 }
 

@@ -752,14 +752,34 @@ func (f FieldConstraintSpec) validate() error {
 }
 
 func validateFieldConstraint(owner string, shape reflect.Type, constraint FieldConstraint) error {
-	_, leaf, ok := contractshape.GoPath(shape, constraint.Field)
+	fields, ok := contractshape.PathFields(shape, constraint.Field)
 	if !ok {
 		return fmt.Errorf("%s: no JSON field %q", owner, constraint.Field)
+	}
+	if err := validateConstraintPathProjection(owner, constraint.Field, fields); err != nil {
+		return err
 	}
 	if err := validateConstraintArguments(owner, constraint); err != nil {
 		return err
 	}
-	return validateConstraintTarget(owner, leaf, constraint)
+	return validateConstraintTarget(owner, fields[len(fields)-1], constraint)
+}
+
+func validateConstraintPathProjection(owner, path string, fields []contractshape.Field) error {
+	for _, parent := range fields[:len(fields)-1] {
+		if parent.Type.Kind() == reflect.Struct {
+			continue
+		}
+		parentKind := parent.Type.Kind().String()
+		if parent.Type.Kind() == reflect.Pointer {
+			parentKind = "pointer"
+		}
+		return fmt.Errorf(
+			"%s.%s constraint path has %s parent %q; only value struct parents are supported",
+			owner, path, parentKind, parent.Name,
+		)
+	}
+	return nil
 }
 
 func validateConstraintArguments(owner string, constraint FieldConstraint) error {
@@ -871,6 +891,9 @@ func validateConstraintProjection(owner string, field contractshape.Field, const
 	if err := validatePointerConstraintProjection(owner, field, constraint); err != nil {
 		return err
 	}
+	if err := validateConstraintHelperAssignment(owner, field, constraint); err != nil {
+		return err
+	}
 	if constraint.Kind == ConstraintMinItems && !field.Optional {
 		return fmt.Errorf(
 			"%s.%s constraint %s does not support a required array",
@@ -881,6 +904,45 @@ func validateConstraintProjection(owner string, field contractshape.Field, const
 		return validateUniqueItemsProjection(owner, field, constraint)
 	}
 	return validateTextualConstraintProjection(owner, field, constraint)
+}
+
+func validateConstraintHelperAssignment(owner string, field contractshape.Field, constraint FieldConstraint) error {
+	if field.Type.Kind() == reflect.Pointer {
+		target := field.Type.Elem()
+		if target.Kind() == reflect.String && target != reflect.TypeFor[string]() {
+			switch constraint.Kind {
+			case ConstraintMaxLength, ConstraintIdentity, ConstraintPrefix, ConstraintPattern:
+				return fmt.Errorf(
+					"%s.%s constraint %s does not support a named string pointer",
+					owner, constraint.Field, constraint.Kind,
+				)
+			}
+		}
+		if target.Kind() == reflect.Slice && target.Name() != "" {
+			switch constraint.Kind {
+			case ConstraintUniqueItems, ConstraintMaxItems, ConstraintMaxItemLength, ConstraintPatternItems:
+				return fmt.Errorf(
+					"%s.%s constraint %s does not support a named slice pointer",
+					owner, constraint.Field, constraint.Kind,
+				)
+			}
+		}
+	}
+	if constraint.Kind == ConstraintNonEmptyProperties ||
+		constraint.Kind == ConstraintMaxPropertyNameLength ||
+		constraint.Kind == ConstraintIdentityPropertyNames {
+		valueType := field.Type
+		if valueType.Kind() == reflect.Pointer {
+			valueType = valueType.Elem()
+		}
+		if valueType.Key() != reflect.TypeFor[string]() {
+			return fmt.Errorf(
+				"%s.%s constraint %s supports only builtin string keys",
+				owner, constraint.Field, constraint.Kind,
+			)
+		}
+	}
+	return nil
 }
 
 func validatePointerConstraintProjection(owner string, field contractshape.Field, constraint FieldConstraint) error {

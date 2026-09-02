@@ -648,3 +648,58 @@ Target validation proves only the dereferenced JSON kind. Go generation addition
 
 - The declared-shape matrix now covers pointer presence and the obvious generic bound, but exact Go assignability can still diverge for pointers to named string/slice types and maps keyed by named strings. Current first-party fields use builtin strings and literal slices/maps.
 - Round 13 will test those named-type projections directly and then inspect dotted constraints through optional parent pointers, where a generated selector may dereference an absent parent before a leaf helper can apply its omission policy.
+
+## Round 13 — complete
+
+### Audit scope and evidence
+
+- Compiled isolated Go probes against the exact helper signatures. `*NamedString` is not assignable to `*string`, `*NamedSlice` cannot infer the `T` in `*[]T`, and `map[NamedString]T` cannot infer the `T` in `map[string]T`; all three shapes currently pass metadata registration.
+- The only first-party dotted value constraint is `ListItemsRequest.scope.type`, whose parent is a required value struct and whose generated selector is safe.
+- `contractshape.GoPath` dereferences pointer and slice parents while building a plain selector. Metadata can therefore accept `pointerParent.value`, which compiles but panics when the parent is nil, and `parentItems.value`, which generates an invalid selector on a slice.
+- Baseline: `GOWORK=off go test -count=1 ./internal/contractshape ./internal/delivery/dispatch ./cmd/contractgen` passed in 2.70s.
+
+### Root cause
+
+Registration validates the leaf's JSON kind but does not validate that the complete declared path can be expressed by the generator's direct Go selector or that the declared named container is assignable to the selected helper parameter.
+
+### Impact and acceptance criteria
+
+- Reject optional named string pointers for the four helpers that accept only `*string`, while preserving generic optional non-empty text and numeric pointer helpers.
+- Reject pointers to named slices for the four collection helpers that accept only `*[]T`, while preserving pointers to literal slices, including named string element types.
+- Require builtin string map keys for the three property-map helpers; named map types with builtin string keys remain valid.
+- Reject dotted field constraints whose intermediate path crosses a pointer or slice; preserve dotted paths through value structs.
+- Keep all rules at metadata registration, change no first-party artifact, and pass focused, drift, race, static, full Runtime/CLI, and bounded live verification.
+
+### Plan
+
+- **Completed:** added assignability/path regressions, exposed path fields from the wire-shape owner, and validated projection before generator entry.
+- **Completed:** formatted, regenerated/checked artifacts, remeasured complexity, ran focused/full/live verification, cleaned resources, inspected compatibility, and recorded results.
+
+### Validation
+
+- Before the fix, all three representative helper-assignability cases and both unsafe-parent paths returned no registration error. After the fix, eleven exact named-type helper combinations and both unsafe parent kinds fail at registration.
+- Positive coverage preserves generic optional named-string non-empty validation, pointers to literal slices with named string elements, named map types with builtin string keys, and dotted constraints through value structs.
+- Contractshape, dispatch, and contractgen tests passed after the final change. Generated-contract drift, registry-to-validator reachability, and cross-artifact value-constraint tests passed in 2.52s; `go generate ./...` changed no generated artifact.
+- Contractshape, dispatch, and contractgen passed with `-race` in 18.43s. Focused `go vet` and `staticcheck` passed in 1.84s.
+- Production-only `gocognit` still reports only the pre-existing `constraintCheck` score of 38. None of the new path or helper-assignment functions appears above the cognitive or cyclomatic thresholds.
+- Runtime `GOWORK=off go vet ./...` plus `GOWORK=off go build ./...` passed in 8.74s, and uncached `GOWORK=off go test -count=1 ./...` passed in 47.13s.
+- Current-workspace CLI `go vet ./...` plus `go build ./...` passed in 8.96s, and uncached `go test -count=1 ./...` passed in 43.13s.
+- The current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND13_OK`, status `completed`, one step, 9,183 input tokens, 8 output tokens, 9,088 cache-read tokens, and 867ms total model duration. No credential value was printed or copied.
+- `git diff --check` passed.
+
+### Changes and compatibility
+
+- `contractshape.PathFields` now exposes the already-owned resolved field chain; `GoPath` builds its selector from that one representation rather than maintaining a second traversal.
+- Constraint registration rejects pointer/slice intermediate parents before a direct selector reaches code generation. Value-struct parents, including the current `scope.type` contract, remain supported.
+- Helper-assignment validation states the exact accepted declared forms for four pointer-string helpers, four pointer-slice helpers, and three property-map helpers. It rejects only named wrappers that Go cannot pass to the selected helper; naturally assignable named values remain accepted.
+- Breaking changes: malformed private metadata now fails registration rather than generating uncompilable code or a nil-dereferencing validator. First-party metadata, generated artifacts, wire values, persistence, request behavior, and public Runtime/CLI bindings are unchanged.
+
+### Resource cleanup
+
+- Two isolated `/tmp/flame-typecheck-round13.*` probes established Go assignability, and the bounded live Run used a validated `/tmp/flame-live-round13.*` directory for its Runtime home, build cache, and CLI binary. Each directory was moved to the system Trash after use.
+- No matching temporary directory remained. No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- `uniqueItems` now rejects element types that are statically non-comparable, but Go permits interface and pointer elements that either panic for dynamic non-comparable values or compare identity while JSON Schema compares values. No first-party unique set uses either shape.
+- Round 14 will close that semantic equality gap, then audit optional non-pointer scalar constraints whose zero value conflates omission with presence and may still disagree with Schema/TypeScript omission semantics.
