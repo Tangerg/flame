@@ -176,8 +176,8 @@ func TestBuildChatDeepSeekClassifiesRateLimit(t *testing.T) {
 	if !errors.As(err, &failure) {
 		t.Fatalf("Call error = %T, want *run.FailureError", err)
 	}
-	if failure.Kind != run.FailureRateLimited || failure.RetryAfter != 12*time.Second {
-		t.Fatalf("failure = %+v, want rate limited with 12s retry", failure)
+	if failure.Kind != run.FailureRateLimited || failure.RetryAfter != time.Millisecond {
+		t.Fatalf("failure = %+v, want rate limited with 1ms retry", failure)
 	}
 }
 

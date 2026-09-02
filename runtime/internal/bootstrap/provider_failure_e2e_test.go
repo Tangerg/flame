@@ -46,8 +46,8 @@ func TestProviderFailureTerminalizesRunAndReleasesSession(t *testing.T) {
 	if failedRun.Status != protocol.RunStatusFinished || failedRun.Outcome == nil ||
 		failedRun.Outcome.Type != protocol.OutcomeFailed || failedRun.Outcome.Error == nil ||
 		failedRun.Outcome.Error.Type != protocol.ProblemRateLimited ||
-		failedRun.Outcome.Error.RetryAfterSeconds != 9 {
-		t.Fatalf("provider-failed Run = %+v, want rate_limited with 9s retry", failedRun)
+		failedRun.Outcome.Error.RetryAfterSeconds != 1 {
+		t.Fatalf("provider-failed Run = %+v, want rate_limited with 1s minimum retry", failedRun)
 	}
 
 	followUp, followUpEvents, err := api.StartRun(ctx, protocol.StartRunRequest{
@@ -79,7 +79,7 @@ func (p *providerFailureThenReplyModel) Call(
 	if p.calls.Add(1) == 1 {
 		return nil, &run.FailureError{
 			Kind:       run.FailureRateLimited,
-			RetryAfter: 9 * time.Second,
+			RetryAfter: 250 * time.Millisecond,
 		}
 	}
 	message := chat.NewAssistantMessage(chat.NewTextPart("recovered"))

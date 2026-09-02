@@ -70,6 +70,24 @@ func (f Failure) Validate() error {
 	return nil
 }
 
+// RetryAfterSeconds returns the shortest whole-second delay that does not
+// shorten the provider's retry hint. Durable and wire representations use
+// seconds, while provider protocols may supply finer-grained delays.
+func (f Failure) RetryAfterSeconds() int {
+	if f.RetryAfter <= 0 {
+		return 0
+	}
+	seconds := f.RetryAfter / time.Second
+	if f.RetryAfter%time.Second != 0 {
+		seconds++
+	}
+	maximumInt := int64(^uint(0) >> 1)
+	if int64(seconds) > maximumInt {
+		return int(maximumInt)
+	}
+	return int(seconds)
+}
+
 // FailureError carries a typed Run classification while preserving the
 // original error chain for diagnostics. RetryAfter is meaningful only for
 // retryable kinds and may be zero when the provider supplied no hint.

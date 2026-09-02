@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"errors"
+	"math"
 	"net/http"
 	"testing"
 	"time"
@@ -78,6 +79,35 @@ func TestClassifyModelErrorUsesTypedProviderStatus(t *testing.T) {
 	}
 	if !errors.Is(err, providerErr) {
 		t.Fatal("classification lost the provider error chain")
+	}
+}
+
+func TestRetryAfterUsesProviderPrecisionWithoutOverflow(t *testing.T) {
+	now := time.Unix(100, 0).UTC()
+	tests := []struct {
+		name   string
+		header http.Header
+		want   time.Duration
+	}{
+		{
+			name: "millisecond hint takes precedence",
+			header: http.Header{
+				"Retry-After-Ms": []string{"1.5"},
+				"Retry-After":    []string{"12"},
+			},
+			want: 1500 * time.Microsecond,
+		},
+		{name: "fractional seconds", header: http.Header{"Retry-After": []string{"0.25"}}, want: 250 * time.Millisecond},
+		{name: "date", header: http.Header{"Retry-After": []string{now.Add(3 * time.Second).Format(http.TimeFormat)}}, want: 3 * time.Second},
+		{name: "overflow saturates", header: http.Header{"Retry-After-Ms": []string{"1e100"}}, want: time.Duration(math.MaxInt64)},
+		{name: "invalid preferred falls back", header: http.Header{"Retry-After-Ms": []string{"-1"}, "Retry-After": []string{"2"}}, want: 2 * time.Second},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := retryAfter(test.header, now); got != test.want {
+				t.Fatalf("retryAfter() = %s, want %s", got, test.want)
+			}
+		})
 	}
 }
 

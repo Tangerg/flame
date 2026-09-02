@@ -327,7 +327,6 @@ func encodeToolFailurePayload(failure tool.Failure) (toolFailurePayload, error) 
 	}
 	return toolFailurePayload{
 		Kind: failure.Kind, Scope: toolFailureScope, Detail: failure.Detail, DocURL: failure.DocURL,
-		RetryAfterSeconds: int(failure.RetryAfter / time.Second),
 	}, nil
 }
 

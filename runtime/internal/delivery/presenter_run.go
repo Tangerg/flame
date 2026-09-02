@@ -236,7 +236,7 @@ func presentRunFailure(problem *rundomain.Failure) *protocol.ProblemData {
 	// scope, which is what stops a run problem being stored in a tool slot.
 	return &protocol.ProblemData{
 		Type: kind, Detail: problem.Detail, DocURL: problem.DocURL,
-		RetryAfterSeconds: int(problem.RetryAfter.Seconds()),
+		RetryAfterSeconds: problem.RetryAfterSeconds(),
 	}
 }
 
@@ -261,7 +261,6 @@ func presentToolFailure(failure *tool.Failure) *protocol.ProblemData {
 	}
 	return &protocol.ProblemData{
 		Type: kind, Detail: failure.Detail, DocURL: failure.DocURL,
-		RetryAfterSeconds: int(failure.RetryAfter.Seconds()),
 	}
 }
 

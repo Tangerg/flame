@@ -187,7 +187,7 @@ func artifactRunFailureFromDomain(failure *run.Failure) (*protocol.ArtifactProbl
 	}
 	return &protocol.ArtifactProblem{
 		Type: kind, Detail: failure.Detail, DocURL: failure.DocURL,
-		RetryAfterSeconds: int(failure.RetryAfter.Seconds()),
+		RetryAfterSeconds: failure.RetryAfterSeconds(),
 	}, nil
 }
 
@@ -235,7 +235,6 @@ func artifactToolFailureFromDomain(failure *tool.Failure) (*protocol.ArtifactPro
 	}
 	return &protocol.ArtifactProblem{
 		Type: kind, Detail: failure.Detail, DocURL: failure.DocURL,
-		RetryAfterSeconds: int(failure.RetryAfter.Seconds()),
 	}, nil
 }
 

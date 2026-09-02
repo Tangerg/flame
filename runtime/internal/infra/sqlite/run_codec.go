@@ -301,7 +301,7 @@ func encodeRunFailure(failure *rundomain.Failure) (string, error) {
 		Kind:              failure.Kind,
 		Detail:            failure.Detail,
 		DocURL:            failure.DocURL,
-		RetryAfterSeconds: int(failure.RetryAfter / time.Second),
+		RetryAfterSeconds: failure.RetryAfterSeconds(),
 	})
 	if err != nil {
 		return "", fmt.Errorf("encode run failure: %w", err)

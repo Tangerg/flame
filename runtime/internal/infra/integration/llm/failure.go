@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"iter"
+	"math"
 	"net"
 	"net/http"
 	"strconv"
@@ -151,16 +152,38 @@ func failureKindForHTTPStatus(status int) run.FailureKind {
 }
 
 func retryAfter(header http.Header, now time.Time) time.Duration {
-	value := strings.TrimSpace(header.Get("Retry-After"))
-	if value == "" {
-		return 0
+	for _, candidate := range []struct {
+		name string
+		unit time.Duration
+	}{
+		{name: "Retry-After-Ms", unit: time.Millisecond},
+		{name: "Retry-After", unit: time.Second},
+	} {
+		value := strings.TrimSpace(header.Get(candidate.name))
+		if value == "" {
+			continue
+		}
+		if delay, ok := numericRetryAfter(value, candidate.unit); ok {
+			return delay
+		}
+		if candidate.name == "Retry-After" {
+			when, err := http.ParseTime(value)
+			if err == nil {
+				return max(0, when.Sub(now))
+			}
+		}
 	}
-	if seconds, err := strconv.ParseInt(value, 10, 64); err == nil && seconds >= 0 {
-		return time.Duration(seconds) * time.Second
+	return 0
+}
+
+func numericRetryAfter(value string, unit time.Duration) (time.Duration, bool) {
+	quantity, err := strconv.ParseFloat(value, 64)
+	if err != nil || math.IsNaN(quantity) || math.IsInf(quantity, 0) || quantity < 0 {
+		return 0, false
 	}
-	when, err := http.ParseTime(value)
-	if err != nil || !when.After(now) {
-		return 0
+	scaled := quantity * float64(unit)
+	if scaled >= float64(math.MaxInt64) {
+		return time.Duration(math.MaxInt64), true
 	}
-	return when.Sub(now)
+	return time.Duration(scaled), true
 }
