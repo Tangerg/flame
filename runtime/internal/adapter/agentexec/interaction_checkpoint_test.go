@@ -74,6 +74,10 @@ func TestDecodeInteractionPendingSteersRejectsNoncanonicalWire(t *testing.T) {
 			SignalID: "steer:01",
 			Content:  []interactionContentBlockWire{{Kind: "image", MediaType: "image/png", Data: "*"}},
 		}},
+		"noncanonical base64": {{
+			SignalID: "steer:01",
+			Content:  []interactionContentBlockWire{{Kind: "image", MediaType: "image/png", Data: "A\nQ=="}},
+		}},
 		"unknown kind": {{
 			SignalID: "steer:01",
 			Content:  []interactionContentBlockWire{{Kind: "audio", Data: validImage}},

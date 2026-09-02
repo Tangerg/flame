@@ -182,43 +182,64 @@ func encodeInteractionPendingSteers(
 ) ([]interactionPendingSteerWire, error) {
 	values := make([]interactionPendingSteerWire, 0, len(pending))
 	for signalID, steer := range pending {
-		if !signalID.Valid() {
-			return nil, errors.New("pending steer has an invalid Signal identity")
+		value, err := encodeInteractionPendingSteer(signalID, steer)
+		if err != nil {
+			return nil, err
 		}
-		if len(steer.content) == 0 {
-			return nil, fmt.Errorf("pending steer %s has no product content", signalID)
-		}
-		if steer.projectedItemID != "" {
-			if _, err := resourceid.ParseItem(steer.projectedItemID); err != nil {
-				return nil, fmt.Errorf("pending steer %s projected Item: %w", signalID, err)
-			}
-		}
-		content := make([]interactionContentBlockWire, len(steer.content))
-		for index, block := range steer.content {
-			if err := block.Validate(); err != nil {
-				return nil, fmt.Errorf("pending steer %s content %d: %w", signalID, index, err)
-			}
-			switch block.Kind {
-			case transcript.TextContent:
-				content[index] = interactionContentBlockWire{Kind: block.Kind, Text: block.Text}
-			case transcript.ImageContent:
-				content[index] = interactionContentBlockWire{
-					Kind: block.Kind, MediaType: block.MediaType,
-					Data: base64.StdEncoding.EncodeToString(block.Bytes),
-				}
-			default:
-				return nil, fmt.Errorf("pending steer %s content %d has unknown kind %q", signalID, index, block.Kind)
-			}
-		}
-		values = append(values, interactionPendingSteerWire{
-			SignalID: signalID.String(), Content: content,
-			ProjectedItemID: steer.projectedItemID,
-		})
+		values = append(values, value)
 	}
 	slices.SortFunc(values, func(left, right interactionPendingSteerWire) int {
 		return strings.Compare(left.SignalID, right.SignalID)
 	})
 	return values, nil
+}
+
+func encodeInteractionPendingSteer(
+	signalID agent.SignalID,
+	steer pendingInteractionSteer,
+) (interactionPendingSteerWire, error) {
+	if !signalID.Valid() {
+		return interactionPendingSteerWire{}, errors.New("pending steer has an invalid Signal identity")
+	}
+	if len(steer.content) == 0 {
+		return interactionPendingSteerWire{}, fmt.Errorf("pending steer %s has no product content", signalID)
+	}
+	if steer.projectedItemID != "" {
+		if _, err := resourceid.ParseItem(steer.projectedItemID); err != nil {
+			return interactionPendingSteerWire{}, fmt.Errorf("pending steer %s projected Item: %w", signalID, err)
+		}
+	}
+	content := make([]interactionContentBlockWire, len(steer.content))
+	for index, block := range steer.content {
+		value, err := encodeInteractionContentBlock(block)
+		if err != nil {
+			return interactionPendingSteerWire{}, fmt.Errorf("pending steer %s content %d: %w", signalID, index, err)
+		}
+		content[index] = value
+	}
+	return interactionPendingSteerWire{
+		SignalID: signalID.String(), Content: content,
+		ProjectedItemID: steer.projectedItemID,
+	}, nil
+}
+
+func encodeInteractionContentBlock(
+	block transcript.ContentBlock,
+) (interactionContentBlockWire, error) {
+	if err := block.Validate(); err != nil {
+		return interactionContentBlockWire{}, err
+	}
+	switch block.Kind {
+	case transcript.TextContent:
+		return interactionContentBlockWire{Kind: block.Kind, Text: block.Text}, nil
+	case transcript.ImageContent:
+		return interactionContentBlockWire{
+			Kind: block.Kind, MediaType: block.MediaType,
+			Data: base64.StdEncoding.EncodeToString(block.Bytes),
+		}, nil
+	default:
+		return interactionContentBlockWire{}, fmt.Errorf("has unknown kind %q", block.Kind)
+	}
 }
 
 func interactionCallCounts(
@@ -438,26 +459,40 @@ func (w interactionPendingSteerWire) decode(
 }
 
 func (w interactionContentBlockWire) decode() (transcript.ContentBlock, error) {
-	var content transcript.ContentBlock
 	switch w.Kind {
 	case transcript.TextContent:
-		if w.Text == "" || w.MediaType != "" || w.Data != "" {
-			return transcript.ContentBlock{}, errors.New("is not canonical text")
-		}
-		content = transcript.ContentBlock{Kind: transcript.TextContent, Text: w.Text}
+		return w.decodeText()
 	case transcript.ImageContent:
-		if w.Text != "" || w.MediaType == "" || w.Data == "" {
-			return transcript.ContentBlock{}, errors.New("is not canonical image")
-		}
-		data, err := base64.StdEncoding.Strict().DecodeString(w.Data)
-		if err != nil {
-			return transcript.ContentBlock{}, fmt.Errorf("image data: %w", err)
-		}
-		content = transcript.ContentBlock{
-			Kind: transcript.ImageContent, MediaType: w.MediaType, Bytes: data,
-		}
+		return w.decodeImage()
 	default:
 		return transcript.ContentBlock{}, fmt.Errorf("has unknown kind %q", w.Kind)
+	}
+}
+
+func (w interactionContentBlockWire) decodeText() (transcript.ContentBlock, error) {
+	if w.Text == "" || w.MediaType != "" || w.Data != "" {
+		return transcript.ContentBlock{}, errors.New("is not canonical text")
+	}
+	content := transcript.ContentBlock{Kind: transcript.TextContent, Text: w.Text}
+	if err := content.Validate(); err != nil {
+		return transcript.ContentBlock{}, err
+	}
+	return content, nil
+}
+
+func (w interactionContentBlockWire) decodeImage() (transcript.ContentBlock, error) {
+	if w.Text != "" || w.MediaType == "" || w.Data == "" {
+		return transcript.ContentBlock{}, errors.New("is not canonical image")
+	}
+	data, err := base64.StdEncoding.Strict().DecodeString(w.Data)
+	if err != nil {
+		return transcript.ContentBlock{}, fmt.Errorf("image data: %w", err)
+	}
+	if base64.StdEncoding.EncodeToString(data) != w.Data {
+		return transcript.ContentBlock{}, errors.New("image data is not canonical base64")
+	}
+	content := transcript.ContentBlock{
+		Kind: transcript.ImageContent, MediaType: w.MediaType, Bytes: data,
 	}
 	if err := content.Validate(); err != nil {
 		return transcript.ContentBlock{}, err
