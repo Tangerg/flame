@@ -1,7 +1,7 @@
 import type { PluginError, PluginErrorSource } from "@/plugins/sdk";
 import { formatClock } from "@/lib/i18n/relativeTime";
 import { useState } from "react";
-import { Icon, IconButton, PillButton, TextButton } from "@/ui";
+import { Badge, Icon, IconButton, PillButton, TextButton } from "@/ui";
 import { copyText } from "@/lib/clipboard";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
@@ -108,9 +108,9 @@ function ErrorEntry({ err }: { err: PluginError }) {
   return (
     <div className="rounded-md bg-sunken px-2.5 py-2">
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
-        <span className="rounded-full bg-negative-badge px-1.5 py-px font-mono text-ui-xs font-semibold text-negative">
+        <Badge tone="negative" className="font-mono">
           {source}
-        </span>
+        </Badge>
         <span className="truncate font-medium text-ui-md text-fg" title={err.message}>
           {err.message}
         </span>

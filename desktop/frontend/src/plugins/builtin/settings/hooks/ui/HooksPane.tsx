@@ -1,4 +1,4 @@
-import { DataView, EmptyState, Icon, Surface, Switch, Tag } from "@/ui";
+import { Badge, DataView, EmptyState, Icon, Surface, Switch, Tag } from "@/ui";
 import { isUnsupportedMethod, rpcErrorText } from "@/lib/rpcErrors";
 import type { HookReadModel } from "../application/hookConfig";
 import { useHookConfigs } from "../application/hookConfig";
@@ -34,12 +34,9 @@ function HookRow({ h }: { h: HookReadModel }) {
         </span>
       </div>
       {!h.active ? (
-        <span
-          title={t("hooks.inactive.hint")}
-          className="shrink-0 rounded-sm bg-warning-wash px-1.5 py-px text-ui-xs font-medium text-warning"
-        >
+        <Badge tone="warning" title={t("hooks.inactive.hint")}>
           {t("hooks.inactive")}
-        </span>
+        </Badge>
       ) : h.inject ? (
         <span className="shrink-0 text-ui-xs font-medium text-fg-faint">
           {t("hooks.kind.inject")}

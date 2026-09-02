@@ -1,4 +1,5 @@
-import { DataView, IconButton, TextButton } from "@/ui";
+import { Badge, DataView, IconButton, TextButton } from "@/ui";
+import type { Tone } from "@/lib/tone";
 import {
   agentCommandWasRetired,
   forgetApprovalRule,
@@ -12,10 +13,13 @@ import { notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 
-const SCOPE_CHIP: Record<ApprovalRuleSummary["scope"], string> = {
-  session: "bg-surface-2 text-fg-muted",
-  project: "bg-accent-wash text-accent",
-  global: "bg-warning-wash text-warning",
+// What the scope MEANS. `Tone`'s own contract says the application layer emits the
+// vocabulary and the Badge picks the fill and the ink; a table of classes here is this file
+// painting a second palette beside the one every other badge in the app uses.
+const SCOPE_TONE: Record<ApprovalRuleSummary["scope"], Tone> = {
+  session: "neutral",
+  project: "accent",
+  global: "warning",
 };
 
 export function RulesRow() {
@@ -75,14 +79,9 @@ export function RulesRow() {
                   key={r.id}
                   className="flex items-center gap-2 rounded-md px-2.5 py-2 transition-colors hover:bg-hover"
                 >
-                  <span
-                    className={cn(
-                      "shrink-0 rounded-sm px-1.5 py-px font-mono text-ui-xs font-medium",
-                      SCOPE_CHIP[r.scope],
-                    )}
-                  >
+                  <Badge tone={SCOPE_TONE[r.scope]} className="font-mono">
                     {t(`approvals.scope.${r.scope}`)}
-                  </span>
+                  </Badge>
                   <span
                     className={cn(
                       "shrink-0 text-ui-sm font-medium",

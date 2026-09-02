@@ -11,7 +11,12 @@ import { cn } from "@/lib/classNames";
 // One shape now. `text-code` is the same 13px as `text-ui-sm` and drops the UI tracking that
 // never belonged on mono, and the corner is `sm` because a well sits INSIDE a card whose own
 // corner is `md`: the inner radius has to be the smaller one.
-const styles = cva("m-0 rounded-sm bg-sunken px-3 py-2.5 font-mono text-code leading-relaxed", {
+/** The surface itself. Exported for `TextArea variant="well"` — the editable face of the
+ *  same block — so a well and its editor cannot drift apart. Inside the design system only:
+ *  a call site that wants this surface asks for `<Well>`. */
+export const WELL_SURFACE = "rounded-sm bg-sunken px-3 py-2.5 font-mono text-code leading-relaxed";
+
+const styles = cva(`m-0 ${WELL_SURFACE}`, {
   variants: {
     ink: {
       soft: "text-fg-soft",

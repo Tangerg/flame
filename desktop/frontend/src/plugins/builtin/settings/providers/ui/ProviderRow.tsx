@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Button, Icon, ProviderIcon, TextField } from "@/ui";
+import { Badge, Button, Icon, ProviderIcon, TextField } from "@/ui";
 import {
   type ProviderConfiguration,
   providerMutationWasRetired,
@@ -10,7 +10,6 @@ import {
 import { ProviderCredentialsDraft } from "../application/providerDraft";
 import { useT } from "@/lib/i18n";
 import { useAsyncFeedback } from "../../kit";
-import { cn } from "@/lib/classNames";
 
 export function ProviderRow({ p }: { p: ProviderConfiguration }) {
   const t = useT();
@@ -73,16 +72,11 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
         <div className="min-w-0">
           <div className="truncate text-ui-md font-medium capitalize text-fg">{p.id}</div>
         </div>
-        <span
+        <Badge
+          size="md"
+          tone={fromEnv ? "info" : enabled ? "success" : "neutral"}
           title={fromEnv ? p.credential?.masked : undefined}
-          className={cn(
-            "rounded-pill px-2 py-0.5 font-mono text-ui-sm font-medium",
-            fromEnv
-              ? "bg-info-wash text-info"
-              : enabled
-                ? "bg-success-wash text-success"
-                : "bg-surface-2 text-fg-faint",
-          )}
+          className="font-mono"
         >
           {fromEnv
             ? t("providers.fromEnv")
@@ -91,7 +85,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
                 ? t("providers.key", { masked: p.credential.masked })
                 : t("providers.ready")
               : t("providers.notConfigured")}
-        </span>
+        </Badge>
       </div>
 
       <div className="mt-2.5 grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-2">

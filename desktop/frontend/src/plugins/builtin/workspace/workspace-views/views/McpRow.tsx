@@ -94,13 +94,7 @@ export function McpRow({ server }: { server: MCPServerSettings }) {
   return (
     <div>
       <div className="group grid grid-cols-[40px_1fr_auto_auto_auto] items-center gap-3 px-4 py-3 hover:bg-hover transition-colors">
-        <div
-          className={cn(
-            "grid h-10 w-10 place-items-center rounded-lg bg-surface-2 text-fg-muted group-hover:bg-surface-3 group-hover:text-fg transition-colors",
-            server.status === "connected" && "bg-accent-wash text-accent",
-            server.status === "failed" && "bg-negative-wash text-negative",
-          )}
-        >
+        <div className="grid h-10 w-10 place-items-center rounded-lg bg-surface-2 text-fg-muted group-hover:bg-surface-3 group-hover:text-fg transition-colors">
           <Icon name={knownIconName(server.icon) ?? "tool"} size="md" />
         </div>
         <Pressable

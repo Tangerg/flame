@@ -1,5 +1,5 @@
 import { useT } from "@/lib/i18n";
-import { SectionLabel, TextArea, TextButton } from "@/ui";
+import { SectionLabel, TextArea, TextButton, Well } from "@/ui";
 
 export function ApprovalArgsEditor({
   editing,
@@ -34,7 +34,6 @@ export function ApprovalArgsEditor({
       {editing ? (
         <>
           <TextArea
-            variant="bare"
             invalid={invalid}
             value={argsText}
             aria-label={t("approval.args.label")}
@@ -43,7 +42,7 @@ export function ApprovalArgsEditor({
             onChange={(e) => {
               onTextChange(e.target.value);
             }}
-            className="rounded-md bg-sunken p-2.5 font-mono text-ui-sm text-fg"
+            variant="well"
           />
           {invalid && (
             <div className="mt-1 font-mono text-ui-xs text-negative">
@@ -52,9 +51,9 @@ export function ApprovalArgsEditor({
           )}
         </>
       ) : (
-        <pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded-md bg-sunken p-2.5 font-mono text-ui-sm text-fg">
+        <Well cap="sm" ink="strong">
           {argsText}
-        </pre>
+        </Well>
       )}
     </div>
   );

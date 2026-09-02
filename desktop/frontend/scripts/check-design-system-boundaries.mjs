@@ -49,6 +49,25 @@ const TAG_SHAPE = [
   /\btext-ui-(?:xs|sm|md)\b/,
 ];
 
+// The same defect wearing a colour. `Tone`'s own header says the application layer emits
+// what a state MEANS and the Badge picks the fill and the ink — so a tinted fill sitting
+// beside its own coloured ink is a call site painting a second palette. Six did, in two
+// conventions (`-wash` with coloured ink, `-badge` with coloured ink) against Badge's one,
+// and two of them kept a scope-to-classes table where a scope-to-Tone table belonged.
+//
+// The fill has to be BARE and the ink has to match it: `hover:bg-warning-wash` is row
+// feedback, and a tint with no coloured ink is a panel or a row state, not a badge. Both
+// stay.
+const TONE_FAMILY = "accent|negative|warning|success|info";
+const TONED_BADGE = [
+  new RegExp(String.raw`(?<![:\]-])\bbg-(${TONE_FAMILY})-(?:wash|badge)\b`),
+  new RegExp(String.raw`(?<![:\]-])\btext-(${TONE_FAMILY})\b`),
+];
+
+// A recessed block of verbatim machine text is `Well`. Nine call sites drew it in six
+// spellings before it had an atom; the mono is what separates it from a plain sunken panel.
+const WELL_SHAPE = [/(?<![:\]-])\bbg-sunken\b/, /\brounded-\S+/, /\bfont-mono\b/];
+
 function isTestFile(path) {
   return /\.(?:spec|test)\.[jt]sx?$/.test(path) || path.includes("/__tests__/");
 }
@@ -134,12 +153,18 @@ for (const fileName of project.program.getSourceFileNames()) {
   visit(sourceFile);
 
   if (!insideDesignSystem) {
+    const rebuilt = [
+      [TAG_SHAPE, "hand-rolls a Tag/Badge — use <Tag> for a literal, <Badge> for a state"],
+      [TONED_BADGE, "paints a tone itself — emit a `Tone` and let <Badge> pick fill and ink"],
+      [WELL_SHAPE, 'hand-rolls a Well — use <Well>, or <TextArea variant="well"> to edit one'],
+    ];
     const lines = sourceFile.getFullText().split("\n");
     for (const [index, line] of lines.entries()) {
-      if (!TAG_SHAPE.every((fragment) => fragment.test(line))) continue;
-      violations.push(
-        `${rel}:${index + 1} hand-rolls a Tag/Badge — use <Tag> for a literal, <Badge> for a state`,
-      );
+      for (const [shape, message] of rebuilt) {
+        if (shape.every((fragment) => fragment.test(line))) {
+          violations.push(`${rel}:${index + 1} ${message}`);
+        }
+      }
     }
   }
 }

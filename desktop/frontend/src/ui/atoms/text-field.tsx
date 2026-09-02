@@ -4,6 +4,7 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/classNames";
 import { Icon } from "@/ui/icons";
 import { Button } from "./button";
+import { WELL_SURFACE } from "./well";
 import {
   InputPrimitive,
   TextAreaPrimitive,
@@ -54,6 +55,8 @@ const inputStyles = cva(BASE, {
 const textAreaStyles = cva(`${BASE} resize-y leading-body`, {
   variants: {
     ...SHARED_VARIANTS,
+    // A textarea can be the editable face of a `Well`; a single-line input never is.
+    variant: { ...EDGE, well: "border-0" },
     size: {
       sm: "px-2.5 py-1.5",
       md: "px-3 py-2",
@@ -61,7 +64,11 @@ const textAreaStyles = cva(`${BASE} resize-y leading-body`, {
     },
     autosize: { true: "field-sizing-content resize-none", false: "" },
   },
-  compoundVariants: [...INVALID_COMPOUNDS],
+  compoundVariants: [
+    ...INVALID_COMPOUNDS,
+    // After `size`, so the well's own padding wins over the size step's.
+    { variant: "well", class: WELL_SURFACE },
+  ],
   defaultVariants: {
     variant: "boxed",
     size: "md",
