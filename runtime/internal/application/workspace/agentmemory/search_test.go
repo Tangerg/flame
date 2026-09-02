@@ -43,6 +43,27 @@ type fakeEmbedder struct {
 	err     error
 }
 
+type pointerEmbedder struct{ id string }
+
+func (p *pointerEmbedder) ID() string { return p.id }
+
+func (*pointerEmbedder) Embed(context.Context, []string) ([][]float32, error) {
+	return nil, nil
+}
+
+func mustNewSearcher(
+	t *testing.T,
+	store SearchStore,
+	resolve func(context.Context) (Embedder, error),
+) *Searcher {
+	t.Helper()
+	searcher, err := NewSearcher(store, resolve)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return searcher
+}
+
 func (f fakeEmbedder) ID() string {
 	if f.id != "" {
 		return f.id
@@ -69,7 +90,7 @@ func TestSearchKeywordOnlyWhenNoEmbedder(t *testing.T) {
 		domain.Item{ID: testMemoryItemID('b'), Content: "- prefer tabs over spaces"},
 		domain.Item{ID: testMemoryItemID('c'), Content: "- deploy with kubectl apply"},
 	)}
-	s := NewSearcher(store, nil)
+	s := mustNewSearcher(t, store, nil)
 	got, err := s.Search(context.Background(), "/repo", "how do we run tests", 2)
 	if err != nil {
 		t.Fatal(err)
@@ -82,7 +103,7 @@ func TestSearchKeywordOnlyWhenNoEmbedder(t *testing.T) {
 func TestSearchDegradesWhenEmbedderFails(t *testing.T) {
 	store := &fakeItemSource{items: items(domain.Item{ID: testMemoryItemID('a'), Content: "- run make test"})}
 	resolve := func(context.Context) (Embedder, error) { return fakeEmbedder{err: errors.New("no model")}, nil }
-	s := NewSearcher(store, resolve)
+	s := mustNewSearcher(t, store, resolve)
 	got, err := s.Search(context.Background(), "/repo", "run the tests", 5)
 	if err != nil {
 		t.Fatalf("embed failure must not fail the search: %v", err)
@@ -101,7 +122,7 @@ func TestSearchFusesVectorMatchWithoutKeywordOverlap(t *testing.T) {
 	resolve := func(context.Context) (Embedder, error) {
 		return fakeEmbedder{vectors: map[string][]float32{"where is the pipeline": {1, 0}}}, nil
 	}
-	s := NewSearcher(store, resolve)
+	s := mustNewSearcher(t, store, resolve)
 	got, err := s.Search(context.Background(), "/repo", "where is the pipeline", 2)
 	if err != nil {
 		t.Fatal(err)
@@ -136,7 +157,7 @@ func TestSearchDoesNotReuseCorpusVectorsFromAnotherEmbeddingSpace(t *testing.T) 
 			},
 		}, nil
 	}
-	s := NewSearcher(store, resolve)
+	s := mustNewSearcher(t, store, resolve)
 	got, err := s.Search(t.Context(), "/repo", "find the target", 1)
 	if err != nil {
 		t.Fatal(err)
@@ -150,9 +171,30 @@ func TestSearchDoesNotReuseCorpusVectorsFromAnotherEmbeddingSpace(t *testing.T) 
 }
 
 func TestSearchEmptyCorpus(t *testing.T) {
-	s := NewSearcher(&fakeItemSource{}, nil)
+	s := mustNewSearcher(t, &fakeItemSource{}, nil)
 	got, err := s.Search(context.Background(), "/repo", "anything", 5)
 	if err != nil || got != nil {
 		t.Fatalf("empty corpus search = (%+v, %v)", got, err)
+	}
+}
+
+func TestSearchDegradesWhenResolverReturnsTypedNilEmbedder(t *testing.T) {
+	store := &fakeItemSource{items: items(domain.Item{ID: testMemoryItemID('a'), Content: "run make test"})}
+	resolve := func(context.Context) (Embedder, error) {
+		var embedder *pointerEmbedder
+		return embedder, nil
+	}
+	searcher := mustNewSearcher(t, store, resolve)
+
+	got, err := searcher.Search(t.Context(), "/repo", "make test", 1)
+	if err != nil || len(got) != 1 {
+		t.Fatalf("typed-nil embedder fallback = (%+v, %v), want keyword result", got, err)
+	}
+}
+
+func TestNewSearcherRejectsTypedNilStore(t *testing.T) {
+	var store *fakeItemSource
+	if searcher, err := NewSearcher(store, nil); err == nil || searcher != nil {
+		t.Fatalf("NewSearcher typed-nil store = (%v, %v), want invalid construction", searcher, err)
 	}
 }

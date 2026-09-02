@@ -2,6 +2,8 @@ package agentmemory
 
 import (
 	"context"
+	"errors"
+	"reflect"
 
 	domain "github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
@@ -32,17 +34,20 @@ type Searcher struct {
 	resolveEmbedder func(context.Context) (Embedder, error)
 }
 
-// NewSearcher constructs the search use case. A nil resolver selects
-// keyword-only search.
-func NewSearcher(store SearchStore, resolveEmbedder func(context.Context) (Embedder, error)) *Searcher {
-	return &Searcher{store: store, resolveEmbedder: resolveEmbedder}
+// NewSearcher constructs the search use case over a required corpus store. A
+// nil resolver selects keyword-only search.
+func NewSearcher(store SearchStore, resolveEmbedder func(context.Context) (Embedder, error)) (*Searcher, error) {
+	if nilSearchDependency(store) {
+		return nil, errors.New("agentmemory: search store is required")
+	}
+	return &Searcher{store: store, resolveEmbedder: resolveEmbedder}, nil
 }
 
 // Search returns up to topK relevant project- and user-scoped memory items for
 // one project context. Ranking happens over the combined corpus so neither
 // partition receives a separate top-k quota or query embedding.
 func (s *Searcher) Search(ctx context.Context, project, query string, topK int) ([]domain.Item, error) {
-	if s == nil || s.store == nil || topK <= 0 {
+	if s == nil || topK <= 0 {
 		return nil, nil
 	}
 	items, err := s.store.SearchCorpus(ctx, project)
@@ -68,7 +73,7 @@ func (s *Searcher) resolveSemanticQuery(ctx context.Context, query string) (sema
 		return semanticQuery{}, false
 	}
 	embedder, err := s.resolveEmbedder(ctx)
-	if err != nil || embedder == nil {
+	if err != nil || nilSearchDependency(embedder) {
 		return semanticQuery{}, false
 	}
 	space := embedder.ID()
@@ -84,6 +89,19 @@ func (s *Searcher) resolveSemanticQuery(ctx context.Context, query string) (sema
 		space:       space,
 		queryVector: queryVectors[0],
 	}, true
+}
+
+func nilSearchDependency(value any) bool {
+	if value == nil {
+		return true
+	}
+	reflected := reflect.ValueOf(value)
+	switch reflected.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return reflected.IsNil()
+	default:
+		return false
+	}
 }
 
 func (s *Searcher) refreshEmbeddings(ctx context.Context, semantic semanticQuery, items []domain.Item) {

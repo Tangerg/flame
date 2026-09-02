@@ -47,7 +47,10 @@ func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection mod
 		liveEmbedder:       liveEmbedder,
 	}
 	if cfg.AgentMemoryStore != nil {
-		environment.agentMemorySearch = agentmemoryapp.NewSearcher(cfg.AgentMemoryStore, liveEmbedder.ResolveMemory)
+		environment.agentMemorySearch, err = agentmemoryapp.NewSearcher(cfg.AgentMemoryStore, liveEmbedder.ResolveMemory)
+		if err != nil {
+			return modelEnvironment{}, err
+		}
 	}
 	return environment, nil
 }
