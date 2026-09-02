@@ -539,4 +539,57 @@ Shared condition validation checked path existence and operator arguments but di
 ### Remaining risk and next direction
 
 - Both runtime reflection matchers already required a final scalar string, so registration now states their existing contract rather than changing evaluation. Cross-artifact drift tests cover every accepted first-party rule.
-- Round 11 will revisit strict explicit-null traversal, now the sole measured Runtime complexity finding, and separate type normalization from container recursion only if the existing acceptance rules prove a coherent split.
+- Round 11 will revisit strict explicit-null traversal, now the sole measured Runtime delivery complexity finding, and separate type normalization from container recursion only if the existing acceptance rules prove a coherent split.
+
+## Round 11 — complete
+
+### Audit scope and evidence
+
+- Re-audited strict parameter decoding across pointer omission, scalar leaves, structs, sequences, typed maps, byte slices, custom JSON unmarshallers, `json.RawMessage`, and interface-backed opaque JSON.
+- No new acceptance defect was found. The ordering is deliberate: opaque JSON owns null; every typed value rejects null before custom decoding; custom decoders own their non-null interior; byte slices remain scalar JSON payloads; typed containers recurse.
+- The sole remaining production complexity finding in dispatch comes from placing struct, sequence, and map decoding/traversal inside the same recursive dispatcher. These are independent container policies with distinct ordering and path construction, and none shares mutable state beyond the recursive call.
+- Existing tests cover pointer/struct, typed-map ordering, and opaque values but not an explicit null inside a typed slice. That missing case should anchor the sequence policy before extraction.
+- Baseline: `GOWORK=off go test -count=1 ./internal/delivery/dispatch -run 'TestDecodeParams|TestDecodeProviderUpdate'` passed in 1.11s.
+
+### Root cause
+
+The null boundary began as one recursive routine and accumulated three complete container walkers. The top-level dispatcher now owns type semantics and container traversal simultaneously, inflating nesting even though each traversal is independently understandable.
+
+### Impact and acceptance criteria
+
+- Preserve exact acceptance and error text for pointers, structs, slices, arrays, maps, bytes, custom decoders, raw messages, and interfaces.
+- Keep struct declaration order, sequence index order, and lexicographically sorted map-key order.
+- Add typed-slice element-null coverage alongside existing typed-map and opaque-map regressions.
+- Give each container one private traversal function without a generic visitor, state object, interface, or new package.
+- Eliminate the final dispatch production complexity finding and pass focused dispatch tests normally and under the race detector, Runtime and current-workspace CLI full gates, plus one bounded live Run.
+
+### Plan
+
+- **Completed:** added cross-container null regression coverage and extracted the three container walkers while retaining `rejectExplicitNulls` as the only recursive entry point.
+- **Completed:** formatted, remeasured complexity, ran focused/full/live verification, cleaned resources, inspected compatibility, and recorded results.
+
+### Validation
+
+- Pointer-field, typed-slice element, typed-map value, and opaque-map cases passed after extraction in 1.22s with exact path diagnostics.
+- The complete dispatch package passed in 0.59s and with `-race` in 3.14s. Focused `go vet` and `staticcheck` passed.
+- Production-only `gocognit`/`gocyclo` now reports zero dispatch findings; `rejectExplicitNulls` no longer exceeds the threshold, and none of the three container walkers introduces a finding.
+- Runtime `GOWORK=off go vet ./...` passed in 0.77s, `GOWORK=off go build ./...` passed in 3.81s, and uncached `GOWORK=off go test -count=1 ./...` passed in 44.73s.
+- Current-workspace CLI `go vet ./...` passed in 0.52s, `go build ./...` passed in 2.17s, and uncached `go test -count=1 ./...` passed in 39.72s.
+- The current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND11_OK`, status `completed`, one step, 9,188 input tokens, 8 output tokens, 9,088 cache-read tokens, and 375ms model duration; the Run command took 3.25s. No credential value was printed or copied.
+- `git diff --check` passed. Protocol generation was not applicable because request acceptance, wire shapes, and published artifacts did not change.
+
+### Changes and compatibility
+
+- `rejectExplicitNulls` remains the only recursive semantic entry and owns pointer normalization, opaque-value exemption, explicit-null rejection, custom-decoder ownership, and container dispatch.
+- Struct, sequence, and map traversal now live in concrete private functions that preserve declaration, index, and sorted-key order respectively.
+- Breaking changes: none. Accepted/rejected JSON, exact diagnostic paths and text, protocol errors, generated artifacts, and public bindings are unchanged.
+
+### Resource cleanup
+
+- The bounded live Run used a validated `/tmp/flame-live-round11.*` directory containing its isolated Runtime home and Go build cache. The exit trap moved it to the system Trash.
+- No matching temporary directory remained. No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- The extraction changes only function boundaries; all recursion still re-enters the same semantic gate, so nested opaque and custom-decoder behavior cannot bypass a new path. Focused and full race coverage passed.
+- Round 12 will audit the remaining contractgen field compiler against collection/numeric pointer shapes and requiredness, looking for additional registration-to-generator mismatches before any structural split.

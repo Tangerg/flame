@@ -54,42 +54,56 @@ func rejectExplicitNulls(raw json.RawMessage, target reflect.Type, path string) 
 
 	switch target.Kind() {
 	case reflect.Struct:
-		var object map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &object); err != nil {
-			return fmt.Errorf("decode %s: %w", path, err)
-		}
-		for _, field := range contractshape.Fields(target) {
-			value, present := object[field.Name]
-			if !present {
-				continue
-			}
-			if err := rejectExplicitNulls(value, field.Type, path+"."+field.Name); err != nil {
-				return err
-			}
-		}
+		return rejectStructNulls(raw, target, path)
 	case reflect.Slice, reflect.Array:
 		if target.Elem().Kind() == reflect.Uint8 {
 			return nil
 		}
-		var values []json.RawMessage
-		if err := json.Unmarshal(raw, &values); err != nil {
-			return fmt.Errorf("decode %s: %w", path, err)
-		}
-		for index, value := range values {
-			if err := rejectExplicitNulls(value, target.Elem(), fmt.Sprintf("%s[%d]", path, index)); err != nil {
-				return err
-			}
-		}
+		return rejectSequenceNulls(raw, target.Elem(), path)
 	case reflect.Map:
-		var values map[string]json.RawMessage
-		if err := json.Unmarshal(raw, &values); err != nil {
-			return fmt.Errorf("decode %s: %w", path, err)
+		return rejectMapNulls(raw, target.Elem(), path)
+	}
+	return nil
+}
+
+func rejectStructNulls(raw json.RawMessage, target reflect.Type, path string) error {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &object); err != nil {
+		return fmt.Errorf("decode %s: %w", path, err)
+	}
+	for _, field := range contractshape.Fields(target) {
+		value, present := object[field.Name]
+		if !present {
+			continue
 		}
-		for _, key := range slices.Sorted(maps.Keys(values)) {
-			value := values[key]
-			if err := rejectExplicitNulls(value, target.Elem(), path+"."+key); err != nil {
-				return err
-			}
+		if err := rejectExplicitNulls(value, field.Type, path+"."+field.Name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func rejectSequenceNulls(raw json.RawMessage, element reflect.Type, path string) error {
+	var values []json.RawMessage
+	if err := json.Unmarshal(raw, &values); err != nil {
+		return fmt.Errorf("decode %s: %w", path, err)
+	}
+	for index, value := range values {
+		if err := rejectExplicitNulls(value, element, fmt.Sprintf("%s[%d]", path, index)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func rejectMapNulls(raw json.RawMessage, element reflect.Type, path string) error {
+	var values map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &values); err != nil {
+		return fmt.Errorf("decode %s: %w", path, err)
+	}
+	for _, key := range slices.Sorted(maps.Keys(values)) {
+		if err := rejectExplicitNulls(values[key], element, path+"."+key); err != nil {
+			return err
 		}
 	}
 	return nil

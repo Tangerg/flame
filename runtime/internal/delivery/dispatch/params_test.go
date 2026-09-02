@@ -109,6 +109,41 @@ func TestDecodeParamsAllowsNullInsideOpaqueJSONValues(t *testing.T) {
 	}
 }
 
+type nullTraversalFixture struct {
+	Text   *string        `json:"text,omitempty"`
+	Values []string       `json:"values,omitempty"`
+	Lookup map[string]int `json:"lookup,omitempty"`
+	Opaque map[string]any `json:"opaque,omitempty"`
+}
+
+func TestDecodeParamsRejectsExplicitNullsAcrossTypedContainers(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{name: "pointer field", raw: `{"text":null}`, want: "params.text"},
+		{name: "slice element", raw: `{"values":[null]}`, want: "params.values[0]"},
+		{name: "map value", raw: `{"lookup":{"key":null}}`, want: "params.lookup.key"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			var got nullTraversalFixture
+			err := decodeParams(json.RawMessage(test.raw), &got)
+			if err == nil || err.Error() != test.want+" must be omitted instead of null" {
+				t.Fatalf("decodeParams error = %v, want null rejection at %s", err, test.want)
+			}
+		})
+	}
+
+	var got nullTraversalFixture
+	if err := decodeParams(json.RawMessage(`{"opaque":{"value":null}}`), &got); err != nil {
+		t.Fatalf("decodeParams rejected opaque null: %v", err)
+	}
+}
+
 // TestDecodeReportsFieldLevelConstraintViolations pins the two facts a request
 // constraint has to deliver: the failure is invalid_params, and it names the
 // offending params keys in ProblemData.errors rather than only in
