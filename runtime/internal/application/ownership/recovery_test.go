@@ -42,6 +42,32 @@ type goalReconciler func(context.Context) error
 
 func (g goalReconciler) Reconcile(ctx context.Context) error { return g(ctx) }
 
+func TestNewRecoveryRejectsTypedNilCollaborators(t *testing.T) {
+	validRuns := runReconciler(func(context.Context) (int, error) { return 0, nil })
+	validGoals := goalReconciler(func(context.Context) error { return nil })
+	validOwnership := &testOwnership{acquired: true}
+	var typedNilOwnership *testOwnership
+
+	tests := []struct {
+		name      string
+		runs      ownership.RunRecovery
+		goals     ownership.GoalRecovery
+		ownership ownership.RecoveryBackend
+	}{
+		{name: "Run reconciler", runs: runReconciler(nil), goals: validGoals, ownership: validOwnership},
+		{name: "Goal reconciler", runs: validRuns, goals: goalReconciler(nil), ownership: validOwnership},
+		{name: "ownership backend", runs: validRuns, goals: validGoals, ownership: typedNilOwnership},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			coordinator, err := ownership.NewRecovery(test.runs, test.goals, test.ownership)
+			if err == nil || coordinator != nil {
+				t.Fatalf("NewRecovery = %#v, %v", coordinator, err)
+			}
+		})
+	}
+}
+
 func TestCoordinatorElectsOneWinnerAndOrdersRunBeforeGoalRecovery(t *testing.T) {
 	var order []string
 	backend := &testOwnership{acquired: true}

@@ -42,8 +42,14 @@ type RecoveryCoordinator struct {
 // when autonomous Goal capability is not assembled. A nil RecoveryBackend retains
 // single-process behavior for isolated assembly tests.
 func NewRecovery(runs RunRecovery, goals GoalRecovery, ownership RecoveryBackend) (*RecoveryCoordinator, error) {
-	if runs == nil {
+	if nilDependency(runs) {
 		return nil, errors.New("ownership recovery: Run reconciler is required")
+	}
+	if goals != nil && nilDependency(goals) {
+		return nil, errors.New("ownership recovery: optional Goal reconciler must not be typed nil")
+	}
+	if ownership != nil && nilDependency(ownership) {
+		return nil, errors.New("ownership recovery: optional backend must not be typed nil")
 	}
 	if ownership == nil {
 		ownership = localOwnership{}

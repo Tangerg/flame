@@ -32,7 +32,12 @@ type AdmissionBackend interface {
 // NewGate constructs a Gate whose single-writer and working-tree invariants span
 // every Runtime process sharing the ownership backend. A nil owner keeps the
 // zero-value process-local behavior used by isolated tests.
-func NewGate(ownership AdmissionBackend) *Gate { return &Gate{ownership: ownership} }
+func NewGate(ownership AdmissionBackend) (*Gate, error) {
+	if ownership != nil && nilDependency(ownership) {
+		return nil, errors.New("session admission: ownership backend must not be typed nil")
+	}
+	return &Gate{ownership: ownership}, nil
+}
 
 type liveRun struct {
 	sessionID string

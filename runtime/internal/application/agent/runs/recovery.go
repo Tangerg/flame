@@ -180,13 +180,13 @@ func NewRecovery(
 	admissions RecoveryAdmissions,
 	invalidations invalidation.Publish,
 ) (*Recovery, error) {
-	if store == nil {
+	if nilDependency(store) {
 		return nil, errors.New("runs: recovery store is required")
 	}
-	if resumability == nil {
+	if nilDependency(resumability) {
 		return nil, errors.New("runs: waiting execution resumability is required")
 	}
-	if admissions == nil {
+	if nilDependency(admissions) {
 		return nil, errors.New("runs: recovery admissions are required")
 	}
 	return &Recovery{

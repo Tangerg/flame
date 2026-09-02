@@ -159,6 +159,35 @@ func (s *selectiveRecoveryAdmissions) AcquireSession(sessionID string) (func(), 
 	return func() { s.released[sessionID]++ }, true
 }
 
+func TestNewRecoveryRejectsTypedNilDependencies(t *testing.T) {
+	validStore := &recoveryStoreStub{}
+	validResumability := waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+		return true, nil
+	})
+	validAdmissions := &selectiveRecoveryAdmissions{}
+	var typedNilStore *recoveryStoreStub
+	var typedNilAdmissions *selectiveRecoveryAdmissions
+
+	tests := []struct {
+		name         string
+		store        RecoveryStore
+		resumability WaitingExecutionResumability
+		admissions   RecoveryAdmissions
+	}{
+		{name: "store", store: typedNilStore, resumability: validResumability, admissions: validAdmissions},
+		{name: "resumability", store: validStore, resumability: waitingExecutionResumabilityFunc(nil), admissions: validAdmissions},
+		{name: "admissions", store: validStore, resumability: validResumability, admissions: typedNilAdmissions},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			recovery, err := NewRecovery(test.store, test.resumability, test.admissions, nil)
+			if err == nil || recovery != nil {
+				t.Fatalf("NewRecovery = %#v, %v", recovery, err)
+			}
+		})
+	}
+}
+
 func TestRecoverySkipsFactsOwnedByAnotherRuntime(t *testing.T) {
 	createdAt := time.Date(2026, 8, 14, 1, 0, 0, 0, time.UTC)
 	recoverable := testsupport.MustRestoreRun(rundomain.Snapshot{

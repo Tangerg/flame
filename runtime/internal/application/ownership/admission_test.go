@@ -7,6 +7,33 @@ import (
 	"time"
 )
 
+type admissionBackendStub struct{}
+
+func (*admissionBackendStub) TrySession(string) (Lease, bool) {
+	return noopLease{}, true
+}
+
+func (*admissionBackendStub) TryWorkingTree(string, bool) (Lease, bool) {
+	return noopLease{}, true
+}
+
+func TestNewGateDistinguishesAbsentAndTypedNilOwnership(t *testing.T) {
+	gate, err := NewGate(nil)
+	if err != nil {
+		t.Fatalf("NewGate(nil): %v", err)
+	}
+	release, ok := gate.AcquireSession("ses_1")
+	if !ok {
+		t.Fatal("process-local Gate rejected a Session")
+	}
+	release()
+
+	var backend *admissionBackendStub
+	if gate, err := NewGate(backend); err == nil || gate != nil {
+		t.Fatalf("NewGate(typed nil) = %#v, %v", gate, err)
+	}
+}
+
 func TestGateHoldsSessionThroughMaintenance(t *testing.T) {
 	var gate Gate
 	opening, ok := gate.AcquireRun("ses_1", "/repo")

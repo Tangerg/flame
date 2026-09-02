@@ -170,7 +170,10 @@ func buildAssemblyCore(
 	}
 
 	fileChanges := newNotificationRelay[workspace.FileChangeNotice]()
-	admissionGate := ownership.NewGate(cfg.SessionOwnership)
+	admissionGate, err := ownership.NewGate(cfg.SessionOwnership)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: session admission: %w", err)
+	}
 	sessionStores := persistence.NewSessionStores(persistence.SessionStoresConfig{
 		Sessions:            cfg.SessionStore,
 		Transcript:          cfg.TranscriptStore,
