@@ -26,7 +26,6 @@ type transcriptView struct {
 	content          headless.Transcript
 	scroll           headless.Scroll
 	selection        headless.Selection
-	sticky           headless.Sticky
 	view             kit.Transcript
 	search           transcriptSearch
 	retain           int
@@ -158,10 +157,9 @@ func newTranscriptView(
 	}
 	c.scroll.Wheel(wheel)
 	c.scroll.ToBottom()
-	c.sticky.MinHeight, c.sticky.Gap = 1, 1
 	c.view = kit.Transcript{
 		Content: &c.content, Scroll: &c.scroll, Selection: &c.selection,
-		Sticky: &c.sticky, Theme: theme, Glyphs: glyphs, Current: -1,
+		Theme: theme, Glyphs: glyphs, Current: -1,
 	}
 	return c
 }
@@ -344,9 +342,6 @@ func (t *transcriptView) appendCompleted(block agent.Block, registry *extensions
 		}
 		if isMutable {
 			t.toolViews = append(t.toolViews, trackedToolView{id: id, block: mutable})
-		}
-		if block.Kind == agent.BlockUser {
-			t.sticky.Add(id)
 		}
 	}
 	t.refreshSearch()
@@ -540,9 +535,8 @@ func (t *transcriptView) Reset() {
 	t.scroll.Wheel(t.wheel)
 	t.scroll.ToBottom()
 	t.selection = headless.Selection{}
-	t.sticky = headless.Sticky{MinHeight: 1, Gap: 1}
 	t.view.Content, t.view.Scroll = &t.content, &t.scroll
-	t.view.Selection, t.view.Sticky = &t.selection, &t.sticky
+	t.view.Selection = &t.selection
 	for _, live := range t.textStreams {
 		live.stream.Reset()
 	}

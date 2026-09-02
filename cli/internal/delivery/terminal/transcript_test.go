@@ -90,6 +90,35 @@ func TestStreamingPreservesAReadersScrollPosition(t *testing.T) {
 	}
 }
 
+func TestFollowingLongAnswerDoesNotPinAnExpiredUserLabel(t *testing.T) {
+	view := testTranscriptView(t)
+	registry := new(extensions.Registry)
+	loaded, err := extensions.Load(registry, builtinPlugin())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = loaded.Dispose() })
+	for _, block := range []agent.Block{
+		{ID: "user", RunID: "run_1", Kind: agent.BlockUser, Text: "list the desktop"},
+		{
+			ID: "answer", RunID: "run_1", Kind: agent.BlockAssistant,
+			Text: strings.Repeat("answer paragraph\n\n", 12) + "visible tail",
+		},
+	} {
+		if err := view.Apply(agent.BlockCompleted{Block: block}, registry); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	drawn := drawRoot(t, view, 48, 6)
+	if strings.Contains(drawn, "you") {
+		t.Fatalf("expired user label remained pinned above the followed answer:\n%s", drawn)
+	}
+	if !strings.Contains(drawn, "visible tail") {
+		t.Fatalf("followed transcript did not expose the answer tail:\n%s", drawn)
+	}
+}
+
 func TestAcceptedQuestionRevealsItsDurableAnswerInPlace(t *testing.T) {
 	view := testTranscriptView(t)
 	registry := new(extensions.Registry)
