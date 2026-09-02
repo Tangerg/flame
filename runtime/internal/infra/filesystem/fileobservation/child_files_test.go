@@ -215,11 +215,101 @@ func mustWriteObservedFile(t *testing.T, path, content string) {
 
 func mustScanChildFiles(t *testing.T, target childFileTarget) (childFileSnapshot, []string) {
 	t.Helper()
-	snapshot, watched, err := scanChildFiles(target)
+	roots, err := openObservationRoots([]string{target.physicalBoundary})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = roots.Close() }()
+	snapshot, watched, err := scanChildFiles(target, roots)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return snapshot, watched
+}
+
+func TestScanChildFileDirectoryRejectsEscapingReplacement(t *testing.T) {
+	boundary := t.TempDir()
+	directory := filepath.Join(boundary, "skills")
+	if err := os.Mkdir(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	physicalBoundary, err := pathidentity.Resolve("", boundary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	physicalDirectory, err := pathidentity.Resolve("", directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roots, err := openObservationRoots([]string{physicalBoundary})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = roots.Close() }()
+	if err := os.Remove(directory); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	if err := os.Mkdir(filepath.Join(outside, "external"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, directory); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	candidate := childFileTarget{
+		key: "skills", path: directory, physicalBoundary: physicalBoundary,
+		fileName: "SKILL.md", maxEntries: 16, maxBytes: testMaxBytes,
+	}
+	if _, _, err := scanChildFileDirectory(candidate, physicalDirectory, info, roots); err == nil {
+		t.Fatal("replaced directory escaped its observation boundary")
+	}
+}
+
+func TestFingerprintResolvedChildFileRejectsEscapingReplacement(t *testing.T) {
+	boundary := t.TempDir()
+	directory := filepath.Join(boundary, "skill")
+	if err := os.Mkdir(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	logical := filepath.Join(directory, "SKILL.md")
+	if err := os.WriteFile(logical, []byte("inside"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := filepath.EvalSymlinks(logical)
+	if err != nil {
+		t.Fatal(err)
+	}
+	physicalBoundary, err := pathidentity.Resolve("", boundary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roots, err := openObservationRoots([]string{physicalBoundary})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = roots.Close() }()
+	if err := os.Remove(logical); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(directory); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "SKILL.md"), []byte("outside"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, directory); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	if _, _, err := fingerprintResolvedChildFile(
+		logical, resolved, physicalBoundary, testMaxBytes, roots,
+	); err == nil {
+		t.Fatal("replaced child file escaped its observation boundary")
+	}
 }
 
 func requireBoundedChildWatches(t *testing.T, watched []string, root, child, nested string) {

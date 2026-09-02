@@ -32,6 +32,14 @@ func OpenDirectoryAt(root *os.Root, name string) (*os.File, os.FileInfo, error) 
 	return openExpectedDirectory(info, func() (*os.File, error) { return openRootPath(root, name) })
 }
 
+// OpenDirectoryAtExpected applies OpenDirectoryExpected through an os.Root.
+func OpenDirectoryAtExpected(root *os.Root, name string, expected os.FileInfo) (*os.File, os.FileInfo, error) {
+	if root == nil {
+		return nil, nil, errors.New("file input: root is required")
+	}
+	return openExpectedDirectory(expected, func() (*os.File, error) { return openRootPath(root, name) })
+}
+
 func openExpectedDirectory(
 	source os.FileInfo,
 	openDirectory func() (*os.File, error),

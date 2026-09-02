@@ -38,18 +38,27 @@ func WatchChildFiles(targets []ChildFileTarget, notify func([]string)) (Observat
 	if len(canonical) == 0 {
 		return nopWatch{}, nil
 	}
+	boundaries := make([]string, len(canonical))
+	for index, candidate := range canonical {
+		boundaries[index] = candidate.physicalBoundary
+	}
+	roots, err := openObservationRoots(boundaries)
+	if err != nil {
+		return nil, fmt.Errorf("observe child files: %w", err)
+	}
 	lifecycle, err := newObserverLifecycle("observe child files")
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, roots.Close())
 	}
 	w := &childFileWatch{
 		observerLifecycle: lifecycle,
 		targets:           canonical,
 		notify:            notify,
 		baselines:         make([]childFileSnapshot, len(canonical)),
+		roots:             roots,
 	}
 	if err := w.reconcile(true, acceptance{}); err != nil {
-		return nil, lifecycle.abort(err)
+		return nil, errors.Join(lifecycle.abort(err), roots.Close())
 	}
 	lifecycle.start(func(accepted acceptance) error {
 		return w.reconcile(false, accepted)
@@ -138,6 +147,7 @@ type childFileWatch struct {
 	targets   []childFileTarget
 	notify    func([]string)
 	baselines []childFileSnapshot
+	roots     *observationRoots
 }
 
 func (t *childFileWatch) reconcile(initial bool, accepted acceptance) error {
@@ -151,7 +161,7 @@ func (t *childFileWatch) reconcile(initial bool, accepted acceptance) error {
 	changedKeys := make([]string, 0, len(t.targets))
 	accepting := len(accepted.keys) > 0 && len(accepted.identities) > 0
 	for index, candidate := range t.targets {
-		state, watched, err := scanChildFiles(candidate)
+		state, watched, err := scanChildFiles(candidate, t.roots)
 		if err != nil {
 			t.stateMu.Unlock()
 			return err
@@ -183,15 +193,15 @@ func (t *childFileWatch) reconcile(initial bool, accepted acceptance) error {
 	return nil
 }
 
-func scanChildFiles(candidate childFileTarget) (childFileSnapshot, []string, error) {
-	physical, info, directories, err := resolveChildFileRoot(candidate)
+func scanChildFiles(candidate childFileTarget, roots *observationRoots) (childFileSnapshot, []string, error) {
+	physical, info, directories, err := resolveChildFileRoot(candidate, roots)
 	if err != nil {
 		return childFileSnapshot{}, nil, err
 	}
 	if info == nil {
 		return childFileSnapshot{}, directories, nil
 	}
-	snapshot, children, err := scanChildFileDirectory(candidate, physical, info)
+	snapshot, children, err := scanChildFileDirectory(candidate, physical, info, roots)
 	if err != nil {
 		return childFileSnapshot{}, nil, err
 	}
@@ -206,22 +216,28 @@ func scanChildFiles(candidate childFileTarget) (childFileSnapshot, []string, err
 	return snapshot, directories, nil
 }
 
-func resolveChildFileRoot(candidate childFileTarget) (string, os.FileInfo, []string, error) {
+func resolveChildFileRoot(
+	candidate childFileTarget,
+	roots *observationRoots,
+) (string, os.FileInfo, []string, error) {
 	physical, err := pathidentity.Resolve("", candidate.path)
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("observe child files: resolve %q: %w", candidate.path, err)
 	}
-	if candidate.physicalBoundary != "" {
-		inside, containsErr := pathidentity.Contains(candidate.physicalBoundary, physical)
-		if containsErr != nil {
-			return "", nil, nil, fmt.Errorf("observe child files: confine %q: %w", candidate.path, containsErr)
-		}
-		if !inside {
-			directory, err := nearestExistingDirectory(filepath.Dir(candidate.path))
-			return "", nil, []string{directory}, err
-		}
+	root, name, inside, err := roots.access(candidate.physicalBoundary, physical)
+	if err != nil {
+		return "", nil, nil, fmt.Errorf("observe child files: confine %q: %w", candidate.path, err)
 	}
-	info, err := os.Stat(physical)
+	if !inside {
+		directory, directoryErr := nearestExistingDirectory(filepath.Dir(candidate.path))
+		return "", nil, []string{directory}, directoryErr
+	}
+	var info os.FileInfo
+	if root != nil {
+		info, err = root.Stat(name)
+	} else {
+		info, err = os.Stat(name)
+	}
 	if errors.Is(err, os.ErrNotExist) {
 		directory, directoryErr := nearestExistingDirectory(filepath.Dir(physical))
 		return "", nil, []string{directory}, directoryErr
@@ -240,8 +256,11 @@ func scanChildFileDirectory(
 	candidate childFileTarget,
 	physical string,
 	info os.FileInfo,
+	roots *observationRoots,
 ) (childFileSnapshot, []string, error) {
-	entries, overflow, err := readChildFileEntries(physical, info, candidate.maxEntries)
+	entries, overflow, err := readChildFileEntries(
+		roots, candidate.physicalBoundary, physical, info, candidate.maxEntries,
+	)
 	if err != nil {
 		return childFileSnapshot{}, nil, fmt.Errorf("observe child files: scan %q: %w", physical, err)
 	}
@@ -254,7 +273,9 @@ func scanChildFileDirectory(
 			}
 			directory := filepath.Join(physical, entry.Name())
 			directories = append(directories, directory)
-			logical, observed, present, err := observeImmediateChildFile(candidate, directory, entry.Name())
+			logical, observed, present, err := observeImmediateChildFile(
+				candidate, directory, entry.Name(), roots,
+			)
 			if err != nil {
 				return childFileSnapshot{}, nil, err
 			}
@@ -270,9 +291,22 @@ func observeImmediateChildFile(
 	candidate childFileTarget,
 	directory string,
 	childName string,
+	roots *observationRoots,
 ) (string, childFileEntry, bool, error) {
 	path := filepath.Join(directory, candidate.fileName)
-	matched, err := os.Lstat(path)
+	root, name, inside, err := roots.access(candidate.physicalBoundary, path)
+	if err != nil {
+		return "", childFileEntry{}, false, fmt.Errorf("observe child files: confine %q: %w", path, err)
+	}
+	if !inside {
+		return "", childFileEntry{}, false, nil
+	}
+	var matched os.FileInfo
+	if root != nil {
+		matched, err = root.Lstat(name)
+	} else {
+		matched, err = os.Lstat(name)
+	}
 	if errors.Is(err, os.ErrNotExist) {
 		return "", childFileEntry{}, false, nil
 	}
@@ -283,7 +317,9 @@ func observeImmediateChildFile(
 		return "", childFileEntry{}, false, nil
 	}
 	logical := filepath.Join(candidate.path, childName, candidate.fileName)
-	value, resolved, err := fingerprintChildFile(logical, path, candidate.physicalBoundary, candidate.maxBytes)
+	value, resolved, err := fingerprintChildFile(
+		logical, path, candidate.physicalBoundary, candidate.maxBytes, roots,
+	)
 	if err != nil {
 		return "", childFileEntry{}, false, err
 	}
@@ -297,8 +333,25 @@ func childFileLogicalParent(logical, physical string) (string, error) {
 	return nearestExistingDirectory(filepath.Dir(logical))
 }
 
-func readChildFileEntries(path string, info os.FileInfo, maxEntries int) ([]os.DirEntry, bool, error) {
-	directory, _, err := fileinput.OpenDirectoryExpected(path, info)
+func readChildFileEntries(
+	roots *observationRoots,
+	boundary, path string,
+	info os.FileInfo,
+	maxEntries int,
+) ([]os.DirEntry, bool, error) {
+	root, name, inside, err := roots.access(boundary, path)
+	if err != nil {
+		return nil, false, err
+	}
+	if !inside {
+		return nil, false, errors.New("child file directory is outside its observation boundary")
+	}
+	var directory *os.File
+	if root != nil {
+		directory, _, err = fileinput.OpenDirectoryAtExpected(root, name, info)
+	} else {
+		directory, _, err = fileinput.OpenDirectoryExpected(name, info)
+	}
 	if err != nil {
 		return nil, false, err
 	}
@@ -319,21 +372,36 @@ func readChildFileEntries(path string, info os.FileInfo, maxEntries int) ([]os.D
 	return entries, false, nil
 }
 
-func fingerprintChildFile(logical, physical, boundary string, maxBytes int64) (fingerprint, string, error) {
+func fingerprintChildFile(
+	logical, physical, boundary string,
+	maxBytes int64,
+	roots *observationRoots,
+) (fingerprint, string, error) {
 	resolved, err := pathidentity.Resolve("", physical)
 	if err != nil {
 		return fingerprint{}, "", fmt.Errorf("observe child files: resolve file %q: %w", logical, err)
 	}
-	if boundary != "" {
-		inside, containsErr := pathidentity.Contains(boundary, resolved)
-		if containsErr != nil {
-			return fingerprint{}, "", fmt.Errorf("observe child files: confine file %q: %w", logical, containsErr)
-		}
-		if !inside {
-			return fingerprint{}, resolved, nil
-		}
+	return fingerprintResolvedChildFile(logical, resolved, boundary, maxBytes, roots)
+}
+
+func fingerprintResolvedChildFile(
+	logical, resolved, boundary string,
+	maxBytes int64,
+	roots *observationRoots,
+) (fingerprint, string, error) {
+	root, name, inside, err := roots.access(boundary, resolved)
+	if err != nil {
+		return fingerprint{}, "", fmt.Errorf("observe child files: confine file %q: %w", logical, err)
 	}
-	info, err := os.Stat(resolved)
+	if !inside {
+		return fingerprint{}, resolved, nil
+	}
+	var info os.FileInfo
+	if root != nil {
+		info, err = root.Stat(name)
+	} else {
+		info, err = os.Stat(name)
+	}
 	if err != nil {
 		return fingerprint{}, "", fmt.Errorf("observe child files: inspect file %q: %w", logical, err)
 	}
@@ -352,7 +420,12 @@ func fingerprintChildFile(logical, physical, boundary string, maxBytes int64) (f
 		encoder.state(fingerprintStateTooLarge)
 		return encoder.sum(), resolved, nil
 	}
-	file, _, err := fileinput.OpenExpected(resolved, info, maxBytes)
+	var file *os.File
+	if root != nil {
+		file, _, err = fileinput.OpenAtExpected(root, name, info, maxBytes)
+	} else {
+		file, _, err = fileinput.OpenExpected(name, info, maxBytes)
+	}
 	if err != nil {
 		return fingerprint{}, "", fmt.Errorf("observe child files: open %q: %w", logical, err)
 	}
@@ -365,6 +438,10 @@ func fingerprintChildFile(logical, physical, boundary string, maxBytes int64) (f
 		return fingerprint{}, "", fmt.Errorf("observe child files: read %q: %w", logical, errors.Join(copyErr, closeErr))
 	}
 	return encoder.sum(), resolved, nil
+}
+
+func (t *childFileWatch) Close() error {
+	return errors.Join(t.observerLifecycle.Close(), t.roots.Close())
 }
 
 func acceptChildFileChanges(

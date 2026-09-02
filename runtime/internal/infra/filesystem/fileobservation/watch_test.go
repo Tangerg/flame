@@ -79,6 +79,50 @@ func TestWatchObservesPhysicalSymlinkTargetAndCloseJoins(t *testing.T) {
 	}
 }
 
+func TestFingerprintPhysicalTargetRejectsEscapingReplacement(t *testing.T) {
+	root := t.TempDir()
+	directory := filepath.Join(root, "nested")
+	if err := os.Mkdir(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	targetPath := filepath.Join(directory, "FLAME.md")
+	if err := os.WriteFile(targetPath, []byte("inside"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	physical, err := filepath.EvalSymlinks(targetPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	physicalBoundary, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roots, err := openObservationRoots([]string{physicalBoundary})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = roots.Close() }()
+	if err := os.Remove(targetPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(directory); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "FLAME.md"), []byte("outside"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, directory); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	candidate := target{
+		key: "knowledge", path: targetPath, physicalBoundary: physicalBoundary, maxBytes: testMaxBytes,
+	}
+	if _, _, err := fingerprintPhysicalTarget(newFingerprintEncoder(), candidate, physical, roots); err == nil {
+		t.Fatal("replaced target escaped its observation boundary")
+	}
+}
+
 func TestAcceptRefreshesOnlyTheExactIdentity(t *testing.T) {
 	root := t.TempDir()
 	first := filepath.Join(root, "first", "FLAME.md")

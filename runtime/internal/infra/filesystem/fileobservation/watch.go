@@ -47,18 +47,27 @@ func Watch(targets []Target, notify func([]string)) (Observation, error) {
 	if len(canonical) == 0 {
 		return nopWatch{}, nil
 	}
+	boundaries := make([]string, len(canonical))
+	for index, candidate := range canonical {
+		boundaries[index] = candidate.physicalBoundary
+	}
+	roots, err := openObservationRoots(boundaries)
+	if err != nil {
+		return nil, fmt.Errorf("observe files: %w", err)
+	}
 	lifecycle, err := newObserverLifecycle("observe files")
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(err, roots.Close())
 	}
 	w := &watch{
 		observerLifecycle: lifecycle,
 		targets:           canonical,
 		notify:            notify,
 		fingerprints:      make([]fingerprint, len(canonical)),
+		roots:             roots,
 	}
 	if err := w.reconcile(true, acceptance{}); err != nil {
-		return nil, lifecycle.abort(err)
+		return nil, errors.Join(lifecycle.abort(err), roots.Close())
 	}
 	lifecycle.start(func(accepted acceptance) error {
 		return w.reconcile(false, accepted)
@@ -128,6 +137,7 @@ type watch struct {
 	*observerLifecycle
 	targets []target
 	notify  func([]string)
+	roots   *observationRoots
 
 	fingerprints []fingerprint
 }
@@ -150,7 +160,7 @@ func (w *watch) reconcile(initial bool, accepted acceptance) error {
 	changedKeys := make([]string, 0, len(w.targets))
 	accepting := len(accepted.keys) > 0 && len(accepted.identities) > 0
 	for index, candidate := range w.targets {
-		observed, physical, err := fingerprintOf(candidate)
+		observed, physical, err := fingerprintOf(candidate, w.roots)
 		if err != nil {
 			w.stateMu.Unlock()
 			return err
@@ -215,7 +225,7 @@ func collectParentDirectories(directories map[string]struct{}, paths ...string) 
 	return nil
 }
 
-func fingerprintOf(candidate target) (fingerprint, string, error) {
+func fingerprintOf(candidate target, roots *observationRoots) (fingerprint, string, error) {
 	encoder := newFingerprintEncoder()
 	encoder.field(fingerprintFieldLogicalPath, candidate.path)
 	info, err := os.Lstat(candidate.path)
@@ -240,19 +250,31 @@ func fingerprintOf(candidate target) (fingerprint, string, error) {
 		encoder.field(fingerprintFieldError, err.Error())
 		return encoder.sum(), "", nil
 	}
-	if candidate.physicalBoundary != "" {
-		inside, containsErr := pathidentity.Contains(candidate.physicalBoundary, physical)
-		if containsErr != nil {
-			return fingerprint{}, "", fmt.Errorf("observe files: confine %q: %w", candidate.path, containsErr)
-		}
-		if !inside {
-			encoder.state(fingerprintStateOutsideBoundary)
-			encoder.field(fingerprintFieldPhysicalPath, physical)
-			return encoder.sum(), "", nil
-		}
+	return fingerprintPhysicalTarget(encoder, candidate, physical, roots)
+}
+
+func fingerprintPhysicalTarget(
+	encoder *fingerprintEncoder,
+	candidate target,
+	physical string,
+	roots *observationRoots,
+) (_ fingerprint, _ string, err error) {
+	root, name, inside, err := roots.access(candidate.physicalBoundary, physical)
+	if err != nil {
+		return fingerprint{}, "", fmt.Errorf("observe files: confine %q: %w", candidate.path, err)
+	}
+	if !inside {
+		encoder.state(fingerprintStateOutsideBoundary)
+		encoder.field(fingerprintFieldPhysicalPath, physical)
+		return encoder.sum(), "", nil
 	}
 	encoder.field(fingerprintFieldPhysicalPath, physical)
-	physicalInfo, err := os.Stat(physical)
+	var physicalInfo os.FileInfo
+	if root != nil {
+		physicalInfo, err = root.Stat(name)
+	} else {
+		physicalInfo, err = os.Stat(name)
+	}
 	if errors.Is(err, os.ErrNotExist) {
 		encoder.state(fingerprintStateMissingTarget)
 		return encoder.sum(), physical, nil
@@ -266,7 +288,14 @@ func fingerprintOf(candidate target) (fingerprint, string, error) {
 			encoder.state(fingerprintStateTooLarge)
 			return encoder.sum(), physical, nil
 		}
-		file, opened, openErr := fileinput.OpenExpected(physical, physicalInfo, candidate.maxBytes)
+		var file *os.File
+		var opened os.FileInfo
+		var openErr error
+		if root != nil {
+			file, opened, openErr = fileinput.OpenAtExpected(root, name, physicalInfo, candidate.maxBytes)
+		} else {
+			file, opened, openErr = fileinput.OpenExpected(name, physicalInfo, candidate.maxBytes)
+		}
 		if openErr != nil {
 			return fingerprint{}, "", fmt.Errorf("observe files: open %q: %w", physical, openErr)
 		}
@@ -280,6 +309,10 @@ func fingerprintOf(candidate target) (fingerprint, string, error) {
 		encoder.fileInfo(fingerprintFieldPhysicalInfo, physicalInfo)
 	}
 	return encoder.sum(), physical, nil
+}
+
+func (w *watch) Close() error {
+	return errors.Join(w.observerLifecycle.Close(), w.roots.Close())
 }
 
 func nearestExistingDirectory(path string) (string, error) {
