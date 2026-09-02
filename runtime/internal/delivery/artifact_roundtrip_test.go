@@ -215,7 +215,7 @@ func TestImportRefusesAnUnknownRunProtocolFeature(t *testing.T) {
 
 	_, err := s.ImportSession(t.Context(), protocol.ImportSessionRequest{Artifact: artifact})
 	if !errors.Is(err, protocol.ErrInvalidParams) ||
-		!strings.Contains(err.Error(), `unknown value "telepathy"`) {
+		!strings.Contains(err.Error(), "requiredFeatures[0]") {
 		t.Fatalf("import error = %v, want invalid required feature", err)
 	}
 }
@@ -332,8 +332,9 @@ func carriesAValue(value reflect.Value) bool {
 }
 
 // seedMaximalSession writes a Session that reaches every corner of the current artifact:
-// two runs (one completed with full accounting, one failed with its problem), one
-// item per transcript kind, an offloaded tool body, and a Plan.
+// three runs (one policy-stopped with full accounting, one failed with its
+// problem, and one completed child), one item per transcript kind, an offloaded
+// tool body, and a Plan.
 func seedMaximalSession(t *testing.T, rt *stubRuntime) string {
 	t.Helper()
 	ctx := t.Context()
@@ -361,7 +362,7 @@ func seedMaximalSession(t *testing.T, rt *stubRuntime) string {
 		t.Fatalf("seed messages: %v", err)
 	}
 
-	seedCompletedRun(t, rt, sessionID)
+	seedPolicyStoppedRun(t, rt, sessionID)
 	seedFailedRun(t, rt, sessionID)
 	seedEveryItemKind(t, rt, sessionID)
 	seedChildRun(t, rt, sessionID)
@@ -375,10 +376,10 @@ func seedMaximalSession(t *testing.T, rt *stubRuntime) string {
 	return sessionID
 }
 
-func seedCompletedRun(t *testing.T, rt *stubRuntime, sessionID string) {
+func seedPolicyStoppedRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	t.Helper()
 	cost := 1.25
-	outcome := run.OutcomeCompleted
+	outcome := run.OutcomeMaxSteps
 	selection, err := modelref.NewWithReasoningEffort("anthropic", "claude-opus-5", "high")
 	if err != nil {
 		t.Fatalf("model selection: %v", err)
@@ -390,8 +391,9 @@ func seedCompletedRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	if err != nil {
 		t.Fatalf("run limits: %v", err)
 	}
-	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_done", State: run.Completed,
+	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_done", State: run.Failed,
 		ModelSelection: selection, Outcome: &outcome,
+		Detail: "step limit reached",
 		Limits: limits,
 		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{
 			Total: accounting.Totals{
@@ -445,7 +447,7 @@ func seedFailedRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	outcome := run.OutcomeFailed
 	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: "run_failed", State: run.Failed,
 		Outcome: &outcome,
-		Detail:  "the provider gave up", Failure: &run.Failure{
+		Failure: &run.Failure{
 			Kind:   run.FailureRateLimited,
 			Detail: "slow down", DocURL: "https://example.invalid/rate-limits",
 			RetryAfter: 30 * time.Second,

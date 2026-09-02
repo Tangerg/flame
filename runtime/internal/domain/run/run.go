@@ -283,6 +283,13 @@ func (r Run) validateTerminal() error {
 			return err
 		}
 	}
+	if r.detail != "" {
+		switch *r.outcome {
+		case OutcomeMaxSteps, OutcomeMaxBudget, OutcomeCanceled:
+		default:
+			return fmt.Errorf("run: outcome %s cannot carry terminal detail", r.outcome)
+		}
+	}
 	switch {
 	case r.finishedAt.IsZero():
 		return errors.New("run: terminal Run has no finish time")

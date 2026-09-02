@@ -15,7 +15,8 @@ func validArtifact() protocol.SessionArtifact {
 	return protocol.SessionArtifact{
 		Version: protocol.SessionArtifactVersion,
 		Session: protocol.ArtifactSession{
-			ID: "ses_1", Provider: "test-provider", Model: "test-model",
+			ID: "ses_1", Workspace: protocol.WorkspaceRef{Path: "/workspace"},
+			Provider: "test-provider", Model: "test-model",
 		},
 		Runs: []protocol.ArtifactRun{{
 			ID: "run_1", SessionID: "ses_1", CreatedAt: finished, FinishedAt: finished,
@@ -217,6 +218,18 @@ func TestPortableArtifactDecoderRejectsToolDurationOutsideWireBounds(t *testing.
 		DurationMillis: valuePtr(protocol.MaximumDurationMilliseconds + 1), Type: protocol.ItemTypeToolCall,
 		Tool: &protocol.ArtifactToolInvocation{Name: "shell", Arguments: map[string]any{}},
 	}
+	_, err := portableArtifactFromWire(artifact)
+	if !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("portableArtifactFromWire error = %v, want invalid_params", err)
+	}
+}
+
+func TestPortableArtifactDecoderRejectsRunDurationOutsideWireBounds(t *testing.T) {
+	artifact := validArtifact()
+	// This value wraps to a small positive time.Duration when multiplied by a
+	// millisecond, so domain non-negativity alone cannot detect it.
+	artifact.Runs[0].Metrics.ActiveDurationMillis = 18_446_744_073_710
+
 	_, err := portableArtifactFromWire(artifact)
 	if !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("portableArtifactFromWire error = %v, want invalid_params", err)

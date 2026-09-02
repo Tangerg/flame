@@ -110,14 +110,19 @@ func TestRunTerminalFactsRemainCoherent(t *testing.T) {
 		name    string
 		outcome Outcome
 		failure *Failure
+		detail  string
 		wantErr bool
 	}{
 		{name: "completed", outcome: OutcomeCompleted},
+		{name: "completed with detail", outcome: OutcomeCompleted, detail: "unexpected", wantErr: true},
 		{name: "failed", outcome: OutcomeFailed, failure: &Failure{Kind: FailureProviderRejected}},
+		{name: "failed with duplicate detail", outcome: OutcomeFailed, failure: &Failure{Kind: FailureProviderRejected}, detail: "duplicate", wantErr: true},
 		{name: "failure missing", outcome: OutcomeFailed, wantErr: true},
 		{name: "timeout classified", outcome: OutcomeTimedOut, failure: &Failure{Kind: FailureTimeout}},
 		{name: "timeout misclassified", outcome: OutcomeTimedOut, failure: &Failure{Kind: FailureInternal}, wantErr: true},
 		{name: "lost classified", outcome: OutcomeLost, failure: &Failure{Kind: FailureLost}},
+		{name: "policy stop carries detail", outcome: OutcomeMaxSteps, detail: "limit reached"},
+		{name: "cancellation carries detail", outcome: OutcomeCanceled, detail: "user stopped"},
 		{name: "success carries failure", outcome: OutcomeCompleted, failure: &Failure{Kind: FailureInternal}, wantErr: true},
 	}
 	for _, test := range tests {
@@ -130,7 +135,7 @@ func TestRunTerminalFactsRemainCoherent(t *testing.T) {
 				t.Fatalf("Admit: %v", err)
 			}
 			terminal, err := value.Terminate(Termination{
-				Outcome: test.outcome, Failure: test.failure,
+				Outcome: test.outcome, Failure: test.failure, Detail: test.detail,
 				FinishedAt: time.Unix(2, 0).UTC(), MessageMark: 0,
 			})
 			if test.wantErr {

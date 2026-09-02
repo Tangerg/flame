@@ -2762,7 +2762,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 	assertSingleMessage("exact replay")
 
 	conflicting := mutatedRun(*finished, func(snapshot *run.Snapshot) {
-		snapshot.Detail = "different terminal result"
+		snapshot.ContextTokens = 1
 	})
 	commit.Run = &conflicting
 	commit.CommitID = testCommitID("run_commit_event_conflicting")
@@ -3057,9 +3057,10 @@ func TestCommitEventPersistsTheTerminalRunsResult(t *testing.T) {
 	})
 	finished := finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeFailed)
 	updated := mutatedRun(*finished, func(snapshot *run.Snapshot) {
-		snapshot.Detail = "the provider rejected the request"
 		snapshot.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 3})
-		snapshot.Failure = &run.Failure{Kind: run.FailureProviderRejected, Detail: "rejected"}
+		snapshot.Failure = &run.Failure{
+			Kind: run.FailureProviderRejected, Detail: "the provider rejected the request",
+		}
 	})
 	updated = mustResolveMessageMark(t, updated, 0)
 	finished = &updated
@@ -3076,6 +3077,7 @@ func TestCommitEventPersistsTheTerminalRunsResult(t *testing.T) {
 		t.Fatalf("ListRuns = %d runs, %v", len(recorded), err)
 	}
 	record := recorded[0]
+	failure, hasFailure := record.Failure()
 	switch {
 	case record.State() != run.Failed:
 		t.Errorf("run state = %v, want Failed", record.State())
@@ -3083,8 +3085,8 @@ func TestCommitEventPersistsTheTerminalRunsResult(t *testing.T) {
 		t.Errorf("run outcome = %v, want the outcome it terminated with", record.Snapshot().Outcome)
 	case record.Metrics().Steps() != 3:
 		t.Errorf("run metrics = %+v, want the accrual the terminal commit carried", record.Metrics())
-	case record.Detail() != "the provider rejected the request":
-		t.Errorf("run detail = %q, want the explanation it ended with", record.Detail())
+	case !hasFailure || failure.Detail != "the provider rejected the request":
+		t.Errorf("run failure = %+v/%t, want the explanation it ended with", failure, hasFailure)
 	case record.FinishedAt().IsZero():
 		t.Error("terminal run has no finish time")
 	}

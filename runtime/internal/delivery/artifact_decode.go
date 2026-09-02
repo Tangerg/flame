@@ -32,6 +32,9 @@ func invalidArtifact(path, format string, args ...any) error {
 // Aggregate ownership, union rules, references, terminal boundaries, and tool
 // result bindings are validated by sessions.RestorePortableSession.
 func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSnapshot, error) {
+	if err := protocol.ValidateWireTree(art); err != nil {
+		return sessions.PortableSnapshot{}, invalidArtifact("artifact", "%v", err)
+	}
 	if art.Session.ID == "" {
 		return sessions.PortableSnapshot{}, invalidArtifact("artifact.session.id", "is required")
 	}
@@ -293,9 +296,6 @@ func portableUsageFromArtifact(artifact *protocol.ArtifactUsage) *accounting.Usa
 }
 
 func portableItemFromArtifact(sessionID, path string, artifact protocol.ArtifactItem) (transcript.Item, error) {
-	if err := artifact.ValidateWire(); err != nil {
-		return transcript.Item{}, invalidArtifact(path, "%v", err)
-	}
 	status, err := portableItemStatus(path+".status", artifact.Status)
 	if err != nil {
 		return transcript.Item{}, err
