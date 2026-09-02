@@ -511,6 +511,28 @@ test("dock close control reveals its contextual glyph on hover and focus", async
   await expect.poll(() => opacityOf(hover)).toBe("1");
 });
 
+// A dock tab can be closed with the mouse, with the middle button and from the context
+// menu — and, until this was measured, by no key at all. The close control rested at
+// `visibility: hidden`, which does not merely hide it: the browser skips it in sequential
+// focus navigation and drops it from the accessibility tree. Seventy Tab presses walked
+// the whole dock without ever landing on one, and the `focus-visible:` reveal written on
+// it could not have fired.
+test("the keyboard can reach a dock tab's close control", async ({ page }) => {
+  await openWorkspace(page, { state: "dock-light" });
+
+  const close = page.getByRole("button", { name: "Close Plan" });
+  const focused = () => close.evaluate((node) => node === document.activeElement);
+  for (let step = 0; step < 80 && !(await focused()); step += 1) {
+    await page.keyboard.press("Tab");
+  }
+  expect(await focused()).toBe(true);
+  // Reached is not enough: a control the keyboard lands on while it is still invisible is
+  // a focus ring around nothing.
+  await expect.poll(() => close.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
+  await close.press("Enter");
+  await expect(page.getByTestId("dock-view-ids")).not.toContainText("plan");
+});
+
 test("plugin notifications use the production toast and dismiss automatically", async ({
   page,
 }) => {

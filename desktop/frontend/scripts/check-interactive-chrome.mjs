@@ -95,6 +95,21 @@ const RULES = [
     appliesTo: () => true,
   },
   {
+    // `visibility: hidden` does not merely hide: the browser skips the element in
+    // sequential focus navigation and drops it from the accessibility tree. A control
+    // hidden that way and then revealed on hover is a control the keyboard cannot reach —
+    // measured on the dock tab close button, which seventy Tab presses never landed on,
+    // and whose own `focus-visible:` reveal therefore could not fire. `opacity-0` with
+    // `pointer-events-none` hides it just as completely and leaves it focusable. Hiding
+    // something that must NOT be operable (a streaming turn's actions) is what `invisible`
+    // is for, and carries no reveal, so it does not trip this.
+    pattern: /\binvisible\b/g,
+    message:
+      "`visibility: hidden` makes a control unfocusable — rest it at `opacity-0 pointer-events-none` instead",
+    appliesTo: (line) =>
+      /(?:group-)?(?:hover|focus|focus-visible|focus-within)(?:\/[a-z-]+)?:visible/.test(line),
+  },
+  {
     pattern: /\btransition-all\b/g,
     message:
       "`transition-all` couples unrelated properties — enumerate only the properties that move",

@@ -163,7 +163,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                   quiet
                   title={tab.closeLabel}
                   onClick={close}
-                  className="mr-0.5 invisible opacity-0 transition-opacity duration-[var(--dur-fast)] group-hover:visible group-hover:opacity-100 focus-visible:visible focus-visible:opacity-100"
+                  className="mr-0.5 pointer-events-none opacity-0 transition-opacity duration-[var(--dur-fast)] group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
                 />
               )}
             </div>
