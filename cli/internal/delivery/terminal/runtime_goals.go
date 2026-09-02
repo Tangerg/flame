@@ -163,18 +163,7 @@ func (a *app) ResumeGoal() error {
 func (a *app) changeGoal(label string, change func(context.Context) (protocol.Goal, error)) error {
 	presentation := a.session.context
 	a.status.note(label)
-	sessionID := a.session.current.ID
-	work := func(ctx context.Context) (protocol.Goal, error) {
-		current, exists, err := a.goals.GetGoal(ctx, sessionID)
-		if err != nil {
-			return protocol.Goal{}, err
-		}
-		if exists && current.Status == protocol.GoalCompleting {
-			return protocol.Goal{}, errors.New("goal is completing final accounting; wait for the next runtime change")
-		}
-		return change(ctx)
-	}
-	started := a.runAdmissionMutation(goalOperation, false, work, func(current protocol.Goal, err error) {
+	started := a.runAdmissionMutation(goalOperation, false, change, func(current protocol.Goal, err error) {
 		if err != nil {
 			a.message(label + " failed: " + err.Error())
 			return

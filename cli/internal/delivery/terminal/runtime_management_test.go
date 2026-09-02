@@ -514,6 +514,9 @@ func (g *goalServiceStub) StopGoal(context.Context, string) (protocol.Goal, erro
 		return protocol.Goal{}, errors.New("no goal")
 	}
 	current := *g.current
+	if current.Status == protocol.GoalCompleting {
+		return current, nil
+	}
 	current.Status = protocol.GoalPaused
 	current.Reason = &protocol.GoalReason{Code: protocol.GoalReasonStoppedByUser}
 	current.UpdatedAt = current.UpdatedAt.Add(time.Nanosecond)
@@ -628,16 +631,22 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 	host.Press(input.Esc)
 	host.Shows(t, "Ask flame")
 	baselineWrites := goals.writes.Load()
+	baselineReads := goals.reads.Load()
 	host.Type("/goal-stop")
 	host.Press(input.Enter)
-	host.Shows(t, "goal is completing final accounting")
-	if writes := goals.writes.Load(); writes != baselineWrites {
-		t.Fatalf("goal mutations after settlement command = %d, want %d", writes, baselineWrites)
+	host.Shows(t, "Session goal")
+	if writes := goals.writes.Load(); writes != baselineWrites+1 {
+		t.Fatalf("goal mutations after settlement command = %d, want %d", writes, baselineWrites+1)
+	}
+	if reads := goals.reads.Load(); reads != baselineReads {
+		t.Fatalf("goal mutation performed a client-side lifecycle read: got %d, want %d", reads, baselineReads)
 	}
 	settling, exists, err := goals.GetGoal(t.Context(), "ses_demo_1")
 	if err != nil || !exists || settling.Status != protocol.GoalCompleting {
-		t.Fatalf("goal after rejected settlement command = (%+v, %t, %v)", settling, exists, err)
+		t.Fatalf("goal after runtime-owned settlement decision = (%+v, %t, %v)", settling, exists, err)
 	}
+	host.Press(input.Esc)
+	host.Shows(t, "Ask flame")
 	host.Type("/goal-clear")
 	host.Press(input.Enter)
 	host.Shows(t, "No autonomous goal")
