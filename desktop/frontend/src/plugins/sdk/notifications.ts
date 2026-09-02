@@ -1,7 +1,6 @@
 // Separate from the toaster: a vanished toast cannot answer "did anything fail?".
 
 import type { NotificationEntry, NotificationLevel } from "./types";
-import { dispatchToast } from "./hostToast";
 import { toast } from "sonner";
 import { create } from "zustand";
 import { ExactSequence } from "@/foundation/exactSequence";
@@ -77,15 +76,15 @@ export interface NotifyOptions {
   source?: NotifySource;
 }
 
-// No notifyWarn: "warn" reaches the feed only from a plugin's host.notify.
-type Level = Extract<NotificationLevel, "info" | "error">;
-
-const TOAST_BY_LEVEL: Record<Level, typeof toast.info> = {
+/** The transient half of every notification, whoever raised it. There is no
+ *  `notifyWarn` below: "warn" reaches a toast only from a plugin's `host.notify`. */
+const TOAST_BY_LEVEL: Record<NotificationLevel, typeof toast.info> = {
   info: toast.info,
+  warn: toast.warning,
   error: toast.error,
 };
 
-function notify(level: Level, message: string, opts?: NotifyOptions): void {
+function notify(level: "info" | "error", message: string, opts?: NotifyOptions): void {
   useNotificationStore.getState().push({
     plugin: opts?.source ?? "app",
     level,
@@ -102,8 +101,8 @@ export function notifyError(message: string, opts?: NotifyOptions): void {
 }
 
 /** The feed entry is written BEFORE the toast so anything reacting to the toast can
- *  cross-reference it; the toast goes out as an event to keep React out of the SDK. */
+ *  cross-reference it. */
 export function notifyFrom(plugin: string, message: string, level: NotificationLevel): void {
   useNotificationStore.getState().push({ plugin, level, message });
-  dispatchToast(message, level);
+  TOAST_BY_LEVEL[level](message);
 }

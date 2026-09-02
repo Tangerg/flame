@@ -1,6 +1,6 @@
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import { ChatPanel } from "@/plugins/builtin/shell/kernel/panel/ChatPanel";
-import { PluginToaster } from "@/plugins/host/PluginToaster";
+import { AppToaster } from "@/plugins/builtin/shell/toaster";
 import {
   useActiveWorkspaceViewId,
   useWorkspaceDock,
@@ -105,7 +105,7 @@ export function VisualWorkspaceFixture({ state }: { state: VisualWorkspaceState 
       overlay={
         <>
           <WorkspaceFixtureReadout state={state} />
-          <PluginToaster />
+          <AppToaster />
         </>
       }
     />
