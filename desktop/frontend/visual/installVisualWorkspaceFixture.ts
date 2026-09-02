@@ -399,6 +399,18 @@ const workspaceDockDestinations = definePlugin({
   },
 });
 
+/** A plugin notification has no UI to raise it from inside a fixture, and the toast it
+ *  produces is what the photograph is of — so a fixture plugin parks its own `host.notify`
+ *  where the spec can reach it. The handle is the real one every plugin is handed. */
+const visualNotifier = definePlugin({
+  name: "flame.visual.notifier",
+  setup(ctx) {
+    const host = window as unknown as { flameVisualNotify?: typeof ctx.notify };
+    host.flameVisualNotify = ctx.notify;
+    ctx.cleanup(() => delete host.flameVisualNotify);
+  },
+});
+
 const visualShortcuts = definePlugin({
   name: "flame.visual.shortcuts",
   setup(ctx) {
@@ -523,6 +535,7 @@ export async function installVisualWorkspaceFixture(
     appearanceSettings,
     providersSettings,
     shortcutsSettings,
+    visualNotifier,
     visualShortcuts,
   ]);
 

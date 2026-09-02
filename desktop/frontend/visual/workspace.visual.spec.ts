@@ -546,11 +546,11 @@ test("plugin notifications use the production toast and dismiss automatically", 
   await openWorkspace(page, { state: "settings" });
 
   await page.evaluate(() => {
-    window.dispatchEvent(
-      new CustomEvent("flame:plugin-toast", {
-        detail: { message: "Provider credentials were rejected", level: "error" },
-      }),
-    );
+    const host = window as unknown as {
+      flameVisualNotify?: (message: string, level?: "info" | "warn" | "error") => void;
+    };
+    if (!host.flameVisualNotify) throw new Error("the fixture notifier plugin did not install");
+    host.flameVisualNotify("Provider credentials were rejected", "error");
   });
 
   const toast = page.locator("[data-sonner-toast]");
