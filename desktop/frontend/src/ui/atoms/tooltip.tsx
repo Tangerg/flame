@@ -3,6 +3,13 @@ import { cn } from "@/lib/classNames";
 import { TooltipPrimitive } from "@/ui/primitives";
 import { FLOATING_LAYER, FLOATING_TIP } from "./floating-surface";
 
+// The tip's own measure. Three call sites used to pass this, in three paddings, alongside an
+// inverted fill — so a tooltip's material was decided wherever one happened to be raised.
+// `FLOATING_TIP` already paints the elevated floating surface, which is what Codex gives a
+// tooltip (`--bg-tooltip: var(--color-surface-elevated)`); an inverted one was a fourth
+// material with no owner.
+const TIP_PADDING = "px-2 py-1.5 font-sans text-ui-md leading-snug";
+
 export interface TooltipProviderProps {
   children: ReactNode;
 }
@@ -40,7 +47,7 @@ export function Tooltip({ label, side = "top", sideOffset = 6, delayDuration, ch
       side={side}
       sideOffset={sideOffset}
       delay={delayDuration}
-      className="max-w-[280px] bg-fg px-2 py-1 font-sans text-ui-md leading-snug text-on-fg"
+      className="max-w-[280px]"
     >
       {label}
     </RichTooltip>
@@ -60,7 +67,10 @@ export function RichTooltip({
       <TooltipPrimitive.Trigger render={trigger} delay={delay} />
       <TooltipPrimitive.Portal>
         <TooltipPrimitive.Positioner className={FLOATING_LAYER} side={side} sideOffset={sideOffset}>
-          <TooltipPrimitive.Popup role="tooltip" className={cn(FLOATING_TIP, className)}>
+          <TooltipPrimitive.Popup
+            role="tooltip"
+            className={cn(FLOATING_TIP, TIP_PADDING, className)}
+          >
             {children}
           </TooltipPrimitive.Popup>
         </TooltipPrimitive.Positioner>

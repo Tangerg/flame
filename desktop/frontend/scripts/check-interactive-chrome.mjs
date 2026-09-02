@@ -65,8 +65,12 @@ const RULES = [
     // `data-chrome-focus` if the control is a row that fills instead.
     // `focus-visible:outline-none` stays legal — that suppresses the browser
     // default on a wrapper that isn't the focus target.
+    // `ring-*` belongs here too: three call sites drew `focus-visible:ring-2` and it was
+    // invisible in review because the accompanying `ring-focus` named a colour the theme
+    // never defined, so the second ring came out in currentColor — and, unlike the global
+    // rule, ungated by pointer modality, so it also fired on a click.
     pattern:
-      /\bfocus-visible:(?:outline-(?:accent|offset-[[\]\d.px-]+)|shadow-\[[^\]]*--color-accent[^\]]*\])/g,
+      /\bfocus(?:-visible|-within)?:(?:outline-(?:accent|offset-[[\]\d.px-]+)|ring(?:-[a-z0-9]+)?\b|shadow-\[[^\]]*--color-accent[^\]]*\])/g,
     message:
       "hand-drawn focus ring — the global rule draws it; mark `data-focus-inset` if it would clip",
     appliesTo: (_line, rel) => rel !== "styles/globals.css",

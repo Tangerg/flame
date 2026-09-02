@@ -227,7 +227,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
       tabIndex={0}
       data-slot="question-request-surface"
       data-chrome-focus
-      className="overflow-hidden rounded-3xl shadow-[var(--shadow-popover)] outline-none"
+      className="overflow-hidden rounded-bubble shadow-[var(--shadow-popover)] outline-none"
     >
       <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-2">
         <h3
@@ -332,7 +332,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
         )}
 
         {activeQuestion.type === "choice" && activeQuestion.allowCustom && (
-          <div className="flex min-h-8 items-center gap-2 rounded-full px-2 py-1.5 focus-within:ring-1 focus-within:ring-focus">
+          <div className="flex min-h-8 items-center gap-2 rounded-full px-2 py-1.5 transition-colors duration-[var(--dur-color)] focus-within:bg-hover">
             <span
               aria-hidden
               className={cn(

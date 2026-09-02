@@ -133,7 +133,8 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
       </div>
       {isPreview ? (
         <div
-          className="shiki-preview-body grid max-h-[calc(15lh+16px)] place-items-center overflow-auto p-2"
+          data-slot="shiki-preview-body"
+          className="grid max-h-[calc(15lh+16px)] place-items-center overflow-auto p-2"
           role="region"
           aria-label={previewLabel}
           // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex

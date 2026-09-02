@@ -75,7 +75,7 @@ function PlanPill({
           side="top"
           sideOffset={8}
           delay={0}
-          className="max-h-[min(320px,calc(100vh-16px))] max-w-[min(320px,calc(100vw-16px))] overflow-y-auto bg-fg px-2 py-2 text-on-fg"
+          className="max-h-[min(320px,calc(100vh-16px))] max-w-[min(320px,calc(100vw-16px))] overflow-y-auto"
         >
           <ul className="flex flex-col gap-2">
             {steps.map((step) => (

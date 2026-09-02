@@ -83,7 +83,7 @@ export function ChoiceOption({
 }: ChoiceOptionProps) {
   const className = ({ checked }: { checked: boolean }) =>
     cn(
-      "group/choice flex min-h-8 w-full items-center gap-2 rounded-full px-2 py-1.5 text-left outline-none transition-colors duration-[var(--dur-fast)] focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-64",
+      "group/choice flex min-h-8 w-full items-center gap-2 rounded-full px-2 py-1.5 text-left outline-none transition-colors duration-[var(--dur-fast)] disabled:cursor-not-allowed disabled:opacity-64",
       checked ? "bg-hover" : "hover:bg-hover",
     );
 

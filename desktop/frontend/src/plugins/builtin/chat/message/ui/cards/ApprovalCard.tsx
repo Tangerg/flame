@@ -69,7 +69,7 @@ export function ApprovalCard({
   const title = reason.trim() || approvalHeadline(t, toolName);
 
   return (
-    <Surface inset="none" data-slot="approval-surface" className="overflow-hidden rounded-3xl">
+    <Surface inset="none" data-slot="approval-surface" className="overflow-hidden rounded-bubble">
       <div className="px-4 pt-4 pb-3">
         <div className="flex min-w-0 items-center gap-2 text-ui-sm leading-body text-fg-muted">
           <Icon name={identity.icon} size="sm" className="shrink-0 text-fg-faint" />

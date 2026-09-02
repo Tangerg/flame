@@ -27,19 +27,14 @@ export function ContextUsageGauge() {
   const trigger = (
     <Pressable
       aria-label={label}
-      className="-mx-1.5 inline-flex size-7 items-center justify-center rounded-control text-fg-muted hover:bg-hover hover:text-fg focus-visible:ring-2 focus-visible:ring-focus"
+      className="-mx-1.5 inline-flex size-7 items-center justify-center rounded-sm text-fg-muted transition-colors duration-[var(--dur-color)] hover:bg-hover hover:text-fg"
     >
       <Gauge value={readout.ratio} label={t("context.usage.aria", { percent: readout.percent })} />
     </Pressable>
   );
 
   return (
-    <RichTooltip
-      trigger={trigger}
-      side="top"
-      sideOffset={4}
-      className="w-38 bg-fg px-3 py-2 font-sans text-ui-md leading-snug text-on-fg"
-    >
+    <RichTooltip trigger={trigger} side="top" sideOffset={4} className="w-38">
       <div className="flex flex-col gap-0.5 text-center">
         <span className="opacity-60">{t("context.usage.label")}</span>
         <span className={readout.percent >= 50 ? "opacity-60" : undefined}>

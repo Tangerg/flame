@@ -141,7 +141,7 @@ export function ConnectionPane() {
               <span>{error}</span>
             </div>
           ) : null}
-          <div className="mt-1 rounded-md border border-border-subtle bg-surface-1 px-3 py-2.5">
+          <div className="mt-1 rounded-md bg-sunken px-3 py-2.5">
             <div className="flex items-center justify-between gap-3" aria-live="polite">
               <div className="flex min-w-0 items-center gap-2 text-ui-md text-fg-muted">
                 <StatusDot tone={STATUS_TONE[service.phase]} />

@@ -68,7 +68,11 @@ test("a pending approval uses the Codex neutral request surface", async ({ page 
 
   const surface = page.locator('[data-slot="approval-surface"]');
   await expect(surface).toHaveCSS("border-top-width", "0px");
-  await expect(surface).toHaveCSS("border-radius", "24px");
+  // The `bubble` step, same corner the user's own turn takes — 16px base carrying the
+  // superellipse compensation. It read 24px until the ladder claimed it: that was Tailwind's
+  // own `rounded-3xl`, the one radius in the tree that was neither a ladder step nor scaled
+  // with the rest when the corner curve changed.
+  await expect(surface).toHaveCSS("border-radius", "20px");
   await expect(surface.getByText("Terminal", { exact: true })).toBeVisible();
   await expect(
     page.getByText("Run the race detector across the workspace before committing.", {
@@ -103,7 +107,11 @@ test("question settlement uses the exact interrupt identity", async ({ page }) =
 
   const request = page.locator('[data-slot="question-request-surface"]');
   await expect(request).toBeVisible();
-  await expect(request).toHaveCSS("border-radius", "24px");
+  // The `bubble` step, same corner the user's own turn takes — 16px base carrying the
+  // superellipse compensation. It read 24px until the ladder claimed it: that was Tailwind's
+  // own `rounded-3xl`, the one radius in the tree that was neither a ladder step nor scaled
+  // with the rest when the corner curve changed.
+  await expect(request).toHaveCSS("border-radius", "20px");
   await expect(request).toHaveCSS("border-top-width", "0px");
   await expect(page.locator('[data-slot="composer-root"]')).toHaveCount(0);
   await expect(page.getByText("Input needed", { exact: true })).toHaveCount(0);
@@ -628,7 +636,10 @@ test("code blocks stay readable and expose the wrap control", async ({ context, 
   await expectStableBox(svgArtifact);
   await svgArtifact.hover();
   await expect.poll(() => svgCopy.evaluate((button) => getComputedStyle(button).opacity)).toBe("1");
-  await expect(svgArtifact.locator(".shiki-preview-body")).toHaveAttribute("tabindex", "0");
+  await expect(svgArtifact.locator('[data-slot="shiki-preview-body"]')).toHaveAttribute(
+    "tabindex",
+    "0",
+  );
 });
 
 test("code blocks use the Codex caption and source geometry", async ({ page }) => {
