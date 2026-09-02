@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
-import { reiconOutlineOnly } from "./vite.reicon.ts";
 
 /**
  * Test-only visual fixture entry.
@@ -13,7 +12,7 @@ import { reiconOutlineOnly } from "./vite.reicon.ts";
  * CSS and components, so a screenshot exercises the same visual implementation.
  */
 export default defineConfig({
-  plugins: [react(), tailwindcss(), reiconOutlineOnly()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),

@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
-import { reiconOutlineOnly } from "./vite.reicon.ts";
 
 // The dev-server port is declared once, as VITE_PORT in the Taskfile, and handed to both
 // halves of the dev loop: to Vite as `--port`, to the webview as `wails3 dev -port`. It
@@ -16,7 +15,7 @@ const webviewPort = process.env.WAILS_VITE_PORT;
 const host = "127.0.0.1";
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), reiconOutlineOnly()],
+  plugins: [react(), tailwindcss()],
   // Wails serves the webview through its OWN dev server on a different port, so the page
   // origin is NOT Vite's. Without `hmr.clientPort` the Vite HMR client in the WebView
   // opens its WebSocket against the page origin instead of Vite — the handshake fails
@@ -90,11 +89,11 @@ export default defineConfig({
           if (id.includes("node_modules/@base-ui")) return "base-ui";
           // TanStack
           if (id.includes("node_modules/@tanstack")) return "tanstack";
-          // Icons. Reicon only: the ten provider marks the composer needs are pulled in with
-          // whatever imports them, and the icon gallery globs all 321 of them behind a lazy
-          // route. Naming the whole package here put that glob on the startup path, which is
-          // the one place its own laziness could not reach.
-          if (id.includes("node_modules/reicon-react")) return "icons";
+          // Brand marks are deliberately NOT named here. The composer pulls in the ten it
+          // draws with whatever imports them, and the icon gallery globs the whole catalogue
+          // behind a lazy route; naming the package would put that glob on the startup path,
+          // which is the one place its own laziness cannot reach. Lucide needs no rule at
+          // all — `ui/icons` imports the ninety it draws by name and the rest tree-shakes.
           // Markdown pipeline — eager: every rendered message goes through it.
           if (
             id.includes("node_modules/react-markdown/") ||

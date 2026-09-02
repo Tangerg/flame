@@ -523,6 +523,18 @@ for (const theme of ["light", "dark"] as const) {
     await page.getByPlaceholder("Search models…").fill("");
 
     await rail.first().click();
+
+    // `data-[highlighted]:bg-hover` is the only feedback a row has, and the attribute behind
+    // it is Base UI's to write — a variant keyed on a name the library does not set compiles,
+    // ships and never matches. It needs a real pointer, so it is proved here rather than in a
+    // unit test that can only synthesise one.
+    const row = page.getByRole("option").first();
+    await expect(row).not.toHaveAttribute("data-highlighted", "");
+    await row.hover();
+    await expect(row).toHaveAttribute("data-highlighted", "");
+    await expect(row).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await page.mouse.move(0, 0);
+
     await expectStableBox(surface);
     await expect(surface).toHaveScreenshot(`model-picker-${theme}.png`);
   });
