@@ -1,6 +1,7 @@
 import { MCP_SERVERS_PANE } from "@/plugins/builtin/settings/kit/panes";
 import { useId, useRef, useState } from "react";
-import { Icon, IconButton, Pressable, TextButton, knownIconName } from "@/ui";
+import { Badge, Icon, IconButton, Pressable, Tag, TextButton, knownIconName } from "@/ui";
+import type { Tone } from "@/lib/tone";
 import { useT } from "@/lib/i18n";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { notifyError } from "@/plugins/sdk";
@@ -13,16 +14,16 @@ import {
 } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
 import { useMCPServerToolConfigs } from "@/plugins/builtin/workspace/application/toolCatalog";
 
-const STATUS_CLASSES: Record<MCPServerSettings["status"], { key: string; classes: string }> = {
-  disabled: { key: "tools.status.off", classes: "bg-surface-2 text-fg-faint" },
-  connecting: {
-    key: "tools.status.connecting",
-    classes: "bg-surface-2 text-fg-muted animate-pulse",
-  },
-  connected: { key: "tools.status.on", classes: "bg-accent-wash text-accent" },
-  disconnected: { key: "tools.status.off", classes: "bg-surface-2 text-fg-faint" },
-  failed: { key: "tools.status.error", classes: "bg-negative-wash text-negative" },
-  needsAuth: { key: "tools.status.login", classes: "bg-warning-wash text-warning" },
+// The status is this view's business; how a tone is painted is the Badge's. Before, this
+// table carried its own palette (`-wash` fills, coloured ink) beside the one every other
+// badge in the app uses, so two servers in two views reported the same state in two skins.
+const STATUS_BADGE: Record<MCPServerSettings["status"], { key: string; tone: Tone }> = {
+  disabled: { key: "tools.status.off", tone: "neutral" },
+  connecting: { key: "tools.status.connecting", tone: "neutral" },
+  connected: { key: "tools.status.on", tone: "accent" },
+  disconnected: { key: "tools.status.off", tone: "neutral" },
+  failed: { key: "tools.status.error", tone: "negative" },
+  needsAuth: { key: "tools.status.login", tone: "warning" },
 };
 
 function McpToolList({ server }: { server: string }) {
@@ -38,9 +39,9 @@ function McpToolList({ server }: { server: string }) {
     <ul className="m-0 list-none px-4 pb-3 pl-[68px]">
       {tools.map((tool) => (
         <li key={tool.name} className="flex items-baseline gap-2 py-0.5">
-          <code className="shrink-0 rounded-sm bg-surface-2 px-1 font-mono text-ui-sm text-fg">
+          <Tag size="sm" ink="strong">
             {tool.name}
-          </code>
+          </Tag>
           <span className="truncate text-ui-sm text-fg-faint" title={tool.description}>
             {tool.description}
           </span>
@@ -67,7 +68,7 @@ function McpAuthGuide({ server }: { server: string }) {
 
 export function McpRow({ server }: { server: MCPServerSettings }) {
   const t = useT();
-  const pill = STATUS_CLASSES[server.status];
+  const status = STATUS_BADGE[server.status];
   const reconnectingRef = useRef(false);
   const [reconnecting, setReconnecting] = useState(false);
   const connecting = reconnecting || server.status === "connecting";
@@ -112,18 +113,15 @@ export function McpRow({ server }: { server: MCPServerSettings }) {
           <div className="text-ui-md font-semibold text-fg truncate">{server.name}</div>
           <div className="mt-0.5 text-ui-md text-fg-faint truncate">{server.desc}</div>
         </Pressable>
-        <div className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-ui-sm text-fg-faint">
-          {t("mcp.toolCount", { count: server.tools })}
-        </div>
-        <div
-          className={cn(
-            "rounded-sm px-1.5 py-0.5 font-mono text-ui-sm font-semibold",
-            pill.classes,
-          )}
+        <Badge size="md">{t("mcp.toolCount", { count: server.tools })}</Badge>
+        <Badge
+          size="md"
+          tone={status.tone}
+          className={cn(server.status === "connecting" && "animate-pulse")}
           title={server.status === "failed" ? server.errorDetail : undefined}
         >
-          {t(pill.key)}
-        </div>
+          {t(status.key)}
+        </Badge>
         <IconButton
           icon="loop"
           iconSize="sm"

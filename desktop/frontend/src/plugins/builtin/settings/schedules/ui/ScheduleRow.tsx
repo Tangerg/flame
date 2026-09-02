@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconButton, Switch, type IconName } from "@/ui";
+import { IconButton, Switch, Tag, type IconName } from "@/ui";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import {
   deleteSchedule,
@@ -68,9 +68,7 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
             <span className="truncate text-ui-md font-medium text-fg">
               {schedule.title || t("schedules.untitled")}
             </span>
-            <span className="shrink-0 rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-ui-sm text-fg-muted">
-              {schedule.cron}
-            </span>
+            <Tag size="sm">{schedule.cron}</Tag>
           </div>
           <div
             className="mt-0.5 truncate font-mono text-ui-md leading-body text-fg-muted"

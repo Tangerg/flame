@@ -1,4 +1,4 @@
-import { DataView } from "@/ui";
+import { DataView, Tag } from "@/ui";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useT } from "@/lib/i18n";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
@@ -41,9 +41,9 @@ export function RecipesTab() {
                       {r.argumentHint}
                     </span>
                   )}
-                  <span className="ml-auto shrink-0 rounded-sm bg-surface-2 px-1.5 py-px font-mono text-ui-xs text-fg-faint">
+                  <Tag ink="faint" className="ml-auto">
                     {r.scope}
-                  </span>
+                  </Tag>
                 </div>
                 {r.description && (
                   <div className="mt-0.5 text-ui-sm leading-body text-fg-muted">

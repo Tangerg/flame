@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { Badge, Collapsible, DataView, PillButton, TextButton } from "@/ui";
+import { Badge, Collapsible, DataView, PillButton, Tag, TextButton } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { notifyError } from "@/plugins/sdk";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
@@ -93,9 +93,9 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <div className="truncate text-ui-md font-semibold text-fg">{proposal.name}</div>
-            <span className="shrink-0 rounded-sm bg-surface-2 px-1.5 py-px font-mono text-ui-xs tabular-nums text-fg-faint">
+            <Tag ink="faint" className="tabular-nums">
               {proposal.revision.slice(0, 8)}
-            </span>
+            </Tag>
             <Badge>{t(`skillProposals.scope.${proposal.scope}`)}</Badge>
             {proposal.revises && <Badge tone="warning">{t("skillProposals.revises")}</Badge>}
           </div>

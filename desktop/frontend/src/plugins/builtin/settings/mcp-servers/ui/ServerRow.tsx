@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { IconButton, PillButton, StatusDot, Switch } from "@/ui";
+import { IconButton, PillButton, StatusDot, Switch, Tag } from "@/ui";
 import {
   type MCPServerSettings,
   type MCPTransport,
@@ -24,11 +24,7 @@ const STATUS_TONE: Record<
 };
 
 function TransportBadge({ transport }: { transport: MCPTransport }) {
-  return (
-    <span className="rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-ui-sm text-fg-muted">
-      {transport}
-    </span>
-  );
+  return <Tag size="sm">{transport}</Tag>;
 }
 
 export function ServerRow({ server }: { server: MCPServerSettings }) {

@@ -1,6 +1,7 @@
 import { comboGlyph } from "@/lib/combo";
 import { Trans, useT } from "@/lib/i18n";
 import { IconMap, TocById } from "./iconMap";
+import { Tag } from "@/ui";
 
 interface Section {
   titleKey: string;
@@ -110,9 +111,7 @@ export function IconShowcase() {
           i18nKey="iconGallery.showcase"
           values={{ count: total, pkg: "@lobehub/icons", combo: comboGlyph("Mod+K") }}
           components={{
-            code: (
-              <code className="rounded-xs bg-surface-2 px-1.5 py-px font-mono text-ui-md text-fg" />
-            ),
+            code: <Tag size="md" ink="strong" />,
             em: <em className="not-italic text-fg" />,
           }}
         />

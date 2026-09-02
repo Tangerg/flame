@@ -1,4 +1,4 @@
-import { DataView, EmptyState, Icon, Surface, Switch } from "@/ui";
+import { DataView, EmptyState, Icon, Surface, Switch, Tag } from "@/ui";
 import { isUnsupportedMethod, rpcErrorText } from "@/lib/rpcErrors";
 import type { HookReadModel } from "../application/hookConfig";
 import { useHookConfigs } from "../application/hookConfig";
@@ -20,9 +20,7 @@ function HookRow({ h }: { h: HookReadModel }) {
     >
       <Icon name={h.scope === "global" ? "globe" : "folder"} size="sm" className="text-fg-faint" />
       <div className="flex min-w-0 items-center gap-2">
-        <span className="shrink-0 rounded-sm bg-surface-2 px-1.5 py-0.5 font-mono text-ui-xs font-medium text-fg-muted">
-          {h.event}
-        </span>
+        <Tag>{h.event}</Tag>
         {h.matcher && (
           <span className="shrink-0 font-mono text-ui-sm text-accent" title={t("hooks.matcher")}>
             {h.matcher}

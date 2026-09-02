@@ -9,6 +9,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import {
+  Badge,
   Button,
   ChoiceList,
   ChoiceOption,
@@ -292,11 +293,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
                     <span className="min-w-0 max-w-1/2 shrink-0 truncate text-ui-md font-medium text-fg">
                       {label}
                     </span>
-                    {recommended && (
-                      <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-0.5 text-ui-xs text-fg-muted">
-                        {t("question.recommended")}
-                      </span>
-                    )}
+                    {recommended && <Badge>{t("question.recommended")}</Badge>}
                     {option.description && (
                       <span
                         title={option.description}

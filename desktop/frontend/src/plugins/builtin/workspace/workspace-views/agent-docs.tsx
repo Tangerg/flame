@@ -1,4 +1,4 @@
-import { DataView } from "@/ui";
+import { Badge, DataView } from "@/ui";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useT } from "@/lib/i18n";
 import { useWorkspaceAgentDocs } from "@/plugins/builtin/workspace/application/workspaceQueries";
@@ -43,9 +43,7 @@ export function AgentDocsTab() {
                   <div className="truncate text-ui-md font-semibold text-fg">{d.title}</div>
                   <div className="mt-0.5 truncate font-mono text-ui-sm text-fg-faint">{d.path}</div>
                 </div>
-                <span className="rounded-full bg-surface-2 px-1.5 py-px text-ui-xs text-fg-muted">
-                  {t(d.scopeLabelKey)}
-                </span>
+                <Badge>{t(d.scopeLabelKey)}</Badge>
               </div>
             ))}
           </div>

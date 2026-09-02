@@ -7,6 +7,7 @@ import { projectSkillPreview } from "@/plugins/builtin/chat/tools/application/sp
 import { resultLines } from "@/plugins/builtin/chat/tools/application/toolResultParsing";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
+import { Tag } from "@/ui";
 
 function SkillCatalogPreview({ tool, onOpenView }: ToolPreviewProps) {
   const entries = projectSkillPreview(tool.result);
@@ -28,9 +29,7 @@ function SkillCatalogPreview({ tool, onOpenView }: ToolPreviewProps) {
           key={s.name}
           className="flex items-baseline gap-2 rounded-2xs px-1 py-0.5 hover:bg-hover transition-colors"
         >
-          <code className="shrink-0 rounded-xs bg-surface-2 px-1.5 py-0.5 text-ui-sm text-fg-soft">
-            {s.name}
-          </code>
+          <Tag size="sm">{s.name}</Tag>
           <span className="truncate text-ui-sm text-fg-muted">{s.description}</span>
         </div>
       ))}

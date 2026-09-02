@@ -42,6 +42,7 @@ export type { SegmentedOption } from "./segmented";
 export { ShikiCodeBlock } from "./shiki-code-block";
 export { SkeletonList } from "./skeleton";
 export { SystemMessage } from "./system-message";
+export { Tag } from "./tag";
 export { TextArea, TextField } from "./text-field";
 export { TextEditorDialog } from "./text-editor-dialog";
 export { TextButton } from "./text-button";

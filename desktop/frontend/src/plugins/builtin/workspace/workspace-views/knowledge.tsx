@@ -1,6 +1,6 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatDateTime } from "@/lib/i18n/relativeTime";
-import { Collapsible, DataView, Icon, PillButton, Pressable, TextArea } from "@/ui";
+import { Badge, Collapsible, DataView, Icon, PillButton, Pressable, TextArea } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
@@ -97,9 +97,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
           className={cn("text-fg-faint transition-transform", !open && "-rotate-90")}
         />
         <span className="truncate font-mono text-ui-md text-fg">{row.path}</span>
-        <span className="rounded-full bg-surface-2 px-1.5 py-px text-ui-xs text-fg-muted">
-          {t(row.scopeLabelKey)}
-        </span>
+        <Badge>{t(row.scopeLabelKey)}</Badge>
       </Pressable>
       <Collapsible open={open}>
         <div

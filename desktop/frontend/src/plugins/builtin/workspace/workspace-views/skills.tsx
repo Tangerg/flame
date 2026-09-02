@@ -1,4 +1,4 @@
-import { DataView } from "@/ui";
+import { DataView, Tag } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useWorkspaceSkills } from "@/plugins/builtin/workspace/application/workspaceQueries";
@@ -48,11 +48,7 @@ export function SkillsTab() {
               <div key={s.id} className="px-[var(--density-column-gutter-wide)] py-2">
                 <div className="flex items-center gap-2">
                   <div className="text-ui-md font-semibold text-fg truncate">{s.name}</div>
-                  {s.scope && (
-                    <span className="rounded-sm bg-surface-2 px-1.5 py-px font-mono text-ui-xs text-fg-faint">
-                      {s.scope}
-                    </span>
-                  )}
+                  {s.scope && <Tag ink="faint">{s.scope}</Tag>}
                 </div>
                 {s.description && (
                   <div className="mt-0.5 text-ui-sm leading-body text-fg-muted">

@@ -1,6 +1,15 @@
 import { useCallback, useRef, useState } from "react";
 import { formatDay } from "@/lib/i18n/relativeTime";
-import { DataView, EmptyState, Icon, IconButton, PillButton, SectionLabel, TextArea } from "@/ui";
+import {
+  Badge,
+  DataView,
+  EmptyState,
+  Icon,
+  IconButton,
+  PillButton,
+  SectionLabel,
+  TextArea,
+} from "@/ui";
 
 import { useT } from "@/lib/i18n";
 import { notifyError } from "@/plugins/sdk";
@@ -50,9 +59,7 @@ function useRowAction(): { busy: boolean; run: (op: () => Promise<void>) => void
 function OriginBadge({ origin }: { origin: AgentMemoryEntry["origin"] }) {
   const t = useT();
   return (
-    <span className="shrink-0 rounded-sm bg-surface-2 px-1.5 py-px text-ui-xs text-fg-faint">
-      {origin === "auto" ? t("agentMemory.origin.auto") : t("agentMemory.origin.user")}
-    </span>
+    <Badge>{origin === "auto" ? t("agentMemory.origin.auto") : t("agentMemory.origin.user")}</Badge>
   );
 }
 

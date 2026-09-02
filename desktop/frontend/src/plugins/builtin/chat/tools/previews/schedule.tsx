@@ -1,5 +1,5 @@
 import type { ToolPreviewProps } from "@/plugins/sdk";
-import { Badge, Icon } from "@/ui";
+import { Badge, Icon, Tag } from "@/ui";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
@@ -33,9 +33,7 @@ function ScheduleRows({ tool }: ToolPreviewProps) {
             <span className="min-w-0 flex-1 truncate text-ui-md text-fg">
               {schedule.title || schedule.instructions}
             </span>
-            <code className="shrink-0 rounded-xs bg-surface-2 px-1.5 py-px font-mono text-ui-xs text-fg-muted">
-              {schedule.cron}
-            </code>
+            <Tag>{schedule.cron}</Tag>
             {!schedule.enabled && <Badge tone="warning">{t("schedules.off")}</Badge>}
           </div>
           {schedule.nextRunAt && (
@@ -65,9 +63,9 @@ function DeletedSchedulePreview({ tool }: ToolPreviewProps) {
       {id ? (
         <div className="flex items-center gap-2 text-fg-soft">
           <Icon name="check" size="xs" className="text-success" />
-          <code className="min-w-0 truncate rounded-xs bg-surface-2 px-1.5 py-0.5 text-ui-sm">
+          <Tag size="sm" className="min-w-0 truncate">
             {id}
-          </code>
+          </Tag>
         </div>
       ) : (
         <PreviewPlaceholder

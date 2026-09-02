@@ -31,6 +31,24 @@ const NATIVE_INTERACTIVE_ROLES = new Set([
   "treeitem",
 ]);
 
+// A small raised token — a raised fill, a tag-scale corner, a hair of horizontal padding and
+// a UI type step — is `Tag` (a literal the reader may need to copy) or `Badge` (a state named
+// in the reader's language). Fourteen call sites had hand-rolled it in nine spellings, three
+// of which rendered the SAME field two different ways in two views, and one carried a second
+// tone palette beside the one Badge owns.
+//
+// The bare `bg-surface-2` is what makes this a token rather than a state: `hover:bg-surface-2`
+// and `data-[highlighted]:bg-surface-2` are row feedback and are left alone. Read per line, so
+// a class list prettier split across several string literals can still slip through — every
+// form that existed was one line, and a guard that reads what people write beats one that
+// reads what they might.
+const TAG_SHAPE = [
+  /(?<![:\]-])\bbg-surface-2\b/,
+  /\brounded-(?:2xs|xs|sm)\b/,
+  /\bpx-[\d.]+\b/,
+  /\btext-ui-(?:xs|sm|md)\b/,
+];
+
 function isTestFile(path) {
   return /\.(?:spec|test)\.[jt]sx?$/.test(path) || path.includes("/__tests__/");
 }
@@ -114,6 +132,16 @@ for (const fileName of project.program.getSourceFileNames()) {
   }
 
   visit(sourceFile);
+
+  if (!insideDesignSystem) {
+    const lines = sourceFile.getFullText().split("\n");
+    for (const [index, line] of lines.entries()) {
+      if (!TAG_SHAPE.every((fragment) => fragment.test(line))) continue;
+      violations.push(
+        `${rel}:${index + 1} hand-rolls a Tag/Badge — use <Tag> for a literal, <Badge> for a state`,
+      );
+    }
+  }
 }
 
 closeCompiler();
