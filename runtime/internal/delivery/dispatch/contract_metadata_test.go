@@ -14,10 +14,15 @@ type allowedValuesListFixture struct {
 }
 
 type constraintProjectionFixture struct {
-	RequiredPointer *string   `json:"requiredPointer"`
-	OptionalPointer *string   `json:"optionalPointer,omitempty"`
-	OptionalValue   string    `json:"optionalValue,omitempty"`
-	PointerItems    *[]string `json:"pointerItems,omitempty"`
+	RequiredPointer   *string             `json:"requiredPointer"`
+	OptionalPointer   *string             `json:"optionalPointer,omitempty"`
+	OptionalValue     string              `json:"optionalValue,omitempty"`
+	RequiredItems     []string            `json:"requiredItems"`
+	PointerItems      *[]string           `json:"pointerItems,omitempty"`
+	PointerProperties *map[string]string  `json:"pointerProperties,omitempty"`
+	PointerMinimum    *int                `json:"pointerMinimum,omitempty"`
+	ComparableItems   []string            `json:"comparableItems,omitempty"`
+	MapItems          []map[string]string `json:"mapItems,omitempty"`
 }
 
 func TestShapeMetadataRejectsUnsupportedValidatorTargets(t *testing.T) {
@@ -43,6 +48,13 @@ func TestShapeMetadataRejectsUnsupportedValidatorTargets(t *testing.T) {
 			want: "required pointer",
 		},
 		{
+			name: "required pointer maximum length",
+			constraint: FieldConstraint{
+				Field: "requiredPointer", Kind: ConstraintMaxLength, Limit: 16,
+			},
+			want: "required pointer",
+		},
+		{
 			name: "optional value prefix",
 			constraint: FieldConstraint{
 				Field: "optionalValue", Kind: ConstraintPrefix, Value: "id_",
@@ -62,6 +74,62 @@ func TestShapeMetadataRejectsUnsupportedValidatorTargets(t *testing.T) {
 				Field: "pointerItems", Kind: ConstraintPrefixItems, Value: "id_",
 			},
 			want: "pointer string array",
+		},
+		{
+			name: "pointer non-empty items",
+			constraint: FieldConstraint{
+				Field: "pointerItems", Kind: ConstraintNonEmptyItems,
+			},
+			want: "pointer target",
+		},
+		{
+			name: "pointer minimum items",
+			constraint: FieldConstraint{
+				Field: "pointerItems", Kind: ConstraintMinItems, Limit: 2,
+			},
+			want: "pointer target",
+		},
+		{
+			name: "required minimum items",
+			constraint: FieldConstraint{
+				Field: "requiredItems", Kind: ConstraintMinItems, Limit: 2,
+			},
+			want: "required array",
+		},
+		{
+			name: "pointer non-empty properties",
+			constraint: FieldConstraint{
+				Field: "pointerProperties", Kind: ConstraintNonEmptyProperties,
+			},
+			want: "pointer target",
+		},
+		{
+			name: "pointer maximum property name length",
+			constraint: FieldConstraint{
+				Field: "pointerProperties", Kind: ConstraintMaxPropertyNameLength, Limit: 16,
+			},
+			want: "pointer target",
+		},
+		{
+			name: "pointer identity property names",
+			constraint: FieldConstraint{
+				Field: "pointerProperties", Kind: ConstraintIdentityPropertyNames,
+			},
+			want: "pointer target",
+		},
+		{
+			name: "pointer minimum number",
+			constraint: FieldConstraint{
+				Field: "pointerMinimum", Kind: ConstraintMinimum, Limit: 1,
+			},
+			want: "pointer target",
+		},
+		{
+			name: "non-comparable unique items",
+			constraint: FieldConstraint{
+				Field: "mapItems", Kind: ConstraintUniqueItems,
+			},
+			want: "comparable items",
 		},
 	}
 	for _, test := range tests {
@@ -85,6 +153,9 @@ func TestShapeMetadataKeepsSupportedValidatorTargets(t *testing.T) {
 		{Field: "optionalPointer", Kind: ConstraintPrefix, Value: "id_"},
 		{Field: "optionalPointer", Kind: ConstraintPattern, Value: `\S`},
 		{Field: "pointerItems", Kind: ConstraintPatternItems, Value: `\S`},
+		{Field: "pointerItems", Kind: ConstraintMaxItems, Limit: 4},
+		{Field: "pointerItems", Kind: ConstraintUniqueItems},
+		{Field: "comparableItems", Kind: ConstraintUniqueItems},
 	} {
 		err := (FieldConstraintSpec{
 			GoType:      reflect.TypeFor[constraintProjectionFixture](),

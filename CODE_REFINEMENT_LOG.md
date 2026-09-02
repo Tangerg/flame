@@ -593,3 +593,58 @@ The null boundary began as one recursive routine and accumulated three complete 
 
 - The extraction changes only function boundaries; all recursion still re-enters the same semantic gate, so nested opaque and custom-decoder behavior cannot bypass a new path. Focused and full race coverage passed.
 - Round 12 will audit the remaining contractgen field compiler against collection/numeric pointer shapes and requiredness, looking for additional registration-to-generator mismatches before any structural split.
+
+## Round 12 — complete
+
+### Audit scope and evidence
+
+- Compared every collection, property-map, and numeric `constraintCheck` branch with its concrete helper signature in `protocol/wire_constraints.go` and the registration-time target checks.
+- Registration currently unwraps one pointer and accepts several shapes the Go projection cannot compile: pointer arrays with `nonEmptyItems` or `minItems`, pointer maps with any property constraint, and pointer numbers with `minimum` (whose selected `optionalMinimumNumber` helper does not exist).
+- A required non-pointer array with `minItems` selects another nonexistent helper, `requiredMinItems`. A unique-items constraint also accepts slices whose element type cannot instantiate the helper's `comparable` type parameter.
+- Required pointer fields form a separate cross-projection mismatch: generated helpers treat pointer absence as optional (and `nonEmpty` cannot compile at all), while the schema marks the property required. No first-party constraint uses a required pointer field.
+- Baseline: `GOWORK=off go test -count=1 ./internal/delivery/dispatch ./cmd/contractgen` passed in 2.99s.
+
+### Root cause
+
+Target validation proves only the dereferenced JSON kind. Go generation additionally depends on the declared pointer shape, JSON optionality, collection element comparability, and the exact helper surface, so invalid metadata survives its owner and fails later or projects different requiredness.
+
+### Impact and acceptance criteria
+
+- Reject required pointer fields for field constraints until the Go projection has a required-pointer policy.
+- Reject pointer targets for the collection, property-map, and minimum-number constraints whose generated helper call is invalid.
+- Admit `minItems` only on optional non-pointer slices, matching the one implemented helper, and reject unique-items element types that cannot instantiate `comparable`.
+- Preserve all current first-party metadata and the supported optional pointer paths for numeric maxima, positivity, non-negativity, max-items, unique-items, max-item-length, and pattern-items.
+- Keep the support matrix in the metadata owner, generate no new unused helpers, and pass focused, drift, race, static, full Runtime/CLI, and bounded live verification.
+
+### Plan
+
+- **Completed:** added negative and positive support-matrix regressions, then centralized projection validation after JSON-kind validation.
+- **Completed:** formatted, regenerated/checked contract artifacts, remeasured complexity, ran focused/full/live verification, cleaned resources, inspected compatibility, and recorded results.
+
+### Validation
+
+- Before the fix, all nine new invalid-shape cases returned no registration error: a required pointer, pointer non-empty/min-items, required min-items, three pointer-map constraints, pointer minimum, and non-comparable unique items. After the fix, the full negative matrix fails at registration and the supported optional pointer/comparable-item matrix still passes.
+- Dispatch and contractgen tests passed after the final extraction. Generated-contract drift, registry-to-validator reachability, and cross-artifact value-constraint tests passed in 2.78s; `go generate ./...` changed no generated artifact.
+- Dispatch and contractgen passed with `-race` in 12.18s. Focused `go vet` and `staticcheck` passed.
+- Production-only `gocognit` still reports only the pre-existing `constraintCheck` score of 38. `validateConstraintProjection` and its concrete pointer/unique/text helpers introduce no cognitive or cyclomatic finding above the selected thresholds.
+- Runtime `GOWORK=off go vet ./...` plus `GOWORK=off go build ./...` passed in 17.54s, and an isolated uncached `GOWORK=off go test -count=1 ./...` passed in 25.97s.
+- The first Runtime suite run, executed concurrently with four other heavy gates, exposed one cold-waiting delegate cancellation timing failure. The exact test then passed ten consecutive isolated runs in 2.78s, and the complete isolated Runtime suite passed, so no stable regression remained.
+- Current-workspace CLI `go vet ./...` plus `go build ./...` passed in 2.26s, and uncached `go test -count=1 ./...` passed in 40.63s.
+- The current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND12_OK`, status `completed`, one step, 9,183 input tokens, 8 output tokens, 9,088 cache-read tokens, and 1,013ms total model duration. No credential value was printed or copied.
+- `git diff --check` passed.
+
+### Changes and compatibility
+
+- Projection validation now runs after target-kind validation for every field constraint. It owns declared pointer shape, JSON optionality, helper availability, and unique-item comparability instead of leaving those facts implicit in the generator.
+- Required pointer constraints and the six pointer shapes without valid Go helpers are rejected at registration. `minItems` is limited to the optional value-slice shape its helper implements, and `uniqueItems` requires an element type that satisfies the generated helper's `comparable` bound.
+- Breaking changes: malformed private constraint metadata now fails registration rather than generating uncompilable code or disagreeing with Schema requiredness. All first-party registrations, generated artifacts, wire values, persistence, request behavior, and public Runtime/CLI bindings are unchanged.
+
+### Resource cleanup
+
+- The bounded live Run used a validated `/tmp/flame-live-round12.*` directory containing its isolated Runtime home, Go build cache, and CLI binary. The exit trap moved it to the system Trash.
+- No matching temporary directory remained. No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- The declared-shape matrix now covers pointer presence and the obvious generic bound, but exact Go assignability can still diverge for pointers to named string/slice types and maps keyed by named strings. Current first-party fields use builtin strings and literal slices/maps.
+- Round 13 will test those named-type projections directly and then inspect dotted constraints through optional parent pointers, where a generated selector may dereference an absent parent before a leaf helper can apply its omission policy.

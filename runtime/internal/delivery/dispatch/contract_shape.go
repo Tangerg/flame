@@ -829,7 +829,7 @@ func validateConstraintTarget(owner string, field contractshape.Field, constrain
 		if err != nil {
 			return err
 		}
-		return validateTextualConstraintProjection(owner, field, constraint)
+		return validateConstraintProjection(owner, field, constraint)
 	}
 	switch constraint.Kind {
 	case ConstraintPositive:
@@ -864,18 +864,63 @@ func validateConstraintTarget(owner string, field contractshape.Field, constrain
 			constraint.Kind,
 		)
 	}
-	return nil
+	return validateConstraintProjection(owner, field, constraint)
 }
 
-func validateTextualConstraintProjection(owner string, field contractshape.Field, constraint FieldConstraint) error {
-	declaredKind := field.Type.Kind()
-	if (constraint.Kind == ConstraintPrefix || constraint.Kind == ConstraintPattern) &&
-		declaredKind == reflect.Pointer && !field.Optional {
+func validateConstraintProjection(owner string, field contractshape.Field, constraint FieldConstraint) error {
+	if err := validatePointerConstraintProjection(owner, field, constraint); err != nil {
+		return err
+	}
+	if constraint.Kind == ConstraintMinItems && !field.Optional {
+		return fmt.Errorf(
+			"%s.%s constraint %s does not support a required array",
+			owner, constraint.Field, constraint.Kind,
+		)
+	}
+	if constraint.Kind == ConstraintUniqueItems {
+		return validateUniqueItemsProjection(owner, field, constraint)
+	}
+	return validateTextualConstraintProjection(owner, field, constraint)
+}
+
+func validatePointerConstraintProjection(owner string, field contractshape.Field, constraint FieldConstraint) error {
+	if field.Type.Kind() != reflect.Pointer {
+		return nil
+	}
+	if !field.Optional {
 		return fmt.Errorf(
 			"%s.%s constraint %s does not support a required pointer field",
 			owner, constraint.Field, constraint.Kind,
 		)
 	}
+	switch constraint.Kind {
+	case ConstraintNonEmptyItems, ConstraintNonEmptyProperties, ConstraintMinItems,
+		ConstraintMaxPropertyNameLength, ConstraintIdentityPropertyNames, ConstraintMinimum:
+		return fmt.Errorf(
+			"%s.%s constraint %s does not support a pointer target",
+			owner, constraint.Field, constraint.Kind,
+		)
+	default:
+		return nil
+	}
+}
+
+func validateUniqueItemsProjection(owner string, field contractshape.Field, constraint FieldConstraint) error {
+	valueType := field.Type
+	if valueType.Kind() == reflect.Pointer {
+		valueType = valueType.Elem()
+	}
+	if !valueType.Elem().Comparable() {
+		return fmt.Errorf(
+			"%s.%s constraint %s requires comparable items",
+			owner, constraint.Field, constraint.Kind,
+		)
+	}
+	return nil
+}
+
+func validateTextualConstraintProjection(owner string, field contractshape.Field, constraint FieldConstraint) error {
+	declaredKind := field.Type.Kind()
 	if constraint.Kind == ConstraintPrefix && declaredKind != reflect.Pointer && field.Optional {
 		return fmt.Errorf(
 			"%s.%s constraint %s does not support an optional value field",
