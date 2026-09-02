@@ -503,13 +503,16 @@ heaviest line on the screen. The earlier revision of this section spread a
 directional cast at each seam instead; a cast lands ON the reading plane, so all
 three seams read as pressing down on the document.
 
-There is one other case, and only one: an object that **demands attention** — a
-pending approval, a failed run. It is neither a region nor a control, and it takes
-a 1px `--color-<tone>-edge` over a neutral fill. The fill stays neutral because
-these run 200px tall and a wash at that size is a lot of colour for "please look";
-the small inline notices are the inverse, and tint instead. This is the only place
-the language spends a border on meaning rather than on affordance. The three-step
-ramp (`border` / `border-soft` / `divider`) uses literal hex per theme, because a
+There is one other case, and only one: an object that **demands attention** — the
+failed-run banner. It is neither a region nor a control, and it takes a 1px
+`--color-negative-edge` over a neutral fill. The fill stays neutral because it runs
+200px tall and a wash at that size is a lot of colour for "please look"; the small
+inline notices are the inverse, and tint instead. There is exactly one tone token
+for this, because there is exactly one such object: a pending approval is a card
+like any other, and the four other `-edge` tones this once spelled out were a
+palette nothing asked for. This is the only place the language spends a border on
+meaning rather than on affordance. The three-step ramp
+(`border` / `border-soft` / `divider`) uses literal hex per theme, because a
 semi-transparent border shifts across surface lifts and reads as approximate.
 
 **Ink, by contrast, may derive.** Unlike hairlines, the ink ramp (`text-soft` / `text-muted` / `text-faint`) *should* adapt to the surface behind it — that's the Apple label model. A theme can ship just `text` + `text-bright` and let the soft/muted/faint steps derive as `text` at ~82% / ~56% / ~38% alpha over transparent (so they composite against whatever surface they sit on). Palette themes (Solarized, Catppuccin, Tokyo Night, One Dark) instead pin explicit ink hues — their ramp is part of the palette identity, not a single hue at falling opacity. The first-party Flame themes keep explicit values too; the derivation is the low-friction default for third-party themes.
