@@ -40,9 +40,8 @@ import {
   FolderOpen,
   FolderSearch,
   GitBranch,
-  GitCompareArrows,
   Globe,
-  History,
+  RotateCcwClock,
   Image,
   Library,
   List,
@@ -67,16 +66,16 @@ import {
   Send,
   Settings,
   Share2,
-  Shield,
+  ShieldCheck,
   SkipBack,
   SkipForward,
   Sparkle,
   Sparkles,
   Square,
-  SquareTerminal,
   Star,
   Sun,
   Target,
+  Terminal,
   TextSearch,
   ThumbsDown,
   ThumbsUp,
@@ -86,7 +85,7 @@ import {
   User,
   Users,
   Webhook,
-  WrapText,
+  TextWrap,
   Wrench,
   X,
   Zap,
@@ -107,7 +106,6 @@ export type IconName =
   | "file"
   | "filetext"
   | "send"
-  | "send-arrow"
   | "stop"
   | "play"
   | "pause"
@@ -119,7 +117,6 @@ export type IconName =
   | "x"
   | "check"
   | "branch"
-  | "git"
   | "globe"
   | "book"
   | "history"
@@ -130,7 +127,6 @@ export type IconName =
   | "edit"
   | "image"
   | "command"
-  | "panel"
   | "panel-l"
   | "panel-r"
   | "user"
@@ -197,11 +193,10 @@ const ICON_MAP = {
   folder: Folder,
   "folder-open": FolderOpen,
   code: Code,
-  terminal: SquareTerminal,
+  terminal: Terminal,
   file: File,
   filetext: FileText,
   send: Send,
-  "send-arrow": ArrowUp,
   stop: Square,
   play: Play,
   pause: Pause,
@@ -213,10 +208,9 @@ const ICON_MAP = {
   x: X,
   check: Check,
   branch: GitBranch,
-  git: GitCompareArrows,
   globe: Globe,
   book: Book,
-  history: History,
+  history: RotateCcwClock,
   tool: Wrench,
   sparkle: Sparkle,
   "thumbs-up": ThumbsUp,
@@ -224,7 +218,6 @@ const ICON_MAP = {
   edit: Pencil,
   image: Image,
   command: Command,
-  panel: PanelRight,
   "panel-l": PanelLeft,
   "panel-r": PanelRight,
   user: User,
@@ -240,7 +233,7 @@ const ICON_MAP = {
   bell: Bell,
   lightning: Zap,
   bug: Bug,
-  shield: Shield,
+  shield: ShieldCheck,
   loop: RefreshCw,
   copy: Copy,
   "chevron-up": ChevronUp,
@@ -280,7 +273,7 @@ const ICON_MAP = {
   crosshair: Crosshair,
   "clipboard-check": ClipboardCheck,
   "unfold-horizontal": UnfoldHorizontal,
-  "wrap-text": WrapText,
+  "wrap-text": TextWrap,
 } satisfies Record<IconName, LucideIcon>;
 
 export const ICON_NAMES: ReadonlySet<IconName> = new Set(Object.keys(ICON_MAP) as IconName[]);
