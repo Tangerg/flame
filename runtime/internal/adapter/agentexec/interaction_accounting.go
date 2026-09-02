@@ -133,6 +133,10 @@ func (i *interactionAccounting) snapshot() (accounting.Snapshot, error) {
 			return accounting.Snapshot{}, err
 		}
 	}
+	return interactionUsageSnapshot(byModel), nil
+}
+
+func interactionUsageSnapshot(byModel map[string]accounting.ModelUsage) accounting.Snapshot {
 	models := make([]accounting.ModelUsage, 0, len(byModel))
 	for _, usage := range byModel {
 		models = append(models, usage)
@@ -140,7 +144,7 @@ func (i *interactionAccounting) snapshot() (accounting.Snapshot, error) {
 	slices.SortFunc(models, func(left, right accounting.ModelUsage) int {
 		return strings.Compare(left.Model, right.Model)
 	})
-	return accounting.Snapshot{Models: models}, nil
+	return accounting.Snapshot{Models: models}
 }
 
 func mergeInteractionUsage(
@@ -185,14 +189,8 @@ func advanceProcessUsage(
 		return nil, nil, accounting.ModelUsage{}, fmt.Errorf("agentexec: aggregate model call: %w", err)
 	}
 	next[delta.Model] = model
-	models := make([]accounting.ModelUsage, 0, len(next))
-	for _, usage := range next {
-		models = append(models, usage)
-	}
-	slices.SortFunc(models, func(left, right accounting.ModelUsage) int {
-		return strings.Compare(left.Model, right.Model)
-	})
-	total, err := (accounting.Snapshot{Models: models}).Total()
+	snapshot := interactionUsageSnapshot(next)
+	total, err := snapshot.Total()
 	if err != nil {
 		return nil, nil, accounting.ModelUsage{}, fmt.Errorf("agentexec: total model usage: %w", err)
 	}
@@ -202,7 +200,7 @@ func advanceProcessUsage(
 			expectedCalls, total.Calls,
 		)
 	}
-	return next, models, total, nil
+	return next, snapshot.Models, total, nil
 }
 
 func (i *interactionAccounting) restore(
@@ -354,24 +352,17 @@ func calibrateModelContext(
 
 func (i *interactionAccounting) segmentUsage(processID agent.ProcessID) (*runs.SegmentUsage, error) {
 	i.mu.Lock()
-	usageByModel := i.usageByProcess[processID]
-	models := make([]accounting.ModelUsage, 0, len(usageByModel))
-	for _, usage := range usageByModel {
-		models = append(models, usage)
-	}
+	snapshot := interactionUsageSnapshot(i.usageByProcess[processID])
 	i.mu.Unlock()
-	slices.SortFunc(models, func(left, right accounting.ModelUsage) int {
-		return strings.Compare(left.Model, right.Model)
-	})
-	if len(models) == 0 {
+	if len(snapshot.Models) == 0 {
 		return nil, nil
 	}
-	total, err := (accounting.Snapshot{Models: models}).Total()
+	total, err := snapshot.Total()
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: total segment usage: %w", err)
 	}
 	return &runs.SegmentUsage{
-		Tokens: total.TokenUsage, ByModel: models,
+		Tokens: total.TokenUsage, ByModel: snapshot.Models,
 		Cost: total.Cost, Steps: total.Calls,
 	}, nil
 }

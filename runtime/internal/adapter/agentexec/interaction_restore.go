@@ -3,7 +3,6 @@ package agentexec
 import (
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -271,16 +270,41 @@ func accountingFromRunMetrics(
 	}
 	usage, reported := metrics.Usage()
 	if metrics.Steps() == 0 {
-		if reported || len(callsByModel) != 0 {
-			return nil, errors.New("zero-step member has accounting state")
-		}
-		return map[string]accounting.ModelUsage{}, nil
+		return emptyRunMetricsAccounting(reported, callsByModel)
 	}
 	if !reported || len(usage.ByModel) == 0 {
 		return nil, errors.New("model calls have no per-model usage")
 	}
-	result := make(map[string]accounting.ModelUsage, len(usage.ByModel))
-	for model, value := range usage.ByModel {
+	result, err := modelUsageFromRunMetrics(usage.ByModel, callsByModel)
+	if err != nil {
+		return nil, err
+	}
+	total, err := interactionUsageSnapshot(result).Total()
+	if err != nil {
+		return nil, err
+	}
+	if total.Calls != metrics.Steps() || !sameTranscriptUsage(total, usage.Total) {
+		return nil, errors.New("product metrics differ from reconstructed executor accounting")
+	}
+	return result, nil
+}
+
+func emptyRunMetricsAccounting(
+	reported bool,
+	callsByModel map[string]int,
+) (map[string]accounting.ModelUsage, error) {
+	if reported || len(callsByModel) != 0 {
+		return nil, errors.New("zero-step member has accounting state")
+	}
+	return map[string]accounting.ModelUsage{}, nil
+}
+
+func modelUsageFromRunMetrics(
+	byModel map[string]accounting.Totals,
+	callsByModel map[string]int,
+) (map[string]accounting.ModelUsage, error) {
+	result := make(map[string]accounting.ModelUsage, len(byModel))
+	for model, value := range byModel {
 		calls := callsByModel[model]
 		if calls <= 0 {
 			return nil, fmt.Errorf("model %q has no durable call count", model)
@@ -306,26 +330,6 @@ func accountingFromRunMetrics(
 	}
 	if len(result) != len(callsByModel) {
 		return nil, errors.New("durable call counts name a model absent from product metrics")
-	}
-	models := make([]accounting.ModelUsage, 0, len(result))
-	for _, usage := range result {
-		models = append(models, usage)
-	}
-	slices.SortFunc(models, func(left, right accounting.ModelUsage) int {
-		if left.Model < right.Model {
-			return -1
-		}
-		if left.Model > right.Model {
-			return 1
-		}
-		return 0
-	})
-	total, err := (accounting.Snapshot{Models: models}).Total()
-	if err != nil {
-		return nil, err
-	}
-	if total.Calls != metrics.Steps() || !sameTranscriptUsage(total, usage.Total) {
-		return nil, errors.New("product metrics differ from reconstructed executor accounting")
 	}
 	return result, nil
 }
