@@ -1,8 +1,5 @@
-// A lazy singleton: `createHighlighter` is async and loads grammars from bundled JSON, so
-// it is created once on first request and shared app-wide.
-//
-// The `shiki` module is ALSO dynamic-imported, keeping its ~400KB core and grammar JSONs
-// out of the main chunk until a code block first renders.
+// `shiki` is dynamic-imported to keep its ~400KB core and grammar JSONs out of the main
+// chunk until a code block first renders.
 
 import type { Highlighter } from "shiki";
 
@@ -40,14 +37,10 @@ const LANGS = [
   "xml",
 ] as const;
 
-// A transcript renders one code block per fenced section, so reporting every failure would
-// put the same line in the console hundreds of times on a long conversation — which is how a
-// diagnostic becomes noise nobody reads. One line per distinct cause is enough to find it.
+// A long transcript renders hundreds of code blocks, so one line per distinct cause.
 const reported = new Set<string>();
 
-/** Highlighting is a decoration: when it fails the block still renders, as plain text. That
- *  is the right fallback and the reason nothing here throws — but a failure that leaves no
- *  trace at all is one nobody can act on. */
+/** Highlighting is a decoration — nothing here throws, the block falls back to plain text. */
 export function reportHighlightFailure(cause: string, error: unknown): void {
   if (reported.has(cause)) return;
   reported.add(cause);
@@ -64,12 +57,9 @@ export function getHighlighter(): Promise<Highlighter> {
         langs: [...LANGS],
       }),
     );
-    // A REJECTION IS NOT CACHED. The chunk this awaits is fetched over the dev server or read
-    // off disk, and either can fail once — a memoised rejection turns that single failure into
-    // a session with no syntax highlighting anywhere and no way back except a reload.
-    //
-    // The slot is cleared only if it still holds THIS attempt: a later caller may already have
-    // started a successor, and clearing that one would make every block reload the grammars.
+    // A rejection is NOT cached: the chunk fetch can fail once, and memoising that leaves the
+    // whole session unhighlighted with no way back. Cleared only if the slot still holds THIS
+    // attempt — a later caller may already have started a successor.
     const attempt: Promise<Highlighter> = pending.catch((error: unknown) => {
       if (promise === attempt) promise = null;
       throw error;
@@ -79,11 +69,8 @@ export function getHighlighter(): Promise<Highlighter> {
   return promise;
 }
 
-// Both tables are keyed by a path the person or the model chose, so they are Maps
-// rather than object literals: an object inherits `constructor`, `toString` and
-// `__proto__` as live keys, and a file named any of those handed the caller a
-// FUNCTION where a language tag belongs, which threw one frame later on
-// `lang.toLowerCase()` and took the whole diff view down with it.
+// Maps, not object literals: keyed by a path the person or the model chose, and an object
+// answers `constructor` / `toString` / `__proto__` with an inherited value.
 
 const LANG_BY_FILENAME = new Map([
   ["Dockerfile", "dockerfile"],
@@ -135,10 +122,7 @@ const LANG_BY_EXTENSION = new Map([
   ["xml", "xml"],
 ]);
 
-// Tags a model writes in a fence that are not the tag Shiki loaded them under.
-// Separate from the extension table on purpose: `c++` and `c#` are things only a
-// human types, and an extension table that accepted them would be answering a
-// question nobody asked.
+// Tags a model writes in a fence, not extensions — `c++` and `c#` are not file suffixes.
 const LANG_BY_ALIAS = new Map([
   ["ts", "typescript"],
   ["js", "javascript"],
@@ -155,11 +139,8 @@ const LANG_BY_ALIAS = new Map([
   ["cs", "csharp"],
 ]);
 
-// Map a file path to a Shiki language tag by extension (or a bare basename like
-// "Dockerfile" / "Makefile"). Returns "text" for anything unrecognized; pass the
-// result through [resolveLang] before use so an un-bundled tag still degrades
-// cleanly. Used by the diff view to highlight each file in its OWN language
-// rather than assuming one.
+/** "text" when unrecognised. Pass the result through [resolveLang]: a bundled-looking tag
+ *  may still not be loaded. */
 export function langFromPath(path: string): string {
   const base = path.slice(path.lastIndexOf("/") + 1);
   const byName = LANG_BY_FILENAME.get(base);
@@ -168,12 +149,9 @@ export function langFromPath(path: string): string {
   return LANG_BY_EXTENSION.get(ext) ?? "text";
 }
 
-// Pick the closest loaded language for a tag — Shiki throws on unknown
-// langs, so we degrade to plain "text" if the model emits something we
-// don't bundle (e.g., `kdl`, `nix`).
+/** Shiki throws on a lang it did not load, so an unbundled tag degrades to "text". */
 export function resolveLang(highlighter: Highlighter, lang: string): string {
-  // The loaded set is a couple of dozen entries and this runs once per file in a
-  // diff, so scanning the array beats building a Set to throw away.
+  // Two dozen entries scanned once per file beats building a Set to throw away.
   const loaded = highlighter.getLoadedLanguages();
   if (loaded.includes(lang)) return lang;
   const aliased = LANG_BY_ALIAS.get(lang.toLowerCase());

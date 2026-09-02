@@ -1,17 +1,11 @@
 #!/usr/bin/env node
-// The other half of `check-dead-utilities`. That one fails a class the source names and the
-// stylesheet never emits; this one fails a class the stylesheet emits and the source never
-// names. Both are invisible: nothing errors, the rule simply never meets an element.
+// The other half of `check-dead-utilities`: that one fails a class the source names and the
+// stylesheet never emits, this one a class the stylesheet emits and the source never names.
+// Both are invisible — the rule simply never meets an element.
 //
-// Two survived from the repository's first commit and were never applied — `.lazy-activator`,
-// which was an entire stylesheet on its own, and `.msg-scroll-frame`, sitting beside the two
-// `.msg-scroll-*` classes that ARE used, which is exactly how it read as alive.
-//
-// The rule is narrow on purpose: only a selector that STARTS with one of this app's classes
-// has to be applied by this app. A class a library writes — `.markdown-alert` from the
-// blockquote-alert plugin — is styled under a scope the app does apply (`.md .markdown-alert`)
-// and is therefore not checked. That is a real line, not an exemption list: if the app puts
-// the class on the element, the app names it; if a library does, the app scopes it.
+// Narrow on purpose: only a selector STARTING with one of this app's classes must be applied
+// by this app. A library's class is styled under a scope the app does apply
+// (`.md .markdown-alert`), so it is not checked.
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";

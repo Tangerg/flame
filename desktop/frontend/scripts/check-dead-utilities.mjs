@@ -1,16 +1,8 @@
 #!/usr/bin/env node
-// A utility class that names a token the theme never defined emits NOTHING, and nothing
-// says so. `rounded-control` left a hover wash square because there is no `--radius-control`;
-// `ring-focus` drew a currentColor ring because there is no `--color-focus`; a settings
-// readout had `bg-surface-1 border-border-subtle` and rendered with neither. All four looked
-// like design decisions in the source and were absent from the screen.
-//
-// The judge is the BUILT CSS, not a list of token names kept beside the theme — a list is a
-// second copy of the theme and would drift the same way the classes did. Tailwind emits a
-// rule for every utility it can resolve; a class in the source that has no rule in the output
-// is one it could not.
-//
-// Reads `dist/`, so it runs after the build in `check:bundle`.
+// A utility naming a token the theme never defined emits NOTHING, silently: `rounded-control`
+// left a hover wash square, `ring-focus` drew a currentColor ring. The judge is the BUILT CSS
+// rather than a list of token names, which would be a second copy of the theme and drift the
+// same way. Reads `dist/`, so it runs after the build in `check:bundle`.
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";

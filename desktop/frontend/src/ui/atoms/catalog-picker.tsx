@@ -14,8 +14,7 @@ export interface CatalogPickerItem {
   description?: ReactNode;
   keywords?: readonly string[];
   active?: boolean;
-  /** Which group this entry belongs to, for the lists that are not scoped to one — a flat
-   *  page of search results cannot say it, and a recents shelf holds entries from several. */
+  /** The entry's group, for the lists that are not scoped to one. */
   caption?: string;
 }
 
@@ -90,9 +89,6 @@ function CatalogSearch({
 }
 
 function CatalogRow(item: CatalogPickerItem, groupLabel?: string) {
-  // The caption earns its place only where the list is not already scoped to it: a page of
-  // search results, or a shelf holding entries from several groups. Inside a group it would
-  // repeat that group's own heading on every row.
   const showCaption = item.caption !== undefined && item.caption !== groupLabel;
   return (
     <ComboboxPrimitive.Item
@@ -119,8 +115,7 @@ function CatalogRow(item: CatalogPickerItem, groupLabel?: string) {
   );
 }
 
-/** Every group stacked in one scroller. For a catalogue whose groups are short enough to
- *  read at once — a handful of views, a handful of recipes. */
+/** Every group stacked in one scroller, for a catalogue short enough to read at once. */
 export function CatalogPicker({
   groups,
   label,
@@ -205,15 +200,8 @@ export function CatalogPicker({
 /**
  * A group rail down one side, a fixed viewport beside it, and a query that replaces both.
  *
- * An explicit component rather than a mode on the one above: a catalogue deep enough to need
- * a rail needs a measure that does not move, a group to open on, and a search that leaves the
- * rail behind — and none of those mean anything to a stacked list. The two share the row, the
- * field and the trigger.
- *
- * A query searches EVERY group, because a reader who types a name is no longer thinking in
- * groups. Items are deduplicated by id on that path, so a group that republishes another's
- * entries — a recents shelf — does not answer twice, and `item.caption` carries the group a
- * result came from, which is the one thing a flat list of results cannot say for itself.
+ * A query searches EVERY group and deduplicates by id, so a shelf that republishes another
+ * group's entries does not answer twice.
  */
 export function RailCatalogPicker({
   groups,
@@ -244,19 +232,15 @@ export function RailCatalogPicker({
     ? [...new Map(groups.flatMap((group) => group.items).map((item) => [item.id, item])).values()]
     : (active?.items ?? []);
 
-  // The caret goes to the search ON OPEN, and only on open: a catalogue this deep is reached
-  // by typing at least as often as by pointing, and a field that has to be clicked into first
-  // costs a gesture. Re-running this when the GROUP changes would take focus away from the
-  // rail the reader just used — a keyboard user could never stay on it to try a second group.
+  // On open only: re-running on a GROUP change would pull focus off the rail the reader is
+  // still using.
   useEffect(() => {
     if (!open) return;
     const frame = requestAnimationFrame(() => searchRef.current?.focus());
     return () => cancelAnimationFrame(frame);
   }, [open]);
 
-  // Opening onto the group in force is only half of it — the entry itself can sit below the
-  // fold of a long group, and a picker that opens without showing what it is picking from
-  // makes the reader scroll to find out what they already have.
+  // The entry in force can sit below the fold of a long group.
   useEffect(() => {
     if (!open) return;
     const frame = requestAnimationFrame(() =>
@@ -308,8 +292,7 @@ export function RailCatalogPicker({
               aria-label={placeholder}
               placeholder={placeholder}
               onKeyDown={(event) => {
-                // A query is the reader's narrowing, not their exit. Escape gives that back
-                // first and only closes once there is nothing left to give back.
+                // Escape clears the query first and closes only once there is none.
                 if (event.key !== "Escape" || !searching) return;
                 event.preventDefault();
                 event.stopPropagation();
@@ -323,10 +306,8 @@ export function RailCatalogPicker({
               body that grows with its group walks the whole popover up the screen. */}
           <div className="flex h-[240px] min-h-0">
             {!searching && groups.length > 1 && (
-              // Toggle buttons, not a tablist: the pane beside this is the combobox's own
-              // listbox, and a `tablist` whose panel is a `listbox` is an unallowed pairing
-              // that axe reports. `aria-pressed` says the same thing and needs no roving
-              // tabindex, which nothing here may hand-roll.
+              // Toggle buttons, not a tablist: a `tablist` whose panel is the combobox's
+              // `listbox` is a pairing axe reports.
               <div className="flex w-[132px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-divider p-1.5">
                 {groups.map((group) => (
                   <Pressable
