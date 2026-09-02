@@ -231,64 +231,95 @@ func (c *checkEmitter) compile(node *schema) string {
 	// alone in the branch that narrows a field of a shared shape, so it stays its own
 	// call and one rule has one spelling.
 	var parts []string
+	if part := c.baseCheck(node); part != "" {
+		parts = append(parts, part)
+	}
+	parts = append(parts, c.stringChecks(node)...)
+	parts = append(parts, c.numericChecks(node)...)
+	parts = append(parts, c.collectionChecks(node)...)
+	parts = append(parts, c.compositionChecks(node)...)
+	return c.conjunction(parts)
+}
+
+func (c *checkEmitter) baseCheck(node *schema) string {
 	switch {
 	case node.Const != "":
-		parts = append(parts, c.call("literal", strconv.Quote(node.Const)))
+		return c.call("literal", strconv.Quote(node.Const))
 	case len(node.Enum) > 0:
-		parts = append(parts, c.call("enumOf", "["+strings.Join(quoteAll(node.Enum), ", ")+"]"))
+		return c.call("enumOf", "["+strings.Join(quoteAll(node.Enum), ", ")+"]")
 	default:
-		if part := c.value(node); part != "" {
-			parts = append(parts, part)
-		}
+		return c.value(node)
 	}
+}
+
+func (c *checkEmitter) stringChecks(node *schema) []string {
+	var checks []string
 	if node.MinLength != nil {
-		parts = append(parts, c.call("minLength", strconv.Itoa(*node.MinLength)))
+		checks = append(checks, c.call("minLength", strconv.Itoa(*node.MinLength)))
 	}
 	if node.MaxLength != nil {
-		parts = append(parts, c.call("maxLength", strconv.Itoa(*node.MaxLength)))
+		checks = append(checks, c.call("maxLength", strconv.Itoa(*node.MaxLength)))
 	}
 	if node.Pattern != "" {
-		parts = append(parts, c.call("pattern", strconv.Quote(node.Pattern)))
+		checks = append(checks, c.call("pattern", strconv.Quote(node.Pattern)))
 	}
+	return checks
+}
+
+func (c *checkEmitter) numericChecks(node *schema) []string {
+	var checks []string
 	if node.Minimum != nil {
-		parts = append(parts, c.call("minimum", strconv.FormatInt(*node.Minimum, 10)))
+		checks = append(checks, c.call("minimum", strconv.FormatInt(*node.Minimum, 10)))
 	}
 	if node.ExclusiveMinimum != nil {
-		parts = append(parts, c.call("exclusiveMinimum", strconv.FormatInt(*node.ExclusiveMinimum, 10)))
+		checks = append(checks, c.call("exclusiveMinimum", strconv.FormatInt(*node.ExclusiveMinimum, 10)))
 	}
 	if node.Maximum != nil {
-		parts = append(parts, c.call("maximum", strconv.FormatInt(*node.Maximum, 10)))
+		checks = append(checks, c.call("maximum", strconv.FormatInt(*node.Maximum, 10)))
 	}
+	return checks
+}
+
+func (c *checkEmitter) collectionChecks(node *schema) []string {
+	var checks []string
 	if node.MinItems != nil {
-		parts = append(parts, c.call("minItems", strconv.Itoa(*node.MinItems)))
+		checks = append(checks, c.call("minItems", strconv.Itoa(*node.MinItems)))
 	}
 	if node.MaxItems != nil {
-		parts = append(parts, c.call("maxItems", strconv.Itoa(*node.MaxItems)))
+		checks = append(checks, c.call("maxItems", strconv.Itoa(*node.MaxItems)))
 	}
 	if node.MinProperties != nil {
-		parts = append(parts, c.call("minProperties", strconv.Itoa(*node.MinProperties)))
+		checks = append(checks, c.call("minProperties", strconv.Itoa(*node.MinProperties)))
 	}
 	if node.UniqueItems {
-		parts = append(parts, c.call("uniqueItems"))
+		checks = append(checks, c.call("uniqueItems"))
 	}
 	if node.PropertyNames != nil {
-		parts = append(parts, c.call("propertyNames", c.compile(node.PropertyNames)))
+		checks = append(checks, c.call("propertyNames", c.compile(node.PropertyNames)))
 	}
+	return checks
+}
+
+func (c *checkEmitter) compositionChecks(node *schema) []string {
+	var checks []string
 	if len(node.OneOf) > 0 {
-		parts = append(parts, c.call("oneOf", c.list(node.OneOf)))
+		checks = append(checks, c.call("oneOf", c.list(node.OneOf)))
 	}
 	if len(node.AnyOf) > 0 {
-		parts = append(parts, c.call("anyOf", c.list(node.AnyOf)))
+		checks = append(checks, c.call("anyOf", c.list(node.AnyOf)))
 	}
 	for _, member := range node.AllOf {
-		parts = append(parts, c.compile(member))
+		checks = append(checks, c.compile(member))
 	}
 	if node.If != nil {
 		// Both halves of a conditional rule are objects in their own right, so they get a
 		// line each rather than running together inside one argument list.
-		parts = append(parts, c.callBlock("ifThen", c.compile(node.If), c.compile(node.Then)))
+		checks = append(checks, c.callBlock("ifThen", c.compile(node.If), c.compile(node.Then)))
 	}
+	return checks
+}
 
+func (c *checkEmitter) conjunction(parts []string) string {
 	switch len(parts) {
 	case 0:
 		return c.call("anything")
