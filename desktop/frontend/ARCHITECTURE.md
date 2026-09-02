@@ -45,7 +45,7 @@
 src/
 ├── main.tsx              入口 — createRoot(<App/>)
 ├── App.tsx               顶层 Provider 链：QueryClient → PluginProvider → AppRouter
-├── router.tsx            动态 TanStack 路由（从 listRoutes() 构建）
+├── router.tsx            TanStack 路由；session / 主视图 / dock 目标 / settings 面板住在 search param
 │
 ├── pages/
 │   └── AgentClientPage.tsx   kernel：app.sidebar / app.main / app.overlay 三个 Slot
@@ -55,7 +55,6 @@ src/
 │   │   ├── PluginProvider.tsx    启动编排与代际 owner：Host.start → ready → stop
 │   │   ├── Slot.tsx              <Slot name="…"/> 渲染注册到该 slot 的插件组件
 │   │   ├── PluginBoundary.tsx    每个插件组件的 React Error Boundary
-│   │   ├── PluginToaster.tsx     全局 toast 层（sonner）
 │   │   └── ShortcutsProvider.tsx 全局键盘快捷键派发
 │   │
 │   ├── sdk/                  插件平台
@@ -116,31 +115,32 @@ src/
 ├── plugins/builtin/workspace/                      Workspace 限界上下文
 │   ├── application/        navigation / tool routing / activity projection
 │   ├── adapters/           workspace navigation port adapters
-│   ├── events/             runtime workspace event loop + invalidation rules
+│   ├── events.ts           runtime workspace event loop + invalidation rules
 │   └── public/             navigation / deeplink / sidebar rail facade
 │
-├── state/                Kernel 共享 store（不承载业务规则）
-│   ├── uiStore.ts        主题 / accent / 字体 / motion / sidebarRail（持久化）
-│   ├── tasksStore.ts     后台任务
-│   ├── contextDockStore.ts       session-scoped split / file / tool material
+│                         （全局 toast 层是一个内置插件：plugins/builtin/shell/toaster/）
 │
+
 ├── ui/                   本地 UI kit：primitives(Base UI 防腐层) / atoms / agent 业务原子
 │                         页面只消费 atoms 或 agent 原子，不直连 headless 外部库
 │
 ├── lib/                  共享 hook + 纯函数（跨插件共享，不属于上述任一层）
-│   ├── agent/            会话用例 hook（useChatSend / useApprovalSubmit / useQuestionAnswer /
-│   │                     useCreateSession / …）+ HITL 决策词表 + streamReveal + messageContent
-│   ├── data/             React Query 基础设施（dataQuery / queryClient；不放业务模型）
+│   ├── highlight/        shiki（懒加载 + 缓存 + 语言解析）
 │   ├── i18n/             i18next 接线 + 分词 + 相对时间
-│   ├── markdown/         rehype 插件 + shiki + KaTeX（纯 infra）
+│   ├── navigation.ts     Navigator port —— 「我此刻在哪」的唯一 owner（URL search param）
 │   ├── observability/    OTel 三信号（setup/sink/stores/tracing/logBridge）—— 见 §5.5
-│   └── classNames.ts / motion.ts / metrics.ts / hmr.ts / systemFonts.ts
+│   ├── ports/            createSingletonPort（上下文内部的依赖倒置）
+│   ├── queryClient.ts    单一 QueryClient + 代际缓存修复
+│   ├── taskQueue.ts      RetirableTaskCohort / SerialTaskChain
+│   └── classNames.ts / motion.ts / metrics.ts / hmr.ts / combo.ts / shellGeometry.ts
+
+会话用例 hook 不在 `lib/` —— 它们已经住进 agent 上下文的 `application/`（`input/chatSend`、
+`hitl/useApprovalSubmit`、`session/createSession` …）。markdown 渲染同理，住在 chat 上下文里。
 │
 ├── rpc/                  Runtime Protocol boundary —— 唯一 outbound 副作用层
 │   ├── sdk.ts            createFlameClient(transport) — JSON-RPC client + typed methods
 │   ├── methods.ts        typed method 包装（runs.start / runs.resume / runs.cancel / items.list / …）
-│   ├── shapes.ts         wire schema（Zod，信任边界校验）
-│   ├── stream.ts         RunEvent 信封校验 + 去重（iterableOf / bindLifecycle）
+│   ├── stream.ts         streamRunEvents —— 信封校验、代际去重与有界缓冲
 │   ├── transports/       http / memory（测试）
 │   └── client.ts / channel.ts / ids.ts / errors.ts
 │
@@ -420,7 +420,7 @@ FlameClient（rpc/）—— runs.start / runs.resume 流式返回 RunEvent
    │   useAgentSession → AgentRunPump：for await (event of stream.events)
    ▼
 useAgentStore.applyRunEvents(sessionId, batch)  ◄── rAF 批处理，~1 commit/帧
-   │   reduceRunEvent(view, completeEnvelope)
+   │   reduceAgentEvent(view, envelope)
    ▼
 agent/application/fold/reducer.ts
    │
@@ -617,22 +617,25 @@ Composer onKeyDown (Enter) → submitComposer → useChatSend(text)
    → useAgentSession.send → 乐观渲染 local 气泡 + driver.start
    → StartRunResponse.userItemId 精确 relabel optimistic Item
    → client.runs.start → 流出 segment.* / item.* / state.* …
-   → pump（rAF 批）→ agentStore.applyRunEvents → reduceRunEvent → 新 projection
+   → pump（rAF 批）→ agentStore.applyRunEvents → reduceAgentEvent → 新 projection
    → React 订阅者重渲染（ChatStream 等）
 ```
 
 ### 7.2 工具调用展开 / 打开完整视图
 
 ```
-ChatPanel → ChatStream → MessageBlock → PartRenderer
-   ─ kind="tool" 分支 → <ToolCard onOpenView={() => openViewForTool(toolId)} />
+ChatPanel → ChatStream → MessageBlock → BlockRenderer
+   ─ kind="tool" 分支 → <ToolCard />
 
 用户点 "Open in …"
-   → state/toolRouting.ts.openViewForTool(toolId)
-   → 按 tool.kind 决定 view id（commandExecution→terminal, fileChange→diff …）
-   → uiStore.openMainView({ id, title, icon }) → mainViewTabs 追加 + active
-   → ChatPanel 解析 useWorkspaceViews().find(id).component → 主区换成那个 view
+   → ToolCard 从 TOOL_VIEW_OPENER 里挑第一个 predicate 命中的 opener
+   → workspace 的那个 opener → openWorkspaceViewForTool(tool)
+   → 按 tool 决定 view id（commandExecution→terminal, fileChange→diff …）
+   → openWorkspaceViewInDock(id)：dock tab set 里新增或聚焦这个 singleton tab
 ```
+
+kernel 不认识任何具体工具：它只知道有一个 `TOOL_VIEW_OPENER` 贡献面。opener 抛错
+只归因到它的 owner 插件，不影响卡片本身。
 
 ### 7.3 HITL（人审）—— R-model
 
@@ -779,7 +782,10 @@ Runtime fold 产生的 closed content-block union（text/image/reasoning/tool/ap
 ### 12.2 想做但当前 KISS / YAGNI 不允许
 
 - **`<ToolPrimitive>` headless 组件**：目前只有 `approval` 一个真正 actionable 的块（tool 是只读指针，code/search 是被动展示）。给单一消费者抽 primitive 违反"3+ 重复才抽象"。**触发条件**：第二个 actionable block 出现（如 code-proposal 升级为 accept/reject）。
-- **把 `lib/agent` 提成独立 `application/` 层**：`lib/` 已是"跨插件共享"的明确语义（`messageContent` 就是被刻意从 plugin 内部移来的），6 个用例 hook 不足以撑起一个独立层 + 一条新 layer-guard。**触发条件**：用例 hook 显著增多、或 UI 开始绕过它们直接编排 rpc。
+- ~~**把 `lib/agent` 提成独立 `application/` 层**~~：已经做了，而且做过了头——`lib/agent` 不再
+  存在，那些用例 hook 住进了 agent 上下文自己的 `application/`（`input/chatSend`、
+  `hitl/useApprovalSubmit`、`session/createSession` …），由 layer-guard 守着。触发条件当时写的是
+  "用例 hook 显著增多"，后来确实增多了。
 - **MessageStream 虚拟化**：长会话（1000+ 消息）目前无人抱怨。**触发条件**：实测 > 500 消息卡顿时引入 `@tanstack/react-virtual`。
 - **monorepo packages**：见 §3.2 的 4 个触发条件，目前一个都没命中。
 
