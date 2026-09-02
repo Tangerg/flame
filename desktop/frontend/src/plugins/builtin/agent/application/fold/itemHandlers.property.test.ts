@@ -34,7 +34,13 @@ function toolItem(a: Arbitrary, id: string, status: "running" | "completed"): Ag
     status,
     type: "toolCall",
     startedAt: "2026-06-03T00:00:00.000Z",
-    ...(status === "running" ? {} : { finishedAt: "2026-06-03T00:00:01.000Z" }),
+    // A settled tool call carries BOTH, and the wire says so conditionally — the generated
+    // TS type marks each optional, so only `validateWire` catches a corpus that stopped
+    // producing one. It did: half the frames here were being filtered out unnoticed, which
+    // is the whole reason the coverage assertion below exists.
+    ...(status === "running"
+      ? {}
+      : { finishedAt: "2026-06-03T00:00:01.000Z", durationMillis: 1000 }),
     tool: { name: a.pick(["read", "shell", "grep"]), arguments: { path: a.text() } },
   } as AgentItem;
 }
