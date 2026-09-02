@@ -837,29 +837,6 @@ func registerObjectConstraints(s *Shapes) {
 		}},
 	})
 
-	// An error terminal's explanation lives on `error`, and only there — `detail`
-	// is the note the OTHER terminals may add, so carrying both would give one
-	// failure two prose fields and let them disagree.
-	s.constraint(ObjectConstraintSpec{
-		GoType: typeOf[protocol.RunOutcome](),
-		Rules:  failureTerminalRules(),
-	})
-
-	// The same rule for the segment union, plus the two non-terminal stops: an
-	// interrupt has something to resume, and a suspended segment carries no
-	// interrupts because they belong to the run that raised them.
-	s.constraint(ObjectConstraintSpec{
-		GoType: typeOf[protocol.SegmentOutcome](),
-		Rules: append(failureTerminalRules(), ConditionalRule{
-			When:      []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.SegmentInterrupt)}},
-			Required:  []string{"interrupts"},
-			Forbidden: []string{"error", "detail"},
-		}, ConditionalRule{
-			When:      []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.SegmentSuspended)}},
-			Forbidden: []string{"interrupts", "error", "detail"},
-		}),
-	})
-
 	// A pending set with no interrupts is not a thing to resume — it would leave
 	// the client polling a run that will never move (contract §11.2).
 	s.constraint(ObjectConstraintSpec{
@@ -884,14 +861,6 @@ func registerObjectConstraints(s *Shapes) {
 			When:      []delivery.FieldCondition{{Field: "spawnedByItemId", Operator: delivery.OperatorPresent}},
 			Forbidden: []string{"protocolProfile"},
 		}}, childLineageRules()...),
-	})
-
-	// A failure outcome's explanation lives on `error`, and only there — the
-	// archive's copy of the live rule, because an exported run has to say why it
-	// failed as unambiguously as a live one.
-	s.constraint(ObjectConstraintSpec{
-		GoType: typeOf[protocol.ArtifactOutcome](),
-		Rules:  failureArtifactRules(),
 	})
 
 	// ArtifactProblem is shared by Run outcomes and ToolCall transcript items,
@@ -926,14 +895,6 @@ func artifactProblemRetryRules() []ConditionalRule {
 	return rules
 }
 
-func failureArtifactRules() []ConditionalRule {
-	return []ConditionalRule{
-		{When: []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ArtifactOutcomeTimedOut)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
-		{When: []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ArtifactOutcomeFailed)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
-		{When: []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ArtifactOutcomeLost)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
-	}
-}
-
 // childLineageRules say the three child edges are all-or-none: a run either
 // carries every one of them or is a root (§4.2). Stated as one rule per edge
 // rather than "root forbids them", because presence is the only thing a
@@ -956,16 +917,6 @@ func childLineageRules() []ConditionalRule {
 		})
 	}
 	return rules
-}
-
-// failureTerminalRules define the terminal outcomes whose typed problem is
-// mandatory and mutually exclusive with the free-form detail field.
-func failureTerminalRules() []ConditionalRule {
-	return []ConditionalRule{
-		{When: []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.OutcomeTimedOut)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
-		{When: []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.OutcomeFailed)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
-		{When: []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.OutcomeLost)}}, Required: []string{"error"}, Forbidden: []string{"detail"}},
-	}
 }
 
 func registerCarriedShapes(s *Shapes) {

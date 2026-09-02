@@ -643,30 +643,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         type: literal("lost"),
       }, ["error", "type"]),
     ]),
-    ifThen(
-      fields({
-        type: literal("timedOut"),
-      }, ["type"]),
-      fields({
-        detail: absent(),
-      }, ["error"]),
-    ),
-    ifThen(
-      fields({
-        type: literal("failed"),
-      }, ["type"]),
-      fields({
-        detail: absent(),
-      }, ["error"]),
-    ),
-    ifThen(
-      fields({
-        type: literal("lost"),
-      }, ["type"]),
-      fields({
-        detail: absent(),
-      }, ["error"]),
-    ),
   ]),
   ArtifactOutcomeType: enumOf(["completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"]),
   ArtifactProblem: allOf([
@@ -2704,30 +2680,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         type: literal("lost"),
       }, ["error", "type"]),
     ]),
-    ifThen(
-      fields({
-        type: literal("timedOut"),
-      }, ["type"]),
-      fields({
-        detail: absent(),
-      }, ["error"]),
-    ),
-    ifThen(
-      fields({
-        type: literal("failed"),
-      }, ["type"]),
-      fields({
-        detail: absent(),
-      }, ["error"]),
-    ),
-    ifThen(
-      fields({
-        type: literal("lost"),
-      }, ["type"]),
-      fields({
-        detail: absent(),
-      }, ["error"]),
-    ),
   ]),
   RunOutcomeType: enumOf(["completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"]),
   RunProgress: allOf([
@@ -3202,49 +3154,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         type: literal("lost"),
       }, ["error", "type"]),
     ]),
-    ifThen(
-      fields({
-        type: literal("timedOut"),
-      }, ["type"]),
-      fields({
-        detail: absent(),
-      }, ["error"]),
-    ),
-    ifThen(
-      fields({
-        type: literal("failed"),
-      }, ["type"]),
-      fields({
-        detail: absent(),
-      }, ["error"]),
-    ),
-    ifThen(
-      fields({
-        type: literal("lost"),
-      }, ["type"]),
-      fields({
-        detail: absent(),
-      }, ["error"]),
-    ),
-    ifThen(
-      fields({
-        type: literal("interrupt"),
-      }, ["type"]),
-      fields({
-        detail: absent(),
-        error: absent(),
-      }, ["interrupts"]),
-    ),
-    ifThen(
-      fields({
-        type: literal("suspended"),
-      }, ["type"]),
-      fields({
-        detail: absent(),
-        error: absent(),
-        interrupts: absent(),
-      }, []),
-    ),
   ]),
   SegmentOutcomeType: enumOf(["interrupt", "suspended", "completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"]),
   ServerCapabilities: object({

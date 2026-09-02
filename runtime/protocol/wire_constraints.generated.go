@@ -808,12 +808,6 @@ func (r RunOutcome) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(r, "type", "canceled"), "error", r),
 		requiredWhen(wireFieldEquals(r, "type", "lost"), "error", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "lost"), "detail", r),
-		requiredWhen(wireFieldEquals(r, "type", "timedOut"), "error", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "timedOut"), "detail", r),
-		requiredWhen(wireFieldEquals(r, "type", "failed"), "error", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "failed"), "detail", r),
-		requiredWhen(wireFieldEquals(r, "type", "lost"), "error", r),
-		forbiddenWhen(wireFieldEquals(r, "type", "lost"), "detail", r),
 	)
 }
 
@@ -844,18 +838,6 @@ func (s SegmentOutcome) ValidateWire() error {
 		requiredWhen(wireFieldEquals(s, "type", "lost"), "error", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "lost"), "interrupts", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "lost"), "detail", s),
-		requiredWhen(wireFieldEquals(s, "type", "timedOut"), "error", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "timedOut"), "detail", s),
-		requiredWhen(wireFieldEquals(s, "type", "failed"), "error", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "failed"), "detail", s),
-		requiredWhen(wireFieldEquals(s, "type", "lost"), "error", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "lost"), "detail", s),
-		requiredWhen(wireFieldEquals(s, "type", "interrupt"), "interrupts", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "interrupt"), "error", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "interrupt"), "detail", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "suspended"), "interrupts", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "suspended"), "error", s),
-		forbiddenWhen(wireFieldEquals(s, "type", "suspended"), "detail", s),
 	)
 }
 
@@ -1493,12 +1475,6 @@ func (a ArtifactOutcome) ValidateWire() error {
 		requiredWhen(wireFieldEquals(a, "type", "lost"), "error", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "lost"), "detail", a),
 		allowedValuesWhen(wireFieldEquals(a, "type", "lost"), "error.type", a, []string{"runLost"}),
-		requiredWhen(wireFieldEquals(a, "type", "timedOut"), "error", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "timedOut"), "detail", a),
-		requiredWhen(wireFieldEquals(a, "type", "failed"), "error", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "failed"), "detail", a),
-		requiredWhen(wireFieldEquals(a, "type", "lost"), "error", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "lost"), "detail", a),
 	)
 }
 
