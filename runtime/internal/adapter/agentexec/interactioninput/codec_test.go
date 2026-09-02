@@ -106,6 +106,18 @@ func TestResolutionCodecUsesAgentWireVocabulary(t *testing.T) {
 	if _, decodeResolutionErr := DecodeResolution([]byte(`{"approved":true,"approved":false}`)); decodeResolutionErr == nil {
 		t.Fatal("DecodeResolution accepted a duplicate field")
 	}
+	for _, missing := range [][]byte{
+		[]byte(`{}`),
+		[]byte(`{"approved":null}`),
+	} {
+		if _, decodeResolutionErr := DecodeResolution(missing); decodeResolutionErr == nil {
+			t.Fatalf("DecodeResolution(%s) accepted a missing approval decision", missing)
+		}
+	}
+	denied, err := DecodeResolution([]byte(`{"approved":false,"reason":"not now"}`))
+	if err != nil || denied.Approved || denied.Reason != "not now" {
+		t.Fatalf("DecodeResolution explicit denial = %#v, %v", denied, err)
+	}
 	decoded, err := DecodeResolution(raw)
 	if err != nil || decoded.RememberScope != approval.ScopeSession ||
 		len(decoded.Answers) != 1 || len(decoded.Answers[0]) != 1 || decoded.Answers[0][0] != "yes" {

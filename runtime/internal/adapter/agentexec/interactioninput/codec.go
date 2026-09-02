@@ -63,8 +63,9 @@ func EncodeResolution(resolution interrupt.Resolution) (json.RawMessage, error) 
 	if resolution.RememberScope != "" && !resolution.RememberScope.Valid() {
 		return nil, fmt.Errorf("agentexec interaction input codec: unknown remember scope %q", resolution.RememberScope)
 	}
+	approved := resolution.Approved
 	encoded, err := json.Marshal(ResolutionPayload{
-		Approved: resolution.Approved, Arguments: resolution.Arguments, Answers: resolution.Answers,
+		Approved: &approved, Arguments: resolution.Arguments, Answers: resolution.Answers,
 		Reason: resolution.Reason, RememberScope: resolution.RememberScope,
 	})
 	if err != nil {
@@ -115,37 +116,51 @@ func validateUniqueJSONNames(decoder *json.Decoder, path string) error {
 	if !structured {
 		return nil
 	}
+	var contentErr error
 	switch delimiter {
 	case '{':
-		seen := make(map[string]struct{})
-		for decoder.More() {
-			nameToken, tokenErr := decoder.Token()
-			if tokenErr != nil {
-				return tokenErr
-			}
-			name, ok := nameToken.(string)
-			if !ok {
-				return fmt.Errorf("object member at %s has a non-string name", path)
-			}
-			if _, duplicate := seen[name]; duplicate {
-				return fmt.Errorf("duplicate field %q at %s", name, path)
-			}
-			seen[name] = struct{}{}
-			if memberErr := validateUniqueJSONNames(decoder, path+"."+name); memberErr != nil {
-				return memberErr
-			}
-		}
+		contentErr = validateUniqueJSONObjectNames(decoder, path)
 	case '[':
-		for index := 0; decoder.More(); index++ {
-			if elementErr := validateUniqueJSONNames(decoder, fmt.Sprintf("%s[%d]", path, index)); elementErr != nil {
-				return elementErr
-			}
-		}
+		contentErr = validateUniqueJSONArrayNames(decoder, path)
 	default:
 		return fmt.Errorf("unexpected JSON delimiter %q at %s", delimiter, path)
 	}
+	if contentErr != nil {
+		return contentErr
+	}
 	_, err = decoder.Token()
 	return err
+}
+
+func validateUniqueJSONObjectNames(decoder *json.Decoder, path string) error {
+	seen := make(map[string]struct{})
+	for decoder.More() {
+		nameToken, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		name, ok := nameToken.(string)
+		if !ok {
+			return fmt.Errorf("object member at %s has a non-string name", path)
+		}
+		if _, duplicate := seen[name]; duplicate {
+			return fmt.Errorf("duplicate field %q at %s", name, path)
+		}
+		seen[name] = struct{}{}
+		if err := validateUniqueJSONNames(decoder, path+"."+name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateUniqueJSONArrayNames(decoder *json.Decoder, path string) error {
+	for index := 0; decoder.More(); index++ {
+		if err := validateUniqueJSONNames(decoder, fmt.Sprintf("%s[%d]", path, index)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func validateJSONFieldNames(value any, targetType reflect.Type, path string) error {
@@ -354,7 +369,7 @@ func questionOptionsFrom(options []questionOptionWire) []runs.QuestionOptionSpec
 // continuation codec. Callers should use [EncodeResolution] and
 // [DecodeResolution].
 type ResolutionPayload struct {
-	Approved      bool           `json:"approved"`
+	Approved      *bool          `json:"approved"`
 	Arguments     string         `json:"arguments,omitempty"`
 	Answers       [][]string     `json:"answers,omitempty"`
 	Reason        string         `json:"reason,omitempty"`
@@ -363,6 +378,9 @@ type ResolutionPayload struct {
 
 // Resolution converts the validated technical payload to its Domain value.
 func (r ResolutionPayload) Resolution() (interrupt.Resolution, error) {
+	if r.Approved == nil {
+		return interrupt.Resolution{}, errors.New("agentexec interaction input codec: approved is required")
+	}
 	if r.RememberScope != "" && !r.RememberScope.Valid() {
 		return interrupt.Resolution{}, fmt.Errorf("agentexec interaction input codec: unknown remember scope %q", r.RememberScope)
 	}
@@ -371,7 +389,7 @@ func (r ResolutionPayload) Resolution() (interrupt.Resolution, error) {
 		answers = nil
 	}
 	return interrupt.Resolution{
-		Approved: r.Approved, Arguments: r.Arguments, Answers: answers,
+		Approved: *r.Approved, Arguments: r.Arguments, Answers: answers,
 		Reason: r.Reason, RememberScope: r.RememberScope,
 	}, nil
 }
