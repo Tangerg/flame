@@ -492,45 +492,64 @@ func unionChecks(union dispatch.UnionSpec, recv string) []string {
 	paths := unionPaths(union)
 	var checks []string
 	if pattern := union.PatternVariant; pattern != nil {
-		field, ok := contractshape.LookupField(union.GoType, union.Discriminator)
-		if !ok {
-			panic(fmt.Sprintf("contractgen: %s has no discriminator %q", union.GoType.Name(), union.Discriminator))
-		}
-		tags := make([]string, 0, len(union.Variants))
-		for _, variant := range union.Variants {
-			tags = append(tags, variant.Tag)
-		}
-		checks = append(checks, fmt.Sprintf(
-			"unionTag(%q, string(%s.%s), %s, %q)",
-			union.Discriminator, recv, field.GoName, valueList(tags), pattern.TagPattern,
-		))
+		checks = append(checks, patternUnionTagCheck(union, *pattern, recv))
 	}
 	for _, variant := range union.Variants {
-		applies := fmt.Sprintf("wireFieldEquals(%s, %q, %q)", recv, union.Discriminator, variant.Tag)
-		allowed := append(slices.Clone(variant.Required), variant.Optional...)
-		for _, field := range variant.Required {
-			checks = append(checks, fmt.Sprintf("requiredWhen(%s, %q, %s)", applies, field, recv))
-		}
-		for _, field := range paths {
-			if slices.Contains(allowed, field) {
-				continue
-			}
-			checks = append(checks, fmt.Sprintf("forbiddenWhen(%s, %q, %s)", applies, field, recv))
-		}
-		checks = append(checks, allowedValueChecks(applies, variant.AllowedValues, recv)...)
+		checks = append(checks, literalUnionChecks(union, variant, paths, recv)...)
 	}
 	if pattern := union.PatternVariant; pattern != nil {
-		applies := fmt.Sprintf("wireFieldMatches(%s, %q, %q)", recv, union.Discriminator, pattern.TagPattern)
-		allowed := append(slices.Clone(pattern.Required), pattern.Optional...)
-		for _, field := range pattern.Required {
-			checks = append(checks, fmt.Sprintf("requiredWhen(%s, %q, %s)", applies, field, recv))
+		checks = append(checks, patternUnionChecks(union, *pattern, paths, recv)...)
+	}
+	return checks
+}
+
+func patternUnionTagCheck(union dispatch.UnionSpec, pattern dispatch.PatternVariantSpec, recv string) string {
+	field, ok := contractshape.LookupField(union.GoType, union.Discriminator)
+	if !ok {
+		panic(fmt.Sprintf("contractgen: %s has no discriminator %q", union.GoType.Name(), union.Discriminator))
+	}
+	tags := make([]string, 0, len(union.Variants))
+	for _, variant := range union.Variants {
+		tags = append(tags, variant.Tag)
+	}
+	return fmt.Sprintf(
+		"unionTag(%q, string(%s.%s), %s, %q)",
+		union.Discriminator, recv, field.GoName, valueList(tags), pattern.TagPattern,
+	)
+}
+
+func literalUnionChecks(
+	union dispatch.UnionSpec,
+	variant dispatch.VariantSpec,
+	paths []string,
+	recv string,
+) []string {
+	applies := fmt.Sprintf("wireFieldEquals(%s, %q, %q)", recv, union.Discriminator, variant.Tag)
+	checks := unionBranchChecks(applies, variant.Required, variant.Optional, paths, recv)
+	return append(checks, allowedValueChecks(applies, variant.AllowedValues, recv)...)
+}
+
+func patternUnionChecks(
+	union dispatch.UnionSpec,
+	pattern dispatch.PatternVariantSpec,
+	paths []string,
+	recv string,
+) []string {
+	applies := fmt.Sprintf("wireFieldMatches(%s, %q, %q)", recv, union.Discriminator, pattern.TagPattern)
+	return unionBranchChecks(applies, pattern.Required, pattern.Optional, paths, recv)
+}
+
+func unionBranchChecks(applies string, required, optional, paths []string, recv string) []string {
+	allowed := append(slices.Clone(required), optional...)
+	checks := make([]string, 0, len(required)+len(paths))
+	for _, field := range required {
+		checks = append(checks, fmt.Sprintf("requiredWhen(%s, %q, %s)", applies, field, recv))
+	}
+	for _, field := range paths {
+		if slices.Contains(allowed, field) {
+			continue
 		}
-		for _, field := range paths {
-			if slices.Contains(allowed, field) {
-				continue
-			}
-			checks = append(checks, fmt.Sprintf("forbiddenWhen(%s, %q, %s)", applies, field, recv))
-		}
+		checks = append(checks, fmt.Sprintf("forbiddenWhen(%s, %q, %s)", applies, field, recv))
 	}
 	return checks
 }
