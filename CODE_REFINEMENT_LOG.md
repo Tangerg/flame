@@ -813,3 +813,57 @@ The field compiler infers optional-scalar policy independently per helper. Most 
 
 - `Goal.provider/model` remains an evidenced cross-artifact inconsistency blocked by the current Runtime/CLI-only scope. A future scope that includes Desktop should remove both `omitempty` tags, regenerate the contract, and migrate every Goal fixture/adapter in one batch.
 - Round 16 will address the remaining measured contractgen complexity by separating textual, collection/property, and numeric constraint rendering only where the closed support matrix gives each family a coherent responsibility; output must remain byte-for-byte stable.
+
+## Round 16 — complete
+
+### Audit scope and evidence
+
+- `constraintCheck` is the only production function above the cognitive threshold in the changed contract path, scoring 38. Its switch mixes five text constraints, four numeric constraints, eight array constraints, and three property-map constraints.
+- The function has no shared mutation across families. Each family reads the same resolved selector/leaf and emits one independent helper call; family-specific decisions concern only optionality, pointer shape, limit/value arguments, or union-required text.
+- Rounds 9–15 moved unsupported declared shapes into registration, so the compiler now consumes a closed, validated matrix rather than needing defensive family-crossing logic.
+- Baseline: focused contractgen and generated-drift tests passed in 3.83s; production `gocognit` reported only `constraintCheck` at 38.
+
+### Root cause
+
+One renderer accumulated every constraint vocabulary in a single switch even though text, numeric, array, and property-map helpers evolve independently. The resulting score reflects mixed responsibilities, not an intrinsically complex algorithm.
+
+### Impact and acceptance criteria
+
+- Keep selector resolution and unknown-kind failure at the single `constraintCheck` entry.
+- Move rendering into four concrete family functions without a registry, reflection dispatch table, visitor, or configuration object.
+- Preserve every emitted validator call byte-for-byte, including union-owned non-empty omission and optional pointer helper selection.
+- Reduce every new function below the cognitive threshold and change no generated artifact.
+- Pass focused, drift, race, static, full Runtime/CLI, and bounded live verification.
+
+### Plan
+
+- **Completed:** extracted the four rendering families and three text-policy helpers, formatted them, and proved byte-for-byte generator stability.
+- **Completed:** remeasured complexity, ran focused/full/live verification, cleaned resources, inspected compatibility, and recorded results.
+
+### Validation
+
+- After the initial family split, contractgen tests and generated-contract drift passed. The remaining text renderer scored 16, so its three real optionality decisions were extracted into non-empty, prefix, and pattern helpers; contractgen and drift then passed again.
+- Final focused generation and contract checks passed in 2.30s after `go generate ./...`; no generated artifact changed.
+- Production-only complexity scanning no longer reports `constraintCheck` or any new Round 16 function above either threshold. Existing cognitive findings begin at `newValidators` (29), and existing cyclomatic findings begin at `newValidators` (27).
+- Contractgen passed with `-race`; focused `go vet` and `staticcheck` also passed in the combined 9.65s gate.
+- Runtime `GOWORK=off go vet ./...` plus `GOWORK=off go build ./...` passed in 3.70s, and uncached `GOWORK=off go test -count=1 ./...` passed in 22.12s.
+- Current-workspace CLI `go vet ./...` plus `go build ./...` passed in 3.81s, and uncached `go test -count=1 ./...` passed in 43.50s.
+- The current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND16_OK`, status `completed`, one step, 9,183 input tokens, 8 output tokens, 9,088 cache-read tokens, and 730ms total model duration. No credential value was printed or copied.
+- The first live verifier queried obsolete JSON field names and therefore rejected a successful Run; a shape-only diagnostic identified the verifier defect, and the corrected verifier passed without exposing credentials.
+- `git diff --check` passed.
+
+### Changes and compatibility
+
+- Constraint rendering now has one entry point plus concrete text, numeric, item, and property families. Non-empty, prefix, and pattern helpers each own their distinct optionality rule instead of leaving those rules entangled in one switch.
+- Numeric minimum and item minimum rendering now state the only shapes admitted by registration directly. This removes unreachable pointer/required helper selection without weakening the metadata owner.
+- Generated Go validation, Schema, TypeScript, diagnostics, public APIs, wire shapes, persistence, and first-party behavior are byte-for-byte unchanged. The refactor changes only private generator structure.
+
+### Resource cleanup
+
+- All bounded live attempts used validated `/tmp/flame-live-round16.*` directories containing isolated Runtime homes and temporary CLI binaries. Exit traps moved them to the system Trash.
+- No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- `Goal.provider/model` remains an evidenced cross-artifact inconsistency blocked by the current Runtime/CLI-only scope. A future scope that includes Desktop should remove both `omitempty` tags, regenerate the contract, and migrate every Goal fixture/adapter in one batch.
+- Round 17 will audit `newValidators`, the highest remaining contractgen complexity finding, and split it only if its import collection, method compilation, and source assembly have independently testable ownership; otherwise the round will move to the next evidence-backed correctness candidate.

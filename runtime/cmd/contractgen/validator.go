@@ -180,23 +180,140 @@ func constraintCheck(
 	if !found {
 		panic(fmt.Sprintf("contractgen: %s has no field %q", shape.Name(), constraint.Field))
 	}
+	switch constraint.Kind {
+	case dispatch.ConstraintNonEmpty, dispatch.ConstraintMaxLength, dispatch.ConstraintIdentity,
+		dispatch.ConstraintPrefix, dispatch.ConstraintPattern:
+		return textConstraintCheck(shape, selector, leaf, constraint, union)
+	case dispatch.ConstraintPositive, dispatch.ConstraintNonNegative,
+		dispatch.ConstraintMinimum, dispatch.ConstraintMaximum:
+		return numericConstraintCheck(shape, selector, leaf, constraint)
+	case dispatch.ConstraintNonEmptyItems, dispatch.ConstraintUniqueItems,
+		dispatch.ConstraintMinItems, dispatch.ConstraintMaxItems,
+		dispatch.ConstraintMaxItemLength, dispatch.ConstraintIdentityItems,
+		dispatch.ConstraintPrefixItems, dispatch.ConstraintPatternItems:
+		return itemConstraintCheck(shape, selector, leaf, constraint)
+	case dispatch.ConstraintNonEmptyProperties, dispatch.ConstraintMaxPropertyNameLength,
+		dispatch.ConstraintIdentityPropertyNames:
+		return propertyConstraintCheck(shape, selector, constraint)
+	default:
+		return unsupportedConstraintCheck(shape, constraint)
+	}
+}
+
+func textConstraintCheck(
+	shape reflect.Type,
+	selector string,
+	leaf contractshape.Field,
+	constraint dispatch.FieldConstraint,
+	union dispatch.UnionSpec,
+) string {
+	field := strconv.Quote(constraint.Field)
+	switch constraint.Kind {
+	case dispatch.ConstraintNonEmpty:
+		return nonEmptyConstraintCheck(shape, selector, leaf, constraint, union)
+	case dispatch.ConstraintMaxLength:
+		validatorName := "maxLength"
+		if leaf.Type.Kind() == reflect.Pointer {
+			validatorName = "optionalMaxLength"
+		}
+		return fmt.Sprintf(
+			"%s(%s, %s, %d)",
+			validatorName,
+			field,
+			stringExpr(shape, selector, leaf.Type),
+			constraint.Limit,
+		)
+	case dispatch.ConstraintIdentity:
+		validatorName := "identity"
+		if leaf.Type.Kind() == reflect.Pointer {
+			validatorName = "optionalIdentity"
+		}
+		return fmt.Sprintf("%s(%s, %s)", validatorName, field, stringExpr(shape, selector, leaf.Type))
+	case dispatch.ConstraintPrefix:
+		return prefixConstraintCheck(shape, selector, leaf, constraint)
+	case dispatch.ConstraintPattern:
+		return patternConstraintCheck(shape, selector, leaf, constraint)
+	default:
+		return unsupportedConstraintCheck(shape, constraint)
+	}
+}
+
+func nonEmptyConstraintCheck(
+	shape reflect.Type,
+	selector string,
+	leaf contractshape.Field,
+	constraint dispatch.FieldConstraint,
+	union dispatch.UnionSpec,
+) string {
+	// A non-pointer scalar cannot distinguish an omitted JSON property from its
+	// zero value after decoding. When a union branch owns the property's
+	// requiredness, requiredWhen below already rejects that zero value in the
+	// branch where it is required and accepts it where the property is forbidden.
+	// An unconditional requiredText would reject every other legal branch.
+	if leaf.Optional && leaf.Type.Kind() != reflect.Pointer && unionRequiresField(union, constraint.Field) {
+		return ""
+	}
+	validatorName := "requiredText"
+	if leaf.Optional && leaf.Type.Kind() == reflect.Pointer {
+		validatorName = "optionalText"
+	}
+	return fmt.Sprintf(
+		"%s(%s, %s)",
+		validatorName,
+		strconv.Quote(constraint.Field),
+		stringExpr(shape, selector, leaf.Type),
+	)
+}
+
+func prefixConstraintCheck(
+	shape reflect.Type,
+	selector string,
+	leaf contractshape.Field,
+	constraint dispatch.FieldConstraint,
+) string {
+	validatorName := "requiredTextPrefix"
+	if leaf.Type.Kind() == reflect.Pointer {
+		validatorName = "optionalTextPointerPrefix"
+	}
+	return fmt.Sprintf(
+		"%s(%s, %s, %s)",
+		validatorName,
+		strconv.Quote(constraint.Field),
+		stringExpr(shape, selector, leaf.Type),
+		strconv.Quote(constraint.Value),
+	)
+}
+
+func patternConstraintCheck(
+	shape reflect.Type,
+	selector string,
+	leaf contractshape.Field,
+	constraint dispatch.FieldConstraint,
+) string {
+	validatorName := "requiredTextPattern"
+	if leaf.Type.Kind() == reflect.Pointer {
+		validatorName = "optionalTextPointerPattern"
+	} else if leaf.Optional {
+		validatorName = "optionalTextPattern"
+	}
+	return fmt.Sprintf(
+		"%s(%s, %s, %s)",
+		validatorName,
+		strconv.Quote(constraint.Field),
+		stringExpr(shape, selector, leaf.Type),
+		strconv.Quote(constraint.Value),
+	)
+}
+
+func numericConstraintCheck(
+	shape reflect.Type,
+	selector string,
+	leaf contractshape.Field,
+	constraint dispatch.FieldConstraint,
+) string {
 	field := strconv.Quote(constraint.Field)
 	ref := receiverName(shape) + "." + selector
 	switch constraint.Kind {
-	case dispatch.ConstraintNonEmpty:
-		// A non-pointer scalar cannot distinguish an omitted JSON property from its
-		// zero value after decoding. When a union branch owns the property's
-		// requiredness, requiredWhen below already rejects that zero value in the
-		// branch where it is required and accepts it where the property is forbidden.
-		// An unconditional requiredText would reject every other legal branch.
-		if leaf.Optional && leaf.Type.Kind() != reflect.Pointer && unionRequiresField(union, constraint.Field) {
-			return ""
-		}
-		validatorName := "requiredText"
-		if leaf.Optional && leaf.Type.Kind() == reflect.Pointer {
-			validatorName = "optionalText"
-		}
-		return fmt.Sprintf("%s(%s, %s)", validatorName, field, stringExpr(shape, selector, leaf.Type))
 	case dispatch.ConstraintPositive:
 		validatorName := "positiveNumber"
 		if leaf.Type.Kind() == reflect.Pointer {
@@ -211,14 +328,34 @@ func constraintCheck(
 			validatorName = "optionalNonNegativeNumber"
 		}
 		return fmt.Sprintf("%s(%s, %s)", validatorName, field, ref)
+	case dispatch.ConstraintMinimum:
+		return fmt.Sprintf("minimumNumber(%s, %s, %d)", field, ref, constraint.Limit)
+	case dispatch.ConstraintMaximum:
+		validatorName := "maximumNumber"
+		if leaf.Type.Kind() == reflect.Pointer {
+			validatorName = "optionalMaximumNumber"
+		}
+		return fmt.Sprintf("%s(%s, %s, %d)", validatorName, field, ref, constraint.Limit)
+	default:
+		return unsupportedConstraintCheck(shape, constraint)
+	}
+}
+
+func itemConstraintCheck(
+	shape reflect.Type,
+	selector string,
+	leaf contractshape.Field,
+	constraint dispatch.FieldConstraint,
+) string {
+	field := strconv.Quote(constraint.Field)
+	ref := receiverName(shape) + "." + selector
+	switch constraint.Kind {
 	case dispatch.ConstraintNonEmptyItems:
 		validatorName := "requiredItems"
 		if leaf.Optional {
 			validatorName = "nonEmptyItems"
 		}
 		return fmt.Sprintf("%s(%s, %s)", validatorName, field, ref)
-	case dispatch.ConstraintNonEmptyProperties:
-		return fmt.Sprintf("nonEmptyProperties(%s, %s)", field, ref)
 	case dispatch.ConstraintUniqueItems:
 		validatorName := "uniqueItems"
 		if leaf.Type.Kind() == reflect.Pointer {
@@ -226,59 +363,21 @@ func constraintCheck(
 		}
 		return fmt.Sprintf("%s(%s, %s)", validatorName, field, ref)
 	case dispatch.ConstraintMinItems:
-		validatorName := "requiredMinItems"
-		if leaf.Optional {
-			validatorName = "optionalMinItems"
-		}
-		return fmt.Sprintf("%s(%s, %s, %d)", validatorName, field, ref, constraint.Limit)
+		return fmt.Sprintf("optionalMinItems(%s, %s, %d)", field, ref, constraint.Limit)
 	case dispatch.ConstraintMaxItems:
 		validatorName := "maxItems"
 		if leaf.Type.Kind() == reflect.Pointer {
 			validatorName = "optionalMaxItems"
 		}
 		return fmt.Sprintf("%s(%s, %s, %d)", validatorName, field, ref, constraint.Limit)
-	case dispatch.ConstraintMaxLength:
-		validatorName := "maxLength"
-		if leaf.Type.Kind() == reflect.Pointer {
-			validatorName = "optionalMaxLength"
-		}
-		return fmt.Sprintf(
-			"%s(%s, %s, %d)",
-			validatorName,
-			field,
-			stringExpr(shape, selector, leaf.Type),
-			constraint.Limit,
-		)
 	case dispatch.ConstraintMaxItemLength:
 		validatorName := "maxItemLength"
 		if leaf.Type.Kind() == reflect.Pointer {
 			validatorName = "optionalMaxItemLength"
 		}
 		return fmt.Sprintf("%s(%s, %s, %d)", validatorName, field, ref, constraint.Limit)
-	case dispatch.ConstraintIdentity:
-		validatorName := "identity"
-		if leaf.Type.Kind() == reflect.Pointer {
-			validatorName = "optionalIdentity"
-		}
-		return fmt.Sprintf("%s(%s, %s)", validatorName, field, stringExpr(shape, selector, leaf.Type))
 	case dispatch.ConstraintIdentityItems:
 		return fmt.Sprintf("identityItems(%s, %s)", field, ref)
-	case dispatch.ConstraintMaxPropertyNameLength:
-		return fmt.Sprintf("maxPropertyNameLength(%s, %s, %d)", field, ref, constraint.Limit)
-	case dispatch.ConstraintIdentityPropertyNames:
-		return fmt.Sprintf("identityPropertyNames(%s, %s)", field, ref)
-	case dispatch.ConstraintPrefix:
-		validatorName := "requiredTextPrefix"
-		if leaf.Type.Kind() == reflect.Pointer {
-			validatorName = "optionalTextPointerPrefix"
-		}
-		return fmt.Sprintf(
-			"%s(%s, %s, %s)",
-			validatorName,
-			field,
-			stringExpr(shape, selector, leaf.Type),
-			strconv.Quote(constraint.Value),
-		)
 	case dispatch.ConstraintPrefixItems:
 		return fmt.Sprintf(
 			"textPrefixItems(%s, %s, %s)",
@@ -298,40 +397,37 @@ func constraintCheck(
 			ref,
 			strconv.Quote(constraint.Value),
 		)
-	case dispatch.ConstraintPattern:
-		validatorName := "requiredTextPattern"
-		if leaf.Type.Kind() == reflect.Pointer {
-			validatorName = "optionalTextPointerPattern"
-		} else if leaf.Optional {
-			validatorName = "optionalTextPattern"
-		}
-		return fmt.Sprintf(
-			"%s(%s, %s, %s)",
-			validatorName,
-			field,
-			stringExpr(shape, selector, leaf.Type),
-			strconv.Quote(constraint.Value),
-		)
-	case dispatch.ConstraintMinimum:
-		validatorName := "minimumNumber"
-		if leaf.Type.Kind() == reflect.Pointer {
-			validatorName = "optionalMinimumNumber"
-		}
-		return fmt.Sprintf("%s(%s, %s, %d)", validatorName, field, ref, constraint.Limit)
-	case dispatch.ConstraintMaximum:
-		validatorName := "maximumNumber"
-		if leaf.Type.Kind() == reflect.Pointer {
-			validatorName = "optionalMaximumNumber"
-		}
-		return fmt.Sprintf("%s(%s, %s, %d)", validatorName, field, ref, constraint.Limit)
 	default:
-		panic(fmt.Sprintf(
-			"contractgen: %s.%s uses unsupported constraint %s",
-			shape.Name(),
-			constraint.Field,
-			constraint.Kind,
-		))
+		return unsupportedConstraintCheck(shape, constraint)
 	}
+}
+
+func propertyConstraintCheck(
+	shape reflect.Type,
+	selector string,
+	constraint dispatch.FieldConstraint,
+) string {
+	field := strconv.Quote(constraint.Field)
+	ref := receiverName(shape) + "." + selector
+	switch constraint.Kind {
+	case dispatch.ConstraintNonEmptyProperties:
+		return fmt.Sprintf("nonEmptyProperties(%s, %s)", field, ref)
+	case dispatch.ConstraintMaxPropertyNameLength:
+		return fmt.Sprintf("maxPropertyNameLength(%s, %s, %d)", field, ref, constraint.Limit)
+	case dispatch.ConstraintIdentityPropertyNames:
+		return fmt.Sprintf("identityPropertyNames(%s, %s)", field, ref)
+	default:
+		return unsupportedConstraintCheck(shape, constraint)
+	}
+}
+
+func unsupportedConstraintCheck(shape reflect.Type, constraint dispatch.FieldConstraint) string {
+	panic(fmt.Sprintf(
+		"contractgen: %s.%s uses unsupported constraint %s",
+		shape.Name(),
+		constraint.Field,
+		constraint.Kind,
+	))
 }
 
 func unionRequiresField(union dispatch.UnionSpec, field string) bool {
