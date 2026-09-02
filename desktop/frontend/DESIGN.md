@@ -725,6 +725,25 @@ user's radius preference multiplies through.
 | `xl` | 12px | Lightbox frame |
 | `pill` | 9999px | Status dots, progress tracks, avatars ONLY |
 
+### Corner curve
+
+Every corner that is not a circle is a **superellipse**, not a circular arc —
+`corner-shape: superellipse(1.5)`, which in the CSS parameterisation sits halfway
+between `round` and `squircle`. This is the Codex corner, and it is what makes a
+surface read as drawn rather than clipped.
+
+The curve holds more material near the corner than an arc does, so the same
+radius reads tighter. `--corner-scale: 1.25` buys that back on `md` and up; below
+`md` the two curves differ by a third of a pixel, so those steps take the shape
+and skip the scale. Curve and scale share one `@supports` — each engine gets a
+ladder that agrees with itself.
+
+`pill` opts out. A superellipse at 50% is a rounded square, and an avatar, a
+status dot or the type caret is a circle.
+
+WebKit has no `corner-shape` as of Safari 26.5, so the WKWebView the desktop app
+ships in draws the arc at the base radius today.
+
 ### NEVER
 
 - **No pill-radius CTAs.** The action button is a rounded square on the control
