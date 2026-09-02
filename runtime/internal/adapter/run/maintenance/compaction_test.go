@@ -596,7 +596,7 @@ func TestCompactorShortHistoryKeepsLatestCompleteTurn(t *testing.T) {
 	}
 }
 
-func TestCompactorRejectsEmptySummaryWithoutReplacingHistory(t *testing.T) {
+func TestCompactorRejectsEmptyAuxiliaryResponseWithoutReplacingHistory(t *testing.T) {
 	store := newCompactionTestStore()
 	const sessID = "sess-empty-summary"
 	for index := range 6 {
@@ -606,8 +606,9 @@ func TestCompactorRejectsEmptySummaryWithoutReplacingHistory(t *testing.T) {
 	client, _ := chatclient.New(newTextStubModel(" \n\t "), chatclient.Config{})
 	c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxMessages: intPointer(6), KeepRecent: intPointer(2)})
 
-	if _, err := c.CompactIfNeeded(t.Context(), sessID, modelref.TokenLimits{}, chat.Options{}, nil); !errors.Is(err, errEmptyCompactionSummary) {
-		t.Fatalf("empty summary error = %v, want %v", err, errEmptyCompactionSummary)
+	if _, err := c.CompactIfNeeded(t.Context(), sessID, modelref.TokenLimits{}, chat.Options{}, nil); err == nil ||
+		!strings.Contains(err.Error(), "auxiliary model: completed without text") {
+		t.Fatalf("empty auxiliary response error = %v", err)
 	}
 	after, _ := store.Read(t.Context(), sessID)
 	if !reflect.DeepEqual(after, before) {

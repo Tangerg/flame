@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/scope/core/chat"
@@ -78,5 +79,15 @@ func CompleteAuxiliary(ctx context.Context, client *chatclient.Client, prompt Au
 	if err != nil {
 		return "", err
 	}
-	return response.Text(), nil
+	if err := response.Validate(); err != nil {
+		return "", fmt.Errorf("auxiliary model: invalid response: %w", err)
+	}
+	text := response.Text()
+	if strings.TrimSpace(text) == "" {
+		return "", fmt.Errorf(
+			"auxiliary model: completed without text (finish reason %q)",
+			response.Output.FinishReason,
+		)
+	}
+	return text, nil
 }
