@@ -1,6 +1,7 @@
 package agentexec
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -30,6 +31,7 @@ const (
 // a follow-up round that would exceed it.
 type interactionAllowance struct {
 	limits run.Limits
+	turn   chan struct{}
 
 	mu   sync.Mutex
 	stop interactionAllowanceStop
@@ -60,7 +62,50 @@ func newInteractionAllowance(
 			)
 		}
 	}
-	return &interactionAllowance{limits: limits}, nil
+	allowance := &interactionAllowance{limits: limits}
+	if !limits.Unlimited() {
+		allowance.turn = make(chan struct{}, 1)
+		allowance.turn <- struct{}{}
+	}
+	return allowance, nil
+}
+
+// acquire serializes model calls only for finite Run policies. The turn is
+// held from immediately before the cumulative snapshot through call settlement,
+// so another Process cannot make an admission decision from the same stale
+// tree-wide accounting fact. Unlimited Runs retain framework concurrency.
+func (a *interactionAllowance) acquire(ctx context.Context) (*interactionAllowanceTurn, error) {
+	if a == nil {
+		return nil, errors.New("agentexec: Run allowance is unavailable")
+	}
+	if a.turn == nil {
+		return &interactionAllowanceTurn{}, nil
+	}
+	if cause := context.Cause(ctx); cause != nil {
+		return nil, cause
+	}
+	select {
+	case <-ctx.Done():
+		return nil, context.Cause(ctx)
+	case <-a.turn:
+		if cause := context.Cause(ctx); cause != nil {
+			a.turn <- struct{}{}
+			return nil, cause
+		}
+		return &interactionAllowanceTurn{allowance: a}, nil
+	}
+}
+
+type interactionAllowanceTurn struct {
+	allowance *interactionAllowance
+	once      sync.Once
+}
+
+func (t *interactionAllowanceTurn) release() {
+	if t == nil || t.allowance == nil {
+		return
+	}
+	t.once.Do(func() { t.allowance.turn <- struct{}{} })
 }
 
 func (a *interactionAllowance) admit(snapshot accounting.Snapshot) error {

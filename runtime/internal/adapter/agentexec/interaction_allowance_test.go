@@ -157,3 +157,51 @@ func TestInteractionAllowanceOwnsTreeWideSteps(t *testing.T) {
 		t.Fatalf("terminal reopened as %d", allowance.terminal())
 	}
 }
+
+func TestInteractionAllowanceSerializesFiniteRunSnapshots(t *testing.T) {
+	limits := testsupport.MustRunLimits(run.LimitValues{
+		MaxSteps: testsupport.Pointer(1),
+	})
+	allowance, err := newInteractionAllowance(limits, testDefaultSelection(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := allowance.acquire(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := allowance.admit(accounting.Snapshot{}); err != nil {
+		first.release()
+		t.Fatalf("initial admission: %v", err)
+	}
+
+	cause := errors.New("second caller canceled while waiting")
+	waitCtx, cancel := context.WithCancelCause(t.Context())
+	cancel(cause)
+	if _, err := allowance.acquire(waitCtx); !errors.Is(err, cause) {
+		first.release()
+		t.Fatalf("concurrent acquire error = %v, want cancellation cause", err)
+	}
+	first.release()
+
+	retry, err := allowance.acquire(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := allowance.admit(accounting.Snapshot{}); err != nil {
+		retry.release()
+		t.Fatalf("admission after an unaccounted call = %v, want retry allowed", err)
+	}
+	retry.release()
+
+	second, err := allowance.acquire(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.release()
+	if err := allowance.admit(accounting.Snapshot{Models: []accounting.ModelUsage{{
+		Model: "served-model", Calls: 1,
+	}}}); !errors.Is(err, errInteractionAllowanceDenied) {
+		t.Fatalf("refreshed admission = %v, want step-limit denial", err)
+	}
+}
