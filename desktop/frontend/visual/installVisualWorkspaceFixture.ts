@@ -16,7 +16,7 @@ import {
   MCP_SERVERS_KEY,
   type MCPServerSettings,
 } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
-import { localeEn } from "@/plugins/builtin/i18n/locales/en";
+import { localePlugins } from "@/plugins/builtin/i18n";
 import { installWorkspaceErrorClassifier } from "@/plugins/builtin/workspace/adapters/runtimeWorkspaceErrorClassifier";
 import {
   WORKSPACE_BUILTIN_TOOLS_KEY,
@@ -519,7 +519,7 @@ export async function installVisualWorkspaceFixture(
     planView,
     timelineView,
     kernelSettings,
-    localeEn,
+    ...localePlugins,
     appearanceSettings,
     providersSettings,
     shortcutsSettings,
