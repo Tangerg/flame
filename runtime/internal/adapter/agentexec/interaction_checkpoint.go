@@ -247,77 +247,112 @@ func interactionCallCounts(
 }
 
 func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointState, error) {
+	wire, err := decodeInteractionCheckpointWire(payload)
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
+	tree, processes, err := decodeInteractionCheckpointTree(wire.Tree)
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
+	instructions, err := decodeInteractionCheckpointInstructions(wire.Instructions)
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
+	callsByProcess, err := decodeInteractionCheckpointMembers(wire.Members, processes)
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
+	carriedCallCount, err := decodeInteractionCallCounts(wire.Carried)
+	if err != nil {
+		return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint carried calls: %w", err)
+	}
+	contextByProcess, err := decodeInteractionModelContexts(wire.Contexts, processes, callsByProcess)
+	if err != nil {
+		return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint model contexts: %w", err)
+	}
+	pendingSteers, err := decodeInteractionPendingSteers(wire.PendingSteers)
+	if err != nil {
+		return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint pending steers: %w", err)
+	}
+	return interactionCheckpointState{
+		tree: tree, callsByProcess: callsByProcess, carriedCallCount: carriedCallCount,
+		contextByProcess: contextByProcess, instructions: instructions, pendingSteers: pendingSteers,
+	}, nil
+}
+
+func decodeInteractionCheckpointWire(payload []byte) (interactionCheckpointPayloadWire, error) {
 	if err := strictjson.ValidateUniqueMembers(payload); err != nil {
-		return interactionCheckpointState{}, fmt.Errorf("agentexec: decode Interaction checkpoint: %w", err)
+		return interactionCheckpointPayloadWire{}, fmt.Errorf("agentexec: decode Interaction checkpoint: %w", err)
 	}
 	var wire interactionCheckpointPayloadWire
 	decoder := json.NewDecoder(bytes.NewReader(payload))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&wire); err != nil {
-		return interactionCheckpointState{}, fmt.Errorf("agentexec: decode Interaction checkpoint: %w", err)
+		return interactionCheckpointPayloadWire{}, fmt.Errorf("agentexec: decode Interaction checkpoint: %w", err)
 	}
 	if wire.SchemaVersion != interactionCheckpointSchemaVersion {
-		return interactionCheckpointState{}, fmt.Errorf(
+		return interactionCheckpointPayloadWire{}, fmt.Errorf(
 			"agentexec: Interaction checkpoint schema %d is not supported", wire.SchemaVersion,
 		)
 	}
-	tree, err := agent.ParseTreeSnapshot(wire.Tree)
+	return wire, nil
+}
+
+func decodeInteractionCheckpointTree(
+	wire json.RawMessage,
+) (agent.TreeSnapshot, map[agent.ProcessID]struct{}, error) {
+	tree, err := agent.ParseTreeSnapshot(wire)
 	if err != nil {
-		return interactionCheckpointState{}, fmt.Errorf("agentexec: decode Interaction checkpoint tree: %w", err)
+		return agent.TreeSnapshot{}, nil, fmt.Errorf("agentexec: decode Interaction checkpoint tree: %w", err)
 	}
 	processes := make(map[agent.ProcessID]struct{}, len(tree.ProcessSnapshots()))
 	for _, snapshot := range tree.ProcessSnapshots() {
 		processes[snapshot.ProcessID()] = struct{}{}
 	}
-	state := interactionCheckpointState{
-		tree: tree, callsByProcess: make(map[agent.ProcessID]map[string]int, len(wire.Members)),
-		carriedCallCount: make(map[string]int, len(wire.Carried)),
-		contextByProcess: make(map[agent.ProcessID]ModelContextTokenCalibration, len(wire.Contexts)),
-		instructions:     cloneChatMessages(wire.Instructions),
-		pendingSteers:    make(map[agent.SignalID]pendingInteractionSteer, len(wire.PendingSteers)),
-	}
-	canonicalInstructions, err := interactionInstructionContext(state.instructions)
-	if err != nil || len(canonicalInstructions) != len(state.instructions) {
+	return tree, processes, nil
+}
+
+func decodeInteractionCheckpointInstructions(messages []corechat.Message) ([]corechat.Message, error) {
+	instructions := cloneChatMessages(messages)
+	canonical, err := interactionInstructionContext(instructions)
+	if err != nil || len(canonical) != len(instructions) {
 		if err == nil {
 			err = errors.New("instruction context contains a non-system message")
 		}
-		return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint instructions: %w", err)
+		return nil, fmt.Errorf("agentexec: Interaction checkpoint instructions: %w", err)
 	}
+	return instructions, nil
+}
+
+func decodeInteractionCheckpointMembers(
+	values []interactionMemberCallsWire,
+	processes map[agent.ProcessID]struct{},
+) (map[agent.ProcessID]map[string]int, error) {
+	members := make(map[agent.ProcessID]map[string]int, len(values))
 	previousMember := ""
-	for index, member := range wire.Members {
+	for index, member := range values {
 		if index > 0 && member.MemberID <= previousMember {
-			return interactionCheckpointState{}, errors.New("agentexec: Interaction checkpoint members are not canonical")
+			return nil, errors.New("agentexec: Interaction checkpoint members are not canonical")
 		}
-		processID, parseProcessIDErr := agent.ParseProcessID(member.MemberID)
-		if parseProcessIDErr != nil {
-			return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint member: %w", parseProcessIDErr)
+		processID, err := agent.ParseProcessID(member.MemberID)
+		if err != nil {
+			return nil, fmt.Errorf("agentexec: Interaction checkpoint member: %w", err)
 		}
 		if _, found := processes[processID]; !found {
-			return interactionCheckpointState{}, errors.New("agentexec: Interaction checkpoint accounting names a foreign member")
+			return nil, errors.New("agentexec: Interaction checkpoint accounting names a foreign member")
 		}
-		models, parseProcessIDErr := decodeInteractionCallCounts(member.Models)
-		if parseProcessIDErr != nil || len(models) == 0 {
-			if parseProcessIDErr == nil {
-				parseProcessIDErr = errors.New("member call counts are empty")
+		models, err := decodeInteractionCallCounts(member.Models)
+		if err != nil || len(models) == 0 {
+			if err == nil {
+				err = errors.New("member call counts are empty")
 			}
-			return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint member %s: %w", processID, parseProcessIDErr)
+			return nil, fmt.Errorf("agentexec: Interaction checkpoint member %s: %w", processID, err)
 		}
-		state.callsByProcess[processID] = models
+		members[processID] = models
 		previousMember = member.MemberID
 	}
-	state.carriedCallCount, err = decodeInteractionCallCounts(wire.Carried)
-	if err != nil {
-		return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint carried calls: %w", err)
-	}
-	state.contextByProcess, err = decodeInteractionModelContexts(wire.Contexts, processes, state.callsByProcess)
-	if err != nil {
-		return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint model contexts: %w", err)
-	}
-	state.pendingSteers, err = decodeInteractionPendingSteers(wire.PendingSteers)
-	if err != nil {
-		return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint pending steers: %w", err)
-	}
-	return state, nil
+	return members, nil
 }
 
 func decodeInteractionModelContexts(
