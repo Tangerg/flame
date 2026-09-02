@@ -207,7 +207,7 @@ func (s *Store) History() []agent.Message {
 // Remember records a submitted or deliberately cleared prompt.
 func (s *Store) Remember(message agent.Message) error {
 	message = message.Clone()
-	if messageEmpty(message) {
+	if message.IsEmpty() {
 		return nil
 	}
 	if err := message.Validate(); err != nil {
@@ -233,7 +233,7 @@ func (s *Store) Draft(sessionID string) (agent.Message, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	draft := s.drafts[sessionID]
-	return draft.Clone(), !messageEmpty(draft)
+	return draft.Clone(), !draft.IsEmpty()
 }
 
 // SaveDraft atomically replaces a session draft, or removes it when empty.
@@ -245,13 +245,13 @@ func (s *Store) SaveDraft(sessionID string, message agent.Message) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	current, present := s.drafts[sessionID]
-	if (present && current.Equal(message)) || (!present && messageEmpty(message)) {
+	if (present && current.Equal(message)) || (!present && message.IsEmpty()) {
 		return nil
 	}
 	if err := s.saveSessionState(sessionID, message, s.pendingRuns[sessionID]); err != nil {
 		return err
 	}
-	if messageEmpty(message) {
+	if message.IsEmpty() {
 		delete(s.drafts, sessionID)
 	} else {
 		s.drafts[sessionID] = message
@@ -269,7 +269,7 @@ func (s *Store) DiscardDraft(sessionID string) error {
 // StashPrompt preserves a prompt independently of its session draft.
 func (s *Store) StashPrompt(message agent.Message) (Stash, error) {
 	message = message.Clone()
-	if messageEmpty(message) {
+	if message.IsEmpty() {
 		return Stash{}, errors.New("cannot stash an empty prompt")
 	}
 	identity := make([]byte, 8)
@@ -300,7 +300,7 @@ func (s *Store) StashDraft(sessionID string, message agent.Message) (Stash, erro
 		return Stash{}, err
 	}
 	message = message.Clone()
-	if messageEmpty(message) {
+	if message.IsEmpty() {
 		return Stash{}, errors.New("cannot stash an empty prompt")
 	}
 	identity := make([]byte, 8)
@@ -632,8 +632,4 @@ func pendingRunIndex(commands []PendingRun, commandID agent.CommandID) int {
 func cloneStash(stash Stash) Stash {
 	stash.Message = stash.Message.Clone()
 	return stash
-}
-
-func messageEmpty(message agent.Message) bool {
-	return strings.TrimSpace(message.Text) == "" && len(message.Attachments) == 0
 }

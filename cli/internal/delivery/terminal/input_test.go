@@ -75,7 +75,7 @@ func TestProgrammaticComposerEditsScheduleDraftAutosave(t *testing.T) {
 				host.Type("rename")
 				host.Press(input.Enter)
 			},
-			want: "/rename",
+			want: "/rename ",
 		},
 		{
 			name: "completion",

@@ -66,7 +66,7 @@ func (p *promptHistory) Load(messages []agent.Message) {
 func (p *promptHistory) Add(message agent.Message) {
 	p.at, p.draft = 0, agent.Message{}
 	message = message.Clone()
-	if strings.TrimSpace(message.Text) == "" && len(message.Attachments) == 0 {
+	if message.IsEmpty() {
 		return
 	}
 	if len(p.entries) > 0 && p.entries[len(p.entries)-1].Equal(message) {
@@ -282,7 +282,7 @@ func (a *app) composerMessage() (agent.Message, error) {
 	if err := stripAttachmentElements(lines, elements); err != nil {
 		return agent.Message{}, err
 	}
-	return agent.Message{Text: strings.TrimSpace(strings.Join(lines, "\n")), Attachments: attachments}, nil
+	return agent.Message{Text: strings.Join(lines, "\n"), Attachments: attachments}, nil
 }
 
 func (a *app) collectAttachments(editor *headless.Editor, elements []headless.Element) ([]agent.Attachment, error) {

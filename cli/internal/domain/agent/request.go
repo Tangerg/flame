@@ -49,7 +49,7 @@ func (d DeleteSession) Validate() error {
 }
 
 func (m Message) Validate() error {
-	if strings.TrimSpace(m.Text) == "" && len(m.Attachments) == 0 {
+	if m.IsEmpty() {
 		return errors.New("message is empty")
 	}
 	if len(m.Attachments) > MaxMessageAttachments {

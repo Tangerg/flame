@@ -60,7 +60,7 @@ func (d DraftTransfer) validate() error {
 		{label: "destination after", message: d.DestinationAfter},
 	}
 	for _, value := range values {
-		if messageEmpty(value.message) {
+		if value.message.IsEmpty() {
 			continue
 		}
 		if err := value.message.Validate(); err != nil {
@@ -92,17 +92,17 @@ func MergeSessionDraft(existing, incoming agent.Message) (agent.Message, error) 
 		{label: "incoming", message: incoming},
 	}
 	for _, value := range values {
-		if messageEmpty(value.message) {
+		if value.message.IsEmpty() {
 			continue
 		}
 		if err := value.message.Validate(); err != nil {
 			return agent.Message{}, fmt.Errorf("%s session draft: %w", value.label, err)
 		}
 	}
-	if messageEmpty(existing) {
+	if existing.IsEmpty() {
 		return incoming.Clone(), nil
 	}
-	if messageEmpty(incoming) {
+	if incoming.IsEmpty() {
 		return existing.Clone(), nil
 	}
 
@@ -246,7 +246,7 @@ func (s *Store) advanceDraftTransferSide(sessionID string, before, after agent.M
 	); err != nil {
 		return err
 	}
-	if messageEmpty(after) {
+	if after.IsEmpty() {
 		delete(s.drafts, sessionID)
 	} else {
 		s.drafts[sessionID] = after.Clone()

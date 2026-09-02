@@ -155,7 +155,7 @@ func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft agent.Messag
 	if !slices.Equal(sourceDraft.Attachments, pending.command.Message.Attachments) {
 		return errors.New("pending steer does not own the source draft attachments")
 	}
-	if !messageEmpty(sourceDraft) {
+	if !sourceDraft.IsEmpty() {
 		if err := sourceDraft.Validate(); err != nil {
 			return fmt.Errorf("pending steer source draft: %w", err)
 		}
@@ -169,7 +169,7 @@ func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft agent.Messag
 		}
 		return errors.New("another steer command is already pending")
 	}
-	if current, exists := s.drafts[pending.sessionID]; exists != !messageEmpty(sourceDraft) ||
+	if current, exists := s.drafts[pending.sessionID]; exists != !sourceDraft.IsEmpty() ||
 		(exists && !current.Equal(sourceDraft)) {
 		return errors.New("session draft changed before steer attachment transfer")
 	}
@@ -241,7 +241,7 @@ func (s *Store) RejectPendingSteer(
 		return agent.Message{}, err
 	}
 	currentDraft = currentDraft.Clone()
-	if !messageEmpty(currentDraft) {
+	if !currentDraft.IsEmpty() {
 		if err := currentDraft.Validate(); err != nil {
 			return agent.Message{}, fmt.Errorf("current session draft: %w", err)
 		}
@@ -253,7 +253,7 @@ func (s *Store) RejectPendingSteer(
 	if !exists || pending.command.CommandID != commandID {
 		return agent.Message{}, errors.New("pending steer command identity changed")
 	}
-	if current, present := s.drafts[sessionID]; present != !messageEmpty(currentDraft) ||
+	if current, present := s.drafts[sessionID]; present != !currentDraft.IsEmpty() ||
 		(present && !current.Equal(currentDraft)) {
 		return agent.Message{}, errors.New("session draft changed before steer rejection settlement")
 	}
@@ -264,7 +264,7 @@ func (s *Store) RejectPendingSteer(
 	); err != nil {
 		return agent.Message{}, err
 	}
-	if messageEmpty(recovered) {
+	if recovered.IsEmpty() {
 		delete(s.drafts, sessionID)
 	} else {
 		s.drafts[sessionID] = recovered.Clone()

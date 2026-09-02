@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
@@ -406,11 +407,11 @@ func (a *app) submit() {
 		a.message(err.Error())
 		return
 	}
-	if message.Text == "" && len(message.Attachments) == 0 {
+	if message.IsEmpty() {
 		a.sendNextQueuedIfBusy()
 		return
 	}
-	if name, arg, command := parseSlashCommand(message.Text); command {
+	if name, arg, command := parseSlashCommand(strings.TrimSpace(message.Text)); command {
 		// A command acts on the staged composer context. Clear its command text but
 		// put attachment elements back so /attachments and /detach can inspect or
 		// mutate them without accidentally sending a user turn.

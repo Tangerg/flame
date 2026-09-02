@@ -22,6 +22,26 @@ func TestStartRunValidation(t *testing.T) {
 	}
 }
 
+func TestMessageSemanticTextDoesNotNormalizeAuthoredContent(t *testing.T) {
+	for _, text := range []string{"", " \n\t"} {
+		message := Message{Text: text}
+		if message.HasText() || !message.IsEmpty() {
+			t.Fatalf("blank message %q = hasText:%t empty:%t", text, message.HasText(), message.IsEmpty())
+		}
+	}
+
+	const authored = "  indented\ntrailing  \n"
+	message := Message{Text: authored}
+	if !message.HasText() || message.IsEmpty() || message.Text != authored {
+		t.Fatalf("authored message = %+v", message)
+	}
+	message.Attachments = []Attachment{{}}
+	message.Text = " \n\t"
+	if message.IsEmpty() {
+		t.Fatal("attachment-only message was empty")
+	}
+}
+
 func TestDeleteSessionValidatesItsOptionalMutationIdentity(t *testing.T) {
 	if err := (DeleteSession{SessionID: "ses_1"}).Validate(); err != nil {
 		t.Fatal(err)

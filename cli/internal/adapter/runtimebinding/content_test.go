@@ -48,6 +48,32 @@ func TestProjectInputReadsTypedAttachmentsAtDispatch(t *testing.T) {
 	}
 }
 
+func TestProjectInputPreservesMeaningfulTextAndOmitsBlankText(t *testing.T) {
+	runtime := &Connection{loadAttachment: func(context.Context, string, int64) ([]byte, error) {
+		return []byte("notes"), nil
+	}}
+
+	const authored = "  indented\ntrailing  \n"
+	blocks, err := runtime.projectInput(t.Context(), agent.Message{Text: authored})
+	if err != nil || len(blocks) != 1 || blocks[0].Text != authored {
+		t.Fatalf("meaningful projection = (%+v, %v)", blocks, err)
+	}
+
+	blocks, err = runtime.projectInput(t.Context(), agent.Message{
+		Text: " \n\t",
+		Attachments: []agent.Attachment{{
+			ID: "text", Kind: protocol.ContentBlockText, Name: "notes.txt", Path: "/notes.txt",
+			MimeType: "text/plain", Size: 5,
+		}},
+	})
+	if err != nil {
+		t.Fatalf("attachment-only projection: %v", err)
+	}
+	if len(blocks) != 1 || blocks[0].Type != protocol.ContentBlockText || !strings.Contains(blocks[0].Text, "notes") {
+		t.Fatalf("attachment-only blocks = %+v", blocks)
+	}
+}
+
 func TestProjectInputRejectsImagesBeforeReadingWithoutMultimodalCapability(t *testing.T) {
 	t.Parallel()
 	reads := 0

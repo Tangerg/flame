@@ -145,6 +145,15 @@ func (m Message) Equal(other Message) bool {
 	return m.Text == other.Text && slices.Equal(m.Attachments, other.Attachments)
 }
 
+// HasText reports whether the authored text contains semantic content. It does
+// not normalize Text: leading indentation and trailing newlines belong to the
+// user's prompt and must survive delivery unchanged.
+func (m Message) HasText() bool { return strings.TrimSpace(m.Text) != "" }
+
+// IsEmpty reports whether the message has neither semantic text nor an
+// attachment. Whitespace next to attachments is not a separate text block.
+func (m Message) IsEmpty() bool { return !m.HasText() && len(m.Attachments) == 0 }
+
 type Attachment struct {
 	ID       string
 	Kind     protocol.ContentBlockType

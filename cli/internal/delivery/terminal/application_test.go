@@ -1600,6 +1600,27 @@ func TestShiftEnterInsertsANewlineWithoutSubmitting(t *testing.T) {
 	stop()
 }
 
+func TestSubmittedPromptPreservesAuthoredOuterWhitespace(t *testing.T) {
+	backend := &recordingRuntime{Runtime: runtimefixture.New()}
+	backend.Instant = true
+	backend.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+	}
+	host, stop := runUIWith(t, backend)
+	host.Shows(t, "Ask flame")
+	const authored = "  indented\ntrailing  "
+	host.Send(input.Paste{Text: authored})
+	host.Press(input.Enter)
+	host.Shows(t, "complete")
+
+	if got := backend.startInput().Message.Text; got != authored {
+		t.Fatalf("submitted text = %q, want %q", got, authored)
+	}
+
+	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
+	stop()
+}
+
 func TestTranscriptReaderSearchesBeyondInlineToolSummary(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true

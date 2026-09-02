@@ -36,7 +36,7 @@ type sessionState struct {
 }
 
 func validateSessionDraft(draft agent.Message) error {
-	if messageEmpty(draft) {
+	if draft.IsEmpty() {
 		return nil
 	}
 	if err := draft.Validate(); err != nil {
@@ -190,7 +190,7 @@ func (s *Store) restoreSessionState(name string, state sessionState) error {
 	if err := validatePendingRunSequence(state.SessionID, state.PendingRuns); err != nil {
 		return fmt.Errorf("state %s: %w", name, err)
 	}
-	if !messageEmpty(state.Draft) {
+	if !state.Draft.IsEmpty() {
 		s.drafts[state.SessionID] = state.Draft.Clone()
 	}
 	if len(state.PendingRuns) > 0 {
@@ -284,7 +284,7 @@ func (s *Store) saveSessionStateRecordUnfenced(
 		return errors.New("session authoring state has been retired")
 	}
 	name := s.sessionStateName(sessionID)
-	if messageEmpty(draft) && len(pending) == 0 && resume == nil && rollback == nil && steer == nil {
+	if draft.IsEmpty() && len(pending) == 0 && resume == nil && rollback == nil && steer == nil {
 		return s.remove(name)
 	}
 	state := sessionState{

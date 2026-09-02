@@ -192,7 +192,7 @@ func TestStoreRefusesToReplayDraftTransferOverNewerAuthoringState(t *testing.T) 
 func assertDraft(t *testing.T, store *Store, sessionID string, want agent.Message) {
 	t.Helper()
 	got, found := store.Draft(sessionID)
-	if found != !messageEmpty(want) || !got.Equal(want) {
+	if found != !want.IsEmpty() || !got.Equal(want) {
 		t.Fatalf("draft %s = %+v, found %t; want %+v", sessionID, got, found, want)
 	}
 }

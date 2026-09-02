@@ -292,7 +292,7 @@ func (s *Store) ActivateSessionDraft(sessionID string, incoming agent.Message) (
 	); err != nil {
 		return SessionDraftActivation{}, err
 	}
-	if messageEmpty(draft) {
+	if draft.IsEmpty() {
 		delete(s.drafts, sessionID)
 	} else {
 		s.drafts[sessionID] = draft.Clone()
@@ -317,10 +317,10 @@ func MergeSessionRollbackDraft(current agent.Message, pending PendingSessionRoll
 	recovered := agent.Message{Text: pending.OpeningText}
 	current = current.Clone()
 	recovered = recovered.Clone()
-	if messageEmpty(recovered) {
+	if recovered.IsEmpty() {
 		return current, false
 	}
-	if messageEmpty(current) {
+	if current.IsEmpty() {
 		return recovered, false
 	}
 	if current.Equal(recovered) ||

@@ -102,7 +102,7 @@ func (r *Connection) projectInput(ctx context.Context, message agent.Message) ([
 		return nil, err
 	}
 	blocks := make([]protocol.ContentBlock, 0, 1+len(message.Attachments))
-	if message.Text != "" {
+	if message.HasText() {
 		blocks = append(blocks, protocol.ContentBlock{Type: protocol.ContentBlockText, Text: message.Text})
 	}
 	for _, attachment := range message.Attachments {
