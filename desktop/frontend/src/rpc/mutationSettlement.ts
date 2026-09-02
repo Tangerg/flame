@@ -130,7 +130,13 @@ function driveUnaryMutation<T>(
     }
 
     const retry = createUnaryMutationAttempt(timeoutMs, lifetime);
-    const replay = mutation.retry({ signal: retry.signal });
+    let replay: MutationPromise<T>;
+    try {
+      replay = mutation.retry({ signal: retry.signal });
+    } catch (error) {
+      retry.dispose();
+      throw error;
+    }
     replaceMutation(replay);
     try {
       const value = await retry.wait(replay);

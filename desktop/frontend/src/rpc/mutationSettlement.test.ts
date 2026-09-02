@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { rejected } from "@/test/rejected";
 import { RpcTransportError } from "./errors";
 import type { MutationPromise } from "./mutation";
 import {
@@ -35,6 +36,34 @@ describe("unary mutation settlement", () => {
     expect(open).toHaveBeenCalledOnce();
     expect(retry).toHaveBeenCalledOnce();
     expect(retry.mock.calls[0]?.[0]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  // The journal refuses a replay it no longer owns by throwing from `retry` itself, before any
+  // promise exists. The replacement attempt is already open at that point — its deadline timer
+  // is armed and it is listening to the settler's lifetime.
+  it("closes the replacement attempt when the replay is refused outright", async () => {
+    vi.useFakeTimers();
+    const refused = new Error("journal no longer owns this key");
+    const retry = vi.fn(() => {
+      throw refused;
+    });
+    const open = vi.fn((signal: AbortSignal) =>
+      Object.assign(
+        new Promise<string>((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+        }),
+        { idempotencyKey: "same-key", retry },
+      ),
+    );
+
+    const settler = createUnaryMutationSettler();
+    // Held before the clock moves: the rejection lands during the advance, and a promise that
+    // rejects with no handler attached is an unhandled rejection in this runner.
+    const settled = rejected(settler.settle("test:refused-replay", open, 10));
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(await settled).toBe(refused);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("settles after the finite retry budget even when the transport ignores abort", async () => {
