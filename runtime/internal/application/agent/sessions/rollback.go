@@ -47,6 +47,14 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 			if err := c.transientState.QuiesceSession(sessionID); err != nil {
 				return fmt.Errorf("sessions: quiesce process-local Session state before rollback: %w", err)
 			}
+			// The scratch tree contains effects from the history being removed.
+			// Discard before commit so a successful rollback can never expose the
+			// old copy to a later Run.
+			if c.sandbox != nil {
+				if err := c.sandbox.Discard(sessionID); err != nil {
+					return fmt.Errorf("sessions: discard sandbox copy before history rollback: %w", err)
+				}
+			}
 			return c.writes.ApplyRollback(ctx, RollbackPlan{
 				SessionID:         sessionID,
 				KeepMessageMark:   boundary.KeepMessageMark,

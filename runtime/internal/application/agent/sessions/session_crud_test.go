@@ -3,6 +3,7 @@ package sessions
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -15,14 +16,15 @@ import (
 )
 
 type crudSessionStore struct {
-	sessions []session.Session
-	current  session.Session
-	getErr   error
-	getID    string
-	inserted session.Session
-	saved    session.Session
-	expected uint64
-	saveErr  error
+	sessions   []session.Session
+	current    session.Session
+	getErr     error
+	getID      string
+	inserted   session.Session
+	saved      session.Session
+	expected   uint64
+	saveErr    error
+	operations *[]string
 }
 
 func (c *crudSessionStore) ListPage(ctx context.Context, _ session.CatalogRead) ([]session.Session, error) {
@@ -74,6 +76,9 @@ func (c *crudSessionStore) Insert(_ context.Context, value session.Session) erro
 }
 
 func (c *crudSessionStore) Save(_ context.Context, expected uint64, replacement session.Session) error {
+	if c.operations != nil {
+		*c.operations = append(*c.operations, "session.save")
+	}
 	c.expected = expected
 	c.saved = replacement
 	if c.saveErr != nil {
@@ -88,6 +93,8 @@ type crudStores struct {
 	// and the harness has no reason to care which fake it is holding.
 	session    Store
 	interrupts InterruptStore
+	operations []string
+	quiesceErr error
 }
 
 func (c *crudStores) Session() Store { return c.session }
@@ -100,11 +107,16 @@ func (c *crudStores) Interrupts() InterruptStore {
 func (*crudStores) Transcript() TranscriptStore                            { return emptyTranscript{} }
 func (*crudStores) Runs() RunStore                                         { return emptyTranscript{} }
 func (*crudStores) ReadSnapshot(context.Context, string) (Snapshot, error) { return Snapshot{}, nil }
-func (*crudStores) QuiesceSession(string) error                            { return nil }
-func (*crudStores) QuiesceWorkspace(string) error                          { return nil }
-func (*crudStores) ForgetSession(string)                                   {}
-func (*crudStores) ForgetSessionContext(string)                            {}
-func (*crudStores) ForgetWorkspace(string)                                 {}
+func (c *crudStores) QuiesceSession(string) error {
+	c.operations = append(c.operations, "session.quiesce")
+	return c.quiesceErr
+}
+func (*crudStores) QuiesceWorkspace(string) error { return nil }
+func (*crudStores) ForgetSession(string)          {}
+func (c *crudStores) ForgetSessionContext(string) {
+	c.operations = append(c.operations, "session.context.forget")
+}
+func (*crudStores) ForgetWorkspace(string) {}
 func (*crudStores) ApplyFork(context.Context, ForkPlan) (session.Session, error) {
 	return session.Session{}, nil
 }
@@ -289,6 +301,75 @@ func TestCoordinatorUpdateAppliesPatch(t *testing.T) {
 	}
 	if len(claims.released) != 1 || claims.released[0] != "ses_1" {
 		t.Fatalf("relocation admission releases = %v, want [ses_1]", claims.released)
+	}
+}
+
+func TestCoordinatorUpdateRetiresPreviousExecutionPolicyBeforeSave(t *testing.T) {
+	store := &crudSessionStore{}
+	stores := &crudStores{session: store}
+	store.operations = &stores.operations
+	coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
+		Paths:      testWorkspaceResolver{resolved: "/resolved/project"},
+		Admissions: new(testClaimer),
+		Sandbox:    &mutationSandbox{operations: &stores.operations},
+	}))
+	cwd := "/requested/project"
+
+	if _, err := coordinator.Update(t.Context(), "ses_1", Patch{WorkspacePath: &cwd}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	want := []string{
+		"session.quiesce",
+		"sandbox.discard:ses_1",
+		"session.context.forget",
+		"session.save",
+	}
+	if !slices.Equal(stores.operations, want) {
+		t.Fatalf("operations = %v, want %v", stores.operations, want)
+	}
+}
+
+func TestCoordinatorUpdateKeepsExecutionPolicyForMetadataOnlyEdit(t *testing.T) {
+	store := &crudSessionStore{}
+	stores := &crudStores{session: store}
+	store.operations = &stores.operations
+	coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
+		Admissions: new(testClaimer),
+		Sandbox:    &mutationSandbox{operations: &stores.operations},
+	}))
+	title := "Renamed"
+
+	if _, err := coordinator.Update(t.Context(), "ses_1", Patch{Title: &title}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	want := []string{"session.save"}
+	if !slices.Equal(stores.operations, want) {
+		t.Fatalf("operations = %v, want %v", stores.operations, want)
+	}
+}
+
+func TestCoordinatorUpdateDoesNotExposePolicyWhenCleanupFails(t *testing.T) {
+	wantErr := errors.New("discard failed")
+	store := &crudSessionStore{}
+	stores := &crudStores{session: store}
+	store.operations = &stores.operations
+	coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
+		Paths:      testWorkspaceResolver{resolved: "/resolved/project"},
+		Admissions: new(testClaimer),
+		Sandbox:    &mutationSandbox{operations: &stores.operations, err: wantErr},
+	}))
+	cwd := "/requested/project"
+
+	_, err := coordinator.Update(t.Context(), "ses_1", Patch{WorkspacePath: &cwd})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("Update error = %v, want sandbox cleanup failure", err)
+	}
+	want := []string{"session.quiesce", "sandbox.discard:ses_1"}
+	if !slices.Equal(stores.operations, want) {
+		t.Fatalf("operations = %v, want no context retirement or save after cleanup failure", stores.operations)
+	}
+	if store.saved.ID() != "" {
+		t.Fatalf("failed cleanup exposed replacement: %+v", store.saved.Snapshot())
 	}
 }
 

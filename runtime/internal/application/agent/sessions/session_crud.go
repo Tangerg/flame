@@ -109,8 +109,10 @@ func (c *Coordinator) PrepareScheduled(
 }
 
 // Update applies one complete Session edit. External workspace admission and
-// process-local mutation claims occur before Domain behavior; persistence only
-// saves the resulting aggregate with CAS.
+// process-local mutation claims occur before Domain behavior. A committed
+// execution-policy change must not inherit processes, context evidence, or an
+// isolated copy from the preceding policy, so those resources are retired
+// before persistence exposes the replacement.
 func (c *Coordinator) Update(ctx context.Context, id string, patch Patch) (session.Session, error) {
 	var workspace *session.Workspace
 	if patch.WorkspacePath != nil {
@@ -152,6 +154,21 @@ func (c *Coordinator) Update(ctx context.Context, id string, patch Patch) (sessi
 	}
 	if !changed {
 		return current, nil
+	}
+	executionPolicyChanged := current.Workspace() != updated.Workspace() || current.Isolated() != updated.Isolated()
+	if executionPolicyChanged {
+		if err := c.transientState.QuiesceSession(id); err != nil {
+			return session.Session{}, fmt.Errorf("sessions: quiesce process-local Session state before execution policy change: %w", err)
+		}
+		if c.sandbox != nil {
+			if err := c.sandbox.Discard(id); err != nil {
+				return session.Session{}, fmt.Errorf("sessions: discard sandbox copy before execution policy change: %w", err)
+			}
+		}
+		// This cache is optional, derived state. Retiring it before the CAS is
+		// conservative: a conflicting durable edit can rebuild the old policy's
+		// context, while carrying evidence across a successful relocation is unsafe.
+		c.transientState.ForgetSessionContext(id)
 	}
 	if err := c.sessions.Save(ctx, current.Revision(), updated); err != nil {
 		return session.Session{}, err

@@ -134,26 +134,27 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 			if err := c.transientState.QuiesceSession(sessionID); err != nil {
 				return fmt.Errorf("sessions: quiesce process-local Session state before restore: %w", err)
 			}
+			// The restored Session may name a different workspace and always owns a
+			// different history. Retire the old scratch tree before commit so the
+			// replacement can never resolve to incompatible isolated state.
+			if c.sandbox != nil {
+				if discardErr := c.sandbox.Discard(sessionID); discardErr != nil {
+					return fmt.Errorf("sessions: discard sandbox copy before restore: %w", discardErr)
+				}
+			}
 			return c.writes.ApplyRestore(ctx, restorePlan(snapshot, sessionReplacement, planReplacement))
 		},
 		func(context.Context) error {
-			// Restore replaced the whole history: any isolated working copy
-			// and process-local read evidence from before the restore are stale,
-			// so discard them before exposing the restored aggregate.
+			// Restore replaced the whole history, so process-local read evidence
+			// from before the restore is stale.
 			c.transientState.ForgetSessionContext(sessionID)
 			c.publishAggregateMoved([]string{sessionID}, nil)
-			var postCommitErrs []error
-			if c.sandbox != nil {
-				if discardErr := c.sandbox.Discard(sessionID); discardErr != nil {
-					postCommitErrs = append(postCommitErrs, fmt.Errorf("sessions: discard stale sandbox copy on restore: %w", discardErr))
-				}
+			if !present {
+				return nil
 			}
-			if present {
-				var viewErr error
-				view, viewErr = c.view(committedSession, ActivityIdle)
-				postCommitErrs = append(postCommitErrs, viewErr)
-			}
-			return errors.Join(postCommitErrs...)
+			var viewErr error
+			view, viewErr = c.view(committedSession, ActivityIdle)
+			return viewErr
 		},
 	)
 	return view, err

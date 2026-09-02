@@ -179,11 +179,11 @@ type WorkspaceCheckpoints interface {
 }
 
 // SandboxDiscarder destroys a session's isolated sandbox working copy — the
-// scratch-tree half of the delete/rollback/restore cascades, run POST-COMMIT
-// (a filesystem RemoveAll, never inside the durable transaction) alongside the
-// checkpoint drop. nil disables it (no-op — the session was not isolated or
-// isolation is off). A failure cannot roll the durable delete back, so it is
-// returned as cleanup, never disguised as success.
+// scratch-tree half of execution-policy changes and delete/rollback/restore
+// cascades. Any mutation that can expose another execution policy or history
+// discards before commit so its replacement can never resolve to the old copy;
+// deletion may discard post-commit because no later Run can address the removed
+// Session. nil disables it (no-op — isolation is off).
 type SandboxDiscarder interface {
 	Discard(sessionID string) error
 }
@@ -246,8 +246,8 @@ type Coordinator struct {
 	// rollback and drops a deleted session's snapshots; nil disables both (file
 	// restore is rejected as [ErrCheckpointUnavailable], drop no-ops).
 	checkpoints WorkspaceCheckpoints
-	// sandbox destroys a deleted/rolled-back/restored session's isolated working
-	// copy, post-commit alongside the checkpoint drop; nil disables it.
+	// sandbox destroys a session's isolated working copy when its execution
+	// policy or durable history stops owning that scratch state; nil disables it.
 	sandbox SandboxDiscarder
 	// goals serializes a session write-set with Goal lifecycle commands and
 	// quiesces its loop after a successful commit; nil disables Goal mode.

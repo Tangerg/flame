@@ -4,6 +4,7 @@ package isolation
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -45,6 +46,10 @@ func TestIsolatorCopiesReusesAndDiscards(t *testing.T) {
 	again, err := iso.Workspace(ctx, "s1", project)
 	if err != nil || again != copyDir {
 		t.Fatalf("reuse = (%q, %v), want %q", again, err, copyDir)
+	}
+	otherProject := t.TempDir()
+	if _, err := iso.Workspace(ctx, "s1", otherProject); !errors.Is(err, errWorkspaceChanged) {
+		t.Fatalf("reuse from another project error = %v, want workspace-change rejection", err)
 	}
 
 	// Discard destroys the copy and is idempotent.

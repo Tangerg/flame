@@ -77,7 +77,7 @@ Bootstrap constructs one endpoint and one resource graph. It owns startup, backg
 
 Every goroutine has one owner, stop condition, and join path. Request cancellation governs the request; accepted Run execution uses a Runtime-owned lifetime. Transport disconnect does not implicitly cancel durable execution.
 
-Detached shells remain Runtime-owned after the Tool call and Run that launched them. Session replacement or deletion stops that Session's shells before changing durable state; a destructive working-tree restore stops shells below the shared workspace across every Session before touching files. Runtime shutdown stops everything still owned.
+Detached shells remain Runtime-owned after the Tool call and Run that launched them. Changing a Session's workspace or isolation policy stops that Session's shells and retires its derived context and isolated copy before exposing the replacement. Session deletion and rollback stop the same owned processes; a destructive working-tree restore additionally stops shells below the shared workspace across every Session before touching files. History or file rollback discards the old isolated copy so removed effects cannot reappear in a later Run. Runtime shutdown stops shells before destroying the isolated directories they may still use.
 
 Process-local authority follows the facts that justify it. Replacing, rolling back, or compacting effective model context clears that Session's read-before-write evidence. Restoring a working tree clears such evidence for every Session that observed paths below the shared workspace.
 

@@ -88,6 +88,12 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 		result.Dropped = resolvedBoundary.droppedRuns
 	}
 	if spec.RestoreFiles {
+		// A Session can own shells below its isolated copy, while sibling Sessions
+		// can own shells below the real working tree being reset. Retire both
+		// ownership scopes before Git changes any path.
+		if err := c.transientState.QuiesceSession(spec.SessionID); err != nil {
+			return result, fmt.Errorf("sessions: quiesce process-local Session state before rollback: %w", err)
+		}
 		if err := c.transientState.QuiesceWorkspace(cwd); err != nil {
 			return result, fmt.Errorf("sessions: quiesce working tree before rollback: %w", err)
 		}
@@ -120,6 +126,14 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 		// evidence was recorded. Sessions can share this tree, so every stamp
 		// below the workspace root is stale even when history is left intact.
 		c.transientState.ForgetWorkspace(cwd)
+		// An isolated copy represents the pre-rollback execution history, not the
+		// restored project tree. Remove it before another Run can resolve the
+		// Session so dropped file effects cannot reappear from scratch state.
+		if c.sandbox != nil {
+			if discardErr := c.sandbox.Discard(spec.SessionID); discardErr != nil {
+				return result, fmt.Errorf("sessions: discard sandbox copy after file rollback: %w", discardErr)
+			}
+		}
 	}
 
 	// The tree is restored now; a durable failure here leaves the intent logged so
@@ -239,6 +253,9 @@ func (c *Coordinator) recoverRollback(ctx context.Context, m WorkspaceMutation) 
 			return err
 		}
 	}
+	if err := c.transientState.QuiesceSession(m.SessionID); err != nil {
+		return fmt.Errorf("sessions: quiesce process-local Session state before rollback recovery: %w", err)
+	}
 	if err := c.transientState.QuiesceWorkspace(m.CWD); err != nil {
 		return fmt.Errorf("sessions: quiesce working tree before rollback recovery: %w", err)
 	}
@@ -249,6 +266,11 @@ func (c *Coordinator) recoverRollback(ctx context.Context, m WorkspaceMutation) 
 		return err
 	}
 	c.transientState.ForgetWorkspace(m.CWD)
+	if c.sandbox != nil {
+		if err := c.sandbox.Discard(m.SessionID); err != nil {
+			return fmt.Errorf("sessions: discard sandbox copy during rollback recovery: %w", err)
+		}
+	}
 	if m.RestoreHistory && len(boundary.Dropped) > 0 {
 		if err := c.applyRollback(ctx, m.SessionID, boundary); err != nil {
 			return err

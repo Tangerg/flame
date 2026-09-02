@@ -196,6 +196,7 @@ func TestRollbackReportsParkedExecutorReleaseFailure(t *testing.T) {
 	coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
 		ExecutionReleaser: mutationExecutions{operations: &stores.operations, err: executionErr},
 		Paths:             testWorkspaceResolver{},
+		Sandbox:           &mutationSandbox{operations: &stores.operations},
 	}))
 	boundary := transcript.Boundary{Dropped: []transcript.RunNode{{ID: "run_1"}}}
 
@@ -205,12 +206,33 @@ func TestRollbackReportsParkedExecutorReleaseFailure(t *testing.T) {
 	}
 	want := []string{
 		"session.quiesce",
+		"sandbox.discard:ses_1",
 		"apply.rollback",
 		"session.context.forget",
 		"executor.release",
 	}
 	if !slices.Equal(stores.operations, want) {
 		t.Fatalf("operations = %v, want %v", stores.operations, want)
+	}
+}
+
+func TestRollbackDoesNotExposeHistoryWhenSandboxRetirementFails(t *testing.T) {
+	wantErr := errors.New("sandbox cleanup failed")
+	stores := newMutationStores("")
+	coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
+		ExecutionReleaser: mutationExecutions{operations: &stores.operations},
+		Paths:             testWorkspaceResolver{},
+		Sandbox:           &mutationSandbox{operations: &stores.operations, err: wantErr},
+	}))
+	boundary := transcript.Boundary{Dropped: []transcript.RunNode{{ID: "run_1"}}}
+
+	err := coordinator.applyRollback(t.Context(), "ses_1", boundary)
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("applyRollback error = %v, want sandbox cleanup failure", err)
+	}
+	want := []string{"session.quiesce", "sandbox.discard:ses_1"}
+	if !slices.Equal(stores.operations, want) {
+		t.Fatalf("operations = %v, want no durable rollback after sandbox failure", stores.operations)
 	}
 }
 
@@ -235,7 +257,12 @@ func TestDeleteSessionAddressesOnlyTheRequestedConversation(t *testing.T) {
 func TestRestoreSessionAppliesPlan(t *testing.T) {
 	stores := newMutationStores("")
 	stores.pending = map[string][]runs.Pending{}
-	_, err := newCoordinator(stores, mutationExecutions{operations: &stores.operations}).restoreSession(
+	coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
+		ExecutionReleaser: mutationExecutions{operations: &stores.operations},
+		Paths:             testWorkspaceResolver{},
+		Sandbox:           &mutationSandbox{operations: &stores.operations},
+	}))
+	_, err := coordinator.restoreSession(
 		t.Context(),
 		Snapshot{
 			Session:  testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/workspace")}),
@@ -248,7 +275,7 @@ func TestRestoreSessionAppliesPlan(t *testing.T) {
 	if len(stores.restored) != 1 || stores.restored[0].Session.State().ID() != "ses_1" || len(stores.restored[0].Messages) != 1 {
 		t.Fatalf("restored = %+v, want one plan for ses_1 with 1 message", stores.restored)
 	}
-	want := []string{"interrupt.read", "session.quiesce", "apply.restore", "session.context.forget"}
+	want := []string{"interrupt.read", "session.quiesce", "sandbox.discard:ses_1", "apply.restore", "session.context.forget"}
 	if !slices.Equal(stores.operations, want) {
 		t.Fatalf("operations = %v, want %v", stores.operations, want)
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
@@ -12,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/isolation"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -25,6 +25,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
 const interactionDeploymentConfigurationIdentity = "flame.runtime.interaction.v1"
@@ -162,6 +163,7 @@ type executionComposition struct {
 	conversation      conversationEnvironment
 	models            modelEnvironment
 	tools             toolEnvironment
+	isolation         *isolation.Isolator
 	workingContexts   *agentexec.WorkingContextComposer
 	transientSessions *agentexec.TransientSessionState
 	executor          *agentexec.InteractionExecutor
@@ -195,6 +197,19 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, err
 	}
+	// Isolated working copies are acquired before the shell set that can run in
+	// them. The Host's reverse teardown therefore stops every detached shell
+	// before it destroys the directories those processes use.
+	var isolator *isolation.Isolator
+	if cfg.SandboxDir != "" {
+		isolator, err = isolation.New(cfg.UserHome, cfg.SandboxDir, cfg.SandboxReadOnlyPaths)
+		if err != nil {
+			return executionComposition{}, fmt.Errorf("runtime: build isolated workspace manager: %w", err)
+		}
+		lifetime.toolResources = append(lifetime.toolResources, teardown.Terminal(func(context.Context) error {
+			return isolator.Close()
+		}))
+	}
 	toolRuntime, err := buildTools(ctx, toolEnvironmentDependencies{
 		lifetime:            lifetime.context,
 		config:              cfg,
@@ -208,7 +223,7 @@ func buildExecutionComposition(
 		skillStore:          workspaceServices.skillStore,
 		skillProposals:      workspaceServices.skills,
 	})
-	lifetime.toolResources = slices.Clone(toolRuntime.closers)
+	lifetime.toolResources = append(lifetime.toolResources, toolRuntime.closers...)
 	if err != nil {
 		return executionComposition{}, err
 	}
@@ -294,6 +309,7 @@ func buildExecutionComposition(
 		conversation:      conversation,
 		models:            modelServices,
 		tools:             toolRuntime,
+		isolation:         isolator,
 		workingContexts:   workingContexts,
 		transientSessions: transientSessions,
 		executor:          interactionExecutor,

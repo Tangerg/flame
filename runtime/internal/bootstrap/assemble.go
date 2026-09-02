@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/isolation"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -27,7 +26,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
 // Assembly owns configuration resources before construction begins.
@@ -152,23 +150,6 @@ func buildAssemblyCore(
 	workspaceServices workspaceComposition,
 	execution executionComposition,
 ) (*Host, error) {
-	var err error
-
-	// Sandbox isolation for a run whose session is marked Isolated: its tools
-	// operate in a throwaway copy of the project directory, the shell OS-jailed.
-	// Empty dir disables it (an isolated session's run is then refused, fail-
-	// closed). Its copies are destroyed on session delete and at shutdown.
-	var isolator *isolation.Isolator
-	if cfg.SandboxDir != "" {
-		isolator, err = isolation.New(cfg.UserHome, cfg.SandboxDir, cfg.SandboxReadOnlyPaths)
-		if err != nil {
-			return nil, fmt.Errorf("runtime: build isolated workspace manager: %w", err)
-		}
-		lifetime.toolResources = append(lifetime.toolResources, teardown.Terminal(func(context.Context) error {
-			return isolator.Close()
-		}))
-	}
-
 	fileChanges := newNotificationRelay[workspace.FileChangeNotice]()
 	admissionGate, err := ownership.NewGate(cfg.SessionOwnership)
 	if err != nil {
@@ -239,8 +220,8 @@ func buildAssemblyCore(
 	}
 	// Set only when present so a nil *Isolator never reaches the coordinator as a
 	// non-nil interface (which would defeat its own nil check).
-	if isolator != nil {
-		sessionDependencies.Sandbox = isolator
+	if execution.isolation != nil {
+		sessionDependencies.Sandbox = execution.isolation
 	}
 	// The shared Goal/session mutation coordinator is created before either
 	// lifecycle owner. The Driver is constructed later because it consumes Runs;
@@ -341,8 +322,8 @@ func buildAssemblyCore(
 	}
 	// Set only when present so a nil *Isolator never reaches the coordinator as a
 	// non-nil interface (which would defeat its own nil check).
-	if isolator != nil {
-		runDependencies.Isolation = isolator
+	if execution.isolation != nil {
+		runDependencies.Isolation = execution.isolation
 	}
 	runCoordinator, err := runs.NewCoordinator(runDependencies)
 	if err != nil {

@@ -1,8 +1,11 @@
 package isolation
 
 import (
+	"errors"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
 )
 
 func TestNewRequiresExplicitAbsolutePaths(t *testing.T) {
@@ -43,5 +46,21 @@ func TestNewOwnsReadOnlyPaths(t *testing.T) {
 	paths[0] = t.TempDir()
 	if got := isolator.readOnlyPaths[0]; got != path {
 		t.Fatalf("stored read-only path = %q, want owned value %q", got, path)
+	}
+}
+
+func TestClosePermanentlyRejectsNewWorkspaces(t *testing.T) {
+	isolator, err := New(t.TempDir(), t.TempDir(), nil)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if err := isolator.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if err := isolator.Close(); err != nil {
+		t.Fatalf("second Close: %v", err)
+	}
+	if _, err := isolator.Workspace(t.Context(), "ses_1", t.TempDir()); !errors.Is(err, sandbox.ErrShutdown) {
+		t.Fatalf("Workspace after Close error = %v, want ErrShutdown", err)
 	}
 }

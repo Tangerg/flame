@@ -187,21 +187,25 @@ type executionRuntime interface {
 // executor + effects (testRuntime) over its own in-memory + sqlite stores, and
 // the coordinator-provider seams for Sessions, queries, and execution control.
 type stubRuntime struct {
-	sess         *sqlite.SessionStore
-	model        string
-	history      map[string][]chat.Message // per-session chat history (fork copies it)
-	hist         *sqlite.TranscriptStore   // durable Item history
-	runs         *sqlite.RunStore          // durable Run records (rollback/fork read runs)
-	goals        *sqlite.GoalStore         // autonomous objective included in mounted material reads
-	toolResults  *sqlite.ToolResultStore
-	plan         *sqlite.PlanStore                   // exported, restored, and dropped with the Session
-	interrupts   *persistence.InterruptStore         // open-interrupt registry (rollback clears dropped)
-	muts         *persistence.WorkspaceMutationStore // §8.5 recoverable file-rollback log
-	execution    executionRuntime
-	admissions   *ownership.Gate
-	forgotTrees  []string
-	stoppedTrees []string
-	stopTreeErr  error
+	sess               *sqlite.SessionStore
+	model              string
+	history            map[string][]chat.Message // per-session chat history (fork copies it)
+	hist               *sqlite.TranscriptStore   // durable Item history
+	runs               *sqlite.RunStore          // durable Run records (rollback/fork read runs)
+	goals              *sqlite.GoalStore         // autonomous objective included in mounted material reads
+	toolResults        *sqlite.ToolResultStore
+	plan               *sqlite.PlanStore                   // exported, restored, and dropped with the Session
+	interrupts         *persistence.InterruptStore         // open-interrupt registry (rollback clears dropped)
+	muts               *persistence.WorkspaceMutationStore // §8.5 recoverable file-rollback log
+	execution          executionRuntime
+	admissions         *ownership.Gate
+	forgotTrees        []string
+	stoppedTrees       []string
+	stoppedSessions    []string
+	discardedSandboxes []string
+	stopTreeErr        error
+	stopSessionErr     error
+	sandboxErr         error
 }
 
 // sessionsCoordinatorProvider is the optional test seam newTestHandler uses to
@@ -923,6 +927,7 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 		Models:                allowModelSelections{},
 		DefaultModelSelection: fixtureDefaultModelSelection(),
 		Checkpoints:           checkpoints,
+		Sandbox:               s,
 		Admissions:            admissions,
 		Now:                   time.Now,
 		NewID: func() string {
@@ -1279,13 +1284,21 @@ func (stubRunState) UpdateProgress(context.Context, string, string, string, run.
 // gate; these tests have no live execution state to forget.
 func (stubRuntime) ForgetSession(string)        {}
 func (stubRuntime) ForgetSessionContext(string) {}
-func (stubRuntime) QuiesceSession(string) error { return nil }
+func (s *stubRuntime) QuiesceSession(sessionID string) error {
+	s.stoppedSessions = append(s.stoppedSessions, sessionID)
+	return s.stopSessionErr
+}
 func (s *stubRuntime) QuiesceWorkspace(root string) error {
 	s.stoppedTrees = append(s.stoppedTrees, root)
 	return s.stopTreeErr
 }
 func (s *stubRuntime) ForgetWorkspace(root string) {
 	s.forgotTrees = append(s.forgotTrees, root)
+}
+
+func (s *stubRuntime) Discard(sessionID string) error {
+	s.discardedSandboxes = append(s.discardedSandboxes, sessionID)
+	return s.sandboxErr
 }
 
 func (s stubRuntime) ReadHistory(_ context.Context, id string) ([]chat.Message, error) {

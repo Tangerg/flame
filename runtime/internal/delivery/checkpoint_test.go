@@ -143,6 +143,12 @@ func TestRollback_RestoreFilesKeepsHistory(t *testing.T) {
 	if want := []string{cwd}; !slices.Equal(rt.stoppedTrees, want) {
 		t.Fatalf("stopped workspaces = %v, want %v", rt.stoppedTrees, want)
 	}
+	if want := []string{sid}; !slices.Equal(rt.stoppedSessions, want) {
+		t.Fatalf("stopped sessions = %v, want %v", rt.stoppedSessions, want)
+	}
+	if want := []string{sid}; !slices.Equal(rt.discardedSandboxes, want) {
+		t.Fatalf("discarded sandboxes = %v, want %v", rt.discardedSandboxes, want)
+	}
 }
 
 func TestRollbackStopsBeforeRestoreWhenWorkspaceCannotQuiesce(t *testing.T) {
@@ -173,6 +179,41 @@ func TestRollbackStopsBeforeRestoreWhenWorkspaceCannotQuiesce(t *testing.T) {
 	}
 	if len(rt.forgotTrees) != 0 {
 		t.Fatalf("forgot workspaces = %v, want none before a tree change", rt.forgotTrees)
+	}
+	if want := []string{sid}; !slices.Equal(rt.stoppedSessions, want) {
+		t.Fatalf("stopped sessions = %v, want %v before workspace quiescence", rt.stoppedSessions, want)
+	}
+	if len(rt.discardedSandboxes) != 0 {
+		t.Fatalf("discarded sandboxes = %v, want none before a tree change", rt.discardedSandboxes)
+	}
+}
+
+func TestRollbackKeepsRecoveryIntentWhenSandboxRetirementFails(t *testing.T) {
+	s, rt, cp, sid, cwd := checkpointHarness(t)
+	ctx := t.Context()
+
+	writeCheckpointFile(t, cwd, "v1")
+	if err := cp.Snapshot(ctx, sid, cwd, "run1"); err != nil {
+		t.Fatal(err)
+	}
+	putRun(t, rt, sid, "run1", 1, 1)
+	writeCheckpointFile(t, cwd, "v2")
+	putRun(t, rt, sid, "run2", 2, 2)
+	wantErr := errors.New("sandbox cleanup failed")
+	rt.sandboxErr = wantErr
+
+	_, err := s.RollbackSession(ctx, protocol.RollbackSessionRequest{
+		SessionID: sid, ToRunID: "run1", RestoreType: protocol.RestoreFiles,
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("rollback error = %v, want sandbox cleanup failure", err)
+	}
+	if got, _ := os.ReadFile(filepath.Join(cwd, "a.txt")); string(got) != "v1" {
+		t.Fatalf("a.txt = %q, want restored v1 before cleanup failure", got)
+	}
+	pending, pendingErr := rt.muts.ListPending(ctx)
+	if pendingErr != nil || len(pending) != 1 || pending[0].SessionID != sid {
+		t.Fatalf("pending intents = (%+v, %v), want recoverable rollback for %q", pending, pendingErr, sid)
 	}
 }
 
