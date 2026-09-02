@@ -278,8 +278,10 @@ type recordingRuntime struct {
 type expiringUncommittedResumeRuntime struct {
 	*runtimefixture.Runtime
 
-	mu       sync.Mutex
-	attempts []agent.ResumeRun
+	mu              sync.Mutex
+	attempts        []agent.ResumeRun
+	acceptedCommand agent.CommandID
+	acceptedStream  agent.SegmentStream
 }
 
 func (e *expiringUncommittedResumeRuntime) ResumeRun(
@@ -289,8 +291,8 @@ func (e *expiringUncommittedResumeRuntime) ResumeRun(
 	e.mu.Lock()
 	e.attempts = append(e.attempts, input.Clone())
 	attempt := len(e.attempts)
-	e.mu.Unlock()
 	if attempt == 1 {
+		e.mu.Unlock()
 		timer := time.NewTimer(1100 * time.Millisecond)
 		defer timer.Stop()
 		select {
@@ -300,7 +302,21 @@ func (e *expiringUncommittedResumeRuntime) ResumeRun(
 			return agent.SegmentStream{}, context.Cause(ctx)
 		}
 	}
-	return e.Runtime.ResumeRun(ctx, input)
+	if e.acceptedCommand == input.CommandID {
+		stream := e.acceptedStream
+		e.mu.Unlock()
+		return stream, nil
+	}
+	// This double advertises command replay. Serialize the first delivery of a
+	// fresh identity and cache its receipt so concurrent transport retries cannot
+	// execute the same accepted resume twice.
+	stream, err := e.Runtime.ResumeRun(ctx, input)
+	if err == nil {
+		e.acceptedCommand = input.CommandID
+		e.acceptedStream = stream
+	}
+	e.mu.Unlock()
+	return stream, err
 }
 
 func (e *expiringUncommittedResumeRuntime) resumeAttempts() []agent.ResumeRun {

@@ -90,7 +90,7 @@ func (a *app) StartGoal(objective string) error {
 		return errors.New("this runtime composition has no goal service")
 	}
 	start := protocol.StartGoalRequest{
-		SessionID: a.session.current.ID, Objective: strings.TrimSpace(objective),
+		SessionID: a.session.current.ID, Objective: objective,
 		Provider: a.options.Provider, Model: a.options.Model, ReasoningEffort: a.options.ReasoningEffort,
 	}
 	return a.changeGoal("starting session goal", func(ctx context.Context) (protocol.Goal, error) {
@@ -102,7 +102,7 @@ func (a *app) UpdateGoal(objective string) error {
 	if a.goals == nil {
 		return errors.New("this runtime composition has no goal service")
 	}
-	update := protocol.UpdateGoalRequest{SessionID: a.session.current.ID, Objective: strings.TrimSpace(objective)}
+	update := protocol.UpdateGoalRequest{SessionID: a.session.current.ID, Objective: objective}
 	return a.changeGoal("updating session goal", func(ctx context.Context) (protocol.Goal, error) {
 		return a.goals.UpdateGoal(ctx, update)
 	})
