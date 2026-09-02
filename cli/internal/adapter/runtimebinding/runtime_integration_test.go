@@ -664,6 +664,9 @@ func TestOwnerOpensOnceAndRefusesReopenAfterClose(t *testing.T) {
 	if err := owner.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
 	}
+	if err := owner.Close(); err != nil {
+		t.Fatalf("repeated Close: %v", err)
+	}
 	if _, err := owner.Connection(t.Context()); !errors.Is(err, agent.ErrDisconnected) {
 		t.Fatalf("Connection after Close = %v, want ErrDisconnected", err)
 	}

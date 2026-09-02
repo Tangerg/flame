@@ -398,5 +398,9 @@ func (o *Owner) Close() error {
 	if connection == nil {
 		return nil
 	}
-	return connection.Close()
+	err := connection.Close()
+	if err == nil {
+		o.connection = nil
+	}
+	return err
 }
