@@ -1,3 +1,4 @@
+import { disposeAsyncIterable } from "@/lib/asyncOwnership";
 import type { FlameClient } from "@/rpc";
 
 type RuntimeRunStream = Awaited<ReturnType<FlameClient["runs"]["subscribe"]>>;
@@ -42,12 +43,10 @@ export function settleRunStreamOpening(
   });
 }
 
+/** The generation is already fenced when this runs, so the retirement is not awaited — abort
+ *  remains the authoritative teardown path. What it must not do is reimplement the retirement
+ *  itself: `disposeAsyncIterable` bounds the close to the next task, so a cooperative stream
+ *  joins immediately and a broken one cannot hold the successor. */
 export function retireRunStream(stream: RuntimeRunStream): void {
-  try {
-    const closing = stream.events[Symbol.asyncIterator]().return?.();
-    if (closing) void Promise.resolve(closing).catch(() => undefined);
-  } catch {
-    // The generation is already fenced. Abort remains the authoritative
-    // teardown path when a foreign iterator cannot be constructed or closed.
-  }
+  void disposeAsyncIterable(stream.events);
 }

@@ -1,3 +1,4 @@
+import { disposeAsyncIterable } from "@/lib/asyncOwnership";
 import type { RunEvent, RunId, SegmentId, StreamingResult } from "@/rpc";
 import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 import { endSpan, startRunSpan, withSpan } from "@/lib/observability/tracing";
@@ -69,7 +70,7 @@ export function createRunOpeningController({
         .then(
           async (stream) => {
             if (isCancelled() || ctrl.signal.aborted || ownLease !== openingLease) {
-              disposeIterable(stream.events);
+              void disposeAsyncIterable(stream.events);
               return;
             }
             try {
@@ -107,14 +108,4 @@ export function createRunOpeningController({
       endActiveSpan?.();
     },
   };
-}
-
-function disposeIterable<T>(iterable: AsyncIterable<T>): void {
-  try {
-    const closing = iterable[Symbol.asyncIterator]().return?.();
-    if (closing) void Promise.resolve(closing).catch(() => undefined);
-  } catch {
-    // The generation is already fenced. Abort remains the authoritative
-    // teardown path when a foreign iterator cannot be constructed or closed.
-  }
 }

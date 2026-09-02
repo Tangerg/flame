@@ -75,3 +75,16 @@ export async function disposeAsyncIterator<T>(iterator: AsyncIterator<T>): Promi
     // The owner's abort signal remains the authoritative teardown path.
   }
 }
+
+/** The same retirement for a source that has not been opened yet. Asking a foreign iterable
+ *  for its iterator can itself throw, which is a second failure the caller can do nothing
+ *  about — and, like the first, one the owner's abort already fences. */
+export async function disposeAsyncIterable<T>(iterable: AsyncIterable<T>): Promise<void> {
+  let iterator: AsyncIterator<T>;
+  try {
+    iterator = iterable[Symbol.asyncIterator]();
+  } catch {
+    return;
+  }
+  await disposeAsyncIterator(iterator);
+}

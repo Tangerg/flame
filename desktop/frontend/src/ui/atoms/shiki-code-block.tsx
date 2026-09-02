@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { measureShikiHighlight } from "@/lib/metrics";
-import { getHighlighter, resolveLang } from "@/lib/highlight/shiki";
+import { getHighlighter, reportHighlightFailure, resolveLang } from "@/lib/highlight/shiki";
 import { getCachedHighlight, setCachedHighlight } from "@/lib/highlight/shikiCache";
 import { useShikiTheme } from "@/lib/highlight/useCodeHighlight";
 import { cn } from "@/lib/classNames";
@@ -66,9 +66,13 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
           measureShikiHighlight(performance.now() - start, resolvedLang);
           setCachedHighlight(lang, shikiTheme, debouncedCode, out);
           setHighlighted({ lang, theme: shikiTheme, code: debouncedCode, html: out });
-        } catch {}
+        } catch (error) {
+          // One grammar failing leaves this block plain and every other block alone, so the
+          // report is keyed by language: a file type Shiki cannot parse says so once.
+          reportHighlightFailure(`grammar ${lang}`, error);
+        }
       })
-      .catch(() => undefined);
+      .catch((error: unknown) => reportHighlightFailure("highlighter unavailable", error));
     return () => {
       cancelled = true;
     };

@@ -55,6 +55,10 @@ function defaultContainer(): DefaultContainerOwner {
     let closing!: Promise<void>;
     closing = client
       .close()
+      // A close that fails has still ended this client's claim on the endpoint — the
+      // successor is already the one being used, and `dispose` awaits this set to know when
+      // the old sockets are gone. Rejecting here would leave shutdown waiting on a
+      // connection that is not coming back.
       .catch(() => undefined)
       .finally(() => retiring.delete(closing));
     retiring.add(closing);

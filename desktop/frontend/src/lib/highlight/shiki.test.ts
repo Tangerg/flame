@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Highlighter } from "shiki";
 import { langFromPath, resolveLang } from "./shiki";
+
+const { createHighlighter } = vi.hoisted(() => ({ createHighlighter: vi.fn() }));
+vi.mock("shiki", () => ({ createHighlighter }));
 
 // The names JavaScript hands out from `Object.prototype` to anyone who indexes an
 // object with a string they did not choose.
@@ -62,5 +65,37 @@ describe("resolveLang", () => {
     for (const key of INHERITED_KEYS) {
       expect(resolveLang(highlighter, key)).toBe("text");
     }
+  });
+});
+
+describe("getHighlighter", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    createHighlighter.mockReset();
+  });
+
+  it("builds the highlighter once and shares it", async () => {
+    const highlighter = {} as Highlighter;
+    createHighlighter.mockResolvedValue(highlighter);
+    const { getHighlighter } = await import("./shiki");
+
+    await expect(getHighlighter()).resolves.toBe(highlighter);
+    await expect(getHighlighter()).resolves.toBe(highlighter);
+    expect(createHighlighter).toHaveBeenCalledTimes(1);
+  });
+
+  // The grammars come off disk or the dev server, and either can fail once. Caching the
+  // rejection turned that single failure into a session where no code block anywhere would
+  // ever highlight again, with no way back short of a reload.
+  it("does not keep a failure, so the next code block tries again", async () => {
+    const highlighter = {} as Highlighter;
+    createHighlighter
+      .mockRejectedValueOnce(new Error("chunk unavailable"))
+      .mockResolvedValue(highlighter);
+    const { getHighlighter } = await import("./shiki");
+
+    await expect(getHighlighter()).rejects.toThrow("chunk unavailable");
+    await expect(getHighlighter()).resolves.toBe(highlighter);
+    expect(createHighlighter).toHaveBeenCalledTimes(2);
   });
 });

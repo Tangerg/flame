@@ -1,5 +1,6 @@
 import {
   ASYNC_OWNERSHIP_RETIRED as ABORTED,
+  disposeAsyncIterable,
   disposeAsyncIterator,
   settleBeforeAbort,
   settleWithinNextTask,
@@ -218,20 +219,14 @@ function settleOpening<T>(
     }, timeoutMs);
   });
   return Promise.race([
-    settleBeforeAbort(operation, controller.signal, disposeIterable),
+    // A subscription that arrives after the abort is a foreign resource nobody is holding, so
+    // it is retired without being waited on — the signal is already the authoritative
+    // teardown path.
+    settleBeforeAbort(operation, controller.signal, (late) => void disposeAsyncIterable(late)),
     deadline,
   ]).finally(() => {
     if (timer !== undefined) clearTimeout(timer);
     timer = undefined;
     releaseDeadline();
   });
-}
-
-function disposeIterable<T>(iterable: AsyncIterable<T>): void {
-  try {
-    void disposeAsyncIterator(iterable[Symbol.asyncIterator]());
-  } catch {
-    // The subscription was already superseded, so its signal remains the
-    // authoritative teardown path when constructing its iterator fails.
-  }
 }

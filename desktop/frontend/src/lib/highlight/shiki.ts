@@ -40,16 +40,41 @@ const LANGS = [
   "xml",
 ] as const;
 
+// A transcript renders one code block per fenced section, so reporting every failure would
+// put the same line in the console hundreds of times on a long conversation — which is how a
+// diagnostic becomes noise nobody reads. One line per distinct cause is enough to find it.
+const reported = new Set<string>();
+
+/** Highlighting is a decoration: when it fails the block still renders, as plain text. That
+ *  is the right fallback and the reason nothing here throws — but a failure that leaves no
+ *  trace at all is one nobody can act on. */
+export function reportHighlightFailure(cause: string, error: unknown): void {
+  if (reported.has(cause)) return;
+  reported.add(cause);
+  console.error(`[highlight] ${cause}:`, error);
+}
+
 let promise: Promise<Highlighter> | null = null;
 
 export function getHighlighter(): Promise<Highlighter> {
   if (promise === null) {
-    promise = import("shiki").then(({ createHighlighter }) =>
+    const pending = import("shiki").then(({ createHighlighter }) =>
       createHighlighter({
         themes: [...THEMES],
         langs: [...LANGS],
       }),
     );
+    // A REJECTION IS NOT CACHED. The chunk this awaits is fetched over the dev server or read
+    // off disk, and either can fail once — a memoised rejection turns that single failure into
+    // a session with no syntax highlighting anywhere and no way back except a reload.
+    //
+    // The slot is cleared only if it still holds THIS attempt: a later caller may already have
+    // started a successor, and clearing that one would make every block reload the grammars.
+    const attempt: Promise<Highlighter> = pending.catch((error: unknown) => {
+      if (promise === attempt) promise = null;
+      throw error;
+    });
+    promise = attempt;
   }
   return promise;
 }
