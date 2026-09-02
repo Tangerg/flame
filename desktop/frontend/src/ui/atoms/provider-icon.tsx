@@ -14,24 +14,41 @@ import { Icon } from "@/ui/icons";
 
 type BrandIcon = ComponentType<{ size?: number }>;
 
+interface Brand {
+  mark: BrandIcon;
+  /** How the vendor writes it. `capitalize` gets "Openai" and "Deepseek", which is a
+   *  different company's name than the one on the mark beside it. */
+  name: string;
+}
+
 // Map, not object: keyed by a runtime-chosen name, and an object answers `constructor`
 // with an inherited FUNCTION that then renders as a component.
-const BRAND = new Map<string, BrandIcon>([
-  ["deepseek", DeepSeek],
-  ["openai", OpenAI],
-  ["anthropic", Anthropic],
-  ["claude", Anthropic],
-  ["gemini", Gemini],
-  ["google", Gemini],
-  ["meta", Meta],
-  ["llama", Meta],
-  ["mistral", Mistral],
-  ["moonshot", Moonshot],
-  ["kimi", Moonshot],
-  ["ollama", Ollama],
-  ["qwen", Qwen],
-  ["zhipu", Zhipu],
+//
+// One table, two columns: the mark and the spelling are the same fact about the same brand,
+// and a second table keyed the same way is a second thing to keep in step.
+const BRAND = new Map<string, Brand>([
+  ["deepseek", { mark: DeepSeek, name: "DeepSeek" }],
+  ["openai", { mark: OpenAI, name: "OpenAI" }],
+  ["anthropic", { mark: Anthropic, name: "Anthropic" }],
+  ["claude", { mark: Anthropic, name: "Claude" }],
+  ["gemini", { mark: Gemini, name: "Gemini" }],
+  ["google", { mark: Gemini, name: "Google" }],
+  ["meta", { mark: Meta, name: "Meta" }],
+  ["llama", { mark: Meta, name: "Llama" }],
+  ["mistral", { mark: Mistral, name: "Mistral" }],
+  ["moonshot", { mark: Moonshot, name: "Moonshot" }],
+  ["kimi", { mark: Moonshot, name: "Kimi" }],
+  ["ollama", { mark: Ollama, name: "Ollama" }],
+  ["qwen", { mark: Qwen, name: "Qwen" }],
+  ["zhipu", { mark: Zhipu, name: "Zhipu" }],
 ]);
+
+/** The vendor's own spelling where this app knows it, else the id capitalised. */
+export function providerDisplayName(provider: string): string {
+  return (
+    BRAND.get(provider.toLowerCase())?.name ?? provider.charAt(0).toUpperCase() + provider.slice(1)
+  );
+}
 
 export function ProviderIcon({ provider, size = "md" }: { provider: string; size?: IconSize }) {
   const brand = BRAND.get(provider.toLowerCase());
@@ -44,7 +61,7 @@ export function ProviderIcon({ provider, size = "md" }: { provider: string; size
       >
         {/* The mark is one of the module constants above, picked by name — never built
             here, which is why it is applied rather than written as `<Brand />`. */}
-        {createElement(brand, { size: 0 })}
+        {createElement(brand.mark, { size: 0 })}
       </span>
     );
   }

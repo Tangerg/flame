@@ -178,6 +178,26 @@ const MECHANISM_PROP =
 const VIEW_RING = /^(?:plugins|pages|ui)\//;
 // A `key: "value"` entry in an object or array literal. The key may be an identifier or
 // quoted; a `Record<Status, string>` uses whichever the union member allows.
+
+/**
+ * A value that re-cases a key sitting beside it is not copy — it is how the app writes an
+ * identity it did not choose. `["openai", { mark: OpenAI, name: "OpenAI" }]` renders the
+ * vendor's own spelling of the Runtime's provider id; it is the same string in every locale,
+ * so a catalog entry for it would be eight copies of one proper noun.
+ *
+ * Narrow on purpose: the key has to be quoted on the SAME entry, and the two have to differ
+ * by case alone. "Fast and cheap" beside "gpt-4o-mini" is still copy and still fails.
+ */
+function spellsItsOwnKey(code, index, value) {
+  const start = code.lastIndexOf("\n", index) + 1;
+  const end = code.indexOf("\n", index);
+  const line = code.slice(start, end === -1 ? code.length : end);
+  for (const [, literal] of line.matchAll(/"([^"\n]+)"/g)) {
+    if (literal !== value && literal.toLowerCase() === value.toLowerCase()) return true;
+  }
+  return false;
+}
+
 const TABLE_ENTRY = /(?:^|[,{[\s])(?:([A-Za-z_$][\w$]*)|"([^"\n]+)")\s*:\s*"([^"\n]{3,})"/g;
 // A Tailwind class list is the one table shape that reads like a phrase: `bg-surface-2
 // text-fg-muted` is two "words". Every utility in this codebase carries a hyphen or a
@@ -522,6 +542,7 @@ for (const path of sourceFiles(SRC_DIR)) {
       for (const match of code.matchAll(TABLE_ENTRY)) {
         const value = match[3];
         if (CLASS_LIST.test(value)) continue;
+        if (spellsItsOwnKey(code, match.index, value)) continue;
         if (TWO_WORDS.test(value) || TITLE_CASE_COPY.test(value)) {
           failures.push(
             `${relative}: ${match[1] ?? match[2]}: "${value}" is copy in a lookup table — hold the catalog key`,

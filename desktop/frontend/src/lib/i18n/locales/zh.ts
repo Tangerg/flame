@@ -41,6 +41,7 @@ export const zh: Record<string, string> = {
   "composer.placeholder.steer": "发送消息以引导正在运行的回合…",
   "composer.switchModel": "切换模型",
   "composer.switchReasoningEffort": "切换思考强度",
+  "composer.model.recent": "最近使用",
   "composer.model.search.placeholder": "搜索模型…",
   "composer.model.search.empty": "没有匹配的模型",
   "composer.model.contextWindow": "{{tokens}} 上下文",

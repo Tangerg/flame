@@ -1,7 +1,7 @@
 export { Badge } from "./badge";
 export { Button } from "./button";
 export type { ButtonProps } from "./button";
-export { CatalogPicker } from "./catalog-picker";
+export { CatalogPicker, TabbedCatalogPicker } from "./catalog-picker";
 export type { CatalogPickerGroup } from "./catalog-picker";
 export { Checkbox } from "./checkbox";
 export { ChoiceList, ChoiceOption } from "./choice-list";
@@ -29,7 +29,7 @@ export { Popover } from "./popover";
 export { Pressable } from "./pressable";
 export { Gauge } from "./gauge";
 export { ProgressBar } from "./progress-bar";
-export { ProviderIcon } from "./provider-icon";
+export { ProviderIcon, providerDisplayName } from "./provider-icon";
 export { ResizeHandle } from "./resize-handle";
 export { ScrollArea } from "./scroll-area";
 export { SearchField } from "./text-field";

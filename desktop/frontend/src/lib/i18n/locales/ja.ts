@@ -41,6 +41,7 @@ export const ja: Record<string, string> = {
   "composer.placeholder": "やりたいことを書いてください — @ でファイル参照",
   "composer.switchModel": "モデルを切替",
   "composer.switchReasoningEffort": "思考強度を切替",
+  "composer.model.recent": "最近使用した",
   "composer.model.search.placeholder": "モデルを検索…",
   "composer.model.search.empty": "一致するモデルはありません",
   "composer.model.contextWindow": "コンテキスト {{tokens}}",

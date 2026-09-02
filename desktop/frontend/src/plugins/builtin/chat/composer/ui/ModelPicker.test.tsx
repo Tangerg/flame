@@ -1,6 +1,7 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ModelPicker } from "./ModelPicker";
+import { useRecentModelsStore } from "../adapters/recentModels";
 
 const state = vi.hoisted(() => ({
   models: [] as ModelFixture[],
@@ -67,8 +68,17 @@ function model({
   };
 }
 
+function options() {
+  return within(screen.getByRole("listbox"));
+}
+
+function tabNames(): string[] {
+  return screen.getAllByRole("tab").map((tab) => tab.getAttribute("aria-label") ?? tab.innerText);
+}
+
 describe("ModelPicker", () => {
   beforeEach(() => {
+    useRecentModelsStore.setState({ recent: [] });
     state.models = [
       model({ provider: "ollama", id: "Mistral Local" }),
       model({ provider: "deepseek", id: "DeepSeek Chat" }),
@@ -80,27 +90,107 @@ describe("ModelPicker", () => {
 
   afterEach(cleanup);
 
-  it("groups the current provider first, filters the catalog, and keeps the list scrollable", async () => {
+  it("opens on the provider in force and lists only its models", async () => {
     render(<ModelPicker />);
-
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
 
-    const search = await screen.findByPlaceholderText("Search models…");
-    const options = screen.getAllByRole("option");
-    expect(options.map((option) => option.textContent)).toEqual([
+    await screen.findByPlaceholderText("Search models…");
+    // A tab per provider, and only the one holding the current model is listed. The stacked
+    // form put every provider in one scroller, so the catalogue grew past the surface as
+    // soon as a second provider was configured.
+    // By accessible name: the brand mark is `aria-hidden` but carries an SVG <title>, so
+    // `textContent` would read the provider twice.
+    expect(tabNames()).toEqual(["Ollama", "DeepSeek"]);
+    const current = screen.getByRole("tab", { name: "DeepSeek" });
+    expect(current.getAttribute("aria-selected")).toBe("true");
+    // The underline is keyed on what Base UI actually sets. It was written against
+    // `data-selected`, which Base UI does not set, so the accent never appeared.
+    expect(current.getAttribute("data-active")).toBe("");
+    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
       expect.stringContaining("DeepSeek Chat"),
       expect.stringContaining("DeepSeek Reasoner"),
-      expect.stringContaining("Mistral Local"),
     ]);
-    expect(screen.getByRole("listbox").className).toContain("overflow-y-auto");
+  });
 
-    fireEvent.change(search, { target: { value: "reasoner" } });
+  it("holds one measure so the surface does not walk up the screen", async () => {
+    render(<ModelPicker />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+
+    await screen.findByPlaceholderText("Search models…");
+    const list = screen.getByRole("listbox");
+    expect(list.className).toContain("h-[240px]");
+    expect(list.className).toContain("overflow-y-auto");
+  });
+
+  it("moves to another provider's models by tab", async () => {
+    render(<ModelPicker />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+    await screen.findByPlaceholderText("Search models…");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Ollama" }));
     await waitFor(() => {
-      expect(screen.getByText("DeepSeek Reasoner")).toBeTruthy();
-      expect(screen.queryByText("Mistral Local")).toBeNull();
+      expect(options().getByText("Mistral Local")).toBeTruthy();
+      expect(options().queryByText("DeepSeek Chat")).toBeNull();
+    });
+  });
+
+  it("searches every provider, because a typed name is no longer a tab", async () => {
+    render(<ModelPicker />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+    const search = await screen.findByPlaceholderText("Search models…");
+
+    // "Mistral Local" is not in the open tab; the query has to leave the tab behind to find it.
+    fireEvent.change(search, { target: { value: "mistral" } });
+    await waitFor(() => {
+      expect(options().getByText("Mistral Local")).toBeTruthy();
+      expect(options().queryByText("DeepSeek Chat")).toBeNull();
+    });
+  });
+
+  it("gives the query back before it gives up the surface", async () => {
+    render(<ModelPicker />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+    const search = await screen.findByPlaceholderText("Search models…");
+
+    fireEvent.change(search, { target: { value: "mistral" } });
+    await waitFor(() => expect(options().getByText("Mistral Local")).toBeTruthy());
+
+    fireEvent.keyDown(search, { key: "Escape" });
+    await waitFor(() => {
+      expect(options().getByText("DeepSeek Chat")).toBeTruthy();
+    });
+    expect(screen.getByPlaceholderText("Search models…")).toBeTruthy();
+  });
+
+  it("shelves what was chosen, so the next pick is one tab away", async () => {
+    const { unmount } = render(<ModelPicker />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+    const search = await screen.findByPlaceholderText("Search models…");
+
+    fireEvent.change(search, { target: { value: "mistral" } });
+    await waitFor(() => expect(options().getByText("Mistral Local")).toBeTruthy());
+    fireEvent.click(options().getByText("Mistral Local"));
+    expect(state.setModel).toHaveBeenCalledWith({
+      kind: "explicit",
+      provider: "ollama",
+      model: "Mistral Local",
     });
 
-    fireEvent.click(screen.getByText("DeepSeek Reasoner"));
+    unmount();
+    render(<ModelPicker />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+    await screen.findByPlaceholderText("Search models…");
+    expect(tabNames()).toEqual(["Recent", "Ollama", "DeepSeek"]);
+  });
+
+  it("carries the reasoning effort the selection was already holding", async () => {
+    render(<ModelPicker />);
+    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
+    const search = await screen.findByPlaceholderText("Search models…");
+
+    fireEvent.change(search, { target: { value: "reasoner" } });
+    await waitFor(() => expect(options().getByText("DeepSeek Reasoner")).toBeTruthy());
+    fireEvent.click(options().getByText("DeepSeek Reasoner"));
     expect(state.setModel).toHaveBeenCalledWith({
       kind: "explicit",
       provider: "deepseek",

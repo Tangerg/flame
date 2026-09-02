@@ -6,7 +6,15 @@ import {
   type SelectableModel,
   useModels,
 } from "@/plugins/builtin/settings/providers/public/queries";
-import { Button, CatalogPicker, type CatalogPickerGroup, Icon, ProviderIcon } from "@/ui";
+import {
+  Button,
+  type CatalogPickerGroup,
+  Icon,
+  ProviderIcon,
+  providerDisplayName,
+  TabbedCatalogPicker,
+} from "@/ui";
+import { useRecentModelsStore, type RecentModel } from "../adapters/recentModels";
 import { AgentComposerChip } from "@/ui/agent";
 import { useSetComposerModelPreference } from "../public/modelPreference";
 import { useSelectedModelSelection } from "../public/selectedModel";
@@ -15,9 +23,27 @@ function modelItemId(model: SelectableModel): string {
   return JSON.stringify([model.provider, model.id]);
 }
 
-function groupModels(
+export const RECENT_GROUP_ID = "__recent";
+
+function modelItem(model: SelectableModel, selected: SelectableModel) {
+  return {
+    id: modelItemId(model),
+    label: model.label,
+    leading: <ProviderIcon provider={model.provider} size="md" />,
+    description: <ModelCapabilities model={model} />,
+    keywords: [model.provider, model.id],
+    active: model.provider === selected.provider && model.id === selected.id,
+  };
+}
+
+/** One tab per provider, plus the shelf of what this reader actually moves between. The
+ *  shelf republishes entries that also live under their provider; the picker deduplicates by
+ *  id when a query searches across every tab, so a recent model answers once. */
+function modelGroups(
   models: readonly SelectableModel[],
   selected: SelectableModel,
+  recent: readonly RecentModel[],
+  recentLabel: string,
 ): CatalogPickerGroup[] {
   const byProvider = new Map<string, SelectableModel[]>();
   for (const model of models) {
@@ -26,25 +52,30 @@ function groupModels(
     else byProvider.set(model.provider, [model]);
   }
 
-  const groups = [...byProvider].map(([provider, items]) => ({
+  const shelf = recent
+    .map((entry) =>
+      models.find((model) => model.provider === entry.provider && model.id === entry.id),
+    )
+    .filter((model): model is SelectableModel => model !== undefined);
+
+  const providers = [...byProvider].map(([provider, items]) => ({
     id: provider,
-    label: provider.charAt(0).toUpperCase() + provider.slice(1),
+    label: providerDisplayName(provider),
     leading: <ProviderIcon provider={provider} size="sm" />,
-    count: items.length,
-    items: items.map((model) => ({
-      id: modelItemId(model),
-      label: model.label,
-      leading: <ProviderIcon provider={model.provider} size="md" />,
-      description: <ModelCapabilities model={model} />,
-      keywords: [model.provider, model.id],
-      active: model.provider === selected.provider && model.id === selected.id,
-    })),
+    items: items.map((model) => modelItem(model, selected)),
   }));
-  return groups.sort((left, right) => {
-    if (left.id === selected.provider) return -1;
-    if (right.id === selected.provider) return 1;
-    return 0;
-  });
+
+  return shelf.length > 0
+    ? [
+        {
+          id: RECENT_GROUP_ID,
+          label: recentLabel,
+          leading: <Icon name="history" size="sm" />,
+          items: shelf.map((model) => modelItem(model, selected)),
+        },
+        ...providers,
+      ]
+    : providers;
 }
 
 function ModelCapabilities({ model }: { model: SelectableModel }) {
@@ -113,7 +144,12 @@ export function ModelPicker() {
   const setModel = useSetComposerModelPreference();
   const selection = useSelectedModelSelection();
   const selected = selection?.model;
-  const groups = useMemo(() => (selected ? groupModels(models, selected) : []), [models, selected]);
+  const recent = useRecentModelsStore((state) => state.recent);
+  const remember = useRecentModelsStore((state) => state.remember);
+  const groups = useMemo(
+    () => (selected ? modelGroups(models, selected, recent, t("composer.model.recent")) : []),
+    [models, recent, selected, t],
+  );
   const modelsByItemId = useMemo(
     () => new Map(models.map((model) => [modelItemId(model), model])),
     [models],
@@ -140,14 +176,18 @@ export function ModelPicker() {
   if (!selected) return <ModelPickerPlaceholder />;
 
   return (
-    <CatalogPicker
+    <TabbedCatalogPicker
       groups={groups}
+      openAtGroupId={
+        groups.some((group) => group.id === selected.provider) ? selected.provider : groups[0]?.id
+      }
       label={t("composer.switchModel")}
       placeholder={t("composer.model.search.placeholder")}
       emptyLabel={t("composer.model.search.empty")}
       onSelect={(item) => {
         const model = modelsByItemId.get(item.id);
         if (!model) return;
+        remember({ provider: model.provider, id: model.id });
         const reasoningEffort = model.reasoningLevelOrDefault(selection.reasoningEffort);
         setModel({
           kind: "explicit",

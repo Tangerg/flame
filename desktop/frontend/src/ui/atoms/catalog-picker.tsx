@@ -1,6 +1,6 @@
-import { type ReactElement, type ReactNode, useState } from "react";
+import { type ReactElement, type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/classNames";
-import { ComboboxPrimitive } from "@/ui/primitives";
+import { ComboboxPrimitive, TabsPrimitive } from "@/ui/primitives";
 import { Icon, type IconName } from "@/ui/icons";
 import { buttonStyles } from "./button";
 import { Popover } from "./popover";
@@ -23,6 +23,91 @@ export interface CatalogPickerGroup {
   items: CatalogPickerItem[];
 }
 
+interface CatalogSurfaceProps {
+  label: string;
+  placeholder: string;
+  emptyLabel: string;
+  onSelect: (item: CatalogPickerItem) => void;
+  className?: string;
+  contentClassName?: string;
+  trigger?: ReactElement;
+  side?: "top" | "bottom" | "left" | "right";
+  align?: "start" | "center" | "end";
+}
+
+function CatalogTrigger({
+  trigger,
+  label,
+  className,
+}: {
+  trigger?: ReactElement;
+  label: string;
+  className?: string;
+}) {
+  if (trigger) return <Popover.Trigger render={trigger} />;
+  return (
+    <Popover.Trigger
+      aria-label={label}
+      title={label}
+      data-slot="button"
+      data-variant="ghost"
+      className={cn(
+        buttonStyles({ variant: "ghost", size: "icon-sm" }),
+        "data-[popup-open]:bg-selected data-[popup-open]:text-fg",
+        className,
+      )}
+    >
+      <Icon name="plus" size="sm" />
+    </Popover.Trigger>
+  );
+}
+
+function CatalogSearch({
+  placeholder,
+  onEscape,
+  ref,
+}: {
+  placeholder: string;
+  onEscape?: (event: React.KeyboardEvent) => void;
+  ref?: Ref<HTMLInputElement>;
+}) {
+  return (
+    <div className="mb-1 flex h-[var(--field-height-md)] shrink-0 items-center gap-2 rounded-[var(--field-radius)] border-[length:var(--control-edge-width)] border-field bg-canvas px-2.5 text-fg-muted focus-within:border-field-strong focus-within:text-fg">
+      <Icon name="search" size="sm" className="shrink-0" />
+      <ComboboxPrimitive.Input
+        ref={ref}
+        aria-label={placeholder}
+        placeholder={placeholder}
+        onKeyDown={onEscape}
+        className="h-full min-w-0 flex-1 border-0 bg-transparent font-sans text-ui-md text-fg outline-none placeholder:text-fg-faint"
+      />
+    </div>
+  );
+}
+
+function CatalogRow(item: CatalogPickerItem) {
+  return (
+    <ComboboxPrimitive.Item
+      key={item.id}
+      value={item}
+      data-current={item.active ? "" : undefined}
+      className={cn(
+        "grid cursor-default grid-cols-[16px_minmax(0,1fr)_14px] items-center gap-2 rounded-[var(--shape-sm)] px-2.5 text-ui-md text-fg outline-none select-none data-[highlighted]:bg-hover",
+        item.description ? "min-h-11 py-1.5" : "min-h-9",
+      )}
+    >
+      {item.leading ?? <Icon name={item.icon ?? "panel-r"} size="sm" className="text-fg-muted" />}
+      <span className="min-w-0">
+        <span className="block truncate">{item.label}</span>
+        {item.description}
+      </span>
+      {item.active ? <Icon name="check" size="xs" className="text-accent" /> : <span />}
+    </ComboboxPrimitive.Item>
+  );
+}
+
+/** Every group stacked in one scroller. For a catalogue whose groups are short enough to
+ *  read at once — a handful of views, a handful of recipes. */
 export function CatalogPicker({
   groups,
   label,
@@ -34,18 +119,7 @@ export function CatalogPicker({
   trigger,
   side = "bottom",
   align = "end",
-}: {
-  groups: CatalogPickerGroup[];
-  label: string;
-  placeholder: string;
-  emptyLabel: string;
-  onSelect: (item: CatalogPickerItem) => void;
-  className?: string;
-  contentClassName?: string;
-  trigger?: ReactElement;
-  side?: "top" | "bottom" | "left" | "right";
-  align?: "start" | "center" | "end";
-}) {
+}: CatalogSurfaceProps & { groups: CatalogPickerGroup[] }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -57,23 +131,7 @@ export function CatalogPicker({
         if (!nextOpen) setQuery("");
       }}
     >
-      {trigger ? (
-        <Popover.Trigger render={trigger} />
-      ) : (
-        <Popover.Trigger
-          aria-label={label}
-          title={label}
-          data-slot="button"
-          data-variant="ghost"
-          className={cn(
-            buttonStyles({ variant: "ghost", size: "icon-sm" }),
-            "data-[popup-open]:bg-selected data-[popup-open]:text-fg",
-            className,
-          )}
-        >
-          <Icon name="plus" size="sm" />
-        </Popover.Trigger>
-      )}
+      <CatalogTrigger trigger={trigger} label={label} className={className} />
 
       <Popover.Content
         aria-label={label}
@@ -100,14 +158,7 @@ export function CatalogPicker({
           inline
           open
         >
-          <div className="mb-1 flex h-[var(--field-height-md)] shrink-0 items-center gap-2 rounded-[var(--field-radius)] border-[length:var(--control-edge-width)] border-field bg-canvas px-2.5 text-fg-muted focus-within:border-field-strong focus-within:text-fg">
-            <Icon name="search" size="sm" className="shrink-0" />
-            <ComboboxPrimitive.Input
-              aria-label={placeholder}
-              placeholder={placeholder}
-              className="h-full min-w-0 flex-1 border-0 bg-transparent font-sans text-ui-md text-fg outline-none placeholder:text-fg-faint"
-            />
-          </div>
+          <CatalogSearch placeholder={placeholder} />
 
           <ComboboxPrimitive.Empty className="empty:hidden px-2.5 py-6 text-center text-ui-sm text-fg-faint">
             {emptyLabel}
@@ -127,32 +178,164 @@ export function CatalogPicker({
                   )}
                 </ComboboxPrimitive.GroupLabel>
                 <ComboboxPrimitive.Collection>
-                  {(item: CatalogPickerItem) => (
-                    <ComboboxPrimitive.Item
-                      key={item.id}
-                      value={item}
-                      className={cn(
-                        "grid cursor-default grid-cols-[16px_minmax(0,1fr)_14px] items-center gap-2 rounded-[var(--shape-sm)] px-2.5 text-ui-md text-fg outline-none select-none data-[highlighted]:bg-hover",
-                        item.description ? "min-h-11 py-1.5" : "min-h-9",
-                      )}
-                    >
-                      {item.leading ?? (
-                        <Icon name={item.icon ?? "panel-r"} size="sm" className="text-fg-muted" />
-                      )}
-                      <span className="min-w-0">
-                        <span className="block truncate">{item.label}</span>
-                        {item.description}
-                      </span>
-                      {item.active ? (
-                        <Icon name="check" size="xs" className="text-accent" />
-                      ) : (
-                        <span />
-                      )}
-                    </ComboboxPrimitive.Item>
-                  )}
+                  {(item: CatalogPickerItem) => CatalogRow(item)}
                 </ComboboxPrimitive.Collection>
               </ComboboxPrimitive.Group>
             )}
+          </ComboboxPrimitive.List>
+        </ComboboxPrimitive.Root>
+      </Popover.Content>
+    </Popover.Root>
+  );
+}
+
+/**
+ * One group at a time behind a tab strip, over a viewport that does not resize with the
+ * content. An explicit component rather than a mode on the one above: a catalogue deep
+ * enough to need tabs needs a fixed measure, an opening group and a search that leaves the
+ * tabs behind, and none of those mean anything to a stacked list.
+ *
+ * A query searches EVERY group, because a reader who types a name is no longer thinking in
+ * tabs. Items are deduplicated by id on that path, so a group that republishes another's
+ * entries — a recents shelf — does not answer twice.
+ */
+export function TabbedCatalogPicker({
+  groups,
+  openAtGroupId,
+  label,
+  placeholder,
+  emptyLabel,
+  onSelect,
+  className,
+  contentClassName,
+  trigger,
+  side = "bottom",
+  align = "end",
+}: CatalogSurfaceProps & {
+  groups: CatalogPickerGroup[];
+  /** Where the strip opens — the group holding what is in force, which only the caller knows. */
+  openAtGroupId?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [groupId, setGroupId] = useState<string | undefined>(openAtGroupId);
+  const listRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const searching = query.trim().length > 0;
+  const active = groups.find((group) => group.id === groupId) ?? groups[0];
+  const items = searching
+    ? [...new Map(groups.flatMap((group) => group.items).map((item) => [item.id, item])).values()]
+    : (active?.items ?? []);
+
+  // Opening onto the group in force is only half of it — the entry itself can sit below the
+  // fold of a long provider, and a picker that opens without showing what it is picking from
+  // makes the reader scroll to find out what they already have. The caret goes to the search
+  // in the same frame: a catalogue this deep is reached by typing at least as often as by
+  // pointing, and a field that has to be clicked into first is a field that costs a gesture.
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => {
+      searchRef.current?.focus();
+      listRef.current?.querySelector("[data-current]")?.scrollIntoView({ block: "center" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open, groupId]);
+
+  return (
+    <Popover.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (nextOpen) setGroupId(openAtGroupId);
+        setQuery("");
+      }}
+    >
+      <CatalogTrigger trigger={trigger} label={label} className={className} />
+
+      <Popover.Content
+        aria-label={label}
+        align={align}
+        side={side}
+        sideOffset={6}
+        className={cn(
+          "flex w-[300px] max-w-[var(--available-width)] flex-col overflow-hidden",
+          contentClassName,
+        )}
+      >
+        <ComboboxPrimitive.Root<CatalogPickerItem>
+          items={items}
+          value={null}
+          inputValue={query}
+          onInputValueChange={setQuery}
+          onValueChange={(item) => {
+            if (!item) return;
+            onSelect(item);
+            setOpen(false);
+          }}
+          itemToStringLabel={(item) => [item.label, ...(item.keywords ?? [])].join(" ")}
+          autoHighlight
+          inline
+          open
+        >
+          <TabsPrimitive.Root
+            value={active?.id ?? ""}
+            onValueChange={(value) => {
+              setGroupId(String(value));
+              setQuery("");
+            }}
+          >
+            <TabsPrimitive.List
+              aria-label={label}
+              className="flex shrink-0 items-center gap-3 overflow-x-auto border-b border-divider px-2.5 pt-1.5"
+            >
+              {groups.map((group) => (
+                <TabsPrimitive.Tab
+                  key={group.id}
+                  value={group.id}
+                  data-chrome-focus=""
+                  className="group/tab relative shrink-0 border-0 bg-transparent px-0 pb-1.5 text-ui-sm text-fg-muted transition-colors duration-[var(--dur-color)] hover:text-fg focus-visible:outline-none data-[active]:text-fg"
+                >
+                  <span className="flex items-center gap-1.5">
+                    {group.leading}
+                    {group.label}
+                  </span>
+                  {/* DESIGN §9 spends the accent on exactly this: the active tab indicator. */}
+                  <span
+                    aria-hidden
+                    data-slot="catalog-tab-underline"
+                    className="absolute inset-x-0 -bottom-px h-0.5 rounded-pill bg-accent opacity-0 transition-opacity duration-[var(--dur-color)] group-data-[active]/tab:opacity-100"
+                  />
+                </TabsPrimitive.Tab>
+              ))}
+            </TabsPrimitive.List>
+          </TabsPrimitive.Root>
+
+          <div className="px-1.5 pt-1.5">
+            <CatalogSearch
+              ref={searchRef}
+              placeholder={placeholder}
+              onEscape={(event) => {
+                // A query is the reader's narrowing, not their exit. Escape gives that back
+                // first and only closes once there is nothing left to give back.
+                if (event.key !== "Escape" || !searching) return;
+                event.preventDefault();
+                event.stopPropagation();
+                setQuery("");
+              }}
+            />
+          </div>
+
+          <ComboboxPrimitive.Empty className="empty:hidden px-2.5 py-6 text-center text-ui-sm text-fg-faint">
+            {emptyLabel}
+          </ComboboxPrimitive.Empty>
+          <ComboboxPrimitive.List
+            ref={listRef}
+            // A measure that does not move: the surface is anchored to a composer control, so
+            // a list that grows with its group walks the whole popover up the screen.
+            className="h-[240px] min-h-0 overflow-y-auto overscroll-contain scroll-py-1 px-1.5 pb-1.5 outline-none data-empty:hidden"
+          >
+            {(item: CatalogPickerItem) => CatalogRow(item)}
           </ComboboxPrimitive.List>
         </ComboboxPrimitive.Root>
       </Popover.Content>

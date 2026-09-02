@@ -477,11 +477,54 @@ test("model capabilities drive the picker and image admission together", async (
   // The model picker is a combobox, not a menu: it filters, so its rows are
   // options. Only the effort control above is a menu.
   await expect(page.getByRole("option", { name: GPT_5_6_SOL_CAPABILITY_NAME })).toBeVisible();
+  // The picker opens on the provider in force and lists only its models, so reaching another
+  // provider's model is a tab away or a query away. Typing is the path a reader takes when
+  // they already know the name, and it is the one that has to cross every tab.
+  await page.getByPlaceholder("Search models…").fill("Qwen MT Plus");
   await page.getByRole("option", { name: QWEN_MT_PLUS_CAPABILITY_NAME }).click();
 
   await expect(attach).toBeDisabled();
   await expect(effort).toHaveCount(0);
 });
+
+for (const theme of ["light", "dark"] as const) {
+  test(`the model picker opens on one provider over a fixed measure in ${theme}`, async ({
+    page,
+  }) => {
+    await page.goto(`/visual/?fixture=agent&theme=${theme}&state=empty`);
+    await page.locator("html[data-visual-ready]").waitFor();
+
+    await page.getByRole("button", { name: "Switch model" }).click();
+    const surface = page.getByRole("dialog", { name: "Switch model" });
+    await expect(surface).toBeVisible();
+    await expect(page.getByPlaceholder("Search models…")).toBeFocused();
+
+    // The measure is the point: the list does not resize with its group, so the surface
+    // cannot walk up the screen as the reader moves between providers. Settle first — the
+    // popover enters at `scale(0.97)`, so a box read mid-transition is 97% of the answer.
+    const list = page.getByRole("listbox");
+    await expectStableBox(list);
+    const before = await list.boundingBox();
+
+    const tabs = page.getByRole("tab");
+    await tabs.last().click();
+    await expectStableBox(list);
+    expect((await list.boundingBox())!.height).toBe(before!.height);
+
+    await tabs.first().click();
+    await expectStableBox(surface);
+
+    // DESIGN §9 spends the accent on the active tab indicator. It was first written against
+    // `data-selected`, which Base UI does not set, so the rule was live and never matched —
+    // the kind of miss a golden alone can absorb.
+    const underline = (index: number) =>
+      tabs.nth(index).locator('[data-slot="catalog-tab-underline"]');
+    await expect(underline(0)).toHaveCSS("opacity", "1");
+    await expect(underline(1)).toHaveCSS("opacity", "0");
+
+    await expect(surface).toHaveScreenshot(`model-picker-${theme}.png`);
+  });
+}
 
 test("the projectless composer owns Codex's inset rear project tray", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=empty");
