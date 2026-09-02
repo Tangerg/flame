@@ -4,7 +4,7 @@ import { type ApprovalDecision, type RememberScope } from "@/plugins/builtin/age
 import { approvalSettledDecision } from "@/plugins/builtin/agent/public/messagePresentation";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { useT } from "@/lib/i18n";
-import { Button, Divider, DropdownMenu, Icon, Surface, type IconName } from "@/ui";
+import { Button, Divider, DropdownMenu, Icon, Surface, type IconName, Well } from "@/ui";
 import { useApprovalArgsEditor } from "../../application/approvalArgsEditor";
 import { useApprovalCardActions } from "../../application/approvalCardActions";
 import { ApprovalArgsEditor } from "./ApprovalArgsEditor";
@@ -81,9 +81,9 @@ export function ApprovalCard({
       {(cmd.trim() || hasArgs) && (
         <div className="flex flex-col gap-2 px-4 pb-2">
           {cmd.trim() && (
-            <code className="block max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-md bg-sunken px-2.5 py-2 font-mono text-ui-sm font-medium text-fg">
+            <Well as="code" ink="strong" cap="lg" className="block">
               {cmd}
-            </code>
+            </Well>
           )}
           {hasArgs && (
             <ApprovalArgsEditor

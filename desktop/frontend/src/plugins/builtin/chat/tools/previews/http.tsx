@@ -1,6 +1,6 @@
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import type { Tone } from "@/lib/tone";
-import { Badge } from "@/ui";
+import { Badge, Well } from "@/ui";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { ToolOutputPanel } from "@/plugins/builtin/chat/tools/public/previews/ToolOutputPanel";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
@@ -12,7 +12,7 @@ import {
   projectHttpPreview,
 } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { CODE_PREVIEW_CLASS, TEXT_PREVIEW_CLASS } from "./previewChrome";
+import { TEXT_PREVIEW_CLASS } from "./previewChrome";
 
 function statusTone(status: number): Tone | undefined {
   if (status >= 500) return "negative";
@@ -82,7 +82,7 @@ function WebFetchPreview({ tool, onOpenView }: ToolPreviewProps) {
       <div className="mb-1.5">
         <Badge className="font-mono">{page.format}</Badge>
       </div>
-      <pre className={CODE_PREVIEW_CLASS}>{page.content}</pre>
+      <Well cap="md">{page.content}</Well>
       <PreviewFoot label="tools.preview.viewText" onClick={onOpenView} />
     </div>
   );

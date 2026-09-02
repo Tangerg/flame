@@ -1,6 +1,5 @@
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { SectionLabel } from "@/ui";
-import { cn } from "@/lib/classNames";
+import { SectionLabel, Well } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { toolInspectorModel, type ToolInspectorBody } from "../application/toolInspectorModel";
 
@@ -31,14 +30,9 @@ function InspectorSection({ title, body }: { title: string; body: ToolInspectorB
       >
         {title}
       </SectionLabel>
-      <pre
-        className={cn(
-          "max-h-60 overflow-y-auto rounded-sm bg-sunken px-3 py-2.5 font-mono text-ui-sm leading-body text-fg-soft",
-          body.isJson ? "whitespace-pre" : "whitespace-pre-wrap break-all",
-        )}
-      >
+      <Well cap="md" wrap={body.isJson ? "pre" : "anywhere"}>
         {body.text}
-      </pre>
+      </Well>
     </div>
   );
 }

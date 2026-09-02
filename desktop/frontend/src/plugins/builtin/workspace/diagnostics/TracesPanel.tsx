@@ -3,7 +3,7 @@ import type { SpanRow } from "@/lib/observability/stores";
 import { useTelemetryStore } from "@/lib/observability/stores";
 import { Fragment, useCallback, useId, useMemo, useState } from "react";
 import { useT } from "@/lib/i18n";
-import { Icon, Pressable } from "@/ui";
+import { Icon, Pressable, Well } from "@/ui";
 import { cn } from "@/lib/classNames";
 import { Cell, Empty, Row, VirtualList } from "./primitives";
 
@@ -111,7 +111,7 @@ function SpanDetail({ span }: { span: SpanRow }) {
   ];
   const attrs = Object.entries(span.attrs);
   return (
-    <div className="mx-1 mb-1.5 grid gap-2 rounded-md bg-sunken px-3 py-2 font-mono text-ui-sm">
+    <Well as="div" className="mx-1 mb-1.5 grid gap-2">
       {span.statusMessage && (
         <Field label="error">
           <span className="whitespace-pre-wrap break-words text-negative select-text">
@@ -125,7 +125,7 @@ function SpanDetail({ span }: { span: SpanRow }) {
           <KeyValues rows={attrs.map(([k, v]) => [k, String(v)])} />
         </Field>
       )}
-    </div>
+    </Well>
   );
 }
 

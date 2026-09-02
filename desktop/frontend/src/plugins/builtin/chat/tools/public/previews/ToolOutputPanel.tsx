@@ -8,7 +8,7 @@ import {
 import { cn } from "@/lib/classNames";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { useT } from "@/lib/i18n";
-import { Badge, Icon, IconButton, TextButton } from "@/ui";
+import { Badge, Icon, IconButton, TextButton, Well } from "@/ui";
 import { LinkedText } from "@/plugins/builtin/chat/file-references/public/LinkedText";
 import { PreviewPlaceholder } from "./PreviewPlaceholder";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
@@ -75,13 +75,13 @@ export function ToolOutputPanel({
 
   if (lines.length === 0) {
     return (
-      <div className="rounded-sm bg-sunken px-3 py-2.5 font-mono text-code leading-relaxed">
+      <Well as="div">
         <PreviewPlaceholder
           status={status}
           pending="tools.preview.pending.running"
           idle={idleLabel}
         />
-      </div>
+      </Well>
     );
   }
 

@@ -53,3 +53,4 @@ export { Surface } from "./surface";
 export { Switch } from "./switch";
 export { RichTooltip, Tooltip, TooltipProvider } from "./tooltip";
 export { VerticalTabs } from "./vertical-tabs";
+export { Well } from "./well";

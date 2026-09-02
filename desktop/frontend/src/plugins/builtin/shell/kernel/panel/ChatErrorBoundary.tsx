@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { FallbackProps } from "react-error-boundary";
 import { ErrorBoundary } from "react-error-boundary";
 import { useT } from "@/lib/i18n";
-import { Button } from "@/ui";
+import { Button, Well } from "@/ui";
 
 interface Props {
   resetKey?: unknown;
@@ -17,9 +17,9 @@ function ChatErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
       <div className="mb-2 font-semibold text-display-sm tracking-tight text-negative">
         {t("chat.error.title")}
       </div>
-      <pre className="m-0 mb-3 max-h-[200px] overflow-auto rounded-md bg-sunken px-3 py-2.5 font-mono text-ui-md leading-body text-fg-muted whitespace-pre-wrap break-words">
+      <Well cap="md" className="mb-3">
         {error instanceof Error ? error.message : String(error)}
-      </pre>
+      </Well>
       <div className="flex gap-2">
         <Button
           type="button"

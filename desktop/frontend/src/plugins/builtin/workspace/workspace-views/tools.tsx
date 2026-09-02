@@ -6,12 +6,13 @@ import {
   Collapsible,
   DataView,
   Icon,
+  knownIconName,
   PillButton,
   Pressable,
   SectionLabel,
   TextArea,
   TextButton,
-  knownIconName,
+  Well,
 } from "@/ui";
 import { McpRow } from "./views/McpRow";
 import { cn } from "@/lib/classNames";
@@ -246,9 +247,9 @@ function DiagnosticToolInvocationMaterial({
         <span className="text-ui-xs font-medium text-fg-muted">
           {t("tools.diagnostics.schema")}
         </span>
-        <pre className="mt-1 max-h-36 overflow-auto whitespace-pre-wrap break-words rounded-sm bg-sunken px-3 py-2 font-mono text-ui-xs leading-body text-fg-soft">
+        <Well cap="sm" className="mt-1">
           {schema}
-        </pre>
+        </Well>
       </div>
       <div className="flex items-center gap-2">
         <PillButton
@@ -270,12 +271,9 @@ function DiagnosticToolInvocationMaterial({
           <span className="text-ui-xs font-medium text-fg-muted">
             {t("tools.diagnostics.result")}
           </span>
-          <pre
-            className="mt-1 max-h-52 overflow-auto whitespace-pre-wrap break-words rounded-sm bg-sunken px-3 py-2 font-mono text-ui-xs leading-body text-fg-soft"
-            aria-live="polite"
-          >
+          <Well cap="md" className="mt-1" aria-live="polite">
             {result}
-          </pre>
+          </Well>
         </div>
       )}
     </div>

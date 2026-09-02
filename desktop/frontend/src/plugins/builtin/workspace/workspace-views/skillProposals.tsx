@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { Badge, Collapsible, DataView, PillButton, Tag, TextButton } from "@/ui";
+import { Badge, Collapsible, DataView, PillButton, Tag, TextButton, Well } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { notifyError } from "@/plugins/sdk";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
@@ -141,9 +141,7 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
             {reading ? t("skillProposals.hideBody") : t("skillProposals.readBody")}
           </TextButton>
           <Collapsible open={reading}>
-            <pre className="mt-1.5 whitespace-pre-wrap break-words rounded-sm bg-sunken px-3 py-2 font-mono text-ui-sm leading-body text-fg-soft">
-              {proposal.instructions}
-            </pre>
+            <Well className="mt-1.5">{proposal.instructions}</Well>
           </Collapsible>
         </>
       )}
