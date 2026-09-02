@@ -385,7 +385,7 @@ func (i Item) validateToolCall() error {
 			return errors.New("transcript: running ToolCall carries terminal facts")
 		}
 	case ItemCompleted:
-		if i.finishedAt.IsZero() || i.failure != nil {
+		if i.finishedAt.IsZero() || i.executionDuration == nil || i.failure != nil {
 			return errors.New("transcript: completed ToolCall has invalid terminal facts")
 		}
 	case ItemIncomplete:

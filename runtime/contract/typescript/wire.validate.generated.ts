@@ -579,7 +579,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["status", "type"]),
       fields({
         error: absent(),
-      }, ["finishedAt"]),
+      }, ["durationMillis", "finishedAt"]),
     ),
     ifThen(
       fields({
@@ -1574,7 +1574,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["status", "type"]),
       fields({
         error: absent(),
-      }, ["finishedAt"]),
+      }, ["durationMillis", "finishedAt"]),
     ),
     ifThen(
       fields({

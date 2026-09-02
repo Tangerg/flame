@@ -693,7 +693,7 @@ func registerObjectConstraints(s *Shapes) {
 			{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
 			{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.ItemStatusCompleted)},
 		},
-		Required:  []string{"finishedAt"},
+		Required:  []string{"finishedAt", "durationMillis"},
 		Forbidden: []string{"error"},
 	}, {
 		When: []delivery.FieldCondition{

@@ -4248,7 +4248,8 @@
             }
           ],
           "required": [
-            "finishedAt"
+            "finishedAt",
+            "durationMillis"
           ],
           "forbidden": [
             "error"
@@ -4290,7 +4291,8 @@
             }
           ],
           "required": [
-            "finishedAt"
+            "finishedAt",
+            "durationMillis"
           ],
           "forbidden": [
             "error"

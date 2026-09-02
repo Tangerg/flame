@@ -980,6 +980,7 @@ func (i Item) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(i, "type", "compaction"), "error", i),
 		allowedValuesWhen(wireFieldEquals(i, "type", "compaction"), "status", i, []string{"completed"}),
 		requiredWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "completed"), "finishedAt", i),
+		requiredWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "completed"), "durationMillis", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "completed"), "error", i),
 		requiredWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "incomplete"), "finishedAt", i),
 		forbiddenWhen(wireFieldEquals(i, "type", "toolCall") && wireFieldEquals(i, "status", "running"), "finishedAt", i),
@@ -1626,6 +1627,7 @@ func (a ArtifactItem) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(a, "type", "compaction"), "error", a),
 		allowedValuesWhen(wireFieldEquals(a, "type", "compaction"), "status", a, []string{"completed"}),
 		requiredWhen(wireFieldEquals(a, "type", "toolCall") && wireFieldEquals(a, "status", "completed"), "finishedAt", a),
+		requiredWhen(wireFieldEquals(a, "type", "toolCall") && wireFieldEquals(a, "status", "completed"), "durationMillis", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "toolCall") && wireFieldEquals(a, "status", "completed"), "error", a),
 		requiredWhen(wireFieldEquals(a, "type", "toolCall") && wireFieldEquals(a, "status", "incomplete"), "finishedAt", a),
 	)

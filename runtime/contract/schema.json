@@ -788,6 +788,7 @@
               "error": false
             },
             "required": [
+              "durationMillis",
               "finishedAt"
             ]
           }
@@ -3897,6 +3898,7 @@
               "error": false
             },
             "required": [
+              "durationMillis",
               "finishedAt"
             ]
           }

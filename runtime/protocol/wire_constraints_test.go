@@ -903,6 +903,13 @@ func TestItemTimingVocabularyIsVariantExclusive(t *testing.T) {
 	if err := toolCall.ValidateWire(); err != nil {
 		t.Fatalf("terminal tool-call with exact execution duration: %v", err)
 	}
+	toolCall.Status = ItemStatusCompleted
+	toolCall.DurationMillis = nil
+	assertConstraintField(t, toolCall.ValidateWire(), "Item", "durationMillis")
+	toolCall.DurationMillis = &durationMillis
+	if err := toolCall.ValidateWire(); err != nil {
+		t.Fatalf("completed tool-call with exact execution duration: %v", err)
+	}
 
 	artifactToolCall := ArtifactItem{
 		ID: "item_tool", RunID: "run_1", Status: ItemStatusIncomplete,
@@ -911,6 +918,12 @@ func TestItemTimingVocabularyIsVariantExclusive(t *testing.T) {
 	}
 	if err := artifactToolCall.ValidateWire(); err != nil {
 		t.Fatalf("artifact tool-call timing: %v", err)
+	}
+	artifactToolCall.Status = ItemStatusCompleted
+	assertConstraintField(t, artifactToolCall.ValidateWire(), "ArtifactItem", "durationMillis")
+	artifactToolCall.DurationMillis = &durationMillis
+	if err := artifactToolCall.ValidateWire(); err != nil {
+		t.Fatalf("completed artifact tool-call with exact execution duration: %v", err)
 	}
 	artifactToolCall.CreatedAt = at
 	assertConstraintField(t, artifactToolCall.ValidateWire(), "ArtifactItem", "createdAt")

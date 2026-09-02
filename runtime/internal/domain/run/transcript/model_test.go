@@ -90,6 +90,15 @@ func TestItemValidateOwnsPayloadInvariants(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "completed tool missing execution duration",
+			snapshot: transcript.ItemSnapshot{
+				Identity: identity, Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
+				FinishedAt: identity.OccurredAt.Add(time.Second),
+				Tool:       &transcript.ToolInvocation{Name: "shell"},
+			},
+			wantErr: true,
+		},
+		{
 			name: "tool execution duration exceeds lifecycle",
 			snapshot: transcript.ItemSnapshot{
 				Identity: identity, Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
