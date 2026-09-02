@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	agent "github.com/Tangerg/scope/agent"
+	"github.com/Tangerg/scope/agent/interaction"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -27,6 +28,23 @@ func uint64Pointer(value uint64) *uint64 { return &value }
 func intPointer(value int) *int          { return &value }
 func durationPointer(value time.Duration) *time.Duration {
 	return &value
+}
+
+func TestDelegatedInteractionReplyPreservesRefusal(t *testing.T) {
+	message := chat.NewAssistantMessage(chat.NewRefusalPart("I cannot complete that delegated task."))
+	response := chat.Response{Output: &chat.Output{
+		Message: &message, FinishReason: chat.FinishReasonRefusal,
+	}}
+
+	reply, err := delegatedInteractionReply(interaction.Output{
+		Source: interaction.CompletionSourceModelResponse, ModelResponse: &response, ModelCalls: 1,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reply != "I cannot complete that delegated task." {
+		t.Fatalf("delegated reply = %q", reply)
+	}
 }
 
 func TestInteractionDelegationPolicyPreservesOptionalPresence(t *testing.T) {

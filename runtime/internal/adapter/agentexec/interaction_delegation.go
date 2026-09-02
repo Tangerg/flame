@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/interaction"
@@ -269,11 +270,11 @@ func delegatedInteractionReply(output interaction.Output) (string, error) {
 	}
 	switch output.Source {
 	case interaction.CompletionSourceModelResponse:
-		modelOutput := output.ModelResponse.Output
-		if modelOutput == nil || modelOutput.Message == nil || modelOutput.Message.Text() == "" {
+		reply := delegatedMessageReply(*output.ModelResponse.Output.Message)
+		if reply == "" {
 			return "", errors.New("agentexec: delegated Interaction completed without a textual answer")
 		}
-		return modelOutput.Message.Text(), nil
+		return reply, nil
 	case interaction.CompletionSourceDirectToolResults:
 		encoded, err := json.Marshal(output.DirectToolResults)
 		if err != nil {
@@ -283,4 +284,15 @@ func delegatedInteractionReply(output interaction.Output) (string, error) {
 	default:
 		return "", fmt.Errorf("agentexec: unsupported delegated Interaction completion source %q", output.Source)
 	}
+}
+
+func delegatedMessageReply(message corechat.Message) string {
+	var reply strings.Builder
+	for _, part := range message.Parts {
+		switch part.Kind {
+		case corechat.PartText, corechat.PartRefusal:
+			reply.WriteString(part.Text)
+		}
+	}
+	return reply.String()
 }
