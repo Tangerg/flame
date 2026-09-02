@@ -35,6 +35,8 @@ type constraintProjectionFixture struct {
 	NamedProperties   map[constraintProjectionKey]string `json:"namedProperties,omitempty"`
 	NamedMap          constraintProjectionProperties     `json:"namedMap,omitempty"`
 	PointerMinimum    *int                               `json:"pointerMinimum,omitempty"`
+	OptionalMinimum   int                                `json:"optionalMinimum,omitempty"`
+	RequiredMinimum   int                                `json:"requiredMinimum"`
 	ComparableItems   []string                           `json:"comparableItems,omitempty"`
 	MapItems          []map[string]string                `json:"mapItems,omitempty"`
 	ValueParent       constraintProjectionParent         `json:"valueParent"`
@@ -141,6 +143,13 @@ func TestShapeMetadataRejectsUnsupportedValidatorTargets(t *testing.T) {
 			},
 			want: "pointer target",
 		},
+		{
+			name: "optional value minimum number",
+			constraint: FieldConstraint{
+				Field: "optionalMinimum", Kind: ConstraintMinimum, Limit: 1,
+			},
+			want: "optional value",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -167,6 +176,7 @@ func TestShapeMetadataKeepsSupportedValidatorTargets(t *testing.T) {
 		{Field: "pointerItems", Kind: ConstraintUniqueItems},
 		{Field: "comparableItems", Kind: ConstraintUniqueItems},
 		{Field: "mapItems", Kind: ConstraintUniqueItems},
+		{Field: "requiredMinimum", Kind: ConstraintMinimum, Limit: 1},
 	} {
 		err := (FieldConstraintSpec{
 			GoType:      reflect.TypeFor[constraintProjectionFixture](),

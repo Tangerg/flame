@@ -900,6 +900,12 @@ func validateConstraintProjection(owner string, field contractshape.Field, const
 			owner, constraint.Field, constraint.Kind,
 		)
 	}
+	if constraint.Kind == ConstraintMinimum && field.Optional {
+		return fmt.Errorf(
+			"%s.%s constraint %s does not support an optional value field",
+			owner, constraint.Field, constraint.Kind,
+		)
+	}
 	return validateTextualConstraintProjection(owner, field, constraint)
 }
 

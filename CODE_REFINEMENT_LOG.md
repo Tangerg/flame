@@ -759,3 +759,57 @@ Both validators encode set membership with host-language shortcuts: Go hash equa
 
 - Canonical equality now matches representable JSON values in both validators. Cyclic or otherwise non-JSON direct host values remain outside the wire contract; Go reports them as a field violation and actual TypeScript inputs arrive from JSON decoding.
 - Round 15 will audit every optional non-pointer scalar constraint against encoder omission, Go zero values, Schema keywords, and TypeScript property absence, starting with `nonEmpty`, `nonNegative`, `minimum`, `maximum`, and string identity/length rules.
+
+## Round 15 — complete
+
+### Audit scope and evidence
+
+- Enumerated every first-party value constraint whose declared field is an optional non-pointer scalar, then removed the temporary audit test. Max-length, identity, non-negative, maximum, positive, and pattern helpers all accept an omitted zero value or have an explicit optional-scalar path.
+- `minimum` is the remaining unsupported shape: an omitted `omitempty` numeric decodes to zero, but the generator selects `minimumNumber` and rejects it against every positive minimum. No first-party metadata uses this combination.
+- Optional non-empty strings split into conditionally required union fields and `Goal.provider/model`. Union generation deliberately delegates presence to its branch rule. `Goal` is different: its Go validator and protocol tests require an exact provider/model, while both fields carry `omitempty`, so Schema and generated TypeScript permit omission.
+- Removing `omitempty` from `Goal.provider/model` is the correct semantic repair, but it changes the Runtime-generated TypeScript `Goal` type and requires known Desktop fixtures/adapters to migrate. The prompt's highest-priority scope permits only Runtime and CLI changes, so that batch cannot be completed without violating scope; weakening Go/domain requiredness would preserve the wrong design.
+- Baseline inventory and the prior full gates are green; focused dispatch/contractgen baseline remains the Round 14 result.
+
+### Root cause
+
+The field compiler infers optional-scalar policy independently per helper. Most helpers state omission explicitly, while `minimum` falls through to its required-value helper. Separately, `Goal`'s Go tag contradicts the already-enforced aggregate projection invariant.
+
+### Impact and acceptance criteria
+
+- Reject `minimum` on an optional non-pointer value at metadata registration; preserve required scalar minimum and the already-rejected pointer minimum.
+- Add negative and positive support-matrix coverage, generate no unused optional-minimum helper, and change no first-party artifact.
+- Record the Goal tag/consumer conflict as out-of-scope remaining risk rather than weakening or partially migrating the contract.
+- Pass focused, drift, race, static, full Runtime/CLI, and bounded live verification.
+
+### Plan
+
+- **Completed:** added the minimum support-matrix regression and stated the missing optional-value projection in the metadata owner.
+- **Completed:** formatted, regenerated/checked artifacts, remeasured complexity, ran focused/full/live verification, cleaned resources, inspected compatibility, and recorded results.
+
+### Validation
+
+- Before the fix, optional non-pointer `minimum` returned no registration error. After the fix, it fails with an owner/field/constraint diagnostic, while required scalar minimum remains accepted.
+- Dispatch and contractgen focused tests passed in 4.00s. Generated-contract drift, registry-to-validator reachability, and cross-artifact value-constraint tests passed in 4.00s; `go generate ./...` changed no generated artifact.
+- Dispatch and contractgen passed with `-race`; focused `go vet` and `staticcheck` also passed in the combined 16.54s gate.
+- Production-only complexity scanning remains unchanged: `constraintCheck` is the sole cognitive finding at 38, and the new registration branch introduces no threshold finding.
+- Runtime `GOWORK=off go vet ./...` plus `GOWORK=off go build ./...` passed in 5.39s, and uncached `GOWORK=off go test -count=1 ./...` passed in 49.58s.
+- Current-workspace CLI `go vet ./...` plus `go build ./...` passed in 5.58s, and uncached `go test -count=1 ./...` passed in 42.18s.
+- The current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND15_OK`, status `completed`, one step, 9,183 input tokens, 8 output tokens, 9,088 cache-read tokens, and 884ms total model duration. No credential value was printed or copied.
+- `git diff --check` passed.
+
+### Changes and compatibility
+
+- Projection validation now rejects `minimum` when `omitempty` collapses absence into a non-pointer zero value and no optional helper exists. Required scalar minimum retains the existing Go/Schema/TypeScript behavior.
+- No generated helper, schema keyword, wire type, public API, persistence value, or first-party registration changed. The only breaking behavior is earlier rejection of malformed private metadata.
+- The `Goal.provider/model` tag contradiction was deliberately not partially repaired: Runtime and CLI cannot change the generated type without migrating known Desktop consumers, which the task's priority-0 scope forbids.
+
+### Resource cleanup
+
+- The temporary optional-scalar inventory test was deleted immediately after producing the audit evidence.
+- The bounded live Run used a validated `/tmp/flame-live-round15.*` directory containing its isolated Runtime home, Go build cache, and CLI binary. The exit trap moved it to the system Trash; no matching temporary path remained.
+- No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- `Goal.provider/model` remains an evidenced cross-artifact inconsistency blocked by the current Runtime/CLI-only scope. A future scope that includes Desktop should remove both `omitempty` tags, regenerate the contract, and migrate every Goal fixture/adapter in one batch.
+- Round 16 will address the remaining measured contractgen complexity by separating textual, collection/property, and numeric constraint rendering only where the closed support matrix gives each family a coherent responsibility; output must remain byte-for-byte stable.
