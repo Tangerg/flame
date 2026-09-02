@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createRpcClient, type RpcCallOptions, type RpcClient } from "./client";
 import { RpcError, RpcProtocolError, RpcTransportError } from "./errors";
 import { asRunId, asSegmentId, asSessionId } from "./ids";
-import { createMethods, type WorkspaceResources } from "./methods";
+import { createMethods, type WorkspaceMethods } from "./methods";
 import {
   createMutationJournal,
   MutationJournalOwnershipError,
@@ -605,7 +605,10 @@ describe("methods factory", () => {
   // A workspace-bound client attaching it to everything made every home read and write
   // `invalid_params`, which no unit test could see because the shape still type-checked.
   it("knowledge carries a workspace only for the scopes that live in one", async () => {
-    async function paramsOf(send: (r: WorkspaceResources) => void, method: string) {
+    async function paramsOf(
+      send: (resources: WorkspaceMethods) => void,
+      method: "knowledge.get" | "knowledge.update",
+    ) {
       const t = createMemoryTransport();
       send(createMethods(createRpcClient(t)).workspace({ path: "/repo" }));
       return (await waitForRequest(t, method)).params;
