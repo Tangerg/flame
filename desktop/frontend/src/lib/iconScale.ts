@@ -1,5 +1,5 @@
-// Sizes derive from the type base. Weight is NOT: reicon draws filled geometry, not stroked
-// paths, so there is no stroke-width to compensate with.
+// Sizes derive from the type base. Weight does not need a step of its own: Lucide draws on a
+// 24 grid at stroke 2, so the stroke scales with the box the same way the glyph does.
 
 import { normalizeUiFontSize } from "./typography";
 

@@ -1,96 +1,98 @@
-import type { IconComponent } from "reicon-react/createIcon";
+import type { LucideIcon } from "lucide-react";
 import { memo, type CSSProperties } from "react";
 import type { IconSize } from "@/lib/iconScale";
-import { AlertTriangle } from "reicon-react/icons/AlertTriangle";
-import { Archive } from "reicon-react/icons/Archive";
-import { ArrowDown } from "reicon-react/icons/ArrowDown";
-import { ArrowLeft } from "reicon-react/icons/ArrowLeft";
-import { ArrowRight } from "reicon-react/icons/ArrowRight";
-import { ArrowSwapHorizontal } from "reicon-react/icons/ArrowSwapHorizontal";
-import { ArrowUp } from "reicon-react/icons/ArrowUp";
-import { Backward } from "reicon-react/icons/Backward";
-import { Bell } from "reicon-react/icons/Bell";
-import { Book } from "reicon-react/icons/Book";
-import { BookOpen } from "reicon-react/icons/BookOpen";
-import { BoxSearch } from "reicon-react/icons/BoxSearch";
-import { Bug } from "reicon-react/icons/Bug";
-import { Bullseye } from "reicon-react/icons/Bullseye";
-import { CalendarPlus } from "reicon-react/icons/CalendarPlus";
-import { CalendarX } from "reicon-react/icons/CalendarX";
-import { Chart } from "reicon-react/icons/Chart";
-import { Chat } from "reicon-react/icons/Chat";
-import { Check } from "reicon-react/icons/Check";
-import { ChevronDown } from "reicon-react/icons/ChevronDown";
-import { ChevronLeft } from "reicon-react/icons/ChevronLeft";
-import { ChevronRight } from "reicon-react/icons/ChevronRight";
-import { ChevronUp } from "reicon-react/icons/ChevronUp";
-import { CircleTransferH } from "reicon-react/icons/CircleTransferH";
-import { ClipboardCheck } from "reicon-react/icons/ClipboardCheck";
-import { Clock } from "reicon-react/icons/Clock";
-import { CloudConnection } from "reicon-react/icons/CloudConnection";
-import { Code } from "reicon-react/icons/Code";
-import { Command } from "reicon-react/icons/Command";
-import { Copy } from "reicon-react/icons/Copy";
-import { Cpu } from "reicon-react/icons/Cpu";
-import { Database } from "reicon-react/icons/Database";
-import { Designtools } from "reicon-react/icons/Designtools";
-import { Download } from "reicon-react/icons/Download";
-import { Eye } from "reicon-react/icons/Eye";
-import { File } from "reicon-react/icons/File";
-import { FilePlus } from "reicon-react/icons/FilePlus";
-import { FileText } from "reicon-react/icons/FileText";
-import { Files } from "reicon-react/icons/Files";
-import { FilterSearch } from "reicon-react/icons/FilterSearch";
-import { Flag } from "reicon-react/icons/Flag";
-import { Folder } from "reicon-react/icons/Folder";
-import { FolderOpen } from "reicon-react/icons/FolderOpen";
-import { Forward } from "reicon-react/icons/Forward";
-import { Globe } from "reicon-react/icons/Globe";
-import { Help } from "reicon-react/icons/Help";
-import { Hierarchy } from "reicon-react/icons/Hierarchy";
-import { History } from "reicon-react/icons/History";
-import { Image } from "reicon-react/icons/Image";
-import { Library } from "reicon-react/icons/Library";
-import { Lightning } from "reicon-react/icons/Lightning";
-import { List } from "reicon-react/icons/List";
-import { ListCheck } from "reicon-react/icons/ListCheck";
-import { Map } from "reicon-react/icons/Map";
-import { Maximize } from "reicon-react/icons/Maximize";
-import { Minimize } from "reicon-react/icons/Minimize";
-import { Moon } from "reicon-react/icons/Moon";
-import { MoreH } from "reicon-react/icons/MoreH";
-import { Paperclip } from "reicon-react/icons/Paperclip";
-import { Pause } from "reicon-react/icons/Pause";
-import { Pen } from "reicon-react/icons/Pen";
-import { Play } from "reicon-react/icons/Play";
-import { Plus } from "reicon-react/icons/Plus";
-import { Receipt } from "reicon-react/icons/Receipt";
-import { Repeat } from "reicon-react/icons/Repeat";
-import { Routing } from "reicon-react/icons/Routing";
-import { Search } from "reicon-react/icons/Search";
-import { SearchStatus } from "reicon-react/icons/SearchStatus";
-import { SearchZoomIn } from "reicon-react/icons/SearchZoomIn";
-import { SearchZoomOut } from "reicon-react/icons/SearchZoomOut";
-import { Send } from "reicon-react/icons/Send";
-import { Settings } from "reicon-react/icons/Settings";
-import { Share } from "reicon-react/icons/Share";
-import { Shield } from "reicon-react/icons/Shield";
-import { SidebarLeft } from "reicon-react/icons/SidebarLeft";
-import { SidebarRight } from "reicon-react/icons/SidebarRight";
-import { Sparkle } from "reicon-react/icons/Sparkle";
-import { Sparkles } from "reicon-react/icons/Sparkles";
-import { Star } from "reicon-react/icons/Star";
-import { Stop } from "reicon-react/icons/Stop";
-import { Sun } from "reicon-react/icons/Sun";
-import { Target } from "reicon-react/icons/Target";
-import { TerminalSquare } from "reicon-react/icons/TerminalSquare";
-import { TextalignLeft } from "reicon-react/icons/TextalignLeft";
-import { ThumbsDown } from "reicon-react/icons/ThumbsDown";
-import { ThumbsUp } from "reicon-react/icons/ThumbsUp";
-import { Trash } from "reicon-react/icons/Trash";
-import { User } from "reicon-react/icons/User";
-import { Users } from "reicon-react/icons/Users";
-import { X } from "reicon-react/icons/X";
+import {
+  Archive,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Bell,
+  Book,
+  BookOpen,
+  Bot,
+  Brain,
+  Bug,
+  CalendarPlus,
+  CalendarX,
+  ChartColumn,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  CircleQuestionMark,
+  ClipboardCheck,
+  Clock,
+  Code,
+  Command,
+  Copy,
+  Crosshair,
+  Download,
+  Ellipsis,
+  Eye,
+  File,
+  FileDiff,
+  FilePlus,
+  FileText,
+  Flag,
+  Folder,
+  FolderOpen,
+  FolderSearch,
+  GitBranch,
+  GitCompareArrows,
+  Globe,
+  History,
+  Image,
+  Library,
+  List,
+  ListChecks,
+  Map,
+  Maximize,
+  MessageSquare,
+  Minimize,
+  Moon,
+  PackageSearch,
+  PanelLeft,
+  PanelRight,
+  Paperclip,
+  Pause,
+  Pencil,
+  Play,
+  Plus,
+  RefreshCw,
+  Replace,
+  ScrollText,
+  Search,
+  Send,
+  Settings,
+  Share2,
+  Shield,
+  SkipBack,
+  SkipForward,
+  Sparkle,
+  Sparkles,
+  Square,
+  SquareTerminal,
+  Star,
+  Sun,
+  Target,
+  TextSearch,
+  ThumbsDown,
+  ThumbsUp,
+  Trash2,
+  TriangleAlert,
+  UnfoldHorizontal,
+  User,
+  Users,
+  Webhook,
+  WrapText,
+  Wrench,
+  X,
+  Zap,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 
 export type IconName =
   | "search"
@@ -189,57 +191,57 @@ export type IconName =
 const ICON_MAP = {
   search: Search,
   plus: Plus,
-  "zoom-in": SearchZoomIn,
-  "zoom-out": SearchZoomOut,
-  chat: Chat,
+  "zoom-in": ZoomIn,
+  "zoom-out": ZoomOut,
+  chat: MessageSquare,
   folder: Folder,
   "folder-open": FolderOpen,
   code: Code,
-  terminal: TerminalSquare,
+  terminal: SquareTerminal,
   file: File,
   filetext: FileText,
   send: Send,
   "send-arrow": ArrowUp,
-  stop: Stop,
+  stop: Square,
   play: Play,
   pause: Pause,
   settings: Settings,
   sun: Sun,
   moon: Moon,
-  share: Share,
-  more: MoreH,
+  share: Share2,
+  more: Ellipsis,
   x: X,
   check: Check,
-  branch: Hierarchy,
-  git: Routing,
+  branch: GitBranch,
+  git: GitCompareArrows,
   globe: Globe,
   book: Book,
   history: History,
-  tool: Designtools,
+  tool: Wrench,
   sparkle: Sparkle,
   "thumbs-up": ThumbsUp,
   "thumbs-down": ThumbsDown,
-  edit: Pen,
+  edit: Pencil,
   image: Image,
   command: Command,
-  panel: SidebarRight,
-  "panel-l": SidebarLeft,
-  "panel-r": SidebarRight,
+  panel: PanelRight,
+  "panel-l": PanelLeft,
+  "panel-r": PanelRight,
   user: User,
   spark: Sparkles,
-  "skip-back": Backward,
-  "skip-fwd": Forward,
+  "skip-back": SkipBack,
+  "skip-fwd": SkipForward,
   minimize: Minimize,
   maximize: Maximize,
-  diff: Files,
+  diff: FileDiff,
   list: List,
-  chart: Chart,
+  chart: ChartColumn,
   clock: Clock,
   bell: Bell,
-  lightning: Lightning,
+  lightning: Zap,
   bug: Bug,
   shield: Shield,
-  loop: Repeat,
+  loop: RefreshCw,
   copy: Copy,
   "chevron-up": ChevronUp,
   "chevron-down": ChevronDown,
@@ -249,37 +251,37 @@ const ICON_MAP = {
   "arrow-left": ArrowLeft,
   "arrow-right": ArrowRight,
   "arrow-up": ArrowUp,
-  trash: Trash,
-  alert: AlertTriangle,
+  trash: Trash2,
+  alert: TriangleAlert,
   eye: Eye,
   "file-plus": FilePlus,
-  "folder-search": BoxSearch,
+  "folder-search": FolderSearch,
   download: Download,
-  bot: Cpu,
-  question: Help,
+  bot: Bot,
+  question: CircleQuestionMark,
   star: Star,
-  scroll: Receipt,
-  replace: CircleTransferH,
-  "text-search": SearchStatus,
-  webhook: CloudConnection,
+  scroll: ScrollText,
+  replace: Replace,
+  "text-search": TextSearch,
+  webhook: Webhook,
   library: Library,
   "book-open": BookOpen,
   paperclip: Paperclip,
   users: Users,
   map: Map,
-  "list-checks": ListCheck,
+  "list-checks": ListChecks,
   flag: Flag,
-  brain: Database,
-  "package-search": FilterSearch,
+  brain: Brain,
+  "package-search": PackageSearch,
   archive: Archive,
   "calendar-plus": CalendarPlus,
   "calendar-x": CalendarX,
   target: Target,
-  crosshair: Bullseye,
+  crosshair: Crosshair,
   "clipboard-check": ClipboardCheck,
-  "unfold-horizontal": ArrowSwapHorizontal,
-  "wrap-text": TextalignLeft,
-} satisfies Record<IconName, IconComponent>;
+  "unfold-horizontal": UnfoldHorizontal,
+  "wrap-text": WrapText,
+} satisfies Record<IconName, LucideIcon>;
 
 export const ICON_NAMES: ReadonlySet<IconName> = new Set(Object.keys(ICON_MAP) as IconName[]);
 
@@ -303,9 +305,9 @@ const SIZE_STYLE = Object.fromEntries(
   ]),
 ) as Readonly<Record<IconSize, CSSProperties>>;
 
-// Memo + hoisted style are load-bearing: reicon paints via `dangerouslySetInnerHTML`, so any
-// re-render replaces the <path> nodes, and one mid-press detaches the mousedown target and
-// swallows the click.
+// Memoised because a transcript renders one of these per tool row, per message action and per
+// index row, and re-renders them on every streamed token. The props are four scalars and one
+// hoisted style object, so the comparison is cheap and almost always says no.
 export const Icon = memo(function Icon({ name, size = "sm", style, className }: Props) {
   const Glyph = ICON_MAP[name];
   if (!Glyph) return null;
@@ -314,6 +316,9 @@ export const Icon = memo(function Icon({ name, size = "sm", style, className }: 
       aria-hidden="true"
       data-icon-name={name}
       className={className}
+      // Lucide draws on a 24 grid at stroke 2, so the stroke scales with the box: ~1.2px at
+      // the 14px step, ~1px at 12. Pinning it (`absoluteStrokeWidth`) would make a 12px glyph
+      // carry the same weight as a 28px one, which is what makes small icons read as blobs.
       style={style ? { ...SIZE_STYLE[size], ...style } : SIZE_STYLE[size]}
     />
   );

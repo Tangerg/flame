@@ -109,7 +109,7 @@ export function IconShowcase() {
       <p className="m-0 mb-1 text-ui-md leading-body text-fg-muted">
         <Trans
           i18nKey="iconGallery.showcase"
-          values={{ count: total, pkg: "@lobehub/icons", combo: comboGlyph("Mod+K") }}
+          values={{ count: total, pkg: "lucide-react", combo: comboGlyph("Mod+K") }}
           components={{
             code: <Tag size="md" ink="strong" />,
             em: <em className="not-italic text-fg" />,
