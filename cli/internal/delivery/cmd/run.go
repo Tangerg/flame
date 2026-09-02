@@ -83,7 +83,7 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 	if err != nil {
 		return err
 	}
-	runtime, profile, err := provider.OpenRuntime(cmd)
+	runtime, profile, err := provider.Open(cmd)
 	if err != nil {
 		return err
 	}

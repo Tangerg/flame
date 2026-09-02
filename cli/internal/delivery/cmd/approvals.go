@@ -38,7 +38,7 @@ func newApprovalsCommand(provider runtimeProvider) *cobra.Command {
 			if !yes {
 				return errors.New("refusing to delete an approval rule without --yes")
 			}
-			runtime, err := provider.Open(cmd)
+			runtime, err := provider.Runtime(cmd)
 			if err != nil {
 				return err
 			}
@@ -61,7 +61,7 @@ func completeApprovalRuleIDs(provider runtimeProvider, sessionID *string) cobra.
 		if len(args) > 0 || strings.TrimSpace(*sessionID) == "" {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		runtime, err := provider.OpenQuietly(cmd)
+		runtime, err := provider.Runtime(cmd)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
@@ -83,7 +83,7 @@ func completeApprovalRuleIDs(provider runtimeProvider, sessionID *string) cobra.
 }
 
 func listApprovalRules(cmd *cobra.Command, provider runtimeProvider, sessionID string, asJSON bool) error {
-	runtime, err := provider.Open(cmd)
+	runtime, err := provider.Runtime(cmd)
 	if err != nil {
 		return err
 	}

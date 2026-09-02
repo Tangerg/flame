@@ -89,7 +89,7 @@ func (r *runsListFlags) execute(cmd *cobra.Command, provider runtimeProvider) er
 	if err := query.Validate(); err != nil {
 		return err
 	}
-	runtime, profile, err := provider.OpenRuntime(cmd)
+	runtime, profile, err := provider.Open(cmd)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func newRunsShowCommand(provider runtimeProvider) *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			runtime, err := provider.Open(cmd)
+			runtime, err := provider.Runtime(cmd)
 			if err != nil {
 				return err
 			}
@@ -201,7 +201,7 @@ func newRunsCancelCommand(provider runtimeProvider) *cobra.Command {
 			if !yes {
 				return errors.New("refusing to cancel a run without --yes")
 			}
-			runtime, profile, err := provider.OpenRuntime(cmd)
+			runtime, profile, err := provider.Open(cmd)
 			if err != nil {
 				return err
 			}
@@ -276,7 +276,7 @@ func completeFirstRunArgument(provider runtimeProvider) cobra.CompletionFunc {
 		if len(args) > 0 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
-		runtime, profile, err := provider.resolve(cmd.Context())
+		runtime, profile, err := provider.Open(cmd)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}

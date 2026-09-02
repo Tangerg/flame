@@ -54,21 +54,13 @@ type runtimeProvider struct {
 	open func(context.Context) (Runtime, *runtimebinding.Profile, error)
 }
 
-func (r runtimeProvider) Open(cmd *cobra.Command) (Runtime, error) {
-	runtime, _, err := r.resolve(cmd.Context())
+func (r runtimeProvider) Runtime(cmd *cobra.Command) (Runtime, error) {
+	runtime, _, err := r.Open(cmd)
 	return runtime, err
 }
 
-func (r runtimeProvider) OpenRuntime(cmd *cobra.Command) (Runtime, *runtimebinding.Profile, error) {
-	return r.resolve(cmd.Context())
-}
-
-func (r runtimeProvider) OpenQuietly(cmd *cobra.Command) (Runtime, error) {
-	runtime, _, err := r.resolve(cmd.Context())
-	return runtime, err
-}
-
-func (r runtimeProvider) resolve(ctx context.Context) (Runtime, *runtimebinding.Profile, error) {
+func (r runtimeProvider) Open(cmd *cobra.Command) (Runtime, *runtimebinding.Profile, error) {
+	ctx := cmd.Context()
 	if r.open == nil {
 		return nil, nil, errors.New("runtime factory is required")
 	}

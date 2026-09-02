@@ -74,7 +74,7 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 			if err := update.Validate(); err != nil {
 				return err
 			}
-			runtime, profile, err := provider.OpenRuntime(cmd)
+			runtime, profile, err := provider.Open(cmd)
 			if err != nil {
 				return err
 			}
@@ -124,7 +124,7 @@ func newSessionsListCommand(provider runtimeProvider) *cobra.Command {
 				}
 				query.Workspace = resolved
 			}
-			runtime, err := provider.Open(cmd)
+			runtime, err := provider.Runtime(cmd)
 			if err != nil {
 				return err
 			}
@@ -186,7 +186,7 @@ func newSessionsShowCommand(provider runtimeProvider) *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			runtime, err := provider.Open(cmd)
+			runtime, err := provider.Runtime(cmd)
 			if err != nil {
 				return err
 			}
@@ -223,7 +223,7 @@ func newSessionsRenameCommand(provider runtimeProvider) *cobra.Command {
 		Args:         cobra.ExactArgs(2),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			runtime, err := provider.Open(cmd)
+			runtime, err := provider.Runtime(cmd)
 			if err != nil {
 				return err
 			}
@@ -255,7 +255,7 @@ func newSessionsForkCommand(provider runtimeProvider) *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			runtime, err := provider.Open(cmd)
+			runtime, err := provider.Runtime(cmd)
 			if err != nil {
 				return err
 			}
@@ -290,7 +290,7 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 			if !yes {
 				return errors.New("refusing to delete without --yes")
 			}
-			runtime, profile, err := provider.OpenRuntime(cmd)
+			runtime, profile, err := provider.Open(cmd)
 			if err != nil {
 				return err
 			}
@@ -357,7 +357,7 @@ func completeFirstSessionArgument(provider runtimeProvider) cobra.CompletionFunc
 
 func completeSessionIDs(provider runtimeProvider) cobra.CompletionFunc {
 	return func(cmd *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		runtime, err := provider.OpenQuietly(cmd)
+		runtime, err := provider.Runtime(cmd)
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}

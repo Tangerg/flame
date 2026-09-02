@@ -59,7 +59,7 @@ func newRuntimeInfoCommand(provider runtimeProvider) *cobra.Command {
 		Short: "Show discovery identity, capabilities, and hard limits",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			_, profile, err := provider.OpenRuntime(cmd)
+			_, profile, err := provider.Open(cmd)
 			if err != nil {
 				return err
 			}
