@@ -102,11 +102,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
   if (settled.settled) {
     const shown = settled.answers;
     if (!shown) return <HitlSettledRow label={t("question.settled.dismissed")} />;
-    const count = questions.length;
-    const countLabel = t(
-      count === 1 ? "question.settled.question.one" : "question.settled.question.other",
-      { count },
-    );
+    const countLabel = t("question.settled.question", { count: questions.length });
     return (
       <AgentActivityDisclosure
         icon="question"

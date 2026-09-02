@@ -37,7 +37,7 @@ describe("taskReadout", () => {
       runningCount: 2,
       head: firstRunning,
       label: "first +1",
-      title: "2 running task(s)",
+      title: "2 running tasks",
     });
   });
 

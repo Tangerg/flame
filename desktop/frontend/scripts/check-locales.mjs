@@ -96,6 +96,15 @@
 //      a dropped `{{count}}` renders a sentence with the number silently gone.
 //      (The 1265 non-English strings are unreviewed by native speakers — that
 //      part no build can check. This checks what it can.)
+//  15. No value spells a plural with punctuation. `{{count}} task(s)` is not English, it is
+//      a note to the reader that the writer did not know the number — and i18next did,
+//      because `count` was already being passed. Five strings wore it, and the convention
+//      had been COPIED into three languages that do not use it, plus a German
+//      `Lauf/Läufe`. The forms a language needs are its own (`zh` one, `fr` three), so the
+//      rules above compare plural FAMILIES rather than keys and each locale is held to
+//      `Intl.PluralRules`. A string carrying two counts cannot have a plural form at all —
+//      selection reads one number — so `{{events}} events · {{runs}} run(s)` had to become
+//      two sentences.
 //  12. No value writes "..." where it means "…". Three periods is a different
 //      glyph at a different width, so it does not line up with the real one in
 //      the row above it. The catalogs had settled on `…` in 43 strings and one
@@ -222,6 +231,35 @@ function withoutComments(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
 }
 
+// A plural key is `base_one` / `base_other` / …, resolved by i18next from `count`. The
+// SUFFIX SET is a property of the language, not of the catalog: `zh` has one form and `fr`
+// has three, so demanding key-for-key equality with `en` would be demanding that every
+// locale inflect the way English does. That is how five strings came to carry `(s)` — and
+// how German came to carry `Lauf/Läufe` — an orthographic hack standing where a plural form
+// belongs, in four languages that do not use it.
+const PLURAL_SUFFIX = /_(zero|one|two|few|many|other)$/;
+
+function pluralBase(key) {
+  const match = PLURAL_SUFFIX.exec(key);
+  return match ? key.slice(0, -match[0].length) : null;
+}
+
+/** The forms a locale's own plural rules require. `en` two, `fr` three, `zh` one. */
+function pluralForms(locale) {
+  return new Intl.PluralRules(locale).resolvedOptions().pluralCategories;
+}
+
+/** Every plural family in a catalog, as base → the forms it declares. */
+function pluralFamilies(keys) {
+  const families = new Map();
+  for (const key of keys) {
+    const base = pluralBase(key);
+    if (base === null) continue;
+    families.set(base, [...(families.get(base) ?? []), key.slice(base.length + 1)]);
+  }
+  return families;
+}
+
 const duplicates = [];
 
 function keysOf(file) {
@@ -265,26 +303,64 @@ function note(locale, keys, label) {
   failures.push(`${locale}: ${keys.length} ${label} — ${sample}${rest}`);
 }
 
+const enFamilies = pluralFamilies(en);
+const enSingular = new Set([...en].filter((key) => pluralBase(key) === null));
+
 for (const [locale, keys] of catalogs) {
-  if (locale === "en") continue;
-  note(
-    locale,
-    [...keys].filter((key) => !en.has(key)),
-    "key(s) absent from en",
-  );
-  note(
-    locale,
-    [...en].filter((key) => !keys.has(key)),
-    "key(s) missing",
-  );
+  const families = pluralFamilies(keys);
+  const singular = new Set([...keys].filter((key) => pluralBase(key) === null));
+  if (locale !== "en") {
+    // Whether a string inflects is a property of the LANGUAGE, so a locale may answer an
+    // English singular with a family of its own: `{{count}} available` needs no form in
+    // English and three in French, and i18next falls back from a missing form to the base.
+    // What it may not do is answer with nothing, or with a family missing one of its forms.
+    note(
+      locale,
+      [
+        ...[...singular].filter((key) => !enSingular.has(key) && !enFamilies.has(key)),
+        ...[...families.keys()].filter((base) => !enFamilies.has(base) && !enSingular.has(base)),
+      ],
+      "key(s) absent from en",
+    );
+    note(
+      locale,
+      [
+        ...[...enSingular].filter((key) => !singular.has(key) && !families.has(key)),
+        ...[...enFamilies.keys()].filter((base) => !families.has(base)),
+      ],
+      "key(s) missing",
+    );
+  }
+  // Each family carries exactly the forms this language inflects for — no fewer, so
+  // `t()` cannot fall through and render its own key at a count nobody tried, and no more,
+  // so a catalog does not carry a form its readers never see.
+  const wanted = pluralForms(locale).slice().sort().join(",");
+  for (const [base, forms] of families) {
+    const have = forms.slice().sort().join(",");
+    if (have !== wanted) {
+      failures.push(
+        `${locale}: "${base}" declares ${have || "no"} plural form(s), needs ${wanted}`,
+      );
+    }
+  }
 }
 
 const HOST_LOCALE_CALL = /\.(toLocale(?:Date|Time)?String)\(\s*\)/g;
 
 // Rule 12 — one character, not three periods. See the header for why it earns a gate.
+// Rule 15 — and no orthographic stand-in for a plural form.
+// A word with a bracketed inflection glued to it: `task(s)`, `Aufgabe(n)`, `error(es)`,
+// `non lue(s)`. Deliberately narrow — a slash form (`Lauf/Läufe`) reads the same to a person
+// but is indistinguishable from a path, a ratio, or honest either/or copy.
+const PLURAL_HACK = /[A-Za-zÀ-ÿ]\([a-z]{1,3}\)/;
 for (const [locale] of catalogs) {
   for (const [key, value] of valuesOf(`${locale}.ts`)) {
     if (value.includes("...")) failures.push(`${locale}: "${key}" writes "..." — use "…"`);
+    if (PLURAL_HACK.test(value)) {
+      failures.push(
+        `${locale}: "${key}" spells a plural with punctuation — give it \`${key}_one\`/\`_other\` and let i18next choose`,
+      );
+    }
   }
 }
 
@@ -330,7 +406,9 @@ for (const path of sourceFiles(SRC_DIR)) {
 
   const code = withoutComments(source);
   for (const match of code.matchAll(LITERAL_KEY_PATTERN)) {
-    if (!en.has(match[1])) {
+    // A plural key is named by its BASE: `t("plugins.errors", { count })` is what i18next
+    // resolves to `plugins.errors_one` or `_other`, and the suffixed form appears nowhere.
+    if (!en.has(match[1]) && !enFamilies.has(match[1])) {
       failures.push(`${relative}: t("${match[1]}") names a key no catalog has`);
     }
   }
@@ -485,12 +563,15 @@ for (const path of sourceFiles(SRC_DIR)) {
     for (const match of source.matchAll(DYNAMIC_KEY_PREFIX)) prefixes.add(match[1]);
   }
   const blob = named.join("\n");
-  const unnamed = [...en].filter(
-    (key) =>
-      !blob.includes(`"${key}"`) &&
-      !blob.includes(`'${key}'`) &&
-      ![...prefixes].some((prefix) => key.startsWith(prefix)),
-  );
+  const unnamed = [...en].filter((key) => {
+    // …and named by its base for the same reason.
+    const named = pluralBase(key) ?? key;
+    return (
+      !blob.includes(`"${named}"`) &&
+      !blob.includes(`'${named}'`) &&
+      ![...prefixes].some((prefix) => named.startsWith(prefix))
+    );
+  });
   if (unnamed.length > 0) {
     const sample = unnamed.slice(0, 8).join(", ");
     const rest = unnamed.length > 8 ? `, … (+${unnamed.length - 8} more)` : "";

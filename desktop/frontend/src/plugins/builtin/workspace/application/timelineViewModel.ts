@@ -118,7 +118,13 @@ export function timelineSubtext(
   t: Translate,
   { eventCount, runCount }: Pick<TimelineViewModel, "eventCount" | "runCount">,
 ): string {
-  return t("timeline.summary", { events: eventCount, runs: runCount });
+  // Two counts, so two sentences: a plural form is chosen from ONE number, and a single
+  // string carrying both can only be written for a language that does not inflect — which is
+  // how `{{runs}} run(s)` and `{{runs}} Lauf/Läufe` came to stand where a plural belongs.
+  return [
+    t("timeline.summary.events", { count: eventCount }),
+    t("timeline.summary.runs", { count: runCount }),
+  ].join(" · ");
 }
 
 export function timelineTimeOfDay(ts: number): string {

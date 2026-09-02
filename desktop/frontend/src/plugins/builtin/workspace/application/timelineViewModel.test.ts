@@ -120,8 +120,10 @@ describe("timeline view helpers", () => {
     expect(timelineGroupKey({ runId: "run-a", run: run("run-a"), depth: 0, items: [] })).toBe(
       "run-a",
     );
-    expect(timelineSubtext(t, { eventCount: 0, runCount: 0 })).toBe("0 events · 0 run(s)");
-    expect(timelineSubtext(t, { eventCount: 3, runCount: 2 })).toBe("3 events · 2 run(s)");
+    expect(timelineSubtext(t, { eventCount: 0, runCount: 0 })).toBe("0 events · 0 runs");
+    expect(timelineSubtext(t, { eventCount: 3, runCount: 2 })).toBe("3 events · 2 runs");
+    // One of each: the whole reason two counts cannot share one sentence.
+    expect(timelineSubtext(t, { eventCount: 1, runCount: 1 })).toBe("1 event · 1 run");
   });
 
   it("formats timestamps as local time of day", () => {
