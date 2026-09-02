@@ -10,9 +10,11 @@ import type { AgentMemoryGateway } from "./ports/agentMemoryGateway";
 import { WORKSPACE_AGENT_MEMORY_KEY, type AgentMemoryEntry } from "./workspaceQueries";
 import { AgentMemoryMutationOwner } from "./agentMemoryMutationOwner";
 
+const MEMORY_ID = "mem_0123456789abcdef0123456789abcdef";
+
 function memory(overrides: Partial<AgentMemoryEntry> = {}): AgentMemoryEntry {
   return {
-    id: "memory_1",
+    id: MEMORY_ID,
     scope: "user",
     content: "Remember this",
     origin: "user",
@@ -82,14 +84,14 @@ describe("agent memory configuration", () => {
       .mockReturnValueOnce(second.promise);
     installGateway({ setPinned } as unknown as AgentMemoryGateway);
 
-    const pinned = setAgentMemoryPinned("memory_1", true);
-    const unpinned = setAgentMemoryPinned("memory_1", false);
+    const pinned = setAgentMemoryPinned(MEMORY_ID, true);
+    const unpinned = setAgentMemoryPinned(MEMORY_ID, false);
     await vi.waitFor(() => expect(setPinned).toHaveBeenCalledTimes(1));
 
     first.resolve(memory({ pinned: true, updatedAt: "2026-08-12T12:00:01Z" }));
     await pinned;
     await Promise.resolve();
-    expect(setPinned).toHaveBeenNthCalledWith(2, "memory_1", false);
+    expect(setPinned).toHaveBeenNthCalledWith(2, MEMORY_ID, false);
 
     second.resolve(memory({ pinned: false, updatedAt: "2026-08-12T12:00:02Z" }));
     await unpinned;
@@ -109,15 +111,15 @@ describe("agent memory configuration", () => {
       delete: remove,
     } as unknown as AgentMemoryGateway);
 
-    const pinned = setAgentMemoryPinned("memory_1", true);
-    const deleted = deleteAgentMemory("memory_1");
+    const pinned = setAgentMemoryPinned(MEMORY_ID, true);
+    const deleted = deleteAgentMemory(MEMORY_ID);
     await vi.waitFor(() => expect(setPinned).toHaveBeenCalledOnce());
     expect(remove).not.toHaveBeenCalled();
 
     first.resolve(memory({ pinned: true, updatedAt: "2026-08-12T12:00:01Z" }));
     await pinned;
     await deleted;
-    expect(remove).toHaveBeenCalledWith("memory_1");
+    expect(remove).toHaveBeenCalledWith(MEMORY_ID);
     expect(queryClient.getQueryData([WORKSPACE_AGENT_MEMORY_KEY, query])).toEqual([]);
   });
 });

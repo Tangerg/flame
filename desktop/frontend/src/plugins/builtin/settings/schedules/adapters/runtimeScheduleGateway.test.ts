@@ -9,6 +9,7 @@ import {
   updateSchedule,
 } from "../application/scheduleCommands";
 import { SCHEDULES_KEY } from "../application/scheduleQueries";
+import { validateWire, type WireTypeName } from "@flame/runtime-contract/validate";
 import { installScheduleGateway, registerScheduleDataProvider } from "./runtimeScheduleGateway";
 import { contributeForTest } from "@/plugins/sdk/testKernel";
 import { lookupDataProvider } from "@/plugins/sdk/selectors";
@@ -37,7 +38,7 @@ afterEach(() => {
 
 function schedule(workspace?: { path: string }): Schedule {
   return {
-    id: "schedule-1",
+    id: "sch_1",
     title: "Review",
     instructions: "Review changes",
     ...(workspace ? { workspace } : {}),
@@ -46,6 +47,17 @@ function schedule(workspace?: { path: string }): Schedule {
     createdAt: "2026-08-12T00:00:00Z",
     revision: 1,
   };
+}
+
+/**
+ * The generated TypeScript cannot express what the Runtime actually requires — it types
+ * `instructions` as a string, while the wire also demands it contain something other than
+ * whitespace, and it types an optional field as optional where the validator forbids it
+ * beside a sibling. So the shape is asserted against the validator, on the object the client
+ * was really handed, not on the type the call site happened to satisfy.
+ */
+function expectSendable(shape: WireTypeName, call: ReturnType<typeof vi.fn>): void {
+  expect(validateWire(shape, call.mock.calls[0]?.[0])).toEqual([]);
 }
 
 describe("runtimeScheduleGateway", () => {
@@ -66,6 +78,7 @@ describe("runtimeScheduleGateway", () => {
       instructions: "Review changes",
       cron: "0 9 * * 1",
     });
+    expectSendable("CreateScheduleRequest", create);
   });
 
   it("uses the explicit Runtime-default mode when an edit clears a binding", async () => {
@@ -74,7 +87,7 @@ describe("runtimeScheduleGateway", () => {
     installation = installScheduleGateway();
 
     await updateSchedule({
-      id: "schedule-1",
+      id: "sch_1",
       title: "Review",
       instructions: "Review changes",
       cwd: "",
@@ -84,7 +97,7 @@ describe("runtimeScheduleGateway", () => {
     });
 
     expect(update).toHaveBeenCalledWith({
-      id: "schedule-1",
+      id: "sch_1",
       expectedRevision: 7,
       title: "Review",
       instructions: "Review changes",
@@ -92,6 +105,7 @@ describe("runtimeScheduleGateway", () => {
       cron: "0 9 * * 1",
       enabled: true,
     });
+    expectSendable("UpdateScheduleRequest", update);
   });
 
   it("sends a valid workspace ref when an edit sets an explicit binding", async () => {
@@ -100,7 +114,7 @@ describe("runtimeScheduleGateway", () => {
     installation = installScheduleGateway();
 
     await updateSchedule({
-      id: "schedule-1",
+      id: "sch_1",
       title: "Review",
       instructions: "Review changes",
       cwd: "/workspace",
@@ -110,7 +124,7 @@ describe("runtimeScheduleGateway", () => {
     });
 
     expect(update).toHaveBeenCalledWith({
-      id: "schedule-1",
+      id: "sch_1",
       expectedRevision: 7,
       title: "Review",
       instructions: "Review changes",
@@ -118,6 +132,7 @@ describe("runtimeScheduleGateway", () => {
       cron: "0 9 * * 1",
       enabled: true,
     });
+    expectSendable("UpdateScheduleRequest", update);
   });
 
   it("preserves the launched session and run identities from run-now", async () => {
@@ -125,11 +140,11 @@ describe("runtimeScheduleGateway", () => {
     setContainer({ client: () => ({ schedules: { runNow } }) as unknown as FlameClient });
     installation = installScheduleGateway();
 
-    await expect(runScheduleNow("schedule-1")).resolves.toEqual({
+    await expect(runScheduleNow("sch_1")).resolves.toEqual({
       sessionId: "ses_scheduled",
       runId: "run_1",
     });
-    expect(runNow).toHaveBeenCalledWith("schedule-1");
+    expect(runNow).toHaveBeenCalledWith("sch_1");
   });
 
   it("preserves the authoritative revision returned by an enablement change", async () => {
@@ -155,7 +170,7 @@ describe("runtimeScheduleGateway", () => {
       client: () => ({ schedules: { runNow: runNowRetired } }) as unknown as FlameClient,
     });
     const retiredInstallation = installScheduleGateway();
-    const command = rejected(runScheduleNow("schedule-1"));
+    const command = rejected(runScheduleNow("sch_1"));
     await vi.waitFor(() => expect(runNowRetired).toHaveBeenCalledOnce());
 
     setContainer({
@@ -215,9 +230,7 @@ describe("the schedules read", () => {
     }));
     setContainer({ client: () => ({ schedules: { list } }) as unknown as FlameClient });
 
-    await expect(read()).resolves.toEqual([
-      expect.objectContaining({ id: "schedule-1", cwd: "/repo" }),
-    ]);
+    await expect(read()).resolves.toEqual([expect.objectContaining({ id: "sch_1", cwd: "/repo" })]);
     expect(await read()).not.toContainEqual(
       expect.objectContaining({ workspace: expect.anything() }),
     );

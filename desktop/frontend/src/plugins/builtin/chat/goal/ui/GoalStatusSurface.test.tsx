@@ -132,6 +132,20 @@ describe("Goal status surface", () => {
     );
   });
 
+  // The Runtime rejects a blank objective outright, so this dialog is the only thing standing
+  // between an accidental select-all-delete and a failed command with nothing to show for it.
+  it("refuses to save an objective that is only whitespace", () => {
+    render(<GoalStatusSurface />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit goal" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Goal" }), { target: { value: "   " } });
+    const save = screen.getByRole("button", { name: "Save" });
+
+    expect(save.getAttribute("disabled")).not.toBeNull();
+    fireEvent.click(save);
+    expect(model.updateGoal).not.toHaveBeenCalled();
+  });
+
   it("does not submit the Goal editor while an IME composition is active", () => {
     render(<GoalStatusSurface />);
 

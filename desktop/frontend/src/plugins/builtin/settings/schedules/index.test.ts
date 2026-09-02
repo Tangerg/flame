@@ -50,7 +50,7 @@ describe("schedules plugin Runtime generation wiring", () => {
     });
     await loadPluginsForTest(runtime, schedulesPlugin);
 
-    const command = rejected(runScheduleNow("schedule-1"));
+    const command = rejected(runScheduleNow("sch_1"));
     await vi.waitFor(() => expect(runNow).toHaveBeenCalledOnce());
 
     generation = RuntimeConnectionGeneration.forProcess("runtime_2");

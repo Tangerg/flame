@@ -31,16 +31,16 @@ describe("schedule commands", () => {
     queryClient.setQueryData([SCHEDULES_KEY], []);
     const invalidate = vi.spyOn(queryClient, "invalidateQueries");
 
-    await expect(runScheduleNow("schedule-1")).resolves.toEqual(run);
+    await expect(runScheduleNow("sch_1")).resolves.toEqual(run);
 
-    expect(runNow).toHaveBeenCalledWith("schedule-1");
+    expect(runNow).toHaveBeenCalledWith("sch_1");
     expect(invalidate).toHaveBeenCalledWith({ queryKey: [SCHEDULES_KEY] });
     expect(selectAgentSession).toHaveBeenCalledWith("ses_scheduled");
   });
 
   it("commits the authoritative enablement revision before revalidation", async () => {
     const current = {
-      id: "schedule-1",
+      id: "sch_1",
       title: "Review",
       instructions: "Review changes",
       cwd: "/repo",
@@ -60,7 +60,7 @@ describe("schedule commands", () => {
 
   it("serializes same-schedule intents and rebases them on the accepted revision", async () => {
     const current = {
-      id: "schedule-1",
+      id: "sch_1",
       title: "Review",
       instructions: "Review changes",
       cwd: "/repo",
@@ -95,7 +95,7 @@ describe("schedule commands", () => {
 
   it("preserves accepted enablement when a queued edit rebases its revision", async () => {
     const current = {
-      id: "schedule-1",
+      id: "sch_1",
       title: "Review",
       instructions: "Review changes",
       cwd: "/repo",
@@ -138,7 +138,7 @@ describe("schedule commands", () => {
 
   it("does not block a different schedule behind an in-flight mutation", async () => {
     const current = {
-      id: "schedule-1",
+      id: "sch_1",
       title: "Review",
       instructions: "Review changes",
       cron: "0 9 * * 1",
@@ -154,7 +154,7 @@ describe("schedule commands", () => {
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
 
     const mutation = setScheduleEnabled(current, false);
-    await expect(runScheduleNow("schedule-2")).resolves.toEqual(run);
+    await expect(runScheduleNow("sch_2")).resolves.toEqual(run);
 
     slow.resolve({ ...current, enabled: false, revision: 8 });
     await expect(mutation).resolves.toMatchObject({ enabled: false, revision: 8 });
@@ -167,7 +167,7 @@ describe("schedule commands", () => {
     } as unknown as ScheduleGateway);
     vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("cache unavailable"));
 
-    await expect(runScheduleNow("schedule-1")).resolves.toEqual(run);
+    await expect(runScheduleNow("sch_1")).resolves.toEqual(run);
     expect(selectAgentSession).toHaveBeenCalledWith("ses_scheduled");
   });
 });

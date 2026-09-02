@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { validateWire } from "@flame/runtime-contract/validate";
 import type { ComposerSubmitModeContext } from "@/plugins/sdk";
 import type { GoalState } from "./goalReadModel";
 import { GoalComposerModeOwner } from "./goalComposerMode";
@@ -51,6 +52,12 @@ beforeEach(() => {
 
 afterEach(() => owner.dispose());
 
+/** The Goal gateway forwards this input to `goals.start` unchanged, so what is built here is
+ *  what the Runtime validates. */
+function expectSendable(start: GoalComposerSubmitDependencies["start"]): void {
+  expect(validateWire("StartGoalRequest", vi.mocked(start).mock.calls[0]?.[0])).toEqual([]);
+}
+
 describe("Goal composer submit mode", () => {
   it("turns a bare /goal command into composer mode without opening a second draft", () => {
     context = {
@@ -84,8 +91,28 @@ describe("Goal composer submit mode", () => {
         reasoningEffort: "high",
       }),
     );
+    expectSendable(dependencies.start);
     expect(context.accept).toHaveBeenCalledOnce();
     expect(owner.snapshot().phase).toBe("inactive");
+  });
+
+  // A model preference is three fields the Runtime accepts only as a set — `reasoningEffort`
+  // needs both of the others, and provider and model need each other. `StartGoalInput` types
+  // all three as independently optional, so the whole invariant rests on the shape of one
+  // conditional spread. Both of its branches are asserted against the validator itself.
+  it("sends the inherited session preference as no model fields at all", async () => {
+    dependencies.modelPreference = () => ({ kind: "session" });
+    const mode = createGoalComposerSubmitMode(owner, dependencies);
+
+    mode.submit(context);
+
+    await vi.waitFor(() =>
+      expect(dependencies.start).toHaveBeenCalledWith({
+        sessionId: "ses_a",
+        objective: "ship alpha",
+      }),
+    );
+    expectSendable(dependencies.start);
   });
 
   it("keeps the exact draft armed when Runtime rejects the start", async () => {

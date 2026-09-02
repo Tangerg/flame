@@ -4,6 +4,7 @@ import { AgentMemoryMutationOwner } from "./agentMemoryMutationOwner";
 import type { AgentMemoryGateway } from "./ports/agentMemoryGateway";
 import { WORKSPACE_AGENT_MEMORY_KEY, type AgentMemoryEntry } from "./workspaceQueries";
 
+const MEMORY_ID = "mem_0123456789abcdef0123456789abcdef";
 const QUERY = { scope: "user" } as const;
 let owner: AgentMemoryMutationOwner | undefined;
 
@@ -24,8 +25,8 @@ describe("AgentMemoryMutationOwner", () => {
     owner = AgentMemoryMutationOwner.install({ setPinned } as unknown as AgentMemoryGateway);
     queryClient.setQueryData([WORKSPACE_AGENT_MEMORY_KEY, QUERY], [memory()]);
 
-    const inFlight = owner.setPinned("memory_1", true);
-    const queued = owner.setPinned("memory_1", false);
+    const inFlight = owner.setPinned(MEMORY_ID, true);
+    const queued = owner.setPinned(MEMORY_ID, false);
     const inFlightSettlement = rejected(inFlight);
     const queuedSettlement = rejected(queued);
     await vi.waitFor(() => expect(setPinned).toHaveBeenCalledOnce());
@@ -43,7 +44,7 @@ describe("AgentMemoryMutationOwner", () => {
     await Promise.resolve();
     expect(queryClient.getQueryData([WORKSPACE_AGENT_MEMORY_KEY, QUERY])).toEqual([memory()]);
 
-    await expect(owner.setPinned("memory_1", false)).resolves.toBeUndefined();
+    await expect(owner.setPinned(MEMORY_ID, false)).resolves.toBeUndefined();
     expect(setPinned).toHaveBeenCalledTimes(2);
     expect(queryClient.getQueryData([WORKSPACE_AGENT_MEMORY_KEY, QUERY])).toEqual([
       memory({ content: "successor", pinned: false }),
@@ -58,14 +59,14 @@ describe("AgentMemoryMutationOwner", () => {
     queryClient.setQueryData([WORKSPACE_AGENT_MEMORY_KEY, QUERY], [memory()]);
     vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("read unavailable"));
 
-    await expect(owner.setPinned("memory_1", true)).resolves.toBeUndefined();
+    await expect(owner.setPinned(MEMORY_ID, true)).resolves.toBeUndefined();
     expect(queryClient.getQueryData([WORKSPACE_AGENT_MEMORY_KEY, QUERY])).toEqual([saved]);
   });
 
   it("serializes one memory identity without blocking an unrelated item", async () => {
     const first = deferred<AgentMemoryEntry>();
     const setPinned = vi.fn((id: string, pinned: boolean) =>
-      id === "memory_1"
+      id === MEMORY_ID
         ? first.promise
         : Promise.resolve(memory({ id, content: "Independent", pinned })),
     );
@@ -75,7 +76,7 @@ describe("AgentMemoryMutationOwner", () => {
       [memory(), memory({ id: "memory_2", content: "Independent" })],
     );
 
-    const blocked = owner.setPinned("memory_1", true);
+    const blocked = owner.setPinned(MEMORY_ID, true);
     const independent = owner.setPinned("memory_2", true);
 
     await vi.waitFor(() => expect(setPinned).toHaveBeenCalledTimes(2));
@@ -87,7 +88,7 @@ describe("AgentMemoryMutationOwner", () => {
 
 function memory(overrides: Partial<AgentMemoryEntry> = {}): AgentMemoryEntry {
   return {
-    id: "memory_1",
+    id: MEMORY_ID,
     scope: "user",
     content: "Remember this",
     origin: "user",
