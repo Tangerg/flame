@@ -173,6 +173,7 @@ type executionComposition struct {
 func buildExecutionComposition(
 	ctx context.Context,
 	cfg Config,
+	defaultSelection modelref.Selection,
 	lifetime *hostLifetime,
 	buildTools toolEnvironmentBuilder,
 	policy policyComposition,
@@ -186,10 +187,6 @@ func buildExecutionComposition(
 			persistence.Transactor(cfg.Transactor),
 		),
 	)
-	if err != nil {
-		return executionComposition{}, err
-	}
-	defaultSelection, err := runtimeDefaultModelSelection(cfg)
 	if err != nil {
 		return executionComposition{}, err
 	}

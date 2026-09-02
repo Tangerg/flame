@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
@@ -244,6 +245,34 @@ func TestAssemblyFailureReclaimsToolsAndOwnedResources(t *testing.T) {
 	if got := resourceClosed.Load(); got != 1 {
 		t.Fatalf("owned resource closer calls = %d, want 1", got)
 	}
+}
+
+func TestAssemblyRejectsInvalidDefaultModelBeforeStartupReconciliation(t *testing.T) {
+	cfg := runtimeConfigWithRequiredDeps(t)
+	db, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "tool-results.db"))
+	if err != nil {
+		t.Fatalf("open tool-result store: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := sqlitestore.NewToolResultStore(db)
+	id := toolresult.NewID()
+	if err := store.Stage(t.Context(), toolresult.Stage{
+		ID: id, SessionID: "ses_staged", ToolName: "shell", Body: "unbound",
+	}); err != nil {
+		t.Fatalf("stage tool result: %v", err)
+	}
+	cfg.ToolResultStore = store
+	cfg.Provider = ""
+
+	assembly := NewAssembly(t.Context(), cfg)
+	_, err = BuildAssembly(t.Context(), assembly)
+	if err == nil || !strings.Contains(err.Error(), "default model selection") {
+		t.Fatalf("BuildAssembly error = %v, want invalid default model selection", err)
+	}
+	if _, found, fetchErr := store.Fetch(t.Context(), "ses_staged", id); fetchErr != nil || !found {
+		t.Fatalf("staged tool result after rejected config = (found %v, err %v), want (true, nil)", found, fetchErr)
+	}
+	_ = CloseAssembly(assembly)
 }
 
 func TestAssemblyBuilderFailureReclaimsReturnedAcquisitions(t *testing.T) {

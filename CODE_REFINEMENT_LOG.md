@@ -325,3 +325,56 @@ Allowed-value type validation reused a traversal helper whose broader contract d
 
 - The fix affects only malformed metadata and is guarded at the earliest common owner before either projection runs. Existing registrations and byte-for-byte artifact drift gates cover the accepted path.
 - Round 7 will audit bootstrap assembly and configuration authority, the next measured complex boundary, for duplicated provider/model or lifecycle ownership before considering any extraction.
+
+## Round 7 — complete
+
+### Audit scope and evidence
+
+- Traced the default provider/model pair from process settings through `Config`, execution composition, utility-role fallback, Session creation, and Run freezing.
+- `buildAssembly` validates adapter presence and paths, then purges unbound tool-result blobs before the default model pair is parsed. A malformed pair therefore mutates durable startup state before construction rejects its configuration.
+- The same `runtimeDefaultModelSelection` derivation runs again in `buildAssemblyCore` for Session dependencies. Configuration is immutable during one build, so the second parse is a duplicate representation and a second failure point for one fact.
+- The model environment is already the composition capsule shared by interactive execution, auxiliary model work, and Session-facing model state. It can carry the one validated default selection without adding a package, interface, or locator.
+- Baseline: `GOWORK=off go test -count=1 ./internal/bootstrap -run 'TestAssembly|TestNewRequiresRuntimeDependencies'` passed in 2.14s.
+
+### Root cause
+
+Default model selection was treated as a local constructor argument at two downstream consumers instead of a validated composition input. As a result, its validation happened after startup reconciliation and its value had no single owner during assembly.
+
+### Impact and acceptance criteria
+
+- Parse and validate the default provider/model pair exactly once, immediately after structural Config validation and before any persistence cleanup or other construction work.
+- Carry that same typed selection through the model composition into Session dependencies.
+- Prove an invalid selection cannot purge an unbound tool result.
+- Preserve valid startup ordering, provider hot updates, utility-role fallback, Session defaults, frozen Run identity, errors, public bindings, and generated contracts.
+- Pass focused bootstrap tests normally and under the race detector, Runtime and current-workspace CLI full gates, plus one bounded live Run.
+
+### Plan
+
+- **Completed:** added a durable-side-effect regression, then moved the one selection derivation to the assembly entry and retained it in the model environment.
+- **Completed:** formatted, remeasured the assembly complexity finding, ran focused/full/live verification, cleaned resources, inspected compatibility, and recorded results.
+
+### Validation
+
+- The new regression first failed after observing that rejected config had already deleted the staged tool result. After the sequencing fix, it and the focused assembly/config set passed in 2.59s.
+- The full bootstrap package passed in 3.34s and with `-race` in 43.34s. Focused `go vet` and `staticcheck` passed.
+- `buildAssemblyCore` fell from cognitive complexity 32 to 31 because it no longer reparses and branches on the default selection. It remains one point above the configured diagnostic threshold; its remaining branches attach distinct optional capabilities, so no mechanical split was made.
+- Runtime `GOWORK=off go vet ./...` passed in 0.73s, `GOWORK=off go build ./...` passed in 1.86s, and uncached `GOWORK=off go test -count=1 ./...` passed in 43.76s.
+- Current-workspace CLI `go vet ./...` passed in 0.56s, `go build ./...` passed in 1.99s, and uncached `go test -count=1 ./...` passed in 38.91s.
+- The current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND7_OK`, status `completed`, one step, 9,188 input tokens, 8 output tokens, 9,088 cache-read tokens, and 703ms model duration; the Run command took 3.82s. No credential value was printed or copied.
+- `git diff --check` passed. Protocol generation was not applicable because no wire type, constraint, schema, or published contract changed.
+
+### Changes and compatibility
+
+- `buildAssembly` now derives the default model selection once immediately after structural Config validation and before startup reconciliation.
+- `modelEnvironment` carries that exact typed value alongside the role state and resolvers it configures; Session construction consumes the same value instead of parsing Config again.
+- Breaking changes: none. All changed functions and fields are package-private. Valid startup phase order, provider hot updates, role fallback, Session defaults, frozen Run identity, errors, persistence formats, protocol values, and consumer bindings are unchanged.
+
+### Resource cleanup
+
+- The bounded live Run used a validated `/tmp/flame-live-round7.*` directory containing its isolated Runtime home and Go build cache. The exit trap moved it to the system Trash.
+- No matching temporary directory remained. No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- The selection is immutable construction data and is still revalidated by the Session coordinator at its application boundary; the change removes only duplicate composition parsing and moves rejection before effects.
+- Round 8 will audit CLI terminal invalidation refresh, the remaining measured consumer complexity, for stale-projection or duplicate retry ownership before deciding whether its branches should move.

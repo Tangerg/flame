@@ -13,6 +13,7 @@ import (
 // execution, utility-model work, and embedding-backed search. Its live role
 // states let configuration changes take effect without rebuilding the Host.
 type modelEnvironment struct {
+	defaultSelection   modelref.Selection
 	chatResolver       ChatResolver
 	utilityRoleState   *models.RoleState
 	utilityClient      modeladapter.AuxiliaryResolver
@@ -49,6 +50,7 @@ func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection mod
 	}
 
 	environment := modelEnvironment{
+		defaultSelection:   defaultSelection,
 		chatResolver:       chatResolver,
 		utilityRoleState:   utilityRoleState,
 		utilityClient:      utilityClient,

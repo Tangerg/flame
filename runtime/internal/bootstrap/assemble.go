@@ -109,6 +109,10 @@ func buildAssembly(ctx context.Context, a *Assembly) (*Host, error) {
 	if err := validateAssemblyConfig(a.cfg); err != nil {
 		return nil, err
 	}
+	defaultSelection, err := runtimeDefaultModelSelection(a.cfg)
+	if err != nil {
+		return nil, err
+	}
 	// Offloads are staged before their ordered transcript event commits so a
 	// following model round can read them immediately. A process crash may leave
 	// that short-lived stage behind; startup is the only point with no live tool
@@ -129,6 +133,7 @@ func buildAssembly(ctx context.Context, a *Assembly) (*Host, error) {
 	execution, err := buildExecutionComposition(
 		ctx,
 		a.cfg,
+		defaultSelection,
 		a.lifetime,
 		a.buildTools,
 		policy,
@@ -184,10 +189,6 @@ func buildAssemblyCore(
 		EmbeddingStore:     cfg.EmbeddingRoleStore,
 		Invalidations:      policy.invalidations.Publish,
 	})
-	defaultRunModel, err := runtimeDefaultModelSelection(cfg)
-	if err != nil {
-		return nil, err
-	}
 	sessionDependencies := sessions.Dependencies{
 		Sessions:              cfg.SessionStore,
 		Interrupts:            cfg.InterruptStore,
@@ -200,7 +201,7 @@ func buildAssemblyCore(
 		ExecutionReleaser:     execution.executor,
 		Paths:                 workspaceadapter.Resolver{},
 		Models:                modelCapabilities,
-		DefaultModelSelection: defaultRunModel,
+		DefaultModelSelection: execution.models.defaultSelection,
 		Checkpoints:           workspaceadapter.NewSessionCheckpoints(workspaceServices.checkpoints),
 		Admissions:            admissionGate,
 		Invalidations:         policy.invalidations.Publish,
