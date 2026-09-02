@@ -105,6 +105,40 @@ func TestListFiles_OneLevelIncludesEmptyDirectoryWithoutDescending(t *testing.T)
 	}
 }
 
+func TestLevelFilesystemEntriesRejectsEscapingDirectoryReplacement(t *testing.T) {
+	root := t.TempDir()
+	selected := filepath.Join(root, "selected")
+	if err := os.Mkdir(selected, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	scope, err := resolveListDirectory(root, "selected")
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "secret.txt"), []byte("secret"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(selected); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, selected); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	rootHandle, err := os.OpenRoot(scope.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = rootHandle.Close() })
+	scope.handle = rootHandle
+	if entries, err := levelFilesystemEntries(t.Context(), scope, true); err == nil {
+		t.Fatalf("replaced directory entries = %+v, want confined-open error", entries)
+	}
+	if files, err := walkFiles(t.Context(), scope, true); err == nil {
+		t.Fatalf("replaced directory walk = %v, want confined-walk error", files)
+	}
+}
+
 func TestListFiles_HidesGitControlFileAndBoundsOneLevelReads(t *testing.T) {
 	root := t.TempDir()
 	for _, name := range []string{".git", "a.txt", "b.txt", "c.txt"} {
@@ -126,7 +160,12 @@ func TestListFiles_HidesGitControlFileAndBoundsOneLevelReads(t *testing.T) {
 		}
 	}
 
-	if _, err := readDirectoryEntries(root, 3); !errors.Is(err, ErrListingTooLarge) {
+	rootHandle, err := os.OpenRoot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = rootHandle.Close() })
+	if _, err := readDirectoryEntries(rootHandle, "", 3); !errors.Is(err, ErrListingTooLarge) {
 		t.Fatalf("readDirectoryEntries() error = %v, want ErrListingTooLarge", err)
 	}
 }

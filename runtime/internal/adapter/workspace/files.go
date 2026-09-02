@@ -57,7 +57,7 @@ var backstopExclude = map[string]bool{
 // immediate children (files + dirs) of opts.Path, for a lazy file tree.
 // The complete, deterministically ordered result is returned for use-case
 // pagination. Oversized trees fail explicitly with ErrListingTooLarge.
-func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptions) ([]workspaceapp.FileEntry, error) {
+func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptions) (_ []workspaceapp.FileEntry, err error) {
 	sub := path.Clean(filepath.ToSlash(opts.Path))
 	if sub == "." || sub == "/" {
 		sub = ""
@@ -66,6 +66,14 @@ func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptio
 	if err != nil {
 		return nil, err
 	}
+	rootHandle, err := os.OpenRoot(scope.root)
+	if err != nil {
+		return nil, fmt.Errorf("open listing root %q: %w", scope.root, err)
+	}
+	defer func() {
+		err = errors.Join(err, rootHandle.Close())
+	}()
+	scope.handle = rootHandle
 	if opts.Glob != "" {
 		if _, err := matchGlob(opts.Glob, ""); err != nil {
 			return nil, fmt.Errorf("%w %q: %v", ErrInvalidGlob, opts.Glob, err)
@@ -117,7 +125,7 @@ type listDirectory struct {
 	root     string
 	logical  string
 	physical string
-	path     string
+	handle   *os.Root
 }
 
 func resolveListDirectory(root, sub string) (listDirectory, error) {
@@ -157,7 +165,7 @@ func resolveListDirectory(root, sub string) (listDirectory, error) {
 		physical = ""
 	}
 	return listDirectory{
-		root: physicalRoot, logical: sub, physical: filepath.ToSlash(physical), path: physicalPath,
+		root: physicalRoot, logical: sub, physical: filepath.ToSlash(physical),
 	}, nil
 }
 
@@ -185,7 +193,7 @@ func (l listDirectory) inspect(logical string) (workspaceapp.FileEntry, bool, er
 		}
 		physical = path.Join(l.physical, relative)
 	}
-	entry, exists, err := inspectEntry(l.root, physical)
+	entry, exists, err := inspectEntry(l.handle, physical)
 	if err != nil || !exists {
 		return entry, exists, err
 	}
@@ -198,7 +206,7 @@ func levelFilesystemEntries(ctx context.Context, scope listDirectory, includeIgn
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	children, err := readDirectoryEntries(scope.path, maxListEntries)
+	children, err := readDirectoryEntries(scope.handle, scope.physical, maxListEntries)
 	if err != nil {
 		return nil, err
 	}
@@ -223,21 +231,15 @@ func levelFilesystemEntries(ctx context.Context, scope listDirectory, includeIgn
 	return entries, nil
 }
 
-func readDirectoryEntries(directory string, limit int) ([]fs.DirEntry, error) {
-	source, err := os.Stat(directory)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("%w: %q does not exist", errInvalidListPath, directory)
-	}
+func readDirectoryEntries(root *os.Root, directory string, limit int) ([]fs.DirEntry, error) {
+	name := rootPath(directory)
+	dir, _, err := fileinput.OpenDirectoryAt(root, name)
 	if err != nil {
-		return nil, fmt.Errorf("inspect listing path %q: %w", directory, err)
-	}
-	if !source.IsDir() {
-		return nil, fmt.Errorf("%w: %q is not a directory", errInvalidListPath, directory)
-	}
-	dir, _, err := fileinput.OpenDirectoryExpected(directory, source)
-	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("%w: %q does not exist", errInvalidListPath, directory)
+		}
 		if errors.Is(err, fileinput.ErrNotDirectory) || errors.Is(err, fileinput.ErrChanged) {
-			return nil, fmt.Errorf("%w: %q changed while it was being opened", errInvalidListPath, directory)
+			return nil, fmt.Errorf("%w: %q is not a stable directory", errInvalidListPath, directory)
 		}
 		return nil, fmt.Errorf("list %q: %w", directory, err)
 	}
@@ -260,37 +262,41 @@ func readDirectoryEntries(directory string, limit int) ([]fs.DirEntry, error) {
 // skips backstop directories and fails explicitly at the safety boundary.
 func walkFiles(ctx context.Context, scope listDirectory, includeIgnored bool) ([]string, error) {
 	var files []string
-	walkErr := filepath.WalkDir(scope.path, func(p string, d fs.DirEntry, err error) error {
+	walkRoot := rootPath(scope.physical)
+	walkErr := fs.WalkDir(scope.handle.FS(), walkRoot, func(p string, d fs.DirEntry, err error) error {
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return ctxErr
 		}
 		if err != nil {
 			return fmt.Errorf("visit %q: %w", p, err)
 		}
-		if p != scope.path && d.Name() == ".git" {
+		if p != walkRoot && d.Name() == ".git" {
 			if d.IsDir() {
 				return fs.SkipDir
 			}
 			return nil
 		}
 		if d.IsDir() {
-			if p != scope.path && !includeIgnored && backstopExclude[d.Name()] {
+			if p != walkRoot && !includeIgnored && backstopExclude[d.Name()] {
 				return fs.SkipDir
 			}
 			return nil
 		}
-		rel, e := filepath.Rel(scope.path, p)
-		if e != nil {
-			return nil
+		rel := p
+		if walkRoot != "." {
+			rel = strings.TrimPrefix(p, walkRoot+"/")
+			if rel == p {
+				return fmt.Errorf("walk path %q is outside root %q", p, walkRoot)
+			}
 		}
-		files = append(files, path.Join(scope.logical, filepath.ToSlash(rel)))
+		files = append(files, path.Join(scope.logical, rel))
 		if len(files) > maxListEntries {
 			return ErrListingTooLarge
 		}
 		return nil
 	})
 	if walkErr != nil {
-		return nil, fmt.Errorf("walk %q: %w", scope.path, walkErr)
+		return nil, fmt.Errorf("walk %q: %w", scope.physical, walkErr)
 	}
 	return files, nil
 }
@@ -376,8 +382,8 @@ func levelEntries(scope listDirectory, files []string) ([]workspaceapp.FileEntry
 	return entries, nil
 }
 
-func inspectEntry(root, rel string) (workspaceapp.FileEntry, bool, error) {
-	info, err := os.Lstat(filepath.Join(root, filepath.FromSlash(rel)))
+func inspectEntry(root *os.Root, rel string) (workspaceapp.FileEntry, bool, error) {
+	info, err := root.Lstat(filepath.FromSlash(rel))
 	if errors.Is(err, os.ErrNotExist) {
 		// git ls-files includes tracked deletions. They are not current workspace
 		// entries, so omit them from the filesystem view.
@@ -405,6 +411,13 @@ func inspectEntry(root, rel string) (workspaceapp.FileEntry, bool, error) {
 		SizeBytes:  info.Size(),
 		ModifiedAt: info.ModTime(),
 	}, true, nil
+}
+
+func rootPath(relative string) string {
+	if relative == "" {
+		return "."
+	}
+	return relative
 }
 
 func sortFileEntries(entries []workspaceapp.FileEntry) {
