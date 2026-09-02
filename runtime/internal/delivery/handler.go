@@ -1,7 +1,6 @@
 package delivery
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 
@@ -141,32 +140,32 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 
 func (c HandlerConfig) validate() error {
 	for _, dependency := range []struct {
-		name      string
-		available bool
+		name  string
+		value any
 	}{
-		{name: "Sessions", available: c.Sessions != nil},
-		{name: "MCP", available: c.MCP != nil},
-		{name: "Approvals", available: c.Approvals != nil},
-		{name: "Models", available: c.Models != nil},
-		{name: "Tools", available: c.Tools != nil},
-		{name: "Runs", available: c.Runs != nil},
-		{name: "Queries", available: c.Queries != nil},
-		{name: "Usage", available: c.Usage != nil},
-		{name: "Feedback", available: c.Feedback != nil},
-		{name: "Schedules", available: c.Schedules != nil},
-		{name: "ScheduleFiring", available: c.ScheduleFiring != nil},
+		{name: "Sessions", value: c.Sessions},
+		{name: "MCP", value: c.MCP},
+		{name: "Approvals", value: c.Approvals},
+		{name: "Models", value: c.Models},
+		{name: "Tools", value: c.Tools},
+		{name: "Runs", value: c.Runs},
+		{name: "Queries", value: c.Queries},
+		{name: "Usage", value: c.Usage},
+		{name: "Feedback", value: c.Feedback},
+		{name: "Schedules", value: c.Schedules},
+		{name: "ScheduleFiring", value: c.ScheduleFiring},
+		{name: "WorkspaceFiles", value: c.WorkspaceFiles},
+		{name: "WorkspaceVCS", value: c.WorkspaceVCS},
+		{name: "WorkspaceDiscovery", value: c.WorkspaceDiscovery},
+		{name: "WorkspaceKnowledge", value: c.WorkspaceKnowledge},
+		{name: "WorkspaceSkills", value: c.WorkspaceSkills},
+		{name: "WorkspaceHooks", value: c.WorkspaceHooks},
+		{name: "WorkspaceWatch", value: c.WorkspaceWatch},
+		{name: "WorkspaceAuthoredWatch", value: c.WorkspaceAuthoredWatch},
 	} {
-		if !dependency.available {
+		if !capabilityAvailable(dependency.value) {
 			return fmt.Errorf("delivery: %s is required", dependency.name)
 		}
-	}
-	if c.WorkspaceFiles == nil || c.WorkspaceVCS == nil ||
-		c.WorkspaceDiscovery == nil || c.WorkspaceKnowledge == nil || c.WorkspaceSkills == nil ||
-		c.WorkspaceHooks == nil || c.WorkspaceWatch == nil {
-		return errors.New("delivery: workspace use cases are required")
-	}
-	if c.WorkspaceAuthoredWatch == nil {
-		return errors.New("delivery: authored workspace observation is required")
 	}
 	if _, err := runtimeidentity.ParseRuntimeInstance(c.ServerInfo.InstanceID); err != nil {
 		return fmt.Errorf("delivery: ServerInfo.InstanceID: %w", err)
@@ -197,8 +196,8 @@ func deriveContractFacts(cfg HandlerConfig) (contractFacts, error) {
 			git:         cfg.GitAvailable,
 			fileWatch:   cfg.WorkspaceWatch.Available(),
 			plan:        cfg.PlanEnabled,
-			goals:       cfg.Goals != nil,
-			agentMemory: cfg.AgentMemory != nil && cfg.AgentMemory.Available(),
+			goals:       capabilityAvailable(cfg.Goals),
+			agentMemory: capabilityAvailable(cfg.AgentMemory) && cfg.AgentMemory.Available(),
 			schedules:   cfg.Schedules.Available() && cfg.ScheduleFiring.Available(),
 		},
 		replay: replayLimitsFrom(cfg.Runs.ReplayRetention()),

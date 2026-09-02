@@ -14,6 +14,14 @@ func TestNewReportsMissingIntegrations(t *testing.T) {
 	}
 }
 
+func TestNewRejectsTypedNilRequiredCapability(t *testing.T) {
+	var sessionsCapability *sessions.Coordinator
+	_, err := NewHandler(HandlerConfig{Sessions: sessionsCapability})
+	if err == nil || err.Error() != "delivery: Sessions is required" {
+		t.Fatalf("New with typed-nil Sessions = %v, want named dependency error", err)
+	}
+}
+
 func TestServerInfoDefaultUsesCanonicalProductIdentity(t *testing.T) {
 	got := (HandlerConfig{}).withServerInfoDefaults().ServerInfo.Name
 	if got != runtimeidentity.ProductName {
