@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createRpcClient, type RpcCallOptions, type RpcClient } from "./client";
 import { RpcError, RpcProtocolError, RpcTransportError } from "./errors";
 import { asRunId, asSegmentId, asSessionId } from "./ids";
-import { createMethods } from "./methods";
+import { createMethods, type WorkspaceResources } from "./methods";
 import {
   createMutationJournal,
   MutationJournalOwnershipError,
@@ -599,6 +599,31 @@ describe("methods factory", () => {
     const second = call.mock.calls[1]?.[2] as RpcCallOptions | undefined;
     expect(second?.idempotencyKey).toBe(first?.idempotencyKey);
     vi.useRealTimers();
+  });
+
+  // The wire FORBIDS a workspace on home knowledge and REQUIRES one on the other scopes.
+  // A workspace-bound client attaching it to everything made every home read and write
+  // `invalid_params`, which no unit test could see because the shape still type-checked.
+  it("knowledge carries a workspace only for the scopes that live in one", async () => {
+    async function paramsOf(send: (r: WorkspaceResources) => void, method: string) {
+      const t = createMemoryTransport();
+      send(createMethods(createRpcClient(t)).workspace({ path: "/repo" }));
+      return (await waitForRequest(t, method)).params;
+    }
+
+    expect(await paramsOf((r) => void r.knowledge.get("home"), "knowledge.get")).toEqual({
+      scope: "home",
+    });
+    expect(await paramsOf((r) => void r.knowledge.get("cwd"), "knowledge.get")).toEqual({
+      scope: "cwd",
+      workspace: { path: "/repo" },
+    });
+    expect(
+      await paramsOf(
+        (r) => void r.knowledge.update({ scope: "home", content: "x", expectedRevision: "r1" }),
+        "knowledge.update",
+      ),
+    ).toEqual({ scope: "home", content: "x", expectedRevision: "r1" });
   });
 
   it("sessions.list sends sessions.list with optional query and returns a Page", async () => {

@@ -58,3 +58,17 @@ describe("the wording tables", () => {
     expect(unworded).toEqual([]);
   });
 });
+
+// The Runtime refuses `Goal.Resume` for this one exactly as it does for a spent cap: a cost
+// budget it cannot price is one it will not agree to enforce.
+describe("a goal the Runtime will not resume", () => {
+  it("offers no resume when pricing is unavailable", () => {
+    expect(
+      goalCanResume({
+        ...goal(),
+        status: "blocked",
+        stop: { code: "pricingUnavailable", detail: "" },
+      }),
+    ).toBe(false);
+  });
+});

@@ -37,7 +37,7 @@ export function toGoalReadModel(goal: Goal): GoalReadModel {
     budget: toGoalBudget(goal.budget),
     used: {
       runs: goal.used.runs,
-      costUsd: goal.used.costUsd,
+      ...(goal.used.costUsd !== undefined ? { costUsd: goal.used.costUsd } : {}),
       steps: goal.used.steps,
     },
     createdAt: goal.createdAt,

@@ -103,7 +103,7 @@ describe("defaultDataProviders — providers over JSON-RPC", () => {
             data: [
               {
                 name: "verify",
-                revision: "rev_1",
+                revision: "a12dd3a7fd3203a452eb34d91a9be20569d5e337a3384347068895c07f3e0c5a",
                 scope: "project",
                 description: "Verify changes",
                 instructions: "Run the checks.",

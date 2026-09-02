@@ -11,15 +11,18 @@ export const GOAL_STATUS_I18N = {
   completing: { label: "goal.summary.completing" },
 } as const satisfies Record<GoalStatus, { label: string }>;
 
-const EXHAUSTED_BUDGET_STOPS = new Set<GoalStopCode>([
+// `Goal.Resume` rejects each of these outright. A cap that is spent stays spent, and a cost
+// cap the Runtime cannot price is one it will not agree to enforce — the same refusal for a
+// different reason, which is why this is not named after the budget.
+const REFUSED_BY_RUNTIME_STOPS = new Set<GoalStopCode>([
   "runBudgetReached",
   "costBudgetReached",
   "stepBudgetReached",
+  "pricingUnavailable",
 ]);
 
-/** Runtime refuses resume once a durable budget cap is spent. All other
- * paused/blocked states retain the same Goal incarnation and are resumable. */
+/** All other paused/blocked states retain the same Goal incarnation and are resumable. */
 export function goalCanResume(goal: GoalReadModel): boolean {
   if (goal.status !== "paused" && goal.status !== "blocked") return false;
-  return !goal.stop || !EXHAUSTED_BUDGET_STOPS.has(goal.stop.code);
+  return !goal.stop || !REFUSED_BY_RUNTIME_STOPS.has(goal.stop.code);
 }

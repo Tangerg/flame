@@ -422,8 +422,9 @@ function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
     },
     knowledge: {
       list: () => call("knowledge.list", { workspace }),
-      get: (scope) => call("knowledge.get", { scope, workspace }),
-      update: (params) => call("knowledge.update", { ...params, workspace }),
+      get: (scope) => call("knowledge.get", { scope, ...knowledgeWorkspace(scope, workspace) }),
+      update: (params) =>
+        call("knowledge.update", { ...params, ...knowledgeWorkspace(params.scope, workspace) }),
     },
     agentMemory: {
       list: () => call("agentMemory.list", { scope: "project", workspace }),
@@ -653,4 +654,17 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       runNow: (id) => call("schedules.runNow", { id }),
     },
   };
+}
+
+/**
+ * Home knowledge belongs to the person, not to a workspace, so the wire FORBIDS a workspace
+ * ref on that scope and requires one on the other two. Attaching it unconditionally — which
+ * is what a workspace-bound client naturally does — made every home read and write
+ * `invalid_params`.
+ */
+function knowledgeWorkspace(
+  scope: KnowledgeScope,
+  workspace: WorkspaceRef,
+): { workspace?: WorkspaceRef } {
+  return scope === "home" ? {} : { workspace };
 }

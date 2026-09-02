@@ -24,16 +24,4 @@ export default defineConfig({
     port: 4174,
     strictPort: true,
   },
-  build: {
-    outDir: "../.cache/visual-dist",
-    emptyOutDir: true,
-    target: "chrome131",
-    // Agent-state fixtures intentionally render the production Markdown,
-    // Shiki, and ELK-backed diagram paths. They are lazy from the foundation
-    // entry and carry the same reviewed capability shape as production.
-    chunkSizeWarningLimit: 1600,
-    rollupOptions: {
-      input: path.resolve(import.meta.dirname, "visual/index.html"),
-    },
-  },
 });

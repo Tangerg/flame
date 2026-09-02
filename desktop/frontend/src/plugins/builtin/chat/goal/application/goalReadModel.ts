@@ -8,7 +8,9 @@ export type GoalStatus = "active" | "paused" | "blocked" | "completing";
 
 export interface GoalUsage {
   runs: number;
-  costUsd: number;
+  /** Absent when the Runtime could not price the model. NOT zero: nothing was measured, and
+   *  a spend of nothing is a different claim from a spend nobody could total. */
+  costUsd?: number;
   steps: number;
 }
 
@@ -26,6 +28,7 @@ export type GoalStopCode =
   | "runBudgetReached"
   | "costBudgetReached"
   | "stepBudgetReached"
+  | "pricingUnavailable"
   | "blockedByModel";
 
 export interface GoalStop {
