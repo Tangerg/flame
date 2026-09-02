@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -175,12 +174,12 @@ func testChildRunLineage(t *testing.T, runID, spawn, parent, root string) RunLin
 }
 
 func TestOutcomeValidationMatchesRuntimeUnion(t *testing.T) {
-	problem := &failure.Problem{Type: "rate_limited", Detail: "deadline exceeded", RetryAfterSeconds: 2}
+	problem := &runtimeprotocol.ProblemData{Type: "rate_limited", Detail: "deadline exceeded", RetryAfterSeconds: 2}
 	valid := []Outcome{
 		{Status: OutcomeCompleted},
 		{Status: OutcomeTimedOut, Problem: problem},
-		{Status: OutcomeFailed, Problem: &failure.Problem{Type: "provider_failed", Detail: "provider failed"}},
-		{Status: OutcomeLost, Problem: &failure.Problem{Type: "run_lost", Detail: "executor disappeared"}},
+		{Status: OutcomeFailed, Problem: &runtimeprotocol.ProblemData{Type: "provider_error", Detail: "provider failed"}},
+		{Status: OutcomeLost, Problem: &runtimeprotocol.ProblemData{Type: "run_lost", Detail: "executor disappeared"}},
 		{Status: OutcomeMaxSteps, Detail: "20 / 20 steps"},
 		{Status: OutcomeMaxBudget, Detail: "$2.00 / $2.00"},
 		{Status: OutcomeCanceled, Detail: "user stopped"},
@@ -196,7 +195,7 @@ func TestOutcomeValidationMatchesRuntimeUnion(t *testing.T) {
 		{Status: OutcomeCanceled, Problem: problem},
 		{Status: OutcomeCompleted, Detail: "unexpected"},
 		{Status: OutcomeCompleted, Problem: problem},
-		{Status: OutcomeFailed, Problem: &failure.Problem{}},
+		{Status: OutcomeFailed, Problem: &runtimeprotocol.ProblemData{}},
 	} {
 		if err := outcome.Validate(); err == nil {
 			t.Fatalf("invalid outcome %+v was accepted", outcome)
@@ -210,7 +209,7 @@ func TestOutcomeValidationMatchesRuntimeUnion(t *testing.T) {
 }
 
 func TestOutcomeExplanationIncludesRecoveryMetadata(t *testing.T) {
-	outcome := Outcome{Status: OutcomeFailed, Problem: &failure.Problem{
+	outcome := Outcome{Status: OutcomeFailed, Problem: &runtimeprotocol.ProblemData{
 		Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
 	}}
 	if got := outcome.Description(); got != "quota exhausted" {

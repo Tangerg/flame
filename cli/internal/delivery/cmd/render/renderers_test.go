@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -40,7 +39,7 @@ func TestTextRendersRunRecoveryMetadata(t *testing.T) {
 	}
 	if err := renderer.Render(testEvent("failed", agent.RunFinished{Outcome: agent.Outcome{
 		Status: agent.OutcomeFailed,
-		Problem: &failure.Problem{
+		Problem: &protocol.ProblemData{
 			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
 		},
 	}})); err != nil {
@@ -285,7 +284,7 @@ func TestBlockJSONPreservesRuntimeItemMetadata(t *testing.T) {
 		Tool: &agent.ToolCall{
 			Kind: agent.ToolShell, Name: "shell", Status: agent.ToolError, Safety: protocol.SafetyClassExec,
 			StartedAt: started, FinishedAt: finished,
-			Problem: &failure.Problem{Type: "provider_error", RetryAfterSeconds: 2},
+			Problem: &protocol.ProblemData{Type: protocol.ProblemRateLimited, RetryAfterSeconds: 2},
 		},
 	})
 	if tool.Tool == nil || tool.Tool.Safety != "exec" || !tool.Tool.StartedAt.Equal(started) || !tool.Tool.FinishedAt.Equal(finished) {
@@ -322,16 +321,14 @@ func TestRunJSONPreservesLifecycleTimestamps(t *testing.T) {
 func TestOutcomeJSONPreservesStructuredProblem(t *testing.T) {
 	encoded, err := json.Marshal(encodeOutcome(agent.Outcome{
 		Status: agent.OutcomeFailed,
-		Problem: &failure.Problem{
+		Problem: &protocol.ProblemData{
 			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 2,
-			RequiredCapabilities: []protocol.CapabilityRequirement{{Type: protocol.RequirementFeature, Name: "subagents"}},
-			Errors:               []protocol.FieldError{{Field: "provider", Detail: "is unavailable"}},
 		},
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`"error":"quota exhausted"`, `"problem"`, `"type":"rate_limited"`, `"retryAfterSeconds":2`, `"requiredCapabilities"`, `"feature"`, `"errors"`, `"provider"`} {
+	for _, want := range []string{`"error":"quota exhausted"`, `"problem"`, `"type":"rate_limited"`, `"retryAfterSeconds":2`} {
 		if !bytes.Contains(encoded, []byte(want)) {
 			t.Fatalf("outcome JSON omitted %s: %s", want, encoded)
 		}

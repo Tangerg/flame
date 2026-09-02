@@ -30,7 +30,7 @@ var (
 type State struct {
 	Type      protocol.MCPServerStateType
 	ToolCount *int
-	Problem   *failure.Problem
+	Problem   *protocol.ProblemData
 }
 
 func (s State) Validate() error {
@@ -47,7 +47,7 @@ func (s State) Validate() error {
 		if s.ToolCount != nil || s.Problem == nil {
 			return fmt.Errorf("MCP %s state requires only a problem", s.Type)
 		}
-		if err := s.Problem.Validate(); err != nil {
+		if err := failure.Validate(s.Problem); err != nil {
 			return err
 		}
 	default:
@@ -181,7 +181,7 @@ func (s Server) Clone() Server {
 		s.State.ToolCount = new(*s.State.ToolCount)
 	}
 	if s.State.Problem != nil {
-		s.State.Problem = s.State.Problem.Clone()
+		s.State.Problem = failure.Clone(s.State.Problem)
 	}
 	return s
 }
@@ -578,7 +578,7 @@ func validateMaskedMap[T interface {
 
 type TestResult struct {
 	OK      bool
-	Problem *failure.Problem
+	Problem *protocol.ProblemData
 }
 
 func (t TestResult) Validate() error {
@@ -586,7 +586,7 @@ func (t TestResult) Validate() error {
 		return errors.New("MCP test result must contain exactly one success or problem state")
 	}
 	if t.Problem != nil {
-		return t.Problem.Validate()
+		return failure.Validate(t.Problem)
 	}
 	return nil
 }
@@ -612,7 +612,7 @@ type AuthorizationAttempt struct {
 	ID         string
 	Server     string
 	Status     protocol.MCPAuthorizationAttemptStatusType
-	Problem    *failure.Problem
+	Problem    *protocol.ProblemData
 	CreatedAt  time.Time
 	FinishedAt *time.Time
 }
@@ -649,7 +649,7 @@ func (a AuthorizationAttempt) Validate() error {
 		if a.Problem == nil || a.FinishedAt == nil {
 			return errors.New("failed MCP authorization requires a problem and finish time")
 		}
-		if err := a.Problem.Validate(); err != nil {
+		if err := failure.Validate(a.Problem); err != nil {
 			return err
 		}
 	default:

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 type toolSectionStyle uint8
@@ -167,7 +168,7 @@ func toolSections(call agent.ToolCall, output ToolSection) []ToolSection {
 	if call.Problem != nil {
 		encoded, err := json.Marshal(call.Problem)
 		if err != nil {
-			encoded = []byte(call.Problem.String())
+			encoded = []byte(failure.String(call.Problem))
 		}
 		sections = append(sections, ToolSection{
 			Title: "Problem", Style: toolSectionCode, Language: "json", Text: prettyJSON(encoded),

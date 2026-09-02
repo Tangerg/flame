@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 const mcpAuthorizationPollInterval = 500 * time.Millisecond
@@ -91,7 +92,7 @@ func mcpServerDetail(server mcp.Server) string {
 		lines = append(lines, "auto-approve "+strings.Join(server.AutoApproveTools, ", "))
 	}
 	if server.State.Problem != nil {
-		lines = append(lines, "problem      "+server.State.Problem.String())
+		lines = append(lines, "problem      "+failure.String(server.State.Problem))
 	}
 	return strings.Join(lines, "\n")
 }
@@ -275,7 +276,7 @@ func (a *app) probeMCPServer(candidate mcp.Candidate) {
 				a.message("MCP candidate is reachable · " + candidate.Name)
 				return
 			}
-			a.message("MCP candidate failed · " + result.Problem.String())
+			a.message("MCP candidate failed · " + failure.String(result.Problem))
 		},
 	)
 	if !started {
@@ -456,7 +457,7 @@ func mcpAuthorizationDocument(attempt mcp.AuthorizationAttempt) readerDocument {
 		lines = append(lines, "finished "+attempt.FinishedAt.Format(time.RFC3339))
 	}
 	if attempt.Problem != nil {
-		lines = append(lines, "problem  "+attempt.Problem.String())
+		lines = append(lines, "problem  "+failure.String(attempt.Problem))
 	}
 	detail := "complete the sign-in in your browser"
 	if !attempt.Pending() {

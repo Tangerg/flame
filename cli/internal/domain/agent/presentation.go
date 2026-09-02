@@ -241,7 +241,7 @@ type ToolCall struct {
 	ResultJSON    []byte
 	// Problem retains the structured tool-level failure, including documentation,
 	// retry guidance, and capability or field-level details.
-	Problem *failure.Problem
+	Problem *protocol.ProblemData
 	// Diff is a unified diff when the call changed files.
 	Diff string
 	// ExitCode is set for completed process-like tools. Nil distinguishes an
@@ -254,7 +254,7 @@ type ToolCall struct {
 func (t ToolCall) Clone() ToolCall {
 	t.ArgumentsJSON = bytes.Clone(t.ArgumentsJSON)
 	t.ResultJSON = bytes.Clone(t.ResultJSON)
-	t.Problem = t.Problem.Clone()
+	t.Problem = failure.Clone(t.Problem)
 	if t.ExitCode != nil {
 		t.ExitCode = new(*t.ExitCode)
 	}
@@ -269,7 +269,7 @@ func (t ToolCall) Equal(other ToolCall) bool {
 		!t.FinishedAt.Equal(other.FinishedAt) || t.Command != other.Command || t.Path != other.Path ||
 		t.Query != other.Query || t.URL != other.URL || t.Output != other.Output ||
 		!bytes.Equal(t.ArgumentsJSON, other.ArgumentsJSON) || !bytes.Equal(t.ResultJSON, other.ResultJSON) ||
-		!t.Problem.Equal(other.Problem) ||
+		!failure.Equal(t.Problem, other.Problem) ||
 		t.Diff != other.Diff || t.Duration != other.Duration ||
 		(t.ExitCode == nil) != (other.ExitCode == nil) {
 		return false
@@ -334,7 +334,7 @@ func (t ToolCall) Validate() error {
 		problems = append(problems, errors.New("result JSON is invalid"))
 	}
 	if t.Problem != nil {
-		if err := t.Problem.Validate(); err != nil {
+		if err := failure.Validate(t.Problem); err != nil {
 			problems = append(problems, err)
 		}
 		if t.Status != ToolError && t.Status != ToolCanceled {
@@ -365,24 +365,24 @@ type Outcome struct {
 	Status OutcomeStatus
 	// Problem is the single source of failure classification, display text, and
 	// recovery metadata for failed, timed-out, and lost outcomes.
-	Problem *failure.Problem
+	Problem *protocol.ProblemData
 	// Detail explains a policy stop such as max steps, max budget, or cancel.
 	Detail string
 }
 
 func (o Outcome) Clone() Outcome {
-	o.Problem = o.Problem.Clone()
+	o.Problem = failure.Clone(o.Problem)
 	return o
 }
 
 func (o Outcome) Equal(other Outcome) bool {
-	return o.Status == other.Status && o.Detail == other.Detail && o.Problem.Equal(other.Problem)
+	return o.Status == other.Status && o.Detail == other.Detail && failure.Equal(o.Problem, other.Problem)
 }
 
 // Description returns the concise explanation appropriate for status lines.
 func (o Outcome) Description() string {
 	if o.Problem != nil {
-		return o.Problem.Message("")
+		return failure.Message(o.Problem, "")
 	}
 	return strings.TrimSpace(o.Detail)
 }
@@ -391,7 +391,7 @@ func (o Outcome) Description() string {
 // recovery metadata carried by a structured failure.
 func (o Outcome) Explanation() string {
 	if o.Problem != nil {
-		return o.Problem.String()
+		return failure.String(o.Problem)
 	}
 	return strings.TrimSpace(o.Detail)
 }

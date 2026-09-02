@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 type mcpBinding interface {
@@ -133,7 +134,7 @@ func (r *Connection) TestServer(ctx context.Context, candidate mcp.Candidate) (m
 	if result == nil {
 		return mcp.TestResult{}, runtimeContractViolation("test MCP server returned nil")
 	}
-	projected := mcp.TestResult{OK: result.OK, Problem: projectRuntimeProblem(result.Error)}
+	projected := mcp.TestResult{OK: result.OK, Problem: failure.Clone(result.Error)}
 	if err := projected.Validate(); err != nil {
 		return mcp.TestResult{}, runtimeContractViolation("test MCP server returned an invalid result: %v", err)
 	}
@@ -246,7 +247,7 @@ func projectMCPServer(value protocol.MCPServer) (mcp.Server, error) {
 		AutoApproveTools: slices.Clone(value.AutoApproveTools),
 		State: mcp.State{
 			Type: value.Status.Type, ToolCount: clonePointer(value.Status.ToolCount),
-			Problem: projectRuntimeProblem(value.Status.Error),
+			Problem: failure.Clone(value.Status.Error),
 		},
 	}, nil
 }
@@ -326,7 +327,7 @@ func projectMCPAuthorizationResult(
 	}
 	attempt := mcp.AuthorizationAttempt{
 		ID: result.ID, Server: result.Server, Status: result.Status.Type,
-		Problem: projectRuntimeProblem(result.Status.Error), CreatedAt: result.CreatedAt,
+		Problem: failure.Clone(result.Status.Error), CreatedAt: result.CreatedAt,
 		FinishedAt: clonePointer(result.FinishedAt),
 	}
 	if err := attempt.Validate(); err != nil {

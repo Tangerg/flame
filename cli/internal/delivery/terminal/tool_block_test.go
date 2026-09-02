@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/oolong/highlight"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -205,13 +204,13 @@ func TestToolDetailsPresentSafetyAndLifecycleMetadata(t *testing.T) {
 func TestToolDetailsPreserveStructuredProblems(t *testing.T) {
 	presentation := presentUnknownTool(agent.ToolCall{
 		Kind: agent.ToolUnknown, Name: "provider_tool", Status: agent.ToolError,
-		Problem: &failure.Problem{
-			Type: "provider_rate_limited", RetryAfterSeconds: 2,
+		Problem: &protocol.ProblemData{
+			Type: protocol.ProblemToolFailed,
 			DocURL: "https://docs.example/errors/rate-limit",
 		},
 	})
 	if len(presentation.Sections) != 1 || presentation.Sections[0].Title != "Problem" ||
-		!strings.Contains(presentation.Sections[0].Text, "retryAfterSeconds") ||
+		!strings.Contains(presentation.Sections[0].Text, "tool_failed") ||
 		!strings.Contains(presentation.Sections[0].Text, "docs.example") {
 		t.Fatalf("tool problem presentation = %+v", presentation)
 	}

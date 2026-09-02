@@ -120,32 +120,16 @@ func projectRunOutcome(value protocol.RunOutcome) (agent.Outcome, error) {
 }
 
 func projectOutcome(value protocol.SegmentOutcome) (agent.Outcome, error) {
+	if err := protocol.ValidateWireTree(value); err != nil {
+		return agent.Outcome{}, runtimeContractViolation("runtime outcome is invalid: %v", err)
+	}
 	outcome := agent.Outcome{Status: agent.OutcomeStatus(value.Type), Detail: value.Detail}
 	switch value.Type {
 	case protocol.SegmentTimedOut, protocol.SegmentFailed, protocol.SegmentLost:
 		outcome.Detail = ""
-		outcome.Problem = projectRuntimeProblem(value.Error)
-		if outcome.Problem == nil {
-			outcome.Problem = &failure.Problem{Type: string(value.Type)}
-		}
+		outcome.Problem = failure.Clone(value.Error)
 	}
 	return outcome, nil
-}
-
-func projectRuntimeProblem(problem *protocol.ProblemData) *failure.Problem {
-	if problem == nil {
-		return nil
-	}
-	projected := &failure.Problem{
-		Type: problem.Type, Detail: problem.Detail, DocURL: problem.DocURL,
-		RetryAfterSeconds:    problem.RetryAfterSeconds,
-		RequiredCapabilities: slices.Clone(problem.RequiredCapabilities),
-		Errors:               slices.Clone(problem.Errors),
-	}
-	if problem.ActiveRun != nil {
-		projected.ActiveRun = new(*problem.ActiveRun)
-	}
-	return projected
 }
 
 func projectPlan(plan *protocol.Plan) (*protocol.Plan, error) {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestRunEventEqualityUsesDomainValues(t *testing.T) {
@@ -167,11 +168,11 @@ func TestEphemeralEventsCloneOwnedValues(t *testing.T) {
 func TestFinishedEventCloneOwnsOutcomeProblem(t *testing.T) {
 	event := RunFinished{Outcome: Outcome{
 		Status:  OutcomeFailed,
-		Problem: &failure.Problem{Type: "rate_limited", Detail: "rate limited", RetryAfterSeconds: 2},
+		Problem: &protocol.ProblemData{Type: "rate_limited", Detail: "rate limited", RetryAfterSeconds: 2},
 	}}
 	clone := CloneEvent(event).(RunFinished)
 	clone.Outcome.Problem.Detail = "mutated"
-	if event.Outcome.Problem.Equal(clone.Outcome.Problem) || !equalEvent(event, CloneEvent(event)) {
+	if failure.Equal(event.Outcome.Problem, clone.Outcome.Problem) || !equalEvent(event, CloneEvent(event)) {
 		t.Fatal("finished event outcome problem is not value-owned")
 	}
 }
@@ -226,14 +227,14 @@ func TestToolCallCloneOwnsRawJSON(t *testing.T) {
 	call := ToolCall{
 		Kind: ToolUnknown, Name: "provider_tool", Status: ToolError,
 		ArgumentsJSON: []byte(`{"nested":{"value":1}}`),
-		Problem:       &failure.Problem{Type: "provider_error", RetryAfterSeconds: 2},
+		Problem:       &protocol.ProblemData{Type: protocol.ProblemRateLimited, RetryAfterSeconds: 2},
 	}
 	if err := call.Validate(); err != nil {
 		t.Fatal(err)
 	}
 	clone := call.Clone()
 	clone.ArgumentsJSON[0], clone.Problem.Detail = '[', "mutated"
-	if bytes.Equal(call.ArgumentsJSON, clone.ArgumentsJSON) || call.Problem.Equal(clone.Problem) || !call.Equal(call.Clone()) {
+	if bytes.Equal(call.ArgumentsJSON, clone.ArgumentsJSON) || failure.Equal(call.Problem, clone.Problem) || !call.Equal(call.Clone()) {
 		t.Fatalf("tool JSON clone aliases source: source=%+v clone=%+v", call, clone)
 	}
 

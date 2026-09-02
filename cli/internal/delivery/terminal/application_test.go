@@ -25,7 +25,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
@@ -4801,7 +4800,7 @@ func TestOutcomeNotificationMatchesTheRunVerdict(t *testing.T) {
 	}{
 		{name: "completed", outcome: agent.Outcome{Status: agent.OutcomeCompleted}, want: "flame run completed"},
 		{name: "canceled", outcome: agent.Outcome{Status: agent.OutcomeCanceled}, want: "flame run canceled"},
-		{name: "failed", outcome: agent.Outcome{Status: agent.OutcomeFailed, Problem: &failure.Problem{Type: "provider_error", Detail: "boom"}}, want: "flame run failed"},
+		{name: "failed", outcome: agent.Outcome{Status: agent.OutcomeFailed, Problem: &protocol.ProblemData{Type: "provider_error", Detail: "boom"}}, want: "flame run failed"},
 		{name: "unsettled", outcome: agent.Outcome{}, want: ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {

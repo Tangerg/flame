@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 func projectItem(value protocol.Item) (agent.Block, error) {
@@ -210,7 +211,7 @@ func projectTool(projection toolProjection) (agent.ToolCall, error) {
 		projectToolResult(&tool, resultJSON)
 	}
 	if projection.problem != nil {
-		tool.Problem = projectRuntimeProblem(projection.problem)
+		tool.Problem = failure.Clone(projection.problem)
 	}
 	if projection.durationMillis != nil {
 		tool.Duration = time.Duration(*projection.durationMillis) * time.Millisecond

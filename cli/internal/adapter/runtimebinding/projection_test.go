@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 func TestProjectToolPreservesStructuredDetails(t *testing.T) {
@@ -198,96 +197,10 @@ func TestProjectOutcomePreservesStructuredProblem(t *testing.T) {
 	}
 }
 
-func TestProjectRuntimeProblemPreservesEveryRecoveryShape(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		problem protocol.ProblemData
-		assert  func(*testing.T, *failure.Problem)
-	}{
-		{
-			name: "retry guidance",
-			problem: protocol.ProblemData{
-				Type: protocol.ProblemRateLimited, Detail: "quota exhausted",
-				DocURL: "https://docs.example/rate-limit", RetryAfterSeconds: 2,
-			},
-			assert: func(t *testing.T, problem *failure.Problem) {
-				if problem.Detail != "quota exhausted" || problem.DocURL == "" || problem.RetryAfterSeconds != 2 {
-					t.Fatalf("retry problem = %+v", problem)
-				}
-			},
-		},
-		{
-			name: "capability requirements",
-			problem: protocol.ProblemData{
-				Type:                 protocol.ErrCapabilityNotNeg.Error(),
-				RequiredCapabilities: []protocol.CapabilityRequirement{{Type: protocol.RequirementRuntimeTopic, Name: "files.changed"}},
-			},
-			assert: func(t *testing.T, problem *failure.Problem) {
-				if len(problem.RequiredCapabilities) != 1 || problem.RequiredCapabilities[0].Type != protocol.RequirementRuntimeTopic || problem.RequiredCapabilities[0].Name != "files.changed" {
-					t.Fatalf("capability problem = %+v", problem)
-				}
-			},
-		},
-		{
-			name: "active run",
-			problem: protocol.ProblemData{
-				Type:      protocol.ErrSessionHasActiveRun.Error(),
-				ActiveRun: &protocol.ActiveRunRef{RunID: "run_1", Status: protocol.RunStatusWaiting},
-			},
-			assert: func(t *testing.T, problem *failure.Problem) {
-				if problem.ActiveRun == nil || problem.ActiveRun.RunID != "run_1" || problem.ActiveRun.Status != protocol.RunStatusWaiting {
-					t.Fatalf("active-run problem = %+v", problem)
-				}
-			},
-		},
-		{
-			name: "field errors",
-			problem: protocol.ProblemData{
-				Type:   protocol.ErrInvalidParams.Error(),
-				Errors: []protocol.FieldError{{Field: "provider", Detail: "is unknown"}},
-			},
-			assert: func(t *testing.T, problem *failure.Problem) {
-				if len(problem.Errors) != 1 || problem.Errors[0].Field != "provider" || problem.Errors[0].Detail != "is unknown" {
-					t.Fatalf("field problem = %+v", problem)
-				}
-			},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			projected := projectRuntimeProblem(&test.problem)
-			if projected == nil {
-				t.Fatal("projectRuntimeProblem returned nil")
-			}
-			if err := projected.Validate(); err != nil {
-				t.Fatal(err)
-			}
-			test.assert(t, projected)
-		})
-	}
-}
-
-func TestProjectRuntimeProblemOwnsRecoveryLeaves(t *testing.T) {
-	t.Parallel()
-
-	source := protocol.ProblemData{
-		Type: protocol.ErrCapabilityNotNeg.Error(),
-		RequiredCapabilities: []protocol.CapabilityRequirement{{
-			Type: protocol.RequirementFeature, Name: "subagents",
-		}},
-		ActiveRun: &protocol.ActiveRunRef{RunID: "run_1", Status: protocol.RunStatusRunning},
-		Errors:    []protocol.FieldError{{Field: "features", Detail: "subagents is absent"}},
-	}
-	projected := projectRuntimeProblem(&source)
-	projected.RequiredCapabilities[0].Name = "mutated"
-	projected.ActiveRun.RunID = "run_2"
-	projected.Errors[0].Detail = "mutated"
-	if source.RequiredCapabilities[0].Name != "subagents" || source.ActiveRun.RunID != "run_1" ||
-		source.Errors[0].Detail != "subagents is absent" {
-		t.Fatalf("problem projection retained Runtime-owned leaves: source=%+v projected=%+v", source, projected)
+func TestProjectOutcomeRejectsFailureWithoutRuntimeProblem(t *testing.T) {
+	_, err := projectOutcome(protocol.SegmentOutcome{Type: protocol.SegmentFailed})
+	if !errors.Is(err, agent.ErrIncompatibleRuntime) {
+		t.Fatalf("projectOutcome error = %v, want ErrIncompatibleRuntime", err)
 	}
 }
 

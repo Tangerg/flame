@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
@@ -116,7 +115,7 @@ func TestSettledStatusIncludesRunRecoveryMetadata(t *testing.T) {
 	status := newStatusView(kit.Dark(), kit.Unicode())
 	status.settled(agent.Run{Outcome: agent.Outcome{
 		Status: agent.OutcomeFailed,
-		Problem: &failure.Problem{
+		Problem: &protocol.ProblemData{
 			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
 		},
 	}})

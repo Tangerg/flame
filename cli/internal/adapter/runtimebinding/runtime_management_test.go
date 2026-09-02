@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 type usageBindingStub struct {
@@ -371,7 +372,7 @@ func TestModelConfigurationAdapterPreservesRoleAndSecretMutationSemantics(t *tes
 		t.Fatal(updateProviderErr)
 	}
 	tested, err := runtime.TestProvider(t.Context(), "deepseek")
-	if err != nil || tested.OK || tested.Problem == nil || tested.Problem.String() != "provider_unavailable: deepseek · retry after 3s · docs https://docs.example/providers" {
+	if err != nil || tested.OK || tested.Problem == nil || failure.String(tested.Problem) != "provider_unavailable: deepseek · retry after 3s · docs https://docs.example/providers" {
 		t.Fatalf("TestProvider = (%+v, %v)", tested, err)
 	}
 	if _, err := runtime.TestProvider(t.Context(), " deepseek"); err == nil {

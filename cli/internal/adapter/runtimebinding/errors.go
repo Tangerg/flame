@@ -16,12 +16,12 @@ import (
 type projectedError struct {
 	kind    error
 	source  error
-	problem *failure.Problem
+	problem *protocol.ProblemData
 }
 
 func (p projectedError) Error() string {
 	if p.problem != nil {
-		return p.problem.String()
+		return failure.String(p.problem)
 	}
 	return p.source.Error()
 }
@@ -76,11 +76,11 @@ func classifyError(err error) error {
 			break
 		}
 	}
-	var problem *failure.Problem
+	var problem *protocol.ProblemData
 	if source, ok := errors.AsType[protocol.ProblemError](err); ok {
 		data := source.Problem()
-		problem = projectRuntimeProblem(&data)
-		if validationErr := problem.Validate(); validationErr != nil {
+		problem = failure.Clone(&data)
+		if validationErr := failure.Validate(problem); validationErr != nil {
 			return errors.Join(
 				runtimeContractViolation("runtime problem is invalid: %v", validationErr),
 				err,

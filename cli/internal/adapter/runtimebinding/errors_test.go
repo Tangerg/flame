@@ -63,7 +63,11 @@ func TestClassifyErrorExposesCommandReplaySemantics(t *testing.T) {
 		{source: protocol.ErrIdempotencyConflict, want: agent.ErrCommandConflict},
 		{source: protocol.ErrIdempotencyStoreMismatch, want: agent.ErrCommandStoreMismatch},
 	} {
-		err := classifyError(runtimeProblemError{cause: test.source, data: protocol.ProblemData{Type: test.source.Error()}})
+		problem := protocol.ProblemData{Type: test.source.Error()}
+		if errors.Is(test.source, protocol.ErrIdempotencyInProgress) {
+			problem.RetryAfterSeconds = 1
+		}
+		err := classifyError(runtimeProblemError{cause: test.source, data: problem})
 		if !errors.Is(err, test.want) || !errors.Is(err, test.source) {
 			t.Fatalf("classified %v = %v, want %v", test.source, err, test.want)
 		}

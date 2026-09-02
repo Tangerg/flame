@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -144,7 +145,7 @@ func (g GenerationParams) Validate() error {
 
 func (o Outcome) Validate() error {
 	if o.Problem != nil {
-		if err := o.Problem.Validate(); err != nil {
+		if err := failure.Validate(o.Problem); err != nil {
 			return fmt.Errorf("outcome: %w", err)
 		}
 	}

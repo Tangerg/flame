@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 type modelConfigBinding interface {
@@ -211,7 +212,7 @@ func (r *Connection) TestProvider(ctx context.Context, providerID string) (model
 	if result == nil {
 		return models.TestResult{}, runtimeContractViolation("test provider returned nil")
 	}
-	projected := models.TestResult{OK: result.OK, Problem: projectRuntimeProblem(result.Error)}
+	projected := models.TestResult{OK: result.OK, Problem: failure.Clone(result.Error)}
 	if err := projected.Validate(); err != nil {
 		return models.TestResult{}, runtimeContractViolation("test provider returned an invalid result: %v", err)
 	}

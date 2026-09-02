@@ -10,30 +10,49 @@ import (
 func TestProblemOwnsAndPresentsRecoveryMetadata(t *testing.T) {
 	t.Parallel()
 
-	problem := &Problem{
-		Type: "capability_not_negotiated", Detail: "additional declarations required",
-		DocURL: "https://docs.example/capabilities", RetryAfterSeconds: 2,
-		RequiredCapabilities: []protocol.CapabilityRequirement{{Type: protocol.RequirementFeature, Name: "subagents"}},
-		ActiveRun:            &protocol.ActiveRunRef{RunID: "run_1", Status: protocol.RunStatusWaiting},
-		Errors:               []protocol.FieldError{{Field: "features", Detail: "subagents is absent"}},
+	problems := []*protocol.ProblemData{
+		{
+			Type: protocol.ProblemRateLimited, Detail: "additional declarations required",
+			DocURL: "https://docs.example/capabilities", RetryAfterSeconds: 2,
+		},
+		{
+			Type:                 protocol.ErrCapabilityNotNeg.Error(),
+			RequiredCapabilities: []protocol.CapabilityRequirement{{Type: protocol.RequirementFeature, Name: "subagents"}},
+		},
+		{
+			Type:      protocol.ErrSessionHasActiveRun.Error(),
+			ActiveRun: &protocol.ActiveRunRef{RunID: "run_1", Status: protocol.RunStatusWaiting},
+		},
+		{
+			Type:   protocol.ErrInvalidParams.Error(),
+			Errors: []protocol.FieldError{{Field: "features", Detail: "subagents is absent"}},
+		},
 	}
-	if err := problem.Validate(); err != nil {
-		t.Fatal(err)
+	var rendered []string
+	for _, problem := range problems {
+		if err := Validate(problem); err != nil {
+			t.Fatal(err)
+		}
+		rendered = append(rendered, String(problem))
 	}
+	presentation := strings.Join(rendered, " ")
 	for _, want := range []string{"additional declarations required", "retry after 2s", "docs.example", "feature:subagents", "run_1 (waiting)", "features: subagents is absent"} {
-		if !strings.Contains(problem.String(), want) {
-			t.Fatalf("Problem.String() omitted %q: %s", want, problem)
+		if !strings.Contains(presentation, want) {
+			t.Fatalf("String() omitted %q: %s", want, presentation)
 		}
 	}
 
-	clone := problem.Clone()
-	clone.RequiredCapabilities[0].Name = "mutated"
-	clone.ActiveRun.RunID = "run_2"
-	clone.Errors[0].Detail = "mutated"
-	if problem.Equal(clone) || problem.RequiredCapabilities[0].Name != "subagents" || problem.ActiveRun.RunID != "run_1" || problem.Errors[0].Detail != "subagents is absent" {
-		t.Fatalf("Clone retained caller-owned state: source=%+v clone=%+v", problem, clone)
+	capabilitiesClone := Clone(problems[1])
+	activeRunClone := Clone(problems[2])
+	fieldsClone := Clone(problems[3])
+	capabilitiesClone.RequiredCapabilities[0].Name = "mutated"
+	activeRunClone.ActiveRun.RunID = "run_2"
+	fieldsClone.Errors[0].Detail = "mutated"
+	if Equal(problems[1], capabilitiesClone) || problems[1].RequiredCapabilities[0].Name != "subagents" ||
+		problems[2].ActiveRun.RunID != "run_1" || problems[3].Errors[0].Detail != "subagents is absent" {
+		t.Fatalf("Clone retained caller-owned state: sources=%+v", problems)
 	}
-	if !problem.Equal(problem.Clone()) || (*Problem)(nil).Clone() != nil || !(*Problem)(nil).Equal(nil) {
+	if !Equal(problems[0], Clone(problems[0])) || Clone(nil) != nil || !Equal(nil, nil) {
 		t.Fatal("problem clone/equality identity is broken")
 	}
 }
@@ -41,17 +60,18 @@ func TestProblemOwnsAndPresentsRecoveryMetadata(t *testing.T) {
 func TestProblemRejectsMalformedStructuredLeaves(t *testing.T) {
 	t.Parallel()
 
-	tests := []Problem{
+	tests := []protocol.ProblemData{
 		{},
 		{Type: "rate_limited", RetryAfterSeconds: -1},
 		{Type: "capability_not_negotiated", RequiredCapabilities: []protocol.CapabilityRequirement{{Type: "unknown", Name: "x"}}},
 		{Type: "capability_not_negotiated", RequiredCapabilities: []protocol.CapabilityRequirement{{Type: protocol.RequirementFeature}}},
+		{Type: "capability_not_negotiated", RetryAfterSeconds: 2, RequiredCapabilities: []protocol.CapabilityRequirement{{Type: protocol.RequirementFeature, Name: "subagents"}}},
 		{Type: "session_has_active_run", ActiveRun: &protocol.ActiveRunRef{Status: protocol.RunStatusRunning}},
 		{Type: "session_has_active_run", ActiveRun: &protocol.ActiveRunRef{RunID: "run_1", Status: "queued"}},
 		{Type: "invalid_params", Errors: []protocol.FieldError{{Field: "provider"}}},
 	}
 	for _, problem := range tests {
-		if err := problem.Validate(); err == nil {
+		if err := Validate(&problem); err == nil {
 			t.Fatalf("Validate accepted malformed problem: %+v", problem)
 		}
 	}

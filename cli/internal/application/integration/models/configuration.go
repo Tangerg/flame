@@ -309,7 +309,7 @@ func (u UpdateProvider) Validate() error {
 
 type TestResult struct {
 	OK      bool
-	Problem *failure.Problem
+	Problem *runtimeprotocol.ProblemData
 }
 
 func (t TestResult) Validate() error {
@@ -317,7 +317,7 @@ func (t TestResult) Validate() error {
 		return errors.New("provider test result must contain exactly one success or problem state")
 	}
 	if t.Problem != nil {
-		return t.Problem.Validate()
+		return failure.Validate(t.Problem)
 	}
 	return nil
 }

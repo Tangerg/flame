@@ -20,7 +20,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
@@ -406,7 +405,7 @@ func TestRunReturnsAnErrorForNonCompletedOutcomes(t *testing.T) {
 		outcome agent.Outcome
 		want    string
 	}{
-		{name: "failed", outcome: agent.Outcome{Status: agent.OutcomeFailed, Problem: &failure.Problem{Type: "rate_limited", Detail: "provider refused", RetryAfterSeconds: 9}}, want: "retry after 9s"},
+		{name: "failed", outcome: agent.Outcome{Status: agent.OutcomeFailed, Problem: &protocol.ProblemData{Type: "rate_limited", Detail: "provider refused", RetryAfterSeconds: 9}}, want: "retry after 9s"},
 		{name: "canceled", outcome: agent.Outcome{Status: agent.OutcomeCanceled}, want: "run canceled"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
