@@ -1,7 +1,6 @@
 package runtimebinding
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -14,16 +13,16 @@ func projectRuntimeProfile(
 	discovery *protocol.DiscoverResponse,
 	client *protocol.ClientCapabilities,
 ) (Profile, error) {
-	if discovery == nil {
-		return Profile{}, fmt.Errorf("project runtime profile: discovery is nil")
+	if err := validateDiscovery(discovery); err != nil {
+		return Profile{}, fmt.Errorf("project runtime profile: %w", err)
 	}
 	runConcurrency, err := projectRunConcurrency(discovery.Capabilities.Limits.MaxConcurrentRuns)
 	if err != nil {
-		return Profile{}, fmt.Errorf("project runtime profile: %w", err)
+		return Profile{}, runtimeContractViolation("project runtime profile: %v", err)
 	}
 	commandReplay, err := projectCommandReplay(discovery.Capabilities.Limits.Idempotency)
 	if err != nil {
-		return Profile{}, fmt.Errorf("project runtime profile: %w", err)
+		return Profile{}, runtimeContractViolation("project runtime profile: %v", err)
 	}
 	profile := Profile{
 		Protocol: Protocol{Version: discovery.ProtocolVersion},
@@ -65,16 +64,12 @@ func projectRuntimeProfile(
 		}
 	}
 	if err := profile.Validate(); err != nil {
-		return Profile{}, fmt.Errorf("project runtime profile: %w", err)
+		return Profile{}, runtimeContractViolation("project runtime profile: %v", err)
 	}
 	return profile, nil
 }
 
 func projectCommandReplay(limits protocol.IdempotencyLimits) (commandreplay.Capability, error) {
-	if limits.RetentionSeconds <= 0 ||
-		int64(limits.RetentionSeconds) > int64((time.Duration(1<<63-1))/time.Second) {
-		return commandreplay.Capability{}, errors.New("command replay retention is outside the positive duration range")
-	}
 	capability, err := commandreplay.NewCapability(
 		limits.Namespace, time.Duration(limits.RetentionSeconds)*time.Second,
 	)

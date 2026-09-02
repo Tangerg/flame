@@ -136,14 +136,10 @@ func Open(ctx context.Context, cfg Config) (*Connection, error) {
 	}
 	discovery, err := binding.Discover(ctx, runtime.callOptions())
 	if err == nil {
-		err = validateDiscovery(discovery)
+		runtime.profile, err = projectRuntimeProfile(discovery, runtime.meta.ClientCapabilities)
 	}
 	if err != nil {
 		return nil, errors.Join(classifyError(err), binding.Close())
-	}
-	runtime.profile, err = projectRuntimeProfile(discovery, runtime.meta.ClientCapabilities)
-	if err != nil {
-		return nil, errors.Join(fmt.Errorf("%w: %w", agent.ErrIncompatibleRuntime, err), binding.Close())
 	}
 	return runtime, nil
 }
@@ -265,6 +261,9 @@ func newIdempotencyKey() (string, error) {
 func validateDiscovery(discovery *protocol.DiscoverResponse) error {
 	if discovery == nil {
 		return fmt.Errorf("%w: discovery response is nil", agent.ErrIncompatibleRuntime)
+	}
+	if err := protocol.ValidateWireTree(*discovery); err != nil {
+		return fmt.Errorf("%w: discovery response violates the wire contract: %v", agent.ErrIncompatibleRuntime, err)
 	}
 	if discovery.ProtocolVersion != protocol.ProtocolVersion {
 		return fmt.Errorf(

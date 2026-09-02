@@ -195,7 +195,7 @@ func compatibleDiscovery() *protocol.DiscoverResponse {
 			},
 			Limits: protocol.RuntimeLimits{
 				MaxConcurrentRuns: &maxConcurrentRuns,
-				Idempotency:       protocol.IdempotencyLimits{RetentionSeconds: 600, Namespace: "idp_test"},
+				Idempotency:       protocol.IdempotencyLimits{RetentionSeconds: 600, Namespace: compatibleReplayNamespace},
 				RunReplay: protocol.RunReplayLimits{
 					Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1024, MaxBytes: 1 << 20,
 				},
@@ -205,6 +205,8 @@ func compatibleDiscovery() *protocol.DiscoverResponse {
 		},
 	}
 }
+
+const compatibleReplayNamespace = "idp_0123456789abcdef0123456789abcdef"
 
 type runtimeConsumptionMode string
 

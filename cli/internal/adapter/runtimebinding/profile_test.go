@@ -1,11 +1,14 @@
 package runtimebinding
 
 import (
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
 
@@ -39,7 +42,7 @@ func TestRuntimeProfileProjectionPreservesCompleteDiscovery(t *testing.T) {
 	limits := profile.Limits
 	maximum, bounded := limits.RunConcurrency.Maximum()
 	if !bounded || maximum != 4 || limits.CommandReplay.Retention() != 10*time.Minute ||
-		limits.CommandReplay.Namespace() != "idp_test" ||
+		limits.CommandReplay.Namespace() != compatibleReplayNamespace ||
 		limits.RunReplay.MaxEvents != 1024 || limits.RunReplay.MaxBytes != 1<<20 ||
 		limits.MCPAuthorizationRetentionSeconds != 600 ||
 		limits.RuntimeSubscription.MaxTopics != 32 || limits.RuntimeSubscription.MaxWatches != 32 {
@@ -74,6 +77,23 @@ func TestRuntimeProfileProjectionDistinguishesUnboundedFromInvalidConcurrency(t 
 	invalidDiscovery.Capabilities.Limits.MaxConcurrentRuns = &zero
 	if _, err := projectRuntimeProfile(invalidDiscovery, nil); err == nil {
 		t.Fatal("explicit zero runtime concurrency cap was accepted")
+	}
+}
+
+func TestRuntimeProfileRejectsRetentionThatWouldWrapToOneSecond(t *testing.T) {
+	t.Parallel()
+
+	// Multiplying this value by time.Second modulo 2^64 yields exactly one
+	// second, so validation after conversion cannot detect the overflow.
+	wrapsToOneSecond := int64(36_028_797_018_963_969)
+	if int64(int(wrapsToOneSecond)) != wrapsToOneSecond {
+		t.Skip("int width cannot represent an overflowing duration")
+	}
+	discovery := compatibleDiscovery()
+	discovery.Capabilities.Limits.Idempotency.RetentionSeconds = int(wrapsToOneSecond)
+	_, err := projectRuntimeProfile(discovery, nil)
+	if !errors.Is(err, agent.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "retentionSeconds") {
+		t.Fatalf("projectRuntimeProfile overflow error = %v", err)
 	}
 }
 
