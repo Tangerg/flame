@@ -311,7 +311,7 @@ plugins/builtin/workspace/application/
 
 关键边界：
 
-- Work Index UI 只消费 navigation read model，不直接 join `useSessions()` / `useProjects()` / active view state。
+- Work Index UI 只消费 navigation read model，不直接 join `useAgentSessions()` / `useWorkspaceProjects()` / active view state。
 - Context Dock 只围绕 active session/cwd 组织 workspace destinations。
 - Agent Narrative 只消费 Agent public conversation / Run / HITL language，不读取 Agent
   Store 或 Runtime wire。
@@ -350,7 +350,7 @@ Context Dock state 必须能回答：
 
 P128 的 Agent Narrative 收口建立在同一模型上：Runtime 在 terminal boundary 写入 `commentary | finalAnswer`，Transcript/SQLite/Artifact/public surface 共同持久该事实；Frontend provisional stream 先留在 work narrative，terminal final answer 再以稳定 identity 独立呈现。commentary/canceled/waiting 行不发布 context menu/message actions，同 Run 紧邻最终回答只让前一行 process material 进入 Codex wave folding。
 
-P129 进一步固定 Conversation 与 Transcript 的可见性边界：Application 生成的 fresh autonomous Goal 控制提示只进入 provider Conversation，不创建用户 Transcript Item，也不向 Frontend 返回伪 `UserItemID`；真实用户 start/resume input 仍保持可见。standing Goal 只从 `goals.get` / `goals.changed` 投影 lifecycle、objective 与真实 actions，Frontend 不以字符串过滤、CSS 隐藏或本地缓存修补内部控制提示泄漏。
+P129 进一步固定 Conversation 与 Transcript 的可见性边界：Application 生成的 fresh autonomous Goal 控制提示只进入 provider Conversation，不创建用户 Transcript Item，也不向 Frontend 返回伪 `userItemId`；真实用户 start/resume input 仍保持可见。standing Goal 只从 `goals.get` / `goals.changed` 投影 lifecycle、objective 与真实 actions，Frontend 不以字符串过滤、CSS 隐藏或本地缓存修补内部控制提示泄漏。
 
 ### Phase 1: Document and Guard the Model — `DONE`
 
@@ -397,10 +397,10 @@ P129 进一步固定 Conversation 与 Transcript 的可见性边界：Applicatio
 
 已落地：
 
-- Context Dock 的 `splitViewId`、`activeFile`、`fileViewer`、`selectedToolId`、`expandedToolIds` 已按 active session scope 保存/恢复。
+- Context Dock 的 `dockViewIds`、`lastViewId`、`fileFocus`、`fileViewer`、`selectedToolId`、`expandedToolIds` 已按 active session scope 保存/恢复。
 - 切换 session 会保存离开的 dock scope，恢复进入的 dock scope；没有保存过的 session 使用空 scope。
 - 关闭 session 后会清理不再打开的 dock scope。
-- app-global surface state 已进入 `workspaceSurfaceStore`，session-scoped dock state 已进入 `contextDockStore`。
+- app-global surface state 住在路由 search param（`lib/navigation`），session-scoped dock state 在 `contextDockStore`。
 
 后续如需 cwd 级共享，再在 workspace application 层显式引入 `sessionId -> cwd` 的归属规则。
 
