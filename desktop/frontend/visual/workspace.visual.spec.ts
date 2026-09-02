@@ -68,8 +68,10 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     // tool-stats pane while the diff was the one on screen — and the assertions
     // passed against a view nobody could see. Scope to what is visible.
     const view = page.locator(".agent-workspace-view:visible");
-    // Six, since the shells state gained the write whose empty card body started this.
-    await expect(view).toContainText("6 calls · 8.6s");
+    // Six, since the shells state gained the write whose empty card body started this. The
+    // total moved when every settled call in that fixture finally carried the duration the
+    // Runtime always sends with one: the patch had been counting as instant.
+    await expect(view).toContainText("6 calls · 8.7s");
     // The two ways a call fails to deliver, counted apart.
     await expect(view).toContainText("1 failed");
     await expect(view).toContainText("1 denied");
