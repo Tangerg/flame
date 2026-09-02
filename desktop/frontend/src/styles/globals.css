@@ -111,15 +111,12 @@
 
   --text-display-sm: 18px;
   --text-display-sm--letter-spacing: var(--tracking-ui);
-  --text-display-md: 22px;
+  --text-display-md: 20px;
   --text-display-md--letter-spacing: var(--tracking-display);
   --text-display-md--line-height: 1.2;
-  --text-display-lg: 26px;
+  --text-display-lg: 24px;
   --text-display-lg--letter-spacing: var(--tracking-display);
   --text-display-lg--line-height: 1.15;
-  --text-display-xl: 30px;
-  --text-display-xl--letter-spacing: var(--tracking-display);
-  --text-display-xl--line-height: 1.15;
 
   --tracking-ui: var(--tracking-ui);
   --tracking-display: var(--tracking-display);
@@ -550,7 +547,7 @@
   --boundary-emphasis: color-mix(in oklab, var(--color-text) 28%, var(--color-border-soft));
 
   --content-max: 768px;
-  --content-max-wide: 896px;
+  --content-max-wide: 1024px;
   --reading-column-max: calc(var(--content-max) + 2 * var(--density-column-gutter-wide));
   --reading-rail-width: 176px;
 }
@@ -737,7 +734,7 @@ html.theme-dark {
   --color-on-media: #ffffff;
   --window-sidebar-control-span: 36px;
   --dock-control-span: 36px;
-  --surface-header-height: 42px;
+  --surface-header-height: 46px;
   --dur-drawer: calc(var(--dur-drawer-base) * var(--motion-scale));
   --ease-drawer: linear(
     0,

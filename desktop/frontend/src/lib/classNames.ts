@@ -8,7 +8,7 @@ import { UI_TYPE_STEPS } from "./typography";
 // as a conflict. A missing step fails SILENTLY in two directions — dropped when a colour
 // utility follows, ignored when another size does — which is why the UI steps come from the
 // ladder itself and `check-design-tokens` holds the editorial half.
-const EDITORIAL_STEPS = ["display-sm", "display-md", "display-lg", "display-xl"];
+const EDITORIAL_STEPS = ["display-sm", "display-md", "display-lg"];
 
 const mergeTailwindClasses = extendTailwindMerge({
   extend: { theme: { text: [...UI_TYPE_STEPS, ...EDITORIAL_STEPS] } },

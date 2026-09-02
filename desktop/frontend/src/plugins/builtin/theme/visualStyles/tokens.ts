@@ -96,7 +96,7 @@ export const WORKBENCH_TOKENS: VisualStyleTokens = {
   "field-height-lg": "32px",
   "menu-row-height": "30px",
   "dock-tab-height": "28px",
-  "surface-header-height": "42px",
+  "surface-header-height": "46px",
   "control-edge-width": "1px",
   // One device pixel on a 2x panel; at 1px the composer becomes the heaviest edge on screen.
   "composer-edge-width": "0.5px",

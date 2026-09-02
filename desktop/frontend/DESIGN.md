@@ -408,7 +408,7 @@ The whole system reduces to five decisions. Everything below elaborates them.
    macOS (the OS UI face) for language; mono for everything that is data — paths,
    counts, durations, tokens, shortcuts, code. That split is what makes a dense
    agent transcript scannable.
-5. **Dense, not cramped** — a workbench rhythm: 42px chrome bars, short rows, one
+5. **Dense, not cramped** — a workbench rhythm: 46px chrome bars, short rows, one
    centred reading measure flanked by navigation rails. Features are first-class
    grouped entries in the sidebar + settings, not buried in the command palette.
    **No tab strip** — one active session; workspace views open full-pane or in the
@@ -585,7 +585,7 @@ The full scale is 11 tokens — narrower than the previous 13-step Spotify scale
    out). Hierarchy comes from size + weight contrast (400 vs 500), not from
    going heavier. (600 semibold is reserved for HITL action buttons only.)
 
-3. **Display gets negative tracking.** -0.96px at 32px display-xl, scaling proportionally. Body holds at -0.05 to 0.
+3. **Display gets negative tracking.** Three editorial steps — 18 / 20 / 24 — matching Codex's heading ladder; the app has no fourth, so there is no token for one. Body holds at -0.05 to 0.
 
 4. **Sentence-case headlines.** Never ALL-CAPS. Welcome screen, settings sections, view headers — all sentence-case. Optional period termination is allowed (Vercel signature) but not required.
 
@@ -602,7 +602,7 @@ Three opaque tool windows and no line between any of them. No bottom status bar:
 ```
  drawer (fixed, slides)      reading plane (z-15)                    dock
 ┌─────────────┐┌──────────────────────────────────────────────┬─────────┐
-│ 42px header ││ 42px header: project / title · state · meta   │ 42px    │
+│ 46px header ││ 46px header: project / title · state · meta   │ 46px    │
 │ project     │├──────────────────────────────────────────────┤ tabs +  │
 │ ⌘N ⌘K …     ││ ·                                       In   │─────────│
 │ Projects    ││ ·      Message stream (--content-max)   this │         │
