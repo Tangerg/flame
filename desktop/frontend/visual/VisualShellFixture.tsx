@@ -1,6 +1,6 @@
 import { useT } from "@/lib/i18n";
 import { Slot } from "@/plugins/host/Slot";
-import { SidebarPanel } from "@/plugins/builtin/sidebar/ui/SidebarPanel";
+import { SidebarPanel } from "@/plugins/builtin/sidebar/public/SidebarPanel";
 import {
   useSidebarDrawer,
   useSidebarWidth,
