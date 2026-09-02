@@ -137,6 +137,43 @@ func TestModelContextBudgetAppliesEstimateCalibrationToCapacityChecks(t *testing
 	}
 }
 
+func TestModelContextBudgetKeepsProviderCountSeparateFromCalibrationEstimate(t *testing.T) {
+	messages := []chat.Message{
+		chat.NewUserMessage(chat.NewTextPart(strings.Repeat("context", 100))),
+	}
+	rawEstimate := mustEstimateModelContextTokens(t, messages, nil, chat.Options{})
+	counter := &budgetInputCounter{count: int64(rawEstimate + 500)}
+	budget := newModelContextBudget(
+		messageCountTrigger{},
+		rawEstimate+100,
+		nil,
+		nil,
+		nil,
+		chat.Options{},
+		0,
+		counter,
+	)
+
+	exceeded, calibrationEstimate, err := budget.exceeded(t.Context(), messages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exceeded || counter.calls != 1 {
+		t.Fatalf(
+			"provider capacity = exceeded:%t counts:%d, want true and one count",
+			exceeded,
+			counter.calls,
+		)
+	}
+	if calibrationEstimate != rawEstimate {
+		t.Fatalf(
+			"calibration estimate = %d, want provider-neutral estimate %d",
+			calibrationEstimate,
+			rawEstimate,
+		)
+	}
+}
+
 func TestMaintenanceModelTranscriptHasAggregateInputBound(t *testing.T) {
 	const maximumInputBytes = 384 * 1024
 

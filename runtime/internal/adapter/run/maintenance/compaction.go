@@ -46,14 +46,14 @@ const (
 )
 
 type compactionPlan struct {
-	action         compactionAction
-	required       bool
-	messagesBefore int
-	cutoff         int
-	trimmed        []chat.Message
-	older          []chat.Message
-	recent         []chat.Message
-	inputTokens    int
+	action          compactionAction
+	required        bool
+	messagesBefore  int
+	cutoff          int
+	trimmed         []chat.Message
+	older           []chat.Message
+	recent          []chat.Message
+	estimatedTokens int
 }
 
 // NewCompactor requires a chat history store and per-call chat-client resolver.
@@ -179,15 +179,15 @@ func (c *Compactor) planCompactionWithProtectedTail(
 	budget modelContextBudget,
 	protectedTail int,
 ) (compactionPlan, error) {
-	overBudget, tokenTriggered, inputTokens, err := budget.triggered(ctx, messages)
+	overBudget, tokenTriggered, estimatedTokens, err := budget.triggered(ctx, messages)
 	if err != nil {
 		return compactionPlan{}, err
 	}
 	if !overBudget || len(messages) == 0 {
-		return compactionPlan{inputTokens: inputTokens}, nil
+		return compactionPlan{estimatedTokens: estimatedTokens}, nil
 	}
 	if protectedTail < 0 || protectedTail > len(messages) {
-		return compactionPlan{required: tokenTriggered, inputTokens: inputTokens}, nil
+		return compactionPlan{required: tokenTriggered, estimatedTokens: estimatedTokens}, nil
 	}
 	foldableLimit := len(messages) - protectedTail
 	protectedOverBudget, _, err := budget.exceeded(ctx, messages[foldableLimit:])
@@ -195,17 +195,17 @@ func (c *Compactor) planCompactionWithProtectedTail(
 		return compactionPlan{}, err
 	}
 	if protectedOverBudget {
-		return compactionPlan{required: true, inputTokens: inputTokens}, nil
+		return compactionPlan{required: true, estimatedTokens: estimatedTokens}, nil
 	}
 	if foldableLimit == 0 {
-		return compactionPlan{required: tokenTriggered, inputTokens: inputTokens}, nil
+		return compactionPlan{required: tokenTriggered, estimatedTokens: estimatedTokens}, nil
 	}
 	cutoff := c.summaryCutoffWithProtectedTail(messages, protectedTail)
 	if cutoff == 0 {
-		return compactionPlan{required: tokenTriggered, inputTokens: inputTokens}, nil
+		return compactionPlan{required: tokenTriggered, estimatedTokens: estimatedTokens}, nil
 	}
 	trimmed, changed := trimForBudgetBefore(messages, cutoff)
-	trimmedOverBudget, trimmedTokens, err := budget.exceeded(ctx, trimmed)
+	trimmedOverBudget, trimmedEstimate, err := budget.exceeded(ctx, trimmed)
 	if err != nil {
 		return compactionPlan{}, err
 	}
@@ -213,7 +213,7 @@ func (c *Compactor) planCompactionWithProtectedTail(
 		return compactionPlan{
 			action: trimCompaction, required: tokenTriggered,
 			messagesBefore: len(messages), trimmed: trimmed,
-			inputTokens: trimmedTokens,
+			estimatedTokens: trimmedEstimate,
 		}, nil
 	}
 	// KeepRecent is a preference, not a license to preserve a suffix that is
@@ -228,7 +228,7 @@ func (c *Compactor) planCompactionWithProtectedTail(
 	if recentOverBudget {
 		cutoff = foldableLimit
 		trimmed, changed = trimForBudgetBefore(messages, cutoff)
-		trimmedOverBudget, trimmedTokens, err = budget.exceeded(ctx, trimmed)
+		trimmedOverBudget, trimmedEstimate, err = budget.exceeded(ctx, trimmed)
 		if err != nil {
 			return compactionPlan{}, err
 		}
@@ -236,18 +236,18 @@ func (c *Compactor) planCompactionWithProtectedTail(
 			return compactionPlan{
 				action: trimCompaction, required: tokenTriggered,
 				messagesBefore: len(messages), trimmed: trimmed,
-				inputTokens: trimmedTokens,
+				estimatedTokens: trimmedEstimate,
 			}, nil
 		}
 	}
 	return compactionPlan{
-		action:         summarizeCompaction,
-		required:       tokenTriggered,
-		messagesBefore: len(messages),
-		cutoff:         cutoff,
-		older:          trimmed[:cutoff],
-		recent:         trimmed[cutoff:],
-		inputTokens:    inputTokens,
+		action:          summarizeCompaction,
+		required:        tokenTriggered,
+		messagesBefore:  len(messages),
+		cutoff:          cutoff,
+		older:           trimmed[:cutoff],
+		recent:          trimmed[cutoff:],
+		estimatedTokens: estimatedTokens,
 	}, nil
 }
 

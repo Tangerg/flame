@@ -66,7 +66,11 @@ type modelContextInputTokenCounter interface {
 }
 
 type modelContextFootprint struct {
+	// tokens owns the capacity decision and may be provider-measured.
+	// estimatedTokens keeps the provider-neutral baseline used to calibrate the
+	// next request against eventual provider usage.
 	tokens           int
+	estimatedTokens  int
 	providerMeasured bool
 }
 
@@ -106,9 +110,9 @@ func (m modelContextBudget) triggered(ctx context.Context, messages []chat.Messa
 	}
 	tokenTriggered := footprint.budgetTokens(m.adjustment) >= m.maxTokens
 	if m.messageTrigger.reached(saturatedAdd(len(messages), len(m.tail))) {
-		return true, tokenTriggered, footprint.tokens, nil
+		return true, tokenTriggered, footprint.estimatedTokens, nil
 	}
-	return tokenTriggered, tokenTriggered, footprint.tokens, nil
+	return tokenTriggered, tokenTriggered, footprint.estimatedTokens, nil
 }
 
 func (m modelContextBudget) exceeded(ctx context.Context, messages []chat.Message) (bool, int, error) {
@@ -116,7 +120,7 @@ func (m modelContextBudget) exceeded(ctx context.Context, messages []chat.Messag
 	if err != nil {
 		return false, 0, err
 	}
-	return footprint.budgetTokens(m.adjustment) >= m.maxTokens, footprint.tokens, nil
+	return footprint.budgetTokens(m.adjustment) >= m.maxTokens, footprint.estimatedTokens, nil
 }
 
 func (m modelContextBudget) triggerFootprint(ctx context.Context, messages []chat.Message) (modelContextFootprint, error) {
@@ -126,20 +130,27 @@ func (m modelContextBudget) triggerFootprint(ctx context.Context, messages []cha
 	}
 	calibrated := calibratedTokenEstimate(tokens, m.adjustment)
 	if m.counter == nil || (calibrated < m.maxTokens && !m.hasProviderPricedMedia(messages)) {
-		return modelContextFootprint{tokens: tokens}, nil
+		return modelContextFootprint{tokens: tokens, estimatedTokens: tokens}, nil
 	}
-	return m.countInputTokens(ctx, messages)
+	return m.countInputTokens(ctx, messages, tokens)
 }
 
 func (m modelContextBudget) replacementFootprint(ctx context.Context, messages []chat.Message) (modelContextFootprint, error) {
-	if m.counter != nil {
-		return m.countInputTokens(ctx, messages)
-	}
 	tokens, err := m.estimatedTokens(messages)
-	return modelContextFootprint{tokens: tokens}, err
+	if err != nil {
+		return modelContextFootprint{}, err
+	}
+	if m.counter != nil {
+		return m.countInputTokens(ctx, messages, tokens)
+	}
+	return modelContextFootprint{tokens: tokens, estimatedTokens: tokens}, nil
 }
 
-func (m modelContextBudget) countInputTokens(ctx context.Context, messages []chat.Message) (modelContextFootprint, error) {
+func (m modelContextBudget) countInputTokens(
+	ctx context.Context,
+	messages []chat.Message,
+	estimatedTokens int,
+) (modelContextFootprint, error) {
 	mutable := make([]chat.Message, 0, len(messages)+len(m.tail))
 	mutable = append(mutable, cloneMessages(messages)...)
 	mutable = append(mutable, cloneMessages(m.tail)...)
@@ -147,7 +158,11 @@ func (m modelContextBudget) countInputTokens(ctx context.Context, messages []cha
 	if err != nil {
 		return modelContextFootprint{}, fmt.Errorf("maintenance: count provider input tokens: %w", err)
 	}
-	return modelContextFootprint{tokens: tokenLimitInt(count), providerMeasured: true}, nil
+	return modelContextFootprint{
+		tokens:           tokenLimitInt(count),
+		estimatedTokens:  estimatedTokens,
+		providerMeasured: true,
+	}, nil
 }
 
 func (m modelContextBudget) hasProviderPricedMedia(messages []chat.Message) bool {

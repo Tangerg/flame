@@ -529,7 +529,9 @@ func TestLiveDeepSeekLongContextCompaction(t *testing.T) {
 	fixture := newLiveDeepSeekFixture(t, 5*time.Minute)
 	session := fixture.createSession(t, "Live DeepSeek Long Context Compaction E2E")
 	first := fixture.runTurn(t, session.ID,
-		"Remember the exact origin marker "+liveOriginMarker+" for a later recall check. Reply with exactly ACK_01.")
+		"Keep the exact origin marker "+liveOriginMarker+" in this current conversation context for a later turn. "+
+			"This is not a request for persistent or cross-session memory; do not write a file or call a tool. "+
+			"Reply with exactly ACK_01 and nothing else.")
 	if got := strings.TrimSpace(first.finalText); got != "ACK_01" {
 		t.Fatalf("first answer = %q", got)
 	}

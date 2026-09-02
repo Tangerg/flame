@@ -102,13 +102,13 @@ func (c *Compactor) CompactModelContext(
 		if plan.required {
 			return agentexec.ModelContextCompactionResult{}, ErrModelContextCannotFit
 		}
-		return unchangedModelContextResult(candidate, plan.inputTokens)
+		return unchangedModelContextResult(candidate, plan.estimatedTokens)
 	}
 	if !request.AllowsCompaction(ctx) {
 		if plan.required {
 			return agentexec.ModelContextCompactionResult{}, ErrModelContextCompactionVetoed
 		}
-		return unchangedModelContextResult(candidate, plan.inputTokens)
+		return unchangedModelContextResult(candidate, plan.estimatedTokens)
 	}
 
 	replacement, summary, cutoff, prefixAfter, err := c.materializeModelContextPlan(
@@ -119,7 +119,7 @@ func (c *Compactor) CompactModelContext(
 	if err != nil {
 		return agentexec.ModelContextCompactionResult{}, err
 	}
-	overBudget, inputTokens, err := budget.exceeded(ctx, replacement)
+	overBudget, estimatedTokens, err := budget.exceeded(ctx, replacement)
 	if err != nil {
 		return agentexec.ModelContextCompactionResult{}, err
 	}
@@ -132,7 +132,7 @@ func (c *Compactor) CompactModelContext(
 		true,
 		summary,
 		len(candidate),
-		inputTokens,
+		estimatedTokens,
 	)
 	if err != nil {
 		return agentexec.ModelContextCompactionResult{}, err
@@ -157,14 +157,14 @@ func (c *Compactor) CompactModelContext(
 
 func unchangedModelContextResult(
 	candidate []chat.Message,
-	inputTokens int,
+	estimatedTokens int,
 ) (agentexec.ModelContextCompactionResult, error) {
 	return agentexec.NewModelContextCompactionResult(
 		candidate,
 		false,
 		"",
 		len(candidate),
-		inputTokens,
+		estimatedTokens,
 	)
 }
 

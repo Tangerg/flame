@@ -234,7 +234,13 @@ func TestModelContextCompactionCountsMediaButDoesNotCompactBelowProviderThreshol
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Changed() || result.Summarized() || result.EstimatedTokens() != threshold-1 {
+	wantEstimate := mustEstimateModelContextTokens(
+		t,
+		append([]chat.Message{chat.NewSystemMessage("frozen instructions")}, history...),
+		nil,
+		chat.Options{},
+	)
+	if result.Changed() || result.Summarized() || result.EstimatedTokens() != wantEstimate {
 		t.Fatalf("result = changed:%t summarized:%t tokens:%d", result.Changed(), result.Summarized(), result.EstimatedTokens())
 	}
 	if counter.calls != 1 || store.rewrites != 0 || len(summaryModel.requests) != 0 {
@@ -352,7 +358,13 @@ func TestModelContextCompactionCompactsMediaOnlyAtProviderThreshold(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.Changed() || !result.Summarized() || result.EstimatedTokens() != threshold/10 {
+	wantEstimate := mustEstimateModelContextTokens(
+		t,
+		append([]chat.Message{chat.NewSystemMessage("frozen instructions")}, result.Messages()...),
+		nil,
+		chat.Options{},
+	)
+	if !result.Changed() || !result.Summarized() || result.EstimatedTokens() != wantEstimate {
 		t.Fatalf("result = changed:%t summarized:%t tokens:%d", result.Changed(), result.Summarized(), result.EstimatedTokens())
 	}
 	if counter.calls < 2 || store.rewrites != 1 || len(summaryModel.requests) != 1 {
