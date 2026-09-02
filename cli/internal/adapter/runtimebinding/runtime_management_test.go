@@ -459,6 +459,7 @@ func activeProtocolGoal() *protocol.Goal {
 	maxRuns := 3
 	return &protocol.Goal{
 		SessionID: "ses_1", Objective: "finish", Status: protocol.GoalActive,
+		Provider: "openai", Model: "gpt-5.6-sol",
 		Budget: &protocol.GoalBudget{MaxRuns: &maxRuns}, CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(2, 0),
 	}
 }
@@ -497,6 +498,25 @@ func TestGoalAdapterProjectsTheCompleteLifecycle(t *testing.T) {
 	}
 	if err := runtime.ClearGoal(t.Context(), "ses_1"); err != nil || stub.last != "clear" {
 		t.Fatalf("ClearGoal = %v, last %q", err, stub.last)
+	}
+}
+
+func TestGoalAdapterAcceptsRuntimeResolvedInheritedSelection(t *testing.T) {
+	t.Parallel()
+	resolved := activeProtocolGoal()
+	resolved.Provider = "deepseek"
+	resolved.Model = "deepseek-chat"
+	stub := &goalBindingStub{t: t, startResult: resolved}
+	runtime := &Connection{goals: stub, meta: requestMeta("test")}
+
+	started, err := runtime.StartGoal(t.Context(), protocol.StartGoalRequest{
+		SessionID: "ses_1", Objective: "finish", Budget: limitedGoalBudget(t, 3),
+	})
+	if err != nil {
+		t.Fatalf("StartGoal with inherited selection: %v", err)
+	}
+	if started.Provider != "deepseek" || started.Model != "deepseek-chat" {
+		t.Fatalf("resolved selection = %s/%s", started.Provider, started.Model)
 	}
 }
 

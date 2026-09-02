@@ -7,8 +7,8 @@ cloud.google.com/go/compute/metadata v0.9.0/go.mod h1:E0bWwX5wTnLPedCKqk3pJmVgCB
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Tangerg/flame/runtime v0.0.0-20260902054930-eb57df0de6f0 h1:eY5VWHuOEsU26aJdWTgCxNh03L5ud5VJmtdrVK/eBbs=
-github.com/Tangerg/flame/runtime v0.0.0-20260902054930-eb57df0de6f0/go.mod h1:PjulkHuktxDecvBZihtetmUDo5XxpB1hAXkHN79Gi0E=
+github.com/Tangerg/flame/runtime v0.0.0-20260902060924-b74565ece24d h1:tn4Fu+RMadWAgzJf7DsqCd5Mr1oFtG8C5VKfZPMeWYQ=
+github.com/Tangerg/flame/runtime v0.0.0-20260902060924-b74565ece24d/go.mod h1:PjulkHuktxDecvBZihtetmUDo5XxpB1hAXkHN79Gi0E=
 github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260902054128-7e7bfa58c67a h1:rWI6zZnXFruf5M5M/DMZ68O9MHyha1zX+/UbLPA7hKY=
 github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260902054128-7e7bfa58c67a/go.mod h1:XqeITG7pzIeQNDNRQQ3Jg63RVvKlXYmURgLHPPrIZ5g=
 github.com/Tangerg/oolong/components v0.16.0 h1:HZrRIjlBgY090VgvU5bHEWH0S+bWtnyTiLCU7SRb2Ks=

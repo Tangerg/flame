@@ -84,13 +84,22 @@ func (r *Connection) StartGoal(ctx context.Context, start protocol.StartGoalRequ
 		return protocol.Goal{}, err
 	}
 	if started.Objective != start.Objective || started.Status != protocol.GoalActive ||
-		started.Provider != start.Provider || started.Model != start.Model ||
-		started.ReasoningEffort != start.ReasoningEffort ||
+		!goalStartSelectionAcknowledged(start, started) ||
 		!equalGoalBudget(started.Budget, start.Budget) ||
 		started.Used.Runs != 0 || started.Used.Steps != 0 || started.Used.CostUSD != nil {
 		return protocol.Goal{}, runtimeContractViolation("start goal returned an acknowledgement that differs from the request")
 	}
 	return started, nil
+}
+
+func goalStartSelectionAcknowledged(start protocol.StartGoalRequest, started protocol.Goal) bool {
+	if start.Provider == "" && start.Model == "" {
+		// Omission delegates selection to the Session. Goal is the authoritative
+		// resolved result, so there is no request value to echo here.
+		return true
+	}
+	return started.Provider == start.Provider && started.Model == start.Model &&
+		started.ReasoningEffort == start.ReasoningEffort
 }
 
 func (r *Connection) StopGoal(ctx context.Context, sessionID string) (protocol.Goal, error) {
