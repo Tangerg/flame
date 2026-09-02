@@ -575,6 +575,29 @@ func TestRunResolvesAttachmentOnlyPromptAgainstExistingSessionWorkspace(t *testi
 	}
 }
 
+func TestRunFileCompletionUsesExistingSessionWorkspace(t *testing.T) {
+	workspace := t.TempDir()
+	unrelatedWorkspace := t.TempDir()
+	writeCommandFixture(t, filepath.Join(workspace, "session-notes.txt"), []byte("notes"))
+	writeCommandFixture(t, filepath.Join(unrelatedWorkspace, "unrelated-notes.txt"), []byte("other"))
+	runtime := instantRuntime()
+	created, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: workspace})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out, _, err := executeCommand(
+		t, runtime, "", "__complete", "-C", unrelatedWorkspace,
+		"run", "--session", created.ID, "--file", "notes",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "session-notes.txt") || strings.Contains(out, "unrelated-notes.txt") {
+		t.Fatalf("file completion = %q, want only the existing Session workspace", out)
+	}
+}
+
 func writeCommandFixture(t *testing.T, path string, content []byte) {
 	t.Helper()
 	if err := os.WriteFile(path, content, 0o600); err != nil {

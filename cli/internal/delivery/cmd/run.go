@@ -41,7 +41,7 @@ func newRunCommand(provider runtimeProvider, v *viper.Viper) *cobra.Command {
 		},
 	}
 	flags.register(cmd)
-	_ = cmd.RegisterFlagCompletionFunc("file", completeRunFile)
+	_ = cmd.RegisterFlagCompletionFunc("file", completeRunFile(provider))
 	_ = cmd.RegisterFlagCompletionFunc("output-format", completeOutputFormat)
 	return cmd
 }
@@ -198,24 +198,45 @@ func newRunRenderer(cmd *cobra.Command, format outputFormat) runworkflow.Rendere
 	}
 }
 
-func completeRunFile(cmd *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	workspacePath, err := resolveWorkspace(cmd)
+func completeRunFile(provider runtimeProvider) func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+	return func(cmd *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		workspacePath, err := runFileCompletionWorkspace(cmd, provider)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		resolver, err := attachment.New(workspacePath)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		matches, err := resolver.Complete(cmd.Context(), toComplete)
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveError
+		}
+		out := make([]string, 0, len(matches))
+		for _, match := range matches {
+			out = append(out, match.Path+"\t"+match.Detail)
+		}
+		return out, cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+func runFileCompletionWorkspace(cmd *cobra.Command, provider runtimeProvider) (string, error) {
+	sessionID, err := cmd.Flags().GetString("session")
 	if err != nil {
-		return nil, cobra.ShellCompDirectiveError
+		return "", err
 	}
-	resolver, err := attachment.New(workspacePath)
+	if sessionID == "" {
+		return resolveWorkspace(cmd)
+	}
+	runtime, err := provider.Runtime(cmd)
 	if err != nil {
-		return nil, cobra.ShellCompDirectiveError
+		return "", err
 	}
-	matches, err := resolver.Complete(cmd.Context(), toComplete)
+	snapshot, err := session.Open(cmd.Context(), runtime, sessionID, "")
 	if err != nil {
-		return nil, cobra.ShellCompDirectiveError
+		return "", err
 	}
-	out := make([]string, 0, len(matches))
-	for _, match := range matches {
-		out = append(out, match.Path+"\t"+match.Detail)
-	}
-	return out, cobra.ShellCompDirectiveNoFileComp
+	return snapshot.Session.Workspace.Path, nil
 }
 
 func resolveAttachments(ctx context.Context, workspace string, paths []string) ([]agent.Attachment, error) {
