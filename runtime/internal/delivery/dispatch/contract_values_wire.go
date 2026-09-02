@@ -210,6 +210,7 @@ func registerArtifactValues(s *Shapes) {
 		Constraints: append(append(requiredResourceIdentity("id"), requiredResourceIdentity("runId")...),
 			FieldConstraint{Field: "droppedMessages", Kind: ConstraintNonNegative},
 			FieldConstraint{Field: "durationMillis", Kind: ConstraintNonNegative},
+			FieldConstraint{Field: "durationMillis", Kind: ConstraintMaximum, Limit: protocol.MaximumDurationMilliseconds},
 		),
 	})
 	s.valueConstraint(FieldConstraintSpec{
@@ -226,7 +227,14 @@ func registerArtifactValues(s *Shapes) {
 			{Field: "version", Kind: ConstraintMaximum, Limit: protocol.SessionArtifactVersion},
 		},
 	})
-	nonNegative[protocol.ArtifactRunMetrics](s, "steps", "activeDurationMillis")
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.ArtifactRunMetrics](),
+		Constraints: []FieldConstraint{
+			{Field: "steps", Kind: ConstraintNonNegative},
+			{Field: "activeDurationMillis", Kind: ConstraintNonNegative},
+			{Field: "activeDurationMillis", Kind: ConstraintMaximum, Limit: protocol.MaximumDurationMilliseconds},
+		},
+	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.ArtifactUsage](),
 		Constraints: append([]FieldConstraint{
@@ -269,6 +277,7 @@ func registerRunValues(s *Shapes) {
 		GoType: typeOf[protocol.Item](),
 		Constraints: append(append(requiredResourceIdentity("id"), requiredResourceIdentity("runId")...),
 			FieldConstraint{Field: "durationMillis", Kind: ConstraintNonNegative},
+			FieldConstraint{Field: "durationMillis", Kind: ConstraintMaximum, Limit: protocol.MaximumDurationMilliseconds},
 			FieldConstraint{Field: "droppedMessages", Kind: ConstraintNonNegative},
 		),
 	})
@@ -282,7 +291,14 @@ func registerRunValues(s *Shapes) {
 			FieldConstraint{Field: "contextTokens", Kind: ConstraintNonNegative}),
 	})
 	nonNegative[protocol.RunProgress](s, "step", "contextTokens")
-	nonNegative[protocol.RunMetrics](s, "steps", "activeDurationMillis")
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.RunMetrics](),
+		Constraints: []FieldConstraint{
+			{Field: "steps", Kind: ConstraintNonNegative},
+			{Field: "activeDurationMillis", Kind: ConstraintNonNegative},
+			{Field: "activeDurationMillis", Kind: ConstraintMaximum, Limit: protocol.MaximumDurationMilliseconds},
+		},
+	})
 	nonNegative[protocol.ModelUsage](s,
 		"inputTokens", "outputTokens", "cacheReadTokens", "cacheWriteTokens", "reasoningTokens", "costUsd",
 	)

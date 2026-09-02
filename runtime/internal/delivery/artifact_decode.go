@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"encoding/json/jsontext"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/Tangerg/scope/core/chat"
@@ -323,9 +322,6 @@ func portableItemFromArtifact(sessionID, path string, artifact protocol.Artifact
 		snapshot.Identity.OccurredAt = artifact.StartedAt
 		if status != transcript.ItemRunning {
 			if artifact.DurationMillis != nil {
-				if *artifact.DurationMillis > math.MaxInt64/int64(time.Millisecond) {
-					return transcript.Item{}, invalidArtifact(path+".durationMillis", "exceeds the representable duration")
-				}
 				duration := time.Duration(*artifact.DurationMillis) * time.Millisecond
 				snapshot.ExecutionDuration = &duration
 			}

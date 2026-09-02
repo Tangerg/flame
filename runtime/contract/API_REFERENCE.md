@@ -539,6 +539,7 @@ TypeScript validator from this single registry projection.
 | `ArtifactItem` | `runId` | `maxLength(256)` |
 | `ArtifactItem` | `droppedMessages` | `nonNegative` |
 | `ArtifactItem` | `durationMillis` | `nonNegative` |
+| `ArtifactItem` | `durationMillis` | `maximum(9223372036854)` |
 | `ArtifactToolResult` | `itemId` | `nonEmpty` |
 | `ArtifactToolResult` | `itemId` | `identity` |
 | `ArtifactToolResult` | `itemId` | `maxLength(256)` |
@@ -546,6 +547,7 @@ TypeScript validator from this single registry projection.
 | `SessionArtifact` | `version` | `maximum(27)` |
 | `ArtifactRunMetrics` | `steps` | `nonNegative` |
 | `ArtifactRunMetrics` | `activeDurationMillis` | `nonNegative` |
+| `ArtifactRunMetrics` | `activeDurationMillis` | `maximum(9223372036854)` |
 | `ArtifactUsage` | `inputTokens` | `nonNegative` |
 | `ArtifactUsage` | `outputTokens` | `nonNegative` |
 | `ArtifactUsage` | `cacheReadTokens` | `nonNegative` |
@@ -604,6 +606,7 @@ TypeScript validator from this single registry projection.
 | `Item` | `runId` | `identity` |
 | `Item` | `runId` | `maxLength(256)` |
 | `Item` | `durationMillis` | `nonNegative` |
+| `Item` | `durationMillis` | `maximum(9223372036854)` |
 | `Item` | `droppedMessages` | `nonNegative` |
 | `InterruptResponse` | `itemId` | `nonEmpty` |
 | `InterruptResponse` | `itemId` | `identity` |
@@ -615,6 +618,7 @@ TypeScript validator from this single registry projection.
 | `RunProgress` | `contextTokens` | `nonNegative` |
 | `RunMetrics` | `steps` | `nonNegative` |
 | `RunMetrics` | `activeDurationMillis` | `nonNegative` |
+| `RunMetrics` | `activeDurationMillis` | `maximum(9223372036854)` |
 | `ModelUsage` | `inputTokens` | `nonNegative` |
 | `ModelUsage` | `outputTokens` | `nonNegative` |
 | `ModelUsage` | `cacheReadTokens` | `nonNegative` |

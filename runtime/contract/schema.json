@@ -506,7 +506,8 @@
         },
         "durationMillis": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 9223372036854
         },
         "error": {
           "$ref": "#/$defs/ArtifactProblem"
@@ -1320,7 +1321,8 @@
       "properties": {
         "activeDurationMillis": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 9223372036854
         },
         "steps": {
           "type": "integer",
@@ -3420,7 +3422,8 @@
         },
         "durationMillis": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 9223372036854
         },
         "error": {
           "$ref": "#/$defs/ProblemData"
@@ -7000,7 +7003,8 @@
       "properties": {
         "activeDurationMillis": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "maximum": 9223372036854
         },
         "steps": {
           "type": "integer",

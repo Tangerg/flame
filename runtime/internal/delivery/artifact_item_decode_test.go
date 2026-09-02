@@ -3,8 +3,6 @@ package delivery
 import (
 	"encoding/json"
 	"errors"
-	"math"
-	"strings"
 	"testing"
 	"time"
 
@@ -210,18 +208,18 @@ func TestPortableArtifactDecoderRejectsImpossibleToolTiming(t *testing.T) {
 	}
 }
 
-func TestPortableArtifactDecoderRejectsToolDurationOverflow(t *testing.T) {
+func TestPortableArtifactDecoderRejectsToolDurationOutsideWireBounds(t *testing.T) {
 	startedAt := time.Unix(1, 0).UTC()
 	artifact := validArtifact()
 	artifact.Items[0] = protocol.ArtifactItem{
 		ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusCompleted,
 		StartedAt: startedAt, FinishedAt: startedAt.Add(time.Second),
-		DurationMillis: valuePtr(int64(math.MaxInt64)), Type: protocol.ItemTypeToolCall,
+		DurationMillis: valuePtr(protocol.MaximumDurationMilliseconds + 1), Type: protocol.ItemTypeToolCall,
 		Tool: &protocol.ArtifactToolInvocation{Name: "shell", Arguments: map[string]any{}},
 	}
 	_, err := portableArtifactFromWire(artifact)
-	if !errors.Is(err, protocol.ErrInvalidParams) || !strings.Contains(err.Error(), "representable duration") {
-		t.Fatalf("portableArtifactFromWire error = %v, want bounded invalid duration", err)
+	if !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("portableArtifactFromWire error = %v, want invalid_params", err)
 	}
 }
 

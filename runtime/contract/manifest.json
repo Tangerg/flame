@@ -5403,6 +5403,10 @@
         {
           "field": "durationMillis",
           "constraint": "nonNegative"
+        },
+        {
+          "field": "durationMillis",
+          "constraint": "maximum(9223372036854)"
         }
       ]
     },
@@ -5446,6 +5450,10 @@
         {
           "field": "activeDurationMillis",
           "constraint": "nonNegative"
+        },
+        {
+          "field": "activeDurationMillis",
+          "constraint": "maximum(9223372036854)"
         }
       ]
     },
@@ -5715,6 +5723,10 @@
           "constraint": "nonNegative"
         },
         {
+          "field": "durationMillis",
+          "constraint": "maximum(9223372036854)"
+        },
+        {
           "field": "droppedMessages",
           "constraint": "nonNegative"
         }
@@ -5777,6 +5789,10 @@
         {
           "field": "activeDurationMillis",
           "constraint": "nonNegative"
+        },
+        {
+          "field": "activeDurationMillis",
+          "constraint": "maximum(9223372036854)"
         }
       ]
     },

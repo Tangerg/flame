@@ -1423,6 +1423,7 @@ func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
 	assertConstraintField(t, artifact.ValidateWire(), "SessionArtifact", "version")
 
 	cost := -0.01
+	tooLongDuration := MaximumDurationMilliseconds + 1
 	for _, test := range []struct {
 		shape string
 		field string
@@ -1431,10 +1432,12 @@ func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
 		{shape: "ArtifactRun", field: "messageMark", value: ArtifactRun{MessageMark: -1}},
 		{shape: "ArtifactRunMetrics", field: "steps", value: ArtifactRunMetrics{Steps: -1}},
 		{shape: "ArtifactRunMetrics", field: "activeDurationMillis", value: ArtifactRunMetrics{ActiveDurationMillis: -1}},
+		{shape: "ArtifactRunMetrics", field: "activeDurationMillis", value: ArtifactRunMetrics{ActiveDurationMillis: tooLongDuration}},
 		{shape: "ArtifactUsage", field: "inputTokens", value: ArtifactUsage{InputTokens: -1}},
 		{shape: "ArtifactUsage", field: "costUsd", value: ArtifactUsage{CostUSD: &cost}},
 		{shape: "ArtifactModelUsage", field: "reasoningTokens", value: ArtifactModelUsage{ReasoningTokens: -1}},
 		{shape: "ArtifactItem", field: "droppedMessages", value: ArtifactItem{DroppedMessages: -1}},
+		{shape: "ArtifactItem", field: "durationMillis", value: ArtifactItem{DurationMillis: &tooLongDuration}},
 		{shape: "ArtifactProblem", field: "retryAfterSeconds", value: ArtifactProblem{RetryAfterSeconds: -1}},
 	} {
 		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
@@ -1446,6 +1449,7 @@ func TestRuntimeOutputNumbersPreserveDomainBounds(t *testing.T) {
 
 	negative, tooManyTools := -1, mcpserver.MaxRemoteToolsPerServer+1
 	negativeBytes := int64(-1)
+	tooLongDuration := MaximumDurationMilliseconds + 1
 	negativeCost, nonFiniteCost := -0.01, math.Inf(1)
 	for _, test := range []struct {
 		shape string
@@ -1453,6 +1457,8 @@ func TestRuntimeOutputNumbersPreserveDomainBounds(t *testing.T) {
 		value WireValidator
 	}{
 		{shape: "Item", field: "droppedMessages", value: Item{DroppedMessages: -1}},
+		{shape: "Item", field: "durationMillis", value: Item{DurationMillis: &tooLongDuration}},
+		{shape: "RunMetrics", field: "activeDurationMillis", value: RunMetrics{ActiveDurationMillis: tooLongDuration}},
 		{shape: "WorkspaceSummary", field: "sessionCount", value: WorkspaceSummary{SessionCount: -1}},
 		{shape: "FileContent", field: "totalLines", value: FileContent{}},
 		{shape: "FileContent", field: "startLine", value: FileContent{TotalLines: 1, StartLine: -1}},

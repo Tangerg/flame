@@ -867,6 +867,7 @@ func (i Item) ValidateWire() error {
 		identity("runId", i.RunID),
 		maxLength("runId", i.RunID, 256),
 		optionalNonNegativeNumber("durationMillis", i.DurationMillis),
+		optionalMaximumNumber("durationMillis", i.DurationMillis, 9223372036854),
 		nonNegativeNumber("droppedMessages", i.DroppedMessages),
 		closedEnum("status", string(i.Status), []string{"running", "completed", "incomplete"}, false),
 		closedEnum("type", string(i.Type), []string{"userMessage", "agentMessage", "reasoning", "question", "toolCall", "compaction"}, false),
@@ -1504,6 +1505,7 @@ func (a ArtifactItem) ValidateWire() error {
 		maxLength("runId", a.RunID, 256),
 		nonNegativeNumber("droppedMessages", a.DroppedMessages),
 		optionalNonNegativeNumber("durationMillis", a.DurationMillis),
+		optionalMaximumNumber("durationMillis", a.DurationMillis, 9223372036854),
 		closedEnum("status", string(a.Status), []string{"running", "completed", "incomplete"}, false),
 		closedEnum("type", string(a.Type), []string{"userMessage", "agentMessage", "reasoning", "question", "toolCall", "compaction"}, false),
 		closedEnum("phase", string(a.Phase), []string{"commentary", "finalAnswer"}, true),
@@ -1977,6 +1979,7 @@ func (a ArtifactRunMetrics) ValidateWire() error {
 	return collectWireViolations("ArtifactRunMetrics",
 		nonNegativeNumber("steps", a.Steps),
 		nonNegativeNumber("activeDurationMillis", a.ActiveDurationMillis),
+		maximumNumber("activeDurationMillis", a.ActiveDurationMillis, 9223372036854),
 	)
 }
 
@@ -2051,6 +2054,7 @@ func (r RunMetrics) ValidateWire() error {
 	return collectWireViolations("RunMetrics",
 		nonNegativeNumber("steps", r.Steps),
 		nonNegativeNumber("activeDurationMillis", r.ActiveDurationMillis),
+		maximumNumber("activeDurationMillis", r.ActiveDurationMillis, 9223372036854),
 	)
 }
 
