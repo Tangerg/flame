@@ -246,7 +246,7 @@ func (s SessionSnapshot) Validate() error {
 		}
 	}
 	if s.Goal != nil {
-		if err := s.Goal.ValidateWire(); err != nil {
+		if err := runtimeprotocol.ValidateWireTree(*s.Goal); err != nil {
 			return fmt.Errorf("session snapshot: %w", err)
 		}
 		if s.Goal.SessionID != s.Session.ID {

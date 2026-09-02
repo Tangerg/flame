@@ -415,6 +415,24 @@ func TestSessionSnapshotRejectsRunningItemsWithoutAnActiveRun(t *testing.T) {
 	}
 }
 
+func TestSessionSnapshotRejectsInvalidNestedGoalState(t *testing.T) {
+	snapshot := SessionSnapshot{
+		Session: Session{
+			ID: "ses_1", Status: protocol.SessionStatusIdle,
+			Provider: testSessionProvider, Model: testSessionModel,
+			Workspace: testWorkspace("/tmp/demo"), Revision: 1,
+		},
+		Goal: &protocol.Goal{
+			SessionID: "ses_1", Status: protocol.GoalActive,
+			Used: protocol.GoalUsage{Runs: -1},
+		},
+	}
+	err := snapshot.Validate()
+	if err == nil || !strings.Contains(err.Error(), "runs") {
+		t.Fatalf("snapshot error = %v, want invalid Goal usage", err)
+	}
+}
+
 func TestSessionSnapshotRejectsTransientRunningItems(t *testing.T) {
 	for _, kind := range []BlockKind{BlockAssistant, BlockReasoning} {
 		t.Run(string(kind), func(t *testing.T) {
