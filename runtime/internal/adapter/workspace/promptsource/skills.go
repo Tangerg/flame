@@ -2,6 +2,8 @@ package promptsource
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -42,14 +44,22 @@ func ProjectSkillDir(workspaceRoot string) string {
 func MergeSkillSource(workspaceRoot, userDir string, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) (sdk.ResourceSource, error) {
 	var sources []sdk.ResourceSource
 	projectDir := ProjectSkillDir(workspaceRoot)
-	if dirExists(projectDir) {
+	present, err := skillSourceDirectory(projectDir)
+	if err != nil {
+		return nil, err
+	}
+	if present {
 		project, err := newRuntimeSkillSource(projectDir, workspaceRoot)
 		if err != nil {
 			return nil, err
 		}
 		sources = append(sources, project)
 	}
-	if dirExists(userDir) {
+	present, err = skillSourceDirectory(userDir)
+	if err != nil {
+		return nil, err
+	}
+	if present {
 		userSource, err := newRuntimeSkillSource(userDir, userDir)
 		if err != nil {
 			return nil, err
@@ -74,7 +84,11 @@ func ListSkills(ctx context.Context, workspaceRoot, userDir string) ([]workspace
 	seen := make(map[string]struct{})
 	var out []workspaceapp.SkillSummary
 	add := func(dir, boundary string, scope workspaceapp.SkillScope) error {
-		if !dirExists(dir) {
+		present, err := skillSourceDirectory(dir)
+		if err != nil {
+			return err
+		}
+		if !present {
 			return nil
 		}
 		source, err := newRuntimeSkillSource(dir, boundary)
@@ -104,11 +118,28 @@ func ListSkills(ctx context.Context, workspaceRoot, userDir string) ([]workspace
 	return out, nil
 }
 
-// dirExists reports whether path names an existing directory.
-func dirExists(path string) bool {
+// skillSourceDirectory distinguishes an absent optional source from a broken
+// higher-precedence source. Existing aliases and non-directories must not be
+// silently converted into absence and expose a lower-precedence catalog.
+func skillSourceDirectory(path string) (bool, error) {
 	if path == "" {
-		return false
+		return false, nil
 	}
-	info, err := os.Stat(path)
-	return err == nil && info.IsDir()
+	info, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("promptsource: inspect Skill source %q: %w", path, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		info, err = os.Stat(path)
+		if err != nil {
+			return false, fmt.Errorf("promptsource: resolve Skill source %q: %w", path, err)
+		}
+	}
+	if !info.IsDir() {
+		return false, fmt.Errorf("promptsource: Skill source %q is not a directory", path)
+	}
+	return true, nil
 }

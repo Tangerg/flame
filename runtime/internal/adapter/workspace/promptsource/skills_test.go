@@ -111,6 +111,48 @@ func TestRuntimeSkillSourcesAllowInWorkspaceAlias(t *testing.T) {
 	}
 }
 
+func TestRuntimeSkillSourcesRejectBrokenExistingRoots(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		build func(t *testing.T) (workspaceRoot, userDir string)
+	}{
+		{
+			name: "project source is a file",
+			build: func(t *testing.T) (string, string) {
+				workspace := t.TempDir()
+				if err := os.MkdirAll(filepath.Join(workspace, ".flame"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(ProjectSkillDir(workspace), []byte("not a directory"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				return workspace, ""
+			},
+		},
+		{
+			name: "user source is a broken alias",
+			build: func(t *testing.T) (string, string) {
+				root := t.TempDir()
+				alias := filepath.Join(root, "skills")
+				if err := os.Symlink(filepath.Join(root, "missing"), alias); err != nil {
+					t.Skipf("symlinks unavailable: %v", err)
+				}
+				return "", alias
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			workspace, user := test.build(t)
+			if _, err := ListSkills(t.Context(), workspace, user); err == nil {
+				t.Fatal("ListSkills silently treated a broken source as absent")
+			}
+			if _, err := MergeSkillSource(workspace, user, nil); err == nil {
+				t.Fatal("MergeSkillSource silently treated a broken source as absent")
+			}
+		})
+	}
+}
+
 func TestRuntimeSkillSourceRejectsOversizedResource(t *testing.T) {
 	root := t.TempDir()
 	writeRuntimeSkill(t, root, "with-resource", "Read references/large.txt")
