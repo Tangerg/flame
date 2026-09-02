@@ -15,7 +15,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "oxlint src --deny-warnings",
+    "lint": "oxlint src visual scripts --deny-warnings",
     "lint:fix": "oxlint src --fix --deny-warnings",
     "typecheck": "tsc --noEmit",
     "knip": "knip",

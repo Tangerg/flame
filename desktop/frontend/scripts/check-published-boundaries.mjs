@@ -317,7 +317,7 @@ for (const file of files(SRC)) {
     });
   }
 
-  if (/plugins\/builtin\/chat\/composer\/public\/input\.ts$/.test(rel) && /@\/rpc/.test(text)) {
+  if (rel.endsWith("plugins/builtin/chat/composer/public/input.ts") && /@\/rpc/.test(text)) {
     violations.push({
       file: rel,
       reason: "composer public input must expose composer language, not runtime wire types",

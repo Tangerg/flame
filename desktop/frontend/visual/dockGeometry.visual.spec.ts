@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./test";
 import { DOCK_MIN_WIDTH_PX, dockWidthFromRatio, maxDockWidth } from "../src/lib/shellGeometry";
 import { dockWidthRow } from "../src/plugins/builtin/shell/kernel/panel/dockWidth";
 

@@ -453,7 +453,7 @@ for (const path of sourceFiles(SRC_DIR)) {
   }
 
   // Rule 8b — the spec factories, by convention.
-  if (/Contributions\.ts$/.test(relative) && RESOLVED_COPY.test(code)) {
+  if (relative.endsWith("Contributions.ts") && RESOLVED_COPY.test(code)) {
     failures.push(
       `${relative}: a spec factory resolves copy — carry the key, resolve it where it renders`,
     );

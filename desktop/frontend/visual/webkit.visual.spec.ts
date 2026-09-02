@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./test";
 import { DOCK_MIN_WIDTH_PX } from "@/lib/shellGeometry";
 import { en } from "@/lib/i18n/locales/en";
 

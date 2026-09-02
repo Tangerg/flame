@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./test";
 
 // Narrower than "no overflow": wide blocks and the message action bar overhang the reading
 // column on purpose, and nothing clips them. What is never fine is a control cut in half — the

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./test";
 
 const THEMES = ["light", "dark"] as const;
 const SIDEBAR_STATES = ["expanded", "collapsed"] as const;
