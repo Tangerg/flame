@@ -117,18 +117,19 @@ const MarkdownBlock = memo(function MarkdownBlock({ text, streaming, reveal }: M
     if (hasMath) ensureKatexCss();
   }, [hasMath]);
 
+  // A reveal is a property of the STREAM. Once the text has arrived every mode renders the
+  // same tree, so the settled case is one branch rather than three — `instant` cannot reach
+  // the others at all, because the props union narrows `streaming` to false beside it.
+  //
+  // It matters more than tidiness: a fade needs a wrapper per word, and those were kept
+  // after the fade was over. One long transcript carried 158 of them around text that never
+  // streamed in this session, which is markup for an animation that is not happening, and
+  // it lays a paragraph out as twenty independently positioned inline boxes instead of one
+  // text run.
   const rehypePlugins = useMemo(() => {
-    if (reveal === "instant") {
-      return [rehypeRaw, rehypeFileRefs, rehypeKatex];
-    }
-    if (reveal === "typewriter") {
-      return streaming
-        ? [rehypeRaw, rehypeKatex, rehypeStreamCaret]
-        : [rehypeRaw, rehypeFileRefs, rehypeKatex];
-    }
-    return streaming
-      ? [rehypeRaw, rehypeFadeIn, rehypeKatex]
-      : [rehypeRaw, rehypeFileRefs, rehypeFadeIn, rehypeKatex];
+    if (!streaming) return [rehypeRaw, rehypeFileRefs, rehypeKatex];
+    if (reveal === "typewriter") return [rehypeRaw, rehypeKatex, rehypeStreamCaret];
+    return [rehypeRaw, rehypeFadeIn, rehypeKatex];
   }, [reveal, streaming]);
   const components = useMemo(() => createMarkdownComponents(text), [text]);
 

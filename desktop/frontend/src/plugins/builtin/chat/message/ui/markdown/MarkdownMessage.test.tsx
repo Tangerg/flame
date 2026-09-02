@@ -31,15 +31,19 @@ describe("markdownMessage", () => {
     expect(container.querySelector(".md")).toBeTruthy();
   });
 
-  it("wraps plain words in .fade-in spans", () => {
-    const { container } = render(<MarkdownMessage text="Hello world" reveal="smooth" />);
-    const spans = container.querySelectorAll("span.fade-in");
-    expect(spans.length).toBeGreaterThanOrEqual(2);
-    const text = Array.from(spans)
-      .map((s) => s.textContent)
-      .join("|");
-    expect(text).toContain("Hello");
-    expect(text).toContain("world");
+  it("wraps plain words in .fade-in spans while they are streaming", async () => {
+    const { container } = render(<MarkdownMessage text="Hello world" streaming reveal="smooth" />);
+    // A smooth reveal hands the text over a character at a time, so the wrappers only exist
+    // once there are words to wrap.
+    await waitFor(() => {
+      const spans = container.querySelectorAll("span.fade-in");
+      expect(spans.length).toBeGreaterThanOrEqual(2);
+      const text = Array.from(spans)
+        .map((span) => span.textContent)
+        .join("|");
+      expect(text).toContain("Hello");
+      expect(text).toContain("world");
+    });
   });
 
   it("auto-closes an unmatched inline backtick so it renders as code", () => {
@@ -312,6 +316,15 @@ describe("markdownMessage", () => {
 
     expect.soft(container.querySelector("p > code")?.getAttribute("dir")).toBe("ltr");
     expect.soft(container.querySelector(".shiki-block")?.getAttribute("dir")).toBe("ltr");
+  });
+
+  // The wrappers exist to fade words in. Once the text has arrived there is nothing left to
+  // fade, and they were kept anyway — 158 of them in one long transcript, around text that
+  // never streamed in this session.
+  it("drops them again once the message has settled", () => {
+    const { container } = render(<MarkdownMessage text="Hello world" reveal="smooth" />);
+    expect(container.querySelectorAll("span.fade-in")).toHaveLength(0);
+    expect(container.textContent ?? "").toContain("Hello world");
   });
 
   it("drops fade-in wrappers for the instant reveal mode", () => {
