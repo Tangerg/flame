@@ -29,7 +29,10 @@ const EXPECTED_ATTENTION: Record<VisualAgentState, string> = {
 
 const GPT_5_6_SOL_CAPABILITY_NAME =
   "GPT-5.6 Sol 1.1M context · text + image + pdf input · Reasoning none / low / medium / high / xhigh / max · 922k max input · 128k max output · text output · Tools · Structured output · Knowledge 2026-02-16T00:00:00Z";
-const QWEN_MT_PLUS_CAPABILITY_NAME = "Qwen MT Plus 32.8k context · text input · text output";
+// Reached through the search, where the list is no longer scoped to one provider, so each
+// row says which one it came from — that caption sits in the accessible name too.
+const QWEN_MT_PLUS_CAPABILITY_NAME =
+  "Qwen MT Plus Alibaba 32.8k context · text input · text output";
 
 // The Record's own exhaustiveness is not enforced by its type — a partial Record
 // still typechecks against an index signature — and an absent expectation reads to
@@ -499,29 +502,28 @@ for (const theme of ["light", "dark"] as const) {
     await expect(surface).toBeVisible();
     await expect(page.getByPlaceholder("Search models…")).toBeFocused();
 
-    // The measure is the point: the list does not resize with its group, so the surface
-    // cannot walk up the screen as the reader moves between providers. Settle first — the
-    // popover enters at `scale(0.97)`, so a box read mid-transition is 97% of the answer.
-    const list = page.getByRole("listbox");
-    await expectStableBox(list);
-    const before = await list.boundingBox();
+    const rail = surface.locator("button[aria-pressed]");
+    await expect(rail.first()).toHaveAttribute("aria-pressed", "true");
 
-    const tabs = page.getByRole("tab");
-    await tabs.last().click();
-    await expectStableBox(list);
-    expect((await list.boundingBox())!.height).toBe(before!.height);
+    // The measure is the point: the body does not resize with its group, so the surface
+    // cannot walk up the screen. Settle first — the popover enters at `scale(0.97)`, so a box
+    // read mid-transition is 97% of the answer.
+    const body = surface.locator("button[aria-pressed]").first().locator("..").locator("..");
+    await expectStableBox(body);
+    const before = await body.boundingBox();
 
-    await tabs.first().click();
+    await rail.last().click();
+    await expectStableBox(body);
+    expect((await body.boundingBox())!.height).toBe(before!.height);
+
+    // A query leaves the rail behind: the results are not scoped to one provider any more, so
+    // the rail would be lying about what is listed.
+    await page.getByPlaceholder("Search models…").fill("gpt");
+    await expect(surface.locator("button[aria-pressed]")).toHaveCount(0);
+    await page.getByPlaceholder("Search models…").fill("");
+
+    await rail.first().click();
     await expectStableBox(surface);
-
-    // DESIGN §9 spends the accent on the active tab indicator. It was first written against
-    // `data-selected`, which Base UI does not set, so the rule was live and never matched —
-    // the kind of miss a golden alone can absorb.
-    const underline = (index: number) =>
-      tabs.nth(index).locator('[data-slot="catalog-tab-underline"]');
-    await expect(underline(0)).toHaveCSS("opacity", "1");
-    await expect(underline(1)).toHaveCSS("opacity", "0");
-
     await expect(surface).toHaveScreenshot(`model-picker-${theme}.png`);
   });
 }

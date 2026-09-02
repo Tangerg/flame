@@ -12,7 +12,7 @@ import {
   Icon,
   ProviderIcon,
   providerDisplayName,
-  TabbedCatalogPicker,
+  RailCatalogPicker,
 } from "@/ui";
 import { useRecentModelsStore, type RecentModel } from "../adapters/recentModels";
 import { AgentComposerChip } from "@/ui/agent";
@@ -29,6 +29,7 @@ function modelItem(model: SelectableModel, selected: SelectableModel) {
   return {
     id: modelItemId(model),
     label: model.label,
+    caption: providerDisplayName(model.provider),
     leading: <ProviderIcon provider={model.provider} size="md" />,
     description: <ModelCapabilities model={model} />,
     keywords: [model.provider, model.id],
@@ -62,6 +63,7 @@ function modelGroups(
     id: provider,
     label: providerDisplayName(provider),
     leading: <ProviderIcon provider={provider} size="sm" />,
+    count: items.length,
     items: items.map((model) => modelItem(model, selected)),
   }));
 
@@ -71,6 +73,7 @@ function modelGroups(
           id: RECENT_GROUP_ID,
           label: recentLabel,
           leading: <Icon name="history" size="sm" />,
+          count: shelf.length,
           items: shelf.map((model) => modelItem(model, selected)),
         },
         ...providers,
@@ -113,15 +116,18 @@ function ModelCapabilities({ model }: { model: SelectableModel }) {
   ].filter((value): value is string => value !== null);
   if (primary.length === 0 && secondary.length === 0) return null;
 
+  // One line in the row, both in the title. The rail takes 132px of the 400, so a second line
+  // here does not truncate once — it truncates twice, and the half-sentence that survives is
+  // the less useful half.
   const title = [...primary, ...secondary].join(" · ");
+  if (primary.length === 0) return null;
   return (
     <span
-      className="block min-w-0 text-ui-xs font-normal text-fg-faint"
+      className="block min-w-0 truncate text-ui-xs font-normal text-fg-faint"
       title={title}
       aria-label={title}
     >
-      {primary.length > 0 && <span className="block truncate">{primary.join(" · ")}</span>}
-      {secondary.length > 0 && <span className="block truncate">{secondary.join(" · ")}</span>}
+      {primary.join(" · ")}
     </span>
   );
 }
@@ -176,7 +182,7 @@ export function ModelPicker() {
   if (!selected) return <ModelPickerPlaceholder />;
 
   return (
-    <TabbedCatalogPicker
+    <RailCatalogPicker
       groups={groups}
       openAtGroupId={
         groups.some((group) => group.id === selected.provider) ? selected.provider : groups[0]?.id
@@ -199,12 +205,15 @@ export function ModelPicker() {
       trigger={
         <AgentComposerChip
           aria-label={t("composer.switchModel")}
+          // The chip is the first thing to give up width in a narrow composer, so the label
+          // it truncates has to be readable from somewhere. Provider included: two vendors
+          // can serve the same model name.
+          title={`${selected.label} · ${providerDisplayName(selected.provider)}`}
           shrink="gives"
           leading={<ProviderIcon provider={selected.provider} size="sm" />}
           label={selected.label}
         />
       }
-      contentClassName="w-[380px]"
       side="top"
       align="start"
     />

@@ -72,8 +72,16 @@ function options() {
   return within(screen.getByRole("listbox"));
 }
 
-function tabNames(): string[] {
-  return screen.getAllByRole("tab").map((tab) => tab.getAttribute("aria-label") ?? tab.innerText);
+/** The rail, by accessible name — `textContent` would read the count beside each label and
+ *  the brand mark's own SVG <title>, neither of which a reader hears. */
+function expectRail(names: string[]) {
+  const rail = screen
+    .getAllByRole("button")
+    .filter((node) => node.getAttribute("aria-pressed") !== null);
+  expect(rail).toHaveLength(names.length);
+  for (const name of names) {
+    expect(screen.getByRole("button", { name })).toBeTruthy();
+  }
 }
 
 describe("ModelPicker", () => {
@@ -100,12 +108,9 @@ describe("ModelPicker", () => {
     // soon as a second provider was configured.
     // By accessible name: the brand mark is `aria-hidden` but carries an SVG <title>, so
     // `textContent` would read the provider twice.
-    expect(tabNames()).toEqual(["Ollama", "DeepSeek"]);
-    const current = screen.getByRole("tab", { name: "DeepSeek" });
-    expect(current.getAttribute("aria-selected")).toBe("true");
-    // The underline is keyed on what Base UI actually sets. It was written against
-    // `data-selected`, which Base UI does not set, so the accent never appeared.
-    expect(current.getAttribute("data-active")).toBe("");
+    expectRail(["Ollama", "DeepSeek"]);
+    expect(screen.getByRole("button", { name: "DeepSeek", pressed: true })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Ollama", pressed: false })).toBeTruthy();
     expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
       expect.stringContaining("DeepSeek Chat"),
       expect.stringContaining("DeepSeek Reasoner"),
@@ -118,7 +123,7 @@ describe("ModelPicker", () => {
 
     await screen.findByPlaceholderText("Search models…");
     const list = screen.getByRole("listbox");
-    expect(list.className).toContain("h-[240px]");
+    expect(list.parentElement!.className).toContain("h-[240px]");
     expect(list.className).toContain("overflow-y-auto");
   });
 
@@ -127,7 +132,7 @@ describe("ModelPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     await screen.findByPlaceholderText("Search models…");
 
-    fireEvent.click(screen.getByRole("tab", { name: "Ollama" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ollama" }));
     await waitFor(() => {
       expect(options().getByText("Mistral Local")).toBeTruthy();
       expect(options().queryByText("DeepSeek Chat")).toBeNull();
@@ -180,7 +185,7 @@ describe("ModelPicker", () => {
     render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
     await screen.findByPlaceholderText("Search models…");
-    expect(tabNames()).toEqual(["Recent", "Ollama", "DeepSeek"]);
+    expectRail(["Recent", "Ollama", "DeepSeek"]);
   });
 
   it("carries the reasoning effort the selection was already holding", async () => {

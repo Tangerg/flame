@@ -1,7 +1,7 @@
 export { Badge } from "./badge";
 export { Button } from "./button";
 export type { ButtonProps } from "./button";
-export { CatalogPicker, TabbedCatalogPicker } from "./catalog-picker";
+export { CatalogPicker, RailCatalogPicker } from "./catalog-picker";
 export type { CatalogPickerGroup } from "./catalog-picker";
 export { Checkbox } from "./checkbox";
 export { ChoiceList, ChoiceOption } from "./choice-list";

@@ -10,9 +10,9 @@ export interface RecentModel {
   id: string;
 }
 
-// Long enough that the shelf answers "the two or three I move between" without becoming a
-// second copy of the catalogue.
-const KEEP = 5;
+// Long enough that the shelf answers "the ones I move between" without becoming a second copy
+// of the catalogue — the same depth dimagent keeps.
+const KEEP = 8;
 const STORAGE_KEY = "flame.composer.recent-models";
 
 const persistSchema = z.object({
