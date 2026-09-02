@@ -2,8 +2,8 @@ package maintenance
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"math"
 
 	"github.com/Tangerg/scope/core/chat"
 
@@ -56,66 +56,22 @@ type compactionPlan struct {
 	inputTokens    int
 }
 
-// NewCompactor builds a Compactor over the chat history store and a
-// per-call chat-client resolver. liveState (nil to disable) snapshots a
+// NewCompactor requires a chat history store and per-call chat-client resolver.
+// liveState (nil to disable) snapshots a
 // session's still-active process state so an LLM summary rung can remind the
 // model of running shells the summary cannot reconstruct.
 func NewCompactor(store compactionStore, client modeladapter.AuxiliaryResolver, liveState LiveStateSnapshotter, values CompactionPolicyValues) (*Compactor, error) {
+	if nilDependency(store) {
+		return nil, errors.New("compactor: conversation store is required")
+	}
+	if client == nil {
+		return nil, errors.New("compactor: utility model resolver is required")
+	}
 	policy, err := newCompactionPolicy(values)
 	if err != nil {
 		return nil, err
 	}
 	return &Compactor{store: store, client: client, liveState: liveState, policy: policy}, nil
-}
-
-// tokenTrigger resolves the token-footprint compaction threshold for a run whose
-// model publishes limits. An explicit MaxTokens config chooses the desired
-// trigger; otherwise it is window-relative to the RUN's model when known, else
-// the default model's catalog fallback, else a coarse fixed fallback. The
-// hard input ceiling is the tighter of the provider's independent prompt
-// maximum and the total context remaining after an explicit output reservation.
-func (c *Compactor) tokenTrigger(limits modelref.TokenLimits, options chat.Options) (int, error) {
-	effectiveLimits := limits
-	if effectiveLimits.Unknown() {
-		effectiveLimits = c.policy.fallbackLimits
-	}
-	reservation := modelref.OutputReservation{}
-	if options.MaxOutputTokens != nil {
-		var err error
-		reservation, err = modelref.NewOutputReservation(*options.MaxOutputTokens)
-		if err != nil {
-			return 0, err
-		}
-	}
-	inputLimit, inputLimitKnown, err := effectiveLimits.InputCeiling(reservation)
-	if err != nil {
-		return 0, err
-	}
-	contextWindow, contextWindowKnown := effectiveLimits.ContextWindow()
-
-	trigger := defaultCompactMaxTokens
-	if c.policy.maxTokensExplicit {
-		trigger = c.policy.maxTokens
-	} else if contextWindowKnown {
-		window := tokenLimitInt(contextWindow)
-		whole := window / percentageScale * windowTriggerPct
-		fraction := window % percentageScale * windowTriggerPct / percentageScale
-		trigger = max(1, saturatedAdd(whole, fraction))
-	}
-	if inputLimitKnown {
-		trigger = min(trigger, tokenLimitInt(inputLimit))
-	}
-	return trigger, nil
-}
-
-func tokenLimitInt(value int64) int {
-	if value <= 0 {
-		return 0
-	}
-	if uint64(value) > uint64(math.MaxInt) {
-		return math.MaxInt
-	}
-	return int(value)
 }
 
 // CompactIfNeeded inspects sessionID's history. When either trigger
@@ -149,7 +105,7 @@ func (c *Compactor) CompactIfNeeded(
 	if _, err := resourceid.ParseSession(sessionID); err != nil {
 		return agentexec.CompactionResult{}, fmt.Errorf("compactor: %w", err)
 	}
-	maxTokens, err := c.tokenTrigger(limits, options)
+	maxTokens, err := c.policy.tokenTrigger(limits, options)
 	if err != nil {
 		return agentexec.CompactionResult{}, fmt.Errorf("compactor: resolve token trigger: %w", err)
 	}

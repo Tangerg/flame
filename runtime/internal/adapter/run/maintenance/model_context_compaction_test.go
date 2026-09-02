@@ -172,7 +172,7 @@ func TestDefaultModelContextCompactionDoesNotFailOnLongAssistantSequence(t *test
 	if err := store.Write(t.Context(), sessionID, history...); err != nil {
 		t.Fatal(err)
 	}
-	compactor := mustNewCompactor(t, store, nil, nil, CompactionPolicyValues{})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
 
 	result, err := compactor.CompactModelContext(
 		t.Context(),
@@ -743,7 +743,7 @@ func TestRequiredModelContextCompactionHonorsLifecycleVetoByFailingClosed(t *tes
 	)
 	compactor := mustNewCompactor(t,
 		store,
-		nil,
+		unexpectedClient,
 		nil,
 		CompactionPolicyValues{
 			MaxMessages: intPointer(len(history) + 1),
@@ -767,7 +767,7 @@ func TestDurableModelContextCompactionRejectsConversationDrift(t *testing.T) {
 	}
 	candidate := cloneMessages(history)
 	candidate[0] = chat.NewUserMessage(chat.NewTextPart("different"))
-	compactor := mustNewCompactor(t, store, nil, nil, CompactionPolicyValues{
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{
 		MaxMessages: intPointer(len(history)),
 		KeepRecent:  intPointer(2),
 	})
@@ -788,7 +788,7 @@ func TestDurableModelContextCompactionIgnoresProjectionMetadataDrift(t *testing.
 	}
 	candidate := cloneMessages(history)
 	candidate[1].Metadata = nil
-	compactor := mustNewCompactor(t, store, nil, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
@@ -819,7 +819,7 @@ func TestDurableModelContextCompactionAcceptsEquivalentToolMessageGrouping(t *te
 	}
 	pending := chat.NewUserMessage(chat.NewTextPart("continue"))
 	candidate := []chat.Message{durable[0].Clone(), durable[1].Clone(), chat.NewToolMessage(first, second), pending}
-	compactor := mustNewCompactor(t, store, nil, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
@@ -845,7 +845,7 @@ func TestDurableModelContextCompactionAcceptsEquivalentStructuredToolResultJSON(
 		ID: "call_1", Name: "get_goal",
 		Output: chat.ToolOutput{Details: []byte(`{"goal":{"usage":{"steps":2,"runs":1},"status":"active"}}`)},
 	})}
-	compactor := mustNewCompactor(t, store, nil, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
@@ -867,7 +867,7 @@ func TestDurableModelContextCompactionRejectsToolResultPayloadDrift(t *testing.T
 	candidate := []chat.Message{
 		chat.NewToolMessage(chat.ToolResult{ID: "call_1", Name: "shell", Output: chat.NewTextToolOutput("candidate")}),
 	}
-	compactor := mustNewCompactor(t, store, nil, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, ErrModelContextDiverged) {
@@ -889,7 +889,7 @@ func TestDurableModelContextCompactionRejectsStructuredToolResultDrift(t *testin
 		ID: "call_1", Name: "get_goal",
 		Output: chat.ToolOutput{Details: []byte(`{"goal":{"status":"paused"}}`)},
 	})}
-	compactor := mustNewCompactor(t, store, nil, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{MaxMessages: intPointer(100)})
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, ErrModelContextDiverged) {

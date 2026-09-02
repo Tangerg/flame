@@ -261,14 +261,3 @@ func TestSkillMinerRevisionUnknownSkillSkipsWithoutPhaseTwo(t *testing.T) {
 		t.Fatalf("revised a non-existent Skill: %d proposals", len(proposals.proposals))
 	}
 }
-
-func TestSkillMinerWithoutProposalSubmitterNoOps(t *testing.T) {
-	skillMiner, proposals, model := skillProposalMinerFixture(t, sampleSkillMD, SkillMiningPolicyValues{ComplexityThreshold: intPointer(1), Cadence: intPointer(1)})
-	skillMiner.proposals = nil
-	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 9); err != nil {
-		t.Fatal(err)
-	}
-	if model.calls != 0 || len(proposals.proposals) != 0 {
-		t.Fatalf("missing submitter still mined: calls=%d proposals=%d", model.calls, len(proposals.proposals))
-	}
-}

@@ -39,7 +39,7 @@ func buildRunMaintenance(
 		maintenance.CompactionPolicyValues{FallbackTokenLimits: fallbackLimits},
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("runtime: compaction policy: %w", err)
+		return nil, nil, fmt.Errorf("runtime: build compactor: %w", err)
 	}
 	if cfg.Maintenance != nil {
 		return cfg.Maintenance, compactor, nil
@@ -53,7 +53,7 @@ func buildRunMaintenance(
 			maintenance.MemoryCurationPolicyValues{},
 		)
 		if err != nil {
-			return nil, nil, fmt.Errorf("runtime: memory curation policy: %w", err)
+			return nil, nil, fmt.Errorf("runtime: build memory consolidator: %w", err)
 		}
 	}
 	var skillMiner *maintenance.SkillProposalMiner
@@ -74,11 +74,11 @@ func buildRunMaintenance(
 			maintenance.SkillMiningPolicyValues{},
 		)
 		if err != nil {
-			return nil, nil, fmt.Errorf("runtime: skill mining policy: %w", err)
+			return nil, nil, fmt.Errorf("runtime: build skill proposal miner: %w", err)
 		}
 		skillArchiver, err = maintenance.NewIdleSkillArchiver(skillMaintenance, maintenance.SkillArchivePolicyValues{})
 		if err != nil {
-			return nil, nil, fmt.Errorf("runtime: skill archive policy: %w", err)
+			return nil, nil, fmt.Errorf("runtime: build idle skill archiver: %w", err)
 		}
 	}
 	return maintenance.NewPipeline(compactor, consolidator, skillMiner, skillArchiver), compactor, nil

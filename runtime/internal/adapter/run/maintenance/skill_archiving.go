@@ -2,6 +2,7 @@ package maintenance
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 )
@@ -58,9 +59,12 @@ type IdleSkillArchiver struct {
 	lastCheck time.Time
 }
 
-// NewIdleSkillArchiver builds a Run-boundary scheduler over the Application's
-// automatic Skill-curation capability.
+// NewIdleSkillArchiver builds a Run-boundary scheduler over the required
+// Application Skill-curation capability.
 func NewIdleSkillArchiver(skills idleSkillArchiver, values SkillArchivePolicyValues) (*IdleSkillArchiver, error) {
+	if nilDependency(skills) {
+		return nil, errors.New("idle skill archiver: skill curator is required")
+	}
 	policy, err := newSkillArchivePolicy(values)
 	if err != nil {
 		return nil, err
@@ -76,7 +80,7 @@ func NewIdleSkillArchiver(skills idleSkillArchiver, values SkillArchivePolicyVal
 // within CheckInterval. The rate-limit window advances even when nothing is
 // archived, so a busy Session does not evaluate the library after every Run.
 func (i *IdleSkillArchiver) ArchiveIfDue(ctx context.Context) error {
-	if i == nil || i.skills == nil {
+	if i == nil {
 		return nil
 	}
 	now := i.now()

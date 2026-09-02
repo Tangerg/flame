@@ -77,7 +77,7 @@ func (c *Compactor) CompactModelContext(
 		return agentexec.ModelContextCompactionResult{}, err
 	}
 	options := request.Options()
-	trigger, err := c.tokenTrigger(limits, options)
+	trigger, err := c.policy.tokenTrigger(limits, options)
 	if err != nil {
 		return agentexec.ModelContextCompactionResult{}, fmt.Errorf(
 			"maintenance: resolve model-context token trigger: %w",

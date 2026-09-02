@@ -2,7 +2,10 @@ package maintenance
 
 import (
 	"fmt"
+	"math"
 	"time"
+
+	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
@@ -90,6 +93,54 @@ func newCompactionPolicy(values CompactionPolicyValues) (compactionPolicy, error
 		policy.maxTokensExplicit = true
 	}
 	return policy, nil
+}
+
+// tokenTrigger resolves the token-footprint compaction threshold for a Run.
+// An explicit maximum wins; otherwise the threshold follows the selected
+// model's window, the default model fallback, or the coarse fixed fallback.
+// A provider's prompt envelope always remains the hard upper bound.
+func (p compactionPolicy) tokenTrigger(limits modelref.TokenLimits, options chat.Options) (int, error) {
+	effectiveLimits := limits
+	if effectiveLimits.Unknown() {
+		effectiveLimits = p.fallbackLimits
+	}
+	reservation := modelref.OutputReservation{}
+	if options.MaxOutputTokens != nil {
+		var err error
+		reservation, err = modelref.NewOutputReservation(*options.MaxOutputTokens)
+		if err != nil {
+			return 0, err
+		}
+	}
+	inputLimit, inputLimitKnown, err := effectiveLimits.InputCeiling(reservation)
+	if err != nil {
+		return 0, err
+	}
+	contextWindow, contextWindowKnown := effectiveLimits.ContextWindow()
+
+	trigger := defaultCompactMaxTokens
+	if p.maxTokensExplicit {
+		trigger = p.maxTokens
+	} else if contextWindowKnown {
+		window := tokenLimitInt(contextWindow)
+		whole := window / percentageScale * windowTriggerPct
+		fraction := window % percentageScale * windowTriggerPct / percentageScale
+		trigger = max(1, saturatedAdd(whole, fraction))
+	}
+	if inputLimitKnown {
+		trigger = min(trigger, tokenLimitInt(inputLimit))
+	}
+	return trigger, nil
+}
+
+func tokenLimitInt(value int64) int {
+	if value <= 0 {
+		return 0
+	}
+	if uint64(value) > uint64(math.MaxInt) {
+		return math.MaxInt
+	}
+	return int(value)
 }
 
 func positiveIntOrDefault(value *int, fallback int, field string) (int, error) {

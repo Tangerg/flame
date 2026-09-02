@@ -104,9 +104,21 @@ type SkillProposalMiner struct {
 }
 
 // NewSkillProposalMiner builds the Run-boundary skill skillMiner over the conversation
-// history reader, the proposal use case, the active-Skill source (for the
+// history reader, the proposal use case, the optional active-Skill source (for the
 // read-before-write refinement guard), and the utility-model client resolver.
 func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, source skillSource, client modeladapter.AuxiliaryResolver, values SkillMiningPolicyValues) (*SkillProposalMiner, error) {
+	if nilDependency(history) {
+		return nil, errors.New("skill proposal miner: conversation reader is required")
+	}
+	if nilDependency(proposals) {
+		return nil, errors.New("skill proposal miner: proposal submitter is required")
+	}
+	if source != nil && nilDependency(source) {
+		return nil, errors.New("skill proposal miner: skill source is nil")
+	}
+	if client == nil {
+		return nil, errors.New("skill proposal miner: utility model resolver is required")
+	}
 	policy, err := newSkillMiningPolicy(values)
 	if err != nil {
 		return nil, err
@@ -128,7 +140,7 @@ func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, s
 // or invalid document, or an obviously-dangerous one is dropped silently
 // (return nil) — only a real read/save/LLM failure surfaces as an error.
 func (s *SkillProposalMiner) MineIfDue(ctx context.Context, sessionID, cwd string, toolCalls int) error {
-	if s == nil || s.proposals == nil || sessionID == "" || cwd == "" {
+	if s == nil || sessionID == "" || cwd == "" {
 		return nil
 	}
 	if _, err := resourceid.ParseSession(sessionID); err != nil {

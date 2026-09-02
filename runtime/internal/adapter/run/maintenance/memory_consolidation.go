@@ -102,8 +102,18 @@ type MemoryConsolidator struct {
 	now     func() time.Time
 }
 
-// NewMemoryConsolidator builds the Run-boundary memory consolidation worker.
+// NewMemoryConsolidator builds a Run-boundary worker from its required history,
+// memory, and utility-model collaborators.
 func NewMemoryConsolidator(store messageReader, memory agentMemory, client modeladapter.AuxiliaryResolver, values MemoryCurationPolicyValues) (*MemoryConsolidator, error) {
+	if nilDependency(store) {
+		return nil, errors.New("memory consolidator: conversation reader is required")
+	}
+	if nilDependency(memory) {
+		return nil, errors.New("memory consolidator: memory store is required")
+	}
+	if client == nil {
+		return nil, errors.New("memory consolidator: utility model resolver is required")
+	}
 	policy, err := newMemoryCurationPolicy(values)
 	if err != nil {
 		return nil, err
@@ -123,7 +133,7 @@ func NewMemoryConsolidator(store messageReader, memory agentMemory, client model
 // is due. Short conversations skip extraction but still fold pending ledger
 // entries, so a previous provider failure can recover on a later Run.
 func (m *MemoryConsolidator) Consolidate(ctx context.Context, sessionID, cwd string) error {
-	if m == nil || m.memory == nil || sessionID == "" || cwd == "" {
+	if m == nil || sessionID == "" || cwd == "" {
 		return nil
 	}
 	if _, err := resourceid.ParseSession(sessionID); err != nil {
