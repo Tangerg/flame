@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/ports";
+import { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/services";
 
 const { cancelQueries, invalidateQueries, resetQueries, synchronizeMountedAgentSessions } =
   vi.hoisted(() => ({

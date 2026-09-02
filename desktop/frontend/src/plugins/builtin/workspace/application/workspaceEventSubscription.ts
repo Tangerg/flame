@@ -1,5 +1,5 @@
 import type { WorkspaceEventLoop } from "./workspaceEventLoop";
-import type { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/ports";
+import type { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/services";
 
 export type WorkspaceCwdResolution =
   { status: "resolved"; cwd?: string } | { status: "unavailable" };

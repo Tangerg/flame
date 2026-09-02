@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   followRuntimeGeneration,
   RuntimeConnectionGeneration,
-  type RuntimeStreamPorts,
-} from "./ports";
+  type RuntimeStream,
+} from "./services";
 
 // The comparison is the whole point: `subscribeConnection` fires on connection activity, not
 // only on replacement, so a follower acting on every notification retires in-flight mutations
 // against a generation that never moved — work the person just started, dropped for nothing.
 
-function fakePorts(): RuntimeStreamPorts & { emit(): void; set(next: string | null): void } {
+function fakePorts(): RuntimeStream & { emit(): void; set(next: string | null): void } {
   let generation: RuntimeConnectionGeneration | null = null;
   const listeners = new Set<() => void>();
   return {

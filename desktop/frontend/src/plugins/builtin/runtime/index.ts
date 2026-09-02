@@ -4,14 +4,14 @@ import { installRuntimeMutationJournalStorage } from "./adapters/runtimeMutation
 import { runtimeServiceInspector } from "./adapters/runtimeServiceInspector";
 import { startRuntimeConnection } from "./adapters/runtimeConnectionProjection";
 import {
-  RUNTIME_SERVER_SCOPE_PORTS,
-  RUNTIME_STREAM_PORTS,
+  RUNTIME_SERVER_SCOPE,
+  RUNTIME_STREAM,
   type RuntimeConnectionGeneration,
-} from "@/plugins/builtin/runtime/public/ports";
+} from "@/plugins/builtin/runtime/public/services";
 
 export default definePlugin({
   name: "flame.builtin.runtime",
-  provides: { serverScope: RUNTIME_SERVER_SCOPE_PORTS, stream: RUNTIME_STREAM_PORTS },
+  provides: { serverScope: RUNTIME_SERVER_SCOPE, stream: RUNTIME_STREAM },
   requires: { config: CONFIG },
   setup(ctx) {
     let connection!: ReturnType<typeof startRuntimeConnection>;

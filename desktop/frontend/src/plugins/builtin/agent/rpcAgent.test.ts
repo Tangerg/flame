@@ -13,8 +13,8 @@ import { definePlugin, pickAgentSource } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import {
   RuntimeConnectionGeneration,
-  RUNTIME_STREAM_PORTS,
-} from "@/plugins/builtin/runtime/public/ports";
+  RUNTIME_STREAM,
+} from "@/plugins/builtin/runtime/public/services";
 import rpcAgent from "./rpcAgent";
 
 vi.mock("@/plugins/builtin/agent/public/session", () => ({
@@ -131,7 +131,7 @@ class RuntimeGenerationFixture {
   constructor(name: string) {
     this.plugin = definePlugin({
       name,
-      provides: { stream: RUNTIME_STREAM_PORTS },
+      provides: { stream: RUNTIME_STREAM },
       setup: () => ({
         stream: {
           connectionGeneration: () => this.#generation,

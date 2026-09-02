@@ -5,8 +5,8 @@ import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import {
   RuntimeConnectionGeneration,
-  RUNTIME_STREAM_PORTS,
-} from "@/plugins/builtin/runtime/public/ports";
+  RUNTIME_STREAM,
+} from "@/plugins/builtin/runtime/public/services";
 import { setHookTrust } from "./application/hookTrust";
 import hooksPlugin from "./index";
 
@@ -26,7 +26,7 @@ describe("hooks plugin Runtime generation wiring", () => {
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.runtime-generation",
-      provides: { stream: RUNTIME_STREAM_PORTS },
+      provides: { stream: RUNTIME_STREAM },
       setup() {
         return {
           stream: {

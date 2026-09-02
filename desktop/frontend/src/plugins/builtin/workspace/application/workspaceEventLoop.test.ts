@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createWorkspaceEventLoop } from "./workspaceEventLoop";
-import { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/ports";
+import { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/services";
 
 const CONNECTION_ONE = RuntimeConnectionGeneration.forProcess("connection_1");
 const CONNECTION_TWO = RuntimeConnectionGeneration.forProcess("connection_2");

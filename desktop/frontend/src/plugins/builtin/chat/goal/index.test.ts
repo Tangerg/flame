@@ -5,9 +5,9 @@ import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import {
   RuntimeConnectionGeneration,
-  RUNTIME_STREAM_PORTS,
+  RUNTIME_STREAM,
   type RuntimeConnectionGeneration as RuntimeConnectionGenerationValue,
-} from "@/plugins/builtin/runtime/public/ports";
+} from "@/plugins/builtin/runtime/public/services";
 import { goalCommandWasRetired, resumeGoal, stopGoal } from "./application/goalCommands";
 import goalPlugin from "./index";
 
@@ -38,7 +38,7 @@ describe("Goal plugin Runtime generation wiring", () => {
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.goal-runtime-generation",
-      provides: { stream: RUNTIME_STREAM_PORTS },
+      provides: { stream: RUNTIME_STREAM },
       setup() {
         return {
           stream: {
@@ -87,7 +87,7 @@ describe("Goal plugin Runtime generation wiring", () => {
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.goal-runtime-withdrawal",
-      provides: { stream: RUNTIME_STREAM_PORTS },
+      provides: { stream: RUNTIME_STREAM },
       setup() {
         return {
           stream: {

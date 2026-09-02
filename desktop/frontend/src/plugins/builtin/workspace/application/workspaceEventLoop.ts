@@ -5,7 +5,7 @@ import {
   settleWithinNextTask,
 } from "@/lib/asyncOwnership";
 import type { WorkspaceEventLike } from "../domain/eventInvalidation";
-import type { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/ports";
+import type { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/services";
 
 const RECONNECT_BASE_MS = 1_000;
 const RECONNECT_CAP_MS = 30_000;

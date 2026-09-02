@@ -3,7 +3,7 @@ import type { WorkspaceEventLoop } from "./workspaceEventLoop";
 import {
   RuntimeConnectionGeneration,
   type RuntimeConnectionGeneration as RuntimeConnectionGenerationValue,
-} from "@/plugins/builtin/runtime/public/ports";
+} from "@/plugins/builtin/runtime/public/services";
 import {
   startWorkspaceEventSubscription,
   type WorkspaceCwdInputChange,

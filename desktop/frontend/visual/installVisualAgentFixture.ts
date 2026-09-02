@@ -20,7 +20,7 @@ import {
   subscribeAgentSessionLifecycle,
   type AgentSessionSummary,
 } from "@/plugins/builtin/agent/public/session";
-import { AGENT_SESSION_PORTS } from "@/plugins/builtin/agent/public/ports";
+import { AGENT_SESSIONS } from "@/plugins/builtin/agent/public/services";
 import { APPROVAL_MODE_KEY } from "@/plugins/builtin/agent/public/approvalPolicy";
 import {
   composerBootstrap,
@@ -49,9 +49,9 @@ import { MODELS_KEY, SelectableModel } from "@/plugins/builtin/settings/provider
 import { installWorkspaceNavigationPort } from "@/plugins/builtin/workspace/adapters/navigationStatePort";
 import { installRuntimeCapabilityPort } from "@/plugins/builtin/runtime/adapters/runtimeConnectionProjection";
 import {
-  RUNTIME_STREAM_PORTS,
+  RUNTIME_STREAM,
   RuntimeConnectionGeneration,
-} from "@/plugins/builtin/runtime/public/ports";
+} from "@/plugins/builtin/runtime/public/services";
 import { queryClient } from "@/lib/queryClient";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { toolRenderingPlugins } from "@/plugins/builtin";
@@ -178,9 +178,9 @@ const fileHeadProvider = definePlugin({
  * remain deterministic. Publish that same adapter through the production
  * Service contract as well: setup-time consumers must see the dependency in
  * the composition graph, not infer it from a module singleton. */
-const visualAgentSessionPorts = definePlugin({
+const visualAgentSessions = definePlugin({
   name: "flame.visual.agent-session-ports",
-  provides: { sessions: AGENT_SESSION_PORTS },
+  provides: { sessions: AGENT_SESSIONS },
   setup() {
     return {
       sessions: {
@@ -199,9 +199,9 @@ const VISUAL_RUNTIME_GENERATION = RuntimeConnectionGeneration.forProcess(
   "visual-runtime-connection",
 );
 
-const visualRuntimeStreamPorts = definePlugin({
+const visualRuntimeStream = definePlugin({
   name: "flame.visual.runtime-stream-ports",
-  provides: { stream: RUNTIME_STREAM_PORTS },
+  provides: { stream: RUNTIME_STREAM },
   setup() {
     return {
       stream: {
@@ -266,8 +266,8 @@ export async function installVisualAgentFixture(
     customTheme,
     ...builtinVisualStyles,
     agentFold,
-    visualAgentSessionPorts,
-    visualRuntimeStreamPorts,
+    visualAgentSessions,
+    visualRuntimeStream,
     visualAgentLifecycle,
     composerBootstrap,
     composerKeymap,

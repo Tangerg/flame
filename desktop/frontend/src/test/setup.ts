@@ -25,7 +25,7 @@ import {
   subscribeAgentSessionLifecycle,
   subscribeActiveSessionId,
 } from "@/plugins/builtin/agent/public/session";
-import type { AgentSessionPorts } from "@/plugins/builtin/agent/public/ports";
+import type { AgentSessions } from "@/plugins/builtin/agent/public/services";
 import { installComposerStatePorts } from "@/plugins/builtin/chat/composer/adapters/composerStatePorts";
 import {
   installRuntimeCapabilityPort,
@@ -33,7 +33,7 @@ import {
 } from "@/plugins/builtin/runtime/adapters/runtimeConnectionProjection";
 import { installWorkspaceNavigationPort } from "@/plugins/builtin/workspace/adapters/navigationStatePort";
 
-const testAgentSessionPorts: AgentSessionPorts = {
+const testAgentSessions: AgentSessions = {
   getActiveSessionId,
   getLifecycleSnapshot: getAgentSessionLifecycleSnapshot,
   subscribeActiveSessionId,
@@ -45,7 +45,7 @@ configureNavigator(createMemoryNavigator());
 installAgentStatePorts();
 installAgentDefaultSessionPort();
 installAgentRuntimeGateway();
-installComposerStatePorts(testAgentSessionPorts);
+installComposerStatePorts(testAgentSessions);
 installWorkspaceNavigationPort();
 installRuntimeCapabilityPort();
 
@@ -61,7 +61,7 @@ beforeEach(async () => {
   installAgentStatePorts();
   installAgentDefaultSessionPort();
   installAgentRuntimeGateway();
-  installComposerStatePorts(testAgentSessionPorts);
+  installComposerStatePorts(testAgentSessions);
   installWorkspaceNavigationPort();
   resetRuntimeConnectionForTest();
   installRuntimeCapabilityPort();

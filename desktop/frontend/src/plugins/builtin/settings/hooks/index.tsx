@@ -3,10 +3,7 @@ import { definePlugin } from "@/plugins/sdk";
 import { registerSettingsPane } from "../kit";
 import { HOOKS_PANE } from "../kit/panes";
 import { installHookTrustGateway } from "./adapters/runtimeHookTrustGateway";
-import {
-  RUNTIME_STREAM_PORTS,
-  followRuntimeGeneration,
-} from "@/plugins/builtin/runtime/public/ports";
+import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
 
 const HooksPane = lazy(() =>
   import("./ui/HooksPane").then(({ HooksPane }) => ({ default: HooksPane })),
@@ -14,7 +11,7 @@ const HooksPane = lazy(() =>
 
 export default definePlugin({
   name: "flame.builtin.hooks-pane",
-  requires: { runtime: RUNTIME_STREAM_PORTS },
+  requires: { runtime: RUNTIME_STREAM },
   setup(ctx) {
     const gateway = installHookTrustGateway();
     const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>

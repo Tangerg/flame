@@ -1,5 +1,6 @@
-// The Runtime context's setup-time contract — see `agent/public/ports` for why
-// only setup-time readers need one.
+// What this context PUBLISHES to other plugins, as dougong Services — see
+// `agent/public/services` for when a capability is a Service and when it is an
+// `application/ports/` inversion instead.
 
 import { service } from "dougong";
 
@@ -21,13 +22,13 @@ export class RuntimeConnectionGeneration {
   }
 }
 
-export interface RuntimeStreamPorts {
+export interface RuntimeStream {
   connectionGeneration: () => RuntimeConnectionGeneration | null;
   subscribeConnection: (onChange: () => void) => () => void;
   reportConnectionLoss: (expectedGeneration: RuntimeConnectionGeneration) => Promise<void>;
 }
 
-export const RUNTIME_STREAM_PORTS = service<RuntimeStreamPorts>("flame.runtime.streamPorts");
+export const RUNTIME_STREAM = service<RuntimeStream>("flame.runtime.stream");
 
 /**
  * Calls `onAdvance` only when the generation actually changed.
@@ -36,7 +37,7 @@ export const RUNTIME_STREAM_PORTS = service<RuntimeStreamPorts>("flame.runtime.s
  * every notification retires in-flight mutations against a generation that never moved.
  */
 export function followRuntimeGeneration(
-  ports: RuntimeStreamPorts,
+  ports: RuntimeStream,
   onAdvance: (generation: RuntimeConnectionGeneration | null) => void,
 ): () => void {
   let current = ports.connectionGeneration();
@@ -49,10 +50,8 @@ export function followRuntimeGeneration(
 }
 
 /** A configured endpoint change replaces the product's one server scope. */
-export interface RuntimeServerScopePorts {
+export interface RuntimeServerScope {
   subscribeReplacement: (onReplace: () => void) => () => void;
 }
 
-export const RUNTIME_SERVER_SCOPE_PORTS = service<RuntimeServerScopePorts>(
-  "flame.runtime.serverScopePorts",
-);
+export const RUNTIME_SERVER_SCOPE = service<RuntimeServerScope>("flame.runtime.serverScope");

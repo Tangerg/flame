@@ -5,10 +5,7 @@ import {
   useCurrentMessage,
   useCurrentMessageSessionId,
 } from "@/plugins/sdk";
-import {
-  RUNTIME_STREAM_PORTS,
-  followRuntimeGeneration,
-} from "@/plugins/builtin/runtime/public/ports";
+import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import type { MessageFeedbackRating } from "./domain/feedback";
 import { canRateMessage } from "./application/messageActionAvailability";
@@ -58,7 +55,7 @@ function RateableFeedbackButtons({ msg }: { msg: Message }) {
 
 export const messageFeedback = definePlugin({
   name: "flame.builtin.message-feedback",
-  requires: { runtime: RUNTIME_STREAM_PORTS },
+  requires: { runtime: RUNTIME_STREAM },
   setup(ctx) {
     const gateway = installRuntimeFeedbackGateway();
     const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>

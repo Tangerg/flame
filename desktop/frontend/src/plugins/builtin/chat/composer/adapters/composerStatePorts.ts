@@ -1,12 +1,12 @@
 import { disposeOnHmr } from "@/lib/hmr";
-import type { AgentSessionPorts } from "@/plugins/builtin/agent/public/ports";
+import type { AgentSessions } from "@/plugins/builtin/agent/public/services";
 import { focusComposer } from "../application/focus";
 import { configureComposerStatePort } from "../application/ports/state";
 import { useComposerStore } from "./composerStore";
 
 let stopSessionSync: (() => void) | null = null;
 
-export function installComposerStatePorts(sessions: AgentSessionPorts): () => void {
+export function installComposerStatePorts(sessions: AgentSessions): () => void {
   const disposePort = configureComposerStatePort({
     useText: () => useComposerStore((state) => state.composer.draft.value),
     useSetText: () => useComposerStore((state) => state.setValue),
@@ -41,7 +41,7 @@ export function installComposerStatePorts(sessions: AgentSessionPorts): () => vo
   };
 }
 
-function installComposerSessionSync(sessions: AgentSessionPorts): () => void {
+function installComposerSessionSync(sessions: AgentSessions): () => void {
   stopSessionSync?.();
   const stop = sessions.subscribeLifecycle(({ activeSessionId, openSessionIds }) => {
     const composer = useComposerStore.getState();

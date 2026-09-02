@@ -2,7 +2,7 @@ import type { Disposable, Contributor } from "@/plugins/sdk";
 import { queryClient } from "@/lib/queryClient";
 import { lookupDataProvider } from "@/plugins/sdk";
 import { SLASH_COMMAND } from "@/plugins/sdk/kernelPoints";
-import type { AgentSessionPorts } from "@/plugins/builtin/agent/public/ports";
+import type { AgentSessions } from "@/plugins/builtin/agent/public/services";
 import {
   AGENT_SESSIONS_KEY,
   activeSessionWorkspaceSelection,
@@ -58,7 +58,7 @@ function recipeSignature(recipes: Recipe[]): string {
 
 export function installRecipeSlashCommands(
   ctx: Contributor,
-  sessionPorts: AgentSessionPorts,
+  sessionPorts: AgentSessions,
 ): () => void {
   let dynamic: Disposable[] = [];
   let lastSignature = "";

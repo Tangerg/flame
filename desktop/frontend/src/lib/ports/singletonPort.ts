@@ -12,17 +12,16 @@ export interface SingletonPort<T> {
 }
 
 /**
- * Not a second contract system. dougong owns every capability whose AVAILABILITY has to be
- * ordered — a plugin that reads another context during its own setup declares
- * `requires: { … }` on a `service()` token, and the Host resolves the graph, starts the
- * provider first and rolls the whole installation back if it fails. Reach for a Service
- * whenever the question is "has the thing that answers this been installed yet".
+ * Dependency inversion INSIDE one bounded context: the application declares an interface,
+ * that context's own adapter installs the implementation, and both ship in the same plugin.
+ * There is no ordering question, because the `setup` that installs the adapter is the same
+ * one that will later be read from.
  *
- * This is the other case: a within-context adapter slot read from a React render or an
- * event handler, long after startup settled, where the answer is always yes. The Host can
- * answer those too (`Host.get`), but making every one of them a Service would put a
- * contract graph between a component and its own context's store, and would make a unit
- * test install a Host to swap one function.
+ * The other mechanism is a dougong Service (`<context>/public/services.ts`), and it answers
+ * a different question — "has the OTHER installable started yet". Its whole value is the
+ * contract graph: `requires`, start order, rollback. Every one of these slots is read only
+ * by its own context, so a Service here would mint a token provided and required by the
+ * same plugin: a graph with no edges.
  *
  * Plugin reload can install a new adapter before an older cleanup runs, so a cleanup clears
  * ONLY the exact instance it installed and can never disconnect its successor.

@@ -3,8 +3,8 @@ import { useContextDockStore } from "./adapters/contextDockStore";
 import { navigator } from "@/lib/navigation";
 import { workspaceSessionNavigation as sessionNavigation } from "./sessionNavigation";
 import { definePlugin } from "@/plugins/sdk";
-import { AGENT_SESSION_PORTS } from "@/plugins/builtin/agent/public/ports";
-import { WORKSPACE_SCOPE_PORTS } from "@/plugins/builtin/workspace/public/ports";
+import { AGENT_SESSIONS } from "@/plugins/builtin/agent/public/services";
+import { WORKSPACE_SCOPE } from "@/plugins/builtin/workspace/public/services";
 import {
   activateWorkspaceSessionScope,
   forgetWorkspaceSessionScopes,
@@ -43,7 +43,7 @@ const agentSession = vi.hoisted(() => {
 // rather than mocked into a module path it no longer imports.
 const ports = definePlugin({
   name: "test.session-ports",
-  provides: { sessions: AGENT_SESSION_PORTS, scopes: WORKSPACE_SCOPE_PORTS },
+  provides: { sessions: AGENT_SESSIONS, scopes: WORKSPACE_SCOPE },
   setup: () => ({
     sessions: {
       getActiveSessionId: () => navigator().get().session,

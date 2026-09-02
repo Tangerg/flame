@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AGENT_SESSION_PORTS } from "@/plugins/builtin/agent/public/ports";
+import { AGENT_SESSIONS } from "@/plugins/builtin/agent/public/services";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import { composerBootstrap } from "./bootstrap";
@@ -17,7 +17,7 @@ describe("Composer bootstrap", () => {
     const subscribeLifecycle = vi.fn(() => () => undefined);
     const sessions = definePlugin({
       name: "test.composer-session-ports",
-      provides: { sessions: AGENT_SESSION_PORTS },
+      provides: { sessions: AGENT_SESSIONS },
       setup() {
         return {
           sessions: {

@@ -4,8 +4,8 @@ import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@/rpc";
 import {
   RuntimeConnectionGeneration,
-  RUNTIME_STREAM_PORTS,
-} from "@/plugins/builtin/runtime/public/ports";
+  RUNTIME_STREAM,
+} from "@/plugins/builtin/runtime/public/services";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import { setMCPServerEnabled } from "./application/mcpServerConfig";
@@ -27,7 +27,7 @@ describe("MCP servers plugin Runtime generation wiring", () => {
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.mcp-runtime-generation",
-      provides: { stream: RUNTIME_STREAM_PORTS },
+      provides: { stream: RUNTIME_STREAM },
       setup() {
         return {
           stream: {

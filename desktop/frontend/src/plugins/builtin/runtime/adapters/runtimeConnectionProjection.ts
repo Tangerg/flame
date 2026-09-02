@@ -13,7 +13,7 @@ import {
   type RuntimeServiceController,
   type RuntimeServiceFailure,
 } from "../application/runtimeService";
-import { RuntimeConnectionGeneration } from "../public/ports";
+import { RuntimeConnectionGeneration } from "../public/services";
 
 interface RuntimeConnectionState {
   connectionGeneration: RuntimeConnectionGeneration | null;

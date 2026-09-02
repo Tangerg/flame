@@ -9,10 +9,7 @@ import { rpcErrorText } from "@/lib/rpcErrors";
 import { installGoalRuntimeAdapter } from "./adapters/runtimeGoalCommandsGateway";
 import { GoalStatusSurface } from "./ui/GoalStatusSurface";
 import { GoalModeIndicator } from "./ui/GoalModeIndicator";
-import {
-  RUNTIME_STREAM_PORTS,
-  followRuntimeGeneration,
-} from "@/plugins/builtin/runtime/public/ports";
+import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
 import { getActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { getAgentSessionSharedMaterial } from "@/plugins/builtin/agent/public/sessionMaterial";
 import { getComposerText } from "@/plugins/builtin/chat/composer/public/draft";
@@ -32,7 +29,7 @@ const GOAL_SLASH_COMMAND: SlashCommandSpec = {
 
 export default definePlugin({
   name: "flame.builtin.goal",
-  requires: { runtime: RUNTIME_STREAM_PORTS },
+  requires: { runtime: RUNTIME_STREAM },
   setup(ctx) {
     const composerMode = GoalComposerModeOwner.install();
     const runtimeAdapter = installGoalRuntimeAdapter(ctx.runtime.connectionGeneration() !== null);

@@ -3,10 +3,7 @@ import { definePlugin } from "@/plugins/sdk";
 import { registerSettingsPane } from "../kit";
 import { SCHEDULES_PANE } from "../kit/panes";
 import { installScheduleGateway } from "./adapters/runtimeScheduleGateway";
-import {
-  RUNTIME_STREAM_PORTS,
-  followRuntimeGeneration,
-} from "@/plugins/builtin/runtime/public/ports";
+import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
 
 const SchedulesPane = lazy(() =>
   import("./ui/SchedulesPane").then(({ SchedulesPane }) => ({ default: SchedulesPane })),
@@ -14,7 +11,7 @@ const SchedulesPane = lazy(() =>
 
 export default definePlugin({
   name: "flame.builtin.schedules-pane",
-  requires: { runtime: RUNTIME_STREAM_PORTS },
+  requires: { runtime: RUNTIME_STREAM },
   setup(ctx) {
     const gateway = installScheduleGateway();
     const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>

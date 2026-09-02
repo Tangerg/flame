@@ -4,10 +4,7 @@ import { registerSettingsPane } from "../kit";
 import { MCP_SERVERS_PANE } from "../kit/panes";
 import { installMCPServerGateway } from "./adapters/runtimeMcpServerGateway";
 import { registerMCPDataProviders } from "./adapters/runtimeMcpDataProviders";
-import {
-  RUNTIME_STREAM_PORTS,
-  followRuntimeGeneration,
-} from "@/plugins/builtin/runtime/public/ports";
+import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
 
 const McpServersPane = lazy(() =>
   import("./ui/McpServersPane").then(({ McpServersPane }) => ({ default: McpServersPane })),
@@ -15,7 +12,7 @@ const McpServersPane = lazy(() =>
 
 export default definePlugin({
   name: "flame.builtin.mcp-servers-pane",
-  requires: { runtime: RUNTIME_STREAM_PORTS },
+  requires: { runtime: RUNTIME_STREAM },
   setup(ctx) {
     const gateway = installMCPServerGateway();
     const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>

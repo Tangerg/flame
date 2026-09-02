@@ -11,16 +11,13 @@ import {
   subscribeActiveSessionId,
   subscribeAgentSessionLifecycle,
 } from "@/plugins/builtin/agent/public/session";
-import { AGENT_SESSION_PORTS } from "@/plugins/builtin/agent/public/ports";
-import {
-  RUNTIME_STREAM_PORTS,
-  followRuntimeGeneration,
-} from "@/plugins/builtin/runtime/public/ports";
+import { AGENT_SESSIONS } from "@/plugins/builtin/agent/public/services";
+import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
 
 export default definePlugin({
   name: "flame.builtin.agent-bootstrap",
-  requires: { runtime: RUNTIME_STREAM_PORTS },
-  provides: { sessions: AGENT_SESSION_PORTS },
+  requires: { runtime: RUNTIME_STREAM },
+  provides: { sessions: AGENT_SESSIONS },
   setup(ctx) {
     contributeRuntimePendingWork(ctx);
     const disposeState = installAgentStatePorts();

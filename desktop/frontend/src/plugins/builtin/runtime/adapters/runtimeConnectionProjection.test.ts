@@ -6,7 +6,7 @@ import {
   type RuntimeConnectionInspector,
 } from "../application/runtimeService";
 import { runtimeServiceStatus } from "../application/ports/serviceStatus";
-import { RuntimeConnectionGeneration } from "../public/ports";
+import { RuntimeConnectionGeneration } from "../public/services";
 import {
   resetRuntimeConnectionForTest,
   runtimeSupportsTopic,

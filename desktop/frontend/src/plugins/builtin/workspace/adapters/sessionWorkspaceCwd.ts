@@ -1,6 +1,6 @@
 import { getContainer } from "@/main/container";
 import { queryClient } from "@/lib/queryClient";
-import type { AgentSessionPorts } from "@/plugins/builtin/agent/public/ports";
+import type { AgentSessions } from "@/plugins/builtin/agent/public/services";
 import {
   AGENT_SESSIONS_KEY,
   subscribeAgentSessionProjection,
@@ -13,7 +13,7 @@ import type {
 } from "../application/workspaceEventSubscription";
 
 export async function resolveActiveSessionWorkspaceCwd(
-  sessions: Pick<AgentSessionPorts, "getActiveSessionId">,
+  sessions: Pick<AgentSessions, "getActiveSessionId">,
   signal: AbortSignal,
 ): Promise<WorkspaceCwdResolution> {
   const id = sessions.getActiveSessionId();
@@ -32,7 +32,7 @@ export async function resolveActiveSessionWorkspaceCwd(
 }
 
 export function subscribeWorkspaceCwdInputs(
-  sessions: Pick<AgentSessionPorts, "getActiveSessionId" | "subscribeActiveSessionId">,
+  sessions: Pick<AgentSessions, "getActiveSessionId" | "subscribeActiveSessionId">,
   onChange: (change: WorkspaceCwdInputChange) => void,
 ): () => void {
   const unsubSession = sessions.subscribeActiveSessionId(() => onChange("identity"));

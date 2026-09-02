@@ -5,8 +5,8 @@ import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import {
   RuntimeConnectionGeneration,
-  RUNTIME_STREAM_PORTS,
-} from "@/plugins/builtin/runtime/public/ports";
+  RUNTIME_STREAM,
+} from "@/plugins/builtin/runtime/public/services";
 import { submitMessageFeedback } from "./application/feedback";
 import { messageFeedback } from "./feedback";
 
@@ -24,7 +24,7 @@ describe("message feedback Runtime generation wiring", () => {
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
       name: "test.runtime-generation",
-      provides: { stream: RUNTIME_STREAM_PORTS },
+      provides: { stream: RUNTIME_STREAM },
       setup() {
         return {
           stream: {

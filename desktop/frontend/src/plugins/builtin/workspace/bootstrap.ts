@@ -10,14 +10,14 @@ import {
   activateWorkspaceSessionScope,
   forgetWorkspaceSessionScopes,
 } from "@/plugins/builtin/workspace/public/navigation";
-import { WORKSPACE_SCOPE_PORTS } from "@/plugins/builtin/workspace/public/ports";
-import { WORKSPACE_MUTATION_LIFECYCLE_PORTS } from "@/plugins/builtin/workspace/public/ports";
+import { WORKSPACE_SCOPE } from "@/plugins/builtin/workspace/public/services";
+import { WORKSPACE_MUTATION_LIFECYCLE } from "@/plugins/builtin/workspace/public/services";
 
 export default definePlugin({
   name: "flame.builtin.workspace-bootstrap",
   provides: {
-    scopes: WORKSPACE_SCOPE_PORTS,
-    mutationLifecycle: WORKSPACE_MUTATION_LIFECYCLE_PORTS,
+    scopes: WORKSPACE_SCOPE,
+    mutationLifecycle: WORKSPACE_MUTATION_LIFECYCLE,
   },
   setup(ctx) {
     const agentMemory = installAgentMemoryGateway();

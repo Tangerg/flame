@@ -3,10 +3,7 @@ import { definePlugin } from "@/plugins/sdk";
 import { registerSettingsPane } from "../kit";
 import { PROVIDERS_PANE } from "../kit/panes";
 import { installProviderGateway } from "./adapters/runtimeProviderGateway";
-import {
-  RUNTIME_STREAM_PORTS,
-  followRuntimeGeneration,
-} from "@/plugins/builtin/runtime/public/ports";
+import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
 
 const ProvidersPane = lazy(() =>
   import("./ui/ProvidersPane").then(({ ProvidersPane }) => ({ default: ProvidersPane })),
@@ -14,7 +11,7 @@ const ProvidersPane = lazy(() =>
 
 export default definePlugin({
   name: "flame.builtin.providers-pane",
-  requires: { runtime: RUNTIME_STREAM_PORTS },
+  requires: { runtime: RUNTIME_STREAM },
   setup(ctx) {
     const gateway = installProviderGateway();
     const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>

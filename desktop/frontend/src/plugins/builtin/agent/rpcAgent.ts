@@ -4,14 +4,11 @@ import { AGENT_SOURCE } from "@/plugins/sdk/kernelPoints";
 import { getActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { runtimeRunsGateway } from "./adapters/runtimeRunsGateway";
 import { rpcAgentSource } from "./application/rpcAgentSource";
-import {
-  RUNTIME_STREAM_PORTS,
-  followRuntimeGeneration,
-} from "@/plugins/builtin/runtime/public/ports";
+import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
 
 export default definePlugin({
   name: "flame.builtin.rpc-agent",
-  requires: { runtime: RUNTIME_STREAM_PORTS },
+  requires: { runtime: RUNTIME_STREAM },
   setup(ctx) {
     const gateway = runtimeRunsGateway();
     const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
