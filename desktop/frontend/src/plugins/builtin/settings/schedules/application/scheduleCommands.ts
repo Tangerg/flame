@@ -1,6 +1,6 @@
 import { SCHEDULES_KEY, useSchedules } from "./scheduleQueries";
 import { createPublicationSlot } from "@/lib/publicationSlot";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
 import type { ScheduleConfig, ScheduleConfigInput, ScheduledRunIdentity } from "./scheduleConfig";
 import { selectAgentSession } from "@/plugins/builtin/agent/public/session";
@@ -129,14 +129,8 @@ class ScheduleMutationGeneration {
     return value;
   }
 
-  async #repairProjection(): Promise<void> {
-    try {
-      await this.#settle(queryClient.invalidateQueries({ queryKey: [SCHEDULES_KEY] }));
-    } catch (error) {
-      if (error === this.#retiredError) throw error;
-      // An accepted response remains authoritative. Schedule events and the
-      // next read retain the projection repair path.
-    }
+  #repairProjection(): Promise<void> {
+    return repairCachedProjection(this.#cohort, [SCHEDULES_KEY]);
   }
 
   #commitSaved(saved: ScheduleConfig): void {

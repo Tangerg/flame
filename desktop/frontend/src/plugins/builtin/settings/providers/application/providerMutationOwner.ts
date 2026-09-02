@@ -1,5 +1,5 @@
 import { createPublicationSlot } from "@/lib/publicationSlot";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
 import type { ProviderGateway, ProviderTestOutcome, ProviderUpdate } from "./ports/providerGateway";
@@ -82,18 +82,8 @@ class ProviderMutationGeneration {
     return value;
   }
 
-  async #repairProjection(keys: readonly string[]): Promise<void> {
-    try {
-      await Promise.all(
-        keys.map((key) =>
-          this.#settle(queryClient.invalidateQueries({ queryKey: [key] })).then(() => undefined),
-        ),
-      );
-    } catch (error) {
-      if (error === this.#retiredError) throw error;
-      // The command response already committed its authoritative resource.
-      // Runtime events and the next read remain the projection repair path.
-    }
+  #repairProjection(keys: readonly string[]): Promise<void> {
+    return repairCachedProjection(this.#cohort, keys);
   }
 
   #settle<T>(operation: Promise<T>): Promise<T> {

@@ -1,6 +1,6 @@
 import { HOOKS_KEY } from "./hookQueries";
 import { createPublicationSlot } from "@/lib/publicationSlot";
-import { queryClient } from "@/lib/queryClient";
+import { repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
 
 export interface HookTrustGateway {
@@ -49,14 +49,8 @@ class HookTrustMutationGeneration {
     this.#chain.clear();
   }
 
-  async #repairProjection(): Promise<void> {
-    try {
-      await this.#settle(queryClient.invalidateQueries({ queryKey: [HOOKS_KEY] }));
-    } catch (error) {
-      if (error === this.#retiredError) throw error;
-      // The Runtime command already settled. Hook events and the next read
-      // remain the authoritative projection repair path.
-    }
+  #repairProjection(): Promise<void> {
+    return repairCachedProjection(this.#cohort, [HOOKS_KEY]);
   }
 
   #settle<T>(operation: Promise<T>): Promise<T> {

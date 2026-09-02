@@ -1,5 +1,5 @@
 import { createPublicationSlot } from "@/lib/publicationSlot";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
 import type {
@@ -87,14 +87,8 @@ class AgentMemoryMutationGeneration {
     );
   }
 
-  async #repairProjection(): Promise<void> {
-    try {
-      await this.#settle(queryClient.invalidateQueries({ queryKey: [WORKSPACE_AGENT_MEMORY_KEY] }));
-    } catch (error) {
-      if (error === this.#retiredError) throw error;
-      // The accepted mutation response is authoritative. A failed cache repair
-      // is not a command failure; workspace events and the next read retry it.
-    }
+  #repairProjection(): Promise<void> {
+    return repairCachedProjection(this.#cohort, [WORKSPACE_AGENT_MEMORY_KEY]);
   }
 
   #settle<T>(operation: Promise<T>): Promise<T> {

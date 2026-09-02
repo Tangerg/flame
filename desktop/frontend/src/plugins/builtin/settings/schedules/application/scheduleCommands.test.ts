@@ -136,6 +136,37 @@ describe("schedule commands", () => {
     });
   });
 
+  // The command is accepted before its cache repair runs, so the generation can be replaced
+  // while the repair is still in flight. Reporting success then would hand the UI a result
+  // owned by a generation that no longer exists.
+  it("rejects an accepted mutation whose generation is replaced during cache repair", async () => {
+    const current = {
+      id: "sch_1",
+      title: "Review",
+      instructions: "Review changes",
+      cwd: "/repo",
+      cron: "0 9 * * 1",
+      enabled: true,
+      revision: 7,
+    };
+    const updated = { ...current, enabled: false, revision: 8 };
+    const setEnabled = vi.fn().mockResolvedValue(updated);
+    owner = ScheduleMutationOwner.install({ setEnabled } as unknown as ScheduleGateway);
+    const repair = deferred<void>();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockReturnValue(repair.promise);
+    queryClient.setQueryData([SCHEDULES_KEY], [current]);
+
+    const mutation = setScheduleEnabled(current, false);
+    await vi.waitFor(() => expect(invalidate).toHaveBeenCalled());
+
+    owner.replaceRuntimeGeneration();
+    repair.resolve();
+
+    await expect(mutation).rejects.toMatchObject({
+      message: "schedule_mutation_generation_retired",
+    });
+  });
+
   it("does not block a different schedule behind an in-flight mutation", async () => {
     const current = {
       id: "sch_1",

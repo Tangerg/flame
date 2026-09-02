@@ -14,6 +14,23 @@ const SETTINGS_SEARCH = { name: en["settings.searchPlaceholder"]! };
 const VISUAL_URL = "http://127.0.0.1:4174/visual/";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] as const;
 
+/** No exclusions: platform window controls are outside the document, and every
+ *  application-owned target stays inside the audit. */
+async function expectNoWcagViolations(page: Page): Promise<void> {
+  const { violations } = await new AxeBuilder({ page }).withTags([...WCAG_TAGS]).analyze();
+  expect(
+    violations,
+    violations
+      .map(
+        (violation) =>
+          `${violation.id}: ${violation.help}\n${violation.nodes
+            .map((node) => `  ${node.target.join(" ")}: ${node.failureSummary ?? ""}`)
+            .join("\n")}`,
+      )
+      .join("\n\n"),
+  ).toEqual([]);
+}
+
 interface FixtureRoute {
   fixture: "agent" | "shell" | "workspace";
   state: string;
@@ -115,20 +132,7 @@ for (const route of ACCESSIBILITY_ROUTES) {
   test(`WCAG audit ${route.fixture} ${route.state} ${route.theme}`, async ({ page }) => {
     await openFixture(page, route);
 
-    // No exclusions. Platform window controls are outside the document, while every
-    // application-owned target remains inside this audit.
-    const results = await new AxeBuilder({ page }).withTags([...WCAG_TAGS]).analyze();
-    expect(
-      results.violations,
-      results.violations
-        .map(
-          (violation) =>
-            `${violation.id}: ${violation.help}\n${violation.nodes
-              .map((node) => `  ${node.target.join(" ")}: ${node.failureSummary ?? ""}`)
-              .join("\n")}`,
-        )
-        .join("\n\n"),
-    ).toEqual([]);
+    await expectNoWcagViolations(page);
   });
 }
 
@@ -904,18 +908,7 @@ for (const overlay of OVERLAYS) {
       // element against whatever is behind it and report a contrast the design never had.
       await expect.poll(() => popup.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
 
-      const results = await new AxeBuilder({ page }).withTags([...WCAG_TAGS]).analyze();
-      expect(
-        results.violations,
-        results.violations
-          .map(
-            (violation) =>
-              `${violation.id}: ${violation.help}\n${violation.nodes
-                .map((node) => `  ${node.target.join(" ")}: ${node.failureSummary ?? ""}`)
-                .join("\n")}`,
-          )
-          .join("\n\n"),
-      ).toEqual([]);
+      await expectNoWcagViolations(page);
     });
   }
 }
@@ -938,18 +931,7 @@ test("a text-bearing control meets the minimum target size", async ({ page }) =>
 for (const route of ACCESSIBILITY_ROUTES.filter((candidate) => candidate.theme === "light")) {
   test(`WCAG audit ${route.fixture} ${route.state} at the smallest UI size`, async ({ page }) => {
     await openFixture(page, { ...route, fontSize: 11 });
-    const results = await new AxeBuilder({ page }).withTags([...WCAG_TAGS]).analyze();
-    expect(
-      results.violations,
-      results.violations
-        .map(
-          (violation) =>
-            `${violation.id}: ${violation.help}\n${violation.nodes
-              .map((node) => `  ${node.target.join(" ")}: ${node.failureSummary ?? ""}`)
-              .join("\n")}`,
-        )
-        .join("\n\n"),
-    ).toEqual([]);
+    await expectNoWcagViolations(page);
   });
 }
 

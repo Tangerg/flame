@@ -1,5 +1,5 @@
 import { createPublicationSlot } from "@/lib/publicationSlot";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
 import type { MCPServerInput } from "./mcpServerInput";
 import { MCP_SERVERS_KEY, MCP_TOOLS_KEY, type MCPServerSettings } from "./mcpServerQueries";
@@ -123,17 +123,8 @@ class MCPServerMutationGeneration {
     return value;
   }
 
-  async #repairProjection(): Promise<void> {
-    try {
-      await Promise.all([
-        this.#settle(queryClient.invalidateQueries({ queryKey: [MCP_SERVERS_KEY] })),
-        this.#settle(queryClient.invalidateQueries({ queryKey: [MCP_TOOLS_KEY] })),
-      ]);
-    } catch (error) {
-      if (error === this.#retiredError) throw error;
-      // The command response already committed its authoritative resource.
-      // Runtime events and the next read remain the projection repair path.
-    }
+  #repairProjection(): Promise<void> {
+    return repairCachedProjection(this.#cohort, [MCP_SERVERS_KEY, MCP_TOOLS_KEY]);
   }
 
   #settle<T>(operation: Promise<T>): Promise<T> {
