@@ -5,7 +5,7 @@ import type { Transition } from "motion/react";
 import { motionScale, visualStyleMotion } from "./appearance";
 
 // `duration` is a live getter; framer-motion samples it once per animation start.
-function scaled(duration: "fastMs" | "mediumMs" | "disclosureMs"): Transition {
+function scaled(duration: "fastMs" | "mediumMs"): Transition {
   const t = {} as Transition;
   Object.defineProperty(t, "duration", {
     enumerable: true,
@@ -18,9 +18,10 @@ function scaled(duration: "fastMs" | "mediumMs" | "disclosureMs"): Transition {
   return t;
 }
 
-export const disclosureTransition: Transition = scaled("disclosureMs");
-
-const contentEnterTransition: Transition = scaled("mediumMs");
+/** A surface opening, closing, or arriving. One preset, because the rung it used to have
+ *  of its own sat 20ms from this one — a fifth of a frame, which is a rung the ladder
+ *  cannot express and a reader cannot see. */
+export const disclosureTransition: Transition = scaled("mediumMs");
 
 /** A selection travelling BETWEEN elements — the one motion CSS cannot express, since a
  *  transition animates a property within one element. */
@@ -39,5 +40,5 @@ export const enterUp = {
   initial: { opacity: 0, y: 6 },
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -4 },
-  transition: contentEnterTransition,
+  transition: disclosureTransition,
 };

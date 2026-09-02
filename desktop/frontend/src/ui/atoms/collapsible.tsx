@@ -24,7 +24,7 @@ export function Collapsible({ open, children }: Props) {
       ref={rowRef}
       className={cn(
         "grid grid-cols-[minmax(0,1fr)]",
-        "transition-[grid-template-rows] duration-[var(--dur-disclosure)] ease-out",
+        "transition-[grid-template-rows] duration-[var(--dur-med)] ease-out",
         open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
       )}
       onTransitionRun={() => {

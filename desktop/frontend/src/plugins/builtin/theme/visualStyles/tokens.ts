@@ -153,12 +153,9 @@ export const WORKBENCH_MOTION = {
   instantMs: 80,
   fastMs: 150,
   mediumMs: 200,
-  disclosureMs: 220,
-  slowMs: 360,
+  slowMs: 300,
   drawerMs: 500,
   easeOut: [0.22, 1, 0.36, 1],
-  easeInOut: [0.45, 0, 0.55, 1],
-  easeEmphasized: [0.16, 1, 0.3, 1],
   // A sampled spring as native `linear()`, not a fitted cubic: it keeps the overshoot, and
   // native reversal keeps an interrupted gesture continuous with no React frame owner.
   drawerProgress: [
@@ -180,12 +177,9 @@ export function visualStyleMotionTokens(motion: VisualStyleMotion): Record<strin
     "dur-instant-base": `${motion.instantMs}ms`,
     "dur-fast-base": `${motion.fastMs}ms`,
     "dur-med-base": `${motion.mediumMs}ms`,
-    "dur-disclosure-base": `${motion.disclosureMs}ms`,
     "dur-slow-base": `${motion.slowMs}ms`,
     "dur-drawer-base": `${motion.drawerMs}ms`,
     "ease-out": bezier(motion.easeOut),
-    "ease-in-out": bezier(motion.easeInOut),
-    "ease-emphasized": bezier(motion.easeEmphasized),
     "ease-drawer": `linear(${motion.drawerProgress.join(", ")})`,
     "press-scale": String(motion.pressScale),
   };

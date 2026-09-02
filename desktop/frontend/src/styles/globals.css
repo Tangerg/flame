@@ -471,13 +471,10 @@
   --dur-instant-base: 80ms;
   --dur-fast-base: 150ms;
   --dur-med-base: 200ms;
-  --dur-disclosure-base: 220ms;
-  --dur-slow-base: 360ms;
+  --dur-slow-base: 300ms;
   --dur-drawer-base: 500ms;
   --animation-duration: calc(var(--dur-fast-base) * var(--motion-scale));
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
-  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
 
   --dur-instant: calc(var(--dur-instant-base) * var(--motion-scale));
   --press-scale: 0.98;
@@ -485,7 +482,6 @@
   --dur-color: calc(var(--dur-color-base) * var(--motion-scale));
   --dur-fast: calc(var(--dur-fast-base) * var(--motion-scale));
   --dur-med: calc(var(--dur-med-base) * var(--motion-scale));
-  --dur-disclosure: calc(var(--dur-disclosure-base) * var(--motion-scale));
   --dur-slow: calc(var(--dur-slow-base) * var(--motion-scale));
 
   --polish-fast: var(--dur-fast) var(--ease-out);

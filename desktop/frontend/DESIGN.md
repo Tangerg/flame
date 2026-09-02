@@ -191,13 +191,14 @@ layout:
   # status/notifications in the sidebar footer.
 
 motion:
-  ease-out: cubic-bezier(0.3, 0, 0, 1)
-  ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1)
-  ease-in-out: cubic-bezier(0.45, 0, 0.55, 1)
+  ease-out: cubic-bezier(0.22, 1, 0.36, 1)
+  ease-drawer: linear(...)   # the structural-panel spring, sampled
   dur-instant: 80ms
-  dur-fast: 140ms
-  dur-med: 220ms
-  dur-slow: 360ms
+  dur-color: 100ms
+  dur-fast: 150ms
+  dur-med: 200ms
+  dur-slow: 300ms
+  dur-drawer: 500ms
 
 components:
   # ---- Buttons ----
@@ -754,9 +755,19 @@ ships in draws the arc at the base radius today.
 
 (See frontmatter `motion:` for tokens.)
 
-- **Hover / press feedback**: `dur-fast` 140ms with `ease-out`. Every interactive element has a visible state change.
-- **Layout enter/exit** (modal, toast, palette): `dur-med` 220ms with `ease-emphasized`.
-- **Heavy transitions** (panel slide, accordion expand): `dur-slow` 360ms with `ease-emphasized`.
+One curve for everything that eases, `ease-out`, plus the sampled spring the
+structural panels travel on. Two curves that nothing read were deleted: a ladder
+rung a visual style must fill and no surface consumes is a rung that can only
+ever be wrong.
+
+- **Colour only** (hover wash, ink): `dur-color` 100ms.
+- **Hover / press feedback, and most transitions**: `dur-fast` 150ms with `ease-out`.
+- **A surface opening, closing or arriving** (modal, toast, palette, disclosure):
+  `dur-med` 200ms. There is no separate disclosure rung — it sat 20ms from this
+  one, a fifth of a frame, which is a distinction the ladder cannot express.
+- **An exit**, which should be quicker than the enter that earned it: `dur-instant` 80ms.
+- **Heavy transitions** (panel slide): `dur-slow` 300ms, and the drawer itself
+  `dur-drawer` 500ms on `ease-drawer`.
 - **Active press scale**: `active:scale-[var(--press-scale)]`. One value for the
   whole app — a control that sinks 0.90 next to one that sinks 0.98 reads as two
   different apps. Per-element amounts were tried and drifted to four of them.
