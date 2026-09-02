@@ -42,38 +42,29 @@ func ProjectSkillDir(workspaceRoot string) string {
 // Scope's directory repository, so it remains cheap enough to call per tool
 // resolution.
 func MergeSkillSource(workspaceRoot, userDir string, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) (sdk.ResourceSource, error) {
-	var sources []sdk.ResourceSource
-	projectDir := ProjectSkillDir(workspaceRoot)
-	present, err := skillSourceDirectory(projectDir)
+	layers, err := openRuntimeSkillLayers(workspaceRoot, userDir)
 	if err != nil {
 		return nil, err
 	}
-	if present {
-		project, err := newRuntimeSkillSource(projectDir, workspaceRoot)
-		if err != nil {
-			return nil, err
-		}
-		sources = append(sources, project)
+	return layers.merge(decorateUser), nil
+}
+
+func (l runtimeSkillLayers) merge(decorateUser func(sdk.ResourceSource) sdk.ResourceSource) sdk.ResourceSource {
+	sources := make([]sdk.ResourceSource, 0, 2)
+	if l.project != nil {
+		sources = append(sources, l.project)
 	}
-	present, err = skillSourceDirectory(userDir)
-	if err != nil {
-		return nil, err
-	}
-	if present {
-		userSource, err := newRuntimeSkillSource(userDir, userDir)
-		if err != nil {
-			return nil, err
-		}
-		var user sdk.ResourceSource = userSource
+	if l.user != nil {
+		var user sdk.ResourceSource = l.user
 		if decorateUser != nil {
 			user = decorateUser(user)
 		}
 		sources = append(sources, user)
 	}
 	if len(sources) == 0 {
-		return nil, nil
+		return nil
 	}
-	return sdk.Merge(sources...), nil
+	return sdk.Merge(sources...)
 }
 
 // ListSkills enumerates the skills visible from the selected workspace layered
@@ -81,41 +72,67 @@ func MergeSkillSource(workspaceRoot, userDir string, decorateUser func(sdk.Resou
 // MergeSkillSource gives the model). A missing directory contributes nothing
 // rather than erroring. Result is sorted by name.
 func ListSkills(ctx context.Context, workspaceRoot, userDir string) ([]workspaceapp.SkillSummary, error) {
+	layers, err := openRuntimeSkillLayers(workspaceRoot, userDir)
+	if err != nil {
+		return nil, err
+	}
+	return layers.list(ctx)
+}
+
+func (l runtimeSkillLayers) list(ctx context.Context) ([]workspaceapp.SkillSummary, error) {
 	seen := make(map[string]struct{})
 	var out []workspaceapp.SkillSummary
-	add := func(dir, boundary string, scope workspaceapp.SkillScope) error {
-		present, err := skillSourceDirectory(dir)
+	for _, layer := range []struct {
+		source *runtimeSkillSource
+		scope  workspaceapp.SkillScope
+	}{
+		{source: l.project, scope: workspaceapp.SkillScopeProject},
+		{source: l.user, scope: workspaceapp.SkillScopeUser},
+	} {
+		if layer.source == nil {
+			continue
+		}
+		summaries, err := layer.source.List(ctx)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		if !present {
-			return nil
-		}
-		source, err := newRuntimeSkillSource(dir, boundary)
-		if err != nil {
-			return err
-		}
-		summaries, err := source.List(ctx)
-		if err != nil {
-			return err
-		}
-		for _, s := range summaries {
-			if _, dup := seen[s.Name]; dup {
-				continue // a higher-precedence (project) source already provided it
+		for _, summary := range summaries {
+			if _, duplicate := seen[summary.Name]; duplicate {
+				continue
 			}
-			seen[s.Name] = struct{}{}
-			out = append(out, workspaceapp.SkillSummary{Name: s.Name, Description: s.Description, Scope: scope})
+			seen[summary.Name] = struct{}{}
+			out = append(out, workspaceapp.SkillSummary{
+				Name: summary.Name, Description: summary.Description, Scope: layer.scope,
+			})
 		}
-		return nil
-	}
-	if err := add(ProjectSkillDir(workspaceRoot), workspaceRoot, workspaceapp.SkillScopeProject); err != nil {
-		return nil, err
-	}
-	if err := add(userDir, userDir, workspaceapp.SkillScopeUser); err != nil {
-		return nil, err
 	}
 	slices.SortFunc(out, func(a, b workspaceapp.SkillSummary) int { return strings.Compare(a.Name, b.Name) })
 	return out, nil
+}
+
+type runtimeSkillLayers struct {
+	project *runtimeSkillSource
+	user    *runtimeSkillSource
+}
+
+func openRuntimeSkillLayers(workspaceRoot, userDir string) (runtimeSkillLayers, error) {
+	project, err := openRuntimeSkillSource(ProjectSkillDir(workspaceRoot), workspaceRoot)
+	if err != nil {
+		return runtimeSkillLayers{}, err
+	}
+	user, err := openRuntimeSkillSource(userDir, userDir)
+	if err != nil {
+		return runtimeSkillLayers{}, err
+	}
+	return runtimeSkillLayers{project: project, user: user}, nil
+}
+
+func openRuntimeSkillSource(root, boundary string) (*runtimeSkillSource, error) {
+	present, err := skillSourceDirectory(root)
+	if err != nil || !present {
+		return nil, err
+	}
+	return newRuntimeSkillSource(root, boundary)
 }
 
 // skillSourceDirectory distinguishes an absent optional source from a broken
