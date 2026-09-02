@@ -3,7 +3,6 @@ import { memo, type CSSProperties } from "react";
 import type { IconSize } from "@/lib/iconScale";
 import {
   Archive,
-  ArrowDown,
   ArrowLeft,
   ArrowRight,
   ArrowUp,
@@ -33,7 +32,6 @@ import {
   Eye,
   File,
   FileDiff,
-  FilePlus,
   FileText,
   Flag,
   Folder,
@@ -68,7 +66,6 @@ import {
   Share2,
   ShieldCheck,
   SkipBack,
-  SkipForward,
   Sparkle,
   Sparkles,
   Square,
@@ -132,7 +129,6 @@ export type IconName =
   | "user"
   | "spark"
   | "skip-back"
-  | "skip-fwd"
   | "minimize"
   | "maximize"
   | "diff"
@@ -149,14 +145,12 @@ export type IconName =
   | "chevron-down"
   | "chevron-left"
   | "chevron-right"
-  | "arrow-down"
   | "arrow-left"
   | "arrow-right"
   | "arrow-up"
   | "trash"
   | "alert"
   | "eye"
-  | "file-plus"
   | "folder-search"
   | "download"
   | "bot"
@@ -223,7 +217,6 @@ const ICON_MAP = {
   user: User,
   spark: Sparkles,
   "skip-back": SkipBack,
-  "skip-fwd": SkipForward,
   minimize: Minimize,
   maximize: Maximize,
   diff: FileDiff,
@@ -240,14 +233,12 @@ const ICON_MAP = {
   "chevron-down": ChevronDown,
   "chevron-left": ChevronLeft,
   "chevron-right": ChevronRight,
-  "arrow-down": ArrowDown,
   "arrow-left": ArrowLeft,
   "arrow-right": ArrowRight,
   "arrow-up": ArrowUp,
   trash: Trash2,
   alert: TriangleAlert,
   eye: Eye,
-  "file-plus": FilePlus,
   "folder-search": FolderSearch,
   download: Download,
   bot: Bot,
