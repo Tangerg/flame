@@ -261,10 +261,6 @@ func openPreparedSession(
 	if activateSessionStateErr := authoring.ActivateSessionState(opened.Session.ID); activateSessionStateErr != nil {
 		return preparedSession{}, fmt.Errorf("activate session authoring state: %w", activateSessionStateErr)
 	}
-	recovery, recovered, err := authoring.ConsumeConfirmedSessionRollback(opened.Session.ID)
-	if err != nil {
-		return preparedSession{}, fmt.Errorf("recover session rollback input: %w", err)
-	}
 	attachments, err := attachment.New(opened.Session.Workspace.Path)
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("session attachments: %w", err)
@@ -272,22 +268,25 @@ func openPreparedSession(
 	if rememberWorkspaceErr := authoring.RememberWorkspace(opened.Session.Workspace.Path); rememberWorkspaceErr != nil {
 		return preparedSession{}, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}
-	draft, _, err := authoring.Draft(opened.Session.ID)
-	if err != nil {
-		return preparedSession{}, fmt.Errorf("load session draft: %w", err)
-	}
-	if cfg.InitialPrompt != "" {
-		draft = agent.Message{Text: cfg.InitialPrompt}
-	}
 	editor, err := configuredDraftEditor()
 	if err != nil {
 		return preparedSession{}, err
 	}
+	// Activate last: it commits the existing draft, argv input, and confirmed
+	// rollback opening as one Session authoring transition. No later preparation
+	// step may fail after the one-time rollback report becomes unreachable.
+	activation, err := authoring.ActivateSessionDraft(
+		opened.Session.ID,
+		agent.Message{Text: cfg.InitialPrompt},
+	)
+	if err != nil {
+		return preparedSession{}, fmt.Errorf("activate session draft: %w", err)
+	}
 	return preparedSession{
 		opened: opened, runtimeProfile: profile, attachments: attachments, keyBindings: bindings,
 		settings: configured, reconnectPolicy: reconnectPolicy, options: options,
-		workbench: authoring, draft: draft, editor: editor,
-		rollbackRecovery: optionalRollbackRecovery(recovery, recovered),
+		workbench: authoring, draft: activation.Draft, editor: editor,
+		rollbackRecovery: activation.Rollback,
 	}, nil
 }
 
@@ -337,16 +336,6 @@ func commandReplayAdmission(
 	return mutation.FreshDynamicReplayAdmission(func() commandreplay.Policy {
 		return commandReplayPolicy(profile)
 	}, guard)
-}
-
-func optionalRollbackRecovery(
-	recovery workbench.SessionRollbackRecovery,
-	present bool,
-) *workbench.SessionRollbackRecovery {
-	if !present {
-		return nil
-	}
-	return &recovery
 }
 
 func requireLoadedPlugin(results []extensions.LifecycleResult, id string) error {

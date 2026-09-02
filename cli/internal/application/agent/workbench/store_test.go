@@ -591,7 +591,7 @@ func TestStoreRejectsOnlyTheExactPreparedSessionDeletion(t *testing.T) {
 	}
 }
 
-func TestStorePersistsAndAtomicallyConsumesSessionRollbackRecovery(t *testing.T) {
+func TestStorePersistsAndAtomicallyActivatesSessionRollbackRecovery(t *testing.T) {
 	directory := t.TempDir()
 	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
@@ -625,13 +625,14 @@ func TestStorePersistsAndAtomicallyConsumesSessionRollbackRecovery(t *testing.T)
 	if confirmSessionRollbackErr := reopened.ConfirmSessionRollback(sessionID, pending.CommandID); confirmSessionRollbackErr != nil {
 		t.Fatal(confirmSessionRollbackErr)
 	}
-	recovery, found, err := reopened.ConsumeConfirmedSessionRollback(sessionID)
+	activation, err := reopened.ActivateSessionDraft(sessionID, agent.Message{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !found || !recovery.Merged || recovery.DroppedCount != 1 || recovery.OpeningImages != 2 ||
+	recovery := activation.Rollback
+	if recovery == nil || !recovery.Merged || recovery.DroppedCount != 1 || recovery.OpeningImages != 2 ||
 		recovery.Draft.Text != "restored opening\n\nnew thought" {
-		t.Fatalf("rollback recovery = %+v, present %t", recovery, found)
+		t.Fatalf("rollback activation = %+v", activation)
 	}
 
 	reopened, err = OpenDirectory(directory, Config{})
@@ -686,9 +687,10 @@ func TestStoreDoesNotDuplicateAnEditedRecoveredRollbackDraft(t *testing.T) {
 	if confirmSessionRollbackErr := store.ConfirmSessionRollback(pending.SessionID, pending.CommandID); confirmSessionRollbackErr != nil {
 		t.Fatal(confirmSessionRollbackErr)
 	}
-	recovery, found, err := store.ConsumeConfirmedSessionRollback(pending.SessionID)
-	if err != nil || !found || recovery.Merged || recovery.Draft.Text != "opening!" {
-		t.Fatalf("edited recovery = %+v, present %t, err %v", recovery, found, err)
+	activation, err := store.ActivateSessionDraft(pending.SessionID, agent.Message{})
+	if err != nil || activation.Rollback == nil || activation.Rollback.Merged ||
+		activation.Rollback.Draft.Text != "opening!" {
+		t.Fatalf("edited rollback activation = %+v, err %v", activation, err)
 	}
 }
 

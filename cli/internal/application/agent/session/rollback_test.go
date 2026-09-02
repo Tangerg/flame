@@ -155,9 +155,10 @@ func TestRecoverConfirmsAnAlreadyAppliedRollbackWithoutReplay(t *testing.T) {
 	if !exists || confirmed.Phase != workbench.SessionRollbackConfirmed {
 		t.Fatalf("confirmed rollback = %+v, present %t", confirmed, exists)
 	}
-	recovery, found, err := store.ConsumeConfirmedSessionRollback(pending.SessionID)
-	if err != nil || !found || recovery.Draft.Text != "Why is the cache expiry test flaky?" {
-		t.Fatalf("rollback recovery = %+v, present %t, err %v", recovery, found, err)
+	activation, err := store.ActivateSessionDraft(pending.SessionID, agent.Message{})
+	if err != nil || activation.Rollback == nil ||
+		activation.Rollback.Draft.Text != "Why is the cache expiry test flaky?" {
+		t.Fatalf("rollback activation = %+v, err %v", activation, err)
 	}
 }
 

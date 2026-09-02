@@ -143,6 +143,14 @@ type SessionRollbackRecovery struct {
 	Merged        bool
 }
 
+// SessionDraftActivation is the complete authoring state installed when a
+// Session becomes active. Rollback is present exactly once, on the activation
+// that materializes a confirmed rollback journal.
+type SessionDraftActivation struct {
+	Draft    agent.Message
+	Rollback *SessionRollbackRecovery
+}
+
 // PendingSessionRollbacks returns rollback journals in stable session order.
 func (s *Store) PendingSessionRollbacks() []PendingSessionRollback {
 	s.mu.Lock()
@@ -243,36 +251,56 @@ func (s *Store) RejectSessionRollback(sessionID string, commandID agent.CommandI
 	return nil
 }
 
-// ConsumeConfirmedSessionRollback atomically merges the recovered opening
-// input with any newer draft and retires the journal. A newer user draft is
-// appended after the restored opening text so neither value is discarded.
-func (s *Store) ConsumeConfirmedSessionRollback(sessionID string) (SessionRollbackRecovery, bool, error) {
+// ActivateSessionDraft atomically merges incoming authoring input, materializes
+// a confirmed rollback opening, and retires that journal. Existing Session
+// input precedes incoming input; a recovered opening precedes both. The caller
+// therefore receives the only draft value it may install in the composer.
+func (s *Store) ActivateSessionDraft(sessionID string, incoming agent.Message) (SessionDraftActivation, error) {
 	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
-		return SessionRollbackRecovery{}, false, err
+		return SessionDraftActivation{}, err
 	}
+	incoming = incoming.Clone()
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	pending, exists := s.pendingRollbacks[sessionID]
-	if !exists || pending.Phase != SessionRollbackConfirmed {
-		return SessionRollbackRecovery{}, false, nil
+	current := s.drafts[sessionID]
+	draft, err := MergeSessionDraft(current, incoming)
+	if err != nil {
+		return SessionDraftActivation{}, err
 	}
-	draft, merged := MergeSessionRollbackDraft(s.drafts[sessionID], pending)
+	pending, exists := s.pendingRollbacks[sessionID]
+	confirmed := exists && pending.Phase == SessionRollbackConfirmed
+	var recovery *SessionRollbackRecovery
+	if confirmed {
+		var merged bool
+		draft, merged = MergeSessionRollbackDraft(draft, pending)
+		recovery = &SessionRollbackRecovery{
+			Draft: draft.Clone(), DroppedCount: len(pending.BeforeRunIDs) - len(pending.AfterRunIDs),
+			OpeningImages: pending.OpeningImages, Merged: merged,
+		}
+	}
+	if current.Equal(draft) && !confirmed {
+		return SessionDraftActivation{Draft: draft.Clone()}, nil
+	}
+	var rollback *PendingSessionRollback
+	if exists && !confirmed {
+		cloned := pending.clone()
+		rollback = &cloned
+	}
 	if err := s.saveSessionStateRecord(
-		sessionID, draft, s.pendingRuns[sessionID], s.pendingResumePointer(sessionID), nil,
+		sessionID, draft, s.pendingRuns[sessionID], s.pendingResumePointer(sessionID), rollback,
 		s.pendingSteerPointer(sessionID),
 	); err != nil {
-		return SessionRollbackRecovery{}, false, err
+		return SessionDraftActivation{}, err
 	}
 	if messageEmpty(draft) {
 		delete(s.drafts, sessionID)
 	} else {
 		s.drafts[sessionID] = draft.Clone()
 	}
-	delete(s.pendingRollbacks, sessionID)
-	return SessionRollbackRecovery{
-		Draft: draft.Clone(), DroppedCount: len(pending.BeforeRunIDs) - len(pending.AfterRunIDs),
-		OpeningImages: pending.OpeningImages, Merged: merged,
-	}, true, nil
+	if confirmed {
+		delete(s.pendingRollbacks, sessionID)
+	}
+	return SessionDraftActivation{Draft: draft.Clone(), Rollback: recovery}, nil
 }
 
 func (s *Store) pendingResumePointer(sessionID string) *PendingResume {

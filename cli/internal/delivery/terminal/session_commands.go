@@ -427,8 +427,8 @@ func (s sessionDraftTransition) resolve(
 		return merged, nil
 	case preserveSourceDraft:
 		// Mutations such as rollback replace the authoritative projection without
-		// changing session identity. The destination value may also contain a
-		// rollback recovery consumed during preparation, so it is authoritative.
+		// changing session identity, so no cross-Session transfer is necessary.
+		// Confirmed rollback input is materialized after this transition resolves.
 		if destinationSessionID == s.sourceSessionID {
 			return destinationDraft, nil
 		}
@@ -500,21 +500,20 @@ func (a *app) prepareDestinationDraft(
 	if rememberWorkspaceErr := a.workbench.RememberWorkspace(session.Workspace.Path); rememberWorkspaceErr != nil {
 		return agent.Message{}, nil, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}
-	recovery, recovered, err := a.workbench.ConsumeConfirmedSessionRollback(session.ID)
-	if err != nil {
-		return agent.Message{}, nil, fmt.Errorf("recover session rollback input: %w", err)
-	}
-	if recovered {
-		draft = recovery.Draft
-	}
 	transition := a.session.draftTransition
 	if transition != nil {
-		draft, err = transition.resolve(a.workbench, session.ID, draft, current)
-		if err != nil {
-			return agent.Message{}, nil, err
+		if _, transitionErr := transition.resolve(a.workbench, session.ID, draft, current); transitionErr != nil {
+			return agent.Message{}, nil, transitionErr
 		}
 	}
-	return draft, optionalRollbackRecovery(recovery, recovered), nil
+	// Draft transfer is the last separate preparation that can abort projection
+	// installation. Activation then materializes rollback recovery and retires
+	// its one-time report in the same durable Session state replacement.
+	activation, err := a.workbench.ActivateSessionDraft(session.ID, agent.Message{})
+	if err != nil {
+		return agent.Message{}, nil, fmt.Errorf("activate destination session draft: %w", err)
+	}
+	return activation.Draft, activation.Rollback, nil
 }
 
 func (a *app) retireSessionState(sessionID string) (int, error) {

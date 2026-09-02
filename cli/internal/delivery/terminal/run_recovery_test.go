@@ -8,7 +8,9 @@ import (
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
@@ -58,5 +60,60 @@ func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 	if durable, found := prepared.workbench.PendingSteer(pending.SessionID()); !found ||
 		!durable.Command().Equal(pending.Command()) {
 		t.Fatalf("expired pending steer = %+v, found %t", durable, found)
+	}
+}
+
+func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *testing.T) {
+	runtime := runtimefixture.New()
+	workspace := t.TempDir()
+	created, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: workspace})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stateDirectory := t.TempDir()
+	store, err := openSessionWorkbench(stateDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveDraft(created.ID, agent.Message{Text: "existing draft"}); err != nil {
+		t.Fatal(err)
+	}
+	pending := workbench.PendingSessionRollback{
+		Phase:          workbench.SessionRollbackPrepared,
+		CommandID:      "cli_66666666666666666666666666666666",
+		SessionID:      created.ID,
+		Scope:          protocol.RestoreHistory,
+		BeforeRevision: created.Revision,
+		BeforeRunIDs:   []string{"run_1"},
+		OpeningText:    "restored opening",
+		StagedAt:       time.Now().UTC(),
+		Replay:         commandreplay.UnprotectedGuard(),
+	}
+	if err := store.StageSessionRollback(pending); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.ConfirmSessionRollback(created.ID, pending.CommandID); err != nil {
+		t.Fatal(err)
+	}
+
+	prepared, err := prepareSession(t.Context(), Config{
+		Runtime:        runtime,
+		SessionID:      created.ID,
+		Workspace:      workspace,
+		StateDirectory: stateDirectory,
+		InitialPrompt:  "from argv",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := agent.Message{Text: "restored opening\n\nexisting draft\n\nfrom argv"}
+	if !prepared.draft.Equal(want) {
+		t.Fatalf("prepared draft = %+v, want %+v", prepared.draft, want)
+	}
+	if prepared.rollbackRecovery == nil || !prepared.rollbackRecovery.Draft.Equal(want) {
+		t.Fatalf("rollback recovery = %+v, want merged draft", prepared.rollbackRecovery)
+	}
+	if durable, found, err := prepared.workbench.Draft(created.ID); err != nil || !found || !durable.Equal(want) {
+		t.Fatalf("durable draft = %+v, found %t, err %v", durable, found, err)
 	}
 }
