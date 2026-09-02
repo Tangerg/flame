@@ -66,7 +66,7 @@ class GoalCommandGeneration {
 
   #run(sessionId: string, command: () => Promise<GoalCommandReceipt>): Promise<void> {
     return this.#chain.chain(sessionId, (tail) =>
-      this.#settle(tail).then(() => this.#mutate(sessionId, command)),
+      this.#cohort.settle(tail).then(() => this.#mutate(sessionId, command)),
     );
   }
 
@@ -89,27 +89,19 @@ class GoalCommandGeneration {
     // authoritative material transaction so Goal cannot advance separately from
     // Plan/HITL/Run/Tool or accept a late independent query writer.
     await this.#repairStandingProjection(sessionId);
-    this.#assertCurrent();
+    this.#cohort.assertCurrent();
   }
 
   async #repairStandingProjection(sessionId: string): Promise<void> {
-    this.#assertCurrent();
+    this.#cohort.assertCurrent();
     try {
-      await this.#settle(this.#repairProjection(sessionId));
+      await this.#cohort.settle(this.#repairProjection(sessionId));
     } catch (error) {
       if (this.#cohort.retired) throw error;
       // A durable command receipt and an ambiguous command failure retain their
       // own meanings. Runtime events and the next read remain repair paths when
       // the standing projection itself cannot be fetched.
     }
-  }
-
-  #settle<T>(operation: PromiseLike<T>): Promise<T> {
-    return this.#cohort.settle(operation);
-  }
-
-  #assertCurrent(): void {
-    this.#cohort.assertCurrent();
   }
 }
 

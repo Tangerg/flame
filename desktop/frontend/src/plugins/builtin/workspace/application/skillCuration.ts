@@ -84,19 +84,19 @@ class SkillCurationGeneration {
 
   #run(identity: string, command: SkillCurationCommand): Promise<void> {
     return this.#chain.chain(identity, (tail) =>
-      this.#settle(tail).then(async () => {
-        this.#assertCurrent();
+      this.#cohort.settle(tail).then(async () => {
+        this.#cohort.assertCurrent();
         try {
-          await this.#settle(command.execute());
+          await this.#cohort.settle(command.execute());
         } catch (error) {
           if (this.#cohort.retired) throw error;
           await this.#repair(command.repair());
           throw error;
         }
-        this.#assertCurrent();
+        this.#cohort.assertCurrent();
         command.commit();
         await this.#repair(command.repair());
-        this.#assertCurrent();
+        this.#cohort.assertCurrent();
       }),
     );
   }
@@ -105,7 +105,7 @@ class SkillCurationGeneration {
     try {
       await Promise.all(
         filters.map((filter) =>
-          this.#settle(queryClient.invalidateQueries(filter)).then(() => undefined),
+          this.#cohort.settle(queryClient.invalidateQueries(filter)).then(() => undefined),
         ),
       );
     } catch (error) {
@@ -113,14 +113,6 @@ class SkillCurationGeneration {
       // The accepted command already committed every fact it proved. Runtime
       // events and the next read retain the projection repair path.
     }
-  }
-
-  #settle<T>(operation: Promise<T>): Promise<T> {
-    return this.#cohort.settle(operation);
-  }
-
-  #assertCurrent(): void {
-    this.#cohort.assertCurrent();
   }
 }
 

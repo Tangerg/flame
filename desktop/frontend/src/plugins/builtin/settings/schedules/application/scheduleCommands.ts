@@ -102,7 +102,7 @@ class ScheduleMutationGeneration {
     afterRepair?: (value: T) => void,
   ): Promise<T> {
     return this.#chain.chain(identity, (tail) =>
-      this.#settle(tail).then(() => this.#executeMutation(execute, commit, afterRepair)),
+      this.#cohort.settle(tail).then(() => this.#executeMutation(execute, commit, afterRepair)),
     );
   }
 
@@ -111,26 +111,22 @@ class ScheduleMutationGeneration {
     commit: (value: T) => void,
     afterRepair?: (value: T) => void,
   ): Promise<T> {
-    this.#assertCurrent();
+    this.#cohort.assertCurrent();
     let value: T;
     try {
-      value = await this.#settle(execute());
+      value = await this.#cohort.settle(execute());
     } catch (error) {
       if (error === this.#retiredError) throw error;
-      await this.#repairProjection();
-      this.#assertCurrent();
+      await repairCachedProjection(this.#cohort, [SCHEDULES_KEY]);
+      this.#cohort.assertCurrent();
       throw error;
     }
-    this.#assertCurrent();
+    this.#cohort.assertCurrent();
     commit(value);
-    await this.#repairProjection();
-    this.#assertCurrent();
+    await repairCachedProjection(this.#cohort, [SCHEDULES_KEY]);
+    this.#cohort.assertCurrent();
     afterRepair?.(value);
     return value;
-  }
-
-  #repairProjection(): Promise<void> {
-    return repairCachedProjection(this.#cohort, [SCHEDULES_KEY]);
   }
 
   #commitSaved(saved: ScheduleConfig): void {
@@ -148,14 +144,6 @@ class ScheduleMutationGeneration {
     return candidates.reduce((latest, candidate) =>
       candidate.revision > latest.revision ? candidate : latest,
     ) as ScheduleConfig;
-  }
-
-  #settle<T>(operation: Promise<T>): Promise<T> {
-    return this.#cohort.settle(operation);
-  }
-
-  #assertCurrent(): void {
-    this.#cohort.assertCurrent();
   }
 }
 

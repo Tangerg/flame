@@ -34,31 +34,31 @@ class KnowledgeGeneration {
   }
 
   async read(input: WorkspaceKnowledgeReadInput): Promise<WorkspaceKnowledgeDocument> {
-    const snapshot = await this.#settle(this.#gateway.read(input));
-    this.#assertCurrent();
+    const snapshot = await this.#cohort.settle(this.#gateway.read(input));
+    this.#cohort.assertCurrent();
     return snapshot;
   }
 
   save(input: WorkspaceKnowledgeUpdateInput): Promise<WorkspaceKnowledgeDocument> {
     const identity = knowledgeIdentity(input);
-    const result = this.#settle(this.#saveTails.get(identity) ?? Promise.resolve()).then(
-      async () => {
-        this.#assertCurrent();
+    const result = this.#cohort
+      .settle(this.#saveTails.get(identity) ?? Promise.resolve())
+      .then(async () => {
+        this.#cohort.assertCurrent();
         let saved: WorkspaceKnowledgeDocument;
         try {
-          saved = await this.#settle(this.#gateway.save(input));
+          saved = await this.#cohort.settle(this.#gateway.save(input));
         } catch (error) {
           if (this.#cohort.retired) throw error;
           await this.#repair(knowledgeRepair(input));
           throw error;
         }
-        this.#assertCurrent();
+        this.#cohort.assertCurrent();
         commitKnowledgeDocument(input, saved);
         await this.#repair(knowledgeRepair(input));
-        this.#assertCurrent();
+        this.#cohort.assertCurrent();
         return saved;
-      },
-    );
+      });
     const settlement = result.then(
       () => undefined,
       () => undefined,
@@ -79,7 +79,7 @@ class KnowledgeGeneration {
     try {
       await Promise.all(
         filters.map((filter) =>
-          this.#settle(queryClient.invalidateQueries(filter)).then(() => undefined),
+          this.#cohort.settle(queryClient.invalidateQueries(filter)).then(() => undefined),
         ),
       );
     } catch (error) {
@@ -87,14 +87,6 @@ class KnowledgeGeneration {
       // Accepted writes have already committed every fact proved by their
       // response. Runtime events and a later read retain the repair path.
     }
-  }
-
-  #settle<T>(operation: Promise<T>): Promise<T> {
-    return this.#cohort.settle(operation);
-  }
-
-  #assertCurrent(): void {
-    this.#cohort.assertCurrent();
   }
 }
 

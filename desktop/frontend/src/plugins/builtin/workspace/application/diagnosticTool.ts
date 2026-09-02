@@ -47,17 +47,13 @@ class DiagnosticToolGeneration {
   invoke(input: InvokeDiagnosticToolInput): Promise<unknown> {
     const identity = tupleKey(input.cwd ?? "", input.name);
     return this.#chain.chain(identity, (tail) =>
-      this.#settle(tail).then(() => this.#cohort.run(() => this.#gateway.invoke(input))),
+      this.#cohort.settle(tail).then(() => this.#cohort.run(() => this.#gateway.invoke(input))),
     );
   }
 
   retire(): void {
     this.#cohort.retire();
     this.#chain.clear();
-  }
-
-  #settle<T>(operation: Promise<T>): Promise<T> {
-    return this.#cohort.settle(operation);
   }
 }
 

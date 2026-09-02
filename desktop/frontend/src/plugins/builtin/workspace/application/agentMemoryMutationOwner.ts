@@ -75,28 +75,16 @@ class AgentMemoryMutationGeneration {
 
   #run<T>(identity: string, mutation: AgentMemoryMutation<T>): Promise<T> {
     return this.#chain.chain(identity, (tail) =>
-      this.#settle(tail).then(async () => {
-        this.#assertCurrent();
-        const value = await this.#settle(mutation.execute());
-        this.#assertCurrent();
+      this.#cohort.settle(tail).then(async () => {
+        this.#cohort.assertCurrent();
+        const value = await this.#cohort.settle(mutation.execute());
+        this.#cohort.assertCurrent();
         mutation.commit?.(value);
-        await this.#repairProjection();
-        this.#assertCurrent();
+        await repairCachedProjection(this.#cohort, [WORKSPACE_AGENT_MEMORY_KEY]);
+        this.#cohort.assertCurrent();
         return value;
       }),
     );
-  }
-
-  #repairProjection(): Promise<void> {
-    return repairCachedProjection(this.#cohort, [WORKSPACE_AGENT_MEMORY_KEY]);
-  }
-
-  #settle<T>(operation: Promise<T>): Promise<T> {
-    return this.#cohort.settle(operation);
-  }
-
-  #assertCurrent(): void {
-    this.#cohort.assertCurrent();
   }
 }
 

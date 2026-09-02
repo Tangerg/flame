@@ -88,13 +88,13 @@ class MCPServerMutationGeneration {
       this.#gateway.createAuthorizationAttempt(name, signal),
     );
     while (attempt.status === "pending") {
-      await this.#settle(authorizationPollDelay(signal));
+      await this.#cohort.settle(authorizationPollDelay(signal));
       attempt = await this.#cohort.run(() =>
         this.#gateway.getAuthorizationAttempt(attempt.id, signal),
       );
     }
-    await this.#repairProjection();
-    this.#assertCurrent();
+    await repairCachedProjection(this.#cohort, [MCP_SERVERS_KEY, MCP_TOOLS_KEY]);
+    this.#cohort.assertCurrent();
     if (attempt.status === "failed") throw new Error(attempt.error);
   }
 
@@ -108,26 +108,14 @@ class MCPServerMutationGeneration {
 
   #run<T>(identity: string, mutation: MCPServerMutation<T>): Promise<T> {
     return this.#chain.chain(identity, (tail) =>
-      this.#settle(tail).then(async () => {
+      this.#cohort.settle(tail).then(async () => {
         const value = await this.#cohort.run(mutation.execute);
         mutation.commit(value);
-        await this.#repairProjection();
-        this.#assertCurrent();
+        await repairCachedProjection(this.#cohort, [MCP_SERVERS_KEY, MCP_TOOLS_KEY]);
+        this.#cohort.assertCurrent();
         return value;
       }),
     );
-  }
-
-  #repairProjection(): Promise<void> {
-    return repairCachedProjection(this.#cohort, [MCP_SERVERS_KEY, MCP_TOOLS_KEY]);
-  }
-
-  #settle<T>(operation: Promise<T>): Promise<T> {
-    return this.#cohort.settle(operation);
-  }
-
-  #assertCurrent(): void {
-    this.#cohort.assertCurrent();
   }
 
   #forgetReconnect(name: string, reconnect: Promise<void>): void {

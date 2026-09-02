@@ -65,26 +65,14 @@ class ProviderMutationGeneration {
 
   #run<T>(identity: string, mutation: ProviderMutation<T>): Promise<T> {
     return this.#chain.chain(identity, (tail) =>
-      this.#settle(tail).then(async () => {
+      this.#cohort.settle(tail).then(async () => {
         const value = await this.#cohort.run(mutation.execute);
         mutation.commit(value);
-        await this.#repairProjection(mutation.repair);
-        this.#assertCurrent();
+        await repairCachedProjection(this.#cohort, mutation.repair);
+        this.#cohort.assertCurrent();
         return value;
       }),
     );
-  }
-
-  #repairProjection(keys: readonly string[]): Promise<void> {
-    return repairCachedProjection(this.#cohort, keys);
-  }
-
-  #settle<T>(operation: Promise<T>): Promise<T> {
-    return this.#cohort.settle(operation);
-  }
-
-  #assertCurrent(): void {
-    this.#cohort.assertCurrent();
   }
 }
 

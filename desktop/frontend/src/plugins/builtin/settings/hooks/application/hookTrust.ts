@@ -27,19 +27,19 @@ class HookTrustMutationGeneration {
 
   setProjectTrust(projectRoot: string, trusted: boolean): Promise<void> {
     return this.#chain.chain(projectRoot, (tail) =>
-      this.#settle(tail).then(async () => {
-        this.#assertCurrent();
+      this.#cohort.settle(tail).then(async () => {
+        this.#cohort.assertCurrent();
         try {
-          await this.#settle(this.#gateway.setProjectTrust(projectRoot, trusted));
+          await this.#cohort.settle(this.#gateway.setProjectTrust(projectRoot, trusted));
         } catch (error) {
           if (error === this.#retiredError) throw error;
-          await this.#repairProjection();
-          this.#assertCurrent();
+          await repairCachedProjection(this.#cohort, [HOOKS_KEY]);
+          this.#cohort.assertCurrent();
           throw error;
         }
-        this.#assertCurrent();
-        await this.#repairProjection();
-        this.#assertCurrent();
+        this.#cohort.assertCurrent();
+        await repairCachedProjection(this.#cohort, [HOOKS_KEY]);
+        this.#cohort.assertCurrent();
       }),
     );
   }
@@ -47,18 +47,6 @@ class HookTrustMutationGeneration {
   retire(): void {
     this.#cohort.retire();
     this.#chain.clear();
-  }
-
-  #repairProjection(): Promise<void> {
-    return repairCachedProjection(this.#cohort, [HOOKS_KEY]);
-  }
-
-  #settle<T>(operation: Promise<T>): Promise<T> {
-    return this.#cohort.settle(operation);
-  }
-
-  #assertCurrent(): void {
-    this.#cohort.assertCurrent();
   }
 }
 
