@@ -14,18 +14,19 @@ import (
 
 const projectSkillsSubdir = ".flame/skills"
 
-// ProjectSkillDir resolves the project skill-source directory for a working
-// directory. The .flame layout is a prompt-source filesystem convention, not a
-// skills-domain concern.
-func ProjectSkillDir(cwd string) string {
-	if cwd == "" {
+// ProjectSkillDir resolves the project skill-source directory for a selected
+// workspace. The .flame layout is a prompt-source filesystem convention, not
+// a skills-domain concern.
+func ProjectSkillDir(workspaceRoot string) string {
+	if workspaceRoot == "" {
 		return ""
 	}
-	return filepath.Join(cwd, projectSkillsSubdir)
+	return filepath.Join(workspaceRoot, projectSkillsSubdir)
 }
 
-// MergeSkillSource builds the merged skill source: projectDir layered over
-// userDir, the project copy winning on name collisions. Returns nil when
+// MergeSkillSource builds the merged skill source: the selected workspace's
+// project directory layered over userDir, the project copy winning on name
+// collisions. Returns nil when
 // neither directory exists, so a session that ships no skills gets no skill tool
 // at all rather than one that always lists nothing.
 //
@@ -35,19 +36,21 @@ func ProjectSkillDir(cwd string) string {
 // name to the project copy, so decorating the user source records exactly the
 // user-resolved loads and nothing else.
 //
-// Building a source just wraps an os.DirFS, so this is cheap enough to call per
-// tool resolution (the engine rebuilds the skill tool per Run cwd).
-func MergeSkillSource(projectDir, userDir string, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) (sdk.ResourceSource, error) {
+// Building a source resolves its physical confinement root and wraps it with
+// Scope's directory repository, so it remains cheap enough to call per tool
+// resolution.
+func MergeSkillSource(workspaceRoot, userDir string, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) (sdk.ResourceSource, error) {
 	var sources []sdk.ResourceSource
+	projectDir := ProjectSkillDir(workspaceRoot)
 	if dirExists(projectDir) {
-		project, err := newRuntimeSkillSource(projectDir)
+		project, err := newRuntimeSkillSource(projectDir, workspaceRoot)
 		if err != nil {
 			return nil, err
 		}
 		sources = append(sources, project)
 	}
 	if dirExists(userDir) {
-		userSource, err := newRuntimeSkillSource(userDir)
+		userSource, err := newRuntimeSkillSource(userDir, userDir)
 		if err != nil {
 			return nil, err
 		}
@@ -63,18 +66,18 @@ func MergeSkillSource(projectDir, userDir string, decorateUser func(sdk.Resource
 	return sdk.Merge(sources...), nil
 }
 
-// ListSkills enumerates the skills visible from projectDir layered over
-// userDir, project winning on a name collision (the same precedence
+// ListSkills enumerates the skills visible from the selected workspace layered
+// over userDir, project winning on a name collision (the same precedence
 // MergeSkillSource gives the model). A missing directory contributes nothing
 // rather than erroring. Result is sorted by name.
-func ListSkills(ctx context.Context, projectDir, userDir string) ([]workspaceapp.SkillSummary, error) {
+func ListSkills(ctx context.Context, workspaceRoot, userDir string) ([]workspaceapp.SkillSummary, error) {
 	seen := make(map[string]struct{})
 	var out []workspaceapp.SkillSummary
-	add := func(dir string, scope workspaceapp.SkillScope) error {
+	add := func(dir, boundary string, scope workspaceapp.SkillScope) error {
 		if !dirExists(dir) {
 			return nil
 		}
-		source, err := newRuntimeSkillSource(dir)
+		source, err := newRuntimeSkillSource(dir, boundary)
 		if err != nil {
 			return err
 		}
@@ -91,10 +94,10 @@ func ListSkills(ctx context.Context, projectDir, userDir string) ([]workspaceapp
 		}
 		return nil
 	}
-	if err := add(projectDir, workspaceapp.SkillScopeProject); err != nil {
+	if err := add(ProjectSkillDir(workspaceRoot), workspaceRoot, workspaceapp.SkillScopeProject); err != nil {
 		return nil, err
 	}
-	if err := add(userDir, workspaceapp.SkillScopeUser); err != nil {
+	if err := add(userDir, userDir, workspaceapp.SkillScopeUser); err != nil {
 		return nil, err
 	}
 	slices.SortFunc(out, func(a, b workspaceapp.SkillSummary) int { return strings.Compare(a.Name, b.Name) })

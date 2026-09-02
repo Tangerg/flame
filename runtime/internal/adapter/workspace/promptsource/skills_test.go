@@ -11,6 +11,7 @@ import (
 
 	sdk "github.com/Tangerg/scope/skills"
 
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
 
@@ -43,26 +44,70 @@ func TestRuntimeSkillSourceRejectsOversizedDocument(t *testing.T) {
 }
 
 func TestRuntimeSkillSourceRejectsOverCapacityDirectory(t *testing.T) {
-	root := t.TempDir()
+	workspace := t.TempDir()
+	root := ProjectSkillDir(workspace)
 	for index := range domainskills.MaxSkillsPerSource + 1 {
 		writeRuntimeSkill(t, root, fmt.Sprintf("skill-%03d", index), "instructions")
 	}
 
-	if _, err := ListSkills(t.Context(), root, ""); !errors.Is(err, domainskills.ErrLibraryCapacity) {
+	if _, err := ListSkills(t.Context(), workspace, ""); !errors.Is(err, domainskills.ErrLibraryCapacity) {
 		t.Fatalf("ListSkills error = %v, want ErrLibraryCapacity beyond %d entries", err, domainskills.MaxSkillsPerSource)
 	}
 }
 
 func TestRuntimeSkillSourceRejectsRawDirectoryFlood(t *testing.T) {
-	root := t.TempDir()
+	workspace := t.TempDir()
+	root := ProjectSkillDir(workspace)
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	for index := range domainskills.MaxSkillDirectoryEntries + 1 {
 		if err := os.WriteFile(filepath.Join(root, fmt.Sprintf("junk-%03d", index)), nil, 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	if _, err := ListSkills(t.Context(), root, ""); !errors.Is(err, domainskills.ErrLibraryCapacity) {
+	if _, err := ListSkills(t.Context(), workspace, ""); !errors.Is(err, domainskills.ErrLibraryCapacity) {
 		t.Fatalf("ListSkills raw-directory error = %v, want ErrLibraryCapacity", err)
+	}
+}
+
+func TestRuntimeSkillSourcesRejectEscapingProjectRoot(t *testing.T) {
+	workspace := t.TempDir()
+	escaped := t.TempDir()
+	writeRuntimeSkill(t, escaped, "escaped", "must not load")
+	if err := os.MkdirAll(filepath.Join(workspace, ".flame"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(escaped, ProjectSkillDir(workspace)); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	if _, err := ListSkills(t.Context(), workspace, ""); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
+		t.Fatalf("ListSkills error = %v, want ErrPathOutsideRoot", err)
+	}
+	if _, err := MergeSkillSource(workspace, "", nil); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
+		t.Fatalf("MergeSkillSource error = %v, want ErrPathOutsideRoot", err)
+	}
+}
+
+func TestRuntimeSkillSourcesAllowInWorkspaceAlias(t *testing.T) {
+	workspace := t.TempDir()
+	physical := filepath.Join(workspace, "skill-library")
+	writeRuntimeSkill(t, physical, "inside", "allowed")
+	if err := os.MkdirAll(filepath.Join(workspace, ".flame"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(physical, ProjectSkillDir(workspace)); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	listed, err := ListSkills(t.Context(), workspace, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(listed) != 1 || listed[0].Name != "inside" || listed[0].Scope != workspaceapp.SkillScopeProject {
+		t.Fatalf("ListSkills = %+v, want the confined project Skill", listed)
 	}
 }
 

@@ -12,8 +12,10 @@ import (
 
 	sdk "github.com/Tangerg/scope/skills"
 
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
 // runtimeSkillSource is Runtime's finite admission boundary around the Agent
@@ -25,12 +27,32 @@ type runtimeSkillSource struct {
 	resources sdk.ResourceSource
 }
 
-func newRuntimeSkillSource(root string) (*runtimeSkillSource, error) {
-	repository, err := sdk.NewDirectoryRepository(root, sdk.RepositoryConfig{})
+func newRuntimeSkillSource(root, boundary string) (*runtimeSkillSource, error) {
+	physicalRoot, err := pathidentity.Resolve("", root)
 	if err != nil {
-		return nil, fmt.Errorf("runtime skill source: open %q: %w", root, err)
+		return nil, fmt.Errorf("runtime skill source: resolve root %q: %w", root, err)
 	}
-	return &runtimeSkillSource{root: root, resources: repository}, nil
+	physicalBoundary, err := pathidentity.Resolve("", boundary)
+	if err != nil {
+		return nil, fmt.Errorf("runtime skill source: resolve boundary %q: %w", boundary, err)
+	}
+	inside, err := pathidentity.Contains(physicalBoundary, physicalRoot)
+	if err != nil {
+		return nil, fmt.Errorf("runtime skill source: confine root %q: %w", root, err)
+	}
+	if !inside {
+		return nil, fmt.Errorf(
+			"runtime skill source: root %q resolves outside %q: %w",
+			root,
+			boundary,
+			workspaceapp.ErrPathOutsideRoot,
+		)
+	}
+	repository, err := sdk.NewDirectoryRepository(physicalRoot, sdk.RepositoryConfig{})
+	if err != nil {
+		return nil, fmt.Errorf("runtime skill source: open %q: %w", physicalRoot, err)
+	}
+	return &runtimeSkillSource{root: physicalRoot, resources: repository}, nil
 }
 
 func (r *runtimeSkillSource) List(ctx context.Context) ([]sdk.Summary, error) {

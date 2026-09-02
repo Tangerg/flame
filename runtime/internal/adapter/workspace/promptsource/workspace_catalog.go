@@ -33,5 +33,5 @@ func NewWorkspaceSkills(userDir string) WorkspaceSkills {
 var _ workspaceapp.SkillCatalog = WorkspaceSkills{}
 
 func (w WorkspaceSkills) List(ctx context.Context, cwd string) ([]workspaceapp.SkillSummary, error) {
-	return ListSkills(ctx, ProjectSkillDir(cwd), w.userDir)
+	return ListSkills(ctx, cwd, w.userDir)
 }
