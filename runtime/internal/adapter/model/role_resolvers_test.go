@@ -28,6 +28,26 @@ type staticRoleSource struct {
 
 func (s staticRoleSource) Role() modelref.Selection { return s.selection }
 
+type pointerInputTokenCounter struct{}
+
+func (*pointerInputTokenCounter) CountInputTokens(
+	context.Context,
+	*chat.Request,
+) (int64, error) {
+	return 1, nil
+}
+
+func TestResolvedChatRejectsTypedNilInputTokenCounter(t *testing.T) {
+	client := newTestChatClient(t)
+	var counter *pointerInputTokenCounter
+
+	resolved, err := NewResolvedChat(client, counter)
+
+	if err == nil || resolved.Client() != nil {
+		t.Fatalf("NewResolvedChat typed-nil counter = (%v, %v), want invalid construction", resolved, err)
+	}
+}
+
 func TestLiveUtilityClientResolvesMainForEveryUse(t *testing.T) {
 	selection := mustRoleSelection(t, "anthropic", "claude-test")
 	client := newTestChatClient(t)
