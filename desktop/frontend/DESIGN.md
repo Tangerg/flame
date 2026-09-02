@@ -584,9 +584,13 @@ The full scale is nine sizes — four UI steps, prose, code, and three display s
 
 1. **Sans-first; mono is the _data_ voice only.** Labels, section headings, nav, speaker names, view titles + subtitles are **sans**. Mono (`caption-mono` / `code`) is reserved for genuine data — IDs, durations, timestamps, file paths, tool-call signatures. (The earlier "mono as eyebrow everywhere" read as an engineering console; pulled back.)
 
-2. **500 is the display ceiling.** Never use 600+ for UI (700, 800, 900 right
-   out). Hierarchy comes from size + weight contrast (400 vs 500), not from
-   going heavier. (600 semibold is reserved for HITL action buttons only.)
+2. **600 is the ceiling, and it is the heading weight.** The ladder is three
+   rungs — `--fw-regular` 430, `--fw-medium` 500, `--fw-semibold` 600. 700 and up
+   are out, and nothing in the app reaches for one. 600 carries titles and section
+   headings and the HITL action button; below that, hierarchy comes from size and
+   the 430/500 contrast rather than more weight. Both references land the same
+   way: Codex sets its heading at 600 over a 430 body, and 600 is the single most
+   common weight in ChatGPT's stylesheet.
 
 3. **Display gets negative tracking.** Three editorial steps — 18 / 20 / 24 — matching Codex's heading ladder; the app has no fourth, so there is no token for one. Body holds at -0.05 to 0.
 
