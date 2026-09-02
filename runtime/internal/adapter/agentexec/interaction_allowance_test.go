@@ -150,4 +150,10 @@ func TestInteractionAllowanceOwnsTreeWideSteps(t *testing.T) {
 	if allowance.terminal() != interactionAllowanceStepsExhausted {
 		t.Fatalf("terminal = %d, want steps exhausted", allowance.terminal())
 	}
+	if err := allowance.admit(accounting.Snapshot{}); !errors.Is(err, errInteractionAllowanceDenied) {
+		t.Fatalf("admit after terminal stop = %v, want sticky allowance denial", err)
+	}
+	if allowance.terminal() != interactionAllowanceStepsExhausted {
+		t.Fatalf("terminal reopened as %d", allowance.terminal())
+	}
 }

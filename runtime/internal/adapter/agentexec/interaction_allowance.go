@@ -67,49 +67,64 @@ func (a *interactionAllowance) admit(snapshot accounting.Snapshot) error {
 	if a == nil {
 		return errors.New("agentexec: Run allowance is unavailable")
 	}
-	if len(snapshot.Models) == 0 {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.stop != interactionAllowanceOpen {
+		return errInteractionAllowanceDenied
+	}
+	stop, err := allowanceStop(a.limits, snapshot)
+	if err != nil {
+		return err
+	}
+	if stop == interactionAllowanceOpen {
 		return nil
+	}
+	a.stop = stop
+	return errInteractionAllowanceDenied
+}
+
+func allowanceStop(limits run.Limits, snapshot accounting.Snapshot) (interactionAllowanceStop, error) {
+	if len(snapshot.Models) == 0 {
+		return interactionAllowanceOpen, nil
 	}
 	total, err := snapshot.Total()
 	if err != nil {
-		return fmt.Errorf("agentexec: evaluate Run allowance: %w", err)
+		return interactionAllowanceOpen, fmt.Errorf("agentexec: evaluate Run allowance: %w", err)
 	}
-	stop := interactionAllowanceOpen
-	if maximum, limited := a.limits.MaxSteps(); limited && total.Calls >= maximum {
-		stop = interactionAllowanceStepsExhausted
+	if maximum, limited := limits.MaxSteps(); limited && total.Calls >= maximum {
+		return interactionAllowanceStepsExhausted, nil
 	}
-	if stop == interactionAllowanceOpen {
-		maximum, limited := a.limits.MaxTotalTokens()
-		if limited {
-			used, err := total.Total()
-			if err != nil {
-				return fmt.Errorf("agentexec: cumulative token usage: %w", err)
-			}
-			if used >= maximum {
-				stop = interactionAllowanceBudgetExhausted
-			}
+	stop, err := tokenAllowanceStop(limits, total)
+	if err != nil || stop != interactionAllowanceOpen {
+		return stop, err
+	}
+	return costAllowanceStop(limits, total), nil
+}
+
+func tokenAllowanceStop(limits run.Limits, total accounting.ModelUsage) (interactionAllowanceStop, error) {
+	if maximum, limited := limits.MaxTotalTokens(); limited {
+		used, err := total.Total()
+		if err != nil {
+			return interactionAllowanceOpen, fmt.Errorf("agentexec: cumulative token usage: %w", err)
+		}
+		if used >= maximum {
+			return interactionAllowanceBudgetExhausted, nil
 		}
 	}
-	if stop == interactionAllowanceOpen {
-		if maximum, limited := a.limits.MaxBudgetUSD(); limited {
-			cost, available := total.Cost.USD()
-			switch {
-			case !available:
-				stop = interactionAllowancePricingUnavailable
-			case cost >= maximum:
-				stop = interactionAllowanceBudgetExhausted
-			}
+	return interactionAllowanceOpen, nil
+}
+
+func costAllowanceStop(limits run.Limits, total accounting.ModelUsage) interactionAllowanceStop {
+	if maximum, limited := limits.MaxBudgetUSD(); limited {
+		cost, available := total.Cost.USD()
+		switch {
+		case !available:
+			return interactionAllowancePricingUnavailable
+		case cost >= maximum:
+			return interactionAllowanceBudgetExhausted
 		}
 	}
-	if stop == interactionAllowanceOpen {
-		return nil
-	}
-	a.mu.Lock()
-	if a.stop == interactionAllowanceOpen {
-		a.stop = stop
-	}
-	a.mu.Unlock()
-	return errInteractionAllowanceDenied
+	return interactionAllowanceOpen
 }
 
 func (a *interactionAllowance) terminal() interactionAllowanceStop {
