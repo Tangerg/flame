@@ -4,7 +4,23 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	"github.com/Tangerg/scope/core/chat"
 )
+
+func TestTranscriptPreservesRefusalText(t *testing.T) {
+	messages := []chat.Message{
+		chat.NewAssistantMessage(chat.NewRefusalPart("I cannot help with that request.")),
+	}
+
+	rendered := renderTranscript(messages)
+	if !strings.Contains(rendered, "I cannot help with that request.") {
+		t.Fatalf("renderTranscript = %q, want refusal text", rendered)
+	}
+	if measured := transcriptBytes(messages); measured != len(rendered) {
+		t.Fatalf("transcriptBytes = %d, want rendered size %d", measured, len(rendered))
+	}
+}
 
 func TestCapText(t *testing.T) {
 	// Disabled (max<=0) or already-small: returned unchanged.

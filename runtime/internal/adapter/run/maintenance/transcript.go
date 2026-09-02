@@ -48,11 +48,11 @@ func renderTranscript(msgs []chat.Message) string {
 func renderTranscriptMessage(msg chat.Message, budget int) string {
 	switch msg.Role {
 	case chat.RoleSystem:
-		return renderTranscriptParts("[system] ", textPartValues(msg), "", budget)
+		return renderTranscriptParts("[system] ", transcriptTextValues(msg), "", budget)
 	case chat.RoleUser:
-		return renderTranscriptParts("[user] ", textPartValues(msg), "", budget)
+		return renderTranscriptParts("[user] ", transcriptTextValues(msg), "", budget)
 	case chat.RoleAssistant:
-		return renderTranscriptParts("[assistant] ", textPartValues(msg), "", budget)
+		return renderTranscriptParts("[assistant] ", transcriptTextValues(msg), "", budget)
 	case chat.RoleTool:
 		results := make([]string, 0, len(msg.Parts))
 		for _, part := range msg.Parts {
@@ -66,10 +66,10 @@ func renderTranscriptMessage(msg chat.Message, budget int) string {
 	}
 }
 
-func textPartValues(msg chat.Message) []string {
+func transcriptTextValues(msg chat.Message) []string {
 	values := make([]string, 0, len(msg.Parts))
 	for _, part := range msg.Parts {
-		if part.Kind == chat.PartText {
+		if isTranscriptText(part.Kind) {
 			values = append(values, part.Text)
 		}
 	}
@@ -99,11 +99,11 @@ func transcriptBytes(msgs []chat.Message) int {
 		size := 1 // trailing newline
 		switch msg.Role {
 		case chat.RoleSystem:
-			size = saturatedAdd(size, len("[system] "), textPartsBytes(msg))
+			size = saturatedAdd(size, len("[system] "), transcriptTextBytes(msg))
 		case chat.RoleUser:
-			size = saturatedAdd(size, len("[user] "), textPartsBytes(msg))
+			size = saturatedAdd(size, len("[user] "), transcriptTextBytes(msg))
 		case chat.RoleAssistant:
-			size = saturatedAdd(size, len("[assistant] "), textPartsBytes(msg))
+			size = saturatedAdd(size, len("[assistant] "), transcriptTextBytes(msg))
 		case chat.RoleTool:
 			size = saturatedAdd(size, len("[tool] "))
 			for _, part := range msg.Parts {
@@ -119,14 +119,18 @@ func transcriptBytes(msgs []chat.Message) int {
 	return total
 }
 
-func textPartsBytes(msg chat.Message) int {
+func transcriptTextBytes(msg chat.Message) int {
 	total := 0
 	for _, part := range msg.Parts {
-		if part.Kind == chat.PartText {
+		if isTranscriptText(part.Kind) {
 			total = saturatedAdd(total, len(part.Text))
 		}
 	}
 	return total
+}
+
+func isTranscriptText(kind chat.PartKind) bool {
+	return kind == chat.PartText || kind == chat.PartRefusal
 }
 
 func saturatedAdd(total int, values ...int) int {
