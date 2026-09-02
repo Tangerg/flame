@@ -186,14 +186,17 @@ const VIEW_RING = /^(?:plugins|pages|ui)\//;
  * so a catalog entry for it would be eight copies of one proper noun.
  *
  * Narrow on purpose: the key has to be quoted on the SAME entry, and the two have to differ
- * by case alone. "Fast and cheap" beside "gpt-4o-mini" is still copy and still fails.
+ * by case and separators alone — "Hugging Face" beside "huggingface" is one identity written
+ * two ways, while "Together AI" beside "together" adds a word and is a naming choice. "Fast
+ * and cheap" beside "gpt-4o-mini" is still copy and still fails.
  */
 function spellsItsOwnKey(code, index, value) {
   const start = code.lastIndexOf("\n", index) + 1;
   const end = code.indexOf("\n", index);
   const line = code.slice(start, end === -1 ? code.length : end);
+  const bare = (text) => text.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
   for (const [, literal] of line.matchAll(/"([^"\n]+)"/g)) {
-    if (literal !== value && literal.toLowerCase() === value.toLowerCase()) return true;
+    if (literal !== value && bare(literal) === bare(value)) return true;
   }
   return false;
 }

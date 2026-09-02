@@ -132,8 +132,6 @@ describe("Goal status surface", () => {
     );
   });
 
-  // The Runtime rejects a blank objective outright, so this dialog is the only thing standing
-  // between an accidental select-all-delete and a failed command with nothing to show for it.
   it("refuses to save an objective that is only whitespace", () => {
     render(<GoalStatusSurface />);
 

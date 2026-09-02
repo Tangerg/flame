@@ -58,8 +58,6 @@ describe("runtimeAgentMemoryGateway", () => {
     await expect(setAgentMemoryPinned(MEMORY_ID, true)).resolves.toBeUndefined();
     expect(update).toHaveBeenCalledWith({ id: MEMORY_ID, pinned: true });
 
-    // A pin is the one update that carries no content, and the Runtime accepts it only
-    // because it asks for content *or* pinned. Nothing in the TypeScript says so.
     expectSendable("AgentMemoryAddRequest", add);
     expectSendable("AgentMemoryUpdateRequest", update);
   });

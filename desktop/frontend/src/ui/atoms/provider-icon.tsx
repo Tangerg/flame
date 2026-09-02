@@ -1,13 +1,21 @@
 import { createElement, type ComponentType } from "react";
+import Alibaba from "@lobehub/icons/es/Alibaba/components/Mono";
 import Anthropic from "@lobehub/icons/es/Anthropic/components/Mono";
+import Azure from "@lobehub/icons/es/Azure/components/Mono";
 import DeepSeek from "@lobehub/icons/es/DeepSeek/components/Mono";
+import Fireworks from "@lobehub/icons/es/Fireworks/components/Mono";
 import Gemini from "@lobehub/icons/es/Gemini/components/Mono";
-import Meta from "@lobehub/icons/es/Meta/components/Mono";
+import Groq from "@lobehub/icons/es/Groq/components/Mono";
+import HuggingFace from "@lobehub/icons/es/HuggingFace/components/Mono";
+import Minimax from "@lobehub/icons/es/Minimax/components/Mono";
 import Mistral from "@lobehub/icons/es/Mistral/components/Mono";
 import Moonshot from "@lobehub/icons/es/Moonshot/components/Mono";
 import Ollama from "@lobehub/icons/es/Ollama/components/Mono";
 import OpenAI from "@lobehub/icons/es/OpenAI/components/Mono";
-import Qwen from "@lobehub/icons/es/Qwen/components/Mono";
+import OpenRouter from "@lobehub/icons/es/OpenRouter/components/Mono";
+import Perplexity from "@lobehub/icons/es/Perplexity/components/Mono";
+import Together from "@lobehub/icons/es/Together/components/Mono";
+import XAI from "@lobehub/icons/es/XAI/components/Mono";
 import Zhipu from "@lobehub/icons/es/Zhipu/components/Mono";
 import type { IconSize } from "@/lib/iconScale";
 import { Icon } from "@/ui/icons";
@@ -21,25 +29,28 @@ interface Brand {
   name: string;
 }
 
-// Map, not object: keyed by a runtime-chosen name, and an object answers `constructor`
-// with an inherited FUNCTION that then renders as a component.
-//
-// One table, two columns: the mark and the spelling are the same fact about the same brand,
-// and a second table keyed the same way is a second thing to keep in step.
+// Keyed by the Runtime's own provider id — the only string that reaches here. `alibaba`
+// rather than `qwen` and `google` rather than `gemini` are ITS spellings, not the brand's;
+// keying by the brand leaves the mark unreachable. Map, not object, because an object
+// answers `constructor` with an inherited function that then renders as a component.
 const BRAND = new Map<string, Brand>([
-  ["deepseek", { mark: DeepSeek, name: "DeepSeek" }],
-  ["openai", { mark: OpenAI, name: "OpenAI" }],
+  ["alibaba", { mark: Alibaba, name: "Alibaba" }],
   ["anthropic", { mark: Anthropic, name: "Anthropic" }],
-  ["claude", { mark: Anthropic, name: "Claude" }],
-  ["gemini", { mark: Gemini, name: "Gemini" }],
+  ["azureopenai", { mark: Azure, name: "Azure OpenAI" }],
+  ["deepseek", { mark: DeepSeek, name: "DeepSeek" }],
+  ["fireworks", { mark: Fireworks, name: "Fireworks" }],
   ["google", { mark: Gemini, name: "Google" }],
-  ["meta", { mark: Meta, name: "Meta" }],
-  ["llama", { mark: Meta, name: "Llama" }],
+  ["groq", { mark: Groq, name: "Groq" }],
+  ["huggingface", { mark: HuggingFace, name: "Hugging Face" }],
+  ["minimax", { mark: Minimax, name: "MiniMax" }],
   ["mistral", { mark: Mistral, name: "Mistral" }],
   ["moonshot", { mark: Moonshot, name: "Moonshot" }],
-  ["kimi", { mark: Moonshot, name: "Kimi" }],
   ["ollama", { mark: Ollama, name: "Ollama" }],
-  ["qwen", { mark: Qwen, name: "Qwen" }],
+  ["openai", { mark: OpenAI, name: "OpenAI" }],
+  ["openrouter", { mark: OpenRouter, name: "OpenRouter" }],
+  ["perplexity", { mark: Perplexity, name: "Perplexity" }],
+  ["together", { mark: Together, name: "Together" }],
+  ["xai", { mark: XAI, name: "xAI" }],
   ["zhipu", { mark: Zhipu, name: "Zhipu" }],
 ]);
 

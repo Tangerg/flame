@@ -49,13 +49,8 @@ function schedule(workspace?: { path: string }): Schedule {
   };
 }
 
-/**
- * The generated TypeScript cannot express what the Runtime actually requires — it types
- * `instructions` as a string, while the wire also demands it contain something other than
- * whitespace, and it types an optional field as optional where the validator forbids it
- * beside a sibling. So the shape is asserted against the validator, on the object the client
- * was really handed, not on the type the call site happened to satisfy.
- */
+/** The generated TypeScript is looser than the wire: it cannot express non-blank text or a
+ *  field forbidden beside a sibling. */
 function expectSendable(shape: WireTypeName, call: ReturnType<typeof vi.fn>): void {
   expect(validateWire(shape, call.mock.calls[0]?.[0])).toEqual([]);
 }

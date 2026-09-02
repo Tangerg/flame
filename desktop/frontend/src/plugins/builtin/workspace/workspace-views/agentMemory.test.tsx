@@ -69,8 +69,6 @@ function openEditor(): HTMLTextAreaElement {
 }
 
 describe("Agent memory tab", () => {
-  // The Runtime rejects blank content outright, and this view is the only thing that stops it
-  // being sent — there is no second check between here and the wire.
   it("refuses to add a memory that is only whitespace", () => {
     render(<AgentMemoryTab />);
 

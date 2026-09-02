@@ -52,8 +52,8 @@ beforeEach(() => {
 
 afterEach(() => owner.dispose());
 
-/** The Goal gateway forwards this input to `goals.start` unchanged, so what is built here is
- *  what the Runtime validates. */
+/** The gateway forwards this input to `goals.start` unchanged. `StartGoalRequest` accepts
+ *  provider, model and reasoningEffort only as a set; the TypeScript types them apart. */
 function expectSendable(start: GoalComposerSubmitDependencies["start"]): void {
   expect(validateWire("StartGoalRequest", vi.mocked(start).mock.calls[0]?.[0])).toEqual([]);
 }
@@ -96,10 +96,6 @@ describe("Goal composer submit mode", () => {
     expect(owner.snapshot().phase).toBe("inactive");
   });
 
-  // A model preference is three fields the Runtime accepts only as a set — `reasoningEffort`
-  // needs both of the others, and provider and model need each other. `StartGoalInput` types
-  // all three as independently optional, so the whole invariant rests on the shape of one
-  // conditional spread. Both of its branches are asserted against the validator itself.
   it("sends the inherited session preference as no model fields at all", async () => {
     dependencies.modelPreference = () => ({ kind: "session" });
     const mode = createGoalComposerSubmitMode(owner, dependencies);
