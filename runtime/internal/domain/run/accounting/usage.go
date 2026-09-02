@@ -347,6 +347,39 @@ func (t TokenUsage) Add(other TokenUsage) (TokenUsage, error) {
 	return next, nil
 }
 
+// Subtract removes one independently valid token roll-up from a cumulative
+// total. The remainder must still satisfy the token subset relationships.
+func (t TokenUsage) Subtract(other TokenUsage) (TokenUsage, error) {
+	if err := t.Validate(); err != nil {
+		return TokenUsage{}, fmt.Errorf("total token usage: %w", err)
+	}
+	if err := other.Validate(); err != nil {
+		return TokenUsage{}, fmt.Errorf("subtracted token usage: %w", err)
+	}
+	next := TokenUsage{}
+	fields := []struct {
+		name        string
+		total, used int64
+		target      *int64
+	}{
+		{name: "prompt", total: t.PromptTokens, used: other.PromptTokens, target: &next.PromptTokens},
+		{name: "completion", total: t.CompletionTokens, used: other.CompletionTokens, target: &next.CompletionTokens},
+		{name: "reasoning", total: t.ReasoningTokens, used: other.ReasoningTokens, target: &next.ReasoningTokens},
+		{name: "cache-read", total: t.CacheReadTokens, used: other.CacheReadTokens, target: &next.CacheReadTokens},
+		{name: "cache-write", total: t.CacheWriteTokens, used: other.CacheWriteTokens, target: &next.CacheWriteTokens},
+	}
+	for _, field := range fields {
+		if field.used > field.total {
+			return TokenUsage{}, fmt.Errorf("accounting: %s token subtraction exceeds total", field.name)
+		}
+		*field.target = field.total - field.used
+	}
+	if err := next.Validate(); err != nil {
+		return TokenUsage{}, fmt.Errorf("accounting: token remainder: %w", err)
+	}
+	return next, nil
+}
+
 // ModelUsage is one model's slice of an execution's tokens and cost.
 type ModelUsage struct {
 	Model string
@@ -378,6 +411,60 @@ func (m ModelUsage) Add(other ModelUsage) (ModelUsage, error) {
 		return ModelUsage{}, errors.New("accounting: model call count overflows")
 	}
 	return ModelUsage{Model: m.Model, TokenUsage: tokens, Cost: cost, Calls: m.Calls + other.Calls}, nil
+}
+
+// Subtract removes one model slice from a cumulative slice of the same model.
+// The boolean reports whether a non-empty, valid ModelUsage remains; an exact
+// subtraction returns the zero value and false.
+func (m ModelUsage) Subtract(other ModelUsage) (ModelUsage, bool, error) {
+	if err := validateModelUsageSubtraction(m, other); err != nil {
+		return ModelUsage{}, false, err
+	}
+	tokens, err := m.TokenUsage.Subtract(other.TokenUsage)
+	if err != nil {
+		return ModelUsage{}, false, err
+	}
+	cost, err := m.Cost.Subtract(other.Cost)
+	if err != nil {
+		return ModelUsage{}, false, err
+	}
+	if other.Calls > m.Calls {
+		return ModelUsage{}, false, errors.New("accounting: model call subtraction exceeds total")
+	}
+	return newModelUsageRemainder(m.Model, tokens, cost, m.Calls-other.Calls)
+}
+
+func validateModelUsageSubtraction(total, used ModelUsage) error {
+	if err := total.Validate(); err != nil {
+		return fmt.Errorf("total model usage: %w", err)
+	}
+	if err := used.Validate(); err != nil {
+		return fmt.Errorf("subtracted model usage: %w", err)
+	}
+	if total.Model != used.Model {
+		return fmt.Errorf("accounting: cannot subtract models %q and %q", total.Model, used.Model)
+	}
+	return nil
+}
+
+func newModelUsageRemainder(
+	model string,
+	tokens TokenUsage,
+	cost Cost,
+	calls int,
+) (ModelUsage, bool, error) {
+	if calls == 0 {
+		usd, priced := cost.USD()
+		if tokens != (TokenUsage{}) || priced && usd != 0 {
+			return ModelUsage{}, false, errors.New("accounting: model usage remains without calls")
+		}
+		return ModelUsage{}, false, nil
+	}
+	remainder := ModelUsage{Model: model, TokenUsage: tokens, Cost: cost, Calls: calls}
+	if err := remainder.Validate(); err != nil {
+		return ModelUsage{}, false, fmt.Errorf("accounting: model usage remainder: %w", err)
+	}
+	return remainder, true, nil
 }
 
 // Snapshot is the durable usage projection for one complete execution tree.

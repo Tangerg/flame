@@ -354,35 +354,18 @@ func subtractInteractionUsage(
 	}
 	for model, used := range active {
 		value, found := remaining[model]
-		if !found || value.PromptTokens < used.PromptTokens ||
-			value.CompletionTokens < used.CompletionTokens || value.ReasoningTokens < used.ReasoningTokens ||
-			value.CacheReadTokens < used.CacheReadTokens || value.CacheWriteTokens < used.CacheWriteTokens ||
-			value.Calls < used.Calls {
+		if !found {
 			return nil, fmt.Errorf("active model %q usage exceeds tree checkpoint", model)
 		}
-		remainingCost, err := value.Cost.Subtract(used.Cost)
+		remainder, present, err := value.Subtract(used)
 		if err != nil {
-			return nil, fmt.Errorf("active model %q cost exceeds tree checkpoint: %w", model, err)
+			return nil, fmt.Errorf("active model %q usage exceeds tree checkpoint: %w", model, err)
 		}
-		value.PromptTokens -= used.PromptTokens
-		value.CompletionTokens -= used.CompletionTokens
-		value.ReasoningTokens -= used.ReasoningTokens
-		value.CacheReadTokens -= used.CacheReadTokens
-		value.CacheWriteTokens -= used.CacheWriteTokens
-		value.Calls -= used.Calls
-		value.Cost = remainingCost
-		if value.Calls == 0 {
-			cost, priced := value.Cost.USD()
-			if value.TokenUsage != (accounting.TokenUsage{}) || (priced && cost != 0) {
-				return nil, fmt.Errorf("model %q has residual usage without calls", model)
-			}
+		if !present {
 			delete(remaining, model)
 			continue
 		}
-		if err := value.Validate(); err != nil {
-			return nil, err
-		}
-		remaining[model] = value
+		remaining[model] = remainder
 	}
 	return remaining, nil
 }

@@ -59,6 +59,58 @@ func TestTokenAndModelUsageRejectOverflow(t *testing.T) {
 	}
 }
 
+func TestModelUsageSubtractOwnsRemainderInvariants(t *testing.T) {
+	total := ModelUsage{
+		Model: "model",
+		TokenUsage: TokenUsage{
+			PromptTokens: 10, CompletionTokens: 6, ReasoningTokens: 2,
+			CacheReadTokens: 4, CacheWriteTokens: 3,
+		},
+		Cost: mustCost(t, 1), Calls: 3,
+	}
+	used := ModelUsage{
+		Model: "model",
+		TokenUsage: TokenUsage{
+			PromptTokens: 4, CompletionTokens: 2, ReasoningTokens: 1,
+			CacheReadTokens: 1, CacheWriteTokens: 1,
+		},
+		Cost: mustCost(t, 0.25), Calls: 1,
+	}
+	want := ModelUsage{
+		Model: "model",
+		TokenUsage: TokenUsage{
+			PromptTokens: 6, CompletionTokens: 4, ReasoningTokens: 1,
+			CacheReadTokens: 3, CacheWriteTokens: 2,
+		},
+		Cost: mustCost(t, 0.75), Calls: 2,
+	}
+	got, present, err := total.Subtract(used)
+	if err != nil || !present || got != want {
+		t.Fatalf("Subtract = (%+v, %t, %v), want (%+v, true, nil)", got, present, err, want)
+	}
+	if got, present, err := total.Subtract(total); err != nil || present || got != (ModelUsage{}) {
+		t.Fatalf("exact Subtract = (%+v, %t, %v), want zero, false, nil", got, present, err)
+	}
+
+	for name, candidate := range map[string]ModelUsage{
+		"different model": {Model: "other", Calls: 1},
+		"token underflow": {
+			Model: "model", TokenUsage: TokenUsage{PromptTokens: 11}, Cost: mustCost(t, 0), Calls: 1,
+		},
+		"cost underflow": {Model: "model", Cost: mustCost(t, 1.25), Calls: 1},
+		"call underflow": {Model: "model", Cost: mustCost(t, 0), Calls: 4},
+		"usage without remaining calls": {
+			Model: "model", TokenUsage: TokenUsage{PromptTokens: 9}, Cost: mustCost(t, 1), Calls: 3,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, _, err := total.Subtract(candidate); err == nil {
+				t.Fatal("Subtract accepted an invalid remainder")
+			}
+		})
+	}
+}
+
 func mustCost(t *testing.T, usd float64) Cost {
 	t.Helper()
 	cost, err := NewCost(usd)
