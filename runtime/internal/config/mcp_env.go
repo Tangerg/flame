@@ -23,34 +23,33 @@ func parseMCPServers(raw string) ([]MCPServer, error) {
 	out := make([]MCPServer, 0, len(parts))
 	seen := make(map[string]struct{}, len(parts))
 	tokenOwners := make(map[string]string, len(parts))
-	for _, p := range parts {
+	for index, p := range parts {
 		p = strings.TrimSpace(p)
 		if p == "" {
 			continue
 		}
 		eq := strings.IndexByte(p, '=')
 		if eq <= 0 || eq == len(p)-1 {
-			return nil, fmt.Errorf("entry %q: expected name=value", p)
+			return nil, fmt.Errorf("entry %d: expected name=value", index+1)
 		}
 		name := strings.TrimSpace(p[:eq])
 		value := strings.TrimSpace(p[eq+1:])
 		if name == "" || value == "" {
-			return nil, fmt.Errorf("entry %q: name and value must be non-empty", p)
+			return nil, fmt.Errorf("entry %d: name and value must be non-empty", index+1)
 		}
 		if _, duplicate := seen[name]; duplicate {
-			return nil, fmt.Errorf("entry %q: server %q is configured more than once", p, name)
+			return nil, fmt.Errorf("server %q is configured more than once", name)
 		}
 
 		srv, err := parseMCPServerValue(name, value)
 		if err != nil {
-			return nil, fmt.Errorf("entry %q: %w", p, err)
+			return nil, fmt.Errorf("server %q: %w", name, err)
 		}
 		if srv.Authorization != "" {
 			tokenKey := envTokenKey(name)
 			if owner, collision := tokenOwners[tokenKey]; collision {
 				return nil, fmt.Errorf(
-					"entry %q: servers %q and %q share credential variable %s",
-					p,
+					"servers %q and %q share credential variable %s",
 					owner,
 					name,
 					mcpTokenEnvironment(name),
@@ -84,7 +83,7 @@ func parseMCPServerValue(name, value string) (MCPServer, error) {
 		}, nil
 	}
 	if _, err := httporigin.Parse(value); err != nil {
-		return MCPServer{}, fmt.Errorf("expected HTTP(S) endpoint or stdio: prefix: %w", err)
+		return MCPServer{}, errors.New("expected a valid HTTP(S) endpoint without URL credentials or a stdio: prefix")
 	}
 	return MCPServer{
 		Name:      name,

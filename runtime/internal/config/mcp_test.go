@@ -158,3 +158,14 @@ func TestParseMCPServersRejectsAmbiguousTokenEnvironment(t *testing.T) {
 		}
 	}
 }
+
+func TestParseMCPServersDoesNotEchoRejectedEndpoint(t *testing.T) {
+	const secret = "mcp-url-secret"
+	_, err := parseMCPServers("github=https://user:" + secret + "@mcp.example")
+	if err == nil {
+		t.Fatal("parseMCPServers error = nil, want rejected URL credentials")
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Fatalf("parseMCPServers error leaked URL credential: %q", err)
+	}
+}

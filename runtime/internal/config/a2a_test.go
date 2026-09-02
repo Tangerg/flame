@@ -2,6 +2,7 @@ package config
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -37,6 +38,9 @@ func TestParseA2AAgents(t *testing.T) {
 		{name: "missing =", in: "https://no-name.example.com", wantErr: true},
 		{name: "empty name", in: "=https://x.example.com", wantErr: true},
 		{name: "empty url", in: "x=", wantErr: true},
+		{name: "unsupported card URL scheme", in: "x=file:///tmp/card.json", wantErr: true},
+		{name: "card URL missing host", in: "x=https:///agent-card.json", wantErr: true},
+		{name: "card URL carries credentials", in: "x=https://user:secret@x.example.com/card", wantErr: true},
 		{name: "duplicate name", in: "x=https://one.example,x=https://two.example", wantErr: true},
 	}
 
@@ -56,6 +60,17 @@ func TestParseA2AAgents(t *testing.T) {
 				t.Errorf("parseA2AAgents(%q) = %+v, want %+v", tc.in, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestParseA2AAgentsDoesNotEchoRejectedEndpoint(t *testing.T) {
+	const secret = "card-url-secret"
+	_, err := parseA2AAgents("weather=https://user:" + secret + "@weather.example/card")
+	if err == nil {
+		t.Fatal("parseA2AAgents error = nil, want rejected URL credentials")
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Fatalf("parseA2AAgents error leaked URL credential: %q", err)
 	}
 }
 

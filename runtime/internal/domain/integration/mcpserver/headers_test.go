@@ -12,6 +12,8 @@ func TestServerValidateRejectsAmbiguousOrInvalidHTTPHeaders(t *testing.T) {
 		want   string
 	}{
 		{name: "blank authorization", mutate: func(server *Server) { server.Authorization = " \t" }, want: "authorization"},
+		{name: "authorization leading whitespace", mutate: func(server *Server) { server.Authorization = " Bearer secret" }, want: "authorization"},
+		{name: "authorization trailing whitespace", mutate: func(server *Server) { server.Authorization = "Bearer secret " }, want: "authorization"},
 		{name: "authorization newline", mutate: func(server *Server) { server.Authorization = "Bearer secret\r\nInjected: yes" }, want: "authorization"},
 		{name: "invalid header name", mutate: func(server *Server) { server.Headers = map[string]string{"Bad Header": "value"} }, want: "Bad Header"},
 		{name: "invalid header value", mutate: func(server *Server) { server.Headers = map[string]string{"X-Key": "value\nInjected"} }, want: "X-Key"},

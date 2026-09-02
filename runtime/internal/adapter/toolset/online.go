@@ -1,7 +1,10 @@
 package toolset
 
 import (
+	"errors"
 	"fmt"
+	"strings"
+	"unicode"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
@@ -41,6 +44,9 @@ func buildOnline(online OnlineConfig) ([]toolcontract.Tool, error) {
 	)
 
 	out, err = appendEnabled(out, online.JinaAPIKey != "", "web fetch (jina)", func() (toolcontract.Tool, error) {
+		if err := validateOnlineAPIKey(online.JinaAPIKey); err != nil {
+			return nil, err
+		}
 		client, clientErr := jina.NewClient(jina.Config{APIKey: online.JinaAPIKey})
 		if clientErr != nil {
 			return nil, clientErr
@@ -52,6 +58,9 @@ func buildOnline(online OnlineConfig) ([]toolcontract.Tool, error) {
 	}
 
 	out, err = appendEnabled(out, online.TavilyAPIKey != "", "web search (tavily)", func() (toolcontract.Tool, error) {
+		if err := validateOnlineAPIKey(online.TavilyAPIKey); err != nil {
+			return nil, err
+		}
 		client, clientErr := tavily.NewClient(tavily.Config{APIKey: online.TavilyAPIKey})
 		if clientErr != nil {
 			return nil, clientErr
@@ -74,6 +83,17 @@ func buildOnline(online OnlineConfig) ([]toolcontract.Tool, error) {
 	}
 
 	return out, nil
+}
+
+// validateOnlineAPIKey keeps malformed credential material from surviving
+// assembly and failing only when a model first invokes the HTTP-backed tool.
+// The error deliberately describes the invariant without echoing the secret.
+func validateOnlineAPIKey(value string) error {
+	if strings.TrimSpace(value) == "" || strings.TrimSpace(value) != value ||
+		strings.IndexFunc(value, unicode.IsControl) >= 0 {
+		return errors.New("API key cannot be blank, have surrounding whitespace, or contain control characters")
+	}
+	return nil
 }
 
 // appendEnabled conditionally registers one configured network capability. When

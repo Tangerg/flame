@@ -8,7 +8,8 @@ import (
 
 func validateHTTPConfiguration(authorization string, headers map[string]string) error {
 	if authorization != "" {
-		if strings.TrimSpace(authorization) == "" || !validHeaderValue(authorization) {
+		if strings.TrimSpace(authorization) == "" || strings.TrimSpace(authorization) != authorization ||
+			!validHeaderValue(authorization) {
 			return errors.New("authorization is invalid")
 		}
 	}

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/Tangerg/flame/runtime/internal/httporigin"
 )
 
 // parseA2AAgents parses the FLAME_A2A_AGENTS env var: a comma-separated list of
@@ -18,25 +20,28 @@ func parseA2AAgents(raw string) ([]A2AAgent, error) {
 	parts := strings.Split(raw, ",")
 	out := make([]A2AAgent, 0, len(parts))
 	seen := make(map[string]struct{}, len(parts))
-	for _, p := range parts {
+	for index, p := range parts {
 		p = strings.TrimSpace(p)
 		if p == "" {
 			continue
 		}
 		eq := strings.IndexByte(p, '=')
 		if eq <= 0 || eq == len(p)-1 {
-			return nil, fmt.Errorf("entry %q: expected name=cardURL", p)
+			return nil, fmt.Errorf("entry %d: expected name=cardURL", index+1)
 		}
 		name := strings.TrimSpace(p[:eq])
-		url := strings.TrimSpace(p[eq+1:])
-		if name == "" || url == "" {
-			return nil, fmt.Errorf("entry %q: name and cardURL must be non-empty", p)
+		cardURL := strings.TrimSpace(p[eq+1:])
+		if name == "" || cardURL == "" {
+			return nil, fmt.Errorf("entry %d: name and cardURL must be non-empty", index+1)
 		}
 		if _, duplicate := seen[name]; duplicate {
-			return nil, fmt.Errorf("entry %q: agent %q is configured more than once", p, name)
+			return nil, fmt.Errorf("agent %q is configured more than once", name)
+		}
+		if _, err := httporigin.Parse(cardURL); err != nil {
+			return nil, fmt.Errorf("agent %q: cardURL must be a valid HTTP(S) URL without credentials", name)
 		}
 		seen[name] = struct{}{}
-		out = append(out, A2AAgent{Name: name, CardURL: url})
+		out = append(out, A2AAgent{Name: name, CardURL: cardURL})
 	}
 	if len(out) == 0 {
 		return nil, nil
