@@ -47,11 +47,9 @@ func acquireDirectory(ctx context.Context, directory string) (*Lease, error) {
 		err = unix.Flock(int(file.Fd()), unix.LOCK_EX|unix.LOCK_NB)
 		if err == nil {
 			return newLease(func() error {
-				if unlockErr := unix.Flock(int(file.Fd()), unix.LOCK_UN); unlockErr != nil {
-					return unlockErr
-				}
-				_ = file.Close()
-				return nil
+				return releaseOwnedFile(file, func() error {
+					return unix.Flock(int(file.Fd()), unix.LOCK_UN)
+				})
 			}), nil
 		}
 		if !isContention(err) {
@@ -78,12 +76,20 @@ func tryDirectory(directory string) (*Lease, error) {
 		return nil, err
 	}
 	return newLease(func() error {
-		if err := lease.Release(); err != nil {
-			return err
-		}
-		_ = file.Close()
-		return nil
+		return releaseOwnedFile(file, lease.Release)
 	}), nil
+}
+
+// releaseOwnedFile gives a directory lease two independent release paths:
+// explicit unlock and closing its Runtime-owned descriptor. Either one releases
+// a Unix flock, so a failed unlock must never prevent the close fallback.
+func releaseOwnedFile(file *os.File, unlock func() error) error {
+	unlockErr := unlock()
+	closeErr := file.Close()
+	if unlockErr == nil || closeErr == nil {
+		return nil
+	}
+	return errors.Join(unlockErr, closeErr)
 }
 
 func isContention(err error) bool {

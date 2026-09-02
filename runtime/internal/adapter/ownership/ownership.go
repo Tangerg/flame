@@ -103,9 +103,10 @@ func (f *fileLease) Release() {
 	if f == nil {
 		return
 	}
-	if err := f.lease.Release(); err == nil {
-		_ = f.file.Close()
-	}
+	// The descriptor is an independent OS-level release path. Always close it:
+	// retaining it after an unlock error can retain ownership until process exit.
+	_ = f.lease.Release()
+	_ = f.file.Close()
 }
 
 func tryLease(directory, identity string, shared bool) (*fileLease, bool) {
