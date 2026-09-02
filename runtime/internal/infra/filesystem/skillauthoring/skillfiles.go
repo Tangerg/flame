@@ -78,13 +78,22 @@ func writeFile(root *os.Root, path string, content []byte) (err error) {
 }
 
 func stageProposal(ctx context.Context, root *os.Root, destination string, content []byte) (err error) {
-	if mkdirAllErr := root.MkdirAll(destination, 0o755); mkdirAllErr != nil {
-		return fmt.Errorf("skillauthoring: create proposal slot: %w", mkdirAllErr)
+	createdSlot := false
+	if mkdirErr := root.Mkdir(destination, 0o755); mkdirErr == nil {
+		createdSlot = true
+	} else if !errors.Is(mkdirErr, fs.ErrExist) {
+		return fmt.Errorf("skillauthoring: create proposal slot: %w", mkdirErr)
 	}
 	temporary := filepath.Join(destination, ".stage-"+rand.Text())
+	published := false
 	defer func() {
 		if cleanupErr := root.Remove(temporary); cleanupErr != nil && !errors.Is(cleanupErr, fs.ErrNotExist) {
 			err = errors.Join(err, fmt.Errorf("skillauthoring: clean proposal staging file: %w", cleanupErr))
+		}
+		if !published && createdSlot {
+			if cleanupErr := root.Remove(destination); cleanupErr != nil && !errors.Is(cleanupErr, fs.ErrNotExist) {
+				err = errors.Join(err, fmt.Errorf("skillauthoring: clean empty proposal slot: %w", cleanupErr))
+			}
 		}
 	}()
 	if err := writeFile(root, temporary, content); err != nil {
@@ -96,10 +105,12 @@ func stageProposal(ctx context.Context, root *os.Root, destination string, conte
 	if err := root.Rename(temporary, filepath.Join(destination, skillFile)); err != nil {
 		existing, found, readErr := readSkill(root, destination)
 		if readErr == nil && found && bytes.Equal(existing, content) {
+			published = true
 			return nil
 		}
 		return fmt.Errorf("skillauthoring: publish proposal %q: %w", filepath.Base(destination), errors.Join(err, readErr))
 	}
+	published = true
 	return nil
 }
 
