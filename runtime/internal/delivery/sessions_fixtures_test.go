@@ -313,16 +313,26 @@ func (s stubConversationReader) Read(ctx context.Context, id string) ([]chat.Mes
 }
 
 func (s stubRuntime) queriesCoordinator() *sessions.QueryCoordinator {
-	return sessions.NewQueryCoordinator(sessions.QueryDependencies{
-		Transcript: s.hist,
-		Interrupts: s.interrupts,
-		Runs:       s.runs,
-		Sessions:   s.sess,
-		// The composition root passes the same store to both the write path and the
-		// query one, because features.plan IS "the store exists" — so a harness that
-		// wired only the writes could not reach plan.get at all.
-		Plan: s.plan,
-	})
+	deps := sessions.QueryDependencies{}
+	if s.hist != nil {
+		deps.Transcript = s.hist
+	}
+	if s.interrupts != nil {
+		deps.Interrupts = s.interrupts
+	}
+	if s.runs != nil {
+		deps.Runs = s.runs
+	}
+	if s.sess != nil {
+		deps.Sessions = s.sess
+	}
+	// The composition root passes the same store to both the write path and the
+	// query one, because features.plan IS "the store exists" — so a harness that
+	// wired only the writes could not reach plan.get at all.
+	if s.plan != nil {
+		deps.Plan = s.plan
+	}
+	return mustQueryCoordinator(deps)
 }
 
 func newTestHandler(rt testRuntime) *Handler {
@@ -1063,6 +1073,54 @@ type inertSessionTranscript struct{ inertRuntimeStores }
 
 func (inertSessionTranscript) List(context.Context, string) ([]transcript.Item, error) {
 	return nil, nil
+}
+
+type inertQueryStores struct{}
+
+func (inertQueryStores) PageSessionItems(context.Context, string, transcript.SequenceOrder, int64, int) ([]transcript.SequencedItem, error) {
+	return nil, nil
+}
+func (inertQueryStores) PageRunItems(context.Context, string, transcript.SequenceOrder, int64, int) ([]transcript.SequencedItem, error) {
+	return nil, nil
+}
+func (inertQueryStores) PageRunTreeItems(context.Context, string, transcript.SequenceOrder, int64, int) ([]transcript.SequencedItem, error) {
+	return nil, nil
+}
+func (inertQueryStores) Run(context.Context, string) (run.Run, bool, error) {
+	return run.Run{}, false, nil
+}
+func (inertQueryStores) RunsWithAncestors(context.Context, []string) ([]run.Run, error) {
+	return nil, nil
+}
+func (inertQueryStores) PageRuns(context.Context, string, []run.Status, bool, int64, string, int) ([]run.Run, error) {
+	return nil, nil
+}
+func (inertQueryStores) Exists(context.Context, string) (bool, error) { return false, nil }
+
+type inertQueryInterrupts struct{}
+
+func (inertQueryInterrupts) ListPage(context.Context, string, string, int64, string, int) ([]runs.Pending, error) {
+	return nil, nil
+}
+
+func mustQueryCoordinator(deps sessions.QueryDependencies) *sessions.QueryCoordinator {
+	if deps.Transcript == nil {
+		deps.Transcript = inertQueryStores{}
+	}
+	if deps.Interrupts == nil {
+		deps.Interrupts = inertQueryInterrupts{}
+	}
+	if deps.Runs == nil {
+		deps.Runs = inertQueryStores{}
+	}
+	if deps.Sessions == nil {
+		deps.Sessions = inertQueryStores{}
+	}
+	coordinator, err := sessions.NewQueryCoordinator(deps)
+	if err != nil {
+		panic(err)
+	}
+	return coordinator
 }
 
 func nonNilSessionStore(store *sqlite.SessionStore) sessions.Store {

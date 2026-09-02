@@ -96,15 +96,32 @@ type QueryDependencies struct {
 	Plan       QueryPlanReader
 }
 
-// NewQueryCoordinator returns a query coordinator over deps.
-func NewQueryCoordinator(deps QueryDependencies) *QueryCoordinator {
+// NewQueryCoordinator returns a complete query coordinator over deps.
+func NewQueryCoordinator(deps QueryDependencies) (*QueryCoordinator, error) {
+	required := []struct {
+		name  string
+		value any
+	}{
+		{"transcript reader", deps.Transcript},
+		{"interrupt reader", deps.Interrupts},
+		{"Run reader", deps.Runs},
+		{"session reader", deps.Sessions},
+	}
+	for _, dependency := range required {
+		if nilDependency(dependency.value) {
+			return nil, fmt.Errorf("sessions: query %s is required", dependency.name)
+		}
+	}
+	if deps.Plan != nil && nilDependency(deps.Plan) {
+		return nil, errors.New("sessions: optional query Plan reader must not be typed nil")
+	}
 	return &QueryCoordinator{
 		transcript: deps.Transcript,
 		interrupts: deps.Interrupts,
 		runs:       deps.Runs,
 		sessions:   deps.Sessions,
 		plan:       deps.Plan,
-	}
+	}, nil
 }
 
 // ItemPage is one page of a session's history, with the run tree needed to thread

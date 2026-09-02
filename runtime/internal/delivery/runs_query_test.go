@@ -406,7 +406,7 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 			CreatedAt: created,
 		},
 	}}
-	s := &Handler{queries: sessions.NewQueryCoordinator(sessions.QueryDependencies{Interrupts: reader})}
+	s := &Handler{queries: mustQueryCoordinator(sessions.QueryDependencies{Interrupts: reader})}
 
 	got, err := s.ListInterrupts(context.Background(), protocol.ListInterruptsRequest{SessionID: "ses_1"})
 	if err != nil {

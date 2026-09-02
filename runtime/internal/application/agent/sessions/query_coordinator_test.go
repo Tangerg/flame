@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -162,6 +163,50 @@ type fakeInterrupts struct {
 	limit          int
 }
 
+func newQueryCoordinator(t *testing.T, deps QueryDependencies) *QueryCoordinator {
+	t.Helper()
+	if deps.Transcript == nil {
+		deps.Transcript = &fakeTranscript{}
+	}
+	if deps.Interrupts == nil {
+		deps.Interrupts = &fakeInterrupts{}
+	}
+	if deps.Runs == nil {
+		deps.Runs = &fakeRuns{}
+	}
+	if deps.Sessions == nil {
+		deps.Sessions = &fakeSessions{}
+	}
+	coordinator, err := NewQueryCoordinator(deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return coordinator
+}
+
+func TestNewQueryCoordinatorRejectsIncompleteDependencies(t *testing.T) {
+	complete := QueryDependencies{
+		Transcript: &fakeTranscript{}, Interrupts: &fakeInterrupts{},
+		Runs: &fakeRuns{}, Sessions: &fakeSessions{},
+	}
+	if _, err := NewQueryCoordinator(QueryDependencies{
+		Interrupts: complete.Interrupts, Runs: complete.Runs, Sessions: complete.Sessions,
+	}); err == nil || !strings.Contains(err.Error(), "transcript reader is required") {
+		t.Fatalf("missing transcript error = %v", err)
+	}
+	var typedNilTranscript *fakeTranscript
+	complete.Transcript = typedNilTranscript
+	if _, err := NewQueryCoordinator(complete); err == nil || !strings.Contains(err.Error(), "transcript reader is required") {
+		t.Fatalf("typed-nil transcript error = %v", err)
+	}
+	complete.Transcript = &fakeTranscript{}
+	var typedNilPlan *PlanCoordinator
+	complete.Plan = typedNilPlan
+	if _, err := NewQueryCoordinator(complete); err == nil || !strings.Contains(err.Error(), "Plan reader must not be typed nil") {
+		t.Fatalf("typed-nil Plan error = %v", err)
+	}
+}
+
 func (f *fakeInterrupts) ListPage(_ context.Context, sessionID, rootRunID string, afterCreatedAt int64, afterRunID string, limit int) ([]runs.Pending, error) {
 	f.session, f.rootRun = sessionID, rootRunID
 	f.afterCreatedAt, f.afterRunID, f.limit = afterCreatedAt, afterRunID, limit
@@ -230,7 +275,7 @@ func TestCoordinatorReadsDelegateToProjections(t *testing.T) {
 	tx := &fakeTranscript{items: sequencedItems(1)}
 	runStore := &fakeRuns{runs: []run.Run{queryRun("run_1")}}
 	ints := &fakeInterrupts{pending: []runs.Pending{{RootRunID: "run_1"}}}
-	c := NewQueryCoordinator(QueryDependencies{Transcript: tx, Interrupts: ints, Runs: runStore, Sessions: &fakeSessions{}})
+	c := newQueryCoordinator(t, QueryDependencies{Transcript: tx, Interrupts: ints, Runs: runStore, Sessions: &fakeSessions{}})
 
 	page, err := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, "", pagination.DefaultLimit())
 	if err != nil || len(page.Items) != 1 || len(page.Runs) != 1 || tx.session != "ses_1" {
@@ -253,7 +298,7 @@ func TestCoordinatorReadsDelegateToProjections(t *testing.T) {
 func TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor(t *testing.T) {
 	ctx := context.Background()
 	tx := &fakeTranscript{items: sequencedItems(5)}
-	c := NewQueryCoordinator(QueryDependencies{Transcript: tx, Runs: &fakeRuns{}, Sessions: &fakeSessions{}})
+	c := newQueryCoordinator(t, QueryDependencies{Transcript: tx, Runs: &fakeRuns{}, Sessions: &fakeSessions{}})
 
 	first, err := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, "", explicitPageLimit(t, 2))
 	if err != nil {
@@ -293,7 +338,7 @@ func TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor(t *testing.T) {
 func TestListItemPageRefusesAForeignCursor(t *testing.T) {
 	ctx := context.Background()
 	tx := &fakeTranscript{items: sequencedItems(5)}
-	c := NewQueryCoordinator(QueryDependencies{
+	c := newQueryCoordinator(t, QueryDependencies{
 		Transcript: tx,
 		Runs:       &fakeRuns{history: []run.Run{queryRun("run_1")}},
 		Sessions:   &fakeSessions{},
@@ -337,7 +382,7 @@ func TestListItemPageRefusesAForeignCursor(t *testing.T) {
 func TestListItemPageWalksBackwardFromTheTail(t *testing.T) {
 	ctx := context.Background()
 	tx := &fakeTranscript{items: sequencedItems(5)}
-	c := NewQueryCoordinator(QueryDependencies{Transcript: tx, Runs: &fakeRuns{}, Sessions: &fakeSessions{}})
+	c := newQueryCoordinator(t, QueryDependencies{Transcript: tx, Runs: &fakeRuns{}, Sessions: &fakeSessions{}})
 
 	first, err := c.ListItemPage(ctx, Items("ses_1"), transcript.NewestFirst, "", explicitPageLimit(t, 2))
 	if err != nil {
@@ -377,7 +422,7 @@ func TestListItemPageScopedToARunReadsOnlyThatRun(t *testing.T) {
 		runs:    []run.Run{queryRun("run_1"), queryRun("run_2")},
 		history: []run.Run{queryRun("run_1"), queryRun("run_2")},
 	}
-	c := NewQueryCoordinator(QueryDependencies{Transcript: tx, Runs: runs, Sessions: &fakeSessions{}})
+	c := newQueryCoordinator(t, QueryDependencies{Transcript: tx, Runs: runs, Sessions: &fakeSessions{}})
 
 	page, err := c.ListItemPage(ctx, RunItems("run_2"), transcript.OldestFirst, "", pagination.DefaultLimit())
 	if err != nil {
@@ -419,7 +464,7 @@ func TestListItemPageScopesASubtreeAndIncludesAncestors(t *testing.T) {
 		runs:    []run.Run{grandchild, child, root, sibling},
 		history: []run.Run{grandchild, sibling, child, root},
 	}
-	c := NewQueryCoordinator(QueryDependencies{Transcript: tx, Runs: runs, Sessions: &fakeSessions{}})
+	c := newQueryCoordinator(t, QueryDependencies{Transcript: tx, Runs: runs, Sessions: &fakeSessions{}})
 
 	page, err := c.ListItemPage(t.Context(), RunTreeItems(child.ID()), transcript.OldestFirst, "", pagination.DefaultLimit())
 	if err != nil {
@@ -456,7 +501,7 @@ func TestListItemPageScopesASubtreeAndIncludesAncestors(t *testing.T) {
 // timeline for a typo.
 func TestListItemPageRefusesAScopeThatNamesNothing(t *testing.T) {
 	ctx := context.Background()
-	c := NewQueryCoordinator(QueryDependencies{
+	c := newQueryCoordinator(t, QueryDependencies{
 		Transcript: &fakeTranscript{items: sequencedItems(3)},
 		Runs:       &fakeRuns{history: []run.Run{queryRun("run_1")}},
 		Sessions:   &fakeSessions{missing: []string{"ses_gone"}},
@@ -472,7 +517,7 @@ func TestListItemPageRefusesAScopeThatNamesNothing(t *testing.T) {
 
 func TestListItemPageRejectsAnUnknownOrder(t *testing.T) {
 	tx := &fakeTranscript{items: sequencedItems(1)}
-	c := NewQueryCoordinator(QueryDependencies{Transcript: tx, Runs: &fakeRuns{}, Sessions: &fakeSessions{}})
+	c := newQueryCoordinator(t, QueryDependencies{Transcript: tx, Runs: &fakeRuns{}, Sessions: &fakeSessions{}})
 
 	if _, err := c.ListItemPage(t.Context(), Items("ses_1"), transcript.SequenceOrder("ascending"), "", explicitPageLimit(t, 1)); err == nil {
 		t.Fatal("unknown order returned no error")
@@ -553,7 +598,7 @@ func TestListPendingInterruptPageRefusesACallerThatCannotFollowTheRun(t *testing
 	waiting[0].Capabilities = run.Capabilities{
 		InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
 	}
-	c := NewQueryCoordinator(QueryDependencies{
+	c := newQueryCoordinator(t, QueryDependencies{
 		Transcript: &fakeTranscript{},
 		Runs:       &fakeRuns{history: []run.Run{queryRun("run_1")}},
 		Interrupts: &fakeInterrupts{pending: waiting},
@@ -583,7 +628,7 @@ func TestListPendingInterruptPageRefusesACallerThatCannotFollowTheRun(t *testing
 func TestListPendingInterruptPageFiltersByRootAndRefusesAChild(t *testing.T) {
 	ctx := context.Background()
 	ints := &fakeInterrupts{pending: testSessionPendingRuns("run_1", "run_2")}
-	c := NewQueryCoordinator(QueryDependencies{
+	c := newQueryCoordinator(t, QueryDependencies{
 		Transcript: &fakeTranscript{},
 		Runs: &fakeRuns{history: []run.Run{
 			queryRun("run_1"),
@@ -629,7 +674,7 @@ func TestListPendingInterruptPageFiltersByRootAndRefusesAChild(t *testing.T) {
 func TestListRunPageWalksBackwardThroughHistory(t *testing.T) {
 	ctx := context.Background()
 	runs := &fakeRuns{history: testSessionRunHistory("run_3", "run_2", "run_1")}
-	c := NewQueryCoordinator(QueryDependencies{Transcript: &fakeTranscript{}, Runs: runs, Sessions: &fakeSessions{}})
+	c := newQueryCoordinator(t, QueryDependencies{Transcript: &fakeTranscript{}, Runs: runs, Sessions: &fakeSessions{}})
 
 	first, err := c.ListRunPage(ctx, RunPageFilter{SessionID: "ses_1"}, "", explicitPageLimit(t, 2))
 	if err != nil {
@@ -661,7 +706,7 @@ func TestListRunPageWalksBackwardThroughHistory(t *testing.T) {
 func TestListRunPageReturnsEveryStatusUntilFiltered(t *testing.T) {
 	ctx := context.Background()
 	runs := &fakeRuns{history: testSessionRunHistory("run_3", "run_2", "run_1")}
-	c := NewQueryCoordinator(QueryDependencies{Transcript: &fakeTranscript{}, Runs: runs, Sessions: &fakeSessions{}})
+	c := newQueryCoordinator(t, QueryDependencies{Transcript: &fakeTranscript{}, Runs: runs, Sessions: &fakeSessions{}})
 
 	all, err := c.ListRunPage(ctx, RunPageFilter{SessionID: "ses_1"}, "", pagination.DefaultLimit())
 	if err != nil || len(all.Rows) != 3 {
@@ -699,7 +744,7 @@ func TestListRunPageIncludesDescendantsAndBindsTheCursor(t *testing.T) {
 			ParentRunID: child.ID(), RootRunID: root.ID()}})
 
 	runs := &fakeRuns{history: []run.Run{grandchild, child, root}}
-	c := NewQueryCoordinator(QueryDependencies{Transcript: &fakeTranscript{}, Runs: runs, Sessions: &fakeSessions{}})
+	c := newQueryCoordinator(t, QueryDependencies{Transcript: &fakeTranscript{}, Runs: runs, Sessions: &fakeSessions{}})
 
 	roots, err := c.ListRunPage(t.Context(), RunPageFilter{}, "", pagination.DefaultLimit())
 	if err != nil || !slices.Equal(queryRunIDs(roots.Rows), []string{root.ID()}) {
@@ -724,7 +769,7 @@ func TestListRunPageIncludesDescendantsAndBindsTheCursor(t *testing.T) {
 // all, with nothing to say why.
 func TestListRunPageRefusesACursorFromAnotherQuery(t *testing.T) {
 	ctx := context.Background()
-	c := NewQueryCoordinator(QueryDependencies{
+	c := newQueryCoordinator(t, QueryDependencies{
 		Transcript: &fakeTranscript{items: sequencedItems(5)},
 		Runs:       &fakeRuns{history: testSessionRunHistory("run_3", "run_2", "run_1")},
 		Interrupts: &fakeInterrupts{pending: testSessionPendingRuns("run_1", "run_2", "run_3")},
@@ -777,7 +822,7 @@ func TestListRunPageRefusesACursorFromAnotherQuery(t *testing.T) {
 func TestListPendingInterruptPagePagesOldestFirst(t *testing.T) {
 	ctx := context.Background()
 	ints := &fakeInterrupts{pending: testSessionPendingRuns("run_1", "run_2", "run_3")}
-	c := NewQueryCoordinator(QueryDependencies{
+	c := newQueryCoordinator(t, QueryDependencies{
 		Transcript: &fakeTranscript{},
 		Runs:       &fakeRuns{history: testSessionRunHistory("run_3", "run_2", "run_1")},
 		Interrupts: ints,

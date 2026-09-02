@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/session/feedback"
@@ -26,9 +27,12 @@ type FeedbackRecorder struct {
 	store FeedbackStore
 }
 
-// NewFeedbackRecorder wires the real durable receiver for feedback records.
-func NewFeedbackRecorder(store FeedbackStore) *FeedbackRecorder {
-	return &FeedbackRecorder{store: store}
+// NewFeedbackRecorder wires the complete durable receiver for feedback records.
+func NewFeedbackRecorder(store FeedbackStore) (*FeedbackRecorder, error) {
+	if nilDependency(store) {
+		return nil, errors.New("sessions: feedback store is required")
+	}
+	return &FeedbackRecorder{store: store}, nil
 }
 
 // Record validates and appends one immutable feedback observation.

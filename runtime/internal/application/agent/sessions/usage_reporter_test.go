@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -17,6 +18,22 @@ type usageRunReaderStub struct{ runs []run.Run }
 
 func (s usageRunReaderStub) ListRuns(context.Context, string) ([]run.Run, error) {
 	return s.runs, nil
+}
+
+type usageSessionListerStub struct{}
+
+func (usageSessionListerStub) List(context.Context) ([]session.Session, error) { return nil, nil }
+
+func TestNewUsageReporterRequiresCompleteProjections(t *testing.T) {
+	if _, err := NewUsageReporter(UsageDependencies{Sessions: usageSessionListerStub{}}); err == nil {
+		t.Fatal("missing Run reader was accepted")
+	}
+	var typedNilRuns *usageRunReaderStub
+	if _, err := NewUsageReporter(UsageDependencies{
+		Runs: typedNilRuns, Sessions: usageSessionListerStub{},
+	}); err == nil {
+		t.Fatal("typed-nil Run reader was accepted")
+	}
 }
 
 func TestSummaryPeriodSeparatesAllTimeFromRecentDays(t *testing.T) {
@@ -185,14 +202,19 @@ func TestAccumulatorOmitsCostWhenUnpriced(t *testing.T) {
 
 func TestSessionUsageDoesNotPresentKnownPartialCostAsTotal(t *testing.T) {
 	now := time.Now().UTC()
-	reporter := NewUsageReporter(UsageDependencies{Runs: usageRunReaderStub{runs: []run.Run{
-		finishedRun(t, "private", "served-alias", now, accounting.Usage{
-			Total: accounting.Totals{InputTokens: 10},
-		}),
-		finishedRun(t, "private", "served-alias", now.Add(time.Second), accounting.Usage{
-			Total: accounting.Totals{InputTokens: 5, CostUSD: usd(0.3)},
-		}),
-	}}})
+	reporter, err := NewUsageReporter(UsageDependencies{
+		Runs: usageRunReaderStub{runs: []run.Run{
+			finishedRun(t, "private", "served-alias", now, accounting.Usage{
+				Total: accounting.Totals{InputTokens: 10},
+			}),
+			finishedRun(t, "private", "served-alias", now.Add(time.Second), accounting.Usage{
+				Total: accounting.Totals{InputTokens: 5, CostUSD: usd(0.3)},
+			}),
+		}}, Sessions: usageSessionListerStub{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	report, err := reporter.Session(t.Context(), "session-1")
 	if err != nil {
 		t.Fatal(err)

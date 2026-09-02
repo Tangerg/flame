@@ -452,28 +452,40 @@ func buildAssemblyCore(
 		workspaceServices.scope,
 		workspaceadapter.NewGitWatcher(lifetime.context),
 	)
+	queries, err := sessions.NewQueryCoordinator(sessions.QueryDependencies{
+		Transcript: cfg.TranscriptStore,
+		Interrupts: cfg.InterruptStore,
+		Runs:       cfg.RunStore,
+		Sessions:   cfg.SessionStore,
+		Plan:       cfg.PlanStore,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("runtime: construct session queries: %w", err)
+	}
+	usage, err := sessions.NewUsageReporter(sessions.UsageDependencies{
+		Runs: cfg.RunStore, Sessions: cfg.SessionStore,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("runtime: construct usage reporter: %w", err)
+	}
+	feedback, err := sessions.NewFeedbackRecorder(cfg.FeedbackStore)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: construct feedback recorder: %w", err)
+	}
 	host := &Host{
 		application: &hostApplication{
 			delivery: delivery.HandlerConfig{
-				Sessions:      sessionCoordinator,
-				MCP:           mcpCoordinator,
-				Approvals:     approvalCoordinator,
-				Models:        modelCoordinator,
-				Tools:         toolCoordinator,
-				Runs:          runCoordinator,
-				FileChanges:   fileChanges.Observe,
-				Invalidations: policy.invalidations.Observe,
-				Queries: sessions.NewQueryCoordinator(sessions.QueryDependencies{
-					Transcript: cfg.TranscriptStore,
-					Interrupts: cfg.InterruptStore,
-					Runs:       cfg.RunStore,
-					Sessions:   cfg.SessionStore,
-					Plan:       cfg.PlanStore,
-				}),
-				Usage: sessions.NewUsageReporter(sessions.UsageDependencies{
-					Runs: cfg.RunStore, Sessions: cfg.SessionStore,
-				}),
-				Feedback:               sessions.NewFeedbackRecorder(cfg.FeedbackStore),
+				Sessions:               sessionCoordinator,
+				MCP:                    mcpCoordinator,
+				Approvals:              approvalCoordinator,
+				Models:                 modelCoordinator,
+				Tools:                  toolCoordinator,
+				Runs:                   runCoordinator,
+				FileChanges:            fileChanges.Observe,
+				Invalidations:          policy.invalidations.Observe,
+				Queries:                queries,
+				Usage:                  usage,
+				Feedback:               feedback,
 				WorkspaceFiles:         workspaceFiles,
 				WorkspaceVCS:           workspaceVCS,
 				WorkspaceDiscovery:     workspaceDiscovery,

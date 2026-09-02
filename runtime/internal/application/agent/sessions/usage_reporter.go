@@ -3,6 +3,7 @@ package sessions
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"slices"
@@ -63,15 +64,21 @@ type UsageReporter struct {
 	now      func() time.Time
 }
 
-// NewUsageReporter constructs a usage reporter over the supplied projections.
-func NewUsageReporter(deps UsageDependencies) *UsageReporter {
+// NewUsageReporter constructs a complete usage reporter over the supplied projections.
+func NewUsageReporter(deps UsageDependencies) (*UsageReporter, error) {
+	if nilDependency(deps.Runs) {
+		return nil, errors.New("sessions: usage Run reader is required")
+	}
+	if nilDependency(deps.Sessions) {
+		return nil, errors.New("sessions: usage session lister is required")
+	}
 	now := deps.Now
 	if now == nil {
 		now = time.Now
 	}
 	return &UsageReporter{
 		runs: deps.Runs, sessions: deps.Sessions, now: now,
-	}
+	}, nil
 }
 
 // Session returns one session's cumulative metering and per-model split.
