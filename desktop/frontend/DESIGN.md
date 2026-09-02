@@ -576,7 +576,7 @@ and native than any shipped font, loads instantly, and renders mixed CJK best:
 
 ### Scale
 
-The full scale is 11 tokens — narrower than the previous 13-step Spotify scale. Display sizes are smaller than typical marketing systems because Flame is a product UI, not a hero page.
+The full scale is nine sizes — four UI steps, prose, code, and three display steps. Display sizes are smaller than typical marketing systems because Flame is a product UI, not a hero page.
 
 (See frontmatter `typography:` for canonical sizes / weights / tracking.)
 
