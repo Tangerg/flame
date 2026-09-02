@@ -3,6 +3,8 @@ package agentexec
 import (
 	"errors"
 	"fmt"
+	"maps"
+	"math"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -219,6 +221,28 @@ func restoreInteractionAccounting(
 	if err := total.Validate(); err != nil {
 		return nil, nil, err
 	}
+	usageByProcess, activeAggregate, err := restoreActiveInteractionAccounting(checkpoint, members)
+	if err != nil {
+		return nil, nil, err
+	}
+	carried, err := subtractInteractionUsage(total, activeAggregate)
+	if err != nil {
+		return nil, nil, err
+	}
+	expectedCarriedCalls, err := expectedCarriedInteractionCalls(checkpoint, members)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := validateCarriedInteractionCalls(carried, expectedCarriedCalls); err != nil {
+		return nil, nil, err
+	}
+	return usageByProcess, carried, nil
+}
+
+func restoreActiveInteractionAccounting(
+	checkpoint interactionCheckpointState,
+	members map[agent.ProcessID]runs.WaitingMember,
+) (map[agent.ProcessID]map[string]accounting.ModelUsage, map[string]accounting.ModelUsage, error) {
 	usageByProcess := make(map[agent.ProcessID]map[string]accounting.ModelUsage, len(members))
 	activeAggregate := make(map[string]accounting.ModelUsage)
 	for processID, member := range members {
@@ -231,34 +255,62 @@ func restoreInteractionAccounting(
 			return nil, nil, err
 		}
 	}
-	carried, err := subtractInteractionUsage(total, activeAggregate)
+	return usageByProcess, activeAggregate, nil
+}
+
+func expectedCarriedInteractionCalls(
+	checkpoint interactionCheckpointState,
+	members map[agent.ProcessID]runs.WaitingMember,
+) (map[string]int, error) {
+	expected, err := addInteractionCallCounts(nil, checkpoint.carriedCallCount)
 	if err != nil {
-		return nil, nil, err
-	}
-	expectedCarriedCalls := make(map[string]int)
-	for model, calls := range checkpoint.carriedCallCount {
-		expectedCarriedCalls[model] = calls
+		return nil, fmt.Errorf("carried call counts: %w", err)
 	}
 	for processID, byModel := range checkpoint.callsByProcess {
 		if _, active := members[processID]; active {
 			continue
 		}
-		for model, calls := range byModel {
-			expectedCarriedCalls[model] += calls
+		expected, err = addInteractionCallCounts(expected, byModel)
+		if err != nil {
+			return nil, fmt.Errorf("retired member %s call counts: %w", processID, err)
 		}
 	}
+	return expected, nil
+}
+
+func addInteractionCallCounts(current, additions map[string]int) (map[string]int, error) {
+	next := maps.Clone(current)
+	if next == nil {
+		next = make(map[string]int)
+	}
+	for model, calls := range additions {
+		if calls <= 0 {
+			return nil, fmt.Errorf("model %q call count is not positive", model)
+		}
+		if existing := next[model]; existing > math.MaxInt-calls {
+			return nil, fmt.Errorf("model %q call count overflows", model)
+		}
+		next[model] += calls
+	}
+	return next, nil
+}
+
+func validateCarriedInteractionCalls(
+	carried map[string]accounting.ModelUsage,
+	expected map[string]int,
+) error {
 	for model, usage := range carried {
-		if expectedCarriedCalls[model] != usage.Calls {
-			return nil, nil, fmt.Errorf("carried model %q call count differs from checkpoint", model)
+		if expected[model] != usage.Calls {
+			return fmt.Errorf("carried model %q call count differs from checkpoint", model)
 		}
-		delete(expectedCarriedCalls, model)
+		delete(expected, model)
 	}
-	for model, calls := range expectedCarriedCalls {
+	for model, calls := range expected {
 		if calls != 0 {
-			return nil, nil, fmt.Errorf("carried model %q has calls without aggregate usage", model)
+			return fmt.Errorf("carried model %q has calls without aggregate usage", model)
 		}
 	}
-	return usageByProcess, carried, nil
+	return nil
 }
 
 func accountingFromRunMetrics(
