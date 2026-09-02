@@ -6328,6 +6328,10 @@
         {
           "field": "fields",
           "constraint": "nonEmptyItems"
+        },
+        {
+          "field": "fields",
+          "constraint": "maxItems(4)"
         }
       ]
     },
@@ -6337,6 +6341,10 @@
         {
           "field": "fields",
           "constraint": "nonEmptyItems"
+        },
+        {
+          "field": "fields",
+          "constraint": "maxItems(4)"
         }
       ]
     },
@@ -6345,7 +6353,7 @@
       "rules": [
         {
           "field": "prompt",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         },
         {
           "field": "header",
@@ -6354,6 +6362,10 @@
         {
           "field": "options",
           "constraint": "minItems(2)"
+        },
+        {
+          "field": "options",
+          "constraint": "maxItems(4)"
         }
       ]
     },
@@ -6362,7 +6374,7 @@
       "rules": [
         {
           "field": "prompt",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         },
         {
           "field": "header",
@@ -6371,6 +6383,10 @@
         {
           "field": "options",
           "constraint": "minItems(2)"
+        },
+        {
+          "field": "options",
+          "constraint": "maxItems(4)"
         }
       ]
     },
@@ -6379,7 +6395,7 @@
       "rules": [
         {
           "field": "label",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         }
       ]
     },
@@ -6388,7 +6404,7 @@
       "rules": [
         {
           "field": "label",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         }
       ]
     },

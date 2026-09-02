@@ -7,6 +7,7 @@ import (
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	skilldomain "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
@@ -368,8 +369,11 @@ func registerRunValues(s *Shapes) {
 		typeOf[protocol.ArtifactQuestion](),
 	} {
 		s.valueConstraint(FieldConstraintSpec{
-			GoType:      questionType,
-			Constraints: []FieldConstraint{{Field: "fields", Kind: ConstraintNonEmptyItems}},
+			GoType: questionType,
+			Constraints: []FieldConstraint{
+				{Field: "fields", Kind: ConstraintNonEmptyItems},
+				{Field: "fields", Kind: ConstraintMaxItems, Limit: transcript.MaximumQuestionFields},
+			},
 		})
 	}
 	for _, fieldType := range []reflect.Type{
@@ -379,9 +383,10 @@ func registerRunValues(s *Shapes) {
 		s.valueConstraint(FieldConstraintSpec{
 			GoType: fieldType,
 			Constraints: []FieldConstraint{
-				{Field: "prompt", Kind: ConstraintNonEmpty},
-				{Field: "header", Kind: ConstraintMaxLength, Limit: 12},
+				{Field: "prompt", Kind: ConstraintPattern, Value: `\S`},
+				{Field: "header", Kind: ConstraintMaxLength, Limit: transcript.MaximumQuestionHeaderCharacters},
 				{Field: "options", Kind: ConstraintMinItems, Limit: 2},
+				{Field: "options", Kind: ConstraintMaxItems, Limit: transcript.MaximumQuestionOptions},
 			},
 		})
 	}
@@ -390,8 +395,10 @@ func registerRunValues(s *Shapes) {
 		typeOf[protocol.ArtifactQuestionOption](),
 	} {
 		s.valueConstraint(FieldConstraintSpec{
-			GoType:      optionType,
-			Constraints: []FieldConstraint{{Field: "label", Kind: ConstraintNonEmpty}},
+			GoType: optionType,
+			Constraints: []FieldConstraint{
+				{Field: "label", Kind: ConstraintPattern, Value: `\S`},
+			},
 		})
 	}
 	s.valueConstraint(FieldConstraintSpec{

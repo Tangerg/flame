@@ -178,6 +178,18 @@ type Question struct {
 	Answers [][]string
 }
 
+const (
+	// MaximumQuestionFields bounds one user interaction so every delivery can
+	// present the complete form without inventing pagination or partial answers.
+	MaximumQuestionFields = 4
+	// MaximumQuestionOptions bounds one choice field. Custom input is modelled
+	// separately by AllowCustom and does not consume an advertised option.
+	MaximumQuestionOptions = 4
+	// MaximumQuestionHeaderCharacters keeps the optional presentation chip
+	// compact while Prompt retains the complete question.
+	MaximumQuestionHeaderCharacters = 12
+)
+
 type QuestionField struct {
 	Prompt      string
 	Header      string
@@ -308,8 +320,12 @@ func (c ContentBlock) Validate() error {
 
 // Validate reports whether the question can be rendered and answered unambiguously.
 func (q Question) Validate() error {
-	if len(q.Fields) == 0 {
-		return errors.New("question requires at least one field")
+	if len(q.Fields) < 1 || len(q.Fields) > MaximumQuestionFields {
+		return fmt.Errorf(
+			"question field count must be between 1 and %d, got %d",
+			MaximumQuestionFields,
+			len(q.Fields),
+		)
 	}
 	for index, field := range q.Fields {
 		if err := field.validate(index); err != nil {
@@ -367,8 +383,12 @@ func (field QuestionField) validate(index int) error {
 	if strings.TrimSpace(field.Prompt) == "" {
 		return fmt.Errorf("question field %d prompt is required", index)
 	}
-	if utf8.RuneCountInString(field.Header) > 12 {
-		return fmt.Errorf("question field %d header must be at most 12 characters", index)
+	if utf8.RuneCountInString(field.Header) > MaximumQuestionHeaderCharacters {
+		return fmt.Errorf(
+			"question field %d header must be at most %d characters",
+			index,
+			MaximumQuestionHeaderCharacters,
+		)
 	}
 	switch field.Kind {
 	case QuestionText:
@@ -376,8 +396,13 @@ func (field QuestionField) validate(index int) error {
 			return fmt.Errorf("text question field %d cannot carry choice settings", index)
 		}
 	case QuestionChoice:
-		if len(field.Options) < 2 {
-			return fmt.Errorf("choice question field %d requires at least two options", index)
+		if len(field.Options) < 2 || len(field.Options) > MaximumQuestionOptions {
+			return fmt.Errorf(
+				"choice question field %d option count must be between 2 and %d, got %d",
+				index,
+				MaximumQuestionOptions,
+				len(field.Options),
+			)
 		}
 	default:
 		return fmt.Errorf("question field %d has unknown kind %q", index, field.Kind)

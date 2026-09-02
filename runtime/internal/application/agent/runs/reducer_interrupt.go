@@ -413,7 +413,7 @@ func (r *reducer) questionInterrupt(in Interrupt) (transcript.Item, transcript.I
 	if in.Question == nil {
 		return transcript.Item{}, transcript.Interrupt{}, nil
 	}
-	question := questionFromPrompt(*in.Question)
+	question := in.Question.question()
 	id, err := r.nextItemID()
 	if err != nil {
 		return transcript.Item{}, transcript.Interrupt{}, err
@@ -426,26 +426,6 @@ func (r *reducer) questionInterrupt(in Interrupt) (transcript.Item, transcript.I
 		ItemID: id, ItemOccurredAt: item.OccurredAt(),
 		RunID: r.cfg.RunID, Kind: interrupt.Question, Question: &question,
 	}, nil
-}
-
-func questionFromPrompt(prompt QuestionPrompt) transcript.Question {
-	fields := make([]transcript.QuestionField, len(prompt.Fields))
-	for i, question := range prompt.Fields {
-		field := transcript.QuestionField{
-			Prompt: question.Prompt, Header: question.Header, Kind: transcript.QuestionText,
-		}
-		if len(question.Options) > 0 {
-			field.Kind = transcript.QuestionChoice
-			field.Multiple = question.Multiple
-			field.AllowCustom = question.AllowCustom
-			field.Options = make([]transcript.QuestionOption, len(question.Options))
-			for j, option := range question.Options {
-				field.Options[j] = transcript.QuestionOption{Label: option.Label, Description: option.Description}
-			}
-		}
-		fields[i] = field
-	}
-	return transcript.Question{Fields: fields}
 }
 
 // openTools owns both call lookup and publication order for one reducer. Direct

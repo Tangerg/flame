@@ -1196,6 +1196,7 @@
         "fields": {
           "type": "array",
           "minItems": 1,
+          "maxItems": 4,
           "items": {
             "$ref": "#/$defs/ArtifactQuestionField"
           }
@@ -1221,13 +1222,14 @@
         "options": {
           "type": "array",
           "minItems": 2,
+          "maxItems": 4,
           "items": {
             "$ref": "#/$defs/ArtifactQuestionOption"
           }
         },
         "prompt": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         },
         "type": {
           "$ref": "#/$defs/QuestionFieldType"
@@ -1270,7 +1272,7 @@
         },
         "label": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         },
         "preview": {
           "type": "string"
@@ -7031,6 +7033,7 @@
         "fields": {
           "type": "array",
           "minItems": 1,
+          "maxItems": 4,
           "items": {
             "$ref": "#/$defs/QuestionField"
           }
@@ -7056,13 +7059,14 @@
         "options": {
           "type": "array",
           "minItems": 2,
+          "maxItems": 4,
           "items": {
             "$ref": "#/$defs/QuestionOption"
           }
         },
         "prompt": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         },
         "type": {
           "$ref": "#/$defs/QuestionFieldType"
@@ -7112,7 +7116,7 @@
         },
         "label": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         },
         "preview": {
           "type": "string"

@@ -1041,9 +1041,10 @@ func (c ContentBlock) ValidateWire() error {
 
 func (q QuestionField) ValidateWire() error {
 	return collectWireViolations("QuestionField",
-		requiredText("prompt", q.Prompt),
+		requiredTextPattern("prompt", q.Prompt, "\\S"),
 		maxLength("header", q.Header, 12),
 		optionalMinItems("options", q.Options, 2),
+		maxItems("options", q.Options, 4),
 		closedEnum("type", string(q.Type), []string{"text", "choice"}, false),
 		requiredWhen(wireFieldEquals(q, "type", "text"), "prompt", q),
 		forbiddenWhen(wireFieldEquals(q, "type", "text"), "options", q),
@@ -1056,9 +1057,10 @@ func (q QuestionField) ValidateWire() error {
 
 func (a ArtifactQuestionField) ValidateWire() error {
 	return collectWireViolations("ArtifactQuestionField",
-		requiredText("prompt", a.Prompt),
+		requiredTextPattern("prompt", a.Prompt, "\\S"),
 		maxLength("header", a.Header, 12),
 		optionalMinItems("options", a.Options, 2),
+		maxItems("options", a.Options, 4),
 		closedEnum("type", string(a.Type), []string{"text", "choice"}, false),
 		requiredWhen(wireFieldEquals(a, "type", "text"), "prompt", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "text"), "options", a),
@@ -2157,24 +2159,26 @@ func (g GenerationParams) ValidateWire() error {
 func (q Question) ValidateWire() error {
 	return collectWireViolations("Question",
 		requiredItems("fields", q.Fields),
+		maxItems("fields", q.Fields, 4),
 	)
 }
 
 func (a ArtifactQuestion) ValidateWire() error {
 	return collectWireViolations("ArtifactQuestion",
 		requiredItems("fields", a.Fields),
+		maxItems("fields", a.Fields, 4),
 	)
 }
 
 func (q QuestionOption) ValidateWire() error {
 	return collectWireViolations("QuestionOption",
-		requiredText("label", q.Label),
+		requiredTextPattern("label", q.Label, "\\S"),
 	)
 }
 
 func (a ArtifactQuestionOption) ValidateWire() error {
 	return collectWireViolations("ArtifactQuestionOption",
-		requiredText("label", a.Label),
+		requiredTextPattern("label", a.Label, "\\S"),
 	)
 }
 

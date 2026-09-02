@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
@@ -52,8 +52,9 @@ type QuestionPrompt struct {
 	Fields    []QuestionFieldSpec
 }
 
-// QuestionFieldSpec is one required answer field. An empty Options slice means
-// free-text; otherwise 2-4 unique options are accepted.
+// QuestionFieldSpec is one ordered answer field. An empty Options slice means
+// free-text; otherwise 2-4 unique options are accepted. A response still carries
+// one entry per field, but an empty entry explicitly skips that field.
 type QuestionFieldSpec struct {
 	Prompt      string
 	Header      string
@@ -139,48 +140,35 @@ func (q QuestionPrompt) validate() error {
 	if err := validateArguments(q.Arguments); err != nil {
 		return fmt.Errorf("runs: question arguments: %w", err)
 	}
-	if len(q.Fields) < 1 || len(q.Fields) > 4 {
-		return fmt.Errorf("runs: question field count must be between 1 and 4, got %d", len(q.Fields))
-	}
-	for index, field := range q.Fields {
-		if err := field.validate(); err != nil {
-			return fmt.Errorf("runs: question field %d: %w", index, err)
-		}
+	if err := q.question().Validate(); err != nil {
+		return fmt.Errorf("runs: question: %w", err)
 	}
 	return nil
 }
 
-func (q QuestionFieldSpec) validate() error {
-	if strings.TrimSpace(q.Prompt) == "" {
-		return errors.New("prompt is required")
-	}
-	if utf8.RuneCountInString(q.Header) > 12 {
-		return errors.New("header must be at most 12 characters")
-	}
-	if len(q.Options) == 0 {
-		if q.Multiple || q.AllowCustom {
-			return errors.New("choice settings require options")
+func (q QuestionPrompt) question() transcript.Question {
+	fields := make([]transcript.QuestionField, len(q.Fields))
+	for index, spec := range q.Fields {
+		field := transcript.QuestionField{
+			Prompt: spec.Prompt,
+			Header: spec.Header,
+			Kind:   transcript.QuestionText,
 		}
-		return nil
-	}
-	if len(q.Options) < 2 || len(q.Options) > 4 {
-		return fmt.Errorf("option count must be between 2 and 4, got %d", len(q.Options))
-	}
-	seen := make(map[string]struct{}, len(q.Options))
-	for _, option := range q.Options {
-		label := strings.TrimSpace(option.Label)
-		if label == "" {
-			return errors.New("option label is required")
+		if len(spec.Options) > 0 {
+			field.Kind = transcript.QuestionChoice
+			field.Multiple = spec.Multiple
+			field.AllowCustom = spec.AllowCustom
+			field.Options = make([]transcript.QuestionOption, len(spec.Options))
+			for optionIndex, option := range spec.Options {
+				field.Options[optionIndex] = transcript.QuestionOption{
+					Label:       option.Label,
+					Description: option.Description,
+				}
+			}
 		}
-		if label != option.Label {
-			return fmt.Errorf("option label %q has surrounding whitespace", option.Label)
-		}
-		if _, ok := seen[label]; ok {
-			return fmt.Errorf("duplicate option label %q", label)
-		}
-		seen[label] = struct{}{}
+		fields[index] = field
 	}
-	return nil
+	return transcript.Question{Fields: fields}
 }
 
 func validateArguments(arguments string) error {

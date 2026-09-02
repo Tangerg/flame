@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -472,6 +473,28 @@ func TestQuestionWireConstraints(t *testing.T) {
 	oneOption.Fields = slices.Clone(valid.Fields)
 	oneOption.Fields[0].Options = []QuestionOption{{Label: "A"}}
 	assertConstraintField(t, ValidateWireTree(oneOption), "Question", "fields[0].options")
+
+	tooManyOptions := valid
+	tooManyOptions.Fields = slices.Clone(valid.Fields)
+	tooManyOptions.Fields[0].Options = []QuestionOption{{Label: "A"}, {Label: "B"}, {Label: "C"}, {Label: "D"}, {Label: "E"}}
+	assertConstraintField(t, ValidateWireTree(tooManyOptions), "Question", "fields[0].options")
+
+	blankPrompt := valid
+	blankPrompt.Fields = slices.Clone(valid.Fields)
+	blankPrompt.Fields[0].Prompt = " \t "
+	assertConstraintField(t, ValidateWireTree(blankPrompt), "Question", "fields[0].prompt")
+
+	blankOption := valid
+	blankOption.Fields = slices.Clone(valid.Fields)
+	blankOption.Fields[0].Options = slices.Clone(valid.Fields[0].Options)
+	blankOption.Fields[0].Options[0].Label = "\n"
+	assertConstraintField(t, ValidateWireTree(blankOption), "Question", "fields[0].options[0].label")
+
+	tooManyFields := Question{Fields: make([]QuestionField, transcript.MaximumQuestionFields+1)}
+	for index := range tooManyFields.Fields {
+		tooManyFields.Fields[index] = QuestionField{Type: QuestionFieldText, Prompt: "Answer"}
+	}
+	assertConstraintField(t, ValidateWireTree(tooManyFields), "Question", "fields")
 
 	longHeader := valid
 	longHeader.Fields = slices.Clone(valid.Fields)

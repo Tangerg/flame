@@ -728,15 +728,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ArtifactProblemType: enumOf(["internalError", "runLost", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected", "deniedByUser", "toolFailed", "childRunCanceled", "toolCanceled"]),
   ArtifactQuestion: object({
     answers: array(array(text())),
-    fields: allOf([array(ref(() => CHECKS.ArtifactQuestionField)), minItems(1)]),
+    fields: allOf([array(ref(() => CHECKS.ArtifactQuestionField)), minItems(1), maxItems(4)]),
   }, ["fields"]),
   ArtifactQuestionField: allOf([
     object({
       allowCustom: flag(),
       header: allOf([text(), maxLength(12)]),
       multiple: flag(),
-      options: allOf([array(ref(() => CHECKS.ArtifactQuestionOption)), minItems(2)]),
-      prompt: allOf([text(), minLength(1)]),
+      options: allOf([array(ref(() => CHECKS.ArtifactQuestionOption)), minItems(2), maxItems(4)]),
+      prompt: allOf([text(), pattern("\\S")]),
       type: ref(() => CHECKS.QuestionFieldType),
     }, []),
     oneOf([
@@ -753,7 +753,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   ArtifactQuestionOption: object({
     description: text(),
-    label: allOf([text(), minLength(1)]),
+    label: allOf([text(), pattern("\\S")]),
     preview: text(),
   }, ["label"]),
   ArtifactRun: allOf([
@@ -2659,15 +2659,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["ok"]),
   Question: object({
     answers: array(array(text())),
-    fields: allOf([array(ref(() => CHECKS.QuestionField)), minItems(1)]),
+    fields: allOf([array(ref(() => CHECKS.QuestionField)), minItems(1), maxItems(4)]),
   }, ["fields"]),
   QuestionField: allOf([
     object({
       allowCustom: flag(),
       header: allOf([text(), maxLength(12)]),
       multiple: flag(),
-      options: allOf([array(ref(() => CHECKS.QuestionOption)), minItems(2)]),
-      prompt: allOf([text(), minLength(1)]),
+      options: allOf([array(ref(() => CHECKS.QuestionOption)), minItems(2), maxItems(4)]),
+      prompt: allOf([text(), pattern("\\S")]),
       type: ref(() => CHECKS.QuestionFieldType),
     }, []),
     oneOf([
@@ -2685,7 +2685,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   QuestionFieldType: enumOf(["text", "choice"]),
   QuestionOption: object({
     description: text(),
-    label: allOf([text(), minLength(1)]),
+    label: allOf([text(), pattern("\\S")]),
     preview: text(),
   }, ["label"]),
   ReadFileRequest: allOf([

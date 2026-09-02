@@ -218,9 +218,10 @@ type ContentBlock struct {
 	Data string           `json:"data,omitempty"`
 }
 
-// Question is one ordered set of required clarifying fields.
-// InterruptResponseValue.answers uses this same order; no derivable field IDs
-// or dynamic map keys travel on the wire.
+// Question is one ordered set of clarifying fields. InterruptResponseValue.answers
+// uses this same order and includes one values array per field; an empty inner
+// array explicitly skips that field. No derivable field IDs or dynamic map keys
+// travel on the wire.
 type Question struct {
 	Fields  []QuestionField `json:"fields"`
 	Answers [][]string      `json:"answers,omitempty"` // accepted response, in Fields order
