@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { fontAvailability } from "./ports/fontAvailability";
 
 // Sans-serif / proportional candidates. Order is "best Mac default → wide
-// availability"; the empty default ("") in uiStore already resolves to the
+// availability"; the empty default ("") in `useAppearanceStore` already resolves to the
 // native system stack, so these are opt-in overrides.
 const CANDIDATE_UI_FONTS = [
   "SF Pro Text",

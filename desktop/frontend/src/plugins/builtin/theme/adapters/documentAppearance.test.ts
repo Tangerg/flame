@@ -178,7 +178,7 @@ describe("applyTheme — theme-as-plugin contract", () => {
       });
     });
 
-    // The registry subscription in uiStore re-fires applyTheme when
+    // The registry subscription in `useAppearanceStore` re-fires applyTheme when
     // the themes map mutates, so registering above is enough to write tokens.
     const root = document.documentElement;
     expect(root.style.getPropertyValue("--color-bg")).toBe("#101010");

@@ -42,7 +42,7 @@ function flattenAttrs(
 }
 
 // Deliberately NOT Pacer's `Batcher`, which is otherwise the same shape but restarts its
-// timer on every `addItem`, so the window follows the LAST item. Telemetry has to bound
+// timer on every `add`, so the window follows the LAST item. Telemetry has to bound
 // latency from the FIRST: while a run streams, items arrive closer together than the
 // window, so a debounced batch would not flush until the run went quiet.
 class Batcher<T> {

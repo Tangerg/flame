@@ -1,7 +1,7 @@
 // Convenience wrapper for the built-in locale plugins: each is just
 // `definePlugin` → `contribute(LOCALE, spec)` with a name derived from the
 // language tag. Lives in this plugin package — NOT the core SDK — mirroring
-// `defineThemePlugin` / `defineWorkspaceView`: the kernel exposes only the
+// `defineColorThemePlugin` / `defineWorkspaceView`: the kernel exposes only the
 // generic `contribute` write path; per-domain ergonomics belong to the domain.
 
 import type { LocaleSpec } from "@/plugins/sdk/types";

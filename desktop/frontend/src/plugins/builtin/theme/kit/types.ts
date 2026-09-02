@@ -58,7 +58,7 @@ export interface ThemeCta {
 }
 
 export interface ColorThemePluginSpec {
-  /** Persisted by `uiStore`, so renaming one strands a user's saved choice. */
+  /** Persisted by `useAppearanceStore`, so renaming one strands a user's saved choice. */
   id: string;
   label: string;
   /** Drives the structural `theme-{scheme}` class and scheme-aware assets. */

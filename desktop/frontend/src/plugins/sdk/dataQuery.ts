@@ -1,4 +1,4 @@
-// The read half of the contract whose write half is `contributeDataProvider`. These hooks
+// The read half of the contract whose write half is a `DATA_PROVIDER` contribution. These hooks
 // ARE the registry's read surface, so they live with it rather than in `lib/`, where a
 // utility module would end up depending on the plugin registry.
 
