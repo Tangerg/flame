@@ -6,10 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"sync"
-	"time"
-
-	"github.com/fsnotify/fsnotify"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
@@ -39,21 +35,22 @@ func WatchTrees(targets []TreeTarget, notify func([]string)) (Observation, error
 	if len(canonical) == 0 {
 		return nopWatch{}, nil
 	}
-	fsw, err := fsnotify.NewWatcher()
+	lifecycle, err := newObserverLifecycle("observe trees")
 	if err != nil {
-		return nil, fmt.Errorf("observe trees: create watcher: %w", err)
+		return nil, err
 	}
 	w := &treeWatch{
-		fsw: fsw, targets: canonical, notify: notify,
-		baselines: make([]treeSnapshot, len(canonical)),
-		watched:   make(map[string]struct{}),
-		done:      make(chan struct{}),
-		exited:    make(chan struct{}),
+		observerLifecycle: lifecycle,
+		targets:           canonical,
+		notify:            notify,
+		baselines:         make([]treeSnapshot, len(canonical)),
 	}
 	if err := w.reconcile(true, acceptance{}); err != nil {
-		return nil, closeFailed(fsw, err)
+		return nil, lifecycle.abort(err)
 	}
-	go w.run()
+	lifecycle.start(func(accepted acceptance) error {
+		return w.reconcile(false, accepted)
+	})
 	return w, nil
 }
 
@@ -120,57 +117,10 @@ type treeEntry struct {
 type treeSnapshot map[string]treeEntry
 
 type treeWatch struct {
-	fsw       *fsnotify.Watcher
+	*observerLifecycle
 	targets   []treeTarget
 	notify    func([]string)
 	baselines []treeSnapshot
-	watched   map[string]struct{}
-	done      chan struct{}
-	exited    chan struct{}
-	closeOnce sync.Once
-	stateMu   sync.Mutex
-	closed    bool
-}
-
-func (t *treeWatch) run() {
-	defer close(t.exited)
-	timer := time.NewTimer(debounce)
-	if !timer.Stop() {
-		<-timer.C
-	}
-	defer timer.Stop()
-	armed := false
-	armAfter := func(delay time.Duration) {
-		if armed && !timer.Stop() {
-			select {
-			case <-timer.C:
-			default:
-			}
-		}
-		timer.Reset(delay)
-		armed = true
-	}
-	for {
-		select {
-		case <-t.done:
-			return
-		case _, ok := <-t.fsw.Events:
-			if !ok {
-				return
-			}
-			armAfter(debounce)
-		case _, ok := <-t.fsw.Errors:
-			if !ok {
-				return
-			}
-			armAfter(debounce)
-		case <-timer.C:
-			armed = false
-			if err := t.reconcile(false, acceptance{}); err != nil {
-				armAfter(retryDelay)
-			}
-		}
-	}
 }
 
 func (t *treeWatch) reconcile(initial bool, accepted acceptance) error {
@@ -371,59 +321,4 @@ func treeSnapshotsEqual(left, right treeSnapshot) bool {
 		}
 	}
 	return true
-}
-
-func (t *treeWatch) Accept(keys, identities []string) error {
-	accepted := acceptance{
-		keys:       make(map[string]bool, len(keys)),
-		identities: make(map[string]bool, len(identities)),
-	}
-	for _, key := range keys {
-		if key != "" {
-			accepted.keys[key] = true
-		}
-	}
-	for _, identity := range identities {
-		if filepath.IsAbs(identity) {
-			accepted.identities[filepath.Clean(identity)] = true
-		}
-	}
-	if len(accepted.keys) == 0 || len(accepted.identities) == 0 {
-		return nil
-	}
-	return t.reconcile(false, accepted)
-}
-
-func (t *treeWatch) replaceDirectories(next map[string]struct{}) error {
-	for directory := range next {
-		if _, present := t.watched[directory]; present {
-			continue
-		}
-		if err := t.fsw.Add(directory); err != nil {
-			return fmt.Errorf("observe trees: watch directory %q: %w", directory, err)
-		}
-		t.watched[directory] = struct{}{}
-	}
-	for directory := range t.watched {
-		if _, keep := next[directory]; keep {
-			continue
-		}
-		if err := t.fsw.Remove(directory); err != nil && !errors.Is(err, fsnotify.ErrNonExistentWatch) {
-			return fmt.Errorf("observe trees: unwatch directory %q: %w", directory, err)
-		}
-		delete(t.watched, directory)
-	}
-	return nil
-}
-
-func (t *treeWatch) Close() error {
-	t.closeOnce.Do(func() {
-		t.stateMu.Lock()
-		t.closed = true
-		t.stateMu.Unlock()
-		close(t.done)
-		<-t.exited
-		_ = t.fsw.Close()
-	})
-	return nil
 }

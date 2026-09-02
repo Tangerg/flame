@@ -10,17 +10,10 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"sync"
-	"time"
-
-	"github.com/fsnotify/fsnotify"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
-
-const debounce = 100 * time.Millisecond
-const retryDelay = 500 * time.Millisecond
 
 // Target is one exact path and its caller-owned classification key. Boundary,
 // when non-empty, prevents a symlink target outside that physical root from
@@ -54,21 +47,22 @@ func Watch(targets []Target, notify func([]string)) (Observation, error) {
 	if len(canonical) == 0 {
 		return nopWatch{}, nil
 	}
-	fsw, err := fsnotify.NewWatcher()
+	lifecycle, err := newObserverLifecycle("observe files")
 	if err != nil {
-		return nil, fmt.Errorf("observe files: create watcher: %w", err)
+		return nil, err
 	}
 	w := &watch{
-		fsw: fsw, targets: canonical, notify: notify,
-		fingerprints: make([]fingerprint, len(canonical)),
-		watched:      make(map[string]struct{}),
-		done:         make(chan struct{}),
-		exited:       make(chan struct{}),
+		observerLifecycle: lifecycle,
+		targets:           canonical,
+		notify:            notify,
+		fingerprints:      make([]fingerprint, len(canonical)),
 	}
 	if err := w.reconcile(true, acceptance{}); err != nil {
-		return nil, closeFailed(fsw, err)
+		return nil, lifecycle.abort(err)
 	}
-	go w.run()
+	lifecycle.start(func(accepted acceptance) error {
+		return w.reconcile(false, accepted)
+	})
 	return w, nil
 }
 
@@ -122,72 +116,11 @@ func canonicalTargets(targets []Target) ([]target, error) {
 }
 
 type watch struct {
-	fsw     *fsnotify.Watcher
+	*observerLifecycle
 	targets []target
 	notify  func([]string)
 
 	fingerprints []fingerprint
-	watched      map[string]struct{}
-	done         chan struct{}
-	exited       chan struct{}
-	closeOnce    sync.Once
-	stateMu      sync.Mutex
-	closed       bool
-}
-
-func (w *watch) run() {
-	defer close(w.exited)
-	timer := time.NewTimer(debounce)
-	if !timer.Stop() {
-		<-timer.C
-	}
-	defer timer.Stop()
-	armed := false
-	armAfter := func(delay time.Duration) {
-		if armed {
-			if !timer.Stop() {
-				select {
-				case <-timer.C:
-				default:
-				}
-			}
-		}
-		timer.Reset(delay)
-		armed = true
-	}
-	arm := func() { armAfter(debounce) }
-	for {
-		select {
-		case <-w.done:
-			return
-		case _, ok := <-w.fsw.Events:
-			if !ok {
-				return
-			}
-			arm()
-		case _, ok := <-w.fsw.Errors:
-			if !ok {
-				return
-			}
-			// Overflow and transient backend errors mean the exact paths must be
-			// sampled again; their fingerprints remain the source of truth.
-			arm()
-		case <-timer.C:
-			armed = false
-			if err := w.reconcile(false, acceptance{}); err != nil {
-				// A path may disappear while its parent watches are being rebuilt,
-				// and that rename may have produced the last backend event. Retry the
-				// exact fingerprint instead of silently losing the transition.
-				armAfter(retryDelay)
-				continue
-			}
-		}
-	}
-}
-
-type acceptance struct {
-	keys       map[string]bool
-	identities map[string]bool
 }
 
 func (a acceptance) matches(candidate target, physical string) bool {
@@ -249,30 +182,6 @@ func (w *watch) reconcile(initial bool, accepted acceptance) error {
 		w.notify(changedKeys)
 	}
 	return nil
-}
-
-// Accept records selected exact paths' current filesystem state without
-// emitting a callback. Other paths retain their previous baseline, so an
-// unrelated concurrent edit is still reported by its queued filesystem event.
-func (w *watch) Accept(keys, identities []string) error {
-	accepted := acceptance{
-		keys:       make(map[string]bool, len(keys)),
-		identities: make(map[string]bool, len(identities)),
-	}
-	for _, key := range keys {
-		if key != "" {
-			accepted.keys[key] = true
-		}
-	}
-	for _, identity := range identities {
-		if filepath.IsAbs(identity) {
-			accepted.identities[filepath.Clean(identity)] = true
-		}
-	}
-	if len(accepted.keys) == 0 || len(accepted.identities) == 0 {
-		return nil
-	}
-	return w.reconcile(false, accepted)
 }
 
 func fingerprintOf(candidate target) (fingerprint, string, error) {
@@ -358,47 +267,6 @@ func nearestExistingDirectory(path string) (string, error) {
 			return "", fmt.Errorf("observe files: no existing ancestor for %q", path)
 		}
 	}
-}
-
-func (w *watch) replaceDirectories(next map[string]struct{}) error {
-	for directory := range next {
-		if _, present := w.watched[directory]; present {
-			continue
-		}
-		if err := w.fsw.Add(directory); err != nil {
-			return fmt.Errorf("observe files: watch directory %q: %w", directory, err)
-		}
-		w.watched[directory] = struct{}{}
-	}
-	for directory := range w.watched {
-		if _, keep := next[directory]; keep {
-			continue
-		}
-		if err := w.fsw.Remove(directory); err != nil && !errors.Is(err, fsnotify.ErrNonExistentWatch) {
-			return fmt.Errorf("observe files: unwatch directory %q: %w", directory, err)
-		}
-		delete(w.watched, directory)
-	}
-	return nil
-}
-
-func (w *watch) Close() error {
-	w.closeOnce.Do(func() {
-		w.stateMu.Lock()
-		w.closed = true
-		w.stateMu.Unlock()
-		close(w.done)
-		<-w.exited
-		_ = w.fsw.Close()
-	})
-	return nil
-}
-
-func closeFailed(watcher *fsnotify.Watcher, cause error) error {
-	if err := watcher.Close(); err != nil {
-		return errors.Join(cause, fmt.Errorf("observe files: close failed watcher: %w", err))
-	}
-	return cause
 }
 
 type nopWatch struct{}
