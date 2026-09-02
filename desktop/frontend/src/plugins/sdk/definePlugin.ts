@@ -6,6 +6,7 @@ import {
   type AnyPlugin,
   type Awaitable,
   type PluginContext as ContractContext,
+  type ProvidedServices,
   type Provisions,
   type Requirements,
 } from "dougong";
@@ -39,9 +40,13 @@ export interface PluginSpec<
   readonly name: string;
   readonly requires?: Requires;
   readonly provides?: Provides;
+  /** `ProvidedServices` is Core's own mapping from a Service token to the value it promises.
+   *  Spelling the return as `unknown` per key — which this did — accepts any shape for a
+   *  declared provision, so a provider that answers the wrong surface compiles and fails at
+   *  the first call from the consumer that trusted the contract. */
   readonly setup: (
     ctx: PluginContext<Requires>,
-  ) => Awaitable<keyof Provides extends never ? void : { [K in keyof Provides]: unknown }>;
+  ) => Awaitable<keyof Provides extends never ? void : ProvidedServices<Provides>>;
 }
 
 // Uniqueness only has to hold within one point's keyspace under one owner.

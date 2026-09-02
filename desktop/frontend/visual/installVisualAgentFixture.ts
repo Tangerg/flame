@@ -48,7 +48,10 @@ import { kernelChat } from "@/plugins/builtin/shell/kernel";
 import { MODELS_KEY, SelectableModel } from "@/plugins/builtin/settings/providers/public/queries";
 import { installWorkspaceNavigationPort } from "@/plugins/builtin/workspace/adapters/navigationStatePort";
 import { installRuntimeCapabilityPort } from "@/plugins/builtin/runtime/adapters/runtimeConnectionProjection";
-import { RUNTIME_STREAM_PORTS } from "@/plugins/builtin/runtime/public/ports";
+import {
+  RUNTIME_STREAM_PORTS,
+  RuntimeConnectionGeneration,
+} from "@/plugins/builtin/runtime/public/ports";
 import { queryClient } from "@/lib/queryClient";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { toolRenderingPlugins } from "@/plugins/builtin";
@@ -181,8 +184,8 @@ const visualAgentSessionPorts = definePlugin({
   setup() {
     return {
       sessions: {
-        activeSessionId: getActiveSessionId,
-        lifecycleSnapshot: getAgentSessionLifecycleSnapshot,
+        getActiveSessionId,
+        getLifecycleSnapshot: getAgentSessionLifecycleSnapshot,
         subscribeActiveSessionId,
         subscribeLifecycle: subscribeAgentSessionLifecycle,
       },
@@ -190,13 +193,19 @@ const visualAgentSessionPorts = definePlugin({
   },
 });
 
+// The contract's identity is an object, not a string: a fixture that hands back a string
+// reports a connection the consumer can never match against a successor.
+const VISUAL_RUNTIME_GENERATION = RuntimeConnectionGeneration.forProcess(
+  "visual-runtime-connection",
+);
+
 const visualRuntimeStreamPorts = definePlugin({
   name: "flame.visual.runtime-stream-ports",
   provides: { stream: RUNTIME_STREAM_PORTS },
   setup() {
     return {
       stream: {
-        connectionGeneration: () => "visual-runtime-connection",
+        connectionGeneration: () => VISUAL_RUNTIME_GENERATION,
         subscribeConnection: () => () => undefined,
         reportConnectionLoss: () => Promise.resolve(),
       },
