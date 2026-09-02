@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -99,20 +100,7 @@ func Restore(ctx context.Context) (Continuation, bool, error) {
 // Require returns a restored decision at the original call site or requests a
 // new Agent Framework Interaction input.
 func Require(ctx context.Context, key string, prompt runs.Interrupt) (interrupt.Resolution, error) {
-	if err := prompt.Validate(); err != nil {
-		return interrupt.Resolution{}, err
-	}
-	policy, ok := capabilityPolicyFrom(ctx)
-	if !ok {
-		return interrupt.Resolution{}, errors.New("agentexec interaction input: Run capabilities are unavailable")
-	}
-	if !slices.Contains(policy.allowed, prompt.Kind) {
-		return interrupt.Resolution{}, fmt.Errorf(
-			"agentexec interaction input: %s is outside the Run capability set",
-			prompt.Kind,
-		)
-	}
-	promptJSON, err := EncodePrompt(prompt)
+	promptJSON, err := admitRequirement(ctx, key, prompt)
 	if err != nil {
 		return interrupt.Resolution{}, err
 	}
@@ -121,15 +109,52 @@ func Require(ctx context.Context, key string, prompt runs.Interrupt) (interrupt.
 		return interrupt.Resolution{}, err
 	}
 	if restored {
-		if continued.Key != key {
-			return interrupt.Resolution{}, errors.New("agentexec interaction input: continuation addresses another request")
-		}
-		storedJSON, encodePromptErr := EncodePrompt(continued.Interrupt)
-		if encodePromptErr != nil || !bytes.Equal(storedJSON, promptJSON) {
-			return interrupt.Resolution{}, errors.New("agentexec interaction input: prompt changed during continuation")
-		}
-		return continued.Resolution, nil
+		return restoredResolution(continued, key, promptJSON)
 	}
+	stateJSON, err := encodeRequirementState(key, promptJSON)
+	if err != nil {
+		return interrupt.Resolution{}, err
+	}
+	return interrupt.Resolution{}, interaction.RequireToolInput(promptJSON, resolutionSchema, stateJSON)
+}
+
+func admitRequirement(ctx context.Context, key string, prompt runs.Interrupt) (json.RawMessage, error) {
+	promptJSON, err := EncodePrompt(prompt)
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(key) == "" {
+		return nil, errors.New("agentexec interaction input: request key is required")
+	}
+	policy, ok := capabilityPolicyFrom(ctx)
+	if !ok {
+		return nil, errors.New("agentexec interaction input: Run capabilities are unavailable")
+	}
+	if !slices.Contains(policy.allowed, prompt.Kind) {
+		return nil, fmt.Errorf(
+			"agentexec interaction input: %s is outside the Run capability set",
+			prompt.Kind,
+		)
+	}
+	return promptJSON, nil
+}
+
+func restoredResolution(
+	continued Continuation,
+	key string,
+	promptJSON json.RawMessage,
+) (interrupt.Resolution, error) {
+	if continued.Key != key {
+		return interrupt.Resolution{}, errors.New("agentexec interaction input: continuation addresses another request")
+	}
+	storedJSON, err := EncodePrompt(continued.Interrupt)
+	if err != nil || !bytes.Equal(storedJSON, promptJSON) {
+		return interrupt.Resolution{}, errors.New("agentexec interaction input: prompt changed during continuation")
+	}
+	return continued.Resolution, nil
+}
+
+func encodeRequirementState(key string, promptJSON json.RawMessage) (json.RawMessage, error) {
 	stateJSON, err := json.Marshal(continuationWire{
 		SchemaVersion: continuationSchemaVersion,
 		Key:           key,
@@ -137,9 +162,9 @@ func Require(ctx context.Context, key string, prompt runs.Interrupt) (interrupt.
 		Prompt:        promptJSON,
 	})
 	if err != nil {
-		return interrupt.Resolution{}, fmt.Errorf("agentexec interaction input: encode continuation: %w", err)
+		return nil, fmt.Errorf("agentexec interaction input: encode continuation: %w", err)
 	}
-	return interrupt.Resolution{}, interaction.RequireToolInput(promptJSON, resolutionSchema, stateJSON)
+	return stateJSON, nil
 }
 
 func capabilityPolicyFrom(ctx context.Context) (capabilityPolicy, bool) {
