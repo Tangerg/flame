@@ -857,6 +857,37 @@ func registerObjectConstraints(s *Shapes) {
 		GoType: typeOf[protocol.ArtifactOutcome](),
 		Rules:  failureArtifactRules(),
 	})
+
+	// ArtifactProblem is shared by Run outcomes and ToolCall transcript items,
+	// but retry policy belongs only to the three transient Run classifications.
+	// Refuse the field for every permanent and Tool classification so the common
+	// wire envelope cannot manufacture a fact neither owning domain accepts.
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.ArtifactProblem](),
+		Rules:  artifactProblemRetryRules(),
+	})
+}
+
+func artifactProblemRetryRules() []ConditionalRule {
+	withoutRetry := []protocol.ArtifactProblemType{
+		protocol.ArtifactProblemInternalError,
+		protocol.ArtifactProblemRunLost,
+		protocol.ArtifactProblemAgentStuck,
+		protocol.ArtifactProblemInvalidAPIKey,
+		protocol.ArtifactProblemProviderRejected,
+		protocol.ArtifactProblemDeniedByUser,
+		protocol.ArtifactProblemToolFailed,
+		protocol.ArtifactProblemChildRunCanceled,
+		protocol.ArtifactProblemToolCanceled,
+	}
+	rules := make([]ConditionalRule, 0, len(withoutRetry))
+	for _, kind := range withoutRetry {
+		rules = append(rules, ConditionalRule{
+			When:      []delivery.FieldCondition{{Field: "type", Operator: delivery.OperatorEquals, Value: string(kind)}},
+			Forbidden: []string{"retryAfterSeconds"},
+		})
+	}
+	return rules
 }
 
 func failureArtifactRules() []ConditionalRule {

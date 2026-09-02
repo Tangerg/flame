@@ -4952,6 +4952,119 @@
           ]
         }
       ]
+    },
+    {
+      "type": "ArtifactProblem",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "internalError"
+            }
+          ],
+          "forbidden": [
+            "retryAfterSeconds"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "runLost"
+            }
+          ],
+          "forbidden": [
+            "retryAfterSeconds"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "agentStuck"
+            }
+          ],
+          "forbidden": [
+            "retryAfterSeconds"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "invalidApiKey"
+            }
+          ],
+          "forbidden": [
+            "retryAfterSeconds"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "providerRejected"
+            }
+          ],
+          "forbidden": [
+            "retryAfterSeconds"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "deniedByUser"
+            }
+          ],
+          "forbidden": [
+            "retryAfterSeconds"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "toolFailed"
+            }
+          ],
+          "forbidden": [
+            "retryAfterSeconds"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "childRunCanceled"
+            }
+          ],
+          "forbidden": [
+            "retryAfterSeconds"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "toolCanceled"
+            }
+          ],
+          "forbidden": [
+            "retryAfterSeconds"
+          ]
+        }
+      ]
     }
   ],
   "valueConstraints": [

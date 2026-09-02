@@ -1921,6 +1921,23 @@ func (a ArtifactRun) ValidateWire() error {
 	)
 }
 
+func (a ArtifactProblem) ValidateWire() error {
+	return collectWireViolations("ArtifactProblem",
+		optionalPositiveScalarNumber("retryAfterSeconds", a.RetryAfterSeconds),
+		maximumNumber("retryAfterSeconds", a.RetryAfterSeconds, 9223372036),
+		closedEnum("type", string(a.Type), []string{"internalError", "runLost", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected", "deniedByUser", "toolFailed", "childRunCanceled", "toolCanceled"}, false),
+		forbiddenWhen(wireFieldEquals(a, "type", "internalError"), "retryAfterSeconds", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "runLost"), "retryAfterSeconds", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "agentStuck"), "retryAfterSeconds", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "invalidApiKey"), "retryAfterSeconds", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "providerRejected"), "retryAfterSeconds", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "deniedByUser"), "retryAfterSeconds", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "toolFailed"), "retryAfterSeconds", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "childRunCanceled"), "retryAfterSeconds", a),
+		forbiddenWhen(wireFieldEquals(a, "type", "toolCanceled"), "retryAfterSeconds", a),
+	)
+}
+
 func (p PageContinuation) ValidateWire() error {
 	return collectWireViolations("PageContinuation",
 		maxLength("nextCursor", p.NextCursor, 65536),
@@ -2006,14 +2023,6 @@ func (a ArtifactModelUsage) ValidateWire() error {
 		nonNegativeNumber("cacheWriteTokens", a.CacheWriteTokens),
 		nonNegativeNumber("reasoningTokens", a.ReasoningTokens),
 		optionalNonNegativeNumber("costUsd", a.CostUSD),
-	)
-}
-
-func (a ArtifactProblem) ValidateWire() error {
-	return collectWireViolations("ArtifactProblem",
-		optionalPositiveScalarNumber("retryAfterSeconds", a.RetryAfterSeconds),
-		maximumNumber("retryAfterSeconds", a.RetryAfterSeconds, 9223372036),
-		closedEnum("type", string(a.Type), []string{"internalError", "runLost", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected", "deniedByUser", "toolFailed", "childRunCanceled", "toolCanceled"}, false),
 	)
 }
 

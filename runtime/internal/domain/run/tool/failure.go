@@ -1,9 +1,7 @@
 package tool
 
 import (
-	"errors"
 	"fmt"
-	"time"
 )
 
 // FailureKind classifies why one Tool invocation did not produce a successful
@@ -38,24 +36,16 @@ func (f FailureKind) String() string {
 
 // Failure is the durable explanation attached to an incomplete ToolCall.
 type Failure struct {
-	Kind       FailureKind
-	Detail     string
-	DocURL     string
-	RetryAfter time.Duration
+	Kind   FailureKind
+	Detail string
+	DocURL string
 }
 
 // Validate reports whether the failure is representable. Tool retry is an
-// execution-policy decision, so durable Tool failures do not carry a retry
-// delay in the current product contract.
+// execution-policy decision rather than a durable failure fact.
 func (f Failure) Validate() error {
 	if !f.Kind.Valid() {
 		return fmt.Errorf("tool: unknown failure kind %q", f.Kind)
-	}
-	if f.RetryAfter < 0 {
-		return errors.New("tool: failure retry delay must not be negative")
-	}
-	if f.RetryAfter != 0 {
-		return errors.New("tool: failure must not carry a retry delay")
 	}
 	return nil
 }

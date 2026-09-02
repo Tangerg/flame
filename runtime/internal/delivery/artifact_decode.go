@@ -545,6 +545,5 @@ func portableToolFailureFromArtifact(path string, artifact *protocol.ArtifactPro
 	}
 	return &tool.Failure{
 		Kind: kind, Detail: artifact.Detail, DocURL: artifact.DocURL,
-		RetryAfter: time.Duration(artifact.RetryAfterSeconds) * time.Second,
 	}, nil
 }

@@ -172,7 +172,6 @@ func TestUsageAndToolFailureValidate(t *testing.T) {
 		{name: "nan cost", usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &nanCost}}, wantErr: true},
 		{name: "infinite cost", usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &infiniteCost}}, wantErr: true},
 		{name: "unknown failure kind", failure: &tool.Failure{Kind: tool.FailureKind("invalid")}, wantErr: true},
-		{name: "retry delay on permanent failure", failure: &tool.Failure{Kind: tool.FailureDenied, RetryAfter: time.Second}, wantErr: true},
 		{name: "valid execution failure", failure: &tool.Failure{Kind: tool.FailureExecution}},
 		{name: "valid canceled failure", failure: &tool.Failure{Kind: tool.FailureCanceled}},
 	}

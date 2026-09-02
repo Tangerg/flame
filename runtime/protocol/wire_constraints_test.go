@@ -1468,6 +1468,14 @@ func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
 			Type: ArtifactProblemTimeout, RetryAfterSeconds: tooLongSeconds,
 		}).ValidateWire(), "ArtifactProblem", "retryAfterSeconds")
 	}
+	assertConstraintField(t, (ArtifactProblem{
+		Type: ArtifactProblemToolFailed, RetryAfterSeconds: 1,
+	}).ValidateWire(), "ArtifactProblem", "retryAfterSeconds")
+	if err := (ArtifactProblem{
+		Type: ArtifactProblemRateLimited, RetryAfterSeconds: 1,
+	}).ValidateWire(); err != nil {
+		t.Fatalf("transient Run retry hint validation error = %v", err)
+	}
 }
 
 func TestRuntimeOutputNumbersPreserveDomainBounds(t *testing.T) {

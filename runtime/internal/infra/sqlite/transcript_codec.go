@@ -66,11 +66,10 @@ type toolInvocationPayload struct {
 }
 
 type toolFailurePayload struct {
-	Kind              tool.FailureKind `json:"kind"`
-	Scope             failureScope     `json:"scope"`
-	Detail            string           `json:"detail,omitempty"`
-	DocURL            string           `json:"docUrl,omitempty"`
-	RetryAfterSeconds int              `json:"retryAfterSeconds,omitempty"`
+	Kind   tool.FailureKind `json:"kind"`
+	Scope  failureScope     `json:"scope"`
+	Detail string           `json:"detail,omitempty"`
+	DocURL string           `json:"docUrl,omitempty"`
 }
 
 type failureScope string
@@ -339,6 +338,5 @@ func decodeToolFailurePayload(payload toolFailurePayload) (tool.Failure, error) 
 	}
 	return tool.Failure{
 		Kind: payload.Kind, Detail: payload.Detail, DocURL: payload.DocURL,
-		RetryAfter: time.Duration(payload.RetryAfterSeconds) * time.Second,
 	}, nil
 }

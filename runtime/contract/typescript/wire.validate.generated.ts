@@ -655,12 +655,86 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   ArtifactOutcomeType: enumOf(["completed", "timedOut", "failed", "maxSteps", "maxBudget", "canceled", "lost"]),
-  ArtifactProblem: object({
-    detail: text(),
-    docUrl: text(),
-    retryAfterSeconds: allOf([integer(), minimum(1), maximum(9223372036)]),
-    type: ref(() => CHECKS.ArtifactProblemType),
-  }, ["type"]),
+  ArtifactProblem: allOf([
+    object({
+      detail: text(),
+      docUrl: text(),
+      retryAfterSeconds: allOf([integer(), minimum(1), maximum(9223372036)]),
+      type: ref(() => CHECKS.ArtifactProblemType),
+    }, ["type"]),
+    ifThen(
+      fields({
+        type: literal("internalError"),
+      }, ["type"]),
+      fields({
+        retryAfterSeconds: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        type: literal("runLost"),
+      }, ["type"]),
+      fields({
+        retryAfterSeconds: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        type: literal("agentStuck"),
+      }, ["type"]),
+      fields({
+        retryAfterSeconds: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        type: literal("invalidApiKey"),
+      }, ["type"]),
+      fields({
+        retryAfterSeconds: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        type: literal("providerRejected"),
+      }, ["type"]),
+      fields({
+        retryAfterSeconds: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        type: literal("deniedByUser"),
+      }, ["type"]),
+      fields({
+        retryAfterSeconds: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        type: literal("toolFailed"),
+      }, ["type"]),
+      fields({
+        retryAfterSeconds: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        type: literal("childRunCanceled"),
+      }, ["type"]),
+      fields({
+        retryAfterSeconds: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        type: literal("toolCanceled"),
+      }, ["type"]),
+      fields({
+        retryAfterSeconds: absent(),
+      }, []),
+    ),
+  ]),
   ArtifactProblemType: enumOf(["internalError", "runLost", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected", "deniedByUser", "toolFailed", "childRunCanceled", "toolCanceled"]),
   ArtifactQuestion: object({
     answers: array(array(text())),
