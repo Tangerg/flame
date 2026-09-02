@@ -40,14 +40,6 @@ export interface AccentSpec {
   order?: number;
 }
 
-export interface VisualStylePreview {
-  canvas: string;
-  sidebar: string;
-  dock: string;
-  edge: string;
-  accent: string;
-}
-
 /**
  * A complete component and region design language, independent from colour. Tokens are the
  * whole of it: metrics, materials and region relationships are all custom properties, so a
@@ -55,11 +47,7 @@ export interface VisualStylePreview {
  */
 export interface VisualStyleSpec {
   id: string;
-  label: string;
-  description: string;
-  order?: number;
   motion: VisualStyleMotion;
-  preview: VisualStylePreview;
   /** CSS custom properties without the leading `--`. */
   tokens: Record<string, string>;
 }

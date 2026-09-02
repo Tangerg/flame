@@ -306,16 +306,7 @@ describe("visual-style contract", () => {
     await contributeForTest((ctx) => {
       ctx.contribute(VISUAL_STYLE, {
         id: "test-style",
-        label: "Test style",
-        description: "Test",
         motion: TEST_MOTION,
-        preview: {
-          canvas: "#fff",
-          sidebar: "#eee",
-          dock: "#f5f5f5",
-          edge: "#ccc",
-          accent: "#06f",
-        },
         tokens: { "style-shape-md": "5px", "app-content-shadow": "none" },
       });
     });
@@ -335,30 +326,12 @@ describe("visual-style contract", () => {
     await contributeForTest((ctx) => {
       ctx.contribute(VISUAL_STYLE, {
         id: "first",
-        label: "First",
-        description: "First",
         motion: TEST_MOTION,
-        preview: {
-          canvas: "#fff",
-          sidebar: "#eee",
-          dock: "#fff",
-          edge: "#ccc",
-          accent: "#06f",
-        },
         tokens: { "shadow-surface-card": "0 8px 20px black" },
       });
       ctx.contribute(VISUAL_STYLE, {
         id: "second",
-        label: "Second",
-        description: "Second",
         motion: TEST_MOTION,
-        preview: {
-          canvas: "#111",
-          sidebar: "#222",
-          dock: "#111",
-          edge: "#333",
-          accent: "#69f",
-        },
         tokens: {},
       });
     });

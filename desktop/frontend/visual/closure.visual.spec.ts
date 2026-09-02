@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page } from "./test";
-import { WORKBENCH_MOTION } from "@/plugins/builtin/theme/visualStyles/tokens";
+import { DEFAULT_MOTION } from "@/lib/appearance";
 import { VISUAL_AGENT_STATES } from "./agentSessionSnapshots";
 import { VISUAL_WORK_INDEX_STATES } from "./shellFixtureStates";
 import { VISUAL_WORKSPACE_STATES, VISUAL_WORKSPACE_VIEWPORT } from "./workspaceFixtureStates";
@@ -150,7 +150,7 @@ test("structural panels share one spring, containment, and reduced-motion author
   // shipped duration is the one that reaches CSS, and a literal here would only assert
   // that someone updated two places at once. It did not survive the first time the
   // design value moved.
-  const declared = `${WORKBENCH_MOTION.drawerMs / 1000}s`;
+  const declared = `${DEFAULT_MOTION.drawerMs / 1000}s`;
   await expect(drawer).toHaveCSS("transition-duration", `${declared}, ${declared}, 0s`);
   await expect(drawer.locator(".agent-drawer-surface")).toHaveCSS("contain", "layout paint");
   expect(
