@@ -1,5 +1,5 @@
 import type { AgentItem, AgentItemDelta } from "@/plugins/sdk";
-import type { AgentSessionView, TimelineEntry } from "@/plugins/sdk/types/agentSessionView";
+import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 import { appendTimelineEntry } from "@/plugins/sdk";
 import { blockStatus } from "./projections";
 import {
@@ -13,7 +13,7 @@ import {
   writeToolCall,
 } from "./fold";
 import type { AgentFoldSource } from "./source";
-import { sourceTimestamp } from "./source";
+import { timelineEntry } from "./source";
 
 function assertItemSource(item: AgentItem, source: AgentFoldSource): void {
   if (item.runId !== source.runId) {
@@ -21,20 +21,6 @@ function assertItemSource(item: AgentItem, source: AgentFoldSource): void {
       `agent.fold.itemSourceMismatch:type=${item.type};item=${item.id};itemRun=${item.runId};eventRun=${source.runId}`,
     );
   }
-}
-
-function toolTimelineEntry(
-  source: AgentFoldSource,
-  kind: "tool-start" | "tool-end",
-  patch: Pick<TimelineEntry, "refId" | "summary"> & Partial<Pick<TimelineEntry, "status">>,
-): TimelineEntry {
-  return {
-    id: `timeline:${source.eventId}:${kind}`,
-    ts: sourceTimestamp(source),
-    kind,
-    runId: source.runId,
-    ...patch,
-  };
 }
 
 export function onItemStarted(
@@ -67,7 +53,7 @@ export function onItemStarted(
     case "toolCall": {
       const { state: next, tool } = writeToolCall(state, item);
       return appendTimelineEntry(
-        toolTimelineEntry(source, "tool-start", { refId: item.id, summary: tool.fn }),
+        timelineEntry(source, "tool-start", { refId: item.id, summary: tool.fn }),
       )(next);
     }
     case "question":
@@ -195,7 +181,7 @@ export function onItemCompleted(
     case "toolCall": {
       const { state: next, tool } = writeToolCall(state, item);
       return appendTimelineEntry(
-        toolTimelineEntry(source, "tool-end", {
+        timelineEntry(source, "tool-end", {
           refId: item.id,
           status: tool.status === "err" ? "err" : tool.status === "denied" ? "declined" : "ok",
           summary: tool.fn,

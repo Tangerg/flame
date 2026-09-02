@@ -5,7 +5,7 @@ import { Badge } from "@/ui";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
 import { projectGoalToolPreview } from "../application/specialisedPreviewProjections";
 import { toolPreviews } from "../application/toolPreviewContributions";
-import { TEXT_PREVIEW_CLASS } from "./previewChrome";
+import { TEXT_PREVIEW_CLASS, ToolResultProse } from "./previewChrome";
 
 function GoalStatePreview({ tool }: ToolPreviewProps) {
   const goal = projectGoalToolPreview(tool.result);
@@ -44,31 +44,13 @@ function CurrentGoalPreview(props: ToolPreviewProps) {
   return <GoalStatePreview {...props} />;
 }
 
-function GoalOutcomePreview({ tool }: ToolPreviewProps) {
-  return (
-    <div className={TEXT_PREVIEW_CLASS}>
-      {tool.result?.trim() ? (
-        <p className="whitespace-pre-wrap break-words font-sans text-ui-sm leading-body text-fg-soft">
-          {tool.result}
-        </p>
-      ) : (
-        <PreviewPlaceholder
-          status={tool.status}
-          pending="tools.preview.pending.running"
-          idle="tools.preview.idle.empty"
-        />
-      )}
-    </div>
-  );
-}
-
 export const goalPreviews = definePlugin({
   name: "flame.builtin.goal-previews",
   setup(ctx) {
     for (const preview of toolPreviews({
       create_goal: CreatedGoalPreview,
       get_goal: CurrentGoalPreview,
-      report_goal_outcome: GoalOutcomePreview,
+      report_goal_outcome: ToolResultProse,
     })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });
     }

@@ -9,11 +9,19 @@ import {
   updateSchedule,
 } from "../application/scheduleCommands";
 import { SCHEDULES_KEY } from "../application/scheduleQueries";
-import { installScheduleGateway } from "./runtimeScheduleGateway";
+import { installScheduleGateway, registerScheduleDataProvider } from "./runtimeScheduleGateway";
+import { contributeForTest } from "@/plugins/sdk/testKernel";
+import { lookupDataProvider } from "@/plugins/sdk/selectors";
 
-const { selectAgentSession } = vi.hoisted(() => ({ selectAgentSession: vi.fn() }));
+const { selectAgentSession, runtimeCapability } = vi.hoisted(() => ({
+  selectAgentSession: vi.fn(),
+  runtimeCapability: vi.fn(() => true),
+}));
 
 vi.mock("@/plugins/builtin/agent/public/session", () => ({ selectAgentSession }));
+// The published facade of a foreign context, which is the only surface a test here may
+// reach for — the capability port behind it is Runtime's own business.
+vi.mock("@/plugins/builtin/runtime/public/capabilities", () => ({ runtimeCapability }));
 
 let installation: ReturnType<typeof installScheduleGateway> | undefined;
 
@@ -23,6 +31,8 @@ afterEach(() => {
   resetContainer();
   queryClient.removeQueries({ queryKey: [SCHEDULES_KEY] });
   selectAgentSession.mockReset();
+  runtimeCapability.mockReset();
+  runtimeCapability.mockReturnValue(true);
 });
 
 function schedule(workspace?: { path: string }): Schedule {
@@ -185,3 +195,48 @@ function rejected(operation: Promise<unknown>): Promise<Error> {
     (error: unknown) => (error instanceof Error ? error : new Error(String(error))),
   );
 }
+
+describe("the schedules read", () => {
+  // This translation had two authors — this provider and a second one in the defaults
+  // context — so the wire shape could change under one of them silently. It has one now,
+  // and this is what it promises.
+  async function read(): Promise<unknown> {
+    await contributeForTest((ctx) => {
+      registerScheduleDataProvider(ctx);
+    }, "test.schedule-data-provider");
+    const fetcher = lookupDataProvider(SCHEDULES_KEY);
+    expect(fetcher).toBeDefined();
+    return fetcher!();
+  }
+
+  it("flattens the Runtime's nested workspace onto the config's cwd", async () => {
+    const list = vi.fn(() => ({
+      autoPagingToArray: () => Promise.resolve([schedule({ path: "/repo" })]),
+    }));
+    setContainer({ client: () => ({ schedules: { list } }) as unknown as FlameClient });
+
+    await expect(read()).resolves.toEqual([
+      expect.objectContaining({ id: "schedule-1", cwd: "/repo" }),
+    ]);
+    expect(await read()).not.toContainEqual(
+      expect.objectContaining({ workspace: expect.anything() }),
+    );
+  });
+
+  it("omits cwd entirely when the Runtime sent no workspace", async () => {
+    const list = vi.fn(() => ({ autoPagingToArray: () => Promise.resolve([schedule()]) }));
+    setContainer({ client: () => ({ schedules: { list } }) as unknown as FlameClient });
+
+    const [config] = (await read()) as Record<string, unknown>[];
+    expect(config).not.toHaveProperty("cwd");
+  });
+
+  it("answers empty without reaching the wire when the Runtime cannot schedule", async () => {
+    runtimeCapability.mockReturnValue(false);
+    const list = vi.fn();
+    setContainer({ client: () => ({ schedules: { list } }) as unknown as FlameClient });
+
+    await expect(read()).resolves.toEqual([]);
+    expect(list).not.toHaveBeenCalled();
+  });
+});

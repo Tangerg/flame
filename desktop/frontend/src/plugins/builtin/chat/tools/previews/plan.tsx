@@ -5,29 +5,7 @@ import { planStepsFromToolArgs } from "@/plugins/builtin/agent/public/plan";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
 import { StepRow } from "@/ui";
 import { toolPreviews } from "../application/toolPreviewContributions";
-import { TEXT_PREVIEW_CLASS } from "./previewChrome";
-
-function PlanModeResult({ tool }: ToolPreviewProps) {
-  return (
-    <div className={TEXT_PREVIEW_CLASS}>
-      {tool.result?.trim() ? (
-        <p className="whitespace-pre-wrap break-words font-sans text-ui-sm leading-body text-fg-soft">
-          {tool.result}
-        </p>
-      ) : (
-        <PreviewPlaceholder
-          status={tool.status}
-          pending="tools.preview.pending.running"
-          idle="tools.preview.idle.empty"
-        />
-      )}
-    </div>
-  );
-}
-
-function EnterPlanModePreview(props: ToolPreviewProps) {
-  return <PlanModeResult {...props} />;
-}
+import { ToolResultProse } from "./previewChrome";
 
 function SetPlanPreview({ tool }: ToolPreviewProps) {
   const steps = planStepsFromToolArgs(tool.args);
@@ -52,17 +30,13 @@ function SetPlanPreview({ tool }: ToolPreviewProps) {
   );
 }
 
-function ExitPlanModePreview(props: ToolPreviewProps) {
-  return <PlanModeResult {...props} />;
-}
-
 export const planPreviews = definePlugin({
   name: "flame.builtin.plan-previews",
   setup(ctx) {
     for (const preview of toolPreviews({
-      enter_plan_mode: EnterPlanModePreview,
+      enter_plan_mode: ToolResultProse,
       set_plan: SetPlanPreview,
-      exit_plan_mode: ExitPlanModePreview,
+      exit_plan_mode: ToolResultProse,
     })) {
       ctx.contribute(TOOL_PREVIEW, preview.component, { key: preview.key });
     }

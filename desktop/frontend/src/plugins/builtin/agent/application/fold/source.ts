@@ -1,4 +1,5 @@
 import type { AgentEventEnvelope, AgentItem } from "@/plugins/sdk";
+import type { TimelineEntry } from "@/plugins/sdk/types/agentSessionView";
 import { itemStartedAt } from "./projections";
 
 export interface AgentFoldSource {
@@ -34,4 +35,21 @@ export function sourceTimestamp(source: AgentFoldSource): number {
     );
   }
   return timestamp;
+}
+
+/** One timeline entry per (event, kind). Both the run handlers and the item handlers build
+ *  these, and they were building them separately from the same four source facts — so the
+ *  id scheme that has to stay unique across the whole fold had two authors. */
+export function timelineEntry(
+  source: AgentFoldSource,
+  kind: TimelineEntry["kind"],
+  patch: Partial<Omit<TimelineEntry, "id" | "ts" | "kind" | "runId">> = {},
+): TimelineEntry {
+  return {
+    id: `timeline:${source.eventId}:${kind}`,
+    ts: sourceTimestamp(source),
+    kind,
+    runId: source.runId,
+    ...patch,
+  };
 }

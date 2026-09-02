@@ -18,10 +18,6 @@ import {
   SelectableModel,
   UTILITY_ROLE_KEY,
 } from "@/plugins/builtin/settings/providers/public/queries";
-import {
-  SCHEDULES_KEY,
-  type ScheduleConfig,
-} from "@/plugins/builtin/settings/schedules/public/queries";
 import type {
   WorkspaceDiffQuery,
   WorkspaceFileChangesQuery,
@@ -53,7 +49,7 @@ import {
 import type { DataProviderSpec, Contributor } from "@/plugins/sdk";
 import { getContainer } from "@/main/container";
 import { DATA_PROVIDER } from "@/plugins/sdk/kernelPoints";
-import { asSessionId, type FlameClient, type Schedule } from "@/rpc";
+import { asSessionId, type FlameClient } from "@/rpc";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import {
   toWorkspaceFileChangeSummary,
@@ -76,14 +72,6 @@ function requiredParams<P>(key: string, params: unknown): P {
 
 function pageData<T>(request: Promise<{ data: T[] }>): Promise<T[]> {
   return request.then((page) => page.data);
-}
-
-function scheduleConfig(schedule: Schedule): ScheduleConfig {
-  const { workspace, ...config } = schedule;
-  return {
-    ...config,
-    ...(workspace ? { cwd: workspace.path } : {}),
-  };
 }
 
 /** One admitted DATA_PROVIDER read. The Runtime client and cancellation
@@ -334,13 +322,6 @@ export function registerDefaultDataProviders(ctx: Contributor): void {
     key: HOOKS_KEY,
     fetcher: async (read, params) =>
       (await read.workspace(optionalParams<HooksQuery>(params)?.cwd)).hooks.list(),
-  });
-  contribute({
-    key: SCHEDULES_KEY,
-    fetcher: async (read) => {
-      if (!runtimeCapability("schedules")) return [];
-      return (await read.client.schedules.list().autoPagingToArray()).map(scheduleConfig);
-    },
   });
   contribute({
     key: WORKSPACE_RECIPES_KEY,

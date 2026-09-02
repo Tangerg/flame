@@ -1,5 +1,6 @@
 import type { WorkspaceEventLoop } from "./workspaceEventLoop";
 import type { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/services";
+import { delayUntilAborted } from "@/lib/abortableDelay";
 
 export type WorkspaceCwdResolution =
   { status: "resolved"; cwd?: string } | { status: "unavailable" };
@@ -91,7 +92,7 @@ export function startWorkspaceEventSubscription(
           if (lease !== retargetLease || attemptAbort.signal.aborted || controller.signal.aborted)
             return;
           ports.reportResolutionError(error);
-          await retryDelay(
+          await delayUntilAborted(
             Math.min(RESOLVE_RETRY_BASE_MS * 2 ** attempt, RESOLVE_RETRY_CAP_MS),
             attemptAbort.signal,
           );
@@ -130,20 +131,4 @@ export function startWorkspaceEventSubscription(
     eventLoop.dispose();
     controller.abort();
   };
-}
-
-function retryDelay(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve) => {
-    if (signal.aborted) {
-      resolve();
-      return;
-    }
-    const timer = setTimeout(done, ms);
-    function done(): void {
-      clearTimeout(timer);
-      signal.removeEventListener("abort", done);
-      resolve();
-    }
-    signal.addEventListener("abort", done, { once: true });
-  });
 }

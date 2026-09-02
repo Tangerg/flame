@@ -2,7 +2,10 @@ import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
 import { registerSettingsPane } from "../kit";
 import { SCHEDULES_PANE } from "../kit/panes";
-import { installScheduleGateway } from "./adapters/runtimeScheduleGateway";
+import {
+  installScheduleGateway,
+  registerScheduleDataProvider,
+} from "./adapters/runtimeScheduleGateway";
 import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
 
 const SchedulesPane = lazy(() =>
@@ -14,6 +17,7 @@ export default definePlugin({
   requires: { runtime: RUNTIME_STREAM },
   setup(ctx) {
     const gateway = installScheduleGateway();
+    registerScheduleDataProvider(ctx);
     const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
       gateway.replaceRuntimeGeneration(),
     );

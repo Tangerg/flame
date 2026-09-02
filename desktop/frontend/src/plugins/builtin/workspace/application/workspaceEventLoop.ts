@@ -6,6 +6,7 @@ import {
 } from "@/lib/asyncOwnership";
 import type { WorkspaceEventLike } from "../domain/eventInvalidation";
 import type { RuntimeConnectionGeneration } from "@/plugins/builtin/runtime/public/services";
+import { delayUntilAborted } from "@/lib/abortableDelay";
 
 const RECONNECT_BASE_MS = 1_000;
 const RECONNECT_CAP_MS = 30_000;
@@ -174,7 +175,10 @@ async function subscribeLoop(
     setIterAbort(backoff);
     const abortBackoff = () => backoff.abort();
     signal.addEventListener("abort", abortBackoff, { once: true });
-    await delay(Math.min(RECONNECT_BASE_MS * 2 ** attempt, RECONNECT_CAP_MS), backoff.signal);
+    await delayUntilAborted(
+      Math.min(RECONNECT_BASE_MS * 2 ** attempt, RECONNECT_CAP_MS),
+      backoff.signal,
+    );
     signal.removeEventListener("abort", abortBackoff);
     setIterAbort(null);
     if (signal.aborted) return;
@@ -230,20 +234,4 @@ function disposeIterable<T>(iterable: AsyncIterable<T>): void {
     // The subscription was already superseded, so its signal remains the
     // authoritative teardown path when constructing its iterator fails.
   }
-}
-
-function delay(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve) => {
-    if (signal.aborted) {
-      resolve();
-      return;
-    }
-    const timer = setTimeout(done, ms);
-    function done(): void {
-      clearTimeout(timer);
-      signal.removeEventListener("abort", done);
-      resolve();
-    }
-    signal.addEventListener("abort", done, { once: true });
-  });
 }

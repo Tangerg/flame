@@ -6,13 +6,12 @@ import type {
   AgentRunView,
   AgentSessionView,
   PendingInterrupt,
-  TimelineEntry,
 } from "@/plugins/sdk/types/agentSessionView";
 import { appendTimelineEntry } from "@/plugins/sdk";
 import { settleRunPendingInterrupts } from "./fold";
 import { materializeInterrupt } from "./interruptMaterialization";
 import type { AgentFoldSource } from "./source";
-import { sourceTimestamp } from "./source";
+import { timelineEntry } from "./source";
 import {
   projectRunMetrics,
   projectStartedRun,
@@ -91,20 +90,6 @@ function updateRun(
   return {
     ...state,
     runsById: { ...state.runsById, [runId]: update(run) },
-  };
-}
-
-function timelineEntry(
-  source: AgentFoldSource,
-  kind: TimelineEntry["kind"],
-  patch: Partial<Omit<TimelineEntry, "id" | "ts" | "kind" | "runId">> = {},
-): TimelineEntry {
-  return {
-    id: `timeline:${source.eventId}:${kind}`,
-    ts: sourceTimestamp(source),
-    kind,
-    runId: source.runId,
-    ...patch,
   };
 }
 
