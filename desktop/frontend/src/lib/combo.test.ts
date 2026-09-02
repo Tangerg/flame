@@ -61,6 +61,14 @@ describe("the modifier vocabulary", () => {
       expect(comboGlyph(a!)).toBe(comboGlyph(b!));
     }
   });
+
+  // Without their own table these read as title case — "Escape", "Arrowup" — which is what a
+  // menu hint would print beside the command.
+  it("prints a named key the way a keyboard does", () => {
+    expect(comboGlyph("Escape")).toBe("Esc");
+    expect(comboGlyph("ArrowUp")).toBe("↑");
+    expect(comboGlyph("Mod+ArrowLeft")).toContain("←");
+  });
 });
 
 describe("dispatchBinding", () => {

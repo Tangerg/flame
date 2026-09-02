@@ -35,6 +35,18 @@ describe("startTask generation safety", () => {
     expect(get("task:p:sync")?.status).toBe("running");
   });
 
+  // An owner that reports a failure after it already reported success would leave the pill
+  // showing the wrong outcome, and a late progress update would revive a settled row.
+  it("cannot revise or re-settle a task it already settled", () => {
+    const h = startTask("p", { id: "task:p:sync", label: "Sync" });
+    h.succeed("done");
+
+    h.update({ message: "late progress" });
+    h.fail(new Error("late failure"));
+
+    expect(get("task:p:sync")).toMatchObject({ status: "succeeded", message: "done" });
+  });
+
   it("the previous handle cannot control a same-millisecond restart", () => {
     const h1 = startTask("p", { id: "task:p:sync", label: "Sync" });
     startTask("p", { id: "task:p:sync", label: "Sync" }); // restart, new generation
