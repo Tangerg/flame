@@ -21,7 +21,10 @@ func TestChatResolverRejectsUnconfigured(t *testing.T) {
 		t.Fatal(err)
 	}
 	ps := sqlitestore.NewProviderStore(db) // empty: deepseek not configured
-	r := NewChatResolver(ps)
+	r, err := NewChatResolver(ps)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	_, err = r.ResolveChat(t.Context(), testDeepSeekSelection(t, "deepseek-v4-pro"))
 	if err == nil {
@@ -61,7 +64,11 @@ func TestChatResolverBuildsOptionalCredentialProviderWithoutRegistryRow(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolved, err := NewChatResolver(sqlitestore.NewProviderStore(db)).ResolveChat(t.Context(), selection)
+	resolver, err := NewChatResolver(sqlitestore.NewProviderStore(db))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := resolver.ResolveChat(t.Context(), selection)
 	if err != nil || resolved.Client() == nil {
 		t.Fatalf("ResolveChat optional credential provider = %v, %v", resolved.Client(), err)
 	}

@@ -59,7 +59,10 @@ func TestLiveUtilityClientResolvesMainForEveryUse(t *testing.T) {
 		}
 		return mustResolvedChat(t, client, nil), nil
 	}}
-	resolve := LiveUtilityClient(resolver, selection, staticRoleSource{})
+	resolve, err := LiveUtilityClient(resolver, selection, staticRoleSource{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	first, firstErr := resolve(t.Context())
 	second, secondErr := resolve(t.Context())
@@ -86,7 +89,10 @@ func TestLiveUtilityClientReturnsConfiguredRoleFailureWithoutFallback(t *testing
 		}
 		return mustResolvedChat(t, client, nil), nil
 	}}
-	resolve := LiveUtilityClient(resolver, mainSelection, staticRoleSource{selection: utilitySelection})
+	resolve, err := LiveUtilityClient(resolver, mainSelection, staticRoleSource{selection: utilitySelection})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	got, err := resolve(t.Context())
 	if err == nil || got != nil || !strings.Contains(err.Error(), "utility provider unavailable") {

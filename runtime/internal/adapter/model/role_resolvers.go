@@ -31,13 +31,20 @@ func LiveUtilityClient(
 	resolver ChatClientResolver,
 	mainSelection modelref.Selection,
 	roles RoleSource,
-) AuxiliaryResolver {
+) (AuxiliaryResolver, error) {
+	if missingDependency(resolver) {
+		return nil, errors.New("model: utility chat resolver is required")
+	}
+	if !mainSelection.Configured() {
+		return nil, errors.New("model: utility main model selection is required")
+	}
+	if missingDependency(roles) {
+		return nil, errors.New("model: utility role source is required")
+	}
 	return func(ctx context.Context) (*chatclient.Client, error) {
 		selection := mainSelection
-		if roles != nil {
-			if role := roles.Role(); role.Configured() {
-				selection = role
-			}
+		if role := roles.Role(); role.Configured() {
+			selection = role
 		}
 		resolved, err := resolver.ResolveChat(ctx, selection)
 		if err != nil {
@@ -52,7 +59,7 @@ func LiveUtilityClient(
 			return nil, errors.New("auxiliary model: resolved client is nil")
 		}
 		return resolved.Client(), nil
-	}
+	}, nil
 }
 
 // RoleEmbedder resolves the live embedding role through an embedding resolver.
@@ -61,16 +68,22 @@ type RoleEmbedder struct {
 	roles    RoleSource
 }
 
-// NewRoleEmbedder builds a live embedding-role resolver.
-func NewRoleEmbedder(resolver *EmbeddingResolver, roles RoleSource) *RoleEmbedder {
-	return &RoleEmbedder{resolver: resolver, roles: roles}
+// NewRoleEmbedder builds a complete live embedding-role resolver.
+func NewRoleEmbedder(resolver *EmbeddingResolver, roles RoleSource) (*RoleEmbedder, error) {
+	if resolver == nil {
+		return nil, errors.New("model: embedding resolver is required")
+	}
+	if missingDependency(roles) {
+		return nil, errors.New("model: embedding role source is required")
+	}
+	return &RoleEmbedder{resolver: resolver, roles: roles}, nil
 }
 
 // ResolveMemory returns the optional embedder configured for agent-memory
 // ranking. An absent role is a normal keyword-only configuration.
 func (r *RoleEmbedder) ResolveMemory(ctx context.Context) (agentmemoryapp.Embedder, error) {
-	if r == nil || r.resolver == nil || r.roles == nil {
-		return nil, nil
+	if r == nil || r.resolver == nil || missingDependency(r.roles) {
+		return nil, errors.New("model: embedding role resolver is not configured")
 	}
 	role := r.roles.Role()
 	if !role.Configured() {

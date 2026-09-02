@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -33,20 +32,10 @@ func NewResolvedChat(client *chatclient.Client, counter InputTokenCounter) (Reso
 	if client == nil {
 		return ResolvedChat{}, errors.New("model: resolved chat client is nil")
 	}
-	if counter != nil && nilInputTokenCounter(counter) {
+	if counter != nil && missingDependency(counter) {
 		return ResolvedChat{}, errors.New("model: resolved chat input token counter is nil")
 	}
 	return ResolvedChat{client: client, inputTokenCounter: counter}, nil
-}
-
-func nilInputTokenCounter(counter InputTokenCounter) bool {
-	value := reflect.ValueOf(counter)
-	switch value.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		return value.IsNil()
-	default:
-		return false
-	}
 }
 
 // Client returns the ordinary chat projection.
@@ -73,9 +62,12 @@ type ChatResolver struct {
 	providers CredentialLookup
 }
 
-// NewChatResolver returns a chat resolver over the provider configuration lookup.
-func NewChatResolver(providers CredentialLookup) *ChatResolver {
-	return &ChatResolver{providers: providers}
+// NewChatResolver returns a complete resolver over the provider configuration lookup.
+func NewChatResolver(providers CredentialLookup) (*ChatResolver, error) {
+	if missingDependency(providers) {
+		return nil, errors.New("model: chat provider credential lookup is required")
+	}
+	return &ChatResolver{providers: providers}, nil
 }
 
 // ResolveChat builds one provider model from the registry configuration and
@@ -83,6 +75,9 @@ func NewChatResolver(providers CredentialLookup) *ChatResolver {
 // authentication fails as invalid credentials; optional-key providers may
 // resolve without a registry row.
 func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelref.Selection) (ResolvedChat, error) {
+	if c == nil || missingDependency(c.providers) {
+		return ResolvedChat{}, errors.New("model: chat resolver is not configured")
+	}
 	spec, err := c.resolveClientSpec(ctx, selection)
 	if err != nil {
 		return ResolvedChat{}, err

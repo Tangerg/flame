@@ -108,7 +108,10 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
-	chatResolver := modeladapter.NewChatResolver(providers)
+	chatResolver, err := modeladapter.NewChatResolver(providers)
+	if err != nil {
+		return nil, config.Settings{}, err
+	}
 	if err = SeedUtilityRole(ctx, stores.UtilityRole, settings); err != nil {
 		return nil, config.Settings{}, err
 	}

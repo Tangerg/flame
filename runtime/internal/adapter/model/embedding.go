@@ -20,13 +20,19 @@ type EmbeddingResolver struct {
 	providers CredentialLookup
 }
 
-// NewEmbeddingResolver returns a resolver over the provider credential lookup.
-func NewEmbeddingResolver(providers CredentialLookup) *EmbeddingResolver {
-	return &EmbeddingResolver{providers: providers}
+// NewEmbeddingResolver returns a complete resolver over the provider credential lookup.
+func NewEmbeddingResolver(providers CredentialLookup) (*EmbeddingResolver, error) {
+	if missingDependency(providers) {
+		return nil, errors.New("model: embedding provider credential lookup is required")
+	}
+	return &EmbeddingResolver{providers: providers}, nil
 }
 
 // Resolve builds an embedder for the current selection and registry snapshot.
 func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelref.Selection) (agentmemoryapp.Embedder, error) {
+	if e == nil || missingDependency(e.providers) {
+		return nil, errors.New("model: embedding resolver is not configured")
+	}
 	if !selection.Configured() {
 		return nil, errors.New("model: explicit model selection is required")
 	}

@@ -35,13 +35,23 @@ func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection mod
 		return modelEnvironment{}, err
 	}
 	embeddingRoleState := models.NewRoleState(embeddingRole)
-	embeddingResolver := modeladapter.NewEmbeddingResolver(cfg.ProviderRegistry)
-	liveEmbedder := modeladapter.NewRoleEmbedder(embeddingResolver, embeddingRoleState)
+	embeddingResolver, err := modeladapter.NewEmbeddingResolver(cfg.ProviderRegistry)
+	if err != nil {
+		return modelEnvironment{}, err
+	}
+	liveEmbedder, err := modeladapter.NewRoleEmbedder(embeddingResolver, embeddingRoleState)
+	if err != nil {
+		return modelEnvironment{}, err
+	}
+	utilityClient, err := modeladapter.LiveUtilityClient(chatResolver, defaultSelection, utilityRoleState)
+	if err != nil {
+		return modelEnvironment{}, err
+	}
 
 	environment := modelEnvironment{
 		chatResolver:       chatResolver,
 		utilityRoleState:   utilityRoleState,
-		utilityClient:      modeladapter.LiveUtilityClient(chatResolver, defaultSelection, utilityRoleState),
+		utilityClient:      utilityClient,
 		embeddingRoleState: embeddingRoleState,
 		embeddingResolver:  embeddingResolver,
 		liveEmbedder:       liveEmbedder,
