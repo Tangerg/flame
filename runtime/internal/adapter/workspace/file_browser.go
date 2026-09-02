@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -48,12 +49,20 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 	if err != nil {
 		return workspaceapp.FileReadResult{}, fmt.Errorf("workspace: resolve read root: %w", err)
 	}
+	rootHandle, err := os.OpenRoot(canonicalRoot)
+	if err != nil {
+		return workspaceapp.FileReadResult{}, fmt.Errorf("workspace: open read root: %w", err)
+	}
+	defer func() {
+		err = errors.Join(err, rootHandle.Close())
+	}()
 	relative, err := rootRelativeFilePath(root, canonicalRoot, path)
 	if err != nil {
 		return workspaceapp.FileReadResult{}, err
 	}
-	file, _, err := fileinput.Open(
-		filepath.Join(canonicalRoot, filepath.FromSlash(relative)),
+	file, _, err := fileinput.OpenAt(
+		rootHandle,
+		filepath.FromSlash(relative),
 		workspaceapp.MaxFileReadSourceBytes,
 	)
 	if err != nil {

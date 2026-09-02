@@ -19,7 +19,7 @@ import (
 // workspace browser. It scans in process so source, line, retained material,
 // cancellation, and exact-total semantics remain owned by this product port
 // instead of inheriting a subprocess executor's post-hoc result slicing.
-func (FileBrowser) Grep(ctx context.Context, root string, input workspaceapp.GrepPlan) (workspaceapp.GrepResult, error) {
+func (FileBrowser) Grep(ctx context.Context, root string, input workspaceapp.GrepPlan) (_ workspaceapp.GrepResult, err error) {
 	if cause := context.Cause(ctx); cause != nil {
 		return workspaceapp.GrepResult{}, cause
 	}
@@ -37,10 +37,18 @@ func (FileBrowser) Grep(ctx context.Context, root string, input workspaceapp.Gre
 	if err != nil {
 		return workspaceapp.GrepResult{}, fmt.Errorf("workspace: resolve search root: %w", err)
 	}
+	rootHandle, err := os.OpenRoot(canonicalRoot)
+	if err != nil {
+		return workspaceapp.GrepResult{}, fmt.Errorf("workspace: open search root: %w", err)
+	}
+	defer func() {
+		err = errors.Join(err, rootHandle.Close())
+	}()
 	search := workspaceGrep{
 		ctx:             ctx,
 		root:            root,
 		canonicalRoot:   canonicalRoot,
+		rootHandle:      rootHandle,
 		plan:            input,
 		result:          workspaceapp.GrepResult{Matches: []workspaceapp.GrepMatch{}},
 		remainingSource: int64(workspaceapp.MaxGrepSourceBytes),
@@ -58,6 +66,7 @@ type workspaceGrep struct {
 	ctx             context.Context
 	root            string
 	canonicalRoot   string
+	rootHandle      *os.Root
 	plan            workspaceapp.GrepPlan
 	result          workspaceapp.GrepResult
 	remainingSource int64
@@ -93,8 +102,9 @@ func (search *workspaceGrep) openSource(entryPath string) (grepSource, bool, err
 	if err != nil {
 		return grepSource{}, false, err
 	}
-	file, _, err := fileinput.Open(
-		filepath.Join(search.canonicalRoot, filepath.FromSlash(path)),
+	file, _, err := fileinput.OpenAt(
+		search.rootHandle,
+		filepath.FromSlash(path),
 		workspaceapp.MaxGrepFileBytes,
 	)
 	if err != nil {
