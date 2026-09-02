@@ -62,6 +62,7 @@ describe("workspace session projection invalidation", () => {
 
       expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith({
         sessionIds: ["ses_a", "ses_b"],
+        ownership: "after-live",
       });
     },
   );
@@ -160,6 +161,7 @@ describe("workspace session projection invalidation", () => {
 
     expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith({
       sessionIds: ["ses_a", "ses_b"],
+      ownership: "after-live",
     });
     expect(cancelQueries).not.toHaveBeenCalled();
     expect(invalidateQueries).not.toHaveBeenCalled();
@@ -175,6 +177,7 @@ describe("workspace session projection invalidation", () => {
 
     expect(synchronizeMountedAgentSessions).toHaveBeenCalledWith({
       sessionIds: ["ses_mounted", "ses_unmounted"],
+      ownership: "after-live",
     });
     expect(synchronizeMountedAgentSessions).toHaveBeenCalledOnce();
     expect(cancelQueries).toHaveBeenCalledTimes(2);
@@ -219,10 +222,10 @@ describe("workspace session projection invalidation", () => {
 
     expect(synchronizeMountedAgentSessions.mock.calls).toEqual([
       [{ ownership: "replace-live" }],
-      [{ sessionIds: ["ses_a"] }],
+      [{ sessionIds: ["ses_a"], ownership: "after-live" }],
       [{ ownership: "replace-live" }],
-      [{ sessionIds: ["ses_a"] }],
-      [{ sessionIds: ["ses_a"] }],
+      [{ sessionIds: ["ses_a"], ownership: "after-live" }],
+      [{ sessionIds: ["ses_a"], ownership: "after-live" }],
     ]);
     expect(invalidateQueries.mock.calls.filter(([options]) => options === undefined)).toHaveLength(
       2,

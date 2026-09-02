@@ -69,14 +69,14 @@ describe("refreshAgentSessionProjection", () => {
     const synchronize = vi.fn().mockResolvedValue(true);
     useAgentStore.getState().setSynchronize(SESSION_ID, synchronize);
 
-    await expect(synchronizeMountedAgentSession(SESSION_ID)).resolves.toBe(true);
-    expect(synchronize).toHaveBeenCalledWith(undefined);
+    await expect(synchronizeMountedAgentSession(SESSION_ID, "after-live")).resolves.toBe(true);
+    expect(synchronize).toHaveBeenCalledWith("after-live");
   });
 
   it("reports an unmounted Session instead of creating a second repair path", async () => {
     useAgentStore.getState().dropSession(SESSION_ID);
 
-    await expect(synchronizeMountedAgentSession(SESSION_ID)).resolves.toBe(false);
+    await expect(synchronizeMountedAgentSession(SESSION_ID, "after-live")).resolves.toBe(false);
   });
 
   it("keeps the old projection visible until the complete read commits", async () => {

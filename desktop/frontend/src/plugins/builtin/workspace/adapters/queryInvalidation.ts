@@ -88,7 +88,7 @@ export function invalidateWorkspaceTargets(
   // transactionally coherent mounted-session replacement once, before walking
   // the remaining independent query targets.
   if (targets.includes("agentSessionProjection")) {
-    synchronizeMountedAgentSessions({ sessionIds });
+    synchronizeMountedAgentSessions({ sessionIds, ownership: "after-live" });
   }
   for (const target of targets) {
     if (target === "all") continue;

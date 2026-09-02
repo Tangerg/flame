@@ -59,14 +59,14 @@ export interface MountedAgentSessionSynchronization {
   sessionIds?: readonly string[];
   /** A global reconciliation boundary supersedes any live stream from the
    * previous Runtime/event generation before reading durable truth. */
-  ownership?: SessionProjectionSynchronizationOwnership;
+  ownership: SessionProjectionSynchronizationOwnership;
 }
 
 /** Reconcile one Session through its mounted lifecycle owner and let a command
  * wait for the same authoritative material boundary the event loop uses. */
 export async function synchronizeMountedAgentSession(
   sessionId: string,
-  ownership?: SessionProjectionSynchronizationOwnership,
+  ownership: SessionProjectionSynchronizationOwnership,
 ): Promise<boolean> {
   const entry = agentSessionView().getSession(sessionId);
   if (!entry) return false;
@@ -76,7 +76,7 @@ export async function synchronizeMountedAgentSession(
 }
 
 export function synchronizeMountedAgentSessions(
-  request: MountedAgentSessionSynchronization = {},
+  request: MountedAgentSessionSynchronization,
 ): readonly string[] {
   const sessions = agentSessionView().getSessions();
   const mountedIds = Object.keys(sessions);

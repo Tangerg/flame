@@ -13,7 +13,7 @@ export async function rehydrateSessionView(sessionId: string): Promise<void> {
   const synchronize = agentSessionView().getSession(sessionId)?.synchronize;
   for (let attempt = 0; attempt < REWRITE_SYNCHRONIZATION_ATTEMPTS; attempt += 1) {
     const committed = synchronize
-      ? await synchronize()
+      ? await synchronize("after-live")
       : Boolean(
           await refreshAgentSessionProjection(sessionId, {
             invalidateQueuedRunEvents: true,

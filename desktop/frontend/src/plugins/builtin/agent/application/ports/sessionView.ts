@@ -22,13 +22,22 @@ export type ResolvePatch = {
 };
 
 export type StopCurrentRootRunAction = () => boolean;
+/**
+ *   after-live      The live stream keeps ownership; the read waits for it to go idle.
+ *   replace-live    Supersede the active Runtime generation and read at once.
+ *   retire-live     Revoke the active generation without admitting a successor read.
+ *   replace-server  A new server owns the scope, so the read replaces it wholesale.
+ *
+ * Stated by every caller. An optional argument would give the commonest boundary a second
+ * spelling — absence — and the named one then names nothing.
+ */
 export type SessionProjectionSynchronizationOwnership =
   "after-live" | "replace-live" | "retire-live" | "replace-server";
 /** Request the mounted Session's single projection owner to reconcile durable
  * facts. True means an authoritative snapshot committed; false means the read
  * was superseded, unavailable, or failed and the caller may retry. */
 export type SynchronizeSessionAction = (
-  ownership?: SessionProjectionSynchronizationOwnership,
+  ownership: SessionProjectionSynchronizationOwnership,
 ) => Promise<boolean>;
 export type CancelRunAction = (runId: string) => void;
 export type SendAgentInputAction = (input: AgentInput, options?: AgentRunStartOptions) => boolean;
