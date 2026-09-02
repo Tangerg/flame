@@ -103,13 +103,14 @@ func TestDiscoverAgentDocsCanonicalizesAndDedupesSymlinkedUserSource(t *testing.
 	if err := os.Symlink(filepath.Join(home, ".flame", "AGENTS.md"), filepath.Join(home, ".agents", "AGENTS.md")); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
+	writeFile(t, filepath.Join(home, ".agents", "agents.md"), "lower-priority-user-source")
 
 	files, err := promptsource.DiscoverAgentDocs(t.Context(), root, home)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(files) != 1 {
-		t.Fatalf("files = %+v, want one canonical user source", files)
+		t.Fatalf("files = %+v, want one canonical first-match user source", files)
 	}
 	want, err := filepath.EvalSymlinks(filepath.Join(home, ".flame", "AGENTS.md"))
 	if err != nil {
