@@ -393,35 +393,49 @@ func (s *schemaSet) conditional(t reflect.Type, rule dispatch.ConditionalRule) *
 
 func restrictAllowedValues(node *schema, owner reflect.Type, sets []dispatch.AllowedValueSet) {
 	for _, set := range sets {
-		_, leaf, found := contractshape.GoPath(owner, set.Field)
-		if !found {
-			panic(fmt.Sprintf("contractgen: %s has no field %q", owner.Name(), set.Field))
-		}
-		fieldType := contractshape.Deref(leaf.Type)
-		if values, known := contractcatalog.EnumValues(fieldType); known {
-			for _, value := range set.Values {
-				if !slices.Contains(values, value) {
-					panic(fmt.Sprintf(
-						"contractgen: %s.%s allows %q outside enum %s",
-						owner.Name(), set.Field, value, fieldType.Name(),
-					))
-				}
-			}
-		}
-		parent, name := descend(node, owner, set.Field, false)
-		if parent.Properties == nil {
-			parent.Properties = make(map[string]any)
-		}
-		existing, present := parent.Properties[name]
-		if present {
-			if narrowed, ok := existing.(*schema); ok && narrowed.Const == "" && len(narrowed.Enum) == 0 {
-				narrowed.Enum = slices.Clone(set.Values)
-				continue
-			}
-			panic(fmt.Sprintf("contractgen: %s.%s has conflicting branch constraints", owner.Name(), set.Field))
-		}
-		parent.Properties[name] = &schema{Enum: slices.Clone(set.Values)}
+		restrictAllowedValueSet(node, owner, set)
 	}
+}
+
+func restrictAllowedValueSet(node *schema, owner reflect.Type, set dispatch.AllowedValueSet) {
+	_, leaf, found := contractshape.GoPath(owner, set.Field)
+	if !found {
+		panic(fmt.Sprintf("contractgen: %s has no field %q", owner.Name(), set.Field))
+	}
+	checkAllowedEnumSubset(owner, set, contractshape.Deref(leaf.Type))
+	parent, name := descend(node, owner, set.Field, false)
+	setAllowedValues(parent, name, owner, set)
+}
+
+func checkAllowedEnumSubset(owner reflect.Type, set dispatch.AllowedValueSet, fieldType reflect.Type) {
+	values, known := contractcatalog.EnumValues(fieldType)
+	if !known {
+		return
+	}
+	for _, value := range set.Values {
+		if !slices.Contains(values, value) {
+			panic(fmt.Sprintf(
+				"contractgen: %s.%s allows %q outside enum %s",
+				owner.Name(), set.Field, value, fieldType.Name(),
+			))
+		}
+	}
+}
+
+func setAllowedValues(parent *schema, name string, owner reflect.Type, set dispatch.AllowedValueSet) {
+	if parent.Properties == nil {
+		parent.Properties = make(map[string]any)
+	}
+	existing, present := parent.Properties[name]
+	if !present {
+		parent.Properties[name] = &schema{Enum: slices.Clone(set.Values)}
+		return
+	}
+	narrowed, ok := existing.(*schema)
+	if !ok || narrowed.Const != "" || len(narrowed.Enum) != 0 {
+		panic(fmt.Sprintf("contractgen: %s.%s has conflicting branch constraints", owner.Name(), set.Field))
+	}
+	narrowed.Enum = slices.Clone(set.Values)
 }
 
 // constrain applies required and forbidden JSON paths to a sub-schema, descending

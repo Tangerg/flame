@@ -9,6 +9,16 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
+type allowedValueBranchPayload struct {
+	State string `json:"state"`
+}
+
+type allowedValueBranchFixture struct {
+	Type  string                     `json:"type"`
+	Left  *allowedValueBranchPayload `json:"left,omitempty"`
+	Right *allowedValueBranchPayload `json:"right,omitempty"`
+}
+
 // TestRegisteredShapesDescribeRealTypes is the whole point of declaring unions
 // instead of inferring them: reflection cannot recover a discriminator, but it
 // CAN check that a declaration matches the struct. Every registered spec is
@@ -216,6 +226,19 @@ func TestUnionValidationCatchesTheDriftItExistsFor(t *testing.T) {
 			},
 		},
 		want: `variant "text" is declared twice`,
+	}, {
+		name: "allowed values belong to another variant",
+		spec: UnionSpec{
+			GoType: reflect.TypeFor[allowedValueBranchFixture](), Discriminator: "type",
+			Variants: []VariantSpec{
+				{
+					Tag: "left", Required: []string{"left"},
+					AllowedValues: []AllowedValueSet{{Field: "right.state", Values: []string{"ready"}}},
+				},
+				{Tag: "right", Required: []string{"right"}},
+			},
+		},
+		want: `allowed-values field "right.state" is not claimed by the variant`,
 	}, {
 		name: "an empty forbidden field",
 		spec: UnionSpec{

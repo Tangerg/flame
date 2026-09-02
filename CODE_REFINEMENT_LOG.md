@@ -975,3 +975,59 @@ The union renderer duplicates branch field compilation around two tag-selection 
 
 - `Goal.provider/model` remains an evidenced cross-artifact inconsistency blocked by the current Runtime/CLI-only scope. A future scope that includes Desktop should remove both `omitempty` tags, regenerate the contract, and migrate every Goal fixture/adapter in one batch.
 - Round 19 will audit `restrictAllowedValues`, the next Schema projection complexity finding, against dotted-path construction, optionality, and TypeScript/Go allowed-value checks before deciding whether a semantic fix or a responsibility split is justified.
+
+## Round 19 — complete
+
+### Audit scope and evidence
+
+- `restrictAllowedValues` is the next Schema generator cognitive finding at 20. It resolves paths, revalidates enum subsets, descends or creates schema nodes, merges with an unconstrained existing node, and diagnoses conflicts.
+- Metadata currently rejects an allowed-values field only when it exactly equals a rule's forbidden path. It accepts a nested restriction below a forbidden parent, such as forbidding `error` while restricting `error.type`.
+- Schema first writes the forbidden parent as `false`; `descend` then replaces that boolean with a new object schema for the nested allowed-values field. Go emits both checks and still rejects the parent. The generated TypeScript validator therefore weakens a rule that the Go validator preserves.
+- A literal union variant likewise may restrict a nested field whose root is claimed only by another variant. Depending on path depth, Schema either panics on the conflict or replaces the implicit forbidden node, while Go retains the branch prohibition.
+- First-party registrations do not use either malformed combination, so the generated artifacts and prior gates remain green; the unsupported states are reachable through the private registration API.
+
+### Root cause
+
+The metadata owner validates allowed-value leaf type and exact duplicate/conflict cases, but does not own hierarchical path compatibility or union-branch ownership. The Schema compiler consequently receives states it cannot project consistently and attempts to rediscover conflicts while mutating its tree.
+
+### Impact and acceptance criteria
+
+- Reject allowed-values paths that overlap a conditional rule's forbidden path at any ancestor/descendant boundary.
+- Require every literal-variant allowed-values path to be covered by one of that variant's required or optional claims; an ancestor claim covers its nested values.
+- Preserve valid first-party nested restrictions such as a required `error` frame narrowed at `error.type`.
+- Split Schema enum-subset checking and node application only after metadata closes the structural matrix; add no generic path framework or compatibility fallback.
+- Pass focused negative/positive tests, generated drift, race, static, full Runtime/CLI, and bounded live verification.
+
+### Plan
+
+- **Completed:** added failing metadata regressions, closed hierarchical and branch-ownership validation, simplified Schema application, and remeasured complexity.
+- **Completed:** regenerated, ran focused/full/live verification, cleaned resources, inspected compatibility, and recorded results.
+
+### Validation
+
+- Before the fix, the conditional parent/child conflict returned no registration error and the cross-variant nested restriction also validated successfully. Both focused regressions failed for the intended reason.
+- After metadata validation moved to the owner, both negative regressions and all first-party shape registrations passed. Existing required-parent/nested-value registrations prove that a branch claiming `error` may still narrow `error.type`.
+- Focused dispatch, contractgen, and architecture tests passed in 5.91s after the semantic fix and in 5.92s at the final gate. `go generate ./...` changed no Go or TypeScript artifact.
+- Production-only complexity scanning no longer reports Schema `restrictAllowedValues` or metadata `validateAllowedValueSets`; none of the new per-set, overlap, value-list, branch-claim, enum-subset, or node-application helpers exceeds the selected threshold.
+- Dispatch and contractgen passed with `-race`; focused `go vet` and `staticcheck` also passed in the combined 19.18s gate.
+- Runtime `GOWORK=off go vet ./...` plus `GOWORK=off go build ./...` passed in 9.59s, and uncached `GOWORK=off go test -count=1 ./...` passed in 60.73s.
+- Current-workspace CLI `go vet ./...` plus `go build ./...` passed in 9.61s, and uncached `go test -count=1 ./...` passed in 49.45s.
+- The current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND19_OK`, status `completed`, one step, 9,183 input tokens, 8 output tokens, 9,088 cache-read tokens, and 722ms total model duration. No credential value was printed or copied.
+- `git diff --check` passed.
+
+### Changes and compatibility
+
+- Allowed-values metadata now rejects any ancestor/descendant overlap with a conditional forbidden path and requires each literal-variant restriction to live at or below a field claimed by that variant.
+- Schema application now receives a closed structural matrix. Its remaining work is split into path resolution, enum-subset validation, and leaf-node narrowing without changing valid output.
+- Breaking behavior is limited to earlier rejection of malformed private registrations that could not be projected consistently. First-party metadata, generated bytes, public APIs, valid wire shapes, persistence, diagnostics, and Runtime/CLI behavior are unchanged.
+
+### Resource cleanup
+
+- The temporary strict complexity configuration was deleted after the final scan.
+- The bounded live Run used a validated `/tmp/flame-live-round19.*` directory containing its isolated Runtime home and current-source CLI binary. The exit trap moved it to the system Trash; no matching temporary path remained.
+- No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- `Goal.provider/model` remains an evidenced cross-artifact inconsistency blocked by the current Runtime/CLI-only scope. A future scope that includes Desktop should remove both `omitempty` tags, regenerate the contract, and migrate every Goal fixture/adapter in one batch.
+- Round 20 will audit TypeScript `checkEmitter.compile`, now the next generated-client cognitive finding, against Schema conjunction, union, conditional, primitive, object, array, and reference nodes before deciding whether its node-family boundaries are safe to extract.

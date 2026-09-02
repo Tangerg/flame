@@ -165,6 +165,22 @@ func TestShapeMetadataRejectsUnsupportedValidatorTargets(t *testing.T) {
 	}
 }
 
+func TestObjectConstraintRejectsAllowedValuesBelowForbiddenParent(t *testing.T) {
+	t.Parallel()
+
+	spec := ObjectConstraintSpec{
+		GoType: reflect.TypeFor[constraintProjectionFixture](),
+		Rules: []ConditionalRule{{
+			Forbidden:     []string{"pointerParent"},
+			AllowedValues: []AllowedValueSet{{Field: "pointerParent.value", Values: []string{"ready"}}},
+		}},
+	}
+	err := spec.validate()
+	if err == nil || !strings.Contains(err.Error(), `allowed-values field "pointerParent.value" conflicts with forbidden field "pointerParent"`) {
+		t.Fatalf("validate error = %v, want hierarchical allowed/forbidden conflict", err)
+	}
+}
+
 func TestShapeMetadataKeepsSupportedValidatorTargets(t *testing.T) {
 	t.Parallel()
 

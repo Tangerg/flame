@@ -520,7 +520,7 @@ func (u *unionValidation) validateLiteralVariant(variant VariantSpec) error {
 	); err != nil {
 		return err
 	}
-	return validateAllowedValueSets(owner, u.spec.GoType, variant.AllowedValues, nil)
+	return validateVariantAllowedValueSets(owner, u.spec.GoType, variant)
 }
 
 func (u *unionValidation) validatePatternVariant() error {
@@ -693,38 +693,89 @@ func validateRuleConditions(owner string, shape reflect.Type, conditions []deliv
 
 func validateAllowedValueSets(owner string, shape reflect.Type, sets []AllowedValueSet, forbidden []string) error {
 	for index, set := range sets {
-		if slices.ContainsFunc(sets[:index], func(previous AllowedValueSet) bool {
-			return previous.Field == set.Field
-		}) {
-			return fmt.Errorf("%s: allowed values for field %q are declared twice", owner, set.Field)
-		}
-		if slices.Contains(forbidden, set.Field) {
-			return fmt.Errorf("%s: field %q cannot be both value-restricted and forbidden", owner, set.Field)
-		}
-		_, leaf, found := contractshape.GoPath(shape, set.Field)
-		if !found {
-			return fmt.Errorf("%s: %s has no JSON field path %q", owner, shape.Name(), set.Field)
-		}
-		fieldType := leaf.Type
-		for fieldType.Kind() == reflect.Pointer {
-			fieldType = fieldType.Elem()
-		}
-		if fieldType.Kind() != reflect.String {
-			return fmt.Errorf("%s: allowed-values field %q is not a string", owner, set.Field)
-		}
-		if len(set.Values) == 0 {
-			return fmt.Errorf("%s: allowed-values field %q has no values", owner, set.Field)
-		}
-		for valueIndex, value := range set.Values {
-			switch {
-			case value == "" || value != strings.TrimSpace(value):
-				return fmt.Errorf("%s: allowed value %d for field %q is not canonical", owner, valueIndex, set.Field)
-			case slices.Contains(set.Values[:valueIndex], value):
-				return fmt.Errorf("%s: allowed value %q for field %q is declared twice", owner, value, set.Field)
-			}
+		if err := validateAllowedValueSet(owner, shape, set, sets[:index], forbidden); err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+func validateAllowedValueSet(
+	owner string,
+	shape reflect.Type,
+	set AllowedValueSet,
+	previous []AllowedValueSet,
+	forbidden []string,
+) error {
+	if slices.ContainsFunc(previous, func(previous AllowedValueSet) bool {
+		return previous.Field == set.Field
+	}) {
+		return fmt.Errorf("%s: allowed values for field %q are declared twice", owner, set.Field)
+	}
+	if forbiddenField, found := overlappingForbiddenField(set.Field, forbidden); found {
+		return fmt.Errorf(
+			"%s: allowed-values field %q conflicts with forbidden field %q",
+			owner, set.Field, forbiddenField,
+		)
+	}
+	_, leaf, found := contractshape.GoPath(shape, set.Field)
+	if !found {
+		return fmt.Errorf("%s: %s has no JSON field path %q", owner, shape.Name(), set.Field)
+	}
+	fieldType := leaf.Type
+	for fieldType.Kind() == reflect.Pointer {
+		fieldType = fieldType.Elem()
+	}
+	if fieldType.Kind() != reflect.String {
+		return fmt.Errorf("%s: allowed-values field %q is not a string", owner, set.Field)
+	}
+	return validateAllowedValues(owner, set)
+}
+
+func overlappingForbiddenField(field string, forbidden []string) (string, bool) {
+	for _, forbiddenField := range forbidden {
+		if fieldPathAtOrBelow(field, forbiddenField) || fieldPathAtOrBelow(forbiddenField, field) {
+			return forbiddenField, true
+		}
+	}
+	return "", false
+}
+
+func validateAllowedValues(owner string, set AllowedValueSet) error {
+	if len(set.Values) == 0 {
+		return fmt.Errorf("%s: allowed-values field %q has no values", owner, set.Field)
+	}
+	for valueIndex, value := range set.Values {
+		switch {
+		case value == "" || value != strings.TrimSpace(value):
+			return fmt.Errorf("%s: allowed value %d for field %q is not canonical", owner, valueIndex, set.Field)
+		case slices.Contains(set.Values[:valueIndex], value):
+			return fmt.Errorf("%s: allowed value %q for field %q is declared twice", owner, value, set.Field)
+		}
+	}
+	return nil
+}
+
+func validateVariantAllowedValueSets(owner string, shape reflect.Type, variant VariantSpec) error {
+	if err := validateAllowedValueSets(owner, shape, variant.AllowedValues, nil); err != nil {
+		return err
+	}
+	claimed := slices.Concat(variant.Required, variant.Optional)
+	for _, set := range variant.AllowedValues {
+		if !slices.ContainsFunc(claimed, func(path string) bool {
+			return fieldPathAtOrBelow(set.Field, path)
+		}) {
+			return fmt.Errorf(
+				"%s: allowed-values field %q is not claimed by the variant",
+				owner, set.Field,
+			)
+		}
+	}
+	return nil
+}
+
+func fieldPathAtOrBelow(path, ancestor string) bool {
+	return path == ancestor || strings.HasPrefix(path, ancestor+".")
 }
 
 func (f FieldConstraintSpec) validate() error {
