@@ -1,5 +1,10 @@
 import { mutationSettlementIsUnknown, type MutationPromise } from "@/rpc";
 
+// `rpc/mutationSettlement` is the same mechanism for commands that return a value. The
+// three differences here are deliberate: the caller's signal joins the lifetime, a caller
+// cancel counts as settlement-unknown because the run may already exist, and `accept`
+// releases only the deadline so dispose still revokes the accepted stream. Fix bugs in both.
+
 export const RUN_OPENING_ATTEMPT_TIMEOUT_MS = 30_000;
 
 export class RunOpeningSettlementClosedError extends Error {

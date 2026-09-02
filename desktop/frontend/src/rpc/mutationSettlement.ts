@@ -1,5 +1,10 @@
 import { mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
 
+// `agent/adapters/runOpeningSettlement` is the same mechanism for openings that return a
+// stream. It differs in three places on purpose — it composes a caller signal with the
+// lifetime, it counts a caller cancel as settlement-unknown, and its `accept` keeps the
+// attempt linked so a later dispose still revokes the stream. Fix a bug here in both.
+
 export const UNARY_MUTATION_ATTEMPT_TIMEOUT_MS = 30_000;
 
 export class UnaryMutationSettlementClosedError extends Error {

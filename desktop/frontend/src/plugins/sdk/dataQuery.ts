@@ -50,24 +50,13 @@ class DataProviderGeneration {
     this.#assertCurrent();
     const provider = this.#providers.get(key);
     if (!provider) throw new Error(`No data provider registered for key "${key}"`);
-    const attempt = new AbortController();
-    const abortFromQuery = () => attempt.abort(querySignal.reason);
-    const abortFromLifetime = () => attempt.abort(this.#lifetime.signal.reason);
-    if (querySignal.aborted) abortFromQuery();
-    else querySignal.addEventListener("abort", abortFromQuery, { once: true });
-    if (this.#lifetime.signal.aborted) abortFromLifetime();
-    else this.#lifetime.signal.addEventListener("abort", abortFromLifetime, { once: true });
-    try {
-      const value = await (provider.fetcher as (params?: P, signal?: AbortSignal) => Promise<T>)(
-        params,
-        attempt.signal,
-      );
-      this.#assertCurrent();
-      return value;
-    } finally {
-      querySignal.removeEventListener("abort", abortFromQuery);
-      this.#lifetime.signal.removeEventListener("abort", abortFromLifetime);
-    }
+    const attempt = AbortSignal.any([querySignal, this.#lifetime.signal]);
+    const value = await (provider.fetcher as (params?: P, signal?: AbortSignal) => Promise<T>)(
+      params,
+      attempt,
+    );
+    this.#assertCurrent();
+    return value;
   }
 
   retire(): void {

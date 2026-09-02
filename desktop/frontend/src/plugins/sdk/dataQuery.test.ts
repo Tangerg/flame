@@ -253,6 +253,48 @@ describe("createParameterizedDataQuery", () => {
     }
   });
 
+  // The generation retires whenever ANY provider changes, but TanStack only cancels the
+  // queries whose key was affected. Without the lifetime signal an untouched key's fetch keeps
+  // its request open for a result `#assertCurrent` will throw away.
+  it("aborts an untouched key's in-flight fetch when its generation retires", async () => {
+    const stable = deferred<string>();
+    let stableSignal: AbortSignal | undefined;
+    const host = await startKernel([
+      definePlugin({
+        name: "test.untouched-key-provider",
+        setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, {
+            key: "resource",
+            fetcher: (_params?: unknown, signal?: AbortSignal) => {
+              stableSignal = signal;
+              return stable.promise;
+            },
+          });
+        },
+      }),
+    ]);
+    ownedHosts.push(host);
+    const useResource = createParameterizedDataQuery<{ id: string }, string>("resource");
+    renderHook(() => useResource({ id: "same" }), { wrapper: productQueryWrapper });
+    await waitFor(() => expect(stableSignal).toBeDefined());
+    expect(stableSignal!.aborted).toBe(false);
+
+    await addPluginsForTest(host, [
+      definePlugin({
+        name: "test.other-key-provider",
+        setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, {
+            key: "other",
+            fetcher: vi.fn().mockResolvedValue("other value"),
+          });
+        },
+      }),
+    ]);
+
+    expect(stableSignal!.aborted).toBe(true);
+    stable.resolve("stale value");
+  });
+
   it("replaces one provider overridden inside the active Host", async () => {
     const retired = deferred<string>();
     let retiredSignal: AbortSignal | undefined;
