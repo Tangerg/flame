@@ -11,8 +11,8 @@ import (
 )
 
 func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
+	if cause := context.Cause(ctx); cause != nil {
+		return nil, cause
 	}
 	file, _, err := fileinput.Open(path, workspaceapp.MaxAuthoredPromptDocumentBytes)
 	if err != nil {
@@ -30,13 +30,16 @@ func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
 		}
 		return nil, fmt.Errorf("open %q: %w", path, err)
 	}
-	defer func() { _ = file.Close() }()
-	document, err := io.ReadAll(io.LimitReader(
+	document, readErr := io.ReadAll(io.LimitReader(
 		promptContextReader{ctx: ctx, reader: file},
 		workspaceapp.MaxAuthoredPromptDocumentBytes+1,
 	))
-	if err != nil {
-		return nil, fmt.Errorf("read %q: %w", path, err)
+	closeErr := file.Close()
+	if readErr != nil || closeErr != nil {
+		return nil, fmt.Errorf("read %q: %w", path, errors.Join(readErr, closeErr))
+	}
+	if cause := context.Cause(ctx); cause != nil {
+		return nil, cause
 	}
 	if err := workspaceapp.ValidateAuthoredPromptDocument(document); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
@@ -50,8 +53,12 @@ type promptContextReader struct {
 }
 
 func (p promptContextReader) Read(buffer []byte) (int, error) {
-	if err := p.ctx.Err(); err != nil {
-		return 0, err
+	if cause := context.Cause(p.ctx); cause != nil {
+		return 0, cause
 	}
-	return p.reader.Read(buffer)
+	read, err := p.reader.Read(buffer)
+	if cause := context.Cause(p.ctx); cause != nil {
+		return read, cause
+	}
+	return read, err
 }
