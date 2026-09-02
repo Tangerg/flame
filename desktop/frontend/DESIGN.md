@@ -713,18 +713,21 @@ and the 2026-07 seam-ring pass that gave every boundary a hairline.)
 
 ### Radius scale
 
-Four values do all the work. The visual style owns them (`style-shape-*`); the
-user's radius preference multiplies through.
+The visual style owns the ladder (`style-shape-*`); the user's radius preference
+multiplies through.
 
 | Token | Value | Use |
 |---|---|---|
 | `none` | 0px | Full-bleed bars |
+| `2xs` | 2px | Small marks inside a control — key caps, checkboxes, swatches |
 | `xs` | 4px | Anything that is really a tag — badges, inline code |
 | `sm` | 6px | Controls: buttons, chips, index rows, dock tabs |
 | `md` | 8px | Cards, text fields, segmented tracks |
-| `lg` | 10px | Surfaces that float or receive typing: composer, popovers |
-| `xl` | 12px | Lightbox frame |
-| `pill` | 9999px | Status dots, progress tracks, avatars ONLY |
+| `lg` | 10px | Blocks inside the conversation: code, diagrams, images, banners |
+| `xl` | 12px | Every floating panel and modal, through `--floating-panel-radius` |
+| `bubble` | 16px | The user's own message, and the cards that answer it |
+| `composer` | 20px | The composer and the surfaces that echo it |
+| `pill` | 9999px | Circles and lozenges: dots, tracks and thumbs, the status pill, circular icon wells, the count badge, a selected choice row |
 
 ### Corner curve
 
@@ -749,7 +752,8 @@ ships in draws the arc at the base radius today.
 
 - **No pill-radius CTAs.** The action button is a rounded square on the control
   ladder — a lone disc beside a row of rectangles reads as a different kit.
-- **No mixed scales on one screen.** One corner language, four steps, no exceptions.
+- **No mixed scales on one screen.** One corner language, one ladder, no step
+  invented at a call site.
 
 ## 7. Motion
 
