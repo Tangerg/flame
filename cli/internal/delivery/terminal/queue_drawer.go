@@ -4,7 +4,6 @@ import (
 	"errors"
 	"image"
 	"slices"
-	"strings"
 
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
@@ -395,7 +394,7 @@ func (q *queueDrawer) saveEdit(sendNow bool) {
 	}
 	entry := *q.editingEntry
 	message := q.editingMessage.Clone()
-	message.Text = strings.TrimSpace(q.editor.Editor().Text())
+	message.Text = q.editor.Editor().Text()
 	if err := q.actions.SaveEdit(entry, message, sendNow); err != nil {
 		q.notice = err.Error()
 		return

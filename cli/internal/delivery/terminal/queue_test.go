@@ -305,15 +305,15 @@ func TestQueueDrawerEditsMultilineTextAndKeepsAttachments(t *testing.T) {
 		t.Fatal("queue editor did not hold its entry")
 	}
 	drawer.Handle(input.Key{Code: input.Character, Rune: 'u', Mods: input.Ctrl})
-	drawer.Handle(input.Paste{Text: "edited"})
+	drawer.Handle(input.Paste{Text: "  edited"})
 	drawer.Handle(input.Key{Code: input.Enter, Mods: input.Shift})
-	drawer.Handle(input.Paste{Text: "second line"})
+	drawer.Handle(input.Paste{Text: "second line  "})
 	drawer.Handle(input.Key{Code: input.Enter})
 	if drawer.Editing() {
 		t.Fatal("Enter did not save queue editing")
 	}
 	entry, ok := queue.BeginDispatch("session")
-	if !ok || entry.Message.Text != "edited\nsecond line" || len(entry.Message.Attachments) != 1 || entry.Message.Attachments[0].ID != attachment.ID {
+	if !ok || entry.Message.Text != "  edited\nsecond line  " || len(entry.Message.Attachments) != 1 || entry.Message.Attachments[0].ID != attachment.ID {
 		t.Fatalf("saved queued message = %+v, %v", entry.Message, ok)
 	}
 	queue.ReleaseDispatch("session")
@@ -327,7 +327,7 @@ func TestQueueDrawerEditsMultilineTextAndKeepsAttachments(t *testing.T) {
 		t.Fatal("browse-mode Esc should be left for the dialog controller")
 	}
 	entries := queue.Snapshot("session").Entries
-	if len(entries) != 1 || entries[0].Message.Text != "edited\nsecond line" {
+	if len(entries) != 1 || entries[0].Message.Text != "  edited\nsecond line  " {
 		t.Fatalf("discard changed queued entries to %+v", entries)
 	}
 }
