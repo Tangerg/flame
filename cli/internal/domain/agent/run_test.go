@@ -209,6 +209,18 @@ func TestOutcomeValidationMatchesRuntimeUnion(t *testing.T) {
 	}
 }
 
+func TestOutcomeExplanationIncludesRecoveryMetadata(t *testing.T) {
+	outcome := Outcome{Status: OutcomeFailed, Problem: &failure.Problem{
+		Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
+	}}
+	if got := outcome.Description(); got != "quota exhausted" {
+		t.Fatalf("Description = %q, want concise detail", got)
+	}
+	if got := outcome.Explanation(); !strings.Contains(got, "quota exhausted") || !strings.Contains(got, "retry after 12s") {
+		t.Fatalf("Explanation = %q, want recovery metadata", got)
+	}
+}
+
 func TestUsagePreservesOptionalCostSemantics(t *testing.T) {
 	knownZero, modelCost := 0.0, 0.25
 	usage := Usage{

@@ -408,7 +408,7 @@ func consume(stream agent.EventStream, conversation *agent.Conversation, rendere
 type outcomeError struct{ outcome agent.Outcome }
 
 func (o *outcomeError) Error() string {
-	if detail := o.outcome.Description(); detail != "" {
+	if detail := o.outcome.Explanation(); detail != "" {
 		return "run " + string(o.outcome.Status) + ": " + detail
 	}
 	return "run " + string(o.outcome.Status)

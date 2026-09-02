@@ -406,7 +406,7 @@ func TestRunReturnsAnErrorForNonCompletedOutcomes(t *testing.T) {
 		outcome agent.Outcome
 		want    string
 	}{
-		{name: "failed", outcome: agent.Outcome{Status: agent.OutcomeFailed, Problem: &failure.Problem{Type: "provider_rejected", Detail: "provider refused"}}, want: "run failed: provider refused"},
+		{name: "failed", outcome: agent.Outcome{Status: agent.OutcomeFailed, Problem: &failure.Problem{Type: "rate_limited", Detail: "provider refused", RetryAfterSeconds: 9}}, want: "retry after 9s"},
 		{name: "canceled", outcome: agent.Outcome{Status: agent.OutcomeCanceled}, want: "run canceled"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

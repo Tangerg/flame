@@ -386,3 +386,12 @@ func (o Outcome) Description() string {
 	}
 	return strings.TrimSpace(o.Detail)
 }
+
+// Explanation returns the complete single-line human projection, including
+// recovery metadata carried by a structured failure.
+func (o Outcome) Explanation() string {
+	if o.Problem != nil {
+		return o.Problem.String()
+	}
+	return strings.TrimSpace(o.Detail)
+}

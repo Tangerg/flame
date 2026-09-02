@@ -32,6 +32,30 @@ func TestTextRendersStreamedAnswerToolAndUsage(t *testing.T) {
 	}
 }
 
+func TestTextRendersRunRecoveryMetadata(t *testing.T) {
+	var output bytes.Buffer
+	renderer := NewText(&output)
+	if err := renderer.Begin(testRun(), agent.RunOptions{Limits: agent.UnlimitedRunLimits()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := renderer.Render(testEvent("failed", agent.RunFinished{Outcome: agent.Outcome{
+		Status: agent.OutcomeFailed,
+		Problem: &failure.Problem{
+			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
+		},
+	}})); err != nil {
+		t.Fatal(err)
+	}
+	if err := renderer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"quota exhausted", "retry after 12s"} {
+		if !strings.Contains(output.String(), want) {
+			t.Fatalf("text output omitted %q: %s", want, output.String())
+		}
+	}
+}
+
 func TestRunOptionsJSONUsesLimitPresenceInsteadOfZeroFilling(t *testing.T) {
 	temperature, topP, maxTokens := 0.7, 0.9, int64(2_048)
 	unlimited, err := json.Marshal(encodeRunOptions(agent.RunOptions{

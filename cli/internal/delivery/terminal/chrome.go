@@ -463,9 +463,9 @@ func (s *statusView) settled(run agent.Run) {
 	case agent.OutcomeMaxBudget:
 		s.doing = "max budget"
 	case agent.OutcomeFailed:
-		s.doing = "failed: " + run.Outcome.Description()
+		s.doing = "failed: " + run.Outcome.Explanation()
 	case agent.OutcomeLost:
-		s.doing = "lost: " + run.Outcome.Description()
+		s.doing = "lost: " + run.Outcome.Explanation()
 	default:
 		s.doing = "ready"
 	}

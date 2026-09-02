@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
@@ -108,6 +109,21 @@ func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 	status.beginRun("starting")
 	if status.contextTokens != 0 || status.usage.InputTokens != 0 {
 		t.Fatalf("new Run retained the prior footprint: context %d, usage %+v", status.contextTokens, status.usage)
+	}
+}
+
+func TestSettledStatusIncludesRunRecoveryMetadata(t *testing.T) {
+	status := newStatusView(kit.Dark(), kit.Unicode())
+	status.settled(agent.Run{Outcome: agent.Outcome{
+		Status: agent.OutcomeFailed,
+		Problem: &failure.Problem{
+			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
+		},
+	}})
+	for _, want := range []string{"quota exhausted", "retry after 12s"} {
+		if !strings.Contains(status.doing, want) {
+			t.Fatalf("settled status omitted %q: %q", want, status.doing)
+		}
 	}
 }
 
