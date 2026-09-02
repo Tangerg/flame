@@ -409,14 +409,19 @@
   --style-shape-composer: 20px;
   --style-shape-bubble: 16px;
   --radius-scale: 1;
+  /* Raised only where the corner CURVE changes, at the bottom of this file. Two
+     scales because they answer different questions: `radius-scale` is how round
+     the user wants corners, `corner-scale` is what it costs to keep that answer
+     true after the curve stops being a circular arc. */
+  --corner-scale: 1;
   --shape-2xs: calc(var(--style-shape-2xs) * var(--radius-scale));
   --shape-xs: calc(var(--style-shape-xs) * var(--radius-scale));
   --shape-sm: calc(var(--style-shape-sm) * var(--radius-scale));
-  --shape-md: calc(var(--style-shape-md) * var(--radius-scale));
-  --shape-lg: calc(var(--style-shape-lg) * var(--radius-scale));
-  --shape-xl: calc(var(--style-shape-xl) * var(--radius-scale));
-  --shape-composer: calc(var(--style-shape-composer) * var(--radius-scale));
-  --shape-bubble: calc(var(--style-shape-bubble) * var(--radius-scale));
+  --shape-md: calc(var(--style-shape-md) * var(--radius-scale) * var(--corner-scale));
+  --shape-lg: calc(var(--style-shape-lg) * var(--radius-scale) * var(--corner-scale));
+  --shape-xl: calc(var(--style-shape-xl) * var(--radius-scale) * var(--corner-scale));
+  --shape-composer: calc(var(--style-shape-composer) * var(--radius-scale) * var(--corner-scale));
+  --shape-bubble: calc(var(--style-shape-bubble) * var(--radius-scale) * var(--corner-scale));
   --shape-pill: 9999px;
 
   --button-radius: var(--shape-sm);
@@ -1262,15 +1267,44 @@ html.theme-dark {
   --composer-ring: var(--color-accent);
 }
 
-@supports (corner-shape: round) {
-  [data-slot="composer-root"] {
-    corner-shape: squircle;
-  }
-}
-
 @import "./markdown.css";
 @import "./overlays.css";
 @import "./tool.css";
+
+/* The corner language, in one place, after the imports so the pill exception below reaches
+   the sheets that declare pills.
+
+   In the CSS parameterisation `superellipse(1)` IS `round` and `superellipse(2)` is
+   `squircle`, so 1.5 sits halfway: a curve that holds more material near the corner than a
+   circular arc does and therefore reads TIGHTER at the same radius. `--corner-scale` is
+   what buys that back — the steps from `md` up grow 25% so the corner keeps the apparent
+   roundness the ladder was drawn for. Below `md` the two curves differ by a third of a
+   pixel, so those steps take the shape and skip the scale rather than grow for nothing.
+
+   A circle is not a corner. An avatar, a status dot or the type caret drawn as a
+   superellipse is a rounded square, so everything on the pill step opts back out. The rule
+   is `:where()` so it carries no specificity at all: a call site that has decided on a
+   shape keeps it without having to out-specify a universal selector.
+
+   The curve and the scale are one decision and share one guard, so each engine gets an
+   internally consistent ladder: Chromium draws the superellipse at the compensated radius,
+   and WebKit — which has no `corner-shape` as of Safari 26.5, so this is inert in the
+   WKWebView the desktop app ships in — keeps the arc at the base radius. */
+@supports (corner-shape: superellipse(1.5)) {
+  :root {
+    --corner-scale: 1.25;
+  }
+
+  :where(*, *::before, *::after) {
+    corner-shape: superellipse(1.5);
+  }
+
+  .rounded-full,
+  .rounded-pill,
+  .type-caret {
+    corner-shape: round;
+  }
+}
 
 /* Last in the file on purpose: a rest state may be declared by any of the sheets imported
    above, and this has to be the one that wins.

@@ -372,6 +372,7 @@ for (const theme of ["light", "dark"] as const) {
         maxWidth: actual.maxWidth,
         padding: [actual.paddingTop, actual.paddingRight, actual.paddingBottom, actual.paddingLeft],
         radius: actual.borderRadius,
+        superellipse: CSS.supports("corner-shape", "superellipse(1.5)"),
       };
     });
 
@@ -380,7 +381,11 @@ for (const theme of ["light", "dark"] as const) {
       expectedBackground: material.expectedBackground,
       maxWidth: "77%",
       padding: ["8px", "12px", "8px", "12px"],
-      radius: "16px",
+      // The bubble sits on the `bubble` step — 16px, same base Codex gives it. Where the
+      // superellipse corner is drawn, that step carries the 1.25 compensation from
+      // globals.css, which is also what Codex renders on a browser that supports it.
+      radius: material.superellipse ? "20px" : "16px",
+      superellipse: material.superellipse,
     });
   });
 }
