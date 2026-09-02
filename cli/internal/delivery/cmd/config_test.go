@@ -249,3 +249,19 @@ func TestCompletionGenerationDoesNotDependOnConfiguration(t *testing.T) {
 		t.Fatalf("completion output is incomplete:\n%s", out)
 	}
 }
+
+func TestDynamicCompletionDoesNotDependOnConfiguration(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "invalid.yaml")
+	if err := os.WriteFile(path, []byte("unknown: value\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, _, err := executeCommand(
+		t, instantRuntime(), "", "--config", path, "__complete", "sessions", "show", "",
+	)
+	if err != nil {
+		t.Fatalf("dynamic completion read configuration: %v", err)
+	}
+	if !strings.Contains(out, "ses_demo_") {
+		t.Fatalf("dynamic completion output has no session IDs:\n%s", out)
+	}
+}

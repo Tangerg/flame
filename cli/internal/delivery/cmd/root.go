@@ -30,8 +30,9 @@ func Version() string { return version }
 const configIndependentAnnotation = "flame/config-independent"
 
 // Dependencies are the outer implementations available to the command tree.
-// Runtime construction stays lazy so help and completion do not open sockets,
-// databases, or other process-owned resources.
+// Runtime construction stays lazy so help and completion-script generation do
+// not open sockets, databases, or other process-owned resources. Dynamic value
+// completion may resolve the Runtime when it needs authoritative catalog data.
 type Dependencies struct {
 	OpenRuntime    func(context.Context) (Runtime, *runtimebinding.Profile, error)
 	StartTerminal  func(context.Context, TerminalRequest) error
@@ -126,7 +127,7 @@ func newRootCommand(
 		SilenceErrors: true,
 		Args:          cobra.ArbitraryArgs,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-			if cmd.Annotations[configIndependentAnnotation] == "true" {
+			if configIndependent(cmd) {
 				return nil
 			}
 			return loadConfig(v, cmd)
@@ -139,6 +140,11 @@ func newRootCommand(
 			return runInteractive(cmd, args, startTerminal, config, stateDirectory)
 		},
 	}
+}
+
+func configIndependent(cmd *cobra.Command) bool {
+	return cmd.Annotations[configIndependentAnnotation] == "true" ||
+		cmd.Name() == cobra.ShellCompRequestCmd
 }
 
 func addRootCommands(root *cobra.Command, provider runtimeProvider, v *viper.Viper, stateDirectory string) {
