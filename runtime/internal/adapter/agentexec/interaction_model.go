@@ -27,6 +27,7 @@ func (o *observedInteractionModel) Call(
 	if err != nil {
 		return nil, err
 	}
+	defer o.session.accounting.discardPreparedModelContext(invocation)
 	if beginExternalCallErr := attempt.beginExternalCall(); beginExternalCallErr != nil {
 		return nil, beginExternalCallErr
 	}
@@ -73,6 +74,7 @@ func (o *observedInteractionModel) Stream(
 			yield(nil, err)
 			return
 		}
+		defer o.session.accounting.discardPreparedModelContext(invocation)
 		if err := attempt.beginExternalCall(); err != nil {
 			yield(nil, err)
 			return
@@ -148,12 +150,23 @@ func (o *observedInteractionModel) fail(
 
 func (o *observedInteractionModel) begin(
 	ctx context.Context,
-) (interaction.ModelInvocation, *dispatchAttempt, string, error) {
+) (
+	invocation interaction.ModelInvocation,
+	attempt *dispatchAttempt,
+	callID string,
+	err error,
+) {
 	invocation, ok := interaction.ModelInvocationFromContext(ctx)
 	if !ok {
 		return interaction.ModelInvocation{}, nil, "", errors.New("agentexec: model call has no Interaction attribution")
 	}
-	attempt, err := dispatchAttemptFrom(ctx, invocation.EffectID())
+	preparedInvocation := invocation
+	defer func() {
+		if err != nil {
+			o.session.accounting.discardPreparedModelContext(preparedInvocation)
+		}
+	}()
+	attempt, err = dispatchAttemptFrom(ctx, invocation.EffectID())
 	if err != nil {
 		return interaction.ModelInvocation{}, nil, "", err
 	}
@@ -161,7 +174,7 @@ func (o *observedInteractionModel) begin(
 	if err != nil {
 		return interaction.ModelInvocation{}, nil, "", err
 	}
-	callID := callIdentity.String()
+	callID = callIdentity.String()
 	usage, err := o.session.accounting.snapshot()
 	if err != nil {
 		return interaction.ModelInvocation{}, nil, "", interaction.HostFailure(err)

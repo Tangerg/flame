@@ -69,6 +69,10 @@ func TestAccountModelCallRejectsOutOfSequenceWithoutMutatingUsage(t *testing.T) 
 	if !prepared {
 		t.Fatal("rejected model call consumed its prepared context")
 	}
+	ledger.discardPreparedModelContext(invocation)
+	if err := ledger.prepareModelContext(invocation, 100); err != nil {
+		t.Fatalf("prepare after discarded model context: %v", err)
+	}
 }
 
 func TestAdvanceProcessUsageRejectsOverflowWithoutMutatingInput(t *testing.T) {

@@ -82,6 +82,23 @@ func (i *interactionAccounting) prepareModelContext(
 	return nil
 }
 
+// discardPreparedModelContext releases the one-call calibration reservation
+// when that exact invocation exits without successful accounting. Identity is
+// matched under the lock so a stale exit cannot discard a later call's slot.
+func (i *interactionAccounting) discardPreparedModelContext(invocation interaction.ModelInvocation) {
+	if i == nil || !invocation.Valid() {
+		return
+	}
+	processID := invocation.Relation().ProcessID()
+	i.mu.Lock()
+	prepared, found := i.preparedContextByProcess[processID]
+	if found && prepared.effectID == invocation.EffectID() &&
+		prepared.sequence == invocation.ModelCallSequence() {
+		delete(i.preparedContextByProcess, processID)
+	}
+	i.mu.Unlock()
+}
+
 func (i *interactionAccounting) providerName() string { return i.selection.Provider() }
 
 func (i *interactionAccounting) modelName() string { return i.selection.Model() }
