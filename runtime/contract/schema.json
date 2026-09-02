@@ -1885,7 +1885,7 @@
         },
         "instructions": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         },
         "model": {
           "type": "string",
@@ -8751,7 +8751,8 @@
           ]
         },
         "instructions": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         },
         "lastRunAt": {
           "type": "string",
@@ -10177,7 +10178,7 @@
         },
         "instructions": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         },
         "model": {
           "type": "string",

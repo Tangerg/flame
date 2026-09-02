@@ -10,6 +10,7 @@ package schedule
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -61,8 +62,8 @@ func (d Draft) Validate() error {
 	if err := d.ModelSelection.Validate(); err != nil {
 		return fmt.Errorf("schedule: model selection: %w", err)
 	}
-	if d.Instructions == "" {
-		return ErrInstructionsRequired
+	if err := validateInstructions(d.Instructions); err != nil {
+		return err
 	}
 	if d.Cron == "" {
 		return ErrCronRequired
@@ -223,14 +224,21 @@ func (s Schedule) validateProduct() error {
 	if err := s.modelSelection.Validate(); err != nil {
 		return fmt.Errorf("schedule: model selection: %w", err)
 	}
-	if s.instructions == "" {
-		return ErrInstructionsRequired
+	if err := validateInstructions(s.instructions); err != nil {
+		return err
 	}
 	if s.cron == "" {
 		return ErrCronRequired
 	}
 	if err := ValidateCron(s.cron); err != nil {
 		return err
+	}
+	return nil
+}
+
+func validateInstructions(instructions string) error {
+	if strings.TrimSpace(instructions) == "" {
+		return ErrInstructionsRequired
 	}
 	return nil
 }

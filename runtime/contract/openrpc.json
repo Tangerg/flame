@@ -4077,7 +4077,7 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "pattern": "\\S"
           }
         },
         {
@@ -4207,7 +4207,7 @@
           "name": "instructions",
           "schema": {
             "type": "string",
-            "minLength": 1
+            "pattern": "\\S"
           }
         },
         {

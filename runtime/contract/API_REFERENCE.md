@@ -913,13 +913,14 @@ TypeScript validator from this single registry projection.
 | `Schedule` | `id` | `prefix("sch_")` |
 | `Schedule` | `revision` | `positive` |
 | `Schedule` | `revision` | `maximum(9007199254740991)` |
+| `Schedule` | `instructions` | `pattern("\\S")` |
 | `Schedule` | `provider` | `identity` |
 | `Schedule` | `provider` | `maxLength(64)` |
 | `Schedule` | `model` | `identity` |
 | `Schedule` | `model` | `maxLength(256)` |
 | `Schedule` | `reasoningEffort` | `identity` |
 | `Schedule` | `reasoningEffort` | `maxLength(32)` |
-| `CreateScheduleRequest` | `instructions` | `nonEmpty` |
+| `CreateScheduleRequest` | `instructions` | `pattern("\\S")` |
 | `CreateScheduleRequest` | `cron` | `nonEmpty` |
 | `CreateScheduleRequest` | `provider` | `identity` |
 | `CreateScheduleRequest` | `provider` | `maxLength(64)` |
@@ -933,7 +934,7 @@ TypeScript validator from this single registry projection.
 | `UpdateScheduleRequest` | `id` | `prefix("sch_")` |
 | `UpdateScheduleRequest` | `expectedRevision` | `positive` |
 | `UpdateScheduleRequest` | `expectedRevision` | `maximum(9007199254740991)` |
-| `UpdateScheduleRequest` | `instructions` | `nonEmpty` |
+| `UpdateScheduleRequest` | `instructions` | `pattern("\\S")` |
 | `UpdateScheduleRequest` | `cron` | `nonEmpty` |
 | `UpdateScheduleRequest` | `provider` | `identity` |
 | `UpdateScheduleRequest` | `provider` | `maxLength(64)` |

@@ -790,14 +790,20 @@ func registerAgentMemoryValues(s *Shapes) {
 }
 
 func registerScheduleValues(s *Shapes) {
+	const nonBlankInstructions = `\S`
+	scheduleConstraints := append(requiredScheduleIdentity("id"), exactPositiveInteger("revision")...)
+	scheduleConstraints = append(scheduleConstraints,
+		FieldConstraint{Field: "instructions", Kind: ConstraintPattern, Value: nonBlankInstructions})
+	scheduleConstraints = append(scheduleConstraints,
+		modelSelectionIdentities("provider", "model", "reasoningEffort")...)
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.Schedule](),
-		Constraints: append(append(requiredScheduleIdentity("id"), exactPositiveInteger("revision")...), modelSelectionIdentities("provider", "model", "reasoningEffort")...),
+		Constraints: scheduleConstraints,
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.CreateScheduleRequest](),
 		Constraints: append([]FieldConstraint{
-			{Field: "instructions", Kind: ConstraintNonEmpty},
+			{Field: "instructions", Kind: ConstraintPattern, Value: nonBlankInstructions},
 			{Field: "cron", Kind: ConstraintNonEmpty},
 		}, modelSelectionIdentities("provider", "model", "reasoningEffort")...),
 	})
@@ -806,7 +812,7 @@ func registerScheduleValues(s *Shapes) {
 		Constraints: append(append(requiredScheduleIdentity("id"), []FieldConstraint{
 			{Field: "expectedRevision", Kind: ConstraintPositive},
 			{Field: "expectedRevision", Kind: ConstraintMaximum, Limit: protocol.MaximumExactJSONInteger},
-			{Field: "instructions", Kind: ConstraintNonEmpty},
+			{Field: "instructions", Kind: ConstraintPattern, Value: nonBlankInstructions},
 			{Field: "cron", Kind: ConstraintNonEmpty},
 		}...), modelSelectionIdentities("provider", "model", "reasoningEffort")...),
 	})

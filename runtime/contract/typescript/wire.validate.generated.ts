@@ -920,7 +920,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   CreateScheduleRequest: allOf([
     object({
       cron: allOf([text(), minLength(1)]),
-      instructions: allOf([text(), minLength(1)]),
+      instructions: allOf([text(), pattern("\\S")]),
       model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
       reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3217,7 +3217,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     cron: text(),
     enabled: flag(),
     id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^sch_")]),
-    instructions: text(),
+    instructions: allOf([text(), pattern("\\S")]),
     lastRunAt: text(),
     model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     nextRunAt: text(),
@@ -3638,7 +3638,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       enabled: flag(),
       expectedRevision: allOf([integer(), minimum(1), maximum(9007199254740991)]),
       id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$"), pattern("^sch_")]),
-      instructions: allOf([text(), minLength(1)]),
+      instructions: allOf([text(), pattern("\\S")]),
       model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
       reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),

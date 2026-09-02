@@ -52,8 +52,8 @@ func (e Execution) Validate() error {
 	if err := e.modelSelection.Validate(); err != nil {
 		return fmt.Errorf("schedule: execution model selection: %w", err)
 	}
-	if e.instructions == "" {
-		return ErrInstructionsRequired
+	if err := validateInstructions(e.instructions); err != nil {
+		return err
 	}
 	if e.cron == "" {
 		return ErrCronRequired

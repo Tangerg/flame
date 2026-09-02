@@ -521,6 +521,28 @@ func TestUpdateScheduleWorkspaceModesAreUnambiguous(t *testing.T) {
 	}).ValidateWire(), "UpdateScheduleRequest", "workspaceMode")
 }
 
+func TestScheduleInstructionsMustContainNonWhitespace(t *testing.T) {
+	t.Parallel()
+
+	blank := " \n\t"
+	assertConstraintField(t, ValidateWireTree(CreateScheduleRequest{
+		Instructions: blank,
+		Cron:         "@daily",
+	}), "CreateScheduleRequest", "instructions")
+	assertConstraintField(t, ValidateWireTree(UpdateScheduleRequest{
+		ID:               "sch_1",
+		ExpectedRevision: 1,
+		Instructions:     &blank,
+	}), "UpdateScheduleRequest", "instructions")
+	assertConstraintField(t, ValidateWireTree(Schedule{
+		ID:           "sch_1",
+		Instructions: blank,
+		Cron:         "@daily",
+		CreatedAt:    time.Unix(1, 0).UTC(),
+		Revision:     1,
+	}), "Schedule", "instructions")
+}
+
 func TestMCPWireUnionsAcceptEveryLegalBranch(t *testing.T) {
 	t.Parallel()
 
@@ -1344,7 +1366,7 @@ func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
 		"UpdateSessionRequest": UpdateSessionRequest{
 			SessionID: "ses_1", ExpectedRevision: MaximumExactJSONInteger,
 		},
-		"Schedule": Schedule{ID: "sch_1", Revision: MaximumExactJSONInteger},
+		"Schedule": Schedule{ID: "sch_1", Instructions: "run", Revision: MaximumExactJSONInteger},
 		"UpdateScheduleRequest": UpdateScheduleRequest{
 			ID: "sch_1", ExpectedRevision: MaximumExactJSONInteger,
 		},
@@ -1367,7 +1389,9 @@ func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
 		{name: "UpdateSessionRequest", field: "expectedRevision", value: UpdateSessionRequest{
 			SessionID: "ses_1", ExpectedRevision: MaximumExactJSONInteger + 1,
 		}},
-		{name: "Schedule", field: "revision", value: Schedule{ID: "sch_1", Revision: MaximumExactJSONInteger + 1}},
+		{name: "Schedule", field: "revision", value: Schedule{
+			ID: "sch_1", Instructions: "run", Revision: MaximumExactJSONInteger + 1,
+		}},
 		{name: "UpdateScheduleRequest", field: "expectedRevision", value: UpdateScheduleRequest{
 			ID: "sch_1", ExpectedRevision: MaximumExactJSONInteger + 1,
 		}},

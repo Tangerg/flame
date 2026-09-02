@@ -86,6 +86,7 @@ func TestScheduleRestoreRejectsContradictoryLifecycle(t *testing.T) {
 		{name: "enabled without cursor", edit: func(s *Snapshot) { s.Enabled = true }},
 		{name: "disabled with cursor", edit: func(s *Snapshot) { s.NextRunAt = createdAt.Add(time.Hour) }},
 		{name: "run before creation", edit: func(s *Snapshot) { s.LastRunAt = createdAt.Add(-time.Second) }},
+		{name: "blank instructions", edit: func(s *Snapshot) { s.Instructions = " \n\t" }, want: ErrInstructionsRequired},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -176,6 +177,9 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 		{name: "malformed occurrence", edit: func(value *OccurrenceSnapshot) {
 			value.ID = "sch_hourly:not-a-time"
 		}},
+		{name: "blank captured instructions", edit: func(value *OccurrenceSnapshot) {
+			value.Execution.Instructions = " \n\t"
+		}},
 	}
 	for _, test := range malformed {
 		t.Run(test.name, func(t *testing.T) {
@@ -198,6 +202,7 @@ func TestScheduleValidate(t *testing.T) {
 		{"valid, default model", func(s Draft) Draft { return s }, nil},
 		{"valid, paired model", func(s Draft) Draft { s.ModelSelection = mustSelection(t, "anthropic", "claude"); return s }, nil},
 		{"missing instructions", func(s Draft) Draft { s.Instructions = ""; return s }, ErrInstructionsRequired},
+		{"blank instructions", func(s Draft) Draft { s.Instructions = " \n\t"; return s }, ErrInstructionsRequired},
 		{"missing cron", func(s Draft) Draft { s.Cron = ""; return s }, ErrCronRequired},
 	}
 	for _, tt := range tests {

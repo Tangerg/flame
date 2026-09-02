@@ -7759,6 +7759,10 @@
           "constraint": "maximum(9007199254740991)"
         },
         {
+          "field": "instructions",
+          "constraint": "pattern(\"\\\\S\")"
+        },
+        {
           "field": "provider",
           "constraint": "identity"
         },
@@ -7789,7 +7793,7 @@
       "rules": [
         {
           "field": "instructions",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         },
         {
           "field": "cron",
@@ -7850,7 +7854,7 @@
         },
         {
           "field": "instructions",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         },
         {
           "field": "cron",

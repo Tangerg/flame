@@ -356,7 +356,7 @@ func (p PageQuery) ValidateWire() error {
 
 func (c CreateScheduleRequest) ValidateWire() error {
 	return collectWireViolations("CreateScheduleRequest",
-		requiredText("instructions", c.Instructions),
+		requiredTextPattern("instructions", c.Instructions, "\\S"),
 		requiredText("cron", c.Cron),
 		identity("provider", c.Provider),
 		maxLength("provider", c.Provider, 64),
@@ -379,7 +379,7 @@ func (u UpdateScheduleRequest) ValidateWire() error {
 		requiredTextPrefix("id", u.ID, "sch_"),
 		positiveNumber("expectedRevision", u.ExpectedRevision),
 		maximumNumber("expectedRevision", u.ExpectedRevision, 9007199254740991),
-		optionalText("instructions", u.Instructions),
+		optionalTextPointerPattern("instructions", u.Instructions, "\\S"),
 		optionalText("cron", u.Cron),
 		optionalIdentity("provider", u.Provider),
 		optionalMaxLength("provider", u.Provider, 64),
@@ -2406,6 +2406,7 @@ func (s Schedule) ValidateWire() error {
 		requiredTextPrefix("id", s.ID, "sch_"),
 		positiveNumber("revision", s.Revision),
 		maximumNumber("revision", s.Revision, 9007199254740991),
+		requiredTextPattern("instructions", s.Instructions, "\\S"),
 		identity("provider", s.Provider),
 		maxLength("provider", s.Provider, 64),
 		identity("model", s.Model),
