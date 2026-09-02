@@ -63,6 +63,8 @@ type testStores interface {
 	Runs() RunStore
 	ReadSnapshot(context.Context, string) (Snapshot, error)
 	ForgetSession(string)
+	ForgetSessionContext(string)
+	ForgetWorkspace(string)
 }
 
 func (c coordinatorStores) Session() Store              { return emptySessionStore{} }
@@ -75,7 +77,9 @@ func (c coordinatorStores) ReadSnapshot(context.Context, string) (Snapshot, erro
 	}
 	return c.snapshot, nil
 }
-func (c coordinatorStores) ForgetSession(string) {}
+func (c coordinatorStores) ForgetSession(string)        {}
+func (c coordinatorStores) ForgetSessionContext(string) {}
+func (c coordinatorStores) ForgetWorkspace(string)      {}
 func (c coordinatorStores) ApplyFork(_ context.Context, plan ForkPlan) (session.Session, error) {
 	if c.forked != nil {
 		*c.forked = plan
@@ -241,7 +245,7 @@ func testDependencies(stores testStores, deps Dependencies) Dependencies {
 		deps.MaterialSnapshots = material
 	}
 	deps.Writes = stores
-	deps.Forgetter = stores
+	deps.TransientState = stores
 	return deps
 }
 
@@ -268,8 +272,8 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	if deps.Writes == nil {
 		deps.Writes = defaults
 	}
-	if deps.Forgetter == nil {
-		deps.Forgetter = defaults
+	if deps.TransientState == nil {
+		deps.TransientState = defaults
 	}
 	if deps.ExecutionReleaser == nil {
 		deps.ExecutionReleaser = inertExecutionReleaser{}

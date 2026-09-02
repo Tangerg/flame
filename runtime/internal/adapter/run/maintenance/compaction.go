@@ -28,13 +28,21 @@ type compactionStore interface {
 	) error
 }
 
+// SessionContextInvalidator retires process-local authority derived from model
+// context that a successful compaction replaced. It is optional when no such
+// authority is composed.
+type SessionContextInvalidator interface {
+	ForgetSessionContext(sessionID string)
+}
+
 // Compactor is the automatic conversation-history compaction worker. A nil
 // Compactor makes [Compactor.CompactIfNeeded] a silent no-op.
 type Compactor struct {
-	store     compactionStore
-	client    modeladapter.AuxiliaryResolver
-	liveState LiveStateSnapshotter // nil = no post-compaction live-state reminder
-	policy    compactionPolicy
+	store        compactionStore
+	client       modeladapter.AuxiliaryResolver
+	liveState    LiveStateSnapshotter // nil = no post-compaction live-state reminder
+	contextState SessionContextInvalidator
+	policy       compactionPolicy
 }
 
 type compactionAction uint8
@@ -59,8 +67,16 @@ type compactionPlan struct {
 // NewCompactor requires a chat history store and per-call chat-client resolver.
 // liveState (nil to disable) snapshots a
 // session's still-active process state so an LLM summary rung can remind the
-// model of running shells the summary cannot reconstruct.
-func NewCompactor(store compactionStore, client modeladapter.AuxiliaryResolver, liveState LiveStateSnapshotter, values CompactionPolicyValues) (*Compactor, error) {
+// model of running shells the summary cannot reconstruct. contextState may be
+// nil when the Runtime has no process-local authority derived from model
+// context.
+func NewCompactor(
+	store compactionStore,
+	client modeladapter.AuxiliaryResolver,
+	liveState LiveStateSnapshotter,
+	values CompactionPolicyValues,
+	contextState SessionContextInvalidator,
+) (*Compactor, error) {
 	if nilDependency(store) {
 		return nil, errors.New("compactor: conversation store is required")
 	}
@@ -71,7 +87,13 @@ func NewCompactor(store compactionStore, client modeladapter.AuxiliaryResolver, 
 	if err != nil {
 		return nil, err
 	}
-	return &Compactor{store: store, client: client, liveState: liveState, policy: policy}, nil
+	if nilDependency(contextState) {
+		contextState = nil
+	}
+	return &Compactor{
+		store: store, client: client, liveState: liveState,
+		contextState: contextState, policy: policy,
+	}, nil
 }
 
 // CompactIfNeeded inspects sessionID's history. When either trigger
@@ -129,6 +151,7 @@ func (c *Compactor) CompactIfNeeded(
 		if rewriteForCompactionErr := c.store.RewriteForCompaction(ctx, sessionID, len(msgs), 0, 0, plan.trimmed...); rewriteForCompactionErr != nil {
 			return agentexec.CompactionResult{}, fmt.Errorf("compactor: replace trimmed: %w", rewriteForCompactionErr)
 		}
+		c.forgetSessionContext(sessionID)
 		return agentexec.CompactionResult{}, nil
 	}
 
@@ -162,7 +185,14 @@ func (c *Compactor) CompactIfNeeded(
 	); err != nil {
 		return agentexec.CompactionResult{}, fmt.Errorf("compactor: replace: %w", err)
 	}
+	c.forgetSessionContext(sessionID)
 	return result, nil
+}
+
+func (c *Compactor) forgetSessionContext(sessionID string) {
+	if c.contextState != nil {
+		c.contextState.ForgetSessionContext(sessionID)
+	}
 }
 
 func (c *Compactor) planCompaction(

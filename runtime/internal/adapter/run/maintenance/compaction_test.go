@@ -43,15 +43,31 @@ func textToolOutput(t *testing.T, output chat.ToolOutput) string {
 
 func intPointer(value int) *int { return &value }
 
+type recordingSessionContextInvalidator struct {
+	sessions []string
+}
+
+func (r *recordingSessionContextInvalidator) ForgetSessionContext(sessionID string) {
+	r.sessions = append(r.sessions, sessionID)
+}
+
 func mustNewCompactor(
 	t *testing.T,
 	store compactionStore,
 	client modeladapter.AuxiliaryResolver,
 	liveState LiveStateSnapshotter,
 	values CompactionPolicyValues,
+	contextStates ...SessionContextInvalidator,
 ) *Compactor {
 	t.Helper()
-	compactor, err := NewCompactor(store, client, liveState, values)
+	if len(contextStates) > 1 {
+		t.Fatal("mustNewCompactor accepts at most one context invalidator")
+	}
+	var contextState SessionContextInvalidator
+	if len(contextStates) == 1 {
+		contextState = contextStates[0]
+	}
+	compactor, err := NewCompactor(store, client, liveState, values, contextState)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -284,8 +300,9 @@ func TestCompactor_Compacts(t *testing.T) {
 
 	model := newTextStubModel("BULLETS")
 	client, _ := chatclient.New(model, chatclient.Config{})
+	contextState := new(recordingSessionContextInvalidator)
 
-	c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxMessages: intPointer(total), KeepRecent: intPointer(4)})
+	c := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{MaxMessages: intPointer(total), KeepRecent: intPointer(4)}, contextState)
 	res, err := c.CompactIfNeeded(context.Background(), sessID, modelref.TokenLimits{}, chat.Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -313,6 +330,9 @@ func TestCompactor_Compacts(t *testing.T) {
 	}
 	if !strings.HasPrefix(after[0].Text(), "[Earlier conversation summary]") {
 		t.Errorf("summary preamble missing, got %q", after[0].Text())
+	}
+	if !reflect.DeepEqual(contextState.sessions, []string{sessID}) {
+		t.Fatalf("forgot Session contexts = %v, want [%s]", contextState.sessions, sessID)
 	}
 }
 

@@ -133,10 +133,14 @@ type MaterialSnapshotReader interface {
 	ReadMaterialSnapshot(ctx context.Context, sessionID string) (MaterialSnapshot, error)
 }
 
-// Forgetter releases process-local executor state after a session is
-// removed from durable storage.
-type Forgetter interface {
+// TransientState releases process-local facts when the durable Session, its
+// effective model context, or its shared working tree changes. Whole-Session
+// deletion also retires lifecycle markers; restore and rollback retain those
+// markers while discarding only context-derived authority.
+type TransientState interface {
 	ForgetSession(sessionID string)
+	ForgetSessionContext(sessionID string)
+	ForgetWorkspace(root string)
 }
 
 // Snapshot is one coherent, canonical Session aggregate read used by use cases
@@ -231,7 +235,7 @@ type Coordinator struct {
 	snapshots             SnapshotReader
 	materialSnapshots     MaterialSnapshotReader
 	writes                WriteSets
-	forgetter             Forgetter
+	transientState        TransientState
 	executionReleaser     ExecutionReleaser
 	paths                 WorkspaceResolver
 	models                ModelAdmitter
@@ -278,7 +282,7 @@ type Dependencies struct {
 	Snapshots             SnapshotReader
 	MaterialSnapshots     MaterialSnapshotReader
 	Writes                WriteSets
-	Forgetter             Forgetter
+	TransientState        TransientState
 	ExecutionReleaser     ExecutionReleaser
 	Paths                 WorkspaceResolver
 	Models                ModelAdmitter
@@ -322,7 +326,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{"snapshot reader", deps.Snapshots},
 		{"material snapshot reader", deps.MaterialSnapshots},
 		{"write sets", deps.Writes},
-		{"session forgetter", deps.Forgetter},
+		{"session transient state", deps.TransientState},
 		{"execution releaser", deps.ExecutionReleaser},
 		{"workspace resolver", deps.Paths},
 		{"model admitter", deps.Models},
@@ -377,7 +381,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		snapshots:             deps.Snapshots,
 		materialSnapshots:     deps.MaterialSnapshots,
 		writes:                deps.Writes,
-		forgetter:             deps.Forgetter,
+		transientState:        deps.TransientState,
 		executionReleaser:     deps.ExecutionReleaser,
 		paths:                 deps.Paths,
 		models:                deps.Models,

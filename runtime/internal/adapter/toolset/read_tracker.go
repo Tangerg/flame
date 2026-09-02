@@ -3,6 +3,8 @@ package toolset
 import (
 	"crypto/sha256"
 	"sync"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
 // readTracker records the file content each session has read. A mutation is
@@ -39,6 +41,31 @@ func (r *readTracker) forget(session, path string) {
 	delete(paths, path)
 	if len(paths) == 0 {
 		delete(r.seen, session)
+	}
+}
+
+func (r *readTracker) forgetSession(session string) {
+	r.mu.Lock()
+	delete(r.seen, session)
+	r.mu.Unlock()
+}
+
+func (r *readTracker) forgetWorkspace(root string) {
+	if root == "" {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for session, paths := range r.seen {
+		for path := range paths {
+			inside, err := pathidentity.Contains(root, path)
+			if err == nil && inside {
+				delete(paths, path)
+			}
+		}
+		if len(paths) == 0 {
+			delete(r.seen, session)
+		}
 	}
 }
 

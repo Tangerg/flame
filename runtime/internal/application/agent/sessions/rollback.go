@@ -55,6 +55,7 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 			// The truncation is committed: the dropped Run subtree is gone and the
 			// boundary's Plan is published. Delegated work has no parallel
 			// Session identity to clean up.
+			c.transientState.ForgetSessionContext(sessionID)
 			c.publishAggregateMoved([]string{sessionID}, dropRunIDs)
 			var cleanupErrs []error
 			for _, r := range parked {

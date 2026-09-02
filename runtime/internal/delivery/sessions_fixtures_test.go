@@ -199,6 +199,7 @@ type stubRuntime struct {
 	muts        *persistence.WorkspaceMutationStore // §8.5 recoverable file-rollback log
 	execution   executionRuntime
 	admissions  *ownership.Gate
+	forgotTrees []string
 }
 
 // sessionsCoordinatorProvider is the optional test seam newTestHandler uses to
@@ -914,7 +915,7 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 		Snapshots:             stores,
 		MaterialSnapshots:     stores,
 		Writes:                stores,
-		Forgetter:             s,
+		TransientState:        s,
 		ExecutionReleaser:     stubExecutionReleaser{rt: s},
 		Paths:                 workspaceadapter.Resolver{},
 		Models:                allowModelSelections{},
@@ -1274,7 +1275,11 @@ func (stubRunState) UpdateProgress(context.Context, string, string, string, run.
 // ForgetSession is the no-op the session-delete / rollback / purge cascades call
 // (via the lifecycle coordinator) to release a removed session's process-local
 // gate; these tests have no live execution state to forget.
-func (stubRuntime) ForgetSession(string) {}
+func (stubRuntime) ForgetSession(string)        {}
+func (stubRuntime) ForgetSessionContext(string) {}
+func (s *stubRuntime) ForgetWorkspace(root string) {
+	s.forgotTrees = append(s.forgotTrees, root)
+}
 
 func (s stubRuntime) ReadHistory(_ context.Context, id string) ([]chat.Message, error) {
 	return s.history[id], nil

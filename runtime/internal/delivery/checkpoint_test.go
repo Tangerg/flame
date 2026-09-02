@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace"
@@ -135,6 +136,9 @@ func TestRollback_RestoreFilesKeepsHistory(t *testing.T) {
 	}
 	if pending, _ := rt.muts.ListPending(ctx); len(pending) != 0 {
 		t.Fatalf("pending intents after files-only success = %+v, want none", pending)
+	}
+	if want := []string{cwd}; !slices.Equal(rt.forgotTrees, want) {
+		t.Fatalf("forgot workspaces = %v, want %v", rt.forgotTrees, want)
 	}
 }
 
@@ -358,6 +362,9 @@ func TestRollback_IncompleteRestoreKeepsRecoveryIntent(t *testing.T) {
 	}
 	if len(pending) != 1 || pending[0].SessionID != ses.ID() || !pending[0].RestoreHistory {
 		t.Fatalf("pending = %+v, want recoverable files+history intent", pending)
+	}
+	if want := []string{ses.Workspace().Path()}; !slices.Equal(rt.forgotTrees, want) {
+		t.Fatalf("forgot workspaces = %v, want %v after possibly partial restore", rt.forgotTrees, want)
 	}
 	runs, _ := rt.runs.ListRuns(ctx, ses.ID())
 	if len(runs) != 2 {

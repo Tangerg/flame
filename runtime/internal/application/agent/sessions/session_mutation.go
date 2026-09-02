@@ -62,7 +62,7 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 func (c *Coordinator) dropSessionResources(sessionIDs []string, action string) []error {
 	var errs []error
 	for _, sessionID := range sessionIDs {
-		c.forgetter.ForgetSession(sessionID)
+		c.transientState.ForgetSession(sessionID)
 		if c.checkpoints != nil {
 			if err := c.checkpoints.DropSession(sessionID); err != nil {
 				errs = append(errs, fmt.Errorf("sessions: drop checkpoints for %s session %q: %w", action, sessionID, err))
@@ -134,8 +134,9 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 		},
 		func(context.Context) error {
 			// Restore replaced the whole history: any isolated working copy
-			// from before the restore is stale, so discard it before exposing
-			// the restored aggregate.
+			// and process-local read evidence from before the restore are stale,
+			// so discard them before exposing the restored aggregate.
+			c.transientState.ForgetSessionContext(sessionID)
 			c.publishAggregateMoved([]string{sessionID}, nil)
 			var postCommitErrs []error
 			if c.sandbox != nil {

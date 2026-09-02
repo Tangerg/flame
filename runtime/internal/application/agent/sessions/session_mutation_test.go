@@ -189,6 +189,7 @@ func TestRollbackReportsParkedExecutorReleaseFailure(t *testing.T) {
 	}
 	want := []string{
 		"apply.rollback",
+		"session.context.forget",
 		"executor.release",
 	}
 	if !slices.Equal(stores.operations, want) {
@@ -229,6 +230,10 @@ func TestRestoreSessionAppliesPlan(t *testing.T) {
 	}
 	if len(stores.restored) != 1 || stores.restored[0].Session.State().ID() != "ses_1" || len(stores.restored[0].Messages) != 1 {
 		t.Fatalf("restored = %+v, want one plan for ses_1 with 1 message", stores.restored)
+	}
+	want := []string{"interrupt.read", "apply.restore", "session.context.forget"}
+	if !slices.Equal(stores.operations, want) {
+		t.Fatalf("operations = %v, want %v", stores.operations, want)
 	}
 }
 
@@ -340,6 +345,12 @@ func (m *mutationStores) Runs() RunStore                                       {
 func (*mutationStores) ReadSnapshot(context.Context, string) (Snapshot, error) { panic("unused") }
 func (m *mutationStores) ForgetSession(string) {
 	m.operations = append(m.operations, "session.forget")
+}
+func (m *mutationStores) ForgetSessionContext(string) {
+	m.operations = append(m.operations, "session.context.forget")
+}
+func (m *mutationStores) ForgetWorkspace(string) {
+	m.operations = append(m.operations, "workspace.forget")
 }
 func (*mutationStores) ApplyFork(context.Context, ForkPlan) (session.Session, error) {
 	panic("unused")

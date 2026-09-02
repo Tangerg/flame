@@ -40,11 +40,11 @@ func TestMaintenanceConstructorsRejectMissingDependencies(t *testing.T) {
 
 	tests := map[string]func() error{
 		"compactor typed-nil conversation store": func() error {
-			_, err := NewCompactor(typedNilHistory, unexpectedClient, nil, CompactionPolicyValues{})
+			_, err := NewCompactor(typedNilHistory, unexpectedClient, nil, CompactionPolicyValues{}, nil)
 			return err
 		},
 		"compactor utility model resolver": func() error {
-			_, err := NewCompactor(history, nil, nil, CompactionPolicyValues{})
+			_, err := NewCompactor(history, nil, nil, CompactionPolicyValues{}, nil)
 			return err
 		},
 		"memory conversation reader": func() error {

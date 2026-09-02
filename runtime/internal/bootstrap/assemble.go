@@ -215,7 +215,7 @@ func buildAssemblyCore(
 		Snapshots:             sessionStores,
 		MaterialSnapshots:     sessionStores,
 		Writes:                sessionStores,
-		Forgetter:             execution.workingContexts,
+		TransientState:        execution.transientSessions,
 		ExecutionReleaser:     execution.executor,
 		Paths:                 workspaceadapter.Resolver{},
 		Models:                modelCapabilities,

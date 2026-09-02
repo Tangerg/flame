@@ -23,6 +23,7 @@ func buildRunMaintenance(
 	skillMaintenance *workspace.SkillMaintenance,
 	memoryCuration *agentmemory.Curation,
 	resolveUtility modeladapter.AuxiliaryResolver,
+	contextState maintenance.SessionContextInvalidator,
 ) (agentexec.RunMaintenance, agentexec.ModelContextCompactor, error) {
 	fallbackLimits := modelref.TokenLimits{}
 	limits, found, err := modeladapter.LookupTokenLimits(defaultSelection)
@@ -37,6 +38,7 @@ func buildRunMaintenance(
 		resolveUtility,
 		maintenance.NewLiveStateSnapshotter(shells),
 		maintenance.CompactionPolicyValues{FallbackTokenLimits: fallbackLimits},
+		contextState,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: build compactor: %w", err)

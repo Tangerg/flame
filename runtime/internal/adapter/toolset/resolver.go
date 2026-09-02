@@ -245,6 +245,27 @@ func (r *Resolver) SetMCPTools(tools []toolcontract.Tool) {
 	r.mcp.Store(&snapshot)
 }
 
+// ForgetSessionContext drops file-read evidence derived from one Session's
+// model context. A replaced or compacted context must earn fresh read-before-
+// write authority; retaining the old stamps would let discarded context
+// authorize later filesystem mutations.
+func (r *Resolver) ForgetSessionContext(sessionID string) {
+	if r == nil || r.readTracker == nil {
+		return
+	}
+	r.readTracker.forgetSession(sessionID)
+}
+
+// ForgetWorkspace drops file-read evidence for every Session below a restored
+// workspace root. Sessions may share a working tree, so invalidating only the
+// Session that requested rollback would leave sibling authority stale.
+func (r *Resolver) ForgetWorkspace(root string) {
+	if r == nil || r.readTracker == nil {
+		return
+	}
+	r.readTracker.forgetWorkspace(root)
+}
+
 func mcpToolRef(tool toolcontract.Tool) (mcpserver.ToolRef, bool) {
 	identity, ok := tool.(mcpToolIdentity)
 	if !ok {

@@ -45,11 +45,13 @@ func TestModelContextCompactionRewritesDurableHistoryAndPreservesPendingInput(t 
 	if clientErr != nil {
 		t.Fatal(clientErr)
 	}
+	contextState := new(recordingSessionContextInvalidator)
 	compactor := mustNewCompactor(t,
 		store,
 		constClient(client),
 		nil,
 		CompactionPolicyValues{MaxMessages: intPointer(len(history)), KeepRecent: intPointer(2)},
+		contextState,
 	)
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
@@ -78,6 +80,9 @@ func TestModelContextCompactionRewritesDurableHistoryAndPreservesPendingInput(t 
 	}
 	if len(model.requests) != 1 {
 		t.Fatalf("summary model calls = %d, want one", len(model.requests))
+	}
+	if !reflect.DeepEqual(contextState.sessions, []string{sessionID}) {
+		t.Fatalf("forgot Session contexts = %v, want [%s]", contextState.sessions, sessionID)
 	}
 }
 

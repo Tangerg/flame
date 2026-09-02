@@ -101,6 +101,8 @@ func (*crudStores) Transcript() TranscriptStore                            { ret
 func (*crudStores) Runs() RunStore                                         { return emptyTranscript{} }
 func (*crudStores) ReadSnapshot(context.Context, string) (Snapshot, error) { return Snapshot{}, nil }
 func (*crudStores) ForgetSession(string)                                   {}
+func (*crudStores) ForgetSessionContext(string)                            {}
+func (*crudStores) ForgetWorkspace(string)                                 {}
 func (*crudStores) ApplyFork(context.Context, ForkPlan) (session.Session, error) {
 	return session.Session{}, nil
 }

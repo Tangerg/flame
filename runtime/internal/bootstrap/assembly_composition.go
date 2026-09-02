@@ -159,12 +159,13 @@ func buildWorkspaceComposition(
 // executionComposition owns the model/tool execution graph. Every acquired
 // closer is transferred to hostLifetime before an error can escape.
 type executionComposition struct {
-	conversation    conversationEnvironment
-	models          modelEnvironment
-	tools           toolEnvironment
-	workingContexts *agentexec.WorkingContextComposer
-	executor        *agentexec.InteractionExecutor
-	toolRegistry    toolset.DiagnosticRegistry
+	conversation      conversationEnvironment
+	models            modelEnvironment
+	tools             toolEnvironment
+	workingContexts   *agentexec.WorkingContextComposer
+	transientSessions *agentexec.TransientSessionState
+	executor          *agentexec.InteractionExecutor
+	toolRegistry      toolset.DiagnosticRegistry
 }
 
 func buildExecutionComposition(
@@ -220,6 +221,10 @@ func buildExecutionComposition(
 		Goal:              policy.goalReader,
 		Hooks:             cfg.HooksResolver,
 	})
+	transientSessions := agentexec.NewTransientSessionState(
+		workingContexts,
+		toolRuntime.tools.Resolver,
+	)
 	toolAuthorizer, err := agentexec.NewToolAuthorizer(policy.approvals)
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: Tool authorizer: %w", err)
@@ -233,6 +238,7 @@ func buildExecutionComposition(
 		workspaceServices.skillMaintenance,
 		workspaceServices.memoryCuration,
 		modelServices.utilityClient,
+		transientSessions,
 	)
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: build Run maintenance: %w", err)
@@ -284,12 +290,13 @@ func buildExecutionComposition(
 	}
 	lifetime.executor = interactionExecutor
 	return executionComposition{
-		conversation:    conversation,
-		models:          modelServices,
-		tools:           toolRuntime,
-		workingContexts: workingContexts,
-		executor:        interactionExecutor,
-		toolRegistry:    toolset.NewDiagnosticRegistry(),
+		conversation:      conversation,
+		models:            modelServices,
+		tools:             toolRuntime,
+		workingContexts:   workingContexts,
+		transientSessions: transientSessions,
+		executor:          interactionExecutor,
+		toolRegistry:      toolset.NewDiagnosticRegistry(),
 	}, nil
 }
 

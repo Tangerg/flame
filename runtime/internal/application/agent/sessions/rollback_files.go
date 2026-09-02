@@ -105,7 +105,16 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 	// cleared. ErrCheckpointRestoreIncomplete is different: reset may have
 	// changed only part of the tree, and its intent must survive for recovery.
 	if restoreRollbackFilesErr := c.restoreRollbackFiles(ctx, spec, cwd, mutationRecorded); restoreRollbackFilesErr != nil {
+		if spec.RestoreFiles && errors.Is(restoreRollbackFilesErr, ErrCheckpointRestoreIncomplete) {
+			c.transientState.ForgetWorkspace(cwd)
+		}
 		return result, restoreRollbackFilesErr
+	}
+	if spec.RestoreFiles {
+		// The working tree now differs from the state against which file-read
+		// evidence was recorded. Sessions can share this tree, so every stamp
+		// below the workspace root is stale even when history is left intact.
+		c.transientState.ForgetWorkspace(cwd)
 	}
 
 	// The tree is restored now; a durable failure here leaves the intent logged so
@@ -226,8 +235,12 @@ func (c *Coordinator) recoverRollback(ctx context.Context, m WorkspaceMutation) 
 		}
 	}
 	if err := c.restore(ctx, m.SessionID, m.CWD, m.ToRunID); err != nil {
+		if errors.Is(err, ErrCheckpointRestoreIncomplete) {
+			c.transientState.ForgetWorkspace(m.CWD)
+		}
 		return err
 	}
+	c.transientState.ForgetWorkspace(m.CWD)
 	if m.RestoreHistory && len(boundary.Dropped) > 0 {
 		if err := c.applyRollback(ctx, m.SessionID, boundary); err != nil {
 			return err
