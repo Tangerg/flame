@@ -32,6 +32,29 @@ describe("DesktopRenderer", () => {
     expect(deps.closeRuntime).toHaveBeenCalledOnce();
   });
 
+  it("mounts once however many times start is called", async () => {
+    const deps = rendererDependencies();
+    const renderer = new DesktopRenderer(deps);
+
+    await Promise.all([renderer.start(), renderer.start()]);
+    await renderer.start();
+
+    expect(deps.mount).toHaveBeenCalledOnce();
+    expect(deps.watchWindowChrome).toHaveBeenCalledOnce();
+    await renderer.dispose();
+  });
+
+  it("does not start after the window has already been closed", async () => {
+    const deps = rendererDependencies();
+    const renderer = new DesktopRenderer(deps);
+
+    await renderer.dispose();
+    await renderer.start();
+
+    expect(deps.initializeDesktopHost).not.toHaveBeenCalled();
+    expect(deps.mount).not.toHaveBeenCalled();
+  });
+
   it("cannot install window owners after close wins chrome preparation", async () => {
     const chrome = Promise.withResolvers<void>();
     const deps = rendererDependencies({

@@ -10,6 +10,9 @@ import {
 
 describe("main/container", () => {
   afterEach(resetContainer);
+  // `globalThis.fetch` is spied per test and re-spying returns the SAME mock, so without this
+  // a later test reads the calls an earlier one captured.
+  afterEach(() => vi.restoreAllMocks());
 
   it("exposes the Runtime Protocol entry points out of the box", () => {
     const c = getContainer();
@@ -144,6 +147,42 @@ describe("main/container", () => {
 
     const headers = new Headers(request.mock.calls[0]?.[1]?.headers);
     expect(headers.get("Authorization")).toBe("Bearer successor-token");
+  });
+
+  // The same container, not a fresh one: `setContainer({ desktop })` swaps the host in place,
+  // so the retired bootstrap resolves against the lease that replaced it.
+  it("does not adopt a bootstrap the host swap already retired", async () => {
+    const retired = Promise.withResolvers<Awaited<ReturnType<DesktopHostClient["bootstrap"]>>>();
+    const desktop = (bootstrap: DesktopHostClient["bootstrap"]): DesktopHostClient => ({
+      bootstrap,
+      chooseWorkingDirectory: async () => null,
+      saveImage: async () => false,
+      windowChrome: async () => null,
+    });
+
+    setContainer({ desktop: desktop(() => retired.promise) });
+    const retiredInitialization = initializeDesktopHost();
+
+    setContainer({
+      desktop: desktop(async () => ({
+        localRuntime: { endpoint: "http://127.0.0.1:17171", localToken: "successor-token" },
+      })),
+    });
+    await initializeDesktopHost();
+
+    retired.resolve({
+      localRuntime: { endpoint: "http://127.0.0.1:17171", localToken: "retired-token" },
+    });
+    await retiredInitialization;
+
+    const request = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValueOnce(new Error("request captured"));
+    await expect(getContainer().client().runtime.discover()).rejects.toThrow("request captured");
+
+    expect(new Headers(request.mock.calls[0]?.[1]?.headers).get("Authorization")).toBe(
+      "Bearer successor-token",
+    );
   });
 
   it("sidecar() returns a cached client for the active endpoint", async () => {
