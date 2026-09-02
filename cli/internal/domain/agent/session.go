@@ -213,7 +213,7 @@ func (s SessionSnapshot) RunByID(id string) (Run, bool) {
 func (s SessionSnapshot) LastAssistantText() (string, error) {
 	for _, block := range slices.Backward(s.Transcript) {
 		if block.Kind == BlockAssistant && strings.TrimSpace(block.Text) != "" {
-			return strings.TrimSpace(block.Text), nil
+			return block.Text, nil
 		}
 	}
 	return "", errors.New("the session has no assistant response to copy")

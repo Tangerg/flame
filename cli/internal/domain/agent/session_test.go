@@ -485,10 +485,10 @@ func TestSessionSnapshotFindsTheLastDurableAssistantText(t *testing.T) {
 	snapshot := SessionSnapshot{Transcript: []Block{
 		{Kind: BlockAssistant, Text: "first"},
 		{Kind: BlockReasoning, Text: "internal"},
-		{Kind: BlockAssistant, Text: "  final answer  "},
+		{Kind: BlockAssistant, Text: "  final answer  \n"},
 	}}
 	text, err := snapshot.LastAssistantText()
-	if err != nil || text != "final answer" {
+	if err != nil || text != "  final answer  \n" {
 		t.Fatalf("LastAssistantText = (%q, %v)", text, err)
 	}
 }
