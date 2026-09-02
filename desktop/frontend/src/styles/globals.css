@@ -91,10 +91,6 @@
   --color-info-badge: color-mix(in srgb, var(--tone-info) 18%, transparent);
   --color-accent-badge: color-mix(in srgb, var(--tone-accent) 18%, transparent);
   --color-negative-edge: color-mix(in srgb, var(--tone-negative) 38%, transparent);
-  --color-warning-edge: color-mix(in srgb, var(--tone-warning) 38%, transparent);
-  --color-success-edge: color-mix(in srgb, var(--tone-success) 38%, transparent);
-  --color-info-edge: color-mix(in srgb, var(--tone-info) 38%, transparent);
-  --color-accent-edge: color-mix(in srgb, var(--tone-accent) 38%, transparent);
 
   --text-ui-2xs: var(--fs-ui-2xs);
   --text-ui-2xs--letter-spacing: 0;
@@ -351,10 +347,8 @@
 
   --color-diff-added-tint: color-mix(in srgb, var(--tone-success) 11%, transparent);
   --color-diff-added-meta: #2a713e;
-  --color-diff-added-code: #1c4e2c;
   --color-diff-deleted-tint: color-mix(in srgb, var(--tone-negative) 9%, transparent);
   --color-diff-deleted-meta: #b0342b;
-  --color-diff-deleted-code: #6e211c;
 
   --color-cta: var(--color-accent);
   --color-cta-hover: var(--color-accent-border);
@@ -470,7 +464,6 @@
   --dur-med-base: 200ms;
   --dur-slow-base: 300ms;
   --dur-drawer-base: 500ms;
-  --animation-duration: calc(var(--dur-fast-base) * var(--motion-scale));
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
   --dur-instant: calc(var(--dur-instant-base) * var(--motion-scale));
@@ -482,7 +475,6 @@
   --dur-slow: calc(var(--dur-slow-base) * var(--motion-scale));
 
   --polish-fast: var(--dur-fast) var(--ease-out);
-  --polish-med: var(--dur-med) var(--ease-out);
 
   --icon-swap-dur: 250ms;
   --icon-swap-blur: 2px;
@@ -707,10 +699,8 @@ html.theme-dark {
 
   --color-diff-added-tint: color-mix(in srgb, var(--tone-success) 8%, transparent);
   --color-diff-added-meta: #6db473;
-  --color-diff-added-code: #bcebc4;
   --color-diff-deleted-tint: color-mix(in srgb, var(--tone-negative) 8%, transparent);
   --color-diff-deleted-meta: #e68a8a;
-  --color-diff-deleted-code: #f2cccc;
 
   --color-negative: #e68a8a;
   --color-warning: #d6a750;
