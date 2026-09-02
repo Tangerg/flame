@@ -79,8 +79,15 @@ const RULES = [
     // the same line so a reader can see both at once.
     pattern: /\b(?:group-)?hover(?:\/[a-z-]+)?:opacity-100\b/g,
     message: "hover-only reveal — pair it with `focus-within:` / `focus-visible:opacity-100`",
+    // …unless the thing is hidden with `visibility`, which the keyboard cannot reach at all:
+    // pairing a focus variant onto one of those writes a rule that can never fire, and the
+    // dock's close control carried exactly such a line. `visibility: hidden` is the right
+    // way to say "pointer-only affordance" when the action has its own key elsewhere — that
+    // one closes its tab on Delete, because a focusable sibling inside a `tablist` is an
+    // unallowed child. No regex can check that the key exists, so a test holds it instead.
     appliesTo: (line) =>
-      !/(?:group-)?focus(?:-within|-visible)?(?:\/[a-z-]+)?:opacity-100/.test(line),
+      !/(?:group-)?focus(?:-within|-visible)?(?:\/[a-z-]+)?:opacity-100/.test(line) &&
+      !/\binvisible\b/.test(line),
   },
   {
     // `:has(:focus-visible)` says the right thing and does not do it. Chromium matches the
@@ -93,21 +100,6 @@ const RULES = [
     message:
       "`:has(:focus-visible)` matches but never invalidates in Chromium — key the reveal on the focusable element's own `focus-visible:`, or keep `focus-within:`",
     appliesTo: () => true,
-  },
-  {
-    // `visibility: hidden` does not merely hide: the browser skips the element in
-    // sequential focus navigation and drops it from the accessibility tree. A control
-    // hidden that way and then revealed on hover is a control the keyboard cannot reach —
-    // measured on the dock tab close button, which seventy Tab presses never landed on,
-    // and whose own `focus-visible:` reveal therefore could not fire. `opacity-0` with
-    // `pointer-events-none` hides it just as completely and leaves it focusable. Hiding
-    // something that must NOT be operable (a streaming turn's actions) is what `invisible`
-    // is for, and carries no reveal, so it does not trip this.
-    pattern: /\binvisible\b/g,
-    message:
-      "`visibility: hidden` makes a control unfocusable — rest it at `opacity-0 pointer-events-none` instead",
-    appliesTo: (line) =>
-      /(?:group-)?(?:hover|focus|focus-visible|focus-within)(?:\/[a-z-]+)?:visible/.test(line),
   },
   {
     pattern: /\btransition-all\b/g,

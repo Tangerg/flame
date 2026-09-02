@@ -143,6 +143,18 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
               <TabsPrimitive.Tab
                 value={tab.id}
                 data-chrome-focus=""
+                // The × is a pointer affordance: a focusable sibling inside a `tablist` is
+                // an unallowed child (axe `aria-required-children`, critical), and hiding it
+                // from the keyboard the way `visibility: hidden` does leaves closing with no
+                // key at all — seventy Tab presses never reached one. Delete/Backspace on the
+                // focused tab is the ARIA practice for a closable tab and needs no extra stop
+                // in the tab order.
+                onKeyDown={(event) => {
+                  if (!tab.onClose) return;
+                  if (event.key !== "Delete" && event.key !== "Backspace") return;
+                  event.preventDefault();
+                  close();
+                }}
                 className={cn(
                   "inline-flex h-full min-w-0 max-w-40 items-center gap-1.5 rounded-[inherit] border-0 bg-transparent py-0 text-ui-sm font-normal text-inherit focus-visible:outline-none",
                   tab.onClose ? "pl-2 pr-1" : "px-2",
@@ -163,7 +175,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                   quiet
                   title={tab.closeLabel}
                   onClick={close}
-                  className="mr-0.5 pointer-events-none opacity-0 transition-opacity duration-[var(--dur-fast)] group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
+                  className="mr-0.5 invisible opacity-0 transition-opacity duration-[var(--dur-fast)] group-hover:visible group-hover:opacity-100"
                 />
               )}
             </div>
