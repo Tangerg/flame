@@ -125,6 +125,11 @@ func TestProviderValuesRejectInvalidPrimitiveStates(t *testing.T) {
 	if _, err := NewAPIKey("\t"); !errors.Is(err, ErrAPIKeyRequired) {
 		t.Fatalf("NewAPIKey blank error = %v", err)
 	}
+	for _, value := range []string{" sk-live", "sk-live ", "sk-live\n", "sk\x00live"} {
+		if _, err := NewAPIKey(value); !errors.Is(err, ErrAPIKeyInvalid) {
+			t.Errorf("NewAPIKey(%q) error = %v, want ErrAPIKeyInvalid", value, err)
+		}
+	}
 	for _, value := range []string{
 		"", "api.example.test", "ftp://api.example.test", "https://user@api.example.test",
 		"https://api.example.test?token=secret", "https://api.example.test#fragment",
