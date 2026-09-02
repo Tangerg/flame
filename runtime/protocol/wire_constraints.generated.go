@@ -576,6 +576,7 @@ func (f FeedbackRequest) ValidateWire() error {
 func (p ProblemData) ValidateWire() error {
 	return collectWireViolations("ProblemData",
 		optionalPositiveScalarNumber("retryAfterSeconds", p.RetryAfterSeconds),
+		maximumNumber("retryAfterSeconds", p.RetryAfterSeconds, 9223372036),
 		nonEmptyItems("requiredCapabilities", p.RequiredCapabilities),
 		uniqueItems("requiredCapabilities", p.RequiredCapabilities),
 		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_api_key", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_authorization_failed", "mcp_authorization_required", "mcp_dial_failed", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "provider_error", "provider_not_configured", "provider_rejected", "provider_test_failed", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_lost", "run_not_found", "run_not_root", "run_waiting", "session_busy", "session_has_active_run", "session_not_found", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
@@ -1082,6 +1083,7 @@ func (p ProviderConfigChange) ValidateWire() error {
 func (m MCPHandshakeTimeout) ValidateWire() error {
 	return collectWireViolations("MCPHandshakeTimeout",
 		optionalPositiveNumber("seconds", m.Seconds),
+		optionalMaximumNumber("seconds", m.Seconds, 9223372036),
 		closedEnum("type", string(m.Type), []string{"unbounded", "bounded"}, false),
 		forbiddenWhen(wireFieldEquals(m, "type", "unbounded"), "seconds", m),
 		requiredWhen(wireFieldEquals(m, "type", "bounded"), "seconds", m),
@@ -2010,6 +2012,7 @@ func (a ArtifactModelUsage) ValidateWire() error {
 func (a ArtifactProblem) ValidateWire() error {
 	return collectWireViolations("ArtifactProblem",
 		optionalPositiveScalarNumber("retryAfterSeconds", a.RetryAfterSeconds),
+		maximumNumber("retryAfterSeconds", a.RetryAfterSeconds, 9223372036),
 		closedEnum("type", string(a.Type), []string{"internalError", "runLost", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected", "deniedByUser", "toolFailed", "childRunCanceled", "toolCanceled"}, false),
 	)
 }
@@ -2424,6 +2427,7 @@ func (c ClientCapabilities) ValidateWire() error {
 func (m MCPAuthorizationAttemptLimits) ValidateWire() error {
 	return collectWireViolations("MCPAuthorizationAttemptLimits",
 		positiveNumber("retentionSeconds", m.RetentionSeconds),
+		maximumNumber("retentionSeconds", m.RetentionSeconds, 9223372036),
 	)
 }
 
@@ -2454,6 +2458,7 @@ func (r RunReplayLimits) ValidateWire() error {
 func (i IdempotencyLimits) ValidateWire() error {
 	return collectWireViolations("IdempotencyLimits",
 		positiveNumber("retentionSeconds", i.RetentionSeconds),
+		maximumNumber("retentionSeconds", i.RetentionSeconds, 9223372036),
 		requiredTextPattern("namespace", i.Namespace, "^idp_[0-9a-f]{32}$"),
 	)
 }

@@ -2,15 +2,12 @@ package delivery
 
 import (
 	"fmt"
-	"math"
 	"time"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
-
-const maxMCPHandshakeTimeoutSeconds = int64(math.MaxInt64) / int64(time.Second)
 
 func mcpServerInputFromCandidate(in protocol.MCPServerCandidate) (mcpapp.ServerInput, error) {
 	name, err := parseMCPServerName(in.Name)
@@ -119,7 +116,7 @@ func mcpHandshakeTimeoutFromWire(in protocol.MCPHandshakeTimeout) (mcpserver.Han
 		if in.Seconds == nil {
 			return mcpserver.HandshakeTimeout{}, fmt.Errorf("%w: bounded MCP handshake timeout requires seconds", protocol.ErrInvalidParams)
 		}
-		if int64(*in.Seconds) > maxMCPHandshakeTimeoutSeconds {
+		if int64(*in.Seconds) > protocol.MaximumDurationSeconds {
 			return mcpserver.HandshakeTimeout{}, fmt.Errorf("%w: MCP handshake timeout exceeds time.Duration", protocol.ErrInvalidParams)
 		}
 		timeout, err := mcpserver.NewHandshakeTimeout(time.Duration(*in.Seconds) * time.Second)

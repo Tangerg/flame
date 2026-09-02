@@ -563,6 +563,7 @@ TypeScript validator from this single registry projection.
 | `ArtifactModelUsage` | `reasoningTokens` | `nonNegative` |
 | `ArtifactModelUsage` | `costUsd` | `nonNegative` |
 | `ArtifactProblem` | `retryAfterSeconds` | `positive` |
+| `ArtifactProblem` | `retryAfterSeconds` | `maximum(9223372036)` |
 | `RunSummary` | `id` | `nonEmpty` |
 | `RunSummary` | `id` | `identity` |
 | `RunSummary` | `id` | `maxLength(256)` |
@@ -820,6 +821,7 @@ TypeScript validator from this single registry projection.
 | `MCPConnectionInput` | `command` | `nonEmpty` |
 | `MCPAuthorizationChange` | `value` | `nonEmpty` |
 | `MCPHandshakeTimeout` | `seconds` | `positive` |
+| `MCPHandshakeTimeout` | `seconds` | `maximum(9223372036)` |
 | `MCPHeadersChange` | `value` | `nonEmptyProperties` |
 | `MCPEnvironmentChange` | `value` | `nonEmptyProperties` |
 | `MCPServerCandidate` | `name` | `maxLength(32)` |
@@ -990,6 +992,7 @@ TypeScript validator from this single registry projection.
 | `ClientCapabilities` | `interruptTypes` | `uniqueItems` |
 | `ClientCapabilities` | `excludedEphemeralEvents` | `uniqueItems` |
 | `MCPAuthorizationAttemptLimits` | `retentionSeconds` | `positive` |
+| `MCPAuthorizationAttemptLimits` | `retentionSeconds` | `maximum(9223372036)` |
 | `RuntimeSubscribeRequest` | `topics` | `nonEmptyItems` |
 | `RuntimeSubscribeRequest` | `topics` | `uniqueItems` |
 | `RuntimeEvent` | `sequence` | `positive` |
@@ -1037,11 +1040,13 @@ TypeScript validator from this single registry projection.
 | `FieldError` | `field` | `nonEmpty` |
 | `FieldError` | `detail` | `nonEmpty` |
 | `ProblemData` | `retryAfterSeconds` | `positive` |
+| `ProblemData` | `retryAfterSeconds` | `maximum(9223372036)` |
 | `ProblemData` | `requiredCapabilities` | `nonEmptyItems` |
 | `ProblemData` | `requiredCapabilities` | `uniqueItems` |
 | `RunReplayLimits` | `maxEvents` | `positive` |
 | `RunReplayLimits` | `maxBytes` | `positive` |
 | `IdempotencyLimits` | `retentionSeconds` | `positive` |
+| `IdempotencyLimits` | `retentionSeconds` | `maximum(9223372036)` |
 | `IdempotencyLimits` | `namespace` | `pattern("^idp_[0-9a-f]{32}$")` |
 | `SubscriptionLimits` | `maxTopics` | `positive` |
 | `SubscriptionLimits` | `maxWatches` | `positive` |

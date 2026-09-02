@@ -250,8 +250,11 @@ func registerArtifactValues(s *Shapes) {
 		"inputTokens", "outputTokens", "cacheReadTokens", "cacheWriteTokens", "reasoningTokens", "costUsd",
 	)
 	s.valueConstraint(FieldConstraintSpec{
-		GoType:      typeOf[protocol.ArtifactProblem](),
-		Constraints: []FieldConstraint{{Field: "retryAfterSeconds", Kind: ConstraintPositive}},
+		GoType: typeOf[protocol.ArtifactProblem](),
+		Constraints: []FieldConstraint{
+			{Field: "retryAfterSeconds", Kind: ConstraintPositive},
+			{Field: "retryAfterSeconds", Kind: ConstraintMaximum, Limit: protocol.MaximumDurationSeconds},
+		},
 	})
 }
 
@@ -613,6 +616,7 @@ func registerMCPValues(s *Shapes) {
 		GoType: typeOf[protocol.MCPHandshakeTimeout](),
 		Constraints: []FieldConstraint{
 			{Field: "seconds", Kind: ConstraintPositive},
+			{Field: "seconds", Kind: ConstraintMaximum, Limit: protocol.MaximumDurationSeconds},
 		},
 	})
 	s.valueConstraint(FieldConstraintSpec{
@@ -856,8 +860,11 @@ func registerRuntimeValues(s *Shapes) {
 		},
 	})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType:      typeOf[protocol.MCPAuthorizationAttemptLimits](),
-		Constraints: []FieldConstraint{{Field: "retentionSeconds", Kind: ConstraintPositive}},
+		GoType: typeOf[protocol.MCPAuthorizationAttemptLimits](),
+		Constraints: []FieldConstraint{
+			{Field: "retentionSeconds", Kind: ConstraintPositive},
+			{Field: "retentionSeconds", Kind: ConstraintMaximum, Limit: protocol.MaximumDurationSeconds},
+		},
 	})
 
 	// A subscription names a set. Absence and an empty set both describe no stream,
@@ -924,6 +931,7 @@ func registerRuntimeValues(s *Shapes) {
 		GoType: typeOf[protocol.ProblemData](),
 		Constraints: []FieldConstraint{
 			{Field: "retryAfterSeconds", Kind: ConstraintPositive},
+			{Field: "retryAfterSeconds", Kind: ConstraintMaximum, Limit: protocol.MaximumDurationSeconds},
 			{Field: "requiredCapabilities", Kind: ConstraintNonEmptyItems},
 			{Field: "requiredCapabilities", Kind: ConstraintUniqueItems},
 		},
@@ -939,6 +947,7 @@ func registerRuntimeValues(s *Shapes) {
 		GoType: typeOf[protocol.IdempotencyLimits](),
 		Constraints: []FieldConstraint{
 			{Field: "retentionSeconds", Kind: ConstraintPositive},
+			{Field: "retentionSeconds", Kind: ConstraintMaximum, Limit: protocol.MaximumDurationSeconds},
 			{Field: "namespace", Kind: ConstraintPattern, Value: runtimeidentity.IdempotencyNamespacePattern},
 		},
 	})

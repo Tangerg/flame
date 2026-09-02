@@ -752,6 +752,13 @@ func TestProblemDataWireUnion(t *testing.T) {
 			assertConstraintField(t, err, "ProblemData", test.field)
 		})
 	}
+	if int64(math.MaxInt) > MaximumDurationSeconds {
+		tooLongSeconds64 := MaximumDurationSeconds + 1
+		tooLongSeconds := int(tooLongSeconds64)
+		assertConstraintField(t, ValidateWireTree(ProblemData{
+			Type: ProblemTimeout, RetryAfterSeconds: tooLongSeconds,
+		}), "ProblemData", "retryAfterSeconds")
+	}
 }
 
 func TestProblemDataStructuredLeavesAreValidated(t *testing.T) {
@@ -1066,6 +1073,18 @@ func TestPublishedLimitWireConstraints(t *testing.T) {
 	assertConstraintField(t, invalidNamespace.Idempotency.ValidateWire(), "IdempotencyLimits", "namespace")
 	zeroConcurrentRuns := 0
 	assertConstraintField(t, validRuntimeLimits(&zeroConcurrentRuns).ValidateWire(), "RuntimeLimits", "maxConcurrentRuns")
+	if int64(math.MaxInt) > MaximumDurationSeconds {
+		tooLongSeconds64 := MaximumDurationSeconds + 1
+		tooLongSeconds := int(tooLongSeconds64)
+		tooLong := validRuntimeLimits(nil)
+		tooLong.Idempotency.RetentionSeconds = tooLongSeconds
+		tooLong.MCPAuthorizationAttempts.RetentionSeconds = tooLongSeconds
+		assertConstraintField(t, ValidateWireTree(tooLong), "RuntimeLimits", "idempotency.retentionSeconds")
+		assertConstraintField(t, ValidateWireTree(tooLong), "RuntimeLimits", "mcpAuthorizationAttempts.retentionSeconds")
+		assertConstraintField(t, (MCPHandshakeTimeout{
+			Type: MCPHandshakeBounded, Seconds: &tooLongSeconds,
+		}).ValidateWire(), "MCPHandshakeTimeout", "seconds")
+	}
 
 	negativeTokens, negativeSteps, negativeBudget := int64(-1), -1, -0.01
 	start := StartRunRequest{SessionID: "ses_1", Input: []ContentBlock{{Type: ContentBlockText, Text: "go"}}, Limits: &RunLimits{MaxTotalTokens: &negativeTokens}}
@@ -1441,6 +1460,13 @@ func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
 		{shape: "ArtifactProblem", field: "retryAfterSeconds", value: ArtifactProblem{RetryAfterSeconds: -1}},
 	} {
 		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+	}
+	if int64(math.MaxInt) > MaximumDurationSeconds {
+		tooLongSeconds64 := MaximumDurationSeconds + 1
+		tooLongSeconds := int(tooLongSeconds64)
+		assertConstraintField(t, (ArtifactProblem{
+			Type: ArtifactProblemTimeout, RetryAfterSeconds: tooLongSeconds,
+		}).ValidateWire(), "ArtifactProblem", "retryAfterSeconds")
 	}
 }
 

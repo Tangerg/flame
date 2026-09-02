@@ -491,9 +491,13 @@ func portableRunFailureFromArtifact(path string, artifact *protocol.ArtifactProb
 	if err != nil {
 		return nil, err
 	}
+	retryAfter, err := run.RetryAfterFromSeconds(artifact.RetryAfterSeconds)
+	if err != nil {
+		return nil, invalidArtifact(path+".retryAfterSeconds", "%v", err)
+	}
 	return &run.Failure{
 		Kind: kind, Detail: artifact.Detail, DocURL: artifact.DocURL,
-		RetryAfter: time.Duration(artifact.RetryAfterSeconds) * time.Second,
+		RetryAfter: retryAfter,
 	}, nil
 }
 

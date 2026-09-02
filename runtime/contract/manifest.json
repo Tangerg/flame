@@ -5529,6 +5529,10 @@
         {
           "field": "retryAfterSeconds",
           "constraint": "positive"
+        },
+        {
+          "field": "retryAfterSeconds",
+          "constraint": "maximum(9223372036)"
         }
       ]
     },
@@ -6952,6 +6956,10 @@
         {
           "field": "seconds",
           "constraint": "positive"
+        },
+        {
+          "field": "seconds",
+          "constraint": "maximum(9223372036)"
         }
       ]
     },
@@ -7832,6 +7840,10 @@
         {
           "field": "retentionSeconds",
           "constraint": "positive"
+        },
+        {
+          "field": "retentionSeconds",
+          "constraint": "maximum(9223372036)"
         }
       ]
     },
@@ -8062,6 +8074,10 @@
           "constraint": "positive"
         },
         {
+          "field": "retryAfterSeconds",
+          "constraint": "maximum(9223372036)"
+        },
+        {
           "field": "requiredCapabilities",
           "constraint": "nonEmptyItems"
         },
@@ -8090,6 +8106,10 @@
         {
           "field": "retentionSeconds",
           "constraint": "positive"
+        },
+        {
+          "field": "retentionSeconds",
+          "constraint": "maximum(9223372036)"
         },
         {
           "field": "namespace",

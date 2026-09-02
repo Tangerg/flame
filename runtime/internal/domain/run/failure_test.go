@@ -1,6 +1,7 @@
 package run
 
 import (
+	"math"
 	"testing"
 	"time"
 )
@@ -23,5 +24,22 @@ func TestFailureRetryAfterSecondsNeverShortensProviderHint(t *testing.T) {
 				t.Fatalf("RetryAfterSeconds() = %d, want %d", got, test.want)
 			}
 		})
+	}
+}
+
+func TestRetryAfterWholeSecondRepresentationIsClosed(t *testing.T) {
+	maximumSeconds := int(MaximumRetryAfter / time.Second)
+	delay, err := RetryAfterFromSeconds(maximumSeconds)
+	if err != nil || delay != MaximumRetryAfter {
+		t.Fatalf("RetryAfterFromSeconds(maximum) = %v, %v", delay, err)
+	}
+	if _, err := RetryAfterFromSeconds(maximumSeconds + 1); err == nil {
+		t.Fatal("RetryAfterFromSeconds accepted an overflowing delay")
+	}
+	if err := (Failure{Kind: FailureRateLimited, RetryAfter: MaximumRetryAfter + time.Nanosecond}).Validate(); err == nil {
+		t.Fatal("Failure.Validate accepted a delay that cannot round-trip through seconds")
+	}
+	if got := (Failure{RetryAfter: time.Duration(math.MaxInt64)}).RetryAfterSeconds(); got != maximumSeconds {
+		t.Fatalf("RetryAfterSeconds(max duration) = %d, want %d", got, maximumSeconds)
 	}
 }

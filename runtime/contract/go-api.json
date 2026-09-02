@@ -1340,6 +1340,11 @@
           "value": "9223372036854"
         },
         {
+          "name": "MaximumDurationSeconds",
+          "type": "int64",
+          "value": "9223372036"
+        },
+        {
           "name": "MaximumExactJSONInteger",
           "type": "untyped int",
           "value": "9007199254740991"

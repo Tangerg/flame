@@ -208,7 +208,7 @@ func TestCreateMCPServerRejectsNegativeTimeout(t *testing.T) {
 }
 
 func TestCreateMCPServerRejectsHandshakeTimeoutDurationOverflow(t *testing.T) {
-	if int64(math.MaxInt) <= maxMCPHandshakeTimeoutSeconds {
+	if int64(math.MaxInt) <= protocol.MaximumDurationSeconds {
 		t.Skip("int width cannot represent an overflowing duration")
 	}
 	registry := &mcpRegistryFake{}

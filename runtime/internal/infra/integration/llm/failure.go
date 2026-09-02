@@ -174,7 +174,7 @@ func retryAfter(header http.Header, now time.Time) time.Duration {
 		if candidate.name == "Retry-After" {
 			when, err := http.ParseTime(value)
 			if err == nil {
-				return max(0, when.Sub(now))
+				return min(max(0, when.Sub(now)), run.MaximumRetryAfter)
 			}
 		}
 	}
@@ -187,8 +187,8 @@ func numericRetryAfter(value string, unit time.Duration) (time.Duration, bool) {
 		return 0, false
 	}
 	scaled := quantity * float64(unit)
-	if scaled >= float64(math.MaxInt64) {
-		return time.Duration(math.MaxInt64), true
+	if scaled >= float64(run.MaximumRetryAfter) {
+		return run.MaximumRetryAfter, true
 	}
 	return time.Duration(scaled), true
 }

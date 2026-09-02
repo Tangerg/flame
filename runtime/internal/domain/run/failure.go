@@ -1,9 +1,14 @@
 package run
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
+
+// MaximumRetryAfter is the largest retry delay that survives the domain's
+// whole-second persistence and protocol representations without overflow.
+const MaximumRetryAfter = time.Duration((1<<63-1)/int64(time.Second)) * time.Second
 
 // FailureKind classifies a Run failure without depending on provider
 // error text. Integrations translate concrete failures at their boundary;
@@ -71,6 +76,9 @@ func (f Failure) Validate() error {
 	if f.RetryAfter < 0 {
 		return fmt.Errorf("run: failure retry delay must not be negative")
 	}
+	if f.RetryAfter > MaximumRetryAfter {
+		return fmt.Errorf("run: failure retry delay exceeds the representable whole-second range")
+	}
 	if f.RetryAfter > 0 && !f.Kind.AllowsRetryAfter() {
 		return fmt.Errorf("run: failure kind %s cannot carry a retry delay", f.Kind)
 	}
@@ -84,15 +92,26 @@ func (f Failure) RetryAfterSeconds() int {
 	if f.RetryAfter <= 0 {
 		return 0
 	}
+	if f.RetryAfter > MaximumRetryAfter {
+		return int(MaximumRetryAfter / time.Second)
+	}
 	seconds := f.RetryAfter / time.Second
 	if f.RetryAfter%time.Second != 0 {
 		seconds++
 	}
-	maximumInt := int64(^uint(0) >> 1)
-	if int64(seconds) > maximumInt {
-		return int(maximumInt)
-	}
 	return int(seconds)
+}
+
+// RetryAfterFromSeconds restores a whole-second retry delay without allowing
+// persistence or protocol input to overflow time.Duration.
+func RetryAfterFromSeconds(seconds int) (time.Duration, error) {
+	if seconds < 0 {
+		return 0, errors.New("run: retry-after seconds must not be negative")
+	}
+	if int64(seconds) > int64(MaximumRetryAfter/time.Second) {
+		return 0, errors.New("run: retry-after seconds exceed the representable duration")
+	}
+	return time.Duration(seconds) * time.Second, nil
 }
 
 // FailureError carries a typed Run classification while preserving the

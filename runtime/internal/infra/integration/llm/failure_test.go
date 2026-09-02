@@ -3,7 +3,6 @@ package llm
 import (
 	"context"
 	"errors"
-	"math"
 	"net/http"
 	"testing"
 	"time"
@@ -114,7 +113,7 @@ func TestRetryAfterUsesProviderPrecisionWithoutOverflow(t *testing.T) {
 		},
 		{name: "fractional seconds", header: http.Header{"Retry-After": []string{"0.25"}}, want: 250 * time.Millisecond},
 		{name: "date", header: http.Header{"Retry-After": []string{now.Add(3 * time.Second).Format(http.TimeFormat)}}, want: 3 * time.Second},
-		{name: "overflow saturates", header: http.Header{"Retry-After-Ms": []string{"1e100"}}, want: time.Duration(math.MaxInt64)},
+		{name: "overflow saturates", header: http.Header{"Retry-After-Ms": []string{"1e100"}}, want: run.MaximumRetryAfter},
 		{name: "invalid preferred falls back", header: http.Header{"Retry-After-Ms": []string{"-1"}, "Retry-After": []string{"2"}}, want: 2 * time.Second},
 	}
 	for _, test := range tests {

@@ -1010,7 +1010,8 @@
         },
         "retryAfterSeconds": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 9223372036
         },
         "type": {
           "$ref": "#/$defs/ArtifactProblemType"
@@ -3121,7 +3122,8 @@
         },
         "retentionSeconds": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 9223372036
         }
       },
       "required": [
@@ -4354,7 +4356,8 @@
       "properties": {
         "retentionSeconds": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 9223372036
         }
       },
       "required": [
@@ -4655,7 +4658,8 @@
       "properties": {
         "seconds": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 9223372036
         },
         "type": {
           "$ref": "#/$defs/MCPHandshakeTimeoutType"
@@ -5705,7 +5709,8 @@
         },
         "retryAfterSeconds": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "maximum": 9223372036
         },
         "type": {
           "type": "string"

@@ -658,7 +658,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ArtifactProblem: object({
     detail: text(),
     docUrl: text(),
-    retryAfterSeconds: allOf([integer(), minimum(1)]),
+    retryAfterSeconds: allOf([integer(), minimum(1), maximum(9223372036)]),
     type: ref(() => CHECKS.ArtifactProblemType),
   }, ["type"]),
   ArtifactProblemType: enumOf(["internalError", "runLost", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected", "deniedByUser", "toolFailed", "childRunCanceled", "toolCanceled"]),
@@ -1264,7 +1264,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["hooks", "projectTrusted"]),
   IdempotencyLimits: object({
     namespace: allOf([text(), pattern("^idp_[0-9a-f]{32}$")]),
-    retentionSeconds: allOf([integer(), minimum(1)]),
+    retentionSeconds: allOf([integer(), minimum(1), maximum(9223372036)]),
   }, ["namespace", "retentionSeconds"]),
   ImportSessionRequest: allOf([
     object({
@@ -1690,7 +1690,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   MCPAuthorizationAttemptLimits: object({
-    retentionSeconds: allOf([integer(), minimum(1)]),
+    retentionSeconds: allOf([integer(), minimum(1), maximum(9223372036)]),
   }, ["retentionSeconds"]),
   MCPAuthorizationAttemptRequest: object({
     attemptId: allOf([text(), pattern("^mcpauth_[A-Z2-7]{26,64}$")]),
@@ -1805,7 +1805,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   MCPHandshakeTimeout: allOf([
     object({
-      seconds: allOf([integer(), minimum(1)]),
+      seconds: allOf([integer(), minimum(1), maximum(9223372036)]),
       type: ref(() => CHECKS.MCPHandshakeTimeoutType),
     }, []),
     oneOf([
@@ -2066,7 +2066,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       docUrl: text(),
       errors: array(ref(() => CHECKS.FieldError)),
       requiredCapabilities: allOf([array(ref(() => CHECKS.CapabilityRequirement)), minItems(1), uniqueItems()]),
-      retryAfterSeconds: allOf([integer(), minimum(1)]),
+      retryAfterSeconds: allOf([integer(), minimum(1), maximum(9223372036)]),
       type: text(),
     }, []),
     oneOf([

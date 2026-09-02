@@ -520,10 +520,14 @@ func decodeRunFailure(encoded string) (*rundomain.Failure, error) {
 	if !row.Kind.Valid() {
 		return nil, fmt.Errorf("unknown run failure kind %q", row.Kind)
 	}
+	retryAfter, err := rundomain.RetryAfterFromSeconds(row.RetryAfterSeconds)
+	if err != nil {
+		return nil, fmt.Errorf("decode run failure: %w", err)
+	}
 	return &rundomain.Failure{
 		Kind:       row.Kind,
 		Detail:     row.Detail,
 		DocURL:     row.DocURL,
-		RetryAfter: time.Duration(row.RetryAfterSeconds) * time.Second,
+		RetryAfter: retryAfter,
 	}, nil
 }
