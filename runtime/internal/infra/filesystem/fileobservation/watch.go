@@ -75,44 +75,53 @@ type target struct {
 
 func canonicalTargets(targets []Target) ([]target, error) {
 	out := make([]target, 0, len(targets))
-	type targetKey struct {
-		name     string
-		path     string
-		maxBytes int64
-	}
-	seen := make(map[targetKey]struct{}, len(targets))
+	seen := make(map[target]struct{}, len(targets))
 	for index, candidate := range targets {
-		if candidate.Key == "" {
-			return nil, fmt.Errorf("observe files: target %d key is required", index)
+		canonical, err := canonicalTarget(index, candidate)
+		if err != nil {
+			return nil, err
 		}
-		if candidate.Path == "" || !filepath.IsAbs(candidate.Path) {
-			return nil, fmt.Errorf("observe files: target %d path must be absolute", index)
-		}
-		if candidate.MaxBytes <= 0 {
-			return nil, fmt.Errorf("observe files: target %d byte limit must be positive", index)
-		}
-		path := filepath.Clean(candidate.Path)
-		identity := targetKey{name: candidate.Key, path: path, maxBytes: candidate.MaxBytes}
-		if _, duplicate := seen[identity]; duplicate {
+		if _, duplicate := seen[canonical]; duplicate {
 			continue
 		}
-		seen[identity] = struct{}{}
-		var boundary string
-		if candidate.Boundary != "" {
-			if !filepath.IsAbs(candidate.Boundary) {
-				return nil, fmt.Errorf("observe files: target %d boundary must be absolute", index)
-			}
-			resolved, err := pathidentity.Resolve("", candidate.Boundary)
-			if err != nil {
-				return nil, fmt.Errorf("observe files: resolve target %d boundary: %w", index, err)
-			}
-			boundary = resolved
-		}
-		out = append(out, target{
-			key: candidate.Key, path: path, physicalBoundary: boundary, maxBytes: candidate.MaxBytes,
-		})
+		seen[canonical] = struct{}{}
+		out = append(out, canonical)
 	}
 	return out, nil
+}
+
+func canonicalTarget(index int, candidate Target) (target, error) {
+	if candidate.Key == "" {
+		return target{}, fmt.Errorf("observe files: target %d key is required", index)
+	}
+	if candidate.Path == "" || !filepath.IsAbs(candidate.Path) {
+		return target{}, fmt.Errorf("observe files: target %d path must be absolute", index)
+	}
+	if candidate.MaxBytes <= 0 {
+		return target{}, fmt.Errorf("observe files: target %d byte limit must be positive", index)
+	}
+	boundary, err := resolveTargetBoundary(index, candidate.Boundary)
+	if err != nil {
+		return target{}, err
+	}
+	return target{
+		key: candidate.Key, path: filepath.Clean(candidate.Path),
+		physicalBoundary: boundary, maxBytes: candidate.MaxBytes,
+	}, nil
+}
+
+func resolveTargetBoundary(index int, boundary string) (string, error) {
+	if boundary == "" {
+		return "", nil
+	}
+	if !filepath.IsAbs(boundary) {
+		return "", fmt.Errorf("observe files: target %d boundary must be absolute", index)
+	}
+	resolved, err := pathidentity.Resolve("", boundary)
+	if err != nil {
+		return "", fmt.Errorf("observe files: resolve target %d boundary: %w", index, err)
+	}
+	return resolved, nil
 }
 
 type watch struct {

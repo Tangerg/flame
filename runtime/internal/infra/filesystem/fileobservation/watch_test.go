@@ -170,6 +170,36 @@ func TestWatchBoundsOversizedContentFingerprints(t *testing.T) {
 	assertObservedKey(t, events, "knowledge")
 }
 
+func TestCanonicalTargetsKeepBoundaryPolicyInIdentity(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "FLAME.md")
+	targets, err := canonicalTargets([]Target{
+		{Key: "knowledge", Path: path, Boundary: root, MaxBytes: testMaxBytes},
+		{Key: "knowledge", Path: path, Boundary: filepath.Dir(root), MaxBytes: testMaxBytes},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(targets) != 2 {
+		t.Fatalf("canonical targets = %d, want both confinement policies", len(targets))
+	}
+	if targets[0].physicalBoundary == targets[1].physicalBoundary {
+		t.Fatalf("canonical boundaries collapsed to %q", targets[0].physicalBoundary)
+	}
+}
+
+func TestCanonicalTargetsValidateEveryDuplicateCandidate(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "FLAME.md")
+	_, err := canonicalTargets([]Target{
+		{Key: "knowledge", Path: path, Boundary: root, MaxBytes: testMaxBytes},
+		{Key: "knowledge", Path: path, Boundary: "relative", MaxBytes: testMaxBytes},
+	})
+	if err == nil {
+		t.Fatal("canonical targets accepted an invalid boundary hidden behind a duplicate")
+	}
+}
+
 func assertObservedKey(t *testing.T, events <-chan []string, want string) {
 	t.Helper()
 	select {

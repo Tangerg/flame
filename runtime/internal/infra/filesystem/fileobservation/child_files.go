@@ -66,57 +66,46 @@ type childFileTarget struct {
 	maxBytes         int64
 }
 
-type childFileTargetKey struct {
-	name       string
-	path       string
-	fileName   string
-	maxEntries int
-	maxBytes   int64
-}
-
 func canonicalChildFileTargets(targets []ChildFileTarget) ([]childFileTarget, error) {
 	out := make([]childFileTarget, 0, len(targets))
-	seen := make(map[childFileTargetKey]struct{}, len(targets))
+	seen := make(map[childFileTarget]struct{}, len(targets))
 	for index, candidate := range targets {
-		identity, err := validateChildFileTarget(index, candidate)
+		canonical, err := canonicalChildFileTarget(index, candidate)
 		if err != nil {
 			return nil, err
 		}
-		if _, duplicate := seen[identity]; duplicate {
+		if _, duplicate := seen[canonical]; duplicate {
 			continue
 		}
-		seen[identity] = struct{}{}
-		boundary, err := resolveChildFileBoundary(index, candidate.Boundary)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, childFileTarget{
-			key: candidate.Key, path: identity.path, physicalBoundary: boundary,
-			fileName: candidate.FileName, maxEntries: candidate.MaxEntries, maxBytes: candidate.MaxBytes,
-		})
+		seen[canonical] = struct{}{}
+		out = append(out, canonical)
 	}
 	return out, nil
 }
 
-func validateChildFileTarget(index int, candidate ChildFileTarget) (childFileTargetKey, error) {
+func canonicalChildFileTarget(index int, candidate ChildFileTarget) (childFileTarget, error) {
 	if candidate.Key == "" {
-		return childFileTargetKey{}, fmt.Errorf("observe child files: target %d key is required", index)
+		return childFileTarget{}, fmt.Errorf("observe child files: target %d key is required", index)
 	}
 	if candidate.Path == "" || !filepath.IsAbs(candidate.Path) {
-		return childFileTargetKey{}, fmt.Errorf("observe child files: target %d path must be absolute", index)
+		return childFileTarget{}, fmt.Errorf("observe child files: target %d path must be absolute", index)
 	}
 	if candidate.FileName == "" || filepath.Base(candidate.FileName) != candidate.FileName {
-		return childFileTargetKey{}, fmt.Errorf("observe child files: target %d filename must be one path element", index)
+		return childFileTarget{}, fmt.Errorf("observe child files: target %d filename must be one path element", index)
 	}
 	if candidate.MaxEntries <= 0 {
-		return childFileTargetKey{}, fmt.Errorf("observe child files: target %d entry limit must be positive", index)
+		return childFileTarget{}, fmt.Errorf("observe child files: target %d entry limit must be positive", index)
 	}
 	if candidate.MaxBytes <= 0 {
-		return childFileTargetKey{}, fmt.Errorf("observe child files: target %d byte limit must be positive", index)
+		return childFileTarget{}, fmt.Errorf("observe child files: target %d byte limit must be positive", index)
 	}
-	return childFileTargetKey{
-		name: candidate.Key, path: filepath.Clean(candidate.Path), fileName: candidate.FileName,
-		maxEntries: candidate.MaxEntries, maxBytes: candidate.MaxBytes,
+	boundary, err := resolveChildFileBoundary(index, candidate.Boundary)
+	if err != nil {
+		return childFileTarget{}, err
+	}
+	return childFileTarget{
+		key: candidate.Key, path: filepath.Clean(candidate.Path), physicalBoundary: boundary,
+		fileName: candidate.FileName, maxEntries: candidate.MaxEntries, maxBytes: candidate.MaxBytes,
 	}, nil
 }
 

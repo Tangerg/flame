@@ -52,6 +52,34 @@ func TestWatchChildFilesRequiresPositiveHardLimits(t *testing.T) {
 	}
 }
 
+func TestCanonicalChildFileTargetsKeepBoundaryPolicyInIdentity(t *testing.T) {
+	root := t.TempDir()
+	targets, err := canonicalChildFileTargets([]ChildFileTarget{
+		{Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md", MaxEntries: 16, MaxBytes: testMaxBytes},
+		{Key: "skills", Path: root, Boundary: filepath.Dir(root), FileName: "SKILL.md", MaxEntries: 16, MaxBytes: testMaxBytes},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(targets) != 2 {
+		t.Fatalf("canonical targets = %d, want both confinement policies", len(targets))
+	}
+	if targets[0].physicalBoundary == targets[1].physicalBoundary {
+		t.Fatalf("canonical boundaries collapsed to %q", targets[0].physicalBoundary)
+	}
+}
+
+func TestCanonicalChildFileTargetsValidateEveryDuplicateCandidate(t *testing.T) {
+	root := t.TempDir()
+	_, err := canonicalChildFileTargets([]ChildFileTarget{
+		{Key: "skills", Path: root, Boundary: root, FileName: "SKILL.md", MaxEntries: 16, MaxBytes: testMaxBytes},
+		{Key: "skills", Path: root, Boundary: "relative", FileName: "SKILL.md", MaxEntries: 16, MaxBytes: testMaxBytes},
+	})
+	if err == nil {
+		t.Fatal("canonical targets accepted an invalid boundary hidden behind a duplicate")
+	}
+}
+
 func TestWatchChildFilesAcceptsOnlyExactCommittedFiles(t *testing.T) {
 	root := t.TempDir()
 	first := filepath.Join(root, "first", "SKILL.md")
