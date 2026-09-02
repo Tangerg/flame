@@ -42,6 +42,7 @@ type interactionSession struct {
 	buildID             runtimeidentity.BuildID
 	start               runs.RootExecutionStart
 	toolOutcomes        interactionToolOutcomes
+	modelFailures       interactionModelFailures
 	committedReplies    interactionCommittedReplies
 	segmentClock        interactionSegmentClock
 }
@@ -113,6 +114,7 @@ func newInteractionSession(
 			canceledSubtreeRoots: make(map[agent.ProcessID]struct{}),
 		},
 		committedReplies: newInteractionCommittedReplies(),
+		modelFailures:    newInteractionModelFailures(),
 		accounting: newInteractionAccounting(
 			start.ModelSelection,
 			config.Pricing,
@@ -577,6 +579,14 @@ func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded,
 		end = segmentEndFromAllowance(stop, duration)
 	} else {
 		end = segmentEndFromTermination(termination, duration)
+		if termination.Cause() == agent.TerminationCauseExternalFailure {
+			failure, _ := termination.Failure()
+			if failure.Code() == "interaction.model.failed" {
+				if classified, found := i.modelFailures.take(result.ProcessID()); found {
+					end.Failure = &classified
+				}
+			}
+		}
 	}
 	usage, err := i.accounting.segmentUsage(result.ProcessID())
 	if err != nil {

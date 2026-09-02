@@ -2,12 +2,15 @@ package llm
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/deepseek"
 	"github.com/Tangerg/scope/models/google"
@@ -147,6 +150,34 @@ func TestBuildChatDeepSeekReasoningSurvivesOrdinarySecondTurn(t *testing.T) {
 	assistant := findWireAssistant(t, secondRequest.Messages)
 	if _, exists := assistant["reasoning_content"]; exists {
 		t.Fatalf("ordinary prior turn replayed reasoning_content: %#v", assistant)
+	}
+}
+
+func TestBuildChatDeepSeekClassifiesRateLimit(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		writer.Header().Set("Retry-After", "12")
+		writer.Header().Set("Retry-After-Ms", "1")
+		writer.WriteHeader(http.StatusTooManyRequests)
+		_, _ = writer.Write([]byte(`{"error":{"message":"slow down","type":"rate_limit_error","code":"rate_limit"}}`))
+	}))
+	t.Cleanup(server.Close)
+
+	client, _, err := BuildChat(mustClientSpec(t, ProviderDeepSeek, deepseek.ModelV4Flash, "test-key", server.URL))
+	if err != nil {
+		t.Fatalf("BuildChat: %v", err)
+	}
+	request, err := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("trigger rate limit")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.Call(t.Context(), request)
+	var failure *run.FailureError
+	if !errors.As(err, &failure) {
+		t.Fatalf("Call error = %T, want *run.FailureError", err)
+	}
+	if failure.Kind != run.FailureRateLimited || failure.RetryAfter != 12*time.Second {
+		t.Fatalf("failure = %+v, want rate limited with 12s retry", failure)
 	}
 }
 

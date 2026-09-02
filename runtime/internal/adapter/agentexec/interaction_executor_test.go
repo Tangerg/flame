@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"iter"
 	"slices"
 	"sync/atomic"
 	"testing"
@@ -266,15 +267,91 @@ func TestInteractionExecutorShutdownRejectsNewRoots(t *testing.T) {
 }
 
 func TestInteractionExecutorMapsModelFailure(t *testing.T) {
-	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
-		return nil, errors.New("provider unavailable")
+	tests := []struct {
+		name      string
+		cause     error
+		wantKind  run.FailureKind
+		wantRetry time.Duration
+	}{
+		{
+			name: "unclassified provider failure", cause: errors.New("provider unavailable"),
+			wantKind: run.FailureProviderUnavailable,
+		},
+		{
+			name: "rate limit", cause: &run.FailureError{
+				Kind: run.FailureRateLimited, RetryAfter: 12 * time.Second,
+				Err: errors.New("provider rate limited"),
+			}, wantKind: run.FailureRateLimited, wantRetry: 12 * time.Second,
+		},
+		{
+			name: "invalid credentials", cause: &run.FailureError{
+				Kind: run.FailureInvalidCredentials, Err: errors.New("provider rejected credentials"),
+			}, wantKind: run.FailureInvalidCredentials,
+		},
+		{
+			name: "request rejected", cause: &run.FailureError{
+				Kind: run.FailureProviderRejected, Err: errors.New("provider rejected request"),
+			}, wantKind: run.FailureProviderRejected,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+				return nil, test.cause
+			})
+			executor := newTestInteractionExecutor(t, model)
+			events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+			ended := payloadsOf[runs.SegmentEnded](events)
+			if len(ended) != 1 || ended[0].Reason != run.OutcomeFailed || ended[0].Failure == nil ||
+				ended[0].Failure.Kind != test.wantKind || ended[0].Failure.RetryAfter != test.wantRetry {
+				t.Fatalf("segment end = %#v", ended)
+			}
+		})
+	}
+}
+
+func TestInteractionExecutorMapsStreamingModelFailure(t *testing.T) {
+	cause := &run.FailureError{
+		Kind: run.FailureRateLimited, RetryAfter: 7 * time.Second,
+		Err: errors.New("stream rate limited"),
+	}
+	model := failingInteractionStream{cause: cause}
+	client, err := chatclient.New(model, chatclient.Config{Streamer: model})
+	if err != nil {
+		t.Fatal(err)
+	}
+	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+		Lifetime:               t.Context(),
+		ChatResolver:           staticInteractionChatResolver(client),
+		ImplementationIdentity: "interaction-executor-test-build",
+		ConfigurationIdentity:  "interaction-executor-test-config",
+		DefaultMaxModelCalls:   uint32Pointer(4),
+		BuildID:                interactionTestBuildID,
+		StreamModelResponses:   true,
 	})
-	executor := newTestInteractionExecutor(t, model)
+	if err != nil {
+		t.Fatal(err)
+	}
 	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
 	ended := payloadsOf[runs.SegmentEnded](events)
 	if len(ended) != 1 || ended[0].Reason != run.OutcomeFailed || ended[0].Failure == nil ||
-		ended[0].Failure.Kind != run.FailureProviderUnavailable {
+		ended[0].Failure.Kind != run.FailureRateLimited || ended[0].Failure.RetryAfter != 7*time.Second {
 		t.Fatalf("segment end = %#v", ended)
+	}
+}
+
+type failingInteractionStream struct{ cause error }
+
+func (f failingInteractionStream) Call(context.Context, *chat.Request) (*chat.Response, error) {
+	return nil, errors.New("unexpected synchronous model call")
+}
+
+func (f failingInteractionStream) Stream(
+	context.Context,
+	*chat.Request,
+) iter.Seq2[*chat.ResponseDelta, error] {
+	return func(yield func(*chat.ResponseDelta, error) bool) {
+		yield(nil, f.cause)
 	}
 }
 

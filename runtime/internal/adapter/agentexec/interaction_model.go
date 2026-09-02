@@ -36,6 +36,7 @@ func (o *observedInteractionModel) Call(
 			attempt.recordProjectionFailure(projectionErr)
 			return nil, errors.Join(err, projectionErr)
 		}
+		o.session.modelFailures.record(invocation.Relation().ProcessID(), err)
 		return response, err
 	}
 	if response == nil {
@@ -44,6 +45,7 @@ func (o *observedInteractionModel) Call(
 			attempt.recordProjectionFailure(projectionErr)
 			return nil, errors.Join(responseErr, projectionErr)
 		}
+		o.session.modelFailures.record(invocation.Relation().ProcessID(), responseErr)
 		return nil, responseErr
 	}
 	if err := response.Validate(); err != nil {
@@ -51,6 +53,7 @@ func (o *observedInteractionModel) Call(
 			attempt.recordProjectionFailure(projectionErr)
 			return nil, errors.Join(err, projectionErr)
 		}
+		o.session.modelFailures.record(invocation.Relation().ProcessID(), err)
 		return response, err
 	}
 	if err := o.complete(ctx, invocation, callID, response); err != nil {
@@ -120,6 +123,9 @@ func (o *observedInteractionModel) finishFailedStream(
 ) error {
 	projectionErr := o.fail(ctx, invocation, callID)
 	if projectionErr == nil {
+		if cause != nil {
+			o.session.modelFailures.record(invocation.Relation().ProcessID(), cause)
+		}
 		return cause
 	}
 	attempt.recordProjectionFailure(projectionErr)
