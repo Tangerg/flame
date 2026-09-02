@@ -158,6 +158,8 @@ const RUNNING_SET_PLAN: Item = {
   runId: ROOT_RUN_ID,
   status: "completed",
   startedAt: CREATED_AT,
+  durationMillis: 12,
+  finishedAt: "2026-07-31T08:00:00.012Z",
   tool: {
     name: "set_plan",
     arguments: {
@@ -178,6 +180,8 @@ const RUNNING_READ: Item = {
   runId: ROOT_RUN_ID,
   status: "completed",
   startedAt: CREATED_AT,
+  durationMillis: 36,
+  finishedAt: "2026-07-31T08:00:00.036Z",
   tool: {
     name: "read",
     arguments: {
@@ -452,6 +456,16 @@ const WAVE_LIVE_TOOL: Item = {
     },
   },
 };
+
+interface TailFrame {
+  index: number;
+  event: StreamEvent;
+}
+
+/** The RAW frame, before projection. See `RUNTIME_AGENT_SESSION_SNAPSHOTS` for why both. */
+function tail(index: number, event: StreamEvent): TailFrame {
+  return { index, event };
+}
 
 function tailEvent(index: number, event: StreamEvent): AgentEventEnvelope {
   return runtimeAgentEvent({
@@ -1044,16 +1058,16 @@ export const AGENT_SESSION_SNAPSHOTS: Readonly<Record<VisualAgentState, AgentSes
     ]),
   ) as Record<VisualAgentState, AgentSessionSnapshot>;
 
-export const AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState, AgentEventEnvelope[]>> = {
+export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState, TailFrame[]>> = {
   empty: [],
   idle: [],
   running: [
-    tailEvent(1, { type: "item.started", item: RUNNING_REASONING }),
-    tailEvent(2, { type: "item.completed", item: RUNNING_SET_PLAN }),
-    tailEvent(3, { type: "item.started", item: RUNNING_READ }),
-    tailEvent(4, { type: "item.started", item: RUNNING_TOOL }),
-    tailEvent(5, { type: "item.started", item: RUNNING_RESPONSE }),
-    tailEvent(6, {
+    tail(1, { type: "item.started", item: RUNNING_REASONING }),
+    tail(2, { type: "item.completed", item: RUNNING_SET_PLAN }),
+    tail(3, { type: "item.completed", item: RUNNING_READ }),
+    tail(4, { type: "item.started", item: RUNNING_TOOL }),
+    tail(5, { type: "item.started", item: RUNNING_RESPONSE }),
+    tail(6, {
       type: "segment.progress",
       progress: { contextTokens: VISUAL_CONTEXT_TOKENS },
     }),
@@ -1062,22 +1076,22 @@ export const AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState, AgentE
   // superseded yet, so the thinking stays readable and the live tool work stays
   // unfolded; an empty answer is not yet replacement material.
   "answer-opening": [
-    tailEvent(1, { type: "item.started", item: RUNNING_REASONING }),
-    tailEvent(2, { type: "item.completed", item: RUNNING_SET_PLAN }),
-    tailEvent(3, { type: "item.started", item: RUNNING_READ }),
-    tailEvent(4, { type: "item.started", item: RUNNING_TOOL }),
-    tailEvent(5, { type: "item.started", item: OPENING_RESPONSE }),
-    tailEvent(6, {
+    tail(1, { type: "item.started", item: RUNNING_REASONING }),
+    tail(2, { type: "item.completed", item: RUNNING_SET_PLAN }),
+    tail(3, { type: "item.completed", item: RUNNING_READ }),
+    tail(4, { type: "item.started", item: RUNNING_TOOL }),
+    tail(5, { type: "item.started", item: OPENING_RESPONSE }),
+    tail(6, {
       type: "segment.progress",
       progress: { contextTokens: VISUAL_CONTEXT_TOKENS },
     }),
   ],
   steer: [
-    tailEvent(1, { type: "item.started", item: RUNNING_REASONING }),
-    tailEvent(3, { type: "item.started", item: RUNNING_READ }),
-    tailEvent(4, { type: "item.started", item: RUNNING_TOOL }),
-    tailEvent(5, { type: "item.started", item: RUNNING_RESPONSE }),
-    tailEvent(6, {
+    tail(1, { type: "item.started", item: RUNNING_REASONING }),
+    tail(3, { type: "item.completed", item: RUNNING_READ }),
+    tail(4, { type: "item.started", item: RUNNING_TOOL }),
+    tail(5, { type: "item.started", item: RUNNING_RESPONSE }),
+    tail(6, {
       type: "segment.progress",
       progress: { contextTokens: VISUAL_CONTEXT_TOKENS },
     }),
@@ -1095,10 +1109,18 @@ export const AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState, AgentE
   // The live round arrives as started items, not as snapshot history: a snapshot holds
   // only what has reached a terminal state.
   waves: [
-    tailEvent(1, { type: "item.started", item: WAVE_LIVE_REASONING }),
-    tailEvent(2, { type: "item.started", item: WAVE_LIVE_TOOL }),
+    tail(1, { type: "item.started", item: WAVE_LIVE_REASONING }),
+    tail(2, { type: "item.started", item: WAVE_LIVE_TOOL }),
   ],
 };
+
+export const AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState, AgentEventEnvelope[]>> =
+  Object.fromEntries(
+    Object.entries(RUNTIME_AGENT_SESSION_TAIL_EVENTS).map(([state, frames]) => [
+      state,
+      frames.map((frame) => tailEvent(frame.index, frame.event)),
+    ]),
+  ) as Record<VisualAgentState, AgentEventEnvelope[]>;
 
 /**
  * The session's standing order, for the states that have one.
