@@ -69,6 +69,25 @@ describe("KnowledgeDraft", () => {
     });
   });
 
+  // The save's answer and the `latest` read race. When `latest` is still the pre-save document,
+  // reconciling against it would open the OLD content over the save that just landed.
+  it("does not roll a settled save back onto a stale read of the document", () => {
+    const saving = KnowledgeDraft.open({ content: "old", revision: "rev-1" }).edit("saved edit");
+
+    const committed = saving.settleSave(
+      { content: "saved edit", revision: "rev-2", updatedAt: "2026-08-12T00:01:00Z" },
+      { content: "old", revision: "rev-1" },
+    );
+
+    expect(committed).toEqual({
+      content: "saved edit",
+      draft: "saved edit",
+      revision: "rev-2",
+      updatedAt: "2026-08-12T00:01:00Z",
+    });
+    expect(committed.dirty).toBe(false);
+  });
+
   it("does not become clean on an obsolete save when a newer snapshot arrived", () => {
     const saving = KnowledgeDraft.open({ content: "old", revision: "rev-1" }).edit("saved edit");
 

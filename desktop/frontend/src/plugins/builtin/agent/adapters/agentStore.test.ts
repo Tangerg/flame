@@ -137,6 +137,25 @@ beforeEach(async () => {
   await loadPluginsForTest(spec);
 });
 
+// The transcript re-renders off `viewRevision`, and a token stream delivers events that fold
+// to the state already held — a replayed frame, a late duplicate. Advancing the revision for
+// those turns every no-op into a full re-render of every message.
+describe("agentStore projection identity", () => {
+  it("does not advance the revision for a batch that folds to the same view", () => {
+    const store = useAgentStore.getState();
+    store.ensureSession(SID);
+    store.applyRunEvents(SID, [fold(runStarted("run_1", SID))]);
+    const settled = materialToken();
+    const sessions = useAgentStore.getState().sessions;
+
+    // A re-delivered `segment.started` for the same run is folded away as an exact replay.
+    store.applyRunEvents(SID, [fold(runStarted("run_1", SID))]);
+
+    expect(materialToken()).toEqual(settled);
+    expect(useAgentStore.getState().sessions).toBe(sessions);
+  });
+});
+
 describe("agentStore.commitCancelResponse", () => {
   it("merges the exact root RunRef committed by the runtime", () => {
     const store = useAgentStore.getState();
