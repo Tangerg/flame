@@ -4,11 +4,11 @@
 // dispatch lives in reducer.custom.test.ts; shared-state tests in
 // reducer.aggregates.test.ts.
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentItem as Item, AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
-import { foldTestEvent as reduce, runFinished } from "./reducer.fixtures";
-import { reduceDurableItem } from "./reducer";
+import { foldTestEvent as reduce, runFinished, testRunEvent } from "./reducer.fixtures";
+import { reduceAgentEvent, reduceDurableItem } from "./reducer";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { selectCurrentRootRun, selectVisibleProblem } from "../view/runTree";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
@@ -50,6 +50,49 @@ describe("reducer — run lifecycle", () => {
       status: "finished",
       metrics: { steps: 2 },
     });
+  });
+
+  // A reconnect replays the same finish. The fold fails closed on a protocol violation by
+  // logging and returning the state unchanged, so a missing duplicate guard looks identical
+  // from the outside — except that every ordinary reconnect would report a `runStatusMismatch`
+  // it invented, and the log that is supposed to mean something stops meaning it.
+  for (const outcome of [
+    { type: "completed" },
+    { type: "canceled", detail: "" },
+    { type: "suspended" },
+  ] as const) {
+    it(`a re-delivered segment.finished{${outcome.type}} settles silently`, () => {
+      const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const started = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
+      const finish = testRunEvent(started, runFinished(outcome));
+      const settled = reduceAgentEvent(started, finish);
+
+      expect(reduceAgentEvent(settled, { ...finish, eventId: "evt_replay" })).toBe(settled);
+      expect(error).not.toHaveBeenCalled();
+      error.mockRestore();
+    });
+  }
+
+  // Two different outcomes for one segment is the Runtime contradicting itself. Treating the
+  // second as a duplicate would drop it with no log at all, leaving the transcript showing an
+  // outcome the Runtime has already replaced.
+  it("does not mistake a different outcome at the same instant for a replay", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const started = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
+    const finish = testRunEvent(started, runFinished({ type: "completed" }));
+    const settled = reduceAgentEvent(started, finish);
+
+    reduceAgentEvent(settled, {
+      ...finish,
+      eventId: "evt_contradiction",
+      event: runFinished({ type: "failed", error: { code: "provider_error", message: "boom" } }),
+    });
+
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining('stream handler "segment.finished"'),
+      expect.objectContaining({ message: expect.stringContaining("agent.fold.runStatusMismatch") }),
+    );
+    error.mockRestore();
   });
 
   it("segment.finished{failed} stores the error; a fresh segment.started clears it", () => {

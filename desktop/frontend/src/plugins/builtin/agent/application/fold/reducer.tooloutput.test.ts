@@ -87,6 +87,30 @@ describe("reducer — commandExecution output durability", () => {
     expect(s.toolCalls["t1"]?.result).toBe("/Users/tangerg\n");
   });
 
+  // A delta that arrives after the completed frame is a reconnect re-sending the tail of a
+  // stream the fold already settled. Appending it would grow the authoritative output past
+  // what the Runtime actually produced.
+  it("ignores a delta that arrives after the tool has settled", () => {
+    let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
+    s = reduce(s, started(item({ id: "t1", type: "toolCall", tool: cmd({}) })));
+    s = reduce(s, delta("t1", { type: "toolOutput", text: "partial" }));
+    s = reduce(
+      s,
+      completed(
+        item({
+          id: "t1",
+          status: "completed",
+          type: "toolCall",
+          tool: cmd({ output: "/Users/tangerg\n", exitCode: 0 }),
+        }),
+      ),
+    );
+
+    const settled = reduce(s, delta("t1", { type: "toolOutput", text: " and more" }));
+
+    expect(settled.toolCalls["t1"]?.result).toBe("/Users/tangerg\n");
+  });
+
   // The row titles itself with the human `description`, so the command has to reach
   // the view by another route or the one line a reader verifies is nowhere.
   it("carries the command itself alongside the description-derived label", () => {
