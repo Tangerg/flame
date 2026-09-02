@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { VISUAL_AGENT_STATES, type VisualAgentState } from "./agentSessionSnapshots";
 import {
   VISUAL_CONTEXT_TOKENS,
@@ -516,6 +516,27 @@ test("long content remains inside the reading column without horizontal overflow
   await expect(page.locator('[data-slot="composer-root"]')).toBeVisible();
 });
 
+/**
+ * Wait until a locator's box stops moving.
+ *
+ * Playwright's `hover()` reads the box and then moves the pointer, so anything still easing
+ * — the transcript's own scroll, an image resolving its size — is a pointer aimed where the
+ * target used to be. The failure that follows is a control that never reveals, which reads
+ * as a broken affordance rather than as a race.
+ */
+async function expectStableBox(locator: Locator): Promise<void> {
+  let previous = "";
+  await expect
+    .poll(async () => {
+      const box = await locator.boundingBox();
+      const current = box ? `${box.x},${box.y},${box.width},${box.height}` : "";
+      const settled = current !== "" && current === previous;
+      previous = current;
+      return settled;
+    })
+    .toBe(true);
+}
+
 test("code blocks stay readable and expose the wrap control", async ({ context, page }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"], {
     origin: "http://127.0.0.1:4174",
@@ -570,6 +591,10 @@ test("code blocks stay readable and expose the wrap control", async ({ context, 
   // earlier wrap click. Move it away so this measures the true resting state.
   await page.mouse.move(0, 0);
   await expect.poll(() => svgCopy.evaluate((button) => getComputedStyle(button).opacity)).toBe("0");
+  // And settle where it is before aiming at it. `hover()` reads the box, then moves the
+  // pointer — the transcript eases its own scroll, so under load the artifact has slid on by
+  // the time the pointer arrives and the hover lands on nothing.
+  await expectStableBox(svgArtifact);
   await svgArtifact.hover();
   await expect.poll(() => svgCopy.evaluate((button) => getComputedStyle(button).opacity)).toBe("1");
   await expect(svgArtifact.locator(".shiki-preview-body")).toHaveAttribute("tabindex", "0");
