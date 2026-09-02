@@ -113,6 +113,7 @@ function MessageBlockInner({
           )}
           {actionsVisibility !== "absent" && (
             <div
+              data-reveal={actionsVisibility === "hover" ? "hover" : undefined}
               className={cn(
                 "flex shrink-0 transition-[opacity,visibility] duration-[var(--dur-fast)]",
                 ACTIONS_VISIBILITY[actionsVisibility],

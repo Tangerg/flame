@@ -20,6 +20,7 @@ export function Chip({ icon, children, title, onClose }: Props) {
         <span className="max-w-[220px] truncate font-mono">{children}</span>
         {onClose && (
           <ButtonPrimitive
+            data-reveal="hover"
             type="button"
             className="grid h-5 w-5 place-items-center rounded-pill border-0 bg-transparent text-fg-faint opacity-0 scale-[0.96] transition-[opacity,scale,background-color,color] group-hover:opacity-100 group-hover:scale-100 focus-visible:opacity-100 hover:bg-hover hover:text-fg active:scale-[var(--press-scale)]"
             onClick={onClose}

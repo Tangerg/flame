@@ -119,6 +119,7 @@ export function MermaidBlock({ code }: Props) {
           dangerouslySetInnerHTML={{ __html: svg }}
         />
         <div
+          data-reveal="hover"
           className="absolute top-1 right-1 z-1 flex gap-1 opacity-0 transition-opacity group-hover/mermaid:opacity-100 focus-within:opacity-100"
           data-markdown-copy="exclude"
         >

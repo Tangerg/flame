@@ -215,6 +215,39 @@ test("coarse pointers receive real 44px controls without overlapping hit targets
   }
 });
 
+// A control that only appears when the pointer arrives has no way to appear where there is
+// no pointer. Every one of these was hidden at rest and revealed on `:hover` alone, so on a
+// touch screen the dock tab's close, a code block's copy and a message's actions were
+// reachable by nothing at all — the markdown table had been given the exception on its own,
+// which is how the rule was known and applied once.
+test("a pointer-only affordance is permanently shown where there is no pointer", async ({
+  browser,
+}) => {
+  const { context, page } = await closurePage(browser, {
+    hasTouch: true,
+    viewport: { width: 1120, height: 720 },
+  });
+  try {
+    expect(await page.evaluate(() => matchMedia("(hover: none)").matches)).toBe(true);
+
+    await openFixture(page, { fixture: "workspace", state: "dock-light" });
+    const close = page.getByRole("button", { name: "Close Plan" });
+    await expect.poll(() => close.evaluate((n) => getComputedStyle(n).opacity)).toBe("1");
+    await expect.poll(() => close.evaluate((n) => getComputedStyle(n).visibility)).toBe("visible");
+
+    await openFixture(page, { fixture: "agent", state: "narrative" });
+    const hidden = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('[data-reveal="hover"]')]
+        .filter((node) => node.getClientRects().length > 0)
+        .filter((node) => getComputedStyle(node).opacity !== "1")
+        .map((node) => node.className),
+    );
+    expect(hidden).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
 test("keyboard-only traversal reaches recovery, HITL, and settings actions", async ({ page }) => {
   await openFixture(page, { fixture: "shell", state: "error", theme: "light" });
   const settings = page.getByRole("button", { name: "Settings" });

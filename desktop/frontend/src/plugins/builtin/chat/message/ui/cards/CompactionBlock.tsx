@@ -25,6 +25,7 @@ export function CompactionBlock({ summary }: { summary: string }) {
         <Icon
           name="chevron-down"
           size="xs"
+          data-reveal="hover"
           className={cn(
             "shrink-0 text-fg-faint opacity-0 transition-[opacity,transform] duration-[var(--dur-fast)] group-hover/compaction:opacity-100 group-focus-visible/compaction:opacity-100",
             open && "rotate-180 opacity-100",

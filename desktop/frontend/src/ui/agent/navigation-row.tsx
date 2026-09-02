@@ -79,7 +79,14 @@ export function AgentRow({
           ) : (
             <span className="min-w-0 flex-1 truncate-fade">{children}</span>
           )}
-          {trailing && <span className={cn("shrink-0", action && RESTING_GLYPH)}>{trailing}</span>}
+          {trailing && (
+            <span
+              data-reveal={action ? "rest" : undefined}
+              className={cn("shrink-0", action && RESTING_GLYPH)}
+            >
+              {trailing}
+            </span>
+          )}
         </span>
         {detail != null && (
           <span className="min-w-0 truncate-fade text-ui-2xs leading-body text-fg-faint">
@@ -101,7 +108,10 @@ export function AgentRow({
   return (
     <div className={cn("relative select-none", ROW_GROUP)}>
       {row}
-      <span className={cn("absolute inset-y-0 right-1 grid place-items-center", HOVER_ACTION)}>
+      <span
+        data-reveal="hover"
+        className={cn("absolute inset-y-0 right-1 grid place-items-center", HOVER_ACTION)}
+      >
         {action}
       </span>
     </div>

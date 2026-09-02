@@ -90,6 +90,7 @@ function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () =>
         title={t("composer.removeImage")}
         aria-label={t("composer.removeImage")}
         onClick={onRemove}
+        data-reveal="hover"
         className="absolute right-0.5 top-0.5 rounded-full bg-media-scrim text-on-media opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
       />
     </div>

@@ -270,11 +270,6 @@
 .md-table-container:focus-within .md-table-actions {
   opacity: 1;
 }
-@media (hover: none) {
-  .md-table-actions {
-    opacity: 1;
-  }
-}
 .md table {
   border-collapse: separate;
   border-spacing: 0;

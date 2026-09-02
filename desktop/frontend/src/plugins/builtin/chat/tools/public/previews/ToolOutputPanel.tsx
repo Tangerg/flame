@@ -101,6 +101,7 @@ export function ToolOutputPanel({
           ))}
         </div>
         <IconButton
+          data-reveal="hover"
           icon={copied ? "check" : "copy"}
           size="xs"
           title={t(copied ? "tools.output.copied" : "tools.output.copy")}

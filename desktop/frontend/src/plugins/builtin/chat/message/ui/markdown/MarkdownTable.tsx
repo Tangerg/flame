@@ -32,7 +32,7 @@ export function MarkdownTable({ markdownSource, children }: Props) {
           </table>
         </div>
       </div>
-      <div className="md-table-actions" data-markdown-copy="exclude">
+      <div className="md-table-actions" data-reveal="hover" data-markdown-copy="exclude">
         <LightboxDialog
           open={previewOpen}
           onOpenChange={setPreviewOpen}

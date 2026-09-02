@@ -119,6 +119,7 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
           />
         )}
         <IconButton
+          data-reveal={isPreview ? "hover" : undefined}
           icon={copied ? "check" : "copy"}
           size="xs"
           onClick={() => void copy()}

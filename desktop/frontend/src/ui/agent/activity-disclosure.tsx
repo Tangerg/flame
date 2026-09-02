@@ -141,6 +141,7 @@ export function AgentActivityDisclosure({
           <span
             aria-hidden
             data-slot="agent-activity-chevron"
+            data-reveal="hover"
             className={cn(
               "flex shrink-0 text-fg-faint transition-[transform,opacity] duration-[var(--dur-fast)]",
               // Keyed on the TRIGGER's own `:focus-visible`, not on the header's

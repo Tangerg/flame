@@ -71,6 +71,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
       actions={actions.map((action) => (
         <IconButton
           key={action.id}
+          data-reveal="hover"
           icon={knownIconName(action.icon) ?? "tool"}
           size="xs"
           quiet

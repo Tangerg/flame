@@ -170,6 +170,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
               </TabsPrimitive.Tab>
               {tab.onClose && (
                 <IconButton
+                  data-reveal="hover"
                   icon="x"
                   size="xs"
                   quiet
