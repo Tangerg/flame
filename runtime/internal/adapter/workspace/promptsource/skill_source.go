@@ -66,14 +66,6 @@ func (r *runtimeSkillSource) List(ctx context.Context) ([]sdk.Summary, error) {
 		if !entry.IsDir() || !validRuntimeSkillName(name) {
 			continue
 		}
-		if len(names) == domainskills.MaxSkillsPerSource {
-			return nil, fmt.Errorf(
-				"%w: source %q contains more than %d Skills",
-				domainskills.ErrLibraryCapacity,
-				r.root,
-				domainskills.MaxSkillsPerSource,
-			)
-		}
 		names = append(names, name)
 	}
 	slices.Sort(names)
@@ -88,6 +80,14 @@ func (r *runtimeSkillSource) List(ctx context.Context) ([]sdk.Summary, error) {
 				continue
 			}
 			return nil, fmt.Errorf("runtime skill source: list: %w", err)
+		}
+		if len(summaries) == domainskills.MaxSkillsPerSource {
+			return nil, fmt.Errorf(
+				"%w: source %q contains more than %d valid Skills",
+				domainskills.ErrLibraryCapacity,
+				r.root,
+				domainskills.MaxSkillsPerSource,
+			)
 		}
 		summaries = append(summaries, skill.Summary())
 	}

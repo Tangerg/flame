@@ -55,6 +55,24 @@ func TestRuntimeSkillSourceRejectsOverCapacityDirectory(t *testing.T) {
 	}
 }
 
+func TestRuntimeSkillSourceCapacityCountsOnlyValidSkills(t *testing.T) {
+	workspace := t.TempDir()
+	root := ProjectSkillDir(workspace)
+	for index := range domainskills.MaxSkillsPerSource + 1 {
+		if err := os.MkdirAll(filepath.Join(root, fmt.Sprintf("invalid-%03d", index)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	listed, err := ListSkills(t.Context(), workspace, "")
+	if err != nil {
+		t.Fatalf("ListSkills rejected invalid candidates below the raw entry limit: %v", err)
+	}
+	if len(listed) != 0 {
+		t.Fatalf("ListSkills = %+v, want no valid Skills", listed)
+	}
+}
+
 func TestRuntimeSkillSourceRejectsRawDirectoryFlood(t *testing.T) {
 	workspace := t.TempDir()
 	root := ProjectSkillDir(workspace)
