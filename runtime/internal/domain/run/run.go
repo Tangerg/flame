@@ -265,6 +265,9 @@ func (r Run) validateTerminal() error {
 		if r.failure == nil {
 			return errors.New("run: failed Run has no failure")
 		}
+		if r.failure.Kind == FailureLost {
+			return fmt.Errorf("run: failed Run uses failure kind %s with a dedicated outcome", r.failure.Kind)
+		}
 	case OutcomeTimedOut:
 		if r.failure == nil || r.failure.Kind != FailureTimeout {
 			return errors.New("run: timed-out Run has no timeout failure")

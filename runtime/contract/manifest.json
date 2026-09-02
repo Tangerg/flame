@@ -3366,12 +3366,34 @@
           "tag": "timedOut",
           "required": [
             "error"
+          ],
+          "allowedValues": [
+            {
+              "field": "error.type",
+              "values": [
+                "timeout"
+              ]
+            }
           ]
         },
         {
           "tag": "failed",
           "required": [
             "error"
+          ],
+          "allowedValues": [
+            {
+              "field": "error.type",
+              "values": [
+                "internalError",
+                "agentStuck",
+                "rateLimited",
+                "invalidApiKey",
+                "timeout",
+                "providerUnavailable",
+                "providerRejected"
+              ]
+            }
           ]
         },
         {
@@ -3396,6 +3418,14 @@
           "tag": "lost",
           "required": [
             "error"
+          ],
+          "allowedValues": [
+            {
+              "field": "error.type",
+              "values": [
+                "runLost"
+              ]
+            }
           ]
         }
       ]
@@ -3502,6 +3532,16 @@
               "values": [
                 "completed",
                 "incomplete"
+              ]
+            },
+            {
+              "field": "error.type",
+              "values": [
+                "internalError",
+                "deniedByUser",
+                "toolFailed",
+                "childRunCanceled",
+                "toolCanceled"
               ]
             }
           ]
@@ -4209,6 +4249,9 @@
           ],
           "required": [
             "finishedAt"
+          ],
+          "forbidden": [
+            "error"
           ]
         },
         {
@@ -4248,6 +4291,9 @@
           ],
           "required": [
             "finishedAt"
+          ],
+          "forbidden": [
+            "error"
           ]
         },
         {

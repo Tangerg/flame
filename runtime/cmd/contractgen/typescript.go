@@ -369,10 +369,19 @@ func (t *tsEmitter) narrow(baseChild, narrowing *schema) string {
 		if !ok {
 			continue
 		}
-		if excluded, ok := narrowing.Properties[name].(bool); ok && !excluded {
+		override, mentioned := narrowing.Properties[name]
+		if excluded, ok := override.(bool); mentioned && ok && !excluded {
 			continue
 		}
-		fields = append(fields, fmt.Sprintf("%s%s: %s", propertyKey(name), optionalMark(narrowing, name), t.typeOf(child)))
+		rendered := t.typeOf(child)
+		if narrowed, ok := override.(*schema); mentioned && ok {
+			rendered = t.narrow(child, narrowed)
+		}
+		optional := "?"
+		if slices.Contains(frame.Required, name) || slices.Contains(narrowing.Required, name) {
+			optional = ""
+		}
+		fields = append(fields, fmt.Sprintf("%s%s: %s", propertyKey(name), optional, rendered))
 	}
 	return "{ " + strings.Join(fields, "; ") + " }"
 }

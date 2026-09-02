@@ -188,7 +188,7 @@ export type ArtifactItem =
   | { type: "agentMessage"; content: ArtifactContentBlock[]; createdAt: string; id: string; phase: MessagePhase; runId: string; status: "completed" }
   | { type: "reasoning"; createdAt: string; id: string; redacted?: boolean; runId: string; status: "completed"; text: string }
   | { type: "question"; createdAt: string; id: string; question: ArtifactQuestion; runId: string; status: "completed" }
-  | { type: "toolCall"; approvalDecision?: ApprovalDecision; durationMillis?: number; error?: ArtifactProblem; finishedAt?: string; id: string; runId: string; safetyClass?: SafetyClass; startedAt: string; status: "completed" | "incomplete"; tool: ArtifactToolInvocation }
+  | { type: "toolCall"; approvalDecision?: ApprovalDecision; durationMillis?: number; error?: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "internalError" | "deniedByUser" | "toolFailed" | "childRunCanceled" | "toolCanceled" }; finishedAt?: string; id: string; runId: string; safetyClass?: SafetyClass; startedAt: string; status: "completed" | "incomplete"; tool: ArtifactToolInvocation }
   | { type: "compaction"; createdAt: string; droppedMessages?: number; id: string; runId: string; status: "completed"; summary: string };
 
 export interface ArtifactModelUsage {
@@ -202,12 +202,12 @@ export interface ArtifactModelUsage {
 
 export type ArtifactOutcome =
   | { type: "completed" }
-  | { type: "timedOut"; error: ArtifactProblem }
-  | { type: "failed"; error: ArtifactProblem }
+  | { type: "timedOut"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "timeout" } }
+  | { type: "failed"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "internalError" | "agentStuck" | "rateLimited" | "invalidApiKey" | "timeout" | "providerUnavailable" | "providerRejected" } }
   | { type: "maxSteps"; detail?: string }
   | { type: "maxBudget"; detail?: string }
   | { type: "canceled"; detail?: string }
-  | { type: "lost"; error: ArtifactProblem };
+  | { type: "lost"; error: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "runLost" } };
 
 export type ArtifactOutcomeType = "completed" | "timedOut" | "failed" | "maxSteps" | "maxBudget" | "canceled" | "lost";
 

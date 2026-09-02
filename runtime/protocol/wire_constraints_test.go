@@ -1478,6 +1478,30 @@ func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
 	}
 }
 
+func TestSessionArtifactFailureTaxonomiesAreContextual(t *testing.T) {
+	t.Parallel()
+
+	at := time.Unix(1, 0).UTC()
+	completedTool := ArtifactItem{
+		ID: "item_1", RunID: "run_1", Status: ItemStatusCompleted,
+		Type: ItemTypeToolCall, StartedAt: at, FinishedAt: at,
+		Tool:  &ArtifactToolInvocation{Name: "shell", Arguments: map[string]any{}},
+		Error: &ArtifactProblem{Type: ArtifactProblemToolFailed},
+	}
+	assertConstraintField(t, completedTool.ValidateWire(), "ArtifactItem", "error")
+
+	incompleteTool := completedTool
+	incompleteTool.Status = ItemStatusIncomplete
+	incompleteTool.Error = &ArtifactProblem{Type: ArtifactProblemRunLost}
+	assertConstraintField(t, incompleteTool.ValidateWire(), "ArtifactItem", "error.type")
+
+	timedOut := ArtifactOutcome{
+		Type:  ArtifactOutcomeTimedOut,
+		Error: &ArtifactProblem{Type: ArtifactProblemProviderUnavailable},
+	}
+	assertConstraintField(t, timedOut.ValidateWire(), "ArtifactOutcome", "error.type")
+}
+
 func TestRuntimeOutputNumbersPreserveDomainBounds(t *testing.T) {
 	t.Parallel()
 

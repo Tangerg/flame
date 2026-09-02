@@ -116,6 +116,7 @@ func TestRunTerminalFactsRemainCoherent(t *testing.T) {
 		{name: "completed", outcome: OutcomeCompleted},
 		{name: "completed with detail", outcome: OutcomeCompleted, detail: "unexpected", wantErr: true},
 		{name: "failed", outcome: OutcomeFailed, failure: &Failure{Kind: FailureProviderRejected}},
+		{name: "generic failure classified as lost", outcome: OutcomeFailed, failure: &Failure{Kind: FailureLost}, wantErr: true},
 		{name: "failed with duplicate detail", outcome: OutcomeFailed, failure: &Failure{Kind: FailureProviderRejected}, detail: "duplicate", wantErr: true},
 		{name: "failure missing", outcome: OutcomeFailed, wantErr: true},
 		{name: "timeout classified", outcome: OutcomeTimedOut, failure: &Failure{Kind: FailureTimeout}},

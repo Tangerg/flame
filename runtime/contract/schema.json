@@ -697,6 +697,19 @@
             "content": false,
             "createdAt": false,
             "droppedMessages": false,
+            "error": {
+              "properties": {
+                "type": {
+                  "enum": [
+                    "internalError",
+                    "deniedByUser",
+                    "toolFailed",
+                    "childRunCanceled",
+                    "toolCanceled"
+                  ]
+                }
+              }
+            },
             "phase": false,
             "question": false,
             "redacted": false,
@@ -771,6 +784,9 @@
             ]
           },
           "then": {
+            "properties": {
+              "error": false
+            },
             "required": [
               "finishedAt"
             ]
@@ -857,6 +873,15 @@
         {
           "properties": {
             "detail": false,
+            "error": {
+              "properties": {
+                "type": {
+                  "enum": [
+                    "timeout"
+                  ]
+                }
+              }
+            },
             "type": {
               "const": "timedOut"
             }
@@ -869,6 +894,21 @@
         {
           "properties": {
             "detail": false,
+            "error": {
+              "properties": {
+                "type": {
+                  "enum": [
+                    "internalError",
+                    "agentStuck",
+                    "rateLimited",
+                    "invalidApiKey",
+                    "timeout",
+                    "providerUnavailable",
+                    "providerRejected"
+                  ]
+                }
+              }
+            },
             "type": {
               "const": "failed"
             }
@@ -914,6 +954,15 @@
         {
           "properties": {
             "detail": false,
+            "error": {
+              "properties": {
+                "type": {
+                  "enum": [
+                    "runLost"
+                  ]
+                }
+              }
+            },
             "type": {
               "const": "lost"
             }
@@ -3844,6 +3893,9 @@
             ]
           },
           "then": {
+            "properties": {
+              "error": false
+            },
             "required": [
               "finishedAt"
             ]

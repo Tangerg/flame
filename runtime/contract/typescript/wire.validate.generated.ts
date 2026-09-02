@@ -544,6 +544,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         content: absent(),
         createdAt: absent(),
         droppedMessages: absent(),
+        error: fields({
+          type: enumOf(["internalError", "deniedByUser", "toolFailed", "childRunCanceled", "toolCanceled"]),
+        }, []),
         phase: absent(),
         question: absent(),
         redacted: absent(),
@@ -574,7 +577,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         status: literal("completed"),
         type: literal("toolCall"),
       }, ["status", "type"]),
-      fields({}, ["finishedAt"]),
+      fields({
+        error: absent(),
+      }, ["finishedAt"]),
     ),
     ifThen(
       fields({
@@ -606,10 +611,16 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["type"]),
       fields({
         detail: absent(),
+        error: fields({
+          type: enumOf(["timeout"]),
+        }, []),
         type: literal("timedOut"),
       }, ["error", "type"]),
       fields({
         detail: absent(),
+        error: fields({
+          type: enumOf(["internalError", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected"]),
+        }, []),
         type: literal("failed"),
       }, ["error", "type"]),
       fields({
@@ -626,6 +637,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["type"]),
       fields({
         detail: absent(),
+        error: fields({
+          type: enumOf(["runLost"]),
+        }, []),
         type: literal("lost"),
       }, ["error", "type"]),
     ]),
@@ -1558,7 +1572,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         status: literal("completed"),
         type: literal("toolCall"),
       }, ["status", "type"]),
-      fields({}, ["finishedAt"]),
+      fields({
+        error: absent(),
+      }, ["finishedAt"]),
     ),
     ifThen(
       fields({

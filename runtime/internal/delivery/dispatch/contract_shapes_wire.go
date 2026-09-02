@@ -173,6 +173,14 @@ func allowedStreamItemKinds(kinds ...protocol.ItemType) []AllowedValueSet {
 	return []AllowedValueSet{{Field: "item.type", Values: values}}
 }
 
+func allowedArtifactProblemTypes(field string, kinds ...protocol.ArtifactProblemType) []AllowedValueSet {
+	values := make([]string, len(kinds))
+	for index, kind := range kinds {
+		values[index] = string(kind)
+	}
+	return []AllowedValueSet{{Field: field, Values: values}}
+}
+
 func registerRunUnions(s *Shapes) {
 	s.union(UnionSpec{
 		GoType:        typeOf[protocol.CancelRunResponse](),
@@ -413,12 +421,29 @@ func registerArtifactUnions(s *Shapes) {
 		Discriminator: "type",
 		Variants: []VariantSpec{
 			{Tag: string(protocol.ArtifactOutcomeCompleted)},
-			{Tag: string(protocol.ArtifactOutcomeTimedOut), Required: []string{"error"}},
-			{Tag: string(protocol.ArtifactOutcomeFailed), Required: []string{"error"}},
+			{
+				Tag: string(protocol.ArtifactOutcomeTimedOut), Required: []string{"error"},
+				AllowedValues: allowedArtifactProblemTypes("error.type", protocol.ArtifactProblemTimeout),
+			}, {
+				Tag: string(protocol.ArtifactOutcomeFailed), Required: []string{"error"},
+				AllowedValues: allowedArtifactProblemTypes(
+					"error.type",
+					protocol.ArtifactProblemInternalError,
+					protocol.ArtifactProblemAgentStuck,
+					protocol.ArtifactProblemRateLimited,
+					protocol.ArtifactProblemInvalidAPIKey,
+					protocol.ArtifactProblemTimeout,
+					protocol.ArtifactProblemProviderUnavailable,
+					protocol.ArtifactProblemProviderRejected,
+				),
+			},
 			{Tag: string(protocol.ArtifactOutcomeMaxSteps), Optional: []string{"detail"}},
 			{Tag: string(protocol.ArtifactOutcomeMaxBudget), Optional: []string{"detail"}},
 			{Tag: string(protocol.ArtifactOutcomeCanceled), Optional: []string{"detail"}},
-			{Tag: string(protocol.ArtifactOutcomeLost), Required: []string{"error"}},
+			{
+				Tag: string(protocol.ArtifactOutcomeLost), Required: []string{"error"},
+				AllowedValues: allowedArtifactProblemTypes("error.type", protocol.ArtifactProblemRunLost),
+			},
 		},
 	})
 
@@ -443,7 +468,17 @@ func registerArtifactUnions(s *Shapes) {
 				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
 			}, {
 				Tag: string(protocol.ItemTypeToolCall), Required: slices.Concat(toolItemFields, []string{"tool"}), Optional: []string{"finishedAt", "durationMillis", "safetyClass", "approvalDecision", "error"},
-				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted, protocol.ItemStatusIncomplete),
+				AllowedValues: slices.Concat(
+					allowedItemStatuses(protocol.ItemStatusCompleted, protocol.ItemStatusIncomplete),
+					allowedArtifactProblemTypes(
+						"error.type",
+						protocol.ArtifactProblemInternalError,
+						protocol.ArtifactProblemDeniedByUser,
+						protocol.ArtifactProblemToolFailed,
+						protocol.ArtifactProblemChildRunCanceled,
+						protocol.ArtifactProblemToolCanceled,
+					),
+				),
 			}, {
 				Tag: string(protocol.ItemTypeCompaction), Required: slices.Concat(createdItemFields, []string{"summary"}), Optional: []string{"droppedMessages"},
 				AllowedValues: allowedItemStatuses(protocol.ItemStatusCompleted),
@@ -658,7 +693,8 @@ func registerObjectConstraints(s *Shapes) {
 			{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
 			{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.ItemStatusCompleted)},
 		},
-		Required: []string{"finishedAt"},
+		Required:  []string{"finishedAt"},
+		Forbidden: []string{"error"},
 	}, {
 		When: []delivery.FieldCondition{
 			{Field: "type", Operator: delivery.OperatorEquals, Value: string(protocol.ItemTypeToolCall)},
