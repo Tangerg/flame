@@ -43,37 +43,17 @@ func (o *observedInteractionTool) Definition() corechat.ToolDefinition {
 func (o *observedInteractionTool) Unwrap() toolcontract.Tool { return o.inner }
 
 func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.Invocation) (corechat.ToolOutput, error) {
-	rawArguments := string(bound.Arguments())
-	invocation, ok := interaction.ToolInvocationFromContext(ctx)
-	if !ok {
-		return corechat.ToolOutput{}, errors.New("agentexec: Tool call has no Interaction attribution")
-	}
-	attempt, err := dispatchAttemptFrom(ctx, invocation.EffectID())
+	invocation, attempt, arguments, callID, err := o.attributedInvocation(ctx, bound)
 	if err != nil {
 		return corechat.ToolOutput{}, err
 	}
 	call := invocation.ToolCall()
-	if call.Name != o.Definition().Name || call.Arguments != rawArguments {
-		return corechat.ToolOutput{}, errors.New("agentexec: Tool invocation differs from its bound executable")
-	}
-	if _, err := conversation.NewToolCallIdentity(call.ID); err != nil {
-		return corechat.ToolOutput{}, fmt.Errorf("agentexec: Tool invocation: %w", err)
-	}
-	arguments, err := tool.ParseArguments(rawArguments)
-	if err != nil {
-		return corechat.ToolOutput{}, fmt.Errorf("agentexec: parse Tool %q arguments: %w", call.Name, err)
-	}
-	callIdentity, err := toolInvocationID(invocation)
-	if err != nil {
-		return corechat.ToolOutput{}, err
-	}
-	callID := callIdentity.String()
 	ctx = interactioninput.WithCapabilities(ctx, o.start.InterruptKinds)
 	arguments, denied, denialReason, err := o.prepare(ctx, callID, call.Name, arguments)
 	if err != nil {
 		return corechat.ToolOutput{}, err
 	}
-	rawArguments = arguments.Canonical()
+	rawArguments := arguments.Canonical()
 	innerInvocation, err := o.binding.Prepare(corechat.ToolCall{
 		ID: call.ID, Name: call.Name, Arguments: rawArguments,
 	})
@@ -94,24 +74,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	}
 	o.session.accounting.recordToolCall()
 	if denied {
-		if denialReason == "" {
-			denialReason = "tool call denied by policy"
-		}
-		denialOutput := corechat.NewTextToolOutput(denialReason)
-		modelResult, _ := invocation.ModelResult(denialOutput, nil)
-		end := o.finishedFact(
-			callID, arguments, denialOutput, &modelResult, nil, nil, errors.New(denialReason),
-		)
-		end.Failure = &tool.Failure{
-			Kind: tool.FailureDenied,
-		}
-		if err := o.session.commitFact(ctx, member, end); err != nil {
-			failure := interaction.HostFailure(fmt.Errorf("agentexec: commit denied Tool result: %w", err))
-			attempt.recordProjectionFailure(failure)
-			return corechat.ToolOutput{}, failure
-		}
-		o.session.toolOutcomes.record(call.Name, arguments, denialOutput, errors.New(denialReason))
-		return denialOutput, nil
+		return o.settleDeniedToolCall(ctx, attempt, invocation, member, callID, arguments, denialReason)
 	}
 	ctx = toolset.WithToolAdvertiser(ctx, func(names ...string) error {
 		return interaction.AdvertiseTools(ctx, names...)
@@ -171,34 +134,105 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		return corechat.ToolOutput{}, fmt.Errorf("agentexec: commit Tool result: %w", commitErr)
 	}
 	o.session.toolOutcomes.record(call.Name, arguments, modelOutput, callErr)
-	if o.interpreter != nil {
-		projected, projectionErr := o.interpreter.ProjectOutcome(
-			projectionCtx, o.start.SessionID, call.Name, callErr == nil,
-		)
-		if projectionErr != nil {
-			trace.SpanFromContext(projectionCtx).RecordError(
-				fmt.Errorf("agentexec: project Tool outcome: %w", projectionErr),
-			)
-		} else if projected != nil {
-			// Tool outcome projection is a refetchable live hint (for example a Plan
-			// snapshot), not a second settlement fact. The canonical Tool result above
-			// is already committed; losing this hint cannot make the Effect unknown.
-			o.session.lifetime.send(runs.ExecutorEvent{Member: member, Payload: projected})
-		}
-	}
-	if o.hooks != nil {
-		hookCtx, hookCancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
-		if hookErr := o.hooks.AfterToolUse(hookCtx, InteractionToolHookInput{
-			SessionID: o.start.SessionID, CWD: o.start.CWD, CallID: callID,
-			ToolName: call.Name, Arguments: arguments, Result: hookToolOutput(modelOutput), CallError: callErr,
-		}); hookErr != nil {
-			trace.SpanFromContext(hookCtx).RecordError(
-				fmt.Errorf("agentexec: run post-Tool hook: %w", hookErr),
-			)
-		}
-		hookCancel()
-	}
+	o.projectToolOutcome(projectionCtx, member, call.Name, callErr == nil)
+	o.runAfterToolUseHook(ctx, callID, call.Name, arguments, modelOutput, callErr)
 	return modelOutput, callErr
+}
+
+func (o *observedInteractionTool) attributedInvocation(
+	ctx context.Context,
+	bound toolcontract.Invocation,
+) (interaction.ToolInvocation, *dispatchAttempt, tool.Arguments, string, error) {
+	invocation, ok := interaction.ToolInvocationFromContext(ctx)
+	if !ok {
+		return interaction.ToolInvocation{}, nil, tool.Arguments{}, "", errors.New("agentexec: Tool call has no Interaction attribution")
+	}
+	attempt, err := dispatchAttemptFrom(ctx, invocation.EffectID())
+	if err != nil {
+		return interaction.ToolInvocation{}, nil, tool.Arguments{}, "", err
+	}
+	call := invocation.ToolCall()
+	rawArguments := string(bound.Arguments())
+	if call.Name != o.Definition().Name || call.Arguments != rawArguments {
+		return interaction.ToolInvocation{}, nil, tool.Arguments{}, "", errors.New("agentexec: Tool invocation differs from its bound executable")
+	}
+	if _, err := conversation.NewToolCallIdentity(call.ID); err != nil {
+		return interaction.ToolInvocation{}, nil, tool.Arguments{}, "", fmt.Errorf("agentexec: Tool invocation: %w", err)
+	}
+	arguments, err := tool.ParseArguments(rawArguments)
+	if err != nil {
+		return interaction.ToolInvocation{}, nil, tool.Arguments{}, "", fmt.Errorf("agentexec: parse Tool %q arguments: %w", call.Name, err)
+	}
+	callIdentity, err := toolInvocationID(invocation)
+	if err != nil {
+		return interaction.ToolInvocation{}, nil, tool.Arguments{}, "", err
+	}
+	return invocation, attempt, arguments, callIdentity.String(), nil
+}
+
+func (o *observedInteractionTool) settleDeniedToolCall(
+	ctx context.Context,
+	attempt *dispatchAttempt,
+	invocation interaction.ToolInvocation,
+	member runs.ExecutorMember,
+	callID string,
+	arguments tool.Arguments,
+	reason string,
+) (corechat.ToolOutput, error) {
+	if reason == "" {
+		reason = "tool call denied by policy"
+	}
+	denialOutput := corechat.NewTextToolOutput(reason)
+	modelResult, _ := invocation.ModelResult(denialOutput, nil)
+	end := o.finishedFact(callID, arguments, denialOutput, &modelResult, nil, nil, errors.New(reason))
+	end.Failure = &tool.Failure{Kind: tool.FailureDenied}
+	if err := o.session.commitFact(ctx, member, end); err != nil {
+		failure := interaction.HostFailure(fmt.Errorf("agentexec: commit denied Tool result: %w", err))
+		attempt.recordProjectionFailure(failure)
+		return corechat.ToolOutput{}, failure
+	}
+	o.session.toolOutcomes.record(invocation.ToolCall().Name, arguments, denialOutput, errors.New(reason))
+	return denialOutput, nil
+}
+
+func (o *observedInteractionTool) projectToolOutcome(
+	ctx context.Context,
+	member runs.ExecutorMember,
+	name string,
+	succeeded bool,
+) {
+	projected, err := o.interpreter.ProjectOutcome(ctx, o.start.SessionID, name, succeeded)
+	if err != nil {
+		trace.SpanFromContext(ctx).RecordError(fmt.Errorf("agentexec: project Tool outcome: %w", err))
+		return
+	}
+	if projected != nil {
+		// Tool outcome projection is a refetchable live hint (for example a Plan
+		// snapshot), not a second settlement fact. The canonical Tool result is
+		// already committed; losing this hint cannot make the Effect unknown.
+		o.session.lifetime.send(runs.ExecutorEvent{Member: member, Payload: projected})
+	}
+}
+
+func (o *observedInteractionTool) runAfterToolUseHook(
+	ctx context.Context,
+	callID string,
+	name string,
+	arguments tool.Arguments,
+	output corechat.ToolOutput,
+	callErr error,
+) {
+	if o.hooks == nil {
+		return
+	}
+	hookCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
+	if err := o.hooks.AfterToolUse(hookCtx, InteractionToolHookInput{
+		SessionID: o.start.SessionID, CWD: o.start.CWD, CallID: callID,
+		ToolName: name, Arguments: arguments, Result: hookToolOutput(output), CallError: callErr,
+	}); err != nil {
+		trace.SpanFromContext(hookCtx).RecordError(fmt.Errorf("agentexec: run post-Tool hook: %w", err))
+	}
+	cancel()
 }
 
 func (o *observedInteractionTool) prepare(
@@ -234,7 +268,7 @@ func (o *observedInteractionTool) prepare(
 		}
 		forceApproval = decision.RequireApproval
 	}
-	if o.authorizer == nil || !o.interpreter.UsesStandardPolicy(name) {
+	if !o.interpreter.UsesStandardPolicy(name) {
 		if forceApproval {
 			return arguments, true, "a lifecycle hook requires approval, but approval is unavailable", nil
 		}
@@ -279,7 +313,7 @@ func (o *observedInteractionTool) applyDoomLoopBrake(
 		"%q has been called with the same arguments and unchanged result %d times; approve to continue or deny so the agent changes approach",
 		name, interactionDoomLoopThreshold,
 	)
-	if o.authorizer == nil || !slices.Contains(o.start.InterruptKinds, interrupt.Approval) {
+	if !slices.Contains(o.start.InterruptKinds, interrupt.Approval) {
 		return arguments, true, reason, nil
 	}
 	request, err := o.authorizationRequest(callID, name, arguments, true)
@@ -303,7 +337,7 @@ func (o *observedInteractionTool) authorizationRequest(
 		return ToolAuthorizationRequest{}, fmt.Errorf("agentexec: derive Tool %q approval subject: %w", name, err)
 	}
 	autoApproved := false
-	if o.session != nil && o.session.mcpToolAutoApproved != nil {
+	if o.session.mcpToolAutoApproved != nil {
 		if identity, ok := o.inner.(interactionMCPToolIdentity); ok {
 			server, remote := identity.MCPToolIdentity()
 			autoApproved = server != "" && remote != "" && o.session.mcpToolAutoApproved(server, remote)
@@ -388,9 +422,6 @@ func (o *observedInteractionTool) resolveToolApproval(
 	prompt runs.ApprovalPrompt,
 	resolution interrupt.Resolution,
 ) (tool.Arguments, bool, string, error) {
-	if o.authorizer == nil {
-		return tool.Arguments{}, false, "", errors.New("agentexec: continued Tool approval has no authorizer")
-	}
 	decision, err := o.authorizer.ResolveToolApproval(ctx, request, prompt, resolution)
 	if err != nil {
 		return tool.Arguments{}, false, "", fmt.Errorf("agentexec: resolve Tool %q approval: %w", request.ToolName, err)

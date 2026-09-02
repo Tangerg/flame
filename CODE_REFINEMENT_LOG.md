@@ -1195,3 +1195,60 @@ The decorator's call closure performs path discovery, pre-mutation policy, deleg
 
 - `Goal.provider/model` remains an evidenced cross-artifact inconsistency blocked by the current Runtime/CLI-only scope. A future scope that includes Desktop should remove both `omitempty` tags, regenerate the contract, and migrate every Goal fixture/adapter in one batch.
 - Round 23 will audit `observedInteractionTool.Call`, another score-30 Runtime hotspot, against delegated-tool observation ownership, cancellation, notification, and output preservation. A split will proceed only if those are distinct proven lifecycle phases rather than unavoidable branching in one policy.
+
+## Round 23 — complete
+
+### Audit scope and evidence
+
+- `observedInteractionTool.Call` scores 30 and currently combines attribution validation, policy preparation, authoritative start/finish commits, automatic denial, external execution, cancellation/control translation, result offload, refetchable outcome hints, and a best-effort post-use hook.
+- The authoritative ordering is real and must remain in one visible call path. Four subordinate responsibilities are independently testable and have distinct failure semantics: rejecting mismatched Interaction attribution, settling a policy denial without external execution, projecting a non-authoritative refetch hint after durable settlement, and running a bounded observational hook.
+- Private construction is closed: `observedInteractionTool` has exactly one composite literal in `wrapInteractionTools`; that function has exactly one caller in the deployment builder, after `resolveInteractionManifest` calls `validateInteractionTools`. Any non-empty manifest is therefore rejected unless both interpreter and authorizer are present. The wrapped session is also dereferenced before every optional-looking session check.
+- Consequently, the interpreter nil guard around outcome projection, authorizer nil branches in preparation/approval recovery, and session nil branch around MCP auto-approval are unreachable compatibility fallbacks. They do not support a second constructor or valid product mode.
+- The complete agentexec package is the green baseline at 2.35s; a strict package scan reports `Call` at 30 and `prepare` at 21 before the change.
+
+### Root cause
+
+The observer's authoritative lifecycle accumulated validation and best-effort side projections inline, while retaining defensive branches for impossible privately constructed states. That makes lossy hints look as authoritative as durable settlement and obscures the one validated construction path.
+
+### Impact and acceptance criteria
+
+- Keep authoritative start, external-boundary, control-error, and finish ordering visibly in `Call`; extract only exact attribution, denied settlement, outcome hint, and after-hook policies.
+- Remove nil fallbacks contradicted by private construction and manifest validation; do not add a compatibility shim, alternate constructor, phase registry, generic observer, or mutable lifecycle record.
+- Preserve every error string, HostFailure classification, attempt projection-failure recording, accounting update, offload/model-result choice, mutation normalization, cancellation translation, hook timeout, and returned output/error.
+- Keep all new helpers below the selected complexity threshold and reduce `prepare` by deleting impossible branches rather than redistributing them.
+- Pass focused lifecycle/denial/concurrency/waiting tests, race/static/generated/full Runtime/CLI gates, and both bounded live provider paths.
+
+### Plan
+
+- **Completed:** removed the disproven fallbacks, extracted the four concrete subordinate policies, formatted, and remeasured the package.
+- **Completed:** ran focused/full/live verification, inspected compatibility, cleaned resources, and recorded results.
+
+### Validation
+
+- The new manifest-policy-owner regression and the focused authoritative lifecycle, automatic denial, denial-commit failure, cancellation, concurrent completion, approval restore, refetch projection, and hook matrix passed in 4.80s.
+- The complete agentexec package passed uncached in 4.75s against the 2.35s warm baseline. The package also passed with `-race` in 15.69s; focused `go vet` and `staticcheck` passed.
+- Production complexity scanning no longer reports `observedInteractionTool.Call`, and none of the attribution, denial-settlement, outcome-projection, or after-hook helpers reaches the selected threshold. The package scan fell from 45 to 44 total findings including tests. `prepare` fell from 21 to 20 by deletion alone and remains unsplit because its ordering is one policy.
+- `go generate ./...` changed no generated artifact. Contractgen plus generated-drift architecture tests passed in 5.42s.
+- Runtime `GOWORK=off go vet ./...` plus `GOWORK=off go build ./...` passed in 7.26s, and uncached `GOWORK=off go test -count=1 ./...` passed in 55.82s.
+- Current-workspace CLI `go vet ./...` plus `go build ./...` passed in 7.31s, and uncached `go test -count=1 ./...` passed in 39.09s.
+- The current-source CLI completed a production-bootstrap Run using the authorized DeepSeek configuration and returned exactly `FLAME_LIVE_ROUND23_OK`, status `completed`, one step, 9,262 input tokens, 9 output tokens, 9,216 cache-read tokens, and 876ms total model duration. No credential value was printed or copied.
+- The isolated invalid-credential Run failed closed as `invalid_api_key`, projected the provider's 401 failure, consumed zero model tokens, and terminated in 85ms. The configured credential was neither read nor changed.
+- `git diff --check` passed.
+
+### Changes and compatibility
+
+- `Call` retains the visible authoritative sequence: attribution, policy preparation, start commit, accounting, denial or external boundary, control translation, result construction, finish commit, and outcome recording. Exact attribution and the denial settlement are now named subordinate policies.
+- Refetchable outcome projection and the bounded post-use hook are visibly downstream of the canonical finish commit. Their errors remain trace-only and cannot make an already settled Effect unknown.
+- The private construction chain now has one enforced invariant: any wrapped Tool has a non-nil interpreter, authorizer, and session. Four unreachable nil fallbacks were removed, and a focused owner test protects both required policy capabilities.
+- Error strings, HostFailure classification, attempt failure recording, accounting, canonical arguments, offload, model result, mutation paths, cancellation and waiting behavior, output/error propagation, wire shapes, persistence, and generated artifacts are unchanged for every valid construction.
+
+### Resource cleanup
+
+- The temporary strict complexity configuration was deleted after the final scan.
+- Both bounded live paths used one validated `/tmp/flame-live-round23.*` directory containing isolated Runtime homes and the current-source CLI binary. It was moved intact to the system Trash after verification, so it is recoverable and no matching temporary path remains.
+- No shared cache, global dependency, user Runtime data, or authorized configuration was removed or modified.
+
+### Remaining risk and next direction
+
+- `Goal.provider/model` remains an evidenced cross-artifact inconsistency blocked by the current Runtime/CLI-only scope. A future scope that includes Desktop should remove both `omitempty` tags, regenerate the contract, and migrate every Goal fixture/adapter in one batch.
+- Round 24 will audit domain transcript `Item.Validate`, another score-30 Runtime hotspot, against its discriminated payload invariants and every persistence/protocol constructor. The owner will remain behavior-rich; extraction or a semantic fix will proceed only if the variant matrix proves duplicated, incomplete, or independently owned.

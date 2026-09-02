@@ -6,17 +6,20 @@ import (
 	"errors"
 	"iter"
 	"slices"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 const interactionTestBuildID = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -79,6 +82,51 @@ func TestInteractionExecutorRequiresChatResolver(t *testing.T) {
 	})
 	if err == nil || executor != nil {
 		t.Fatalf("NewInteractionExecutor without resolver = (%v, %v), want nil executor and non-nil error", executor, err)
+	}
+}
+
+func TestInteractionToolManifestRequiresPolicyOwners(t *testing.T) {
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "echo", Description: "Return a fixed response.",
+	}, func(context.Context, struct{}) (string, error) {
+		return "ok", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest := toolset.Manifest{Visible: []toolcontract.Tool{executable}}
+
+	for _, test := range []struct {
+		name   string
+		config InteractionExecutorConfig
+		want   string
+	}{
+		{name: "missing interpreter", want: "Interaction Tools require a Tool interpreter"},
+		{
+			name: "missing authorizer",
+			config: InteractionExecutorConfig{
+				ToolInterpreter: testInteractionToolInterpreter{},
+			},
+			want: "Interaction Tools require a Tool authorizer",
+		},
+		{
+			name: "complete policy owners",
+			config: InteractionExecutorConfig{
+				ToolInterpreter: testInteractionToolInterpreter{},
+				ToolAuthorizer:  allowInteractionTools{},
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			executor := &InteractionExecutor{config: test.config}
+			err := executor.validateInteractionTools(manifest)
+			if test.want == "" && err != nil {
+				t.Fatalf("validate complete Tool policy = %v", err)
+			}
+			if test.want != "" && (err == nil || !strings.Contains(err.Error(), test.want)) {
+				t.Fatalf("validate Tool policy error = %v, want %q", err, test.want)
+			}
+		})
 	}
 }
 
