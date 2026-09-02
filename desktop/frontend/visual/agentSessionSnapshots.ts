@@ -233,6 +233,7 @@ const SHELL_READ: Item = {
   status: "completed",
   startedAt: CREATED_AT,
   durationMillis: 42,
+  finishedAt: "2026-07-31T08:00:00.042Z",
   tool: { name: "read", arguments: { path: "runtime/internal/session/store.go" } },
 };
 
@@ -244,6 +245,7 @@ const SHELL_COMMAND: Item = {
   status: "completed",
   startedAt: CREATED_AT,
   durationMillis: 8400,
+  finishedAt: "2026-07-31T08:00:08.400Z",
   // A real test run: coloured, longer than the panel shows at rest, and non-zero.
   // Every one of those was invisible here — the fixture's command produced no output
   // at all, so the panel that holds it appeared in no screenshot.
@@ -286,6 +288,7 @@ const PATCH_NEW_FILE: Item = {
   status: "completed",
   startedAt: CREATED_AT,
   durationMillis: 40,
+  finishedAt: "2026-07-31T08:00:00.040Z",
   tool: {
     name: "apply_patch",
     arguments: { patch: "*** Begin Patch\n*** Add File: atomicity.md\n…\n*** End Patch" },
@@ -301,6 +304,7 @@ const SHELL_FAILED: Item = {
   status: "incomplete",
   startedAt: CREATED_AT,
   durationMillis: 120,
+  finishedAt: "2026-07-31T08:00:00.120Z",
   tool: { name: "apply_patch", arguments: { patch: "*** Begin Patch\n…\n*** End Patch" } },
   error: { type: "tool_failed", detail: "store.go changed on disk after it was read." },
 };
@@ -317,6 +321,8 @@ const SHELL_PATCH: Item = {
   runId: ROOT_RUN_ID,
   status: "completed",
   startedAt: CREATED_AT,
+  durationMillis: 64,
+  finishedAt: "2026-07-31T08:00:00.064Z",
   tool: {
     name: "apply_patch",
     arguments: { patch: "*** Begin Patch\n…\n*** End Patch" },
@@ -339,6 +345,7 @@ const SHELL_DENIED: Item = {
   status: "incomplete",
   startedAt: CREATED_AT,
   durationMillis: 15,
+  finishedAt: "2026-07-31T08:00:00.015Z",
   tool: { name: "apply_patch", arguments: { patch: "*** Begin Patch\n…\n*** End Patch" } },
   error: { type: "denied_by_user", detail: "You declined this write." },
 };
@@ -363,6 +370,8 @@ const WAVE_READ: Item = {
   runId: ROOT_RUN_ID,
   status: "completed",
   startedAt: CREATED_AT,
+  durationMillis: 31,
+  finishedAt: "2026-07-31T08:00:00.031Z",
   tool: { name: "read", arguments: { path: "runtime/internal/session/store.go" } },
 };
 
@@ -373,6 +382,8 @@ const WAVE_GREP: Item = {
   runId: ROOT_RUN_ID,
   status: "completed",
   startedAt: CREATED_AT,
+  durationMillis: 88,
+  finishedAt: "2026-07-31T08:00:00.088Z",
   tool: { name: "grep", arguments: { pattern: "RunInTx", path: "runtime" } },
 };
 
@@ -400,6 +411,8 @@ const WAVE_PATCH: Item = {
   runId: ROOT_RUN_ID,
   status: "completed",
   startedAt: CREATED_AT,
+  durationMillis: 57,
+  finishedAt: "2026-07-31T08:00:00.057Z",
   tool: {
     name: "apply_patch",
     arguments: { patch: "*** Begin Patch\n…\n*** End Patch" },
@@ -563,6 +576,8 @@ function narrativeTool(
     runId: ROOT_RUN_ID,
     status: "completed",
     startedAt: "2026-07-31T08:01:04.000Z",
+    durationMillis: 120,
+    finishedAt: "2026-07-31T08:01:04.120Z",
     safetyClass: SAFETY_CLASS[name] ?? "exec",
     tool: { name, arguments: args, ...(result === undefined ? {} : { result }) },
   };
@@ -634,7 +649,10 @@ const BASE: RuntimeAgentSessionSnapshot = {
   pendingInterruptSets: [],
 };
 
-const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
+/** The RAW wire form, before `runtimeItem` projects it. Exported so a test can hold it to
+ *  the contract: the projected form below is a different shape by design, so validating that
+ *  one proves nothing about what the Runtime would actually have sent. */
+export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
   Record<VisualAgentState, RuntimeAgentSessionSnapshot>
 > = {
   empty: BASE,
@@ -850,6 +868,8 @@ const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         runId: ROOT_RUN_ID,
         status: "completed",
         startedAt: "2026-07-31T08:00:02.000Z",
+        durationMillis: 940,
+        finishedAt: "2026-07-31T08:00:02.940Z",
         safetyClass: "safe",
         tool: {
           name: "delegate_task",
@@ -869,6 +889,8 @@ const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         runId: "run_child",
         status: "completed",
         startedAt: "2026-07-31T08:00:04.000Z",
+        durationMillis: 610,
+        finishedAt: "2026-07-31T08:00:04.610Z",
         safetyClass: "safe",
         tool: {
           name: "delegate_task",

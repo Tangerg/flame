@@ -15,6 +15,9 @@ export default defineConfig({
     environment: "happy-dom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.test.{ts,tsx}"],
+    // `visual/` holds the fixtures the goldens are taken from. Playwright proves what they
+    // LOOK like; whether the Runtime could have sent them is a pure assertion, and it has no
+    // business costing a browser.
+    include: ["src/**/*.test.{ts,tsx}", "visual/**/*.test.ts"],
   },
 });
