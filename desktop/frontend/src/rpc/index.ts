@@ -11,14 +11,13 @@ export {
 export { asItemId, asRunId, asSegmentId, asSessionId } from "./ids";
 export type { ItemId, RunId, SegmentId } from "./ids";
 export type { MutationAttemptOptions, MutationPromise } from "./mutation";
-export { mutationSettlementIsUnknown } from "./mutation";
 export { createMutationJournal } from "./mutationJournal";
 export {
-  createUnaryMutationSettler,
-  UNARY_MUTATION_ATTEMPT_TIMEOUT_MS,
-  UnaryMutationSettlementClosedError,
+  createMutationSettler,
+  MUTATION_ATTEMPT_TIMEOUT_MS,
+  MutationSettlementClosedError,
 } from "./mutationSettlement";
-export type { UnaryMutationSettler } from "./mutationSettlement";
+export type { MutationSettler } from "./mutationSettlement";
 export type { Methods, StreamingResult } from "./methods";
 export { createFlameClient } from "./sdk";
 export type { FlameClient } from "./sdk";

@@ -3,11 +3,11 @@ import { resetContainer, setContainer } from "@/main/container";
 import {
   RpcError,
   RpcTransportError,
-  UNARY_MUTATION_ATTEMPT_TIMEOUT_MS,
+  MUTATION_ATTEMPT_TIMEOUT_MS,
   type FlameClient,
   type Methods,
   type MutationPromise,
-  UnaryMutationSettlementClosedError,
+  MutationSettlementClosedError,
 } from "@/rpc";
 import { asRunId, asSegmentId, asSessionId } from "@/rpc";
 import { createMutationPromise } from "@/rpc/mutation";
@@ -96,7 +96,7 @@ describe("agentRuntimeGateway", () => {
     uninstall.dispose();
     uninstall = undefined;
 
-    await expect(creating).rejects.toBeInstanceOf(UnaryMutationSettlementClosedError);
+    await expect(creating).rejects.toBeInstanceOf(MutationSettlementClosedError);
     expect(attemptSignal?.aborted).toBe(true);
 
     settleRetired({ id: asSessionId("ses_retired") });
@@ -136,7 +136,7 @@ describe("agentRuntimeGateway", () => {
     const creating = agentRuntime().createSession({ cwd: "/repo" });
     await vi.advanceTimersByTimeAsync(0);
     expect(executions).toBe(1);
-    await vi.advanceTimersByTimeAsync(UNARY_MUTATION_ATTEMPT_TIMEOUT_MS);
+    await vi.advanceTimersByTimeAsync(MUTATION_ATTEMPT_TIMEOUT_MS);
 
     await expect(creating).resolves.toEqual({ id: "ses_replayed" });
     expect(create).toHaveBeenCalledOnce();

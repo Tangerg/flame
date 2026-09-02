@@ -1,5 +1,5 @@
 import { getContainer } from "@/main/container";
-import { asRunId, asSegmentId, asSessionId, createUnaryMutationSettler, isErrorType } from "@/rpc";
+import { asRunId, asSegmentId, asSessionId, createMutationSettler, isErrorType } from "@/rpc";
 import { configureAgentRuntimeGateway } from "../application/ports/runtimeGateway";
 import type { AgentRuntimeGateway } from "../application/ports/runtimeGateway";
 import { agentInputToContentBlocks, contentBlocksToAgentInput } from "./wireInput";
@@ -11,7 +11,7 @@ import { AgentCommandOwner } from "../application/agentCommandOwner";
 import { AgentSessionUsageOwner } from "../application/session/sessionUsage";
 
 class RuntimeAgentGateway implements AgentRuntimeGateway {
-  #sessionMutations = createUnaryMutationSettler();
+  #sessionMutations = createMutationSettler();
 
   async createSession(input: Parameters<AgentRuntimeGateway["createSession"]>[0]) {
     const client = getContainer().client();
@@ -133,7 +133,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
 
   replaceRuntimeGeneration(): void {
     const predecessor = this.#sessionMutations;
-    this.#sessionMutations = createUnaryMutationSettler();
+    this.#sessionMutations = createMutationSettler();
     predecessor.dispose();
   }
 

@@ -1,11 +1,17 @@
 import { getContainer } from "@/main/container";
-import { asItemId, asRunId, asSegmentId, asSessionId, type StartRunResponse } from "@/rpc";
+import {
+  asItemId,
+  asRunId,
+  asSegmentId,
+  asSessionId,
+  createMutationSettler,
+  type StartRunResponse,
+} from "@/rpc";
 import type {
   RpcRunResumeParams,
   RpcRunsGateway,
   RpcRunStartParams,
 } from "../application/rpcAgentDriver";
-import { createRunOpeningSettler } from "./runOpeningSettlement";
 
 function runOpeningIdentity(method: "start" | "resume", params: unknown): string {
   return JSON.stringify([`runs.${method}`, params]);
@@ -23,7 +29,7 @@ export interface RuntimeRunsGateway extends RpcRunsGateway {
 }
 
 class DefaultRuntimeRunsGateway implements RuntimeRunsGateway {
-  #openings = createRunOpeningSettler();
+  #openings = createMutationSettler({ acceptedAttempt: "retained" });
 
   async start({ sessionId, ...params }: RpcRunStartParams, signal?: AbortSignal) {
     const client = getContainer().client();
@@ -31,7 +37,7 @@ class DefaultRuntimeRunsGateway implements RuntimeRunsGateway {
       runOpeningIdentity("start", { sessionId, ...params }),
       (attemptSignal) =>
         client.runs.start({ ...params, sessionId: asSessionId(sessionId) }, attemptSignal),
-      signal,
+      { parent: signal },
     );
     return { result: brandStartedRun(result), events };
   }
@@ -41,7 +47,7 @@ class DefaultRuntimeRunsGateway implements RuntimeRunsGateway {
     const { result, events } = await this.#openings.settle(
       runOpeningIdentity("resume", params),
       (attemptSignal) => client.runs.resume(params, attemptSignal),
-      signal,
+      { parent: signal },
     );
     return {
       result: {
@@ -55,7 +61,7 @@ class DefaultRuntimeRunsGateway implements RuntimeRunsGateway {
 
   replaceRuntimeGeneration(): void {
     const predecessor = this.#openings;
-    this.#openings = createRunOpeningSettler();
+    this.#openings = createMutationSettler({ acceptedAttempt: "retained" });
     predecessor.dispose();
   }
 

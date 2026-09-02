@@ -1,11 +1,11 @@
 import { getContainer } from "@/main/container";
 import {
   asSessionId,
-  createUnaryMutationSettler,
+  createMutationSettler,
   type Goal,
   type FlameClient,
   type SessionSnapshot,
-  type UnaryMutationSettler,
+  type MutationSettler,
 } from "@/rpc";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { synchronizeMountedAgentSession } from "@/plugins/builtin/agent/public/session";
@@ -68,7 +68,7 @@ export function runtimeGoalMaterial(goal: Goal | undefined, available: boolean):
 
 class RuntimeGoalCommandsGateway implements GoalCommandsGateway {
   readonly #client: FlameClient;
-  #mutations: UnaryMutationSettler = createUnaryMutationSettler();
+  #mutations: MutationSettler = createMutationSettler();
 
   constructor(client: FlameClient) {
     this.#client = client;

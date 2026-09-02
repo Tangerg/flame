@@ -2,10 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { rejected } from "@/test/rejected";
 import { RpcTransportError } from "./errors";
 import type { MutationPromise } from "./mutation";
-import {
-  createUnaryMutationSettler,
-  UnaryMutationSettlementClosedError,
-} from "./mutationSettlement";
+import { createMutationSettler, MutationSettlementClosedError } from "./mutationSettlement";
 
 afterEach(() => vi.useRealTimers());
 
@@ -29,7 +26,7 @@ describe("unary mutation settlement", () => {
       ),
     );
 
-    const result = createUnaryMutationSettler().settle("test:timeout-replay", open, 10);
+    const result = createMutationSettler().settle("test:timeout-replay", open, { timeoutMs: 10 });
     await vi.advanceTimersByTimeAsync(10);
 
     await expect(result).resolves.toBe("committed");
@@ -56,10 +53,10 @@ describe("unary mutation settlement", () => {
       ),
     );
 
-    const settler = createUnaryMutationSettler();
+    const settler = createMutationSettler();
     // Held before the clock moves: the rejection lands during the advance, and a promise that
     // rejects with no handler attached is an unhandled rejection in this runner.
-    const settled = rejected(settler.settle("test:refused-replay", open, 10));
+    const settled = rejected(settler.settle("test:refused-replay", open, { timeoutMs: 10 }));
     await vi.advanceTimersByTimeAsync(10);
 
     expect(await settled).toBe(refused);
@@ -77,7 +74,7 @@ describe("unary mutation settlement", () => {
     mutation = Object.assign(ignored, { idempotencyKey: "same-key", retry });
     const open = vi.fn(() => mutation);
 
-    const result = createUnaryMutationSettler().settle("test:ignored-abort", open, 10);
+    const result = createMutationSettler().settle("test:ignored-abort", open, { timeoutMs: 10 });
     const settlement = result.then(
       () => null,
       (error: unknown) => error,
@@ -106,14 +103,16 @@ describe("unary mutation settlement", () => {
       () =>
         Object.assign(ignored, { idempotencyKey: "same-key", retry }) as MutationPromise<string>,
     );
-    const settler = createUnaryMutationSettler();
+    const settler = createMutationSettler();
 
-    const first = settler.settle("goals.stop:ses_1", open, 10);
+    const first = settler.settle("goals.stop:ses_1", open, { timeoutMs: 10 });
     const firstFailure = first.catch((error: unknown) => error);
     await vi.advanceTimersByTimeAsync(20);
     await expect(firstFailure).resolves.toMatchObject({ name: "TimeoutError" });
 
-    await expect(settler.settle("goals.stop:ses_1", open, 10)).resolves.toBe("committed");
+    await expect(settler.settle("goals.stop:ses_1", open, { timeoutMs: 10 })).resolves.toBe(
+      "committed",
+    );
     expect(open).toHaveBeenCalledOnce();
     expect(retry).toHaveBeenCalledTimes(2);
     settleIgnored("late ignored response");
@@ -130,7 +129,7 @@ describe("unary mutation settlement", () => {
           retry,
         }) as MutationPromise<string>,
     );
-    const settler = createUnaryMutationSettler();
+    const settler = createMutationSettler();
 
     await expect(settler.settle("sessions.create:/repo", ambiguousOpen)).rejects.toBe(
       transportFailure,
@@ -156,7 +155,7 @@ describe("unary mutation settlement", () => {
 
   it("does not merge fresh same-shaped calls that may be distinct product intents", async () => {
     const open = vi.fn(() => resolvedMutation("committed"));
-    const settler = createUnaryMutationSettler();
+    const settler = createMutationSettler();
 
     const first = settler.settle("goals.start:ses_1", open);
     const second = settler.settle("goals.start:ses_1", open);
@@ -176,23 +175,23 @@ describe("unary mutation settlement", () => {
       idempotencyKey: "retired-key",
       retry: vi.fn(() => mutation),
     });
-    const settler = createUnaryMutationSettler();
+    const settler = createMutationSettler();
     const settlement = settler.settle(
       "sessions.create:/repo",
       (signal) => {
         attemptSignal = signal;
         return mutation;
       },
-      60_000,
+      { timeoutMs: 60_000 },
     );
 
     settler.dispose();
 
-    await expect(settlement).rejects.toBeInstanceOf(UnaryMutationSettlementClosedError);
+    await expect(settlement).rejects.toBeInstanceOf(MutationSettlementClosedError);
     expect(attemptSignal?.aborted).toBe(true);
     await expect(
       settler.settle("sessions.create:/repo", () => resolvedMutation("successor")),
-    ).rejects.toBeInstanceOf(UnaryMutationSettlementClosedError);
+    ).rejects.toBeInstanceOf(MutationSettlementClosedError);
 
     settleRetired("late retired response");
     await retired;

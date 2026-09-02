@@ -1,59 +1,72 @@
 import { mutationSettlementIsUnknown, type MutationPromise } from "./mutation";
 
-// `agent/adapters/runOpeningSettlement` is the same mechanism for openings that return a
-// stream. It differs in three places on purpose — it composes a caller signal with the
-// lifetime, it counts a caller cancel as settlement-unknown, and its `accept` keeps the
-// attempt linked so a later dispose still revokes the stream. Fix a bug here in both.
+export const MUTATION_ATTEMPT_TIMEOUT_MS = 30_000;
 
-export const UNARY_MUTATION_ATTEMPT_TIMEOUT_MS = 30_000;
-
-export class UnaryMutationSettlementClosedError extends Error {
-  override readonly name = "UnaryMutationSettlementClosedError";
+export class MutationSettlementClosedError extends Error {
+  override readonly name = "MutationSettlementClosedError";
 
   constructor() {
-    super("Unary mutation settlement owner is closed");
+    super("Mutation settlement owner is closed");
   }
 }
 
-interface PendingUnaryMutation<T> {
+/**
+ * Whether the winning attempt's signal still belongs to the generation after the command
+ * settles. `retained` is for a result that carries a live stream owned by that signal: only
+ * the opening deadline is released, so disposing the settler still revokes the stream.
+ */
+export type AcceptedAttempt = "released" | "retained";
+
+export interface MutationSettlerConfig {
+  acceptedAttempt?: AcceptedAttempt;
+}
+
+export interface MutationSettleOptions {
+  /** The caller's own cancellation, joined with this settler's lifetime. */
+  parent?: AbortSignal;
+  timeoutMs?: number;
+}
+
+interface PendingMutation<T> {
   mutation: MutationPromise<T>;
 }
 
-export interface UnaryMutationSettler {
+export interface MutationSettler {
   /**
-   * Settle one product command. `identity` names the command while its outcome
-   * remains unknown; a later call with the same identity replays the retained
-   * MutationPromise instead of opening a second logical mutation.
+   * Settle one product command. `identity` names the command while its outcome remains
+   * unknown; a later call with the same identity replays the retained MutationPromise instead
+   * of opening a second logical mutation.
    */
   settle<T>(
     identity: string,
     open: (signal: AbortSignal) => MutationPromise<T>,
-    timeoutMs?: number,
+    options?: MutationSettleOptions,
   ): Promise<T>;
   dispose(): void;
 }
 
-interface UnaryMutationAttempt {
-  signal: AbortSignal;
-  deadlineExpired(): boolean;
+interface MutationAttempt {
+  readonly signal: AbortSignal;
+  readonly deadlineExpired: () => boolean;
   wait<T>(operation: PromiseLike<T>): Promise<T>;
   accept(): void;
   dispose(): void;
 }
 
-function createUnaryMutationAttempt(
+function createAttempt(
+  ownership: AbortSignal,
   timeoutMs: number,
-  lifetime: AbortSignal,
-): UnaryMutationAttempt {
+  acceptedAttempt: AcceptedAttempt,
+): MutationAttempt {
   const controller = new AbortController();
   let expired = false;
   let deadlineSettled = false;
   let resolveDeadline!: () => void;
   let rejectDeadline!: (reason: unknown) => void;
   const deadline = new Promise<never>((resolve, reject) => {
-    // A released deadline can only settle after its operation already won the
-    // race (or before no race was installed). Resolving the `never` branch is
-    // therefore an ownership signal, never a product result.
+    // A released deadline can only settle after its operation already won the race (or before
+    // no race was installed). Resolving the `never` branch is an ownership signal, never a
+    // product result.
     resolveDeadline = () => resolve(undefined as never);
     rejectDeadline = reject;
   });
@@ -66,52 +79,55 @@ function createUnaryMutationAttempt(
     rejectDeadline(error);
   }, timeoutMs);
 
-  function detachLifetime() {
-    lifetime.removeEventListener("abort", abortFromLifetime);
+  function detach() {
+    ownership.removeEventListener("abort", abortFromOwnership);
   }
-
-  const clearDeadline = () => {
+  const releaseDeadline = () => {
     if (timer !== undefined) clearTimeout(timer);
     timer = undefined;
-    detachLifetime();
     if (deadlineSettled) return;
     deadlineSettled = true;
     resolveDeadline();
   };
-  function abortFromLifetime() {
+  function abortFromOwnership() {
     if (timer !== undefined) clearTimeout(timer);
     timer = undefined;
-    detachLifetime();
-    const reason = lifetime.reason ?? new UnaryMutationSettlementClosedError();
+    detach();
+    const reason = ownership.reason ?? new MutationSettlementClosedError();
     if (!controller.signal.aborted) controller.abort(reason);
     if (deadlineSettled) return;
     deadlineSettled = true;
     rejectDeadline(reason);
   }
 
-  if (lifetime.aborted) abortFromLifetime();
-  else lifetime.addEventListener("abort", abortFromLifetime, { once: true });
+  if (ownership.aborted) abortFromOwnership();
+  else ownership.addEventListener("abort", abortFromOwnership, { once: true });
 
   return {
     signal: controller.signal,
     deadlineExpired: () => expired,
-    // Do not depend on a transport honoring AbortSignal to settle. The signal
-    // stops cooperative work; the race independently releases the product
-    // command latch when a socket or custom transport ignores cancellation.
+    // Do not depend on a transport honoring AbortSignal to settle. The signal stops
+    // cooperative work; the race independently releases the product command latch when a
+    // socket or custom transport ignores cancellation.
     wait: (operation) => Promise.race([operation, deadline]),
-    accept: clearDeadline,
+    accept: () => {
+      releaseDeadline();
+      if (acceptedAttempt === "released") detach();
+    },
     dispose: () => {
-      clearDeadline();
+      releaseDeadline();
+      detach();
       if (!controller.signal.aborted) controller.abort();
     },
   };
 }
 
-function driveUnaryMutation<T>(
+function driveMutation<T>(
   mutation: MutationPromise<T>,
-  first: UnaryMutationAttempt,
+  first: MutationAttempt,
+  ownership: AbortSignal,
   timeoutMs: number,
-  lifetime: AbortSignal,
+  acceptedAttempt: AcceptedAttempt,
   markUnknown: () => void,
   replaceMutation: (mutation: MutationPromise<T>) => void,
 ): Promise<T> {
@@ -122,16 +138,21 @@ function driveUnaryMutation<T>(
       return value;
     } catch (error) {
       const timedOut = first.deadlineExpired();
+      // A cancel leaves the command's outcome unknown — the Runtime may already hold it — so
+      // the identity is retained for a later owner rather than retried here.
+      const canceled = ownership.aborted;
       first.dispose();
-      if (!timedOut) {
-        if (mutationSettlementIsUnknown(error)) markUnknown();
+      if (!timedOut || canceled) {
+        if (canceled || mutationSettlementIsUnknown(error)) markUnknown();
         throw error;
       }
     }
 
-    const retry = createUnaryMutationAttempt(timeoutMs, lifetime);
+    const retry = createAttempt(ownership, timeoutMs, acceptedAttempt);
     let replay: MutationPromise<T>;
     try {
+      // The journal refuses a replay it no longer owns by throwing from here, before any
+      // promise exists, which would otherwise leave this attempt's deadline armed.
       replay = mutation.retry({ signal: retry.signal });
     } catch (error) {
       retry.dispose();
@@ -143,7 +164,9 @@ function driveUnaryMutation<T>(
       retry.accept();
       return value;
     } catch (error) {
-      if (retry.deadlineExpired() || mutationSettlementIsUnknown(error)) markUnknown();
+      if (retry.deadlineExpired() || ownership.aborted || mutationSettlementIsUnknown(error)) {
+        markUnknown();
+      }
       retry.dispose();
       throw error;
     }
@@ -151,27 +174,27 @@ function driveUnaryMutation<T>(
 }
 
 /**
- * Own unresolved unary mutation identities for one Runtime adapter. Product
- * layers choose a semantic identity; transport/idempotency handles remain here.
- * A component unmount or bounded settlement failure therefore cannot turn the
- * next explicit retry into a new Runtime command.
+ * Own unresolved mutation identities for one Runtime adapter generation. Product layers choose
+ * a semantic identity; transport and idempotency handles stay here, so a component unmount or
+ * a bounded settlement failure cannot turn the next explicit retry into a new Runtime command.
  */
-export function createUnaryMutationSettler(): UnaryMutationSettler {
-  const pending = new Map<string, PendingUnaryMutation<unknown>[]>();
+export function createMutationSettler(config: MutationSettlerConfig = {}): MutationSettler {
+  const acceptedAttempt = config.acceptedAttempt ?? "released";
+  const pending = new Map<string, PendingMutation<unknown>[]>();
   const replaying = new Map<string, Promise<unknown>>();
   const lifetime = new AbortController();
   let disposed = false;
 
-  const retain = (identity: string, record: PendingUnaryMutation<unknown>) => {
+  const retain = (identity: string, record: PendingMutation<unknown>) => {
     if (disposed) return;
     const queue = pending.get(identity) ?? [];
     queue.push(record);
     pending.set(identity, queue);
   };
 
-  const take = <T>(identity: string): PendingUnaryMutation<T> | undefined => {
+  const take = <T>(identity: string): PendingMutation<T> | undefined => {
     const queue = pending.get(identity);
-    const record = queue?.shift() as PendingUnaryMutation<T> | undefined;
+    const record = queue?.shift() as PendingMutation<T> | undefined;
     if (queue?.length === 0) pending.delete(identity);
     return record;
   };
@@ -180,18 +203,22 @@ export function createUnaryMutationSettler(): UnaryMutationSettler {
     settle<T>(
       identity: string,
       open: (signal: AbortSignal) => MutationPromise<T>,
-      timeoutMs: number = UNARY_MUTATION_ATTEMPT_TIMEOUT_MS,
+      options: MutationSettleOptions = {},
     ): Promise<T> {
-      if (disposed) return Promise.reject(new UnaryMutationSettlementClosedError());
+      if (disposed) return Promise.reject(new MutationSettlementClosedError());
       const activeReplay = replaying.get(identity) as Promise<T> | undefined;
       if (activeReplay) return activeReplay;
 
-      // Only a command that already returned settlement-unknown may be reused.
-      // Two fresh same-shaped calls can still be separate product intents; their
-      // application owner, not the transport adapter, decides whether to join.
+      // Only a command that already returned settlement-unknown may be reused. Two fresh
+      // same-shaped calls can still be separate product intents; their application owner, not
+      // the transport adapter, decides whether to join.
       const retained = take<T>(identity);
 
-      const first = createUnaryMutationAttempt(timeoutMs, lifetime.signal);
+      const timeoutMs = options.timeoutMs ?? MUTATION_ATTEMPT_TIMEOUT_MS;
+      const ownership = options.parent
+        ? AbortSignal.any([options.parent, lifetime.signal])
+        : lifetime.signal;
+      const first = createAttempt(ownership, timeoutMs, acceptedAttempt);
       let mutation: MutationPromise<T>;
       try {
         mutation = retained
@@ -199,7 +226,7 @@ export function createUnaryMutationSettler(): UnaryMutationSettler {
           : open(first.signal);
       } catch (error) {
         first.dispose();
-        if (retained) retain(identity, retained as PendingUnaryMutation<unknown>);
+        if (retained) retain(identity, retained as PendingMutation<unknown>);
         return Promise.reject(error);
       }
 
@@ -207,11 +234,12 @@ export function createUnaryMutationSettler(): UnaryMutationSettler {
       record.mutation = mutation;
 
       let unknown = false;
-      const settlement = driveUnaryMutation(
+      const settlement = driveMutation(
         mutation,
         first,
+        ownership,
         timeoutMs,
-        lifetime.signal,
+        acceptedAttempt,
         () => {
           unknown = true;
         },
@@ -223,7 +251,7 @@ export function createUnaryMutationSettler(): UnaryMutationSettler {
         .then(
           (value) => value,
           (error: unknown) => {
-            if (unknown) retain(identity, record as PendingUnaryMutation<unknown>);
+            if (unknown) retain(identity, record as PendingMutation<unknown>);
             throw error;
           },
         )
@@ -236,7 +264,7 @@ export function createUnaryMutationSettler(): UnaryMutationSettler {
     dispose(): void {
       if (disposed) return;
       disposed = true;
-      lifetime.abort(new UnaryMutationSettlementClosedError());
+      lifetime.abort(new MutationSettlementClosedError());
       pending.clear();
       replaying.clear();
     },

@@ -10,8 +10,8 @@ import {
   type RunEvent,
 } from "@/rpc";
 import { createMutationPromise } from "@/rpc/mutation";
-import { RUN_OPENING_ATTEMPT_TIMEOUT_MS } from "./runOpeningSettlement";
 import { runtimeRunsGateway } from "./runtimeRunsGateway";
+import { MUTATION_ATTEMPT_TIMEOUT_MS } from "@/rpc";
 
 afterEach(() => {
   resetContainer();
@@ -129,7 +129,7 @@ describe("runtimeRunsGateway", () => {
 
     const first = gateway.start(params);
     const firstFailure = first.catch((error: unknown) => error);
-    await vi.advanceTimersByTimeAsync(RUN_OPENING_ATTEMPT_TIMEOUT_MS * 2);
+    await vi.advanceTimersByTimeAsync(MUTATION_ATTEMPT_TIMEOUT_MS * 2);
     await expect(firstFailure).resolves.toMatchObject({ name: "TimeoutError" });
 
     await expect(gateway.start(params)).resolves.toMatchObject({
