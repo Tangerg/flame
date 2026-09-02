@@ -9,6 +9,7 @@ import {
   setMCPServerEnabled,
 } from "../application/mcpServerConfig";
 import { MCP_SERVERS_KEY, type MCPServerSettings } from "../application/mcpServerQueries";
+import { validateWire } from "@flame/runtime-contract/validate";
 import { installMCPServerGateway } from "./runtimeMcpServerGateway";
 
 let uninstall: (() => void) | undefined;
@@ -22,6 +23,51 @@ afterEach(() => {
 });
 
 describe("runtimeMcpServerGateway", () => {
+  // The payload this builds is the one place the frontend decides which fields a transport
+  // may carry, and the wire's answer is CONDITIONAL — a stdio connection must not carry a
+  // url, an http one must not carry a command. The generated TS type cannot say that, so it
+  // marks both optional and agrees with either. Only the validator disagrees, which is how a
+  // request carrying a forbidden field reached a live Runtime once already.
+  it.each([
+    [
+      "stdio",
+      {
+        name: "local-tools",
+        transport: "stdio" as const,
+        enabled: true,
+        handshakeTimeout: { type: "unbounded" as const },
+        command: "tool-server",
+        args: ["--stdio"],
+      },
+    ],
+    [
+      "streamableHttp",
+      {
+        name: "cloud",
+        transport: "streamableHttp" as const,
+        enabled: true,
+        handshakeTimeout: { type: "bounded" as const, seconds: 15 },
+        url: "https://mcp.example/sse",
+      },
+    ],
+  ])("sends a %s candidate the Runtime would accept", async (_transport, input) => {
+    const create = vi.fn().mockResolvedValue({
+      name: input.name,
+      connection:
+        input.transport === "stdio"
+          ? { type: "stdio", command: "tool-server", args: [] }
+          : { type: "streamableHttp", url: "https://mcp.example/sse" },
+      handshakeTimeout: { type: "unbounded" },
+      status: { type: "connected", toolCount: 0 },
+    });
+    setContainer({ client: () => ({ mcp: { create } }) as unknown as FlameClient });
+    uninstall = installMCPServerGateway().dispose;
+
+    await createMCPServer(input);
+
+    expect(validateWire("MCPServerCandidate", create.mock.calls[0]?.[0])).toEqual([]);
+  });
+
   it("maps the complete server returned by create", async () => {
     const create = vi.fn().mockResolvedValue({
       name: "local-tools",
