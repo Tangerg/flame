@@ -7,12 +7,8 @@
 // rather than a full allow-matrix (brittle, false-positive prone), each
 // guarded layer declares the set of layers it must NEVER import. Edges to
 // any other layer are allowed — so this catches the architectural
-// regressions we care about (UI/plugin upward deps, domain/infra/rpc
-// purity) without policing every legitimate inward dependency.
-//
-// NOT enforced here (intentional, see CLAUDE.md): protocol → plugins/sdk is
-// the reducer's dispatcher seam (StreamEvents route to host.events.onStream
-// handlers) — that's the core "kernel doesn't grow" design, not a leak.
+// regressions we care about (UI/plugin upward deps, rpc purity) without
+// policing every legitimate inward dependency.
 
 import { execFileSync } from "node:child_process";
 import { closeSync, openSync, readFileSync, rmSync } from "node:fs";
@@ -21,17 +17,18 @@ import { join } from "node:path";
 
 // Ordered longest-prefix-first: first match wins. Paths are relative to
 // src/ (how madge reports them when invoked with `src/`).
+//
+// Every entry names a directory that EXISTS. Rules for a layer that was retired
+// (or never built) guard nothing while reading as architecture, so the shape of
+// the tree stays visible here; `UNDECLARED_ROOTS` below is what keeps a new one
+// from slipping in unguarded, and it costs five lines instead of fifty.
 const LAYER_PREFIXES = [
   ["foundation/", "foundation"],
   ["plugins/sdk/", "sdk"],
   ["plugins/builtin/", "builtin"],
   ["plugins/", "plugins-glue"], // Slot / PluginProvider / etc. — UI glue
-  ["protocol/", "protocol"],
-  ["domain/", "domain"],
-  ["infra/", "infra"],
   ["main/", "main"],
   ["rpc/", "rpc"],
-  ["state/", "state"],
   ["lib/", "lib"],
   // The design system is three rings, and the direction between them is the
   // whole point: Base UI lives behind `ui/primitives` (nothing else may reach
@@ -43,115 +40,55 @@ const LAYER_PREFIXES = [
   ["ui/atoms/", "ui-atoms"],
   ["ui/agent/", "ui-agent"],
   ["ui/", "ui"],
-  ["components/", "components"],
   ["pages/", "pages"],
 ];
 
+// Roots that carry no dependency direction: assets, the test harness, and the
+// bare entry files that sit beside them at src/ root.
+const UNGUARDED_ROOTS = new Set(["styles", "test"]);
+
 function layerOf(path) {
   for (const [prefix, layer] of LAYER_PREFIXES) if (path.startsWith(prefix)) return layer;
-  return "other"; // assets / styles / test helpers / bare entry — unguarded
+  return "other";
 }
 
-// Per guarded layer: the layers it must NEVER import. The inner three
-// (domain/infra/rpc) are near-total: they're meant to be self-contained
-// or contract-only. The outer guards lock the upward edges.
+/** A src/ subtree that no rule above classifies — a new layer nobody declared a
+ *  direction for. Silence there is the failure mode this whole file exists to
+ *  prevent, so it is reported rather than defaulted to "unguarded". */
+function undeclaredRoot(path) {
+  const [root, ...rest] = path.split("/");
+  if (rest.length === 0) return null; // bare entry file at src/ root
+  if (root === "..") return null; // outside src/ — the runtime contract's sample fixtures
+  if (UNGUARDED_ROOTS.has(root)) return null;
+  return layerOf(path) === "other" ? root : null;
+}
+
+// Per guarded layer: the layers it must NEVER import. `rpc` is near-total —
+// it is meant to be self-contained. The outer guards lock the upward edges.
 const UI_RINGS = ["ui", "ui-primitives", "ui-atoms", "ui-agent"];
-const UI = [...UI_RINGS, "components", "pages", "builtin", "plugins-glue"];
+const UI = [...UI_RINGS, "pages", "builtin", "plugins-glue"];
 const FORBIDDEN = {
   // Consumer-neutral scalar values. This is the innermost app layer and may
   // import only external packages or itself.
-  foundation: [
-    "domain",
-    "infra",
-    "main",
-    "rpc",
-    "protocol",
-    "state",
-    "sdk",
-    "builtin",
-    "plugins-glue",
-    "lib",
-    "ui",
-    "ui-primitives",
-    "ui-atoms",
-    "ui-agent",
-    "components",
-    "pages",
-  ],
-  // NOTE: `domain/` + `infra/` hold NO files today — the early clean-arch
-  // gateway seam was superseded by the `rpc/` layer + main/container.ts
-  // (ARCHITECTURE.md §3.1). Kept as reserved guards: if those dirs ever come
-  // back they're locked to contract-/impl-only purity from the first file.
-  // Pure contracts — import nothing else in src.
-  domain: [
-    "infra",
-    "main",
-    "rpc",
-    "protocol",
-    "state",
-    "sdk",
-    "builtin",
-    "plugins-glue",
-    "lib",
-    "ui",
-    "components",
-    "pages",
-  ],
-  // Gateway impls — only the domain contracts they implement.
-  infra: [
-    "main",
-    "rpc",
-    "protocol",
-    "state",
-    "sdk",
-    "builtin",
-    "plugins-glue",
-    "lib",
-    "ui",
-    "components",
-    "pages",
-  ],
+  foundation: [...UI, "main", "rpc", "sdk", "lib"],
   // Standalone protocol layer — externals + its own files only.
-  rpc: [
-    "domain",
-    "infra",
-    "main",
-    "protocol",
-    "state",
-    "sdk",
-    "builtin",
-    "plugins-glue",
-    "lib",
-    "ui",
-    "components",
-    "pages",
-  ],
-  // Protocol reducer/viewState. MAY reach sdk (dispatcher seam) + lib + rpc;
-  // must not reach UI, stores, or wiring.
-  protocol: [...UI, "state", "infra", "main"],
+  rpc: [...UI, "main", "sdk", "lib"],
   // The plugin SDK is a platform layer — it must not depend on the UI it
   // is consumed by (locks the MessageContext inversion fix).
   sdk: [...UI],
-  // Stores are below the UI — and below the plugin system. A store holds the
-  // preference; deciding what it should become from the extension registry is a
-  // context's job; presentation and plugin knowledge cannot enter the value layer.
-  // Type-only imports of the SDK's contract types stay allowed — madge's graph
-  // is value-level, so those don't appear here anyway.
-  state: [...UI, "sdk", "plugins-glue"],
   // Utility layer. `rpc` stays allowed — it's the standalone protocol layer
   // below lib (see `rpc` above, which forbids lib), so mapping an error type to
   // copy from here runs downhill. Everything else is uphill and was the hole
-  // that mattered: with only `[...UI]` forbidden, lib could import the store and
-  // the plugin registry, and it did — so `ui/atoms/shiki-code-block` reached
-  // both *through* `lib/highlight`, laundering the edge the `ui` rings forbid.
-  // A module in lib that needs app state is not a utility; it either belongs to
-  // the context that owns the state, or the value gets published down to it
-  // (`lib/appearance`).
-  lib: [...UI, "state", "sdk", "protocol", "infra", "domain", "main"],
+  // that mattered: with only `[...UI]` forbidden, lib could import the plugin
+  // registry, and it did — so `ui/atoms/shiki-code-block` reached it *through*
+  // `lib/highlight`, laundering the edge the `ui` rings forbid. A module in lib
+  // that needs app state is not a utility; it either belongs to the context that
+  // owns the state, or the value gets published down to it (`lib/appearance`).
+  lib: [...UI, "sdk", "main"],
   // Local design-system layer — presentation only, never backend wiring. `sdk`
-  // is forbidden alongside `state`: an atom that reads the plugin registry is an
-  // atom that can only be dressed by this app.
-  ui: ["main", "rpc", "state", "sdk", "plugins-glue", "builtin", "protocol", "components", "pages"],
+  // is forbidden too: an atom that reads the plugin registry is an atom that can
+  // only be dressed by this app.
+  ui: ["main", "rpc", "sdk", "plugins-glue", "builtin", "pages"],
   // Headless ring: Base UI re-exports and nothing else. It must not know about
   // the tokens, the atoms, or the shell that consume it.
   "ui-primitives": [
@@ -160,41 +97,22 @@ const FORBIDDEN = {
     "ui",
     "ui-atoms",
     "ui-agent",
-    "components",
     "pages",
     "builtin",
     "plugins-glue",
-    "state",
     "sdk",
   ],
   // Token-dressed controls. May reach primitives; must not reach the shell ring
   // above it, or anything outside the design system.
-  "ui-atoms": [
-    "main",
-    "rpc",
-    "ui-agent",
-    "components",
-    "pages",
-    "builtin",
-    "plugins-glue",
-    "state",
-    "sdk",
-  ],
+  "ui-atoms": ["main", "rpc", "ui-agent", "pages", "builtin", "plugins-glue", "sdk"],
   // Shell composites. May reach atoms and primitives; still no wiring, and no
   // reaching back into the app that mounts it.
-  "ui-agent": ["main", "rpc", "components", "pages", "builtin", "plugins-glue", "state", "sdk"],
-  // The view layer reaches the backend only through hooks / stores (state,
-  // the SDK's data-query hooks and selectors) — never the composition root
-  // (`main/container`) or the raw protocol client (`rpc`) directly. Keeps
-  // components a thin presentation + store-wiring layer; business access stays
-  // behind a minimal hook/selector seam.
-  components: ["main", "rpc"],
+  "ui-agent": ["main", "rpc", "pages", "builtin", "plugins-glue", "sdk"],
+  // The view layer reaches the backend only through hooks — the SDK's
+  // data-query hooks and selectors — never the composition root
+  // (`main/container`) or the raw protocol client (`rpc`) directly.
   pages: ["main", "rpc"],
 };
-
-// Documented exceptions: "importer↦importee" file pairs (src-relative)
-// that are knowingly allowed despite the rule. Empty today.
-const ALLOWED_EDGES = new Set([]);
 
 // A directory named any of these under plugins/builtin/<ctx>/ marks <ctx> as a
 // bounded context (it has opted into the layout). `public/` is the only surface
@@ -367,7 +285,10 @@ if (moduleCount < MIN_MODULES || graphEdgeCount < MIN_EDGES) {
 
 const violations = [];
 const contextRoots = contextRootsOf(graph);
+const undeclared = new Set();
 for (const [file, deps] of Object.entries(graph)) {
+  const root = undeclaredRoot(file);
+  if (root) undeclared.add(root);
   // Tests may cross LAYERS to wire fixtures (e.g. loading a plugin to exercise
   // the reducer), and a test naturally reaches its own module's internals — the
   // layering invariant is about production dependency direction. The CONTEXT
@@ -379,14 +300,16 @@ for (const [file, deps] of Object.entries(graph)) {
   const from = layerOf(file);
   const forbidden = isTest ? [] : (FORBIDDEN[from] ?? []);
   for (const dep of deps) {
+    const depRoot = undeclaredRoot(dep);
+    if (depRoot) undeclared.add(depRoot);
     const to = layerOf(dep);
-    if (forbidden.includes(to) && !ALLOWED_EDGES.has(`${file}↦${dep}`)) {
+    if (forbidden.includes(to)) {
       violations.push({ file, dep, from, to });
     }
     // Tests are exempt from the LAYER rule above for fixture wiring; the ring
     // rule is about production direction too, so they are exempt here as well.
     const ringBreak = isTest ? null : ringViolation(file, dep, contextRoots);
-    if (ringBreak && !ALLOWED_EDGES.has(`${file}↦${dep}`)) {
+    if (ringBreak) {
       violations.push({
         file,
         dep,
@@ -395,7 +318,7 @@ for (const [file, deps] of Object.entries(graph)) {
       });
     }
     const contextViolation = crossContextViolation(file, dep, contextRoots);
-    if (contextViolation && !ALLOWED_EDGES.has(`${file}↦${dep}`)) {
+    if (contextViolation) {
       violations.push({
         file,
         dep,
@@ -406,6 +329,15 @@ for (const [file, deps] of Object.entries(graph)) {
   }
 }
 
+if (undeclared.size > 0) {
+  console.error(
+    `[check-layers] src/ subtree(s) with no declared direction: ${[...undeclared].sort().join(", ")}`,
+  );
+  console.error("Add each to LAYER_PREFIXES + FORBIDDEN, or to UNGUARDED_ROOTS if it carries no");
+  console.error("dependency direction at all. A new layer nobody declared is an unguarded one.");
+  process.exit(1);
+}
+
 if (violations.length > 0) {
   console.error(`[check-layers] Found ${violations.length} layer-boundary violation(s):`);
   for (const v of violations) {
@@ -414,9 +346,8 @@ if (violations.length > 0) {
   console.error("");
   console.error("An inner layer is importing an outer one, or a plugin context");
   console.error("is reaching past another context's public/ facade (that facade is");
-  console.error("the only surface importable across contexts). Either invert the");
-  console.error("dependency / route through the public surface, or — if genuinely");
-  console.error("intentional — add the edge to ALLOWED_EDGES with a comment.");
+  console.error("the only surface importable across contexts). Invert the dependency,");
+  console.error("or route it through the public surface.");
   process.exit(1);
 }
 
