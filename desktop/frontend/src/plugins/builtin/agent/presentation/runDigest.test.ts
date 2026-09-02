@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { t } from "@/lib/i18n";
-import { buildPlaintext, deriveLatestRun } from "./runDigest";
+import { buildPlaintext, deriveLatestRun, durationText } from "./runDigest";
 
 // Spread-helpers so tests stay terse — each entry only needs to set
 // the fields it actually cares about.
@@ -31,6 +31,15 @@ const view = (
 });
 
 describe("deriveLatestRun", () => {
+  // Two branches and an unfinished run, all on the string a reader copies out of the app.
+  it("reads an elapsed run in the largest unit it fills", () => {
+    expect(durationText(t, 1_000, null)).toBe("—");
+    expect(durationText(t, 1_000, 1_000)).toBe("0s");
+    expect(durationText(t, 1_000, 31_400)).toBe("30s");
+    expect(durationText(t, 1_000, 61_000)).toBe("1m 0s");
+    expect(durationText(t, 1_000, 155_000)).toBe("2m 34s");
+  });
+
   it("returns null when no run has started", () => {
     expect(deriveLatestRun(view({ timeline: [] }))).toBeNull();
   });
