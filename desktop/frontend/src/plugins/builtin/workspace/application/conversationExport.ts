@@ -146,7 +146,7 @@ class ConversationArchiveGeneration {
 
       let server: LocalExportMaterial | null = null;
       try {
-        const response = await this.#execute(() =>
+        const response = await this.#cohort.run(() =>
           this.#gateway.exportConversation(local.sessionId, format),
         );
         server = serverExportMaterial(local, format, response);
@@ -182,7 +182,7 @@ class ConversationArchiveGeneration {
         notifyError(t("convExport.importUnsupported"), { source: "import" });
         return;
       }
-      const text = await this.#execute(() => this.#files.pickText("application/json,.json"));
+      const text = await this.#cohort.run(() => this.#files.pickText("application/json,.json"));
       if (text === null) return;
 
       let artifact: unknown;
@@ -199,8 +199,8 @@ class ConversationArchiveGeneration {
         return;
       }
 
-      const session = await this.#execute(() => this.#gateway.importConversation(artifact));
-      await this.#execute(() => rehydrateSessionView(session.id));
+      const session = await this.#cohort.run(() => this.#gateway.importConversation(artifact));
+      await this.#cohort.run(() => rehydrateSessionView(session.id));
       await this.#repairSessionList();
       this.#cohort.assertCurrent();
       selectAgentSession(session.id);
@@ -213,16 +213,9 @@ class ConversationArchiveGeneration {
     }
   }
 
-  async #execute<T>(operation: () => PromiseLike<T>): Promise<T> {
-    this.#cohort.assertCurrent();
-    const value = await this.#cohort.settle(operation());
-    this.#cohort.assertCurrent();
-    return value;
-  }
-
   async #repairSessionList(): Promise<void> {
     try {
-      await this.#execute(() => invalidateAgentSessions());
+      await this.#cohort.run(() => invalidateAgentSessions());
     } catch (error) {
       if (this.#cohort.retired) throw error;
       // The import response and rehydrated Session are authoritative. Runtime

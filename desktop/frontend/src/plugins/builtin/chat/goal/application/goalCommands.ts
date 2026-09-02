@@ -72,7 +72,7 @@ class GoalCommandGeneration {
 
   async #mutate(sessionId: string, command: () => Promise<GoalCommandReceipt>): Promise<void> {
     try {
-      const committed = await this.#execute(command);
+      const committed = await this.#cohort.run(command);
       if (committed.sessionId !== sessionId) {
         throw new GoalCommandSessionMismatchError(sessionId, committed.sessionId);
       }
@@ -90,13 +90,6 @@ class GoalCommandGeneration {
     // Plan/HITL/Run/Tool or accept a late independent query writer.
     await this.#repairStandingProjection(sessionId);
     this.#assertCurrent();
-  }
-
-  async #execute<T>(operation: () => Promise<T>): Promise<T> {
-    this.#assertCurrent();
-    const value = await this.#settle(operation());
-    this.#assertCurrent();
-    return value;
   }
 
   async #repairStandingProjection(sessionId: string): Promise<void> {

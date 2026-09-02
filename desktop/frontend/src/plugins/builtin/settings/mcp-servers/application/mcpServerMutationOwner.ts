@@ -77,17 +77,19 @@ class MCPServerMutationGeneration {
   }
 
   test(input: MCPServerInput): Promise<MCPServerTestOutcome> {
-    return this.#execute(() => this.#gateway.test(input));
+    return this.#cohort.run(() => this.#gateway.test(input));
   }
 
   async authorize(name: string, callerSignal?: AbortSignal): Promise<void> {
     const signal = callerSignal
       ? AbortSignal.any([callerSignal, this.#lifetime.signal])
       : this.#lifetime.signal;
-    let attempt = await this.#execute(() => this.#gateway.createAuthorizationAttempt(name, signal));
+    let attempt = await this.#cohort.run(() =>
+      this.#gateway.createAuthorizationAttempt(name, signal),
+    );
     while (attempt.status === "pending") {
       await this.#settle(authorizationPollDelay(signal));
-      attempt = await this.#execute(() =>
+      attempt = await this.#cohort.run(() =>
         this.#gateway.getAuthorizationAttempt(attempt.id, signal),
       );
     }
@@ -107,20 +109,13 @@ class MCPServerMutationGeneration {
   #run<T>(identity: string, mutation: MCPServerMutation<T>): Promise<T> {
     return this.#chain.chain(identity, (tail) =>
       this.#settle(tail).then(async () => {
-        const value = await this.#execute(mutation.execute);
+        const value = await this.#cohort.run(mutation.execute);
         mutation.commit(value);
         await this.#repairProjection();
         this.#assertCurrent();
         return value;
       }),
     );
-  }
-
-  async #execute<T>(operation: () => Promise<T>): Promise<T> {
-    this.#assertCurrent();
-    const value = await this.#settle(operation());
-    this.#assertCurrent();
-    return value;
   }
 
   #repairProjection(): Promise<void> {

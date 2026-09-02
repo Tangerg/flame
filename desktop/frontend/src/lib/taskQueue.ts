@@ -43,6 +43,15 @@ export class RetirableTaskCohort {
     });
   }
 
+  /** Bracket a whole operation: the leading check is what keeps a retired generation from
+   *  invoking the dependency at all, which `settle` alone cannot do. */
+  async run<T>(operation: () => PromiseLike<T>): Promise<T> {
+    this.assertCurrent();
+    const value = await this.settle(operation());
+    this.assertCurrent();
+    return value;
+  }
+
   retire(): void {
     if (this.#retired) return;
     this.#retired = true;

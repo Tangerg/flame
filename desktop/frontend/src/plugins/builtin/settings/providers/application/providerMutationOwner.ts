@@ -55,7 +55,7 @@ class ProviderMutationGeneration {
   }
 
   testProvider(provider: string): Promise<ProviderTestOutcome> {
-    return this.#execute(() => this.#gateway.testProvider(provider));
+    return this.#cohort.run(() => this.#gateway.testProvider(provider));
   }
 
   retire(): void {
@@ -66,20 +66,13 @@ class ProviderMutationGeneration {
   #run<T>(identity: string, mutation: ProviderMutation<T>): Promise<T> {
     return this.#chain.chain(identity, (tail) =>
       this.#settle(tail).then(async () => {
-        const value = await this.#execute(mutation.execute);
+        const value = await this.#cohort.run(mutation.execute);
         mutation.commit(value);
         await this.#repairProjection(mutation.repair);
         this.#assertCurrent();
         return value;
       }),
     );
-  }
-
-  async #execute<T>(operation: () => Promise<T>): Promise<T> {
-    this.#assertCurrent();
-    const value = await this.#settle(operation());
-    this.#assertCurrent();
-    return value;
   }
 
   #repairProjection(keys: readonly string[]): Promise<void> {

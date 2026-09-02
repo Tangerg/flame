@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { RetirableTaskCohort } from "./taskQueue";
 
 describe("retirable task cohort", () => {
@@ -15,5 +15,27 @@ describe("retirable task cohort", () => {
     late.resolve("stale");
     await Promise.resolve();
     expect(() => cohort.assertCurrent()).toThrow(retired);
+  });
+
+  it("never reaches the dependency once retired", async () => {
+    const retired = new Error("generation retired");
+    const cohort = new RetirableTaskCohort(retired);
+    const operation = vi.fn(() => Promise.resolve("value"));
+    cohort.retire();
+
+    await expect(cohort.run(operation)).rejects.toBe(retired);
+    expect(operation).not.toHaveBeenCalled();
+  });
+
+  it("refuses a value that arrived after retirement", async () => {
+    const retired = new Error("generation retired");
+    const cohort = new RetirableTaskCohort(retired);
+    const settled = Promise.withResolvers<string>();
+
+    const command = cohort.run(() => settled.promise);
+    cohort.retire();
+    settled.resolve("stale");
+
+    await expect(command).rejects.toBe(retired);
   });
 });
