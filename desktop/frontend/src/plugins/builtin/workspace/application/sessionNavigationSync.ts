@@ -4,8 +4,8 @@ export type AgentSessionListener = (sessionId: string) => void;
 export type AgentSessionLifecycleListener = (state: AgentOpenSessions) => void;
 
 export interface WorkspaceSessionNavigationPorts {
-  activeSessionId: () => string;
-  lifecycleSnapshot: () => AgentOpenSessions;
+  getActiveSessionId: () => string;
+  getLifecycleSnapshot: () => AgentOpenSessions;
   subscribeActiveSessionId: (listener: AgentSessionListener) => () => void;
   subscribeLifecycle: (listener: AgentSessionLifecycleListener) => () => void;
   activateSessionScope: (sessionId: string) => void;
@@ -25,8 +25,8 @@ export function syncWorkspaceSessionLifecycle(
  * only activates the current scope and forgets scopes for closed sessions.
  */
 export function bindWorkspaceSessionNavigation(ports: WorkspaceSessionNavigationPorts): () => void {
-  ports.activateSessionScope(ports.activeSessionId());
-  ports.forgetSessionScopes(ports.lifecycleSnapshot().openSessionIds);
+  ports.activateSessionScope(ports.getActiveSessionId());
+  ports.forgetSessionScopes(ports.getLifecycleSnapshot().openSessionIds);
 
   const unsubscribeSession = ports.subscribeActiveSessionId((sessionId) => {
     ports.activateSessionScope(sessionId);

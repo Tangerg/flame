@@ -85,7 +85,7 @@ export function installRecipeSlashCommands(
   const refresh = () => {
     const lease = (refreshLease = {});
     const sessions = queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY]);
-    const query = recipeWorkspaceQuery(sessionPorts.activeSessionId(), sessions);
+    const query = recipeWorkspaceQuery(sessionPorts.getActiveSessionId(), sessions);
     // Remove commands from the previous project immediately. An active id whose
     // Session row has not arrived is not permission to fall back to the Runtime's
     // default workspace.

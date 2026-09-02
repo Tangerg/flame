@@ -12,6 +12,18 @@ export interface SingletonPort<T> {
 }
 
 /**
+ * Not a second contract system. dougong owns every capability whose AVAILABILITY has to be
+ * ordered — a plugin that reads another context during its own setup declares
+ * `requires: { … }` on a `service()` token, and the Host resolves the graph, starts the
+ * provider first and rolls the whole installation back if it fails. Reach for a Service
+ * whenever the question is "has the thing that answers this been installed yet".
+ *
+ * This is the other case: a within-context adapter slot read from a React render or an
+ * event handler, long after startup settled, where the answer is always yes. The Host can
+ * answer those too (`Host.get`), but making every one of them a Service would put a
+ * contract graph between a component and its own context's store, and would make a unit
+ * test install a Host to swap one function.
+ *
  * Plugin reload can install a new adapter before an older cleanup runs, so a cleanup clears
  * ONLY the exact instance it installed and can never disconnect its successor.
  */

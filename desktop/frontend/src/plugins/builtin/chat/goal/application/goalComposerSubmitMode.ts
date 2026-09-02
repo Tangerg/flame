@@ -5,7 +5,7 @@ import { GoalComposerModeOwner } from "./goalComposerMode";
 import type { ComposerModelPreference } from "../../composer/public/modelPreference";
 
 export interface GoalComposerSubmitDependencies {
-  activeSessionId(): string | null;
+  getActiveSessionId(): string | null;
   composerText(): string;
   goalState(sessionId: string): GoalState | undefined;
   runtimeAvailable(): boolean;
@@ -25,7 +25,7 @@ export function createGoalComposerSubmitMode(
   return {
     id: "goal",
     matches: (draft) => {
-      const sessionId = dependencies.activeSessionId();
+      const sessionId = dependencies.getActiveSessionId();
       return draft.slash?.command === "/goal" || Boolean(sessionId && owner.active(sessionId));
     },
     submit: (context) => submitGoalComposerMode(owner, dependencies, context),
@@ -37,7 +37,7 @@ function submitGoalComposerMode(
   dependencies: GoalComposerSubmitDependencies,
   context: ComposerSubmitModeContext,
 ): void {
-  const sessionId = dependencies.activeSessionId();
+  const sessionId = dependencies.getActiveSessionId();
   if (!sessionId || !owner.ownsPublication() || !dependencies.runtimeAvailable()) {
     dependencies.reportUnavailable();
     return;
@@ -106,7 +106,7 @@ async function startGoal(
     const committed = owner.finish(sessionId, true);
     if (
       committed &&
-      dependencies.activeSessionId() === sessionId &&
+      dependencies.getActiveSessionId() === sessionId &&
       dependencies.composerText() === context.rawText
     ) {
       context.accept();

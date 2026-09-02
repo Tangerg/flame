@@ -18,8 +18,8 @@ describe("Recipe slash bootstrap", () => {
       setup() {
         return {
           sessions: {
-            activeSessionId,
-            lifecycleSnapshot: () => ({ activeSessionId: "", openSessionIds: [] }),
+            getActiveSessionId: activeSessionId,
+            getLifecycleSnapshot: () => ({ activeSessionId: "", openSessionIds: [] }),
             subscribeActiveSessionId,
             subscribeLifecycle: () => () => undefined,
           },

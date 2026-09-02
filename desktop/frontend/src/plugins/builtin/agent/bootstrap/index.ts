@@ -42,8 +42,8 @@ export default definePlugin({
     });
     return {
       sessions: {
-        activeSessionId: getActiveSessionId,
-        lifecycleSnapshot: getAgentSessionLifecycleSnapshot,
+        getActiveSessionId,
+        getLifecycleSnapshot: getAgentSessionLifecycleSnapshot,
         subscribeActiveSessionId,
         subscribeLifecycle: subscribeAgentSessionLifecycle,
       },

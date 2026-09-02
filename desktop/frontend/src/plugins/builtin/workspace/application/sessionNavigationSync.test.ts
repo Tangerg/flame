@@ -7,8 +7,8 @@ import {
 
 function ports(overrides: Partial<WorkspaceSessionNavigationPorts> = {}) {
   return {
-    activeSessionId: vi.fn(() => "s1"),
-    lifecycleSnapshot: vi.fn(() => ({ activeSessionId: "s1", openSessionIds: ["s1"] })),
+    getActiveSessionId: vi.fn(() => "s1"),
+    getLifecycleSnapshot: vi.fn(() => ({ activeSessionId: "s1", openSessionIds: ["s1"] })),
     subscribeActiveSessionId: vi.fn(() => () => {}),
     subscribeLifecycle: vi.fn(() => () => {}),
     activateSessionScope: vi.fn(),

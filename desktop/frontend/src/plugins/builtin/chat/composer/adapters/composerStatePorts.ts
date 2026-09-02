@@ -50,7 +50,7 @@ function installComposerSessionSync(sessions: AgentSessionPorts): () => void {
   });
   stopSessionSync = stop;
 
-  const initial = sessions.lifecycleSnapshot();
+  const initial = sessions.getLifecycleSnapshot();
   useComposerStore.getState().loadSession(initial.activeSessionId);
   useComposerStore.getState().pruneDrafts(new Set(initial.openSessionIds));
   return () => {

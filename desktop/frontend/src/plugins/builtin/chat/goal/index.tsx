@@ -57,7 +57,7 @@ export default definePlugin({
     ctx.contribute(
       COMPOSER_SUBMIT_MODE,
       createGoalComposerSubmitMode(composerMode, {
-        activeSessionId: getActiveSessionId,
+        getActiveSessionId,
         composerText: getComposerText,
         goalState: (sessionId) => getAgentSessionSharedMaterial<GoalState>(sessionId, "goal"),
         runtimeAvailable: runtimeCommandsAvailable,

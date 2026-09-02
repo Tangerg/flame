@@ -34,8 +34,8 @@ import {
 import { installWorkspaceNavigationPort } from "@/plugins/builtin/workspace/adapters/navigationStatePort";
 
 const testAgentSessionPorts: AgentSessionPorts = {
-  activeSessionId: getActiveSessionId,
-  lifecycleSnapshot: getAgentSessionLifecycleSnapshot,
+  getActiveSessionId,
+  getLifecycleSnapshot: getAgentSessionLifecycleSnapshot,
   subscribeActiveSessionId,
   subscribeLifecycle: subscribeAgentSessionLifecycle,
 };

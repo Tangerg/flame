@@ -46,8 +46,8 @@ const ports = definePlugin({
   provides: { sessions: AGENT_SESSION_PORTS, scopes: WORKSPACE_SCOPE_PORTS },
   setup: () => ({
     sessions: {
-      activeSessionId: () => navigator().get().session,
-      lifecycleSnapshot: () => ({
+      getActiveSessionId: () => navigator().get().session,
+      getLifecycleSnapshot: () => ({
         activeSessionId: navigator().get().session,
         openSessionIds: agentSession.getOpen(),
       }),

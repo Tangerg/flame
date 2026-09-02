@@ -13,10 +13,10 @@ import type {
 } from "../application/workspaceEventSubscription";
 
 export async function resolveActiveSessionWorkspaceCwd(
-  sessions: Pick<AgentSessionPorts, "activeSessionId">,
+  sessions: Pick<AgentSessionPorts, "getActiveSessionId">,
   signal: AbortSignal,
 ): Promise<WorkspaceCwdResolution> {
-  const id = sessions.activeSessionId();
+  const id = sessions.getActiveSessionId();
   if (!id) return { status: "resolved" };
   const list = queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY]);
   const cached = list?.find((session) => session.id === id);
@@ -32,12 +32,12 @@ export async function resolveActiveSessionWorkspaceCwd(
 }
 
 export function subscribeWorkspaceCwdInputs(
-  sessions: Pick<AgentSessionPorts, "activeSessionId" | "subscribeActiveSessionId">,
+  sessions: Pick<AgentSessionPorts, "getActiveSessionId" | "subscribeActiveSessionId">,
   onChange: (change: WorkspaceCwdInputChange) => void,
 ): () => void {
   const unsubSession = sessions.subscribeActiveSessionId(() => onChange("identity"));
   const unsubCache = subscribeAgentSessionProjection(
-    (projection) => sessionWorkspaceRevision(sessions.activeSessionId(), projection),
+    (projection) => sessionWorkspaceRevision(sessions.getActiveSessionId(), projection),
     () => onChange("projection"),
   );
   return () => {

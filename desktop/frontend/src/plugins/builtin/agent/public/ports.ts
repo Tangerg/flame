@@ -7,8 +7,8 @@ import { service } from "dougong";
 import type { AgentOpenSessions } from "./session";
 
 export interface AgentSessionPorts {
-  activeSessionId: () => string;
-  lifecycleSnapshot: () => AgentOpenSessions;
+  getActiveSessionId: () => string;
+  getLifecycleSnapshot: () => AgentOpenSessions;
   subscribeActiveSessionId: (listener: (sessionId: string) => void) => () => void;
   subscribeLifecycle: (listener: (state: AgentOpenSessions) => void) => () => void;
 }

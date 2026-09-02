@@ -21,8 +21,8 @@ describe("Composer bootstrap", () => {
       setup() {
         return {
           sessions: {
-            activeSessionId: () => "session-from-service",
-            lifecycleSnapshot,
+            getActiveSessionId: () => "session-from-service",
+            getLifecycleSnapshot: lifecycleSnapshot,
             subscribeActiveSessionId: () => () => undefined,
             subscribeLifecycle,
           },
