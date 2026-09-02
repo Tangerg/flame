@@ -16,6 +16,9 @@ import (
 )
 
 func projectItem(value protocol.Item) (agent.Block, error) {
+	if err := protocol.ValidateWireTree(value); err != nil {
+		return agent.Block{}, fmt.Errorf("item %s wire projection: %w", value.ID, err)
+	}
 	projection := itemProjection{
 		source: value,
 		block: agent.Block{

@@ -107,7 +107,7 @@ func TestProjectAssistantMessagePreservesInlineImages(t *testing.T) {
 	created := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
 	block, err := projectItem(protocol.Item{
 		ID: "answer", RunID: "run_1", Status: protocol.ItemStatusCompleted, Type: protocol.ItemTypeAgentMessage,
-		CreatedAt: created,
+		CreatedAt: created, Phase: protocol.MessagePhaseFinalAnswer,
 		Content: []protocol.ContentBlock{
 			{Type: protocol.ContentBlockText, Text: "Generated chart"},
 			{Type: protocol.ContentBlockImage, Mime: "image/png", Data: base64.StdEncoding.EncodeToString(data)},
@@ -125,7 +125,7 @@ func TestProjectAssistantMessagePreservesInlineImages(t *testing.T) {
 func TestProjectItemPreservesReasoningAndCompactionMetadata(t *testing.T) {
 	created := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
 	reasoning, err := projectItem(protocol.Item{
-		ID: "reasoning", RunID: "run_1", Status: protocol.ItemStatusCompleted,
+		ID: "reasoning", RunID: "run_1", Status: protocol.ItemStatusRunning,
 		Type: protocol.ItemTypeReasoning, CreatedAt: created, Redacted: true,
 	})
 	if err != nil {
@@ -153,7 +153,7 @@ func TestProjectItemRejectsCompactionWithoutSummary(t *testing.T) {
 		ID: "compaction", RunID: "run_1", Status: protocol.ItemStatusCompleted,
 		Type: protocol.ItemTypeCompaction, CreatedAt: time.Now(), DroppedMessages: 17,
 	})
-	if err == nil || !strings.Contains(err.Error(), "empty compaction summary") {
+	if err == nil || !strings.Contains(err.Error(), "summary") {
 		t.Fatalf("projectItem error = %v", err)
 	}
 }
@@ -177,6 +177,35 @@ func TestProjectRunUsagePreservesStepsAndPerModelAttribution(t *testing.T) {
 	*model.CostUSD = 9
 	if modelCost != 0.25 {
 		t.Fatal("projected model cost aliases runtime usage")
+	}
+}
+
+func TestRuntimeDurationProjectionsRejectPositiveOverflow(t *testing.T) {
+	t.Parallel()
+
+	// This value used to wrap to a small positive time.Duration, bypassing the
+	// CLI domain's non-negative duration invariant.
+	const wrapsPositive = int64(18_446_744_073_710)
+	_, err := projectRun(protocol.RunRef{
+		RunSummary: protocol.RunSummary{
+			ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusWaiting,
+		},
+		Metrics: protocol.RunMetrics{ActiveDurationMillis: wrapsPositive},
+	})
+	if err == nil || !strings.Contains(err.Error(), "activeDurationMillis") {
+		t.Fatalf("projectRun overflow error = %v", err)
+	}
+
+	startedAt := time.Unix(1, 0).UTC()
+	_, err = projectItem(protocol.Item{
+		ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusCompleted,
+		Type: protocol.ItemTypeToolCall, Tool: &protocol.ToolInvocation{
+			Name: "shell", Arguments: map[string]any{},
+		},
+		StartedAt: startedAt, FinishedAt: startedAt.Add(time.Second), DurationMillis: new(wrapsPositive),
+	})
+	if err == nil || !strings.Contains(err.Error(), "durationMillis") {
+		t.Fatalf("projectItem overflow error = %v", err)
 	}
 }
 
@@ -226,7 +255,7 @@ func TestQuestionItemAndInterruptShareProjection(t *testing.T) {
 	}}}
 	block, err := projectItem(protocol.Item{
 		ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusCompleted,
-		Type: protocol.ItemTypeQuestion, Question: question,
+		Type: protocol.ItemTypeQuestion, CreatedAt: time.Unix(1, 0).UTC(), Question: question,
 	})
 	if err != nil {
 		t.Fatalf("projectItem: %v", err)
@@ -249,7 +278,7 @@ func TestCompletedQuestionPreservesAcceptedAnswers(t *testing.T) {
 	answers := [][]string{{"safe"}}
 	block, err := projectItem(protocol.Item{
 		ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusCompleted,
-		Type: protocol.ItemTypeQuestion, Question: &protocol.Question{
+		Type: protocol.ItemTypeQuestion, CreatedAt: time.Unix(1, 0).UTC(), Question: &protocol.Question{
 			Fields: []protocol.QuestionField{{
 				Prompt: "Choose a strategy", Type: protocol.QuestionFieldChoice,
 				Options: []protocol.QuestionOption{{Label: "safe"}, {Label: "fast"}},
@@ -460,15 +489,6 @@ func TestProjectEventRejectsMalformedEnvelopeBeforeStreaming(t *testing.T) {
 	}
 }
 
-func TestRunProfileAcceptsSubagentTrees(t *testing.T) {
-	_, err := projectRunProtocolProfile(protocol.RunProtocolProfile{
-		RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
-	})
-	if err != nil {
-		t.Fatalf("projectRunProtocolProfile: %v", err)
-	}
-}
-
 func TestProjectChildRunPreservesLineage(t *testing.T) {
 	created := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
 	projected, err := projectRun(protocol.RunRef{
@@ -507,7 +527,7 @@ func TestProjectRunRejectsPartialChildLineage(t *testing.T) {
 		ID: "run_child", SessionID: "ses_1", Status: protocol.RunStatusWaiting,
 		ParentRunID: "run_root",
 	}})
-	if err == nil || !strings.Contains(err.Error(), "spawn block") {
+	if err == nil || !strings.Contains(err.Error(), "spawnedByItemId") {
 		t.Fatalf("projectRun partial lineage error = %v", err)
 	}
 }

@@ -13,9 +13,8 @@ import (
 )
 
 func projectRun(value protocol.RunRef) (agent.Run, error) {
-	profile, err := projectRunProtocolProfile(value.ProtocolProfile)
-	if err != nil {
-		return agent.Run{}, fmt.Errorf("run %s: %w", value.ID, err)
+	if err := protocol.ValidateWireTree(value); err != nil {
+		return agent.Run{}, fmt.Errorf("run %s wire projection: %w", value.ID, err)
 	}
 	lineage, err := projectRunLineage(value)
 	if err != nil {
@@ -28,7 +27,7 @@ func projectRun(value protocol.RunRef) (agent.Run, error) {
 		Status:  value.Status, ActiveSegmentID: value.ActiveSegmentID,
 		CreatedAt: value.CreatedAt, FinishedAt: value.FinishedAt,
 		Limits: agent.UnlimitedRunLimits(), ContextTokens: value.ContextTokens,
-		Usage: projectUsage(value.Metrics), ProtocolProfile: profile,
+		Usage: projectUsage(value.Metrics), ProtocolProfile: projectRunProtocolProfile(value.ProtocolProfile),
 	}
 	if value.Limits != nil {
 		projected.Limits, err = agent.NewRunLimits(agent.RunLimitValues{
@@ -60,14 +59,11 @@ func projectRunLineage(value protocol.RunRef) (agent.RunLineage, error) {
 	return agent.NewChildRunLineage(value.ID, value.SpawnedByItemID, value.ParentRunID, value.RootRunID)
 }
 
-func projectRunProtocolProfile(profile protocol.RunProtocolProfile) (*protocol.RunProtocolProfile, error) {
-	if err := protocol.ValidateWireTree(profile); err != nil {
-		return nil, fmt.Errorf("%w: run protocol profile: %v", agent.ErrIncompatibleRuntime, err)
-	}
+func projectRunProtocolProfile(profile protocol.RunProtocolProfile) *protocol.RunProtocolProfile {
 	projected := profile
 	projected.RequiredFeatures = slices.Clone(profile.RequiredFeatures)
 	projected.InterruptTypes = slices.Clone(profile.InterruptTypes)
-	return &projected, nil
+	return &projected
 }
 
 func projectUsage(metrics protocol.RunMetrics) agent.Usage {

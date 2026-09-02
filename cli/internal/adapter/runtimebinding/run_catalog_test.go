@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -30,6 +31,7 @@ func TestRunCatalogMapsQueriesAndProjectsPages(t *testing.T) {
 	wantRun := protocol.RunRef{
 		RunSummary: protocol.RunSummary{
 			ID: "run_1", SessionID: "ses_1", Provider: "deepseek", Model: "deepseek-chat",
+			CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
 			Status: protocol.RunStatusFinished, Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted},
 		},
 		ProtocolProfile: protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{}},

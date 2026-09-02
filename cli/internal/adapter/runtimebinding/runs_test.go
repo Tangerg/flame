@@ -150,7 +150,11 @@ func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 			t.Fatalf("cancel idempotency options = %+v", options)
 		}
 		return &protocol.CancelRunResponse{Type: protocol.CancelRunRoot, Run: protocol.RunRef{
-			RunSummary:      protocol.RunSummary{ID: request.RunID, SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCanceled}},
+			RunSummary: protocol.RunSummary{
+				ID: request.RunID, SessionID: "ses_1", Status: protocol.RunStatusFinished,
+				CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
+				Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCanceled},
+			},
 			ProtocolProfile: protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{}},
 		}}, nil
 	}
@@ -406,6 +410,7 @@ func TestResumeAndCancelMapControlContracts(t *testing.T) {
 		return &protocol.CancelRunResponse{Type: protocol.CancelRunRoot, Run: protocol.RunRef{
 			RunSummary: protocol.RunSummary{
 				ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished,
+				CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
 				Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCanceled, Detail: "stop"},
 			},
 			ProtocolProfile: protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval}},
@@ -501,6 +506,7 @@ func TestCancelRunProjectsChildAndSurvivingRootAtomically(t *testing.T) {
 				RunSummary: protocol.RunSummary{
 					ID: "run_child", SessionID: "ses_1", SpawnedByItemID: "item_spawn",
 					ParentRunID: "run_root", RootRunID: "run_root", Status: protocol.RunStatusFinished,
+					CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
 					Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCanceled, Detail: "stop child"},
 				},
 				ProtocolProfile: root.ProtocolProfile,
@@ -524,6 +530,7 @@ func TestCancelRunRejectsMalformedClosedResults(t *testing.T) {
 	canceled := protocol.RunRef{
 		RunSummary: protocol.RunSummary{
 			ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished,
+			CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
 			Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCanceled},
 		},
 		ProtocolProfile: protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{}},
