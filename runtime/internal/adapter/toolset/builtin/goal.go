@@ -176,8 +176,7 @@ func (c *creator) create(ctx context.Context, args createArgs) (goalResult, erro
 	if sessionID == "" {
 		return goalResult{Message: "No active session; a Goal must belong to a session."}, nil
 	}
-	objective := strings.TrimSpace(args.Objective)
-	if objective == "" {
+	if strings.TrimSpace(args.Objective) == "" {
 		return goalResult{Message: "Provide a non-empty autonomous objective."}, nil
 	}
 	budget := goalstate.UnlimitedBudget()
@@ -192,7 +191,7 @@ func (c *creator) create(ctx context.Context, args createArgs) (goalResult, erro
 	}
 	capabilities, _ := executionctx.RunCapabilities(ctx)
 	selection, _ := executionctx.ModelSelection(ctx)
-	g, err := c.goals.Start(ctx, sessionID, objective, selection, budget, capabilities)
+	g, err := c.goals.Start(ctx, sessionID, args.Objective, selection, budget, capabilities)
 	if err != nil {
 		switch {
 		case errors.Is(err, goals.ErrGoalActive):

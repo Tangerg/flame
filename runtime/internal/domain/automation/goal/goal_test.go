@@ -69,7 +69,7 @@ func TestNewRejectsIncompleteIdentityPolicyAndTime(t *testing.T) {
 		{name: "session non-printing", sessionID: "ses_\u200bhidden", objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "session oversized", sessionID: strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1), objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "objective missing", sessionID: "ses", selection: selection, incarnation: "inc", createdAt: now},
-		{name: "objective whitespace", sessionID: "ses", objective: " obj ", selection: selection, incarnation: "inc", createdAt: now},
+		{name: "objective blank", sessionID: "ses", objective: " \t ", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "selection missing", sessionID: "ses", objective: "obj", incarnation: "inc", createdAt: now},
 		{name: "budget missing", sessionID: "ses", objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "incarnation missing", sessionID: "ses", objective: "obj", selection: selection, createdAt: now},
@@ -85,6 +85,28 @@ func TestNewRejectsIncompleteIdentityPolicyAndTime(t *testing.T) {
 				t.Fatal("New accepted invalid input")
 			}
 		})
+	}
+}
+
+func TestGoalCanonicalizesObjectiveCommands(t *testing.T) {
+	now := time.Unix(1, 0).UTC()
+	created, err := New(
+		"ses", " \n objective one \t", testSelection(t), UnlimitedBudget(),
+		run.Capabilities{}, "inc_1", now,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.Objective() != "objective one" {
+		t.Fatalf("created objective = %q", created.Objective())
+	}
+
+	revised, err := created.ReviseObjective("  objective two\n", "inc_2", now.Add(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if revised.Objective() != "objective two" {
+		t.Fatalf("revised objective = %q", revised.Objective())
 	}
 }
 
@@ -148,6 +170,7 @@ func TestRestoreRejectsImpossibleCommittedState(t *testing.T) {
 		mutate func(*Snapshot)
 	}{
 		{name: "revision missing", mutate: func(s *Snapshot) { s.Revision = 0 }},
+		{name: "noncanonical objective", mutate: func(s *Snapshot) { s.Objective = " objective " }},
 		{name: "update before create", mutate: func(s *Snapshot) { s.UpdatedAt = s.CreatedAt.Add(-time.Nanosecond) }},
 		{name: "active with reason", mutate: func(s *Snapshot) { s.ReasonCode = ReasonStoppedByUser }},
 		{name: "paused without reason", mutate: func(s *Snapshot) { s.Status = StatusPaused }},

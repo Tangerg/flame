@@ -6744,7 +6744,7 @@
         },
         {
           "field": "description",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         }
       ]
     },
@@ -7999,7 +7999,7 @@
         },
         {
           "field": "objective",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         },
         {
           "field": "provider",
@@ -8069,7 +8069,7 @@
         },
         {
           "field": "objective",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         },
         {
           "field": "provider",
@@ -8131,7 +8131,7 @@
         },
         {
           "field": "objective",
-          "constraint": "nonEmpty"
+          "constraint": "pattern(\"\\\\S\")"
         }
       ]
     },

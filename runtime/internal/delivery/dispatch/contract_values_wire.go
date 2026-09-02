@@ -470,7 +470,13 @@ func registerPlanValues(s *Shapes) {
 		GoType:      typeOf[protocol.PlanState](),
 		Constraints: exactPositiveInteger("revision"),
 	})
-	nonEmpty[protocol.PlanStep](s, "id", "description")
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.PlanStep](),
+		Constraints: []FieldConstraint{
+			{Field: "id", Kind: ConstraintNonEmpty},
+			{Field: "description", Kind: ConstraintPattern, Value: `\S`},
+		},
+	})
 }
 
 func registerWorkspaceValues(s *Shapes) {
@@ -836,10 +842,11 @@ func registerScheduleValues(s *Shapes) {
 }
 
 func registerGoalValues(s *Shapes) {
+	const nonBlankObjective = `\S`
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.Goal](),
 		Constraints: append(append(requiredResourceIdentity("sessionId"), []FieldConstraint{
-			{Field: "objective", Kind: ConstraintNonEmpty},
+			{Field: "objective", Kind: ConstraintPattern, Value: nonBlankObjective},
 			{Field: "provider", Kind: ConstraintNonEmpty},
 			{Field: "model", Kind: ConstraintNonEmpty},
 		}...), modelSelectionIdentities("provider", "model", "reasoningEffort")...),
@@ -848,14 +855,14 @@ func registerGoalValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.StartGoalRequest](),
 		Constraints: append(append(requiredResourceIdentity("sessionId"), []FieldConstraint{
-			{Field: "objective", Kind: ConstraintNonEmpty},
+			{Field: "objective", Kind: ConstraintPattern, Value: nonBlankObjective},
 		}...), modelSelectionIdentities("provider", "model", "reasoningEffort")...),
 	})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.GoalRequest](), Constraints: requiredResourceIdentity("sessionId")})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.UpdateGoalRequest](),
 		Constraints: append(requiredResourceIdentity("sessionId"),
-			FieldConstraint{Field: "objective", Kind: ConstraintNonEmpty}),
+			FieldConstraint{Field: "objective", Kind: ConstraintPattern, Value: nonBlankObjective}),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.GoalBudget](),

@@ -157,6 +157,8 @@ func TestPlanUsesAnOptionalCommittedStateInsteadOfRevisionZero(t *testing.T) {
 	if err := ValidateWireTree(committed); err != nil {
 		t.Fatalf("ValidateWireTree rejected committed empty Plan: %v", err)
 	}
+	committed.State.Steps = []PlanStep{{ID: "step-1", Description: " \t", Status: PlanStatusPending}}
+	assertConstraintField(t, ValidateWireTree(committed), "Plan", "state.steps[0].description")
 
 	updatedWithoutState := StreamEvent{Type: StreamPlanUpdated, Plan: &unwritten}
 	assertConstraintField(t, updatedWithoutState.ValidateWire(), "StreamEvent", "plan.state")
@@ -1204,7 +1206,9 @@ func TestModelSelectionWireConstraintsRequireAnExactPair(t *testing.T) {
 
 	goalStart := StartGoalRequest{SessionID: "ses_1", Objective: "finish", Provider: "provider"}
 	assertConstraintField(t, goalStart.ValidateWire(), "StartGoalRequest", "model")
-	goalStart = StartGoalRequest{SessionID: "ses_1", Objective: "finish", ReasoningEffort: "high"}
+	goalStart = StartGoalRequest{SessionID: "ses_1", Objective: " \t", ReasoningEffort: "high"}
+	assertConstraintField(t, goalStart.ValidateWire(), "StartGoalRequest", "objective")
+	goalStart.Objective = "finish"
 	goalSelectionErr := goalStart.ValidateWire()
 	assertConstraintField(t, goalSelectionErr, "StartGoalRequest", "provider")
 	assertConstraintField(t, goalSelectionErr, "StartGoalRequest", "model")
@@ -1232,6 +1236,7 @@ func TestGoalWireConstraintsCloseLifecycleState(t *testing.T) {
 		value Goal
 	}{
 		{name: "missing objective", field: "objective", value: func() Goal { value := valid(GoalActive, nil); value.Objective = ""; return value }()},
+		{name: "blank objective", field: "objective", value: func() Goal { value := valid(GoalActive, nil); value.Objective = " \n"; return value }()},
 		{name: "missing provider", field: "provider", value: func() Goal { value := valid(GoalActive, nil); value.Provider = ""; return value }()},
 		{name: "missing model", field: "model", value: func() Goal { value := valid(GoalActive, nil); value.Model = ""; return value }()},
 		{name: "active reason", field: "reason", value: valid(GoalActive, &GoalReason{Code: GoalReasonStoppedByUser})},
@@ -1274,6 +1279,7 @@ func TestGoalWireConstraintsCloseLifecycleState(t *testing.T) {
 	}
 
 	assertConstraintField(t, (UpdateGoalRequest{SessionID: "ses_1"}).ValidateWire(), "UpdateGoalRequest", "objective")
+	assertConstraintField(t, (UpdateGoalRequest{SessionID: "ses_1", Objective: "\t"}).ValidateWire(), "UpdateGoalRequest", "objective")
 }
 
 func TestModelIdentitiesAreBoundedCanonicalWireValues(t *testing.T) {

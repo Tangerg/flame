@@ -417,7 +417,7 @@ func (s StartGoalRequest) ValidateWire() error {
 		requiredText("sessionId", s.SessionID),
 		identity("sessionId", s.SessionID),
 		maxLength("sessionId", s.SessionID, 256),
-		requiredText("objective", s.Objective),
+		requiredTextPattern("objective", s.Objective, "\\S"),
 		identity("provider", s.Provider),
 		maxLength("provider", s.Provider, 64),
 		identity("model", s.Model),
@@ -436,7 +436,7 @@ func (u UpdateGoalRequest) ValidateWire() error {
 		requiredText("sessionId", u.SessionID),
 		identity("sessionId", u.SessionID),
 		maxLength("sessionId", u.SessionID, 256),
-		requiredText("objective", u.Objective),
+		requiredTextPattern("objective", u.Objective, "\\S"),
 	)
 }
 
@@ -1772,7 +1772,7 @@ func (g Goal) ValidateWire() error {
 		requiredText("sessionId", g.SessionID),
 		identity("sessionId", g.SessionID),
 		maxLength("sessionId", g.SessionID, 256),
-		requiredText("objective", g.Objective),
+		requiredTextPattern("objective", g.Objective, "\\S"),
 		requiredText("provider", g.Provider),
 		requiredText("model", g.Model),
 		identity("provider", g.Provider),
@@ -2228,7 +2228,7 @@ func (p PlanState) ValidateWire() error {
 func (p PlanStep) ValidateWire() error {
 	return collectWireViolations("PlanStep",
 		requiredText("id", p.ID),
-		requiredText("description", p.Description),
+		requiredTextPattern("description", p.Description, "\\S"),
 		closedEnum("status", string(p.Status), []string{"pending", "in_progress", "completed"}, false),
 	)
 }

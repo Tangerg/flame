@@ -147,7 +147,9 @@ func (c Current) Version() Version {
 	return c.goal.Version()
 }
 
-// New constructs revision one of a fresh objective incarnation.
+// New constructs revision one of a fresh objective incarnation. Command text
+// is canonicalized here so every delivery enters the same aggregate semantics;
+// Restore remains strict about already-persisted snapshots.
 func New(
 	sessionID, objective string,
 	selection modelref.Selection,
@@ -158,7 +160,7 @@ func New(
 ) (Goal, error) {
 	return Restore(Snapshot{
 		SessionID:      sessionID,
-		Objective:      objective,
+		Objective:      strings.TrimSpace(objective),
 		Status:         StatusActive,
 		ModelSelection: selection,
 		Capabilities:   capabilities.Normalized(),
@@ -460,11 +462,9 @@ func (g Goal) reviseObjective(objective, incarnationID string, resume bool, now 
 	if g.status == StatusComplete {
 		return Goal{}, ErrNotEditable
 	}
-	if strings.TrimSpace(objective) == "" {
+	objective = strings.TrimSpace(objective)
+	if objective == "" {
 		return Goal{}, errObjectiveRequired
-	}
-	if objective != strings.TrimSpace(objective) {
-		return Goal{}, fmt.Errorf("%w: objective has surrounding whitespace", ErrInvalid)
 	}
 	parsedIncarnationID, err := goalref.ParseIncarnation(incarnationID)
 	if err != nil {

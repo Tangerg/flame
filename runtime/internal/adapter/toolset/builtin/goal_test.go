@@ -286,7 +286,7 @@ func TestCreateGoalUsesCurrentSessionAndExplicitBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if starter.sessionID != "s1" || starter.objective != "finish the migration" {
+	if starter.sessionID != "s1" || starter.objective != "  finish the migration  " {
 		t.Fatalf("start identity = (%q, %q)", starter.sessionID, starter.objective)
 	}
 	if starter.selection.Configured() {
@@ -299,7 +299,7 @@ func TestCreateGoalUsesCurrentSessionAndExplicitBudget(t *testing.T) {
 	if !starter.capabilities.Equal(testGoalRunCapabilities()) {
 		t.Fatalf("capabilities = %+v", starter.capabilities)
 	}
-	if result.Goal == nil || !strings.Contains(result.Message, "after the current Run") {
+	if result.Goal == nil || result.Goal.Objective != "finish the migration" || !strings.Contains(result.Message, "after the current Run") {
 		t.Fatalf("result = %+v", result)
 	}
 }

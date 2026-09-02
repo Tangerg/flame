@@ -739,7 +739,7 @@ TypeScript validator from this single registry projection.
 | `PlanState` | `revision` | `positive` |
 | `PlanState` | `revision` | `maximum(9007199254740991)` |
 | `PlanStep` | `id` | `nonEmpty` |
-| `PlanStep` | `description` | `nonEmpty` |
+| `PlanStep` | `description` | `pattern("\\S")` |
 | `WorkspaceRef` | `path` | `nonEmpty` |
 | `WorkspaceSummary` | `sessionCount` | `nonNegative` |
 | `FileContent` | `totalLines` | `positive` |
@@ -964,7 +964,7 @@ TypeScript validator from this single registry projection.
 | `Goal` | `sessionId` | `nonEmpty` |
 | `Goal` | `sessionId` | `identity` |
 | `Goal` | `sessionId` | `maxLength(256)` |
-| `Goal` | `objective` | `nonEmpty` |
+| `Goal` | `objective` | `pattern("\\S")` |
 | `Goal` | `provider` | `nonEmpty` |
 | `Goal` | `model` | `nonEmpty` |
 | `Goal` | `provider` | `identity` |
@@ -979,7 +979,7 @@ TypeScript validator from this single registry projection.
 | `StartGoalRequest` | `sessionId` | `nonEmpty` |
 | `StartGoalRequest` | `sessionId` | `identity` |
 | `StartGoalRequest` | `sessionId` | `maxLength(256)` |
-| `StartGoalRequest` | `objective` | `nonEmpty` |
+| `StartGoalRequest` | `objective` | `pattern("\\S")` |
 | `StartGoalRequest` | `provider` | `identity` |
 | `StartGoalRequest` | `provider` | `maxLength(64)` |
 | `StartGoalRequest` | `model` | `identity` |
@@ -992,7 +992,7 @@ TypeScript validator from this single registry projection.
 | `UpdateGoalRequest` | `sessionId` | `nonEmpty` |
 | `UpdateGoalRequest` | `sessionId` | `identity` |
 | `UpdateGoalRequest` | `sessionId` | `maxLength(256)` |
-| `UpdateGoalRequest` | `objective` | `nonEmpty` |
+| `UpdateGoalRequest` | `objective` | `pattern("\\S")` |
 | `GoalBudget` | `maxRuns` | `positive` |
 | `GoalBudget` | `maxCostUsd` | `positive` |
 | `GoalBudget` | `maxSteps` | `positive` |

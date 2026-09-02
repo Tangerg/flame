@@ -2836,7 +2836,7 @@
         },
         "objective": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         },
         "provider": {
           "type": "string",
@@ -6147,7 +6147,7 @@
       "properties": {
         "description": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         },
         "id": {
           "type": "string",
@@ -9383,7 +9383,7 @@
         },
         "objective": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         },
         "provider": {
           "type": "string",
@@ -10000,7 +10000,7 @@
       "properties": {
         "objective": {
           "type": "string",
-          "minLength": 1
+          "pattern": "\\S"
         },
         "sessionId": {
           "type": "string",

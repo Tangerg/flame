@@ -1204,7 +1204,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       budget: ref(() => CHECKS.GoalBudget),
       createdAt: text(),
       model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      objective: allOf([text(), minLength(1)]),
+      objective: allOf([text(), pattern("\\S")]),
       provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
       reason: ref(() => CHECKS.GoalReason),
       reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -2259,7 +2259,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["revision", "steps", "updatedAt"]),
   PlanStatus: enumOf(["pending", "in_progress", "completed"]),
   PlanStep: object({
-    description: allOf([text(), minLength(1)]),
+    description: allOf([text(), pattern("\\S")]),
     id: allOf([text(), minLength(1)]),
     status: ref(() => CHECKS.PlanStatus),
   }, ["description", "id", "status"]),
@@ -3379,7 +3379,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       budget: ref(() => CHECKS.GoalBudget),
       model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      objective: allOf([text(), minLength(1)]),
+      objective: allOf([text(), pattern("\\S")]),
       provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
       reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
       sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3587,7 +3587,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["name"]),
   TransportKind: enumOf(["http"]),
   UpdateGoalRequest: object({
-    objective: allOf([text(), minLength(1)]),
+    objective: allOf([text(), pattern("\\S")]),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["objective", "sessionId"]),
   UpdateKnowledgeRequest: allOf([

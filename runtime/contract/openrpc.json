@@ -4473,7 +4473,7 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "pattern": "\\S"
           }
         },
         {
@@ -4580,7 +4580,7 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1
+            "pattern": "\\S"
           }
         },
         {
