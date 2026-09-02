@@ -200,6 +200,33 @@ func TestCanonicalTargetsValidateEveryDuplicateCandidate(t *testing.T) {
 	}
 }
 
+func TestAdvanceFingerprintOwnsAcceptancePolicy(t *testing.T) {
+	previous := fingerprint{1}
+	observed := fingerprint{2}
+	for _, test := range []struct {
+		name            string
+		initial         bool
+		accepting       bool
+		matchesAccepted bool
+		want            fingerprint
+		wantChanged     bool
+	}{
+		{name: "initial", initial: true, want: observed},
+		{name: "accepted identity", accepting: true, matchesAccepted: true, want: observed},
+		{name: "unrelated during acceptance", accepting: true, want: previous},
+		{name: "ordinary external change", want: observed, wantChanged: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, changed := advanceFingerprint(
+				test.initial, test.accepting, test.matchesAccepted, previous, observed,
+			)
+			if got != test.want || changed != test.wantChanged {
+				t.Fatalf("advance = (%x, %v), want (%x, %v)", got, changed, test.want, test.wantChanged)
+			}
+		})
+	}
+}
+
 func assertObservedKey(t *testing.T, events <-chan []string, want string) {
 	t.Helper()
 	select {

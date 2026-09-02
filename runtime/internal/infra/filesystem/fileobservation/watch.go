@@ -150,35 +150,22 @@ func (w *watch) reconcile(initial bool, accepted acceptance) error {
 	changedKeys := make([]string, 0, len(w.targets))
 	accepting := len(accepted.keys) > 0 && len(accepted.identities) > 0
 	for index, candidate := range w.targets {
-		state, physical, err := fingerprintOf(candidate)
+		observed, physical, err := fingerprintOf(candidate)
 		if err != nil {
 			w.stateMu.Unlock()
 			return err
 		}
 		matchesAccepted := accepting && accepted.matches(candidate, physical)
-		switch {
-		case initial:
-			next[index] = state
-		case matchesAccepted:
-			next[index] = state
-		case accepting:
-			next[index] = w.fingerprints[index]
-		default:
-			next[index] = state
-			if state != w.fingerprints[index] && !slices.Contains(changedKeys, candidate.key) {
-				changedKeys = append(changedKeys, candidate.key)
-			}
+		var changed bool
+		next[index], changed = advanceFingerprint(
+			initial, accepting, matchesAccepted, w.fingerprints[index], observed,
+		)
+		if changed && !slices.Contains(changedKeys, candidate.key) {
+			changedKeys = append(changedKeys, candidate.key)
 		}
-		for _, path := range []string{candidate.path, physical} {
-			if path == "" {
-				continue
-			}
-			directory, err := nearestExistingDirectory(filepath.Dir(path))
-			if err != nil {
-				w.stateMu.Unlock()
-				return err
-			}
-			directories[directory] = struct{}{}
+		if err := collectParentDirectories(directories, candidate.path, physical); err != nil {
+			w.stateMu.Unlock()
+			return err
 		}
 	}
 	if err := w.replaceDirectories(directories); err != nil {
@@ -189,6 +176,41 @@ func (w *watch) reconcile(initial bool, accepted acceptance) error {
 	w.stateMu.Unlock()
 	if !accepting && len(changedKeys) > 0 && w.notify != nil {
 		w.notify(changedKeys)
+	}
+	return nil
+}
+
+// advanceFingerprint is the exact-file baseline policy. Initial sampling and
+// explicitly accepted identities advance immediately. During any acceptance
+// batch, unrelated targets retain their prior baseline so the next ordinary
+// resample still publishes their independently observed change.
+func advanceFingerprint(
+	initial bool,
+	accepting bool,
+	matchesAccepted bool,
+	previous fingerprint,
+	observed fingerprint,
+) (fingerprint, bool) {
+	switch {
+	case initial || matchesAccepted:
+		return observed, false
+	case accepting:
+		return previous, false
+	default:
+		return observed, observed != previous
+	}
+}
+
+func collectParentDirectories(directories map[string]struct{}, paths ...string) error {
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		directory, err := nearestExistingDirectory(filepath.Dir(path))
+		if err != nil {
+			return err
+		}
+		directories[directory] = struct{}{}
 	}
 	return nil
 }
