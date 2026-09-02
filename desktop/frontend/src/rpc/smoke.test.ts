@@ -42,7 +42,9 @@ function agentMessageItem(
     createdAt: "2026-06-03T00:00:00Z",
     type: "agentMessage",
     ...(status === "running" ? {} : { phase: "finalAnswer" as const }),
-    content: [{ type: "text", text }],
+    // `content` is optional on the streaming Item, and the Runtime rejects a blank text
+    // block. A message that has not said anything yet has no content — not one empty one.
+    ...(text ? { content: [{ type: "text" as const, text }] } : {}),
   };
 }
 
