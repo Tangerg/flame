@@ -100,6 +100,8 @@ func (c *crudStores) Interrupts() InterruptStore {
 func (*crudStores) Transcript() TranscriptStore                            { return emptyTranscript{} }
 func (*crudStores) Runs() RunStore                                         { return emptyTranscript{} }
 func (*crudStores) ReadSnapshot(context.Context, string) (Snapshot, error) { return Snapshot{}, nil }
+func (*crudStores) QuiesceSession(string) error                            { return nil }
+func (*crudStores) QuiesceWorkspace(string) error                          { return nil }
 func (*crudStores) ForgetSession(string)                                   {}
 func (*crudStores) ForgetSessionContext(string)                            {}
 func (*crudStores) ForgetWorkspace(string)                                 {}

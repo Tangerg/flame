@@ -62,6 +62,8 @@ type testStores interface {
 	Transcript() TranscriptStore
 	Runs() RunStore
 	ReadSnapshot(context.Context, string) (Snapshot, error)
+	QuiesceSession(string) error
+	QuiesceWorkspace(string) error
 	ForgetSession(string)
 	ForgetSessionContext(string)
 	ForgetWorkspace(string)
@@ -80,6 +82,10 @@ func (c coordinatorStores) ReadSnapshot(context.Context, string) (Snapshot, erro
 func (c coordinatorStores) ForgetSession(string)        {}
 func (c coordinatorStores) ForgetSessionContext(string) {}
 func (c coordinatorStores) ForgetWorkspace(string)      {}
+func (c coordinatorStores) QuiesceSession(string) error { return nil }
+func (c coordinatorStores) QuiesceWorkspace(string) error {
+	return nil
+}
 func (c coordinatorStores) ApplyFork(_ context.Context, plan ForkPlan) (session.Session, error) {
 	if c.forked != nil {
 		*c.forked = plan

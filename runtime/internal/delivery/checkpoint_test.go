@@ -140,6 +140,40 @@ func TestRollback_RestoreFilesKeepsHistory(t *testing.T) {
 	if want := []string{cwd}; !slices.Equal(rt.forgotTrees, want) {
 		t.Fatalf("forgot workspaces = %v, want %v", rt.forgotTrees, want)
 	}
+	if want := []string{cwd}; !slices.Equal(rt.stoppedTrees, want) {
+		t.Fatalf("stopped workspaces = %v, want %v", rt.stoppedTrees, want)
+	}
+}
+
+func TestRollbackStopsBeforeRestoreWhenWorkspaceCannotQuiesce(t *testing.T) {
+	s, rt, cp, sid, cwd := checkpointHarness(t)
+	ctx := t.Context()
+
+	writeCheckpointFile(t, cwd, "v1")
+	if err := cp.Snapshot(ctx, sid, cwd, "run1"); err != nil {
+		t.Fatal(err)
+	}
+	putRun(t, rt, sid, "run1", 1, 1)
+	writeCheckpointFile(t, cwd, "v2")
+	putRun(t, rt, sid, "run2", 2, 2)
+	wantErr := errors.New("background process cleanup failed")
+	rt.stopTreeErr = wantErr
+
+	_, err := s.RollbackSession(ctx, protocol.RollbackSessionRequest{
+		SessionID: sid, ToRunID: "run1", RestoreType: protocol.RestoreFiles,
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("rollback error = %v, want workspace quiesce failure", err)
+	}
+	if got, _ := os.ReadFile(filepath.Join(cwd, "a.txt")); string(got) != "v2" {
+		t.Fatalf("a.txt = %q, want untouched v2", got)
+	}
+	if pending, _ := rt.muts.ListPending(ctx); len(pending) != 0 {
+		t.Fatalf("pending intents = %+v, want none before restore begins", pending)
+	}
+	if len(rt.forgotTrees) != 0 {
+		t.Fatalf("forgot workspaces = %v, want none before a tree change", rt.forgotTrees)
+	}
 }
 
 // TestRollback_RestoreBoth_ClearsIntent: a successful files+history rollback
@@ -365,6 +399,9 @@ func TestRollback_IncompleteRestoreKeepsRecoveryIntent(t *testing.T) {
 	}
 	if want := []string{ses.Workspace().Path()}; !slices.Equal(rt.forgotTrees, want) {
 		t.Fatalf("forgot workspaces = %v, want %v after possibly partial restore", rt.forgotTrees, want)
+	}
+	if want := []string{ses.Workspace().Path()}; !slices.Equal(rt.stoppedTrees, want) {
+		t.Fatalf("stopped workspaces = %v, want %v before partial restore", rt.stoppedTrees, want)
 	}
 	runs, _ := rt.runs.ListRuns(ctx, ses.ID())
 	if len(runs) != 2 {

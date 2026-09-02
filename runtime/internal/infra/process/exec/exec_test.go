@@ -3,6 +3,8 @@ package exec
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -272,6 +274,56 @@ func TestShells_RunningForSession(t *testing.T) {
 	waitForDone(t, shells, bID)
 	if got := shells.RunningForSession("sess-b"); len(got) != 0 {
 		t.Fatalf("session b after kill = %d, want 0", len(got))
+	}
+}
+
+func TestShellsStopOwnedProcesses(t *testing.T) {
+	shells := NewShells(nil, false)
+	t.Cleanup(func() { _ = shells.KillAll() })
+	root := t.TempDir()
+	nested := filepath.Join(root, "nested")
+	if err := os.Mkdir(nested, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+
+	rootID, err := shells.Launch(t.Context(), "owner", root, "sleep 30", Timeout{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nestedID, err := shells.Launch(t.Context(), "sibling", nested, "sleep 30", Timeout{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outsideID, err := shells.Launch(t.Context(), "owner", outside, "sleep 30", Timeout{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rootShell := mustShell(t, shells, rootID)
+	nestedShell := mustShell(t, shells, nestedID)
+
+	if err := shells.StopWorkspace(root); err != nil {
+		t.Fatalf("StopWorkspace: %v", err)
+	}
+	for id, sh := range map[string]*Shell{rootID: rootShell, nestedID: nestedShell} {
+		if _, exists := shells.Get(id); exists {
+			t.Fatalf("StopWorkspace retained shell %s", id)
+		}
+		select {
+		case <-sh.Done():
+		default:
+			t.Fatalf("StopWorkspace returned before shell %s joined", id)
+		}
+	}
+	if _, exists := shells.Get(outsideID); !exists {
+		t.Fatal("StopWorkspace removed a shell outside its tree")
+	}
+
+	if err := shells.StopSession("owner"); err != nil {
+		t.Fatalf("StopSession: %v", err)
+	}
+	if _, exists := shells.Get(outsideID); exists {
+		t.Fatal("StopSession retained its shell outside the restored tree")
 	}
 }
 

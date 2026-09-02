@@ -138,6 +138,8 @@ type MaterialSnapshotReader interface {
 // deletion also retires lifecycle markers; restore and rollback retain those
 // markers while discarding only context-derived authority.
 type TransientState interface {
+	QuiesceSession(sessionID string) error
+	QuiesceWorkspace(root string) error
 	ForgetSession(sessionID string)
 	ForgetSessionContext(sessionID string)
 	ForgetWorkspace(root string)

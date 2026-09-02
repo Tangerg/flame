@@ -48,10 +48,10 @@ type RollbackResult struct {
 // Rollback executes a session rollback as one guarded operation: it claims
 // the single-writer mutation slot (rejecting a rollback under an in-flight run
 // as [ErrSessionBusy]) and, for a file restore, the working-tree mutation slot
-// too, then resolves the boundary under those guards, restores the working tree
-// to the run snapshot, restoring files before durable session state, and applies
-// the durable history truncation. It returns the resolved session view with the
-// mutation result so callers do not re-read a newer revision.
+// too, then resolves the boundary under those guards, stops detached processes
+// that could outlive the discarded state, restores files before durable Session
+// state, and applies the history truncation. It returns the resolved Session
+// view with the mutation result so callers do not re-read a newer revision.
 //
 // The guards live with the use case: a file restore's `git reset --hard`
 // writes a working tree a sibling session sharing the cwd would race, and that
@@ -86,6 +86,11 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 	}
 	if spec.RestoreHistory {
 		result.Dropped = resolvedBoundary.droppedRuns
+	}
+	if spec.RestoreFiles {
+		if err := c.transientState.QuiesceWorkspace(cwd); err != nil {
+			return result, fmt.Errorf("sessions: quiesce working tree before rollback: %w", err)
+		}
 	}
 	// Every file restore is logged before Git touches the working tree. A reset
 	// updates multiple paths and can fail after changing only some of them, so
@@ -233,6 +238,9 @@ func (c *Coordinator) recoverRollback(ctx context.Context, m WorkspaceMutation) 
 		if err != nil {
 			return err
 		}
+	}
+	if err := c.transientState.QuiesceWorkspace(m.CWD); err != nil {
+		return fmt.Errorf("sessions: quiesce working tree before rollback recovery: %w", err)
 	}
 	if err := c.restore(ctx, m.SessionID, m.CWD, m.ToRunID); err != nil {
 		if errors.Is(err, ErrCheckpointRestoreIncomplete) {

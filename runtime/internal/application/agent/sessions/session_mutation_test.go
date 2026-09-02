@@ -28,7 +28,7 @@ func TestDeleteSessionAppliesThenReleasesExecutors(t *testing.T) {
 		t.Fatalf("DeleteSession: %v", err)
 	}
 
-	want := []string{"interrupt.read", "apply.delete", "executor.release", "session.forget"}
+	want := []string{"interrupt.read", "session.quiesce", "apply.delete", "executor.release", "session.forget"}
 	if !slices.Equal(stores.operations, want) {
 		t.Fatalf("operations = %v, want %v", stores.operations, want)
 	}
@@ -53,6 +53,22 @@ func TestDeleteSessionStopsBeforeExecutorReleaseOnApplyFailure(t *testing.T) {
 	}
 }
 
+func TestDeleteSessionStopsBeforeDurableMutationOnQuiesceFailure(t *testing.T) {
+	stores := newMutationStores("session.quiesce")
+
+	err := newCoordinator(stores, mutationExecutions{operations: &stores.operations}).DeleteSession(t.Context(), "ses_1")
+	if !errors.Is(err, errMutationStage) {
+		t.Fatalf("DeleteSession error = %v, want %v", err, errMutationStage)
+	}
+	want := []string{"interrupt.read", "session.quiesce"}
+	if !slices.Equal(stores.operations, want) {
+		t.Fatalf("operations = %v, want no durable mutation after quiesce failure", stores.operations)
+	}
+	if len(stores.deleted) != 0 {
+		t.Fatalf("deleted = %v, want none", stores.deleted)
+	}
+}
+
 func TestDeleteSessionQuiescesGoalOnlyAfterDurableCommit(t *testing.T) {
 	stores := newMutationStores("")
 	coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
@@ -64,7 +80,7 @@ func TestDeleteSessionQuiescesGoalOnlyAfterDurableCommit(t *testing.T) {
 	if err := coordinator.DeleteSession(t.Context(), "ses_1"); err != nil {
 		t.Fatalf("DeleteSession: %v", err)
 	}
-	want := []string{"goal.mutation", "interrupt.read", "apply.delete", "goal.quiesce", "executor.release", "session.forget"}
+	want := []string{"goal.mutation", "interrupt.read", "session.quiesce", "apply.delete", "goal.quiesce", "executor.release", "session.forget"}
 	if !slices.Equal(stores.operations, want) {
 		t.Fatalf("operations = %v, want %v", stores.operations, want)
 	}
@@ -99,7 +115,7 @@ func TestDeleteSessionCleansUpAfterGoalQuiesceFailure(t *testing.T) {
 	if !errors.Is(err, quiesceErr) {
 		t.Fatalf("DeleteSession error = %v, want quiesce failure", err)
 	}
-	want := []string{"goal.mutation", "interrupt.read", "apply.delete", "goal.quiesce", "executor.release", "session.forget"}
+	want := []string{"goal.mutation", "interrupt.read", "session.quiesce", "apply.delete", "goal.quiesce", "executor.release", "session.forget"}
 	if !slices.Equal(stores.operations, want) {
 		t.Fatalf("operations = %v, want post-commit cleanup despite quiesce failure", stores.operations)
 	}
@@ -140,7 +156,7 @@ func TestDeleteSessionReportsEveryPostCommitCleanupFailure(t *testing.T) {
 	if !errors.Is(err, executionErr) || !errors.Is(err, checkpointErr) {
 		t.Fatalf("DeleteSession error = %v, want execution and checkpoint cleanup failures", err)
 	}
-	want := []string{"interrupt.read", "apply.delete", "executor.release", "session.forget", "checkpoint.drop:ses_1"}
+	want := []string{"interrupt.read", "session.quiesce", "apply.delete", "executor.release", "session.forget", "checkpoint.drop:ses_1"}
 	if !slices.Equal(stores.operations, want) {
 		t.Fatalf("operations = %v, want %v", stores.operations, want)
 	}
@@ -165,7 +181,7 @@ func TestDeleteSessionDiscardsIsolatedSandboxCopyPostCommit(t *testing.T) {
 	}
 	// The sandbox copy is discarded post-commit, after the durable delete and the
 	// checkpoint drop — never inside the write-set.
-	want := []string{"interrupt.read", "apply.delete", "executor.release", "session.forget", "checkpoint.drop:ses_1", "sandbox.discard:ses_1"}
+	want := []string{"interrupt.read", "session.quiesce", "apply.delete", "executor.release", "session.forget", "checkpoint.drop:ses_1", "sandbox.discard:ses_1"}
 	if !slices.Equal(stores.operations, want) {
 		t.Fatalf("operations = %v, want %v", stores.operations, want)
 	}
@@ -188,6 +204,7 @@ func TestRollbackReportsParkedExecutorReleaseFailure(t *testing.T) {
 		t.Fatalf("applyRollback error = %v, want execution release failure", err)
 	}
 	want := []string{
+		"session.quiesce",
 		"apply.rollback",
 		"session.context.forget",
 		"executor.release",
@@ -231,7 +248,7 @@ func TestRestoreSessionAppliesPlan(t *testing.T) {
 	if len(stores.restored) != 1 || stores.restored[0].Session.State().ID() != "ses_1" || len(stores.restored[0].Messages) != 1 {
 		t.Fatalf("restored = %+v, want one plan for ses_1 with 1 message", stores.restored)
 	}
-	want := []string{"interrupt.read", "apply.restore", "session.context.forget"}
+	want := []string{"interrupt.read", "session.quiesce", "apply.restore", "session.context.forget"}
 	if !slices.Equal(stores.operations, want) {
 		t.Fatalf("operations = %v, want %v", stores.operations, want)
 	}
@@ -351,6 +368,12 @@ func (m *mutationStores) ForgetSessionContext(string) {
 }
 func (m *mutationStores) ForgetWorkspace(string) {
 	m.operations = append(m.operations, "workspace.forget")
+}
+func (m *mutationStores) QuiesceSession(string) error {
+	return m.record("session.quiesce")
+}
+func (m *mutationStores) QuiesceWorkspace(string) error {
+	return m.record("workspace.quiesce")
 }
 func (*mutationStores) ApplyFork(context.Context, ForkPlan) (session.Session, error) {
 	panic("unused")

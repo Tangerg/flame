@@ -9,12 +9,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// DeleteSession atomically removes all durable session state (the atomic
-// write-set), then tears down process-local parked executions and the resume gate,
-// and finally drops the session's working-tree checkpoints. The open interrupts
-// are read up front so the abandoned executions can be canceled after the durable
-// state is gone. Checkpoint cleanup runs last, after the durable delete has
-// already succeeded; all post-commit cleanup failures are returned together.
+// DeleteSession first quiesces detached processes while the Session mutation
+// admission is held, atomically removes all durable state, then tears down
+// parked executions and non-failing process-local markers. The open interrupts
+// are read up front so abandoned executions can be canceled after the durable
+// state is gone. Checkpoint and sandbox cleanup run last; all post-commit
+// cleanup failures are returned together.
 func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error {
 	admission, err := c.ClaimSessionMutation(sessionID)
 	if err != nil {
@@ -32,6 +32,9 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 				return err
 			}
 			pending = append(pending, open...)
+			if err := c.transientState.QuiesceSession(sessionID); err != nil {
+				return fmt.Errorf("sessions: quiesce process-local Session state before delete: %w", err)
+			}
 			return c.writes.ApplyDelete(commitCtx, DeletePlan{SessionID: sessionID})
 		},
 		func(ctx context.Context) error {
@@ -55,10 +58,8 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 	)
 }
 
-// dropSessionResources removes the process-local resources which outlive a
-// durable session write-set. Deletion and rollback share this exact post-commit
-// cleanup order; callers choose the action only to preserve useful error
-// context for the operator.
+// dropSessionResources removes process-local resources after a durable Session
+// delete. The action preserves useful error context for the operator.
 func (c *Coordinator) dropSessionResources(sessionIDs []string, action string) []error {
 	var errs []error
 	for _, sessionID := range sessionIDs {
@@ -130,6 +131,9 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 		ctx,
 		[]string{sessionID},
 		func(ctx context.Context) error {
+			if err := c.transientState.QuiesceSession(sessionID); err != nil {
+				return fmt.Errorf("sessions: quiesce process-local Session state before restore: %w", err)
+			}
 			return c.writes.ApplyRestore(ctx, restorePlan(snapshot, sessionReplacement, planReplacement))
 		},
 		func(context.Context) error {

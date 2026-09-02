@@ -31,6 +31,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
 )
 
@@ -45,6 +46,7 @@ const (
 // stop them. The process handles and output buffers live here. The zero value is
 // not usable; build one with [NewShells].
 type Shells struct {
+	lifecycle sync.Mutex
 	mu        sync.Mutex
 	epoch     string
 	nextID    uint64
@@ -144,6 +146,7 @@ type Shell struct {
 	started   time.Time
 	id        shellID       // the owner-map key, mirrored here for RunningForSession
 	sessionID string        // session that launched it; scopes RunningForSession
+	cwd       string        // canonical working-tree identity used by lifecycle cleanup
 	command   string        // the shell command, for a session's live-state readout
 	done      chan struct{} // closed once the process finishes
 
@@ -202,11 +205,13 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 	process := newShellProcessOwner(cmd)
 	sh := &Shell{
 		cancel: cancel, cmd: cmd, process: process, started: time.Now(),
-		sessionID: sessionID, command: command, done: make(chan struct{}),
+		sessionID: sessionID, cwd: cwd, command: command, done: make(chan struct{}),
 	}
 	cmd.Stdout = sh
 	cmd.Stderr = sh
 
+	s.lifecycle.Lock()
+	defer s.lifecycle.Unlock()
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
@@ -340,41 +345,116 @@ func (s *Shells) Remove(id string) {
 	s.mu.Unlock()
 }
 
+// StopSession stops, joins, and removes every shell owned by sessionID while
+// leaving other Sessions' jobs addressable. It is the process-lifecycle
+// boundary used before replacing or deleting a Session.
+func (s *Shells) StopSession(sessionID string) error {
+	return s.stopMatching("for Session "+strconv.Quote(sessionID), func(sh *Shell) (bool, error) {
+		return sh.sessionID == sessionID, nil
+	})
+}
+
+// StopWorkspace stops, joins, and removes every shell running at or below root
+// across all Sessions. A destructive working-tree restore must not race a
+// detached process that can immediately rewrite the restored files.
+func (s *Shells) StopWorkspace(root string) error {
+	if root == "" {
+		return errors.New("exec: workspace root is required")
+	}
+	return s.stopMatching("for workspace "+strconv.Quote(root), func(sh *Shell) (bool, error) {
+		if sh.cwd == "" {
+			return false, nil
+		}
+		inside, err := pathidentity.Contains(root, sh.cwd)
+		if err != nil {
+			return false, fmt.Errorf("exec: compare shell %q workspace: %w", sh.id, err)
+		}
+		return inside, nil
+	})
+}
+
+func (s *Shells) stopMatching(action string, matches func(*Shell) (bool, error)) error {
+	if s == nil {
+		return nil
+	}
+	s.lifecycle.Lock()
+	defer s.lifecycle.Unlock()
+	s.mu.Lock()
+	selected := make(map[shellID]*Shell)
+	var errs []error
+	for id, sh := range s.shells {
+		match, err := matches(sh)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		if match {
+			selected[id] = sh
+		}
+	}
+	s.mu.Unlock()
+	stopped, stopErr := stopDetachedShells(selected, action)
+	errs = append(errs, stopErr)
+	s.mu.Lock()
+	for _, id := range stopped {
+		if s.shells[id] == selected[id] {
+			delete(s.shells, id)
+		}
+	}
+	s.mu.Unlock()
+	return errors.Join(errs...)
+}
+
 // KillAll stops and joins every background shell in stable id order. It keeps
 // every process-kill failure while still joining the complete set. Safe to call
 // repeatedly; subsequent calls return the original shutdown result.
 func (s *Shells) KillAll() error {
 	s.closeOnce.Do(func() {
+		s.lifecycle.Lock()
+		defer s.lifecycle.Unlock()
 		s.mu.Lock()
 		s.closed = true
 		shells := s.shells
 		s.shells = map[shellID]*Shell{}
 		s.mu.Unlock()
-		ids := make([]shellID, 0, len(shells))
-		for id := range shells {
-			ids = append(ids, id)
-		}
-		slices.SortFunc(ids, func(left, right shellID) int {
-			return strings.Compare(left.String(), right.String())
-		})
-		var errs []error
-		for _, id := range ids {
-			sh := shells[id]
-			sh.cancel()
-			if err := sh.process.stop(); err != nil {
-				errs = append(errs, fmt.Errorf("exec: kill shell %q during shutdown: %w", id, err))
-			}
-		}
-		for _, id := range ids {
-			sh := shells[id]
-			<-sh.done
-			if err := sh.cleanupFailure(); err != nil {
-				errs = append(errs, fmt.Errorf("exec: clean shell %q during shutdown: %w", id, err))
-			}
-		}
-		s.closeErr = errors.Join(errs...)
+		_, s.closeErr = stopDetachedShells(shells, "during shutdown")
 	})
 	return s.closeErr
+}
+
+func stopDetachedShells(shells map[shellID]*Shell, action string) ([]shellID, error) {
+	ids := make([]shellID, 0, len(shells))
+	for id := range shells {
+		ids = append(ids, id)
+	}
+	slices.SortFunc(ids, func(left, right shellID) int {
+		return strings.Compare(left.String(), right.String())
+	})
+	var errs []error
+	stopped := make([]shellID, 0, len(ids))
+	for _, id := range ids {
+		sh := shells[id]
+		select {
+		case <-sh.done:
+			stopped = append(stopped, id)
+			continue
+		default:
+		}
+		sh.cancel()
+		if err := sh.process.stop(); err != nil {
+			errs = append(errs, fmt.Errorf("exec: kill shell %q %s: %w", id, action, err))
+			continue
+		}
+		stopped = append(stopped, id)
+	}
+	for _, id := range stopped {
+		sh := shells[id]
+		<-sh.done
+		if err := sh.cleanupFailure(); err != nil {
+			errs = append(errs, fmt.Errorf("exec: clean shell %q %s: %w", id, action, err))
+		}
+	}
+	return stopped, errors.Join(errs...)
 }
 
 type shellProcessOwner struct {

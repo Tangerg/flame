@@ -224,6 +224,7 @@ func buildExecutionComposition(
 	transientSessions := agentexec.NewTransientSessionState(
 		workingContexts,
 		toolRuntime.tools.Resolver,
+		toolRuntime.tools.Shells,
 	)
 	toolAuthorizer, err := agentexec.NewToolAuthorizer(policy.approvals)
 	if err != nil {

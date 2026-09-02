@@ -3,6 +3,7 @@ package sessions
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -43,6 +44,9 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 		ctx,
 		[]string{sessionID},
 		func(ctx context.Context) error {
+			if err := c.transientState.QuiesceSession(sessionID); err != nil {
+				return fmt.Errorf("sessions: quiesce process-local Session state before rollback: %w", err)
+			}
 			return c.writes.ApplyRollback(ctx, RollbackPlan{
 				SessionID:         sessionID,
 				KeepMessageMark:   boundary.KeepMessageMark,
