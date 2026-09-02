@@ -273,3 +273,55 @@ The null rejector reparses each typed map into `map[string]json.RawMessage` and 
 
 - Typed protocol maps are small control-plane values and sorting changes no accepted payload. Regression coverage includes typed maps, nested pointer fields, and opaque maps.
 - Round 6 will inspect contract-shape specification validation and generator constraint compilation for a similarly concrete ordering or ownership defect before considering structural splitting.
+
+## Round 6 — complete
+
+### Audit scope and evidence
+
+- Traced `AllowedValueSet` from shape-registration validation through generated Go validators and conditional JSON Schema branches.
+- The registry currently checks the target with `contractshape.Deref`, which unwraps both pointers and slices so nested paths can traverse collection elements. That path-navigation policy incorrectly makes `[]string` look like a scalar string when validating an allowed-value set.
+- Generated Go validation reads the actual field and requires `reflect.String`; an array therefore fails every applicable allowed-value rule. Generated JSON Schema likewise attaches a string-valued `enum` to the array node, so no array instance can satisfy it.
+- Existing first-party registrations happen to target only scalar fields, but the semantic owner accepts metadata that its two projections cannot implement. Rejecting the malformed declaration at registration keeps invalid contract states unconstructable.
+- Baseline: `GOWORK=off go test -count=1 ./internal/delivery/dispatch ./cmd/contractgen` passed in 17.57s.
+
+### Root cause
+
+Allowed-value type validation reused a traversal helper whose broader contract deliberately removes slice layers. Path traversal and leaf cardinality are different facts: a path may cross a collection, but the field narrowed by one allowed-value set must itself be one scalar string value.
+
+### Impact and acceptance criteria
+
+- Accept scalar string and pointer-to-string fields exactly as before, including named string types.
+- Reject slice or array fields during shape registration before artifact generation.
+- Preserve current first-party generated artifacts, registry order, diagnostics for other malformed specifications, Runtime protocol values, and public bindings.
+- Add a regression test proving a string slice cannot be value-restricted, then pass focused dispatch/generator tests, generation drift, Runtime and current-workspace CLI full gates, plus one bounded live Run.
+
+### Plan
+
+- **Completed:** added the failing shape-metadata regression, then narrowed leaf unwrapping to pointers at the metadata owner.
+- **Completed:** checked every contract projection, formatted, ran focused/full/live verification, cleaned resources, inspected compatibility, and recorded results.
+
+### Validation
+
+- The new regression first failed because the malformed string-slice declaration returned no error, proving the registration gap. It passed after the owner fix in 1.06s; dispatch plus contractgen tests passed in 3.41s.
+- Generated-contract drift, registry-to-validator reachability, and cross-artifact value-constraint tests passed in 2.67s. No generated artifact changed.
+- Dispatch and contractgen passed with `-race` in 19.29s. Focused `go vet` and `staticcheck` passed.
+- Runtime `GOWORK=off go vet ./...` passed in 5.65s, `GOWORK=off go build ./...` passed in 1.88s, and uncached `GOWORK=off go test -count=1 ./...` passed in 45.51s.
+- Current-workspace CLI `go vet ./...` passed in 3.07s, `go build ./...` passed in 1.92s, and uncached `go test -count=1 ./...` passed in 39.29s.
+- The current-source CLI completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND6_OK`, status `completed`, one step, 9,188 input tokens, 8 output tokens, 9,088 cache-read tokens, and 670ms model duration; the Run command took 3.80s. No credential value was printed or copied.
+- `git diff --check` passed.
+
+### Changes and compatibility
+
+- `AllowedValueSet` registration now removes pointer layers only when deciding whether its target is a scalar string. It no longer imports collection-path traversal semantics into leaf cardinality validation.
+- Existing pointer and named-string targets remain valid; slices are rejected alongside the arrays and non-string scalar types that were already invalid.
+- Breaking changes: malformed private shape metadata that value-restricts an entire string collection is now rejected at registration. First-party metadata, generated Go/TypeScript validators, JSON Schema, OpenRPC, manifest artifacts, protocol values, persisted data, and public bindings are unchanged.
+
+### Resource cleanup
+
+- The bounded live Run used a validated `/tmp/flame-live-round6.*` directory containing its isolated Runtime home and Go build cache. The exit trap moved it to the system Trash.
+- No matching temporary directory remained. No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- The fix affects only malformed metadata and is guarded at the earliest common owner before either projection runs. Existing registrations and byte-for-byte artifact drift gates cover the accepted path.
+- Round 7 will audit bootstrap assembly and configuration authority, the next measured complex boundary, for duplicated provider/model or lifecycle ownership before considering any extraction.

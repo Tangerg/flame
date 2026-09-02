@@ -704,7 +704,11 @@ func validateAllowedValueSets(owner string, shape reflect.Type, sets []AllowedVa
 		if !found {
 			return fmt.Errorf("%s: %s has no JSON field path %q", owner, shape.Name(), set.Field)
 		}
-		if contractshape.Deref(leaf.Type).Kind() != reflect.String {
+		fieldType := leaf.Type
+		for fieldType.Kind() == reflect.Pointer {
+			fieldType = fieldType.Elem()
+		}
+		if fieldType.Kind() != reflect.String {
 			return fmt.Errorf("%s: allowed-values field %q is not a string", owner, set.Field)
 		}
 		if len(set.Values) == 0 {

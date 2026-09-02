@@ -9,6 +9,10 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
+type allowedValuesListFixture struct {
+	Values []string `json:"values,omitempty"`
+}
+
 func TestShapeMetadataRejectsUnknownValues(t *testing.T) {
 	t.Parallel()
 
@@ -142,6 +146,16 @@ func TestShapeMetadataRejectsUnknownValues(t *testing.T) {
 	}
 	if validateErr := allowedSpec.validate(); validateErr == nil || !strings.Contains(validateErr.Error(), "not a string") {
 		t.Fatalf("allowed-values type error = %v, want string requirement", validateErr)
+	}
+
+	listAllowedSpec := ObjectConstraintSpec{
+		GoType: reflect.TypeFor[allowedValuesListFixture](),
+		Rules: []ConditionalRule{{
+			AllowedValues: []AllowedValueSet{{Field: "values", Values: []string{"one"}}},
+		}},
+	}
+	if validateErr := listAllowedSpec.validate(); validateErr == nil || !strings.Contains(validateErr.Error(), "not a string") {
+		t.Fatalf("list allowed-values type error = %v, want scalar string requirement", validateErr)
 	}
 
 	for _, test := range []struct {
