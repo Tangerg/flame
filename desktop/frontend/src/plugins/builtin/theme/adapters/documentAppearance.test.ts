@@ -302,13 +302,12 @@ describe("applyTheme — theme-as-plugin contract", () => {
 });
 
 describe("visual-style contract", () => {
-  it("applies component tokens and the control treatment independently from colour", async () => {
+  it("applies component tokens independently from colour", async () => {
     await contributeForTest((ctx) => {
       ctx.contribute(VISUAL_STYLE, {
         id: "test-style",
         label: "Test style",
         description: "Test",
-        controls: "outlined",
         motion: TEST_MOTION,
         preview: {
           canvas: "#fff",
@@ -325,7 +324,6 @@ describe("visual-style contract", () => {
 
     const root = document.documentElement;
     expect(root.dataset.visualStyle).toBe("test-style");
-    expect(root.dataset.controlTreatment).toBe("outlined");
     expect(root.style.getPropertyValue("--style-shape-md")).toBe("5px");
     expect(root.style.getPropertyValue("--app-content-shadow")).toBe("none");
     expect(root.style.getPropertyValue("--dur-fast-base")).toBe("150ms");
@@ -339,7 +337,6 @@ describe("visual-style contract", () => {
         id: "first",
         label: "First",
         description: "First",
-        controls: "quiet",
         motion: TEST_MOTION,
         preview: {
           canvas: "#fff",
@@ -354,7 +351,6 @@ describe("visual-style contract", () => {
         id: "second",
         label: "Second",
         description: "Second",
-        controls: "quiet",
         motion: TEST_MOTION,
         preview: {
           canvas: "#111",

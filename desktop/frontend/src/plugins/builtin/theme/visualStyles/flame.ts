@@ -10,7 +10,6 @@ export const flameStyle: VisualStyleSpec = {
   label: "Flame Workbench",
   description: "Tool-window geometry: opaque columns, borderless cards, half-pixel seams.",
   order: -10,
-  controls: "quiet",
   motion: WORKBENCH_MOTION,
   preview: {
     canvas: "#1d1f23",

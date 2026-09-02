@@ -40,8 +40,6 @@ export interface AccentSpec {
   order?: number;
 }
 
-export type ControlTreatment = "quiet" | "outlined" | "tonal" | "elevated";
-
 export interface VisualStylePreview {
   canvas: string;
   sidebar: string;
@@ -51,18 +49,15 @@ export interface VisualStylePreview {
 }
 
 /**
- * A complete component and region design language, independent from colour. `traits` expose
- * structural intent to shell CSS as data attributes while tokens own metrics and materials,
- * and keeping both in ONE contribution is what lets a third-party style change pane
- * relationships rather than merely repaint existing controls.
+ * A complete component and region design language, independent from colour. Tokens are the
+ * whole of it: metrics, materials and region relationships are all custom properties, so a
+ * third-party style changes how panes relate rather than merely repainting controls.
  */
 export interface VisualStyleSpec {
   id: string;
   label: string;
   description: string;
   order?: number;
-  /** Selects the chrome rules a stylesheet keys on `data-control-treatment`. */
-  controls: ControlTreatment;
   motion: VisualStyleMotion;
   preview: VisualStylePreview;
   /** CSS custom properties without the leading `--`. */

@@ -1181,26 +1181,6 @@ html.theme-dark {
   );
 }
 
-html[data-control-treatment="outlined"] .agent-dock-tabs > [role="tablist"] > [data-active] {
-  border-radius: 0;
-  background: transparent;
-  box-shadow: inset 0 -2px 0 var(--color-accent);
-}
-
-html[data-control-treatment="elevated"] .agent-dock-tabs > [role="tablist"] > [data-active] {
-  box-shadow: var(--shadow-control);
-}
-
-html[data-control-treatment="elevated"]
-  :where(
-    [data-slot="button"][data-variant="soft"],
-    [data-slot="button"][data-variant="outline"],
-    [data-slot="button"][data-variant="primary"],
-    [data-slot="text-field"][data-variant="boxed"]
-  ) {
-  box-shadow: var(--shadow-control);
-}
-
 .panel-scroll {
   flex: 1 1 0;
   min-height: 0;
@@ -1291,3 +1271,23 @@ html[data-control-treatment="elevated"]
 @import "./markdown.css";
 @import "./overlays.css";
 @import "./tool.css";
+
+/* Last in the file on purpose: a rest state may be declared by any of the sheets imported
+   above, and this has to be the one that wins.
+
+   A control that only appears when the pointer arrives has no way to appear on a device
+   with no pointer: the × on a dock tab, the copy on a code block, a message's actions. The
+   reveal itself is eleven different class lists — which group, which pseudo-class, opacity
+   or visibility — so what is marked here is the one part that is the same decision
+   everywhere. `rest` is the other end of it: what the reveal displaces, which has to give
+   way at the same moment or the two overlap. */
+@media (hover: none) {
+  [data-reveal="hover"] {
+    opacity: 1;
+    visibility: visible;
+  }
+  [data-reveal="rest"] {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
