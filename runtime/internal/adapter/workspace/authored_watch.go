@@ -100,7 +100,7 @@ func (a AuthoredWatcher) Watch(
 	if err != nil {
 		return nil, err
 	}
-	trees, err := fileobservation.WatchTrees(a.skillTreeTargets(scopes, resources), func(keys []string) {
+	skillFiles, err := fileobservation.WatchChildFiles(a.skillFileTargets(scopes, resources), func(keys []string) {
 		if slices.Contains(keys, authoredSkillsKey) {
 			notify(workspaceapp.AuthoredSkills)
 		}
@@ -108,7 +108,7 @@ func (a AuthoredWatcher) Watch(
 	if err != nil {
 		return nil, errors.Join(err, files.Close())
 	}
-	return &authoredObservation{observations: []fileobservation.Observation{files, trees}}, nil
+	return &authoredObservation{observations: []fileobservation.Observation{files, skillFiles}}, nil
 }
 
 type authoredObservation struct {
@@ -144,22 +144,27 @@ func (a *authoredObservation) Accept(changes []workspaceapp.AuthoredChange) erro
 	return errors.Join(errs...)
 }
 
-func (a AuthoredWatcher) skillTreeTargets(scopes []workspaceapp.AuthoredScope, resources []workspaceapp.AuthoredResource) []fileobservation.TreeTarget {
+func (a AuthoredWatcher) skillFileTargets(
+	scopes []workspaceapp.AuthoredScope,
+	resources []workspaceapp.AuthoredResource,
+) []fileobservation.ChildFileTarget {
 	if !slices.Contains(resources, workspaceapp.AuthoredSkills) {
 		return nil
 	}
-	targets := make([]fileobservation.TreeTarget, 0, len(scopes)+1)
+	targets := make([]fileobservation.ChildFileTarget, 0, len(scopes)+1)
 	if a.skillsHome != "" {
-		targets = append(targets, fileobservation.TreeTarget{
+		targets = append(targets, fileobservation.ChildFileTarget{
 			Key: authoredSkillsKey, Path: a.skillsHome, Boundary: a.skillsHome, FileName: skillspec.SkillFile,
-			MaxBytes: domainskills.MaxAuthoredSkillDocumentBytes,
+			MaxEntries: domainskills.MaxSkillDirectoryEntries,
+			MaxBytes:   domainskills.MaxAuthoredSkillDocumentBytes,
 		})
 	}
 	for _, scope := range scopes {
-		targets = append(targets, fileobservation.TreeTarget{
+		targets = append(targets, fileobservation.ChildFileTarget{
 			Key:  authoredSkillsKey,
 			Path: promptsource.ProjectSkillDir(scope.ProjectRoot), Boundary: scope.ProjectRoot,
-			FileName: skillspec.SkillFile, MaxBytes: domainskills.MaxAuthoredSkillDocumentBytes,
+			FileName: skillspec.SkillFile, MaxEntries: domainskills.MaxSkillDirectoryEntries,
+			MaxBytes: domainskills.MaxAuthoredSkillDocumentBytes,
 		})
 	}
 	return targets

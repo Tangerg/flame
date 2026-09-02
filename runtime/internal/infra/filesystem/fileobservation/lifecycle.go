@@ -19,7 +19,7 @@ type acceptance struct {
 }
 
 // observerLifecycle owns the one fsnotify resource and goroutine lifecycle
-// shared by exact-file and tree reconciliation policies.
+// shared by exact-file and bounded child-file reconciliation policies.
 type observerLifecycle struct {
 	label     string
 	fsw       *fsnotify.Watcher

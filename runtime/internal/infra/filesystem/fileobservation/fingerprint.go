@@ -21,7 +21,7 @@ const (
 	fingerprintFieldError        fingerprintField = "error"
 	fingerprintFieldLogicalInfo  fingerprintField = "logical-info"
 	fingerprintFieldPhysicalInfo fingerprintField = "physical-info"
-	fingerprintFieldTreeInfo     fingerprintField = "tree-info"
+	fingerprintFieldChildInfo    fingerprintField = "child-file-info"
 	fingerprintFieldContent      fingerprintField = "content"
 )
 

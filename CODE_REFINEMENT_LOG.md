@@ -1309,3 +1309,63 @@ The live management query correctly separates lock ownership from network I/O in
 
 - `Goal.provider/model` remains an evidenced cross-artifact inconsistency blocked by the current Runtime/CLI-only scope. A future scope that includes Desktop should remove both `omitempty` tags, regenerate the contract, and migrate every Goal fixture/adapter in one batch.
 - Round 25 will audit filesystem observation `scanTree`, another score-30 Runtime hotspot, against root confinement, symlink policy, hard limits, cancellation, deterministic ordering, and hashing. It will stay intact if those branches are one recursive algorithm; a change requires a proven lifecycle boundary or correctness gap.
+
+## Round 25 — complete
+
+### Audit scope and evidence
+
+- `scanTree` scores 30 and recursively walks every directory below each target, watches every discovered directory, and fingerprints every exact filename at arbitrary depth. Only `AuthoredWatcher.skillTreeTargets` calls this API, exclusively for user/project Skill libraries.
+- Runtime's actual Skill source reads a positive bounded batch of at most `skills.MaxSkillDirectoryEntries + 1` root entries, considers only immediate child directories, and loads exactly `<root>/<skill>/SKILL.md`. Nested `SKILL.md` files are resources or unrelated content and never enter the model/UI Skill projection.
+- The observer therefore maintains a broader, unbounded recursive representation than its sole semantic consumer: nested documents cause false authored-Skill invalidations, arbitrary resource trees expand watches and scan time, and `Close` can wait behind an unbounded walk while `stateMu` is held. Per-file `MaxBytes` does not bound entry traversal.
+- A bounded child-file observer is the smallest complete design. It needs the source-owned root-entry limit, watches only the physical root plus admitted immediate child directories, and represents overflow as a stable snapshot state so entering/leaving an invalid oversized library still notifies without making observer construction fail.
+- Baseline file-observation and workspace adapter tests pass uncached in 3.61s. Strict scanning reports `scanTree` at 30 and target canonicalization at 21.
+
+### Root cause
+
+A generic recursive tree capability was created around one one-level bounded Skill-library requirement. The watcher independently widened the source's projection instead of encoding the same directory shape and capacity owner.
+
+### Impact and acceptance criteria
+
+- Replace the speculative `TreeTarget` / `WatchTrees` surface with `ChildFileTarget` / `WatchChildFiles`, including a required positive `MaxEntries` supplied from `skills.MaxSkillDirectoryEntries`.
+- Scan only exact files directly below immediate child directories; ignore root and deeper matches because the Skill source ignores them.
+- Read at most one sentinel entry beyond the limit, retain deterministic bounded processing, and encode overflow without traversing children or failing startup.
+- Preserve missing/non-directory roots, symlink confinement, logical/physical acceptance identities, root replacement watching, per-file bounded fingerprints, non-regular paths, content-derived equality, notification coalescing, and close/join behavior.
+- Remove every obsolete recursive name and call path in the same batch; add no depth option, traversal framework, cache, goroutine, or compatibility alias.
+- Pass focused overflow/nesting/symlink/acceptance tests, race/static/generated/full Runtime/CLI gates, and both bounded live provider paths.
+
+### Plan
+
+- **Completed:** narrowed and renamed the observer, migrated its sole consumer/tests, added nesting/limit regressions, and remeasured complexity.
+- **Completed:** ran full gates and live verification, inspected compatibility, cleaned resources, and recorded results.
+
+### Validation
+
+- Before the change, code inspection proved that `filepath.WalkDir` admits root and arbitrarily nested matching names while the sole Skill source reads only immediate child directories through a bounded root batch. The new direct scan regression verifies that root/nested `SKILL.md` files produce no snapshot and no nested watch, while `<root>/<name>/SKILL.md` does.
+- The entry-limit regression starts from three root entries under a limit of two, proves watcher construction remains available in the opaque overflow state, removes one entry, observes the capacity transition, and then observes a valid child document write. A separate regression rejects either absent hard limit.
+- Final file-observation, workspace adapter, and Skill-source tests passed uncached in 4.00s against the 3.61s baseline. The changed observer/adapter packages passed with `-race` in 6.46s; focused `go vet`, `staticcheck`, and the production bounded-directory architecture test passed.
+- Production complexity scanning in fileobservation fell from six to four findings. Neither the new child-file production path nor its tests is reported; the four remaining findings are pre-existing exact-file/lifecycle functions. The former score-30 recursive scan and score-21 target canonicalizer were deleted.
+- `go generate ./...` changed no generated artifact. Contractgen plus generated-drift architecture tests passed in 6.08s.
+- Runtime `GOWORK=off go vet ./...` plus `GOWORK=off go build ./...` passed in 9.78s, and uncached `GOWORK=off go test -count=1 ./...` passed in 56.43s.
+- Current-workspace CLI `go vet ./...` plus `go build ./...` passed in 11.16s, and uncached `go test -count=1 ./...` passed in 43.93s.
+- The current-source CLI completed a production-bootstrap Run using the authorized DeepSeek configuration and returned exactly `FLAME_LIVE_ROUND25_OK`, status `completed`, one step, 9,262 input tokens, 9 output tokens, 9,216 cache-read tokens, and 360ms total model duration. No credential value was printed or copied.
+- The isolated invalid-credential Run failed closed as `invalid_api_key`, projected the provider's 401 failure, consumed zero model tokens, and terminated in 85ms. The configured credential was neither read nor changed.
+- `git diff --check` passed.
+
+### Changes and compatibility
+
+- The unconsumed recursive `TreeTarget` / `WatchTrees` API, implementation, tests, and vocabulary were removed. `ChildFileTarget` / `WatchChildFiles` now encode the one proven directory shape and require both root-entry and per-file byte limits.
+- The adapter supplies `skills.MaxSkillDirectoryEntries`, so Skill source and observation share one capacity fact. A positive `ReadDir(limit + 1)` bounds each resample; valid entries are sorted after the bounded read, and overflow remains a stable opaque snapshot watched only at the root.
+- The observer watches the physical root and immediate child directories only, plus the logical parent needed to notice root-symlink replacement. File confinement, logical/physical acceptance, content hashing, oversize/non-regular state, and notification coalescing remain owned by the same package.
+- Observable behavior intentionally changes only for unsupported breadth: root and nested matching documents no longer cause false Skill invalidations, and oversized root directories no longer create unbounded walks/watches. Immediate Skill additions, edits, replacements, removals, missing roots, and symlink aliases retain their behavior.
+- This is an internal Runtime adapter break with its sole consumer migrated atomically. Public Runtime/CLI APIs, wire shapes, persistence, and generated artifacts are unchanged; the renamed fingerprint field affects only in-process baselines.
+
+### Resource cleanup
+
+- Both temporary strict complexity configurations were deleted after the final scan.
+- Both bounded live paths used one validated `/tmp/flame-live-round25.*` directory containing isolated Runtime homes and the current-source CLI binary. It was moved intact to the system Trash after verification, so it is recoverable and no matching temporary path remains.
+- No shared cache, global dependency, user Runtime data, or authorized configuration was removed or modified.
+
+### Remaining risk and next direction
+
+- `Goal.provider/model` remains an evidenced cross-artifact inconsistency blocked by the current Runtime/CLI-only scope. A future scope that includes Desktop should remove both `omitempty` tags, regenerate the contract, and migrate every Goal fixture/adapter in one batch.
+- Round 26 will audit the remaining exact-file observer against its sole authored-file consumers, especially canonical target deduplication, boundary identity, missing/symlink state, selective acceptance, and the separation between resampling and lifecycle notification. Complexity alone will not justify a change.
