@@ -60,6 +60,10 @@ func (r *runtimeSkillSource) List(ctx context.Context) ([]sdk.Summary, error) {
 	if err != nil {
 		return nil, err
 	}
+	return r.loadSummaries(ctx, skillCandidateNames(entries))
+}
+
+func skillCandidateNames(entries []fs.DirEntry) []string {
 	names := make([]string, 0, min(len(entries), domainskills.MaxSkillsPerSource))
 	for _, entry := range entries {
 		name := entry.Name()
@@ -69,17 +73,18 @@ func (r *runtimeSkillSource) List(ctx context.Context) ([]sdk.Summary, error) {
 		names = append(names, name)
 	}
 	slices.Sort(names)
+	return names
+}
+
+func (r *runtimeSkillSource) loadSummaries(ctx context.Context, names []string) ([]sdk.Summary, error) {
 	summaries := make([]sdk.Summary, 0, len(names))
 	for _, name := range names {
-		if err := skillSourceContextError(ctx, "list"); err != nil {
+		summary, valid, err := r.loadSummary(ctx, name)
+		if err != nil {
 			return nil, err
 		}
-		skill, err := r.Load(ctx, name)
-		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) || errors.Is(err, sdk.ErrInvalidSkill) {
-				continue
-			}
-			return nil, fmt.Errorf("runtime skill source: list: %w", err)
+		if !valid {
+			continue
 		}
 		if len(summaries) == domainskills.MaxSkillsPerSource {
 			return nil, fmt.Errorf(
@@ -89,9 +94,23 @@ func (r *runtimeSkillSource) List(ctx context.Context) ([]sdk.Summary, error) {
 				domainskills.MaxSkillsPerSource,
 			)
 		}
-		summaries = append(summaries, skill.Summary())
+		summaries = append(summaries, summary)
 	}
 	return summaries, nil
+}
+
+func (r *runtimeSkillSource) loadSummary(ctx context.Context, name string) (sdk.Summary, bool, error) {
+	if err := skillSourceContextError(ctx, "list"); err != nil {
+		return sdk.Summary{}, false, err
+	}
+	skill, err := r.Load(ctx, name)
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, sdk.ErrInvalidSkill) {
+		return sdk.Summary{}, false, nil
+	}
+	if err != nil {
+		return sdk.Summary{}, false, fmt.Errorf("runtime skill source: list: %w", err)
+	}
+	return skill.Summary(), true, nil
 }
 
 func (r *runtimeSkillSource) Load(ctx context.Context, name string) (*sdk.Skill, error) {
