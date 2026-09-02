@@ -152,6 +152,13 @@ func renderSessionMarkdown(session protocol.Session, items []transcript.Item) st
 				}
 				b.WriteString("\n")
 			}
+		case protocol.ItemTypeCompaction:
+			fmt.Fprintf(
+				&b,
+				"## Context compacted\n\n- dropped messages: %d\n\n%s\n\n",
+				item.DroppedMessages,
+				item.Summary,
+			)
 		}
 	}
 	return strings.TrimRight(b.String(), "\n") + "\n"

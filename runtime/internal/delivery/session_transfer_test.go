@@ -476,6 +476,15 @@ func TestSessionExport_Markdown(t *testing.T) {
 	ses, _ := insertSessionFixture(ctx, rt.sess, "Doc", "/proj")
 	putRun(t, rt, ses.ID(), "run1", 1, 0)
 	putUserItem(t, rt, ses.ID(), "run1", "item1", "explain this")
+	compaction, err := transcript.NewCompaction(transcript.ItemIdentity{
+		SessionID: ses.ID(), RunID: "run1", ItemID: "item_compaction", OccurredAt: time.Unix(3, 0),
+	}, "Earlier messages established the migration constraints.", 7)
+	if err != nil {
+		t.Fatalf("build compaction: %v", err)
+	}
+	if err := rt.hist.AppendItem(ctx, compaction); err != nil {
+		t.Fatalf("seed compaction: %v", err)
+	}
 
 	exp, err := s.ExportSession(ctx, protocol.ExportSessionRequest{SessionID: ses.ID(), Format: protocol.ExportFormatMarkdown})
 	if err != nil {
@@ -484,8 +493,16 @@ func TestSessionExport_Markdown(t *testing.T) {
 	if exp.Format != protocol.ExportFormatMarkdown || exp.Artifact != nil {
 		t.Fatalf("export = %+v, want md (no artifact)", exp)
 	}
-	if !strings.Contains(exp.Markdown, "# Doc") || !strings.Contains(exp.Markdown, "explain this") {
-		t.Errorf("markdown = %q, want title + user text", exp.Markdown)
+	for _, want := range []string{
+		"# Doc",
+		"explain this",
+		"## Context compacted",
+		"dropped messages: 7",
+		"Earlier messages established the migration constraints.",
+	} {
+		if !strings.Contains(exp.Markdown, want) {
+			t.Errorf("markdown = %q, want %q", exp.Markdown, want)
+		}
 	}
 }
 
