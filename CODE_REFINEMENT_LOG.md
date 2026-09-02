@@ -1252,3 +1252,60 @@ The observer's authoritative lifecycle accumulated validation and best-effort si
 
 - `Goal.provider/model` remains an evidenced cross-artifact inconsistency blocked by the current Runtime/CLI-only scope. A future scope that includes Desktop should remove both `omitempty` tags, regenerate the contract, and migrate every Goal fixture/adapter in one batch.
 - Round 24 will audit domain transcript `Item.Validate`, another score-30 Runtime hotspot, against its discriminated payload invariants and every persistence/protocol constructor. The owner will remain behavior-rich; extraction or a semantic fix will proceed only if the variant matrix proves duplicated, incomplete, or independently owned.
+
+## Round 24 — complete
+
+### Audit scope and evidence
+
+- Transcript `Item.Validate` scores 30, `validateToolCall` 26, and `rejectDisallowedPayload` 18. The audit accounted for every field: identity is common; status is kind-specific; lifecycle timing, invocation, safety, approval, and failure belong only to ToolCall; phase belongs only to AgentMessage; content to user/agent messages; text/redaction to reasoning; prompt to Question; summary/drop count to Compaction.
+- The six-kind switch is the exact finite domain matrix, while `rejectDisallowedPayload` provides one centralized inverse check and `validateToolCall` owns its three lifecycle states. Constructors and technical restoration all enter `RestoreItem` and therefore the same validator. No duplicate semantic owner, missing non-zero payload restriction, or invalid public construction was found.
+- Splitting those closed matrices into one-line methods would make the aggregate harder to audit without deleting state or changing behavior. The transcript package therefore remains unchanged despite the scores; its uncached baseline passes in 0.44s.
+- The next same-rank candidate, `Connections.Tools`, scores 30 and mixes three genuinely separate external-adapter phases: snapshotting live server/session targets under a lock, iterating each remote paginated catalog without the lock, and translating one descriptor through the ordered catalog invariants.
+- The MCP package baseline passes uncached in 0.64s. Its tests cover request-lifetime independence, management schema bounds, live port projection, and connection/reconnect ownership; the per-descriptor error order is directly visible and will be preserved.
+
+### Root cause
+
+The live management query correctly separates lock ownership from network I/O in comments, but not in function structure. Nested server, pagination, duplicate, count, description, and schema logic obscures the critical fact that the connection lock is released before the first RPC.
+
+### Impact and acceptance criteria
+
+- Leave transcript aggregate validation intact and record why its closed state matrix is not a refactoring target.
+- Give target snapshotting, one-server listing, and one-descriptor decoding exact private functions; keep `Tools` as the sole ordered multi-server call path.
+- Preserve nil receiver behavior, optional server filtering, dial/server response order, nil slices, pagination, duplicate-before-count-before-description-before-schema validation order, exact errors, all-or-nothing results, and racing reconnect behavior.
+- Add no catalog service, generic iterator, interface, cache, parallel fan-out, sorting, or alternate representation.
+- Remove the score-30 MCP function without creating another threshold finding; pass focused, race/static/generated/full Runtime/CLI gates and both bounded live provider paths.
+
+### Plan
+
+- **Completed:** extracted the three proven MCP adapter phases, formatted, ran catalog/connection tests, and remeasured complexity.
+- **Completed:** ran full gates and live verification, inspected compatibility, cleaned resources, and recorded results.
+
+### Validation
+
+- The first post-change infrastructure, adapter, and application MCP test slice passed uncached in 2.05s against the 0.64s infrastructure-package baseline. Its final focused pass completed in 1.20s.
+- Production complexity scanning no longer reports `Connections.Tools`; none of `toolListTargets`, `listAdvertisedTools`, or `decodeAdvertisedTool` reaches the selected threshold. The combined transcript/MCP scan fell from 9 to 8 findings, all remaining transcript findings unchanged.
+- The MCP infrastructure package passed with `-race` in 4.60s; focused `go vet` and `staticcheck` across the three MCP layers passed.
+- `go generate ./...` changed no generated artifact. Contractgen plus generated-drift architecture tests passed in 5.58s.
+- Runtime `GOWORK=off go vet ./...` plus `GOWORK=off go build ./...` passed in 7.39s, and uncached `GOWORK=off go test -count=1 ./...` passed in 55.14s.
+- Current-workspace CLI `go vet ./...` plus `go build ./...` passed in 7.33s, and uncached `go test -count=1 ./...` passed in 39.08s.
+- The current-source CLI completed a production-bootstrap Run using the authorized DeepSeek configuration and returned exactly `FLAME_LIVE_ROUND24_OK`, status `completed`, one step, 9,262 input tokens, 39 output tokens, 30 reasoning tokens, 9,216 cache-read tokens, and 636ms total model duration. No credential value was printed or copied.
+- The isolated invalid-credential Run failed closed as `invalid_api_key`, projected the provider's 401 failure, consumed zero model tokens, and terminated in 89ms. The configured credential was neither read nor changed.
+- `git diff --check` passed.
+
+### Changes and compatibility
+
+- `Connections.Tools` now states only the ordered multi-server operation. `toolListTargets` owns the brief connection-lock snapshot, `listAdvertisedTools` owns one remote paginated iterator, and `decodeAdvertisedTool` owns the ordered per-server catalog admission.
+- The connection mutex is visibly released before every remote RPC. Session pointers remain component-owned during a racing reconnect, and a concurrently closed session still reports through the same iterator error path.
+- Nil receiver/filter behavior, nil-versus-empty slices, server and remote response order, all-or-nothing failure, error strings, validation order, pagination, live query semantics, model-facing cached publication, public APIs, wire shapes, persistence, and generated artifacts are unchanged.
+- Transcript `Item` remains a behavior-rich aggregate with one finite validation matrix; this round deliberately made no domain change merely to clear its complexity scores.
+
+### Resource cleanup
+
+- The temporary strict complexity configuration was deleted after the final scan.
+- Both bounded live paths used one validated `/tmp/flame-live-round24.*` directory containing isolated Runtime homes and the current-source CLI binary. It was moved intact to the system Trash after verification, so it is recoverable and no matching temporary path remains.
+- No shared cache, global dependency, user Runtime data, or authorized configuration was removed or modified.
+
+### Remaining risk and next direction
+
+- `Goal.provider/model` remains an evidenced cross-artifact inconsistency blocked by the current Runtime/CLI-only scope. A future scope that includes Desktop should remove both `omitempty` tags, regenerate the contract, and migrate every Goal fixture/adapter in one batch.
+- Round 25 will audit filesystem observation `scanTree`, another score-30 Runtime hotspot, against root confinement, symlink policy, hard limits, cancellation, deterministic ordering, and hashing. It will stay intact if those branches are one recursive algorithm; a change requires a proven lifecycle boundary or correctness gap.

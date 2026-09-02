@@ -46,10 +46,24 @@ func (c *Connections) Tools(ctx context.Context, serverName *mcpserver.ServerNam
 	if c == nil {
 		return nil, nil
 	}
+	targets := c.toolListTargets(serverName)
+	var out []mcpserver.AdvertisedTool
+	for _, target := range targets {
+		tools, err := listAdvertisedTools(ctx, target)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, tools...)
+	}
+	return out, nil
+}
+
+func (c *Connections) toolListTargets(serverName *mcpserver.ServerName) []toolListTarget {
 	// Snapshot the connected (name, session) pairs under the lock, then run the
 	// live tools/list RPCs outside it — a slow upstream mustn't block reconnect
 	// or status reads. A session closed by a racing reconnect just errors here.
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	var targets []toolListTarget
 	for _, configuredServer := range c.servers {
 		if configuredServer.session == nil || (serverName != nil && configuredServer.name() != *serverName) {
@@ -57,50 +71,79 @@ func (c *Connections) Tools(ctx context.Context, serverName *mcpserver.ServerNam
 		}
 		targets = append(targets, toolListTarget{configuredServer.name(), configuredServer.session})
 	}
-	c.mu.Unlock()
+	return targets
+}
 
+func listAdvertisedTools(ctx context.Context, target toolListTarget) ([]mcpserver.AdvertisedTool, error) {
 	var out []mcpserver.AdvertisedTool
-	for _, t := range targets {
-		seen := make(map[mcpserver.RemoteToolName]struct{})
-		for descriptor, err := range t.session.Tools(ctx, nil) {
-			if err != nil {
-				return nil, fmt.Errorf("mcp: list tools from server %q: %w", t.name, err)
-			}
-			if descriptor == nil {
-				return nil, fmt.Errorf("%w: server %q returned a nil or unnamed tool", mcpserver.ErrInvalidRemoteToolCatalog, t.name)
-			}
-			toolName, nameErr := mcpserver.ParseRemoteToolName(descriptor.Name)
-			if nameErr != nil {
-				return nil, fmt.Errorf("%w: server %q: %w", mcpserver.ErrInvalidRemoteToolCatalog, t.name, nameErr)
-			}
-			if _, duplicate := seen[toolName]; duplicate {
-				return nil, fmt.Errorf("%w: server %q returned duplicate tool %q", mcpserver.ErrInvalidRemoteToolCatalog, t.name, toolName)
-			}
-			if err := mcpserver.ValidateRemoteToolCount(len(seen) + 1); err != nil {
-				return nil, fmt.Errorf("mcp: validate tools from server %q: %w", t.name, err)
-			}
-			if err := mcpserver.ValidateRemoteToolDescription(descriptor.Description); err != nil {
-				return nil, fmt.Errorf("mcp: validate tool %q from server %q: %w", descriptor.Name, t.name, err)
-			}
-			schema, err := inputSchema(descriptor.InputSchema)
-			if err != nil {
-				return nil, fmt.Errorf(
-					"mcp: decode input schema for tool %q from server %q: %w",
-					descriptor.Name,
-					t.name,
-					err,
-				)
-			}
-			seen[toolName] = struct{}{}
-			out = append(out, mcpserver.AdvertisedTool{
-				Server:      t.name,
-				Name:        toolName,
-				Description: descriptor.Description,
-				InputSchema: schema,
-			})
+	seen := make(map[mcpserver.RemoteToolName]struct{})
+	for descriptor, err := range target.session.Tools(ctx, nil) {
+		if err != nil {
+			return nil, fmt.Errorf("mcp: list tools from server %q: %w", target.name, err)
 		}
+		tool, err := decodeAdvertisedTool(target.name, descriptor, seen)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, tool)
 	}
 	return out, nil
+}
+
+func decodeAdvertisedTool(
+	serverName mcpserver.ServerName,
+	descriptor *sdkmcp.Tool,
+	seen map[mcpserver.RemoteToolName]struct{},
+) (mcpserver.AdvertisedTool, error) {
+	if descriptor == nil {
+		return mcpserver.AdvertisedTool{}, fmt.Errorf(
+			"%w: server %q returned a nil or unnamed tool",
+			mcpserver.ErrInvalidRemoteToolCatalog,
+			serverName,
+		)
+	}
+	toolName, err := mcpserver.ParseRemoteToolName(descriptor.Name)
+	if err != nil {
+		return mcpserver.AdvertisedTool{}, fmt.Errorf(
+			"%w: server %q: %w",
+			mcpserver.ErrInvalidRemoteToolCatalog,
+			serverName,
+			err,
+		)
+	}
+	if _, duplicate := seen[toolName]; duplicate {
+		return mcpserver.AdvertisedTool{}, fmt.Errorf(
+			"%w: server %q returned duplicate tool %q",
+			mcpserver.ErrInvalidRemoteToolCatalog,
+			serverName,
+			toolName,
+		)
+	}
+	if err := mcpserver.ValidateRemoteToolCount(len(seen) + 1); err != nil {
+		return mcpserver.AdvertisedTool{}, fmt.Errorf("mcp: validate tools from server %q: %w", serverName, err)
+	}
+	if err := mcpserver.ValidateRemoteToolDescription(descriptor.Description); err != nil {
+		return mcpserver.AdvertisedTool{}, fmt.Errorf(
+			"mcp: validate tool %q from server %q: %w",
+			descriptor.Name,
+			serverName,
+			err,
+		)
+	}
+	schema, err := inputSchema(descriptor.InputSchema)
+	if err != nil {
+		return mcpserver.AdvertisedTool{}, fmt.Errorf(
+			"mcp: decode input schema for tool %q from server %q: %w",
+			descriptor.Name,
+			serverName,
+			err,
+		)
+	}
+	seen[toolName] = struct{}{}
+	return mcpserver.AdvertisedTool{
+		Server: serverName, Name: toolName,
+		Description: descriptor.Description, InputSchema: schema,
+	}, nil
 }
 
 // Detach removes a server from the live projection and starts retiring its
