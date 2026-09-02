@@ -698,7 +698,7 @@ value delta to lean on because they can land over anything.
 | 1 | `bg-card` | Message card, tool card, composer, plan card, table |
 | 2 | `bg-sunken` | Code body, terminal, diff hunk, text field, progress track |
 | 3 | `surface-2` / `-3` | Chips, badges, kbd, selected rows — on chrome, not on the plane |
-| 4 | `--shadow-popover` | Floating overlays only — one token, ring plus depth |
+| 4 | `--shadow-raised` / `-overlay` / `-popover` / `-modal` | Floating overlays only — one ladder, each rung `--shadow-ring` plus more depth |
 
 Each role owns exactly ONE edge mechanism. A border and a shadow ring on the same
 surface is a double edge; two 1px semi-transparent lines sharing a pixel double
