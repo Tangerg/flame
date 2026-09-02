@@ -86,7 +86,7 @@ src/
 │       ├── shell/            纯框架：kernel · main-route · status · toaster ·
 │       │                     topbar-new-tab · welcome-screen
 │       ├── sidebar/          Work Index renderer / footer / rail surfaces
-│       ├── theme/            kit（defineThemePlugin helper）+ themes（10+ 主题）
+│       ├── theme/            kit（defineColorThemePlugin helper）+ themes（10+ 主题）+ visualStyles
 │       └── workspace/        workspace-views · tasks · diagnostics · conversation-export
 │
 ├── plugins/builtin/agent/                          Agent 限界上下文
@@ -443,7 +443,7 @@ refreshSequence + viewRevision CAS → 整份 AgentSessionView 原子替换
 `AgentSessionView` 是一个 Session 的唯一 Agent projection：
 
 - `runsById` 保存 root / child / sibling / nested Run 的独立 lifecycle；
-- `plansByRunId` 与 `assistantTurnByRunId` 按 source Run 隔离；
+- `plan` 是 Session 级的单一 Plan projection，`assistantTurnByRunId` 按 source Run 隔离；
 - `Message.runId`、`ToolCall.runId`、`TimelineEntry.runId` 保留 durable ownership；
 - `pendingInterrupts`、`shared` 和 `commandError` 保留 Session 级事实；
 - children、roots、depth 与 narrative placement 由 selector 从 lineage 派生，不保存第二份索引。
@@ -461,11 +461,11 @@ owner 冲突、`item.completed` 仍是 running 等不变量失败，fold fail cl
 
 `agent/public/run.ts` 不发布内部 Store，也不把整个 Session 伪称成 Active Run：
 
-- 当前 root：`useCurrentRootRunId`、`useCurrentRootPlan`、
-  `useIsCurrentRootRunning`、`stopCurrentRootRun`；
+- 当前 root：`useCurrentRootMaterial`（一次读出 run/plan/progress，不发布多个各自订阅的
+  标量）、`useIsCurrentRootRunning`、`stopCurrentRootRun`、`useStopCurrentRootRun`；
 - 活动 Session：`useActiveSessionRunTree`、`useActiveSessionTimeline`、
   `useActiveSessionToolCalls`、`useActiveSessionProblem`；
-- 精确 Run 命令：`cancelActiveSessionRun(runId)`；
+- 精确 Run 命令：`cancelSessionRun(sessionId, runId)`、`dismissActiveSessionProblem()`；
 - window-level attention：`subscribeAnySessionRunning`、
   `subscribeRootRunSettlements`。
 
@@ -521,13 +521,19 @@ application port 重读完整 durable projection；不能把旧 Running 留给 U
 | ------------------------ | ------------------------------------------------------------------- | -------------- |
 | `agentStore`             | 每 Session 的 `AgentSessionView`、refresh revision 与已绑定 actions | ❌ ephemeral   |
 | `agentSessionStore`      | active/open/draft Session、selection epoch 与 welcome pending input | ✅（部分字段） |
-| `uiStore`                | theme / accent / 字体 / motion / messageStyle / sidebarRail         | ✅             |
+| `appearanceStore`        | theme / accent / tint / 字号 / 密度 / motion / visual style         | ✅             |
+| `shellLayoutStore`       | 抽屉折叠与宽度、右栏宽度比                                          | ✅             |
 | Runtime capability store | 握手协商能力（由 runtime context 私有持有）                         | ❌ ephemeral   |
 | `tasksStore`             | host.tasks 的后台任务                                               | ❌             |
-| `composerStore`          | 撰写区文本 / 模式 / 附件 / provider+model                           | ❌ ephemeral   |
-| `contextDockStore`       | 按 Session 隔离的 file/tool/dock material                           | ❌ ephemeral   |
-| `workspaceSurfaceStore`  | app-global main/settings surface                                    | ❌ ephemeral   |
+| `composerStore`          | 撰写区文本 / 模式 / 附件 / provider+model                           | ✅（仅草稿文本）|
+| `contextDockStore`       | 按 Session 隔离的 file/tool/dock material                           | ✅（仅 session scope）|
+| `recentModels`           | 模型选择器的最近列表                                                | ✅             |
+| `streamReveal` / `completionSound` | 两个各自独立的偏好（逐字显示、完成提示音）                | ✅             |
 | `useConfigStore`         | 插件可读写的全局 config（如 `runtime.endpoint`）                    | ✅             |
+
+「我此刻在哪」不在任何 store 里：session / 主视图 / dock 目标 / settings 面板四个标量住在
+路由 search param（`lib/navigation` 的 Navigator port），所以前进后退成立。曾经的
+`workspaceSurfaceStore` 就是这条规则缺席时长出来的。
 
 每个 store 各自用 Zustand `persist` + 自己的 `version`；**schema 变了就 bump version 丢旧数据，不写 migration**（开发期无历史包袱）。
 
@@ -535,10 +541,10 @@ application port 重读完整 durable projection；不能把旧 Running 留给 U
 
 ### 5.4 主题系统（IDE 风格的"主题即插件"）
 
-每个主题就是一个完整的 CSS 变量调色板，用 `defineThemePlugin()` helper（`theme/kit/`）声明独有部分：
+每个主题就是一个完整的 CSS 变量调色板，用 `defineColorThemePlugin()` helper（`theme/kit/`）声明独有部分：
 
 ```ts
-defineThemePlugin({
+defineColorThemePlugin({
   id, label, scheme: "dark" | "light", order,
   palette: { "color-bg": "#…", "color-surface": "#…", "color-accent": "#…", … },
 });
@@ -546,7 +552,7 @@ defineThemePlugin({
 
 helper 自动补 shadow ladder + CTA defaults + `ctx.contribute(THEME, …)` 注册仪式。切主题时 `uiStore` 副作用：替换 `<html>` 的 `theme-{scheme}` class + 把 `palette` 全部 inline 写到 `:root.style`（内联永远胜过 stylesheet，插件完全拥有调色板）+ 最后写一次用户选的 `--color-accent`。
 
-加新主题 = 新文件（调 `defineThemePlugin`）+ `theme/themes/index.ts` 加一行；Settings → Appearance 的 picker 从主题 extension view 自动读列表。首屏防闪烁靠 `index.html` 内嵌一段同步 JS 在 CSS 解析前贴 `theme-{scheme}` class。
+加新主题 = 新文件（调 `defineColorThemePlugin`）+ `theme/themes/index.ts` 加一行；Settings → Appearance 的 picker 从主题 extension view 自动读列表。首屏防闪烁靠 `index.html` 内嵌一段同步 JS 在 CSS 解析前贴 `theme-{scheme}` class。
 
 ---
 
@@ -582,16 +588,22 @@ return specs.map(spec => (
 
 ### 6.2 其它"消费端"选择器（`sdk/selectors/`）
 
-| Hook / 函数                                      | 用途                            |
-| ------------------------------------------------ | ------------------------------- |
-| `useToolPreview(fn)` / `useToolActions()`        | 工具卡片预览 / 头部按钮         |
-| `useWorkspaceViews()` / `useSettingsPanes()`     | 主区 workspace view / 设置左栏  |
-| `useSidebarSections()` / `useSidebarRailItems()` | 侧栏内部                        |
-| `executeCommand()` / `useSlashCommands()`        | 命令调用 / composer slash 提示  |
-| `useComposerModes()` / `useComposerStatus()` / … | composer 工具栏                 |
-| `useThemes()` / `useAccents()`                   | Appearance 面板                 |
-| `useMessageRole(id)`                             | 消息头像 / 名字                 |
-| `lookupStreamHandlers(type)`                     | reducer 内部用，非 React 选择器 |
+贡献面塌进单一 `extensions` 底座之后，**没有 per-point 的 hook**：任一贡献面都用同一对泛型
+读法，只有真正需要额外投影的才另立函数。
+
+| Hook / 函数                                                              | 用途                                    |
+| ------------------------------------------------------------------------ | --------------------------------------- |
+| `useExtensionPoint(POINT)` / `useExtensionByKey(POINT, key)`             | 任一贡献面的通用读法                    |
+| `useExtensionEntries(POINT)`                                             | 带 owner 的条目（错误归因）             |
+| `lookupExtensionPoint` / `lookupExtensionByKey` / `lookupExtensionOwner` | 同上的非 React 读法                     |
+| `createPointSubIndex(POINT, …)`                                          | 按 key 建子索引，避免每次线性扫          |
+| `useWorkspaceViews()` / `useSettingsPanes()` / `useLayoutSlot(slot)`     | 主区 workspace view / 设置左栏 / 命名 slot |
+| `useWorkIndexItems()` / `useContextDockDestinations()`                   | 侧栏工作索引 / dock 目的地              |
+| `executeCommand()` / `useSlashCommands()` / `lookupSlashCommandOwner()`  | 命令调用 / composer slash 提示          |
+| `lookupToolActionOwner()` / `lookupToolViewOpenerOwner()`                | 工具动作 / 视图打开器的归属             |
+| `lookupDataProvider(key)`                                                | `DATA_PROVIDER` 的读路径                |
+| `pickAgentSource()` / `resolveAgentRunStartOptions()`                    | agent source 选择 / run 启动参数        |
+| `lookupStreamHandlers(type)`                                             | reducer 内部用，非 React 选择器         |
 
 ---
 
@@ -746,7 +758,7 @@ Runtime fold 产生的 closed content-block union（text/image/reasoning/tool/ap
 
 #### C. fileChange diff 直渲（已落地）
 
-**现状**：`DiffPreview` 优先用 call-scoped `tool.diff`（`useDiffToolPreview`：`tool.diff ? tool.diff : 整树 diff`），仅在没有 call-scoped diff 时回退 worktree query。
+**现状**：`previews/patch.tsx` 直接从这一次调用渲染——落地的用 `projectPatchChanges(tool.result)`，还在跑的用 `tool.changes` 的提议列表——不再回落到整树 worktree query。
 **维护触发**：后端下发更细的 diff（多文件 `changes[].diff` / 更大 diff 行）时按需扩展投影。
 
 #### D. Work Index read model（首批落地）
@@ -761,8 +773,8 @@ Runtime fold 产生的 closed content-block union（text/image/reasoning/tool/ap
 
 #### F. Context Dock session scope（已落地）
 
-**现状**：`contextDockStore` 已把 `dockOpen + dockViewIds + activeDockViewId` 及 material state 按 active session scope 保存/恢复；`workspaceSurfaceStore` 只承载 app-global surface state（main tabs / settings target）。`workspace.session-navigation` 监听 agent session selection/lifecycle，切换 session 时保存离开的右侧 workspace、恢复进入的 workspace，关闭 session 后清理不再打开的 scope。右栏宽度是稳定的单一用户偏好，切换 tab 不改变列宽。
-**维护触发**：后续如果引入 cwd 级共享，不要把 app-global surface state 与 session-scoped dock state 重新揉回一个 store；在 workspace application 层显式定义 `sessionId -> cwd` 的归属规则。
+**现状**：`contextDockStore` 已把 dock 的 view 集合与 material state 按 active session scope 保存/恢复；app-global surface（主视图 / settings target）不在 store 里，住在路由 search param。`workspace.session-navigation` 监听 agent session selection/lifecycle，切换 session 时保存离开的右侧 workspace、恢复进入的 workspace，关闭 session 后清理不再打开的 scope。右栏宽度是稳定的单一用户偏好，切换 tab 不改变列宽。
+**维护触发**：后续如果引入 cwd 级共享，不要把 app-global surface state 从 URL 挪回 store，也不要与 session-scoped dock state 揉回一处；在 workspace application 层显式定义 `sessionId -> cwd` 的归属规则。
 
 ### 12.2 想做但当前 KISS / YAGNI 不允许
 

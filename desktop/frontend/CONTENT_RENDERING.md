@@ -235,7 +235,7 @@ type Item =
   | { type: "toolCall";     id: string; runId: string; status: ItemStatus;
       startedAt: string;              // ← 唯一用 startedAt 而非 createdAt 的 Item
       finishedAt?: string;
-      durationMs?: number;            // runtime 测的，不是客户端秒表
+      durationMillis?: number;            // runtime 测的，不是客户端秒表
       safetyClass?: SafetyClass;
       tool?: ToolInvocation;
       error?: ProblemData }
@@ -536,7 +536,7 @@ interface ToolCall {
   args: string;                // 累积的参数文本（未解析）
   status: ToolCallStatus;
   safetyClass?: SafetyClass;   // 决定卡形
-  durationMs?: number;
+  durationMillis?: number;
   error?: string;              // status="err" 时的人读原因
 
   // ── 命令族 ──
@@ -794,7 +794,7 @@ interface BlockCtx {
 | `range` | 实际返回的行窗口 | **仅当不是整个文件时才有意义**，否则它只是把 `lines` 又写一遍 |
 | `lines` | 文件多长 | — |
 | `exitCode` | 退出码 | **`≠0` 不代表失败**（grep 无匹配就是 1）。可以标成需要注意，但**不能让整张卡变成失败态** —— 真失败会设 `error` |
-| `durationMs` | 耗时 | 只在**足够长**时才值得占位（现状阈值 1s）。这是**服务端测的**，客户端秒表测的是自己的渲染循环 |
+| `durationMillis` | 耗时 | 只在**足够长**时才值得占位（现状阈值 1s）。这是**服务端测的**，客户端秒表测的是自己的渲染循环 |
 | `status === "running"` | 正在跑 | 此时其余数字大多还没有 |
 | `result` / `diff` | 完整结果 | 展开体，见 §7 逐工具 |
 
@@ -1085,7 +1085,7 @@ Plan 不创建 disclosure card、底部 progress bar、关闭按钮或 click-exp
 
 Goal 与 Composer 同宽，以重叠 1px 接缝组成一个 stack；空态不留下固定边线或高度。预算、额度、花费、步数、轮次、model、last move、限制条件和 `reason.detail` 一律不进入 standing UI。完整 objective 只进入 420px compact editor，不在常驻条展开第二张卡。
 
-自治 drive 的控制提示是 Application-authored model input：Runtime 只把它持久到 provider Conversation，不创建 Transcript `userMessage` 或 `UserItemID`。Frontend 不按字符串、来源 ID 或 CSS 猜测并隐藏内部提示；真实用户 start/resume input 仍必须作为用户消息出现。
+自治 drive 的控制提示是 Application-authored model input：Runtime 只把它持久到 provider Conversation，不创建 Transcript `userMessage` 或 `userItemId`。Frontend 不按字符串、来源 ID 或 CSS 猜测并隐藏内部提示；真实用户 start/resume input 仍必须作为用户消息出现。
 
 ### 5.5 Composer Context 环
 

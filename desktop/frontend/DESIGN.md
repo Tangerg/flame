@@ -371,7 +371,7 @@ components:
 >   (`surface` vs `bg`), no hairline.
 > - **Display weight ceiling lowered 600 → 500** (Codex-style restraint).
 > - **Assistant message de-chromed** — no glass document surface, no per-message
->   header/avatar, no `MessageOutline` gutter (unboxed prose on the canvas).
+>   header/avatar, no gutter — unboxed prose on the canvas.
 > - **Composer is the `rounded-xl` anchor** with `bg-fg` send (accent reserved
 >   for live/steer state); model picker + context chips moved inside.
 > - Shadow roles are semantic: composer depth, popover edge + depth, and the
@@ -815,9 +815,11 @@ There is no dense bottom data row. Run telemetry (tokens / cost / rate) lives in
 
 Header was `THOUGHT FOR 1S` ALL-CAPS — now `thought · 1.2s` in `caption-mono` lowercase. Body italic stays.
 
-### Composer cheatsheet — auto-derived
+### Shortcuts pane — auto-derived
 
-The composer's hover-revealed cheatsheet **derives rows from `useCommands()`**. Any command with a `shortcut: string` field auto-appears. Static rows reserved for composer-local keys (`Enter`, `⇧↵`, `⌘↵`, `Esc`, `⌘1-9`).
+There is no composer cheatsheet. A command that carries a combo is projected into
+the `SHORTCUT` point, and `ShortcutsPane` renders that point — so a shortcut is
+listed because a command declared one, never because a table was kept in step.
 
 ## 9. Accent Usage Policy (strict)
 
