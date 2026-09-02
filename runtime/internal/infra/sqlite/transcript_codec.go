@@ -16,7 +16,7 @@ import (
 
 type transcriptItemPayload struct {
 	Status                 transcript.ItemStatus   `json:"status"`
-	FinishedAt             int64                   `json:"finishedAt,omitempty"`
+	FinishedAt             *int64                  `json:"finishedAt,omitempty"`
 	ExecutionDurationNanos *int64                  `json:"executionDurationNanos,omitempty"`
 	Kind                   transcript.ItemKind     `json:"kind"`
 	Phase                  transcript.MessagePhase `json:"phase,omitempty"`
@@ -88,7 +88,8 @@ func encodeTranscriptItem(item transcript.Item) ([]byte, error) {
 		DroppedMessages: item.DroppedMessages(),
 	}
 	if !item.FinishedAt().IsZero() {
-		payload.FinishedAt = item.FinishedAt().UnixNano()
+		nanos := item.FinishedAt().UnixNano()
+		payload.FinishedAt = &nanos
 	}
 	if duration, known := item.ExecutionDuration(); known {
 		nanos := duration.Nanoseconds()
@@ -154,8 +155,8 @@ func decodeTranscriptItem(data []byte) (transcript.ItemSnapshot, error) {
 		ApprovalDecision: payload.ApprovalDecision, Summary: payload.Summary,
 		DroppedMessages: payload.DroppedMessages,
 	}
-	if payload.FinishedAt != 0 {
-		snapshot.FinishedAt = time.Unix(0, payload.FinishedAt).UTC()
+	if payload.FinishedAt != nil {
+		snapshot.FinishedAt = time.Unix(0, *payload.FinishedAt).UTC()
 	}
 	if payload.ExecutionDurationNanos != nil {
 		duration := time.Duration(*payload.ExecutionDurationNanos)

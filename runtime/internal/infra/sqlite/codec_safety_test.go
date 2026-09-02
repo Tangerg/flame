@@ -1,8 +1,10 @@
 package sqlite
 
 import (
+	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -40,5 +42,36 @@ func TestTranscriptCodecRejectsRemovedToolFailureMetadata(t *testing.T) {
 				t.Fatalf("decodeTranscriptItem error = %v, want removed %s rejection", err, field)
 			}
 		})
+	}
+}
+
+func TestTranscriptCodecPreservesEpochFinishTime(t *testing.T) {
+	finishedAt := time.Unix(0, 0).UTC()
+	item, err := transcript.RestoreItem(transcript.ItemSnapshot{
+		Identity: transcript.ItemIdentity{
+			SessionID: "session_1", RunID: "run_1", ItemID: "item_1",
+			OccurredAt: finishedAt.Add(-time.Second),
+		},
+		Status: transcript.ItemIncomplete, Kind: transcript.ToolCall,
+		FinishedAt: finishedAt,
+		Tool:       &transcript.ToolInvocation{Name: "shell"},
+	})
+	if err != nil {
+		t.Fatalf("RestoreItem: %v", err)
+	}
+
+	encoded, err := encodeTranscriptItem(item)
+	if err != nil {
+		t.Fatalf("encodeTranscriptItem: %v", err)
+	}
+	if !bytes.Contains(encoded, []byte(`"finishedAt":0`)) {
+		t.Fatalf("encoded item = %s, want explicit epoch finish time", encoded)
+	}
+	decoded, err := decodeTranscriptItem(encoded)
+	if err != nil {
+		t.Fatalf("decodeTranscriptItem: %v", err)
+	}
+	if !decoded.FinishedAt.Equal(finishedAt) {
+		t.Fatalf("decoded finish time = %v, want %v", decoded.FinishedAt, finishedAt)
 	}
 }
