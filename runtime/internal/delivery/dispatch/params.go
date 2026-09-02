@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"reflect"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/contractshape"
 )
@@ -83,7 +85,8 @@ func rejectExplicitNulls(raw json.RawMessage, target reflect.Type, path string) 
 		if err := json.Unmarshal(raw, &values); err != nil {
 			return fmt.Errorf("decode %s: %w", path, err)
 		}
-		for key, value := range values {
+		for _, key := range slices.Sorted(maps.Keys(values)) {
+			value := values[key]
 			if err := rejectExplicitNulls(value, target.Elem(), path+"."+key); err != nil {
 				return err
 			}

@@ -222,3 +222,54 @@ Delivery decoded a closed wire enum into procedural booleans instead of preservi
 - Delivery's direct string conversion intentionally depends on the shared history/files/both vocabulary; wire constraint tests, scope owner tests, three-mode integration tests, recovery tests, and full binding consumers passed.
 - Shared rollback phase errors now use the same file-rollback context in live and recovery paths while preserving wrapped causes and protocol categories.
 - Round 5 will audit the remaining measured complexity at strict JSON-null rejection and contract-shape validation, prioritizing a concrete boundary invariant over mechanical function splitting.
+
+## Round 5 — complete
+
+### Audit scope and evidence
+
+- Traced strict parameter decoding from the dispatch router through `encoding/json`, unknown-field rejection, explicit-null traversal, generated wire validation, error projection, and representative protocol map fields.
+- Opaque `json.RawMessage` and interface values intentionally admit null. Typed maps such as MCP headers/environment, feature capabilities, and per-model usage do not: a JSON null would otherwise silently become the Go zero value.
+- Struct traversal uses declaration-ordered contract fields and arrays use index order, but typed-map traversal ranges directly over a Go map. When several values are null, the same request can therefore report different first failing paths across executions.
+- The unstable path is observable boundary behavior and conflicts with stable field diagnostics. It is independent of performance; no parser rewrite or cache is justified.
+- Baseline: `GOWORK=off go test -count=1 ./internal/delivery/dispatch` passed in 1.67s.
+
+### Root cause
+
+The null rejector reparses each typed map into `map[string]json.RawMessage` and immediately recurses over its iteration order. Go deliberately does not define that order, while the function returns on the first invalid child and thereby exposes it as error ordering.
+
+### Impact and acceptance criteria
+
+- Sort typed-map keys before recursive null validation so the first field path is deterministic.
+- Keep structs, slices, arrays, byte slices, custom JSON decoders, raw messages, and interface/opaque maps unchanged.
+- Add a request-level regression test with two null map entries and preserve the existing test that allows null inside open tool arguments.
+- Pass focused dispatch tests normally and under the race detector, Runtime and current-workspace CLI full gates, plus one bounded live Run.
+
+### Plan
+
+- **Completed:** made typed-map recursion lexicographic using the current Go standard library and added the deterministic diagnostic test.
+- **Completed:** formatted, ran focused/full/live verification, cleaned resources, inspected compatibility, and recorded results.
+
+### Validation
+
+- Dispatch tests passed in 3.05s; the deterministic map diagnostic test passed 100 consecutive runs in 3.24s; the full dispatch package passed with `-race` in 6.15s. Focused `go vet` and `staticcheck` passed.
+- Runtime `GOWORK=off go vet ./...` passed in 0.89s, `GOWORK=off go build ./...` passed in 3.90s, and uncached `GOWORK=off go test -count=1 ./...` passed in 38.45s.
+- Current-workspace CLI `go vet ./...` passed in 0.56s, `go build ./...` passed in 2.63s, and uncached `go test -count=1 ./...` passed in 39.45s.
+- The first live-validation build observed a shared Go build-cache file disappear during linking and therefore produced no binary; its trap cleaned the temporary directory. The isolated retry used a task-owned `GOCACHE` and completed successfully.
+- The current-source CLI then completed a bounded production-bootstrap Run using the authorized DeepSeek configuration. It returned exactly `FLAME_LIVE_ROUND5_OK`, status `completed`, one step, 9,185 input tokens, 8 output tokens, 9,088 cache-read tokens, and 1,440ms model duration; the Run command took 5.78s. No credential value was printed or copied.
+- `git diff --check` passed. Protocol generation was not applicable because the published wire shape did not change.
+
+### Changes and compatibility
+
+- Typed-map null traversal now visits `maps.Keys` through `slices.Sorted`, making the first rejected field lexicographically stable.
+- Opaque interfaces and raw JSON still bypass typed traversal, so third-party tool arguments retain explicit null values.
+- Breaking changes: none. Request acceptance, error category and text format, protocol values, schemas, and decoded values are unchanged; only competing invalid map children now have deterministic precedence.
+
+### Resource cleanup
+
+- Both live attempts used validated `/tmp/flame-live-round5.*` directories; the successful retry also contained its own Go build cache. Traps moved every directory to the system Trash.
+- No matching temporary directory remained. No shared cache, global dependency, user Runtime data, or configuration was removed.
+
+### Remaining risk and next direction
+
+- Typed protocol maps are small control-plane values and sorting changes no accepted payload. Regression coverage includes typed maps, nested pointer fields, and opaque maps.
+- Round 6 will inspect contract-shape specification validation and generator constraint compilation for a similarly concrete ordering or ownership defect before considering structural splitting.

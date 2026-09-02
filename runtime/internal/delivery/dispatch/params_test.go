@@ -83,6 +83,19 @@ func TestDecodeProviderUpdateRejectsExplicitNullChanges(t *testing.T) {
 	}
 }
 
+func TestDecodeParamsReportsTypedMapNullsInKeyOrder(t *testing.T) {
+	t.Parallel()
+
+	var got protocol.MCPHeadersChange
+	err := decodeParams(
+		json.RawMessage(`{"type":"set","value":{"zulu":null,"alpha":null}}`),
+		&got,
+	)
+	if err == nil || err.Error() != "params.value.alpha must be omitted instead of null" {
+		t.Fatalf("decodeParams() error = %v", err)
+	}
+}
+
 func TestDecodeParamsAllowsNullInsideOpaqueJSONValues(t *testing.T) {
 	t.Parallel()
 
