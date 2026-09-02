@@ -5,10 +5,13 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/oolong/core/input"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
@@ -35,6 +38,26 @@ func TestResolveWorkspaceUsesTheCurrentRootForRelativePathsAndRejectsFiles(t *te
 	}
 	if _, err := resolveWorkspace(root, file); err == nil {
 		t.Fatal("regular file was accepted as a workspace")
+	}
+}
+
+func TestWorkspaceChoicesUseTheFrozenCurrentWorkspace(t *testing.T) {
+	now := time.Now()
+	known := []workspace.Summary{
+		{Workspace: workspace.Workspace{Path: "/work/first"}, Sessions: 2, LastActive: &now},
+		{Workspace: workspace.Workspace{Path: "/work/current"}, Sessions: 1},
+	}
+	recent := []workbench.Workspace{{Path: "/work/recent", LastOpened: now.Add(time.Hour)}}
+
+	choices := mergeWorkspaceChoices(known, recent, "/work/current")
+
+	if len(choices) != 3 || !choices[0].current || choices[0].workspace.Path != "/work/current" {
+		t.Fatalf("workspace choices = %+v, want frozen current workspace first", choices)
+	}
+	for _, choice := range choices[1:] {
+		if choice.current {
+			t.Fatalf("workspace %q was also marked current", choice.workspace.Path)
+		}
 	}
 }
 

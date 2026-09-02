@@ -101,47 +101,15 @@ func (a *app) showLocalWorkspaceChoices() error {
 
 func (a *app) loadWorkspaceChoices() {
 	a.status.note("loading runtime workspaces")
+	currentWorkspace := a.session.current.Workspace.Path
+	recentWorkspaces := a.workbench.Workspaces()
 	a.runOperation(workspaceQueryOperation, true,
 		func(ctx context.Context) ([]workspaceChoice, error) {
 			known, err := a.workspaces.List(ctx)
 			if err != nil {
 				return nil, err
 			}
-			byPath := make(map[string]workspaceChoice, len(known))
-			for _, summary := range known {
-				lastOpened := time.Time{}
-				if summary.LastActive != nil {
-					lastOpened = *summary.LastActive
-				}
-				detail := fmt.Sprintf("%d sessions", summary.Sessions)
-				if !summary.Workspace.IsAvailable() {
-					detail += " · missing"
-				}
-				byPath[summary.Workspace.Path] = workspaceChoice{
-					workspace: workbench.Workspace{Path: summary.Workspace.Path, LastOpened: lastOpened},
-					current:   samePath(summary.Workspace.Path, a.session.current.Workspace.Path),
-					available: summary.Workspace.IsAvailable(), detail: detail,
-				}
-			}
-			for _, recent := range a.workbench.Workspaces() {
-				if _, exists := byPath[recent.Path]; exists {
-					continue
-				}
-				byPath[recent.Path] = workspaceChoice{
-					workspace: recent, current: samePath(recent.Path, a.session.current.Workspace.Path), available: true,
-				}
-			}
-			choices := make([]workspaceChoice, 0, len(byPath))
-			for _, choice := range byPath {
-				choices = append(choices, choice)
-			}
-			sort.Slice(choices, func(left, right int) bool {
-				if choices[left].current != choices[right].current {
-					return choices[left].current
-				}
-				return choices[left].workspace.LastOpened.After(choices[right].workspace.LastOpened)
-			})
-			return choices, nil
+			return mergeWorkspaceChoices(known, recentWorkspaces, currentWorkspace), nil
 		},
 		func(choices []workspaceChoice, err error) {
 			if err != nil {
@@ -158,6 +126,48 @@ func (a *app) loadWorkspaceChoices() {
 			a.status.note("choose a workspace")
 		},
 	)
+}
+
+func mergeWorkspaceChoices(
+	known []workspace.Summary,
+	recent []workbench.Workspace,
+	currentWorkspace string,
+) []workspaceChoice {
+	byPath := make(map[string]workspaceChoice, len(known)+len(recent))
+	for _, summary := range known {
+		lastOpened := time.Time{}
+		if summary.LastActive != nil {
+			lastOpened = *summary.LastActive
+		}
+		detail := fmt.Sprintf("%d sessions", summary.Sessions)
+		if !summary.Workspace.IsAvailable() {
+			detail += " · missing"
+		}
+		byPath[summary.Workspace.Path] = workspaceChoice{
+			workspace: workbench.Workspace{Path: summary.Workspace.Path, LastOpened: lastOpened},
+			current:   samePath(summary.Workspace.Path, currentWorkspace),
+			available: summary.Workspace.IsAvailable(), detail: detail,
+		}
+	}
+	for _, remembered := range recent {
+		if _, exists := byPath[remembered.Path]; exists {
+			continue
+		}
+		byPath[remembered.Path] = workspaceChoice{
+			workspace: remembered, current: samePath(remembered.Path, currentWorkspace), available: true,
+		}
+	}
+	choices := make([]workspaceChoice, 0, len(byPath))
+	for _, choice := range byPath {
+		choices = append(choices, choice)
+	}
+	sort.Slice(choices, func(left, right int) bool {
+		if choices[left].current != choices[right].current {
+			return choices[left].current
+		}
+		return choices[left].workspace.LastOpened.After(choices[right].workspace.LastOpened)
+	})
+	return choices
 }
 
 func (a *app) resolveAndStartWorkspace(requested string) {
