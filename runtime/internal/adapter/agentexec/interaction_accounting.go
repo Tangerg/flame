@@ -38,6 +38,12 @@ type preparedModelContext struct {
 	estimated int
 }
 
+type modelCallAccountingInput struct {
+	message       corechat.Message
+	delta         accounting.ModelUsage
+	contextTokens int64
+}
+
 func newInteractionAccounting(
 	selection modelref.Selection,
 	pricing accounting.Pricing,
@@ -262,18 +268,44 @@ func (i *interactionAccounting) accountModelCall(
 	callID string,
 	response *corechat.Response,
 ) (runs.ModelCallCompleted, error) {
-	if response == nil || response.Output == nil || response.Output.Message == nil {
-		return runs.ModelCallCompleted{}, errors.New("agentexec: account model call without an assistant message")
-	}
-	if err := conversation.ValidateMessageIdentities(*response.Output.Message); err != nil {
-		return runs.ModelCallCompleted{}, fmt.Errorf("agentexec: account model call: %w", err)
-	}
-	delta := modelUsage(response, i.selection, i.pricing)
-	if err := delta.Validate(); err != nil {
-		return runs.ModelCallCompleted{}, fmt.Errorf("agentexec: account model call: %w", err)
+	input, err := newModelCallAccountingInput(response, i.selection, i.pricing)
+	if err != nil {
+		return runs.ModelCallCompleted{}, err
 	}
 	i.mu.Lock()
 	defer i.mu.Unlock()
+	return i.accountModelCallLocked(invocation, callID, input)
+}
+
+func newModelCallAccountingInput(
+	response *corechat.Response,
+	selection modelref.Selection,
+	pricing accounting.Pricing,
+) (modelCallAccountingInput, error) {
+	if response == nil || response.Output == nil || response.Output.Message == nil {
+		return modelCallAccountingInput{}, errors.New("agentexec: account model call without an assistant message")
+	}
+	if err := conversation.ValidateMessageIdentities(*response.Output.Message); err != nil {
+		return modelCallAccountingInput{}, fmt.Errorf("agentexec: account model call: %w", err)
+	}
+	delta := modelUsage(response, selection, pricing)
+	if err := delta.Validate(); err != nil {
+		return modelCallAccountingInput{}, fmt.Errorf("agentexec: account model call: %w", err)
+	}
+	var contextTokens int64
+	if response.Metadata != nil {
+		contextTokens = response.Metadata.Usage.InputTokens
+	}
+	return modelCallAccountingInput{
+		message: response.Output.Message.Clone(), delta: delta, contextTokens: contextTokens,
+	}, nil
+}
+
+func (i *interactionAccounting) accountModelCallLocked(
+	invocation interaction.ModelInvocation,
+	callID string,
+	input modelCallAccountingInput,
+) (runs.ModelCallCompleted, error) {
 	processID := invocation.Relation().ProcessID()
 	prepared, preparedFound := i.preparedContextByProcess[processID]
 	if preparedFound && (prepared.effectID != invocation.EffectID() ||
@@ -281,38 +313,43 @@ func (i *interactionAccounting) accountModelCall(
 		return runs.ModelCallCompleted{}, errors.New("agentexec: model response has no matching prepared context")
 	}
 	nextUsage, models, total, err := advanceProcessUsage(
-		i.usageByProcess[processID], delta, invocation.ModelCallSequence(),
+		i.usageByProcess[processID], input.delta, invocation.ModelCallSequence(),
 	)
 	if err != nil {
 		return runs.ModelCallCompleted{}, err
 	}
-	modelOutput := response.Output
-	var usage corechat.Usage
-	if response.Metadata != nil {
-		usage = response.Metadata.Usage
-	}
-	var calibration *ModelContextTokenCalibration
-	if preparedFound && usage.InputTokens > 0 {
-		nextCalibration, err := NewModelContextTokenCalibration(usage.InputTokens, prepared.estimated)
-		if err != nil {
-			return runs.ModelCallCompleted{}, err
-		}
-		calibration = &nextCalibration
+	calibration, calibrated, err := calibrateModelContext(prepared, preparedFound, input.contextTokens)
+	if err != nil {
+		return runs.ModelCallCompleted{}, err
 	}
 	completed := runs.ModelCallCompleted{
-		CallID: callID, Message: modelOutput.Message.Clone(), TokenUsage: total.TokenUsage,
+		CallID: callID, Message: input.message, TokenUsage: total.TokenUsage,
 		ByModel: slices.Clone(models), Cost: total.Cost, Steps: total.Calls,
-		ContextTokens: usage.InputTokens,
+		ContextTokens: input.contextTokens,
 	}
-
 	i.usageByProcess[processID] = nextUsage
 	if preparedFound {
 		delete(i.preparedContextByProcess, processID)
 	}
-	if calibration != nil {
-		i.contextByProcess[processID] = *calibration
+	if calibrated {
+		i.contextByProcess[processID] = calibration
 	}
 	return completed, nil
+}
+
+func calibrateModelContext(
+	prepared preparedModelContext,
+	found bool,
+	reported int64,
+) (ModelContextTokenCalibration, bool, error) {
+	if !found || reported <= 0 {
+		return ModelContextTokenCalibration{}, false, nil
+	}
+	calibration, err := NewModelContextTokenCalibration(reported, prepared.estimated)
+	if err != nil {
+		return ModelContextTokenCalibration{}, false, err
+	}
+	return calibration, true, nil
 }
 
 func (i *interactionAccounting) segmentUsage(processID agent.ProcessID) (*runs.SegmentUsage, error) {
