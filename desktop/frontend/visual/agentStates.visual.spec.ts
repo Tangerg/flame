@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { VISUAL_AGENT_STATES, type VisualAgentState } from "./agentSessionSnapshots";
 import {
   VISUAL_CONTEXT_TOKENS,
@@ -517,6 +517,32 @@ test("long content remains inside the reading column without horizontal overflow
 });
 
 /**
+ * Render every turn once, top to bottom.
+ *
+ * `content-visibility` holds an off-screen turn at its estimated height until it has
+ * rendered, and `contain-intrinsic-size: auto` then remembers the real one — so the
+ * transcript's total height depends on which turns happened to get rendering time. A golden
+ * settles STABLY at a different offset run to run, which is why asserting the resting scroll
+ * position cannot catch it.
+ *
+ * It is not only the goldens. Anything reaching INTO a turn needs the same pass: a lazy image
+ * inside an unrendered subtree has no box, so `scrollIntoView` aims at nothing, the image
+ * never loads, and the control around it reports itself hidden.
+ */
+async function layOutTranscript(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const scroller = document.querySelector(".msg-scroll-viewport");
+    if (!scroller) return;
+    const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+    for (let top = 0; top <= scroller.scrollHeight; top += scroller.clientHeight) {
+      scroller.scrollTop = top;
+      await frame();
+      await frame();
+    }
+  });
+}
+
+/**
  * Wait until a locator's box stops moving.
  *
  * Playwright's `hover()` reads the box and then moves the pointer, so anything still easing
@@ -664,6 +690,7 @@ for (const theme of ["light", "dark"] as const) {
     const diagram = page.getByRole("img", { name: "Diagram" });
     await expect(diagram).toBeVisible();
     const artifact = diagram.locator("..");
+    await expectStableBox(artifact);
     await artifact.hover();
     await expect(artifact).toHaveScreenshot(`markdown-mermaid-${theme}.png`);
 
@@ -694,7 +721,9 @@ for (const theme of ["light", "dark"] as const) {
     await page.locator("html[data-visual-ready]").waitFor();
 
     const table = page.locator("[data-markdown-table]").filter({ hasText: "Boundary" });
+    await layOutTranscript(page);
     await table.evaluate((element) => element.scrollIntoView({ block: "center" }));
+    await expectStableBox(table);
     await table.hover();
     await page.getByRole("button", { name: "Expand table" }).click();
 
@@ -729,6 +758,7 @@ for (const theme of ["light", "dark"] as const) {
     await expect(table.locator("table")).toHaveAttribute("dir", "auto");
     await expect(table.locator("td.md-table-cell-numeric")).toHaveCount(2);
 
+    await expectStableBox(table);
     await table.hover();
     await expect(table).toHaveScreenshot(`markdown-table-${theme}.png`);
     await table.getByRole("button", { name: "Copy table" }).click();
@@ -758,8 +788,10 @@ for (const theme of ["light", "dark"] as const) {
     const preview = page.getByRole("button", { name: "Inline architecture" });
     await expect(page.locator('[data-markdown-image-grid="true"] > button')).toHaveCount(2);
     await expect(preview.locator("img")).toHaveAttribute("loading", "lazy");
+    await layOutTranscript(page);
     await preview.evaluate((button) => button.parentElement?.scrollIntoView({ block: "center" }));
     await expect(preview).toBeVisible();
+    await expectStableBox(preview);
     await expect(preview).toHaveScreenshot(`markdown-image-${theme}.png`);
     await preview.click();
     const dialog = page.getByRole("dialog", { name: "Inline architecture" });
@@ -1394,22 +1426,7 @@ for (const theme of ["light", "dark"] as const) {
           .filter({ hasText: "specialisedPreviewProjections.ts" })
           .click();
       }
-      // Lay every turn out ONCE before judging the frame. `content-visibility` holds an
-      // off-screen turn at its estimated height until it has rendered, and
-      // `contain-intrinsic-size: auto` then remembers the real one — so the transcript's
-      // total height depends on which turns happened to get rendering time. Under a full
-      // suite that set differs run to run and the frame settles STABLY at a different
-      // offset, which is why asserting the resting scroll position cannot catch it.
-      await page.evaluate(async () => {
-        const scroller = document.querySelector(".msg-scroll-viewport");
-        if (!scroller) return;
-        const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-        for (let top = 0; top <= scroller.scrollHeight; top += scroller.clientHeight) {
-          scroller.scrollTop = top;
-          await frame();
-          await frame();
-        }
-      });
+      await layOutTranscript(page);
 
       // Put the transcript where it belongs BEFORE the clock stops, rather than
       // waiting to see where it lands. Ready only means the tree is mounted;
