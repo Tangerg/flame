@@ -28,13 +28,17 @@ func TestToolCancellationFailureKindRoundTrips(t *testing.T) {
 	}
 }
 
-func TestTranscriptCodecRejectsRemovedToolRetryMetadata(t *testing.T) {
-	_, err := decodeTranscriptItem([]byte(`{
-		"status":"incomplete",
-		"kind":"toolCall",
-		"failure":{"kind":"tool_failed","scope":"tool","retryAfterSeconds":1}
-	}`))
-	if err == nil || !strings.Contains(err.Error(), `unknown field "retryAfterSeconds"`) {
-		t.Fatalf("decodeTranscriptItem error = %v, want removed retryAfterSeconds rejection", err)
+func TestTranscriptCodecRejectsRemovedToolFailureMetadata(t *testing.T) {
+	for field, metadata := range map[string]string{
+		"scope":             `"scope":"tool"`,
+		"retryAfterSeconds": `"retryAfterSeconds":1`,
+	} {
+		t.Run(field, func(t *testing.T) {
+			encoded := `{"status":"incomplete","kind":"toolCall","failure":{"kind":"tool_failed",` + metadata + `}}`
+			_, err := decodeTranscriptItem([]byte(encoded))
+			if err == nil || !strings.Contains(err.Error(), `unknown field "`+field+`"`) {
+				t.Fatalf("decodeTranscriptItem error = %v, want removed %s rejection", err, field)
+			}
+		})
 	}
 }

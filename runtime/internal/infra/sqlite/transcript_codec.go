@@ -67,14 +67,9 @@ type toolInvocationPayload struct {
 
 type toolFailurePayload struct {
 	Kind   tool.FailureKind `json:"kind"`
-	Scope  failureScope     `json:"scope"`
 	Detail string           `json:"detail,omitempty"`
 	DocURL string           `json:"docUrl,omitempty"`
 }
-
-type failureScope string
-
-const toolFailureScope failureScope = "tool"
 
 func encodeTranscriptItem(item transcript.Item) ([]byte, error) {
 	if !item.Status().Valid() {
@@ -325,16 +320,13 @@ func encodeToolFailurePayload(failure tool.Failure) (toolFailurePayload, error) 
 		return toolFailurePayload{}, fmt.Errorf("unknown Tool failure kind %q", failure.Kind)
 	}
 	return toolFailurePayload{
-		Kind: failure.Kind, Scope: toolFailureScope, Detail: failure.Detail, DocURL: failure.DocURL,
+		Kind: failure.Kind, Detail: failure.Detail, DocURL: failure.DocURL,
 	}, nil
 }
 
 func decodeToolFailurePayload(payload toolFailurePayload) (tool.Failure, error) {
 	if !payload.Kind.Valid() {
 		return tool.Failure{}, fmt.Errorf("unknown Tool failure kind %q", payload.Kind)
-	}
-	if payload.Scope != toolFailureScope {
-		return tool.Failure{}, fmt.Errorf("unknown Tool failure scope %q", payload.Scope)
 	}
 	return tool.Failure{
 		Kind: payload.Kind, Detail: payload.Detail, DocURL: payload.DocURL,
