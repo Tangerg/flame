@@ -181,7 +181,7 @@ func (a InterruptAnswer) validateResolution(request transcript.Interrupt) error 
 			}
 		}
 		for index, field := range request.Question.Fields {
-			if err := validateQuestionAnswer(field, resolution.Answers[index]); err != nil {
+			if err := field.ValidateAnswer(resolution.Answers[index]); err != nil {
 				return &QuestionAnswerError{
 					ItemID: a.InterruptItemID,
 					Index:  index,
@@ -194,65 +194,6 @@ func (a InterruptAnswer) validateResolution(request transcript.Interrupt) error 
 	default:
 		return fmt.Errorf("unknown interrupt kind %q", request.Kind)
 	}
-}
-
-func validateQuestionAnswer(field transcript.QuestionField, values []string) error {
-	switch field.Kind {
-	case transcript.QuestionText:
-		return validateTextAnswer(values)
-	case transcript.QuestionChoice:
-		return validateChoiceAnswer(field, values)
-	default:
-		return fmt.Errorf("unknown question field kind %q", field.Kind)
-	}
-}
-
-func validateTextAnswer(values []string) error {
-	if len(values) == 0 {
-		return nil
-	}
-	if len(values) != 1 || strings.TrimSpace(values[0]) == "" {
-		return errors.New("one non-empty text value is required")
-	}
-	return nil
-}
-
-func validateChoiceAnswer(field transcript.QuestionField, values []string) error {
-	if len(values) == 0 {
-		return nil
-	}
-	if !field.Multiple && len(values) != 1 {
-		return errors.New("exactly one choice is required")
-	}
-	allowedLabels := make(map[string]struct{}, len(field.Options))
-	for _, option := range field.Options {
-		allowedLabels[option.Label] = struct{}{}
-	}
-	seenLabels := make(map[string]struct{}, len(values))
-	customValueCount := 0
-	for _, value := range values {
-		trimmed := strings.TrimSpace(value)
-		if trimmed == "" {
-			return errors.New("choice values must not be empty")
-		}
-		if trimmed != value {
-			return errors.New("choice values must not have surrounding whitespace")
-		}
-		if _, allowed := allowedLabels[value]; !allowed {
-			if !field.AllowCustom {
-				return fmt.Errorf("unknown choice %q", value)
-			}
-			customValueCount++
-			if customValueCount > 1 {
-				return errors.New("at most one custom choice is allowed")
-			}
-		}
-		if _, duplicate := seenLabels[value]; duplicate {
-			return errors.New("duplicate choices are not allowed")
-		}
-		seenLabels[value] = struct{}{}
-	}
-	return nil
 }
 
 func cloneAnswers(answers [][]string) [][]string {

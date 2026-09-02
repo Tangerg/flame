@@ -357,9 +357,6 @@ func (i Item) Validate() error {
 		if i.summary != strings.TrimSpace(i.summary) {
 			return errors.New("transcript: compaction summary is not canonical")
 		}
-		if i.droppedMessages < 0 {
-			return errors.New("transcript: compaction dropped-message count is negative")
-		}
 	default:
 		return fmt.Errorf("transcript: unknown Item kind %q", i.kind)
 	}

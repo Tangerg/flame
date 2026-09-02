@@ -324,7 +324,7 @@ func (q Question) Validate() error {
 			)
 		}
 		for index, values := range q.Answers {
-			if err := q.Fields[index].validateAnswer(values); err != nil {
+			if err := q.Fields[index].ValidateAnswer(values); err != nil {
 				return fmt.Errorf("question answer %d: %w", index, err)
 			}
 		}
@@ -399,7 +399,10 @@ func (field QuestionField) validate(index int) error {
 	return nil
 }
 
-func (field QuestionField) validateAnswer(values []string) error {
+// ValidateAnswer reports whether values are one legal answer to this field.
+// An empty slice explicitly skips the field; the containing Question owns
+// answer count and ordering.
+func (field QuestionField) ValidateAnswer(values []string) error {
 	switch field.Kind {
 	case QuestionText:
 		if len(values) == 0 {
