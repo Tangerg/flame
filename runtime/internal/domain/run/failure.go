@@ -43,6 +43,17 @@ func (f FailureKind) String() string {
 	return string(f)
 }
 
+// AllowsRetryAfter reports whether waiting can plausibly clear this failure.
+// Other kinds require a different recovery action and cannot carry a delay.
+func (f FailureKind) AllowsRetryAfter() bool {
+	switch f {
+	case FailureRateLimited, FailureTimeout, FailureProviderUnavailable:
+		return true
+	default:
+		return false
+	}
+}
+
 // Failure is the durable, provider-neutral explanation for a failed Run.
 type Failure struct {
 	Kind       FailureKind
@@ -60,12 +71,8 @@ func (f Failure) Validate() error {
 	if f.RetryAfter < 0 {
 		return fmt.Errorf("run: failure retry delay must not be negative")
 	}
-	if f.RetryAfter > 0 {
-		switch f.Kind {
-		case FailureRateLimited, FailureTimeout, FailureProviderUnavailable:
-		default:
-			return fmt.Errorf("run: failure kind %s cannot carry a retry delay", f.Kind)
-		}
+	if f.RetryAfter > 0 && !f.Kind.AllowsRetryAfter() {
+		return fmt.Errorf("run: failure kind %s cannot carry a retry delay", f.Kind)
 	}
 	return nil
 }

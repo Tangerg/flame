@@ -82,6 +82,21 @@ func TestClassifyModelErrorUsesTypedProviderStatus(t *testing.T) {
 	}
 }
 
+func TestClassifyModelErrorDropsIrrelevantRetryHintWithoutChangingKind(t *testing.T) {
+	providerErr := &providerError{
+		status: http.StatusBadRequest,
+		header: http.Header{"Retry-After": []string{"12"}},
+	}
+	err := classifyModelError(providerErr)
+	var failure *run.FailureError
+	if !errors.As(err, &failure) {
+		t.Fatalf("classified error = %T, want *run.FailureError", err)
+	}
+	if failure.Kind != run.FailureProviderRejected || failure.RetryAfter != 0 {
+		t.Fatalf("failure = %+v, want provider rejected without retry delay", failure)
+	}
+}
+
 func TestRetryAfterUsesProviderPrecisionWithoutOverflow(t *testing.T) {
 	now := time.Unix(100, 0).UTC()
 	tests := []struct {

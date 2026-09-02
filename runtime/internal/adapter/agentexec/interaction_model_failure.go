@@ -30,10 +30,14 @@ func (i *interactionModelFailures) record(processID agent.ProcessID, cause error
 		Detail: executorDiagnostic(cause),
 	}
 	if classified, ok := errors.AsType[*run.FailureError](cause); ok {
+		delay := classified.RetryAfter
+		if delay < 0 || !classified.Kind.AllowsRetryAfter() {
+			delay = 0
+		}
 		candidate := run.Failure{
 			Kind:       classified.Kind,
 			Detail:     failure.Detail,
-			RetryAfter: classified.RetryAfter,
+			RetryAfter: delay,
 		}
 		if candidate.Validate() == nil {
 			failure = candidate

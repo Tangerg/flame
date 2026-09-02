@@ -284,8 +284,9 @@ func TestInteractionExecutorMapsModelFailure(t *testing.T) {
 			}, wantKind: run.FailureRateLimited, wantRetry: 12 * time.Second,
 		},
 		{
-			name: "invalid credentials", cause: &run.FailureError{
-				Kind: run.FailureInvalidCredentials, Err: errors.New("provider rejected credentials"),
+			name: "invalid credentials discard irrelevant retry", cause: &run.FailureError{
+				Kind: run.FailureInvalidCredentials, RetryAfter: 12 * time.Second,
+				Err: errors.New("provider rejected credentials"),
 			}, wantKind: run.FailureInvalidCredentials,
 		},
 		{

@@ -105,9 +105,14 @@ func classifyModelError(err error) error {
 		return &run.FailureError{Kind: run.FailureTimeout, Err: err}
 	}
 	if status, header, ok := providerHTTPError(err); ok {
+		kind := failureKindForHTTPStatus(status)
+		var delay time.Duration
+		if kind.AllowsRetryAfter() {
+			delay = retryAfter(header, time.Now())
+		}
 		return &run.FailureError{
-			Kind:       failureKindForHTTPStatus(status),
-			RetryAfter: retryAfter(header, time.Now()),
+			Kind:       kind,
+			RetryAfter: delay,
 			Err:        err,
 		}
 	}
