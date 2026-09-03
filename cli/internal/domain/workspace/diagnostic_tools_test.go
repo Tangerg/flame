@@ -11,9 +11,10 @@ func TestDescriptorRejectsMalformedTools(t *testing.T) {
 		t.Fatalf("valid descriptor: %v", err)
 	}
 	for name, descriptor := range map[string]DiagnosticToolDescriptor{
-		"empty name": {Schema: json.RawMessage(`{}`)},
-		"array":      {Name: "inspect", Schema: json.RawMessage(`[]`)},
-		"malformed":  {Name: "inspect", Schema: json.RawMessage(`{`)},
+		"empty name":  {Schema: json.RawMessage(`{}`)},
+		"padded name": {Name: " inspect ", Schema: json.RawMessage(`{}`)},
+		"array":       {Name: "inspect", Schema: json.RawMessage(`[]`)},
+		"malformed":   {Name: "inspect", Schema: json.RawMessage(`{`)},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := descriptor.Validate(); err == nil {

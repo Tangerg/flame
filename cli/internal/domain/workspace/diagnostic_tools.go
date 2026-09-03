@@ -14,8 +14,12 @@ type DiagnosticToolDescriptor struct {
 }
 
 func (d DiagnosticToolDescriptor) Validate() error {
-	if strings.TrimSpace(d.Name) == "" {
+	name := strings.TrimSpace(d.Name)
+	if name == "" {
 		return errors.New("diagnostic tool name is empty")
+	}
+	if name != d.Name {
+		return errors.New("diagnostic tool name is not canonical")
 	}
 	return validateObject("diagnostic tool schema", d.Schema)
 }

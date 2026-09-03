@@ -53,6 +53,14 @@ func (d *DiagnosticTools) Tools(ctx context.Context) ([]workspace.DiagnosticTool
 			return nil, runtimeContractViolation("list diagnostic tools repeats %q", descriptor.Name)
 		}
 		seen[descriptor.Name] = struct{}{}
+		if len(tools) > 0 && descriptor.Name < tools[len(tools)-1].Name {
+			return nil, runtimeContractViolation(
+				"list diagnostic tools item %d is out of name order: %q follows %q",
+				index+1,
+				descriptor.Name,
+				tools[len(tools)-1].Name,
+			)
+		}
 		tools = append(tools, descriptor)
 	}
 	return tools, nil

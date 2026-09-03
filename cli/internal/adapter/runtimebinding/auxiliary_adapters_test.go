@@ -49,14 +49,19 @@ func TestDiagnosticToolAdapterConfinesSafeCatalogAndJSON(t *testing.T) {
 	}
 }
 
-func TestDiagnosticToolAdapterRejectsUnaddressableOrUnsafeCatalogs(t *testing.T) {
+func TestDiagnosticToolAdapterRejectsBrokenCatalogs(t *testing.T) {
 	for name, page := range map[string]*protocol.Page[protocol.ToolSpec]{
 		"nil":          nil,
 		"continuation": {PageContinuation: protocol.PageContinuation{NextCursor: "next"}},
+		"padded name":  protocol.NewPage([]protocol.ToolSpec{{Name: " inspect ", SafetyClass: protocol.SafetyClassSafe, Parameters: map[string]any{}}}),
 		"unsafe":       protocol.NewPage([]protocol.ToolSpec{{Name: "write", SafetyClass: protocol.SafetyClassWrite, Parameters: map[string]any{}}}),
 		"duplicate": protocol.NewPage([]protocol.ToolSpec{
 			{Name: "inspect", SafetyClass: protocol.SafetyClassSafe, Parameters: map[string]any{}},
 			{Name: "inspect", SafetyClass: protocol.SafetyClassSafe, Parameters: map[string]any{}},
+		}),
+		"out of order": protocol.NewPage([]protocol.ToolSpec{
+			{Name: "read", SafetyClass: protocol.SafetyClassSafe, Parameters: map[string]any{}},
+			{Name: "glob", SafetyClass: protocol.SafetyClassSafe, Parameters: map[string]any{}},
 		}),
 	} {
 		t.Run(name, func(t *testing.T) {
