@@ -1,5 +1,4 @@
 {
-  "path": "src/main.go",
   "content": "package main\n\nfunc main() {}\n",
   "totalLines": 3
 }

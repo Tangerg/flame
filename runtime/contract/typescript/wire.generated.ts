@@ -448,7 +448,6 @@ export interface FieldError {
 export interface FileContent {
   content: string;
   endLine?: number;
-  path: string;
   startLine?: number;
   totalLines: number;
   truncated?: boolean;

@@ -6893,10 +6893,6 @@
       "type": "FileContent",
       "rules": [
         {
-          "field": "path",
-          "constraint": "nonEmpty"
-        },
-        {
           "field": "totalLines",
           "constraint": "positive"
         },

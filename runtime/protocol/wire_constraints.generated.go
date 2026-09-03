@@ -1743,7 +1743,6 @@ func (a ApprovalRule) ValidateWire() error {
 
 func (f FileContent) ValidateWire() error {
 	return collectWireViolations("FileContent",
-		requiredText("path", f.Path),
 		positiveNumber("totalLines", f.TotalLines),
 		optionalPositiveScalarNumber("startLine", f.StartLine),
 		optionalPositiveScalarNumber("endLine", f.EndLine),

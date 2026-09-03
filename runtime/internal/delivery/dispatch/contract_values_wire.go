@@ -500,7 +500,6 @@ func registerWorkspaceValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.FileContent](),
 		Constraints: []FieldConstraint{
-			{Field: "path", Kind: ConstraintNonEmpty},
 			{Field: "totalLines", Kind: ConstraintPositive},
 			{Field: "startLine", Kind: ConstraintPositive},
 			{Field: "endLine", Kind: ConstraintPositive},

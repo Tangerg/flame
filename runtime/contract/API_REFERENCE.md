@@ -748,7 +748,6 @@ TypeScript validator from this single registry projection.
 | `WorkspaceInfo` | `projectRoot` | `nonEmpty` |
 | `WorkspaceSummary` | `name` | `nonEmpty` |
 | `WorkspaceSummary` | `sessionCount` | `nonNegative` |
-| `FileContent` | `path` | `nonEmpty` |
 | `FileContent` | `totalLines` | `positive` |
 | `FileContent` | `startLine` | `positive` |
 | `FileContent` | `endLine` | `positive` |

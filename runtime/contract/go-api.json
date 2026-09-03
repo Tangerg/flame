@@ -3860,11 +3860,6 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "Path",
-              "type": "string",
-              "tag": "json:\"path\""
-            },
-            {
               "name": "Content",
               "type": "string",
               "tag": "json:\"content\""

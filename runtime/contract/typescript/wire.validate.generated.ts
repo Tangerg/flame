@@ -1060,11 +1060,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       content: text(),
       endLine: allOf([integer(), minimum(1)]),
-      path: allOf([text(), minLength(1)]),
       startLine: allOf([integer(), minimum(1)]),
       totalLines: allOf([integer(), minimum(1)]),
       truncated: flag(),
-    }, ["content", "path", "totalLines"]),
+    }, ["content", "totalLines"]),
     ifThen(
       fields({}, ["startLine"]),
       fields({}, ["endLine"]),

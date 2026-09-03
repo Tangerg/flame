@@ -62,7 +62,6 @@ type ReadFileRequest struct {
 // even its first code point cannot fit, both window fields are omitted and
 // Truncated remains true.
 type FileContent struct {
-	Path       string `json:"path"`
 	Content    string `json:"content"`
 	TotalLines int    `json:"totalLines"`
 	Truncated  bool   `json:"truncated,omitempty"`

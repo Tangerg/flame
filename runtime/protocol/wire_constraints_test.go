@@ -1880,7 +1880,6 @@ func TestWorkspaceOutputIdentitiesAreRequired(t *testing.T) {
 	}{
 		{shape: "WorkspaceInfo", field: "projectRoot", value: WorkspaceInfo{Availability: WorkspaceAvailable}},
 		{shape: "WorkspaceSummary", field: "name", value: WorkspaceSummary{}},
-		{shape: "FileContent", field: "path", value: FileContent{TotalLines: 1}},
 		{shape: "FileEntry", field: "path", value: FileEntry{Name: "main.go", Type: FileEntryFile}},
 		{shape: "FileEntry", field: "name", value: FileEntry{Path: "main.go", Type: FileEntryFile}},
 		{shape: "FileHead", field: "path", value: FileHead{}},
@@ -1910,7 +1909,7 @@ func TestRuntimeOutputNumberBoundariesRemainRepresentable(t *testing.T) {
 	zeroBytes := int64(0)
 	for _, value := range []WireValidator{
 		WorkspaceSummary{Name: "workspace"},
-		FileContent{Path: "main.go", TotalLines: 1, StartLine: 1, EndLine: 1},
+		FileContent{TotalLines: 1, StartLine: 1, EndLine: 1},
 		FileEntry{Path: "main.go", Name: "main.go", Type: FileEntryFile, SizeBytes: &zeroBytes},
 		FileLine{LineNumber: 1},
 		GrepResult{},
@@ -1959,14 +1958,14 @@ func TestHookInfoKeepsExecutableAndDeclarativeFormsDisjoint(t *testing.T) {
 func TestFileContentWindowBoundariesAreAtomic(t *testing.T) {
 	t.Parallel()
 
-	if err := (FileContent{Path: "main.go", TotalLines: 1}).ValidateWire(); err != nil {
+	if err := (FileContent{TotalLines: 1}).ValidateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected an unwindowed file: %v", err)
 	}
-	if err := (FileContent{Path: "main.go", TotalLines: 1, StartLine: 1, EndLine: 1}).ValidateWire(); err != nil {
+	if err := (FileContent{TotalLines: 1, StartLine: 1, EndLine: 1}).ValidateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected a complete window: %v", err)
 	}
-	assertConstraintField(t, (FileContent{Path: "main.go", TotalLines: 1, StartLine: 1}).ValidateWire(), "FileContent", "endLine")
-	assertConstraintField(t, (FileContent{Path: "main.go", TotalLines: 1, EndLine: 1}).ValidateWire(), "FileContent", "startLine")
+	assertConstraintField(t, (FileContent{TotalLines: 1, StartLine: 1}).ValidateWire(), "FileContent", "endLine")
+	assertConstraintField(t, (FileContent{TotalLines: 1, EndLine: 1}).ValidateWire(), "FileContent", "startLine")
 }
 
 func TestWorkspaceChangeMetadataMatchesItsStatusAndRepresentation(t *testing.T) {
