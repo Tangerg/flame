@@ -209,13 +209,13 @@ func readConfigFile(path string) ([]byte, error) {
 		return nil, err
 	}
 	content, readErr := io.ReadAll(io.LimitReader(file, maximumCLIConfigBytes+1))
-	after, statErr := file.Stat()
+	verifyErr := fileinput.VerifyPathVersion(file, opened, path)
 	closeErr := file.Close()
 	if readErr != nil {
 		return nil, readErr
 	}
-	if statErr != nil {
-		return nil, statErr
+	if verifyErr != nil {
+		return nil, verifyErr
 	}
 	if closeErr != nil {
 		return nil, closeErr
@@ -224,13 +224,6 @@ func readConfigFile(path string) ([]byte, error) {
 		return nil, fileinput.SizeLimitError{
 			Size: int64(len(content)), Limit: maximumCLIConfigBytes,
 		}
-	}
-	current, err := os.Stat(path)
-	if err != nil {
-		return nil, err
-	}
-	if !fileinput.SameVersion(opened, after) || !fileinput.SameVersion(after, current) {
-		return nil, fileinput.ErrChanged
 	}
 	return content, nil
 }

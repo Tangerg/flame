@@ -148,7 +148,7 @@ func (s *Store) Read(name string, maximumBytes int64) ([]byte, error) {
 	if info.Size() > maximumBytes {
 		return nil, fmt.Errorf("state file %q exceeds %d bytes", name, maximumBytes)
 	}
-	file, _, err := fileinput.OpenAtExpected(directory, base, info, maximumBytes)
+	file, opened, err := fileinput.OpenAtExpected(directory, base, info, maximumBytes)
 	if err != nil {
 		switch {
 		case errors.Is(err, fileinput.ErrChanged):
@@ -168,6 +168,12 @@ func (s *Store) Read(name string, maximumBytes int64) ([]byte, error) {
 	}
 	if int64(len(body)) > maximumBytes {
 		return nil, fmt.Errorf("state file %q exceeds %d bytes", name, maximumBytes)
+	}
+	if err := fileinput.VerifyAtVersion(file, opened, directory, base); err != nil {
+		if errors.Is(err, fileinput.ErrChanged) {
+			return nil, fmt.Errorf("state file %q changed while it was being read", name)
+		}
+		return nil, fmt.Errorf("verify state file %q after reading: %w", name, err)
 	}
 	return body, nil
 }

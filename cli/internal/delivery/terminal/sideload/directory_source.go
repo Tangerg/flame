@@ -277,6 +277,12 @@ func readPlugin(directory string) (extensions.Plugin, bool, error) {
 	if len(encoded) > maxManifestBytes {
 		return extensions.Plugin{}, false, fmt.Errorf("plugin manifest %q exceeds %d bytes", path, maxManifestBytes)
 	}
+	if err := fileinput.VerifyPathVersion(file, info, path); err != nil {
+		if errors.Is(err, fileinput.ErrChanged) {
+			return extensions.Plugin{}, false, fmt.Errorf("plugin manifest %q changed while it was being read", path)
+		}
+		return extensions.Plugin{}, false, fmt.Errorf("verify plugin manifest %q after reading: %w", path, err)
+	}
 	var declared pluginManifest
 	decoder := json.NewDecoder(bytes.NewReader(encoded))
 	decoder.DisallowUnknownFields()

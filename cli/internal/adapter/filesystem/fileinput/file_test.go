@@ -90,6 +90,76 @@ func TestSameVersionRequiresStableIdentityAndMetadata(t *testing.T) {
 	}
 }
 
+func TestVerifyPathVersionRejectsMutationAndReplacement(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		change func(string) error
+	}{
+		{
+			name: "mutation",
+			change: func(path string) error {
+				return os.WriteFile(path, []byte("changed size"), 0o600)
+			},
+		},
+		{
+			name: "replacement",
+			change: func(path string) error {
+				replacement := filepath.Join(filepath.Dir(path), "replacement")
+				if err := os.WriteFile(replacement, []byte("second"), 0o600); err != nil {
+					return err
+				}
+				return os.Rename(replacement, path)
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "input")
+			if err := os.WriteFile(path, []byte("first"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			file, opened, err := Open(path, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = file.Close() }()
+			if err := test.change(path); err != nil {
+				t.Fatal(err)
+			}
+			if err := VerifyPathVersion(file, opened, path); !errors.Is(err, ErrChanged) {
+				t.Fatalf("VerifyPathVersion error = %v, want ErrChanged", err)
+			}
+		})
+	}
+}
+
+func TestVerifyAtVersionAcceptsUnchangedSource(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "input")
+	if err := os.WriteFile(path, []byte("content"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.OpenRoot(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = root.Close() }()
+	expected, err := root.Lstat("input")
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, opened, err := OpenAtExpected(root, "input", expected, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = file.Close() }()
+	if err := VerifyAtVersion(file, opened, root, "input"); err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyAtVersion(file, opened, nil, "input"); err == nil {
+		t.Fatal("VerifyAtVersion accepted a nil root")
+	}
+}
+
 func TestOpenAtExpectedUsesRootRelativeIdentity(t *testing.T) {
 	directory := t.TempDir()
 	path := filepath.Join(directory, "input")

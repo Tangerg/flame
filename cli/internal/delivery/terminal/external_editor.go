@@ -111,6 +111,12 @@ func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspa
 	if len(content) > maxExternalDraftBytes {
 		return "", fmt.Errorf("edited draft exceeds %d bytes", maxExternalDraftBytes)
 	}
+	if err := fileinput.VerifyPathVersion(file, opened, path); err != nil {
+		if errors.Is(err, fileinput.ErrChanged) {
+			return "", errors.New("edited draft changed while it was being read")
+		}
+		return "", fmt.Errorf("verify edited draft after reading: %w", err)
+	}
 	if !utf8.Valid(content) || bytes.IndexByte(content, 0) >= 0 {
 		return "", errors.New("edited draft is not valid text")
 	}

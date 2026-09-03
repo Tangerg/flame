@@ -106,6 +106,12 @@ func (r *Resolver) inspect(input string) (string, fs.FileInfo, []byte, error) {
 	if err != nil {
 		return "", nil, nil, err
 	}
+	if err := fileinput.VerifyPathVersion(file, info, canonical); err != nil {
+		if errors.Is(err, fileinput.ErrChanged) {
+			return "", nil, nil, fmt.Errorf("attachment: %q changed while it was being inspected", input)
+		}
+		return "", nil, nil, fmt.Errorf("attachment: verify %q after inspection: %w", input, err)
+	}
 	canonical, err = filepath.Abs(canonical)
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("attachment: canonical path: %w", err)

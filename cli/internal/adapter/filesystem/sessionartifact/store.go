@@ -98,6 +98,12 @@ func (Store) Load(workspace, selectedPath string) (session.Document, error) {
 	if len(body) > session.MaximumDocumentBytes {
 		return session.Document{}, fmt.Errorf("session artifact exceeds %d bytes", session.MaximumDocumentBytes)
 	}
+	if err := fileinput.VerifyPathVersion(file, info, path); err != nil {
+		if errors.Is(err, fileinput.ErrChanged) {
+			return session.Document{}, errors.New("session artifact changed while it was being read")
+		}
+		return session.Document{}, fmt.Errorf("verify session artifact after reading: %w", err)
+	}
 	document, err := session.NewDocument(protocol.ExportFormatJSON, body)
 	if err != nil {
 		return session.Document{}, fmt.Errorf("read session artifact: %w", err)

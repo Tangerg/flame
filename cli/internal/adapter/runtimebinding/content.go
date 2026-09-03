@@ -72,6 +72,12 @@ func loadAttachmentFile(ctx context.Context, path string, maximumBytes int64) (_
 	if int64(len(data)) > maximumBytes {
 		return nil, attachmentTooLargeError{maximumBytes: maximumBytes}
 	}
+	if err := fileinput.VerifyPathVersion(file, opened, path); err != nil {
+		if errors.Is(err, fileinput.ErrChanged) {
+			return nil, errors.New("file changed while it was being read")
+		}
+		return nil, fmt.Errorf("verify file after reading: %w", err)
+	}
 	return data, nil
 }
 
