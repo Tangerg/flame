@@ -7,3 +7,14 @@ export type ApprovalDecision = "approved" | "declined";
  */
 export type ApprovalMode = "safe" | "balanced" | "yolo";
 export type RememberScope = "session" | "project" | "global";
+
+/**
+ * Which interrupt, in which Run, in which Session. The three travel together everywhere a
+ * pending question or approval is staged, answered or looked up — a Run identifies the batch
+ * a response joins, and an item identifies the one answer within it.
+ */
+export interface InterruptRef {
+  sessionId: string;
+  rootRunId: string;
+  itemId: string;
+}

@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { ApprovalDecision, RememberScope } from "../../domain/hitl";
+import type { ApprovalDecision, InterruptRef, RememberScope } from "../../domain/hitl";
 import { WIRE_DECISION } from "./wireDecision";
 import { useInterruptResume } from "./useInterruptResume";
 
@@ -22,21 +22,15 @@ export interface ApprovalActions {
   decline: () => void;
 }
 
-interface ApprovalActionOwner {
-  sessionId: string;
-  rootRunId: string;
-  itemId: string;
-}
-
 interface ApprovalActionEntry {
-  owner: ApprovalActionOwner;
+  owner: InterruptRef;
   actions: ApprovalActions;
 }
 
 class ApprovalActionRegistry {
   readonly #entries = new Map<string, ApprovalActionEntry>();
 
-  register(owner: ApprovalActionOwner, actions: ApprovalActions): () => void {
+  register(owner: InterruptRef, actions: ApprovalActions): () => void {
     const key = this.#key(owner);
     const entry = { owner, actions };
     this.#entries.set(key, entry);
@@ -45,11 +39,11 @@ class ApprovalActionRegistry {
     };
   }
 
-  find(owner: ApprovalActionOwner): ApprovalActions | undefined {
+  find(owner: InterruptRef): ApprovalActions | undefined {
     return this.#entries.get(this.#key(owner))?.actions;
   }
 
-  #key(owner: ApprovalActionOwner): string {
+  #key(owner: InterruptRef): string {
     return JSON.stringify([owner.sessionId, owner.rootRunId, owner.itemId]);
   }
 }
@@ -58,21 +52,12 @@ const approvalActionRegistry = new ApprovalActionRegistry();
 
 /** Internal keyboard bridge registration. Product cards bind through the
  * identity-capturing registrar returned by useApprovalSubmit. */
-export function registerApprovalActions(
-  sessionId: string,
-  rootRunId: string,
-  itemId: string,
-  actions: ApprovalActions,
-): () => void {
-  return approvalActionRegistry.register({ sessionId, rootRunId, itemId }, actions);
+export function registerApprovalActions(ref: InterruptRef, actions: ApprovalActions): () => void {
+  return approvalActionRegistry.register(ref, actions);
 }
 
-export function getApprovalActions(
-  sessionId: string,
-  rootRunId: string,
-  itemId: string,
-): ApprovalActions | undefined {
-  return approvalActionRegistry.find({ sessionId, rootRunId, itemId });
+export function getApprovalActions(ref: InterruptRef): ApprovalActions | undefined {
+  return approvalActionRegistry.find(ref);
 }
 
 export interface ApprovalSubmit {
@@ -103,7 +88,7 @@ export function useApprovalSubmit(rootRunId?: string, itemId?: string): Approval
   const registerActions = useCallback(
     (actions: ApprovalActions) => {
       if (!rootRunId || !itemId) return () => undefined;
-      return registerApprovalActions(sessionId, rootRunId, itemId, actions);
+      return registerApprovalActions({ sessionId, rootRunId, itemId }, actions);
     },
     [itemId, rootRunId, sessionId],
   );

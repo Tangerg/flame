@@ -60,22 +60,24 @@ describe("interrupt response coordinator", () => {
 
     expect(
       stageInterruptResponse(
-        SESSION_ID,
-        ROOT_RUN_ID,
-        "approval_a",
+        { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
         { type: "approval", decision: "approve" },
         { decision: "approved" },
         { onSettled: approvalSettled },
       ),
     ).toBe(true);
     expect(resume).not.toHaveBeenCalled();
-    expect(interruptResponseIsStaged(SESSION_ID, ROOT_RUN_ID, "approval_a")).toBe(true);
+    expect(
+      interruptResponseIsStaged({
+        sessionId: SESSION_ID,
+        rootRunId: ROOT_RUN_ID,
+        itemId: "approval_a",
+      }),
+    ).toBe(true);
 
     expect(
       stageInterruptResponse(
-        SESSION_ID,
-        ROOT_RUN_ID,
-        "question_b",
+        { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
         { type: "answer", answers: [["Postgres"]] },
         { answered: true, answers: [["Postgres"]] },
         { onSettled: questionSettled },
@@ -118,17 +120,13 @@ describe("interrupt response coordinator", () => {
     useAgentStore.getState().setResume(SESSION_ID, resume);
 
     stageInterruptResponse(
-      SESSION_ID,
-      ROOT_RUN_ID,
-      "approval_a",
+      { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "deny" },
       { decision: "declined" },
       { onError: approvalError },
     );
     stageInterruptResponse(
-      SESSION_ID,
-      ROOT_RUN_ID,
-      "question_b",
+      { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["SQLite"]] },
       { answered: true, answers: [["SQLite"]] },
       { onError: questionError },
@@ -136,7 +134,13 @@ describe("interrupt response coordinator", () => {
 
     expect(approvalError).toHaveBeenCalledOnce();
     expect(questionError).toHaveBeenCalledOnce();
-    expect(interruptResponseIsStaged(SESSION_ID, ROOT_RUN_ID, "approval_a")).toBe(false);
+    expect(
+      interruptResponseIsStaged({
+        sessionId: SESSION_ID,
+        rootRunId: ROOT_RUN_ID,
+        itemId: "approval_a",
+      }),
+    ).toBe(false);
     expect(useAgentStore.getState().sessions[SESSION_ID]!.view.pendingInterrupts).toEqual(groups());
   });
 
@@ -150,17 +154,13 @@ describe("interrupt response coordinator", () => {
     );
 
     stageInterruptResponse(
-      SESSION_ID,
-      ROOT_RUN_ID,
-      "approval_a",
+      { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
       { decision: "approved" },
       { onError: approvalError },
     );
     stageInterruptResponse(
-      SESSION_ID,
-      ROOT_RUN_ID,
-      "question_b",
+      { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["Postgres"]] },
       { answered: true, answers: [["Postgres"]] },
       { onError: questionError },
@@ -168,7 +168,13 @@ describe("interrupt response coordinator", () => {
 
     expect(approvalError).toHaveBeenCalledOnce();
     expect(questionError).toHaveBeenCalledOnce();
-    expect(interruptResponseIsStaged(SESSION_ID, ROOT_RUN_ID, "approval_a")).toBe(false);
+    expect(
+      interruptResponseIsStaged({
+        sessionId: SESSION_ID,
+        rootRunId: ROOT_RUN_ID,
+        itemId: "approval_a",
+      }),
+    ).toBe(false);
   });
 
   it("discards a partial barrier when an authoritative refresh removes its set", () => {
@@ -181,9 +187,7 @@ describe("interrupt response coordinator", () => {
     const dispose = installInterruptResponseCoordinator();
 
     stageInterruptResponse(
-      SESSION_ID,
-      ROOT_RUN_ID,
-      "approval_a",
+      { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
       { decision: "approved" },
       { onError },
@@ -191,7 +195,13 @@ describe("interrupt response coordinator", () => {
     seedPending([]);
 
     expect(onError).toHaveBeenCalledOnce();
-    expect(interruptResponseIsStaged(SESSION_ID, ROOT_RUN_ID, "approval_a")).toBe(false);
+    expect(
+      interruptResponseIsStaged({
+        sessionId: SESSION_ID,
+        rootRunId: ROOT_RUN_ID,
+        itemId: "approval_a",
+      }),
+    ).toBe(false);
     dispose();
   });
 
@@ -212,17 +222,13 @@ describe("interrupt response coordinator", () => {
     const dispose = installInterruptResponseCoordinator();
 
     stageInterruptResponse(
-      SESSION_ID,
-      ROOT_RUN_ID,
-      "approval_a",
+      { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
       { decision: "approved" },
       { onSettled: approvalSettled, onError: approvalError },
     );
     stageInterruptResponse(
-      SESSION_ID,
-      ROOT_RUN_ID,
-      "question_b",
+      { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["Postgres"]] },
       { answered: true, answers: [["Postgres"]] },
       { onSettled: questionSettled, onError: questionError },
@@ -234,7 +240,13 @@ describe("interrupt response coordinator", () => {
 
     expect(approvalError).toHaveBeenCalledOnce();
     expect(questionError).toHaveBeenCalledOnce();
-    expect(interruptResponseIsStaged(SESSION_ID, ROOT_RUN_ID, "approval_a")).toBe(false);
+    expect(
+      interruptResponseIsStaged({
+        sessionId: SESSION_ID,
+        rootRunId: ROOT_RUN_ID,
+        itemId: "approval_a",
+      }),
+    ).toBe(false);
     expect(reject?.()).toBe(true);
 
     // A late local ack must not paint this client's choices over the already
@@ -259,17 +271,13 @@ describe("interrupt response coordinator", () => {
     const questionError = vi.fn();
 
     stageInterruptResponse(
-      SESSION_ID,
-      ROOT_RUN_ID,
-      "approval_a",
+      { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
       { decision: "approved" },
       { onSettled: approvalSettled, onError: approvalError },
     );
     stageInterruptResponse(
-      SESSION_ID,
-      ROOT_RUN_ID,
-      "question_b",
+      { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["Postgres"]] },
       { answered: true, answers: [["Postgres"]] },
       { onSettled: questionSettled, onError: questionError },
@@ -280,7 +288,13 @@ describe("interrupt response coordinator", () => {
     // truth is available. The cards must stay latched through that gap so the
     // same atomic barrier cannot be submitted twice.
     useAgentStore.getState().retireProjectionGeneration([SESSION_ID]);
-    expect(interruptResponseIsStaged(SESSION_ID, ROOT_RUN_ID, "approval_a")).toBe(true);
+    expect(
+      interruptResponseIsStaged({
+        sessionId: SESSION_ID,
+        rootRunId: ROOT_RUN_ID,
+        itemId: "approval_a",
+      }),
+    ).toBe(true);
     expect(approvalError).not.toHaveBeenCalled();
     expect(questionError).not.toHaveBeenCalled();
 
@@ -288,7 +302,13 @@ describe("interrupt response coordinator", () => {
     // connection problem or successor live event may advance the visible view
     // before the recovery snapshot has committed.
     useAgentStore.getState().setCommandError(SESSION_ID, { code: "transport_error" });
-    expect(interruptResponseIsStaged(SESSION_ID, ROOT_RUN_ID, "approval_a")).toBe(true);
+    expect(
+      interruptResponseIsStaged({
+        sessionId: SESSION_ID,
+        rootRunId: ROOT_RUN_ID,
+        itemId: "approval_a",
+      }),
+    ).toBe(true);
     expect(approvalError).not.toHaveBeenCalled();
 
     // The successor's authoritative snapshot proves the resume did not
@@ -297,7 +317,13 @@ describe("interrupt response coordinator", () => {
     seedPending(groups());
     expect(approvalError).toHaveBeenCalledOnce();
     expect(questionError).toHaveBeenCalledOnce();
-    expect(interruptResponseIsStaged(SESSION_ID, ROOT_RUN_ID, "approval_a")).toBe(false);
+    expect(
+      interruptResponseIsStaged({
+        sessionId: SESSION_ID,
+        rootRunId: ROOT_RUN_ID,
+        itemId: "approval_a",
+      }),
+    ).toBe(false);
 
     retiredAccept?.();
     expect(approvalSettled).not.toHaveBeenCalled();
@@ -315,16 +341,20 @@ describe("interrupt response coordinator", () => {
     const onError = vi.fn();
 
     stageInterruptResponse(
-      SESSION_ID,
-      ROOT_RUN_ID,
-      "approval_a",
+      { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
       { decision: "approved" },
       { onError },
     );
     retired();
 
-    expect(interruptResponseIsStaged(SESSION_ID, ROOT_RUN_ID, "approval_a")).toBe(true);
+    expect(
+      interruptResponseIsStaged({
+        sessionId: SESSION_ID,
+        rootRunId: ROOT_RUN_ID,
+        itemId: "approval_a",
+      }),
+    ).toBe(true);
     expect(onError).not.toHaveBeenCalled();
     successor();
   });
@@ -344,17 +374,13 @@ describe("interrupt response coordinator", () => {
     const retired = installInterruptResponseCoordinator();
 
     stageInterruptResponse(
-      SESSION_ID,
-      ROOT_RUN_ID,
-      "approval_a",
+      { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
       { decision: "approved" },
       { onSettled: retiredApprovalSettled, onError: retiredApprovalError },
     );
     stageInterruptResponse(
-      SESSION_ID,
-      ROOT_RUN_ID,
-      "question_b",
+      { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["Retired"]] },
       { answered: true, answers: [["Retired"]] },
       { onSettled: retiredQuestionSettled, onError: retiredQuestionError },
@@ -370,9 +396,7 @@ describe("interrupt response coordinator", () => {
     expect(retiredQuestionError).toHaveBeenCalledOnce();
     expect(
       stageInterruptResponse(
-        SESSION_ID,
-        ROOT_RUN_ID,
-        "approval_a",
+        { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
         { type: "approval", decision: "deny" },
         { decision: "declined" },
         { onError: successorError },
@@ -381,7 +405,13 @@ describe("interrupt response coordinator", () => {
 
     retiredAccept?.();
 
-    expect(interruptResponseIsStaged(SESSION_ID, ROOT_RUN_ID, "approval_a")).toBe(true);
+    expect(
+      interruptResponseIsStaged({
+        sessionId: SESSION_ID,
+        rootRunId: ROOT_RUN_ID,
+        itemId: "approval_a",
+      }),
+    ).toBe(true);
     expect(successorError).not.toHaveBeenCalled();
     expect(retiredApprovalSettled).not.toHaveBeenCalled();
     expect(retiredQuestionSettled).not.toHaveBeenCalled();

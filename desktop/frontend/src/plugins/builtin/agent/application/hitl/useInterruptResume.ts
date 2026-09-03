@@ -21,7 +21,7 @@ export function resumeInterrupt(
   settled: ResolvePatch,
   hooks?: { onSettled?: () => void; onError?: () => void },
 ): boolean {
-  return stageInterruptResponse(sessionId, runId, itemId, response, settled, hooks);
+  return stageInterruptResponse({ sessionId, rootRunId: runId, itemId }, response, settled, hooks);
 }
 
 export function useInterruptResume<P>(runId?: string, itemId?: string) {

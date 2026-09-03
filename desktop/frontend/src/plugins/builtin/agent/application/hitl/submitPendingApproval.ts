@@ -24,13 +24,21 @@ export function submitPendingApproval(decision: ApprovalDecision): boolean {
     group.interrupts.some(
       (interrupt) =>
         interrupt.kind === "approval" &&
-        !interruptResponseIsStaged(sid, group.rootRunId, interrupt.itemId),
+        !interruptResponseIsStaged({
+          sessionId: sid,
+          rootRunId: group.rootRunId,
+          itemId: interrupt.itemId,
+        }),
     ),
   );
   const interrupt = oi?.interrupts.find(
     (candidate) =>
       candidate.kind === "approval" &&
-      !interruptResponseIsStaged(sid, oi.rootRunId, candidate.itemId),
+      !interruptResponseIsStaged({
+        sessionId: sid,
+        rootRunId: oi.rootRunId,
+        itemId: candidate.itemId,
+      }),
   );
   // Every approval in the atomic set is already staged or submitting. Consume
   // a repeated shortcut instead of letting it fall through into chat send.
@@ -40,7 +48,7 @@ export function submitPendingApproval(decision: ApprovalDecision): boolean {
   // Prefer the mounted card's own submit so the shortcut applies its edited
   // args + remember exactly like its buttons. Direct staging below is only for
   // the no-card-mounted fallback.
-  const actions = getApprovalActions(sid, oi.rootRunId, itemId);
+  const actions = getApprovalActions({ sessionId: sid, rootRunId: oi.rootRunId, itemId });
   if (actions) {
     if (decision === "approved") actions.approve();
     else actions.decline();

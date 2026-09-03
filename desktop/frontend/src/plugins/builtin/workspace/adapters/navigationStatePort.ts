@@ -22,11 +22,16 @@ function dockSnapshot() {
   };
 }
 
-function showDockView(id: string, alsoLeavePromotedView: boolean): void {
+/** The two ways a dock view arrives: `alone` takes the content card back from whatever was
+ *  promoted there, `beside` leaves it. Named because a bare `true` at the call site says
+ *  neither, and six call sites split three and three. */
+type DockArrival = "alone" | "beside";
+
+function showDockView(id: string, arrival: DockArrival): void {
   // Remembered by the mover rather than by a subscriber on the location: this
   // port is installed while plugins load, before the router exists.
   useContextDockStore.getState().rememberDockView(id);
-  navigator().go(alsoLeavePromotedView ? { view: null, dock: id } : { dock: id });
+  navigator().go(arrival === "alone" ? { view: null, dock: id } : { dock: id });
 }
 
 export function installWorkspaceNavigationPort(): () => void {
@@ -70,22 +75,22 @@ export function installWorkspaceNavigationPort(): () => void {
     // view behind.
     openViewInDock: (id) => {
       useContextDockStore.getState().openDockTab(id);
-      showDockView(id, true);
+      showDockView(id, "alone");
     },
     selectDockView: (id) => {
-      if (useContextDockStore.getState().dockViewIds.includes(id)) showDockView(id, false);
+      if (useContextDockStore.getState().dockViewIds.includes(id)) showDockView(id, "beside");
     },
     closeDockView: (id) => {
       const next = useContextDockStore.getState().closeDockTab(id);
       if (navigator().get().dock !== id) return;
       if (next === null) navigator().go({ dock: WORKSPACE_DOCK_CATALOG });
-      else showDockView(next, false);
+      else showDockView(next, "beside");
     },
     closeOtherDockViews: (id) => {
       const state = useContextDockStore.getState();
       if (!state.dockViewIds.includes(id)) return;
       state.closeOtherDockTabs(id);
-      showDockView(id, false);
+      showDockView(id, "beside");
     },
     closeAllDockViews: () => {
       useContextDockStore.getState().closeAllDockTabs();
@@ -98,7 +103,7 @@ export function installWorkspaceNavigationPort(): () => void {
       // The catalogue is a destination, not a tab: opening one for it would leave the person
       // closing a tab they never asked for.
       if (target !== WORKSPACE_DOCK_CATALOG) useContextDockStore.getState().openDockTab(target);
-      showDockView(target, true);
+      showDockView(target, "alone");
     },
     /** A stale id is a no-op: it is not the surface on screen. */
     closeView: (id) => {
@@ -111,7 +116,7 @@ export function installWorkspaceNavigationPort(): () => void {
     openFile: (path, line) => {
       useContextDockStore.getState().setFileViewer(path, line);
       useContextDockStore.getState().openDockTab("file");
-      showDockView("file", true);
+      showDockView("file", "alone");
     },
     selectedToolId: () => useContextDockStore.getState().selectedToolId,
     setSelectedTool: (id) => useContextDockStore.getState().setSelectedToolId(id),

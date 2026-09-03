@@ -1,5 +1,6 @@
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { tupleKey } from "@/lib/tupleKey";
+import type { InterruptRef } from "../../domain/hitl";
 import type {
   AgentSessionViewEntry,
   AgentSessionViewPort,
@@ -129,9 +130,7 @@ class InterruptResponseCoordinator {
   }
 
   stage(
-    sessionId: string,
-    rootRunId: string,
-    itemId: string,
+    { sessionId, rootRunId, itemId }: InterruptRef,
     response: InterruptResumeInput["response"],
     settled: ResolvePatch,
     hooks?: { onSettled?: () => void; onError?: () => void },
@@ -181,7 +180,7 @@ class InterruptResponseCoordinator {
     return true;
   }
 
-  isStaged(sessionId: string, rootRunId: string, itemId: string): boolean {
+  isStaged({ sessionId, rootRunId, itemId }: InterruptRef): boolean {
     return this.#batches.get(batchKey(sessionId, rootRunId))?.contains(itemId) ?? false;
   }
 
@@ -229,22 +228,16 @@ function coordinator(): InterruptResponseCoordinator {
  * response, and it always addresses the owning root Run.
  */
 export function stageInterruptResponse(
-  sessionId: string,
-  rootRunId: string,
-  itemId: string,
+  ref: InterruptRef,
   response: InterruptResumeInput["response"],
   settled: ResolvePatch,
   hooks?: { onSettled?: () => void; onError?: () => void },
 ): boolean {
-  return coordinator().stage(sessionId, rootRunId, itemId, response, settled, hooks);
+  return coordinator().stage(ref, response, settled, hooks);
 }
 
-export function interruptResponseIsStaged(
-  sessionId: string,
-  rootRunId: string,
-  itemId: string,
-): boolean {
-  return coordinator().isStaged(sessionId, rootRunId, itemId);
+export function interruptResponseIsStaged(ref: InterruptRef): boolean {
+  return coordinator().isStaged(ref);
 }
 
 /** Own staged choices, continuation settlement and projection reconciliation

@@ -107,10 +107,13 @@ describe("submitPendingApproval", () => {
     const resume = vi.fn(() => true);
     useAgentStore.getState().setResume(SESSION_ID, resume);
     const retiredApprove = vi.fn();
-    const unregister = registerApprovalActions("ses_retired", ROOT_RUN_ID, "approval_same", {
-      approve: retiredApprove,
-      decline: vi.fn(),
-    });
+    const unregister = registerApprovalActions(
+      { sessionId: "ses_retired", rootRunId: ROOT_RUN_ID, itemId: "approval_same" },
+      {
+        approve: retiredApprove,
+        decline: vi.fn(),
+      },
+    );
 
     try {
       expect(submitPendingApproval("approved")).toBe(true);
@@ -133,10 +136,13 @@ describe("submitPendingApproval", () => {
     const resume = vi.fn(() => true);
     useAgentStore.getState().setResume(SESSION_ID, resume);
     const retiredApprove = vi.fn();
-    const unregister = registerApprovalActions(SESSION_ID, "run_retired", "approval_same", {
-      approve: retiredApprove,
-      decline: vi.fn(),
-    });
+    const unregister = registerApprovalActions(
+      { sessionId: SESSION_ID, rootRunId: "run_retired", itemId: "approval_same" },
+      {
+        approve: retiredApprove,
+        decline: vi.fn(),
+      },
+    );
 
     try {
       expect(submitPendingApproval("approved")).toBe(true);
@@ -159,10 +165,13 @@ describe("submitPendingApproval", () => {
     const resume = vi.fn(() => true);
     useAgentStore.getState().setResume(SESSION_ID, resume);
     const approve = vi.fn();
-    const unregister = registerApprovalActions(SESSION_ID, ROOT_RUN_ID, "approval_exact", {
-      approve,
-      decline: vi.fn(),
-    });
+    const unregister = registerApprovalActions(
+      { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_exact" },
+      {
+        approve,
+        decline: vi.fn(),
+      },
+    );
 
     try {
       expect(submitPendingApproval("approved")).toBe(true);
