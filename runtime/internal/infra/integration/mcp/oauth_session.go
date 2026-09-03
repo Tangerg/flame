@@ -303,8 +303,7 @@ func (r *restoredOAuthHandler) TokenSource(context.Context) (oauth2.TokenSource,
 func (r *restoredOAuthHandler) Authorize(ctx context.Context, _ *http.Request, response *http.Response) error {
 	var responseErr error
 	if response != nil && response.Body != nil {
-		_, drainErr := io.Copy(io.Discard, response.Body)
-		responseErr = errors.Join(drainErr, response.Body.Close())
+		responseErr = response.Body.Close()
 	}
 	r.mu.Lock()
 	r.source = nil

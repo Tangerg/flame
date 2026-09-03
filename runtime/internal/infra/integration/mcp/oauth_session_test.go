@@ -55,6 +55,21 @@ type tokenSourceFunc func() (*oauth2.Token, error)
 
 func (t tokenSourceFunc) Token() (*oauth2.Token, error) { return t() }
 
+type observedResponseBody struct {
+	read   bool
+	closed bool
+}
+
+func (b *observedResponseBody) Read([]byte) (int, error) {
+	b.read = true
+	return 0, errors.New("response body must not be read")
+}
+
+func (b *observedResponseBody) Close() error {
+	b.closed = true
+	return nil
+}
+
 func oauthSessionFixture(t *testing.T, token *oauth2.Token) (*oauth2.Config, []byte) {
 	t.Helper()
 	cfg := &oauth2.Config{
@@ -174,6 +189,23 @@ func TestRestoreOAuthHandlerRejectsCredentialWithoutInteractiveFlow(t *testing.T
 	}
 	if store.removed != 1 || len(store.payload) != 0 {
 		t.Fatalf("rejected session was not removed: %+v", store)
+	}
+}
+
+func TestRestoreOAuthHandlerDoesNotDrainRejectedResponse(t *testing.T) {
+	store := &memoryOAuthStore{payload: []byte("saved")}
+	body := &observedResponseBody{}
+	handler := &restoredOAuthHandler{store: store, server: testMCPServerName("remote")}
+
+	err := handler.Authorize(t.Context(), nil, &http.Response{Body: body})
+	if !errors.Is(err, errStoredOAuthRejected) {
+		t.Fatalf("Authorize error = %v", err)
+	}
+	if body.read || !body.closed {
+		t.Fatalf("response body read=%v closed=%v, want false, true", body.read, body.closed)
+	}
+	if store.removed != 1 {
+		t.Fatalf("removed = %d, want 1", store.removed)
 	}
 }
 
