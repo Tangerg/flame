@@ -422,14 +422,38 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     mode: ref(() => CHECKS.ApprovalMode),
   }, ["mode"]),
   ApprovalRisk: enumOf(["low", "medium", "high"]),
-  ApprovalRule: object({
-    decision: ref(() => CHECKS.ApprovalRuleDecision),
-    dir: text(),
-    id: text(),
-    scope: ref(() => CHECKS.ApprovalRuleScope),
-    subject: text(),
-    tool: text(),
-  }, ["decision", "id", "scope", "tool"]),
+  ApprovalRule: allOf([
+    object({
+      decision: ref(() => CHECKS.ApprovalRuleDecision),
+      dir: text(),
+      id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      scope: ref(() => CHECKS.ApprovalRuleScope),
+      subject: text(),
+      tool: allOf([text(), pattern("\\S")]),
+    }, ["decision", "id", "scope", "tool"]),
+    ifThen(
+      fields({
+        scope: literal("project"),
+      }, ["scope"]),
+      fields({}, ["dir"]),
+    ),
+    ifThen(
+      fields({
+        scope: literal("session"),
+      }, ["scope"]),
+      fields({
+        dir: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        scope: literal("global"),
+      }, ["scope"]),
+      fields({
+        dir: absent(),
+      }, []),
+    ),
+  ]),
   ApprovalRuleDecision: enumOf(["allow", "deny"]),
   ApprovalRuleScope: enumOf(["session", "project", "global"]),
   ArtifactContentBlock: allOf([

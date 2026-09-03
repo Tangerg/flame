@@ -576,6 +576,20 @@ func registerObjectConstraints(s *Shapes) {
 	}
 	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.HookInfo](), Rules: hookRules})
 
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.ApprovalRule](),
+		Rules: []ConditionalRule{{
+			When:     []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: string(protocol.ApprovalRuleScopeProject)}},
+			Required: []string{"dir"},
+		}, {
+			When:      []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: string(protocol.ApprovalRuleScopeSession)}},
+			Forbidden: []string{"dir"},
+		}, {
+			When:      []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: string(protocol.ApprovalRuleScopeGlobal)}},
+			Forbidden: []string{"dir"},
+		}},
+	})
+
 	knowledgeTargetRules := []ConditionalRule{{
 		When:      []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: string(protocol.KnowledgeScopeHome)}},
 		Forbidden: []string{"workspace"},

@@ -598,6 +598,11 @@ func registerHookValues(s *Shapes) {
 }
 
 func registerApprovalValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.ApprovalRule](),
+		Constraints: append(requiredResourceIdentity("id"),
+			FieldConstraint{Field: "tool", Kind: ConstraintPattern, Value: `\S`}),
+	})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ListApprovalRulesRequest](), Constraints: requiredResourceIdentity("sessionId")})
 	nonEmpty[protocol.ForgetApprovalRuleRequest](s, "id")
 }

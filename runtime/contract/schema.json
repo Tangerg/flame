@@ -405,7 +405,10 @@
           "type": "string"
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
         "scope": {
           "$ref": "#/$defs/ApprovalRuleScope"
@@ -414,7 +417,8 @@
           "type": "string"
         },
         "tool": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         }
       },
       "required": [
@@ -422,6 +426,59 @@
         "id",
         "scope",
         "tool"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scope": {
+                "const": "project"
+              }
+            },
+            "required": [
+              "scope"
+            ]
+          },
+          "then": {
+            "required": [
+              "dir"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scope": {
+                "const": "session"
+              }
+            },
+            "required": [
+              "scope"
+            ]
+          },
+          "then": {
+            "properties": {
+              "dir": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "scope": {
+                "const": "global"
+              }
+            },
+            "required": [
+              "scope"
+            ]
+          },
+          "then": {
+            "properties": {
+              "dir": false
+            }
+          }
+        }
       ]
     },
     "ApprovalRuleDecision": {

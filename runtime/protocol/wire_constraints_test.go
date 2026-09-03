@@ -582,6 +582,44 @@ func TestScheduleRequiresCron(t *testing.T) {
 	assertConstraintField(t, valid.ValidateWire(), "Schedule", "cron")
 }
 
+func TestApprovalRuleWireConstraintsCloseScopeShape(t *testing.T) {
+	t.Parallel()
+	valid := ApprovalRule{
+		ID: "rule_1", Scope: ApprovalRuleScopeGlobal, Tool: "shell",
+		Decision: ApprovalRuleDecisionAllow,
+	}
+	if err := valid.ValidateWire(); err != nil {
+		t.Fatalf("valid global ApprovalRule: %v", err)
+	}
+	project := valid
+	project.Scope, project.Dir = ApprovalRuleScopeProject, "/workspace"
+	if err := project.ValidateWire(); err != nil {
+		t.Fatalf("valid project ApprovalRule: %v", err)
+	}
+
+	tests := []struct {
+		name  string
+		field string
+		value ApprovalRule
+	}{
+		{name: "missing id", field: "id", value: func() ApprovalRule { value := valid; value.ID = ""; return value }()},
+		{name: "blank tool", field: "tool", value: func() ApprovalRule { value := valid; value.Tool = " \t"; return value }()},
+		{name: "project without directory", field: "dir", value: func() ApprovalRule { value := valid; value.Scope = ApprovalRuleScopeProject; return value }()},
+		{name: "session with directory", field: "dir", value: func() ApprovalRule {
+			value := valid
+			value.Scope, value.Dir = ApprovalRuleScopeSession, "/workspace"
+			return value
+		}()},
+		{name: "global with directory", field: "dir", value: func() ApprovalRule { value := valid; value.Dir = "/workspace"; return value }()},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			assertConstraintField(t, test.value.ValidateWire(), "ApprovalRule", test.field)
+		})
+	}
+}
+
 func TestMCPWireUnionsAcceptEveryLegalBranch(t *testing.T) {
 	t.Parallel()
 

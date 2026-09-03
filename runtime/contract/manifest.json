@@ -3805,6 +3805,47 @@
       ]
     },
     {
+      "type": "ApprovalRule",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "scope",
+              "operator": "equals",
+              "value": "project"
+            }
+          ],
+          "required": [
+            "dir"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "scope",
+              "operator": "equals",
+              "value": "session"
+            }
+          ],
+          "forbidden": [
+            "dir"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "scope",
+              "operator": "equals",
+              "value": "global"
+            }
+          ],
+          "forbidden": [
+            "dir"
+          ]
+        }
+      ]
+    },
+    {
       "type": "GetKnowledgeRequest",
       "rules": [
         {
@@ -7144,6 +7185,27 @@
         {
           "field": "projectRoot",
           "constraint": "nonEmpty"
+        }
+      ]
+    },
+    {
+      "type": "ApprovalRule",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "tool",
+          "constraint": "pattern(\"\\\\S\")"
         }
       ]
     },

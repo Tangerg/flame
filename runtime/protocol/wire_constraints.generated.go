@@ -1727,6 +1727,20 @@ func (h HookInfo) ValidateWire() error {
 	)
 }
 
+func (a ApprovalRule) ValidateWire() error {
+	return collectWireViolations("ApprovalRule",
+		requiredText("id", a.ID),
+		identity("id", a.ID),
+		maxLength("id", a.ID, 256),
+		requiredTextPattern("tool", a.Tool, "\\S"),
+		closedEnum("scope", string(a.Scope), []string{"session", "project", "global"}, false),
+		closedEnum("decision", string(a.Decision), []string{"allow", "deny"}, false),
+		requiredWhen(wireFieldEquals(a, "scope", "project"), "dir", a),
+		forbiddenWhen(wireFieldEquals(a, "scope", "session"), "dir", a),
+		forbiddenWhen(wireFieldEquals(a, "scope", "global"), "dir", a),
+	)
+}
+
 func (f FileContent) ValidateWire() error {
 	return collectWireViolations("FileContent",
 		positiveNumber("totalLines", f.TotalLines),
@@ -2528,13 +2542,6 @@ func (s SubscriptionLimits) ValidateWire() error {
 func (a ApprovalModeResult) ValidateWire() error {
 	return collectWireViolations("ApprovalModeResult",
 		closedEnum("mode", string(a.Mode), []string{"safe", "balanced", "yolo"}, false),
-	)
-}
-
-func (a ApprovalRule) ValidateWire() error {
-	return collectWireViolations("ApprovalRule",
-		closedEnum("scope", string(a.Scope), []string{"session", "project", "global"}, false),
-		closedEnum("decision", string(a.Decision), []string{"allow", "deny"}, false),
 	)
 }
 

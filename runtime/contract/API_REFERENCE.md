@@ -794,6 +794,10 @@ TypeScript validator from this single registry projection.
 | `HookInfo` | `timeoutMillis` | `nonNegative` |
 | `HookInfo` | `timeoutMillis` | `maximum(300000)` |
 | `SetHookTrustRequest` | `projectRoot` | `nonEmpty` |
+| `ApprovalRule` | `id` | `nonEmpty` |
+| `ApprovalRule` | `id` | `identity` |
+| `ApprovalRule` | `id` | `maxLength(256)` |
+| `ApprovalRule` | `tool` | `pattern("\\S")` |
 | `ListApprovalRulesRequest` | `sessionId` | `nonEmpty` |
 | `ListApprovalRulesRequest` | `sessionId` | `identity` |
 | `ListApprovalRulesRequest` | `sessionId` | `maxLength(256)` |
