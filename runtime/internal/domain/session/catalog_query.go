@@ -224,6 +224,17 @@ func (r CatalogRead) After() (CatalogAnchor, bool) {
 	return *r.after, true
 }
 
+// ValidateCatalog checks one complete unfiltered Session catalog. Complete reads
+// have no overfetch ceiling, but they share the page contract's aggregate,
+// identity, and favorite/recency order invariants.
+func ValidateCatalog(values []Session) error {
+	read, err := NewCatalogRead(AllCatalogEntries(), nil, max(1, len(values)))
+	if err != nil {
+		return err
+	}
+	return read.ValidatePage(values)
+}
+
 // ValidatePage checks a store page before Application resolves live state or
 // mints a continuation from it. Store order is favorite first, then update time
 // and Session identity descending; every returned value must strictly follow

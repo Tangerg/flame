@@ -162,6 +162,51 @@ func TestCoordinatorSessionCRUD(t *testing.T) {
 	}
 }
 
+func TestCoordinatorListProtectsCompleteCatalog(t *testing.T) {
+	latest := time.Unix(30, 0).UTC()
+	favoriteB := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_b", Favorite: true, StartedAt: latest.Add(-time.Second), UpdatedAt: latest,
+	})
+	favoriteA := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_a", Favorite: true, StartedAt: latest.Add(-time.Second), UpdatedAt: latest,
+	})
+	older := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_old", Favorite: true, StartedAt: latest.Add(-2 * time.Second), UpdatedAt: latest.Add(-time.Second),
+	})
+	unfavorite := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "ses_z", StartedAt: latest.Add(-time.Second), UpdatedAt: latest.Add(time.Second),
+	})
+	for name, values := range map[string][]session.Session{
+		"invalid aggregate":  {{}},
+		"duplicate identity": {favoriteB, favoriteB},
+		"favorite order":     {unfavorite, favoriteB},
+		"update order":       {older, favoriteB},
+		"identity tie order": {favoriteA, favoriteB},
+	} {
+		t.Run(name, func(t *testing.T) {
+			coordinator := mustNewCoordinator(testDependencies(
+				&crudStores{session: &crudSessionStore{sessions: values}}, Dependencies{},
+			))
+			if _, err := coordinator.List(t.Context()); err == nil {
+				t.Fatal("List accepted a broken complete Session catalog")
+			}
+		})
+	}
+
+	stored := []session.Session{favoriteB, favoriteA, older, unfavorite}
+	coordinator := mustNewCoordinator(testDependencies(
+		&crudStores{session: &crudSessionStore{sessions: stored}}, Dependencies{},
+	))
+	listed, err := coordinator.List(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	listed[0] = session.Session{}
+	if got := stored[0].ID(); got != favoriteB.ID() {
+		t.Fatalf("Session store row changed through List result: %q", got)
+	}
+}
+
 func TestPrepareScheduledBuildsOneUnpersistedInitialAggregate(t *testing.T) {
 	store := &crudSessionStore{getErr: session.ErrNotFound}
 	createdAt := time.Unix(9, 0).UTC()

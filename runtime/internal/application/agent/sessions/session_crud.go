@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -33,7 +34,14 @@ type Patch struct {
 
 // List returns every user-facing Session, newest-updated first.
 func (c *Coordinator) List(ctx context.Context) ([]session.Session, error) {
-	return c.sessions.List(ctx)
+	values, err := c.sessions.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := session.ValidateCatalog(values); err != nil {
+		return nil, err
+	}
+	return slices.Clone(values), nil
 }
 
 // Get returns one saved Session by identity.
