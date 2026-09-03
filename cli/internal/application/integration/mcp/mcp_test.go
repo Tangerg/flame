@@ -61,6 +61,11 @@ func TestServerAndAuthorizationStatesRejectContradictoryData(t *testing.T) {
 	if err := ValidateAuthorizationAttempt(attempt); err != nil {
 		t.Fatal(err)
 	}
+	attempt.CreatedAt = time.Time{}
+	if err := ValidateAuthorizationAttempt(attempt); err == nil {
+		t.Fatal("authorization without creation time was accepted")
+	}
+	attempt.CreatedAt = now
 	attempt.Status.Type = protocol.MCPAuthorizationAttemptFailed
 	if err := ValidateAuthorizationAttempt(attempt); err == nil {
 		t.Fatal("failed authorization without terminal data was accepted")

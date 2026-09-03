@@ -630,13 +630,10 @@ func (a AuthorizationReference) Validate() error {
 }
 
 // ValidateAuthorizationAttempt composes the Runtime wire contract with the
-// observer's chronological requirement.
+// observer's cross-timestamp chronological requirement.
 func ValidateAuthorizationAttempt(attempt protocol.MCPAuthorizationAttempt) error {
 	if err := protocol.ValidateWireTree(attempt); err != nil {
 		return fmt.Errorf("MCP authorization attempt: %w", err)
-	}
-	if attempt.CreatedAt.IsZero() {
-		return errors.New("MCP authorization attempt creation time is missing")
 	}
 	if attempt.FinishedAt != nil && attempt.FinishedAt.Before(attempt.CreatedAt) {
 		return errors.New("MCP authorization finished before it started")
