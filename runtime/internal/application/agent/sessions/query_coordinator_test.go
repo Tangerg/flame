@@ -30,9 +30,26 @@ type fakeTranscript struct {
 	limit         int
 }
 
+type rawTranscriptPageReader struct {
+	*fakeTranscript
+	page []transcript.SequencedItem
+}
+
+func (r *rawTranscriptPageReader) PageSessionItems(context.Context, string, transcript.SequenceOrder, int64, int) ([]transcript.SequencedItem, error) {
+	return r.page, nil
+}
+
+func (r *rawTranscriptPageReader) PageRunItems(context.Context, string, transcript.SequenceOrder, int64, int) ([]transcript.SequencedItem, error) {
+	return r.page, nil
+}
+
+func (r *rawTranscriptPageReader) PageRunTreeItems(context.Context, string, transcript.SequenceOrder, int64, int) ([]transcript.SequencedItem, error) {
+	return r.page, nil
+}
+
 func (f *fakeTranscript) PageSessionItems(_ context.Context, sessionID string, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error) {
 	f.session = sessionID
-	return f.page(order, fromSequence, limit, func(transcript.Item) bool { return true })
+	return f.page(order, fromSequence, limit, func(item transcript.Item) bool { return item.SessionID() == sessionID })
 }
 
 func (f *fakeTranscript) PageRunItems(_ context.Context, runID string, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error) {
@@ -110,6 +127,15 @@ type rawRunPageReader struct {
 
 func (r *rawRunPageReader) PageRuns(context.Context, string, []run.Status, bool, int64, string, int) ([]run.Run, error) {
 	return r.page, nil
+}
+
+type rawAncestorRunReader struct {
+	*fakeRuns
+	ancestors []run.Run
+}
+
+func (r *rawAncestorRunReader) RunsWithAncestors(context.Context, []string) ([]run.Run, error) {
+	return r.ancestors, nil
 }
 
 func (f *fakeRuns) Run(_ context.Context, runID string) (run.Run, bool, error) {
@@ -260,11 +286,17 @@ func seeksBefore(at int64, id string, beforeAt int64, beforeID string) bool {
 // sequencedItems builds a session's items, every one belonging to run_1, so a page
 // of them has a run to be threaded onto.
 func sequencedItems(count int) []transcript.SequencedItem {
+	return sequencedItemsFor("ses_1", "run_1", "it", count)
+}
+
+func sequencedItemsFor(sessionID, runID, itemPrefix string, count int) []transcript.SequencedItem {
 	out := make([]transcript.SequencedItem, 0, count)
 	for i := 1; i <= count; i++ {
 		out = append(out, transcript.SequencedItem{
 			Sequence: int64(i),
-			Item:     testsupport.MustRestoreItem(testsupport.ItemInput{ID: "it_" + strconv.Itoa(i), RunID: "run_1"}),
+			Item: testsupport.MustRestoreItem(testsupport.ItemInput{
+				SessionID: sessionID, RunID: runID, ID: itemPrefix + "_" + strconv.Itoa(i),
+			}),
 		})
 	}
 	return out
@@ -279,7 +311,11 @@ func queryRunIDs(runs []run.Run) []string {
 }
 
 func queryRun(id string) run.Run {
-	return testsupport.MustRestoreRun(run.Snapshot{ID: id})
+	return queryRunForSession("ses_1", id)
+}
+
+func queryRunForSession(sessionID, id string) run.Run {
+	return testsupport.MustRestoreRun(run.Snapshot{ID: id, SessionID: sessionID})
 }
 
 func TestCoordinatorReadsDelegateToProjections(t *testing.T) {
@@ -310,7 +346,9 @@ func TestCoordinatorReadsDelegateToProjections(t *testing.T) {
 func TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor(t *testing.T) {
 	ctx := context.Background()
 	tx := &fakeTranscript{items: sequencedItems(5)}
-	c := newQueryCoordinator(t, QueryDependencies{Transcript: tx, Runs: &fakeRuns{}, Sessions: &fakeSessions{}})
+	c := newQueryCoordinator(t, QueryDependencies{
+		Transcript: tx, Runs: &fakeRuns{runs: []run.Run{queryRun("run_1")}}, Sessions: &fakeSessions{},
+	})
 
 	first, err := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, "", explicitPageLimit(t, 2))
 	if err != nil {
@@ -343,17 +381,141 @@ func TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor(t *testing.T) {
 	}
 }
 
+func TestListItemPageRejectsBrokenTranscriptStoreOutput(t *testing.T) {
+	valid := sequencedItems(3)
+	otherSession := sequencedItemsFor("ses_other", "run_1", "other", 1)[0]
+	otherRun := sequencedItemsFor("ses_1", "run_2", "other-run", 1)[0]
+	cursor, err := pagination.Encode(itemPageNamespace, []string{"ses_1", "", "false", "oldest"}, []string{"1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name   string
+		scope  ItemScope
+		order  transcript.SequenceOrder
+		cursor string
+		rows   []transcript.SequencedItem
+	}{
+		{name: "invalid aggregate", scope: Items("ses_1"), order: transcript.OldestFirst, rows: []transcript.SequencedItem{{Sequence: 1}}},
+		{name: "invalid sequence", scope: Items("ses_1"), order: transcript.OldestFirst, rows: []transcript.SequencedItem{{Item: valid[0].Item}}},
+		{name: "duplicate Item", scope: Items("ses_1"), order: transcript.OldestFirst, rows: []transcript.SequencedItem{valid[0], {Sequence: 2, Item: valid[0].Item}}},
+		{name: "oldest-first order", scope: Items("ses_1"), order: transcript.OldestFirst, rows: []transcript.SequencedItem{valid[1], valid[0]}},
+		{name: "newest-first order", scope: Items("ses_1"), order: transcript.NewestFirst, rows: []transcript.SequencedItem{valid[0], valid[1]}},
+		{name: "cursor replay", scope: Items("ses_1"), order: transcript.OldestFirst, cursor: cursor, rows: valid[:1]},
+		{name: "Session scope", scope: Items("ses_1"), order: transcript.OldestFirst, rows: []transcript.SequencedItem{otherSession}},
+		{name: "Run scope", scope: RunItems("run_1"), order: transcript.OldestFirst, rows: []transcript.SequencedItem{otherRun}},
+		{name: "excess overfetch", scope: Items("ses_1"), order: transcript.OldestFirst, rows: valid},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			reader := &rawTranscriptPageReader{fakeTranscript: &fakeTranscript{}, page: test.rows}
+			coordinator := newQueryCoordinator(t, QueryDependencies{
+				Transcript: reader,
+				Runs:       &fakeRuns{history: []run.Run{queryRun("run_1")}},
+				Sessions:   &fakeSessions{},
+			})
+			if _, err := coordinator.ListItemPage(t.Context(), test.scope, test.order, test.cursor, explicitPageLimit(t, 1)); err == nil {
+				t.Fatal("ListItemPage accepted broken transcript store output")
+			}
+		})
+	}
+}
+
+func TestListItemPageRejectsBrokenRunAncestorClosure(t *testing.T) {
+	root := queryRun("run_root")
+	child := testsupport.MustRestoreRun(run.Snapshot{
+		ID: "run_child", SessionID: "ses_1",
+		Lineage: run.Lineage{SpawnedByItemID: "item_spawn", ParentRunID: root.ID(), RootRunID: root.ID()},
+	})
+	unrelated := queryRun("run_unrelated")
+	otherRoot := queryRunForSession("ses_other", root.ID())
+	otherChild := testsupport.MustRestoreRun(run.Snapshot{
+		ID: child.ID(), SessionID: "ses_other",
+		Lineage: run.Lineage{SpawnedByItemID: "item_spawn", ParentRunID: otherRoot.ID(), RootRunID: otherRoot.ID()},
+	})
+	cycleA := testsupport.MustRestoreRun(run.Snapshot{
+		ID: "run_cycle_a", SessionID: "ses_1",
+		Lineage: run.Lineage{SpawnedByItemID: "item_spawn_a", ParentRunID: "run_cycle_b", RootRunID: "run_cycle_root"},
+	})
+	cycleB := testsupport.MustRestoreRun(run.Snapshot{
+		ID: "run_cycle_b", SessionID: "ses_1",
+		Lineage: run.Lineage{SpawnedByItemID: "item_spawn_b", ParentRunID: "run_cycle_a", RootRunID: "run_cycle_root"},
+	})
+	item := sequencedItemsFor("ses_1", child.ID(), "item", 1)
+	cycleItem := sequencedItemsFor("ses_1", cycleA.ID(), "cycle", 1)
+	target := queryRun("run_target")
+	for _, test := range []struct {
+		name      string
+		scope     ItemScope
+		itemRows  []transcript.SequencedItem
+		ancestors []run.Run
+	}{
+		{name: "missing referenced Run", scope: Items("ses_1"), itemRows: item},
+		{name: "invalid Run", scope: Items("ses_1"), itemRows: item, ancestors: []run.Run{{}}},
+		{name: "duplicate Run", scope: Items("ses_1"), itemRows: item, ancestors: []run.Run{child, child, root}},
+		{name: "missing parent", scope: Items("ses_1"), itemRows: item, ancestors: []run.Run{child}},
+		{name: "extra Run", scope: Items("ses_1"), itemRows: item, ancestors: []run.Run{child, root, unrelated}},
+		{name: "cross-Session Run", scope: Items("ses_1"), itemRows: item, ancestors: []run.Run{otherChild, otherRoot}},
+		{name: "cyclic ancestry", scope: Items("ses_1"), itemRows: cycleItem, ancestors: []run.Run{cycleA, cycleB}},
+		{name: "outside requested subtree", scope: RunTreeItems(target.ID()), itemRows: item, ancestors: []run.Run{child, root}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			transcriptReader := &rawTranscriptPageReader{fakeTranscript: &fakeTranscript{}, page: test.itemRows}
+			runReader := &rawAncestorRunReader{
+				fakeRuns: &fakeRuns{history: []run.Run{target}}, ancestors: test.ancestors,
+			}
+			coordinator := newQueryCoordinator(t, QueryDependencies{
+				Transcript: transcriptReader, Runs: runReader, Sessions: &fakeSessions{},
+			})
+			if _, err := coordinator.ListItemPage(t.Context(), test.scope, transcript.OldestFirst, "", pagination.DefaultLimit()); err == nil {
+				t.Fatal("ListItemPage accepted a broken Run ancestor closure")
+			}
+		})
+	}
+}
+
+func TestListItemPageAcceptsReferencedForestAndIsolatesRunSlice(t *testing.T) {
+	first := queryRun("run_first")
+	second := queryRun("run_second")
+	itemRows := []transcript.SequencedItem{
+		sequencedItemsFor("ses_1", first.ID(), "first", 1)[0],
+		sequencedItemsFor("ses_1", second.ID(), "second", 2)[1],
+	}
+	ancestorRows := []run.Run{second, first}
+	coordinator := newQueryCoordinator(t, QueryDependencies{
+		Transcript: &rawTranscriptPageReader{fakeTranscript: &fakeTranscript{}, page: itemRows},
+		Runs:       &rawAncestorRunReader{fakeRuns: &fakeRuns{}, ancestors: ancestorRows},
+		Sessions:   &fakeSessions{},
+	})
+	page, err := coordinator.ListItemPage(t.Context(), Items("ses_1"), transcript.OldestFirst, "", pagination.DefaultLimit())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := queryRunIDs(page.Runs); !slices.Equal(got, []string{second.ID(), first.ID()}) {
+		t.Fatalf("Run forest = %v", got)
+	}
+	page.Runs[0] = run.Run{}
+	if got := ancestorRows[0].ID(); got != second.ID() {
+		t.Fatalf("ancestor store row changed through page result: %q", got)
+	}
+}
+
 // A cursor from another session would page this one against positions it never
 // enumerated. Restarting from the top instead of refusing would hand the client
 // rows it had already read, as if they were new. It is the items cursor-binding
 // fixture.
 func TestListItemPageRefusesAForeignCursor(t *testing.T) {
 	ctx := context.Background()
-	tx := &fakeTranscript{items: sequencedItems(5)}
+	otherRun := queryRunForSession("ses_other", "run_other")
+	tx := &fakeTranscript{items: append(
+		sequencedItemsFor("ses_other", otherRun.ID(), "other", 5),
+		sequencedItems(5)...,
+	)}
 	c := newQueryCoordinator(t, QueryDependencies{
 		Transcript: tx,
-		Runs:       &fakeRuns{history: []run.Run{queryRun("run_1")}},
-		Sessions:   &fakeSessions{},
+		Runs: &fakeRuns{
+			runs: []run.Run{otherRun, queryRun("run_1")}, history: []run.Run{otherRun, queryRun("run_1")},
+		},
+		Sessions: &fakeSessions{},
 	})
 
 	other, err := c.ListItemPage(ctx, Items("ses_other"), transcript.OldestFirst, "", explicitPageLimit(t, 2))
@@ -394,7 +556,9 @@ func TestListItemPageRefusesAForeignCursor(t *testing.T) {
 func TestListItemPageWalksBackwardFromTheTail(t *testing.T) {
 	ctx := context.Background()
 	tx := &fakeTranscript{items: sequencedItems(5)}
-	c := newQueryCoordinator(t, QueryDependencies{Transcript: tx, Runs: &fakeRuns{}, Sessions: &fakeSessions{}})
+	c := newQueryCoordinator(t, QueryDependencies{
+		Transcript: tx, Runs: &fakeRuns{runs: []run.Run{queryRun("run_1")}}, Sessions: &fakeSessions{},
+	})
 
 	first, err := c.ListItemPage(ctx, Items("ses_1"), transcript.NewestFirst, "", explicitPageLimit(t, 2))
 	if err != nil {
@@ -877,7 +1041,7 @@ func TestListRunPageRefusesACursorFromAnotherQuery(t *testing.T) {
 	)
 	c := newQueryCoordinator(t, QueryDependencies{
 		Transcript: &fakeTranscript{items: sequencedItems(5)},
-		Runs:       &fakeRuns{history: runHistory},
+		Runs:       &fakeRuns{runs: runHistory, history: runHistory},
 		Interrupts: &fakeInterrupts{pending: testSessionPendingRuns("run_1", "run_2", "run_3")},
 		Sessions:   &fakeSessions{},
 	})

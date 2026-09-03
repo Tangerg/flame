@@ -215,6 +215,9 @@ func (c *QueryCoordinator) ListItemPage(ctx context.Context, scope ItemScope, or
 	if err != nil {
 		return ItemPage{}, err
 	}
+	if err := validateItemRows(sequenced, scope, order, fromSequence, size+1); err != nil {
+		return ItemPage{}, err
+	}
 	page, err := pagination.PageOf(sequenced, size, itemPageNamespace, filters,
 		func(entry transcript.SequencedItem) []string {
 			return []string{strconv.FormatInt(entry.Sequence, 10)}
@@ -231,7 +234,131 @@ func (c *QueryCoordinator) ListItemPage(ctx context.Context, scope ItemScope, or
 	if err != nil {
 		return ItemPage{}, err
 	}
+	if err := validateItemRunClosure(scope, items, runs); err != nil {
+		return ItemPage{}, err
+	}
+	runs = slices.Clone(runs)
 	return ItemPage{Items: items, NextCursor: page.NextCursor, Runs: runs}, nil
+}
+
+func validateItemRows(rows []transcript.SequencedItem, scope ItemScope, order transcript.SequenceOrder, anchor int64, maximum int) error {
+	if len(rows) > maximum {
+		return fmt.Errorf("sessions: transcript store returned %d rows, maximum %d", len(rows), maximum)
+	}
+	seenItems := make(map[string]struct{}, len(rows))
+	for index, entry := range rows {
+		if entry.Sequence <= 0 {
+			return fmt.Errorf("sessions: transcript store row %d has invalid sequence %d", index+1, entry.Sequence)
+		}
+		if err := entry.Item.Validate(); err != nil {
+			return fmt.Errorf("sessions: transcript store row %d is invalid: %w", index+1, err)
+		}
+		if err := scope.validateDirectItem(entry.Item); err != nil {
+			return err
+		}
+		if _, duplicate := seenItems[entry.Item.ID()]; duplicate {
+			return fmt.Errorf("sessions: transcript page repeats Item %q", entry.Item.ID())
+		}
+		seenItems[entry.Item.ID()] = struct{}{}
+		if anchor > 0 && !sequenceFollows(entry.Sequence, anchor, order) {
+			return fmt.Errorf("sessions: transcript Item %q does not follow the page cursor", entry.Item.ID())
+		}
+		if index > 0 && !sequenceFollows(entry.Sequence, rows[index-1].Sequence, order) {
+			return fmt.Errorf("sessions: transcript Item %q is out of order after %q", entry.Item.ID(), rows[index-1].Item.ID())
+		}
+	}
+	return nil
+}
+
+func (i ItemScope) validateDirectItem(item transcript.Item) error {
+	switch i.kind {
+	case sessionItemScope:
+		if item.SessionID() != i.subjectID {
+			return fmt.Errorf("sessions: transcript Item %q does not belong to Session %q", item.ID(), i.subjectID)
+		}
+	case runItemScope:
+		if !i.includeDescendants && item.RunID() != i.subjectID {
+			return fmt.Errorf("sessions: transcript Item %q does not belong to Run %q", item.ID(), i.subjectID)
+		}
+	default:
+		return errInvalidItemScope
+	}
+	return nil
+}
+
+func sequenceFollows(sequence, previous int64, order transcript.SequenceOrder) bool {
+	if order == transcript.NewestFirst {
+		return sequence < previous
+	}
+	return sequence > previous
+}
+
+func validateItemRunClosure(scope ItemScope, items []transcript.Item, values []run.Run) error {
+	runsByID := make(map[string]run.Run, len(values))
+	for index, value := range values {
+		if err := value.Validate(); err != nil {
+			return fmt.Errorf("sessions: Item page Run[%d] is invalid: %w", index, err)
+		}
+		if _, duplicate := runsByID[value.ID()]; duplicate {
+			return fmt.Errorf("sessions: Item page repeats Run %q", value.ID())
+		}
+		runsByID[value.ID()] = value
+	}
+	if err := validateItemRunTrees(runsByID); err != nil {
+		return err
+	}
+
+	required := make(map[string]struct{}, len(values))
+	for _, item := range items {
+		owner, found := runsByID[item.RunID()]
+		if !found {
+			return fmt.Errorf("sessions: Item page omits Run %q referenced by Item %q", item.RunID(), item.ID())
+		}
+		if owner.SessionID() != item.SessionID() {
+			return fmt.Errorf("sessions: Item %q and Run %q belong to different Sessions", item.ID(), owner.ID())
+		}
+		inRequestedTree := scope.kind == sessionItemScope
+		current := owner
+		for {
+			if current.SessionID() != item.SessionID() {
+				return fmt.Errorf("sessions: Run %q crosses the Session boundary for Item %q", current.ID(), item.ID())
+			}
+			required[current.ID()] = struct{}{}
+			if current.ID() == scope.subjectID {
+				inRequestedTree = true
+			}
+			if current.Lineage().IsRoot() {
+				break
+			}
+			parentID := current.Lineage().ParentRunID
+			parent, exists := runsByID[parentID]
+			if !exists {
+				return fmt.Errorf("sessions: Item page omits parent Run %q of %q", parentID, current.ID())
+			}
+			current = parent
+		}
+		if !inRequestedTree {
+			return fmt.Errorf("sessions: Item %q belongs outside Run subtree %q", item.ID(), scope.subjectID)
+		}
+	}
+	if len(required) != len(runsByID) {
+		return errors.New("sessions: Item page contains a Run outside its referenced ancestor closure")
+	}
+	return nil
+}
+
+func validateItemRunTrees(values map[string]run.Run) error {
+	byRoot := make(map[string][]run.TreeMember)
+	for _, value := range values {
+		rootID := value.Lineage().TreeRootID(value.ID())
+		byRoot[rootID] = append(byRoot[rootID], run.TreeMember{RunID: value.ID(), Lineage: value.Lineage()})
+	}
+	for rootID, members := range byRoot {
+		if _, err := run.NewTree(rootID, members); err != nil {
+			return fmt.Errorf("sessions: Item page Run closure: %w", err)
+		}
+	}
+	return nil
 }
 
 // PlanState returns a session's optional Plan projection. An existing Session
