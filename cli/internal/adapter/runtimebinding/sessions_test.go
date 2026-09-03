@@ -141,6 +141,23 @@ func TestSessionCatalogRejectsPagesOutsideWorkspaceFilter(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 }
 
+func TestSessionCatalogRejectsPagesOutsideSearchFilter(t *testing.T) {
+	t.Parallel()
+	runtime := &Connection{sessionCatalog: sessionCatalogStub{list: func(protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
+		return protocol.NewPage([]protocol.Session{{
+			ID: "ses_other", Title: "unrelated", Status: protocol.SessionStatusIdle,
+			Provider: testSessionProvider, Model: testSessionModel,
+			Workspace: testProtocolWorkspace("/other", "/other", protocol.WorkspaceAvailable),
+			CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
+		}}), nil
+	}}, meta: requestMeta("test")}
+
+	_, err := runtime.ListSessions(t.Context(), agent.SessionQuery{
+		Search: "release", PageSize: agent.DefaultPageSize(),
+	})
+	requireRuntimeContractViolation(t, err)
+}
+
 func (s sessionCatalogStub) CreateSession(_ context.Context, request protocol.CreateSessionRequest, _ flameruntime.CommandOptions) (*protocol.Session, error) {
 	if s.create != nil {
 		return s.create(request)

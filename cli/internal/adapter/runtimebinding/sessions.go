@@ -3,6 +3,7 @@ package runtimebinding
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -67,6 +68,13 @@ func projectSessionPage(page *protocol.Page[protocol.Session], query agent.Sessi
 				query.Workspace, projected.ID, projected.Workspace.Path,
 			)
 		}
+		if query.Search != "" && !sessionMatchesSearch(projected, query.Search) {
+			return agent.SessionPage{}, runtimeContractViolation(
+				"list sessions for search %q returned non-matching session %q",
+				query.Search,
+				projected.ID,
+			)
+		}
 		if len(result.Items) != 0 {
 			previous := result.Items[len(result.Items)-1]
 			misordered := projected.Favorite && !previous.Favorite
@@ -86,6 +94,12 @@ func projectSessionPage(page *protocol.Page[protocol.Session], query agent.Sessi
 		return agent.SessionPage{}, runtimeContractViolation("list sessions returned an invalid projection: %v", err)
 	}
 	return result, nil
+}
+
+func sessionMatchesSearch(value agent.Session, search string) bool {
+	search = strings.ToLower(search)
+	return strings.Contains(strings.ToLower(value.Title), search) ||
+		strings.Contains(strings.ToLower(value.Workspace.Path), search)
 }
 
 func projectSession(value protocol.Session) (agent.Session, error) {
