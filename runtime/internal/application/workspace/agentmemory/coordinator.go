@@ -3,8 +3,10 @@
 package agentmemory
 
 import (
+	"cmp"
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -22,7 +24,9 @@ type RootResolver interface {
 }
 
 // Store is the review-oriented persistence port consumed by this coordinator.
-// Extraction and search declare their own narrower consumer views.
+// List returns one complete target without presentation ordering; the
+// coordinator owns that cross-item policy. Extraction and search declare their
+// own narrower consumer views.
 type Store interface {
 	List(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error)
 	Review(ctx context.Context, id domain.ItemID, decision domain.ReviewDecision, now time.Time) error
@@ -71,7 +75,32 @@ func (c *Coordinator) List(ctx context.Context, scope domain.Scope, cwd string) 
 	if err != nil {
 		return nil, err
 	}
-	return c.store.List(ctx, scope, project)
+	items, err := c.store.List(ctx, scope, project)
+	if err != nil {
+		return nil, err
+	}
+	items = slices.Clone(items)
+	slices.SortFunc(items, compareManagementItems)
+	return items, nil
+}
+
+func compareManagementItems(a, b domain.Item) int {
+	if a.Status != b.Status {
+		if a.Status == domain.StatusPending {
+			return -1
+		}
+		return 1
+	}
+	if a.Pinned != b.Pinned {
+		if a.Pinned {
+			return -1
+		}
+		return 1
+	}
+	if order := b.UpdatedAt.Compare(a.UpdatedAt); order != 0 {
+		return order
+	}
+	return cmp.Compare(b.ID.String(), a.ID.String())
 }
 
 // Review accepts or rejects an extracted proposal.

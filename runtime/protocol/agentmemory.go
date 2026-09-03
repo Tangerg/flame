@@ -44,7 +44,8 @@ const (
 	AgentMemoryStatusPending AgentMemoryStatus = "pending"
 )
 
-// AgentMemoryList is the agentMemory.list result.
+// AgentMemoryList is the agentMemory.list result. Items are ordered pending
+// first, then pinned first, then by UpdatedAt and ID descending.
 type AgentMemoryList struct {
 	Items []AgentMemoryItem `json:"items"`
 }

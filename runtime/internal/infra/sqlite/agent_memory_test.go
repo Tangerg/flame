@@ -393,8 +393,10 @@ func TestAgentMemoryReconcilePublishesOnlyAvailableTargetCapacity(t *testing.T) 
 	if err != nil || len(items) != agentmemory.MaxVisiblePerTarget {
 		t.Fatalf("List = (%d items, %v)", len(items), err)
 	}
-	if items[0].Content != "highest priority proposal" || items[0].Status != agentmemory.StatusPending {
-		t.Fatalf("capacity proposal = %+v", items[0])
+	if !slices.ContainsFunc(items, func(item agentmemory.Item) bool {
+		return item.Content == "highest priority proposal" && item.Status == agentmemory.StatusPending
+	}) {
+		t.Fatalf("capacity proposal is missing: %+v", items)
 	}
 	if slices.ContainsFunc(items, func(item agentmemory.Item) bool {
 		return item.Content == "lower priority proposal"

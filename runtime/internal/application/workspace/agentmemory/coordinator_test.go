@@ -3,6 +3,7 @@ package agentmemory
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -25,6 +26,7 @@ func testMemoryItemID(digit byte) domain.ItemID {
 type fakeStore struct {
 	listScope   domain.Scope
 	listProject string
+	listed      []domain.Item
 	updatedAt   time.Time
 	content     *string
 	pinned      *bool
@@ -35,6 +37,9 @@ type fakeStore struct {
 
 func (f *fakeStore) List(_ context.Context, scope domain.Scope, project string) ([]domain.Item, error) {
 	f.listScope, f.listProject = scope, project
+	if f.listed != nil {
+		return f.listed, f.err
+	}
 	return []domain.Item{{ID: testMemoryItemID('1'), Scope: scope, Project: project}}, nil
 }
 
@@ -78,6 +83,54 @@ func TestListResolvesProjectAtApplicationBoundary(t *testing.T) {
 	}
 	if store.listScope != domain.ScopeUser || store.listProject != "" {
 		t.Fatalf("user target = %v %q", store.listScope, store.listProject)
+	}
+}
+
+func TestListOwnsManagementOrder(t *testing.T) {
+	t.Parallel()
+	updated := time.Date(2026, 9, 4, 8, 0, 0, 0, time.UTC)
+	item := func(id byte, status domain.Status, pinned bool, updatedAt time.Time) domain.Item {
+		origin := domain.OriginAuto
+		if status == domain.StatusActive {
+			origin = domain.OriginUser
+		}
+		return domain.Item{
+			ID: testMemoryItemID(id), Scope: domain.ScopeProject, Project: "/repo",
+			Content: string(id), Origin: origin, Status: status, Pinned: pinned,
+			CreatedAt: updated, UpdatedAt: updatedAt,
+		}
+	}
+	store := &fakeStore{listed: []domain.Item{
+		item('6', domain.StatusActive, false, updated.Add(time.Hour)),
+		item('1', domain.StatusPending, true, updated),
+		item('4', domain.StatusPending, false, updated.Add(time.Hour)),
+		item('5', domain.StatusActive, true, updated),
+		item('2', domain.StatusPending, true, updated),
+		item('0', domain.StatusPending, true, updated.Add(time.Hour)),
+	}}
+	c := New(Config{Store: store, Roots: rootResolver{root: "/repo"}})
+
+	items, err := c.List(t.Context(), domain.ScopeProject, "/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := make([]string, 0, len(items))
+	for _, value := range items {
+		got = append(got, value.ID.String())
+	}
+	want := []string{
+		testMemoryItemID('0').String(),
+		testMemoryItemID('2').String(),
+		testMemoryItemID('1').String(),
+		testMemoryItemID('4').String(),
+		testMemoryItemID('5').String(),
+		testMemoryItemID('6').String(),
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("List order = %v, want %v", got, want)
+	}
+	if store.listed[0].ID != testMemoryItemID('6') {
+		t.Fatal("List mutated persistence-owned rows")
 	}
 }
 

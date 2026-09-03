@@ -298,9 +298,9 @@ func (a *AgentMemoryStore) SearchCorpus(ctx context.Context, project string) ([]
 	return items, nil
 }
 
-// List returns the (scope, project) items the review surface shows: active and
-// pending, ordered pending-first (they need attention), then pinned, then most
-// recently updated. Rejected tombstones are hidden.
+// List returns the complete bounded (scope, project) item set consumed by the
+// review use case. Rejected tombstones are hidden; Application owns the
+// management order.
 func (a *AgentMemoryStore) List(ctx context.Context, scope agentmemory.Scope, project string) ([]agentmemory.Item, error) {
 	token, err := memoryPartition(scope, project)
 	if err != nil {
@@ -310,7 +310,6 @@ func (a *AgentMemoryStore) List(ctx context.Context, scope agentmemory.Scope, pr
 		`SELECT `+agentMemoryItemColumns+`
 		 FROM agent_memory_items
 		 WHERE scope = ? AND project = ? AND status IN ('active','pending')
-		 ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END, pinned DESC, updated_at DESC
 		 LIMIT ?`,
 		"agent memory", agentmemory.MaxVisiblePerTarget, token, project)
 }
