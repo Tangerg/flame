@@ -27,12 +27,16 @@ type mcpBindingStub struct {
 	authErr      error
 	authGet      *protocol.MCPAuthorizationAttempt
 	now          time.Time
+	servers      []protocol.MCPServer
 	createResult *protocol.MCPServer
 	updateResult *protocol.MCPServer
 }
 
 func (m *mcpBindingStub) ListMCPServers(_ context.Context, options flameruntime.CallOptions) (*protocol.Page[protocol.MCPServer], error) {
 	m.assertMeta(options.RequestMeta)
+	if m.servers != nil {
+		return protocol.NewPage(m.servers), nil
+	}
 	return protocol.NewPage([]protocol.MCPServer{wireMCPServer()}), nil
 }
 
@@ -248,6 +252,19 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 	}
 	if len(stub.actions) != 8 {
 		t.Fatalf("MCP actions = %v", stub.actions)
+	}
+}
+
+func TestMCPAdapterRejectsOutOfOrderServerCatalog(t *testing.T) {
+	t.Parallel()
+	first, second := wireMCPServer(), wireMCPServer()
+	first.Name, second.Name = "zeta", "alpha"
+	stub := &mcpBindingStub{t: t, servers: []protocol.MCPServer{first, second}}
+	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
+
+	if _, err := runtime.Servers(t.Context()); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) ||
+		!strings.Contains(err.Error(), "out of catalog order") {
+		t.Fatalf("Servers error = %v, want ordered-catalog contract violation", err)
 	}
 }
 

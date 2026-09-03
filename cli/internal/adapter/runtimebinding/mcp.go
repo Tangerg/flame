@@ -37,9 +37,23 @@ func (r *Connection) Servers(ctx context.Context) ([]mcp.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValuesFallible("list MCP servers", values, projectMCPServer, func(server mcp.Server) string {
+	servers, err := projectUniqueValuesFallible("list MCP servers", values, projectMCPServer, func(server mcp.Server) string {
 		return server.Name
 	})
+	if err != nil {
+		return nil, err
+	}
+	for index := 1; index < len(servers); index++ {
+		previous, current := servers[index-1], servers[index]
+		if current.Name < previous.Name {
+			return nil, runtimeContractViolation(
+				"list MCP servers returned server %q out of catalog order after %q",
+				current.Name,
+				previous.Name,
+			)
+		}
+	}
+	return servers, nil
 }
 
 func (r *Connection) CreateServer(ctx context.Context, candidate mcp.Candidate) (mcp.Server, error) {

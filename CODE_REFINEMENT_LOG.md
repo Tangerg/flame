@@ -137,6 +137,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 175 | `8624f0b3` + CLI dependency update | Moved Agent Memory management ordering from SQLite into Application, made it total with ID, published it, and rejected out-of-order CLI projections. |
 | 176 | `67dd9366` + CLI dependency update | Made equal-activity Workspace order stable by canonical path and rejected missing activity time or out-of-order CLI catalogs. |
 | 177 | `b8cc7719` + CLI dependency update | Replaced Git encounter order with an Application-owned, path-ascending Workspace change order and rejected out-of-order CLI projections. |
+| 178 | `2a53b6ea` + CLI dependency update | Moved MCP server name ordering from SQLite into Application, published the ascending-name contract, and rejected out-of-order CLI projections. |
 
 ## Verification contract
 
