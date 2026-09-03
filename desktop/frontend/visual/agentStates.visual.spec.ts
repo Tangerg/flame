@@ -1564,9 +1564,9 @@ for (const theme of ["light", "dark"] as const) {
     // scroll position, the transcript's mask, element geometry, font readiness, resolving
     // `content-visibility` (which moved twenty-six other goldens and fixed nothing), the Vite
     // transform cache, the runner's within-file parallelism, and cropping to the scroller.
-    // A budget wide enough to pass would be wider than a whole button, so the frame is given
-    // up rather than the suite's sensitivity. What the state is named for is asserted below
-    // instead, and its behaviour already was.
+    // A budget wide enough to pass would be wider than a whole button, so the PAGE frame is
+    // given up rather than the suite's sensitivity — the element frame below covers what the
+    // state is named for, and its behaviour already was.
     if (state === "delegated") continue;
     test(`agent golden ${theme} ${state}`, async ({ page }) => {
       await page.goto(`/visual/?fixture=agent&theme=${theme}&state=${state}`);
@@ -1615,4 +1615,22 @@ for (const theme of ["light", "dark"] as const) {
       await expect(page).toHaveScreenshot(`agent-${theme}-${state}.png`);
     });
   }
+}
+
+// The ninth cause, which the page frame could not escape and an element frame does not have
+// to: the shift is a WHOLE pixel, so a clip taken relative to the card's own box carries
+// identical content at an identical raster phase. Bucketed 12 loads to one hash before it was
+// written down. This is the delegated card — a sub-agent's own run, with its status, its step
+// count and its nested delegation — which is the whole of what the state is named for.
+for (const theme of ["light", "dark"] as const) {
+  test(`agent delegated card ${theme}`, async ({ page }) => {
+    await page.goto(`/visual/?fixture=agent&theme=${theme}&state=delegated`);
+    await page.locator("html[data-visual-ready]").waitFor();
+    await layOutTranscript(page);
+    await freezeVisualClock(page);
+
+    const card = page.locator('[data-shell="card"]').first();
+    await expect(card).toBeVisible();
+    await expect(card).toHaveScreenshot(`agent-${theme}-delegated-card.png`);
+  });
 }

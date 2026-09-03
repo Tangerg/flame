@@ -2123,3 +2123,51 @@ reproducible from its method.
 
 Unchanged. The two that would take real work — the composer's single-line
 arrangement and what `⌘1`–`⌘9` should mean — are both waiting on a decision.
+
+## Round 28 — the frame `delegated` could have had all along, and what it caught
+
+The page frame for `delegated` was given up because its transcript "lands a pixel
+apart". A ninth cause was never tried: **an element frame does not have to
+escape that shift** — a clip taken relative to the card's own box carries
+identical content at an identical raster phase when the whole block moves a whole
+pixel. Bucketed 12 loads to one hash before writing it down, and it survived two
+full-suite runs, where the page frame never did.
+
+The card is the whole of what the state is named for: a sub-agent's run with its
+status and step count, a nested delegation inside it, a terminal call and the
+approval pair.
+
+### What it caught in its first frame
+
+**"1 steps".** `agent.steps` was `"{{count}} steps"` with no plural form. Auditing
+the catalogue for the class found **40 keys interpolating a count with no plural
+form**, of which 22 are wrong at one: `1 files`, `1 matches`, `1 lines`,
+`1 commands`, `1 calls`, `1 headers`, `1 runs`, `1 sessions`, `Couldn't read 1
+images`, `Pasted · 1 lines`. The other eighteen are correct — `{{count}} of`,
+`{{count}} available`, `{{count}} more` — no noun follows the count.
+
+All 22 now carry plural forms in all eight locales, following the catalogue's own
+conventions: `_one`/`_other` where the language distinguishes, `_other` alone for
+ja/ko/zh/zh-TW whose text is already count-neutral, and the `_many` category that
+es and fr require — with French's `de`/`d'` before the noun, as its seven existing
+`_many` entries already do. **No code changed**: every one of the 22 call sites
+already passes `count`, so i18next selects the form.
+
+One test had frozen the bug: `terminalSubtext(…{ commandCount: 1 })` asserted
+`"1 commands"`. It asserts both forms now.
+
+### A budget wide enough to hide a word
+
+The golden written before the plural fix kept passing after it. An `s` at 13px is
+about thirty pixels, and `maxDiffPixels` is 40 — so the frame went on documenting
+a bug that no longer existed, and `--update-snapshots` does not rewrite a passing
+test. Deleted and regenerated. Worth knowing about the budget: it is small enough
+for an icon swap and large enough for one letter.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` and all fifteen guards — green;
+  `check:locales` now counts 1106 keys complete across 8 locales.
+- 1897 tests passing.
+- `visual` — 429 of 430, the one failure being the round-17 `empty` flake. Both
+  delegated card frames passed inside the full run.

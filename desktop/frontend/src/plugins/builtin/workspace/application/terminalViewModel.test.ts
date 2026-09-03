@@ -59,6 +59,7 @@ describe("terminalSubtext", () => {
   });
 
   it("builds command count header text", () => {
-    expect(terminalSubtext(t, { commandCount: 1 })).toBe("1 commands");
+    expect(terminalSubtext(t, { commandCount: 1 })).toBe("1 command");
+    expect(terminalSubtext(t, { commandCount: 4 })).toBe("4 commands");
   });
 });
