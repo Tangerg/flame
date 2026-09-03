@@ -300,10 +300,11 @@ func fingerprintPhysicalTarget(
 			return fingerprint{}, "", fmt.Errorf("observe files: open %q: %w", physical, openErr)
 		}
 		encoder.fileInfo(fingerprintFieldPhysicalInfo, opened)
-		copyErr := encoder.content(file)
+		copyErr := encoder.content(file, opened.Size())
+		versionErr := verifyObservedFileVersion(root, name, file, opened)
 		closeErr := file.Close()
-		if copyErr != nil || closeErr != nil {
-			return fingerprint{}, "", fmt.Errorf("observe files: read %q: %w", physical, errors.Join(copyErr, closeErr))
+		if copyErr != nil || versionErr != nil || closeErr != nil {
+			return fingerprint{}, "", fmt.Errorf("observe files: read %q: %w", physical, errors.Join(copyErr, versionErr, closeErr))
 		}
 	} else {
 		encoder.fileInfo(fingerprintFieldPhysicalInfo, physicalInfo)

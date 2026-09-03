@@ -421,10 +421,11 @@ func fingerprintResolvedChildFile(
 		return encoder.sum(), resolved, nil
 	}
 	var file *os.File
+	var opened os.FileInfo
 	if root != nil {
-		file, _, err = fileinput.OpenAtExpected(root, name, info, maxBytes)
+		file, opened, err = fileinput.OpenAtExpected(root, name, info, maxBytes)
 	} else {
-		file, _, err = fileinput.OpenExpected(name, info, maxBytes)
+		file, opened, err = fileinput.OpenExpected(name, info, maxBytes)
 	}
 	if err != nil {
 		return fingerprint{}, "", fmt.Errorf("observe child files: open %q: %w", logical, err)
@@ -432,10 +433,11 @@ func fingerprintResolvedChildFile(
 	encoder := newFingerprintEncoder()
 	encoder.field(fingerprintFieldLogicalPath, logical)
 	encoder.field(fingerprintFieldPhysicalPath, resolved)
-	copyErr := encoder.content(file)
+	copyErr := encoder.content(file, opened.Size())
+	versionErr := verifyObservedFileVersion(root, name, file, opened)
 	closeErr := file.Close()
-	if copyErr != nil || closeErr != nil {
-		return fingerprint{}, "", fmt.Errorf("observe child files: read %q: %w", logical, errors.Join(copyErr, closeErr))
+	if copyErr != nil || versionErr != nil || closeErr != nil {
+		return fingerprint{}, "", fmt.Errorf("observe child files: read %q: %w", logical, errors.Join(copyErr, versionErr, closeErr))
 	}
 	return encoder.sum(), resolved, nil
 }

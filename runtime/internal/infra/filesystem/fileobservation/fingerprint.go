@@ -3,8 +3,11 @@ package fileobservation
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"hash"
 	"io"
+	"math"
 	"os"
 	"strconv"
 )
@@ -62,14 +65,49 @@ func (e *fingerprintEncoder) fileInfo(scope fingerprintField, info os.FileInfo) 
 	e.frame([]byte(strconv.FormatInt(info.ModTime().UnixNano(), 10)))
 }
 
-func (e *fingerprintEncoder) content(reader io.Reader) error {
+func (e *fingerprintEncoder) content(reader io.Reader, expectedSize int64) error {
+	if expectedSize < 0 || expectedSize == math.MaxInt64 {
+		return fmt.Errorf("invalid observed content size %d", expectedSize)
+	}
 	contentDigest := sha256.New()
-	if _, err := io.Copy(contentDigest, reader); err != nil {
+	written, err := io.Copy(contentDigest, io.LimitReader(reader, expectedSize+1))
+	if err != nil {
 		return err
+	}
+	if written != expectedSize {
+		return fmt.Errorf("observed content size changed: read %d bytes, expected %d", written, expectedSize)
 	}
 	e.frame([]byte(fingerprintFieldContent))
 	e.frame(contentDigest.Sum(nil))
 	return nil
+}
+
+func verifyObservedFileVersion(root *os.Root, name string, file *os.File, before os.FileInfo) error {
+	after, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("inspect opened file after reading: %w", err)
+	}
+	var current os.FileInfo
+	if root != nil {
+		current, err = root.Stat(name)
+	} else {
+		current, err = os.Stat(name)
+	}
+	if err != nil {
+		return fmt.Errorf("inspect current file after reading: %w", err)
+	}
+	if !sameObservedFileVersion(before, after) || !sameObservedFileVersion(after, current) {
+		return errors.New("file changed while reading")
+	}
+	return nil
+}
+
+func sameObservedFileVersion(left, right os.FileInfo) bool {
+	return left != nil && right != nil &&
+		os.SameFile(left, right) &&
+		left.Size() == right.Size() &&
+		left.Mode() == right.Mode() &&
+		left.ModTime().Equal(right.ModTime())
 }
 
 func (e *fingerprintEncoder) sum() fingerprint {
