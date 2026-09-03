@@ -61,7 +61,7 @@ func TestSessionQueryNormalizesLocalFilterIdentity(t *testing.T) {
 		{PageSize: PageSize{kind: explicitPageSize, rows: -1}},
 		{PageSize: DefaultPageSize(), Workspace: "relative/workspace"},
 		{PageSize: DefaultPageSize(), Workspace: "/repo/../repo"},
-		{PageSize: DefaultPageSize(), Search: strings.Repeat("x", MaximumSessionSearchCharacters+1)},
+		{PageSize: DefaultPageSize(), Search: strings.Repeat("x", 1025)},
 		{PageSize: DefaultPageSize(), Search: "bad\x00query"},
 		{PageSize: DefaultPageSize(), Search: string([]byte{0xff})},
 	} {

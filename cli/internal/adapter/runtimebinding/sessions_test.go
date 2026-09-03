@@ -452,6 +452,7 @@ func TestSessionCatalogRejectsInvalidLocalFiltersBeforeCallingRuntime(t *testing
 	runtime := &Connection{sessionCatalog: sessionCatalogStub{}, meta: requestMeta("test")}
 	for _, query := range []agent.SessionQuery{
 		{PageSize: agent.DefaultPageSize(), Workspace: "relative/workspace"},
+		{PageSize: agent.DefaultPageSize(), Search: strings.Repeat("x", 1025)},
 	} {
 		if _, err := runtime.ListSessions(t.Context(), query); err == nil {
 			t.Fatalf("ListSessions accepted %+v", query)

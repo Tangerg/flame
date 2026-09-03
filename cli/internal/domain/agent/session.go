@@ -118,10 +118,6 @@ type SessionQuery struct {
 	Workspace string
 }
 
-// MaximumSessionSearchCharacters mirrors the Flame sessions.list transport
-// envelope while keeping CLI query admission independent of protocol DTOs.
-const MaximumSessionSearchCharacters = 1024
-
 // Normalize returns one exact session-catalog query. Search text and workspace
 // input are presentation values; a non-empty workspace is an exact absolute
 // identity because the Runtime binds it into the authoritative cursor query.
@@ -136,8 +132,8 @@ func (s SessionQuery) Normalize() (SessionQuery, error) {
 	if strings.ContainsRune(s.Search, 0) {
 		return SessionQuery{}, errors.New("session query: search contains NUL")
 	}
-	if utf8.RuneCountInString(s.Search) > MaximumSessionSearchCharacters {
-		return SessionQuery{}, fmt.Errorf("session query: search exceeds %d characters", MaximumSessionSearchCharacters)
+	if err := (runtimeprotocol.ListSessionsRequest{Search: s.Search}).ValidateWire(); err != nil {
+		return SessionQuery{}, fmt.Errorf("session query: %w", err)
 	}
 	s.Workspace = strings.TrimSpace(s.Workspace)
 	if err := (workspace.ResolveRequest{Path: s.Workspace}).Validate(); err != nil {
