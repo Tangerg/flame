@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -315,11 +314,11 @@ func buildExecutionComposition(
 
 func runtimeDefaultModelSelection(cfg Config) (modelref.Selection, error) {
 	selection, err := modelref.New(cfg.Provider, cfg.Model)
+	if err == nil {
+		err = selection.ValidateExact()
+	}
 	if err != nil {
 		return modelref.Selection{}, fmt.Errorf("runtime: default model selection: %w", err)
-	}
-	if !selection.Configured() {
-		return modelref.Selection{}, errors.New("runtime: configured default model selection is required")
 	}
 	return selection, nil
 }

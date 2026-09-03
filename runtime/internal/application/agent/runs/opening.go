@@ -246,11 +246,8 @@ func (c *Coordinator) resolveSessionSelection(
 	if !effective.Configured() {
 		effective = sess.Selection()
 	}
-	if err := effective.Validate(); err != nil {
+	if err := effective.ValidateExact(); err != nil {
 		return session.Session{}, nil, modelref.Selection{}, fmt.Errorf("runs: effective model selection: %w", err)
-	}
-	if !effective.Configured() {
-		return session.Session{}, nil, modelref.Selection{}, errors.New("runs: effective model selection is required")
 	}
 	if effective != requested {
 		if err := c.AdmitSelection(effective); err != nil {

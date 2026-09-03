@@ -93,7 +93,7 @@ func (c *Coordinator) PrepareScheduled(
 	if !selection.Configured() {
 		selection = c.defaultModelSelection
 	}
-	if validateErr := selection.Validate(); validateErr != nil {
+	if validateErr := selection.ValidateExact(); validateErr != nil {
 		return session.Session{}, nil, fmt.Errorf("sessions: scheduled model selection: %w", validateErr)
 	}
 	if admitErr := c.models.AdmitSelection(selection); admitErr != nil {

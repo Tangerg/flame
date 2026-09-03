@@ -272,11 +272,8 @@ func (s Session) Validate() error {
 	if s.title != strings.TrimSpace(s.title) {
 		return fmt.Errorf("%w: title must not contain surrounding whitespace", ErrInvalid)
 	}
-	if err := s.selection.Validate(); err != nil {
-		return fmt.Errorf("%w: model selection: %v", ErrInvalid, err)
-	}
-	if !s.selection.Configured() {
-		return fmt.Errorf("%w: model selection is required", ErrInvalid)
+	if err := s.selection.ValidateExact(); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalid, err)
 	}
 	if s.parentID != "" {
 		if _, err := resourceid.ParseSession(s.parentID); err != nil {

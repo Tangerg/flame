@@ -365,11 +365,8 @@ func New(deps Dependencies) (*Coordinator, error) {
 			return nil, errors.New("sessions: plan replacements are required when Plan support is enabled")
 		}
 	}
-	if err := deps.DefaultModelSelection.Validate(); err != nil {
+	if err := deps.DefaultModelSelection.ValidateExact(); err != nil {
 		return nil, fmt.Errorf("sessions: default model selection: %w", err)
-	}
-	if !deps.DefaultModelSelection.Configured() {
-		return nil, errors.New("sessions: configured default model selection is required")
 	}
 	if err := deps.Models.AdmitSelection(deps.DefaultModelSelection); err != nil {
 		return nil, fmt.Errorf("sessions: default model selection is not admitted: %w", err)

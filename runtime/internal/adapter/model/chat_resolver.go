@@ -90,8 +90,8 @@ func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelref.Selec
 }
 
 func (c *ChatResolver) resolveClientSpec(ctx context.Context, selection modelref.Selection) (llm.ClientSpec, error) {
-	if !selection.Configured() {
-		return llm.ClientSpec{}, errors.New("model: explicit model selection is required")
+	if err := selection.ValidateExact(); err != nil {
+		return llm.ClientSpec{}, fmt.Errorf("model: chat selection: %w", err)
 	}
 	providerID, model := selection.Provider(), selection.Model()
 	entry, ok, err := c.providers.Get(ctx, providerID)

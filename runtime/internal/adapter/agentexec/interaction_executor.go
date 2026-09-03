@@ -178,9 +178,6 @@ func (i *InteractionExecutor) ValidateRootStart(start runs.RootExecutionStart) e
 	if err := start.Validate(); err != nil {
 		return err
 	}
-	if !start.ModelSelection.Configured() {
-		return errors.New("agentexec: Interaction requires an exact model selection")
-	}
 	if err := validateModelOutputReservation(start.ModelSelection, start.Options); err != nil {
 		return err
 	}
@@ -741,11 +738,8 @@ func (i *InteractionExecutor) resolveChat(
 	ctx context.Context,
 	selection modelref.Selection,
 ) (modeladapter.ResolvedChat, error) {
-	if err := selection.Validate(); err != nil {
-		return modeladapter.ResolvedChat{}, fmt.Errorf("agentexec: Interaction model selection: %w", err)
-	}
-	if !selection.Configured() {
-		return modeladapter.ResolvedChat{}, errors.New("agentexec: Interaction requires an exact model selection")
+	if err := selection.ValidateExact(); err != nil {
+		return modeladapter.ResolvedChat{}, fmt.Errorf("agentexec: Interaction: %w", err)
 	}
 	resolved, err := i.config.ChatResolver.ResolveChat(ctx, selection)
 	if err != nil {

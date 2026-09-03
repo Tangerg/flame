@@ -61,11 +61,8 @@ func (e ExecutorCheckpointRecord) validate() error {
 	if err := e.Scope.validate(); err != nil {
 		return err
 	}
-	if err := e.ModelSelection.Validate(); err != nil {
-		return fmt.Errorf("%w: model selection: %w", ErrInvalidExecutorCheckpointRecord, err)
-	}
-	if !e.ModelSelection.Configured() {
-		return fmt.Errorf("%w: model selection is required", ErrInvalidExecutorCheckpointRecord)
+	if err := e.ModelSelection.ValidateExact(); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpointRecord, err)
 	}
 	if err := e.Limits.Validate(); err != nil {
 		return fmt.Errorf("%w: limits: %w", ErrInvalidExecutorCheckpointRecord, err)

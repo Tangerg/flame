@@ -35,8 +35,8 @@ func LiveUtilityClient(
 	if missingDependency(resolver) {
 		return nil, errors.New("model: utility chat resolver is required")
 	}
-	if !mainSelection.Configured() {
-		return nil, errors.New("model: utility main model selection is required")
+	if err := mainSelection.ValidateExact(); err != nil {
+		return nil, fmt.Errorf("model: utility main selection: %w", err)
 	}
 	if missingDependency(roles) {
 		return nil, errors.New("model: utility role source is required")

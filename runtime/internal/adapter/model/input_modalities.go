@@ -19,11 +19,8 @@ var ErrUnsupportedInputModality = errors.New("model: unsupported input modality"
 // accept. A catalog miss remains admissible because compatible endpoints may
 // expose private models whose capabilities are not available locally.
 func (Capabilities) AdmitInput(selection modelref.Selection, messages []chat.Message) error {
-	if err := selection.Validate(); err != nil {
+	if err := selection.ValidateExact(); err != nil {
 		return fmt.Errorf("model: input-modality selection: %w", err)
-	}
-	if !selection.Configured() {
-		return errors.New("model: input-modality model selection is required")
 	}
 	entry, found := catalog.Default.Lookup(selection.Provider(), selection.Model())
 	if !found {

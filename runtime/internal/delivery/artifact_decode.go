@@ -39,14 +39,12 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 		return sessions.PortableSnapshot{}, invalidArtifact("artifact.session.id", "is required")
 	}
 	selection, err := modelref.NewWithReasoningEffort(art.Session.Provider, art.Session.Model, art.Session.ReasoningEffort)
+	if err == nil {
+		err = selection.ValidateExact()
+	}
 	if err != nil {
 		return sessions.PortableSnapshot{}, invalidArtifact(
-			"artifact.session", "provider and model must form a complete selection: %v", err,
-		)
-	}
-	if !selection.Configured() {
-		return sessions.PortableSnapshot{}, invalidArtifact(
-			"artifact.session", "provider and model are required",
+			"artifact.session", "invalid model selection: %v", err,
 		)
 	}
 	messages := make([]chat.Message, 0, len(art.Messages))

@@ -421,11 +421,8 @@ func (r RootExecutionStart) Validate() error {
 	if err := r.Limits.Validate(); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidRunLimit, err)
 	}
-	if err := r.ModelSelection.Validate(); err != nil {
-		return fmt.Errorf("runs: model selection: %w", err)
-	}
-	if !r.ModelSelection.Configured() {
-		return errors.New("runs: model selection is required")
+	if err := r.ModelSelection.ValidateExact(); err != nil {
+		return fmt.Errorf("runs: %w", err)
 	}
 	if err := (run.Capabilities{
 		ChildRuns:      r.ChildRunAdmissionEnabled,

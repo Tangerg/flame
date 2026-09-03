@@ -225,11 +225,8 @@ func (g Goal) ValidateSnapshot() error {
 	if !g.status.Valid() {
 		return fmt.Errorf("%w: unknown status %q", ErrInvalid, g.status)
 	}
-	if err := g.selection.Validate(); err != nil {
-		return fmt.Errorf("%w: model selection: %v", ErrInvalid, err)
-	}
-	if !g.selection.Configured() {
-		return fmt.Errorf("%w: exact model selection is required", ErrInvalid)
+	if err := g.selection.ValidateExact(); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalid, err)
 	}
 	if err := g.capabilities.Validate(); err != nil {
 		return fmt.Errorf("%w: capabilities: %v", ErrInvalid, err)

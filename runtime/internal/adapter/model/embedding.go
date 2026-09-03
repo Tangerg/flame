@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/Tangerg/scope/core/embeddingclient"
 
@@ -33,8 +34,8 @@ func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelref.Sele
 	if e == nil || missingDependency(e.providers) {
 		return nil, errors.New("model: embedding resolver is not configured")
 	}
-	if !selection.Configured() {
-		return nil, errors.New("model: explicit model selection is required")
+	if err := selection.ValidateExact(); err != nil {
+		return nil, fmt.Errorf("model: embedding selection: %w", err)
 	}
 	providerID, model := selection.Provider(), selection.Model()
 	entry, ok, err := e.providers.Get(ctx, providerID)

@@ -23,6 +23,8 @@ var ErrReasoningEffortWithoutModel = runtimeidentity.ErrReasoningEffortWithoutMo
 // Runtime cannot admit.
 var ErrUnsupported = errors.New("model selection: unsupported")
 
+var errExactSelectionRequired = errors.New("model selection is required")
+
 // IsInvalid reports whether err is a stable model-selection syntax failure.
 func IsInvalid(err error) bool {
 	return errors.Is(err, ErrIncomplete) ||
@@ -95,6 +97,18 @@ func NewWithReasoningEffort(provider, model, reasoningEffort string) (Selection,
 func (s Selection) Validate() error {
 	_, err := NewWithReasoningEffort(s.Provider(), s.Model(), s.ReasoningEffort())
 	return err
+}
+
+// ValidateExact reports whether s names one provider/model pair instead of
+// asking an owning use case to supply its default.
+func (s Selection) ValidateExact() error {
+	if err := s.Validate(); err != nil {
+		return err
+	}
+	if !s.Configured() {
+		return errExactSelectionRequired
+	}
+	return nil
 }
 
 // Configured reports whether s pins one provider and model.

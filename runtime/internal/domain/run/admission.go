@@ -70,8 +70,8 @@ func (d Draft) Validate() error {
 	if err := lineage.Validate(d.RunID); err != nil {
 		return err
 	}
-	if err := validateExactModelSelection(d.ModelSelection); err != nil {
-		return err
+	if err := d.ModelSelection.ValidateExact(); err != nil {
+		return fmt.Errorf("run: %w", err)
 	}
 	if err := d.Limits.Validate(); err != nil {
 		return err
@@ -81,16 +81,6 @@ func (d Draft) Validate() error {
 	}
 	if lineage.IsChild() && d.GoalIncarnationID != "" {
 		return errors.New("run: child carries a root Goal incarnation")
-	}
-	return nil
-}
-
-func validateExactModelSelection(selection modelref.Selection) error {
-	if err := selection.Validate(); err != nil {
-		return fmt.Errorf("run: model selection: %w", err)
-	}
-	if !selection.Configured() {
-		return errors.New("run: model selection is required")
 	}
 	return nil
 }

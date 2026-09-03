@@ -179,17 +179,11 @@ func newModelContextCompaction(
 			err,
 		)
 	}
-	if err := selection.Validate(); err != nil {
+	if err := selection.ValidateExact(); err != nil {
 		return ModelContextCompaction{}, fmt.Errorf(
-			"%w: model selection: %w",
+			"%w: %w",
 			errInvalidModelContextCompaction,
 			err,
-		)
-	}
-	if !selection.Configured() {
-		return ModelContextCompaction{}, fmt.Errorf(
-			"%w: model selection is required",
-			errInvalidModelContextCompaction,
 		)
 	}
 	if len(candidate) == 0 {
