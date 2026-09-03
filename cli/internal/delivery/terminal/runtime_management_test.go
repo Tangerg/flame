@@ -28,15 +28,15 @@ type usageServiceStub struct{}
 func (usageServiceStub) SessionUsage(_ context.Context, sessionID string) (agent.SessionUsageReport, error) {
 	cost := 0.25
 	return agent.SessionUsageReport{
-		SessionID: sessionID, Total: agent.UsageTotals{InputTokens: 1_200, OutputTokens: 300, CostUSD: &cost},
-		ByModel: []agent.UsageBucket{{Key: "deepseek/model", Totals: agent.UsageTotals{InputTokens: 1_200}}},
+		SessionID: sessionID, Total: protocol.ModelUsage{InputTokens: 1_200, OutputTokens: 300, CostUSD: &cost},
+		ByModel: []agent.UsageBucket{{Key: "deepseek/model", Totals: protocol.ModelUsage{InputTokens: 1_200}}},
 	}, nil
 }
 
 func (usageServiceStub) Summary(_ context.Context, period agent.UsageSummaryPeriod) (agent.UsageSummary, error) {
 	cost := 1.5
 	return agent.UsageSummary{
-		Period: period, Total: agent.UsageTotals{InputTokens: 8_000, OutputTokens: 2_000, CostUSD: &cost},
+		Period: period, Total: protocol.ModelUsage{InputTokens: 8_000, OutputTokens: 2_000, CostUSD: &cost},
 		ByProvider: []agent.UsageBucket{{Key: "deepseek", Runs: 4}}, Sessions: 2, Runs: 4,
 	}, nil
 }

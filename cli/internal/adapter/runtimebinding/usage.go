@@ -29,7 +29,7 @@ func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (agent.
 	}
 	report := agent.SessionUsageReport{
 		SessionID: sessionID,
-		Total:     projectUsageTotals(result.ModelUsage),
+		Total:     cloneModelUsage(result.ModelUsage),
 		ByModel:   make([]agent.UsageBucket, 0, len(result.ByModel)),
 	}
 	keys := make([]string, 0, len(result.ByModel))
@@ -38,7 +38,7 @@ func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (agent.
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		report.ByModel = append(report.ByModel, agent.UsageBucket{Key: key, Totals: projectUsageTotals(result.ByModel[key])})
+		report.ByModel = append(report.ByModel, agent.UsageBucket{Key: key, Totals: cloneModelUsage(result.ByModel[key])})
 	}
 	if err := report.Validate(); err != nil {
 		return agent.SessionUsageReport{}, runtimeContractViolation("session usage returned an invalid report: %v", err)
@@ -63,7 +63,7 @@ func (r *Connection) Summary(ctx context.Context, period agent.UsageSummaryPerio
 		return agent.UsageSummary{}, runtimeContractViolation("usage summary returned nil")
 	}
 	summary := agent.UsageSummary{
-		Period: period, Total: projectUsageTotals(result.Total),
+		Period: period, Total: cloneModelUsage(result.Total),
 		ByProvider: projectUsageBuckets(result.ByProvider),
 		ByModel:    projectUsageBuckets(result.ByModel),
 		ByDay:      projectUsageBuckets(result.ByDay),
@@ -78,19 +78,14 @@ func (r *Connection) Summary(ctx context.Context, period agent.UsageSummaryPerio
 func projectUsageBuckets(values []protocol.UsageBucket) []agent.UsageBucket {
 	projected := make([]agent.UsageBucket, len(values))
 	for index, value := range values {
-		projected[index] = agent.UsageBucket{Key: value.Key, Totals: projectUsageTotals(value.ModelUsage), Runs: value.Runs}
+		projected[index] = agent.UsageBucket{Key: value.Key, Totals: cloneModelUsage(value.ModelUsage), Runs: value.Runs}
 	}
 	return projected
 }
 
-func projectUsageTotals(value protocol.ModelUsage) agent.UsageTotals {
-	projected := agent.UsageTotals{
-		InputTokens: value.InputTokens, OutputTokens: value.OutputTokens,
-		CacheReadTokens: value.CacheReadTokens, CacheWriteTokens: value.CacheWriteTokens,
-		ReasoningTokens: value.ReasoningTokens,
-	}
+func cloneModelUsage(value protocol.ModelUsage) protocol.ModelUsage {
 	if value.CostUSD != nil {
-		projected.CostUSD = new(*value.CostUSD)
+		value.CostUSD = new(*value.CostUSD)
 	}
-	return projected
+	return value
 }

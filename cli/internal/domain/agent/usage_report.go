@@ -9,29 +9,9 @@ import (
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
-type UsageTotals struct {
-	InputTokens      int64
-	OutputTokens     int64
-	CacheReadTokens  int64
-	CacheWriteTokens int64
-	ReasoningTokens  int64
-	CostUSD          *float64
-}
-
-func (t UsageTotals) Validate() error {
-	if t.InputTokens < 0 || t.OutputTokens < 0 || t.CacheReadTokens < 0 ||
-		t.CacheWriteTokens < 0 || t.ReasoningTokens < 0 {
-		return errors.New("usage totals contain a negative token count")
-	}
-	if t.CostUSD != nil && *t.CostUSD < 0 {
-		return errors.New("usage totals contain a negative cost")
-	}
-	return nil
-}
-
 type UsageBucket struct {
 	Key    string
-	Totals UsageTotals
+	Totals runtimeprotocol.ModelUsage
 	Runs   int
 }
 
@@ -42,12 +22,12 @@ func (b UsageBucket) Validate() error {
 	if b.Runs < 0 {
 		return errors.New("usage bucket run count is negative")
 	}
-	return b.Totals.Validate()
+	return b.Totals.ValidateWire()
 }
 
 type SessionUsageReport struct {
 	SessionID string
-	Total     UsageTotals
+	Total     runtimeprotocol.ModelUsage
 	ByModel   []UsageBucket
 }
 
@@ -55,7 +35,7 @@ func (s SessionUsageReport) Validate() error {
 	if err := runtimeprotocol.ValidateSessionID(s.SessionID); err != nil {
 		return fmt.Errorf("session usage report: %w", err)
 	}
-	if err := s.Total.Validate(); err != nil {
+	if err := s.Total.ValidateWire(); err != nil {
 		return fmt.Errorf("session usage report: %w", err)
 	}
 	return validateBuckets("session usage report", s.ByModel)
@@ -63,7 +43,7 @@ func (s SessionUsageReport) Validate() error {
 
 type UsageSummary struct {
 	Period     UsageSummaryPeriod
-	Total      UsageTotals
+	Total      runtimeprotocol.ModelUsage
 	ByProvider []UsageBucket
 	ByModel    []UsageBucket
 	ByDay      []UsageBucket
@@ -78,7 +58,7 @@ func (s UsageSummary) Validate() error {
 	if err := s.Period.Validate(); err != nil {
 		return err
 	}
-	if err := s.Total.Validate(); err != nil {
+	if err := s.Total.ValidateWire(); err != nil {
 		return fmt.Errorf("usage summary: %w", err)
 	}
 	for _, breakdown := range []struct {

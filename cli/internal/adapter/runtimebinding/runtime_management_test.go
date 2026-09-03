@@ -55,6 +55,10 @@ func TestUsageAdapterProjectsSessionAndSummaryReports(t *testing.T) {
 	if err != nil || len(session.ByModel) != 2 || session.ByModel[0].Key != "a/model" || session.Total.CostUSD == nil {
 		t.Fatalf("SessionUsage = (%+v, %v)", session, err)
 	}
+	cost = 9
+	if *session.Total.CostUSD != 0.25 {
+		t.Fatal("session usage projection aliases runtime cost storage")
+	}
 	summary, err := runtime.Summary(t.Context(), recentUsagePeriod(t, 30))
 	if err != nil || summary.Runs != 4 || len(summary.ByProvider) != 1 {
 		t.Fatalf("Summary = (%+v, %v)", summary, err)

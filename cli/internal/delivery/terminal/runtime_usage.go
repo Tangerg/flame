@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type usageReport struct {
@@ -88,7 +89,7 @@ func appendUsageBreakdown(sections []ToolSection, title string, buckets []agent.
 	return append(sections, ToolSection{Title: title, Style: toolSectionCode, Language: "text", Text: strings.Join(lines, "\n")})
 }
 
-func usageTotalsText(totals agent.UsageTotals) string {
+func usageTotalsText(totals protocol.ModelUsage) string {
 	parts := []string{
 		"input " + formatThousands(totals.InputTokens),
 		"output " + formatThousands(totals.OutputTokens),

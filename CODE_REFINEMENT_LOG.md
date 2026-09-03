@@ -7,7 +7,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–123 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–124 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
 - The current Runtime contract is `834261d3` (`refactor(runtime): stop echoing file
   head paths`).
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–123 — exact handoff
+## Rounds 101–124 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -83,6 +83,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 121 | CLI commit | Removed the synonymous CLI agent-document DTO while retaining complete-catalog validation, unique paths, and projection isolation. |
 | 122 | CLI commit | Removed the synonymous CLI discovered-skill DTO and unified direct Runtime catalog cloning, validation, and identity checks. |
 | 123 | CLI commit | Removed the synonymous CLI lifecycle-hook DTO while retaining wire, matcher, trust-state, and catalog isolation checks. |
+| 124 | CLI commit | Removed the synonymous CLI usage-totals DTO and cloned Runtime model usage without maintaining a duplicate field list. |
 
 ## Verification contract
 
@@ -120,7 +121,7 @@ repeated here.
 
 ## Remaining direction
 
-- Start Round 124 by continuing to audit complete Runtime catalogs and CLI
+- Start Round 125 by continuing to audit complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the
