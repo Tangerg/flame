@@ -14,6 +14,11 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
+const (
+	adapterMCPAuthorizationAttemptID      = "mcpauth_AAAAAAAAAAAAAAAAAAAAAAAAAA"
+	adapterOtherMCPAuthorizationAttemptID = "mcpauth_BBBBBBBBBBBBBBBBBBBBBBBBBB"
+)
+
 type mcpBindingStub struct {
 	t            *testing.T
 	actions      []string
@@ -102,7 +107,8 @@ func (m *mcpBindingStub) ReconnectMCPServer(_ context.Context, request protocol.
 func (m *mcpBindingStub) CreateMCPAuthorizationAttempt(_ context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options flameruntime.CommandOptions) (*protocol.MCPAuthorizationAttempt, error) {
 	m.assertCommand("authorize:"+request.Server, options)
 	return &protocol.MCPAuthorizationAttempt{
-		ID: "auth_1", Server: request.Server, Status: protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptPending},
+		ID: adapterMCPAuthorizationAttemptID, Server: request.Server,
+		Status:    protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptPending},
 		CreatedAt: m.now,
 	}, nil
 }
@@ -233,11 +239,11 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 		t.Fatal(reconnectServerErr)
 	}
 	attempt, err := runtime.StartAuthorization(t.Context(), "docs")
-	if err != nil || !attempt.Pending() || attempt.ID != "auth_1" {
+	if err != nil || attempt.Status.Type != protocol.MCPAuthorizationAttemptPending || attempt.ID != adapterMCPAuthorizationAttemptID {
 		t.Fatalf("StartAuthorization = (%+v, %v)", attempt, err)
 	}
-	attempt, err = runtime.GetAuthorization(t.Context(), attempt.Reference())
-	if err != nil || attempt.Status != protocol.MCPAuthorizationAttemptSucceeded || attempt.FinishedAt == nil {
+	attempt, err = runtime.GetAuthorization(t.Context(), mcp.AuthorizationReferenceFrom(attempt))
+	if err != nil || attempt.Status.Type != protocol.MCPAuthorizationAttemptSucceeded || attempt.FinishedAt == nil {
 		t.Fatalf("GetAuthorization = (%+v, %v)", attempt, err)
 	}
 	if len(stub.actions) != 8 {
@@ -253,7 +259,13 @@ func TestMCPAuthorizationAdapterClassifiesAbsenceAndEnforcesReferenceIdentity(t 
 
 	stub := &mcpBindingStub{t: t, now: time.Unix(100, 0), authErr: protocol.ErrMCPAuthorizationAttemptNotFound}
 	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
-	reference := mcp.AuthorizationReference{ID: "auth_1", Server: "docs"}
+	if _, err := runtime.GetAuthorization(t.Context(), mcp.AuthorizationReference{ID: "auth_1", Server: "docs"}); err == nil || !strings.Contains(err.Error(), "attemptId") {
+		t.Fatalf("non-canonical authorization reference = %v, want attemptId error", err)
+	}
+	if len(stub.actions) != 0 {
+		t.Fatalf("invalid authorization reference reached Runtime: %v", stub.actions)
+	}
+	reference := mcp.AuthorizationReference{ID: adapterMCPAuthorizationAttemptID, Server: "docs"}
 	if _, err := runtime.GetAuthorization(t.Context(), reference); !errors.Is(err, mcp.ErrAuthorizationAttemptNotFound) {
 		t.Fatalf("missing authorization = %v, want ErrAuthorizationAttemptNotFound", err)
 	}
@@ -261,7 +273,7 @@ func TestMCPAuthorizationAdapterClassifiesAbsenceAndEnforcesReferenceIdentity(t 
 	finished := stub.now.Add(time.Second)
 	stub.authErr = nil
 	stub.authGet = &protocol.MCPAuthorizationAttempt{
-		ID: "auth_other", Server: "docs",
+		ID: adapterOtherMCPAuthorizationAttemptID, Server: "docs",
 		Status:    protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptSucceeded},
 		CreatedAt: stub.now, FinishedAt: &finished,
 	}
@@ -272,6 +284,11 @@ func TestMCPAuthorizationAdapterClassifiesAbsenceAndEnforcesReferenceIdentity(t 
 	stub.authGet.Server = "other"
 	if _, err := runtime.GetAuthorization(t.Context(), reference); !errors.Is(err, agent.ErrIncompatibleRuntime) {
 		t.Fatalf("mismatched authorization server = %v, want ErrIncompatibleRuntime", err)
+	}
+	stub.authGet.ID = "auth_1"
+	stub.authGet.Server = reference.Server
+	if _, err := runtime.GetAuthorization(t.Context(), reference); !errors.Is(err, agent.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "id") {
+		t.Fatalf("invalid Runtime authorization identity = %v, want contract violation for id", err)
 	}
 }
 

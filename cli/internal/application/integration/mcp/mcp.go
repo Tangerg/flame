@@ -9,7 +9,6 @@ import (
 	"maps"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
@@ -608,15 +607,6 @@ func (t Tool) Validate() error {
 	return nil
 }
 
-type AuthorizationAttempt struct {
-	ID         string
-	Server     string
-	Status     protocol.MCPAuthorizationAttemptStatusType
-	Problem    *protocol.ProblemData
-	CreatedAt  time.Time
-	FinishedAt *time.Time
-}
-
 // AuthorizationReference is the stable identity used to observe an attempt.
 // Server is retained even though the runtime query is keyed by ID so adapters
 // can reject a response that silently crosses authorization ownership.
@@ -626,47 +616,38 @@ type AuthorizationReference struct {
 }
 
 func (a AuthorizationReference) Validate() error {
-	if strings.TrimSpace(a.ID) == "" || strings.TrimSpace(a.Server) == "" {
-		return errors.New("MCP authorization reference requires attempt id and server")
+	var problems []error
+	if err := (protocol.MCPAuthorizationAttemptRequest{AttemptID: a.ID}).ValidateWire(); err != nil {
+		problems = append(problems, err)
+	}
+	if err := (protocol.MCPServerRequest{Server: a.Server}).ValidateWire(); err != nil {
+		problems = append(problems, err)
+	}
+	if err := errors.Join(problems...); err != nil {
+		return fmt.Errorf("MCP authorization reference: %w", err)
 	}
 	return nil
 }
 
-func (a AuthorizationAttempt) Validate() error {
-	if strings.TrimSpace(a.ID) == "" || strings.TrimSpace(a.Server) == "" || a.CreatedAt.IsZero() {
-		return errors.New("MCP authorization attempt identity is incomplete")
+// ValidateAuthorizationAttempt composes the Runtime wire contract with the
+// observer's chronological requirement.
+func ValidateAuthorizationAttempt(attempt protocol.MCPAuthorizationAttempt) error {
+	if err := protocol.ValidateWireTree(attempt); err != nil {
+		return fmt.Errorf("MCP authorization attempt: %w", err)
 	}
-	switch a.Status {
-	case protocol.MCPAuthorizationAttemptPending:
-		if a.Problem != nil || a.FinishedAt != nil {
-			return errors.New("pending MCP authorization carries a terminal result")
-		}
-	case protocol.MCPAuthorizationAttemptSucceeded, protocol.MCPAuthorizationAttemptCanceled:
-		if a.Problem != nil || a.FinishedAt == nil {
-			return fmt.Errorf("%s MCP authorization has an invalid terminal result", a.Status)
-		}
-	case protocol.MCPAuthorizationAttemptFailed:
-		if a.Problem == nil || a.FinishedAt == nil {
-			return errors.New("failed MCP authorization requires a problem and finish time")
-		}
-		if err := failure.Validate(a.Problem); err != nil {
-			return err
-		}
-	default:
-		return fmt.Errorf("MCP authorization status %q is invalid", a.Status)
+	if attempt.CreatedAt.IsZero() {
+		return errors.New("MCP authorization attempt creation time is missing")
 	}
-	if a.FinishedAt != nil && a.FinishedAt.Before(a.CreatedAt) {
+	if attempt.FinishedAt != nil && attempt.FinishedAt.Before(attempt.CreatedAt) {
 		return errors.New("MCP authorization finished before it started")
 	}
 	return nil
 }
 
-func (a AuthorizationAttempt) Pending() bool {
-	return a.Status == protocol.MCPAuthorizationAttemptPending
-}
-
-func (a AuthorizationAttempt) Reference() AuthorizationReference {
-	return AuthorizationReference{ID: a.ID, Server: a.Server}
+// AuthorizationReferenceFrom retains both identities needed to detect a poll
+// response that crosses server ownership.
+func AuthorizationReferenceFrom(attempt protocol.MCPAuthorizationAttempt) AuthorizationReference {
+	return AuthorizationReference{ID: attempt.ID, Server: attempt.Server}
 }
 
 func validateMapChange(label string, kind protocol.MCPSecretChangeType, values map[string]string) error {

@@ -342,10 +342,10 @@ func (a *app) AuthorizeMCPServer(server string) error {
 	presentation := a.session.context
 	a.status.note("starting MCP authorization " + server)
 	started := a.runAdmissionMutation(mcpAuthorizationOperation, false,
-		func(ctx context.Context) (mcp.AuthorizationAttempt, error) {
+		func(ctx context.Context) (protocol.MCPAuthorizationAttempt, error) {
 			return a.mcp.StartAuthorization(ctx, server)
 		},
-		func(attempt mcp.AuthorizationAttempt, err error) {
+		func(attempt protocol.MCPAuthorizationAttempt, err error) {
 			if err != nil {
 				a.message("start MCP authorization failed: " + err.Error())
 				return
@@ -356,7 +356,7 @@ func (a *app) AuthorizeMCPServer(server string) error {
 				a.dialogs.workspaceReader = workspaceReaderNone
 				a.openReaderDocument(mcpAuthorizationDocument(attempt))
 			}
-			if attempt.Pending() {
+			if attempt.Status.Type == protocol.MCPAuthorizationAttemptPending {
 				a.pollMCPAuthorization(attempt)
 			}
 		},
@@ -367,15 +367,15 @@ func (a *app) AuthorizeMCPServer(server string) error {
 	return nil
 }
 
-func (a *app) pollMCPAuthorization(initial mcp.AuthorizationAttempt) {
+func (a *app) pollMCPAuthorization(initial protocol.MCPAuthorizationAttempt) {
 	observer := mcpAuthorizationObserver{
 		service: a.mcp, pollInterval: mcpAuthorizationPollInterval, recovery: runtimeRecoveryBackoff,
 	}
 	started := a.runApplicationOperation(mcpAuthorizationOperation, false,
-		func(ctx context.Context) (mcp.AuthorizationAttempt, error) {
+		func(ctx context.Context) (protocol.MCPAuthorizationAttempt, error) {
 			return observer.observe(ctx, initial)
 		},
-		func(attempt mcp.AuthorizationAttempt, err error) {
+		func(attempt protocol.MCPAuthorizationAttempt, err error) {
 			if err != nil {
 				a.message("observe MCP authorization failed: " + err.Error())
 				return
@@ -383,7 +383,7 @@ func (a *app) pollMCPAuthorization(initial mcp.AuthorizationAttempt) {
 			if a.dialogs.runtimeReader == runtimeReaderMCPAuthorization && a.dialogs.mcpAuthorizationID == attempt.ID && a.dialogs.readerDialog.Open() {
 				a.dialogs.reader.replace(mcpAuthorizationDocument(attempt), true, false)
 			}
-			a.message("MCP authorization " + string(attempt.Status) + " · " + attempt.Server)
+			a.message("MCP authorization " + string(attempt.Status.Type) + " · " + attempt.Server)
 		},
 	)
 	if !started {
@@ -398,45 +398,46 @@ type mcpAuthorizationObserver struct {
 }
 
 type mcpAuthorizationReader interface {
-	GetAuthorization(context.Context, mcp.AuthorizationReference) (mcp.AuthorizationAttempt, error)
+	GetAuthorization(context.Context, mcp.AuthorizationReference) (protocol.MCPAuthorizationAttempt, error)
 }
 
 func (m mcpAuthorizationObserver) observe(
 	ctx context.Context,
-	initial mcp.AuthorizationAttempt,
-) (mcp.AuthorizationAttempt, error) {
-	if err := initial.Validate(); err != nil {
-		return mcp.AuthorizationAttempt{}, fmt.Errorf("observe MCP authorization: %w", err)
+	initial protocol.MCPAuthorizationAttempt,
+) (protocol.MCPAuthorizationAttempt, error) {
+	if err := mcp.ValidateAuthorizationAttempt(initial); err != nil {
+		return protocol.MCPAuthorizationAttempt{}, fmt.Errorf("observe MCP authorization: %w", err)
 	}
 	current := initial
-	reference := initial.Reference()
+	reference := mcp.AuthorizationReferenceFrom(initial)
 	delay := m.pollInterval
 	failures := 0
-	for current.Pending() {
+	for current.Status.Type == protocol.MCPAuthorizationAttemptPending {
 		if err := retry.Wait(ctx, delay); err != nil {
-			return mcp.AuthorizationAttempt{}, err
+			return protocol.MCPAuthorizationAttempt{}, err
 		}
 		next, err := m.service.GetAuthorization(ctx, reference)
 		if err != nil {
 			if !retry.IsReconnectable(err) {
-				return mcp.AuthorizationAttempt{}, err
+				return protocol.MCPAuthorizationAttempt{}, err
 			}
 			failures++
 			delay, err = m.recovery.Delay(failures)
 			if err != nil {
-				return mcp.AuthorizationAttempt{}, err
+				return protocol.MCPAuthorizationAttempt{}, err
 			}
 			continue
 		}
-		if err := next.Validate(); err != nil {
-			return mcp.AuthorizationAttempt{}, fmt.Errorf("observe MCP authorization: %w", err)
+		if err := mcp.ValidateAuthorizationAttempt(next); err != nil {
+			return protocol.MCPAuthorizationAttempt{}, fmt.Errorf("observe MCP authorization: %w", err)
 		}
-		if next.Reference() != reference {
-			return mcp.AuthorizationAttempt{}, fmt.Errorf(
+		nextReference := mcp.AuthorizationReferenceFrom(next)
+		if nextReference != reference {
+			return protocol.MCPAuthorizationAttempt{}, fmt.Errorf(
 				"%w: authorization observation moved from %+v to %+v",
 				agent.ErrIncompatibleRuntime,
 				reference,
-				next.Reference(),
+				nextReference,
 			)
 		}
 		current = next
@@ -446,22 +447,22 @@ func (m mcpAuthorizationObserver) observe(
 	return current, nil
 }
 
-func mcpAuthorizationDocument(attempt mcp.AuthorizationAttempt) readerDocument {
+func mcpAuthorizationDocument(attempt protocol.MCPAuthorizationAttempt) readerDocument {
 	lines := []string{
 		"attempt  " + attempt.ID,
 		"server   " + attempt.Server,
-		"status   " + string(attempt.Status),
+		"status   " + string(attempt.Status.Type),
 		"started  " + attempt.CreatedAt.Format(time.RFC3339),
 	}
 	if attempt.FinishedAt != nil {
 		lines = append(lines, "finished "+attempt.FinishedAt.Format(time.RFC3339))
 	}
-	if attempt.Problem != nil {
-		lines = append(lines, "problem  "+failure.String(attempt.Problem))
+	if attempt.Status.Error != nil {
+		lines = append(lines, "problem  "+failure.String(attempt.Status.Error))
 	}
 	detail := "complete the sign-in in your browser"
-	if !attempt.Pending() {
-		detail = string(attempt.Status)
+	if attempt.Status.Type != protocol.MCPAuthorizationAttemptPending {
+		detail = string(attempt.Status.Type)
 	}
 	return paragraphDocument("MCP authorization", detail, lines)
 }

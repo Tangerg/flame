@@ -20,6 +20,8 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
+const terminalMCPAuthorizationAttemptID = "mcpauth_AAAAAAAAAAAAAAAAAAAAAAAAAA"
+
 type mcpServiceStub struct {
 	mu          sync.Mutex
 	servers     []mcp.Server
@@ -67,7 +69,7 @@ func (b *blockingMCPReconnectService) ReconnectServer(ctx context.Context, serve
 func (b *blockingMCPAuthorizationService) GetAuthorization(
 	ctx context.Context,
 	reference mcp.AuthorizationReference,
-) (mcp.AuthorizationAttempt, error) {
+) (protocol.MCPAuthorizationAttempt, error) {
 	select {
 	case b.started <- struct{}{}:
 	default:
@@ -80,7 +82,7 @@ func (b *blockingMCPAuthorizationService) GetAuthorization(
 		case b.canceled <- struct{}{}:
 		default:
 		}
-		return mcp.AuthorizationAttempt{}, context.Cause(ctx)
+		return protocol.MCPAuthorizationAttempt{}, context.Cause(ctx)
 	}
 }
 
@@ -186,20 +188,24 @@ func (m *mcpServiceStub) ReconnectServer(_ context.Context, server string) error
 	return nil
 }
 
-func (m *mcpServiceStub) StartAuthorization(_ context.Context, server string) (mcp.AuthorizationAttempt, error) {
-	return mcp.AuthorizationAttempt{ID: "auth_1", Server: server, Status: protocol.MCPAuthorizationAttemptPending, CreatedAt: m.now}, nil
+func (m *mcpServiceStub) StartAuthorization(_ context.Context, server string) (protocol.MCPAuthorizationAttempt, error) {
+	return protocol.MCPAuthorizationAttempt{
+		ID: terminalMCPAuthorizationAttemptID, Server: server,
+		Status: protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptPending}, CreatedAt: m.now,
+	}, nil
 }
 
-func (m *mcpServiceStub) GetAuthorization(context.Context, mcp.AuthorizationReference) (mcp.AuthorizationAttempt, error) {
+func (m *mcpServiceStub) GetAuthorization(context.Context, mcp.AuthorizationReference) (protocol.MCPAuthorizationAttempt, error) {
 	m.authReads.Add(1)
 	select {
 	case err := <-m.authErrors:
-		return mcp.AuthorizationAttempt{}, err
+		return protocol.MCPAuthorizationAttempt{}, err
 	default:
 	}
 	finished := m.now.Add(time.Second)
-	return mcp.AuthorizationAttempt{
-		ID: "auth_1", Server: "docs", Status: protocol.MCPAuthorizationAttemptSucceeded,
+	return protocol.MCPAuthorizationAttempt{
+		ID: terminalMCPAuthorizationAttemptID, Server: "docs",
+		Status:    protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptSucceeded},
 		CreatedAt: m.now, FinishedAt: &finished,
 	}, nil
 }
@@ -218,7 +224,7 @@ func TestMCPAuthorizationObserverRecoversTransientReadsAndStopsOnAuthoritativeAb
 		t.Fatal(err)
 	}
 	observed, err := observer.observe(t.Context(), initial)
-	if err != nil || observed.Status != protocol.MCPAuthorizationAttemptSucceeded || service.authReads.Load() != 3 {
+	if err != nil || observed.Status.Type != protocol.MCPAuthorizationAttemptSucceeded || service.authReads.Load() != 3 {
 		t.Fatalf("observe after transient failures = (%+v, %v), reads %d", observed, err, service.authReads.Load())
 	}
 

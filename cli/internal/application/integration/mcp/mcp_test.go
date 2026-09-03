@@ -54,12 +54,15 @@ func TestServerAndAuthorizationStatesRejectContradictoryData(t *testing.T) {
 		t.Fatal("server accepted contradictory tool policy")
 	}
 	now := time.Now()
-	attempt := AuthorizationAttempt{ID: "auth_1", Server: "docs", Status: protocol.MCPAuthorizationAttemptPending, CreatedAt: now}
-	if err := attempt.Validate(); err != nil {
+	attempt := protocol.MCPAuthorizationAttempt{
+		ID: "mcpauth_AAAAAAAAAAAAAAAAAAAAAAAAAA", Server: "docs",
+		Status: protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptPending}, CreatedAt: now,
+	}
+	if err := ValidateAuthorizationAttempt(attempt); err != nil {
 		t.Fatal(err)
 	}
-	attempt.Status = protocol.MCPAuthorizationAttemptFailed
-	if err := attempt.Validate(); err == nil {
+	attempt.Status.Type = protocol.MCPAuthorizationAttemptFailed
+	if err := ValidateAuthorizationAttempt(attempt); err == nil {
 		t.Fatal("failed authorization without terminal data was accepted")
 	}
 }

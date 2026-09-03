@@ -72,8 +72,8 @@ type MCPManagement interface {
 	TestServer(context.Context, mcp.Candidate) (mcp.TestResult, error)
 	Tools(context.Context, string) ([]mcp.Tool, error)
 	ReconnectServer(context.Context, string) error
-	StartAuthorization(context.Context, string) (mcp.AuthorizationAttempt, error)
-	GetAuthorization(context.Context, mcp.AuthorizationReference) (mcp.AuthorizationAttempt, error)
+	StartAuthorization(context.Context, string) (protocol.MCPAuthorizationAttempt, error)
+	GetAuthorization(context.Context, mcp.AuthorizationReference) (protocol.MCPAuthorizationAttempt, error)
 }
 
 type Goals interface {
