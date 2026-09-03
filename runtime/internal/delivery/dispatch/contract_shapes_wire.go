@@ -690,24 +690,29 @@ func registerObjectConstraints(s *Shapes) {
 	// Value selections are either wholly absent (inherit the surrounding
 	// default) or name one exact model. Reasoning effort belongs to that exact
 	// identity and therefore cannot be supplied on its own.
+	modelSelectionRules := []ConditionalRule{{
+		When:     []delivery.FieldCondition{{Field: "provider", Operator: delivery.OperatorPresent}},
+		Required: []string{"model"},
+	}, {
+		When:     []delivery.FieldCondition{{Field: "model", Operator: delivery.OperatorPresent}},
+		Required: []string{"provider"},
+	}, {
+		When:     []delivery.FieldCondition{{Field: "reasoningEffort", Operator: delivery.OperatorPresent}},
+		Required: []string{"provider", "model"},
+	}}
 	for _, target := range []reflect.Type{
 		typeOf[protocol.StartRunRequest](),
 		typeOf[protocol.StartGoalRequest](),
 		typeOf[protocol.CreateScheduleRequest](),
 		typeOf[protocol.Schedule](),
 	} {
+		rules := modelSelectionRules
+		if target == typeOf[protocol.Schedule]() {
+			rules = slices.Concat([]ConditionalRule{{Required: []string{"createdAt"}}}, rules)
+		}
 		s.constraint(ObjectConstraintSpec{
 			GoType: target,
-			Rules: []ConditionalRule{{
-				When:     []delivery.FieldCondition{{Field: "provider", Operator: delivery.OperatorPresent}},
-				Required: []string{"model"},
-			}, {
-				When:     []delivery.FieldCondition{{Field: "model", Operator: delivery.OperatorPresent}},
-				Required: []string{"provider"},
-			}, {
-				When:     []delivery.FieldCondition{{Field: "reasoningEffort", Operator: delivery.OperatorPresent}},
-				Required: []string{"provider", "model"},
-			}},
+			Rules:  rules,
 		})
 	}
 

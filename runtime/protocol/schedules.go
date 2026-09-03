@@ -20,7 +20,7 @@ type Schedule struct {
 	Enabled         bool          `json:"enabled"`
 	LastRunAt       *time.Time    `json:"lastRunAt,omitempty"`
 	NextRunAt       *time.Time    `json:"nextRunAt,omitempty"`
-	CreatedAt       time.Time     `json:"createdAt"`
+	CreatedAt       time.Time     `json:"createdAt,omitzero"`
 	Revision        uint64        `json:"revision"`
 }
 

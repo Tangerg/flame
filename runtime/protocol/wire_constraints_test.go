@@ -629,6 +629,20 @@ func TestScheduleRequiresCron(t *testing.T) {
 	assertConstraintField(t, valid.ValidateWire(), "Schedule", "cron")
 }
 
+func TestScheduleRequiresCreationTime(t *testing.T) {
+	t.Parallel()
+
+	schedule := Schedule{
+		ID: "sch_1", Instructions: "run", Cron: "@daily",
+		CreatedAt: time.Unix(1, 0).UTC(), Revision: 1,
+	}
+	if err := schedule.ValidateWire(); err != nil {
+		t.Fatalf("valid Schedule: %v", err)
+	}
+	schedule.CreatedAt = time.Time{}
+	assertConstraintField(t, schedule.ValidateWire(), "Schedule", "createdAt")
+}
+
 func TestApprovalRuleWireConstraintsCloseScopeShape(t *testing.T) {
 	t.Parallel()
 	valid := ApprovalRule{
@@ -1592,7 +1606,7 @@ func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
 		},
 		"Schedule": Schedule{
 			ID: "sch_1", Instructions: "run", Cron: "@daily",
-			Revision: MaximumExactJSONInteger,
+			CreatedAt: time.Unix(1, 0).UTC(), Revision: MaximumExactJSONInteger,
 		},
 		"UpdateScheduleRequest": UpdateScheduleRequest{
 			ID: "sch_1", ExpectedRevision: MaximumExactJSONInteger,
@@ -1618,7 +1632,7 @@ func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
 		}},
 		{name: "Schedule", field: "revision", value: Schedule{
 			ID: "sch_1", Instructions: "run", Cron: "@daily",
-			Revision: MaximumExactJSONInteger + 1,
+			CreatedAt: time.Unix(1, 0).UTC(), Revision: MaximumExactJSONInteger + 1,
 		}},
 		{name: "UpdateScheduleRequest", field: "expectedRevision", value: UpdateScheduleRequest{
 			ID: "sch_1", ExpectedRevision: MaximumExactJSONInteger + 1,

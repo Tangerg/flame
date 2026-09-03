@@ -1801,6 +1801,7 @@ func (s Schedule) ValidateWire() error {
 		maxLength("model", s.Model, 256),
 		identity("reasoningEffort", s.ReasoningEffort),
 		maxLength("reasoningEffort", s.ReasoningEffort, 32),
+		requiredWhen(true, "createdAt", s),
 		requiredWhen(wireFieldPresent(s, "provider"), "model", s),
 		requiredWhen(wireFieldPresent(s, "model"), "provider", s),
 		requiredWhen(wireFieldPresent(s, "reasoningEffort"), "provider", s),

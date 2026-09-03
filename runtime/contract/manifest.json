@@ -4333,6 +4333,11 @@
       "type": "Schedule",
       "rules": [
         {
+          "required": [
+            "createdAt"
+          ]
+        },
+        {
           "when": [
             {
               "field": "provider",
