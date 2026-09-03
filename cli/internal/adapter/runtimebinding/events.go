@@ -12,9 +12,6 @@ func projectEvent(value protocol.RunEvent) (agent.RunEvent, bool, error) {
 	if err := protocol.ValidateWireTree(value); err != nil {
 		return agent.RunEvent{}, false, err
 	}
-	if value.Timestamp.IsZero() {
-		return agent.RunEvent{}, false, fmt.Errorf("event %s timestamp is zero", value.EventID)
-	}
 	projection := runEventProjection{source: value}
 	projected, err := projection.project()
 	if err != nil || !projected.included {

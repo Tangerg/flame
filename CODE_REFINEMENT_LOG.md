@@ -7,10 +7,10 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–152 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–153 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
-- The current Runtime contract is `0f351472` (`fix(runtime): require schedule
-  creation time`).
+- The current Runtime contract is `7ca66b23` (`fix(runtime): require run event
+  timestamps`).
 - Authorized code scope remains `runtime` and `cli`. Desktop work is concurrent
   user-owned work and must not be modified by this refinement stream.
 - The configured provider credential is used only through Runtime configuration.
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–152 — exact handoff
+## Rounds 101–153 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -112,6 +112,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 150 | `bea20b5d` + CLI dependency update | Made pending-interrupt creation time enforceably required, then rejected extra, cross-session, and wrong-root interrupt sets during CLI snapshot projection. |
 | 151 | `e67e6b6d` + CLI dependency update | Moved MCP authorization creation-time presence into the generated Runtime contract and left only cross-timestamp chronology in CLI. |
 | 152 | `0f351472` + CLI dependency update | Moved Schedule creation-time presence into the generated Runtime contract while retaining CLI-owned cross-field scheduling chronology. |
+| 153 | `7ca66b23` + CLI dependency update | Made every Run event timestamp enforceably required in Runtime's generated contract and removed CLI's duplicate zero-time check. |
 
 ## Verification contract
 
@@ -149,7 +150,7 @@ repeated here.
 
 ## Remaining direction
 
-- Continue after Round 152 by auditing complete Runtime catalogs and CLI
+- Continue after Round 153 by auditing complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the

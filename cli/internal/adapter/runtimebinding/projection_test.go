@@ -485,24 +485,39 @@ func TestProjectEventConsumesAuthoritativeItemAndStateFrames(t *testing.T) {
 func TestProjectEventRejectsMalformedEnvelopeBeforeStreaming(t *testing.T) {
 	t.Parallel()
 
-	for _, event := range []protocol.RunEvent{
+	for _, test := range []struct {
+		name  string
+		event protocol.RunEvent
+		field string
+	}{
 		{
-			EventID: "evt_event_1", RunID: "run_1", SegmentID: "segment_1",
-			Event: protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &protocol.Item{
-				ID: "answer", RunID: "run_1", Status: protocol.ItemStatusCompleted, Type: protocol.ItemTypeAgentMessage,
-			}},
+			name: "missing timestamp", field: "timestamp",
+			event: protocol.RunEvent{
+				EventID: "evt_event_1", RunID: "run_1", SegmentID: "segment_1",
+				Event: protocol.StreamEvent{
+					Type: protocol.StreamSegmentProgress, Progress: &protocol.RunProgress{Activity: "thinking"},
+				},
+			},
 		},
 		{
-			EventID: "evt_event_1", RunID: "run_1", SegmentID: "segment_1", Timestamp: time.Now(),
-			Event: protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &protocol.Item{
-				ID: "answer", RunID: "another_run", Status: protocol.ItemStatusCompleted, Type: protocol.ItemTypeAgentMessage,
-			}},
+			name: "cross-run item", field: "another_run",
+			event: protocol.RunEvent{
+				EventID: "evt_event_1", RunID: "run_1", SegmentID: "segment_1", Timestamp: time.Now(),
+				Event: protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &protocol.Item{
+					ID: "answer", RunID: "another_run", Status: protocol.ItemStatusCompleted, Type: protocol.ItemTypeAgentMessage,
+					CreatedAt: time.Now(), Phase: protocol.MessagePhaseFinalAnswer,
+					Content: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "done"}},
+				}},
+			},
 		},
 	} {
-		_, included, err := projectEvent(event)
-		if err == nil || included {
-			t.Fatalf("malformed event = (included %v, error %v)", included, err)
-		}
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			_, included, err := projectEvent(test.event)
+			if err == nil || included || !strings.Contains(err.Error(), test.field) {
+				t.Fatalf("malformed event = (included %v, error %v), want %q", included, err, test.field)
+			}
+		})
 	}
 }
 
