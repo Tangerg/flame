@@ -7,7 +7,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–141 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–142 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
 - The current Runtime contract is `bec9a946` (`fix(runtime): require agent memory
   timestamps`).
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–141 — exact handoff
+## Rounds 101–142 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -101,6 +101,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 139 | CLI commit | Reused Runtime's generated question aggregate validator so CLI questions enforce both the required field set and four-field ceiling. |
 | 140 | CLI commit | Replaced partial cancellation validation with Runtime's complete generated request validator, including the reason-length contract. |
 | 141 | CLI commit | Validated each projected interrupt response as a complete Runtime wire tree before resume dispatch. |
+| 142 | CLI commit | Validated projected MCP create, test, and update writes against Runtime-owned identity and collection constraints before dispatch. |
 
 ## Verification contract
 
@@ -138,7 +139,7 @@ repeated here.
 
 ## Remaining direction
 
-- Continue after Round 141 by auditing complete Runtime catalogs and CLI
+- Continue after Round 142 by auditing complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the

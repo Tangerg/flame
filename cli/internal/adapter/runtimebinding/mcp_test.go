@@ -3,6 +3,7 @@ package runtimebinding
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -283,7 +284,11 @@ func TestMCPAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 			Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools", Authorization: &authorization,
 		},
 	}
-	createResult := wireMCPServerFromCandidate(projectMCPCandidate(candidate))
+	projectedCandidate, err := projectMCPCandidate(candidate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	createResult := wireMCPServerFromCandidate(projectedCandidate)
 	createResult.Description = "ignored"
 	description := "Updated"
 	enabled := false
@@ -319,6 +324,61 @@ func TestMCPAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 			test.stub.t, test.stub.now = t, time.Unix(100, 0)
 			runtime := &Connection{mcp: test.stub, meta: requestMeta("test")}
 			requireRuntimeContractViolation(t, test.invoke(runtime))
+		})
+	}
+}
+
+func TestMCPAdapterRejectsWritesOutsideRuntimeWireContract(t *testing.T) {
+	t.Parallel()
+	validConnection := mcp.ConnectionInput{
+		Transport: protocol.MCPTransportStreamableHTTP,
+		URL:       "https://mcp.example/tools",
+	}
+	tests := []struct {
+		name   string
+		invoke func(*Connection) error
+		field  string
+	}{
+		{
+			name: "candidate server name",
+			invoke: func(runtime *Connection) error {
+				_, err := runtime.CreateServer(t.Context(), mcp.Candidate{Name: "Docs", Connection: validConnection})
+				return err
+			},
+			field: "name",
+		},
+		{
+			name: "candidate tool name",
+			invoke: func(runtime *Connection) error {
+				_, err := runtime.TestServer(t.Context(), mcp.Candidate{
+					Name: "docs", Connection: validConnection, DisabledTools: []string{"invalid tool"},
+				})
+				return err
+			},
+			field: "disabledTools[0]",
+		},
+		{
+			name: "update server name",
+			invoke: func(runtime *Connection) error {
+				description := "updated"
+				_, err := runtime.UpdateServer(t.Context(), mcp.ServerUpdate{Server: "Docs", Description: &description})
+				return err
+			},
+			field: "server",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			stub := &mcpBindingStub{t: t}
+			runtime := &Connection{mcp: stub, meta: requestMeta("test")}
+			err := test.invoke(runtime)
+			if err == nil || !strings.Contains(err.Error(), test.field) {
+				t.Fatalf("write error = %v, want field %q", err, test.field)
+			}
+			if len(stub.actions) != 0 {
+				t.Fatalf("invalid write reached Runtime: %v", stub.actions)
+			}
 		})
 	}
 }

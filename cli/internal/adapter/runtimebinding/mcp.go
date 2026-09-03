@@ -46,11 +46,15 @@ func (r *Connection) CreateServer(ctx context.Context, candidate mcp.Candidate) 
 	if err := candidate.Validate(); err != nil {
 		return mcp.Server{}, err
 	}
+	request, err := projectMCPCandidate(candidate)
+	if err != nil {
+		return mcp.Server{}, err
+	}
 	options, err := r.commandOptions()
 	if err != nil {
 		return mcp.Server{}, err
 	}
-	result, err := r.mcp.CreateMCPServer(ctx, projectMCPCandidate(candidate), options)
+	result, err := r.mcp.CreateMCPServer(ctx, request, options)
 	projected, err := projectMCPServerResult("create MCP server", candidate.Name, result, err)
 	if err != nil {
 		return mcp.Server{}, err
@@ -87,6 +91,9 @@ func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) 
 	if update.AutoApproveTools != nil {
 		values := slices.Clone(*update.AutoApproveTools)
 		request.AutoApproveTools = &values
+	}
+	if err := protocol.ValidateWireTree(request); err != nil {
+		return mcp.Server{}, fmt.Errorf("MCP update %s violates runtime wire contract: %w", update.Server, err)
 	}
 	result, err := r.mcp.UpdateMCPServer(ctx, request, options)
 	projected, err := projectMCPServerResult("update MCP server", update.Server, result, err)
@@ -127,7 +134,11 @@ func (r *Connection) TestServer(ctx context.Context, candidate mcp.Candidate) (m
 	if err := candidate.Validate(); err != nil {
 		return mcp.TestResult{}, err
 	}
-	result, err := r.mcp.TestMCPServer(ctx, projectMCPCandidate(candidate), r.callOptions())
+	request, err := projectMCPCandidate(candidate)
+	if err != nil {
+		return mcp.TestResult{}, err
+	}
+	result, err := r.mcp.TestMCPServer(ctx, request, r.callOptions())
 	if err != nil {
 		return mcp.TestResult{}, classifyMCPError(err)
 	}
@@ -252,12 +263,16 @@ func projectMCPServer(value protocol.MCPServer) (mcp.Server, error) {
 	}, nil
 }
 
-func projectMCPCandidate(candidate mcp.Candidate) protocol.MCPServerCandidate {
-	return protocol.MCPServerCandidate{
+func projectMCPCandidate(candidate mcp.Candidate) (protocol.MCPServerCandidate, error) {
+	projected := protocol.MCPServerCandidate{
 		Name: candidate.Name, Enabled: candidate.Enabled, Description: candidate.Description,
 		Connection: projectMCPConnectionInput(candidate.Connection), HandshakeTimeout: projectMCPHandshakeTimeout(candidate.HandshakeTimeout),
 		DisabledTools: slices.Clone(candidate.DisabledTools), AutoApproveTools: slices.Clone(candidate.AutoApproveTools),
 	}
+	if err := protocol.ValidateWireTree(projected); err != nil {
+		return protocol.MCPServerCandidate{}, fmt.Errorf("MCP candidate %s violates runtime wire contract: %w", candidate.Name, err)
+	}
+	return projected, nil
 }
 
 func projectMCPHandshakeTimeout(timeout mcp.HandshakeTimeout) protocol.MCPHandshakeTimeout {
