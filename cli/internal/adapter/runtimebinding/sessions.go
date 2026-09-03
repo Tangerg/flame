@@ -42,17 +42,17 @@ func (r *Connection) ListSessions(ctx context.Context, query agent.SessionQuery)
 	if err != nil {
 		return agent.SessionPage{}, classifyError(err)
 	}
-	return projectSessionPage(page, query.Cursor, limit)
+	return projectSessionPage(page, query, limit)
 }
 
-func projectSessionPage(page *protocol.Page[protocol.Session], cursor string, limit int) (agent.SessionPage, error) {
+func projectSessionPage(page *protocol.Page[protocol.Session], query agent.SessionQuery, limit int) (agent.SessionPage, error) {
 	if page == nil {
 		return agent.SessionPage{}, runtimeContractViolation("list sessions returned a nil page")
 	}
 	if len(page.Data) > limit {
 		return agent.SessionPage{}, runtimeContractViolation("list sessions returned %d rows for limit %d", len(page.Data), limit)
 	}
-	if err := validateContinuationCursor("list sessions", cursor, page.NextCursor); err != nil {
+	if err := validateContinuationCursor("list sessions", query.Cursor, page.NextCursor); err != nil {
 		return agent.SessionPage{}, err
 	}
 	result := agent.SessionPage{Items: make([]agent.Session, 0, len(page.Data)), NextCursor: page.NextCursor}
@@ -60,6 +60,12 @@ func projectSessionPage(page *protocol.Page[protocol.Session], cursor string, li
 		projected, err := projectSession(value)
 		if err != nil {
 			return agent.SessionPage{}, runtimeContractViolation("list sessions returned an invalid session: %v", err)
+		}
+		if query.Workspace != "" && projected.Workspace.Path != query.Workspace {
+			return agent.SessionPage{}, runtimeContractViolation(
+				"list sessions for workspace %q returned session %q from %q",
+				query.Workspace, projected.ID, projected.Workspace.Path,
+			)
 		}
 		if len(result.Items) != 0 {
 			previous := result.Items[len(result.Items)-1]

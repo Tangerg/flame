@@ -73,7 +73,9 @@ func TestSessionCatalogRejectsOversizedCursorsAtTheAdapterBoundary(t *testing.T)
 		t.Fatal("oversized request cursor reached the Runtime binding")
 	}
 
-	_, err := projectSessionPage(protocol.NewPageWithCursor([]protocol.Session{}, oversized), "", agent.DefaultPageRows)
+	_, err := projectSessionPage(
+		protocol.NewPageWithCursor([]protocol.Session{}, oversized), agent.SessionQuery{}, agent.DefaultPageRows,
+	)
 	if err == nil || !strings.Contains(err.Error(), "continuation cursor larger") {
 		t.Fatalf("oversized response cursor error = %v", err)
 	}
@@ -116,10 +118,27 @@ func TestSessionCatalogRejectsPagesOutsideRuntimeOrder(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := projectSessionPage(protocol.NewPage(test.sessions), "", agent.DefaultPageRows)
+			_, err := projectSessionPage(protocol.NewPage(test.sessions), agent.SessionQuery{}, agent.DefaultPageRows)
 			requireRuntimeContractViolation(t, err)
 		})
 	}
+}
+
+func TestSessionCatalogRejectsPagesOutsideWorkspaceFilter(t *testing.T) {
+	t.Parallel()
+	runtime := &Connection{sessionCatalog: sessionCatalogStub{list: func(protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
+		return protocol.NewPage([]protocol.Session{{
+			ID: "ses_other", Status: protocol.SessionStatusIdle,
+			Provider: testSessionProvider, Model: testSessionModel,
+			Workspace: testProtocolWorkspace("/other", "/other", protocol.WorkspaceAvailable),
+			CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
+		}}), nil
+	}}, meta: requestMeta("test")}
+
+	_, err := runtime.ListSessions(t.Context(), agent.SessionQuery{
+		Workspace: "/workspace", PageSize: agent.DefaultPageSize(),
+	})
+	requireRuntimeContractViolation(t, err)
 }
 
 func (s sessionCatalogStub) CreateSession(_ context.Context, request protocol.CreateSessionRequest, _ flameruntime.CommandOptions) (*protocol.Session, error) {
