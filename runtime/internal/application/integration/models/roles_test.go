@@ -14,7 +14,7 @@ import (
 )
 
 func TestSetUtilityRoleUsesSaverPort(t *testing.T) {
-	state := NewRoleState(*mustModelRole(t, "anthropic", "claude-haiku"))
+	state := NewRoleState(mustModelRole(t, "anthropic", "claude-haiku"))
 	saver := &fakeUtilityRoleSaver{}
 	c := New(Config{UtilityRoleState: state, UtilityStore: saver})
 
@@ -32,7 +32,7 @@ func TestSetUtilityRoleUsesSaverPort(t *testing.T) {
 }
 
 func TestSetUtilityRoleUsesChatModelValidatorPort(t *testing.T) {
-	state := NewRoleState(modelref.Selection{})
+	state := NewRoleState(modelref.Role{})
 	saver := &fakeUtilityRoleSaver{}
 	validator := &fakeChatModelValidator{}
 	cfg := configuredRoleConfig(t)
@@ -55,7 +55,7 @@ func TestSetUtilityRoleUsesChatModelValidatorPort(t *testing.T) {
 
 func TestSetUtilityRoleReturnsChatModelValidatorError(t *testing.T) {
 	fail := errors.New("build client")
-	state := NewRoleState(modelref.Selection{})
+	state := NewRoleState(modelref.Role{})
 	cfg := configuredRoleConfig(t)
 	cfg.UtilityRoleState = state
 	cfg.UtilityValidator = &fakeChatModelValidator{err: fail}
@@ -67,7 +67,7 @@ func TestSetUtilityRoleReturnsChatModelValidatorError(t *testing.T) {
 }
 
 func TestSetUtilityRoleRequiresChatModelValidator(t *testing.T) {
-	state := NewRoleState(modelref.Selection{})
+	state := NewRoleState(modelref.Role{})
 	cfg := configuredRoleConfig(t)
 	cfg.UtilityRoleState = state
 	c := New(cfg)
@@ -79,7 +79,7 @@ func TestSetUtilityRoleRequiresChatModelValidator(t *testing.T) {
 }
 
 func TestSetUtilityRoleRequiresAConfiguredProvider(t *testing.T) {
-	state := NewRoleState(modelref.Selection{})
+	state := NewRoleState(modelref.Role{})
 	cfg := configuredRoleConfig(t)
 	cfg.Providers = &testProviderRegistry{}
 	cfg.UtilityRoleState = state
@@ -93,7 +93,7 @@ func TestSetUtilityRoleRequiresAConfiguredProvider(t *testing.T) {
 }
 
 func TestSetEmbeddingRoleUsesSaverPort(t *testing.T) {
-	state := NewRoleState(*mustModelRole(t, "openai", "text-embedding-3-small"))
+	state := NewRoleState(mustModelRole(t, "openai", "text-embedding-3-small"))
 	saver := &fakeEmbeddingRoleSaver{}
 	c := New(Config{EmbeddingRoleState: state, EmbeddingStore: saver})
 
@@ -113,10 +113,10 @@ func TestSetEmbeddingRoleUsesSaverPort(t *testing.T) {
 func TestCommittedRoleUpdatesPublishModelsInvalidation(t *testing.T) {
 	var notices []invalidation.Notice
 	cfg := configuredRoleConfig(t)
-	cfg.UtilityRoleState = NewRoleState(modelref.Selection{})
+	cfg.UtilityRoleState = NewRoleState(modelref.Role{})
 	cfg.UtilityValidator = staticChatModelValidator{}
 	cfg.UtilityStore = &fakeUtilityRoleSaver{}
-	cfg.EmbeddingRoleState = NewRoleState(modelref.Selection{})
+	cfg.EmbeddingRoleState = NewRoleState(modelref.Role{})
 	cfg.EmbeddingValidator = staticEmbeddingResolver{}
 	cfg.EmbeddingStore = &fakeEmbeddingRoleSaver{}
 	cfg.Invalidations = func(notice invalidation.Notice) { notices = append(notices, notice) }
@@ -139,7 +139,7 @@ func TestCommittedRoleUpdatesPublishModelsInvalidation(t *testing.T) {
 }
 
 func TestSetEmbeddingRoleRequiresResolver(t *testing.T) {
-	state := NewRoleState(modelref.Selection{})
+	state := NewRoleState(modelref.Role{})
 	cfg := configuredRoleConfig(t)
 	cfg.EmbeddingRoleState = state
 	c := New(cfg)
@@ -151,7 +151,7 @@ func TestSetEmbeddingRoleRequiresResolver(t *testing.T) {
 }
 
 func TestSetEmbeddingRoleRejectsProviderWithoutEmbeddings(t *testing.T) {
-	state := NewRoleState(modelref.Selection{})
+	state := NewRoleState(modelref.Role{})
 	cfg := configuredRoleConfig(t)
 	cfg.Catalog = testCatalog{metadata: []ProviderMetadata{
 		providerMetadataFixture(t, "anthropic", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability()),
@@ -167,7 +167,7 @@ func TestSetEmbeddingRoleRejectsProviderWithoutEmbeddings(t *testing.T) {
 }
 
 func TestSetUtilityRoleSerializesPersistAndPublish(t *testing.T) {
-	state := NewRoleState(modelref.Selection{})
+	state := NewRoleState(modelref.Role{})
 	saver := newBlockingUtilitySaver()
 	cfg := configuredRoleConfig(t)
 	cfg.UtilityRoleState = state
@@ -179,7 +179,7 @@ func TestSetUtilityRoleSerializesPersistAndPublish(t *testing.T) {
 }
 
 func TestSetEmbeddingRoleSerializesPersistAndPublish(t *testing.T) {
-	state := NewRoleState(modelref.Selection{})
+	state := NewRoleState(modelref.Role{})
 	saver := newBlockingEmbeddingSaver()
 	cfg := configuredRoleConfig(t)
 	cfg.EmbeddingRoleState = state
@@ -190,7 +190,7 @@ func TestSetEmbeddingRoleSerializesPersistAndPublish(t *testing.T) {
 	assertRoleMutationSerializesPersistAndPublish(t, state, saver.blockingRoleSaver, c.SetEmbeddingRole)
 }
 
-type roleMutation func(context.Context, string, string) (modelref.Selection, error)
+type roleMutation func(context.Context, string, string) (modelref.Role, error)
 
 func assertRoleMutationSerializesPersistAndPublish(t *testing.T, state *RoleState, saver *blockingRoleSaver, setRole roleMutation) {
 	t.Helper()
@@ -219,13 +219,13 @@ func assertRoleMutationSerializesPersistAndPublish(t *testing.T, state *RoleStat
 	}
 }
 
-func mustModelRole(t *testing.T, providerID, model string) *modelref.Selection {
+func mustModelRole(t *testing.T, providerID, model string) modelref.Role {
 	t.Helper()
-	role, err := modelref.New(providerID, model)
+	role, err := modelref.NewRole(providerID, model)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &role
+	return role
 }
 
 type fakeUtilityRoleSaver struct {
@@ -234,7 +234,7 @@ type fakeUtilityRoleSaver struct {
 	calls    int
 }
 
-func (f *fakeUtilityRoleSaver) SaveUtilityRole(_ context.Context, role modelref.Selection) error {
+func (f *fakeUtilityRoleSaver) SaveUtilityRole(_ context.Context, role modelref.Role) error {
 	f.calls++
 	f.provider = role.Provider()
 	f.model = role.Model()
@@ -259,7 +259,7 @@ type fakeEmbeddingRoleSaver struct {
 	calls    int
 }
 
-func (f *fakeEmbeddingRoleSaver) SaveEmbeddingRole(_ context.Context, role modelref.Selection) error {
+func (f *fakeEmbeddingRoleSaver) SaveEmbeddingRole(_ context.Context, role modelref.Role) error {
 	f.calls++
 	f.provider = role.Provider()
 	f.model = role.Model()
@@ -332,7 +332,7 @@ func newBlockingUtilitySaver() *blockingUtilitySaver {
 	return &blockingUtilitySaver{blockingRoleSaver: newBlockingRoleSaver()}
 }
 
-func (b *blockingUtilitySaver) SaveUtilityRole(_ context.Context, role modelref.Selection) error {
+func (b *blockingUtilitySaver) SaveUtilityRole(_ context.Context, role modelref.Role) error {
 	b.save(role.Model())
 	return nil
 }
@@ -343,7 +343,7 @@ func newBlockingEmbeddingSaver() *blockingEmbeddingSaver {
 	return &blockingEmbeddingSaver{blockingRoleSaver: newBlockingRoleSaver()}
 }
 
-func (b *blockingEmbeddingSaver) SaveEmbeddingRole(_ context.Context, role modelref.Selection) error {
+func (b *blockingEmbeddingSaver) SaveEmbeddingRole(_ context.Context, role modelref.Role) error {
 	b.save(role.Model())
 	return nil
 }

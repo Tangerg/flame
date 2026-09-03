@@ -23,10 +23,10 @@ func (r recordingChatResolver) ResolveChat(
 }
 
 type staticRoleSource struct {
-	selection modelref.Selection
+	role modelref.Role
 }
 
-func (s staticRoleSource) Role() modelref.Selection { return s.selection }
+func (s staticRoleSource) Role() modelref.Role { return s.role }
 
 type pointerInputTokenCounter struct{}
 
@@ -79,17 +79,18 @@ func TestLiveUtilityClientResolvesMainForEveryUse(t *testing.T) {
 
 func TestLiveUtilityClientReturnsConfiguredRoleFailureWithoutFallback(t *testing.T) {
 	mainSelection := mustRoleSelection(t, "anthropic", "claude-main")
-	utilitySelection := mustRoleSelection(t, "openai", "utility-model")
+	utilityRole := mustRole(t, "openai", "utility-model")
+	utilitySelection := utilityRole.Selection()
 	client := newTestChatClient(t)
 	var resolved []modelref.Selection
 	resolver := recordingChatResolver{resolve: func(selection modelref.Selection) (ResolvedChat, error) {
 		resolved = append(resolved, selection)
-		if selection == utilitySelection {
+		if selection.Equal(utilitySelection) {
 			return ResolvedChat{}, errors.New("utility provider unavailable")
 		}
 		return mustResolvedChat(t, client, nil), nil
 	}}
-	resolve, err := LiveUtilityClient(resolver, mainSelection, staticRoleSource{selection: utilitySelection})
+	resolve, err := LiveUtilityClient(resolver, mainSelection, staticRoleSource{role: utilityRole})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +99,7 @@ func TestLiveUtilityClientReturnsConfiguredRoleFailureWithoutFallback(t *testing
 	if err == nil || got != nil || !strings.Contains(err.Error(), "utility provider unavailable") {
 		t.Fatalf("resolve configured utility = (%p, %v), want exact failure", got, err)
 	}
-	if len(resolved) != 1 || resolved[0] != utilitySelection {
+	if len(resolved) != 1 || !resolved[0].Equal(utilitySelection) {
 		t.Fatalf("resolved selections = %#v, want utility only", resolved)
 	}
 }
@@ -110,6 +111,15 @@ func mustRoleSelection(t testing.TB, providerID, model string) modelref.Selectio
 		t.Fatal(err)
 	}
 	return selection
+}
+
+func mustRole(t testing.TB, providerID, model string) modelref.Role {
+	t.Helper()
+	role, err := modelref.NewRole(providerID, model)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return role
 }
 
 func newTestChatClient(t testing.TB) *chatclient.Client {

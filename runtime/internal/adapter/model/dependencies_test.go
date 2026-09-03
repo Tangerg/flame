@@ -23,7 +23,7 @@ func (*pointerChatResolver) ResolveChat(context.Context, modelref.Selection) (Re
 
 type pointerRoleSource struct{}
 
-func (*pointerRoleSource) Role() modelref.Selection { return modelref.Selection{} }
+func (*pointerRoleSource) Role() modelref.Role { return modelref.Role{} }
 
 func TestModelResolversRejectMissingCredentialLookup(t *testing.T) {
 	var lookup *pointerCredentialLookup

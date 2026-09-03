@@ -61,7 +61,7 @@ func SeedUtilityRole(ctx context.Context, store UtilityRoleStore, cfg config.Set
 	if cfg.UtilityModel == "" || cfg.UtilityModel == cfg.Model {
 		return nil
 	}
-	role, err := modelref.New(cfg.Provider, cfg.UtilityModel)
+	role, err := modelref.NewRole(cfg.Provider, cfg.UtilityModel)
 	if err != nil {
 		return err
 	}

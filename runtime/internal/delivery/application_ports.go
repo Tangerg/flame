@@ -63,13 +63,13 @@ type approvalUseCases interface {
 
 type modelUseCases interface {
 	UpdateProvider(ctx context.Context, cmd models.UpdateProviderCommand) (models.ProviderSummary, error)
-	EmbeddingRole() modelref.Selection
+	EmbeddingRole() modelref.Role
 	ListModels(ctx context.Context, providerID string) ([]models.Model, error)
 	ListProviders(ctx context.Context) ([]models.ProviderSummary, error)
-	SetEmbeddingRole(ctx context.Context, providerID, model string) (modelref.Selection, error)
-	SetUtilityRole(ctx context.Context, provider, model string) (modelref.Selection, error)
+	SetEmbeddingRole(ctx context.Context, providerID, model string) (modelref.Role, error)
+	SetUtilityRole(ctx context.Context, provider, model string) (modelref.Role, error)
 	TestProvider(ctx context.Context, id string) (models.ProviderTestOutcome, error)
-	UtilityRole() modelref.Selection
+	UtilityRole() modelref.Role
 }
 
 type toolUseCases interface {

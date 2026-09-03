@@ -41,7 +41,7 @@ func TestEmbeddingRoleStore_RoundTrip(t *testing.T) {
 		t.Fatalf("load after re-save = (%+v, %v); want (anthropic, voyage-3-large, nil)", role, err)
 	}
 
-	if err := s.SaveEmbeddingRole(ctx, modelref.Selection{}); err != nil {
+	if err := s.SaveEmbeddingRole(ctx, modelref.Role{}); err != nil {
 		t.Fatalf("clear: %v", err)
 	}
 	if role, err := s.LoadEmbeddingRole(ctx); err != nil || role.Configured() {

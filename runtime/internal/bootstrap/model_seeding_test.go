@@ -11,7 +11,7 @@ import (
 func TestSeedUtilityRoleOnlySeedsAnAbsentDurableChoice(t *testing.T) {
 	tests := []struct {
 		name         string
-		stored       modelref.Selection
+		stored       modelref.Role
 		present      bool
 		configured   config.Settings
 		wantSaves    int
@@ -58,16 +58,16 @@ func TestSeedUtilityRoleOnlySeedsAnAbsentDurableChoice(t *testing.T) {
 }
 
 type utilityRoleSeedStore struct {
-	role    modelref.Selection
+	role    modelref.Role
 	present bool
 	saves   int
 }
 
-func (s *utilityRoleSeedStore) LoadUtilityRole(context.Context) (modelref.Selection, bool, error) {
+func (s *utilityRoleSeedStore) LoadUtilityRole(context.Context) (modelref.Role, bool, error) {
 	return s.role, s.present, nil
 }
 
-func (s *utilityRoleSeedStore) SaveUtilityRole(_ context.Context, role modelref.Selection) error {
+func (s *utilityRoleSeedStore) SaveUtilityRole(_ context.Context, role modelref.Role) error {
 	s.role = role
 	s.present = true
 	s.saves++

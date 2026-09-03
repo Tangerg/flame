@@ -48,7 +48,7 @@ type utilitySaverRecorder struct {
 	calls    int
 }
 
-func (u *utilitySaverRecorder) SaveUtilityRole(_ context.Context, role modelref.Selection) error {
+func (u *utilitySaverRecorder) SaveUtilityRole(_ context.Context, role modelref.Role) error {
 	u.calls++
 	u.provider = role.Provider()
 	u.model = role.Model()
@@ -60,7 +60,7 @@ func modelRoleServer(entries map[string]provider.Provider, saver *utilitySaverRe
 	return handlerWithModels(models.Config{
 		Providers:        fake,
 		Catalog:          fake,
-		UtilityRoleState: models.NewRoleState(modelref.Selection{}),
+		UtilityRoleState: models.NewRoleState(modelref.Role{}),
 		UtilityValidator: okChatModelValidator{},
 		UtilityStore:     saver,
 	})

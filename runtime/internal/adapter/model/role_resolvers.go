@@ -14,7 +14,7 @@ import (
 // RoleSource is the read view a live specialized-model resolver needs. The
 // source's owner decides how role changes are synchronized.
 type RoleSource interface {
-	Role() modelref.Selection
+	Role() modelref.Role
 }
 
 // ChatClientResolver resolves an exact selection from the current provider
@@ -44,7 +44,7 @@ func LiveUtilityClient(
 	return func(ctx context.Context) (*chatclient.Client, error) {
 		selection := mainSelection
 		if role := roles.Role(); role.Configured() {
-			selection = role
+			selection = role.Selection()
 		}
 		resolved, err := resolver.ResolveChat(ctx, selection)
 		if err != nil {
@@ -89,5 +89,5 @@ func (r *RoleEmbedder) ResolveMemory(ctx context.Context) (agentmemoryapp.Embedd
 	if !role.Configured() {
 		return nil, nil
 	}
-	return r.resolver.Resolve(ctx, role)
+	return r.resolver.Resolve(ctx, role.Selection())
 }

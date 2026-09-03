@@ -23,12 +23,12 @@ func NewUtilityRoleStore(db *sql.DB) *UtilityRoleStore {
 // LoadUtilityRole returns the stored role and whether its row exists. A present
 // zero role is an explicit choice to inherit the main Run model; absence permits
 // first-run configuration seeding.
-func (u *UtilityRoleStore) LoadUtilityRole(ctx context.Context) (modelref.Selection, bool, error) {
+func (u *UtilityRoleStore) LoadUtilityRole(ctx context.Context) (modelref.Role, bool, error) {
 	return u.store.load(ctx)
 }
 
 // SaveUtilityRole upserts the single utility-role row. A zero role clears it
 // back to the main Run model.
-func (u *UtilityRoleStore) SaveUtilityRole(ctx context.Context, role modelref.Selection) error {
+func (u *UtilityRoleStore) SaveUtilityRole(ctx context.Context, role modelref.Role) error {
 	return u.store.save(ctx, role)
 }

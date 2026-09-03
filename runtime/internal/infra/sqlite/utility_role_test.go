@@ -46,7 +46,7 @@ func TestUtilityRoleStore_RoundTrip(t *testing.T) {
 	}
 
 	// Clearing (zero role) round-trips as unset.
-	if err := s.SaveUtilityRole(ctx, modelref.Selection{}); err != nil {
+	if err := s.SaveUtilityRole(ctx, modelref.Role{}); err != nil {
 		t.Fatalf("clear: %v", err)
 	}
 	if role, present, err := s.LoadUtilityRole(ctx); err != nil || !present || role.Configured() {
@@ -69,9 +69,9 @@ func TestUtilityRoleStoreRejectsPartialPersistedSelection(t *testing.T) {
 	}
 }
 
-func mustStoredRole(t testing.TB, provider, model string) modelref.Selection {
+func mustStoredRole(t testing.TB, provider, model string) modelref.Role {
 	t.Helper()
-	role, err := modelref.New(provider, model)
+	role, err := modelref.NewRole(provider, model)
 	if err != nil {
 		t.Fatal(err)
 	}

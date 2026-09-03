@@ -70,13 +70,13 @@ type EmbeddingModelValidator interface {
 // UtilityRoleSaver persists the utility-model role across restarts. nil disables
 // persistence (the role stays in-process only).
 type UtilityRoleSaver interface {
-	SaveUtilityRole(ctx context.Context, role modelref.Selection) error
+	SaveUtilityRole(ctx context.Context, role modelref.Role) error
 }
 
 // EmbeddingRoleSaver persists the embedding-model role across restarts. nil
 // disables persistence.
 type EmbeddingRoleSaver interface {
-	SaveEmbeddingRole(ctx context.Context, role modelref.Selection) error
+	SaveEmbeddingRole(ctx context.Context, role modelref.Role) error
 }
 
 // Coordinator owns provider + model configuration. Any nil dependency disables
@@ -130,10 +130,10 @@ type Config struct {
 // New returns a models Coordinator over cfg.
 func New(cfg Config) *Coordinator {
 	if cfg.UtilityRoleState == nil {
-		cfg.UtilityRoleState = NewRoleState(modelref.Selection{})
+		cfg.UtilityRoleState = NewRoleState(modelref.Role{})
 	}
 	if cfg.EmbeddingRoleState == nil {
-		cfg.EmbeddingRoleState = NewRoleState(modelref.Selection{})
+		cfg.EmbeddingRoleState = NewRoleState(modelref.Role{})
 	}
 	if cfg.ProbeTimeout <= 0 {
 		cfg.ProbeTimeout = defaultProviderProbeTimeout

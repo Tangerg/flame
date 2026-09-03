@@ -34,28 +34,28 @@ func TestLoadEmbeddingRoleUsesLoaderPort(t *testing.T) {
 }
 
 type fakeUtilityRoleLoader struct {
-	role  modelref.Selection
+	role  modelref.Role
 	calls int
 }
 
-func (f *fakeUtilityRoleLoader) LoadUtilityRole(context.Context) (modelref.Selection, bool, error) {
+func (f *fakeUtilityRoleLoader) LoadUtilityRole(context.Context) (modelref.Role, bool, error) {
 	f.calls++
 	return f.role, true, nil
 }
 
 type fakeEmbeddingRoleLoader struct {
-	role  modelref.Selection
+	role  modelref.Role
 	calls int
 }
 
-func (f *fakeEmbeddingRoleLoader) LoadEmbeddingRole(context.Context) (modelref.Selection, error) {
+func (f *fakeEmbeddingRoleLoader) LoadEmbeddingRole(context.Context) (modelref.Role, error) {
 	f.calls++
 	return f.role, nil
 }
 
-func mustBootstrapRole(t testing.TB, provider, model string) modelref.Selection {
+func mustBootstrapRole(t testing.TB, provider, model string) modelref.Role {
 	t.Helper()
-	role, err := modelref.New(provider, model)
+	role, err := modelref.NewRole(provider, model)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -23,13 +23,13 @@ func NewEmbeddingRoleStore(db *sql.DB) *EmbeddingRoleStore {
 
 // LoadEmbeddingRole returns the stored role, or its zero value when unset (no
 // row yet) — the index feature is then off until one is configured.
-func (e *EmbeddingRoleStore) LoadEmbeddingRole(ctx context.Context) (modelref.Selection, error) {
+func (e *EmbeddingRoleStore) LoadEmbeddingRole(ctx context.Context) (modelref.Role, error) {
 	role, _, err := e.store.load(ctx)
 	return role, err
 }
 
 // SaveEmbeddingRole upserts the single embedding-role row. A zero role clears
 // it (turns the index feature off).
-func (e *EmbeddingRoleStore) SaveEmbeddingRole(ctx context.Context, role modelref.Selection) error {
+func (e *EmbeddingRoleStore) SaveEmbeddingRole(ctx context.Context, role modelref.Role) error {
 	return e.store.save(ctx, role)
 }
