@@ -1,3 +1,4 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { MCP_SERVERS_PANE } from "@/plugins/builtin/settings/kit/panes";
 import { useId, useRef, useState } from "react";
 import { Badge, Icon, IconButton, Pressable, Tag, TextButton, knownIconName } from "@/ui";
@@ -9,7 +10,6 @@ import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/na
 import { cn } from "@/lib/classNames";
 import {
   type MCPServerSettings,
-  mcpServerMutationWasRetired,
   reconnectMCPServer,
 } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
 import { useMCPServerToolConfigs } from "@/plugins/builtin/workspace/application/toolCatalog";
@@ -82,7 +82,7 @@ export function McpRow({ server }: { server: MCPServerSettings }) {
     try {
       await reconnectMCPServer(server.id);
     } catch (cause) {
-      if (!mcpServerMutationWasRetired(cause)) {
+      if (!wasGenerationRetired(cause)) {
         notifyError(rpcErrorText(cause) ?? t("tools.reconnectFailed", { server: server.id }));
       }
     } finally {

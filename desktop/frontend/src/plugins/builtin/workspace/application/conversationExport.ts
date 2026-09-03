@@ -1,3 +1,4 @@
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { formatDateTime } from "@/lib/i18n/relativeTime";
@@ -115,18 +116,12 @@ const artifactEnvelope = z.looseObject({
   items: z.array(z.unknown()),
 });
 
-class ConversationArchiveGenerationRetiredError extends Error {
-  override readonly name = "ConversationArchiveGenerationRetiredError";
-
-  constructor() {
-    super("conversation_archive_generation_retired");
-  }
-}
-
 class ConversationArchiveGeneration {
   readonly #gateway: ConversationArchiveGateway;
   readonly #files: FileTransferPort;
-  readonly #cohort = new RetirableTaskCohort(new ConversationArchiveGenerationRetiredError());
+  readonly #cohort = new RetirableTaskCohort(
+    new GenerationRetiredError("conversation_archive_generation"),
+  );
   #importOperation: Promise<void> | null = null;
 
   constructor(gateway: ConversationArchiveGateway, files: FileTransferPort) {

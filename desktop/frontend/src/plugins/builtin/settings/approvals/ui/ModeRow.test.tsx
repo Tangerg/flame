@@ -15,7 +15,6 @@ vi.mock("@/plugins/builtin/agent/public/approvalPolicy", async (importOriginal) 
 
 vi.mock("../application/approvalConfig", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../application/approvalConfig")>()),
-  agentCommandWasRetired: () => false,
 }));
 
 import { ModeRow } from "./ModeRow";

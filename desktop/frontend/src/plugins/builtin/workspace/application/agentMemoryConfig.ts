@@ -4,14 +4,10 @@ import {
   type AgentMemoryEntry,
   type AgentMemoryQuery,
 } from "./workspaceQueries";
-import {
-  AgentMemoryMutationOwner,
-  agentMemoryMutationWasRetired,
-  agentMemoryQuery,
-} from "./agentMemoryMutationOwner";
+import { AgentMemoryMutationOwner, agentMemoryQuery } from "./agentMemoryMutationOwner";
 
 export type { AgentMemoryEntry, AgentMemoryQuery };
-export { agentMemoryMutationWasRetired, agentMemoryQuery };
+export { agentMemoryQuery };
 
 // Read the review surface for a scope. Disabled (enabled=false) parks the query
 // so a not-yet-ready cwd doesn't fire a request; the project scope binds to the

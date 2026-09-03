@@ -1,3 +1,4 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { contributeLayout, definePlugin, notifyError, type SlashCommandSpec } from "@/plugins/sdk";
 import {
   COMPOSER_SUBMIT_MODE,
@@ -16,7 +17,7 @@ import { getComposerText } from "@/plugins/builtin/chat/composer/public/draft";
 import { focusComposer } from "@/plugins/builtin/chat/composer/public/focus";
 import { selectedComposerModelPreference } from "@/plugins/builtin/chat/composer/public/modelPreference";
 import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { goalCommandWasRetired, startGoal } from "./application/goalCommands";
+import { startGoal } from "./application/goalCommands";
 import { GoalComposerModeOwner } from "./application/goalComposerMode";
 import { createGoalComposerSubmitMode } from "./application/goalComposerSubmitMode";
 import type { GoalState } from "./application/goalReadModel";
@@ -64,7 +65,7 @@ export default definePlugin({
         reportUnavailable: () => notifyError(t("goal.error.unavailable")),
         reportUnsupportedAttachments: () => notifyError(t("goal.error.attachmentsUnsupported")),
         reportStartError: (error) => notifyError(rpcErrorText(error) ?? t("goal.error.start")),
-        retired: goalCommandWasRetired,
+        retired: wasGenerationRetired,
       }),
     );
     ctx.contribute(SLASH_COMMAND, GOAL_SLASH_COMMAND, { key: "/goal" });

@@ -1,3 +1,4 @@
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient, repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
@@ -5,14 +6,6 @@ import { tupleKey } from "@/lib/tupleKey";
 import type { ProviderGateway, ProviderTestOutcome, ProviderUpdate } from "./ports/providerGateway";
 import type { ProviderConfiguration, ProviderRole } from "./providerModels";
 import { EMBEDDING_ROLE_KEY, MODELS_KEY, PROVIDERS_KEY, UTILITY_ROLE_KEY } from "./providerQueries";
-
-class ProviderMutationRetiredError extends Error {
-  override readonly name = "ProviderMutationRetiredError";
-
-  constructor() {
-    super("provider_mutation_generation_retired");
-  }
-}
 
 interface ProviderMutation<T> {
   execute(): Promise<T>;
@@ -22,7 +15,7 @@ interface ProviderMutation<T> {
 
 class ProviderMutationGeneration {
   readonly #gateway: ProviderGateway;
-  readonly #retiredError = new ProviderMutationRetiredError();
+  readonly #retiredError = new GenerationRetiredError("provider_mutation_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
   readonly #chain = new SerialTaskChain();
 
@@ -157,10 +150,6 @@ export class ProviderMutationOwner {
 }
 
 const providerMutationPublication = createPublicationSlot<ProviderMutationOwner>();
-
-export function providerMutationWasRetired(error: unknown): boolean {
-  return error instanceof ProviderMutationRetiredError;
-}
 
 function commitProviderSaved(saved: ProviderConfiguration): void {
   queryClient.setQueryData<ProviderConfiguration[]>([PROVIDERS_KEY], (current) =>

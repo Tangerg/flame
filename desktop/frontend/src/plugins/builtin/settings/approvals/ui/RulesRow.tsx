@@ -1,7 +1,7 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { Badge, DataView, IconButton, TextButton } from "@/ui";
 import type { Tone } from "@/lib/tone";
 import {
-  agentCommandWasRetired,
   forgetApprovalRule,
   forgetApprovalRules,
   type ApprovalRuleSummary,
@@ -27,7 +27,7 @@ export function RulesRow() {
   const sessionId = useActiveSessionId();
   const { data, isLoading, isError, error, refetch } = useApprovalRuleConfigs(sessionId);
   const { busy, run } = useCommandAction({
-    wasRetired: agentCommandWasRetired,
+    wasRetired: wasGenerationRetired,
     fallback: t("approvals.error.forget"),
   });
 

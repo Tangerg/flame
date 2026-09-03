@@ -1,3 +1,4 @@
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient, repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
@@ -7,14 +8,6 @@ import type { MCPServerGateway, MCPServerTestOutcome } from "./ports/mcpServerGa
 
 const AUTHORIZATION_ATTEMPT_POLL_MS = 500;
 
-class MCPServerMutationRetiredError extends Error {
-  override readonly name = "MCPServerMutationRetiredError";
-
-  constructor() {
-    super("mcp_server_mutation_generation_retired");
-  }
-}
-
 interface MCPServerMutation<T> {
   execute(): Promise<T>;
   commit(result: T): void;
@@ -23,7 +16,7 @@ interface MCPServerMutation<T> {
 class MCPServerMutationGeneration {
   readonly #gateway: MCPServerGateway;
   readonly #lifetime = new AbortController();
-  readonly #retiredError = new MCPServerMutationRetiredError();
+  readonly #retiredError = new GenerationRetiredError("mcp_server_mutation_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
   readonly #chain = new SerialTaskChain();
   readonly #reconnects = new Map<string, Promise<void>>();
@@ -212,10 +205,6 @@ export class MCPServerMutationOwner {
 }
 
 const mcpServerMutationPublication = createPublicationSlot<MCPServerMutationOwner>();
-
-export function mcpServerMutationWasRetired(error: unknown): boolean {
-  return error instanceof MCPServerMutationRetiredError;
-}
 
 function commitMCPServerSaved(saved: MCPServerSettings): void {
   queryClient.setQueryData<MCPServerSettings[]>([MCP_SERVERS_KEY], (current) => {

@@ -6,7 +6,6 @@ const { forgetRules } = vi.hoisted(() => ({ forgetRules: vi.fn() }));
 
 vi.mock("@/plugins/builtin/agent/public/approvalPolicy", () => ({
   APPROVAL_MODES: [],
-  agentCommandWasRetired: vi.fn(),
   forgetRule: vi.fn(),
   forgetRules,
   setApprovalMode: vi.fn(),

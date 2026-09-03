@@ -1,3 +1,4 @@
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
 import {
@@ -19,18 +20,10 @@ export class GoalCommandSessionMismatchError extends Error {
   }
 }
 
-class GoalCommandGenerationRetiredError extends Error {
-  override readonly name = "GoalCommandGenerationRetiredError";
-
-  constructor() {
-    super("goal_command_generation_retired");
-  }
-}
-
 class GoalCommandGeneration {
   readonly #gateway: GoalCommandsGateway;
   readonly #repairProjection: GoalProjectionRepair;
-  readonly #retiredError = new GoalCommandGenerationRetiredError();
+  readonly #retiredError = new GenerationRetiredError("goal_command_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
   readonly #chain = new SerialTaskChain();
 
@@ -178,7 +171,7 @@ export class GoalCommandOwner {
 
   #currentGeneration(): GoalCommandGeneration {
     if (this.#disposed || !goalCommandPublication.owns(this) || !this.#generation) {
-      throw new GoalCommandGenerationRetiredError();
+      throw new GenerationRetiredError("goal_command_generation");
     }
     return this.#generation;
   }
@@ -204,8 +197,4 @@ export async function stopGoal(sessionId: string): Promise<void> {
 
 export async function resumeGoal(sessionId: string): Promise<void> {
   await GoalCommandOwner.current().resume(sessionId);
-}
-
-export function goalCommandWasRetired(error: unknown): boolean {
-  return error instanceof GoalCommandGenerationRetiredError;
 }

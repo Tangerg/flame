@@ -30,7 +30,6 @@ vi.mock("../application/goalCommands", () => ({
   updateGoal: model.updateGoal,
   stopGoal: model.stopGoal,
   resumeGoal: model.resumeGoal,
-  goalCommandWasRetired: () => false,
 }));
 
 vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({

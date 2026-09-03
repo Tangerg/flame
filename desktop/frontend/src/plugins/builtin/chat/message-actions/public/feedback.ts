@@ -2,14 +2,11 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import {
   messageFeedbackRating,
-  messageFeedbackWasRetired,
   submitMessageFeedback as submitMessageFeedbackIntent,
   subscribeMessageFeedback,
   type MessageFeedbackTarget,
 } from "../application/feedback";
 import type { MessageFeedbackRating } from "../domain/feedback";
-
-export { messageFeedbackWasRetired };
 
 interface MessageFeedbackModel {
   rating: MessageFeedbackRating | undefined;

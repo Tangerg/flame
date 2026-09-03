@@ -2,13 +2,12 @@ import { useCallback, useSyncExternalStore } from "react";
 import { type MCPServerSettings } from "./mcpServerQueries";
 import type { MCPServerInput } from "./mcpServerInput";
 import type { MCPServerTestOutcome } from "./ports/mcpServerGateway";
-import { MCPServerMutationOwner, mcpServerMutationWasRetired } from "./mcpServerMutationOwner";
+import { MCPServerMutationOwner } from "./mcpServerMutationOwner";
 
 export type { MCPServerInput } from "./mcpServerInput";
 export type { MCPTransport } from "./mcpServerQueries";
 export type { MCPServerTestOutcome } from "./ports/mcpServerGateway";
 export type { MCPServerSettings };
-export { mcpServerMutationWasRetired };
 
 export function useMCPServerMutationMaterialGeneration(): bigint {
   return useSyncExternalStore(

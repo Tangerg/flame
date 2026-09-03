@@ -1,3 +1,4 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useCallback, useRef, useState } from "react";
 import { Badge, Collapsible, DataView, PillButton, Tag, TextButton, Well } from "@/ui";
 import { useT } from "@/lib/i18n";
@@ -10,7 +11,6 @@ import {
 import {
   approveSkillProposal,
   rejectSkillProposal,
-  skillCurationWasRetired,
 } from "@/plugins/builtin/workspace/application/skillCuration";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 
@@ -68,7 +68,7 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
       try {
         await run();
       } catch (error) {
-        if (!skillCurationWasRetired(error)) {
+        if (!wasGenerationRetired(error)) {
           notifyError(error instanceof Error ? error.message : t("skillProposals.error"), {
             source: "skills",
           });

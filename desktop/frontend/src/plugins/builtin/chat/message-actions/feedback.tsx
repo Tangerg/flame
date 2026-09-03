@@ -1,3 +1,4 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useT } from "@/lib/i18n";
 import {
   contributeLayout,
@@ -9,7 +10,7 @@ import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runti
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import type { MessageFeedbackRating } from "./domain/feedback";
 import { canRateMessage } from "./application/messageActionAvailability";
-import { messageFeedbackWasRetired, useMessageFeedback } from "./public/feedback";
+import { useMessageFeedback } from "./public/feedback";
 import { installRuntimeFeedbackGateway } from "./adapters/runtimeFeedback";
 import { MessageActionButton } from "./MessageActionButton";
 
@@ -27,7 +28,7 @@ function RateableFeedbackButtons({ msg }: { msg: Message }) {
   const rate = (rating: MessageFeedbackRating): void => {
     if (feedback.rating === rating) return;
     void feedback.submit(rating).catch((error: unknown) => {
-      if (!messageFeedbackWasRetired(error)) console.warn("[feedback] create failed:", error);
+      if (!wasGenerationRetired(error)) console.warn("[feedback] create failed:", error);
     });
   };
 

@@ -2,6 +2,7 @@
 // ARE the registry's read surface, so they live with it rather than in `lib/`, where a
 // utility module would end up depending on the plugin registry.
 
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import type { Query, UseQueryResult } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import type { Host } from "dougong";
@@ -15,14 +16,6 @@ const STATIC_QUERY_OPTIONS = {
   staleTime: 5 * 60_000,
   refetchOnWindowFocus: false as const,
 };
-
-class DataProviderGenerationRetiredError extends Error {
-  override readonly name = "DataProviderGenerationRetiredError";
-
-  constructor() {
-    super("data_provider_generation_retired");
-  }
-}
 
 class DataProviderGeneration {
   readonly keys: ReadonlySet<string>;
@@ -62,11 +55,11 @@ class DataProviderGeneration {
   retire(): void {
     if (this.#retired) return;
     this.#retired = true;
-    this.#lifetime.abort(new DataProviderGenerationRetiredError());
+    this.#lifetime.abort(new GenerationRetiredError("data_provider_generation"));
   }
 
   #assertCurrent(): void {
-    if (this.#retired) throw new DataProviderGenerationRetiredError();
+    if (this.#retired) throw new GenerationRetiredError("data_provider_generation");
   }
 }
 

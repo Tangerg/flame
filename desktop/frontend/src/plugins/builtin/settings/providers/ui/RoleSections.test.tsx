@@ -9,7 +9,6 @@ const provider = vi.hoisted(() => ({
 }));
 
 vi.mock("../application/providerConfig", () => ({
-  providerMutationWasRetired: () => false,
   setEmbeddingRole: provider.setEmbeddingRole,
   setUtilityRole: provider.setUtilityRole,
   useEmbeddingModelConfig: () => ({

@@ -1,10 +1,7 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { Icon, Pressable } from "@/ui";
 import { setApprovalMode } from "@/plugins/builtin/agent/public/approvalPolicy";
-import {
-  agentCommandWasRetired,
-  APPROVAL_MODES,
-  type ApprovalMode,
-} from "../application/approvalConfig";
+import { APPROVAL_MODES, type ApprovalMode } from "../application/approvalConfig";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
@@ -34,7 +31,7 @@ export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
       );
     } catch (err) {
       setIntent((current) => (current?.mode === next ? null : current));
-      if (agentCommandWasRetired(err)) return;
+      if (wasGenerationRetired(err)) return;
       notifyError(rpcErrorText(err) ?? t("approvals.error.mode"));
     }
   };

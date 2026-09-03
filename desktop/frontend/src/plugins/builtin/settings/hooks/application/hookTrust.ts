@@ -1,3 +1,4 @@
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { HOOKS_KEY } from "./hookQueries";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { repairCachedProjection } from "@/lib/queryClient";
@@ -7,17 +8,9 @@ export interface HookTrustGateway {
   setProjectTrust(projectRoot: string, trusted: boolean): Promise<void>;
 }
 
-class HookTrustMutationRetiredError extends Error {
-  override readonly name = "HookTrustMutationRetiredError";
-
-  constructor() {
-    super("hook_trust_mutation_generation_retired");
-  }
-}
-
 class HookTrustMutationGeneration {
   readonly #gateway: HookTrustGateway;
-  readonly #retiredError = new HookTrustMutationRetiredError();
+  readonly #retiredError = new GenerationRetiredError("hook_trust_mutation_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
   readonly #chain = new SerialTaskChain();
 
@@ -95,8 +88,4 @@ const hookTrustPublication = createPublicationSlot<HookTrustMutationOwner>();
 
 export function setHookTrust(projectRoot: string, trusted: boolean): Promise<void> {
   return HookTrustMutationOwner.current().setProjectTrust(projectRoot, trusted);
-}
-
-export function hookTrustMutationWasRetired(error: unknown): boolean {
-  return error instanceof HookTrustMutationRetiredError;
 }

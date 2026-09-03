@@ -1,3 +1,4 @@
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { SCHEDULES_KEY, useSchedules } from "./scheduleQueries";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient, repairCachedProjection } from "@/lib/queryClient";
@@ -20,17 +21,9 @@ export interface ScheduleGateway {
   runNow(id: string): Promise<ScheduledRunIdentity>;
 }
 
-class ScheduleMutationRetiredError extends Error {
-  override readonly name = "ScheduleMutationRetiredError";
-
-  constructor() {
-    super("schedule_mutation_generation_retired");
-  }
-}
-
 class ScheduleMutationGeneration {
   readonly #gateway: ScheduleGateway;
-  readonly #retiredError = new ScheduleMutationRetiredError();
+  readonly #retiredError = new GenerationRetiredError("schedule_mutation_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
   readonly #chain = new SerialTaskChain();
   readonly #accepted = new Map<string, ScheduleConfig>();
@@ -234,10 +227,6 @@ export async function deleteSchedule(id: string): Promise<void> {
 // Re-reads the schedules so `lastRunAt` updates once the runtime reports the run.
 export async function runScheduleNow(id: string): Promise<ScheduledRunIdentity> {
   return ScheduleMutationOwner.current().runNow(id);
-}
-
-export function scheduleMutationWasRetired(error: unknown): boolean {
-  return error instanceof ScheduleMutationRetiredError;
 }
 
 function commitScheduleSaved(saved: ScheduleConfig): void {

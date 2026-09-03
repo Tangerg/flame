@@ -1,3 +1,4 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useCallback, useSyncExternalStore } from "react";
 import type { ProviderTestOutcome } from "./ports/providerGateway";
 import { t } from "@/lib/i18n";
@@ -11,7 +12,7 @@ import {
 } from "./providerQueries";
 import type { ProviderRole } from "./providerModels";
 import type { ProviderUpdate } from "./ports/providerGateway";
-import { ProviderMutationOwner, providerMutationWasRetired } from "./providerMutationOwner";
+import { ProviderMutationOwner } from "./providerMutationOwner";
 
 export type { ProviderConfiguration };
 
@@ -71,8 +72,6 @@ export function useEmbeddingModelConfig() {
   };
 }
 
-export { providerMutationWasRetired };
-
 export async function updateProvider(input: ProviderUpdate): Promise<ProviderConfiguration> {
   return ProviderMutationOwner.current().updateProvider(input);
 }
@@ -94,7 +93,7 @@ export async function setUtilityRole(role: ProviderRole): Promise<ProviderTestOu
     await owner.setUtilityRole(role);
     return { ok: true };
   } catch (error) {
-    if (providerMutationWasRetired(error)) throw error;
+    if (wasGenerationRetired(error)) throw error;
     const detail = owner.errorMessage(error);
     return {
       ok: false,
@@ -114,7 +113,7 @@ export async function setEmbeddingRole(role: ProviderRole): Promise<ProviderTest
     await owner.setEmbeddingRole(role);
     return { ok: true };
   } catch (error) {
-    if (providerMutationWasRetired(error)) throw error;
+    if (wasGenerationRetired(error)) throw error;
     const detail = owner.errorMessage(error);
     return {
       ok: false,

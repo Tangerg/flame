@@ -1,3 +1,4 @@
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { z } from "zod";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
@@ -26,17 +27,9 @@ export function parseDiagnosticToolArguments(text: string): DiagnosticArgumentsP
     : { ok: false, reason: "objectRequired" };
 }
 
-class DiagnosticToolGenerationRetiredError extends Error {
-  override readonly name = "DiagnosticToolGenerationRetiredError";
-
-  constructor() {
-    super("diagnostic_tool_generation_retired");
-  }
-}
-
 class DiagnosticToolGeneration {
   readonly #gateway: DiagnosticToolGateway;
-  readonly #retiredError = new DiagnosticToolGenerationRetiredError();
+  readonly #retiredError = new GenerationRetiredError("diagnostic_tool_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
   readonly #chain = new SerialTaskChain();
 
@@ -123,10 +116,6 @@ const diagnosticToolPublication = createPublicationSlot<DiagnosticToolOwner>();
 
 export function invokeDiagnosticTool(input: InvokeDiagnosticToolInput): Promise<unknown> {
   return DiagnosticToolOwner.current().invoke(input);
-}
-
-export function diagnosticToolInvocationWasRetired(error: unknown): boolean {
-  return error instanceof DiagnosticToolGenerationRetiredError;
 }
 
 export function diagnosticToolMaterialGeneration(): bigint {

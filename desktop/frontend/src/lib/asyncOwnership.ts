@@ -2,6 +2,27 @@
 export const ASYNC_OWNERSHIP_RETIRED = Symbol("async-ownership.retired");
 
 /**
+ * The rejection half of `ASYNC_OWNERSHIP_RETIRED`: the generation that owned this work was
+ * replaced before it settled, so its result must not commit.
+ *
+ * ONE type for every owner. Fifteen of them each declared their own class and eleven wrapped
+ * it in their own predicate, and not one of the nineteen consumers ever asked WHICH — every
+ * site asks "was this retired?" and stops. The owner rides as data so the message still names
+ * it, which is what the tests that assert these messages actually pin.
+ */
+export class GenerationRetiredError extends Error {
+  override readonly name = "GenerationRetiredError";
+
+  constructor(readonly owner: string) {
+    super(`${owner}_retired`);
+  }
+}
+
+export function wasGenerationRetired(error: unknown): boolean {
+  return error instanceof GenerationRetiredError;
+}
+
+/**
  * Observe a dependency that may ignore AbortSignal without allowing it to
  * retain generation ownership. Late rejection remains handled; a late value
  * can be explicitly retired by its consumer-owned disposer.

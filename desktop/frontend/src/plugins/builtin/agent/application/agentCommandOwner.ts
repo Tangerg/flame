@@ -1,13 +1,6 @@
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
-
-class AgentCommandRetiredError extends Error {
-  override readonly name = "AgentCommandRetiredError";
-
-  constructor() {
-    super("agent_command_owner_retired");
-  }
-}
 
 interface SessionSummaryQueue {
   tail: Promise<void>;
@@ -40,7 +33,7 @@ export class AgentCommandOwner {
   readonly #rollbackSessions = new Set<string>();
   readonly #sessionSummaryQueues = new Map<string, SessionSummaryQueue>();
   readonly #effects = new Set<AgentCommandEffect>();
-  readonly #retiredError = new AgentCommandRetiredError();
+  readonly #retiredError = new GenerationRetiredError("agent_command_owner");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
   #approvalModeTail: Promise<void> = Promise.resolve();
   #approvalRulesTail: Promise<void> = Promise.resolve();
@@ -55,7 +48,7 @@ export class AgentCommandOwner {
 
   static current(): AgentCommandOwner {
     const owner = agentCommandPublication.current();
-    if (!owner) throw new AgentCommandRetiredError();
+    if (!owner) throw new GenerationRetiredError("agent_command_owner");
     return owner;
   }
 
@@ -214,8 +207,4 @@ const agentCommandPublication = createPublicationSlot<AgentCommandOwner>();
 
 export function agentCommandOwner(): AgentCommandOwner {
   return AgentCommandOwner.current();
-}
-
-export function agentCommandWasRetired(error: unknown): boolean {
-  return error instanceof AgentCommandRetiredError;
 }

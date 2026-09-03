@@ -1,5 +1,5 @@
 export { forgetRule, forgetRules, setApprovalMode } from "../application/approvalPolicy";
-export { agentCommandWasRetired } from "../application/agentCommandOwner";
+export {} from "../application/agentCommandOwner";
 export {
   APPROVAL_MODE_KEY,
   APPROVAL_RULES_KEY,

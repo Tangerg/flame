@@ -1,3 +1,4 @@
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import type { Query } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createPublicationSlot } from "@/lib/publicationSlot";
@@ -5,14 +6,6 @@ import { queryClient } from "@/lib/queryClient";
 import type { AgentRuntimeGateway, AgentSessionUsage } from "../ports/runtimeGateway";
 
 export const AGENT_SESSION_USAGE_KEY = "usage.session";
-
-class AgentSessionUsageOwnerRetiredError extends Error {
-  override readonly name = "AgentSessionUsageOwnerRetiredError";
-
-  constructor() {
-    super("agent_session_usage_owner_retired");
-  }
-}
 
 /** Exact Agent Runtime gateway generation allowed to populate Session usage cache. */
 export class AgentSessionUsageOwner {
@@ -30,7 +23,7 @@ export class AgentSessionUsageOwner {
 
   static current(): AgentSessionUsageOwner {
     const owner = agentSessionUsagePublication.current();
-    if (!owner) throw new AgentSessionUsageOwnerRetiredError();
+    if (!owner) throw new GenerationRetiredError("agent_session_usage_owner");
     return owner;
   }
 
@@ -69,14 +62,14 @@ export class AgentSessionUsageOwner {
 
   #assertCurrent(): void {
     if (this.#retired || !agentSessionUsagePublication.owns(this)) {
-      throw new AgentSessionUsageOwnerRetiredError();
+      throw new GenerationRetiredError("agent_session_usage_owner");
     }
   }
 
   #retire(): void {
     if (this.#retired) return;
     this.#retired = true;
-    this.#lifetime.abort(new AgentSessionUsageOwnerRetiredError());
+    this.#lifetime.abort(new GenerationRetiredError("agent_session_usage_owner"));
   }
 }
 

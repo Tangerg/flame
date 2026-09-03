@@ -1,10 +1,10 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type GoalCommandReceipt, type GoalCommandsGateway } from "./ports/goalCommandsGateway";
 import {
   GoalCommandOwner,
   GoalCommandSessionMismatchError,
   type GoalProjectionRepair,
-  goalCommandWasRetired,
   clearGoal,
   resumeGoal,
   startGoal,
@@ -258,8 +258,8 @@ describe("Goal lifecycle commands", () => {
       ),
     ).toBe(true);
 
-    expect(goalCommandWasRetired(await inFlight)).toBe(true);
-    expect(goalCommandWasRetired(await queued)).toBe(true);
+    expect(wasGenerationRetired(await inFlight)).toBe(true);
+    expect(wasGenerationRetired(await queued)).toBe(true);
     expect(retiredResume).not.toHaveBeenCalled();
     expect(successorResume).not.toHaveBeenCalled();
 

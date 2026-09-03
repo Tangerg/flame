@@ -1,8 +1,9 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { Badge, DataView, EmptyState, Icon, Surface, Switch, Tag } from "@/ui";
 import { isUnsupportedMethod, rpcErrorText } from "@/lib/rpcErrors";
 import type { HookReadModel } from "../application/hookConfig";
 import { useHookConfigs } from "../application/hookConfig";
-import { hookTrustMutationWasRetired, setHookTrust } from "../application/hookTrust";
+import { setHookTrust } from "../application/hookTrust";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
@@ -74,7 +75,7 @@ export function HooksPane() {
     try {
       await setHookTrust(projectRoot, trusted);
     } catch (err) {
-      if (hookTrustMutationWasRetired(err)) return;
+      if (wasGenerationRetired(err)) return;
       notifyError(rpcErrorText(err) ?? t("hooks.error.trust"));
     } finally {
       trustingRef.current = false;

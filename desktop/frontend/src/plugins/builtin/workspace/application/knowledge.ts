@@ -1,3 +1,4 @@
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import type { QueryFilters } from "@tanstack/react-query";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { tupleKey } from "@/lib/tupleKey";
@@ -16,17 +17,11 @@ import {
   type WorkspaceKnowledgeQuery,
 } from "./workspaceQueries";
 
-class WorkspaceKnowledgeGenerationRetiredError extends Error {
-  override readonly name = "WorkspaceKnowledgeGenerationRetiredError";
-
-  constructor() {
-    super("workspace_knowledge_generation_retired");
-  }
-}
-
 class KnowledgeGeneration {
   readonly #gateway: WorkspaceKnowledgeGateway;
-  readonly #cohort = new RetirableTaskCohort(new WorkspaceKnowledgeGenerationRetiredError());
+  readonly #cohort = new RetirableTaskCohort(
+    new GenerationRetiredError("workspace_knowledge_generation"),
+  );
   readonly #saveTails = new Map<string, Promise<void>>();
 
   constructor(gateway: WorkspaceKnowledgeGateway) {
@@ -209,10 +204,6 @@ export function isWorkspaceKnowledgeRevisionConflict(
   error: unknown,
 ): error is WorkspaceKnowledgeRevisionConflictError {
   return error instanceof WorkspaceKnowledgeRevisionConflictError;
-}
-
-export function workspaceKnowledgeWasRetired(error: unknown): boolean {
-  return error instanceof WorkspaceKnowledgeGenerationRetiredError;
 }
 
 function knowledgeIdentity(input: WorkspaceKnowledgeReadInput): string {

@@ -1,8 +1,8 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useRef, useState } from "react";
 import { Badge, Button, Icon, ProviderIcon, TextField } from "@/ui";
 import {
   type ProviderConfiguration,
-  providerMutationWasRetired,
   useProviderMutationMaterialGeneration,
   useUpdateProvider,
   useTestProvider,
@@ -38,7 +38,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
       const saved = await update(draft.toUpdate(p));
       setDraft(ProviderCredentialsDraft.initial(saved));
     } catch (err) {
-      if (providerMutationWasRetired(err)) return;
+      if (wasGenerationRetired(err)) return;
       fail(err instanceof Error ? err.message : t("providers.error.save"));
     } finally {
       savingLatch.current = false;
@@ -55,7 +55,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
       const saved = await update({ provider: p.id, apiKey: { type: "clear" } });
       setDraft(ProviderCredentialsDraft.initial(saved));
     } catch (err) {
-      if (providerMutationWasRetired(err)) return;
+      if (wasGenerationRetired(err)) return;
       fail(err instanceof Error ? err.message : t("providers.error.save"));
     } finally {
       savingLatch.current = false;
@@ -63,7 +63,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
     }
   };
 
-  const onTest = () => run(() => test(p.id), t("providers.error.test"), providerMutationWasRetired);
+  const onTest = () => run(() => test(p.id), t("providers.error.test"), wasGenerationRetired);
 
   return (
     <div className="rounded-md px-3 py-3 transition-colors hover:bg-hover">

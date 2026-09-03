@@ -1,3 +1,4 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useCallback, useRef, useState } from "react";
 import { DataView, PillButton, SectionLabel } from "@/ui";
 import { useT } from "@/lib/i18n";
@@ -7,11 +8,7 @@ import {
   useManagedSkills,
   type ManagedSkill,
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
-import {
-  archiveSkill,
-  restoreSkill,
-  skillCurationWasRetired,
-} from "@/plugins/builtin/workspace/application/skillCuration";
+import { archiveSkill, restoreSkill } from "@/plugins/builtin/workspace/application/skillCuration";
 
 export function SkillLibraryTab() {
   const t = useT();
@@ -83,7 +80,7 @@ function SkillRow({ skill }: { skill: ManagedSkill }) {
     try {
       await (archived ? restoreSkill(skill.name) : archiveSkill(skill.name));
     } catch (error) {
-      if (!skillCurationWasRetired(error)) {
+      if (!wasGenerationRetired(error)) {
         notifyError(error instanceof Error ? error.message : t("skillLibrary.error"), {
           source: "skills",
         });

@@ -1,8 +1,8 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
 import { PillButton, Pressable, Surface, TextArea, TextField } from "@/ui";
 import {
   createSchedule,
-  scheduleMutationWasRetired,
   updateSchedule,
   type ScheduleConfig,
 } from "../application/scheduleCommands";
@@ -30,7 +30,7 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
     initialScheduleDraft(schedule, defaultCwd),
   );
   const { busy, run } = useCommandAction({
-    wasRetired: scheduleMutationWasRetired,
+    wasRetired: wasGenerationRetired,
     fallback: t("schedules.error.save"),
   });
 

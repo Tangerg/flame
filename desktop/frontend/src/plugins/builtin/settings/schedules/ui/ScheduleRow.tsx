@@ -1,9 +1,9 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
 import { IconButton, Switch, Tag, type IconName } from "@/ui";
 import {
   deleteSchedule,
   runScheduleNow,
-  scheduleMutationWasRetired,
   setScheduleEnabled,
   type ScheduleConfig,
 } from "../application/scheduleCommands";
@@ -55,7 +55,7 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
   const [editing, setEditing] = useState(false);
 
   const { busy, run } = useCommandAction({
-    wasRetired: scheduleMutationWasRetired,
+    wasRetired: wasGenerationRetired,
     fallback: t("schedules.error.save"),
   });
 

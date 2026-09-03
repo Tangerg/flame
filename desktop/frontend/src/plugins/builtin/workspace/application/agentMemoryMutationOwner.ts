@@ -1,3 +1,4 @@
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient, repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort, SerialTaskChain } from "@/lib/taskQueue";
@@ -13,14 +14,6 @@ import {
   type AgentMemoryQuery,
 } from "./workspaceQueries";
 
-class AgentMemoryMutationRetiredError extends Error {
-  override readonly name = "AgentMemoryMutationRetiredError";
-
-  constructor() {
-    super("agent_memory_mutation_generation_retired");
-  }
-}
-
 interface AgentMemoryMutation<T> {
   execute(): Promise<T>;
   commit?(result: T): void;
@@ -28,7 +21,7 @@ interface AgentMemoryMutation<T> {
 
 class AgentMemoryMutationGeneration {
   readonly #gateway: AgentMemoryGateway;
-  readonly #retiredError = new AgentMemoryMutationRetiredError();
+  readonly #retiredError = new GenerationRetiredError("agent_memory_mutation_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
   readonly #chain = new SerialTaskChain();
 
@@ -150,10 +143,6 @@ export class AgentMemoryMutationOwner {
 }
 
 const agentMemoryMutationPublication = createPublicationSlot<AgentMemoryMutationOwner>();
-
-export function agentMemoryMutationWasRetired(error: unknown): boolean {
-  return error instanceof AgentMemoryMutationRetiredError;
-}
 
 export function agentMemoryQuery(scope: AgentMemoryQuery["scope"], cwd?: string): AgentMemoryQuery {
   return scope === "user" ? { scope } : { scope, cwd };

@@ -1,8 +1,8 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import type { ReactNode } from "react";
 import { Button, DropdownMenu, Icon, ProviderIcon, Surface } from "@/ui";
 import {
   type ProviderConfiguration,
-  providerMutationWasRetired,
   setEmbeddingRole,
   setUtilityRole,
   useEmbeddingModelConfig,
@@ -53,7 +53,7 @@ export function UtilityModelSection() {
   const busy = feedback.state === "busy";
 
   const pick = (next: { provider: string; model: string } | null): Promise<void> =>
-    run(() => setUtilityRole(next ?? {}), t("providers.utility.error"), providerMutationWasRetired);
+    run(() => setUtilityRole(next ?? {}), t("providers.utility.error"), wasGenerationRetired);
 
   return (
     <RoleSectionShell
@@ -139,7 +139,6 @@ export function EmbeddingModelSection() {
     run(
       () => setEmbeddingRole(p ? { provider: p.id, model: p.defaultEmbeddingModel || "" } : {}),
       t("providers.embedding.error"),
-      providerMutationWasRetired,
     );
 
   return (

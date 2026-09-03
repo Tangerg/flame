@@ -1,3 +1,4 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useId, useRef, useState, useSyncExternalStore } from "react";
 import { useMCPServers } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
 import { MCP_SERVERS_PANE } from "@/plugins/builtin/settings/kit/panes";
@@ -23,7 +24,6 @@ import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/sessio
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
 import {
   type DiagnosticArgumentsParseResult,
-  diagnosticToolInvocationWasRetired,
   diagnosticToolMaterialGeneration,
   formatDiagnosticToolResult,
   invokeDiagnosticTool,
@@ -212,7 +212,7 @@ function DiagnosticToolInvocationMaterial({
       });
       setResult(formatDiagnosticToolResult(value));
     } catch (cause) {
-      if (!diagnosticToolInvocationWasRetired(cause)) {
+      if (!wasGenerationRetired(cause)) {
         setRuntimeError(rpcErrorText(cause) ?? t("tools.diagnostics.error.invoke"));
       }
     } finally {

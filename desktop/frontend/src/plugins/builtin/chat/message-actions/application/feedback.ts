@@ -1,3 +1,4 @@
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import type { MessageFeedbackRating } from "../domain/feedback";
@@ -13,14 +14,6 @@ export interface MessageFeedbackGateway {
     target: MessageFeedbackTarget;
     rating: MessageFeedbackRating;
   }): Promise<void>;
-}
-
-class MessageFeedbackGenerationRetiredError extends Error {
-  override readonly name = "MessageFeedbackGenerationRetiredError";
-
-  constructor() {
-    super("message_feedback_generation_retired");
-  }
 }
 
 type RatingListener = () => void;
@@ -96,7 +89,7 @@ class MessageFeedbackAggregate {
 class MessageFeedbackGeneration {
   readonly #gateway: MessageFeedbackGateway;
   readonly #publish: (identity: string) => void;
-  readonly #retiredError = new MessageFeedbackGenerationRetiredError();
+  readonly #retiredError = new GenerationRetiredError("message_feedback_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
   readonly #aggregates = new Map<string, MessageFeedbackAggregate>();
 
@@ -238,10 +231,6 @@ export function submitMessageFeedback(
   rating: MessageFeedbackRating,
 ): Promise<MessageFeedbackRating> {
   return MessageFeedbackOwner.current().submit(target, rating);
-}
-
-export function messageFeedbackWasRetired(error: unknown): boolean {
-  return error instanceof MessageFeedbackGenerationRetiredError;
 }
 
 function messageFeedbackIdentity(target: MessageFeedbackTarget): string {

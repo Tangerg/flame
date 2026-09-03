@@ -1,3 +1,4 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
 import { formatDay } from "@/lib/i18n/relativeTime";
 import {
@@ -18,7 +19,6 @@ import { useRuntimeCapability } from "@/plugins/builtin/runtime/public/capabilit
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import {
   addAgentMemory,
-  agentMemoryMutationWasRetired,
   deleteAgentMemory,
   reviewAgentMemory,
   setAgentMemoryPinned,
@@ -40,7 +40,7 @@ function OriginBadge({ origin }: { origin: AgentMemoryEntry["origin"] }) {
 function PendingRow({ item }: { item: AgentMemoryEntry }) {
   const t = useT();
   const { busy, run } = useCommandAction({
-    wasRetired: agentMemoryMutationWasRetired,
+    wasRetired: wasGenerationRetired,
     fallback: t("agentMemory.error"),
     source: "knowledge",
   });
@@ -82,7 +82,7 @@ function PendingRow({ item }: { item: AgentMemoryEntry }) {
 function ActiveRow({ item }: { item: AgentMemoryEntry }) {
   const t = useT();
   const { busy, run } = useCommandAction({
-    wasRetired: agentMemoryMutationWasRetired,
+    wasRetired: wasGenerationRetired,
     fallback: t("agentMemory.error"),
     source: "knowledge",
   });
@@ -176,7 +176,7 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
 function AddMemory({ scope, cwd }: { scope: Scope; cwd?: string }) {
   const t = useT();
   const { busy, run } = useCommandAction({
-    wasRetired: agentMemoryMutationWasRetired,
+    wasRetired: wasGenerationRetired,
     fallback: t("agentMemory.error"),
     source: "knowledge",
   });

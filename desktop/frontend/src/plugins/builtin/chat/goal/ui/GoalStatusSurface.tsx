@@ -1,16 +1,11 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useRef, useState } from "react";
 import { Button, IconButton, TextEditorDialog } from "@/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { notifyError } from "@/plugins/sdk";
-import {
-  clearGoal,
-  goalCommandWasRetired,
-  resumeGoal,
-  stopGoal,
-  updateGoal,
-} from "../application/goalCommands";
+import { clearGoal, resumeGoal, stopGoal, updateGoal } from "../application/goalCommands";
 import {
   GOAL_STATUS_I18N,
   goalCanResume,
@@ -61,7 +56,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
       await command();
       return true;
     } catch (error) {
-      if (!goalCommandWasRetired(error)) notifyError(rpcErrorText(error) ?? fallback);
+      if (!wasGenerationRetired(error)) notifyError(rpcErrorText(error) ?? fallback);
       return false;
     } finally {
       commandInFlight.current = false;

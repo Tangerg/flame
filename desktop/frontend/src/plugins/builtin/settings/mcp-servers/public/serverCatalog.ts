@@ -1,4 +1,4 @@
-export { reconnectMCPServer, mcpServerMutationWasRetired } from "../application/mcpServerConfig";
+export { reconnectMCPServer } from "../application/mcpServerConfig";
 export {
   MCP_SERVERS_KEY,
   MCP_TOOLS_KEY,

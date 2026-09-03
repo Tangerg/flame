@@ -1,3 +1,4 @@
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 
 interface RunCancellationTarget {
@@ -21,14 +22,6 @@ export interface RunCancellationController {
   retire(): void;
 }
 
-class RunCancellationGenerationRetiredError extends Error {
-  override readonly name = "RunCancellationGenerationRetiredError";
-
-  constructor() {
-    super("run_cancellation_generation_retired");
-  }
-}
-
 /** One cancellation command per Run inside one replaceable Runtime generation.
  *
  * A successful response is a snapshot taken at commit time, so it may only fold while the
@@ -47,7 +40,7 @@ export function createRunCancellationController<Response>({
   onFailure,
 }: RunCancellationControllerOptions<Response>): RunCancellationController {
   const pending = new Set<string>();
-  const retiredError = new RunCancellationGenerationRetiredError();
+  const retiredError = new GenerationRetiredError("run_cancellation_generation");
   const cohort = new RetirableTaskCohort(retiredError);
 
   return {

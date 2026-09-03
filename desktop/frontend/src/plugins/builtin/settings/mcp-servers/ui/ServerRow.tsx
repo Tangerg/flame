@@ -1,9 +1,9 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useEffect, useId, useRef, useState } from "react";
 import { IconButton, PillButton, StatusDot, Switch, Tag } from "@/ui";
 import {
   type MCPServerSettings,
   type MCPTransport,
-  mcpServerMutationWasRetired,
   useAuthorizeMCPServer,
   useSetMCPServerEnabled,
 } from "../application/mcpServerConfig";
@@ -49,7 +49,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
     try {
       await setEnabled(server.name, enabled);
     } catch (err) {
-      if (mcpServerMutationWasRetired(err)) return;
+      if (wasGenerationRetired(err)) return;
       notifyError(err instanceof Error ? err.message : t("mcp.error.toggle"), { source: "mcp" });
     }
   };
@@ -62,7 +62,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
     try {
       await authorize(server.name, controller.signal);
     } catch (err) {
-      if (controller.signal.aborted || mcpServerMutationWasRetired(err)) return;
+      if (controller.signal.aborted || wasGenerationRetired(err)) return;
       notifyError(err instanceof Error ? err.message : t("mcp.error.signIn"), { source: "mcp" });
     } finally {
       if (authorizationController.current === controller) {

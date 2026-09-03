@@ -13,7 +13,6 @@ const hooks = vi.hoisted(() => ({
 }));
 
 vi.mock("../application/providerConfig", () => ({
-  providerMutationWasRetired: () => false,
   useProviderMutationMaterialGeneration: () => hooks.generation,
   useUpdateProvider: () => hooks.update,
   useTestProvider: () => hooks.test,

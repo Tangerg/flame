@@ -1,6 +1,5 @@
 import {
   APPROVAL_MODES,
-  agentCommandWasRetired,
   forgetRule,
   forgetRules,
   type ApprovalMode,
@@ -10,7 +9,7 @@ import {
 } from "@/plugins/builtin/agent/public/approvalPolicy";
 
 export type { ApprovalMode, ApprovalRuleSummary };
-export { APPROVAL_MODES, agentCommandWasRetired };
+export { APPROVAL_MODES };
 
 export function useApprovalModeConfig() {
   return useApprovalMode();

@@ -1,3 +1,4 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatDateTime } from "@/lib/i18n/relativeTime";
 import { Badge, Collapsible, DataView, Icon, PillButton, Pressable, TextArea } from "@/ui";
@@ -11,7 +12,6 @@ import {
   loadWorkspaceKnowledge,
   isWorkspaceKnowledgeRevisionConflict,
   saveWorkspaceKnowledge,
-  workspaceKnowledgeWasRetired,
 } from "@/plugins/builtin/workspace/application/knowledge";
 import { useWorkspaceKnowledge } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import {
@@ -62,13 +62,13 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
         setEditor((current) => current.settleSave(saved, latestListedDocument.current));
       })
       .catch(async (error: unknown) => {
-        if (workspaceKnowledgeWasRetired(error)) return;
+        if (wasGenerationRetired(error)) return;
         if (isWorkspaceKnowledgeRevisionConflict(error)) {
           try {
             const latest = await loadWorkspaceKnowledge({ scope: row.scope, cwd });
             setEditor((current) => current.rebase(latest));
           } catch (readError) {
-            if (workspaceKnowledgeWasRetired(readError)) return;
+            if (wasGenerationRetired(readError)) return;
           }
         }
         notifyError(t("knowledge.saveError"), {

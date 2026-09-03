@@ -1,3 +1,4 @@
+import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resetContainer, setContainer } from "@/main/container";
 import type { Goal, FlameClient, MutationPromise } from "@/rpc";
@@ -8,7 +9,7 @@ import {
   RUNTIME_STREAM,
   type RuntimeConnectionGeneration as RuntimeConnectionGenerationValue,
 } from "@/plugins/builtin/runtime/public/services";
-import { goalCommandWasRetired, resumeGoal, stopGoal } from "./application/goalCommands";
+import { resumeGoal, stopGoal } from "./application/goalCommands";
 import goalPlugin from "./index";
 import { rejected } from "@/test/rejected";
 
@@ -115,7 +116,7 @@ describe("Goal plugin Runtime generation wiring", () => {
       for (const subscriber of subscribers) subscriber();
     }).not.toThrow();
 
-    expect(goalCommandWasRetired(await rejected(stopGoal("ses_goal")))).toBe(true);
+    expect(wasGenerationRetired(await rejected(stopGoal("ses_goal")))).toBe(true);
 
     const successorResume = vi.fn(() =>
       mutation(Promise.resolve(runtimeGoal("ses_goal")), "successor-resume"),

@@ -1,3 +1,4 @@
+import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import type { QueryFilters } from "@tanstack/react-query";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient } from "@/lib/queryClient";
@@ -14,14 +15,6 @@ import {
   type WorkspaceSkill,
 } from "./workspaceQueries";
 
-class SkillCurationRetiredError extends Error {
-  override readonly name = "SkillCurationRetiredError";
-
-  constructor() {
-    super("skill_curation_generation_retired");
-  }
-}
-
 interface SkillCurationCommand {
   execute(): Promise<void>;
   commit(): void;
@@ -30,7 +23,9 @@ interface SkillCurationCommand {
 
 class SkillCurationGeneration {
   readonly #gateway: SkillCurationGateway;
-  readonly #cohort = new RetirableTaskCohort(new SkillCurationRetiredError());
+  readonly #cohort = new RetirableTaskCohort(
+    new GenerationRetiredError("skill_curation_generation"),
+  );
   readonly #chain = new SerialTaskChain();
 
   constructor(gateway: SkillCurationGateway) {
@@ -188,10 +183,6 @@ export function approveSkillProposal(handle: SkillProposalHandle): Promise<void>
 
 export function rejectSkillProposal(handle: SkillProposalHandle): Promise<void> {
   return SkillCurationOwner.current().rejectProposal(handle);
-}
-
-export function skillCurationWasRetired(error: unknown): boolean {
-  return error instanceof SkillCurationRetiredError;
 }
 
 function userSkillIdentity(name: string): string {
