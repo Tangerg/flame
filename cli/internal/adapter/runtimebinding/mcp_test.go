@@ -28,6 +28,7 @@ type mcpBindingStub struct {
 	authGet      *protocol.MCPAuthorizationAttempt
 	now          time.Time
 	servers      []protocol.MCPServer
+	tools        []protocol.MCPTool
 	createResult *protocol.MCPServer
 	updateResult *protocol.MCPServer
 }
@@ -97,6 +98,9 @@ func (m *mcpBindingStub) TestMCPServer(_ context.Context, request protocol.MCPSe
 func (m *mcpBindingStub) ListMCPTools(_ context.Context, request protocol.MCPListToolsRequest, options flameruntime.CallOptions) (*protocol.Page[protocol.MCPTool], error) {
 	m.assertMeta(options.RequestMeta)
 	m.actions = append(m.actions, "tools:"+request.Server)
+	if m.tools != nil {
+		return protocol.NewPage(m.tools), nil
+	}
 	return protocol.NewPage([]protocol.MCPTool{{
 		Server: "docs", Name: "search", Description: "Search docs",
 		InputSchema: map[string]any{"type": "object"},
@@ -265,6 +269,20 @@ func TestMCPAdapterRejectsOutOfOrderServerCatalog(t *testing.T) {
 	if _, err := runtime.Servers(t.Context()); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) ||
 		!strings.Contains(err.Error(), "out of catalog order") {
 		t.Fatalf("Servers error = %v, want ordered-catalog contract violation", err)
+	}
+}
+
+func TestMCPAdapterRejectsOutOfOrderToolCatalog(t *testing.T) {
+	t.Parallel()
+	stub := &mcpBindingStub{t: t, tools: []protocol.MCPTool{
+		{Server: "zeta", Name: "alpha"},
+		{Server: "alpha", Name: "zeta"},
+	}}
+	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
+
+	if _, err := runtime.Tools(t.Context(), ""); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) ||
+		!strings.Contains(err.Error(), "out of catalog order") {
+		t.Fatalf("Tools error = %v, want ordered-catalog contract violation", err)
 	}
 }
 

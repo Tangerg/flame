@@ -196,6 +196,18 @@ func (r *Connection) Tools(ctx context.Context, server string) ([]mcp.Tool, erro
 		seen[identity] = struct{}{}
 		tools = append(tools, tool)
 	}
+	for index := 1; index < len(tools); index++ {
+		previous, current := tools[index-1], tools[index]
+		if current.Server < previous.Server || current.Server == previous.Server && current.Name < previous.Name {
+			return nil, runtimeContractViolation(
+				"list MCP tools returned tool %s/%s out of catalog order after %s/%s",
+				current.Server,
+				current.Name,
+				previous.Server,
+				previous.Name,
+			)
+		}
+	}
 	return tools, nil
 }
 
