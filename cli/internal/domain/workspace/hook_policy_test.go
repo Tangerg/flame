@@ -8,16 +8,40 @@ import (
 
 func TestCatalogEnforcesTrustProjection(t *testing.T) {
 	valid := HookCatalog{ProjectRoot: "/repo", ProjectTrusted: true, Hooks: []protocol.HookInfo{{
+		Event: protocol.HookEventStop, Inject: "done", Scope: protocol.HookScopeGlobal, Source: "/home/.flame/hooks.json", Active: true,
+	}, {
 		Event: protocol.HookEventPreToolUse, Matcher: "shell*", Command: "check", Scope: protocol.HookScopeProject, Source: "/repo/.flame/hooks.json", Active: true,
-	}, {Event: protocol.HookEventStop, Inject: "done", Scope: protocol.HookScopeGlobal, Source: "/home/.flame/hooks.json", Active: true}}}
+	}}}
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("valid catalog: %v", err)
 	}
 	invalid := valid
 	invalid.Hooks = append([]protocol.HookInfo(nil), valid.Hooks...)
-	invalid.Hooks[0].Active = false
+	invalid.Hooks[1].Active = false
 	if err := invalid.Validate(); err == nil {
 		t.Fatal("accepted project active state that disagrees with trust")
+	}
+}
+
+func TestCatalogRejectsBrokenCascadeProvenance(t *testing.T) {
+	global := protocol.HookInfo{
+		Event: protocol.HookEventStop, Inject: "done", Scope: protocol.HookScopeGlobal,
+		Source: "/home/.flame/hooks.json", Active: true,
+	}
+	project := protocol.HookInfo{
+		Event: protocol.HookEventStop, Inject: "done", Scope: protocol.HookScopeProject,
+		Source: "/repo/.flame/hooks.json",
+	}
+	for name, catalog := range map[string]HookCatalog{
+		"relative source":        {Hooks: []protocol.HookInfo{{Event: protocol.HookEventStop, Inject: "done", Scope: protocol.HookScopeGlobal, Source: ".flame/hooks.json", Active: true}}},
+		"project source outside": {ProjectRoot: "/repo", Hooks: []protocol.HookInfo{{Event: protocol.HookEventStop, Inject: "done", Scope: protocol.HookScopeProject, Source: "/other/.flame/hooks.json"}}},
+		"global after project":   {ProjectRoot: "/repo", Hooks: []protocol.HookInfo{project, global}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := catalog.Validate(); err == nil {
+				t.Fatal("Validate accepted broken Hook cascade provenance")
+			}
+		})
 	}
 }
 
