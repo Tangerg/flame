@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 
@@ -154,9 +155,43 @@ func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit paginat
 	if err != nil {
 		return pagination.Page[schedule.Schedule]{}, err
 	}
+	if err := validateManagementPage(rows, afterCreatedAt, afterID, size+1); err != nil {
+		return pagination.Page[schedule.Schedule]{}, err
+	}
+	rows = slices.Clone(rows)
 	return pagination.PageOf(rows, size, listPageNamespace, nil, func(scheduled schedule.Schedule) []string {
 		return []string{strconv.FormatInt(scheduled.CreatedAt().UnixNano(), 10), scheduled.ID()}
 	})
+}
+
+func validateManagementPage(rows []schedule.Schedule, afterCreatedAt time.Time, afterID string, maximum int) error {
+	if len(rows) > maximum {
+		return fmt.Errorf("schedules: store returned %d rows, maximum %d", len(rows), maximum)
+	}
+	seen := make(map[string]struct{}, len(rows))
+	for index, scheduled := range rows {
+		if err := scheduled.ValidateStored(); err != nil {
+			return fmt.Errorf("schedules: store row %d is invalid: %w", index+1, err)
+		}
+		if _, duplicate := seen[scheduled.ID()]; duplicate {
+			return fmt.Errorf("schedules: store page repeats schedule %q", scheduled.ID())
+		}
+		seen[scheduled.ID()] = struct{}{}
+		if (!afterCreatedAt.IsZero() || afterID != "") &&
+			(scheduled.CreatedAt().After(afterCreatedAt) ||
+				scheduled.CreatedAt().Equal(afterCreatedAt) && scheduled.ID() >= afterID) {
+			return fmt.Errorf("schedules: store row %q does not follow the page cursor", scheduled.ID())
+		}
+		if index == 0 {
+			continue
+		}
+		previous := rows[index-1]
+		if scheduled.CreatedAt().After(previous.CreatedAt()) ||
+			scheduled.CreatedAt().Equal(previous.CreatedAt()) && scheduled.ID() >= previous.ID() {
+			return fmt.Errorf("schedules: store row %q is out of order after %q", scheduled.ID(), previous.ID())
+		}
+	}
+	return nil
 }
 
 // Create validates, normalizes, schedules, and persists a new schedule.
