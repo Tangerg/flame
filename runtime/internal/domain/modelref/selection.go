@@ -111,6 +111,22 @@ func (s Selection) ValidateExact() error {
 	return nil
 }
 
+// Equal reports whether both selections carry the same provider, model, and
+// model-owned reasoning effort.
+func (s Selection) Equal(other Selection) bool { return s == other }
+
+// String returns the complete selection identity used in diagnostics.
+func (s Selection) String() string {
+	if s.Provider() == "" && s.Model() == "" {
+		return "<default>"
+	}
+	identity := s.Provider() + "/" + s.Model()
+	if effort := s.ReasoningEffort(); effort != "" {
+		return identity + " (reasoning effort " + effort + ")"
+	}
+	return identity
+}
+
 // Configured reports whether s pins one provider and model.
 func (s Selection) Configured() bool { return s.model.String() != "" }
 

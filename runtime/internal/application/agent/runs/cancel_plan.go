@@ -327,7 +327,7 @@ func validateCancellationLiveRoot(live liveSegment, root rundomain.Run) error {
 		)
 	case !live.record.CreatedAt.Equal(root.CreatedAt()):
 		return fmt.Errorf("runs: cancellation root %q creation time differs from live owner", root.ID())
-	case live.record.ModelSelection != root.ModelSelection():
+	case !live.record.ModelSelection.Equal(root.ModelSelection()):
 		return fmt.Errorf("runs: cancellation root %q model selection differs from live owner", root.ID())
 	case !live.record.Capabilities.Equal(root.Capabilities()):
 		return fmt.Errorf("runs: cancellation root %q run capabilities differ from live owner", root.ID())

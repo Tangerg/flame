@@ -239,13 +239,11 @@ func (w waitingCancellationBuilder) validate() error {
 			ErrInvalidExecutorCheckpoint,
 		)
 	}
-	if w.prepared.Checkpoint.ModelSelection != rootContinuation.ModelSelection {
+	if !w.prepared.Checkpoint.ModelSelection.Equal(rootContinuation.ModelSelection) {
 		return fmt.Errorf(
-			"runs: prepared waiting subtree checkpoint model %q/%q does not match root continuation %q/%q: %w",
-			w.prepared.Checkpoint.ModelSelection.Provider(),
-			w.prepared.Checkpoint.ModelSelection.Model(),
-			rootContinuation.ModelSelection.Provider(),
-			rootContinuation.ModelSelection.Model(),
+			"runs: prepared waiting subtree checkpoint model %q does not match root continuation %q: %w",
+			w.prepared.Checkpoint.ModelSelection,
+			rootContinuation.ModelSelection,
 			ErrInvalidExecutorCheckpoint,
 		)
 	}

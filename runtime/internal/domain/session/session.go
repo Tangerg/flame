@@ -336,7 +336,7 @@ func (s Session) Revision() uint64 { return s.revision.Value() }
 
 func (s Session) sameValue(other Session) bool {
 	return s.id == other.id && s.title == other.title && s.workspace == other.workspace &&
-		s.selection == other.selection && s.parentID == other.parentID &&
+		s.selection.Equal(other.selection) && s.parentID == other.parentID &&
 		s.startedAt.Equal(other.startedAt) && s.favorite == other.favorite &&
 		s.isolated == other.isolated
 }

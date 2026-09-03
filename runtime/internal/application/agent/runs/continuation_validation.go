@@ -161,15 +161,13 @@ func validateContinuationRunFacts(
 			value.ID(),
 			continuation.RunID,
 		)
-	case value.ModelSelection() != continuation.ModelSelection:
+	case !value.ModelSelection().Equal(continuation.ModelSelection):
 		return fmt.Errorf(
-			"runs: validate Run tree %q: Run %q admission model %q/%q differs from continuation model %q/%q",
+			"runs: validate Run tree %q: Run %q admission model %q differs from continuation model %q",
 			rootRunID,
 			value.ID(),
-			value.ModelSelection().Provider(),
-			value.ModelSelection().Model(),
-			continuation.ModelSelection.Provider(),
-			continuation.ModelSelection.Model(),
+			value.ModelSelection(),
+			continuation.ModelSelection,
 		)
 	case !value.Metrics().Equal(continuation.Metrics):
 		return fmt.Errorf(

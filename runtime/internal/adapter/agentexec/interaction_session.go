@@ -447,7 +447,7 @@ func (i *interactionSession) continuationAccepted() {
 
 func executorCheckpointsEqual(left, right runs.ExecutorCheckpoint) bool {
 	return left.RootMemberID == right.RootMemberID && left.BuildID == right.BuildID &&
-		left.Scope == right.Scope && left.ModelSelection == right.ModelSelection &&
+		left.Scope == right.Scope && left.ModelSelection.Equal(right.ModelSelection) &&
 		left.Limits == right.Limits && slices.Equal(left.Usage.Models, right.Usage.Models) &&
 		bytes.Equal(left.Payload, right.Payload)
 }

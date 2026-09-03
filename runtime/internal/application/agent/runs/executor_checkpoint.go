@@ -216,14 +216,12 @@ func (e ExecutorCheckpoint) ValidateFor(expected ExecutorCheckpointExpectation) 
 			expected.GoalIncarnationID,
 		)
 	}
-	if e.ModelSelection != expected.ModelSelection {
+	if !e.ModelSelection.Equal(expected.ModelSelection) {
 		return fmt.Errorf(
-			"%w: model selection %q/%q does not match owner %q/%q",
+			"%w: model selection %q does not match owner %q",
 			ErrInvalidExecutorCheckpoint,
-			e.ModelSelection.Provider(),
-			e.ModelSelection.Model(),
-			expected.ModelSelection.Provider(),
-			expected.ModelSelection.Model(),
+			e.ModelSelection,
+			expected.ModelSelection,
 		)
 	}
 	if e.Limits != expected.Limits {

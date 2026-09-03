@@ -111,6 +111,16 @@ func TestExecutorCheckpointValidatesCrossAggregateOwnership(t *testing.T) {
 	if err := checkpoint.ValidateFor(expected); err != nil {
 		t.Fatalf("ValidateFor: %v", err)
 	}
+	differentEffort := expected
+	selectionWithEffort, err := modelref.NewWithReasoningEffort("anthropic", "claude", "high")
+	if err != nil {
+		t.Fatal(err)
+	}
+	differentEffort.ModelSelection = selectionWithEffort
+	if err := checkpoint.ValidateFor(differentEffort); !errors.Is(err, ErrInvalidExecutorCheckpoint) ||
+		!strings.Contains(err.Error(), "reasoning effort high") {
+		t.Fatalf("reasoning mismatch error = %v, want complete selection identity", err)
+	}
 
 	tests := []struct {
 		name   string

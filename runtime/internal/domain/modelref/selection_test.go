@@ -92,6 +92,30 @@ func TestSelectionValidateExact(t *testing.T) {
 	}
 }
 
+func TestSelectionOwnsEqualityAndDiagnosticIdentity(t *testing.T) {
+	selection, err := NewWithReasoningEffort("openai", "gpt-5", "high")
+	if err != nil {
+		t.Fatal(err)
+	}
+	same, err := NewWithReasoningEffort("openai", "gpt-5", "high")
+	if err != nil {
+		t.Fatal(err)
+	}
+	differentEffort, err := NewWithReasoningEffort("openai", "gpt-5", "low")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !selection.Equal(same) || selection.Equal(differentEffort) {
+		t.Fatalf("Equal() did not compare the complete selection")
+	}
+	if got, want := selection.String(), "openai/gpt-5 (reasoning effort high)"; got != want {
+		t.Fatalf("String() = %q, want %q", got, want)
+	}
+	if got, want := (Selection{}).String(), "<default>"; got != want {
+		t.Fatalf("zero String() = %q, want %q", got, want)
+	}
+}
+
 func TestPatchAppliesSelectionAtomically(t *testing.T) {
 	current, err := NewWithReasoningEffort("openai", "gpt-5.6-sol", "high")
 	if err != nil {

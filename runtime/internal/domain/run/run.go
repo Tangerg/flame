@@ -143,7 +143,7 @@ func (r Run) Fork(sessionID, id string, lineage Lineage) (Run, error) {
 // proposed transition was derived from the currently committed aggregate.
 func (r Run) Equal(other Run) bool {
 	if r.sessionID != other.sessionID || r.id != other.id || r.lineage != other.lineage ||
-		r.modelSelection != other.modelSelection || r.goalIncarnationID != other.goalIncarnationID ||
+		!r.modelSelection.Equal(other.modelSelection) || r.goalIncarnationID != other.goalIncarnationID ||
 		r.state != other.state || r.activeSegmentID != other.activeSegmentID ||
 		r.detail != other.detail || !r.metrics.Equal(other.metrics) ||
 		r.contextTokens != other.contextTokens || r.limits != other.limits ||

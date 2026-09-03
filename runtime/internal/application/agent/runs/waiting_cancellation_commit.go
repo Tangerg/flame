@@ -154,7 +154,7 @@ func validateWaitingCancellationBoundary(c WaitingSubtreeCancellationCommit) err
 		return fmt.Errorf("runs: waiting cancellation checkpoint ownership: %w", err)
 	}
 	if c.Checkpoint.Scope.GoalIncarnationID != c.ExpectedPending.GoalIncarnationID ||
-		c.Checkpoint.ModelSelection != rootContinuation.ModelSelection ||
+		!c.Checkpoint.ModelSelection.Equal(rootContinuation.ModelSelection) ||
 		c.Checkpoint.Limits != rootContinuation.Limits {
 		return fmt.Errorf(
 			"runs: waiting cancellation checkpoint differs from root continuation: %w",
@@ -252,7 +252,7 @@ func (w *waitingCancellationValidation) validateTerminalRuns() error {
 			return fmt.Errorf("runs: waiting cancellation Run[%d] Session mismatch", index)
 		case run.Lineage() != continuation.Lineage:
 			return fmt.Errorf("runs: waiting cancellation Run[%d] lineage mismatch", index)
-		case run.ModelSelection() != continuation.ModelSelection:
+		case !run.ModelSelection().Equal(continuation.ModelSelection):
 			return fmt.Errorf("runs: waiting cancellation Run[%d] model mismatch", index)
 		case !run.Metrics().Equal(continuation.Metrics):
 			return fmt.Errorf("runs: waiting cancellation Run[%d] metrics mismatch", index)
@@ -553,7 +553,7 @@ func validateWaitingRunContinuation(run rundomain.Run, continuation Continuation
 		return errors.New("identity differs from continuation")
 	case run.Lineage() != continuation.Lineage:
 		return errors.New("lineage differs from continuation")
-	case run.ModelSelection() != continuation.ModelSelection:
+	case !run.ModelSelection().Equal(continuation.ModelSelection):
 		return errors.New("model selection differs from continuation")
 	case !run.Metrics().Equal(continuation.Metrics):
 		return errors.New("metrics differ from continuation")

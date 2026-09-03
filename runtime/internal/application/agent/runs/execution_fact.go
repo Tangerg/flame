@@ -288,13 +288,11 @@ func (t TreeInterrupted) validateFor(
 			ErrInvalidExecutorCheckpoint,
 		)
 	}
-	if t.Checkpoint.ModelSelection != selection {
+	if !t.Checkpoint.ModelSelection.Equal(selection) {
 		return fmt.Errorf(
-			"runs: executor tree interrupt checkpoint model %q/%q does not match Run %q/%q: %w",
-			t.Checkpoint.ModelSelection.Provider(),
-			t.Checkpoint.ModelSelection.Model(),
-			selection.Provider(),
-			selection.Model(),
+			"runs: executor tree interrupt checkpoint model %q does not match Run %q: %w",
+			t.Checkpoint.ModelSelection,
+			selection,
 			ErrInvalidExecutorCheckpoint,
 		)
 	}
