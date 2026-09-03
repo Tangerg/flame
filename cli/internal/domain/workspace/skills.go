@@ -8,17 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-type DiscoveredSkill struct {
-	Name        string
-	Description string
-	Scope       protocol.SkillScope
-}
-
-func (d DiscoveredSkill) Validate() error {
-	return (protocol.Skill{Name: d.Name, Description: d.Description, Scope: d.Scope}).ValidateWire()
-}
-
-func (d DiscoveredSkill) Key() string { return string(d.Scope) + "/" + d.Name }
+func DiscoveredSkillKey(skill protocol.Skill) string { return string(skill.Scope) + "/" + skill.Name }
 
 // ValidateSkillLifecycleAcknowledgement proves that an authoritative managed-skill
 // catalog reflects the requested lifecycle for exactly one named skill.

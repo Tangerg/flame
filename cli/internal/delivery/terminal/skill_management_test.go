@@ -33,7 +33,7 @@ func TestResolveSkillProposalRequiresRevisionWhenNamesAreNotUnique(t *testing.T)
 
 type skillServiceStub struct {
 	mu              sync.Mutex
-	discovered      []workspace.DiscoveredSkill
+	discovered      []protocol.Skill
 	managed         []protocol.ManagedSkill
 	proposals       []workspace.SkillProposal
 	reads           atomic.Int32
@@ -70,7 +70,7 @@ func (b *blockingSkillArchiveService) Archive(ctx context.Context, name string) 
 
 func newSkillServiceStub() *skillServiceStub {
 	return &skillServiceStub{
-		discovered: []workspace.DiscoveredSkill{{Name: "release-checks", Description: "Release safely", Scope: protocol.SkillScopeProject}},
+		discovered: []protocol.Skill{{Name: "release-checks", Description: "Release safely", Scope: protocol.SkillScopeProject}},
 		managed:    []protocol.ManagedSkill{{Name: "review", Description: "Review code", Lifecycle: protocol.SkillLifecycleActive}},
 		proposals: []workspace.SkillProposal{
 			{Name: "release-checks", Revision: terminalSkillRevision, Scope: protocol.SkillScopeUser, Description: "Release safely", Instructions: "Run every release gate.", Origin: protocol.SkillProposalOriginRequested},
@@ -80,11 +80,11 @@ func newSkillServiceStub() *skillServiceStub {
 	}
 }
 
-func (s *skillServiceStub) Discover(context.Context, string) ([]workspace.DiscoveredSkill, error) {
+func (s *skillServiceStub) Discover(context.Context, string) ([]protocol.Skill, error) {
 	s.reads.Add(1)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return append([]workspace.DiscoveredSkill(nil), s.discovered...), nil
+	return append([]protocol.Skill(nil), s.discovered...), nil
 }
 
 func (s *skillServiceStub) Managed(context.Context) ([]protocol.ManagedSkill, error) {

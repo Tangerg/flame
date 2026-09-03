@@ -86,7 +86,7 @@ type Goals interface {
 }
 
 type Skills interface {
-	Discover(context.Context, string) ([]workspace.DiscoveredSkill, error)
+	Discover(context.Context, string) ([]protocol.Skill, error)
 	Managed(context.Context) ([]protocol.ManagedSkill, error)
 	Proposals(context.Context, string) ([]workspace.SkillProposal, error)
 	Archive(context.Context, string) error

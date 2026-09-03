@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -111,7 +112,7 @@ func TestSkillAdapterProjectsCatalogsAndExactMutationReferences(t *testing.T) {
 	stub := &skillBindingStub{t: t}
 	runtime := &Connection{skills: stub, meta: requestMeta("test")}
 	discovered, err := runtime.Discover(t.Context(), "/workspace")
-	if err != nil || len(discovered) != 1 || discovered[0].Key() != "project/release-checks" {
+	if err != nil || len(discovered) != 1 || workspace.DiscoveredSkillKey(discovered[0]) != "project/release-checks" {
 		t.Fatalf("Discover = (%+v, %v)", discovered, err)
 	}
 	managed, err := runtime.Managed(t.Context())
@@ -149,19 +150,29 @@ func TestSkillAdapterProjectsCatalogsAndExactMutationReferences(t *testing.T) {
 	}
 }
 
-func TestSkillAdapterClonesManagedCatalog(t *testing.T) {
-	page := protocol.NewPage([]protocol.ManagedSkill{{
+func TestSkillAdapterClonesDirectProtocolCatalogs(t *testing.T) {
+	discoveredPage := protocol.NewPage([]protocol.Skill{{
+		Name: "release-checks", Description: "Release safely", Scope: protocol.SkillScopeProject,
+	}})
+	managedPage := protocol.NewPage([]protocol.ManagedSkill{{
 		Name: "review", Description: "Review code", Lifecycle: protocol.SkillLifecycleActive,
 	}})
-	stub := &invalidSkillBindingStub{skillBindingStub: &skillBindingStub{t: t}, managed: page}
+	stub := &invalidSkillBindingStub{
+		skillBindingStub: &skillBindingStub{t: t}, discovered: discoveredPage, managed: managedPage,
+	}
 	runtime := &Connection{skills: stub, meta: requestMeta("test")}
+	discovered, err := runtime.Discover(t.Context(), "/workspace")
+	if err != nil {
+		t.Fatal(err)
+	}
 	managed, err := runtime.Managed(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	page.Data[0].Description = "mutated"
-	if managed[0].Description != "Review code" {
-		t.Fatal("managed skill projection aliases runtime catalog storage")
+	discoveredPage.Data[0].Description = "mutated"
+	managedPage.Data[0].Description = "mutated"
+	if discovered[0].Description != "Release safely" || managed[0].Description != "Review code" {
+		t.Fatal("skill projections alias runtime catalog storage")
 	}
 }
 
@@ -174,6 +185,16 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 		{
 			name: "blank discovered name",
 			stub: &invalidSkillBindingStub{discovered: protocol.NewPage([]protocol.Skill{{Scope: protocol.SkillScopeProject}})},
+			read: func(runtime *Connection) error {
+				_, err := runtime.Discover(t.Context(), "/workspace")
+				return err
+			},
+		}, {
+			name: "repeated discovered identity",
+			stub: &invalidSkillBindingStub{discovered: protocol.NewPage([]protocol.Skill{
+				{Name: "review", Scope: protocol.SkillScopeProject},
+				{Name: "review", Scope: protocol.SkillScopeProject},
+			})},
 			read: func(runtime *Connection) error {
 				_, err := runtime.Discover(t.Context(), "/workspace")
 				return err

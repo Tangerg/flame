@@ -3,7 +3,6 @@ package runtimebinding
 import (
 	"context"
 	"errors"
-	"slices"
 	"strings"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
@@ -33,18 +32,9 @@ func (a *AuthoringContext) Documents(ctx context.Context, workspacePath string) 
 	if err != nil {
 		return nil, err
 	}
-	documents := slices.Clone(values)
-	seen := make(map[string]struct{}, len(documents))
-	for index, document := range documents {
-		if err := document.ValidateWire(); err != nil {
-			return nil, runtimeContractViolation("list agent documents item %d is invalid: %v", index+1, err)
-		}
-		if _, duplicate := seen[document.Path]; duplicate {
-			return nil, runtimeContractViolation("list agent documents repeats %q", document.Path)
-		}
-		seen[document.Path] = struct{}{}
-	}
-	return documents, nil
+	return cloneUniqueWireValues("list agent documents", values, func(document protocol.AgentDoc) string {
+		return document.Path
+	})
 }
 
 func (a *AuthoringContext) Recipes(ctx context.Context, workspacePath string) ([]workspace.AuthoringRecipe, error) {

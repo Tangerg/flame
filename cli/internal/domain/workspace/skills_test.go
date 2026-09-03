@@ -34,7 +34,7 @@ func TestProposalReferencePreservesImmutableReviewIdentity(t *testing.T) {
 }
 
 func TestSkillClosedVocabulariesRejectUnknownValues(t *testing.T) {
-	if err := (DiscoveredSkill{Name: "review", Scope: protocol.SkillScope("global")}).Validate(); err == nil {
+	if err := (protocol.Skill{Name: "review", Scope: protocol.SkillScope("global")}).ValidateWire(); err == nil {
 		t.Fatal("unknown scope was accepted")
 	}
 	if err := (protocol.ManagedSkill{Name: "review", Lifecycle: protocol.SkillLifecycle("stale")}).ValidateWire(); err == nil {

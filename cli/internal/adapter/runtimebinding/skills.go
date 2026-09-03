@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
@@ -22,7 +21,7 @@ type skillBinding interface {
 	RejectSkillProposal(context.Context, protocol.SkillProposalRef, flameruntime.CommandOptions) error
 }
 
-func (r *Connection) Discover(ctx context.Context, workspacePath string) ([]workspace.DiscoveredSkill, error) {
+func (r *Connection) Discover(ctx context.Context, workspacePath string) ([]protocol.Skill, error) {
 	query, err := skillWorkspaceQuery(workspacePath)
 	if err != nil {
 		return nil, err
@@ -35,15 +34,8 @@ func (r *Connection) Discover(ctx context.Context, workspacePath string) ([]work
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValuesFallible("list discovered skills", values, func(value protocol.Skill) (workspace.DiscoveredSkill, error) {
-		if err := protocol.ValidateWireTree(value); err != nil {
-			return workspace.DiscoveredSkill{}, err
-		}
-		return workspace.DiscoveredSkill{
-			Name: value.Name, Description: value.Description, Scope: value.Scope,
-		}, nil
-	}, func(skill workspace.DiscoveredSkill) string {
-		return skill.Key()
+	return cloneUniqueWireValues("list discovered skills", values, func(skill protocol.Skill) string {
+		return workspace.DiscoveredSkillKey(skill)
 	})
 }
 
@@ -56,18 +48,9 @@ func (r *Connection) Managed(ctx context.Context) ([]protocol.ManagedSkill, erro
 	if err != nil {
 		return nil, err
 	}
-	managed := slices.Clone(values)
-	seen := make(map[string]struct{}, len(managed))
-	for index, skill := range managed {
-		if err := skill.ValidateWire(); err != nil {
-			return nil, runtimeContractViolation("list managed skills item %d is invalid: %v", index+1, err)
-		}
-		if _, duplicate := seen[skill.Name]; duplicate {
-			return nil, runtimeContractViolation("list managed skills repeats %q", skill.Name)
-		}
-		seen[skill.Name] = struct{}{}
-	}
-	return managed, nil
+	return cloneUniqueWireValues("list managed skills", values, func(skill protocol.ManagedSkill) string {
+		return skill.Name
+	})
 }
 
 func (r *Connection) Proposals(ctx context.Context, workspacePath string) ([]workspace.SkillProposal, error) {

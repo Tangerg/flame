@@ -33,10 +33,10 @@ func (a *app) discoveredSkillsReaderQuery() runtimeReaderQuery {
 	}
 }
 
-func discoveredSkillsDocument(workspace string, discovered []workspace.DiscoveredSkill) readerDocument {
+func discoveredSkillsDocument(workspacePath string, discovered []protocol.Skill) readerDocument {
 	lines := make([]string, 0, len(discovered))
 	for _, skill := range discovered {
-		line := skill.Key()
+		line := workspace.DiscoveredSkillKey(skill)
 		if skill.Description != "" {
 			line += "  " + skill.Description
 		}
@@ -45,7 +45,7 @@ func discoveredSkillsDocument(workspace string, discovered []workspace.Discovere
 	if len(lines) == 0 {
 		lines = append(lines, "No skills are discoverable for this workspace.")
 	}
-	return paragraphDocument("Discovered skills", fmt.Sprintf("%d available · %s", len(discovered), workspace), lines)
+	return paragraphDocument("Discovered skills", fmt.Sprintf("%d available · %s", len(discovered), workspacePath), lines)
 }
 
 func (a *app) ShowManagedSkills() {
