@@ -313,6 +313,23 @@ func TestCompletedQuestionCannotReenterTheInterruptChannel(t *testing.T) {
 	}
 }
 
+func TestProjectInteractionRejectsFieldsOutsideTheInterruptVariant(t *testing.T) {
+	t.Parallel()
+
+	_, err := projectInteraction(protocol.Interrupt{
+		ItemID: "item_1", RunID: "run_1", Type: protocol.InterruptQuestion,
+		Payload: &protocol.InterruptPayload{
+			Risk: protocol.ApprovalRiskLow,
+			Question: &protocol.Question{Fields: []protocol.QuestionField{{
+				Prompt: "Target", Type: protocol.QuestionFieldText,
+			}}},
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "payload.risk") {
+		t.Fatalf("question interrupt with approval risk error = %v", err)
+	}
+}
+
 func TestApprovalInterruptPreservesCompleteToolArguments(t *testing.T) {
 	interaction, err := projectInteraction(protocol.Interrupt{
 		ItemID: "tool_1", RunID: "run_1", Type: protocol.InterruptApproval,

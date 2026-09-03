@@ -138,6 +138,9 @@ func projectPlan(plan *protocol.Plan) (*protocol.Plan, error) {
 }
 
 func projectInteraction(value protocol.Interrupt) (agent.Interaction, error) {
+	if err := protocol.ValidateWireTree(value); err != nil {
+		return nil, fmt.Errorf("interrupt %s wire projection: %w", value.ItemID, err)
+	}
 	if value.Payload == nil {
 		return nil, fmt.Errorf("interrupt %s has no payload", value.ItemID)
 	}
