@@ -31,3 +31,13 @@ func TestReadTokenFileRejectsFIFOReplacementWithoutBlocking(t *testing.T) {
 		t.Fatalf("readTokenFile() error = %v, want ErrInvalidToken", err)
 	}
 }
+
+func TestSyncDirectoryDoesNotBlockOnFIFOReplacement(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "directory")
+	if err := syscall.Mkfifo(path, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := syncDirectory(path); err == nil {
+		t.Fatal("syncDirectory() error = nil for FIFO")
+	}
+}

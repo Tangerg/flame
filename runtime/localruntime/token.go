@@ -123,7 +123,7 @@ func ReadToken(path string) (*Token, error) {
 }
 
 func readTokenFile(path string, pathInfo os.FileInfo) (*Token, error) {
-	file, err := openTokenPath(path)
+	file, err := openReadOnlyPath(path)
 	if err != nil {
 		return nil, fmt.Errorf("local Runtime token: open: %w", err)
 	}
@@ -193,9 +193,20 @@ func invalidToken(reason string) error {
 }
 
 func syncCommittedDirectory(path string) {
-	directory, err := os.Open(path)
+	_ = syncDirectory(path)
+}
+
+func syncDirectory(path string) error {
+	directory, err := openReadOnlyPath(path)
 	if err != nil {
-		return
+		return err
 	}
-	_ = errors.Join(directory.Sync(), directory.Close())
+	info, err := directory.Stat()
+	if err != nil {
+		return errors.Join(err, directory.Close())
+	}
+	if !info.IsDir() {
+		return errors.Join(errors.New("local Runtime token: sync target is not a directory"), directory.Close())
+	}
+	return errors.Join(directory.Sync(), directory.Close())
 }
