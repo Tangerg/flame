@@ -1061,7 +1061,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       content: text(),
       encoding: text(),
       endLine: allOf([integer(), minimum(1)]),
-      path: text(),
+      path: allOf([text(), minLength(1)]),
       startLine: allOf([integer(), minimum(1)]),
       totalLines: allOf([integer(), minimum(1)]),
       truncated: flag(),
@@ -1133,15 +1133,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   FileEntry: object({
     modifiedAt: text(),
-    name: text(),
-    path: text(),
+    name: allOf([text(), minLength(1)]),
+    path: allOf([text(), minLength(1)]),
     sizeBytes: allOf([integer(), minimum(0)]),
     type: ref(() => CHECKS.FileEntryType),
   }, ["modifiedAt", "name", "path", "type"]),
   FileEntryType: enumOf(["file", "dir", "symlink"]),
   FileHead: object({
     lines: array(ref(() => CHECKS.FileLine)),
-    path: text(),
+    path: allOf([text(), minLength(1)]),
   }, ["lines", "path"]),
   FileLine: object({
     lineNumber: allOf([integer(), minimum(1)]),
@@ -1384,7 +1384,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["runs", "steps"]),
   GrepMatch: object({
     lineNumber: allOf([integer(), minimum(1)]),
-    path: text(),
+    path: allOf([text(), minLength(1)]),
     text: text(),
   }, ["lineNumber", "path", "text"]),
   GrepRequest: object({
@@ -3823,7 +3823,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   WorkspaceInfo: object({
     availability: ref(() => CHECKS.WorkspaceAvailability),
-    projectRoot: text(),
+    projectRoot: allOf([text(), minLength(1)]),
     ref: ref(() => CHECKS.WorkspaceRef),
   }, ["availability", "ref"]),
   WorkspaceQuery: object({
@@ -3834,7 +3834,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["path"]),
   WorkspaceSummary: object({
     lastActiveAt: text(),
-    name: text(),
+    name: allOf([text(), minLength(1)]),
     sessionCount: allOf([integer(), minimum(0)]),
     workspace: ref(() => CHECKS.WorkspaceInfo),
   }, ["name", "sessionCount", "workspace"]),

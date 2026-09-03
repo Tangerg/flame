@@ -489,24 +489,43 @@ func registerPlanValues(s *Shapes) {
 
 func registerWorkspaceValues(s *Shapes) {
 	nonEmpty[protocol.WorkspaceRef](s, "path")
-	nonNegative[protocol.WorkspaceSummary](s, "sessionCount")
+	nonEmpty[protocol.WorkspaceInfo](s, "projectRoot")
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.WorkspaceSummary](),
+		Constraints: []FieldConstraint{
+			{Field: "name", Kind: ConstraintNonEmpty},
+			{Field: "sessionCount", Kind: ConstraintNonNegative},
+		},
+	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.FileContent](),
 		Constraints: []FieldConstraint{
+			{Field: "path", Kind: ConstraintNonEmpty},
 			{Field: "totalLines", Kind: ConstraintPositive},
 			{Field: "startLine", Kind: ConstraintPositive},
 			{Field: "endLine", Kind: ConstraintPositive},
 		},
 	})
-	nonNegative[protocol.FileEntry](s, "sizeBytes")
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.FileEntry](),
+		Constraints: []FieldConstraint{
+			{Field: "path", Kind: ConstraintNonEmpty},
+			{Field: "name", Kind: ConstraintNonEmpty},
+			{Field: "sizeBytes", Kind: ConstraintNonNegative},
+		},
+	})
+	nonEmpty[protocol.FileHead](s, "path")
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.FileLine](),
 		Constraints: []FieldConstraint{{Field: "lineNumber", Kind: ConstraintPositive}},
 	})
 	nonNegative[protocol.GrepResult](s, "total")
 	s.valueConstraint(FieldConstraintSpec{
-		GoType:      typeOf[protocol.GrepMatch](),
-		Constraints: []FieldConstraint{{Field: "lineNumber", Kind: ConstraintPositive}},
+		GoType: typeOf[protocol.GrepMatch](),
+		Constraints: []FieldConstraint{
+			{Field: "path", Kind: ConstraintNonEmpty},
+			{Field: "lineNumber", Kind: ConstraintPositive},
+		},
 	})
 	workspaceChangeConstraints := []FieldConstraint{
 		{Field: "path", Kind: ConstraintNonEmpty},

@@ -1743,6 +1743,7 @@ func (a ApprovalRule) ValidateWire() error {
 
 func (f FileContent) ValidateWire() error {
 	return collectWireViolations("FileContent",
+		requiredText("path", f.Path),
 		positiveNumber("totalLines", f.TotalLines),
 		optionalPositiveScalarNumber("startLine", f.StartLine),
 		optionalPositiveScalarNumber("endLine", f.EndLine),
@@ -2290,16 +2291,32 @@ func (w WorkspaceRef) ValidateWire() error {
 	)
 }
 
+func (w WorkspaceInfo) ValidateWire() error {
+	return collectWireViolations("WorkspaceInfo",
+		requiredText("projectRoot", w.ProjectRoot),
+		closedEnum("availability", string(w.Availability), []string{"available", "missing"}, false),
+	)
+}
+
 func (w WorkspaceSummary) ValidateWire() error {
 	return collectWireViolations("WorkspaceSummary",
+		requiredText("name", w.Name),
 		nonNegativeNumber("sessionCount", w.SessionCount),
 	)
 }
 
 func (f FileEntry) ValidateWire() error {
 	return collectWireViolations("FileEntry",
+		requiredText("path", f.Path),
+		requiredText("name", f.Name),
 		optionalNonNegativeNumber("sizeBytes", f.SizeBytes),
 		closedEnum("type", string(f.Type), []string{"file", "dir", "symlink"}, false),
+	)
+}
+
+func (f FileHead) ValidateWire() error {
+	return collectWireViolations("FileHead",
+		requiredText("path", f.Path),
 	)
 }
 
@@ -2317,6 +2334,7 @@ func (g GrepResult) ValidateWire() error {
 
 func (g GrepMatch) ValidateWire() error {
 	return collectWireViolations("GrepMatch",
+		requiredText("path", g.Path),
 		positiveNumber("lineNumber", g.LineNumber),
 	)
 }
@@ -2587,11 +2605,5 @@ func (s ServerCapabilities) ValidateWire() error {
 func (t ToolSpec) ValidateWire() error {
 	return collectWireViolations("ToolSpec",
 		closedEnum("safetyClass", string(t.SafetyClass), []string{"safe", "write", "exec", "network"}, true),
-	)
-}
-
-func (w WorkspaceInfo) ValidateWire() error {
-	return collectWireViolations("WorkspaceInfo",
-		closedEnum("availability", string(w.Availability), []string{"available", "missing"}, false),
 	)
 }

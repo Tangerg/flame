@@ -6868,8 +6868,21 @@
       ]
     },
     {
+      "type": "WorkspaceInfo",
+      "rules": [
+        {
+          "field": "projectRoot",
+          "constraint": "nonEmpty"
+        }
+      ]
+    },
+    {
       "type": "WorkspaceSummary",
       "rules": [
+        {
+          "field": "name",
+          "constraint": "nonEmpty"
+        },
         {
           "field": "sessionCount",
           "constraint": "nonNegative"
@@ -6879,6 +6892,10 @@
     {
       "type": "FileContent",
       "rules": [
+        {
+          "field": "path",
+          "constraint": "nonEmpty"
+        },
         {
           "field": "totalLines",
           "constraint": "positive"
@@ -6897,8 +6914,25 @@
       "type": "FileEntry",
       "rules": [
         {
+          "field": "path",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "name",
+          "constraint": "nonEmpty"
+        },
+        {
           "field": "sizeBytes",
           "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "FileHead",
+      "rules": [
+        {
+          "field": "path",
+          "constraint": "nonEmpty"
         }
       ]
     },
@@ -6923,6 +6957,10 @@
     {
       "type": "GrepMatch",
       "rules": [
+        {
+          "field": "path",
+          "constraint": "nonEmpty"
+        },
         {
           "field": "lineNumber",
           "constraint": "positive"

@@ -1870,6 +1870,26 @@ func TestWorkspaceChangePathsAreRequired(t *testing.T) {
 	}
 }
 
+func TestWorkspaceOutputIdentitiesAreRequired(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		shape string
+		field string
+		value WireValidator
+	}{
+		{shape: "WorkspaceInfo", field: "projectRoot", value: WorkspaceInfo{Availability: WorkspaceAvailable}},
+		{shape: "WorkspaceSummary", field: "name", value: WorkspaceSummary{}},
+		{shape: "FileContent", field: "path", value: FileContent{TotalLines: 1}},
+		{shape: "FileEntry", field: "path", value: FileEntry{Name: "main.go", Type: FileEntryFile}},
+		{shape: "FileEntry", field: "name", value: FileEntry{Path: "main.go", Type: FileEntryFile}},
+		{shape: "FileHead", field: "path", value: FileHead{}},
+		{shape: "GrepMatch", field: "path", value: GrepMatch{LineNumber: 1}},
+	} {
+		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
+	}
+}
+
 func TestReachableOutputLeavesKeepGeneratedConstraints(t *testing.T) {
 	t.Parallel()
 
@@ -1889,12 +1909,12 @@ func TestRuntimeOutputNumberBoundariesRemainRepresentable(t *testing.T) {
 	zero, maximumTools := 0, mcpserver.MaxRemoteToolsPerServer
 	zeroBytes := int64(0)
 	for _, value := range []WireValidator{
-		WorkspaceSummary{},
-		FileContent{TotalLines: 1, StartLine: 1, EndLine: 1},
-		FileEntry{Type: FileEntryFile, SizeBytes: &zeroBytes},
+		WorkspaceSummary{Name: "workspace"},
+		FileContent{Path: "main.go", TotalLines: 1, StartLine: 1, EndLine: 1},
+		FileEntry{Path: "main.go", Name: "main.go", Type: FileEntryFile, SizeBytes: &zeroBytes},
 		FileLine{LineNumber: 1},
 		GrepResult{},
-		GrepMatch{LineNumber: 1},
+		GrepMatch{Path: "main.go", LineNumber: 1},
 		FileDiff{Path: "main.go", Status: FileStatusModified, Added: &zero, Removed: &zero},
 		WorkspaceFileChange{Path: "main.go", Status: FileStatusModified, Added: &zero, Removed: &zero},
 		DiffRow{Type: DiffRowContext, LeftLine: 1, RightLine: 1, Code: "line"},
@@ -1939,14 +1959,14 @@ func TestHookInfoKeepsExecutableAndDeclarativeFormsDisjoint(t *testing.T) {
 func TestFileContentWindowBoundariesAreAtomic(t *testing.T) {
 	t.Parallel()
 
-	if err := (FileContent{TotalLines: 1}).ValidateWire(); err != nil {
+	if err := (FileContent{Path: "main.go", TotalLines: 1}).ValidateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected an unwindowed file: %v", err)
 	}
-	if err := (FileContent{TotalLines: 1, StartLine: 1, EndLine: 1}).ValidateWire(); err != nil {
+	if err := (FileContent{Path: "main.go", TotalLines: 1, StartLine: 1, EndLine: 1}).ValidateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected a complete window: %v", err)
 	}
-	assertConstraintField(t, (FileContent{TotalLines: 1, StartLine: 1}).ValidateWire(), "FileContent", "endLine")
-	assertConstraintField(t, (FileContent{TotalLines: 1, EndLine: 1}).ValidateWire(), "FileContent", "startLine")
+	assertConstraintField(t, (FileContent{Path: "main.go", TotalLines: 1, StartLine: 1}).ValidateWire(), "FileContent", "endLine")
+	assertConstraintField(t, (FileContent{Path: "main.go", TotalLines: 1, EndLine: 1}).ValidateWire(), "FileContent", "startLine")
 }
 
 func TestWorkspaceChangeMetadataMatchesItsStatusAndRepresentation(t *testing.T) {
