@@ -1767,6 +1767,29 @@ func (f FileDiff) ValidateWire() error {
 	)
 }
 
+func (s Schedule) ValidateWire() error {
+	return collectWireViolations("Schedule",
+		requiredText("id", s.ID),
+		identity("id", s.ID),
+		maxLength("id", s.ID, 256),
+		requiredTextPrefix("id", s.ID, "sch_"),
+		positiveNumber("revision", s.Revision),
+		maximumNumber("revision", s.Revision, 9007199254740991),
+		requiredTextPattern("instructions", s.Instructions, "\\S"),
+		requiredText("cron", s.Cron),
+		identity("provider", s.Provider),
+		maxLength("provider", s.Provider, 64),
+		identity("model", s.Model),
+		maxLength("model", s.Model, 256),
+		identity("reasoningEffort", s.ReasoningEffort),
+		maxLength("reasoningEffort", s.ReasoningEffort, 32),
+		requiredWhen(wireFieldPresent(s, "provider"), "model", s),
+		requiredWhen(wireFieldPresent(s, "model"), "provider", s),
+		requiredWhen(wireFieldPresent(s, "reasoningEffort"), "provider", s),
+		requiredWhen(wireFieldPresent(s, "reasoningEffort"), "model", s),
+	)
+}
+
 func (g Goal) ValidateWire() error {
 	return collectWireViolations("Goal",
 		requiredText("sessionId", g.SessionID),
@@ -2410,24 +2433,6 @@ func (r Recipe) ValidateWire() error {
 		requiredTextPattern("body", r.Body, "\\S"),
 		requiredTextPattern("source", r.Source, "\\S"),
 		closedEnum("scope", string(r.Scope), []string{"project", "global"}, false),
-	)
-}
-
-func (s Schedule) ValidateWire() error {
-	return collectWireViolations("Schedule",
-		requiredText("id", s.ID),
-		identity("id", s.ID),
-		maxLength("id", s.ID, 256),
-		requiredTextPrefix("id", s.ID, "sch_"),
-		positiveNumber("revision", s.Revision),
-		maximumNumber("revision", s.Revision, 9007199254740991),
-		requiredTextPattern("instructions", s.Instructions, "\\S"),
-		identity("provider", s.Provider),
-		maxLength("provider", s.Provider, 64),
-		identity("model", s.Model),
-		maxLength("model", s.Model, 256),
-		identity("reasoningEffort", s.ReasoningEffort),
-		maxLength("reasoningEffort", s.ReasoningEffort, 32),
 	)
 }
 

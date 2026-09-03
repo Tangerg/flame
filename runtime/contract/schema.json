@@ -2871,7 +2871,9 @@
       },
       "required": [
         "createdAt",
+        "model",
         "objective",
+        "provider",
         "sessionId",
         "status",
         "updatedAt",
@@ -8741,7 +8743,8 @@
           "format": "date-time"
         },
         "cron": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "enabled": {
           "type": "boolean"
@@ -8804,6 +8807,45 @@
         "instructions",
         "revision",
         "title"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "provider"
+            ]
+          },
+          "then": {
+            "required": [
+              "model"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "model"
+            ]
+          },
+          "then": {
+            "required": [
+              "provider"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "reasoningEffort"
+            ]
+          },
+          "then": {
+            "required": [
+              "model",
+              "provider"
+            ]
+          }
+        }
       ]
     },
     "ScheduleWorkspaceMode": {

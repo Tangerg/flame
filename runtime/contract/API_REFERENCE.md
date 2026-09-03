@@ -921,6 +921,7 @@ TypeScript validator from this single registry projection.
 | `Schedule` | `revision` | `positive` |
 | `Schedule` | `revision` | `maximum(9007199254740991)` |
 | `Schedule` | `instructions` | `pattern("\\S")` |
+| `Schedule` | `cron` | `nonEmpty` |
 | `Schedule` | `provider` | `identity` |
 | `Schedule` | `provider` | `maxLength(64)` |
 | `Schedule` | `model` | `identity` |

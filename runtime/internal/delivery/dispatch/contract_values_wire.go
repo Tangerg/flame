@@ -814,7 +814,9 @@ func registerScheduleValues(s *Shapes) {
 	const nonBlankInstructions = `\S`
 	scheduleConstraints := append(requiredScheduleIdentity("id"), exactPositiveInteger("revision")...)
 	scheduleConstraints = append(scheduleConstraints,
-		FieldConstraint{Field: "instructions", Kind: ConstraintPattern, Value: nonBlankInstructions})
+		FieldConstraint{Field: "instructions", Kind: ConstraintPattern, Value: nonBlankInstructions},
+		FieldConstraint{Field: "cron", Kind: ConstraintNonEmpty},
+	)
 	scheduleConstraints = append(scheduleConstraints,
 		modelSelectionIdentities("provider", "model", "reasoningEffort")...)
 	s.valueConstraint(FieldConstraintSpec{

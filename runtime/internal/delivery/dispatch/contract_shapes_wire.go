@@ -679,6 +679,7 @@ func registerObjectConstraints(s *Shapes) {
 		typeOf[protocol.StartRunRequest](),
 		typeOf[protocol.StartGoalRequest](),
 		typeOf[protocol.CreateScheduleRequest](),
+		typeOf[protocol.Schedule](),
 	} {
 		s.constraint(ObjectConstraintSpec{
 			GoType: target,

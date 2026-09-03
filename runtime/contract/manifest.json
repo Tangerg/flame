@@ -4278,6 +4278,45 @@
       ]
     },
     {
+      "type": "Schedule",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "provider",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "model"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "model",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "provider"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "reasoningEffort",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "provider",
+            "model"
+          ]
+        }
+      ]
+    },
+    {
       "type": "UpdateSessionRequest",
       "rules": [
         {
@@ -7808,6 +7847,10 @@
         {
           "field": "instructions",
           "constraint": "pattern(\"\\\\S\")"
+        },
+        {
+          "field": "cron",
+          "constraint": "nonEmpty"
         },
         {
           "field": "provider",

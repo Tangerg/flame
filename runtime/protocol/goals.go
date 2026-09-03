@@ -13,8 +13,8 @@ type Goal struct {
 	Objective       string      `json:"objective"`
 	Status          GoalStatus  `json:"status"`
 	Reason          *GoalReason `json:"reason,omitempty"`
-	Provider        string      `json:"provider,omitempty"`
-	Model           string      `json:"model,omitempty"`
+	Provider        string      `json:"provider"`
+	Model           string      `json:"model"`
 	ReasoningEffort string      `json:"reasoningEffort,omitempty"`
 	Budget          *GoalBudget `json:"budget,omitempty"`
 	Used            GoalUsage   `json:"used"`

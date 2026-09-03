@@ -568,6 +568,20 @@ func TestScheduleInstructionsMustContainNonWhitespace(t *testing.T) {
 	}), "Schedule", "instructions")
 }
 
+func TestScheduleRequiresCron(t *testing.T) {
+	t.Parallel()
+
+	valid := Schedule{
+		ID: "sch_1", Instructions: "run",
+		Cron: "@daily", CreatedAt: time.Unix(1, 0).UTC(), Revision: 1,
+	}
+	if err := valid.ValidateWire(); err != nil {
+		t.Fatalf("valid Schedule: %v", err)
+	}
+	valid.Cron = ""
+	assertConstraintField(t, valid.ValidateWire(), "Schedule", "cron")
+}
+
 func TestMCPWireUnionsAcceptEveryLegalBranch(t *testing.T) {
 	t.Parallel()
 
@@ -1215,6 +1229,15 @@ func TestModelSelectionWireConstraintsRequireAnExactPair(t *testing.T) {
 
 	scheduleCreate := CreateScheduleRequest{Instructions: "run", Cron: "0 0 * * *", Model: "model"}
 	assertConstraintField(t, scheduleCreate.ValidateWire(), "CreateScheduleRequest", "provider")
+
+	schedule := Schedule{ID: "sch_1", Instructions: "run", Cron: "@daily", Revision: 1, Provider: "provider"}
+	assertConstraintField(t, schedule.ValidateWire(), "Schedule", "model")
+	schedule.Provider, schedule.Model = "", "model"
+	assertConstraintField(t, schedule.ValidateWire(), "Schedule", "provider")
+	schedule.Model, schedule.ReasoningEffort = "", "high"
+	scheduleSelectionErr := schedule.ValidateWire()
+	assertConstraintField(t, scheduleSelectionErr, "Schedule", "provider")
+	assertConstraintField(t, scheduleSelectionErr, "Schedule", "model")
 	scheduleUpdate := UpdateScheduleRequest{ID: "sch_1", ExpectedRevision: 1, Provider: &provider}
 	assertConstraintField(t, scheduleUpdate.ValidateWire(), "UpdateScheduleRequest", "model")
 }
@@ -1478,7 +1501,10 @@ func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
 		"UpdateSessionRequest": UpdateSessionRequest{
 			SessionID: "ses_1", ExpectedRevision: MaximumExactJSONInteger,
 		},
-		"Schedule": Schedule{ID: "sch_1", Instructions: "run", Revision: MaximumExactJSONInteger},
+		"Schedule": Schedule{
+			ID: "sch_1", Instructions: "run", Cron: "@daily",
+			Revision: MaximumExactJSONInteger,
+		},
 		"UpdateScheduleRequest": UpdateScheduleRequest{
 			ID: "sch_1", ExpectedRevision: MaximumExactJSONInteger,
 		},
@@ -1502,7 +1528,8 @@ func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
 			SessionID: "ses_1", ExpectedRevision: MaximumExactJSONInteger + 1,
 		}},
 		{name: "Schedule", field: "revision", value: Schedule{
-			ID: "sch_1", Instructions: "run", Revision: MaximumExactJSONInteger + 1,
+			ID: "sch_1", Instructions: "run", Cron: "@daily",
+			Revision: MaximumExactJSONInteger + 1,
 		}},
 		{name: "UpdateScheduleRequest", field: "expectedRevision", value: UpdateScheduleRequest{
 			ID: "sch_1", ExpectedRevision: MaximumExactJSONInteger + 1,
