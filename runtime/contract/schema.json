@@ -2589,15 +2589,10 @@
           "items": {
             "$ref": "#/$defs/FileLine"
           }
-        },
-        "path": {
-          "type": "string",
-          "minLength": 1
         }
       },
       "required": [
-        "lines",
-        "path"
+        "lines"
       ]
     },
     "FileLine": {

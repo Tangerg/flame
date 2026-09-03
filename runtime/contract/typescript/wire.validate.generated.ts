@@ -1139,8 +1139,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   FileEntryType: enumOf(["file", "dir", "symlink"]),
   FileHead: object({
     lines: array(ref(() => CHECKS.FileLine)),
-    path: allOf([text(), minLength(1)]),
-  }, ["lines", "path"]),
+  }, ["lines"]),
   FileLine: object({
     lineNumber: allOf([integer(), minimum(1)]),
     text: text(),

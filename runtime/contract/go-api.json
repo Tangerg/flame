@@ -3986,20 +3986,9 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "Path",
-              "type": "string",
-              "tag": "json:\"path\""
-            },
-            {
               "name": "Lines",
               "type": "[]FileLine",
               "tag": "json:\"lines\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
             }
           ]
         },

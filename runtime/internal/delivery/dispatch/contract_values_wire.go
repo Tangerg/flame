@@ -513,7 +513,6 @@ func registerWorkspaceValues(s *Shapes) {
 			{Field: "sizeBytes", Kind: ConstraintNonNegative},
 		},
 	})
-	nonEmpty[protocol.FileHead](s, "path")
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.FileLine](),
 		Constraints: []FieldConstraint{{Field: "lineNumber", Kind: ConstraintPositive}},

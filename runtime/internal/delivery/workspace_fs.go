@@ -75,7 +75,7 @@ func (s *Handler) GetWorkspaceFileHead(ctx context.Context, in protocol.GetFileH
 	for _, line := range head.Lines {
 		lines = append(lines, protocol.FileLine{LineNumber: line.Number, Text: line.Text})
 	}
-	return &protocol.FileHead{Path: in.Path, Lines: lines}, nil
+	return &protocol.FileHead{Lines: lines}, nil
 }
 
 // ReadWorkspaceFile maps the application file read onto the protocol response.

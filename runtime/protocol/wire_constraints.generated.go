@@ -2313,12 +2313,6 @@ func (f FileEntry) ValidateWire() error {
 	)
 }
 
-func (f FileHead) ValidateWire() error {
-	return collectWireViolations("FileHead",
-		requiredText("path", f.Path),
-	)
-}
-
 func (f FileLine) ValidateWire() error {
 	return collectWireViolations("FileLine",
 		positiveNumber("lineNumber", f.LineNumber),

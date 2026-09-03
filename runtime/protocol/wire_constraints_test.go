@@ -1882,7 +1882,6 @@ func TestWorkspaceOutputIdentitiesAreRequired(t *testing.T) {
 		{shape: "WorkspaceSummary", field: "name", value: WorkspaceSummary{}},
 		{shape: "FileEntry", field: "path", value: FileEntry{Name: "main.go", Type: FileEntryFile}},
 		{shape: "FileEntry", field: "name", value: FileEntry{Path: "main.go", Type: FileEntryFile}},
-		{shape: "FileHead", field: "path", value: FileHead{}},
 		{shape: "GrepMatch", field: "path", value: GrepMatch{LineNumber: 1}},
 	} {
 		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)

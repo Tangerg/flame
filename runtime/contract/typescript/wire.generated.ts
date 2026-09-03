@@ -475,7 +475,6 @@ export type FileEntryType = "file" | "dir" | "symlink";
 
 export interface FileHead {
   lines: FileLine[];
-  path: string;
 }
 
 export interface FileLine {

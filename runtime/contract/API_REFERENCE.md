@@ -754,7 +754,6 @@ TypeScript validator from this single registry projection.
 | `FileEntry` | `path` | `nonEmpty` |
 | `FileEntry` | `name` | `nonEmpty` |
 | `FileEntry` | `sizeBytes` | `nonNegative` |
-| `FileHead` | `path` | `nonEmpty` |
 | `FileLine` | `lineNumber` | `positive` |
 | `GrepResult` | `total` | `nonNegative` |
 | `GrepMatch` | `path` | `nonEmpty` |

@@ -91,7 +91,6 @@ type FileEntry struct {
 
 // FileHead is a file preview.
 type FileHead struct {
-	Path  string     `json:"path"`
 	Lines []FileLine `json:"lines"`
 }
 
