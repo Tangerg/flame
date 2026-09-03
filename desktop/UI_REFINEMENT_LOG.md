@@ -2082,3 +2082,44 @@ now the product's. The diff is confined to `x=16..204` — the rail — in every
 ### Open
 
 Rounds 19–24's items, less the settings panes' missing coverage.
+
+## Round 27 — five audits, five null results
+
+No decisions were pending on any of these, and none of them found anything. That
+is worth writing down: it is what stops the next round re-treading the same
+ground, and after twenty-six rounds a null is information.
+
+| Audit | Method | Result |
+| --- | --- | --- |
+| Paste-to-attachment threshold vs the reference | the reference's composer paste handler, in the deobfuscated source | it handles **files only** — long text becoming an attachment is Flame's own feature, so `LARGE_PASTE_LINES = 12` / `CHARS = 1600` are not a divergence from anything |
+| Dead locale keys | all 1084 keys against every source file, allowing i18next plural suffixes and dynamically composed prefixes | **0 unreachable**. A naive literal match reports 141 — every one of them a plural form or a template tail |
+| Port configured then overwritten | every `configure*` call site in `src` | all live in an `adapters/` module called from their own plugin's setup; `router.tsx` configures the navigator at the composition root. No ordering hazard — the trap round 26 hit exists only in the fixture, where a seed ran before `loadPluginsForTest` |
+| The settings view's three never-settling skeletons | ancestor chain of every `main [aria-busy]` | all inside `aside.agent-context-dock` at 0×0 — the dock stays mounted behind a full-card view on purpose, the same way `Activity mode="hidden"` keeps the chat. Not a leak |
+| Moving the seam rail into a landmark | the computed styles of both candidates | `main.agent-content-card` is `position: relative` **and `overflow: clip`**, and the rail is `translateX(-5px)` at `left: 0` — deliberately half outside the card. Moving it in clips half its hit area. Round 21's judgement, now measured rather than reasoned |
+
+### The golden flake, narrowed
+
+`empty` and `foundation dark collapsed` again, with one new fact and one ruled out.
+
+- **Ruled out: fonts.** `font-display: swap`, not `optional`, so both renderings
+  end up in Geist. Bucketed 16 loads of `foundation` in isolation: one hash,
+  paragraph 46px tall and 578.08px wide, `document.fonts.check('14px "Geist"')`
+  true every time.
+- **Ruled out: leaked page state.** Playwright gives each test its own context, so
+  neither the appearance store's `localStorage` nor an inline `--ui-*` style
+  survives into the next test.
+- **What is left** is what the config's own comment already said about
+  `delegated`: it "renders a pixel apart depending on what its worker drew
+  first". All three are the same family — deterministic alone, nondeterministic
+  after a process has drawn other pages, unaffected by the worker count. One
+  differs only in antialiasing at identical geometry; another moves a line break.
+
+### Verification
+
+Nothing changed, so nothing to verify beyond the audits above, each of which is
+reproducible from its method.
+
+### Open
+
+Unchanged. The two that would take real work — the composer's single-line
+arrangement and what `⌘1`–`⌘9` should mean — are both waiting on a decision.
