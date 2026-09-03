@@ -5,6 +5,7 @@
 #
 # config.yaml is gitignored (it holds your key). Precedence, later wins:
 #   built-in defaults  <  this file  <  env vars (FLAME_* / {PROVIDER}_API_KEY)
+# The file must be a regular YAML file no larger than 256 KiB.
 # YAML keys are strict: an unknown or misspelled field fails startup instead of
 # silently falling back to a default.
 

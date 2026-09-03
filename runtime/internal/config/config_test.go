@@ -1,11 +1,14 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 func TestAPIKeyInputFormattingNeverRevealsTheCredential(t *testing.T) {
@@ -45,6 +48,76 @@ func TestLoadUsesOnlyExplicitAbsoluteSearchDirectories(t *testing.T) {
 	if !settings.ToolResultOffload.Enabled || settings.ToolResultOffload.Threshold != DefaultToolResultOffloadThreshold {
 		t.Fatalf("default Tool-result offload = %+v", settings.ToolResultOffload)
 	}
+}
+
+func TestLoadSelectsOnlyConfigYAMLInDirectoryPrecedenceOrder(t *testing.T) {
+	first := t.TempDir()
+	second := t.TempDir()
+	if err := os.WriteFile(
+		filepath.Join(first, "config.json"),
+		[]byte(`{"provider":"openai","model":"wrong-format"}`),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(second, "config.yaml"),
+		[]byte("provider: anthropic\nmodel: expected-yaml\n"),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FLAME_PROVIDER", "")
+	t.Setenv("FLAME_MODEL", "")
+
+	settings, err := Load([]string{first, second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.Provider != "anthropic" || settings.Model != "expected-yaml" {
+		t.Fatalf("settings = %+v, want config.yaml from second search directory", settings)
+	}
+}
+
+func TestLoadRejectsUnboundedOrNonRegularConfigFile(t *testing.T) {
+	t.Run("oversized", func(t *testing.T) {
+		directory := t.TempDir()
+		path := filepath.Join(directory, "config.yaml")
+		content := "provider: anthropic\n"
+		content += strings.Repeat(" ", int(maximumRuntimeConfigBytes)-len(content))
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("FLAME_PROVIDER", "")
+		if _, err := Load([]string{directory}); err != nil {
+			t.Fatalf("Load maximum-sized file: %v", err)
+		}
+
+		file, err := os.OpenFile(path, os.O_WRONLY, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := file.Truncate(maximumRuntimeConfigBytes + 1); err != nil {
+			_ = file.Close()
+			t.Fatal(err)
+		}
+		if err := file.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Load([]string{directory}); !errors.Is(err, fileinput.ErrTooLarge) {
+			t.Fatalf("Load oversized error = %v, want ErrTooLarge", err)
+		}
+	})
+
+	t.Run("directory", func(t *testing.T) {
+		directory := t.TempDir()
+		if err := os.Mkdir(filepath.Join(directory, "config.yaml"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Load([]string{directory}); !errors.Is(err, fileinput.ErrNotRegular) {
+			t.Fatalf("Load directory error = %v, want ErrNotRegular", err)
+		}
+	})
 }
 
 func TestLoadToolResultOffloadUsesExplicitEnablement(t *testing.T) {

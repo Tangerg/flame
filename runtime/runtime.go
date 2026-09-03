@@ -33,8 +33,9 @@ type Config struct {
 	// UserHomePath anchors home-scoped instructions and workspace discovery.
 	// Empty takes one os.UserHomeDir snapshot during Open.
 	UserHomePath string
-	// ConfigDirectories are absolute search directories for config.yaml. Empty
-	// searches only DataDirectory; the in-process binding never reads process cwd.
+	// ConfigDirectories are absolute search directories for config.yaml. The
+	// first existing file wins. Empty searches only DataDirectory; the in-process
+	// binding never reads process cwd.
 	ConfigDirectories []string
 }
 
