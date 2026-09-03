@@ -119,8 +119,11 @@ func ReadToken(path string) (*Token, error) {
 	if validationErr := validateTokenFile(pathInfo); validationErr != nil {
 		return nil, validationErr
 	}
+	return readTokenFile(path, pathInfo)
+}
 
-	file, err := os.Open(path)
+func readTokenFile(path string, pathInfo os.FileInfo) (*Token, error) {
+	file, err := openTokenPath(path)
 	if err != nil {
 		return nil, fmt.Errorf("local Runtime token: open: %w", err)
 	}
