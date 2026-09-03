@@ -4,12 +4,16 @@
 // checked advancement.
 package exactint
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/Tangerg/flame/runtime/protocol"
+)
 
 // Maximum is the greatest integer every IEEE-754 binary64 consumer represents
 // exactly. JSON has no numeric precision limit, but JavaScript and common JSON
 // implementations decode numbers through binary64.
-const Maximum uint64 = 1<<53 - 1
+const Maximum uint64 = protocol.MaximumExactJSONInteger
 
 var (
 	ErrOutOfRange   = errors.New("exact integer counter is outside the supported range")
