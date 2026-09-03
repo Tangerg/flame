@@ -7,10 +7,10 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–164 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–165 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
-- The current Runtime contract is `aa1a89a8` (`refactor(runtime): collapse agent
-  memory id constraints`).
+- The current Runtime contract is `07a3244f` (`refactor(runtime): collapse MCP
+  name constraints`).
 - Authorized code scope remains `runtime` and `cli`. Desktop work is concurrent
   user-owned work and must not be modified by this refinement stream.
 - The configured provider credential is used only through Runtime configuration.
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–164 — exact handoff
+## Rounds 101–165 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -124,6 +124,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 162 | `c6a0bde9` + CLI dependency update | Removed the import request's duplicate restatement of nested artifact Session identity and the decoder's third check while preserving the same tree-qualified rejection. |
 | 163 | `4eddab70` + CLI dependency update | Removed the final production parent-to-child constraint restatement; item scope now owns its discriminator once while list requests preserve the same nested rejection. |
 | 164 | `aa1a89a8` + CLI dependency update | Collapsed four Agent Memory ID shapes from redundant nonempty, length, and pattern rules to the one exact canonical pattern, preserving every rejected spelling. |
+| 165 | `07a3244f` + CLI dependency update | Collapsed MCP server and remote-tool length checks into their exact bounded grammar, retained list cardinality/uniqueness, and removed the resulting unused validator helper. |
 
 ## Verification contract
 
@@ -161,7 +162,7 @@ repeated here.
 
 ## Remaining direction
 
-- Continue after Round 164 by auditing complete Runtime catalogs and CLI
+- Continue after Round 165 by auditing complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the
