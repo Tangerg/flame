@@ -146,6 +146,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 186 | `1c6881ca` + CLI dependency update | Made Application own per-provider Model identity/order, enforced it at the CLI boundary, and removed presentation-layer sorting. |
 | 187 | `fd5704cb` + CLI dependency update | Moved direct diagnostic Tool safety, canonical unique-name identity, and name order into Application and enforced the catalog at the CLI boundary. |
 | 188 | `9047eac3` + CLI dependency update | Protected resolved Hook validity/provenance, trust-root containment, and global-to-project cascade order in Runtime and at the CLI boundary. |
+| 189 | `a2058135` + CLI dependency update | Made Schedule Application validate bounded, valid, unique, strictly cursor-ordered store pages and isolate returned row storage before minting continuations. |
 
 ## Verification contract
 
