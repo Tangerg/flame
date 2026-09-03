@@ -1753,6 +1753,7 @@ func (f FileContent) ValidateWire() error {
 
 func (w WorkspaceFileChange) ValidateWire() error {
 	return collectWireViolations("WorkspaceFileChange",
+		requiredText("path", w.Path),
 		optionalNonNegativeNumber("added", w.Added),
 		optionalNonNegativeNumber("removed", w.Removed),
 		closedEnum("status", string(w.Status), []string{"added", "modified", "deleted", "renamed", "untracked"}, false),
@@ -1768,6 +1769,7 @@ func (w WorkspaceFileChange) ValidateWire() error {
 
 func (f FileDiff) ValidateWire() error {
 	return collectWireViolations("FileDiff",
+		requiredText("path", f.Path),
 		optionalNonNegativeNumber("added", f.Added),
 		optionalNonNegativeNumber("removed", f.Removed),
 		closedEnum("status", string(f.Status), []string{"added", "modified", "deleted", "renamed", "untracked"}, false),

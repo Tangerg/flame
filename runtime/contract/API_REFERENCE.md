@@ -753,8 +753,10 @@ TypeScript validator from this single registry projection.
 | `FileLine` | `lineNumber` | `positive` |
 | `GrepResult` | `total` | `nonNegative` |
 | `GrepMatch` | `lineNumber` | `positive` |
+| `FileDiff` | `path` | `nonEmpty` |
 | `FileDiff` | `added` | `nonNegative` |
 | `FileDiff` | `removed` | `nonNegative` |
+| `WorkspaceFileChange` | `path` | `nonEmpty` |
 | `WorkspaceFileChange` | `added` | `nonNegative` |
 | `WorkspaceFileChange` | `removed` | `nonNegative` |
 | `DiffRow` | `leftLine` | `positive` |

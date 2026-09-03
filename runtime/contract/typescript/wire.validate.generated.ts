@@ -1079,7 +1079,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       added: allOf([integer(), minimum(0)]),
       binary: flag(),
-      path: text(),
+      path: allOf([text(), minLength(1)]),
       previousPath: text(),
       removed: allOf([integer(), minimum(0)]),
       rows: array(ref(() => CHECKS.DiffRow)),
@@ -3770,7 +3770,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     object({
       added: allOf([integer(), minimum(0)]),
       binary: flag(),
-      path: text(),
+      path: allOf([text(), minLength(1)]),
       previousPath: text(),
       removed: allOf([integer(), minimum(0)]),
       status: ref(() => CHECKS.FileStatus),

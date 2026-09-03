@@ -508,8 +508,17 @@ func registerWorkspaceValues(s *Shapes) {
 		GoType:      typeOf[protocol.GrepMatch](),
 		Constraints: []FieldConstraint{{Field: "lineNumber", Kind: ConstraintPositive}},
 	})
-	nonNegative[protocol.FileDiff](s, "added", "removed")
-	nonNegative[protocol.WorkspaceFileChange](s, "added", "removed")
+	workspaceChangeConstraints := []FieldConstraint{
+		{Field: "path", Kind: ConstraintNonEmpty},
+		{Field: "added", Kind: ConstraintNonNegative},
+		{Field: "removed", Kind: ConstraintNonNegative},
+	}
+	for _, shape := range []reflect.Type{
+		typeOf[protocol.FileDiff](),
+		typeOf[protocol.WorkspaceFileChange](),
+	} {
+		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: workspaceChangeConstraints})
+	}
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.DiffRow](),
 		Constraints: []FieldConstraint{

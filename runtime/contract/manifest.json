@@ -6933,6 +6933,10 @@
       "type": "FileDiff",
       "rules": [
         {
+          "field": "path",
+          "constraint": "nonEmpty"
+        },
+        {
           "field": "added",
           "constraint": "nonNegative"
         },
@@ -6945,6 +6949,10 @@
     {
       "type": "WorkspaceFileChange",
       "rules": [
+        {
+          "field": "path",
+          "constraint": "nonEmpty"
+        },
         {
           "field": "added",
           "constraint": "nonNegative"

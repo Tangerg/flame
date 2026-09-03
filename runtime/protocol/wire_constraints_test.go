@@ -1856,6 +1856,20 @@ func TestRuntimeOutputNumbersPreserveDomainBounds(t *testing.T) {
 	}
 }
 
+func TestWorkspaceChangePathsAreRequired(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		shape string
+		value WireValidator
+	}{
+		{shape: "FileDiff", value: FileDiff{Status: FileStatusModified}},
+		{shape: "WorkspaceFileChange", value: WorkspaceFileChange{Status: FileStatusModified}},
+	} {
+		assertConstraintField(t, test.value.ValidateWire(), test.shape, "path")
+	}
+}
+
 func TestReachableOutputLeavesKeepGeneratedConstraints(t *testing.T) {
 	t.Parallel()
 
@@ -1881,8 +1895,8 @@ func TestRuntimeOutputNumberBoundariesRemainRepresentable(t *testing.T) {
 		FileLine{LineNumber: 1},
 		GrepResult{},
 		GrepMatch{LineNumber: 1},
-		FileDiff{Status: FileStatusModified, Added: &zero, Removed: &zero},
-		WorkspaceFileChange{Status: FileStatusModified, Added: &zero, Removed: &zero},
+		FileDiff{Path: "main.go", Status: FileStatusModified, Added: &zero, Removed: &zero},
+		WorkspaceFileChange{Path: "main.go", Status: FileStatusModified, Added: &zero, Removed: &zero},
 		DiffRow{Type: DiffRowContext, LeftLine: 1, RightLine: 1, Code: "line"},
 		UsageBucket{},
 		UsageSummary{},
@@ -1940,10 +1954,10 @@ func TestWorkspaceChangeMetadataMatchesItsStatusAndRepresentation(t *testing.T) 
 
 	count := 1
 	for _, value := range []WireValidator{
-		WorkspaceFileChange{Status: FileStatusRenamed, PreviousPath: "old.go"},
-		WorkspaceFileChange{Status: FileStatusModified, Binary: true},
-		FileDiff{Status: FileStatusRenamed, PreviousPath: "old.go", Rows: []DiffRow{}},
-		FileDiff{Status: FileStatusModified, Binary: true, Rows: []DiffRow{}},
+		WorkspaceFileChange{Path: "main.go", Status: FileStatusRenamed, PreviousPath: "old.go"},
+		WorkspaceFileChange{Path: "main.go", Status: FileStatusModified, Binary: true},
+		FileDiff{Path: "main.go", Status: FileStatusRenamed, PreviousPath: "old.go", Rows: []DiffRow{}},
+		FileDiff{Path: "main.go", Status: FileStatusModified, Binary: true, Rows: []DiffRow{}},
 	} {
 		if err := value.ValidateWire(); err != nil {
 			t.Errorf("ValidateWire rejected valid %T metadata: %v", value, err)
@@ -1955,12 +1969,12 @@ func TestWorkspaceChangeMetadataMatchesItsStatusAndRepresentation(t *testing.T) 
 		field string
 		value WireValidator
 	}{
-		{shape: "WorkspaceFileChange", field: "previousPath", value: WorkspaceFileChange{Status: FileStatusRenamed}},
-		{shape: "WorkspaceFileChange", field: "previousPath", value: WorkspaceFileChange{Status: FileStatusModified, PreviousPath: "old.go"}},
-		{shape: "WorkspaceFileChange", field: "added", value: WorkspaceFileChange{Status: FileStatusModified, Binary: true, Added: &count}},
-		{shape: "FileDiff", field: "previousPath", value: FileDiff{Status: FileStatusRenamed}},
-		{shape: "FileDiff", field: "previousPath", value: FileDiff{Status: FileStatusUntracked, PreviousPath: "old.go"}},
-		{shape: "FileDiff", field: "removed", value: FileDiff{Status: FileStatusModified, Binary: true, Removed: &count}},
+		{shape: "WorkspaceFileChange", field: "previousPath", value: WorkspaceFileChange{Path: "main.go", Status: FileStatusRenamed}},
+		{shape: "WorkspaceFileChange", field: "previousPath", value: WorkspaceFileChange{Path: "main.go", Status: FileStatusModified, PreviousPath: "old.go"}},
+		{shape: "WorkspaceFileChange", field: "added", value: WorkspaceFileChange{Path: "main.go", Status: FileStatusModified, Binary: true, Added: &count}},
+		{shape: "FileDiff", field: "previousPath", value: FileDiff{Path: "main.go", Status: FileStatusRenamed}},
+		{shape: "FileDiff", field: "previousPath", value: FileDiff{Path: "main.go", Status: FileStatusUntracked, PreviousPath: "old.go"}},
+		{shape: "FileDiff", field: "removed", value: FileDiff{Path: "main.go", Status: FileStatusModified, Binary: true, Removed: &count}},
 	} {
 		assertConstraintField(t, test.value.ValidateWire(), test.shape, test.field)
 	}
