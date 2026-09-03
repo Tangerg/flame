@@ -5,10 +5,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/Tangerg/scope/tools/web"
 	"github.com/Tangerg/scope/tools/web/jina"
+
+	"github.com/Tangerg/flame/runtime/internal/httporigin"
 )
 
 func TestOnlineHTTPClientBoundsProviderResponseBeforeSDKDecode(t *testing.T) {
@@ -28,6 +31,35 @@ func TestOnlineHTTPClientBoundsProviderResponseBeforeSDKDecode(t *testing.T) {
 	_, err = client.Fetch(t.Context(), &web.FetchRequest{URL: "https://example.test"})
 	if !errors.Is(err, errOnlineResponseFrameTooLarge) {
 		t.Fatalf("Fetch error = %v, want errOnlineResponseFrameTooLarge", err)
+	}
+}
+
+func TestOnlineHTTPClientBlocksCredentialRedirectAcrossOrigins(t *testing.T) {
+	var targetHit atomic.Bool
+	target := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		targetHit.Store(true)
+	}))
+	t.Cleanup(target.Close)
+	source := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Header.Get("Authorization") != "Bearer test-key" {
+			t.Error("source request did not carry the provider credential")
+		}
+		http.Redirect(writer, request, target.URL, http.StatusTemporaryRedirect)
+	}))
+	t.Cleanup(source.Close)
+
+	client, err := jina.NewClient(jina.Config{
+		APIKey: "test-key", FetchBaseURL: source.URL, HTTPClient: newOnlineHTTPClient(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.Fetch(t.Context(), &web.FetchRequest{URL: "https://example.test"})
+	if !errors.Is(err, httporigin.ErrCrossOriginRedirect) {
+		t.Fatalf("Fetch error = %v, want ErrCrossOriginRedirect", err)
+	}
+	if targetHit.Load() {
+		t.Fatal("cross-origin online-provider redirect reached the target")
 	}
 }
 

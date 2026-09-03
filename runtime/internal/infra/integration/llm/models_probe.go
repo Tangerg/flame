@@ -107,7 +107,7 @@ func listRemoteModels(ctx context.Context, baseURL, apiKey string, protocol mode
 	}
 	protocol.authorize(req, apiKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := newModelHTTPClient().Do(req)
 	if err != nil {
 		return nil, err
 	}

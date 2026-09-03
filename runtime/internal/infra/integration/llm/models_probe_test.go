@@ -2,14 +2,17 @@ package llm
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/httporigin"
 )
 
 func TestListRemoteModels(t *testing.T) {
@@ -181,5 +184,28 @@ func TestListRemoteModelsNon200IsError(t *testing.T) {
 
 	if _, err := listRemoteModels(t.Context(), srv.URL, "", modelListProtocolOpenAI); err == nil {
 		t.Fatal("expected an error on a non-200 probe, got nil")
+	}
+}
+
+func TestListRemoteModelsBlocksCredentialRedirectAcrossOrigins(t *testing.T) {
+	var targetHit atomic.Bool
+	target := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		targetHit.Store(true)
+	}))
+	t.Cleanup(target.Close)
+	source := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.Header.Get("x-api-key") != "test-key" {
+			t.Error("source request did not carry the provider credential")
+		}
+		http.Redirect(writer, request, target.URL, http.StatusTemporaryRedirect)
+	}))
+	t.Cleanup(source.Close)
+
+	_, err := listRemoteModels(t.Context(), source.URL, "test-key", modelListProtocolAnthropic)
+	if !errors.Is(err, httporigin.ErrCrossOriginRedirect) {
+		t.Fatalf("ListRemoteModels error = %v, want ErrCrossOriginRedirect", err)
+	}
+	if targetHit.Load() {
+		t.Fatal("cross-origin model probe redirect reached the target")
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/scope/tools/web/jina"
 	"github.com/Tangerg/scope/tools/web/tavily"
 
+	"github.com/Tangerg/flame/runtime/internal/httporigin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpresponse"
 )
 
@@ -94,7 +95,9 @@ func buildOnline(online OnlineConfig) ([]toolcontract.Tool, error) {
 }
 
 func newOnlineHTTPClient() *http.Client {
-	return httpresponse.NewClient(maxOnlineResponseFrameBytes, errOnlineResponseFrameTooLarge)
+	client := httpresponse.NewClient(maxOnlineResponseFrameBytes, errOnlineResponseFrameTooLarge)
+	client.CheckRedirect = httporigin.CheckRedirect
+	return client
 }
 
 // validateOnlineAPIKey keeps malformed credential material from surviving

@@ -6,9 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
 )
+
+const maximumRedirects = 10
+
+// ErrCrossOriginRedirect reports an attempted redirect outside the first
+// request's credential authority.
+var ErrCrossOriginRedirect = errors.New("httporigin: cross-origin redirect blocked")
 
 // Origin is a normalized, comparable HTTP(S) origin: a lowercased scheme and
 // host with the effective default port filled in, so two origins are equal iff
@@ -68,4 +75,35 @@ func Same(left, right string) bool {
 	}
 	rightOrigin, err := Parse(right)
 	return err == nil && leftOrigin == rightOrigin
+}
+
+// CheckRedirect permits redirects only within the initial request's origin.
+// It is suitable for clients whose credential and endpoint authority must stay
+// inseparable; callers with an explicit multi-origin policy need their own
+// callback.
+func CheckRedirect(request *http.Request, via []*http.Request) error {
+	if request == nil {
+		return errors.New("httporigin: redirect request is nil")
+	}
+	if len(via) == 0 {
+		return errors.New("httporigin: redirect chain is empty")
+	}
+	if via[0] == nil {
+		return errors.New("httporigin: initial redirect request is nil")
+	}
+	if len(via) >= maximumRedirects {
+		return fmt.Errorf("httporigin: stopped after %d redirects", maximumRedirects)
+	}
+	source, err := FromURL(via[0].URL)
+	if err != nil {
+		return fmt.Errorf("httporigin: initial redirect request: %w", err)
+	}
+	target, err := FromURL(request.URL)
+	if err != nil {
+		return fmt.Errorf("httporigin: redirect target: %w", err)
+	}
+	if source != target {
+		return fmt.Errorf("%w: %s to %s", ErrCrossOriginRedirect, source, target)
+	}
+	return nil
 }
