@@ -37,11 +37,14 @@ export function Sparkline({ data, label, className }: SparklineProps) {
         </linearGradient>
       </defs>
       <polygon points={`0,100 ${points.join(" ")} 100,100`} fill={`url(#${gradientId})`} />
+      {/* `strokeWidth` is in DEVICE pixels here, not viewBox units: `non-scaling-stroke` is
+          what keeps the line even after `preserveAspectRatio="none"` squashes 100×100 into
+          48×16. Six of them covered better than a third of the plot's height. */}
       <polyline
         points={points.join(" ")}
         fill="none"
         stroke="currentColor"
-        strokeWidth="6"
+        strokeWidth="1.5"
         vectorEffect="non-scaling-stroke"
         strokeLinecap="round"
         strokeLinejoin="round"

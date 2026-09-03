@@ -991,3 +991,66 @@ The other seventeen previews. `grep`, `lsp`, `recall`, `skill`, `schedule` and
 1. The five ChatGPT-versus-Flame rows from round 5, waiting on a product answer.
 2. `delegated` has no raster coverage.
 3. Nine settings panes have no fixture coverage.
+
+---
+
+## Round 12 — a sparkline whose line was a third of its own plot
+
+Status: **complete**
+
+### Audit scope
+
+The workspace views — twenty-one renderers, the largest surface still unaudited.
+Surveyed the same way round 11 surveyed the tool previews: what bounds each one,
+then a stress test at the dock's 320 px floor.
+
+### Checked and found already handled
+
+Four candidates, each measured before it was claimed:
+
+| | Verdict |
+| --- | --- |
+| `search` renders a capped match list | It passes `limit`, computes `overflowCount`, and **says so** — "N more matches not shown — narrow the query." |
+| `filetree` passes no `limit` to a paginated API | The adapter drains with `autoPagingToArray`, so nothing is silently dropped, and the tree loads children per expanded directory. |
+| `timeline` accumulates run events | Capped at `TIMELINE_MAX` where the entries are appended. |
+| `diff` renders every hunk | The Runtime answers `truncated` and the view reports it. |
+
+The 320 px stress test found no real overflow either. The first probe reported
+spills of up to 435 px, all of them inside `.agent-dock-tabs` — a horizontal
+scroll container by design, with mask fades on both ends. Excluding scroll
+containers, **every dock view fits its floor exactly**: `scrollWidth === 320` in
+all seven.
+
+### The finding — the mark that read as a stray glyph
+
+`Tool stats` at 320 px draws a thick grey chevron across the `apply_patch` row,
+overlapping the progress bar beside it. It is not a stray icon: it is the row's
+**sparkline**.
+
+`Sparkline` is `h-4 w-12` — 16 × 48 px — with `viewBox="0 0 100 100"` and
+`preserveAspectRatio="none"`, and it strokes at `6` with
+`vectorEffect="non-scaling-stroke"`. That vector effect means the width is in
+**device pixels**, not viewBox units: **six of them in a sixteen-pixel-tall
+plot, better than a third of its height.** With four samples and one outlier the
+result is a blob, and `overflow-visible` lets its round caps spill onto the
+neighbouring bar.
+
+| | Before | After |
+| --- | --- | --- |
+| Stroke | `6` device px in a 16 px plot | `1.5` |
+
+It reads as a trend now rather than as something that wandered into the row. The
+two `dock-stats` goldens are regenerated; nothing else moved.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` clean.
+- `npm run test` excluding the live-runtime e2e — 2295 passed, 2 failed, both
+  `runtime/contract`'s own sample.
+- `npm run visual:test` — 388 passed.
+- Before/after screenshots of the row at the 320 px floor.
+
+### Open, for the next round
+
+The user's instruction to **align strictly with `study/chatgpt`** turns round 5's
+queue from a question into work. Next round starts there.
