@@ -249,6 +249,62 @@ func TestSessionImportRejectsMissingArtifactLifecycleTimes(t *testing.T) {
 	}
 }
 
+func TestSessionImportRejectsMissingArtifactRunLifecycleTimes(t *testing.T) {
+	called := false
+	stub := sessionBindingStub{imported: func(context.Context, protocol.ImportSessionRequest, flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error) {
+		called = true
+		return nil, nil
+	}}
+	runtime := &Connection{
+		sessions: stub, meta: requestMeta("test"),
+		profile: sessionControlProfile(protocol.FeatureSessionExport),
+	}
+	valid := protocol.SessionArtifact{
+		Version: protocol.SessionArtifactVersion,
+		Session: protocol.ArtifactSession{
+			ID: "ses_1", Workspace: protocol.WorkspaceRef{Path: "/workspace"},
+			Provider: testSessionProvider, Model: testSessionModel,
+			CreatedAt: testSessionTime, UpdatedAt: testSessionTime,
+		},
+		Messages: []json.RawMessage{},
+		Runs: []protocol.ArtifactRun{{
+			ID: "run_1", SessionID: "ses_1", Provider: testSessionProvider, Model: testSessionModel,
+			Outcome:   protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCompleted},
+			CreatedAt: testSessionTime, FinishedAt: testSessionTime, UpdatedAt: testSessionTime,
+		}},
+		Items: []protocol.ArtifactItem{}, ToolResults: []protocol.ArtifactToolResult{},
+	}
+	for _, test := range []struct {
+		field string
+		clear func(*protocol.ArtifactRun)
+	}{
+		{field: "createdAt", clear: func(value *protocol.ArtifactRun) { value.CreatedAt = time.Time{} }},
+		{field: "finishedAt", clear: func(value *protocol.ArtifactRun) { value.FinishedAt = time.Time{} }},
+		{field: "updatedAt", clear: func(value *protocol.ArtifactRun) { value.UpdatedAt = time.Time{} }},
+	} {
+		t.Run(test.field, func(t *testing.T) {
+			artifact := valid
+			artifact.Runs = append([]protocol.ArtifactRun(nil), valid.Runs...)
+			test.clear(&artifact.Runs[0])
+			body, err := json.Marshal(artifact)
+			if err != nil {
+				t.Fatal(err)
+			}
+			document, err := session.NewDocument(protocol.ExportFormatJSON, body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document})
+			if err == nil || !strings.Contains(err.Error(), test.field) {
+				t.Fatalf("ImportSession error = %v, want %q", err, test.field)
+			}
+		})
+	}
+	if called {
+		t.Fatal("invalid artifact reached the Runtime binding")
+	}
+}
+
 func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 	t.Parallel()
 	createdAt := time.Date(2026, time.August, 14, 8, 0, 0, 0, time.UTC)

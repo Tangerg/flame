@@ -7,10 +7,10 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–157 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–158 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
-- The current Runtime contract is `dc4e3331` (`fix(runtime): require artifact
-  session times`).
+- The current Runtime contract is `e93a0d73` (`fix(runtime): require artifact run
+  times`).
 - Authorized code scope remains `runtime` and `cli`. Desktop work is concurrent
   user-owned work and must not be modified by this refinement stream.
 - The configured provider credential is used only through Runtime configuration.
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–157 — exact handoff
+## Rounds 101–158 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -117,6 +117,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 155 | `29adafbe` + CLI dependency update | Made Goal creation/update times enforceably required and verified the existing CLI Goal boundary rejects either missing fact. |
 | 156 | `1601d420` + CLI dependency update | Required committed Plan timestamps and stopped CLI's mock Runtime from fabricating committed Plan metadata merely to validate draft steps. |
 | 157 | `dc4e3331` + CLI dependency update | Required portable Session creation/update times and verified CLI import rejects either missing fact before dispatch. |
+| 158 | `e93a0d73` + CLI dependency update | Required every portable terminal Run lifecycle time and verified CLI import rejects each missing fact before dispatch. |
 
 ## Verification contract
 
@@ -154,7 +155,7 @@ repeated here.
 
 ## Remaining direction
 
-- Continue after Round 157 by auditing complete Runtime catalogs and CLI
+- Continue after Round 158 by auditing complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the
