@@ -58,6 +58,38 @@ func TestCatalogsRejectResponsesOutsideTheRequestedIdentity(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 }
 
+func TestModelCatalogRejectsOutOfOrderRuntimeResults(t *testing.T) {
+	t.Parallel()
+	provider := func(id string) protocol.Provider {
+		return protocol.Provider{ID: id, CredentialRequirement: protocol.ProviderAPIKeyRequired}
+	}
+	for name, stub := range map[string]modelCatalogBindingStub{
+		"providers": {
+			providers: protocol.NewPage([]protocol.Provider{provider("zeta"), provider("alpha")}),
+			models: map[string]*protocol.Page[protocol.Model]{
+				"zeta":  protocol.NewPage([]protocol.Model{}),
+				"alpha": protocol.NewPage([]protocol.Model{}),
+			},
+		},
+		"models": {
+			providers: protocol.NewPage([]protocol.Provider{provider("provider")}),
+			models: map[string]*protocol.Page[protocol.Model]{
+				"provider": protocol.NewPage([]protocol.Model{
+					{ID: "zeta", Provider: "provider"},
+					{ID: "alpha", Provider: "provider"},
+				}),
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			runtime := &Connection{modelCatalog: stub, meta: requestMeta("test")}
+			_, err := runtime.ListModels(t.Context())
+			requireRuntimeContractViolation(t, err)
+		})
+	}
+}
+
 func (a *approvalBindingRecorder) ForgetApprovalRule(_ context.Context, request protocol.ForgetApprovalRuleRequest, options flameruntime.CommandOptions) error {
 	a.forgetCalls++
 	a.forgetRequest = request

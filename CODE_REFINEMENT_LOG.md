@@ -143,6 +143,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 183 | `1cefd3ce` + CLI dependency update | Moved managed Skill lifecycle/name ordering from filesystem traversal into Application, enforced one lifecycle per name, and rejected out-of-order CLI catalogs. |
 | 184 | `04308fcc` + CLI dependency update | Made Recipe identity the precedence-resolved name, enforced it in Runtime, moved name ordering out of prompt-source infrastructure, and rejected out-of-order CLI catalogs. |
 | 185 | `9a53b39c` + CLI dependency update | Enforced unique Agent-document paths and monotonic home/project-root/cwd render phases in Runtime and rejected contradictory CLI catalogs. |
+| 186 | `1c6881ca` + CLI dependency update | Made Application own per-provider Model identity/order, enforced it at the CLI boundary, and removed presentation-layer sorting. |
 
 ## Verification contract
 

@@ -3,7 +3,6 @@ package terminal
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -31,15 +30,8 @@ func modelCatalogDocument(models []protocol.Model) readerDocument {
 	if len(models) == 0 {
 		return paragraphDocument("Models", "none available", []string{"The runtime did not advertise any models."})
 	}
-	ordered := slices.Clone(models)
-	slices.SortFunc(ordered, func(left, right protocol.Model) int {
-		if compared := strings.Compare(left.Provider, right.Provider); compared != 0 {
-			return compared
-		}
-		return strings.Compare(left.ID, right.ID)
-	})
-	sections := make([]ToolSection, 0, len(ordered))
-	for _, model := range ordered {
+	sections := make([]ToolSection, 0, len(models))
+	for _, model := range models {
 		title := model.Provider + "/" + model.ID
 		if model.DisplayName != "" && model.DisplayName != model.ID {
 			title += " · " + model.DisplayName
@@ -52,7 +44,7 @@ func modelCatalogDocument(models []protocol.Model) readerDocument {
 			Text: strings.Join(modelCatalogLines(model), "\n"),
 		})
 	}
-	return readerDocument{Title: "Models", Detail: fmt.Sprintf("%d available", len(ordered)), Sections: sections}
+	return readerDocument{Title: "Models", Detail: fmt.Sprintf("%d available", len(models)), Sections: sections}
 }
 
 func modelCatalogLines(model protocol.Model) []string {
