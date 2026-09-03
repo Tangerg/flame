@@ -775,6 +775,7 @@ TypeScript validator from this single registry projection.
 | `ReadFileRequest` | `maxBytes` | `positive` |
 | `GrepRequest` | `query` | `nonEmpty` |
 | `GrepRequest` | `limit` | `positive` |
+| `UsageBucket` | `key` | `nonEmpty` |
 | `UsageBucket` | `runs` | `nonNegative` |
 | `UsageSummary` | `sessions` | `nonNegative` |
 | `UsageSummary` | `runs` | `nonNegative` |

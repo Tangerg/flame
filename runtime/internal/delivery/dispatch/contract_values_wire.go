@@ -575,7 +575,13 @@ func registerWorkspaceValues(s *Shapes) {
 }
 
 func registerUsageValues(s *Shapes) {
-	nonNegative[protocol.UsageBucket](s, "runs")
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.UsageBucket](),
+		Constraints: []FieldConstraint{
+			{Field: "key", Kind: ConstraintNonEmpty},
+			{Field: "runs", Kind: ConstraintNonNegative},
+		},
+	})
 	nonNegative[protocol.UsageSummary](s, "sessions", "runs")
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.SessionUsageRequest](), Constraints: requiredResourceIdentity("sessionId")})
 	s.valueConstraint(FieldConstraintSpec{

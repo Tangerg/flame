@@ -7061,6 +7061,10 @@
       "type": "UsageBucket",
       "rules": [
         {
+          "field": "key",
+          "constraint": "nonEmpty"
+        },
+        {
           "field": "runs",
           "constraint": "nonNegative"
         }

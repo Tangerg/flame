@@ -2334,6 +2334,7 @@ func (g GrepMatch) ValidateWire() error {
 
 func (u UsageBucket) ValidateWire() error {
 	return collectWireViolations("UsageBucket",
+		requiredText("key", u.Key),
 		nonNegativeNumber("runs", u.Runs),
 		nonNegativeNumber("inputTokens", u.InputTokens),
 		nonNegativeNumber("outputTokens", u.OutputTokens),

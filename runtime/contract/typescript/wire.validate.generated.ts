@@ -3729,7 +3729,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     cacheWriteTokens: allOf([integer(), minimum(0)]),
     costUsd: allOf([numeric(), minimum(0)]),
     inputTokens: allOf([integer(), minimum(0)]),
-    key: text(),
+    key: allOf([text(), minLength(1)]),
     outputTokens: allOf([integer(), minimum(0)]),
     reasoningTokens: allOf([integer(), minimum(0)]),
     runs: allOf([integer(), minimum(0)]),
