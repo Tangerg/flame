@@ -9,8 +9,9 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ListProviders projects the application-owned supported-provider set onto the
-// protocol page. The application combines static support and runtime state.
+// ListProviders projects the application-owned, ID-ordered supported-provider
+// set onto the protocol page. The application combines static support and
+// runtime state.
 func (s *Handler) ListProviders(ctx context.Context) (*protocol.Page[protocol.Provider], error) {
 	providers, err := s.models.ListProviders(ctx)
 	if err != nil {

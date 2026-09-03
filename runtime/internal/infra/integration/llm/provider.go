@@ -62,8 +62,9 @@ func LookupProvider(id Provider) (ProviderProfile, bool) {
 	return ProviderProfile{value: profile}, found
 }
 
-// SupportedProviders lists every constructed profile in deterministic identity
-// order, regardless of which providers are configured at runtime.
+// SupportedProviders lists every constructed profile in registration order,
+// regardless of which providers are configured at runtime. Application use
+// cases own any public catalog order.
 func SupportedProviders() []ProviderProfile {
 	ids := providers.supported()
 	out := make([]ProviderProfile, len(ids))

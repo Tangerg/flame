@@ -293,7 +293,6 @@ func newProviderCatalog(profiles ...providerProfile) (providerCatalog, error) {
 		catalog.profiles[profile.id] = profile
 		catalog.ids = append(catalog.ids, profile.id)
 	}
-	slices.Sort(catalog.ids)
 	return catalog, nil
 }
 

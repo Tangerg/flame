@@ -1,9 +1,11 @@
 package models
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"go.opentelemetry.io/otel/trace"
 
@@ -195,7 +197,11 @@ func (c *Coordinator) supportedProviders() []ProviderMetadata {
 	if c.catalog == nil {
 		return nil
 	}
-	return c.catalog.Supported()
+	metadata := slices.Clone(c.catalog.Supported())
+	slices.SortFunc(metadata, func(first, second ProviderMetadata) int {
+		return cmp.Compare(first.ID(), second.ID())
+	})
+	return metadata
 }
 
 func (c *Coordinator) providerMetadata(id string) (ProviderMetadata, bool) {

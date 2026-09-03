@@ -133,6 +133,24 @@ func (t testCatalog) LookupModel(providerID, modelID string) (Model, bool) {
 	return Model{}, false
 }
 
+func TestListProvidersOwnsCatalogOrder(t *testing.T) {
+	c := New(Config{
+		Providers: &testProviderRegistry{},
+		Catalog: testCatalog{metadata: []ProviderMetadata{
+			providerMetadataFixture(t, "zeta", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability()),
+			providerMetadataFixture(t, "alpha", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability()),
+		}},
+	})
+
+	providers, err := c.ListProviders(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(providers) != 2 || providers[0].ID != "alpha" || providers[1].ID != "zeta" {
+		t.Fatalf("providers = %+v, want alpha then zeta", providers)
+	}
+}
+
 func catalogModelFixture(t testing.TB, providerID, modelID string, details *Details) Model {
 	t.Helper()
 	model, err := NewModel(providerID, modelID, details)

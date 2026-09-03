@@ -7,7 +7,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ListProviders returns the provider registry projection.
+// ListProviders returns the provider registry projection ordered by ID ascending.
 func (r *Runtime) ListProviders(ctx context.Context, options CallOptions) (*protocol.Page[protocol.Provider], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.Provider]](ctx, delivery.ProvidersList, struct{}{}, callOptions(options))
 }

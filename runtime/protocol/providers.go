@@ -5,8 +5,8 @@ type TestProviderRequest struct {
 	Provider string `json:"provider"`
 }
 
-// Provider is one configured LLM provider. The key is
-// returned masked, never reconstructable.
+// Provider is one configured LLM provider. Provider list results are ordered by
+// ID ascending. The key is returned masked, never reconstructable.
 type Provider struct {
 	ID                    string                        `json:"id"`
 	BaseURL               *string                       `json:"baseUrl,omitempty"`
