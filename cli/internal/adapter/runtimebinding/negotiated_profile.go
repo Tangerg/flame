@@ -47,13 +47,13 @@ type Limits struct {
 // Profile is the complete, CLI-owned projection of one successful runtime
 // discovery. It is immutable by convention; Clone crosses ownership boundaries.
 type Profile struct {
-	Protocol         Protocol           `json:"protocol"`
-	Server           Server             `json:"server"`
-	RunEvents        []string           `json:"runEvents"`
-	RuntimeTopics    []string           `json:"runtimeTopics"`
-	StreamingMethods []string           `json:"streamingMethods"`
-	Features         map[string]Feature `json:"features"`
-	Limits           Limits             `json:"limits"`
+	Protocol         Protocol                   `json:"protocol"`
+	Server           Server                     `json:"server"`
+	RunEvents        []protocol.StreamEventType `json:"runEvents"`
+	RuntimeTopics    []protocol.RuntimeTopic    `json:"runtimeTopics"`
+	StreamingMethods []string                   `json:"streamingMethods"`
+	Features         map[string]Feature         `json:"features"`
+	Limits           Limits                     `json:"limits"`
 }
 
 func (p Profile) Clone() Profile {
@@ -75,13 +75,14 @@ func (p Profile) Validate() error {
 	if strings.TrimSpace(p.Server.DefaultWorkspace) == "" || strings.TrimSpace(p.Server.Home) == "" {
 		problems = append(problems, errors.New("server filesystem context is incomplete"))
 	}
-	for name, values := range map[string][]string{
-		"run events": p.RunEvents, "runtime topics": p.RuntimeTopics,
-		"streaming methods": p.StreamingMethods,
-	} {
-		if err := validateUniqueStrings(name, values); err != nil {
-			problems = append(problems, err)
-		}
+	if err := validateUniqueStrings("run events", p.RunEvents); err != nil {
+		problems = append(problems, err)
+	}
+	if err := validateUniqueStrings("runtime topics", p.RuntimeTopics); err != nil {
+		problems = append(problems, err)
+	}
+	if err := validateUniqueStrings("streaming methods", p.StreamingMethods); err != nil {
+		problems = append(problems, err)
 	}
 	for name := range p.Features {
 		if strings.TrimSpace(string(name)) == "" {
@@ -116,10 +117,10 @@ func (l Limits) validate() error {
 	return nil
 }
 
-func validateUniqueStrings(name string, values []string) error {
-	seen := make(map[string]struct{}, len(values))
+func validateUniqueStrings[String ~string](name string, values []String) error {
+	seen := make(map[String]struct{}, len(values))
 	for index, value := range values {
-		if strings.TrimSpace(value) == "" {
+		if strings.TrimSpace(string(value)) == "" {
 			return fmt.Errorf("%s item %d is empty", name, index+1)
 		}
 		if _, duplicate := seen[value]; duplicate {
@@ -134,7 +135,7 @@ func (p Profile) Supports(feature string) bool {
 	return p.Features[feature].Available()
 }
 
-func (p Profile) SupportsRuntimeTopic(topic string) bool {
+func (p Profile) SupportsRuntimeTopic(topic protocol.RuntimeTopic) bool {
 	return slices.Contains(p.RuntimeTopics, topic)
 }
 

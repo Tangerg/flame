@@ -2,6 +2,7 @@ package runtimebinding
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -30,9 +31,9 @@ func projectRuntimeProfile(
 			Name: discovery.ServerInfo.Name, Version: discovery.ServerInfo.Version,
 			DefaultWorkspace: discovery.ServerInfo.DefaultWorkspace.Path, Home: discovery.ServerInfo.Home,
 		},
-		RunEvents:        make([]string, 0, len(discovery.Capabilities.RunEvents)),
-		RuntimeTopics:    make([]string, 0, len(discovery.Capabilities.RuntimeTopics)),
-		StreamingMethods: append([]string(nil), discovery.Capabilities.StreamingMethods...),
+		RunEvents:        slices.Clone(discovery.Capabilities.RunEvents),
+		RuntimeTopics:    slices.Clone(discovery.Capabilities.RuntimeTopics),
+		StreamingMethods: slices.Clone(discovery.Capabilities.StreamingMethods),
 		Features:         make(map[string]Feature, len(discovery.Capabilities.Features)),
 		Limits: Limits{
 			RunConcurrency:                   runConcurrency,
@@ -41,12 +42,6 @@ func projectRuntimeProfile(
 			MCPAuthorizationRetentionSeconds: discovery.Capabilities.Limits.MCPAuthorizationAttempts.RetentionSeconds,
 			RuntimeSubscription:              discovery.Capabilities.Limits.RuntimeSubscription,
 		},
-	}
-	for _, eventType := range discovery.Capabilities.RunEvents {
-		profile.RunEvents = append(profile.RunEvents, string(eventType))
-	}
-	for _, topic := range discovery.Capabilities.RuntimeTopics {
-		profile.RuntimeTopics = append(profile.RuntimeTopics, string(topic))
 	}
 	for name, feature := range discovery.Capabilities.Features {
 		requested := client != nil && client.Features[name].Enabled

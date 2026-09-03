@@ -117,8 +117,8 @@ func validProfile(t *testing.T) Profile {
 		Server: Server{
 			Name: "flame-runtime", Version: "dev", DefaultWorkspace: "/workspace", Home: "/home/test",
 		},
-		RunEvents:        []string{"segment.started"},
-		RuntimeTopics:    []string{"files.changed"},
+		RunEvents:        []protocol.StreamEventType{protocol.StreamSegmentStarted},
+		RuntimeTopics:    []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 		StreamingMethods: []string{"runs.start"},
 		Features: map[string]Feature{
 			protocol.FeatureMCP:       {Enabled: true},

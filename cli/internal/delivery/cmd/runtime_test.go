@@ -84,7 +84,7 @@ func commandRuntimeProfile(t *testing.T) runtimebinding.Profile {
 	return runtimebinding.Profile{
 		Protocol:  runtimebinding.Protocol{Version: "2.0"},
 		Server:    runtimebinding.Server{Name: "flame-runtime", Version: "1.2.3", DefaultWorkspace: "/workspace", Home: "/home/test"},
-		RunEvents: []string{"segment.started"}, RuntimeTopics: []string{"files.changed"},
+		RunEvents: []protocol.StreamEventType{protocol.StreamSegmentStarted}, RuntimeTopics: []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 		StreamingMethods: []string{"runs.start"},
 		Features: map[string]runtimebinding.Feature{
 			"mcp": {

@@ -298,10 +298,8 @@ func TestChangefeedAdapterProjectsPlanInvalidation(t *testing.T) {
 
 func changefeedProfile(topics ...protocol.RuntimeTopic) Profile {
 	profile := Profile{
-		Limits: Limits{RuntimeSubscription: protocol.SubscriptionLimits{MaxTopics: 32, MaxWatches: 32}},
-	}
-	for _, topic := range topics {
-		profile.RuntimeTopics = append(profile.RuntimeTopics, string(topic))
+		RuntimeTopics: slices.Clone(topics),
+		Limits:        Limits{RuntimeSubscription: protocol.SubscriptionLimits{MaxTopics: 32, MaxWatches: 32}},
 	}
 	return profile
 }

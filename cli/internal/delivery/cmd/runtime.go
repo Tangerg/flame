@@ -89,9 +89,9 @@ func writeRuntimeProfile(output io.Writer, profile runtimebinding.Profile) error
 		{"protocol", profile.Protocol.Version},
 		{"default workspace", profile.Server.DefaultWorkspace},
 		{"home", profile.Server.Home},
-		{"run events", strings.Join(profile.RunEvents, ", ")},
-		{"runtime topics", strings.Join(profile.RuntimeTopics, ", ")},
-		{"streaming methods", strings.Join(profile.StreamingMethods, ", ")},
+		{"run events", joinRuntimeCatalog(profile.RunEvents)},
+		{"runtime topics", joinRuntimeCatalog(profile.RuntimeTopics)},
+		{"streaming methods", joinRuntimeCatalog(profile.StreamingMethods)},
 	}
 	for _, name := range slices.Sorted(maps.Keys(profile.Features)) {
 		feature := profile.Features[name]
@@ -130,6 +130,14 @@ func writeRuntimeProfile(output io.Writer, profile runtimebinding.Profile) error
 		}
 	}
 	return writer.Flush()
+}
+
+func joinRuntimeCatalog[String ~string](values []String) string {
+	items := make([]string, len(values))
+	for index, value := range values {
+		items[index] = string(value)
+	}
+	return strings.Join(items, ", ")
 }
 
 func formatRunConcurrency(limit runtimebinding.RunConcurrencyLimit) string {

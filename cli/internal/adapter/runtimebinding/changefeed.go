@@ -18,7 +18,7 @@ type changeBinding interface {
 }
 
 func (r *Connection) Supports(topic protocol.RuntimeTopic) bool {
-	return r.profile.SupportsRuntimeTopic(string(topic))
+	return r.profile.SupportsRuntimeTopic(topic)
 }
 
 func (r *Connection) Subscribe(ctx context.Context, subscription changefeed.Subscription) (changefeed.EventStream, error) {

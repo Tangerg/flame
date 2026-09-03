@@ -7,7 +7,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–133 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–134 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
 - The current Runtime contract is `bec9a946` (`fix(runtime): require agent memory
   timestamps`).
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–133 — exact handoff
+## Rounds 101–134 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -93,6 +93,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 131 | CLI commit | Removed the duplicate generation-parameters DTO and its weaker validator; Run options now retain Runtime's exact value and reject repeated stop sequences. |
 | 132 | CLI commit | Removed the duplicate per-model Run-usage DTO and validator while preserving CLI-owned cumulative progress, duration, equality, and isolation behavior. |
 | 133 | CLI commit | Removed the duplicate question-option DTO and field-copy loop; CLI question fields now reuse Runtime validation and enforce the advertised option ceiling. |
+| 134 | CLI commit | Preserved Runtime's closed Run-event and change-topic catalogs through profile negotiation, moving string conversion to text rendering only. |
 
 ## Verification contract
 
@@ -130,7 +131,7 @@ repeated here.
 
 ## Remaining direction
 
-- Start Round 134 by continuing to audit complete Runtime catalogs and CLI
+- Start Round 135 by continuing to audit complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the
