@@ -198,9 +198,10 @@ func pendingForRun(
 		Bindings:     bindings,
 		Capabilities: capabilitiesForInterrupts(copied),
 		Continuations: []runs.Continuation{{
-			RunID:        runID,
-			MemberID:     memberID,
-			RunCreatedAt: runCreatedAt,
+			RunID:          runID,
+			MemberID:       memberID,
+			ModelSelection: testsupport.DefaultModelSelection(),
+			RunCreatedAt:   runCreatedAt,
 		}},
 		CreatedAt: createdAt,
 	}

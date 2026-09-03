@@ -477,7 +477,7 @@ func (c Continuation) validateRun() error {
 	if err := c.Lineage.Validate(c.RunID); err != nil {
 		return fmt.Errorf("lineage: %w", err)
 	}
-	if err := c.ModelSelection.Validate(); err != nil {
+	if err := validateDurableModelSelection(c.ModelSelection); err != nil {
 		return fmt.Errorf("model selection: %w", err)
 	}
 	if err := c.Metrics.Validate(); err != nil {

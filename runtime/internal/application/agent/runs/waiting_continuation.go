@@ -100,7 +100,7 @@ func (w WaitingMember) Validate() error {
 	if w.ParentRunID == w.RunID {
 		return errors.New("runs: waiting member refers to itself as parent")
 	}
-	if err := w.ModelSelection.Validate(); err != nil {
+	if err := validateDurableModelSelection(w.ModelSelection); err != nil {
 		return fmt.Errorf("runs: waiting member model selection: %w", err)
 	}
 	if err := w.Metrics.Validate(); err != nil {

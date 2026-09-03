@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func newInterruptStore(t *testing.T) *persistence.InterruptStore {
@@ -141,7 +142,7 @@ func TestInterruptStore_ConsumeIsAtomic(t *testing.T) {
 			ToolCallID:      "call_1",
 		}},
 		Continuations: []runs.Continuation{{
-			RunID: "run_1", MemberID: "member_1", RunCreatedAt: time.Unix(1, 0).UTC(),
+			RunID: "run_1", MemberID: "member_1", ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: time.Unix(1, 0).UTC(),
 		}},
 		CreatedAt: time.Unix(7, 0).UTC(),
 	}); openErr != nil {
@@ -185,7 +186,7 @@ func TestInterruptStoreRejectsForeignSessionMutation(t *testing.T) {
 			InterruptItemID: "item_question", MemberID: "member_root", RequestID: "request_root",
 		}},
 		Continuations: []runs.Continuation{{
-			RunID: "run_1", MemberID: "member_root", RunCreatedAt: time.Unix(1, 0).UTC(),
+			RunID: "run_1", MemberID: "member_root", ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: time.Unix(1, 0).UTC(),
 		}},
 		CreatedAt: time.Unix(2, 0).UTC(),
 	}
@@ -220,7 +221,7 @@ func TestInterruptStoreDeleteResumeClaimMatchesOnlyTheOwnedResumingRow(t *testin
 			InterruptItemID: "item_question", MemberID: "member_root", RequestID: "request_root",
 		}},
 		Continuations: []runs.Continuation{{
-			RunID: "run_claimed", MemberID: "member_root", RunCreatedAt: time.Unix(1, 0).UTC(),
+			RunID: "run_claimed", MemberID: "member_root", ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: time.Unix(1, 0).UTC(),
 		}},
 		CreatedAt: time.Unix(3, 0).UTC(),
 	}
@@ -291,10 +292,11 @@ func TestInterruptStoreRoundTripsAppLineageWithoutExecutorTopology(t *testing.T)
 		}},
 		Continuations: []runs.Continuation{
 			{
-				RunID:        "run_child",
-				MemberID:     "member_child",
-				Lineage:      lineage,
-				RunCreatedAt: createdAt,
+				RunID:          "run_child",
+				MemberID:       "member_child",
+				Lineage:        lineage,
+				ModelSelection: testsupport.DefaultModelSelection(),
+				RunCreatedAt:   createdAt,
 				DrainedTools: []runs.DrainedTool{{
 					ItemID: "item_open", ItemOccurredAt: createdAt.Add(time.Second),
 					CallID: "call_open", SourceCallID: "provider_open",
@@ -302,9 +304,10 @@ func TestInterruptStoreRoundTripsAppLineageWithoutExecutorTopology(t *testing.T)
 				}},
 			},
 			{
-				RunID:        "run_root",
-				MemberID:     "member_root",
-				RunCreatedAt: createdAt,
+				RunID:          "run_root",
+				MemberID:       "member_root",
+				ModelSelection: testsupport.DefaultModelSelection(),
+				RunCreatedAt:   createdAt,
 				CommittedTools: []runs.CommittedTool{{
 					ItemID: "item_spawn_child", CallID: "call_child", SourceCallID: "provider_child",
 					Name: "delegate_task", Arguments: "{}",
@@ -361,7 +364,7 @@ func TestInterruptStoreRejectsUnknownExecutorTopologyFields(t *testing.T) {
 			InterruptItemID: "item_question", MemberID: "member_root", RequestID: "request_root",
 		}},
 		Continuations: []runs.Continuation{{
-			RunID: "run_root", MemberID: "member_root", RunCreatedAt: time.Unix(1, 0).UTC(),
+			RunID: "run_root", MemberID: "member_root", ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: time.Unix(1, 0).UTC(),
 		}},
 		CreatedAt: time.Unix(2, 0).UTC(),
 	}
@@ -417,7 +420,7 @@ func TestInterruptStoreExecutorRootHasOnePendingOwner(t *testing.T) {
 				RequestID:       "request_" + runID,
 			}},
 			Continuations: []runs.Continuation{{
-				RunID: runID, MemberID: "member_shared", RunCreatedAt: time.Unix(1, 0).UTC(),
+				RunID: runID, MemberID: "member_shared", ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: time.Unix(1, 0).UTC(),
 			}},
 			CreatedAt: time.Unix(2, 0).UTC(),
 		})

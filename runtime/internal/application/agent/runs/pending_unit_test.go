@@ -6,11 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestResumeClaimDerivesExactToolApprovalResolutions(t *testing.T) {
@@ -200,6 +202,21 @@ func TestPendingEqualUsesLogicalDurableValue(t *testing.T) {
 	}
 }
 
+func TestContinuationRequiresExactModelSelection(t *testing.T) {
+	pending := validTreePending()
+	pending.Continuations[0].ModelSelection = modelref.Selection{}
+	if err := pending.Validate(); err == nil || !strings.Contains(err.Error(), "model selection is required") {
+		t.Fatalf("Validate without continuation model selection error = %v", err)
+	}
+}
+
+func TestWaitingMemberRequiresExactModelSelection(t *testing.T) {
+	member := WaitingMember{RunID: "run_1", MemberID: "member_1"}
+	if err := member.Validate(); err == nil || !strings.Contains(err.Error(), "model selection is required") {
+		t.Fatalf("Validate without waiting member model selection error = %v", err)
+	}
+}
+
 func validTreePending() Pending {
 	createdAt := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
 	return Pending{
@@ -241,7 +258,8 @@ func validTreePending() Pending {
 					ParentRunID:     "run_a",
 					RootRunID:       "run_root",
 				},
-				RunCreatedAt: createdAt,
+				ModelSelection: testsupport.DefaultModelSelection(),
+				RunCreatedAt:   createdAt,
 			},
 			{
 				RunID:    "run_a",
@@ -251,7 +269,8 @@ func validTreePending() Pending {
 					ParentRunID:     "run_root",
 					RootRunID:       "run_root",
 				},
-				RunCreatedAt: createdAt,
+				ModelSelection: testsupport.DefaultModelSelection(),
+				RunCreatedAt:   createdAt,
 			},
 			{
 				RunID:    "run_b",
@@ -261,12 +280,14 @@ func validTreePending() Pending {
 					ParentRunID:     "run_root",
 					RootRunID:       "run_root",
 				},
-				RunCreatedAt: createdAt,
+				ModelSelection: testsupport.DefaultModelSelection(),
+				RunCreatedAt:   createdAt,
 			},
 			{
-				RunID:        "run_root",
-				MemberID:     "member_root",
-				RunCreatedAt: createdAt,
+				RunID:          "run_root",
+				MemberID:       "member_root",
+				ModelSelection: testsupport.DefaultModelSelection(),
+				RunCreatedAt:   createdAt,
 			},
 		},
 		CreatedAt: createdAt,

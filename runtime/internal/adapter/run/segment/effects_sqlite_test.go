@@ -687,8 +687,8 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 			InterruptItemID: "item_child", MemberID: "member_child", RequestID: "request_child",
 		}},
 		Continuations: []runs.Continuation{
-			{RunID: "run_child", MemberID: "member_child", Lineage: lineage, RunCreatedAt: createdAt},
-			{RunID: "run_root", MemberID: "member_root", RunCreatedAt: createdAt},
+			{RunID: "run_child", MemberID: "member_child", Lineage: lineage, ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: createdAt},
+			{RunID: "run_root", MemberID: "member_root", ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: createdAt},
 		},
 		CreatedAt: createdAt.Add(time.Second),
 	}

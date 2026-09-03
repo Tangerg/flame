@@ -87,6 +87,16 @@ type ExecutorCheckpointExpectation struct {
 	Capabilities      run.Capabilities
 }
 
+func validateDurableModelSelection(selection modelref.Selection) error {
+	if err := selection.Validate(); err != nil {
+		return err
+	}
+	if !selection.Configured() {
+		return errors.New("model selection is required")
+	}
+	return nil
+}
+
 // Clone returns an ownership-independent checkpoint value.
 func (e ExecutorCheckpoint) Clone() ExecutorCheckpoint {
 	e.Payload = append([]byte(nil), e.Payload...)
@@ -110,7 +120,7 @@ func (e ExecutorCheckpoint) Validate() error {
 	if err := e.Scope.Validate(); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
 	}
-	if err := e.ModelSelection.Validate(); err != nil {
+	if err := validateDurableModelSelection(e.ModelSelection); err != nil {
 		return fmt.Errorf("%w: model selection: %w", ErrInvalidExecutorCheckpoint, err)
 	}
 	if err := e.Limits.Validate(); err != nil {
@@ -172,7 +182,7 @@ func (e ExecutorCheckpoint) ValidateFor(expected ExecutorCheckpointExpectation) 
 	if expected.WorkspaceCWD != strings.TrimSpace(expected.WorkspaceCWD) {
 		return fmt.Errorf("%w: expected workspace dir has surrounding whitespace", ErrInvalidExecutorCheckpoint)
 	}
-	if err := expected.ModelSelection.Validate(); err != nil {
+	if err := validateDurableModelSelection(expected.ModelSelection); err != nil {
 		return fmt.Errorf("%w: expected model selection: %w", ErrInvalidExecutorCheckpoint, err)
 	}
 	if err := expected.Limits.Validate(); err != nil {

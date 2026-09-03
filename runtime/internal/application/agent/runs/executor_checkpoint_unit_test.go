@@ -52,6 +52,9 @@ func TestExecutorCheckpointValidatesOnlyApplicationEnvelope(t *testing.T) {
 		{name: "unstable root", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.RootMemberID = " root" }},
 		{name: "empty payload", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.Payload = nil }},
 		{name: "empty build", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.BuildID = "" }},
+		{name: "empty model selection", mutate: func(checkpoint *ExecutorCheckpoint) {
+			checkpoint.ModelSelection = modelref.Selection{}
+		}},
 		{name: "unstable session", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.Scope.SessionID = " session-1" }},
 		{name: "unstable cwd", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.Scope.CWD = "/workspace/project " }},
 		{name: "goal incarnation whitespace", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "lease 1" }},
@@ -124,6 +127,9 @@ func TestExecutorCheckpointValidatesCrossAggregateOwnership(t *testing.T) {
 		}},
 		{name: "model", mutate: func(value *ExecutorCheckpointExpectation) {
 			value.ModelSelection = checkpointSelection(t, "anthropic", "claude-sonnet")
+		}},
+		{name: "empty model selection", mutate: func(value *ExecutorCheckpointExpectation) {
+			value.ModelSelection = modelref.Selection{}
 		}},
 		{name: "limits", mutate: func(value *ExecutorCheckpointExpectation) {
 			value.Limits = testsupport.MustRunLimits(run.LimitValues{MaxTotalTokens: testsupport.Pointer[int64](1)})
