@@ -175,6 +175,10 @@ func TestCheckpointCandidateRecordsAndSeedFilesAreBounded(t *testing.T) {
 	if _, err := readSourceAlternates(oversizedAlternates); !errors.Is(err, ErrSnapshotTooLarge) {
 		t.Fatalf("readSourceAlternates() error = %v, want ErrSnapshotTooLarge", err)
 	}
+	oversizedIdentity := strings.NewReader(strings.Repeat("x", maxWorkspaceIdentityBytes+1))
+	if _, err := readWorkspaceIdentity(oversizedIdentity); !errors.Is(err, ErrSnapshotTooLarge) {
+		t.Fatalf("readWorkspaceIdentity() error = %v, want ErrSnapshotTooLarge", err)
+	}
 
 	source := filepath.Join(t.TempDir(), "index")
 	if err := os.WriteFile(source, []byte("12345"), 0o600); err != nil {

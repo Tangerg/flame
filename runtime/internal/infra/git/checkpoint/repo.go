@@ -21,10 +21,11 @@ import (
 const commonExcludes = "node_modules/\n.venv/\nvenv/\n__pycache__/\ndist/\nbuild/\ntarget/\n.next/\n.DS_Store\n"
 
 const (
-	maxSourceAlternatesBytes = 64 << 10
-	maxSourceAlternates      = 256
-	maxSourceIndexBytes      = 64 << 20
-	workspaceIdentityFile    = "flame-workspace"
+	maxSourceAlternatesBytes  = 64 << 10
+	maxSourceAlternates       = 256
+	maxSourceIndexBytes       = 64 << 20
+	maxWorkspaceIdentityBytes = 64 << 10
+	workspaceIdentityFile     = "flame-workspace"
 )
 
 // ensureRepo lazily initializes the session's shadow repo (idempotent).
@@ -100,18 +101,31 @@ func (s *Store) ensureRepo(ctx context.Context, sessionID, cwd string) (string, 
 }
 
 func repositoryMatchesWorkspace(gitDir, cwd string) (bool, error) {
-	const maximumWorkspaceIdentityBytes = 64 << 10
 	path := filepath.Join(gitDir, workspaceIdentityFile)
-	file, _, err := fileinput.Open(path, maximumWorkspaceIdentityBytes)
+	file, _, err := fileinput.Open(path, maxWorkspaceIdentityBytes)
 	if err != nil {
 		return false, fmt.Errorf("checkpoint: open workspace identity: %w", err)
 	}
-	data, readErr := io.ReadAll(file)
+	data, readErr := readWorkspaceIdentity(file)
 	closeErr := file.Close()
 	if err := errors.Join(readErr, closeErr); err != nil {
 		return false, fmt.Errorf("checkpoint: read workspace identity: %w", err)
 	}
 	return string(data) == cwd, nil
+}
+
+func readWorkspaceIdentity(source io.Reader) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(source, maxWorkspaceIdentityBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxWorkspaceIdentityBytes {
+		return nil, fmt.Errorf(
+			"%w: workspace identity exceeds %d bytes",
+			ErrSnapshotTooLarge, maxWorkspaceIdentityBytes,
+		)
+	}
+	return data, nil
 }
 
 // publishRepo makes a fully initialized repository visible in one rename. The
