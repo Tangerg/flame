@@ -143,6 +143,16 @@ func (r *Connection) ListApprovalRules(ctx context.Context, sessionID string) ([
 	if result == nil {
 		return nil, runtimeContractViolation("list approval rules returned nil")
 	}
+	if err := protocol.ValidateWireTree(*result); err != nil {
+		return nil, runtimeContractViolation("list approval rules returned an invalid result: %v", err)
+	}
+	seen := make(map[string]struct{}, len(result.Rules))
+	for _, rule := range result.Rules {
+		if _, duplicate := seen[rule.ID]; duplicate {
+			return nil, runtimeContractViolation("list approval rules repeats %q", rule.ID)
+		}
+		seen[rule.ID] = struct{}{}
+	}
 	return slices.Clone(result.Rules), nil
 }
 

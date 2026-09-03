@@ -16,6 +16,7 @@ type approvalBindingRecorder struct {
 	listCalls     int
 	forgetCalls   int
 	setMode       protocol.ApprovalMode
+	listResult    *protocol.ListApprovalRulesResult
 }
 
 func (*approvalBindingRecorder) GetApprovalMode(context.Context, flameruntime.CallOptions) (*protocol.ApprovalModeResult, error) {
@@ -32,6 +33,9 @@ func (a *approvalBindingRecorder) SetApprovalMode(_ context.Context, request pro
 func (a *approvalBindingRecorder) ListApprovalRules(_ context.Context, request protocol.ListApprovalRulesRequest, _ flameruntime.CallOptions) (*protocol.ListApprovalRulesResult, error) {
 	a.listCalls++
 	a.listRequest = request
+	if a.listResult != nil {
+		return a.listResult, nil
+	}
 	return &protocol.ListApprovalRulesResult{Rules: []protocol.ApprovalRule{{
 		ID: "rule_1", Scope: protocol.ApprovalRuleScopeProject, Tool: "shell",
 		Subject: "go test *", Dir: "/workspace", Decision: protocol.ApprovalRuleDecisionAllow,
@@ -155,5 +159,35 @@ func TestApprovalCatalogRejectsNonExactSessionIdentityBeforeRuntimeBoundary(t *t
 	}
 	if recorder.listCalls != 1 || recorder.forgetCalls != 1 {
 		t.Fatalf("invalid identities reached runtime: list=%d forget=%d", recorder.listCalls, recorder.forgetCalls)
+	}
+}
+
+func TestApprovalCatalogRejectsInvalidAndDuplicateRules(t *testing.T) {
+	t.Parallel()
+	valid := protocol.ApprovalRule{
+		ID: "rule_1", Scope: protocol.ApprovalRuleScopeGlobal, Tool: "shell",
+		Decision: protocol.ApprovalRuleDecisionAllow,
+	}
+	tests := []struct {
+		name  string
+		rules []protocol.ApprovalRule
+	}{
+		{
+			name: "invalid nested rule",
+			rules: []protocol.ApprovalRule{{
+				ID: "rule_1", Scope: protocol.ApprovalRuleScopeProject, Tool: "shell",
+				Decision: protocol.ApprovalRuleDecisionAllow,
+			}},
+		},
+		{name: "duplicate identity", rules: []protocol.ApprovalRule{valid, valid}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			stub := &approvalBindingRecorder{listResult: &protocol.ListApprovalRulesResult{Rules: test.rules}}
+			runtime := &Connection{approvals: stub, meta: requestMeta("test")}
+			_, err := runtime.ListApprovalRules(t.Context(), "ses_1")
+			requireRuntimeContractViolation(t, err)
+		})
 	}
 }
