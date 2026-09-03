@@ -199,7 +199,7 @@ func readAutoFormatFile(ctx context.Context, path string) (_ autoFormatSource, e
 		return autoFormatSource{}, err
 	}
 	current, err := os.Lstat(path)
-	if err != nil || !sameFileVersion(info, after) || !sameFileVersion(after, current) {
+	if err != nil || !fileinput.SameVersion(info, after) || !fileinput.SameVersion(after, current) {
 		return autoFormatSource{}, errors.New("file changed while reading for formatting")
 	}
 	return autoFormatSource{content: content, info: current}, nil
@@ -289,7 +289,7 @@ func writeFormattedFile(path string, data []byte, source os.FileInfo) error {
 	}
 	closed = true
 	current, err := os.Lstat(path)
-	if err != nil || !sameFileVersion(source, current) {
+	if err != nil || !fileinput.SameVersion(source, current) {
 		return errors.New("file changed while formatting")
 	}
 	if err := os.Rename(tmpPath, path); err != nil {

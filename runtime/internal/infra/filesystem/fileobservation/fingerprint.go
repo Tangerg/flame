@@ -10,6 +10,8 @@ import (
 	"math"
 	"os"
 	"strconv"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 type fingerprint [sha256.Size]byte
@@ -96,18 +98,10 @@ func verifyObservedFileVersion(root *os.Root, name string, file *os.File, before
 	if err != nil {
 		return fmt.Errorf("inspect current file after reading: %w", err)
 	}
-	if !sameObservedFileVersion(before, after) || !sameObservedFileVersion(after, current) {
+	if !fileinput.SameVersion(before, after) || !fileinput.SameVersion(after, current) {
 		return errors.New("file changed while reading")
 	}
 	return nil
-}
-
-func sameObservedFileVersion(left, right os.FileInfo) bool {
-	return left != nil && right != nil &&
-		os.SameFile(left, right) &&
-		left.Size() == right.Size() &&
-		left.Mode() == right.Mode() &&
-		left.ModTime().Equal(right.ModTime())
 }
 
 func (e *fingerprintEncoder) sum() fingerprint {

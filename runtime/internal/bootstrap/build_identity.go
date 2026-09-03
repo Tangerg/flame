@@ -50,15 +50,10 @@ func buildIDFromOpenedFile(path string, file *os.File, before os.FileInfo) (stri
 	if err != nil {
 		return "", fmt.Errorf("bootstrap: inspect executable after hashing build identity: %w", err)
 	}
-	if !sameBuildFileVersion(before, after) || !sameBuildFileVersion(after, current) {
+	if !fileinput.SameVersion(before, after) || !fileinput.SameVersion(after, current) {
 		return "", errors.New("bootstrap: executable changed while hashing build identity")
 	}
 	var digest [sha256.Size]byte
 	copy(digest[:], hash.Sum(nil))
 	return runtimeidentity.BuildFromSHA256(digest).String(), nil
-}
-
-func sameBuildFileVersion(left, right os.FileInfo) bool {
-	return left != nil && right != nil && os.SameFile(left, right) &&
-		left.Size() == right.Size() && left.Mode() == right.Mode() && left.ModTime().Equal(right.ModTime())
 }

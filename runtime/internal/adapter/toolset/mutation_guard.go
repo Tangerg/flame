@@ -200,7 +200,7 @@ func observeFingerprintExistingFile(ctx context.Context, path string, maxBytes i
 	if err != nil {
 		return fingerprintObservation{}, false, fmt.Errorf("file changed while fingerprinting: %w", err)
 	}
-	if !sameFileVersion(before, after) || !sameFileVersion(after, current) {
+	if !fileinput.SameVersion(before, after) || !fileinput.SameVersion(after, current) {
 		return fingerprintObservation{}, false, errors.New("file changed while fingerprinting")
 	}
 	var fingerprint contentFingerprint
@@ -220,15 +220,7 @@ func fingerprintFile(ctx context.Context, path string, maxBytes int64) (contentF
 }
 
 func sameFingerprintObservation(left, right fingerprintObservation) bool {
-	return left.fingerprint == right.fingerprint && sameFileVersion(left.info, right.info)
-}
-
-func sameFileVersion(left, right os.FileInfo) bool {
-	return left != nil && right != nil &&
-		os.SameFile(left, right) &&
-		left.Size() == right.Size() &&
-		left.Mode() == right.Mode() &&
-		left.ModTime().Equal(right.ModTime())
+	return left.fingerprint == right.fingerprint && fileinput.SameVersion(left.info, right.info)
 }
 
 type fingerprintContextReader struct {
