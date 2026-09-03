@@ -166,17 +166,14 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	if err != nil {
 		return agent.Deployment{}, fmt.Errorf("agentexec: wrap Interaction tools at depth %d: %w", depth, err)
 	}
-	var contextReducer interaction.ModelContextReducer
-	if i.executor.config.ModelContextCompactor != nil {
-		contextReducer = newInteractionModelContextReducer(
-			i.executor.config.ModelContextCompactor,
-			i.executor.config.ModelContextState,
-			i.session,
-			i.start,
-			i.instructions,
-			i.counter,
-		)
-	}
+	contextReducer := newInteractionModelContextReducer(
+		i.executor.config.ModelContextCompactor,
+		i.executor.config.ModelContextState,
+		i.session,
+		i.start,
+		i.instructions,
+		i.counter,
+	)
 	responseMode := interaction.ModelResponseComplete
 	if i.executor.config.StreamModelResponses {
 		responseMode = interaction.ModelResponseStream

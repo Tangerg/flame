@@ -169,16 +169,14 @@ func (i *interactionSession) removePendingSteer(signalID agent.SignalID) {
 	i.state.mu.Unlock()
 }
 
-func (i *interactionSession) commitAppliedSteers(
+func (i *interactionSession) commitAppliedInputs(
 	ctx context.Context,
 	member runs.ExecutorMember,
+	processID agent.ProcessID,
 	signalIDs []agent.SignalID,
 ) error {
-	if len(signalIDs) == 0 {
-		return nil
-	}
 	i.state.mu.Lock()
-	messages := make([]runs.AppliedSteerMessage, 0, len(signalIDs))
+	messages := make([]runs.AppliedSteerMessage, 0, len(signalIDs)+1)
 	seen := make(map[agent.SignalID]struct{}, len(signalIDs))
 	for _, signalID := range signalIDs {
 		if _, duplicate := seen[signalID]; duplicate {
@@ -192,19 +190,55 @@ func (i *interactionSession) commitAppliedSteers(
 			return fmt.Errorf("agentexec: model attribution names unknown steer Signal %s", signalID)
 		}
 		messages = append(messages, runs.AppliedSteerMessage{
-			Content: transcript.CloneContent(pending.content), ProjectedItemID: pending.projectedItemID,
+			Content: transcript.CloneContent(pending.content),
+		})
+	}
+	var continuation pendingInteractionContinuation
+	if pending := i.state.pendingContinuation; pending != nil && pending.processID == processID {
+		continuation = pendingInteractionContinuation{
+			processID: pending.processID,
+			itemID:    pending.itemID,
+			content:   transcript.CloneContent(pending.content),
+		}
+		messages = append(messages, runs.AppliedSteerMessage{
+			Content:         transcript.CloneContent(pending.content),
+			ProjectedItemID: pending.itemID,
 		})
 	}
 	i.state.mu.Unlock()
-	if len(messages) > 0 {
-		if err := i.commitFact(ctx, member, runs.SteerMessagesApplied{Messages: messages}); err != nil {
-			return fmt.Errorf("agentexec: commit applied Interaction steers: %w", err)
-		}
+	if len(messages) == 0 {
+		return nil
+	}
+	if err := i.commitFact(ctx, member, runs.SteerMessagesApplied{Messages: messages}); err != nil {
+		return fmt.Errorf("agentexec: commit applied Interaction inputs: %w", err)
 	}
 	i.state.mu.Lock()
 	for _, signalID := range signalIDs {
 		delete(i.state.pendingSteers, signalID)
 	}
+	if current := i.state.pendingContinuation; current != nil &&
+		current.processID == continuation.processID && current.itemID == continuation.itemID {
+		i.state.pendingContinuation = nil
+	}
 	i.state.mu.Unlock()
 	return nil
+}
+
+func (i *interactionSession) pendingContinuationFor(
+	processID agent.ProcessID,
+) (pendingInteractionContinuation, bool, error) {
+	i.state.mu.Lock()
+	defer i.state.mu.Unlock()
+	pending := i.state.pendingContinuation
+	if pending == nil || pending.processID != processID {
+		return pendingInteractionContinuation{}, false, nil
+	}
+	if !processID.Valid() || pending.itemID == "" || len(pending.content) == 0 {
+		return pendingInteractionContinuation{}, false, errors.New("agentexec: invalid pending continuation input")
+	}
+	return pendingInteractionContinuation{
+		processID: pending.processID,
+		itemID:    pending.itemID,
+		content:   transcript.CloneContent(pending.content),
+	}, true, nil
 }

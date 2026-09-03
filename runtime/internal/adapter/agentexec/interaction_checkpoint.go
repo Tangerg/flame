@@ -20,16 +20,17 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-const interactionCheckpointSchemaVersion uint16 = 5
+const interactionCheckpointSchemaVersion uint16 = 6
 
 type interactionCheckpointPayloadWire struct {
-	SchemaVersion uint16                        `json:"schema_version"`
-	Tree          json.RawMessage               `json:"tree"`
-	Instructions  []corechat.Message            `json:"instructions,omitempty"`
-	Members       []interactionMemberCallsWire  `json:"members,omitempty"`
-	Carried       []interactionModelCallsWire   `json:"carried,omitempty"`
-	Contexts      []interactionModelContextWire `json:"contexts,omitempty"`
-	PendingSteers []interactionPendingSteerWire `json:"pending_steers,omitempty"`
+	SchemaVersion       uint16                              `json:"schema_version"`
+	Tree                json.RawMessage                     `json:"tree"`
+	Instructions        []corechat.Message                  `json:"instructions,omitempty"`
+	Members             []interactionMemberCallsWire        `json:"members,omitempty"`
+	Carried             []interactionModelCallsWire         `json:"carried,omitempty"`
+	Contexts            []interactionModelContextWire       `json:"contexts,omitempty"`
+	PendingSteers       []interactionPendingSteerWire       `json:"pending_steers,omitempty"`
+	PendingContinuation *interactionPendingContinuationWire `json:"pending_continuation,omitempty"`
 }
 
 type interactionMemberCallsWire struct {
@@ -49,9 +50,14 @@ type interactionModelContextWire struct {
 }
 
 type interactionPendingSteerWire struct {
-	SignalID        string                        `json:"signal_id"`
-	Content         []interactionContentBlockWire `json:"content"`
-	ProjectedItemID string                        `json:"projected_item_id,omitempty"`
+	SignalID string                        `json:"signal_id"`
+	Content  []interactionContentBlockWire `json:"content"`
+}
+
+type interactionPendingContinuationWire struct {
+	MemberID string                        `json:"member_id"`
+	ItemID   string                        `json:"item_id"`
+	Content  []interactionContentBlockWire `json:"content"`
 }
 
 type interactionContentBlockWire struct {
@@ -62,12 +68,13 @@ type interactionContentBlockWire struct {
 }
 
 type interactionCheckpointState struct {
-	tree             agent.TreeSnapshot
-	callsByProcess   map[agent.ProcessID]map[string]int
-	carriedCallCount map[string]int
-	contextByProcess map[agent.ProcessID]ModelContextTokenCalibration
-	instructions     []corechat.Message
-	pendingSteers    map[agent.SignalID]pendingInteractionSteer
+	tree                agent.TreeSnapshot
+	callsByProcess      map[agent.ProcessID]map[string]int
+	carriedCallCount    map[string]int
+	contextByProcess    map[agent.ProcessID]ModelContextTokenCalibration
+	instructions        []corechat.Message
+	pendingSteers       map[agent.SignalID]pendingInteractionSteer
+	pendingContinuation *pendingInteractionContinuation
 }
 
 func (i *interactionSession) executorCheckpoint(
@@ -104,6 +111,7 @@ func encodeInteractionCheckpointPayload(
 	contextByProcess map[agent.ProcessID]ModelContextTokenCalibration,
 	instructions []corechat.Message,
 	pendingSteers map[agent.SignalID]pendingInteractionSteer,
+	pendingContinuation *pendingInteractionContinuation,
 ) ([]byte, error) {
 	if !tree.Valid() {
 		return nil, errors.New("agentexec: encode invalid Interaction tree checkpoint")
@@ -143,6 +151,12 @@ func encodeInteractionCheckpointPayload(
 	wire.PendingSteers, err = encodeInteractionPendingSteers(pendingSteers)
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: encode pending Interaction steers: %w", err)
+	}
+	wire.PendingContinuation, err = encodeInteractionPendingContinuation(
+		pendingContinuation, tree.RootID(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("agentexec: encode pending Interaction continuation: %w", err)
 	}
 	payload, err := json.Marshal(wire)
 	if err != nil {
@@ -204,11 +218,6 @@ func encodeInteractionPendingSteer(
 	if len(steer.content) == 0 {
 		return interactionPendingSteerWire{}, fmt.Errorf("pending steer %s has no product content", signalID)
 	}
-	if steer.projectedItemID != "" {
-		if _, err := resourceid.ParseItem(steer.projectedItemID); err != nil {
-			return interactionPendingSteerWire{}, fmt.Errorf("pending steer %s projected Item: %w", signalID, err)
-		}
-	}
 	content := make([]interactionContentBlockWire, len(steer.content))
 	for index, block := range steer.content {
 		value, err := encodeInteractionContentBlock(block)
@@ -219,7 +228,35 @@ func encodeInteractionPendingSteer(
 	}
 	return interactionPendingSteerWire{
 		SignalID: signalID.String(), Content: content,
-		ProjectedItemID: steer.projectedItemID,
+	}, nil
+}
+
+func encodeInteractionPendingContinuation(
+	pending *pendingInteractionContinuation,
+	rootID agent.ProcessID,
+) (*interactionPendingContinuationWire, error) {
+	if pending == nil {
+		return nil, nil
+	}
+	if !pending.processID.Valid() || pending.processID != rootID {
+		return nil, errors.New("pending continuation does not name the root member")
+	}
+	if _, err := resourceid.ParseItem(pending.itemID); err != nil {
+		return nil, fmt.Errorf("pending continuation Item: %w", err)
+	}
+	if len(pending.content) == 0 {
+		return nil, errors.New("pending continuation has no product content")
+	}
+	content := make([]interactionContentBlockWire, len(pending.content))
+	for index, block := range pending.content {
+		value, err := encodeInteractionContentBlock(block)
+		if err != nil {
+			return nil, fmt.Errorf("pending continuation content %d: %w", index, err)
+		}
+		content[index] = value
+	}
+	return &interactionPendingContinuationWire{
+		MemberID: pending.processID.String(), ItemID: pending.itemID, Content: content,
 	}, nil
 }
 
@@ -296,9 +333,16 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint pending steers: %w", err)
 	}
+	pendingContinuation, err := decodeInteractionPendingContinuation(
+		wire.PendingContinuation, tree.RootID(),
+	)
+	if err != nil {
+		return interactionCheckpointState{}, fmt.Errorf("agentexec: Interaction checkpoint pending continuation: %w", err)
+	}
 	return interactionCheckpointState{
 		tree: tree, callsByProcess: callsByProcess, carriedCallCount: carriedCallCount,
 		contextByProcess: contextByProcess, instructions: instructions, pendingSteers: pendingSteers,
+		pendingContinuation: pendingContinuation,
 	}, nil
 }
 
@@ -446,15 +490,38 @@ func (w interactionPendingSteerWire) decode(
 			)
 		}
 	}
-	if w.ProjectedItemID != "" {
-		if _, err := resourceid.ParseItem(w.ProjectedItemID); err != nil {
-			return zeroSignalID, pendingInteractionSteer{}, fmt.Errorf(
-				"pending steer %s projected Item: %w", signalID, err,
-			)
+	return signalID, pendingInteractionSteer{content: content}, nil
+}
+
+func decodeInteractionPendingContinuation(
+	wire *interactionPendingContinuationWire,
+	rootID agent.ProcessID,
+) (*pendingInteractionContinuation, error) {
+	if wire == nil {
+		return nil, nil
+	}
+	processID, err := agent.ParseProcessID(wire.MemberID)
+	if err != nil || processID != rootID {
+		return nil, errors.New("pending continuation does not name the root member")
+	}
+	if _, err := resourceid.ParseItem(wire.ItemID); err != nil {
+		return nil, fmt.Errorf("pending continuation Item: %w", err)
+	}
+	if len(wire.Content) == 0 {
+		return nil, errors.New("pending continuation has no product content")
+	}
+	content := make([]transcript.ContentBlock, len(wire.Content))
+	for index, block := range wire.Content {
+		content[index], err = block.decode()
+		if err != nil {
+			return nil, fmt.Errorf("pending continuation content %d: %w", index, err)
 		}
 	}
-	return signalID, pendingInteractionSteer{
-		content: content, projectedItemID: w.ProjectedItemID,
+	if _, err := runs.MaterializeUserMessage(content); err != nil {
+		return nil, fmt.Errorf("pending continuation message: %w", err)
+	}
+	return &pendingInteractionContinuation{
+		processID: processID, itemID: wire.ItemID, content: content,
 	}, nil
 }
 

@@ -132,7 +132,11 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	}
 	events := <-resumedEvents
 	if toolCalls != 1 {
-		t.Fatalf("Tool calls after answer = %d, want 1", toolCalls)
+		var failure run.Failure
+		if terminal := payloadsOf[runs.SegmentEnded](events); len(terminal) == 1 && terminal[0].Failure != nil {
+			failure = *terminal[0].Failure
+		}
+		t.Fatalf("Tool calls after answer = %d, want 1; failure=%+v events=%#v", toolCalls, failure, events)
 	}
 	completed := payloadsOf[runs.AssistantMessageCompleted](events)
 	if len(completed) != 1 || completed[0].Message.Text() != "completed" {
@@ -660,7 +664,7 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 		mutate func(*runs.ExecutorCheckpoint)
 	}{
 		{name: "corrupt payload", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.Payload = []byte(`{"schema_version":4}`)
+			checkpoint.Payload = []byte(`{"schema_version":5}`)
 		}},
 		{name: "wrong build", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.BuildID = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"

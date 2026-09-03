@@ -26,7 +26,7 @@ func TestInteractionPendingSteersRoundTripCanonicalContent(t *testing.T) {
 		}}},
 		secondID: {content: []transcript.ContentBlock{{
 			Kind: transcript.TextContent, Text: "revise",
-		}}, projectedItemID: "item_followup"},
+		}}},
 	}
 	wire, err := encodeInteractionPendingSteers(pending)
 	if err != nil {
@@ -41,6 +41,38 @@ func TestInteractionPendingSteersRoundTripCanonicalContent(t *testing.T) {
 	}
 	if !reflect.DeepEqual(decoded, pending) {
 		t.Fatalf("decoded pending steers = %#v, want %#v", decoded, pending)
+	}
+}
+
+func TestInteractionPendingContinuationRoundTripsCanonicalContent(t *testing.T) {
+	rootID, err := agent.ParseProcessID("process:root")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pending := &pendingInteractionContinuation{
+		processID: rootID,
+		itemID:    "item_followup",
+		content: []transcript.ContentBlock{{
+			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte{0, 1, 2},
+		}},
+	}
+	wire, err := encodeInteractionPendingContinuation(pending, rootID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := decodeInteractionPendingContinuation(wire, rootID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(decoded, pending) {
+		t.Fatalf("decoded pending continuation = %#v, want %#v", decoded, pending)
+	}
+	foreignID, err := agent.ParseProcessID("process:foreign")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decodeInteractionPendingContinuation(wire, foreignID); err == nil {
+		t.Fatal("decode accepted a continuation for a foreign root")
 	}
 }
 
@@ -93,7 +125,7 @@ func TestDecodeInteractionPendingSteersRejectsNoncanonicalWire(t *testing.T) {
 }
 
 func TestDecodeInteractionCheckpointRejectsPreviousSchema(t *testing.T) {
-	if _, err := decodeInteractionCheckpointPayload([]byte(`{"schema_version":4}`)); err == nil {
+	if _, err := decodeInteractionCheckpointPayload([]byte(`{"schema_version":5}`)); err == nil {
 		t.Fatal("decode accepted previous checkpoint schema")
 	}
 }
@@ -107,12 +139,12 @@ func TestDecodeInteractionCheckpointRejectsDuplicateJSONMembers(t *testing.T) {
 	}{
 		{
 			name:    "root",
-			payload: `{"schema_version":5,"schema_version":5}`,
+			payload: `{"schema_version":6,"schema_version":6}`,
 			want:    `duplicate JSON member "schema_version" at $`,
 		},
 		{
 			name:    "nested tree",
-			payload: `{"schema_version":5,"tree":{"state":"first","state":"second"}}`,
+			payload: `{"schema_version":6,"tree":{"state":"first","state":"second"}}`,
 			want:    `duplicate JSON member "state" at $.tree`,
 		},
 	} {

@@ -58,6 +58,7 @@ func (i *interactionSession) initializeRestoredContinuation(
 	i.state.delegateCalls = delegateCalls
 	i.state.delegateChildren = delegateChildren
 	i.state.pendingSteers = checkpoint.pendingSteers
+	i.state.pendingContinuation = checkpoint.pendingContinuation
 	return nil
 }
 

@@ -47,10 +47,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	invocation interaction.ModelInvocation,
 	request *corechat.Request,
 ) ([]corechat.Message, error) {
-	if i == nil || i.compactor == nil {
-		return nil, errors.New("agentexec: model-context compactor is unavailable")
-	}
-	if i.session == nil || request == nil || !invocation.Valid() {
+	if i == nil || i.session == nil || request == nil || !invocation.Valid() {
 		return nil, errors.New("agentexec: model-context reduction requires an attributed Interaction request")
 	}
 	prefixMatches, err := sameInteractionMessages(
@@ -68,9 +65,38 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 			prefixMatches,
 		)
 	}
+	pendingContinuation, hasPendingContinuation, err := i.session.pendingContinuationFor(
+		invocation.Relation().ProcessID(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	if i.compactor == nil {
+		effective := cloneChatMessages(request.Messages)
+		if hasPendingContinuation {
+			message, err := runs.MaterializeUserMessage(pendingContinuation.content)
+			if err != nil {
+				return nil, fmt.Errorf("agentexec: materialize pending continuation input: %w", err)
+			}
+			effective = append(effective, message)
+		}
+		validation := request.Clone()
+		validation.Messages = effective
+		if err := validation.Validate(); err != nil {
+			return nil, fmt.Errorf("agentexec: reduced model context: %w", err)
+		}
+		return effective, nil
+	}
 	candidate, err := withoutReplaceableSessionState(request.Messages[len(i.instructions):])
 	if err != nil {
 		return nil, err
+	}
+	if hasPendingContinuation {
+		message, err := runs.MaterializeUserMessage(pendingContinuation.content)
+		if err != nil {
+			return nil, fmt.Errorf("agentexec: materialize pending continuation input: %w", err)
+		}
+		candidate = append(candidate, message)
 	}
 	fixedContext := cloneChatMessages(i.instructions)
 	if i.state != nil {
@@ -97,6 +123,9 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		protectedTail := 0
 		if invocation.ModelCallSequence() == 1 {
 			protectedTail = rootOpeningMessageCount
+		}
+		if hasPendingContinuation {
+			protectedTail = max(protectedTail, trailingUserMessageCount(candidate))
 		}
 		compaction, buildErr = NewDurableModelContextCompaction(
 			i.start.SessionID,

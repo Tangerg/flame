@@ -55,6 +55,7 @@ type interactionSession struct {
 type interactionState struct {
 	mu                         sync.Mutex
 	pendingSteers              map[agent.SignalID]pendingInteractionSteer
+	pendingContinuation        *pendingInteractionContinuation
 	process                    *agent.Process
 	admittedProcessID          agent.ProcessID
 	observerWasAttached        bool
@@ -80,8 +81,17 @@ type activeInteractionDispatch struct {
 }
 
 type pendingInteractionSteer struct {
-	content         []transcript.ContentBlock
-	projectedItemID string
+	content []transcript.ContentBlock
+}
+
+// pendingInteractionContinuation is Runtime-owned input that already has a
+// durable transcript Item but cannot share Scope Interaction's input-response
+// Signal. The model-context boundary applies it exactly once to the root
+// conversation after the answered Tool result.
+type pendingInteractionContinuation struct {
+	processID agent.ProcessID
+	itemID    string
+	content   []transcript.ContentBlock
 }
 
 type interactionBoundary uint8

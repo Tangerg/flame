@@ -231,7 +231,7 @@ func (i *interactionAccounting) checkpointLocked() (
 func (i *interactionSession) interactionCheckpointPayload(
 	tree agent.TreeSnapshot,
 ) ([]byte, error) {
-	// Accounting and pending steers were one lock domain before P113. Hold both
+	// Accounting and pending inputs were one lock domain before P113. Hold both
 	// owners while copying so the checkpoint retains the same atomic snapshot,
 	// without making every model call contend with Process lifecycle transitions.
 	i.accounting.mu.Lock()
@@ -240,8 +240,15 @@ func (i *interactionSession) interactionCheckpointPayload(
 	pendingSteers := make(map[agent.SignalID]pendingInteractionSteer, len(i.state.pendingSteers))
 	for signalID, pending := range i.state.pendingSteers {
 		pendingSteers[signalID] = pendingInteractionSteer{
-			content:         transcript.CloneContent(pending.content),
-			projectedItemID: pending.projectedItemID,
+			content: transcript.CloneContent(pending.content),
+		}
+	}
+	var pendingContinuation *pendingInteractionContinuation
+	if pending := i.state.pendingContinuation; pending != nil {
+		pendingContinuation = &pendingInteractionContinuation{
+			processID: pending.processID,
+			itemID:    pending.itemID,
+			content:   transcript.CloneContent(pending.content),
 		}
 	}
 	i.state.mu.Unlock()
@@ -258,6 +265,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 		contexts,
 		instructions,
 		pendingSteers,
+		pendingContinuation,
 	)
 }
 

@@ -254,8 +254,8 @@ type ResumeCommand struct {
 
 // CommittedUserInput is optional follow-up content whose transcript Item has
 // already committed with a continuation opening. The executor must make it
-// visible after the interrupt answers at the same Strategy boundary, append it
-// to Conversation once, and never project a second transcript Item.
+// visible at the first root model boundary after the answered Tool result,
+// append it to Conversation once, and never project a second transcript Item.
 type CommittedUserInput struct {
 	ItemID  string
 	Content []transcript.ContentBlock

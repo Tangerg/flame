@@ -191,7 +191,9 @@ func (o *observedInteractionModel) begin(
 		return interaction.ModelInvocation{}, nil, "", nil, interaction.HostFailure(err)
 	}
 	member := o.session.executorMember(invocation.Relation())
-	if err := o.session.commitAppliedSteers(ctx, member, invocation.AppliedSteerSignalIDs()); err != nil {
+	if err := o.session.commitAppliedInputs(
+		ctx, member, invocation.Relation().ProcessID(), invocation.AppliedSteerSignalIDs(),
+	); err != nil {
 		return interaction.ModelInvocation{}, nil, "", nil, interaction.HostFailure(err)
 	}
 	if err := o.session.commitFact(ctx, member, runs.ModelCallStarted{CallID: callID}); err != nil {

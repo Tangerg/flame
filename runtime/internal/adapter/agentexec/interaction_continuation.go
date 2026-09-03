@@ -68,11 +68,9 @@ type preparedInteractionAnswer struct {
 }
 
 type preparedCommittedInteractionInput struct {
-	process  *agent.Process
-	signalID agent.SignalID
-	signal   agent.SignalRequest
-	itemID   string
-	content  []transcript.ContentBlock
+	processID agent.ProcessID
+	itemID    string
+	content   []transcript.ContentBlock
 }
 
 func (i *interactionSession) prepareContinuationAnswers(
@@ -147,32 +145,32 @@ func (i *interactionSession) deliverContinuationAnswers(
 	input *preparedCommittedInteractionInput,
 ) error {
 	deliveryContext := runExecutionContext(ctx, i.scope, i.start)
-	inputDelivered := false
+	inputRetained := false
 	if input != nil {
 		i.state.mu.Lock()
-		if _, exists := i.state.pendingSteers[input.signalID]; exists {
+		if i.state.pendingContinuation != nil {
 			i.state.mu.Unlock()
-			return errors.New("agentexec: committed continuation input Signal is already pending")
+			return errors.New("agentexec: committed continuation input is already pending")
 		}
-		i.state.pendingSteers[input.signalID] = pendingInteractionSteer{
-			content: transcript.CloneContent(input.content), projectedItemID: input.itemID,
+		i.state.pendingContinuation = &pendingInteractionContinuation{
+			processID: input.processID,
+			itemID:    input.itemID,
+			content:   transcript.CloneContent(input.content),
 		}
 		i.state.mu.Unlock()
 		defer func() {
-			if !inputDelivered {
-				i.removePendingSteer(input.signalID)
+			if !inputRetained {
+				i.state.mu.Lock()
+				if pending := i.state.pendingContinuation; pending != nil &&
+					pending.processID == input.processID && pending.itemID == input.itemID {
+					i.state.pendingContinuation = nil
+				}
+				i.state.mu.Unlock()
 			}
 		}()
 	}
 	for _, answer := range answers {
-		var accepted bool
-		var err error
-		if input != nil && answer.process == input.process {
-			accepted, err = answer.process.DeliverSignals(deliveryContext, answer.signal, input.signal)
-			inputDelivered = accepted
-		} else {
-			accepted, err = answer.process.DeliverSignal(deliveryContext, answer.signal)
-		}
+		accepted, err := answer.process.DeliverSignal(deliveryContext, answer.signal)
 		if err != nil {
 			return fmt.Errorf("agentexec: deliver Interaction answer Signal: %w", err)
 		}
@@ -180,16 +178,7 @@ func (i *interactionSession) deliverContinuationAnswers(
 			return errors.New("agentexec: Interaction answer Signal was already accepted")
 		}
 	}
-	if input != nil && !inputDelivered {
-		accepted, err := input.process.DeliverSignal(deliveryContext, input.signal)
-		if err != nil {
-			return fmt.Errorf("agentexec: deliver committed continuation input Signal: %w", err)
-		}
-		if !accepted {
-			return errors.New("agentexec: committed continuation input Signal was already accepted")
-		}
-		inputDelivered = true
-	}
+	inputRetained = input != nil
 	return nil
 }
 
@@ -202,24 +191,15 @@ func (i *interactionSession) prepareCommittedContinuationInput(
 	if _, err := resourceid.ParseItem(input.ItemID); err != nil {
 		return nil, fmt.Errorf("agentexec: committed continuation input: %w", err)
 	}
-	message, err := runs.MaterializeUserMessage(input.Content)
-	if err != nil {
+	if _, err := runs.MaterializeUserMessage(input.Content); err != nil {
 		return nil, fmt.Errorf("agentexec: materialize committed continuation input: %w", err)
-	}
-	signalID, err := interactionCommittedInputSignalID(input.ItemID)
-	if err != nil {
-		return nil, err
-	}
-	signal, err := interaction.NewSteerSignal(signalID, message)
-	if err != nil {
-		return nil, fmt.Errorf("agentexec: construct committed continuation input Signal: %w", err)
 	}
 	process := i.state.processHandle()
 	if process == nil {
 		return nil, runs.ErrExecutorNotLive
 	}
 	return &preparedCommittedInteractionInput{
-		process: process, signalID: signalID, signal: signal, itemID: input.ItemID,
+		processID: process.ID(), itemID: input.ItemID,
 		content: transcript.CloneContent(input.Content),
 	}, nil
 }
@@ -256,11 +236,4 @@ func interactionAnswerSignalID(
 	_, _ = digest.Write([]byte{0})
 	_, _ = digest.Write(response)
 	return agent.ParseSignalID("answer:" + hex.EncodeToString(digest.Sum(nil)))
-}
-
-const interactionCommittedInputSignalDomain = "continuation-input:"
-
-func interactionCommittedInputSignalID(itemID string) (agent.SignalID, error) {
-	digest := sha256.Sum256([]byte(itemID))
-	return agent.ParseSignalID(interactionCommittedInputSignalDomain + hex.EncodeToString(digest[:]))
 }
