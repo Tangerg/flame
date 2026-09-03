@@ -1,8 +1,15 @@
 import { useT } from "@/lib/i18n";
 import { splitCombo } from "@/lib/combo";
 import { EmptyState, Icon, Kbd, SearchOverlay } from "@/ui";
-import { COMMAND, useExtensionPoint } from "@/plugins/sdk";
-import { matchCommands } from "../application/commandMatches";
+import { knownIconName } from "@/ui/icons";
+import { COMMAND, useExtensionPoint, useWorkspaceViews } from "@/plugins/sdk";
+import { useContextDockCatalog } from "@/plugins/builtin/workspace/public/contextDockCatalog";
+import {
+  WORKSPACE_SETTINGS_VIEW,
+  openWorkspaceView,
+  openWorkspaceViewInDock,
+} from "@/plugins/builtin/workspace/public/navigation";
+import { matchCommands, type CommandChoice } from "../application/commandMatches";
 import { useCommandMenuStore } from "../application/commandMenuState";
 
 export function CommandMenu() {
@@ -10,6 +17,37 @@ export function CommandMenu() {
   const open = useCommandMenuStore((state) => state.open);
   const setOpen = useCommandMenuStore((state) => state.setOpen);
   const commands = useExtensionPoint(COMMAND);
+  const catalog = useContextDockCatalog();
+  const views = useWorkspaceViews();
+
+  // Views are rows here for the same reason the reference lists its panels: one you can only
+  // reach by opening the dock and browsing is one the keyboard cannot reach. Where it opens
+  // comes from the dock catalogue rather than a second list — a view it does not carry takes
+  // the whole content card, which is what settings and the icon gallery are.
+  const docked = new Set(
+    catalog.flatMap((group) => group.destinations.map((destination) => destination.viewId)),
+  );
+  const viewRow = (id: string, title: string, icon: string | undefined): CommandChoice => ({
+    key: `view:${id}`,
+    label: t("commandMenu.view", { title: t(title) }),
+    icon,
+    run: () => (docked.has(id) ? openWorkspaceViewInDock(id) : openWorkspaceView(id)),
+  });
+
+  const choices: CommandChoice[] = [
+    ...commands.map((command) => ({
+      key: command.id,
+      label: t(command.label),
+      icon: "command",
+      combo: command.combo,
+      run: () => void command.run(),
+    })),
+    // Settings has a command of its own, carrying the key the platform reserves for it; a
+    // second row for the same surface would only be noise.
+    ...views
+      .filter((view) => view.id !== WORKSPACE_SETTINGS_VIEW)
+      .map((view) => viewRow(view.id, view.title, view.icon)),
+  ];
 
   return (
     <SearchOverlay
@@ -26,26 +64,23 @@ export function CommandMenu() {
         />
       }
       options={(query) =>
-        matchCommands(
-          commands.map((command) => ({
-            id: command.id,
-            label: t(command.label),
-            combo: command.combo,
-          })),
-          query,
-        ).map((command) => ({
-          key: command.id,
+        matchCommands(choices, query).map((choice) => ({
+          key: choice.key,
           onSelect: () => {
             setOpen(false);
-            void commands.find((c) => c.id === command.id)?.run();
+            choice.run();
           },
           children: (
             <>
-              <Icon name="command" size="sm" className="shrink-0 text-fg-muted" />
-              <span className="min-w-0 flex-1 truncate">{command.label}</span>
-              {command.combo && (
+              <Icon
+                name={knownIconName(choice.icon) ?? "command"}
+                size="sm"
+                className="shrink-0 text-fg-muted"
+              />
+              <span className="min-w-0 flex-1 truncate">{choice.label}</span>
+              {choice.combo && (
                 <span className="flex shrink-0 items-center gap-1">
-                  {splitCombo(command.combo).map((part, index) => (
+                  {splitCombo(choice.combo).map((part, index) => (
                     <Kbd key={index}>{part}</Kbd>
                   ))}
                 </span>

@@ -1069,6 +1069,7 @@ export const en: Record<string, string> = {
   "command.searchChats": "Search chats",
   "command.openCommandMenu": "Open command menu",
   "commandMenu.placeholder": "Run a command…",
+  "commandMenu.view": "View: {{title}}",
   "commandMenu.empty.title": "No command matches",
   "commandMenu.empty.sub": "Try part of its name.",
   "command.showShortcuts": "Keyboard shortcuts",

@@ -2,6 +2,8 @@ import { comboGlyph } from "@/lib/combo";
 import { Trans, useT } from "@/lib/i18n";
 import { IconMap, TocById } from "./iconMap";
 import { Tag } from "@/ui";
+import { COMMAND, useExtensionByKey } from "@/plugins/sdk";
+import { COMMAND_MENU_COMMAND } from "@/plugins/builtin/command/command-menu/public/commandMenu";
 
 interface Section {
   titleKey: string;
@@ -102,6 +104,7 @@ const SECTIONS: Section[] = [
 
 export function IconShowcase() {
   const t = useT();
+  const combo = useExtensionByKey(COMMAND, COMMAND_MENU_COMMAND)?.combo;
   const total = SECTIONS.reduce((n, s) => n + s.ids.length, 0);
 
   return (
@@ -109,7 +112,7 @@ export function IconShowcase() {
       <p className="m-0 mb-1 text-ui-md leading-body text-fg-muted">
         <Trans
           i18nKey="iconGallery.showcase"
-          values={{ count: total, pkg: "@lobehub/icons", combo: comboGlyph("Mod+K") }}
+          values={{ count: total, pkg: "@lobehub/icons", combo: comboGlyph(combo ?? "") }}
           components={{
             code: <Tag size="md" ink="strong" />,
             em: <em className="not-italic text-fg" />,

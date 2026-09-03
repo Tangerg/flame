@@ -1595,3 +1595,81 @@ owns combo spelling.
    in round 17.
 5. The command menu has no raster coverage; it is a new overlay and the fixture
    harness does not install shortcut dispatch.
+
+## Round 19 — three comments described a palette that was not there
+
+Grepping the repository for what the new command menu should hold turned up
+three independent statements, in three files, describing a palette that lists
+workspace views:
+
+- the icon pane's own copy: *"Full catalogue: ⌘K → **View: Icon Gallery**"*
+- `workspace-views/index.ts`: *"the tab strip, dock destination list **and command
+  palette** enumerate views before any is opened"*
+- `openWorkspaceViewInDock`: *"the default placement for anything opened from the
+  conversation **or the palette**"*
+
+The palette had been removed and its consumers' documentation stayed. Round 18
+rebuilt the menu; this round gives it the half those three sentences describe.
+
+### Finding 1 — no view could be reached from the keyboard
+
+23 views, every one of them behind "open the dock, click Browse, click the row".
+
+| | Before | After |
+| --- | --- | --- |
+| Reaching a named panel | dock → Browse → click | ⌘⇧P, `View: <name>` |
+| Where it opens | — | from the dock catalogue: a view it carries opens in the dock, one it does not takes the whole content card — the rule `openWorkspaceView` already documented |
+| Second placement list | — | none: placement is read off the same catalogue the dock reads |
+
+The copy that named ⌘K now names the menu's key, read off the command rather
+than spelt — round 18's rule, applied to the one literal it had missed.
+
+### Finding 2 — the icon gallery was registered and unreachable
+
+`icon-gallery` is a `WORKSPACE_VIEW`. It is not a dock destination and not the
+settings card, so **nothing could open it** — while the settings pane it
+complements told the reader to go find it. It renders on the card now, like
+settings, because the menu reaches every registered view rather than only the
+docked ones.
+
+I first added it to the dock destination list, which was wrong twice over, and
+the repository said so: `dockDestinations.test.ts` — a guard I had not found and
+had wrongly called absent — asserts that **every destination's view is
+`splittable`**, and the gallery is not. It is a full-card catalogue, not a panel.
+Reverted; the two comments I had "corrected" on the assumption that no guard
+existed are restored to what they said.
+
+### Finding 3 — Settings had no command
+
+The reference lists `settings` in its command menu on the key the platform
+reserves for it.
+
+| | Before | After |
+| --- | --- | --- |
+| Opening settings | sidebar row, or a pane-specific caller | `⌘,`, and a row in the menu |
+| The view id `"settings"` | a literal in `openWorkspaceSettingsPane` and another in the contribution | `WORKSPACE_SETTINGS_VIEW`, named once beside `WORKSPACE_DOCK_CATALOG` |
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` and all fifteen guards run
+  individually — green.
+- 337 test files, 1894 tests in `plugins`/`ui`/`lib`, all passing.
+- `visual` — **390 passed**, no golden regenerated.
+- The menu's two placements are pinned: a docked view opens in the dock, a view
+  the catalogue does not carry opens on the card.
+
+### Open
+
+1. `thread1`…`thread9`, waiting on a decision about what nine numeric slots mean
+   in a Work Index grouped by project.
+2. `delegated` has no raster coverage.
+3. Nine settings panes have no fixture coverage.
+4. The `empty` golden's two renderings — reproduction and eight ruled-out causes
+   in round 17.
+5. The command menu has no raster coverage; the fixture harness does not install
+   shortcut dispatch.
+6. A view's placement is declared apart from the view, so the two can disagree —
+   which is how `icon-gallery` came to be unreachable and how `dockDestinations.test.ts`
+   misses it (its assembled set does not include the plugins that register views
+   outside `workspace-views/`). Making placement part of the view's own spec would
+   remove the class, and is a structural change worth agreeing before making.

@@ -801,6 +801,7 @@ export const es: Record<string, string> = {
   "command.searchChats": "Buscar chats",
   "command.openCommandMenu": "Abrir menú de comandos",
   "commandMenu.placeholder": "Ejecutar un comando…",
+  "commandMenu.view": "Vista: {{title}}",
   "commandMenu.empty.title": "Ningún comando coincide",
   "commandMenu.empty.sub": "Prueba parte del nombre.",
   "command.showShortcuts": "Atajos de teclado",

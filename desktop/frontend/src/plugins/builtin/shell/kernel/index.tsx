@@ -4,7 +4,11 @@ import { SidebarPanel } from "@/plugins/builtin/sidebar/public/SidebarPanel";
 import { useSendComposerInput } from "@/plugins/builtin/chat/composer/public/sendToAgent";
 import { useReconcilePersistedAgentSessions } from "@/plugins/builtin/agent/public/session";
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
-import { WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
+import { COMMAND, WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
+import {
+  WORKSPACE_SETTINGS_VIEW,
+  openWorkspaceView,
+} from "@/plugins/builtin/workspace/public/navigation";
 import { useDefaultChatSession } from "@/plugins/builtin/agent/public/defaultSession";
 import { ComposerProjectTray } from "./panel/ProjectSelector";
 
@@ -42,11 +46,17 @@ export const kernelSettings = definePlugin({
   name: "flame.builtin.kernel-settings",
   setup(ctx) {
     ctx.contribute(WORKSPACE_VIEW, {
-      id: "settings",
+      id: WORKSPACE_SETTINGS_VIEW,
       title: "settings.title",
       icon: "settings",
       order: 200,
       component: SettingsPage,
+    });
+    ctx.contribute(COMMAND, {
+      id: "settings.open",
+      label: "settings.title",
+      combo: "Mod+,",
+      run: () => openWorkspaceView(WORKSPACE_SETTINGS_VIEW),
     });
   },
 });

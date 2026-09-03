@@ -947,6 +947,7 @@ export const zh: Record<string, string> = {
   "command.searchChats": "搜索会话",
   "command.openCommandMenu": "打开命令菜单",
   "commandMenu.placeholder": "执行命令…",
+  "commandMenu.view": "视图：{{title}}",
   "commandMenu.empty.title": "没有匹配的命令",
   "commandMenu.empty.sub": "试试名称的一部分。",
   "command.showShortcuts": "键盘快捷键",

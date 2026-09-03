@@ -774,6 +774,7 @@ export const ja: Record<string, string> = {
   "command.searchChats": "チャットを検索",
   "command.openCommandMenu": "コマンドメニューを開く",
   "commandMenu.placeholder": "コマンドを実行…",
+  "commandMenu.view": "ビュー: {{title}}",
   "commandMenu.empty.title": "一致するコマンドがありません",
   "commandMenu.empty.sub": "名前の一部を入力してください。",
   "command.showShortcuts": "キーボードショートカット",

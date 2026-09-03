@@ -1,9 +1,11 @@
-/** A command as the menu shows it: the label already resolved, because only the render knows
- *  the active locale, and the combo so a person can learn the key from the row they just ran. */
+/** A row of the menu: the label already resolved, because only the render knows the active
+ *  locale, and the combo so a person can learn the key from the row they just ran. */
 export interface CommandChoice {
-  id: string;
+  key: string;
   label: string;
+  icon?: string;
   combo?: string;
+  run: () => void;
 }
 
 /**

@@ -1,5 +1,6 @@
 export {
   WORKSPACE_DOCK_CATALOG,
+  WORKSPACE_SETTINGS_VIEW,
   activateWorkspaceSessionScope,
   closeActiveWorkspaceDockView,
   closeActiveWorkspaceView,
@@ -13,6 +14,7 @@ export {
   openWorkspaceDiffForFile,
   openWorkspaceFile,
   openWorkspaceSettingsPane,
+  openWorkspaceView,
   openWorkspaceViewInDock,
   reconcileWorkspaceToolSelection,
   reorderWorkspaceDockView,

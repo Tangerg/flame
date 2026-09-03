@@ -804,6 +804,7 @@ export const fr: Record<string, string> = {
   "command.searchChats": "Rechercher des conversations",
   "command.openCommandMenu": "Ouvrir le menu des commandes",
   "commandMenu.placeholder": "Exécuter une commande…",
+  "commandMenu.view": "Vue : {{title}}",
   "commandMenu.empty.title": "Aucune commande ne correspond",
   "commandMenu.empty.sub": "Essayez une partie du nom.",
   "command.showShortcuts": "Raccourcis clavier",

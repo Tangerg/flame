@@ -1,6 +1,7 @@
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
 import { COMMAND } from "@/plugins/sdk/kernelPoints";
 import { useCommandMenuStore } from "./application/commandMenuState";
+import { COMMAND_MENU_COMMAND } from "./public/commandMenu";
 import { CommandMenu } from "./ui/CommandMenu";
 
 export default definePlugin({
@@ -12,7 +13,7 @@ export default definePlugin({
       component: CommandMenu,
     });
     ctx.contribute(COMMAND, {
-      id: "command.menu",
+      id: COMMAND_MENU_COMMAND,
       label: "command.openCommandMenu",
       combo: "Mod+Shift+P",
       run: () => useCommandMenuStore.getState().toggle(),

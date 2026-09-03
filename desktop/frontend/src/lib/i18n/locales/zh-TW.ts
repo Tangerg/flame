@@ -779,6 +779,7 @@ export const zhTW: Record<string, string> = {
   "command.searchChats": "搜尋工作階段",
   "command.openCommandMenu": "開啟命令選單",
   "commandMenu.placeholder": "執行命令…",
+  "commandMenu.view": "檢視：{{title}}",
   "commandMenu.empty.title": "沒有相符的命令",
   "commandMenu.empty.sub": "試試名稱的一部分。",
   "command.showShortcuts": "鍵盤快速鍵",

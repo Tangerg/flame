@@ -14,6 +14,10 @@ import {
  */
 export const WORKSPACE_DOCK_CATALOG = "catalog";
 
+/** The one view that takes the whole content card instead of a dock slot, which is why it is
+ *  absent from the dock destinations and named here rather than spelled at each caller. */
+export const WORKSPACE_SETTINGS_VIEW = "settings";
+
 export function useActiveWorkspaceViewId(): string | null {
   return workspaceNavigation().useActiveViewId();
 }
@@ -143,7 +147,7 @@ export function closeActiveWorkspaceView(): boolean {
 
 export function openWorkspaceSettingsPane(pane: string): void {
   workspaceNavigation().setSettingsPane(pane);
-  workspaceNavigation().openView("settings");
+  workspaceNavigation().openView(WORKSPACE_SETTINGS_VIEW);
 }
 
 export function openWorkspaceDiffForFile(path: string): void {

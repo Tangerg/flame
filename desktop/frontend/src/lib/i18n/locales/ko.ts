@@ -769,6 +769,7 @@ export const ko: Record<string, string> = {
   "command.searchChats": "대화 검색",
   "command.openCommandMenu": "명령 메뉴 열기",
   "commandMenu.placeholder": "명령 실행…",
+  "commandMenu.view": "보기: {{title}}",
   "commandMenu.empty.title": "일치하는 명령이 없습니다",
   "commandMenu.empty.sub": "이름의 일부를 입력해 보세요.",
   "command.showShortcuts": "키보드 단축키",

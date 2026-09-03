@@ -794,6 +794,7 @@ export const de: Record<string, string> = {
   "command.searchChats": "Chats durchsuchen",
   "command.openCommandMenu": "Befehlsmenü öffnen",
   "commandMenu.placeholder": "Befehl ausführen…",
+  "commandMenu.view": "Ansicht: {{title}}",
   "commandMenu.empty.title": "Kein Befehl passt",
   "commandMenu.empty.sub": "Versuche einen Teil des Namens.",
   "command.showShortcuts": "Tastenkürzel",
