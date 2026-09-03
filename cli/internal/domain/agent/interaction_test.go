@@ -97,6 +97,17 @@ func TestQuestionFieldEnforcesRuntimePresentationBounds(t *testing.T) {
 	}
 }
 
+func TestQuestionEnforcesRuntimeFieldCount(t *testing.T) {
+	fields := make([]QuestionField, 5)
+	for index := range fields {
+		fields[index] = QuestionField{Prompt: "Prompt", Kind: QuestionText}
+	}
+	question := Question{RunID: "run_1", ItemID: "q_1", Title: "Configuration", Fields: fields}
+	if err := question.Validate(); err == nil {
+		t.Fatal("question with too many fields was accepted")
+	}
+}
+
 func TestCompletedQuestionOwnsAndValidatesAcceptedAnswers(t *testing.T) {
 	t.Parallel()
 

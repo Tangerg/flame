@@ -130,8 +130,11 @@ func (q Question) Validate() error {
 	if strings.TrimSpace(q.Title) == "" {
 		problems = append(problems, errors.New("title is empty"))
 	}
-	if len(q.Fields) == 0 {
-		problems = append(problems, errors.New("fields are empty"))
+	if err := (runtimeprotocol.Question{
+		Fields:  make([]runtimeprotocol.QuestionField, len(q.Fields)),
+		Answers: q.Answers,
+	}).ValidateWire(); err != nil {
+		problems = append(problems, err)
 	}
 	for i, field := range q.Fields {
 		if err := field.Validate(); err != nil {
