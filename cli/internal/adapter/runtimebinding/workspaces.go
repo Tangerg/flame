@@ -205,7 +205,15 @@ func (r *Connection) Files(ctx context.Context, request workspace.FilesRequest) 
 				workspaceFilePageLimit,
 			)
 		}
-		for _, entry := range page.Data {
+		for index, entry := range page.Data {
+			if err := protocol.ValidateWireTree(entry); err != nil {
+				return workspace.FileListing{}, runtimeContractViolation(
+					"list workspace files after cursor %q item %d is invalid: %v",
+					cursor,
+					index+1,
+					err,
+				)
+			}
 			result.Entries = append(result.Entries, workspace.FileEntry{
 				Path: entry.Path, Type: entry.Type, SizeBytes: cloneInt64(entry.SizeBytes),
 				ModifiedAt: entry.ModifiedAt,

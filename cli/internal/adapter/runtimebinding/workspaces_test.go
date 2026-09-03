@@ -256,6 +256,23 @@ func TestWorkspaceFilesRejectsCyclicRuntimePagination(t *testing.T) {
 	}
 }
 
+func TestWorkspaceFilesValidateCompleteRuntimeEntriesBeforeProjection(t *testing.T) {
+	t.Parallel()
+
+	runtime := &Connection{
+		workspaces: &workspaceBindingStub{files: protocol.NewPage([]protocol.FileEntry{{
+			Path: "main.go", Type: protocol.FileEntryFile,
+		}})},
+		meta: requestMeta("test"),
+	}
+
+	_, err := runtime.Files(t.Context(), workspace.FilesRequest{Workspace: "/workspace"})
+	if err == nil || !strings.Contains(err.Error(), "name") {
+		t.Fatalf("Files error = %v, want missing runtime name failure", err)
+	}
+	requireRuntimeContractViolation(t, err)
+}
+
 func TestWorkspaceUnpageableListsRejectContinuation(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
