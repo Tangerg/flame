@@ -2,7 +2,7 @@ package runtimebinding
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"sort"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
@@ -17,18 +17,22 @@ type usageBinding interface {
 }
 
 func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (agent.SessionUsageReport, error) {
-	if sessionID == "" {
-		return agent.SessionUsageReport{}, errors.New("session usage: session id is empty")
+	request := protocol.SessionUsageRequest{SessionID: sessionID}
+	if err := request.ValidateWire(); err != nil {
+		return agent.SessionUsageReport{}, fmt.Errorf("session usage: %w", err)
 	}
-	result, err := r.usage.GetSessionUsage(ctx, protocol.SessionUsageRequest{SessionID: sessionID}, r.callOptions())
+	result, err := r.usage.GetSessionUsage(ctx, request, r.callOptions())
 	if err != nil {
 		return agent.SessionUsageReport{}, classifyError(err)
 	}
 	if result == nil {
 		return agent.SessionUsageReport{}, runtimeContractViolation("session usage returned nil")
 	}
+	if err := protocol.ValidateWireTree(*result); err != nil {
+		return agent.SessionUsageReport{}, runtimeContractViolation("session usage returned an invalid wire result: %v", err)
+	}
 	report := agent.SessionUsageReport{
-		SessionID: sessionID,
+		SessionID: request.SessionID,
 		Total:     cloneModelUsage(result.ModelUsage),
 		ByModel:   make([]protocol.UsageBucket, 0, len(result.ByModel)),
 	}
@@ -55,12 +59,19 @@ func (r *Connection) Summary(ctx context.Context, period agent.UsageSummaryPerio
 	if recent {
 		sinceDays = protocolPositiveInt(days)
 	}
-	result, err := r.usage.GetUsageSummary(ctx, protocol.UsageSummaryRequest{SinceDays: sinceDays}, r.callOptions())
+	request := protocol.UsageSummaryRequest{SinceDays: sinceDays}
+	if err := request.ValidateWire(); err != nil {
+		return agent.UsageSummary{}, fmt.Errorf("usage summary: %w", err)
+	}
+	result, err := r.usage.GetUsageSummary(ctx, request, r.callOptions())
 	if err != nil {
 		return agent.UsageSummary{}, classifyError(err)
 	}
 	if result == nil {
 		return agent.UsageSummary{}, runtimeContractViolation("usage summary returned nil")
+	}
+	if err := protocol.ValidateWireTree(*result); err != nil {
+		return agent.UsageSummary{}, runtimeContractViolation("usage summary returned an invalid wire result: %v", err)
 	}
 	summary := agent.UsageSummary{
 		Period: period, Total: cloneModelUsage(result.Total),

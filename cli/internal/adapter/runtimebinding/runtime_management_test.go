@@ -108,7 +108,7 @@ func TestUsageAdapterRejectsInvalidRuntimeReports(t *testing.T) {
 	t.Parallel()
 	runtime := &Connection{usage: usageBindingStub{
 		session: func(context.Context, protocol.SessionUsageRequest, flameruntime.CallOptions) (*protocol.Usage, error) {
-			return &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: -1}}, nil
+			return &protocol.Usage{ByModel: map[string]protocol.ModelUsage{" invalid/model": {}}}, nil
 		},
 		summary: func(context.Context, protocol.UsageSummaryRequest, flameruntime.CallOptions) (*protocol.UsageSummary, error) {
 			return &protocol.UsageSummary{ByModel: []protocol.UsageBucket{{Key: "same"}, {Key: "same"}}}, nil
@@ -118,6 +118,24 @@ func TestUsageAdapterRejectsInvalidRuntimeReports(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 	_, err = runtime.Summary(t.Context(), recentUsagePeriod(t, 7))
 	requireRuntimeContractViolation(t, err)
+}
+
+func TestSessionUsageRejectsInvalidIdentityBeforeCallingRuntime(t *testing.T) {
+	t.Parallel()
+	called := false
+	runtime := &Connection{usage: usageBindingStub{
+		session: func(context.Context, protocol.SessionUsageRequest, flameruntime.CallOptions) (*protocol.Usage, error) {
+			called = true
+			return &protocol.Usage{}, nil
+		},
+	}, meta: requestMeta("test")}
+
+	if _, err := runtime.SessionUsage(t.Context(), " ses_1"); err == nil || !strings.Contains(err.Error(), "sessionId") {
+		t.Fatalf("SessionUsage error = %v, want sessionId field", err)
+	}
+	if called {
+		t.Fatal("SessionUsage called Runtime with an invalid session identity")
+	}
 }
 
 func recentUsagePeriod(t *testing.T, days int) agent.UsageSummaryPeriod {
