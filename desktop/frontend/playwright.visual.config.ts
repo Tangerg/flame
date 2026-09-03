@@ -5,7 +5,11 @@ const VISUAL_PORT = 4174;
 export default defineConfig({
   testDir: "./visual",
   testMatch: "**/*.visual.spec.ts",
-  fullyParallel: true,
+  // Tests inside a file run in declaration order, in one worker. With `fullyParallel` the
+  // agent goldens were spread across both workers in an order that changed run to run, and
+  // one of them — `delegated` — renders its transcript a pixel apart depending on what its
+  // worker drew first. Files still run in parallel, so the suite keeps its wall clock.
+  fullyParallel: false,
   forbidOnly: true,
   retries: 0,
   workers: 2,

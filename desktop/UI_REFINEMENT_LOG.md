@@ -559,13 +559,93 @@ removed.
 
 ### Open, for the next round
 
-1. **The golden budget versus a virtualised transcript.** Round 3 tightened the
-   budget to 40 pixels and that has already earned itself twice — the Lucide swap
-   and round 4's missing context gauge. But a frame-level golden of a transcript
-   whose turns quantise their own height cannot be pixel-exact, and the variant
-   costs 9037. The decision is between photographing the settled layout (which
-   means the fixture stops virtualising, and the README forbids a fixture-only
-   branch) and scoping a wider budget to the goldens that contain a transcript.
-   Not a decision to make in passing.
+1. **The golden budget versus a virtualised transcript** — answered in round 7.
 2. The chip stub, unchanged.
 3. The five ChatGPT-versus-Flame rows from round 5, waiting on a product answer.
+
+---
+
+## Round 7 — the flake was the test runner, not the app
+
+Status: **complete**
+
+### Audit scope
+
+Round 6's first open item, and the hypothesis it rested on: that a transcript
+whose turns quantise their own height is unstable **in production** too, and
+that fixing the product would fix the golden.
+
+### The hypothesis was worth testing and it was wrong
+
+Every turn but the last carries `content-visibility: auto` with
+`contain-intrinsic-size: auto 220px`. Measured on `long-content`:
+
+| | Placeholder | Real |
+| --- | --- | --- |
+| First turn (a short user message) | **220px** | **98px** |
+
+A 122-pixel over-estimate for a single turn, and the transcript's own
+`scrollHeight` moves 2326 → 2422 as turns come into view. That looks exactly
+like a scroll jump, so the next measurement was whether a reader sees one.
+
+**They do not.** Parking the scroll and walking it upward, a marker's viewport
+position tracks `scrollTop` linearly to the pixel — Chromium's scroll anchoring
+holds the visible content while the sizes correct behind it. What actually moves
+is the scrollbar's range, and a scroll target set beyond the not-yet-grown range
+clamps short. Neither is worth changing production for.
+
+So the instability is the harness's, and that is where it was fixed.
+
+### The finding
+
+`agent golden light delegated` deterministically renders **two different
+frames**, one pixel apart, identical in content, 9037 counted pixels apart:
+
+- Baselined from a full-suite run, an isolated `-g` run fails it.
+- Baselined from an isolated run, **the full suite fails it.**
+
+Both directions verified. No single baseline satisfies both, so the frame
+depends on something outside the page.
+
+Ruled out by direct measurement, six hypotheses:
+
+| | Result |
+| --- | --- |
+| Scroll position | identical, and the content does not overflow |
+| The transcript's mask (`--composer-overlay`) | identical to the fraction |
+| Element positions | identical |
+| `document.fonts.ready` | no effect; reverted |
+| Resolving `content-visibility` before capture | **not layout-neutral** — moved 26 goldens; reverted |
+| Resolving it by scrolling each turn through the viewport | no effect; reverted |
+| Vite's transform cache, cold vs warm | no effect |
+
+What was left was the runner. `fullyParallel: true` spreads the tests **inside a
+file** across both workers in an order that changes run to run, so what a
+worker had already drawn before it reached `delegated` was never the same twice.
+
+| | Before | After |
+| --- | --- | --- |
+| `fullyParallel` | `true` | `false` — declaration order, one worker per file; files still parallel |
+| Full-suite result | roughly one golden failing per run, and not the same one — `delegated`, then `dock-light` | **three consecutive clean runs** |
+| Wall clock | 4.1–4.5 min | 4.1–5.0 min — unchanged |
+
+Also kept from round 6: the frame's origin has to stop moving to the fraction
+before capture, which the integer `scrollTop` settle it joins cannot see.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` clean.
+- `npm run test` — 2334 passed, the same 8 `runtime/contract` failures.
+- `npm run visual:test` — **388 passed, three times running**.
+
+### Reclaimed
+
+Visual dev server stopped; the round's probe script deleted.
+
+### Open, for the next round
+
+1. The chip stub, unchanged.
+2. The five ChatGPT-versus-Flame rows from round 5, waiting on a product answer.
+3. Three clean runs is evidence, not proof. If a golden flakes again, the next
+   step is the one this round did not need: a single worker for the goldens,
+   paid for in wall clock.
