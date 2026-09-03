@@ -86,14 +86,6 @@ func (e ExportSessionRequest) ValidateWire() error {
 	)
 }
 
-func (i ImportSessionRequest) ValidateWire() error {
-	return collectWireViolations("ImportSessionRequest",
-		requiredText("artifact.session.id", i.Artifact.Session.ID),
-		identity("artifact.session.id", i.Artifact.Session.ID),
-		maxLength("artifact.session.id", i.Artifact.Session.ID, 256),
-	)
-}
-
 func (s StartRunRequest) ValidateWire() error {
 	return collectWireViolations("StartRunRequest",
 		requiredText("sessionId", s.SessionID),

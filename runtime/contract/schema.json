@@ -3699,53 +3699,6 @@
       },
       "required": [
         "artifact"
-      ],
-      "allOf": [
-        {
-          "properties": {
-            "artifact": {
-              "properties": {
-                "session": {
-                  "properties": {
-                    "id": {
-                      "minLength": 1
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "properties": {
-            "artifact": {
-              "properties": {
-                "session": {
-                  "properties": {
-                    "id": {
-                      "pattern": "^[^\\p{C}\\p{Z}]*$"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "properties": {
-            "artifact": {
-              "properties": {
-                "session": {
-                  "properties": {
-                    "id": {
-                      "maxLength": 256
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
       ]
     },
     "ImportSessionResponse": {

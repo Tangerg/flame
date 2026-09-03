@@ -172,6 +172,20 @@ func TestArtifactSessionRequiresLifecycleTimes(t *testing.T) {
 	}
 }
 
+func TestImportSessionTreeUsesArtifactSessionIdentityConstraint(t *testing.T) {
+	t.Parallel()
+
+	at := time.Unix(1, 0).UTC()
+	request := ImportSessionRequest{Artifact: SessionArtifact{
+		Version: SessionArtifactVersion,
+		Session: ArtifactSession{
+			Workspace: WorkspaceRef{Path: "/workspace"}, Provider: "provider", Model: "model",
+			CreatedAt: at, UpdatedAt: at,
+		},
+	}}
+	assertConstraintField(t, ValidateWireTree(request), "ImportSessionRequest", "artifact.session.id")
+}
+
 func TestRunProgressCarriesAtLeastOneValidFact(t *testing.T) {
 	t.Parallel()
 

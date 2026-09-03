@@ -5713,23 +5713,6 @@
       ]
     },
     {
-      "type": "ImportSessionRequest",
-      "rules": [
-        {
-          "field": "artifact.session.id",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "artifact.session.id",
-          "constraint": "identity"
-        },
-        {
-          "field": "artifact.session.id",
-          "constraint": "maxLength(256)"
-        }
-      ]
-    },
-    {
       "type": "ArtifactSession",
       "rules": [
         {

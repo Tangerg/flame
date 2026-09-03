@@ -35,9 +35,6 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 	if err := protocol.ValidateWireTree(art); err != nil {
 		return sessions.PortableSnapshot{}, invalidArtifact("artifact", "%v", err)
 	}
-	if art.Session.ID == "" {
-		return sessions.PortableSnapshot{}, invalidArtifact("artifact.session.id", "is required")
-	}
 	selection, err := modelref.NewWithReasoningEffort(art.Session.Provider, art.Session.Model, art.Session.ReasoningEffort)
 	if err == nil {
 		err = selection.ValidateExact()

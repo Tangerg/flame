@@ -4625,12 +4625,6 @@
               "type": "SessionArtifact",
               "tag": "json:\"artifact\""
             }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
           ]
         },
         {

@@ -1492,32 +1492,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     namespace: allOf([text(), pattern("^idp_[0-9a-f]{32}$")]),
     retentionSeconds: allOf([integer(), minimum(1), maximum(9223372036)]),
   }, ["namespace", "retentionSeconds"]),
-  ImportSessionRequest: allOf([
-    object({
-      artifact: ref(() => CHECKS.SessionArtifact),
-    }, ["artifact"]),
-    fields({
-      artifact: fields({
-        session: fields({
-          id: minLength(1),
-        }, []),
-      }, []),
-    }, []),
-    fields({
-      artifact: fields({
-        session: fields({
-          id: pattern("^[^\\p{C}\\p{Z}]*$"),
-        }, []),
-      }, []),
-    }, []),
-    fields({
-      artifact: fields({
-        session: fields({
-          id: maxLength(256),
-        }, []),
-      }, []),
-    }, []),
-  ]),
+  ImportSessionRequest: object({
+    artifact: ref(() => CHECKS.SessionArtifact),
+  }, ["artifact"]),
   ImportSessionResponse: object({
     session: ref(() => CHECKS.Session),
   }, ["session"]),

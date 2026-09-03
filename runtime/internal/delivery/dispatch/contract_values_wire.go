@@ -182,12 +182,6 @@ func registerSessionValues(s *Shapes) {
 			{Field: "model", Kind: ConstraintNonEmpty},
 		}...), modelSelectionIdentities("provider", "model", "reasoningEffort")...),
 	})
-
-	// Import is RESTORE semantics — the session comes back under the id it was
-	// exported with — so an artifact with no id names no session to restore.
-	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.ImportSessionRequest](), Constraints: requiredResourceIdentity("artifact.session.id"),
-	})
 }
 
 func registerArtifactValues(s *Shapes) {

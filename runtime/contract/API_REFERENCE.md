@@ -497,9 +497,6 @@ TypeScript validator from this single registry projection.
 | `UpdateSessionRequest` | `model` | `maxLength(256)` |
 | `UpdateSessionRequest` | `reasoningEffort` | `identity` |
 | `UpdateSessionRequest` | `reasoningEffort` | `maxLength(32)` |
-| `ImportSessionRequest` | `artifact.session.id` | `nonEmpty` |
-| `ImportSessionRequest` | `artifact.session.id` | `identity` |
-| `ImportSessionRequest` | `artifact.session.id` | `maxLength(256)` |
 | `ArtifactSession` | `id` | `nonEmpty` |
 | `ArtifactSession` | `id` | `identity` |
 | `ArtifactSession` | `id` | `maxLength(256)` |
