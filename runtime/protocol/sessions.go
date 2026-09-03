@@ -251,9 +251,9 @@ type ArtifactRun struct {
 	// capabilities. A child has none of its own; it reads its root's.
 	ProtocolProfile *RunProtocolProfile `json:"protocolProfile,omitempty"`
 	Outcome         ArtifactOutcome     `json:"outcome"`
-	CreatedAt       time.Time           `json:"createdAt"`
-	FinishedAt      time.Time           `json:"finishedAt"`
-	UpdatedAt       time.Time           `json:"updatedAt"`
+	CreatedAt       time.Time           `json:"createdAt,omitzero"`
+	FinishedAt      time.Time           `json:"finishedAt,omitzero"`
+	UpdatedAt       time.Time           `json:"updatedAt,omitzero"`
 	MessageMark     int                 `json:"messageMark"`
 }
 

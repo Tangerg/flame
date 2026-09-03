@@ -999,10 +999,17 @@ func registerObjectConstraints(s *Shapes) {
 	// into a session.
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.ArtifactRun](),
-		Rules: append([]ConditionalRule{{
-			When:      []delivery.FieldCondition{{Field: "spawnedByItemId", Operator: delivery.OperatorPresent}},
-			Forbidden: []string{"protocolProfile"},
-		}}, childLineageRules()...),
+		Rules: append([]ConditionalRule{
+			{
+				// Artifacts contain terminal Runs only, so all three lifecycle
+				// boundaries are durable facts needed by Run restoration.
+				Required: []string{"createdAt", "finishedAt", "updatedAt"},
+			},
+			{
+				When:      []delivery.FieldCondition{{Field: "spawnedByItemId", Operator: delivery.OperatorPresent}},
+				Forbidden: []string{"protocolProfile"},
+			},
+		}, childLineageRules()...),
 	})
 
 	// A portable Session retains the aggregate's origin and latest replacement

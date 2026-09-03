@@ -3004,17 +3004,17 @@
             {
               "name": "CreatedAt",
               "type": "time.Time",
-              "tag": "json:\"createdAt\""
+              "tag": "json:\"createdAt,omitzero\""
             },
             {
               "name": "FinishedAt",
               "type": "time.Time",
-              "tag": "json:\"finishedAt\""
+              "tag": "json:\"finishedAt,omitzero\""
             },
             {
               "name": "UpdatedAt",
               "type": "time.Time",
-              "tag": "json:\"updatedAt\""
+              "tag": "json:\"updatedAt,omitzero\""
             },
             {
               "name": "MessageMark",
