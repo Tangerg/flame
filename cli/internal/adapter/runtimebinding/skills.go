@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
@@ -46,7 +47,7 @@ func (r *Connection) Discover(ctx context.Context, workspacePath string) ([]work
 	})
 }
 
-func (r *Connection) Managed(ctx context.Context) ([]workspace.ManagedSkill, error) {
+func (r *Connection) Managed(ctx context.Context) ([]protocol.ManagedSkill, error) {
 	page, err := r.skills.ListManagedSkills(ctx, r.callOptions())
 	if err != nil {
 		return nil, classifyError(err)
@@ -55,16 +56,18 @@ func (r *Connection) Managed(ctx context.Context) ([]workspace.ManagedSkill, err
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValuesFallible("list managed skills", values, func(value protocol.ManagedSkill) (workspace.ManagedSkill, error) {
-		if err := protocol.ValidateWireTree(value); err != nil {
-			return workspace.ManagedSkill{}, err
+	managed := slices.Clone(values)
+	seen := make(map[string]struct{}, len(managed))
+	for index, skill := range managed {
+		if err := skill.ValidateWire(); err != nil {
+			return nil, runtimeContractViolation("list managed skills item %d is invalid: %v", index+1, err)
 		}
-		return workspace.ManagedSkill{
-			Name: value.Name, Description: value.Description, Lifecycle: value.Lifecycle,
-		}, nil
-	}, func(skill workspace.ManagedSkill) string {
-		return skill.Name
-	})
+		if _, duplicate := seen[skill.Name]; duplicate {
+			return nil, runtimeContractViolation("list managed skills repeats %q", skill.Name)
+		}
+		seen[skill.Name] = struct{}{}
+	}
+	return managed, nil
 }
 
 func (r *Connection) Proposals(ctx context.Context, workspacePath string) ([]workspace.SkillProposal, error) {

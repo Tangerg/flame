@@ -149,6 +149,22 @@ func TestSkillAdapterProjectsCatalogsAndExactMutationReferences(t *testing.T) {
 	}
 }
 
+func TestSkillAdapterClonesManagedCatalog(t *testing.T) {
+	page := protocol.NewPage([]protocol.ManagedSkill{{
+		Name: "review", Description: "Review code", Lifecycle: protocol.SkillLifecycleActive,
+	}})
+	stub := &invalidSkillBindingStub{skillBindingStub: &skillBindingStub{t: t}, managed: page}
+	runtime := &Connection{skills: stub, meta: requestMeta("test")}
+	managed, err := runtime.Managed(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	page.Data[0].Description = "mutated"
+	if managed[0].Description != "Review code" {
+		t.Fatal("managed skill projection aliases runtime catalog storage")
+	}
+}
+
 func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 	for _, test := range []struct {
 		name string
@@ -165,6 +181,16 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 		}, {
 			name: "blank managed name",
 			stub: &invalidSkillBindingStub{managed: protocol.NewPage([]protocol.ManagedSkill{{Name: " \t", Lifecycle: protocol.SkillLifecycleActive}})},
+			read: func(runtime *Connection) error {
+				_, err := runtime.Managed(t.Context())
+				return err
+			},
+		}, {
+			name: "repeated managed name",
+			stub: &invalidSkillBindingStub{managed: protocol.NewPage([]protocol.ManagedSkill{
+				{Name: "review", Lifecycle: protocol.SkillLifecycleActive},
+				{Name: "review", Lifecycle: protocol.SkillLifecycleArchived},
+			})},
 			read: func(runtime *Connection) error {
 				_, err := runtime.Managed(t.Context())
 				return err

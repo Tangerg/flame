@@ -34,7 +34,7 @@ func TestResolveSkillProposalRequiresRevisionWhenNamesAreNotUnique(t *testing.T)
 type skillServiceStub struct {
 	mu              sync.Mutex
 	discovered      []workspace.DiscoveredSkill
-	managed         []workspace.ManagedSkill
+	managed         []protocol.ManagedSkill
 	proposals       []workspace.SkillProposal
 	reads           atomic.Int32
 	decisions       chan skillDecision
@@ -71,7 +71,7 @@ func (b *blockingSkillArchiveService) Archive(ctx context.Context, name string) 
 func newSkillServiceStub() *skillServiceStub {
 	return &skillServiceStub{
 		discovered: []workspace.DiscoveredSkill{{Name: "release-checks", Description: "Release safely", Scope: protocol.SkillScopeProject}},
-		managed:    []workspace.ManagedSkill{{Name: "review", Description: "Review code", Lifecycle: protocol.SkillLifecycleActive}},
+		managed:    []protocol.ManagedSkill{{Name: "review", Description: "Review code", Lifecycle: protocol.SkillLifecycleActive}},
 		proposals: []workspace.SkillProposal{
 			{Name: "release-checks", Revision: terminalSkillRevision, Scope: protocol.SkillScopeUser, Description: "Release safely", Instructions: "Run every release gate.", Origin: protocol.SkillProposalOriginRequested},
 			{Name: "cleanup", Revision: terminalSkillRevision, Scope: protocol.SkillScopeProject, Description: "Clean generated files", Instructions: "Remove only generated output.", Origin: protocol.SkillProposalOriginMined},
@@ -87,10 +87,10 @@ func (s *skillServiceStub) Discover(context.Context, string) ([]workspace.Discov
 	return append([]workspace.DiscoveredSkill(nil), s.discovered...), nil
 }
 
-func (s *skillServiceStub) Managed(context.Context) ([]workspace.ManagedSkill, error) {
+func (s *skillServiceStub) Managed(context.Context) ([]protocol.ManagedSkill, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return append([]workspace.ManagedSkill(nil), s.managed...), nil
+	return append([]protocol.ManagedSkill(nil), s.managed...), nil
 }
 
 func (s *skillServiceStub) Proposals(context.Context, string) ([]workspace.SkillProposal, error) {

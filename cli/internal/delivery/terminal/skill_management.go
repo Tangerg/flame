@@ -70,7 +70,7 @@ func (a *app) managedSkillsReaderQuery() runtimeReaderQuery {
 	}
 }
 
-func managedSkillsDocument(managed []workspace.ManagedSkill) readerDocument {
+func managedSkillsDocument(managed []protocol.ManagedSkill) readerDocument {
 	lines := make([]string, 0, len(managed))
 	for _, skill := range managed {
 		line := skill.Name + "  " + string(skill.Lifecycle)

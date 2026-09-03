@@ -37,13 +37,13 @@ func TestSkillClosedVocabulariesRejectUnknownValues(t *testing.T) {
 	if err := (DiscoveredSkill{Name: "review", Scope: protocol.SkillScope("global")}).Validate(); err == nil {
 		t.Fatal("unknown scope was accepted")
 	}
-	if err := (ManagedSkill{Name: "review", Lifecycle: protocol.SkillLifecycle("stale")}).Validate(); err == nil {
+	if err := (protocol.ManagedSkill{Name: "review", Lifecycle: protocol.SkillLifecycle("stale")}).ValidateWire(); err == nil {
 		t.Fatal("unknown lifecycle was accepted")
 	}
 }
 
 func TestManagedSkillValidatesLifecycleAcknowledgement(t *testing.T) {
-	catalog := []ManagedSkill{{Name: "review", Lifecycle: protocol.SkillLifecycleActive}}
+	catalog := []protocol.ManagedSkill{{Name: "review", Lifecycle: protocol.SkillLifecycleActive}}
 	if err := ValidateSkillLifecycleAcknowledgement(catalog, "review", protocol.SkillLifecycleActive); err != nil {
 		t.Fatalf("active lifecycle acknowledgement: %v", err)
 	}

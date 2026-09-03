@@ -20,19 +20,9 @@ func (d DiscoveredSkill) Validate() error {
 
 func (d DiscoveredSkill) Key() string { return string(d.Scope) + "/" + d.Name }
 
-type ManagedSkill struct {
-	Name        string
-	Description string
-	Lifecycle   protocol.SkillLifecycle
-}
-
-func (m ManagedSkill) Validate() error {
-	return (protocol.ManagedSkill{Name: m.Name, Description: m.Description, Lifecycle: m.Lifecycle}).ValidateWire()
-}
-
 // ValidateSkillLifecycleAcknowledgement proves that an authoritative managed-skill
 // catalog reflects the requested lifecycle for exactly one named skill.
-func ValidateSkillLifecycleAcknowledgement(catalog []ManagedSkill, name string, lifecycle protocol.SkillLifecycle) error {
+func ValidateSkillLifecycleAcknowledgement(catalog []protocol.ManagedSkill, name string, lifecycle protocol.SkillLifecycle) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return errors.New("managed skill acknowledgement name is empty")
@@ -42,7 +32,7 @@ func ValidateSkillLifecycleAcknowledgement(catalog []ManagedSkill, name string, 
 	}
 	found := false
 	for index, skill := range catalog {
-		if err := skill.Validate(); err != nil {
+		if err := skill.ValidateWire(); err != nil {
 			return fmt.Errorf("managed skill acknowledgement item %d: %w", index+1, err)
 		}
 		if skill.Name != name {
