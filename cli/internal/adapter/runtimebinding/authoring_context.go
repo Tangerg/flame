@@ -32,9 +32,37 @@ func (a *AuthoringContext) Documents(ctx context.Context, workspacePath string) 
 	if err != nil {
 		return nil, err
 	}
-	return cloneUniqueWireValues("list agent documents", values, func(document protocol.AgentDoc) string {
+	documents, err := cloneUniqueWireValues("list agent documents", values, func(document protocol.AgentDoc) string {
 		return document.Path
 	})
+	if err != nil {
+		return nil, err
+	}
+	previousPhase := -1
+	for _, document := range documents {
+		phase := agentDocumentRenderPhase(document.Scope)
+		if phase < previousPhase {
+			return nil, runtimeContractViolation(
+				"list agent documents returned scope %q after a later render phase",
+				document.Scope,
+			)
+		}
+		previousPhase = phase
+	}
+	return documents, nil
+}
+
+func agentDocumentRenderPhase(scope protocol.AgentDocScope) int {
+	switch scope {
+	case protocol.AgentDocScopeHome:
+		return 0
+	case protocol.AgentDocScopeProjectRoot:
+		return 1
+	case protocol.AgentDocScopeCWD:
+		return 2
+	default:
+		return -1
+	}
 }
 
 func (a *AuthoringContext) Recipes(ctx context.Context, workspacePath string) ([]workspace.AuthoringRecipe, error) {

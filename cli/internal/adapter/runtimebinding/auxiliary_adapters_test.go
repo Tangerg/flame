@@ -134,6 +134,16 @@ func TestAuthoringContextAdapterRejectsInvalidWireValues(t *testing.T) {
 				return err
 			},
 		}, {
+			name: "out-of-order document cascade",
+			stub: &authoringContextBindingStub{docs: protocol.NewPage([]protocol.AgentDoc{
+				{Path: "/workspace/AGENTS.md", Scope: protocol.AgentDocScopeProjectRoot},
+				{Path: "/home/AGENTS.md", Scope: protocol.AgentDocScopeHome},
+			})},
+			read: func(adapter *AuthoringContext) error {
+				_, err := adapter.Documents(t.Context(), "/workspace")
+				return err
+			},
+		}, {
 			name: "blank recipe body",
 			stub: &authoringContextBindingStub{recipes: protocol.NewPage([]protocol.Recipe{{
 				Name: "empty", Body: " \n", Scope: protocol.RecipeScopeGlobal, Source: "/recipe.md",
