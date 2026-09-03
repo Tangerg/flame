@@ -283,6 +283,15 @@ func registerRunValues(s *Shapes) {
 			},
 		})
 	}
+	for _, invocationType := range []reflect.Type{
+		typeOf[protocol.ToolInvocation](),
+		typeOf[protocol.ArtifactToolInvocation](),
+	} {
+		s.valueConstraint(FieldConstraintSpec{
+			GoType:      invocationType,
+			Constraints: []FieldConstraint{{Field: "name", Kind: ConstraintPattern, Value: `\S`}},
+		})
+	}
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.RunSummary](),
 		Constraints: append(append(append(append(append(append(requiredResourceIdentity("id"),

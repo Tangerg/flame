@@ -6081,6 +6081,24 @@
       ]
     },
     {
+      "type": "ToolInvocation",
+      "rules": [
+        {
+          "field": "name",
+          "constraint": "pattern(\"\\\\S\")"
+        }
+      ]
+    },
+    {
+      "type": "ArtifactToolInvocation",
+      "rules": [
+        {
+          "field": "name",
+          "constraint": "pattern(\"\\\\S\")"
+        }
+      ]
+    },
+    {
       "type": "RunSummary",
       "rules": [
         {

@@ -2164,6 +2164,18 @@ func (a ArtifactModelUsage) ValidateWire() error {
 	)
 }
 
+func (t ToolInvocation) ValidateWire() error {
+	return collectWireViolations("ToolInvocation",
+		requiredTextPattern("name", t.Name, "\\S"),
+	)
+}
+
+func (a ArtifactToolInvocation) ValidateWire() error {
+	return collectWireViolations("ArtifactToolInvocation",
+		requiredTextPattern("name", a.Name, "\\S"),
+	)
+}
+
 func (s SubscribeRunResponse) ValidateWire() error {
 	return collectWireViolations("SubscribeRunResponse",
 		requiredText("runId", s.RunID),

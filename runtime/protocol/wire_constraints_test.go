@@ -1141,6 +1141,20 @@ func TestContentBlocksRequireSemanticTextAndImageMediaType(t *testing.T) {
 	}
 }
 
+func TestToolInvocationsRequireNonBlankNames(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		shape      string
+		invocation WireValidator
+	}{
+		{shape: "ToolInvocation", invocation: ToolInvocation{Name: " \t", Arguments: map[string]any{}}},
+		{shape: "ArtifactToolInvocation", invocation: ArtifactToolInvocation{Name: " \t", Arguments: map[string]any{}}},
+	} {
+		assertConstraintField(t, test.invocation.ValidateWire(), test.shape, "name")
+	}
+}
+
 func TestItemTimingVocabularyIsVariantExclusive(t *testing.T) {
 	t.Parallel()
 

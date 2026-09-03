@@ -3159,6 +3159,12 @@
               "type": "any",
               "tag": "json:\"result,omitempty\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {
@@ -8129,6 +8135,12 @@
               "name": "Result",
               "type": "any",
               "tag": "json:\"result,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },

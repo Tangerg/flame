@@ -845,7 +845,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["createdAt", "id", "model", "provider", "title", "updatedAt", "workspace"]),
   ArtifactToolInvocation: object({
     arguments: record(anything()),
-    name: text(),
+    name: allOf([text(), pattern("\\S")]),
     result: anything(),
   }, ["arguments", "name"]),
   ArtifactToolResult: object({
@@ -3611,7 +3611,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["provider"]),
   ToolInvocation: object({
     arguments: record(anything()),
-    name: text(),
+    name: allOf([text(), pattern("\\S")]),
     result: anything(),
   }, ["arguments", "name"]),
   ToolSpec: object({

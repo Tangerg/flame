@@ -574,6 +574,8 @@ TypeScript validator from this single registry projection.
 | `ContentBlock` | `mime` | `pattern("^image/")` |
 | `ArtifactContentBlock` | `text` | `pattern("\\S")` |
 | `ArtifactContentBlock` | `mime` | `pattern("^image/")` |
+| `ToolInvocation` | `name` | `pattern("\\S")` |
+| `ArtifactToolInvocation` | `name` | `pattern("\\S")` |
 | `RunSummary` | `id` | `nonEmpty` |
 | `RunSummary` | `id` | `identity` |
 | `RunSummary` | `id` | `maxLength(256)` |

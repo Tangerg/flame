@@ -1608,7 +1608,8 @@
           "additionalProperties": {}
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         },
         "result": {}
       },
@@ -10081,7 +10082,8 @@
           "additionalProperties": {}
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         },
         "result": {}
       },
