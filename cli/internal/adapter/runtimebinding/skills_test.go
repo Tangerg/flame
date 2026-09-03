@@ -191,10 +191,20 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 				return err
 			},
 		}, {
-			name: "repeated discovered identity",
+			name: "shadowed discovered name",
 			stub: &invalidSkillBindingStub{discovered: protocol.NewPage([]protocol.Skill{
 				{Name: "review", Scope: protocol.SkillScopeProject},
-				{Name: "review", Scope: protocol.SkillScopeProject},
+				{Name: "review", Scope: protocol.SkillScopeUser},
+			})},
+			read: func(runtime *Connection) error {
+				_, err := runtime.Discover(t.Context(), "/workspace")
+				return err
+			},
+		}, {
+			name: "out-of-order discovered catalog",
+			stub: &invalidSkillBindingStub{discovered: protocol.NewPage([]protocol.Skill{
+				{Name: "zeta", Scope: protocol.SkillScopeProject},
+				{Name: "alpha", Scope: protocol.SkillScopeUser},
 			})},
 			read: func(runtime *Connection) error {
 				_, err := runtime.Discover(t.Context(), "/workspace")

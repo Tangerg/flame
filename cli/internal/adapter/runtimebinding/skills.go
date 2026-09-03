@@ -34,9 +34,22 @@ func (r *Connection) Discover(ctx context.Context, workspacePath string) ([]prot
 	if err != nil {
 		return nil, err
 	}
-	return cloneUniqueWireValues("list discovered skills", values, func(skill protocol.Skill) string {
-		return workspace.DiscoveredSkillKey(skill)
+	found, err := cloneUniqueWireValues("list discovered skills", values, func(skill protocol.Skill) string {
+		return skill.Name
 	})
+	if err != nil {
+		return nil, err
+	}
+	for index := 1; index < len(found); index++ {
+		if found[index].Name < found[index-1].Name {
+			return nil, runtimeContractViolation(
+				"list discovered skills returned name %q out of catalog order after %q",
+				found[index].Name,
+				found[index-1].Name,
+			)
+		}
+	}
+	return found, nil
 }
 
 func (r *Connection) Managed(ctx context.Context) ([]protocol.ManagedSkill, error) {
