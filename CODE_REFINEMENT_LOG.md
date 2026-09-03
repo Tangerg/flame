@@ -7,8 +7,10 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–109 are complete and pushed to `origin/main`.
-- Round 109 ends at `42557a1` (`fix(runtime): reject repeated workspace changes`).
+- Rounds 1–110 are complete and pushed to `origin/main` through the Runtime
+  contract commit plus its CLI dependency update.
+- Round 110's Runtime contract is `b0581e65` (`fix(runtime): require workspace
+  change identities`).
 - Authorized code scope remains `runtime` and `cli`. Desktop work is concurrent
   user-owned work and must not be modified by this refinement stream.
 - The configured provider credential is used only through Runtime configuration.
@@ -54,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–109 — exact handoff
+## Rounds 101–110 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -67,6 +69,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 107 | `83098da`, `5a31545` | Closed ApprovalRule wire shape, published the Runtime version, and made CLI validate complete unique rule catalogs. |
 | 108 | `a227410` | Merged live workspace aliases at the Runtime owner and rejected repeated workspace identities at the CLI boundary. |
 | 109 | `42557a1` | Rejected repeated workspace change and retained structured-diff paths at both the Runtime owner and CLI boundary. |
+| 110 | `b0581e65` + CLI dependency update | Required non-empty path identities for change and structured-diff rows in every generated Runtime contract projection. |
 
 ## Verification contract
 
@@ -104,7 +107,7 @@ repeated here.
 
 ## Remaining direction
 
-- Start Round 110 by continuing to audit complete Runtime catalogs and CLI
+- Start Round 111 by continuing to audit complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the
