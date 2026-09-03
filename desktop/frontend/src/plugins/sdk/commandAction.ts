@@ -20,9 +20,11 @@ export interface CommandAction {
  * One user-triggered Runtime command at a time, with the fact that it is running visible on
  * the control that started it.
  *
- * The re-entry guard is a ref rather than the state: `busy` reaches the DOM a render later,
- * so a second click landing inside that gap would otherwise fire the command twice — which,
- * on a delete or a run-now, is two commands and not one wasted render.
+ * The guard is a ref so the "one at a time" part holds however the caller is wired. React
+ * flushes a discrete event's state synchronously, so a control that renders `disabled={busy}`
+ * is already refusing the second click on its own — measured, not assumed. A caller that
+ * forgets the attribute, or drives `run` from something other than a click, is the case this
+ * covers.
  */
 export function useCommandAction({
   wasRetired,

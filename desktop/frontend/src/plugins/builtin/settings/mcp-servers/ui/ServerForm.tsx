@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Icon, PillButton, Segmented, Surface, Switch, TextField } from "@/ui";
 import {
   type MCPServerSettings,
@@ -34,11 +34,6 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
   const draft = edit.fields;
 
   const [saving, setSaving] = useState(false);
-  // One save or delete at a time. `saving` disables the buttons a render after the click that
-  // started the first, and a create inside that gap is a second server. Deliberately NOT in
-  // `useAsyncFeedback`: its lease exists so a row editor's second save can supersede a
-  // pending one, and this form closes on success, so it has nothing to supersede.
-  const settling = useRef(false);
   const materialGeneration = useMCPServerMutationMaterialGeneration();
   const { feedback, reset, fail, run } = useAsyncFeedback(materialGeneration);
 
@@ -58,8 +53,6 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
   const valid = edit.isValid;
 
   const onSave = async () => {
-    if (settling.current) return;
-    settling.current = true;
     setSaving(true);
     reset();
     try {
@@ -71,7 +64,6 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
       if (mcpServerMutationWasRetired(err)) return;
       fail(err instanceof Error ? err.message : t("mcp.error.save"));
     } finally {
-      settling.current = false;
       setSaving(false);
     }
   };
@@ -80,8 +72,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
     run(() => test(buildInput()), t("mcp.error.test"), mcpServerMutationWasRetired);
 
   const onDelete = async () => {
-    if (!server || settling.current) return;
-    settling.current = true;
+    if (!server) return;
     setSaving(true);
     try {
       await remove(server.name);
@@ -90,7 +81,6 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
       if (mcpServerMutationWasRetired(err)) return;
       fail(err instanceof Error ? err.message : t("mcp.error.remove"));
     } finally {
-      settling.current = false;
       setSaving(false);
     }
   };

@@ -37,6 +37,33 @@ describe("ConnectionPane runtime status", () => {
     });
   });
 
+  // The URL field is `flex-1` beside these two, so a button that appears on the first
+  // keystroke takes width from it and moves the caret mid-typing.
+  it("keeps its controls mounted and disabled rather than appearing as you type", () => {
+    runtime.snapshot = {
+      phase: "ready",
+      failure: null,
+      observation: {
+        server: { name: "flame-runtime", version: "1.2.3" },
+        protocolVersion: "2",
+        health: "ready",
+        checks: {},
+      },
+    };
+    render(<ConnectionPane />);
+
+    const apply = screen.getByRole("button", { name: "Apply" });
+    const reset = screen.getByRole("button", { name: "Reset to default" });
+    expect((apply as HTMLButtonElement).disabled).toBe(true);
+    expect((reset as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText("URL"), {
+      target: { value: "http://127.0.0.1:9999" },
+    });
+    expect(screen.getByRole("button", { name: "Apply" })).toBe(apply);
+    expect((apply as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it("hands an endpoint replacement to the Runtime owner without reloading the renderer", () => {
     runtime.snapshot = {
       phase: "ready",

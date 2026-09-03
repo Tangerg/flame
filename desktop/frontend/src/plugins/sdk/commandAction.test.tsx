@@ -12,7 +12,7 @@ const wasRetired = (error: unknown) => error instanceof Retired;
 function Harness({ command }: { command: () => Promise<unknown> }) {
   const { busy, run } = useCommandAction({ wasRetired, fallback: "could not do it" });
   return (
-    <button disabled={busy} aria-busy={busy} onClick={() => run(command)}>
+    <button aria-busy={busy} onClick={() => run(command)}>
       go
     </button>
   );
@@ -23,9 +23,7 @@ describe("useCommandAction", () => {
     useNotificationStore.getState().clearAll();
   });
 
-  // The button is disabled from `busy`, which lands a render after the click that started
-  // the command — so the guard has to be the ref, not the rendered state.
-  it("refuses a second click that lands before the first has rendered", () => {
+  it("runs one command at a time even when the caller renders no disabled state", () => {
     const command = vi.fn(() => new Promise<void>(() => {}));
     render(<Harness command={command} />);
 
@@ -49,7 +47,6 @@ describe("useCommandAction", () => {
       await settle.promise;
     });
     expect(button.getAttribute("aria-busy")).toBe("false");
-    expect((button as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("says what the Runtime said, and takes the next command", async () => {

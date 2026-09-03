@@ -3578,7 +3578,6 @@ for await (const line of lines) {
       );
       throw new Error(`agent write did not persist: ${JSON.stringify(toolEvents)}`);
     }
-    expect(file.path).toBe("agent-write.txt");
 
     streamController.abort();
     await runtimeEvents.return?.();

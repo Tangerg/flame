@@ -118,22 +118,28 @@ export function ConnectionPane() {
               className="flex-1"
               spellCheck={false}
             />
-            {!isDefault && (
-              <Button
-                type="button"
-                variant="soft"
-                size="sm"
-                onClick={reset}
-                className="h-9 shrink-0"
-              >
-                {t("settings.connection.reset")}
-              </Button>
-            )}
-            {dirty && (
-              <Button type="button" size="sm" onClick={apply} className="h-9 shrink-0">
-                {t("settings.connection.apply")}
-              </Button>
-            )}
+            {/* Both stay mounted and go disabled instead of appearing. The field beside them is
+                `flex-1`, so a button arriving on the first keystroke narrowed it and moved the
+                caret in the middle of typing. */}
+            <Button
+              type="button"
+              variant="soft"
+              size="sm"
+              disabled={isDefault}
+              onClick={reset}
+              className="h-9 shrink-0"
+            >
+              {t("settings.connection.reset")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!dirty}
+              onClick={apply}
+              className="h-9 shrink-0"
+            >
+              {t("settings.connection.apply")}
+            </Button>
           </div>
           {error ? (
             <div className="flex items-center gap-1.5 text-ui-sm text-negative">

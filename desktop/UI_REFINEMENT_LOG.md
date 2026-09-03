@@ -835,3 +835,90 @@ have quietly removed a designed capability to fix an unrelated one.
 2. `delegated` has no raster coverage.
 3. **Nine settings panes have no fixture coverage.** The two read by hand both
    had real defects; the other seven have not been read.
+
+---
+
+## Round 10 — a guard measured out of existence, and a field that moved as you typed
+
+Status: **complete**
+
+### Audit scope
+
+The seven settings panes never read. Reading `ModeRow` first raised a question
+about rounds 4 and 9 that turned out to matter more than the panes did.
+
+### Finding 1 — the premise of rounds 4 and 9 was wrong, and round 9's fix with it
+
+`ModeRow` guards its async action by reading **state**, not a ref, and it is
+otherwise the most complete control in the settings surface — an intent state
+machine, `aria-busy`, `disabled`, a spinner. That contradicted the reason rounds
+4 and 9 gave for their refs: *"`busy` reaches the control a render after the
+click that started it."*
+
+Measured rather than argued. Two components, two synchronous `fireEvent.click`s:
+
+| | Commands fired |
+| --- | --- |
+| State guard, `disabled={busy}` on the button | **1** |
+| State guard, **no** `disabled` attribute at all | **1** |
+| Ref guard | 1 |
+
+React flushes a discrete event's state synchronously, so the second handler's
+closure already sees `busy`. **The gap the refs were protecting does not exist
+for a click.**
+
+All three of round 9's call sites already rendered `disabled={… busy}`, so its
+two hand-rolled refs bought nothing. Reverted. What round 9 got right stands:
+`ScheduleForm` keeps the migration to `useCommandAction`, which removed a
+hand-rolled catch, and round 4's fixes were real — `ScheduleRow` and `RulesRow`
+had **no guard and no disabled state at all**.
+
+`useCommandAction` keeps its ref, for a reason that survives the measurement and
+is now what its comment says: it makes "one at a time" hold **however the caller
+is wired**, including a caller that renders no disabled state. Its test was
+rewritten to prove exactly that — the harness no longer sets `disabled`, and
+removing the ref turns the test red.
+
+### Finding 2 — the connection field moved as you typed
+
+`ConnectionPane` renders Apply on `{dirty && …}` and Reset on `{!isDefault && …}`,
+in the same flex row as a `flex-1` URL field. The first keystroke mounts Apply,
+which takes its width out of the field — **the caret moves in the middle of
+typing.** Rule 12 asks for a stable layout; rule 5 asks for a legible disabled
+state, and this had neither.
+
+| | Before | After |
+| --- | --- | --- |
+| Apply | mounts on the first keystroke | always mounted, `disabled={!dirty}` |
+| Reset | mounts when the URL differs from the default | always mounted, `disabled={isDefault}` |
+
+A test pins it and fails if either disabled prop is dropped.
+
+### Read and found sound
+
+`ModeRow` (intent machine, busy, disabled, spinner), `HooksPane`,
+`PluginsPane`, `PrefSections`, `UsagePane`, `IconGallery`. The rest of
+`ConnectionPane` is the best-instrumented surface in the app: an `invalid` field,
+an inline error with a status dot, `aria-live="polite"` on the status row, and a
+refresh that disables while checking.
+
+### Contract migration
+
+`4fdd4697 refactor(runtime): stop echoing file read paths` landed mid-round;
+`FileContent` no longer carries `path`. One desktop e2e assertion read it, and is
+removed — the read answers content, not the path it was asked for.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` and nine gates clean.
+- `npm run test` excluding the live-runtime e2e — 2294 passed, 2 failed, both
+  `runtime/contract`'s own sample.
+- `npm run visual:test` — 388 passed.
+- Both new assertions proved able to fail by reverting what they guard.
+
+### Open, for the next round
+
+1. The five ChatGPT-versus-Flame rows from round 5, waiting on a product answer.
+2. `delegated` has no raster coverage.
+3. Nine settings panes have no fixture coverage. Seven are now read by hand and
+   sound; the coverage gap itself is unchanged.
