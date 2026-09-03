@@ -28,7 +28,8 @@ type ListModelsRequest struct {
 	Provider string `json:"provider,omitempty"`
 }
 
-// Model is one entry in models.list.
+// Model is one entry in models.list. A provider's complete page contains each
+// model ID once in ascending ID order.
 type Model struct {
 	ID          string `json:"id"`
 	Provider    string `json:"provider"`

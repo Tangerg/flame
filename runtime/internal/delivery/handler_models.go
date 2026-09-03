@@ -11,9 +11,9 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ListModels projects the application-owned model-discovery result onto the
-// protocol page. Discovery policy, remote fallback, and catalog enrichment all
-// remain in application/integration/models.
+// ListModels projects the application-owned unique, ID-ordered model-discovery
+// result onto the protocol page. Discovery policy, remote fallback, and catalog
+// enrichment all remain in application/integration/models.
 func (s *Handler) ListModels(ctx context.Context, in protocol.ListModelsRequest) (*protocol.Page[protocol.Model], error) {
 	models, err := s.models.ListModels(ctx, in.Provider)
 	if err != nil {

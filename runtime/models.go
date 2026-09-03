@@ -7,7 +7,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ListModels returns models available through configured providers.
+// ListModels returns one model per ID for a provider in ascending ID order.
 func (r *Runtime) ListModels(ctx context.Context, request protocol.ListModelsRequest, options CallOptions) (*protocol.Page[protocol.Model], error) {
 	return r.invoke[protocol.ListModelsRequest, *protocol.Page[protocol.Model]](ctx, delivery.ModelsList, request, callOptions(options))
 }

@@ -152,11 +152,11 @@ func (c *Coordinator) TestProvider(ctx context.Context, id string) (ProviderTest
 	return ProviderTestSucceeded, nil
 }
 
-// ListModels applies the model-discovery policy for one supported provider.
-// Providers with endpoint-owned
-// model sets prefer a successful non-empty remote list; every other outcome
-// falls back to the static catalog, so restart behavior never depends on an
-// in-memory probe result.
+// ListModels applies the model-discovery policy for one supported provider and
+// returns one entry per model ID in ascending ID order. Providers with
+// endpoint-owned model sets prefer a successful non-empty remote list; every
+// other outcome falls back to the static catalog, so restart behavior never
+// depends on an in-memory probe result.
 func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Model, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -183,14 +183,14 @@ func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Mode
 				}
 				model, modelErr := NewModel(providerID, id, nil)
 				if modelErr != nil {
-					return c.catalogModels(providerID), nil
+					return c.catalogModels(providerID)
 				}
 				out = append(out, model)
 			}
-			return out, nil
+			return orderedModels(providerID, out)
 		}
 	}
-	return c.catalogModels(providerID), nil
+	return c.catalogModels(providerID)
 }
 
 func (c *Coordinator) supportedProviders() []ProviderMetadata {
@@ -260,11 +260,32 @@ func (c *Coordinator) modelDiscoveryProvider(ctx context.Context, providerID str
 	return entry, nil
 }
 
-func (c *Coordinator) catalogModels(providerID string) []Model {
+func (c *Coordinator) catalogModels(providerID string) ([]Model, error) {
 	if c.catalog == nil {
-		return nil
+		return nil, nil
 	}
-	return c.catalog.Models(providerID)
+	return orderedModels(providerID, c.catalog.Models(providerID))
+}
+
+func orderedModels(providerID string, models []Model) ([]Model, error) {
+	models = slices.Clone(models)
+	slices.SortFunc(models, func(first, second Model) int {
+		return cmp.Compare(first.ID(), second.ID())
+	})
+	for index, model := range models {
+		if model.Provider() != providerID {
+			return nil, fmt.Errorf(
+				"models: catalog for provider %q contains model %q from provider %q",
+				providerID,
+				model.ID(),
+				model.Provider(),
+			)
+		}
+		if index > 0 && model.ID() == models[index-1].ID() {
+			return nil, fmt.Errorf("models: catalog for provider %q repeats model %q", providerID, model.ID())
+		}
+	}
+	return models, nil
 }
 
 func (c *Coordinator) lookupModel(providerID, modelID string) (Model, bool) {

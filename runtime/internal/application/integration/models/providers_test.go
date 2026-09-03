@@ -151,6 +151,52 @@ func TestListProvidersOwnsCatalogOrder(t *testing.T) {
 	}
 }
 
+func TestListModelsOwnsCatalogOrderAndSnapshot(t *testing.T) {
+	providerID := "static"
+	catalog := testCatalog{
+		metadata: []ProviderMetadata{providerMetadataFixture(
+			t, providerID, ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability(),
+		)},
+		models: map[string][]Model{providerID: {
+			catalogModelFixture(t, providerID, "zeta", &Details{DisplayName: "Zeta"}),
+			catalogModelFixture(t, providerID, "alpha", &Details{DisplayName: "Alpha"}),
+		}},
+	}
+	c := New(Config{Catalog: catalog})
+
+	models, err := c.ListModels(t.Context(), providerID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(models) != 2 || models[0].ID() != "alpha" || models[1].ID() != "zeta" {
+		t.Fatalf("models = %+v, want alpha then zeta", models)
+	}
+	if catalog.models[providerID][0].ID() != "zeta" {
+		t.Fatal("ListModels mutated catalog storage while ordering its result")
+	}
+}
+
+func TestListModelsRejectsContradictoryCatalogIdentity(t *testing.T) {
+	providerID := "static"
+	alpha := catalogModelFixture(t, providerID, "alpha", &Details{})
+	for name, entries := range map[string][]Model{
+		"duplicate model":  {alpha, alpha},
+		"foreign provider": {catalogModelFixture(t, "other", "alpha", &Details{})},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := New(Config{Catalog: testCatalog{
+				metadata: []ProviderMetadata{providerMetadataFixture(
+					t, providerID, ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability(),
+				)},
+				models: map[string][]Model{providerID: entries},
+			}})
+			if models, err := c.ListModels(t.Context(), providerID); err == nil || models != nil {
+				t.Fatalf("ListModels = (%+v, %v), want nil/error", models, err)
+			}
+		})
+	}
+}
+
 func catalogModelFixture(t testing.TB, providerID, modelID string, details *Details) Model {
 	t.Helper()
 	model, err := NewModel(providerID, modelID, details)
@@ -287,7 +333,7 @@ func TestListModelsPrefersRemoteModelsAndEnrichesKnownEntries(t *testing.T) {
 		metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability())},
 		models:   map[string][]Model{"ollama": {catalogModelFixture(t, "ollama", "known", &Details{DisplayName: "Known"})}},
 	}
-	lister := &fakeLister{ids: []string{"known", "local"}}
+	lister := &fakeLister{ids: []string{"local", "known"}}
 	c := New(Config{Providers: registry, Catalog: catalog, Lister: lister})
 
 	got, err := c.ListModels(t.Context(), "ollama")
