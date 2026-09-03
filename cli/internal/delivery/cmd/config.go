@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"math"
 	"os"
@@ -15,8 +17,11 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 )
+
+const maximumCLIConfigBytes int64 = 256 << 10
 
 type flagBinding struct {
 	key  string
@@ -67,7 +72,7 @@ func configureRoot(v *viper.Viper, root *cobra.Command) {
 	}
 
 	flags := root.PersistentFlags()
-	flags.String("config", "", "Configuration file (default: <workspace>/.flame.yaml or the user config directory)")
+	flags.String("config", "", "YAML configuration file (default: <workspace>/.flame.yaml or the user config directory)")
 	flags.String("provider", defaults.Provider, "Optional provider override for new runs (must be paired with --model)")
 	flags.String("model", defaults.Model, "Optional model override for new runs (must be paired with --provider)")
 	flags.String("max-total-tokens", "", "Maximum cumulative tokens per run (strictly positive; omit for unlimited)")
@@ -102,13 +107,19 @@ func loadConfig(v *viper.Viper, cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	if selectConfigSourceErr := selectConfigSource(v, cmd, path); selectConfigSourceErr != nil {
-		return selectConfigSourceErr
+	source, found, err := selectConfigSource(cmd, path)
+	if err != nil {
+		return err
 	}
-	if readInConfigErr := v.ReadInConfig(); readInConfigErr != nil {
-		_, notFound := errors.AsType[viper.ConfigFileNotFoundError](readInConfigErr)
-		if path != "" || !notFound {
-			return fmt.Errorf("read configuration: %w", readInConfigErr)
+	if found {
+		content, err := readConfigFile(source)
+		if err != nil {
+			return fmt.Errorf("read configuration %q: %w", source, err)
+		}
+		v.SetConfigType("yaml")
+		v.SetConfigFile(source)
+		if err := v.ReadConfig(bytes.NewReader(content)); err != nil {
+			return fmt.Errorf("read configuration %q: %w", source, err)
 		}
 	}
 	if bindSettingFlagsErr := bindSettingFlags(v, cmd); bindSettingFlagsErr != nil {
@@ -157,32 +168,71 @@ func applyRunLimitFlags(v *viper.Viper, cmd *cobra.Command) error {
 	return nil
 }
 
-func selectConfigSource(v *viper.Viper, cmd *cobra.Command, explicitPath string) error {
+func selectConfigSource(cmd *cobra.Command, explicitPath string) (string, bool, error) {
 	if explicitPath != "" {
-		v.SetConfigFile(explicitPath)
-		return nil
+		if !strings.EqualFold(filepath.Ext(explicitPath), ".yaml") {
+			return "", false, errors.New("--config must name a .yaml file")
+		}
+		return explicitPath, true, nil
 	}
 	workspace, err := resolveWorkspace(cmd)
 	if err != nil {
-		return fmt.Errorf("resolve project configuration workspace: %w", err)
+		return "", false, fmt.Errorf("resolve project configuration workspace: %w", err)
 	}
 	projectConfig := filepath.Join(workspace, ".flame.yaml")
 	_, err = os.Stat(projectConfig)
 	switch {
 	case err == nil:
-		v.SetConfigFile(projectConfig)
-		return nil
+		return projectConfig, true, nil
 	case !errors.Is(err, os.ErrNotExist):
-		return fmt.Errorf("inspect project configuration: %w", err)
+		return "", false, fmt.Errorf("inspect project configuration: %w", err)
 	}
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		return fmt.Errorf("resolve user config directory: %w", err)
+		return "", false, fmt.Errorf("resolve user config directory: %w", err)
 	}
-	v.SetConfigName("config")
-	v.SetConfigType("yaml")
-	v.AddConfigPath(filepath.Join(configDir, "flame"))
-	return nil
+	userConfig := filepath.Join(configDir, "flame", "config.yaml")
+	_, err = os.Stat(userConfig)
+	switch {
+	case err == nil:
+		return userConfig, true, nil
+	case errors.Is(err, os.ErrNotExist):
+		return "", false, nil
+	default:
+		return "", false, fmt.Errorf("inspect user configuration: %w", err)
+	}
+}
+
+func readConfigFile(path string) ([]byte, error) {
+	file, opened, err := fileinput.Open(path, maximumCLIConfigBytes)
+	if err != nil {
+		return nil, err
+	}
+	content, readErr := io.ReadAll(io.LimitReader(file, maximumCLIConfigBytes+1))
+	after, statErr := file.Stat()
+	closeErr := file.Close()
+	if readErr != nil {
+		return nil, readErr
+	}
+	if statErr != nil {
+		return nil, statErr
+	}
+	if closeErr != nil {
+		return nil, closeErr
+	}
+	if int64(len(content)) > maximumCLIConfigBytes {
+		return nil, fileinput.SizeLimitError{
+			Size: int64(len(content)), Limit: maximumCLIConfigBytes,
+		}
+	}
+	current, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !fileinput.SameVersion(opened, after) || !fileinput.SameVersion(after, current) {
+		return nil, fileinput.ErrChanged
+	}
+	return content, nil
 }
 
 func bindSettingFlags(v *viper.Viper, cmd *cobra.Command) error {

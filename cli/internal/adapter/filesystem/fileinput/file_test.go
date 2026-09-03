@@ -58,6 +58,38 @@ func TestOpenExpectedRejectsReplacement(t *testing.T) {
 	}
 }
 
+func TestSameVersionRequiresStableIdentityAndMetadata(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "input")
+	if err := os.WriteFile(path, []byte("first"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	first, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unchanged, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !SameVersion(first, unchanged) {
+		t.Fatal("unchanged file versions differ")
+	}
+	if SameVersion(nil, unchanged) {
+		t.Fatal("nil file version was accepted")
+	}
+	if err := os.WriteFile(path, []byte("changed size"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	changed, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if SameVersion(first, changed) {
+		t.Fatal("changed file version was accepted")
+	}
+}
+
 func TestOpenAtExpectedUsesRootRelativeIdentity(t *testing.T) {
 	directory := t.TempDir()
 	path := filepath.Join(directory, "input")

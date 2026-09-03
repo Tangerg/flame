@@ -8,6 +8,7 @@
 # environment variables and CLI flags override file values. `flame config path`
 # shows the selected file and `flame config show` prints the merged, validated
 # result.
+# CLI configuration must be a regular YAML file no larger than 256 KiB.
 #
 # This file configures the CLI consumer only. Provider credentials, custom
 # endpoints, utility/embedding roles, Runtime server, sandbox, MCP, and LSP are

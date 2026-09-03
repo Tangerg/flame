@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 )
 
@@ -83,6 +85,55 @@ func TestConfigurationPrecedenceFileEnvironmentFlag(t *testing.T) {
 	}
 }
 
+func TestConfigurationAcceptsOnlyBoundedRegularYAML(t *testing.T) {
+	t.Run("extension", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "config.json")
+		if err := os.WriteFile(path, []byte(`{"ui":{"mouse":false}}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "config", "show"); err == nil ||
+			!strings.Contains(err.Error(), ".yaml") {
+			t.Fatalf("non-YAML configuration error = %v", err)
+		}
+	})
+
+	t.Run("size", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "config.yaml")
+		content := "ui:\n  mouse: false\n"
+		content += strings.Repeat(" ", int(maximumCLIConfigBytes)-len(content))
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "config", "show"); err != nil {
+			t.Fatalf("maximum-sized configuration: %v", err)
+		}
+		file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := file.WriteString(" "); err != nil {
+			_ = file.Close()
+			t.Fatal(err)
+		}
+		if err := file.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "config", "show"); !errors.Is(err, fileinput.ErrTooLarge) {
+			t.Fatalf("oversized configuration error = %v, want ErrTooLarge", err)
+		}
+	})
+
+	t.Run("kind", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "config.yaml")
+		if err := os.Mkdir(path, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := executeCommand(t, instantRuntime(), "", "--config", path, "config", "show"); !errors.Is(err, fileinput.ErrNotRegular) {
+			t.Fatalf("non-regular configuration error = %v, want ErrNotRegular", err)
+		}
+	})
+}
+
 func TestProjectConfigurationFollowsTheSelectedWorkspace(t *testing.T) {
 	workspace := t.TempDir()
 	canonical, err := canonicalWorkspacePath(workspace)
@@ -111,6 +162,55 @@ func TestProjectConfigurationFollowsTheSelectedWorkspace(t *testing.T) {
 	}
 	if strings.TrimSpace(used) != path {
 		t.Fatalf("workspace configuration path = %q, want %q", strings.TrimSpace(used), path)
+	}
+}
+
+func TestUserConfigurationUsesOnlyConfigYAML(t *testing.T) {
+	home := t.TempDir()
+	configured := filepath.Join(home, "config")
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", configured)
+	t.Setenv("AppData", configured)
+	t.Setenv("FLAME_CLI_PROVIDER", "")
+	t.Setenv("FLAME_CLI_MODEL", "")
+	configDirectory, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	configDirectory = filepath.Join(configDirectory, "flame")
+	if err := os.MkdirAll(configDirectory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(configDirectory, "config.json"),
+		[]byte(`{"provider":"wrong-format","model":"wrong-format"}`),
+		0o600,
+	); err != nil {
+		t.Fatal(err)
+	}
+	workspace := t.TempDir()
+	out, _, err := executeCommand(t, instantRuntime(), "", "-C", workspace, "config", "show")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got settings.Config
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Provider != "" || got.Model != "" {
+		t.Fatalf("non-YAML user configuration was loaded: %+v", got)
+	}
+
+	yamlPath := filepath.Join(configDirectory, "config.yaml")
+	if err := os.WriteFile(yamlPath, []byte("provider: yaml-provider\nmodel: yaml-model\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	used, _, err := executeCommand(t, instantRuntime(), "", "-C", workspace, "config", "path")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(used) != yamlPath {
+		t.Fatalf("user configuration path = %q, want %q", strings.TrimSpace(used), yamlPath)
 	}
 }
 

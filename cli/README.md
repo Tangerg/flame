@@ -19,7 +19,7 @@ CLI preferences and Runtime configuration have separate owners.
 
 - `.flame.yaml` in the selected workspace (`.` or `-C`) is the project-local CLI preferences file.
 - The OS user configuration directory provides the default CLI preferences file.
-- `--config` selects an explicit CLI file.
+- `--config` selects an explicit CLI YAML file.
 - `FLAME_CLI_*` variables and flags override file values.
 - `$FLAME_HOME/runtime/config.yaml` is Runtime-owned configuration.
 - `FLAME_RUNTIME_CONFIG_DIR` selects an explicit Runtime configuration directory.

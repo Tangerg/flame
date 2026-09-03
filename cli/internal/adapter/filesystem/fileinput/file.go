@@ -116,3 +116,13 @@ func validateFile(info os.FileInfo, maximumBytes int64) error {
 	}
 	return nil
 }
+
+// SameVersion reports whether two observations identify the same unchanged
+// filesystem object.
+func SameVersion(left, right os.FileInfo) bool {
+	return left != nil && right != nil &&
+		os.SameFile(left, right) &&
+		left.Size() == right.Size() &&
+		left.Mode() == right.Mode() &&
+		left.ModTime().Equal(right.ModTime())
+}
