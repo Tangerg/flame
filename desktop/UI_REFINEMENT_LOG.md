@@ -2032,3 +2032,53 @@ say which is which.
 ### Open
 
 Rounds 19–24's items, less the command menu's missing coverage.
+
+## Round 26 — eleven settings panes nobody had ever audited
+
+The last coverage item. The settings state hard-coded `settings: "appearance"`, so
+one pane of twelve was ever rendered — and the fixture loaded three pane plugins,
+so the settings goldens photographed a **three-row nav** the product does not
+have.
+
+| | Before | After |
+| --- | --- | --- |
+| Panes a fixture can open | one | twelve, by a `pane` route parameter |
+| Pane plugins loaded | 3 | 12 — the nav in every settings frame is now production's |
+| WCAG 2.2 AA audits | 1 pane × 2 themes | **12 panes × 2 themes** |
+| Frames | the appearance pane | plus the densest list and the most form-heavy: `plugins` and `providers` |
+
+### Two harness assumptions the panes exposed
+
+**"Wait for the Appearance heading."** Both `closure` and `workspace` waited for a
+control that only the hard-coded pane owns, in two hand-written copies of the same
+assumption. Every other pane timed out. The ready boundary every pane shares is
+the Suspense fallback's own `aria-busy`, scoped to the pane's section — the dock
+keeps skeletons that never settle in a fixture seeding no data for them, and they
+say nothing about the pane.
+
+**A gateway seeded too early.** The usage pane reads a port, not a data provider,
+and installs the Runtime gateway in its own `setup`. Seeding before
+`loadPluginsForTest` is overwritten, so the pane rendered a connection failure and
+the audit was about the fixture rather than the pane. Seeded after the plugins
+load, it passes.
+
+### Goldens regenerated
+
+Four, all for one reason and measured before accepting it: the settings nav is
+now the product's. The diff is confined to `x=16..204` — the rail — in every one.
+
+| Golden | Why |
+| --- | --- |
+| `workspace-light-settings`, `workspace-dark-settings` | the nav lists twelve panes |
+| `closure-light-settings-font18`, `closure-dark-settings-font18` | the same nav at the largest UI text |
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` and all fifteen guards — green.
+- 1897 tests passing.
+- `visual` — **428 passed**, up from 402: 24 pane audits and two frames added. One
+  run showed the round-17 `empty` flake; the next was clean.
+
+### Open
+
+Rounds 19–24's items, less the settings panes' missing coverage.

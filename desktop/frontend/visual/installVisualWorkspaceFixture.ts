@@ -6,6 +6,16 @@ import { useRuntimeConnectionStore } from "@/plugins/builtin/runtime/adapters/ru
 import { kernelSettings } from "@/plugins/builtin/shell/kernel";
 import appearanceSettings from "@/plugins/builtin/settings/appearance";
 import providersSettings from "@/plugins/builtin/settings/providers";
+import approvalsSettings from "@/plugins/builtin/settings/approvals";
+import brandIconsSettings from "@/plugins/builtin/settings/icon-gallery";
+import connectionSettings from "@/plugins/builtin/settings/connection-settings";
+import hooksSettings from "@/plugins/builtin/settings/hooks";
+import mcpServersSettings from "@/plugins/builtin/settings/mcp-servers";
+import personalizationSettings from "@/plugins/builtin/settings/personalization";
+import pluginsSettings from "@/plugins/builtin/settings/plugins-pane";
+import schedulesSettings from "@/plugins/builtin/settings/schedules";
+import usageSettings from "@/plugins/builtin/settings/usage";
+import { configureUsageGateway } from "@/plugins/builtin/settings/usage/application/ports/usageGateway";
 import {
   EMBEDDING_ROLE_KEY,
   PROVIDERS_KEY,
@@ -59,6 +69,7 @@ import {
   VISUAL_DOCK_WIDTH_RATIO,
   VISUAL_REVIEW_DOCK_WIDTH_RATIO,
   type VisualWorkspaceState,
+  type VisualSettingsPane,
   type VisualWorkspaceTheme,
 } from "./workspaceFixtureStates";
 
@@ -417,6 +428,7 @@ const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
 export async function installVisualWorkspaceFixture(
   state: VisualWorkspaceState,
   theme: VisualWorkspaceTheme,
+  pane: VisualSettingsPane = "appearance",
 ): Promise<void> {
   // Tool stats needs a session that actually ran tools; every other state wants
   // the quiet one. `tool-shells` is the state with a read, a command, a patch, a
@@ -472,7 +484,7 @@ export async function installVisualWorkspaceFixture(
     session: VISUAL_SESSION_ID,
     dock: dockViewId,
     view: state === "settings" ? "settings" : null,
-    settings: state === "settings" ? "appearance" : null,
+    settings: state === "settings" ? pane : null,
   });
   useAppearanceStore.setState({ theme, visualStyle: "flame", motionScale: 0 });
   useShellLayoutStore.setState({
@@ -502,12 +514,42 @@ export async function installVisualWorkspaceFixture(
     appearanceSettings,
     providersSettings,
     shortcutsSettings,
+    // Every remaining pane, so the settings state can open any of them and the pane list
+    // itself is the one production renders rather than a three-row stub.
+    approvalsSettings,
+    brandIconsSettings,
+    connectionSettings,
+    hooksSettings,
+    mcpServersSettings,
+    personalizationSettings,
+    pluginsSettings,
+    schedulesSettings,
+    usageSettings,
     visualNotifier,
     visualShortcuts,
   ]);
 
   const root = document.documentElement;
   root.dataset.visualDockWidthCommits = "0";
+  // AFTER the plugins: the usage pane installs the Runtime gateway in its own setup, so a
+  // fixture that seeds first is overwritten and the pane renders a connection failure — the
+  // one pane whose audit could never have been about the pane.
+  configureUsageGateway({
+    loadSummary: async () => ({
+      total: { inputTokens: 128_400, outputTokens: 41_900, costUsd: 4.12 },
+      byProvider: [
+        { key: "openai", inputTokens: 96_300, outputTokens: 31_200, costUsd: 3.04, runs: 18 },
+        { key: "anthropic", inputTokens: 32_100, outputTokens: 10_700, costUsd: 1.08, runs: 6 },
+      ],
+      byModel: [
+        { key: "gpt-5.6-sol", inputTokens: 96_300, outputTokens: 31_200, costUsd: 3.04, runs: 18 },
+        { key: "claude-opus-5", inputTokens: 32_100, outputTokens: 10_700, costUsd: 1.08, runs: 6 },
+      ],
+      sessions: 7,
+      runs: 24,
+    }),
+  });
+
   useShellLayoutStore.subscribe((next, previous) => {
     if (next.dockWidthRatio === previous.dockWidthRatio) return;
     root.dataset.visualDockWidthCommits = String(

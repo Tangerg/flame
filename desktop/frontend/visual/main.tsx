@@ -20,7 +20,12 @@ import {
   type VisualShellOverlay,
   type VisualWorkIndexState,
 } from "./shellFixtureStates";
-import { isVisualWorkspaceState, type VisualWorkspaceState } from "./workspaceFixtureStates";
+import {
+  isVisualSettingsPane,
+  isVisualWorkspaceState,
+  type VisualSettingsPane,
+  type VisualWorkspaceState,
+} from "./workspaceFixtureStates";
 import "../src/styles/globals.css";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { VISUAL_NOW } from "./agentFixtureFacts";
@@ -46,6 +51,10 @@ function fixtureTheme(value: string | null): FixtureTheme {
 const query = new URLSearchParams(window.location.search);
 const theme = fixtureTheme(query.get("theme"));
 const sidebarOpen = query.get("sidebar") !== "collapsed";
+const requestedPane = query.get("pane");
+const settingsPane: VisualSettingsPane = isVisualSettingsPane(requestedPane)
+  ? requestedPane
+  : "appearance";
 const requestedOverlay = query.get("overlay");
 const shellOverlay: VisualShellOverlay | null = isVisualShellOverlay(requestedOverlay)
   ? requestedOverlay
@@ -119,7 +128,7 @@ async function fixtureNode(): Promise<ReactNode> {
       import("./VisualWorkspaceFixture"),
       import("./installVisualWorkspaceFixture"),
     ]);
-    await installVisualWorkspaceFixture(workspaceState, theme);
+    await installVisualWorkspaceFixture(workspaceState, theme, settingsPane);
     return <VisualWorkspaceFixture state={workspaceState} />;
   }
   if (fixture === "shell") {

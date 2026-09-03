@@ -5,8 +5,9 @@ import { DOCK_MIN_WIDTH_PX, DOCK_SAFE_AREA_PX } from "@/lib/shellGeometry";
 import {
   VISUAL_DOCK_WIDTH_RATIO,
   VISUAL_REVIEW_VIEWPORT,
-  VISUAL_WORKSPACE_VIEWPORT,
   VISUAL_WORKSPACE_STATES,
+  VISUAL_WORKSPACE_VIEWPORT,
+  type VisualSettingsPane,
   type VisualWorkspaceState,
   type VisualWorkspaceTheme,
 } from "./workspaceFixtureStates";
@@ -21,6 +22,7 @@ test.use({ viewport: VISUAL_WORKSPACE_VIEWPORT });
 interface WorkspaceRoute {
   state: VisualWorkspaceState;
   theme?: VisualWorkspaceTheme;
+  pane?: VisualSettingsPane;
 }
 
 async function openWorkspace(page: Page, route: WorkspaceRoute): Promise<void> {
@@ -30,6 +32,7 @@ async function openWorkspace(page: Page, route: WorkspaceRoute): Promise<void> {
     theme: route.theme ?? "light",
     state: route.state,
   });
+  if (route.pane) query.set("pane", route.pane);
   await page.goto(`/visual/?${query}`);
   await page.locator("html[data-visual-ready]").waitFor();
   await expect(page.getByTestId("workspace-state")).toHaveAttribute("data-state", route.state);
@@ -133,11 +136,12 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     return;
   }
   if (state === "settings") {
-    await expect(page.getByRole("heading", { name: "Appearance" })).toBeVisible();
-    // The heading is owned by the settings host and renders before the lazy
-    // Appearance pane. A pane-owned control is the actual ready boundary for
-    // interaction assertions and goldens.
-    await expect(page.getByRole("button", { name: en["settings.theme"]! })).toBeVisible();
+    // The heading is owned by the settings host and renders before the lazy pane, so it
+    // says nothing about whether the chunk resolved. The Suspense fallback marks itself
+    // `aria-busy`, and its absence from the pane's own section is the ready boundary every
+    // pane shares — a control Appearance owns was one only for the pane that was hard-coded.
+    await expect(page.getByRole("heading").first()).toBeVisible();
+    await expect(page.locator('main section [aria-busy="true"]')).toHaveCount(0);
     return;
   }
   // Exhaustiveness belongs here: an added state must declare its own ready boundary
@@ -635,4 +639,16 @@ for (const theme of ["light", "dark"] as const) {
       await expect(page).toHaveScreenshot(`workspace-${theme}-${state}.png`);
     });
   }
+}
+
+// Two panes beyond the one the settings state used to hard-code: the densest list and the
+// most form-heavy, which between them carry the row, field and empty-state vocabulary every
+// other pane is assembled from.
+for (const pane of ["plugins", "providers"] as const) {
+  test(`workspace golden settings pane ${pane}`, async ({ page }) => {
+    await openWorkspace(page, { state: "settings", pane });
+    await waitForWorkspaceState(page, "settings");
+    await expect(page.locator('main section [aria-busy="true"]')).toHaveCount(0);
+    await expect(page).toHaveScreenshot(`workspace-light-settings-${pane}.png`);
+  });
 }

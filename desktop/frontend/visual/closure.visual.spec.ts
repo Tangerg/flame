@@ -7,7 +7,12 @@ import {
   VISUAL_WORK_INDEX_STATES,
   type VisualShellOverlay,
 } from "./shellFixtureStates";
-import { VISUAL_WORKSPACE_STATES, VISUAL_WORKSPACE_VIEWPORT } from "./workspaceFixtureStates";
+import {
+  VISUAL_SETTINGS_PANES,
+  VISUAL_WORKSPACE_STATES,
+  VISUAL_WORKSPACE_VIEWPORT,
+  type VisualSettingsPane,
+} from "./workspaceFixtureStates";
 import { en } from "@/lib/i18n/locales/en";
 
 // Named from the catalogue, not copied out of it. This string had seven literal copies
@@ -38,6 +43,7 @@ async function expectNoWcagViolations(page: Page): Promise<void> {
 interface FixtureRoute {
   fixture: "agent" | "shell" | "workspace";
   state: string;
+  pane?: VisualSettingsPane;
   theme?: "light" | "dark";
   motion?: "full";
   fontSize?: number;
@@ -63,6 +69,7 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
   if (route.motion) query.set("motion", route.motion);
   if (route.fontSize !== undefined) query.set("font-size", String(route.fontSize));
   if (route.overlay) query.set("overlay", route.overlay);
+  if (route.pane) query.set("pane", route.pane);
 
   await page.goto(`${VISUAL_URL}?${query}`);
   await page.locator("html[data-visual-ready]").waitFor();
@@ -106,11 +113,14 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
     await page.locator('[data-diff-file] span[style*="color"]').first().waitFor();
   }
   if (route.fixture === "workspace" && route.state === "settings") {
-    await expect(page.getByRole("heading", { name: "Appearance" })).toBeVisible();
-    // The heading belongs to the host and precedes the lazy pane body. Waiting
-    // for a control owned by Appearance proves the chunk has resolved before
-    // accessibility checks or screenshots inspect the page.
-    await expect(page.getByRole("button", { name: en["settings.theme"]! })).toBeVisible();
+    // The heading belongs to the host and precedes the lazy pane body, so it says nothing
+    // about whether the chunk resolved. The Suspense fallback is a skeleton that marks
+    // itself `aria-busy`, and its absence is the one readiness signal every pane shares —
+    // waiting for a control Appearance owns worked only for the pane that was hard-coded.
+    await expect(page.getByRole("heading").first()).toBeVisible();
+    // Scoped to the pane's own section: the dock keeps its own skeletons, which never
+    // settle in a fixture that seeds no data for them and say nothing about this pane.
+    await expect(page.locator('main section [aria-busy="true"]')).toHaveCount(0);
   }
 }
 
@@ -149,6 +159,20 @@ for (const route of ACCESSIBILITY_ROUTES) {
 
     await expectNoWcagViolations(page);
   });
+}
+
+// Every settings pane, which only this family runs over: the settings state hard-coded
+// `appearance`, so eleven panes had never been audited at all. A separate list rather than
+// more ACCESSIBILITY_ROUTES because the clipping families multiply by theme and font size,
+// and a pane's chrome is the same chrome the settings route already covers there.
+for (const pane of VISUAL_SETTINGS_PANES) {
+  for (const theme of ["light", "dark"] as const) {
+    test(`WCAG audit settings pane ${pane} ${theme}`, async ({ page }) => {
+      await openFixture(page, { fixture: "workspace", state: "settings", theme, pane });
+
+      await expectNoWcagViolations(page);
+    });
+  }
 }
 
 test("structural panels share one spring, containment, and reduced-motion authority", async ({

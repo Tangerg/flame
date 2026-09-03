@@ -30,6 +30,31 @@ export const VISUAL_REVIEW_DOCK_WIDTH_RATIO = 0.36;
 /** The viewport the review golden needs for `maxDockWidth` to allow the width above. */
 export const VISUAL_REVIEW_VIEWPORT = { width: 1800, height: 1000 } as const;
 
+/**
+ * The settings panes a fixture can open. Only `appearance` was ever shown — the settings
+ * state hard-coded it — so eleven panes shipped with no frame and no accessibility audit.
+ */
+export const VISUAL_SETTINGS_PANES = [
+  "appearance",
+  "personalization",
+  "providers",
+  "approvals",
+  "mcp-servers",
+  "hooks",
+  "schedules",
+  "plugins",
+  "usage",
+  "connection",
+  "brand-icons",
+  "shortcuts",
+] as const;
+
+export type VisualSettingsPane = (typeof VISUAL_SETTINGS_PANES)[number];
+
+export function isVisualSettingsPane(value: string | null): value is VisualSettingsPane {
+  return VISUAL_SETTINGS_PANES.includes(value as VisualSettingsPane);
+}
+
 export const VISUAL_WORKSPACE_STATES = [
   "dock-light",
   "dock-review",
