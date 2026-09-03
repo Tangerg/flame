@@ -1045,13 +1045,16 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     enabled: flag(),
   }, ["enabled"]),
   FeedbackRating: enumOf(["positive", "negative"]),
-  FeedbackRequest: object({
-    itemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    rating: ref(() => CHECKS.FeedbackRating),
-    runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    text: text(),
-  }, []),
+  FeedbackRequest: allOf([
+    object({
+      itemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      rating: ref(() => CHECKS.FeedbackRating),
+      runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      text: allOf([text(), pattern("\\S")]),
+    }, []),
+    anyOf([fields({}, ["rating"]), fields({}, ["text"])]),
+  ]),
   FieldError: object({
     detail: allOf([text(), minLength(1)]),
     field: allOf([text(), minLength(1)]),

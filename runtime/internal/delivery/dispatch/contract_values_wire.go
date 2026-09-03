@@ -34,6 +34,7 @@ func registerValueConstraints(s *Shapes) {
 	registerPlanValues(s)
 	registerWorkspaceValues(s)
 	registerUsageValues(s)
+	registerFeedbackValues(s)
 	registerSkillValues(s)
 	registerHookValues(s)
 	registerApprovalValues(s)
@@ -588,9 +589,15 @@ func registerUsageValues(s *Shapes) {
 		GoType:      typeOf[protocol.UsageSummaryRequest](),
 		Constraints: []FieldConstraint{{Field: "sinceDays", Kind: ConstraintPositive}},
 	})
+}
+
+func registerFeedbackValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
-		GoType:      typeOf[protocol.FeedbackRequest](),
-		Constraints: append(append(resourceIdentity("sessionId"), resourceIdentity("runId")...), resourceIdentity("itemId")...),
+		GoType: typeOf[protocol.FeedbackRequest](),
+		Constraints: append(
+			append(append(resourceIdentity("sessionId"), resourceIdentity("runId")...), resourceIdentity("itemId")...),
+			FieldConstraint{Field: "text", Kind: ConstraintPattern, Value: `\S`},
+		),
 	})
 }
 

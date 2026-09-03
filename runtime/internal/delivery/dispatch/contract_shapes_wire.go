@@ -534,6 +534,7 @@ func registerObjectConstraints(s *Shapes) {
 		{goType: typeOf[protocol.RunLimits](), requiredAny: []string{"maxTotalTokens", "maxSteps", "maxBudgetUsd"}},
 		{goType: typeOf[protocol.ArtifactRunLimits](), requiredAny: []string{"maxTotalTokens", "maxSteps", "maxBudgetUsd"}},
 		{goType: typeOf[protocol.ModelTokenLimits](), requiredAny: []string{"contextWindow", "maxInputTokens", "maxOutputTokens"}},
+		{goType: typeOf[protocol.FeedbackRequest](), requiredAny: []string{"rating", "text"}},
 	} {
 		s.constraint(ObjectConstraintSpec{
 			GoType: constrained.goType,

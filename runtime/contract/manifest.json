@@ -3673,6 +3673,17 @@
       ]
     },
     {
+      "type": "FeedbackRequest",
+      "rules": [
+        {
+          "requiredAny": [
+            "rating",
+            "text"
+          ]
+        }
+      ]
+    },
+    {
       "type": "RunProgress",
       "rules": [
         {
@@ -7135,6 +7146,10 @@
         {
           "field": "itemId",
           "constraint": "maxLength(256)"
+        },
+        {
+          "field": "text",
+          "constraint": "pattern(\"\\\\S\")"
         }
       ]
     },

@@ -422,6 +422,22 @@ func TestAgentMemoryUpdateRequiresAtLeastOneChange(t *testing.T) {
 	assertConstraintField(t, (AgentMemoryUpdateRequest{ID: id}).ValidateWire(), "AgentMemoryUpdateRequest", "content|pinned")
 }
 
+func TestFeedbackRequiresRatingOrNonBlankText(t *testing.T) {
+	t.Parallel()
+
+	for _, request := range []FeedbackRequest{
+		{Rating: FeedbackPositive},
+		{Text: "details"},
+		{Rating: FeedbackNegative, Text: "details"},
+	} {
+		if err := request.ValidateWire(); err != nil {
+			t.Errorf("ValidateWire rejected feedback with content: %v", err)
+		}
+	}
+	assertConstraintField(t, (FeedbackRequest{}).ValidateWire(), "FeedbackRequest", "rating|text")
+	assertConstraintField(t, (FeedbackRequest{Text: " \t"}).ValidateWire(), "FeedbackRequest", "text")
+}
+
 func TestUserAuthoredAgentMemoryCanOnlyBeActive(t *testing.T) {
 	t.Parallel()
 

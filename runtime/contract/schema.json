@@ -2332,9 +2332,26 @@
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
         "text": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         }
-      }
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": [
+                "rating"
+              ]
+            },
+            {
+              "required": [
+                "text"
+              ]
+            }
+          ]
+        }
+      ]
     },
     "FieldError": {
       "type": "object",

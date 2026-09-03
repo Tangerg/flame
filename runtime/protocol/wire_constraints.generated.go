@@ -582,7 +582,9 @@ func (f FeedbackRequest) ValidateWire() error {
 		maxLength("runId", f.RunID, 256),
 		identity("itemId", f.ItemID),
 		maxLength("itemId", f.ItemID, 256),
+		optionalTextPattern("text", f.Text, "\\S"),
 		closedEnum("rating", string(f.Rating), []string{"positive", "negative"}, true),
+		requiredAnyWhen(true, []string{"rating", "text"}, f),
 	)
 }
 

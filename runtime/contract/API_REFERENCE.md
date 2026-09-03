@@ -789,6 +789,7 @@ TypeScript validator from this single registry projection.
 | `FeedbackRequest` | `runId` | `maxLength(256)` |
 | `FeedbackRequest` | `itemId` | `identity` |
 | `FeedbackRequest` | `itemId` | `maxLength(256)` |
+| `FeedbackRequest` | `text` | `pattern("\\S")` |
 | `SkillNameRequest` | `name` | `pattern("\\S")` |
 | `Skill` | `name` | `pattern("\\S")` |
 | `ManagedSkill` | `name` | `pattern("\\S")` |
