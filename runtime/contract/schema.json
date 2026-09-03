@@ -1619,14 +1619,16 @@
       "type": "object",
       "properties": {
         "body": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "createdAt": {
           "type": "string",
           "format": "date-time"
         },
         "id": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[A-Z2-7]{2,64}$"
         },
         "itemId": {
           "type": "string",
@@ -1635,10 +1637,12 @@
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
         "preview": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "toolName": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         }
       },
       "required": [

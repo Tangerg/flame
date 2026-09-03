@@ -1019,6 +1019,13 @@ func registerObjectConstraints(s *Shapes) {
 		Rules:  []ConditionalRule{{Required: []string{"createdAt", "updatedAt"}}},
 	})
 
+	// A portable offloaded result is a durable blob; its creation time is part
+	// of the record restored into the destination store.
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.ArtifactToolResult](),
+		Rules:  []ConditionalRule{{Required: []string{"createdAt"}}},
+	})
+
 	// ArtifactProblem is shared by Run outcomes and ToolCall transcript items,
 	// but retry policy belongs only to the three transient Run classifications.
 	// Refuse the field for every permanent and Tool classification so the common

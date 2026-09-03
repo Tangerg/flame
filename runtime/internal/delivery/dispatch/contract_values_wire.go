@@ -7,6 +7,7 @@ import (
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
@@ -220,8 +221,13 @@ func registerArtifactValues(s *Shapes) {
 		),
 	})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType:      typeOf[protocol.ArtifactToolResult](),
-		Constraints: requiredResourceIdentity("itemId"),
+		GoType: typeOf[protocol.ArtifactToolResult](),
+		Constraints: append([]FieldConstraint{
+			{Field: "id", Kind: ConstraintPattern, Value: toolresult.IDPattern},
+			{Field: "toolName", Kind: ConstraintPattern, Value: `\S`},
+			{Field: "preview", Kind: ConstraintNonEmpty},
+			{Field: "body", Kind: ConstraintNonEmpty},
+		}, requiredResourceIdentity("itemId")...),
 	})
 	// Import accepts exactly the archive revision this development build emits.
 	// Publishing the version as an unconstrained integer would make generated

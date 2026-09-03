@@ -15,6 +15,9 @@ import (
 const (
 	minIDLength = 2
 	maxIDLength = 64
+	// IDPattern is the public wire grammar shared with generated
+	// protocol validators for portable offloaded-result records.
+	IDPattern = `^[A-Z2-7]{2,64}$`
 )
 
 var (

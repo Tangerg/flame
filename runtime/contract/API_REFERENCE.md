@@ -542,6 +542,10 @@ TypeScript validator from this single registry projection.
 | `ArtifactItem` | `droppedMessages` | `nonNegative` |
 | `ArtifactItem` | `durationMillis` | `nonNegative` |
 | `ArtifactItem` | `durationMillis` | `maximum(9223372036854)` |
+| `ArtifactToolResult` | `id` | `pattern("^[A-Z2-7]{2,64}$")` |
+| `ArtifactToolResult` | `toolName` | `pattern("\\S")` |
+| `ArtifactToolResult` | `preview` | `nonEmpty` |
+| `ArtifactToolResult` | `body` | `nonEmpty` |
 | `ArtifactToolResult` | `itemId` | `nonEmpty` |
 | `ArtifactToolResult` | `itemId` | `identity` |
 | `ArtifactToolResult` | `itemId` | `maxLength(256)` |

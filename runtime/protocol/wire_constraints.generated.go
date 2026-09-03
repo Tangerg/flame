@@ -2086,6 +2086,19 @@ func (a ArtifactSession) ValidateWire() error {
 	)
 }
 
+func (a ArtifactToolResult) ValidateWire() error {
+	return collectWireViolations("ArtifactToolResult",
+		requiredTextPattern("id", a.ID, "^[A-Z2-7]{2,64}$"),
+		requiredTextPattern("toolName", a.ToolName, "\\S"),
+		requiredText("preview", a.Preview),
+		requiredText("body", a.Body),
+		requiredText("itemId", a.ItemID),
+		identity("itemId", a.ItemID),
+		maxLength("itemId", a.ItemID, 256),
+		requiredWhen(true, "createdAt", a),
+	)
+}
+
 func (a ArtifactProblem) ValidateWire() error {
 	return collectWireViolations("ArtifactProblem",
 		optionalPositiveScalarNumber("retryAfterSeconds", a.RetryAfterSeconds),
@@ -2106,14 +2119,6 @@ func (a ArtifactProblem) ValidateWire() error {
 func (p PageContinuation) ValidateWire() error {
 	return collectWireViolations("PageContinuation",
 		maxLength("nextCursor", p.NextCursor, 65536),
-	)
-}
-
-func (a ArtifactToolResult) ValidateWire() error {
-	return collectWireViolations("ArtifactToolResult",
-		requiredText("itemId", a.ItemID),
-		identity("itemId", a.ItemID),
-		maxLength("itemId", a.ItemID, 256),
 	)
 }
 

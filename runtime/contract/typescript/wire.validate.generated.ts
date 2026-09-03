@@ -849,12 +849,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     result: anything(),
   }, ["arguments", "name"]),
   ArtifactToolResult: object({
-    body: text(),
+    body: allOf([text(), minLength(1)]),
     createdAt: text(),
-    id: text(),
+    id: allOf([text(), pattern("^[A-Z2-7]{2,64}$")]),
     itemId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    preview: text(),
-    toolName: text(),
+    preview: allOf([text(), minLength(1)]),
+    toolName: allOf([text(), pattern("\\S")]),
   }, ["body", "createdAt", "id", "itemId", "preview", "toolName"]),
   ArtifactUsage: object({
     byModel: allOf([record(ref(() => CHECKS.ArtifactModelUsage)), propertyNames(allOf([maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]))]),

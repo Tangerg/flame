@@ -2,6 +2,7 @@ package toolresult
 
 import (
 	"errors"
+	"regexp"
 	"testing"
 	"time"
 )
@@ -29,6 +30,9 @@ func TestNewIDReturnsDistinctValidIdentities(t *testing.T) {
 	}
 	if first == second {
 		t.Fatalf("NewID returned duplicate identity %q", first)
+	}
+	if pattern := regexp.MustCompile(IDPattern); !pattern.MatchString(first.String()) || !pattern.MatchString(second.String()) {
+		t.Fatalf("generated identities %q and %q do not match the public wire grammar", first, second)
 	}
 }
 

@@ -1920,6 +1920,35 @@ func TestArtifactRunRequiresLifecycleTimes(t *testing.T) {
 	}
 }
 
+func TestArtifactToolResultRequiresPortableBlobFacts(t *testing.T) {
+	t.Parallel()
+
+	valid := ArtifactToolResult{
+		ID: "BLOB234", ItemID: "item_1", ToolName: "shell",
+		Preview: "bounded preview", Body: "full body", CreatedAt: time.Unix(1, 0).UTC(),
+	}
+	if err := valid.ValidateWire(); err != nil {
+		t.Fatalf("valid ArtifactToolResult: %v", err)
+	}
+	for _, test := range []struct {
+		field  string
+		mutate func(*ArtifactToolResult)
+	}{
+		{field: "id", mutate: func(result *ArtifactToolResult) { result.ID = "lowercase" }},
+		{field: "itemId", mutate: func(result *ArtifactToolResult) { result.ItemID = "" }},
+		{field: "toolName", mutate: func(result *ArtifactToolResult) { result.ToolName = " \t" }},
+		{field: "preview", mutate: func(result *ArtifactToolResult) { result.Preview = "" }},
+		{field: "body", mutate: func(result *ArtifactToolResult) { result.Body = "" }},
+		{field: "createdAt", mutate: func(result *ArtifactToolResult) { result.CreatedAt = time.Time{} }},
+	} {
+		t.Run(test.field, func(t *testing.T) {
+			result := valid
+			test.mutate(&result)
+			assertConstraintField(t, result.ValidateWire(), "ArtifactToolResult", test.field)
+		})
+	}
+}
+
 func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
 	t.Parallel()
 

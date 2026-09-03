@@ -417,7 +417,7 @@ type ArtifactToolResult struct {
 	ToolName  string    `json:"toolName"`
 	Preview   string    `json:"preview"`
 	Body      string    `json:"body"`
-	CreatedAt time.Time `json:"createdAt"`
+	CreatedAt time.Time `json:"createdAt,omitzero"`
 }
 
 // ImportSessionRequest — sessions.import body. Restore semantics: the session
