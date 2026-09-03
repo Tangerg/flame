@@ -238,7 +238,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 		t.Fatalf("Items agent memory = (%+v, %v)", items, err)
 	}
 	pinned := true
-	updated, err := agentMemory.Update(t.Context(), agent.MemoryPatch{ID: added.ID, Pinned: &pinned})
+	updated, err := agentMemory.Update(t.Context(), protocol.AgentMemoryUpdateRequest{ID: added.ID, Pinned: &pinned})
 	if err != nil || !updated.Pinned {
 		t.Fatalf("Update agent memory = (%+v, %v)", updated, err)
 	}

@@ -7,7 +7,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–127 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–128 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
 - The current Runtime contract is `bec9a946` (`fix(runtime): require agent memory
   timestamps`).
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–127 — exact handoff
+## Rounds 101–128 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -87,6 +87,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 125 | `304f589c` + CLI dependency update | Made usage bucket identity a Runtime contract invariant and removed the synonymous CLI bucket DTO. |
 | 126 | `237f4484` + CLI dependency update | Made feedback content a Runtime contract invariant and removed the synonymous CLI feedback signal. |
 | 127 | `bec9a946` + CLI dependency update | Required agent-memory timestamps in Runtime's Go contract and removed the synonymous CLI memory-item DTO. |
+| 128 | CLI commit | Removed the synonymous CLI memory-patch DTO while preserving normalization, pointer isolation, and exact update acknowledgements. |
 
 ## Verification contract
 
@@ -124,7 +125,7 @@ repeated here.
 
 ## Remaining direction
 
-- Start Round 128 by continuing to audit complete Runtime catalogs and CLI
+- Start Round 129 by continuing to audit complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the

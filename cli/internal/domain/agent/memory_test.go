@@ -54,22 +54,7 @@ func TestItemRejectsBrokenReviewProjection(t *testing.T) {
 	}
 }
 
-func TestPatchRequiresAnIntentionalChange(t *testing.T) {
-	t.Parallel()
-	if err := (MemoryPatch{ID: testMemoryID}).Validate(); err == nil {
-		t.Fatal("empty patch was accepted")
-	}
-	empty := "  "
-	if err := (MemoryPatch{ID: testMemoryID, Content: &empty}).Validate(); err == nil {
-		t.Fatal("blank content was accepted")
-	}
-	pinned := true
-	if err := (MemoryPatch{ID: testMemoryID, Pinned: &pinned}).Validate(); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestAgentMemoryMutationResultsMustFulfillTheCommand(t *testing.T) {
+func TestAgentMemoryAddResultMustFulfillTheCommand(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
 	valid := protocol.AgentMemoryItem{
@@ -87,31 +72,5 @@ func TestAgentMemoryMutationResultsMustFulfillTheCommand(t *testing.T) {
 	wrongAdd.Content = "ignored"
 	if err := target.ValidateAddResult("authored", wrongAdd); err == nil || !strings.Contains(err.Error(), "content") {
 		t.Fatalf("add result error = %v", err)
-	}
-
-	content, pinned := "edited", true
-	patch := MemoryPatch{ID: valid.ID, Content: &content, Pinned: &pinned}
-	updated := valid
-	updated.Content, updated.Pinned = content, pinned
-	if err := patch.ValidateResult(updated); err != nil {
-		t.Fatalf("valid update result: %v", err)
-	}
-	for _, test := range []struct {
-		name   string
-		mutate func(*protocol.AgentMemoryItem)
-		want   string
-	}{
-		{name: "identity", mutate: func(result *protocol.AgentMemoryItem) { result.ID = "mem_00000000000000000000000000000002" }, want: "item"},
-		{name: "content", mutate: func(result *protocol.AgentMemoryItem) { result.Content = "ignored" }, want: "content"},
-		{name: "pinned", mutate: func(result *protocol.AgentMemoryItem) { result.Pinned = false }, want: "pinned"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			result := updated
-			test.mutate(&result)
-			err := patch.ValidateResult(result)
-			if err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("ValidateResult error = %v, want %q", err, test.want)
-			}
-		})
 	}
 }

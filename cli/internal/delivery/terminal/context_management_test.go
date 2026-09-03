@@ -40,19 +40,19 @@ type blockingAgentMemoryReviewService struct {
 
 type blockingAgentMemoryUpdateService struct {
 	AgentMemory
-	started  chan agent.MemoryPatch
+	started  chan protocol.AgentMemoryUpdateRequest
 	release  chan struct{}
 	canceled chan struct{}
 }
 
 func (b *blockingAgentMemoryUpdateService) Update(
 	ctx context.Context,
-	patch agent.MemoryPatch,
+	request protocol.AgentMemoryUpdateRequest,
 ) (protocol.AgentMemoryItem, error) {
-	b.started <- patch
+	b.started <- request
 	select {
 	case <-b.release:
-		return b.AgentMemory.Update(ctx, patch)
+		return b.AgentMemory.Update(ctx, request)
 	case <-ctx.Done():
 		close(b.canceled)
 		return protocol.AgentMemoryItem{}, context.Cause(ctx)
@@ -128,8 +128,8 @@ func (a *agentMemoryServiceStub) Review(_ context.Context, id string, decision p
 	return errors.New("not found")
 }
 
-func (a *agentMemoryServiceStub) Update(_ context.Context, patch agent.MemoryPatch) (protocol.AgentMemoryItem, error) {
-	if err := patch.Validate(); err != nil {
+func (a *agentMemoryServiceStub) Update(_ context.Context, request protocol.AgentMemoryUpdateRequest) (protocol.AgentMemoryItem, error) {
+	if err := request.ValidateWire(); err != nil {
 		return protocol.AgentMemoryItem{}, err
 	}
 	a.mu.Lock()
@@ -137,14 +137,14 @@ func (a *agentMemoryServiceStub) Update(_ context.Context, patch agent.MemoryPat
 	for _, items := range []*[]protocol.AgentMemoryItem{&a.project, &a.user} {
 		for index := range *items {
 			item := &(*items)[index]
-			if item.ID != patch.ID {
+			if item.ID != request.ID {
 				continue
 			}
-			if patch.Content != nil {
-				item.Content = *patch.Content
+			if request.Content != nil {
+				item.Content = *request.Content
 			}
-			if patch.Pinned != nil {
-				item.Pinned = *patch.Pinned
+			if request.Pinned != nil {
+				item.Pinned = *request.Pinned
 			}
 			item.UpdatedAt = time.Now()
 			return *item, nil
@@ -383,7 +383,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 func TestAgentMemoryUpdateDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) {
 	base := newAgentMemoryServiceStub()
 	memory := &blockingAgentMemoryUpdateService{
-		AgentMemory: base, started: make(chan agent.MemoryPatch, 1),
+		AgentMemory: base, started: make(chan protocol.AgentMemoryUpdateRequest, 1),
 		release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(memory.release) })

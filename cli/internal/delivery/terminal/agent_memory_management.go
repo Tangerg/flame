@@ -118,7 +118,7 @@ func (a *app) EditAgentMemory(argument string) error {
 					complete(nil)
 					return nil
 				}
-				return a.updateAgentMemory(target, agent.MemoryPatch{ID: item.ID, Content: &content}, "updating agent memory "+item.ID, complete)
+				return a.updateAgentMemory(target, protocol.AgentMemoryUpdateRequest{ID: item.ID, Content: &content}, "updating agent memory "+item.ID, complete)
 			},
 		})
 	})
@@ -138,7 +138,7 @@ func (a *app) SetAgentMemoryPinned(argument string, pinned bool) error {
 			a.message("agent memory is already " + state + " · " + item.ID)
 			return
 		}
-		if err := a.updateAgentMemory(target, agent.MemoryPatch{ID: item.ID, Pinned: &pinned}, verb+" agent memory "+item.ID, nil); err != nil {
+		if err := a.updateAgentMemory(target, protocol.AgentMemoryUpdateRequest{ID: item.ID, Pinned: &pinned}, verb+" agent memory "+item.ID, nil); err != nil {
 			a.message(err.Error())
 		}
 	})
@@ -292,11 +292,11 @@ func (a *app) addAgentMemory(target agent.MemoryTarget, content string, complete
 	return nil
 }
 
-func (a *app) updateAgentMemory(target agent.MemoryTarget, patch agent.MemoryPatch, label string, complete func(error) bool) error {
+func (a *app) updateAgentMemory(target agent.MemoryTarget, request protocol.AgentMemoryUpdateRequest, label string, complete func(error) bool) error {
 	presentation := a.session.context
 	a.status.note(label)
 	if !a.runAdmissionMutation(agentMemoryOperation, false,
-		func(ctx context.Context) (protocol.AgentMemoryItem, error) { return a.agentMemory.Update(ctx, patch) },
+		func(ctx context.Context) (protocol.AgentMemoryItem, error) { return a.agentMemory.Update(ctx, request) },
 		func(item protocol.AgentMemoryItem, err error) {
 			if err != nil {
 				a.message(label + " failed: " + err.Error())

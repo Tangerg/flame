@@ -106,7 +106,7 @@ type Schedules interface {
 type AgentMemory interface {
 	Items(context.Context, agent.MemoryTarget) ([]protocol.AgentMemoryItem, error)
 	Review(context.Context, string, protocol.AgentMemoryReviewDecision) error
-	Update(context.Context, agent.MemoryPatch) (protocol.AgentMemoryItem, error)
+	Update(context.Context, protocol.AgentMemoryUpdateRequest) (protocol.AgentMemoryItem, error)
 	Delete(context.Context, string) error
 	Add(context.Context, agent.MemoryTarget, string) (protocol.AgentMemoryItem, error)
 }

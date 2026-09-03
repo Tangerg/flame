@@ -76,31 +76,51 @@ func (a *AgentMemory) Review(ctx context.Context, id string, decision protocol.A
 	return classifyError(r.agentMemory.ReviewAgentMemory(ctx, request, options))
 }
 
-func (a *AgentMemory) Update(ctx context.Context, patch agent.MemoryPatch) (protocol.AgentMemoryItem, error) {
+func (a *AgentMemory) Update(ctx context.Context, request protocol.AgentMemoryUpdateRequest) (protocol.AgentMemoryItem, error) {
 	r := a.runtime
-	if err := patch.Validate(); err != nil {
+	validated, err := normalizeAgentMemoryUpdate(request)
+	if err != nil {
 		return protocol.AgentMemoryItem{}, err
-	}
-	validated := patch
-	if patch.Content != nil {
-		content := strings.TrimSpace(*patch.Content)
-		validated.Content = &content
 	}
 	options, err := r.commandOptions()
 	if err != nil {
 		return protocol.AgentMemoryItem{}, err
 	}
-	result, err := r.agentMemory.UpdateAgentMemory(ctx, protocol.AgentMemoryUpdateRequest{
-		ID: validated.ID, Content: clonePointer(validated.Content), Pinned: clonePointer(validated.Pinned),
-	}, options)
+	result, err := r.agentMemory.UpdateAgentMemory(ctx, validated, options)
 	item, err := agentMemoryResult("update agent memory", validated.ID, "", result, err)
 	if err != nil {
 		return protocol.AgentMemoryItem{}, err
 	}
-	if err := validated.ValidateResult(item); err != nil {
+	if err := validateAgentMemoryUpdateResult(validated, item); err != nil {
 		return protocol.AgentMemoryItem{}, runtimeContractViolation("update agent memory returned an invalid acknowledgement: %v", err)
 	}
 	return item, nil
+}
+
+func normalizeAgentMemoryUpdate(request protocol.AgentMemoryUpdateRequest) (protocol.AgentMemoryUpdateRequest, error) {
+	if request.Content != nil {
+		content := strings.TrimSpace(*request.Content)
+		request.Content = &content
+	}
+	request.Pinned = clonePointer(request.Pinned)
+	if err := request.ValidateWire(); err != nil {
+		return protocol.AgentMemoryUpdateRequest{}, err
+	}
+	return request, nil
+}
+
+func validateAgentMemoryUpdateResult(request protocol.AgentMemoryUpdateRequest, result protocol.AgentMemoryItem) error {
+	var problems []error
+	if request.Content != nil && result.Content != *request.Content {
+		problems = append(problems, fmt.Errorf("runtime returned content %q, want %q", result.Content, *request.Content))
+	}
+	if request.Pinned != nil && result.Pinned != *request.Pinned {
+		problems = append(problems, fmt.Errorf("runtime returned pinned %t, want %t", result.Pinned, *request.Pinned))
+	}
+	if err := errors.Join(problems...); err != nil {
+		return fmt.Errorf("agent memory update: %w", err)
+	}
+	return nil
 }
 
 func (a *AgentMemory) Delete(ctx context.Context, id string) error {

@@ -58,40 +58,6 @@ func ValidateMemoryItem(item protocol.AgentMemoryItem) error {
 	return nil
 }
 
-// MemoryPatch changes one item without manufacturing a default for an omitted field.
-type MemoryPatch struct {
-	ID      string
-	Content *string
-	Pinned  *bool
-}
-
-func (p MemoryPatch) Validate() error {
-	return (protocol.AgentMemoryUpdateRequest{ID: p.ID, Content: p.Content, Pinned: p.Pinned}).ValidateWire()
-}
-
-func (p MemoryPatch) ValidateResult(result protocol.AgentMemoryItem) error {
-	if err := p.Validate(); err != nil {
-		return err
-	}
-	var problems []error
-	if err := ValidateMemoryItem(result); err != nil {
-		problems = append(problems, fmt.Errorf("runtime result: %w", err))
-	}
-	if result.ID != p.ID {
-		problems = append(problems, fmt.Errorf("runtime returned item %q, want %q", result.ID, p.ID))
-	}
-	if p.Content != nil && result.Content != strings.TrimSpace(*p.Content) {
-		problems = append(problems, fmt.Errorf("runtime returned content %q, want %q", result.Content, strings.TrimSpace(*p.Content)))
-	}
-	if p.Pinned != nil && result.Pinned != *p.Pinned {
-		problems = append(problems, fmt.Errorf("runtime returned pinned %t, want %t", result.Pinned, *p.Pinned))
-	}
-	if err := errors.Join(problems...); err != nil {
-		return fmt.Errorf("agent memory patch: %w", err)
-	}
-	return nil
-}
-
 func (t MemoryTarget) ValidateAddResult(content string, result protocol.AgentMemoryItem) error {
 	if err := t.Validate(); err != nil {
 		return err

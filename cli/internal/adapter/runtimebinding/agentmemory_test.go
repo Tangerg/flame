@@ -184,7 +184,7 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 		t.Fatal(reviewErr)
 	}
 	content, pinned := "edited", true
-	updated, err := adapter.Update(t.Context(), agent.MemoryPatch{ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned})
+	updated, err := adapter.Update(t.Context(), protocol.AgentMemoryUpdateRequest{ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned})
 	if err != nil || updated.Content != content || !updated.Pinned {
 		t.Fatalf("Update = (%+v, %v)", updated, err)
 	}
@@ -217,14 +217,40 @@ func TestAgentMemoryMutationRejectsIdentityDrift(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 }
 
+func TestNormalizeAgentMemoryUpdateUsesRuntimeContractAndOwnsPointers(t *testing.T) {
+	t.Parallel()
+
+	content, pinned := " edited ", true
+	request := protocol.AgentMemoryUpdateRequest{ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned}
+	normalized, err := normalizeAgentMemoryUpdate(request)
+	if err != nil || normalized.Content == nil || *normalized.Content != "edited" || normalized.Pinned == nil || !*normalized.Pinned {
+		t.Fatalf("normalizeAgentMemoryUpdate = (%+v, %v)", normalized, err)
+	}
+	pinned = false
+	if !*normalized.Pinned {
+		t.Fatal("normalized request aliases caller pinned storage")
+	}
+	blank := "  "
+	for _, invalid := range []protocol.AgentMemoryUpdateRequest{
+		{ID: adapterMemoryIDOne},
+		{ID: adapterMemoryIDOne, Content: &blank},
+	} {
+		if _, err := normalizeAgentMemoryUpdate(invalid); err == nil {
+			t.Fatalf("accepted invalid update %+v", invalid)
+		}
+	}
+}
+
 func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
-	wrongUpdate := protocol.AgentMemoryItem{
+	wrongContent := protocol.AgentMemoryItem{
 		ID: adapterMemoryIDOne, Scope: protocol.AgentMemoryScopeProject, Content: "ignored",
 		Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive, Pinned: true,
 		CreatedAt: now, UpdatedAt: now,
 	}
+	wrongPinned := wrongContent
+	wrongPinned.Content, wrongPinned.Pinned = "edited", false
 	wrongAdd := protocol.AgentMemoryItem{
 		ID: adapterMemoryIDTwo, Scope: protocol.AgentMemoryScopeUser, Content: "ignored",
 		Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive,
@@ -237,10 +263,19 @@ func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 	}{
 		{
 			name: "update content",
-			stub: &agentMemoryBindingStub{updateResult: &wrongUpdate},
+			stub: &agentMemoryBindingStub{updateResult: &wrongContent},
 			invoke: func(adapter *AgentMemory) error {
 				content, pinned := "edited", true
-				_, err := adapter.Update(t.Context(), agent.MemoryPatch{ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned})
+				_, err := adapter.Update(t.Context(), protocol.AgentMemoryUpdateRequest{ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned})
+				return err
+			},
+		},
+		{
+			name: "update pinned",
+			stub: &agentMemoryBindingStub{updateResult: &wrongPinned},
+			invoke: func(adapter *AgentMemory) error {
+				content, pinned := "edited", true
+				_, err := adapter.Update(t.Context(), protocol.AgentMemoryUpdateRequest{ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned})
 				return err
 			},
 		},
