@@ -3,6 +3,7 @@ package runtimebinding
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -140,10 +141,7 @@ func (r *Connection) Head(ctx context.Context, request workspace.HeadRequest) (w
 	if value == nil {
 		return workspace.FileHead{}, runtimeContractViolation("get workspace file head returned nil")
 	}
-	result := workspace.FileHead{Lines: make([]workspace.FileLine, 0, len(value.Lines))}
-	for _, line := range value.Lines {
-		result.Lines = append(result.Lines, workspace.FileLine{Number: line.LineNumber, Text: line.Text})
-	}
+	result := workspace.FileHead{Lines: slices.Clone(value.Lines)}
 	if err := result.Validate(); err != nil {
 		return workspace.FileHead{}, runtimeContractViolation("get workspace file head returned an invalid projection: %v", err)
 	}

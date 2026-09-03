@@ -130,22 +130,17 @@ func (h HeadRequest) Validate() error {
 	return err
 }
 
-type FileLine struct {
-	Number int
-	Text   string
-}
-
 type FileHead struct {
-	Lines []FileLine
+	Lines []protocol.FileLine
 }
 
 func (f FileHead) Validate() error {
 	previous := 0
 	for index, line := range f.Lines {
-		if line.Number <= previous {
+		if line.LineNumber <= previous {
 			return fmt.Errorf("file head line %d is not strictly ordered", index)
 		}
-		previous = line.Number
+		previous = line.LineNumber
 	}
 	return nil
 }
