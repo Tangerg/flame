@@ -124,7 +124,7 @@ func mapGoalErr(err error, method string) error {
 	case errors.Is(err, goal.ErrNotEditable):
 		return fmt.Errorf("%w: this goal is finishing and cannot be edited", protocol.ErrInvalidParams)
 	case modelref.IsInvalid(err):
-		return protocol.ErrInvalidParams
+		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
 	case errors.Is(err, goal.ErrInvalid):
 		return fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
 	case errors.Is(err, modelref.ErrUnsupported):

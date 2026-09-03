@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -9,6 +10,13 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+func TestMapGoalErrPreservesInvalidModelIdentity(t *testing.T) {
+	err := mapGoalErr(modelref.ErrModelIdentity, "goals.start")
+	if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, modelref.ErrModelIdentity) {
+		t.Fatalf("err = %v, want ErrInvalidParams and ErrModelIdentity", err)
+	}
+}
 
 func TestGoalProjectsEveryMachineReadableReason(t *testing.T) {
 	t.Parallel()

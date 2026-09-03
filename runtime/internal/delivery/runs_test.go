@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -224,6 +225,13 @@ func TestWireTurnStartErrMapsInvalidTurnLimit(t *testing.T) {
 	}
 	if !errors.Is(err, runs.ErrInvalidRunLimit) {
 		t.Fatalf("err = %v, want original ErrInvalidTurnLimit", err)
+	}
+}
+
+func TestWireRunStartErrPreservesInvalidModelIdentity(t *testing.T) {
+	err := wireRunStartErr(modelref.ErrProviderIdentity)
+	if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, modelref.ErrProviderIdentity) {
+		t.Fatalf("err = %v, want ErrInvalidParams and ErrProviderIdentity", err)
 	}
 }
 
