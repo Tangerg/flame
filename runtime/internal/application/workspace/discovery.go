@@ -12,7 +12,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// RecipeLister discovers the recipes visible from a working directory.
+// RecipeLister discovers the precedence-resolved recipes visible from a working
+// directory. Application validates visible-name identity and owns public order.
 type RecipeLister interface {
 	List(ctx context.Context, cwd string) ([]Recipe, error)
 }
@@ -29,7 +30,8 @@ func NewDiscovery(scope *Scope, workspaces Catalog, agentDocs AgentDocFinder, re
 	return &Discovery{scope: scope, workspaces: workspaces, agentDocs: agentDocs, recipes: recipes}
 }
 
-// Recipes enumerates project recipes layered over the global directory.
+// Recipes enumerates the one precedence-resolved Recipe per visible name,
+// ordered by name.
 func (d *Discovery) Recipes(ctx context.Context, cwd string) ([]Recipe, error) {
 	root, err := d.scope.root(cwd)
 	if err != nil {
@@ -42,9 +44,13 @@ func (d *Discovery) Recipes(ctx context.Context, cwd string) ([]Recipe, error) {
 	if err != nil {
 		return nil, err
 	}
+	recipes = slices.Clone(recipes)
 	if err := ValidateRecipeCascade(recipes); err != nil {
 		return nil, err
 	}
+	slices.SortFunc(recipes, func(first, second Recipe) int {
+		return cmp.Compare(first.Name, second.Name)
+	})
 	return recipes, nil
 }
 

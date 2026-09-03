@@ -150,6 +150,7 @@ func ValidateRecipeCascade(recipes []Recipe) error {
 		)
 	}
 	perScope := make(map[RecipeScope]int, 2)
+	seen := make(map[string]struct{}, len(recipes))
 	total := 0
 	for index, recipe := range recipes {
 		if strings.TrimSpace(recipe.Name) == "" || strings.TrimSpace(recipe.Body) == "" || strings.TrimSpace(recipe.Source) == "" {
@@ -160,6 +161,10 @@ func ValidateRecipeCascade(recipes []Recipe) error {
 		default:
 			return fmt.Errorf("%w: recipe %q has unknown scope %q", ErrInvalidPromptSource, recipe.Name, recipe.Scope)
 		}
+		if _, duplicate := seen[recipe.Name]; duplicate {
+			return fmt.Errorf("%w: recipe catalog repeats visible name %q", ErrInvalidPromptSource, recipe.Name)
+		}
+		seen[recipe.Name] = struct{}{}
 		perScope[recipe.Scope]++
 		if perScope[recipe.Scope] > MaxRecipesPerScope {
 			return fmt.Errorf(

@@ -16,6 +16,12 @@ func (s staticAgentDocFinder) Find(context.Context, string, string) ([]AgentDocF
 	return s.files, nil
 }
 
+type staticRecipeLister struct{ recipes []Recipe }
+
+func (s *staticRecipeLister) List(context.Context, string) ([]Recipe, error) {
+	return s.recipes, nil
+}
+
 type workspaceCatalogStub struct {
 	sessions []session.Session
 	resolved map[string]Resolved
@@ -110,6 +116,38 @@ func TestAgentDocsRejectsUnknownDiscoveryProvenance(t *testing.T) {
 
 	if _, err := discovery.AgentDocs(t.Context(), "/repo"); err == nil {
 		t.Fatal("AgentDocs accepted an unknown scope")
+	}
+}
+
+func TestRecipesOwnVisibleCatalogOrderAndSnapshot(t *testing.T) {
+	lister := &staticRecipeLister{recipes: []Recipe{
+		{Name: "zeta", Body: "zeta body", Scope: RecipeScopeGlobal, Source: "/home/zeta.md"},
+		{Name: "alpha", Body: "alpha body", Scope: RecipeScopeProject, Source: "/repo/alpha.md"},
+	}}
+	discovery := NewDiscovery(NewScope("", "", testPaths{}), nil, nil, lister)
+
+	recipes, err := discovery.Recipes(t.Context(), "/repo")
+	if err != nil {
+		t.Fatalf("Recipes: %v", err)
+	}
+	if len(recipes) != 2 || recipes[0].Name != "alpha" || recipes[1].Name != "zeta" {
+		t.Fatalf("Recipes = %+v, want alpha then zeta", recipes)
+	}
+	recipes[0].Body = "mutated"
+	if lister.recipes[1].Body != "alpha body" {
+		t.Fatal("Recipes result aliases lister storage")
+	}
+}
+
+func TestRecipesRejectRepeatedVisibleName(t *testing.T) {
+	lister := &staticRecipeLister{recipes: []Recipe{
+		{Name: "review", Body: "project", Scope: RecipeScopeProject, Source: "/repo/review.md"},
+		{Name: "review", Body: "global", Scope: RecipeScopeGlobal, Source: "/home/review.md"},
+	}}
+	discovery := NewDiscovery(NewScope("", "", testPaths{}), nil, nil, lister)
+
+	if _, err := discovery.Recipes(t.Context(), "/repo"); !errors.Is(err, ErrInvalidPromptSource) {
+		t.Fatalf("Recipes error = %v, want ErrInvalidPromptSource", err)
 	}
 }
 

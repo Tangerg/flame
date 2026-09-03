@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -27,7 +26,8 @@ const (
 
 // listRecipes enumerates recipe files from projectDir layered over globalDir,
 // with the project copy winning on name collisions. This adapter owns the
-// directory convention and the Markdown/YAML format; malformed frontmatter is
+// directory convention and the Markdown/YAML format and preserves discovery
+// order; Application owns public catalog order. Malformed frontmatter is
 // preserved as a plain prompt rather than discarding user-authored content.
 func listRecipes(ctx context.Context, projectDir, globalDir string) ([]workspaceapp.Recipe, error) {
 	cascade := recipeCascade{
@@ -40,7 +40,6 @@ func listRecipes(ctx context.Context, projectDir, globalDir string) ([]workspace
 	if err := cascade.addDirectory(globalDir, workspaceapp.RecipeScopeGlobal); err != nil {
 		return nil, err
 	}
-	slices.SortFunc(cascade.recipes, func(a, b workspaceapp.Recipe) int { return strings.Compare(a.Name, b.Name) })
 	if err := workspaceapp.ValidateRecipeCascade(cascade.recipes); err != nil {
 		return nil, err
 	}

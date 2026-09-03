@@ -464,11 +464,11 @@ func TestListRecipes(t *testing.T) {
 	if len(got.Data) != 2 {
 		t.Fatalf("recipes = %+v, want 2", got.Data)
 	}
-	if got.Data[0].Name != "review" || got.Data[0].Scope != "project" || got.Data[0].Body != "Review $ARGUMENTS" {
-		t.Errorf("recipe[0] = %+v, want review(project) with body", got.Data[0])
+	if got.Data[0].Name != "commit" || got.Data[0].Scope != "global" {
+		t.Errorf("recipe[0] = %+v, want commit(global)", got.Data[0])
 	}
-	if got.Data[1].Scope != "global" {
-		t.Errorf("recipe[1].Scope = %q, want global", got.Data[1].Scope)
+	if got.Data[1].Name != "review" || got.Data[1].Scope != "project" || got.Data[1].Body != "Review $ARGUMENTS" {
+		t.Errorf("recipe[1] = %+v, want review(project) with body", got.Data[1])
 	}
 }
 

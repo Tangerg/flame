@@ -8,7 +8,8 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ListRecipes maps application recipe discovery to the protocol shape.
+// ListRecipes maps the application-owned unique, name-ordered Recipe catalog to
+// the protocol shape.
 func (s *Handler) ListRecipes(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.Recipe], error) {
 	found, err := s.workspaceDiscovery.Recipes(ctx, in.Workspace.Path)
 	if err != nil {

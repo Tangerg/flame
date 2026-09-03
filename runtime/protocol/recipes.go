@@ -16,10 +16,11 @@ const (
 	RecipeScopeGlobal  RecipeScope = "global"
 )
 
-// Recipe is one entry in recipes.list. Body is the full
-// prompt template (the client expands and sends it), so it travels with the
-// listing — recipes are small. ArgumentHint is the optional placeholder shown in
-// the slash autocomplete (e.g. "[focus area]").
+// Recipe is one entry in recipes.list, which contains one precedence-resolved
+// entry per name in ascending name order. Body is the full prompt template (the
+// client expands and sends it), so it travels with the listing — recipes are
+// small. ArgumentHint is the optional placeholder shown in the slash
+// autocomplete (e.g. "[focus area]").
 type Recipe struct {
 	Name         string      `json:"name"`
 	Description  string      `json:"description,omitempty"`

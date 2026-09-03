@@ -83,4 +83,10 @@ func TestRecipeCascadeContract(t *testing.T) {
 	}}); !errors.Is(err, ErrInvalidPromptSource) {
 		t.Fatalf("blank body error = %v, want ErrInvalidPromptSource", err)
 	}
+	if err := ValidateRecipeCascade([]Recipe{
+		{Name: "review", Body: "project", Scope: RecipeScopeProject, Source: "/repo/review.md"},
+		{Name: "review", Body: "global", Scope: RecipeScopeGlobal, Source: "/home/review.md"},
+	}); !errors.Is(err, ErrInvalidPromptSource) {
+		t.Fatalf("repeated visible name error = %v, want ErrInvalidPromptSource", err)
+	}
 }

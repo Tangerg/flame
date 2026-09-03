@@ -32,17 +32,8 @@ func findRecipe(rs []workspaceapp.Recipe, name string) (workspaceapp.Recipe, boo
 	return workspaceapp.Recipe{}, false
 }
 
-func recipeNames(rs []workspaceapp.Recipe) []string {
-	out := make([]string, len(rs))
-	for i, r := range rs {
-		out[i] = r.Name
-	}
-	return out
-}
-
-// TestListRecipes covers the merge/precedence/sort contract and frontmatter
-// parsing: project layers over global (winning a name collision), entries sort
-// by name, and frontmatter is optional.
+// TestListRecipes covers merge precedence and frontmatter parsing: project
+// layers over global (winning a name collision), and frontmatter is optional.
 func TestListRecipes(t *testing.T) {
 	project := filepath.Join(t.TempDir(), ".flame", "recipes")
 	global := t.TempDir()
@@ -62,14 +53,12 @@ func TestListRecipes(t *testing.T) {
 		t.Fatalf("ListRecipes: %v", err)
 	}
 
-	// Sorted by name: commit, explain, review (notes.txt / .hidden.md excluded).
-	wantNames := []string{"commit", "explain", "review"}
-	if len(got) != len(wantNames) {
-		t.Fatalf("got %d recipes %v, want %d %v", len(got), recipeNames(got), len(wantNames), wantNames)
+	if len(got) != 3 {
+		t.Fatalf("got %d recipes, want 3", len(got))
 	}
-	for i, n := range wantNames {
-		if got[i].Name != n {
-			t.Errorf("recipe[%d].Name = %q, want %q", i, got[i].Name, n)
+	for _, name := range []string{"commit", "explain", "review"} {
+		if _, ok := findRecipe(got, name); !ok {
+			t.Errorf("recipe %q was not discovered", name)
 		}
 	}
 
