@@ -7,7 +7,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–144 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–145 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
 - The current Runtime contract is `bec9a946` (`fix(runtime): require agent memory
   timestamps`).
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–144 — exact handoff
+## Rounds 101–145 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -104,6 +104,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 142 | CLI commit | Validated projected MCP create, test, and update writes against Runtime-owned identity and collection constraints before dispatch. |
 | 143 | CLI commit | Replaced weaker MCP server-name checks across delete, reconnect, tool listing, and authorization start with each Runtime request's generated validator. |
 | 144 | CLI commit | Removed the flattened MCP authorization-attempt DTO; ports and polling now retain the validated Runtime value while CLI adds only chronology and cross-server observation checks. |
+| 145 | CLI commit | Validated MCP Server and Tool wire trees before their justified CLI form and presentation projections, centralizing Tool schema encoding in one path. |
 
 ## Verification contract
 
@@ -141,7 +142,7 @@ repeated here.
 
 ## Remaining direction
 
-- Continue after Round 144 by auditing complete Runtime catalogs and CLI
+- Continue after Round 145 by auditing complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the

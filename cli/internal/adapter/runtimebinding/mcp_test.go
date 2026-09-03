@@ -449,6 +449,19 @@ func TestMCPAdapterRejectsInvalidServerIdentityBeforeDispatch(t *testing.T) {
 	}
 }
 
+func TestMCPReadProjectionsRejectValuesOutsideRuntimeWireContract(t *testing.T) {
+	t.Parallel()
+	server := wireMCPServer()
+	server.Name = "Docs"
+	if _, err := projectMCPServer(server); err == nil || !strings.Contains(err.Error(), "name") {
+		t.Fatalf("server projection error = %v, want name field", err)
+	}
+	tool := protocol.MCPTool{Server: "docs", Name: "invalid tool"}
+	if _, err := projectMCPTool(tool); err == nil || !strings.Contains(err.Error(), "name") {
+		t.Fatalf("tool projection error = %v, want name field", err)
+	}
+}
+
 func TestMCPAdapterClassifiesBoundedContextErrors(t *testing.T) {
 	tests := []struct {
 		source error

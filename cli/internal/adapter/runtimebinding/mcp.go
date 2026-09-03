@@ -168,15 +168,8 @@ func (r *Connection) Tools(ctx context.Context, server string) ([]mcp.Tool, erro
 	tools := make([]mcp.Tool, 0, len(values))
 	seen := make(map[[2]string]struct{}, len(values))
 	for index, value := range values {
-		tool := mcp.Tool{Server: value.Server, Name: value.Name, Description: value.Description}
-		if value.InputSchema != nil {
-			schema, marshalErr := json.Marshal(value.InputSchema)
-			if marshalErr != nil {
-				return nil, runtimeContractViolation("list MCP tools item %d has an invalid schema: %v", index+1, marshalErr)
-			}
-			tool.InputSchema = schema
-		}
-		if err := tool.Validate(); err != nil {
+		tool, err := projectMCPTool(value)
+		if err != nil {
 			return nil, runtimeContractViolation("list MCP tools item %d is invalid: %v", index+1, err)
 		}
 		if request.Server != "" && tool.Server != request.Server {
@@ -190,6 +183,24 @@ func (r *Connection) Tools(ctx context.Context, server string) ([]mcp.Tool, erro
 		tools = append(tools, tool)
 	}
 	return tools, nil
+}
+
+func projectMCPTool(value protocol.MCPTool) (mcp.Tool, error) {
+	if err := protocol.ValidateWireTree(value); err != nil {
+		return mcp.Tool{}, err
+	}
+	tool := mcp.Tool{Server: value.Server, Name: value.Name, Description: value.Description}
+	if value.InputSchema != nil {
+		schema, err := json.Marshal(value.InputSchema)
+		if err != nil {
+			return mcp.Tool{}, fmt.Errorf("encode input schema: %w", err)
+		}
+		tool.InputSchema = schema
+	}
+	if err := tool.Validate(); err != nil {
+		return mcp.Tool{}, err
+	}
+	return tool, nil
 }
 
 func (r *Connection) StartAuthorization(ctx context.Context, server string) (protocol.MCPAuthorizationAttempt, error) {
@@ -228,7 +239,7 @@ func projectMCPServerResult(operation, expectedName string, result *protocol.MCP
 	}
 	server, projectionErr := projectMCPServer(*result)
 	if projectionErr != nil {
-		return mcp.Server{}, runtimeContractViolation("%s returned an invalid handshake timeout: %v", operation, projectionErr)
+		return mcp.Server{}, runtimeContractViolation("%s returned an invalid server projection: %v", operation, projectionErr)
 	}
 	if err := server.Validate(); err != nil {
 		return mcp.Server{}, runtimeContractViolation("%s returned an invalid server: %v", operation, err)
@@ -245,6 +256,9 @@ func projectMCPServerResult(operation, expectedName string, result *protocol.MCP
 }
 
 func projectMCPServer(value protocol.MCPServer) (mcp.Server, error) {
+	if err := protocol.ValidateWireTree(value); err != nil {
+		return mcp.Server{}, err
+	}
 	timeout, err := mcpHandshakeTimeoutFromWire(value.HandshakeTimeout)
 	if err != nil {
 		return mcp.Server{}, err
