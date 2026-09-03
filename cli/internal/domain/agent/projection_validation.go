@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 	"strings"
 
@@ -154,11 +153,11 @@ func (o Outcome) Validate() error {
 }
 
 func (u Usage) Validate() error {
-	if err := validateModelUsage(ModelUsage{
+	if err := (runtimeprotocol.ModelUsage{
 		InputTokens: u.InputTokens, OutputTokens: u.OutputTokens,
 		CacheReadTokens: u.CacheReadTokens, CacheWriteTokens: u.CacheWriteTokens,
 		ReasoningTokens: u.ReasoningTokens, CostUSD: u.CostUSD,
-	}); err != nil {
+	}).ValidateWire(); err != nil {
 		return fmt.Errorf("total usage: %w", err)
 	}
 	if u.Steps < 0 {
@@ -171,20 +170,9 @@ func (u Usage) Validate() error {
 		if err := runtimeprotocol.ValidateModelIdentity(model); err != nil {
 			return fmt.Errorf("usage model identity: %w", err)
 		}
-		if err := validateModelUsage(usage); err != nil {
+		if err := usage.ValidateWire(); err != nil {
 			return fmt.Errorf("model usage %q: %w", model, err)
 		}
-	}
-	return nil
-}
-
-func validateModelUsage(usage ModelUsage) error {
-	if usage.InputTokens < 0 || usage.OutputTokens < 0 || usage.CacheReadTokens < 0 ||
-		usage.CacheWriteTokens < 0 || usage.ReasoningTokens < 0 {
-		return errors.New("token counts cannot be negative")
-	}
-	if usage.CostUSD != nil && (*usage.CostUSD < 0 || math.IsNaN(*usage.CostUSD) || math.IsInf(*usage.CostUSD, 0)) {
-		return errors.New("cost must be finite and non-negative when known")
 	}
 	return nil
 }
@@ -412,11 +400,11 @@ func (t ToolStatus) blockStatus() BlockStatus {
 }
 
 func validateUsageProgress(previous, next Usage) error {
-	if err := validateModelUsageProgress("total", ModelUsage{
+	if err := validateModelUsageProgress("total", runtimeprotocol.ModelUsage{
 		InputTokens: previous.InputTokens, OutputTokens: previous.OutputTokens,
 		CacheReadTokens: previous.CacheReadTokens, CacheWriteTokens: previous.CacheWriteTokens,
 		ReasoningTokens: previous.ReasoningTokens, CostUSD: previous.CostUSD,
-	}, ModelUsage{
+	}, runtimeprotocol.ModelUsage{
 		InputTokens: next.InputTokens, OutputTokens: next.OutputTokens,
 		CacheReadTokens: next.CacheReadTokens, CacheWriteTokens: next.CacheWriteTokens,
 		ReasoningTokens: next.ReasoningTokens, CostUSD: next.CostUSD,
@@ -441,7 +429,7 @@ func validateUsageProgress(previous, next Usage) error {
 	return nil
 }
 
-func validateModelUsageProgress(label string, previous, next ModelUsage) error {
+func validateModelUsageProgress(label string, previous, next runtimeprotocol.ModelUsage) error {
 	switch {
 	case next.InputTokens < previous.InputTokens:
 		return fmt.Errorf("%s input-token usage regressed", label)

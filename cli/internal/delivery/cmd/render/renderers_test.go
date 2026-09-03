@@ -758,7 +758,7 @@ func TestUsageJSONDistinguishesUnknownFromKnownZeroCost(t *testing.T) {
 	modelCost := 0.25
 	detailed, err := json.Marshal(encodeUsage(agent.Usage{
 		Steps: 3,
-		ByModel: map[string]agent.ModelUsage{
+		ByModel: map[string]protocol.ModelUsage{
 			"deepseek/v4": {InputTokens: 12, ReasoningTokens: 4, CostUSD: &modelCost},
 		},
 	}))

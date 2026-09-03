@@ -168,14 +168,14 @@ func TestConversationFoldsRunProgressWithoutMakingPreviewsDurable(t *testing.T) 
 	run := runningRun("seg_1")
 	run.Usage = Usage{
 		InputTokens: 10, CostUSD: &cost, Steps: 2,
-		ByModel: map[string]ModelUsage{"mock/balanced": {InputTokens: 10}},
+		ByModel: map[string]protocol.ModelUsage{"mock/balanced": {InputTokens: 10}},
 	}
 	apply(t, conversation, RunEvent{EventID: "start", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: SegmentStarted{Run: run}})
 
 	progressUsage := Usage{
 		InputTokens:  14,
 		OutputTokens: 2,
-		ByModel:      map[string]ModelUsage{"mock/balanced": {InputTokens: 14, OutputTokens: 2}},
+		ByModel:      map[string]protocol.ModelUsage{"mock/balanced": {InputTokens: 14, OutputTokens: 2}},
 	}
 	step := 3
 	contextTokens := int64(16_384)

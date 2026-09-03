@@ -82,7 +82,7 @@ func projectUsageBreakdown(value protocol.Usage) agent.Usage {
 	usage := agent.Usage{
 		InputTokens: value.InputTokens, OutputTokens: value.OutputTokens,
 		CacheReadTokens: value.CacheReadTokens, CacheWriteTokens: value.CacheWriteTokens,
-		ReasoningTokens: value.ReasoningTokens, ByModel: projectUsageByModel(value.ByModel),
+		ReasoningTokens: value.ReasoningTokens, ByModel: cloneUsageByModel(value.ByModel),
 	}
 	if value.CostUSD != nil {
 		usage.CostUSD = new(*value.CostUSD)
@@ -90,21 +90,13 @@ func projectUsageBreakdown(value protocol.Usage) agent.Usage {
 	return usage
 }
 
-func projectUsageByModel(values map[string]protocol.ModelUsage) map[string]agent.ModelUsage {
+func cloneUsageByModel(values map[string]protocol.ModelUsage) map[string]protocol.ModelUsage {
 	if values == nil {
 		return nil
 	}
-	projected := make(map[string]agent.ModelUsage, len(values))
+	projected := make(map[string]protocol.ModelUsage, len(values))
 	for model, value := range values {
-		usage := agent.ModelUsage{
-			InputTokens: value.InputTokens, OutputTokens: value.OutputTokens,
-			CacheReadTokens: value.CacheReadTokens, CacheWriteTokens: value.CacheWriteTokens,
-			ReasoningTokens: value.ReasoningTokens,
-		}
-		if value.CostUSD != nil {
-			usage.CostUSD = new(*value.CostUSD)
-		}
-		projected[model] = usage
+		projected[model] = cloneModelUsage(value)
 	}
 	return projected
 }

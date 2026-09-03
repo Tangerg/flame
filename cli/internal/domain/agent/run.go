@@ -302,20 +302,10 @@ type Usage struct {
 	CostUSD *float64
 	// ByModel retains the runtime's cumulative attribution without coupling the
 	// conversation domain to provider-specific model registries.
-	ByModel map[string]ModelUsage
+	ByModel map[string]protocol.ModelUsage
 	Steps   int
 	// Duration is active execution time; human-interrupt waiting is excluded.
 	Duration time.Duration
-}
-
-// ModelUsage is one model's cumulative metering slice within a run.
-type ModelUsage struct {
-	InputTokens      int64
-	OutputTokens     int64
-	CacheReadTokens  int64
-	CacheWriteTokens int64
-	ReasoningTokens  int64
-	CostUSD          *float64
 }
 
 func (u Usage) Clone() Usage {
@@ -323,9 +313,9 @@ func (u Usage) Clone() Usage {
 		u.CostUSD = new(*u.CostUSD)
 	}
 	if u.ByModel != nil {
-		cloned := make(map[string]ModelUsage, len(u.ByModel))
+		cloned := make(map[string]protocol.ModelUsage, len(u.ByModel))
 		for model, usage := range u.ByModel {
-			cloned[model] = usage.Clone()
+			cloned[model] = cloneProtocolModelUsage(usage)
 		}
 		u.ByModel = cloned
 	}
@@ -348,7 +338,7 @@ func (u Usage) Equal(other Usage) bool {
 	}
 	for model, usage := range u.ByModel {
 		otherUsage, exists := other.ByModel[model]
-		if !exists || !usage.Equal(otherUsage) {
+		if !exists || !equalProtocolModelUsage(usage, otherUsage) {
 			return false
 		}
 	}
@@ -362,16 +352,16 @@ func (u Usage) Empty() bool {
 		len(u.ByModel) == 0 && u.Steps == 0 && u.Duration == 0
 }
 
-func (m ModelUsage) Clone() ModelUsage {
-	if m.CostUSD != nil {
-		m.CostUSD = new(*m.CostUSD)
+func cloneProtocolModelUsage(usage protocol.ModelUsage) protocol.ModelUsage {
+	if usage.CostUSD != nil {
+		usage.CostUSD = new(*usage.CostUSD)
 	}
-	return m
+	return usage
 }
 
-func (m ModelUsage) Equal(other ModelUsage) bool {
-	return m.InputTokens == other.InputTokens && m.OutputTokens == other.OutputTokens &&
-		m.CacheReadTokens == other.CacheReadTokens && m.CacheWriteTokens == other.CacheWriteTokens &&
-		m.ReasoningTokens == other.ReasoningTokens && (m.CostUSD == nil) == (other.CostUSD == nil) &&
-		(m.CostUSD == nil || *m.CostUSD == *other.CostUSD)
+func equalProtocolModelUsage(left, right protocol.ModelUsage) bool {
+	return left.InputTokens == right.InputTokens && left.OutputTokens == right.OutputTokens &&
+		left.CacheReadTokens == right.CacheReadTokens && left.CacheWriteTokens == right.CacheWriteTokens &&
+		left.ReasoningTokens == right.ReasoningTokens && (left.CostUSD == nil) == (right.CostUSD == nil) &&
+		(left.CostUSD == nil || *left.CostUSD == *right.CostUSD)
 }

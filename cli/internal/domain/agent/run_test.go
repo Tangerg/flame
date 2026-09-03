@@ -228,7 +228,7 @@ func TestUsagePreservesOptionalCostSemantics(t *testing.T) {
 	knownZero, modelCost := 0.0, 0.25
 	usage := Usage{
 		CostUSD: &knownZero, Steps: 3,
-		ByModel: map[string]ModelUsage{"deepseek/v4": {InputTokens: 12, CostUSD: &modelCost}},
+		ByModel: map[string]runtimeprotocol.ModelUsage{"deepseek/v4": {InputTokens: 12, CostUSD: &modelCost}},
 	}
 	if err := usage.Validate(); err != nil {
 		t.Fatal(err)
@@ -257,19 +257,19 @@ func TestUsagePreservesOptionalCostSemantics(t *testing.T) {
 	if err := (Usage{Steps: -1}).Validate(); err == nil {
 		t.Fatal("negative step usage was accepted")
 	}
-	if err := (Usage{ByModel: map[string]ModelUsage{"": {}}}).Validate(); err == nil {
+	if err := (Usage{ByModel: map[string]runtimeprotocol.ModelUsage{"": {}}}).Validate(); err == nil {
 		t.Fatal("empty model attribution key was accepted")
 	}
-	if err := (Usage{ByModel: map[string]ModelUsage{"bad model": {}}}).Validate(); err == nil {
+	if err := (Usage{ByModel: map[string]runtimeprotocol.ModelUsage{"bad model": {}}}).Validate(); err == nil {
 		t.Fatal("non-canonical model attribution key was accepted")
 	}
-	if err := (Usage{ByModel: map[string]ModelUsage{
+	if err := (Usage{ByModel: map[string]runtimeprotocol.ModelUsage{
 		strings.Repeat("m", runtimeprotocol.MaximumModelIdentityCharacters+1): {},
 	}}).Validate(); err == nil {
 		t.Fatal("overlong model attribution key was accepted")
 	}
 	if err := validateUsageProgress(
-		Usage{Steps: 3, ByModel: map[string]ModelUsage{"deepseek/v4": {InputTokens: 12}}},
+		Usage{Steps: 3, ByModel: map[string]runtimeprotocol.ModelUsage{"deepseek/v4": {InputTokens: 12}}},
 		Usage{Steps: 2},
 	); err == nil {
 		t.Fatal("step or per-model usage regression was accepted")
