@@ -1860,6 +1860,8 @@ func (g Goal) ValidateWire() error {
 		identity("reasoningEffort", g.ReasoningEffort),
 		maxLength("reasoningEffort", g.ReasoningEffort, 32),
 		closedEnum("status", string(g.Status), []string{"active", "paused", "blocked", "completing"}, false),
+		requiredWhen(true, "createdAt", g),
+		requiredWhen(true, "updatedAt", g),
 		forbiddenWhen(wireFieldEquals(g, "status", "active"), "reason", g),
 		forbiddenWhen(wireFieldEquals(g, "status", "completing"), "reason", g),
 		requiredWhen(wireFieldEquals(g, "status", "paused"), "reason", g),

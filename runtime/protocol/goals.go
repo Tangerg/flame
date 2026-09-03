@@ -18,8 +18,8 @@ type Goal struct {
 	ReasoningEffort string      `json:"reasoningEffort,omitempty"`
 	Budget          *GoalBudget `json:"budget,omitempty"`
 	Used            GoalUsage   `json:"used"`
-	CreatedAt       time.Time   `json:"createdAt"`
-	UpdatedAt       time.Time   `json:"updatedAt"`
+	CreatedAt       time.Time   `json:"createdAt,omitzero"`
+	UpdatedAt       time.Time   `json:"updatedAt,omitzero"`
 }
 
 // GoalStatus is the lifecycle vocabulary exposed by the autonomous-goal API.

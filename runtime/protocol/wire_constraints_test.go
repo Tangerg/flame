@@ -125,6 +125,24 @@ func TestSessionRequiresLifecycleTimes(t *testing.T) {
 	}
 }
 
+func TestGoalRequiresLifecycleTimes(t *testing.T) {
+	t.Parallel()
+
+	goal := Goal{
+		SessionID: "ses_1", Objective: "finish", Status: GoalActive,
+		Provider: "provider", Model: "model",
+	}
+	assertConstraintField(t, goal.ValidateWire(), "Goal", "createdAt")
+	assertConstraintField(t, goal.ValidateWire(), "Goal", "updatedAt")
+
+	goal.CreatedAt = time.Unix(1, 0).UTC()
+	assertConstraintField(t, goal.ValidateWire(), "Goal", "updatedAt")
+	goal.UpdatedAt = goal.CreatedAt
+	if err := goal.ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected a timestamped goal: %v", err)
+	}
+}
+
 func TestRunProgressCarriesAtLeastOneValidFact(t *testing.T) {
 	t.Parallel()
 

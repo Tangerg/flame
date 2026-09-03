@@ -4425,6 +4425,12 @@
       "type": "Goal",
       "rules": [
         {
+          "required": [
+            "createdAt",
+            "updatedAt"
+          ]
+        },
+        {
           "when": [
             {
               "field": "status",

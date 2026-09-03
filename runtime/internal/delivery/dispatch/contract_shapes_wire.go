@@ -746,6 +746,8 @@ func registerObjectConstraints(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.Goal](),
 		Rules: []ConditionalRule{{
+			Required: []string{"createdAt", "updatedAt"},
+		}, {
 			When:      []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.GoalActive)}},
 			Forbidden: []string{"reason"},
 		}, {
