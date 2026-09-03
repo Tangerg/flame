@@ -161,10 +161,29 @@ func TestCompleteCountsDirectoriesTowardTheVisitBudget(t *testing.T) {
 		ctx: t.Context(), root: root, query: "budget", maxBytes: DefaultMaxFileBytes,
 		maxVisited: 2,
 	}
-	if err := filepath.WalkDir(root, search.visit); err != nil {
+	if err := search.walk(); err != nil {
 		t.Fatal(err)
 	}
 	if search.visited != 2 || len(search.matches) != 0 {
+		t.Fatalf("bounded search visited %d entries and returned %d matches", search.visited, len(search.matches))
+	}
+}
+
+func TestCompleteBoundsOneDirectoryBeforeRanking(t *testing.T) {
+	root := t.TempDir()
+	for index := range 3 {
+		if err := os.WriteFile(filepath.Join(root, fmt.Sprintf("match-%d.txt", index)), []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	search := completionSearch{
+		ctx: t.Context(), root: root, query: "match", maxBytes: DefaultMaxFileBytes,
+		maxVisited: 2,
+	}
+	if err := search.walk(); err != nil {
+		t.Fatal(err)
+	}
+	if search.visited != 2 || len(search.matches) != 1 {
 		t.Fatalf("bounded search visited %d entries and returned %d matches", search.visited, len(search.matches))
 	}
 }

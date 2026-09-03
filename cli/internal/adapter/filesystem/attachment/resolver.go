@@ -204,7 +204,7 @@ func (r *Resolver) Complete(ctx context.Context, query string) ([]PathMatch, err
 		query: filepath.ToSlash(strings.TrimSpace(query)), maxVisited: maxVisitedEntries,
 		matches: make([]PathMatch, 0, completionResultLimit),
 	}
-	err := filepath.WalkDir(r.root, search.visit)
+	err := search.walk()
 	if err != nil {
 		return nil, fmt.Errorf("attachment: search workspace: %w", err)
 	}
@@ -230,55 +230,87 @@ type completionSearch struct {
 	matches    []PathMatch
 }
 
-func (c *completionSearch) visit(path string, entry os.DirEntry, walkErr error) error {
-	if walkErr != nil {
-		return c.handleWalkError(path, entry, walkErr)
-	}
-	if err := context.Cause(c.ctx); err != nil {
+func (c *completionSearch) walk() (err error) {
+	root, err := os.OpenRoot(c.root)
+	if err != nil {
 		return err
 	}
-	if c.visited >= c.maxVisited {
-		return filepath.SkipAll
+	defer func() { err = errors.Join(err, root.Close()) }()
+	if c.maxVisited <= 0 {
+		return nil
 	}
-	c.visited++
-	if entry.IsDir() {
-		return c.visitDirectory(path, entry)
-	}
-	return c.visitFile(path, entry)
-}
-
-func (c *completionSearch) handleWalkError(path string, entry os.DirEntry, walkErr error) error {
-	if path != c.root && entry != nil && entry.IsDir() {
-		return filepath.SkipDir
-	}
-	return walkErr
-}
-
-func (c *completionSearch) visitDirectory(path string, entry os.DirEntry) error {
-	if path != c.root && ignoredDirectory(entry.Name()) {
-		return filepath.SkipDir
+	c.visited = 1 // The workspace root is itself one visited entry.
+	pendingDirectories := []string{"."}
+	for len(pendingDirectories) > 0 && c.visited < c.maxVisited {
+		if cause := context.Cause(c.ctx); cause != nil {
+			return cause
+		}
+		directory := pendingDirectories[0]
+		pendingDirectories[0] = ""
+		pendingDirectories = pendingDirectories[1:]
+		entries, readErr := readCompletionDirectory(root, directory, c.maxVisited-c.visited)
+		if readErr != nil {
+			if directory == "." {
+				return readErr
+			}
+			continue
+		}
+		for _, entry := range entries {
+			if cause := context.Cause(c.ctx); cause != nil {
+				return cause
+			}
+			c.visited++
+			candidate := filepath.Join(directory, entry.Name())
+			if entry.IsDir() {
+				if !ignoredDirectory(entry.Name()) {
+					pendingDirectories = append(pendingDirectories, candidate)
+				}
+				continue
+			}
+			c.visitFile(candidate, entry)
+		}
 	}
 	return nil
 }
 
-func (c *completionSearch) visitFile(path string, entry os.DirEntry) error {
+func readCompletionDirectory(root *os.Root, name string, maximumEntries int) (_ []os.DirEntry, err error) {
+	if maximumEntries <= 0 {
+		return nil, nil
+	}
+	directory, _, err := fileinput.OpenDirectoryAt(root, name)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { err = errors.Join(err, directory.Close()) }()
+	entries, err := directory.ReadDir(maximumEntries + 1)
+	if errors.Is(err, io.EOF) {
+		err = nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(entries) > maximumEntries {
+		entries = entries[:maximumEntries]
+	}
+	slices.SortFunc(entries, func(left, right os.DirEntry) int {
+		return strings.Compare(left.Name(), right.Name())
+	})
+	return entries, nil
+}
+
+func (c *completionSearch) visitFile(relative string, entry os.DirEntry) {
 	if entry.Type()&os.ModeSymlink != 0 {
-		return nil
+		return
 	}
 	info, ok := completionFileInfo(entry, c.maxBytes)
 	if !ok {
-		return nil
-	}
-	relative, err := filepath.Rel(c.root, path)
-	if err != nil {
-		return err
+		return
 	}
 	relative = filepath.ToSlash(relative)
 	score, at, matched := fuzzyPath(c.query, relative)
 	if matched {
 		c.matches = append(c.matches, PathMatch{Path: relative, Detail: formatByteSize(info.Size()), Matched: at, score: score})
 	}
-	return nil
 }
 
 // completionFileInfo makes completion's best-effort policy explicit: a file
