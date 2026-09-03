@@ -1748,3 +1748,78 @@ construct under a name its own context uses.
 ### Open
 
 Unchanged from round 19; the composer's single-line state is added to it as item 7.
+
+## Round 21 — an accessibility sweep, and a guard that had stopped asking the right question
+
+### The sweep
+
+The suite already runs axe across every state in both themes, but only with the
+WCAG 2.2 A/AA tags. Everything axe calls *best practice* — heading order,
+landmarks, regions — was outside it. Ran it.
+
+| Rule set | Result |
+| --- | --- |
+| `heading-order` | clean everywhere — round 16's `h1` header over `h2` turns over `h3` bodies holds across six states |
+| `region` | one violation, in every agent state: `.agent-seam-rail` |
+| everything else | clean |
+
+The seam rail is the sidebar's resize separator, positioned absolutely on the
+seam inside `.agent-card-backing`, a sibling of `<main>` and of the `<aside>` it
+resizes. Both landmarks are candidates and neither is right: the `<aside>`
+carries `contain: paint`, which would clip a handle that deliberately straddles
+its edge, and `<main>` does not own the sidebar's width. `region` is a best
+practice, not WCAG, and the alternative is restructuring the shell — recorded,
+not changed.
+
+**A real gap axe cannot see:** the transcript has no live region. Six exist in
+the app; none is on the conversation. A screen reader is told nothing when an
+answer arrives. The reference does carry `sr-only` + `aria-live="polite"` status
+text (found in the deobfuscated source, which turns out to exist under
+`study/chatgpt/deob` and is far better evidence than the minified CSS), but what
+it announces at the transcript level was not established, and announcing streamed
+tokens is worse than announcing nothing. Left for a decision — see below.
+
+### The guard that stopped asking the right question
+
+`dockDestinations.test.ts` asserts that **every registered view is reachable from
+the dock**. Round 19 made that too strong: the command menu now opens a view the
+dock catalogue does not carry on the content card, so a non-dock view is no
+longer unreachable — it is simply placed differently.
+
+It also assembled the wrong set. It loads the views registry plus `diagnostics`,
+and misses the two plugins that register a view elsewhere — which is exactly why
+`icon-gallery` could ship registered and unreachable while a file whose whole job
+is catching that stayed green.
+
+| | Before | After |
+| --- | --- | --- |
+| The question | every registered view is a dock destination | every view that **can sit in the dock** is a dock destination |
+| Why that is the right question | — | `splittable: true` ⟺ listed holds exactly today: 20 registry views + `diagnostics` are splittable and listed; `settings` and `icon-gallery` are neither |
+| The exception | would have been a hand-written list of two ids | derived from the view's own `splittable` |
+| The assembled set | views registry + `diagnostics` | plus `icon-gallery` and `kernelSettings` |
+| Proof it catches its case | — | marking `icon-gallery` splittable fails it by name; under the old set it stayed green |
+
+A view-contributing plugin still missing from the list fails the first assertion
+if it owns any destination. One that owns none is the remaining blind spot, and
+it is written down in the file.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` and all fifteen guards — green.
+- 1894 tests passing; the new assertion proven against a deliberate violation.
+
+### Decisions this work is now waiting on
+
+1. **A view's placement is declared apart from the view** (round 19, item 6).
+   Folding the dock scope into `defineWorkspaceView` would make the two unable to
+   disagree and retire both the destination list and two of the three assertions
+   above. Structural: touches 23 views, one extension point and the dock catalogue.
+2. **The composer's single-line state.** The reference collapses to a 22px-radius
+   pill at a 44px min height with the controls inline, and grows into a rounded
+   rect; Flame always carries its footer on a second row. It also overhangs the
+   thread column by 24px a side. Both move every golden.
+3. **What a screen reader should hear when an answer arrives.**
+
+### Open
+
+Items 1–7 from rounds 19 and 20, plus the `region` violation above.
