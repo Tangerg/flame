@@ -81,7 +81,9 @@ type AgentDocFile struct {
 }
 
 // ValidateAgentDocumentCascade protects every producer of AgentDocFile values,
-// including ones that do not use the normal filesystem discovery path.
+// including ones that do not use the normal filesystem discovery path. Each
+// source path appears once, and scopes advance in render order from home to
+// project root to cwd without returning to an earlier phase.
 func ValidateAgentDocumentCascade(files []AgentDocFile) error {
 	if len(files) > MaxAgentDocumentsPerCascade {
 		return fmt.Errorf(
@@ -92,6 +94,8 @@ func ValidateAgentDocumentCascade(files []AgentDocFile) error {
 		)
 	}
 	total := 0
+	seen := make(map[string]struct{}, len(files))
+	previousPhase := -1
 	for index, file := range files {
 		if strings.TrimSpace(file.Path) == "" || strings.TrimSpace(file.Content) == "" {
 			return fmt.Errorf("%w: agent document %d is incomplete", ErrInvalidPromptSource, index)
@@ -99,11 +103,18 @@ func ValidateAgentDocumentCascade(files []AgentDocFile) error {
 		if !utf8.ValidString(file.Path) {
 			return fmt.Errorf("%w: agent document %d path must be valid UTF-8", ErrInvalidPromptSource, index)
 		}
-		switch file.Scope {
-		case AgentDocScopeHome, AgentDocScopeProjectRoot, AgentDocScopeCWD:
-		default:
+		phase, validScope := file.Scope.renderPhase()
+		if !validScope {
 			return fmt.Errorf("%w: agent document %q has unknown scope %q", ErrInvalidPromptSource, file.Path, file.Scope)
 		}
+		if phase < previousPhase {
+			return fmt.Errorf("%w: agent document %q returns to scope %q after a later render phase", ErrInvalidPromptSource, file.Path, file.Scope)
+		}
+		previousPhase = phase
+		if _, duplicate := seen[file.Path]; duplicate {
+			return fmt.Errorf("%w: agent document cascade repeats source %q", ErrInvalidPromptSource, file.Path)
+		}
+		seen[file.Path] = struct{}{}
 		if err := validateAuthoredPromptString(file.Content); err != nil {
 			return fmt.Errorf("agent document %q: %w", file.Path, err)
 		}
@@ -117,6 +128,19 @@ func ValidateAgentDocumentCascade(files []AgentDocFile) error {
 		total += len(file.Content)
 	}
 	return nil
+}
+
+func (s AgentDocScope) renderPhase() (int, bool) {
+	switch s {
+	case AgentDocScopeHome:
+		return 0, true
+	case AgentDocScopeProjectRoot:
+		return 1, true
+	case AgentDocScopeCWD:
+		return 2, true
+	default:
+		return 0, false
+	}
 }
 
 // RecipeScope identifies the source layer that supplied a recipe.

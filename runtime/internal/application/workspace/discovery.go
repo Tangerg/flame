@@ -167,12 +167,14 @@ type AgentDoc struct {
 	Scope AgentDocScope
 }
 
-// AgentDocFinder discovers the workspace instruction-document cascade.
+// AgentDocFinder discovers the workspace instruction-document cascade in render
+// order. Application validates unique source identity and phase order.
 type AgentDocFinder interface {
 	Find(ctx context.Context, cwd, home string) ([]AgentDocFile, error)
 }
 
-// AgentDocs returns the instruction-document cascade for one workspace.
+// AgentDocs returns the unique instruction-document cascade for one workspace in
+// home, project-root, and cwd render phases.
 func (d *Discovery) AgentDocs(ctx context.Context, cwd string) ([]AgentDoc, error) {
 	root, err := d.scope.root(cwd)
 	if err != nil {

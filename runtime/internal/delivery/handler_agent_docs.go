@@ -8,8 +8,8 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ListAgentDocs maps the application-owned instruction-document cascade onto
-// the protocol shape.
+// ListAgentDocs maps the application-owned unique, render-ordered instruction
+// document cascade onto the protocol shape.
 func (s *Handler) ListAgentDocs(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.AgentDoc], error) {
 	docs, err := s.workspaceDiscovery.AgentDocs(ctx, in.Workspace.Path)
 	if err != nil {

@@ -11,7 +11,8 @@ const (
 	AgentDocScopeHome        AgentDocScope = "home"
 )
 
-// AgentDoc is one AGENTS.md discovered from cwd upward.
+// AgentDoc is one AGENTS.md in the unique effective cascade. agentDocs.list
+// returns documents in prompt render order: home, project-root tree, then cwd.
 type AgentDoc struct {
 	Path  string        `json:"path"`
 	Title string        `json:"title,omitempty"`

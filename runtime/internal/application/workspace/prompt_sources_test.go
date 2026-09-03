@@ -48,6 +48,20 @@ func TestAgentDocumentCascadeContract(t *testing.T) {
 	if err := ValidateAgentDocumentCascade(overfull); !errors.Is(err, ErrPromptSourceTooLarge) {
 		t.Fatalf("overfull error = %v, want ErrPromptSourceTooLarge", err)
 	}
+
+	for _, invalid := range [][]AgentDocFile{
+		{
+			{Path: "/repo/AGENTS.md", Content: "root", Scope: AgentDocScopeProjectRoot},
+			{Path: "/repo/AGENTS.md", Content: "leaf", Scope: AgentDocScopeCWD},
+		}, {
+			{Path: "/repo/AGENTS.md", Content: "project", Scope: AgentDocScopeProjectRoot},
+			{Path: "/home/AGENTS.md", Content: "home", Scope: AgentDocScopeHome},
+		},
+	} {
+		if err := ValidateAgentDocumentCascade(invalid); !errors.Is(err, ErrInvalidPromptSource) {
+			t.Errorf("invalid cascade error = %v, want ErrInvalidPromptSource", err)
+		}
+	}
 }
 
 func TestRecipeCascadeContract(t *testing.T) {
