@@ -20,6 +20,17 @@ func (s scriptedHTTPServer) Shutdown(ctx context.Context) error { return s.shutd
 
 func (s scriptedHTTPServer) Close() error { return s.close() }
 
+type scriptedRuntimeCloser struct {
+	results []error
+	closes  int
+}
+
+func (s *scriptedRuntimeCloser) Close() error {
+	result := s.results[s.closes]
+	s.closes++
+	return result
+}
+
 func TestResolvedVersionPrefersExplicitLinkValue(t *testing.T) {
 	original := version
 	version = "v1.2.3"
@@ -27,6 +38,26 @@ func TestResolvedVersionPrefersExplicitLinkValue(t *testing.T) {
 
 	if got := resolvedVersion(); got != "v1.2.3" {
 		t.Fatalf("resolvedVersion = %q, want explicit link value", got)
+	}
+}
+
+func TestCloseRuntimeInstanceRetriesIncompleteShutdown(t *testing.T) {
+	transient := errors.New("component still draining")
+	instance := &scriptedRuntimeCloser{results: []error{transient, transient, nil}}
+	if err := closeRuntimeInstance(instance); err != nil {
+		t.Fatalf("closeRuntimeInstance: %v", err)
+	}
+	if instance.closes != 3 {
+		t.Fatalf("runtime close attempts = %d, want 3", instance.closes)
+	}
+}
+
+func TestCloseRuntimeInstanceBoundsRepeatedFailure(t *testing.T) {
+	want := errors.New("component shutdown failed")
+	instance := &scriptedRuntimeCloser{results: []error{want, want, want, nil}}
+	err := closeRuntimeInstance(instance)
+	if !errors.Is(err, want) || instance.closes != runtimeCloseAttempts {
+		t.Fatalf("close result = (%v, %d attempts)", err, instance.closes)
 	}
 }
 

@@ -21,6 +21,7 @@ import (
 const (
 	runtimeLogPrefix      = "[flame]"
 	serverShutdownTimeout = 10 * time.Second
+	runtimeCloseAttempts  = 3
 )
 
 func run(ctx context.Context, errw io.Writer) (err error) {
@@ -31,7 +32,7 @@ func run(ctx context.Context, errw io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() { err = errors.Join(err, instance.Close()) }()
+	defer func() { err = errors.Join(err, closeRuntimeInstance(instance)) }()
 	srv := cfg.Server
 	if len(srv.CORSOrigins) == 0 {
 		srv.CORSOrigins = flamehttp.DefaultCORSOrigins()
@@ -61,6 +62,29 @@ func run(ctx context.Context, errw io.Writer) (err error) {
 		return err
 	}
 	return runServer(ctx, errw, httpServer, srv.Listen, token)
+}
+
+type runtimeCloser interface {
+	Close() error
+}
+
+func closeRuntimeInstance(instance runtimeCloser) error {
+	if instance == nil {
+		return nil
+	}
+	errorsByAttempt := make([]error, 0, runtimeCloseAttempts)
+	for range runtimeCloseAttempts {
+		err := instance.Close()
+		if err == nil {
+			return nil
+		}
+		errorsByAttempt = append(errorsByAttempt, err)
+	}
+	return fmt.Errorf(
+		"close runtime after %d attempts: %w",
+		runtimeCloseAttempts,
+		errors.Join(errorsByAttempt...),
+	)
 }
 
 // buildHTTPServer assembles the HTTP+SSE server from the resolved settings.
