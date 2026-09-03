@@ -4,17 +4,6 @@ import { ALL_TIME_USAGE, recentUsage, type UsagePeriod } from "./usagePeriod";
 
 export const USAGE_SUMMARY_KEY = "usage.summary";
 
-export interface UsageBreakdownBucket {
-  key: string;
-  inputTokens?: number;
-  outputTokens?: number;
-  cacheReadTokens?: number;
-  cacheWriteTokens?: number;
-  reasoningTokens?: number;
-  costUsd?: number;
-  runs?: number;
-}
-
 export const UsageRange = {
   AllTime: "allTime",
   Last30Days: "last30Days",

@@ -6,11 +6,11 @@ import { useT } from "@/lib/i18n";
 import {
   USAGE_RANGES,
   UsageRange,
-  type UsageBreakdownBucket,
   usagePeriodForRange,
   usageTokens,
   useUsageReport,
 } from "../application/usageConfig";
+import type { UsageAmount, UsageBucket } from "../application/ports/usageGateway";
 
 function BreakdownSection({
   title,
@@ -18,7 +18,7 @@ function BreakdownSection({
   icon,
 }: {
   title: string;
-  buckets: UsageBreakdownBucket[];
+  buckets: UsageBucket[];
   icon?: (key: string) => ReactNode;
 }) {
   if (buckets.length === 0) return null;
@@ -56,7 +56,7 @@ function UsageTotals({
   sessions,
   runs,
 }: {
-  total: NonNullable<ReturnType<typeof useUsageReport>["data"]>["total"];
+  total: UsageAmount;
   sessions: number;
   runs: number;
 }) {
