@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -73,6 +74,41 @@ func TestDirectorySourceDiscoversValidPluginsAndIsolatesMalformedNeighbors(t *te
 	}
 	if len(discovered.Issues) != 1 || !strings.Contains(discovered.Issues[0].Error(), "broken") {
 		t.Fatalf("issues = %+v", discovered.Issues)
+	}
+}
+
+func TestDirectorySourceRejectsAnOversizedPluginDirectory(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		entries   int
+		wantIssue bool
+	}{
+		{name: "exact limit", entries: maxPluginDirectoryEntries},
+		{name: "over limit", entries: maxPluginDirectoryEntries + 1, wantIssue: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			for index := range test.entries {
+				name := filepath.Join(root, fmt.Sprintf("entry-%04d", index))
+				if err := os.WriteFile(name, nil, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			discovered, err := New([]string{root}).Discover(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if test.wantIssue {
+				want := fmt.Sprintf("more than %d entries", maxPluginDirectoryEntries)
+				if len(discovered.Issues) != 1 || !strings.Contains(discovered.Issues[0].Error(), want) {
+					t.Fatalf("issues = %v", discovered.Issues)
+				}
+				return
+			}
+			if len(discovered.Issues) != 0 {
+				t.Fatalf("issues = %v", discovered.Issues)
+			}
+		})
 	}
 }
 

@@ -38,7 +38,8 @@ ui:
   transcript-retain: 24       # 4..500 finished transcript blocks
   reconnect-attempts: 4       # 0..20 dropped-stream reconnect attempts
 
-# Omit this block to use ~/.flame/plugins. Paths must be non-empty and unique.
+# Omit this block to use ~/.flame/plugins. Paths must be non-empty and unique;
+# each directory may contain at most 1024 immediate entries.
 # plugins:
 #   directories:
 #     - /absolute/path/to/plugins

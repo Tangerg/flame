@@ -25,16 +25,17 @@ import (
 )
 
 const (
-	manifestName          = "flame-plugin.json"
-	manifestSchemaVersion = 2
-	maxManifestBytes      = 1 << 20
-	defaultCommandTimeout = 10 * time.Second
-	maxCommandTimeout     = 60 * time.Second
-	processWaitDelay      = 250 * time.Millisecond
-	maxManifestCommands   = 128
-	maxCommandAliases     = 16
-	maxCommandNameBytes   = 64
-	maxCommandTitleBytes  = 256
+	manifestName              = "flame-plugin.json"
+	manifestSchemaVersion     = 2
+	maxManifestBytes          = 1 << 20
+	defaultCommandTimeout     = 10 * time.Second
+	maxCommandTimeout         = 60 * time.Second
+	processWaitDelay          = 250 * time.Millisecond
+	maxPluginDirectoryEntries = 1024
+	maxManifestCommands       = 128
+	maxCommandAliases         = 16
+	maxCommandNameBytes       = 64
+	maxCommandTitleBytes      = 256
 )
 
 type DirectorySource struct {
@@ -81,15 +82,41 @@ func (d *directoryDiscovery) scanRoot(configured string) {
 		return
 	}
 	d.scannedRoots[rootKey] = struct{}{}
-	entries, err := os.ReadDir(root)
+	entries, err := readDirectoryEntries(root)
 	if err != nil {
-		d.sourceResult.Issues = append(d.sourceResult.Issues, fmt.Errorf("read plugin directory %q: %w", root, err))
+		d.sourceResult.Issues = append(d.sourceResult.Issues, err)
 		return
 	}
 	d.discover(root)
 	for _, entry := range entries {
 		d.discoverChild(root, entry)
 	}
+}
+
+func readDirectoryEntries(root string) (_ []os.DirEntry, err error) {
+	directory, _, err := fileinput.OpenDirectory(root)
+	if err != nil {
+		return nil, fmt.Errorf("open plugin directory %q: %w", root, err)
+	}
+	defer func() {
+		if closeErr := directory.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close plugin directory %q: %w", root, closeErr))
+		}
+	}()
+	entries, err := directory.ReadDir(maxPluginDirectoryEntries + 1)
+	if errors.Is(err, io.EOF) {
+		err = nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read plugin directory %q: %w", root, err)
+	}
+	if len(entries) > maxPluginDirectoryEntries {
+		return nil, fmt.Errorf("plugin directory %q has more than %d entries", root, maxPluginDirectoryEntries)
+	}
+	slices.SortFunc(entries, func(left, right os.DirEntry) int {
+		return strings.Compare(left.Name(), right.Name())
+	})
+	return entries, nil
 }
 
 func (d *directoryDiscovery) discoverChild(root string, entry os.DirEntry) {
