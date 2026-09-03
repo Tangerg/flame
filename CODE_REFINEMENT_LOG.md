@@ -7,7 +7,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–170 are complete and pushed to `origin/main`. Public Runtime changes
+- Rounds 1–171 are complete and pushed to `origin/main`. Public Runtime changes
   are followed by their exact CLI dependency update.
 - The current Runtime contract is `f37dc362` (`refactor(runtime): centralize
   request validation`).
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–170 — exact handoff
+## Rounds 101–171 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -130,6 +130,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 168 | CLI commit | Routed Goal get, clear, stop, and resume through one generated `GoalRequest` validator so every Goal entrypoint rejects non-canonical Session identities before calling Runtime. |
 | 169 | CLI commit | Bound cold Session reads to validated generated requests and rejected metadata whose identity does not match the requested Session. |
 | 170 | CLI commit | Rejected `runs.list` pages that violate Runtime's newest-first creation-time and Run-ID ordering contract. |
+| 171 | CLI commit | Rejected `sessions.list` pages that violate Runtime's favorite, update-time, and Session-ID ordering contract. |
 
 ## Verification contract
 
@@ -167,7 +168,7 @@ repeated here.
 
 ## Remaining direction
 
-- Continue after Round 170 by auditing complete Runtime catalogs and CLI
+- Continue after Round 171 by auditing complete Runtime catalogs and CLI
   projections for aggregate invariants that element-level wire validation cannot
   express.
 - Treat missing output-resource identity constraints as candidates only after the

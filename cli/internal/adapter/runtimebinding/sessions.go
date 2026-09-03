@@ -61,6 +61,19 @@ func projectSessionPage(page *protocol.Page[protocol.Session], cursor string, li
 		if err != nil {
 			return agent.SessionPage{}, runtimeContractViolation("list sessions returned an invalid session: %v", err)
 		}
+		if len(result.Items) != 0 {
+			previous := result.Items[len(result.Items)-1]
+			misordered := projected.Favorite && !previous.Favorite
+			if projected.Favorite == previous.Favorite {
+				misordered = projected.UpdatedAt.After(previous.UpdatedAt) ||
+					(projected.UpdatedAt.Equal(previous.UpdatedAt) && projected.ID > previous.ID)
+			}
+			if misordered {
+				return agent.SessionPage{}, runtimeContractViolation(
+					"list sessions returned session %q out of catalog order after %q", projected.ID, previous.ID,
+				)
+			}
+		}
 		result.Items = append(result.Items, projected)
 	}
 	if err := result.Validate(); err != nil {

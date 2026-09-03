@@ -80,6 +80,48 @@ func TestSessionCatalogRejectsOversizedCursorsAtTheAdapterBoundary(t *testing.T)
 	requireRuntimeContractViolation(t, err)
 }
 
+func TestSessionCatalogRejectsPagesOutsideRuntimeOrder(t *testing.T) {
+	t.Parallel()
+	session := func(id string, updated time.Time, favorite bool) protocol.Session {
+		return protocol.Session{
+			ID: id, Status: protocol.SessionStatusIdle,
+			Provider: testSessionProvider, Model: testSessionModel,
+			Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
+			CreatedAt: testSessionTime, UpdatedAt: updated, Favorite: favorite, Revision: 1,
+		}
+	}
+	updated := testSessionTime.Add(time.Hour)
+	for _, test := range []struct {
+		name     string
+		sessions []protocol.Session
+	}{
+		{
+			name: "favorite follows ordinary",
+			sessions: []protocol.Session{
+				session("ses_ordinary", updated, false), session("ses_favorite", updated, true),
+			},
+		},
+		{
+			name: "update time ascends",
+			sessions: []protocol.Session{
+				session("ses_old", updated, false), session("ses_new", updated.Add(time.Second), false),
+			},
+		},
+		{
+			name: "equal-time identity ascends",
+			sessions: []protocol.Session{
+				session("ses_a", updated, false), session("ses_b", updated, false),
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := projectSessionPage(protocol.NewPage(test.sessions), "", agent.DefaultPageRows)
+			requireRuntimeContractViolation(t, err)
+		})
+	}
+}
+
 func (s sessionCatalogStub) CreateSession(_ context.Context, request protocol.CreateSessionRequest, _ flameruntime.CommandOptions) (*protocol.Session, error) {
 	if s.create != nil {
 		return s.create(request)
