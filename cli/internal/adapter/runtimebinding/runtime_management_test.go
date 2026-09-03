@@ -423,6 +423,7 @@ type goalBindingStub struct {
 	stopResult   *protocol.Goal
 	resumeResult *protocol.Goal
 	last         string
+	getCalls     int
 }
 
 func (g *goalBindingStub) UpdateGoal(_ context.Context, request protocol.UpdateGoalRequest, options flameruntime.CommandOptions) (*protocol.Goal, error) {
@@ -449,6 +450,7 @@ func (g *goalBindingStub) ClearGoal(_ context.Context, request protocol.GoalRequ
 }
 
 func (g *goalBindingStub) GetGoal(context.Context, protocol.GoalRequest, flameruntime.CallOptions) (*protocol.Goal, error) {
+	g.getCalls++
 	return g.current, nil
 }
 
@@ -579,6 +581,41 @@ func TestGoalAdapterRejectsInvalidNestedBudgetBeforeCallingRuntime(t *testing.T)
 	}
 	if stub.last != "" {
 		t.Fatalf("StartGoal called runtime before validating nested budget: %q", stub.last)
+	}
+}
+
+func TestGoalAdapterRejectsInvalidSessionIdentityBeforeCallingRuntime(t *testing.T) {
+	tests := []struct {
+		name   string
+		invoke func(*Connection) error
+	}{
+		{name: "get", invoke: func(runtime *Connection) error {
+			_, _, err := runtime.GetGoal(t.Context(), " ses_1 ")
+			return err
+		}},
+		{name: "clear", invoke: func(runtime *Connection) error {
+			return runtime.ClearGoal(t.Context(), " ses_1 ")
+		}},
+		{name: "stop", invoke: func(runtime *Connection) error {
+			_, err := runtime.StopGoal(t.Context(), " ses_1 ")
+			return err
+		}},
+		{name: "resume", invoke: func(runtime *Connection) error {
+			_, err := runtime.ResumeGoal(t.Context(), " ses_1 ")
+			return err
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			stub := &goalBindingStub{t: t, current: activeProtocolGoal()}
+			runtime := &Connection{goals: stub, meta: requestMeta("test")}
+			if err := test.invoke(runtime); err == nil {
+				t.Fatal("invalid session identity was accepted")
+			}
+			if stub.last != "" || stub.getCalls != 0 {
+				t.Fatalf("invalid session identity reached Runtime: last=%q getCalls=%d", stub.last, stub.getCalls)
+			}
+		})
 	}
 }
 

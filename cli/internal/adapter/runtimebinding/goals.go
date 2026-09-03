@@ -2,7 +2,6 @@ package runtimebinding
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
@@ -42,24 +41,26 @@ func (r *Connection) UpdateGoal(ctx context.Context, update protocol.UpdateGoalR
 }
 
 func (r *Connection) ClearGoal(ctx context.Context, sessionID string) error {
-	if sessionID == "" {
-		return errors.New("clear goal: session id is empty")
+	request, err := newGoalRequest("clear goal", sessionID)
+	if err != nil {
+		return err
 	}
 	options, err := r.commandOptions()
 	if err != nil {
 		return err
 	}
-	if err := r.goals.ClearGoal(ctx, protocol.GoalRequest{SessionID: sessionID}, options); err != nil {
+	if err := r.goals.ClearGoal(ctx, request, options); err != nil {
 		return classifyError(err)
 	}
 	return nil
 }
 
 func (r *Connection) GetGoal(ctx context.Context, sessionID string) (protocol.Goal, bool, error) {
-	if sessionID == "" {
-		return protocol.Goal{}, false, errors.New("get goal: session id is empty")
+	request, err := newGoalRequest("get goal", sessionID)
+	if err != nil {
+		return protocol.Goal{}, false, err
 	}
-	result, err := r.goals.GetGoal(ctx, protocol.GoalRequest{SessionID: sessionID}, r.callOptions())
+	result, err := r.goals.GetGoal(ctx, request, r.callOptions())
 	if err != nil {
 		return protocol.Goal{}, false, classifyError(err)
 	}
@@ -133,15 +134,24 @@ func (r *Connection) changeGoal(
 	operation, sessionID string,
 	change func(context.Context, protocol.GoalRequest, flameruntime.CommandOptions) (*protocol.Goal, error),
 ) (protocol.Goal, error) {
-	if sessionID == "" {
-		return protocol.Goal{}, fmt.Errorf("%s: session id is empty", operation)
+	request, err := newGoalRequest(operation, sessionID)
+	if err != nil {
+		return protocol.Goal{}, err
 	}
 	options, err := r.commandOptions()
 	if err != nil {
 		return protocol.Goal{}, err
 	}
-	result, err := change(ctx, protocol.GoalRequest{SessionID: sessionID}, options)
+	result, err := change(ctx, request, options)
 	return goalResult(operation, sessionID, result, err)
+}
+
+func newGoalRequest(operation, sessionID string) (protocol.GoalRequest, error) {
+	request := protocol.GoalRequest{SessionID: sessionID}
+	if err := request.ValidateWire(); err != nil {
+		return protocol.GoalRequest{}, fmt.Errorf("%s: %w", operation, err)
+	}
+	return request, nil
 }
 
 func goalResult(operation, expectedSessionID string, result *protocol.Goal, err error) (protocol.Goal, error) {
