@@ -11,7 +11,7 @@ export interface TaskReadoutTask {
   startedAt: number;
 }
 
-export interface TaskReadoutPort {
+interface TaskReadoutPort {
   useTasks(): Map<string, TaskReadoutTask>;
 }
 

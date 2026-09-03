@@ -109,7 +109,7 @@ export function renderBlock(
   }
 }
 
-export function renderUnit(unit: MessageRenderUnit, facts: TurnFacts, ctx: BlockCtx) {
+function renderUnit(unit: MessageRenderUnit, facts: TurnFacts, ctx: BlockCtx) {
   if (unit.kind === "wave")
     return <NarrativeWave units={unit.units} facts={facts} ctx={ctx} renderUnit={renderUnit} />;
   if (unit.kind === "toolGroup") {

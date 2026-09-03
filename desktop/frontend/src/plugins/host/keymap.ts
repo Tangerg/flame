@@ -33,7 +33,7 @@ export function commandShortcuts(commands: readonly CommandSpec[]): ShortcutSpec
  * wins" rule `ShortcutSpec` states. Identity is the dispatch form, the same string the keydown
  * listener binds, so what this lists and what fires cannot disagree.
  */
-export function keymapOf(
+function keymapOf(
   commands: readonly CommandSpec[],
   shortcuts: readonly ShortcutSpec[],
 ): ShortcutSpec[] {

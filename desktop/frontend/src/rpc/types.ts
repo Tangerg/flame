@@ -17,7 +17,7 @@ export interface RpcRequest<P = unknown> {
   params?: P;
 }
 
-export interface RpcResponseSuccess<R = unknown> {
+interface RpcResponseSuccess<R = unknown> {
   jsonrpc: typeof JSONRPC_VERSION;
   id: RpcId;
   result: R;
@@ -39,7 +39,7 @@ export interface RpcNotification<P = unknown> {
 
 export type RpcMessage = RpcRequest | RpcResponse | RpcNotification;
 
-export interface RpcErrorPayload {
+interface RpcErrorPayload {
   code: number;
   message: string;
   data?: unknown;

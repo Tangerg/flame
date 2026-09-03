@@ -76,7 +76,7 @@ const QUERY_KEYS: Record<
   skillProposals: WORKSPACE_SKILL_PROPOSALS_KEY,
 };
 
-export function invalidateWorkspaceTargets(
+function invalidateWorkspaceTargets(
   targets: WorkspaceInvalidationTarget[],
   sessionIds?: readonly string[],
 ): void {

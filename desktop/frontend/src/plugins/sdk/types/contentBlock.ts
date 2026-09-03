@@ -2,7 +2,7 @@
 
 export type BlockStatus = "running" | "complete" | "incomplete" | "requires-action";
 
-export interface QuestionOption {
+interface QuestionOption {
   label: string;
   description: string;
   preview?: string;
@@ -13,7 +13,7 @@ interface QuestionItemBase {
   header: string;
 }
 
-export interface TextQuestionItem extends QuestionItemBase {
+interface TextQuestionItem extends QuestionItemBase {
   type: "text";
 }
 

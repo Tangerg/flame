@@ -67,7 +67,7 @@ type VisualStyleTokenName =
 
 export type VisualStyleTokens = Record<VisualStyleTokenName, string>;
 
-export const WORKBENCH_TOKENS: VisualStyleTokens = {
+const WORKBENCH_TOKENS: VisualStyleTokens = {
   "style-shape-2xs": "2px",
   "style-shape-xs": "4px",
   "style-shape-sm": "6px",

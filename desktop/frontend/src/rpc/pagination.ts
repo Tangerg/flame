@@ -5,7 +5,7 @@ export interface CursorPage<T = unknown> {
   nextCursor?: string;
 }
 
-export type PageItem<P extends CursorPage> = P["data"][number];
+type PageItem<P extends CursorPage> = P["data"][number];
 
 export interface PaginationPolicy {
   readonly maximumPageRequests: number;

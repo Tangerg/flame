@@ -1,7 +1,7 @@
 import type { AgentOpenSessions } from "@/plugins/builtin/agent/public/session";
 
-export type AgentSessionListener = (sessionId: string) => void;
-export type AgentSessionLifecycleListener = (state: AgentOpenSessions) => void;
+type AgentSessionListener = (sessionId: string) => void;
+type AgentSessionLifecycleListener = (state: AgentOpenSessions) => void;
 
 export interface WorkspaceSessionNavigationPorts {
   getActiveSessionId: () => string;

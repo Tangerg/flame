@@ -1,10 +1,10 @@
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 
-export type LoaderVariant =
+type LoaderVariant =
   "dots" | "typing" | "pulse-dot" | "wave" | "bars" | "terminal" | "text-shimmer";
 
-export type LoaderSize = "sm" | "md" | "lg";
+type LoaderSize = "sm" | "md" | "lg";
 
 export interface LoaderProps {
   variant?: LoaderVariant;

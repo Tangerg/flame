@@ -6,7 +6,7 @@ import type { GoalBudget } from "./goalBudget";
 
 export type GoalStatus = "active" | "paused" | "blocked" | "completing";
 
-export interface GoalUsage {
+interface GoalUsage {
   runs: number;
   /** Absent when the Runtime could not price the model. NOT zero: nothing was measured, and
    *  a spend of nothing is a different claim from a spend nobody could total. */
@@ -31,7 +31,7 @@ export type GoalStopCode =
   | "pricingUnavailable"
   | "blockedByModel";
 
-export interface GoalStop {
+interface GoalStop {
   code: GoalStopCode;
   detail: string;
 }

@@ -19,7 +19,7 @@ export interface TurnFacts {
 
 // `unassigned` is only ever an optimistic turn that has not received its Run id: the root
 // narrative selector already excludes material whose Run is absent.
-export type TranscriptRunOwner =
+type TranscriptRunOwner =
   { kind: "unassigned" } | { kind: "owned"; runId: string; status: AgentRunStatus };
 
 export interface TranscriptRow {

@@ -14,7 +14,7 @@ export interface RunSummaryBadge {
   tone: Tone;
 }
 
-export interface RunSummarySection<T> {
+interface RunSummarySection<T> {
   items: readonly T[];
   count: number;
 }

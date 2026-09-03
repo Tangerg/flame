@@ -6,7 +6,7 @@ import type {
 
 export type QuestionAnswers = string[][];
 
-export interface QuestionDraftEntry {
+interface QuestionDraftEntry {
   selected: string[];
   text: string;
 }

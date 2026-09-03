@@ -1,9 +1,9 @@
-export interface AgentTextInput {
+interface AgentTextInput {
   kind: "text";
   text: string;
 }
 
-export interface AgentImageInput {
+interface AgentImageInput {
   kind: "image";
   mime: string;
   data: string;

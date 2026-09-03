@@ -1,6 +1,6 @@
 import type { ComposerKeyBindingSpec } from "@/plugins/sdk";
 
-export type ComposerKeyHandler = ComposerKeyBindingSpec["handler"];
+type ComposerKeyHandler = ComposerKeyBindingSpec["handler"];
 
 export interface ComposerKeyHandlers {
   send: ComposerKeyHandler;

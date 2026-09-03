@@ -4,7 +4,7 @@ import type { AppearanceEdit, AppearancePreference } from "../../kit/appearance"
 /** A selector rather than a hook per field: thirteen preferences would otherwise mean
  *  twenty-six methods saying the same thing. The port exists to keep `setState`,
  *  `subscribe` and the persist middleware off every consumer. */
-export interface AppearancePreferencePort {
+interface AppearancePreferencePort {
   use<T>(select: (preference: AppearancePreference) => T): T;
   /** For rules that run outside render. */
   read(): AppearancePreference;

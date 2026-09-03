@@ -4,7 +4,7 @@ import { useInterruptResume } from "./useInterruptResume";
 // Answers preserve `Question.fields` order and every field always contributes one values
 // array — already the wire shape, so nothing is normalized at the boundary (API.md §6).
 
-export type QuestionAnswers = string[][];
+type QuestionAnswers = string[][];
 
 export interface QuestionAnswerSubmit {
   submit: (answers: QuestionAnswers) => void;

@@ -19,7 +19,7 @@ import { createRunEventBatcher } from "./runEventBatcher";
 
 /** headEventId exists only on a REATTACH: a start or resume stream begins at the beginning
  *  of its segment, so there is no earlier position to name. */
-export interface RunStreamAck {
+interface RunStreamAck {
   runId: RunId;
   segmentId: SegmentId;
   headEventId?: string;

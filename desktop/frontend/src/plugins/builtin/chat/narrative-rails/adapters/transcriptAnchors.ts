@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export const TURN_ANCHOR_ATTR = "data-turn-id";
+const TURN_ANCHOR_ATTR = "data-turn-id";
 const TURN_ROLE_ATTR = "data-turn-role";
 const TURN_SELECTOR = `[${TURN_ANCHOR_ATTR}]`;
 
@@ -16,7 +16,7 @@ function turnElements(root: HTMLElement): HTMLElement[] {
 }
 
 /** `share` is one EXCHANGE's extent as a fraction of the longest one. */
-export interface TurnExtent {
+interface TurnExtent {
   id: string;
   share: number;
 }

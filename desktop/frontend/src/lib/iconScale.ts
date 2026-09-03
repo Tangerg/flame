@@ -5,7 +5,7 @@ import { normalizeUiFontSize } from "./typography";
 
 export type IconSize = "xs" | "sm" | "md" | "lg" | "xl";
 
-export const ICON_SIZES: readonly IconSize[] = ["xs", "sm", "md", "lg", "xl"];
+const ICON_SIZES: readonly IconSize[] = ["xs", "sm", "md", "lg", "xl"];
 
 // Offsets from the type base, in px. `xl` is the only multiplier: display glyphs scale with
 // the surface rather than tracking a label.
@@ -17,7 +17,7 @@ const OFFSETS: Readonly<Record<Exclude<IconSize, "xl">, number>> = {
 };
 const XL_RATIO = 2;
 
-export function iconSizePx(size: IconSize, basePx: number | null | undefined): number {
+function iconSizePx(size: IconSize, basePx: number | null | undefined): number {
   const base = normalizeUiFontSize(basePx);
   return size === "xl" ? Math.round(base * XL_RATIO) : base + OFFSETS[size];
 }

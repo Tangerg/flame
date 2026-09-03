@@ -6,7 +6,7 @@ import {
 } from "@/plugins/builtin/agent/public/plan";
 import { useWorkspaceCapability } from "./workspaceCapabilities";
 
-export type PlanState = "unavailable" | "empty" | "ready";
+type PlanState = "unavailable" | "empty" | "ready";
 
 export interface PlanViewModel {
   steps: readonly PlanStep[];

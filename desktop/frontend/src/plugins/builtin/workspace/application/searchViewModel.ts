@@ -8,7 +8,7 @@ export interface WorkspaceSearchResult {
   total: number;
 }
 
-export interface WorkspaceSearchMatchGroup {
+interface WorkspaceSearchMatchGroup {
   path: string;
   matches: WorkspaceGrepMatch[];
   matchCount: number;

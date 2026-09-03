@@ -51,7 +51,7 @@ function serverFeature(feature: WireFeature): boolean {
   return useRuntimeConnectionStore.getState().capabilities?.features[feature]?.enabled === true;
 }
 
-export function runtimeSupportsStreamingMethod(method: string): boolean {
+function runtimeSupportsStreamingMethod(method: string): boolean {
   return (
     useRuntimeConnectionStore.getState().capabilities?.streamingMethods?.includes(method) ?? false
   );

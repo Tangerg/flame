@@ -49,7 +49,7 @@ function runtimeUsage(usage?: Usage): RunUsage {
   };
 }
 
-export function runtimeRunMetrics(metrics: RunMetrics): AgentRunMetrics {
+function runtimeRunMetrics(metrics: RunMetrics): AgentRunMetrics {
   return {
     steps: metrics.steps,
     activeDurationMillis: metrics.activeDurationMillis,
@@ -57,7 +57,7 @@ export function runtimeRunMetrics(metrics: RunMetrics): AgentRunMetrics {
   };
 }
 
-export function runtimeProblem(problem: ProblemData): AgentProblem {
+function runtimeProblem(problem: ProblemData): AgentProblem {
   const message = errorDetail(problem);
   const retryAfterSeconds = errorRetryAfterSeconds(problem);
   return {
@@ -261,7 +261,7 @@ function runtimeItemDelta(delta: ItemDelta): AgentItemDelta {
   return { ...delta };
 }
 
-export function runtimeInterrupt(interrupt: Interrupt): AgentInterrupt {
+function runtimeInterrupt(interrupt: Interrupt): AgentInterrupt {
   switch (interrupt.type) {
     case "approval":
       return {

@@ -1,7 +1,7 @@
 import type { ThemeNeutralSteps } from "@/plugins/sdk";
 import type { Scheme } from "@/lib/appearance";
 
-export interface ThemeBrand {
+interface ThemeBrand {
   accent: string;
   textOnAccent: string;
   /** Defaults to `colord(accent).darken(0.08)`. */
@@ -12,7 +12,7 @@ export interface ThemeBrand {
 
 /** surface-2/-3/-4 are ALWAYS derived off `--depth-step`; pinning them makes the contrast
  *  slider partially dead. `elevated` / `sunken` are anchors, not rungs on that ladder. */
-export interface ThemeSurfaces {
+interface ThemeSurfaces {
   bg: string;
   surface: string;
   /** Defaults to the first ladder step. */
@@ -22,7 +22,7 @@ export interface ThemeSurfaces {
   sunken?: string;
 }
 
-export interface ThemeInk {
+interface ThemeInk {
   /** The anchor: the soft/muted/faint ramp derives from this when omitted. */
   text: string;
   textBright: string;
@@ -35,13 +35,13 @@ export interface ThemeInk {
 }
 
 /** Literal hex, NOT alpha-blended (DESIGN.md §2), so borders read as precise. */
-export interface ThemeBorders {
+interface ThemeBorders {
   border: string;
   borderSoft: string;
   divider: string;
 }
 
-export interface ThemeSemantic {
+interface ThemeSemantic {
   negative: string;
   warning: string;
   info: string;

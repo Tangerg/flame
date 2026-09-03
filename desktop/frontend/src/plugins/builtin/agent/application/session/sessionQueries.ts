@@ -1,7 +1,7 @@
 import { createDataQuery } from "@/plugins/sdk";
 import { queryClient } from "@/lib/queryClient";
 
-export interface AgentSessionWorkspace {
+interface AgentSessionWorkspace {
   path: string;
   availability: "available" | "missing";
 }

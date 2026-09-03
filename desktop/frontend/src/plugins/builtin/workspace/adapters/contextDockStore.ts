@@ -23,7 +23,7 @@ type PersistedDockScope = z.infer<typeof persistedDockScopeSchema>;
 // to the location so no flag here can disagree with the view on screen. `lastViewId` is the
 // memory a re-open reads, written FROM the location and never back into it.
 
-export interface WorkspaceFileViewer {
+interface WorkspaceFileViewer {
   path: string;
   line: number;
 }

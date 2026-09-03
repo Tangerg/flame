@@ -1,6 +1,6 @@
 import type { AccentSpec, CommandSpec, MessageRoleSpec } from "@/plugins/sdk";
 
-export type CommandRun = CommandSpec["run"];
+type CommandRun = CommandSpec["run"];
 
 export interface DefaultCommandRuns {
   toggleSidebar: CommandRun;

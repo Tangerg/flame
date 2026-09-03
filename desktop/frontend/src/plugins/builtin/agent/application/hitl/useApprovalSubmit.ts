@@ -3,8 +3,6 @@ import type { ApprovalDecision, RememberScope } from "../../domain/hitl";
 import { WIRE_DECISION } from "./wireDecision";
 import { useInterruptResume } from "./useInterruptResume";
 
-export type { RememberScope } from "../../domain/hitl";
-
 // Session pinning, the pending latch and the deferred settle belong to useInterruptResume;
 // only the approval-specific wire payload is built here (API.md §6).
 

@@ -4,7 +4,7 @@ export type { HookReadModel };
 
 // Derived: the runtime's list plus the one fact the pane needs that the wire
 // doesn't carry — whether any hook came from the project file.
-export interface HookListViewModel {
+interface HookListViewModel {
   hooks: HookReadModel[];
   projectRoot?: string;
   projectTrusted: boolean;

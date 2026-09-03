@@ -5,7 +5,7 @@ export type ComposerModelPreference =
   | { kind: "session" }
   | { kind: "explicit"; provider: string; model: string; reasoningEffort?: string };
 
-export interface ComposerStatePort {
+interface ComposerStatePort {
   useText(): string;
   useSetText(): (value: string) => void;
   useClearDraft(): () => void;

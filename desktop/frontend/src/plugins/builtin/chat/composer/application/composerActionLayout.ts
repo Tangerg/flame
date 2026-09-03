@@ -1,4 +1,4 @@
-export type ComposerAction = "send" | "steer" | "stop";
+type ComposerAction = "send" | "steer" | "stop";
 
 export interface ComposerActionLayout {
   primary: ComposerAction;

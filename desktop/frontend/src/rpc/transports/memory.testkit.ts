@@ -31,7 +31,7 @@ export function respondSuccess(t: MemoryTransport, id: RpcId, result: unknown): 
   t.inject({ jsonrpc: JSONRPC_VERSION, id, result } as RpcMessage);
 }
 
-export function injectNotification(
+function injectNotification(
   t: MemoryTransport,
   requestRpcId: RpcId,
   method: string,

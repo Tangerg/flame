@@ -15,13 +15,13 @@ export class MutationSettlementClosedError extends Error {
  * settles. `retained` is for a result that carries a live stream owned by that signal: only
  * the opening deadline is released, so disposing the settler still revokes the stream.
  */
-export type AcceptedAttempt = "released" | "retained";
+type AcceptedAttempt = "released" | "retained";
 
 export interface MutationSettlerConfig {
   acceptedAttempt?: AcceptedAttempt;
 }
 
-export interface MutationSettleOptions {
+interface MutationSettleOptions {
   /** The caller's own cancellation, joined with this settler's lifetime. */
   parent?: AbortSignal;
   timeoutMs?: number;

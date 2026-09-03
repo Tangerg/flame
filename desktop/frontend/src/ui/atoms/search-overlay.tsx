@@ -8,7 +8,7 @@ import { Kbd } from "./kbd";
 import { OptionRow } from "./option-row";
 import { TextField } from "./text-field";
 
-export interface SearchOption {
+interface SearchOption {
   key: string;
   onSelect: () => void;
   children: ReactNode;

@@ -1,7 +1,7 @@
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 
-export class AgentCommandRetiredError extends Error {
+class AgentCommandRetiredError extends Error {
   override readonly name = "AgentCommandRetiredError";
 
   constructor() {

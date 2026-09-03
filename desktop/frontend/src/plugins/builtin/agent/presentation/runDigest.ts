@@ -12,18 +12,18 @@ import { toolCategory } from "../domain/toolCategory";
 import type { AgentRootAttention } from "../application/view/runTree";
 import { projectPatchChanges } from "../public/patchResult";
 
-export interface ApprovalDigest {
+interface ApprovalDigest {
   command: string;
   decision?: ApprovalDecision;
 }
 
-export interface ChangedFile {
+interface ChangedFile {
   path: string;
   added?: number;
   removed?: number;
 }
 
-export interface CommandDigest {
+interface CommandDigest {
   cmd: string;
   status: "running" | "ok" | "err";
 }

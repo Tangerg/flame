@@ -1,4 +1,4 @@
-export type FileChangeStatus = "added" | "deleted" | "modified" | "moved";
+type FileChangeStatus = "added" | "deleted" | "modified" | "moved";
 
 export interface UnifiedDiffFile {
   path: string;

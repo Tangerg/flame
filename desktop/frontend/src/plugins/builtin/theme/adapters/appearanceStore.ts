@@ -14,7 +14,7 @@ import {
 // Read back as COLOURS, not opaque strings. `parseInt(hex, 16)` does not reject a non-hex
 // value, it reads whatever prefix parses — "blue" returns a finite garbage colour and every
 // derived surface paints black. Rejecting here is what makes a corrupt payload boot clean.
-export const APPEARANCE_STORAGE_KEY = "flame.appearance";
+const APPEARANCE_STORAGE_KEY = "flame.appearance";
 
 const HEX_COLOUR = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 

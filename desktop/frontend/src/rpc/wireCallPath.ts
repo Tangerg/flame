@@ -28,7 +28,7 @@ import {
 
 // From the GENERATED table, so a rename in the Registry is a compile error rather than a
 // runtime `method_not_found`.
-export type WirePerform = <M extends WireMethodName>(
+type WirePerform = <M extends WireMethodName>(
   method: M,
   params: WireParams<M>,
   options?: RpcCallOptions,
@@ -84,7 +84,7 @@ export interface WireCallPath {
   openMutation: OpenMutation;
 }
 
-export type OpenMutation = <M extends WireMethodName, Result>(
+type OpenMutation = <M extends WireMethodName, Result>(
   method: M,
   params: WireParams<M>,
   execute: (

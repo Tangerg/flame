@@ -21,7 +21,7 @@ export interface MutationJournalScope {
   retentionSeconds: number;
 }
 
-export class MutationJournalError extends Error {
+class MutationJournalError extends Error {
   override readonly name: string = "MutationJournalError";
 }
 

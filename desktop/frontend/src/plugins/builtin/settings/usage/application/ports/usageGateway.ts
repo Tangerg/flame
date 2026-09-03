@@ -1,6 +1,6 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 import type { UsagePeriod } from "../usagePeriod";
-export interface UsageAmount {
+interface UsageAmount {
   inputTokens?: number;
   outputTokens?: number;
   cacheReadTokens?: number;
@@ -9,12 +9,12 @@ export interface UsageAmount {
   costUsd?: number;
 }
 
-export interface UsageBucket extends UsageAmount {
+interface UsageBucket extends UsageAmount {
   key: string;
   runs?: number;
 }
 
-export interface UsageSummaryReadModel {
+interface UsageSummaryReadModel {
   total: UsageAmount;
   byProvider?: UsageBucket[];
   byModel?: UsageBucket[];

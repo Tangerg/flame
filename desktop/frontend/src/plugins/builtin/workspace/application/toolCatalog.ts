@@ -7,7 +7,7 @@ import {
 } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
 import { useWorkspaceBuiltinTools, type BuiltinToolSummary } from "./workspaceQueries";
 
-export interface BuiltinToolSafetyPill {
+interface BuiltinToolSafetyPill {
   label: string;
   tone: Tone;
 }
@@ -22,7 +22,7 @@ export interface BuiltinToolRowViewModel {
 }
 
 /** One family of the catalog, named by its i18n key so the ring stays wordless. */
-export interface BuiltinToolFamilyViewModel {
+interface BuiltinToolFamilyViewModel {
   id: string;
   titleKey: string;
   rows: BuiltinToolRowViewModel[];

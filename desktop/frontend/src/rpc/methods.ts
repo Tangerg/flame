@@ -168,7 +168,7 @@ export interface WorkspaceMethods {
   };
 }
 
-export type AgentMemoryTarget =
+type AgentMemoryTarget =
   | { scope: Extract<AgentMemoryScope, "user"> }
   | { scope: Extract<AgentMemoryScope, "project">; workspace: WorkspaceRef };
 

@@ -23,7 +23,7 @@ function modelItemId(model: SelectableModel): string {
   return JSON.stringify([model.provider, model.id]);
 }
 
-export const RECENT_GROUP_ID = "__recent";
+const RECENT_GROUP_ID = "__recent";
 
 function modelItem(model: SelectableModel, selected: SelectableModel) {
   return {

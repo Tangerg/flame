@@ -27,7 +27,7 @@ export function useProviderMutationMaterialGeneration(): bigint {
   );
 }
 
-export function useProviderRoleConfig() {
+function useProviderRoleConfig() {
   const utilityRole = useUtilityRole();
   const embeddingRole = useEmbeddingRole();
   const models = useModels();

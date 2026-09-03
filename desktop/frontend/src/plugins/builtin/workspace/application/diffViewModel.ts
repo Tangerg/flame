@@ -8,7 +8,7 @@ import { useWorkspaceCapability } from "./workspaceCapabilities";
 export type WorkspaceDiffMode = NonNullable<WorkspaceDiffQuery["mode"]>;
 export type { WorkspaceFileDiff } from "./workspaceQueries";
 
-export interface WorkspaceDiffSubtext {
+interface WorkspaceDiffSubtext {
   added: number;
   removed: number;
   fileCount: number;

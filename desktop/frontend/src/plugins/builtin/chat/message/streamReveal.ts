@@ -6,7 +6,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
 
-export const STREAM_REVEALS = ["smooth", "typewriter"] as const;
+const STREAM_REVEALS = ["smooth", "typewriter"] as const;
 export type StreamReveal = (typeof STREAM_REVEALS)[number];
 
 interface StreamRevealState {

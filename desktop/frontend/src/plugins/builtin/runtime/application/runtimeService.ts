@@ -8,7 +8,7 @@ export interface RuntimeServiceObservation {
 }
 
 /** Opaque identity reported by one Runtime process incarnation. */
-export type RuntimeProcessGeneration = string;
+type RuntimeProcessGeneration = string;
 
 export interface RuntimeConnectionInspection<Capabilities> {
   /** The exact process generation observed by every member of this inspection. */

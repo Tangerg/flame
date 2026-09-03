@@ -32,7 +32,7 @@ export type WorkspaceInvalidationTarget =
 // Spelled here rather than imported from the wire so this layer stays protocol-free. The
 // assignment at the subscribe adapter is then the DRIFT GATE: a signal the runtime adds
 // surfaces as a type error at the boundary instead of reaching a default branch.
-export type WorkspaceEventType =
+type WorkspaceEventType =
   | "files.changed"
   | "skills.changed"
   | "mcp.changed"
@@ -49,7 +49,7 @@ export type WorkspaceEventType =
   | "agentMemory.changed"
   | "resync";
 
-export type WorkspaceTopic = Exclude<WorkspaceEventType, "resync">;
+type WorkspaceTopic = Exclude<WorkspaceEventType, "resync">;
 
 export interface WorkspaceEventLike {
   type: WorkspaceEventType;

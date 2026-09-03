@@ -1,13 +1,12 @@
 import type { Translate } from "@/lib/i18n";
 import type { WorkspaceFileChange } from "./workspaceQueries";
 
-export interface FileChangeTag {
+interface FileChangeTag {
   letter: "A" | "D" | "M";
   className: string;
 }
 
-export type FileChangeLineStats =
-  { kind: "binary" } | { kind: "text"; added: number; removed: number };
+type FileChangeLineStats = { kind: "binary" } | { kind: "text"; added: number; removed: number };
 
 export interface FileChangeRowViewModel {
   path: string;

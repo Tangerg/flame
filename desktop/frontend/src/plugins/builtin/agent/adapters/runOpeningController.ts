@@ -4,7 +4,7 @@ import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 import { endSpan, startRunSpan, withSpan } from "@/lib/observability/tracing";
 import { agentProblemFromRpcFailure } from "./rpcProblem";
 
-export type RunOpening = { runId: RunId; segmentId: SegmentId };
+type RunOpening = { runId: RunId; segmentId: SegmentId };
 
 interface RunOpeningControllerOptions {
   sessionId: string;

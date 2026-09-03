@@ -5,7 +5,7 @@ import type { WorkspaceFileDiff } from "./workspaceQueries";
 
 /** Carried on BOTH node kinds, so a row never has to walk its children to say what it
  *  is worth. */
-export interface ReviewTreeStat {
+interface ReviewTreeStat {
   added: number;
   removed: number;
   /** Distinct from a pair of zeroes, which would claim the file was touched and changed
@@ -13,14 +13,14 @@ export interface ReviewTreeStat {
   binary: boolean;
 }
 
-export interface ReviewTreeFileNode extends ReviewTreeStat {
+interface ReviewTreeFileNode extends ReviewTreeStat {
   kind: "file";
   name: string;
   /** Also the selection id, the React key and the diff list's scroll anchor. */
   path: string;
 }
 
-export interface ReviewTreeDirectoryNode extends ReviewTreeStat {
+interface ReviewTreeDirectoryNode extends ReviewTreeStat {
   kind: "directory";
   /** Display name; a compressed chain reads as `parent/child`. */
   name: string;

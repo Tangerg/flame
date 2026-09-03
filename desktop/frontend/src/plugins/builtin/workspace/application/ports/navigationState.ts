@@ -34,7 +34,7 @@ export interface WorkspaceDockSnapshot {
   activeViewId: string | null;
 }
 
-export interface WorkspaceNavigationPort {
+interface WorkspaceNavigationPort {
   useActiveViewId(): string | null;
   useDock(): WorkspaceDockSnapshot;
   useFileFocus(): WorkspaceFileFocusSnapshot;

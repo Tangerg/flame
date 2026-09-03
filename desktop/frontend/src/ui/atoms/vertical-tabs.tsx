@@ -3,14 +3,14 @@ import { Icon, type IconName } from "@/ui/icons";
 import { TabsPrimitive } from "@/ui/primitives";
 import { SectionLabel } from "./section-label";
 
-export interface VerticalTabItem {
+interface VerticalTabItem {
   id: string;
   label: ReactNode;
   icon?: IconName;
   content: ReactNode;
 }
 
-export interface VerticalTabGroup {
+interface VerticalTabGroup {
   id: string;
   label: ReactNode;
   items: VerticalTabItem[];

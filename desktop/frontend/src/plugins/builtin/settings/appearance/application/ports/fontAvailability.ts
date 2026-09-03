@@ -4,7 +4,7 @@ import { createSingletonPort } from "@/lib/ports/singletonPort";
  * A port because the candidate list is ours — a curated cross-platform set — while the probe
  * is the browser's, and keeping it behind here leaves that list testable without a DOM.
  */
-export interface FontAvailabilityPort {
+interface FontAvailabilityPort {
   isAvailable(family: string): boolean;
 }
 

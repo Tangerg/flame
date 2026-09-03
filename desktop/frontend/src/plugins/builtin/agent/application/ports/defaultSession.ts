@@ -8,7 +8,7 @@ export interface AgentSession {
   stop: () => void;
 }
 
-export interface AgentDefaultSessionPort {
+interface AgentDefaultSessionPort {
   useDefaultChatSession(): AgentSession;
 }
 

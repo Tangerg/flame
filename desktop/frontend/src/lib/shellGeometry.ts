@@ -6,7 +6,7 @@ const SIDEBAR_READING_MIN_WIDTH_PX = 240;
 export const DOCK_MIN_WIDTH_PX = 320;
 /** Reserved for the CONVERSATION, not the flank, before the flank may claim anything. */
 export const DOCK_SAFE_AREA_PX = 352;
-export const DOCK_PREFERRED_WIDTH_PX = 640;
+const DOCK_PREFERRED_WIDTH_PX = 640;
 const DOCK_PREFERRED_SAFE_AREA_PX = 500;
 const DOCK_ASPECT_RATIO = 16 / 10;
 

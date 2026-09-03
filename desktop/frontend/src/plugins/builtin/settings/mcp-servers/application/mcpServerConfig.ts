@@ -22,7 +22,7 @@ export function createMCPServer(input: MCPServerInput): Promise<MCPServerSetting
   return MCPServerMutationOwner.current().create(input);
 }
 
-export function updateMCPServer(name: string, input: MCPServerInput): Promise<MCPServerSettings> {
+function updateMCPServer(name: string, input: MCPServerInput): Promise<MCPServerSettings> {
   return MCPServerMutationOwner.current().update(name, input);
 }
 

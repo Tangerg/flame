@@ -1,6 +1,6 @@
 import { createPublicationSlot } from "@/lib/publicationSlot";
 
-export type GoalComposerModePhase = "inactive" | "armed" | "confirming" | "starting";
+type GoalComposerModePhase = "inactive" | "armed" | "confirming" | "starting";
 
 export interface GoalComposerModeSnapshot {
   sessionId: string | null;

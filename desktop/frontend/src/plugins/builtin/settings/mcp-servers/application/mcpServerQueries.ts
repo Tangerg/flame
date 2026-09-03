@@ -2,7 +2,7 @@ import { createDataQuery, createParameterizedDataQuery } from "@/plugins/sdk";
 import type { MCPHandshakeTimeout } from "./mcpHandshakeTimeout";
 
 export type MCPTransport = "stdio" | "streamableHttp";
-export type MCPServerStatus =
+type MCPServerStatus =
   "disabled" | "disconnected" | "connecting" | "connected" | "failed" | "needsAuth";
 
 // MCPServerSettings is the frontend's unified MCP resource. Workspace and

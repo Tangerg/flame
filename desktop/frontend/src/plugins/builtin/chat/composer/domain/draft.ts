@@ -1,4 +1,4 @@
-export interface ComposerDraftImage {
+interface ComposerDraftImage {
   mime: string;
   data: string;
   name?: string;

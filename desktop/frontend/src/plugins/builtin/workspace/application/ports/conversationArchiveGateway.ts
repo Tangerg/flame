@@ -3,7 +3,7 @@ export type ConversationExportFormat = "md" | "json";
 export type ConversationExportResult =
   { format: "md"; markdown?: string } | { format: "json"; artifact?: unknown };
 
-export interface ImportedConversation {
+interface ImportedConversation {
   id: string;
   title?: string;
 }

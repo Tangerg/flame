@@ -12,7 +12,7 @@ const HISTOGRAM_DATA_POINT = 0;
 
 type Attrs = Record<string, string | number | boolean>;
 
-export type InstrumentKind = "histogram" | "counter";
+type InstrumentKind = "histogram" | "counter";
 
 /** One metric row per (instrument name, attribute combo). */
 export interface MetricRow {

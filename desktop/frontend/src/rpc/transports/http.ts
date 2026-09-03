@@ -35,7 +35,7 @@ import {
 
 /** A transport-safety ceiling ONLY: it stops a malformed peer growing an unterminated
  *  parser frame forever before discovery can exist. */
-export const MAXIMUM_EVENT_STREAM_FRAME_CHARACTERS = 128 * 1024 * 1024;
+const MAXIMUM_EVENT_STREAM_FRAME_CHARACTERS = 128 * 1024 * 1024;
 
 // The injected `traceparent` rides HEADERS, never the JSON-RPC body (TRANSPORT.md §2).
 const tracer = trace.getTracer("flame-frontend");

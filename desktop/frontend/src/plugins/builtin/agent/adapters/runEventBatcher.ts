@@ -5,7 +5,7 @@ type CancelFrame = (handle: number) => void;
 
 /** A hidden WebView may suspend animation frames while Runtime streaming stays
  * active. This is the maximum material kept waiting for one visual frame. */
-export const MAXIMUM_RUN_EVENTS_PER_FRAME = 256;
+const MAXIMUM_RUN_EVENTS_PER_FRAME = 256;
 
 export interface RunEventBatcher {
   enqueue(event: RunEvent): void;

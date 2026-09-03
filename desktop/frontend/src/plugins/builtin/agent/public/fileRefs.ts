@@ -1,7 +1,7 @@
 // Precision over recall: a token qualifies only with a path separator OR a known source-file
 // extension, so prose like "e.g." and a version "1.2.3" do not light up.
 
-export interface FileRef {
+interface FileRef {
   path: string;
   line: number; // 0 = no specific line
   /** 0 = none. Carried so the rendered reference reads as the tool wrote it —

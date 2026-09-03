@@ -4,8 +4,8 @@ export const DEFAULT_RPC_SESSION_ID = "ses_default";
 
 export type RpcAgentInput = Parameters<AgentDriver["start"]>[0];
 export type RpcAgentStartOptions = Parameters<AgentDriver["start"]>[1];
-export type RpcAgentRunId = Parameters<AgentDriver["resume"]>[0];
-export type RpcAgentResumeOptions = Parameters<AgentDriver["resume"]>[1];
+type RpcAgentRunId = Parameters<AgentDriver["resume"]>[0];
+type RpcAgentResumeOptions = Parameters<AgentDriver["resume"]>[1];
 
 export interface RpcRunStartParams {
   sessionId: string;

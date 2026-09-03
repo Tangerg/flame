@@ -71,7 +71,7 @@ export interface McpImportResult {
  * servers "Git" or "Brave Search". Shaped here, at the boundary that can still say what
  * happened; passed through, it imports cleanly and fails later at the configure request.
  */
-export function wireServerName(name: string): string | null {
+function wireServerName(name: string): string | null {
   const shaped = name
     .toLowerCase()
     .replace(/[^a-z0-9._-]+/g, "-")
