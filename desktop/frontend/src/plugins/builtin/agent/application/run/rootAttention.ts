@@ -14,12 +14,8 @@ export interface RootRunSettlement {
   errorMessage: string | null;
 }
 
-function currentRootAttention(view: AgentSessionView): AgentRootAttention {
-  return selectCurrentRootAttention(view);
-}
-
 function currentRootRunning(view: AgentSessionView): boolean {
-  return currentRootAttention(view).status === "running";
+  return selectCurrentRootAttention(view).status === "running";
 }
 
 function anySessionRunning(sessions: Record<string, AgentSessionViewEntry>): boolean {
@@ -60,12 +56,12 @@ export function subscribeRootRunSettlements(
 ): () => void {
   const previousBySession = new Map<string, AgentRootAttention>();
   for (const [sessionId, entry] of Object.entries(agentSessionView().getSessions())) {
-    previousBySession.set(sessionId, currentRootAttention(entry.view));
+    previousBySession.set(sessionId, selectCurrentRootAttention(entry.view));
   }
   return agentSessionView().subscribeSessions((sessions) => {
     for (const sessionId in sessions) {
       const view = sessions[sessionId]!.view;
-      const current = currentRootAttention(view);
+      const current = selectCurrentRootAttention(view);
       const previous = previousBySession.get(sessionId) ?? { status: "idle", runId: null };
       if (current.runId === previous.runId && current.status === previous.status) continue;
       previousBySession.set(sessionId, current);

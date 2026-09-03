@@ -1673,3 +1673,78 @@ reserves for it.
    misses it (its assembled set does not include the plugins that register views
    outside `workspace-views/`). Making placement part of the view's own spec would
    remove the class, and is a structural change worth agreeing before making.
+
+## Round 20 — a measurement round, including one of my own that was wrong
+
+Six audits against the reference and against the polish rules. Five found
+nothing, one found me measuring with the wrong font. The round is recorded in
+full because "this dimension is clean" is only worth anything with the numbers
+under it.
+
+### The mistake, and how it was caught
+
+A probe span styled `font: 14px Geist` measured ten `1`s at **48.7px** and ten
+`8`s at **84.6px** — proportional figures, a 3.5px shift per digit tick. On that
+basis I put `tabular-nums` on the activity summary (`1 read · 1 search`, which
+counts while a run streams) and on the working line (`Working · 390m 1s`, which
+re-reads a clock every second), with comments stating the measurement.
+
+Then the visual suite passed with **no golden moved**, which a 3.5px text shift
+cannot do. Measuring the real elements instead of a detached span:
+
+| | `normal` | `tabular-nums` |
+| --- | --- | --- |
+| `Working · 390m 0s` | 102.000px | 102.000px |
+| `1 read · 1 search` | 95.953px | 95.953px |
+| ten `1`s vs ten `8`s, inheriting the row's font | 77.047 / 77.047 | 77.047 / 77.047 |
+
+**Geist's digits are tabular already.** The detached span had fallen back to
+another family — `1` at 4.87px is no sans. Both changes were inert and both
+comments asserted a false number, so both are reverted. The 30 files that do
+carry `tabular-nums` are not wasted: the UI font is a user setting, and the next
+font need not be Geist.
+
+### Audited, nothing to change
+
+| Dimension | Method | Result |
+| --- | --- | --- |
+| Live numerals | every element whose own text carries a digit, 16 agent states + 2 workspace states | only the model name `GPT-5.6 Sol`, a question's option numbers, and authored prose — none of them counters |
+| Concentric radii | every child that hugs a parent's corner within 8px, inset equally on both sides | **no violation**; the shape ladder is concentric where a reader can see it |
+| `transition: all` | source | none |
+| `will-change` | source | two, both on `opacity`/`filter`/`transform` |
+| Reduced motion | source | a global `prefers-reduced-motion` rule **and** a user-facing `--motion-scale`, which are different questions |
+| Horizontal overflow at the 1120×720 minimum | `scrollWidth > clientWidth` with a visible overflow, six states | all deliberate: `sr-only` 1px clamps, the content card's `clip`, `truncate`, the actions row's optical `-6px`, and `md-table-container`'s `-20px` full-bleed |
+
+### Reference comparison
+
+| | Reference | Flame |
+| --- | --- | --- |
+| Transition durations | `--transition-duration-basic: .15s`, `--transition-duration-relaxed: .3s` | `--dur-fast: 150ms`, `--dur-slow: 300ms` — the same two |
+| Enter curve | `--ease-enter-snappy: cubic-bezier(.23, 1, .32, 1)` | `--ease-out: cubic-bezier(.22, 1, .36, 1)` — the same curve under another name |
+| Tabular figures | one surface: a chart tooltip value | leaving authored markdown tables proportional matches it |
+| Composer attachment radius | `max(0px, composer-radius − attachment-inset)` | the same formula, already |
+
+Two differences are real and neither is a defect to fix unilaterally: the
+reference's composer is a **pill at one line** (`--radius-token-composer-single-line`
+= 22px against a 44px min height, with the controls inline) and grows into a
+rounded rect, where Flame's always carries its footer on a second row; and the
+reference's composer **overhangs** the thread column by 24px a side. Both are
+design decisions with wide golden churn.
+
+### Changed
+
+Two functions whose whole body forwarded their own arguments unchanged, owning
+no name, boundary or policy: `viewIcon` → `knownIconName`, and a file-local
+`currentRootAttention` → the `selectCurrentRootAttention` its own import already
+named. Eight other forwarders were looked at and kept: each publishes a private
+construct under a name its own context uses.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` and all fifteen guards — green.
+- 337 test files, 1894 tests, all passing.
+- `visual` — **390 passed**, no golden regenerated.
+
+### Open
+
+Unchanged from round 19; the composer's single-line state is added to it as item 7.

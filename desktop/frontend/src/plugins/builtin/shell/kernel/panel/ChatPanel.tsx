@@ -2,7 +2,7 @@ import { Activity, Fragment, useLayoutEffect, useRef, useState, type ReactNode }
 import { dockWidthRow } from "./dockWidth";
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import type { ViewPlacement } from "@/plugins/builtin/workspace/public/viewPlacement";
-import { CatalogPicker, knownIconName, type CatalogPickerGroup, type IconName } from "@/ui";
+import { CatalogPicker, knownIconName, type CatalogPickerGroup } from "@/ui";
 import {
   AgentContentCard,
   AgentContextDock,
@@ -49,10 +49,6 @@ import { WorkspaceViewBody } from "./WorkspaceViewBody";
 import { useT } from "@/lib/i18n";
 import { canPresentDock, defaultDockRatio } from "@/lib/shellGeometry";
 
-function viewIcon(name: string | undefined): IconName | undefined {
-  return knownIconName(name);
-}
-
 interface Props {
   onSend: (input: AgentInput) => boolean;
 }
@@ -78,7 +74,7 @@ function useDockCatalogGroups(
     items: group.destinations.map((destination) => ({
       id: destination.viewId,
       label: t(destination.title),
-      icon: viewIcon(destination.icon),
+      icon: knownIconName(destination.icon),
       keywords: [destination.viewId, group.id],
       active: openViewIds.has(destination.viewId),
     })),
@@ -201,7 +197,7 @@ export function ChatPanel({ onSend }: Props) {
     return {
       id,
       title,
-      icon: viewIcon(view?.icon),
+      icon: knownIconName(view?.icon),
       badge: Badge ? <Badge /> : undefined,
       active: id === dock.activeViewId,
       onSelect: () => selectWorkspaceDockView(id),
