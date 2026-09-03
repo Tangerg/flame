@@ -2,6 +2,7 @@ package runtimebinding
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -302,6 +303,18 @@ func TestProjectProviderPreservesConfiguredOptionalCredentialState(t *testing.T)
 	}
 	if _, present := provider.Credential(); present {
 		t.Fatal("optional credential provider invented a credential")
+	}
+}
+
+func TestProjectProviderValidatesDiscardedRuntimeFields(t *testing.T) {
+	t.Parallel()
+	invalidDefault := " default-model"
+	_, err := projectProvider(protocol.Provider{
+		ID: "provider", CredentialRequirement: protocol.ProviderAPIKeyOptional,
+		DefaultEmbeddingModel: &invalidDefault,
+	})
+	if err == nil || !strings.Contains(err.Error(), "defaultEmbeddingModel") {
+		t.Fatalf("projectProvider error = %v, want defaultEmbeddingModel field", err)
 	}
 }
 

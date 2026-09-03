@@ -220,6 +220,9 @@ func (r *Connection) TestProvider(ctx context.Context, providerID string) (model
 }
 
 func projectProvider(value protocol.Provider) (models.Provider, error) {
+	if err := protocol.ValidateWireTree(value); err != nil {
+		return models.Provider{}, err
+	}
 	var credential *models.Credential
 	if value.Credential != nil {
 		projected, err := models.NewCredential(
