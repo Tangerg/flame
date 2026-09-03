@@ -133,5 +133,5 @@ type Hooks interface {
 }
 
 type Feedback interface {
-	Record(context.Context, agent.FeedbackSignal) error
+	Record(context.Context, protocol.FeedbackRequest) error
 }

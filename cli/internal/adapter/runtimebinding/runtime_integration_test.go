@@ -211,7 +211,7 @@ func requireAuxiliaryCapabilities(t *testing.T, runtime *Connection, sessionID, 
 	if catalog, err := hooks.Catalog(t.Context(), workspace); err != nil {
 		t.Fatalf("Hooks = (%+v, %v)", catalog, err)
 	}
-	if err := feedbackService.Record(t.Context(), agent.FeedbackSignal{
+	if err := feedbackService.Record(t.Context(), protocol.FeedbackRequest{
 		SessionID: sessionID, Rating: protocol.FeedbackPositive, Text: "embedded integration",
 	}); err != nil {
 		t.Fatalf("Create feedback: %v", err)

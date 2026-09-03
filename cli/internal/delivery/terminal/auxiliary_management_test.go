@@ -274,33 +274,43 @@ func TestHookTrustMutationOutlivesSameSessionProjectionReplacement(t *testing.T)
 	stop()
 }
 
-type feedbackServiceStub struct{ recorded chan agent.FeedbackSignal }
+type feedbackServiceStub struct{ recorded chan protocol.FeedbackRequest }
 
 type blockingFeedbackService struct {
 	Feedback
-	started  chan agent.FeedbackSignal
+	started  chan protocol.FeedbackRequest
 	release  chan struct{}
 	canceled chan struct{}
 }
 
-func (b *blockingFeedbackService) Record(ctx context.Context, signal agent.FeedbackSignal) error {
-	b.started <- signal
+func (b *blockingFeedbackService) Record(ctx context.Context, request protocol.FeedbackRequest) error {
+	b.started <- request
 	select {
 	case <-b.release:
-		return b.Feedback.Record(ctx, signal)
+		return b.Feedback.Record(ctx, request)
 	case <-ctx.Done():
 		close(b.canceled)
 		return context.Cause(ctx)
 	}
 }
 
-func (f *feedbackServiceStub) Record(_ context.Context, signal agent.FeedbackSignal) error {
-	f.recorded <- signal
+func (f *feedbackServiceStub) Record(_ context.Context, request protocol.FeedbackRequest) error {
+	f.recorded <- request
 	return nil
 }
 
+func TestParseFeedbackRatingUsesRuntimeVocabulary(t *testing.T) {
+	rating, err := parseFeedbackRating("  positive  ")
+	if err != nil || rating != protocol.FeedbackPositive {
+		t.Fatalf("parseFeedbackRating = (%q, %v)", rating, err)
+	}
+	if _, err := parseFeedbackRating("mixed"); err == nil {
+		t.Fatal("accepted rating outside the Runtime vocabulary")
+	}
+}
+
 func TestFeedbackTargetsLatestDurableAssistantItem(t *testing.T) {
-	feedbacks := &feedbackServiceStub{recorded: make(chan agent.FeedbackSignal, 1)}
+	feedbacks := &feedbackServiceStub{recorded: make(chan protocol.FeedbackRequest, 1)}
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Feedback: feedbacks, SessionID: "ses_demo_1"})
 	host.Shows(t, "The fixed sleep races the janitor")
 	host.Type("/feedback positive useful explanation")
@@ -315,9 +325,9 @@ func TestFeedbackTargetsLatestDurableAssistantItem(t *testing.T) {
 
 func TestFeedbackMutationOutlivesSameSessionProjectionReplacement(t *testing.T) {
 	backend := runtimefixture.New()
-	base := &feedbackServiceStub{recorded: make(chan agent.FeedbackSignal, 1)}
+	base := &feedbackServiceStub{recorded: make(chan protocol.FeedbackRequest, 1)}
 	feedbacks := &blockingFeedbackService{
-		Feedback: base, started: make(chan agent.FeedbackSignal, 1), release: make(chan struct{}), canceled: make(chan struct{}),
+		Feedback: base, started: make(chan protocol.FeedbackRequest, 1), release: make(chan struct{}), canceled: make(chan struct{}),
 	}
 	release := sync.OnceFunc(func() { close(feedbacks.release) })
 	t.Cleanup(release)

@@ -9,7 +9,6 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
@@ -204,9 +203,20 @@ func TestHookAndFeedbackAdaptersPreserveGovernanceAndTargeting(t *testing.T) {
 
 	feedbacks := &feedbackBindingStub{t: t}
 	feedbackAdapter := &Feedback{runtime: &Connection{feedback: feedbacks, meta: requestMeta("test")}}
-	signal := agent.FeedbackSignal{SessionID: "ses_1", RunID: "run_1", ItemID: "item_1", Rating: protocol.FeedbackPositive, Text: "useful"}
-	if err := feedbackAdapter.Record(t.Context(), signal); err != nil || feedbacks.recorded != signal {
+	request := protocol.FeedbackRequest{SessionID: "ses_1", RunID: "run_1", ItemID: "item_1", Rating: protocol.FeedbackPositive, Text: "useful"}
+	if err := feedbackAdapter.Record(t.Context(), request); err != nil || feedbacks.recorded != request {
 		t.Fatalf("Record = %v, recorded %+v", err, feedbacks.recorded)
+	}
+	for _, invalid := range []protocol.FeedbackRequest{
+		{},
+		{SessionID: " ses_1", Rating: protocol.FeedbackPositive},
+	} {
+		if err := feedbackAdapter.Record(t.Context(), invalid); err == nil {
+			t.Fatalf("Record accepted invalid feedback %+v", invalid)
+		}
+		if feedbacks.recorded != request {
+			t.Fatalf("invalid feedback reached Runtime: %+v", feedbacks.recorded)
+		}
 	}
 }
 
@@ -220,15 +230,12 @@ func TestHookAdapterRejectsCatalogForAnotherProject(t *testing.T) {
 
 type feedbackBindingStub struct {
 	t        *testing.T
-	recorded agent.FeedbackSignal
+	recorded protocol.FeedbackRequest
 }
 
 func (f *feedbackBindingStub) CreateFeedback(_ context.Context, request protocol.FeedbackRequest, options flameruntime.CommandOptions) error {
 	assertCommandMeta(f.t, options)
-	f.recorded = agent.FeedbackSignal{
-		SessionID: request.SessionID, RunID: request.RunID, ItemID: request.ItemID,
-		Rating: request.Rating, Text: request.Text,
-	}
+	f.recorded = request
 	return nil
 }
 
