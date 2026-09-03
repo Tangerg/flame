@@ -940,10 +940,10 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
 
   const markdown = page.locator(".md").filter({ hasText: "Structural primitives" });
   const styles = await markdown.evaluate((root) => {
-    const h2 = Array.from(root.querySelectorAll("h2")).find((heading) =>
+    const level2 = Array.from(root.querySelectorAll('[data-md-level="2"]')).find((heading) =>
       heading.textContent?.includes("Architecture review"),
     );
-    const h3 = Array.from(root.querySelectorAll("h3")).find((heading) =>
+    const level3 = Array.from(root.querySelectorAll('[data-md-level="3"]')).find((heading) =>
       heading.textContent?.includes("Structural primitives"),
     );
     const primaryList = Array.from(root.querySelectorAll("ul")).find((list) =>
@@ -972,8 +972,8 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
     const quote = root.querySelector("blockquote");
     const rule = root.querySelector("hr");
     if (
-      !h2 ||
-      !h3 ||
+      !level2 ||
+      !level3 ||
       !leadParagraph ||
       !(leadList instanceof HTMLUListElement) ||
       !tableContainer ||
@@ -992,8 +992,8 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
       !rule
     )
       return null;
-    const h2Style = getComputedStyle(h2);
-    const h3Style = getComputedStyle(h3);
+    const level2Style = getComputedStyle(level2);
+    const level3Style = getComputedStyle(level3);
     const leadParagraphStyle = getComputedStyle(leadParagraph);
     const leadListStyle = getComputedStyle(leadList);
     const tableContainerStyle = getComputedStyle(tableContainer);
@@ -1003,10 +1003,12 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
     const inlineCodeStyle = getComputedStyle(inlineCode);
     const rtlListStyle = getComputedStyle(rtlList);
     return {
-      h2Size: h2Style.fontSize,
-      h2Margin: `${h2Style.marginBlockStart} ${h2Style.marginBlockEnd}`,
-      h3Size: h3Style.fontSize,
-      h3Margin: `${h3Style.marginBlockStart} ${h3Style.marginBlockEnd}`,
+      level2Tag: level2.tagName,
+      level2Size: level2Style.fontSize,
+      level2Margin: `${level2Style.marginBlockStart} ${level2Style.marginBlockEnd}`,
+      level3Tag: level3.tagName,
+      level3Size: level3Style.fontSize,
+      level3Margin: `${level3Style.marginBlockStart} ${level3Style.marginBlockEnd}`,
       leadParagraphMargin: `${leadParagraphStyle.marginBlockStart} ${leadParagraphStyle.marginBlockEnd}`,
       leadListMargin: `${leadListStyle.marginBlockStart} ${leadListStyle.marginBlockEnd}`,
       tableMargin: `${tableContainerStyle.marginBlockStart} ${tableContainerStyle.marginBlockEnd}`,
@@ -1039,10 +1041,12 @@ test("Markdown structural primitives follow the Codex reading grammar", async ({
   });
 
   expect(styles).not.toBeNull();
-  expect.soft(styles?.h2Size).toBe("20px");
-  expect.soft(styles?.h2Margin).toBe("20px 10px");
-  expect.soft(styles?.h3Size).toBe("17px");
-  expect.soft(styles?.h3Margin).toBe("20px 10px");
+  expect.soft(styles?.level2Tag).toBe("H3");
+  expect.soft(styles?.level2Size).toBe("20px");
+  expect.soft(styles?.level2Margin).toBe("20px 10px");
+  expect.soft(styles?.level3Tag).toBe("H4");
+  expect.soft(styles?.level3Size).toBe("17px");
+  expect.soft(styles?.level3Margin).toBe("20px 10px");
   expect.soft(styles?.leadParagraphMargin).toBe("0px 10px");
   expect.soft(styles?.leadListMargin).toBe("0px 10px");
   expect.soft(styles?.tableMargin).toBe("0px 0px");

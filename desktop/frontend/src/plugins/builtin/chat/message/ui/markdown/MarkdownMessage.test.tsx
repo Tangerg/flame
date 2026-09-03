@@ -291,7 +291,7 @@ describe("markdownMessage", () => {
     ].join("\n");
     const { container } = render(<MarkdownMessage text={src} reveal="instant" />);
 
-    expect(container.querySelector('h1[dir="auto"]')).toBeTruthy();
+    expect(container.querySelector('h3[dir="auto"][data-md-level="1"]')).toBeTruthy();
     expect(container.querySelectorAll('p[data-markdown-han-text="true"]')).toHaveLength(2);
     expect(container.querySelector('ul[dir="auto"]')).toBeTruthy();
     expect(container.querySelector('ol[dir="auto"]')).toBeTruthy();
@@ -384,5 +384,23 @@ describe("markdownMessage", () => {
     expect
       .soft(container.textContent)
       .toContain('<style>@import url("https://tracker.example/agent.css");</style>');
+  });
+
+  it("nests every authored heading level below the turn that holds it", () => {
+    const source = ["# One", "## Two", "### Three", "#### Four", "##### Five", "###### Six"].join(
+      "\n\n",
+    );
+    const { container } = render(<MarkdownMessage text={source} reveal="instant" />);
+
+    const headings = [...container.querySelectorAll<HTMLElement>("[data-md-level]")];
+    expect(headings.map((h) => [h.dataset.mdLevel, h.tagName])).toEqual([
+      ["1", "H3"],
+      ["2", "H3"],
+      ["3", "H4"],
+      ["4", "H5"],
+      ["5", "H6"],
+      ["6", "H6"],
+    ]);
+    expect(container.querySelectorAll("h1, h2")).toHaveLength(0);
   });
 });

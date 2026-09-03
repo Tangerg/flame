@@ -89,9 +89,13 @@ export function RunErrorBanner() {
         >
           <Icon name="alert" size="sm" className="mt-0.5 text-negative" />
           <div className="min-w-0">
-            <div className="mb-0.5 text-ui-md font-semibold text-negative">
-              {t("runError.title")}
-              {error.code ? ` · ${error.code}` : ""}
+            <div className="mb-0.5 flex flex-wrap items-baseline gap-x-2">
+              <span className="text-ui-md font-semibold text-negative">{t("runError.title")}</span>
+              {error.code && (
+                <span className="font-mono text-ui-xs break-all text-fg-faint select-text">
+                  {error.code}
+                </span>
+              )}
             </div>
             <div className="whitespace-pre-wrap break-words text-ui-md leading-body text-fg-soft">
               {error.message ?? describeErrorType(error.code) ?? t("runError.unknown")}

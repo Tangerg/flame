@@ -14,7 +14,6 @@ interface SegmentedProps<T extends string | number> {
   options: SegmentedOption<T>[];
   onChange: (value: T) => void;
   ariaLabel: string;
-  mono?: boolean;
   className?: string;
 }
 
@@ -23,7 +22,6 @@ export function Segmented<T extends string | number>({
   options,
   onChange,
   ariaLabel,
-  mono = false,
   className,
 }: SegmentedProps<T>) {
   const chipId = useId();
@@ -48,7 +46,6 @@ export function Segmented<T extends string | number>({
             className={cn(
               "relative h-[var(--control-height-xs)] rounded-[var(--segment-radius)] border-0 bg-transparent px-2 text-ui-sm font-medium",
               "text-fg-muted transition-colors duration-[var(--dur-color)] ease-out",
-              mono && "font-mono",
               "hover:text-fg",
               "data-[active]:text-fg",
               "focus-visible:outline-none",

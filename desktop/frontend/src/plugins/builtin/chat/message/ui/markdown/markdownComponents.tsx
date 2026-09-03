@@ -112,23 +112,51 @@ const sharedMarkdownComponents: Components = {
       </p>
     );
   },
+  // A body opens at h3 — one below the turn heading that contains it — so a model writing
+  // `# Title` cannot outrank its own turn, and `#`/`##` share a rung because streamdown
+  // renders each block through its own parser and nothing here can see which levels the rest
+  // of the message used. `data-md-level` carries the authored level for the type scale.
   h1({ children }) {
-    return <h1 dir="auto">{children}</h1>;
+    return (
+      <h3 dir="auto" data-md-level="1">
+        {children}
+      </h3>
+    );
   },
   h2({ children }) {
-    return <h2 dir="auto">{children}</h2>;
+    return (
+      <h3 dir="auto" data-md-level="2">
+        {children}
+      </h3>
+    );
   },
   h3({ children }) {
-    return <h3 dir="auto">{children}</h3>;
+    return (
+      <h4 dir="auto" data-md-level="3">
+        {children}
+      </h4>
+    );
   },
   h4({ children }) {
-    return <h4 dir="auto">{children}</h4>;
+    return (
+      <h5 dir="auto" data-md-level="4">
+        {children}
+      </h5>
+    );
   },
   h5({ children }) {
-    return <h5 dir="auto">{children}</h5>;
+    return (
+      <h6 dir="auto" data-md-level="5">
+        {children}
+      </h6>
+    );
   },
   h6({ children }) {
-    return <h6 dir="auto">{children}</h6>;
+    return (
+      <h6 dir="auto" data-md-level="6">
+        {children}
+      </h6>
+    );
   },
   ul({ children, className }) {
     return (

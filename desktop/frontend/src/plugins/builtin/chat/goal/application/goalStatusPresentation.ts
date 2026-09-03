@@ -13,16 +13,23 @@ export const GOAL_STATUS_I18N = {
 
 // `Goal.Resume` rejects each of these outright. A cap that is spent stays spent, and a cost
 // cap the Runtime cannot price is one it will not agree to enforce — the same refusal for a
-// different reason, which is why this is not named after the budget.
-const REFUSED_BY_RUNTIME_STOPS = new Set<GoalStopCode>([
-  "runBudgetReached",
-  "costBudgetReached",
-  "stepBudgetReached",
-  "pricingUnavailable",
-]);
+// different reason, which is why this is not named after the budget. Naming them here rather
+// than in a bare set is what stops the row from removing the resume control in silence.
+const REFUSED_BY_RUNTIME_STOPS: Partial<Record<GoalStopCode, string>> = {
+  runBudgetReached: "goal.stopped.runBudget",
+  costBudgetReached: "goal.stopped.costBudget",
+  stepBudgetReached: "goal.stopped.stepBudget",
+  pricingUnavailable: "goal.stopped.pricingUnavailable",
+};
+
+/** The i18n key naming why the Runtime will not resume this goal, or null when it will. */
+export function goalRefusalLabel(goal: GoalReadModel): string | null {
+  if (goal.status !== "paused" && goal.status !== "blocked") return null;
+  return (goal.stop && REFUSED_BY_RUNTIME_STOPS[goal.stop.code]) ?? null;
+}
 
 /** All other paused/blocked states retain the same Goal incarnation and are resumable. */
 export function goalCanResume(goal: GoalReadModel): boolean {
   if (goal.status !== "paused" && goal.status !== "blocked") return false;
-  return !goal.stop || !REFUSED_BY_RUNTIME_STOPS.has(goal.stop.code);
+  return goalRefusalLabel(goal) === null;
 }

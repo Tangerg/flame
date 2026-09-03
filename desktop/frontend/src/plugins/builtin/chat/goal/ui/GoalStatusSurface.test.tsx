@@ -199,6 +199,20 @@ describe("Goal status surface", () => {
 
     expect(screen.queryByRole("button", { name: "Resume goal" })).toBeNull();
     expect(screen.queryByText("Out of turns")).toBeNull();
+    expect(screen.getByText("Run budget reached")).toBeTruthy();
+    expect(screen.queryByText("Goal stalled")).toBeNull();
+  });
+
+  it("keeps the plain status word when the Runtime would still resume", () => {
+    model.goal = {
+      ...model.goal,
+      status: "paused",
+      stop: { code: "stoppedByUser", detail: "" },
+    };
+    render(<GoalStatusSurface />);
+
+    expect(screen.getByRole("button", { name: "Resume goal" })).toBeTruthy();
+    expect(screen.getByText("Paused goal")).toBeTruthy();
   });
 
   it("presents only Goal status and objective, never limits or usage", () => {

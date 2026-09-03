@@ -36,9 +36,8 @@ function ReasoningEffortPicker() {
         render={
           <AgentComposerChip
             aria-label={t("composer.switchReasoningEffort")}
-            title={t("composer.switchReasoningEffort")}
             className="capitalize"
-            leading={<Icon name="sparkle" size="sm" className="shrink-0 text-fg-faint" />}
+            leading={<Icon name="sparkle" size="sm" className="text-fg-faint" />}
             label={selectedEffort}
           />
         }
@@ -122,9 +121,7 @@ function ApprovalModePill() {
               "font-medium",
               full ? "text-warning hover:bg-warning-wash" : "hover:bg-hover hover:text-fg",
             )}
-            leading={
-              <Icon name={full ? "alert" : "shield"} size="sm" className="shrink-0 opacity-100" />
-            }
+            leading={<Icon name={full ? "alert" : "shield"} size="sm" className="opacity-100" />}
             label={t(current.labelKey)}
           />
         }

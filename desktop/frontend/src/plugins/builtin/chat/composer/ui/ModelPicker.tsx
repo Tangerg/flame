@@ -205,9 +205,8 @@ export function ModelPicker() {
       trigger={
         <AgentComposerChip
           aria-label={t("composer.switchModel")}
-          // The chip is the first thing to give up width in a narrow composer, so the label
-          // it truncates has to be readable from somewhere. Provider included: two vendors
-          // can serve the same model name.
+          // Provider included, unlike the chip's default title: two vendors can serve the
+          // same model name.
           title={`${selected.label} · ${providerDisplayName(selected.provider)}`}
           shrink="gives"
           leading={<ProviderIcon provider={selected.provider} size="sm" />}

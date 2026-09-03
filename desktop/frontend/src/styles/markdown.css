@@ -40,35 +40,30 @@
   margin-top: 4px;
 }
 
-.md h1,
-.md h2,
-.md h3,
-.md h4,
-.md h5,
-.md h6 {
+.md [data-md-level] {
   font-weight: 600;
   line-height: var(--leading-markdown-heading);
   letter-spacing: normal;
   color: var(--color-text);
   margin: 20px 0 10px;
 }
-.md h1 {
+.md [data-md-level="1"] {
   font-size: var(--fs-markdown-h1);
 }
-.md h2 {
+.md [data-md-level="2"] {
   font-size: var(--fs-markdown-h2);
 }
-.md h3,
-.md h4 {
+.md [data-md-level="3"],
+.md [data-md-level="4"] {
   font-size: var(--fs-markdown-h3);
   line-height: var(--leading-markdown-subheading);
 }
-.md h5,
-.md h6 {
+.md [data-md-level="5"],
+.md [data-md-level="6"] {
   font-size: var(--fs-markdown-h5);
   line-height: var(--leading-markdown-minor);
 }
-.md > :is(h1, h2, h3, h4, h5, h6):first-child {
+.md > [data-md-level]:first-child {
   margin-top: 20px;
 }
 

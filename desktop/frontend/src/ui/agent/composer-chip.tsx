@@ -11,11 +11,15 @@ interface Props extends Omit<ButtonProps, "children" | "variant" | "size"> {
   shrink?: "holds" | "gives";
 }
 
+/** The middle grid track is the only one that may shrink, so a chip bottoms out at its glyph
+ *  and chevron instead of a sliver whose contents spill onto the next control. `title` names
+ *  the current value because that is where the label survives. */
 export function AgentComposerChip({
   leading,
   label,
   className,
   shrink = "holds",
+  title,
   ...props
 }: Props) {
   return (
@@ -23,16 +27,18 @@ export function AgentComposerChip({
       variant="ghost"
       size="md"
       press={false}
+      title={title ?? label}
       className={cn(
-        "min-w-0 gap-1.5 px-2 text-ui-sm text-fg-soft data-[popup-open]:bg-selected data-[popup-open]:text-fg",
+        "grid grid-cols-[auto_minmax(0,auto)_auto] gap-1.5 px-2",
+        "text-ui-sm text-fg-soft data-[popup-open]:bg-selected data-[popup-open]:text-fg",
         shrink === "gives" ? "shrink-[12]" : "shrink",
         className,
       )}
       {...props}
     >
-      {leading}
+      <span className="flex items-center">{leading}</span>
       <span className="truncate">{label}</span>
-      <Icon name="chevron-down" size="sm" className="shrink-0 text-fg-faint" />
+      <Icon name="chevron-down" size="sm" className="text-fg-faint" />
     </Button>
   );
 }

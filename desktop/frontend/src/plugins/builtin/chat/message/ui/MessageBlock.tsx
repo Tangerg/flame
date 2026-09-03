@@ -105,7 +105,7 @@ function MessageBlockInner({
         generation={visibleMaterialGeneration}
       >
         <div className={cn("group relative flex min-w-0 flex-col gap-2", isUser && "items-end")}>
-          <h4 className="sr-only select-none">{roleLabel}</h4>
+          <h2 className="sr-only select-none">{roleLabel}</h2>
           {msg.phase === "commentary" ? (
             messageContent
           ) : (

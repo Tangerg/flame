@@ -11,7 +11,11 @@ import {
   stopGoal,
   updateGoal,
 } from "../application/goalCommands";
-import { GOAL_STATUS_I18N, goalCanResume } from "../application/goalStatusPresentation";
+import {
+  GOAL_STATUS_I18N,
+  goalCanResume,
+  goalRefusalLabel,
+} from "../application/goalStatusPresentation";
 import { type GoalReadModel, useGoalMaterial } from "../application/goalReadModel";
 import {
   runtimeCommandsAvailable,
@@ -111,7 +115,9 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             className="h-auto min-h-6 min-w-0 flex-1 justify-start rounded-none border-0 p-0 text-ui-sm leading-[max(1rem,1.2em)] font-normal hover:bg-transparent disabled:cursor-default disabled:opacity-100"
             onClick={openEditor}
           >
-            <span className="shrink-0 text-fg">{t(GOAL_STATUS_I18N[goal.status].label)}</span>
+            <span className="shrink-0 text-fg">
+              {t(goalRefusalLabel(goal) ?? GOAL_STATUS_I18N[goal.status].label)}
+            </span>
             <span className="ml-1 min-w-0 truncate text-fg-muted">{goal.objective}</span>
           </Button>
         </div>

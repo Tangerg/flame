@@ -100,7 +100,6 @@ function FontSizeField({
         options={options}
         onChange={(v) => onChange(v === SIZE_RESET ? null : Number(v))}
         ariaLabel={label}
-        mono
       />
     </div>
   );
