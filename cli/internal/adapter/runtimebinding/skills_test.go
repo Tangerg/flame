@@ -228,6 +228,16 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 				return err
 			},
 		}, {
+			name: "out-of-order managed catalog",
+			stub: &invalidSkillBindingStub{managed: protocol.NewPage([]protocol.ManagedSkill{
+				{Name: "alpha", Lifecycle: protocol.SkillLifecycleArchived},
+				{Name: "zeta", Lifecycle: protocol.SkillLifecycleActive},
+			})},
+			read: func(runtime *Connection) error {
+				_, err := runtime.Managed(t.Context())
+				return err
+			},
+		}, {
 			name: "repeated proposal slot",
 			stub: &invalidSkillBindingStub{proposals: protocol.NewPage([]protocol.SkillProposal{
 				{Name: "review", Revision: skillRevision, Scope: protocol.SkillScopeProject, Description: "Review code", Instructions: "Inspect code."},

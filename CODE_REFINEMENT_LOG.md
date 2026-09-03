@@ -142,6 +142,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 180 | `8ae6ce2a` + CLI dependency update | Replaced MCP connection/upstream encounter order with an Application-owned server/name tool order and rejected out-of-order CLI projections. |
 | 181 | `a0359f04` + CLI dependency update | Made Skill proposals one current revision per scope/name, moved scope/name ordering from filesystem encounter into Application, and enforced both invariants in CLI. |
 | 182 | `9bd2c900` + CLI dependency update | Made discovered Skill identity the precedence-resolved name, moved name ordering out of prompt-source infrastructure, and rejected shadow leaks or out-of-order CLI catalogs. |
+| 183 | `1cefd3ce` + CLI dependency update | Moved managed Skill lifecycle/name ordering from filesystem traversal into Application, enforced one lifecycle per name, and rejected out-of-order CLI catalogs. |
 
 ## Verification contract
 

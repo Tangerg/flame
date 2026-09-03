@@ -61,9 +61,23 @@ func (r *Connection) Managed(ctx context.Context) ([]protocol.ManagedSkill, erro
 	if err != nil {
 		return nil, err
 	}
-	return cloneUniqueWireValues("list managed skills", values, func(skill protocol.ManagedSkill) string {
+	managed, err := cloneUniqueWireValues("list managed skills", values, func(skill protocol.ManagedSkill) string {
 		return skill.Name
 	})
+	if err != nil {
+		return nil, err
+	}
+	for index := 1; index < len(managed); index++ {
+		previous, current := managed[index-1], managed[index]
+		if current.Lifecycle < previous.Lifecycle || current.Lifecycle == previous.Lifecycle && current.Name < previous.Name {
+			return nil, runtimeContractViolation(
+				"list managed skills returned name %q out of catalog order after %q",
+				current.Name,
+				previous.Name,
+			)
+		}
+	}
+	return managed, nil
 }
 
 func (r *Connection) Proposals(ctx context.Context, workspacePath string) ([]workspace.SkillProposal, error) {
