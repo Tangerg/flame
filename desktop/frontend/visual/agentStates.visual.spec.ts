@@ -412,7 +412,9 @@ for (const theme of ["light", "dark"] as const) {
     expect(material).toEqual({
       background: material.expectedBackground,
       expectedBackground: material.expectedBackground,
-      maxWidth: "77%",
+      // 70% is the reference's own `--user-chat-width` for a standard bubble; its 456px cap
+      // belongs to a compact variant this app has no counterpart for.
+      maxWidth: "70%",
       padding: ["8px", "12px", "8px", "12px"],
       // The bubble sits on the `bubble` step — 16px, same base Codex gives it. Where the
       // superellipse corner is drawn, that step carries the 1.25 compensation from

@@ -207,9 +207,10 @@ has one shape on every machine and still renders mixed CJK with the OS:
 - **Mono** (`--font-mono`) — **JetBrains Mono**, then `ui-monospace` / SF Mono / Menlo. Genuine data only: code, IDs, timestamps, file paths, tool signatures.
 - A single `--font-sans` / `--font-mono` token (no `--font-ui` split); the user can override either in Settings → Appearance.
 
-Open against the reference: **ChatGPT ships no UI webfont** — its stack starts at
-`-apple-system`. Flame bundles Geist. Which one is right is a product decision,
-not a rule this document can settle.
+Same shape as the reference, which bundles `OpenAI Sans` in front of
+`-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`. It bundles **no**
+mono, though: its code voice is `ui-monospace, SFMono-Regular, SF Mono, Menlo,
+Consolas, monospace`, and Flame's is JetBrains Mono.
 
 ### Scale
 

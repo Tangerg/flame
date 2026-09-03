@@ -1054,3 +1054,89 @@ two `dock-stats` goldens are regenerated; nothing else moved.
 
 The user's instruction to **align strictly with `study/chatgpt`** turns round 5's
 queue from a question into work. Next round starts there.
+
+---
+
+## Round 13 — aligning with the reference, starting by correcting my own reading of it
+
+Status: **complete**, with one item that needs a decision.
+
+### Audit scope
+
+The user's instruction to align strictly with `study/chatgpt` turns round 5's
+queue into work. Every row of it was re-derived from the bundle rather than
+reused.
+
+### Correcting round 5
+
+Round 5 recorded: *"ChatGPT ships no UI webfont — its stack starts at
+`-apple-system`."* **That was wrong.** It bundles `OpenAI Sans` in Regular and
+Medium, and its token is
+
+```
+--font-openai-sans: "OpenAI Sans", var(--font-sans-default)
+--font-sans-default: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif
+```
+
+— a bundled face in front of the native chain, which is the same shape as
+Flame's `"Geist", -apple-system, …`. The `-apple-system` declaration round 5
+found was the fallback, read as the whole stack. **`DESIGN.md` is corrected**;
+the divergence it recorded does not exist.
+
+### The corner radii are not the divergence they looked like
+
+The reference draws `superellipse(1.5)` — **the same curve Flame draws** — and
+its bubble and composer sit at 22px, against Flame's 16 and 20. That looks like
+a six-pixel gap until `--corner-scale` is accounted for.
+
+Flame grows every step above `md` by 25% under the superellipse, because at the
+same radius that curve reads tighter than a circular arc. The reference applies
+**no** such compensation. So in apparent terms:
+
+| | Reference | Flame |
+| --- | --- | --- |
+| User bubble | 22 superellipse ≈ 17.6 circular | 16 |
+| Composer | 22 superellipse ≈ 17.6 circular | 20 |
+
+The bubble is 1.6px apart and the composer 2.4px the other way. **Matching the
+raw numbers would overshoot both**, making the app rounder than the thing it is
+aligning to. Left alone, with the arithmetic recorded so the next reader does
+not redo it.
+
+### Aligned
+
+| | Before | After |
+| --- | --- | --- |
+| User message max-width | `77%` | **`70%`** — the reference's own `--user-chat-width` for a standard bubble |
+
+Its `min(456px, 100%)` belongs to `_compactMessageBubble_`, a variant this app
+has no counterpart for, so 70% is the whole of the alignment. At the shared
+768px measure the bubble goes from 591px to **538px**.
+
+Fifty-one goldens regenerated, and the assertion that pinned `77%` now pins
+`70%` with the reason beside it.
+
+### Already aligned, verified rather than assumed
+
+| | Reference | Flame |
+| --- | --- | --- |
+| Reading measure | `--thread-content-max-width: 48rem` | `--content-max: 768px` |
+| Corner curve | `superellipse(1.5)` | `superellipse(1.5)` |
+| UI face strategy | bundled + native fallback | bundled + native fallback |
+| Body size | `--text-base: 14px` | `--fs-ui-md: 14px` |
+
+### Needs a decision
+
+**The code voice.** The reference bundles no mono — `ui-monospace,
+SFMono-Regular, SF Mono, Menlo, Consolas, monospace`. Flame bundles JetBrains
+Mono. Strict alignment means dropping the bundled mono, which changes every code
+block, every diff, every path, every timestamp and every golden that contains
+one. That is the largest visual change left, and unlike the bubble width it has
+no arithmetic that settles it.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` clean.
+- `npm run test` excluding the live-runtime e2e — 2295 passed, 2 failed, both
+  `runtime/contract`'s own sample.
+- `npm run visual:test` — 388 passed.

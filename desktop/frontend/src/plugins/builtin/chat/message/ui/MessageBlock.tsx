@@ -91,7 +91,7 @@ function MessageBlockInner({
       className={cn(
         MESSAGE_CONTENT_CLASS,
         "min-w-0 text-pretty leading-prose text-prose text-fg",
-        isUser && "max-w-[77%] rounded-bubble bg-user-message px-3 py-2",
+        isUser && "max-w-[70%] rounded-bubble bg-user-message px-3 py-2",
       )}
     >
       {content}
