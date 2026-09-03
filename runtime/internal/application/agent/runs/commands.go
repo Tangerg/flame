@@ -424,6 +424,9 @@ func (r RootExecutionStart) Validate() error {
 	if err := r.ModelSelection.Validate(); err != nil {
 		return fmt.Errorf("runs: model selection: %w", err)
 	}
+	if !r.ModelSelection.Configured() {
+		return errors.New("runs: model selection is required")
+	}
 	if err := (run.Capabilities{
 		ChildRuns:      r.ChildRunAdmissionEnabled,
 		InterruptKinds: r.InterruptKinds,

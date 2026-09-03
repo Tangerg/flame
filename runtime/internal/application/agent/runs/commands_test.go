@@ -31,7 +31,9 @@ func TestStartExecutionValidateDelegatesCoreOptions(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := (RootExecutionStart{Message: "hello", Options: &test.options}).Validate()
+			err := (RootExecutionStart{
+				Message: "hello", ModelSelection: mustSelection("provider", "model"), Options: &test.options,
+			}).Validate()
 			if !errors.Is(err, ErrInvalidRunOptions) {
 				t.Fatalf("Validate() error = %v, want ErrInvalidRunOptions", err)
 			}
@@ -54,7 +56,9 @@ func TestStartExecutionValidateKeepsModelSelectionOutsideOptions(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := (RootExecutionStart{Message: "hello", Options: &test.options}).Validate()
+			err := (RootExecutionStart{
+				Message: "hello", ModelSelection: mustSelection("provider", "model"), Options: &test.options,
+			}).Validate()
 			if !errors.Is(err, ErrInvalidRunOptions) {
 				t.Fatalf("Validate() error = %v, want ErrInvalidRunOptions", err)
 			}
@@ -67,6 +71,15 @@ func TestStartExecutionValidateRejectsWhitespaceOnlyMessage(t *testing.T) {
 
 	if err := (RootExecutionStart{Message: " \n\t"}).Validate(); !errors.Is(err, ErrInputRequired) {
 		t.Fatalf("Validate() error = %v, want ErrInputRequired", err)
+	}
+}
+
+func TestStartExecutionValidateRequiresExactModelSelection(t *testing.T) {
+	t.Parallel()
+
+	err := (RootExecutionStart{Message: "hello"}).Validate()
+	if err == nil || !strings.Contains(err.Error(), "model selection is required") {
+		t.Fatalf("Validate() error = %v, want required model selection", err)
 	}
 }
 
@@ -100,6 +113,7 @@ func TestStartExecutionValidateRejectsNonCanonicalAdmissionPolicy(t *testing.T) 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
+			test.execution.ModelSelection = mustSelection("provider", "model")
 			if err := test.execution.Validate(); err == nil {
 				t.Fatal("Validate accepted non-canonical admission policy")
 			}
