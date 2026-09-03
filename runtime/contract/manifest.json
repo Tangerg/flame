@@ -4935,6 +4935,11 @@
       "type": "MCPAuthorizationAttempt",
       "rules": [
         {
+          "required": [
+            "createdAt"
+          ]
+        },
+        {
           "when": [
             {
               "field": "status.type",

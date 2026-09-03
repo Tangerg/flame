@@ -893,6 +893,8 @@ func registerObjectConstraints(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.MCPAuthorizationAttempt](),
 		Rules: []ConditionalRule{{
+			Required: []string{"createdAt"},
+		}, {
 			When:      []delivery.FieldCondition{{Field: "status.type", Operator: delivery.OperatorEquals, Value: string(protocol.MCPAuthorizationAttemptPending)}},
 			Forbidden: []string{"finishedAt"},
 		}, {

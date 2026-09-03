@@ -207,6 +207,6 @@ type MCPAuthorizationAttempt struct {
 	ID         string                        `json:"id"`
 	Server     string                        `json:"server"`
 	Status     MCPAuthorizationAttemptStatus `json:"status"`
-	CreatedAt  time.Time                     `json:"createdAt"`
+	CreatedAt  time.Time                     `json:"createdAt,omitzero"`
 	FinishedAt *time.Time                    `json:"finishedAt,omitempty"`
 }

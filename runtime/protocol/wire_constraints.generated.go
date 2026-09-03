@@ -1872,6 +1872,7 @@ func (m MCPAuthorizationAttempt) ValidateWire() error {
 		requiredTextPattern("id", m.ID, "^mcpauth_[A-Z2-7]{26,64}$"),
 		maxLength("server", m.Server, 32),
 		requiredTextPattern("server", m.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+		requiredWhen(true, "createdAt", m),
 		forbiddenWhen(wireFieldEquals(m, "status.type", "pending"), "finishedAt", m),
 		requiredWhen(wireFieldEquals(m, "status.type", "succeeded"), "finishedAt", m),
 		requiredWhen(wireFieldEquals(m, "status.type", "failed"), "finishedAt", m),

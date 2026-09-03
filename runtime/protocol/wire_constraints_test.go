@@ -720,7 +720,9 @@ func TestMCPAuthorizationAttemptIdentityUsesCanonicalWireGrammar(t *testing.T) {
 	request.AttemptID = "mcpauth_missing"
 	assertConstraintField(t, request.ValidateWire(), "MCPAuthorizationAttemptRequest", "attemptId")
 
-	attempt := MCPAuthorizationAttempt{ID: testsupport.MCPAuthorizationAttemptID, Server: "github"}
+	attempt := MCPAuthorizationAttempt{
+		ID: testsupport.MCPAuthorizationAttemptID, Server: "github", CreatedAt: time.Unix(1, 0).UTC(),
+	}
 	if err := attempt.ValidateWire(); err != nil {
 		t.Fatalf("canonical response identity: %v", err)
 	}
@@ -729,6 +731,8 @@ func TestMCPAuthorizationAttemptIdentityUsesCanonicalWireGrammar(t *testing.T) {
 	attempt.ID = testsupport.MCPAuthorizationAttemptID
 	attempt.Server = "GitHub"
 	assertConstraintField(t, attempt.ValidateWire(), "MCPAuthorizationAttempt", "server")
+	attempt.Server, attempt.CreatedAt = "github", time.Time{}
+	assertConstraintField(t, attempt.ValidateWire(), "MCPAuthorizationAttempt", "createdAt")
 }
 
 func TestMCPServerIdentityUsesCanonicalWireGrammar(t *testing.T) {
