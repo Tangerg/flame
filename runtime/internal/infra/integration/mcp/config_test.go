@@ -3,8 +3,10 @@ package mcp
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -174,6 +176,32 @@ func TestEndpointHTTPClientEnforcesOriginWithoutHeaders(t *testing.T) {
 	client, err := endpointHTTPClient("https://example.com/mcp", "", nil)
 	require.NoError(t, err)
 	assert.NotNil(t, client)
+}
+
+func TestEndpointHTTPClientBoundsServerFrames(t *testing.T) {
+	client, err := endpointHTTPClient("https://example.com/mcp", "", nil)
+	require.NoError(t, err)
+	transport := client.Transport.(*headerRoundTripper)
+	transport.maxResponseFrameBytes = 8
+	transport.base = mcpRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": {"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(strings.Repeat("x", 9))),
+			Request:    request,
+		}, nil
+	})
+	response, err := client.Get("https://example.com/mcp")
+	require.NoError(t, err)
+	t.Cleanup(func() { assert.NoError(t, response.Body.Close()) })
+	_, err = io.ReadAll(response.Body)
+	assert.ErrorIs(t, err, errMCPResponseFrameTooLarge)
+}
+
+type mcpRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f mcpRoundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return f(request)
 }
 
 func TestEndpointHTTPClientFollowsSameOriginRedirect(t *testing.T) {

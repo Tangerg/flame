@@ -2,7 +2,9 @@ package toolset
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 
 	scopea2a "github.com/Tangerg/scope/a2a"
@@ -11,7 +13,13 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpresponse"
 )
+
+const maxA2AResponseFrameBytes int64 = 64 << 20
+
+var errA2AResponseFrameTooLarge = errors.New("a2a: response frame too large")
 
 // A2AAgentConfig identifies one remote Agent-to-Agent endpoint to expose as a
 // delegation tool in the assembled tool environment.
@@ -37,12 +45,14 @@ func openA2AToolSet(ctx context.Context, agents []A2AAgentConfig) (_ *scopea2a.T
 		span.End()
 	}()
 
+	httpClient := newA2AHTTPClient()
 	endpoints := make([]scopea2a.Endpoint, len(agents))
 	for i, agent := range agents {
 		endpoints[i] = scopea2a.Endpoint{
 			Name:              agent.Name,
 			CardURL:           agent.CardURL,
 			AllowedRPCOrigins: slices.Clone(agent.AllowedRPCOrigins),
+			HTTPClient:        httpClient,
 		}
 	}
 	toolSet, err := scopea2a.OpenToolSet(ctx, endpoints...)
@@ -51,4 +61,27 @@ func openA2AToolSet(ctx context.Context, agents []A2AAgentConfig) (_ *scopea2a.T
 	}
 	span.SetAttributes(attribute.Int("a2a.tool.count", len(toolSet.Tools())))
 	return toolSet, nil
+}
+
+func newA2AHTTPClient() *http.Client {
+	client := *http.DefaultClient
+	base := client.Transport
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	client.Transport = a2aResponseRoundTripper{base: base, maxFrameBytes: maxA2AResponseFrameBytes}
+	return &client
+}
+
+type a2aResponseRoundTripper struct {
+	base          http.RoundTripper
+	maxFrameBytes int64
+}
+
+func (a a2aResponseRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
+	response, err := a.base.RoundTrip(request)
+	if response != nil {
+		httpresponse.LimitBody(response, a.maxFrameBytes, errA2AResponseFrameTooLarge)
+	}
+	return response, err
 }

@@ -1,46 +1,48 @@
-package mcp
+// Package httpresponse applies finite document and event admission to HTTP
+// response bodies before protocol SDKs decode server-controlled material.
+package httpresponse
 
 import (
-	"errors"
 	"io"
 	"mime"
 	"net/http"
 	"strings"
 )
 
-const maxMCPResponseFrameBytes int64 = 64 << 20
-
-var errMCPResponseFrameTooLarge = errors.New("mcp: response frame too large")
-
-// boundMCPResponseBody keeps the SDK as the MCP protocol owner while applying
-// Flame's finite admission policy before its JSON and SSE decoders allocate
-// from a server-controlled response. A stream may carry arbitrarily many SSE
-// events; the bound resets only at an event boundary.
-func boundMCPResponseBody(response *http.Response) {
+// LimitBody bounds one non-streaming response document or one SSE event. SSE
+// streams may carry arbitrarily many events; their budget resets only at a
+// blank-line event boundary. The caller owns the protocol-specific limit and
+// error vocabulary.
+func LimitBody(response *http.Response, maxFrameBytes int64, tooLarge error) {
+	if maxFrameBytes <= 0 || tooLarge == nil {
+		panic("httpresponse: a positive frame limit and size error are required")
+	}
 	if response == nil || response.Body == nil {
 		return
 	}
 	mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
-	response.Body = &boundedMCPResponseBody{
+	response.Body = &boundedBody{
 		body:        response.Body,
-		limit:       maxMCPResponseFrameBytes,
-		remaining:   maxMCPResponseFrameBytes,
+		limit:       maxFrameBytes,
+		remaining:   maxFrameBytes,
+		tooLarge:    tooLarge,
 		eventStream: err == nil && strings.EqualFold(mediaType, "text/event-stream"),
 	}
 }
 
-type boundedMCPResponseBody struct {
+type boundedBody struct {
 	body        io.ReadCloser
 	limit       int64
 	remaining   int64
+	tooLarge    error
 	eventStream bool
 	lineHasData bool
 	failed      bool
 }
 
-func (b *boundedMCPResponseBody) Read(destination []byte) (int, error) {
+func (b *boundedBody) Read(destination []byte) (int, error) {
 	if b.failed {
-		return 0, errMCPResponseFrameTooLarge
+		return 0, b.tooLarge
 	}
 	if len(destination) == 0 {
 		return b.body.Read(destination)
@@ -51,7 +53,7 @@ func (b *boundedMCPResponseBody) Read(destination []byte) (int, error) {
 			accepted := int(b.remaining)
 			b.remaining = 0
 			b.failed = true
-			return accepted, errMCPResponseFrameTooLarge
+			return accepted, b.tooLarge
 		}
 		b.remaining -= int64(read)
 		return read, readErr
@@ -61,7 +63,7 @@ func (b *boundedMCPResponseBody) Read(destination []byte) (int, error) {
 		b.remaining--
 		if b.remaining < 0 {
 			b.failed = true
-			return index, errMCPResponseFrameTooLarge
+			return index, b.tooLarge
 		}
 		switch value {
 		case '\n':
@@ -77,6 +79,6 @@ func (b *boundedMCPResponseBody) Read(destination []byte) (int, error) {
 	return read, readErr
 }
 
-func (b *boundedMCPResponseBody) Close() error {
+func (b *boundedBody) Close() error {
 	return b.body.Close()
 }

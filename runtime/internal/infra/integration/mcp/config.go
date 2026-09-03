@@ -19,6 +19,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/httporigin"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpresponse"
 )
 
 // Transport is the wire mode of an MCP server connection. The zero value is
@@ -267,9 +268,15 @@ func connectSession(
 	return session, cancelLifetime, nil
 }
 
-const maxRedirects = 10
+const (
+	maxRedirects             = 10
+	maxMCPResponseFrameBytes = 64 << 20
+)
 
-var errCrossOrigin = errors.New("mcp: cross-origin request blocked")
+var (
+	errCrossOrigin              = errors.New("mcp: cross-origin request blocked")
+	errMCPResponseFrameTooLarge = errors.New("mcp: response frame too large")
+)
 
 func endpointHTTPClient(endpoint, authorization string, headers map[string]string) (*http.Client, error) {
 	origin, err := httporigin.Parse(endpoint)
@@ -277,10 +284,11 @@ func endpointHTTPClient(endpoint, authorization string, headers map[string]strin
 		return nil, err
 	}
 	transport := &headerRoundTripper{
-		origin:        origin,
-		authorization: authorization,
-		headers:       maps.Clone(headers),
-		base:          http.DefaultTransport,
+		origin:                origin,
+		authorization:         authorization,
+		headers:               maps.Clone(headers),
+		base:                  http.DefaultTransport,
+		maxResponseFrameBytes: maxMCPResponseFrameBytes,
 	}
 	return &http.Client{
 		Transport: transport,
@@ -294,11 +302,12 @@ func endpointHTTPClient(endpoint, authorization string, headers map[string]strin
 }
 
 type headerRoundTripper struct {
-	origin        httporigin.Origin
-	authorization string
-	headers       map[string]string
-	base          http.RoundTripper
-	lastStatus    atomic.Int64
+	origin                httporigin.Origin
+	authorization         string
+	headers               map[string]string
+	base                  http.RoundTripper
+	lastStatus            atomic.Int64
+	maxResponseFrameBytes int64
 }
 
 func (h *headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -315,7 +324,7 @@ func (h *headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 	response, err := h.base.RoundTrip(r)
 	if response != nil {
 		h.lastStatus.Store(int64(response.StatusCode))
-		boundMCPResponseBody(response)
+		httpresponse.LimitBody(response, h.maxResponseFrameBytes, errMCPResponseFrameTooLarge)
 	}
 	return response, err
 }
