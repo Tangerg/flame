@@ -1525,7 +1525,7 @@ func TestStorePersistsTheCompleteMixedInteractionReview(t *testing.T) {
 		RunID: "run_1", ItemID: "item_question", Title: "Choose targets",
 		Fields: []agent.QuestionField{
 			{Prompt: "Reason", Kind: agent.QuestionText},
-			{Prompt: "Platforms", Kind: agent.QuestionMulti, AllowCustom: true, Options: []agent.QuestionOption{{Label: "linux"}, {Label: "darwin"}}},
+			{Prompt: "Platforms", Kind: agent.QuestionMulti, AllowCustom: true, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}},
 		},
 	}
 	pending := PendingResume{

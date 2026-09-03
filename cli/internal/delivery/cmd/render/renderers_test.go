@@ -122,7 +122,7 @@ func TestNDJSONCarriesSegmentIdentityAndInterruptSet(t *testing.T) {
 		testEvent("evt_start", agent.SegmentStarted{Run: testRun()}),
 		testEvent("evt_wait", agent.RunInterrupted{Usage: agent.Usage{InputTokens: 42}, Interactions: []agent.Interaction{
 			testApproval("tool_1", "shell"),
-			agent.Question{RunID: "run_1", ItemID: "question_1", Title: "choose", Fields: []agent.QuestionField{{Prompt: "Target", Kind: agent.QuestionSingle, Options: []agent.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}}},
+			agent.Question{RunID: "run_1", ItemID: "question_1", Title: "choose", Fields: []agent.QuestionField{{Prompt: "Target", Kind: agent.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}}},
 		}}),
 	}
 	for _, event := range events {
@@ -167,7 +167,7 @@ func TestCompletedQuestionAnswersReachTextAndNDJSON(t *testing.T) {
 		RunID: "run_1", ItemID: "question_1", Title: "choose",
 		Fields: []agent.QuestionField{{
 			Prompt: "Target", Kind: agent.QuestionSingle,
-			Options: []agent.QuestionOption{{Label: "linux"}, {Label: "darwin"}},
+			Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}},
 		}},
 		Answers: [][]string{{"linux"}},
 	}
@@ -522,7 +522,7 @@ func TestResultJSONClearsPriorInterruptWhenANewSegmentStarts(t *testing.T) {
 	}
 	question := agent.Question{
 		RunID: "run_1", ItemID: "question_1", Title: "choose",
-		Fields: []agent.QuestionField{{Prompt: "Target", Kind: agent.QuestionSingle, Options: []agent.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
+		Fields: []agent.QuestionField{{Prompt: "Target", Kind: agent.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
 	}
 	resumed := testRun()
 	resumed.ActiveSegmentID = "seg_2"

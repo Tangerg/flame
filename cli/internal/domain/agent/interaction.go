@@ -6,8 +6,6 @@ import (
 	"slices"
 	"strings"
 
-	"unicode/utf8"
-
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -188,33 +186,28 @@ func (q Question) Equal(other Question) bool {
 }
 
 func (q QuestionField) Validate() error {
-	if strings.TrimSpace(q.Prompt) == "" {
-		return errors.New("prompt is empty")
-	}
-	if utf8.RuneCountInString(q.Header) > 12 {
-		return errors.New("header is longer than 12 characters")
+	wire := runtimeprotocol.QuestionField{
+		Prompt: q.Prompt, Header: q.Header, AllowCustom: q.AllowCustom,
+		Options: q.Options,
 	}
 	switch q.Kind {
 	case QuestionText:
-		if len(q.Options) != 0 || q.AllowCustom {
-			return errors.New("text field carries choice options")
-		}
+		wire.Type = runtimeprotocol.QuestionFieldText
 	case QuestionSingle, QuestionMulti:
-		if len(q.Options) < 2 {
-			return errors.New("choice field has fewer than two options")
-		}
-		seen := make(map[string]struct{}, len(q.Options))
-		for i, option := range q.Options {
-			if strings.TrimSpace(option.Label) == "" {
-				return fmt.Errorf("option %d has no label", i+1)
-			}
-			if _, duplicate := seen[option.Label]; duplicate {
-				return fmt.Errorf("option label %q is duplicated", option.Label)
-			}
-			seen[option.Label] = struct{}{}
-		}
+		wire.Type = runtimeprotocol.QuestionFieldChoice
+		wire.Multiple = q.Kind == QuestionMulti
 	default:
 		return fmt.Errorf("kind %q is invalid", q.Kind)
+	}
+	if err := runtimeprotocol.ValidateWireTree(wire); err != nil {
+		return err
+	}
+	seen := make(map[string]struct{}, len(q.Options))
+	for _, option := range q.Options {
+		if _, duplicate := seen[option.Label]; duplicate {
+			return fmt.Errorf("option label %q is duplicated", option.Label)
+		}
+		seen[option.Label] = struct{}{}
 	}
 	return nil
 }
@@ -316,7 +309,7 @@ func validateQuestionValues(field QuestionField, values []string) error {
 }
 
 func questionOffers(field QuestionField, value string) bool {
-	return slices.ContainsFunc(field.Options, func(option QuestionOption) bool { return option.Label == value })
+	return slices.ContainsFunc(field.Options, func(option runtimeprotocol.QuestionOption) bool { return option.Label == value })
 }
 
 func CloneInteraction(interaction Interaction) Interaction {

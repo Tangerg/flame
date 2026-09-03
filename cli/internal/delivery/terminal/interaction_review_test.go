@@ -16,7 +16,7 @@ func TestInteractionReviewRecordsEditsAndCommitsInRuntimeOrder(t *testing.T) {
 	}
 	question := agent.Question{
 		RunID: "run_1", ItemID: "question", Title: "Choose target",
-		Fields: []agent.QuestionField{{Prompt: "Target", Kind: agent.QuestionSingle, Options: []agent.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
+		Fields: []agent.QuestionField{{Prompt: "Target", Kind: agent.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
 	}
 	review, err := newInteractionReview([]agent.Interaction{approval, question})
 	if err != nil {
@@ -80,7 +80,7 @@ func TestInteractionReviewRestoresACommittedBatchWithoutSharingAnswers(t *testin
 		RunID: "run_1", ItemID: "question", Title: "Choose target",
 		Fields: []agent.QuestionField{{
 			Prompt: "Target", Kind: agent.QuestionMulti,
-			Options: []agent.QuestionOption{{Label: "linux"}, {Label: "darwin"}},
+			Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}},
 		}},
 	}
 	responses := []agent.InterruptAnswer{

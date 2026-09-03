@@ -139,7 +139,7 @@ func projectQuestion(runID, itemID string, value *protocol.Question) (agent.Ques
 	for _, field := range value.Fields {
 		projected := agent.QuestionField{
 			Prompt: field.Prompt, Header: field.Header, AllowCustom: field.AllowCustom,
-			Options: make([]agent.QuestionOption, 0, len(field.Options)),
+			Options: slices.Clone(field.Options),
 		}
 		switch field.Type {
 		case protocol.QuestionFieldText:
@@ -152,11 +152,6 @@ func projectQuestion(runID, itemID string, value *protocol.Question) (agent.Ques
 			}
 		default:
 			return agent.Question{}, fmt.Errorf("question item %s has unsupported field type %q", itemID, field.Type)
-		}
-		for _, option := range field.Options {
-			projected.Options = append(projected.Options, agent.QuestionOption{
-				Label: option.Label, Description: option.Description, Preview: option.Preview,
-			})
 		}
 		question.Fields = append(question.Fields, projected)
 	}

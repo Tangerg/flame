@@ -548,14 +548,14 @@ func mixedInteractionPTYInteractions() []agent.Interaction {
 			ItemID: "platform", Title: "Choose platform",
 			Fields: []agent.QuestionField{{
 				Prompt: "Platform", Kind: agent.QuestionSingle,
-				Options: []agent.QuestionOption{{Label: "Linux"}, {Label: "Darwin"}},
+				Options: []protocol.QuestionOption{{Label: "Linux"}, {Label: "Darwin"}},
 			}},
 		},
 		agent.Question{
 			ItemID: "checks", Title: "Choose checks",
 			Fields: []agent.QuestionField{{
 				Prompt: "Checks", Kind: agent.QuestionMulti,
-				Options: []agent.QuestionOption{{Label: "Unit"}, {Label: "Integration"}},
+				Options: []protocol.QuestionOption{{Label: "Unit"}, {Label: "Integration"}},
 			}},
 		},
 	}

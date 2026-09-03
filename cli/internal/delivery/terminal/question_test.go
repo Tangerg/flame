@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestQuestionnaireOwnsAnswersAndNavigation(t *testing.T) {
@@ -12,8 +13,8 @@ func TestQuestionnaireOwnsAnswersAndNavigation(t *testing.T) {
 		RunID: "run_1", ItemID: "plan", Title: "Plan deployment",
 		Fields: []agent.QuestionField{
 			{Prompt: "Goal", Kind: agent.QuestionText},
-			{Prompt: "Strategy", Kind: agent.QuestionSingle, Options: []agent.QuestionOption{{Label: "Safe"}, {Label: "Fast"}}},
-			{Prompt: "Checks", Kind: agent.QuestionMulti, Options: []agent.QuestionOption{{Label: "Unit"}, {Label: "Integration"}}},
+			{Prompt: "Strategy", Kind: agent.QuestionSingle, Options: []protocol.QuestionOption{{Label: "Safe"}, {Label: "Fast"}}},
+			{Prompt: "Checks", Kind: agent.QuestionMulti, Options: []protocol.QuestionOption{{Label: "Unit"}, {Label: "Integration"}}},
 		},
 	}
 	previous := agent.QuestionAnswer{Values: [][]string{{"release"}, {"Fast"}, {"Unit"}}}
@@ -48,7 +49,7 @@ func TestQuestionnaireNormalizesCustomMultipleValues(t *testing.T) {
 		RunID: "run_1", ItemID: "targets", Title: "Targets",
 		Fields: []agent.QuestionField{{
 			Prompt: "Targets", Kind: agent.QuestionMulti, AllowCustom: true,
-			Options: []agent.QuestionOption{{Label: "linux"}, {Label: "darwin"}},
+			Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}},
 		}},
 	}
 	review, err := newQuestionnaire(question, nil)
@@ -71,8 +72,8 @@ func TestQuestionnaireRestoresOfferedAndCustomChoices(t *testing.T) {
 	question := agent.Question{
 		RunID: "run_1", ItemID: "targets", Title: "Targets",
 		Fields: []agent.QuestionField{
-			{Prompt: "Platform", Kind: agent.QuestionSingle, AllowCustom: true, Options: []agent.QuestionOption{{Label: "linux"}, {Label: "darwin"}}},
-			{Prompt: "Checks", Kind: agent.QuestionMulti, AllowCustom: true, Options: []agent.QuestionOption{{Label: "unit"}, {Label: "integration"}}},
+			{Prompt: "Platform", Kind: agent.QuestionSingle, AllowCustom: true, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}},
+			{Prompt: "Checks", Kind: agent.QuestionMulti, AllowCustom: true, Options: []protocol.QuestionOption{{Label: "unit"}, {Label: "integration"}}},
 		},
 	}
 	previous := agent.QuestionAnswer{Values: [][]string{{"freebsd"}, {"unit", "smoke", "manual"}}}

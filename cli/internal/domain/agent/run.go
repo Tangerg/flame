@@ -261,13 +261,7 @@ type QuestionField struct {
 	Header      string
 	Kind        QuestionKind
 	AllowCustom bool
-	Options     []QuestionOption
-}
-
-type QuestionOption struct {
-	Label       string
-	Description string
-	Preview     string
+	Options     []protocol.QuestionOption
 }
 
 func (Approval) isInteraction() {}

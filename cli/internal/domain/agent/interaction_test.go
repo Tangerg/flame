@@ -9,7 +9,7 @@ import (
 func TestQuestionAnswerUsesFieldOrder(t *testing.T) {
 	question := Question{RunID: "run_1", ItemID: "q_1", Title: "Configuration", Fields: []QuestionField{
 		{Prompt: "Name", Kind: QuestionText},
-		{Prompt: "Targets", Kind: QuestionMulti, Options: []QuestionOption{{Label: "linux"}, {Label: "darwin"}}},
+		{Prompt: "Targets", Kind: QuestionMulti, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}},
 	}}
 	answer := QuestionAnswer{Values: [][]string{{"flame"}, {"linux", "darwin"}}}
 	if err := ValidateAnswer(question, answer); err != nil {
@@ -87,8 +87,13 @@ func TestQuestionFieldEnforcesRuntimePresentationBounds(t *testing.T) {
 	if err := (QuestionField{Prompt: "Choose", Header: "1234567890123", Kind: QuestionText}).Validate(); err == nil {
 		t.Fatal("overlong question header was accepted")
 	}
-	if err := (QuestionField{Prompt: "Choose", Kind: QuestionSingle, Options: []QuestionOption{{Label: "only"}}}).Validate(); err == nil {
+	if err := (QuestionField{Prompt: "Choose", Kind: QuestionSingle, Options: []protocol.QuestionOption{{Label: "only"}}}).Validate(); err == nil {
 		t.Fatal("single-option choice was accepted")
+	}
+	if err := (QuestionField{Prompt: "Choose", Kind: QuestionSingle, Options: []protocol.QuestionOption{
+		{Label: "one"}, {Label: "two"}, {Label: "three"}, {Label: "four"}, {Label: "five"},
+	}}).Validate(); err == nil {
+		t.Fatal("oversized option set was accepted")
 	}
 }
 
@@ -99,7 +104,7 @@ func TestCompletedQuestionOwnsAndValidatesAcceptedAnswers(t *testing.T) {
 		RunID: "run_1", ItemID: "q_1", Title: "Configuration",
 		Fields: []QuestionField{
 			{Prompt: "Target", Kind: QuestionText},
-			{Prompt: "Checks", Kind: QuestionMulti, Options: []QuestionOption{{Label: "unit"}, {Label: "smoke"}}},
+			{Prompt: "Checks", Kind: QuestionMulti, Options: []protocol.QuestionOption{{Label: "unit"}, {Label: "smoke"}}},
 		},
 		Answers: [][]string{{"linux"}, {"unit", "smoke"}},
 	}

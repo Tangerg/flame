@@ -21,7 +21,7 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 
 	interrupts := []Interaction{
 		runningApproval("item_approval", "run shell"),
-		Question{RunID: "run_1", ItemID: "item_question", Title: "choose", Fields: []QuestionField{{Prompt: "Which?", Kind: QuestionSingle, Options: []QuestionOption{{Label: "A"}, {Label: "B"}}}}},
+		Question{RunID: "run_1", ItemID: "item_question", Title: "choose", Fields: []QuestionField{{Prompt: "Which?", Kind: QuestionSingle, Options: []protocol.QuestionOption{{Label: "A"}, {Label: "B"}}}}},
 	}
 	approval := interrupts[0].(Approval)
 	startedApprovalTool := approval.Tool.Clone()

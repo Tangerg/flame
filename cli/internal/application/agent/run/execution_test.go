@@ -352,7 +352,7 @@ func TestExecuteLeavesQuestionsParked(t *testing.T) {
 		return runtimefixture.Script{
 			Interactions: []agent.Interaction{agent.Question{
 				ItemID: "q_1", Title: "Target",
-				Fields: []agent.QuestionField{{Prompt: "Target", Kind: agent.QuestionSingle, Options: []agent.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
+				Fields: []agent.QuestionField{{Prompt: "Target", Kind: agent.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
 				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}

@@ -936,7 +936,7 @@ func TestAcceptedQuestionResumeSettlementRetriesTheExactDurableDecision(t *testi
 				ItemID: "question", Title: "Persist settlement",
 				Fields: []agent.QuestionField{{
 					Prompt: "Continue?", Kind: agent.QuestionSingle,
-					Options: []agent.QuestionOption{{Label: "Continue"}, {Label: "Stop"}},
+					Options: []protocol.QuestionOption{{Label: "Continue"}, {Label: "Stop"}},
 				}},
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
@@ -1103,7 +1103,7 @@ func TestAcceptedResumeProjectionFailureRejectsTheContinuationTail(t *testing.T)
 				ItemID: "question", Title: "Corrupt accepted projection",
 				Fields: []agent.QuestionField{{
 					Prompt: "Continue?", Kind: agent.QuestionSingle,
-					Options: []agent.QuestionOption{{Label: "Continue"}, {Label: "Stop"}},
+					Options: []protocol.QuestionOption{{Label: "Continue"}, {Label: "Stop"}},
 				}},
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
@@ -1168,7 +1168,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 					ItemID: "question", Title: "Choose targets",
 					Fields: []agent.QuestionField{
 						{Prompt: "Reason", Kind: agent.QuestionText},
-						{Prompt: "Platforms", Kind: agent.QuestionMulti, AllowCustom: true, Options: []agent.QuestionOption{{Label: "linux"}, {Label: "darwin"}}},
+						{Prompt: "Platforms", Kind: agent.QuestionMulti, AllowCustom: true, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}},
 					},
 				},
 			},
@@ -3136,7 +3136,7 @@ func TestQuestionFormSubmitsTypedAnswerAndCanCancel(t *testing.T) {
 				ItemID: "question_1", Title: "Choose a strategy", Detail: "One short decision",
 				Fields: []agent.QuestionField{{
 					Header: "Strategy", Prompt: "Choose a strategy", Kind: agent.QuestionSingle,
-					Options: []agent.QuestionOption{{Label: "Safe"}, {Label: "Fast"}},
+					Options: []protocol.QuestionOption{{Label: "Safe"}, {Label: "Fast"}},
 				}},
 			}},
 			Continue: func(answerSet []agent.InterruptAnswer) []runtimefixture.Step {
@@ -3178,8 +3178,8 @@ func TestQuestionnaireSurvivesResizeBetweenFields(t *testing.T) {
 				ItemID: "deployment-plan", Title: "Plan deployment", Detail: "Complete every field",
 				Fields: []agent.QuestionField{
 					{Header: "Goal", Prompt: "What should change?", Kind: agent.QuestionText},
-					{Header: "Strategy", Prompt: "Choose an approach", Kind: agent.QuestionSingle, Options: []agent.QuestionOption{{Label: "Safe"}, {Label: "Fast"}}},
-					{Header: "Checks", Prompt: "Select validation", Kind: agent.QuestionMulti, Options: []agent.QuestionOption{{Label: "Unit"}, {Label: "Integration"}}},
+					{Header: "Strategy", Prompt: "Choose an approach", Kind: agent.QuestionSingle, Options: []protocol.QuestionOption{{Label: "Safe"}, {Label: "Fast"}}},
+					{Header: "Checks", Prompt: "Select validation", Kind: agent.QuestionMulti, Options: []protocol.QuestionOption{{Label: "Unit"}, {Label: "Integration"}}},
 				},
 			}},
 			Continue: func(answerSet []agent.InterruptAnswer) []runtimefixture.Step {
@@ -3250,7 +3250,7 @@ func TestCustomMultipleQuestionKeepsInvalidInputEditable(t *testing.T) {
 				ItemID: "targets", Title: "Choose targets",
 				Fields: []agent.QuestionField{{
 					Prompt: "Targets", Kind: agent.QuestionMulti, AllowCustom: true,
-					Options: []agent.QuestionOption{{Label: "linux"}, {Label: "darwin"}},
+					Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}},
 				}},
 			}},
 			Continue: func(answerSet []agent.InterruptAnswer) []runtimefixture.Step {
@@ -3302,7 +3302,7 @@ func TestCustomSingleQuestionPreservesOptionsAndSurvivesResize(t *testing.T) {
 				ItemID: "platform", Title: "Choose platform", Detail: "Select a supported platform or provide another one",
 				Fields: []agent.QuestionField{{
 					Prompt: "Platform", Kind: agent.QuestionSingle, AllowCustom: true,
-					Options: []agent.QuestionOption{
+					Options: []protocol.QuestionOption{
 						{Label: "linux", Description: "Supported", Preview: "CI image"},
 						{Label: "darwin", Description: "Experimental"},
 					},
@@ -4186,7 +4186,7 @@ func multiInteractionReviewScript(answers chan<- []agent.InterruptAnswer) runtim
 			},
 			agent.Question{
 				ItemID: "question", Title: "Choose platform",
-				Fields: []agent.QuestionField{{Prompt: "Platform", Kind: agent.QuestionSingle, Options: []agent.QuestionOption{{Label: "Linux"}, {Label: "Darwin"}}}},
+				Fields: []agent.QuestionField{{Prompt: "Platform", Kind: agent.QuestionSingle, Options: []protocol.QuestionOption{{Label: "Linux"}, {Label: "Darwin"}}}},
 			},
 		},
 		Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {

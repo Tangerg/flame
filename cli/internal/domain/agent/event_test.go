@@ -21,7 +21,7 @@ func TestRunEventEqualityUsesDomainValues(t *testing.T) {
 		RunID: "run_1", ItemID: "question_1", Title: "Choose target",
 		Fields: []QuestionField{{
 			Prompt: "Target", Kind: QuestionSingle,
-			Options: []QuestionOption{{Label: "linux"}, {Label: "darwin"}},
+			Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}},
 		}},
 	}
 	at := time.Date(2026, time.August, 12, 8, 0, 0, 0, time.UTC)

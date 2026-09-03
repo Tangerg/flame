@@ -79,7 +79,7 @@ func TestStreamFailureRetiresTheObsoleteInteractionProjection(t *testing.T) {
 				ItemID: "question_before_stream_failure", Title: "Choose before failure",
 				Fields: []agent.QuestionField{{
 					Header: "Strategy", Prompt: "Choose a strategy", Kind: agent.QuestionSingle,
-					Options: []agent.QuestionOption{{Label: "Safe"}, {Label: "Fast"}},
+					Options: []protocol.QuestionOption{{Label: "Safe"}, {Label: "Fast"}},
 				}},
 			},
 			open: "Choose before failure", obsolete: []string{"Safe"},
@@ -175,7 +175,7 @@ func TestPendingResumePersistenceFailureReopensTheQuestionForRetry(t *testing.T)
 				ItemID: "question_resume_persistence", Title: "Persist question before resuming",
 				Fields: []agent.QuestionField{{
 					Prompt: "Strategy", Kind: agent.QuestionSingle,
-					Options: []agent.QuestionOption{{Label: "Safe"}, {Label: "Fast"}},
+					Options: []protocol.QuestionOption{{Label: "Safe"}, {Label: "Fast"}},
 				}},
 			}},
 			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
