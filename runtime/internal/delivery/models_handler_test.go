@@ -97,6 +97,22 @@ func TestSetUtilityRoleRejectsPartialSelection(t *testing.T) {
 	}
 }
 
+func TestSetUtilityRoleClassifiesInvalidIdentityBeforePersistence(t *testing.T) {
+	saver := &utilitySaverRecorder{}
+	s := modelRoleServer(nil, saver)
+
+	_, err := s.SetUtilityRole(context.Background(), protocol.UtilityRole{
+		Provider: "anthropic\x00shadow",
+		Model:    "claude-3-5-haiku-20241022",
+	})
+	if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, modelref.ErrProviderIdentity) {
+		t.Fatalf("set invalid utility role err = %v, want ErrInvalidParams and ErrProviderIdentity", err)
+	}
+	if saver.calls != 0 {
+		t.Fatalf("utility role calls = %d, want 0", saver.calls)
+	}
+}
+
 func TestSetUtilityRoleStoresConfiguredProvider(t *testing.T) {
 	saver := &utilitySaverRecorder{}
 	s := modelRoleServer(map[string]provider.Provider{
