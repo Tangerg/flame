@@ -1,5 +1,7 @@
 package protocol
 
+import "time"
+
 // WorkspaceQuery is the common explicit scope for workspace reads.
 type WorkspaceQuery struct {
 	Workspace WorkspaceRef `json:"workspace"`
@@ -85,7 +87,7 @@ type FileEntry struct {
 	Name       string        `json:"name"`
 	Type       FileEntryType `json:"type"`
 	SizeBytes  *int64        `json:"sizeBytes,omitempty"`
-	ModifiedAt string        `json:"modifiedAt"`
+	ModifiedAt time.Time     `json:"modifiedAt"`
 }
 
 // FileHead is a file preview.

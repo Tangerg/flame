@@ -3,7 +3,6 @@ package delivery
 import (
 	"context"
 	"fmt"
-	"time"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -39,7 +38,7 @@ func (s *Handler) ListWorkspaceFiles(ctx context.Context, in protocol.ListFilesR
 		}
 		data = append(data, protocol.FileEntry{
 			Path: entry.Path, Name: entry.Name, Type: kind, SizeBytes: sizeBytes,
-			ModifiedAt: entry.ModifiedAt.Format(time.RFC3339Nano),
+			ModifiedAt: entry.ModifiedAt,
 		})
 	}
 	return protocol.NewPageWithCursor(data, page.NextCursor), nil

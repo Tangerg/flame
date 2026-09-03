@@ -3970,7 +3970,7 @@
             },
             {
               "name": "ModifiedAt",
-              "type": "string",
+              "type": "time.Time",
               "tag": "json:\"modifiedAt\""
             }
           ],

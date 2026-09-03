@@ -170,7 +170,7 @@ func TestWorkspaceListFilesPaginatesInspectedEntries(t *testing.T) {
 	if _, decodeStringErr := base64.RawURLEncoding.DecodeString(first.NextCursor); decodeStringErr != nil {
 		t.Fatalf("cursor = %q, want opaque base64 key: %v", first.NextCursor, decodeStringErr)
 	}
-	if first.Data[0].Type != protocol.FileEntryFile || first.Data[0].SizeBytes == nil || *first.Data[0].SizeBytes == 0 || first.Data[0].ModifiedAt == "" {
+	if first.Data[0].Type != protocol.FileEntryFile || first.Data[0].SizeBytes == nil || *first.Data[0].SizeBytes == 0 || first.Data[0].ModifiedAt.IsZero() {
 		t.Fatalf("entry is not fully inspected: %+v", first.Data[0])
 	}
 	// The cursor is an ordered key rather than a row-existence dependency: if

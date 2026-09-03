@@ -2552,7 +2552,8 @@
       "type": "object",
       "properties": {
         "modifiedAt": {
-          "type": "string"
+          "type": "string",
+          "format": "date-time"
         },
         "name": {
           "type": "string",
