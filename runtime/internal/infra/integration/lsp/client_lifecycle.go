@@ -71,7 +71,7 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (*client, er
 		diags:        map[string]diagSet{},
 		updated:      make(chan struct{}),
 	}
-	stream := jsonrpc2.NewBufferedStream(pipes, jsonrpc2.VSCodeObjectCodec{})
+	stream := jsonrpc2.NewBufferedStream(pipes, lspObjectCodec{})
 	c.conn = jsonrpc2.NewConn(connCtx, stream, jsonrpc2.AsyncHandler(c))
 
 	// The handshake is synchronous within this call, so it rides ctx directly —
