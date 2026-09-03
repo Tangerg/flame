@@ -18,6 +18,8 @@ export interface SettingsPaneSpec {
  * Unlike `LayoutSlotSpec`, a workspace view does not pick its position — the user does. The
  * kernel needs only `id` and the component; everything else is a hint.
  */
+export type ContextDockDestinationScope = "workspace" | "session" | "run";
+
 export interface WorkspaceViewSpec {
   /** The layout PERSISTENCE key: renaming one strands a saved layout. */
   id: string;
@@ -33,20 +35,12 @@ export interface WorkspaceViewSpec {
   badge?: ComponentType;
   /** Lower comes first. */
   order?: number;
-  /** Required in practice for anything a user can reach: every Context Dock destination
-   *  opens in the dock, so a view that cannot live there is a one-way trip. */
-  splittable?: boolean;
+  /** Where the view goes, and the whole of it: a scope names the group the dock's add-panel
+   *  menu files it under, and its ABSENCE says the view takes the content card instead, the
+   *  way settings does. Declared here rather than in a list beside the registry, because the
+   *  two could disagree — and did: a view left out of that list had no way in at all. */
+  dock?: ContextDockDestinationScope;
   component: ComponentType;
-}
-
-export type ContextDockDestinationScope = "workspace" | "session" | "run";
-
-// Carries NO metadata of its own: the referenced WorkspaceViewSpec owns title, icon and
-// component, and placement is implied by the extension point itself.
-export interface ContextDockDestinationSpec {
-  viewId: string;
-  scope: ContextDockDestinationScope;
-  order?: number;
 }
 
 /**

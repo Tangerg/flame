@@ -10,7 +10,7 @@ export default definePlugin({
       title: "workspace.view.title.diagnostics",
       icon: "spark",
       order: 115,
-      splittable: true,
+      dock: "workspace",
       component: DiagnosticsView,
     });
   },

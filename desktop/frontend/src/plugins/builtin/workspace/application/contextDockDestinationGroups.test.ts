@@ -13,17 +13,17 @@ const item = (
 });
 
 describe("resolveContextDockItems", () => {
-  it("joins destinations with view title/icon and drops unresolved viewIds", () => {
-    const items = resolveContextDockItems(
-      [
-        { viewId: "search", scope: "workspace", order: 10 },
-        { viewId: "ghost", scope: "workspace", order: 20 },
-      ],
-      [
-        { id: "search", title: "workspace.view.title.search", icon: "search" },
-        { id: "diff", title: "workspace.view.title.diff", icon: "diff" },
-      ],
-    );
+  it("takes the views that name a scope and leaves the rest to the content card", () => {
+    const items = resolveContextDockItems([
+      {
+        id: "search",
+        title: "workspace.view.title.search",
+        icon: "search",
+        order: 10,
+        dock: "workspace",
+      },
+      { id: "settings", title: "settings.title", icon: "settings", order: 200 },
+    ]);
 
     expect(items).toEqual([
       {

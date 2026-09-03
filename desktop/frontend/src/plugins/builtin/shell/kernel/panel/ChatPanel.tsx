@@ -185,7 +185,7 @@ export function ChatPanel({ onSend }: Props) {
 
   const placementFor = (id: string, placement: "full" | "dock"): ViewPlacement => ({
     placement,
-    splittable: viewsById.get(id)?.splittable ?? false,
+    splittable: viewsById.get(id)?.dock !== undefined,
     onOpenInDock: () => openWorkspaceViewInDock(id),
     onClose: () => (placement === "dock" ? closeWorkspaceDockView(id) : closeWorkspaceView(id)),
   });

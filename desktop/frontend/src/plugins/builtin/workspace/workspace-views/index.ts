@@ -13,7 +13,7 @@ export const searchView = defineWorkspaceView({
   title: "workspace.view.title.search",
   icon: "search",
   order: 10,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() => import("./search").then((m) => ({ default: m.SearchTab }))),
 });
 
@@ -23,7 +23,7 @@ export const inboxView = defineWorkspaceView({
   icon: "bell",
   badge: InboxBadge,
   order: 15,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() => import("./inbox").then((m) => ({ default: m.InboxTab }))),
 });
 
@@ -32,7 +32,7 @@ export const fileTreeView = defineWorkspaceView({
   title: "workspace.view.title.filetree",
   icon: "folder",
   order: 20,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() => import("./filetree").then((m) => ({ default: m.ExplorerView }))),
 });
 
@@ -41,7 +41,7 @@ export const fileView = defineWorkspaceView({
   title: "workspace.view.title.file",
   icon: "filetext",
   order: 25,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() => import("./file").then((m) => ({ default: m.FileViewTab }))),
 });
 
@@ -50,7 +50,7 @@ export const filesView = defineWorkspaceView({
   title: "workspace.view.title.files",
   icon: "filetext",
   order: 30,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() => import("./files").then((m) => ({ default: m.FilesView }))),
 });
 
@@ -60,7 +60,7 @@ export const diffView = defineWorkspaceView({
   icon: "diff",
   badge: DiffTabBadge,
   order: 40,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() => import("./diff").then((m) => ({ default: m.DiffWorkspaceSurface }))),
 });
 
@@ -69,7 +69,7 @@ export const terminalView = defineWorkspaceView({
   title: "workspace.view.title.terminal",
   icon: "terminal",
   order: 60,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() =>
     import("./terminal").then((m) => ({ default: m.TerminalWorkspaceSurface })),
   ),
@@ -80,7 +80,7 @@ export const toolsView = defineWorkspaceView({
   title: "workspace.view.title.tools",
   icon: "tool",
   order: 70,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() => import("./tools").then((m) => ({ default: m.ToolsTab }))),
 });
 
@@ -89,7 +89,7 @@ export const skillsView = defineWorkspaceView({
   title: "workspace.view.title.skills",
   icon: "sparkle",
   order: 80,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() => import("./skills").then((m) => ({ default: m.SkillsTab }))),
 });
 
@@ -98,7 +98,7 @@ export const skillProposalsView = defineWorkspaceView({
   title: "workspace.view.title.skillProposals",
   icon: "sparkle",
   order: 85,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() => import("./skillProposals").then((m) => ({ default: m.SkillProposalsTab }))),
 });
 
@@ -107,7 +107,7 @@ export const skillLibraryView = defineWorkspaceView({
   title: "workspace.view.title.skillLibrary",
   icon: "sparkle",
   order: 90,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() => import("./skillLibrary").then((m) => ({ default: m.SkillLibraryTab }))),
 });
 
@@ -116,7 +116,7 @@ export const recipesView = defineWorkspaceView({
   title: "workspace.view.title.recipes",
   icon: "command",
   order: 95,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() => import("./recipes").then((m) => ({ default: m.RecipesTab }))),
 });
 
@@ -125,7 +125,7 @@ export const knowledgeView = defineWorkspaceView({
   title: "workspace.view.title.knowledge",
   icon: "filetext",
   order: 100,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() => import("./knowledge").then((m) => ({ default: m.KnowledgeTab }))),
 });
 
@@ -134,7 +134,7 @@ export const agentMemoryView = defineWorkspaceView({
   title: "workspace.view.title.agentMemory",
   icon: "book",
   order: 105,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() => import("./agentMemory").then((m) => ({ default: m.AgentMemoryTab }))),
 });
 
@@ -143,7 +143,7 @@ export const agentDocsView = defineWorkspaceView({
   title: "workspace.view.title.agentDocs",
   icon: "book",
   order: 110,
-  splittable: true,
+  dock: "workspace",
   component: lazy(() => import("./agent-docs").then((m) => ({ default: m.AgentDocsTab }))),
 });
 
@@ -153,7 +153,7 @@ export const planView = defineWorkspaceView({
   icon: "list",
   badge: PlanTabBadge,
   order: 120,
-  splittable: true,
+  dock: "session",
   component: lazy(() => import("./plan").then((m) => ({ default: m.PlanTab }))),
 });
 
@@ -162,7 +162,7 @@ export const runSummaryView = defineWorkspaceView({
   title: "workspace.view.title.runSummary",
   icon: "check",
   order: 130,
-  splittable: true,
+  dock: "run",
   component: lazy(() => import("./run-summary").then((m) => ({ default: m.RunSummaryTab }))),
 });
 
@@ -171,7 +171,7 @@ export const timelineView = defineWorkspaceView({
   title: "workspace.view.title.timeline",
   icon: "history",
   order: 140,
-  splittable: true,
+  dock: "session",
   component: lazy(() => import("./timeline").then((m) => ({ default: m.TimelineTab }))),
 });
 
@@ -180,7 +180,7 @@ export const notificationsView = defineWorkspaceView({
   title: "workspace.view.title.notifications",
   icon: "bell",
   order: 145,
-  splittable: true,
+  dock: "session",
   component: lazy(() => import("./notifications").then((m) => ({ default: m.NotificationsTab }))),
 });
 
@@ -189,6 +189,6 @@ export const toolStatsView = defineWorkspaceView({
   title: "workspace.view.title.toolStats",
   icon: "chart",
   order: 150,
-  splittable: true,
+  dock: "session",
   component: lazy(() => import("./toolStats").then((m) => ({ default: m.ToolStatsTab }))),
 });

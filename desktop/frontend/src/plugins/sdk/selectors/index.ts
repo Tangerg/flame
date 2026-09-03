@@ -18,13 +18,7 @@ export { executeCommand, lookupSlashCommandOwner, useSlashCommands } from "./com
 export { lookupStreamHandlers } from "./events";
 
 // Layout slot (sub-keyed by slot) + workspace views / settings panes.
-export {
-  useContextDockDestinations,
-  useLayoutSlot,
-  useSettingsPanes,
-  useWorkIndexItems,
-  useWorkspaceViews,
-} from "./layout";
+export { useLayoutSlot, useSettingsPanes, useWorkIndexItems, useWorkspaceViews } from "./layout";
 
 // Tool owner attribution.
 export { lookupToolActionOwner, lookupToolViewOpenerOwner } from "./messages";

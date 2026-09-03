@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { definePlugin } from "@/plugins/sdk";
-import { COMMAND, CONTEXT_DOCK_DESTINATION, WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
+import { COMMAND, WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { drainBrowserTasks } from "@/test/browserTasks";
 import { useCommandMenuStore } from "../application/commandMenuState";
@@ -32,10 +32,10 @@ async function withCommands() {
           id: "terminal",
           title: "Terminal",
           icon: "terminal",
+          dock: "workspace",
           component: () => null,
         });
-        ctx.contribute(CONTEXT_DOCK_DESTINATION, { viewId: "terminal", scope: "workspace" });
-        // No destination: a full-card view, which is the shape that had no way in at all.
+        // No dock scope: a full-card view, which is the shape that had no way in at all.
         ctx.contribute(WORKSPACE_VIEW, {
           id: "icon-gallery",
           title: "Icon Gallery",

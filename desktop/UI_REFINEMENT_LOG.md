@@ -1823,3 +1823,62 @@ it is written down in the file.
 ### Open
 
 Items 1–7 from rounds 19 and 20, plus the `region` violation above.
+
+## Round 22 — a view now says where it goes
+
+Agreed in round 21. A view's placement lived in a list beside the registry, so
+the two could disagree, and did: `icon-gallery` was registered, absent from the
+list, and openable by nothing.
+
+The list turned out to carry **one** fact the view did not: all 21 entries
+repeated the view's own `order` verbatim, and `splittable` already meant "can sit
+in the dock" — the same predicate as "is listed". So the fold moves a scope and
+deletes the rest.
+
+| | Before | After |
+| --- | --- | --- |
+| Placement | `builtinContextDockDestinations`, 21 entries beside the registry | `dock?: "workspace" \| "session" \| "run"` on the view |
+| Catalogue order | the destination's `order`, a verbatim copy of the view's | the view's |
+| "Can it be split" | `splittable?: boolean`, a second spelling | `dock !== undefined` |
+| The extension point | `CONTEXT_DOCK_DESTINATION` + `useContextDockDestinations` | gone — nothing contributed to it but the list |
+| The join | `resolveContextDockItems(destinations, views)`, dropping unresolved ids | a filter over views; an unresolvable id cannot be written |
+| The guard | 3 assertions over an assembled set that missed two plugins | deleted: all three now hold by construction |
+
+Not a wrapper removal — the point had one contributor and the wrapper WAS the
+disagreement.
+
+### What the fixture could no longer do
+
+The workspace fixture picked eight view ids and contributed destinations for
+them, out of a set of nine views it loads. It loaded `toolsView` and withheld its
+destination, so the `dock-catalog` golden photographed an add-panel menu that
+production does not have — the mirror image of the bug the fixture's own comment
+was written about ("the fixture invented the entry that production was missing").
+A view now brings its placement with it, so the fixture cannot invent one **or
+suppress one**.
+
+Two goldens regenerated: `dock-catalog` light and dark, each gaining the **Tools**
+row and shifting the Session group down by one. Measured before regenerating —
+2236 pixels, all in rows 286–429, which is exactly that row and the shift.
+
+### A second flaking golden, and a better clue
+
+`foundation dark collapsed` failed once in a full run and passed 8 of 8 in
+isolation — the same shape as round 17's `empty`. This one is more informative:
+the difference is a **line break**, a paragraph wrapping one word earlier, not
+antialiasing at identical geometry. A wrap moves only if the measured text width
+did, which points somewhere the `empty` case ruled out. Two instances now, both
+only under a full run.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` and all fifteen guards — green.
+- 336 test files, 1891 tests passing (one file fewer: the guard that can no longer
+  fail).
+- `visual` — 390 passed after regenerating the two `dock-catalog` goldens.
+
+### Open
+
+Rounds 19–21's items, less item 6, which this round closed. Item 4 gains
+`foundation dark collapsed` and the line-break observation. Next: the screen
+reader's status announcements, then the composer's single-line state and overhang.

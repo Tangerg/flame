@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useContextDockDestinations, useWorkspaceViews } from "@/plugins/sdk";
+import { useWorkspaceViews } from "@/plugins/sdk";
 import {
   groupContextDockDestinations,
   resolveContextDockItems,
@@ -7,10 +7,6 @@ import {
 } from "./contextDockDestinationGroups";
 
 export function useContextDockCatalog(): ContextDockDestinationGroup[] {
-  const destinations = useContextDockDestinations();
   const views = useWorkspaceViews();
-  return useMemo(
-    () => groupContextDockDestinations(resolveContextDockItems(destinations, views)),
-    [destinations, views],
-  );
+  return useMemo(() => groupContextDockDestinations(resolveContextDockItems(views)), [views]);
 }

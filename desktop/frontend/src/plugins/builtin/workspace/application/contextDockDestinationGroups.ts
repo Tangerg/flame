@@ -1,12 +1,7 @@
-import type {
-  ContextDockDestinationScope,
-  ContextDockDestinationSpec,
-  WorkspaceViewSpec,
-} from "@/plugins/sdk";
+import type { ContextDockDestinationScope, WorkspaceViewSpec } from "@/plugins/sdk";
 
-// A dock destination joined with its WorkspaceViewSpec — the view supplies
-// title/icon, the spec supplies scope/order. This is the catalog rendered by
-// the dock's add-panel menu.
+// A view that has told the dock where it belongs. This is the catalog rendered by the
+// add-panel menu.
 export interface ContextDockItem {
   viewId: string;
   title: string;
@@ -21,24 +16,20 @@ export interface ContextDockDestinationGroup {
   destinations: ContextDockItem[];
 }
 
-// Join destinations with the registered workspace views. A destination whose
-// viewId no longer resolves (a plugin referencing a removed view) is dropped so
-// the menu never renders a title-less ghost; builtins are guarded by a test.
+/** A view that names no scope is not missing from the menu — it takes the content card
+ *  instead, and the command menu opens it there. */
 export function resolveContextDockItems(
-  destinations: readonly ContextDockDestinationSpec[],
-  views: readonly Pick<WorkspaceViewSpec, "id" | "title" | "icon">[],
+  views: readonly Pick<WorkspaceViewSpec, "id" | "title" | "icon" | "order" | "dock">[],
 ): ContextDockItem[] {
-  const byId = new Map(views.map((view) => [view.id, view]));
   const items: ContextDockItem[] = [];
-  for (const destination of destinations) {
-    const view = byId.get(destination.viewId);
-    if (!view) continue;
+  for (const view of views) {
+    if (view.dock === undefined) continue;
     items.push({
-      viewId: destination.viewId,
+      viewId: view.id,
       title: view.title,
       icon: view.icon,
-      scope: destination.scope,
-      order: destination.order,
+      scope: view.dock,
+      order: view.order,
     });
   }
   return items;

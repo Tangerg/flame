@@ -6,7 +6,6 @@ import type {
   CommandSpec,
   ComposerKeyBindingSpec,
   ComposerSubmitModeSpec,
-  ContextDockDestinationSpec,
   StreamEventHandler,
   DataProviderSpec,
   LayoutSlotSpec,
@@ -104,11 +103,6 @@ export const SETTINGS_PANE = defineExtensionPoint<SettingsPaneSpec>({
 export const WORKSPACE_VIEW = defineExtensionPoint<WorkspaceViewSpec>({
   id: "flame.workspaceView",
   keying: "single",
-});
-export const CONTEXT_DOCK_DESTINATION = defineExtensionPoint<ContextDockDestinationSpec>({
-  id: "flame.contextDock.destination",
-  keying: "single",
-  keyOf: (destination) => destination.viewId,
 });
 
 // ---- multi-handler surfaces (every contribution coexists, runs in order) --

@@ -41,9 +41,8 @@ import {
   toolStatsView,
   toolsView,
 } from "@/plugins/builtin/workspace/workspace-views";
-import { builtinContextDockDestinations } from "@/plugins/builtin/workspace/application/contextDockDestinations";
 import { PENDING_WORK_KEY, type PendingWorkItem } from "@/plugins/builtin/agent/public/hitl";
-import { CONTEXT_DOCK_DESTINATION, DATA_PROVIDER, SHORTCUT, definePlugin } from "@/plugins/sdk";
+import { DATA_PROVIDER, SHORTCUT, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
 import type { FeatureCapability, ServerCapabilities } from "@/rpc";
 import {
@@ -368,37 +367,6 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
   });
 }
 
-/**
- * Which views this fixture loads — the ONLY thing it decides about the dock.
- *
- * Scope and order come from the production catalog, filtered to these. A
- * hand-written destination list here is what let two views be photographed as
- * reachable while the product had no destination for either: the fixture invented
- * the entry that production was missing. Selecting from the real catalog cannot
- * invent one, and a view the catalog forgets now goes missing from the golden
- * instead of passing.
- */
-const FIXTURE_VIEW_IDS = new Set([
-  "explorer",
-  "file",
-  "diff",
-  "terminal",
-  "plan",
-  "timeline",
-  "inbox",
-  "tool-stats",
-]);
-
-const workspaceDockDestinations = definePlugin({
-  name: "flame.visual.workspace-dock-destinations",
-  setup(ctx) {
-    for (const destination of builtinContextDockDestinations) {
-      if (!FIXTURE_VIEW_IDS.has(destination.viewId)) continue;
-      ctx.contribute(CONTEXT_DOCK_DESTINATION, destination);
-    }
-  },
-});
-
 /** A plugin notification has no UI to raise it from inside a fixture, and the toast it
  *  produces is what the photograph is of — so a fixture plugin parks its own `host.notify`
  *  where the spec can reach it. The handle is the real one every plugin is handed. */
@@ -520,7 +488,6 @@ export async function installVisualWorkspaceFixture(
   // loader here treats as a failure.
   await loadVisualPlugins([
     workspaceDataPlugin(state),
-    workspaceDockDestinations,
     diffView,
     fileView,
     fileTreeView,

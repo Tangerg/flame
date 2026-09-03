@@ -21,7 +21,6 @@ import agentBootstrap from "./agent/bootstrap";
 import observability from "./observability";
 import runtime from "./runtime";
 import conversationExport from "./workspace/conversationExport";
-import contextDockDestinations from "./workspace/context-dock";
 import agentFold from "./agent/bootstrap/foldPlugin";
 import {
   defaultAccents,
@@ -201,7 +200,6 @@ const panes: AnyPlugin[] = [
   mcpServersPane,
   hooksPane,
   schedulesPane,
-  contextDockDestinations,
   diffView,
   fileView,
   terminalView,

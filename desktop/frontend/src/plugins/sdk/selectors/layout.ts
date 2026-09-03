@@ -3,19 +3,12 @@
 
 import { useMemo } from "react";
 import type {
-  ContextDockDestinationSpec,
   LayoutSlotSpec,
   SettingsPaneSpec,
   WorkIndexItemSpec,
   WorkspaceViewSpec,
 } from "../types";
-import {
-  CONTEXT_DOCK_DESTINATION,
-  LAYOUT_SLOT,
-  SETTINGS_PANE,
-  WORK_INDEX_ITEM,
-  WORKSPACE_VIEW,
-} from "../kernelPoints";
+import { LAYOUT_SLOT, SETTINGS_PANE, WORK_INDEX_ITEM, WORKSPACE_VIEW } from "../kernelPoints";
 import { useContributions } from "../kernel";
 import { createPointSubIndex, useExtensionPoint } from "./extensions";
 
@@ -37,10 +30,6 @@ export function useLayoutSlot(slot: string): LayoutSlotSpec[] {
 
 export function useWorkspaceViews(): WorkspaceViewSpec[] {
   return useExtensionPoint(WORKSPACE_VIEW);
-}
-
-export function useContextDockDestinations(): ContextDockDestinationSpec[] {
-  return useExtensionPoint(CONTEXT_DOCK_DESTINATION);
 }
 
 export function useWorkIndexItems(): WorkIndexItemSpec[] {
