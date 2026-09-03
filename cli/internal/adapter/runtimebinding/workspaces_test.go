@@ -207,6 +207,59 @@ func TestWorkspaceAdapterRejectsRepeatedRuntimeIdentity(t *testing.T) {
 	}
 }
 
+func TestWorkspaceAdapterRejectsCatalogOrderViolations(t *testing.T) {
+	t.Parallel()
+	active := time.Date(2026, 9, 4, 8, 0, 0, 0, time.UTC)
+	summary := func(path, name string, lastActive *time.Time) protocol.WorkspaceSummary {
+		return protocol.WorkspaceSummary{
+			Workspace: protocol.WorkspaceInfo{
+				Ref: protocol.WorkspaceRef{Path: path}, ProjectRoot: path,
+				Availability: protocol.WorkspaceAvailable,
+			},
+			Name: name, SessionCount: 1, LastActiveAt: lastActive,
+		}
+	}
+	older := active.Add(-time.Hour)
+	zero := time.Time{}
+	for _, test := range []struct {
+		name   string
+		values []protocol.WorkspaceSummary
+	}{
+		{
+			name:   "activity time is missing",
+			values: []protocol.WorkspaceSummary{summary("/workspace", "workspace", nil)},
+		},
+		{
+			name:   "activity time is zero",
+			values: []protocol.WorkspaceSummary{summary("/workspace", "workspace", &zero)},
+		},
+		{
+			name: "activity time ascends",
+			values: []protocol.WorkspaceSummary{
+				summary("/older", "older", &older),
+				summary("/newer", "newer", &active),
+			},
+		},
+		{
+			name: "equal-time path descends",
+			values: []protocol.WorkspaceSummary{
+				summary("/zeta", "zeta", &active),
+				summary("/alpha", "alpha", &active),
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			runtime := &Connection{
+				workspaces: &workspaceBindingStub{known: protocol.NewPage(test.values)},
+				meta:       requestMeta("test"),
+			}
+			_, err := runtime.List(t.Context())
+			requireRuntimeContractViolation(t, err)
+		})
+	}
+}
+
 func TestWorkspaceAdapterRejectsRepeatedChangePath(t *testing.T) {
 	t.Parallel()
 	change := protocol.WorkspaceFileChange{Path: "main.go", Status: protocol.FileStatusModified}

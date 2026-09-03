@@ -60,12 +60,35 @@ func (r *Connection) List(ctx context.Context) ([]workspace.Summary, error) {
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValuesFallible(
+	summaries, err := projectUniqueValuesFallible(
 		"list workspaces",
 		values,
 		projectWorkspaceSummary,
 		func(summary workspace.Summary) string { return summary.Workspace.Path },
 	)
+	if err != nil {
+		return nil, err
+	}
+	for index, summary := range summaries {
+		if summary.LastActive == nil || summary.LastActive.IsZero() {
+			return nil, runtimeContractViolation(
+				"list workspaces returned workspace %q without an activity time", summary.Workspace.Path,
+			)
+		}
+		if index == 0 {
+			continue
+		}
+		previous := summaries[index-1]
+		if summary.LastActive.After(*previous.LastActive) ||
+			summary.LastActive.Equal(*previous.LastActive) && summary.Workspace.Path < previous.Workspace.Path {
+			return nil, runtimeContractViolation(
+				"list workspaces returned workspace %q out of catalog order after %q",
+				summary.Workspace.Path,
+				previous.Workspace.Path,
+			)
+		}
+	}
+	return summaries, nil
 }
 
 func (r *Connection) Changes(ctx context.Context, path string) ([]workspace.Change, error) {
