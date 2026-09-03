@@ -138,6 +138,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 176 | `67dd9366` + CLI dependency update | Made equal-activity Workspace order stable by canonical path and rejected missing activity time or out-of-order CLI catalogs. |
 | 177 | `b8cc7719` + CLI dependency update | Replaced Git encounter order with an Application-owned, path-ascending Workspace change order and rejected out-of-order CLI projections. |
 | 178 | `2a53b6ea` + CLI dependency update | Moved MCP server name ordering from SQLite into Application, published the ascending-name contract, and rejected out-of-order CLI projections. |
+| 179 | `17687307` + CLI dependency update | Moved Provider ID ordering from the LLM adapter into Application, published the ascending-ID contract, and rejected out-of-order CLI projections. |
 
 ## Verification contract
 
