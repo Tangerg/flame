@@ -559,6 +559,13 @@ func registerObjectConstraints(s *Shapes) {
 		Rules:  []ConditionalRule{{Required: []string{"timestamp"}}},
 	})
 
+	// These are the public projection of the aggregate's immutable origin and
+	// latest replacement time. Neither has an uninitialized live meaning.
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.Session](),
+		Rules:  []ConditionalRule{{Required: []string{"createdAt", "updatedAt"}}},
+	})
+
 	hookRules := []ConditionalRule{{
 		RequiredAny: []string{"command", "inject"},
 	}, {

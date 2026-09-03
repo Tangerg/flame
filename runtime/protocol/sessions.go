@@ -23,8 +23,8 @@ type Session struct {
 	Model           string        `json:"model"`
 	ReasoningEffort string        `json:"reasoningEffort,omitempty"`
 	Workspace       WorkspaceInfo `json:"workspace"`
-	CreatedAt       time.Time     `json:"createdAt"`
-	UpdatedAt       time.Time     `json:"updatedAt"`
+	CreatedAt       time.Time     `json:"createdAt,omitzero"`
+	UpdatedAt       time.Time     `json:"updatedAt,omitzero"`
 	Favorite        bool          `json:"favorite,omitempty"` // user-pinned; sorts ahead in the session list
 	Revision        uint64        `json:"revision"`
 }

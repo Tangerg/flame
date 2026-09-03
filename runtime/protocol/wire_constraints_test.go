@@ -108,6 +108,23 @@ func TestRunEventRequiresTimestamp(t *testing.T) {
 	}
 }
 
+func TestSessionRequiresLifecycleTimes(t *testing.T) {
+	t.Parallel()
+
+	session := Session{
+		ID: "ses_1", Status: SessionStatusIdle, Provider: "provider", Model: "model", Revision: 1,
+	}
+	assertConstraintField(t, session.ValidateWire(), "Session", "createdAt")
+	assertConstraintField(t, session.ValidateWire(), "Session", "updatedAt")
+
+	session.CreatedAt = time.Unix(1, 0).UTC()
+	assertConstraintField(t, session.ValidateWire(), "Session", "updatedAt")
+	session.UpdatedAt = session.CreatedAt
+	if err := session.ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected a timestamped session: %v", err)
+	}
+}
+
 func TestRunProgressCarriesAtLeastOneValidFact(t *testing.T) {
 	t.Parallel()
 
@@ -1617,7 +1634,7 @@ func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
 	for name, value := range map[string]WireValidator{
 		"Session": Session{
 			ID: "ses_1", Status: SessionStatusIdle, Provider: "provider", Model: "model",
-			Revision: MaximumExactJSONInteger,
+			CreatedAt: time.Unix(1, 0).UTC(), UpdatedAt: time.Unix(1, 0).UTC(), Revision: MaximumExactJSONInteger,
 		},
 		"UpdateSessionRequest": UpdateSessionRequest{
 			SessionID: "ses_1", ExpectedRevision: MaximumExactJSONInteger,

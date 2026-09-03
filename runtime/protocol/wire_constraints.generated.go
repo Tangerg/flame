@@ -1722,6 +1722,27 @@ func (r RunEvent) ValidateWire() error {
 	)
 }
 
+func (s Session) ValidateWire() error {
+	return collectWireViolations("Session",
+		requiredText("id", s.ID),
+		identity("id", s.ID),
+		maxLength("id", s.ID, 256),
+		requiredText("provider", s.Provider),
+		requiredText("model", s.Model),
+		identity("provider", s.Provider),
+		maxLength("provider", s.Provider, 64),
+		identity("model", s.Model),
+		maxLength("model", s.Model, 256),
+		identity("reasoningEffort", s.ReasoningEffort),
+		maxLength("reasoningEffort", s.ReasoningEffort, 32),
+		positiveNumber("revision", s.Revision),
+		maximumNumber("revision", s.Revision, 9007199254740991),
+		closedEnum("status", string(s.Status), []string{"running", "waiting", "idle"}, false),
+		requiredWhen(true, "createdAt", s),
+		requiredWhen(true, "updatedAt", s),
+	)
+}
+
 func (h HookInfo) ValidateWire() error {
 	return collectWireViolations("HookInfo",
 		requiredText("source", h.Source),
@@ -2054,25 +2075,6 @@ func (a ArtifactProblem) ValidateWire() error {
 func (p PageContinuation) ValidateWire() error {
 	return collectWireViolations("PageContinuation",
 		maxLength("nextCursor", p.NextCursor, 65536),
-	)
-}
-
-func (s Session) ValidateWire() error {
-	return collectWireViolations("Session",
-		requiredText("id", s.ID),
-		identity("id", s.ID),
-		maxLength("id", s.ID, 256),
-		requiredText("provider", s.Provider),
-		requiredText("model", s.Model),
-		identity("provider", s.Provider),
-		maxLength("provider", s.Provider, 64),
-		identity("model", s.Model),
-		maxLength("model", s.Model, 256),
-		identity("reasoningEffort", s.ReasoningEffort),
-		maxLength("reasoningEffort", s.ReasoningEffort, 32),
-		positiveNumber("revision", s.Revision),
-		maximumNumber("revision", s.Revision, 9007199254740991),
-		closedEnum("status", string(s.Status), []string{"running", "waiting", "idle"}, false),
 	)
 }
 

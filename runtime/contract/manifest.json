@@ -3707,6 +3707,17 @@
       ]
     },
     {
+      "type": "Session",
+      "rules": [
+        {
+          "required": [
+            "createdAt",
+            "updatedAt"
+          ]
+        }
+      ]
+    },
+    {
       "type": "HookInfo",
       "rules": [
         {
