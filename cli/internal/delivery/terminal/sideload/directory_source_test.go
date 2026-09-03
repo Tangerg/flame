@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
 )
@@ -365,6 +367,22 @@ func TestCommandRequestIsBoundedBeforeAProcessStarts(t *testing.T) {
 	_, err := executor.Execute(t.Context(), terminal.CommandRequest{Argument: strings.Repeat("x", maxCommandArgumentBytes+1)})
 	if err == nil || !strings.Contains(err.Error(), "argument exceeds") || strings.Contains(err.Error(), "executable") {
 		t.Fatalf("oversized request error = %v", err)
+	}
+}
+
+func TestCommandRequestUsesRuntimeSessionIdentityContract(t *testing.T) {
+	valid := strings.Repeat("界", protocol.MaximumResourceIdentityCharacters)
+	if err := validateCommandRequest(terminal.CommandRequest{SessionID: valid}); err != nil {
+		t.Fatalf("valid multibyte session identity: %v", err)
+	}
+
+	for _, invalid := range []string{
+		"session shadow",
+		strings.Repeat("界", protocol.MaximumResourceIdentityCharacters+1),
+	} {
+		if err := validateCommandRequest(terminal.CommandRequest{SessionID: invalid}); err == nil {
+			t.Fatalf("accepted invalid session identity %q", invalid)
+		}
 	}
 }
 

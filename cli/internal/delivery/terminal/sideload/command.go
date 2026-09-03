@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
 )
@@ -22,7 +24,6 @@ const (
 	maxCommandMessageBytes  = 4096
 	maxCommandArgumentBytes = 64 << 10
 	maxWorkspaceBytes       = 32 << 10
-	maxSessionIDBytes       = 256
 	maxCommandRequestBytes  = 128 << 10
 )
 
@@ -117,11 +118,13 @@ func validateCommandRequest(request terminal.CommandRequest) error {
 		return fmt.Errorf("argument exceeds %d bytes", maxCommandArgumentBytes)
 	case len(request.Workspace) > maxWorkspaceBytes:
 		return fmt.Errorf("workspace exceeds %d bytes", maxWorkspaceBytes)
-	case len(request.SessionID) > maxSessionIDBytes:
-		return fmt.Errorf("session id exceeds %d bytes", maxSessionIDBytes)
-	default:
-		return nil
 	}
+	if request.SessionID != "" {
+		if err := protocol.ValidateSessionID(request.SessionID); err != nil {
+			return fmt.Errorf("session id: %w", err)
+		}
+	}
+	return nil
 }
 
 func commandEnvironment(pluginID, command string) []string {
