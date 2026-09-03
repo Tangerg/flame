@@ -30,14 +30,14 @@ export default defineConfig({
       // "the same" image. Geometry has explicit DOM/CSS assertions and contrast
       // has Axe; the raster layer still needs to catch subtle colour drift.
       threshold: 0.05,
-      // …but a per-pixel threshold with no pixel budget fails on text
-      // antialiasing, which the renderer does not reproduce bit-for-bit between
-      // runs. The composer's pills drifted ~515 px this way while their
-      // bounding boxes stayed identical across loads, and a suite that reports
-      // that as a regression is one everybody learns to ignore. Two thousandths
-      // of the frame absorbs the noise and is still an order of magnitude below
-      // a moved element or a changed ink rung.
-      maxDiffPixelRatio: 0.002,
+      // A COUNT, not a ratio, and a small one. The ratio this replaced scaled the
+      // tolerance with the frame, so the largest goldens forgave the most: 0.002
+      // carried an entire icon-set swap through 96 of 99 goldens and, later, a
+      // whole new button. Measured across repeated runs, this suite reproduces
+      // every frame to within a few pixels once the elapsed label is settled —
+      // the one exception is Mermaid's own text layout, which carries its budget
+      // at its call site.
+      maxDiffPixels: 40,
     },
   },
   webServer: {

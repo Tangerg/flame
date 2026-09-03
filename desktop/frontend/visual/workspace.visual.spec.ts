@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "./test";
+import { freezeVisualClock } from "./frozenClock";
 import { en } from "@/lib/i18n/locales/en";
 import { DOCK_MIN_WIDTH_PX, DOCK_SAFE_AREA_PX } from "@/lib/shellGeometry";
-import { VISUAL_NOW } from "./agentFixtureFacts";
 import {
   VISUAL_DOCK_WIDTH_RATIO,
   VISUAL_REVIEW_VIEWPORT,
@@ -606,23 +606,7 @@ for (const theme of ["light", "dark"] as const) {
         }
         return settle.frames >= 5;
       });
-      // The light-density fixture deliberately uses a live Running snapshot so the
-      // production Plan has useful content, and its elapsed-time label has to settle.
-      // Stop the clock at the instant the fixtures are written for, NOT at whatever the
-      // harness clock has drifted to: it advances by the page's real age, which is the one
-      // thing about a frame that load changes. A running turn's elapsed label read
-      // `390m 0s` or `390m 1s` depending on how long bootstrap took.
-      await page.evaluate((frozen) => {
-        Date.now = () => frozen;
-      }, VISUAL_NOW);
-      // …and wait for the label to have taken it: the elapsed re-reads once a second.
-      await expect
-        .poll(async () => {
-          const first = await page.locator("body").innerText();
-          await page.waitForTimeout(60);
-          return first === (await page.locator("body").innerText());
-        })
-        .toBe(true);
+      await freezeVisualClock(page);
       await expect(page).toHaveScreenshot(`workspace-${theme}-${state}.png`);
     });
   }

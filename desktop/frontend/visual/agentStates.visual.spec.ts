@@ -1,10 +1,7 @@
 import { expect, test, type Locator, type Page } from "./test";
+import { freezeVisualClock } from "./frozenClock";
 import { VISUAL_AGENT_STATES, type VisualAgentState } from "./agentSessionSnapshots";
-import {
-  VISUAL_CONTEXT_TOKENS,
-  VISUAL_NOW,
-  VISUAL_PRIMARY_MODEL_CONTEXT_WINDOW,
-} from "./agentFixtureFacts";
+import { VISUAL_CONTEXT_TOKENS, VISUAL_PRIMARY_MODEL_CONTEXT_WINDOW } from "./agentFixtureFacts";
 import { contextUsageReadout } from "@/plugins/builtin/chat/context-usage/application/contextUsageReadout";
 import { fmtTokens } from "@/lib/format";
 
@@ -776,7 +773,12 @@ for (const theme of ["light", "dark"] as const) {
     const artifact = diagram.locator("..");
     await expectStableBox(artifact);
     await artifact.hover();
-    await expect(artifact).toHaveScreenshot(`markdown-mermaid-${theme}.png`);
+    // Mermaid lays its own labels out in SVG and does not place their glyphs at the same
+    // subpixel offset twice, which costs about two hundred pixels of text edge per run. The
+    // rest of the suite holds a far tighter budget; this is the one golden that cannot.
+    await expect(artifact).toHaveScreenshot(`markdown-mermaid-${theme}.png`, {
+      maxDiffPixels: 400,
+    });
 
     await artifact.getByRole("button", { name: "Copy Mermaid" }).click();
     await expect
@@ -1538,24 +1540,7 @@ for (const theme of ["light", "dark"] as const) {
         return settle.frames >= 5;
       });
 
-      // The fixture keeps Date.now advancing through production bootstrap so
-      // use-stick-to-bottom can complete its frame waits, and only stops after the ready
-      // boundary.
-      // Stop the clock at the instant the fixtures are written for, NOT at whatever the
-      // harness clock has drifted to: it advances by the page's real age, which is the one
-      // thing about a frame that load changes. A running turn's elapsed label read
-      // `390m 0s` or `390m 1s` depending on how long bootstrap took.
-      await page.evaluate((frozen) => {
-        Date.now = () => frozen;
-      }, VISUAL_NOW);
-      // …and wait for the label to have taken it: the elapsed re-reads once a second.
-      await expect
-        .poll(async () => {
-          const first = await page.locator("body").innerText();
-          await page.waitForTimeout(60);
-          return first === (await page.locator("body").innerText());
-        })
-        .toBe(true);
+      await freezeVisualClock(page);
 
       await expect(page).toHaveScreenshot(`agent-${theme}-${state}.png`);
     });

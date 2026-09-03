@@ -213,3 +213,64 @@ Visual dev server stopped; five probe scripts deleted; `knip` clean.
    workspace suite wants a tighter budget at its larger viewport, or whether
    region-scoped assertions are the right answer for surfaces this small
    relative to the frame.
+
+---
+
+## Round 3 — the suite had been photographing an app that no longer exists
+
+Status: **complete**
+
+### Audit scope
+
+Round 2's third open item: the visual suite reported green while absorbing a
+real change. This round measured what it was actually absorbing.
+
+### Findings
+
+| # | Problem | Evidence | Root cause |
+| --- | --- | --- | --- |
+| 1 | **96 of 99 goldens were stale by an entire icon set.** The suite had been comparing pre-Lucide glyphs against Lucide ones and reporting green for months. | At `maxDiffPixels: 0`, 83 goldens differ. The diff image for `agent-light-empty` shows the differing pixels are **only the icons** — every sidebar glyph, every composer glyph, every chevron — with the text untouched. `agent-light-empty-darwin.png` last written 18:44 Sep 2 in `b5f0119`; `package-lock.json` last written 22:23 Sep 2 in `1e8ec7a`, *"feat(desktop): draw the glyph set with Lucide"*. That commit regenerated **3** goldens. | `maxDiffPixelRatio: 0.002` scales the tolerance with the frame, so the largest goldens forgive the most: 2650 px at 1472×900. A whole glyph swap fits inside that. |
+| 2 | The wait that was supposed to settle a running turn's elapsed label could not do what its comment said. | The label re-reads on a `setInterval(…, 1000)`; the wait compared `body.innerText` across **60 ms**. `workspace golden dark dock-light` failed on `390m 2s` vs `390m 1s`, 34 px. | A stability window sixteen times shorter than the tick it is waiting for. Duplicated verbatim in both spec files. |
+| 3 | Mermaid does not place its own SVG label glyphs at the same subpixel offset twice. | ~196 px of text-edge difference between two runs of `markdown-mermaid-dark`, diff image is entirely label text. | Third-party renderer; not the app's to fix. |
+
+### What changed
+
+| | Before | After |
+| --- | --- | --- |
+| Budget | `maxDiffPixelRatio: 0.002` — 1613 px at 1120×720, **2650 px** at 1472×900 | `maxDiffPixels: 40`, one absolute count at every viewport |
+| Mermaid golden | same budget as everything else | its own `maxDiffPixels: 400` at the call site, with the reason |
+| Elapsed-label settle | 60 ms `body.innerText` comparison, written twice | `freezeVisualClock(page)` — waits out the full second the label ticks on, and only on states that show it |
+| Goldens | 96 of 99 predating the Lucide swap | all regenerated against the current UI |
+
+### Verification
+
+- Three consecutive full runs of `npm run visual:test`: **387 passed** each
+  time, no flakes.
+- `typecheck`, `lint`, `format:check`, `knip` clean.
+- **Sensitivity proved, not assumed.** Temporarily disabling round 2's retry
+  button makes `workspace golden light dock-error` fail with 90 differing
+  pixels — the change the old 2650-px budget had absorbed in silence. Reverted
+  immediately; `data-view` tests still 5/5.
+- Noise floor measured two ways: a scratch baseline in `.cache` compared across
+  separate browser processes (0 px), and repeated full runs at zero tolerance
+  (0 px on almost every golden, 2–34 px on a few, ~196 px on Mermaid alone).
+
+### Deliberately not changed
+
+- **`threshold: 0.05`.** It is the knob that absorbs per-pixel antialiasing, and
+  tightening it would raise the noise floor as fast as it raised sensitivity.
+  It is also why a whole button only registers as 90 px: most of its pixels sit
+  within 5% of the background they replaced.
+
+### Reclaimed
+
+`.cache/noise-snapshots` and `.cache/playwright-results` removed; the temporary
+`_noise.config.ts` deleted; no dev server left running.
+
+### Open, for the next round
+
+1. Round 1's chip-stub item, unchanged.
+2. `page-has-heading-one`, unchanged.
+3. **The margin is thin.** A whole button is 90 px against a 40 px budget — 2.25×.
+   A single small glyph on a small control could still pass. If that matters,
+   the answer is component-scoped goldens rather than a tighter global count.
