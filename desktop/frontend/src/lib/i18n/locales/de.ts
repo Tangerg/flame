@@ -17,7 +17,6 @@ export const de: Record<string, string> = {
   "session.restore.history": "Unterhaltung auf diesen Checkpoint zurückgespult.",
   "session.restore.noCheckpoint":
     "Kein Checkpoint vor dem ersten Zug — Dateien bleiben unverändert.",
-  "shortcut.sessionSearch": "Zu einer Sitzung springen",
   "sessionSearch.label": "Zu einer Sitzung springen",
   "sessionSearch.placeholder": "Sitzungen suchen…",
   "sessionSearch.empty.title": "Keine Sitzung passt",
@@ -792,6 +791,11 @@ export const de: Record<string, string> = {
   "command.historyForward": "Vorwärts",
   "command.previousSession": "Vorheriger Chat",
   "command.nextSession": "Nächster Chat",
+  "command.searchChats": "Chats durchsuchen",
+  "command.openCommandMenu": "Befehlsmenü öffnen",
+  "commandMenu.placeholder": "Befehl ausführen…",
+  "commandMenu.empty.title": "Kein Befehl passt",
+  "commandMenu.empty.sub": "Versuche einen Teil des Namens.",
   "command.showShortcuts": "Tastenkürzel",
 
   "diagnostics.clear": "Löschen",

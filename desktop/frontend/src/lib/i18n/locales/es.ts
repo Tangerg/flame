@@ -17,7 +17,6 @@ export const es: Record<string, string> = {
   "session.restore.history": "Conversación revertida a este punto de control.",
   "session.restore.noCheckpoint":
     "No hay punto de control antes del primer turno: los archivos quedan como están.",
-  "shortcut.sessionSearch": "Ir a una sesión",
   "sessionSearch.label": "Ir a una sesión",
   "sessionSearch.placeholder": "Buscar sesiones…",
   "sessionSearch.empty.title": "Ninguna sesión coincide",
@@ -799,6 +798,11 @@ export const es: Record<string, string> = {
   "command.historyForward": "Adelante",
   "command.previousSession": "Chat anterior",
   "command.nextSession": "Chat siguiente",
+  "command.searchChats": "Buscar chats",
+  "command.openCommandMenu": "Abrir menú de comandos",
+  "commandMenu.placeholder": "Ejecutar un comando…",
+  "commandMenu.empty.title": "Ningún comando coincide",
+  "commandMenu.empty.sub": "Prueba parte del nombre.",
   "command.showShortcuts": "Atajos de teclado",
 
   "diagnostics.clear": "Limpiar",

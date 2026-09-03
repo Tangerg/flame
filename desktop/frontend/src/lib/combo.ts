@@ -90,6 +90,27 @@ export function comboGlyph(combo: string): string {
   return splitCombo(combo).join("");
 }
 
+const ARIA_MODIFIERS = new Map([
+  ["ctrl", "Control"],
+  ["alt", "Alt"],
+  ["shift", "Shift"],
+]);
+
+/** The fourth spelling of one combo, for `aria-keyshortcuts`: ARIA names modifiers in full and
+ *  separates alternative bindings with a space, so `Mod` — one binding on two platforms —
+ *  publishes both rather than picking the host's. */
+export function ariaKeyShortcuts(combo: string): string {
+  const parts = normalizeCombo(combo).split("+");
+  const key = parts.pop() ?? "";
+  const named = key.length === 1 ? key.toUpperCase() : key.charAt(0).toUpperCase() + key.slice(1);
+  const spell = (mod: string) =>
+    [
+      ...parts.map((part) => (part === "mod" ? mod : (ARIA_MODIFIERS.get(part) ?? part))),
+      named,
+    ].join("+");
+  return parts.includes("mod") ? `${spell("Meta")} ${spell("Control")}` : spell("Meta");
+}
+
 // `$mod` resolves to Meta on Mac and Control elsewhere — narrower than "either, on both",
 // which made ⌃K open the command palette on a Mac where Cocoa owns that chord.
 const DISPATCH_MODIFIERS = new Map([

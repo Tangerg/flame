@@ -37,6 +37,7 @@ import workspaceEvents from "./workspace/events";
 import { workspaceSessionNavigation } from "./workspace/sessionNavigation";
 import { workspaceKeymap } from "./workspace/keymap";
 import sessionSearch from "./command/session-search";
+import commandMenu from "./command/command-menu";
 import hooksPane from "./settings/hooks";
 import schedulesPane from "./settings/schedules";
 import iconGallery from "./settings/icon-gallery";
@@ -238,6 +239,7 @@ const overlays: AnyPlugin[] = [
   windowTitle,
   shortcuts,
   sessionSearch,
+  commandMenu,
   iconGallery,
   narrativeRails,
   goal,

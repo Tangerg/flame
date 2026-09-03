@@ -4,7 +4,6 @@ import { EmptyState, Icon, SearchOverlay } from "@/ui";
 import { selectAgentSession, useAgentSessions } from "@/plugins/builtin/agent/public/session";
 import { matchSessions } from "../application/sessionMatches";
 import { useSessionSearchStore } from "../application/sessionSearchState";
-import { sessionSearchReturnFocus } from "../adapters/sessionSearchLauncher";
 
 export function SessionSearch() {
   const t = useT();
@@ -16,7 +15,6 @@ export function SessionSearch() {
     <SearchOverlay
       open={open}
       onOpenChange={setOpen}
-      finalFocus={sessionSearchReturnFocus}
       label={t("sessionSearch.label")}
       placeholder={t("sessionSearch.placeholder")}
       empty={

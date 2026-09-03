@@ -16,7 +16,6 @@ export const ja: Record<string, string> = {
   "session.restore.history": "会話をこのチェックポイントまで巻き戻しました。",
   "session.restore.noCheckpoint":
     "最初のターンより前にチェックポイントがないため、ファイルはそのままです。",
-  "shortcut.sessionSearch": "セッションへ移動",
   "sessionSearch.label": "セッションへ移動",
   "sessionSearch.placeholder": "セッションを検索…",
   "sessionSearch.empty.title": "一致するセッションがありません",
@@ -772,6 +771,11 @@ export const ja: Record<string, string> = {
   "command.historyForward": "進む",
   "command.previousSession": "前のチャット",
   "command.nextSession": "次のチャット",
+  "command.searchChats": "チャットを検索",
+  "command.openCommandMenu": "コマンドメニューを開く",
+  "commandMenu.placeholder": "コマンドを実行…",
+  "commandMenu.empty.title": "一致するコマンドがありません",
+  "commandMenu.empty.sub": "名前の一部を入力してください。",
   "command.showShortcuts": "キーボードショートカット",
 
   "diagnostics.clear": "クリア",

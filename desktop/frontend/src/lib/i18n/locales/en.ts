@@ -18,7 +18,6 @@ export const en: Record<string, string> = {
   "session.restore.both": "Conversation and files restored to this checkpoint.",
   "session.restore.history": "Conversation rewound to this checkpoint.",
   "session.restore.noCheckpoint": "No checkpoint before the first turn — files left as they are.",
-  "shortcut.sessionSearch": "Go to a session",
   "sessionSearch.label": "Go to a session",
   "sessionSearch.placeholder": "Search sessions…",
   "sessionSearch.empty.title": "No session matches",
@@ -1067,6 +1066,11 @@ export const en: Record<string, string> = {
   "command.historyForward": "Go forward",
   "command.previousSession": "Previous chat",
   "command.nextSession": "Next chat",
+  "command.searchChats": "Search chats",
+  "command.openCommandMenu": "Open command menu",
+  "commandMenu.placeholder": "Run a command…",
+  "commandMenu.empty.title": "No command matches",
+  "commandMenu.empty.sub": "Try part of its name.",
   "command.showShortcuts": "Keyboard shortcuts",
 
   // ── Diagnostics view ──

@@ -18,8 +18,9 @@ describe("shortcuts provider", () => {
     await loadPluginsForTest(
       definePlugin({
         name: "test.command.combo",
-        setup: (ctx) =>
-          ctx.contribute(COMMAND, { id: "test.act", label: "Act", combo: "Alt+K", run }),
+        setup: (ctx) => {
+          ctx.contribute(COMMAND, { id: "test.act", label: "Act", combo: "Alt+K", run });
+        },
       }),
     );
     render(<ShortcutsProvider />);

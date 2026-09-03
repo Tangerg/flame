@@ -1495,3 +1495,103 @@ measurements above and removed.
 3. Nine settings panes have no fixture coverage.
 4. The `empty` golden's two renderings — reproduction and eight ruled-out causes
    above.
+
+## Round 18 — the commands existed; nothing showed them
+
+The reference's command menu carries **47 entries**, and lists commands that
+already have accelerators — `toggleSidebar`, `navigateBack`, `newThread`,
+`searchChats`, `showKeyboardShortcuts` — because a key you have not learned yet
+is a key you do not have. Flame registers commands, ships a locale block
+literally headed "Default command palette labels", and has no palette. The
+labels were written for a surface that was never built.
+
+### Correction to round 17
+
+Round 17's report said `typecheck` was green. It was — at the moment it ran,
+which was before that round's last file existed. `ShortcutsProvider.test.tsx`
+carried a type error (`setup` returning a `Disposable` where the kernel expects
+provided services) that `vitest` does not typecheck and so did not catch. Fixed,
+and typecheck is now run after the last edit rather than before it.
+
+### Finding 1 — a controlled dialog handed focus to nowhere
+
+`SearchOverlay` is opened from a store, so Base UI has no trigger node to restore
+focus to. Verified by deleting the mechanism and watching the test fail: **Base
+UI does not restore it on its own** — focus lands on `<body>` and the next key
+press goes nowhere.
+
+The session finder solved this for itself, in an adapter behind a port, with a
+module-level `returnFocus` variable. That put a browser fact — who had focus —
+three files from the component that took it, and left the port with nothing else
+to do.
+
+| | Before | After |
+| --- | --- | --- |
+| Who remembers the opener | `session-search/adapters/`, in a module variable | `SearchOverlay`, the component that takes focus |
+| The port | `SessionSearchLauncherPort` + adapter + `installSessionSearchLauncher` | deleted — with the capture gone it forwarded to the store, which its own comment already called the meeting point |
+| Any other overlay | would need its own copy | gets it by using the atom |
+| Covered by | nothing | an atom test that opens, moves focus, closes, and asserts the opener has it back |
+
+### Finding 2 — ⌘⇧P opens the command menu
+
+The reference binds `openCommandMenu` to `CmdOrCtrl+K` **and**
+`CmdOrCtrl+Shift+P`. Flame's ⌘K already finds chats — which is the reference's
+`searchChats`, on the same key — so the menu takes the second binding and ⌘K is
+left alone.
+
+| | Before | After |
+| --- | --- | --- |
+| Seeing what the app can do | nothing lists commands | ⌘⇧P — every registered command, filtered by the label a person can read |
+| Learning the key for one | open Settings → Shortcuts | the row that runs it shows it |
+| Reaching a command with no combo | impossible | the menu |
+
+It needed no allow-list edit, no ordering change and no plugin bookkeeping —
+which is round 17's fix demonstrating itself.
+
+### Finding 3 — ⌘K was a shortcut where everything else is a command
+
+The session finder registered a raw `SHORTCUT`, so it appeared in the shortcuts
+pane but could never appear in a command menu. Since round 17 the rule is
+one-way: **a user-facing action is a `COMMAND`; `SHORTCUT` is for keys that are
+not commands.** Only Escape is one now.
+
+The sidebar's search row spelled the same key a second time — `comboGlyph("Mod+K")`
+and `aria-keyshortcuts="Meta+K Control+K"`, both hand-written next to a command
+that already carries `Mod+K`. It reads the command now, so a hint cannot outlive
+the binding it advertises. `ariaKeyShortcuts` joins `normalizeCombo`, `splitCombo`
+and `dispatchBinding` as the fourth projection of one combo, in the module that
+owns combo spelling.
+
+| | Before | After |
+| --- | --- | --- |
+| ⌘K | `SHORTCUT`, invisible to any command surface | `COMMAND` `chat.find`, in the menu and the pane |
+| The sidebar's `⌘K` hint | a literal, in a component | read off the command |
+| `aria-keyshortcuts` | a hand-spelled literal | derived from the same combo |
+| Shortcuts pane rows | 12 | 15 |
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` and **all fifteen guards run
+  individually** — green.
+- 337 test files, 1892 tests in `plugins`/`ui`/`lib`, all passing. The 9 failures
+  in the whole-repo run are the same out-of-scope pair as every round.
+- `visual` — 389 passed, no golden regenerated; the round-17 `empty` flake fired
+  once, as recorded.
+- Both new behaviours pinned: the overlay's focus handoff, and the menu's listing,
+  filtering and running.
+
+### Reclamation
+
+`session-search/adapters/` and `session-search/application/ports/` deleted
+(2 files); the orphaned `shortcut.sessionSearch` string removed from 8 locales.
+
+### Open
+
+1. `thread1`…`thread9`, waiting on a decision about what nine numeric slots mean
+   in a Work Index grouped by project.
+2. `delegated` has no raster coverage.
+3. Nine settings panes have no fixture coverage.
+4. The `empty` golden's two renderings — reproduction and eight ruled-out causes
+   in round 17.
+5. The command menu has no raster coverage; it is a new overlay and the fixture
+   harness does not install shortcut dispatch.

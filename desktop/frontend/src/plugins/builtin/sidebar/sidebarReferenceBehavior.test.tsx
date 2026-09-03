@@ -36,6 +36,7 @@ vi.mock("@/plugins/builtin/navigation/public/workIndex", async (importOriginal) 
 }));
 
 vi.mock("@/plugins/builtin/command/session-search/public/actions", () => ({
+  SESSION_SEARCH_COMMAND: "chat.find",
   openSessionSearch: vi.fn(),
 }));
 

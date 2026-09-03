@@ -21,7 +21,6 @@ interface SearchOverlayProps {
   placeholder: string;
   options: (query: string) => readonly SearchOption[];
   empty: ReactNode;
-  finalFocus?: () => HTMLElement | null;
 }
 
 function wrap(index: number, count: number, step: number) {
@@ -36,8 +35,17 @@ export function SearchOverlay({
   placeholder,
   options,
   empty,
-  finalFocus,
 }: SearchOverlayProps) {
+  // A controlled dialog has no trigger node to hand focus back to, and this render is the last
+  // moment the element that opened it still holds focus — the popup takes it once it mounts.
+  const [wasOpen, setWasOpen] = useState(open);
+  const [opener, setOpener] = useState<HTMLElement | null>(null);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open)
+      setOpener(document.activeElement instanceof HTMLElement ? document.activeElement : null);
+  }
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
@@ -45,7 +53,7 @@ export function SearchOverlay({
         <DialogPrimitive.Popup
           data-slot="search-overlay"
           aria-label={label}
-          finalFocus={finalFocus}
+          finalFocus={() => (opener?.isConnected ? opener : null)}
           className={cn(
             "fixed inset-x-0 top-24 z-[var(--layer-modal)] mx-auto flex w-[min(520px,calc(100vw-32px))]",
             "flex-col overflow-hidden rounded-[var(--floating-panel-radius)] outline-none",
@@ -67,7 +75,7 @@ export function SearchOverlay({
   );
 }
 
-type SearchOverlayContentProps = Omit<SearchOverlayProps, "onOpenChange" | "finalFocus">;
+type SearchOverlayContentProps = Omit<SearchOverlayProps, "onOpenChange">;
 
 function SearchOverlayContent({
   open,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { matchKeybindingPress, parseKeybinding } from "tinykeys";
 
-import { comboGlyph, dispatchBinding, normalizeCombo } from "./combo";
+import { ariaKeyShortcuts, comboGlyph, dispatchBinding, normalizeCombo } from "./combo";
 
 // A keydown as the browser reports it. `key` is what the active layout prints
 // at that position; `code` is the position itself.
@@ -124,5 +124,17 @@ describe("a letter shortcut under a non-US keyboard layout", () => {
     expect(dispatchBinding("Mod+[")).toBe("$mod+BracketLeft");
     expect(dispatchBinding("Mod+k")).toBe("$mod+KeyK");
     expect(dispatchBinding("Escape")).toBe("Escape");
+  });
+});
+
+describe("ariaKeyShortcuts", () => {
+  it("publishes both platforms for Mod, because the binding is both", () => {
+    expect(ariaKeyShortcuts("Mod+K")).toBe("Meta+K Control+K");
+    expect(ariaKeyShortcuts("Mod+Shift+P")).toBe("Meta+Shift+P Control+Shift+P");
+  });
+
+  it("names modifiers in full and leaves a named key its spelling", () => {
+    expect(ariaKeyShortcuts("Alt+Enter")).toBe("Alt+Enter");
+    expect(ariaKeyShortcuts("Ctrl+k")).toBe("Control+K");
   });
 });
