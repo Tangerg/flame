@@ -115,8 +115,8 @@ func TestFileContentOwnsOneCompleteRuntimeWindow(t *testing.T) {
 	t.Parallel()
 
 	valid := []FileContent{
-		{Path: "empty.txt", Encoding: "utf-8", TotalLines: 1},
-		{Path: "window.txt", Encoding: "utf-8", TotalLines: 3, StartLine: 2, EndLine: 3},
+		{Path: "empty.txt", TotalLines: 1},
+		{Path: "window.txt", TotalLines: 3, StartLine: 2, EndLine: 3},
 	}
 	for _, content := range valid {
 		if err := content.Validate(); err != nil {
@@ -125,9 +125,9 @@ func TestFileContentOwnsOneCompleteRuntimeWindow(t *testing.T) {
 	}
 
 	for _, content := range []FileContent{
-		{Path: "empty.txt", Encoding: "utf-8"},
-		{Path: "window.txt", Encoding: "utf-8", TotalLines: 3, StartLine: 2},
-		{Path: "window.txt", Encoding: "utf-8", TotalLines: 3, StartLine: 2, EndLine: 4},
+		{Path: "empty.txt"},
+		{Path: "window.txt", TotalLines: 3, StartLine: 2},
+		{Path: "window.txt", TotalLines: 3, StartLine: 2, EndLine: 4},
 	} {
 		if err := content.Validate(); err == nil {
 			t.Errorf("Validate accepted invalid content %+v", content)

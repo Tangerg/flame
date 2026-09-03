@@ -89,7 +89,6 @@ func (r ReadRequest) Validate() error {
 type FileContent struct {
 	Path       string
 	Content    string
-	Encoding   string
 	TotalLines int
 	Truncated  bool
 	StartLine  int
@@ -100,11 +99,9 @@ func (f FileContent) Validate() error {
 	switch {
 	case strings.TrimSpace(f.Path) == "":
 		return errors.New("file content path is empty")
-	case f.Encoding != "utf-8":
-		return fmt.Errorf("file content encoding %q is unsupported", f.Encoding)
 	}
 	if err := (protocol.FileContent{
-		Path: f.Path, Content: f.Content, Encoding: f.Encoding, TotalLines: f.TotalLines,
+		Path: f.Path, Content: f.Content, TotalLines: f.TotalLines,
 		Truncated: f.Truncated, StartLine: f.StartLine, EndLine: f.EndLine,
 	}).ValidateWire(); err != nil {
 		return fmt.Errorf("file content: %w", err)

@@ -260,7 +260,7 @@ func (r *Connection) Read(ctx context.Context, request workspace.ReadRequest) (w
 		return workspace.FileContent{}, runtimeContractViolation("read workspace file returned nil")
 	}
 	result := workspace.FileContent{
-		Path: value.Path, Content: value.Content, Encoding: value.Encoding, TotalLines: value.TotalLines,
+		Path: value.Path, Content: value.Content, TotalLines: value.TotalLines,
 		Truncated: value.Truncated, StartLine: value.StartLine, EndLine: value.EndLine,
 	}
 	if err := result.Validate(); err != nil {

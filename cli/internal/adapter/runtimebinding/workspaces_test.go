@@ -106,7 +106,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 			"":     protocol.NewPageWithCursor([]protocol.FileEntry{{Path: "main.go", Name: "main.go", Type: protocol.FileEntryFile, SizeBytes: &size, ModifiedAt: "2026-08-12T00:00:00Z"}}, "next"),
 			"next": protocol.NewPage([]protocol.FileEntry{{Path: "internal", Name: "internal", Type: protocol.FileEntryDir}}),
 		},
-		content: &protocol.FileContent{Path: "main.go", Content: "package main\n", Encoding: "utf-8", TotalLines: 1},
+		content: &protocol.FileContent{Path: "main.go", Content: "package main\n", TotalLines: 1},
 	}
 	runtime := &Connection{
 		workspaces: stub, meta: requestMeta("test"),
