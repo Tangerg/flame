@@ -5307,6 +5307,17 @@
       ]
     },
     {
+      "type": "ArtifactSession",
+      "rules": [
+        {
+          "required": [
+            "createdAt",
+            "updatedAt"
+          ]
+        }
+      ]
+    },
+    {
       "type": "ArtifactProblem",
       "rules": [
         {

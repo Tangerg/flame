@@ -1005,6 +1005,13 @@ func registerObjectConstraints(s *Shapes) {
 		}}, childLineageRules()...),
 	})
 
+	// A portable Session retains the aggregate's origin and latest replacement
+	// time; importing an uninitialized timestamp cannot reconstruct that owner.
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.ArtifactSession](),
+		Rules:  []ConditionalRule{{Required: []string{"createdAt", "updatedAt"}}},
+	})
+
 	// ArtifactProblem is shared by Run outcomes and ToolCall transcript items,
 	// but retry policy belongs only to the three transient Run classifications.
 	// Refuse the field for every permanent and Tool classification so the common

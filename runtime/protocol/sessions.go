@@ -217,8 +217,8 @@ type ArtifactSession struct {
 	Provider        string       `json:"provider"`
 	Model           string       `json:"model"`
 	ReasoningEffort string       `json:"reasoningEffort,omitempty"`
-	CreatedAt       time.Time    `json:"createdAt"`
-	UpdatedAt       time.Time    `json:"updatedAt"`
+	CreatedAt       time.Time    `json:"createdAt,omitzero"`
+	UpdatedAt       time.Time    `json:"updatedAt,omitzero"`
 	Favorite        bool         `json:"favorite,omitempty"`
 }
 

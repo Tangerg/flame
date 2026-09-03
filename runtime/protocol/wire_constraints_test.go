@@ -155,6 +155,23 @@ func TestPlanStateRequiresUpdateTime(t *testing.T) {
 	}
 }
 
+func TestArtifactSessionRequiresLifecycleTimes(t *testing.T) {
+	t.Parallel()
+
+	session := ArtifactSession{
+		ID: "ses_1", Provider: "provider", Model: "model",
+	}
+	assertConstraintField(t, session.ValidateWire(), "ArtifactSession", "createdAt")
+	assertConstraintField(t, session.ValidateWire(), "ArtifactSession", "updatedAt")
+
+	session.CreatedAt = time.Unix(1, 0).UTC()
+	assertConstraintField(t, session.ValidateWire(), "ArtifactSession", "updatedAt")
+	session.UpdatedAt = session.CreatedAt
+	if err := session.ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected a timestamped artifact Session: %v", err)
+	}
+}
+
 func TestRunProgressCarriesAtLeastOneValidFact(t *testing.T) {
 	t.Parallel()
 

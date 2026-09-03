@@ -523,12 +523,14 @@ func TestSessionExportRejectsUnknownFormat(t *testing.T) {
 // TestSessionImport_VersionMismatch rejects every non-current artifact version.
 func TestSessionImport_VersionMismatch(t *testing.T) {
 	s, _ := rollbackHarness(t)
+	at := time.Unix(1, 0).UTC()
 	for _, version := range []int{0, protocol.SessionArtifactVersion - 1, protocol.SessionArtifactVersion + 1} {
 		_, err := s.ImportSession(context.Background(), protocol.ImportSessionRequest{
 			Artifact: protocol.SessionArtifact{
 				Version: version,
 				Session: protocol.ArtifactSession{
 					ID: "ses_x", Provider: "test-provider", Model: "test-model",
+					CreatedAt: at, UpdatedAt: at,
 				},
 			},
 		})
@@ -704,7 +706,7 @@ func TestSessionImportRefusesPlanWhenFeatureIsDisabled(t *testing.T) {
 		Version: protocol.SessionArtifactVersion,
 		Session: protocol.ArtifactSession{
 			ID: ses.ID(), Title: "planned", Provider: "test-provider", Model: "test-model",
-			Workspace: protocol.WorkspaceRef{Path: ses.Workspace().Path()},
+			Workspace: protocol.WorkspaceRef{Path: ses.Workspace().Path()}, CreatedAt: ses.StartedAt(), UpdatedAt: ses.UpdatedAt(),
 		},
 		Plan: []protocol.PlanStep{{ID: "0", Description: "plan", Status: protocol.PlanStatusPending}},
 	}

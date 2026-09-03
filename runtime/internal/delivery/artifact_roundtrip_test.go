@@ -199,6 +199,7 @@ func TestImportRefusesAChildWhoseRootProfileDisallowsChildren(t *testing.T) {
 
 func TestImportRefusesAnUnknownRunProtocolFeature(t *testing.T) {
 	s, _ := rollbackHarness(t)
+	at := time.Unix(1, 0).UTC()
 	profile := protocol.RunProtocolProfile{
 		RequiredFeatures: []protocol.RunProtocolFeature{"telepathy"},
 		InterruptTypes:   []protocol.InterruptType{},
@@ -207,12 +208,13 @@ func TestImportRefusesAnUnknownRunProtocolFeature(t *testing.T) {
 		Version: protocol.SessionArtifactVersion,
 		Session: protocol.ArtifactSession{
 			ID: "ses_unknown_profile", Title: "profile", Workspace: protocol.WorkspaceRef{Path: t.TempDir()},
-			Provider: "test-provider", Model: "test-model",
+			Provider: "test-provider", Model: "test-model", CreatedAt: at, UpdatedAt: at,
 		},
 		Runs: []protocol.ArtifactRun{{
 			ID: "run_root", SessionID: "ses_unknown_profile", ProtocolProfile: &profile,
 			Provider: "test-provider", Model: "test-model",
-			Outcome: protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCompleted},
+			Outcome:   protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCompleted},
+			CreatedAt: at, FinishedAt: at, UpdatedAt: at,
 		}},
 	}
 

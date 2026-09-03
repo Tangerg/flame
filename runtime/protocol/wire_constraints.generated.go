@@ -2065,6 +2065,24 @@ func (a ArtifactRun) ValidateWire() error {
 	)
 }
 
+func (a ArtifactSession) ValidateWire() error {
+	return collectWireViolations("ArtifactSession",
+		requiredText("id", a.ID),
+		identity("id", a.ID),
+		maxLength("id", a.ID, 256),
+		requiredText("provider", a.Provider),
+		requiredText("model", a.Model),
+		identity("provider", a.Provider),
+		maxLength("provider", a.Provider, 64),
+		identity("model", a.Model),
+		maxLength("model", a.Model, 256),
+		identity("reasoningEffort", a.ReasoningEffort),
+		maxLength("reasoningEffort", a.ReasoningEffort, 32),
+		requiredWhen(true, "createdAt", a),
+		requiredWhen(true, "updatedAt", a),
+	)
+}
+
 func (a ArtifactProblem) ValidateWire() error {
 	return collectWireViolations("ArtifactProblem",
 		optionalPositiveScalarNumber("retryAfterSeconds", a.RetryAfterSeconds),
@@ -2085,22 +2103,6 @@ func (a ArtifactProblem) ValidateWire() error {
 func (p PageContinuation) ValidateWire() error {
 	return collectWireViolations("PageContinuation",
 		maxLength("nextCursor", p.NextCursor, 65536),
-	)
-}
-
-func (a ArtifactSession) ValidateWire() error {
-	return collectWireViolations("ArtifactSession",
-		requiredText("id", a.ID),
-		identity("id", a.ID),
-		maxLength("id", a.ID, 256),
-		requiredText("provider", a.Provider),
-		requiredText("model", a.Model),
-		identity("provider", a.Provider),
-		maxLength("provider", a.Provider, 64),
-		identity("model", a.Model),
-		maxLength("model", a.Model, 256),
-		identity("reasoningEffort", a.ReasoningEffort),
-		maxLength("reasoningEffort", a.ReasoningEffort, 32),
 	)
 }
 

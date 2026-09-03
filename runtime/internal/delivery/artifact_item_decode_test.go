@@ -17,6 +17,7 @@ func validArtifact() protocol.SessionArtifact {
 		Session: protocol.ArtifactSession{
 			ID: "ses_1", Workspace: protocol.WorkspaceRef{Path: "/workspace"},
 			Provider: "test-provider", Model: "test-model",
+			CreatedAt: finished, UpdatedAt: finished,
 		},
 		Runs: []protocol.ArtifactRun{{
 			ID: "run_1", SessionID: "ses_1", Provider: "test-provider", Model: "test-model",
