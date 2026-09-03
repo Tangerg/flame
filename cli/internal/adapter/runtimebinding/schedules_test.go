@@ -18,6 +18,7 @@ type scheduleBindingStub struct {
 	updated      protocol.UpdateScheduleRequest
 	createResult *protocol.Schedule
 	updateResult *protocol.Schedule
+	list         func(protocol.PageQuery) *protocol.Page[protocol.Schedule]
 }
 
 func (s *scheduleBindingStub) ListSchedules(_ context.Context, query protocol.PageQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.Schedule], error) {
@@ -25,11 +26,14 @@ func (s *scheduleBindingStub) ListSchedules(_ context.Context, query protocol.Pa
 	if query.Limit == nil || *query.Limit != schedulePageLimit {
 		s.t.Fatalf("schedule page limit = %v", query.Limit)
 	}
-	first := wireSchedule(s.now, "sch_1")
+	if s.list != nil {
+		return s.list(query), nil
+	}
+	first := wireSchedule(s.now.Add(time.Minute), "sch_2")
 	if query.Cursor == "" {
 		return protocol.NewPageWithCursor([]protocol.Schedule{first}, "next"), nil
 	}
-	second := wireSchedule(s.now.Add(time.Minute), "sch_2")
+	second := wireSchedule(s.now, "sch_1")
 	return protocol.NewPage([]protocol.Schedule{second}), nil
 }
 
@@ -138,7 +142,7 @@ func TestScheduleAdapterConsumesEveryOperationAndPaginates(t *testing.T) {
 	}
 
 	listed, err := runtime.Schedules(t.Context())
-	if err != nil || len(listed) != 2 || listed[0].ID != "sch_1" || listed[1].ID != "sch_2" {
+	if err != nil || len(listed) != 2 || listed[0].ID != "sch_2" || listed[1].ID != "sch_1" {
 		t.Fatalf("Schedules = (%+v, %v)", listed, err)
 	}
 	candidate := protocol.CreateScheduleRequest{
@@ -176,6 +180,40 @@ func TestScheduleAdapterConsumesEveryOperationAndPaginates(t *testing.T) {
 		if stub.actions[index] != want[index] {
 			t.Fatalf("actions = %v, want %v", stub.actions, want)
 		}
+	}
+}
+
+func TestScheduleAdapterRejectsPagesOutsideRuntimeOrder(t *testing.T) {
+	t.Parallel()
+	created := time.Unix(10, 0).UTC()
+	for _, test := range []struct {
+		name   string
+		first  protocol.Schedule
+		second protocol.Schedule
+	}{
+		{
+			name:   "creation time ascends across pages",
+			first:  wireSchedule(created, "sch_old"),
+			second: wireSchedule(created.Add(time.Second), "sch_new"),
+		},
+		{
+			name:   "equal-time identity ascends across pages",
+			first:  wireSchedule(created, "sch_a"),
+			second: wireSchedule(created, "sch_b"),
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			stub := &scheduleBindingStub{t: t, list: func(query protocol.PageQuery) *protocol.Page[protocol.Schedule] {
+				if query.Cursor == "" {
+					return protocol.NewPageWithCursor([]protocol.Schedule{test.first}, "next")
+				}
+				return protocol.NewPage([]protocol.Schedule{test.second})
+			}}
+			runtime := &Connection{schedules: stub, meta: requestMeta("test")}
+			_, err := runtime.Schedules(t.Context())
+			requireRuntimeContractViolation(t, err)
+		})
 	}
 }
 

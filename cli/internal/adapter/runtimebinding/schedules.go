@@ -57,6 +57,15 @@ func (r *Connection) Schedules(ctx context.Context) ([]protocol.Schedule, error)
 			if _, duplicate := seenIDs[value.ID]; duplicate {
 				return nil, runtimeContractViolation("list schedules repeats %q", value.ID)
 			}
+			if len(schedules) != 0 {
+				previous := schedules[len(schedules)-1]
+				if value.CreatedAt.After(previous.CreatedAt) ||
+					(value.CreatedAt.Equal(previous.CreatedAt) && value.ID > previous.ID) {
+					return nil, runtimeContractViolation(
+						"list schedules returned schedule %q out of catalog order after %q", value.ID, previous.ID,
+					)
+				}
+			}
 			seenIDs[value.ID] = struct{}{}
 			schedules = append(schedules, cloneSchedule(value))
 		}
