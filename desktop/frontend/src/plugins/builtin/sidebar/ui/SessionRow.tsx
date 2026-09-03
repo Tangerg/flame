@@ -18,6 +18,48 @@ interface Props {
   onToggleFavorite?: (id: string, expectedRevision: number, favorite: boolean) => void;
 }
 
+/**
+ * The row's title while it is being renamed. Enter and blur are the same intention, so they
+ * share one `commit` — written twice, the two could drift, and a rename that depends on which
+ * key ended it is not a thing anyone asked for.
+ */
+function SessionTitleField({
+  title,
+  onCommit,
+  onSettle,
+}: {
+  title: string;
+  onCommit: (next: string) => void;
+  onSettle: () => void;
+}) {
+  const t = useT();
+  const commit = (value: string) => {
+    const next = value.trim();
+    if (next && next !== title) onCommit(next);
+    onSettle();
+  };
+
+  return (
+    <TextField
+      variant="bare"
+      font="sans"
+      defaultValue={title}
+      aria-label={t("session.row.titleLabel")}
+      // oxlint-disable-next-line jsx-a11y/no-autofocus
+      autoFocus
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.nativeEvent.isComposing) return;
+        e.stopPropagation();
+        if (e.key === "Escape") onSettle();
+        if (e.key === "Enter") commit(e.currentTarget.value);
+      }}
+      onBlur={(e) => commit(e.currentTarget.value)}
+      className="flex-1 rounded-xs bg-surface-3 px-1 leading-body"
+    />
+  );
+}
+
 export function SessionRow({
   session,
   active,
@@ -77,34 +119,10 @@ export function SessionRow({
         }
       >
         {renaming ? (
-          <TextField
-            variant="bare"
-            font="sans"
-            defaultValue={title}
-            aria-label={t("session.row.titleLabel")}
-            // oxlint-disable-next-line jsx-a11y/no-autofocus
-            autoFocus
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.nativeEvent.isComposing) return;
-              e.stopPropagation();
-              if (e.key === "Escape") setRenaming(false);
-              if (e.key === "Enter") {
-                const next = e.currentTarget.value.trim();
-                if (next && next !== title) {
-                  onRename?.(session.id, session.revision, next);
-                }
-                setRenaming(false);
-              }
-            }}
-            onBlur={(e) => {
-              const next = e.currentTarget.value.trim();
-              if (next && next !== title) {
-                onRename?.(session.id, session.revision, next);
-              }
-              setRenaming(false);
-            }}
-            className="flex-1 rounded-xs bg-surface-3 px-1 leading-body"
+          <SessionTitleField
+            title={title}
+            onCommit={(next) => onRename?.(session.id, session.revision, next)}
+            onSettle={() => setRenaming(false)}
           />
         ) : (
           title
