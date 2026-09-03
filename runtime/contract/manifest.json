@@ -4891,6 +4891,13 @@
       "type": "RunSummary",
       "rules": [
         {
+          "required": [
+            "provider",
+            "model",
+            "createdAt"
+          ]
+        },
+        {
           "when": [
             {
               "field": "status",
@@ -4970,6 +4977,13 @@
     {
       "type": "RunRef",
       "rules": [
+        {
+          "required": [
+            "provider",
+            "model",
+            "createdAt"
+          ]
+        },
         {
           "when": [
             {
@@ -5903,6 +5917,14 @@
         {
           "field": "rootRunId",
           "constraint": "maxLength(256)"
+        },
+        {
+          "field": "provider",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "model",
+          "constraint": "nonEmpty"
         },
         {
           "field": "provider",

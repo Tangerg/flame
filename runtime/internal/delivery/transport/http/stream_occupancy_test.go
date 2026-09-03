@@ -62,7 +62,10 @@ func (b *blockingRuntime) StartRun(ctx context.Context, in protocol.StartRunRequ
 			Event: protocol.StreamEvent{
 				Type: protocol.StreamSegmentStarted,
 				Run: &protocol.RunRef{
-					RunSummary:      protocol.RunSummary{ID: "run_block", SessionID: in.SessionID},
+					RunSummary: protocol.RunSummary{
+						ID: "run_block", SessionID: in.SessionID, Provider: "mock", Model: "balanced",
+						Status: protocol.RunStatusRunning, CreatedAt: time.Unix(1, 0).UTC(),
+					},
 					ActiveSegmentID: "seg_block",
 				},
 			},

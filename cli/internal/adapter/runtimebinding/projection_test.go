@@ -576,7 +576,10 @@ func TestProjectSnapshotMatchesApprovalInvocationWithoutErasingItemLifecycle(t *
 			Revision:  1,
 		},
 		runs: []protocol.RunRef{{
-			RunSummary: protocol.RunSummary{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusWaiting},
+			RunSummary: protocol.RunSummary{
+				ID: "run_1", SessionID: "ses_1", Provider: testSessionProvider, Model: testSessionModel,
+				Status: protocol.RunStatusWaiting, CreatedAt: startedAt.Add(-time.Second),
+			},
 			ProtocolProfile: protocol.RunProtocolProfile{
 				RequiredFeatures: []protocol.RunProtocolFeature{},
 				InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval},

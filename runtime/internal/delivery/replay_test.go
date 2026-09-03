@@ -23,11 +23,13 @@ type countingCancelService struct {
 func (c *countingCancelService) CancelRun(_ context.Context, request protocol.CancelRunRequest) (*protocol.CancelRunResponse, error) {
 	c.calls.Add(1)
 	outcome := protocol.RunOutcome{Type: protocol.OutcomeCanceled}
+	finishedAt := time.Date(2026, 8, 11, 1, 0, 0, 0, time.UTC)
 	return &protocol.CancelRunResponse{
 		Type: protocol.CancelRunRoot,
 		Run: protocol.RunRef{RunSummary: protocol.RunSummary{
-			ID: request.RunID, SessionID: "ses_1", Status: protocol.RunStatusFinished,
-			Outcome: &outcome, FinishedAt: time.Date(2026, 8, 11, 1, 0, 0, 0, time.UTC),
+			ID: request.RunID, SessionID: "ses_1", Provider: "mock", Model: "balanced",
+			Status: protocol.RunStatusFinished, Outcome: &outcome,
+			CreatedAt: finishedAt.Add(-time.Second), FinishedAt: finishedAt,
 		}},
 	}, nil
 }
@@ -405,8 +407,9 @@ func TestPendingCompletionReplaysDurableFirstResult(t *testing.T) {
 	durablePayload, err := encodeStoredOutcome(Result{Value: &protocol.CancelRunResponse{
 		Type: protocol.CancelRunRoot,
 		Run: protocol.RunRef{RunSummary: protocol.RunSummary{
-			ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished,
-			Outcome: &durableOutcome, FinishedAt: durableFinishedAt,
+			ID: "run_1", SessionID: "ses_1", Provider: "mock", Model: "balanced",
+			Status: protocol.RunStatusFinished, Outcome: &durableOutcome,
+			CreatedAt: durableFinishedAt.Add(-time.Second), FinishedAt: durableFinishedAt,
 		}},
 	}})
 	if err != nil {

@@ -213,8 +213,9 @@ func (s *schemaSet) define(t reflect.Type, body *schema) *schema {
 	return &schema{Ref: refPrefix + name}
 }
 
-// object walks a struct's fields. Optionality comes from the json tag — the
-// encoder is the only authority on whether a field can be absent.
+// object walks a struct's fields. Optionality starts with the json tag, then an
+// unconditional requirement may narrow an omittable field into a required wire
+// fact.
 func (s *schemaSet) object(t reflect.Type) *schema {
 	out := &schema{Type: schemaTypeObject, Properties: make(map[string]any)}
 	for _, field := range contractshape.Fields(t) {
@@ -254,6 +255,14 @@ func (s *schemaSet) object(t reflect.Type) *schema {
 		out.OneOf = s.variants(t, union)
 	}
 	for _, rule := range s.constraints[t] {
+		if len(rule.When) == 0 && len(rule.RequiredAny) == 0 &&
+			len(rule.Forbidden) == 0 && len(rule.AllowedValues) == 0 {
+			// A bare requirement is part of the object's base shape. Keeping it in
+			// allOf is schema-equivalent, but hides requiredness from generated
+			// structural clients such as TypeScript interfaces.
+			constrain(out, t, rule.Required, nil)
+			continue
+		}
 		out.AllOf = append(out.AllOf, s.conditional(t, rule))
 	}
 	normalize(out)

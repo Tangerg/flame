@@ -7078,12 +7078,12 @@
             {
               "name": "Model",
               "type": "string",
-              "tag": "json:\"model,omitempty\""
+              "tag": "json:\"model\""
             },
             {
               "name": "Provider",
               "type": "string",
-              "tag": "json:\"provider,omitempty\""
+              "tag": "json:\"provider\""
             },
             {
               "name": "ReasoningEffort",
@@ -7093,7 +7093,7 @@
             {
               "name": "Status",
               "type": "RunStatus",
-              "tag": "json:\"status,omitempty\""
+              "tag": "json:\"status\""
             },
             {
               "name": "Outcome",

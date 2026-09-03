@@ -41,8 +41,9 @@ func (f *fakeRuntime) CancelRun(_ context.Context, in protocol.CancelRunRequest)
 	return &protocol.CancelRunResponse{
 		Type: protocol.CancelRunRoot,
 		Run: protocol.RunRef{RunSummary: protocol.RunSummary{
-			ID: in.RunID, SessionID: "ses_test", Status: protocol.RunStatusFinished,
-			Outcome: &outcome, FinishedAt: finishedAt,
+			ID: in.RunID, SessionID: "ses_test", Provider: "mock", Model: "balanced",
+			Status: protocol.RunStatusFinished, Outcome: &outcome,
+			CreatedAt: finishedAt.Add(-time.Second), FinishedAt: finishedAt,
 		}},
 	}, nil
 }

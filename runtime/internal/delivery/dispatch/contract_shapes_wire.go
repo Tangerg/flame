@@ -900,6 +900,8 @@ func registerObjectConstraints(s *Shapes) {
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.RunSummary](),
 		Rules: append([]ConditionalRule{{
+			Required: []string{"provider", "model", "createdAt"},
+		}, {
 			When:     []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.RunStatusFinished)}},
 			Required: []string{"outcome", "finishedAt"},
 		}, {

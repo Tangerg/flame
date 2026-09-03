@@ -1211,21 +1211,21 @@ export interface RunProtocolProfile {
 export interface RunRef {
   activeSegmentId?: string;
   contextTokens?: number;
-  createdAt?: string;
+  createdAt: string;
   finishedAt?: string;
   id: string;
   limits?: RunLimits;
   metrics: RunMetrics;
-  model?: string;
+  model: string;
   outcome?: RunOutcome;
   parentRunId?: string;
   protocolProfile: RunProtocolProfile;
-  provider?: string;
+  provider: string;
   reasoningEffort?: string;
   rootRunId?: string;
   sessionId: string;
   spawnedByItemId?: string;
-  status?: RunStatus;
+  status: RunStatus;
 }
 
 export interface RunReplayLimits {
@@ -1248,18 +1248,18 @@ export interface RunScheduleNowResponse {
 export type RunStatus = "running" | "waiting" | "finished";
 
 export interface RunSummary {
-  createdAt?: string;
+  createdAt: string;
   finishedAt?: string;
   id: string;
-  model?: string;
+  model: string;
   outcome?: RunOutcome;
   parentRunId?: string;
-  provider?: string;
+  provider: string;
   reasoningEffort?: string;
   rootRunId?: string;
   sessionId: string;
   spawnedByItemId?: string;
-  status?: RunStatus;
+  status: RunStatus;
 }
 
 export type RuntimeEvent =

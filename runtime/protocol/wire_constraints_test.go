@@ -1425,6 +1425,32 @@ func TestRequestBoundsAreWireConstraints(t *testing.T) {
 	}
 }
 
+func TestRunSummaryRequiresExecutionAttribution(t *testing.T) {
+	t.Parallel()
+
+	valid := RunSummary{
+		ID: "run_1", SessionID: "ses_1", Provider: "provider", Model: "model",
+		Status: RunStatusRunning, CreatedAt: time.Unix(1, 0).UTC(),
+	}
+	if err := valid.ValidateWire(); err != nil {
+		t.Fatalf("valid RunSummary: %v", err)
+	}
+	for _, test := range []struct {
+		field  string
+		mutate func(*RunSummary)
+	}{
+		{field: "provider", mutate: func(run *RunSummary) { run.Provider = "" }},
+		{field: "model", mutate: func(run *RunSummary) { run.Model = "" }},
+		{field: "createdAt", mutate: func(run *RunSummary) { run.CreatedAt = time.Time{} }},
+	} {
+		t.Run(test.field, func(t *testing.T) {
+			run := valid
+			test.mutate(&run)
+			assertConstraintField(t, run.ValidateWire(), "RunSummary", test.field)
+		})
+	}
+}
+
 func TestIntegerBoundsCompareWithoutFloat64Rounding(t *testing.T) {
 	t.Parallel()
 

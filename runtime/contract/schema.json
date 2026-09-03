@@ -6080,16 +6080,6 @@
         "interrupts",
         "rootRunId",
         "sessionId"
-      ],
-      "allOf": [
-        {
-          "required": [
-            "createdAt",
-            "interrupts",
-            "rootRunId",
-            "sessionId"
-          ]
-        }
       ]
     },
     "Plan": {
@@ -7725,6 +7715,7 @@
         },
         "model": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
@@ -7741,6 +7732,7 @@
         },
         "provider": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 64,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
@@ -7770,10 +7762,14 @@
         }
       },
       "required": [
+        "createdAt",
         "id",
         "metrics",
+        "model",
         "protocolProfile",
-        "sessionId"
+        "provider",
+        "sessionId",
+        "status"
       ],
       "allOf": [
         {
@@ -8016,6 +8012,7 @@
         },
         "model": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
@@ -8029,6 +8026,7 @@
         },
         "provider": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 64,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
@@ -8058,8 +8056,12 @@
         }
       },
       "required": [
+        "createdAt",
         "id",
-        "sessionId"
+        "model",
+        "provider",
+        "sessionId",
+        "status"
       ],
       "allOf": [
         {

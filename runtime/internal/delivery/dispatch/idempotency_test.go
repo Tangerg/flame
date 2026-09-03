@@ -31,8 +31,9 @@ func canceledRootResponse(runID string) *protocol.CancelRunResponse {
 	return &protocol.CancelRunResponse{
 		Type: protocol.CancelRunRoot,
 		Run: protocol.RunRef{RunSummary: protocol.RunSummary{
-			ID: runID, SessionID: "ses_1", Status: protocol.RunStatusFinished,
-			Outcome: &outcome, FinishedAt: finishedAt,
+			ID: runID, SessionID: "ses_1", Provider: "mock", Model: "balanced",
+			Status: protocol.RunStatusFinished, Outcome: &outcome,
+			CreatedAt: finishedAt.Add(-time.Second), FinishedAt: finishedAt,
 		}},
 	}
 }

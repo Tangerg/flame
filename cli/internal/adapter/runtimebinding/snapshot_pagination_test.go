@@ -206,7 +206,8 @@ func TestSessionMaterialSnapshotCanonicalizesRunCreationOrder(t *testing.T) {
 	finishedRun := func(id string, at time.Time) protocol.RunRef {
 		return protocol.RunRef{
 			RunSummary: protocol.RunSummary{
-				ID: id, SessionID: "ses_1", Status: protocol.RunStatusFinished,
+				ID: id, SessionID: "ses_1", Provider: testSessionProvider, Model: testSessionModel,
+				Status:  protocol.RunStatusFinished,
 				Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted}, CreatedAt: at, FinishedAt: at,
 			},
 			ProtocolProfile: protocol.RunProtocolProfile{

@@ -577,6 +577,8 @@ TypeScript validator from this single registry projection.
 | `RunSummary` | `parentRunId` | `maxLength(256)` |
 | `RunSummary` | `rootRunId` | `identity` |
 | `RunSummary` | `rootRunId` | `maxLength(256)` |
+| `RunSummary` | `provider` | `nonEmpty` |
+| `RunSummary` | `model` | `nonEmpty` |
 | `RunSummary` | `provider` | `identity` |
 | `RunSummary` | `provider` | `maxLength(64)` |
 | `RunSummary` | `model` | `identity` |

@@ -266,9 +266,13 @@ func registerRunValues(s *Shapes) {
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.RunSummary](),
-		Constraints: append(append(append(append(append(requiredResourceIdentity("id"),
+		Constraints: append(append(append(append(append(append(requiredResourceIdentity("id"),
 			requiredResourceIdentity("sessionId")...), resourceIdentity("spawnedByItemId")...),
 			resourceIdentity("parentRunId")...), resourceIdentity("rootRunId")...),
+			[]FieldConstraint{
+				{Field: "provider", Kind: ConstraintNonEmpty},
+				{Field: "model", Kind: ConstraintNonEmpty},
+			}...),
 			modelSelectionIdentities("provider", "model", "reasoningEffort")...),
 	})
 	s.valueConstraint(FieldConstraintSpec{

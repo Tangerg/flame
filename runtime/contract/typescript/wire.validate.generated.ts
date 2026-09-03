@@ -2239,15 +2239,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   PatchResult: object({
     changes: array(ref(() => CHECKS.AppliedChange)),
   }, ["changes"]),
-  PendingInterruptSet: allOf([
-    object({
-      createdAt: text(),
-      interrupts: allOf([array(ref(() => CHECKS.Interrupt)), minItems(1)]),
-      rootRunId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    }, ["createdAt", "interrupts", "rootRunId", "sessionId"]),
-    fields({}, ["createdAt", "interrupts", "rootRunId", "sessionId"]),
-  ]),
+  PendingInterruptSet: object({
+    createdAt: text(),
+    interrupts: allOf([array(ref(() => CHECKS.Interrupt)), minItems(1)]),
+    rootRunId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+  }, ["createdAt", "interrupts", "rootRunId", "sessionId"]),
   Plan: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     state: ref(() => CHECKS.PlanState),
@@ -2843,17 +2840,17 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       limits: ref(() => CHECKS.RunLimits),
       metrics: ref(() => CHECKS.RunMetrics),
-      model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       outcome: ref(() => CHECKS.RunOutcome),
       parentRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       protocolProfile: ref(() => CHECKS.RunProtocolProfile),
-      provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
       reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
       rootRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       spawnedByItemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       status: ref(() => CHECKS.RunStatus),
-    }, ["id", "metrics", "protocolProfile", "sessionId"]),
+    }, ["createdAt", "id", "metrics", "model", "protocolProfile", "provider", "sessionId", "status"]),
     ifThen(
       fields({
         status: literal("finished"),
@@ -2932,16 +2929,16 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       createdAt: text(),
       finishedAt: text(),
       id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       outcome: ref(() => CHECKS.RunOutcome),
       parentRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
       reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
       rootRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       spawnedByItemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       status: ref(() => CHECKS.RunStatus),
-    }, ["id", "sessionId"]),
+    }, ["createdAt", "id", "model", "provider", "sessionId", "status"]),
     ifThen(
       fields({
         status: literal("finished"),
