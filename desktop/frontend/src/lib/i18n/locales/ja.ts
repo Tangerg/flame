@@ -772,6 +772,7 @@ export const ja: Record<string, string> = {
   "command.historyForward": "進む",
   "command.previousSession": "前のチャット",
   "command.nextSession": "次のチャット",
+  "command.showShortcuts": "キーボードショートカット",
 
   "diagnostics.clear": "クリア",
   "diagnostics.title": "診断",

@@ -777,6 +777,7 @@ export const zhTW: Record<string, string> = {
   "command.historyForward": "下一頁",
   "command.previousSession": "上一個工作階段",
   "command.nextSession": "下一個工作階段",
+  "command.showShortcuts": "鍵盤快速鍵",
 
   "diagnostics.clear": "清除",
   "diagnostics.title": "診斷",

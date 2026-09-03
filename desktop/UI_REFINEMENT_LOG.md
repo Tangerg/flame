@@ -1358,3 +1358,140 @@ duplicating.
    in a Work Index grouped by project.
 2. `delegated` has no raster coverage.
 3. Nine settings panes have no fixture coverage.
+
+## Round 17 — a shortcut only fired if a second list happened to name it
+
+The reference's command menu binds `CmdOrCtrl+/` to `showKeyboardShortcuts`.
+Flame has the pane; reaching it meant opening Settings and finding the row. The
+surface that documents every key was the one surface with no key.
+
+Adding it is a four-line contribution. It did not work, and why it did not work
+is this round.
+
+### Correction to round 16
+
+Round 16 stated that `data-pointer` "is written by nobody" and removed the gate
+`html:not([data-pointer])` from the one global focus rule. That reading was
+wrong: it is written by `index.html` — three times, outside `src/`, which is
+where the grep stopped. The gate was live and load-bearing, and its removal put
+the accent ring back on plain mouse clicks in the WebView, which is the exact
+problem that boot script exists to solve. **The gate is restored.**
+
+It stayed broken for three rounds because `npm run check` runs the tests before
+the guards, and this repository has two contract tests that fail for reasons
+outside this scope — so `check:bootstrap`, which owns exactly this pairing and
+was red the whole time, never got to run. Every guard is now run individually
+each round, not through the pipeline that stops at the first red.
+
+| | Before | After |
+| --- | --- | --- |
+| Focus ring, mouse click | drawn — the WebView reports `:focus-visible` for a click | gated on the last input device again |
+| `check:bootstrap` | red since round 14, unseen | green |
+| Goldens moved | — | **none**: the gate changes behaviour, not a static frame |
+
+### Finding 1 — a command's combo was a declaration, not a registration
+
+`CommandSpec` documents a combo as: "one carrying a combo is also projected into
+the global shortcut registry." It was not. A plugin resolved commands **by a
+hand-written list of ids**, once, at its own setup:
+
+```
+export const GLOBAL_COMMAND_IDS = [ "chat.new", "chat.search", … ];  // 11 ids
+```
+
+Two defects fall out of that, and the second is the one that bites.
+
+**The list carried no information.** It contained exactly the eleven ids that
+declare a combo — the set is derivable from the combo itself. It guarded nothing
+either: any plugin can contribute a `SHORTCUT` for any key directly, so the list
+never had authority over which keys the app answers. What it did have was the
+power to silently drop the next command. `shortcuts.show` was written first and
+did nothing at all, with no error anywhere.
+
+**It made the binding depend on array order.** The projection read the command
+registry once during setup, so a command contributed by a plugin loaded later was
+invisible. `builtin/index.ts` opens with the line "this array's order is only a
+tie-breaker between independent plugins, not dependency semantics" — and `⌘F`
+worked only because `chatSearch` happened to sit above `globalKeymap` in it.
+Moving one line would have killed it silently.
+
+| | Before | After |
+| --- | --- | --- |
+| What registers a key | `combo` **and** an id in `GLOBAL_COMMAND_IDS` | `combo`, alone |
+| When it resolves | once, at one plugin's setup | with the registry, in the host that dispatches |
+| A command from a later plugin | never bound | bound |
+| Same key from a command and a shortcut | whichever plugin ran last | the shortcut, by the rule `ShortcutSpec` already states |
+| What the pane lists | the eleven allow-listed | the keymap the listener binds — one entry per key, same source |
+| `command/global-keymap/` | 3 files projecting commands, plus Escape | deleted; Escape moves to `workspace/keymap.ts`, whose meaning it is |
+
+The pane and the keydown listener now read one `useKeymap()`, keyed by the same
+dispatch string the listener binds, so what the app lists and what it answers
+cannot disagree.
+
+Escape's description was `t("shortcut.closeWorkspaceView")` — resolved text where
+the contract says catalog key, which froze that one row in the boot locale. It
+passes the key now, like everything else in the list.
+
+### Finding 2 — ⌘/ shows the keyboard shortcuts
+
+| | Before | After |
+| --- | --- | --- |
+| Reaching the shortcuts | Settings → find the row | `⌘/`, the reference's own binding, and a command in the palette |
+| Proof it is bound | — | a host test: contribute a command with a combo and nothing else, press the key, assert it ran. It fails against the old projection. |
+
+### Finding 3 — a golden that renders two ways, measured but not solved
+
+`agent golden light/dark empty` fails about one run in four. Diagnosed rather
+than budgeted around, because a suite that is randomly red teaches people to
+ignore it.
+
+The difference is **1084–1088 pixels in a band 11 rows tall**, containing only
+the three composer chip labels. Everything about the layout is identical:
+
+- geometry byte-stable across loads — `Balanced@384.500 w55.859375`, every time
+- same text colour (peak 198 in both), both subpixel-antialiased
+- four captures of one page: one hash; the difference is between **loads**
+- two buckets, **15:1** over 16 loads, with identical rects
+
+Ruled out by measurement, each with a 16-load bucket test: worker contention
+(fails at `--workers=1`), capture timing, a stale golden (`--update-snapshots`
+rewrote nothing — the committed image is the majority rendering), the label's
+`truncate`, the `data-measuring` reflow of `useToolbarLabels` (disabling it
+entirely leaves the split), `font-synthesis`, and explicit
+`font-variation-settings` (byte-identical to baseline).
+
+What does move it is the origin. The label sits at **x = 384.5** because
+`main.agent-content-card` is 845 wide — odd — and the thread column is centred
+in it, so the half pixel is born at `mx-auto` and inherited all the way down. At
+a viewport one pixel wider the label lands on **385** and 16 of 16 loads agree.
+All three harness widths (1120, 1472, 1800) less the 275 rail are odd.
+
+That is not a fix, and it is not the harness's fault either: at
+`deviceScaleFactor: 2`, which is what the product actually runs at, the split is
+**11:5** — worse. Left as an open item with its reproduction rather than papered
+over with a wider budget or a mask; the two candidate fixes both regenerate every
+golden, which is a decision, not a cleanup.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, and **all fifteen guards run
+  individually** — green, including `check:bootstrap`.
+- 322 plugin and lib test files, 1834 tests, all passing; 2340 across the app.
+  The 9 failures are the same out-of-scope pair as every round: `runtime`'s own
+  `segment.finished.json` contract sample and the e2e against the live Go
+  runtime.
+- `visual` — 389 passed, **no golden regenerated**, one known flake above.
+
+### Reclamation
+
+`command/global-keymap/` (3 files) deleted; six probe specs written for the
+measurements above and removed.
+
+### Open
+
+1. `thread1`…`thread9`, waiting on a decision about what nine numeric slots mean
+   in a Work Index grouped by project.
+2. `delegated` has no raster coverage.
+3. Nine settings panes have no fixture coverage.
+4. The `empty` golden's two renderings — reproduction and eight ruled-out causes
+   above.

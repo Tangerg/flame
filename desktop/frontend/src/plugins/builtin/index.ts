@@ -35,7 +35,7 @@ import workspaceBootstrap from "./workspace/bootstrap";
 import { workspaceService } from "./workspace/adapters/workspaceService";
 import workspaceEvents from "./workspace/events";
 import { workspaceSessionNavigation } from "./workspace/sessionNavigation";
-import globalKeymap from "./command/global-keymap";
+import { workspaceKeymap } from "./workspace/keymap";
 import sessionSearch from "./command/session-search";
 import hooksPane from "./settings/hooks";
 import schedulesPane from "./settings/schedules";
@@ -128,6 +128,7 @@ const infrastructure: AnyPlugin[] = [
   defaultDataProviders,
   workspaceEvents,
   workspaceSessionNavigation,
+  workspaceKeymap,
   rpcAgent,
   defaultTitle,
   defaultAccents,
@@ -236,7 +237,6 @@ const overlays: AnyPlugin[] = [
   completionNotify,
   windowTitle,
   shortcuts,
-  globalKeymap,
   sessionSearch,
   iconGallery,
   narrativeRails,

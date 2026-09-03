@@ -1067,6 +1067,7 @@ export const en: Record<string, string> = {
   "command.historyForward": "Go forward",
   "command.previousSession": "Previous chat",
   "command.nextSession": "Next chat",
+  "command.showShortcuts": "Keyboard shortcuts",
 
   // ── Diagnostics view ──
   "diagnostics.clear": "Clear",

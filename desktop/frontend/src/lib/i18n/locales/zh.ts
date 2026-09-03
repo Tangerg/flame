@@ -945,6 +945,7 @@ export const zh: Record<string, string> = {
   "command.historyForward": "前进",
   "command.previousSession": "上一个会话",
   "command.nextSession": "下一个会话",
+  "command.showShortcuts": "键盘快捷键",
 
   "diagnostics.clear": "清除",
   "diagnostics.title": "诊断",

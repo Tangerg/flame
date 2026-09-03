@@ -767,6 +767,7 @@ export const ko: Record<string, string> = {
   "command.historyForward": "앞으로 가기",
   "command.previousSession": "이전 대화",
   "command.nextSession": "다음 대화",
+  "command.showShortcuts": "키보드 단축키",
 
   "diagnostics.clear": "지우기",
   "diagnostics.title": "진단",

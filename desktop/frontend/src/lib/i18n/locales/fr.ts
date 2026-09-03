@@ -802,6 +802,7 @@ export const fr: Record<string, string> = {
   "command.historyForward": "Suivant",
   "command.previousSession": "Conversation précédente",
   "command.nextSession": "Conversation suivante",
+  "command.showShortcuts": "Raccourcis clavier",
 
   "diagnostics.clear": "Effacer",
   "diagnostics.title": "Diagnostics",

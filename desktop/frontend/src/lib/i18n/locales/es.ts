@@ -799,6 +799,7 @@ export const es: Record<string, string> = {
   "command.historyForward": "Adelante",
   "command.previousSession": "Chat anterior",
   "command.nextSession": "Chat siguiente",
+  "command.showShortcuts": "Atajos de teclado",
 
   "diagnostics.clear": "Limpiar",
   "diagnostics.title": "Diagnóstico",

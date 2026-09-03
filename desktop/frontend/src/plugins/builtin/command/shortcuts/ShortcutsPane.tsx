@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { Kbd, SearchField } from "@/ui";
-import { SHORTCUT, useExtensionPoint } from "@/plugins/sdk";
+import { useKeymap } from "@/plugins/host/keymap";
 import { useT } from "@/lib/i18n";
 import { splitCombo } from "@/lib/combo";
 
 export function ShortcutsPane() {
   const t = useT();
-  const shortcuts = useExtensionPoint(SHORTCUT);
+  const shortcuts = useKeymap();
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {

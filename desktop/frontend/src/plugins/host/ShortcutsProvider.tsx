@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { tinykeys } from "tinykeys";
-import { SHORTCUT, useExtensionPoint } from "@/plugins/sdk";
 import { dispatchBinding } from "@/lib/combo";
+import { useKeymap } from "./keymap";
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -11,7 +11,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 export function ShortcutsProvider() {
-  const shortcuts = useExtensionPoint(SHORTCUT);
+  const shortcuts = useKeymap();
 
   useEffect(() => {
     const bindings: Record<string, (event: KeyboardEvent) => void> = {};
