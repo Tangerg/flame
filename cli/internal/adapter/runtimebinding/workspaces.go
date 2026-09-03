@@ -59,15 +59,12 @@ func (r *Connection) List(ctx context.Context) ([]workspace.Summary, error) {
 	if err != nil {
 		return nil, err
 	}
-	result := make([]workspace.Summary, 0, len(values))
-	for index, value := range values {
-		projected, err := projectWorkspaceSummary(value)
-		if err != nil {
-			return nil, runtimeContractViolation("list workspaces row %d is invalid: %v", index, err)
-		}
-		result = append(result, projected)
-	}
-	return result, nil
+	return projectUniqueValuesFallible(
+		"list workspaces",
+		values,
+		projectWorkspaceSummary,
+		func(summary workspace.Summary) string { return summary.Workspace.Path },
+	)
 }
 
 func (r *Connection) Changes(ctx context.Context, path string) ([]workspace.Change, error) {

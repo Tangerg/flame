@@ -172,6 +172,26 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 	}
 }
 
+func TestWorkspaceAdapterRejectsRepeatedRuntimeIdentity(t *testing.T) {
+	t.Parallel()
+	summary := protocol.WorkspaceSummary{
+		Workspace: protocol.WorkspaceInfo{
+			Ref: protocol.WorkspaceRef{Path: "/workspace"}, ProjectRoot: "/workspace",
+			Availability: protocol.WorkspaceAvailable,
+		},
+		Name: "workspace",
+	}
+	runtime := &Connection{
+		workspaces: &workspaceBindingStub{known: protocol.NewPage([]protocol.WorkspaceSummary{summary, summary})},
+		meta:       requestMeta("test"),
+	}
+
+	_, err := runtime.List(t.Context())
+	if err == nil || !strings.Contains(err.Error(), `list workspaces repeats "/workspace"`) {
+		t.Fatalf("List error = %v, want repeated workspace identity failure", err)
+	}
+}
+
 func TestWorkspaceAdapterRejectsGitReadsBeforeCallingBinding(t *testing.T) {
 	t.Parallel()
 	stub := &workspaceBindingStub{}

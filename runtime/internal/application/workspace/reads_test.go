@@ -16,6 +16,23 @@ func (s staticAgentDocFinder) Find(context.Context, string, string) ([]AgentDocF
 	return s.files, nil
 }
 
+type workspaceCatalogStub struct {
+	sessions []session.Session
+	resolved map[string]Resolved
+}
+
+func (w workspaceCatalogStub) List(context.Context) ([]session.Session, error) {
+	return w.sessions, nil
+}
+
+func (w workspaceCatalogStub) InspectWorkspace(path string) (Resolved, error) {
+	resolved, ok := w.resolved[path]
+	if !ok {
+		return Resolved{}, errors.New("workspace is not configured")
+	}
+	return resolved, nil
+}
+
 func TestWorkspacesFromSessions(t *testing.T) {
 	t0 := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 	workspaces := workspacesFromSessions([]session.Session{
@@ -34,6 +51,34 @@ func TestWorkspacesFromSessions(t *testing.T) {
 	}
 	if workspaces[1].Path != "/b/other" || workspaces[1].SessionCount != 1 {
 		t.Fatalf("second workspace = %+v", workspaces[1])
+	}
+}
+
+func TestWorkspacesCollapseLiveAliasesIntoCanonicalIdentity(t *testing.T) {
+	t0 := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+	catalog := workspaceCatalogStub{
+		sessions: []session.Session{
+			testsupport.MustRestoreSession(session.Snapshot{ID: "s1", Workspace: testsupport.MustWorkspace("/aliases/one"), UpdatedAt: t0}),
+			testsupport.MustRestoreSession(session.Snapshot{ID: "s2", Workspace: testsupport.MustWorkspace("/aliases/two"), UpdatedAt: t0.Add(time.Hour)}),
+		},
+		resolved: map[string]Resolved{
+			"/aliases/one": {Path: "/real/project", ProjectRoot: "/real", Missing: false},
+			"/aliases/two": {Path: "/real/project", ProjectRoot: "/real", Missing: false},
+		},
+	}
+	discovery := NewDiscovery(nil, catalog, nil, nil)
+
+	workspaces, err := discovery.Workspaces(t.Context())
+	if err != nil {
+		t.Fatalf("Workspaces: %v", err)
+	}
+	if len(workspaces) != 1 {
+		t.Fatalf("workspaces = %+v, want one canonical identity", workspaces)
+	}
+	workspace := workspaces[0]
+	if workspace.Path != "/real/project" || workspace.ProjectRoot != "/real" || workspace.Name != "project" ||
+		workspace.SessionCount != 2 || !workspace.LastActiveAt.Equal(t0.Add(time.Hour)) {
+		t.Fatalf("workspace = %+v, want merged canonical summary", workspace)
 	}
 }
 

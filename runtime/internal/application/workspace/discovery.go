@@ -99,16 +99,29 @@ func (d *Discovery) Workspaces(ctx context.Context) ([]Summary, error) {
 		return nil, err
 	}
 	workspaces := workspacesFromSessions(sessions)
-	for index := range workspaces {
-		identity, err := d.workspaces.InspectWorkspace(workspaces[index].Path)
+	resolved := make([]Summary, 0, len(workspaces))
+	byPath := make(map[string]int, len(workspaces))
+	for _, workspace := range workspaces {
+		identity, err := d.workspaces.InspectWorkspace(workspace.Path)
 		if err != nil {
 			return nil, err
 		}
-		workspaces[index].Path = identity.Path
-		workspaces[index].ProjectRoot = identity.ProjectRoot
-		workspaces[index].Missing = identity.Missing
+		workspace.Path = identity.Path
+		workspace.ProjectRoot = identity.ProjectRoot
+		workspace.Missing = identity.Missing
+		workspace.Name = filepath.Base(identity.Path)
+		if index, exists := byPath[identity.Path]; exists {
+			resolved[index].SessionCount += workspace.SessionCount
+			if workspace.LastActiveAt.After(resolved[index].LastActiveAt) {
+				resolved[index].LastActiveAt = workspace.LastActiveAt
+			}
+			continue
+		}
+		byPath[identity.Path] = len(resolved)
+		resolved = append(resolved, workspace)
 	}
-	return workspaces, nil
+	slices.SortFunc(resolved, func(a, b Summary) int { return b.LastActiveAt.Compare(a.LastActiveAt) })
+	return resolved, nil
 }
 
 func workspacesFromSessions(sessions []session.Session) []Summary {
