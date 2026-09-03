@@ -605,7 +605,7 @@ func waitingApprovalColdRead() coldRead {
 			ID: "ses_1", Status: protocol.SessionStatusWaiting,
 			Provider: testSessionProvider, Model: testSessionModel,
 			Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
-			Revision:  1,
+			CreatedAt: startedAt, UpdatedAt: startedAt, Revision: 1,
 		},
 		runs: []protocol.RunRef{{
 			RunSummary: protocol.RunSummary{

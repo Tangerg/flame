@@ -70,6 +70,9 @@ func projectSessionPage(page *protocol.Page[protocol.Session], cursor string, li
 }
 
 func projectSession(value protocol.Session) (agent.Session, error) {
+	if err := protocol.ValidateWireTree(value); err != nil {
+		return agent.Session{}, fmt.Errorf("runtime session %q: %w", value.ID, err)
+	}
 	projectedWorkspace, err := projectWorkspace(value.Workspace)
 	if err != nil {
 		return agent.Session{}, fmt.Errorf("runtime session %q: %w", value.ID, err)

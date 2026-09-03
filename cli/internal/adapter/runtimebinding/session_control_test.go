@@ -56,7 +56,11 @@ func TestSessionControlProjectsRollbackWithoutLosingInlineInput(t *testing.T) {
 			t.Fatalf("rollback options = %+v", options)
 		}
 		return &protocol.RollbackSessionResponse{
-			Session: &protocol.Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable), Revision: 1},
+			Session: &protocol.Session{
+				ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel,
+				Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
+				CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
+			},
 			DroppedRuns: []protocol.DroppedRun{{
 				Run: protocol.RunSummary{ID: "run_2", SessionID: "ses_1", Status: protocol.RunStatusFinished},
 				UserInput: []protocol.ContentBlock{
@@ -94,12 +98,17 @@ func TestSessionControlRejectsCrossSessionResponses(t *testing.T) {
 				ID: "ses_other", Status: protocol.SessionStatusIdle,
 				Provider: testSessionProvider, Model: testSessionModel,
 				Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
+				CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
 			}}, nil
 		},
 		export: func(context.Context, protocol.ExportSessionRequest, flameruntime.CallOptions) (*protocol.ExportSessionResponse, error) {
 			return &protocol.ExportSessionResponse{Format: protocol.ExportFormatJSON, Artifact: &protocol.SessionArtifact{
 				Version: protocol.SessionArtifactVersion,
-				Session: protocol.ArtifactSession{ID: "ses_other", Workspace: protocol.WorkspaceRef{Path: "/workspace"}, Provider: testSessionProvider, Model: testSessionModel},
+				Session: protocol.ArtifactSession{
+					ID: "ses_other", Workspace: protocol.WorkspaceRef{Path: "/workspace"},
+					Provider: testSessionProvider, Model: testSessionModel,
+					CreatedAt: testSessionTime, UpdatedAt: testSessionTime,
+				},
 			}}, nil
 		},
 	}
@@ -166,7 +175,7 @@ func TestSessionImportDecodesOpaqueDocumentOnlyAtTheAdapterBoundary(t *testing.T
 		meta:    requestMeta("test"),
 		profile: sessionControlProfile(protocol.FeatureSessionExport),
 	}
-	artifactJSON := fmt.Sprintf(`{"version":%d,"session":{"id":"ses_1","title":"Session","workspace":{"path":"/workspace/alias"},"provider":"mock","model":"balanced","reasoningEffort":"high","createdAt":"0001-01-01T00:00:00Z","updatedAt":"0001-01-01T00:00:00Z"},"messages":[],"runs":[],"items":[],"toolResults":[]}`, protocol.SessionArtifactVersion)
+	artifactJSON := fmt.Sprintf(`{"version":%d,"session":{"id":"ses_1","title":"Session","workspace":{"path":"/workspace/alias"},"provider":"mock","model":"balanced","reasoningEffort":"high","createdAt":"2026-08-14T08:00:00Z","updatedAt":"2026-08-14T08:00:00Z"},"messages":[],"runs":[],"items":[],"toolResults":[]}`, protocol.SessionArtifactVersion)
 	document, err := session.NewDocument(protocol.ExportFormatJSON, []byte(artifactJSON))
 	if err != nil {
 		t.Fatal(err)

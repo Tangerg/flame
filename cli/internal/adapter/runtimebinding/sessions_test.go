@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -31,6 +32,8 @@ const (
 	testSessionProvider = "mock"
 	testSessionModel    = "balanced"
 )
+
+var testSessionTime = time.Unix(1, 0).UTC()
 
 func (s sessionCatalogStub) ListSessions(_ context.Context, query protocol.ListSessionsRequest, _ flameruntime.CallOptions) (*protocol.Page[protocol.Session], error) {
 	if s.list != nil {
@@ -104,7 +107,7 @@ func TestCreateAndForkSessionRejectAcknowledgementDrift(t *testing.T) {
 		ID: "ses_new", Title: "Requested", Status: protocol.SessionStatusIdle,
 		Provider: testSessionProvider, Model: testSessionModel,
 		Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
-		Revision:  1,
+		CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
 	}
 	tests := []struct {
 		name    string
@@ -190,7 +193,8 @@ func TestUpdateSessionProjectsEveryWritableField(t *testing.T) {
 		return &protocol.Session{
 			ID: request.SessionID, Title: title, Status: protocol.SessionStatusIdle, Provider: model.Provider, Model: model.Model,
 			Workspace: testProtocolWorkspace(request.Workspace.Path, "/workspace", protocol.WorkspaceAvailable),
-			Favorite:  favorite, Revision: 8,
+			CreatedAt: testSessionTime, UpdatedAt: testSessionTime,
+			Favorite: favorite, Revision: 8,
 		}, nil
 	}}
 	runtime := &Connection{
@@ -247,7 +251,8 @@ func TestUpdateSessionRejectsAcknowledgementsThatDidNotApplyTheMutation(t *testi
 	valid := protocol.Session{
 		ID: request.SessionID, Title: title, Status: protocol.SessionStatusIdle, Provider: model.Provider, Model: model.Model,
 		Workspace: testProtocolWorkspace(workspace, "/workspace", protocol.WorkspaceAvailable),
-		Favorite:  favorite, Revision: 8,
+		CreatedAt: testSessionTime, UpdatedAt: testSessionTime,
+		Favorite: favorite, Revision: 8,
 	}
 	tests := []struct {
 		name   string
@@ -297,7 +302,7 @@ func TestSessionMutationsUseResolvedWorkspaceIdentity(t *testing.T) {
 		ID: "ses_1", Title: "Requested", Status: protocol.SessionStatusIdle,
 		Provider: testSessionProvider, Model: testSessionModel,
 		Workspace: testProtocolWorkspace(canonical, canonical, protocol.WorkspaceAvailable),
-		Revision:  1,
+		CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
 	}
 	catalog := sessionCatalogStub{
 		create: func(request protocol.CreateSessionRequest) (*protocol.Session, error) {
@@ -342,7 +347,7 @@ func TestProjectSessionPreservesResolvedWorkspaceIdentity(t *testing.T) {
 		ID: "ses_1", Status: protocol.SessionStatusIdle,
 		Provider: testSessionProvider, Model: testSessionModel, ReasoningEffort: "high",
 		Workspace: testProtocolWorkspace("/repo/work", "/repo", protocol.WorkspaceMissing),
-		Revision:  1,
+		CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -366,9 +371,42 @@ func TestProjectSessionRejectsIncompleteWorkspaceIdentity(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := projectSession(protocol.Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: test.workspace})
+			_, err := projectSession(protocol.Session{
+				ID: "ses_1", Status: protocol.SessionStatusIdle,
+				Provider: testSessionProvider, Model: testSessionModel, Workspace: test.workspace,
+				CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
+			})
 			if err == nil {
 				t.Fatalf("projectSession accepted %+v", test.workspace)
+			}
+		})
+	}
+}
+
+func TestProjectSessionRejectsMissingLifecycleTimes(t *testing.T) {
+	t.Parallel()
+
+	valid := protocol.Session{
+		ID: "ses_1", Status: protocol.SessionStatusIdle,
+		Provider: testSessionProvider, Model: testSessionModel,
+		Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
+		CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
+	}
+	for _, test := range []struct {
+		name  string
+		field string
+		clear func(*protocol.Session)
+	}{
+		{name: "creation", field: "createdAt", clear: func(value *protocol.Session) { value.CreatedAt = time.Time{} }},
+		{name: "update", field: "updatedAt", clear: func(value *protocol.Session) { value.UpdatedAt = time.Time{} }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			value := valid
+			test.clear(&value)
+			_, err := projectSession(value)
+			if err == nil || !strings.Contains(err.Error(), test.field) {
+				t.Fatalf("projectSession error = %v, want %q", err, test.field)
 			}
 		})
 	}
@@ -435,6 +473,7 @@ func TestSessionCatalogRejectsAStalledCursorAndMutationIdentity(t *testing.T) {
 				ID: "ses_other", Status: protocol.SessionStatusIdle,
 				Provider: testSessionProvider, Model: testSessionModel,
 				Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
+				CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 2,
 			}, nil
 		},
 	}, meta: requestMeta("test")}

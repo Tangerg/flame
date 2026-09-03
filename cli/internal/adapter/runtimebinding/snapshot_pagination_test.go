@@ -51,6 +51,7 @@ func snapshotSession(revision uint64) *protocol.Session {
 		ID: "ses_1", Status: protocol.SessionStatusIdle, Revision: revision,
 		Provider: testSessionProvider, Model: testSessionModel,
 		Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
+		CreatedAt: testSessionTime, UpdatedAt: testSessionTime,
 	}
 }
 
