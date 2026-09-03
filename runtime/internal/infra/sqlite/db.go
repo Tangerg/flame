@@ -82,8 +82,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			build_id        TEXT    NOT NULL,
 			payload         BLOB    NOT NULL,
 			policy          TEXT    NOT NULL,
-			usage           TEXT    NOT NULL,
-			committed_at    INTEGER NOT NULL
+			usage           TEXT    NOT NULL
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_executor_checkpoints_session
 			ON executor_checkpoints(session_id)`,

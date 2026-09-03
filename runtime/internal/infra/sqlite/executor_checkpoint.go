@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -180,15 +179,14 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 		if errors.Is(err, sql.ErrNoRows) {
 			_, err = conn(ctx, e.db).ExecContext(ctx,
 				`INSERT INTO executor_checkpoints(
-					root_member_id, session_id, build_id, payload, policy, usage, committed_at
-				 ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+					root_member_id, session_id, build_id, payload, policy, usage
+				 ) VALUES (?, ?, ?, ?, ?, ?)`,
 				checkpoint.RootMemberID,
 				checkpoint.Scope.SessionID,
 				checkpoint.BuildID,
 				checkpoint.Payload,
 				string(encodedPolicy),
 				string(encodedUsage),
-				time.Now().UTC().UnixNano(),
 			)
 			if err != nil {
 				return fmt.Errorf("sqlite: insert executor checkpoint %q: %w", checkpoint.RootMemberID, err)
@@ -243,11 +241,10 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 		}
 		result, err := conn(ctx, e.db).ExecContext(ctx,
 			`UPDATE executor_checkpoints
-			    SET payload = ?, usage = ?, committed_at = ?
+			    SET payload = ?, usage = ?
 			  WHERE root_member_id = ?`,
 			checkpoint.Payload,
 			string(encodedUsage),
-			time.Now().UTC().UnixNano(),
 			checkpoint.RootMemberID,
 		)
 		if err != nil {

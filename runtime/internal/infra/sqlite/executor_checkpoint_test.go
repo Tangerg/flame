@@ -408,7 +408,7 @@ func TestExecutorCheckpointStoreDeletesByApplicationOwnership(t *testing.T) {
 	}
 }
 
-func TestExecutorCheckpointSchemaContainsNoFrameworkTopology(t *testing.T) {
+func TestExecutorCheckpointSchemaContainsOnlyOwnedData(t *testing.T) {
 	db, _ := newExecutorCheckpointStorage(t)
 	rows, err := db.Query(`PRAGMA table_info(executor_checkpoints)`)
 	if err != nil {
@@ -425,9 +425,8 @@ func TestExecutorCheckpointSchemaContainsNoFrameworkTopology(t *testing.T) {
 		}
 		columns = append(columns, name)
 	}
-	for _, leaked := range []string{"process_id", "parent_process_id", "started_at", "status", "suspension"} {
-		if slices.Contains(columns, leaked) {
-			t.Fatalf("executor checkpoint schema leaks framework column %q: %v", leaked, columns)
-		}
+	want := []string{"root_member_id", "session_id", "build_id", "payload", "policy", "usage"}
+	if !slices.Equal(columns, want) {
+		t.Fatalf("executor checkpoint columns = %v, want %v", columns, want)
 	}
 }
