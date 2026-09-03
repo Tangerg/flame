@@ -11,7 +11,6 @@ import (
 
 type FileEntry struct {
 	Path       string
-	Name       string
 	Type       protocol.FileEntryType
 	SizeBytes  *int64
 	ModifiedAt time.Time
@@ -21,8 +20,6 @@ func (f FileEntry) Validate() error {
 	switch {
 	case strings.TrimSpace(f.Path) == "":
 		return errors.New("file entry path is empty")
-	case strings.TrimSpace(f.Name) == "":
-		return errors.New("file entry name is empty")
 	case f.Type != protocol.FileEntryFile && f.Type != protocol.FileEntryDir && f.Type != protocol.FileEntrySymlink:
 		return fmt.Errorf("file entry type %q is invalid", f.Type)
 	case f.SizeBytes != nil && *f.SizeBytes < 0:

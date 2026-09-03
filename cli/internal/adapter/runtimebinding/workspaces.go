@@ -212,8 +212,8 @@ func (r *Connection) Files(ctx context.Context, request workspace.FilesRequest) 
 		}
 		for _, entry := range page.Data {
 			result.Entries = append(result.Entries, workspace.FileEntry{
-				Path: entry.Path, Name: entry.Name, Type: entry.Type,
-				SizeBytes: cloneInt64(entry.SizeBytes), ModifiedAt: entry.ModifiedAt,
+				Path: entry.Path, Type: entry.Type, SizeBytes: cloneInt64(entry.SizeBytes),
+				ModifiedAt: entry.ModifiedAt,
 			})
 		}
 		more, err := cursors.Advance(page.NextCursor)
