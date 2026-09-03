@@ -632,6 +632,9 @@ func statusFilter(statuses []run.Status) string {
 // rootRunID must name a root. A child id is [transcript.ErrNotRoot], because the
 // set it belongs to exists — under the root — and an empty page would say otherwise.
 func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, sessionID, rootRunID string, caller run.Capabilities, cursor string, limit pagination.RequestedLimit) (pagination.Page[runs.Pending], error) {
+	if err := caller.Validate(); err != nil {
+		return pagination.Page[runs.Pending]{}, fmt.Errorf("sessions: query interrupts page caller capabilities: %w", err)
+	}
 	if sessionID != "" {
 		if _, err := resourceid.ParseSession(sessionID); err != nil {
 			return pagination.Page[runs.Pending]{}, fmt.Errorf("sessions: query interrupts page: %w", err)
@@ -658,6 +661,10 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 	if err != nil {
 		return pagination.Page[runs.Pending]{}, err
 	}
+	if err := validatePendingInterruptPage(rows, sessionID, rootRunID, afterCreatedAt, afterID, size+1); err != nil {
+		return pagination.Page[runs.Pending]{}, err
+	}
+	rows = slices.Clone(rows)
 	page, err := pagination.PageOf(rows, size, interruptPageNamespace, filters, func(pending runs.Pending) []string {
 		return []string{strconv.FormatInt(pending.CreatedAt.UnixNano(), 10), pending.RootRunID}
 	})
@@ -670,6 +677,40 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 		}
 	}
 	return page, nil
+}
+
+func validatePendingInterruptPage(rows []runs.Pending, sessionID, rootRunID string, afterCreatedAt int64, afterID string, maximum int) error {
+	if len(rows) > maximum {
+		return fmt.Errorf("sessions: interrupt store returned %d rows, maximum %d", len(rows), maximum)
+	}
+	seen := make(map[string]struct{}, len(rows))
+	for index, pending := range rows {
+		if err := pending.Validate(); err != nil {
+			return fmt.Errorf("sessions: interrupt store row %d is invalid: %w", index+1, err)
+		}
+		if sessionID != "" && pending.SessionID != sessionID {
+			return fmt.Errorf("sessions: pending set %q does not belong to filtered Session %q", pending.RootRunID, sessionID)
+		}
+		if rootRunID != "" && pending.RootRunID != rootRunID {
+			return fmt.Errorf("sessions: pending set %q does not match root Run filter %q", pending.RootRunID, rootRunID)
+		}
+		if _, duplicate := seen[pending.RootRunID]; duplicate {
+			return fmt.Errorf("sessions: interrupt page repeats pending set %q", pending.RootRunID)
+		}
+		seen[pending.RootRunID] = struct{}{}
+		if afterID != "" && !pendingFollowsPosition(pending, afterCreatedAt, afterID) {
+			return fmt.Errorf("sessions: pending set %q does not follow the page cursor", pending.RootRunID)
+		}
+		if index > 0 && !pendingFollowsPosition(pending, rows[index-1].CreatedAt.UnixNano(), rows[index-1].RootRunID) {
+			return fmt.Errorf("sessions: pending set %q is out of order after %q", pending.RootRunID, rows[index-1].RootRunID)
+		}
+	}
+	return nil
+}
+
+func pendingFollowsPosition(pending runs.Pending, createdAt int64, rootRunID string) bool {
+	position := pending.CreatedAt.UnixNano()
+	return position > createdAt || position == createdAt && pending.RootRunID > rootRunID
 }
 
 // requireRoot refuses a run filter that names a child. An empty filter names no run

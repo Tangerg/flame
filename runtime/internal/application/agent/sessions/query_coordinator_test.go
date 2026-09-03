@@ -201,6 +201,15 @@ type fakeInterrupts struct {
 	limit          int
 }
 
+type rawInterruptPageReader struct {
+	*fakeInterrupts
+	page []runs.Pending
+}
+
+func (r *rawInterruptPageReader) ListPage(context.Context, string, string, int64, string, int) ([]runs.Pending, error) {
+	return r.page, nil
+}
+
 func newQueryCoordinator(t *testing.T, deps QueryDependencies) *QueryCoordinator {
 	t.Helper()
 	if deps.Transcript == nil {
@@ -250,6 +259,9 @@ func (f *fakeInterrupts) ListPage(_ context.Context, sessionID, rootRunID string
 	f.afterCreatedAt, f.afterRunID, f.limit = afterCreatedAt, afterRunID, limit
 	var out []runs.Pending
 	for _, pending := range f.pending {
+		if sessionID != "" && pending.SessionID != sessionID {
+			continue
+		}
 		if !seeksPast(pending.CreatedAt.UnixNano(), pending.RootRunID, afterCreatedAt, afterRunID) {
 			continue
 		}
@@ -322,7 +334,7 @@ func TestCoordinatorReadsDelegateToProjections(t *testing.T) {
 	ctx := context.Background()
 	tx := &fakeTranscript{items: sequencedItems(1)}
 	runStore := &fakeRuns{runs: []run.Run{queryRun("run_1")}}
-	ints := &fakeInterrupts{pending: []runs.Pending{{RootRunID: "run_1"}}}
+	ints := &fakeInterrupts{pending: []runs.Pending{testPending("run_1", "ses_2", time.Unix(0, 1).UTC())}}
 	c := newQueryCoordinator(t, QueryDependencies{Transcript: tx, Interrupts: ints, Runs: runStore, Sessions: &fakeSessions{}})
 
 	page, err := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, "", pagination.DefaultLimit())
@@ -333,7 +345,7 @@ func TestCoordinatorReadsDelegateToProjections(t *testing.T) {
 		t.Fatalf("threaded runs = %v, want only the run the page's items belong to", runStore.requested)
 	}
 
-	pending, err := c.ListPendingInterruptPage(ctx, "ses_2", "", run.Capabilities{}, "", pagination.DefaultLimit())
+	pending, err := c.ListPendingInterruptPage(ctx, "ses_2", "", approvalCapabilities(), "", pagination.DefaultLimit())
 	if err != nil || len(pending.Rows) != 1 || ints.session != "ses_2" {
 		t.Fatalf("ListPendingInterruptPage pending=%d session=%q err=%v", len(pending.Rows), ints.session, err)
 	}
@@ -757,11 +769,104 @@ func testRunHistory(sessionID string, ids ...string) []run.Run {
 func testSessionPendingRuns(ids ...string) []runs.Pending {
 	out := make([]runs.Pending, 0, len(ids))
 	for i, id := range ids {
-		out = append(out, runs.Pending{
-			RootRunID: id, SessionID: "ses_1", CreatedAt: time.Unix(0, int64(i+1)).UTC(),
-		})
+		out = append(out, testPending(id, "ses_1", time.Unix(0, int64(i+1)).UTC()))
 	}
 	return out
+}
+
+func approvalCapabilities() run.Capabilities {
+	return run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}}
+}
+
+func testPending(rootRunID, sessionID string, createdAt time.Time) runs.Pending {
+	suffix := strings.TrimPrefix(rootRunID, "run_")
+	runCreatedAt := createdAt.Add(-time.Nanosecond)
+	itemID := "item_" + suffix
+	memberID := "member_" + suffix
+	return runs.Pending{
+		RootRunID: rootRunID, SessionID: sessionID, ExecutorID: "turn_" + suffix,
+		Capabilities: approvalCapabilities(),
+		Interrupts: []transcript.Interrupt{{
+			ItemID: itemID, ItemOccurredAt: runCreatedAt, RunID: rootRunID, Kind: interrupt.Approval,
+			Approval: &transcript.Approval{
+				Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium",
+			},
+		}},
+		Bindings: []runs.InterruptBinding{{
+			InterruptItemID: itemID, MemberID: memberID,
+			RequestID: "request_" + suffix, ToolCallID: "call_" + suffix,
+		}},
+		Continuations: []runs.Continuation{{
+			RunID: rootRunID, MemberID: memberID,
+			ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: runCreatedAt,
+		}},
+		CreatedAt: createdAt,
+	}
+}
+
+func TestListPendingInterruptPageRejectsBrokenStoreOutput(t *testing.T) {
+	ordered := testSessionPendingRuns("run_1", "run_2", "run_3")
+	tie := time.Unix(0, 10).UTC()
+	tieDescending := []runs.Pending{
+		testPending("run_b", "ses_1", tie),
+		testPending("run_a", "ses_1", tie),
+	}
+	cursor, err := pagination.Encode(interruptPageNamespace, []string{"ses_1", ""}, []string{
+		strconv.FormatInt(ordered[0].CreatedAt.UnixNano(), 10), ordered[0].RootRunID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name      string
+		sessionID string
+		rootRunID string
+		cursor    string
+		rows      []runs.Pending
+	}{
+		{name: "invalid aggregate", sessionID: "ses_1", rows: []runs.Pending{{}}},
+		{name: "duplicate root", sessionID: "ses_1", rows: []runs.Pending{ordered[0], ordered[0]}},
+		{name: "creation order", sessionID: "ses_1", rows: []runs.Pending{ordered[1], ordered[0]}},
+		{name: "identity tie order", sessionID: "ses_1", rows: tieDescending},
+		{name: "cursor replay", sessionID: "ses_1", cursor: cursor, rows: ordered[:1]},
+		{name: "Session filter", sessionID: "ses_1", rows: []runs.Pending{testPending("run_other", "ses_other", tie)}},
+		{name: "root filter", rootRunID: "run_1", rows: []runs.Pending{ordered[1]}},
+		{name: "excess overfetch", sessionID: "ses_1", rows: ordered},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			reader := &rawInterruptPageReader{fakeInterrupts: &fakeInterrupts{}, page: test.rows}
+			coordinator := newQueryCoordinator(t, QueryDependencies{
+				Transcript: &fakeTranscript{}, Interrupts: reader,
+				Runs: &fakeRuns{history: []run.Run{queryRun("run_1")}}, Sessions: &fakeSessions{},
+			})
+			if _, err := coordinator.ListPendingInterruptPage(
+				t.Context(), test.sessionID, test.rootRunID, approvalCapabilities(), test.cursor, explicitPageLimit(t, 1),
+			); err == nil {
+				t.Fatal("ListPendingInterruptPage accepted broken store output")
+			}
+		})
+	}
+}
+
+func TestListPendingInterruptPageValidatesCallerAndIsolatesStoreSlice(t *testing.T) {
+	stored := testSessionPendingRuns("run_1")
+	reader := &rawInterruptPageReader{fakeInterrupts: &fakeInterrupts{}, page: stored}
+	coordinator := newQueryCoordinator(t, QueryDependencies{
+		Transcript: &fakeTranscript{}, Interrupts: reader,
+		Runs: &fakeRuns{}, Sessions: &fakeSessions{},
+	})
+	invalidCaller := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Approval}}
+	if _, err := coordinator.ListPendingInterruptPage(t.Context(), "ses_1", "", invalidCaller, "", pagination.DefaultLimit()); err == nil {
+		t.Fatal("ListPendingInterruptPage accepted non-canonical caller capabilities")
+	}
+	page, err := coordinator.ListPendingInterruptPage(t.Context(), "ses_1", "", approvalCapabilities(), "", pagination.DefaultLimit())
+	if err != nil {
+		t.Fatal(err)
+	}
+	page.Rows[0] = runs.Pending{}
+	if got := stored[0].RootRunID; got != "run_1" {
+		t.Fatalf("interrupt store row changed through page result: %q", got)
+	}
 }
 
 // TestListPendingInterruptPageRefusesACallerThatCannotFollowTheRun is the deferred
@@ -820,7 +925,7 @@ func TestListPendingInterruptPageFiltersByRootAndRefusesAChild(t *testing.T) {
 		Sessions:   &fakeSessions{},
 	})
 
-	page, err := c.ListPendingInterruptPage(ctx, "", "run_1", run.Capabilities{}, "", pagination.DefaultLimit())
+	page, err := c.ListPendingInterruptPage(ctx, "", "run_1", approvalCapabilities(), "", pagination.DefaultLimit())
 	if err != nil {
 		t.Fatalf("root-filtered page: %v", err)
 	}
@@ -828,17 +933,17 @@ func TestListPendingInterruptPageFiltersByRootAndRefusesAChild(t *testing.T) {
 		t.Fatalf("filtered page = %+v (asked %q), want only run_1's set", page.Rows, ints.rootRun)
 	}
 
-	if _, listPendingInterruptPageErr := c.ListPendingInterruptPage(ctx, "", "run_child", run.Capabilities{}, "", pagination.DefaultLimit()); !errors.Is(listPendingInterruptPageErr, transcript.ErrNotRoot) {
+	if _, listPendingInterruptPageErr := c.ListPendingInterruptPage(ctx, "", "run_child", approvalCapabilities(), "", pagination.DefaultLimit()); !errors.Is(listPendingInterruptPageErr, transcript.ErrNotRoot) {
 		t.Fatalf("child filter err = %v, want transcript.ErrNotRoot", listPendingInterruptPageErr)
 	}
 
 	// The filter is part of the cursor's identity: the same anchor against a
 	// different filter names a position in a collection it never enumerated.
-	unfiltered, err := c.ListPendingInterruptPage(ctx, "", "", run.Capabilities{}, "", explicitPageLimit(t, 1))
+	unfiltered, err := c.ListPendingInterruptPage(ctx, "", "", approvalCapabilities(), "", explicitPageLimit(t, 1))
 	if err != nil {
 		t.Fatalf("unfiltered page: %v", err)
 	}
-	if _, err := c.ListPendingInterruptPage(ctx, "", "run_1", run.Capabilities{}, unfiltered.NextCursor, explicitPageLimit(t, 1)); !errors.Is(err, pagination.ErrInvalidCursor) {
+	if _, err := c.ListPendingInterruptPage(ctx, "", "run_1", approvalCapabilities(), unfiltered.NextCursor, explicitPageLimit(t, 1)); !errors.Is(err, pagination.ErrInvalidCursor) {
 		t.Fatalf("cross-filter cursor err = %v, want ErrInvalidCursor", err)
 	}
 }
@@ -1069,7 +1174,7 @@ func TestListRunPageRefusesACursorFromAnotherQuery(t *testing.T) {
 
 	// The interrupt page is scoped the same way and ordered by a timestamp too, so
 	// only the query namespace tells the two apart.
-	interruptPage, err := c.ListPendingInterruptPage(ctx, "ses_1", "", run.Capabilities{}, "", explicitPageLimit(t, 2))
+	interruptPage, err := c.ListPendingInterruptPage(ctx, "ses_1", "", approvalCapabilities(), "", explicitPageLimit(t, 2))
 	if err != nil {
 		t.Fatalf("interrupt page: %v", err)
 	}
@@ -1099,7 +1204,7 @@ func TestListPendingInterruptPagePagesOldestFirst(t *testing.T) {
 		Sessions:   &fakeSessions{},
 	})
 
-	first, err := c.ListPendingInterruptPage(ctx, "ses_1", "", run.Capabilities{}, "", explicitPageLimit(t, 2))
+	first, err := c.ListPendingInterruptPage(ctx, "ses_1", "", approvalCapabilities(), "", explicitPageLimit(t, 2))
 	if err != nil {
 		t.Fatalf("first page: %v", err)
 	}
@@ -1110,7 +1215,7 @@ func TestListPendingInterruptPagePagesOldestFirst(t *testing.T) {
 		t.Fatalf("first page = %+v, want two pending sets and a cursor", first.Rows)
 	}
 
-	second, err := c.ListPendingInterruptPage(ctx, "ses_1", "", run.Capabilities{}, first.NextCursor, explicitPageLimit(t, 2))
+	second, err := c.ListPendingInterruptPage(ctx, "ses_1", "", approvalCapabilities(), first.NextCursor, explicitPageLimit(t, 2))
 	if err != nil {
 		t.Fatalf("second page: %v", err)
 	}
@@ -1120,7 +1225,7 @@ func TestListPendingInterruptPagePagesOldestFirst(t *testing.T) {
 	if len(second.Rows) != 1 || second.Rows[0].RootRunID != "run_3" || second.NextCursor != "" {
 		t.Fatalf("second page = %+v, want the tail and no cursor", second.Rows)
 	}
-	if _, listPendingInterruptPageErr := c.ListPendingInterruptPage(ctx, "ses_1", "", run.Capabilities{}, first.NextCursor+"x", explicitPageLimit(t, 2)); !errors.Is(listPendingInterruptPageErr, pagination.ErrInvalidCursor) {
+	if _, listPendingInterruptPageErr := c.ListPendingInterruptPage(ctx, "ses_1", "", approvalCapabilities(), first.NextCursor+"x", explicitPageLimit(t, 2)); !errors.Is(listPendingInterruptPageErr, pagination.ErrInvalidCursor) {
 		t.Fatalf("damaged cursor err = %v, want ErrInvalidCursor", listPendingInterruptPageErr)
 	}
 
@@ -1130,7 +1235,7 @@ func TestListPendingInterruptPagePagesOldestFirst(t *testing.T) {
 	if err != nil {
 		t.Fatalf("run page: %v", err)
 	}
-	if _, err := c.ListPendingInterruptPage(ctx, "ses_1", "", run.Capabilities{}, runPage.NextCursor, explicitPageLimit(t, 2)); !errors.Is(err, pagination.ErrInvalidCursor) {
+	if _, err := c.ListPendingInterruptPage(ctx, "ses_1", "", approvalCapabilities(), runPage.NextCursor, explicitPageLimit(t, 2)); !errors.Is(err, pagination.ErrInvalidCursor) {
 		t.Fatalf("run cursor on the interrupt page err = %v, want ErrInvalidCursor", err)
 	}
 }

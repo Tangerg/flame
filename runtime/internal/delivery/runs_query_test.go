@@ -388,21 +388,47 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 	}
 	reader := &fakeInterruptReader{pending: []runs.Pending{
 		{
-			RootRunID: "run_waiting",
-			SessionID: "ses_1",
+			RootRunID: "run_waiting", SessionID: "ses_1", ExecutorID: "turn_1",
+			Capabilities: run.Capabilities{
+				ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Approval},
+			},
 			Interrupts: []transcript.Interrupt{{
-				ItemID: "item_1", RunID: "run_child", Kind: interrupt.Approval,
+				ItemID: "item_1", ItemOccurredAt: created.Add(-time.Second),
+				RunID: "run_child", Kind: interrupt.Approval,
 				Approval: &transcript.Approval{
 					Tool: transcript.ToolInvocation{Name: "shell", Arguments: arguments},
 					Risk: tool.RiskHigh, Reason: "Runs commands in the workspace.", Rememberable: true,
 				},
 			}},
+			Bindings: []runs.InterruptBinding{{
+				InterruptItemID: "item_1", MemberID: "member_child",
+				RequestID: "request_1", ToolCallID: "call_1",
+			}},
+			Continuations: []runs.Continuation{
+				{
+					RunID: "run_child", MemberID: "member_child",
+					Lineage: run.Lineage{
+						SpawnedByItemID: "item_spawn", ParentRunID: "run_waiting", RootRunID: "run_waiting",
+					},
+					ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: created.Add(-time.Second),
+				},
+				{
+					RunID: "run_waiting", MemberID: "member_root",
+					ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: created.Add(-2 * time.Second),
+				},
+			},
 			CreatedAt: created,
 		},
 	}}
 	s := &Handler{queries: mustQueryCoordinator(sessions.QueryDependencies{Interrupts: reader})}
+	ctx := withClientCapabilities(protocol.ClientCapabilities{
+		Features: map[string]protocol.FeaturePreference{
+			protocol.FeatureSubagents: {Enabled: true},
+		},
+		InterruptTypes: []protocol.InterruptType{protocol.InterruptApproval},
+	})
 
-	got, err := s.ListInterrupts(context.Background(), protocol.ListInterruptsRequest{SessionID: "ses_1"})
+	got, err := s.ListInterrupts(ctx, protocol.ListInterruptsRequest{SessionID: "ses_1"})
 	if err != nil {
 		t.Fatalf("list open interrupts: %v", err)
 	}
