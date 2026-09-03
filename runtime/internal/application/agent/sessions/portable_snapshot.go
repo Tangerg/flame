@@ -144,9 +144,6 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 			return Snapshot{}, fmt.Errorf("%w: run %q names root %q, which this archive does not contain",
 				ErrInvalidPortableSnapshot, portable.ID, portable.rootID())
 		}
-		if err := portable.Selection.Validate(); err != nil {
-			return Snapshot{}, fmt.Errorf("%w: run %q model selection: %w", ErrInvalidPortableSnapshot, portable.ID, err)
-		}
 		state, ok := run.Running.Terminate(portable.Outcome)
 		if !ok {
 			return Snapshot{}, fmt.Errorf("%w: run %q has invalid outcome %s", ErrInvalidPortableSnapshot, portable.ID, portable.Outcome)

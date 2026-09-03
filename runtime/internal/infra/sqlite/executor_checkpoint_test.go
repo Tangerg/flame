@@ -97,6 +97,24 @@ func TestExecutorCheckpointStoreReplacesOneRootOwnedAggregate(t *testing.T) {
 	}
 }
 
+func TestExecutorCheckpointStorageRejectsMissingModelIdentity(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), ":memory:")
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	err = sqlite.NewExecutorCheckpointStore(db).SaveCheckpoint(t.Context(), sqlite.ExecutorCheckpointRecord{
+		RootMemberID: "member_root",
+		Payload:      []byte("opaque"),
+		BuildID:      testsupport.BuildID,
+		Scope:        sqlite.ExecutorScopeRecord{SessionID: "session-1"},
+	})
+	if !errors.Is(err, sqlite.ErrInvalidExecutorCheckpointRecord) || !strings.Contains(err.Error(), "model selection is required") {
+		t.Fatalf("SaveCheckpoint without model identity error = %v", err)
+	}
+}
+
 func TestExecutorCheckpointStoreRejectsImmutablePolicyReplacement(t *testing.T) {
 	_, store := newExecutorCheckpointStorage(t)
 	first := storedExecutorCheckpoint("member_root", "session-1", `{"tree":"first"}`)

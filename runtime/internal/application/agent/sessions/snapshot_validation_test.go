@@ -165,6 +165,26 @@ func TestPortableSnapshotRefusesABrokenRunLineage(t *testing.T) {
 	}
 }
 
+func TestPortableSnapshotDelegatesModelIdentityToRun(t *testing.T) {
+	selection := mustTestSelection(t, "provider", "model")
+	capabilities := run.Capabilities{}
+	at := time.Unix(1, 0).UTC()
+	portable := PortableSnapshot{
+		Session: PortableSession{
+			ID: "ses_1", Title: "t", CWD: "/w", Selection: selection,
+			CreatedAt: at, UpdatedAt: at,
+		},
+		Runs: []PortableRun{{
+			SessionID: "ses_1", ID: "run_1", Outcome: run.OutcomeCompleted,
+			Capabilities: &capabilities, CreatedAt: at, FinishedAt: at, UpdatedAt: at,
+		}},
+	}
+	_, err := portable.CanonicalSnapshot()
+	if !errors.Is(err, ErrInvalidPortableSnapshot) || !strings.Contains(err.Error(), "model selection is required") {
+		t.Fatalf("CanonicalSnapshot without Run model identity error = %v", err)
+	}
+}
+
 // A child inherits rather than restating its root's capabilities, so the
 // restored Run must carry the root value rather than an empty set.
 func TestPortableSnapshotChildInheritsRootCapabilities(t *testing.T) {

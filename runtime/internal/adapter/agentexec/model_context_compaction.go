@@ -186,6 +186,12 @@ func newModelContextCompaction(
 			err,
 		)
 	}
+	if !selection.Configured() {
+		return ModelContextCompaction{}, fmt.Errorf(
+			"%w: model selection is required",
+			errInvalidModelContextCompaction,
+		)
+	}
 	if len(candidate) == 0 {
 		return ModelContextCompaction{}, fmt.Errorf(
 			"%w: candidate conversation is empty",
