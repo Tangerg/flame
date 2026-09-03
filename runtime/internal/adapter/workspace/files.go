@@ -37,8 +37,9 @@ var (
 	errInvalidListPath = errors.New("workspace: invalid file listing path")
 )
 
-// maxListEntries is a safety boundary, not a silent result cap. Crossing it
-// returns ErrListingTooLarge so callers can report precise invalid input.
+// maxListEntries is a safety boundary, not a silent result cap. Every entry in
+// a filesystem walk consumes it; Git-backed discovery consumes one per file.
+// Crossing it returns ErrListingTooLarge so callers can narrow the request.
 const maxListEntries = 20000
 
 // backstopExclude are directories never worth listing. `.git` is always
@@ -106,7 +107,7 @@ func ListFiles(ctx context.Context, root string, opts workspaceapp.FileListOptio
 	}
 
 	if !repository {
-		files, err = walkFiles(ctx, scope, opts.IncludeIgnored)
+		files, err = walkFiles(ctx, scope, opts.IncludeIgnored, maxListEntries)
 		if err != nil {
 			return nil, err
 		}
@@ -231,7 +232,10 @@ func levelFilesystemEntries(ctx context.Context, scope listDirectory, includeIgn
 	return entries, nil
 }
 
-func readDirectoryEntries(root *os.Root, directory string, limit int) ([]fs.DirEntry, error) {
+func readDirectoryEntries(root *os.Root, directory string, limit int) (_ []fs.DirEntry, err error) {
+	if limit < 0 {
+		return nil, errors.New("workspace: directory entry limit must not be negative")
+	}
 	name := rootPath(directory)
 	dir, _, err := fileinput.OpenDirectoryAt(root, name)
 	if err != nil {
@@ -243,7 +247,11 @@ func readDirectoryEntries(root *os.Root, directory string, limit int) ([]fs.DirE
 		}
 		return nil, fmt.Errorf("list %q: %w", directory, err)
 	}
-	defer func() { _ = dir.Close() }()
+	defer func() {
+		if closeErr := dir.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close listing directory %q: %w", directory, closeErr))
+		}
+	}()
 
 	// Read one sentinel entry beyond the contract limit. os.ReadDir(directory)
 	// would materialize an unbounded directory before the safety policy had a
@@ -255,48 +263,54 @@ func readDirectoryEntries(root *os.Root, directory string, limit int) ([]fs.DirE
 	if len(children) > limit {
 		return nil, fmt.Errorf("%w: more than %d entries in %q", ErrListingTooLarge, limit, directory)
 	}
+	slices.SortFunc(children, func(left, right fs.DirEntry) int {
+		return strings.Compare(left.Name(), right.Name())
+	})
 	return children, nil
 }
 
 // walkFiles is the non-repo fallback: a filesystem walk under root/sub that
 // skips backstop directories and fails explicitly at the safety boundary.
-func walkFiles(ctx context.Context, scope listDirectory, includeIgnored bool) ([]string, error) {
+func walkFiles(ctx context.Context, scope listDirectory, includeIgnored bool, maximumEntries int) ([]string, error) {
 	var files []string
-	walkRoot := rootPath(scope.physical)
-	walkErr := fs.WalkDir(scope.handle.FS(), walkRoot, func(p string, d fs.DirEntry, err error) error {
-		if ctxErr := ctx.Err(); ctxErr != nil {
-			return ctxErr
+	pendingDirectories := []string{scope.physical}
+	visitedEntries := 0
+	for len(pendingDirectories) > 0 {
+		if cause := context.Cause(ctx); cause != nil {
+			return nil, cause
 		}
+		directory := pendingDirectories[0]
+		pendingDirectories[0] = ""
+		pendingDirectories = pendingDirectories[1:]
+		children, err := readDirectoryEntries(scope.handle, directory, maximumEntries-visitedEntries)
 		if err != nil {
-			return fmt.Errorf("visit %q: %w", p, err)
-		}
-		if p != walkRoot && d.Name() == ".git" {
-			if d.IsDir() {
-				return fs.SkipDir
+			if errors.Is(err, ErrListingTooLarge) {
+				err = fmt.Errorf("%w: more than %d entries", ErrListingTooLarge, maximumEntries)
 			}
-			return nil
+			return nil, fmt.Errorf("walk %q: %w", scope.physical, err)
 		}
-		if d.IsDir() {
-			if p != walkRoot && !includeIgnored && backstopExclude[d.Name()] {
-				return fs.SkipDir
+		visitedEntries += len(children)
+		for _, child := range children {
+			if cause := context.Cause(ctx); cause != nil {
+				return nil, cause
 			}
-			return nil
-		}
-		rel := p
-		if walkRoot != "." {
-			rel = strings.TrimPrefix(p, walkRoot+"/")
-			if rel == p {
-				return fmt.Errorf("walk path %q is outside root %q", p, walkRoot)
+			if child.Name() == ".git" {
+				continue
 			}
+			candidate := path.Join(directory, child.Name())
+			if child.IsDir() {
+				if !includeIgnored && backstopExclude[child.Name()] {
+					continue
+				}
+				pendingDirectories = append(pendingDirectories, candidate)
+				continue
+			}
+			relative, inside := listingRelativePath(candidate, scope.physical)
+			if !inside {
+				return nil, fmt.Errorf("walk path %q is outside root %q", candidate, scope.physical)
+			}
+			files = append(files, path.Join(scope.logical, relative))
 		}
-		files = append(files, path.Join(scope.logical, rel))
-		if len(files) > maxListEntries {
-			return ErrListingTooLarge
-		}
-		return nil
-	})
-	if walkErr != nil {
-		return nil, fmt.Errorf("walk %q: %w", scope.physical, walkErr)
 	}
 	return files, nil
 }

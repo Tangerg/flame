@@ -134,8 +134,34 @@ func TestLevelFilesystemEntriesRejectsEscapingDirectoryReplacement(t *testing.T)
 	if entries, err := levelFilesystemEntries(t.Context(), scope, true); err == nil {
 		t.Fatalf("replaced directory entries = %+v, want confined-open error", entries)
 	}
-	if files, err := walkFiles(t.Context(), scope, true); err == nil {
+	if files, err := walkFiles(t.Context(), scope, true, maxListEntries); err == nil {
 		t.Fatalf("replaced directory walk = %v, want confined-walk error", files)
+	}
+}
+
+func TestWalkFilesCountsDirectoriesAgainstTheSafetyLimit(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"a/nested", "b"} {
+		if err := os.MkdirAll(filepath.Join(root, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	scope, err := resolveListDirectory(root, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rootHandle, err := os.OpenRoot(scope.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = rootHandle.Close() })
+	scope.handle = rootHandle
+
+	if files, err := walkFiles(t.Context(), scope, true, 2); !errors.Is(err, ErrListingTooLarge) {
+		t.Fatalf("two-entry walk = %v, %v; want ErrListingTooLarge", files, err)
+	}
+	if files, err := walkFiles(t.Context(), scope, true, 3); err != nil || len(files) != 0 {
+		t.Fatalf("three-entry walk = %v, %v; want an empty complete result", files, err)
 	}
 }
 
@@ -165,6 +191,9 @@ func TestListFiles_HidesGitControlFileAndBoundsOneLevelReads(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = rootHandle.Close() })
+	if _, err := readDirectoryEntries(rootHandle, "", -1); err == nil {
+		t.Fatal("readDirectoryEntries() accepted a negative limit")
+	}
 	if _, err := readDirectoryEntries(rootHandle, "", 3); !errors.Is(err, ErrListingTooLarge) {
 		t.Fatalf("readDirectoryEntries() error = %v, want ErrListingTooLarge", err)
 	}
