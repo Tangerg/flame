@@ -5832,8 +5832,6 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 36,
             "pattern": "^mem_[0-9a-f]{32}$"
           }
         },
@@ -5904,8 +5902,6 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 36,
             "pattern": "^mem_[0-9a-f]{32}$"
           }
         },
@@ -5983,8 +5979,6 @@
           "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 36,
             "pattern": "^mem_[0-9a-f]{32}$"
           }
         },

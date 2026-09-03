@@ -835,11 +835,7 @@ func registerAuthoringContextValues(s *Shapes) {
 func registerAgentMemoryValues(s *Shapes) {
 	const nonBlankContent = `\S`
 	agentMemoryItemIdentity := func(field string) []FieldConstraint {
-		return []FieldConstraint{
-			{Field: field, Kind: ConstraintNonEmpty},
-			{Field: field, Kind: ConstraintMaxLength, Limit: int64(agentmemory.MaximumItemIDCharacters)},
-			{Field: field, Kind: ConstraintPattern, Value: agentmemory.ItemIDPattern},
-		}
+		return []FieldConstraint{{Field: field, Kind: ConstraintPattern, Value: agentmemory.ItemIDPattern}}
 	}
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.AgentMemoryItemRequest](),

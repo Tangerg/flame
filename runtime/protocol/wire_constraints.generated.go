@@ -529,8 +529,6 @@ func (a AgentMemoryListRequest) ValidateWire() error {
 
 func (a AgentMemoryReviewRequest) ValidateWire() error {
 	return collectWireViolations("AgentMemoryReviewRequest",
-		requiredText("id", a.ID),
-		maxLength("id", a.ID, 36),
 		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
 		closedEnum("decision", string(a.Decision), []string{"approve", "reject"}, false),
 	)
@@ -538,8 +536,6 @@ func (a AgentMemoryReviewRequest) ValidateWire() error {
 
 func (a AgentMemoryUpdateRequest) ValidateWire() error {
 	return collectWireViolations("AgentMemoryUpdateRequest",
-		requiredText("id", a.ID),
-		maxLength("id", a.ID, 36),
 		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
 		optionalTextPointerPattern("content", a.Content, "\\S"),
 		optionalMaxLength("content", a.Content, 4096),
@@ -549,8 +545,6 @@ func (a AgentMemoryUpdateRequest) ValidateWire() error {
 
 func (a AgentMemoryItemRequest) ValidateWire() error {
 	return collectWireViolations("AgentMemoryItemRequest",
-		requiredText("id", a.ID),
-		maxLength("id", a.ID, 36),
 		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
 	)
 }
@@ -1892,8 +1886,6 @@ func (g GoalReason) ValidateWire() error {
 
 func (a AgentMemoryItem) ValidateWire() error {
 	return collectWireViolations("AgentMemoryItem",
-		requiredText("id", a.ID),
-		maxLength("id", a.ID, 36),
 		requiredTextPattern("id", a.ID, "^mem_[0-9a-f]{32}$"),
 		identity("sessionId", a.SessionID),
 		maxLength("sessionId", a.SessionID, 256),

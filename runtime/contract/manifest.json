@@ -7945,14 +7945,6 @@
       "rules": [
         {
           "field": "id",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "id",
-          "constraint": "maxLength(36)"
-        },
-        {
-          "field": "id",
           "constraint": "pattern(\"^mem_[0-9a-f]{32}$\")"
         }
       ]
@@ -7962,14 +7954,6 @@
       "rules": [
         {
           "field": "id",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "id",
-          "constraint": "maxLength(36)"
-        },
-        {
-          "field": "id",
           "constraint": "pattern(\"^mem_[0-9a-f]{32}$\")"
         }
       ]
@@ -7977,14 +7961,6 @@
     {
       "type": "AgentMemoryItem",
       "rules": [
-        {
-          "field": "id",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "id",
-          "constraint": "maxLength(36)"
-        },
         {
           "field": "id",
           "constraint": "pattern(\"^mem_[0-9a-f]{32}$\")"
@@ -8010,14 +7986,6 @@
     {
       "type": "AgentMemoryUpdateRequest",
       "rules": [
-        {
-          "field": "id",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "id",
-          "constraint": "maxLength(36)"
-        },
         {
           "field": "id",
           "constraint": "pattern(\"^mem_[0-9a-f]{32}$\")"

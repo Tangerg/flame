@@ -352,7 +352,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       content: allOf([text(), maxLength(4096), pattern("\\S")]),
       createdAt: text(),
       day: text(),
-      id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
+      id: allOf([text(), pattern("^mem_[0-9a-f]{32}$")]),
       origin: ref(() => CHECKS.AgentMemoryOrigin),
       pinned: flag(),
       scope: ref(() => CHECKS.AgentMemoryScope),
@@ -370,7 +370,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   AgentMemoryItemRequest: object({
-    id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
+    id: allOf([text(), pattern("^mem_[0-9a-f]{32}$")]),
   }, ["id"]),
   AgentMemoryList: object({
     items: array(ref(() => CHECKS.AgentMemoryItem)),
@@ -399,14 +399,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   AgentMemoryReviewDecision: enumOf(["approve", "reject"]),
   AgentMemoryReviewRequest: object({
     decision: ref(() => CHECKS.AgentMemoryReviewDecision),
-    id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
+    id: allOf([text(), pattern("^mem_[0-9a-f]{32}$")]),
   }, ["decision", "id"]),
   AgentMemoryScope: enumOf(["project", "user"]),
   AgentMemoryStatus: enumOf(["active", "pending"]),
   AgentMemoryUpdateRequest: allOf([
     object({
       content: allOf([text(), maxLength(4096), pattern("\\S")]),
-      id: allOf([text(), minLength(1), maxLength(36), pattern("^mem_[0-9a-f]{32}$")]),
+      id: allOf([text(), pattern("^mem_[0-9a-f]{32}$")]),
       pinned: flag(),
     }, ["id"]),
     anyOf([fields({}, ["content"]), fields({}, ["pinned"])]),

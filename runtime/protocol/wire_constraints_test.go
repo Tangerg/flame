@@ -504,9 +504,11 @@ func TestAgentMemoryItemIdentityWireConstraintIsExact(t *testing.T) {
 			t.Errorf("%s rejected canonical identity: %v", shape.name, err)
 		}
 		for _, id := range []string{
+			"",
 			"mem_1",
 			agentmemory.ItemIDPrefix + strings.Repeat("A", agentmemory.MaximumItemIDCharacters-len(agentmemory.ItemIDPrefix)),
 			" " + validID,
+			validID + "0",
 		} {
 			assertConstraintField(t, shape.validate(id), shape.shape, "id")
 		}
