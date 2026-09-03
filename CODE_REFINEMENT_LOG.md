@@ -7,10 +7,8 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–177 are complete and pushed to `origin/main`. Public Runtime changes
-  are followed by their exact CLI dependency update.
-- The current Runtime contract is `b8cc7719` (`refactor(runtime): own workspace
-  change order`).
+- Every round through the last completed table row is pushed to `origin/main`.
+  Public Runtime changes are followed by their exact CLI dependency update.
 - Authorized code scope remains `runtime` and `cli`. Desktop work is concurrent
   user-owned work and must not be modified by this refinement stream.
 - The configured provider credential is used only through Runtime configuration.
@@ -143,6 +141,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 181 | `a0359f04` + CLI dependency update | Made Skill proposals one current revision per scope/name, moved scope/name ordering from filesystem encounter into Application, and enforced both invariants in CLI. |
 | 182 | `9bd2c900` + CLI dependency update | Made discovered Skill identity the precedence-resolved name, moved name ordering out of prompt-source infrastructure, and rejected shadow leaks or out-of-order CLI catalogs. |
 | 183 | `1cefd3ce` + CLI dependency update | Moved managed Skill lifecycle/name ordering from filesystem traversal into Application, enforced one lifecycle per name, and rejected out-of-order CLI catalogs. |
+| 184 | `04308fcc` + CLI dependency update | Made Recipe identity the precedence-resolved name, enforced it in Runtime, moved name ordering out of prompt-source infrastructure, and rejected out-of-order CLI catalogs. |
 
 ## Verification contract
 

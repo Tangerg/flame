@@ -142,6 +142,16 @@ func TestAuthoringContextAdapterRejectsInvalidWireValues(t *testing.T) {
 				_, err := adapter.Recipes(t.Context(), "/workspace")
 				return err
 			},
+		}, {
+			name: "out-of-order recipe catalog",
+			stub: &authoringContextBindingStub{recipes: protocol.NewPage([]protocol.Recipe{
+				{Name: "zeta", Body: "zeta", Scope: protocol.RecipeScopeGlobal, Source: "/zeta.md"},
+				{Name: "alpha", Body: "alpha", Scope: protocol.RecipeScopeProject, Source: "/alpha.md"},
+			})},
+			read: func(adapter *AuthoringContext) error {
+				_, err := adapter.Recipes(t.Context(), "/workspace")
+				return err
+			},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

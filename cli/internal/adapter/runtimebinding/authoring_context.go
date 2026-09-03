@@ -51,7 +51,7 @@ func (a *AuthoringContext) Recipes(ctx context.Context, workspacePath string) ([
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValuesFallible("list recipes", values, func(value protocol.Recipe) (workspace.AuthoringRecipe, error) {
+	recipes, err := projectUniqueValuesFallible("list recipes", values, func(value protocol.Recipe) (workspace.AuthoringRecipe, error) {
 		if err := protocol.ValidateWireTree(value); err != nil {
 			return workspace.AuthoringRecipe{}, err
 		}
@@ -62,6 +62,19 @@ func (a *AuthoringContext) Recipes(ctx context.Context, workspacePath string) ([
 	}, func(recipe workspace.AuthoringRecipe) string {
 		return recipe.Name
 	})
+	if err != nil {
+		return nil, err
+	}
+	for index := 1; index < len(recipes); index++ {
+		if recipes[index].Name < recipes[index-1].Name {
+			return nil, runtimeContractViolation(
+				"list recipes returned name %q out of catalog order after %q",
+				recipes[index].Name,
+				recipes[index-1].Name,
+			)
+		}
+	}
+	return recipes, nil
 }
 
 func authoringWorkspaceQuery(workspace string) (protocol.WorkspaceQuery, error) {
