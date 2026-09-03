@@ -92,6 +92,15 @@ func projectRunPage(page *protocol.Page[protocol.RunRef], query agent.RunQuery, 
 		if !query.IncludeDescendants && !run.Lineage.IsRoot() {
 			return agent.RunPage{}, runtimeContractViolation("list root runs returned child %q", run.ID)
 		}
+		if len(projected.Items) != 0 {
+			previous := projected.Items[len(projected.Items)-1]
+			if run.CreatedAt.After(previous.CreatedAt) ||
+				(run.CreatedAt.Equal(previous.CreatedAt) && run.ID > previous.ID) {
+				return agent.RunPage{}, runtimeContractViolation(
+					"list runs returned run %q out of newest-first order after %q", run.ID, previous.ID,
+				)
+			}
+		}
 		projected.Items = append(projected.Items, run)
 	}
 	if err := projected.Validate(); err != nil {

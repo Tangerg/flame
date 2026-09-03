@@ -230,6 +230,42 @@ func TestRunCatalogRejectsResponsesOutsideTheRequestedScope(t *testing.T) {
 	}
 }
 
+func TestRunCatalogRejectsPagesOutsideRuntimeOrder(t *testing.T) {
+	t.Parallel()
+	finished := func(id string, created time.Time) protocol.RunRef {
+		return protocol.RunRef{
+			RunSummary: protocol.RunSummary{
+				ID: id, SessionID: "ses_1", Provider: "deepseek", Model: "deepseek-chat",
+				CreatedAt: created, FinishedAt: created.Add(time.Second),
+				Status: protocol.RunStatusFinished, Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted},
+			},
+			ProtocolProfile: protocol.RunProtocolProfile{
+				RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{},
+			},
+		}
+	}
+	created := time.Unix(10, 0).UTC()
+	for _, test := range []struct {
+		name string
+		runs []protocol.RunRef
+	}{
+		{
+			name: "creation time ascends",
+			runs: []protocol.RunRef{finished("run_old", created), finished("run_new", created.Add(time.Second))},
+		},
+		{
+			name: "equal-time identity ascends",
+			runs: []protocol.RunRef{finished("run_a", created), finished("run_b", created)},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := projectRunPage(protocol.NewPage(test.runs), agent.RunQuery{}, agent.DefaultPageRows)
+			requireRuntimeContractViolation(t, err)
+		})
+	}
+}
+
 func TestRunCatalogOmitsAnEmptyStatusFilter(t *testing.T) {
 	t.Parallel()
 	stub := runCatalogBindingStub{
