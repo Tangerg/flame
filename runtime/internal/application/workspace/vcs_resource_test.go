@@ -43,6 +43,26 @@ func TestVCSRejectsUnboundedCompleteChangeCatalog(t *testing.T) {
 	}
 }
 
+func TestVCSChangesOwnsStablePathOrder(t *testing.T) {
+	t.Parallel()
+	reader := &resourceGitReader{changes: []FileChange{
+		{Path: "zeta.go", Status: FileStatusModified},
+		{Path: "alpha.go", Status: FileStatusAdded},
+	}}
+	vcs := NewVCS(NewScope("", "", testPaths{}), reader)
+
+	changes, err := vcs.Changes(t.Context(), "/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(changes) != 2 || changes[0].Path != "alpha.go" || changes[1].Path != "zeta.go" {
+		t.Fatalf("Changes = %+v, want path-ascending order", changes)
+	}
+	if reader.changes[0].Path != "zeta.go" {
+		t.Fatal("Changes mutated adapter-owned rows")
+	}
+}
+
 func TestVCSRejectsRepeatedChangePath(t *testing.T) {
 	vcs := NewVCS(NewScope("", "", testPaths{}), &resourceGitReader{changes: []FileChange{
 		{Path: "main.go", Status: FileStatusModified},

@@ -1,8 +1,10 @@
 package workspace
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"slices"
 )
 
 const (
@@ -150,6 +152,7 @@ func (v *VCS) Changes(ctx context.Context, cwd string) ([]FileChange, error) {
 	if len(changes) > MaxWorkspaceChanges {
 		return nil, fmt.Errorf("%w: more than %d workspace changes", ErrVCSResultTooLarge, MaxWorkspaceChanges)
 	}
+	changes = slices.Clone(changes)
 	paths := make(map[string]struct{}, len(changes))
 	for _, change := range changes {
 		if _, duplicate := paths[change.Path]; duplicate {
@@ -157,6 +160,7 @@ func (v *VCS) Changes(ctx context.Context, cwd string) ([]FileChange, error) {
 		}
 		paths[change.Path] = struct{}{}
 	}
+	slices.SortFunc(changes, func(a, b FileChange) int { return cmp.Compare(a.Path, b.Path) })
 	return changes, nil
 }
 

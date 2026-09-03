@@ -64,7 +64,8 @@ type FileDiff struct {
 	Rows         []DiffRow  `json:"rows"`
 }
 
-// WorkspaceFileChange is one entry in workspace.changes.list.
+// WorkspaceFileChange is one entry in workspace.changes.list, whose complete
+// result is ordered by Path ascending.
 // Added/Removed are omitted for a Binary file (not a fake 0); PreviousPath is
 // set only for renames.
 type WorkspaceFileChange struct {

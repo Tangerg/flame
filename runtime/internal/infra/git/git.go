@@ -148,7 +148,8 @@ func gitExitError(args []string, exitCode int, diagnostic string) error {
 // ListChanges scans the working tree against HEAD: tracked changes (with line
 // counts + rename detection) plus untracked files. It rejects the complete
 // catalog before retaining more than maxChanges entries. Returns ErrNotRepo
-// when dir isn't a repo. Result order is Git's (roughly path order).
+// when dir isn't a repo. Result order is Git's encounter order; the consuming
+// Application use case owns the public catalog order.
 func ListChanges(ctx context.Context, dir string, maxChanges int) ([]FileChange, error) {
 	repository, err := IsRepo(ctx, dir)
 	if err != nil {
