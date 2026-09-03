@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -13,7 +14,7 @@ type FileEntry struct {
 	Name       string
 	Type       protocol.FileEntryType
 	SizeBytes  *int64
-	ModifiedAt string
+	ModifiedAt time.Time
 }
 
 func (f FileEntry) Validate() error {

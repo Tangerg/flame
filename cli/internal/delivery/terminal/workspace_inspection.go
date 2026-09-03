@@ -175,8 +175,8 @@ func (a *app) BrowseWorkspace(argument string) error {
 				if entry.SizeBytes != nil {
 					metadata = append(metadata, fmt.Sprintf("%d B", *entry.SizeBytes))
 				}
-				if entry.ModifiedAt != "" {
-					metadata = append(metadata, entry.ModifiedAt)
+				if !entry.ModifiedAt.IsZero() {
+					metadata = append(metadata, entry.ModifiedAt.Format(time.RFC3339Nano))
 				}
 				if len(metadata) > 0 {
 					line += "  · " + strings.Join(metadata, " · ")

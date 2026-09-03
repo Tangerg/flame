@@ -7,10 +7,10 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–112 are complete and pushed to `origin/main` through the Runtime
+- Rounds 1–113 are complete and pushed to `origin/main` through the Runtime
   contract commit plus its CLI dependency update.
-- Round 112's Runtime contract is `36d1bd54` (`refactor(runtime): remove redundant
-  file encoding`).
+- Round 113's Runtime contract is `92b928bb` (`refactor(runtime): preserve file
+  modification time`).
 - Authorized code scope remains `runtime` and `cli`. Desktop work is concurrent
   user-owned work and must not be modified by this refinement stream.
 - The configured provider credential is used only through Runtime configuration.
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–112 — exact handoff
+## Rounds 101–113 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -72,6 +72,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 110 | `b0581e65` + CLI dependency update | Required non-empty path identities for change and structured-diff rows in every generated Runtime contract projection. |
 | 111 | `1cf11854` + CLI dependency update | Required complete workspace, file, and grep output identities, then migrated CLI domain validation to the full Runtime wire shape. |
 | 112 | `36d1bd54` + CLI dependency update | Removed the always-`utf-8` file-content encoding field and its duplicate CLI representation; valid text is now one documented Runtime invariant. |
+| 113 | `92b928bb` + CLI dependency update | Preserved file modification instants as `time.Time` through Runtime and CLI, deferring RFC3339 formatting to the terminal presentation boundary. |
 
 ## Verification contract
 
@@ -109,7 +110,7 @@ repeated here.
 
 ## Remaining direction
 
-- Start Round 113 by continuing to audit complete Runtime catalogs and CLI
+- Start Round 114 by continuing to audit complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the
