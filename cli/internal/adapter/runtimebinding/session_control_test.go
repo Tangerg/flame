@@ -199,17 +199,8 @@ func TestSessionImportDecodesOpaqueDocumentOnlyAtTheAdapterBoundary(t *testing.T
 	}
 }
 
-func TestSessionImportRejectsMissingArtifactLifecycleTimes(t *testing.T) {
-	called := false
-	stub := sessionBindingStub{imported: func(context.Context, protocol.ImportSessionRequest, flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error) {
-		called = true
-		return nil, nil
-	}}
-	runtime := &Connection{
-		sessions: stub, meta: requestMeta("test"),
-		profile: sessionControlProfile(protocol.FeatureSessionExport),
-	}
-	valid := protocol.SessionArtifact{
+func validSessionImportArtifact() protocol.SessionArtifact {
+	return protocol.SessionArtifact{
 		Version: protocol.SessionArtifactVersion,
 		Session: protocol.ArtifactSession{
 			ID: "ses_1", Workspace: protocol.WorkspaceRef{Path: "/workspace"},
@@ -219,6 +210,38 @@ func TestSessionImportRejectsMissingArtifactLifecycleTimes(t *testing.T) {
 		Messages: []json.RawMessage{}, Runs: []protocol.ArtifactRun{}, Items: []protocol.ArtifactItem{},
 		ToolResults: []protocol.ArtifactToolResult{},
 	}
+}
+
+func assertSessionImportRejectsArtifact(t *testing.T, artifact protocol.SessionArtifact, field string) {
+	t.Helper()
+
+	called := false
+	stub := sessionBindingStub{imported: func(context.Context, protocol.ImportSessionRequest, flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error) {
+		called = true
+		return nil, nil
+	}}
+	runtime := &Connection{
+		sessions: stub, meta: requestMeta("test"),
+		profile: sessionControlProfile(protocol.FeatureSessionExport),
+	}
+	body, err := json.Marshal(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := session.NewDocument(protocol.ExportFormatJSON, body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document})
+	if err == nil || !strings.Contains(err.Error(), field) {
+		t.Fatalf("ImportSession error = %v, want %q", err, field)
+	}
+	if called {
+		t.Fatal("invalid artifact reached the Runtime binding")
+	}
+}
+
+func TestSessionImportRejectsMissingArtifactLifecycleTimes(t *testing.T) {
 	for _, test := range []struct {
 		name  string
 		field string
@@ -228,52 +251,14 @@ func TestSessionImportRejectsMissingArtifactLifecycleTimes(t *testing.T) {
 		{name: "update", field: "updatedAt", clear: func(value *protocol.ArtifactSession) { value.UpdatedAt = time.Time{} }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			artifact := valid
+			artifact := validSessionImportArtifact()
 			test.clear(&artifact.Session)
-			body, err := json.Marshal(artifact)
-			if err != nil {
-				t.Fatal(err)
-			}
-			document, err := session.NewDocument(protocol.ExportFormatJSON, body)
-			if err != nil {
-				t.Fatal(err)
-			}
-			_, err = runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document})
-			if err == nil || !strings.Contains(err.Error(), test.field) {
-				t.Fatalf("ImportSession error = %v, want %q", err, test.field)
-			}
+			assertSessionImportRejectsArtifact(t, artifact, test.field)
 		})
-	}
-	if called {
-		t.Fatal("invalid artifact reached the Runtime binding")
 	}
 }
 
 func TestSessionImportRejectsMissingArtifactRunLifecycleTimes(t *testing.T) {
-	called := false
-	stub := sessionBindingStub{imported: func(context.Context, protocol.ImportSessionRequest, flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error) {
-		called = true
-		return nil, nil
-	}}
-	runtime := &Connection{
-		sessions: stub, meta: requestMeta("test"),
-		profile: sessionControlProfile(protocol.FeatureSessionExport),
-	}
-	valid := protocol.SessionArtifact{
-		Version: protocol.SessionArtifactVersion,
-		Session: protocol.ArtifactSession{
-			ID: "ses_1", Workspace: protocol.WorkspaceRef{Path: "/workspace"},
-			Provider: testSessionProvider, Model: testSessionModel,
-			CreatedAt: testSessionTime, UpdatedAt: testSessionTime,
-		},
-		Messages: []json.RawMessage{},
-		Runs: []protocol.ArtifactRun{{
-			ID: "run_1", SessionID: "ses_1", Provider: testSessionProvider, Model: testSessionModel,
-			Outcome:   protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCompleted},
-			CreatedAt: testSessionTime, FinishedAt: testSessionTime, UpdatedAt: testSessionTime,
-		}},
-		Items: []protocol.ArtifactItem{}, ToolResults: []protocol.ArtifactToolResult{},
-	}
 	for _, test := range []struct {
 		field string
 		clear func(*protocol.ArtifactRun)
@@ -283,51 +268,19 @@ func TestSessionImportRejectsMissingArtifactRunLifecycleTimes(t *testing.T) {
 		{field: "updatedAt", clear: func(value *protocol.ArtifactRun) { value.UpdatedAt = time.Time{} }},
 	} {
 		t.Run(test.field, func(t *testing.T) {
-			artifact := valid
-			artifact.Runs = append([]protocol.ArtifactRun(nil), valid.Runs...)
+			artifact := validSessionImportArtifact()
+			artifact.Runs = []protocol.ArtifactRun{{
+				ID: "run_1", SessionID: "ses_1", Provider: testSessionProvider, Model: testSessionModel,
+				Outcome:   protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCompleted},
+				CreatedAt: testSessionTime, FinishedAt: testSessionTime, UpdatedAt: testSessionTime,
+			}}
 			test.clear(&artifact.Runs[0])
-			body, err := json.Marshal(artifact)
-			if err != nil {
-				t.Fatal(err)
-			}
-			document, err := session.NewDocument(protocol.ExportFormatJSON, body)
-			if err != nil {
-				t.Fatal(err)
-			}
-			_, err = runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document})
-			if err == nil || !strings.Contains(err.Error(), test.field) {
-				t.Fatalf("ImportSession error = %v, want %q", err, test.field)
-			}
+			assertSessionImportRejectsArtifact(t, artifact, test.field)
 		})
-	}
-	if called {
-		t.Fatal("invalid artifact reached the Runtime binding")
 	}
 }
 
 func TestSessionImportRejectsInvalidArtifactToolResults(t *testing.T) {
-	called := false
-	stub := sessionBindingStub{imported: func(context.Context, protocol.ImportSessionRequest, flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error) {
-		called = true
-		return nil, nil
-	}}
-	runtime := &Connection{
-		sessions: stub, meta: requestMeta("test"),
-		profile: sessionControlProfile(protocol.FeatureSessionExport),
-	}
-	valid := protocol.SessionArtifact{
-		Version: protocol.SessionArtifactVersion,
-		Session: protocol.ArtifactSession{
-			ID: "ses_1", Workspace: protocol.WorkspaceRef{Path: "/workspace"},
-			Provider: testSessionProvider, Model: testSessionModel,
-			CreatedAt: testSessionTime, UpdatedAt: testSessionTime,
-		},
-		Messages: []json.RawMessage{}, Runs: []protocol.ArtifactRun{}, Items: []protocol.ArtifactItem{},
-		ToolResults: []protocol.ArtifactToolResult{{
-			ID: "BLOB234", ItemID: "item_1", ToolName: "shell",
-			Preview: "bounded preview", Body: "full body", CreatedAt: testSessionTime,
-		}},
-	}
 	for _, test := range []struct {
 		field  string
 		mutate func(*protocol.ArtifactToolResult)
@@ -340,53 +293,18 @@ func TestSessionImportRejectsInvalidArtifactToolResults(t *testing.T) {
 		{field: "createdAt", mutate: func(result *protocol.ArtifactToolResult) { result.CreatedAt = time.Time{} }},
 	} {
 		t.Run(test.field, func(t *testing.T) {
-			artifact := valid
-			artifact.ToolResults = append([]protocol.ArtifactToolResult(nil), valid.ToolResults...)
+			artifact := validSessionImportArtifact()
+			artifact.ToolResults = []protocol.ArtifactToolResult{{
+				ID: "BLOB234", ItemID: "item_1", ToolName: "shell",
+				Preview: "bounded preview", Body: "full body", CreatedAt: testSessionTime,
+			}}
 			test.mutate(&artifact.ToolResults[0])
-			body, err := json.Marshal(artifact)
-			if err != nil {
-				t.Fatal(err)
-			}
-			document, err := session.NewDocument(protocol.ExportFormatJSON, body)
-			if err != nil {
-				t.Fatal(err)
-			}
-			_, err = runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document})
-			if err == nil || !strings.Contains(err.Error(), test.field) {
-				t.Fatalf("ImportSession error = %v, want %q", err, test.field)
-			}
+			assertSessionImportRejectsArtifact(t, artifact, test.field)
 		})
-	}
-	if called {
-		t.Fatal("invalid artifact reached the Runtime binding")
 	}
 }
 
 func TestSessionImportRejectsInvalidArtifactContent(t *testing.T) {
-	called := false
-	stub := sessionBindingStub{imported: func(context.Context, protocol.ImportSessionRequest, flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error) {
-		called = true
-		return nil, nil
-	}}
-	runtime := &Connection{
-		sessions: stub, meta: requestMeta("test"),
-		profile: sessionControlProfile(protocol.FeatureSessionExport),
-	}
-	valid := protocol.SessionArtifact{
-		Version: protocol.SessionArtifactVersion,
-		Session: protocol.ArtifactSession{
-			ID: "ses_1", Workspace: protocol.WorkspaceRef{Path: "/workspace"},
-			Provider: testSessionProvider, Model: testSessionModel,
-			CreatedAt: testSessionTime, UpdatedAt: testSessionTime,
-		},
-		Messages: []json.RawMessage{}, Runs: []protocol.ArtifactRun{},
-		Items: []protocol.ArtifactItem{{
-			ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusCompleted,
-			CreatedAt: testSessionTime, Type: protocol.ItemTypeUserMessage,
-			Content: []protocol.ArtifactContentBlock{{Type: protocol.ContentBlockText, Text: "hello"}},
-		}},
-		ToolResults: []protocol.ArtifactToolResult{},
-	}
 	for _, test := range []struct {
 		name  string
 		field string
@@ -396,26 +314,25 @@ func TestSessionImportRejectsInvalidArtifactContent(t *testing.T) {
 		{name: "non-image media type", field: "mime", block: protocol.ArtifactContentBlock{Type: protocol.ContentBlockImage, Mime: "text/plain", Data: "AA=="}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			artifact := valid
-			artifact.Items = append([]protocol.ArtifactItem(nil), valid.Items...)
-			artifact.Items[0].Content = []protocol.ArtifactContentBlock{test.block}
-			body, err := json.Marshal(artifact)
-			if err != nil {
-				t.Fatal(err)
-			}
-			document, err := session.NewDocument(protocol.ExportFormatJSON, body)
-			if err != nil {
-				t.Fatal(err)
-			}
-			_, err = runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document})
-			if err == nil || !strings.Contains(err.Error(), test.field) {
-				t.Fatalf("ImportSession error = %v, want %q", err, test.field)
-			}
+			artifact := validSessionImportArtifact()
+			artifact.Items = []protocol.ArtifactItem{{
+				ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusCompleted,
+				CreatedAt: testSessionTime, Type: protocol.ItemTypeUserMessage,
+				Content: []protocol.ArtifactContentBlock{test.block},
+			}}
+			assertSessionImportRejectsArtifact(t, artifact, test.field)
 		})
 	}
-	if called {
-		t.Fatal("invalid artifact reached the Runtime binding")
-	}
+}
+
+func TestSessionImportRejectsBlankArtifactToolName(t *testing.T) {
+	artifact := validSessionImportArtifact()
+	artifact.Items = []protocol.ArtifactItem{{
+		ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusIncomplete,
+		Type: protocol.ItemTypeToolCall, StartedAt: testSessionTime, FinishedAt: testSessionTime,
+		Tool: &protocol.ArtifactToolInvocation{Name: " \t", Arguments: map[string]any{}},
+	}}
+	assertSessionImportRejectsArtifact(t, artifact, "name")
 }
 
 func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
