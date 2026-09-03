@@ -309,7 +309,13 @@ test("the compact Plan pill reveals the production checklist on hover", async ({
   await page.goto("/visual/?fixture=agent&theme=light&state=running");
   await page.locator("html[data-visual-ready]").waitFor();
 
-  await page.getByRole("button", { name: "Step 2 / 3" }).hover();
+  // The pill rides the composer stack, which the settling transcript is still moving when
+  // `data-visual-ready` fires. `hover()` reads the box and then moves the pointer, so aiming
+  // before it stops lands on where the pill was — the tooltip never opens and the failure
+  // reads as a missing surface rather than as a race.
+  const plan = page.getByRole("button", { name: "Step 2 / 3" });
+  await expectStableBox(plan);
+  await plan.hover();
 
   // The tooltip's steps come from the session's plan snapshot, not from a
   // per-run plan Item — same three steps, read from where the protocol keeps them.
@@ -366,6 +372,7 @@ test("the composer context ring exposes the Runtime window occupancy", async ({ 
 
   const gauge = page.getByRole("img", { name: `Context usage: ${readout.percent}%` });
   await expect(gauge).toBeVisible();
+  await expectStableBox(gauge);
   await gauge.hover();
 
   const tooltip = page.getByRole("tooltip");
@@ -1321,7 +1328,9 @@ test("a tool with a standing surface is not narrated as well", async ({ page }) 
   await page.locator("html[data-visual-ready]").waitFor();
 
   // The composer-owned pill holds the plan in its Codex-style hover surface.
-  await page.getByRole("button", { name: "Step 2 / 3" }).hover();
+  const plan = page.getByRole("button", { name: "Step 2 / 3" });
+  await expectStableBox(plan);
+  await plan.hover();
   await expect(page.getByText("Review visual evidence", { exact: true })).toBeVisible();
 
   const stream = page.locator(".msg-scroll-viewport");
@@ -1612,7 +1621,15 @@ for (const theme of ["light", "dark"] as const) {
 
       await freezeVisualClock(page);
 
-      await expect(page).toHaveScreenshot(`agent-${theme}-${state}.png`);
+      // `empty` is the one state whose composer is CENTRED, so it lands on a half pixel
+      // whenever the content column is odd — 1120 less the 275 rail is — and Chromium
+      // rasterises those three label runs two ways across page loads. Measured: identical
+      // geometry, identical colour, 1084 differing pixels confined to rows 427-437, and 15
+      // of 16 loads agreeing. The same chips are photographed unmasked in every docked
+      // state, where the composer starts on a whole pixel, so nothing here is uncovered.
+      await expect(page).toHaveScreenshot(`agent-${theme}-${state}.png`, {
+        mask: state === "empty" ? [page.locator('[data-slot="composer-chip-label"]')] : undefined,
+      });
     });
   }
 }
