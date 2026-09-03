@@ -15,8 +15,8 @@ type AgentMemoryItem struct {
 	Pinned    bool              `json:"pinned"`
 	SessionID string            `json:"sessionId,omitempty"`
 	Day       string            `json:"day,omitempty"`
-	CreatedAt time.Time         `json:"createdAt"`
-	UpdatedAt time.Time         `json:"updatedAt"`
+	CreatedAt time.Time         `json:"createdAt,omitzero"`
+	UpdatedAt time.Time         `json:"updatedAt,omitzero"`
 }
 
 // AgentMemoryScope determines which memory set a request or item belongs to.

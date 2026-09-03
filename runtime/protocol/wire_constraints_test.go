@@ -368,6 +368,7 @@ func TestAgentMemoryItemIdentityWireConstraintIsExact(t *testing.T) {
 	t.Parallel()
 
 	validID := agentMemoryWireItemID('a')
+	now := time.Unix(1, 0).UTC()
 	pinned := true
 	valid := []struct {
 		name     string
@@ -387,6 +388,7 @@ func TestAgentMemoryItemIdentityWireConstraintIsExact(t *testing.T) {
 			return (AgentMemoryItem{
 				ID: id, Scope: AgentMemoryScopeUser, Content: "fact",
 				Origin: AgentMemoryOriginUser, Status: AgentMemoryStatusActive,
+				CreatedAt: now, UpdatedAt: now,
 			}).ValidateWire()
 		}},
 	}
@@ -441,9 +443,11 @@ func TestFeedbackRequiresRatingOrNonBlankText(t *testing.T) {
 func TestUserAuthoredAgentMemoryCanOnlyBeActive(t *testing.T) {
 	t.Parallel()
 
+	now := time.Unix(1, 0).UTC()
 	base := AgentMemoryItem{
 		ID: agentMemoryWireItemID('1'), Scope: AgentMemoryScopeUser, Content: "fact",
 		Origin: AgentMemoryOriginUser, Status: AgentMemoryStatusActive,
+		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := base.ValidateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected active user memory: %v", err)
@@ -455,6 +459,24 @@ func TestUserAuthoredAgentMemoryCanOnlyBeActive(t *testing.T) {
 	if err := pending.ValidateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected pending automatic memory: %v", err)
 	}
+}
+
+func TestAgentMemoryItemRequiresTimestamps(t *testing.T) {
+	t.Parallel()
+
+	now := time.Unix(1, 0).UTC()
+	item := AgentMemoryItem{
+		ID: agentMemoryWireItemID('1'), Scope: AgentMemoryScopeUser, Content: "fact",
+		Origin: AgentMemoryOriginUser, Status: AgentMemoryStatusActive,
+		CreatedAt: now, UpdatedAt: now,
+	}
+	if err := item.ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected complete memory item: %v", err)
+	}
+	item.CreatedAt = time.Time{}
+	assertConstraintField(t, item.ValidateWire(), "AgentMemoryItem", "createdAt")
+	item.CreatedAt, item.UpdatedAt = now, time.Time{}
+	assertConstraintField(t, item.ValidateWire(), "AgentMemoryItem", "updatedAt")
 }
 
 func TestOutputCollectionWireConstraints(t *testing.T) {

@@ -4878,6 +4878,12 @@
       "type": "AgentMemoryItem",
       "rules": [
         {
+          "required": [
+            "createdAt",
+            "updatedAt"
+          ]
+        },
+        {
           "when": [
             {
               "field": "origin",

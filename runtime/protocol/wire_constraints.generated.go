@@ -1861,6 +1861,8 @@ func (a AgentMemoryItem) ValidateWire() error {
 		closedEnum("scope", string(a.Scope), []string{"project", "user"}, false),
 		closedEnum("origin", string(a.Origin), []string{"auto", "user"}, false),
 		closedEnum("status", string(a.Status), []string{"active", "pending"}, false),
+		requiredWhen(true, "createdAt", a),
+		requiredWhen(true, "updatedAt", a),
 		allowedValuesWhen(wireFieldEquals(a, "origin", "user"), "status", a, []string{"active"}),
 	)
 }
