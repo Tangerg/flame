@@ -136,7 +136,7 @@ func (c CancelRun) Validate() error {
 			return fmt.Errorf("cancel run: %w", err)
 		}
 	}
-	if err := runtimeprotocol.ValidateRunID(c.RunID); err != nil {
+	if err := (runtimeprotocol.CancelRunRequest{RunID: c.RunID, Reason: c.Reason}).ValidateWire(); err != nil {
 		return fmt.Errorf("cancel run: %w", err)
 	}
 	return nil

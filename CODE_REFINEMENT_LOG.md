@@ -7,7 +7,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–139 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–140 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
 - The current Runtime contract is `bec9a946` (`fix(runtime): require agent memory
   timestamps`).
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–139 — exact handoff
+## Rounds 101–140 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -99,6 +99,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 137 | CLI commit | Moved the 4 MiB authored-message text limit into the domain owner and reused it for command input and external-editor boundaries. |
 | 138 | CLI commit | Removed the copied session-search length ceiling and delegated that public input constraint to Runtime's generated wire validator. |
 | 139 | CLI commit | Reused Runtime's generated question aggregate validator so CLI questions enforce both the required field set and four-field ceiling. |
+| 140 | CLI commit | Replaced partial cancellation validation with Runtime's complete generated request validator, including the reason-length contract. |
 
 ## Verification contract
 

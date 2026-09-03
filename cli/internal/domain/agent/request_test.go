@@ -113,6 +113,12 @@ func TestSubscribeRunNeedsRunAndSegment(t *testing.T) {
 	}
 }
 
+func TestCancelRunUsesRuntimeWireConstraints(t *testing.T) {
+	if err := (CancelRun{RunID: "run_1", Reason: strings.Repeat("界", 1025)}).Validate(); err == nil {
+		t.Fatal("oversized cancellation reason was accepted")
+	}
+}
+
 func TestMessageRejectsDuplicateAttachments(t *testing.T) {
 	attachment := Attachment{ID: "a", Kind: protocol.ContentBlockText, Name: "a.txt", Path: "/tmp/a.txt"}
 	message := Message{Attachments: []Attachment{attachment, attachment}}
