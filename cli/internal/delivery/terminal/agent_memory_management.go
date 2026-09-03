@@ -41,7 +41,7 @@ func (a *app) agentMemoryReaderQuery(target agent.MemoryTarget) runtimeReaderQue
 	}
 }
 
-func agentMemoryDocument(target agent.MemoryTarget, items []agent.MemoryItem) readerDocument {
+func agentMemoryDocument(target agent.MemoryTarget, items []protocol.AgentMemoryItem) readerDocument {
 	title := "Agent memory · " + string(target.Scope)
 	detail := fmt.Sprintf("%d items", len(items))
 	if target.Workspace != "" {
@@ -102,7 +102,7 @@ func (a *app) AddAgentMemory(argument string) error {
 }
 
 func (a *app) EditAgentMemory(argument string) error {
-	return a.loadAgentMemoryItem(argument, "loading agent memory to edit", func(target agent.MemoryTarget, item agent.MemoryItem) {
+	return a.loadAgentMemoryItem(argument, "loading agent memory to edit", func(target agent.MemoryTarget, item protocol.AgentMemoryItem) {
 		a.openContextEditor(contextEditorRequest{
 			Title:       "Edit agent memory · " + item.ID,
 			Description: "The item identity and provenance are preserved.",
@@ -129,7 +129,7 @@ func (a *app) SetAgentMemoryPinned(argument string, pinned bool) error {
 	if !pinned {
 		verb = "unpinning"
 	}
-	return a.loadAgentMemoryItem(argument, verb+" agent memory", func(target agent.MemoryTarget, item agent.MemoryItem) {
+	return a.loadAgentMemoryItem(argument, verb+" agent memory", func(target agent.MemoryTarget, item protocol.AgentMemoryItem) {
 		if item.Pinned == pinned {
 			state := "unpinned"
 			if pinned {
@@ -150,7 +150,7 @@ func (a *app) PrepareAgentMemoryReview(argument string, approve bool) error {
 	if approve {
 		action, verb, decision = "Approve", "approving", protocol.AgentMemoryReviewApprove
 	}
-	return a.loadAgentMemoryItem(argument, verb+" agent memory", func(target agent.MemoryTarget, item agent.MemoryItem) {
+	return a.loadAgentMemoryItem(argument, verb+" agent memory", func(target agent.MemoryTarget, item protocol.AgentMemoryItem) {
 		if item.Status != protocol.AgentMemoryStatusPending {
 			a.message("only pending agent memory can be reviewed · " + item.ID)
 			return
@@ -165,14 +165,14 @@ func (a *app) PrepareAgentMemoryReview(argument string, approve bool) error {
 }
 
 func (a *app) PrepareDeleteAgentMemory(argument string) error {
-	return a.loadAgentMemoryItem(argument, "loading agent memory to delete", func(target agent.MemoryTarget, item agent.MemoryItem) {
+	return a.loadAgentMemoryItem(argument, "loading agent memory to delete", func(target agent.MemoryTarget, item protocol.AgentMemoryItem) {
 		a.confirmAction("Delete agent memory", "Delete item "+item.ID+" permanently?", "Delete permanently", func() {
 			a.deleteAgentMemory(target, item.ID)
 		})
 	})
 }
 
-func (a *app) loadAgentMemoryItem(argument, label string, apply func(agent.MemoryTarget, agent.MemoryItem)) error {
+func (a *app) loadAgentMemoryItem(argument, label string, apply func(agent.MemoryTarget, protocol.AgentMemoryItem)) error {
 	if a.agentMemory == nil {
 		return errors.New("this runtime composition has no agent memory service")
 	}
@@ -182,14 +182,14 @@ func (a *app) loadAgentMemoryItem(argument, label string, apply func(agent.Memor
 	}
 	a.status.note(label)
 	started := a.runOperation(agentMemoryOperation, false,
-		func(ctx context.Context) (agent.MemoryItem, error) {
+		func(ctx context.Context) (protocol.AgentMemoryItem, error) {
 			items, err := a.agentMemory.Items(ctx, target)
 			if err != nil {
-				return agent.MemoryItem{}, err
+				return protocol.AgentMemoryItem{}, err
 			}
 			return resolveAgentMemory(items, identity)
 		},
-		func(item agent.MemoryItem, err error) {
+		func(item protocol.AgentMemoryItem, err error) {
 			if err != nil {
 				a.message(label + " failed: " + err.Error())
 				return
@@ -203,13 +203,13 @@ func (a *app) loadAgentMemoryItem(argument, label string, apply func(agent.Memor
 	return nil
 }
 
-func resolveAgentMemory(items []agent.MemoryItem, identity string) (agent.MemoryItem, error) {
+func resolveAgentMemory(items []protocol.AgentMemoryItem, identity string) (protocol.AgentMemoryItem, error) {
 	for _, item := range items {
 		if item.ID == identity {
 			return item, nil
 		}
 	}
-	var matches []agent.MemoryItem
+	var matches []protocol.AgentMemoryItem
 	for _, item := range items {
 		if strings.HasPrefix(item.ID, identity) {
 			matches = append(matches, item)
@@ -217,11 +217,11 @@ func resolveAgentMemory(items []agent.MemoryItem, identity string) (agent.Memory
 	}
 	switch len(matches) {
 	case 0:
-		return agent.MemoryItem{}, errors.New("agent memory not found: " + identity)
+		return protocol.AgentMemoryItem{}, errors.New("agent memory not found: " + identity)
 	case 1:
 		return matches[0], nil
 	default:
-		return agent.MemoryItem{}, errors.New("agent memory identity is ambiguous; use the full id")
+		return protocol.AgentMemoryItem{}, errors.New("agent memory identity is ambiguous; use the full id")
 	}
 }
 
@@ -266,8 +266,10 @@ func (a *app) addAgentMemory(target agent.MemoryTarget, content string, complete
 	presentation := a.session.context
 	a.status.note("adding agent memory")
 	if !a.runAdmissionMutation(agentMemoryOperation, false,
-		func(ctx context.Context) (agent.MemoryItem, error) { return a.agentMemory.Add(ctx, target, content) },
-		func(item agent.MemoryItem, err error) {
+		func(ctx context.Context) (protocol.AgentMemoryItem, error) {
+			return a.agentMemory.Add(ctx, target, content)
+		},
+		func(item protocol.AgentMemoryItem, err error) {
 			if err != nil {
 				a.message("add agent memory failed: " + err.Error())
 				if complete != nil {
@@ -294,8 +296,8 @@ func (a *app) updateAgentMemory(target agent.MemoryTarget, patch agent.MemoryPat
 	presentation := a.session.context
 	a.status.note(label)
 	if !a.runAdmissionMutation(agentMemoryOperation, false,
-		func(ctx context.Context) (agent.MemoryItem, error) { return a.agentMemory.Update(ctx, patch) },
-		func(item agent.MemoryItem, err error) {
+		func(ctx context.Context) (protocol.AgentMemoryItem, error) { return a.agentMemory.Update(ctx, patch) },
+		func(item protocol.AgentMemoryItem, err error) {
 			if err != nil {
 				a.message(label + " failed: " + err.Error())
 				if complete != nil {

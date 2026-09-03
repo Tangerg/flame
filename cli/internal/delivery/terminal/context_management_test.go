@@ -25,8 +25,8 @@ const (
 
 type agentMemoryServiceStub struct {
 	mu      sync.Mutex
-	project []agent.MemoryItem
-	user    []agent.MemoryItem
+	project []protocol.AgentMemoryItem
+	user    []protocol.AgentMemoryItem
 	added   chan string
 	review  chan protocol.AgentMemoryReviewDecision
 }
@@ -48,14 +48,14 @@ type blockingAgentMemoryUpdateService struct {
 func (b *blockingAgentMemoryUpdateService) Update(
 	ctx context.Context,
 	patch agent.MemoryPatch,
-) (agent.MemoryItem, error) {
+) (protocol.AgentMemoryItem, error) {
 	b.started <- patch
 	select {
 	case <-b.release:
 		return b.AgentMemory.Update(ctx, patch)
 	case <-ctx.Done():
 		close(b.canceled)
-		return agent.MemoryItem{}, context.Cause(ctx)
+		return protocol.AgentMemoryItem{}, context.Cause(ctx)
 	}
 }
 
@@ -77,12 +77,12 @@ func (b *blockingAgentMemoryReviewService) Review(
 func newAgentMemoryServiceStub() *agentMemoryServiceStub {
 	now := time.Now()
 	return &agentMemoryServiceStub{
-		project: []agent.MemoryItem{{
+		project: []protocol.AgentMemoryItem{{
 			ID: terminalMemoryPendingID, Scope: protocol.AgentMemoryScopeProject, Content: "confirm release steps",
 			Origin: protocol.AgentMemoryOriginAuto, Status: protocol.AgentMemoryStatusPending, SessionID: "ses_origin",
 			Day: "2026-08-12", CreatedAt: now, UpdatedAt: now,
 		}},
-		user: []agent.MemoryItem{{
+		user: []protocol.AgentMemoryItem{{
 			ID: terminalMemoryUserID, Scope: protocol.AgentMemoryScopeUser, Content: "prefer concise answers",
 			Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive, Pinned: true,
 			CreatedAt: now, UpdatedAt: now,
@@ -91,16 +91,16 @@ func newAgentMemoryServiceStub() *agentMemoryServiceStub {
 	}
 }
 
-func (a *agentMemoryServiceStub) Items(_ context.Context, target agent.MemoryTarget) ([]agent.MemoryItem, error) {
+func (a *agentMemoryServiceStub) Items(_ context.Context, target agent.MemoryTarget) ([]protocol.AgentMemoryItem, error) {
 	if err := target.Validate(); err != nil {
 		return nil, err
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if target.Scope == protocol.AgentMemoryScopeUser {
-		return append([]agent.MemoryItem(nil), a.user...), nil
+		return append([]protocol.AgentMemoryItem(nil), a.user...), nil
 	}
-	return append([]agent.MemoryItem(nil), a.project...), nil
+	return append([]protocol.AgentMemoryItem(nil), a.project...), nil
 }
 
 func (a *agentMemoryServiceStub) Review(_ context.Context, id string, decision protocol.AgentMemoryReviewDecision) error {
@@ -128,13 +128,13 @@ func (a *agentMemoryServiceStub) Review(_ context.Context, id string, decision p
 	return errors.New("not found")
 }
 
-func (a *agentMemoryServiceStub) Update(_ context.Context, patch agent.MemoryPatch) (agent.MemoryItem, error) {
+func (a *agentMemoryServiceStub) Update(_ context.Context, patch agent.MemoryPatch) (protocol.AgentMemoryItem, error) {
 	if err := patch.Validate(); err != nil {
-		return agent.MemoryItem{}, err
+		return protocol.AgentMemoryItem{}, err
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	for _, items := range []*[]agent.MemoryItem{&a.project, &a.user} {
+	for _, items := range []*[]protocol.AgentMemoryItem{&a.project, &a.user} {
 		for index := range *items {
 			item := &(*items)[index]
 			if item.ID != patch.ID {
@@ -150,13 +150,13 @@ func (a *agentMemoryServiceStub) Update(_ context.Context, patch agent.MemoryPat
 			return *item, nil
 		}
 	}
-	return agent.MemoryItem{}, errors.New("not found")
+	return protocol.AgentMemoryItem{}, errors.New("not found")
 }
 
 func (a *agentMemoryServiceStub) Delete(_ context.Context, id string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	for _, items := range []*[]agent.MemoryItem{&a.project, &a.user} {
+	for _, items := range []*[]protocol.AgentMemoryItem{&a.project, &a.user} {
 		for index := range *items {
 			if (*items)[index].ID == id {
 				*items = append((*items)[:index], (*items)[index+1:]...)
@@ -167,12 +167,12 @@ func (a *agentMemoryServiceStub) Delete(_ context.Context, id string) error {
 	return errors.New("not found")
 }
 
-func (a *agentMemoryServiceStub) Add(_ context.Context, target agent.MemoryTarget, content string) (agent.MemoryItem, error) {
+func (a *agentMemoryServiceStub) Add(_ context.Context, target agent.MemoryTarget, content string) (protocol.AgentMemoryItem, error) {
 	if err := target.Validate(); err != nil {
-		return agent.MemoryItem{}, err
+		return protocol.AgentMemoryItem{}, err
 	}
 	now := time.Now()
-	item := agent.MemoryItem{
+	item := protocol.AgentMemoryItem{
 		ID: terminalMemoryAddedID, Scope: target.Scope, Content: content, Origin: protocol.AgentMemoryOriginUser,
 		Status: protocol.AgentMemoryStatusActive, CreatedAt: now, UpdatedAt: now,
 	}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -47,33 +46,14 @@ func (t MemoryTarget) Validate() error {
 	return nil
 }
 
-// MemoryItem is one stable, addressable fact together with its review provenance.
-type MemoryItem struct {
-	ID        string
-	Scope     protocol.AgentMemoryScope
-	Content   string
-	Origin    protocol.AgentMemoryOrigin
-	Status    protocol.AgentMemoryStatus
-	Pinned    bool
-	SessionID string
-	Day       string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
-func (i MemoryItem) Validate() error {
-	if err := (protocol.AgentMemoryItem{
-		ID: i.ID, Scope: i.Scope, Content: i.Content, Origin: i.Origin, Status: i.Status,
-		Pinned: i.Pinned, SessionID: i.SessionID, Day: i.Day,
-		CreatedAt: i.CreatedAt, UpdatedAt: i.UpdatedAt,
-	}).ValidateWire(); err != nil {
+// ValidateMemoryItem checks the temporal relationship that Runtime's field-level
+// wire contract cannot express.
+func ValidateMemoryItem(item protocol.AgentMemoryItem) error {
+	if err := item.ValidateWire(); err != nil {
 		return err
 	}
-	if i.CreatedAt.IsZero() || i.UpdatedAt.IsZero() {
-		return fmt.Errorf("agent memory item %s has incomplete timestamps", i.ID)
-	}
-	if i.UpdatedAt.Before(i.CreatedAt) {
-		return fmt.Errorf("agent memory item %s was updated before creation", i.ID)
+	if item.UpdatedAt.Before(item.CreatedAt) {
+		return fmt.Errorf("agent memory item %s was updated before creation", item.ID)
 	}
 	return nil
 }
@@ -89,12 +69,12 @@ func (p MemoryPatch) Validate() error {
 	return (protocol.AgentMemoryUpdateRequest{ID: p.ID, Content: p.Content, Pinned: p.Pinned}).ValidateWire()
 }
 
-func (p MemoryPatch) ValidateResult(result MemoryItem) error {
+func (p MemoryPatch) ValidateResult(result protocol.AgentMemoryItem) error {
 	if err := p.Validate(); err != nil {
 		return err
 	}
 	var problems []error
-	if err := result.Validate(); err != nil {
+	if err := ValidateMemoryItem(result); err != nil {
 		problems = append(problems, fmt.Errorf("runtime result: %w", err))
 	}
 	if result.ID != p.ID {
@@ -112,7 +92,7 @@ func (p MemoryPatch) ValidateResult(result MemoryItem) error {
 	return nil
 }
 
-func (t MemoryTarget) ValidateAddResult(content string, result MemoryItem) error {
+func (t MemoryTarget) ValidateAddResult(content string, result protocol.AgentMemoryItem) error {
 	if err := t.Validate(); err != nil {
 		return err
 	}
@@ -121,7 +101,7 @@ func (t MemoryTarget) ValidateAddResult(content string, result MemoryItem) error
 		return errors.New("add agent memory: content is empty")
 	}
 	var problems []error
-	if err := result.Validate(); err != nil {
+	if err := ValidateMemoryItem(result); err != nil {
 		problems = append(problems, fmt.Errorf("runtime result: %w", err))
 	}
 	if result.Scope != t.Scope {

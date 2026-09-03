@@ -23,7 +23,7 @@ type agentMemoryBinding interface {
 
 type AgentMemory struct{ runtime *Connection }
 
-func (a *AgentMemory) Items(ctx context.Context, target agent.MemoryTarget) ([]agent.MemoryItem, error) {
+func (a *AgentMemory) Items(ctx context.Context, target agent.MemoryTarget) ([]protocol.AgentMemoryItem, error) {
 	r := a.runtime
 	validated, err := a.resolveTarget(ctx, target)
 	if err != nil {
@@ -43,11 +43,11 @@ func (a *AgentMemory) Items(ctx context.Context, target agent.MemoryTarget) ([]a
 	if result == nil {
 		return nil, runtimeContractViolation("list agent memory returned nil")
 	}
-	items := make([]agent.MemoryItem, 0, len(result.Items))
+	items := make([]protocol.AgentMemoryItem, 0, len(result.Items))
 	seen := make(map[string]struct{}, len(result.Items))
 	for index, value := range result.Items {
-		item := projectAgentMemoryItem(value)
-		if err := item.Validate(); err != nil {
+		item := value
+		if err := agent.ValidateMemoryItem(item); err != nil {
 			return nil, runtimeContractViolation("list agent memory item %d is invalid: %v", index+1, err)
 		}
 		if item.Scope != validated.Scope {
@@ -76,10 +76,10 @@ func (a *AgentMemory) Review(ctx context.Context, id string, decision protocol.A
 	return classifyError(r.agentMemory.ReviewAgentMemory(ctx, request, options))
 }
 
-func (a *AgentMemory) Update(ctx context.Context, patch agent.MemoryPatch) (agent.MemoryItem, error) {
+func (a *AgentMemory) Update(ctx context.Context, patch agent.MemoryPatch) (protocol.AgentMemoryItem, error) {
 	r := a.runtime
 	if err := patch.Validate(); err != nil {
-		return agent.MemoryItem{}, err
+		return protocol.AgentMemoryItem{}, err
 	}
 	validated := patch
 	if patch.Content != nil {
@@ -88,17 +88,17 @@ func (a *AgentMemory) Update(ctx context.Context, patch agent.MemoryPatch) (agen
 	}
 	options, err := r.commandOptions()
 	if err != nil {
-		return agent.MemoryItem{}, err
+		return protocol.AgentMemoryItem{}, err
 	}
 	result, err := r.agentMemory.UpdateAgentMemory(ctx, protocol.AgentMemoryUpdateRequest{
 		ID: validated.ID, Content: clonePointer(validated.Content), Pinned: clonePointer(validated.Pinned),
 	}, options)
-	item, err := projectAgentMemoryResult("update agent memory", validated.ID, "", result, err)
+	item, err := agentMemoryResult("update agent memory", validated.ID, "", result, err)
 	if err != nil {
-		return agent.MemoryItem{}, err
+		return protocol.AgentMemoryItem{}, err
 	}
 	if err := validated.ValidateResult(item); err != nil {
-		return agent.MemoryItem{}, runtimeContractViolation("update agent memory returned an invalid acknowledgement: %v", err)
+		return protocol.AgentMemoryItem{}, runtimeContractViolation("update agent memory returned an invalid acknowledgement: %v", err)
 	}
 	return item, nil
 }
@@ -117,34 +117,34 @@ func (a *AgentMemory) Delete(ctx context.Context, id string) error {
 	return classifyError(r.agentMemory.DeleteAgentMemory(ctx, request, options))
 }
 
-func (a *AgentMemory) Add(ctx context.Context, target agent.MemoryTarget, content string) (agent.MemoryItem, error) {
+func (a *AgentMemory) Add(ctx context.Context, target agent.MemoryTarget, content string) (protocol.AgentMemoryItem, error) {
 	r := a.runtime
 	validated, err := a.resolveTarget(ctx, target)
 	if err != nil {
-		return agent.MemoryItem{}, err
+		return protocol.AgentMemoryItem{}, err
 	}
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return agent.MemoryItem{}, errors.New("add agent memory: content is empty")
+		return protocol.AgentMemoryItem{}, errors.New("add agent memory: content is empty")
 	}
 	options, err := r.commandOptions()
 	if err != nil {
-		return agent.MemoryItem{}, err
+		return protocol.AgentMemoryItem{}, err
 	}
 	request := protocol.AgentMemoryAddRequest{Scope: validated.Scope, Content: content}
 	if validated.Scope == protocol.AgentMemoryScopeProject {
 		request.Workspace = &protocol.WorkspaceRef{Path: validated.Workspace}
 	}
 	if err := protocol.ValidateWireTree(request); err != nil {
-		return agent.MemoryItem{}, err
+		return protocol.AgentMemoryItem{}, err
 	}
 	result, err := r.agentMemory.AddAgentMemory(ctx, request, options)
-	item, err := projectAgentMemoryResult("add agent memory", "", validated.Scope, result, err)
+	item, err := agentMemoryResult("add agent memory", "", validated.Scope, result, err)
 	if err != nil {
-		return agent.MemoryItem{}, err
+		return protocol.AgentMemoryItem{}, err
 	}
 	if err := validated.ValidateAddResult(content, item); err != nil {
-		return agent.MemoryItem{}, runtimeContractViolation("add agent memory returned an invalid acknowledgement: %v", err)
+		return protocol.AgentMemoryItem{}, runtimeContractViolation("add agent memory returned an invalid acknowledgement: %v", err)
 	}
 	return item, nil
 }
@@ -163,35 +163,27 @@ func (a *AgentMemory) resolveTarget(ctx context.Context, target agent.MemoryTarg
 	return agent.NewMemoryTarget(target.Scope, resolved.Path)
 }
 
-func projectAgentMemoryResult(
+func agentMemoryResult(
 	operation, expectedID string,
 	expectedScope protocol.AgentMemoryScope,
 	result *protocol.AgentMemoryItem,
 	err error,
-) (agent.MemoryItem, error) {
+) (protocol.AgentMemoryItem, error) {
 	if err != nil {
-		return agent.MemoryItem{}, classifyError(err)
+		return protocol.AgentMemoryItem{}, classifyError(err)
 	}
 	if result == nil {
-		return agent.MemoryItem{}, runtimeContractViolation("%s returned nil", operation)
+		return protocol.AgentMemoryItem{}, runtimeContractViolation("%s returned nil", operation)
 	}
-	item := projectAgentMemoryItem(*result)
-	if err := item.Validate(); err != nil {
-		return agent.MemoryItem{}, runtimeContractViolation("%s returned an invalid item: %v", operation, err)
+	item := *result
+	if err := agent.ValidateMemoryItem(item); err != nil {
+		return protocol.AgentMemoryItem{}, runtimeContractViolation("%s returned an invalid item: %v", operation, err)
 	}
 	if expectedID != "" && item.ID != expectedID {
-		return agent.MemoryItem{}, runtimeContractViolation("%s returned id %q for %q", operation, item.ID, expectedID)
+		return protocol.AgentMemoryItem{}, runtimeContractViolation("%s returned id %q for %q", operation, item.ID, expectedID)
 	}
 	if expectedScope != "" && item.Scope != expectedScope {
-		return agent.MemoryItem{}, runtimeContractViolation("%s returned %s scope, want %s", operation, item.Scope, expectedScope)
+		return protocol.AgentMemoryItem{}, runtimeContractViolation("%s returned %s scope, want %s", operation, item.Scope, expectedScope)
 	}
 	return item, nil
-}
-
-func projectAgentMemoryItem(value protocol.AgentMemoryItem) agent.MemoryItem {
-	return agent.MemoryItem{
-		ID: value.ID, Scope: value.Scope, Content: value.Content,
-		Origin: value.Origin, Status: value.Status, Pinned: value.Pinned,
-		SessionID: value.SessionID, Day: value.Day, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
-	}
 }

@@ -104,11 +104,11 @@ type Schedules interface {
 }
 
 type AgentMemory interface {
-	Items(context.Context, agent.MemoryTarget) ([]agent.MemoryItem, error)
+	Items(context.Context, agent.MemoryTarget) ([]protocol.AgentMemoryItem, error)
 	Review(context.Context, string, protocol.AgentMemoryReviewDecision) error
-	Update(context.Context, agent.MemoryPatch) (agent.MemoryItem, error)
+	Update(context.Context, agent.MemoryPatch) (protocol.AgentMemoryItem, error)
 	Delete(context.Context, string) error
-	Add(context.Context, agent.MemoryTarget, string) (agent.MemoryItem, error)
+	Add(context.Context, agent.MemoryTarget, string) (protocol.AgentMemoryItem, error)
 }
 
 type Knowledge interface {

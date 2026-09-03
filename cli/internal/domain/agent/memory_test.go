@@ -38,14 +38,19 @@ func TestTargetOwnsScopeWorkspaceInvariant(t *testing.T) {
 func TestItemRejectsBrokenReviewProjection(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
-	valid := MemoryItem{ID: testMemoryID, Scope: protocol.AgentMemoryScopeProject, Content: "fact", Origin: protocol.AgentMemoryOriginAuto, Status: protocol.AgentMemoryStatusPending, CreatedAt: now, UpdatedAt: now}
-	if err := valid.Validate(); err != nil {
+	valid := protocol.AgentMemoryItem{ID: testMemoryID, Scope: protocol.AgentMemoryScopeProject, Content: "fact", Origin: protocol.AgentMemoryOriginAuto, Status: protocol.AgentMemoryStatusPending, CreatedAt: now, UpdatedAt: now}
+	if err := ValidateMemoryItem(valid); err != nil {
 		t.Fatal(err)
 	}
 	invalid := valid
 	invalid.Origin = protocol.AgentMemoryOriginUser
-	if err := invalid.Validate(); err == nil || !strings.Contains(err.Error(), "status") {
+	if err := ValidateMemoryItem(invalid); err == nil || !strings.Contains(err.Error(), "status") {
 		t.Fatalf("Validate() = %v", err)
+	}
+	invalid = valid
+	invalid.UpdatedAt = now.Add(-time.Second)
+	if err := ValidateMemoryItem(invalid); err == nil || !strings.Contains(err.Error(), "before creation") {
+		t.Fatalf("ValidateMemoryItem() = %v", err)
 	}
 }
 
@@ -67,7 +72,7 @@ func TestPatchRequiresAnIntentionalChange(t *testing.T) {
 func TestAgentMemoryMutationResultsMustFulfillTheCommand(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
-	valid := MemoryItem{
+	valid := protocol.AgentMemoryItem{
 		ID: testMemoryID, Scope: protocol.AgentMemoryScopeUser, Content: "authored", Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive,
 		CreatedAt: now, UpdatedAt: now,
 	}
@@ -93,12 +98,12 @@ func TestAgentMemoryMutationResultsMustFulfillTheCommand(t *testing.T) {
 	}
 	for _, test := range []struct {
 		name   string
-		mutate func(*MemoryItem)
+		mutate func(*protocol.AgentMemoryItem)
 		want   string
 	}{
-		{name: "identity", mutate: func(result *MemoryItem) { result.ID = "mem_00000000000000000000000000000002" }, want: "item"},
-		{name: "content", mutate: func(result *MemoryItem) { result.Content = "ignored" }, want: "content"},
-		{name: "pinned", mutate: func(result *MemoryItem) { result.Pinned = false }, want: "pinned"},
+		{name: "identity", mutate: func(result *protocol.AgentMemoryItem) { result.ID = "mem_00000000000000000000000000000002" }, want: "item"},
+		{name: "content", mutate: func(result *protocol.AgentMemoryItem) { result.Content = "ignored" }, want: "content"},
+		{name: "pinned", mutate: func(result *protocol.AgentMemoryItem) { result.Pinned = false }, want: "pinned"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			result := updated

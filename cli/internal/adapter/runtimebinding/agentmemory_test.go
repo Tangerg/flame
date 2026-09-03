@@ -213,7 +213,7 @@ func TestAgentMemoryMutationRejectsIdentityDrift(t *testing.T) {
 		Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive,
 		CreatedAt: now, UpdatedAt: now,
 	}
-	_, err := projectAgentMemoryResult("update agent memory", adapterMemoryIDOne, "", &result, nil)
+	_, err := agentMemoryResult("update agent memory", adapterMemoryIDOne, "", &result, nil)
 	requireRuntimeContractViolation(t, err)
 }
 
