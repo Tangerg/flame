@@ -978,7 +978,7 @@ func steerReplayTestProfile(t *testing.T, workspace string) runtimebinding.Profi
 				Scope: "runtimeInstanceRootSegment", MaxEvents: 128, MaxBytes: 1 << 20,
 			},
 			MCPAuthorizationRetentionSeconds: 600,
-			RuntimeSubscription:              runtimebinding.SubscriptionLimits{MaxTopics: 1, MaxWatches: 1},
+			RuntimeSubscription:              protocol.SubscriptionLimits{MaxTopics: 1, MaxWatches: 1},
 		},
 	}
 }

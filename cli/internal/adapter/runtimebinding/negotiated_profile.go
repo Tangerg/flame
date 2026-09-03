@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
 
@@ -40,17 +42,12 @@ type ReplayLimits struct {
 	MaxBytes  int    `json:"maxBytes"`
 }
 
-type SubscriptionLimits struct {
-	MaxTopics  int `json:"maxTopics"`
-	MaxWatches int `json:"maxWatches"`
-}
-
 type Limits struct {
-	RunConcurrency                   RunConcurrencyLimit      `json:"runConcurrency"`
-	CommandReplay                    commandreplay.Capability `json:"commandReplay"`
-	RunReplay                        ReplayLimits             `json:"runReplay"`
-	MCPAuthorizationRetentionSeconds int                      `json:"mcpAuthorizationRetentionSeconds"`
-	RuntimeSubscription              SubscriptionLimits       `json:"runtimeSubscription"`
+	RunConcurrency                   RunConcurrencyLimit         `json:"runConcurrency"`
+	CommandReplay                    commandreplay.Capability    `json:"commandReplay"`
+	RunReplay                        ReplayLimits                `json:"runReplay"`
+	MCPAuthorizationRetentionSeconds int                         `json:"mcpAuthorizationRetentionSeconds"`
+	RuntimeSubscription              protocol.SubscriptionLimits `json:"runtimeSubscription"`
 }
 
 // Profile is the complete, CLI-owned projection of one successful runtime
@@ -119,8 +116,8 @@ func (l Limits) validate() error {
 	if strings.TrimSpace(l.RunReplay.Scope) == "" || l.RunReplay.MaxEvents <= 0 || l.RunReplay.MaxBytes <= 0 {
 		return errors.New("runtime replay limits are incomplete")
 	}
-	if l.RuntimeSubscription.MaxTopics <= 0 || l.RuntimeSubscription.MaxWatches <= 0 {
-		return errors.New("runtime subscription limits must be positive")
+	if err := l.RuntimeSubscription.ValidateWire(); err != nil {
+		return fmt.Errorf("runtime limits: %w", err)
 	}
 	return nil
 }

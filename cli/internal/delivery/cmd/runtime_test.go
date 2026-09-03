@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
@@ -93,7 +95,7 @@ func commandRuntimeProfile(t *testing.T) runtimebinding.Profile {
 			RunConcurrency: concurrency, CommandReplay: commandReplay,
 			RunReplay:                        runtimebinding.ReplayLimits{Scope: "runtimeInstanceRootSegment", MaxEvents: 1024, MaxBytes: 1 << 20},
 			MCPAuthorizationRetentionSeconds: 600,
-			RuntimeSubscription:              runtimebinding.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
+			RuntimeSubscription:              protocol.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
 		},
 	}
 }

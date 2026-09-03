@@ -43,10 +43,7 @@ func projectRuntimeProfile(
 				MaxBytes:  discovery.Capabilities.Limits.RunReplay.MaxBytes,
 			},
 			MCPAuthorizationRetentionSeconds: discovery.Capabilities.Limits.MCPAuthorizationAttempts.RetentionSeconds,
-			RuntimeSubscription: SubscriptionLimits{
-				MaxTopics:  discovery.Capabilities.Limits.RuntimeSubscription.MaxTopics,
-				MaxWatches: discovery.Capabilities.Limits.RuntimeSubscription.MaxWatches,
-			},
+			RuntimeSubscription:              discovery.Capabilities.Limits.RuntimeSubscription,
 		},
 	}
 	for _, eventType := range discovery.Capabilities.RunEvents {
