@@ -94,7 +94,7 @@ func (w *workspaceServiceStub) Head(_ context.Context, request workspace.HeadReq
 	w.mu.Lock()
 	w.headRequest = request
 	w.mu.Unlock()
-	return workspace.FileHead{Path: "main.go", Lines: []workspace.FileLine{{Number: 1, Text: "package main"}}}, nil
+	return workspace.FileHead{Lines: []workspace.FileLine{{Number: 1, Text: "package main"}}}, nil
 }
 
 func (w *workspaceServiceStub) Search(_ context.Context, request workspace.SearchRequest) (workspace.SearchResult, error) {

@@ -140,7 +140,7 @@ func (r *Connection) Head(ctx context.Context, request workspace.HeadRequest) (w
 	if value == nil {
 		return workspace.FileHead{}, runtimeContractViolation("get workspace file head returned nil")
 	}
-	result := workspace.FileHead{Path: value.Path, Lines: make([]workspace.FileLine, 0, len(value.Lines))}
+	result := workspace.FileHead{Lines: make([]workspace.FileLine, 0, len(value.Lines))}
 	for _, line := range value.Lines {
 		result.Lines = append(result.Lines, workspace.FileLine{Number: line.LineNumber, Text: line.Text})
 	}

@@ -136,14 +136,10 @@ type FileLine struct {
 }
 
 type FileHead struct {
-	Path  string
 	Lines []FileLine
 }
 
 func (f FileHead) Validate() error {
-	if strings.TrimSpace(f.Path) == "" {
-		return errors.New("file head path is empty")
-	}
 	previous := 0
 	for index, line := range f.Lines {
 		if line.Number <= previous {

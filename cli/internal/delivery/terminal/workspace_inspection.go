@@ -111,8 +111,8 @@ func (a *app) PreviewWorkspaceFile(argument string) error {
 			for _, line := range head.Lines {
 				lines = append(lines, line.Text)
 			}
-			detail := fmt.Sprintf("%s · up to %d lines", head.Path, previewLines)
-			return codeDocument("File preview", detail, strings.Join(lines, "\n"), head.Path, true), nil
+			detail := fmt.Sprintf("%s · up to %d lines", request.Path, previewLines)
+			return codeDocument("File preview", detail, strings.Join(lines, "\n"), request.Path, true), nil
 		}, workspaceReaderNone)
 	return nil
 }

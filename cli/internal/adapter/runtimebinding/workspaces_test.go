@@ -100,7 +100,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 			Path: "main.go", Status: protocol.FileStatusModified, Added: &added, Removed: &removed,
 			Rows: []protocol.DiffRow{{Type: protocol.DiffRowAdded, RightLine: 1, Code: "package main"}},
 		}}},
-		head:   &protocol.FileHead{Path: "main.go", Lines: []protocol.FileLine{{LineNumber: 1, Text: "package main"}}},
+		head:   &protocol.FileHead{Lines: []protocol.FileLine{{LineNumber: 1, Text: "package main"}}},
 		search: &protocol.GrepResult{Matches: []protocol.GrepMatch{{Path: "main.go", LineNumber: 1, Text: "package main"}}, Total: 1},
 		filePages: map[string]*protocol.Page[protocol.FileEntry]{
 			"": protocol.NewPageWithCursor([]protocol.FileEntry{{
