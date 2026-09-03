@@ -116,26 +116,9 @@ func (d DiffRequest) Validate() error {
 	return nil
 }
 
-type DiffRow struct {
-	Type      protocol.DiffRowType
-	Text      string
-	LeftLine  int
-	RightLine int
-	Code      string
-}
-
-func (d DiffRow) Validate() error {
-	if err := (protocol.DiffRow{
-		Type: d.Type, Text: d.Text, LeftLine: d.LeftLine, RightLine: d.RightLine, Code: d.Code,
-	}).ValidateWire(); err != nil {
-		return fmt.Errorf("diff row: %w", err)
-	}
-	return nil
-}
-
 type FileDiff struct {
 	Change
-	Rows []DiffRow
+	Rows []protocol.DiffRow
 }
 
 type Diff struct {
@@ -161,7 +144,7 @@ func (d Diff) Validate() error {
 			return fmt.Errorf("file diff %d: binary file has text rows", index)
 		}
 		for rowIndex, row := range file.Rows {
-			if err := row.Validate(); err != nil {
+			if err := row.ValidateWire(); err != nil {
 				return fmt.Errorf("file diff %d row %d: %w", index, rowIndex, err)
 			}
 		}

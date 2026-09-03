@@ -140,6 +140,10 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 	if err != nil || diff.Text() != "diff -- main.go (modified)\n+package main" {
 		t.Fatalf("Diff = (%+v, %v)", diff, err)
 	}
+	stub.diff.Files[0].Rows[0].Code = "mutated"
+	if diff.Text() != "diff -- main.go (modified)\n+package main" {
+		t.Fatal("workspace diff projection aliases runtime row storage")
+	}
 	head, err := runtime.Head(t.Context(), workspace.HeadRequest{
 		Workspace: "/workspace", Path: "main.go", LineLimit: workspace.DefaultHeadLineLimit(),
 	})

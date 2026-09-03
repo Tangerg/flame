@@ -312,14 +312,7 @@ func projectDiff(value protocol.Diff) (workspace.Diff, error) {
 		if err != nil {
 			return workspace.Diff{}, fmt.Errorf("workspace file diff %d: %w", index, err)
 		}
-		rows := make([]workspace.DiffRow, 0, len(file.Rows))
-		for _, row := range file.Rows {
-			rows = append(rows, workspace.DiffRow{
-				Type: row.Type, Text: row.Text, LeftLine: row.LeftLine,
-				RightLine: row.RightLine, Code: row.Code,
-			})
-		}
-		result.Files = append(result.Files, workspace.FileDiff{Change: change, Rows: rows})
+		result.Files = append(result.Files, workspace.FileDiff{Change: change, Rows: slices.Clone(file.Rows)})
 	}
 	if err := result.Validate(); err != nil {
 		return workspace.Diff{}, fmt.Errorf("get workspace diff projection: %w", err)

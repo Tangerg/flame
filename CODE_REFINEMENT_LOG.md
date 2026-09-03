@@ -7,7 +7,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–118 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–119 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
 - The current Runtime contract is `834261d3` (`refactor(runtime): stop echoing file
   head paths`).
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–118 — exact handoff
+## Rounds 101–119 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -78,6 +78,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 116 | `834261d3` + CLI dependency update | Removed the file-head response's request-path echo and the empty validator surface left behind by that deletion. |
 | 117 | CLI commit | Removed the synonymous CLI file-line DTO and projected cloned Runtime protocol lines directly under the existing ordering invariant. |
 | 118 | CLI commit | Removed the synonymous CLI grep-match DTO and projected cloned Runtime protocol matches while retaining the result aggregate invariant. |
+| 119 | CLI commit | Removed the synonymous CLI diff-row DTO and projected cloned Runtime protocol rows while retaining structured-diff aggregate invariants. |
 
 ## Verification contract
 
@@ -115,7 +116,7 @@ repeated here.
 
 ## Remaining direction
 
-- Start Round 119 by continuing to audit complete Runtime catalogs and CLI
+- Start Round 120 by continuing to audit complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the

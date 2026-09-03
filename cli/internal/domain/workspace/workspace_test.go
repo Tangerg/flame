@@ -68,7 +68,7 @@ func TestStructuredDiffValidatesAndRendersEveryRow(t *testing.T) {
 	t.Parallel()
 	diff := Diff{Files: []FileDiff{{
 		Change: Change{Path: "main.go", Status: protocol.FileStatusModified},
-		Rows: []DiffRow{
+		Rows: []protocol.DiffRow{
 			{Type: protocol.DiffRowHunk, Text: "@@ -1,2 +1,2 @@"},
 			{Type: protocol.DiffRowContext, LeftLine: 1, RightLine: 1, Code: "package main"},
 			{Type: protocol.DiffRowDeleted, LeftLine: 2, Code: "var old = true"},
@@ -85,7 +85,7 @@ func TestStructuredDiffValidatesAndRendersEveryRow(t *testing.T) {
 
 	invalid := diff
 	invalid.Files = append([]FileDiff(nil), diff.Files...)
-	invalid.Files[0].Rows = append([]DiffRow(nil), diff.Files[0].Rows...)
+	invalid.Files[0].Rows = append([]protocol.DiffRow(nil), diff.Files[0].Rows...)
 	invalid.Files[0].Rows[1].LeftLine = 0
 	if err := invalid.Validate(); err == nil {
 		t.Fatal("invalid context row was accepted")
