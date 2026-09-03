@@ -22,7 +22,7 @@ CLI preferences and Runtime configuration have separate owners.
 - `--config` selects an explicit CLI YAML file.
 - `FLAME_CLI_*` variables and flags override file values.
 - `$FLAME_HOME/runtime/config.yaml` is Runtime-owned configuration.
-- `FLAME_RUNTIME_CONFIG_DIR` selects an explicit Runtime configuration directory.
+- `FLAME_RUNTIME_CONFIG_DIR` selects the sole Runtime configuration directory.
 
 Provider selection is either an exact provider/model pair or absent. Absence means that Runtime applies the active Session selection; CLI never infers a provider from a model name.
 

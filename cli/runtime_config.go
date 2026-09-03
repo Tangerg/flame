@@ -9,27 +9,20 @@ import (
 
 const runtimeConfigDirectoryEnvironment = "FLAME_RUNTIME_CONFIG_DIR"
 
-// runtimeConfigDirectories returns config sources in precedence order. A user
-// config beside the runtime's durable data wins. Inside the Flame worktree, the existing
-// runtime development config is a fallback so source checkouts retain one
-// provider configuration instead of copying credentials into cli.
+// runtimeConfigDirectories returns the explicit config source when configured.
+// Otherwise a config beside the runtime's durable data wins, with the current
+// Flame worktree's development config as a source-checkout fallback.
 func runtimeConfigDirectories(runtimeDirectory string) ([]string, error) {
-	directories := make([]string, 0, 3)
-	explicit := false
 	if configured := strings.TrimSpace(os.Getenv(runtimeConfigDirectoryEnvironment)); configured != "" {
 		if !filepath.IsAbs(configured) {
 			return nil, fmt.Errorf("%s must be an absolute path", runtimeConfigDirectoryEnvironment)
 		}
-		explicit = true
-		directories = append(directories, filepath.Clean(configured))
+		return []string{filepath.Clean(configured)}, nil
 	}
+
+	directories := make([]string, 0, 2)
 	runtimeDirectory = filepath.Clean(runtimeDirectory)
-	if len(directories) == 0 || directories[0] != runtimeDirectory {
-		directories = append(directories, runtimeDirectory)
-	}
-	if explicit {
-		return directories, nil
-	}
+	directories = append(directories, runtimeDirectory)
 
 	if development, ok := discoverDevelopmentRuntimeConfigDirectory(); ok && development != runtimeDirectory {
 		directories = append(directories, development)
