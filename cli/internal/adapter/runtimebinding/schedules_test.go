@@ -259,8 +259,21 @@ func TestScheduleAdapterRejectsMismatchedMutationAcknowledgements(t *testing.T) 
 
 func TestScheduleAdapterRejectsImpossibleScheduleProjection(t *testing.T) {
 	t.Parallel()
-	value := wireSchedule(time.Unix(1, 0), "sch_1")
-	value.Enabled = false
-	_, err := scheduleResult("update schedule", value.ID, &value, nil)
-	requireRuntimeContractViolation(t, err)
+
+	tests := []struct {
+		name   string
+		mutate func(*protocol.Schedule)
+	}{
+		{name: "missing creation time", mutate: func(value *protocol.Schedule) { value.CreatedAt = time.Time{} }},
+		{name: "disabled with next run", mutate: func(value *protocol.Schedule) { value.Enabled = false }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			value := wireSchedule(time.Unix(1, 0), "sch_1")
+			test.mutate(&value)
+			_, err := scheduleResult("update schedule", value.ID, &value, nil)
+			requireRuntimeContractViolation(t, err)
+		})
+	}
 }

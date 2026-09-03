@@ -179,9 +179,6 @@ func scheduleResult(operation, expectedID string, result *protocol.Schedule, err
 
 func validateScheduleProjection(result protocol.Schedule) error {
 	var problems []error
-	if result.CreatedAt.IsZero() {
-		problems = append(problems, errors.New("creation time is zero"))
-	}
 	if result.LastRunAt != nil {
 		if result.LastRunAt.IsZero() {
 			problems = append(problems, errors.New("last-run time is zero"))
