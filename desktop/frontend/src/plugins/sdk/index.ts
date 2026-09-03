@@ -44,6 +44,8 @@ export {
 
 export { notifyError, notifyInfo, useNotificationStore } from "./notifications";
 export type { NotifyOptions, NotifySource } from "./notifications";
+export { useCommandAction } from "./commandAction";
+export type { CommandAction, CommandActionConfig } from "./commandAction";
 export { createDataQuery, createParameterizedDataQuery } from "./dataQuery";
 export type { ParameterizedQueryOptions } from "./dataQuery";
 

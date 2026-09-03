@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useState } from "react";
 import { formatDay } from "@/lib/i18n/relativeTime";
 import {
   Badge,
@@ -12,7 +12,7 @@ import {
 } from "@/ui";
 
 import { useT } from "@/lib/i18n";
-import { notifyError } from "@/plugins/sdk";
+import { useCommandAction } from "@/plugins/sdk";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useRuntimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
@@ -30,32 +30,6 @@ import {
 
 type Scope = AgentMemoryQuery["scope"];
 
-function useRowAction(): { busy: boolean; run: (op: () => Promise<void>) => void } {
-  const t = useT();
-  const pending = useRef(false);
-  const [busy, setBusy] = useState(false);
-  const run = useCallback(
-    (op: () => Promise<void>) => {
-      if (pending.current) return;
-      pending.current = true;
-      setBusy(true);
-      op()
-        .catch((err: unknown) => {
-          if (agentMemoryMutationWasRetired(err)) return;
-          notifyError(err instanceof Error ? err.message : t("agentMemory.error"), {
-            source: "knowledge",
-          });
-        })
-        .finally(() => {
-          pending.current = false;
-          setBusy(false);
-        });
-    },
-    [t],
-  );
-  return { busy, run };
-}
-
 function OriginBadge({ origin }: { origin: AgentMemoryEntry["origin"] }) {
   const t = useT();
   return (
@@ -65,7 +39,11 @@ function OriginBadge({ origin }: { origin: AgentMemoryEntry["origin"] }) {
 
 function PendingRow({ item }: { item: AgentMemoryEntry }) {
   const t = useT();
-  const { busy, run } = useRowAction();
+  const { busy, run } = useCommandAction({
+    wasRetired: agentMemoryMutationWasRetired,
+    fallback: t("agentMemory.error"),
+    source: "knowledge",
+  });
   return (
     <div className="flex items-start gap-3 px-4 py-2.5">
       <div className="min-w-0 flex-1">
@@ -103,7 +81,11 @@ function PendingRow({ item }: { item: AgentMemoryEntry }) {
 
 function ActiveRow({ item }: { item: AgentMemoryEntry }) {
   const t = useT();
-  const { busy, run } = useRowAction();
+  const { busy, run } = useCommandAction({
+    wasRetired: agentMemoryMutationWasRetired,
+    fallback: t("agentMemory.error"),
+    source: "knowledge",
+  });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.content);
   const dirty = editing && draft.trim() !== "" && draft !== item.content;
@@ -193,7 +175,11 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
 
 function AddMemory({ scope, cwd }: { scope: Scope; cwd?: string }) {
   const t = useT();
-  const { busy, run } = useRowAction();
+  const { busy, run } = useCommandAction({
+    wasRetired: agentMemoryMutationWasRetired,
+    fallback: t("agentMemory.error"),
+    source: "knowledge",
+  });
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const canSave = draft.trim() !== "";

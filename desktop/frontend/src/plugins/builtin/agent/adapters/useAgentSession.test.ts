@@ -674,6 +674,8 @@ describe("useAgentSession durable recovery", () => {
             finishedAt: "2026-08-12T00:00:01Z",
             metrics: { steps: 1, activeDurationMillis: 1 },
             protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+            provider: "openai",
+            model: "gpt-5",
           },
         ],
         items: [
@@ -710,6 +712,8 @@ describe("useAgentSession durable recovery", () => {
             createdAt: "2026-07-29T00:00:00Z",
             metrics: { steps: 1, activeDurationMillis: 5 },
             protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+            provider: "openai",
+            model: "gpt-5",
             spawnedByItemId: "item_x",
             parentRunId: "run_live",
             rootRunId: "run_live",
@@ -724,6 +728,8 @@ describe("useAgentSession durable recovery", () => {
             createdAt: "2026-07-29T00:00:00Z",
             metrics: { steps: 0, activeDurationMillis: 0 },
             protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+            provider: "openai",
+            model: "gpt-5",
           },
         ],
       },
@@ -1357,6 +1363,8 @@ function runRef(partial: Partial<RunRef> = {}): RunRef {
     createdAt: "2026-07-30T02:00:00.000Z",
     metrics: { steps: 0, activeDurationMillis: 0 },
     protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+    provider: "openai",
+    model: "gpt-5",
     ...partial,
   };
 }

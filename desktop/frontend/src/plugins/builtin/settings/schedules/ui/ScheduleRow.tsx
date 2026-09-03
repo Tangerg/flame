@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { IconButton, Switch, Tag, type IconName } from "@/ui";
-import { rpcErrorText } from "@/lib/rpcErrors";
 import {
   deleteSchedule,
   runScheduleNow,
@@ -8,7 +7,7 @@ import {
   setScheduleEnabled,
   type ScheduleConfig,
 } from "../application/scheduleCommands";
-import { notifyError } from "@/plugins/sdk";
+import { useCommandAction } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/i18n/relativeTime";
 import { cn } from "@/lib/classNames";
@@ -20,6 +19,7 @@ function ScheduleActionButton({
   title,
   active,
   tone,
+  busy,
   onClick,
 }: {
   icon: IconName;
@@ -27,6 +27,7 @@ function ScheduleActionButton({
   title?: string;
   active?: boolean;
   tone?: "accent" | "negative";
+  busy?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -37,6 +38,8 @@ function ScheduleActionButton({
       quiet
       aria-label={label}
       aria-expanded={active}
+      aria-busy={busy}
+      disabled={busy}
       title={title}
       onClick={onClick}
       className={cn(
@@ -51,14 +54,10 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
   const t = useT();
   const [editing, setEditing] = useState(false);
 
-  const guard = async <T,>(fn: () => Promise<T>) => {
-    try {
-      await fn();
-    } catch (err) {
-      if (scheduleMutationWasRetired(err)) return;
-      notifyError(rpcErrorText(err) ?? t("schedules.error.save"));
-    }
-  };
+  const { busy, run } = useCommandAction({
+    wasRetired: scheduleMutationWasRetired,
+    fallback: t("schedules.error.save"),
+  });
 
   return (
     <div className={cn(!schedule.enabled && "opacity-60")}>
@@ -88,7 +87,8 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
         <div className="flex items-center gap-1.5">
           <Switch
             checked={schedule.enabled}
-            onCheckedChange={(value) => void guard(() => setScheduleEnabled(schedule, value))}
+            disabled={busy}
+            onCheckedChange={(value) => run(() => setScheduleEnabled(schedule, value))}
             ariaLabel={t("schedules.enable.aria")}
           />
           <ScheduleActionButton
@@ -96,7 +96,8 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
             label={t("schedules.runNow")}
             title={t("schedules.runNow")}
             tone="accent"
-            onClick={() => void guard(() => runScheduleNow(schedule.id))}
+            busy={busy}
+            onClick={() => run(() => runScheduleNow(schedule.id))}
           />
           <ScheduleActionButton
             icon="edit"
@@ -109,7 +110,8 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
             label={t("schedules.delete")}
             title={t("schedules.delete")}
             tone="negative"
-            onClick={() => void guard(() => deleteSchedule(schedule.id))}
+            busy={busy}
+            onClick={() => run(() => deleteSchedule(schedule.id))}
           />
         </div>
       </div>

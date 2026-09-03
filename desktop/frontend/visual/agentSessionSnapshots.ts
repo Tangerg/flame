@@ -34,6 +34,8 @@ export type VisualAgentState = (typeof VISUAL_AGENT_STATES)[number];
 const SESSION_ID = "ses_visual";
 const ROOT_RUN_ID = "run_root";
 const CREATED_AT = "2026-07-31T08:00:00.000Z";
+const RUN_PROVIDER = "openai";
+const RUN_MODEL = "gpt-5.6-sol";
 // Cumulative accounting remains a Run fact. It deliberately does NOT drive the
 // composer's context gauge: window occupancy is the latest Runtime contextTokens
 // reading, supplied independently in the live event tail below.
@@ -75,6 +77,8 @@ function run(status: RunRef["status"], patch: Partial<RunRef> = {}): RunRef {
     createdAt: CREATED_AT,
     metrics: METRICS,
     protocolProfile: PROFILE,
+    provider: RUN_PROVIDER,
+    model: RUN_MODEL,
     ...(status === "running" ? { activeSegmentId: "seg_root" } : {}),
     ...patch,
   };
@@ -856,6 +860,8 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         createdAt: "2026-07-31T08:00:03.000Z",
         metrics: { steps: 2, activeDurationMillis: 7_000 },
         protocolProfile: PROFILE,
+        provider: RUN_PROVIDER,
+        model: RUN_MODEL,
         parentRunId: ROOT_RUN_ID,
         rootRunId: ROOT_RUN_ID,
         spawnedByItemId: "item_delegate",
@@ -868,6 +874,8 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         createdAt: "2026-07-31T08:00:05.000Z",
         metrics: { steps: 1, activeDurationMillis: 3_000 },
         protocolProfile: PROFILE,
+        provider: RUN_PROVIDER,
+        model: RUN_MODEL,
         parentRunId: "run_child",
         rootRunId: ROOT_RUN_ID,
         spawnedByItemId: "item_nested_delegate",

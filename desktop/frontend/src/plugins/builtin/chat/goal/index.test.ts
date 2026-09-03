@@ -143,6 +143,8 @@ function runtimeGoal(sessionId: string): Goal {
     sessionId,
     objective: "Keep one generation",
     status: "active",
+    provider: "openai",
+    model: "gpt-5",
     used: { runs: 0, costUsd: 0, steps: 0 },
     createdAt: "2026-08-18T00:00:00Z",
     updatedAt: "2026-08-18T00:00:00Z",

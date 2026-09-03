@@ -20,6 +20,8 @@ function runningRoot(patch: Partial<RunRef> = {}): RunRef {
     createdAt: "2026-08-12T08:00:00.000Z",
     metrics: METRICS,
     protocolProfile: PROFILE,
+    provider: "openai",
+    model: "gpt-5",
     ...patch,
   };
 }
@@ -90,6 +92,8 @@ describe("Runtime → Agent fact adapter", () => {
         usage: { inputTokens: 11, outputTokens: 7, cacheReadTokens: 3, costUsd: 0.01 },
       },
       protocolProfile: PROFILE,
+      provider: "openai",
+      model: "gpt-5",
     };
 
     const mapped = runtimeRunFact(child);
@@ -258,10 +262,14 @@ describe("Runtime → Agent fact adapter", () => {
     ],
     ["root lineage absence", runningRoot({ rootRunId: "run_root" }), "rootLineagePresent"],
     ["running segment", runningRoot({ activeSegmentId: undefined }), "activeSegmentMissing"],
-    ["complete model identity", runningRoot({ provider: "openai" }), "modelSelectionIncomplete"],
+    [
+      "complete model identity",
+      runningRoot({ provider: "openai", model: undefined }),
+      "modelSelectionIncomplete",
+    ],
     [
       "reasoning model ownership",
-      runningRoot({ reasoningEffort: "high" }),
+      runningRoot({ provider: undefined, model: undefined, reasoningEffort: "high" }),
       "reasoningWithoutModel",
     ],
     [

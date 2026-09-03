@@ -58,6 +58,8 @@ function terminalRun(): RunRef {
     outcome: { type: "completed" },
     metrics: { steps: 1, activeDurationMillis: 1 },
     protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+    provider: "openai",
+    model: "gpt-5",
   };
 }
 

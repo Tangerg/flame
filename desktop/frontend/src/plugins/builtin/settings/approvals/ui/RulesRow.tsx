@@ -7,9 +7,9 @@ import {
   type ApprovalRuleSummary,
   useApprovalRuleConfigs,
 } from "../application/approvalConfig";
-import { isUnsupportedMethod, rpcErrorText } from "@/lib/rpcErrors";
+import { isUnsupportedMethod } from "@/lib/rpcErrors";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
-import { notifyError } from "@/plugins/sdk";
+import { useCommandAction } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 
@@ -26,22 +26,10 @@ export function RulesRow() {
   const t = useT();
   const sessionId = useActiveSessionId();
   const { data, isLoading, isError, error, refetch } = useApprovalRuleConfigs(sessionId);
-  const forget = async (id: string) => {
-    try {
-      await forgetApprovalRule(id);
-    } catch (err) {
-      if (agentCommandWasRetired(err)) return;
-      notifyError(rpcErrorText(err) ?? t("approvals.error.forget"));
-    }
-  };
-  const forgetAll = async (rows: ApprovalRuleSummary[]) => {
-    try {
-      await forgetApprovalRules(rows);
-    } catch (err) {
-      if (agentCommandWasRetired(err)) return;
-      notifyError(rpcErrorText(err) ?? t("approvals.error.forget"));
-    }
-  };
+  const { busy, run } = useCommandAction({
+    wasRetired: agentCommandWasRetired,
+    fallback: t("approvals.error.forget"),
+  });
 
   return (
     <div>
@@ -71,7 +59,7 @@ export function RulesRow() {
           {(rows) => (
             <div className="flex flex-col gap-0.5">
               <div className="flex justify-end">
-                <TextButton onClick={() => void forgetAll(rows)}>
+                <TextButton disabled={busy} onClick={() => run(() => forgetApprovalRules(rows))}>
                   {t("approvals.clearAll")}
                 </TextButton>
               </div>
@@ -103,7 +91,9 @@ export function RulesRow() {
                     quiet
                     className="shrink-0"
                     aria-label={t("approvals.forget", { tool: r.tool })}
-                    onClick={() => void forget(r.id)}
+                    aria-busy={busy}
+                    disabled={busy}
+                    onClick={() => run(() => forgetApprovalRule(r.id))}
                   />
                 </div>
               ))}

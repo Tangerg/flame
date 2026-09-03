@@ -108,6 +108,8 @@ const finishedRun = {
   finishedAt: "2026-07-07T10:00:20Z",
   metrics: { steps: 2, activeDurationMillis: 20_000 },
   protocolProfile: { requiredFeatures: [], interruptTypes: [] },
+  provider: "openai",
+  model: "gpt-5",
   outcome: { type: "completed" },
 };
 

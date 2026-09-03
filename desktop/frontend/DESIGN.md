@@ -859,16 +859,16 @@ When in doubt: **does this surface convey "the agent is alive and live"?** If ye
 ### Don't
 
 - **Don't use ALL-CAPS labels with letter-spacing.** Section labels / eyebrows / table heads are **sentence-case** (mono for dense technical labels like `args` / `attrs`); the ALL-CAPS + wide-tracking eyebrow is the rejected Sonance vocabulary.
-- **Don't use pill-radius CTAs** (`9999px`, `500px`, `100px` on a button). Buttons are `md` 8px.
+- **Don't use pill-radius CTAs** (`9999px`, `500px`, `100px` on a button). Buttons are `sm`, through `--button-radius`.
 - **Don't use weight 700+ for display.** 600 is the ceiling, Linear and Vercel both forbid this.
 - **Don't add panel / card drop shadows.** The layout is flush — depth is the surface step + hairlines. Stacked-subtle shadow is for truly-floating overlays (Level 4) only, in BOTH schemes. No cards-on-canvas, no gutters.
-- **Don't use pure `#000000` or a harsh near-black canvas.** Dark canvas is `#0c0d0f` — a soft, comfortable dark for a full reading surface.
+- **Don't use pure `#000000` or a harsh near-black canvas.** Dark canvas is `--color-bg`, a soft grey, not a black.
 - **Don't flash a bright accent ring/halo on focus or click.** Keyboard focus is one thin stroke; inputs/composer just strengthen their border. The loud glow read as cheap.
 - **Don't introduce a second chromatic accent.** Flame has one accent + four semantic colors. No more.
 - **Don't use accent decoratively.** Active tab / primary CTA / focus ring / live indicator — that's the entire allowed list.
 - **Don't set body paragraphs in mono.** Mono is for the technical layer only.
 - **Don't apply atmospheric gradients, mesh backdrops, or dot grids** (the latter was discussed and rejected — Linear explicitly forbids "atmospheric gradients or spotlight cards").
-- **Don't add backdrop-filter / vibrancy / Mica effects.** Wails WebView is inconsistent across platforms; visual carries the load.
+- **Don't add a fourth glass surface.** Blur is material, not decoration, and it belongs to exactly three tokens — `--floating-backdrop`, `--composer-backdrop`, `--composer-tray-backdrop` (see `DESKTOP_UI_POLISH.md` §Glass). ChatGPT blurs its own composer surface the same way. A raw `backdrop-blur-*` at a call site is how a fourth appears.
 
 ## 11. Light theme
 

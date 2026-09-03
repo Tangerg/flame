@@ -69,6 +69,9 @@ describe("the published JSON Schema bundle", () => {
       finishedAt: "2026-07-30T00:00:00Z",
       metrics: { steps: 0, activeDurationMillis: 0 },
       protocolProfile: { requiredFeatures: [], interruptTypes: [] },
+      provider: "openai",
+      model: "gpt-5",
+      createdAt: "2026-07-30T00:00:00Z",
     };
     expect(cancel?.({ type: "root", run: canceledRun })).toBe(true);
     expect(cancel?.({ type: "root", run: canceledRun, rootRun: canceledRun })).toBe(false);

@@ -27,6 +27,8 @@ const runStarted = (id: string, sessionId: string): StreamEvent => ({
     createdAt: "2026-06-03T00:00:00.000Z",
     metrics: { steps: 0, activeDurationMillis: 0 },
     protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+    provider: "openai",
+    model: "gpt-5",
   },
 });
 const runFinished = (outcome: SegmentOutcome): StreamEvent => ({
@@ -122,6 +124,8 @@ const runRef = (partial: Partial<RunRef> = {}): RunRef => ({
   createdAt: "2026-06-03T00:00:00.000Z",
   metrics: { steps: 0, activeDurationMillis: 0 },
   protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+  provider: "openai",
+  model: "gpt-5",
   ...partial,
 });
 

@@ -45,6 +45,8 @@ function schedule(workspace?: { path: string }): Schedule {
     ...(workspace ? { workspace } : {}),
     cron: "0 9 * * 1",
     enabled: true,
+    provider: "openai",
+    model: "gpt-5",
     createdAt: "2026-08-12T00:00:00Z",
     revision: 1,
   };

@@ -274,3 +274,111 @@ real change. This round measured what it was actually absorbing.
 3. **The margin is thin.** A whole button is 90 px against a 40 px budget — 2.25×.
    A single small glyph on a small control could still pass. If that matters,
    the answer is component-scoped goldens rather than a tighter global count.
+
+---
+
+## Round 4 — controls that fire a Runtime command and say nothing
+
+Status: **complete**.
+
+### Audit scope
+
+Overlay interactions first — every composer menu, the message context menu, the
+model picker — then a mechanical sweep of every click handler that starts an
+async command, checked against `refactor-prompt.md` rule 5 ("禁止点击后没有即时
+反馈").
+
+### Checked and left alone
+
+Two candidate findings were dropped after reading the code rather than the
+screenshot:
+
+- **Floating panels are translucent and what is behind them tints them.** Real,
+  and visible in the context menu over a user bubble. But `DESKTOP_UI_POLISH.md`
+  §Glass states it as intent: blur belongs to floating panels and the composer
+  because "a hint of what is covered is what makes them read as above it". Round
+  1 removed it from a *modal*, which that same rule excludes. Consistent.
+- **The model picker reserves 240 px whatever it holds**, so one model sits above
+  ~120 px of nothing. `catalog-picker.tsx` says why in place: the surface is
+  anchored to a composer control, so a body that grows with its group walks the
+  whole popover up the screen. A fixed measure is the point.
+
+### Findings
+
+| # | Problem | Evidence | Root cause |
+| --- | --- | --- | --- |
+| 1 | Schedule **Run now**, **Delete** and the enable toggle fire a Runtime command with no in-flight state at all: the click leaves no mark, so a second click sends the command again. Two runs, two deletes. | `ScheduleRow`'s `guard()` had the error handling and nothing else. | — |
+| 2 | Approval **Forget** and **Forget all** — same. | `RulesRow`'s two bare `try/catch` handlers. | — |
+| 3 | The app already had the answer written down three times and never shared. | `GoalStatusSurface` (`commandInFlight` ref + `pending` + `aria-busy`), `agentMemory` (`useRowAction`), `ImagePreviewGallery` (`savingRef` + `saving`). Two more callsites simply omitted the half that shows the command is running. | No owner for "one user-triggered command at a time, visibly". |
+| 4 | `DESIGN.md` forbids what the app ships and what its own spec section prescribes. | Line 871 said *"Don't add backdrop-filter / vibrancy"*; line 314 of the same file specifies `backdropFilter: blur(10px)` for the command palette, and three blur tokens ship. ChatGPT's own stylesheet carries `--composer-layout-surface-backdrop-filter: blur(...)`. | — |
+
+### What changed
+
+| | Before | After |
+| --- | --- | --- |
+| Command in flight | three hand-rolled `useRef` + `useState` pairs, two callsites with neither | one `useCommandAction` in the plugin SDK; the guard is the ref, because `busy` reaches the DOM a render after the click that started the command |
+| Schedule row | click → nothing until the query invalidates | `disabled` + `aria-busy` on the control that started it |
+| Approval rules | same | same |
+| `agentMemory` error text | `err instanceof Error ? err.message : …` — an internal error's own words | `rpcErrorText(err) ?? fallback`, the convention the other four already used |
+| `DESIGN.md` blur rule | "Don't add backdrop-filter" | "Don't add a fourth glass surface", naming the three tokens that exist |
+| `DESIGN.md` button radius | "Buttons are `md` 8px" | `sm`, through `--button-radius` — what ships |
+| `DESIGN.md` dark canvas | `#0c0d0f` | `--color-bg`, which is `#1d1f23` |
+
+### Authority note
+
+The user ruled this round that **`DESIGN.md` is stale and the ChatGPT reference
+is authoritative**. Where the document contradicts what ships or what the
+reference does, the document is what gets corrected. Three such contradictions
+are fixed above; the file has not been swept end to end.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` and all sixteen
+  architecture/style gates clean, including `check:bundle`.
+- `npm run test` — 2334 passed, 8 failed. All eight are `runtime/contract`'s:
+  two are `segment.finished.json` failing its own regenerated validator, six are
+  `runtime-http.e2e` against the live Go runtime.
+- `npm run visual:test` — 387 passed, no golden changed.
+- Five new `useCommandAction` tests: a second click inside the pre-render gap is
+  refused, `aria-busy` tracks the command, the Runtime's own refusal text is what
+  the user reads, an internal `Error`'s words are not, and a retired command is
+  silent.
+- Every suite covering the touched files: 475 passed.
+
+### Contract migration, mid-round
+
+`runtime/contract` landed `7472cd0 fix(runtime): require run execution
+attribution` while this round was running: `RunRef`, `Goal` and `Schedule` all
+require `model` and `provider` now. That broke `typecheck` across eleven desktop
+test and fixture files. It was recorded as blocked while the change was still
+uncommitted in the working tree — adapting to a definition someone is still
+editing produces conflicts, not progress — and migrated once it landed.
+
+Two of those files needed more than the mechanical addition:
+
+- **`runtimeAgentFacts.test.ts`** has two negative cases that construct a run
+  with a *deliberately incomplete* identity — provider without model, reasoning
+  without model. Adding the fields to the shared builder made both cases valid
+  and both assertions vacuous. They override back to `undefined` explicitly now,
+  which also says out loud what each case is about.
+- **`visual/agentSessionSnapshots.ts`** first got `model: "gpt-5"`, copied from
+  the Goal fixtures beside it. Wrong axis: a run's model is resolved against the
+  *composer's catalogue*, whose only entry is `gpt-5.6-sol`, so the context gauge
+  found no window and stopped rendering. `Context usage: 9%` disappeared from
+  every running-state golden.
+
+That second one is worth its own note: **round 3's budget caught it.** The
+difference was 58 pixels against a 40-pixel budget. Under the ratio it replaced
+— 2650 pixels at that viewport — a missing gauge would have shipped green.
+
+### Reclaimed
+
+Visual dev server stopped; two probe scripts deleted; `knip` clean.
+
+### Open, for the next round
+
+1–3 unchanged. Plus:
+4. `GoalStatusSurface` and `ImagePreviewGallery` keep their own in-flight state.
+   The goal row tracks *which* of three commands is running so only that button
+   reads busy, which a boolean owner cannot express; the gallery guards a
+   download, not a Runtime command. Both left deliberately.
