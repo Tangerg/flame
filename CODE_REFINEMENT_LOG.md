@@ -7,10 +7,10 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–159 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–160 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
-- The current Runtime contract is `6534c97a` (`fix(runtime): validate artifact
-  tool results`).
+- The current Runtime contract is `6f9c4b77` (`fix(runtime): align artifact
+  content validation`).
 - Authorized code scope remains `runtime` and `cli`. Desktop work is concurrent
   user-owned work and must not be modified by this refinement stream.
 - The configured provider credential is used only through Runtime configuration.
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–159 — exact handoff
+## Rounds 101–160 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -119,6 +119,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 157 | `dc4e3331` + CLI dependency update | Required portable Session creation/update times and verified CLI import rejects either missing fact before dispatch. |
 | 158 | `e93a0d73` + CLI dependency update | Required every portable terminal Run lifecycle time and verified CLI import rejects each missing fact before dispatch. |
 | 159 | `6534c97a` + CLI dependency update | Published the complete portable tool-result blob contract, including canonical ID grammar and required creation time, and enforced it at CLI import. |
+| 160 | `6f9c4b77` + CLI dependency update | Unified live and portable content validation so both reject blank text and non-image media types before projection or import. |
 
 ## Verification contract
 
@@ -156,7 +157,7 @@ repeated here.
 
 ## Remaining direction
 
-- Continue after Round 159 by auditing complete Runtime catalogs and CLI
+- Continue after Round 160 by auditing complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the

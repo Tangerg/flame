@@ -362,6 +362,62 @@ func TestSessionImportRejectsInvalidArtifactToolResults(t *testing.T) {
 	}
 }
 
+func TestSessionImportRejectsInvalidArtifactContent(t *testing.T) {
+	called := false
+	stub := sessionBindingStub{imported: func(context.Context, protocol.ImportSessionRequest, flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error) {
+		called = true
+		return nil, nil
+	}}
+	runtime := &Connection{
+		sessions: stub, meta: requestMeta("test"),
+		profile: sessionControlProfile(protocol.FeatureSessionExport),
+	}
+	valid := protocol.SessionArtifact{
+		Version: protocol.SessionArtifactVersion,
+		Session: protocol.ArtifactSession{
+			ID: "ses_1", Workspace: protocol.WorkspaceRef{Path: "/workspace"},
+			Provider: testSessionProvider, Model: testSessionModel,
+			CreatedAt: testSessionTime, UpdatedAt: testSessionTime,
+		},
+		Messages: []json.RawMessage{}, Runs: []protocol.ArtifactRun{},
+		Items: []protocol.ArtifactItem{{
+			ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusCompleted,
+			CreatedAt: testSessionTime, Type: protocol.ItemTypeUserMessage,
+			Content: []protocol.ArtifactContentBlock{{Type: protocol.ContentBlockText, Text: "hello"}},
+		}},
+		ToolResults: []protocol.ArtifactToolResult{},
+	}
+	for _, test := range []struct {
+		name  string
+		field string
+		block protocol.ArtifactContentBlock
+	}{
+		{name: "blank text", field: "text", block: protocol.ArtifactContentBlock{Type: protocol.ContentBlockText, Text: " \t"}},
+		{name: "non-image media type", field: "mime", block: protocol.ArtifactContentBlock{Type: protocol.ContentBlockImage, Mime: "text/plain", Data: "AA=="}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			artifact := valid
+			artifact.Items = append([]protocol.ArtifactItem(nil), valid.Items...)
+			artifact.Items[0].Content = []protocol.ArtifactContentBlock{test.block}
+			body, err := json.Marshal(artifact)
+			if err != nil {
+				t.Fatal(err)
+			}
+			document, err := session.NewDocument(protocol.ExportFormatJSON, body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document})
+			if err == nil || !strings.Contains(err.Error(), test.field) {
+				t.Fatalf("ImportSession error = %v, want %q", err, test.field)
+			}
+		})
+	}
+	if called {
+		t.Fatal("invalid artifact reached the Runtime binding")
+	}
+}
+
 func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 	t.Parallel()
 	createdAt := time.Date(2026, time.August, 14, 8, 0, 0, 0, time.UTC)
