@@ -339,27 +339,28 @@ func contributeCommands(commands []terminal.SlashCommand) func(*extensions.Scope
 	}
 }
 
-func resolveEntry(directory, entry string) (string, string, error) {
+func resolveEntry(directory, entry string) (executableSource, string, error) {
 	entry, expected, err := validateEntryPath(directory, entry)
 	if err != nil {
-		return "", "", err
+		return executableSource{}, "", err
 	}
 	realDirectory, err := filepath.EvalSymlinks(directory)
 	if err != nil {
-		return "", "", fmt.Errorf("resolve plugin directory: %w", err)
+		return executableSource{}, "", fmt.Errorf("resolve plugin directory: %w", err)
 	}
 	realExecutable, err := filepath.EvalSymlinks(expected)
 	if err != nil {
-		return "", "", fmt.Errorf("resolve entry %q: %w", entry, err)
+		return executableSource{}, "", fmt.Errorf("resolve entry %q: %w", entry, err)
 	}
 	relative, err := filepath.Rel(realDirectory, realExecutable)
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-		return "", "", fmt.Errorf("entry %q escapes its plugin directory", entry)
+		return executableSource{}, "", fmt.Errorf("entry %q escapes its plugin directory", entry)
 	}
-	if err := validateExecutable(entry, realExecutable); err != nil {
-		return "", "", err
+	identity, err := inspectExecutable(entry, realExecutable)
+	if err != nil {
+		return executableSource{}, "", err
 	}
-	return realExecutable, realDirectory, nil
+	return executableSource{path: realExecutable, identity: identity}, realDirectory, nil
 }
 
 func validateEntryPath(directory, entry string) (string, string, error) {
@@ -375,11 +376,15 @@ func validateEntryPath(directory, entry string) (string, string, error) {
 	return entry, expected, nil
 }
 
-func validateExecutable(entry, path string) error {
+func inspectExecutable(entry, path string) (os.FileInfo, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return fmt.Errorf("inspect entry %q: %w", entry, err)
+		return nil, fmt.Errorf("inspect entry %q: %w", entry, err)
 	}
+	return info, validateExecutable(entry, info)
+}
+
+func validateExecutable(entry string, info os.FileInfo) error {
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("entry %q is not a regular file", entry)
 	}
@@ -389,7 +394,12 @@ func validateExecutable(entry, path string) error {
 	return nil
 }
 
-func compileCommands(pluginID, executable, directory string, manifests []commandManifest) ([]terminal.SlashCommand, error) {
+func compileCommands(
+	pluginID string,
+	executable executableSource,
+	directory string,
+	manifests []commandManifest,
+) ([]terminal.SlashCommand, error) {
 	if len(manifests) > maxManifestCommands {
 		return nil, fmt.Errorf("contributes.commands exceeds %d entries", maxManifestCommands)
 	}
@@ -406,7 +416,9 @@ func compileCommands(pluginID, executable, directory string, manifests []command
 }
 
 func compileCommand(
-	pluginID, executable, directory string,
+	pluginID string,
+	executable executableSource,
+	directory string,
 	declared commandManifest,
 	seen map[string]struct{},
 ) (terminal.SlashCommand, error) {
@@ -434,7 +446,7 @@ func compileCommand(
 		return terminal.SlashCommand{}, err
 	}
 	commandExecutor := executableCommand{
-		pluginID: pluginID, command: name, executable: executable,
+		pluginID: pluginID, command: name, source: executable,
 		directory: directory, timeout: timeout,
 	}
 	return terminal.SlashCommand{

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
 )
 
@@ -25,11 +27,16 @@ const (
 )
 
 type executableCommand struct {
-	pluginID   string
-	command    string
-	executable string
-	directory  string
-	timeout    time.Duration
+	pluginID  string
+	command   string
+	source    executableSource
+	directory string
+	timeout   time.Duration
+}
+
+type executableSource struct {
+	path     string
+	identity os.FileInfo
 }
 
 type commandRequest struct {
@@ -50,6 +57,21 @@ func (e executableCommand) Execute(ctx context.Context, request terminal.Command
 	if err := validateCommandRequest(request); err != nil {
 		return terminal.CommandResult{}, fmt.Errorf("plugin %s command /%s request: %w", e.pluginID, e.command, err)
 	}
+	executable, opened, err := fileinput.OpenExpected(e.source.path, e.source.identity, 0)
+	if err != nil {
+		switch {
+		case errors.Is(err, fileinput.ErrChanged):
+			return terminal.CommandResult{}, fmt.Errorf("plugin %s command /%s entry changed since discovery", e.pluginID, e.command)
+		case errors.Is(err, fileinput.ErrNotRegular):
+			return terminal.CommandResult{}, fmt.Errorf("plugin %s command /%s entry is not a regular file", e.pluginID, e.command)
+		default:
+			return terminal.CommandResult{}, fmt.Errorf("plugin %s command /%s open discovered entry: %w", e.pluginID, e.command, err)
+		}
+	}
+	defer func() { _ = executable.Close() }()
+	if err := validateExecutable(e.source.path, opened); err != nil {
+		return terminal.CommandResult{}, fmt.Errorf("plugin %s command /%s: %w", e.pluginID, e.command, err)
+	}
 	ctx, cancel := context.WithTimeout(ctx, e.timeout)
 	defer cancel()
 	payload, err := json.Marshal(commandRequest{
@@ -62,9 +84,10 @@ func (e executableCommand) Execute(ctx context.Context, request terminal.Command
 	if len(payload) > maxCommandRequestBytes {
 		return terminal.CommandResult{}, fmt.Errorf("plugin %s command /%s request exceeds %d bytes", e.pluginID, e.command, maxCommandRequestBytes)
 	}
-	// #nosec G204 -- discovery canonicalizes the manifest entry, proves that it
-	// remains inside the plugin directory, and requires an executable regular file.
-	process := exec.CommandContext(ctx, e.executable)
+	// #nosec G204 -- discovery confines the manifest entry to the explicitly
+	// configured plugin directory, and Execute reopens the same discovered
+	// executable identity immediately before process admission.
+	process := exec.CommandContext(ctx, e.source.path)
 	configureProcess(process)
 	process.Dir = e.directory
 	process.Env = commandEnvironment(e.pluginID, e.command)

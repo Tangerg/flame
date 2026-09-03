@@ -248,6 +248,26 @@ func TestExecutableCommandUsesBoundedJSONProtocol(t *testing.T) {
 	}
 }
 
+func TestDiscoveredCommandRejectsAReplacedExecutable(t *testing.T) {
+	root := t.TempDir()
+	declared := validManifest("test.replaced")
+	writePlugin(t, root, "replaced", declared, "not executed")
+	commands, closeKernel := loadFixtureCommands(t, root)
+	defer closeKernel()
+	if len(commands) != 1 || commands[0].Execute == nil {
+		t.Fatalf("commands = %+v", commands)
+	}
+	entry := filepath.Join(root, "replaced", declared.Entry)
+	replacement := entry + ".replacement"
+	writeExecutable(t, replacement, "replacement must not execute")
+	if err := os.Rename(replacement, entry); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := commands[0].Execute(t.Context(), terminal.CommandRequest{}); err == nil || !strings.Contains(err.Error(), "entry changed since discovery") {
+		t.Fatalf("replaced executable error = %v", err)
+	}
+}
+
 func loadFixtureCommands(t *testing.T, root string) ([]terminal.SlashCommand, func()) {
 	t.Helper()
 	discovered, err := New([]string{root}).Discover(t.Context())
@@ -274,8 +294,15 @@ func TestExecutableCommandHonorsCancellation(t *testing.T) {
 	root := t.TempDir()
 	slow := filepath.Join(root, "slow")
 	writeExecutable(t, slow, "#!/bin/sh\nsleep 2\n")
-	executor := executableCommand{pluginID: "test.slow", command: "slow", executable: slow, directory: root, timeout: 20 * time.Millisecond}
-	_, err := executor.Execute(t.Context(), terminal.CommandRequest{})
+	identity, err := os.Stat(slow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	executor := executableCommand{
+		pluginID: "test.slow", command: "slow", source: executableSource{path: slow, identity: identity},
+		directory: root, timeout: 20 * time.Millisecond,
+	}
+	_, err = executor.Execute(t.Context(), terminal.CommandRequest{})
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("timeout error = %v", err)
 	}
@@ -295,7 +322,10 @@ func TestCommandResponseNamesGenericTrailingJSON(t *testing.T) {
 }
 
 func TestCommandRequestIsBoundedBeforeAProcessStarts(t *testing.T) {
-	executor := executableCommand{pluginID: "test.bounds", command: "large", executable: filepath.Join(t.TempDir(), "missing"), timeout: time.Second}
+	executor := executableCommand{
+		pluginID: "test.bounds", command: "large",
+		source: executableSource{path: filepath.Join(t.TempDir(), "missing")}, timeout: time.Second,
+	}
 	_, err := executor.Execute(t.Context(), terminal.CommandRequest{Argument: strings.Repeat("x", maxCommandArgumentBytes+1)})
 	if err == nil || !strings.Contains(err.Error(), "argument exceeds") || strings.Contains(err.Error(), "executable") {
 		t.Fatalf("oversized request error = %v", err)
