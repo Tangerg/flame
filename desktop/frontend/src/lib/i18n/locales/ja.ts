@@ -762,6 +762,8 @@ export const ja: Record<string, string> = {
   "command.focusComposer": "コンポーザーにフォーカス",
   "command.historyBack": "戻る",
   "command.historyForward": "進む",
+  "command.previousSession": "前のチャット",
+  "command.nextSession": "次のチャット",
 
   "diagnostics.clear": "クリア",
   "diagnostics.title": "診断",

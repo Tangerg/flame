@@ -935,6 +935,8 @@ export const zh: Record<string, string> = {
   "command.focusComposer": "聚焦输入框",
   "command.historyBack": "后退",
   "command.historyForward": "前进",
+  "command.previousSession": "上一个会话",
+  "command.nextSession": "下一个会话",
 
   "diagnostics.clear": "清除",
   "diagnostics.title": "诊断",

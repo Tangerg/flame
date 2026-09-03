@@ -115,4 +115,14 @@ describe("a letter shortcut under a non-US keyboard layout", () => {
   it("still matches a US layout, where key and code agree", () => {
     expect(matches("Ctrl+K", keydown("k", "KeyK", ["Control"]))).toBe(true);
   });
+
+  // `KeyboardEvent.key` for ⌘⇧] is `}`, on every layout there is, so a binding spelled with
+  // the character it prints matches nothing. Letters do not need this — Shift+b reports `B`.
+  it("dispatches punctuation by its physical code, not the glyph a modifier rewrites", () => {
+    expect(dispatchBinding("Mod+Shift+]")).toBe("$mod+Shift+BracketRight");
+    expect(dispatchBinding("Mod+Shift+[")).toBe("$mod+Shift+BracketLeft");
+    expect(dispatchBinding("Mod+[")).toBe("$mod+BracketLeft");
+    expect(dispatchBinding("Mod+k")).toBe("$mod+KeyK");
+    expect(dispatchBinding("Escape")).toBe("Escape");
+  });
 });

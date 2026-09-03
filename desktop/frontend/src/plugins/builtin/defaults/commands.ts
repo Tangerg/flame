@@ -1,4 +1,4 @@
-// The eight static application commands that also own the global shortcuts
+// The static application commands that also own the global shortcuts
 // listed in Settings. Workspace destinations and theme accents stay in their
 // dedicated selection surfaces.
 
@@ -7,6 +7,7 @@ import {
   closeActiveAgentSession,
   createSession,
   getActiveSessionId,
+  stepActiveAgentSession,
 } from "@/plugins/builtin/agent/public/session";
 import {
   closeActiveWorkspaceDockView,
@@ -54,6 +55,8 @@ export const defaultCommands = definePlugin({
       focusComposer: () => focusComposer(),
       historyBack: () => navigator().back(),
       historyForward: () => navigator().forward(),
+      previousSession: () => stepActiveAgentSession(-1),
+      nextSession: () => stepActiveAgentSession(1),
     })) {
       ctx.contribute(COMMAND, command);
     }

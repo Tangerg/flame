@@ -757,6 +757,8 @@ export const ko: Record<string, string> = {
   "command.focusComposer": "컴포저에 포커스",
   "command.historyBack": "뒤로 가기",
   "command.historyForward": "앞으로 가기",
+  "command.previousSession": "이전 대화",
+  "command.nextSession": "다음 대화",
 
   "diagnostics.clear": "지우기",
   "diagnostics.title": "진단",

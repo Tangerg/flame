@@ -13,6 +13,8 @@ export const GLOBAL_COMMAND_IDS = [
   "settings.toggle-theme",
   "history.back",
   "history.forward",
+  "session.previous",
+  "session.next",
 ];
 
 export type CommandLookup = (id: string) => CommandSpec | undefined;

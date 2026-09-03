@@ -1204,3 +1204,88 @@ the reference has no such setting to align to.
 - `npm run visual:test` — **389 passed, no golden regenerated.**
 - The new assertion fails if the tokens go back inside `@theme inline` —
   verified by putting them back.
+
+---
+
+## Round 15 — the interaction half of the alignment, and a shortcut spelling that could not fire
+
+Status: **complete**
+
+### Audit scope
+
+"UI **与交互**" — the previous alignment rounds compared static measurements.
+This one compares the command surface. The reference ships a native menu whose
+locale files carry its whole command vocabulary: **36 commands**, against
+Flame's nine.
+
+Most of the 36 are concepts Flame does not have — a browser sidebar, a pet
+overlay, dictation, temporary chats. Mapping the rest onto Flame's model:
+
+| Reference | Flame |
+| --- | --- |
+| `navigateBack` / `navigateForward`, `CmdOrCtrl+[` / `]` | `history.back` / `history.forward`, `Mod+[` / `Mod+]` — **already aligned** |
+| `newThread`, `searchChats`, `toggleSidebar` | `chat.new`, `chat.search`, `view.toggle-sidebar` |
+| **`previousThread` / `nextThread`, `CmdOrCtrl+Shift+[` / `]`** | **nothing** |
+| `thread1`…`thread9` | nothing |
+
+The accelerators were read from the bundle rather than guessed:
+`menuTitle: "Previous Chat" … defaultKeybindings: [{ key: "CmdOrCtrl+Shift+[" }]`.
+
+### Added
+
+Switching sessions had no keyboard path at all — the Work Index is a mouse
+surface, which rule 8 ("所有核心交互必须支持键盘操作") does not allow for something
+this central.
+
+| | Combo |
+| --- | --- |
+| `session.previous` | `Mod+Shift+[` |
+| `session.next` | `Mod+Shift+]` |
+
+One step out from history's own pair, which is where the reference puts them
+too. `stepAgentSession` is pure and wraps at both ends; a selection the list no
+longer carries — what a deletion leaves behind — enters from whichever end the
+step came from.
+
+### The finding this uncovered
+
+The first version did not work, and the reason is a latent bug older than it.
+
+`KeyboardEvent.key` for ⌘⇧] is **`}`**, not `]`. Measured in a real browser:
+`{ key: "}", code: "BracketRight" }`. tinykeys matches a binding against
+`event.key` **or** `event.code`, so `Mod+Shift+]` matches neither and could never
+fire.
+
+`lib/combo.ts` already had the fix for the general case — `dispatchKey` maps
+letters and digits to physical codes, because "⌘K under Cyrillic reports `к` and
+matches no registration". **It did not cover punctuation.** So:
+
+| | Before | After |
+| --- | --- | --- |
+| `Mod+Shift+]` | `$mod+Shift+]` — matches nothing | `$mod+Shift+BracketRight` |
+| `Mod+[` (shipped since before this round) | `$mod+[` — works on a US layout **only** | `$mod+BracketLeft` |
+
+The existing history shortcuts were layout-dependent and nobody had noticed,
+because the layout they were written on is the one they were tested on. Eleven
+punctuation keys now dispatch by physical code.
+
+Verified end to end in a real browser: the emitted `$mod+Shift+BracketRight`
+fires on ⌘⇧], and a binding spelled `$mod+Shift+]` registered beside it does not.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, `check:locales` (1068 keys × 8
+  locales) and fourteen gates clean.
+- `npm run test` excluding the live-runtime e2e — 2300 passed, 2 failed, both
+  `runtime/contract`'s own sample.
+- `npm run visual:test` — 389 passed, no golden regenerated.
+- New tests: four on `stepAgentSession`'s order and wrap-around, one on
+  punctuation dispatch, and the pinned command set updated to ten.
+
+### Open
+
+1. `thread1`…`thread9` — jumping to the Nth session by number. The reference has
+   it; whether a nine-slot numeric index suits a Work Index grouped by project
+   rather than a flat tab strip is a design question, not a transcription.
+2. `delegated` has no raster coverage.
+3. Nine settings panes have no fixture coverage.

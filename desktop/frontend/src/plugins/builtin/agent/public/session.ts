@@ -41,3 +41,4 @@ export {
 } from "../application/session/refreshSessionProjection";
 export { useRelocateSession } from "../application/session/relocateSession";
 export { useRenameSession } from "../application/session/renameSession";
+export { stepActiveAgentSession } from "../application/session/stepSession";

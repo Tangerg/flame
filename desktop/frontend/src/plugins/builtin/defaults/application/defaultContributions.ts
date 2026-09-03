@@ -11,6 +11,8 @@ export interface DefaultCommandRuns {
   focusComposer: CommandRun;
   historyBack: CommandRun;
   historyForward: CommandRun;
+  previousSession: CommandRun;
+  nextSession: CommandRun;
 }
 
 // The tool-window accent set. Each `dark` value is the hue as the language states
@@ -124,6 +126,20 @@ export function defaultStaticCommands(runs: DefaultCommandRuns): CommandSpec[] {
       label: "command.historyForward",
       combo: "Mod+]",
       run: runs.historyForward,
+    },
+    // One step out from history's own pair, which is where the reference puts them too:
+    // `Mod+[`/`]` moves through where you have been, `Mod+Shift+[`/`]` through what is open.
+    {
+      id: "session.previous",
+      label: "command.previousSession",
+      combo: "Mod+Shift+[",
+      run: runs.previousSession,
+    },
+    {
+      id: "session.next",
+      label: "command.nextSession",
+      combo: "Mod+Shift+]",
+      run: runs.nextSession,
     },
   ];
 }

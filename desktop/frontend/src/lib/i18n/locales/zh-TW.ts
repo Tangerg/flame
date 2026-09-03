@@ -767,6 +767,8 @@ export const zhTW: Record<string, string> = {
   "command.focusComposer": "聚焦輸入框",
   "command.historyBack": "上一頁",
   "command.historyForward": "下一頁",
+  "command.previousSession": "上一個工作階段",
+  "command.nextSession": "下一個工作階段",
 
   "diagnostics.clear": "清除",
   "diagnostics.title": "診斷",

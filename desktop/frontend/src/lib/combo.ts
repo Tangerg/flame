@@ -99,15 +99,33 @@ const DISPATCH_MODIFIERS = new Map([
   ["shift", "Shift"],
 ]);
 
+// The punctuation whose `KeyboardEvent.key` a modifier REWRITES: with Shift held, `]` arrives
+// as `}` and matches neither the registration nor its own code. Letters do not have this
+// problem — Shift+b is still reported as `B` — which is why the rule below is per-character.
+const DISPATCH_CODES = new Map([
+  ["[", "BracketLeft"],
+  ["]", "BracketRight"],
+  ["\\", "Backslash"],
+  [";", "Semicolon"],
+  ["'", "Quote"],
+  [",", "Comma"],
+  [".", "Period"],
+  ["/", "Slash"],
+  ["-", "Minus"],
+  ["=", "Equal"],
+  ["`", "Backquote"],
+]);
+
 function dispatchKey(key: string): string {
   if (/^[a-z]$/i.test(key)) return `Key${key.toUpperCase()}`;
   if (/^[0-9]$/.test(key)) return `Digit${key}`;
-  return key;
+  return DISPATCH_CODES.get(key) ?? key;
 }
 
-/** Letters and digits become PHYSICAL key codes: `KeyboardEvent.key` carries whatever the
- *  active layout prints, so ⌘K under Cyrillic reports `"к"` and matches no registration.
- *  The key segment keeps its spelling — tinykeys names `Escape` and `Enter` in full. */
+/** Letters, digits and punctuation become PHYSICAL key codes: `KeyboardEvent.key` carries
+ *  whatever the active layout prints, so ⌘K under Cyrillic reports `"к"` and matches no
+ *  registration — and ⌘⇧] reports `}` on every layout there is. The key segment otherwise
+ *  keeps its spelling — tinykeys names `Escape` and `Enter` in full. */
 export function dispatchBinding(combo: string): string {
   return combo
     .trim()

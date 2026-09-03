@@ -62,6 +62,8 @@ describe("defaultStaticCommands", () => {
       focusComposer: run,
       historyBack: run,
       historyForward: run,
+      previousSession: run,
+      nextSession: run,
     });
 
     expect(commands.map((command) => command.id)).toEqual([
@@ -73,6 +75,8 @@ describe("defaultStaticCommands", () => {
       "composer.focus",
       "history.back",
       "history.forward",
+      "session.previous",
+      "session.next",
     ]);
     expect(commands.map((command) => command.combo)).toEqual([
       "Mod+B",
@@ -83,6 +87,8 @@ describe("defaultStaticCommands", () => {
       "Mod+L",
       "Mod+[",
       "Mod+]",
+      "Mod+Shift+[",
+      "Mod+Shift+]",
     ]);
     expect(commands.map((command) => command.label)).toEqual([
       "command.toggleSidebar",
@@ -93,6 +99,8 @@ describe("defaultStaticCommands", () => {
       "command.focusComposer",
       "command.historyBack",
       "command.historyForward",
+      "command.previousSession",
+      "command.nextSession",
     ]);
   });
 });

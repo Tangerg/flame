@@ -789,6 +789,8 @@ export const es: Record<string, string> = {
   "command.focusComposer": "Enfocar compositor",
   "command.historyBack": "Atrás",
   "command.historyForward": "Adelante",
+  "command.previousSession": "Chat anterior",
+  "command.nextSession": "Chat siguiente",
 
   "diagnostics.clear": "Limpiar",
   "diagnostics.title": "Diagnóstico",

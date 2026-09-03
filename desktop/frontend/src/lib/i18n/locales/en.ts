@@ -1057,6 +1057,8 @@ export const en: Record<string, string> = {
   "command.focusComposer": "Focus composer",
   "command.historyBack": "Go back",
   "command.historyForward": "Go forward",
+  "command.previousSession": "Previous chat",
+  "command.nextSession": "Next chat",
 
   // ── Diagnostics view ──
   "diagnostics.clear": "Clear",
