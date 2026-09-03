@@ -33,3 +33,52 @@ func TestBuildIDFromFileReportsReadFailure(t *testing.T) {
 		t.Fatalf("buildIDFromFile error = %v, want contextual read failure", err)
 	}
 }
+
+func TestBuildIDFromOpenedFileRejectsGrowthAfterOpen(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "flame")
+	if err := os.WriteFile(path, []byte("before"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = file.Close() }()
+	before, err := file.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("before and after"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := buildIDFromOpenedFile(path, file, before); err == nil || !strings.Contains(err.Error(), "changed while hashing") {
+		t.Fatalf("growing executable error = %v", err)
+	}
+}
+
+func TestBuildIDFromOpenedFileRejectsPathReplacement(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "flame")
+	if err := os.WriteFile(path, []byte("before"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = file.Close() }()
+	before, err := file.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacement := filepath.Join(directory, "replacement")
+	if err := os.WriteFile(replacement, []byte("after!"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(replacement, path); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := buildIDFromOpenedFile(path, file, before); err == nil || !strings.Contains(err.Error(), "changed while hashing") {
+		t.Fatalf("replaced executable error = %v", err)
+	}
+}
