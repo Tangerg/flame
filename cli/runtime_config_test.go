@@ -28,7 +28,7 @@ func TestRuntimeConfigDirectoriesRejectRelativeExplicitSource(t *testing.T) {
 	}
 }
 
-func TestRuntimeConfigDirectoriesFindWorktreeDevelopmentConfig(t *testing.T) {
+func TestRuntimeConfigDirectoriesIgnoreWorkingDirectoryConfig(t *testing.T) {
 	t.Setenv(runtimeConfigDirectoryEnvironment, "")
 	root := t.TempDir()
 	configDirectory := filepath.Join(root, "runtime", "config")
@@ -54,8 +54,8 @@ func TestRuntimeConfigDirectoriesFindWorktreeDevelopmentConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runtimeConfigDirectories: %v", err)
 	}
-	want := []string{runtimeDirectory, configDirectory}
-	if len(directories) != len(want) || directories[0] != want[0] || directories[1] != want[1] {
+	want := []string{runtimeDirectory}
+	if len(directories) != len(want) || directories[0] != want[0] {
 		t.Fatalf("directories = %v, want %v", directories, want)
 	}
 }
