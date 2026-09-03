@@ -2,6 +2,7 @@ package statefile
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -37,7 +38,7 @@ func TestStoreReplacesReadsListsAndRemovesState(t *testing.T) {
 	if string(body) != "second" {
 		t.Fatalf("body = %q", body)
 	}
-	names, err := store.List("sessions")
+	names, err := store.ListFiles("sessions", ".json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,6 +50,31 @@ func TestStoreReplacesReadsListsAndRemovesState(t *testing.T) {
 	}
 	if _, err := store.Read(filepath.Join("sessions", "one.json"), 6); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("read removed state: %v", err)
+	}
+}
+
+func TestStoreListFilesFiltersAcrossReadBatches(t *testing.T) {
+	root := t.TempDir()
+	store := openStore(t, root)
+	if err := store.Replace(filepath.Join("sessions", "one.json"), nil); err != nil {
+		t.Fatal(err)
+	}
+	for index := range listReadBatchSize + 1 {
+		name := filepath.Join(root, "sessions", fmt.Sprintf("ignored-%03d.tmp", index))
+		if err := os.WriteFile(name, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := store.Replace(filepath.Join("sessions", "two.json"), nil); err != nil {
+		t.Fatal(err)
+	}
+	names, err := store.ListFiles("sessions", ".json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	slices.Sort(names)
+	if !slices.Equal(names, []string{"one.json", "two.json"}) {
+		t.Fatalf("names = %v", names)
 	}
 }
 
@@ -73,8 +99,8 @@ func TestStoreRejectsUnsafeNamesAndNonRegularState(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(outside, "escaped.json"), []byte("outside"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := store.List("sessions"); err == nil {
-		t.Fatal("List followed a symbolic-link state directory")
+	if _, err := store.ListFiles("sessions", ".json"); err == nil {
+		t.Fatal("ListFiles followed a symbolic-link state directory")
 	}
 }
 
@@ -136,8 +162,8 @@ func TestStoreCloseIsIdempotentAndRejectsFurtherOperations(t *testing.T) {
 	if _, err := store.Read("state.json", 16); err == nil {
 		t.Fatal("Read succeeded after Close")
 	}
-	if _, err := store.List("sessions"); err == nil {
-		t.Fatal("List succeeded after Close")
+	if _, err := store.ListFiles("sessions", ".json"); err == nil {
+		t.Fatal("ListFiles succeeded after Close")
 	}
 	if err := store.Replace("state.json", nil); err == nil {
 		t.Fatal("Replace succeeded after Close")

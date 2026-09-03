@@ -10,7 +10,7 @@ import (
 // physical root and atomic file operations.
 type Persistence interface {
 	Read(name string, maximumBytes int64) ([]byte, error)
-	List(directory string) ([]string, error)
+	ListFiles(directory, extension string) ([]string, error)
 	Replace(name string, body []byte) error
 	Remove(name string) error
 }

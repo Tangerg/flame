@@ -17,6 +17,10 @@ import (
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 )
 
+// listReadBatchSize bounds temporary directory metadata, not the number of
+// matching state records returned to the owner.
+const listReadBatchSize = 128
+
 // Store confines named state records to one pinned directory tree. It is safe
 // for concurrent use and must be closed when its owning workbench exits.
 type Store struct {
@@ -168,8 +172,9 @@ func (s *Store) Read(name string, maximumBytes int64) ([]byte, error) {
 	return body, nil
 }
 
-// List returns child names in the order supplied by os.File.ReadDir.
-func (s *Store) List(name string) (_ []string, err error) {
+// ListFiles returns child file names with the requested extension in the order
+// supplied by os.File.ReadDir.
+func (s *Store) ListFiles(name, extension string) (_ []string, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.ensureRoot(); err != nil {
@@ -185,17 +190,21 @@ func (s *Store) List(name string) (_ []string, err error) {
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, opened.Close()) }()
-	entries, err := opened.ReadDir(-1)
-	if err != nil {
-		return nil, err
-	}
-	names := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			names = append(names, entry.Name())
+	var names []string
+	for {
+		entries, readErr := opened.ReadDir(listReadBatchSize)
+		for _, entry := range entries {
+			if !entry.IsDir() && filepath.Ext(entry.Name()) == extension {
+				names = append(names, entry.Name())
+			}
+		}
+		switch {
+		case errors.Is(readErr, io.EOF):
+			return names, nil
+		case readErr != nil:
+			return nil, readErr
 		}
 	}
-	return names, nil
 }
 
 // Replace atomically publishes one complete state file. The temporary file is

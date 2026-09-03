@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	formatVersion     = 1
-	maximumStateBytes = 16 << 20
+	formatVersion         = 1
+	maximumStateBytes     = 16 << 20
+	sessionStateExtension = ".json"
 )
 
 type envelope[T any] struct {
@@ -147,7 +148,7 @@ func (s *Store) loadSessionStates() error {
 	if s.persistence == nil {
 		return nil
 	}
-	entries, err := s.persistence.List("sessions")
+	entries, err := s.persistence.ListFiles("sessions", sessionStateExtension)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
@@ -155,9 +156,6 @@ func (s *Store) loadSessionStates() error {
 		return err
 	}
 	for _, name := range entries {
-		if filepath.Ext(name) != ".json" {
-			continue
-		}
 		if s.confirmedSessionStateFile(name) {
 			continue
 		}
@@ -345,5 +343,5 @@ func (s *Store) blockWrites(cause error) error {
 
 func (s *Store) sessionStateName(sessionID string) string {
 	digest := sha256.Sum256([]byte(sessionID))
-	return filepath.Join("sessions", hex.EncodeToString(digest[:16])+".json")
+	return filepath.Join("sessions", hex.EncodeToString(digest[:16])+sessionStateExtension)
 }

@@ -13,9 +13,11 @@ type closeTrackingPersistence struct {
 }
 
 func (*closeTrackingPersistence) Read(string, int64) ([]byte, error) { return nil, os.ErrNotExist }
-func (*closeTrackingPersistence) List(string) ([]string, error)      { return nil, os.ErrNotExist }
-func (*closeTrackingPersistence) Replace(string, []byte) error       { return nil }
-func (*closeTrackingPersistence) Remove(string) error                { return nil }
+func (*closeTrackingPersistence) ListFiles(string, string) ([]string, error) {
+	return nil, os.ErrNotExist
+}
+func (*closeTrackingPersistence) Replace(string, []byte) error { return nil }
+func (*closeTrackingPersistence) Remove(string) error          { return nil }
 func (p *closeTrackingPersistence) Close() error {
 	p.closed++
 	return nil
