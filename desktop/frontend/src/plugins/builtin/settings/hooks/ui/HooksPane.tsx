@@ -51,7 +51,7 @@ export function HooksPane() {
   const [trusting, setTrusting] = useState(false);
   const trustingRef = useRef(false);
   const workspace = useActiveSessionWorkspace();
-  const { data, isLoading, isError, error } = useHookConfigs(
+  const { data, isLoading, isError, error, refetch } = useHookConfigs(
     workspace.status === "ready" ? { cwd: workspace.cwd } : undefined,
   );
 
@@ -110,6 +110,7 @@ export function HooksPane() {
         items={data?.hooks}
         isLoading={isLoading || workspace.status === "resolving"}
         isError={isError}
+        onRetry={refetch}
         skeletonCount={3}
         empty={{ icon: "lightning", title: t("hooks.empty"), sub: t("hooks.empty.sub") }}
       >

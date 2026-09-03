@@ -8,7 +8,7 @@ import { workspaceRecipesViewModel } from "@/plugins/builtin/workspace/applicati
 export function RecipesTab() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
-  const { data, isLoading, isError } = useWorkspaceRecipes(
+  const { data, isLoading, isError, refetch } = useWorkspaceRecipes(
     workspace.status === "ready" ? { cwd: workspace.cwd } : undefined,
   );
   const view = workspaceRecipesViewModel(data ?? []);
@@ -25,6 +25,7 @@ export function RecipesTab() {
         items={view.rows}
         isLoading={isLoading || workspace.status === "resolving"}
         isError={isError}
+        onRetry={refetch}
         skeletonCount={4}
         empty={{ icon: "command", title: t("recipes.empty.title"), sub: t("recipes.empty.sub") }}
       >

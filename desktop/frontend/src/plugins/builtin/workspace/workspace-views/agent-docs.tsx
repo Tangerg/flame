@@ -8,7 +8,7 @@ import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/sessio
 export function AgentDocsTab() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
-  const { data, isLoading, isError } = useWorkspaceAgentDocs(
+  const { data, isLoading, isError, refetch } = useWorkspaceAgentDocs(
     workspace.status === "ready" ? { cwd: workspace.cwd } : undefined,
   );
   const view = workspaceAgentDocsViewModel(data ?? []);
@@ -25,6 +25,7 @@ export function AgentDocsTab() {
         items={view.rows}
         isLoading={isLoading || workspace.status === "resolving"}
         isError={isError}
+        onRetry={refetch}
         skeletonCount={3}
         empty={{
           icon: "book",

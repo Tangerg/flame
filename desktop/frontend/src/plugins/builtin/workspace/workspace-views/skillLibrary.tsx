@@ -15,7 +15,7 @@ import {
 
 export function SkillLibraryTab() {
   const t = useT();
-  const { data, isLoading, isError } = useManagedSkills();
+  const { data, isLoading, isError, refetch } = useManagedSkills();
   const skills = data ?? [];
   const activeCount = skills.filter((s) => s.lifecycle === "active").length;
 
@@ -31,6 +31,7 @@ export function SkillLibraryTab() {
         items={skills}
         isLoading={isLoading}
         isError={isError}
+        onRetry={refetch}
         skeletonCount={4}
         empty={{
           icon: "sparkle",

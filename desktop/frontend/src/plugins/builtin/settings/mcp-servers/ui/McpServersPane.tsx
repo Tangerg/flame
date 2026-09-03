@@ -9,7 +9,7 @@ import { ServerRow } from "./ServerRow";
 
 export function McpServersPane() {
   const t = useT();
-  const { data, isLoading, isError } = useMCPServers();
+  const { data, isLoading, isError, refetch } = useMCPServers();
   const [adding, setAdding] = useState(false);
 
   return (
@@ -34,6 +34,7 @@ export function McpServersPane() {
         items={data}
         isLoading={isLoading}
         isError={isError}
+        onRetry={refetch}
         skeletonCount={3}
         empty={{
           icon: "tool",

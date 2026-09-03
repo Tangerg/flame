@@ -6,7 +6,7 @@ import { EmbeddingModelSection, UtilityModelSection } from "./RoleSections";
 
 export function ProvidersPane() {
   const t = useT();
-  const { data, isLoading, isError } = useProviderConfigs();
+  const { data, isLoading, isError, refetch } = useProviderConfigs();
 
   return (
     <div className="flex flex-col gap-6">
@@ -18,6 +18,7 @@ export function ProvidersPane() {
         items={data}
         isLoading={isLoading}
         isError={isError}
+        onRetry={refetch}
         skeletonCount={3}
         empty={{
           icon: "spark",

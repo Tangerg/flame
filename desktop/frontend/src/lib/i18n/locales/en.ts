@@ -235,6 +235,7 @@ export const en: Record<string, string> = {
 
   "common.remove": "Remove",
   "common.loading": "Loading",
+  "common.retry": "Retry",
   "tasks.header": "Tasks",
   "tasks.title.running_one": "{{count}} running task",
   "tasks.title.running_other": "{{count}} running tasks",
@@ -628,7 +629,6 @@ export const en: Record<string, string> = {
 
   "runError.unknown": "The run failed.",
   "runError.title": "Agent error",
-  "runError.action.retry": "Retry",
   "runError.action.retryIn": "Retry in {{seconds}}s",
   "runError.action.timeline": "Open timeline",
   "runError.action.diagnostics": "Diagnostics",
@@ -967,7 +967,7 @@ export const en: Record<string, string> = {
   "diff.error.loadFailed": "Couldn't load the diff",
   "diff.error.noBaselineSub":
     "The default branch couldn't be resolved (no remote / detached HEAD).",
-  "diff.error.loadFailedSub": "The runtime rejected workspace.diff.get — see Diagnostics.",
+  "diff.error.loadFailedSub": "The runtime rejected the request.",
   "file.lines": "{{count}} lines",
   "file.truncated": "truncated",
   "file.empty.title": "No file open",

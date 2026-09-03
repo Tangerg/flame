@@ -223,6 +223,7 @@ export const de: Record<string, string> = {
 
   "common.remove": "Entfernen",
   "common.loading": "Wird geladen",
+  "common.retry": "Erneut versuchen",
   "tasks.header": "Aufgaben",
   "tasks.title.running_one": "{{count}} laufende Aufgabe",
   "tasks.title.running_other": "{{count}} laufende Aufgaben",
@@ -482,7 +483,6 @@ export const de: Record<string, string> = {
 
   "runError.unknown": "Der Lauf ist fehlgeschlagen.",
   "runError.title": "Agent-Fehler",
-  "runError.action.retry": "Erneut versuchen",
   "runError.action.timeline": "Timeline öffnen",
   "runError.action.diagnostics": "Diagnose",
   "runError.action.dismiss": "Schließen",
@@ -718,7 +718,7 @@ export const de: Record<string, string> = {
   "diff.error.loadFailed": "Diff konnte nicht geladen werden",
   "diff.error.noBaselineSub":
     "Der Standard-Branch konnte nicht aufgelöst werden (kein Remote / detached HEAD).",
-  "diff.error.loadFailedSub": "Die Runtime hat workspace.diff.get abgelehnt — siehe Diagnose.",
+  "diff.error.loadFailedSub": "Die Runtime hat die Anfrage abgelehnt.",
   "diff.empty.title": "Nichts zu vergleichen",
   "diff.empty.sub": "Der Arbeitsbaum hat keine nicht-committeten Änderungen.",
   "diff.binary": "Binärdatei",

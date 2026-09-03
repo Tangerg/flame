@@ -11,7 +11,7 @@ interface Props {
 
 export function ToolControls({ server, disabledTools, autoApproveTools, onChange }: Props) {
   const t = useT();
-  const { data, isLoading, isError } = useMCPTools({ server });
+  const { data, isLoading, isError, refetch } = useMCPTools({ server });
 
   const disabled = new Set(disabledTools);
   const autoApprove = new Set(autoApproveTools);
@@ -49,6 +49,7 @@ export function ToolControls({ server, disabledTools, autoApproveTools, onChange
         items={data}
         isLoading={isLoading}
         isError={isError}
+        onRetry={refetch}
         skeletonCount={3}
         empty={{ icon: "tool", title: t("mcp.tools.empty") }}
       >

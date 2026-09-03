@@ -142,7 +142,7 @@ export function KnowledgeTab() {
   const knowledgeEnabled = useWorkspaceCapability("knowledge");
   const workspace = useActiveSessionWorkspace();
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
-  const { data, isLoading, isError } = useWorkspaceKnowledge(
+  const { data, isLoading, isError, refetch } = useWorkspaceKnowledge(
     knowledgeEnabled && workspace.status === "ready" ? { cwd } : undefined,
   );
   const view = workspaceKnowledgeViewModel(data ?? [], knowledgeEnabled);
@@ -159,6 +159,7 @@ export function KnowledgeTab() {
         items={view.rows}
         isLoading={view.enabled && (isLoading || workspace.status === "resolving")}
         isError={isError}
+        onRetry={refetch}
         skeletonCount={2}
         empty={
           knowledgeEnabled

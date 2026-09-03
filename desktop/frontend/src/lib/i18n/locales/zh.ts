@@ -229,6 +229,7 @@ export const zh: Record<string, string> = {
 
   "common.remove": "移除",
   "common.loading": "加载中",
+  "common.retry": "重试",
   "tasks.header": "任务",
   "tasks.title.running_other": "{{count}} 个任务运行中",
   "tasks.title.recent": "最近任务",
@@ -606,7 +607,6 @@ export const zh: Record<string, string> = {
 
   "runError.unknown": "运行失败。",
   "runError.title": "Agent 报错",
-  "runError.action.retry": "重试",
   "runError.action.retryIn": "{{seconds}} 秒后可重试",
   "runError.action.timeline": "查看时间线",
   "runError.action.diagnostics": "诊断",
@@ -866,7 +866,7 @@ export const zh: Record<string, string> = {
   "diff.error.noBaseline": "无基线分支",
   "diff.error.loadFailed": "无法加载 diff",
   "diff.error.noBaselineSub": "无法解析默认分支（无远程 / 独立 HEAD）。",
-  "diff.error.loadFailedSub": "运行时拒绝了 workspace.diff.get —— 请查看诊断信息。",
+  "diff.error.loadFailedSub": "运行时拒绝了这次请求。",
   "file.lines": "{{count}} 行",
   "file.truncated": "已截断",
   "file.empty.title": "未打开文件",

@@ -10,7 +10,7 @@ export function SkillsTab() {
   const t = useT();
   const skillsEnabled = useWorkspaceCapability("skills");
   const workspace = useActiveSessionWorkspace();
-  const { data, isLoading, isError } = useWorkspaceSkills(
+  const { data, isLoading, isError, refetch } = useWorkspaceSkills(
     workspace.status === "ready" ? { cwd: workspace.cwd } : undefined,
   );
   const view = workspaceSkillsViewModel(data ?? [], skillsEnabled);
@@ -27,6 +27,7 @@ export function SkillsTab() {
         items={view.rows}
         isLoading={view.enabled && (isLoading || workspace.status === "resolving")}
         isError={isError}
+        onRetry={refetch}
         skeletonCount={4}
         empty={
           skillsEnabled

@@ -20,6 +20,7 @@ export function ExplorerView() {
     isLoading,
     isError,
     error,
+    refetch,
   } = useWorkspaceListFiles(workspace.status === "ready" ? { cwd } : undefined);
 
   return (
@@ -28,7 +29,8 @@ export function ExplorerView() {
         items={roots}
         isLoading={isLoading || workspace.status === "resolving"}
         isError={isError}
-        error={
+        onRetry={refetch}
+        unsupported={
           isUnsupportedMethod(error)
             ? {
                 icon: "folder",

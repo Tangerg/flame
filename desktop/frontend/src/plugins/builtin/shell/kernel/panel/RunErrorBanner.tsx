@@ -107,7 +107,7 @@ export function RunErrorBanner() {
                   label={
                     retryIn > 0
                       ? t("runError.action.retryIn", { seconds: retryIn })
-                      : t("runError.action.retry")
+                      : t("common.retry")
                   }
                   onClick={onRetry}
                   disabled={retryIn > 0}

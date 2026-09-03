@@ -222,6 +222,7 @@ export const ja: Record<string, string> = {
 
   "common.remove": "削除",
   "common.loading": "読み込み中",
+  "common.retry": "再試行",
   "tasks.header": "タスク",
   "tasks.title.running_other": "{{count}} 件のタスクを実行中",
   "tasks.title.recent": "最近のタスク",
@@ -470,7 +471,6 @@ export const ja: Record<string, string> = {
 
   "runError.unknown": "実行が失敗しました。",
   "runError.title": "Agent エラー",
-  "runError.action.retry": "再試行",
   "runError.action.timeline": "タイムラインを開く",
   "runError.action.diagnostics": "診断",
   "runError.action.dismiss": "閉じる",
@@ -701,8 +701,7 @@ export const ja: Record<string, string> = {
   "diff.error.loadFailed": "Diff を読み込めませんでした",
   "diff.error.noBaselineSub":
     "デフォルトブランチを解決できませんでした（リモートなし / デタッチド HEAD）。",
-  "diff.error.loadFailedSub":
-    "ランタイムが workspace.diff.get を拒否しました — 診断を確認してください。",
+  "diff.error.loadFailedSub": "ランタイムがこのリクエストを拒否しました。",
   "diff.empty.title": "比較するものがありません",
   "diff.empty.sub": "ワーキングツリーに未コミットの変更はありません。",
   "diff.binary": "バイナリファイル",

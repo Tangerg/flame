@@ -25,6 +25,7 @@ export function FilesView() {
     isLoading,
     isError,
     error,
+    refetch,
   } = useWorkspaceFileChanges(
     gitEnabled && workspace.status === "ready" ? { cwd: workspace.cwd } : undefined,
   );
@@ -43,6 +44,7 @@ export function FilesView() {
         items={gitEnabled ? items : []}
         isLoading={isLoading || workspace.status === "resolving"}
         isError={isError && !notARepo}
+        onRetry={refetch}
         skeletonCount={6}
         empty={
           !gitEnabled

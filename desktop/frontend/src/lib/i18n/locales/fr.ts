@@ -223,6 +223,7 @@ export const fr: Record<string, string> = {
 
   "common.remove": "Supprimer",
   "common.loading": "Chargement",
+  "common.retry": "Réessayer",
   "tasks.header": "Tâches",
   "tasks.title.running_one": "{{count}} tâche en cours",
   "tasks.title.running_many": "{{count}} de tâches en cours",
@@ -486,7 +487,6 @@ export const fr: Record<string, string> = {
 
   "runError.unknown": "L'exécution a échoué.",
   "runError.title": "Erreur d'agent",
-  "runError.action.retry": "Réessayer",
   "runError.action.timeline": "Ouvrir la timeline",
   "runError.action.diagnostics": "Diagnostics",
   "runError.action.dismiss": "Fermer",
@@ -729,7 +729,7 @@ export const fr: Record<string, string> = {
   "diff.error.loadFailed": "Impossible de charger le diff",
   "diff.error.noBaselineSub":
     "La branche par défaut n'a pas pu être résolue (pas de remote / HEAD détaché).",
-  "diff.error.loadFailedSub": "Le runtime a rejeté workspace.diff.get — voir Diagnostics.",
+  "diff.error.loadFailedSub": "Le runtime a rejeté la requête.",
   "diff.empty.title": "Rien à comparer",
   "diff.empty.sub": "L'arbre de travail n'a aucune modification non validée.",
   "diff.binary": "Fichier binaire",

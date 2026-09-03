@@ -223,6 +223,7 @@ export const zhTW: Record<string, string> = {
 
   "common.remove": "移除",
   "common.loading": "載入中",
+  "common.retry": "重試",
   "tasks.header": "工作",
   "tasks.title.running_other": "{{count}} 個工作執行中",
   "tasks.title.recent": "最近工作",
@@ -469,7 +470,6 @@ export const zhTW: Record<string, string> = {
 
   "runError.unknown": "執行失敗。",
   "runError.title": "Agent 錯誤",
-  "runError.action.retry": "重試",
   "runError.action.retryIn": "{{seconds}} 秒後可重試",
   "runError.action.timeline": "開啟時間軸",
   "runError.action.diagnostics": "診斷",
@@ -699,7 +699,7 @@ export const zhTW: Record<string, string> = {
   "diff.error.noBaseline": "無基線分支",
   "diff.error.loadFailed": "無法載入 diff",
   "diff.error.noBaselineSub": "無法解析預設分支（無遠端 / 獨立 HEAD）。",
-  "diff.error.loadFailedSub": "執行時拒絕了 workspace.diff.get —— 請查看診斷資訊。",
+  "diff.error.loadFailedSub": "執行時拒絕了這次請求。",
   "file.lines": "{{count}} 行",
   "file.truncated": "已截斷",
   "file.empty.title": "未開啟檔案",

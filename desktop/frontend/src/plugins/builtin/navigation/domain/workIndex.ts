@@ -38,4 +38,5 @@ export interface WorkIndex {
   activeCwd: string | undefined;
   isLoading: boolean;
   isError: boolean;
+  retry: () => void;
 }

@@ -134,3 +134,82 @@ or cache directories added.
    transcript renders none. Decide what names the window.
 3. Prose claims in `ARCHITECTURE.md` §7.3 and §5.5 are still unverified against
    the code.
+
+---
+
+## Round 2 — twenty-one error states with no way out
+
+Status: **complete**
+
+### Audit scope
+
+Loading, empty and error states of the workspace views, plus the interaction
+states around them. Screenshots of `dock-loading`, `dock-error`, `dock-empty`,
+`dock-inbox`, `dock-stats`, `dock-catalog` at the canonical 1472×900. DOM
+probes of the dock's live regions, hidden panels, and toolbar geometry across
+all four diff states.
+
+### Findings
+
+| # | Problem | Evidence | Root cause |
+| --- | --- | --- | --- |
+| 1 | Every error state in the app is terminal. Nothing retries and nothing offers to. | `DataView` is the single loading/empty/error owner and has **21 callsites**; none can render a recovery action. `queryClient` sets `retry: 1`, `refetchOnWindowFocus: false`, `staleTime: 60_000` — after two failures nothing refetches, so the only way back is to unmount the view and return to it. | `EmptyState` has had an `action` slot since it was written, used by **zero** callsites, and `DataView`'s `EmptyConfig` never exposed it. |
+| 2 | The diff and file views draw a failure with the same glyph as their own empty result, so error and empty are the same picture and differ only in wording. | Screenshots `r2-error.png` / `r2-empty.png` — identical layout, identical neutral circular glyph. | `DataView` defaults the error glyph to `alert` and then spreads the caller's config over it. Four of its callsites overrode it; two of those were errors wearing the empty icon. |
+| 3 | "The Runtime does not implement this" was being smuggled through the error slot with a hand-picked glyph. | `RulesRow` and `filetree` both pass `isUnsupportedMethod(error) ? {icon: …} : undefined` as `error`. | The triad had no name for a capability gap, so callsites disguised one as a failure — and a retry would have been offered for something retrying cannot fix. |
+| 4 | The diff's failure copy named an RPC method and pointed at a destination it gave no way to reach: "The runtime rejected `workspace.diff.get` — see Diagnostics." | Locale catalogues, all eight. | Same shape as round 1's error headline: a protocol identifier used as prose, in a string no locale can translate. |
+| 5 | "Retry" was written twice. | `runError.action.retry` beside no `common.retry`. | — |
+
+### What changed
+
+| | Before | After |
+| --- | --- | --- |
+| `DataView` error | message only | message + one standard `Retry`, wired at **all 21 callsites** |
+| `DataView` error glyph | `icon` overridable per callsite | `error?: Omit<EmptyConfig, "icon">` — the alert glyph is the owner's |
+| Capability gap | disguised as an error with a custom icon | its own `unsupported?: EmptyConfig`, checked before `isError`, with no retry |
+| Diff failure copy | `The runtime rejected workspace.diff.get — see Diagnostics.` | `The runtime rejected the request.` |
+| Retry label | `runError.action.retry` + nothing shared | one `common.retry`; the run banner uses it too |
+| `WorkIndex` / `useWorkspaceDiffView` | state only | plus `retry`, so the sidebar and the review panel can serve the button |
+
+Breaking change: `DataView`'s `error` no longer accepts `icon`; the two
+callsites that were using it to draw a failure as an empty result are corrected
+and the two that were describing a capability gap moved to `unsupported`.
+
+### Deliberately not changed
+
+- **`HooksPane`'s early return** for an unsupported Runtime. It replaces the
+  whole pane rather than the list, which is right: rendering the `unsupported`
+  notice inside `DataView` would leave a trust toggle on screen for a capability
+  that does not exist.
+- **The 26 px retry button.** Same resolved conflict as round 1: it is
+  `--control-height-sm`, the ladder every other `size="sm"` action uses, and
+  `@media (pointer: coarse)` still promotes it to 44 px.
+
+### Verification
+
+- `npm run typecheck`, `lint`, `format:check` — clean.
+- `knip` and the fifteen architecture/style gates — clean.
+- `npm run test` — 2329 passed, the same 8 out-of-scope failures as round 1.
+  Five new `DataView` tests pin the contract: the retry fires, the failure glyph
+  survives a caller's own title, `unsupported` wins over `isError` and offers no
+  retry, no retry is invented without `onRetry`, and an empty result keeps its
+  own icon and no action.
+- `npm run visual:test` — 387 passed. **No golden changed**, which is itself a
+  finding: at 1472×900 the suite's `maxDiffPixelRatio: 0.002` budget absorbed a
+  swapped glyph, a rewritten sentence and a new button. The unit tests are what
+  guard this contract, not the goldens.
+- Browser: the retry button focuses from the keyboard, takes the one global
+  accent ring (`outline: 1px solid oklab(… / 0.5)`, offset 1), and `Tab` leaves
+  it for the dock's collapse control. Screenshot `r2-after-error.png`.
+
+### Reclaimed
+
+Visual dev server stopped; five probe scripts deleted; `knip` clean.
+
+### Open, for the next round
+
+1. Round 1's chip-stub item is unchanged.
+2. `page-has-heading-one` is unchanged.
+3. **The golden budget hid a real visual change.** Worth deciding whether the
+   workspace suite wants a tighter budget at its larger viewport, or whether
+   region-scoped assertions are the right answer for surfaces this small
+   relative to the frame.

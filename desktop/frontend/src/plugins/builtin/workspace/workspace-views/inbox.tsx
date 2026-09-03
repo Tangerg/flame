@@ -25,6 +25,7 @@ export function InboxTab() {
         items={items}
         isLoading={query.isLoading}
         isError={query.isError}
+        onRetry={() => void query.refetch()}
         skeletonVariant="stacked"
         empty={{ icon: "bell", title: t("inbox.empty.title"), sub: t("inbox.empty.sub") }}
       >

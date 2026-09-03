@@ -286,7 +286,7 @@ function openMcpSettings(): void {
 
 export function ToolsTab() {
   const t = useT();
-  const { data, isLoading, isError } = useMCPServers();
+  const { data, isLoading, isError, refetch } = useMCPServers();
   const view = toolCatalogViewModel(data ?? []);
 
   return (
@@ -302,6 +302,7 @@ export function ToolsTab() {
         items={view.mcpServers}
         isLoading={isLoading}
         isError={isError}
+        onRetry={refetch}
         skeletonCount={4}
         empty={{
           icon: "tool",

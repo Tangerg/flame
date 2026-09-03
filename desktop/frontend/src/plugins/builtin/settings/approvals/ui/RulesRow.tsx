@@ -25,7 +25,7 @@ const SCOPE_TONE: Record<ApprovalRuleSummary["scope"], Tone> = {
 export function RulesRow() {
   const t = useT();
   const sessionId = useActiveSessionId();
-  const { data, isLoading, isError, error } = useApprovalRuleConfigs(sessionId);
+  const { data, isLoading, isError, error, refetch } = useApprovalRuleConfigs(sessionId);
   const forget = async (id: string) => {
     try {
       await forgetApprovalRule(id);
@@ -52,7 +52,8 @@ export function RulesRow() {
           items={data}
           isLoading={isLoading}
           isError={isError}
-          error={
+          onRetry={refetch}
+          unsupported={
             isUnsupportedMethod(error)
               ? {
                   icon: "shield",

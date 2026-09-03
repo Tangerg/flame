@@ -17,7 +17,7 @@ import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/sessio
 export function SkillProposalsTab() {
   const t = useT();
   const workspace = useActiveSessionWorkspace();
-  const { data, isLoading, isError } = useSkillProposals(
+  const { data, isLoading, isError, refetch } = useSkillProposals(
     workspace.status === "ready" ? { cwd: workspace.cwd } : undefined,
   );
   const proposals = data ?? [];
@@ -34,6 +34,7 @@ export function SkillProposalsTab() {
         items={proposals}
         isLoading={isLoading || workspace.status === "resolving"}
         isError={isError}
+        onRetry={refetch}
         skeletonCount={3}
         empty={{
           icon: "sparkle",

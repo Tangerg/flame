@@ -222,6 +222,7 @@ export const ko: Record<string, string> = {
 
   "common.remove": "제거",
   "common.loading": "불러오는 중",
+  "common.retry": "다시 시도",
   "tasks.header": "작업",
   "tasks.title.running_other": "실행 중인 작업 {{count}}개",
   "tasks.title.recent": "최근 작업",
@@ -469,7 +470,6 @@ export const ko: Record<string, string> = {
 
   "runError.unknown": "실행이 실패했습니다.",
   "runError.title": "Agent 오류",
-  "runError.action.retry": "재시도",
   "runError.action.timeline": "타임라인 열기",
   "runError.action.diagnostics": "진단",
   "runError.action.dismiss": "닫기",
@@ -696,7 +696,7 @@ export const ko: Record<string, string> = {
   "diff.error.noBaseline": "기준 브랜치 없음",
   "diff.error.loadFailed": "Diff를 불러올 수 없음",
   "diff.error.noBaselineSub": "기본 브랜치를 확인할 수 없습니다 (원격 없음 / 분리된 HEAD).",
-  "diff.error.loadFailedSub": "런타임이 workspace.diff.get을 거부했습니다 — 진단을 확인하세요.",
+  "diff.error.loadFailedSub": "런타임이 이 요청을 거부했습니다.",
   "diff.empty.title": "비교할 내용 없음",
   "diff.empty.sub": "워킹 트리에 커밋되지 않은 변경 사항이 없습니다.",
   "diff.binary": "바이너리 파일",

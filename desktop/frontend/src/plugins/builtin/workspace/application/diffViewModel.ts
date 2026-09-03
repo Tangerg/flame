@@ -52,6 +52,7 @@ export function useWorkspaceDiffView(mode: WorkspaceDiffMode) {
     isError: query.isError,
     gitEnabled,
     notARepo: isVcsUnavailable(query.error),
+    retry: () => void query.refetch(),
     view,
   };
 }

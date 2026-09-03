@@ -14,7 +14,7 @@ export function FileViewTab() {
   const cwd = workspace.status === "ready" ? workspace.cwd : undefined;
   const viewer = useWorkspaceFileViewer();
   const targetLine = viewer?.line ?? 0;
-  const { data, isLoading, isError } = useWorkspaceReadFile(
+  const { data, isLoading, isError, refetch } = useWorkspaceReadFile(
     viewer && workspace.status === "ready" && cwd !== undefined
       ? {
           cwd,
@@ -47,9 +47,10 @@ export function FileViewTab() {
         items={data ? [data] : []}
         isLoading={isLoading || (Boolean(viewer) && workspace.status === "resolving")}
         isError={isError}
+        onRetry={refetch}
         skeletonCount={12}
         empty={{ icon: "filetext", title: t("file.empty.title"), sub: t("file.empty.sub") }}
-        error={{ icon: "filetext", title: t("file.error.title"), sub: t("file.error.sub") }}
+        error={{ title: t("file.error.title"), sub: t("file.error.sub") }}
       >
         {(items) => (
           <FileView

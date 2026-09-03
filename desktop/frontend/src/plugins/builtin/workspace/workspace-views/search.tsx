@@ -17,7 +17,7 @@ export function SearchTab() {
   const workspace = useActiveSessionWorkspace();
   const [input, setInput] = useState("");
   const [query] = useDebouncedValue(input.trim(), { wait: 300 });
-  const { data, isLoading, isError } = useWorkspaceGrep(
+  const { data, isLoading, isError, refetch } = useWorkspaceGrep(
     query && workspace.status === "ready"
       ? { query, cwd: workspace.cwd, limit: WORKSPACE_SEARCH_MATCH_LIMIT }
       : undefined,
@@ -47,6 +47,7 @@ export function SearchTab() {
           items={data ? view.groups : undefined}
           isLoading={isLoading || workspace.status === "resolving"}
           isError={isError}
+          onRetry={refetch}
           skeletonCount={4}
           empty={{
             icon: "search",

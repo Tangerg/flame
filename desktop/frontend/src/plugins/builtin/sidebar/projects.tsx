@@ -81,6 +81,7 @@ export function ProjectsSection() {
         items={workIndex.groups}
         isLoading={workIndex.isLoading}
         isError={workIndex.isError}
+        onRetry={workIndex.retry}
         skeletonCount={3}
         skeletonVariant="compact"
         loadingLabel={t("common.loading")}

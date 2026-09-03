@@ -223,6 +223,7 @@ export const es: Record<string, string> = {
 
   "common.remove": "Eliminar",
   "common.loading": "Cargando",
+  "common.retry": "Reintentar",
   "tasks.header": "Tareas",
   "tasks.title.running_one": "{{count}} tarea en ejecución",
   "tasks.title.running_many": "{{count}} de tareas en ejecución",
@@ -483,7 +484,6 @@ export const es: Record<string, string> = {
 
   "runError.unknown": "La ejecución falló.",
   "runError.title": "Error de agent",
-  "runError.action.retry": "Reintentar",
   "runError.action.timeline": "Abrir línea de tiempo",
   "runError.action.diagnostics": "Diagnóstico",
   "runError.action.dismiss": "Descartar",
@@ -727,7 +727,7 @@ export const es: Record<string, string> = {
   "diff.error.loadFailed": "No se pudo cargar el diff",
   "diff.error.noBaselineSub":
     "No se pudo resolver la rama predeterminada (sin remoto / HEAD separado).",
-  "diff.error.loadFailedSub": "El runtime rechazó workspace.diff.get — consulta Diagnóstico.",
+  "diff.error.loadFailedSub": "El runtime rechazó la petición.",
   "diff.empty.title": "Nada que comparar",
   "diff.empty.sub": "El árbol de trabajo no tiene cambios sin confirmar.",
   "diff.binary": "Archivo binario",
