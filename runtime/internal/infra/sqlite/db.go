@@ -501,8 +501,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			scope_key  TEXT    NOT NULL DEFAULT '',
 			tool       TEXT    NOT NULL,
 			subject    TEXT    NOT NULL DEFAULT '',
-			decision   TEXT    NOT NULL,
-			created_at INTEGER NOT NULL
+			decision   TEXT    NOT NULL
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_approval_rules_scope
 			ON approval_rules(scope, scope_key)`,
@@ -511,8 +510,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// trusts a project explicitly and the grant is recorded here. Global
 		// (~/.flame) hooks need no entry — they're the user's own.
 		`CREATE TABLE IF NOT EXISTS trusted_projects (
-			project_root TEXT    PRIMARY KEY,
-			trusted_at   INTEGER NOT NULL
+			project_root TEXT PRIMARY KEY
 		)`,
 		// Scheduled runs (schedules.*): a saved instructions fired on a cron trigger as
 		// a headless run. last_run_at / next_run_at are unix millis (0 = never /

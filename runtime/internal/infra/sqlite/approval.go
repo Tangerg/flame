@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 )
@@ -12,9 +11,9 @@ import (
 // ApprovalRuleStore persists approval rules in SQLite. It satisfies the
 // Application consumer interface structurally without importing it. This is the
 // persistent home for fine-grained "remember this decision" rules. Put is an
-// upsert by the deterministic rule id (only the decision changes on
-// re-remember; created_at is preserved). The DB must have been opened via
-// [Open] so the approval_rules table exists.
+// upsert by the deterministic rule id, so only the decision changes when a
+// rule is remembered again. The DB must have been opened via [Open] so the
+// approval_rules table exists.
 type ApprovalRuleStore struct {
 	db *sql.DB
 }
@@ -29,11 +28,10 @@ func (a *ApprovalRuleStore) Put(ctx context.Context, r approval.Rule) error {
 		return fmt.Errorf("sqlite: put approval rule: %w", err)
 	}
 	_, err := conn(ctx, a.db).ExecContext(ctx,
-		`INSERT INTO approval_rules (id, scope, scope_key, tool, subject, decision, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO approval_rules (id, scope, scope_key, tool, subject, decision)
+		 VALUES (?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(id) DO UPDATE SET decision = excluded.decision`,
-		r.ID, string(r.Scope), r.ScopeKey, r.Tool, r.Subject, string(r.Decision),
-		time.Now().UnixMilli())
+		r.ID, string(r.Scope), r.ScopeKey, r.Tool, r.Subject, string(r.Decision))
 	if err != nil {
 		return fmt.Errorf("sqlite: put approval rule: %w", err)
 	}
@@ -52,7 +50,7 @@ func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID, projectDir s
 		 WHERE (scope = 'session' AND scope_key = ?)
 		    OR (scope = 'project' AND ? <> '' AND scope_key = ?)
 		    OR scope = 'global'
-		 ORDER BY created_at DESC`,
+		 ORDER BY scope, scope_key, tool, subject, id`,
 		sessionID, projectDir, projectDir)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list approval rules: %w", err)

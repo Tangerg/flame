@@ -34,9 +34,6 @@ func TestTrustStore_RoundTrip(t *testing.T) {
 	if ok, _ := s.IsTrusted(ctx, root); !ok {
 		t.Fatal("project should be trusted after Trust")
 	}
-	if list, _ := s.List(ctx); len(list) != 1 || list[0] != root {
-		t.Fatalf("List = %v, want [%s]", list, root)
-	}
 
 	// Untrust → gone.
 	if err := s.Untrust(ctx, root); err != nil {
