@@ -265,21 +265,17 @@ func (t *treeCopier) copyFile(
 
 	reader := io.LimitReader(contextReader{ctx: ctx, reader: source}, size+1)
 	written, copyErr := io.CopyBuffer(writeOnly{writer: destination}, reader, t.buffer)
-	after, sourceStatErr := source.Stat()
-	current, pathStatErr := t.source.Lstat(localName)
+	verifyErr := fileinput.VerifyAtVersion(source, openedInfo, t.source, localName)
 	closeErr := errors.Join(destination.Close(), source.Close())
-	if copyErr != nil || sourceStatErr != nil || pathStatErr != nil || closeErr != nil {
+	if copyErr != nil || verifyErr != nil || closeErr != nil {
 		return fmt.Errorf(
 			"copy file %q: %w",
 			portableName,
-			errors.Join(copyErr, sourceStatErr, pathStatErr, closeErr),
+			errors.Join(copyErr, verifyErr, closeErr),
 		)
 	}
 	if written != size {
 		return fmt.Errorf("source file %q changed during copy: copied %d bytes, expected %d", portableName, written, size)
-	}
-	if !fileinput.SameVersion(openedInfo, after) || !fileinput.SameVersion(after, current) {
-		return fmt.Errorf("source file %q changed during copy", portableName)
 	}
 	return nil
 }

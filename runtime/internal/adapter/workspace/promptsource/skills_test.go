@@ -65,14 +65,14 @@ func TestRuntimeSkillSourceRejectsDocumentGrowthAfterOpen(t *testing.T) {
 		t.Fatalf("open document at exact limit: %v", err)
 	}
 	if appendFile, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0); err != nil {
-		_ = file.Close()
+		_ = file.close()
 		t.Fatal(err)
 	} else if _, err := appendFile.WriteString("x"); err != nil {
 		_ = appendFile.Close()
-		_ = file.Close()
+		_ = file.close()
 		t.Fatal(err)
 	} else if err := appendFile.Close(); err != nil {
-		_ = file.Close()
+		_ = file.close()
 		t.Fatal(err)
 	}
 	if _, err := readSkillDocument(t.Context(), name, file); !errors.Is(err, domainskills.ErrDocumentTooLarge) {

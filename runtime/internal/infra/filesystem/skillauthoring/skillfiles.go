@@ -27,7 +27,7 @@ func readSkill(root *os.Root, dir string) ([]byte, bool, error) {
 }
 
 func readBoundedFile(root *os.Root, path string) ([]byte, bool, error) {
-	file, _, err := fileinput.OpenAt(root, path, skills.MaxAuthoredSkillDocumentBytes)
+	file, opened, err := fileinput.OpenAt(root, path, skills.MaxAuthoredSkillDocumentBytes)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, false, nil
 	}
@@ -45,9 +45,10 @@ func readBoundedFile(root *os.Root, path string) ([]byte, bool, error) {
 		return nil, false, err
 	}
 	content, readErr := io.ReadAll(io.LimitReader(file, skills.MaxAuthoredSkillDocumentBytes+1))
+	verifyErr := fileinput.VerifyAtVersion(file, opened, root, path)
 	closeErr := file.Close()
 	if readErr != nil || closeErr != nil {
-		return nil, false, errors.Join(readErr, closeErr)
+		return nil, false, errors.Join(readErr, verifyErr, closeErr)
 	}
 	if len(content) > skills.MaxAuthoredSkillDocumentBytes {
 		return nil, false, fmt.Errorf(
@@ -55,6 +56,9 @@ func readBoundedFile(root *os.Root, path string) ([]byte, bool, error) {
 			skills.ErrDocumentTooLarge,
 			skills.MaxAuthoredSkillDocumentBytes,
 		)
+	}
+	if verifyErr != nil {
+		return nil, false, verifyErr
 	}
 	return content, true, nil
 }

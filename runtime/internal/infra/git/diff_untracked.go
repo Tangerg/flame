@@ -51,7 +51,7 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (int, bool, error) 
 	if !info.Mode().IsRegular() {
 		return 0, true, nil
 	}
-	file, _, err := fileinput.OpenExpected(path, info, 0)
+	file, opened, err := fileinput.OpenExpected(path, info, 0)
 	if err != nil {
 		if errors.Is(err, fileinput.ErrNotRegular) {
 			return 0, true, nil
@@ -63,6 +63,7 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (int, bool, error) 
 	lines := 0
 	var last byte
 	nonempty := false
+	binary := false
 	for {
 		if err := ctx.Err(); err != nil {
 			return 0, false, err
@@ -72,7 +73,8 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (int, bool, error) 
 			nonempty = true
 			chunk := buffer[:count]
 			if bytes.IndexByte(chunk, 0) >= 0 {
-				return 0, true, nil
+				binary = true
+				break
 			}
 			lines += bytes.Count(chunk, []byte{'\n'})
 			last = chunk[len(chunk)-1]
@@ -83,6 +85,12 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (int, bool, error) 
 		if readErr != nil {
 			return 0, false, fmt.Errorf("git: read untracked file %q: %w", rel, readErr)
 		}
+	}
+	if err := fileinput.VerifyPathVersion(file, opened, path); err != nil {
+		return 0, false, fmt.Errorf("git: verify untracked file %q after reading: %w", rel, err)
+	}
+	if binary {
+		return 0, true, nil
 	}
 	if nonempty && last != '\n' {
 		lines++

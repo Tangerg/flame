@@ -129,3 +129,48 @@ func SameVersion(left, right os.FileInfo) bool {
 		left.Mode() == right.Mode() &&
 		left.ModTime().Equal(right.ModTime())
 }
+
+// VerifyPathVersion reports whether file and path still identify the unchanged
+// regular file returned by Open or OpenExpected. Call it after consuming a
+// complete value so an in-place mutation or path replacement cannot publish a
+// torn snapshot.
+func VerifyPathVersion(file *os.File, opened os.FileInfo, path string) error {
+	return verifyVersion(file, opened, func() (os.FileInfo, error) {
+		return os.Stat(path)
+	})
+}
+
+// VerifyAtVersion is VerifyPathVersion for a name confined beneath root.
+func VerifyAtVersion(file *os.File, opened os.FileInfo, root *os.Root, name string) error {
+	if root == nil {
+		return errors.New("file input: root is required")
+	}
+	return verifyVersion(file, opened, func() (os.FileInfo, error) {
+		return root.Stat(name)
+	})
+}
+
+func verifyVersion(
+	file *os.File,
+	opened os.FileInfo,
+	inspect func() (os.FileInfo, error),
+) error {
+	if file == nil {
+		return errors.New("file input: opened file is required")
+	}
+	if opened == nil {
+		return errors.New("file input: opened source information is required")
+	}
+	after, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("file input: inspect opened source after read: %w", err)
+	}
+	current, err := inspect()
+	if err != nil {
+		return fmt.Errorf("%w: inspect current source: %w", ErrChanged, err)
+	}
+	if !SameVersion(opened, after) || !SameVersion(after, current) {
+		return ErrChanged
+	}
+	return nil
+}

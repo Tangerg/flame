@@ -14,7 +14,7 @@ func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
 	if cause := context.Cause(ctx); cause != nil {
 		return nil, cause
 	}
-	file, _, err := fileinput.Open(path, workspaceapp.MaxAuthoredPromptDocumentBytes)
+	file, opened, err := fileinput.Open(path, workspaceapp.MaxAuthoredPromptDocumentBytes)
 	if err != nil {
 		switch {
 		case errors.Is(err, fileinput.ErrNotRegular):
@@ -34,15 +34,22 @@ func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
 		promptContextReader{ctx: ctx, reader: file},
 		workspaceapp.MaxAuthoredPromptDocumentBytes+1,
 	))
+	verifyErr := fileinput.VerifyPathVersion(file, opened, path)
+	if errors.Is(verifyErr, fileinput.ErrChanged) {
+		verifyErr = fmt.Errorf("%w: changed while it was being read", workspaceapp.ErrInvalidPromptSource)
+	}
 	closeErr := file.Close()
 	if readErr != nil || closeErr != nil {
-		return nil, fmt.Errorf("read %q: %w", path, errors.Join(readErr, closeErr))
+		return nil, fmt.Errorf("read %q: %w", path, errors.Join(readErr, verifyErr, closeErr))
 	}
 	if cause := context.Cause(ctx); cause != nil {
 		return nil, cause
 	}
 	if err := workspaceapp.ValidateAuthoredPromptDocument(document); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	if verifyErr != nil {
+		return nil, fmt.Errorf("read %q: %w", path, verifyErr)
 	}
 	return document, nil
 }

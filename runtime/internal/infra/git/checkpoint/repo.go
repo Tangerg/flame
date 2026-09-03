@@ -102,13 +102,14 @@ func (s *Store) ensureRepo(ctx context.Context, sessionID, cwd string) (string, 
 
 func repositoryMatchesWorkspace(gitDir, cwd string) (bool, error) {
 	path := filepath.Join(gitDir, workspaceIdentityFile)
-	file, _, err := fileinput.Open(path, maxWorkspaceIdentityBytes)
+	file, opened, err := fileinput.Open(path, maxWorkspaceIdentityBytes)
 	if err != nil {
 		return false, fmt.Errorf("checkpoint: open workspace identity: %w", err)
 	}
 	data, readErr := readWorkspaceIdentity(file)
+	verifyErr := fileinput.VerifyPathVersion(file, opened, path)
 	closeErr := file.Close()
-	if err := errors.Join(readErr, closeErr); err != nil {
+	if err := errors.Join(readErr, verifyErr, closeErr); err != nil {
 		return false, fmt.Errorf("checkpoint: read workspace identity: %w", err)
 	}
 	return string(data) == cwd, nil
@@ -292,7 +293,7 @@ func (seed sourceRepositorySeed) copyIndex() error {
 }
 
 func readSourceAlternates(path string) ([]byte, error) {
-	file, _, err := fileinput.Open(path, maxSourceAlternatesBytes)
+	file, opened, err := fileinput.Open(path, maxSourceAlternatesBytes)
 	if err != nil {
 		return nil, checkpointSourceError(err)
 	}
@@ -306,6 +307,9 @@ func readSourceAlternates(path string) ([]byte, error) {
 			"%w: source alternates exceed %d bytes",
 			ErrSnapshotTooLarge, maxSourceAlternatesBytes,
 		)
+	}
+	if err := fileinput.VerifyPathVersion(file, opened, path); err != nil {
+		return nil, err
 	}
 	return data, nil
 }

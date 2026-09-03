@@ -148,13 +148,13 @@ func readConfigFile(configDirectories []string) (string, []byte, error) {
 			return "", nil, fmt.Errorf("config: open config file %q: %w", path, err)
 		}
 		content, readErr := io.ReadAll(io.LimitReader(file, maximumRuntimeConfigBytes+1))
-		after, statErr := file.Stat()
+		verifyErr := fileinput.VerifyPathVersion(file, opened, path)
 		closeErr := file.Close()
 		if readErr != nil {
 			return "", nil, fmt.Errorf("config: read config file %q: %w", path, readErr)
 		}
-		if statErr != nil {
-			return "", nil, fmt.Errorf("config: inspect config file %q after reading: %w", path, statErr)
+		if verifyErr != nil {
+			return "", nil, fmt.Errorf("config: verify config file %q after reading: %w", path, verifyErr)
 		}
 		if closeErr != nil {
 			return "", nil, fmt.Errorf("config: close config file %q: %w", path, closeErr)
@@ -165,13 +165,6 @@ func readConfigFile(configDirectories []string) (string, []byte, error) {
 				path,
 				fileinput.ErrTooLarge,
 			)
-		}
-		current, err := os.Stat(path)
-		if err != nil {
-			return "", nil, fmt.Errorf("config: inspect config file %q after reading: %w", path, err)
-		}
-		if !fileinput.SameVersion(opened, after) || !fileinput.SameVersion(after, current) {
-			return "", nil, fmt.Errorf("config: read config file %q: %w", path, fileinput.ErrChanged)
 		}
 		return path, content, nil
 	}

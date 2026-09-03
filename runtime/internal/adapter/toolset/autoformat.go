@@ -194,15 +194,10 @@ func readAutoFormatFile(ctx context.Context, path string) (_ autoFormatSource, e
 	if len(content) > int(maxAutoFormatFileBytes) {
 		return autoFormatSource{}, fmt.Errorf("%w: file grew while reading", errAutoFormatFileTooLarge)
 	}
-	after, err := file.Stat()
-	if err != nil {
-		return autoFormatSource{}, err
-	}
-	current, err := os.Lstat(path)
-	if err != nil || !fileinput.SameVersion(info, after) || !fileinput.SameVersion(after, current) {
+	if err := fileinput.VerifyPathVersion(file, info, path); err != nil {
 		return autoFormatSource{}, errors.New("file changed while reading for formatting")
 	}
-	return autoFormatSource{content: content, info: current}, nil
+	return autoFormatSource{content: content, info: info}, nil
 }
 
 func validateAutoFormatSource(info os.FileInfo) error {

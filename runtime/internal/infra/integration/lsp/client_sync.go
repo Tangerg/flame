@@ -74,7 +74,7 @@ func readDocument(ctx context.Context, path string) (_ []byte, err error) {
 	if cause := context.Cause(ctx); cause != nil {
 		return nil, cause
 	}
-	file, _, err := fileinput.Open(path, maxDocumentBytes)
+	file, opened, err := fileinput.Open(path, maxDocumentBytes)
 	if err != nil {
 		switch {
 		case errors.Is(err, fileinput.ErrNotRegular):
@@ -94,6 +94,12 @@ func readDocument(ctx context.Context, path string) (_ []byte, err error) {
 	}
 	if len(content) > int(maxDocumentBytes) {
 		return nil, fmt.Errorf("%w: file grew while reading", ErrDocumentTooLarge)
+	}
+	if err := fileinput.VerifyPathVersion(file, opened, path); err != nil {
+		if errors.Is(err, fileinput.ErrChanged) {
+			return nil, errors.New("lsp: document changed while it was being read")
+		}
+		return nil, fmt.Errorf("lsp: verify document after reading: %w", err)
 	}
 	if !utf8.Valid(content) || bytes.IndexByte(content, 0) >= 0 {
 		return nil, ErrUnsupportedDocument

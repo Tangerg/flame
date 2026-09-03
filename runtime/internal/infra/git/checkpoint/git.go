@@ -87,7 +87,7 @@ func gitIn(ctx context.Context, cwd string, args ...string) (string, error) {
 }
 
 func copyFile(src, dst string, maxBytes int64) (err error) {
-	in, _, err := fileinput.Open(src, maxBytes)
+	in, opened, err := fileinput.Open(src, maxBytes)
 	if err != nil {
 		return checkpointSourceError(err)
 	}
@@ -103,6 +103,9 @@ func copyFile(src, dst string, maxBytes int64) (err error) {
 	}
 	if written > maxBytes {
 		return fmt.Errorf("%w: source index exceeds %d bytes", ErrSnapshotTooLarge, maxBytes)
+	}
+	if err := fileinput.VerifyPathVersion(in, opened, src); err != nil {
+		return checkpointSourceError(err)
 	}
 	return nil
 }

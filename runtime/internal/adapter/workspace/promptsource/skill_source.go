@@ -120,11 +120,11 @@ func (r *runtimeSkillSource) Load(ctx context.Context, name string) (*sdk.Skill,
 	if err := skillSourceContextError(ctx, "load"); err != nil {
 		return nil, err
 	}
-	file, err := r.openSkillDocument(name)
+	source, err := r.openSkillDocument(name)
 	if err != nil {
 		return nil, err
 	}
-	content, err := readSkillDocument(ctx, name, file)
+	content, err := readSkillDocument(ctx, name, source)
 	if err != nil {
 		return nil, err
 	}
@@ -134,16 +134,24 @@ func (r *runtimeSkillSource) Load(ctx context.Context, name string) (*sdk.Skill,
 	return parseSkillDocument(name, content)
 }
 
-func (r *runtimeSkillSource) openSkillDocument(name string) (*os.File, error) {
+type openedSkillDocument struct {
+	root *os.Root
+	file *os.File
+	info os.FileInfo
+	path string
+}
+
+func (o *openedSkillDocument) close() error {
+	return errors.Join(o.file.Close(), o.root.Close())
+}
+
+func (r *runtimeSkillSource) openSkillDocument(name string) (*openedSkillDocument, error) {
 	root, err := os.OpenRoot(r.root)
 	if err != nil {
 		return nil, fmt.Errorf("runtime skill source: open %q: %w", r.root, err)
 	}
-	file, _, openErr := fileinput.OpenAt(root, filepath.Join(name, sdk.SkillFile), domainskills.MaxAuthoredSkillDocumentBytes)
-	closeErr := root.Close()
-	if closeErr != nil {
-		closeErr = fmt.Errorf("runtime skill source: close root %q: %w", r.root, closeErr)
-	}
+	path := filepath.Join(name, sdk.SkillFile)
+	file, info, openErr := fileinput.OpenAt(root, path, domainskills.MaxAuthoredSkillDocumentBytes)
 	if openErr != nil {
 		var err error
 		switch {
@@ -159,22 +167,24 @@ func (r *runtimeSkillSource) openSkillDocument(name string) (*os.File, error) {
 		default:
 			err = fmt.Errorf("runtime skill source: open %q: %w", name, openErr)
 		}
-		return nil, errors.Join(err, closeErr)
+		return nil, errors.Join(err, root.Close())
 	}
-	if closeErr != nil {
-		return nil, errors.Join(closeErr, file.Close())
-	}
-	return file, nil
+	return &openedSkillDocument{root: root, file: file, info: info, path: path}, nil
 }
 
-func readSkillDocument(ctx context.Context, name string, file *os.File) ([]byte, error) {
+func readSkillDocument(ctx context.Context, name string, source *openedSkillDocument) ([]byte, error) {
 	content, readErr := io.ReadAll(io.LimitReader(
-		skillSourceContextReader{ctx: ctx, reader: file},
+		skillSourceContextReader{ctx: ctx, reader: source.file},
 		domainskills.MaxAuthoredSkillDocumentBytes+1,
 	))
-	closeErr := file.Close()
+	verifyErr := fileinput.VerifyAtVersion(source.file, source.info, source.root, source.path)
+	closeErr := source.close()
 	if readErr != nil || closeErr != nil {
-		return nil, fmt.Errorf("runtime skill source: read %q: %w", name, errors.Join(readErr, closeErr))
+		return nil, fmt.Errorf(
+			"runtime skill source: read %q: %w",
+			name,
+			errors.Join(readErr, verifyErr, closeErr),
+		)
 	}
 	if len(content) > domainskills.MaxAuthoredSkillDocumentBytes {
 		return nil, fmt.Errorf(
@@ -183,6 +193,9 @@ func readSkillDocument(ctx context.Context, name string, file *os.File) ([]byte,
 			name,
 			domainskills.MaxAuthoredSkillDocumentBytes,
 		)
+	}
+	if verifyErr != nil {
+		return nil, fmt.Errorf("runtime skill source: read %q: %w", name, verifyErr)
 	}
 	return content, nil
 }

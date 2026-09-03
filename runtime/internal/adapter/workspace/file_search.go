@@ -89,8 +89,9 @@ func (search *workspaceGrep) scanEntry(entry workspaceapp.FileEntry) error {
 }
 
 type grepSource struct {
-	path string
-	file *os.File
+	path   string
+	file   *os.File
+	opened os.FileInfo
 }
 
 func (search *workspaceGrep) openSource(entryPath string) (grepSource, bool, error) {
@@ -102,7 +103,7 @@ func (search *workspaceGrep) openSource(entryPath string) (grepSource, bool, err
 	if err != nil {
 		return grepSource{}, false, err
 	}
-	file, _, err := fileinput.OpenAt(
+	file, opened, err := fileinput.OpenAt(
 		search.rootHandle,
 		filepath.FromSlash(path),
 		workspaceapp.MaxGrepFileBytes,
@@ -113,7 +114,7 @@ func (search *workspaceGrep) openSource(entryPath string) (grepSource, bool, err
 		}
 		return grepSource{}, false, fmt.Errorf("workspace: open search file %q: %w", path, err)
 	}
-	return grepSource{path: path, file: file}, true, nil
+	return grepSource{path: path, file: file, opened: opened}, true, nil
 }
 
 func (search *workspaceGrep) scanSource(source grepSource) error {
@@ -132,6 +133,12 @@ func (search *workspaceGrep) scanSource(source grepSource) error {
 		matchLimit,
 		resultBytes,
 	)
+	verifyErr := fileinput.VerifyAtVersion(
+		source.file,
+		source.opened,
+		search.rootHandle,
+		filepath.FromSlash(source.path),
+	)
 	if err := source.file.Close(); err != nil {
 		return fmt.Errorf("workspace: close search file %q: %w", source.path, err)
 	}
@@ -141,6 +148,12 @@ func (search *workspaceGrep) scanSource(source grepSource) error {
 	}
 	if err := classifyGrepScanError(source.path, scanErr); err != nil {
 		return err
+	}
+	if verifyErr != nil {
+		if errors.Is(verifyErr, fileinput.ErrChanged) {
+			return fmt.Errorf("workspace: search file %q changed while it was being read", source.path)
+		}
+		return fmt.Errorf("workspace: verify search file %q after reading: %w", source.path, verifyErr)
 	}
 	if scanErr != nil {
 		// Binary and pathological single-line files are not members of the

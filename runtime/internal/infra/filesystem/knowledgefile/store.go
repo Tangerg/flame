@@ -178,6 +178,12 @@ func readDocumentAt(ctx context.Context, root *os.Root, doc document) (knowledge
 	if sizeErr := knowledge.ValidateDocumentSize(int64(len(data))); sizeErr != nil {
 		return knowledge.Entry{}, 0, fmt.Errorf("knowledge store: read %q: %w", doc.path, sizeErr)
 	}
+	if err := fileinput.VerifyAtVersion(file, info, root, doc.relative); err != nil {
+		if errors.Is(err, fileinput.ErrChanged) {
+			return knowledge.Entry{}, 0, fmt.Errorf("knowledge store: %q changed while it was being read", doc.path)
+		}
+		return knowledge.Entry{}, 0, fmt.Errorf("knowledge store: verify %q after reading: %w", doc.path, err)
+	}
 	entry := knowledge.Entry{
 		Scope: doc.scope, Path: doc.path, Content: string(data), Revision: contentRevision(data),
 		UpdatedAt: info.ModTime(),

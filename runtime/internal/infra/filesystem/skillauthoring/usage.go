@@ -196,7 +196,7 @@ func readUsage(ctx context.Context, root *os.Root) (map[string]usageRecord, erro
 	if err := contextError(ctx, "read skill usage"); err != nil {
 		return nil, err
 	}
-	file, _, err := fileinput.OpenAt(root, usageFile, maxUsageMetadataBytes)
+	file, opened, err := fileinput.OpenAt(root, usageFile, maxUsageMetadataBytes)
 	if errors.Is(err, os.ErrNotExist) {
 		return map[string]usageRecord{}, nil
 	}
@@ -213,12 +213,16 @@ func readUsage(ctx context.Context, root *os.Root) (map[string]usageRecord, erro
 		skillUsageContextReader{ctx: ctx, reader: file},
 		maxUsageMetadataBytes+1,
 	))
+	verifyErr := fileinput.VerifyAtVersion(file, opened, root, usageFile)
 	closeErr := file.Close()
 	if readErr != nil || closeErr != nil {
-		return nil, fmt.Errorf("skillauthoring: read usage: %w", errors.Join(readErr, closeErr))
+		return nil, fmt.Errorf("skillauthoring: read usage: %w", errors.Join(readErr, verifyErr, closeErr))
 	}
 	if len(data) > maxUsageMetadataBytes {
 		return nil, fmt.Errorf("%w: exceeds %d bytes", skills.ErrUsageTooLarge, maxUsageMetadataBytes)
+	}
+	if verifyErr != nil {
+		return nil, fmt.Errorf("skillauthoring: read usage: %w", verifyErr)
 	}
 	var usage map[string]usageRecord
 	if err := json.Unmarshal(data, &usage); err != nil {

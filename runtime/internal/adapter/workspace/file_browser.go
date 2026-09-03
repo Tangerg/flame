@@ -60,7 +60,7 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 	if err != nil {
 		return workspaceapp.FileReadResult{}, err
 	}
-	file, _, err := fileinput.OpenAt(
+	file, opened, err := fileinput.OpenAt(
 		rootHandle,
 		filepath.FromSlash(relative),
 		workspaceapp.MaxFileReadSourceBytes,
@@ -104,6 +104,12 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 		default:
 			return workspaceapp.FileReadResult{}, fmt.Errorf("workspace: scan %s: %w", input.Path, err)
 		}
+	}
+	if err := fileinput.VerifyAtVersion(file, opened, rootHandle, filepath.FromSlash(relative)); err != nil {
+		if errors.Is(err, fileinput.ErrChanged) {
+			return workspaceapp.FileReadResult{}, fmt.Errorf("workspace: %s changed while it was being read", input.Path)
+		}
+		return workspaceapp.FileReadResult{}, fmt.Errorf("workspace: verify %s after reading: %w", input.Path, err)
 	}
 	if input.StartLine > result.TotalLines {
 		return workspaceapp.FileReadResult{}, workspaceapp.ErrInvalidFileRange

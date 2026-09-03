@@ -42,16 +42,8 @@ func buildIDFromOpenedFile(path string, file *os.File, before os.FileInfo) (stri
 	if written != before.Size() {
 		return "", errors.New("bootstrap: executable size changed while hashing build identity")
 	}
-	after, err := file.Stat()
-	if err != nil {
-		return "", fmt.Errorf("bootstrap: inspect hashed executable: %w", err)
-	}
-	current, err := os.Stat(path)
-	if err != nil {
-		return "", fmt.Errorf("bootstrap: inspect executable after hashing build identity: %w", err)
-	}
-	if !fileinput.SameVersion(before, after) || !fileinput.SameVersion(after, current) {
-		return "", errors.New("bootstrap: executable changed while hashing build identity")
+	if err := fileinput.VerifyPathVersion(file, before, path); err != nil {
+		return "", fmt.Errorf("bootstrap: executable changed while hashing build identity: %w", err)
 	}
 	var digest [sha256.Size]byte
 	copy(digest[:], hash.Sum(nil))
