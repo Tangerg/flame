@@ -386,14 +386,19 @@ func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
 
 func openIntegrationRuntime(t *testing.T, workspace string) *Connection {
 	t.Helper()
-	runtime, err := Open(t.Context(), Config{
+	owner := NewOwner(Config{
 		DataDirectory: t.TempDir(), DefaultWorkspacePath: workspace,
 		UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()}, ClientVersion: "test",
 	})
+	runtime, err := owner.Connection(t.Context())
 	if err != nil {
-		t.Fatalf("Open: %v", err)
+		t.Fatalf("open Runtime: %v", err)
 	}
-	t.Cleanup(func() { _ = runtime.Close() })
+	t.Cleanup(func() {
+		if err := owner.Close(); err != nil {
+			t.Errorf("close Runtime: %v", err)
+		}
+	})
 	return runtime
 }
 

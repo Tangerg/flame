@@ -63,10 +63,19 @@ type Config struct {
 	ClientVersion        string
 }
 
+type runtimeLifecycle interface {
+	Close() error
+}
+
+type discoveryBinding interface {
+	Discover(context.Context, flameruntime.CallOptions) (*protocol.DiscoverResponse, error)
+}
+
 // Connection owns one negotiated Runtime binding and translates its protocol
 // DTOs into CLI-owned consumer interfaces. It owns no product state machine.
 type Connection struct {
-	binding          *flameruntime.Runtime
+	lifecycle        runtimeLifecycle
+	discovery        discoveryBinding
 	modelCatalog     modelCatalogBinding
 	approvals        approvalBinding
 	sessionCatalog   sessionCatalogBinding
@@ -95,9 +104,7 @@ type Connection struct {
 
 var _ changefeed.Source = (*Connection)(nil)
 
-// Open starts and validates one in-process Runtime connection. A connection
-// whose discovery contract cannot support the CLI is closed before Open returns.
-func Open(ctx context.Context, cfg Config) (*Connection, error) {
+func openConnection(ctx context.Context, cfg Config) (*Connection, error) {
 	binding, err := flameruntime.Open(ctx, flameruntime.Config{
 		DataDirectory:        cfg.DataDirectory,
 		DefaultWorkspacePath: cfg.DefaultWorkspacePath,
@@ -108,8 +115,9 @@ func Open(ctx context.Context, cfg Config) (*Connection, error) {
 		return nil, classifyError(err)
 	}
 
-	runtime := &Connection{
-		binding:          binding,
+	connection := &Connection{
+		lifecycle:        binding,
+		discovery:        binding,
 		modelCatalog:     binding,
 		approvals:        binding,
 		sessionCatalog:   binding,
@@ -134,14 +142,14 @@ func Open(ctx context.Context, cfg Config) (*Connection, error) {
 		meta:             requestMeta(cfg.ClientVersion),
 		loadAttachment:   loadAttachmentFile,
 	}
-	discovery, err := binding.Discover(ctx, runtime.callOptions())
+	discovery, err := connection.discovery.Discover(ctx, connection.callOptions())
 	if err == nil {
-		runtime.profile, err = projectRuntimeProfile(discovery, runtime.meta.ClientCapabilities)
+		connection.profile, err = projectRuntimeProfile(discovery, connection.meta.ClientCapabilities)
 	}
 	if err != nil {
-		return nil, errors.Join(classifyError(err), binding.Close())
+		return connection, classifyError(err)
 	}
-	return runtime, nil
+	return connection, nil
 }
 
 func requestMeta(version string) protocol.RequestMeta {
@@ -302,15 +310,15 @@ func validateDiscovery(discovery *protocol.DiscoverResponse) error {
 // Close completes the in-process Runtime teardown. Call it again when it returns
 // an error; flameruntime.Runtime.Close resumes incomplete teardown.
 func (r *Connection) Close() error {
-	if r == nil || r.binding == nil {
+	if r == nil || r.lifecycle == nil {
 		return nil
 	}
-	return classifyError(r.binding.Close())
+	return classifyError(r.lifecycle.Close())
 }
 
 // Owner lazily opens exactly one Runtime connection for a process and owns its
-// shutdown. A failed Open may be retried; after Close begins, no new connection
-// is opened.
+// shutdown. A failed open may be retried after successful cleanup; incomplete
+// cleanup moves the owner into shutdown so it cannot create a second Runtime.
 type Owner struct {
 	mu         sync.Mutex
 	config     Config
@@ -335,12 +343,25 @@ func (o *Owner) Connection(ctx context.Context) (*Connection, error) {
 	if o.connection != nil {
 		return o.connection, nil
 	}
-	opened, err := Open(ctx, o.config)
+	opened, err := openConnection(ctx, o.config)
 	if err != nil {
+		if opened != nil {
+			err = o.rejectOpen(opened, err)
+		}
 		return nil, err
 	}
 	o.connection = opened
 	return opened, nil
+}
+
+func (o *Owner) rejectOpen(opened *Connection, openErr error) error {
+	closeErr := opened.Close()
+	if closeErr == nil {
+		return openErr
+	}
+	o.connection = opened
+	o.closing = true
+	return errors.Join(openErr, fmt.Errorf("close runtime after failed negotiation: %w", closeErr))
 }
 
 // Profile returns the immutable discovery projection for this connection.
