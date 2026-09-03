@@ -286,7 +286,7 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 		Aliases:      []string{"rm"},
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, args []string) (runErr error) {
 			if !yes {
 				return errors.New("refusing to delete without --yes")
 			}
@@ -298,6 +298,7 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 			if err != nil {
 				return fmt.Errorf("open CLI workbench: %w", err)
 			}
+			defer func() { runErr = errors.Join(runErr, authoring.Close()) }()
 			replayPolicy, err := runtimebinding.CommandReplayPolicy(profile)
 			if err != nil {
 				return fmt.Errorf("runtime command replay policy: %w", err)
@@ -342,7 +343,11 @@ func openCommandWorkbench(directory string) (*workbench.Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return workbench.Open(persistence, workbench.Config{})
+	store, err := workbench.Open(persistence, workbench.Config{})
+	if err != nil {
+		return nil, errors.Join(err, persistence.Close())
+	}
+	return store, nil
 }
 
 func completeFirstSessionArgument(provider runtimeProvider) cobra.CompletionFunc {

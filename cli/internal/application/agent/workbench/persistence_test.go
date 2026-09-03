@@ -2,16 +2,52 @@ package workbench
 
 import (
 	"errors"
+	"os"
+	"testing"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/statefile"
 )
+
+type closeTrackingPersistence struct {
+	closed int
+}
+
+func (*closeTrackingPersistence) Read(string, int64) ([]byte, error) { return nil, os.ErrNotExist }
+func (*closeTrackingPersistence) List(string) ([]string, error)      { return nil, os.ErrNotExist }
+func (*closeTrackingPersistence) Replace(string, []byte) error       { return nil }
+func (*closeTrackingPersistence) Remove(string) error                { return nil }
+func (p *closeTrackingPersistence) Close() error {
+	p.closed++
+	return nil
+}
+
+func TestStoreClosesOwnedPersistenceOnce(t *testing.T) {
+	persistence := new(closeTrackingPersistence)
+	store, err := Open(persistence, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if persistence.closed != 1 {
+		t.Fatalf("persistence close count = %d, want 1", persistence.closed)
+	}
+}
 
 func OpenDirectory(directory string, config Config) (*Store, error) {
 	persistence, err := statefile.Open(directory)
 	if err != nil {
 		return nil, err
 	}
-	return Open(persistence, config)
+	store, err := Open(persistence, config)
+	if err != nil {
+		return nil, errors.Join(err, persistence.Close())
+	}
+	return store, nil
 }
 
 type removeFailurePersistence struct {

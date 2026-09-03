@@ -58,6 +58,33 @@ func TestOpenExpectedRejectsReplacement(t *testing.T) {
 	}
 }
 
+func TestOpenAtExpectedUsesRootRelativeIdentity(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "input")
+	if err := os.WriteFile(path, []byte("content"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.OpenRoot(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = root.Close() }()
+	expected, err := root.Lstat("input")
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, _, err := OpenAtExpected(root, "input", expected, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := OpenAtExpected(nil, "input", expected, 7); err == nil {
+		t.Fatal("OpenAtExpected accepted a nil root")
+	}
+}
+
 func TestOpenDirectoryRejectsFiles(t *testing.T) {
 	root := t.TempDir()
 	directory, _, err := OpenDirectory(root)
@@ -73,5 +100,27 @@ func TestOpenDirectoryRejectsFiles(t *testing.T) {
 	}
 	if _, _, err := OpenDirectory(path); !errors.Is(err, ErrNotDirectory) {
 		t.Fatalf("OpenDirectory file error = %v, want ErrNotDirectory", err)
+	}
+}
+
+func TestOpenDirectoryAtUsesRootRelativeIdentity(t *testing.T) {
+	rootPath := t.TempDir()
+	if err := os.Mkdir(filepath.Join(rootPath, "child"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.OpenRoot(rootPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = root.Close() }()
+	directory, _, err := OpenDirectoryAt(root, "child")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := directory.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := OpenDirectoryAt(nil, "child"); err == nil {
+		t.Fatal("OpenDirectoryAt accepted a nil root")
 	}
 }

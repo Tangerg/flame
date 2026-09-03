@@ -66,6 +66,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 	if err != nil {
 		return err
 	}
+	defer func() { runErr = errors.Join(runErr, prepared.workbench.Close()) }()
 
 	registry := new(extensions.Registry)
 	extensionHost, err := extensions.NewHost(registry)
@@ -169,11 +170,11 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	}
 	recovery, err := recoverSessionCommands(ctx, cfg.Runtime, authoring, profile)
 	if err != nil {
-		return preparedSession{}, err
+		return preparedSession{}, errors.Join(err, authoring.Close())
 	}
 	prepared, err := openPreparedSession(ctx, cfg, profile, configured, reconnectPolicy, bindings, authoring)
 	if err != nil {
-		return preparedSession{}, err
+		return preparedSession{}, errors.Join(err, authoring.Close())
 	}
 	prepared.recoveryIssues = recovery
 	return prepared, nil
@@ -187,7 +188,11 @@ func openSessionWorkbench(directory string) (*workbench.Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return workbench.Open(persistence, workbench.Config{})
+	store, err := workbench.Open(persistence, workbench.Config{})
+	if err != nil {
+		return nil, errors.Join(err, persistence.Close())
+	}
+	return store, nil
 }
 
 func validatedSessionConfig(cfg Config) (*runtimebinding.Profile, settings.Config, keyBindings, error) {

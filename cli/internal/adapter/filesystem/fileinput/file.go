@@ -44,6 +44,18 @@ func OpenExpected(path string, expected os.FileInfo, maximumBytes int64) (*os.Fi
 	return openExpected(expected, func() (*os.File, error) { return openPath(path) }, maximumBytes)
 }
 
+// OpenAtExpected opens name beneath root only when it still identifies
+// expected. Root confinement and non-blocking special-file admission apply to
+// the same open.
+func OpenAtExpected(root *os.Root, name string, expected os.FileInfo, maximumBytes int64) (*os.File, os.FileInfo, error) {
+	if root == nil {
+		return nil, nil, errors.New("file input: root is required")
+	}
+	return openExpected(expected, func() (*os.File, error) {
+		return root.OpenFile(name, readOnlyFlags, 0)
+	}, maximumBytes)
+}
+
 func open(
 	inspect func() (os.FileInfo, error),
 	openFile func() (*os.File, error),

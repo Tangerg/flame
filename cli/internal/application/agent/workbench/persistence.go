@@ -1,6 +1,9 @@
 package workbench
 
-import "reflect"
+import (
+	"io"
+	"reflect"
+)
 
 // Persistence is the filesystem-neutral port used by Store. Workbench owns
 // record names, formats, and recovery semantics; an external adapter owns the
@@ -10,6 +13,13 @@ type Persistence interface {
 	List(directory string) ([]string, error)
 	Replace(name string, body []byte) error
 	Remove(name string) error
+}
+
+func closePersistence(storage Persistence) error {
+	if closer, ok := storage.(io.Closer); ok {
+		return closer.Close()
+	}
+	return nil
 }
 
 func missingPersistence(storage Persistence) bool {

@@ -29,3 +29,29 @@ func TestOpenExpectedDoesNotBlockOnFIFOReplacement(t *testing.T) {
 		t.Fatalf("OpenExpected FIFO error = %v, want ErrChanged", err)
 	}
 }
+
+func TestOpenAtExpectedDoesNotBlockOnFIFOReplacement(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "input")
+	if err := os.WriteFile(path, []byte("content"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.OpenRoot(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = root.Close() }()
+	expected, err := root.Lstat("input")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Mkfifo(path, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := OpenAtExpected(root, "input", expected, 0); !errors.Is(err, ErrChanged) {
+		t.Fatalf("OpenAtExpected FIFO error = %v, want ErrChanged", err)
+	}
+}

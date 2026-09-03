@@ -135,6 +135,8 @@ type Store struct {
 	sessionDeletions  map[string]PendingSessionDeletion
 	draftTransfer     *DraftTransfer
 	writeBarrier      error
+	closed            bool
+	closeErr          error
 }
 
 // OpenMemory constructs an explicitly process-local Store.
@@ -143,6 +145,7 @@ func OpenMemory(config Config) (*Store, error) {
 }
 
 // Open loads an explicitly durable Store through its filesystem-neutral port.
+// The returned Store owns and closes storage when it implements io.Closer.
 func Open(storage Persistence, config Config) (*Store, error) {
 	if missingPersistence(storage) {
 		return nil, errors.New("workbench persistence is not configured")
@@ -191,6 +194,18 @@ func newStore(storage Persistence, config Config) (*Store, error) {
 		store.random = rand.Reader
 	}
 	return store, nil
+}
+
+// Close releases resources owned by durable persistence. It is idempotent.
+func (s *Store) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return s.closeErr
+	}
+	s.closed = true
+	s.closeErr = closePersistence(s.persistence)
+	return s.closeErr
 }
 
 // History returns detached prompts in oldest-to-newest order.
