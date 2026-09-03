@@ -378,17 +378,21 @@ func (s *segmentStartup) activate(
 		ModelSelection: spec.ModelSelection,
 		Capabilities:   spec.effectiveCapabilities(),
 	}, s.treeOwner)
-	stream := s.openingStream(requestContext)
-	if err := s.publishOpenings(openings); err != nil {
-		return nil, err
-	}
 	s.markSegmentsStarted()
-	if !s.spec.DetachActivation {
+	// Attach before publishing so this opening stream has no gap; a fresh journal
+	// has no earlier events to replay.
+	subscription := s.journal.tail()
+	publicationErr := s.publishOpenings(openings)
+	if publicationErr != nil {
+		subscription.Cancel()
+		publicationErr = errors.Join(publicationErr, s.treeOwner.rejectActivation(publicationErr))
+	}
+	if publicationErr == nil && !s.spec.DetachActivation {
 		s.beginExecution()
 	}
 	go func() {
 		defer s.releaseTask()
-		if s.spec.DetachActivation {
+		if publicationErr == nil && s.spec.DetachActivation {
 			s.beginExecution()
 		}
 		s.coordinator.pump(
@@ -398,15 +402,16 @@ func (s *segmentStartup) activate(
 			s.executorEvents,
 			s.treeOwner,
 			s.routes,
+			publicationErr,
 		)
 	}()
-	return stream, nil
+	if publicationErr != nil {
+		return nil, publicationErr
+	}
+	return openingStream(requestContext, subscription), nil
 }
 
-func (s *segmentStartup) openingStream(requestContext context.Context) iter.Seq[Event] {
-	// The opening subscription attaches before any event is appended, so tail-only
-	// and "from the beginning" are the same stream here — there is no beginning yet.
-	subscription := s.journal.tail()
+func openingStream(requestContext context.Context, subscription subscription) iter.Seq[Event] {
 	stopUnsubscribe := context.AfterFunc(requestContext, subscription.Cancel)
 	return func(yield func(Event) bool) {
 		defer stopUnsubscribe()

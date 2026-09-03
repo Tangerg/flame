@@ -87,6 +87,27 @@ func (r *runTreeOwner) beginExecution(
 	return false, err
 }
 
+func (r *runTreeOwner) rejectActivation(cause error) error {
+	if r == nil {
+		return errors.New("runs: missing Run-tree owner")
+	}
+	if cause == nil {
+		return errors.New("runs: activation rejection requires a cause")
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.activation.done == nil {
+		r.activation.done = make(chan struct{})
+	}
+	if r.activation.started || r.activation.finished {
+		return errors.New("runs: segment activation already resolved")
+	}
+	r.activation.err = cause
+	r.activation.finished = true
+	close(r.activation.done)
+	return nil
+}
+
 func (r *runTreeOwner) committedTerminalRun() (run.Run, bool) {
 	if r == nil {
 		return run.Run{}, false

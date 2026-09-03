@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"iter"
+	"math"
 	"slices"
 	"strings"
 	"sync"
@@ -2617,6 +2618,43 @@ func TestCoordinatorCommitsSyntheticTerminalBeforeRelease(t *testing.T) {
 	}
 	close(executor.allowRelease)
 	collectEvents(stream)
+}
+
+func TestCoordinatorOpeningPublicationFailureReclaimsCommittedRun(t *testing.T) {
+	executor := &fakeExecutor{}
+	effects := &fakeEffects{}
+	coordinator := testCoordinator(executor, effects)
+	spec := testSegment()
+	startup, err := coordinator.prepareSegmentStartup(t.Context(), spec)
+	if err != nil {
+		t.Fatalf("prepare Segment: %v", err)
+	}
+	openings, err := coordinator.commitOpening(t.Context(), spec, startup.routes)
+	if err != nil {
+		t.Fatalf("commit opening: %v", err)
+	}
+	startup.journal.head = math.MaxUint64
+
+	if stream, err := startup.activate(t.Context(), openings); stream != nil || !errors.Is(err, errReplaySequenceExhausted) {
+		t.Fatalf("activate = (stream %v, error %v), want replay exhaustion", stream != nil, err)
+	}
+	select {
+	case <-startup.treeOwner.done:
+	case <-time.After(time.Second):
+		t.Fatal("opening publication failure left the Segment task running")
+	}
+	if _, live := coordinator.segments.lookup(spec.RunID); live {
+		t.Fatal("opening publication failure left the Run registered as live")
+	}
+	if !effects.terminalized(spec.SessionID, spec.RunID) {
+		t.Fatal("opening publication failure left the durable Run non-terminal")
+	}
+	if executor.releases() != 1 {
+		t.Fatalf("opening publication failure released executor %d times, want 1", executor.releases())
+	}
+	if _, err := startup.treeOwner.requestCancel(t.Context(), "stop", nil); !errors.Is(err, ErrRunFinished) {
+		t.Fatalf("cancel after activation rejection = %v, want ErrRunFinished", err)
+	}
 }
 
 func TestCoordinatorCommitFailureNeverPublishesUnbackedFact(t *testing.T) {

@@ -23,6 +23,7 @@ func (c *Coordinator) pump(
 	executorEvents iter.Seq[ExecutorEvent],
 	owner *runTreeOwner,
 	routes *executorRoutes,
+	initialErr error,
 ) {
 	pump := &segmentPump{
 		coordinator: c,
@@ -34,7 +35,7 @@ func (c *Coordinator) pump(
 		routes:      routes,
 	}
 	pump.publisher = treePublisher{publications: &c.publications, rootSpec: spec, owner: owner}
-	pump.run()
+	pump.run(initialErr)
 }
 
 // segmentPump serializes executor events into durable Run-tree projections. A
@@ -50,10 +51,8 @@ type segmentPump struct {
 	routes      *executorRoutes
 	publisher   treePublisher
 
-	rootFinished   bool
-	rootParked     bool
-	abortExecution bool
-
+	rootFinished       bool
+	rootParked         bool
 	pendingToolCommits map[toolCommitKey]ExecutionFactCommit
 	childStarts        map[string]*managedChildStart
 }
@@ -75,9 +74,13 @@ type authoritativeFactResult struct {
 	settledToolCallIDs []string
 }
 
-func (s *segmentPump) run() {
+func (s *segmentPump) run(initialErr error) {
 	defer close(s.owner.done)
 	defer s.finish()
+	if initialErr != nil {
+		s.fail(initialErr)
+		return
+	}
 	for event := range s.events {
 		if !s.processEvent(event) {
 			return
@@ -537,7 +540,6 @@ func (s *segmentPump) classifyChildCancellationFact(
 }
 
 func (s *segmentPump) fail(err error) {
-	s.abortExecution = true
 	if s.ctx.Err() == nil && s.ownerCtx.Err() == nil {
 		trace.SpanFromContext(s.ctx).RecordError(err)
 		s.routes.abortUnfinished()
