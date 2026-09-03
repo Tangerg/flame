@@ -8,7 +8,9 @@ const (
 	SkillScopeUser    SkillScope = "user"
 )
 
-// Skill is one entry in skills.discovered.list.
+// Skill is one entry in skills.discovered.list. List results contain one entry
+// per Name, with project scope winning over user scope on collisions, and are
+// ordered by Name ascending.
 type Skill struct {
 	Name        string     `json:"name"`
 	Description string     `json:"description,omitempty"`

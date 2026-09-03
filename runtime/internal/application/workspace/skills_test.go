@@ -27,6 +27,37 @@ func TestListUsesCatalogPort(t *testing.T) {
 	}
 }
 
+func TestListOwnsVisibleSkillOrder(t *testing.T) {
+	catalog := &fakeSkillCatalog{skills: []SkillSummary{
+		{Name: "zeta", Scope: SkillScopeUser},
+		{Name: "alpha", Scope: SkillScopeProject},
+	}}
+	c := NewSkills(NewScope("", "", testPaths{}), catalog, nil, nil, nil, nil)
+
+	got, err := c.List(t.Context(), "/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].Name != "alpha" || got[1].Name != "zeta" {
+		t.Fatalf("skills = %+v, want alpha then zeta", got)
+	}
+	if catalog.skills[0].Name != "zeta" {
+		t.Fatal("List reordered adapter-owned storage")
+	}
+}
+
+func TestListRejectsShadowedSkillLeak(t *testing.T) {
+	catalog := &fakeSkillCatalog{skills: []SkillSummary{
+		{Name: "review", Scope: SkillScopeProject},
+		{Name: "review", Scope: SkillScopeUser},
+	}}
+	c := NewSkills(NewScope("", "", testPaths{}), catalog, nil, nil, nil, nil)
+
+	if _, err := c.List(t.Context(), "/repo"); err == nil {
+		t.Fatal("List accepted two visible Skills with one precedence-resolved name")
+	}
+}
+
 func TestListWithoutCatalogReturnsNil(t *testing.T) {
 	c := NewSkills(NewScope("", "", testPaths{}), nil, nil, nil, nil, nil)
 	got, err := c.List(context.Background(), "/repo")

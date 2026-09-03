@@ -61,7 +61,8 @@ func NewSkills(scope *Scope, catalog SkillCatalog, curator SkillCurator, proposa
 	}
 }
 
-// List enumerates the Skills visible from cwd.
+// List enumerates the one precedence-resolved Skill per name visible from cwd,
+// ordered by name.
 func (s *Skills) List(ctx context.Context, cwd string) ([]SkillSummary, error) {
 	root, err := s.scope.root(cwd)
 	if err != nil {
@@ -70,7 +71,20 @@ func (s *Skills) List(ctx context.Context, cwd string) ([]SkillSummary, error) {
 	if s.catalog == nil {
 		return nil, nil
 	}
-	return s.catalog.List(ctx, root)
+	found, err := s.catalog.List(ctx, root)
+	if err != nil {
+		return nil, err
+	}
+	found = slices.Clone(found)
+	slices.SortFunc(found, func(first, second SkillSummary) int {
+		return cmp.Compare(first.Name, second.Name)
+	})
+	for index := 1; index < len(found); index++ {
+		if found[index].Name == found[index-1].Name {
+			return nil, fmt.Errorf("workspace: discovered Skill catalog repeats visible name %q", found[index].Name)
+		}
+	}
+	return found, nil
 }
 
 // Managed returns active and archived user-authored Skills.

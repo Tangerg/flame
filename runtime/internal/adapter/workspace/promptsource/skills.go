@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
-	"strings"
 
 	sdk "github.com/Tangerg/scope/skills"
 
@@ -70,7 +68,8 @@ func (l runtimeSkillLayers) merge(decorateUser func(sdk.ResourceSource) sdk.Reso
 // ListSkills enumerates the skills visible from the selected workspace layered
 // over userDir, project winning on a name collision (the same precedence
 // MergeSkillSource gives the model). A missing directory contributes nothing
-// rather than erroring. Result is sorted by name.
+// rather than erroring. The source projection resolves precedence and preserves
+// encounter order; Application owns public catalog order.
 func ListSkills(ctx context.Context, workspaceRoot, userDir string) ([]workspaceapp.SkillSummary, error) {
 	layers, err := openRuntimeSkillLayers(workspaceRoot, userDir)
 	if err != nil {
@@ -106,7 +105,6 @@ func (l runtimeSkillLayers) list(ctx context.Context) ([]workspaceapp.SkillSumma
 			})
 		}
 	}
-	slices.SortFunc(out, func(a, b workspaceapp.SkillSummary) int { return strings.Compare(a.Name, b.Name) })
 	return out, nil
 }
 

@@ -7,7 +7,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ListDiscoveredSkills returns Skills applicable to a workspace.
+// ListDiscoveredSkills returns precedence-resolved Skills ordered by name.
 func (r *Runtime) ListDiscoveredSkills(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.Skill], error) {
 	return r.invoke[protocol.WorkspaceQuery, *protocol.Page[protocol.Skill]](ctx, delivery.SkillsDiscoveredList, request, callOptions(options))
 }

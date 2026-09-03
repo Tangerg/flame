@@ -10,7 +10,8 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ListDiscoveredSkills maps application skill discovery to the protocol shape.
+// ListDiscoveredSkills maps the application-owned, name-ordered visible Skill
+// catalog to the protocol shape.
 func (s *Handler) ListDiscoveredSkills(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.Skill], error) {
 	found, err := s.workspaceSkills.List(ctx, in.Workspace.Path)
 	if err != nil {
