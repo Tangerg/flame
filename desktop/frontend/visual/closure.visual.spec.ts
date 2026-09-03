@@ -952,6 +952,26 @@ test("a chosen typeface reaches the controls, not only the text that inherits", 
   });
 });
 
+// A menu popup takes focus so the keyboard can drive it, which makes it match
+// `:focus-visible` even when a mouse opened it. The gate meant to suppress that —
+// `html:not([data-pointer])` — was written by nobody, so every right-click drew an accent
+// ring around the whole menu. The highlighted item is the indicator; the container is not.
+test("a mouse-opened menu shows its highlighted item, not a ring around itself", async ({
+  page,
+}) => {
+  await openFixture(page, { fixture: "agent", state: "idle", theme: "light" });
+
+  await page.locator("[data-user-message-bubble]").first().click({ button: "right" });
+  const menu = page.locator('[role="menu"]');
+  await expect(menu).toBeVisible();
+  await expect(menu).toHaveCSS("outline-style", "none");
+
+  await page.keyboard.press("ArrowDown");
+  const highlighted = page.locator('[role="menuitem"][data-highlighted]');
+  await expect(highlighted).toHaveCount(1);
+  await expect(highlighted).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+});
+
 test("a text-bearing control meets the minimum target size", async ({ page }) => {
   await openFixture(page, { fixture: "workspace", state: "dock-light" });
   const summary = page.locator('[data-goal="summary"]');

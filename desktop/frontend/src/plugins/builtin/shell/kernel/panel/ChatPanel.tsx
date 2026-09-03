@@ -38,10 +38,10 @@ import {
 } from "@/plugins/builtin/workspace/public/contextDockCatalog";
 import { useWorkspaceViews } from "@/plugins/sdk";
 import { useDockWidth } from "@/plugins/builtin/workspace/public/sidebarDrawer";
-import { basename } from "@/lib/path";
 import { Slot } from "@/plugins/host/Slot";
 import { WORKSPACE_DOCK_CATALOG } from "@/plugins/builtin/workspace/public/navigation";
 import { ChatStream } from "./ChatStream";
+import { SessionIdentity } from "./SessionIdentity";
 import { DockResizer } from "./DockResizer";
 import { HeaderDiffStat } from "./HeaderDiffStat";
 import { ViewPlacementProvider } from "@/plugins/builtin/workspace/public/viewPlacement";
@@ -233,22 +233,11 @@ export function ChatPanel({ onSend }: Props) {
         >
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
             <AgentSurfaceHeader windowCorner>
-              {activeSession?.workspace.path && (
-                <>
-                  <span className="hidden min-w-0 max-w-[160px] shrink truncate font-mono text-ui-sm text-fg-faint lg:inline">
-                    {basename(activeSession.workspace.path)}
-                  </span>
-                  <span aria-hidden className="hidden shrink-0 text-ui-sm text-fg-faint lg:inline">
-                    /
-                  </span>
-                </>
-              )}
-              {/* The name of what the reader is looking at, and the only heading above the
-                  turns — which are h2. It was a span, so a populated transcript published an
-                  outline that started at its second rung. */}
-              <h1 className="m-0 min-w-0 max-w-[420px] truncate text-ui-sm font-semibold text-fg">
-                {activeSession?.title.trim() || t("sidebar.action.newSession")}
-              </h1>
+              <SessionIdentity
+                sessionId={activeSessionId}
+                title={activeSession?.title.trim() || t("sidebar.action.newSession")}
+                workspacePath={activeSession?.workspace.path}
+              />
               {running && (
                 <AgentStatusPill tone="running">{t("session.status.running")}</AgentStatusPill>
               )}

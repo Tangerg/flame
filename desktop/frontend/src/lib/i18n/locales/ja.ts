@@ -478,6 +478,14 @@ export const ja: Record<string, string> = {
   "runError.action.dismiss": "閉じる",
 
   "session.status.running": "実行中",
+
+  "session.identity.copyCwd": "作業ディレクトリをコピー",
+
+  "session.identity.copiedCwd": "作業ディレクトリをコピーしました",
+
+  "session.identity.copyId": "セッション ID をコピー",
+
+  "session.identity.copiedId": "セッション ID をコピーしました",
   "session.status.waiting": "入力待ち",
 
   "agent.runTree.delegated.one": "サブエージェント",

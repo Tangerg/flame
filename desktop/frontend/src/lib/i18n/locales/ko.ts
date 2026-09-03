@@ -477,6 +477,14 @@ export const ko: Record<string, string> = {
   "runError.action.dismiss": "닫기",
 
   "session.status.running": "실행 중",
+
+  "session.identity.copyCwd": "작업 디렉터리 복사",
+
+  "session.identity.copiedCwd": "작업 디렉터리를 복사했습니다",
+
+  "session.identity.copyId": "세션 ID 복사",
+
+  "session.identity.copiedId": "세션 ID를 복사했습니다",
   "session.status.waiting": "입력 대기",
 
   "agent.runTree.delegated.one": "서브에이전트",

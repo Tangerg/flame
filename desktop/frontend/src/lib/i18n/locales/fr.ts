@@ -494,6 +494,14 @@ export const fr: Record<string, string> = {
   "runError.action.dismiss": "Fermer",
 
   "session.status.running": "En cours",
+
+  "session.identity.copyCwd": "Copier le répertoire de travail",
+
+  "session.identity.copiedCwd": "Répertoire de travail copié",
+
+  "session.identity.copyId": "Copier l'ID de session",
+
+  "session.identity.copiedId": "ID de session copié",
   "session.status.waiting": "Attente d'entrée",
 
   "agent.runTree.delegated.one": "Sous-agent",

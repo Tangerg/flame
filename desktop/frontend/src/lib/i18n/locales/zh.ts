@@ -615,6 +615,14 @@ export const zh: Record<string, string> = {
   "runError.action.dismiss": "忽略",
 
   "session.status.running": "运行中",
+
+  "session.identity.copyCwd": "复制工作目录",
+
+  "session.identity.copiedCwd": "已复制工作目录",
+
+  "session.identity.copyId": "复制会话 ID",
+
+  "session.identity.copiedId": "已复制会话 ID",
   "session.status.waiting": "等待输入",
 
   "agent.runTree.delegated.one": "子智能体",

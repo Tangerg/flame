@@ -616,13 +616,11 @@ body {
   color: var(--color-text);
 }
 
-html:not([data-pointer])
-  :focus-visible:not([data-chrome-focus]):not(input):not(textarea):not([contenteditable]) {
+:focus-visible:not([data-chrome-focus]):not(input):not(textarea):not([contenteditable]) {
   outline: 1.5px solid var(--color-focus-ring);
   outline-offset: 1px;
 }
-html:not([data-pointer])
-  [data-focus-inset]:focus-visible:not([data-chrome-focus]):not(input):not(textarea):not(
+[data-focus-inset]:focus-visible:not([data-chrome-focus]):not(input):not(textarea):not(
     [contenteditable]
   ) {
   outline-offset: -2px;

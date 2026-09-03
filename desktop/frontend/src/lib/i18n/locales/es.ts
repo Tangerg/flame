@@ -491,6 +491,14 @@ export const es: Record<string, string> = {
   "runError.action.dismiss": "Descartar",
 
   "session.status.running": "Ejecutando",
+
+  "session.identity.copyCwd": "Copiar directorio de trabajo",
+
+  "session.identity.copiedCwd": "Directorio de trabajo copiado",
+
+  "session.identity.copyId": "Copiar ID de sesión",
+
+  "session.identity.copiedId": "ID de sesión copiado",
   "session.status.waiting": "Esperando entrada",
 
   "agent.runTree.delegated.one": "Subagente",

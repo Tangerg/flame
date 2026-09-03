@@ -1289,3 +1289,72 @@ fires on ⌘⇧], and a binding spelled `$mod+Shift+]` registered beside it does
    rather than a flat tab strip is a design question, not a transcription.
 2. `delegated` has no raster coverage.
 3. Nine settings panes have no fixture coverage.
+
+---
+
+## Round 16 — two facts you could see and not take, and a ring nobody asked for
+
+Status: **complete**
+
+### Audit scope
+
+The rest of the reference's menu vocabulary — 192 keys, of which round 15 read
+only the commands. Two of the remaining ones name a surface Flame has:
+`threadHeader.copySessionId` and `threadHeader.copyWorkingDirectory`.
+
+### Finding 1 — the header showed two facts and let you take neither
+
+The content header renders the workspace path **as its basename**, inside
+`max-w-[160px] truncate`, and only at `lg` and above. The session title is
+truncated at 420px. Neither carried a `title`, and neither could be copied.
+
+So the full working directory was unreachable: not on hover, not by copy, and
+not at all below `lg`. That is round 1's finding — a lossy label with no way back
+to the value — in a second place.
+
+| | Before | After |
+| --- | --- | --- |
+| Workspace path | `basename(path)`, no title | the same, with the **full path** as its title |
+| Session title | truncated, no title | the same, with the full title |
+| Either, copied | nothing | a context menu on the header: **Copy working directory**, **Copy session ID** — the reference's own two items |
+
+### Finding 2 — every context menu drew a keyboard ring when a mouse opened it
+
+Building that menu surfaced it. `globals.css` guards the one global focus rule
+with `html:not([data-pointer])`, and **`data-pointer` is written by nobody** — it
+appears twice in the stylesheet and nowhere else in the tree. The gate always
+matched, so the rule it qualified was never gated at all.
+
+That matters because a menu popup takes focus so the keyboard can drive it, which
+makes it match `:focus-visible` even when a right-click opened it. Measured on
+the **existing** message context menu, before any change of mine:
+
+| | Outline |
+| --- | --- |
+| Message context menu, opened by right-click | `oklab(… / 0.5) solid 1px` — the accent ring |
+| Approval dropdown, opened by clicking its trigger | none — the trigger is a mouse-clicked button, so nothing matches |
+
+| | Before | After |
+| --- | --- | --- |
+| Menu popup | accent ring around the whole menu on every right-click | `data-chrome-focus` — the design system's own opt-out for "a row state stands in for the ring" — plus `focus-visible:outline-none` so the UA default does not take its place |
+| The dead gate | `html:not([data-pointer])`, always true | removed; the rule reads as what it always did |
+
+Keyboard navigation is unchanged and verified: `ArrowDown` highlights the first
+item with a visible wash, which is the indicator the container's ring was
+duplicating.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` and seven gates clean, including
+  `check:chrome`, which owns this vocabulary.
+- `npm run test` excluding the live-runtime e2e — 2300 passed, 2 failed, both
+  `runtime/contract`'s own sample.
+- `npm run visual:test` — **390 passed, no golden regenerated.**
+- Both behaviours pinned by new assertions.
+
+### Open
+
+1. `thread1`…`thread9`, waiting on a decision about what nine numeric slots mean
+   in a Work Index grouped by project.
+2. `delegated` has no raster coverage.
+3. Nine settings panes have no fixture coverage.

@@ -478,6 +478,14 @@ export const zhTW: Record<string, string> = {
   "runError.action.dismiss": "關閉",
 
   "session.status.running": "執行中",
+
+  "session.identity.copyCwd": "複製工作目錄",
+
+  "session.identity.copiedCwd": "已複製工作目錄",
+
+  "session.identity.copyId": "複製工作階段 ID",
+
+  "session.identity.copiedId": "已複製工作階段 ID",
   "session.status.waiting": "等待輸入",
 
   "agent.runTree.delegated.one": "子代理",

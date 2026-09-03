@@ -5,7 +5,11 @@ import { ContextMenuPrimitive, MenuPrimitive } from "@/ui/primitives";
 import { FLOATING_LAYER, FLOATING_PANEL } from "./floating-surface";
 import { floatingRowStyles } from "./option-row";
 
-const MENU_CONTENT_CLASSES = `${FLOATING_PANEL} p-1`;
+// The popup takes focus so the keyboard can drive it, which makes it match `:focus-visible`
+// even when a mouse opened it — a ring around the whole menu, every time, on right-click. The
+// highlighted ITEM is the indicator here, so the popup opts out the way the design system
+// says a row state may: `data-chrome-focus`.
+const MENU_CONTENT_CLASSES = `${FLOATING_PANEL} p-1 focus-visible:outline-none`;
 
 const MENU_ITEM_CLASSES = `relative ${floatingRowStyles({ size: "sm" })}`;
 
@@ -60,7 +64,11 @@ function DropdownContent({
         alignOffset={alignOffset}
         className={FLOATING_LAYER}
       >
-        <MenuPrimitive.Popup {...popupProps} className={cn(MENU_CONTENT_CLASSES, className)}>
+        <MenuPrimitive.Popup
+          {...popupProps}
+          data-chrome-focus=""
+          className={cn(MENU_CONTENT_CLASSES, className)}
+        >
           {children}
         </MenuPrimitive.Popup>
       </MenuPrimitive.Positioner>
@@ -86,7 +94,11 @@ function ContextContent({
         alignOffset={alignOffset}
         className={FLOATING_LAYER}
       >
-        <ContextMenuPrimitive.Popup {...popupProps} className={cn(MENU_CONTENT_CLASSES, className)}>
+        <ContextMenuPrimitive.Popup
+          {...popupProps}
+          data-chrome-focus=""
+          className={cn(MENU_CONTENT_CLASSES, className)}
+        >
           {children}
         </ContextMenuPrimitive.Popup>
       </ContextMenuPrimitive.Positioner>

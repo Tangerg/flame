@@ -637,6 +637,14 @@ export const en: Record<string, string> = {
   "runError.action.dismiss": "Dismiss",
 
   "session.status.running": "Running",
+
+  "session.identity.copyCwd": "Copy working directory",
+
+  "session.identity.copiedCwd": "Working directory copied",
+
+  "session.identity.copyId": "Copy session ID",
+
+  "session.identity.copiedId": "Session ID copied",
   "session.status.waiting": "Needs input",
 
   "agent.runTree.delegated.one": "Sub-agent",
