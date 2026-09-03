@@ -67,7 +67,7 @@ func (r *Connection) Proposals(ctx context.Context, workspacePath string) ([]wor
 		return nil, err
 	}
 	projected := make([]workspace.SkillProposal, 0, len(values))
-	seen := make(map[[3]string]struct{}, len(values))
+	seen := make(map[[2]string]struct{}, len(values))
 	for index, value := range values {
 		if err := protocol.ValidateWireTree(value); err != nil {
 			return nil, runtimeContractViolation("list skill proposals item %d is invalid: %v", index+1, err)
@@ -77,12 +77,22 @@ func (r *Connection) Proposals(ctx context.Context, workspacePath string) ([]wor
 			Description: value.Description, Instructions: value.Instructions,
 			Origin: value.Origin, SourceSession: value.SourceSession, Revises: value.Revises,
 		}
-		identity := [3]string{string(proposal.Scope), proposal.Name, proposal.Revision}
+		identity := [2]string{string(proposal.Scope), proposal.Name}
 		if _, duplicate := seen[identity]; duplicate {
-			return nil, runtimeContractViolation("list skill proposals repeats %q", proposal.Key())
+			return nil, runtimeContractViolation("list skill proposals repeats current slot %q", proposal.QualifiedName())
 		}
 		seen[identity] = struct{}{}
 		projected = append(projected, proposal)
+	}
+	for index := 1; index < len(projected); index++ {
+		previous, current := projected[index-1], projected[index]
+		if current.Scope < previous.Scope || current.Scope == previous.Scope && current.Name < previous.Name {
+			return nil, runtimeContractViolation(
+				"list skill proposals returned %q out of catalog order after %q",
+				current.QualifiedName(),
+				previous.QualifiedName(),
+			)
+		}
 	}
 	return projected, nil
 }

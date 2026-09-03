@@ -140,6 +140,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 178 | `2a53b6ea` + CLI dependency update | Moved MCP server name ordering from SQLite into Application, published the ascending-name contract, and rejected out-of-order CLI projections. |
 | 179 | `17687307` + CLI dependency update | Moved Provider ID ordering from the LLM adapter into Application, published the ascending-ID contract, and rejected out-of-order CLI projections. |
 | 180 | `8ae6ce2a` + CLI dependency update | Replaced MCP connection/upstream encounter order with an Application-owned server/name tool order and rejected out-of-order CLI projections. |
+| 181 | `a0359f04` + CLI dependency update | Made Skill proposals one current revision per scope/name, moved scope/name ordering from filesystem encounter into Application, and enforced both invariants in CLI. |
 
 ## Verification contract
 

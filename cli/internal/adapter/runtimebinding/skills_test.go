@@ -10,6 +10,7 @@ import (
 )
 
 const skillRevision = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+const otherSkillRevision = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
 
 type skillBindingStub struct {
 	t       *testing.T
@@ -214,6 +215,26 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 			})},
 			read: func(runtime *Connection) error {
 				_, err := runtime.Managed(t.Context())
+				return err
+			},
+		}, {
+			name: "repeated proposal slot",
+			stub: &invalidSkillBindingStub{proposals: protocol.NewPage([]protocol.SkillProposal{
+				{Name: "review", Revision: skillRevision, Scope: protocol.SkillScopeProject, Description: "Review code", Instructions: "Inspect code."},
+				{Name: "review", Revision: otherSkillRevision, Scope: protocol.SkillScopeProject, Description: "Review again", Instructions: "Inspect code again."},
+			})},
+			read: func(runtime *Connection) error {
+				_, err := runtime.Proposals(t.Context(), "/workspace")
+				return err
+			},
+		}, {
+			name: "out-of-order proposal catalog",
+			stub: &invalidSkillBindingStub{proposals: protocol.NewPage([]protocol.SkillProposal{
+				{Name: "alpha", Revision: skillRevision, Scope: protocol.SkillScopeUser, Description: "User proposal", Instructions: "Review the user proposal."},
+				{Name: "zeta", Revision: otherSkillRevision, Scope: protocol.SkillScopeProject, Description: "Project proposal", Instructions: "Review the project proposal."},
+			})},
+			read: func(runtime *Connection) error {
+				_, err := runtime.Proposals(t.Context(), "/workspace")
 				return err
 			},
 		}, {
