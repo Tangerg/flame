@@ -201,8 +201,8 @@ func (r Run) Validate() error {
 	if err := r.lineage.Validate(r.id); err != nil {
 		return err
 	}
-	if err := r.modelSelection.Validate(); err != nil {
-		return fmt.Errorf("run: model selection: %w", err)
+	if err := validateExactModelSelection(r.modelSelection); err != nil {
+		return err
 	}
 	if _, _, err := goalref.ParseOptionalIncarnation(r.goalIncarnationID.String()); err != nil {
 		return fmt.Errorf("run: %w", err)

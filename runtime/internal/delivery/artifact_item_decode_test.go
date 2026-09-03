@@ -19,7 +19,8 @@ func validArtifact() protocol.SessionArtifact {
 			Provider: "test-provider", Model: "test-model",
 		},
 		Runs: []protocol.ArtifactRun{{
-			ID: "run_1", SessionID: "ses_1", CreatedAt: finished, FinishedAt: finished,
+			ID: "run_1", SessionID: "ses_1", Provider: "test-provider", Model: "test-model",
+			CreatedAt: finished, FinishedAt: finished,
 			UpdatedAt: finished, MessageMark: 0,
 			Outcome: protocol.ArtifactOutcome{Type: "completed"},
 		}},

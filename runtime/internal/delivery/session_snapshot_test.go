@@ -25,10 +25,10 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 
 	createdAt := time.Date(2026, 8, 14, 2, 0, 0, 0, time.UTC)
 	capabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
-	if err := rt.runs.Admit(t.Context(), run.Draft{
+	if err := rt.runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{
 		SegmentID: "seg_waiting", RunID: "run_waiting", SessionID: "ses_1",
 		Capabilities: capabilities, CreatedAt: createdAt,
-	}); err != nil {
+	})); err != nil {
 		t.Fatalf("admit waiting Run: %v", err)
 	}
 	if err := rt.runs.Suspend(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
@@ -121,10 +121,10 @@ func TestGetSessionSnapshotKeepsCapabilityAndExistenceRefusals(t *testing.T) {
 	putTestSession(t, rt)
 	createdAt := time.Date(2026, 8, 14, 3, 0, 0, 0, time.UTC)
 	capabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
-	if err := rt.runs.Admit(t.Context(), run.Draft{
+	if err := rt.runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{
 		SegmentID: "seg_waiting", RunID: "run_waiting", SessionID: "ses_1",
 		Capabilities: capabilities, CreatedAt: createdAt,
-	}); err != nil {
+	})); err != nil {
 		t.Fatalf("admit waiting Run: %v", err)
 	}
 	if err := rt.runs.Suspend(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
@@ -163,10 +163,10 @@ func TestGetSessionSnapshotRejectsOwnerlessInterruptMaterial(t *testing.T) {
 	putTestSession(t, rt)
 	createdAt := time.Date(2026, 8, 14, 4, 0, 0, 0, time.UTC)
 	capabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
-	if err := rt.runs.Admit(t.Context(), run.Draft{
+	if err := rt.runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{
 		SegmentID: "seg_waiting", RunID: "run_waiting", SessionID: "ses_1",
 		Capabilities: capabilities, CreatedAt: createdAt,
-	}); err != nil {
+	})); err != nil {
 		t.Fatalf("admit waiting Run: %v", err)
 	}
 	if err := rt.runs.Suspend(t.Context(), testsupport.MustRestoreRun(run.Snapshot{

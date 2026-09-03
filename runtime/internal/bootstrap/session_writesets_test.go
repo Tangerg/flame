@@ -70,10 +70,11 @@ func bootstrapRestoreReplacement(
 // only adapter/agentexec may construct or interpret a tree snapshot.
 func bootstrapCheckpoint(rootMemberID, sessionID string) runsapp.ExecutorCheckpoint {
 	return runsapp.ExecutorCheckpoint{
-		RootMemberID: rootMemberID,
-		Payload:      []byte("opaque executor checkpoint"),
-		BuildID:      bootstrapCheckpointBuildID,
-		Scope:        runsapp.ExecutionScope{SessionID: sessionID},
+		RootMemberID:   rootMemberID,
+		Payload:        []byte("opaque executor checkpoint"),
+		BuildID:        bootstrapCheckpointBuildID,
+		Scope:          runsapp.ExecutionScope{SessionID: sessionID},
+		ModelSelection: testsupport.DefaultModelSelection(),
 	}
 }
 
@@ -101,9 +102,10 @@ func bootstrapPending(
 			RequestID:       "request-" + memberID,
 		}},
 		Continuations: []runsapp.Continuation{{
-			RunID:        runID,
-			MemberID:     memberID,
-			RunCreatedAt: runCreatedAt,
+			RunID:          runID,
+			MemberID:       memberID,
+			ModelSelection: testsupport.DefaultModelSelection(),
+			RunCreatedAt:   runCreatedAt,
 		}},
 		CreatedAt: barrierCreatedAt,
 	}
@@ -243,6 +245,7 @@ func parkWithGoalLease(
 	if err := runs.Admit(ctx, run.Draft{
 		RunID: runID, SessionID: sessionID, SegmentID: "seg_open",
 		GoalIncarnationID: goalIncarnationID,
+		ModelSelection:    testsupport.DefaultModelSelection(),
 		Capabilities: run.Capabilities{
 			InterruptKinds: []interrupt.Kind{interrupt.Question},
 		},
@@ -306,7 +309,7 @@ func TestApplyTerminalDropsInterruptAndTerminalizes(t *testing.T) {
 		t.Fatalf("executor checkpoint after cancel = %v, want not found", loadCheckpointErr)
 	}
 	// The admission row is terminal, so the session can start a fresh run.
-	if admitErr := runs.Admit(ctx, run.Draft{RunID: "run_2", SessionID: "ses_A", SegmentID: "seg_open", CreatedAt: parkCreatedAt.Add(time.Minute)}); admitErr != nil {
+	if admitErr := runs.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_A", SegmentID: "seg_open", CreatedAt: parkCreatedAt.Add(time.Minute)})); admitErr != nil {
 		t.Fatalf("admit after cancel = %v, want the slot freed", admitErr)
 	}
 	storedRuns, err := runs.ListRuns(ctx, "ses_A")
@@ -341,7 +344,7 @@ func TestApplyTerminalRecoversLostParkAtomically(t *testing.T) {
 	if _, loadCheckpointErr := ss.checkpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, runsapp.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("executor checkpoint after run_lost = %v, want not found", loadCheckpointErr)
 	}
-	if admitErr := runs.Admit(ctx, run.Draft{RunID: "run_2", SessionID: "ses_A", SegmentID: "seg_open", CreatedAt: parkCreatedAt.Add(time.Minute)}); admitErr != nil {
+	if admitErr := runs.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_A", SegmentID: "seg_open", CreatedAt: parkCreatedAt.Add(time.Minute)})); admitErr != nil {
 		t.Fatalf("admit after run_lost = %v, want the slot freed", admitErr)
 	}
 	storedRuns, err := runs.ListRuns(ctx, "ses_A")
@@ -512,7 +515,7 @@ func TestApplyRollbackDropsRunsAndFreesAdmission(t *testing.T) {
 	if _, err := ss.checkpoints.LoadCheckpoint(ctx, memberID); !errors.Is(err, runsapp.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("executor checkpoint after rollback = %v, want not found", err)
 	}
-	if err := runs.Admit(ctx, run.Draft{RunID: "run_2", SessionID: "ses_A", SegmentID: "seg_open", CreatedAt: parkCreatedAt.Add(time.Minute)}); err != nil {
+	if err := runs.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_A", SegmentID: "seg_open", CreatedAt: parkCreatedAt.Add(time.Minute)})); err != nil {
 		t.Fatalf("admit after rollback = %v, want the slot freed", err)
 	}
 	// The rollback carries no recorded boundary, so the plan is left exactly as it
@@ -744,7 +747,7 @@ func TestApplyDeleteRemovesRunRows(t *testing.T) {
 	}
 	// The non-terminal admission row is gone (not just terminal), so a fresh admit
 	// succeeds — proving the delete cascade dropped the runs rows.
-	if err := runs.Admit(ctx, run.Draft{RunID: "run_2", SessionID: "ses_A", SegmentID: "seg_open", CreatedAt: parkCreatedAt.Add(time.Minute)}); err != nil {
+	if err := runs.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_A", SegmentID: "seg_open", CreatedAt: parkCreatedAt.Add(time.Minute)})); err != nil {
 		t.Fatalf("admit after delete = %v, want the slot freed", err)
 	}
 }

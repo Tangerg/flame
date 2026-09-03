@@ -47,7 +47,10 @@ func newRunProjectionStores(t *testing.T) (*sqlite.RunStore, *persistence.Interr
 var runCreatedAt = time.Unix(1, 0).UTC()
 
 func runDraft(runID, sessionID string) run.Draft {
-	return run.Draft{RunID: runID, SessionID: sessionID, SegmentID: "seg_open", CreatedAt: runCreatedAt}
+	return run.Draft{
+		RunID: runID, SessionID: sessionID, SegmentID: "seg_open",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: runCreatedAt,
+	}
 }
 
 func TestRunLimitColumnsPreservePresenceWithoutNumericSentinels(t *testing.T) {
@@ -107,7 +110,7 @@ func finishedRun(runID, sessionID string, outcome run.Outcome) run.Run {
 }
 
 func finishedRunFromDraft(draft run.Draft, outcome run.Outcome) run.Run {
-	value, err := run.Admit(draft)
+	value, err := run.Admit(testsupport.RunDraft(draft))
 	if err != nil {
 		panic(err)
 	}
@@ -141,7 +144,7 @@ func parkedRun(runID, sessionID string) run.Run {
 }
 
 func parkedRunFromDraft(draft run.Draft) run.Run {
-	value, err := run.Admit(draft)
+	value, err := run.Admit(testsupport.RunDraft(draft))
 	if err != nil {
 		panic(err)
 	}
@@ -499,7 +502,7 @@ func TestRunAdmitRejectsAChildOutsideItsDurableTree(t *testing.T) {
 			draft: run.Draft{
 				RunID: "run_child_missing", SessionID: "ses_A", SegmentID: "seg_open",
 				SpawnedByItemID: "item_spawn", ParentRunID: "run_missing", RootRunID: "run_root_a",
-				CreatedAt: runCreatedAt,
+				ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: runCreatedAt,
 			},
 			want: "does not exist",
 		},
@@ -508,7 +511,7 @@ func TestRunAdmitRejectsAChildOutsideItsDurableTree(t *testing.T) {
 			draft: run.Draft{
 				RunID: "run_child_cross", SessionID: "ses_A", SegmentID: "seg_open",
 				SpawnedByItemID: "item_spawn", ParentRunID: "run_root_a", RootRunID: "run_root_b",
-				CreatedAt: runCreatedAt,
+				ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: runCreatedAt,
 			},
 			want: "belongs to session",
 		},
@@ -687,7 +690,8 @@ func TestRunRestoreRejectsUnknownOutcome(t *testing.T) {
 	outcome := run.Outcome("invalid")
 	if _, err := run.Restore(run.Snapshot{
 		ID: "run_1", SessionID: "ses_1", State: run.Failed, Outcome: &outcome,
-		CreatedAt: runCreatedAt, FinishedAt: time.Unix(9, 0).UTC(), UpdatedAt: time.Unix(9, 0).UTC(),
+		ModelSelection: testsupport.DefaultModelSelection(),
+		CreatedAt:      runCreatedAt, FinishedAt: time.Unix(9, 0).UTC(), UpdatedAt: time.Unix(9, 0).UTC(),
 	}); err == nil {
 		t.Fatal("Run restore accepted an unknown outcome")
 	}
@@ -708,6 +712,7 @@ func TestPageRunsReturnsEveryLifecyclePosition(t *testing.T) {
 		{RunID: "run_parked", SessionID: "ses_B", SegmentID: "seg_open", CreatedAt: time.Unix(0, 10)},
 		{RunID: "run_done", SessionID: "ses_C", SegmentID: "seg_open", CreatedAt: time.Unix(0, 30)},
 	} {
+		draft = testsupport.RunDraft(draft)
 		if err := store.Admit(ctx, draft); err != nil {
 			t.Fatalf("admit %s: %v", draft.RunID, err)
 		}
@@ -787,6 +792,7 @@ func TestPageRunsOrdersNewestFirst(t *testing.T) {
 		{RunID: "run_a", SessionID: "ses_A", SegmentID: "seg_open", CreatedAt: time.Unix(0, 10)},
 		{RunID: "run_b", SessionID: "ses_B", SegmentID: "seg_open", CreatedAt: time.Unix(0, 20)},
 	} {
+		draft = testsupport.RunDraft(draft)
 		if err := store.Admit(ctx, draft); err != nil {
 			t.Fatalf("admit %s: %v", draft.RunID, err)
 		}
@@ -812,6 +818,7 @@ func TestPageRunsSeeksBeforeItsAnchor(t *testing.T) {
 		{RunID: "run_b", SessionID: "ses_B", SegmentID: "seg_open", CreatedAt: time.Unix(0, 20)},
 		{RunID: "run_c", SessionID: "ses_C", SegmentID: "seg_open", CreatedAt: time.Unix(0, 20)},
 	} {
+		draft = testsupport.RunDraft(draft)
 		if err := store.Admit(ctx, draft); err != nil {
 			t.Fatalf("admit %s: %v", draft.RunID, err)
 		}

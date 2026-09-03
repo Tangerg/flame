@@ -84,7 +84,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	capabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
 	if admitErr := runStore.Admit(ctx, run.Draft{
 		RunID: "run_claim", SessionID: "session_claim", SegmentID: "segment_claim",
-		Capabilities: capabilities, CreatedAt: createdAt,
+		Capabilities: capabilities, ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}); admitErr != nil {
 		t.Fatalf("Admit: %v", admitErr)
 	}
@@ -108,7 +108,8 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 			InterruptItemID: request.ItemID, MemberID: "member_claim", RequestID: "request_claim",
 		}},
 		Continuations: []runs.Continuation{{
-			RunID: "run_claim", MemberID: "member_claim", RunCreatedAt: createdAt,
+			RunID: "run_claim", MemberID: "member_claim",
+			ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: createdAt,
 		}},
 		CreatedAt: createdAt.Add(time.Second),
 	}
@@ -377,7 +378,8 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 		t.Fatalf("Save Goal: applied=%t err=%v", applied, saveErr)
 	}
 	if admitErr := runStore.Admit(ctx, run.Draft{
-		RunID: "run_lost", SessionID: "session", SegmentID: "segment", GoalIncarnationID: goalValue.IncarnationID(), CreatedAt: createdAt,
+		RunID: "run_lost", SessionID: "session", SegmentID: "segment", GoalIncarnationID: goalValue.IncarnationID(),
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}); admitErr != nil {
 		t.Fatalf("Admit: %v", admitErr)
 	}
@@ -574,6 +576,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
 	if admitErr := runStore.Admit(ctx, run.Draft{
 		RunID: "run_partial", SessionID: "session", SegmentID: "segment", CreatedAt: createdAt,
+		ModelSelection: testsupport.DefaultModelSelection(),
 		Capabilities: run.Capabilities{
 			InterruptKinds: []interrupt.Kind{interrupt.Question},
 		},
@@ -604,7 +607,8 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 			InterruptItemID: pendingInterrupt.ItemID, MemberID: "member_root", RequestID: "request_root",
 		}},
 		Continuations: []runs.Continuation{{
-			RunID: "run_partial", MemberID: "member_root", RunCreatedAt: createdAt,
+			RunID: "run_partial", MemberID: "member_root",
+			ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: createdAt,
 		}},
 		CreatedAt: createdAt.Add(time.Second),
 	}
@@ -613,7 +617,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	}
 	checkpoint := runs.ExecutorCheckpoint{
 		RootMemberID: "member_root", Payload: []byte(`{"opaque":true}`), BuildID: testsupport.BuildID,
-		Scope: runs.ExecutionScope{SessionID: "session"},
+		Scope: runs.ExecutionScope{SessionID: "session"}, ModelSelection: testsupport.DefaultModelSelection(),
 	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("SaveCheckpoint: %v", saveCheckpointErr)

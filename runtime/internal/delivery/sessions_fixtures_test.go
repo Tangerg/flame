@@ -27,6 +27,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -162,9 +163,10 @@ func serverPending(
 		Bindings:     bindings,
 		Capabilities: capabilities.Normalized(),
 		Continuations: []runs.Continuation{{
-			RunID:        runID,
-			MemberID:     memberID,
-			RunCreatedAt: createdAt,
+			RunID:          runID,
+			MemberID:       memberID,
+			ModelSelection: testsupport.DefaultModelSelection(),
+			RunCreatedAt:   createdAt,
 		}},
 		CreatedAt: createdAt,
 	}

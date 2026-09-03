@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func newScheduleStore(t *testing.T) *sqlite.ScheduleStore {
@@ -86,7 +87,7 @@ func admitOccurrenceRun(t *testing.T, store *sqlite.RunStore, occurrence schedul
 	t.Helper()
 	draft := run.Draft{
 		RunID: occurrence.RunID(), SessionID: occurrence.SessionID(),
-		SegmentID: "seg_schedule", CreatedAt: occurrence.FiredAt(),
+		SegmentID: "seg_schedule", ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: occurrence.FiredAt(),
 	}
 	if err := store.Admit(t.Context(), draft); err != nil {
 		t.Fatalf("admit occurrence Run: %v", err)

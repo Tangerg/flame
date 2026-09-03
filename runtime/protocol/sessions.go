@@ -234,8 +234,8 @@ type ArtifactRun struct {
 	// document, so a half-linked child would import a tree that cannot be walked.
 	ParentRunID     string `json:"parentRunId,omitempty"`
 	RootRunID       string `json:"rootRunId,omitempty"`
-	Provider        string `json:"provider,omitempty"`
-	Model           string `json:"model,omitempty"`
+	Provider        string `json:"provider"`
+	Model           string `json:"model"`
 	ReasoningEffort string `json:"reasoningEffort,omitempty"`
 	// Limits and Metrics split the same way the live wire does. The archive has
 	// to move with it: leaving the old combined shape here would keep a second,

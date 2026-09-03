@@ -290,7 +290,7 @@ func TestTranscriptStoreRejectsIdentityReparenting(t *testing.T) {
 	ctx := t.Context()
 	now := time.Now().UTC()
 
-	if admitErr := runs.Admit(ctx, run.Draft{SegmentID: "seg_open", RunID: "run_shared", SessionID: "ses_a", CreatedAt: now}); admitErr != nil {
+	if admitErr := runs.Admit(ctx, testsupport.RunDraft(run.Draft{SegmentID: "seg_open", RunID: "run_shared", SessionID: "ses_a", CreatedAt: now})); admitErr != nil {
 		t.Fatalf("seed run: %v", admitErr)
 	}
 	if appendItemErr := store.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
@@ -301,7 +301,7 @@ func TestTranscriptStoreRejectsIdentityReparenting(t *testing.T) {
 
 	// A run id belongs to one session for its whole lifetime — and the refusal must
 	// say so, not report the innocent session as busy.
-	if admitErr := runs.Admit(ctx, run.Draft{SegmentID: "seg_open", RunID: "run_shared", SessionID: "ses_b", CreatedAt: now}); !errors.Is(admitErr, run.ErrIdentityConflict) {
+	if admitErr := runs.Admit(ctx, testsupport.RunDraft(run.Draft{SegmentID: "seg_open", RunID: "run_shared", SessionID: "ses_b", CreatedAt: now})); !errors.Is(admitErr, run.ErrIdentityConflict) {
 		t.Fatalf("re-parent run error = %v, want ErrIdentityConflict", admitErr)
 	}
 	if appendItemErr := store.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{

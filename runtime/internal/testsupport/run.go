@@ -18,8 +18,18 @@ type RunMetricsInput struct {
 // DefaultModelSelection returns the deterministic model identity MustRestoreRun supplies when
 // a fixture omits one.
 func DefaultModelSelection() modelref.Selection {
-	selection, _ := modelref.New("fixture", "fixture")
+	selection, _ := modelref.New("anthropic", "claude")
 	return selection
+}
+
+// RunDraft supplies the deterministic model identity used by valid Run fixtures
+// when the behavior under test does not care which model executes the Run.
+func RunDraft(draft run.Draft) run.Draft {
+	if draft.ModelSelection.Provider() == "" && draft.ModelSelection.Model() == "" &&
+		draft.ModelSelection.ReasoningEffort() == "" {
+		draft.ModelSelection = DefaultModelSelection()
+	}
+	return draft
 }
 
 // MustRunMetrics constructs valid metrics or panics. It is intended only for
@@ -56,6 +66,10 @@ func MustRestoreRun(snapshot run.Snapshot) run.Run {
 	}
 	if snapshot.CreatedAt.IsZero() {
 		snapshot.CreatedAt = time.Unix(1, 0).UTC()
+	}
+	if snapshot.ModelSelection.Provider() == "" && snapshot.ModelSelection.Model() == "" &&
+		snapshot.ModelSelection.ReasoningEffort() == "" {
+		snapshot.ModelSelection = DefaultModelSelection()
 	}
 	if snapshot.State == "" {
 		snapshot.State = run.Running

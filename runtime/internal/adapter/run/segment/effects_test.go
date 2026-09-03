@@ -237,7 +237,8 @@ func TestCommitOpeningAdmitsAndProjectsInOneTransaction(t *testing.T) {
 	tx := &fakeTx{}
 	effects := testEffects(stores, Config{State: runState, Tx: tx.run})
 	draft := run.Draft{
-		RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: time.Unix(1, 0).UTC(),
+		RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: time.Unix(1, 0).UTC(),
 	}
 
 	err := effects.CommitOpening(context.Background(), runs.OpeningCommit{
@@ -278,7 +279,7 @@ func TestCommitStartedChildRunOwnsOneTransactionBoundary(t *testing.T) {
 	draft := run.Draft{
 		RunID: "run_child", SessionID: "ses_1", SegmentID: "segment_child",
 		SpawnedByItemID: "item_delegate", ParentRunID: "run_root", RootRunID: "run_root",
-		CreatedAt: startedAt,
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: startedAt,
 	}
 	tx := &nonReentrantTx{}
 	childStarts := &fakeChildRunStarts{}

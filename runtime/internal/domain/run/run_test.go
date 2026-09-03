@@ -6,13 +6,26 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
+func mustRunSelection(t testing.TB) modelref.Selection {
+	t.Helper()
+	selection, err := modelref.New("provider", "model")
+	if err != nil {
+		t.Fatalf("modelref.New: %v", err)
+	}
+	return selection
+}
+
 func TestRunAdmissionRejectsNonCanonicalOrUnboundedResourceIdentity(t *testing.T) {
-	valid := Draft{RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1", CreatedAt: time.Unix(1, 0)}
+	valid := Draft{
+		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",
+		ModelSelection: mustRunSelection(t), CreatedAt: time.Unix(1, 0),
+	}
 	for name, mutate := range map[string]func(*Draft){
 		"run control":       func(draft *Draft) { draft.RunID = "run_\n1" },
 		"session control":   func(draft *Draft) { draft.SessionID = "session_\t1" },
@@ -28,12 +41,24 @@ func TestRunAdmissionRejectsNonCanonicalOrUnboundedResourceIdentity(t *testing.T
 	}
 }
 
+func TestRunAdmissionRequiresExactModelSelection(t *testing.T) {
+	t.Parallel()
+
+	_, err := Admit(Draft{
+		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",
+		CreatedAt: time.Unix(1, 0).UTC(),
+	})
+	if err == nil || !strings.Contains(err.Error(), "model selection is required") {
+		t.Fatalf("Admit without model selection error = %v", err)
+	}
+}
+
 func TestRunLifecyclePreservesAdmissionFactsAndAdvancesMetrics(t *testing.T) {
 	createdAt := time.Unix(1, 0).UTC()
 	capabilities := Capabilities{ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question}}
 	value, err := Admit(Draft{
 		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",
-		Capabilities: capabilities, CreatedAt: createdAt,
+		ModelSelection: mustRunSelection(t), Capabilities: capabilities, CreatedAt: createdAt,
 	})
 	if err != nil {
 		t.Fatalf("Admit: %v", err)
@@ -71,7 +96,8 @@ func TestRunLifecyclePreservesAdmissionFactsAndAdvancesMetrics(t *testing.T) {
 func TestRunProgressPreservesLatestPromptFootprintAcrossLifecycle(t *testing.T) {
 	createdAt := time.Unix(1, 0).UTC()
 	value, err := Admit(Draft{
-		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1", CreatedAt: createdAt,
+		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",
+		ModelSelection: mustRunSelection(t), CreatedAt: createdAt,
 	})
 	if err != nil {
 		t.Fatalf("Admit: %v", err)
@@ -130,7 +156,7 @@ func TestRunTerminalFactsRemainCoherent(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			value, err := Admit(Draft{
 				RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",
-				CreatedAt: time.Unix(1, 0).UTC(),
+				ModelSelection: mustRunSelection(t), CreatedAt: time.Unix(1, 0).UTC(),
 			})
 			if err != nil {
 				t.Fatalf("Admit: %v", err)
@@ -160,7 +186,7 @@ func TestForkReidentifiesTerminalHistoryAndClearsGoalAttribution(t *testing.T) {
 	createdAt := time.Unix(1, 0).UTC()
 	source, err := Admit(Draft{
 		RunID: "run_source", SessionID: "session_source", SegmentID: "segment_source",
-		GoalIncarnationID: "goal_incarnation_source", CreatedAt: createdAt,
+		ModelSelection: mustRunSelection(t), GoalIncarnationID: "goal_incarnation_source", CreatedAt: createdAt,
 	})
 	if err != nil {
 		t.Fatalf("Admit: %v", err)
@@ -187,7 +213,7 @@ func TestForkReidentifiesTerminalHistoryAndClearsGoalAttribution(t *testing.T) {
 	}
 	if running, err := Admit(Draft{
 		RunID: "run_running", SessionID: "session_source", SegmentID: "segment_running",
-		CreatedAt: createdAt,
+		ModelSelection: mustRunSelection(t), CreatedAt: createdAt,
 	}); err != nil {
 		t.Fatalf("Admit running: %v", err)
 	} else if _, err := running.Fork("session_child", "run_invalid", Lineage{}); err == nil {
@@ -198,7 +224,8 @@ func TestForkReidentifiesTerminalHistoryAndClearsGoalAttribution(t *testing.T) {
 func TestRunRejectsIllegalTransitionsAndRegressingFacts(t *testing.T) {
 	createdAt := time.Unix(2, 0).UTC()
 	value, err := Admit(Draft{
-		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1", CreatedAt: createdAt,
+		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",
+		ModelSelection: mustRunSelection(t), CreatedAt: createdAt,
 	})
 	if err != nil {
 		t.Fatalf("Admit: %v", err)
@@ -242,7 +269,7 @@ func TestRunAndMetricsCopyOwnership(t *testing.T) {
 	capabilities := Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
 	value, err := Admit(Draft{
 		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",
-		Capabilities: capabilities, CreatedAt: time.Unix(1, 0).UTC(),
+		ModelSelection: mustRunSelection(t), Capabilities: capabilities, CreatedAt: time.Unix(1, 0).UTC(),
 	})
 	if err != nil {
 		t.Fatalf("Admit: %v", err)

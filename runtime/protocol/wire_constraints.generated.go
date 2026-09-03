@@ -1977,6 +1977,8 @@ func (a ArtifactRun) ValidateWire() error {
 		maxLength("parentRunId", a.ParentRunID, 256),
 		identity("rootRunId", a.RootRunID),
 		maxLength("rootRunId", a.RootRunID, 256),
+		requiredText("provider", a.Provider),
+		requiredText("model", a.Model),
 		identity("provider", a.Provider),
 		maxLength("provider", a.Provider, 64),
 		identity("model", a.Model),

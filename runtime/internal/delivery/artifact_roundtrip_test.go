@@ -170,12 +170,14 @@ func TestImportRefusesAChildWhoseRootProfileDisallowsChildren(t *testing.T) {
 		Runs: []protocol.ArtifactRun{
 			{
 				ID: "run_root", SessionID: "ses_tree", ProtocolProfile: &profile,
+				Provider: "test-provider", Model: "test-model",
 				Outcome:   protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCompleted},
 				CreatedAt: at, FinishedAt: at, UpdatedAt: at,
 			},
 			{
 				ID: "run_child", SessionID: "ses_tree",
 				SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root",
+				Provider: "test-provider", Model: "test-model",
 				Outcome:   protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCompleted},
 				CreatedAt: at, FinishedAt: at, UpdatedAt: at,
 			},
@@ -209,6 +211,7 @@ func TestImportRefusesAnUnknownRunProtocolFeature(t *testing.T) {
 		},
 		Runs: []protocol.ArtifactRun{{
 			ID: "run_root", SessionID: "ses_unknown_profile", ProtocolProfile: &profile,
+			Provider: "test-provider", Model: "test-model",
 			Outcome: protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCompleted},
 		}},
 	}

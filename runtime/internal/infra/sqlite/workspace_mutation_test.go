@@ -132,6 +132,7 @@ func TestPendingWorkspaceMutationFencesItsRecoveryInputs(t *testing.T) {
 		{RunID: "run_owner_next", SessionID: "ses_owner", SegmentID: "seg_open", CreatedAt: time.Unix(3, 0)},
 		{RunID: "run_sibling_next", SessionID: "ses_sibling", SegmentID: "seg_open", CreatedAt: time.Unix(3, 0)},
 	} {
+		draft = testsupport.RunDraft(draft)
 		if err := runs.Admit(ctx, draft); !errors.Is(err, run.ErrSessionBusy) {
 			t.Fatalf("admit %q during pending mutation = %v, want ErrSessionBusy", draft.RunID, err)
 		}
@@ -146,9 +147,9 @@ func TestPendingWorkspaceMutationFencesItsRecoveryInputs(t *testing.T) {
 	if err := mutations.Complete(ctx, "ses_owner"); err != nil {
 		t.Fatalf("complete mutation: %v", err)
 	}
-	if err := runs.Admit(ctx, run.Draft{
+	if err := runs.Admit(ctx, testsupport.RunDraft(run.Draft{
 		RunID: "run_owner_next", SessionID: "ses_owner", SegmentID: "seg_open", CreatedAt: time.Unix(3, 0),
-	}); err != nil {
+	})); err != nil {
 		t.Fatalf("admit after completion: %v", err)
 	}
 }

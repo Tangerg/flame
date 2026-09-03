@@ -31,7 +31,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 	}
 	root := run.Draft{
 		RunID: "run_root", SessionID: "session_1", SegmentID: "segment_root",
-		Capabilities: capabilities, CreatedAt: time.Unix(1, 0),
+		Capabilities: capabilities, ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: time.Unix(1, 0),
 	}
 	if admitErr := runStore.Admit(t.Context(), root); admitErr != nil {
 		t.Fatalf("admit root: %v", admitErr)
@@ -62,7 +62,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 	child := run.Draft{
 		RunID: "run_child", SessionID: "session_1", SegmentID: "segment_child",
 		SpawnedByItemID: spawningItem.ID(), ParentRunID: root.RunID, RootRunID: root.RunID,
-		Capabilities: capabilities, CreatedAt: time.Unix(3, 0),
+		Capabilities: capabilities, ModelSelection: root.ModelSelection, CreatedAt: time.Unix(3, 0),
 	}
 	if commitOpeningErr := effects.CommitOpening(t.Context(), runs.OpeningCommit{
 		CommitID: testCommitID("run_commit_child_opening"), Admit: &child,
@@ -149,7 +149,7 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 	childStarts := sqlite.NewChildRunStartReservationStore(db)
 	root := run.Draft{
 		RunID: "run_root", SessionID: "session_1", SegmentID: "segment_root",
-		CreatedAt: time.Unix(1, 0).UTC(),
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: time.Unix(1, 0).UTC(),
 	}
 	if admitErr := runStore.Admit(ctx, root); admitErr != nil {
 		t.Fatalf("admit root: %v", admitErr)
@@ -167,7 +167,7 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 	child := run.Draft{
 		RunID: "run_child", SessionID: root.SessionID, SegmentID: "segment_child",
 		SpawnedByItemID: spawningItem.ID(), ParentRunID: root.RunID, RootRunID: root.RunID,
-		CreatedAt: startedAt,
+		ModelSelection: root.ModelSelection, CreatedAt: startedAt,
 	}
 	reservation := runs.ChildRunStartReservation{
 		SessionID: root.SessionID, ExecutorID: "executor_1",

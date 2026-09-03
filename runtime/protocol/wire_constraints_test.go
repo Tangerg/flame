@@ -1682,6 +1682,28 @@ func TestGenerationAndGoalBoundsAreWireConstraints(t *testing.T) {
 	assertConstraintField(t, ValidateWireTree(goal), "Goal", "used.steps")
 }
 
+func TestArtifactRunRequiresExecutionAttribution(t *testing.T) {
+	t.Parallel()
+
+	valid := ArtifactRun{ID: "run_1", SessionID: "ses_1", Provider: "provider", Model: "model"}
+	if err := valid.ValidateWire(); err != nil {
+		t.Fatalf("valid ArtifactRun: %v", err)
+	}
+	for _, test := range []struct {
+		field  string
+		mutate func(*ArtifactRun)
+	}{
+		{field: "provider", mutate: func(run *ArtifactRun) { run.Provider = "" }},
+		{field: "model", mutate: func(run *ArtifactRun) { run.Model = "" }},
+	} {
+		t.Run(test.field, func(t *testing.T) {
+			run := valid
+			test.mutate(&run)
+			assertConstraintField(t, run.ValidateWire(), "ArtifactRun", test.field)
+		})
+	}
+}
+
 func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
 	t.Parallel()
 
@@ -1697,7 +1719,9 @@ func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
 		field string
 		value WireValidator
 	}{
-		{shape: "ArtifactRun", field: "messageMark", value: ArtifactRun{MessageMark: -1}},
+		{shape: "ArtifactRun", field: "messageMark", value: ArtifactRun{
+			ID: "run_1", SessionID: "ses_1", Provider: "provider", Model: "model", MessageMark: -1,
+		}},
 		{shape: "ArtifactRunMetrics", field: "steps", value: ArtifactRunMetrics{Steps: -1}},
 		{shape: "ArtifactRunMetrics", field: "activeDurationMillis", value: ArtifactRunMetrics{ActiveDurationMillis: -1}},
 		{shape: "ArtifactRunMetrics", field: "activeDurationMillis", value: ArtifactRunMetrics{ActiveDurationMillis: tooLongDuration}},

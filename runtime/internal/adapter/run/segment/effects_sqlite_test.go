@@ -75,7 +75,7 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 	state := sqlite.NewRunStore(db)
 	ctx := context.Background()
 	createdAt := time.Now().UTC()
-	if admitErr := state.Admit(ctx, run.Draft{RunID: "run_actual", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: createdAt}); admitErr != nil {
+	if admitErr := state.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_actual", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: createdAt})); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
 	}
 	if suspendErr := state.Suspend(ctx, parkedRunRecord("run_actual", "ses_1", createdAt)); suspendErr != nil {
@@ -123,7 +123,7 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 	state := sqlite.NewRunStore(db)
 	ctx := context.Background()
 	created := time.Now().UTC()
-	if admitErr := state.Admit(ctx, run.Draft{RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created}); admitErr != nil {
+	if admitErr := state.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created})); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
 	}
 	if suspendErr := state.Suspend(ctx, parkedRunRecord("run_1", "ses_1", created)); suspendErr != nil {
@@ -209,7 +209,7 @@ func TestCommitOpeningReconcilesAmbiguousAdmission(t *testing.T) {
 	createdAt := time.Unix(1, 0).UTC()
 	draft := run.Draft{
 		RunID: "run_ambiguous_opening", SessionID: "ses_ambiguous_opening",
-		SegmentID: "seg_ambiguous_opening", CreatedAt: createdAt,
+		SegmentID: "seg_ambiguous_opening", ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
 	opening := runs.OpeningCommit{
 		CommitID: testCommitID("run_commit_ambiguous_opening"),
@@ -276,7 +276,8 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 	finishedAt := startedAt.Add(time.Second)
 	runState := sqlite.NewRunStore(db)
 	if admitErr := runState.Admit(ctx, run.Draft{
-		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model", CreatedAt: startedAt,
+		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: startedAt,
 	}); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
 	}
@@ -372,7 +373,8 @@ func TestCommitEventRejectsTerminalFromReplacedSegment(t *testing.T) {
 	finishedAt := resumedAt.Add(time.Second)
 	store := sqlite.NewRunStore(db)
 	draft := run.Draft{
-		RunID: "run_resumed", SessionID: "ses_resumed", SegmentID: "seg_old", CreatedAt: startedAt,
+		RunID: "run_resumed", SessionID: "ses_resumed", SegmentID: "seg_old",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: startedAt,
 	}
 	if admitErr := store.Admit(ctx, draft); admitErr != nil {
 		t.Fatal(admitErr)
@@ -431,7 +433,8 @@ func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t 
 	startedAt := time.Date(2026, 8, 15, 2, 0, 0, 0, time.UTC)
 	store := sqlite.NewRunStore(db)
 	draft := run.Draft{
-		RunID: "run_resumed", SessionID: "ses_resumed", SegmentID: "seg_old", CreatedAt: startedAt,
+		RunID: "run_resumed", SessionID: "ses_resumed", SegmentID: "seg_old",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: startedAt,
 	}
 	if admitErr := store.Admit(ctx, draft); admitErr != nil {
 		t.Fatal(admitErr)
@@ -499,7 +502,8 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 	finishedAt := startedAt.Add(time.Second)
 	runState := sqlite.NewRunStore(db)
 	if admitErr := runState.Admit(ctx, run.Draft{
-		RunID: "run_tools", SessionID: "ses_tools", SegmentID: "seg_tools", CreatedAt: startedAt,
+		RunID: "run_tools", SessionID: "ses_tools", SegmentID: "seg_tools",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: startedAt,
 	}); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
 	}
@@ -641,7 +645,8 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(database))
 	createdAt := time.Now().UTC()
 	if err := runStore.Admit(ctx, run.Draft{
-		RunID: "run_root", SessionID: "session_1", SegmentID: "segment_root", CreatedAt: createdAt,
+		RunID: "run_root", SessionID: "session_1", SegmentID: "segment_root",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}); err != nil {
 		t.Fatalf("admit root: %v", err)
 	}
@@ -651,7 +656,7 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 	if err := runStore.Admit(ctx, run.Draft{
 		RunID: "run_child", SessionID: "session_1", SegmentID: "segment_child",
 		SpawnedByItemID: lineage.SpawnedByItemID, ParentRunID: lineage.ParentRunID,
-		RootRunID: lineage.RootRunID, CreatedAt: createdAt,
+		RootRunID: lineage.RootRunID, ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}); err != nil {
 		t.Fatalf("admit child: %v", err)
 	}
@@ -801,7 +806,7 @@ func TestCommitOpeningRollsBackScheduledSession(t *testing.T) {
 		Tx:        func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
 	})
 	created := time.Now().UTC()
-	draft := run.Draft{RunID: "run_scheduled", SessionID: "ses_scheduled", SegmentID: "seg_open", CreatedAt: created}
+	draft := testsupport.RunDraft(run.Draft{RunID: "run_scheduled", SessionID: "ses_scheduled", SegmentID: "seg_open", CreatedAt: created})
 	scheduled := testsupport.MustRestoreSession(session.Snapshot{
 		ID: draft.SessionID, Title: "scheduled", Workspace: testsupport.MustWorkspace("/work"),
 		StartedAt: created, UpdatedAt: created, Revision: 1,
@@ -869,7 +874,8 @@ func TestCommitOpeningOwnsManualScheduleRunFact(t *testing.T) {
 		StartedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
 	})
 	manualDraft := run.Draft{
-		RunID: "run_manual", SessionID: manualSession.ID(), SegmentID: "seg_manual", CreatedAt: createdAt,
+		RunID: "run_manual", SessionID: manualSession.ID(), SegmentID: "seg_manual",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
 	opening := runs.OpeningCommit{
 		CommitID: testCommitID("run_commit_manual_schedule"), Admit: &manualDraft,
@@ -903,7 +909,8 @@ func TestCommitOpeningOwnsManualScheduleRunFact(t *testing.T) {
 		StartedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
 	})
 	missingDraft := run.Draft{
-		RunID: "run_manual_missing", SessionID: missingSession.ID(), SegmentID: "seg_manual_missing", CreatedAt: createdAt,
+		RunID: "run_manual_missing", SessionID: missingSession.ID(), SegmentID: "seg_manual_missing",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
 	err = effects.CommitOpening(ctx, runs.OpeningCommit{
 		CommitID: testCommitID("run_commit_manual_schedule_missing"), Admit: &missingDraft,
@@ -959,7 +966,7 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	state := sqlite.NewRunStore(db)
 	draft := run.Draft{
 		RunID: "run_goal", SessionID: g.SessionID(), SegmentID: "seg_open",
-		GoalIncarnationID: g.IncarnationID(), CreatedAt: created,
+		GoalIncarnationID: g.IncarnationID(), ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: created,
 	}
 	if admitErr := state.Admit(ctx, draft); admitErr != nil {
 		t.Fatalf("admit goal run: %v", admitErr)
@@ -1139,7 +1146,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		items[0].Status() != transcript.ItemRunning {
 		t.Fatalf("parked transcript Items = %+v err=%v, want running Tool then Question", items, err)
 	}
-	if err := state.Admit(ctx, run.Draft{RunID: "run_next", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: parkedAt}); !errors.Is(err, run.ErrSessionBusy) {
+	if err := state.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_next", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: parkedAt})); !errors.Is(err, run.ErrSessionBusy) {
 		t.Fatalf("admit after intact park = %v, want ErrSessionBusy", err)
 	}
 	requireSQLiteHealthy(t, ctx, db)
@@ -1784,7 +1791,7 @@ func newTerminalCheckpointFixture(
 	runStore := sqlite.NewRunStore(database)
 	if err := runStore.Admit(ctx, run.Draft{
 		RunID: "run_terminal", SessionID: "ses_terminal", SegmentID: "seg_terminal",
-		CreatedAt: createdAt,
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
@@ -2173,8 +2180,9 @@ func newWaitingCancellationSQLiteFixtureAt(
 	}
 	if admitErr := state.Admit(ctx, run.Draft{
 		RunID: "run_root", SessionID: "session_1", SegmentID: "segment_root",
-		Capabilities: capabilities,
-		CreatedAt:    createdAt,
+		Capabilities:   capabilities,
+		ModelSelection: testsupport.DefaultModelSelection(),
+		CreatedAt:      createdAt,
 	}); admitErr != nil {
 		t.Fatalf("admit root: %v", admitErr)
 	}
@@ -2198,6 +2206,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		SpawnedByItemID: childLineage.SpawnedByItemID,
 		ParentRunID:     childLineage.ParentRunID,
 		RootRunID:       childLineage.RootRunID,
+		ModelSelection:  testsupport.DefaultModelSelection(),
 		CreatedAt:       createdAt,
 	}); admitErr != nil {
 		t.Fatalf("admit child: %v", admitErr)
@@ -2209,6 +2218,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		SpawnedByItemID: grandchildLineage.SpawnedByItemID,
 		ParentRunID:     grandchildLineage.ParentRunID,
 		RootRunID:       grandchildLineage.RootRunID,
+		ModelSelection:  testsupport.DefaultModelSelection(),
 		CreatedAt:       createdAt,
 	}); admitErr != nil {
 		t.Fatalf("admit grandchild: %v", admitErr)
@@ -2221,6 +2231,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 			SpawnedByItemID: siblingLineage.SpawnedByItemID,
 			ParentRunID:     siblingLineage.ParentRunID,
 			RootRunID:       siblingLineage.RootRunID,
+			ModelSelection:  testsupport.DefaultModelSelection(),
 			CreatedAt:       createdAt,
 		}); admitErr != nil {
 			t.Fatalf("admit sibling: %v", admitErr)
@@ -2342,16 +2353,18 @@ func newWaitingCancellationSQLiteFixtureAt(
 	}
 	pendingContinuations := []runs.Continuation{
 		{
-			RunID:        grandchildRun.ID(),
-			MemberID:     "member_grandchild",
-			Lineage:      grandchildLineage,
-			RunCreatedAt: createdAt,
+			RunID:          grandchildRun.ID(),
+			MemberID:       "member_grandchild",
+			Lineage:        grandchildLineage,
+			ModelSelection: grandchildRun.ModelSelection(),
+			RunCreatedAt:   createdAt,
 		},
 		{
-			RunID:        childRun.ID(),
-			MemberID:     "member_child",
-			Lineage:      childLineage,
-			RunCreatedAt: createdAt,
+			RunID:          childRun.ID(),
+			MemberID:       "member_child",
+			Lineage:        childLineage,
+			ModelSelection: childRun.ModelSelection(),
+			RunCreatedAt:   createdAt,
 		},
 	}
 	if survivingBoundary {
@@ -2362,16 +2375,18 @@ func newWaitingCancellationSQLiteFixtureAt(
 			RequestID:       "request-member_sibling",
 		})
 		pendingContinuations = append(pendingContinuations, runs.Continuation{
-			RunID:        siblingRun.ID(),
-			MemberID:     "member_sibling",
-			Lineage:      siblingLineage,
-			RunCreatedAt: createdAt,
+			RunID:          siblingRun.ID(),
+			MemberID:       "member_sibling",
+			Lineage:        siblingLineage,
+			ModelSelection: siblingRun.ModelSelection(),
+			RunCreatedAt:   createdAt,
 		})
 	}
 	pendingContinuations = append(pendingContinuations, runs.Continuation{
-		RunID:        rootRun.ID(),
-		MemberID:     "member_root",
-		RunCreatedAt: createdAt,
+		RunID:          rootRun.ID(),
+		MemberID:       "member_root",
+		ModelSelection: rootRun.ModelSelection(),
+		RunCreatedAt:   createdAt,
 		DrainedTools: []runs.DrainedTool{{
 			ItemID: parentItem.ID(), ItemOccurredAt: parentItem.OccurredAt(),
 			CallID: "call_child", SourceCallID: "provider_child",
@@ -2535,6 +2550,9 @@ func executorCheckpoint(
 	t.Helper()
 	checkpoint.RootMemberID = rootMemberID
 	checkpoint.Payload = []byte(payload)
+	if !checkpoint.ModelSelection.Configured() {
+		checkpoint.ModelSelection = testsupport.DefaultModelSelection()
+	}
 	if err := checkpoint.Validate(); err != nil {
 		t.Fatalf("executor checkpoint: %v", err)
 	}
@@ -2572,7 +2590,7 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 	history := sqlite.NewTranscriptStore(db)
 	messages := sqlite.NewMessageStore(db)
 	state := sqlite.NewRunStore(db)
-	if admitErr := state.Admit(ctx, run.Draft{RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created}); admitErr != nil {
+	if admitErr := state.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created})); admitErr != nil {
 		t.Fatalf("admit the first run: %v", admitErr)
 	}
 
@@ -2581,7 +2599,7 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 		State:        state,
 		Tx:           func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
 	})
-	second := run.Draft{RunID: "run_2", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created}
+	second := testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created})
 	err = effects.CommitOpening(ctx, runs.OpeningCommit{
 		CommitID: testCommitID("run_commit_busy_opening"), Admit: &second,
 		Events: []runs.EventCommit{{
@@ -2628,7 +2646,7 @@ func TestCommitEventAppendsConversationBeforeResolvingTerminalWatermark(t *testi
 	messages := sqlite.NewMessageStore(db)
 	draft := run.Draft{
 		RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open",
-		CreatedAt: time.Unix(1, 0).UTC(),
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: time.Unix(1, 0).UTC(),
 	}
 	if admitErr := state.Admit(ctx, draft); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
@@ -2674,7 +2692,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 	messages := sqlite.NewMessageStore(db)
 	draft := run.Draft{
 		RunID: "run_ambiguous", SessionID: "ses_ambiguous", SegmentID: "seg_open",
-		CreatedAt: time.Unix(1, 0).UTC(),
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: time.Unix(1, 0).UTC(),
 	}
 	if admitErr := state.Admit(ctx, draft); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
@@ -2772,7 +2790,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 
 	otherDraft := run.Draft{
 		RunID: "run_other", SessionID: "ses_other", SegmentID: "seg_other",
-		CreatedAt: time.Unix(1, 0).UTC(),
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: time.Unix(1, 0).UTC(),
 	}
 	if admitErr := state.Admit(ctx, otherDraft); admitErr != nil {
 		t.Fatalf("admit other Run: %v", admitErr)
@@ -2822,7 +2840,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 	finishedAt := startedAt.Add(time.Second)
 	draft := run.Draft{
 		RunID: "run_authoritative", SessionID: "ses_authoritative",
-		SegmentID: "seg_authoritative", CreatedAt: startedAt,
+		SegmentID: "seg_authoritative", ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: startedAt,
 	}
 	state := sqlite.NewRunStore(db)
 	if admitErr := state.Admit(ctx, draft); admitErr != nil {
@@ -2981,7 +2999,8 @@ func TestRootTerminalCommitReclaimsChildStartReservations(t *testing.T) {
 	messages := sqlite.NewMessageStore(db)
 	childStarts := sqlite.NewChildRunStartReservationStore(db)
 	draft := run.Draft{
-		RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: createdAt,
+		RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
 	if err := state.Admit(ctx, draft); err != nil {
 		t.Fatalf("admit: %v", err)
@@ -3046,7 +3065,7 @@ func TestCommitEventPersistsTheTerminalRunsResult(t *testing.T) {
 	ctx := t.Context()
 	history := sqlite.NewTranscriptStore(db)
 	state := sqlite.NewRunStore(db)
-	draft := run.Draft{RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: time.Unix(1, 0).UTC()}
+	draft := testsupport.RunDraft(run.Draft{RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: time.Unix(1, 0).UTC()})
 	if admitErr := state.Admit(ctx, draft); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
 	}
@@ -3096,7 +3115,8 @@ func TestCommitEventPersistsTheTerminalRunsResult(t *testing.T) {
 // Waiting with the interrupt it is parked on.
 func parkedRunRecord(runID, sessionID string, createdAt time.Time) run.Run {
 	value, err := run.Admit(run.Draft{
-		RunID: runID, SessionID: sessionID, SegmentID: "seg_open", CreatedAt: createdAt,
+		RunID: runID, SessionID: sessionID, SegmentID: "seg_open",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	})
 	if err != nil {
 		panic(err)

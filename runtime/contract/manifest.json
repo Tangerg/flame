@@ -5698,6 +5698,14 @@
         },
         {
           "field": "provider",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "model",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "provider",
           "constraint": "identity"
         },
         {

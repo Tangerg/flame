@@ -1315,6 +1315,7 @@
         },
         "model": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
@@ -1331,6 +1332,7 @@
         },
         "provider": {
           "type": "string",
+          "minLength": 1,
           "maxLength": 64,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
@@ -1366,7 +1368,9 @@
         "id",
         "messageMark",
         "metrics",
+        "model",
         "outcome",
+        "provider",
         "sessionId",
         "updatedAt"
       ],

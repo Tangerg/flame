@@ -523,6 +523,8 @@ TypeScript validator from this single registry projection.
 | `ArtifactRun` | `parentRunId` | `maxLength(256)` |
 | `ArtifactRun` | `rootRunId` | `identity` |
 | `ArtifactRun` | `rootRunId` | `maxLength(256)` |
+| `ArtifactRun` | `provider` | `nonEmpty` |
+| `ArtifactRun` | `model` | `nonEmpty` |
 | `ArtifactRun` | `provider` | `identity` |
 | `ArtifactRun` | `provider` | `maxLength(64)` |
 | `ArtifactRun` | `model` | `identity` |

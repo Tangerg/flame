@@ -372,9 +372,9 @@ func TestCancelParkedRunProducesPortableTerminalSnapshot(t *testing.T) {
 	capabilities := run.Capabilities{
 		InterruptKinds: []interrupt.Kind{interrupt.Question},
 	}
-	if admitErr := rt.runs.Admit(ctx, run.Draft{SegmentID: "seg_open",
+	if admitErr := rt.runs.Admit(ctx, testsupport.RunDraft(run.Draft{SegmentID: "seg_open",
 		RunID: "run_parked", SessionID: ses.ID(), Capabilities: capabilities, CreatedAt: parkedAt,
-	}); admitErr != nil {
+	})); admitErr != nil {
 		t.Fatalf("admit parked run: %v", admitErr)
 	}
 	if suspendErr := rt.runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: ses.ID(), ID: "run_parked", State: run.Waiting,
@@ -578,7 +578,7 @@ func TestSessionImportRejectsAFailedRunWithoutItsFailure(t *testing.T) {
 				CreatedAt: created, UpdatedAt: created,
 			},
 			Runs: []protocol.ArtifactRun{{
-				ID: "run_1", SessionID: "ses_unexplained",
+				ID: "run_1", SessionID: "ses_unexplained", Provider: "test-provider", Model: "test-model",
 				// Failed by its own account, with nothing that says how.
 				Outcome:   protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeFailed},
 				CreatedAt: created, FinishedAt: created, UpdatedAt: created,

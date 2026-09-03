@@ -161,7 +161,7 @@ func TestEventCommitOwnsInvocationAndProgressSegment(t *testing.T) {
 func TestOpeningCommitValidatesItsLifecycleAction(t *testing.T) {
 	createdAt := time.Date(2026, 8, 15, 1, 2, 3, 0, time.UTC)
 	invalidAdmission := run.Draft{
-		RunID: "run_1", SessionID: "session", CreatedAt: createdAt,
+		RunID: "run_1", SessionID: "session", ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
 	invalidResume := run.TreeResumeDraft{
 		RootRunID: "run_1", SessionID: "session", ResumedAt: createdAt,
@@ -193,7 +193,8 @@ func TestOpeningCommitRejectsRootFactsOutsideARootAdmission(t *testing.T) {
 	})
 	child := run.Draft{
 		RunID: "run_child", SessionID: initialSession.ID(), SegmentID: "segment_child",
-		SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root", CreatedAt: createdAt,
+		SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
 	if err := (OpeningCommit{
 		CommitID: testCommitID("run_commit_child_with_session"), Admit: &child, InitialSession: &initialSession,
@@ -202,7 +203,8 @@ func TestOpeningCommitRejectsRootFactsOutsideARootAdmission(t *testing.T) {
 	}
 
 	root := run.Draft{
-		RunID: "run_scheduled", SessionID: "session_scheduled", SegmentID: "segment_scheduled", CreatedAt: createdAt,
+		RunID: "run_scheduled", SessionID: "session_scheduled", SegmentID: "segment_scheduled",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
 	if err := (OpeningCommit{
 		CommitID: testCommitID("run_commit_schedule_without_session"), Admit: &root, ScheduleFiring: "sch_test:1000",
@@ -224,7 +226,8 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 		})
 	}
 	root := run.Draft{
-		RunID: "run_root", SessionID: "session", SegmentID: "segment_root", CreatedAt: createdAt,
+		RunID: "run_root", SessionID: "session", SegmentID: "segment_root",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
 	foreign := EventCommit{
 		RunID: "run_foreign", SessionID: "session", SegmentID: "segment_foreign",
@@ -238,7 +241,8 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 
 	child := run.Draft{
 		RunID: "run_child", SessionID: "session", SegmentID: "segment_child",
-		SpawnedByItemID: "item_spawn", ParentRunID: root.RunID, RootRunID: root.RunID, CreatedAt: createdAt,
+		SpawnedByItemID: "item_spawn", ParentRunID: root.RunID, RootRunID: root.RunID,
+		ModelSelection: root.ModelSelection, CreatedAt: createdAt,
 	}
 	parentEvent := EventCommit{
 		RunID: root.RunID, SessionID: "session", SegmentID: root.SegmentID,
@@ -287,7 +291,8 @@ func TestCompositeCommitsRejectNestedTopLevelEventIdentity(t *testing.T) {
 		SessionID: "session", RunID: "run_root", ID: "item_opening", OccurredAt: createdAt,
 	})
 	admission := run.Draft{
-		RunID: "run_root", SessionID: "session", SegmentID: "segment_root", CreatedAt: createdAt,
+		RunID: "run_root", SessionID: "session", SegmentID: "segment_root",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
 	if err := (OpeningCommit{
 		CommitID: testCommitID("run_commit_opening_parent"), Admit: &admission,

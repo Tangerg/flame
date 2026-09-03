@@ -243,11 +243,11 @@ export interface ArtifactRun {
   limits?: ArtifactRunLimits;
   messageMark: number;
   metrics: ArtifactRunMetrics;
-  model?: string;
+  model: string;
   outcome: ArtifactOutcome;
   parentRunId?: string;
   protocolProfile?: RunProtocolProfile;
-  provider?: string;
+  provider: string;
   reasoningEffort?: string;
   rootRunId?: string;
   sessionId: string;

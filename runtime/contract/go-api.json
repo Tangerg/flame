@@ -2964,12 +2964,12 @@
             {
               "name": "Provider",
               "type": "string",
-              "tag": "json:\"provider,omitempty\""
+              "tag": "json:\"provider\""
             },
             {
               "name": "Model",
               "type": "string",
-              "tag": "json:\"model,omitempty\""
+              "tag": "json:\"model\""
             },
             {
               "name": "ReasoningEffort",
