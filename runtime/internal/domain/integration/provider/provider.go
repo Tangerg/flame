@@ -21,6 +21,7 @@ var (
 	ErrAPIKeyInvalid   = errors.New("provider: API key cannot have surrounding whitespace or contain control characters")
 	ErrBaseURLInvalid  = errors.New("provider: base URL must be an absolute HTTP(S) URL without credentials, query, or fragment")
 	ErrChangeCorrupted = errors.New("provider: change is corrupted")
+	ErrInvalid         = errors.New("provider: invalid aggregate")
 )
 
 // APIKey is a validated opaque provider credential. It deliberately exposes
@@ -197,6 +198,36 @@ func (p Provider) Credential() (Credential, bool) {
 }
 func (p Provider) APIKey() (APIKey, bool) {
 	return p.credential.APIKey()
+}
+
+// Validate rechecks the complete aggregate after it crosses a repository or
+// adapter boundary. Constructors protect normal callers, while this method
+// prevents a zero or corrupted value supplied by an implementation from being
+// mistaken for an absent or unrelated provider.
+func (p Provider) Validate() error {
+	if _, err := New(p.ID()); err != nil {
+		return fmt.Errorf("%w: identity: %w", ErrInvalid, err)
+	}
+	if p.credential.Configured() {
+		if _, err := NewAPIKey(p.credential.key.Reveal()); err != nil {
+			return fmt.Errorf("%w: credential: %w", ErrInvalid, err)
+		}
+		if p.credential.source != KeyStored && p.credential.source != KeyEnvironment {
+			return fmt.Errorf("%w: credential source %q", ErrInvalid, p.credential.source)
+		}
+	} else if p.credential.source != "" {
+		return fmt.Errorf("%w: credential source exists without a key", ErrInvalid)
+	}
+	if p.baseURL.Present() {
+		canonical, err := NewBaseURL(p.baseURL.String())
+		if err != nil {
+			return fmt.Errorf("%w: base URL: %w", ErrInvalid, err)
+		}
+		if canonical.String() != p.baseURL.String() {
+			return fmt.Errorf("%w: base URL is not canonical", ErrInvalid)
+		}
+	}
+	return nil
 }
 
 // WithEnvironmentFallback supplies an environment credential only when no

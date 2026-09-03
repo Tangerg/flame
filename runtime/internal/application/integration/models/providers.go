@@ -64,11 +64,14 @@ func (c *Coordinator) ListProviders(ctx context.Context) ([]ProviderSummary, err
 	if err != nil {
 		return nil, err
 	}
-	byID := make(map[string]provider.Provider, len(entries))
-	for _, entry := range entries {
-		byID[entry.ID()] = entry
+	byID, err := indexProviderRegistry(entries)
+	if err != nil {
+		return nil, err
 	}
-	metadata := c.supportedProviders()
+	metadata, err := c.supportedProviders()
+	if err != nil {
+		return nil, err
+	}
 	out := make([]ProviderSummary, 0, len(metadata))
 	for _, meta := range metadata {
 		out = append(out, providerSummary(meta, byID[meta.ID()]))
@@ -97,6 +100,9 @@ func (c *Coordinator) UpdateProvider(ctx context.Context, cmd UpdateProviderComm
 		}
 		currentBaseURL := provider.BaseURL{}
 		if found {
+			if err := validateProviderResult("get", cmd.ID, existing); err != nil {
+				return ProviderSummary{}, err
+			}
 			currentBaseURL, _ = existing.BaseURL()
 		}
 		finalBaseURL, resolveErr := cmd.BaseURL.Resolve(currentBaseURL)
@@ -109,6 +115,9 @@ func (c *Coordinator) UpdateProvider(ctx context.Context, cmd UpdateProviderComm
 	}
 	entry, err := c.providers.Update(ctx, cmd.ID, patch)
 	if err != nil {
+		return ProviderSummary{}, err
+	}
+	if err := validateProviderResult("update", cmd.ID, entry); err != nil {
 		return ProviderSummary{}, err
 	}
 	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.Models})
@@ -193,15 +202,25 @@ func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Mode
 	return c.catalogModels(providerID)
 }
 
-func (c *Coordinator) supportedProviders() []ProviderMetadata {
+func (c *Coordinator) supportedProviders() ([]ProviderMetadata, error) {
 	if c.catalog == nil {
-		return nil
+		return nil, nil
 	}
 	metadata := slices.Clone(c.catalog.Supported())
+	seen := make(map[string]struct{}, len(metadata))
+	for index, value := range metadata {
+		if err := value.Validate(); err != nil {
+			return nil, fmt.Errorf("models: supported provider %d is invalid: %w", index+1, err)
+		}
+		if _, duplicate := seen[value.ID()]; duplicate {
+			return nil, fmt.Errorf("models: supported provider catalog repeats %q", value.ID())
+		}
+		seen[value.ID()] = struct{}{}
+	}
 	slices.SortFunc(metadata, func(first, second ProviderMetadata) int {
 		return cmp.Compare(first.ID(), second.ID())
 	})
-	return metadata
+	return metadata, nil
 }
 
 func (c *Coordinator) providerMetadata(id string) (ProviderMetadata, bool) {
@@ -215,6 +234,12 @@ func (c *Coordinator) supportedProvider(id string) (ProviderMetadata, error) {
 	meta, ok := c.providerMetadata(id)
 	if !ok {
 		return ProviderMetadata{}, fmt.Errorf("%w: provider %q", ErrProviderUnsupported, id)
+	}
+	if err := meta.Validate(); err != nil {
+		return ProviderMetadata{}, fmt.Errorf("models: metadata for provider %q is invalid: %w", id, err)
+	}
+	if meta.ID() != id {
+		return ProviderMetadata{}, fmt.Errorf("models: metadata lookup for provider %q returned %q", id, meta.ID())
 	}
 	return meta, nil
 }
@@ -236,6 +261,8 @@ func (c *Coordinator) configuredProvider(ctx context.Context, id string) (Provid
 		if err != nil {
 			return ProviderMetadata{}, provider.Provider{}, err
 		}
+	} else if err := validateProviderResult("get", id, entry); err != nil {
+		return ProviderMetadata{}, provider.Provider{}, err
 	}
 	if !meta.ConfigurationSatisfied(entry) {
 		return ProviderMetadata{}, provider.Provider{}, fmt.Errorf("%w: provider %q", ErrProviderUnconfigured, id)
@@ -254,10 +281,37 @@ func (c *Coordinator) modelDiscoveryProvider(ctx context.Context, providerID str
 			return provider.Provider{}, getErr
 		}
 		if ok {
+			if err := validateProviderResult("get", providerID, configured); err != nil {
+				return provider.Provider{}, err
+			}
 			entry = configured
 		}
 	}
 	return entry, nil
+}
+
+func indexProviderRegistry(entries []provider.Provider) (map[string]provider.Provider, error) {
+	byID := make(map[string]provider.Provider, len(entries))
+	for index, entry := range entries {
+		if err := entry.Validate(); err != nil {
+			return nil, fmt.Errorf("models: provider registry row %d is invalid: %w", index+1, err)
+		}
+		if _, duplicate := byID[entry.ID()]; duplicate {
+			return nil, fmt.Errorf("models: provider registry repeats %q", entry.ID())
+		}
+		byID[entry.ID()] = entry
+	}
+	return byID, nil
+}
+
+func validateProviderResult(operation, id string, entry provider.Provider) error {
+	if err := entry.Validate(); err != nil {
+		return fmt.Errorf("models: provider registry %s for %q returned an invalid aggregate: %w", operation, id, err)
+	}
+	if entry.ID() != id {
+		return fmt.Errorf("models: provider registry %s for %q returned %q", operation, id, entry.ID())
+	}
+	return nil
 }
 
 func (c *Coordinator) catalogModels(providerID string) ([]Model, error) {

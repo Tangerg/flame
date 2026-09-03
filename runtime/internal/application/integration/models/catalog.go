@@ -129,6 +129,14 @@ func NewProviderMetadata(id string, authentication ProviderAuthenticationPolicy,
 
 func (p ProviderMetadata) ID() string { return p.id.String() }
 
+// Validate rechecks static catalog metadata returned through the application
+// port. Production metadata is constructor-built, but the use case must not
+// publish a zero or contradictory value from an alternate implementation.
+func (p ProviderMetadata) Validate() error {
+	_, err := NewProviderMetadata(p.ID(), p.authentication, p.endpoint, p.models, p.embedding)
+	return err
+}
+
 func (p ProviderMetadata) RequiresAPIKey() bool {
 	return p.authentication == ProviderAPIKeyRequired
 }
