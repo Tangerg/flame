@@ -86,8 +86,5 @@ func presentHookScope(scope hooks.Scope) (protocol.HookScope, bool) {
 // setTrust). The change takes effect on the next Run — the resolver re-reads
 // trust per Run.
 func (s *Handler) SetHookTrust(ctx context.Context, in protocol.SetHookTrustRequest) error {
-	if in.ProjectRoot == "" {
-		return protocol.ErrInvalidParams
-	}
 	return wireWorkspaceError(s.workspaceHooks.SetProjectTrust(ctx, in.ProjectRoot, in.Trusted))
 }

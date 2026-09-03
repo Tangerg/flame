@@ -307,9 +307,9 @@ func TestListItemsReadsTheScopeItWasGiven(t *testing.T) {
 	}
 }
 
-// TestListItemsRefusesAScopeItCannotServe covers the four ways a scope is wrong. The
-// two not-found cases are the contract's explicit refusal to answer a bad id with an
-// empty page: the client's next move differs, so the two subjects get two errors.
+// TestListItemsRefusesAScopeItCannotServe covers translation failures and the two
+// not-found cases. Missing union fields are rejected by the Endpoint contract test;
+// bad resource identities reach this query only after forming a valid wire scope.
 func TestListItemsRefusesAScopeItCannotServe(t *testing.T) {
 	s, rt := rollbackHarness(t)
 	putTestSession(t, rt)
@@ -327,12 +327,6 @@ func TestListItemsRefusesAScopeItCannotServe(t *testing.T) {
 		name: "a scope kind the union does not define",
 		in: protocol.ListItemsRequest{
 			Scope: protocol.ItemListScope{Type: "everything"},
-		},
-		wants: protocol.ErrInvalidParams,
-	}, {
-		name: "a session scope with no session",
-		in: protocol.ListItemsRequest{
-			Scope: protocol.ItemListScope{Type: protocol.ItemScopeSession},
 		},
 		wants: protocol.ErrInvalidParams,
 	}, {

@@ -111,23 +111,16 @@ func (s *Handler) GetPlan(ctx context.Context, in protocol.GetPlanRequest) (*pro
 
 // itemScopeFromWire reads the scope union. The tag decides which fields are read —
 // that is what a discriminated union means — so a field belonging to the other
-// variant is left alone rather than blended in: the schema states the exclusivity
-// for clients, and the server that honored both would be answering a request no
-// valid client sends.
+// variant is left alone rather than blended in. Endpoint validation has already
+// enforced the union's required and forbidden fields before this translation.
 //
 // A run scope is legal for a root or a child run, and it carries no sessionId: the
 // run's own record says where it lives.
 func itemScopeFromWire(scope protocol.ItemListScope) (sessions.ItemScope, error) {
 	switch scope.Type {
 	case protocol.ItemScopeSession:
-		if scope.SessionID == "" {
-			return sessions.ItemScope{}, fmt.Errorf("%w: scope.sessionId is required for a session scope", protocol.ErrInvalidParams)
-		}
 		return sessions.Items(scope.SessionID), nil
 	case protocol.ItemScopeRun:
-		if scope.RunID == "" {
-			return sessions.ItemScope{}, fmt.Errorf("%w: scope.runId is required for a run scope", protocol.ErrInvalidParams)
-		}
 		if scope.IncludeDescendants {
 			return sessions.RunTreeItems(scope.RunID), nil
 		}

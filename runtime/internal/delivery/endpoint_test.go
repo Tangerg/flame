@@ -18,6 +18,33 @@ type lifetimeService struct {
 
 type nilDiscoverService struct{}
 
+type invalidRequestService struct{ calls int }
+
+func (s *invalidRequestService) SetHookTrust(context.Context, protocol.SetHookTrustRequest) error {
+	s.calls++
+	return nil
+}
+
+func (s *invalidRequestService) ArchiveSkill(context.Context, protocol.SkillNameRequest) error {
+	s.calls++
+	return nil
+}
+
+func (s *invalidRequestService) RestoreSkill(context.Context, protocol.SkillNameRequest) error {
+	s.calls++
+	return nil
+}
+
+func (s *invalidRequestService) DeleteSession(context.Context, string) error {
+	s.calls++
+	return nil
+}
+
+func (s *invalidRequestService) ListItems(context.Context, protocol.ListItemsRequest) (*protocol.ListItemsResponse, error) {
+	s.calls++
+	return &protocol.ListItemsResponse{}, nil
+}
+
 func mustNewEndpoint(t *testing.T, target any, config EndpointConfig) *Endpoint {
 	t.Helper()
 	if config.Lifetime == nil {
@@ -151,6 +178,47 @@ func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *t
 			)
 			if !errors.Is(result.Failure, protocol.ErrInvalidParams) {
 				t.Fatalf("failure = %v, want invalid_params", result.Failure)
+			}
+		})
+	}
+}
+
+func TestEndpointRejectsInvalidRequestsBeforeHandlerAdmission(t *testing.T) {
+	tests := []struct {
+		name       string
+		method     Name
+		parameters any
+	}{
+		{name: "hook trust root", method: HooksSetTrust, parameters: protocol.SetHookTrustRequest{}},
+		{name: "archive skill name", method: SkillsLibraryArchive, parameters: protocol.SkillNameRequest{}},
+		{name: "restore skill name", method: SkillsLibraryRestore, parameters: protocol.SkillNameRequest{}},
+		{name: "delete session id", method: SessionsDelete, parameters: protocol.DeleteSessionRequest{}},
+		{
+			name:   "item session scope id",
+			method: ItemsList,
+			parameters: protocol.ListItemsRequest{Scope: protocol.ItemListScope{
+				Type: protocol.ItemScopeSession,
+			}},
+		},
+		{
+			name:   "item run scope id",
+			method: ItemsList,
+			parameters: protocol.ListItemsRequest{Scope: protocol.ItemListScope{
+				Type: protocol.ItemScopeRun,
+			}},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			service := &invalidRequestService{}
+			result := mustNewEndpoint(t, service, EndpointConfig{}).Invoke(
+				t.Context(), test.method, test.parameters, Options{},
+			)
+			if !errors.Is(result.Failure, protocol.ErrInvalidParams) {
+				t.Fatalf("failure = %v, want invalid_params", result.Failure)
+			}
+			if service.calls != 0 {
+				t.Fatalf("handler calls = %d, want 0", service.calls)
 			}
 		})
 	}

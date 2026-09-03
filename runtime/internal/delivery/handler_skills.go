@@ -78,9 +78,6 @@ func presentSkillLifecycle(lifecycle skills.Lifecycle) (protocol.SkillLifecycle,
 // (skills.library.archive). The application use case publishes the refresh
 // nudge after its durable mutation commits.
 func (s *Handler) ArchiveSkill(ctx context.Context, in protocol.SkillNameRequest) error {
-	if in.Name == "" {
-		return protocol.ErrInvalidParams
-	}
 	if err := s.workspaceSkills.Archive(ctx, in.Name); err != nil {
 		return mapSkillLibraryErr(err, "skills.library.archive")
 	}
@@ -91,9 +88,6 @@ func (s *Handler) ArchiveSkill(ctx context.Context, in protocol.SkillNameRequest
 // (skills.library.restore). The application use case publishes the refresh
 // nudge after its durable mutation commits.
 func (s *Handler) RestoreSkill(ctx context.Context, in protocol.SkillNameRequest) error {
-	if in.Name == "" {
-		return protocol.ErrInvalidParams
-	}
 	if err := s.workspaceSkills.Restore(ctx, in.Name); err != nil {
 		return mapSkillLibraryErr(err, "skills.library.restore")
 	}

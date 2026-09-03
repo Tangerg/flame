@@ -148,9 +148,6 @@ func (s *Handler) CreateSession(ctx context.Context, in protocol.CreateSessionRe
 }
 
 func (s *Handler) DeleteSession(ctx context.Context, id string) error {
-	if id == "" {
-		return protocol.ErrSessionNotFound
-	}
 	// The session use case claims the addressed session and every owned
 	// internal-subtask descendant before deleting their durable state atomically.
 	// User-created forks remain independent conversations.
