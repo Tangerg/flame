@@ -48,7 +48,7 @@ func configuredDraftEditor() (*draftEditor, error) {
 	return &draftEditor{command: command}, nil
 }
 
-func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspace, original string) (string, error) {
+func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspace, original string) (edited string, err error) {
 	if d == nil || len(d.command) == 0 {
 		return "", errors.New("external editor is unavailable")
 	}
@@ -57,7 +57,12 @@ func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspa
 		return "", fmt.Errorf("create editor draft: %w", err)
 	}
 	path := temporary.Name()
-	defer func() { _ = os.Remove(path) }()
+	defer func() {
+		if removeErr := os.Remove(path); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+			edited = ""
+			err = errors.Join(err, fmt.Errorf("remove editor draft: %w", removeErr))
+		}
+	}()
 	if chmodErr := temporary.Chmod(0o600); chmodErr != nil {
 		_ = temporary.Close()
 		return "", fmt.Errorf("protect editor draft: %w", chmodErr)

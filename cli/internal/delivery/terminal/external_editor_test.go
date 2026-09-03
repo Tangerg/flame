@@ -89,3 +89,25 @@ func TestDraftEditorRejectsInvalidReplacementFiles(t *testing.T) {
 		})
 	}
 }
+
+func TestDraftEditorReportsCleanupFailure(t *testing.T) {
+	workspace := t.TempDir()
+	record := filepath.Join(workspace, "draft-path")
+	editor := &draftEditor{command: []string{
+		"sh", "-c", `printf '%s' "$1" > "$0" && rm "$1" && mkdir "$1" && printf 'retained' > "$1/child"`, record,
+	}}
+	_, err := editor.Edit(t.Context(), program.Session{}, workspace, "sensitive prompt")
+	draftPath, readErr := os.ReadFile(record)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(string(draftPath)) })
+	if err == nil {
+		t.Fatal("Edit succeeded despite retaining its temporary draft path")
+	}
+	for _, want := range []string{"edited draft is not a regular file", "remove editor draft"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("Edit error = %v, want %q", err, want)
+		}
+	}
+}
