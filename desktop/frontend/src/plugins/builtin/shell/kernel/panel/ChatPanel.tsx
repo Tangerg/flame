@@ -243,9 +243,12 @@ export function ChatPanel({ onSend }: Props) {
                   </span>
                 </>
               )}
-              <span className="min-w-0 max-w-[420px] truncate text-ui-sm font-semibold text-fg">
+              {/* The name of what the reader is looking at, and the only heading above the
+                  turns — which are h2. It was a span, so a populated transcript published an
+                  outline that started at its second rung. */}
+              <h1 className="m-0 min-w-0 max-w-[420px] truncate text-ui-sm font-semibold text-fg">
                 {activeSession?.title.trim() || t("sidebar.action.newSession")}
-              </span>
+              </h1>
               {running && (
                 <AgentStatusPill tone="running">{t("session.status.running")}</AgentStatusPill>
               )}

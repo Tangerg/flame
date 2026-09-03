@@ -116,9 +116,9 @@ export function ChatStream({ onSend }: Props) {
         <ChatBanners sessionId={sessionId} />
         <div className="panel-scroll flex flex-1 flex-col items-center justify-center gap-5 pb-[6vh]">
           <div className={cn(READING_COLUMN, READING_GUTTER)}>
-            <h1 className="mx-auto max-w-[620px] text-balance text-center text-display-md font-medium text-fg">
+            <h2 className="mx-auto max-w-[620px] text-balance text-center text-display-md font-medium text-fg">
               <EmptyChatHeading />
-            </h1>
+            </h2>
           </div>
           <div className={cn(READING_COLUMN, READING_GUTTER)}>
             <ComposerOverlayTop />

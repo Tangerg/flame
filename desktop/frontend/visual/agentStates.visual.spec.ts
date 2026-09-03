@@ -1449,6 +1449,39 @@ test("completed work folds before the separate final answer owns message actions
   await expect(answer.getByRole("button", { name: "Regenerate response" })).toBeVisible();
 });
 
+test("the transcript publishes one heading outline, from the session down", async ({ page }) => {
+  await page.goto("/visual/?fixture=agent&theme=light&state=narrative");
+  await page.locator("html[data-visual-ready]").waitFor();
+
+  const outline = await page.evaluate(() =>
+    [...document.querySelectorAll("h1, h2, h3, h4, h5, h6")].map((heading) => ({
+      level: Number(heading.tagName.slice(1)),
+      authored: heading.getAttribute("data-md-level"),
+      text: (heading.textContent ?? "").trim().slice(0, 24),
+    })),
+  );
+
+  // One h1, and it names the session rather than sitting inside it.
+  const roots = outline.filter((heading) => heading.level === 1);
+  expect(roots).toHaveLength(1);
+  expect(roots[0]?.text).toBe("Agent · narrative");
+
+  // Every turn is its child, and nothing a model wrote outranks the turn holding it.
+  expect(
+    outline.filter((heading) => heading.level === 2 && !heading.authored).length,
+  ).toBeGreaterThan(0);
+  for (const heading of outline) {
+    if (heading.authored) expect.soft(heading.level).toBeGreaterThanOrEqual(3);
+  }
+
+  // No rung is skipped, which is the whole reason the body opens at h3 and not h4.
+  let previous = 0;
+  for (const heading of outline) {
+    expect.soft(heading.level).toBeLessThanOrEqual(previous + 1);
+    previous = heading.level;
+  }
+});
+
 test("an expanded wave keeps its summary while its rows scroll past", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=tool-shells");
   await page.locator("html[data-visual-ready]").waitFor();

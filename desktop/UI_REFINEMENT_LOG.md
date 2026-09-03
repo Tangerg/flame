@@ -470,3 +470,102 @@ break it rather than align it.
 1–4 unchanged. Plus:
 5. The five rows above are a design queue and need a product answer, the typeface
    most of all: it is the one that changes every glyph in every golden.
+
+---
+
+## Round 6 — the transcript had no root, and one golden has two layouts
+
+Status: **complete**, with one problem characterised rather than fixed.
+
+### Audit scope
+
+Round 1's third open item — `page-has-heading-one`, deferred twice as "a shell
+ownership question". It has an answer. Then the flake that answering it exposed.
+
+### Finding 1 — the view's own name was not a heading
+
+Round 1 gave every turn an `h2` and left the transcript with no `h1`, on the
+grounds that the shell had no page title. It does: `ChatPanel`'s content header
+renders `activeSession.title` — the name of exactly what the reader is looking
+at, already styled as a heading — in a `<span>`. Its siblings do not: the
+settings pane titles its own panes with `h1`, and the empty chat greeted with
+one too, so a *populated* transcript was the only view publishing an outline
+that began at its second rung.
+
+| | Before | After |
+| --- | --- | --- |
+| Session title | `<span class="… font-semibold">` | `<h1>` — the one root, above the turns |
+| Empty-state greeting | `<h1>What should we build?</h1>` | `<h2>` — a prompt in the transcript's place, not a second document title |
+
+Pixel-identical, and the suite proved it: Tailwind's preflight already zeroes
+heading margins, the span already carried weight 600, and `text-wrap: balance`
+cannot act on a `truncate`d line. **No golden changed.**
+
+`page-has-heading-one` is gone from all 36 audited renders. The only axe finding
+left anywhere is `region` on `.agent-seam-rail`, which round 1 recorded as
+deliberate — re-checked here: both resize rails already render
+`SeparatorPrimitive` through one atom, so the rail's semantics are right and only
+its *position* (between two landmarks rather than inside one) is what axe counts.
+
+A visual-suite assertion now pins the whole outline in one place: exactly one
+`h1` and it names the session, every turn below it, nothing a model authored
+above `h3`, and no rung skipped. Proved it can fail by reverting the `h1` — it
+does.
+
+### Finding 2 — `agent golden light delegated` has two layouts
+
+Characterised, not fixed.
+
+- The failure is bistable and **exactly reproducible in magnitude**: a run either
+  matches or differs by 9037 counted pixels.
+- The two frames are **identical in content**. Cropped and compared side by side,
+  the whole transcript block sits about one pixel lower in one of them.
+- Ruled out by direct measurement, eight runs each: scroll position
+  (`scrollTop`/`scrollHeight`/`clientHeight` identical, and the content does not
+  even overflow), the transcript's mask (`--composer-overlay` identical to the
+  fraction), element positions, and `document.fonts.ready`.
+- **The mechanism is `content-visibility`.** Every turn but the last carries
+  `content-visibility: auto` with `contain-intrinsic-size: auto 220px`, so a turn
+  the browser has not laid out contributes 220px and its real height afterwards.
+  Two layouts of one transcript, and which one a screenshot catches depends on
+  what the worker rendered before it.
+- **The obvious fix is not layout-neutral.** Resolving every turn's
+  `content-visibility` before capture — with a comment claiming it changed no
+  pixel — failed 26 goldens. Falsified and reverted.
+- `document.fonts.ready` was also tried and reverted: no observable effect, which
+  is the same standard applied to it as to everything else this round.
+
+What is kept: the frame's origin now has to stop moving *to the fraction* before
+capture. The scroll settle it joins compares an integer `scrollTop` and is blind
+to the sub-pixel the block still has to give.
+
+Observed rate across this round's full runs: roughly one golden per run, and
+**not always the same golden** — `delegated`, then `dock-light`. Two other
+intermittent failures (`closing tabs selects a neighbor`, `an overflowing Session
+title`) are interaction assertions with no screenshot in them; both predate
+round 3 and all three pass in isolation.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` clean.
+- Shell suites 25/25.
+- `npm run visual:test` — 388 tests. Clean runs and single-golden flakes both
+  observed, as described above.
+
+### Reclaimed
+
+Visual dev server stopped; four probe scripts deleted; `.cache` artefacts
+removed.
+
+### Open, for the next round
+
+1. **The golden budget versus a virtualised transcript.** Round 3 tightened the
+   budget to 40 pixels and that has already earned itself twice — the Lucide swap
+   and round 4's missing context gauge. But a frame-level golden of a transcript
+   whose turns quantise their own height cannot be pixel-exact, and the variant
+   costs 9037. The decision is between photographing the settled layout (which
+   means the fixture stops virtualising, and the README forbids a fixture-only
+   branch) and scoping a wider budget to the goldens that contain a transcript.
+   Not a decision to make in passing.
+2. The chip stub, unchanged.
+3. The five ChatGPT-versus-Flame rows from round 5, waiting on a product answer.
