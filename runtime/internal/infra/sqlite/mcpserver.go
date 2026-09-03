@@ -33,7 +33,7 @@ const mcpColumns = `name, transport, enabled, description, url, authorization, h
 
 func (m *MCPServerStore) List(ctx context.Context) ([]mcpserver.Server, error) {
 	rows, err := conn(ctx, m.db).QueryContext(ctx,
-		`SELECT `+mcpColumns+` FROM mcp_servers ORDER BY name`)
+		`SELECT `+mcpColumns+` FROM mcp_servers`)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list mcp servers: %w", err)
 	}

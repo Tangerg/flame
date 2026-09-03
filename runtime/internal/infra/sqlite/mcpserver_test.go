@@ -69,9 +69,14 @@ func TestMCPServerStoreRoundTrip(t *testing.T) {
 	if len(listed) != len(servers) {
 		t.Fatalf("List count = %d, want %d", len(listed), len(servers))
 	}
-	for i := range listed {
-		if !equalMCPServer(listed[i], servers[i]) {
-			t.Fatalf("List[%d] = %+v, want %+v", i, listed[i], servers[i])
+	wantByName := make(map[mcpserver.ServerName]mcpserver.Server, len(servers))
+	for _, server := range servers {
+		wantByName[server.Name] = server
+	}
+	for _, got := range listed {
+		want, ok := wantByName[got.Name]
+		if !ok || !equalMCPServer(got, want) {
+			t.Fatalf("List contains %+v, want matching saved server", got)
 		}
 	}
 

@@ -7,7 +7,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ListMCPServers returns configured MCP servers.
+// ListMCPServers returns configured MCP servers ordered by name ascending.
 func (r *Runtime) ListMCPServers(ctx context.Context, options CallOptions) (*protocol.Page[protocol.MCPServer], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.MCPServer]](ctx, delivery.MCPServersList, struct{}{}, callOptions(options))
 }

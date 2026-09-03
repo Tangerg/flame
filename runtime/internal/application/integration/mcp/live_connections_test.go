@@ -15,13 +15,17 @@ import (
 
 func TestServersAndToolsUsePorts(t *testing.T) {
 	ports := &fakePorts{
-		statuses: []mcpserver.ConnectionStatus{{Name: testMCPServerName("fs"), State: mcpserver.ConnectionConnected, ToolCount: 1}},
-		tools:    []mcpserver.AdvertisedTool{{Server: testMCPServerName("fs"), Name: testRemoteToolName("read")}},
+		statuses: []mcpserver.ConnectionStatus{
+			{Name: testMCPServerName("fs"), State: mcpserver.ConnectionConnected, ToolCount: 1},
+			{Name: testMCPServerName("docs"), State: mcpserver.ConnectionFailed},
+		},
+		tools: []mcpserver.AdvertisedTool{{Server: testMCPServerName("fs"), Name: testRemoteToolName("read")}},
 	}
 	c := New(configWithPorts(ports))
 
-	if got, err := c.Servers(context.Background()); err != nil || len(got) != 1 || got[0].Name.String() != "fs" ||
-		got[0].State.ToolCount == nil || *got[0].State.ToolCount != 1 {
+	if got, err := c.Servers(context.Background()); err != nil || len(got) != 2 ||
+		got[0].Name.String() != "docs" || got[1].Name.String() != "fs" ||
+		got[1].State.ToolCount == nil || *got[1].State.ToolCount != 1 {
 		t.Fatalf("Servers = %+v, %v", got, err)
 	}
 	if ports.toolsCalls != 0 {
@@ -471,9 +475,10 @@ func awaitAuthorizationAttempt(t *testing.T, c *Coordinator, id AuthorizationAtt
 	return AuthorizationAttempt{}
 }
 
-// testRegistry is a concurrency-safe registry fake that preserves the
-// domain Registry's sorted-list contract. Optional mutation hooks let
-// concurrency tests stop a write after its durable commit.
+// testRegistry is a concurrency-safe registry fake. It deliberately returns
+// reverse name order so Application-owned catalog order cannot accidentally
+// depend on an adapter. Optional mutation hooks let concurrency tests stop a
+// write after its durable commit.
 type testRegistry struct {
 	mu              sync.Mutex
 	servers         map[mcpserver.ServerName]mcpserver.Server
@@ -491,7 +496,7 @@ func (t *testRegistry) List(context.Context) ([]mcpserver.Server, error) {
 		servers = append(servers, server)
 	}
 	slices.SortFunc(servers, func(a, b mcpserver.Server) int {
-		return cmp.Compare(a.Name.String(), b.Name.String())
+		return cmp.Compare(b.Name.String(), a.Name.String())
 	})
 	return servers, nil
 }

@@ -1,8 +1,10 @@
 package mcp
 
 import (
+	"cmp"
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -19,6 +21,10 @@ func (c *Coordinator) Servers(ctx context.Context) ([]Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	servers = slices.Clone(servers)
+	slices.SortFunc(servers, func(first, second mcpserver.Server) int {
+		return cmp.Compare(first.Name.String(), second.Name.String())
+	})
 	statuses := c.statusesByName()
 	out := make([]Server, 0, len(servers))
 	for _, server := range servers {

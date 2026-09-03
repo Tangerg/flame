@@ -25,9 +25,10 @@ type MCPListToolsRequest struct {
 	Server string `json:"server,omitempty"`
 }
 
-// MCPServer is the single safe read model for one configured MCP server. Its
-// status includes "disabled", so configuration enablement and live lifecycle
-// can never contradict one another on the wire.
+// MCPServer is the single safe read model for one configured MCP server. Server
+// list results are ordered by Name ascending. Status includes "disabled", so
+// configuration enablement and live lifecycle can never contradict one another
+// on the wire.
 type MCPServer struct {
 	Name             string              `json:"name"`
 	Description      string              `json:"description,omitempty"`

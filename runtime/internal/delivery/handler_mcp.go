@@ -12,8 +12,8 @@ import (
 
 // mcp.* is runtime-global, so these methods take no workspace reference.
 
-// ListMCPServers returns the single authoritative MCP resource collection:
-// durable configuration enriched with current live state.
+// ListMCPServers returns the single authoritative MCP resource collection in
+// name order: durable configuration enriched with current live state.
 func (s *Handler) ListMCPServers(ctx context.Context) (*protocol.Page[protocol.MCPServer], error) {
 	servers, err := s.mcp.Servers(ctx)
 	if err != nil {
