@@ -1,386 +1,20 @@
----
-version: 1.0
-name: flame-design-analysis
-description: "Flame is an agent client — a desktop chat shell that streams Flame Runtime Protocol events from a Go runtime. CURRENT DIRECTION (2026-07, drawer + content card): the work index is a fixed-position DRAWER plus an in-flow spacer, and the content is a card that floats over it — card z-index outranks the drawer, so collapsing slides the drawer UNDER the card and the card never moves. The two regions sit at nearly the same value and the split is carried by ONE 1px inset ring on the card (clipped to the seam-side radius) plus a low-spread directional shadow; internal pane splits and chrome-bar bottoms use the more-transparent --app-surface-divider hairline. This SUPERSEDES the earlier background-delta / no-hairline model. One chrome-bar height (46px) is shared by the drawer and every content header so they align across the seam. Type and corner radius are derived ladders (--fs-* from one base size, --shape-* off a 10px base × the user Shape scale) — no per-callsite pixel values; check:tokens fails the build on any. Light by default with full dark parity, bundled Geist Sans/Mono, one restrained blue-700 accent reserved for live/focus/links, inverting ink primary CTA. AUTHORITATIVE VALUES LIVE IN CODE: src/styles/globals.css and src/plugins/builtin/theme/themes/*.ts — the YAML below is historical illustration from the dark-first spec; trust the code."
+# Flame visual design
 
-colors:
-  # ---- Accent ----
-  # One restrained, near-monochrome chromatic accent — used scarcely. Allowed
-  # surfaces: active tab indicator, primary CTA, focus ring (a single thin
-  # stroke, no bright halo), live indicator (streaming dot, running pill).
-  # Forbidden as section background, card fill, or decorative tint. The hue is
-  # user-selectable; the default is a calm blue (green is now just one option).
-  accent: "#6c97ff"             # default accent — calm blue (dark); #2563eb on light
-  accent-border: "#5b86f0"
-  accent-pressed: "#4a72d8"
-  on-accent: "#ffffff"
+The visual specification for the desktop app: what each surface, colour, type
+step, shape and motion token is FOR.
 
-  # ---- Ink (text) ----
-  ink: "#f7f8f8"                # Headlines + emphasized body
-  ink-soft: "#d0d6e0"            # Body / paragraph
-  ink-muted: "#8a8f98"           # Secondary / inactive nav / meta
-  ink-faint: "#62666d"           # Tertiary / disabled / footnotes
+**It does not restate values.** Those live in `src/styles/globals.css` and
+`src/plugins/builtin/theme/themes/*.ts`, and a document that copies them is a
+document that goes stale — this one carried a 339-line palette snapshot of a
+design three revisions old, and five of its sections cited that snapshot as
+canonical while its own opening line told the reader not to trust it. Where a
+value matters here, the token is named and the reader looks it up.
 
-  # ---- Surface ladder ----
-  # Flush layout: canvas IS the main reading area; surface is the one lifted
-  # chrome step (sidebar, cards, bubbles), divided from canvas by a hairline.
-  # -2/-3/-4 derive via color-mix so the contrast slider moves them per scheme.
-  canvas: "#0c0d0f"              # Main reading surface (dark). Light: #ffffff
-  surface: "#16181b"             # Lifted chrome — sidebar / cards / bubble. Light: #f6f7f8
-  surface-2: "#1c1e21"           # Hover / active row, raised surface (derived)
-  surface-3: "#212327"           # Sub-nav, dropdown, popover (derived)
-  surface-4: "#26282c"           # Deepest lifted surface (derived)
-
-  # ---- Hairlines ----
-  hairline: "#23252a"            # Default 1px border
-  hairline-strong: "#34343a"     # Input focus, emphasized divider
-  hairline-tertiary: "#3e3e44"   # Nested surface borders
-
-  # ---- Semantic ----
-  # Used ONLY for genuine errors / warnings / live confirmations. Not
-  # decoration. RUN_ERROR banner / approval-card warnings / status dots.
-  # Dark-tuned: desaturated + lifted vs the raw web values so they don't
-  # vibrate / edge-bleed on the near-black canvas (Apple Dark Mode / Ant
-  # dark). Light themes keep the saturated web values (read clean on white).
-  success: "#3fb950"             # Confirmed action, run finished cleanly
-  warning: "#f0a936"             # User attention required (approval pending)
-  negative: "#f85149"            # Errors (RUN_ERROR banner, tool failure)
-  info: "#58a6ff"                # Inline links, info badges
-
-  # ---- Light theme (full parity, not second-class) ----
-  light-canvas: "#ffffff"        # clean white main reading area
-  light-surface: "#f6f7f8"       # subtle gray chrome — sidebar / cards
-  light-hairline: "#ebebeb"
-  light-hairline-strong: "#d4d4d6"
-  light-ink: "#171717"
-  light-ink-soft: "#4d4d4d"
-  light-ink-muted: "#5e5e5e"
-  light-accent: "#2563eb"        # accent reads crisp on white
-
-typography:
-  # ---- Font families ----
-  # Sans: the native OS UI face (SF Pro on macOS via -apple-system, PingFang
-  # for CJK) — the crisp, premium, native default; no bundled webfont.
-  # Mono: the native OS monospace (SF Mono / Menlo) — code / IDs / timestamps /
-  # paths only (NOT every eyebrow). Single --font-sans / --font-mono token in
-  # globals.css; the user can override either in Settings → Appearance.
-
-  # ---- Display ----
-  # 600 is the display ceiling. Both Linear and Vercel forbid 700+.
-  # Negative tracking on display, near-zero on body.
-  display-xl:
-    fontFamily: -apple-system, BlinkMacSystemFont, SF Pro Text, system-ui, PingFang SC, sans-serif
-    fontSize: 32px
-    fontWeight: 600
-    lineHeight: 1.10
-    letterSpacing: -0.96px
-  display-lg:
-    fontFamily: -apple-system, BlinkMacSystemFont, SF Pro Text, system-ui, PingFang SC, sans-serif
-    fontSize: 24px
-    fontWeight: 600
-    lineHeight: 1.15
-    letterSpacing: -0.6px
-  display-md:
-    fontFamily: -apple-system, BlinkMacSystemFont, SF Pro Text, system-ui, PingFang SC, sans-serif
-    fontSize: 20px
-    fontWeight: 600
-    lineHeight: 1.20
-    letterSpacing: -0.4px
-  display-sm:
-    fontFamily: -apple-system, BlinkMacSystemFont, SF Pro Text, system-ui, PingFang SC, sans-serif
-    fontSize: 16px
-    fontWeight: 600
-    lineHeight: 1.25
-    letterSpacing: -0.2px
-
-  # ---- Body ----
-  body-lg:
-    fontFamily: -apple-system, BlinkMacSystemFont, SF Pro Text, system-ui, PingFang SC, sans-serif
-    fontSize: 15px
-    fontWeight: 400
-    lineHeight: 1.65
-    letterSpacing: -0.1px
-  body-md:
-    fontFamily: -apple-system, BlinkMacSystemFont, SF Pro Text, system-ui, PingFang SC, sans-serif
-    fontSize: 14px
-    fontWeight: 400
-    lineHeight: 1.55
-    letterSpacing: -0.05px
-  body-sm:
-    fontFamily: -apple-system, BlinkMacSystemFont, SF Pro Text, system-ui, PingFang SC, sans-serif
-    fontSize: 13px
-    fontWeight: 400
-    lineHeight: 1.50
-    letterSpacing: 0
-  body-xs:
-    fontFamily: -apple-system, BlinkMacSystemFont, SF Pro Text, system-ui, PingFang SC, sans-serif
-    fontSize: 12px
-    fontWeight: 400
-    lineHeight: 1.45
-    letterSpacing: 0
-
-  # ---- Button label ----
-  button-md:
-    fontFamily: -apple-system, BlinkMacSystemFont, SF Pro Text, system-ui, PingFang SC, sans-serif
-    fontSize: 13px
-    fontWeight: 500
-    lineHeight: 1.20
-    letterSpacing: 0
-  button-sm:
-    fontFamily: -apple-system, BlinkMacSystemFont, SF Pro Text, system-ui, PingFang SC, sans-serif
-    fontSize: 12px
-    fontWeight: 500
-    lineHeight: 1.20
-    letterSpacing: 0
-
-  # ---- Caption / mono eyebrow ----
-  # Replaces every ALL-CAPS + letter-spacing label from the previous system.
-  # Mono signals "technical / observable / data" — used for reasoning headers,
-  # tool-call signatures, file paths, durations, IDs (data only — not labels).
-  caption:
-    fontFamily: -apple-system, BlinkMacSystemFont, SF Pro Text, system-ui, PingFang SC, sans-serif
-    fontSize: 12px
-    fontWeight: 400
-    lineHeight: 1.40
-    letterSpacing: 0
-  caption-mono:
-    fontFamily: ui-monospace, SF Mono, SFMono-Regular, Menlo, monospace
-    fontSize: 11.5px
-    fontWeight: 400
-    lineHeight: 1.40
-    letterSpacing: 0
-    fontFeatureSettings: "\"tnum\""
-  code:
-    fontFamily: ui-monospace, SF Mono, SFMono-Regular, Menlo, monospace
-    fontSize: 12.5px
-    fontWeight: 400
-    lineHeight: 1.55
-    letterSpacing: 0
-    fontFeatureSettings: "\"tnum\""
-
-rounded:
-  none: 0px
-  xs: 4px        # Badges, status pills
-  sm: 6px        # Inputs, small buttons, nav buttons (Vercel --geist-radius)
-  md: 8px        # Default button, card chrome, dialog (Linear --geist-marketing-radius)
-  lg: 12px       # Workspace cards, pricing-style summaries
-  xl: 16px       # Hero / lightbox frame
-  pill: 9999px   # Status badge / segmented toggle ONLY — NEVER for CTAs
-  circle: 50%    # Avatar, dot indicator
-
-spacing:
-  # 4-base — every value a multiple of 4. Both Linear & Vercel agree.
-  px: 1px
-  xxs: 4px
-  xs: 8px
-  sm: 12px
-  md: 16px
-  lg: 24px
-  xl: 32px
-  2xl: 40px
-  3xl: 48px
-  4xl: 64px
-  5xl: 96px
-
-# ---- Flame-specific layout constants ----
-layout:
-  content-max: 720px       # Max reading width for chat content (was 760; narrowed 2026-06)
-  sidebar-expanded: 275px  # Expanded Work Index preference (default state)
-  # No tab strip, no sidebar/main divider (separation is a background delta),
-  # no bottom status bar — run telemetry lives in the composer footer, global
-  # status/notifications in the sidebar footer.
-
-motion:
-  ease-out: cubic-bezier(0.22, 1, 0.36, 1)
-  ease-drawer: linear(...)   # the structural-panel spring, sampled
-  dur-instant: 80ms
-  dur-color: 100ms
-  dur-fast: 150ms
-  dur-med: 200ms
-  dur-slow: 300ms
-  dur-drawer: 500ms
-
-components:
-  # ---- Buttons ----
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.button-md}"
-    rounded: "{rounded.md}"
-    padding: "8px 14px"
-    description: Primary CTA. Flame signature green. Reserved for explicit action ("Send", "Approve", "Run").
-  button-secondary:
-    backgroundColor: "{colors.surface-1}"
-    textColor: "{colors.ink}"
-    borderColor: "{colors.hairline}"
-    typography: "{typography.button-md}"
-    rounded: "{rounded.md}"
-    padding: "8px 14px"
-    description: Charcoal button on hairline border. Most "Cancel" / "Dismiss" / inline actions.
-  button-tertiary:
-    backgroundColor: transparent
-    textColor: "{colors.ink-muted}"
-    typography: "{typography.button-sm}"
-    rounded: "{rounded.sm}"
-    padding: "6px 8px"
-    description: Plain text button. Sidebar toggles, inline minor actions.
-  icon-button:
-    backgroundColor: transparent
-    textColor: "{colors.ink-muted}"
-    rounded: "{rounded.sm}"
-    minSize: 28px
-    description: Square icon container. 28×28 standard, 32×32 emphasized. Hover surface-2 fill.
-
-  # ---- Composer surface ----
-  composer:
-    backgroundColor: "{colors.surface-1}"
-    borderColor: "{colors.hairline}"
-    rounded: "{rounded.lg}"
-    padding: "12px 14px"
-    maxWidth: "{layout.chat-measure}"
-    description: Textarea + toolbar surface. Anchored bottom, centered to chat-measure. One real border defines the edge; a depth-only shadow lifts it; focus quietly strengthens the border.
-  composer-chip:
-    backgroundColor: "{colors.surface-2}"
-    textColor: "{colors.ink-muted}"
-    typography: "{typography.caption-mono}"
-    rounded: "{rounded.xs}"
-    padding: "2px 8px"
-    description: Attachment / file ref pill. Mono caption — these are file paths and IDs.
-  segmented-control:
-    backgroundColor: "{colors.surface-2}"
-    textColor: "{colors.ink-muted}"
-    rounded: "{rounded.sm}"
-    description: Composer mode picker (Agent / Ask / Plan). Active segment lifts to surface-3 + ink.
-
-  # ---- Message stream ----
-  message-bubble-user:
-    backgroundColor: "{colors.surface-1}"
-    borderColor: "{colors.hairline}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-md}"
-    rounded: "14px 14px 4px 14px"
-    padding: "10px 14px"
-    maxWidth: "580px"
-    description: Right-aligned bubble. Compact, hairline-bordered.
-  message-body-assistant:
-    backgroundColor: transparent
-    textColor: "{colors.ink-soft}"
-    typography: "{typography.body-md}"
-    maxWidth: "{layout.chat-measure}"
-    description: Full-width prose. No bubble chrome. Avatar peeks left.
-  reasoning-block:
-    backgroundColor: "{colors.surface-2}"
-    rounded: "{rounded.sm}"
-    padding: "8px 12px"
-    headerTypography: "{typography.caption-mono}"
-    headerColor: "{colors.ink-muted}"
-    bodyTypography: "{typography.body-sm}"
-    bodyColor: "{colors.ink-muted}"
-    bodyFontStyle: italic
-    description: Collapsible thinking panel — a filled surface-2 box (chosen over a left-border: it reads as a distinct, hover-able disclosure with an auto-expand-while-streaming header). Header shows "thinking · 12s" or "thought for 12s" in mono lowercase (NEVER "THINKING" all-caps).
-  tool-call-card:
-    backgroundColor: "{colors.surface-1}"
-    borderColor: "{colors.hairline}"
-    rounded: "{rounded.md}"
-    signatureTypography: "{typography.code}"
-    metaTypography: "{typography.caption-mono}"
-    description: |
-      Renders like an RPC log entry, not a generic card. First line: function
-      signature in mono (e.g. `read_file(path: "src/auth.ts")`). Second line:
-      status glyph + duration + bytes/lines summary in caption-mono. Expandable
-      for full result.
-
-  # ---- Code & Mermaid ----
-  shiki-code-block:
-    backgroundColor: "{colors.surface-1}"
-    borderColor: "{colors.hairline}"
-    rounded: "{rounded.md}"
-    headTypography: "{typography.caption-mono}"
-    bodyTypography: "{typography.code}"
-    description: Shiki-highlighted code with mono header (lang lowercase, optional filename, copy button on hover). Long blocks auto-collapse > 24 lines.
-  mermaid-block:
-    backgroundColor: "{colors.surface-1}"
-    borderColor: "{colors.hairline}"
-    rounded: "{rounded.md}"
-    description: Clickable diagram — click opens lightbox at native scale. Diagram colors derived from theme tokens at render time.
-
-  # ---- Navigation ----
-  # (2026-06) chat-tab + view-tab removed — no tab strip. One active session;
-  # workspace views open full-pane.
-  command-palette:
-    backgroundColor: "{colors.surface-2}"
-    borderColor: "{colors.hairline-strong}"
-    rounded: "{rounded.lg}"
-    backdropFilter: blur(10px)
-    itemTypography: "{typography.body-sm}"
-    description: ⌘K overlay. Surface-2 + hairline-strong + backdrop blur + Level 5 stacked shadow (the rare floating element where shadow is allowed).
-
-  # ---- Overlays ----
-  toast:
-    backgroundColor: "{colors.surface-2}"
-    borderColor: "{colors.hairline}"
-    rounded: "{rounded.md}"
-    typography: "{typography.body-sm}"
-    description: Plugin toaster entry. Bottom-right stack. Auto-dismiss 4s.
-  approval-card:
-    backgroundColor: "color-mix(in srgb, {colors.warning} 8%, {colors.surface-1})"
-    borderColor: "color-mix(in srgb, {colors.warning} 30%, transparent)"
-    rounded: "{rounded.md}"
-    titleTypography: "{typography.display-sm}"
-    metaTypography: "{typography.caption-mono}"
-    description: HITL approval prompt. Warning-tinted card with mono command preview, "Approve" primary + "Decline" secondary.
-  run-error-banner:
-    backgroundColor: "color-mix(in srgb, {colors.negative} 12%, transparent)"
-    borderColor: "color-mix(in srgb, {colors.negative} 35%, transparent)"
-    rounded: "{rounded.md}"
-    titleTypography: "{typography.caption-mono}"
-    titleColor: "{colors.negative}"
-    bodyTypography: "{typography.body-sm}"
-    description: Run-error surface. Lives above the message stream, dismissible. Cleared automatically when the next run starts.
----
-
-> **Shell rewrite 2026-07 (landed on `main`) — read this first.** The structural
-> model below is superseded on these points:
-> - **Drawer, not a grid column.** The work index is `position: fixed` and slides;
->   an in-flow spacer reserves its width. A grid template swap cannot be
->   interpolated, which is why the old shell snapped on collapse.
-> - **Content is a card over the drawer.** Rounded on the seam side, one 1px inset
->   ring clipped to that side's radius, one low-spread directional shadow, and the
->   parent backs the rounded-corner wedge with the drawer's own material. Collapsed,
->   the card squares off and drops ring + shadow so its corner cannot double up
->   with the OS window's.
-> - **Separation is a hairline, NOT a background delta.** Drawer and card sit half
->   a step apart on purpose; the ring does the dividing. The earlier "no grey
->   rules, background delta only" rule is reversed — see DESKTOP_UI_POLISH.md §2.
-> - **One chrome-bar height** (`--surface-header-height`, 46px) shared by the
->   drawer header and every content header, so they line up across the seam.
-> - **Composer floats over the transcript** (`-mt-5`), in normal flow. No reserved
->   bottom padding, no gradient mask.
-> - **Composer owns one real edge.** Its 1px field border defines the shape,
->   focus only strengthens that border, and `--shadow-composer-depth` carries
->   depth without drawing a second optical ring.
-> - **Derived ladders.** Type (`--fs-*`) comes from one base size; radius
->   (`--shape-*`) from a 10px base × the user's Shape scale. Density (`--density-*`)
->   is a third, independent axis. Per-callsite pixel values are a build failure.
->
-> **Redesign 2026-06 (landed on `main`).** The OpenAI-restrained redesign
-> changed the structural design intent from the original spec below:
-> - **Tabs removed** — one active session; workspace views open full-pane and
->   close via sidebar-toggle / `Esc` (no tab strip, no in-view ×).
-> - **Sidebar/main divider removed** — separation is a background delta only
->   (`surface` vs `bg`), no hairline.
-> - **Display weight ceiling lowered 600 → 500** (Codex-style restraint).
-> - **Assistant message de-chromed** — no glass document surface, no per-message
->   header/avatar, no gutter — unboxed prose on the canvas.
-> - **Composer is the `rounded-xl` anchor** with `bg-fg` send (accent reserved
->   for live/steer state); model picker + context chips moved inside.
-> - Shadow roles are semantic: composer depth, popover edge + depth, and the
->   single global keyboard-focus rule. A surface never stacks two edge mechanisms.
->
-> **Authoritative token values now live in `src/styles/globals.css` `:root` +
-> `plugins/builtin/theme/themes/*`.** The frontmatter palette / typography /
-> rounded values below are a pre-redesign snapshot retained for historical
-> context — where they disagree with globals.css, globals.css wins.
+Companion documents: `DESKTOP_UI_POLISH.md` is the desktop-feel regression list,
+`ARCHITECTURE.md` the structure, `CONTENT_RENDERING.md` the wire → render
+grammar. Where this document and the shipped design disagree, the shipped design
+wins; where the shipped design and the ChatGPT desktop reference disagree, that
+is a decision to make, not a rule to apply.
 
 ## 0. Design language (the five pillars)
 
@@ -438,7 +72,6 @@ are *inside*, framed by opaque panels, with the technical layer set in mono.
 - Region hairlines and seam rings (regions separate by value + cast now)
 - Cards-on-canvas gutters, panel drop shadows, and glass blur outside floating panels
 - An inverting ink CTA that kept the accent unused (the accent IS the CTA)
-- A bundled UI webfont where the native OS face reads more premium
 - Pill-radius CTAs, ALL-CAPS letter-spaced labels, 700+ display weight
 - Bright focus halos/glows that flash on click (focus is a single quiet stroke)
 
@@ -519,9 +152,8 @@ semi-transparent border shifts across surface lifts and reads as approximate.
 
 ### Accent policy
 
-The single accent (default `#6c97ff` dark / `#2563eb` light, a calm blue;
-user-selectable, with green / pink / orange as alternates) is reserved for
-**exactly four surfaces**:
+The single accent (`--color-accent`, a calm blue by default, user-selectable with
+green / pink / orange as alternates) is reserved for **exactly four surfaces**:
 
 1. Active tab indicator (2px underline on `chat-tab.active`)
 2. Primary CTA fill (`button-primary`, Send button)
@@ -537,12 +169,12 @@ but an unchosen one.
 
 ### Semantic palette
 
-| Token | Hex (dark) | Use |
-|---|---|---|
-| `success` | `#3fb950` | Run finished cleanly, action confirmed. Allowed in: run pill (idle/done), `tab-dot.idle` after success. |
-| `warning` | `#f0a936` | User attention required. Allowed in: `approval-card`, `tab-dot.waiting`. |
-| `negative` | `#f85149` | Error. Allowed in: `run-error-banner`, tool-call `status: err`. |
-| `info` | `#58a6ff` | Information / link. Allowed in: inline links, info badges. |
+| Token | Use |
+|---|---|
+| `--color-success` | Run finished cleanly, action confirmed. Allowed in: run pill (idle/done), tab dot after success. |
+| `--color-warning` | User attention required. Allowed in: the approval card, the waiting tab dot. |
+| `--color-negative` | Error. Allowed in: the run error banner, a tool call's failed status. |
+| `--color-info` | Information / link. Allowed in: inline links, info badges. |
 
 **Each semantic is two colours, and only one of them is pinned.** The theme
 spells the INK — the tone a status word, an icon or a 6px dot is drawn in, whose
@@ -556,29 +188,35 @@ pick — and no palette has to carry a second set. Anything that must be legible
 its own keeps the ink: these tones are near 1.9:1 on white and would fail 1.4.11
 as a mark.
 
-**Semantic colours are scheme-tuned.** The dark values above are desaturated +
-lifted in luminance so they don't vibrate or edge-bleed on the near-black canvas
-(Apple Dark Mode / Ant dark). Light themes keep the saturated web values
-(`#ee0000` / `#0070f3` …) — those read crisp on white. Palette themes
-(Catppuccin / Tokyo Night / Solarized / One Dark) ship their own canonical
-semantic tones and are left untouched.
+**Semantic colours are scheme-tuned**, and in both directions. Dark lifts them in
+luminance and pulls the chroma down so they neither vibrate nor edge-bleed on a
+near-black plane; light pushes them the other way, DARKER and deeper than the
+saturated web reds and blues, because on white it is contrast against the plane
+that decides legibility, not brightness. Palette themes (Catppuccin / Tokyo Night
+/ Solarized / One Dark) ship their own canonical semantic tones and are left
+untouched.
 
 ## 3. Typography
 
 ### Font families
 
-The **native OS font**, no bundled webfont — the system face reads more premium
-and native than any shipped font, loads instantly, and renders mixed CJK best:
+Two bundled variable faces, each in front of a native fallback chain so the app
+has one shape on every machine and still renders mixed CJK with the OS:
 
-- **Sans** (`--font-sans`) — SF Pro on macOS (via `-apple-system` / `BlinkMacSystemFont` / `system-ui`), Segoe UI / Roboto elsewhere, **PingFang SC** (+ Hiragino / Microsoft YaHei) for CJK. The primary UI face; display + body share it, weight does the hierarchy.
-- **Mono** (`--font-mono`) — SF Mono / Menlo (`ui-monospace`). Used for genuine data only: code, IDs, timestamps, file paths, tool signatures.
+- **Sans** (`--font-sans`) — **Geist**, then `-apple-system` / `BlinkMacSystemFont` / `system-ui`, with **PingFang SC** (+ Hiragino / Microsoft YaHei) for CJK. The primary UI face; display + body share it, weight does the hierarchy.
+- **Mono** (`--font-mono`) — **JetBrains Mono**, then `ui-monospace` / SF Mono / Menlo. Genuine data only: code, IDs, timestamps, file paths, tool signatures.
 - A single `--font-sans` / `--font-mono` token (no `--font-ui` split); the user can override either in Settings → Appearance.
+
+Open against the reference: **ChatGPT ships no UI webfont** — its stack starts at
+`-apple-system`. Flame bundles Geist. Which one is right is a product decision,
+not a rule this document can settle.
 
 ### Scale
 
 The full scale is nine sizes — four UI steps, prose, code, and three display steps. Display sizes are smaller than typical marketing systems because Flame is a product UI, not a hero page.
 
-(See frontmatter `typography:` for canonical sizes / weights / tracking.)
+Sizes, weights and tracking are the `--fs-*`, `--fw-*` and `--tracking-*` tokens
+in `globals.css`; `check:tokens` fails the build on a per-callsite pixel value.
 
 ### Principles
 
@@ -678,12 +316,16 @@ all. Banners and composer take the same gutters, so the three stay on one axis.
 
 ### Spacing rhythm
 
-Flame is a **product UI**, not a marketing site. Spacing values from the frontmatter `spacing:` block apply, but:
+Flame is a **product UI**, not a marketing site. Spacing comes from the Tailwind scale and the `--density-*` tokens, but:
 
-- Section breaks inside a panel: `md` 16px to `lg` 24px (never `5xl` 96px — too marketing).
-- Card interior padding: `md` 16px default, `lg` 24px for emphasized cards.
-- Inline gaps: `xs` 8px to `sm` 12px.
-- Marketing-band spacing (`5xl` / `section` 192px from Vercel) is **not used** in Flame except in the welcome screen.
+- Section breaks inside a panel: 16px to 24px.
+- Card interior padding: 16px, 24px where the card is the point of the view.
+- Inline gaps: 8px to 12px.
+- Nothing reaches marketing-band spacing — no 96px section break, no 192px band —
+  outside the welcome screen, where the page IS the band.
+- The chrome's own rhythm is not free-hand: row height, gutters and composer
+  insets are `--density-*`, a third axis beside type and shape, so the Density
+  setting moves all of them together.
 
 ## 5. Elevation & Depth
 
@@ -768,7 +410,8 @@ ships in draws the arc at the base radius today.
 
 ## 7. Motion
 
-(See frontmatter `motion:` for tokens.)
+Durations and easings are the `--dur-*` / `--ease-*` tokens, all scaled by
+`--motion-scale` so the Motion setting and `prefers-reduced-motion` reach every one.
 
 One curve for everything that eases, `ease-out`, plus the sampled spring the
 structural panels travel on. Two curves that nothing read were deleted: a ladder
@@ -790,7 +433,8 @@ ever be wrong.
 
 ## 8. Components
 
-The frontmatter `components:` block carries the canonical spec for every Flame-specific component. Highlights:
+A component's canonical spec is its own file in `ui/atoms` / `ui/agent`; the visual
+vocabulary they share is what follows.
 
 ### Tool-call row — one line on the work narrative
 
@@ -823,7 +467,7 @@ listed because a command declared one, never because a table was kept in step.
 
 ## 9. Accent Usage Policy (strict)
 
-Accent (default `#6c97ff` dark / `#2563eb` light, user-selectable) appears in:
+Accent (`--color-accent`, user-selectable) appears in:
 
 1. **Primary CTA fill** — `bg-cta`: the send button, an accent `PillButton`
 2. **Focus ring** — `:focus-visible`, a single thin accent stroke (**no halo / glow**, and never on plain mouse-focus of inputs). One global rule in globals.css draws it for everything; mark `data-focus-inset` where it would land outside the box, `data-chrome-focus` where a row fills instead. A theme retunes it through `--color-focus-ring`. Never drawn at a callsite — `check-interactive-chrome` fails the build
@@ -888,14 +532,21 @@ ink cannot be:
 
 ## 12. References
 
+- **ChatGPT desktop** — the authority. Where its answer and this document's
+  disagree, its answer is the one to explain away, not the other. Its own
+  stylesheet is readable evidence: heading weight, thread measure, composer
+  material, glass.
+- **Codex** — the corner shape, the heading ladder, the body weight.
 - **JetBrains tool windows** — the region model: an editor you are inside, framed
   by opaque panels, separated by value rather than by lines.
 - **Linear-app** — the scarce single-accent policy and sentence-case labels.
-- Flame Runtime Protocol — `frontend/src/protocol/run/` + `frontend/src/rpc/` — drives the shape of the data this UI renders.
+- Flame Runtime Protocol — `src/rpc/` — drives the shape of the data this UI
+  renders.
 
 ## 13. Iteration guide
 
-1. When adding a new surface, reference its component spec in the frontmatter `components:` block. If none exists, propose one (commit + this doc together).
+1. When adding a new surface, build it from the rings in `ui/` rather than at the
+   call site; if the vocabulary has no rung for it, add the rung and say so here.
 2. Verify BOTH schemes (the default follows the OS) before merging visual changes.
 3. Run `npx tsc --noEmit && npx vitest run` after any token change.
 4. Visually verify in `wails3 dev` — type/spacing changes especially.

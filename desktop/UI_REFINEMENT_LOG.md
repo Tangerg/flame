@@ -382,3 +382,91 @@ Visual dev server stopped; two probe scripts deleted; `knip` clean.
    The goal row tracks *which* of three commands is running so only that button
    reads busy, which a boolean owner cannot express; the gallery guards a
    download, not a Runtime command. Both left deliberately.
+
+---
+
+## Round 5 — a visual spec that told the reader not to trust half of itself
+
+Status: **complete**
+
+### Audit scope
+
+`DESIGN.md`, on the user's ruling that it is stale and the ChatGPT desktop
+reference is authoritative. Every `--token` and every backticked identifier in
+the file, checked against `globals.css` and `src/`; every px figure checked
+against the code that owns it; the ChatGPT stylesheet read for the metrics it
+declares.
+
+### Blast radius, first
+
+- **No script parses `DESIGN.md`.** The one gate that grepped positive
+  (`check-design-system-boundaries.mjs`) matches on a JS constant named
+  `DESIGN_SYSTEM_RINGS`.
+- Six documents link to it as the visual spec (`CLAUDE.md` ×3,
+  `ARCHITECTURE.md` ×2, `CONTENT_RENDERING.md`, `REFACTORING.md`,
+  `FRONTEND_AGENT_WORKSPACE_MODEL.md`), and `theme/kit/types.ts` cites `§2`.
+  `CLAUDE.md` cites `§2` and `§5`. **Section numbers had to survive; they did**
+  — the file still runs §0 to §13.
+- No document links to an anchor inside it.
+
+### Findings
+
+| # | Problem | Evidence |
+| --- | --- | --- |
+| 1 | **339 of 902 lines were a YAML palette snapshot the file itself said not to trust** — "the YAML below is historical illustration from the dark-first spec; trust the code" — and then **five sections cited that same block as canonical**: §3 for type, §4 for spacing, §7 for motion, §8 for every component spec, §13 for the iteration rule. The document contradicted itself about its own authority, in both directions. | The block's vocabulary is gone from the code: `hairline-strong`, `hairline-tertiary`, `ink-soft`, `ink-faint` exist nowhere in `src/`. |
+| 2 | Below the YAML sat **four generations of "read this first" notices**, each superseding the one under it, none deleted. 2026-06 said separation is a background delta and no hairline; 2026-07 reversed it to a hairline; §0's pillars, revised 2026-08, supersede both. A reader had to replay the file's history to learn its present. | Lines 342–383. |
+| 3 | The prose restated hexes anyway, and they were stale. `success #3fb950 / warning #f0a936 / negative #f85149 / info #58a6ff`, accent `#6c97ff` / `#2563eb` — **not one of the six matches a shipped theme**. §2's *surface* table three paragraphs above says why it does not repeat hexes: "which is how the previous version of it went stale". The lesson was learned in one table and not the one below it. |
+| 4 | §3 describes a typeface strategy the app abandoned: "**The native OS font, no bundled webfont**", with `--font-sans` spelled as SF Pro first. §1 listed "a bundled UI webfont" under **Explicitly rejected**. | `public/fonts/` ships `geist.woff2` and `jetbrains-mono.woff2`; `--font-sans` begins `"Geist"`. A reader following the document would delete them. |
+| 5 | "Light themes keep the saturated web values (`#ee0000` / `#0070f3`)" | Shipped light semantics are `#b0342b` and `#2b5fd0` — deeper than the web values, not brighter. Light pushes semantics the *opposite* way from dark, which is the actual rule. |
+| 6 | §12 References cites `frontend/src/protocol/run/`, which does not exist, and never named the reference the user calls authoritative. |
+
+### What changed
+
+`DESIGN.md`: **902 → 553 lines.**
+
+| | Before | After |
+| --- | --- | --- |
+| Head | 339 lines of dead YAML + 42 lines of superseded notices | 17 lines: what the document is for, where values actually live, and why it does not copy them |
+| Five citations | "See frontmatter `typography:` / `spacing:` / `motion:` / `components:`" | the tokens and the rings that own them |
+| Semantic table | four stale hexes | four token names and what each is allowed on |
+| Accent, twice | `#6c97ff` / `#2563eb` | `--color-accent` |
+| Light semantics | "keep the saturated web values" | darker and deeper than the web values, because on white contrast against the plane decides |
+| Typeface | "native OS font, no bundled webfont" | Geist and JetBrains Mono in front of the native chain — plus the open question below |
+| Spacing rhythm | `md` / `lg` / `5xl` / `section`, names from the deleted block | plain figures, and `--density-*` named as the third axis |
+| §12 | JetBrains, Linear, a dead path | ChatGPT desktop named as **the authority**, Codex for corner and ladder, then the rest |
+
+### Measured against the reference — a queue, not a change
+
+These are product decisions, so they are recorded rather than acted on:
+
+| | ChatGPT | Flame |
+| --- | --- | --- |
+| UI typeface | no webfont; stack starts `-apple-system` | bundles Geist |
+| User message width | `min(70%, 456px)` | `max-w-[77%]`, uncapped — 591px at a 768px measure against their 456px |
+| Composer corner | `--radius-token-composer-single-line` = 22px | 20px base; 25px in Chromium via `--corner-scale`, 20px in the WKWebView that ships |
+| Reading measure | `--thread-content-max-width: 48rem` | `--content-max: 768px` — **already aligned** |
+| User bubble tint | 5% of the ink, mixed `in oklab` | 5% of the ink, mixed `in srgb` |
+
+The last row is not drift: the app mixes `in srgb` toward `transparent` (18 of
+18 washes, badges, tints) and `in oklab` between two opaque colours (18 of 18
+surface steps and casts). That split is systematic, and changing one entry would
+break it rather than align it.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check` clean; no code changed this round.
+- Every `--token` the document names now resolves in `globals.css` or `src/`,
+  bar two deliberate mentions of things that do **not** exist (`--font-ui`, cited
+  as a split the app does not have).
+- Every backticked identifier — 32 of them — resolves in `src/`.
+- Every px figure re-derived from the code that owns it: 46px chrome bar, the
+  2/4/6/8/10/12 shape ladder and each role's token, sidebar 275 default with a
+  240 floor and 520 ceiling, dock 640.
+- The only hexes left in the file are `#000000` and `#ffffff`, both in prose
+  about what not to use.
+
+### Open, for the next round
+
+1–4 unchanged. Plus:
+5. The five rows above are a design queue and need a product answer, the typeface
+   most of all: it is the one that changes every glyph in every golden.
