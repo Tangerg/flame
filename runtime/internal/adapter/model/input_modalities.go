@@ -22,6 +22,9 @@ func (Capabilities) AdmitInput(selection modelref.Selection, messages []chat.Mes
 	if err := selection.Validate(); err != nil {
 		return fmt.Errorf("model: input-modality selection: %w", err)
 	}
+	if !selection.Configured() {
+		return errors.New("model: input-modality model selection is required")
+	}
 	entry, found := catalog.Default.Lookup(selection.Provider(), selection.Model())
 	if !found {
 		return nil

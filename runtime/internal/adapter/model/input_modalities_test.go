@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/scope/core/chat"
@@ -32,6 +33,15 @@ func TestCapabilitiesAdmitInputUsesExactCatalogModel(t *testing.T) {
 	}
 	if admitErr := (Capabilities{}).AdmitInput(imageCapable, messages); admitErr != nil {
 		t.Fatalf("image-capable model error = %v", admitErr)
+	}
+}
+
+func TestCapabilitiesAdmitInputRejectsMissingModelSelection(t *testing.T) {
+	err := (Capabilities{}).AdmitInput(modelref.Selection{}, []chat.Message{
+		chat.NewUserMessage(chat.NewTextPart("inspect")),
+	})
+	if err == nil || !strings.Contains(err.Error(), "model selection is required") {
+		t.Fatalf("missing model selection error = %v", err)
 	}
 }
 
