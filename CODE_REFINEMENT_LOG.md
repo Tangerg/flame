@@ -150,6 +150,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 190 | `94fc54a2` + CLI dependency update | Made Session CatalogRead validate store-page membership, identity, order, cursor position, and overfetch before live projection, with CLI search-filter enforcement. |
 | 191 | `585e53aa` + CLI dependency update | Protected Run query filters, page scope/order/cursors/overfetch, and store-slice isolation; corrected a CLI descendant-guard false positive. |
 | 192 | `9a175bcb` + CLI dependency update | Protected Item page bounds/scope/order/cursors and required an exact, valid, ownership-isolated Run-ancestor forest. |
+| 193 | `7552fbaf` + CLI dependency update | Protected pending-interrupt caller capabilities and bounded, valid, scoped, unique, strictly cursor-ordered store pages. |
 
 ## Verification contract
 
