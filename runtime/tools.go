@@ -7,7 +7,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ListTools returns the Runtime's model-facing tool descriptors.
+// ListTools returns the safe direct-invocation tool catalog in unique name order.
 func (r *Runtime) ListTools(ctx context.Context, options CallOptions) (*protocol.Page[protocol.ToolSpec], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.ToolSpec]](ctx, delivery.ToolsList, struct{}{}, callOptions(options))
 }

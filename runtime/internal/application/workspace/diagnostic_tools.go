@@ -1,7 +1,12 @@
 package workspace
 
 import (
+	"cmp"
 	"context"
+	"errors"
+	"fmt"
+	"slices"
+	"strings"
 
 	toolsvc "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -40,9 +45,33 @@ func NewDiagnosticTools(registry DiagnosticToolRegistry, roots DiagnosticToolRoo
 	return &DiagnosticTools{registry: registry, roots: roots}
 }
 
-// List returns every tool that can be invoked directly outside a Run.
+// List returns the safe direct-invocation catalog, ordered by unique tool name.
 func (c *DiagnosticTools) List(ctx context.Context) ([]toolsvc.Tool, error) {
-	return c.registry.List(ctx)
+	tools, err := c.registry.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tools = slices.Clone(tools)
+	for _, candidate := range tools {
+		if strings.TrimSpace(candidate.Name) == "" {
+			return nil, errors.New("workspace: diagnostic tool catalog contains an empty name")
+		}
+		if candidate.Name != strings.TrimSpace(candidate.Name) {
+			return nil, fmt.Errorf("workspace: diagnostic tool catalog contains non-canonical name %q", candidate.Name)
+		}
+		if candidate.SafetyClass != toolsvc.SafetyClassSafe {
+			return nil, fmt.Errorf("workspace: diagnostic tool %q is not safe for direct invocation", candidate.Name)
+		}
+	}
+	slices.SortFunc(tools, func(first, second toolsvc.Tool) int {
+		return cmp.Compare(first.Name, second.Name)
+	})
+	for index := 1; index < len(tools); index++ {
+		if tools[index].Name == tools[index-1].Name {
+			return nil, fmt.Errorf("workspace: diagnostic tool catalog repeats name %q", tools[index].Name)
+		}
+	}
+	return tools, nil
 }
 
 // Invoke runs one direct diagnostic tool within its admitted workspace root.

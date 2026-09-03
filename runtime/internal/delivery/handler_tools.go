@@ -8,8 +8,8 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// ListTools surfaces every read-only diagnostic tool valid outside an agent
-// Run.
+// ListTools projects the complete safe direct-invocation catalog in the
+// Application-owned unique name order.
 func (s *Handler) ListTools(ctx context.Context) (*protocol.Page[protocol.ToolSpec], error) {
 	internal, err := s.tools.List(ctx)
 	if err != nil {

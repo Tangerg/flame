@@ -30,6 +30,8 @@ func NewDiagnosticRegistry() DiagnosticRegistry { return DiagnosticRegistry{} }
 // tool catalog exposed outside an Agent Run.
 type DiagnosticRegistry struct{}
 
+// List translates the adapter catalog in encounter order. Application owns the
+// safe, unique, name-ordered public catalog.
 func (DiagnosticRegistry) List(context.Context) ([]tool.Tool, error) {
 	chatTools, err := directTools(".")
 	if err != nil {
