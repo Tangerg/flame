@@ -31,7 +31,11 @@ func (w Workspace) Validate() error {
 	case !filepath.IsAbs(w.ProjectRoot):
 		return errors.New("workspace project root is not absolute")
 	default:
-		return (protocol.WorkspaceInfo{Availability: w.Availability}).ValidateWire()
+		return protocol.ValidateWireTree(protocol.WorkspaceInfo{
+			Ref:          protocol.WorkspaceRef{Path: w.Path},
+			ProjectRoot:  w.ProjectRoot,
+			Availability: w.Availability,
+		})
 	}
 }
 

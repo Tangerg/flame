@@ -7,10 +7,10 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–110 are complete and pushed to `origin/main` through the Runtime
+- Rounds 1–111 are complete and pushed to `origin/main` through the Runtime
   contract commit plus its CLI dependency update.
-- Round 110's Runtime contract is `b0581e65` (`fix(runtime): require workspace
-  change identities`).
+- Round 111's Runtime contract is `1cf11854` (`fix(runtime): require workspace
+  output identities`).
 - Authorized code scope remains `runtime` and `cli`. Desktop work is concurrent
   user-owned work and must not be modified by this refinement stream.
 - The configured provider credential is used only through Runtime configuration.
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–110 — exact handoff
+## Rounds 101–111 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -70,6 +70,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 108 | `a227410` | Merged live workspace aliases at the Runtime owner and rejected repeated workspace identities at the CLI boundary. |
 | 109 | `42557a1` | Rejected repeated workspace change and retained structured-diff paths at both the Runtime owner and CLI boundary. |
 | 110 | `b0581e65` + CLI dependency update | Required non-empty path identities for change and structured-diff rows in every generated Runtime contract projection. |
+| 111 | `1cf11854` + CLI dependency update | Required complete workspace, file, and grep output identities, then migrated CLI domain validation to the full Runtime wire shape. |
 
 ## Verification contract
 
@@ -107,7 +108,7 @@ repeated here.
 
 ## Remaining direction
 
-- Start Round 111 by continuing to audit complete Runtime catalogs and CLI
+- Start Round 112 by continuing to audit complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the
