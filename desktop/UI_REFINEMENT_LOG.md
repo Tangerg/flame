@@ -1140,3 +1140,67 @@ no arithmetic that settles it.
 - `npm run test` excluding the live-runtime e2e — 2295 passed, 2 failed, both
   `runtime/contract`'s own sample.
 - `npm run visual:test` — 388 passed.
+
+---
+
+## Round 14 — the font setting only worked on half the app
+
+Status: **complete**
+
+### How it was found
+
+Round 13 ended on a question: the reference bundles no mono, Flame bundles
+JetBrains Mono — should the bundled face go? Rather than answer it by taste,
+the two stacks were rendered side by side. **They came out identical**, which
+was the tell: the override had not taken effect at all.
+
+### The finding
+
+`globals.css` declares `--font-sans` and `--font-mono` inside `@theme inline`.
+The `inline` keyword compiles a token's **value** into every utility that uses
+it, so `font-mono` emits the literal `"JetBrains Mono", ui-monospace, …` rather
+than `font-family: var(--font-mono)`.
+
+Settings → Font → UI / Code is a shipped preference. `documentAppearance` sets
+those two tokens on the root when the user picks a face. Measured through that
+same path:
+
+| | Token | Before | After |
+| --- | --- | --- | --- |
+| `body`, inheriting from `html { font-family: var(--font-sans) }` | Times New Roman | Geist | **Times New Roman** ✓ |
+| any `button`, carrying the `font-sans` utility | Times New Roman | Geist | **Geist** ✗ |
+| any `.font-mono` element | Courier New | JetBrains Mono | **JetBrains Mono** ✗ |
+
+**74 files** carry the `font-mono` utility. Four CSS rules use
+`var(--font-mono)`, and one uses `var(--font-sans)`. So the user's choice reached
+prose and inline markdown code, and nothing else: every button, chip, badge,
+code block, file path, timestamp and diff kept the bundled face while the text
+around them changed.
+
+| | Before | After |
+| --- | --- | --- |
+| The two font tokens | `@theme inline` | a plain `@theme` block, so utilities emit `var(…)` |
+
+The rest of the theme stays `inline` — for a colour that resolves to another
+token that is what makes theme switching work. Fonts are the case where it does
+the opposite.
+
+Nothing moved: **389 goldens pass with none regenerated**, which is the evidence
+that the defaults render identically and only the override path changed.
+
+### On round 13's open question
+
+It is less pressing now, and arguably answered: the app offers a code-font
+preference and, as of this round, honours it everywhere. Hard-coding the
+reference's system stack would take that choice away rather than align with it —
+the reference has no such setting to align to.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, `check:tokens`, `check:styles`,
+  `check:style-invalidation`, `check:design-system`, `check:chrome` clean.
+- `npm run test` excluding the live-runtime e2e — 2295 passed, 2 failed, both
+  `runtime/contract`'s own sample.
+- `npm run visual:test` — **389 passed, no golden regenerated.**
+- The new assertion fails if the tokens go back inside `@theme inline` —
+  verified by putting them back.

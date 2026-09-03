@@ -917,6 +917,41 @@ for (const overlay of OVERLAYS) {
 // land nearby: the spacing exception made a 16px-tall control pass until something moved next
 // to it. A control carrying text is the one that must meet the floor on its own — an
 // icon-only button sits in a row that spaces it.
+// Settings → Font is a shipped preference that sets `--font-sans` / `--font-mono` on the
+// root. It only ever reached text that INHERITED them: declaring the two tokens in
+// `@theme inline` compiled their value into every `font-sans` / `font-mono` utility, so
+// every button, chip, code block, path and timestamp kept the bundled face while the body
+// changed around them.
+test("a chosen typeface reaches the controls, not only the text that inherits", async ({
+  page,
+}) => {
+  await openFixture(page, { fixture: "agent", state: "long-content", theme: "light" });
+
+  const faces = () =>
+    page.evaluate(() => {
+      const family = (selector: string) => {
+        const element = document.querySelector(selector);
+        return element
+          ? getComputedStyle(element).fontFamily.split(",")[0]!.replace(/"/g, "")
+          : null;
+      };
+      return { body: family("body"), control: family("button"), code: family(".shiki-block") };
+    });
+
+  expect(await faces()).toEqual({ body: "Geist", control: "Geist", code: "JetBrains Mono" });
+
+  await page.evaluate(() => {
+    document.documentElement.style.setProperty("--font-sans", '"Times New Roman", serif');
+    document.documentElement.style.setProperty("--font-mono", '"Courier New", monospace');
+  });
+
+  expect(await faces()).toEqual({
+    body: "Times New Roman",
+    control: "Times New Roman",
+    code: "Courier New",
+  });
+});
+
 test("a text-bearing control meets the minimum target size", async ({ page }) => {
   await openFixture(page, { fixture: "workspace", state: "dock-light" });
   const summary = page.locator('[data-goal="summary"]');

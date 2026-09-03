@@ -34,6 +34,19 @@
   outline-offset: -1px;
 }
 
+/* NOT `@theme inline`, unlike everything below. `inline` compiles a token's value into the
+   utilities that use it, so `font-mono` would emit the literal stack and Settings → Font could
+   only ever reach text that inherits from `html` — every button, chip, code block and path
+   carrying the utility kept the bundled face. */
+@theme {
+  --font-sans:
+    "Geist", -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB",
+    system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Cascadia Code", Consolas,
+    monospace;
+}
+
 @theme inline {
   --color-canvas: var(--color-bg);
   --color-surface: var(--color-surface);
@@ -136,13 +149,6 @@
   --radius-composer: var(--shape-composer);
   --radius-bubble: var(--shape-bubble);
   --radius-pill: var(--shape-pill);
-
-  --font-sans:
-    "Geist", -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB",
-    system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
-  --font-mono:
-    "JetBrains Mono", ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Cascadia Code", Consolas,
-    monospace;
 
   --animate-sweep: flame-sweep calc(1300ms * var(--motion-scale)) linear infinite;
   --animate-shimmer: flame-shimmer calc(4000ms * var(--motion-scale)) linear infinite;
