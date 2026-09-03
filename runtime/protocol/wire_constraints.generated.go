@@ -1707,6 +1707,21 @@ func (r RunProgress) ValidateWire() error {
 	)
 }
 
+func (r RunEvent) ValidateWire() error {
+	return collectWireViolations("RunEvent",
+		requiredText("runId", r.RunID),
+		identity("runId", r.RunID),
+		maxLength("runId", r.RunID, 256),
+		requiredText("segmentId", r.SegmentID),
+		identity("segmentId", r.SegmentID),
+		maxLength("segmentId", r.SegmentID, 256),
+		identity("eventId", r.EventID),
+		requiredTextPrefix("eventId", r.EventID, "evt_"),
+		maxLength("eventId", r.EventID, 65540),
+		requiredWhen(true, "timestamp", r),
+	)
+}
+
 func (h HookInfo) ValidateWire() error {
 	return collectWireViolations("HookInfo",
 		requiredText("source", h.Source),
@@ -2121,20 +2136,6 @@ func (a ArtifactModelUsage) ValidateWire() error {
 		nonNegativeNumber("cacheWriteTokens", a.CacheWriteTokens),
 		nonNegativeNumber("reasoningTokens", a.ReasoningTokens),
 		optionalNonNegativeNumber("costUsd", a.CostUSD),
-	)
-}
-
-func (r RunEvent) ValidateWire() error {
-	return collectWireViolations("RunEvent",
-		requiredText("runId", r.RunID),
-		identity("runId", r.RunID),
-		maxLength("runId", r.RunID, 256),
-		requiredText("segmentId", r.SegmentID),
-		identity("segmentId", r.SegmentID),
-		maxLength("segmentId", r.SegmentID, 256),
-		identity("eventId", r.EventID),
-		requiredTextPrefix("eventId", r.EventID, "evt_"),
-		maxLength("eventId", r.EventID, 65540),
 	)
 }
 

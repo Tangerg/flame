@@ -19,7 +19,7 @@ import (
 // end-to-end.
 func (f *fakeRuntime) StartRun(_ context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq[protocol.RunEvent], error) {
 	events := slices.Values([]protocol.RunEvent{
-		{RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000001",
+		{RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000001", Timestamp: time.Unix(1, 0).UTC(),
 			Event: protocol.StreamEvent{Type: protocol.StreamSegmentStarted, Run: &protocol.RunRef{
 				RunSummary: protocol.RunSummary{
 					ID: "run_x", SessionID: in.SessionID, Provider: "mock", Model: "balanced",
@@ -27,7 +27,7 @@ func (f *fakeRuntime) StartRun(_ context.Context, in protocol.StartRunRequest) (
 				},
 				ActiveSegmentID: "seg_x",
 			}}},
-		{RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000002",
+		{RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000002", Timestamp: time.Unix(2, 0).UTC(),
 			Event: protocol.StreamEvent{Type: protocol.StreamSegmentFinished, Outcome: &protocol.SegmentOutcome{Type: protocol.SegmentOutcomeType(protocol.OutcomeCompleted)}, Metrics: &protocol.RunMetrics{}, ContextTokens: new(int64(0))}},
 	})
 	return &protocol.StartRunResponse{

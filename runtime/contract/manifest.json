@@ -3697,6 +3697,16 @@
       ]
     },
     {
+      "type": "RunEvent",
+      "rules": [
+        {
+          "required": [
+            "timestamp"
+          ]
+        }
+      ]
+    },
+    {
       "type": "HookInfo",
       "rules": [
         {

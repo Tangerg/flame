@@ -552,6 +552,13 @@ func registerObjectConstraints(s *Shapes) {
 		}},
 	})
 
+	// Every stream frame is an ordered observation. A zero timestamp would make
+	// replayed and live frames indistinguishable from an uninitialized envelope.
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.RunEvent](),
+		Rules:  []ConditionalRule{{Required: []string{"timestamp"}}},
+	})
+
 	hookRules := []ConditionalRule{{
 		RequiredAny: []string{"command", "inject"},
 	}, {

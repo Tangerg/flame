@@ -90,6 +90,24 @@ func TestRuntimeEventWireConstraints(t *testing.T) {
 	}
 }
 
+func TestRunEventRequiresTimestamp(t *testing.T) {
+	t.Parallel()
+
+	event := RunEvent{
+		RunID: "run_1", SegmentID: "seg_1", EventID: "evt_1",
+		Event: StreamEvent{
+			Type:     StreamSegmentProgress,
+			Progress: &RunProgress{Activity: "Calling model"},
+		},
+	}
+	assertConstraintField(t, event.ValidateWire(), "RunEvent", "timestamp")
+
+	event.Timestamp = time.Unix(1, 0).UTC()
+	if err := event.ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected a timestamped event: %v", err)
+	}
+}
+
 func TestRunProgressCarriesAtLeastOneValidFact(t *testing.T) {
 	t.Parallel()
 
@@ -1665,7 +1683,10 @@ func TestPageContinuationBoundIsPromotedToEveryPageInstantiation(t *testing.T) {
 func TestRunEventIdentityFramingDistinguishesAbsentFromMalformed(t *testing.T) {
 	t.Parallel()
 
-	if err := (RunEvent{RunID: "run_1", SegmentID: "seg_1", EventID: IDPrefixEvent + "opaque"}).ValidateWire(); err != nil {
+	if err := (RunEvent{
+		RunID: "run_1", SegmentID: "seg_1", EventID: IDPrefixEvent + "opaque",
+		Timestamp: time.Unix(1, 0).UTC(),
+	}).ValidateWire(); err != nil {
 		t.Fatalf("valid RunEvent identity: %v", err)
 	}
 	if err := (SubscribeRunResponse{RunID: "run_1", SegmentID: "seg_1"}).ValidateWire(); err != nil {

@@ -6754,7 +6754,7 @@
             {
               "name": "Timestamp",
               "type": "time.Time",
-              "tag": "json:\"timestamp\""
+              "tag": "json:\"timestamp,omitzero\""
             },
             {
               "name": "Event",

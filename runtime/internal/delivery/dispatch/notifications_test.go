@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -38,6 +39,7 @@ func TestEphemeralEventNeverCarriesAnSSEReplayID(t *testing.T) {
 
 	frame, ok := runEventToFrame(protocol.RunEvent{
 		RunID: "run_1", SegmentID: "seg_1", EventID: "evt_1",
+		Timestamp: time.Unix(1, 0).UTC(),
 		Event: protocol.StreamEvent{
 			Type:     protocol.StreamSegmentProgress,
 			Progress: &protocol.RunProgress{Activity: "Calling model"},
