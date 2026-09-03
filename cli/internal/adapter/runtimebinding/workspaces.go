@@ -166,10 +166,7 @@ func (r *Connection) Search(ctx context.Context, request workspace.SearchRequest
 	if value == nil {
 		return workspace.SearchResult{}, runtimeContractViolation("search workspace files returned nil")
 	}
-	result := workspace.SearchResult{Total: value.Total, Matches: make([]workspace.Match, 0, len(value.Matches))}
-	for _, match := range value.Matches {
-		result.Matches = append(result.Matches, workspace.Match{Path: match.Path, Line: match.LineNumber, Text: match.Text})
-	}
+	result := workspace.SearchResult{Total: value.Total, Matches: slices.Clone(value.Matches)}
 	if err := result.Validate(); err != nil {
 		return workspace.SearchResult{}, runtimeContractViolation("search workspace files returned an invalid projection: %v", err)
 	}

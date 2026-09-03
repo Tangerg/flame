@@ -137,7 +137,7 @@ func (a *app) SearchWorkspace(argument string) error {
 			}
 			lines := make([]string, 0, len(result.Matches))
 			for _, match := range result.Matches {
-				lines = append(lines, fmt.Sprintf("%s:%d  %s", match.Path, match.Line, match.Text))
+				lines = append(lines, fmt.Sprintf("%s:%d  %s", match.Path, match.LineNumber, match.Text))
 			}
 			detail := fmt.Sprintf("%d/%d matches", len(result.Matches), result.Total)
 			if request.Path != "" {

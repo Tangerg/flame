@@ -160,14 +160,8 @@ func (s SearchRequest) Validate() error {
 	return err
 }
 
-type Match struct {
-	Path string
-	Line int
-	Text string
-}
-
 type SearchResult struct {
-	Matches []Match
+	Matches []protocol.GrepMatch
 	Total   int
 }
 
@@ -176,8 +170,8 @@ func (s SearchResult) Validate() error {
 		return errors.New("workspace search total is smaller than its matches")
 	}
 	for index, match := range s.Matches {
-		if strings.TrimSpace(match.Path) == "" || match.Line <= 0 {
-			return fmt.Errorf("workspace search match %d is invalid", index)
+		if err := match.ValidateWire(); err != nil {
+			return fmt.Errorf("workspace search match %d: %w", index, err)
 		}
 	}
 	return nil

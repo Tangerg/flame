@@ -146,11 +146,19 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 	if err != nil || len(head.Lines) != 1 {
 		t.Fatalf("Head = (%+v, %v)", head, err)
 	}
+	stub.head.Lines[0].Text = "mutated"
+	if head.Lines[0].Text != "package main" {
+		t.Fatal("file head projection aliases runtime line storage")
+	}
 	search, err := runtime.Search(t.Context(), workspace.SearchRequest{
 		Workspace: "/workspace", Query: "main", Limit: workspace.DefaultSearchResultLimit(),
 	})
 	if err != nil || search.Total != 1 || len(search.Matches) != 1 {
 		t.Fatalf("Search = (%+v, %v)", search, err)
+	}
+	stub.search.Matches[0].Text = "mutated"
+	if search.Matches[0].Text != "package main" {
+		t.Fatal("workspace search projection aliases runtime match storage")
 	}
 	files, err := runtime.Files(t.Context(), workspace.FilesRequest{Workspace: "/workspace"})
 	if err != nil || len(files.Entries) != 2 || files.Entries[0].Type != protocol.FileEntryFile ||

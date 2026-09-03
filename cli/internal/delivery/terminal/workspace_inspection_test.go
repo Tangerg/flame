@@ -102,7 +102,7 @@ func (w *workspaceServiceStub) Search(_ context.Context, request workspace.Searc
 	w.mu.Lock()
 	w.search = request
 	w.mu.Unlock()
-	return workspace.SearchResult{Matches: []workspace.Match{{Path: "main.go", Line: 1, Text: "package main"}}, Total: 1}, nil
+	return workspace.SearchResult{Matches: []protocol.GrepMatch{{Path: "main.go", LineNumber: 1, Text: "package main"}}, Total: 1}, nil
 }
 
 func (w *workspaceServiceStub) Files(_ context.Context, request workspace.FilesRequest) (workspace.FileListing, error) {
