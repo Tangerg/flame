@@ -336,7 +336,7 @@ func (r *RunStore) suspend(
 			        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
 			 WHERE session_id = ? AND run_id = ? AND state = ?`,
 			coarseState(next.State()).databaseValue(), commitSegmentID, commitID,
-			metrics.steps, metrics.durationNs, metrics.usage, next.ContextTokens(), runUpdatedAt(value),
+			metrics.steps, metrics.durationNs, metrics.usage, next.ContextTokens(), value.UpdatedAt().UTC().UnixNano(),
 			value.SessionID(), value.ID(), coarseState(current.State()).databaseValue())
 		if err != nil {
 			return fmt.Errorf("sqlite: suspend run: %w", err)
@@ -675,7 +675,7 @@ func (r *RunStore) finish(
 			outcome.String(), value.Detail(), metrics.steps, metrics.durationNs,
 			metrics.usage, next.ContextTokens(), encodedFailure,
 			value.MessageMark(), value.FinishedAt().UTC().UnixNano(),
-			runUpdatedAt(value), value.SessionID(), value.ID(), coarseState(current.State()).databaseValue(),
+			value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID(), coarseState(current.State()).databaseValue(),
 		}
 		if marker != nil {
 			query += ` AND active_segment_id = ?`
@@ -764,7 +764,7 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 		value.GoalIncarnationID(),
 		value.Detail(), metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedFailure,
 		maxTotalTokens, maxSteps, maxBudgetUSD, capabilities, value.MessageMark(),
-		value.CreatedAt().UTC().UnixNano(), value.FinishedAt().UTC().UnixNano(), runUpdatedAt(value))
+		value.CreatedAt().UTC().UnixNano(), value.FinishedAt().UTC().UnixNano(), value.UpdatedAt().UTC().UnixNano())
 	if isPrimaryKeyViolation(err) {
 		// A Run id belongs to one Session for its whole lifetime. An import that
 		// would re-parent an existing Run is refused rather than silently taking it
@@ -885,14 +885,4 @@ func isUniqueViolation(err error) bool {
 func isPrimaryKeyViolation(err error) bool {
 	se, ok := errors.AsType[*sqlite3.Error](err)
 	return ok && se.Code() == sqlite3lib.SQLITE_CONSTRAINT_PRIMARYKEY
-}
-
-// runUpdatedAt is the row's touch time. A caller that recorded one is honored so
-// a restored Run keeps the timestamp it was exported with; otherwise the write
-// stamps itself.
-func runUpdatedAt(run rundomain.Run) int64 {
-	if run.UpdatedAt().IsZero() {
-		return time.Now().UTC().UnixNano()
-	}
-	return run.UpdatedAt().UTC().UnixNano()
 }
