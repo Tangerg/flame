@@ -1932,7 +1932,6 @@
       "properties": {
         "server": {
           "type": "string",
-          "maxLength": 32,
           "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
         }
       },
@@ -4734,7 +4733,6 @@
         },
         "server": {
           "type": "string",
-          "maxLength": 32,
           "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
         },
         "status": {
@@ -5236,7 +5234,6 @@
       "properties": {
         "server": {
           "type": "string",
-          "maxLength": 32,
           "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
         }
       }
@@ -5257,7 +5254,6 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "maxLength": 128,
             "pattern": "^[A-Za-z0-9_.-]{1,128}$"
           }
         },
@@ -5273,7 +5269,6 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "maxLength": 128,
             "pattern": "^[A-Za-z0-9_.-]{1,128}$"
           }
         },
@@ -5282,7 +5277,6 @@
         },
         "name": {
           "type": "string",
-          "maxLength": 32,
           "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
         },
         "status": {
@@ -5305,7 +5299,6 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "maxLength": 128,
             "pattern": "^[A-Za-z0-9_.-]{1,128}$"
           }
         },
@@ -5321,7 +5314,6 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "maxLength": 128,
             "pattern": "^[A-Za-z0-9_.-]{1,128}$"
           }
         },
@@ -5333,7 +5325,6 @@
         },
         "name": {
           "type": "string",
-          "maxLength": 32,
           "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
         }
       },
@@ -5349,7 +5340,6 @@
       "properties": {
         "server": {
           "type": "string",
-          "maxLength": 32,
           "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
         }
       },
@@ -5484,12 +5474,10 @@
         },
         "name": {
           "type": "string",
-          "maxLength": 128,
           "pattern": "^[A-Za-z0-9_.-]{1,128}$"
         },
         "server": {
           "type": "string",
-          "maxLength": 32,
           "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
         }
       },
@@ -10155,7 +10143,6 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "maxLength": 128,
             "pattern": "^[A-Za-z0-9_.-]{1,128}$"
           }
         },
@@ -10171,7 +10158,6 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "maxLength": 128,
             "pattern": "^[A-Za-z0-9_.-]{1,128}$"
           }
         },
@@ -10183,7 +10169,6 @@
         },
         "server": {
           "type": "string",
-          "maxLength": 32,
           "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
         }
       },

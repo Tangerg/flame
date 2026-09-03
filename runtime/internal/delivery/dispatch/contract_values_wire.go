@@ -727,24 +727,17 @@ func registerMCPValues(s *Shapes) {
 }
 
 func mcpServerIdentity(field string) []FieldConstraint {
-	return []FieldConstraint{
-		{Field: field, Kind: ConstraintMaxLength, Limit: mcpserver.MaximumServerNameCharacters},
-		{Field: field, Kind: ConstraintPattern, Value: mcpserver.ServerNamePattern},
-	}
+	return []FieldConstraint{{Field: field, Kind: ConstraintPattern, Value: mcpserver.ServerNamePattern}}
 }
 
 func mcpRemoteToolIdentity(field string) []FieldConstraint {
-	return []FieldConstraint{
-		{Field: field, Kind: ConstraintMaxLength, Limit: mcpserver.MaximumRemoteToolNameCharacters},
-		{Field: field, Kind: ConstraintPattern, Value: mcpserver.RemoteToolNamePattern},
-	}
+	return []FieldConstraint{{Field: field, Kind: ConstraintPattern, Value: mcpserver.RemoteToolNamePattern}}
 }
 
 func mcpRemoteToolItems(field string) []FieldConstraint {
 	return []FieldConstraint{
 		{Field: field, Kind: ConstraintMaxItems, Limit: mcpserver.MaxRemoteToolsPerServer},
 		{Field: field, Kind: ConstraintUniqueItems},
-		{Field: field, Kind: ConstraintMaxItemLength, Limit: mcpserver.MaximumRemoteToolNameCharacters},
 		{Field: field, Kind: ConstraintPatternItems, Value: mcpserver.RemoteToolNamePattern},
 	}
 }

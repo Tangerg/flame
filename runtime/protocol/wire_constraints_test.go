@@ -911,6 +911,7 @@ func TestMCPRemoteToolIdentityUsesCanonicalWireGrammar(t *testing.T) {
 	}
 
 	invalidUpdate := []string{"tool/name"}
+	overlongTool := strings.Repeat("a", mcpserver.MaximumRemoteToolNameCharacters+1)
 	tests := []struct {
 		shape string
 		field string
@@ -919,7 +920,8 @@ func TestMCPRemoteToolIdentityUsesCanonicalWireGrammar(t *testing.T) {
 		{"MCPServerCandidate", "disabledTools[0]", (MCPServerCandidate{Name: "files", DisabledTools: []string{"with space"}}).ValidateWire()},
 		{"UpdateMCPServerRequest", "autoApproveTools[0]", (UpdateMCPServerRequest{Server: "files", AutoApproveTools: &invalidUpdate}).ValidateWire()},
 		{"MCPServer", "disabledTools[0]", (MCPServer{Name: "files", DisabledTools: []string{"工具"}}).ValidateWire()},
-		{"MCPTool", "name", (MCPTool{Server: "files", Name: strings.Repeat("a", mcpserver.MaximumRemoteToolNameCharacters+1)}).ValidateWire()},
+		{"MCPServerCandidate", "autoApproveTools[0]", (MCPServerCandidate{Name: "files", AutoApproveTools: []string{overlongTool}}).ValidateWire()},
+		{"MCPTool", "name", (MCPTool{Server: "files", Name: overlongTool}).ValidateWire()},
 	}
 	for _, test := range tests {
 		assertConstraintField(t, test.err, test.shape, test.field)

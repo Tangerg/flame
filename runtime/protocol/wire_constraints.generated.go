@@ -257,51 +257,42 @@ func (s SkillProposalRef) ValidateWire() error {
 
 func (m MCPServerCandidate) ValidateWire() error {
 	return collectWireViolations("MCPServerCandidate",
-		maxLength("name", m.Name, 32),
 		requiredTextPattern("name", m.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 		maxItems("disabledTools", m.DisabledTools, 2048),
 		uniqueItems("disabledTools", m.DisabledTools),
-		maxItemLength("disabledTools", m.DisabledTools, 128),
 		textPatternItems("disabledTools", m.DisabledTools, "^[A-Za-z0-9_.-]{1,128}$"),
 		maxItems("autoApproveTools", m.AutoApproveTools, 2048),
 		uniqueItems("autoApproveTools", m.AutoApproveTools),
-		maxItemLength("autoApproveTools", m.AutoApproveTools, 128),
 		textPatternItems("autoApproveTools", m.AutoApproveTools, "^[A-Za-z0-9_.-]{1,128}$"),
 	)
 }
 
 func (u UpdateMCPServerRequest) ValidateWire() error {
 	return collectWireViolations("UpdateMCPServerRequest",
-		maxLength("server", u.Server, 32),
 		requiredTextPattern("server", u.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 		optionalMaxItems("disabledTools", u.DisabledTools, 2048),
 		optionalUniqueItems("disabledTools", u.DisabledTools),
-		optionalMaxItemLength("disabledTools", u.DisabledTools, 128),
 		optionalTextPatternItems("disabledTools", u.DisabledTools, "^[A-Za-z0-9_.-]{1,128}$"),
 		optionalMaxItems("autoApproveTools", u.AutoApproveTools, 2048),
 		optionalUniqueItems("autoApproveTools", u.AutoApproveTools),
-		optionalMaxItemLength("autoApproveTools", u.AutoApproveTools, 128),
 		optionalTextPatternItems("autoApproveTools", u.AutoApproveTools, "^[A-Za-z0-9_.-]{1,128}$"),
 	)
 }
 
 func (m MCPServerRequest) ValidateWire() error {
 	return collectWireViolations("MCPServerRequest",
-		maxLength("server", m.Server, 32),
 		requiredTextPattern("server", m.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 	)
 }
 
 func (m MCPListToolsRequest) ValidateWire() error {
 	return collectWireViolations("MCPListToolsRequest",
-		maxLength("server", m.Server, 32),
 		optionalTextPattern("server", m.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 	)
 }
 
 func (c CreateMCPAuthorizationAttemptRequest) ValidateWire() error {
 	return collectWireViolations("CreateMCPAuthorizationAttemptRequest",
-		maxLength("server", c.Server, 32),
 		requiredTextPattern("server", c.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 	)
 }
@@ -1903,7 +1894,6 @@ func (a AgentMemoryItem) ValidateWire() error {
 func (m MCPAuthorizationAttempt) ValidateWire() error {
 	return collectWireViolations("MCPAuthorizationAttempt",
 		requiredTextPattern("id", m.ID, "^mcpauth_[A-Z2-7]{26,64}$"),
-		maxLength("server", m.Server, 32),
 		requiredTextPattern("server", m.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 		requiredWhen(true, "createdAt", m),
 		forbiddenWhen(wireFieldEquals(m, "status.type", "pending"), "finishedAt", m),
@@ -2399,24 +2389,19 @@ func (s SkillProposal) ValidateWire() error {
 
 func (m MCPServer) ValidateWire() error {
 	return collectWireViolations("MCPServer",
-		maxLength("name", m.Name, 32),
 		requiredTextPattern("name", m.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 		maxItems("disabledTools", m.DisabledTools, 2048),
 		uniqueItems("disabledTools", m.DisabledTools),
-		maxItemLength("disabledTools", m.DisabledTools, 128),
 		textPatternItems("disabledTools", m.DisabledTools, "^[A-Za-z0-9_.-]{1,128}$"),
 		maxItems("autoApproveTools", m.AutoApproveTools, 2048),
 		uniqueItems("autoApproveTools", m.AutoApproveTools),
-		maxItemLength("autoApproveTools", m.AutoApproveTools, 128),
 		textPatternItems("autoApproveTools", m.AutoApproveTools, "^[A-Za-z0-9_.-]{1,128}$"),
 	)
 }
 
 func (m MCPTool) ValidateWire() error {
 	return collectWireViolations("MCPTool",
-		maxLength("server", m.Server, 32),
 		requiredTextPattern("server", m.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
-		maxLength("name", m.Name, 128),
 		requiredTextPattern("name", m.Name, "^[A-Za-z0-9_.-]{1,128}$"),
 	)
 }

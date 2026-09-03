@@ -373,13 +373,6 @@ func maxItemLength[Identity ~string](field string, values []Identity, maximum in
 	return FieldError{}
 }
 
-func optionalMaxItemLength[Identity ~string](field string, values *[]Identity, maximum int) FieldError {
-	if values == nil {
-		return FieldError{}
-	}
-	return maxItemLength(field, *values, maximum)
-}
-
 func identity(field, value string) FieldError {
 	for _, character := range value {
 		if unicode.IsSpace(character) || !unicode.IsPrint(character) {

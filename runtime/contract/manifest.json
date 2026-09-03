@@ -7411,10 +7411,6 @@
       "rules": [
         {
           "field": "server",
-          "constraint": "maxLength(32)"
-        },
-        {
-          "field": "server",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
         }
       ]
@@ -7422,10 +7418,6 @@
     {
       "type": "CreateMCPAuthorizationAttemptRequest",
       "rules": [
-        {
-          "field": "server",
-          "constraint": "maxLength(32)"
-        },
         {
           "field": "server",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
@@ -7437,10 +7429,6 @@
       "rules": [
         {
           "field": "server",
-          "constraint": "maxLength(32)"
-        },
-        {
-          "field": "server",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
         }
       ]
@@ -7448,10 +7436,6 @@
     {
       "type": "MCPServer",
       "rules": [
-        {
-          "field": "name",
-          "constraint": "maxLength(32)"
-        },
         {
           "field": "name",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
@@ -7463,10 +7447,6 @@
         {
           "field": "disabledTools",
           "constraint": "uniqueItems"
-        },
-        {
-          "field": "disabledTools",
-          "constraint": "maxItemLength(128)"
         },
         {
           "field": "disabledTools",
@@ -7479,10 +7459,6 @@
         {
           "field": "autoApproveTools",
           "constraint": "uniqueItems"
-        },
-        {
-          "field": "autoApproveTools",
-          "constraint": "maxItemLength(128)"
         },
         {
           "field": "autoApproveTools",
@@ -7495,15 +7471,7 @@
       "rules": [
         {
           "field": "server",
-          "constraint": "maxLength(32)"
-        },
-        {
-          "field": "server",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
-        },
-        {
-          "field": "name",
-          "constraint": "maxLength(128)"
         },
         {
           "field": "name",
@@ -7526,10 +7494,6 @@
         {
           "field": "id",
           "constraint": "pattern(\"^mcpauth_[A-Z2-7]{26,64}$\")"
-        },
-        {
-          "field": "server",
-          "constraint": "maxLength(32)"
         },
         {
           "field": "server",
@@ -7608,10 +7572,6 @@
       "rules": [
         {
           "field": "name",
-          "constraint": "maxLength(32)"
-        },
-        {
-          "field": "name",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
         },
         {
@@ -7624,10 +7584,6 @@
         },
         {
           "field": "disabledTools",
-          "constraint": "maxItemLength(128)"
-        },
-        {
-          "field": "disabledTools",
           "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
         },
         {
@@ -7637,10 +7593,6 @@
         {
           "field": "autoApproveTools",
           "constraint": "uniqueItems"
-        },
-        {
-          "field": "autoApproveTools",
-          "constraint": "maxItemLength(128)"
         },
         {
           "field": "autoApproveTools",
@@ -7653,10 +7605,6 @@
       "rules": [
         {
           "field": "server",
-          "constraint": "maxLength(32)"
-        },
-        {
-          "field": "server",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
         },
         {
@@ -7669,10 +7617,6 @@
         },
         {
           "field": "disabledTools",
-          "constraint": "maxItemLength(128)"
-        },
-        {
-          "field": "disabledTools",
           "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
         },
         {
@@ -7682,10 +7626,6 @@
         {
           "field": "autoApproveTools",
           "constraint": "uniqueItems"
-        },
-        {
-          "field": "autoApproveTools",
-          "constraint": "maxItemLength(128)"
         },
         {
           "field": "autoApproveTools",

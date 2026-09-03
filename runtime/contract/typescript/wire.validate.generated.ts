@@ -939,7 +939,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   ContentBlockType: enumOf(["text", "image"]),
   CreateMCPAuthorizationAttemptRequest: object({
-    server: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
+    server: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
   }, ["server"]),
   CreateScheduleRequest: allOf([
     object({
@@ -1849,7 +1849,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       createdAt: text(),
       finishedAt: text(),
       id: allOf([text(), pattern("^mcpauth_[A-Z2-7]{26,64}$")]),
-      server: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
+      server: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
       status: ref(() => CHECKS.MCPAuthorizationAttemptStatus),
     }, ["createdAt", "id", "server", "status"]),
     ifThen(
@@ -2033,29 +2033,29 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ]),
   ]),
   MCPListToolsRequest: object({
-    server: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
+    server: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
   }, []),
   MCPSecretChangeType: enumOf(["set", "clear"]),
   MCPServer: object({
-    autoApproveTools: allOf([array(allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
+    autoApproveTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     connection: ref(() => CHECKS.MCPConnection),
     description: text(),
-    disabledTools: allOf([array(allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
+    disabledTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
-    name: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
+    name: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
     status: ref(() => CHECKS.MCPServerState),
   }, ["connection", "handshakeTimeout", "name", "status"]),
   MCPServerCandidate: object({
-    autoApproveTools: allOf([array(allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
+    autoApproveTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     connection: ref(() => CHECKS.MCPConnectionInput),
     description: text(),
-    disabledTools: allOf([array(allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
+    disabledTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     enabled: flag(),
     handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
-    name: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
+    name: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
   }, ["connection", "enabled", "handshakeTimeout", "name"]),
   MCPServerRequest: object({
-    server: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
+    server: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
   }, ["server"]),
   MCPServerState: allOf([
     object({
@@ -2101,8 +2101,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   MCPTool: object({
     description: text(),
     inputSchema: record(anything()),
-    name: allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")]),
-    server: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
+    name: allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")]),
+    server: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
   }, ["name", "server"]),
   MCPTransport: enumOf(["stdio", "streamableHttp"]),
   ManagedSkill: object({
@@ -3624,13 +3624,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   UpdateMCPServerRequest: object({
-    autoApproveTools: allOf([array(allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
+    autoApproveTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     connection: ref(() => CHECKS.MCPConnectionInput),
     description: text(),
-    disabledTools: allOf([array(allOf([text(), maxLength(128), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
+    disabledTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     enabled: flag(),
     handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
-    server: allOf([text(), maxLength(32), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
+    server: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
   }, ["server"]),
   UpdateProviderRequest: object({
     apiKey: ref(() => CHECKS.ProviderConfigChange),
