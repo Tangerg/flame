@@ -105,7 +105,7 @@ func (r *Connection) Changes(ctx context.Context, path string) ([]workspace.Chan
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValuesFallible(
+	changes, err := projectUniqueValuesFallible(
 		"list workspace changes",
 		values,
 		func(value protocol.WorkspaceFileChange) (workspace.Change, error) {
@@ -113,6 +113,20 @@ func (r *Connection) Changes(ctx context.Context, path string) ([]workspace.Chan
 		},
 		func(change workspace.Change) string { return change.Path },
 	)
+	if err != nil {
+		return nil, err
+	}
+	for index := 1; index < len(changes); index++ {
+		previous, current := changes[index-1], changes[index]
+		if current.Path < previous.Path {
+			return nil, runtimeContractViolation(
+				"list workspace changes returned path %q out of catalog order after %q",
+				current.Path,
+				previous.Path,
+			)
+		}
+	}
+	return changes, nil
 }
 
 func (r *Connection) Diff(ctx context.Context, request workspace.DiffRequest) (workspace.Diff, error) {

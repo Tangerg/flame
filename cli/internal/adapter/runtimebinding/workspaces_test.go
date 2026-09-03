@@ -277,6 +277,24 @@ func TestWorkspaceAdapterRejectsRepeatedChangePath(t *testing.T) {
 	}
 }
 
+func TestWorkspaceAdapterRejectsChangeCatalogOutsideRuntimeOrder(t *testing.T) {
+	t.Parallel()
+	count := 1
+	runtime := &Connection{
+		workspaces: &workspaceBindingStub{changes: protocol.NewPage([]protocol.WorkspaceFileChange{
+			{Path: "zeta.go", Status: protocol.FileStatusModified, Added: &count, Removed: &count},
+			{Path: "alpha.go", Status: protocol.FileStatusAdded, Added: &count, Removed: &count},
+		})},
+		meta: requestMeta("test"),
+		profile: Profile{Features: map[string]Feature{
+			protocol.FeatureGit: {Enabled: true},
+		}},
+	}
+
+	_, err := runtime.Changes(t.Context(), "/workspace")
+	requireRuntimeContractViolation(t, err)
+}
+
 func TestWorkspaceAdapterRejectsGitReadsBeforeCallingBinding(t *testing.T) {
 	t.Parallel()
 	stub := &workspaceBindingStub{}
