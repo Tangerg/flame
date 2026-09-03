@@ -32,16 +32,27 @@ type coldRead struct {
 // coherent material snapshot. Identical metadata projections around the read
 // prove that its lifecycle cannot belong to a different Session generation.
 func (r *Connection) GetSession(ctx context.Context, sessionID string) (agent.SessionSnapshot, error) {
-	previous, err := r.readSession(ctx, sessionID)
+	sessionRequest := protocol.GetSessionRequest{SessionID: sessionID}
+	if err := sessionRequest.ValidateWire(); err != nil {
+		return agent.SessionSnapshot{}, fmt.Errorf("get session: %w", err)
+	}
+	snapshotRequest := protocol.GetSessionSnapshotRequest{
+		SessionID: sessionID, IncludeDescendants: r.profile.Supports(protocol.FeatureSubagents),
+	}
+	if err := snapshotRequest.ValidateWire(); err != nil {
+		return agent.SessionSnapshot{}, fmt.Errorf("get session: %w", err)
+	}
+
+	previous, err := r.readSession(ctx, sessionRequest)
 	if err != nil {
 		return agent.SessionSnapshot{}, err
 	}
 	for range snapshotStabilityAttempts {
-		material, err := r.readMaterialSnapshot(ctx, sessionID)
+		material, err := r.readMaterialSnapshot(ctx, snapshotRequest)
 		if err != nil {
 			return agent.SessionSnapshot{}, err
 		}
-		current, err := r.readSession(ctx, sessionID)
+		current, err := r.readSession(ctx, sessionRequest)
 		if err != nil {
 			return agent.SessionSnapshot{}, err
 		}
@@ -58,16 +69,22 @@ func (r *Connection) GetSession(ctx context.Context, sessionID string) (agent.Se
 	return agent.SessionSnapshot{}, fmt.Errorf("%w: session %s changed throughout cold recovery", agent.ErrDisconnected, sessionID)
 }
 
-func (r *Connection) readSession(ctx context.Context, sessionID string) (protocol.Session, error) {
-	session, err := r.snapshot.GetSession(ctx, protocol.GetSessionRequest{SessionID: sessionID}, r.callOptions())
+func (r *Connection) readSession(ctx context.Context, request protocol.GetSessionRequest) (protocol.Session, error) {
+	session, err := r.snapshot.GetSession(ctx, request, r.callOptions())
 	if err != nil {
 		return protocol.Session{}, classifyError(err)
 	}
 	if session == nil {
 		return protocol.Session{}, runtimeContractViolation("get session returned nil")
 	}
-	if _, err := projectSession(*session); err != nil {
+	projected, err := projectSession(*session)
+	if err != nil {
 		return protocol.Session{}, runtimeContractViolation("get session returned an invalid session: %v", err)
+	}
+	if projected.ID != request.SessionID {
+		return protocol.Session{}, runtimeContractViolation(
+			"get session returned id %q for %q", projected.ID, request.SessionID,
+		)
 	}
 	return *session, nil
 }
@@ -83,10 +100,11 @@ func sessionProjectionEqual(left, right protocol.Session) bool {
 		left.Favorite == right.Favorite && left.Revision == right.Revision
 }
 
-func (r *Connection) readMaterialSnapshot(ctx context.Context, sessionID string) (coldRead, error) {
-	snapshot, err := r.snapshot.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{
-		SessionID: sessionID, IncludeDescendants: r.profile.Supports(protocol.FeatureSubagents),
-	}, r.callOptions())
+func (r *Connection) readMaterialSnapshot(
+	ctx context.Context,
+	request protocol.GetSessionSnapshotRequest,
+) (coldRead, error) {
+	snapshot, err := r.snapshot.GetSessionSnapshot(ctx, request, r.callOptions())
 	if err != nil {
 		return coldRead{}, classifyError(err)
 	}

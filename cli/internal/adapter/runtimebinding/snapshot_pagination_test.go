@@ -91,6 +91,30 @@ func TestSessionMaterialSnapshotFollowsTheNegotiatedTopology(t *testing.T) {
 	}
 }
 
+func TestSessionColdReadRejectsInvalidIdentityBeforeCallingRuntime(t *testing.T) {
+	stub := &snapshotBindingStub{}
+	runtime := &Connection{snapshot: stub, meta: requestMeta("test")}
+	if _, err := runtime.GetSession(t.Context(), " ses_1 "); err == nil {
+		t.Fatal("accepted a non-canonical Session identity")
+	}
+	if stub.sessionCalls != 0 || len(stub.snapshotRequests) != 0 {
+		t.Fatalf("invalid request reached Runtime: session=%d snapshot=%d", stub.sessionCalls, len(stub.snapshotRequests))
+	}
+}
+
+func TestSessionColdReadRejectsMismatchedMetadataIdentity(t *testing.T) {
+	wrong := snapshotSession(1)
+	wrong.ID = "ses_2"
+	stub := &snapshotBindingStub{sessions: []*protocol.Session{wrong}, snapshot: &protocol.SessionSnapshot{}}
+	runtime := &Connection{snapshot: stub, meta: requestMeta("test")}
+	if _, err := runtime.GetSession(t.Context(), "ses_1"); !errors.Is(err, agent.ErrIncompatibleRuntime) {
+		t.Fatalf("mismatched Session error = %v", err)
+	}
+	if stub.sessionCalls != 1 || len(stub.snapshotRequests) != 0 {
+		t.Fatalf("mismatched metadata was not rejected immediately: session=%d snapshot=%d", stub.sessionCalls, len(stub.snapshotRequests))
+	}
+}
+
 func TestSessionMaterialSnapshotEnforcesThePublishedPlanShape(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -110,7 +134,7 @@ func TestSessionMaterialSnapshotEnforcesThePublishedPlanShape(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			stub := &snapshotBindingStub{snapshot: &protocol.SessionSnapshot{Plan: test.plan}}
 			runtime := &Connection{snapshot: stub, profile: test.profile, meta: requestMeta("test")}
-			_, err := runtime.readMaterialSnapshot(t.Context(), "ses_1")
+			_, err := runtime.readMaterialSnapshot(t.Context(), protocol.GetSessionSnapshotRequest{SessionID: "ses_1"})
 			if (err != nil) != test.wantErr {
 				t.Fatalf("material snapshot error = %v, wantErr %t", err, test.wantErr)
 			}
@@ -138,7 +162,7 @@ func TestSessionMaterialSnapshotPreservesTheGoalProjection(t *testing.T) {
 	}
 
 	runtime.profile = snapshotProfile()
-	if _, err := runtime.readMaterialSnapshot(t.Context(), "ses_1"); err == nil {
+	if _, err := runtime.readMaterialSnapshot(t.Context(), protocol.GetSessionSnapshotRequest{SessionID: "ses_1"}); err == nil {
 		t.Fatal("accepted a Goal from a Runtime profile without Goal support")
 	}
 }
@@ -194,10 +218,10 @@ func TestSessionColdReadStopsWhenMetadataNeverStabilizes(t *testing.T) {
 func TestSessionMaterialSnapshotRejectsMissingResponses(t *testing.T) {
 	stub := &snapshotBindingStub{}
 	runtime := &Connection{snapshot: stub, meta: requestMeta("test")}
-	if _, err := runtime.readSession(t.Context(), "ses_1"); err == nil {
+	if _, err := runtime.readSession(t.Context(), protocol.GetSessionRequest{SessionID: "ses_1"}); err == nil {
 		t.Fatal("accepted a nil Session response")
 	}
-	if _, err := runtime.readMaterialSnapshot(t.Context(), "ses_1"); err == nil {
+	if _, err := runtime.readMaterialSnapshot(t.Context(), protocol.GetSessionSnapshotRequest{SessionID: "ses_1"}); err == nil {
 		t.Fatal("accepted a nil SessionSnapshot response")
 	}
 }

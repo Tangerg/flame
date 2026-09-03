@@ -7,7 +7,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–168 are complete and pushed to `origin/main`. Public Runtime changes
+- Rounds 1–169 are complete and pushed to `origin/main`. Public Runtime changes
   are followed by their exact CLI dependency update.
 - The current Runtime contract is `f37dc362` (`refactor(runtime): centralize
   request validation`).
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–168 — exact handoff
+## Rounds 101–169 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -128,6 +128,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 166 | `f37dc362` + CLI dependency update | Removed Handler-local empty-input checks already owned by the common Endpoint; one endpoint regression now proves invalid Hook, Skill, Session, and Item requests cannot reach Application while translation and domain rejection remain intact. |
 | 167 | CLI commit | Replaced the sideload command protocol's copied 256-byte Session ID ceiling with Runtime's canonical optional identity validator, preserving valid opaque Unicode identities and rejecting malformed values before process admission. |
 | 168 | CLI commit | Routed Goal get, clear, stop, and resume through one generated `GoalRequest` validator so every Goal entrypoint rejects non-canonical Session identities before calling Runtime. |
+| 169 | CLI commit | Bound cold Session reads to validated generated requests and rejected metadata whose identity does not match the requested Session. |
 
 ## Verification contract
 
@@ -165,7 +166,7 @@ repeated here.
 
 ## Remaining direction
 
-- Continue after Round 168 by auditing complete Runtime catalogs and CLI
+- Continue after Round 169 by auditing complete Runtime catalogs and CLI
   projections for aggregate invariants that element-level wire validation cannot
   express.
 - Treat missing output-resource identity constraints as candidates only after the
