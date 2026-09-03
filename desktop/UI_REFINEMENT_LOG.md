@@ -744,3 +744,94 @@ Visual dev server stopped; three probe scripts deleted.
 1. The five ChatGPT-versus-Flame rows from round 5, waiting on a product answer.
 2. `delegated` has no raster coverage. If the two-frame cause is ever found, the
    golden goes back.
+
+---
+
+## Round 9 — three creates that could run twice, and a guard put in the wrong place
+
+Status: **complete**
+
+### Audit scope
+
+The settings forms — validation, save feedback, error recovery — never looked at
+in eight rounds.
+
+### The coverage gap that let round 4's defects ship
+
+**Eleven settings panes exist. The visual fixture registers two** — appearance
+and providers. Approvals, hooks, MCP servers, personalization, plugins,
+connection, usage, schedules and the icon gallery have no visual or interaction
+coverage at all.
+
+That is measured, not inferred, and it has already cost something: the two
+uncovered panes read by hand in round 4 (`ScheduleRow`, `RulesRow`) both turned
+out to be firing Runtime commands with no in-flight state. Nothing photographs
+or drives those panes, so nothing could have caught it.
+
+Recorded rather than closed: registering a pane needs its own data providers and
+capability gate, and nine of them is a piece of work to plan, not to slip into a
+round.
+
+### Finding — three creates with no re-entry guard
+
+Seven places in the app guard a user-triggered async action with a ref, because
+`busy` state reaches the control a render after the click that started it.
+**Three did not, and all three create things:**
+
+| | What a second click inside the gap does |
+| --- | --- |
+| `ScheduleForm.onSave` | creates a second schedule |
+| `ServerForm.onSave` / `onDelete` | creates a second MCP server |
+| `JsonImport.onImport` | imports **every server in the payload** twice |
+
+| | Before | After |
+| --- | --- | --- |
+| `ScheduleForm` | `setBusy` + a hand-rolled try/catch/notify | `useCommandAction` — the round 4 owner, whose guard is the ref |
+| `ServerForm` | `setSaving` only | a ref, local, with the reason written down |
+| `JsonImport` | `setBusy` only | a ref |
+
+### The guard that was put in the wrong place first
+
+The first attempt put the re-entry guard in `useAsyncFeedback.run`, the owner
+those forms share — six call sites fixed at once, which looked like the root.
+
+**An existing test refused it**: *"drops a superseded run's result"* asserts that
+a second run started while the first is in flight **is admitted and supersedes
+it**. The lease machinery exists for exactly that. A row editor whose user edits,
+saves, edits again and saves again before the first answer arrives must let the
+second win.
+
+So the guard belongs where the operation cannot be superseded — a form that
+closes on success has nothing to supersede — and not in the shared runner. The
+owner change was reverted along with the test written for it, and each form
+carries its own guard with the distinction stated at the call site.
+
+This is the round's most useful result: the suite stopped a change that would
+have quietly removed a designed capability to fix an unrelated one.
+
+### Checked and left alone
+
+- **Placeholder-as-label.** `ScheduleForm`'s four fields carry `aria-label` and
+  no visible label. So do most text inputs in the settings surface — `LinesField`
+  and one connection field are the only exceptions, and the reference puts the
+  label on the settings *row* rather than in the field. A surface-wide change to
+  stacked-form labelling is a product decision, not a defect fix.
+- **The cron field has no client-side validation.** The Runtime owns cron
+  validity; a second validator in the client would be a second owner of the same
+  rule, and presets cover the common shapes.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` and sixteen gates clean.
+- Settings suites 131/131; `useAsyncFeedback` 7/7 with its supersession test
+  intact.
+- `npm run test` excluding the live-runtime e2e — 2293 passed, 2 failed, both
+  `runtime/contract`'s `segment.finished.json` against its own validator.
+- `npm run visual:test` — 388 passed.
+
+### Open, for the next round
+
+1. The five ChatGPT-versus-Flame rows from round 5, waiting on a product answer.
+2. `delegated` has no raster coverage.
+3. **Nine settings panes have no fixture coverage.** The two read by hand both
+   had real defects; the other seven have not been read.

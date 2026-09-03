@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { PillButton, Pressable, Surface, TextArea, TextField } from "@/ui";
-import { rpcErrorText } from "@/lib/rpcErrors";
 import {
   createSchedule,
   scheduleMutationWasRetired,
   updateSchedule,
   type ScheduleConfig,
 } from "../application/scheduleCommands";
-import { notifyError } from "@/plugins/sdk";
+import { useCommandAction } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import {
@@ -30,15 +29,17 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
   const [draft, setDraft] = useState<ScheduleDraft>(() =>
     initialScheduleDraft(schedule, defaultCwd),
   );
-  const [busy, setBusy] = useState(false);
+  const { busy, run } = useCommandAction({
+    wasRetired: scheduleMutationWasRetired,
+    fallback: t("schedules.error.save"),
+  });
 
   const updateDraft = <K extends keyof ScheduleDraft>(key: K, value: ScheduleDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
   };
 
-  const onSave = async () => {
-    setBusy(true);
-    try {
+  const onSave = () =>
+    run(async () => {
       const input = scheduleInputFromDraft(draft);
       if (schedule) {
         await updateSchedule({
@@ -51,13 +52,7 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
         await createSchedule(input);
       }
       onDone();
-    } catch (err) {
-      if (scheduleMutationWasRetired(err)) return;
-      notifyError(rpcErrorText(err) ?? t("schedules.error.save"));
-    } finally {
-      setBusy(false);
-    }
-  };
+    });
 
   return (
     <Surface className="flex flex-col gap-3">
@@ -111,7 +106,7 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
           variant="accent"
           size="sm"
           disabled={!canSaveScheduleDraft(draft, busy)}
-          onClick={() => void onSave()}
+          onClick={onSave}
         >
           {busy ? t("schedules.saving") : t("schedules.save")}
         </PillButton>

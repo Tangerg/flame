@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Icon, PillButton, Surface, TextArea, TextButton } from "@/ui";
 import { mcpServerMutationWasRetired, useCreateMCPServer } from "../application/mcpServerConfig";
 import { notifyInfo } from "@/plugins/sdk";
@@ -11,9 +11,15 @@ export function JsonImport() {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  // One import at a time. `busy` disables the control a render after the click that started
+  // it, and this loop creates every server in the payload — a second start inside that gap
+  // imports the whole file twice.
+  const importing = useRef(false);
   const [error, setError] = useState<string | undefined>();
 
   const onImport = async () => {
+    if (importing.current) return;
+    importing.current = true;
     setBusy(true);
     setError(undefined);
     try {
@@ -34,6 +40,7 @@ export function JsonImport() {
       if (mcpServerMutationWasRetired(err)) return;
       setError(err instanceof Error ? err.message : t("mcp.import.error"));
     } finally {
+      importing.current = false;
       setBusy(false);
     }
   };
