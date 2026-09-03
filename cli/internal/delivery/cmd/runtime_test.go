@@ -93,7 +93,7 @@ func commandRuntimeProfile(t *testing.T) runtimebinding.Profile {
 		},
 		Limits: runtimebinding.Limits{
 			RunConcurrency: concurrency, CommandReplay: commandReplay,
-			RunReplay:                        runtimebinding.ReplayLimits{Scope: "runtimeInstanceRootSegment", MaxEvents: 1024, MaxBytes: 1 << 20},
+			RunReplay:                        protocol.RunReplayLimits{Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1024, MaxBytes: 1 << 20},
 			MCPAuthorizationRetentionSeconds: 600,
 			RuntimeSubscription:              protocol.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
 		},

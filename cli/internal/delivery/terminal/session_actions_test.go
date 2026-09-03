@@ -974,8 +974,8 @@ func steerReplayTestProfile(t *testing.T, workspace string) runtimebinding.Profi
 		Limits: runtimebinding.Limits{
 			RunConcurrency: boundedRunConcurrency(t, 1),
 			CommandReplay:  testCommandReplay(t, terminalTestReplayNamespace, 10*time.Minute),
-			RunReplay: runtimebinding.ReplayLimits{
-				Scope: "runtimeInstanceRootSegment", MaxEvents: 128, MaxBytes: 1 << 20,
+			RunReplay: protocol.RunReplayLimits{
+				Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 128, MaxBytes: 1 << 20,
 			},
 			MCPAuthorizationRetentionSeconds: 600,
 			RuntimeSubscription:              protocol.SubscriptionLimits{MaxTopics: 1, MaxWatches: 1},

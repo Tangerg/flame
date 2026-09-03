@@ -60,6 +60,7 @@ func TestProfileRejectsIncompleteIdentityCapabilitiesAndLimits(t *testing.T) {
 			return value
 		}(),
 		func() Profile { value := validProfile(t); value.Limits.RunReplay.MaxBytes = 0; return value }(),
+		func() Profile { value := validProfile(t); value.Limits.RunReplay.Scope = "future"; return value }(),
 		func() Profile { value := validProfile(t); value.Limits.RuntimeSubscription.MaxTopics = 0; return value }(),
 	}
 	for _, profile := range tests {
@@ -126,7 +127,7 @@ func validProfile(t *testing.T) Profile {
 		Limits: Limits{
 			RunConcurrency:                   boundedRunConcurrency(t, 4),
 			CommandReplay:                    commandReplayCapability(t, "idp_test", 10*time.Minute),
-			RunReplay:                        ReplayLimits{Scope: "runtimeInstanceRootSegment", MaxEvents: 1024, MaxBytes: 1 << 20},
+			RunReplay:                        protocol.RunReplayLimits{Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1024, MaxBytes: 1 << 20},
 			MCPAuthorizationRetentionSeconds: 600,
 			RuntimeSubscription:              protocol.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
 		},

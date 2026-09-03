@@ -129,7 +129,7 @@ func TestRuntimeStatusConsumesTheNegotiatedDiscoveryProfile(t *testing.T) {
 		Limits: runtimebinding.Limits{
 			RunConcurrency:                   boundedRunConcurrency(t, 4),
 			CommandReplay:                    testCommandReplay(t, "idp_test", 10*time.Minute),
-			RunReplay:                        runtimebinding.ReplayLimits{Scope: "runtimeInstanceRootSegment", MaxEvents: 1024, MaxBytes: 1 << 20},
+			RunReplay:                        protocol.RunReplayLimits{Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1024, MaxBytes: 1 << 20},
 			MCPAuthorizationRetentionSeconds: 600,
 			RuntimeSubscription:              protocol.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
 		},

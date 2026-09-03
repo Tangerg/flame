@@ -36,16 +36,10 @@ func (f Feature) Available() bool {
 	return f.Enabled && (!f.ClientOptIn || f.ClientRequested)
 }
 
-type ReplayLimits struct {
-	Scope     string `json:"scope"`
-	MaxEvents int    `json:"maxEvents"`
-	MaxBytes  int    `json:"maxBytes"`
-}
-
 type Limits struct {
 	RunConcurrency                   RunConcurrencyLimit         `json:"runConcurrency"`
 	CommandReplay                    commandreplay.Capability    `json:"commandReplay"`
-	RunReplay                        ReplayLimits                `json:"runReplay"`
+	RunReplay                        protocol.RunReplayLimits    `json:"runReplay"`
 	MCPAuthorizationRetentionSeconds int                         `json:"mcpAuthorizationRetentionSeconds"`
 	RuntimeSubscription              protocol.SubscriptionLimits `json:"runtimeSubscription"`
 }
@@ -113,8 +107,8 @@ func (l Limits) validate() error {
 	if l.MCPAuthorizationRetentionSeconds <= 0 {
 		return errors.New("runtime limits require positive MCP authorization retention")
 	}
-	if strings.TrimSpace(l.RunReplay.Scope) == "" || l.RunReplay.MaxEvents <= 0 || l.RunReplay.MaxBytes <= 0 {
-		return errors.New("runtime replay limits are incomplete")
+	if err := l.RunReplay.ValidateWire(); err != nil {
+		return fmt.Errorf("runtime limits: %w", err)
 	}
 	if err := l.RuntimeSubscription.ValidateWire(); err != nil {
 		return fmt.Errorf("runtime limits: %w", err)

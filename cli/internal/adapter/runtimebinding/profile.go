@@ -35,13 +35,9 @@ func projectRuntimeProfile(
 		StreamingMethods: append([]string(nil), discovery.Capabilities.StreamingMethods...),
 		Features:         make(map[string]Feature, len(discovery.Capabilities.Features)),
 		Limits: Limits{
-			RunConcurrency: runConcurrency,
-			CommandReplay:  commandReplay,
-			RunReplay: ReplayLimits{
-				Scope:     string(discovery.Capabilities.Limits.RunReplay.Scope),
-				MaxEvents: discovery.Capabilities.Limits.RunReplay.MaxEvents,
-				MaxBytes:  discovery.Capabilities.Limits.RunReplay.MaxBytes,
-			},
+			RunConcurrency:                   runConcurrency,
+			CommandReplay:                    commandReplay,
+			RunReplay:                        discovery.Capabilities.Limits.RunReplay,
 			MCPAuthorizationRetentionSeconds: discovery.Capabilities.Limits.MCPAuthorizationAttempts.RetentionSeconds,
 			RuntimeSubscription:              discovery.Capabilities.Limits.RuntimeSubscription,
 		},
