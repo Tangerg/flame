@@ -484,6 +484,15 @@ func TestOutputCollectionWireConstraints(t *testing.T) {
 
 	pending := PendingInterruptSet{Interrupts: []Interrupt{}}
 	assertConstraintField(t, pending.ValidateWire(), "PendingInterruptSet", "interrupts")
+	pending = PendingInterruptSet{
+		RootRunID: "run_1", SessionID: "ses_1", Interrupts: []Interrupt{{}},
+		CreatedAt: time.Unix(1, 0).UTC(),
+	}
+	if err := pending.ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected complete pending interrupt set: %v", err)
+	}
+	pending.CreatedAt = time.Time{}
+	assertConstraintField(t, pending.ValidateWire(), "PendingInterruptSet", "createdAt")
 
 	capability := ProblemData{
 		Type:                 ErrCapabilityNotNeg.Error(),

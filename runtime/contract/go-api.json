@@ -6106,7 +6106,7 @@
             {
               "name": "CreatedAt",
               "type": "time.Time",
-              "tag": "json:\"createdAt\""
+              "tag": "json:\"createdAt,omitzero\""
             }
           ],
           "methods": [

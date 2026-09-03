@@ -520,5 +520,5 @@ type PendingInterruptSet struct {
 	RootRunID  string      `json:"rootRunId"`
 	SessionID  string      `json:"sessionId"`
 	Interrupts []Interrupt `json:"interrupts"`
-	CreatedAt  time.Time   `json:"createdAt"`
+	CreatedAt  time.Time   `json:"createdAt,omitzero"`
 }
