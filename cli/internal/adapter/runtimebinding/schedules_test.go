@@ -10,12 +10,14 @@ import (
 )
 
 type scheduleBindingStub struct {
-	t       *testing.T
-	now     time.Time
-	actions []string
-	keys    map[string]struct{}
-	created protocol.CreateScheduleRequest
-	updated protocol.UpdateScheduleRequest
+	t            *testing.T
+	now          time.Time
+	actions      []string
+	keys         map[string]struct{}
+	created      protocol.CreateScheduleRequest
+	updated      protocol.UpdateScheduleRequest
+	createResult *protocol.Schedule
+	updateResult *protocol.Schedule
 }
 
 func (s *scheduleBindingStub) ListSchedules(_ context.Context, query protocol.PageQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.Schedule], error) {
@@ -34,6 +36,10 @@ func (s *scheduleBindingStub) ListSchedules(_ context.Context, query protocol.Pa
 func (s *scheduleBindingStub) CreateSchedule(_ context.Context, request protocol.CreateScheduleRequest, options flameruntime.CommandOptions) (*protocol.Schedule, error) {
 	s.assertCommand("create", options)
 	s.created = request
+	if s.createResult != nil {
+		result := cloneSchedule(*s.createResult)
+		return &result, nil
+	}
 	created := wireSchedule(s.now, "sch_created")
 	created.Title, created.Instructions, created.Cron = request.Title, request.Instructions, request.Cron
 	created.Provider, created.Model, created.ReasoningEffort = request.Provider, request.Model, request.ReasoningEffort
@@ -44,6 +50,10 @@ func (s *scheduleBindingStub) CreateSchedule(_ context.Context, request protocol
 func (s *scheduleBindingStub) UpdateSchedule(_ context.Context, request protocol.UpdateScheduleRequest, options flameruntime.CommandOptions) (*protocol.Schedule, error) {
 	s.assertCommand("update", options)
 	s.updated = request
+	if s.updateResult != nil {
+		result := cloneSchedule(*s.updateResult)
+		return &result, nil
+	}
 	updated := wireSchedule(s.now, request.ID)
 	updated.Revision = request.ExpectedRevision + 1
 	if request.Title != nil {
@@ -207,5 +217,50 @@ func TestScheduleAdapterRejectsAMutationForAnotherSchedule(t *testing.T) {
 	t.Parallel()
 	value := wireSchedule(time.Unix(1, 0), "sch_other")
 	_, err := scheduleResult("update schedule", "sch_expected", &value, nil)
+	requireRuntimeContractViolation(t, err)
+}
+
+func TestScheduleAdapterRejectsMismatchedMutationAcknowledgements(t *testing.T) {
+	now := time.Date(2026, time.August, 12, 10, 0, 0, 0, time.UTC)
+	newRuntime := func(stub *scheduleBindingStub) *Connection {
+		return &Connection{
+			schedules: stub,
+			workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
+				Ref: protocol.WorkspaceRef{Path: "/workspace"}, ProjectRoot: "/workspace",
+				Availability: protocol.WorkspaceAvailable,
+			}},
+			meta: requestMeta("test"),
+		}
+	}
+
+	t.Run("create", func(t *testing.T) {
+		request := protocol.CreateScheduleRequest{
+			Title: "Expected", Instructions: "review everything", Cron: "0 9 * * *",
+		}
+		result := wireSchedule(now, "sch_created")
+		result.Title = "Other"
+		result.Instructions, result.Cron = request.Instructions, request.Cron
+		stub := &scheduleBindingStub{t: t, now: now, keys: make(map[string]struct{}), createResult: &result}
+		_, err := newRuntime(stub).Create(t.Context(), request)
+		requireRuntimeContractViolation(t, err)
+	})
+
+	t.Run("update", func(t *testing.T) {
+		title := "Expected"
+		request := protocol.UpdateScheduleRequest{ID: "sch_1", ExpectedRevision: 1, Title: &title}
+		result := wireSchedule(now, request.ID)
+		result.Revision = request.ExpectedRevision + 1
+		result.Title = "Other"
+		stub := &scheduleBindingStub{t: t, now: now, keys: make(map[string]struct{}), updateResult: &result}
+		_, err := newRuntime(stub).Update(t.Context(), request)
+		requireRuntimeContractViolation(t, err)
+	})
+}
+
+func TestScheduleAdapterRejectsImpossibleScheduleProjection(t *testing.T) {
+	t.Parallel()
+	value := wireSchedule(time.Unix(1, 0), "sch_1")
+	value.Enabled = false
+	_, err := scheduleResult("update schedule", value.ID, &value, nil)
 	requireRuntimeContractViolation(t, err)
 }
