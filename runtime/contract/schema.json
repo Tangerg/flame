@@ -2359,9 +2359,6 @@
         "content": {
           "type": "string"
         },
-        "encoding": {
-          "type": "string"
-        },
         "endLine": {
           "type": "integer",
           "minimum": 1
@@ -2384,7 +2381,6 @@
       },
       "required": [
         "content",
-        "encoding",
         "path",
         "totalLines"
       ],

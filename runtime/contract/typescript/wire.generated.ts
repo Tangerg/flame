@@ -447,7 +447,6 @@ export interface FieldError {
 
 export interface FileContent {
   content: string;
-  encoding: string;
   endLine?: number;
   path: string;
   startLine?: number;

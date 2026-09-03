@@ -100,7 +100,7 @@ func (s *Handler) ReadWorkspaceFile(ctx context.Context, in protocol.ReadFileReq
 		return nil, wireWorkspaceError(err)
 	}
 	out := &protocol.FileContent{
-		Path: in.Path, Content: read.Content, Encoding: "utf-8", TotalLines: read.TotalLines, Truncated: read.Truncated,
+		Path: in.Path, Content: read.Content, TotalLines: read.TotalLines, Truncated: read.Truncated,
 	}
 	if in.StartLine != nil && read.EndLine > read.StartLine {
 		out.StartLine = read.StartLine + 1
