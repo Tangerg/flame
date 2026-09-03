@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
@@ -26,7 +28,7 @@ func (a *app) ShowAgentDocuments() {
 		})
 }
 
-func agentDocumentsDocument(workspacePath string, documents []workspace.AuthoringDocument) readerDocument {
+func agentDocumentsDocument(workspacePath string, documents []protocol.AgentDoc) readerDocument {
 	if len(documents) == 0 {
 		return paragraphDocument("Agent documents", workspacePath, []string{"No AGENTS.md documents apply to this workspace."})
 	}

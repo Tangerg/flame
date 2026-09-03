@@ -101,6 +101,10 @@ func TestAuthoringContextAdapterProjectsDocumentsAndRecipes(t *testing.T) {
 	if err != nil || len(documents) != 1 || documents[0].Scope != protocol.AgentDocScopeProjectRoot {
 		t.Fatalf("Documents = (%+v, %v)", documents, err)
 	}
+	stub.docs.Data[0].Path = "/mutated/AGENTS.md"
+	if documents[0].Path != "/workspace/AGENTS.md" {
+		t.Fatal("agent document projection aliases runtime catalog storage")
+	}
 	recipes, err := adapter.Recipes(t.Context(), "/workspace")
 	if err != nil || len(recipes) != 1 {
 		t.Fatalf("Recipes = (%+v, %v)", recipes, err)
@@ -116,6 +120,16 @@ func TestAuthoringContextAdapterRejectsInvalidWireValues(t *testing.T) {
 		{
 			name: "blank document path",
 			stub: &authoringContextBindingStub{docs: protocol.NewPage([]protocol.AgentDoc{{Path: " \t", Scope: protocol.AgentDocScopeHome}})},
+			read: func(adapter *AuthoringContext) error {
+				_, err := adapter.Documents(t.Context(), "/workspace")
+				return err
+			},
+		}, {
+			name: "repeated document path",
+			stub: &authoringContextBindingStub{docs: protocol.NewPage([]protocol.AgentDoc{
+				{Path: "/workspace/AGENTS.md", Scope: protocol.AgentDocScopeProjectRoot},
+				{Path: "/workspace/AGENTS.md", Scope: protocol.AgentDocScopeCWD},
+			})},
 			read: func(adapter *AuthoringContext) error {
 				_, err := adapter.Documents(t.Context(), "/workspace")
 				return err

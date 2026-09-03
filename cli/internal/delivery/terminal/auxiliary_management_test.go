@@ -58,8 +58,8 @@ func TestDiagnosticToolsRenderSchemaAndConfinedResultAcrossResize(t *testing.T) 
 
 type authoringContextServiceStub struct{}
 
-func (authoringContextServiceStub) Documents(context.Context, string) ([]workspace.AuthoringDocument, error) {
-	return []workspace.AuthoringDocument{{Path: "/workspace/AGENTS.md", Title: "Project policy", Scope: protocol.AgentDocScopeProjectRoot}}, nil
+func (authoringContextServiceStub) Documents(context.Context, string) ([]protocol.AgentDoc, error) {
+	return []protocol.AgentDoc{{Path: "/workspace/AGENTS.md", Title: "Project policy", Scope: protocol.AgentDocScopeProjectRoot}}, nil
 }
 
 func (authoringContextServiceStub) Recipes(context.Context, string) ([]workspace.AuthoringRecipe, error) {

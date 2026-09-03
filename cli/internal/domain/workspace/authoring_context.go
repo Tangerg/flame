@@ -6,16 +6,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-type AuthoringDocument struct {
-	Path  string
-	Title string
-	Scope protocol.AgentDocScope
-}
-
-func (d AuthoringDocument) Validate() error {
-	return (protocol.AgentDoc{Path: d.Path, Title: d.Title, Scope: d.Scope}).ValidateWire()
-}
-
 type AuthoringRecipe struct {
 	Name         string
 	Description  string

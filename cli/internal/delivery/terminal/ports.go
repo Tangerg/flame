@@ -123,7 +123,7 @@ type DiagnosticTools interface {
 }
 
 type AuthoringContext interface {
-	Documents(context.Context, string) ([]workspace.AuthoringDocument, error)
+	Documents(context.Context, string) ([]protocol.AgentDoc, error)
 	Recipes(context.Context, string) ([]workspace.AuthoringRecipe, error)
 }
 

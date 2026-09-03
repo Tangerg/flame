@@ -3,6 +3,7 @@ package runtimebinding
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
@@ -18,7 +19,7 @@ type authoringContextBinding interface {
 
 type AuthoringContext struct{ runtime *Connection }
 
-func (a *AuthoringContext) Documents(ctx context.Context, workspacePath string) ([]workspace.AuthoringDocument, error) {
+func (a *AuthoringContext) Documents(ctx context.Context, workspacePath string) ([]protocol.AgentDoc, error) {
 	r := a.runtime
 	query, err := authoringWorkspaceQuery(workspacePath)
 	if err != nil {
@@ -32,14 +33,18 @@ func (a *AuthoringContext) Documents(ctx context.Context, workspacePath string) 
 	if err != nil {
 		return nil, err
 	}
-	return projectUniqueValuesFallible("list agent documents", values, func(value protocol.AgentDoc) (workspace.AuthoringDocument, error) {
-		if err := protocol.ValidateWireTree(value); err != nil {
-			return workspace.AuthoringDocument{}, err
+	documents := slices.Clone(values)
+	seen := make(map[string]struct{}, len(documents))
+	for index, document := range documents {
+		if err := document.ValidateWire(); err != nil {
+			return nil, runtimeContractViolation("list agent documents item %d is invalid: %v", index+1, err)
 		}
-		return workspace.AuthoringDocument{Path: value.Path, Title: value.Title, Scope: value.Scope}, nil
-	}, func(document workspace.AuthoringDocument) string {
-		return document.Path
-	})
+		if _, duplicate := seen[document.Path]; duplicate {
+			return nil, runtimeContractViolation("list agent documents repeats %q", document.Path)
+		}
+		seen[document.Path] = struct{}{}
+	}
+	return documents, nil
 }
 
 func (a *AuthoringContext) Recipes(ctx context.Context, workspacePath string) ([]workspace.AuthoringRecipe, error) {
