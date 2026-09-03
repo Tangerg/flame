@@ -64,24 +64,5 @@ func openA2AToolSet(ctx context.Context, agents []A2AAgentConfig) (_ *scopea2a.T
 }
 
 func newA2AHTTPClient() *http.Client {
-	client := *http.DefaultClient
-	base := client.Transport
-	if base == nil {
-		base = http.DefaultTransport
-	}
-	client.Transport = a2aResponseRoundTripper{base: base, maxFrameBytes: maxA2AResponseFrameBytes}
-	return &client
-}
-
-type a2aResponseRoundTripper struct {
-	base          http.RoundTripper
-	maxFrameBytes int64
-}
-
-func (a a2aResponseRoundTripper) RoundTrip(request *http.Request) (*http.Response, error) {
-	response, err := a.base.RoundTrip(request)
-	if response != nil {
-		httpresponse.LimitBody(response, a.maxFrameBytes, errA2AResponseFrameTooLarge)
-	}
-	return response, err
+	return httpresponse.NewClient(maxA2AResponseFrameBytes, errA2AResponseFrameTooLarge)
 }

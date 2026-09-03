@@ -14,9 +14,7 @@ import (
 // blank-line event boundary. The caller owns the protocol-specific limit and
 // error vocabulary.
 func LimitBody(response *http.Response, maxFrameBytes int64, tooLarge error) {
-	if maxFrameBytes <= 0 || tooLarge == nil {
-		panic("httpresponse: a positive frame limit and size error are required")
-	}
+	validateFrameLimit(maxFrameBytes, tooLarge)
 	if response == nil || response.Body == nil {
 		return
 	}
@@ -27,6 +25,12 @@ func LimitBody(response *http.Response, maxFrameBytes int64, tooLarge error) {
 		remaining:   maxFrameBytes,
 		tooLarge:    tooLarge,
 		eventStream: err == nil && strings.EqualFold(mediaType, "text/event-stream"),
+	}
+}
+
+func validateFrameLimit(maxFrameBytes int64, tooLarge error) {
+	if maxFrameBytes <= 0 || tooLarge == nil {
+		panic("httpresponse: a positive frame limit and size error are required")
 	}
 }
 

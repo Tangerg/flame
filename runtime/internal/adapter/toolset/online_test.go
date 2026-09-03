@@ -1,9 +1,35 @@
 package toolset
 
 import (
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/scope/tools/web"
+	"github.com/Tangerg/scope/tools/web/jina"
 )
+
+func TestOnlineHTTPClientBoundsProviderResponseBeforeSDKDecode(t *testing.T) {
+	body := `{"data":{"content":"` + strings.Repeat("x", int(maxOnlineResponseFrameBytes)) + `"}}`
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(body))
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := jina.NewClient(jina.Config{
+		APIKey: "test-key", FetchBaseURL: server.URL, HTTPClient: newOnlineHTTPClient(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = client.Fetch(t.Context(), &web.FetchRequest{URL: "https://example.test"})
+	if !errors.Is(err, errOnlineResponseFrameTooLarge) {
+		t.Fatalf("Fetch error = %v, want errOnlineResponseFrameTooLarge", err)
+	}
+}
 
 func TestBuildOnlineRejectsMalformedAPIKeysDuringAssembly(t *testing.T) {
 	tests := []struct {

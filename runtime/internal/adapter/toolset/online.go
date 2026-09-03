@@ -3,6 +3,7 @@ package toolset
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"unicode"
 
@@ -12,7 +13,13 @@ import (
 	"github.com/Tangerg/scope/tools/web"
 	"github.com/Tangerg/scope/tools/web/jina"
 	"github.com/Tangerg/scope/tools/web/tavily"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpresponse"
 )
+
+const maxOnlineResponseFrameBytes int64 = 8 << 20
+
+var errOnlineResponseFrameTooLarge = errors.New("toolset: online response frame too large")
 
 // OnlineConfig groups the credentials network-reaching tools need (web /
 // httpreq). Empty fields disable the corresponding tool — no tool
@@ -39,15 +46,16 @@ type OnlineConfig struct {
 // provider fails to build (e.g. invalid HTTP allowlist).
 func buildOnline(online OnlineConfig) ([]toolcontract.Tool, error) {
 	var (
-		out []toolcontract.Tool
-		err error
+		out        []toolcontract.Tool
+		err        error
+		httpClient = newOnlineHTTPClient()
 	)
 
 	out, err = appendEnabled(out, online.JinaAPIKey != "", "web fetch (jina)", func() (toolcontract.Tool, error) {
 		if err := validateOnlineAPIKey(online.JinaAPIKey); err != nil {
 			return nil, err
 		}
-		client, clientErr := jina.NewClient(jina.Config{APIKey: online.JinaAPIKey})
+		client, clientErr := jina.NewClient(jina.Config{APIKey: online.JinaAPIKey, HTTPClient: httpClient})
 		if clientErr != nil {
 			return nil, clientErr
 		}
@@ -61,7 +69,7 @@ func buildOnline(online OnlineConfig) ([]toolcontract.Tool, error) {
 		if err := validateOnlineAPIKey(online.TavilyAPIKey); err != nil {
 			return nil, err
 		}
-		client, clientErr := tavily.NewClient(tavily.Config{APIKey: online.TavilyAPIKey})
+		client, clientErr := tavily.NewClient(tavily.Config{APIKey: online.TavilyAPIKey, HTTPClient: httpClient})
 		if clientErr != nil {
 			return nil, clientErr
 		}
@@ -83,6 +91,10 @@ func buildOnline(online OnlineConfig) ([]toolcontract.Tool, error) {
 	}
 
 	return out, nil
+}
+
+func newOnlineHTTPClient() *http.Client {
+	return httpresponse.NewClient(maxOnlineResponseFrameBytes, errOnlineResponseFrameTooLarge)
 }
 
 // validateOnlineAPIKey keeps malformed credential material from surviving
