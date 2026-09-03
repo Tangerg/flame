@@ -315,6 +315,7 @@ func (h *headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 	response, err := h.base.RoundTrip(r)
 	if response != nil {
 		h.lastStatus.Store(int64(response.StatusCode))
+		boundMCPResponseBody(response)
 	}
 	return response, err
 }
