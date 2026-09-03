@@ -566,6 +566,13 @@ func registerObjectConstraints(s *Shapes) {
 		Rules:  []ConditionalRule{{Required: []string{"createdAt", "updatedAt"}}},
 	})
 
+	// A PlanState is a committed replacement, so its revision and commit time
+	// are one value rather than independently optional metadata.
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.PlanState](),
+		Rules:  []ConditionalRule{{Required: []string{"updatedAt"}}},
+	})
+
 	hookRules := []ConditionalRule{{
 		RequiredAny: []string{"command", "inject"},
 	}, {

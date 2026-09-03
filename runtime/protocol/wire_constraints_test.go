@@ -143,6 +143,18 @@ func TestGoalRequiresLifecycleTimes(t *testing.T) {
 	}
 }
 
+func TestPlanStateRequiresUpdateTime(t *testing.T) {
+	t.Parallel()
+
+	state := PlanState{Revision: 1, Steps: []PlanStep{}}
+	assertConstraintField(t, state.ValidateWire(), "PlanState", "updatedAt")
+
+	state.UpdatedAt = time.Unix(1, 0).UTC()
+	if err := state.ValidateWire(); err != nil {
+		t.Fatalf("ValidateWire rejected a timestamped Plan state: %v", err)
+	}
+}
+
 func TestRunProgressCarriesAtLeastOneValidFact(t *testing.T) {
 	t.Parallel()
 
@@ -1664,7 +1676,7 @@ func TestRevisionWireConstraintsUseTheExactJSONEnvelope(t *testing.T) {
 		"UpdateScheduleRequest": UpdateScheduleRequest{
 			ID: "sch_1", ExpectedRevision: MaximumExactJSONInteger,
 		},
-		"PlanState": PlanState{Revision: MaximumExactJSONInteger},
+		"PlanState": PlanState{Revision: MaximumExactJSONInteger, UpdatedAt: time.Unix(1, 0).UTC()},
 	} {
 		if err := value.ValidateWire(); err != nil {
 			t.Fatalf("%s exact boundary: %v", name, err)

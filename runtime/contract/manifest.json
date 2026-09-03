@@ -3718,6 +3718,16 @@
       ]
     },
     {
+      "type": "PlanState",
+      "rules": [
+        {
+          "required": [
+            "updatedAt"
+          ]
+        }
+      ]
+    },
+    {
       "type": "HookInfo",
       "rules": [
         {

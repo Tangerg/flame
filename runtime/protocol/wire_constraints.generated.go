@@ -1743,6 +1743,14 @@ func (s Session) ValidateWire() error {
 	)
 }
 
+func (p PlanState) ValidateWire() error {
+	return collectWireViolations("PlanState",
+		positiveNumber("revision", p.Revision),
+		maximumNumber("revision", p.Revision, 9007199254740991),
+		requiredWhen(true, "updatedAt", p),
+	)
+}
+
 func (h HookInfo) ValidateWire() error {
 	return collectWireViolations("HookInfo",
 		requiredText("source", h.Source),
@@ -2277,13 +2285,6 @@ func (p Plan) ValidateWire() error {
 		requiredText("sessionId", p.SessionID),
 		identity("sessionId", p.SessionID),
 		maxLength("sessionId", p.SessionID, 256),
-	)
-}
-
-func (p PlanState) ValidateWire() error {
-	return collectWireViolations("PlanState",
-		positiveNumber("revision", p.Revision),
-		maximumNumber("revision", p.Revision, 9007199254740991),
 	)
 }
 

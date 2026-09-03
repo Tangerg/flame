@@ -124,7 +124,7 @@ type Plan struct {
 type PlanState struct {
 	Revision  uint64     `json:"revision"`
 	Steps     []PlanStep `json:"steps"`
-	UpdatedAt time.Time  `json:"updatedAt"`
+	UpdatedAt time.Time  `json:"updatedAt,omitzero"`
 }
 
 // GetPlanRequest is the plan.get body — the cold read for the Plan projection.

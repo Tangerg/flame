@@ -6155,7 +6155,7 @@
             {
               "name": "UpdatedAt",
               "type": "time.Time",
-              "tag": "json:\"updatedAt\""
+              "tag": "json:\"updatedAt,omitzero\""
             }
           ],
           "methods": [
