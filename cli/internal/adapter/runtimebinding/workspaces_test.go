@@ -103,11 +103,11 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 		head:   &protocol.FileHead{Lines: []protocol.FileLine{{LineNumber: 1, Text: "package main"}}},
 		search: &protocol.GrepResult{Matches: []protocol.GrepMatch{{Path: "main.go", LineNumber: 1, Text: "package main"}}, Total: 1},
 		filePages: map[string]*protocol.Page[protocol.FileEntry]{
-			"": protocol.NewPageWithCursor([]protocol.FileEntry{{
+			"": protocol.NewPageWithCursor([]protocol.FileEntry{{Path: "internal", Name: "internal", Type: protocol.FileEntryDir}}, "next"),
+			"next": protocol.NewPage([]protocol.FileEntry{{
 				Path: "main.go", Name: "main.go", Type: protocol.FileEntryFile, SizeBytes: &size,
 				ModifiedAt: time.Date(2026, 8, 12, 0, 0, 0, 0, time.UTC),
-			}}, "next"),
-			"next": protocol.NewPage([]protocol.FileEntry{{Path: "internal", Name: "internal", Type: protocol.FileEntryDir}}),
+			}}),
 		},
 		content: &protocol.FileContent{Content: "package main\n", TotalLines: 1},
 	}
@@ -165,8 +165,8 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 		t.Fatal("workspace search projection aliases runtime match storage")
 	}
 	files, err := runtime.Files(t.Context(), workspace.FilesRequest{Workspace: "/workspace"})
-	if err != nil || len(files.Entries) != 2 || files.Entries[0].Type != protocol.FileEntryFile ||
-		*files.Entries[0].SizeBytes != size || files.Entries[1].Type != protocol.FileEntryDir {
+	if err != nil || len(files.Entries) != 2 || files.Entries[0].Type != protocol.FileEntryDir ||
+		files.Entries[1].Type != protocol.FileEntryFile || *files.Entries[1].SizeBytes != size {
 		t.Fatalf("Files = (%+v, %v)", files, err)
 	}
 	if len(stub.fileCalls) != 2 || stub.fileCalls[0].Cursor != "" ||
@@ -253,6 +253,45 @@ func TestWorkspaceFilesRejectsCyclicRuntimePagination(t *testing.T) {
 	_, err := runtime.Files(t.Context(), workspace.FilesRequest{Workspace: "/workspace"})
 	if err == nil || !strings.Contains(err.Error(), "cyclic continuation cursor") {
 		t.Fatalf("Files error = %v, want cyclic continuation cursor", err)
+	}
+}
+
+func TestWorkspaceFilesRejectsPagesOutsideRuntimeOrder(t *testing.T) {
+	t.Parallel()
+	size := int64(1)
+	file := func(path string) protocol.FileEntry {
+		return protocol.FileEntry{Path: path, Name: path, Type: protocol.FileEntryFile, SizeBytes: &size}
+	}
+	directory := func(path string) protocol.FileEntry {
+		return protocol.FileEntry{Path: path, Name: path, Type: protocol.FileEntryDir}
+	}
+	for _, test := range []struct {
+		name  string
+		pages map[string]*protocol.Page[protocol.FileEntry]
+	}{
+		{
+			name: "path descends within a page",
+			pages: map[string]*protocol.Page[protocol.FileEntry]{
+				"": protocol.NewPage([]protocol.FileEntry{file("b.go"), file("a.go")}),
+			},
+		},
+		{
+			name: "directory follows a file across pages",
+			pages: map[string]*protocol.Page[protocol.FileEntry]{
+				"":     protocol.NewPageWithCursor([]protocol.FileEntry{file("a.go")}, "next"),
+				"next": protocol.NewPage([]protocol.FileEntry{directory("docs")}),
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			runtime := &Connection{
+				workspaces: &workspaceBindingStub{filePages: test.pages},
+				meta:       requestMeta("test"),
+			}
+			_, err := runtime.Files(t.Context(), workspace.FilesRequest{Workspace: "/workspace"})
+			requireRuntimeContractViolation(t, err)
+		})
 	}
 }
 

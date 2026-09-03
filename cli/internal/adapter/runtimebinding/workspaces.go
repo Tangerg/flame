@@ -214,10 +214,24 @@ func (r *Connection) Files(ctx context.Context, request workspace.FilesRequest) 
 					err,
 				)
 			}
-			result.Entries = append(result.Entries, workspace.FileEntry{
+			projected := workspace.FileEntry{
 				Path: entry.Path, Type: entry.Type, SizeBytes: cloneInt64(entry.SizeBytes),
 				ModifiedAt: entry.ModifiedAt,
-			})
+			}
+			if len(result.Entries) != 0 {
+				previous := result.Entries[len(result.Entries)-1]
+				previousDirectory := previous.Type == protocol.FileEntryDir
+				currentDirectory := projected.Type == protocol.FileEntryDir
+				if currentDirectory && !previousDirectory ||
+					currentDirectory == previousDirectory && projected.Path < previous.Path {
+					return workspace.FileListing{}, runtimeContractViolation(
+						"list workspace files returned path %q out of catalog order after %q",
+						projected.Path,
+						previous.Path,
+					)
+				}
+			}
+			result.Entries = append(result.Entries, projected)
 		}
 		more, err := cursors.Advance(page.NextCursor)
 		if err != nil {
