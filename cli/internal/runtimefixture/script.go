@@ -50,10 +50,13 @@ func Emit(delay time.Duration, event agent.Event) Step {
 // the step.
 func ReplacePlan(delay time.Duration, steps []protocol.PlanStep) Step {
 	cloned := slices.Clone(steps)
-	err := protocol.ValidateWireTree(protocol.Plan{
-		SessionID: "ses_fixture",
-		State:     &protocol.PlanState{Revision: 1, Steps: cloned},
-	})
+	var err error
+	for index, step := range cloned {
+		if validationErr := protocol.ValidateWireTree(step); validationErr != nil {
+			err = fmt.Errorf("plan step %d: %w", index+1, validationErr)
+			break
+		}
+	}
 	return Step{Delay: delay, plan: &planReplacementAction{steps: cloned, err: err}}
 }
 

@@ -28,6 +28,20 @@ func TestMockIdentitySequenceDoesNotWrapAndOverwriteExistingSession(t *testing.T
 	}
 }
 
+func TestPlanReplacementValidatesOnlyItsUncommittedSteps(t *testing.T) {
+	t.Parallel()
+
+	step := ReplacePlan(0, []protocol.PlanStep{{ID: "step_1", Status: protocol.PlanStatusPending}})
+	if err := validateSteps([]Step{step}, false); err == nil {
+		t.Fatal("Plan replacement accepted a step without a description")
+	}
+
+	step = ReplacePlan(0, []protocol.PlanStep{{ID: "step_1", Description: "verify", Status: protocol.PlanStatusPending}})
+	if err := validateSteps([]Step{step}, false); err != nil {
+		t.Fatalf("uncommitted Plan steps: %v", err)
+	}
+}
+
 func TestMockSessionUpdateRevisionExhaustionIsAtomic(t *testing.T) {
 	runtime := New()
 	state := runtime.sessions["ses_demo_1"]

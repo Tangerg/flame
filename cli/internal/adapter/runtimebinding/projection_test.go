@@ -482,6 +482,18 @@ func TestProjectEventConsumesAuthoritativeItemAndStateFrames(t *testing.T) {
 	}
 }
 
+func TestProjectPlanRejectsMissingCommitTime(t *testing.T) {
+	t.Parallel()
+
+	_, err := projectPlan(&protocol.Plan{
+		SessionID: "ses_1",
+		State:     &protocol.PlanState{Revision: 1, Steps: []protocol.PlanStep{}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "updatedAt") {
+		t.Fatalf("projectPlan error = %v, want updatedAt", err)
+	}
+}
+
 func TestProjectEventRejectsMalformedEnvelopeBeforeStreaming(t *testing.T) {
 	t.Parallel()
 
