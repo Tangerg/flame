@@ -40,8 +40,9 @@ func (c *Connections) Statuses() []mcpserver.ConnectionStatus {
 }
 
 // Tools lists the tools advertised by the connected servers, scoped to server
-// when non-empty. It queries each session's tools/list live, ordered by
-// (server, tool name) as dialed. Nil-safe.
+// when non-empty. It queries each session's tools/list live and preserves
+// connection and upstream encounter order; Application owns public catalog
+// order. Nil-safe.
 func (c *Connections) Tools(ctx context.Context, serverName *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
 	if c == nil {
 		return nil, nil

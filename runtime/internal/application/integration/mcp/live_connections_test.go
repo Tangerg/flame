@@ -41,6 +41,26 @@ func TestServersAndToolsUsePorts(t *testing.T) {
 	}
 }
 
+func TestToolsOwnCatalogOrder(t *testing.T) {
+	ports := &fakePorts{tools: []mcpserver.AdvertisedTool{
+		{Server: testMCPServerName("zeta"), Name: testRemoteToolName("alpha")},
+		{Server: testMCPServerName("alpha"), Name: testRemoteToolName("zeta")},
+		{Server: testMCPServerName("alpha"), Name: testRemoteToolName("alpha")},
+	}}
+	c := New(Config{ToolCatalog: ports})
+
+	tools, err := c.Tools(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tools) != 3 ||
+		tools[0].Server.String() != "alpha" || tools[0].Name.String() != "alpha" ||
+		tools[1].Server.String() != "alpha" || tools[1].Name.String() != "zeta" ||
+		tools[2].Server.String() != "zeta" || tools[2].Name.String() != "alpha" {
+		t.Fatalf("tools = %+v, want alpha/alpha, alpha/zeta, zeta/alpha", tools)
+	}
+}
+
 func TestDeleteServerPublishesRemovalAfterProjectionFailure(t *testing.T) {
 	projectionErr := errors.New("projection detach failed")
 	ports := &fakePorts{

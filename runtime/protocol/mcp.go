@@ -170,7 +170,8 @@ type UpdateMCPServerRequest struct {
 	AutoApproveTools *[]string            `json:"autoApproveTools,omitempty"`
 }
 
-// MCPTool is one tool exposed by an MCP server.
+// MCPTool is one tool exposed by an MCP server. Tool list results are ordered by
+// Server ascending and then Name ascending.
 type MCPTool struct {
 	Server      string         `json:"server"`
 	Name        string         `json:"name"`

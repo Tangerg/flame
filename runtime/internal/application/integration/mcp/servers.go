@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -559,12 +560,23 @@ func resolveEnvironment(
 }
 
 // Tools lists tools advertised by the connected MCP servers (scoped to server
-// when non-empty) for tool discovery.
+// when non-empty) for tool discovery, ordered by server then tool name.
 func (c *Coordinator) Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
 	if c.toolCatalog == nil {
 		return nil, nil
 	}
-	return c.toolCatalog.Tools(ctx, server)
+	tools, err := c.toolCatalog.Tools(ctx, server)
+	if err != nil {
+		return nil, err
+	}
+	tools = slices.Clone(tools)
+	slices.SortFunc(tools, func(first, second mcpserver.AdvertisedTool) int {
+		return cmp.Or(
+			cmp.Compare(first.Server.String(), second.Server.String()),
+			cmp.Compare(first.Name.String(), second.Name.String()),
+		)
+	})
+	return tools, nil
 }
 
 // refreshToolPolicy atomically publishes the policy derived from the

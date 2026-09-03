@@ -95,8 +95,8 @@ func (s *Handler) TestMCPServer(ctx context.Context, in protocol.MCPServerCandid
 	return &protocol.MCPTestResult{OK: result.OK, Error: problem}, nil
 }
 
-// ListMCPTools lists tools advertised by connected MCP servers, optionally
-// narrowed to one server.
+// ListMCPTools lists tools advertised by connected MCP servers in server/name
+// order, optionally narrowed to one server.
 func (s *Handler) ListMCPTools(ctx context.Context, in protocol.MCPListToolsRequest) (*protocol.Page[protocol.MCPTool], error) {
 	var name *mcpserver.ServerName
 	if in.Server != "" {

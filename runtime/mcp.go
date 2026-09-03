@@ -32,7 +32,7 @@ func (r *Runtime) TestMCPServer(ctx context.Context, request protocol.MCPServerC
 	return r.invoke[protocol.MCPServerCandidate, *protocol.MCPTestResult](ctx, delivery.MCPServersTest, request, callOptions(options))
 }
 
-// ListMCPTools returns tools advertised by configured MCP servers.
+// ListMCPTools returns advertised tools ordered by server then tool name.
 func (r *Runtime) ListMCPTools(ctx context.Context, request protocol.MCPListToolsRequest, options CallOptions) (*protocol.Page[protocol.MCPTool], error) {
 	return r.invoke[protocol.MCPListToolsRequest, *protocol.Page[protocol.MCPTool]](ctx, delivery.MCPToolsList, request, callOptions(options))
 }
