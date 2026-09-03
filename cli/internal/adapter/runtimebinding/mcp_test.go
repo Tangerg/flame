@@ -383,6 +383,55 @@ func TestMCPAdapterRejectsWritesOutsideRuntimeWireContract(t *testing.T) {
 	}
 }
 
+func TestMCPAdapterRejectsInvalidServerIdentityBeforeDispatch(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		invoke func(*Connection) error
+	}{
+		{
+			name: "delete",
+			invoke: func(runtime *Connection) error {
+				return runtime.DeleteServer(t.Context(), "Docs")
+			},
+		},
+		{
+			name: "reconnect",
+			invoke: func(runtime *Connection) error {
+				return runtime.ReconnectServer(t.Context(), "Docs")
+			},
+		},
+		{
+			name: "list tools",
+			invoke: func(runtime *Connection) error {
+				_, err := runtime.Tools(t.Context(), "Docs")
+				return err
+			},
+		},
+		{
+			name: "start authorization",
+			invoke: func(runtime *Connection) error {
+				_, err := runtime.StartAuthorization(t.Context(), "Docs")
+				return err
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			stub := &mcpBindingStub{t: t}
+			runtime := &Connection{mcp: stub, meta: requestMeta("test")}
+			err := test.invoke(runtime)
+			if err == nil || !strings.Contains(err.Error(), "server") {
+				t.Fatalf("operation error = %v, want server field", err)
+			}
+			if len(stub.actions) != 0 {
+				t.Fatalf("invalid operation reached Runtime: %v", stub.actions)
+			}
+		})
+	}
+}
+
 func TestMCPAdapterClassifiesBoundedContextErrors(t *testing.T) {
 	tests := []struct {
 		source error

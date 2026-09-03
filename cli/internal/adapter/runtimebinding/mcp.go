@@ -119,15 +119,15 @@ func (r *Connection) mutateMCPServer(
 	operation, server string,
 	mutate func(context.Context, protocol.MCPServerRequest, flameruntime.CommandOptions) error,
 ) error {
-	server = strings.TrimSpace(server)
-	if server == "" {
-		return fmt.Errorf("%s: server name is empty", operation)
+	request := protocol.MCPServerRequest{Server: strings.TrimSpace(server)}
+	if err := request.ValidateWire(); err != nil {
+		return fmt.Errorf("%s: %w", operation, err)
 	}
 	options, err := r.commandOptions()
 	if err != nil {
 		return err
 	}
-	return classifyMCPError(mutate(ctx, protocol.MCPServerRequest{Server: server}, options))
+	return classifyMCPError(mutate(ctx, request, options))
 }
 
 func (r *Connection) TestServer(ctx context.Context, candidate mcp.Candidate) (mcp.TestResult, error) {
@@ -153,8 +153,11 @@ func (r *Connection) TestServer(ctx context.Context, candidate mcp.Candidate) (m
 }
 
 func (r *Connection) Tools(ctx context.Context, server string) ([]mcp.Tool, error) {
-	server = strings.TrimSpace(server)
-	page, err := r.mcp.ListMCPTools(ctx, protocol.MCPListToolsRequest{Server: server}, r.callOptions())
+	request := protocol.MCPListToolsRequest{Server: strings.TrimSpace(server)}
+	if err := request.ValidateWire(); err != nil {
+		return nil, fmt.Errorf("list MCP tools: %w", err)
+	}
+	page, err := r.mcp.ListMCPTools(ctx, request, r.callOptions())
 	if err != nil {
 		return nil, classifyMCPError(err)
 	}
@@ -176,8 +179,8 @@ func (r *Connection) Tools(ctx context.Context, server string) ([]mcp.Tool, erro
 		if err := tool.Validate(); err != nil {
 			return nil, runtimeContractViolation("list MCP tools item %d is invalid: %v", index+1, err)
 		}
-		if server != "" && tool.Server != server {
-			return nil, runtimeContractViolation("list MCP tools for %q returned a tool from %q", server, tool.Server)
+		if request.Server != "" && tool.Server != request.Server {
+			return nil, runtimeContractViolation("list MCP tools for %q returned a tool from %q", request.Server, tool.Server)
 		}
 		identity := [2]string{tool.Server, tool.Name}
 		if _, duplicate := seen[identity]; duplicate {
@@ -190,16 +193,16 @@ func (r *Connection) Tools(ctx context.Context, server string) ([]mcp.Tool, erro
 }
 
 func (r *Connection) StartAuthorization(ctx context.Context, server string) (mcp.AuthorizationAttempt, error) {
-	server = strings.TrimSpace(server)
-	if server == "" {
-		return mcp.AuthorizationAttempt{}, errors.New("start MCP authorization: server name is empty")
+	request := protocol.CreateMCPAuthorizationAttemptRequest{Server: strings.TrimSpace(server)}
+	if err := request.ValidateWire(); err != nil {
+		return mcp.AuthorizationAttempt{}, fmt.Errorf("start MCP authorization: %w", err)
 	}
 	options, err := r.commandOptions()
 	if err != nil {
 		return mcp.AuthorizationAttempt{}, err
 	}
-	result, err := r.mcp.CreateMCPAuthorizationAttempt(ctx, protocol.CreateMCPAuthorizationAttemptRequest{Server: server}, options)
-	return projectMCPAuthorizationResult("start MCP authorization", mcpAuthorizationIdentity{server: server}, result, err)
+	result, err := r.mcp.CreateMCPAuthorizationAttempt(ctx, request, options)
+	return projectMCPAuthorizationResult("start MCP authorization", mcpAuthorizationIdentity{server: request.Server}, result, err)
 }
 
 func (r *Connection) GetAuthorization(ctx context.Context, reference mcp.AuthorizationReference) (mcp.AuthorizationAttempt, error) {
