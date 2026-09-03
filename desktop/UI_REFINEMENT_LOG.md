@@ -1985,3 +1985,50 @@ consumer**.
 ### Open
 
 Rounds 19–23's items, plus the arrangement question above.
+
+## Round 25 — two overlays nobody had ever photographed
+
+Not waiting on the composer decision. Open item: the command menu had no raster
+coverage. Checking turned up a bigger hole — **the session finder had none
+either**. It is loaded by the shell fixture and never opened, so both search
+overlays, and the `SearchOverlay` atom under them that round 18 gave focus
+handoff to, had never been in a frame or an audit.
+
+| | Before | After |
+| --- | --- | --- |
+| Frames | none | 2 goldens: the finder light, the command menu dark |
+| Accessibility | none | 10 assertions: a WCAG 2.2 AA audit of each in both themes, each at the smallest UI size, and both text-clipping audits |
+| How a fixture opens one | it could not | an `overlay` route parameter, driving the store the shortcut drives |
+
+The fixture loads `defaultCommands`, the menu and two views, so the frame carries
+both kinds of row — one that runs with a key and one that opens a panel.
+
+### What the frames showed
+
+**A scrim I thought was missing.** The overlay looked undimmed. Measured before
+believing it: the same background pixel reads `255,255,255` closed and
+`221,221,221` open — 13.3% black, exactly `bg-scrim`. Nothing wrong; I had misread
+a PNG.
+
+**A ⌘ said twice on every row.** Every command row carried a constant `command`
+glyph, and every command row's key chip starts with ⌘ as well, so each row showed
+the same symbol at both ends. The glyph was doing no work: in a list where each
+row is either a command or a `View:`, the view's own glyph and the prefix already
+say which is which.
+
+| | Before | After |
+| --- | --- | --- |
+| A command row | `⌘  Close panel or chat        ⌘ W` | `Close panel or chat        ⌘ W` |
+| A view row | `⌘  View: Terminal` | the terminal glyph, as before |
+| Label alignment | — | the icon slot is held empty, so both kinds start on one edge |
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` and all fifteen guards — green.
+- 1897 tests passing; the menu's icon rule is pinned in its component test.
+- `visual` — **402 passed**, up from 390: two goldens and ten closure assertions
+  added. One run showed the round-17 `empty` flake; the next was clean.
+
+### Open
+
+Rounds 19–24's items, less the command menu's missing coverage.

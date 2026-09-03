@@ -38,7 +38,6 @@ export function CommandMenu() {
     ...commands.map((command) => ({
       key: command.id,
       label: t(command.label),
-      icon: "command",
       combo: command.combo,
       run: () => void command.run(),
     })),
@@ -72,11 +71,18 @@ export function CommandMenu() {
           },
           children: (
             <>
-              <Icon
-                name={knownIconName(choice.icon) ?? "command"}
-                size="sm"
-                className="shrink-0 text-fg-muted"
-              />
+              {/* A command has no glyph of its own, and a ⌘ on every row would say what the
+                  key beside it already does — twice. The slot is held so the labels of both
+                  kinds of row start on the same edge. */}
+              {knownIconName(choice.icon) ? (
+                <Icon
+                  name={knownIconName(choice.icon)!}
+                  size="sm"
+                  className="shrink-0 text-fg-muted"
+                />
+              ) : (
+                <span aria-hidden className="size-[var(--icon-sm)] shrink-0" />
+              )}
               <span className="min-w-0 flex-1 truncate">{choice.label}</span>
               {choice.combo && (
                 <span className="flex shrink-0 items-center gap-1">

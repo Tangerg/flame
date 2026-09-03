@@ -2,7 +2,11 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Browser, type Page } from "./test";
 import { DEFAULT_MOTION } from "@/lib/appearance";
 import { VISUAL_AGENT_STATES } from "./agentSessionSnapshots";
-import { VISUAL_WORK_INDEX_STATES } from "./shellFixtureStates";
+import {
+  VISUAL_SHELL_OVERLAYS,
+  VISUAL_WORK_INDEX_STATES,
+  type VisualShellOverlay,
+} from "./shellFixtureStates";
 import { VISUAL_WORKSPACE_STATES, VISUAL_WORKSPACE_VIEWPORT } from "./workspaceFixtureStates";
 import { en } from "@/lib/i18n/locales/en";
 
@@ -37,6 +41,7 @@ interface FixtureRoute {
   theme?: "light" | "dark";
   motion?: "full";
   fontSize?: number;
+  overlay?: VisualShellOverlay;
 }
 
 async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
@@ -57,6 +62,7 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
   });
   if (route.motion) query.set("motion", route.motion);
   if (route.fontSize !== undefined) query.set("font-size", String(route.fontSize));
+  if (route.overlay) query.set("overlay", route.overlay);
 
   await page.goto(`${VISUAL_URL}?${query}`);
   await page.locator("html[data-visual-ready]").waitFor();
@@ -123,13 +129,22 @@ const ACCESSIBILITY_ROUTES: readonly FixtureRoute[] = [
   ...VISUAL_AGENT_STATES.map((state) => ({ fixture: "agent" as const, state })),
   ...VISUAL_WORK_INDEX_STATES.map((state) => ({ fixture: "shell" as const, state })),
   ...VISUAL_WORKSPACE_STATES.map((state) => ({ fixture: "workspace" as const, state })),
+  // The two search overlays: a modal dialog is where a name, a role or a reachable control
+  // goes missing, and neither was in this audit until they had a fixture to open them from.
+  ...VISUAL_SHELL_OVERLAYS.map((overlay) => ({
+    fixture: "shell" as const,
+    state: "populated",
+    overlay,
+  })),
 ].flatMap((route) => [
   { ...route, theme: "light" as const },
   { ...route, theme: "dark" as const },
 ]);
 
 for (const route of ACCESSIBILITY_ROUTES) {
-  test(`WCAG audit ${route.fixture} ${route.state} ${route.theme}`, async ({ page }) => {
+  test(`WCAG audit ${route.fixture} ${route.overlay ?? route.state} ${route.theme}`, async ({
+    page,
+  }) => {
     await openFixture(page, route);
 
     await expectNoWcagViolations(page);
@@ -358,7 +373,9 @@ for (const state of ["waves", "tool-shells", "delegated", "narrative"] as const)
 // the sidebar's section labels were shaving the tail off the "j" in "Projects". A
 // `line-clamp` is exempt: it cuts on purpose and says so with an ellipsis.
 for (const route of ACCESSIBILITY_ROUTES.filter((r) => r.theme === "light")) {
-  test(`no text is cut off vertically — ${route.fixture} ${route.state}`, async ({ page }) => {
+  test(`no text is cut off vertically — ${route.fixture} ${route.overlay ?? route.state}`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1120, height: 720 });
     await openFixture(page, { ...route, fontSize: 18 });
 
@@ -484,7 +501,7 @@ async function horizontallyClippedText(page: Page): Promise<string[]> {
 // below that width the product intentionally folds the material, and the narrow
 // presentation boundary has its own workspace test.
 for (const route of ACCESSIBILITY_ROUTES.filter((r) => r.theme === "light")) {
-  test(`no text is cut off with no way to read it — ${route.fixture} ${route.state}`, async ({
+  test(`no text is cut off with no way to read it — ${route.fixture} ${route.overlay ?? route.state}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1120, height: 720 });
@@ -984,7 +1001,9 @@ test("a text-bearing control meets the minimum target size", async ({ page }) =>
 // The SMALLEST UI size is where a control whose box is only its text line falls under the
 // minimum — it keeps shrinking with the type, and half a pixel short still fails.
 for (const route of ACCESSIBILITY_ROUTES.filter((candidate) => candidate.theme === "light")) {
-  test(`WCAG audit ${route.fixture} ${route.state} at the smallest UI size`, async ({ page }) => {
+  test(`WCAG audit ${route.fixture} ${route.overlay ?? route.state} at the smallest UI size`, async ({
+    page,
+  }) => {
     await openFixture(page, { ...route, fontSize: 11 });
     await expectNoWcagViolations(page);
   });

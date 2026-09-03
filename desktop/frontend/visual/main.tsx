@@ -14,7 +14,12 @@ import { installDocumentAppearance } from "@/plugins/builtin/theme/adapters/docu
 import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
 import { VisualFoundationFixture } from "./VisualFoundationFixture";
 import { VISUAL_AGENT_STATES, type VisualAgentState } from "./agentSessionSnapshots";
-import { VISUAL_WORK_INDEX_STATES, type VisualWorkIndexState } from "./shellFixtureStates";
+import {
+  VISUAL_WORK_INDEX_STATES,
+  isVisualShellOverlay,
+  type VisualShellOverlay,
+  type VisualWorkIndexState,
+} from "./shellFixtureStates";
 import { isVisualWorkspaceState, type VisualWorkspaceState } from "./workspaceFixtureStates";
 import "../src/styles/globals.css";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
@@ -41,6 +46,10 @@ function fixtureTheme(value: string | null): FixtureTheme {
 const query = new URLSearchParams(window.location.search);
 const theme = fixtureTheme(query.get("theme"));
 const sidebarOpen = query.get("sidebar") !== "collapsed";
+const requestedOverlay = query.get("overlay");
+const shellOverlay: VisualShellOverlay | null = isVisualShellOverlay(requestedOverlay)
+  ? requestedOverlay
+  : null;
 const requestedFixture = query.get("fixture");
 const fixture =
   requestedFixture === "agent" || requestedFixture === "workspace" || requestedFixture === "shell"
@@ -118,7 +127,7 @@ async function fixtureNode(): Promise<ReactNode> {
       import("./VisualShellFixture"),
       import("./installVisualShellFixture"),
     ]);
-    await installVisualShellFixture(workIndexState, theme, sidebarOpen);
+    await installVisualShellFixture(workIndexState, theme, sidebarOpen, shellOverlay);
     return <VisualShellFixture state={workIndexState} />;
   }
   const [{ VisualAgentStateFixture }, { installVisualAgentFixture }] = await Promise.all([

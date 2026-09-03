@@ -8,6 +8,11 @@ import {
   type AgentSessionSummary,
 } from "@/plugins/builtin/agent/public/session";
 import sessionSearch from "@/plugins/builtin/command/session-search";
+import commandMenu from "@/plugins/builtin/command/command-menu";
+import { useSessionSearchStore } from "@/plugins/builtin/command/session-search/application/sessionSearchState";
+import { useCommandMenuStore } from "@/plugins/builtin/command/command-menu/application/commandMenuState";
+import { defaultCommands } from "@/plugins/builtin/defaults";
+import { searchView, terminalView } from "@/plugins/builtin/workspace/workspace-views";
 import {
   sidebarActions,
   sidebarFooter,
@@ -27,7 +32,11 @@ import { DATA_PROVIDER, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
 import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
 import { useShellLayoutStore } from "@/plugins/builtin/workspace/adapters/shellLayoutStore";
-import type { VisualShellTheme, VisualWorkIndexState } from "./shellFixtureStates";
+import type {
+  VisualShellOverlay,
+  VisualShellTheme,
+  VisualWorkIndexState,
+} from "./shellFixtureStates";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { installVisualRuntimeServiceStatusPort } from "./installVisualRuntimeServiceStatusPort";
 
@@ -162,6 +171,7 @@ export async function installVisualShellFixture(
   state: VisualWorkIndexState,
   theme: VisualShellTheme,
   sidebarOpen: boolean,
+  overlay: VisualShellOverlay | null = null,
 ): Promise<void> {
   queryClient.clear();
   queryClient.setQueryDefaults([WORKSPACE_PROJECTS_KEY], { retry: false });
@@ -193,9 +203,18 @@ export async function installVisualShellFixture(
     flameDark,
     ...builtinVisualStyles,
     sessionSearch,
+    // Commands and two views so the menu has both kinds of row to photograph — one that
+    // carries a key and one that opens a panel.
+    defaultCommands,
+    commandMenu,
+    searchView,
+    terminalView,
     sidebarActions,
     sidebarProjects,
     sidebarRecents,
     sidebarFooter,
   );
+
+  useSessionSearchStore.setState({ open: overlay === "finder" });
+  useCommandMenuStore.setState({ open: overlay === "commands" });
 }

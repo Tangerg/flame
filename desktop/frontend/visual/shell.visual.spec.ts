@@ -1,6 +1,7 @@
 import { expect, test, type Browser, type Page } from "./test";
 import {
   VISUAL_WORK_INDEX_STATES,
+  type VisualShellOverlay,
   type VisualShellTheme,
   type VisualWorkIndexState,
 } from "./shellFixtureStates";
@@ -12,6 +13,7 @@ interface ShellRoute {
   state: VisualWorkIndexState;
   sidebar?: "expanded" | "collapsed";
   motion?: "full";
+  overlay?: VisualShellOverlay;
 }
 
 async function openShell(page: Page, route: ShellRoute): Promise<void> {
@@ -22,6 +24,7 @@ async function openShell(page: Page, route: ShellRoute): Promise<void> {
     sidebar: route.sidebar ?? "expanded",
   });
   if (route.motion) query.set("motion", route.motion);
+  if (route.overlay) query.set("overlay", route.overlay);
   await page.goto(`${VISUAL_URL}?${query}`);
   await page.locator("html[data-visual-ready]").waitFor();
 }
@@ -236,12 +239,28 @@ const DPR_ONE_GOLDENS: readonly ShellGolden[] = [
     viewport: { width: 1120, height: 720 },
     route: { theme: "dark", state: "populated", sidebar: "collapsed" },
   },
+  // Both search overlays are the same atom, and nothing photographed either: the finder
+  // shipped unphotographed, and the command menu was built in rounds 18-19 without a frame.
+  {
+    name: "shell-light-finder-1440x900.png",
+    viewport: { width: 1440, height: 900 },
+    route: { theme: "light", state: "populated", overlay: "finder" },
+  },
+  {
+    name: "shell-dark-commands-1440x900.png",
+    viewport: { width: 1440, height: 900 },
+    route: { theme: "dark", state: "populated", overlay: "commands" },
+  },
 ];
 
 for (const golden of DPR_ONE_GOLDENS) {
   test(`shell golden ${golden.name}`, async ({ page }) => {
     await page.setViewportSize(golden.viewport);
     await openShell(page, golden.route);
+    if (golden.route.overlay) {
+      await expect(page.locator('[data-slot="search-overlay"]')).toBeVisible();
+      await expect(page.getByRole("option").first()).toBeVisible();
+    }
     if (golden.route.sidebar !== "collapsed") {
       await waitForWorkIndexState(page, golden.route.state);
     }
