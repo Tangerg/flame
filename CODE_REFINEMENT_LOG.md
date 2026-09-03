@@ -7,10 +7,10 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–162 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–163 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
-- The current Runtime contract is `c6a0bde9` (`refactor(runtime): remove duplicate
-  import identity checks`).
+- The current Runtime contract is `4eddab70` (`refactor(runtime): remove duplicate
+  item scope check`).
 - Authorized code scope remains `runtime` and `cli`. Desktop work is concurrent
   user-owned work and must not be modified by this refinement stream.
 - The configured provider credential is used only through Runtime configuration.
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–162 — exact handoff
+## Rounds 101–163 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -122,6 +122,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 160 | `6f9c4b77` + CLI dependency update | Unified live and portable content validation so both reject blank text and non-image media types before projection or import. |
 | 161 | `0d38d55a` + CLI dependency update | Required nonblank live and portable tool names from one generated rule, then collapsed four repeated CLI artifact-import rejection harnesses into one boundary helper. |
 | 162 | `c6a0bde9` + CLI dependency update | Removed the import request's duplicate restatement of nested artifact Session identity and the decoder's third check while preserving the same tree-qualified rejection. |
+| 163 | `4eddab70` + CLI dependency update | Removed the final production parent-to-child constraint restatement; item scope now owns its discriminator once while list requests preserve the same nested rejection. |
 
 ## Verification contract
 
@@ -159,7 +160,7 @@ repeated here.
 
 ## Remaining direction
 
-- Continue after Round 162 by auditing complete Runtime catalogs and CLI
+- Continue after Round 163 by auditing complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the
