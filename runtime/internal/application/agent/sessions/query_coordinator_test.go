@@ -103,6 +103,15 @@ type fakeRuns struct {
 	limit           int
 }
 
+type rawRunPageReader struct {
+	*fakeRuns
+	page []run.Run
+}
+
+func (r *rawRunPageReader) PageRuns(context.Context, string, []run.Status, bool, int64, string, int) ([]run.Run, error) {
+	return r.page, nil
+}
+
 func (f *fakeRuns) Run(_ context.Context, runID string) (run.Run, bool, error) {
 	for _, run := range f.history {
 		if run.ID() == runID {
@@ -117,6 +126,9 @@ func (f *fakeRuns) PageRuns(_ context.Context, sessionID string, statuses []run.
 	f.beforeCreatedAt, f.beforeRunID, f.limit = beforeCreatedAt, beforeRunID, limit
 	var out []run.Run
 	for _, run := range f.history {
+		if sessionID != "" && run.SessionID() != sessionID {
+			continue
+		}
 		if !includeDescendants && run.Lineage().IsChild() {
 			continue
 		}
@@ -558,6 +570,10 @@ func TestTimeAndRunIDAnchorRejectsForgedIdentityMaterial(t *testing.T) {
 // through the three lifecycle positions so a status filter has something to
 // exclude.
 func testSessionRunHistory(ids ...string) []run.Run {
+	return testRunHistory("ses_1", ids...)
+}
+
+func testRunHistory(sessionID string, ids ...string) []run.Run {
 	states := [...]run.State{run.Running, run.Waiting, run.Completed}
 	out := make([]run.Run, 0, len(ids))
 	for i, id := range ids {
@@ -567,7 +583,7 @@ func testSessionRunHistory(ids ...string) []run.Run {
 			value := run.OutcomeCompleted
 			outcome = &value
 		}
-		record := testsupport.MustRestoreRun(run.Snapshot{ID: id, SessionID: "ses_1", State: state,
+		record := testsupport.MustRestoreRun(run.Snapshot{ID: id, SessionID: sessionID, State: state,
 			Outcome: outcome, CreatedAt: time.Unix(0, int64(len(ids)-i)).UTC()})
 		out = append(out, record)
 	}
@@ -699,6 +715,92 @@ func TestListRunPageWalksBackwardThroughHistory(t *testing.T) {
 	}
 }
 
+func TestListRunPageRejectsBrokenStoreOutput(t *testing.T) {
+	ordered := testSessionRunHistory("run_3", "run_2", "run_1")
+	createdAt := time.Unix(10, 0).UTC()
+	tieAscending := []run.Run{
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_a", SessionID: "ses_1", CreatedAt: createdAt}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_b", SessionID: "ses_1", CreatedAt: createdAt}),
+	}
+	for name, page := range map[string][]run.Run{
+		"invalid aggregate":     {{}},
+		"duplicate identity":    {ordered[0], ordered[0]},
+		"creation out of order": {ordered[1], ordered[0]},
+		"id tie out of order":   tieAscending,
+		"excess overfetch":      ordered,
+	} {
+		t.Run(name, func(t *testing.T) {
+			reader := &rawRunPageReader{fakeRuns: &fakeRuns{}, page: page}
+			coordinator := newQueryCoordinator(t, QueryDependencies{
+				Transcript: &fakeTranscript{}, Runs: reader, Sessions: &fakeSessions{},
+			})
+			if _, err := coordinator.ListRunPage(t.Context(), RunPageFilter{IncludeDescendants: true}, "", explicitPageLimit(t, 1)); err == nil {
+				t.Fatal("ListRunPage accepted broken store output")
+			}
+		})
+	}
+}
+
+func TestListRunPageRejectsRowsOutsideFilterOrCursor(t *testing.T) {
+	root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_root", SessionID: "ses_other", CreatedAt: time.Unix(3, 0).UTC()})
+	waiting := testsupport.MustRestoreRun(run.Snapshot{ID: "run_waiting", SessionID: "ses_1", State: run.Waiting, CreatedAt: time.Unix(2, 0).UTC()})
+	child := testsupport.MustRestoreRun(run.Snapshot{
+		ID: "run_child", SessionID: "ses_1", CreatedAt: time.Unix(1, 0).UTC(),
+		Lineage: run.Lineage{SpawnedByItemID: "item_spawn", ParentRunID: "run_parent", RootRunID: "run_parent"},
+	})
+	for _, test := range []struct {
+		name   string
+		filter RunPageFilter
+		value  run.Run
+	}{
+		{name: "Session", filter: RunPageFilter{SessionID: "ses_1", IncludeDescendants: true}, value: root},
+		{name: "status", filter: RunPageFilter{Statuses: []run.Status{run.StatusRunning}, IncludeDescendants: true}, value: waiting},
+		{name: "descendant", filter: RunPageFilter{}, value: child},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			reader := &rawRunPageReader{fakeRuns: &fakeRuns{}, page: []run.Run{test.value}}
+			coordinator := newQueryCoordinator(t, QueryDependencies{
+				Transcript: &fakeTranscript{}, Runs: reader, Sessions: &fakeSessions{},
+			})
+			if _, err := coordinator.ListRunPage(t.Context(), test.filter, "", explicitPageLimit(t, 1)); err == nil {
+				t.Fatal("ListRunPage accepted a Run outside its filter")
+			}
+		})
+	}
+
+	reader := &rawRunPageReader{fakeRuns: &fakeRuns{}, page: []run.Run{root}}
+	coordinator := newQueryCoordinator(t, QueryDependencies{
+		Transcript: &fakeTranscript{}, Runs: reader, Sessions: &fakeSessions{},
+	})
+	cursor, err := pagination.Encode(runPageNamespace, []string{"", "", "true"}, []string{
+		strconv.FormatInt(root.CreatedAt().UnixNano(), 10), root.ID(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := coordinator.ListRunPage(t.Context(), RunPageFilter{IncludeDescendants: true}, cursor, explicitPageLimit(t, 1)); err == nil {
+		t.Fatal("ListRunPage accepted the cursor anchor again")
+	}
+	if _, err := coordinator.ListRunPage(t.Context(), RunPageFilter{Statuses: []run.Status{"other"}}, "", explicitPageLimit(t, 1)); err == nil {
+		t.Fatal("ListRunPage accepted an invalid status filter")
+	}
+}
+
+func TestListRunPageDoesNotExposeStoreSlice(t *testing.T) {
+	reader := &rawRunPageReader{fakeRuns: &fakeRuns{}, page: testSessionRunHistory("run_2", "run_1")}
+	coordinator := newQueryCoordinator(t, QueryDependencies{
+		Transcript: &fakeTranscript{}, Runs: reader, Sessions: &fakeSessions{},
+	})
+	page, err := coordinator.ListRunPage(t.Context(), RunPageFilter{IncludeDescendants: true}, "", explicitPageLimit(t, 2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	page.Rows[0] = run.Run{}
+	if got := reader.page[0].ID(); got != "run_2" {
+		t.Fatalf("store row changed through page result: %q", got)
+	}
+}
+
 // TestListRunPageReturnsEveryStatusUntilFiltered pins the default: the read is the
 // whole history, not the work in progress. A page that hid finished runs would make
 // "what did this session cost" unanswerable from the run record, which is the one
@@ -769,9 +871,13 @@ func TestListRunPageIncludesDescendantsAndBindsTheCursor(t *testing.T) {
 // all, with nothing to say why.
 func TestListRunPageRefusesACursorFromAnotherQuery(t *testing.T) {
 	ctx := context.Background()
+	runHistory := append(
+		testRunHistory("ses_other", "run_6", "run_5", "run_4"),
+		testSessionRunHistory("run_3", "run_2", "run_1")...,
+	)
 	c := newQueryCoordinator(t, QueryDependencies{
 		Transcript: &fakeTranscript{items: sequencedItems(5)},
-		Runs:       &fakeRuns{history: testSessionRunHistory("run_3", "run_2", "run_1")},
+		Runs:       &fakeRuns{history: runHistory},
 		Interrupts: &fakeInterrupts{pending: testSessionPendingRuns("run_1", "run_2", "run_3")},
 		Sessions:   &fakeSessions{},
 	})

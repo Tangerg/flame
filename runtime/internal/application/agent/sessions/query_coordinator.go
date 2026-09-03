@@ -373,10 +373,8 @@ type RunPageFilter struct {
 // a page under a different session or status set would seek into a collection the
 // anchor was never a position in.
 func (c *QueryCoordinator) ListRunPage(ctx context.Context, filter RunPageFilter, cursor string, limit pagination.RequestedLimit) (pagination.Page[run.Run], error) {
-	if filter.SessionID != "" {
-		if _, err := resourceid.ParseSession(filter.SessionID); err != nil {
-			return pagination.Page[run.Run]{}, fmt.Errorf("sessions: query Runs page: %w", err)
-		}
+	if err := filter.validate(); err != nil {
+		return pagination.Page[run.Run]{}, err
 	}
 	filter.Statuses = normalizeStatuses(filter.Statuses)
 	filters := []string{
@@ -404,9 +402,64 @@ func (c *QueryCoordinator) ListRunPage(ctx context.Context, filter RunPageFilter
 	if err != nil {
 		return pagination.Page[run.Run]{}, err
 	}
+	if err := validateRunPage(rows, filter, beforeCreatedAt, beforeID, size+1); err != nil {
+		return pagination.Page[run.Run]{}, err
+	}
+	rows = slices.Clone(rows)
 	return pagination.PageOf(rows, size, runPageNamespace, filters, func(run run.Run) []string {
 		return []string{strconv.FormatInt(run.CreatedAt().UnixNano(), 10), run.ID()}
 	})
+}
+
+func (f RunPageFilter) validate() error {
+	if f.SessionID != "" {
+		if _, err := resourceid.ParseSession(f.SessionID); err != nil {
+			return fmt.Errorf("sessions: query Runs page: %w", err)
+		}
+	}
+	for _, status := range f.Statuses {
+		if !status.Valid() {
+			return fmt.Errorf("sessions: query Runs page has invalid status %q", status)
+		}
+	}
+	return nil
+}
+
+func validateRunPage(rows []run.Run, filter RunPageFilter, beforeCreatedAt int64, beforeID string, maximum int) error {
+	if len(rows) > maximum {
+		return fmt.Errorf("sessions: Run store returned %d rows, maximum %d", len(rows), maximum)
+	}
+	seen := make(map[string]struct{}, len(rows))
+	for index, value := range rows {
+		if err := value.Validate(); err != nil {
+			return fmt.Errorf("sessions: Run store row %d is invalid: %w", index+1, err)
+		}
+		if filter.SessionID != "" && value.SessionID() != filter.SessionID {
+			return fmt.Errorf("sessions: Run %q does not belong to filtered Session %q", value.ID(), filter.SessionID)
+		}
+		if len(filter.Statuses) > 0 && !slices.Contains(filter.Statuses, value.State().Status()) {
+			return fmt.Errorf("sessions: Run %q does not match the status filter", value.ID())
+		}
+		if !filter.IncludeDescendants && value.Lineage().IsChild() {
+			return fmt.Errorf("sessions: root Run page contains child %q", value.ID())
+		}
+		if _, duplicate := seen[value.ID()]; duplicate {
+			return fmt.Errorf("sessions: Run page repeats %q", value.ID())
+		}
+		seen[value.ID()] = struct{}{}
+		if beforeID != "" && !runFollowsPosition(value, beforeCreatedAt, beforeID) {
+			return fmt.Errorf("sessions: Run %q does not follow the page cursor", value.ID())
+		}
+		if index > 0 && !runFollowsPosition(value, rows[index-1].CreatedAt().UnixNano(), rows[index-1].ID()) {
+			return fmt.Errorf("sessions: Run %q is out of order after %q", value.ID(), rows[index-1].ID())
+		}
+	}
+	return nil
+}
+
+func runFollowsPosition(value run.Run, createdAt int64, id string) bool {
+	position := value.CreatedAt().UnixNano()
+	return position < createdAt || position == createdAt && value.ID() < id
 }
 
 // normalizeStatuses puts a status set in one canonical order and drops repeats, so
