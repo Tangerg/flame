@@ -271,10 +271,18 @@ func registerArtifactValues(s *Shapes) {
 }
 
 func registerRunValues(s *Shapes) {
-	s.valueConstraint(FieldConstraintSpec{
-		GoType:      typeOf[protocol.ContentBlock](),
-		Constraints: []FieldConstraint{{Field: "text", Kind: ConstraintPattern, Value: `\S`}},
-	})
+	for _, contentType := range []reflect.Type{
+		typeOf[protocol.ContentBlock](),
+		typeOf[protocol.ArtifactContentBlock](),
+	} {
+		s.valueConstraint(FieldConstraintSpec{
+			GoType: contentType,
+			Constraints: []FieldConstraint{
+				{Field: "text", Kind: ConstraintPattern, Value: `\S`},
+				{Field: "mime", Kind: ConstraintPattern, Value: `^image/`},
+			},
+		})
+	}
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.RunSummary](),
 		Constraints: append(append(append(append(append(append(requiredResourceIdentity("id"),

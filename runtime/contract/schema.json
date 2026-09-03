@@ -503,10 +503,12 @@
           "type": "string"
         },
         "mime": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^image/"
         },
         "text": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         },
         "type": {
           "$ref": "#/$defs/ContentBlockType"
@@ -1885,7 +1887,8 @@
           "type": "string"
         },
         "mime": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^image/"
         },
         "text": {
           "type": "string",

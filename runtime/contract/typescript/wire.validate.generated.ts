@@ -459,8 +459,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ArtifactContentBlock: allOf([
     object({
       data: text(),
-      mime: text(),
-      text: text(),
+      mime: allOf([text(), pattern("^image/")]),
+      text: allOf([text(), pattern("\\S")]),
       type: ref(() => CHECKS.ContentBlockType),
     }, []),
     oneOf([
@@ -921,7 +921,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ContentBlock: allOf([
     object({
       data: text(),
-      mime: text(),
+      mime: allOf([text(), pattern("^image/")]),
       text: allOf([text(), pattern("\\S")]),
       type: ref(() => CHECKS.ContentBlockType),
     }, []),

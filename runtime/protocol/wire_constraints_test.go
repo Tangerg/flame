@@ -1109,7 +1109,7 @@ func TestValidateWireTreeComposesNestedConstraints(t *testing.T) {
 	)
 }
 
-func TestTextContentMustContainNonWhitespace(t *testing.T) {
+func TestContentBlocksRequireSemanticTextAndImageMediaType(t *testing.T) {
 	t.Parallel()
 
 	blank := ContentBlock{
@@ -1126,6 +1126,18 @@ func TestTextContentMustContainNonWhitespace(t *testing.T) {
 	}
 	if err := (ContentBlock{Type: ContentBlockImage, Mime: "image/png", Data: "AA=="}).ValidateWire(); err != nil {
 		t.Fatalf("ValidateWire rejected image-only content: %v", err)
+	}
+
+	artifactBlank := ArtifactContentBlock{Type: ContentBlockText, Text: " \n\t"}
+	assertConstraintField(t, artifactBlank.ValidateWire(), "ArtifactContentBlock", "text")
+	for _, test := range []struct {
+		shape   string
+		content WireValidator
+	}{
+		{shape: "ContentBlock", content: ContentBlock{Type: ContentBlockImage, Mime: "text/plain", Data: "AA=="}},
+		{shape: "ArtifactContentBlock", content: ArtifactContentBlock{Type: ContentBlockImage, Mime: "text/plain", Data: "AA=="}},
+	} {
+		assertConstraintField(t, test.content.ValidateWire(), test.shape, "mime")
 	}
 }
 

@@ -1031,6 +1031,7 @@ func (i ItemListScope) ValidateWire() error {
 func (c ContentBlock) ValidateWire() error {
 	return collectWireViolations("ContentBlock",
 		optionalTextPattern("text", c.Text, "\\S"),
+		optionalTextPattern("mime", c.Mime, "^image/"),
 		closedEnum("type", string(c.Type), []string{"text", "image"}, false),
 		requiredWhen(wireFieldEquals(c, "type", "text"), "text", c),
 		forbiddenWhen(wireFieldEquals(c, "type", "text"), "mime", c),
@@ -1629,6 +1630,8 @@ func (a ArtifactItem) ValidateWire() error {
 
 func (a ArtifactContentBlock) ValidateWire() error {
 	return collectWireViolations("ArtifactContentBlock",
+		optionalTextPattern("text", a.Text, "\\S"),
+		optionalTextPattern("mime", a.Mime, "^image/"),
 		closedEnum("type", string(a.Type), []string{"text", "image"}, false),
 		requiredWhen(wireFieldEquals(a, "type", "text"), "text", a),
 		forbiddenWhen(wireFieldEquals(a, "type", "text"), "mime", a),
