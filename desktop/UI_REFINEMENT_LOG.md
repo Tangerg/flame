@@ -649,3 +649,98 @@ Visual dev server stopped; the round's probe script deleted.
 3. Three clean runs is evidence, not proof. If a golden flakes again, the next
    step is the one this round did not need: a single worker for the goldens,
    paid for in wall clock.
+
+---
+
+## Round 8 — the chip label, and a golden given up
+
+Status: **complete**
+
+### Finding 1 — the chip stub, after eight rounds
+
+The symptom since round 1: at a narrow composer the three chips read
+`Balanc…`, `GP…`, `Mediu…` — two characters each, where the row could have shown
+three glyphs and nothing else.
+
+Measured this round at the 423 px footer: the deficit is **45 px**, and flexbox
+splits it by `shrink × basis` exactly as configured — the giver takes 39, each
+holder 3. Three pixels is enough, because a label box is sized to its text and
+an ellipsis costs about eight.
+
+Every CSS mechanism was tried against a **screenshot**, not against
+`scrollWidth`, which lies at sub-pixel widths:
+
+| | Result |
+| --- | --- |
+| `shrink-[999]` on the giver | holders keep their labels to within 0.04 px — and still ellipse |
+| `-mr-px` slack on the label | the grid does not widen the box by it; +0.02 px |
+| the two together | still `Balanc…` |
+| `minmax(0, auto)` grid track (round 1) | fixed the 18 px spill, not the stub |
+| `flex-shrink: 0` on holders | overflows the 312 px floor by 78 px |
+| `flex-wrap` on the footer | puts the send button alone on a second row at the **default** dock width |
+
+CSS has no way to say *hide the label rather than ellipse it*. After eight
+rounds the measurement is the answer, and its machinery is earned:
+
+`useToolbarLabels` reads the row's natural width and sets `data-labelled`. It
+measures with `data-measuring` on for one synchronous reflow — labels back on
+**and shrinking off**, because a flex row whose items have already shrunk reports
+no overflow and measures as fitting. Below the threshold a chip keeps its glyph,
+its chevron and its tooltip, and gives up its label whole.
+
+| Width | Before | After |
+| --- | --- | --- |
+| 768 px | `Balanced` `GPT-5.6 Sol` `Medium` | unchanged |
+| 423 px | `Balanc…` `GP…` `Mediu…` | three glyphs, three chevrons, three tooltips |
+| 312 px | `Bal…` `⌄` `Me…` | the same |
+
+No golden changed: the goldens photograph the dock at widths where the labels
+fit, so this is only reachable below them. A new spec covers both sides.
+
+### Finding 2 — `agent golden light|dark delegated` is withdrawn
+
+Three rounds and **eight measured hypotheses** on one golden that renders two
+frames a pixel apart, 9–11k pixels either way, deterministic in magnitude and
+never in which:
+
+| | Result |
+| --- | --- |
+| Scroll position | identical; the content does not even overflow |
+| The transcript's mask | identical to the fraction |
+| Element geometry | identical |
+| `document.fonts.ready` | no effect |
+| Resolving `content-visibility` before capture | **moved 26 other goldens and fixed nothing** |
+| Resolving it by scrolling each turn through the viewport | no effect |
+| Vite's transform cache, cold vs warm | no effect |
+| Cropping to the scroller | the offset is inside it |
+| The runner's within-file parallelism (round 7) | made it rarer, not absent |
+
+A budget wide enough to pass would be wider than a whole button, which would
+give up the sensitivity round 3 earned. So the **frame** is given up instead, for
+this one state, and what it was guarding is asserted: two sub-agent rows, each
+carrying its own child Run's state, the nested one inside the subtree of the item
+that spawned the first, and each drawn as a line with no fill of its own. The
+state's behaviour — cancellation targeting and narrative anchoring — was already
+covered.
+
+The assertion earned its keep immediately: it was written expecting the nested
+row **not** to sit inside `item_delegate` and failed, which is how the nesting
+got stated correctly.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` and eleven gates clean, including
+  `check:bundle`.
+- `npm run test` — 2334 passed, the same 8 `runtime/contract` failures.
+- `npm run visual:test` — **388 passed, three consecutive runs.**
+- Screenshots at 768 / 423 / 312 px for the chip collapse.
+
+### Reclaimed
+
+Visual dev server stopped; three probe scripts deleted.
+
+### Open, for the next round
+
+1. The five ChatGPT-versus-Flame rows from round 5, waiting on a product answer.
+2. `delegated` has no raster coverage. If the two-frame cause is ever found, the
+   golden goes back.

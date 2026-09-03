@@ -1087,6 +1087,18 @@ html.theme-dark {
   --icon-sm: var(--composer-control-icon);
 }
 
+/* A chip keeps its glyph, its chevron and its tooltip; what it gives up is the label, whole,
+   rather than the two characters an ellipsis would leave. `data-measuring` is on for the
+   length of one synchronous reflow: labels back on AND shrinking off, because a flex row
+   whose items have already shrunk reports no overflow at all and would measure as fitting. */
+.agent-composer-footer:not([data-labelled]):not([data-measuring])
+  [data-slot="composer-chip-label"] {
+  display: none;
+}
+.agent-composer-footer[data-measuring] > * {
+  flex-shrink: 0;
+}
+
 .agent-dock-tabs {
   display: flex;
   min-width: 0;

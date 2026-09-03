@@ -13,6 +13,7 @@ import { Slot } from "@/plugins/host/Slot";
 import { ComposerAttachments } from "./ComposerAttachments";
 import { ComposerImageDrop } from "./ComposerImageDrop";
 import { useComposerInputController } from "./useComposerInputController";
+import { useToolbarLabels } from "./useToolbarLabels";
 
 interface Props {
   onSend: (input: AgentInput) => boolean;
@@ -42,6 +43,7 @@ export function Composer({
   acceptsImages,
 }: Props) {
   const t = useT();
+  const { ref: toolbarRef, labelled: toolbarLabelled } = useToolbarLabels();
   const recordHistory = useRecordComposerHistory();
   const {
     inputRef,
@@ -114,7 +116,9 @@ export function Composer({
         />
       </div>
       <div
+        ref={toolbarRef}
         data-slot="composer-footer"
+        data-labelled={toolbarLabelled ? "" : undefined}
         className="agent-composer-footer flex flex-nowrap items-center gap-1.5 pr-[var(--density-composer-footer-end)] pb-[var(--density-composer-footer)] pl-[var(--density-composer-footer)]"
       >
         <Slot name="composer.toolbar.start" />

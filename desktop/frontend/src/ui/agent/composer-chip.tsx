@@ -37,7 +37,9 @@ export function AgentComposerChip({
       {...props}
     >
       <span className="flex items-center">{leading}</span>
-      <span className="truncate">{label}</span>
+      <span data-slot="composer-chip-label" className="truncate">
+        {label}
+      </span>
       <Icon name="chevron-down" size="sm" className="text-fg-faint" />
     </Button>
   );

@@ -15,14 +15,19 @@ const FIRST_TURN = "[data-turn-id]";
  * one returns while the label still holds its pre-freeze value, which is how `390m 1s` and
  * `390m 2s` both reached goldens; only states that show the label pay for it.
  *
- * Then every turn has to have been laid out once, and the frame's origin has to stop moving
+ * Then every turn's `content-visibility` is resolved, and the frame's origin has to stop moving
  * to the FRACTION. Both come from the same place: a turn carries `content-visibility: auto`
  * with an `auto 220px` intrinsic size, so one the browser has never measured contributes
  * 220px and its real height afterwards — measured at 98px for a short user turn. Two layouts
- * of one transcript, which is how the delegated golden came to differ by exactly 9037 pixels
- * whenever it differed at all, with identical content one pixel apart. Scrolling each turn
- * through the viewport resolves them the way a reader would; overriding the property instead
- * is NOT layout-neutral and moved twenty-six goldens when it was tried.
+ * of one transcript, which is how the delegated golden came to differ by 9-11k pixels
+ * whenever it differed at all, with identical content one pixel apart — and the content is
+ * bottom-aligned in its scroller, so cropping to the transcript does not escape it either.
+ *
+ * Resolving them is NOT layout-neutral: it moved twenty-six goldens the first time it was
+ * tried, which is why it was reverted then. That was the wrong conclusion. The settled
+ * layout is the one a reader who has scrolled through the session sees, and it is the only
+ * one of the two that a screenshot can be made to land on every time. The goldens are
+ * regenerated against it once and then hold.
  *
  * Production is unaffected and was measured before this was written: Chromium's scroll
  * anchoring holds the visible content while the sizes correct, so only the scrollbar's own

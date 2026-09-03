@@ -211,6 +211,31 @@ test("an unsafe narrow row folds the dock without forgetting its tabs", async ({
   );
 });
 
+test("the composer's chips drop their labels whole rather than ellipse them", async ({ page }) => {
+  await openWorkspace(page, { state: "dock-review" });
+
+  const footer = page.locator(".agent-composer-footer");
+  const labels = footer.locator('[data-slot="composer-chip-label"]');
+  const model = page.getByRole("button", { name: "Switch model" });
+
+  // Wide enough for all three: every label reads in full, none clipped.
+  await page.setViewportSize({ width: 1800, height: 1000 });
+  await expect(footer).toHaveAttribute("data-labelled", "");
+  await expect(labels.first()).toBeVisible();
+  const clipped = await labels.evaluateAll((nodes) =>
+    nodes.filter((node) => node.scrollWidth > Math.ceil(node.getBoundingClientRect().width)),
+  );
+  expect(clipped).toHaveLength(0);
+
+  // Narrow: the labels go, and nothing is left ellipsed in their place.
+  await page.setViewportSize({ width: 1120, height: 720 });
+  await expect(footer).not.toHaveAttribute("data-labelled", "");
+  await expect(labels.first()).toBeHidden();
+  // The value is still readable, which is the whole reason the label may go.
+  await expect(model).toHaveAttribute("title", /GPT/);
+  await expect(model).toBeVisible();
+});
+
 test("closing tabs selects a neighbor without collapsing the workspace", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
