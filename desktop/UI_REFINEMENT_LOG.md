@@ -1925,3 +1925,63 @@ is there. Landing on a chat that finished yesterday is not an event.
 
 Rounds 19–22's items. Next: the composer's single-line state and its overhang,
 the last of the three decisions.
+
+## Round 24 — the overhang does not exist, and the pill needs a decision
+
+The third of round 21's decisions was "do both": the composer's single-line pill
+and a 24px overhang past the thread column. Reading the reference properly before
+building either turned one of them into a correction.
+
+### Correction — there is no overhang
+
+Round 20 read `--composer-adjacent-max-width: calc(--thread-content-max-width +
+--composer-inline-overhang * 2 - --home-composer-inline-inset * 2)` and concluded
+the composer sits 24px wider than the thread column on each side. That was
+inferred from a formula without looking at who reads it. Both tokens have exactly
+one consumer each:
+
+| Token | Its only consumer |
+| --- | --- |
+| `--composer-inline-overhang` | the **suggestion strip's** margins: `ms-[calc(--composer-suggestion-inline-inset - --composer-inline-overhang)]` and the matching `me-` |
+| `--composer-adjacent-max-width` | one class, `max-w-(--composer-adjacent-max-width)`, on `codex-sonner-toaster` — the **toast container**, so toasts line up with the composer |
+
+Neither touches the composer's own width. Flame's composer matching its thread
+column is not a divergence, and there is nothing to align. **Nothing was built for
+this half.**
+
+### What the single-line state actually is
+
+Verified from the stylesheet's selectors and the deobfuscated source, which turns
+out to exist under `study/chatgpt/deob` and answers questions the minified CSS
+cannot.
+
+| | Reference |
+| --- | --- |
+| How the state is decided | measured — `shouldUseSingleLineComposer`, from the text against the available width |
+| Attributes | `data-composer-layout` = `single-line \| multiline` (derived) and `data-composer-radius-variant` (a **prop**, not derived) |
+| Single-line footer | `grid-template-columns: auto minmax(0,1fr) auto`, `column-gap` 5–7px, `padding-inline` 8px, `padding-block` 4–8px — the input is the middle track |
+| Multiline footer | `minmax(0,auto) auto minmax(0,1fr)`, gap 5px, and the input is **above** it |
+| The 44px pill | `h-11` and the 22px radius apply where `isHome` — the empty-state composer. In a thread the radius stays `--radius-3xl` unless a caller asks for the single-line variant |
+| Motion | height `duration-basic` (150ms), radius `duration-relaxed` (300ms), both `ease-enter-snappy` = `cubic-bezier(.23, 1, .32, 1)` — round 20 measured that this is Flame's `--dur-fast` / `--dur-slow` / `--ease-out` already |
+| Chip labels | `._ComposerLayoutFooterLabel[data-composer-footer-label-responsive] { display: none }` — the reference drops the label whole, which is the mechanism `useToolbarLabels` already implements here |
+
+There is also a `single-line` + `rows=stacked` combination: single-line
+treatment with the input keeping its own row, which is Flame's present shape.
+
+### What stops the build
+
+The reference renders its footer's three clusters from a caller I did not chase
+through the bundle, so **which controls occupy the left `auto` track is not
+established**. Flame has six contributions in ONE slot — `composer.toolbar.start`
+carries attach, three chips, context usage and the goal control — and `…end`
+carries send.
+
+Mapping Flame's two slots onto three tracks has to answer where those six go when
+they share a row with the text. That is a design decision, and splitting the slot
+would change an extension point third-party plugins contribute to. A hook that
+measured the wrap was written and **deleted rather than shipped without its
+consumer**.
+
+### Open
+
+Rounds 19–23's items, plus the arrangement question above.
