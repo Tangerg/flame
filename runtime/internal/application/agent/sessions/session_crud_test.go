@@ -473,6 +473,15 @@ type pagedSessionStore struct {
 	limit   int
 }
 
+type rawPagedSessionStore struct {
+	*crudSessionStore
+	rows []session.Session
+}
+
+func (p *rawPagedSessionStore) ListPage(context.Context, session.CatalogRead) ([]session.Session, error) {
+	return p.rows, nil
+}
+
 func (p *pagedSessionStore) ListPage(_ context.Context, read session.CatalogRead) ([]session.Session, error) {
 	p.limit = read.Limit()
 	anchor, hasAnchor := read.After()
@@ -562,5 +571,17 @@ func TestListViewPagePagesInAFixedOrderAndRefusesAForeignCursor(t *testing.T) {
 	}
 	if _, err := c.ListViewPage(ctx, search, first.NextCursor, explicitPageLimit(t, 2)); !errors.Is(err, pagination.ErrInvalidCursor) {
 		t.Fatalf("cursor reused with another filter err = %v, want ErrInvalidCursor", err)
+	}
+}
+
+func TestListViewPageRejectsBrokenStorePageBeforeLiveProjection(t *testing.T) {
+	rows := sessionRows("ses_1", "ses_2")
+	store := &rawPagedSessionStore{crudSessionStore: &crudSessionStore{}, rows: []session.Session{rows[1], rows[0]}}
+	c := mustNewCoordinator(testDependencies(&crudStores{session: store}, Dependencies{
+		Paths: testWorkspaceResolver{resolved: "/repo"},
+	}))
+
+	if _, err := c.ListViewPage(t.Context(), session.AllCatalogEntries(), "", explicitPageLimit(t, 2)); err == nil {
+		t.Fatal("ListViewPage accepted an out-of-order store page")
 	}
 }

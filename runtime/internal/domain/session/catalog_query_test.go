@@ -127,3 +127,96 @@ func TestCatalogAnchorAndReadRejectPrimitiveSentinelStates(t *testing.T) {
 		t.Fatalf("zero catalog read error = %v", err)
 	}
 }
+
+func TestCatalogReadValidatesExactStorePage(t *testing.T) {
+	t.Parallel()
+	latest := time.Unix(30, 0).UTC()
+	values := []Session{
+		mustCatalogSession(t, "ses_b", "Release", "/repo", true, latest),
+		mustCatalogSession(t, "ses_a", "Release", "/repo", true, latest),
+		mustCatalogSession(t, "ses_z", "Release", "/repo", false, latest.Add(time.Second)),
+	}
+	filter, err := NewCatalogFilter("release", mustCatalogWorkspace(t, "/repo"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	read, err := NewCatalogRead(filter, nil, len(values))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := read.ValidatePage(values); err != nil {
+		t.Fatalf("ValidatePage: %v", err)
+	}
+}
+
+func TestCatalogReadRejectsBrokenStorePages(t *testing.T) {
+	t.Parallel()
+	latest := time.Unix(30, 0).UTC()
+	favoriteB := mustCatalogSession(t, "ses_b", "Release", "/repo", true, latest)
+	favoriteA := mustCatalogSession(t, "ses_a", "Release", "/repo", true, latest)
+	older := mustCatalogSession(t, "ses_old", "Release", "/repo", true, latest.Add(-time.Second))
+	unfavorite := mustCatalogSession(t, "ses_z", "Release", "/repo", false, latest.Add(time.Second))
+	read, err := NewCatalogRead(AllCatalogEntries(), nil, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, values := range map[string][]Session{
+		"invalid aggregate":     {{}},
+		"duplicate identity":    {favoriteB, favoriteB},
+		"favorite out of order": {unfavorite, favoriteB},
+		"time out of order":     {older, favoriteB},
+		"id tie out of order":   {favoriteA, favoriteB},
+		"excess overfetch":      {favoriteB, favoriteA, older},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if err := read.ValidatePage(values); err == nil {
+				t.Fatal("ValidatePage accepted broken store output")
+			}
+		})
+	}
+
+	t.Run("cursor anchor repeated", func(t *testing.T) {
+		t.Parallel()
+		anchor, anchorErr := NewCatalogAnchor(favoriteB.Favorite(), favoriteB.UpdatedAt(), favoriteB.ID())
+		if anchorErr != nil {
+			t.Fatal(anchorErr)
+		}
+		anchored, readErr := NewCatalogRead(AllCatalogEntries(), &anchor, 2)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if err := anchored.ValidatePage([]Session{favoriteB}); err == nil {
+			t.Fatal("ValidatePage accepted the cursor anchor again")
+		}
+	})
+
+	t.Run("filter mismatch", func(t *testing.T) {
+		t.Parallel()
+		filter, filterErr := NewCatalogFilter("release", mustCatalogWorkspace(t, "/repo"))
+		if filterErr != nil {
+			t.Fatal(filterErr)
+		}
+		filtered, readErr := NewCatalogRead(filter, nil, 2)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		outside := mustCatalogSession(t, "ses_other", "Other", "/other", false, latest)
+		if err := filtered.ValidatePage([]Session{outside}); err == nil {
+			t.Fatal("ValidatePage accepted a Session outside the filter")
+		}
+	})
+}
+
+func mustCatalogSession(t *testing.T, id, title, workspace string, favorite bool, updatedAt time.Time) Session {
+	t.Helper()
+	value, err := Restore(Snapshot{
+		ID: id, Title: title, Workspace: *mustCatalogWorkspace(t, workspace),
+		Selection: mustModelSelection(t, "provider", "model"), Favorite: favorite,
+		StartedAt: updatedAt.Add(-time.Second), UpdatedAt: updatedAt, Revision: 1,
+	})
+	if err != nil {
+		t.Fatalf("Restore catalog Session: %v", err)
+	}
+	return value
+}

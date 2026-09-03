@@ -147,6 +147,9 @@ func (c *Coordinator) ListViewPage(
 	if err != nil {
 		return pagination.Page[View]{}, err
 	}
+	if err := read.ValidatePage(values); err != nil {
+		return pagination.Page[View]{}, err
+	}
 	bounded, err := pagination.PageOf(values, size, viewPageNamespace, filterIdentity, func(value session.Session) []string {
 		favorite := "0"
 		if value.Favorite() {
