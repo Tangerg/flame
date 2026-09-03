@@ -14,6 +14,8 @@ import (
 
 	"github.com/Tangerg/oolong/core/program"
 	"github.com/mattn/go-shellwords"
+
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 )
 
 const maxExternalDraftBytes = 4 << 20
@@ -85,18 +87,20 @@ func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspa
 	if err := validateEditedDraft(source); err != nil {
 		return "", err
 	}
-	file, err := os.Open(path)
+	file, opened, err := fileinput.OpenExpected(path, source, maxExternalDraftBytes)
 	if err != nil {
-		return "", fmt.Errorf("open edited draft: %w", err)
+		switch {
+		case errors.Is(err, fileinput.ErrChanged):
+			return "", errors.New("edited draft changed while it was being opened")
+		case errors.Is(err, fileinput.ErrNotRegular):
+			return "", errors.New("edited draft is not a regular file")
+		case errors.Is(err, fileinput.ErrTooLarge):
+			return "", fmt.Errorf("edited draft exceeds %d bytes", maxExternalDraftBytes)
+		default:
+			return "", fmt.Errorf("open edited draft: %w", err)
+		}
 	}
 	defer func() { _ = file.Close() }()
-	opened, err := file.Stat()
-	if err != nil {
-		return "", fmt.Errorf("inspect edited draft: %w", err)
-	}
-	if !os.SameFile(source, opened) {
-		return "", errors.New("edited draft changed while it was being opened")
-	}
 	if err := validateEditedDraft(opened); err != nil {
 		return "", err
 	}

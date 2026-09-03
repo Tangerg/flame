@@ -19,6 +19,7 @@ import (
 
 	"github.com/spf13/pathologize"
 
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
 )
@@ -225,18 +226,20 @@ func readPlugin(directory string) (extensions.Plugin, bool, error) {
 	if err := validateManifestSource(path, source); err != nil {
 		return extensions.Plugin{}, false, err
 	}
-	file, err := os.Open(path)
+	file, info, err := fileinput.OpenExpected(path, source, maxManifestBytes)
 	if err != nil {
-		return extensions.Plugin{}, false, fmt.Errorf("open plugin manifest %q: %w", path, err)
+		switch {
+		case errors.Is(err, fileinput.ErrChanged):
+			return extensions.Plugin{}, false, fmt.Errorf("plugin manifest %q changed while it was being opened", path)
+		case errors.Is(err, fileinput.ErrNotRegular):
+			return extensions.Plugin{}, false, fmt.Errorf("plugin manifest %q is not a regular file", path)
+		case errors.Is(err, fileinput.ErrTooLarge):
+			return extensions.Plugin{}, false, fmt.Errorf("plugin manifest %q exceeds %d bytes", path, maxManifestBytes)
+		default:
+			return extensions.Plugin{}, false, fmt.Errorf("open plugin manifest %q: %w", path, err)
+		}
 	}
 	defer func() { _ = file.Close() }()
-	info, err := file.Stat()
-	if err != nil {
-		return extensions.Plugin{}, false, fmt.Errorf("inspect plugin manifest %q: %w", path, err)
-	}
-	if !os.SameFile(source, info) {
-		return extensions.Plugin{}, false, fmt.Errorf("plugin manifest %q changed while it was being opened", path)
-	}
 	if err := validateManifestSource(path, info); err != nil {
 		return extensions.Plugin{}, false, err
 	}

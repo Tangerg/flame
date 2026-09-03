@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/fileflow"
 	"github.com/spf13/pathologize"
 
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 )
 
@@ -73,18 +74,20 @@ func (Store) Load(workspace, selectedPath string) (session.Document, error) {
 	if err := validateDocumentSource(source); err != nil {
 		return session.Document{}, err
 	}
-	file, err := os.Open(path)
+	file, info, err := fileinput.OpenExpected(path, source, int64(session.MaximumDocumentBytes))
 	if err != nil {
-		return session.Document{}, fmt.Errorf("open session artifact: %w", err)
+		switch {
+		case errors.Is(err, fileinput.ErrChanged):
+			return session.Document{}, errors.New("session artifact changed while it was being opened")
+		case errors.Is(err, fileinput.ErrNotRegular):
+			return session.Document{}, errors.New("session artifact is not a regular file")
+		case errors.Is(err, fileinput.ErrTooLarge):
+			return session.Document{}, fmt.Errorf("session artifact exceeds %d bytes", session.MaximumDocumentBytes)
+		default:
+			return session.Document{}, fmt.Errorf("open session artifact: %w", err)
+		}
 	}
 	defer func() { _ = file.Close() }()
-	info, err := file.Stat()
-	if err != nil {
-		return session.Document{}, fmt.Errorf("inspect session artifact: %w", err)
-	}
-	if !os.SameFile(source, info) {
-		return session.Document{}, errors.New("session artifact changed while it was being opened")
-	}
 	if err := validateDocumentSource(info); err != nil {
 		return session.Document{}, err
 	}
@@ -233,7 +236,7 @@ func stage(root string, body []byte) (path string, err error) {
 }
 
 func syncCommittedDirectory(path string) {
-	directory, err := os.Open(path)
+	directory, _, err := fileinput.OpenDirectory(path)
 	if err != nil {
 		return
 	}

@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/spf13/pathologize"
+
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 )
 
 // Store confines named state records to one absolute directory. The value is
@@ -67,9 +69,18 @@ func (s Store) Read(name string, maximumBytes int64) ([]byte, error) {
 	if info.Size() > maximumBytes {
 		return nil, fmt.Errorf("state file %q exceeds %d bytes", name, maximumBytes)
 	}
-	file, err := os.Open(path)
+	file, _, err := fileinput.OpenExpected(path, info, maximumBytes)
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Is(err, fileinput.ErrChanged):
+			return nil, fmt.Errorf("state file %q changed while it was being opened", name)
+		case errors.Is(err, fileinput.ErrNotRegular):
+			return nil, fmt.Errorf("state file %q is not regular", name)
+		case errors.Is(err, fileinput.ErrTooLarge):
+			return nil, fmt.Errorf("state file %q exceeds %d bytes", name, maximumBytes)
+		default:
+			return nil, err
+		}
 	}
 	defer func() { _ = file.Close() }()
 	body, err := io.ReadAll(io.LimitReader(file, maximumBytes+1))
@@ -228,7 +239,7 @@ func (s Store) directory(name string, create bool) (string, error) {
 }
 
 func syncDirectory(path string) error {
-	directory, err := os.Open(path)
+	directory, _, err := fileinput.OpenDirectory(path)
 	if err != nil {
 		return err
 	}

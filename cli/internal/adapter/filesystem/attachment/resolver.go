@@ -25,6 +25,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -96,18 +97,11 @@ func (r *Resolver) inspect(input string) (string, fs.FileInfo, []byte, error) {
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("attachment: resolve %q: %w", input, err)
 	}
-	file, err := os.Open(canonical)
+	file, info, err := fileinput.Open(canonical, r.maxBytes)
 	if err != nil {
-		return "", nil, nil, fmt.Errorf("attachment: open %q: %w", input, err)
+		return "", nil, nil, attachmentOpenError(input, r.maxBytes, err)
 	}
 	defer func() { _ = file.Close() }()
-	info, err := file.Stat()
-	if err != nil {
-		return "", nil, nil, fmt.Errorf("attachment: inspect %q: %w", input, err)
-	}
-	if validateAttachmentInfoErr := validateAttachmentInfo(info, input, r.maxBytes); validateAttachmentInfoErr != nil {
-		return "", nil, nil, validateAttachmentInfoErr
-	}
 	header, err := readAttachmentHeader(file, input)
 	if err != nil {
 		return "", nil, nil, err
@@ -119,14 +113,24 @@ func (r *Resolver) inspect(input string) (string, fs.FileInfo, []byte, error) {
 	return canonical, info, header, nil
 }
 
-func validateAttachmentInfo(info fs.FileInfo, input string, maxBytes int64) error {
-	if !info.Mode().IsRegular() {
+func attachmentOpenError(input string, maximumBytes int64, err error) error {
+	switch {
+	case errors.Is(err, fileinput.ErrChanged):
+		return fmt.Errorf("attachment: %q changed while it was being opened", input)
+	case errors.Is(err, fileinput.ErrNotRegular):
 		return fmt.Errorf("%w: %s", ErrNotRegular, input)
+	case errors.Is(err, fileinput.ErrTooLarge):
+		var limit fileinput.SizeLimitError
+		if errors.As(err, &limit) {
+			return fmt.Errorf(
+				"%w: %s is %s (limit %s)",
+				ErrTooLarge, input, formatByteSize(limit.Size), formatByteSize(maximumBytes),
+			)
+		}
+		return fmt.Errorf("%w: %s exceeds %s", ErrTooLarge, input, formatByteSize(maximumBytes))
+	default:
+		return fmt.Errorf("attachment: open %q: %w", input, err)
 	}
-	if info.Size() > maxBytes {
-		return fmt.Errorf("%w: %s is %s (limit %s)", ErrTooLarge, input, formatByteSize(info.Size()), formatByteSize(maxBytes))
-	}
-	return nil
 }
 
 func readAttachmentHeader(file io.Reader, input string) ([]byte, error) {

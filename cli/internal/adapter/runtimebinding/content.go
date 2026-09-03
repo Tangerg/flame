@@ -15,6 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -41,20 +42,22 @@ func loadAttachmentFile(ctx context.Context, path string, maximumBytes int64) (_
 	if err := validateAttachmentSource(source, maximumBytes); err != nil {
 		return nil, err
 	}
-	file, err := os.Open(path)
+	file, opened, err := fileinput.OpenExpected(path, source, maximumBytes)
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Is(err, fileinput.ErrChanged):
+			return nil, errors.New("file changed while it was being opened")
+		case errors.Is(err, fileinput.ErrNotRegular):
+			return nil, errors.New("file is not a regular file")
+		case errors.Is(err, fileinput.ErrTooLarge):
+			return nil, attachmentTooLargeError{maximumBytes: maximumBytes}
+		default:
+			return nil, err
+		}
 	}
 	defer func() {
 		err = errors.Join(err, file.Close())
 	}()
-	opened, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if !os.SameFile(source, opened) {
-		return nil, errors.New("file changed while it was being opened")
-	}
 	if err := validateAttachmentSource(opened, maximumBytes); err != nil {
 		return nil, err
 	}
