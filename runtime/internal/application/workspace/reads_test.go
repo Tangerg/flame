@@ -39,9 +39,11 @@ func TestWorkspacesFromSessions(t *testing.T) {
 		testsupport.MustRestoreSession(session.Snapshot{ID: "s1", Workspace: testsupport.MustWorkspace("/a/proj"), UpdatedAt: t0}),
 		testsupport.MustRestoreSession(session.Snapshot{ID: "s2", Workspace: testsupport.MustWorkspace("/a/proj"), UpdatedAt: t0.Add(2 * time.Hour)}),
 		testsupport.MustRestoreSession(session.Snapshot{ID: "s3", Workspace: testsupport.MustWorkspace("/b/other"), UpdatedAt: t0.Add(time.Hour)}),
+		testsupport.MustRestoreSession(session.Snapshot{ID: "s4", Workspace: testsupport.MustWorkspace("/c/zeta"), UpdatedAt: t0}),
+		testsupport.MustRestoreSession(session.Snapshot{ID: "s5", Workspace: testsupport.MustWorkspace("/c/alpha"), UpdatedAt: t0}),
 	})
-	if len(workspaces) != 2 {
-		t.Fatalf("workspaces = %d, want 2", len(workspaces))
+	if len(workspaces) != 4 {
+		t.Fatalf("workspaces = %d, want 4", len(workspaces))
 	}
 	if workspaces[0].Path != "/a/proj" || workspaces[0].Name != "proj" || workspaces[0].SessionCount != 2 {
 		t.Fatalf("first workspace = %+v", workspaces[0])
@@ -51,6 +53,9 @@ func TestWorkspacesFromSessions(t *testing.T) {
 	}
 	if workspaces[1].Path != "/b/other" || workspaces[1].SessionCount != 1 {
 		t.Fatalf("second workspace = %+v", workspaces[1])
+	}
+	if workspaces[2].Path != "/c/alpha" || workspaces[3].Path != "/c/zeta" {
+		t.Fatalf("equal-activity workspaces = %+v, want canonical path order", workspaces[2:])
 	}
 }
 

@@ -28,6 +28,8 @@ type WorkspaceInfo struct {
 }
 
 // WorkspaceSummary adds the user-facing session catalog facts to a Workspace.
+// LastActiveAt is present in list results, which are ordered by that instant
+// descending and then canonical workspace path ascending.
 type WorkspaceSummary struct {
 	Workspace    WorkspaceInfo `json:"workspace"`
 	Name         string        `json:"name"`

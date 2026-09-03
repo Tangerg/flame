@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -89,7 +90,8 @@ func (d *Discovery) Resolve(path string) (Resolved, error) {
 	}, nil
 }
 
-// Workspaces returns each non-empty session workspace once, newest-active first.
+// Workspaces returns each non-empty session workspace once, newest-active first
+// with canonical path ascending as the stable tie-breaker.
 func (d *Discovery) Workspaces(ctx context.Context) ([]Summary, error) {
 	if d.workspaces == nil {
 		return nil, errors.New("workspace: workspace catalog is not configured")
@@ -120,7 +122,7 @@ func (d *Discovery) Workspaces(ctx context.Context) ([]Summary, error) {
 		byPath[identity.Path] = len(resolved)
 		resolved = append(resolved, workspace)
 	}
-	slices.SortFunc(resolved, func(a, b Summary) int { return b.LastActiveAt.Compare(a.LastActiveAt) })
+	slices.SortFunc(resolved, compareWorkspaceSummaries)
 	return resolved, nil
 }
 
@@ -142,8 +144,15 @@ func workspacesFromSessions(sessions []session.Session) []Summary {
 	for _, workspace := range byPath {
 		workspaces = append(workspaces, *workspace)
 	}
-	slices.SortFunc(workspaces, func(a, b Summary) int { return b.LastActiveAt.Compare(a.LastActiveAt) })
+	slices.SortFunc(workspaces, compareWorkspaceSummaries)
 	return workspaces
+}
+
+func compareWorkspaceSummaries(a, b Summary) int {
+	if order := b.LastActiveAt.Compare(a.LastActiveAt); order != 0 {
+		return order
+	}
+	return cmp.Compare(a.Path, b.Path)
 }
 
 // AgentDoc is one discovered instruction document with its cascade scope.
