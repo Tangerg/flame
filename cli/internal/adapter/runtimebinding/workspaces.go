@@ -81,15 +81,14 @@ func (r *Connection) Changes(ctx context.Context, path string) ([]workspace.Chan
 	if err != nil {
 		return nil, err
 	}
-	result := make([]workspace.Change, 0, len(values))
-	for index, value := range values {
-		projected, err := projectChange(value.Path, value.Status, value.PreviousPath, value.Added, value.Removed, value.Binary)
-		if err != nil {
-			return nil, runtimeContractViolation("list workspace changes row %d is invalid: %v", index, err)
-		}
-		result = append(result, projected)
-	}
-	return result, nil
+	return projectUniqueValuesFallible(
+		"list workspace changes",
+		values,
+		func(value protocol.WorkspaceFileChange) (workspace.Change, error) {
+			return projectChange(value.Path, value.Status, value.PreviousPath, value.Added, value.Removed, value.Binary)
+		},
+		func(change workspace.Change) string { return change.Path },
+	)
 }
 
 func (r *Connection) Diff(ctx context.Context, request workspace.DiffRequest) (workspace.Diff, error) {

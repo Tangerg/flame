@@ -148,10 +148,15 @@ func (d Diff) Validate() error {
 	if d.Patch != "" && len(d.Files) != 0 {
 		return errors.New("workspace diff mixes raw and structured representations")
 	}
+	paths := make(map[string]struct{}, len(d.Files))
 	for index, file := range d.Files {
 		if err := file.Validate(); err != nil {
 			return fmt.Errorf("file diff %d: %w", index, err)
 		}
+		if _, duplicate := paths[file.Path]; duplicate {
+			return fmt.Errorf("file diff %d repeats path %q", index, file.Path)
+		}
+		paths[file.Path] = struct{}{}
 		if file.Binary && len(file.Rows) != 0 {
 			return fmt.Errorf("file diff %d: binary file has text rows", index)
 		}

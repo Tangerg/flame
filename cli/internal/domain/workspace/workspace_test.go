@@ -92,6 +92,18 @@ func TestStructuredDiffValidatesAndRendersEveryRow(t *testing.T) {
 	}
 }
 
+func TestStructuredDiffOwnsPathUniqueness(t *testing.T) {
+	t.Parallel()
+	diff := Diff{Files: []FileDiff{
+		{Change: Change{Path: "main.go", Status: protocol.FileStatusModified}},
+		{Change: Change{Path: "main.go", Status: protocol.FileStatusModified}},
+	}}
+
+	if err := diff.Validate(); err == nil || !strings.Contains(err.Error(), `repeats path "main.go"`) {
+		t.Fatalf("Validate = %v, want duplicate path error", err)
+	}
+}
+
 func TestReadRequestRefusesAnAmbiguousLineWindow(t *testing.T) {
 	t.Parallel()
 	if _, err := NewReadLineRange(0, 10); err == nil {

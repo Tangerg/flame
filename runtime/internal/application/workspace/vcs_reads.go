@@ -150,6 +150,13 @@ func (v *VCS) Changes(ctx context.Context, cwd string) ([]FileChange, error) {
 	if len(changes) > MaxWorkspaceChanges {
 		return nil, fmt.Errorf("%w: more than %d workspace changes", ErrVCSResultTooLarge, MaxWorkspaceChanges)
 	}
+	paths := make(map[string]struct{}, len(changes))
+	for _, change := range changes {
+		if _, duplicate := paths[change.Path]; duplicate {
+			return nil, fmt.Errorf("workspace: VCS changes repeated path %q", change.Path)
+		}
+		paths[change.Path] = struct{}{}
+	}
 	return changes, nil
 }
 
@@ -197,6 +204,13 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 		return Diff{}, err
 	}
 	files, truncated := limitDiffFiles(result.Files, MaxWorkspaceDiffFiles, rowLimit, MaxWorkspaceDiffBytes)
+	paths := make(map[string]struct{}, len(files))
+	for _, file := range files {
+		if _, duplicate := paths[file.Path]; duplicate {
+			return Diff{}, fmt.Errorf("workspace: VCS diff repeated path %q", file.Path)
+		}
+		paths[file.Path] = struct{}{}
+	}
 	return Diff{Files: files, Truncated: result.Truncated || truncated}, nil
 }
 

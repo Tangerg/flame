@@ -192,6 +192,23 @@ func TestWorkspaceAdapterRejectsRepeatedRuntimeIdentity(t *testing.T) {
 	}
 }
 
+func TestWorkspaceAdapterRejectsRepeatedChangePath(t *testing.T) {
+	t.Parallel()
+	change := protocol.WorkspaceFileChange{Path: "main.go", Status: protocol.FileStatusModified}
+	runtime := &Connection{
+		workspaces: &workspaceBindingStub{changes: protocol.NewPage([]protocol.WorkspaceFileChange{change, change})},
+		meta:       requestMeta("test"),
+		profile: Profile{Features: map[string]Feature{
+			protocol.FeatureGit: {Enabled: true},
+		}},
+	}
+
+	_, err := runtime.Changes(t.Context(), "/workspace")
+	if err == nil || !strings.Contains(err.Error(), `list workspace changes repeats "main.go"`) {
+		t.Fatalf("Changes error = %v, want repeated path failure", err)
+	}
+}
+
 func TestWorkspaceAdapterRejectsGitReadsBeforeCallingBinding(t *testing.T) {
 	t.Parallel()
 	stub := &workspaceBindingStub{}
