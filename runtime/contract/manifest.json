@@ -6836,15 +6836,6 @@
       ]
     },
     {
-      "type": "ListItemsRequest",
-      "rules": [
-        {
-          "field": "scope.type",
-          "constraint": "nonEmpty"
-        }
-      ]
-    },
-    {
       "type": "ListRunsRequest",
       "rules": [
         {

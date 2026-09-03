@@ -724,7 +724,6 @@ TypeScript validator from this single registry projection.
 | `SteerRunRequest` | `expectedSegmentId` | `identity` |
 | `SteerRunRequest` | `expectedSegmentId` | `maxLength(256)` |
 | `SteerRunRequest` | `input` | `nonEmptyItems` |
-| `ListItemsRequest` | `scope.type` | `nonEmpty` |
 | `ListRunsRequest` | `sessionId` | `identity` |
 | `ListRunsRequest` | `sessionId` | `maxLength(256)` |
 | `ListRunsRequest` | `statuses` | `nonEmptyItems` |

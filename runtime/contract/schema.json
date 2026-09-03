@@ -4618,19 +4618,6 @@
       },
       "required": [
         "scope"
-      ],
-      "allOf": [
-        {
-          "properties": {
-            "scope": {
-              "properties": {
-                "type": {
-                  "minLength": 1
-                }
-              }
-            }
-          }
-        }
       ]
     },
     "ListItemsResponse": {

@@ -187,7 +187,6 @@ func (g GetPlanRequest) ValidateWire() error {
 
 func (l ListItemsRequest) ValidateWire() error {
 	return collectWireViolations("ListItemsRequest",
-		requiredText("scope.type", string(l.Scope.Type)),
 		optionalPositiveNumber("limit", l.Limit),
 		maxLength("cursor", l.Cursor, 65536),
 		closedEnum("order", string(l.Order), []string{"asc", "desc"}, true),

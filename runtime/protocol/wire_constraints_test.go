@@ -186,6 +186,17 @@ func TestImportSessionTreeUsesArtifactSessionIdentityConstraint(t *testing.T) {
 	assertConstraintField(t, ValidateWireTree(request), "ImportSessionRequest", "artifact.session.id")
 }
 
+func TestListItemsTreeUsesNestedScopeDiscriminator(t *testing.T) {
+	t.Parallel()
+
+	assertConstraintField(
+		t,
+		ValidateWireTree(ListItemsRequest{}),
+		"ListItemsRequest",
+		"scope.type",
+	)
+}
+
 func TestRunProgressCarriesAtLeastOneValidFact(t *testing.T) {
 	t.Parallel()
 

@@ -1812,19 +1812,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     rootRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, []),
-  ListItemsRequest: allOf([
-    object({
-      cursor: allOf([text(), maxLength(65536)]),
-      limit: allOf([integer(), minimum(1)]),
-      order: ref(() => CHECKS.ItemOrder),
-      scope: ref(() => CHECKS.ItemListScope),
-    }, ["scope"]),
-    fields({
-      scope: fields({
-        type: minLength(1),
-      }, []),
-    }, []),
-  ]),
+  ListItemsRequest: object({
+    cursor: allOf([text(), maxLength(65536)]),
+    limit: allOf([integer(), minimum(1)]),
+    order: ref(() => CHECKS.ItemOrder),
+    scope: ref(() => CHECKS.ItemListScope),
+  }, ["scope"]),
   ListItemsResponse: object({
     data: array(ref(() => CHECKS.Item)),
     nextCursor: allOf([text(), maxLength(65536)]),
