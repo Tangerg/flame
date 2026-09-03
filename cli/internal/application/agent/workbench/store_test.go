@@ -911,7 +911,7 @@ func TestStorePersistsAndAcknowledgesPendingRunsByCommandIdentity(t *testing.T) 
 	commandID := agent.CommandID("cli_0123456789abcdef0123456789abcdef")
 	pending := agent.StartRun{
 		CommandID: commandID, SessionID: "ses_1", Message: agent.Message{Text: "recover this start"},
-		Options: agent.RunOptions{Provider: "deepseek", Model: "deepseek-v4-flash", Limits: agent.UnlimitedRunLimits(), Generation: agent.GenerationParams{Stop: []string{"done"}}},
+		Options: agent.RunOptions{Provider: "deepseek", Model: "deepseek-v4-flash", Limits: agent.UnlimitedRunLimits(), Generation: protocol.GenerationParams{Stop: []string{"done"}}},
 	}
 	if saveDraftErr := store.SaveDraft("ses_1", pending.Message); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)

@@ -59,7 +59,7 @@ func TestRunOptionsJSONUsesLimitPresenceInsteadOfZeroFilling(t *testing.T) {
 	temperature, topP, maxTokens := 0.7, 0.9, int64(2_048)
 	unlimited, err := json.Marshal(encodeRunOptions(agent.RunOptions{
 		Provider: "mock", Model: "balanced", ReasoningEffort: "high", Limits: agent.UnlimitedRunLimits(),
-		Generation: agent.GenerationParams{
+		Generation: protocol.GenerationParams{
 			Temperature: &temperature, MaxTokens: &maxTokens, TopP: &topP, Stop: []string{"END"},
 		},
 	}))

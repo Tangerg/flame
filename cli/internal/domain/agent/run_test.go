@@ -109,7 +109,7 @@ func TestRunOptionsValidateBounds(t *testing.T) {
 	}
 	options := RunOptions{
 		Provider: "mock", Model: "balanced", ReasoningEffort: "high",
-		Limits: limits, Generation: GenerationParams{
+		Limits: limits, Generation: runtimeprotocol.GenerationParams{
 			Temperature: &temperature, TopP: &topP, MaxTokens: &maxTokens, Stop: []string{"END"},
 		},
 	}
@@ -121,6 +121,10 @@ func TestRunOptionsValidateBounds(t *testing.T) {
 	if err := options.Validate(); err == nil {
 		t.Fatal("invalid temperature was accepted")
 	}
+	options.Generation = runtimeprotocol.GenerationParams{Stop: []string{"END", "END"}}
+	if err := options.Validate(); err == nil {
+		t.Fatal("duplicate stop sequences were accepted")
+	}
 	options = RunOptions{ReasoningEffort: "high", Limits: UnlimitedRunLimits()}
 	if err := options.Validate(); err == nil {
 		t.Fatal("reasoning effort without a model was accepted")
@@ -131,7 +135,7 @@ func TestRunOptionsEqualPreservesOptionalGenerationSemantics(t *testing.T) {
 	zero := 0.0
 	left := RunOptions{
 		Provider: "deepseek", Model: "v4", Limits: UnlimitedRunLimits(),
-		Generation: GenerationParams{Temperature: &zero, Stop: []string{"END"}},
+		Generation: runtimeprotocol.GenerationParams{Temperature: &zero, Stop: []string{"END"}},
 	}
 	if !left.Equal(left.Clone()) {
 		t.Fatal("cloned options are not equal")

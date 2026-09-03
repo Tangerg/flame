@@ -194,14 +194,7 @@ type RunOptions struct {
 	Model           string
 	ReasoningEffort string
 	Limits          RunLimits
-	Generation      GenerationParams
-}
-
-type GenerationParams struct {
-	Temperature *float64
-	MaxTokens   *int64
-	TopP        *float64
-	Stop        []string
+	Generation      protocol.GenerationParams
 }
 
 func (r RunOptions) Clone() RunOptions {

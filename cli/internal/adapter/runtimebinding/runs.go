@@ -39,12 +39,8 @@ func (r *Connection) StartRun(ctx context.Context, input agent.StartRun) (agent.
 		Limits:          projectRunLimitsToWire(input.Options.Limits),
 	}
 	if generationParamsPresent(input.Options.Generation) {
-		request.Params = &protocol.GenerationParams{
-			Temperature: input.Options.Generation.Temperature,
-			MaxTokens:   input.Options.Generation.MaxTokens,
-			TopP:        input.Options.Generation.TopP,
-			Stop:        slices.Clone(input.Options.Generation.Stop),
-		}
+		params := input.Options.Clone().Generation
+		request.Params = &params
 	}
 	ack, events, err := r.runs.StartRun(ctx, request, options)
 	if err != nil {
@@ -87,7 +83,7 @@ func projectRunLimitsToWire(limits agent.RunLimits) *protocol.RunLimits {
 	return wire
 }
 
-func generationParamsPresent(value agent.GenerationParams) bool {
+func generationParamsPresent(value protocol.GenerationParams) bool {
 	return value.Temperature != nil || value.MaxTokens != nil || value.TopP != nil || len(value.Stop) != 0
 }
 

@@ -116,29 +116,11 @@ func (r RunOptions) Validate() error {
 	if err := r.Limits.Validate(); err != nil {
 		problems = append(problems, err)
 	}
-	if err := r.Generation.Validate(); err != nil {
+	if err := r.Generation.ValidateWire(); err != nil {
 		problems = append(problems, err)
 	}
 	if err := errors.Join(problems...); err != nil {
 		return fmt.Errorf("run options: %w", err)
-	}
-	return nil
-}
-
-func (g GenerationParams) Validate() error {
-	if g.Temperature != nil && (math.IsNaN(*g.Temperature) || math.IsInf(*g.Temperature, 0) || *g.Temperature < 0 || *g.Temperature > 2) {
-		return errors.New("generation temperature must be between 0 and 2")
-	}
-	if g.TopP != nil && (math.IsNaN(*g.TopP) || math.IsInf(*g.TopP, 0) || *g.TopP < 0 || *g.TopP > 1) {
-		return errors.New("generation top-p must be between 0 and 1")
-	}
-	if g.MaxTokens != nil && *g.MaxTokens <= 0 {
-		return errors.New("generation max tokens must be positive")
-	}
-	for i, stop := range g.Stop {
-		if stop == "" {
-			return fmt.Errorf("generation stop sequence %d is empty", i+1)
-		}
 	}
 	return nil
 }

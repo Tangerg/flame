@@ -393,7 +393,7 @@ func encodeRunOptions(options agent.RunOptions) *runOptionsJSON {
 	}
 }
 
-func encodeGenerationParams(params agent.GenerationParams) *generationParamsJSON {
+func encodeGenerationParams(params protocol.GenerationParams) *generationParamsJSON {
 	if params.Temperature == nil && params.MaxTokens == nil && params.TopP == nil && len(params.Stop) == 0 {
 		return nil
 	}
