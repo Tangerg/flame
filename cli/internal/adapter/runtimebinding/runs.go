@@ -163,6 +163,9 @@ func projectAnswer(value agent.InterruptAnswer) (protocol.InterruptResponse, err
 	default:
 		return protocol.InterruptResponse{}, fmt.Errorf("answer for item %s has unsupported type %T", value.ItemID, value.Answer)
 	}
+	if err := protocol.ValidateWireTree(response); err != nil {
+		return protocol.InterruptResponse{}, fmt.Errorf("answer for item %s violates runtime wire contract: %w", value.ItemID, err)
+	}
 	return response, nil
 }
 

@@ -492,6 +492,43 @@ func TestProjectAnswerPreservesQuestionFieldOrderAndOwnsValues(t *testing.T) {
 	}
 }
 
+func TestProjectAnswerRejectsInvalidRuntimeWireVariants(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		answer agent.Answer
+		field  string
+	}{
+		{
+			name:   "approval decision",
+			answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDecision("later")},
+			field:  "response.decision",
+		},
+		{
+			name: "remember scope",
+			answer: agent.ApprovalAnswer{
+				Decision: protocol.ApprovalApprove,
+				Remember: protocol.RememberScopeKind("workspace"),
+			},
+			field: "response.remember.scope",
+		},
+		{
+			name:   "empty question answer",
+			answer: agent.QuestionAnswer{},
+			field:  "response.answers",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := projectAnswer(agent.InterruptAnswer{ItemID: "item_answer", Answer: test.answer})
+			if err == nil || !strings.Contains(err.Error(), test.field) {
+				t.Fatalf("projectAnswer error = %v, want field %q", err, test.field)
+			}
+		})
+	}
+}
+
 func TestCancelRunProjectsChildAndSurvivingRootAtomically(t *testing.T) {
 	stub := runBindingStub{}
 	stub.cancel = func(_ context.Context, request protocol.CancelRunRequest, _ flameruntime.CommandOptions) (*protocol.CancelRunResponse, error) {
