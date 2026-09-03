@@ -141,7 +141,7 @@ func (b *blockingHookTrustService) SetProjectTrust(ctx context.Context, projectR
 func (h *hookServiceStub) Catalog(context.Context, string) (workspace.HookCatalog, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	return workspace.HookCatalog{ProjectRoot: "/workspace", ProjectTrusted: h.trusted, Hooks: []workspace.LifecycleHook{{
+	return workspace.HookCatalog{ProjectRoot: "/workspace", ProjectTrusted: h.trusted, Hooks: []protocol.HookInfo{{
 		Event: protocol.HookEventPreToolUse, Matcher: "shell*", Command: "./check.sh", Scope: protocol.HookScopeProject,
 		Source: "/workspace/.flame/hooks.json", Active: h.trusted,
 	}}}, nil

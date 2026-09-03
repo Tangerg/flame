@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
@@ -48,14 +49,7 @@ func (h *Hooks) Catalog(ctx context.Context, workspacePath string) (workspace.Ho
 	}
 	catalog := workspace.HookCatalog{
 		ProjectRoot: result.ProjectRoot, ProjectTrusted: result.ProjectTrusted,
-		Hooks: make([]workspace.LifecycleHook, 0, len(result.Hooks)),
-	}
-	for _, value := range result.Hooks {
-		catalog.Hooks = append(catalog.Hooks, workspace.LifecycleHook{
-			Event: value.Event, Matcher: value.Matcher,
-			Command: value.Command, Inject: value.Inject, TimeoutMillis: value.TimeoutMillis,
-			Scope: value.Scope, Source: value.Source, Active: value.Active,
-		})
+		Hooks: slices.Clone(result.Hooks),
 	}
 	if err := catalog.Validate(); err != nil {
 		return workspace.HookCatalog{}, runtimeContractViolation("list hooks returned an invalid catalog: %v", err)

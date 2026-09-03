@@ -9,43 +9,22 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-type LifecycleHook struct {
-	Event         protocol.HookEvent
-	Matcher       string
-	Command       string
-	Inject        string
-	TimeoutMillis int
-	Scope         protocol.HookScope
-	Source        string
-	Active        bool
-}
-
-func (h LifecycleHook) Validate() error {
-	if err := (protocol.HookInfo{
-		Event: h.Event, Matcher: h.Matcher, Command: h.Command, Inject: h.Inject,
-		TimeoutMillis: h.TimeoutMillis, Scope: h.Scope, Source: h.Source, Active: h.Active,
-	}).ValidateWire(); err != nil {
-		return err
-	}
-	if h.Matcher != "" {
-		if _, err := path.Match(h.Matcher, ""); err != nil {
-			return fmt.Errorf("hook matcher %q is invalid: %w", h.Matcher, err)
-		}
-	}
-	return nil
-}
-
 type HookCatalog struct {
 	ProjectRoot    string
 	ProjectTrusted bool
-	Hooks          []LifecycleHook
+	Hooks          []protocol.HookInfo
 }
 
 func (c HookCatalog) Validate() error {
 	projectHooks := false
 	for index, hook := range c.Hooks {
-		if err := hook.Validate(); err != nil {
+		if err := hook.ValidateWire(); err != nil {
 			return fmt.Errorf("hook %d: %w", index+1, err)
+		}
+		if hook.Matcher != "" {
+			if _, err := path.Match(hook.Matcher, ""); err != nil {
+				return fmt.Errorf("hook %d matcher %q is invalid: %w", index+1, hook.Matcher, err)
+			}
 		}
 		if hook.Scope == protocol.HookScopeGlobal && !hook.Active {
 			return fmt.Errorf("global hook %d is inactive", index+1)

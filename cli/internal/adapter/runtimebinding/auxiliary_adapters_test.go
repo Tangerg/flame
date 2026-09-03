@@ -194,6 +194,10 @@ func TestHookAndFeedbackAdaptersPreserveGovernanceAndTargeting(t *testing.T) {
 	if err != nil || len(catalog.Hooks) != 1 || catalog.Hooks[0].Active {
 		t.Fatalf("Catalog = (%+v, %v)", catalog, err)
 	}
+	hooks.result.Hooks[0].Command = "mutated"
+	if catalog.Hooks[0].Command != "check" {
+		t.Fatal("hook catalog projection aliases runtime hook storage")
+	}
 	if err := hookAdapter.SetProjectTrust(t.Context(), projectRoot, true); err != nil || hooks.trusted == nil || !*hooks.trusted {
 		t.Fatalf("SetProjectTrust = %v, trusted %v", err, hooks.trusted)
 	}
