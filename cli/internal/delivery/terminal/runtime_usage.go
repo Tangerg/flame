@@ -74,13 +74,13 @@ func usageDocument(report usageReport) (readerDocument, error) {
 	}, nil
 }
 
-func appendUsageBreakdown(sections []ToolSection, title string, buckets []agent.UsageBucket) []ToolSection {
+func appendUsageBreakdown(sections []ToolSection, title string, buckets []protocol.UsageBucket) []ToolSection {
 	if len(buckets) == 0 {
 		return sections
 	}
 	lines := make([]string, 0, len(buckets))
 	for _, bucket := range buckets {
-		line := bucket.Key + "  " + usageTotalsText(bucket.Totals)
+		line := bucket.Key + "  " + usageTotalsText(bucket.ModelUsage)
 		if bucket.Runs > 0 {
 			line += fmt.Sprintf("  · %d runs", bucket.Runs)
 		}

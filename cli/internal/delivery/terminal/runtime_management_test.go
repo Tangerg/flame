@@ -29,7 +29,7 @@ func (usageServiceStub) SessionUsage(_ context.Context, sessionID string) (agent
 	cost := 0.25
 	return agent.SessionUsageReport{
 		SessionID: sessionID, Total: protocol.ModelUsage{InputTokens: 1_200, OutputTokens: 300, CostUSD: &cost},
-		ByModel: []agent.UsageBucket{{Key: "deepseek/model", Totals: protocol.ModelUsage{InputTokens: 1_200}}},
+		ByModel: []protocol.UsageBucket{{Key: "deepseek/model", ModelUsage: protocol.ModelUsage{InputTokens: 1_200}}},
 	}, nil
 }
 
@@ -37,7 +37,7 @@ func (usageServiceStub) Summary(_ context.Context, period agent.UsageSummaryPeri
 	cost := 1.5
 	return agent.UsageSummary{
 		Period: period, Total: protocol.ModelUsage{InputTokens: 8_000, OutputTokens: 2_000, CostUSD: &cost},
-		ByProvider: []agent.UsageBucket{{Key: "deepseek", Runs: 4}}, Sessions: 2, Runs: 4,
+		ByProvider: []protocol.UsageBucket{{Key: "deepseek", Runs: 4}}, Sessions: 2, Runs: 4,
 	}, nil
 }
 

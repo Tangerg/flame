@@ -30,7 +30,7 @@ func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (agent.
 	report := agent.SessionUsageReport{
 		SessionID: sessionID,
 		Total:     cloneModelUsage(result.ModelUsage),
-		ByModel:   make([]agent.UsageBucket, 0, len(result.ByModel)),
+		ByModel:   make([]protocol.UsageBucket, 0, len(result.ByModel)),
 	}
 	keys := make([]string, 0, len(result.ByModel))
 	for key := range result.ByModel {
@@ -38,7 +38,7 @@ func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (agent.
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		report.ByModel = append(report.ByModel, agent.UsageBucket{Key: key, Totals: cloneModelUsage(result.ByModel[key])})
+		report.ByModel = append(report.ByModel, protocol.UsageBucket{Key: key, ModelUsage: cloneModelUsage(result.ByModel[key])})
 	}
 	if err := report.Validate(); err != nil {
 		return agent.SessionUsageReport{}, runtimeContractViolation("session usage returned an invalid report: %v", err)
@@ -64,9 +64,9 @@ func (r *Connection) Summary(ctx context.Context, period agent.UsageSummaryPerio
 	}
 	summary := agent.UsageSummary{
 		Period: period, Total: cloneModelUsage(result.Total),
-		ByProvider: projectUsageBuckets(result.ByProvider),
-		ByModel:    projectUsageBuckets(result.ByModel),
-		ByDay:      projectUsageBuckets(result.ByDay),
+		ByProvider: cloneUsageBuckets(result.ByProvider),
+		ByModel:    cloneUsageBuckets(result.ByModel),
+		ByDay:      cloneUsageBuckets(result.ByDay),
 		Sessions:   result.Sessions, Runs: result.Runs,
 	}
 	if err := summary.Validate(); err != nil {
@@ -75,12 +75,13 @@ func (r *Connection) Summary(ctx context.Context, period agent.UsageSummaryPerio
 	return summary, nil
 }
 
-func projectUsageBuckets(values []protocol.UsageBucket) []agent.UsageBucket {
-	projected := make([]agent.UsageBucket, len(values))
+func cloneUsageBuckets(values []protocol.UsageBucket) []protocol.UsageBucket {
+	cloned := make([]protocol.UsageBucket, len(values))
 	for index, value := range values {
-		projected[index] = agent.UsageBucket{Key: value.Key, Totals: cloneModelUsage(value.ModelUsage), Runs: value.Runs}
+		value.ModelUsage = cloneModelUsage(value.ModelUsage)
+		cloned[index] = value
 	}
-	return projected
+	return cloned
 }
 
 func cloneModelUsage(value protocol.ModelUsage) protocol.ModelUsage {

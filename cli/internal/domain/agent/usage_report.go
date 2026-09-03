@@ -4,31 +4,14 @@ package agent
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
-type UsageBucket struct {
-	Key    string
-	Totals runtimeprotocol.ModelUsage
-	Runs   int
-}
-
-func (b UsageBucket) Validate() error {
-	if strings.TrimSpace(b.Key) == "" {
-		return errors.New("usage bucket key is empty")
-	}
-	if b.Runs < 0 {
-		return errors.New("usage bucket run count is negative")
-	}
-	return b.Totals.ValidateWire()
-}
-
 type SessionUsageReport struct {
 	SessionID string
 	Total     runtimeprotocol.ModelUsage
-	ByModel   []UsageBucket
+	ByModel   []runtimeprotocol.UsageBucket
 }
 
 func (s SessionUsageReport) Validate() error {
@@ -44,9 +27,9 @@ func (s SessionUsageReport) Validate() error {
 type UsageSummary struct {
 	Period     UsageSummaryPeriod
 	Total      runtimeprotocol.ModelUsage
-	ByProvider []UsageBucket
-	ByModel    []UsageBucket
-	ByDay      []UsageBucket
+	ByProvider []runtimeprotocol.UsageBucket
+	ByModel    []runtimeprotocol.UsageBucket
+	ByDay      []runtimeprotocol.UsageBucket
 	Sessions   int
 	Runs       int
 }
@@ -63,7 +46,7 @@ func (s UsageSummary) Validate() error {
 	}
 	for _, breakdown := range []struct {
 		name    string
-		buckets []UsageBucket
+		buckets []runtimeprotocol.UsageBucket
 	}{
 		{name: "provider", buckets: s.ByProvider},
 		{name: "model", buckets: s.ByModel},
@@ -76,10 +59,10 @@ func (s UsageSummary) Validate() error {
 	return nil
 }
 
-func validateBuckets(context string, buckets []UsageBucket) error {
+func validateBuckets(context string, buckets []runtimeprotocol.UsageBucket) error {
 	seen := make(map[string]struct{}, len(buckets))
 	for index, bucket := range buckets {
-		if err := bucket.Validate(); err != nil {
+		if err := bucket.ValidateWire(); err != nil {
 			return fmt.Errorf("%s bucket %d: %w", context, index+1, err)
 		}
 		if _, duplicate := seen[bucket.Key]; duplicate {

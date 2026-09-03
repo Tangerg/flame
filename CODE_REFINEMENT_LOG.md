@@ -7,10 +7,10 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–124 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–125 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
-- The current Runtime contract is `834261d3` (`refactor(runtime): stop echoing file
-  head paths`).
+- The current Runtime contract is `304f589c` (`fix(runtime): require usage bucket
+  identities`).
 - Authorized code scope remains `runtime` and `cli`. Desktop work is concurrent
   user-owned work and must not be modified by this refinement stream.
 - The configured provider credential is used only through Runtime configuration.
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–124 — exact handoff
+## Rounds 101–125 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -84,6 +84,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 122 | CLI commit | Removed the synonymous CLI discovered-skill DTO and unified direct Runtime catalog cloning, validation, and identity checks. |
 | 123 | CLI commit | Removed the synonymous CLI lifecycle-hook DTO while retaining wire, matcher, trust-state, and catalog isolation checks. |
 | 124 | CLI commit | Removed the synonymous CLI usage-totals DTO and cloned Runtime model usage without maintaining a duplicate field list. |
+| 125 | `304f589c` + CLI dependency update | Made usage bucket identity a Runtime contract invariant and removed the synonymous CLI bucket DTO. |
 
 ## Verification contract
 
@@ -121,7 +122,7 @@ repeated here.
 
 ## Remaining direction
 
-- Start Round 125 by continuing to audit complete Runtime catalogs and CLI
+- Start Round 126 by continuing to audit complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the
