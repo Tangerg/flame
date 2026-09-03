@@ -219,6 +219,16 @@ function planFields(tool: AgentToolInvocation): Partial<ToolCall> {
   return { step: activePlanStep(steps)?.text, progress: planProgress(steps) };
 }
 
+/** The call's OWN result, carried verbatim beside whatever the category summarises, so a
+ *  preview renders this call's rows instead of re-querying. Absent stays absent: the key is
+ *  omitted rather than emptied, so a live `item.delta` preview stands until completed
+ *  reconciles it. */
+function rawResult(result: unknown): Pick<ToolCall, "result"> | Record<string, never> {
+  return result === undefined
+    ? {}
+    : { result: typeof result === "string" ? result : JSON.stringify(result) };
+}
+
 function categoryFields(
   tool: AgentToolInvocation,
   result: Record<string, unknown> | undefined,
@@ -255,9 +265,7 @@ function categoryFields(
           : {}),
         // Only the call's own path/status/from receipt. A preview must NOT substitute the
         // current Git worktree for absent line diffs — that includes other calls' edits.
-        ...(tool.result !== undefined
-          ? { result: typeof tool.result === "string" ? tool.result : JSON.stringify(tool.result) }
-          : {}),
+        ...rawResult(tool.result),
       };
     }
     case "search":
@@ -265,18 +273,12 @@ function categoryFields(
       // along so previews render the call's own rows instead of re-querying.
       return {
         hits: asArrayLength(searchToolResult(tool.result)?.hits),
-        ...(tool.result !== undefined
-          ? {
-              result: typeof tool.result === "string" ? tool.result : JSON.stringify(tool.result),
-            }
-          : {}),
+        ...rawResult(tool.result),
       };
     case "webSearch":
       return {
         hits: asArrayLength(webSearchToolResult(tool.result)?.results),
-        ...(tool.result !== undefined
-          ? { result: typeof tool.result === "string" ? tool.result : JSON.stringify(tool.result) }
-          : {}),
+        ...rawResult(tool.result),
       };
     case "read": {
       const content = asString(result?.content);

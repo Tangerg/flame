@@ -85,7 +85,12 @@ function runtimeRunOutcome(outcome: RunOutcome): AgentRunOutcome {
   }
 }
 
-export function runtimeRunFact(run: RunRef): AgentRunFact {
+/**
+ * Every rule the wire's Run shape has to satisfy before anything projects it, stated once and
+ * named by the error it raises. A Run that breaks one is not a Run this app can render, so it
+ * fails HERE rather than as an absent field three layers away.
+ */
+function assertRunFacts(run: RunRef): void {
   if (!run.status) throw new Error(`agent.adapter.run.statusMissing:run=${run.id}`);
   if (!run.createdAt) throw new Error(`agent.adapter.run.createdAtMissing:run=${run.id}`);
 
@@ -126,6 +131,11 @@ export function runtimeRunFact(run: RunRef): AgentRunFact {
   if (run.reasoningEffort !== undefined && run.provider === undefined) {
     throw new Error(`agent.adapter.run.reasoningWithoutModel:run=${run.id}`);
   }
+}
+
+export function runtimeRunFact(run: RunRef): AgentRunFact {
+  assertRunFacts(run);
+  const child = run.spawnedByItemId !== undefined;
 
   return {
     id: run.id,
