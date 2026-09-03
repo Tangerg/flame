@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/Tangerg/oolong/core/program"
+
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestConfiguredDraftEditorParsesArgumentsWithoutExecutingShellSyntax(t *testing.T) {
@@ -47,6 +49,16 @@ func TestDraftEditorHonorsApplicationCancellation(t *testing.T) {
 	editor := &draftEditor{command: []string{"sh", "-c", "sleep 30"}}
 	if _, err := editor.Edit(ctx, program.Session{}, t.TempDir(), "preserve me"); !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled editor error = %v, want context.Canceled", err)
+	}
+}
+
+func TestDraftEditorRejectsOversizedSourceBeforeLaunching(t *testing.T) {
+	editor := &draftEditor{command: []string{"sh", "-c", "exit 99"}}
+	_, err := editor.Edit(
+		t.Context(), program.Session{}, t.TempDir(), strings.Repeat("x", agent.MaxMessageTextBytes+1),
+	)
+	if err == nil || !strings.Contains(err.Error(), "editor draft exceeds") {
+		t.Fatalf("oversized source error = %v", err)
 	}
 }
 

@@ -20,8 +20,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
-const maximumPromptBytes = 4 << 20
-
 func newRunCommand(provider runtimeProvider, v *viper.Viper) *cobra.Command {
 	flags := new(runFlags)
 	cmd := &cobra.Command{
@@ -283,8 +281,8 @@ func readPrompt(cmd *cobra.Command, args []string) (string, error) {
 		return "", errNoPrompt
 	}
 	prompt := strings.Join(parts, "\n\n")
-	if len(prompt) > maximumPromptBytes {
-		return "", fmt.Errorf("prompt exceeds the %d-byte limit", maximumPromptBytes)
+	if len(prompt) > agent.MaxMessageTextBytes {
+		return "", fmt.Errorf("prompt exceeds the %d-byte limit", agent.MaxMessageTextBytes)
 	}
 	if !utf8.ValidString(prompt) {
 		return "", errors.New("prompt is not valid UTF-8")
@@ -304,12 +302,12 @@ func readPipedPrompt(in io.Reader) (string, error) {
 			return "", nil
 		}
 	}
-	b, err := io.ReadAll(io.LimitReader(in, maximumPromptBytes+1))
+	b, err := io.ReadAll(io.LimitReader(in, agent.MaxMessageTextBytes+1))
 	if err != nil {
 		return "", fmt.Errorf("read stdin: %w", err)
 	}
-	if len(b) > maximumPromptBytes {
-		return "", fmt.Errorf("piped prompt exceeds the %d-byte limit", maximumPromptBytes)
+	if len(b) > agent.MaxMessageTextBytes {
+		return "", fmt.Errorf("piped prompt exceeds the %d-byte limit", agent.MaxMessageTextBytes)
 	}
 	if !utf8.Valid(b) {
 		return "", errors.New("piped prompt is not valid UTF-8")

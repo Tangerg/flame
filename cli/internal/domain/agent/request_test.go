@@ -42,6 +42,17 @@ func TestMessageSemanticTextDoesNotNormalizeAuthoredContent(t *testing.T) {
 	}
 }
 
+func TestMessageRejectsOversizedText(t *testing.T) {
+	message := Message{Text: strings.Repeat("x", MaxMessageTextBytes)}
+	if err := message.Validate(); err != nil {
+		t.Fatalf("maximum-sized message error = %v", err)
+	}
+	message.Text += "x"
+	if err := message.Validate(); err == nil || !strings.Contains(err.Error(), "message text") {
+		t.Fatalf("oversized message error = %v", err)
+	}
+}
+
 func TestDeleteSessionValidatesItsOptionalMutationIdentity(t *testing.T) {
 	if err := (DeleteSession{SessionID: "ses_1"}).Validate(); err != nil {
 		t.Fatal(err)

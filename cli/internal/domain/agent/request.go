@@ -8,7 +8,10 @@ import (
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
-const MaxMessageAttachments = 16
+const (
+	MaxMessageAttachments = 16
+	MaxMessageTextBytes   = 4 << 20
+)
 
 func (s StartRun) Validate() error {
 	var problems []error
@@ -49,6 +52,9 @@ func (d DeleteSession) Validate() error {
 }
 
 func (m Message) Validate() error {
+	if len(m.Text) > MaxMessageTextBytes {
+		return fmt.Errorf("message text has %d bytes; limit is %d", len(m.Text), MaxMessageTextBytes)
+	}
 	if m.IsEmpty() {
 		return errors.New("message is empty")
 	}
