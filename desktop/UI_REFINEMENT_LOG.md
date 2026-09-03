@@ -922,3 +922,72 @@ removed — the read answers content, not the path it was asked for.
 2. `delegated` has no raster coverage.
 3. Nine settings panes have no fixture coverage. Seven are now read by hand and
    sound; the coverage gap itself is unchanged.
+
+---
+
+## Round 11 — a button that froze the app for nine seconds
+
+Status: **complete**
+
+### Audit scope
+
+The tool-output previews — eighteen renderers, never audited. Surveyed first for
+what bounds them: which truncate, which clip, which cap.
+
+### Finding 1 — expanding tool output was unbounded, and the cost is superlinear
+
+`ToolOutputPanel` collapses to nine lines with a fade and a "Show all N lines"
+control. Expanding rendered **every line there was**. Measured, rather than
+suspected:
+
+| Lines | Expand |
+| --- | --- |
+| 1,000 | 120 ms |
+| 10,000 | 702 ms |
+| 50,000 | **9,172 ms** — the measuring test timed out at 14 s |
+
+`ContentBlock.text` carries no `maxLength` in the protocol, so nothing upstream
+caps it either; a `shell` running a build reaches those sizes without trying.
+That is a control the user can press that freezes the app.
+
+| | Before | After |
+| --- | --- | --- |
+| Expanded | every line | 1,000 — where the measurement says it is still a frame |
+| The control | "Show all 50000 lines" | "Show 1000 of 50000 lines" |
+| The remainder | silently absent | "49000 more lines — open the terminal view", beside the Open-in-Terminal control the panel already had |
+
+The cap is the one number in this round, and it comes from the table above, not
+from taste. The escape hatch is not new: every caller of this panel already
+renders `PreviewFoot` pointing at the terminal view.
+
+### Finding 2 — a truncation badge no caller could reach
+
+`ToolOutputPanel` took a `truncated` prop and drew a "truncated by runtime"
+badge from it. **Four call sites, none passes it.** The one preview that has the
+fact — `http`, whose response carries `truncated` from the Runtime — draws its
+own badge in its status row instead.
+
+The prop and its badge are removed. The http preview keeps its own, where it sits
+with the status, the duration and the header count that describe the same
+response.
+
+### Read and found sound
+
+The other seventeen previews. `grep`, `lsp`, `recall`, `skill`, `schedule` and
+`glob` each bound their own lists; `patch` bounds its hunks. `askUser`, `goal`,
+`plan` and `webSearch` render fixed-shape material with nothing to bound.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, `check:locales` (1066 keys × 8
+  locales) clean.
+- Tool suites 100/100; the new bound test fails if the slice is removed.
+- `npm run test` excluding the live-runtime e2e — 2 failed, both
+  `runtime/contract`'s own sample.
+- `npm run visual:test` — 388 passed.
+
+### Open, for the next round
+
+1. The five ChatGPT-versus-Flame rows from round 5, waiting on a product answer.
+2. `delegated` has no raster coverage.
+3. Nine settings panes have no fixture coverage.

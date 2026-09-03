@@ -223,6 +223,8 @@ export const zh: Record<string, string> = {
   "tools.output.copy": "复制输出",
   "tools.output.copied": "已复制",
   "tools.output.showAll": "显示全部 {{count}} 行",
+  "tools.output.showSome": "显示 {{count}} / {{total}} 行",
+  "tools.output.beyond": "还有 {{count}} 行 —— 请打开终端视图",
   "tools.output.collapse": "收起",
   "tools.overflow.truncated": "已被运行时截断",
   "tools.group.calls": "{{count}} 次调用",

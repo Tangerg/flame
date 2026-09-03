@@ -216,6 +216,8 @@ export const ja: Record<string, string> = {
   "tools.output.copy": "出力をコピー",
   "tools.output.copied": "コピーしました",
   "tools.output.showAll": "全 {{count}} 行を表示",
+  "tools.output.showSome": "{{total}} 行中 {{count}} 行を表示",
+  "tools.output.beyond": "残り {{count}} 行 — ターミナルビューで確認",
   "tools.output.collapse": "折りたたむ",
   "tools.overflow.truncated": "ランタイムにより切り詰められました",
   "tools.group.calls": "{{count}} 件の呼び出し",

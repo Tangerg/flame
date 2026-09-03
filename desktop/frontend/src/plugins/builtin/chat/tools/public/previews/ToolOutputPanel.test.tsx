@@ -25,4 +25,18 @@ describe("ToolOutputPanel copy material ownership", () => {
 
     expect(screen.getByRole("button", { name: "Copy output" })).toBeTruthy();
   });
+
+  // Expanding used to render every line, and the cost is superlinear — nine seconds at fifty
+  // thousand. The whole output is a click away in the terminal view either way.
+  it("stops expanding where the frame is still a frame", () => {
+    const lines = 3_000;
+    const output = Array.from({ length: lines }, (_, index) => `line ${index}`).join("\n");
+    const { container } = render(<ToolOutputPanel output={output} status="ok" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Show 1000 of 3000/ }));
+
+    const rendered = container.querySelectorAll("div.whitespace-pre-wrap");
+    expect(rendered).toHaveLength(1_000);
+    expect(screen.getByText(/2000 more lines/)).toBeTruthy();
+  });
 });

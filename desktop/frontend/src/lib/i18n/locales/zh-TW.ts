@@ -217,6 +217,8 @@ export const zhTW: Record<string, string> = {
   "tools.output.copy": "複製輸出",
   "tools.output.copied": "已複製",
   "tools.output.showAll": "顯示全部 {{count}} 行",
+  "tools.output.showSome": "顯示 {{count}} / {{total}} 行",
+  "tools.output.beyond": "還有 {{count}} 行 —— 請開啟終端機檢視",
   "tools.output.collapse": "收合",
   "tools.overflow.truncated": "已被執行環境截斷",
   "tools.group.calls": "{{count}} 次呼叫",

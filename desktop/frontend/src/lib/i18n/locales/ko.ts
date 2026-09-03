@@ -216,6 +216,8 @@ export const ko: Record<string, string> = {
   "tools.output.copy": "출력 복사",
   "tools.output.copied": "복사됨",
   "tools.output.showAll": "전체 {{count}}줄 보기",
+  "tools.output.showSome": "{{total}}행 중 {{count}}행 표시",
+  "tools.output.beyond": "{{count}}행 더 있음 — 터미널 보기에서 확인",
   "tools.output.collapse": "접기",
   "tools.overflow.truncated": "런타임에서 잘렸습니다",
   "tools.group.calls": "호출 {{count}}회",

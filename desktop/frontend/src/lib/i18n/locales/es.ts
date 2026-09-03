@@ -217,6 +217,8 @@ export const es: Record<string, string> = {
   "tools.output.copy": "Copiar salida",
   "tools.output.copied": "Copiado",
   "tools.output.showAll": "Mostrar las {{count}} líneas",
+  "tools.output.showSome": "Mostrar {{count}} de {{total}} líneas",
+  "tools.output.beyond": "{{count}} líneas más: ábrelas en la vista de terminal",
   "tools.output.collapse": "Contraer",
   "tools.overflow.truncated": "truncado por el runtime",
   "tools.group.calls": "{{count}} llamadas",

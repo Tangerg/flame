@@ -229,6 +229,8 @@ export const en: Record<string, string> = {
   "tools.output.copy": "Copy output",
   "tools.output.copied": "Copied",
   "tools.output.showAll": "Show all {{count}} lines",
+  "tools.output.showSome": "Show {{count}} of {{total}} lines",
+  "tools.output.beyond": "{{count}} more lines — open the terminal view",
   "tools.output.collapse": "Collapse",
   "tools.overflow.truncated": "truncated by runtime",
   "tools.group.calls": "{{count}} calls",
