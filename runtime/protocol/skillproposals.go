@@ -10,7 +10,8 @@ const (
 
 // SkillProposal is complete immutable Skill content awaiting review. Name,
 // Revision, and Scope form the content-addressed reference used by approve and
-// reject operations.
+// reject operations. List results contain one current revision per Scope/Name,
+// ordered project scope first, then user scope, and by Name within each scope.
 type SkillProposal struct {
 	Name          string              `json:"name"`
 	Revision      string              `json:"revision"`

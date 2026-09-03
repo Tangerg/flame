@@ -94,8 +94,8 @@ func (s *Handler) RestoreSkill(ctx context.Context, in protocol.SkillNameRequest
 	return nil
 }
 
-// ListSkillProposals returns complete project and user proposals awaiting
-// review (skills.proposals.list).
+// ListSkillProposals returns the one current proposal per scoped Skill name,
+// ordered project first and then by name (skills.proposals.list).
 func (s *Handler) ListSkillProposals(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.SkillProposal], error) {
 	proposals, err := s.workspaceSkills.Proposals(ctx, in.Workspace.Path)
 	if err != nil {

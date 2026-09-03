@@ -27,7 +27,7 @@ func (r *Runtime) RestoreSkill(ctx context.Context, request protocol.SkillNameRe
 	return r.invokeAck(ctx, delivery.SkillsLibraryRestore, request, commandOptions(options))
 }
 
-// ListSkillProposals returns pending Skill proposals for a workspace.
+// ListSkillProposals returns pending Skill proposals ordered by scope and name.
 func (r *Runtime) ListSkillProposals(ctx context.Context, request protocol.WorkspaceQuery, options CallOptions) (*protocol.Page[protocol.SkillProposal], error) {
 	return r.invoke[protocol.WorkspaceQuery, *protocol.Page[protocol.SkillProposal]](ctx, delivery.SkillsProposalsList, request, callOptions(options))
 }

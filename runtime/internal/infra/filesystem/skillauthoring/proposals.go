@@ -9,7 +9,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"slices"
 
 	skillspec "github.com/Tangerg/scope/skills"
 
@@ -256,7 +255,8 @@ func (s *Store) replaceActive(ctx context.Context, root *os.Root, ref skills.Pro
 // _proposals/. The queue is bounded, so this complete, non-paginated read has a
 // finite document and collection cost. Unparseable or path/name-mismatched
 // content is skipped; an over-capacity queue fails closed instead of silently
-// truncating the review surface. Ordering follows skill name.
+// truncating the review surface. Filesystem encounter order is intentionally
+// preserved; Application owns the public catalog order.
 func (s *Store) ListProposals(ctx context.Context) ([]skills.ProposalReview, error) {
 	if !s.Enabled() {
 		return nil, nil
@@ -341,7 +341,6 @@ func proposalSlotNames(root *os.Root) ([]string, error) {
 			names = append(names, entry.Name())
 		}
 	}
-	slices.Sort(names)
 	return names, nil
 }
 

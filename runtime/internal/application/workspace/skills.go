@@ -1,8 +1,11 @@
 package workspace
 
 import (
+	"cmp"
 	"context"
 	"errors"
+	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
@@ -29,9 +32,10 @@ type SkillCurator interface {
 	Restore(ctx context.Context, name string) ([]string, error)
 }
 
-// SkillProposals stores immutable project or user proposals. Mutation methods
-// return exact opaque file identities so filesystem observation can accept only
-// the caller's committed paths without swallowing concurrent external edits.
+// SkillProposals stores the one current immutable proposal for each scoped
+// Skill name. Mutation methods return exact opaque file identities so
+// filesystem observation can accept only the caller's committed paths without
+// swallowing concurrent external edits.
 type SkillProposals interface {
 	SubmitProposal(ctx context.Context, projectRoot string, proposal skills.Proposal) (skills.ProposalRef, []string, error)
 	ListProposals(ctx context.Context, projectRoot string) ([]skills.ProposalReview, error)
@@ -111,7 +115,8 @@ func (s *Skills) SubmitProposal(ctx context.Context, cwd string, proposal skills
 	return ref, err
 }
 
-// Proposals returns immutable Skill proposals visible from cwd.
+// Proposals returns the current immutable Skill proposals visible from cwd,
+// ordered by scope and name.
 func (s *Skills) Proposals(ctx context.Context, cwd string) ([]skills.ProposalReview, error) {
 	if s.proposals == nil {
 		return nil, ErrSkillProposalsUnavailable
@@ -120,7 +125,24 @@ func (s *Skills) Proposals(ctx context.Context, cwd string) ([]skills.ProposalRe
 	if err != nil {
 		return nil, err
 	}
-	return s.proposals.ListProposals(ctx, root)
+	proposals, err := s.proposals.ListProposals(ctx, root)
+	if err != nil {
+		return nil, err
+	}
+	proposals = slices.Clone(proposals)
+	slices.SortFunc(proposals, func(first, second skills.ProposalReview) int {
+		return cmp.Or(
+			cmp.Compare(string(first.Ref.Scope), string(second.Ref.Scope)),
+			cmp.Compare(first.Ref.Name, second.Ref.Name),
+		)
+	})
+	for index := 1; index < len(proposals); index++ {
+		previous, current := proposals[index-1].Ref, proposals[index].Ref
+		if current.Scope == previous.Scope && current.Name == previous.Name {
+			return nil, fmt.Errorf("workspace: skill proposal catalog repeats current slot %s/%s", current.Scope, current.Name)
+		}
+	}
+	return proposals, nil
 }
 
 // ApproveProposal accepts a Skill proposal into its target library.

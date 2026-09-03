@@ -100,3 +100,34 @@ func TestSkillProposalsResolveWorkspaceAndDelegate(t *testing.T) {
 		t.Fatalf("rejected = %+v", fake.rejected)
 	}
 }
+
+func TestSkillProposalsOwnCurrentSlotOrder(t *testing.T) {
+	projectAlpha := skills.NewProposalRef(skills.ScopeProject, "alpha", []byte("project alpha"))
+	projectZeta := skills.NewProposalRef(skills.ScopeProject, "zeta", []byte("project zeta"))
+	userAlpha := skills.NewProposalRef(skills.ScopeUser, "alpha", []byte("user alpha"))
+	fake := &fakeSkillProposals{list: []skills.ProposalReview{
+		{Ref: userAlpha},
+		{Ref: projectZeta},
+		{Ref: projectAlpha},
+	}}
+	c := NewSkills(NewScope("", "", testPaths{}), nil, nil, fake, nil, nil)
+
+	got, err := c.Proposals(t.Context(), "/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 3 || got[0].Ref != projectAlpha || got[1].Ref != projectZeta || got[2].Ref != userAlpha {
+		t.Fatalf("Proposals = %+v, want project/alpha, project/zeta, user/alpha", got)
+	}
+}
+
+func TestSkillProposalsRejectDuplicateCurrentSlot(t *testing.T) {
+	first := skills.NewProposalRef(skills.ScopeProject, "review", []byte("first"))
+	second := skills.NewProposalRef(skills.ScopeProject, "review", []byte("second"))
+	fake := &fakeSkillProposals{list: []skills.ProposalReview{{Ref: first}, {Ref: second}}}
+	c := NewSkills(NewScope("", "", testPaths{}), nil, nil, fake, nil, nil)
+
+	if _, err := c.Proposals(t.Context(), "/repo"); err == nil {
+		t.Fatal("Proposals accepted two current revisions for one scoped Skill name")
+	}
+}
