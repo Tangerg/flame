@@ -1,6 +1,7 @@
 package runtimebinding
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -56,10 +57,37 @@ func (a *AgentMemory) Items(ctx context.Context, target agent.MemoryTarget) ([]p
 		if _, duplicate := seen[item.ID]; duplicate {
 			return nil, runtimeContractViolation("list agent memory repeats %q", item.ID)
 		}
+		if len(items) != 0 {
+			previous := items[len(items)-1]
+			if compareAgentMemoryItems(previous, item) > 0 {
+				return nil, runtimeContractViolation(
+					"list agent memory returned item %q out of catalog order after %q", item.ID, previous.ID,
+				)
+			}
+		}
 		seen[item.ID] = struct{}{}
 		items = append(items, item)
 	}
 	return items, nil
+}
+
+func compareAgentMemoryItems(a, b protocol.AgentMemoryItem) int {
+	if a.Status != b.Status {
+		if a.Status == protocol.AgentMemoryStatusPending {
+			return -1
+		}
+		return 1
+	}
+	if a.Pinned != b.Pinned {
+		if a.Pinned {
+			return -1
+		}
+		return 1
+	}
+	if order := b.UpdatedAt.Compare(a.UpdatedAt); order != 0 {
+		return order
+	}
+	return cmp.Compare(b.ID, a.ID)
 }
 
 func (a *AgentMemory) Review(ctx context.Context, id string, decision protocol.AgentMemoryReviewDecision) error {

@@ -7,10 +7,10 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–174 are complete and pushed to `origin/main`. Public Runtime changes
+- Rounds 1–175 are complete and pushed to `origin/main`. Public Runtime changes
   are followed by their exact CLI dependency update.
-- The current Runtime contract is `f37dc362` (`refactor(runtime): centralize
-  request validation`).
+- The current Runtime contract is `8624f0b3` (`refactor(runtime): own agent
+  memory list order`).
 - Authorized code scope remains `runtime` and `cli`. Desktop work is concurrent
   user-owned work and must not be modified by this refinement stream.
 - The configured provider credential is used only through Runtime configuration.
@@ -134,6 +134,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 172 | CLI commit | Preserved the normalized Session query through projection and rejected pages that escape its exact Workspace filter. |
 | 173 | CLI commit | Enforced Runtime's creation-time and Schedule-ID order while materializing the complete Schedule catalog across pages. |
 | 174 | CLI commit | Rejected workspace-file pages that violate Runtime's directory-first, path-ascending total order, including violations across page boundaries. |
+| 175 | `8624f0b3` + CLI dependency update | Moved Agent Memory management ordering from SQLite into Application, made it total with ID, published it, and rejected out-of-order CLI projections. |
 
 ## Verification contract
 
@@ -171,7 +172,7 @@ repeated here.
 
 ## Remaining direction
 
-- Continue after Round 174 by auditing complete Runtime catalogs and CLI
+- Continue after Round 175 by auditing complete Runtime catalogs and CLI
   projections for aggregate invariants that element-level wire validation cannot
   express.
 - Treat missing output-resource identity constraints as candidates only after the

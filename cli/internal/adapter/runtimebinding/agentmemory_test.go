@@ -96,6 +96,77 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 	}
 }
 
+func TestAgentMemoryAdapterRejectsCatalogOrderViolations(t *testing.T) {
+	t.Parallel()
+	created := time.Date(2026, 9, 4, 8, 0, 0, 0, time.UTC)
+	item := func(id string, status protocol.AgentMemoryStatus, pinned bool, updated time.Time) protocol.AgentMemoryItem {
+		origin := protocol.AgentMemoryOriginAuto
+		if status == protocol.AgentMemoryStatusActive {
+			origin = protocol.AgentMemoryOriginUser
+		}
+		return protocol.AgentMemoryItem{
+			ID: id, Scope: protocol.AgentMemoryScopeProject, Content: "fact",
+			Origin: origin, Status: status, Pinned: pinned,
+			CreatedAt: created, UpdatedAt: updated,
+		}
+	}
+	for _, test := range []struct {
+		name  string
+		items []protocol.AgentMemoryItem
+	}{
+		{
+			name: "pending follows active",
+			items: []protocol.AgentMemoryItem{
+				item(adapterMemoryIDOne, protocol.AgentMemoryStatusActive, false, created),
+				item(adapterMemoryIDTwo, protocol.AgentMemoryStatusPending, false, created),
+			},
+		},
+		{
+			name: "pinned follows unpinned",
+			items: []protocol.AgentMemoryItem{
+				item(adapterMemoryIDOne, protocol.AgentMemoryStatusPending, false, created),
+				item(adapterMemoryIDTwo, protocol.AgentMemoryStatusPending, true, created),
+			},
+		},
+		{
+			name: "update time ascends",
+			items: []protocol.AgentMemoryItem{
+				item(adapterMemoryIDOne, protocol.AgentMemoryStatusPending, true, created),
+				item(adapterMemoryIDTwo, protocol.AgentMemoryStatusPending, true, created.Add(time.Second)),
+			},
+		},
+		{
+			name: "equal-time identity ascends",
+			items: []protocol.AgentMemoryItem{
+				item(adapterMemoryIDOne, protocol.AgentMemoryStatusPending, true, created),
+				item(adapterMemoryIDTwo, protocol.AgentMemoryStatusPending, true, created),
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			stub := &agentMemoryBindingStub{
+				t: t, now: created, listed: &protocol.AgentMemoryList{Items: test.items},
+			}
+			adapter := &AgentMemory{runtime: &Connection{
+				agentMemory: stub,
+				workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
+					Ref:          protocol.WorkspaceRef{Path: "/workspace"},
+					ProjectRoot:  "/workspace",
+					Availability: protocol.WorkspaceAvailable,
+				}},
+				meta: requestMeta("test"),
+			}}
+			target, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeProject, "/workspace")
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = adapter.Items(t.Context(), target)
+			requireRuntimeContractViolation(t, err)
+		})
+	}
+}
+
 func (a *agentMemoryBindingStub) ReviewAgentMemory(_ context.Context, request protocol.AgentMemoryReviewRequest, options flameruntime.CommandOptions) error {
 	a.assertCommand(options)
 	a.actions = append(a.actions, "review:"+request.ID+":"+string(request.Decision))
