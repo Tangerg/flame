@@ -210,6 +210,34 @@ func TestMemoryIdempotencyStoreKeepsAbandonedClaimReserved(t *testing.T) {
 	}
 }
 
+func TestMemoryIdempotencyStorePrunesExpiredResultsBeforeNewClaim(t *testing.T) {
+	store := newMemoryIdempotencyStore()
+	expired, claimed, err := store.Claim(t.Context(), "expired", "first")
+	if err != nil || !claimed {
+		t.Fatalf("claim expired fixture = (%+v, %v, %v)", expired, claimed, err)
+	}
+	expired.Payload = []byte(`{"version":1}`)
+	if err := store.Complete(t.Context(), expired); err != nil {
+		t.Fatalf("complete expired fixture: %v", err)
+	}
+	store.mu.Lock()
+	stored := store.records[expired.Key]
+	stored.expiresAt = time.Time{}
+	store.records[expired.Key] = stored
+	store.mu.Unlock()
+
+	if _, claimed, err := store.Claim(t.Context(), "fresh", "second"); err != nil || !claimed {
+		t.Fatalf("claim fresh key = (%v, %v)", claimed, err)
+	}
+	store.mu.Lock()
+	_, exists := store.records[expired.Key]
+	count := len(store.records)
+	store.mu.Unlock()
+	if exists || count != 1 {
+		t.Fatalf("records after fresh claim = %d, expired exists = %v", count, exists)
+	}
+}
+
 func TestCompletionFailureRetriesWithoutRepeatingCommand(t *testing.T) {
 	service := &countingCancelService{}
 	store := &flakyCompletionStore{Store: newMemoryIdempotencyStore()}

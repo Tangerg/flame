@@ -585,7 +585,6 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			key         TEXT PRIMARY KEY,
 			fingerprint TEXT NOT NULL,
 			payload     BLOB NOT NULL,
-			created_at  INTEGER NOT NULL,
 			expires_at  INTEGER NOT NULL
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_idempotency_records_expires_at

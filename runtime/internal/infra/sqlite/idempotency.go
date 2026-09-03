@@ -52,10 +52,10 @@ func (i *IdempotencyStore) Claim(ctx context.Context, key, fingerprint string) (
 			return fmt.Errorf("sqlite: prune idempotency records: %w", execContextErr)
 		}
 		res, execContextErr := db.ExecContext(ctx, `INSERT INTO idempotency_records(
-				key, fingerprint, payload, created_at, expires_at
-			) VALUES (?, ?, ?, ?, ?)
+				key, fingerprint, payload, expires_at
+			) VALUES (?, ?, ?, ?)
 			ON CONFLICT(key) DO NOTHING`,
-			key, fingerprint, []byte{}, now, now+int64(idempotency.Retention/time.Second))
+			key, fingerprint, []byte{}, now+int64(idempotency.Retention/time.Second))
 		if execContextErr != nil {
 			return fmt.Errorf("sqlite: insert idempotency claim: %w", execContextErr)
 		}

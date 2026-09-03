@@ -386,11 +386,13 @@ func newMemoryIdempotencyStore() *memoryIdempotencyStore {
 func (m *memoryIdempotencyStore) Claim(_ context.Context, key, fingerprint string) (idempotency.Record, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	stored, ok := m.records[key]
-	if ok && len(stored.Payload) != 0 && !time.Now().Before(stored.expiresAt) {
-		delete(m.records, key)
-		ok = false
+	now := time.Now()
+	for storedKey, stored := range m.records {
+		if len(stored.Payload) != 0 && !now.Before(stored.expiresAt) {
+			delete(m.records, storedKey)
+		}
 	}
+	stored, ok := m.records[key]
 	if ok {
 		if stored.Fingerprint != fingerprint {
 			return idempotency.Record{}, false, idempotency.ErrKeyConflict
@@ -399,7 +401,7 @@ func (m *memoryIdempotencyStore) Claim(_ context.Context, key, fingerprint strin
 		return stored.Record, false, nil
 	}
 	record := idempotency.Record{Key: key, Fingerprint: fingerprint}
-	m.records[key] = memoryIdempotencyRecord{Record: record, expiresAt: time.Now().Add(idempotency.Retention)}
+	m.records[key] = memoryIdempotencyRecord{Record: record}
 	return record, true, nil
 }
 
