@@ -85,9 +85,15 @@ func resolvedVersion() string {
 	return flamehttp.ServerInfoOrDefault().Version
 }
 
+type runtimeHTTPServer interface {
+	Start() error
+	Shutdown(context.Context) error
+	Close() error
+}
+
 // runServer launches the server, blocks until it returns or a shutdown signal
 // arrives, then drains with a 10s budget.
-func runServer(ctx context.Context, errw io.Writer, httpServer *flamehttp.Server, addr string, token *localruntime.Token) error {
+func runServer(ctx context.Context, errw io.Writer, httpServer runtimeHTTPServer, addr string, token *localruntime.Token) error {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -107,11 +113,11 @@ func runServer(ctx context.Context, errw io.Writer, httpServer *flamehttp.Server
 	}()
 
 	select {
-	case err := <-errs:
-		if errors.Is(err, http.ErrServerClosed) || err == nil {
-			return nil
-		}
-		return err
+	case serveErr := <-errs:
+		return errors.Join(
+			normalizeHTTPServerError(serveErr),
+			normalizeHTTPServerError(httpServer.Close()),
+		)
 	case <-ctx.Done():
 		_, _ = fmt.Fprintln(errw, runtimeLogPrefix+" shutdown requested, draining...")
 	}
@@ -120,11 +126,15 @@ func runServer(ctx context.Context, errw io.Writer, httpServer *flamehttp.Server
 	defer cancel()
 	shutdownErr := httpServer.Shutdown(shutdownCtx)
 	if shutdownErr != nil {
-		shutdownErr = errors.Join(shutdownErr, httpServer.Close())
+		shutdownErr = errors.Join(shutdownErr, normalizeHTTPServerError(httpServer.Close()))
 	}
-	serveErr := <-errs
-	if errors.Is(serveErr, http.ErrServerClosed) {
-		serveErr = nil
-	}
+	serveErr := normalizeHTTPServerError(<-errs)
 	return errors.Join(shutdownErr, serveErr)
+}
+
+func normalizeHTTPServerError(err error) error {
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
 }
