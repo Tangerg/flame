@@ -41,6 +41,7 @@ import { useDockWidth } from "@/plugins/builtin/workspace/public/sidebarDrawer";
 import { Slot } from "@/plugins/host/Slot";
 import { WORKSPACE_DOCK_CATALOG } from "@/plugins/builtin/workspace/public/navigation";
 import { ChatStream } from "./ChatStream";
+import { RunAnnouncer } from "./RunAnnouncer";
 import { SessionIdentity } from "./SessionIdentity";
 import { DockResizer } from "./DockResizer";
 import { HeaderDiffStat } from "./HeaderDiffStat";
@@ -242,6 +243,7 @@ export function ChatPanel({ onSend }: Props) {
               <HeaderDiffStat />
             </AgentSurfaceHeader>
             <ChatStream onSend={onSend} />
+            <RunAnnouncer />
           </div>
           {dockOpen && <DockResizer />}
           <SessionOwnedWorkspaceState sessionId={activeSessionId}>

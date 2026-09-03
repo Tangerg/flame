@@ -25,7 +25,7 @@ function anySessionRunning(sessions: Record<string, AgentSessionViewEntry>): boo
   return false;
 }
 
-function terminalSettlementStatus(
+export function terminalSettlementStatus(
   outcome: AgentRunView["outcome"],
 ): Exclude<RootRunSettlement["status"], "needsInput"> {
   if (isAgentRunFailure(outcome)) return "error";

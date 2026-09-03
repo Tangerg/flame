@@ -1882,3 +1882,46 @@ only under a full run.
 Rounds 19–21's items, less item 6, which this round closed. Item 4 gains
 `foundation dark collapsed` and the line-break observation. Next: the screen
 reader's status announcements, then the composer's single-line state and overhang.
+
+## Round 23 — the transcript arrived without a sound
+
+Agreed in round 21: announce the **state**, never the text. A polite region fed a
+streamed answer re-reads it from the top on every chunk, which is worse than
+silence — so the transcript stays a document the reader navigates, and one
+`sr-only` region says only that it changed.
+
+| | Before | After |
+| --- | --- | --- |
+| A turn starts, finishes, fails, is stopped, or asks a question | nothing is announced | `Responding` / `Response complete` / `The turn failed` / `The turn was stopped` / `The turn reached its limit` / `Waiting for your answer` |
+| Where the vocabulary comes from | — | `terminalSettlementStatus`, the mapping the OS notifier already settles runs through; it is exported rather than copied |
+| The answer's text | — | never enters the region |
+
+### The bug in my own first version
+
+The region rendered its state on mount. Measured in five fixtures: a chat whose
+run had finished announced **"Response complete"** the moment it was opened. A
+live region whose text arrives in the same commit as the region is announced by
+some readers — which is the caveat my own comment had just written down, two
+lines above the code that ignored it.
+
+It opens empty now and speaks only about a change that happens while the reader
+is there. Landing on a chat that finished yesterday is not an event.
+
+| Fixture | Announced |
+| --- | --- |
+| `running`, mounted running | nothing — until it settles |
+| `idle` (a finished run) | nothing |
+| `canceled`, `error`, `waiting`, mounted | nothing |
+| any of them, on a transition | the state it moved to |
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip` and all fifteen guards — green.
+- 1897 tests passing, including the mount-silence case.
+- `visual` — 390 passed, no golden regenerated; the region is 1×1 and `sr-only`,
+  and the WCAG audits over every state in both themes stay clean.
+
+### Open
+
+Rounds 19–22's items. Next: the composer's single-line state and its overhang,
+the last of the three decisions.

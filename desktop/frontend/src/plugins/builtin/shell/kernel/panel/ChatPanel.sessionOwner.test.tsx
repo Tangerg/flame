@@ -20,6 +20,7 @@ vi.mock("@/plugins/builtin/agent/public/session", () => ({
 
 vi.mock("@/plugins/builtin/agent/public/run", () => ({
   useIsCurrentRootRunning: () => false,
+  useCurrentRootMaterial: () => ({ status: "idle", outcome: null }),
 }));
 
 vi.mock("@/plugins/builtin/workspace/public/navigation", () => ({
