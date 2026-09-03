@@ -26,6 +26,25 @@ func (r runtimeProblemError) Error() string                 { return r.data.Type
 func (r runtimeProblemError) Unwrap() error                 { return r.cause }
 func (r runtimeProblemError) Problem() protocol.ProblemData { return r.data }
 
+func TestRuntimeContractViolationPreservesValidationCause(t *testing.T) {
+	cause := &protocol.ConstraintError{
+		Shape:  "RuntimeEvent",
+		Fields: []protocol.FieldError{{Field: "sequence", Detail: "must be positive"}},
+	}
+	err := runtimeContractViolation("runtime change event is invalid: %v", cause)
+	if !errors.Is(err, agent.ErrIncompatibleRuntime) {
+		t.Fatalf("error = %v, want ErrIncompatibleRuntime", err)
+	}
+	var preserved *protocol.ConstraintError
+	if !errors.As(err, &preserved) || preserved != cause {
+		t.Fatalf("validation cause = %v, want original ConstraintError", preserved)
+	}
+	want := agent.ErrIncompatibleRuntime.Error() + ": runtime change event is invalid: " + cause.Error()
+	if err.Error() != want {
+		t.Fatalf("error = %q, want %q", err, want)
+	}
+}
+
 func TestClassifyErrorPreservesIdentityAndProjectsRecoveryMetadata(t *testing.T) {
 	t.Parallel()
 

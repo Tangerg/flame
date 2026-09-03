@@ -37,7 +37,29 @@ func (p projectedError) Unwrap() []error {
 // negotiated at startup. Callers may retry transport and storage failures, but
 // the same malformed response cannot become valid through backoff.
 func runtimeContractViolation(format string, arguments ...any) error {
-	return fmt.Errorf("%w: %s", agent.ErrIncompatibleRuntime, fmt.Sprintf(format, arguments...))
+	causes := []error{agent.ErrIncompatibleRuntime}
+	for _, argument := range arguments {
+		if cause, ok := argument.(error); ok {
+			causes = append(causes, cause)
+		}
+	}
+	return &contractViolationError{
+		detail: fmt.Sprintf(format, arguments...),
+		causes: causes,
+	}
+}
+
+type contractViolationError struct {
+	detail string
+	causes []error
+}
+
+func (e *contractViolationError) Error() string {
+	return agent.ErrIncompatibleRuntime.Error() + ": " + e.detail
+}
+
+func (e *contractViolationError) Unwrap() []error {
+	return append([]error(nil), e.causes...)
 }
 
 func classifyError(err error) error {

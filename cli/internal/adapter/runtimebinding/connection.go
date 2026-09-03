@@ -271,7 +271,7 @@ func validateDiscovery(discovery *protocol.DiscoverResponse) error {
 		return fmt.Errorf("%w: discovery response is nil", agent.ErrIncompatibleRuntime)
 	}
 	if err := protocol.ValidateWireTree(*discovery); err != nil {
-		return fmt.Errorf("%w: discovery response violates the wire contract: %v", agent.ErrIncompatibleRuntime, err)
+		return runtimeContractViolation("discovery response violates the wire contract: %v", err)
 	}
 	if discovery.ProtocolVersion != protocol.ProtocolVersion {
 		return fmt.Errorf(

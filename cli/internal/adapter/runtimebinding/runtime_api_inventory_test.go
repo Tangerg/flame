@@ -178,6 +178,20 @@ func TestDiscoveryAcceptsRuntimeWithoutOptionalPlanCapability(t *testing.T) {
 	}
 }
 
+func TestDiscoveryPreservesWireConstraintCause(t *testing.T) {
+	discovery := compatibleDiscovery()
+	zero := 0
+	discovery.Capabilities.Limits.MaxConcurrentRuns = &zero
+	err := validateDiscovery(discovery)
+	if !errors.Is(err, agent.ErrIncompatibleRuntime) {
+		t.Fatalf("validateDiscovery = %v, want ErrIncompatibleRuntime", err)
+	}
+	var constraint *protocol.ConstraintError
+	if !errors.As(err, &constraint) {
+		t.Fatalf("validateDiscovery lost ConstraintError: %v", err)
+	}
+}
+
 func compatibleDiscovery() *protocol.DiscoverResponse {
 	maxConcurrentRuns := 4
 	return &protocol.DiscoverResponse{
