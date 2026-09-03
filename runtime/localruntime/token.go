@@ -128,11 +128,18 @@ func readTokenFile(path string, pathInfo os.FileInfo) (*Token, error) {
 		return nil, fmt.Errorf("local Runtime token: open: %w", err)
 	}
 	defer func() { _ = file.Close() }()
+	return readOpenedTokenFile(path, file, pathInfo)
+}
+
+func readOpenedTokenFile(path string, file *os.File, pathInfo os.FileInfo) (*Token, error) {
+	if file == nil {
+		return nil, invalidToken("opened file is required")
+	}
 	openedInfo, err := file.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("local Runtime token: inspect opened file: %w", err)
 	}
-	if !os.SameFile(pathInfo, openedInfo) {
+	if !sameTokenFileVersion(pathInfo, openedInfo) {
 		return nil, invalidToken("path changed while opening")
 	}
 	if validationErr := validateTokenFile(openedInfo); validationErr != nil {
@@ -147,6 +154,20 @@ func readTokenFile(path string, pathInfo os.FileInfo) (*Token, error) {
 		}
 		return nil, invalidToken("file must contain exactly 43 bytes")
 	}
+	after, err := file.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("local Runtime token: inspect file after reading: %w", err)
+	}
+	current, err := os.Lstat(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, invalidToken("path changed while reading")
+		}
+		return nil, fmt.Errorf("local Runtime token: inspect path after reading: %w", err)
+	}
+	if !sameTokenFileVersion(openedInfo, after) || !sameTokenFileVersion(after, current) {
+		return nil, invalidToken("path changed while reading")
+	}
 
 	var decoded [rawTokenBytes]byte
 	decodedBytes, err := base64.RawURLEncoding.Decode(decoded[:], encoded[:encodedTokenBytes])
@@ -155,6 +176,12 @@ func readTokenFile(path string, pathInfo os.FileInfo) (*Token, error) {
 		return nil, invalidToken("file does not contain one canonical 32-byte token")
 	}
 	return &Token{value: string(encoded[:encodedTokenBytes]), path: path}, nil
+}
+
+func sameTokenFileVersion(left, right os.FileInfo) bool {
+	return left != nil && right != nil && os.SameFile(left, right) &&
+		left.Size() == right.Size() && left.Mode() == right.Mode() &&
+		left.ModTime().Equal(right.ModTime())
 }
 
 func cleanTokenPath(path string) (string, error) {
