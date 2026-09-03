@@ -304,6 +304,11 @@ func TestClientSpecRejectsPrimitiveSentinelsAndPartialState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	unbounded := spec
+	unbounded.httpClient = nil
+	if _, _, err := BuildChat(unbounded); err == nil {
+		t.Fatal("ClientSpec without bounded response admission was accepted")
+	}
 	for _, invalid := range []string{"", " https://example.test", "ftp://example.test", "https://user@example.test", "https://example.test/#fragment"} {
 		if _, err := spec.WithBaseURL(invalid); err == nil {
 			t.Errorf("base URL %q was accepted", invalid)

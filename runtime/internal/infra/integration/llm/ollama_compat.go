@@ -15,10 +15,6 @@ const (
 	defaultOllamaOpenAIBaseURL = "http://127.0.0.1:11434/v1"
 )
 
-var ollamaUnauthenticatedHTTPClient = &http.Client{
-	Transport: authorizationStrippingRoundTripper{base: http.DefaultTransport},
-}
-
 // buildOllamaChatModel uses the daemon's supported OpenAI-compatible surface.
 // Keeping the protocol adapter provider-scoped preserves ollama/* extension
 // ownership without importing Ollama's server repository into the Runtime.
@@ -49,13 +45,15 @@ func buildOllamaEmbeddingModel(spec ClientSpec, opts embedding.Options) (embeddi
 
 func ollamaProtocolAuthentication(spec ClientSpec) (string, *http.Client) {
 	if apiKey := spec.sdkAPIKey(); apiKey != "" {
-		return apiKey, nil
+		return apiKey, spec.sdkHTTPClient()
 	}
 	// scope's OpenAI protocol constructor requires a non-empty key even when the
 	// target daemon does not authenticate. Satisfy that construction invariant,
 	// then remove the header in this anti-corruption boundary so no fabricated
 	// credential crosses the process boundary.
-	return ollamaSDKValidationAPIKey, ollamaUnauthenticatedHTTPClient
+	client := *spec.sdkHTTPClient()
+	client.Transport = authorizationStrippingRoundTripper{base: client.Transport}
+	return ollamaSDKValidationAPIKey, &client
 }
 
 type authorizationStrippingRoundTripper struct {

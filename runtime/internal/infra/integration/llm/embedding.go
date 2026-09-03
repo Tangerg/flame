@@ -64,25 +64,25 @@ func BuildEmbeddingModel(spec ClientSpec) (embedding.Model, error) {
 }
 
 func buildOpenAIEmbeddingModel(s ClientSpec, o embedding.Options) (embedding.Model, error) {
-	return openaimodel.NewEmbeddingModel(openaimodel.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	return openaimodel.NewEmbeddingModel(openaimodel.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 }
 
 func buildAzureOpenAIEmbeddingModel(s ClientSpec, o embedding.Options) (embedding.Model, error) {
-	return azureopenai.NewEmbeddingModel(azureopenai.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), BaseURL: s.sdkBaseURL(), DefaultOptions: o})
+	return azureopenai.NewEmbeddingModel(azureopenai.EmbeddingModelConfig{Config: azureopenai.Config{APIKey: s.sdkAPIKey(), BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()}, DefaultOptions: o})
 }
 
 func buildGoogleEmbeddingModel(s ClientSpec, o embedding.Options) (embedding.Model, error) {
-	return google.NewEmbeddingModel(google.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	return google.NewEmbeddingModel(google.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 }
 
 func buildMistralEmbeddingModel(s ClientSpec, o embedding.Options) (embedding.Model, error) {
-	return mistral.NewEmbeddingModel(mistral.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	return mistral.NewEmbeddingModel(mistral.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 }
 
 func buildZhipuEmbeddingModel(s ClientSpec, o embedding.Options) (embedding.Model, error) {
-	return zhipu.NewEmbeddingModel(zhipu.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	return zhipu.NewEmbeddingModel(zhipu.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 }
 
 func buildAlibabaEmbeddingModel(s ClientSpec, o embedding.Options) (embedding.Model, error) {
-	return alibaba.NewEmbeddingModel(alibaba.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL()})
+	return alibaba.NewEmbeddingModel(alibaba.EmbeddingModelConfig{APIKey: s.sdkAPIKey(), DefaultOptions: o, BaseURL: s.sdkBaseURL(), HTTPClient: s.sdkHTTPClient()})
 }
