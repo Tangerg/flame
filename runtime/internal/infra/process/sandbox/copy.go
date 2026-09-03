@@ -37,24 +37,24 @@ func copyTree(ctx context.Context, source, destination string) error {
 	}
 	source = filepath.Clean(source)
 	destination = filepath.Clean(destination)
-	physicalSource, err := filepath.EvalSymlinks(source)
+	resolvedSource, err := resolveCopyRoot(source, "source")
 	if err != nil {
-		return fmt.Errorf("resolve workspace copy source: %w", err)
+		return err
 	}
-	physicalDestination, err := filepath.EvalSymlinks(destination)
+	resolvedDestination, err := resolveCopyRoot(destination, "destination")
 	if err != nil {
-		return fmt.Errorf("resolve workspace copy destination: %w", err)
+		return err
 	}
-	if containsPath(physicalSource, physicalDestination) {
+	if containsPath(resolvedSource.path, resolvedDestination.path) {
 		return errors.New("workspace copy destination must not be inside source")
 	}
 
-	sourceRoot, err := openDirectoryRoot(source, "source")
+	sourceRoot, sourceInfo, err := openCopyRoot(resolvedSource, "source")
 	if err != nil {
 		return err
 	}
 	defer func() { _ = sourceRoot.Close() }()
-	destinationRoot, err := openDirectoryRoot(destination, "destination")
+	destinationRoot, _, err := openCopyRoot(resolvedDestination, "destination")
 	if err != nil {
 		return err
 	}
@@ -66,27 +66,47 @@ func copyTree(ctx context.Context, source, destination string) error {
 		buffer:      make([]byte, workspaceCopyBufferBytes),
 		maxEntries:  maxWorkspaceCopyEntries,
 	}
-	if err := copier.copyDirectory(ctx, "."); err != nil {
+	if err := copier.copyDirectory(ctx, ".", sourceInfo); err != nil {
 		return err
 	}
 	return copier.restoreDirectoryModes(ctx)
 }
 
-func openDirectoryRoot(name, role string) (*os.Root, error) {
-	root, err := os.OpenRoot(name)
+type copyRoot struct {
+	path string
+	info os.FileInfo
+}
+
+func resolveCopyRoot(name, role string) (copyRoot, error) {
+	physical, err := filepath.EvalSymlinks(name)
 	if err != nil {
-		return nil, fmt.Errorf("open workspace copy %s: %w", role, err)
+		return copyRoot{}, fmt.Errorf("resolve workspace copy %s: %w", role, err)
 	}
-	info, err := root.Stat(".")
+	info, err := os.Stat(physical)
 	if err != nil {
-		_ = root.Close()
-		return nil, fmt.Errorf("stat workspace copy %s: %w", role, err)
+		return copyRoot{}, fmt.Errorf("stat workspace copy %s: %w", role, err)
 	}
 	if !info.IsDir() {
-		_ = root.Close()
-		return nil, fmt.Errorf("workspace copy %s %q is not a directory", role, name)
+		return copyRoot{}, fmt.Errorf("workspace copy %s %q is not a directory", role, name)
 	}
-	return root, nil
+	return copyRoot{path: physical, info: info}, nil
+}
+
+func openCopyRoot(expected copyRoot, role string) (*os.Root, os.FileInfo, error) {
+	root, err := os.OpenRoot(expected.path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open workspace copy %s: %w", role, err)
+	}
+	opened, err := root.Stat(".")
+	if err != nil {
+		_ = root.Close()
+		return nil, nil, fmt.Errorf("stat opened workspace copy %s: %w", role, err)
+	}
+	if !opened.IsDir() || !fileinput.SameVersion(expected.info, opened) {
+		_ = root.Close()
+		return nil, nil, fmt.Errorf("workspace copy %s changed while it was being opened", role)
+	}
+	return root, opened, nil
 }
 
 func containsPath(parent, candidate string) bool {
@@ -112,11 +132,11 @@ type treeCopier struct {
 	totalBytes  int64
 }
 
-func (t *treeCopier) copyDirectory(ctx context.Context, name string) error {
+func (t *treeCopier) copyDirectory(ctx context.Context, name string, expected fs.FileInfo) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	entries, err := t.readSourceDirectory(name)
+	entries, opened, err := t.readSourceDirectory(name, expected)
 	if err != nil {
 		return err
 	}
@@ -125,17 +145,23 @@ func (t *treeCopier) copyDirectory(ctx context.Context, name string) error {
 			return err
 		}
 	}
-	return nil
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return t.verifySourceDirectory(name, opened)
 }
 
-func (t *treeCopier) readSourceDirectory(name string) (_ []os.DirEntry, err error) {
+func (t *treeCopier) readSourceDirectory(
+	name string,
+	expected fs.FileInfo,
+) (_ []os.DirEntry, _ os.FileInfo, err error) {
 	remaining := t.maxEntries - t.entries
 	if remaining < 0 {
-		return nil, fmt.Errorf("workspace has more than %d entries", t.maxEntries)
+		return nil, nil, fmt.Errorf("workspace has more than %d entries", t.maxEntries)
 	}
-	directory, _, err := fileinput.OpenDirectoryAt(t.source, name)
+	directory, opened, err := fileinput.OpenDirectoryAtExpected(t.source, name, expected)
 	if err != nil {
-		return nil, fmt.Errorf("open source directory %q: %w", filepath.ToSlash(name), err)
+		return nil, nil, fmt.Errorf("open source directory %q: %w", filepath.ToSlash(name), err)
 	}
 	defer func() {
 		if closeErr := directory.Close(); closeErr != nil {
@@ -147,16 +173,23 @@ func (t *treeCopier) readSourceDirectory(name string) (_ []os.DirEntry, err erro
 		readErr = nil
 	}
 	if readErr != nil {
-		return nil, fmt.Errorf("read source directory %q: %w", filepath.ToSlash(name), readErr)
+		return nil, nil, fmt.Errorf("read source directory %q: %w", filepath.ToSlash(name), readErr)
 	}
 	if len(entries) > remaining {
-		return nil, fmt.Errorf("workspace has more than %d entries", t.maxEntries)
+		return nil, nil, fmt.Errorf("workspace has more than %d entries", t.maxEntries)
+	}
+	after, err := directory.Stat()
+	if err != nil {
+		return nil, nil, fmt.Errorf("stat source directory %q after reading: %w", filepath.ToSlash(name), err)
+	}
+	if !fileinput.SameVersion(opened, after) {
+		return nil, nil, fmt.Errorf("source directory %q changed while it was being read", filepath.ToSlash(name))
 	}
 	t.entries += len(entries)
 	slices.SortFunc(entries, func(left, right os.DirEntry) int {
 		return strings.Compare(left.Name(), right.Name())
 	})
-	return entries, nil
+	return entries, after, nil
 }
 
 func (t *treeCopier) copyEntry(ctx context.Context, name string, entry fs.DirEntry) error {
@@ -181,11 +214,11 @@ func (t *treeCopier) copyEntry(ctx context.Context, name string, entry fs.DirEnt
 			return fmt.Errorf("create directory %q: %w", portableName, err)
 		}
 		t.directories = append(t.directories, directoryMode{name: localName, mode: mode.Perm()})
-		return t.copyDirectory(ctx, localName)
+		return t.copyDirectory(ctx, localName, info)
 	case mode.IsRegular():
 		return t.copyFile(ctx, portableName, localName, info)
 	case mode&os.ModeSymlink != 0:
-		return t.copySymlink(portableName, localName)
+		return t.copySymlink(portableName, localName, info)
 	default:
 		return fmt.Errorf("unsupported file type %s at %q", mode.Type(), portableName)
 	}
@@ -232,12 +265,21 @@ func (t *treeCopier) copyFile(
 
 	reader := io.LimitReader(contextReader{ctx: ctx, reader: source}, size+1)
 	written, copyErr := io.CopyBuffer(writeOnly{writer: destination}, reader, t.buffer)
+	after, sourceStatErr := source.Stat()
+	current, pathStatErr := t.source.Lstat(localName)
 	closeErr := errors.Join(destination.Close(), source.Close())
-	if copyErr != nil || closeErr != nil {
-		return fmt.Errorf("copy file %q: %w", portableName, errors.Join(copyErr, closeErr))
+	if copyErr != nil || sourceStatErr != nil || pathStatErr != nil || closeErr != nil {
+		return fmt.Errorf(
+			"copy file %q: %w",
+			portableName,
+			errors.Join(copyErr, sourceStatErr, pathStatErr, closeErr),
+		)
 	}
 	if written != size {
 		return fmt.Errorf("source file %q changed during copy: copied %d bytes, expected %d", portableName, written, size)
+	}
+	if !fileinput.SameVersion(openedInfo, after) || !fileinput.SameVersion(after, current) {
+		return fmt.Errorf("source file %q changed during copy", portableName)
 	}
 	return nil
 }
@@ -260,10 +302,18 @@ func (w writeOnly) Write(buffer []byte) (int, error) {
 	return w.writer.Write(buffer)
 }
 
-func (t *treeCopier) copySymlink(portableName, localName string) error {
+func (t *treeCopier) copySymlink(portableName, localName string, expected fs.FileInfo) error {
+	before, err := t.source.Lstat(localName)
+	if err != nil || !fileinput.SameVersion(expected, before) || before.Mode()&os.ModeSymlink == 0 {
+		return fmt.Errorf("source symlink %q changed before copy: %w", portableName, errors.Join(err, fileinput.ErrChanged))
+	}
 	target, err := t.source.Readlink(localName)
 	if err != nil {
 		return fmt.Errorf("read symlink %q: %w", portableName, err)
+	}
+	after, err := t.source.Lstat(localName)
+	if err != nil || !fileinput.SameVersion(before, after) {
+		return fmt.Errorf("source symlink %q changed during copy: %w", portableName, errors.Join(err, fileinput.ErrChanged))
 	}
 	portableTarget := filepath.ToSlash(target)
 	if err := validateSymlinkTarget(portableName, portableTarget); err != nil {
@@ -271,6 +321,17 @@ func (t *treeCopier) copySymlink(portableName, localName string) error {
 	}
 	if err := t.destination.Symlink(filepath.FromSlash(portableTarget), localName); err != nil {
 		return fmt.Errorf("create symlink %q: %w", portableName, err)
+	}
+	return nil
+}
+
+func (t *treeCopier) verifySourceDirectory(name string, expected fs.FileInfo) error {
+	current, err := t.source.Lstat(name)
+	if err != nil {
+		return fmt.Errorf("stat source directory %q after copy: %w", filepath.ToSlash(name), err)
+	}
+	if !fileinput.SameVersion(expected, current) {
+		return fmt.Errorf("source directory %q changed during copy", filepath.ToSlash(name))
 	}
 	return nil
 }

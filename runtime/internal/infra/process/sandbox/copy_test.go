@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 func TestCopyTreePreservesDirectoryAndSymlinkSemantics(t *testing.T) {
@@ -78,6 +80,32 @@ func TestCopyTreeRequiresIndependentAbsoluteRoots(t *testing.T) {
 	}
 }
 
+func TestOpenCopyRootRejectsReplacedResolvedDirectory(t *testing.T) {
+	parent := t.TempDir()
+	name := filepath.Join(parent, "source")
+	if err := os.Mkdir(name, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := resolveCopyRoot(name, "source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(name, filepath.Join(parent, "retired")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(name, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	root, _, err := openCopyRoot(resolved, "source")
+	if root != nil {
+		_ = root.Close()
+	}
+	if err == nil || !strings.Contains(err.Error(), "changed while it was being opened") {
+		t.Fatalf("open replaced root error = %v", err)
+	}
+}
+
 func TestCopyTreeHonorsCanceledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
@@ -109,14 +137,85 @@ func TestTreeCopierCountsDirectoriesAgainstTheEntryLimit(t *testing.T) {
 	}
 }
 
+func TestTreeCopierRejectsReplacedSourceDirectory(t *testing.T) {
+	source := t.TempDir()
+	destination := t.TempDir()
+	original := filepath.Join(source, "nested")
+	if err := os.Mkdir(original, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	expected, err := os.Stat(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(original, filepath.Join(source, "retired")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(original, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	sourceRoot, _, err := openResolvedCopyRoot(source, "source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destinationRoot, _, err := openResolvedCopyRoot(destination, "destination")
+	if err != nil {
+		_ = sourceRoot.Close()
+		t.Fatal(err)
+	}
+	defer func() { _ = errors.Join(destinationRoot.Close(), sourceRoot.Close()) }()
+	copier := treeCopier{
+		source: sourceRoot, destination: destinationRoot,
+		buffer: make([]byte, workspaceCopyBufferBytes), maxEntries: maxWorkspaceCopyEntries,
+	}
+	if err := copier.copyDirectory(t.Context(), "nested", expected); err == nil || !errors.Is(err, fileinput.ErrChanged) {
+		t.Fatalf("copy replaced directory error = %v, want fileinput.ErrChanged", err)
+	}
+}
+
+func TestTreeCopierRejectsReplacedSourceSymlink(t *testing.T) {
+	source := t.TempDir()
+	destination := t.TempDir()
+	name := filepath.Join(source, "link")
+	if err := os.Symlink("first", name); err != nil {
+		t.Fatal(err)
+	}
+	expected, err := os.Lstat(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(name); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("second", name); err != nil {
+		t.Fatal(err)
+	}
+
+	sourceRoot, _, err := openResolvedCopyRoot(source, "source")
+	if err != nil {
+		t.Fatal(err)
+	}
+	destinationRoot, _, err := openResolvedCopyRoot(destination, "destination")
+	if err != nil {
+		_ = sourceRoot.Close()
+		t.Fatal(err)
+	}
+	defer func() { _ = errors.Join(destinationRoot.Close(), sourceRoot.Close()) }()
+	copier := treeCopier{source: sourceRoot, destination: destinationRoot}
+	if err := copier.copySymlink("link", "link", expected); err == nil || !errors.Is(err, fileinput.ErrChanged) {
+		t.Fatalf("copy replaced symlink error = %v, want fileinput.ErrChanged", err)
+	}
+}
+
 func copyTreeWithEntryLimit(t *testing.T, source string, limit int) (_ string, err error) {
 	t.Helper()
 	destination := t.TempDir()
-	sourceRoot, err := openDirectoryRoot(source, "source")
+	sourceRoot, sourceInfo, err := openResolvedCopyRoot(source, "source")
 	if err != nil {
 		return "", err
 	}
-	destinationRoot, err := openDirectoryRoot(destination, "destination")
+	destinationRoot, _, err := openResolvedCopyRoot(destination, "destination")
 	if err != nil {
 		return "", errors.Join(err, sourceRoot.Close())
 	}
@@ -125,11 +224,19 @@ func copyTreeWithEntryLimit(t *testing.T, source string, limit int) (_ string, e
 		source: sourceRoot, destination: destinationRoot,
 		buffer: make([]byte, workspaceCopyBufferBytes), maxEntries: limit,
 	}
-	if err := copier.copyDirectory(t.Context(), "."); err != nil {
+	if err := copier.copyDirectory(t.Context(), ".", sourceInfo); err != nil {
 		return "", err
 	}
 	if err := copier.restoreDirectoryModes(t.Context()); err != nil {
 		return "", err
 	}
 	return destination, nil
+}
+
+func openResolvedCopyRoot(name, role string) (*os.Root, os.FileInfo, error) {
+	resolved, err := resolveCopyRoot(name, role)
+	if err != nil {
+		return nil, nil, err
+	}
+	return openCopyRoot(resolved, role)
 }
