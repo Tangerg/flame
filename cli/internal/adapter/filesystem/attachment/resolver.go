@@ -201,7 +201,8 @@ func attachmentKind(mimeType string) (protocol.ContentBlockType, bool) {
 func (r *Resolver) Complete(ctx context.Context, query string) ([]PathMatch, error) {
 	search := completionSearch{
 		ctx: ctx, root: r.root, maxBytes: r.maxBytes,
-		query: filepath.ToSlash(strings.TrimSpace(query)), matches: make([]PathMatch, 0, completionResultLimit),
+		query: filepath.ToSlash(strings.TrimSpace(query)), maxVisited: maxVisitedEntries,
+		matches: make([]PathMatch, 0, completionResultLimit),
 	}
 	err := filepath.WalkDir(r.root, search.visit)
 	if err != nil {
@@ -220,12 +221,13 @@ func (r *Resolver) Complete(ctx context.Context, query string) ([]PathMatch, err
 }
 
 type completionSearch struct {
-	ctx      context.Context
-	root     string
-	query    string
-	maxBytes int64
-	visited  int
-	matches  []PathMatch
+	ctx        context.Context
+	root       string
+	query      string
+	maxBytes   int64
+	maxVisited int
+	visited    int
+	matches    []PathMatch
 }
 
 func (c *completionSearch) visit(path string, entry os.DirEntry, walkErr error) error {
@@ -235,6 +237,10 @@ func (c *completionSearch) visit(path string, entry os.DirEntry, walkErr error) 
 	if err := context.Cause(c.ctx); err != nil {
 		return err
 	}
+	if c.visited >= c.maxVisited {
+		return filepath.SkipAll
+	}
+	c.visited++
 	if entry.IsDir() {
 		return c.visitDirectory(path, entry)
 	}
@@ -256,10 +262,6 @@ func (c *completionSearch) visitDirectory(path string, entry os.DirEntry) error 
 }
 
 func (c *completionSearch) visitFile(path string, entry os.DirEntry) error {
-	c.visited++
-	if c.visited > maxVisitedEntries {
-		return filepath.SkipAll
-	}
 	if entry.Type()&os.ModeSymlink != 0 {
 		return nil
 	}
