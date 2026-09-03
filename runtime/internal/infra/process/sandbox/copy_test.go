@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -84,4 +85,51 @@ func TestCopyTreeHonorsCanceledContext(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("copyTree error = %v, want context.Canceled", err)
 	}
+}
+
+func TestTreeCopierCountsDirectoriesAgainstTheEntryLimit(t *testing.T) {
+	source := t.TempDir()
+	for _, name := range []string{"a/nested", "b"} {
+		if err := os.MkdirAll(filepath.Join(source, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if _, err := copyTreeWithEntryLimit(t, source, 2); err == nil || !strings.Contains(err.Error(), "more than 2 entries") {
+		t.Fatalf("two-entry copy error = %v", err)
+	}
+	destination, err := copyTreeWithEntryLimit(t, source, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"a", "a/nested", "b"} {
+		if info, err := os.Stat(filepath.Join(destination, name)); err != nil || !info.IsDir() {
+			t.Fatalf("copied directory %q = %v, %v", name, info, err)
+		}
+	}
+}
+
+func copyTreeWithEntryLimit(t *testing.T, source string, limit int) (_ string, err error) {
+	t.Helper()
+	destination := t.TempDir()
+	sourceRoot, err := openDirectoryRoot(source, "source")
+	if err != nil {
+		return "", err
+	}
+	destinationRoot, err := openDirectoryRoot(destination, "destination")
+	if err != nil {
+		return "", errors.Join(err, sourceRoot.Close())
+	}
+	defer func() { err = errors.Join(err, destinationRoot.Close(), sourceRoot.Close()) }()
+	copier := treeCopier{
+		source: sourceRoot, destination: destinationRoot,
+		buffer: make([]byte, workspaceCopyBufferBytes), maxEntries: limit,
+	}
+	if err := copier.copyDirectory(t.Context(), "."); err != nil {
+		return "", err
+	}
+	if err := copier.restoreDirectoryModes(t.Context()); err != nil {
+		return "", err
+	}
+	return destination, nil
 }

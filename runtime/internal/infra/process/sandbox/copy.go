@@ -64,8 +64,9 @@ func copyTree(ctx context.Context, source, destination string) error {
 		source:      sourceRoot,
 		destination: destinationRoot,
 		buffer:      make([]byte, workspaceCopyBufferBytes),
+		maxEntries:  maxWorkspaceCopyEntries,
 	}
-	if err := fs.WalkDir(sourceRoot.FS(), ".", copier.copyEntry(ctx)); err != nil {
+	if err := copier.copyDirectory(ctx, "."); err != nil {
 		return err
 	}
 	return copier.restoreDirectoryModes(ctx)
@@ -106,51 +107,87 @@ type treeCopier struct {
 	destination *os.Root
 	buffer      []byte
 	directories []directoryMode
+	maxEntries  int
 	entries     int
 	totalBytes  int64
 }
 
-func (t *treeCopier) copyEntry(ctx context.Context) fs.WalkDirFunc {
-	return func(name string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if err := ctx.Err(); err != nil {
+func (t *treeCopier) copyDirectory(ctx context.Context, name string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	entries, err := t.readSourceDirectory(name)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if err := t.copyEntry(ctx, filepath.Join(name, entry.Name()), entry); err != nil {
 			return err
 		}
-		if name == "." {
-			return nil
-		}
-		t.entries++
-		if t.entries > maxWorkspaceCopyEntries {
-			return fmt.Errorf("workspace has more than %d entries", maxWorkspaceCopyEntries)
-		}
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-		portableName := filepath.ToSlash(name)
-		localName := filepath.FromSlash(portableName)
-		if parent := filepath.Dir(localName); parent != "." {
-			if err := t.destination.MkdirAll(parent, 0o700); err != nil {
-				return fmt.Errorf("create parent for %q: %w", portableName, err)
-			}
-		}
+	}
+	return nil
+}
 
-		switch mode := info.Mode(); {
-		case mode.IsDir():
-			if err := t.destination.MkdirAll(localName, 0o700); err != nil {
-				return fmt.Errorf("create directory %q: %w", portableName, err)
-			}
-			t.directories = append(t.directories, directoryMode{name: localName, mode: mode.Perm()})
-			return nil
-		case mode.IsRegular():
-			return t.copyFile(ctx, portableName, localName, info)
-		case mode&os.ModeSymlink != 0:
-			return t.copySymlink(portableName, localName)
-		default:
-			return fmt.Errorf("unsupported file type %s at %q", mode.Type(), portableName)
+func (t *treeCopier) readSourceDirectory(name string) (_ []os.DirEntry, err error) {
+	remaining := t.maxEntries - t.entries
+	if remaining < 0 {
+		return nil, fmt.Errorf("workspace has more than %d entries", t.maxEntries)
+	}
+	directory, _, err := fileinput.OpenDirectoryAt(t.source, name)
+	if err != nil {
+		return nil, fmt.Errorf("open source directory %q: %w", filepath.ToSlash(name), err)
+	}
+	defer func() {
+		if closeErr := directory.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("close source directory %q: %w", filepath.ToSlash(name), closeErr))
 		}
+	}()
+	entries, readErr := directory.ReadDir(remaining + 1)
+	if errors.Is(readErr, io.EOF) {
+		readErr = nil
+	}
+	if readErr != nil {
+		return nil, fmt.Errorf("read source directory %q: %w", filepath.ToSlash(name), readErr)
+	}
+	if len(entries) > remaining {
+		return nil, fmt.Errorf("workspace has more than %d entries", t.maxEntries)
+	}
+	t.entries += len(entries)
+	slices.SortFunc(entries, func(left, right os.DirEntry) int {
+		return strings.Compare(left.Name(), right.Name())
+	})
+	return entries, nil
+}
+
+func (t *treeCopier) copyEntry(ctx context.Context, name string, entry fs.DirEntry) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	info, err := entry.Info()
+	if err != nil {
+		return fmt.Errorf("inspect source entry %q: %w", filepath.ToSlash(name), err)
+	}
+	portableName := filepath.ToSlash(name)
+	localName := filepath.FromSlash(portableName)
+	if parent := filepath.Dir(localName); parent != "." {
+		if err := t.destination.MkdirAll(parent, 0o700); err != nil {
+			return fmt.Errorf("create parent for %q: %w", portableName, err)
+		}
+	}
+
+	switch mode := info.Mode(); {
+	case mode.IsDir():
+		if err := t.destination.MkdirAll(localName, 0o700); err != nil {
+			return fmt.Errorf("create directory %q: %w", portableName, err)
+		}
+		t.directories = append(t.directories, directoryMode{name: localName, mode: mode.Perm()})
+		return t.copyDirectory(ctx, localName)
+	case mode.IsRegular():
+		return t.copyFile(ctx, portableName, localName, info)
+	case mode&os.ModeSymlink != 0:
+		return t.copySymlink(portableName, localName)
+	default:
+		return fmt.Errorf("unsupported file type %s at %q", mode.Type(), portableName)
 	}
 }
 
