@@ -12,7 +12,7 @@ func (r *Runtime) ListDiscoveredSkills(ctx context.Context, request protocol.Wor
 	return r.invoke[protocol.WorkspaceQuery, *protocol.Page[protocol.Skill]](ctx, delivery.SkillsDiscoveredList, request, callOptions(options))
 }
 
-// ListManagedSkills returns user-scope Skills managed by the Runtime.
+// ListManagedSkills returns user-scope Skills ordered by lifecycle and name.
 func (r *Runtime) ListManagedSkills(ctx context.Context, options CallOptions) (*protocol.Page[protocol.ManagedSkill], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.ManagedSkill]](ctx, delivery.SkillsLibraryList, struct{}{}, callOptions(options))
 }

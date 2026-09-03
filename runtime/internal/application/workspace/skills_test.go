@@ -153,11 +153,12 @@ type fakeSkillCatalog struct {
 }
 
 type fakeSkillCurator struct {
+	entries           []skills.Entry
 	archiveErr        error
 	archiveIdentities []string
 }
 
-func (f *fakeSkillCurator) List(context.Context) ([]skills.Entry, error) { return nil, nil }
+func (f *fakeSkillCurator) List(context.Context) ([]skills.Entry, error) { return f.entries, nil }
 func (f *fakeSkillCurator) Archive(context.Context, string) ([]string, error) {
 	if f.archiveErr != nil {
 		return f.archiveIdentities, f.archiveErr
@@ -179,4 +180,37 @@ func (testPaths) ResolveExistingInRoot(_, path string) (string, error) {
 func (f *fakeSkillCatalog) List(_ context.Context, cwd string) ([]SkillSummary, error) {
 	f.cwd = cwd
 	return f.skills, nil
+}
+
+func TestManagedSkillsOwnLifecycleAndNameOrder(t *testing.T) {
+	curator := &fakeSkillCurator{entries: []skills.Entry{
+		{Name: "omega", Lifecycle: skills.Archived},
+		{Name: "zeta", Lifecycle: skills.Active},
+		{Name: "alpha", Lifecycle: skills.Active},
+		{Name: "beta", Lifecycle: skills.Archived},
+	}}
+	c := NewSkills(NewScope("", "", testPaths{}), nil, curator, nil, nil, nil)
+
+	got, err := c.Managed(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 4 || got[0].Name != "alpha" || got[1].Name != "zeta" || got[2].Name != "beta" || got[3].Name != "omega" {
+		t.Fatalf("Managed = %+v, want active alpha/zeta then archived beta/omega", got)
+	}
+	if curator.entries[0].Name != "omega" {
+		t.Fatal("Managed reordered curator-owned storage")
+	}
+}
+
+func TestManagedSkillsRejectDuplicateNameAcrossLifecycles(t *testing.T) {
+	curator := &fakeSkillCurator{entries: []skills.Entry{
+		{Name: "review", Lifecycle: skills.Active},
+		{Name: "review", Lifecycle: skills.Archived},
+	}}
+	c := NewSkills(NewScope("", "", testPaths{}), nil, curator, nil, nil, nil)
+
+	if _, err := c.Managed(t.Context()); err == nil {
+		t.Fatal("Managed accepted one Skill name in two lifecycles")
+	}
 }

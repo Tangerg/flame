@@ -29,7 +29,8 @@ const (
 // ManagedSkill is one entry in the user-scoped self-authored Skill library
 // (skills.library.list), tagged with its curator lifecycle. Distinct from
 // [Skill] (the Agent's project+user discovery view): this is the management
-// surface, which also lists archived skills.
+// surface, which also lists archived skills. List results contain one entry per
+// Name, ordered active first, then archived, and by Name within each lifecycle.
 type ManagedSkill struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description,omitempty"`

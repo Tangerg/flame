@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"slices"
 
 	skillspec "github.com/Tangerg/scope/skills"
 
@@ -16,7 +15,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
-// List returns active and archived skills from one ordered library snapshot.
+// List returns active and archived skills from one library snapshot. Directory
+// encounter order is preserved; Application owns public catalog order.
 func (s *Store) List(ctx context.Context) ([]skills.Entry, error) {
 	if !s.Enabled() {
 		return nil, nil
@@ -142,6 +142,5 @@ func managedSkillNamesAt(root *os.Root, path string) ([]string, error) {
 		}
 		names = append(names, entry.Name())
 	}
-	slices.Sort(names)
 	return names, nil
 }

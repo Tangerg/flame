@@ -23,9 +23,9 @@ type SkillCatalog interface {
 	List(ctx context.Context, cwd string) ([]SkillSummary, error)
 }
 
-// SkillCurator manages active and archived user-authored Skills. Mutation
-// methods return the exact opaque file identities whose public projection
-// changed, including changes committed before a later error.
+// SkillCurator manages the one active or archived entry for each user-authored
+// Skill name. Mutation methods return the exact opaque file identities whose
+// public projection changed, including changes committed before a later error.
 type SkillCurator interface {
 	List(ctx context.Context) ([]skills.Entry, error)
 	Archive(ctx context.Context, name string) ([]string, error)
@@ -87,12 +87,31 @@ func (s *Skills) List(ctx context.Context, cwd string) ([]SkillSummary, error) {
 	return found, nil
 }
 
-// Managed returns active and archived user-authored Skills.
+// Managed returns active and archived user-authored Skills, active first and
+// then ordered by name within each lifecycle.
 func (s *Skills) Managed(ctx context.Context) ([]skills.Entry, error) {
 	if s.curator == nil {
 		return nil, ErrSkillLibraryUnavailable
 	}
-	return s.curator.List(ctx)
+	entries, err := s.curator.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	entries = slices.Clone(entries)
+	slices.SortFunc(entries, func(first, second skills.Entry) int {
+		return cmp.Or(
+			cmp.Compare(string(first.Lifecycle), string(second.Lifecycle)),
+			cmp.Compare(first.Name, second.Name),
+		)
+	})
+	seen := make(map[string]struct{}, len(entries))
+	for _, entry := range entries {
+		if _, duplicate := seen[entry.Name]; duplicate {
+			return nil, fmt.Errorf("workspace: managed Skill catalog repeats name %q", entry.Name)
+		}
+		seen[entry.Name] = struct{}{}
+	}
+	return entries, nil
 }
 
 // Archive removes a Skill from active use without deleting it.

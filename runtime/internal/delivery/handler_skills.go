@@ -39,8 +39,8 @@ func presentWorkspaceSkillScope(scope workspace.SkillScope) (protocol.SkillScope
 	}
 }
 
-// ListManagedSkills returns the user self-authored Skill library —
-// active and archived skills, each tagged with its lifecycle
+// ListManagedSkills returns the user self-authored Skill library — active then
+// archived, ordered by name within each lifecycle and tagged with its lifecycle
 // (skills.library.list). The library is small, so it comes back in one page
 // (same as skills.discovered.list). capability_not_negotiated when the library
 // curator is disabled.
