@@ -109,7 +109,7 @@ func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
 			}}, "next"),
 			"next": protocol.NewPage([]protocol.FileEntry{{Path: "internal", Name: "internal", Type: protocol.FileEntryDir}}),
 		},
-		content: &protocol.FileContent{Path: "main.go", Content: "package main\n", TotalLines: 1},
+		content: &protocol.FileContent{Content: "package main\n", TotalLines: 1},
 	}
 	runtime := &Connection{
 		workspaces: stub, meta: requestMeta("test"),

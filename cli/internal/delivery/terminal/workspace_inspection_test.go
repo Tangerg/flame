@@ -122,7 +122,7 @@ func (w *workspaceServiceStub) Read(_ context.Context, request workspace.ReadReq
 	w.mu.Lock()
 	w.read = request
 	w.mu.Unlock()
-	return workspace.FileContent{Path: "main.go", Content: "package main\n", TotalLines: 1}, nil
+	return workspace.FileContent{Content: "package main\n", TotalLines: 1}, nil
 }
 
 func (w *workspaceServiceStub) inspectionRequests() (workspace.HeadRequest, workspace.SearchRequest, workspace.FilesRequest, workspace.ReadRequest) {

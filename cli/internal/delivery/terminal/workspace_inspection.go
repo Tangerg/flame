@@ -221,7 +221,7 @@ func (a *app) ReadWorkspaceFile(argument string) error {
 			if content.Truncated {
 				detail += " · truncated"
 			}
-			return codeDocument("Workspace file", detail, content.Content, content.Path, true), nil
+			return codeDocument("Workspace file", detail, content.Content, request.Path, true), nil
 		}, workspaceReaderNone)
 	return nil
 }

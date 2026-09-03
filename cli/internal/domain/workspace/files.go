@@ -85,7 +85,6 @@ func (r ReadRequest) Validate() error {
 }
 
 type FileContent struct {
-	Path       string
 	Content    string
 	TotalLines int
 	Truncated  bool
@@ -94,12 +93,8 @@ type FileContent struct {
 }
 
 func (f FileContent) Validate() error {
-	switch {
-	case strings.TrimSpace(f.Path) == "":
-		return errors.New("file content path is empty")
-	}
 	if err := (protocol.FileContent{
-		Path: f.Path, Content: f.Content, TotalLines: f.TotalLines,
+		Content: f.Content, TotalLines: f.TotalLines,
 		Truncated: f.Truncated, StartLine: f.StartLine, EndLine: f.EndLine,
 	}).ValidateWire(); err != nil {
 		return fmt.Errorf("file content: %w", err)
