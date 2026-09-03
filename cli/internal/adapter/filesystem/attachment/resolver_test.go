@@ -158,7 +158,7 @@ func TestCompleteCountsDirectoriesTowardTheVisitBudget(t *testing.T) {
 		t.Fatal(err)
 	}
 	search := completionSearch{
-		ctx: t.Context(), root: root, query: "budget", maxBytes: DefaultMaxFileBytes,
+		ctx: t.Context(), root: root, query: "budget", maxBytes: agent.MaxAttachmentBytes,
 		maxVisited: 2,
 	}
 	if err := search.walk(); err != nil {
@@ -177,7 +177,7 @@ func TestCompleteBoundsOneDirectoryBeforeRanking(t *testing.T) {
 		}
 	}
 	search := completionSearch{
-		ctx: t.Context(), root: root, query: "match", maxBytes: DefaultMaxFileBytes,
+		ctx: t.Context(), root: root, query: "match", maxBytes: agent.MaxAttachmentBytes,
 		maxVisited: 2,
 	}
 	if err := search.walk(); err != nil {

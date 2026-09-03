@@ -30,7 +30,6 @@ import (
 )
 
 const (
-	DefaultMaxFileBytes   = 20 << 20
 	completionResultLimit = 50
 	maxVisitedEntries     = 100_000
 )
@@ -72,7 +71,7 @@ func New(root string) (*Resolver, error) {
 	} else if !errors.Is(evalErr, os.ErrNotExist) {
 		return nil, fmt.Errorf("attachment: resolve workspace symlinks: %w", evalErr)
 	}
-	return &Resolver{root: abs, maxBytes: DefaultMaxFileBytes}, nil
+	return &Resolver{root: abs, maxBytes: agent.MaxAttachmentBytes}, nil
 }
 
 // Resolve validates and classifies one explicit path. Symlinks are resolved so

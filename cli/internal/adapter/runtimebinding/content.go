@@ -19,8 +19,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
-const maximumAttachmentBytes = 20 << 20
-
 type attachmentTooLargeError struct {
 	maximumBytes int64
 }
@@ -118,7 +116,7 @@ func (r *Connection) projectInput(ctx context.Context, message agent.Message) ([
 		if err := context.Cause(ctx); err != nil {
 			return nil, err
 		}
-		data, err := r.loadAttachment(ctx, attachment.Path, maximumAttachmentBytes)
+		data, err := r.loadAttachment(ctx, attachment.Path, agent.MaxAttachmentBytes)
 		if err != nil {
 			return nil, fmt.Errorf("read attachment %q: %w", attachment.Name, err)
 		}

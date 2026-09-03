@@ -163,6 +163,9 @@ type Attachment struct {
 	Size     int64
 }
 
+// MaxAttachmentBytes is the largest local file one authored attachment may carry.
+const MaxAttachmentBytes int64 = 20 << 20
+
 func (a Attachment) Validate() error {
 	var problems []error
 	if strings.TrimSpace(a.ID) == "" {
@@ -182,6 +185,8 @@ func (a Attachment) Validate() error {
 	}
 	if a.Size < 0 {
 		problems = append(problems, errors.New("size is negative"))
+	} else if a.Size > MaxAttachmentBytes {
+		problems = append(problems, fmt.Errorf("size exceeds %d bytes", MaxAttachmentBytes))
 	}
 	if err := errors.Join(problems...); err != nil {
 		return fmt.Errorf("attachment: %w", err)

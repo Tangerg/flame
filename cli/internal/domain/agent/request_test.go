@@ -110,6 +110,16 @@ func TestMessageRejectsDuplicateAttachments(t *testing.T) {
 	}
 }
 
+func TestMessageRejectsOversizedAttachment(t *testing.T) {
+	attachment := Attachment{
+		ID: "a", Kind: protocol.ContentBlockText, Name: "large.txt", Path: "/tmp/large.txt",
+		Size: MaxAttachmentBytes + 1,
+	}
+	if err := (Message{Attachments: []Attachment{attachment}}).Validate(); err == nil || !strings.Contains(err.Error(), "size exceeds") {
+		t.Fatalf("oversized attachment error = %v", err)
+	}
+}
+
 func TestDurableAttachmentMayLackLocalPathButDraftMayNot(t *testing.T) {
 	durable := Attachment{ID: "item_1:image:0", Kind: protocol.ContentBlockImage, Name: "image.png", MimeType: "image/png", Size: 8}
 	if err := durable.Validate(); err != nil {

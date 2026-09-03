@@ -7,7 +7,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–135 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–136 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
 - The current Runtime contract is `bec9a946` (`fix(runtime): require agent memory
   timestamps`).
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–135 — exact handoff
+## Rounds 101–136 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -95,6 +95,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 133 | CLI commit | Removed the duplicate question-option DTO and field-copy loop; CLI question fields now reuse Runtime validation and enforce the advertised option ceiling. |
 | 134 | CLI commit | Preserved Runtime's closed Run-event and change-topic catalogs through profile negotiation, moving string conversion to text rendering only. |
 | 135 | CLI commit | Derived CLI's checked revision-counter ceiling from Runtime Protocol's exact-JSON integer limit instead of duplicating the numeric contract. |
+| 136 | CLI commit | Centralized the 20 MiB authored-attachment limit in the domain owner and reused it for resolution and dispatch-time revalidation. |
 
 ## Verification contract
 
