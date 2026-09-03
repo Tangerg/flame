@@ -31,6 +31,8 @@ func TestRuntimeInspectUsesInspectionPort(t *testing.T) {
 			Hooks: []hooks.Hook{{
 				Event:   hooks.UserPromptSubmit,
 				Command: "make test",
+				Scope:   hooks.ScopeGlobal,
+				Source:  "/home/.flame/hooks.json",
 			}},
 		},
 	}
@@ -45,6 +47,16 @@ func TestRuntimeInspectUsesInspectionPort(t *testing.T) {
 	}
 	if got.ProjectRoot != "/repo" || !got.ProjectTrusted || len(got.Hooks) != 1 || got.Hooks[0].Hook.Command != "make test" || !got.Hooks[0].Active {
 		t.Fatalf("Inspect = %+v", got)
+	}
+}
+
+func TestRuntimeInspectRejectsInvalidInspection(t *testing.T) {
+	c := NewHooks(NewScope("", "", testPaths{}), &fakeHookInspector{inspection: apphooks.Inspection{
+		ProjectRoot: "/other",
+	}}, nil, nil)
+
+	if _, err := c.Inspect(context.Background(), "/repo"); err == nil {
+		t.Fatal("Inspect accepted an unrelated project root")
 	}
 }
 

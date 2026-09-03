@@ -86,8 +86,12 @@ func (s staticHookInspector) Inspect(context.Context, string) (apphooks.Inspecti
 
 func TestListHooksPreservesCompleteHookDefinition(t *testing.T) {
 	root := t.TempDir()
+	projectRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
 	s := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Hooks: staticHookInspector{inspection: apphooks.Inspection{
-		ProjectRoot: root,
+		ProjectRoot: projectRoot,
 		Hooks: []domainhooks.Hook{{
 			Event: domainhooks.SubagentStart, Command: "audit", TimeoutMillis: 2500,
 			Scope: domainhooks.ScopeGlobal, Source: "/home/user/.flame/hooks.json",

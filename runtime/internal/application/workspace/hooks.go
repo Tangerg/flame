@@ -56,6 +56,9 @@ func (h *Hooks) Inspect(ctx context.Context, cwd string) (HookInspection, error)
 	if err != nil {
 		return HookInspection{}, err
 	}
+	if err := inspection.ValidateFor(root); err != nil {
+		return HookInspection{}, err
+	}
 	resolved := HookInspection{
 		ProjectRoot: inspection.ProjectRoot, ProjectTrusted: inspection.ProjectTrusted,
 		Hooks: make([]ResolvedHook, 0, len(inspection.Hooks)),
