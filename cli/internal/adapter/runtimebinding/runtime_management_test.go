@@ -595,6 +595,30 @@ func TestGoalAdapterRejectsInvalidNestedUsageInRuntimeResult(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 }
 
+func TestGoalAdapterRejectsMissingLifecycleTimes(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name  string
+		field string
+		clear func(*protocol.Goal)
+	}{
+		{name: "creation", field: "createdAt", clear: func(value *protocol.Goal) { value.CreatedAt = time.Time{} }},
+		{name: "update", field: "updatedAt", clear: func(value *protocol.Goal) { value.UpdatedAt = time.Time{} }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			goal := activeProtocolGoal()
+			test.clear(goal)
+			runtime := &Connection{goals: &goalBindingStub{t: t, current: goal}, meta: requestMeta("test")}
+			_, _, err := runtime.GetGoal(t.Context(), "ses_1")
+			if err == nil || !strings.Contains(err.Error(), test.field) {
+				t.Fatalf("GetGoal error = %v, want %q", err, test.field)
+			}
+		})
+	}
+}
+
 func TestGoalAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 	t.Parallel()
 	paused := *activeProtocolGoal()
