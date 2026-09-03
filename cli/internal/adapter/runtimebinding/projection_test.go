@@ -580,12 +580,12 @@ func TestProjectTreeStreamRetainsProducerAndStreamSegments(t *testing.T) {
 	t.Fatal("tree stream yielded no event")
 }
 
-func TestProjectSnapshotMatchesApprovalInvocationWithoutErasingItemLifecycle(t *testing.T) {
+func waitingApprovalColdRead() coldRead {
 	tool := &protocol.ToolInvocation{Name: "shell", Arguments: map[string]any{
 		"command": "go test ./...", "description": "Run tests",
 	}}
 	startedAt := time.Date(2026, time.August, 31, 6, 0, 0, 0, time.UTC)
-	snapshot, err := projectSnapshot(coldRead{
+	return coldRead{
 		session: protocol.Session{
 			ID: "ses_1", Status: protocol.SessionStatusWaiting,
 			Provider: testSessionProvider, Model: testSessionModel,
@@ -608,13 +608,19 @@ func TestProjectSnapshotMatchesApprovalInvocationWithoutErasingItemLifecycle(t *
 		}},
 		plan: &protocol.Plan{SessionID: "ses_1"},
 		interrupts: []protocol.PendingInterruptSet{{
-			RootRunID: "run_1", SessionID: "ses_1",
+			RootRunID: "run_1", SessionID: "ses_1", CreatedAt: startedAt,
 			Interrupts: []protocol.Interrupt{{
 				ItemID: "item_1", RunID: "run_1", Type: protocol.InterruptApproval,
 				Payload: &protocol.InterruptPayload{Tool: tool, Risk: protocol.ApprovalRiskHigh, Rememberable: true},
 			}},
 		}},
-	})
+	}
+}
+
+func TestProjectSnapshotMatchesApprovalInvocationWithoutErasingItemLifecycle(t *testing.T) {
+	read := waitingApprovalColdRead()
+	startedAt := read.items[0].StartedAt
+	snapshot, err := projectSnapshot(read)
 	if err != nil {
 		t.Fatalf("projectSnapshot: %v", err)
 	}
@@ -628,5 +634,50 @@ func TestProjectSnapshotMatchesApprovalInvocationWithoutErasingItemLifecycle(t *
 		approval.Tool.Safety != "" || !approval.Tool.StartedAt.IsZero() ||
 		!bytes.Equal(itemTool.ArgumentsJSON, approval.Tool.ArgumentsJSON) {
 		t.Fatalf("snapshot = %+v", snapshot)
+	}
+}
+
+func TestProjectSnapshotRejectsUnownedPendingInterruptSets(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		mutate func(*coldRead)
+		want   string
+	}{
+		{
+			name: "extra set",
+			mutate: func(read *coldRead) {
+				extra := read.interrupts[0]
+				extra.RootRunID = "run_other"
+				read.interrupts = append(read.interrupts, extra)
+			},
+			want: "2 pending interrupt sets",
+		},
+		{
+			name: "different session",
+			mutate: func(read *coldRead) {
+				read.interrupts[0].SessionID = "ses_other"
+			},
+			want: "for session ses_other",
+		},
+		{
+			name: "missing creation time",
+			mutate: func(read *coldRead) {
+				read.interrupts[0].CreatedAt = time.Time{}
+			},
+			want: "createdAt",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			read := waitingApprovalColdRead()
+			test.mutate(&read)
+			_, err := projectSnapshot(read)
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("projectSnapshot error = %v, want %q", err, test.want)
+			}
+		})
 	}
 }

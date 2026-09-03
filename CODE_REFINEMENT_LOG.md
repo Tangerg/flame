@@ -7,10 +7,10 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 
 ## Current state
 
-- Rounds 1–149 are complete and pushed to `origin/main`; public Runtime changes
+- Rounds 1–150 are complete and pushed to `origin/main`; public Runtime changes
   are followed by their exact CLI dependency update.
-- The current Runtime contract is `bec9a946` (`fix(runtime): require agent memory
-  timestamps`).
+- The current Runtime contract is `bea20b5d` (`fix(runtime): require pending
+  interrupt timestamps`).
 - Authorized code scope remains `runtime` and `cli`. Desktop work is concurrent
   user-owned work and must not be modified by this refinement stream.
 - The configured provider credential is used only through Runtime configuration.
@@ -56,7 +56,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
   coherent algorithm. Refactoring proceeds only when a distinct owner, phase,
   invariant, or deletion candidate is proven.
 
-## Rounds 101–149 — exact handoff
+## Rounds 101–150 — exact handoff
 
 | Round | Commit | Result |
 | --- | --- | --- |
@@ -109,6 +109,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 147 | CLI commit | Validated Usage requests and complete Runtime Usage trees before map-to-bucket projection could erase model-key constraints. |
 | 148 | CLI commit | Validated complete Interrupt unions before CLI projection could erase fields belonging to another interrupt variant. |
 | 149 | CLI commit | Validated complete Runtime file entries before the intentionally smaller CLI projection could erase required names. |
+| 150 | `bea20b5d` + CLI dependency update | Made pending-interrupt creation time enforceably required, then rejected extra, cross-session, and wrong-root interrupt sets during CLI snapshot projection. |
 
 ## Verification contract
 
@@ -146,7 +147,7 @@ repeated here.
 
 ## Remaining direction
 
-- Continue after Round 149 by auditing complete Runtime catalogs and CLI
+- Continue after Round 150 by auditing complete Runtime catalogs and CLI
   projections for aggregate
   invariants that element-level wire validation cannot express.
 - Treat missing output-resource identity constraints as candidates only after the

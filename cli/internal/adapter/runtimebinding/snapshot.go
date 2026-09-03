@@ -145,16 +145,20 @@ func projectSnapshot(read coldRead) (agent.SessionSnapshot, error) {
 		snapshot.Goal = &projected
 	}
 	if active, ok := snapshot.ActiveRun(); ok && active.Status == protocol.RunStatusWaiting {
-		sets := make([]protocol.PendingInterruptSet, 0, 1)
-		for _, set := range read.interrupts {
-			if set.RootRunID == active.ID {
-				sets = append(sets, set)
-			}
+		if len(read.interrupts) != 1 {
+			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has %d pending interrupt sets", active.ID, len(read.interrupts))
 		}
-		if len(sets) != 1 {
-			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has %d pending interrupt sets", active.ID, len(sets))
+		set := read.interrupts[0]
+		if err := protocol.ValidateWireTree(set); err != nil {
+			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has an invalid pending interrupt set: %w", active.ID, err)
 		}
-		snapshot.Interactions, err = projectInteractions(sets[0].Interrupts)
+		if set.SessionID != session.ID {
+			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has a pending interrupt set for session %s", active.ID, set.SessionID)
+		}
+		if set.RootRunID != active.ID {
+			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has a pending interrupt set for root %s", active.ID, set.RootRunID)
+		}
+		snapshot.Interactions, err = projectInteractions(set.Interrupts)
 		if err != nil {
 			return agent.SessionSnapshot{}, err
 		}
