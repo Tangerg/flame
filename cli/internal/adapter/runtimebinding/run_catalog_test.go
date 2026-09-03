@@ -210,7 +210,7 @@ func TestRunCatalogRejectsResponsesOutsideTheRequestedScope(t *testing.T) {
 		{name: "session", query: agent.RunQuery{SessionID: "ses_1", PageSize: agent.DefaultPageSize()}, value: base},
 		{name: "status", query: agent.RunQuery{PageSize: agent.DefaultPageSize(), Statuses: []protocol.RunStatus{protocol.RunStatusRunning}}, value: base},
 		{name: "descendant", query: agent.RunQuery{
-			IncludeDescendants: true, PageSize: agent.DefaultPageSize(),
+			PageSize: agent.DefaultPageSize(),
 		}, value: func() protocol.RunRef {
 			value := base
 			value.SessionID = "ses_1"
