@@ -746,7 +746,11 @@ func TestApplyDeleteRemovesRunRows(t *testing.T) {
 		t.Fatalf("seed approval: %v", err)
 	}
 
-	if err := ss.ApplyDelete(ctx, sessions.DeletePlan{SessionID: "ses_A"}); err != nil {
+	deletion, err := sessions.NewDeletePlan("ses_A")
+	if err != nil {
+		t.Fatalf("NewDeletePlan: %v", err)
+	}
+	if err := ss.ApplyDelete(ctx, deletion); err != nil {
 		t.Fatalf("ApplyDelete: %v", err)
 	}
 	if open, _ := ints.List(ctx, "ses_A"); len(open) != 0 {
@@ -975,7 +979,11 @@ func TestApplyDeleteClearsSessionGoal(t *testing.T) {
 	ctx := context.Background()
 	seedGoal(t, ss, "ses_goal")
 
-	if err := ss.ApplyDelete(ctx, sessions.DeletePlan{SessionID: "ses_goal"}); err != nil {
+	deletion, err := sessions.NewDeletePlan("ses_goal")
+	if err != nil {
+		t.Fatalf("NewDeletePlan: %v", err)
+	}
+	if err := ss.ApplyDelete(ctx, deletion); err != nil {
 		t.Fatalf("ApplyDelete: %v", err)
 	}
 	if _, ok, err := readBootstrapGoal(ctx, ss.goals, "ses_goal"); err != nil || ok {

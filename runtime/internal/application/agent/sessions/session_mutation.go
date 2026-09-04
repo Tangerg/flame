@@ -16,6 +16,11 @@ import (
 // state is gone. Checkpoint and sandbox cleanup run last; all post-commit
 // cleanup failures are returned together.
 func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error {
+	deletion, err := NewDeletePlan(sessionID)
+	if err != nil {
+		return err
+	}
+	sessionID = deletion.SessionID()
 	admission, err := c.ClaimSessionMutation(sessionID)
 	if err != nil {
 		return err
@@ -35,7 +40,7 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 			if err := c.transientState.QuiesceSession(sessionID); err != nil {
 				return fmt.Errorf("sessions: quiesce process-local Session state before delete: %w", err)
 			}
-			return c.writes.ApplyDelete(commitCtx, DeletePlan{SessionID: sessionID})
+			return c.writes.ApplyDelete(commitCtx, deletion)
 		},
 		func(ctx context.Context) error {
 			// The durable cascade is gone as of here, so the signal cannot outrun it —

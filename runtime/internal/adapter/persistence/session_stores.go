@@ -10,7 +10,6 @@ import (
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -406,11 +405,12 @@ func (s *SessionStores) restoreToolResults(ctx context.Context, blobs []toolresu
 
 // ApplyDelete removes all durable state for the addressed session.
 func (s *SessionStores) ApplyDelete(ctx context.Context, deletion sessions.DeletePlan) error {
-	if _, err := resourceid.ParseSession(deletion.SessionID); err != nil {
-		return fmt.Errorf("persistence: delete plan: %w", err)
+	if err := deletion.Validate(); err != nil {
+		return fmt.Errorf("persistence: invalid delete plan: %w", err)
 	}
+	sessionID := deletion.SessionID()
 	return s.tx(ctx, func(ctx context.Context) error {
-		return s.deleteSession(ctx, deletion.SessionID)
+		return s.deleteSession(ctx, sessionID)
 	})
 }
 

@@ -44,13 +44,6 @@ func runsInParentFirstOrder(runs []rundomain.Run) []rundomain.Run {
 	return ordered
 }
 
-// DeletePlan removes exactly one addressed conversation. User-created forks are
-// independent conversations and delegated work is represented by child Runs,
-// not hidden Session rows.
-type DeletePlan struct {
-	SessionID string
-}
-
 // TerminalPlan is the complete durable projection for ending a parked Run tree
 // by cancellation or executor-state loss. Runs retains each exact waiting
 // aggregate and its replacement in canonical postorder so every descendant

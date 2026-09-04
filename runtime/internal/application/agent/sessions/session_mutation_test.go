@@ -326,6 +326,18 @@ func TestRestoreSessionRejectsUnresolvableCWDBeforeMutation(t *testing.T) {
 	}
 }
 
+func TestDeleteSessionRejectsInvalidIdentityBeforeLifecycleEffects(t *testing.T) {
+	stores := newMutationStores("")
+	coordinator := newCoordinator(stores, mutationExecutions{operations: &stores.operations})
+
+	if err := coordinator.DeleteSession(t.Context(), "ses bad"); err == nil {
+		t.Fatal("DeleteSession accepted an invalid Session identity")
+	}
+	if len(stores.operations) != 0 || len(stores.deleted) != 0 {
+		t.Fatalf("invalid delete reached lifecycle effects: operations=%v deleted=%v", stores.operations, stores.deleted)
+	}
+}
+
 var errMutationStage = errors.New("mutation stage failed")
 
 type mutationGoalGuard struct {
@@ -417,7 +429,7 @@ func (m *mutationStores) ApplyDelete(_ context.Context, plan DeletePlan) error {
 	if err := m.record("apply.delete"); err != nil {
 		return err
 	}
-	m.deleted = append(m.deleted, plan.SessionID)
+	m.deleted = append(m.deleted, plan.SessionID())
 	return nil
 }
 func (m *mutationStores) ApplyTerminal(context.Context, TerminalPlan) error {

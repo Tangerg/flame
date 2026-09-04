@@ -820,7 +820,7 @@ func (s stubLifecycleStores) ApplyRestore(ctx context.Context, plan sessions.Res
 }
 
 func (s stubLifecycleStores) ApplyDelete(ctx context.Context, plan sessions.DeletePlan) error {
-	return s.deleteSession(ctx, plan.SessionID)
+	return s.deleteSession(ctx, plan.SessionID())
 }
 
 func (s stubLifecycleStores) deleteSession(ctx context.Context, sessionID string) error {

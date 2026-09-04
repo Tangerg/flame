@@ -107,9 +107,9 @@ func (c coordinatorStores) ApplyRollback(ctx context.Context, plan RollbackPlan)
 }
 func (c coordinatorStores) ApplyRestore(context.Context, RestorePlan) error { return nil }
 func (c coordinatorStores) ApplyDelete(ctx context.Context, plan DeletePlan) error {
-	pending, _ := c.interrupts.List(ctx, plan.SessionID)
+	pending, _ := c.interrupts.List(ctx, plan.SessionID())
 	for _, p := range pending {
-		_ = c.interrupts.Delete(ctx, plan.SessionID, p.RootRunID)
+		_ = c.interrupts.Delete(ctx, plan.SessionID(), p.RootRunID)
 	}
 	return nil
 }
