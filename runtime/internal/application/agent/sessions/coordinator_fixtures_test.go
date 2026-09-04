@@ -90,7 +90,7 @@ func (c coordinatorStores) ApplyFork(_ context.Context, plan ForkPlan) (session.
 	if c.forked != nil {
 		*c.forked = plan
 	}
-	return plan.Child, nil
+	return plan.Child(), nil
 }
 
 // The atomic write-sets delegate their interrupt drops to the interrupt fake so

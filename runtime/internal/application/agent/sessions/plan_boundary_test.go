@@ -190,7 +190,7 @@ func TestForkSeedsTheBoundaryPlanList(t *testing.T) {
 	if _, err := c.Fork(t.Context(), ForkSpec{ParentID: "ses_A"}); err != nil {
 		t.Fatalf("Fork: %v", err)
 	}
-	steps := replacementSteps(applied.PlanReplacement)
+	steps := replacementSteps(applied.PlanReplacement())
 	if len(steps) != 1 || steps[0].Description != "the plan at the boundary" {
 		t.Fatalf("fork Plan replacement = %+v, want the boundary list, not the parent's live one", steps)
 	}

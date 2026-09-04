@@ -687,33 +687,31 @@ func (s stubLifecycleStores) ReadMaterialSnapshot(ctx context.Context, id string
 }
 
 func (s stubLifecycleStores) ApplyFork(ctx context.Context, plan sessions.ForkPlan) (session.Session, error) {
-	child := plan.Child
-	if err := child.Validate(); err != nil {
+	if err := plan.Validate(); err != nil {
 		return session.Session{}, err
 	}
-	if child.ParentID() != plan.ParentID || child.Revision() != 1 {
-		return session.Session{}, errors.New("test persistence: invalid fork child")
-	}
-	if _, err := s.rt.sess.Get(ctx, plan.ParentID); err != nil {
+	child := plan.Child()
+	snapshot := plan.Snapshot()
+	if _, err := s.rt.sess.Get(ctx, plan.ParentID()); err != nil {
 		return session.Session{}, err
 	}
 	if err := s.rt.sess.Insert(ctx, child); err != nil {
 		return session.Session{}, err
 	}
-	if err := s.rt.SeedHistory(ctx, child.ID(), plan.Messages); err != nil {
+	if err := s.rt.SeedHistory(ctx, child.ID(), snapshot.Messages); err != nil {
 		return session.Session{}, err
 	}
-	for _, value := range plan.Runs {
+	for _, value := range snapshot.Runs {
 		if err := s.rt.runs.Restore(ctx, value); err != nil {
 			return session.Session{}, err
 		}
 	}
-	for _, item := range plan.Items {
+	for _, item := range snapshot.Items {
 		if err := s.rt.hist.AppendItem(ctx, item); err != nil {
 			return session.Session{}, err
 		}
 	}
-	for _, blob := range plan.ToolResults {
+	for _, blob := range snapshot.ToolResults {
 		if s.rt.toolResults == nil {
 			return session.Session{}, errors.New("test runtime: tool-result persistence is unavailable")
 		}
@@ -721,8 +719,8 @@ func (s stubLifecycleStores) ApplyFork(ctx context.Context, plan sessions.ForkPl
 			return session.Session{}, err
 		}
 	}
-	if s.rt.plan != nil && plan.PlanReplacement != nil {
-		if err := s.rt.plan.Save(ctx, child.ID(), *plan.PlanReplacement); err != nil {
+	if replacement := plan.PlanReplacement(); s.rt.plan != nil && replacement != nil {
+		if err := s.rt.plan.Save(ctx, child.ID(), *replacement); err != nil {
 			return session.Session{}, err
 		}
 	}

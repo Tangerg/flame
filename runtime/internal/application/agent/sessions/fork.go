@@ -100,15 +100,11 @@ func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec) (session.Session,
 	if err != nil {
 		return session.Session{}, err
 	}
-	if _, err := c.writes.ApplyFork(ctx, ForkPlan{
-		ParentID:        spec.ParentID,
-		Child:           child,
-		Messages:        forked.Messages,
-		Items:           forked.Items,
-		Runs:            forked.Runs,
-		ToolResults:     forked.ToolResults,
-		PlanReplacement: planReplacement,
-	}); err != nil {
+	fork, err := NewForkPlan(spec.ParentID, forked, planReplacement)
+	if err != nil {
+		return session.Session{}, err
+	}
+	if _, err := c.writes.ApplyFork(ctx, fork); err != nil {
 		return session.Session{}, err
 	}
 	c.publishSessionMoved(child.ID())

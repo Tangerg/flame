@@ -18,23 +18,6 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
-type ForkPlan struct {
-	ParentID string
-	// Child is the complete Domain-derived child Session. Persistence verifies
-	// the parent still exists and inserts this exact aggregate.
-	Child    session.Session
-	Messages []chat.Message
-	// Runs, Items, and ToolResults are the identity-remapped durable projection of
-	// the copied conversation. They make the child's visible transcript agree with
-	// the chat history used as model context.
-	Runs        []rundomain.Run
-	Items       []transcript.Item
-	ToolResults []toolresult.Blob
-	// PlanReplacement is the initial child Plan decided from the parent's fork
-	// boundary. nil means the boundary held no value worth publishing.
-	PlanReplacement *plan.Replacement
-}
-
 // RestorePlan is the atomic durable command for replacing a session aggregate.
 // It is intentionally distinct from Snapshot, the export read model: the
 // explicit command makes the persistence boundary's destructive operation

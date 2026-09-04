@@ -674,15 +674,17 @@ func TestApplyForkBranchesAndSeeds(t *testing.T) {
 		ToolName: "read_large", Preview: "bounded preview", Body: "complete durable body",
 		CreatedAt: forkedAt,
 	}
-	child, err := ss.ApplyFork(ctx, sessions.ForkPlan{
-		ParentID:        parent.ID(),
-		Child:           childState,
-		Messages:        []chat.Message{chat.NewUserMessage(chat.NewTextPart("hello"))},
-		Runs:            []run.Run{forkedRun},
-		Items:           []transcript.Item{forkedItem, forkedToolItem},
-		ToolResults:     []toolresult.Blob{forkedBlob},
-		PlanReplacement: &initial,
-	})
+	fork, err := sessions.NewForkPlan(parent.ID(), sessions.Snapshot{
+		Session:  childState,
+		Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("hello"))},
+		Runs:     []run.Run{forkedRun}, Items: []transcript.Item{forkedItem, forkedToolItem},
+		ToolResults: []toolresult.Blob{forkedBlob},
+		Plan:        []plan.Step{{Description: "inherited plan", Status: plan.StatusInProgress}},
+	}, &initial)
+	if err != nil {
+		t.Fatalf("NewForkPlan: %v", err)
+	}
+	child, err := ss.ApplyFork(ctx, fork)
 	if err != nil {
 		t.Fatalf("ApplyFork: %v", err)
 	}

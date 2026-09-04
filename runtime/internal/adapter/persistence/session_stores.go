@@ -204,43 +204,44 @@ func (s *SessionStores) ReadSnapshot(ctx context.Context, sessionID string) (ses
 // ApplyFork persists the Domain-derived child Session and the complete visible
 // history/Plan boundary in one transaction.
 func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (session.Session, error) {
-	if err := fork.Child.Validate(); err != nil {
-		return session.Session{}, fmt.Errorf("persistence: invalid child Session: %w", err)
+	if err := fork.Validate(); err != nil {
+		return session.Session{}, fmt.Errorf("persistence: invalid fork plan: %w", err)
 	}
-	if fork.Child.ParentID() != fork.ParentID || fork.Child.Revision() != 1 {
-		return session.Session{}, errors.New("persistence: child Session differs from fork parent or initial revision")
-	}
-	if s.toolResults == nil && len(fork.ToolResults) > 0 {
+	snapshot := fork.Snapshot()
+	child := fork.Child()
+	parentID := fork.ParentID()
+	planReplacement := fork.PlanReplacement()
+	if s.toolResults == nil && len(snapshot.ToolResults) > 0 {
 		return session.Session{}, errors.New("persistence: cannot fork tool results without blob persistence")
 	}
 	err := s.tx(ctx, func(ctx context.Context) error {
-		if _, err := s.sessions.Get(ctx, fork.ParentID); err != nil {
+		if _, err := s.sessions.Get(ctx, parentID); err != nil {
 			return err
 		}
-		if err := s.sessions.Insert(ctx, fork.Child); err != nil {
+		if err := s.sessions.Insert(ctx, child); err != nil {
 			return err
 		}
-		if err := s.history.Seed(ctx, fork.Child.ID(), fork.Messages); err != nil {
+		if err := s.history.Seed(ctx, child.ID(), snapshot.Messages); err != nil {
 			return err
 		}
 		// A branch that copies the conversation copies the plan it was following. Only
 		// a non-empty list is written: a fresh child with no row already reads as a
 		// session with no list, and writing one would publish an empty list as news.
-		if err := s.savePlanReplacement(ctx, fork.Child.ID(), fork.PlanReplacement); err != nil {
+		if err := s.savePlanReplacement(ctx, child.ID(), planReplacement); err != nil {
 			return err
 		}
-		if err := s.restoreRuns(ctx, fork.Runs); err != nil {
+		if err := s.restoreRuns(ctx, snapshot.Runs); err != nil {
 			return err
 		}
-		if err := s.appendTranscriptItems(ctx, fork.Items); err != nil {
+		if err := s.appendTranscriptItems(ctx, snapshot.Items); err != nil {
 			return err
 		}
-		return s.restoreToolResults(ctx, fork.ToolResults)
+		return s.restoreToolResults(ctx, snapshot.ToolResults)
 	})
 	if err != nil {
 		return session.Session{}, err
 	}
-	return fork.Child, nil
+	return child, nil
 }
 
 // ApplyRollback persists one resolved rollback plan atomically.
