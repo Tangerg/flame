@@ -93,6 +93,7 @@ func (a *AuthoredWatch) Watch(cwds []string, resources []AuthoredResource, notif
 	if a.scope == nil || a.workspaces == nil {
 		return nil, ErrCWDUnavailable
 	}
+	cwds = slices.Clone(cwds)
 	resources = distinctAuthoredResources(resources)
 	if len(resources) == 0 {
 		return nopAuthoredWatch{}, nil
@@ -151,7 +152,7 @@ func (a *AuthoredWatch) Accept(change AuthoredChange) {
 	}
 	a.mu.Unlock()
 	for _, observation := range active {
-		_ = observation.inner.Accept([]AuthoredChange{change})
+		_ = observation.inner.Accept([]AuthoredChange{change.clone()})
 	}
 }
 
@@ -162,7 +163,11 @@ type managedAuthoredObservation struct {
 }
 
 func (m *managedAuthoredObservation) Accept(changes []AuthoredChange) error {
-	return m.inner.Accept(changes)
+	owned := make([]AuthoredChange, len(changes))
+	for index, change := range changes {
+		owned[index] = change.clone()
+	}
+	return m.inner.Accept(owned)
 }
 
 func (m *managedAuthoredObservation) Close() error {
@@ -184,6 +189,11 @@ func distinctAuthoredResources(resources []AuthoredResource) []AuthoredResource 
 		}
 	}
 	return out
+}
+
+func (c AuthoredChange) clone() AuthoredChange {
+	c.Identities = slices.Clone(c.Identities)
+	return c
 }
 
 type nopAuthoredWatch struct{}
