@@ -152,14 +152,13 @@ type ToolInvocationJournal interface {
 // transcript, conversation, invocation, accounting, or lifecycle fact moves.
 // RecordRunCommit records the Application-owned immutable write-set identity
 // after a non-terminal command's complete projections in the same transaction.
-// SuspendBarrier and TerminalizeEvent record it in their boundary transitions.
+// Suspend and TerminalizeEvent record it in their boundary transitions.
 // The sqlite RunStore satisfies it.
 type RunWriter interface {
 	Admit(ctx context.Context, draft run.Draft) error
 	Resume(ctx context.Context, sessionID string, draft run.ResumeDraft, resumedAt time.Time) error
 	RequireActiveSegment(ctx context.Context, sessionID, runID, segmentID string) error
-	Suspend(ctx context.Context, run run.Run) error
-	SuspendBarrier(ctx context.Context, run run.Run, segmentID string, commitID runtimeidentity.CommitID) error
+	Suspend(ctx context.Context, run run.Run, segmentID string, commitID runtimeidentity.CommitID) error
 	Terminalize(ctx context.Context, replacement run.Replacement) error
 	RecordRunCommit(ctx context.Context, sessionID, runID, segmentID string, commitID runtimeidentity.CommitID) error
 	RecordWaitingRunCommit(ctx context.Context, sessionID, runID string, commitID runtimeidentity.CommitID) error

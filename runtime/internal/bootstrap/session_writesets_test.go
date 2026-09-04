@@ -22,6 +22,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	sqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -261,6 +262,7 @@ func parkWithGoalLease(
 
 		CreatedAt:   parkCreatedAt,
 		MessageMark: run.UnknownMessageMark}),
+		"seg_open", runtimeidentity.CommitID{},
 	); err != nil {
 		t.Fatalf("suspend: %v", err)
 	}

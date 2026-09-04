@@ -265,35 +265,27 @@ func (r *RunStore) validateChildPlacement(
 	return nil
 }
 
-// Suspend persists the exact aggregate transition from Running to Waiting,
-// recording what the Run had consumed up to the park. A missing row,
-// repeated transition, mismatched identity, or any other source state is an
-// ownership error and never succeeds silently.
-func (r *RunStore) Suspend(ctx context.Context, value rundomain.Run) error {
-	return r.suspend(ctx, value, nil)
-}
-
-// SuspendBarrier parks one exact active Segment and stamps the root-owned tree
-// barrier identity in the same transition. Child Runs use Suspend without a
-// marker; the root marker proves the complete multi-Run transaction.
-func (r *RunStore) SuspendBarrier(
+// Suspend persists the exact active Segment's transition from Running to
+// Waiting, recording what the Run had consumed up to the park. Every tree
+// member is fenced by segmentID; the root additionally supplies commitID so
+// the complete barrier can be reconciled after an ambiguous transaction result.
+func (r *RunStore) Suspend(
 	ctx context.Context,
 	value rundomain.Run,
 	segmentID string,
 	commitID runtimeidentity.CommitID,
 ) error {
-	marker, err := newRunCommitMarker(value.SessionID(), value.ID(), segmentID, commitID)
-	if err != nil {
+	if err := validateRunCoordinates("suspend Run", value.SessionID(), value.ID(), segmentID); err != nil {
 		return err
 	}
-	return r.suspend(ctx, value, marker)
-}
-
-func (r *RunStore) suspend(
-	ctx context.Context,
-	value rundomain.Run,
-	marker *runCommitMarker,
-) error {
+	var marker *runCommitMarker
+	if !commitID.IsZero() {
+		var err error
+		marker, err = newRunCommitMarker(value.SessionID(), value.ID(), segmentID, commitID)
+		if err != nil {
+			return err
+		}
+	}
 	if err := value.Validate(); err != nil {
 		return fmt.Errorf("sqlite: suspend run %q: %w", value.ID(), err)
 	}
@@ -312,8 +304,12 @@ func (r *RunStore) suspend(
 		if !found || current.SessionID() != value.SessionID() {
 			return errors.New("sqlite: suspend run: active run not found")
 		}
-		if err := marker.requireActiveSegment(current.ActiveSegmentID()); err != nil {
-			return fmt.Errorf("sqlite: suspend run: %w", err)
+		if current.ActiveSegmentID() != segmentID {
+			return fmt.Errorf(
+				"sqlite: suspend run: active Segment is %q, want %q",
+				current.ActiveSegmentID(),
+				segmentID,
+			)
 		}
 		next, err := current.AdvanceProgress(
 			value.Metrics(), value.ContextTokens(), value.UpdatedAt(),
@@ -334,10 +330,10 @@ func (r *RunStore) suspend(
 		res, err := conn(ctx, r.db).ExecContext(ctx,
 			`UPDATE runs SET state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
 			        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
-			 WHERE session_id = ? AND run_id = ? AND state = ?`,
+			 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
 			coarseState(next.State()).databaseValue(), commitSegmentID, commitID,
 			metrics.steps, metrics.durationNs, metrics.usage, next.ContextTokens(), value.UpdatedAt().UTC().UnixNano(),
-			value.SessionID(), value.ID(), coarseState(current.State()).databaseValue())
+			value.SessionID(), value.ID(), coarseState(current.State()).databaseValue(), segmentID)
 		if err != nil {
 			return fmt.Errorf("sqlite: suspend run: %w", err)
 		}

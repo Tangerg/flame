@@ -814,10 +814,7 @@ func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit) error
 		if commit.Run == nil {
 			return errors.New("segment: park commit carries no run record")
 		}
-		if !commit.CommitID.IsZero() {
-			return e.runState.SuspendBarrier(ctx, *commit.Run, commit.SegmentID, commit.CommitID)
-		}
-		return e.runState.Suspend(ctx, *commit.Run)
+		return e.runState.Suspend(ctx, *commit.Run, commit.SegmentID, commit.CommitID)
 	case runs.StateTerminalize:
 		run, err := e.finishedRun(ctx, commit)
 		if err != nil {

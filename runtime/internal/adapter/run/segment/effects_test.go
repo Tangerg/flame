@@ -918,8 +918,13 @@ func (f *fakeRunState) RequireActiveSegment(_ context.Context, sessionID, runID,
 	return nil
 }
 
-func (f *fakeRunState) Suspend(_ context.Context, run run.Run) error {
-	f.suspended = append(f.suspended, run)
+func (f *fakeRunState) Suspend(
+	_ context.Context,
+	value run.Run,
+	_ string,
+	_ runtimeidentity.CommitID,
+) error {
+	f.suspended = append(f.suspended, value)
 	return nil
 }
 
@@ -950,9 +955,6 @@ func (*fakeRunState) RecordRunCommit(context.Context, string, string, string, ru
 }
 func (*fakeRunState) RecordWaitingRunCommit(context.Context, string, string, runtimeidentity.CommitID) error {
 	return nil
-}
-func (f *fakeRunState) SuspendBarrier(ctx context.Context, value run.Run, _ string, _ runtimeidentity.CommitID) error {
-	return f.Suspend(ctx, value)
 }
 func (*fakeRunState) RunCommitCommitted(context.Context, string, string, string, runtimeidentity.CommitID) (bool, error) {
 	return false, nil

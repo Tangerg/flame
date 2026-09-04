@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -35,7 +36,7 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 		ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
 		Capabilities: capabilities, CreatedAt: createdAt, UpdatedAt: createdAt,
 		MessageMark: run.UnknownMessageMark,
-	})); err != nil {
+	}), "seg_waiting", runtimeidentity.CommitID{}); err != nil {
 		t.Fatalf("suspend waiting Run: %v", err)
 	}
 	question := transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
@@ -131,7 +132,7 @@ func TestGetSessionSnapshotKeepsCapabilityAndExistenceRefusals(t *testing.T) {
 		ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
 		Capabilities: capabilities, CreatedAt: createdAt, UpdatedAt: createdAt,
 		MessageMark: run.UnknownMessageMark,
-	})); err != nil {
+	}), "seg_waiting", runtimeidentity.CommitID{}); err != nil {
 		t.Fatalf("suspend waiting Run: %v", err)
 	}
 	if err := rt.hist.AppendItem(t.Context(), testsupport.MustRestoreItem(testsupport.ItemInput{
@@ -173,7 +174,7 @@ func TestGetSessionSnapshotRejectsOwnerlessInterruptMaterial(t *testing.T) {
 		ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
 		Capabilities: capabilities, CreatedAt: createdAt, UpdatedAt: createdAt,
 		MessageMark: run.UnknownMessageMark,
-	})); err != nil {
+	}), "seg_waiting", runtimeidentity.CommitID{}); err != nil {
 		t.Fatalf("suspend waiting Run: %v", err)
 	}
 	if err := rt.interrupts.Open(t.Context(), serverPending(

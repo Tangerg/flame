@@ -79,7 +79,8 @@ func (r *RunStore) RecordWaitingRunCommit(
 // runCommitMarker is the optional durable fence attached to one Application
 // write-set. A non-nil marker always carries both coordinates because callers
 // can only construct it through newRunCommitMarker; nil means the lifecycle
-// transition has no EventCommit to stamp.
+// transition carries no individual receipt, as with a child in a root-owned
+// tree barrier.
 type runCommitMarker struct {
 	segmentID string
 	commitID  runtimeidentity.CommitID

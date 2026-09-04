@@ -15,6 +15,7 @@ import (
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
@@ -381,6 +382,7 @@ func TestCancelParkedRunProducesPortableTerminalSnapshot(t *testing.T) {
 		Capabilities: capabilities,
 
 		CreatedAt: parkedAt, MessageMark: run.UnknownMessageMark}),
+		"seg_open", runtimeidentity.CommitID{},
 	); suspendErr != nil {
 		t.Fatalf("suspend parked run: %v", suspendErr)
 	}

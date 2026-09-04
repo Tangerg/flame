@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -98,7 +99,9 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 		CreatedAt:    createdAt, UpdatedAt: createdAt.Add(time.Second),
 		MessageMark: run.UnknownMessageMark})
 
-	if suspendErr := runStore.Suspend(ctx, waiting); suspendErr != nil {
+	if suspendErr := runStore.Suspend(
+		ctx, waiting, "segment_claim", runtimeidentity.CommitID{},
+	); suspendErr != nil {
 		t.Fatalf("Suspend: %v", suspendErr)
 	}
 	pending := runs.Pending{
@@ -621,6 +624,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 		},
 		CreatedAt: createdAt,
 		UpdatedAt: createdAt.Add(time.Second), MessageMark: run.UnknownMessageMark}),
+		"segment", runtimeidentity.CommitID{},
 	); suspendErr != nil {
 		t.Fatalf("Suspend: %v", suspendErr)
 	}

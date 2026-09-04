@@ -78,7 +78,9 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 	if admitErr := state.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_actual", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: createdAt})); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
 	}
-	if suspendErr := state.Suspend(ctx, parkedRunRecord("run_actual", "ses_1", createdAt)); suspendErr != nil {
+	if suspendErr := state.Suspend(
+		ctx, parkedRunRecord("run_actual", "ses_1", createdAt), "seg_open", runtimeidentity.CommitID{},
+	); suspendErr != nil {
 		t.Fatalf("suspend: %v", suspendErr)
 	}
 	stalePending := singleRunPending(
@@ -126,7 +128,9 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 	if admitErr := state.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created})); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
 	}
-	if suspendErr := state.Suspend(ctx, parkedRunRecord("run_1", "ses_1", created)); suspendErr != nil {
+	if suspendErr := state.Suspend(
+		ctx, parkedRunRecord("run_1", "ses_1", created), "seg_open", runtimeidentity.CommitID{},
+	); suspendErr != nil {
 		t.Fatalf("suspend: %v", suspendErr)
 	}
 	pending := singleRunPending(
@@ -387,7 +391,7 @@ func TestCommitEventRejectsTerminalFromReplacedSegment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if suspendErr := store.Suspend(ctx, waiting); suspendErr != nil {
+	if suspendErr := store.Suspend(ctx, waiting, "seg_old", runtimeidentity.CommitID{}); suspendErr != nil {
 		t.Fatal(suspendErr)
 	}
 	if resumeErr := store.Resume(ctx, draft.SessionID, run.ResumeDraft{
@@ -447,7 +451,7 @@ func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if suspendErr := store.Suspend(ctx, waiting); suspendErr != nil {
+	if suspendErr := store.Suspend(ctx, waiting, "seg_old", runtimeidentity.CommitID{}); suspendErr != nil {
 		t.Fatal(suspendErr)
 	}
 	if resumeErr := store.Resume(ctx, draft.SessionID, run.ResumeDraft{
@@ -668,12 +672,12 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 		childInterrupts,
 	)
 
-	if err := runStore.Suspend(ctx, childRun); err != nil {
+	if err := runStore.Suspend(ctx, childRun, "segment_child", runtimeidentity.CommitID{}); err != nil {
 		t.Fatalf("suspend child: %v", err)
 	}
 	if suspendRoot {
 		rootRun := waitingTestSessionRun("run_root", run.Lineage{}, createdAt, nil)
-		if err := runStore.Suspend(ctx, rootRun); err != nil {
+		if err := runStore.Suspend(ctx, rootRun, "segment_root", runtimeidentity.CommitID{}); err != nil {
 			t.Fatalf("suspend root: %v", err)
 		}
 	}
@@ -1267,7 +1271,9 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	if err != nil {
 		t.Fatalf("park claim root Run: %v", err)
 	}
-	if suspendErr := runStore.Suspend(ctx, waitingRoot); suspendErr != nil {
+	if suspendErr := runStore.Suspend(
+		ctx, waitingRoot, "segment_claim", runtimeidentity.CommitID{},
+	); suspendErr != nil {
 		t.Fatalf("persist claim root park: %v", suspendErr)
 	}
 	effects := mustNewEffects(Config{
@@ -1448,7 +1454,9 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 	if err != nil {
 		t.Fatalf("park Run: %v", err)
 	}
-	if suspendErr := runStore.Suspend(ctx, waitingRoot); suspendErr != nil {
+	if suspendErr := runStore.Suspend(
+		ctx, waitingRoot, "segment_approval_claim", runtimeidentity.CommitID{},
+	); suspendErr != nil {
 		t.Fatalf("persist Run park: %v", suspendErr)
 	}
 	answer := runs.InterruptAnswer{
@@ -1673,7 +1681,9 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 	if err != nil {
 		t.Fatalf("park claim root Run: %v", err)
 	}
-	if err := runStore.Suspend(ctx, waitingRoot); err != nil {
+	if err := runStore.Suspend(
+		ctx, waitingRoot, "segment_claim_"+suffix, runtimeidentity.CommitID{},
+	); err != nil {
 		t.Fatalf("persist claim root park: %v", err)
 	}
 	answers := []runs.InterruptAnswer{{
@@ -2323,18 +2333,24 @@ func newWaitingCancellationSQLiteFixtureAt(
 			t.Fatalf("seed interrupt Item %q: %v", item.ID(), appendItemErr)
 		}
 	}
-	if suspendErr := state.Suspend(ctx, grandchildRun); suspendErr != nil {
+	if suspendErr := state.Suspend(
+		ctx, grandchildRun, "segment_grandchild", runtimeidentity.CommitID{},
+	); suspendErr != nil {
 		t.Fatalf("suspend grandchild: %v", suspendErr)
 	}
-	if suspendErr := state.Suspend(ctx, childRun); suspendErr != nil {
+	if suspendErr := state.Suspend(
+		ctx, childRun, "segment_child", runtimeidentity.CommitID{},
+	); suspendErr != nil {
 		t.Fatalf("suspend child: %v", suspendErr)
 	}
 	if survivingBoundary {
-		if suspendErr := state.Suspend(ctx, siblingRun); suspendErr != nil {
+		if suspendErr := state.Suspend(
+			ctx, siblingRun, "segment_sibling", runtimeidentity.CommitID{},
+		); suspendErr != nil {
 			t.Fatalf("suspend sibling: %v", suspendErr)
 		}
 	}
-	if suspendErr := state.Suspend(ctx, rootRun); suspendErr != nil {
+	if suspendErr := state.Suspend(ctx, rootRun, "segment_root", runtimeidentity.CommitID{}); suspendErr != nil {
 		t.Fatalf("suspend root: %v", suspendErr)
 	}
 

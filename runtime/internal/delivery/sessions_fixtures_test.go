@@ -1261,7 +1261,9 @@ func (stubRunState) Resume(
 func (stubRunState) RequireActiveSegment(context.Context, string, string, string) error {
 	return nil
 }
-func (stubRunState) Suspend(context.Context, run.Run) error { return nil }
+func (stubRunState) Suspend(context.Context, run.Run, string, runtimeidentity.CommitID) error {
+	return nil
+}
 func (stubRunState) Terminalize(context.Context, run.Replacement) error {
 	return nil
 }
@@ -1272,9 +1274,6 @@ func (stubRunState) RecordRunCommit(context.Context, string, string, string, run
 	return nil
 }
 func (stubRunState) RecordWaitingRunCommit(context.Context, string, string, runtimeidentity.CommitID) error {
-	return nil
-}
-func (stubRunState) SuspendBarrier(context.Context, run.Run, string, runtimeidentity.CommitID) error {
 	return nil
 }
 func (stubRunState) RunCommitCommitted(context.Context, string, string, string, runtimeidentity.CommitID) (bool, error) {

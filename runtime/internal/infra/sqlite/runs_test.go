@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -53,6 +54,10 @@ func storedRunReplacement(
 		t.Fatalf("load expected Run %q: found=%t err=%v", state.ID(), found, err)
 	}
 	return testsupport.MustRunReplacement(expected, state)
+}
+
+func suspendRun(ctx context.Context, store *sqlite.RunStore, state run.Run, segmentID string) error {
+	return store.Suspend(ctx, state, segmentID, runtimeidentity.CommitID{})
 }
 
 // runCreatedAt is when every fixture Run is admitted. The interrupt record
@@ -262,7 +267,7 @@ func TestParkCommitsInterruptAndSuspendAtomically(t *testing.T) {
 		)); err != nil {
 			return err
 		}
-		return runStore.Suspend(ctx, parkedRun("run_1", "ses_A"))
+		return suspendRun(ctx, runStore, parkedRun("run_1", "ses_A"), "seg_open")
 	}
 
 	// A park commit that fails after both writes leaves NEITHER: no interrupt, and
@@ -656,7 +661,7 @@ func TestTerminalizeParkedRunRejectsNonCancel(t *testing.T) {
 		t.Fatalf("admit: %v", err)
 	}
 	parked := parkedRun("run_1", "ses_A")
-	if err := store.Suspend(ctx, parked); err != nil {
+	if err := suspendRun(ctx, store, parked, "seg_open"); err != nil {
 		t.Fatalf("suspend: %v", err)
 	}
 	// A parked run cannot complete/error/cap out without resuming — the illegal
@@ -679,6 +684,53 @@ func TestTerminalizeParkedRunRejectsNonCancel(t *testing.T) {
 	}
 }
 
+func TestSuspendRequiresExactActiveSegment(t *testing.T) {
+	ctx := t.Context()
+	store, _ := newRunStores(t)
+	draft := runDraft("run_1", "ses_A")
+	draft.SegmentID = "seg_old"
+	if err := store.Admit(ctx, draft); err != nil {
+		t.Fatalf("Admit: %v", err)
+	}
+	oldSegment := admittedRunFromDraft(draft)
+	staleWaiting, err := oldSegment.Suspend(runCreatedAt.Add(time.Second))
+	if err != nil {
+		t.Fatalf("prepare old Segment park: %v", err)
+	}
+	if err := suspendRun(ctx, store, staleWaiting, "seg_old"); err != nil {
+		t.Fatalf("Suspend old Segment: %v", err)
+	}
+	if err := store.Resume(
+		ctx,
+		draft.SessionID,
+		run.ResumeDraft{RunID: draft.RunID, SegmentID: "seg_new"},
+		runCreatedAt.Add(2*time.Second),
+	); err != nil {
+		t.Fatalf("Resume new Segment: %v", err)
+	}
+	if err := suspendRun(ctx, store, staleWaiting, "seg_old"); err == nil {
+		t.Fatal("Suspend accepted a waiting projection from a replaced Segment")
+	}
+	current, found, err := store.Run(ctx, "run_1")
+	if err != nil || !found {
+		t.Fatalf("read Run after rejected suspend: found=%t err=%v", found, err)
+	}
+	if current.State() != run.Running || current.ActiveSegmentID() != "seg_new" {
+		t.Fatalf(
+			"Run after rejected suspend = %s/%q, want running seg_new",
+			current.State(),
+			current.ActiveSegmentID(),
+		)
+	}
+	currentWaiting, err := current.Suspend(runCreatedAt.Add(3 * time.Second))
+	if err != nil {
+		t.Fatalf("prepare current Segment park: %v", err)
+	}
+	if err := suspendRun(ctx, store, currentWaiting, "seg_new"); err != nil {
+		t.Fatalf("Suspend current Segment: %v", err)
+	}
+}
+
 // TestSuspendResumeReusesOneSlot: a parked run's Suspend keeps the session's row
 // non-terminal (a second Admit is still rejected), and a continuation's Resume
 // keeps reusing that one row rather than admitting a second — so the durable
@@ -692,7 +744,7 @@ func TestSuspendResumeReusesOneSlot(t *testing.T) {
 		t.Fatalf("admit: %v", err)
 	}
 	// Park: the row goes waiting but stays non-terminal — still busy.
-	if err := store.Suspend(ctx, parkedRun("run_1", "ses_A")); err != nil {
+	if err := suspendRun(ctx, store, parkedRun("run_1", "ses_A"), "seg_open"); err != nil {
 		t.Fatalf("suspend: %v", err)
 	}
 	if err := store.Admit(ctx, runDraft("run_2", "ses_A")); !errors.Is(err, run.ErrSessionBusy) {
@@ -732,7 +784,7 @@ func TestEventCommitMarkerDoesNotCrossSuspendResumeGeneration(t *testing.T) {
 	if err != nil || !matched {
 		t.Fatalf("active marker matched=%t err=%v, want true/nil", matched, err)
 	}
-	if suspendErr := store.Suspend(ctx, parkedRun("run_1", "ses_A")); suspendErr != nil {
+	if suspendErr := suspendRun(ctx, store, parkedRun("run_1", "ses_A"), "seg_open"); suspendErr != nil {
 		t.Fatalf("Suspend: %v", suspendErr)
 	}
 	matched, err = store.RunCommitCommitted(
@@ -826,7 +878,7 @@ func TestPageRunsReturnsEveryLifecyclePosition(t *testing.T) {
 	)); err != nil {
 		t.Fatalf("open interrupt: %v", err)
 	}
-	if err := store.Suspend(ctx, parked); err != nil {
+	if err := suspendRun(ctx, store, parked, "seg_open"); err != nil {
 		t.Fatalf("suspend: %v", err)
 	}
 	finished := finishedRunFromDraft(run.Draft{
@@ -1112,7 +1164,7 @@ func TestRunCapabilitiesAreImmutable(t *testing.T) {
 	if err := interruptStore.Open(ctx, pending); err != nil {
 		t.Fatalf("open interrupt: %v", err)
 	}
-	if err := store.Suspend(ctx, parked); err != nil {
+	if err := suspendRun(ctx, store, parked, "seg_open"); err != nil {
 		t.Fatalf("suspend: %v", err)
 	}
 	assertRunCapabilities(t, store, "run_1", admitted, "after park")
