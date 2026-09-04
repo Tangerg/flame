@@ -167,6 +167,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 207 | `672669d2` + CLI dependency update | Centralized valid exact Pending-interrupt point reads at the Session boundary, removed duplicate Run checks, and deleted the unused list capability from the Run port and fixtures. |
 | 208 | `db5f1fb9` + CLI dependency update | Centralized valid Session-scoped, duplicate-free Pending catalogs for idle admission, executor cleanup, and pagination so foreign or corrupt rows cannot drive lifecycle effects. |
 | 209 | `5b130484` + CLI dependency update | Centralized valid exact, unique, admission-ordered Session Run catalogs for activity, usage, rollback/recovery, and pagination so corrupt or foreign rows cannot affect policy or history. |
+| 210 | `1868abc8` + CLI dependency update | Unified pinned and searched Agent Memory behind one Application read model that rejects invalid, inactive, foreign, duplicate, or over-capacity catalogs before model context. |
 
 ## Verification contract
 
