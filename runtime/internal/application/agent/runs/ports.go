@@ -218,10 +218,10 @@ type ActiveRunReader interface {
 	ActiveRun(ctx context.Context, sessionID string) (run.Run, bool, error)
 }
 
-// PendingInterruptReader projects root-owned waiting boundaries by Session or
-// addressed Run without exposing checkpoint storage.
+// PendingInterruptReader returns the valid root-owned waiting boundary for an
+// addressed Run without exposing checkpoint storage. A found value belongs to
+// the requested root Run.
 type PendingInterruptReader interface {
-	ListOpenInterrupts(ctx context.Context, sessionID string) ([]Pending, error)
 	LookupOpenInterrupt(ctx context.Context, runID string) (Pending, bool, error)
 }
 

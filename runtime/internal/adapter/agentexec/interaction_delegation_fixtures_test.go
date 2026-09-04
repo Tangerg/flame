@@ -185,13 +185,6 @@ func (*delegateSessionStore) ActiveRun(
 	return run.Run{}, false, nil
 }
 
-func (*delegateSessionStore) ListOpenInterrupts(
-	context.Context,
-	string,
-) ([]runs.Pending, error) {
-	return nil, nil
-}
-
 func (*delegateSessionStore) LookupOpenInterrupt(
 	context.Context,
 	string,

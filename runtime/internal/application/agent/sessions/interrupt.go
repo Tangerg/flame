@@ -25,11 +25,6 @@ func (r RunExecutionBinding) executorRef() runs.ExecutorRef {
 	return runs.ExecutorRef{SessionID: r.SessionID, ExecutorID: r.ExecutorID}
 }
 
-// ListOpenInterrupts exposes the run-admission read needed by application/agent/runs.
-func (c *Coordinator) ListOpenInterrupts(ctx context.Context, sessionID string) ([]runs.Pending, error) {
-	return c.interrupts.List(ctx, sessionID)
-}
-
 // ActiveRun returns the Session's non-terminal Run — the one the admission
 // invariant allows at most one of — reporting false when the Session holds none.
 //
@@ -52,7 +47,22 @@ func (c *Coordinator) ActiveRun(ctx context.Context, sessionID string) (rundomai
 // LookupOpenInterrupt returns the parked run identified by runID without claiming
 // or consuming it. The run use case owns the subsequent admission ordering.
 func (c *Coordinator) LookupOpenInterrupt(ctx context.Context, runID string) (runs.Pending, bool, error) {
-	return c.interrupts.Get(ctx, runID)
+	return c.lookupOpenInterrupt(ctx, runID)
+}
+
+func (c *Coordinator) lookupOpenInterrupt(ctx context.Context, runID string) (runs.Pending, bool, error) {
+	pending, found, err := c.interrupts.Get(ctx, runID)
+	if err != nil || !found {
+		return runs.Pending{}, found, err
+	}
+	if err := pending.ValidateForRoot(runID); err != nil {
+		return runs.Pending{}, false, fmt.Errorf(
+			"sessions: interrupt store Get(%q) returned invalid Pending: %w",
+			runID,
+			err,
+		)
+	}
+	return pending, true, nil
 }
 
 // ApplyRunCancel commits the atomic durable abandon write-set. Executor
@@ -95,7 +105,7 @@ func (c *Coordinator) terminalizeParkedRun(ctx context.Context, sessionID, runID
 	if finishedAt.IsZero() {
 		return rundomain.Run{}, fmt.Errorf("sessions: terminalize parked run %q: finished time is required", runID)
 	}
-	pending, found, err := c.interrupts.Get(ctx, runID)
+	pending, found, err := c.lookupOpenInterrupt(ctx, runID)
 	if err != nil {
 		return rundomain.Run{}, err
 	}
@@ -154,7 +164,7 @@ func (c *Coordinator) terminalizePendingRun(
 func (c *Coordinator) parkedExecutions(ctx context.Context, runIDs []string) ([]RunExecutionBinding, error) {
 	var out []RunExecutionBinding
 	for _, runID := range runIDs {
-		pending, found, err := c.interrupts.Get(ctx, runID)
+		pending, found, err := c.lookupOpenInterrupt(ctx, runID)
 		if err != nil {
 			return nil, err
 		}

@@ -202,13 +202,6 @@ func (c *Coordinator) resolveCancellationOwner(
 				),
 			)
 		}
-		if err := pending.Validate(); err != nil {
-			return ExecutorRef{}, nil, fmt.Errorf(
-				"runs: cancellation tree %q pending set: %w",
-				root.ID(),
-				err,
-			)
-		}
 		members := make(map[string]string, len(pending.Continuations))
 		for _, continuation := range pending.Continuations {
 			members[continuation.RunID] = continuation.MemberID

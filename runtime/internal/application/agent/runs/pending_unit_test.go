@@ -186,6 +186,19 @@ func TestPendingValidateRequiresOneCanonicalConnectedTree(t *testing.T) {
 	}
 }
 
+func TestPendingValidatesExactRootIdentity(t *testing.T) {
+	pending := validTreePending()
+	if err := pending.ValidateForRoot(pending.RootRunID); err != nil {
+		t.Fatalf("ValidateForRoot exact Pending: %v", err)
+	}
+	if err := pending.ValidateForRoot("run_other"); err == nil || !strings.Contains(err.Error(), "requested identity") {
+		t.Fatalf("ValidateForRoot mismatched Pending error = %v", err)
+	}
+	if err := (Pending{}).ValidateForRoot("run_root"); err == nil {
+		t.Fatal("ValidateForRoot accepted invalid Pending")
+	}
+}
+
 func TestPendingEqualUsesLogicalDurableValue(t *testing.T) {
 	left := validTreePending()
 	right := left

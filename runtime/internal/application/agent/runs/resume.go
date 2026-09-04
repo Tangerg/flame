@@ -23,9 +23,6 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if !found {
 		return StartResult{}, ErrInterruptNotOpen
 	}
-	if validateErr := pending.Validate(); validateErr != nil {
-		return StartResult{}, fmt.Errorf("runs: invalid pending interrupt set: %w", validateErr)
-	}
 	if gap := pending.Capabilities.MissingFrom(cmd.CallerCapabilities); !gap.IsEmpty() {
 		return StartResult{}, &run.InsufficientCapabilitiesError{RunID: cmd.RunID, Missing: gap}
 	}

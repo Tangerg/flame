@@ -118,16 +118,6 @@ func (f *fakeRunSessions) PrepareScheduled(
 	return f.sess, &f.sess, nil
 }
 
-func (f *fakeRunSessions) ListOpenInterrupts(_ context.Context, sessionID string) ([]Pending, error) {
-	var out []Pending
-	for _, pending := range f.pending {
-		if pending.SessionID == sessionID {
-			out = append(out, pending)
-		}
-	}
-	return out, nil
-}
-
 func (f *fakeRunSessions) LookupOpenInterrupt(_ context.Context, runID string) (Pending, bool, error) {
 	pending, ok := f.pending[runID]
 	return pending, ok, nil

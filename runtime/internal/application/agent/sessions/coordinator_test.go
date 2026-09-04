@@ -98,6 +98,35 @@ func TestClaimSessionMutationAllowsOpenInterrupt(t *testing.T) {
 	admission.Release()
 }
 
+func TestLookupOpenInterruptProtectsExactPendingIdentity(t *testing.T) {
+	requested := "run_requested"
+	exact := testPending(requested, "ses_1", time.Unix(1, 0).UTC())
+	coordinator := &Coordinator{interrupts: &coordinatorInterrupts{
+		pending: map[string]runs.Pending{requested: exact},
+	}}
+	got, found, err := coordinator.LookupOpenInterrupt(t.Context(), requested)
+	if err != nil || !found || !got.Equal(exact) {
+		t.Fatalf("LookupOpenInterrupt exact = (%+v, %t, %v)", got, found, err)
+	}
+
+	for _, test := range []struct {
+		name    string
+		pending runs.Pending
+	}{
+		{name: "invalid Pending"},
+		{name: "mismatched root", pending: testPending("run_other", "ses_1", time.Unix(1, 0).UTC())},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			coordinator := &Coordinator{interrupts: &coordinatorInterrupts{
+				pending: map[string]runs.Pending{requested: test.pending},
+			}}
+			if _, found, err := coordinator.LookupOpenInterrupt(t.Context(), requested); err == nil || found {
+				t.Fatalf("LookupOpenInterrupt accepted invalid Pending: found=%t err=%v", found, err)
+			}
+		})
+	}
+}
+
 func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 	finishedAt := time.Date(2026, 7, 13, 2, 3, 4, 0, time.UTC)
 	createdAt := finishedAt.Add(-time.Minute)

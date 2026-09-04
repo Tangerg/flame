@@ -169,6 +169,23 @@ func (p Pending) Validate() error {
 	return p.validateBindings(interruptsByItem)
 }
 
+// ValidateForRoot verifies the complete hand-off and its exact requested root
+// Run identity. Point reads use it before stored continuation state can
+// influence a use case.
+func (p Pending) ValidateForRoot(expectedRootRunID string) error {
+	if err := p.Validate(); err != nil {
+		return err
+	}
+	if p.RootRunID != expectedRootRunID {
+		return fmt.Errorf(
+			"interrupts: pending root %q does not match requested identity %q",
+			p.RootRunID,
+			expectedRootRunID,
+		)
+	}
+	return nil
+}
+
 func (p Pending) validateEnvelope() error {
 	if _, err := resourceid.ParseRun(p.RootRunID); err != nil {
 		return fmt.Errorf("interrupts: pending root: %w", err)
