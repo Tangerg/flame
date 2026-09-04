@@ -12,11 +12,11 @@ import (
 )
 
 func (r *reducer) segmentEnd(e SegmentEnded) ([]ProjectionEvent, error) {
-	if e.Reason != run.OutcomeFailed && e.Reason != run.OutcomeTimedOut && e.Reason != run.OutcomeLost && e.Failure != nil {
+	if e.Reason != run.OutcomeFailed && e.Reason != run.OutcomeTimedOut && e.Reason != run.OutcomeLost && e.failure != nil {
 		return nil, errors.New("outcome does not allow a failure")
 	}
-	if e.Usage != nil {
-		if err := r.applyUsage(*e.Usage); err != nil {
+	if e.usage != nil {
+		if err := r.applyUsage(*e.usage); err != nil {
 			return nil, err
 		}
 	}
@@ -25,10 +25,10 @@ func (r *reducer) segmentEnd(e SegmentEnded) ([]ProjectionEvent, error) {
 	detail := ""
 	switch e.Reason {
 	case run.OutcomeFailed, run.OutcomeTimedOut, run.OutcomeLost:
-		if e.Failure == nil {
+		if e.failure == nil {
 			return nil, errors.New("failure outcome is missing a failure")
 		}
-		failure = e.Failure
+		failure = e.failure
 	case run.OutcomeCanceled:
 		if r.cfg.CancelReason != nil {
 			detail = r.cfg.CancelReason()

@@ -112,16 +112,7 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 		value.Interrupts = interrupts
 		return value, true
 	case SegmentEnded:
-		if value.Failure != nil {
-			failure := *value.Failure
-			value.Failure = &failure
-		}
-		if value.Usage != nil {
-			usage := *value.Usage
-			usage.ByModel = slices.Clone(usage.ByModel)
-			value.Usage = &usage
-		}
-		return value, true
+		return NewSegmentEnded(value.Reason, value.failure, value.usage, value.Duration), true
 	case UsageReported:
 		value.ByModel = slices.Clone(value.ByModel)
 		return value, true

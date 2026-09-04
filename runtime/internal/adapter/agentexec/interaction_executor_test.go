@@ -270,7 +270,7 @@ func TestInteractionExecutorRunsRootFromCompleteWorkingContext(t *testing.T) {
 		t.Fatalf("authoritative assistant completion = %#v", completed)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted || ended[0].Usage == nil || ended[0].Usage.Steps != 1 {
+	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted || ended[0].Usage() == nil || ended[0].Usage().Steps != 1 {
 		t.Fatalf("segment end = %#v", ended)
 	}
 	assertOneRootMember(t, events)
@@ -355,8 +355,8 @@ func TestInteractionExecutorMapsModelFailure(t *testing.T) {
 			executor := newTestInteractionExecutor(t, model)
 			events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
 			ended := payloadsOf[runs.SegmentEnded](events)
-			if len(ended) != 1 || ended[0].Reason != run.OutcomeFailed || ended[0].Failure == nil ||
-				ended[0].Failure.Kind != test.wantKind || ended[0].Failure.RetryAfter != test.wantRetry {
+			if len(ended) != 1 || ended[0].Reason != run.OutcomeFailed || ended[0].Failure() == nil ||
+				ended[0].Failure().Kind != test.wantKind || ended[0].Failure().RetryAfter != test.wantRetry {
 				t.Fatalf("segment end = %#v", ended)
 			}
 		})
@@ -387,8 +387,8 @@ func TestInteractionExecutorMapsStreamingModelFailure(t *testing.T) {
 	}
 	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeFailed || ended[0].Failure == nil ||
-		ended[0].Failure.Kind != run.FailureRateLimited || ended[0].Failure.RetryAfter != 7*time.Second {
+	if len(ended) != 1 || ended[0].Reason != run.OutcomeFailed || ended[0].Failure() == nil ||
+		ended[0].Failure().Kind != run.FailureRateLimited || ended[0].Failure().RetryAfter != 7*time.Second {
 		t.Fatalf("segment end = %#v", ended)
 	}
 }
@@ -514,11 +514,11 @@ func TestInteractionTerminationMappingIsComplete(t *testing.T) {
 				t.Fatal(err)
 			}
 			end := segmentEndFromTermination(termination, time.Second)
-			if end.Reason != test.wantOutcome || (end.Failure != nil) != test.hasFailure {
+			if end.reason != test.wantOutcome || (end.failure != nil) != test.hasFailure {
 				t.Fatalf("mapping = %#v", end)
 			}
-			if test.hasFailure && end.Failure.Kind != test.wantFailure {
-				t.Fatalf("failure = %#v, want kind %v", end.Failure, test.wantFailure)
+			if test.hasFailure && end.failure.Kind != test.wantFailure {
+				t.Fatalf("failure = %#v, want kind %v", end.failure, test.wantFailure)
 			}
 		})
 	}

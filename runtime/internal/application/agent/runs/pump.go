@@ -412,10 +412,12 @@ func (s *segmentPump) handleUnknownEffects(
 		Kind:   run.FailureLost,
 		Detail: "an external operation completed without a provable durable result",
 	}
-	batch, err := route.reducer.reduce(SegmentEnded{
-		Reason: run.OutcomeLost, Failure: &failure,
-		Duration: route.activeDuration(s.coordinator.publications.nowUTC()),
-	})
+	batch, err := route.reducer.reduce(NewSegmentEnded(
+		run.OutcomeLost,
+		&failure,
+		nil,
+		route.activeDuration(s.coordinator.publications.nowUTC()),
+	))
 	if err != nil {
 		return fmt.Errorf("runs: reduce unknown Effect loss: %w", err)
 	}

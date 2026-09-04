@@ -135,7 +135,7 @@ func yieldChildStart(
 	}
 	yield(ExecutorEvent{
 		Member:  ExecutorMember{MemberID: member.ParentID},
-		Payload: SegmentEnded{Reason: run.OutcomeFailed, Failure: &failure},
+		Payload: SegmentEnded{Reason: run.OutcomeFailed, failure: &failure},
 	})
 	return false
 }
@@ -1016,7 +1016,7 @@ func hasActiveSession(c *Coordinator, sessionID string) bool {
 
 func TestCoordinatorCommitsExecutorStartFailureInCanonicalOrder(t *testing.T) {
 	executor := &fakeExecutor{events: []ExecutorPayload{
-		SegmentEnded{Reason: run.OutcomeFailed, Failure: &run.Failure{Kind: run.FailureInternal, Detail: "the run failed due to an internal error"}},
+		SegmentEnded{Reason: run.OutcomeFailed, failure: &run.Failure{Kind: run.FailureInternal, Detail: "the run failed due to an internal error"}},
 	}}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
@@ -1654,7 +1654,7 @@ func TestCoordinatorPublishesChildSegmentOnItsOwnRunIdentity(t *testing.T) {
 		{Member: childMember, Payload: MessageDelta{Text: "child reply"}},
 		{Member: childMember, Payload: SegmentEnded{
 			Reason: run.OutcomeCompleted,
-			Usage:  &finalUsage,
+			usage:  &finalUsage,
 		}},
 		{Member: rootMember, Payload: ToolCallFinished{
 			CallID:     "canonical_call_delegate",
@@ -1738,11 +1738,11 @@ func TestCoordinatorKeepsConcurrentSiblingSegmentsIsolated(t *testing.T) {
 		{Member: childB, Payload: MessageDelta{Text: "beta"}},
 		{Member: childB, Payload: SegmentEnded{
 			Reason: run.OutcomeCompleted,
-			Usage:  childUsage("model-b", 7),
+			usage:  childUsage("model-b", 7),
 		}},
 		{Member: childA, Payload: SegmentEnded{
 			Reason: run.OutcomeCompleted,
-			Usage:  childUsage("model-a", 5),
+			usage:  childUsage("model-a", 5),
 		}},
 		{Member: rootMember, Payload: ToolCallFinished{CallID: "canonical_a", OutputText: "alpha"}},
 		{Member: rootMember, Payload: ToolCallFinished{CallID: "canonical_b", OutputText: "beta"}},
@@ -1868,7 +1868,7 @@ func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t
 		{Member: grandchildSource, Payload: MessageDelta{Text: "leaf"}},
 		{Member: grandchildSource, Payload: SegmentEnded{
 			Reason: run.OutcomeCompleted,
-			Usage:  usage(3, 1),
+			usage:  usage(3, 1),
 		}},
 		{Member: childMember, Payload: ToolCallFinished{
 			CallID: "canonical_grandchild", OutputText: "leaf",
@@ -1876,7 +1876,7 @@ func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t
 		{Member: childMember, Payload: MessageDelta{Text: "branch"}},
 		{Member: childMember, Payload: SegmentEnded{
 			Reason: run.OutcomeCompleted,
-			Usage:  usage(9, 3),
+			usage:  usage(9, 3),
 		}},
 		{Member: rootMember, Payload: ToolCallFinished{
 			CallID: "canonical_child", OutputText: "branch",

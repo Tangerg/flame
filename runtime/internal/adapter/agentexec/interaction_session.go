@@ -554,7 +554,7 @@ func (i *interactionSession) publishProjectionFailure(cause error) {
 	}
 	i.lifetime.send(runs.ExecutorEvent{
 		Member:  member,
-		Payload: runs.SegmentEnded{Reason: run.OutcomeFailed, Failure: &failure},
+		Payload: runs.NewSegmentEnded(run.OutcomeFailed, &failure, nil, 0),
 	})
 }
 
@@ -596,7 +596,7 @@ func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded,
 	// at this boundary, so do not project that scheduling race as provider
 	// failure. Other framework terminal causes remain untouched.
 	ownerCause := i.lifetime.ownerCause()
-	var end runs.SegmentEnded
+	var end segmentEndDraft
 	if termination.Cause() == agent.TerminationCauseExternalFailure && ownerCause != nil {
 		end = segmentEndFromOwnerCause(ownerCause, duration)
 	} else if stop := i.allowance.terminal(); stop != interactionAllowanceOpen {
@@ -607,7 +607,7 @@ func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded,
 			failure, _ := termination.Failure()
 			if failure.Code() == "interaction.model.failed" {
 				if classified, found := i.modelFailures.take(result.ProcessID()); found {
-					end.Failure = &classified
+					end.failure = &classified
 				}
 			}
 		}
@@ -616,20 +616,25 @@ func (i *interactionSession) segmentEnd(result agent.Result) (runs.SegmentEnded,
 	if err != nil {
 		return runs.SegmentEnded{}, err
 	}
-	end.Usage = usage
-	return end, nil
+	return runs.NewSegmentEnded(end.reason, end.failure, usage, end.duration), nil
 }
 
-func segmentEndFromAllowance(stop interactionAllowanceStop, duration time.Duration) runs.SegmentEnded {
-	end := runs.SegmentEnded{Duration: duration}
+type segmentEndDraft struct {
+	reason   run.Outcome
+	failure  *run.Failure
+	duration time.Duration
+}
+
+func segmentEndFromAllowance(stop interactionAllowanceStop, duration time.Duration) segmentEndDraft {
+	end := segmentEndDraft{duration: duration}
 	switch stop {
 	case interactionAllowanceStepsExhausted:
-		end.Reason = run.OutcomeMaxSteps
+		end.reason = run.OutcomeMaxSteps
 	case interactionAllowanceBudgetExhausted:
-		end.Reason = run.OutcomeMaxBudget
+		end.reason = run.OutcomeMaxBudget
 	case interactionAllowancePricingUnavailable:
-		end.Reason = run.OutcomeFailed
-		end.Failure = &run.Failure{
+		end.reason = run.OutcomeFailed
+		end.failure = &run.Failure{
 			Kind:   run.FailureProviderRejected,
 			Detail: "served model pricing is unavailable for the configured cost limit",
 		}
@@ -639,11 +644,11 @@ func segmentEndFromAllowance(stop interactionAllowanceStop, duration time.Durati
 	return end
 }
 
-func segmentEndFromOwnerCause(cause error, duration time.Duration) runs.SegmentEnded {
-	end := runs.SegmentEnded{Reason: run.OutcomeCanceled, Duration: duration}
+func segmentEndFromOwnerCause(cause error, duration time.Duration) segmentEndDraft {
+	end := segmentEndDraft{reason: run.OutcomeCanceled, duration: duration}
 	if errors.Is(cause, context.DeadlineExceeded) {
-		end.Reason = run.OutcomeTimedOut
-		end.Failure = &run.Failure{
+		end.reason = run.OutcomeTimedOut
+		end.failure = &run.Failure{
 			Kind:   run.FailureTimeout,
 			Detail: "executor deadline reached",
 		}
@@ -651,43 +656,43 @@ func segmentEndFromOwnerCause(cause error, duration time.Duration) runs.SegmentE
 	return end
 }
 
-func segmentEndFromTermination(termination agent.Termination, duration time.Duration) runs.SegmentEnded {
-	end := runs.SegmentEnded{Duration: duration}
+func segmentEndFromTermination(termination agent.Termination, duration time.Duration) segmentEndDraft {
+	end := segmentEndDraft{duration: duration}
 	switch termination.Cause() {
 	case agent.TerminationCauseCompletion:
-		end.Reason = run.OutcomeCompleted
+		end.reason = run.OutcomeCompleted
 	case agent.TerminationCauseProcessDeadline,
 		agent.TerminationCauseParentDeadline,
 		agent.TerminationCauseHostDeadline:
-		end.Reason = run.OutcomeTimedOut
+		end.reason = run.OutcomeTimedOut
 		failure := run.Failure{
 			Kind:   run.FailureTimeout,
 			Detail: "executor deadline reached",
 		}
-		end.Failure = &failure
+		end.failure = &failure
 	case agent.TerminationCauseParentCancellation, agent.TerminationCauseHostCancellation:
-		end.Reason = run.OutcomeCanceled
+		end.reason = run.OutcomeCanceled
 	case agent.TerminationCauseExecutionFailure:
 		failure, _ := termination.Failure()
 		if failure.Code() == "interaction.limit.model_calls" {
-			end.Reason = run.OutcomeMaxSteps
+			end.reason = run.OutcomeMaxSteps
 			break
 		}
-		end.Reason = run.OutcomeFailed
+		end.reason = run.OutcomeFailed
 		problem := run.Failure{
 			Kind:   run.FailureAgentStuck,
 			Detail: executorDiagnostic(errors.New(failure.Message())),
 		}
-		end.Failure = &problem
+		end.failure = &problem
 	case agent.TerminationCauseExternalFailure:
-		end.Reason = run.OutcomeFailed
+		end.reason = run.OutcomeFailed
 		failure, _ := termination.Failure()
 		if failure.Code() == "interaction.host.failed" {
 			problem := run.Failure{
 				Kind:   run.FailureInternal,
 				Detail: executorDiagnostic(errors.New(failure.Message())),
 			}
-			end.Failure = &problem
+			end.failure = &problem
 			break
 		}
 		detail := executorDiagnostic(errors.New(failure.Message()))
@@ -698,29 +703,29 @@ func segmentEndFromTermination(termination agent.Termination, duration time.Dura
 			Kind:   run.FailureProviderUnavailable,
 			Detail: detail,
 		}
-		end.Failure = &problem
+		end.failure = &problem
 	case agent.TerminationCauseContractFailure, agent.TerminationCausePanic:
-		end.Reason = run.OutcomeFailed
+		end.reason = run.OutcomeFailed
 		failure, _ := termination.Failure()
 		problem := run.Failure{
 			Kind:   run.FailureInternal,
 			Detail: executorDiagnostic(errors.New(failure.Message())),
 		}
-		end.Failure = &problem
+		end.failure = &problem
 	case agent.TerminationCauseEngineKill:
-		end.Reason = run.OutcomeFailed
+		end.reason = run.OutcomeFailed
 		problem := run.Failure{
 			Kind:   run.FailureInternal,
 			Detail: termination.Reason(),
 		}
-		end.Failure = &problem
+		end.failure = &problem
 	default:
-		end.Reason = run.OutcomeFailed
+		end.reason = run.OutcomeFailed
 		problem := run.Failure{
 			Kind:   run.FailureInternal,
 			Detail: "executor returned an unknown terminal cause",
 		}
-		end.Failure = &problem
+		end.failure = &problem
 	}
 	return end
 }

@@ -49,7 +49,7 @@ func TestReducerTerminalIncludesGoalRunRecord(t *testing.T) {
 	mustReduce(t, reducer, ToolCallFinished{CallID: "call_1", Result: testToolResult(t, "ok")})
 	reductions := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeCompleted,
-		Usage:  &SegmentUsage{Cost: mustReducerCost(t, 0.75), Steps: 1},
+		usage:  &SegmentUsage{Cost: mustReducerCost(t, 0.75), Steps: 1},
 	})
 	commit := reductions[len(reductions)-1].Commit
 	if commit == nil || commit.GoalRun == nil {
@@ -80,7 +80,7 @@ func TestReducerStepsCountModelCallsRatherThanParallelTools(t *testing.T) {
 	mustReduce(t, reducer, ToolCallFinished{CallID: "call_1", Result: testToolResult(t, "one")})
 	finished := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeCompleted,
-		Usage:  &SegmentUsage{Steps: 1},
+		usage:  &SegmentUsage{Steps: 1},
 	})
 	record := finished[len(finished)-1].Event.(SegmentFinished).Run
 	if record.Metrics().Steps() != 1 {
@@ -521,7 +521,7 @@ func TestReducerTreatsExecutorAccountingAsCumulativeAcrossResume(t *testing.T) {
 	})
 	finished := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeCompleted,
-		Usage: &SegmentUsage{
+		usage: &SegmentUsage{
 			Tokens: accounting.TokenUsage{PromptTokens: 15},
 			Steps:  3,
 		},
@@ -561,7 +561,7 @@ func TestReducerPreservesUsageWhenCumulativePricingBecomesUnavailable(t *testing
 
 	finished := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeCompleted,
-		Usage: &SegmentUsage{
+		usage: &SegmentUsage{
 			Tokens: accounting.TokenUsage{PromptTokens: 20},
 			Steps:  2,
 		},
@@ -1133,7 +1133,7 @@ func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 	// — see reducer.fenceFinalPlan.
 	terminal := mustReduce(t, reducer, SegmentEnded{
 		Reason: run.OutcomeMaxBudget, Duration: 1500 * time.Millisecond,
-		Usage: &SegmentUsage{
+		usage: &SegmentUsage{
 			Tokens: accounting.TokenUsage{
 				PromptTokens:     1200,
 				CompletionTokens: 80,
@@ -1167,7 +1167,7 @@ func TestReducerClassifiesErrorsWithoutLeakingProviderDetails(t *testing.T) {
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			reducer := newReducer(testReducerConfig())
-			terminal := mustReduce(t, reducer, SegmentEnded{Reason: run.OutcomeFailed, Failure: &test.failure})
+			terminal := mustReduce(t, reducer, SegmentEnded{Reason: run.OutcomeFailed, failure: &test.failure})
 			finished := terminal[len(terminal)-1].Event.(SegmentFinished)
 			failure, failed := finished.Run.Failure()
 			if !failed || failure != test.failure || strings.Contains(failure.Detail, "api.example") {
@@ -1183,7 +1183,7 @@ func TestReducerRejectsIncoherentTerminalProblems(t *testing.T) {
 		event SegmentEnded
 	}{
 		{name: "error without problem", event: SegmentEnded{Reason: run.OutcomeFailed}},
-		{name: "completed with failure", event: SegmentEnded{Reason: run.OutcomeCompleted, Failure: &run.Failure{Kind: run.FailureInternal}}},
+		{name: "completed with failure", event: SegmentEnded{Reason: run.OutcomeCompleted, failure: &run.Failure{Kind: run.FailureInternal}}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

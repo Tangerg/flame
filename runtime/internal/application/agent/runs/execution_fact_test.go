@@ -129,18 +129,22 @@ func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
 
 	usage := SegmentUsage{ByModel: []accounting.ModelUsage{{Model: "model-original", Calls: 1}}}
 	runFailure := run.Failure{Kind: run.FailureInternal, Detail: "original"}
-	ended := SegmentEnded{Failure: &runFailure, Usage: &usage}
+	ended := NewSegmentEnded(run.OutcomeFailed, &runFailure, &usage, 0)
+	usage.ByModel[0].Model = "model-changed"
+	runFailure.Detail = "changed"
 	endedCommit, _, err := NewExecutionFactCommit(ended)
 	if err != nil {
 		t.Fatalf("new segment-end fact commit: %v", err)
 	}
-	usage.ByModel[0].Model = "model-changed"
-	runFailure.Detail = "changed"
 	projectedEnd := endedCommit.Fact().(SegmentEnded)
-	projectedEnd.Usage.ByModel[0].Model = "model-projected"
-	projectedEnd.Failure.Detail = "projected"
+	projectedUsage := projectedEnd.Usage()
+	projectedUsage.ByModel[0].Model = "model-projected"
+	projectedFailure := projectedEnd.Failure()
+	projectedFailure.Detail = "projected"
 	ownedEnd := endedCommit.Fact().(SegmentEnded)
-	if ownedEnd.Usage.ByModel[0].Model != "model-original" || ownedEnd.Failure.Detail != "original" {
+	ownedUsage := ownedEnd.Usage()
+	ownedFailure := ownedEnd.Failure()
+	if ownedUsage.ByModel[0].Model != "model-original" || ownedFailure.Detail != "original" {
 		t.Fatalf("owned segment-end fact = %+v", ownedEnd)
 	}
 

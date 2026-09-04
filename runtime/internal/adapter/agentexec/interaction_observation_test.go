@@ -83,12 +83,13 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 		t.Fatalf("hook calls = before %d after %d", hooks.before, hooks.after)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Usage == nil {
+	if len(ended) != 1 || ended[0].Usage() == nil {
 		t.Fatalf("segment accounting = %#v", ended)
 	}
-	segmentCost, segmentCostAvailable := ended[0].Usage.Cost.USD()
-	if ended[0].Usage.Steps != 2 ||
-		ended[0].Usage.Tokens.PromptTokens != 18 || !segmentCostAvailable || segmentCost != 0.5 {
+	segmentUsage := ended[0].Usage()
+	segmentCost, segmentCostAvailable := segmentUsage.Cost.USD()
+	if segmentUsage.Steps != 2 ||
+		segmentUsage.Tokens.PromptTokens != 18 || !segmentCostAvailable || segmentCost != 0.5 {
 		t.Fatalf("segment accounting = %#v", ended)
 	}
 }
@@ -583,8 +584,8 @@ func TestInteractionExecutorChunkDropPreservesFinalAndUsage(t *testing.T) {
 		t.Fatalf("authoritative model completion = %#v", completed)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Usage == nil || ended[0].Usage.Tokens.PromptTokens != 5 ||
-		ended[0].Usage.Tokens.CompletionTokens != 2 {
+	if len(ended) != 1 || ended[0].Usage() == nil || ended[0].Usage().Tokens.PromptTokens != 5 ||
+		ended[0].Usage().Tokens.CompletionTokens != 2 {
 		t.Fatalf("terminal usage = %#v", ended)
 	}
 }
@@ -735,7 +736,7 @@ func assertInternalProjectionTerminal(t *testing.T, events []runs.ExecutorEvent)
 	t.Helper()
 	ended := payloadsOf[runs.SegmentEnded](events)
 	if len(ended) != 1 || ended[0].Reason != run.OutcomeFailed ||
-		ended[0].Failure == nil || ended[0].Failure.Kind != run.FailureInternal {
+		ended[0].Failure() == nil || ended[0].Failure().Kind != run.FailureInternal {
 		t.Fatalf("projection terminal = %#v, want one internal failure", ended)
 	}
 }

@@ -62,8 +62,8 @@ func TestInteractionAllowanceStopsBeforeTheNextModelCall(t *testing.T) {
 			events := runInteractionHarness(t.Context(), t, executor, start, nil)
 
 			ended := payloadsOf[runs.SegmentEnded](events)
-			if len(ended) != 1 || ended[0].Reason != run.OutcomeMaxBudget || ended[0].Failure != nil ||
-				ended[0].Usage == nil || ended[0].Usage.Steps != 1 {
+			if len(ended) != 1 || ended[0].Reason != run.OutcomeMaxBudget || ended[0].Failure() != nil ||
+				ended[0].Usage() == nil || ended[0].Usage().Steps != 1 {
 				t.Fatalf("SegmentEnded = %#v, want one metered max-budget terminal", ended)
 			}
 			if len(payloadsOf[runs.ModelCallCompleted](events)) != 1 ||

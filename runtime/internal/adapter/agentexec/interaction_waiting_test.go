@@ -133,8 +133,8 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	events := <-resumedEvents
 	if toolCalls != 1 {
 		var failure run.Failure
-		if terminal := payloadsOf[runs.SegmentEnded](events); len(terminal) == 1 && terminal[0].Failure != nil {
-			failure = *terminal[0].Failure
+		if terminal := payloadsOf[runs.SegmentEnded](events); len(terminal) == 1 && terminal[0].Failure() != nil {
+			failure = *terminal[0].Failure()
 		}
 		t.Fatalf("Tool calls after answer = %d, want 1; failure=%+v events=%#v", toolCalls, failure, events)
 	}
@@ -147,7 +147,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		t.Fatalf("completion = %#v", completed)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted || ended[0].Usage == nil || ended[0].Usage.Steps != 2 {
+	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted || ended[0].Usage() == nil || ended[0].Usage().Steps != 2 {
 		t.Fatalf("terminal = %#v", ended)
 	}
 	mu.Lock()

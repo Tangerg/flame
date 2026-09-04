@@ -377,14 +377,14 @@ type SegmentEnded struct {
 	// Failure is present exactly when Reason is Failed, TimedOut, or Lost. It is
 	// already a stable, client-safe classification; executor diagnostics
 	// never enter the event stream.
-	Failure *run.Failure
+	failure *run.Failure
 	// Usage is the segment's final accounting, and is absent only when the
 	// executor cannot produce an authoritative report. Child executors retain
 	// their subtree ledger through cancellation and failure, so those terminals
 	// can still carry usage. Absent is NOT zero: reading a missing report as
 	// "spent nothing" made a canceled Run's committed metering fall back below
 	// what its own progress events had already published.
-	Usage    *SegmentUsage
+	usage    *SegmentUsage
 	Duration time.Duration
 }
 
@@ -397,6 +397,47 @@ type SegmentUsage struct {
 	ByModel []accounting.ModelUsage
 	Cost    accounting.Cost
 	Steps   int
+}
+
+// NewSegmentEnded captures an ownership-independent terminal observation.
+// Contextual outcome and monotonic-accounting checks remain with the reducer,
+// which owns the active Segment state needed to decide them.
+func NewSegmentEnded(
+	reason run.Outcome,
+	failure *run.Failure,
+	usage *SegmentUsage,
+	duration time.Duration,
+) SegmentEnded {
+	end := SegmentEnded{Reason: reason, Duration: duration}
+	if failure != nil {
+		owned := *failure
+		end.failure = &owned
+	}
+	if usage != nil {
+		owned := *usage
+		owned.ByModel = append([]accounting.ModelUsage(nil), usage.ByModel...)
+		end.usage = &owned
+	}
+	return end
+}
+
+// Failure returns an ownership-independent terminal failure, when present.
+func (s SegmentEnded) Failure() *run.Failure {
+	if s.failure == nil {
+		return nil
+	}
+	failure := *s.failure
+	return &failure
+}
+
+// Usage returns an ownership-independent final accounting report, when present.
+func (s SegmentEnded) Usage() *SegmentUsage {
+	if s.usage == nil {
+		return nil
+	}
+	usage := *s.usage
+	usage.ByModel = append([]accounting.ModelUsage(nil), s.usage.ByModel...)
+	return &usage
 }
 
 type UsageReported struct {
