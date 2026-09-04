@@ -500,10 +500,10 @@ type RunPageFilter struct {
 // a page under a different session or status set would seek into a collection the
 // anchor was never a position in.
 func (c *QueryCoordinator) ListRunPage(ctx context.Context, filter RunPageFilter, cursor string, limit pagination.RequestedLimit) (pagination.Page[run.Run], error) {
+	filter.Statuses = normalizeStatuses(filter.Statuses)
 	if err := filter.validate(); err != nil {
 		return pagination.Page[run.Run]{}, err
 	}
-	filter.Statuses = normalizeStatuses(filter.Statuses)
 	filters := []string{
 		filter.SessionID,
 		statusFilter(filter.Statuses),
@@ -520,7 +520,7 @@ func (c *QueryCoordinator) ListRunPage(ctx context.Context, filter RunPageFilter
 	rows, err := c.runs.PageRuns(
 		ctx,
 		filter.SessionID,
-		filter.Statuses,
+		slices.Clone(filter.Statuses),
 		filter.IncludeDescendants,
 		beforeCreatedAt,
 		beforeID,

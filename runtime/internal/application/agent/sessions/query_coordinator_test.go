@@ -122,10 +122,14 @@ type fakeRuns struct {
 
 type rawRunPageReader struct {
 	*fakeRuns
-	page []run.Run
+	page               []run.Run
+	mutateStatusFilter bool
 }
 
-func (r *rawRunPageReader) PageRuns(context.Context, string, []run.Status, bool, int64, string, int) ([]run.Run, error) {
+func (r *rawRunPageReader) PageRuns(_ context.Context, _ string, statuses []run.Status, _ bool, _ int64, _ string, _ int) ([]run.Run, error) {
+	if r.mutateStatusFilter && len(statuses) > 0 {
+		statuses[0] = run.StatusFinished
+	}
 	return r.page, nil
 }
 
@@ -1101,6 +1105,31 @@ func TestListRunPageDoesNotExposeStoreSlice(t *testing.T) {
 	page.Rows[0] = run.Run{}
 	if got := reader.page[0].ID(); got != "run_2" {
 		t.Fatalf("store row changed through page result: %q", got)
+	}
+}
+
+func TestListRunPageOwnsStatusFilterAcrossStoreRead(t *testing.T) {
+	statuses := []run.Status{run.StatusRunning, run.StatusRunning}
+	reader := &rawRunPageReader{
+		fakeRuns:           &fakeRuns{},
+		page:               testSessionRunHistory("run_1"),
+		mutateStatusFilter: true,
+	}
+	coordinator := newQueryCoordinator(t, QueryDependencies{
+		Transcript: &fakeTranscript{}, Runs: reader, Sessions: &fakeSessions{},
+	})
+
+	page, err := coordinator.ListRunPage(
+		t.Context(),
+		RunPageFilter{Statuses: statuses, IncludeDescendants: true},
+		"",
+		explicitPageLimit(t, 1),
+	)
+	if err != nil || len(page.Rows) != 1 || page.Rows[0].State().Status() != run.StatusRunning {
+		t.Fatalf("run page after store rewrote its status argument = (%+v, %v)", page, err)
+	}
+	if !slices.Equal(statuses, []run.Status{run.StatusRunning, run.StatusRunning}) {
+		t.Fatalf("caller status filter changed through query: %v", statuses)
 	}
 }
 
