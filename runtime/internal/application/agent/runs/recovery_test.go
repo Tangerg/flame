@@ -38,11 +38,13 @@ type recoveryStoreStub struct {
 	messages     map[string][]corechat.Message
 	sessions     map[string]session.Session
 
-	commit        RecoveryCommit
-	commits       int
-	commitErr     error
-	checkpoint    *ExecutorCheckpoint
-	checkpointErr error
+	commit          RecoveryCommit
+	commits         int
+	commitErr       error
+	checkpoint      *ExecutorCheckpoint
+	checkpointErr   error
+	aliasOpen       bool
+	transcriptReads int
 }
 
 func (r *recoveryStoreStub) ListNonTerminalRuns(context.Context) ([]rundomain.Run, error) {
@@ -54,10 +56,16 @@ func (r *recoveryStoreStub) ListPendingInterrupts(context.Context) ([]Pending, e
 }
 
 func (r *recoveryStoreStub) ListOpenModelInvocations(context.Context) ([]OpenModelInvocation, error) {
+	if r.aliasOpen {
+		return r.models, nil
+	}
 	return append([]OpenModelInvocation(nil), r.models...), nil
 }
 
 func (r *recoveryStoreStub) ListOpenToolInvocations(context.Context) ([]OpenToolInvocation, error) {
+	if r.aliasOpen {
+		return r.tools, nil
+	}
 	return append([]OpenToolInvocation(nil), r.tools...), nil
 }
 
@@ -93,6 +101,7 @@ func TestRecoveryPlannerProtectsSessionPointRead(t *testing.T) {
 }
 
 func (r *recoveryStoreStub) ListTranscript(_ context.Context, sessionID string) ([]transcript.Item, error) {
+	r.transcriptReads++
 	return append([]transcript.Item(nil), r.transcripts[sessionID]...), nil
 }
 
@@ -273,6 +282,105 @@ func TestRecoverySkipsFactsOwnedByAnotherRuntime(t *testing.T) {
 	}
 	if !reflect.DeepEqual(notices, wantNotices) {
 		t.Fatalf("recovery notices = %+v, want %+v", notices, wantNotices)
+	}
+}
+
+func TestRecoveryOwnsOpenInvocationCatalogsBeforeFiltering(t *testing.T) {
+	createdAt := time.Date(2026, 8, 14, 2, 0, 0, 0, time.UTC)
+	active := testsupport.MustRestoreRun(rundomain.Snapshot{
+		ID: "run_active", SessionID: "session_active", State: rundomain.Running,
+		ActiveSegmentID: "segment_active", CreatedAt: createdAt,
+		MessageMark: rundomain.UnknownMessageMark,
+	})
+	models := []OpenModelInvocation{
+		{SessionID: "session_foreign", RunID: "run_foreign", SegmentID: "segment_foreign", CallID: "model_foreign", StartedAt: createdAt},
+		{SessionID: active.SessionID(), RunID: active.ID(), SegmentID: "segment_active", CallID: "model_active", StartedAt: createdAt},
+	}
+	tools := []OpenToolInvocation{
+		{SessionID: "session_foreign", RunID: "run_foreign", SegmentID: "segment_foreign", CallID: "tool_foreign", ItemID: "item_foreign", StartedAt: createdAt},
+		{SessionID: active.SessionID(), RunID: active.ID(), SegmentID: "segment_active", CallID: "tool_active", ItemID: "item_active", StartedAt: createdAt},
+	}
+	wantModels := append([]OpenModelInvocation(nil), models...)
+	wantTools := append([]OpenToolInvocation(nil), tools...)
+	store := &recoveryStoreStub{
+		runs: []rundomain.Run{active}, models: models, tools: tools, aliasOpen: true,
+		transcripts: map[string][]transcript.Item{}, messageMarks: map[string]int{},
+	}
+	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
+		func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+	))
+	if err != nil {
+		t.Fatalf("NewRecovery: %v", err)
+	}
+	recovery.now = func() time.Time { return createdAt.Add(time.Minute) }
+
+	if _, err := recovery.Reconcile(t.Context()); err != nil {
+		t.Fatalf("Reconcile: %v", err)
+	}
+	if !reflect.DeepEqual(store.models, wantModels) || !reflect.DeepEqual(store.tools, wantTools) {
+		t.Fatalf("recovery mutated store-owned catalogs: models=%+v tools=%+v", store.models, store.tools)
+	}
+}
+
+func TestRecoveryRejectsInvalidClaimedOpenInvocationsBeforePlanning(t *testing.T) {
+	createdAt := time.Date(2026, 8, 14, 3, 0, 0, 0, time.UTC)
+	active := testsupport.MustRestoreRun(rundomain.Snapshot{
+		ID: "run_active", SessionID: "session_active", State: rundomain.Running,
+		ActiveSegmentID: "segment_active", CreatedAt: createdAt,
+		MessageMark: rundomain.UnknownMessageMark,
+	})
+	model := OpenModelInvocation{
+		SessionID: active.SessionID(), RunID: active.ID(), SegmentID: "segment_active",
+		CallID: "model_active", StartedAt: createdAt,
+	}
+	toolInvocation := OpenToolInvocation{
+		SessionID: active.SessionID(), RunID: active.ID(), SegmentID: "segment_active",
+		CallID: "tool_active", ItemID: "item_active", StartedAt: createdAt,
+	}
+	for name, input := range map[string]struct {
+		models []OpenModelInvocation
+		tools  []OpenToolInvocation
+	}{
+		"missing model call": {models: []OpenModelInvocation{{
+			SessionID: model.SessionID, RunID: model.RunID, SegmentID: model.SegmentID, StartedAt: model.StartedAt,
+		}}},
+		"non-UTC model start": {models: []OpenModelInvocation{{
+			SessionID: model.SessionID, RunID: model.RunID, SegmentID: model.SegmentID,
+			CallID: model.CallID, StartedAt: model.StartedAt.In(time.FixedZone("offset", 60)),
+		}}},
+		"duplicate model call": {models: []OpenModelInvocation{model, model}},
+		"missing Tool Item": {tools: []OpenToolInvocation{{
+			SessionID: toolInvocation.SessionID, RunID: toolInvocation.RunID,
+			SegmentID: toolInvocation.SegmentID, CallID: toolInvocation.CallID,
+			StartedAt: toolInvocation.StartedAt,
+		}}},
+		"duplicate Tool Item": {tools: []OpenToolInvocation{
+			toolInvocation,
+			{
+				SessionID: toolInvocation.SessionID, RunID: toolInvocation.RunID,
+				SegmentID: toolInvocation.SegmentID, CallID: "tool_second",
+				ItemID: toolInvocation.ItemID, StartedAt: toolInvocation.StartedAt,
+			},
+		}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			store := &recoveryStoreStub{
+				runs: []rundomain.Run{active}, models: input.models, tools: input.tools,
+				transcripts: map[string][]transcript.Item{}, messageMarks: map[string]int{},
+			}
+			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
+				func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+			))
+			if err != nil {
+				t.Fatalf("NewRecovery: %v", err)
+			}
+			if _, err := recovery.Reconcile(t.Context()); err == nil {
+				t.Fatal("Reconcile accepted an invalid claimed open-invocation catalog")
+			}
+			if store.transcriptReads != 0 || store.commits != 0 {
+				t.Fatalf("invalid catalog reached planning or commit: transcriptReads=%d commits=%d", store.transcriptReads, store.commits)
+			}
+		})
 	}
 }
 

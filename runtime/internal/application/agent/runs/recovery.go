@@ -379,12 +379,18 @@ func newRecoveryPlanner(
 		_, ok := activeRoots[open.RootRunID]
 		return !ok
 	})
-	modelInvocations = slices.DeleteFunc(modelInvocations, func(open OpenModelInvocation) bool {
+	modelInvocations = slices.DeleteFunc(slices.Clone(modelInvocations), func(open OpenModelInvocation) bool {
 		return !claims.includes(open.SessionID)
 	})
-	toolInvocations = slices.DeleteFunc(toolInvocations, func(open OpenToolInvocation) bool {
+	toolInvocations = slices.DeleteFunc(slices.Clone(toolInvocations), func(open OpenToolInvocation) bool {
 		return !claims.includes(open.SessionID)
 	})
+	if err := validateOpenModelInvocations(modelInvocations); err != nil {
+		return nil, err
+	}
+	if err := validateOpenToolInvocations(toolInvocations); err != nil {
+		return nil, err
+	}
 	pendingByRun := make(map[string]Pending, len(pending))
 	checkpointOwners := make(map[string]string, len(pending))
 	for _, open := range pending {
