@@ -799,7 +799,7 @@ func TestInteractionExecutorCheckpointsWithoutReplayingUnknownEffect(t *testing.
 		for event := range sequence {
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				var commitErr error
-				if _, completed := commit.Fact.(runs.ModelCallCompleted); completed {
+				if _, completed := commit.Fact().(runs.ModelCallCompleted); completed {
 					commitErr = errors.New("final projection is indeterminate")
 				}
 				commit.Complete(commitErr)
@@ -908,11 +908,11 @@ func TestInteractionExecutorDoesNotCallNextModelWhenAppliedSteerCommitFails(t *t
 		for event := range sequence {
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commitErr := error(nil)
-				if _, applied := commit.Fact.(runs.SteerMessagesApplied); applied {
+				if _, applied := commit.Fact().(runs.SteerMessagesApplied); applied {
 					commitErr = errors.New("steer store unavailable")
 				}
 				commit.Complete(commitErr)
-				event.Payload = commit.Fact
+				event.Payload = commit.Fact()
 			}
 			events = append(events, event)
 		}
@@ -1047,7 +1047,7 @@ func observeInteractionUntilWaiting(
 		sequence(func(event runs.ExecutorEvent) bool {
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
-				event.Payload = commit.Fact
+				event.Payload = commit.Fact()
 			}
 			value.events = append(value.events, event)
 			if barrier, waiting := event.Payload.(runs.TreeInterrupted); waiting {
@@ -1075,7 +1075,7 @@ func collectInteractionEvents(sequence func(func(runs.ExecutorEvent) bool)) <-ch
 		sequence(func(event runs.ExecutorEvent) bool {
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
-				event.Payload = commit.Fact
+				event.Payload = commit.Fact()
 			}
 			events = append(events, event)
 			return true

@@ -105,8 +105,9 @@ func (s *segmentPump) processEvent(event ExecutorEvent) bool {
 			s.fail(err)
 			return false
 		}
-		result, err := s.handleAuthoritativeFact(event.Member, commit.Fact)
-		s.completeAuthoritativeFact(commit, result, err)
+		fact := commit.Fact()
+		result, err := s.handleAuthoritativeFact(event.Member, fact)
+		s.completeAuthoritativeFact(commit, fact, result, err)
 		// A rejected authoritative write is reported synchronously to the
 		// executor. It then produces either a definite failed result or
 		// an unknown settlement; stopping this pump here would race that decision
@@ -350,10 +351,11 @@ func (s *segmentPump) handleAuthoritativeFact(
 
 func (s *segmentPump) completeAuthoritativeFact(
 	current ExecutionFactCommit,
+	fact ExecutionFact,
 	result authoritativeFactResult,
 	err error,
 ) {
-	toolEnd, endingTool := current.Fact.(ToolCallFinished)
+	toolEnd, endingTool := fact.(ToolCallFinished)
 	if !endingTool {
 		current.Complete(err)
 		return

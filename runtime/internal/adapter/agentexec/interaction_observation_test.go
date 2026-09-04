@@ -311,7 +311,7 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.
 		for event := range sequence {
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
-				event.Payload = commit.Fact
+				event.Payload = commit.Fact()
 			}
 			events = append(events, event)
 		}
@@ -383,7 +383,7 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightModel(t *testing
 		for event := range sequence {
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
-				event.Payload = commit.Fact
+				event.Payload = commit.Fact()
 			}
 			events = append(events, event)
 		}
@@ -450,12 +450,12 @@ func TestInteractionExecutorCancellationWinsWhileModelStartCommitIsSettling(t *t
 		var events []runs.ExecutorEvent
 		for event := range sequence {
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
-				if _, starting := commit.Fact.(runs.ModelCallStarted); starting {
+				if _, starting := commit.Fact().(runs.ModelCallStarted); starting {
 					close(startCommitSeen)
 					<-releaseCommit
 				}
 				commit.Complete(nil)
-				event.Payload = commit.Fact
+				event.Payload = commit.Fact()
 			}
 			events = append(events, event)
 		}
@@ -545,7 +545,7 @@ func TestInteractionExecutorChunkDropPreservesFinalAndUsage(t *testing.T) {
 		for event := range sequence {
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
-				event.Payload = commit.Fact
+				event.Payload = commit.Fact()
 			}
 			events = append(events, event)
 			if _, delta := event.Payload.(runs.MessageDelta); delta && !blocked {
@@ -793,11 +793,11 @@ func TestInteractionExecutorPollingFindsUnknownWhenDirectWakeIsLost(t *testing.T
 		for event := range sequence {
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				var commitErr error
-				if _, completion := commit.Fact.(runs.ModelCallCompleted); completion {
+				if _, completion := commit.Fact().(runs.ModelCallCompleted); completion {
 					commitErr = errors.New("model final store unavailable")
 				}
 				commit.Complete(commitErr)
-				event.Payload = commit.Fact
+				event.Payload = commit.Fact()
 			}
 			events = append(events, event)
 			if _, unknown := event.Payload.(runs.UnknownEffectsDetected); unknown {
@@ -1047,7 +1047,7 @@ func TestInteractionExecutorMakesConcurrentEffectUnknownWhenDeniedSiblingProject
 		var events []runs.ExecutorEvent
 		for event := range sequence {
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
-				finished, toolFinished := commit.Fact.(runs.ToolCallFinished)
+				finished, toolFinished := commit.Fact().(runs.ToolCallFinished)
 				switch {
 				case toolFinished && finished.Failure == nil:
 					// Model-order persistence cannot commit index 1 before the
@@ -1059,7 +1059,7 @@ func TestInteractionExecutorMakesConcurrentEffectUnknownWhenDeniedSiblingProject
 				default:
 					commit.Complete(nil)
 				}
-				event.Payload = commit.Fact
+				event.Payload = commit.Fact()
 			}
 			events = append(events, event)
 			if _, unknown := event.Payload.(runs.UnknownEffectsDetected); unknown {
@@ -1510,8 +1510,8 @@ func runInteractionHarnessWithCommit(
 		var events []runs.ExecutorEvent
 		for event := range sequence {
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
-				commit.Complete(commitFact(commit.Fact))
-				event.Payload = commit.Fact
+				commit.Complete(commitFact(commit.Fact()))
+				event.Payload = commit.Fact()
 			}
 			events = append(events, event)
 			if _, unknown := event.Payload.(runs.UnknownEffectsDetected); unknown {

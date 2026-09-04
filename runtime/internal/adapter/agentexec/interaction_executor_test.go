@@ -597,7 +597,7 @@ func runInteractionHarness(
 		for event := range sequence {
 			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
 				commit.Complete(nil)
-				event.Payload = commit.Fact
+				event.Payload = commit.Fact()
 			}
 			events = append(events, event)
 		}
