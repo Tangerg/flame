@@ -191,6 +191,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 231 | `23aa1f84` + CLI dependency update | Deleted the writable recovered-Session duplicate and unconsumed preserved-checkpoint marker; callback cleanup now derives its exact Session scope from lost roots plus preserved waiting Sessions. |
 | 232 | `f759e265` + CLI dependency update | Required each lost-Run Tool journal recovery to carry the matching Running Item replacement, while retaining cleanup-only journal orphans for already-terminal Runs. |
 | 233 | `1ab79caf` + CLI dependency update | Replaced terminal-only lost-Run commands with exact expected→replacement aggregates across boot recovery and parked Session termination, binding invocation cleanup to the recovered active Segment and giving SQLite an exact pre-transition CAS fence. |
+| 234 | `addb8d3c` + CLI dependency update | Removed the remaining terminal-only non-Event Run write path; waiting-subtree cancellation and parked Session termination now carry validated exact expected→replacement aggregates into SQLite CAS, while Event termination retains its Segment/commit fence. |
 
 ## Verification contract
 
