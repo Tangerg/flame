@@ -604,6 +604,9 @@ func (r *recoveryPlanner) transcript(sessionID string) ([]transcript.Item, error
 	if err != nil {
 		return nil, fmt.Errorf("runs: load recovery transcript for Session %q: %w", sessionID, err)
 	}
+	if err := validateRecoveryTranscript(sessionID, items); err != nil {
+		return nil, err
+	}
 	for _, item := range items {
 		r.observeTime(item.OccurredAt())
 		r.observeTime(item.FinishedAt())

@@ -38,14 +38,15 @@ type recoveryStoreStub struct {
 	messages     map[string][]corechat.Message
 	sessions     map[string]session.Session
 
-	commit          RecoveryCommit
-	commits         int
-	commitErr       error
-	checkpoint      *ExecutorCheckpoint
-	checkpointErr   error
-	aliasOpen       bool
-	aliasPending    bool
-	transcriptReads int
+	commit            RecoveryCommit
+	commits           int
+	commitErr         error
+	checkpoint        *ExecutorCheckpoint
+	checkpointErr     error
+	aliasOpen         bool
+	aliasPending      bool
+	transcriptReads   int
+	conversationReads int
 }
 
 func (r *recoveryStoreStub) ListNonTerminalRuns(context.Context) ([]rundomain.Run, error) {
@@ -120,6 +121,7 @@ func (r *recoveryStoreStub) ReadMessages(
 	_ context.Context,
 	sessionID string,
 ) ([]corechat.Message, error) {
+	r.conversationReads++
 	if messages, explicit := r.messages[sessionID]; explicit {
 		cloned := make([]corechat.Message, len(messages))
 		for index, message := range messages {
@@ -132,6 +134,59 @@ func (r *recoveryStoreStub) ReadMessages(
 		messages[index] = corechat.NewUserMessage(corechat.NewTextPart(fmt.Sprintf("message %d", index+1)))
 	}
 	return messages, nil
+}
+
+func TestRecoveryRejectsInvalidTranscriptBeforePlanning(t *testing.T) {
+	createdAt := time.Date(2026, 8, 14, 4, 0, 0, 0, time.UTC)
+	active := testsupport.MustRestoreRun(rundomain.Snapshot{
+		ID: "run_active", SessionID: "session_active", State: rundomain.Running,
+		ActiveSegmentID: "segment_active", CreatedAt: createdAt,
+		MessageMark: rundomain.UnknownMessageMark,
+	})
+	foreign := testsupport.MustRestoreItem(testsupport.ItemInput{
+		ID: "item_foreign", SessionID: "session_foreign", RunID: active.ID(),
+		Kind: transcript.QuestionItem, OccurredAt: createdAt.Add(time.Hour),
+		Question: &transcript.Question{
+			Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}},
+		},
+	})
+	duplicate := testsupport.MustRestoreItem(testsupport.ItemInput{
+		ID: "item_duplicate", SessionID: active.SessionID(), RunID: active.ID(),
+		Kind: transcript.QuestionItem, OccurredAt: createdAt,
+		Question: &transcript.Question{
+			Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}},
+		},
+	})
+	for name, items := range map[string][]transcript.Item{
+		"invalid aggregate":  {{}},
+		"foreign Session":    {foreign},
+		"duplicate identity": {duplicate, duplicate},
+	} {
+		t.Run(name, func(t *testing.T) {
+			store := &recoveryStoreStub{
+				runs:         []rundomain.Run{active},
+				transcripts:  map[string][]transcript.Item{active.SessionID(): items},
+				messageMarks: map[string]int{},
+			}
+			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
+				func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+			))
+			if err != nil {
+				t.Fatalf("NewRecovery: %v", err)
+			}
+
+			if _, err := recovery.Reconcile(t.Context()); err == nil {
+				t.Fatal("Reconcile accepted an invalid transcript")
+			}
+			if store.conversationReads != 0 || store.commits != 0 {
+				t.Fatalf(
+					"invalid transcript reached planning or commit: conversationReads=%d commits=%d",
+					store.conversationReads,
+					store.commits,
+				)
+			}
+		})
+	}
 }
 
 func (r *recoveryStoreStub) LoadExecutorCheckpoint(
