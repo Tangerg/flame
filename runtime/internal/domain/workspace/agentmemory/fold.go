@@ -28,7 +28,7 @@ type FoldPlan struct {
 // rejection. The result is deterministic in the order of contents. Invalid or
 // overlarge curator output is rejected before persistence can partially apply it.
 func Fold(existing []Item, contents []string) (FoldPlan, error) {
-	contents, err := normalizeFactList(contents, MaxCurationProposals, "curation result")
+	contents, err := NormalizeGeneration(contents)
 	if err != nil {
 		return FoldPlan{}, err
 	}
@@ -72,4 +72,10 @@ func Fold(existing []Item, contents []string) (FoldPlan, error) {
 		}
 	}
 	return plan, nil
+}
+
+// NormalizeGeneration validates the complete content set returned by one
+// curation pass and preserves its first-seen priority order.
+func NormalizeGeneration(contents []string) ([]string, error) {
+	return normalizeFactList(contents, MaxCurationProposals, "curation result")
 }

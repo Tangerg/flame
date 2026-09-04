@@ -94,6 +94,10 @@ func compareManagementItems(a, b domain.Item) int {
 		}
 		return 1
 	}
+	return compareActiveItems(a, b)
+}
+
+func compareActiveItems(a, b domain.Item) int {
 	if a.Pinned != b.Pinned {
 		if a.Pinned {
 			return -1

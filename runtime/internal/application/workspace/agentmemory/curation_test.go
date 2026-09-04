@@ -13,8 +13,15 @@ import (
 )
 
 type fakeCurationStore struct {
-	published bool
-	err       error
+	published       bool
+	err             error
+	appended        []domain.LedgerFact
+	pending         []domain.LedgerFact
+	state           domain.State
+	items           []domain.Item
+	appendBatch     domain.FactBatch
+	reconcileValues []string
+	reconcileAt     time.Time
 }
 
 type singleWinnerCurationStore struct {
@@ -26,24 +33,27 @@ func (s *singleWinnerCurationStore) Reconcile(context.Context, string, int64, in
 	return s.won.CompareAndSwap(false, true), nil
 }
 
-func (f *fakeCurationStore) AppendLedger(context.Context, domain.FactBatch) ([]domain.LedgerFact, error) {
-	return nil, f.err
+func (f *fakeCurationStore) AppendLedger(_ context.Context, batch domain.FactBatch) ([]domain.LedgerFact, error) {
+	f.appendBatch = batch
+	return f.appended, f.err
 }
 
 func (f *fakeCurationStore) PendingLedger(context.Context, string, int64, int) ([]domain.LedgerFact, error) {
-	return nil, f.err
+	return f.pending, f.err
 }
 
 func (f *fakeCurationStore) State(context.Context, string) (domain.State, error) {
-	return domain.State{}, f.err
+	return f.state, f.err
 }
 
-func (f *fakeCurationStore) Reconcile(context.Context, string, int64, int64, []string, time.Time) (bool, error) {
+func (f *fakeCurationStore) Reconcile(_ context.Context, _ string, _, _ int64, contents []string, now time.Time) (bool, error) {
+	f.reconcileValues = contents
+	f.reconcileAt = now
 	return f.published, f.err
 }
 
 func (f *fakeCurationStore) Items(context.Context, domain.Scope, string) ([]domain.Item, error) {
-	return nil, f.err
+	return f.items, f.err
 }
 
 func TestCurationReconcilePublishesOnlyNewGeneration(t *testing.T) {
@@ -83,11 +93,83 @@ func TestCurationFailureAndLedgerWritesDoNotPublish(t *testing.T) {
 		t.Fatalf("failed Reconcile = (%t, %v), want (false, %v)", published, err, wantErr)
 	}
 	store.err = nil
-	if _, err := c.AppendLedger(t.Context(), domain.FactBatch{}); err != nil {
+	if _, err := c.AppendLedger(t.Context(), validFactBatch("fact")); err != nil {
 		t.Fatal(err)
 	}
 	if len(notices) != 0 {
 		t.Fatalf("non-public writes published notices = %+v", notices)
+	}
+}
+
+func validFactBatch(facts ...string) domain.FactBatch {
+	return domain.FactBatch{
+		Project: "/repo", SessionID: "ses_1", Day: "2026-09-04", Facts: facts,
+		CapturedAt: time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC),
+	}
+}
+
+func validLedgerFact(sequence int64, content string) domain.LedgerFact {
+	batch := validFactBatch(content)
+	return domain.LedgerFact{
+		Sequence: sequence, Day: batch.Day, Content: content, CapturedAt: batch.CapturedAt,
+	}
+}
+
+func TestCurationValidatesDurableMaterial(t *testing.T) {
+	store := &fakeCurationStore{appended: []domain.LedgerFact{validLedgerFact(4, "fact")}}
+	curation := NewCuration(CurationConfig{Store: store})
+	appended, err := curation.AppendLedger(t.Context(), validFactBatch(" fact ", "fact"))
+	if err != nil || len(appended) != 1 || len(store.appendBatch.Facts) != 1 || store.appendBatch.Facts[0] != "fact" {
+		t.Fatalf("AppendLedger = (%+v, %v), normalized batch = %+v", appended, err, store.appendBatch)
+	}
+
+	store.appended = []domain.LedgerFact{validLedgerFact(4, "other")}
+	if _, err := curation.AppendLedger(t.Context(), validFactBatch("fact")); err == nil {
+		t.Fatal("unrequested append acknowledgement was accepted")
+	}
+
+	store.pending = []domain.LedgerFact{validLedgerFact(3, "three"), validLedgerFact(2, "two")}
+	if _, err := curation.PendingLedger(t.Context(), "/repo", 1, 2); err == nil {
+		t.Fatal("out-of-order pending ledger was accepted")
+	}
+	store.pending = nil
+	if _, err := curation.PendingLedger(t.Context(), "/repo", -1, 2); err == nil {
+		t.Fatal("negative pending watermark was accepted")
+	}
+
+	store.state = domain.State{Watermark: 1}
+	if _, err := curation.State(t.Context(), "/repo"); err == nil {
+		t.Fatal("invalid curation state was accepted")
+	}
+
+	store.items = []domain.Item{readModelItem(t, '1', domain.ScopeProject, "/other", "foreign")}
+	if _, err := curation.Items(t.Context(), domain.ScopeProject, "/repo"); err == nil {
+		t.Fatal("foreign curation item was accepted")
+	}
+	first := readModelItem(t, '1', domain.ScopeProject, "/repo", "first")
+	second := readModelItem(t, '2', domain.ScopeProject, "/repo", "second")
+	store.items = []domain.Item{first, second}
+	if items, err := curation.Items(t.Context(), domain.ScopeProject, "/repo"); err != nil ||
+		len(items) != 2 || items[0].ID != second.ID {
+		t.Fatalf("curation item order = (%+v, %v)", items, err)
+	}
+}
+
+func TestPublishGenerationNormalizesBeforeStore(t *testing.T) {
+	store := &fakeCurationStore{published: true}
+	curation := NewCuration(CurationConfig{Store: store})
+	local := time.Date(2026, time.September, 4, 16, 0, 0, 0, time.FixedZone("local", 8*60*60))
+	published, err := curation.PublishGeneration(
+		t.Context(), "/repo", 1, 2, []string{" fact ", "fact"}, local,
+	)
+	if err != nil || !published {
+		t.Fatalf("PublishGeneration = (%t, %v)", published, err)
+	}
+	if len(store.reconcileValues) != 1 || store.reconcileValues[0] != "fact" || store.reconcileAt.Location() != time.UTC {
+		t.Fatalf("reconcile input = %v at %s", store.reconcileValues, store.reconcileAt)
+	}
+	if _, err := curation.PublishGeneration(t.Context(), "/repo", 2, 2, nil, local); err == nil {
+		t.Fatal("non-advancing generation was accepted")
 	}
 }
 

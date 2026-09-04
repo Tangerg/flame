@@ -2,6 +2,8 @@ package agentmemory
 
 import (
 	"context"
+	"fmt"
+	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -47,7 +49,21 @@ func (c *Curation) AppendLedger(ctx context.Context, batch domain.FactBatch) ([]
 	if !c.Available() {
 		return nil, ErrUnavailable
 	}
-	return c.store.AppendLedger(ctx, batch)
+	normalized, err := batch.Normalize()
+	if err != nil {
+		return nil, err
+	}
+	if len(normalized.Facts) == 0 {
+		return nil, nil
+	}
+	facts, err := c.store.AppendLedger(ctx, normalized)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateAppendedFacts(facts, normalized); err != nil {
+		return nil, err
+	}
+	return slices.Clone(facts), nil
 }
 
 // PendingLedger returns facts not yet incorporated into the curated generation.
@@ -55,7 +71,17 @@ func (c *Curation) PendingLedger(ctx context.Context, project string, watermark 
 	if !c.Available() {
 		return nil, ErrUnavailable
 	}
-	return c.store.PendingLedger(ctx, project, watermark, limit)
+	if err := validatePendingRead(project, watermark, limit); err != nil {
+		return nil, err
+	}
+	facts, err := c.store.PendingLedger(ctx, project, watermark, limit)
+	if err != nil {
+		return nil, err
+	}
+	if err := validatePendingFacts(facts, watermark, limit); err != nil {
+		return nil, err
+	}
+	return slices.Clone(facts), nil
 }
 
 // State returns the current curation watermark.
@@ -63,7 +89,17 @@ func (c *Curation) State(ctx context.Context, project string) (domain.State, err
 	if !c.Available() {
 		return domain.State{}, ErrUnavailable
 	}
-	return c.store.State(ctx, project)
+	if err := domain.ValidateTarget(domain.ScopeProject, project); err != nil {
+		return domain.State{}, err
+	}
+	state, err := c.store.State(ctx, project)
+	if err != nil {
+		return domain.State{}, err
+	}
+	if err := state.Validate(); err != nil {
+		return domain.State{}, fmt.Errorf("agentmemory: invalid curation state for project %q: %w", project, err)
+	}
+	return state, nil
 }
 
 // PublishGeneration publishes one compare-and-swap-protected curated
@@ -72,7 +108,20 @@ func (c *Curation) PublishGeneration(ctx context.Context, project string, expect
 	if !c.Available() {
 		return false, ErrUnavailable
 	}
-	published, err := c.store.Reconcile(ctx, project, expectedWatermark, through, contents, now)
+	if err := domain.ValidateTarget(domain.ScopeProject, project); err != nil {
+		return false, err
+	}
+	if expectedWatermark < 0 || through <= expectedWatermark {
+		return false, fmt.Errorf("agentmemory: invalid curation watermark transition %d -> %d", expectedWatermark, through)
+	}
+	if now.IsZero() {
+		return false, fmt.Errorf("agentmemory: curation update time is required")
+	}
+	contents, err := domain.NormalizeGeneration(contents)
+	if err != nil {
+		return false, err
+	}
+	published, err := c.store.Reconcile(ctx, project, expectedWatermark, through, contents, now.UTC())
 	if err != nil {
 		return false, err
 	}
@@ -82,10 +131,81 @@ func (c *Curation) PublishGeneration(ctx context.Context, project string, expect
 	return published, nil
 }
 
-// Items returns the stored generation used as input to the next fold.
+// Items returns the valid active generation used as input to the next fold,
+// with pinned and newer values first and identity as the stable tie-breaker.
 func (c *Curation) Items(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error) {
 	if !c.Available() {
 		return nil, ErrUnavailable
 	}
-	return c.store.Items(ctx, scope, project)
+	if err := domain.ValidateTarget(scope, project); err != nil {
+		return nil, err
+	}
+	items, err := c.store.Items(ctx, scope, project)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateActiveTargetCatalog(items, scope, project); err != nil {
+		return nil, err
+	}
+	items = slices.Clone(items)
+	slices.SortFunc(items, compareActiveItems)
+	return items, nil
+}
+
+func validateAppendedFacts(facts []domain.LedgerFact, batch domain.FactBatch) error {
+	if len(facts) > len(batch.Facts) {
+		return fmt.Errorf("agentmemory: append returned %d facts for a %d-fact batch", len(facts), len(batch.Facts))
+	}
+	remaining := make(map[string]struct{}, len(batch.Facts))
+	for _, content := range batch.Facts {
+		remaining[content] = struct{}{}
+	}
+	var previous int64
+	for index, fact := range facts {
+		if err := fact.Validate(); err != nil {
+			return fmt.Errorf("agentmemory: appended ledger row %d is invalid: %w", index+1, err)
+		}
+		if fact.Sequence <= previous {
+			return fmt.Errorf("agentmemory: appended ledger sequence %d is not after %d", fact.Sequence, previous)
+		}
+		previous = fact.Sequence
+		if fact.Day != batch.Day || !fact.CapturedAt.Equal(batch.CapturedAt) {
+			return fmt.Errorf("agentmemory: appended ledger row %d does not acknowledge its batch", index+1)
+		}
+		if _, requested := remaining[fact.Content]; !requested {
+			return fmt.Errorf("agentmemory: appended ledger row %d was not requested", index+1)
+		}
+		delete(remaining, fact.Content)
+	}
+	return nil
+}
+
+func validatePendingRead(project string, watermark int64, limit int) error {
+	if err := domain.ValidateTarget(domain.ScopeProject, project); err != nil {
+		return err
+	}
+	if watermark < 0 {
+		return fmt.Errorf("agentmemory: curation watermark must not be negative")
+	}
+	if limit <= 0 || limit > domain.MaxLedgerFoldFacts {
+		return fmt.Errorf("agentmemory: pending ledger limit must be between 1 and %d", domain.MaxLedgerFoldFacts)
+	}
+	return nil
+}
+
+func validatePendingFacts(facts []domain.LedgerFact, watermark int64, limit int) error {
+	if len(facts) > limit {
+		return fmt.Errorf("agentmemory: pending ledger returned %d facts, limit %d", len(facts), limit)
+	}
+	previous := watermark
+	for index, fact := range facts {
+		if err := fact.Validate(); err != nil {
+			return fmt.Errorf("agentmemory: pending ledger row %d is invalid: %w", index+1, err)
+		}
+		if fact.Sequence <= previous {
+			return fmt.Errorf("agentmemory: pending ledger sequence %d is not after %d", fact.Sequence, previous)
+		}
+		previous = fact.Sequence
+	}
+	return nil
 }
