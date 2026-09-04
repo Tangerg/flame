@@ -222,6 +222,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 262 | `78f89307` + CLI dependency update | Removed the duplicate Start input materializer and unused root Message/Media projections, derived prompt text from the one canonical user message, and deep-froze working context, model options, and interrupt capabilities at StageRoot. |
 | 263 | `fea35be6` + CLI dependency update | Made Start acquire an internal snapshot at the use-case entry, including manual schedule facts, model options, capabilities, and content bytes, so later preparation, staging, and opening commits cannot observe caller aliases. |
 | 264 | `2c107044` + CLI dependency update | Made Resume acquire a complete command snapshot before Pending lookup and claim, including response pointers, nested question answers, content bytes, and caller capabilities, so the continuation transaction cannot observe caller aliases. |
+| 265 | `b5849dde` + CLI dependency update | Made Steer own a deep command snapshot before live-segment resolution, so model admission and executor delivery observe the same immutable text, media metadata, and image bytes. |
 
 ## Verification contract
 
