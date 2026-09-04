@@ -49,17 +49,23 @@ type fakePreparedWaitingCancellation struct {
 	settled     bool
 }
 
-func (f *fakePreparedWaitingCancellation) value() PreparedWaitingSubtreeCancellation {
+func (f *fakePreparedWaitingCancellation) value(t testing.TB) PreparedWaitingSubtreeCancellation {
+	t.Helper()
 	checkpoint := testExecutorCheckpoint()
 	if f.checkpoint != nil {
 		checkpoint = f.checkpoint.Clone()
 	}
-	return PreparedWaitingSubtreeCancellation{
-		CanceledMemberIDs:    slices.Clone(f.canceled),
-		PendingInterruptions: slices.Clone(f.interruptions),
-		Checkpoint:           checkpoint,
-		Change:               f,
+	prepared, err := NewPreparedWaitingSubtreeCancellation(
+		f.canceled,
+		nil,
+		f.interruptions,
+		checkpoint,
+		f,
+	)
+	if err != nil {
+		t.Fatalf("build prepared waiting subtree cancellation: %v", err)
 	}
+	return prepared
 }
 
 func TestPrepareWaitingCancellationRejectsCheckpointBoundToDifferentApplicationFacts(t *testing.T) {
@@ -86,7 +92,7 @@ func TestPrepareWaitingCancellationRejectsCheckpointBoundToDifferentApplicationF
 				plan,
 				"stop delegated branch",
 				time.Date(2026, 7, 30, 2, 3, 4, 0, time.UTC),
-				prepared.value(),
+				prepared.value(t),
 			)
 			if !errors.Is(err, ErrInvalidExecutorCheckpoint) {
 				t.Fatalf("prepare error = %v, want ErrInvalidExecutorCheckpoint", err)
@@ -127,6 +133,60 @@ func (f *fakePreparedWaitingCancellation) Discard() error {
 	return nil
 }
 
+func TestPreparedWaitingSubtreeCancellationOwnsProjections(t *testing.T) {
+	canceled := []string{"member_a"}
+	paused := []string{"member_b"}
+	interruptions := []MemberInterruption{{
+		MemberID:  "member_b",
+		RequestID: "request_b",
+		Interrupt: waitingQuestionPrompt(),
+	}}
+	checkpoint := testExecutorCheckpoint()
+	change := &fakePreparedWaitingCancellation{}
+	prepared, err := NewPreparedWaitingSubtreeCancellation(
+		canceled,
+		paused,
+		interruptions,
+		checkpoint,
+		change,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	canceled[0] = "member_changed"
+	paused[0] = "member_changed"
+	interruptions[0].MemberID = "member_changed"
+	interruptions[0].Interrupt.Question.Fields[0].Prompt = "Changed?"
+	checkpoint.Payload[0] = 'x'
+
+	projectedCanceled := prepared.CanceledMemberIDs()
+	projectedPaused := prepared.PausedMemberIDs()
+	projectedInterruptions := prepared.PendingInterruptions()
+	projectedCheckpoint := prepared.Checkpoint()
+	projectedCanceled[0] = "member_projected"
+	projectedPaused[0] = "member_projected"
+	projectedInterruptions[0].MemberID = "member_projected"
+	projectedInterruptions[0].Interrupt.Question.Fields[0].Prompt = "Projected?"
+	projectedCheckpoint.Payload[0] = 'y'
+
+	ownedInterruptions := prepared.PendingInterruptions()
+	if got := prepared.CanceledMemberIDs(); !slices.Equal(got, []string{"member_a"}) {
+		t.Fatalf("canceled members = %v, want owned input", got)
+	}
+	if got := prepared.PausedMemberIDs(); !slices.Equal(got, []string{"member_b"}) {
+		t.Fatalf("paused members = %v, want owned input", got)
+	}
+	if len(ownedInterruptions) != 1 ||
+		ownedInterruptions[0].MemberID != "member_b" ||
+		ownedInterruptions[0].Interrupt.Question.Fields[0].Prompt != "Continue?" {
+		t.Fatalf("pending interruptions = %+v, want owned input", ownedInterruptions)
+	}
+	if got := prepared.Checkpoint().Payload[0]; got != testExecutorCheckpoint().Payload[0] {
+		t.Fatalf("checkpoint payload prefix = %q, want owned input", got)
+	}
+}
+
 func TestPrepareWaitingCancellationKeepsSurvivingExternalBoundary(t *testing.T) {
 	plan := runACancellationPlan(t, false)
 	prepared := &fakePreparedWaitingCancellation{
@@ -143,7 +203,7 @@ func TestPrepareWaitingCancellationKeepsSurvivingExternalBoundary(t *testing.T) 
 		plan,
 		"stop delegated branch",
 		finishedAt,
-		prepared.value(),
+		prepared.value(t),
 	)
 	if err != nil {
 		t.Fatalf("prepare waiting cancellation: %v", err)
@@ -192,7 +252,7 @@ func TestPrepareWaitingCancellationContinuesAfterFinalBoundaryIsRemoved(t *testi
 		plan,
 		"stop final waiting branch",
 		time.Date(2026, 7, 30, 2, 3, 4, 0, time.UTC),
-		prepared.value(),
+		prepared.value(t),
 	)
 	if err != nil {
 		t.Fatalf("prepare waiting cancellation: %v", err)
@@ -243,7 +303,7 @@ func TestPublishWaitingChildCancellationInvalidatesExactReadSet(t *testing.T) {
 				plan,
 				"stop delegated branch",
 				time.Date(2026, 7, 30, 2, 3, 4, 0, time.UTC),
-				prepared.value(),
+				prepared.value(t),
 			)
 			if err != nil {
 				t.Fatalf("prepare waiting cancellation: %v", err)
@@ -819,7 +879,7 @@ func waitingCancellationCoordinator(
 		if request.Reason() == "" {
 			return PreparedWaitingSubtreeCancellation{}, errors.New("prepared without a cancellation reason")
 		}
-		return prepared.value(), nil
+		return prepared.value(t), nil
 	}
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: plan.pending.SessionID, Workspace: testsupport.MustWorkspace("/work")}),

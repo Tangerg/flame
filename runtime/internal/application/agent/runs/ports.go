@@ -185,15 +185,15 @@ type WaitingSubtreeChange interface {
 // crosses the application boundary.
 type PreparedWaitingSubtreeCancellation struct {
 	// CanceledMemberIDs names the exact product members projected as canceled.
-	CanceledMemberIDs []string
+	canceledMemberIDs []string
 	// PausedMemberIDs names surviving members held before child-outcome consumption.
-	PausedMemberIDs []string
+	pausedMemberIDs []string
 	// PendingInterruptions contains the surviving external waiting boundaries.
-	PendingInterruptions []MemberInterruption
+	pendingInterruptions []MemberInterruption
 	// Checkpoint is the opaque complete-tree state that Change.Apply installs.
-	Checkpoint ExecutorCheckpoint
+	checkpoint ExecutorCheckpoint
 	// Change owns the frozen executor source until Apply or Discard resolves it.
-	Change WaitingSubtreeChange
+	change WaitingSubtreeChange
 }
 
 // SessionReader resolves the product Session a Run belongs to.

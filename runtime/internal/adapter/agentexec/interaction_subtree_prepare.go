@@ -156,15 +156,26 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 		session: i, prepared: frameworkChange, checkpoint: checkpoint.Clone(),
 		canceled: slices.Clone(canceled), paused: slices.Clone(paused),
 	}
+	prepared, err := runs.NewPreparedWaitingSubtreeCancellation(
+		canceledMembers,
+		pausedMembers,
+		interruptions,
+		checkpoint,
+		change,
+	)
+	if err != nil {
+		i.failSubtreePreparation(preparedSignal)
+		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf(
+			"agentexec: build prepared waiting subtree cancellation: %w",
+			err,
+		)
+	}
 	if err := i.completeSubtreePreparation(preparedSignal, change); err != nil {
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
 	change.armExpiration(ctx)
 	discard = false
-	return runs.PreparedWaitingSubtreeCancellation{
-		CanceledMemberIDs: canceledMembers, PausedMemberIDs: pausedMembers,
-		PendingInterruptions: interruptions, Checkpoint: checkpoint, Change: change,
-	}, nil
+	return prepared, nil
 }
 
 func (i *interactionSession) executorMemberIDs(

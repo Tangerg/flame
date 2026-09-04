@@ -1,6 +1,7 @@
 package runs
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -13,21 +14,87 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
+// NewPreparedWaitingSubtreeCancellation captures one validated executor change
+// and ownership-independent projections of its resulting waiting tree.
+func NewPreparedWaitingSubtreeCancellation(
+	canceledMemberIDs []string,
+	pausedMemberIDs []string,
+	pendingInterruptions []MemberInterruption,
+	checkpoint ExecutorCheckpoint,
+	change WaitingSubtreeChange,
+) (PreparedWaitingSubtreeCancellation, error) {
+	prepared := PreparedWaitingSubtreeCancellation{
+		canceledMemberIDs:    slices.Clone(canceledMemberIDs),
+		pausedMemberIDs:      slices.Clone(pausedMemberIDs),
+		pendingInterruptions: cloneMemberInterruptions(pendingInterruptions),
+		checkpoint:           checkpoint.Clone(),
+		change:               change,
+	}
+	if err := prepared.Validate(); err != nil {
+		return PreparedWaitingSubtreeCancellation{}, err
+	}
+	return prepared, nil
+}
+
+// CanceledMemberIDs returns the exact canceled executor members.
+func (p PreparedWaitingSubtreeCancellation) CanceledMemberIDs() []string {
+	return slices.Clone(p.canceledMemberIDs)
+}
+
+// PausedMemberIDs returns the surviving executor members held at the boundary.
+func (p PreparedWaitingSubtreeCancellation) PausedMemberIDs() []string {
+	return slices.Clone(p.pausedMemberIDs)
+}
+
+// PendingInterruptions returns ownership-independent surviving input boundaries.
+func (p PreparedWaitingSubtreeCancellation) PendingInterruptions() []MemberInterruption {
+	return cloneMemberInterruptions(p.pendingInterruptions)
+}
+
+// Checkpoint returns an ownership-independent resulting executor snapshot.
+func (p PreparedWaitingSubtreeCancellation) Checkpoint() ExecutorCheckpoint {
+	return p.checkpoint.Clone()
+}
+
+// Apply installs the committed product disposition in the prepared executor tree.
+func (p PreparedWaitingSubtreeCancellation) Apply(disposition WaitingSubtreeDisposition) error {
+	if p.change == nil {
+		return errors.New("runs: apply malformed prepared waiting subtree cancellation")
+	}
+	return p.change.Apply(disposition)
+}
+
+// Continue advances a prepared tree whose final waiting boundary was removed.
+func (p PreparedWaitingSubtreeCancellation) Continue(ctx context.Context) error {
+	if p.change == nil {
+		return errors.New("runs: continue malformed prepared waiting subtree cancellation")
+	}
+	return p.change.Continue(ctx)
+}
+
+// Discard releases a prepared executor change that was not applied.
+func (p PreparedWaitingSubtreeCancellation) Discard() error {
+	if p.change == nil {
+		return errors.New("runs: discard malformed prepared waiting subtree cancellation")
+	}
+	return p.change.Discard()
+}
+
 // Validate verifies the Application projection and one-shot executor
 // capability without interpreting the opaque checkpoint payload.
 func (p PreparedWaitingSubtreeCancellation) Validate() error {
-	if p.Change == nil {
+	if p.change == nil {
 		return errors.New("runs: prepared waiting subtree cancellation has no executor change")
 	}
-	if err := p.Checkpoint.Validate(); err != nil {
+	if err := p.checkpoint.Validate(); err != nil {
 		return err
 	}
-	if len(p.CanceledMemberIDs) == 0 {
+	if len(p.canceledMemberIDs) == 0 {
 		return errors.New("runs: prepared waiting subtree cancellation has no canceled members")
 	}
-	canceledMembers := make(map[string]struct{}, len(p.CanceledMemberIDs))
-	seenMembers := make(map[string]struct{}, len(p.CanceledMemberIDs)+len(p.PausedMemberIDs))
-	for _, memberID := range p.CanceledMemberIDs {
+	canceledMembers := make(map[string]struct{}, len(p.canceledMemberIDs))
+	seenMembers := make(map[string]struct{}, len(p.canceledMemberIDs)+len(p.pausedMemberIDs))
+	for _, memberID := range p.canceledMemberIDs {
 		if _, err := runtimeidentity.ParseMember(memberID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree cancellation: %w", err)
 		}
@@ -37,7 +104,7 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 		canceledMembers[memberID] = struct{}{}
 		seenMembers[memberID] = struct{}{}
 	}
-	for _, memberID := range p.PausedMemberIDs {
+	for _, memberID := range p.pausedMemberIDs {
 		if _, err := runtimeidentity.ParseMember(memberID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree cancellation: %w", err)
 		}
@@ -46,8 +113,8 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 		}
 		seenMembers[memberID] = struct{}{}
 	}
-	requests := make(map[inputRequestKey]struct{}, len(p.PendingInterruptions))
-	for index, interruption := range p.PendingInterruptions {
+	requests := make(map[inputRequestKey]struct{}, len(p.pendingInterruptions))
+	for index, interruption := range p.pendingInterruptions {
 		if _, err := runtimeidentity.ParseMember(interruption.MemberID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree interruption[%d]: %w", index, err)
 		}
@@ -117,8 +184,8 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 	if err := w.validate(); err != nil {
 		return waitingCancellationTransformation{}, err
 	}
-	canceledMembers := make(map[string]struct{}, len(w.prepared.CanceledMemberIDs))
-	for _, memberID := range w.prepared.CanceledMemberIDs {
+	canceledMembers := make(map[string]struct{}, len(w.prepared.canceledMemberIDs))
+	for _, memberID := range w.prepared.canceledMemberIDs {
 		canceledMembers[memberID] = struct{}{}
 	}
 
@@ -152,7 +219,7 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 		parentItem:           parentItem,
 		remaining:            remaining,
 		continuation:         continuation,
-		checkpoint:           w.prepared.Checkpoint.Clone(),
+		checkpoint:           w.prepared.checkpoint.Clone(),
 		conversationMessages: conversationMessages,
 		root:                 w.plan.root.run,
 		targetRunID:          w.plan.target.run.ID(),
@@ -227,32 +294,32 @@ func (w waitingCancellationBuilder) validate() error {
 	if !ok {
 		return errors.New("runs: waiting cancellation Pending has no root continuation")
 	}
-	if err := w.prepared.Checkpoint.ValidateOwnership(
+	if err := w.prepared.checkpoint.ValidateOwnership(
 		rootContinuation.MemberID,
 		w.plan.pending.SessionID,
 	); err != nil {
 		return fmt.Errorf("runs: invalid prepared waiting subtree checkpoint ownership: %w", err)
 	}
-	if w.prepared.Checkpoint.Scope.GoalIncarnationID != w.plan.pending.GoalIncarnationID {
+	if w.prepared.checkpoint.Scope.GoalIncarnationID != w.plan.pending.GoalIncarnationID {
 		return fmt.Errorf(
 			"runs: prepared waiting subtree checkpoint goal incarnation %q does not match Pending %q: %w",
-			w.prepared.Checkpoint.Scope.GoalIncarnationID,
+			w.prepared.checkpoint.Scope.GoalIncarnationID,
 			w.plan.pending.GoalIncarnationID,
 			ErrInvalidExecutorCheckpoint,
 		)
 	}
-	if !w.prepared.Checkpoint.ModelSelection.Equal(rootContinuation.ModelSelection) {
+	if !w.prepared.checkpoint.ModelSelection.Equal(rootContinuation.ModelSelection) {
 		return fmt.Errorf(
 			"runs: prepared waiting subtree checkpoint model %q does not match root continuation %q: %w",
-			w.prepared.Checkpoint.ModelSelection,
+			w.prepared.checkpoint.ModelSelection,
 			rootContinuation.ModelSelection,
 			ErrInvalidExecutorCheckpoint,
 		)
 	}
-	if w.prepared.Checkpoint.Limits != rootContinuation.Limits {
+	if w.prepared.checkpoint.Limits != rootContinuation.Limits {
 		return fmt.Errorf(
 			"runs: prepared waiting subtree checkpoint limits %+v do not match root continuation %+v: %w",
-			w.prepared.Checkpoint.Limits,
+			w.prepared.checkpoint.Limits,
 			rootContinuation.Limits,
 			ErrInvalidExecutorCheckpoint,
 		)
@@ -420,7 +487,7 @@ func (w waitingCancellationBuilder) remainingInterruptions(
 	for _, continuation := range continuations {
 		survivingRunByMemberID[continuation.MemberID] = continuation.RunID
 	}
-	pendingInterruptions := w.prepared.PendingInterruptions
+	pendingInterruptions := w.prepared.pendingInterruptions
 	remainingInterrupts := make([]transcript.Interrupt, 0, len(pendingInterruptions))
 	remainingBindings := make([]InterruptBinding, 0, len(pendingInterruptions))
 	keptBindings := make(map[int]struct{}, len(pendingInterruptions))

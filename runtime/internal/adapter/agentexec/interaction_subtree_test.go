@@ -63,7 +63,7 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 		t.Fatal(validateErr)
 	}
 	cancelPrepare()
-	if discardErr := prepared.Change.Discard(); discardErr != nil {
+	if discardErr := prepared.Discard(); discardErr != nil {
 		t.Fatal(discardErr)
 	}
 	liveSession, err := fixture.executor.session(ref)
@@ -96,7 +96,7 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 		t.Fatal(err)
 	}
 	resumedEvents := collectInteractionEvents(sequence)
-	if err := prepared.Change.Apply(runs.WaitingSubtreeResumesRunning); err != nil {
+	if err := prepared.Apply(runs.WaitingSubtreeResumesRunning); err != nil {
 		cancelPrepare()
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 		cancelPrepare()
 		t.Fatalf("provider calls after state apply = %d, want 2 before continuation activation", calls)
 	}
-	if err := prepared.Change.Continue(t.Context()); err != nil {
+	if err := prepared.Continue(t.Context()); err != nil {
 		cancelPrepare()
 		t.Fatal(err)
 	}
@@ -148,19 +148,23 @@ func assertPreparedWaitingCancellation(
 	cancelPrepare context.CancelFunc,
 ) {
 	t.Helper()
-	if len(prepared.CanceledMemberIDs) == 1 &&
-		prepared.CanceledMemberIDs[0] == targetMemberID &&
-		len(prepared.PausedMemberIDs) == 1 &&
-		prepared.PausedMemberIDs[0] == prepared.Checkpoint.RootMemberID &&
-		len(prepared.PendingInterruptions) == 0 {
+	canceledMemberIDs := prepared.CanceledMemberIDs()
+	pausedMemberIDs := prepared.PausedMemberIDs()
+	checkpoint := prepared.Checkpoint()
+	pendingInterruptions := prepared.PendingInterruptions()
+	if len(canceledMemberIDs) == 1 &&
+		canceledMemberIDs[0] == targetMemberID &&
+		len(pausedMemberIDs) == 1 &&
+		pausedMemberIDs[0] == checkpoint.RootMemberID &&
+		len(pendingInterruptions) == 0 {
 		return
 	}
 	cancelPrepare()
 	t.Fatalf(
 		"prepared waiting cancellation canceled=%v paused=%v interruptions=%d",
-		prepared.CanceledMemberIDs,
-		prepared.PausedMemberIDs,
-		len(prepared.PendingInterruptions),
+		canceledMemberIDs,
+		pausedMemberIDs,
+		len(pendingInterruptions),
 	)
 }
 

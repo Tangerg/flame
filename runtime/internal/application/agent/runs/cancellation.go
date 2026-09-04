@@ -222,7 +222,7 @@ func (c *Coordinator) cancelWaitingChild(
 		return CancelResult{}, validateErr
 	}
 	defer func() {
-		if discardErr := prepared.Change.Discard(); discardErr != nil {
+		if discardErr := prepared.Discard(); discardErr != nil {
 			result = CancelResult{}
 			err = errors.Join(
 				err,
@@ -241,14 +241,14 @@ func (c *Coordinator) cancelWaitingChild(
 		return CancelResult{}, err
 	}
 	if transformation.remaining != nil {
-		return c.commitWaitingChildCancellation(cleanupCtx, plan, transformation, prepared.Change)
+		return c.commitWaitingChildCancellation(cleanupCtx, plan, transformation, prepared)
 	}
 	return c.resumeAfterWaitingChildCancellation(
 		cleanupCtx,
 		sess,
 		plan,
 		transformation,
-		prepared.Change,
+		prepared,
 		&runAdmission,
 	)
 }
