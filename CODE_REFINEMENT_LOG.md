@@ -161,6 +161,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 201 | `96fe1b57` + CLI dependency update | Validated complete pending-occurrence and due-schedule worker batches before any Run dispatch or cursor claim. |
 | 202 | `923e7fda` + CLI dependency update | Protected Schedule point-read identity and removed the redundant store-owned update result. |
 | 203 | `9023cb0d` + CLI dependency update | Made Schedule Run requests the sole authority for the stable Session/Run identities returned after firing. |
+| 204 | `d801a7a7` + CLI dependency update | Made Domain own visible Approval-rule relations, rejected out-of-scope/duplicate rules and invalid/mismatched Session reads before authorization or listing, and isolated returned storage. |
 
 ## Verification contract
 
