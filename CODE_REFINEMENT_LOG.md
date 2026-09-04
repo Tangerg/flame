@@ -217,6 +217,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 257 | `c4540950` + CLI dependency update | Collapsed unknown-Effect reporting to one constructed control fact, kept executor-only Effect identities out of Application, and removed sorting, deduplication, mutable catalog state, and tests for unused diagnostics. |
 | 258 | `980e995d` + CLI dependency update | Encapsulated final assistant confirmations behind role, message, and correlation validation; deep-isolated construction and access; and migrated both root raw delivery and child authoritative delivery. |
 | 259 | `6702019d` + CLI dependency update | Made terminal Failure and cumulative per-model Usage constructor-owned, exposed only isolated projections, and confined executor outcome assembly to a private draft before one final SegmentEnded snapshot. |
+| 260 | `49870903` + CLI dependency update | Froze waiting continuations and subtree-cancellation requests at Application/executor boundaries, deep-isolated member, checkpoint, and capability projections, and made every restore, resume, and recovery-probe entry take its own snapshot. |
 
 ## Verification contract
 
