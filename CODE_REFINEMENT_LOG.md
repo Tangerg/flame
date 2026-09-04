@@ -183,6 +183,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 223 | `d3779a1d` + CLI dependency update | Admitted each complete Session transcript before time observation or planning, rejecting invalid Items, cross-Session rows, and duplicate Item identities at the recovery read boundary. |
 | 224 | `40f036d4` + CLI dependency update | Enforced the Domain/SQLite invariant of one non-terminal root tree per Session at recovery catalog admission, before duplicate roots can acquire ownership or produce conflicting plans. |
 | 225 | `c0b5778e` + CLI dependency update | Enforced one lifecycle state and root-owned capabilities across every active recovery-tree member before transcript reads, resumability probes, or terminal planning. |
+| 226 | `34e604fa` + CLI dependency update | Bound transcript admission to its active recovery tree so every Running Item must have a live Run owner, while completed historical Items remain valid Session history. |
 
 ## Verification contract
 
