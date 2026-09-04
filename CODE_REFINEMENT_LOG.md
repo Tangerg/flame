@@ -206,6 +206,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 246 | `d0a87b21` + CLI dependency update | Constructed Session fork writes from one normalized, ownership-isolated child projection and bound its exact parent, initial revision, parent-first Runs, and matching initial Plan replacement before persistence. |
 | 247 | `4330c36b` + CLI dependency update | Constructed complete Session restore writes before process-local teardown, bound the committed Session replacement to one normalized isolated projection, and required its Plan transition to publish exactly the restored steps. |
 | 248 | `5ecc5324` + CLI dependency update | Replaced the raw Session delete DTO with one canonical owned identity and rejected malformed deletion before admission, interrupt reads, process quiescing, or persistence. |
+| 249 | `9cdd8fbf` + CLI dependency update | Encapsulated parked-Run terminal writes behind validated ordinary/claimed constructors, isolated every returned projection, and derived Goal accounting only from the terminal root Run. |
 
 ## Verification contract
 
