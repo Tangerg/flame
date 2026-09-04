@@ -135,6 +135,14 @@ func (c *Coordinator) Update(ctx context.Context, id string, content *string, pi
 	if !c.Available() {
 		return domain.Item{}, ErrUnavailable
 	}
+	if content != nil {
+		value := *content
+		content = &value
+	}
+	if pinned != nil {
+		value := *pinned
+		pinned = &value
+	}
 	itemID, err := domain.ParseItemID(id)
 	if err != nil {
 		return domain.Item{}, err

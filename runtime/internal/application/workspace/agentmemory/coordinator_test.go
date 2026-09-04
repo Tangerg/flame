@@ -205,8 +205,31 @@ func TestUpdateDelegatesOneAtomicPatchWithApplicationClock(t *testing.T) {
 	if _, err := c.Update(context.Background(), testMemoryItemID('1').String(), &content, &pinned); err != nil {
 		t.Fatal(err)
 	}
-	if store.content == nil || *store.content != content || store.pinned != &pinned || !store.updatedAt.Equal(now) {
+	if store.content == nil || *store.content != content || store.pinned == nil || *store.pinned != pinned || !store.updatedAt.Equal(now) {
 		t.Fatalf("patch = content=%p pinned=%p at=%s", store.content, store.pinned, store.updatedAt)
+	}
+}
+
+func TestUpdateSnapshotsPatchBeforeClockCallback(t *testing.T) {
+	store := &fakeStore{}
+	content := "original fact"
+	pinned := true
+	now := time.Date(2026, 7, 23, 9, 0, 0, 0, time.UTC)
+	coordinator := New(Config{Store: store, Now: func() time.Time {
+		content = "clock mutation"
+		pinned = false
+		return now
+	}})
+
+	item, err := coordinator.Update(t.Context(), testMemoryItemID('1').String(), &content, &pinned)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if store.content == nil || *store.content != "original fact" || store.pinned == nil || !*store.pinned {
+		t.Fatalf("stored patch = content=%v pinned=%v", store.content, store.pinned)
+	}
+	if item.Content != "original fact" || !item.Pinned {
+		t.Fatalf("acknowledged item = %+v, want original patch", item)
 	}
 }
 
