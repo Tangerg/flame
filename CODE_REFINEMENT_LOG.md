@@ -220,6 +220,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 260 | `49870903` + CLI dependency update | Froze waiting continuations and subtree-cancellation requests at Application/executor boundaries, deep-isolated member, checkpoint, and capability projections, and made every restore, resume, and recovery-probe entry take its own snapshot. |
 | 261 | `1d50ba99` + CLI dependency update | Encapsulated prepared waiting-subtree results behind one validating constructor, isolated every returned tree projection, and made the value itself own Apply, Continue, and Discard instead of exposing its one-shot executor capability. |
 | 262 | `78f89307` + CLI dependency update | Removed the duplicate Start input materializer and unused root Message/Media projections, derived prompt text from the one canonical user message, and deep-froze working context, model options, and interrupt capabilities at StageRoot. |
+| 263 | `fea35be6` + CLI dependency update | Made Start acquire an internal snapshot at the use-case entry, including manual schedule facts, model options, capabilities, and content bytes, so later preparation, staging, and opening commits cannot observe caller aliases. |
 
 ## Verification contract
 
