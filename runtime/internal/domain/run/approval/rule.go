@@ -18,6 +18,39 @@ func Decide(rules []Rule, q Query) (Decision, bool, error) {
 	return ruleSet(rules).decide(q)
 }
 
+// ValidateVisibleRules verifies that rules is one complete relation visible
+// from the requested session and project. Stores filter this relation for
+// efficiency; Domain rechecks scope membership and identity uniqueness before
+// the relation can affect authorization or escape through a read model.
+func ValidateVisibleRules(rules []Rule, sessionID, projectDir string) error {
+	if sessionID != "" {
+		if _, err := resourceid.ParseSession(sessionID); err != nil {
+			return fmt.Errorf("%w: session: %v", ErrInvalidRule, err)
+		}
+	}
+	seen := make(map[string]struct{}, len(rules))
+	for index, rule := range rules {
+		if err := rule.Validate(); err != nil {
+			return fmt.Errorf("approval: visible rule %d: %w", index, err)
+		}
+		scopeKey, visible := rule.Scope.key(sessionID, projectDir)
+		if !visible || rule.ScopeKey != scopeKey {
+			return fmt.Errorf(
+				"%w: visible rule %d with scope %q and key %q is outside the requested scope",
+				ErrInvalidRule,
+				index,
+				rule.Scope,
+				rule.ScopeKey,
+			)
+		}
+		if _, duplicate := seen[rule.ID]; duplicate {
+			return fmt.Errorf("%w: duplicate visible rule identity %q", ErrInvalidRule, rule.ID)
+		}
+		seen[rule.ID] = struct{}{}
+	}
+	return nil
+}
+
 // NewRule constructs one durable rule and derives its deterministic identity.
 func NewRule(scope Scope, scopeKey, toolName, subject string, decision Decision) (Rule, error) {
 	rule := Rule{
@@ -110,24 +143,32 @@ func (r Rule) specificity() int {
 	return score
 }
 
-// decide picks the strongest visible rule; equally specific disagreements
-// resolve to Deny so a remembered deny cannot be canceled by a peer allow.
-func (r ruleSet) decide(q Query) (Decision, bool, error) {
+// Validate verifies the complete identity of one tool-call policy query.
+func (q Query) Validate() error {
 	if q.SessionID != "" {
 		if _, err := resourceid.ParseSession(q.SessionID); err != nil {
-			return "", false, fmt.Errorf("%w: session: %v", ErrInvalidQuery, err)
+			return fmt.Errorf("%w: session: %v", ErrInvalidQuery, err)
 		}
 	}
 	if strings.TrimSpace(q.Tool) == "" || strings.TrimSpace(q.Tool) != q.Tool {
-		return "", false, fmt.Errorf("%w: tool name is required without surrounding whitespace", ErrInvalidQuery)
+		return fmt.Errorf("%w: tool name is required without surrounding whitespace", ErrInvalidQuery)
+	}
+	return nil
+}
+
+// decide picks the strongest visible rule; equally specific disagreements
+// resolve to Deny so a remembered deny cannot be canceled by a peer allow.
+func (r ruleSet) decide(q Query) (Decision, bool, error) {
+	if err := q.Validate(); err != nil {
+		return "", false, err
+	}
+	if err := ValidateVisibleRules(r, q.SessionID, q.ProjectDir); err != nil {
+		return "", false, err
 	}
 	best := -1
 	var verdict Decision
 	conflict := false
-	for index, rule := range r {
-		if err := rule.Validate(); err != nil {
-			return "", false, fmt.Errorf("approval: candidate rule %d: %w", index, err)
-		}
+	for _, rule := range r {
 		if rule.Tool != q.Tool || !rule.matchesSubject(q.Subject) {
 			continue
 		}

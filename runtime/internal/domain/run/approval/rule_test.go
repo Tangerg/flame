@@ -66,11 +66,37 @@ func TestDecidePrecedence(t *testing.T) {
 func TestDecideConflictDeny(t *testing.T) {
 	q := approval.Query{SessionID: "s1", Tool: "shell", Subject: "go test"}
 	rules := []approval.Rule{
-		mustRule(t, approval.ScopeSession, "s1", "shell", "", approval.Allow),
-		mustRule(t, approval.ScopeSession, "s1", "shell", "", approval.Deny),
+		mustRule(t, approval.ScopeSession, "s1", "shell", "go *", approval.Allow),
+		mustRule(t, approval.ScopeSession, "s1", "shell", "* test", approval.Deny),
 	}
 	if d, ok, err := approval.Decide(rules, q); err != nil || !ok || d != approval.Deny {
 		t.Fatalf("conflict = (%v,%v,%v), want (deny,true,nil)", d, ok, err)
+	}
+}
+
+func TestDecideRejectsInvalidVisibleRuleRelation(t *testing.T) {
+	q := approval.Query{SessionID: "s1", ProjectDir: "/repo", Tool: "shell", Subject: "go test"}
+	visible := mustRule(t, approval.ScopeSession, "s1", "shell", "", approval.Allow)
+	tests := []struct {
+		name  string
+		rules []approval.Rule
+	}{
+		{
+			name:  "other session",
+			rules: []approval.Rule{mustRule(t, approval.ScopeSession, "s2", "shell", "", approval.Allow)},
+		},
+		{
+			name:  "other project",
+			rules: []approval.Rule{mustRule(t, approval.ScopeProject, "/other", "shell", "", approval.Allow)},
+		},
+		{name: "duplicate identity", rules: []approval.Rule{visible, visible}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, _, err := approval.Decide(test.rules, q); !errors.Is(err, approval.ErrInvalidRule) {
+				t.Fatalf("Decide error = %v, want ErrInvalidRule", err)
+			}
+		})
 	}
 }
 

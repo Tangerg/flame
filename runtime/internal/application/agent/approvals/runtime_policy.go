@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 
@@ -170,10 +171,10 @@ func (r *RuntimePolicy) ExitPlanMode(ctx context.Context, sessionID string) (res
 }
 
 func (r *RuntimePolicy) Decide(ctx context.Context, q approval.Query) (approval.Decision, bool, error) {
-	if r.store == nil {
-		return approval.Decide(nil, q)
+	if err := q.Validate(); err != nil {
+		return "", false, err
 	}
-	candidates, err := r.store.Visible(ctx, q.SessionID, q.ProjectDir)
+	candidates, err := r.visibleRules(ctx, q.SessionID, q.ProjectDir)
 	if err != nil {
 		return "", false, err
 	}
@@ -200,6 +201,10 @@ func (r *RuntimePolicy) Remember(ctx context.Context, req approval.RememberReque
 }
 
 func (r *RuntimePolicy) Rules(ctx context.Context, sessionID, projectDir string) ([]approval.Rule, error) {
+	return r.visibleRules(ctx, sessionID, projectDir)
+}
+
+func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID, projectDir string) ([]approval.Rule, error) {
 	if r.store == nil {
 		return nil, nil
 	}
@@ -207,12 +212,10 @@ func (r *RuntimePolicy) Rules(ctx context.Context, sessionID, projectDir string)
 	if err != nil {
 		return nil, err
 	}
-	for index, rule := range rules {
-		if err := rule.Validate(); err != nil {
-			return nil, fmt.Errorf("approval: visible rule %d: %w", index, err)
-		}
+	if err := approval.ValidateVisibleRules(rules, sessionID, projectDir); err != nil {
+		return nil, err
 	}
-	return rules, nil
+	return slices.Clone(rules), nil
 }
 
 func (r *RuntimePolicy) Forget(ctx context.Context, id string) error {

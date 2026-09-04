@@ -120,14 +120,96 @@ func TestPlanModeRequiresDurableStore(t *testing.T) {
 }
 
 type ruleStoreStub struct {
-	err error
+	rules        []approval.Rule
+	err          error
+	visibleCalls *int
 }
 
 func (r ruleStoreStub) Put(context.Context, approval.Rule) error { return r.err }
 func (r ruleStoreStub) Visible(context.Context, string, string) ([]approval.Rule, error) {
-	return nil, r.err
+	if r.visibleCalls != nil {
+		*r.visibleCalls++
+	}
+	return r.rules, r.err
 }
 func (r ruleStoreStub) Delete(context.Context, string) error { return r.err }
+
+func TestRuntimePolicyRejectsInvalidQueryBeforeRuleStore(t *testing.T) {
+	calls := 0
+	policy, err := NewRuntimePolicy(approval.ModeSafe, ruleStoreStub{visibleCalls: &calls}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := policy.Decide(t.Context(), approval.Query{Tool: " shell"}); !errors.Is(err, approval.ErrInvalidQuery) {
+		t.Fatalf("Decide error = %v, want ErrInvalidQuery", err)
+	}
+	if calls != 0 {
+		t.Fatalf("Visible calls = %d, want 0", calls)
+	}
+}
+
+func TestRuntimePolicyProtectsVisibleRuleRelations(t *testing.T) {
+	visible := mustRuntimePolicyRule(t, approval.ScopeSession, "s1", approval.Allow)
+	tests := []struct {
+		name  string
+		rules []approval.Rule
+	}{
+		{
+			name:  "other session",
+			rules: []approval.Rule{mustRuntimePolicyRule(t, approval.ScopeSession, "s2", approval.Allow)},
+		},
+		{
+			name:  "other project",
+			rules: []approval.Rule{mustRuntimePolicyRule(t, approval.ScopeProject, "/other", approval.Allow)},
+		},
+		{name: "duplicate identity", rules: []approval.Rule{visible, visible}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			policy, err := NewRuntimePolicy(approval.ModeSafe, ruleStoreStub{rules: test.rules}, nil, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			query := approval.Query{SessionID: "s1", ProjectDir: "/repo", Tool: "shell"}
+			if _, _, err := policy.Decide(t.Context(), query); !errors.Is(err, approval.ErrInvalidRule) {
+				t.Fatalf("Decide error = %v, want ErrInvalidRule", err)
+			}
+			if _, err := policy.Rules(t.Context(), query.SessionID, query.ProjectDir); !errors.Is(err, approval.ErrInvalidRule) {
+				t.Fatalf("Rules error = %v, want ErrInvalidRule", err)
+			}
+		})
+	}
+}
+
+func TestRuntimePolicyIsolatesVisibleRuleStorage(t *testing.T) {
+	rule := mustRuntimePolicyRule(t, approval.ScopeGlobal, "", approval.Allow)
+	policy, err := NewRuntimePolicy(approval.ModeSafe, ruleStoreStub{rules: []approval.Rule{rule}}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rules, err := policy.Rules(t.Context(), "s1", "/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rules[0] = approval.Rule{}
+
+	got, err := policy.Rules(t.Context(), "s1", "/repo")
+	if err != nil {
+		t.Fatalf("Rules after caller mutation: %v", err)
+	}
+	if len(got) != 1 || got[0] != rule {
+		t.Fatalf("Rules after caller mutation = %+v, want %+v", got, rule)
+	}
+}
+
+func mustRuntimePolicyRule(t *testing.T, scope approval.Scope, scopeKey string, decision approval.Decision) approval.Rule {
+	t.Helper()
+	rule, err := approval.NewRule(scope, scopeKey, "shell", "", decision)
+	if err != nil {
+		t.Fatalf("NewRule: %v", err)
+	}
+	return rule
+}
 
 func TestCommittedApprovalMutationsPublishInvalidations(t *testing.T) {
 	var notices []invalidation.Notice

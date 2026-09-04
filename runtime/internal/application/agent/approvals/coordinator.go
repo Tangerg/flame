@@ -5,13 +5,15 @@ package approvals
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
 // SessionLookup resolves a session so rule listing can scope rules to the
-// session's project directory. The session store satisfies it.
+// session's project directory. A successful read must return the valid Session
+// whose identity was requested. The session store satisfies it.
 type SessionLookup interface {
 	Get(ctx context.Context, id string) (session.Session, error)
 }
@@ -55,6 +57,12 @@ func (c *Coordinator) ListRules(ctx context.Context, sessionID string) ([]approv
 	if sessionID != "" {
 		switch sess, err := c.sessions.Get(ctx, sessionID); {
 		case err == nil:
+			if err := sess.Validate(); err != nil {
+				return nil, fmt.Errorf("approvals: invalid session %q: %w", sessionID, err)
+			}
+			if sess.ID() != sessionID {
+				return nil, fmt.Errorf("approvals: requested session %q, got %q", sessionID, sess.ID())
+			}
 			cwd = sess.Workspace().Path()
 		case !errors.Is(err, session.ErrNotFound):
 			return nil, err

@@ -119,6 +119,33 @@ func TestListRulesReturnsSessionStoreFailure(t *testing.T) {
 	}
 }
 
+func TestListRulesRejectsInvalidOrMismatchedSessionRead(t *testing.T) {
+	tests := []struct {
+		name string
+		sess session.Session
+	}{
+		{name: "invalid aggregate"},
+		{
+			name: "mismatched identity",
+			sess: testsupport.MustRestoreSession(session.Snapshot{
+				ID: "ses_other", Workspace: testsupport.MustWorkspace("/repo"),
+			}),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			store := &approvalStore{}
+			coordinator := New(store, fakeSessionLookup{sess: test.sess})
+			if _, err := coordinator.ListRules(t.Context(), "ses_1"); err == nil {
+				t.Fatal("ListRules accepted an invalid Session point read")
+			}
+			if len(store.ruleScopes) != 0 {
+				t.Fatalf("rules called after invalid Session read: %+v", store.ruleScopes)
+			}
+		})
+	}
+}
+
 func TestForgetRuleUsesDeletionPort(t *testing.T) {
 	store := &approvalStore{}
 	c := New(store, nil)
