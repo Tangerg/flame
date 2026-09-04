@@ -203,6 +203,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 243 | `772eab24` + CLI dependency update | Bound each Knowledge file CAS precondition and replacement body into one Domain-owned value while preserving workspace routing and public protocol input at their existing owners. |
 | 244 | `7b02affc` + CLI dependency update | Made the conversation compaction write-set own its valid Session, isolated coordinate rewrite, and unique same-Session Run replacement set before persistence CAS. |
 | 245 | `f76ff768` + CLI dependency update | Constructed Session rollback writes from one Domain boundary, admitted only the exact unknown message sentinel, and bound unique Run/checkpoint identities before side effects or persistence. |
+| 246 | `d0a87b21` + CLI dependency update | Constructed Session fork writes from one normalized, ownership-isolated child projection and bound its exact parent, initial revision, parent-first Runs, and matching initial Plan replacement before persistence. |
 
 ## Verification contract
 
