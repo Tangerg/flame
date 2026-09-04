@@ -394,6 +394,9 @@ func newRecoveryPlanner(
 	if err != nil {
 		return nil, err
 	}
+	if err := validateOpenInvocationOwners(trees, modelInvocations, toolInvocations); err != nil {
+		return nil, err
+	}
 	planner := &recoveryPlanner{
 		ctx:           ctx,
 		store:         recovery.store,

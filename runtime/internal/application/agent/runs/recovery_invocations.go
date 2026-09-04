@@ -88,3 +88,76 @@ func validateOpenToolInvocations(invocations []OpenToolInvocation) error {
 	}
 	return nil
 }
+
+func validateOpenInvocationOwners(
+	trees map[string]recoveryRunTree,
+	models []OpenModelInvocation,
+	tools []OpenToolInvocation,
+) error {
+	activeRuns := make(map[string]recoveryInvocationOwner)
+	for _, tree := range trees {
+		for runID, active := range tree.runsByID {
+			activeRuns[runID] = recoveryInvocationOwner{
+				sessionID: active.SessionID(),
+				segmentID: active.ActiveSegmentID(),
+			}
+		}
+	}
+	for index, invocation := range models {
+		if err := validateOpenInvocationOwner(
+			"model", index, invocation.SessionID, invocation.RunID, invocation.SegmentID, activeRuns,
+		); err != nil {
+			return err
+		}
+	}
+	for index, invocation := range tools {
+		if err := validateOpenInvocationOwner(
+			"Tool", index, invocation.SessionID, invocation.RunID, invocation.SegmentID, activeRuns,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type recoveryInvocationOwner struct {
+	sessionID string
+	segmentID string
+}
+
+func validateOpenInvocationOwner(
+	kind string,
+	index int,
+	sessionID string,
+	runID string,
+	segmentID string,
+	activeRuns map[string]recoveryInvocationOwner,
+) error {
+	owner, active := activeRuns[runID]
+	if !active {
+		// An operational row may outlive a Run already made terminal by an
+		// earlier atomic commit. Recovery still owns closing that orphan.
+		return nil
+	}
+	if sessionID != owner.sessionID {
+		return fmt.Errorf(
+			"runs: open %s invocation[%d] Run %q belongs to Session %q, not %q",
+			kind,
+			index,
+			runID,
+			owner.sessionID,
+			sessionID,
+		)
+	}
+	if segmentID != owner.segmentID {
+		return fmt.Errorf(
+			"runs: open %s invocation[%d] belongs to Segment %q, want active Segment %q for Run %q",
+			kind,
+			index,
+			segmentID,
+			owner.segmentID,
+			runID,
+		)
+	}
+	return nil
+}

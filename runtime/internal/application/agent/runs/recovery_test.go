@@ -613,6 +613,73 @@ func TestRecoveryRejectsInvalidClaimedOpenInvocationsBeforePlanning(t *testing.T
 	}
 }
 
+func TestRecoveryRejectsOpenInvocationThatContradictsActiveRun(t *testing.T) {
+	createdAt := time.Date(2026, 8, 14, 4, 0, 0, 0, time.UTC)
+	first := testsupport.MustRestoreRun(rundomain.Snapshot{
+		ID: "run_first", SessionID: "session_first", State: rundomain.Running,
+		ActiveSegmentID: "segment_first", CreatedAt: createdAt,
+		MessageMark: rundomain.UnknownMessageMark,
+	})
+	second := testsupport.MustRestoreRun(rundomain.Snapshot{
+		ID: "run_second", SessionID: "session_second", State: rundomain.Running,
+		ActiveSegmentID: "segment_second", CreatedAt: createdAt,
+		MessageMark: rundomain.UnknownMessageMark,
+	})
+	model := OpenModelInvocation{
+		SessionID: first.SessionID(), RunID: first.ID(), SegmentID: first.ActiveSegmentID(),
+		CallID: "model_active", StartedAt: createdAt,
+	}
+	toolInvocation := OpenToolInvocation{
+		SessionID: first.SessionID(), RunID: first.ID(), SegmentID: first.ActiveSegmentID(),
+		CallID: "tool_active", ItemID: "item_active", StartedAt: createdAt,
+	}
+	for name, input := range map[string]struct {
+		models []OpenModelInvocation
+		tools  []OpenToolInvocation
+	}{
+		"model Session": {models: []OpenModelInvocation{{
+			SessionID: second.SessionID(), RunID: model.RunID, SegmentID: model.SegmentID,
+			CallID: model.CallID, StartedAt: model.StartedAt,
+		}}},
+		"model Segment": {models: []OpenModelInvocation{{
+			SessionID: model.SessionID, RunID: model.RunID, SegmentID: second.ActiveSegmentID(),
+			CallID: model.CallID, StartedAt: model.StartedAt,
+		}}},
+		"Tool Session": {tools: []OpenToolInvocation{{
+			SessionID: second.SessionID(), RunID: toolInvocation.RunID, SegmentID: toolInvocation.SegmentID,
+			CallID: toolInvocation.CallID, ItemID: toolInvocation.ItemID, StartedAt: toolInvocation.StartedAt,
+		}}},
+		"Tool Segment": {tools: []OpenToolInvocation{{
+			SessionID: toolInvocation.SessionID, RunID: toolInvocation.RunID, SegmentID: second.ActiveSegmentID(),
+			CallID: toolInvocation.CallID, ItemID: toolInvocation.ItemID, StartedAt: toolInvocation.StartedAt,
+		}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			store := &recoveryStoreStub{
+				runs: []rundomain.Run{first, second}, models: input.models, tools: input.tools,
+				transcripts: map[string][]transcript.Item{}, messageMarks: map[string]int{},
+			}
+			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
+				func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+			))
+			if err != nil {
+				t.Fatalf("NewRecovery: %v", err)
+			}
+
+			if _, err := recovery.Reconcile(t.Context()); err == nil {
+				t.Fatal("Reconcile accepted an open invocation that contradicts its active Run")
+			}
+			if store.transcriptReads != 0 || store.commits != 0 {
+				t.Fatalf(
+					"contradictory invocation reached planning or commit: transcriptReads=%d commits=%d",
+					store.transcriptReads,
+					store.commits,
+				)
+			}
+		})
+	}
+}
+
 func TestRecoveryDoesNotPublishBeforeItsCommitSucceeds(t *testing.T) {
 	createdAt := time.Date(2026, 8, 15, 1, 0, 0, 0, time.UTC)
 	abandoned := testsupport.MustRestoreRun(rundomain.Snapshot{
