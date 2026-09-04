@@ -395,6 +395,41 @@ func TestCoordinatorUpdateAppliesPatch(t *testing.T) {
 	}
 }
 
+func TestSessionPatchCloneOwnsMutableInput(t *testing.T) {
+	title, provider, model, effort, cwd := "before", "provider", "model", "high", "/before"
+	favorite, isolated := true, true
+	patch := Patch{
+		Title: &title,
+		ModelSelection: modelref.Patch{
+			Provider: &provider, Model: &model, ReasoningEffort: &effort,
+		},
+		WorkspacePath: &cwd,
+		Favorite:      &favorite,
+		Isolated:      &isolated,
+	}
+	owned := patch.clone()
+
+	*patch.Title = "after"
+	*patch.ModelSelection.Provider = "other-provider"
+	*patch.ModelSelection.Model = "other-model"
+	*patch.ModelSelection.ReasoningEffort = "low"
+	*patch.WorkspacePath = "/after"
+	*patch.Favorite = false
+	*patch.Isolated = false
+
+	if *owned.Title != "before" || *owned.WorkspacePath != "/before" {
+		t.Fatalf("owned text patch = title:%q cwd:%q", *owned.Title, *owned.WorkspacePath)
+	}
+	if *owned.ModelSelection.Provider != "provider" ||
+		*owned.ModelSelection.Model != "model" ||
+		*owned.ModelSelection.ReasoningEffort != "high" {
+		t.Fatalf("owned model patch = %+v", owned.ModelSelection)
+	}
+	if !*owned.Favorite || !*owned.Isolated {
+		t.Fatalf("owned flags = favorite:%t isolated:%t", *owned.Favorite, *owned.Isolated)
+	}
+}
+
 func TestCoordinatorUpdateRetiresPreviousExecutionPolicyBeforeSave(t *testing.T) {
 	store := &crudSessionStore{}
 	stores := &crudStores{session: store}

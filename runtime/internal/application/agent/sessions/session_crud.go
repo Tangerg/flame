@@ -32,6 +32,25 @@ type Patch struct {
 	ExpectedRevision uint64
 }
 
+func (p Patch) clone() Patch {
+	p.Title = clonePatchValue(p.Title)
+	p.ModelSelection.Provider = clonePatchValue(p.ModelSelection.Provider)
+	p.ModelSelection.Model = clonePatchValue(p.ModelSelection.Model)
+	p.ModelSelection.ReasoningEffort = clonePatchValue(p.ModelSelection.ReasoningEffort)
+	p.WorkspacePath = clonePatchValue(p.WorkspacePath)
+	p.Favorite = clonePatchValue(p.Favorite)
+	p.Isolated = clonePatchValue(p.Isolated)
+	return p
+}
+
+func clonePatchValue[T any](value *T) *T {
+	if value == nil {
+		return nil
+	}
+	cloned := *value
+	return &cloned
+}
+
 // List returns every user-facing Session, newest-updated first.
 func (c *Coordinator) List(ctx context.Context) ([]session.Session, error) {
 	values, err := c.sessions.List(ctx)
@@ -136,6 +155,7 @@ func (c *Coordinator) PrepareScheduled(
 // isolated copy from the preceding policy, so those resources are retired
 // before persistence exposes the replacement.
 func (c *Coordinator) Update(ctx context.Context, id string, patch Patch) (session.Session, error) {
+	patch = patch.clone()
 	var workspace *session.Workspace
 	if patch.WorkspacePath != nil {
 		resolved, err := c.resolveSessionWorkspace(*patch.WorkspacePath)
