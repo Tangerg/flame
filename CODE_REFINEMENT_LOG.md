@@ -235,6 +235,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 275 | `39ec33da` + CLI dependency update | Snapshotted Git-watch cwd inputs before path resolution, so resolver callbacks cannot rewrite later roots in the same observation request. |
 | 276 | `fb377b76` + CLI dependency update | Added the hooks Domain's deep Input clone, froze Hook/Input values before matching, and isolated every command request so callbacks cannot alter later policy decisions. |
 | 277 | `6474feab` + CLI dependency update | Added deep Item/EmbeddingUpdate ownership and applied it at every Agent Memory read, result, ranking, and cache-write boundary so mutable vectors cannot leak across owners. |
+| 278 | `8ae88d55` + CLI dependency update | Isolated the normalized Agent Memory fact batch before ledger persistence, so a store cannot rewrite the Application-owned acknowledgement validation snapshot. |
 
 ## Verification contract
 
