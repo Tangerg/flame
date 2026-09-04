@@ -106,9 +106,9 @@ func (c conflictingReconcileStore) Save(
 	context.Context,
 	goal.Goal,
 	goal.Version,
-) (goal.Goal, bool, error) {
+) (bool, error) {
 	if c.rejectSave {
-		return goal.Goal{}, false, nil
+		return false, nil
 	}
 	panic("unexpected Save")
 }
@@ -128,25 +128,25 @@ func (p *pauseCompletionRaceStore) Save(
 	ctx context.Context,
 	candidate goal.Goal,
 	expected goal.Version,
-) (goal.Goal, bool, error) {
+) (bool, error) {
 	if candidate.Reason().Code() != goal.ReasonRunStartFailed || !p.won.CompareAndSwap(false, true) {
 		return p.memStore.Save(ctx, candidate, expected)
 	}
 	if err := p.lock(ctx); err != nil {
-		return goal.Goal{}, false, err
+		return false, err
 	}
 	defer p.mu.Unlock()
 	current, ok := p.goals[candidate.SessionID()]
 	if !ok || current.Version() != expected {
-		return goal.Goal{}, false, nil
+		return false, nil
 	}
 	completed, err := current.Complete(time.Now())
 	if err != nil {
-		return goal.Goal{}, false, err
+		return false, err
 	}
 	p.goals[completed.SessionID()] = completed
 	p.notifyLocked()
-	return goal.Goal{}, false, nil
+	return false, nil
 }
 
 func newMemStore() *memStore {
@@ -189,32 +189,32 @@ func (m *memStore) Get(ctx context.Context, id string) (goal.Current, error) {
 	}
 	return goal.CurrentOf(g)
 }
-func (m *memStore) Save(ctx context.Context, g goal.Goal, expected goal.Version) (goal.Goal, bool, error) {
+func (m *memStore) Save(ctx context.Context, g goal.Goal, expected goal.Version) (bool, error) {
 	if err := m.lock(ctx); err != nil {
-		return goal.Goal{}, false, err
+		return false, err
 	}
 	defer m.mu.Unlock()
 	if m.failSave != nil {
 		if err := m.failSave(g); err != nil {
 			m.failSave = nil
-			return goal.Goal{}, false, err
+			return false, err
 		}
 	}
 	if err := expected.AdvancesTo(g); err != nil {
-		return goal.Goal{}, false, err
+		return false, err
 	}
 	cur, ok := m.goals[g.SessionID()]
 	switch {
 	case expected.IsUnwritten():
 		if ok {
-			return goal.Goal{}, false, nil
+			return false, nil
 		}
 	case !ok || cur.Version() != expected:
-		return goal.Goal{}, false, nil
+		return false, nil
 	}
 	m.goals[g.SessionID()] = g
 	m.notifyLocked()
-	return g, true, nil
+	return true, nil
 }
 
 func (m *memStore) failNextStopSave(err error) {
@@ -422,7 +422,7 @@ func (f *fakeRuns) applyScriptedGoalStatus(
 			replacement, err = g.Block(goal.ReasonBlockedByModel, script.reason, time.Now())
 		}
 		if err == nil {
-			_, _, _ = f.store.Save(ctx, replacement, expected)
+			_, _ = f.store.Save(ctx, replacement, expected)
 		}
 	}
 }
@@ -752,20 +752,20 @@ func loadStoredGoal(ctx context.Context, store goals.Store, sessionID string) (g
 
 func seedStoredGoal(t *testing.T, store *memStore, value goal.Goal) goal.Goal {
 	t.Helper()
-	saved, applied, err := store.Save(t.Context(), value, unwrittenGoalVersion(t, value.SessionID()))
+	applied, err := store.Save(t.Context(), value, unwrittenGoalVersion(t, value.SessionID()))
 	if err != nil || !applied {
 		t.Fatalf("seed Goal: applied=%t err=%v", applied, err)
 	}
-	return saved
+	return value
 }
 
 func replaceStoredGoal(t *testing.T, store *memStore, replacement goal.Goal, expected goal.Version) goal.Goal {
 	t.Helper()
-	saved, applied, err := store.Save(t.Context(), replacement, expected)
+	applied, err := store.Save(t.Context(), replacement, expected)
 	if err != nil || !applied {
 		t.Fatalf("replace Goal: applied=%t err=%v", applied, err)
 	}
-	return saved
+	return replacement
 }
 
 // waitTestSessionGoal blocks until the test session's goal satisfies cond.
@@ -1244,7 +1244,7 @@ func TestDriverAccumulatesCostBudget(t *testing.T) {
 func TestDriverRefusesConcurrentStart(t *testing.T) {
 	store := newMemStore()
 	g, _ := goal.New("s1", "obj", testGoalModelSelection(), goal.UnlimitedBudget(), run.Capabilities{}, "lease-active", time.Unix(0, 0))
-	_, _, _ = store.Save(context.Background(), g, unwrittenGoalVersion(t, "s1"))
+	_, _ = store.Save(context.Background(), g, unwrittenGoalVersion(t, "s1"))
 	// Refusing also restores the in-process drive for the active row it found, so
 	// the fake has to have a Run to serve. Scripting none asserted the opposite
 	// — that adoption never happens — and passed only when the assertion outran
@@ -1629,7 +1629,7 @@ func TestMemStoreRejectsCancellationWhileWaitingForLock(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	result := make(chan error, 1)
 	go func() {
-		_, _, err := store.Save(ctx, goal.Goal{}, unwrittenGoalVersion(t, "s"))
+		_, err := store.Save(ctx, goal.Goal{}, unwrittenGoalVersion(t, "s"))
 		result <- err
 	}()
 	<-checked // the first cancellation check has passed; Save is about to wait
@@ -1816,7 +1816,7 @@ func (a *activateOnSecondReadStore) Get(
 		if err != nil {
 			return goal.Current{}, err
 		}
-		if _, applied, err := a.base.Save(ctx, active, paused.Version()); err != nil || !applied {
+		if applied, err := a.base.Save(ctx, active, paused.Version()); err != nil || !applied {
 			return goal.Current{}, fmt.Errorf("foreign resume: applied=%t err=%v", applied, err)
 		}
 	}
@@ -1875,7 +1875,7 @@ func TestReconcileSkipsGoalDriveOwnedByAnotherRuntime(t *testing.T) {
 	foreign, _ := goal.New("foreign", "obj", testGoalModelSelection(), goal.UnlimitedBudget(), run.Capabilities{}, "inc-foreign", now)
 	abandoned, _ := goal.New("abandoned", "obj", testGoalModelSelection(), goal.UnlimitedBudget(), run.Capabilities{}, "inc-abandoned", now)
 	for _, value := range []goal.Goal{foreign, abandoned} {
-		if _, applied, err := store.Save(t.Context(), value, unwrittenGoalVersion(t, value.SessionID())); err != nil || !applied {
+		if applied, err := store.Save(t.Context(), value, unwrittenGoalVersion(t, value.SessionID())); err != nil || !applied {
 			t.Fatalf("seed Goal %q: applied=%t err=%v", value.SessionID(), applied, err)
 		}
 	}
@@ -1975,7 +1975,7 @@ func TestReconcileSweepsOrphanGoal(t *testing.T) {
 	store := newMemStore()
 	now := time.Unix(0, 0)
 	orphan, _ := goal.New("gone", "obj", testGoalModelSelection(), goal.UnlimitedBudget(), run.Capabilities{}, "lease-gone", now) // session deleted while down
-	_, _, _ = store.Save(context.Background(), orphan, unwrittenGoalVersion(t, orphan.SessionID()))
+	_, _ = store.Save(context.Background(), orphan, unwrittenGoalVersion(t, orphan.SessionID()))
 	kept, _ := goal.New("live", "obj", testGoalModelSelection(), goal.UnlimitedBudget(), run.Capabilities{}, "lease-live", now)
 	kept = seedStoredGoal(t, store, kept)
 	expected := kept.Version()
@@ -2023,7 +2023,7 @@ func TestStopThenStartRejectsStragglerWrite(t *testing.T) {
 		t.Fatalf("Stop: %v", err)
 	}
 	newGoal, _ := goal.New("s1", "objective two", testGoalModelSelection(), goal.UnlimitedBudget(), run.Capabilities{}, "lease-replacement", time.Unix(0, 0))
-	if _, applied, err := store.Save(context.Background(), newGoal, stopped.Version()); err != nil || !applied {
+	if applied, err := store.Save(context.Background(), newGoal, stopped.Version()); err != nil || !applied {
 		t.Fatalf("seed replacement goal: applied=%v err=%v", applied, err)
 	}
 

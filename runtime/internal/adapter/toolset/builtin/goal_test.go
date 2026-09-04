@@ -31,23 +31,23 @@ func (m *memStore) Get(_ context.Context, id string) (goalstate.Current, error) 
 // put seeds a goal directly (test setup), bypassing the CAS.
 func (m *memStore) put(g goalstate.Goal) { m.goals[g.SessionID()] = g }
 
-func (m *memStore) Save(_ context.Context, g goalstate.Goal, expected goalstate.Version) (goalstate.Goal, bool, error) {
+func (m *memStore) Save(_ context.Context, g goalstate.Goal, expected goalstate.Version) (bool, error) {
 	if err := expected.AdvancesTo(g); err != nil {
-		return goalstate.Goal{}, false, err
+		return false, err
 	}
 	cur, ok := m.goals[g.SessionID()]
 	if expected.IsUnwritten() {
 		if ok {
-			return goalstate.Goal{}, false, nil
+			return false, nil
 		}
 		m.goals[g.SessionID()] = g
-		return g, true, nil
+		return true, nil
 	}
 	if !ok || cur.Version() != expected {
-		return goalstate.Goal{}, false, nil
+		return false, nil
 	}
 	m.goals[g.SessionID()] = g
-	return g, true, nil
+	return true, nil
 }
 func (m *memStore) Clear(_ context.Context, id string) error { delete(m.goals, id); return nil }
 func (m *memStore) ClearIf(_ context.Context, id string, expected goalstate.Version) (bool, error) {

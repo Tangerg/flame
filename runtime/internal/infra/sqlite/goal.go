@@ -75,22 +75,22 @@ func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Current, er
 // adapter atomically persists the exact replacement.
 // INSERT-if-absent (not INSERT OR REPLACE) is deliberate — a stale writer whose
 // row was cleared must not resurrect it.
-func (g *GoalStore) Save(ctx context.Context, record goal.Goal, expected goal.Version) (goal.Goal, bool, error) {
+func (g *GoalStore) Save(ctx context.Context, record goal.Goal, expected goal.Version) (bool, error) {
 	if err := expected.AdvancesTo(record); err != nil {
-		return goal.Goal{}, false, fmt.Errorf("sqlite: validate Goal replacement: %w", err)
+		return false, fmt.Errorf("sqlite: validate Goal replacement: %w", err)
 	}
 	snapshot := record.Snapshot()
 	budget, err := encodeGoalBudget(snapshot.Budget)
 	if err != nil {
-		return goal.Goal{}, false, fmt.Errorf("sqlite: encode goal budget: %w", err)
+		return false, fmt.Errorf("sqlite: encode goal budget: %w", err)
 	}
 	used, err := json.Marshal(goalUsed{Runs: snapshot.Used.Runs, CostUSD: snapshot.Used.Cost.OptionalUSD(), Steps: snapshot.Used.Steps})
 	if err != nil {
-		return goal.Goal{}, false, fmt.Errorf("sqlite: encode goal used: %w", err)
+		return false, fmt.Errorf("sqlite: encode goal used: %w", err)
 	}
 	capabilities, err := encodeRunCapabilities(snapshot.Capabilities)
 	if err != nil {
-		return goal.Goal{}, false, fmt.Errorf("sqlite: encode goal capabilities: %w", err)
+		return false, fmt.Errorf("sqlite: encode goal capabilities: %w", err)
 	}
 	if expected.IsUnwritten() {
 		res, execContextErr := conn(ctx, g.db).ExecContext(ctx,
@@ -100,18 +100,18 @@ func (g *GoalStore) Save(ctx context.Context, record goal.Goal, expected goal.Ve
 			snapshot.SessionID, snapshot.Objective, string(snapshot.Status), string(snapshot.ReasonCode), snapshot.ReasonDetail, snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(),
 			capabilities, budget, string(used), snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano())
 		if execContextErr != nil {
-			return goal.Goal{}, false, fmt.Errorf("sqlite: insert goal: %w", execContextErr)
+			return false, fmt.Errorf("sqlite: insert goal: %w", execContextErr)
 		}
 		applied, execContextErr := rowsAffected(res)
 		if execContextErr != nil || !applied {
-			return goal.Goal{}, applied, execContextErr
+			return applied, execContextErr
 		}
-		return record, true, nil
+		return true, nil
 	}
 	expectedIncarnation, committed := expected.IncarnationID()
 	expectedRevision, revisionCommitted := expected.Revision()
 	if !committed || !revisionCommitted {
-		return goal.Goal{}, false, errors.New("sqlite: committed Goal version lost identity")
+		return false, errors.New("sqlite: committed Goal version lost identity")
 	}
 	res, err := conn(ctx, g.db).ExecContext(ctx,
 		`UPDATE goals SET objective = ?, status = ?, reason_code = ?, reason_detail = ?, provider = ?, model = ?, reasoning_effort = ?, capabilities = ?, budget = ?, used = ?, incarnation_id = ?, revision = ?, created_at = ?, updated_at = ?
@@ -120,13 +120,13 @@ func (g *GoalStore) Save(ctx context.Context, record goal.Goal, expected goal.Ve
 		capabilities, budget, string(used), snapshot.IncarnationID, snapshot.Revision, snapshot.CreatedAt.UnixNano(), snapshot.UpdatedAt.UnixNano(),
 		snapshot.SessionID, expectedIncarnation, expectedRevision)
 	if err != nil {
-		return goal.Goal{}, false, fmt.Errorf("sqlite: save goal: %w", err)
+		return false, fmt.Errorf("sqlite: save goal: %w", err)
 	}
 	applied, err := rowsAffected(res)
 	if err != nil || !applied {
-		return goal.Goal{}, applied, err
+		return applied, err
 	}
-	return record, true, nil
+	return true, nil
 }
 
 // RecordRun records a terminal goal-owned Run and applies its aggregate
@@ -178,7 +178,7 @@ func (g *GoalStore) RecordRun(ctx context.Context, record goal.RunRecord) error 
 		if err != nil {
 			return fmt.Errorf("sqlite: apply Goal Run: %w", err)
 		}
-		_, applied, err := g.Save(ctx, replacement, expected)
+		applied, err := g.Save(ctx, replacement, expected)
 		if err != nil {
 			return err
 		}

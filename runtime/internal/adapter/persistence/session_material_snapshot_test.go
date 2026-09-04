@@ -83,7 +83,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	originalGoal, applied, err := writerGoalStore.Save(ctx, originalGoal, unwritten.Version())
+	applied, err := writerGoalStore.Save(ctx, originalGoal, unwritten.Version())
 	if err != nil || !applied {
 		t.Fatalf("seed Goal: applied=%t err=%v", applied, err)
 	}
@@ -150,7 +150,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 			if saveErr := writerPlanStore.Save(ctx, original.ID(), originalCurrent.Version(), updatedPlan); saveErr != nil {
 				return saveErr
 			}
-			_, applied, saveErr := writerGoalStore.Save(ctx, updatedGoal, originalGoal.Version())
+			applied, saveErr := writerGoalStore.Save(ctx, updatedGoal, originalGoal.Version())
 			if saveErr == nil && !applied {
 				return errors.New("replace Goal: CAS did not apply")
 			}

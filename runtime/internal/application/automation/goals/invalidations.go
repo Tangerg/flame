@@ -35,12 +35,12 @@ type notifyingStore struct {
 	invalidations invalidation.Publish
 }
 
-func (n notifyingStore) Save(ctx context.Context, g goal.Goal, expected goal.Version) (goal.Goal, bool, error) {
-	saved, applied, err := n.Store.Save(ctx, g, expected)
+func (n notifyingStore) Save(ctx context.Context, g goal.Goal, expected goal.Version) (bool, error) {
+	applied, err := n.Store.Save(ctx, g, expected)
 	if err == nil && applied {
 		n.publish(g.SessionID())
 	}
-	return saved, applied, err
+	return applied, err
 }
 
 func (n notifyingStore) ClearIf(ctx context.Context, sessionID string, expected goal.Version) (bool, error) {

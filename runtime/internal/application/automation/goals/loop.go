@@ -454,12 +454,12 @@ func (d *Driver) pauseOwned(
 		if transitionErr != nil {
 			return "", transitionErr
 		}
-		saved, applied, err := d.goals.Save(ctx, candidate, expected)
+		applied, err := d.goals.Save(ctx, candidate, expected)
 		if err != nil {
 			return "", err
 		}
 		if applied {
-			*current = saved
+			*current = candidate
 			return dispPaused, nil
 		}
 		reread, ok, err := loadGoal(ctx, d.goals, current.SessionID())

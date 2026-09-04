@@ -16,7 +16,7 @@ type Store interface {
 	// Save executes the domain-decided next durable revision. Expected is the
 	// sole CAS authority; persistence never assigns or rewrites Goal identity.
 	// A lost compare-and-swap returns applied=false.
-	Save(ctx context.Context, g goal.Goal, expected goal.Version) (saved goal.Goal, applied bool, err error)
+	Save(ctx context.Context, g goal.Goal, expected goal.Version) (applied bool, err error)
 	ClearIf(ctx context.Context, sessionID string, expected goal.Version) (applied bool, err error)
 	List(ctx context.Context) ([]goal.Goal, error)
 }

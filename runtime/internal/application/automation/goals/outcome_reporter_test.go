@@ -22,15 +22,15 @@ func (r *reportingStore) Get(_ context.Context, sessionID string) (goal.Current,
 	}
 	return goal.CurrentOf(r.goal)
 }
-func (r *reportingStore) Save(_ context.Context, next goal.Goal, expected goal.Version) (goal.Goal, bool, error) {
+func (r *reportingStore) Save(_ context.Context, next goal.Goal, expected goal.Version) (bool, error) {
 	if r.conflict || !r.present || r.goal.Version() != expected {
-		return goal.Goal{}, false, nil
+		return false, nil
 	}
 	if err := expected.AdvancesTo(next); err != nil {
-		return goal.Goal{}, false, err
+		return false, err
 	}
 	r.goal = next
-	return next, true, nil
+	return true, nil
 }
 func (r *reportingStore) Clear(context.Context, string) error { r.present = false; return nil }
 func (r *reportingStore) ClearIf(context.Context, string, goal.Version) (bool, error) {

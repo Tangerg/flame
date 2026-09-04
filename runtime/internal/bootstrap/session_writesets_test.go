@@ -436,7 +436,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new Goal: %v", err)
 	}
-	if _, applied, saveErr := ss.goals.Save(ctx, goalValue, bootstrapUnwrittenGoalVersion(t, "ses_A")); saveErr != nil || !applied {
+	if applied, saveErr := ss.goals.Save(ctx, goalValue, bootstrapUnwrittenGoalVersion(t, "ses_A")); saveErr != nil || !applied {
 		t.Fatalf("save Goal: applied=%t err=%v", applied, saveErr)
 	}
 
@@ -917,7 +917,7 @@ func seedGoal(t *testing.T, ss sessionStores, sessionID string) {
 		t.Fatalf("get goal session %q: %v", sessionID, err)
 	}
 	g, _ := goal.New(sessionID, "obj", testsupport.DefaultModelSelection(), goal.UnlimitedBudget(), run.Capabilities{}, "lease-"+sessionID, time.Unix(0, 0))
-	if _, applied, err := ss.goals.Save(context.Background(), g, bootstrapUnwrittenGoalVersion(t, sessionID)); err != nil || !applied {
+	if applied, err := ss.goals.Save(context.Background(), g, bootstrapUnwrittenGoalVersion(t, sessionID)); err != nil || !applied {
 		t.Fatalf("seed goal %q: applied=%v err=%v", sessionID, applied, err)
 	}
 }

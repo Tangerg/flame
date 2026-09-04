@@ -90,7 +90,7 @@ func TestGoalStoreRecordRunIsIdempotentAndBlocksAtBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, applied, saveErr := store.Save(t.Context(), g, unwrittenVersion(t, sessionID)); saveErr != nil || !applied {
+	if applied, saveErr := store.Save(t.Context(), g, unwrittenVersion(t, sessionID)); saveErr != nil || !applied {
 		t.Fatalf("Save = (%v, %v), want true, nil", applied, saveErr)
 	}
 	record := goal.RunRecord{
@@ -144,7 +144,7 @@ func TestGoalStorePreservesUnavailableRunPricing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, applied, saveErr := store.Save(t.Context(), g, unwrittenVersion(t, sessionID)); saveErr != nil || !applied {
+	if applied, saveErr := store.Save(t.Context(), g, unwrittenVersion(t, sessionID)); saveErr != nil || !applied {
 		t.Fatalf("Save = (%v, %v), want true, nil", applied, saveErr)
 	}
 	record := goal.RunRecord{
@@ -258,7 +258,7 @@ func TestGoalStore_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, applied, saveErr := store.Save(ctx, g, unwrittenVersion(t, sess)); saveErr != nil || !applied {
+	if applied, saveErr := store.Save(ctx, g, unwrittenVersion(t, sess)); saveErr != nil || !applied {
 		t.Fatalf("Save: applied=%v err=%v", applied, saveErr)
 	}
 
@@ -312,7 +312,7 @@ func TestGoalStore_ListAndClear(t *testing.T) {
 	for _, s := range []string{"a", "b"} {
 		seedSession(t, sessions, s)
 		g, _ := goal.New(s, "obj-"+s, testReasoningSelection(t, "provider", "model", ""), goal.UnlimitedBudget(), run.Capabilities{}, "lease-"+s, now)
-		if _, applied, err := store.Save(ctx, g, unwrittenVersion(t, s)); err != nil || !applied {
+		if applied, err := store.Save(ctx, g, unwrittenVersion(t, s)); err != nil || !applied {
 			t.Fatalf("Save(%s): applied=%v err=%v", s, applied, err)
 		}
 	}
@@ -352,10 +352,10 @@ func TestGoalStore_CompareAndSwap(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The unwritten version inserts when absent, then refuses a second insert.
-	if _, applied, err := store.Save(ctx, initial, unwrittenVersion(t, sess)); err != nil || !applied {
+	if applied, err := store.Save(ctx, initial, unwrittenVersion(t, sess)); err != nil || !applied {
 		t.Fatalf("insert: applied=%v err=%v", applied, err)
 	}
-	if _, applied, _ := store.Save(ctx, initial, unwrittenVersion(t, sess)); applied {
+	if applied, _ := store.Save(ctx, initial, unwrittenVersion(t, sess)); applied {
 		t.Fatal("unwritten version must not overwrite an existing goal")
 	}
 
@@ -371,7 +371,7 @@ func TestGoalStore_CompareAndSwap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, applied, _ := store.Save(ctx, replacement, staleVersionOwner.Version()); applied {
+	if applied, _ := store.Save(ctx, replacement, staleVersionOwner.Version()); applied {
 		t.Fatal("mismatched revision must not apply")
 	}
 	// A lifecycle transition preserves the objective incarnation and arrives
@@ -381,7 +381,7 @@ func TestGoalStore_CompareAndSwap(t *testing.T) {
 		t.Fatal(err)
 	}
 	var applied bool
-	if paused, applied, err = store.Save(ctx, paused, initial.Version()); err != nil || !applied {
+	if applied, err = store.Save(ctx, paused, initial.Version()); err != nil || !applied {
 		t.Fatalf("cas update: applied=%v err=%v", applied, err)
 	}
 	got, _, _ := readGoal(ctx, store, sess)
@@ -394,7 +394,7 @@ func TestGoalStore_CompareAndSwap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resumed, applied, err = store.Save(ctx, resumed, paused.Version()); err != nil || !applied {
+	if applied, err = store.Save(ctx, resumed, paused.Version()); err != nil || !applied {
 		t.Fatalf("same-incarnation update: applied=%v err=%v", applied, err)
 	}
 	if applied, _ := store.ClearIf(ctx, sess, paused.Version()); applied {
@@ -408,14 +408,14 @@ func TestGoalStore_CompareAndSwap(t *testing.T) {
 	}
 }
 
-func TestGoalStoreReplacesExistingGoalWithoutCallerRevision(t *testing.T) {
+func TestGoalStoreReplacesIncarnationWithoutRewritingRevision(t *testing.T) {
 	store, sessions := newGoalStore(t)
 	const sessionID = "s"
 	seedSession(t, sessions, sessionID)
 	now := time.Unix(1_700_000_000, 0).UTC()
 
 	first, _ := goal.New(sessionID, "first", testReasoningSelection(t, "provider", "model", ""), goal.UnlimitedBudget(), run.Capabilities{}, "lease-first", now)
-	first, applied, err := store.Save(t.Context(), first, unwrittenVersion(t, sessionID))
+	applied, err := store.Save(t.Context(), first, unwrittenVersion(t, sessionID))
 	if err != nil || !applied {
 		t.Fatalf("insert first goal: applied=%v err=%v", applied, err)
 	}
@@ -424,13 +424,13 @@ func TestGoalStoreReplacesExistingGoalWithoutCallerRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, applied, err = store.Save(t.Context(), first, firstVersion)
+	applied, err = store.Save(t.Context(), first, firstVersion)
 	if err != nil || !applied {
 		t.Fatalf("stop first goal: applied=%v err=%v", applied, err)
 	}
 
 	fresh, _ := goal.New(sessionID, "second", testReasoningSelection(t, "provider", "model", ""), goal.UnlimitedBudget(), run.Capabilities{}, "lease-second", now.Add(2*time.Second))
-	fresh, applied, err = store.Save(t.Context(), fresh, first.Version())
+	applied, err = store.Save(t.Context(), fresh, first.Version())
 	if err != nil || !applied {
 		t.Fatalf("replace goal: applied=%v err=%v", applied, err)
 	}
@@ -447,7 +447,7 @@ func TestGoalStore_ClearThenRecreateRejectsStaleIncarnation(t *testing.T) {
 
 	stale, _ := goal.New(sessionID, "old", testReasoningSelection(t, "provider", "model", ""), goal.UnlimitedBudget(), run.Capabilities{}, "lease-old", now)
 	staleVersion := stale.Version()
-	if _, applied, err := store.Save(t.Context(), stale, unwrittenVersion(t, sessionID)); err != nil || !applied {
+	if applied, err := store.Save(t.Context(), stale, unwrittenVersion(t, sessionID)); err != nil || !applied {
 		t.Fatalf("seed stale goal: applied=%v err=%v", applied, err)
 	}
 	if err := store.Clear(t.Context(), sessionID); err != nil {
@@ -455,12 +455,12 @@ func TestGoalStore_ClearThenRecreateRejectsStaleIncarnation(t *testing.T) {
 	}
 
 	fresh, _ := goal.New(sessionID, "new", testReasoningSelection(t, "provider", "model", ""), goal.UnlimitedBudget(), run.Capabilities{}, "lease-fresh", now)
-	if _, applied, err := store.Save(t.Context(), fresh, unwrittenVersion(t, sessionID)); err != nil || !applied {
+	if applied, err := store.Save(t.Context(), fresh, unwrittenVersion(t, sessionID)); err != nil || !applied {
 		t.Fatalf("seed fresh goal: applied=%v err=%v", applied, err)
 	}
 
 	stale, _ = stale.Pause(goal.ReasonRunNotCompleted, "error", now)
-	if _, applied, err := store.Save(t.Context(), stale, staleVersion); err != nil || applied {
+	if applied, err := store.Save(t.Context(), stale, staleVersion); err != nil || applied {
 		t.Fatalf("stale Save: applied=%v err=%v, want false/nil", applied, err)
 	}
 	if applied, err := store.ClearIf(t.Context(), sessionID, staleVersion); err != nil || applied {
@@ -479,7 +479,7 @@ func TestGoalStore_ClearThenRecreateRejectsStaleIncarnation(t *testing.T) {
 func TestGoalStoreRejectsMissingSession(t *testing.T) {
 	store, _ := newGoalStore(t)
 	g, _ := goal.New("missing", "obj", testReasoningSelection(t, "provider", "model", ""), goal.UnlimitedBudget(), run.Capabilities{}, "lease-missing", time.Unix(0, 0))
-	if _, applied, err := store.Save(t.Context(), g, unwrittenVersion(t, "missing")); err == nil || applied {
+	if applied, err := store.Save(t.Context(), g, unwrittenVersion(t, "missing")); err == nil || applied {
 		t.Fatalf("Save(missing session) = applied=%v err=%v, want false/non-nil", applied, err)
 	}
 }
@@ -489,7 +489,7 @@ func TestGoalStoreCascadesWithSessionDeletion(t *testing.T) {
 	const sessionID = "s"
 	seedSession(t, sessions, sessionID)
 	g, _ := goal.New(sessionID, "obj", testReasoningSelection(t, "provider", "model", ""), goal.UnlimitedBudget(), run.Capabilities{}, "lease", time.Unix(0, 0))
-	if _, applied, err := store.Save(t.Context(), g, unwrittenVersion(t, sessionID)); err != nil || !applied {
+	if applied, err := store.Save(t.Context(), g, unwrittenVersion(t, sessionID)); err != nil || !applied {
 		t.Fatalf("seed goal: applied=%v err=%v", applied, err)
 	}
 	record := goal.RunRecord{
@@ -515,7 +515,7 @@ func TestGoalStoreCascadesWithSessionDeletion(t *testing.T) {
 	// cascaded with the deleted Session.
 	seedSession(t, sessions, sessionID)
 	recreated, _ := goal.New(sessionID, "new", testReasoningSelection(t, "provider", "model", ""), goal.UnlimitedBudget(), run.Capabilities{}, "lease-new", time.Unix(2, 0))
-	if _, applied, err := store.Save(t.Context(), recreated, unwrittenVersion(t, sessionID)); err != nil || !applied {
+	if applied, err := store.Save(t.Context(), recreated, unwrittenVersion(t, sessionID)); err != nil || !applied {
 		t.Fatalf("seed recreated goal: applied=%v err=%v", applied, err)
 	}
 	record.IncarnationID = recreated.IncarnationID()
@@ -535,26 +535,26 @@ func TestGoalStoreExecutesDomainDecidedRevision(t *testing.T) {
 	const sessionID = "s"
 	seedSession(t, sessions, sessionID)
 	g, _ := goal.New(sessionID, "obj", testReasoningSelection(t, "provider", "model", ""), goal.UnlimitedBudget(), run.Capabilities{}, "lease", time.Unix(0, 0))
-	saved, applied, err := store.Save(t.Context(), g, unwrittenVersion(t, sessionID))
-	if err != nil || !applied || saved.Revision() != 1 {
-		t.Fatalf("insert = revision %d, applied=%v err=%v, want 1/true/nil", saved.Revision(), applied, err)
+	applied, err := store.Save(t.Context(), g, unwrittenVersion(t, sessionID))
+	if err != nil || !applied || g.Revision() != 1 {
+		t.Fatalf("insert = revision %d, applied=%v err=%v, want 1/true/nil", g.Revision(), applied, err)
 	}
 
-	invalidSnapshot := saved.Snapshot()
+	invalidSnapshot := g.Snapshot()
 	invalidSnapshot.Revision = 99
 	invalidAdvance, restoreErr := goal.Restore(invalidSnapshot)
 	if restoreErr != nil {
 		t.Fatal(restoreErr)
 	}
-	if _, applied, err := store.Save(t.Context(), invalidAdvance, saved.Version()); err == nil || applied {
+	if applied, err := store.Save(t.Context(), invalidAdvance, g.Version()); err == nil || applied {
 		t.Fatalf("Save(non-advancing replacement) = applied=%v err=%v, want false/non-nil", applied, err)
 	}
 
-	updated, err := saved.Pause(goal.ReasonStoppedByUser, "", time.Unix(2, 0))
+	updated, err := g.Pause(goal.ReasonStoppedByUser, "", time.Unix(2, 0))
 	if err != nil {
 		t.Fatal(err)
 	}
-	updated, applied, err = store.Save(t.Context(), updated, saved.Version())
+	applied, err = store.Save(t.Context(), updated, g.Version())
 	if err != nil || !applied || updated.Revision() != 2 {
 		t.Fatalf("update = revision %d, applied=%v err=%v, want 2/true/nil", updated.Revision(), applied, err)
 	}
@@ -565,7 +565,7 @@ func TestGoalStoreExecutesDomainDecidedRevision(t *testing.T) {
 	if restoreErr != nil {
 		t.Fatal(restoreErr)
 	}
-	if _, applied, err := store.Save(t.Context(), exhausted, exhausted.Version()); err == nil || applied {
+	if applied, err := store.Save(t.Context(), exhausted, exhausted.Version()); err == nil || applied {
 		t.Fatalf("Save(exhausted revision) = applied=%v err=%v, want false/non-nil", applied, err)
 	}
 }

@@ -284,7 +284,7 @@ func (d *Driver) Start(
 	if !ok {
 		return goal.Goal{}, ErrGoalOwned
 	}
-	g, applied, err := d.goals.Save(ctx, g, expected)
+	applied, err := d.goals.Save(ctx, g, expected)
 	if err != nil {
 		driveLease.Release()
 		return goal.Goal{}, err
@@ -356,8 +356,7 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 	if !ok {
 		return goal.Goal{}, ErrGoalOwned
 	}
-	var applied bool
-	g, applied, err = d.goals.Save(ctx, replacement, expected)
+	applied, err := d.goals.Save(ctx, replacement, expected)
 	if err != nil {
 		driveLease.Release()
 		return goal.Goal{}, err
@@ -366,10 +365,10 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 		driveLease.Release()
 		return goal.Goal{}, ErrGoalConflict
 	}
-	if err := d.launchLocked(ctx, sessionID, g.IncarnationID(), driveLease); err != nil {
+	if err := d.launchLocked(ctx, sessionID, replacement.IncarnationID(), driveLease); err != nil {
 		panic("goals: command crossed the shutdown admission boundary")
 	}
-	return g, nil
+	return replacement, nil
 }
 
 // Stop first quiesces the Goal's owned Run, then pauses the authoritative
@@ -430,14 +429,14 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 	if transitionErr != nil {
 		return goal.Goal{}, errors.Join(transitionErr, quiesceErr)
 	}
-	saved, applied, err := d.goals.Save(ctx, replacement, expected)
+	applied, err := d.goals.Save(ctx, replacement, expected)
 	if err != nil {
 		return goal.Goal{}, errors.Join(err, quiesceErr)
 	}
 	if !applied {
 		return goal.Goal{}, errors.Join(ErrGoalConflict, quiesceErr)
 	}
-	return saved, quiesceErr
+	return replacement, quiesceErr
 }
 
 // UpdateObjective quiesces any locally owned drive before replacing the text.
@@ -497,19 +496,19 @@ func (d *Driver) UpdateObjective(
 			return goal.Goal{}, errors.Join(err, quiesceErr)
 		}
 	}
-	saved, applied, err := d.goals.Save(ctx, replacement, expected)
+	applied, err := d.goals.Save(ctx, replacement, expected)
 	if err != nil {
 		return goal.Goal{}, errors.Join(err, quiesceErr)
 	}
 	if !applied {
 		return goal.Goal{}, errors.Join(ErrGoalConflict, quiesceErr)
 	}
-	if saved.Status() == goal.StatusActive {
-		if err := d.launchLocked(ctx, sessionID, saved.IncarnationID(), commandLease.transfer()); err != nil {
+	if replacement.Status() == goal.StatusActive {
+		if err := d.launchLocked(ctx, sessionID, replacement.IncarnationID(), commandLease.transfer()); err != nil {
 			panic("goals: command crossed the shutdown admission boundary")
 		}
 	}
-	return saved, quiesceErr
+	return replacement, quiesceErr
 }
 
 func (d *Driver) editableGoal(ctx context.Context, sessionID string) (goal.Goal, error) {
@@ -683,7 +682,7 @@ func (d *Driver) Reconcile(ctx context.Context) error {
 				lease.Release()
 				return transitionErr
 			}
-			if _, applied, err := d.goals.Save(ctx, replacement, expected); err != nil {
+			if applied, err := d.goals.Save(ctx, replacement, expected); err != nil {
 				lease.Release()
 				return err
 			} else if !applied {
