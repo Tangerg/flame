@@ -526,10 +526,11 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 	if err := newCoordinator(stores, nil).ApplyRunLost(t.Context(), "ses_1", "run_root", finishedAt); err != nil {
 		t.Fatalf("ApplyRunLost: %v", err)
 	}
-	if len(applied.Runs) != 2 || applied.Runs[0].ID() != "run_child" || applied.Runs[1].ID() != "run_root" {
+	if len(applied.Runs) != 2 || applied.Runs[0].State().ID() != "run_child" || applied.Runs[1].State().ID() != "run_root" {
 		t.Fatalf("terminal Run order = %+v, want child then root", applied.Runs)
 	}
-	for _, record := range applied.Runs {
+	for _, replacement := range applied.Runs {
+		record := replacement.State()
 		outcome, terminalized := record.Outcome()
 		failure, failed := record.Failure()
 		if record.State() != run.Failed || !terminalized || outcome != run.OutcomeLost ||

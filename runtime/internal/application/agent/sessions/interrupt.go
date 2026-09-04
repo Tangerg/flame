@@ -177,8 +177,8 @@ func (c *Coordinator) terminalizePendingRun(
 	// command layer deliberately does not publish this again: it would be a second
 	// author for the same commit, and only one of them would ever be updated.
 	runIDs := make([]string, len(plan.Runs))
-	for index, run := range plan.Runs {
-		runIDs[index] = run.ID()
+	for index, replacement := range plan.Runs {
+		runIDs[index] = replacement.State().ID()
 	}
 	notices := []invalidation.Notice{
 		invalidation.InSession(invalidation.Runs, pending.SessionID, runIDs...),

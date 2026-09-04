@@ -535,8 +535,9 @@ func (s *SessionStores) deleteChildRunStarts(ctx context.Context, sessionID stri
 	return nil
 }
 
-func (s *SessionStores) terminalizeParkedRuns(ctx context.Context, runs []rundomain.Run) error {
-	for _, run := range runs {
+func (s *SessionStores) terminalizeParkedRuns(ctx context.Context, runs []rundomain.Replacement) error {
+	for _, replacement := range runs {
+		run := replacement.State()
 		outcome, terminal := run.Outcome()
 		if !terminal {
 			return fmt.Errorf("persistence: terminal Run %q outcome is required", run.ID())
@@ -547,7 +548,7 @@ func (s *SessionStores) terminalizeParkedRuns(ctx context.Context, runs []rundom
 				return err
 			}
 		case rundomain.OutcomeLost:
-			if err := s.runs.RecoverLost(ctx, run); err != nil {
+			if err := s.runs.RecoverLost(ctx, replacement); err != nil {
 				return err
 			}
 		default:

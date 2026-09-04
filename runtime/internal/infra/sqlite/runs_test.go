@@ -551,6 +551,53 @@ func TestTerminalizeRequiresExactLiveRun(t *testing.T) {
 	}
 }
 
+func TestRecoverLostRequiresExactExpectedRun(t *testing.T) {
+	ctx := t.Context()
+	store, _ := newRunStores(t)
+	draft := runDraft("run_1", "ses_A")
+	if err := store.Admit(ctx, draft); err != nil {
+		t.Fatalf("Admit: %v", err)
+	}
+	actual, err := run.Admit(testsupport.RunDraft(draft))
+	if err != nil {
+		t.Fatalf("Admit aggregate: %v", err)
+	}
+	foreignSnapshot := actual.Snapshot()
+	foreignSnapshot.ActiveSegmentID = "seg_other"
+	foreign := testsupport.MustRestoreRun(foreignSnapshot)
+	finishedAt := runCreatedAt.Add(time.Minute)
+	foreignLost, err := foreign.RecoverLost(
+		run.Failure{Kind: run.FailureLost},
+		finishedAt,
+		0,
+	)
+	if err != nil {
+		t.Fatalf("RecoverLost foreign aggregate: %v", err)
+	}
+	if err := store.RecoverLost(
+		ctx,
+		testsupport.MustRunReplacement(foreign, foreignLost),
+	); err == nil || !strings.Contains(err.Error(), "changed after the application prepared") {
+		t.Fatalf("RecoverLost with a different expected Segment error = %v", err)
+	}
+	current, found, err := store.Run(ctx, actual.ID())
+	if err != nil || !found || !current.Equal(actual) {
+		t.Fatalf("rejected recovery changed Run: found=%t current=%+v err=%v", found, current, err)
+	}
+
+	lost, err := actual.RecoverLost(
+		run.Failure{Kind: run.FailureLost},
+		finishedAt,
+		0,
+	)
+	if err != nil {
+		t.Fatalf("RecoverLost aggregate: %v", err)
+	}
+	if err := store.RecoverLost(ctx, testsupport.MustRunReplacement(actual, lost)); err != nil {
+		t.Fatalf("RecoverLost exact aggregate: %v", err)
+	}
+}
+
 // TestTerminalizeParkedRunRejectsNonCancel proves the store defers to the
 // [run.State] machine (§8.2): a parked (waiting) run may terminalize
 // only via cancellation — any other terminal must resume first — so a non-cancel

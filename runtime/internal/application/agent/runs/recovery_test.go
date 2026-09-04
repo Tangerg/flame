@@ -499,7 +499,7 @@ func TestRecoverySkipsFactsOwnedByAnotherRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
-	if reconciled != 1 || len(store.commit.LostRuns) != 1 || store.commit.LostRuns[0].ID() != recoverable.ID() {
+	if reconciled != 1 || len(store.commit.LostRuns) != 1 || store.commit.LostRuns[0].State().ID() != recoverable.ID() {
 		t.Fatalf("recovery touched wrong Runs: reconciled=%d lost=%+v", reconciled, store.commit.LostRuns)
 	}
 	if len(store.commit.ModelInvocations) != 1 || store.commit.ModelInvocations[0].RunID != recoverable.ID() {
@@ -836,10 +836,15 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 	if recovered != 2 || store.commits != 1 || checkpointCalls != 0 {
 		t.Fatalf("recovered/commits/checkpointCalls = %d/%d/%d, want 2/1/0", recovered, store.commits, checkpointCalls)
 	}
-	if got := []string{store.commit.LostRuns[0].ID(), store.commit.LostRuns[1].ID()}; !reflect.DeepEqual(got, []string{child.ID(), root.ID()}) {
+	if got := []string{store.commit.LostRuns[0].State().ID(), store.commit.LostRuns[1].State().ID()}; !reflect.DeepEqual(got, []string{child.ID(), root.ID()}) {
 		t.Fatalf("lost Run order = %v, want child-before-parent", got)
 	}
-	for _, lost := range store.commit.LostRuns {
+	if !store.commit.LostRuns[0].Expected().Equal(child) ||
+		!store.commit.LostRuns[1].Expected().Equal(root) {
+		t.Fatalf("lost Run replacements discarded their exact pre-recovery states: %+v", store.commit.LostRuns)
+	}
+	for _, replacement := range store.commit.LostRuns {
+		lost := replacement.State()
 		if lost.State() != rundomain.Failed || !runHasOutcome(lost, rundomain.OutcomeLost) ||
 			!runHasFailureKind(lost, rundomain.FailureLost) ||
 			lost.MessageMark() != 7 || !lost.FinishedAt().Equal(finishedAt) {
@@ -899,6 +904,19 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 	missingToolReplacement.ItemReplacements = nil
 	if err := missingToolReplacement.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted a lost-Run Tool journal without its Item replacement")
+	}
+	wrongInvocationSegment := store.commit
+	wrongInvocationSegment.ModelInvocations = append(
+		[]ModelInvocationRecovery(nil),
+		store.commit.ModelInvocations...,
+	)
+	for index := range wrongInvocationSegment.ModelInvocations {
+		if wrongInvocationSegment.ModelInvocations[index].RunID == root.ID() {
+			wrongInvocationSegment.ModelInvocations[index].SegmentID = "segment_wrong"
+		}
+	}
+	if err := wrongInvocationSegment.Validate(); err == nil {
+		t.Fatal("RecoveryCommit.Validate accepted an invocation outside its recovered active Segment")
 	}
 }
 
@@ -971,7 +989,7 @@ func TestRecoveryDoesNotMoveDurableTimeBackwardWhenTheClockRegresses(t *testing.
 			if _, err := recovery.Reconcile(t.Context()); err != nil {
 				t.Fatalf("Reconcile with regressed clock: %v", err)
 			}
-			if got := store.commit.LostRuns[0].FinishedAt(); !got.Equal(test.want) {
+			if got := store.commit.LostRuns[0].State().FinishedAt(); !got.Equal(test.want) {
 				t.Fatalf("lost Run finish = %v, want durable high watermark %v", got, test.want)
 			}
 			for _, invocation := range store.commit.ModelInvocations {
@@ -1383,7 +1401,7 @@ func TestRecoveryAtomicallyClosesLostQuestionToolContext(t *testing.T) {
 	resultText, textual := result.Output.Text()
 	if result.ID != "provider_call_open" || result.Name != "ask_user" ||
 		!textual || resultText != recoveryLostToolResult || !result.IsError ||
-		store.commit.LostRuns[0].MessageMark() != 3 {
+		store.commit.LostRuns[0].State().MessageMark() != 3 {
 		t.Fatalf("closure/lost Run = %#v / %+v", result, store.commit.LostRuns[0])
 	}
 

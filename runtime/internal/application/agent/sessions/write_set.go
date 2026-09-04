@@ -168,12 +168,13 @@ type DeletePlan struct {
 }
 
 // TerminalPlan is the complete durable projection for ending a parked Run tree
-// by cancellation or executor-state loss. Runs is canonical postorder so every
-// descendant terminalizes before its parent; the root is last. The Runs,
-// interrupt Items, root-owned Pending, executor checkpoint, admission, and
-// optional Goal charge all move in one transaction.
+// by cancellation or executor-state loss. Runs retains each exact waiting
+// aggregate and its replacement in canonical postorder so every descendant
+// terminalizes before its parent; the root is last. The Runs, interrupt Items,
+// root-owned Pending, executor checkpoint, admission, and optional Goal charge
+// all move in one transaction.
 type TerminalPlan struct {
-	Runs  []rundomain.Run
+	Runs  []rundomain.Replacement
 	Items []transcript.Item
 	// Messages close model-context Tool calls that cannot receive their ordinary
 	// result because the parked tree is being abandoned. They are appended in
@@ -195,7 +196,7 @@ func (t TerminalPlan) RootRun() (rundomain.Run, bool) {
 	if len(t.Runs) == 0 {
 		return rundomain.Run{}, false
 	}
-	root := t.Runs[len(t.Runs)-1]
+	root := t.Runs[len(t.Runs)-1].State()
 	return root, root.Lineage().IsRoot()
 }
 
@@ -210,10 +211,11 @@ func (t TerminalPlan) Validate() error {
 	members := make([]rundomain.TreeMember, 0, len(t.Runs))
 	ownedRuns := make(map[string]struct{}, len(t.Runs))
 	actualOrder := make([]string, 0, len(t.Runs))
-	for index, run := range t.Runs {
-		if err := run.Validate(); err != nil {
+	for index, replacement := range t.Runs {
+		if err := validateTerminalRunReplacement(replacement); err != nil {
 			return fmt.Errorf("sessions: terminal plan Run[%d]: %w", index, err)
 		}
+		run := replacement.State()
 		if run.SessionID() != root.SessionID() {
 			return fmt.Errorf("sessions: terminal plan Run %q belongs to Session %q, want %q", run.ID(), run.SessionID(), root.SessionID())
 		}
@@ -263,6 +265,46 @@ func (t TerminalPlan) Validate() error {
 		}
 	}
 	return validateTerminalGoalRun(root, t.GoalRun)
+}
+
+func validateTerminalRunReplacement(replacement rundomain.Replacement) error {
+	if err := replacement.Validate(); err != nil {
+		return err
+	}
+	expected := replacement.Expected()
+	state := replacement.State()
+	outcome, terminal := state.Outcome()
+	if !terminal {
+		return errors.New("terminal Run replacement has no outcome")
+	}
+	current, err := expected.AdvanceProgress(
+		state.Metrics(),
+		state.ContextTokens(),
+		state.FinishedAt(),
+	)
+	if err != nil {
+		return fmt.Errorf("terminal Run replacement progress: %w", err)
+	}
+	var derived rundomain.Run
+	switch outcome {
+	case rundomain.OutcomeCanceled:
+		derived, err = current.CancelWaiting(state.Detail(), state.FinishedAt(), state.MessageMark())
+	case rundomain.OutcomeLost:
+		failure, failed := state.Failure()
+		if !failed {
+			return errors.New("lost Run replacement has no failure")
+		}
+		derived, err = current.RecoverLost(failure, state.FinishedAt(), state.MessageMark())
+	default:
+		return fmt.Errorf("terminal Run replacement has unsupported outcome %s", outcome)
+	}
+	if err != nil {
+		return fmt.Errorf("terminal Run replacement transition: %w", err)
+	}
+	if !derived.Equal(state) {
+		return fmt.Errorf("terminal Run replacement rewrites facts outside Run %q transition", expected.ID())
+	}
+	return nil
 }
 
 func validateTerminalGoalRun(run rundomain.Run, record *goal.RunRecord) error {

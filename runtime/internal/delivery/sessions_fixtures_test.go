@@ -855,9 +855,10 @@ func (s stubLifecycleStores) ApplyTerminal(ctx context.Context, plan sessions.Te
 	if err := s.rt.interrupts.Delete(ctx, root.SessionID(), root.ID()); err != nil {
 		return err
 	}
-	for _, record := range plan.Runs {
+	for _, replacement := range plan.Runs {
+		record := replacement.State()
 		if outcome, terminal := record.Outcome(); terminal && outcome == run.OutcomeLost {
-			if err := s.rt.runs.RecoverLost(ctx, record); err != nil {
+			if err := s.rt.runs.RecoverLost(ctx, replacement); err != nil {
 				return err
 			}
 			continue

@@ -60,7 +60,7 @@ func (p parkedRunTerminalization) build() (TerminalPlan, rundomain.Run, error) {
 	if err != nil {
 		return TerminalPlan{}, rundomain.Run{}, err
 	}
-	rootRun := terminalRuns[len(terminalRuns)-1]
+	rootRun := terminalRuns[len(terminalRuns)-1].State()
 	if rootRun.ID() != p.rootRunID || rootRun.GoalIncarnationID() != p.pending.GoalIncarnationID {
 		return TerminalPlan{}, rundomain.Run{}, fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: root admission differs from Pending",
@@ -147,8 +147,8 @@ func (p parkedRunTerminalization) terminalRuns(
 	runsByID map[string]rundomain.Run,
 	rootAdmission rundomain.Run,
 	messageMark int,
-) ([]rundomain.Run, error) {
-	terminalRuns := make([]rundomain.Run, 0, len(p.pending.Continuations))
+) ([]rundomain.Replacement, error) {
+	terminalRuns := make([]rundomain.Replacement, 0, len(p.pending.Continuations))
 	for _, continuation := range p.pending.Continuations {
 		run, found := runsByID[continuation.RunID]
 		if !found {
@@ -182,7 +182,15 @@ func (p parkedRunTerminalization) terminalRuns(
 		if err != nil {
 			return nil, fmt.Errorf("sessions: terminalize parked Run %q: %w", run.ID(), err)
 		}
-		terminalRuns = append(terminalRuns, terminal)
+		replacement, err := rundomain.NewReplacement(run, terminal)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"sessions: terminalize parked Run %q replacement: %w",
+				run.ID(),
+				err,
+			)
+		}
+		terminalRuns = append(terminalRuns, replacement)
 	}
 	return terminalRuns, nil
 }

@@ -52,10 +52,11 @@ type RecoveryAdmissions interface {
 }
 
 // RecoveryCommit is the complete atomic write-set for one ownership-scoped
-// reconciliation. LostRuns are ordered child-before-parent. Checkpoint and
-// callback cleanup names only Sessions whose writer lease was acquired.
+// reconciliation. LostRuns retain the exact non-terminal aggregate and its
+// child-before-parent replacement. Checkpoint and callback cleanup name only
+// Sessions whose writer lease was acquired.
 type RecoveryCommit struct {
-	LostRuns                []rundomain.Run
+	LostRuns                []rundomain.Replacement
 	ItemReplacements        []ItemReplacement
 	ConversationTransitions []RecoveryConversationTransition
 	ModelInvocations        []ModelInvocationRecovery
@@ -259,7 +260,8 @@ func (r *Recovery) publishRecoveredReadModels(commit RecoveryCommit) {
 		goal    bool
 	}
 	changes := make(map[string]*sessionChanges)
-	for _, lost := range commit.LostRuns {
+	for _, recovery := range commit.LostRuns {
+		lost := recovery.State()
 		scope := changes[lost.SessionID()]
 		if scope == nil {
 			scope = &sessionChanges{}
@@ -671,11 +673,11 @@ func (r *recoveryPlanner) conversation(sessionID string) (recoveryConversationSn
 	return snapshot, nil
 }
 
-func recoveredGoalRun(rootRunID string, lostRuns []rundomain.Run) (goal.RunRecord, error) {
+func recoveredGoalRun(rootRunID string, lostRuns []rundomain.Replacement) (goal.RunRecord, error) {
 	if len(lostRuns) == 0 {
 		return goal.RunRecord{}, fmt.Errorf("runs: recovered tree %q has no terminal root", rootRunID)
 	}
-	lostRoot := lostRuns[len(lostRuns)-1]
+	lostRoot := lostRuns[len(lostRuns)-1].State()
 	outcome, terminal := lostRoot.Outcome()
 	if lostRoot.ID() != rootRunID || !terminal {
 		return goal.RunRecord{}, fmt.Errorf("runs: recovered tree %q has no terminal root", rootRunID)
@@ -701,8 +703,8 @@ func recoverLostTree(
 	items []transcript.Item,
 	messageMark int,
 	finishedAt time.Time,
-) ([]rundomain.Run, []ItemReplacement, error) {
-	lostRuns := make([]rundomain.Run, 0, len(tree.postorder))
+) ([]rundomain.Replacement, []ItemReplacement, error) {
+	lostRuns := make([]rundomain.Replacement, 0, len(tree.postorder))
 	var replacements []ItemReplacement
 	for _, runID := range tree.postorder {
 		active := tree.runsByID[runID]
@@ -727,7 +729,11 @@ func recoverLostTree(
 		if err != nil {
 			return nil, nil, fmt.Errorf("runs: recover lost Run %q: %w", active.ID(), err)
 		}
-		lostRuns = append(lostRuns, lost)
+		replacement, err := rundomain.NewReplacement(active, lost)
+		if err != nil {
+			return nil, nil, fmt.Errorf("runs: prepare lost Run %q replacement: %w", active.ID(), err)
+		}
+		lostRuns = append(lostRuns, replacement)
 	}
 	return lostRuns, replacements, nil
 }

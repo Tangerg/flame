@@ -537,7 +537,7 @@ func (r *RunStore) terminalize(
 	value rundomain.Run,
 	marker *runCommitMarker,
 ) error {
-	return r.finish(ctx, "terminalize", value, marker, func(current rundomain.Run) (rundomain.Run, error) {
+	return r.finish(ctx, "terminalize", nil, value, marker, func(current rundomain.Run) (rundomain.Run, error) {
 		outcome, terminal := value.Outcome()
 		if !terminal {
 			return rundomain.Run{}, errors.New("outcome is required")
@@ -595,12 +595,17 @@ func (r *RunStore) RebaseMessageMark(ctx context.Context, expected, replacement 
 	return nil
 }
 
-// RecoverLost ends the exact non-terminal Run whose executor state is no longer
-// resumable. Unlike Terminalize, this recovery transition is legal from either
-// Running or Waiting, because it describes a Run nobody is driving rather
-// than one the executor finished.
-func (r *RunStore) RecoverLost(ctx context.Context, value rundomain.Run) error {
-	return r.finish(ctx, "recover lost", value, nil, func(current rundomain.Run) (rundomain.Run, error) {
+// RecoverLost ends the exact non-terminal Run snapshot whose executor state is
+// no longer resumable. Unlike Terminalize, this recovery transition is legal
+// from either Running or Waiting, because it describes a Run nobody is driving
+// rather than one the executor finished.
+func (r *RunStore) RecoverLost(ctx context.Context, replacement rundomain.Replacement) error {
+	if err := replacement.Validate(); err != nil {
+		return fmt.Errorf("sqlite: recover lost Run replacement: %w", err)
+	}
+	expected := replacement.Expected()
+	value := replacement.State()
+	return r.finish(ctx, "recover lost", &expected, value, nil, func(current rundomain.Run) (rundomain.Run, error) {
 		failure, failed := value.Failure()
 		if !failed {
 			return rundomain.Run{}, errors.New("lost failure is required")
@@ -618,6 +623,7 @@ func (r *RunStore) RecoverLost(ctx context.Context, value rundomain.Run) error {
 func (r *RunStore) finish(
 	ctx context.Context,
 	op string,
+	expected *rundomain.Run,
 	value rundomain.Run,
 	marker *runCommitMarker,
 	transition func(rundomain.Run) (rundomain.Run, error),
@@ -645,6 +651,13 @@ func (r *RunStore) finish(
 		}
 		if !found || current.SessionID() != value.SessionID() {
 			return fmt.Errorf("sqlite: %s run: active run not found", op)
+		}
+		if expected != nil && !current.Equal(*expected) {
+			return fmt.Errorf(
+				"sqlite: %s run: Run %q changed after the application prepared its replacement",
+				op,
+				value.ID(),
+			)
 		}
 		if err := marker.requireActiveSegment(current.ActiveSegmentID()); err != nil {
 			return fmt.Errorf("sqlite: %s run: %w", op, err)
@@ -676,6 +689,10 @@ func (r *RunStore) finish(
 			metrics.usage, next.ContextTokens(), encodedFailure,
 			value.MessageMark(), value.FinishedAt().UTC().UnixNano(),
 			value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID(), coarseState(current.State()).databaseValue(),
+		}
+		if expected != nil {
+			query += ` AND active_segment_id = ? AND updated_at = ?`
+			args = append(args, expected.ActiveSegmentID(), expected.UpdatedAt().UTC().UnixNano())
 		}
 		if marker != nil {
 			query += ` AND active_segment_id = ?`

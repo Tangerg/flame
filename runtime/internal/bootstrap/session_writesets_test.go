@@ -299,7 +299,10 @@ func TestApplyTerminalDropsInterruptAndTerminalizes(t *testing.T) {
 		t.Fatalf("cancel parked Run: %v", err)
 	}
 
-	if applyTerminalErr := ss.ApplyTerminal(ctx, sessions.TerminalPlan{CheckpointRootID: memberID, Runs: []run.Run{terminal}}); applyTerminalErr != nil {
+	if applyTerminalErr := ss.ApplyTerminal(ctx, sessions.TerminalPlan{
+		CheckpointRootID: memberID,
+		Runs:             []run.Replacement{testsupport.MustRunReplacement(parked, terminal)},
+	}); applyTerminalErr != nil {
 		t.Fatalf("ApplyTerminal: %v", applyTerminalErr)
 	}
 	if open, _ := ints.List(ctx, "ses_A"); len(open) != 0 {
@@ -335,7 +338,10 @@ func TestApplyTerminalRecoversLostParkAtomically(t *testing.T) {
 		t.Fatalf("recover parked Run: %v", err)
 	}
 
-	if applyTerminalErr := ss.ApplyTerminal(ctx, sessions.TerminalPlan{CheckpointRootID: memberID, Runs: []run.Run{terminal}}); applyTerminalErr != nil {
+	if applyTerminalErr := ss.ApplyTerminal(ctx, sessions.TerminalPlan{
+		CheckpointRootID: memberID,
+		Runs:             []run.Replacement{testsupport.MustRunReplacement(parked, terminal)},
+	}); applyTerminalErr != nil {
 		t.Fatalf("ApplyTerminal run_lost: %v", applyTerminalErr)
 	}
 	if open, _ := ints.List(ctx, "ses_A"); len(open) != 0 {
@@ -394,7 +400,7 @@ func TestApplyTerminalRecoversClaimedResumeAtomically(t *testing.T) {
 		t.Fatalf("recover parked Run: %v", err)
 	}
 	if applyTerminalErr := ss.ApplyTerminal(ctx, sessions.TerminalPlan{
-		Runs: []run.Run{terminal}, CheckpointRootID: memberID, ResumeClaimed: true,
+		Runs: []run.Replacement{testsupport.MustRunReplacement(parked, terminal)}, CheckpointRootID: memberID, ResumeClaimed: true,
 	}); applyTerminalErr != nil {
 		t.Fatalf("ApplyTerminal claimed Resume: %v", applyTerminalErr)
 	}
@@ -447,6 +453,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("read parked Goal Run: found=%t err=%v", found, err)
 	}
+	expected := parked
 	parked, err = parked.AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 4,
 		Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &costUSD}}}), 0, finishedAt)
 	if err != nil {
@@ -462,7 +469,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 		Outcome: outcome, Cost: bootstrapGoalRunCost(t, costUSD), Steps: 4, CompletedAt: finishedAt,
 	}
 	if applyTerminalErr := ss.ApplyTerminal(ctx, sessions.TerminalPlan{
-		Runs: []run.Run{terminal}, CheckpointRootID: memberID, GoalRun: &goalRun,
+		Runs: []run.Replacement{testsupport.MustRunReplacement(expected, terminal)}, CheckpointRootID: memberID, GoalRun: &goalRun,
 	}); applyTerminalErr != nil {
 		t.Fatalf("ApplyTerminal: %v", applyTerminalErr)
 	}

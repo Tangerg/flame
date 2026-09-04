@@ -127,3 +127,12 @@ func MustRestoreRun(snapshot run.Snapshot) run.Run {
 	}
 	return restored
 }
+
+// MustRunReplacement constructs one exact Run replacement or panics.
+func MustRunReplacement(expected, state run.Run) run.Replacement {
+	replacement, err := run.NewReplacement(expected, state)
+	if err != nil {
+		panic(err)
+	}
+	return replacement
+}

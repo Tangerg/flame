@@ -19,7 +19,7 @@ import (
 
 type RunStore interface {
 	ListNonTerminalRuns(ctx context.Context) ([]run.Run, error)
-	RecoverLost(ctx context.Context, run run.Run) error
+	RecoverLost(ctx context.Context, replacement run.Replacement) error
 }
 
 type SessionStore interface {
@@ -341,9 +341,9 @@ func (p *Persistence) replaceTranscriptItems(ctx context.Context, commit runs.Re
 }
 
 func (p *Persistence) recoverLostRuns(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, lost := range commit.LostRuns {
-		if err := p.runs.RecoverLost(ctx, lost); err != nil {
-			return fmt.Errorf("recovery: recover lost Run %q: %w", lost.ID(), err)
+	for _, replacement := range commit.LostRuns {
+		if err := p.runs.RecoverLost(ctx, replacement); err != nil {
+			return fmt.Errorf("recovery: recover lost Run %q: %w", replacement.State().ID(), err)
 		}
 	}
 	return nil
