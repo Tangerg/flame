@@ -398,6 +398,11 @@ type SubscribeRequest struct {
 	CallerCapabilities run.Capabilities
 }
 
+func (s SubscribeRequest) clone() SubscribeRequest {
+	s.CallerCapabilities = s.CallerCapabilities.Clone()
+	return s
+}
+
 // Subscription is an attached caller's view of a live segment.
 type Subscription struct {
 	Record Record

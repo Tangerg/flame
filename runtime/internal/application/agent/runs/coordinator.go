@@ -572,6 +572,7 @@ func (c *Coordinator) rejectUnadmittedExecution(ctx context.Context, ref Executo
 // publishes — the same rule a resume applies, kept here rather than at each
 // caller so the two entry points into an existing Run cannot disagree about it.
 func (c *Coordinator) Subscribe(ctx context.Context, req SubscribeRequest) (Subscription, error) {
+	req = req.clone()
 	live, err := c.addressLiveSegment(ctx, req.RunID, req.SegmentID)
 	if err != nil {
 		return Subscription{}, err

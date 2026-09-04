@@ -99,6 +99,19 @@ func TestSteerCommandCloneOwnsMutableInput(t *testing.T) {
 	}
 }
 
+func TestSubscribeRequestCloneOwnsCallerCapabilities(t *testing.T) {
+	request := SubscribeRequest{CallerCapabilities: run.Capabilities{
+		InterruptKinds: []interrupt.Kind{interrupt.Question},
+	}}
+	owned := request.clone()
+
+	request.CallerCapabilities.InterruptKinds[0] = interrupt.Approval
+
+	if got := owned.CallerCapabilities.InterruptKinds; !slices.Equal(got, []interrupt.Kind{interrupt.Question}) {
+		t.Fatalf("owned caller capabilities = %v", got)
+	}
+}
+
 func TestStartExecutionValidateDelegatesCoreOptions(t *testing.T) {
 	t.Parallel()
 
