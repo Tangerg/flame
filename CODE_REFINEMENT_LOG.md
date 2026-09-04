@@ -173,6 +173,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 213 | `35447fc5` + CLI dependency update | Made Domain validate Knowledge entries and Application enforce the complete ordered cascade plus exact read/update scope and content acknowledgements before prompt, protocol, or invalidation use. |
 | 214 | `ded0a709` + CLI dependency update | Completed Session Snapshot validation for Conversation and Plan values, making restore/export share one aggregate gate and removing the portable restore's duplicate Plan check. |
 | 215 | `2099e61f` + CLI dependency update | Validated and ownership-isolated Plan boundary reads so contradictory unrecorded steps cannot seed forks and invalid recorded values cannot reach rollback or persistence. |
+| 216 | `9a68ff21` + CLI dependency update | Added Domain row validation and bounded Application gates for discovered, managed, and proposed Skill catalogs, including exact proposal submission acknowledgements and review identity checks. |
 
 ## Verification contract
 
