@@ -11,6 +11,8 @@
 // allowed to do.
 package invalidation
 
+import "slices"
+
 // Resource is what moved. It is a closed set projected exhaustively at the
 // publication boundary.
 type Resource string
@@ -74,26 +76,35 @@ type Notice struct {
 	ServerIDs   []string
 }
 
+// Clone returns an owned notice snapshot for publication boundaries.
+func (n Notice) Clone() Notice {
+	n.SessionIDs = slices.Clone(n.SessionIDs)
+	n.RunIDs = slices.Clone(n.RunIDs)
+	n.ScheduleIDs = slices.Clone(n.ScheduleIDs)
+	n.ServerIDs = slices.Clone(n.ServerIDs)
+	return n
+}
+
 // InSession is the notice for a resource that moved inside one session, optionally
 // naming the runs involved.
 func InSession(resource Resource, sessionID string, runIDs ...string) Notice {
-	return Notice{Resource: resource, SessionIDs: sessionIDs(sessionID), RunIDs: runIDs}
+	return Notice{Resource: resource, SessionIDs: sessionIDs(sessionID), RunIDs: slices.Clone(runIDs)}
 }
 
 // InSessions is the notice for a resource that moved in several sessions at
 // once, such as a bulk lifecycle mutation.
 func InSessions(resource Resource, ids ...string) Notice {
-	return Notice{Resource: resource, SessionIDs: ids}
+	return Notice{Resource: resource, SessionIDs: slices.Clone(ids)}
 }
 
 // ForSchedules is the notice for committed changes to editable schedules.
 func ForSchedules(ids ...string) Notice {
-	return Notice{Resource: Schedules, ScheduleIDs: ids}
+	return Notice{Resource: Schedules, ScheduleIDs: slices.Clone(ids)}
 }
 
 // ForMCP is the notice for MCP registry and live-connection changes.
 func ForMCP(ids ...string) Notice {
-	return Notice{Resource: MCP, ServerIDs: ids}
+	return Notice{Resource: MCP, ServerIDs: slices.Clone(ids)}
 }
 
 func sessionIDs(id string) []string {
@@ -115,6 +126,6 @@ func (p Publish) Notify(notices ...Notice) {
 		return
 	}
 	for _, notice := range notices {
-		p(notice)
+		p(notice.Clone())
 	}
 }
