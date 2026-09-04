@@ -67,7 +67,7 @@ func TestCommittedScheduleMutationsPublishExactInvalidations(t *testing.T) {
 	}
 	title := "after"
 	if _, err := coordinator.Update(t.Context(), UpdateCommand{
-		ID: "sch_updated", ExpectedRevision: 1, Patch: schedule.Patch{Title: &title},
+		ID: "sch_updated", ExpectedRevision: 1, Patch: Patch{Title: &title},
 	}); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestScheduleMutationsPublishOnlyAfterActualCommit(t *testing.T) {
 			case "update":
 				title := "after"
 				_, err = coordinator.Update(t.Context(), UpdateCommand{
-					ID: "sch_1", ExpectedRevision: 1, Patch: schedule.Patch{Title: &title},
+					ID: "sch_1", ExpectedRevision: 1, Patch: Patch{Title: &title},
 				})
 			case "delete":
 				err = coordinator.Delete(t.Context(), "sch_1")

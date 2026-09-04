@@ -61,15 +61,15 @@ func (s *Handler) UpdateSchedule(ctx context.Context, in protocol.UpdateSchedule
 	updated, err := s.schedules.Update(ctx, scheduleapp.UpdateCommand{
 		ID:               in.ID,
 		ExpectedRevision: in.ExpectedRevision,
-		Patch: schedule.Patch{
+		Patch: scheduleapp.Patch{
 			Title:        in.Title,
 			Instructions: in.Instructions,
 			CWD:          scheduleWorkspacePathPatch(in.Workspace, in.WorkspaceMode),
-			Cron:         in.Cron,
-			Enabled:      in.Enabled,
-		},
-		ModelSelection: modelref.Patch{
-			Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort,
+			ModelSelection: modelref.Patch{
+				Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort,
+			},
+			Cron:    in.Cron,
+			Enabled: in.Enabled,
 		},
 	})
 	if err != nil {

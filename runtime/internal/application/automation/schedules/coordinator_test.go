@@ -290,7 +290,7 @@ func TestUpdateOwnsPatchAndPreservesSnapshotState(t *testing.T) {
 
 	updated, err := c.Update(t.Context(), UpdateCommand{
 		ID: "sch_1", ExpectedRevision: 3,
-		Patch: schedule.Patch{
+		Patch: Patch{
 			Instructions: &instructions,
 			CWD:          &cwd,
 			Enabled:      &enabled,
@@ -331,7 +331,7 @@ func TestUpdateRejectsInvalidOrMismatchedStoreScheduleBeforeWriting(t *testing.T
 			title := "after"
 
 			if _, err := coordinator.Update(t.Context(), UpdateCommand{
-				ID: "sch_requested", ExpectedRevision: 1, Patch: schedule.Patch{Title: &title},
+				ID: "sch_requested", ExpectedRevision: 1, Patch: Patch{Title: &title},
 			}); err == nil {
 				t.Fatal("Update accepted an invalid persistence result")
 			}
@@ -339,6 +339,44 @@ func TestUpdateRejectsInvalidOrMismatchedStoreScheduleBeforeWriting(t *testing.T
 				t.Fatalf("store Update received %+v before point-read validation", store.updated)
 			}
 		})
+	}
+}
+
+func TestUpdateCommandCloneOwnsMutablePatch(t *testing.T) {
+	title, instructions, cwd := "before", "review", "/before"
+	provider, model, effort, cron := "provider", "model", "high", "@daily"
+	enabled := true
+	command := UpdateCommand{Patch: Patch{
+		Title: &title, Instructions: &instructions, CWD: &cwd,
+		ModelSelection: modelref.Patch{
+			Provider: &provider, Model: &model, ReasoningEffort: &effort,
+		},
+		Cron: &cron, Enabled: &enabled,
+	}}
+	owned := command.clone()
+
+	*command.Patch.Title = "after"
+	*command.Patch.Instructions = "changed"
+	*command.Patch.CWD = "/after"
+	*command.Patch.ModelSelection.Provider = "other-provider"
+	*command.Patch.ModelSelection.Model = "other-model"
+	*command.Patch.ModelSelection.ReasoningEffort = "low"
+	*command.Patch.Cron = "@hourly"
+	*command.Patch.Enabled = false
+
+	if *owned.Patch.Title != "before" || *owned.Patch.Instructions != "review" || *owned.Patch.CWD != "/before" {
+		t.Fatalf(
+			"owned text patch = title:%q instructions:%q cwd:%q",
+			*owned.Patch.Title, *owned.Patch.Instructions, *owned.Patch.CWD,
+		)
+	}
+	if *owned.Patch.ModelSelection.Provider != "provider" ||
+		*owned.Patch.ModelSelection.Model != "model" ||
+		*owned.Patch.ModelSelection.ReasoningEffort != "high" {
+		t.Fatalf("owned model patch = %+v", owned.Patch.ModelSelection)
+	}
+	if *owned.Patch.Cron != "@daily" || !*owned.Patch.Enabled {
+		t.Fatalf("owned schedule patch = cron:%q enabled:%t", *owned.Patch.Cron, *owned.Patch.Enabled)
 	}
 }
 

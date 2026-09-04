@@ -79,12 +79,48 @@ type CreateCommand struct {
 	Enabled        bool
 }
 
+// Patch is the Application input for editing a Schedule. CWD and model fields
+// remain untrusted external spellings until Update admits them; the Domain
+// patch receives only their resolved values.
+type Patch struct {
+	Title          *string
+	Instructions   *string
+	CWD            *string
+	ModelSelection modelref.Patch
+	Cron           *string
+	Enabled        *bool
+}
+
+func (p Patch) clone() Patch {
+	p.Title = clonePointer(p.Title)
+	p.Instructions = clonePointer(p.Instructions)
+	p.CWD = clonePointer(p.CWD)
+	p.ModelSelection.Provider = clonePointer(p.ModelSelection.Provider)
+	p.ModelSelection.Model = clonePointer(p.ModelSelection.Model)
+	p.ModelSelection.ReasoningEffort = clonePointer(p.ModelSelection.ReasoningEffort)
+	p.Cron = clonePointer(p.Cron)
+	p.Enabled = clonePointer(p.Enabled)
+	return p
+}
+
+func clonePointer[T any](value *T) *T {
+	if value == nil {
+		return nil
+	}
+	cloned := *value
+	return &cloned
+}
+
 // UpdateCommand applies a partial edit to one stored schedule.
 type UpdateCommand struct {
 	ID               string
-	Patch            schedule.Patch
-	ModelSelection   modelref.Patch
+	Patch            Patch
 	ExpectedRevision uint64
+}
+
+func (u UpdateCommand) clone() UpdateCommand {
+	u.Patch = u.Patch.clone()
+	return u
 }
 
 // Disabled returns an explicitly unavailable schedule-management capability.
@@ -236,6 +272,7 @@ func (c *Coordinator) Create(ctx context.Context, cmd CreateCommand) (schedule.S
 // Update applies a patch to an existing schedule, preserving durable identity
 // and timestamps while recomputing its next due time.
 func (c *Coordinator) Update(ctx context.Context, cmd UpdateCommand) (schedule.Schedule, error) {
+	cmd = cmd.clone()
 	if !c.Available() {
 		return schedule.Schedule{}, ErrUnavailable
 	}
@@ -249,19 +286,23 @@ func (c *Coordinator) Update(ctx context.Context, cmd UpdateCommand) (schedule.S
 	if err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: get %q for update: %w", cmd.ID, err)
 	}
-	if !cmd.ModelSelection.Empty() {
-		selection, selectionErr := cmd.ModelSelection.Apply(existing.ModelSelection())
+	patch := schedule.Patch{
+		Title: cmd.Patch.Title, Instructions: cmd.Patch.Instructions, CWD: cmd.Patch.CWD,
+		Cron: cmd.Patch.Cron, Enabled: cmd.Patch.Enabled,
+	}
+	if !cmd.Patch.ModelSelection.Empty() {
+		selection, selectionErr := cmd.Patch.ModelSelection.Apply(existing.ModelSelection())
 		if selectionErr != nil {
 			return schedule.Schedule{}, selectionErr
 		}
-		cmd.Patch.Selection = &selection
+		patch.Selection = &selection
 	}
-	if cmd.Patch.Selection != nil {
-		if err := c.models.AdmitSelection(*cmd.Patch.Selection); err != nil {
+	if patch.Selection != nil {
+		if err := c.models.AdmitSelection(*patch.Selection); err != nil {
 			return schedule.Schedule{}, fmt.Errorf("schedules: model selection is not admitted: %w", err)
 		}
 	}
-	return c.updateExisting(ctx, existing, cmd.Patch, cmd.ExpectedRevision)
+	return c.updateExisting(ctx, existing, patch, cmd.ExpectedRevision)
 }
 
 func (c *Coordinator) updateExisting(
