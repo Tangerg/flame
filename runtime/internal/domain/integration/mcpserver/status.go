@@ -1,6 +1,9 @@
 package mcpserver
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // ConnectionState is the lifecycle state of a configured MCP connection.
 // Keeping this vocabulary canonical prevents subtly different values for the
@@ -33,4 +36,24 @@ type AdvertisedTool struct {
 	Name        RemoteToolName
 	Description string
 	InputSchema InputSchema
+}
+
+// Validate rechecks one complete live tool descriptor after it crosses the
+// catalog port. The connection adapter validates at discovery time; the
+// Application boundary independently protects alternate implementations and
+// retained projections before exposing them to management or execution.
+func (a AdvertisedTool) Validate() error {
+	if err := a.Server.Validate(); err != nil {
+		return fmt.Errorf("%w: server identity: %w", ErrInvalidRemoteToolCatalog, err)
+	}
+	if err := a.Name.Validate(); err != nil {
+		return fmt.Errorf("%w: tool identity: %w", ErrInvalidRemoteToolCatalog, err)
+	}
+	if err := ValidateRemoteToolDescription(a.Description); err != nil {
+		return err
+	}
+	if err := a.InputSchema.Validate(); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidRemoteToolCatalog, err)
+	}
+	return nil
 }

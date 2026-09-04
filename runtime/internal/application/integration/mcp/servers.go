@@ -573,6 +573,11 @@ func resolveEnvironment(
 // Tools lists tools advertised by the connected MCP servers (scoped to server
 // when non-empty) for tool discovery, ordered by server then tool name.
 func (c *Coordinator) Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
+	if server != nil {
+		if err := server.Validate(); err != nil {
+			return nil, fmt.Errorf("mcp: tool catalog server: %w", err)
+		}
+	}
 	if c.toolCatalog == nil {
 		return nil, nil
 	}
@@ -580,13 +585,40 @@ func (c *Coordinator) Tools(ctx context.Context, server *mcpserver.ServerName) (
 	if err != nil {
 		return nil, err
 	}
-	tools = slices.Clone(tools)
+	tools, err = validateToolCatalog(server, tools)
+	if err != nil {
+		return nil, err
+	}
 	slices.SortFunc(tools, func(first, second mcpserver.AdvertisedTool) int {
 		return cmp.Or(
 			cmp.Compare(first.Server.String(), second.Server.String()),
 			cmp.Compare(first.Name.String(), second.Name.String()),
 		)
 	})
+	return tools, nil
+}
+
+func validateToolCatalog(server *mcpserver.ServerName, tools []mcpserver.AdvertisedTool) ([]mcpserver.AdvertisedTool, error) {
+	tools = slices.Clone(tools)
+	seen := make(map[mcpserver.ToolRef]struct{}, len(tools))
+	counts := make(map[mcpserver.ServerName]int)
+	for index, tool := range tools {
+		if err := tool.Validate(); err != nil {
+			return nil, fmt.Errorf("mcp: tool catalog row %d is invalid: %w", index+1, err)
+		}
+		if server != nil && tool.Server != *server {
+			return nil, fmt.Errorf("mcp: tool catalog for %q contains a tool from %q", server, tool.Server)
+		}
+		ref := mcpserver.ToolRef{Server: tool.Server, Tool: tool.Name}
+		if _, duplicate := seen[ref]; duplicate {
+			return nil, fmt.Errorf("mcp: tool catalog repeats %q/%q", tool.Server, tool.Name)
+		}
+		seen[ref] = struct{}{}
+		counts[tool.Server]++
+		if err := mcpserver.ValidateRemoteToolCount(counts[tool.Server]); err != nil {
+			return nil, fmt.Errorf("mcp: tool catalog for %q: %w", tool.Server, err)
+		}
+	}
 	return tools, nil
 }
 

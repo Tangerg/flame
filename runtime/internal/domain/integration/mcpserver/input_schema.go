@@ -93,6 +93,20 @@ func (i InputSchema) JSON() []byte {
 	return []byte(i.String())
 }
 
+// Validate proves that the retained representation still matches the one
+// canonical form admitted by ParseInputSchema. The zero value is the canonical
+// unconstrained object schema.
+func (i InputSchema) Validate() error {
+	canonical, err := ParseInputSchema(i.JSON())
+	if err != nil {
+		return err
+	}
+	if canonical.object != i.object {
+		return fmt.Errorf("%w: schema is not canonical", ErrInvalidInputSchema)
+	}
+	return nil
+}
+
 // String returns the canonical JSON schema.
 func (i InputSchema) String() string {
 	if i.object == "" {

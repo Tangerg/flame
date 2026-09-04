@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 	"testing"
@@ -58,6 +59,47 @@ func TestToolsOwnCatalogOrder(t *testing.T) {
 		tools[1].Server.String() != "alpha" || tools[1].Name.String() != "zeta" ||
 		tools[2].Server.String() != "zeta" || tools[2].Name.String() != "alpha" {
 		t.Fatalf("tools = %+v, want alpha/alpha, alpha/zeta, zeta/alpha", tools)
+	}
+	if ports.tools[0].Server.String() != "zeta" {
+		t.Fatal("Tools reordered the catalog port's retained slice")
+	}
+}
+
+func TestToolsRejectsBrokenOrOutOfScopeCatalogs(t *testing.T) {
+	files := testMCPServerName("files")
+	read := mcpserver.AdvertisedTool{Server: files, Name: testRemoteToolName("read")}
+	for name, tools := range map[string][]mcpserver.AdvertisedTool{
+		"invalid descriptor": {{}},
+		"duplicate identity": {read, read},
+		"foreign scope":      {{Server: testMCPServerName("other"), Name: testRemoteToolName("read")}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := New(Config{ToolCatalog: &fakePorts{tools: tools}})
+			if result, err := c.Tools(t.Context(), &files); err == nil || result != nil {
+				t.Fatalf("Tools = (%+v, %v), want nil/error", result, err)
+			}
+		})
+	}
+
+	overCapacity := make([]mcpserver.AdvertisedTool, mcpserver.MaxRemoteToolsPerServer+1)
+	for index := range overCapacity {
+		overCapacity[index] = mcpserver.AdvertisedTool{
+			Server: files, Name: testRemoteToolName(fmt.Sprintf("tool-%04d", index)),
+		}
+	}
+	c := New(Config{ToolCatalog: &fakePorts{tools: overCapacity}})
+	if result, err := c.Tools(t.Context(), &files); err == nil || result != nil {
+		t.Fatalf("over-capacity Tools = (%d rows, %v), want nil/error", len(result), err)
+	}
+
+	invalidScope := mcpserver.ServerName{}
+	ports := &fakePorts{tools: []mcpserver.AdvertisedTool{read}}
+	c = New(Config{ToolCatalog: ports})
+	if result, err := c.Tools(t.Context(), &invalidScope); err == nil || result != nil {
+		t.Fatalf("invalid-scope Tools = (%+v, %v), want nil/error", result, err)
+	}
+	if ports.toolsCalls != 0 {
+		t.Fatalf("invalid scope reached tool catalog %d times", ports.toolsCalls)
 	}
 }
 

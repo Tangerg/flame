@@ -50,3 +50,24 @@ func TestRemoteToolInputSchemaEnvelope(t *testing.T) {
 		t.Fatalf("oversized normalized schema error = %v, want ErrInvalidInputSchema", err)
 	}
 }
+
+func TestAdvertisedToolValidatesItsCompleteDescriptor(t *testing.T) {
+	valid := AdvertisedTool{Server: testMCPServerName("files"), Name: testRemoteToolName("read")}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("valid tool rejected: %v", err)
+	}
+
+	for name, tool := range map[string]AdvertisedTool{
+		"missing server":      {Name: valid.Name},
+		"missing tool":        {Server: valid.Server},
+		"invalid schema":      {Server: valid.Server, Name: valid.Name, InputSchema: InputSchema{object: `{"type":"array"}`}},
+		"noncanonical schema": {Server: valid.Server, Name: valid.Name, InputSchema: InputSchema{object: `{"z":1,"type":"object"}`}},
+		"invalid UTF-8":       {Server: valid.Server, Name: valid.Name, Description: string([]byte{utf8.RuneSelf})},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := tool.Validate(); !errors.Is(err, ErrInvalidRemoteToolCatalog) {
+				t.Fatalf("Validate error = %v, want ErrInvalidRemoteToolCatalog", err)
+			}
+		})
+	}
+}
