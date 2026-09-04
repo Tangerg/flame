@@ -266,10 +266,16 @@ func TestRecoveryRejectsInvalidRunCatalogBeforeAdmission(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Terminate fixture: %v", err)
 	}
+	secondRoot := testsupport.MustRestoreRun(rundomain.Snapshot{
+		ID: "run_second", SessionID: active.SessionID(), State: rundomain.Running,
+		ActiveSegmentID: "segment_second", CreatedAt: createdAt,
+		MessageMark: rundomain.UnknownMessageMark,
+	})
 	for name, candidates := range map[string][]rundomain.Run{
-		"invalid aggregate":      {{}},
-		"terminal row":           {terminal},
-		"duplicate Run identity": {active, active},
+		"invalid aggregate":          {{}},
+		"terminal row":               {terminal},
+		"duplicate Run identity":     {active, active},
+		"multiple roots for Session": {active, secondRoot},
 	} {
 		t.Run(name, func(t *testing.T) {
 			store := &recoveryStoreStub{runs: candidates}

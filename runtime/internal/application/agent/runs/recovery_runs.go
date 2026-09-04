@@ -72,6 +72,7 @@ func groupRecoveryRunTrees(active []rundomain.Run) (map[string]recoveryRunTree, 
 
 func validateRecoveryRunCatalog(values []rundomain.Run) error {
 	seen := make(map[string]int, len(values))
+	rootBySession := make(map[string]int, len(values))
 	for index, value := range values {
 		if err := value.Validate(); err != nil {
 			return fmt.Errorf("runs: validate recovery Run[%d] %q: %w", index, value.ID(), err)
@@ -88,6 +89,19 @@ func validateRecoveryRunCatalog(values []rundomain.Run) error {
 			)
 		}
 		seen[value.ID()] = index
+		if !value.Lineage().IsRoot() {
+			continue
+		}
+		if first, duplicate := rootBySession[value.SessionID()]; duplicate {
+			return fmt.Errorf(
+				"runs: recovery root Run[%d] %q duplicates Session ownership held by Run[%d] %q",
+				index,
+				value.ID(),
+				first,
+				values[first].ID(),
+			)
+		}
+		rootBySession[value.SessionID()] = index
 	}
 	return nil
 }
