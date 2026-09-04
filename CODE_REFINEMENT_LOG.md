@@ -211,6 +211,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 251 | `ace68a7c` + CLI dependency update | Encapsulated the tree-barrier write-set behind one validating constructor and returned deep-isolated Pending, Run-commit, message, and executor-checkpoint projections. |
 | 252 | `d654dbcc` + CLI dependency update | Replaced mutable opening fields with validated admission/resume constructors, isolated every returned projection, and repaired two SQLite tests that had been short-circuited before their intended transactional failures. |
 | 253 | `df3efe06` + CLI dependency update | Encapsulated waiting-subtree cancellation behind parked/resuming constructors, deep-isolated Pending, checkpoint, message, resume, opening-event, and terminal projections, and moved contradictory write-set rejection before persistence. |
+| 254 | `5425b2c8` + CLI dependency update | Made authoritative execution facts private and exhaustively cloned at receipt construction and access, rejected reducer-unsupported representations early, and covered mutable model, Tool, interrupt, usage, and steer projections under race. |
 
 ## Verification contract
 
