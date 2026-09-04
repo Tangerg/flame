@@ -2,6 +2,7 @@ package goals
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 )
@@ -25,8 +26,32 @@ func loadGoal(ctx context.Context, store Store, sessionID string) (goal.Goal, bo
 	if err != nil {
 		return goal.Goal{}, false, err
 	}
+	if err := current.Validate(); err != nil {
+		return goal.Goal{}, false, fmt.Errorf("goals: store Get(%q) returned invalid Current: %w", sessionID, err)
+	}
+	if current.SessionID() != sessionID {
+		return goal.Goal{}, false, fmt.Errorf(
+			"goals: store Get(%q) returned Session %q",
+			sessionID,
+			current.SessionID(),
+		)
+	}
 	value, exists := current.Goal()
 	return value, exists, nil
+}
+
+func validateGoalCatalog(values []goal.Goal) error {
+	seen := make(map[string]struct{}, len(values))
+	for index, value := range values {
+		if err := value.ValidateSnapshot(); err != nil {
+			return fmt.Errorf("goals: store List item[%d] is invalid: %w", index, err)
+		}
+		if _, duplicate := seen[value.SessionID()]; duplicate {
+			return fmt.Errorf("goals: store List returned duplicate Session %q", value.SessionID())
+		}
+		seen[value.SessionID()] = struct{}{}
+	}
+	return nil
 }
 
 // RunRecorder records one terminal goal-owned Run exactly once. It joins the

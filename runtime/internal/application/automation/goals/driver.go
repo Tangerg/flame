@@ -647,6 +647,9 @@ func (d *Driver) Reconcile(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	if err := validateGoalCatalog(all); err != nil {
+		return err
+	}
 	for _, g := range all {
 		lease, acquired := d.tryDriveLease(g.SessionID())
 		if !acquired {
