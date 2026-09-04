@@ -142,21 +142,16 @@ func (a *AgentMemoryStore) State(ctx context.Context, project string) (agentmemo
 // untouched, so a lost race never half-applies a stale generation.
 func (a *AgentMemoryStore) Reconcile(
 	ctx context.Context,
-	project string,
-	expectedWatermark int64,
-	through int64,
-	contents []string,
-	now time.Time,
+	publication agentmemory.Publication,
 ) (published bool, err error) {
-	if project == "" {
-		return false, errAgentMemoryProject
+	if err := publication.Validate(); err != nil {
+		return false, fmt.Errorf("sqlite: validate agent memory publication: %w", err)
 	}
-	if expectedWatermark < 0 || through <= expectedWatermark {
-		return false, fmt.Errorf("sqlite: invalid agent memory watermark transition %d -> %d", expectedWatermark, through)
-	}
-	if now.IsZero() {
-		return false, errors.New("sqlite: agent memory update time is required")
-	}
+	project := publication.Project()
+	expectedWatermark := publication.ExpectedState().Watermark
+	state := publication.State()
+	through := state.Watermark
+	contents := publication.Contents()
 	err = RunInTx(ctx, a.db, func(ctx context.Context) error {
 		var one int
 		if scanErr := conn(ctx, a.db).QueryRowContext(ctx,
@@ -175,7 +170,7 @@ func (a *AgentMemoryStore) Reconcile(
 		result, execContextErr := conn(ctx, a.db).ExecContext(ctx,
 			`UPDATE agent_memory_state SET watermark = ?, updated_at = ?
 			 WHERE project = ? AND watermark = ?`,
-			through, now.UTC().UnixNano(), project, expectedWatermark)
+			through, state.UpdatedAt.UnixNano(), project, expectedWatermark)
 		if execContextErr != nil {
 			return fmt.Errorf("sqlite: advance agent memory watermark: %w", execContextErr)
 		}
@@ -187,7 +182,7 @@ func (a *AgentMemoryStore) Reconcile(
 			published = false
 			return nil // lost CAS — do not reconcile items against a stale fold
 		}
-		if reconcileItemsErr := a.reconcileItems(ctx, project, contents, now); reconcileItemsErr != nil {
+		if reconcileItemsErr := a.reconcileItems(ctx, project, contents, state.UpdatedAt); reconcileItemsErr != nil {
 			return reconcileItemsErr
 		}
 		published = true

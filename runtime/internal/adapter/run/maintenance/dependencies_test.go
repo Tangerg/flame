@@ -3,7 +3,6 @@ package maintenance
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
@@ -22,7 +21,7 @@ func (dependencyMemory) State(context.Context, string) (agentmemory.State, error
 	return agentmemory.State{}, nil
 }
 
-func (dependencyMemory) PublishGeneration(context.Context, string, int64, int64, []string, time.Time) (bool, error) {
+func (dependencyMemory) PublishGeneration(context.Context, agentmemory.Publication) (bool, error) {
 	return false, nil
 }
 

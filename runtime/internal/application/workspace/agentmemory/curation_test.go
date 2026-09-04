@@ -29,7 +29,7 @@ type singleWinnerCurationStore struct {
 	won atomic.Bool
 }
 
-func (s *singleWinnerCurationStore) Reconcile(context.Context, string, int64, int64, []string, time.Time) (bool, error) {
+func (s *singleWinnerCurationStore) Reconcile(context.Context, domain.Publication) (bool, error) {
 	return s.won.CompareAndSwap(false, true), nil
 }
 
@@ -46,9 +46,9 @@ func (f *fakeCurationStore) State(context.Context, string) (domain.State, error)
 	return f.state, f.err
 }
 
-func (f *fakeCurationStore) Reconcile(_ context.Context, _ string, _, _ int64, contents []string, now time.Time) (bool, error) {
-	f.reconcileValues = contents
-	f.reconcileAt = now
+func (f *fakeCurationStore) Reconcile(_ context.Context, publication domain.Publication) (bool, error) {
+	f.reconcileValues = publication.Contents()
+	f.reconcileAt = publication.State().UpdatedAt
 	return f.published, f.err
 }
 
@@ -63,7 +63,8 @@ func TestCurationReconcilePublishesOnlyNewGeneration(t *testing.T) {
 		notices = append(notices, notice)
 	}})
 
-	published, err := c.PublishGeneration(t.Context(), "/repo", 0, 4, []string{"fact"}, time.Now())
+	now := time.Now()
+	published, err := c.PublishGeneration(t.Context(), testPublication(t, domain.State{}, 4, []string{"fact"}, now))
 	if err != nil || !published {
 		t.Fatalf("Reconcile = (%t, %v), want (true, nil)", published, err)
 	}
@@ -72,7 +73,7 @@ func TestCurationReconcilePublishesOnlyNewGeneration(t *testing.T) {
 	}
 
 	store.published = false
-	published, err = c.PublishGeneration(t.Context(), "/repo", 0, 4, []string{"stale"}, time.Now())
+	published, err = c.PublishGeneration(t.Context(), testPublication(t, domain.State{}, 4, []string{"stale"}, now))
 	if err != nil || published {
 		t.Fatalf("stale Reconcile = (%t, %v), want (false, nil)", published, err)
 	}
@@ -89,7 +90,7 @@ func TestCurationFailureAndLedgerWritesDoNotPublish(t *testing.T) {
 		notices = append(notices, notice)
 	}})
 
-	if published, err := c.PublishGeneration(t.Context(), "/repo", 0, 4, nil, time.Now()); published || !errors.Is(err, wantErr) {
+	if published, err := c.PublishGeneration(t.Context(), testPublication(t, domain.State{}, 4, nil, time.Now())); published || !errors.Is(err, wantErr) {
 		t.Fatalf("failed Reconcile = (%t, %v), want (false, %v)", published, err, wantErr)
 	}
 	store.err = nil
@@ -113,6 +114,15 @@ func validLedgerFact(sequence int64, content string) domain.LedgerFact {
 	return domain.LedgerFact{
 		Sequence: sequence, Day: batch.Day, Content: content, CapturedAt: batch.CapturedAt,
 	}
+}
+
+func testPublication(t *testing.T, expected domain.State, through int64, contents []string, now time.Time) domain.Publication {
+	t.Helper()
+	publication, err := domain.NewPublication("/repo", expected, through, contents, now)
+	if err != nil {
+		t.Fatalf("prepare curation publication: %v", err)
+	}
+	return publication
 }
 
 func TestCurationValidatesDurableMaterial(t *testing.T) {
@@ -159,16 +169,16 @@ func TestPublishGenerationNormalizesBeforeStore(t *testing.T) {
 	store := &fakeCurationStore{published: true}
 	curation := NewCuration(CurationConfig{Store: store})
 	local := time.Date(2026, time.September, 4, 16, 0, 0, 0, time.FixedZone("local", 8*60*60))
-	published, err := curation.PublishGeneration(
-		t.Context(), "/repo", 1, 2, []string{" fact ", "fact"}, local,
-	)
+	expected := domain.State{Watermark: 1, UpdatedAt: local.Add(-time.Hour).UTC()}
+	publication := testPublication(t, expected, 2, []string{" fact ", "fact"}, local)
+	published, err := curation.PublishGeneration(t.Context(), publication)
 	if err != nil || !published {
 		t.Fatalf("PublishGeneration = (%t, %v)", published, err)
 	}
 	if len(store.reconcileValues) != 1 || store.reconcileValues[0] != "fact" || store.reconcileAt.Location() != time.UTC {
 		t.Fatalf("reconcile input = %v at %s", store.reconcileValues, store.reconcileAt)
 	}
-	if _, err := curation.PublishGeneration(t.Context(), "/repo", 2, 2, nil, local); err == nil {
+	if _, err := domain.NewPublication("/repo", publication.State(), 2, nil, local); err == nil {
 		t.Fatal("non-advancing generation was accepted")
 	}
 }
@@ -184,13 +194,14 @@ func TestConcurrentCurationPublishesExactlyOneWinningGeneration(t *testing.T) {
 	}})
 
 	const contenders = 32
+	publication := testPublication(t, domain.State{}, 4, []string{"fact"}, time.Now())
 	var published atomic.Int32
 	var group sync.WaitGroup
 	group.Add(contenders)
 	for range contenders {
 		go func() {
 			defer group.Done()
-			won, err := c.PublishGeneration(t.Context(), "/repo", 0, 4, []string{"fact"}, time.Now())
+			won, err := c.PublishGeneration(t.Context(), publication)
 			if err != nil {
 				t.Errorf("Reconcile error = %v", err)
 			}
@@ -213,7 +224,7 @@ func TestCurationUnavailableFailsExplicitly(t *testing.T) {
 	if _, err := c.AppendLedger(t.Context(), domain.FactBatch{}); !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("AppendLedger error = %v, want ErrUnavailable", err)
 	}
-	if _, err := c.PublishGeneration(t.Context(), "/repo", 0, 1, nil, time.Now()); !errors.Is(err, ErrUnavailable) {
+	if _, err := c.PublishGeneration(t.Context(), domain.Publication{}); !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("PublishGeneration error = %v, want ErrUnavailable", err)
 	}
 }

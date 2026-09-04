@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	domain "github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
@@ -17,7 +16,7 @@ type CurationStore interface {
 	AppendLedger(ctx context.Context, batch domain.FactBatch) ([]domain.LedgerFact, error)
 	PendingLedger(ctx context.Context, project string, watermark int64, limit int) ([]domain.LedgerFact, error)
 	State(ctx context.Context, project string) (domain.State, error)
-	Reconcile(ctx context.Context, project string, expectedWatermark, through int64, contents []string, now time.Time) (bool, error)
+	Reconcile(ctx context.Context, publication domain.Publication) (bool, error)
 	Items(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error)
 }
 
@@ -104,24 +103,14 @@ func (c *Curation) State(ctx context.Context, project string) (domain.State, err
 
 // PublishGeneration publishes one compare-and-swap-protected curated
 // generation and invalidates the public projection only for the winning fold.
-func (c *Curation) PublishGeneration(ctx context.Context, project string, expectedWatermark, through int64, contents []string, now time.Time) (bool, error) {
+func (c *Curation) PublishGeneration(ctx context.Context, publication domain.Publication) (bool, error) {
 	if !c.Available() {
 		return false, ErrUnavailable
 	}
-	if err := domain.ValidateTarget(domain.ScopeProject, project); err != nil {
+	if err := publication.Validate(); err != nil {
 		return false, err
 	}
-	if expectedWatermark < 0 || through <= expectedWatermark {
-		return false, fmt.Errorf("agentmemory: invalid curation watermark transition %d -> %d", expectedWatermark, through)
-	}
-	if now.IsZero() {
-		return false, fmt.Errorf("agentmemory: curation update time is required")
-	}
-	contents, err := domain.NormalizeGeneration(contents)
-	if err != nil {
-		return false, err
-	}
-	published, err := c.store.Reconcile(ctx, project, expectedWatermark, through, contents, now.UTC())
+	published, err := c.store.Reconcile(ctx, publication)
 	if err != nil {
 		return false, err
 	}
