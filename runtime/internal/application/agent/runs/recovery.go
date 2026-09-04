@@ -434,7 +434,11 @@ func newRecoveryPlanner(
 	// before constructing any terminal facts so a later Item in one tree cannot
 	// advance the shared recovery timestamp after another tree was planned.
 	for _, tree := range trees {
-		if _, err := planner.transcript(tree); err != nil {
+		items, err := planner.transcript(tree)
+		if err != nil {
+			return nil, err
+		}
+		if err := validateRecoveryToolInvocationItems(tree, items, toolInvocations); err != nil {
 			return nil, err
 		}
 	}

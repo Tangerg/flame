@@ -44,3 +44,52 @@ func validateRecoveryTranscript(tree recoveryRunTree, items []transcript.Item) e
 	}
 	return nil
 }
+
+func validateRecoveryToolInvocationItems(
+	tree recoveryRunTree,
+	items []transcript.Item,
+	invocations []OpenToolInvocation,
+) error {
+	itemsByID := make(map[string]transcript.Item, len(items))
+	for _, item := range items {
+		itemsByID[item.ID()] = item
+	}
+	for index, invocation := range invocations {
+		if invocation.SessionID != tree.root.SessionID() {
+			continue
+		}
+		if _, active := tree.runsByID[invocation.RunID]; !active {
+			// The invocation journal may outlive an already-terminal Run. It no
+			// longer has an active Transcript lifecycle to reconcile.
+			continue
+		}
+		item, present := itemsByID[invocation.ItemID]
+		if !present {
+			return fmt.Errorf(
+				"runs: open Tool invocation[%d] %q has no recovery transcript Item %q",
+				index,
+				invocation.CallID,
+				invocation.ItemID,
+			)
+		}
+		if item.RunID() != invocation.RunID {
+			return fmt.Errorf(
+				"runs: open Tool invocation[%d] %q Item %q belongs to Run %q, want %q",
+				index,
+				invocation.CallID,
+				item.ID(),
+				item.RunID(),
+				invocation.RunID,
+			)
+		}
+		if item.Kind() != transcript.ToolCall || item.Status() != transcript.ItemRunning {
+			return fmt.Errorf(
+				"runs: open Tool invocation[%d] %q Item %q is not a Running ToolCall",
+				index,
+				invocation.CallID,
+				item.ID(),
+			)
+		}
+	}
+	return nil
+}

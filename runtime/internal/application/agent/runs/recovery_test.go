@@ -194,6 +194,69 @@ func TestRecoveryRejectsInvalidTranscriptBeforePlanning(t *testing.T) {
 	}
 }
 
+func TestRecoveryRejectsActiveOpenToolWithoutItsRunningItem(t *testing.T) {
+	createdAt := time.Date(2026, 8, 14, 5, 0, 0, 0, time.UTC)
+	root := testsupport.MustRestoreRun(rundomain.Snapshot{
+		ID: "run_root", SessionID: "session", State: rundomain.Running,
+		ActiveSegmentID: "segment_root", CreatedAt: createdAt,
+		MessageMark: rundomain.UnknownMessageMark,
+	})
+	child := testsupport.MustRestoreRun(rundomain.Snapshot{
+		ID: "run_child", SessionID: root.SessionID(), State: rundomain.Running,
+		ActiveSegmentID: "segment_child", CreatedAt: createdAt,
+		MessageMark: rundomain.UnknownMessageMark,
+		Lineage: rundomain.Lineage{
+			ParentRunID: root.ID(), RootRunID: root.ID(), SpawnedByItemID: "item_spawn",
+		},
+	})
+	open := OpenToolInvocation{
+		SessionID: root.SessionID(), RunID: root.ID(), SegmentID: root.ActiveSegmentID(),
+		CallID: "tool_open", ItemID: "item_open", StartedAt: createdAt,
+	}
+	terminal := testsupport.MustRestoreItem(testsupport.ItemInput{
+		ID: open.ItemID, SessionID: root.SessionID(), RunID: root.ID(),
+		Kind: transcript.ToolCall, Status: transcript.ItemIncomplete,
+		OccurredAt: createdAt, FinishedAt: createdAt.Add(time.Second),
+		Tool: &transcript.ToolInvocation{Name: "shell"},
+	})
+	wrongOwner := testsupport.MustRestoreItem(testsupport.ItemInput{
+		ID: open.ItemID, SessionID: root.SessionID(), RunID: child.ID(),
+		Kind: transcript.ToolCall, Status: transcript.ItemRunning, OccurredAt: createdAt,
+		Tool: &transcript.ToolInvocation{Name: "shell"},
+	})
+	for name, items := range map[string][]transcript.Item{
+		"missing Item":    nil,
+		"terminal Item":   {terminal},
+		"different owner": {wrongOwner},
+	} {
+		t.Run(name, func(t *testing.T) {
+			store := &recoveryStoreStub{
+				runs: []rundomain.Run{root, child}, tools: []OpenToolInvocation{open},
+				transcripts:  map[string][]transcript.Item{root.SessionID(): items},
+				messageMarks: map[string]int{},
+			}
+			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
+				func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+			))
+			if err != nil {
+				t.Fatalf("NewRecovery: %v", err)
+			}
+
+			if _, err := recovery.Reconcile(t.Context()); err == nil {
+				t.Fatal("Reconcile accepted an active open Tool without its Running Item")
+			}
+			if store.transcriptReads != 1 || store.conversationReads != 0 || store.commits != 0 {
+				t.Fatalf(
+					"invalid Tool/Item relation escaped admission: transcriptReads=%d conversationReads=%d commits=%d",
+					store.transcriptReads,
+					store.conversationReads,
+					store.commits,
+				)
+			}
+		})
+	}
+}
+
 func (r *recoveryStoreStub) LoadExecutorCheckpoint(
 	_ context.Context,
 	rootMemberID string,
@@ -474,11 +537,17 @@ func TestRecoveryOwnsOpenInvocationCatalogsBeforeFiltering(t *testing.T) {
 		{SessionID: "session_foreign", RunID: "run_foreign", SegmentID: "segment_foreign", CallID: "tool_foreign", ItemID: "item_foreign", StartedAt: createdAt},
 		{SessionID: active.SessionID(), RunID: active.ID(), SegmentID: "segment_active", CallID: "tool_active", ItemID: "item_active", StartedAt: createdAt},
 	}
+	activeToolItem := testsupport.MustRestoreItem(testsupport.ItemInput{
+		ID: "item_active", SessionID: active.SessionID(), RunID: active.ID(),
+		Kind: transcript.ToolCall, Status: transcript.ItemRunning, OccurredAt: createdAt,
+		Tool: &transcript.ToolInvocation{Name: "shell"},
+	})
 	wantModels := append([]OpenModelInvocation(nil), models...)
 	wantTools := append([]OpenToolInvocation(nil), tools...)
 	store := &recoveryStoreStub{
 		runs: []rundomain.Run{active}, models: models, tools: tools, aliasOpen: true,
-		transcripts: map[string][]transcript.Item{}, messageMarks: map[string]int{},
+		transcripts:  map[string][]transcript.Item{active.SessionID(): {activeToolItem}},
+		messageMarks: map[string]int{},
 	}
 	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
 		func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
@@ -732,6 +801,11 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 		Kind: transcript.QuestionItem, OccurredAt: createdAt,
 		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
 	})
+	toolItem := testsupport.MustRestoreItem(testsupport.ItemInput{
+		ID: "item_tool_child", SessionID: root.SessionID(), RunID: child.ID(),
+		Kind: transcript.ToolCall, Status: transcript.ItemRunning, OccurredAt: createdAt,
+		Tool: &transcript.ToolInvocation{Name: "shell"},
+	})
 	store := &recoveryStoreStub{
 		runs: []rundomain.Run{root, child},
 		models: []OpenModelInvocation{
@@ -742,7 +816,7 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 			SessionID: child.SessionID(), RunID: child.ID(), SegmentID: "segment_child",
 			CallID: "tool_child", ItemID: "item_tool_child", StartedAt: createdAt.Add(3 * time.Second),
 		}},
-		transcripts:  map[string][]transcript.Item{root.SessionID(): {item}},
+		transcripts:  map[string][]transcript.Item{root.SessionID(): {item, toolItem}},
 		messageMarks: map[string]int{root.SessionID(): 7},
 	}
 	checkpointCalls := 0
@@ -772,8 +846,10 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 			t.Fatalf("lost Run = %+v", lost)
 		}
 	}
-	if len(store.commit.ItemReplacements) != 0 {
-		t.Fatalf("Item replacements = %+v, complete Question prompt must remain unchanged", store.commit.ItemReplacements)
+	if len(store.commit.ItemReplacements) != 1 ||
+		store.commit.ItemReplacements[0].Expected.ID() != toolItem.ID() ||
+		store.commit.ItemReplacements[0].Replacement.Status() != transcript.ItemIncomplete {
+		t.Fatalf("Item replacements = %+v, want only the open Tool Item abandoned", store.commit.ItemReplacements)
 	}
 	if len(store.commit.PreservedCheckpointRootIDs) != 0 {
 		t.Fatalf("preserved checkpoints = %v, want none", store.commit.PreservedCheckpointRootIDs)
@@ -845,6 +921,12 @@ func TestRecoveryDoesNotMoveDurableTimeBackwardWhenTheClockRegresses(t *testing.
 					SessionID: "session", RunID: active.ID(), SegmentID: "segment",
 					CallID: "tool", ItemID: "tool_item", StartedAt: test.toolAt,
 				}}
+				store.transcripts["session"] = []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+					ID: "tool_item", SessionID: "session", RunID: active.ID(),
+					Kind: transcript.ToolCall, Status: transcript.ItemRunning,
+					OccurredAt: base,
+					Tool:       &transcript.ToolInvocation{Name: "shell"},
+				})}
 			}
 
 			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
