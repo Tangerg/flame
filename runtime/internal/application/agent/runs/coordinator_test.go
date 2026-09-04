@@ -492,16 +492,17 @@ func (f *fakeEffects) ClaimResume(_ context.Context, claim ResumeClaimCommit) (C
 		return ClaimedResume{}, err
 	}
 	checkpoint := testExecutorCheckpoint()
-	root, _ := claim.Expected.RootContinuation()
+	pending := claim.Pending()
+	root, _ := pending.RootContinuation()
 	checkpoint.RootMemberID = root.MemberID
-	checkpoint.Scope.SessionID = claim.Expected.SessionID
+	checkpoint.Scope.SessionID = pending.SessionID
 	checkpoint.Scope.CWD = "/work"
 	checkpoint.Scope.WorkspaceCWD = "/work"
-	checkpoint.Scope.GoalIncarnationID = claim.Expected.GoalIncarnationID
+	checkpoint.Scope.GoalIncarnationID = pending.GoalIncarnationID
 	checkpoint.ModelSelection = root.ModelSelection
 	checkpoint.Limits = root.Limits
 	claimed := ClaimedResume{
-		Pending: claim.Expected, Answers: append([]InterruptAnswer(nil), claim.Answers...),
+		Pending: pending, Answers: claim.Answers(),
 		Checkpoint: checkpoint,
 	}
 	if f.mutateClaim != nil {

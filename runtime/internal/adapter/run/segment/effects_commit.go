@@ -194,7 +194,8 @@ func prepareResumeClaim(claim runs.ResumeClaimCommit) (preparedResumeClaim, erro
 	if err := claim.Validate(); err != nil {
 		return preparedResumeClaim{}, fmt.Errorf("segment: invalid resume claim: %w", err)
 	}
-	root, ok := claim.Expected.RootContinuation()
+	pending := claim.Pending()
+	root, ok := pending.RootContinuation()
 	if !ok {
 		return preparedResumeClaim{}, errors.New("segment: resume claim has no root continuation")
 	}
@@ -218,6 +219,7 @@ func (e *Effects) applyResumeClaim(
 	prepared preparedResumeClaim,
 	checkpoint *runs.ExecutorCheckpoint,
 ) error {
+	pending := prepared.claim.Pending()
 	loaded, err := e.loadResumeCheckpoint(ctx, prepared)
 	if err != nil {
 		return err
@@ -236,13 +238,13 @@ func (e *Effects) applyResumeClaim(
 		}
 	}
 	if err := e.executorCheckpoints.DeleteCheckpoints(
-		ctx, prepared.claim.Expected.SessionID, []string{prepared.root.MemberID},
+		ctx, pending.SessionID, []string{prepared.root.MemberID},
 	); err != nil {
 		return fmt.Errorf("segment: invalidate claimed executor checkpoint: %w", err)
 	}
 	*checkpoint = loaded.Clone()
 	if err := e.runState.RecordWaitingRunCommit(
-		ctx, prepared.claim.Expected.SessionID, prepared.claim.Expected.RootRunID, prepared.claim.CommitID,
+		ctx, pending.SessionID, pending.RootRunID, prepared.claim.CommitID(),
 	); err != nil {
 		return fmt.Errorf("segment: record resume claim commit receipt: %w", err)
 	}
@@ -253,17 +255,18 @@ func (e *Effects) loadResumeCheckpoint(
 	ctx context.Context,
 	prepared preparedResumeClaim,
 ) (runs.ExecutorCheckpoint, error) {
+	pending := prepared.claim.Pending()
 	loaded, err := e.executorCheckpoints.LoadCheckpoint(ctx, prepared.root.MemberID)
 	if err != nil {
 		return runs.ExecutorCheckpoint{}, fmt.Errorf("segment: load claimed executor checkpoint: %w", err)
 	}
 	if err := loaded.ValidateOwnership(
-		prepared.root.MemberID, prepared.claim.Expected.SessionID,
+		prepared.root.MemberID, pending.SessionID,
 	); err != nil {
 		return runs.ExecutorCheckpoint{}, err
 	}
 	if !loaded.ModelSelection.Equal(prepared.root.ModelSelection) || loaded.Limits != prepared.root.Limits ||
-		loaded.Scope.GoalIncarnationID != prepared.claim.Expected.GoalIncarnationID {
+		loaded.Scope.GoalIncarnationID != pending.GoalIncarnationID {
 		return runs.ExecutorCheckpoint{}, fmt.Errorf(
 			"%w: claimed checkpoint policy differs from Pending", runs.ErrInvalidExecutorCheckpoint,
 		)
@@ -272,8 +275,9 @@ func (e *Effects) loadResumeCheckpoint(
 }
 
 func (e *Effects) consumeResumePending(ctx context.Context, claim runs.ResumeClaimCommit) error {
+	pending := claim.Pending()
 	consumed, found, err := e.resumeClaims.ClaimResume(
-		ctx, claim.Expected.SessionID, claim.Expected.RootRunID, claim.Answers, claim.ClaimedAt,
+		ctx, pending.SessionID, pending.RootRunID, claim.Answers(), claim.ClaimedAt(),
 	)
 	if err != nil {
 		return fmt.Errorf("segment: consume resume Pending: %w", err)
@@ -281,7 +285,7 @@ func (e *Effects) consumeResumePending(ctx context.Context, claim runs.ResumeCla
 	if !found {
 		return runs.ErrInterruptNotOpen
 	}
-	if !reflect.DeepEqual(consumed, claim.Expected) {
+	if !reflect.DeepEqual(consumed, pending) {
 		return errors.New("segment: waiting hand-off changed before answer claim")
 	}
 	return nil
@@ -293,8 +297,9 @@ func (e *Effects) reconcileResumeClaim(
 	checkpoint runs.ExecutorCheckpoint,
 	commitErr error,
 ) (runs.ClaimedResume, error) {
+	pending := claim.Pending()
 	settled, settleErr := e.reconcileRunCommit(
-		ctx, claim.Expected.SessionID, claim.Expected.RootRunID, "", claim.CommitID,
+		ctx, pending.SessionID, pending.RootRunID, "", claim.CommitID(),
 	)
 	if !settled {
 		return runs.ClaimedResume{}, errors.Join(commitErr, settleErr)
@@ -343,7 +348,7 @@ func (e *Effects) resolveToolApproval(
 
 func claimedResumeResult(claim runs.ResumeClaimCommit, checkpoint runs.ExecutorCheckpoint) runs.ClaimedResume {
 	return runs.ClaimedResume{
-		Pending: claim.Expected, Answers: append([]runs.InterruptAnswer(nil), claim.Answers...),
+		Pending: claim.Pending(), Answers: claim.Answers(),
 		Checkpoint: checkpoint,
 	}
 }

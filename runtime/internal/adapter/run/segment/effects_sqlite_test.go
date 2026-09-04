@@ -38,6 +38,21 @@ func segmentTestCost(t *testing.T, usd float64) accounting.Cost {
 
 const checkpointBuildID = testsupport.BuildID
 
+func mustResumeClaim(
+	t testing.TB,
+	commitID runtimeidentity.CommitID,
+	pending runs.Pending,
+	answers []runs.InterruptAnswer,
+	claimedAt time.Time,
+) runs.ResumeClaimCommit {
+	t.Helper()
+	claim, err := runs.NewResumeClaimCommit(commitID, pending, answers, claimedAt)
+	if err != nil {
+		t.Fatalf("prepare Resume claim: %v", err)
+	}
+	return claim
+}
+
 func claimResumeForTest(
 	t *testing.T,
 	store *persistence.InterruptStore,
@@ -1296,9 +1311,10 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 		RequestID:       pending.Bindings[0].RequestID,
 		Resolution:      interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}},
 	}}
-	replacements, err := (runs.ResumeClaimCommit{
-		CommitID: testCommitID("run_commit_resume_claim"), Expected: pending, Answers: answers, ClaimedAt: claimedAt,
-	}).QuestionReplacements()
+	claim := mustResumeClaim(
+		t, testCommitID("run_commit_resume_claim"), pending, answers, claimedAt,
+	)
+	replacements, err := claim.QuestionReplacements()
 	if err != nil {
 		t.Fatalf("prepare question replacement: %v", err)
 	}
@@ -1314,9 +1330,10 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 
 	stale := pending
 	stale.ExecutorID = "turn_stale"
-	if _, claimResumeErr := effects.ClaimResume(ctx, runs.ResumeClaimCommit{
-		CommitID: testCommitID("run_commit_stale_resume_claim"), Expected: stale, Answers: answers, ClaimedAt: claimedAt,
-	}); claimResumeErr == nil {
+	staleClaim := mustResumeClaim(
+		t, testCommitID("run_commit_stale_resume_claim"), stale, answers, claimedAt,
+	)
+	if _, claimResumeErr := effects.ClaimResume(ctx, staleClaim); claimResumeErr == nil {
 		t.Fatal("ClaimResume accepted a stale waiting hand-off")
 	}
 	if _, getFound, getErr := interruptStore.Get(ctx, pending.RootRunID); getErr != nil || !getFound {
@@ -1326,9 +1343,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 		t.Fatalf("checkpoint after rolled-back claim: %v", loadCheckpointErr)
 	}
 
-	claimed, err := effects.ClaimResume(ctx, runs.ResumeClaimCommit{
-		CommitID: testCommitID("run_commit_resume_claim"), Expected: pending, Answers: answers, ClaimedAt: claimedAt,
-	})
+	claimed, err := effects.ClaimResume(ctx, claim)
 	if err != nil {
 		t.Fatalf("ClaimResume: %v", err)
 	}
@@ -1468,10 +1483,13 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 		MemberID:        pending.Bindings[0].MemberID, RequestID: pending.Bindings[0].RequestID,
 		Resolution: interrupt.Resolution{Approved: true},
 	}
-	claim := runs.ResumeClaimCommit{
-		CommitID: testCommitID("run_commit_approval_claim"), Expected: pending,
-		Answers: []runs.InterruptAnswer{answer}, ClaimedAt: pending.CreatedAt.Add(time.Second),
-	}
+	claim := mustResumeClaim(
+		t,
+		testCommitID("run_commit_approval_claim"),
+		pending,
+		[]runs.InterruptAnswer{answer},
+		pending.CreatedAt.Add(time.Second),
+	)
 	newEffects := func(state RunStore) *Effects {
 		return mustNewEffects(Config{
 			ResumeClaims: interrupts, ExecutorCheckpoints: checkpoints,
@@ -1542,7 +1560,7 @@ func TestClaimResumeReconcilesAmbiguousCommit(t *testing.T) {
 		fixture.pending.SessionID,
 		fixture.pending.RootRunID,
 		"",
-		fixture.claim.CommitID,
+		fixture.claim.CommitID(),
 	)
 	if err != nil || !matched {
 		t.Fatalf("resume claim commit marker = %t err=%v, want exact match", matched, err)
@@ -1552,7 +1570,7 @@ func TestClaimResumeReconcilesAmbiguousCommit(t *testing.T) {
 		fixture.pending.SessionID,
 		fixture.pending.RootRunID,
 		"",
-		testCommitID(fixture.claim.CommitID.String()+"_other"),
+		testCommitID(fixture.claim.CommitID().String()+"_other"),
 	)
 	if err != nil || matched {
 		t.Fatalf("different resume claim commit marker = %t err=%v, want no match", matched, err)
@@ -1595,7 +1613,7 @@ func TestClaimResumeRollsBackWhenCommitMarkerFails(t *testing.T) {
 		fixture.pending.SessionID,
 		fixture.pending.RootRunID,
 		"",
-		fixture.claim.CommitID,
+		fixture.claim.CommitID(),
 	)
 	if err != nil || matched {
 		t.Fatalf("resume claim marker after rollback = %t err=%v, want absent", matched, err)
@@ -1696,14 +1714,16 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 		RequestID:       pending.Bindings[0].RequestID,
 		Resolution:      interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}},
 	}}
+	claim := mustResumeClaim(
+		t,
+		testCommitID("run_commit_resume_claim_"+suffix),
+		pending,
+		answers,
+		pending.CreatedAt.Add(time.Second),
+	)
 	return resumeClaimSQLiteFixture{
 		ctx: ctx, db: database, pending: pending, answers: answers,
-		claim: runs.ResumeClaimCommit{
-			CommitID:  testCommitID("run_commit_resume_claim_" + suffix),
-			Expected:  pending,
-			Answers:   answers,
-			ClaimedAt: pending.CreatedAt.Add(time.Second),
-		},
+		claim:      claim,
 		checkpoint: checkpoint, question: questionItem, interrupts: interrupts,
 		checkpoints: checkpoints, transcript: transcriptStore, runStore: runStore,
 	}

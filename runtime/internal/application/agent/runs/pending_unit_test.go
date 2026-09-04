@@ -26,12 +26,11 @@ func TestResumeClaimDerivesExactToolApprovalResolutions(t *testing.T) {
 			Resolution:      interrupt.Resolution{Approved: index == 0},
 		}
 	}
-	claim := ResumeClaimCommit{
-		CommitID: testCommitID("run_commit_approval"), Expected: pending, Answers: answers,
-		ClaimedAt: pending.CreatedAt.Add(time.Second),
-	}
-	if err := claim.Validate(); err != nil {
-		t.Fatalf("Validate: %v", err)
+	claim, err := NewResumeClaimCommit(
+		testCommitID("run_commit_approval"), pending, answers, pending.CreatedAt.Add(time.Second),
+	)
+	if err != nil {
+		t.Fatalf("NewResumeClaimCommit: %v", err)
 	}
 	resolutions, err := claim.ToolApprovalResolutions()
 	if err != nil {
@@ -49,9 +48,59 @@ func TestResumeClaimDerivesExactToolApprovalResolutions(t *testing.T) {
 		t.Fatalf("Tool approval resolutions = %+v", resolutions)
 	}
 
-	claim.Answers[0].Resolution.Answers = [][]string{{"unexpected"}}
+	claim.answers[0].Resolution.Answers = [][]string{{"unexpected"}}
 	if err := claim.Validate(); err == nil || !strings.Contains(err.Error(), "cannot carry question answers") {
 		t.Fatalf("Validate cross-kind resolution error = %v", err)
+	}
+}
+
+func TestResumeClaimOwnsPendingAndQuestionAnswers(t *testing.T) {
+	pending := validTreePending()
+	pending.Capabilities.InterruptKinds = []interrupt.Kind{interrupt.Question}
+	pending.Interrupts = []transcript.Interrupt{{
+		ItemID: "item_grandchild", ItemOccurredAt: pending.CreatedAt,
+		RunID: "run_grandchild", Kind: interrupt.Question,
+		Question: &transcript.Question{Fields: []transcript.QuestionField{{
+			Prompt: "Continue?", Kind: transcript.QuestionChoice,
+			Options: []transcript.QuestionOption{{Label: "yes"}, {Label: "no"}},
+		}}},
+	}}
+	pending.Bindings = []InterruptBinding{{
+		InterruptItemID: "item_grandchild", MemberID: "member_grandchild", RequestID: "request_grandchild",
+	}}
+	answers := []InterruptAnswer{{
+		InterruptItemID: "item_grandchild", MemberID: "member_grandchild", RequestID: "request_grandchild",
+		Resolution: interrupt.Resolution{Approved: true, Answers: [][]string{{"yes"}}},
+	}}
+
+	claim, err := NewResumeClaimCommit(
+		testCommitID("run_commit_question"), pending, answers, pending.CreatedAt.Add(time.Second),
+	)
+	if err != nil {
+		t.Fatalf("NewResumeClaimCommit: %v", err)
+	}
+	pending.Interrupts[0].Question.Fields[0].Options[0].Label = "changed input"
+	pending.Continuations[0].MemberID = "member_changed"
+	pending.Capabilities.InterruptKinds[0] = interrupt.Approval
+	answers[0].Resolution.Answers[0][0] = "changed input"
+
+	ownedPending := claim.Pending()
+	ownedAnswers := claim.Answers()
+	ownedPending.Interrupts[0].Question.Fields[0].Options[0].Label = "changed accessor"
+	ownedPending.Continuations[0].MemberID = "member_changed_again"
+	ownedPending.Capabilities.InterruptKinds[0] = interrupt.Approval
+	ownedAnswers[0].Resolution.Answers[0][0] = "changed accessor"
+
+	gotPending := claim.Pending()
+	gotAnswers := claim.Answers()
+	if gotPending.Interrupts[0].Question.Fields[0].Options[0].Label != "yes" ||
+		gotPending.Continuations[0].MemberID != "member_grandchild" ||
+		gotPending.Capabilities.InterruptKinds[0] != interrupt.Question ||
+		gotAnswers[0].Resolution.Answers[0][0] != "yes" {
+		t.Fatalf("Resume claim ownership = pending:%+v answers:%+v", gotPending, gotAnswers)
+	}
+	if err := claim.Validate(); err != nil {
+		t.Fatalf("Validate after caller mutations: %v", err)
 	}
 }
 

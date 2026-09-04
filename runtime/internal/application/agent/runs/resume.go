@@ -47,8 +47,9 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		return StartResult{}, validatePendingRunTreeErr
 	}
 
-	claim := ResumeClaimCommit{
-		CommitID: newRunCommitID(), Expected: pending, Answers: answers, ClaimedAt: c.publications.nowUTC(),
+	claim, err := NewResumeClaimCommit(newRunCommitID(), pending, answers, c.publications.nowUTC())
+	if err != nil {
+		return StartResult{}, fmt.Errorf("runs: prepare resume claim: %w", err)
 	}
 	claimed, err := c.resumeClaims.ClaimResume(ctx, claim)
 	if err != nil {

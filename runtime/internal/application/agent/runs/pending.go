@@ -148,6 +148,48 @@ func (p Pending) RootContinuation() (Continuation, bool) {
 	return Continuation{}, false
 }
 
+// Clone returns an ownership-isolated copy of the complete waiting hand-off.
+func (p Pending) Clone() Pending {
+	p.Interrupts = slices.Clone(p.Interrupts)
+	for index := range p.Interrupts {
+		p.Interrupts[index] = clonePendingInterrupt(p.Interrupts[index])
+	}
+	p.Bindings = slices.Clone(p.Bindings)
+	p.Continuations = slices.Clone(p.Continuations)
+	for index := range p.Continuations {
+		continuation := &p.Continuations[index]
+		continuation.DrainedTools = slices.Clone(continuation.DrainedTools)
+		continuation.CommittedTools = slices.Clone(continuation.CommittedTools)
+	}
+	p.Capabilities = p.Capabilities.Clone()
+	return p
+}
+
+func clonePendingInterrupt(value transcript.Interrupt) transcript.Interrupt {
+	if value.Approval != nil {
+		approval := *value.Approval
+		if approval.Tool.Result != nil {
+			result := *approval.Tool.Result
+			approval.Tool.Result = &result
+		}
+		if approval.Tool.Offload != nil {
+			offload := *approval.Tool.Offload
+			approval.Tool.Offload = &offload
+		}
+		value.Approval = &approval
+	}
+	if value.Question != nil {
+		question := *value.Question
+		question.Fields = slices.Clone(question.Fields)
+		for index := range question.Fields {
+			question.Fields[index].Options = slices.Clone(question.Fields[index].Options)
+		}
+		question.Answers = cloneAnswers(question.Answers)
+		value.Question = &question
+	}
+	return value
+}
+
 // Validate checks the complete tree hand-off. It deliberately validates both
 // directions of the item/input-request relation so accepting a response never
 // requires guessing which executor boundary it belongs to.

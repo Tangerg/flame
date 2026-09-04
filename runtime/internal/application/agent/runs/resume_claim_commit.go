@@ -19,10 +19,37 @@ import (
 type ResumeClaimCommit struct {
 	// CommitID identifies the complete answer-claim transaction. The checkpoint
 	// returned by a successful claim remains a one-shot in-memory hand-off.
-	CommitID  runtimeidentity.CommitID
-	Expected  Pending
-	Answers   []InterruptAnswer
-	ClaimedAt time.Time
+	commitID  runtimeidentity.CommitID
+	expected  Pending
+	answers   []InterruptAnswer
+	claimedAt time.Time
+}
+
+// NewResumeClaimCommit binds one validated answer set to the exact waiting
+// hand-off and stable transaction identity that consumes it.
+func NewResumeClaimCommit(
+	commitID runtimeidentity.CommitID,
+	expected Pending,
+	answers []InterruptAnswer,
+	claimedAt time.Time,
+) (ResumeClaimCommit, error) {
+	claim := ResumeClaimCommit{
+		commitID: commitID, expected: expected.Clone(),
+		answers: cloneInterruptAnswers(answers), claimedAt: claimedAt,
+	}
+	if err := claim.Validate(); err != nil {
+		return ResumeClaimCommit{}, err
+	}
+	return claim, nil
+}
+
+func cloneInterruptAnswers(answers []InterruptAnswer) []InterruptAnswer {
+	owned := make([]InterruptAnswer, len(answers))
+	for index, answer := range answers {
+		owned[index] = answer
+		owned[index].Resolution.Answers = cloneAnswers(answer.Resolution.Answers)
+	}
+	return owned
 }
 
 // ClaimedResume is the immutable result of a successful answer claim. The
@@ -62,28 +89,28 @@ func (t ToolApprovalResolution) Validate() error {
 }
 
 func (r ResumeClaimCommit) Validate() error {
-	if err := r.CommitID.Validate(); err != nil {
+	if err := r.commitID.Validate(); err != nil {
 		return fmt.Errorf("runs: resume claim: %w", err)
 	}
-	if err := r.Expected.Validate(); err != nil {
+	if err := r.expected.Validate(); err != nil {
 		return fmt.Errorf("runs: resume claim Pending: %w", err)
 	}
-	if r.ClaimedAt.IsZero() {
+	if r.claimedAt.IsZero() {
 		return errors.New("runs: resume claim time is required")
 	}
-	if len(r.Answers) != len(r.Expected.Bindings) {
+	if len(r.answers) != len(r.expected.Bindings) {
 		return fmt.Errorf(
 			"runs: resume claim has %d answers for %d boundaries",
-			len(r.Answers), len(r.Expected.Bindings),
+			len(r.answers), len(r.expected.Bindings),
 		)
 	}
-	for index, answer := range r.Answers {
-		binding := r.Expected.Bindings[index]
+	for index, answer := range r.answers {
+		binding := r.expected.Bindings[index]
 		if answer.InterruptItemID != binding.InterruptItemID || answer.MemberID != binding.MemberID ||
 			answer.RequestID != binding.RequestID {
 			return fmt.Errorf("runs: resume claim answer[%d] differs from its pending boundary", index)
 		}
-		if err := answer.validateResolution(r.Expected.Interrupts[index]); err != nil {
+		if err := answer.validateResolution(r.expected.Interrupts[index]); err != nil {
 			return fmt.Errorf("runs: resume claim answer[%d]: %w", index, err)
 		}
 	}
@@ -96,6 +123,18 @@ func (r ResumeClaimCommit) Validate() error {
 	return nil
 }
 
+// CommitID returns the stable answer-claim transaction identity.
+func (r ResumeClaimCommit) CommitID() runtimeidentity.CommitID { return r.commitID }
+
+// Pending returns an isolated snapshot of the exact waiting hand-off consumed by the claim.
+func (r ResumeClaimCommit) Pending() Pending { return r.expected.Clone() }
+
+// Answers returns the isolated executor-bound answer set in canonical Pending order.
+func (r ResumeClaimCommit) Answers() []InterruptAnswer { return cloneInterruptAnswers(r.answers) }
+
+// ClaimedAt returns the answer linearization time.
+func (r ResumeClaimCommit) ClaimedAt() time.Time { return r.claimedAt }
+
 // ToolApprovalResolutions derives the durable verdict for every accepted
 // approval response from the exact Pending snapshot. It deliberately carries
 // the original prompt invocation so the answer claim validates the exact
@@ -103,16 +142,16 @@ func (r ResumeClaimCommit) Validate() error {
 // may therefore replace the invocation on the terminal Tool Item; Item and
 // provider call identities, rather than mutable arguments, preserve continuity.
 func (r ResumeClaimCommit) ToolApprovalResolutions() ([]ToolApprovalResolution, error) {
-	answersByItem := make(map[string]InterruptAnswer, len(r.Answers))
-	bindingsByItem := make(map[string]InterruptBinding, len(r.Expected.Bindings))
-	for _, answer := range r.Answers {
+	answersByItem := make(map[string]InterruptAnswer, len(r.answers))
+	bindingsByItem := make(map[string]InterruptBinding, len(r.expected.Bindings))
+	for _, answer := range r.answers {
 		answersByItem[answer.InterruptItemID] = answer
 	}
-	for _, binding := range r.Expected.Bindings {
+	for _, binding := range r.expected.Bindings {
 		bindingsByItem[binding.InterruptItemID] = binding
 	}
-	resolutions := make([]ToolApprovalResolution, 0, len(r.Expected.Interrupts))
-	for _, request := range r.Expected.Interrupts {
+	resolutions := make([]ToolApprovalResolution, 0, len(r.expected.Interrupts))
+	for _, request := range r.expected.Interrupts {
 		if request.Kind != interrupt.Approval {
 			continue
 		}
@@ -129,7 +168,7 @@ func (r ResumeClaimCommit) ToolApprovalResolutions() ([]ToolApprovalResolution, 
 		}
 		resolution := ToolApprovalResolution{
 			Identity: transcript.ItemIdentity{
-				SessionID: r.Expected.SessionID, RunID: request.RunID,
+				SessionID: r.expected.SessionID, RunID: request.RunID,
 				ItemID: request.ItemID, OccurredAt: request.ItemOccurredAt,
 			},
 			CallID:     binding.ToolCallID,
@@ -149,12 +188,12 @@ func (r ResumeClaimCommit) ToolApprovalResolutions() ([]ToolApprovalResolution, 
 // exact Pending snapshot and validated resolutions; the persistence port only
 // executes these replacements in the same transaction as the claim.
 func (r ResumeClaimCommit) QuestionReplacements() ([]transcript.Replacement, error) {
-	answersByItem := make(map[string]InterruptAnswer, len(r.Answers))
-	for _, answer := range r.Answers {
+	answersByItem := make(map[string]InterruptAnswer, len(r.answers))
+	for _, answer := range r.answers {
 		answersByItem[answer.InterruptItemID] = answer
 	}
-	replacements := make([]transcript.Replacement, 0, len(r.Expected.Interrupts))
-	for _, request := range r.Expected.Interrupts {
+	replacements := make([]transcript.Replacement, 0, len(r.expected.Interrupts))
+	for _, request := range r.expected.Interrupts {
 		if request.Kind != interrupt.Question {
 			continue
 		}
@@ -166,7 +205,7 @@ func (r ResumeClaimCommit) QuestionReplacements() ([]transcript.Replacement, err
 			return nil, fmt.Errorf("question item %q has no answer", request.ItemID)
 		}
 		expected, err := transcript.NewQuestion(transcript.ItemIdentity{
-			SessionID:  r.Expected.SessionID,
+			SessionID:  r.expected.SessionID,
 			RunID:      request.RunID,
 			ItemID:     request.ItemID,
 			OccurredAt: request.ItemOccurredAt,
