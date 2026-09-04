@@ -117,7 +117,8 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 		ResumedAt: time.Now().UTC(),
 		Runs:      []run.ResumeDraft{{RunID: "run_stale", SegmentID: "seg_next"}},
 	}
-	err = effects.CommitOpening(ctx, runs.OpeningCommit{CommitID: testCommitID("run_commit_stale_resume"), Resume: &resume, Events: []runs.EventCommit{{RunID: "run_stale", SessionID: "ses_1", SegmentID: "seg_next"}}})
+	opening := mustResumeOpening(t, testCommitID("run_commit_stale_resume"), resume, nil)
+	err = effects.CommitOpening(ctx, opening)
 	if err == nil {
 		t.Fatal("CommitOpening must reject an interrupt that does not own the active run")
 	}
@@ -167,20 +168,17 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 		ResumedAt: time.Now().UTC(),
 		Runs:      []run.ResumeDraft{{RunID: "run_1", SegmentID: "seg_next"}},
 	}
-	opening := runs.OpeningCommit{
-		CommitID: testCommitID("run_commit_resume"),
-		Resume:   &resume,
-		Events: []runs.EventCommit{{
-			RunID:     "run_1",
-			SessionID: "ses_1",
-			SegmentID: "seg_next",
-			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
-				SessionID: "ses_1", RunID: "run_1", ID: "item_resumed", OccurredAt: created,
-				Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
-				Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "go on"}},
-			})},
-		}},
-	}
+	openingEvents := []runs.EventCommit{{
+		RunID:     "run_1",
+		SessionID: "ses_1",
+		SegmentID: "seg_next",
+		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+			SessionID: "ses_1", RunID: "run_1", ID: "item_resumed", OccurredAt: created,
+			Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
+			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "go on"}},
+		})},
+	}}
+	opening := mustResumeOpening(t, testCommitID("run_commit_resume"), resume, openingEvents)
 	err = effects.CommitOpening(ctx, opening)
 	if err != nil {
 		t.Fatalf("CommitOpening: %v", err)
@@ -210,8 +208,8 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 	if err := db.QueryRowContext(ctx, `SELECT state FROM runs WHERE run_id = ?`, "run_1").Scan(&stateName); err != nil || stateName != "running" {
 		t.Fatalf("run state after exact replay=%q err=%v, want running", stateName, err)
 	}
-	opening.CommitID = testCommitID("run_commit_other_resume")
-	if err := effects.CommitOpening(ctx, opening); err == nil {
+	otherOpening := mustResumeOpening(t, testCommitID("run_commit_other_resume"), resume, openingEvents)
+	if err := effects.CommitOpening(ctx, otherOpening); err == nil {
 		t.Fatal("different CommitOpening attempt succeeded after the Run was already resumed")
 	}
 }
@@ -230,18 +228,18 @@ func TestCommitOpeningReconcilesAmbiguousAdmission(t *testing.T) {
 		RunID: "run_ambiguous_opening", SessionID: "ses_ambiguous_opening",
 		SegmentID: "seg_ambiguous_opening", ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	opening := runs.OpeningCommit{
-		CommitID: testCommitID("run_commit_ambiguous_opening"),
-		Admit:    &draft,
-		Events: []runs.EventCommit{{
-			RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
-			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
-				SessionID: draft.SessionID, RunID: draft.RunID, ID: "item_opening",
-				OccurredAt: createdAt, Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
-				Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
-			})},
-		}},
-	}
+	openingEvents := []runs.EventCommit{{
+		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
+		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+			SessionID: draft.SessionID, RunID: draft.RunID, ID: "item_opening",
+			OccurredAt: createdAt, Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
+			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
+		})},
+	}}
+	opening := mustAdmissionOpening(
+		t, testCommitID("run_commit_ambiguous_opening"), draft,
+		nil, nil, "", nil, openingEvents,
+	)
 	commitCtx, cancelCommit := context.WithCancel(ctx)
 	t.Cleanup(cancelCommit)
 	loseReceipt := true
@@ -265,7 +263,7 @@ func TestCommitOpeningReconcilesAmbiguousAdmission(t *testing.T) {
 		t.Fatalf("opened Run = %#v found=%t err=%v", stored, found, err)
 	}
 	matched, err := state.RunCommitCommitted(
-		ctx, draft.SessionID, draft.RunID, draft.SegmentID, opening.CommitID,
+		ctx, draft.SessionID, draft.RunID, draft.SegmentID, opening.CommitID(),
 	)
 	if err != nil || !matched {
 		t.Fatalf("opening marker matched=%t err=%v, want true/nil", matched, err)
@@ -277,8 +275,11 @@ func TestCommitOpeningReconcilesAmbiguousAdmission(t *testing.T) {
 	if err != nil || len(items) != 1 || items[0].ID() != "item_opening" {
 		t.Fatalf("opening items = %#v err=%v, want one item", items, err)
 	}
-	opening.CommitID = testCommitID("run_commit_other_opening")
-	if err := effects.CommitOpening(commitCtx, opening); err == nil {
+	otherOpening := mustAdmissionOpening(
+		t, testCommitID("run_commit_other_opening"), draft,
+		nil, nil, "", nil, openingEvents,
+	)
+	if err := effects.CommitOpening(commitCtx, otherOpening); err == nil {
 		t.Fatal("different opening attempt reconciled against prior marker")
 	}
 	requireSQLiteHealthy(t, ctx, db)
@@ -631,10 +632,8 @@ func TestCommitOpeningResumesRunTreeAtomically(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fixture := newOpeningResumeFixture(t, test.suspendRoot)
-			err := fixture.effects.CommitOpening(
-				fixture.ctx,
-				runs.OpeningCommit{CommitID: testCommitID("run_commit_tree_resume"), Resume: &fixture.resume},
-			)
+			opening := mustResumeOpening(t, testCommitID("run_commit_tree_resume"), fixture.resume, nil)
+			err := fixture.effects.CommitOpening(fixture.ctx, opening)
 			if test.wantError {
 				assertOpeningResumeRollback(t, fixture, err)
 				return
@@ -830,18 +829,14 @@ func TestCommitOpeningRollsBackScheduledSession(t *testing.T) {
 		ID: draft.SessionID, Title: "scheduled", Workspace: testsupport.MustWorkspace("/work"),
 		StartedAt: created, UpdatedAt: created, Revision: 1,
 	})
-	err = effects.CommitOpening(ctx, runs.OpeningCommit{
-		CommitID:       testCommitID("run_commit_claimed_resume"),
-		Admit:          &draft,
-		InitialSession: &scheduled,
+	opening := mustAdmissionOpening(
+		t, testCommitID("run_commit_claimed_resume"), draft,
+		&scheduled, nil,
 		// No firing is seeded: Accept fails after Insert and Admit, so the
 		// test exercises rollback rather than a preflight rejection.
-		ScheduleFiring: "sch_missing:1000",
-		Events: []runs.EventCommit{{
-			RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
-			Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{ID: draft.RunID, SessionID: draft.SessionID, UpdatedAt: created})),
-		}},
-	})
+		"sch_missing:1000", nil, nil,
+	)
+	err = effects.CommitOpening(ctx, opening)
 	if err == nil {
 		t.Fatal("CommitOpening accepted an unknown scheduled occurrence")
 	}
@@ -896,10 +891,10 @@ func TestCommitOpeningOwnsManualScheduleRunFact(t *testing.T) {
 		RunID: "run_manual", SessionID: manualSession.ID(), SegmentID: "seg_manual",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	opening := runs.OpeningCommit{
-		CommitID: testCommitID("run_commit_manual_schedule"), Admit: &manualDraft,
-		InitialSession: &manualSession, ManualScheduleRun: &record,
-	}
+	opening := mustAdmissionOpening(
+		t, testCommitID("run_commit_manual_schedule"), manualDraft,
+		&manualSession, nil, "", &record, nil,
+	)
 	if err := effects.CommitOpening(ctx, opening); err != nil {
 		t.Fatalf("commit manual schedule opening: %v", err)
 	}
@@ -931,10 +926,11 @@ func TestCommitOpeningOwnsManualScheduleRunFact(t *testing.T) {
 		RunID: "run_manual_missing", SessionID: missingSession.ID(), SegmentID: "seg_manual_missing",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	err = effects.CommitOpening(ctx, runs.OpeningCommit{
-		CommitID: testCommitID("run_commit_manual_schedule_missing"), Admit: &missingDraft,
-		InitialSession: &missingSession, ManualScheduleRun: &missingRecord,
-	})
+	missingOpening := mustAdmissionOpening(
+		t, testCommitID("run_commit_manual_schedule_missing"), missingDraft,
+		&missingSession, nil, "", &missingRecord, nil,
+	)
+	err = effects.CommitOpening(ctx, missingOpening)
 	if !errors.Is(err, schedule.ErrNotFound) {
 		t.Fatalf("missing Schedule opening error = %v, want ErrNotFound", err)
 	}
@@ -2654,9 +2650,9 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 		Tx:           func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
 	})
 	second := testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created})
-	err = effects.CommitOpening(ctx, runs.OpeningCommit{
-		CommitID: testCommitID("run_commit_busy_opening"), Admit: &second,
-		Events: []runs.EventCommit{{
+	opening := mustAdmissionOpening(
+		t, testCommitID("run_commit_busy_opening"), second,
+		nil, nil, "", nil, []runs.EventCommit{{
 			RunID:     "run_2",
 			SessionID: "ses_1",
 			SegmentID: second.SegmentID,
@@ -2669,7 +2665,8 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 				Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "me too"}},
 			})},
 		}},
-	})
+	)
+	err = effects.CommitOpening(ctx, opening)
 	if !errors.Is(err, run.ErrSessionBusy) {
 		t.Fatalf("CommitOpening against a busy session = %v, want ErrSessionBusy", err)
 	}

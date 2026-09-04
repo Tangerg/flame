@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -13,16 +14,75 @@ import (
 // OpeningCommit is the atomic acceptance write-set for one fresh admission or
 // one continuation.
 type OpeningCommit struct {
-	// CommitID identifies the complete admission/resume transaction, including
-	// every opening projection. It is not an EventCommit identity.
-	CommitID           runtimeidentity.CommitID
-	Admit              *run.Draft
-	Resume             *run.TreeResumeDraft
-	InitialSession     *session.Session
-	SessionReplacement *session.Replacement
-	ScheduleFiring     string
-	ManualScheduleRun  *schedule.RunRecord
-	Events             []EventCommit
+	commitID           runtimeidentity.CommitID
+	admit              *run.Draft
+	resume             *run.TreeResumeDraft
+	initialSession     *session.Session
+	sessionReplacement *session.Replacement
+	scheduleFiring     string
+	manualScheduleRun  *schedule.RunRecord
+	events             []EventCommit
+}
+
+// NewAdmissionOpeningCommit binds a fresh Run admission to every root-owned
+// Session or Schedule fact and opening projection written in its transaction.
+func NewAdmissionOpeningCommit(
+	commitID runtimeidentity.CommitID,
+	admit run.Draft,
+	initialSession *session.Session,
+	sessionReplacement *session.Replacement,
+	scheduleFiring string,
+	manualScheduleRun *schedule.RunRecord,
+	events []EventCommit,
+) (OpeningCommit, error) {
+	admit = cloneOpeningAdmission(admit)
+	opening := OpeningCommit{
+		commitID: commitID, admit: &admit,
+		scheduleFiring: scheduleFiring, events: cloneEventCommits(events),
+	}
+	if initialSession != nil {
+		value := *initialSession
+		opening.initialSession = &value
+	}
+	if sessionReplacement != nil {
+		value := *sessionReplacement
+		opening.sessionReplacement = &value
+	}
+	if manualScheduleRun != nil {
+		value := *manualScheduleRun
+		opening.manualScheduleRun = &value
+	}
+	if err := opening.Validate(); err != nil {
+		return OpeningCommit{}, err
+	}
+	return opening, nil
+}
+
+// NewResumeOpeningCommit binds one complete tree continuation to the opening
+// projections written in the same transaction.
+func NewResumeOpeningCommit(
+	commitID runtimeidentity.CommitID,
+	resume run.TreeResumeDraft,
+	events []EventCommit,
+) (OpeningCommit, error) {
+	resume = cloneOpeningResume(resume)
+	opening := OpeningCommit{
+		commitID: commitID, resume: &resume, events: cloneEventCommits(events),
+	}
+	if err := opening.Validate(); err != nil {
+		return OpeningCommit{}, err
+	}
+	return opening, nil
+}
+
+func cloneOpeningAdmission(admit run.Draft) run.Draft {
+	admit.Capabilities = admit.Capabilities.Clone()
+	return admit
+}
+
+func cloneOpeningResume(resume run.TreeResumeDraft) run.TreeResumeDraft {
+	resume.Runs = slices.Clone(resume.Runs)
+	return resume
 }
 
 // Validate proves that the opening is exactly one fresh admission or one tree
@@ -33,21 +93,21 @@ type OpeningCommit struct {
 // may reject unavailable stores or concurrent state changes, but they do not
 // reinterpret this application write-set.
 func (o OpeningCommit) Validate() error {
-	if err := o.CommitID.Validate(); err != nil {
+	if err := o.commitID.Validate(); err != nil {
 		return fmt.Errorf("runs: opening: %w", err)
 	}
-	if (o.Admit == nil) == (o.Resume == nil) {
+	if (o.admit == nil) == (o.resume == nil) {
 		return errors.New("runs: opening requires exactly one admission action")
 	}
-	if o.Admit != nil {
+	if o.admit != nil {
 		if err := o.validateAdmission(); err != nil {
 			return err
 		}
 	} else {
-		if err := o.Resume.Validate(); err != nil {
+		if err := o.resume.Validate(); err != nil {
 			return fmt.Errorf("runs: opening resume: %w", err)
 		}
-		if o.InitialSession != nil || o.SessionReplacement != nil || o.ScheduleFiring != "" || o.ManualScheduleRun != nil {
+		if o.initialSession != nil || o.sessionReplacement != nil || o.scheduleFiring != "" || o.manualScheduleRun != nil {
 			return errors.New("runs: resumed opening carries fresh-run facts")
 		}
 	}
@@ -55,46 +115,46 @@ func (o OpeningCommit) Validate() error {
 }
 
 func (o OpeningCommit) validateAdmission() error {
-	if err := o.Admit.Validate(); err != nil {
+	if err := o.admit.Validate(); err != nil {
 		return fmt.Errorf("runs: opening admission: %w", err)
 	}
-	if o.Admit.Lineage().IsChild() &&
-		(o.InitialSession != nil || o.SessionReplacement != nil || o.ScheduleFiring != "" || o.ManualScheduleRun != nil) {
+	if o.admit.Lineage().IsChild() &&
+		(o.initialSession != nil || o.sessionReplacement != nil || o.scheduleFiring != "" || o.manualScheduleRun != nil) {
 		return errors.New("runs: child opening carries root admission facts")
 	}
-	if o.InitialSession != nil {
-		if err := o.InitialSession.Validate(); err != nil {
+	if o.initialSession != nil {
+		if err := o.initialSession.Validate(); err != nil {
 			return fmt.Errorf("runs: opening initial Session: %w", err)
 		}
-		if o.InitialSession.ID() != o.Admit.SessionID || o.InitialSession.Revision() != 1 {
+		if o.initialSession.ID() != o.admit.SessionID || o.initialSession.Revision() != 1 {
 			return errors.New("runs: opening initial Session differs from admitted Run")
 		}
 	}
-	if o.SessionReplacement != nil {
-		if err := o.SessionReplacement.Validate(); err != nil {
+	if o.sessionReplacement != nil {
+		if err := o.sessionReplacement.Validate(); err != nil {
 			return fmt.Errorf("runs: invalid opening Session replacement: %w", err)
 		}
-		if o.SessionReplacement.ExpectedRevision() == 0 ||
-			o.SessionReplacement.State().ID() != o.Admit.SessionID {
+		if o.sessionReplacement.ExpectedRevision() == 0 ||
+			o.sessionReplacement.State().ID() != o.admit.SessionID {
 			return errors.New("runs: opening Session replacement differs from admitted Run")
 		}
 	}
-	if o.InitialSession != nil && o.SessionReplacement != nil {
+	if o.initialSession != nil && o.sessionReplacement != nil {
 		return errors.New("runs: opening cannot insert and replace the same Session")
 	}
-	if (o.ScheduleFiring != "" || o.ManualScheduleRun != nil) && o.InitialSession == nil {
+	if (o.scheduleFiring != "" || o.manualScheduleRun != nil) && o.initialSession == nil {
 		return errors.New("runs: schedule opening has no initial Session")
 	}
-	if o.ScheduleFiring != "" {
-		if err := schedule.ValidateOccurrenceID(o.ScheduleFiring); err != nil {
+	if o.scheduleFiring != "" {
+		if err := schedule.ValidateOccurrenceID(o.scheduleFiring); err != nil {
 			return fmt.Errorf("runs: opening schedule firing: %w", err)
 		}
 	}
-	if o.ManualScheduleRun != nil {
-		if err := o.ManualScheduleRun.Validate(); err != nil {
+	if o.manualScheduleRun != nil {
+		if err := o.manualScheduleRun.Validate(); err != nil {
 			return fmt.Errorf("runs: opening manual schedule Run: %w", err)
 		}
-		if o.ScheduleFiring != "" {
+		if o.scheduleFiring != "" {
 			return errors.New("runs: opening mixes scheduled occurrence and manual schedule Run")
 		}
 	}
@@ -102,7 +162,7 @@ func (o OpeningCommit) validateAdmission() error {
 }
 
 func (o OpeningCommit) validateEvents() error {
-	for index, commit := range o.Events {
+	for index, commit := range o.events {
 		if !commit.CommitID.IsZero() {
 			return fmt.Errorf("runs: opening event[%d] carries a top-level event commit identity", index)
 		}
@@ -137,26 +197,26 @@ func validateOpeningProjection(commit EventCommit) error {
 }
 
 func (o OpeningCommit) validateEventOwner(commit EventCommit) error {
-	if o.Admit != nil {
-		if commit.SessionID != o.Admit.SessionID {
+	if o.admit != nil {
+		if commit.SessionID != o.admit.SessionID {
 			return errors.New("event Session differs from admitted Run")
 		}
-		if commit.RunID == o.Admit.RunID {
-			if commit.SegmentID != o.Admit.SegmentID {
+		if commit.RunID == o.admit.RunID {
+			if commit.SegmentID != o.admit.SegmentID {
 				return errors.New("admitted Run event belongs to another Segment")
 			}
 			return nil
 		}
-		lineage := o.Admit.Lineage()
+		lineage := o.admit.Lineage()
 		if lineage.IsChild() && commit.RunID == lineage.ParentRunID {
 			return nil
 		}
 		return errors.New("event belongs to a Run outside the admission")
 	}
-	if commit.SessionID != o.Resume.SessionID {
+	if commit.SessionID != o.resume.SessionID {
 		return errors.New("event Session differs from resumed tree")
 	}
-	for _, resumed := range o.Resume.Runs {
+	for _, resumed := range o.resume.Runs {
 		if commit.RunID == resumed.RunID {
 			if commit.SegmentID != resumed.SegmentID {
 				return errors.New("resumed Run event belongs to another Segment")
@@ -166,3 +226,52 @@ func (o OpeningCommit) validateEventOwner(commit EventCommit) error {
 	}
 	return errors.New("event belongs to a Run outside the resumed tree")
 }
+
+// CommitID returns the stable admission or resume transaction identity.
+func (o OpeningCommit) CommitID() runtimeidentity.CommitID { return o.commitID }
+
+// Admission returns an isolated fresh-Run admission when this is an admission opening.
+func (o OpeningCommit) Admission() (run.Draft, bool) {
+	if o.admit == nil {
+		return run.Draft{}, false
+	}
+	return cloneOpeningAdmission(*o.admit), true
+}
+
+// Resume returns an isolated tree continuation when this is a resume opening.
+func (o OpeningCommit) Resume() (run.TreeResumeDraft, bool) {
+	if o.resume == nil {
+		return run.TreeResumeDraft{}, false
+	}
+	return cloneOpeningResume(*o.resume), true
+}
+
+// InitialSession returns the new Session inserted with a root admission.
+func (o OpeningCommit) InitialSession() (session.Session, bool) {
+	if o.initialSession == nil {
+		return session.Session{}, false
+	}
+	return *o.initialSession, true
+}
+
+// SessionReplacement returns the existing Session revision written with an admission.
+func (o OpeningCommit) SessionReplacement() (session.Replacement, bool) {
+	if o.sessionReplacement == nil {
+		return session.Replacement{}, false
+	}
+	return *o.sessionReplacement, true
+}
+
+// ScheduleFiring returns the occurrence accepted with a scheduled admission.
+func (o OpeningCommit) ScheduleFiring() string { return o.scheduleFiring }
+
+// ManualScheduleRun returns the manual Schedule execution recorded with an admission.
+func (o OpeningCommit) ManualScheduleRun() (schedule.RunRecord, bool) {
+	if o.manualScheduleRun == nil {
+		return schedule.RunRecord{}, false
+	}
+	return *o.manualScheduleRun, true
+}
+
+// Events returns isolated opening projections in their canonical order.
+func (o OpeningCommit) Events() []EventCommit { return cloneEventCommits(o.events) }

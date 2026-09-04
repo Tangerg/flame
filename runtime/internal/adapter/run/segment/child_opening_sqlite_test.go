@@ -64,13 +64,14 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 		SpawnedByItemID: spawningItem.ID(), ParentRunID: root.RunID, RootRunID: root.RunID,
 		Capabilities: capabilities, ModelSelection: root.ModelSelection, CreatedAt: time.Unix(3, 0),
 	}
-	if commitOpeningErr := effects.CommitOpening(t.Context(), runs.OpeningCommit{
-		CommitID: testCommitID("run_commit_child_opening"), Admit: &child,
-		Events: []runs.EventCommit{{
+	opening := mustAdmissionOpening(
+		t, testCommitID("run_commit_child_opening"), child,
+		nil, nil, "", nil, []runs.EventCommit{{
 			RunID: root.RunID, SessionID: root.SessionID, SegmentID: root.SegmentID,
 			Items: []transcript.Item{spawningItem},
 		}},
-	}); commitOpeningErr != nil {
+	)
+	if commitOpeningErr := effects.CommitOpening(t.Context(), opening); commitOpeningErr != nil {
 		t.Fatalf("CommitOpening: %v", commitOpeningErr)
 	}
 
@@ -115,13 +116,14 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 	rolledBackChild.SegmentID = "segment_rollback"
 	rolledBackChild.SpawnedByItemID = rolledBackItem.ID()
 	rolledBackChild.CreatedAt = time.Unix(5, 0)
-	err = failingEffects.CommitOpening(t.Context(), runs.OpeningCommit{
-		CommitID: testCommitID("run_commit_child_failure"), Admit: &rolledBackChild,
-		Events: []runs.EventCommit{{
+	rolledBackOpening := mustAdmissionOpening(
+		t, testCommitID("run_commit_child_failure"), rolledBackChild,
+		nil, nil, "", nil, []runs.EventCommit{{
 			RunID: root.RunID, SessionID: root.SessionID, SegmentID: root.SegmentID,
 			Items: []transcript.Item{rolledBackItem},
 		}},
-	})
+	)
+	err = failingEffects.CommitOpening(t.Context(), rolledBackOpening)
 	if !errors.Is(err, rollbackErr) {
 		t.Fatalf("rolled-back CommitOpening error = %v, want %v", err, rollbackErr)
 	}
@@ -198,19 +200,20 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 	if reserveChildRunStartErr := effects.ReserveChildRunStart(ctx, reservation); reserveChildRunStartErr != nil {
 		t.Fatalf("ReserveChildRunStart: %v", reserveChildRunStartErr)
 	}
-	opening := runs.OpeningCommit{
-		CommitID: testCommitID("run_commit_child_started"), Admit: &child,
-		Events: []runs.EventCommit{{
-			RunID: root.RunID, SessionID: root.SessionID, SegmentID: root.SegmentID,
-			Items: []transcript.Item{spawningItem},
-		}},
-	}
+	openingEvents := []runs.EventCommit{{
+		RunID: root.RunID, SessionID: root.SessionID, SegmentID: root.SegmentID,
+		Items: []transcript.Item{spawningItem},
+	}}
+	opening := mustAdmissionOpening(
+		t, testCommitID("run_commit_child_started"), child,
+		nil, nil, "", nil, openingEvents,
+	)
 	loseReceipt = true
 	if commitStartedChildRunErr := effects.CommitStartedChildRun(commitCtx, reservation, opening); commitStartedChildRunErr != nil {
 		t.Fatalf("ambiguous CommitStartedChildRun = %v, want reconciled success", commitStartedChildRunErr)
 	}
 	matched, err := runStore.RunCommitCommitted(
-		ctx, child.SessionID, child.RunID, child.SegmentID, opening.CommitID,
+		ctx, child.SessionID, child.RunID, child.SegmentID, opening.CommitID(),
 	)
 	if err != nil || !matched {
 		t.Fatalf("child opening marker matched=%t err=%v, want true/nil", matched, err)
@@ -218,8 +221,11 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 	if commitStartedChildRunErr := effects.CommitStartedChildRun(ctx, reservation, opening); commitStartedChildRunErr != nil {
 		t.Fatalf("exact concluded child opening = %v, want idempotent success", commitStartedChildRunErr)
 	}
-	opening.CommitID = testCommitID("run_commit_other_child_started")
-	if commitStartedChildRunErr := effects.CommitStartedChildRun(ctx, reservation, opening); commitStartedChildRunErr == nil {
+	otherOpening := mustAdmissionOpening(
+		t, testCommitID("run_commit_other_child_started"), child,
+		nil, nil, "", nil, openingEvents,
+	)
+	if commitStartedChildRunErr := effects.CommitStartedChildRun(ctx, reservation, otherOpening); commitStartedChildRunErr == nil {
 		t.Fatal("different child opening write-set reused a concluded reservation")
 	}
 	items, err := transcriptStore.List(ctx, root.SessionID)

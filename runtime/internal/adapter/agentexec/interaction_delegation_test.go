@@ -203,9 +203,10 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 			len(reservation), len(outcomes), len(openings),
 		)
 	}
-	if openings[1].Admit == nil || openings[1].Admit.RunID != "run_child" ||
-		openings[1].Admit.ParentRunID != "run_root" ||
-		openings[1].Admit.SpawnedByItemID == "" {
+	childOpening, admitted := openings[1].Admission()
+	if !admitted || childOpening.RunID != "run_child" ||
+		childOpening.ParentRunID != "run_root" ||
+		childOpening.SpawnedByItemID == "" {
 		t.Fatalf("managed child opening = %#v", openings[1])
 	}
 	var delegatedResult *chat.ToolResult
@@ -392,11 +393,12 @@ func TestInteractionExecutorProjectsConcurrentDelegateSiblingsExactlyOnce(t *tes
 	rootID := result.rootRunID(t)
 	directChildren := 0
 	for _, opening := range result.openings {
-		if opening.Admit == nil || opening.Admit.RunID == rootID {
+		admission, admitted := opening.Admission()
+		if !admitted || admission.RunID == rootID {
 			continue
 		}
-		if opening.Admit.ParentRunID != rootID || opening.Admit.RootRunID != rootID {
-			t.Fatalf("sibling opening has invalid lineage: %+v", opening.Admit)
+		if admission.ParentRunID != rootID || admission.RootRunID != rootID {
+			t.Fatalf("sibling opening has invalid lineage: %+v", admission)
 		}
 		directChildren++
 	}
@@ -460,12 +462,13 @@ func TestInteractionExecutorProjectsNestedDelegateLineageExactlyOnce(t *testing.
 	rootID := result.rootRunID(t)
 	children := make(map[string]string)
 	for _, opening := range result.openings {
-		if opening.Admit == nil || opening.Admit.RunID == rootID {
+		admission, admitted := opening.Admission()
+		if !admitted || admission.RunID == rootID {
 			continue
 		}
-		children[opening.Admit.RunID] = opening.Admit.ParentRunID
-		if opening.Admit.RootRunID != rootID {
-			t.Fatalf("nested opening root = %q, want %q", opening.Admit.RootRunID, rootID)
+		children[admission.RunID] = admission.ParentRunID
+		if admission.RootRunID != rootID {
+			t.Fatalf("nested opening root = %q, want %q", admission.RootRunID, rootID)
 		}
 	}
 	if len(children) != 2 {
@@ -571,8 +574,8 @@ func runDelegateTree(
 func (d delegateTreeResult) rootRunID(t *testing.T) string {
 	t.Helper()
 	for _, opening := range d.openings {
-		if opening.Admit != nil && opening.Admit.ParentRunID == "" {
-			return opening.Admit.RunID
+		if admission, admitted := opening.Admission(); admitted && admission.ParentRunID == "" {
+			return admission.RunID
 		}
 	}
 	t.Fatal("delegate tree has no root opening")

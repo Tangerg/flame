@@ -402,8 +402,7 @@ func (d *delegateProjection) Item(
 }
 
 func (d *delegateProjection) applyOpening(opening runs.OpeningCommit) {
-	if opening.Admit != nil {
-		draft := opening.Admit
+	if draft, found := opening.Admission(); found {
 		d.runs[draft.RunID] = testsupport.MustRestoreRun(run.Snapshot{ID: draft.RunID, SessionID: draft.SessionID,
 
 			State: run.Running, ActiveSegmentID: draft.SegmentID,
@@ -414,7 +413,7 @@ func (d *delegateProjection) applyOpening(opening runs.OpeningCommit) {
 				RootRunID: draft.RootRunID}})
 
 	}
-	for _, commit := range opening.Events {
+	for _, commit := range opening.Events() {
 		d.applyCommit(commit)
 	}
 }

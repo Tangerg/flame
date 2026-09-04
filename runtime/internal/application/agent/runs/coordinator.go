@@ -467,16 +467,18 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 	if err != nil {
 		return nil, fmt.Errorf("runs: order opening tree: %w", err)
 	}
-	opening := OpeningCommit{CommitID: newRunCommitID()}
+	commitID := newRunCommitID()
+	var admission *rundomain.Draft
+	var resume *rundomain.TreeResumeDraft
 	if spec.Continuation != nil {
-		opening.Resume = &rundomain.TreeResumeDraft{
+		resume = &rundomain.TreeResumeDraft{
 			RootRunID: spec.RunID,
 			SessionID: spec.SessionID,
 			ResumedAt: c.publications.nowUTC(),
 			Runs:      make([]rundomain.ResumeDraft, 0, len(ordered)),
 		}
 	} else {
-		opening.Admit = &rundomain.Draft{
+		admission = &rundomain.Draft{
 			RunID:             spec.RunID,
 			SessionID:         spec.SessionID,
 			SegmentID:         spec.SegmentID,
@@ -486,12 +488,9 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 			Capabilities:      spec.Capabilities,
 			CreatedAt:         spec.CreatedAt,
 		}
-		opening.InitialSession = spec.InitialSession
-		opening.SessionReplacement = spec.SessionReplacement
-		opening.ScheduleFiring = spec.ScheduleFiring
-		opening.ManualScheduleRun = spec.ManualScheduleRun
 	}
 	openings := make([]routeOpening, 0, len(ordered))
+	events := make([]EventCommit, 0, len(ordered))
 	for _, route := range ordered {
 		projected, err := route.reducer.open()
 		if err != nil {
@@ -511,11 +510,11 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 				return nil, fmt.Errorf("runs: invalid opening event for Run %q", route.runID)
 			}
 			if reduced.Commit != nil {
-				opening.Events = append(opening.Events, *reduced.Commit)
+				events = append(events, *reduced.Commit)
 			}
 		}
-		if opening.Resume != nil {
-			opening.Resume.Runs = append(opening.Resume.Runs, rundomain.ResumeDraft{
+		if resume != nil {
+			resume.Runs = append(resume.Runs, rundomain.ResumeDraft{
 				RunID:     route.runID,
 				SegmentID: route.segmentID,
 			})
@@ -529,7 +528,16 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 	if spec.CommitOpening != nil {
 		commitOpening = spec.CommitOpening
 	}
-	if err := opening.Validate(); err != nil {
+	var opening OpeningCommit
+	if admission != nil {
+		opening, err = NewAdmissionOpeningCommit(
+			commitID, *admission, spec.InitialSession, spec.SessionReplacement,
+			spec.ScheduleFiring, spec.ManualScheduleRun, events,
+		)
+	} else {
+		opening, err = NewResumeOpeningCommit(commitID, *resume, events)
+	}
+	if err != nil {
 		return nil, err
 	}
 	if err := commitOpening(ctx, opening); err != nil {

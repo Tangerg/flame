@@ -463,7 +463,7 @@ func (f *fakeEffects) CommitStartedChildRun(
 	}
 	f.childOutcomes[memberID] = ChildRunStarted
 	f.openings = append(f.openings, opening)
-	f.commits = append(f.commits, opening.Events...)
+	f.commits = append(f.commits, opening.Events()...)
 	return nil
 }
 
@@ -576,7 +576,7 @@ func (f *fakeEffects) CommitOpening(_ context.Context, opening OpeningCommit) er
 		return f.openingErr
 	}
 	f.openings = append(f.openings, opening)
-	f.commits = append(f.commits, opening.Events...)
+	f.commits = append(f.commits, opening.Events()...)
 	return nil
 }
 
@@ -921,7 +921,10 @@ func TestCoordinatorCommitsCanonicalOpeningAndTerminal(t *testing.T) {
 	}
 	// The opening's durable projection is the admission plus the user item; the
 	// SegmentStarted event carries no second copy of the Run.
-	if opening := effects.opening(); opening.Admit == nil || opening.Resume != nil || len(opening.Events) != 1 {
+	opening := effects.opening()
+	_, admitted := opening.Admission()
+	_, resumed := opening.Resume()
+	if !admitted || resumed || len(opening.Events()) != 1 {
 		t.Fatalf("opening = %+v, want admit + the user-item commit", opening)
 	}
 	if !effects.terminalized("ses_1", "run_1") {
@@ -1057,7 +1060,7 @@ func TestCoordinatorResumeCommitsBeforeActivation(t *testing.T) {
 	spec.Continuation = mustTreeContinuation(t, pending)
 	activatedAfterOpening := false
 	spec.BeginExecution = func(context.Context) error {
-		activatedAfterOpening = effects.opening().Resume != nil
+		_, activatedAfterOpening = effects.opening().Resume()
 		return nil
 	}
 
@@ -1070,7 +1073,9 @@ func TestCoordinatorResumeCommitsBeforeActivation(t *testing.T) {
 		t.Fatal("continuation activated before its opening commit")
 	}
 	opening := effects.opening()
-	if opening.Resume == nil || opening.Resume.RootRunID != "run_1" || opening.Admit != nil {
+	resume, resumed := opening.Resume()
+	_, admitted := opening.Admission()
+	if !resumed || resume.RootRunID != "run_1" || admitted {
 		t.Fatalf("opening = %+v, want resume run_1", opening)
 	}
 }
@@ -1111,7 +1116,8 @@ func TestCoordinatorResumesCompleteRunTreeInOneCanonicalOpening(t *testing.T) {
 	}
 	events := collectEvents(stream)
 	opening := effects.opening()
-	if opening.Resume == nil {
+	resume, resumed := opening.Resume()
+	if !resumed {
 		t.Fatal("opening has no tree resume draft")
 	}
 	wantRuns := []run.ResumeDraft{
@@ -1120,8 +1126,8 @@ func TestCoordinatorResumesCompleteRunTreeInOneCanonicalOpening(t *testing.T) {
 		{RunID: "run_b", SegmentID: "seg_b"},
 		{RunID: "run_1", SegmentID: "seg_root_resumed"},
 	}
-	if !slices.Equal(opening.Resume.Runs, wantRuns) {
-		t.Fatalf("tree resume Runs = %#v, want %#v", opening.Resume.Runs, wantRuns)
+	if !slices.Equal(resume.Runs, wantRuns) {
+		t.Fatalf("tree resume Runs = %#v, want %#v", resume.Runs, wantRuns)
 	}
 
 	var started, finished []string
@@ -1439,10 +1445,10 @@ func TestCoordinatorAtomicallyAdmitsChildRunFromSpawningItem(t *testing.T) {
 		t.Fatalf("opening commits = %d, want root and child", len(openings))
 	}
 	child := openings[1]
-	if child.Admit == nil {
+	draft, admitted := child.Admission()
+	if !admitted {
 		t.Fatal("child opening has no admission draft")
 	}
-	draft := *child.Admit
 	if draft.RunID != "run_child" ||
 		draft.SessionID != "ses_1" ||
 		draft.SpawnedByItemID != firstSegmentItemID(t, "seg_1") ||
@@ -1454,10 +1460,11 @@ func TestCoordinatorAtomicallyAdmitsChildRunFromSpawningItem(t *testing.T) {
 		!draft.CreatedAt.Equal(startedAt) {
 		t.Fatalf("child admission draft = %+v", draft)
 	}
-	if len(child.Events) != 1 || len(child.Events[0].Items) != 1 {
-		t.Fatalf("child opening events = %+v, want parent spawning item", child.Events)
+	childEvents := child.Events()
+	if len(childEvents) != 1 || len(childEvents[0].Items) != 1 {
+		t.Fatalf("child opening events = %+v, want parent spawning item", childEvents)
 	}
-	parentCommit := child.Events[0]
+	parentCommit := childEvents[0]
 	spawningItem := parentCommit.Items[0]
 	invocation, present := spawningItem.ToolInvocation()
 	if parentCommit.RunID != "run_1" ||
@@ -1498,10 +1505,13 @@ func TestCoordinatorPublishesNativeChildOnlyAfterConclusiveStart(t *testing.T) {
 		t.Fatalf("published events = %d, want root and child lifecycle", len(events))
 	}
 	openings := effects.openingSnapshot()
-	if len(openings) != 2 || openings[1].Admit == nil {
+	if len(openings) != 2 {
 		t.Fatalf("openings = %#v, want one conclusive child admission", openings)
 	}
-	child := openings[1].Admit
+	child, admitted := openings[1].Admission()
+	if !admitted {
+		t.Fatalf("openings = %#v, want one conclusive child admission", openings)
+	}
 	if child.RunID != "run_child" || child.SegmentID != "segment_child" ||
 		!child.Capabilities.ChildRuns || !child.CreatedAt.Equal(startedAt) {
 		t.Fatalf("child draft = %+v", child)
@@ -1924,11 +1934,14 @@ func TestCoordinatorProjectsNestedChildrenWithExactLineageAndPostorderTerminal(t
 	}
 
 	openings := effects.openingSnapshot()
-	if len(openings) != 3 || openings[1].Admit == nil || openings[2].Admit == nil {
+	if len(openings) != 3 {
 		t.Fatalf("openings = %+v, want root, child, grandchild", openings)
 	}
-	child := openings[1].Admit
-	grandchild := openings[2].Admit
+	child, childAdmitted := openings[1].Admission()
+	grandchild, grandchildAdmitted := openings[2].Admission()
+	if !childAdmitted || !grandchildAdmitted {
+		t.Fatalf("openings = %+v, want root, child, grandchild", openings)
+	}
 	if child.ParentRunID != "run_1" ||
 		child.RootRunID != "run_1" ||
 		grandchild.ParentRunID != child.RunID ||
@@ -2244,9 +2257,11 @@ func TestCoordinatorClosesAdmittedSiblingWhenNextOpeningRollsBack(t *testing.T) 
 		t.Fatalf("second child opening = %v, want %v", err, commitErr)
 	}
 	openings := effects.openingSnapshot()
-	if len(openings) != 2 ||
-		openings[1].Admit == nil ||
-		openings[1].Admit.RunID != "run_child_a" {
+	if len(openings) != 2 {
+		t.Fatalf("committed openings = %+v, want root and first child only", openings)
+	}
+	child, admitted := openings[1].Admission()
+	if !admitted || child.RunID != "run_child_a" {
 		t.Fatalf("committed openings = %+v, want root and first child only", openings)
 	}
 
@@ -2327,8 +2342,8 @@ func TestCoordinatorAcknowledgesChildOnlyAfterOpeningCommit(t *testing.T) {
 	}
 	if openings := baseEffects.openingSnapshot(); len(openings) != 2 {
 		t.Fatalf("opening commits = %d, want root and child", len(openings))
-	} else if openings[0].CommitID.IsZero() || openings[1].CommitID.IsZero() || openings[0].CommitID == openings[1].CommitID {
-		t.Fatalf("opening commit identities = %q/%q, want distinct non-empty values", openings[0].CommitID, openings[1].CommitID)
+	} else if openings[0].CommitID().IsZero() || openings[1].CommitID().IsZero() || openings[0].CommitID() == openings[1].CommitID() {
+		t.Fatalf("opening commit identities = %q/%q, want distinct non-empty values", openings[0].CommitID(), openings[1].CommitID())
 	}
 }
 

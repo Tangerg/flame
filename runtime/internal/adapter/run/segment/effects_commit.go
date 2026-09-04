@@ -158,12 +158,14 @@ func validateStartedChildOpening(
 	if err := opening.Validate(); err != nil {
 		return fmt.Errorf("segment: invalid started child opening: %w", err)
 	}
-	if opening.Admit == nil || opening.Resume != nil || opening.Admit.RunID != reservation.Binding.RunID ||
-		opening.Admit.SessionID != reservation.SessionID ||
-		opening.Admit.ParentRunID != reservation.Binding.ParentRunID ||
-		opening.Admit.RootRunID != reservation.RootRunID ||
-		opening.Admit.SpawnedByItemID != reservation.SpawnedByItemID ||
-		opening.Admit.SegmentID != reservation.SegmentID {
+	admission, admitting := opening.Admission()
+	_, resuming := opening.Resume()
+	if !admitting || resuming || admission.RunID != reservation.Binding.RunID ||
+		admission.SessionID != reservation.SessionID ||
+		admission.ParentRunID != reservation.Binding.ParentRunID ||
+		admission.RootRunID != reservation.RootRunID ||
+		admission.SpawnedByItemID != reservation.SpawnedByItemID ||
+		admission.SegmentID != reservation.SegmentID {
 		return errors.New("segment: started child opening differs from its reservation")
 	}
 	return nil
@@ -379,17 +381,19 @@ func (e *Effects) CommitOpening(ctx context.Context, opening runs.OpeningCommit)
 // transaction boundary. Keeping the persistence body separate prevents
 // composite commits from depending on reentrant transaction implementations.
 func (e *Effects) commitOpening(ctx context.Context, opening runs.OpeningCommit) error {
+	_, admitting := opening.Admission()
+	resume, resuming := opening.Resume()
 	switch {
-	case opening.Admit != nil:
+	case admitting:
 		if err := e.admitOpening(ctx, opening); err != nil {
 			return err
 		}
-	case opening.Resume != nil:
-		if err := e.resumeTree(ctx, *opening.Resume); err != nil {
+	case resuming:
+		if err := e.resumeTree(ctx, resume); err != nil {
 			return err
 		}
 	}
-	for _, commit := range opening.Events {
+	for _, commit := range opening.Events() {
 		if err := e.applyCommit(ctx, commit); err != nil {
 			return err
 		}
@@ -398,22 +402,23 @@ func (e *Effects) commitOpening(ctx context.Context, opening runs.OpeningCommit)
 	if err != nil {
 		return err
 	}
-	if err := e.runState.RecordRunCommit(ctx, sessionID, runID, segmentID, opening.CommitID); err != nil {
+	if err := e.runState.RecordRunCommit(ctx, sessionID, runID, segmentID, opening.CommitID()); err != nil {
 		return fmt.Errorf("segment: record opening commit receipt: %w", err)
 	}
 	return nil
 }
 
 func openingCommitOwner(opening runs.OpeningCommit) (sessionID, runID, segmentID string, err error) {
-	if opening.Admit != nil {
-		return opening.Admit.SessionID, opening.Admit.RunID, opening.Admit.SegmentID, nil
+	if admission, found := opening.Admission(); found {
+		return admission.SessionID, admission.RunID, admission.SegmentID, nil
 	}
-	if opening.Resume == nil {
+	resume, found := opening.Resume()
+	if !found {
 		return "", "", "", errors.New("segment: opening has no owner")
 	}
-	for _, resumed := range opening.Resume.Runs {
-		if resumed.RunID == opening.Resume.RootRunID {
-			return opening.Resume.SessionID, resumed.RunID, resumed.SegmentID, nil
+	for _, resumed := range resume.Runs {
+		if resumed.RunID == resume.RootRunID {
+			return resume.SessionID, resumed.RunID, resumed.SegmentID, nil
 		}
 	}
 	return "", "", "", errors.New("segment: resumed opening has no root Run")
@@ -424,39 +429,42 @@ func (e *Effects) reconcileOpeningCommit(ctx context.Context, opening runs.Openi
 	if err != nil {
 		return false, err
 	}
-	return e.reconcileRunCommit(ctx, sessionID, runID, segmentID, opening.CommitID)
+	return e.reconcileRunCommit(ctx, sessionID, runID, segmentID, opening.CommitID())
 }
 
 func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) error {
-	if opening.Admit == nil {
+	admission, found := opening.Admission()
+	if !found {
 		return errors.New("segment: opening admission is required")
 	}
-	if opening.InitialSession != nil {
-		if err := e.sessions.Insert(ctx, *opening.InitialSession); err != nil {
+	if initialSession, present := opening.InitialSession(); present {
+		if err := e.sessions.Insert(ctx, initialSession); err != nil {
 			return fmt.Errorf("segment: persist opening initial Session: %w", err)
 		}
 	}
-	if err := e.runState.Admit(ctx, *opening.Admit); err != nil {
+	if err := e.runState.Admit(ctx, admission); err != nil {
 		return err
 	}
-	if opening.SessionReplacement != nil {
-		if err := e.sessions.Save(ctx, *opening.SessionReplacement); err != nil {
+	if replacement, present := opening.SessionReplacement(); present {
+		if err := e.sessions.Save(ctx, replacement); err != nil {
 			return fmt.Errorf("segment: persist opening Session replacement: %w", err)
 		}
 	}
-	if opening.ScheduleFiring == "" && opening.ManualScheduleRun == nil {
+	scheduleFiring := opening.ScheduleFiring()
+	manualScheduleRun, manual := opening.ManualScheduleRun()
+	if scheduleFiring == "" && !manual {
 		return nil
 	}
 	if e.schedules == nil {
 		return errors.New("segment: schedule persistence is unavailable")
 	}
-	if opening.ManualScheduleRun != nil {
-		if err := e.schedules.RecordRun(ctx, *opening.ManualScheduleRun); err != nil {
+	if manual {
+		if err := e.schedules.RecordRun(ctx, manualScheduleRun); err != nil {
 			return fmt.Errorf("segment: record manual schedule Run: %w", err)
 		}
 		return nil
 	}
-	acceptance, err := schedule.NewAcceptance(opening.ScheduleFiring, opening.Admit.RunID)
+	acceptance, err := schedule.NewAcceptance(scheduleFiring, admission.RunID)
 	if err != nil {
 		return fmt.Errorf("segment: form scheduled occurrence acceptance: %w", err)
 	}

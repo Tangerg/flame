@@ -558,7 +558,7 @@ func TestStartOwnsCompleteAdmissionSequence(t *testing.T) {
 	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")})}
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
 	activatedAfterOpening := false
-	control.activateCheck = func() { activatedAfterOpening = effects.opening().Admit != nil }
+	control.activateCheck = func() { _, activatedAfterOpening = effects.opening().Admission() }
 	c := newUseCaseCoordinator(exec, control, sessions, effects)
 
 	wantLimits := testsupport.MustRunLimits(run.LimitValues{
@@ -592,14 +592,17 @@ func TestStartOwnsCompleteAdmissionSequence(t *testing.T) {
 	if !control.activated || !activatedAfterOpening {
 		t.Fatalf("activated=%v activatedAfterOpening=%v", control.activated, activatedAfterOpening)
 	}
-	if opening := effects.opening(); opening.CommitID.IsZero() || opening.Admit == nil || opening.Admit.RunID != "run_new" {
+	opening := effects.opening()
+	admission, admitted := opening.Admission()
+	replacement, replaced := opening.SessionReplacement()
+	if opening.CommitID().IsZero() || !admitted || admission.RunID != "run_new" {
 		t.Fatalf("opening = %+v, want fresh run admission", opening)
-	} else if opening.Admit.Limits != wantLimits {
-		t.Fatalf("opening limits = %+v, want %+v", opening.Admit.Limits, wantLimits)
-	} else if opening.SessionReplacement == nil ||
-		opening.SessionReplacement.State().ID() != "ses_1" ||
-		opening.SessionReplacement.State().Selection() != mustUseCaseSelection("provider", "model") {
-		t.Fatalf("opening Session replacement = %+v, want ses_1/model", opening.SessionReplacement)
+	} else if admission.Limits != wantLimits {
+		t.Fatalf("opening limits = %+v, want %+v", admission.Limits, wantLimits)
+	} else if !replaced ||
+		replacement.State().ID() != "ses_1" ||
+		replacement.State().Selection() != mustUseCaseSelection("provider", "model") {
+		t.Fatalf("opening Session replacement = %+v, want ses_1/model", replacement)
 	}
 }
 
@@ -661,8 +664,8 @@ func TestStartSettlesAfterOpeningWithoutWaitingForExecutorActivation(t *testing.
 	if outcome.err != nil || outcome.result.Events == nil {
 		t.Fatalf("Start = result:%+v err:%v", outcome.result, outcome.err)
 	}
-	if opening := effects.opening(); opening.Admit == nil || opening.Admit.RunID != "run_new" {
-		t.Fatalf("opening = %+v, want durable admission run_new", opening)
+	if admission, admitted := effects.opening().Admission(); !admitted || admission.RunID != "run_new" {
+		t.Fatalf("opening = %+v, want durable admission run_new", effects.opening())
 	}
 	if control.activated {
 		t.Fatal("blocked root activation completed before the command settled")
@@ -698,7 +701,8 @@ func TestStartResolvesTheSessionSelectionBeforeExecutorAndDurableAdmission(t *te
 		t.Fatalf("executor selection: validated=%v started=%v want=%v", control.validated.ModelSelection, control.started.ModelSelection, want)
 	}
 	opening := effects.opening()
-	if opening.Admit == nil || opening.Admit.ModelSelection != want {
+	admission, admitted := opening.Admission()
+	if !admitted || admission.ModelSelection != want {
 		t.Fatalf("durable opening = %+v, want model selection %v", opening, want)
 	}
 }
@@ -724,7 +728,10 @@ func TestStartWithoutOverrideUsesTheSessionExactModelSelection(t *testing.T) {
 	if control.started.ModelSelection != sessionSelection {
 		t.Fatalf("executor selection = %v, want Session selection %v", control.started.ModelSelection, sessionSelection)
 	}
-	if opening := effects.opening(); opening.Admit == nil || opening.Admit.ModelSelection != sessionSelection || opening.SessionReplacement != nil {
+	opening := effects.opening()
+	admission, admitted := opening.Admission()
+	_, replaced := opening.SessionReplacement()
+	if !admitted || admission.ModelSelection != sessionSelection || replaced {
 		t.Fatalf("durable opening = %+v, want Session selection without replacement", opening)
 	}
 }
@@ -747,10 +754,11 @@ func TestScheduledStartCarriesExactInitialSessionInOpening(t *testing.T) {
 	}
 	consumeEvents(result.Events)
 	opening := effects.opening()
-	if opening.InitialSession == nil || opening.SessionReplacement != nil {
+	initial, initialized := opening.InitialSession()
+	_, replaced := opening.SessionReplacement()
+	if !initialized || replaced {
 		t.Fatalf("scheduled opening = %+v", opening)
 	}
-	initial := *opening.InitialSession
 	if initial.ID() != "ses_1" || initial.Title() != "Scheduled" ||
 		initial.Workspace().Path() != "/work" ||
 		initial.Selection() != mustUseCaseSelection("provider", "model") || initial.Revision() != 1 {
@@ -786,9 +794,11 @@ func TestManualScheduleStartCarriesRunFactInOpening(t *testing.T) {
 	}
 	consumeEvents(result.Events)
 	opening := effects.opening()
-	if opening.InitialSession == nil || opening.ManualScheduleRun == nil ||
-		opening.ManualScheduleRun.ScheduleID() != scheduled.ID() ||
-		!opening.ManualScheduleRun.RanAt().Equal(record.RanAt()) || opening.ScheduleFiring != "" {
+	_, initialized := opening.InitialSession()
+	manualRun, manual := opening.ManualScheduleRun()
+	if !initialized || !manual ||
+		manualRun.ScheduleID() != scheduled.ID() ||
+		!manualRun.RanAt().Equal(record.RanAt()) || opening.ScheduleFiring() != "" {
 		t.Fatalf("manual schedule opening = %+v", opening)
 	}
 }
@@ -844,7 +854,7 @@ func TestStartKeepsGoalControlInputModelOnly(t *testing.T) {
 	if len(workingContext) != 1 || workingContext[0].Role != corechat.RoleUser || workingContext[0].Text() != instruction {
 		t.Fatalf("Goal working context = %#v, want exact model-only instruction", workingContext)
 	}
-	for _, event := range effects.opening().Events {
+	for _, event := range effects.opening().Events() {
 		for _, item := range event.Items {
 			if item.Kind() == transcript.UserMessage {
 				t.Fatalf("Goal control input escaped into transcript Item %q", item.ID())
@@ -1056,7 +1066,7 @@ func TestResumeCommitsOpeningBeforeActivation(t *testing.T) {
 	}
 	control := &fakeExecutionPorts{prepared: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
 	activatedAfterOpening := false
-	control.resumeCheck = func() { activatedAfterOpening = effects.opening().Resume != nil }
+	control.resumeCheck = func() { _, activatedAfterOpening = effects.opening().Resume() }
 	c := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
 
 	result, err := c.Resume(context.Background(), ResumeCommand{
@@ -1076,8 +1086,8 @@ func TestResumeCommitsOpeningBeforeActivation(t *testing.T) {
 	if !control.resumed || !activatedAfterOpening {
 		t.Fatalf("resumed=%v activatedAfterOpening=%v", control.resumed, activatedAfterOpening)
 	}
-	if opening := effects.opening(); opening.Resume == nil || opening.Resume.RootRunID != "run_1" {
-		t.Fatalf("opening = %+v, want resume run_1", opening)
+	if resume, resumed := effects.opening().Resume(); !resumed || resume.RootRunID != "run_1" {
+		t.Fatalf("opening = %+v, want resume run_1", effects.opening())
 	}
 }
 
@@ -1146,8 +1156,8 @@ func TestResumeSettlesAfterOpeningWithoutWaitingForExecutorActivation(t *testing
 	if outcome.err != nil || outcome.result.Events == nil {
 		t.Fatalf("Resume = result:%+v err:%v", outcome.result, outcome.err)
 	}
-	if opening := effects.opening(); opening.Resume == nil || opening.Resume.RootRunID != "run_1" {
-		t.Fatalf("opening = %+v, want durable resume run_1", opening)
+	if resume, resumed := effects.opening().Resume(); !resumed || resume.RootRunID != "run_1" {
+		t.Fatalf("opening = %+v, want durable resume run_1", effects.opening())
 	}
 	if control.resumed {
 		t.Fatal("blocked executor activation completed before the command settled")
@@ -1328,11 +1338,12 @@ func TestResumeWithInputCommitsTheUserItemWithTheContinuation(t *testing.T) {
 		t.Fatal("a resume that carried input named no user item")
 	}
 	opening := effects.opening()
-	if opening.Resume == nil {
+	if _, resumed := opening.Resume(); !resumed {
 		t.Fatalf("opening = %+v, want the continuation", opening)
 	}
 	committed := false
-	for _, event := range opening.Events {
+	events := opening.Events()
+	for _, event := range events {
 		for _, item := range event.Items {
 			if item.ID() == withInput.UserItemID && item.Kind() == transcript.UserMessage {
 				committed = true
@@ -1340,7 +1351,7 @@ func TestResumeWithInputCommitsTheUserItemWithTheContinuation(t *testing.T) {
 		}
 	}
 	if !committed {
-		t.Fatalf("the user item is not in the continuation's write-set: %+v", opening.Events)
+		t.Fatalf("the user item is not in the continuation's write-set: %+v", events)
 	}
 	if control.continuationInput == nil || control.continuationInput.ItemID != withInput.UserItemID ||
 		len(control.continuationInput.Content) != 1 || control.continuationInput.Content[0].Text != "also skip the tests" {
@@ -1972,10 +1983,13 @@ func projectAdmittedChildRun(
 ) run.Run {
 	t.Helper()
 	openings := effects.openingSnapshot()
-	if len(openings) != 2 || openings[1].Admit == nil {
+	if len(openings) != 2 {
 		t.Fatalf("openings = %+v, want root and child", openings)
 	}
-	draft := *openings[1].Admit
+	draft, admitted := openings[1].Admission()
+	if !admitted {
+		t.Fatalf("openings = %+v, want root and child", openings)
+	}
 	child := testsupport.MustRestoreRun(run.Snapshot{ID: draft.RunID,
 		SessionID: draft.SessionID,
 
@@ -2632,7 +2646,7 @@ func TestStartRefusesASessionThatAlreadyHasARunAndNamesIt(t *testing.T) {
 			if conflict.RunID != "run_active" || conflict.Status != tt.status {
 				t.Fatalf("conflict = %+v, want run_active as %s", conflict, tt.status)
 			}
-			if opening := effects.opening(); opening.Admit != nil {
+			if _, admitted := effects.opening().Admission(); admitted {
 				t.Fatal("a refused start committed an opening — nothing may be created")
 			}
 			if sessions.canceledRunID != "" {

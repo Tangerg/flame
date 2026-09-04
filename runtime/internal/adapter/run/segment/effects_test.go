@@ -15,6 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -103,6 +104,41 @@ func mustTreeBarrier(
 		t.Fatalf("NewTreeBarrierCommit: %v", err)
 	}
 	return barrier
+}
+
+func mustAdmissionOpening(
+	t testing.TB,
+	commitID runtimeidentity.CommitID,
+	admission run.Draft,
+	initialSession *session.Session,
+	sessionReplacement *session.Replacement,
+	scheduleFiring string,
+	manualScheduleRun *schedule.RunRecord,
+	events []runs.EventCommit,
+) runs.OpeningCommit {
+	t.Helper()
+	opening, err := runs.NewAdmissionOpeningCommit(
+		commitID, admission, initialSession, sessionReplacement,
+		scheduleFiring, manualScheduleRun, events,
+	)
+	if err != nil {
+		t.Fatalf("NewAdmissionOpeningCommit: %v", err)
+	}
+	return opening
+}
+
+func mustResumeOpening(
+	t testing.TB,
+	commitID runtimeidentity.CommitID,
+	resume run.TreeResumeDraft,
+	events []runs.EventCommit,
+) runs.OpeningCommit {
+	t.Helper()
+	opening, err := runs.NewResumeOpeningCommit(commitID, resume, events)
+	if err != nil {
+		t.Fatalf("NewResumeOpeningCommit: %v", err)
+	}
+	return opening
 }
 
 // TestCommitEventPersistsTranscriptAndTerminalizes: a terminal commit appends the
@@ -256,9 +292,9 @@ func TestCommitOpeningAdmitsAndProjectsInOneTransaction(t *testing.T) {
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: time.Unix(1, 0).UTC(),
 	}
 
-	err := effects.CommitOpening(context.Background(), runs.OpeningCommit{
-		CommitID: testCommitID("run_commit_opening"), Admit: &draft,
-		Events: []runs.EventCommit{{
+	opening := mustAdmissionOpening(
+		t, testCommitID("run_commit_opening"), draft,
+		nil, nil, "", nil, []runs.EventCommit{{
 			RunID:     "run_1",
 			SessionID: "ses_1",
 			SegmentID: "seg_open",
@@ -266,7 +302,8 @@ func TestCommitOpeningAdmitsAndProjectsInOneTransaction(t *testing.T) {
 				SessionID: "ses_1", RunID: "run_1", ID: "item_1", OccurredAt: time.Unix(1, 0).UTC(),
 			})},
 		}},
-	})
+	)
+	err := effects.CommitOpening(context.Background(), opening)
 	if err != nil {
 		t.Fatalf("CommitOpening: %v", err)
 	}
@@ -303,9 +340,10 @@ func TestCommitStartedChildRunOwnsOneTransactionBoundary(t *testing.T) {
 		State: runState, ChildRunStarts: childStarts, Tx: tx.run,
 	})
 
-	if err := effects.CommitStartedChildRun(t.Context(), reservation, runs.OpeningCommit{
-		CommitID: testCommitID("run_commit_child"), Admit: &draft,
-	}); err != nil {
+	opening := mustAdmissionOpening(
+		t, testCommitID("run_commit_child"), draft, nil, nil, "", nil, nil,
+	)
+	if err := effects.CommitStartedChildRun(t.Context(), reservation, opening); err != nil {
 		t.Fatalf("CommitStartedChildRun: %v", err)
 	}
 	if tx.calls != 1 {
@@ -364,9 +402,8 @@ func TestCommitOpeningResumesAfterSeparateAnswerClaim(t *testing.T) {
 		Runs:      []run.ResumeDraft{{RunID: "run_1", SegmentID: "seg_next"}},
 	}
 
-	err := effects.CommitOpening(context.Background(), runs.OpeningCommit{
-		CommitID: testCommitID("run_commit_resume"), Resume: &resume,
-		Events: []runs.EventCommit{{
+	opening := mustResumeOpening(
+		t, testCommitID("run_commit_resume"), resume, []runs.EventCommit{{
 			RunID:     "run_1",
 			SessionID: "ses_1",
 			SegmentID: "seg_next",
@@ -374,7 +411,8 @@ func TestCommitOpeningResumesAfterSeparateAnswerClaim(t *testing.T) {
 				SessionID: "ses_1", RunID: "run_1", ID: "item_1", OccurredAt: now,
 			})},
 		}},
-	})
+	)
+	err := effects.CommitOpening(context.Background(), opening)
 	if err != nil {
 		t.Fatalf("CommitOpening: %v", err)
 	}

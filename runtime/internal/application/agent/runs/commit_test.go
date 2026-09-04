@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -168,18 +169,25 @@ func TestOpeningCommitValidatesItsLifecycleAction(t *testing.T) {
 		RootRunID: "run_1", SessionID: "session", ResumedAt: createdAt,
 	}
 	for _, test := range []struct {
-		name    string
-		opening OpeningCommit
+		name  string
+		build func() error
 	}{
-		{name: "admission", opening: OpeningCommit{
-			CommitID: testCommitID("run_commit_invalid_admission"), Admit: &invalidAdmission,
+		{name: "admission", build: func() error {
+			_, err := NewAdmissionOpeningCommit(
+				testCommitID("run_commit_invalid_admission"), invalidAdmission,
+				nil, nil, "", nil, nil,
+			)
+			return err
 		}},
-		{name: "resume", opening: OpeningCommit{
-			CommitID: testCommitID("run_commit_invalid_resume"), Resume: &invalidResume,
+		{name: "resume", build: func() error {
+			_, err := NewResumeOpeningCommit(
+				testCommitID("run_commit_invalid_resume"), invalidResume, nil,
+			)
+			return err
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if err := test.opening.Validate(); err == nil {
+			if err := test.build(); err == nil {
 				t.Fatalf("OpeningCommit accepted an invalid %s action", test.name)
 			}
 		})
@@ -197,9 +205,10 @@ func TestOpeningCommitRejectsRootFactsOutsideARootAdmission(t *testing.T) {
 		SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	if err := (OpeningCommit{
-		CommitID: testCommitID("run_commit_child_with_session"), Admit: &child, InitialSession: &initialSession,
-	}).Validate(); err == nil {
+	if _, err := NewAdmissionOpeningCommit(
+		testCommitID("run_commit_child_with_session"), child,
+		&initialSession, nil, "", nil, nil,
+	); err == nil {
 		t.Fatal("OpeningCommit accepted root Session facts on a child admission")
 	}
 
@@ -207,14 +216,16 @@ func TestOpeningCommitRejectsRootFactsOutsideARootAdmission(t *testing.T) {
 		RunID: "run_scheduled", SessionID: "session_scheduled", SegmentID: "segment_scheduled",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	if err := (OpeningCommit{
-		CommitID: testCommitID("run_commit_schedule_without_session"), Admit: &root, ScheduleFiring: "sch_test:1000",
-	}).Validate(); err == nil {
+	if _, err := NewAdmissionOpeningCommit(
+		testCommitID("run_commit_schedule_without_session"), root,
+		nil, nil, "sch_test:1000", nil, nil,
+	); err == nil {
 		t.Fatal("OpeningCommit accepted a schedule admission without its initial Session")
 	}
-	if err := (OpeningCommit{
-		CommitID: testCommitID("run_commit_existing_session"), Admit: &root,
-	}).Validate(); err != nil {
+	if _, err := NewAdmissionOpeningCommit(
+		testCommitID("run_commit_existing_session"), root,
+		nil, nil, "", nil, nil,
+	); err != nil {
 		t.Fatalf("ordinary admission into an existing Session: %v", err)
 	}
 }
@@ -234,9 +245,10 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 		RunID: "run_foreign", SessionID: "session", SegmentID: "segment_foreign",
 		Items: []transcript.Item{item("run_foreign", "item_foreign")},
 	}
-	if err := (OpeningCommit{
-		CommitID: testCommitID("run_commit_foreign_event"), Admit: &root, Events: []EventCommit{foreign},
-	}).Validate(); err == nil {
+	if _, err := NewAdmissionOpeningCommit(
+		testCommitID("run_commit_foreign_event"), root,
+		nil, nil, "", nil, []EventCommit{foreign},
+	); err == nil {
 		t.Fatal("root OpeningCommit accepted an event for another Run")
 	}
 
@@ -253,20 +265,20 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 		RunID: child.RunID, SessionID: "session", SegmentID: child.SegmentID,
 		Items: []transcript.Item{item(child.RunID, "item_child")},
 	}
-	if err := (OpeningCommit{
-		CommitID: testCommitID("run_commit_child_events"), Admit: &child,
-		Events: []EventCommit{parentEvent, childEvent},
-	}).Validate(); err != nil {
+	if _, err := NewAdmissionOpeningCommit(
+		testCommitID("run_commit_child_events"), child,
+		nil, nil, "", nil, []EventCommit{parentEvent, childEvent},
+	); err != nil {
 		t.Fatalf("child OpeningCommit rejected its parent/child projections: %v", err)
 	}
 	withProgress := childEvent
 	withProgress.Progress = &ProgressCommit{
 		SegmentID: child.SegmentID, UpdatedAt: createdAt, Metrics: run.Metrics{},
 	}
-	if err := (OpeningCommit{
-		CommitID: testCommitID("run_commit_child_progress"), Admit: &child,
-		Events: []EventCommit{parentEvent, withProgress},
-	}).Validate(); err == nil {
+	if _, err := NewAdmissionOpeningCommit(
+		testCommitID("run_commit_child_progress"), child,
+		nil, nil, "", nil, []EventCommit{parentEvent, withProgress},
+	); err == nil {
 		t.Fatal("child OpeningCommit accepted an execution observation")
 	}
 
@@ -278,10 +290,9 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 		RunID: root.RunID, SessionID: "session", SegmentID: "segment_stale",
 		Items: []transcript.Item{item(root.RunID, "item_resumed")},
 	}
-	if err := (OpeningCommit{
-		CommitID: testCommitID("run_commit_stale_resume_event"), Resume: &resume,
-		Events: []EventCommit{wrongSegment},
-	}).Validate(); err == nil {
+	if _, err := NewResumeOpeningCommit(
+		testCommitID("run_commit_stale_resume_event"), resume, []EventCommit{wrongSegment},
+	); err == nil {
 		t.Fatal("resumed OpeningCommit accepted an event for a stale Segment")
 	}
 }
@@ -295,13 +306,13 @@ func TestCompositeCommitsRejectNestedTopLevelEventIdentity(t *testing.T) {
 		RunID: "run_root", SessionID: "session", SegmentID: "segment_root",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	if err := (OpeningCommit{
-		CommitID: testCommitID("run_commit_opening_parent"), Admit: &admission,
-		Events: []EventCommit{{
+	if _, err := NewAdmissionOpeningCommit(
+		testCommitID("run_commit_opening_parent"), admission,
+		nil, nil, "", nil, []EventCommit{{
 			RunID: admission.RunID, SessionID: admission.SessionID, SegmentID: admission.SegmentID,
 			CommitID: testCommitID("run_commit_opening_nested"), Items: []transcript.Item{openingItem},
 		}},
-	}).Validate(); err == nil {
+	); err == nil {
 		t.Fatal("OpeningCommit accepted a nested top-level event identity")
 	}
 
@@ -377,5 +388,77 @@ func TestTreeBarrierCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	}
 	if err := barrier.Validate(); err != nil {
 		t.Fatalf("owned barrier no longer validates: %v", err)
+	}
+}
+
+func TestOpeningCommitOwnsItsValidatedWriteSet(t *testing.T) {
+	createdAt := time.Date(2026, 9, 5, 2, 3, 4, 0, time.UTC)
+	admission := run.Draft{
+		RunID: "run_root", SessionID: "session", SegmentID: "segment_root",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
+		Capabilities: run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
+	}
+	initialSession := testsupport.MustRestoreSession(session.Snapshot{
+		ID: "session", Workspace: testsupport.MustWorkspace("/work"),
+		StartedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
+	})
+	events := []EventCommit{{
+		RunID: admission.RunID, SessionID: admission.SessionID, SegmentID: admission.SegmentID,
+		ConversationMessages: []corechat.Message{
+			corechat.NewUserMessage(corechat.NewTextPart("original")),
+		},
+	}}
+
+	opening, err := NewAdmissionOpeningCommit(
+		testCommitID("run_commit_owned_opening"), admission,
+		&initialSession, nil, "", nil, events,
+	)
+	if err != nil {
+		t.Fatalf("NewAdmissionOpeningCommit: %v", err)
+	}
+
+	admission.Capabilities.InterruptKinds[0] = interrupt.Question
+	initialSession = session.Session{}
+	events[0].ConversationMessages[0].Parts[0].Text = "changed"
+	projectedAdmission, _ := opening.Admission()
+	projectedAdmission.Capabilities.InterruptKinds[0] = interrupt.Question
+	projectedEvents := opening.Events()
+	projectedEvents[0].ConversationMessages[0].Parts[0].Text = "projected"
+
+	ownedAdmission, admitted := opening.Admission()
+	ownedSession, initialized := opening.InitialSession()
+	ownedEvents := opening.Events()
+	if !admitted || ownedAdmission.Capabilities.InterruptKinds[0] != interrupt.Approval {
+		t.Fatalf("owned admission = %+v", ownedAdmission)
+	}
+	if !initialized || ownedSession.ID() != "session" {
+		t.Fatalf("owned initial Session = %+v", ownedSession)
+	}
+	if ownedEvents[0].ConversationMessages[0].Text() != "original" {
+		t.Fatalf("owned opening events = %+v", ownedEvents)
+	}
+	if err := opening.Validate(); err != nil {
+		t.Fatalf("owned admission opening no longer validates: %v", err)
+	}
+
+	resume := run.TreeResumeDraft{
+		RootRunID: "run_root", SessionID: "session", ResumedAt: createdAt,
+		Runs: []run.ResumeDraft{{RunID: "run_root", SegmentID: "segment_resumed"}},
+	}
+	resumed, err := NewResumeOpeningCommit(
+		testCommitID("run_commit_owned_resume"), resume, nil,
+	)
+	if err != nil {
+		t.Fatalf("NewResumeOpeningCommit: %v", err)
+	}
+	resume.Runs[0].SegmentID = "segment_changed"
+	projectedResume, _ := resumed.Resume()
+	projectedResume.Runs[0].SegmentID = "segment_projected"
+	ownedResume, ok := resumed.Resume()
+	if !ok || ownedResume.Runs[0].SegmentID != "segment_resumed" {
+		t.Fatalf("owned resume = %+v", ownedResume)
+	}
+	if err := resumed.Validate(); err != nil {
+		t.Fatalf("owned resume opening no longer validates: %v", err)
 	}
 }

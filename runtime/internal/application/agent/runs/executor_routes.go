@@ -730,39 +730,39 @@ func (c *Coordinator) finalizeChildOpening(
 	if len(projected.events) == 0 || projected.parkCommit != nil {
 		return fmt.Errorf("runs: child member %q produced an invalid opening batch", prepared.member.MemberID)
 	}
-	opening := OpeningCommit{
-		CommitID: newRunCommitID(),
-		Admit: &rundomain.Draft{
-			RunID:           child.runID,
-			SessionID:       spec.SessionID,
-			SpawnedByItemID: child.lineage.SpawnedByItemID,
-			ParentRunID:     child.lineage.ParentRunID,
-			RootRunID:       child.lineage.RootRunID,
-			SegmentID:       child.segmentID,
-			ModelSelection:  child.modelSelection,
-			Limits:          child.limits,
-			Capabilities:    child.capabilities,
-			CreatedAt:       startedAt,
-		},
-		Events: []EventCommit{{
-			RunID:     prepared.parent.runID,
-			SessionID: spec.SessionID,
-			SegmentID: prepared.parent.segmentID,
-			Items:     []transcript.Item{prepared.spawningItem},
-		}},
+	admission := rundomain.Draft{
+		RunID:           child.runID,
+		SessionID:       spec.SessionID,
+		SpawnedByItemID: child.lineage.SpawnedByItemID,
+		ParentRunID:     child.lineage.ParentRunID,
+		RootRunID:       child.lineage.RootRunID,
+		SegmentID:       child.segmentID,
+		ModelSelection:  child.modelSelection,
+		Limits:          child.limits,
+		Capabilities:    child.capabilities,
+		CreatedAt:       startedAt,
 	}
+	events := []EventCommit{{
+		RunID:     prepared.parent.runID,
+		SessionID: spec.SessionID,
+		SegmentID: prepared.parent.segmentID,
+		Items:     []transcript.Item{prepared.spawningItem},
+	}}
 	for _, reduced := range projected.events {
 		if reduced.Event.Terminal() || reduced.Nudge != nil {
 			return fmt.Errorf("runs: child member %q produced an invalid opening event", prepared.member.MemberID)
 		}
 		if reduced.Commit != nil {
-			opening.Events = append(opening.Events, *reduced.Commit)
+			events = append(events, *reduced.Commit)
 		}
 	}
 	if err := validateRouteReductionBatch(child, spec.SessionID, projected); err != nil {
 		return err
 	}
-	if err := opening.Validate(); err != nil {
+	opening, err := NewAdmissionOpeningCommit(
+		newRunCommitID(), admission, nil, nil, "", nil, events,
+	)
+	if err != nil {
 		return fmt.Errorf("runs: child member %q opening: %w", prepared.member.MemberID, err)
 	}
 	prepared.batch = projected
