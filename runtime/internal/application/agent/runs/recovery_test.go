@@ -307,6 +307,60 @@ func TestRecoveryRejectsInvalidRunCatalogBeforeAdmission(t *testing.T) {
 	}
 }
 
+func TestRecoveryRejectsIncoherentActiveTreeBeforePlanning(t *testing.T) {
+	createdAt := time.Date(2026, 8, 14, 0, 30, 0, 0, time.UTC)
+	capabilities := rundomain.Capabilities{ChildRuns: true}
+	root := testsupport.MustRestoreRun(rundomain.Snapshot{
+		ID: "run_root", SessionID: "session_tree", State: rundomain.Running,
+		ActiveSegmentID: "segment_root", Capabilities: capabilities, CreatedAt: createdAt,
+		MessageMark: rundomain.UnknownMessageMark,
+	})
+	child := testsupport.MustRestoreRun(rundomain.Snapshot{
+		ID: "run_child", SessionID: root.SessionID(), State: rundomain.Running,
+		ActiveSegmentID: "segment_child", Capabilities: capabilities, CreatedAt: createdAt,
+		MessageMark: rundomain.UnknownMessageMark,
+		Lineage: rundomain.Lineage{
+			SpawnedByItemID: "item_spawn", ParentRunID: root.ID(), RootRunID: root.ID(),
+		},
+	})
+	for name, mutate := range map[string]func(*rundomain.Snapshot){
+		"mixed lifecycle": func(snapshot *rundomain.Snapshot) {
+			snapshot.State = rundomain.Waiting
+			snapshot.ActiveSegmentID = ""
+		},
+		"capability drift": func(snapshot *rundomain.Snapshot) {
+			snapshot.Capabilities = rundomain.Capabilities{}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			snapshot := child.Snapshot()
+			mutate(&snapshot)
+			candidate := testsupport.MustRestoreRun(snapshot)
+			store := &recoveryStoreStub{
+				runs:        []rundomain.Run{root, candidate},
+				transcripts: map[string][]transcript.Item{}, messageMarks: map[string]int{},
+			}
+			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
+				func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+			))
+			if err != nil {
+				t.Fatalf("NewRecovery: %v", err)
+			}
+
+			if _, err := recovery.Reconcile(t.Context()); err == nil {
+				t.Fatal("Reconcile accepted an incoherent active Run tree")
+			}
+			if store.transcriptReads != 0 || store.commits != 0 {
+				t.Fatalf(
+					"incoherent tree reached planning or commit: transcriptReads=%d commits=%d",
+					store.transcriptReads,
+					store.commits,
+				)
+			}
+		})
+	}
+}
+
 func TestNewRecoveryRejectsTypedNilDependencies(t *testing.T) {
 	validStore := &recoveryStoreStub{}
 	validResumability := waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
