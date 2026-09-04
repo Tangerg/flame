@@ -15,10 +15,10 @@ type RuleStore interface {
 	// duplicates.
 	Put(ctx context.Context, r approval.Rule) error
 
-	// Visible returns every rule reachable from a session: its session-scoped
+	// Visible returns at most limit rules reachable from a session: its session-scoped
 	// rules (ScopeKey == sessionID), its project's rules (ScopeKey ==
 	// projectDir), and all global rules. Any tool — the domain filters by tool.
-	Visible(ctx context.Context, sessionID, projectDir string) ([]approval.Rule, error)
+	Visible(ctx context.Context, sessionID, projectDir string, limit int) ([]approval.Rule, error)
 
 	// Delete removes one rule by id; removing a missing id is not an error.
 	Delete(ctx context.Context, id string) error

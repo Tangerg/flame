@@ -100,6 +100,16 @@ func TestDecideRejectsInvalidVisibleRuleRelation(t *testing.T) {
 	}
 }
 
+func TestVisibleRuleRelationRejectsOverCapacity(t *testing.T) {
+	rules := make([]approval.Rule, approval.MaximumVisibleRules+1)
+	if err := approval.ValidateVisibleRules(rules, "s1", "/repo"); !errors.Is(err, approval.ErrRuleCapacity) {
+		t.Fatalf("ValidateVisibleRules error = %v, want ErrRuleCapacity", err)
+	}
+	if _, _, err := approval.Decide(rules, approval.Query{SessionID: "s1", ProjectDir: "/repo", Tool: "shell"}); !errors.Is(err, approval.ErrRuleCapacity) {
+		t.Fatalf("Decide error = %v, want ErrRuleCapacity", err)
+	}
+}
+
 func TestSessionScopedApprovalIdentityIsExact(t *testing.T) {
 	if _, err := approval.NewRule(approval.ScopeSession, "ses_ one", "shell", "", approval.Allow); !errors.Is(err, approval.ErrInvalidRule) {
 		t.Fatalf("NewRule error = %v, want ErrInvalidRule", err)

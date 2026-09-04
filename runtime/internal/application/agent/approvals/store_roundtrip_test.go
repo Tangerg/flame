@@ -132,13 +132,16 @@ func (m *memoryRuleStore) Put(_ context.Context, rule approval.Rule) error {
 	return nil
 }
 
-func (m *memoryRuleStore) Visible(_ context.Context, sessionID, projectDir string) ([]approval.Rule, error) {
+func (m *memoryRuleStore) Visible(_ context.Context, sessionID, projectDir string, limit int) ([]approval.Rule, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	var rules []approval.Rule
 	for _, rule := range m.rules {
 		if ruleVisibleFrom(rule, sessionID, projectDir) {
 			rules = append(rules, rule)
+			if len(rules) == limit {
+				break
+			}
 		}
 	}
 	return rules, nil

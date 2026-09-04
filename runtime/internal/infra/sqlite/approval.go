@@ -38,9 +38,12 @@ func (a *ApprovalRuleStore) Put(ctx context.Context, r approval.Rule) error {
 	return nil
 }
 
-func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID, projectDir string) ([]approval.Rule, error) {
+func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID, projectDir string, limit int) ([]approval.Rule, error) {
 	if err := validateOptionalSessionResource("list visible approval rules", sessionID); err != nil {
 		return nil, err
+	}
+	if limit <= 0 || limit > approval.MaximumVisibleRules+1 {
+		return nil, fmt.Errorf("sqlite: list approval rules: invalid limit %d", limit)
 	}
 	// Scope predicate expressed as a WHERE clause — the mirror of approval's
 	// visible(): session rules for this session, project rules for this cwd
@@ -50,8 +53,9 @@ func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID, projectDir s
 		 WHERE (scope = 'session' AND scope_key = ?)
 		    OR (scope = 'project' AND ? <> '' AND scope_key = ?)
 		    OR scope = 'global'
-		 ORDER BY scope, scope_key, tool, subject, id`,
-		sessionID, projectDir, projectDir)
+		 ORDER BY scope, scope_key, tool, subject, id
+		 LIMIT ?`,
+		sessionID, projectDir, projectDir, limit)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list approval rules: %w", err)
 	}

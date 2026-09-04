@@ -39,7 +39,7 @@ func TestApprovalRuleStore_VisibleScopes(t *testing.T) {
 	put(globalRule)
 
 	ids := func(sessionID, dir string) map[string]bool {
-		rules, err := store.Visible(ctx, sessionID, dir)
+		rules, err := store.Visible(ctx, sessionID, dir, approval.MaximumVisibleRules+1)
 		if err != nil {
 			t.Fatalf("visible: %v", err)
 		}
@@ -77,14 +77,14 @@ func TestApprovalRuleStore_UpsertAndDelete(t *testing.T) {
 	if err := store.Put(ctx, r); err != nil {
 		t.Fatalf("re-put: %v", err)
 	}
-	rules, _ := store.Visible(ctx, "s", "/p")
+	rules, _ := store.Visible(ctx, "s", "/p", approval.MaximumVisibleRules+1)
 	if len(rules) != 1 || rules[0].Decision != approval.Deny || rules[0].Subject != "npm run *" {
 		t.Fatalf("after upsert = %+v, want one Deny rule (no duplicate)", rules)
 	}
 	if err := store.Delete(ctx, r.ID); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
-	if rules, _ := store.Visible(ctx, "s", "/p"); len(rules) != 0 {
+	if rules, _ := store.Visible(ctx, "s", "/p", approval.MaximumVisibleRules+1); len(rules) != 0 {
 		t.Fatalf("after delete = %+v, want none", rules)
 	}
 }
@@ -104,7 +104,7 @@ func TestApprovalRuleStore_DeleteSessionPreservesBroaderScopes(t *testing.T) {
 	if err := store.DeleteSession(ctx, "sess1"); err != nil {
 		t.Fatalf("DeleteSession: %v", err)
 	}
-	rules, err := store.Visible(ctx, "sess1", "/proj")
+	rules, err := store.Visible(ctx, "sess1", "/proj", approval.MaximumVisibleRules+1)
 	if err != nil {
 		t.Fatalf("Visible: %v", err)
 	}
@@ -115,8 +115,27 @@ func TestApprovalRuleStore_DeleteSessionPreservesBroaderScopes(t *testing.T) {
 	if ids[sessionOne.ID] || !ids[project.ID] || !ids[global.ID] || len(ids) != 2 {
 		t.Fatalf("visible after DeleteSession = %v, want p+g", ids)
 	}
-	if rules, err := store.Visible(ctx, "sess2", ""); err != nil || len(rules) != 2 {
+	if rules, err := store.Visible(ctx, "sess2", "", approval.MaximumVisibleRules+1); err != nil || len(rules) != 2 {
 		t.Fatalf("other session after DeleteSession = %+v, %v, want s2+g", rules, err)
+	}
+}
+
+func TestApprovalRuleStore_VisibleEnforcesRequestedBound(t *testing.T) {
+	ctx := t.Context()
+	store := newApprovalStore(t)
+	for _, toolName := range []string{"read", "shell"} {
+		if err := store.Put(ctx, newApprovalRule(t, approval.ScopeGlobal, "", toolName, "", approval.Allow)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rules, err := store.Visible(ctx, "s", "/repo", 1)
+	if err != nil || len(rules) != 1 {
+		t.Fatalf("Visible limit = %+v, %v; want one row", rules, err)
+	}
+	for _, limit := range []int{0, approval.MaximumVisibleRules + 2} {
+		if _, err := store.Visible(ctx, "s", "/repo", limit); err == nil {
+			t.Fatalf("Visible accepted invalid limit %d", limit)
+		}
 	}
 }
 

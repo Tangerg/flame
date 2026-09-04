@@ -2387,6 +2387,12 @@ func (s SkillProposal) ValidateWire() error {
 	)
 }
 
+func (l ListApprovalRulesResult) ValidateWire() error {
+	return collectWireViolations("ListApprovalRulesResult",
+		maxItems("rules", l.Rules, 2048),
+	)
+}
+
 func (m MCPServer) ValidateWire() error {
 	return collectWireViolations("MCPServer",
 		requiredTextPattern("name", m.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),

@@ -123,12 +123,16 @@ type ruleStoreStub struct {
 	rules        []approval.Rule
 	err          error
 	visibleCalls *int
+	visibleLimit *int
 }
 
 func (r ruleStoreStub) Put(context.Context, approval.Rule) error { return r.err }
-func (r ruleStoreStub) Visible(context.Context, string, string) ([]approval.Rule, error) {
+func (r ruleStoreStub) Visible(_ context.Context, _, _ string, limit int) ([]approval.Rule, error) {
 	if r.visibleCalls != nil {
 		*r.visibleCalls++
+	}
+	if r.visibleLimit != nil {
+		*r.visibleLimit = limit
 	}
 	return r.rules, r.err
 }
@@ -145,6 +149,22 @@ func TestRuntimePolicyRejectsInvalidQueryBeforeRuleStore(t *testing.T) {
 	}
 	if calls != 0 {
 		t.Fatalf("Visible calls = %d, want 0", calls)
+	}
+}
+
+func TestRuntimePolicyOverfetchesAndRejectsRuleCapacity(t *testing.T) {
+	limit := 0
+	policy, err := NewRuntimePolicy(approval.ModeSafe, ruleStoreStub{
+		rules: make([]approval.Rule, approval.MaximumVisibleRules+1), visibleLimit: &limit,
+	}, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := policy.Rules(t.Context(), "s1", "/repo"); !errors.Is(err, approval.ErrRuleCapacity) {
+		t.Fatalf("Rules error = %v, want ErrRuleCapacity", err)
+	}
+	if limit != approval.MaximumVisibleRules+1 {
+		t.Fatalf("Visible limit = %d, want one-row overfetch", limit)
 	}
 }
 

@@ -4515,6 +4515,7 @@
       "properties": {
         "rules": {
           "type": "array",
+          "maxItems": 2048,
           "items": {
             "$ref": "#/$defs/ApprovalRule"
           }

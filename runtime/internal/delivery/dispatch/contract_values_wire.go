@@ -7,6 +7,7 @@ import (
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -657,6 +658,12 @@ func registerApprovalValues(s *Shapes) {
 			FieldConstraint{Field: "tool", Kind: ConstraintPattern, Value: `\S`}),
 	})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ListApprovalRulesRequest](), Constraints: requiredResourceIdentity("sessionId")})
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.ListApprovalRulesResult](),
+		Constraints: []FieldConstraint{{
+			Field: "rules", Kind: ConstraintMaxItems, Limit: approval.MaximumVisibleRules,
+		}},
+	})
 	nonEmpty[protocol.ForgetApprovalRuleRequest](s, "id")
 }
 

@@ -1792,7 +1792,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
   ListApprovalRulesResult: object({
-    rules: array(ref(() => CHECKS.ApprovalRule)),
+    rules: allOf([array(ref(() => CHECKS.ApprovalRule)), maxItems(2048)]),
   }, ["rules"]),
   ListFilesRequest: object({
     cursor: allOf([text(), maxLength(65536)]),

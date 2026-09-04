@@ -208,7 +208,7 @@ func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID, projectDir 
 	if r.store == nil {
 		return nil, nil
 	}
-	rules, err := r.store.Visible(ctx, sessionID, projectDir)
+	rules, err := r.store.Visible(ctx, sessionID, projectDir, approval.MaximumVisibleRules+1)
 	if err != nil {
 		return nil, err
 	}

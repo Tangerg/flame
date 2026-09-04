@@ -7385,6 +7385,15 @@
       ]
     },
     {
+      "type": "ListApprovalRulesResult",
+      "rules": [
+        {
+          "field": "rules",
+          "constraint": "maxItems(2048)"
+        }
+      ]
+    },
+    {
       "type": "ForgetApprovalRuleRequest",
       "rules": [
         {

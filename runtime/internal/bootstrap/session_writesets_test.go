@@ -735,7 +735,7 @@ func TestApplyDeleteRemovesRunRows(t *testing.T) {
 	if got, err := ss.plan.List(ctx, "ses_A"); err != nil || len(got) != 0 {
 		t.Fatalf("plan after delete = %+v, %v, want cleared", got, err)
 	}
-	if got, err := ss.approvals.Visible(ctx, "ses_A", ""); err != nil || len(got) != 0 {
+	if got, err := ss.approvals.Visible(ctx, "ses_A", "", approval.MaximumVisibleRules+1); err != nil || len(got) != 0 {
 		t.Fatalf("session approvals after delete = %+v, %v, want cleared", got, err)
 	}
 	// Reusing the old member identity with a different payload succeeds only if
@@ -795,7 +795,7 @@ func TestApplyRestoreClearsSessionOwnedProjections(t *testing.T) {
 	if _, ok, getErr := readBootstrapGoal(ctx, ss.goals, "ses_A"); getErr != nil || ok {
 		t.Fatalf("goal survived the restore: ok=%v err=%v", ok, getErr)
 	}
-	rules, err := ss.approvals.Visible(ctx, "ses_A", "/repo")
+	rules, err := ss.approvals.Visible(ctx, "ses_A", "/repo", approval.MaximumVisibleRules+1)
 	if err != nil {
 		t.Fatalf("visible approvals: %v", err)
 	}

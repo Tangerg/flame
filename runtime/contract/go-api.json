@@ -5068,6 +5068,12 @@
               "type": "[]ApprovalRule",
               "tag": "json:\"rules\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {

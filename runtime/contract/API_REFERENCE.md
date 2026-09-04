@@ -815,6 +815,7 @@ TypeScript validator from this single registry projection.
 | `ListApprovalRulesRequest` | `sessionId` | `nonEmpty` |
 | `ListApprovalRulesRequest` | `sessionId` | `identity` |
 | `ListApprovalRulesRequest` | `sessionId` | `maxLength(256)` |
+| `ListApprovalRulesResult` | `rules` | `maxItems(2048)` |
 | `ForgetApprovalRuleRequest` | `id` | `nonEmpty` |
 | `MCPServerState` | `toolCount` | `nonNegative` |
 | `MCPServerState` | `toolCount` | `maximum(2048)` |

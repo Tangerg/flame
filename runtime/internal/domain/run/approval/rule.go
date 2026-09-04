@@ -23,6 +23,14 @@ func Decide(rules []Rule, q Query) (Decision, bool, error) {
 // efficiency; Domain rechecks scope membership and identity uniqueness before
 // the relation can affect authorization or escape through a read model.
 func ValidateVisibleRules(rules []Rule, sessionID, projectDir string) error {
+	if len(rules) > MaximumVisibleRules {
+		return fmt.Errorf(
+			"%w: got %d rules, maximum %d",
+			ErrRuleCapacity,
+			len(rules),
+			MaximumVisibleRules,
+		)
+	}
 	if sessionID != "" {
 		if _, err := resourceid.ParseSession(sessionID); err != nil {
 			return fmt.Errorf("%w: session: %v", ErrInvalidRule, err)

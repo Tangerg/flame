@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -788,6 +789,17 @@ func TestApprovalRuleWireConstraintsCloseScopeShape(t *testing.T) {
 			assertConstraintField(t, test.value.ValidateWire(), "ApprovalRule", test.field)
 		})
 	}
+}
+
+func TestApprovalRuleListHasOneRuntimeCapacity(t *testing.T) {
+	t.Parallel()
+	maximum := ListApprovalRulesResult{Rules: make([]ApprovalRule, approval.MaximumVisibleRules)}
+	if err := maximum.ValidateWire(); err != nil {
+		t.Fatalf("maximum approval rule list: %v", err)
+	}
+	overCapacity := maximum
+	overCapacity.Rules = append(overCapacity.Rules, ApprovalRule{})
+	assertConstraintField(t, overCapacity.ValidateWire(), "ListApprovalRulesResult", "rules")
 }
 
 func TestMCPWireUnionsAcceptEveryLegalBranch(t *testing.T) {

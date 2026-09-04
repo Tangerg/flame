@@ -21,7 +21,14 @@ var (
 	ErrInvalidSessionMode = errors.New("approval: invalid session mode")
 	ErrInvalidQuery       = errors.New("approval: invalid query")
 	ErrInvalidRule        = errors.New("approval: invalid rule")
+	ErrRuleCapacity       = errors.New("approval: visible rule capacity exceeded")
 )
+
+// MaximumVisibleRules bounds the complete, non-paginated relation consulted
+// by one authorization decision and returned by approval.listRules. Stores
+// overfetch one row so Application can distinguish an exact maximum from a
+// truncated relation.
+const MaximumVisibleRules = 2_048
 
 // Mode is one effective tool-permission stance. Safe, balanced, and yolo may be
 // configured as runtime defaults. Plan is an internal session-only overlay and
