@@ -155,6 +155,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 195 | `1d758c44` + CLI dependency update | Made Provider aggregates self-validating and rejected corrupt, duplicate, or identity-mismatched provider registry and supported-catalog results before projection or probing. |
 | 196 | `754a4db1` + CLI dependency update | Rejected invalid, duplicate, or identity-mismatched MCP registry reads across catalogs, commands, connection settlement, and tool-policy replacement. |
 | 197 | `bbb08aa3` + CLI dependency update | Made advertised MCP tools and input schemas self-validating, then enforced request scope, composite uniqueness, per-server bounds, order, and slice isolation in Application. |
+| 198 | `6fea3bdf` + CLI dependency update | Closed MCP connection-status state/count invariants and replaced silent duplicate-map overwrite or presenter panic with explicit Application contract errors. |
 
 ## Verification contract
 
