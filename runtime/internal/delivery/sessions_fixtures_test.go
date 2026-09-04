@@ -863,7 +863,7 @@ func (s stubLifecycleStores) ApplyTerminal(ctx context.Context, plan sessions.Te
 			}
 			continue
 		}
-		if err := s.rt.runs.Terminalize(ctx, record); err != nil {
+		if err := s.rt.runs.Terminalize(ctx, replacement); err != nil {
 			return err
 		}
 	}
@@ -1261,8 +1261,10 @@ func (stubRunState) Resume(
 func (stubRunState) RequireActiveSegment(context.Context, string, string, string) error {
 	return nil
 }
-func (stubRunState) Suspend(context.Context, run.Run) error     { return nil }
-func (stubRunState) Terminalize(context.Context, run.Run) error { return nil }
+func (stubRunState) Suspend(context.Context, run.Run) error { return nil }
+func (stubRunState) Terminalize(context.Context, run.Replacement) error {
+	return nil
+}
 func (stubRunState) TerminalizeEvent(context.Context, run.Run, string, runtimeidentity.CommitID) error {
 	return nil
 }

@@ -456,7 +456,10 @@ func TestAcceptedScheduleOccurrenceFollowsRunLifecycle(t *testing.T) {
 				if err != nil {
 					t.Fatalf("terminate Run: %v", err)
 				}
-				if err := runStore.Terminalize(ctx, finished); err != nil {
+				if err := runStore.Terminalize(
+					ctx,
+					testsupport.MustRunReplacement(current, finished),
+				); err != nil {
 					t.Fatalf("persist terminal Run: %v", err)
 				}
 			} else if err := runStore.Delete(ctx, draft.SessionID, draft.RunID); err != nil {

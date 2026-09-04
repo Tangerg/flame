@@ -149,7 +149,7 @@ func TestPrepareWaitingCancellationKeepsSurvivingExternalBoundary(t *testing.T) 
 	if err != nil {
 		t.Fatalf("prepare waiting cancellation: %v", err)
 	}
-	if got, want := runIDs(transformation.terminalRuns), []string{"run_grandchild", "run_a"}; !slices.Equal(got, want) {
+	if got, want := runReplacementIDs(transformation.terminalRuns), []string{"run_grandchild", "run_a"}; !slices.Equal(got, want) {
 		t.Fatalf("terminal Runs = %v, want canonical postorder %v", got, want)
 	}
 	if len(transformation.terminalItems) != 1 ||
@@ -172,7 +172,8 @@ func TestPrepareWaitingCancellationKeepsSurvivingExternalBoundary(t *testing.T) 
 	if got := continuationRunIDs(transformation.continuation.continuations); !slices.Equal(got, []string{"run_b", "run_1"}) {
 		t.Fatalf("continuation Runs = %v, want [run_b run_1]", got)
 	}
-	for _, record := range transformation.terminalRuns {
+	for _, replacement := range transformation.terminalRuns {
+		record := replacement.State()
 		if record.State() != run.Canceled ||
 			!runHasOutcome(record, run.OutcomeCanceled) ||
 			record.Detail() != "stop delegated branch" ||
@@ -952,10 +953,10 @@ func assertSettledParentTool(
 	}
 }
 
-func runIDs(runs []run.Run) []string {
-	ids := make([]string, len(runs))
-	for index, record := range runs {
-		ids[index] = record.ID()
+func runReplacementIDs(replacements []run.Replacement) []string {
+	ids := make([]string, len(replacements))
+	for index, replacement := range replacements {
+		ids[index] = replacement.State().ID()
 	}
 	return ids
 }

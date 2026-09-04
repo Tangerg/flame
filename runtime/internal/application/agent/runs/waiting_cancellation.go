@@ -78,7 +78,7 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 }
 
 type waitingCancellationTransformation struct {
-	terminalRuns         []rundomain.Run
+	terminalRuns         []rundomain.Replacement
 	terminalItems        []ItemReplacement
 	parentItem           ItemReplacement
 	remaining            *Pending
@@ -260,9 +260,9 @@ func (w waitingCancellationBuilder) validate() error {
 
 func (w waitingCancellationBuilder) terminalProjection(
 	canceledMembers map[string]struct{},
-) ([]rundomain.Run, []string, error) {
+) ([]rundomain.Replacement, []string, error) {
 	expectedProcesses := make(map[string]struct{})
-	var terminalRuns []rundomain.Run
+	var terminalRuns []rundomain.Replacement
 	var canceledRunIDs []string
 	for _, member := range w.plan.targetSubtree {
 		if member.run.State().IsTerminal() {
@@ -279,7 +279,15 @@ func (w waitingCancellationBuilder) terminalProjection(
 		if err != nil {
 			return nil, nil, err
 		}
-		terminalRuns = append(terminalRuns, terminal)
+		replacement, err := rundomain.NewReplacement(member.run, terminal)
+		if err != nil {
+			return nil, nil, fmt.Errorf(
+				"runs: prepare canceled waiting Run %q replacement: %w",
+				member.run.ID(),
+				err,
+			)
+		}
+		terminalRuns = append(terminalRuns, replacement)
 		canceledRunIDs = append(canceledRunIDs, member.run.ID())
 	}
 	if len(canceledMembers) != len(expectedProcesses) {

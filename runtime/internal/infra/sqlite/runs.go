@@ -510,10 +510,14 @@ func (r *RunStore) UpdateProgress(
 	})
 }
 
-// Terminalize ends the exact non-terminal Run that run identifies, recording the
-// outcome the executor reached and the result that explains it.
-func (r *RunStore) Terminalize(ctx context.Context, value rundomain.Run) error {
-	return r.terminalize(ctx, value, nil)
+// Terminalize ends the exact non-terminal Run snapshot that replacement names,
+// recording the outcome the application reached and the result that explains it.
+func (r *RunStore) Terminalize(ctx context.Context, replacement rundomain.Replacement) error {
+	if err := replacement.Validate(); err != nil {
+		return fmt.Errorf("sqlite: terminalize Run replacement: %w", err)
+	}
+	expected := replacement.Expected()
+	return r.terminalize(ctx, &expected, replacement.State(), nil)
 }
 
 // TerminalizeEvent ends one exact active Segment and stamps the immutable
@@ -529,15 +533,16 @@ func (r *RunStore) TerminalizeEvent(
 	if err != nil {
 		return err
 	}
-	return r.terminalize(ctx, value, marker)
+	return r.terminalize(ctx, nil, value, marker)
 }
 
 func (r *RunStore) terminalize(
 	ctx context.Context,
+	expected *rundomain.Run,
 	value rundomain.Run,
 	marker *runCommitMarker,
 ) error {
-	return r.finish(ctx, "terminalize", nil, value, marker, func(current rundomain.Run) (rundomain.Run, error) {
+	return r.finish(ctx, "terminalize", expected, value, marker, func(current rundomain.Run) (rundomain.Run, error) {
 		outcome, terminal := value.Outcome()
 		if !terminal {
 			return rundomain.Run{}, errors.New("outcome is required")

@@ -923,8 +923,8 @@ func (f *fakeRunState) Suspend(_ context.Context, run run.Run) error {
 	return nil
 }
 
-func (f *fakeRunState) Terminalize(_ context.Context, run run.Run) error {
-	f.terminalized = append(f.terminalized, run)
+func (f *fakeRunState) Terminalize(_ context.Context, replacement run.Replacement) error {
+	f.terminalized = append(f.terminalized, replacement.State())
 	return nil
 }
 

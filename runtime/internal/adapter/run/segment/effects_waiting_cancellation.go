@@ -134,10 +134,11 @@ func (e *Effects) persistWaitingCancellationProjection(
 
 func (e *Effects) terminalizeWaitingCancellationRuns(
 	ctx context.Context,
-	planned []run.Run,
+	planned []run.Replacement,
 ) (map[string]run.Run, error) {
 	terminalByID := make(map[string]run.Run, len(planned))
-	for _, runRecord := range planned {
+	for _, replacement := range planned {
+		runRecord := replacement.State()
 		finalized, err := e.finishedRun(ctx, runs.EventCommit{
 			RunID:     runRecord.ID(),
 			SessionID: runRecord.SessionID(),
@@ -148,7 +149,11 @@ func (e *Effects) terminalizeWaitingCancellationRuns(
 		if err != nil {
 			return nil, fmt.Errorf("segment: finalize canceled Run %q: %w", runRecord.ID(), err)
 		}
-		if err := e.runState.Terminalize(ctx, finalized); err != nil {
+		finalReplacement, err := run.NewReplacement(replacement.Expected(), finalized)
+		if err != nil {
+			return nil, fmt.Errorf("segment: finalize canceled Run %q replacement: %w", runRecord.ID(), err)
+		}
+		if err := e.runState.Terminalize(ctx, finalReplacement); err != nil {
 			return nil, fmt.Errorf("segment: terminalize canceled Run %q: %w", runRecord.ID(), err)
 		}
 		terminalByID[runRecord.ID()] = finalized

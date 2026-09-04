@@ -2527,8 +2527,11 @@ func newWaitingCancellationSQLiteFixtureAt(
 			ExpectedPending:  pending,
 			RemainingPending: remainingPending,
 			Checkpoint:       replacementCheckpoint,
-			TerminalRuns:     []run.Run{terminalGrandchild, terminalChild},
-			TerminalItems:    terminalItems,
+			TerminalRuns: []run.Replacement{
+				testsupport.MustRunReplacement(grandchildRun, terminalGrandchild),
+				testsupport.MustRunReplacement(childRun, terminalChild),
+			},
+			TerminalItems: terminalItems,
 			ParentItem: runs.ItemReplacement{
 				Expected: parentItem, Replacement: replacementItem,
 			},

@@ -160,7 +160,7 @@ type RunWriter interface {
 	RequireActiveSegment(ctx context.Context, sessionID, runID, segmentID string) error
 	Suspend(ctx context.Context, run run.Run) error
 	SuspendBarrier(ctx context.Context, run run.Run, segmentID string, commitID runtimeidentity.CommitID) error
-	Terminalize(ctx context.Context, run run.Run) error
+	Terminalize(ctx context.Context, replacement run.Replacement) error
 	RecordRunCommit(ctx context.Context, sessionID, runID, segmentID string, commitID runtimeidentity.CommitID) error
 	RecordWaitingRunCommit(ctx context.Context, sessionID, runID string, commitID runtimeidentity.CommitID) error
 	TerminalizeEvent(ctx context.Context, run run.Run, segmentID string, commitID runtimeidentity.CommitID) error

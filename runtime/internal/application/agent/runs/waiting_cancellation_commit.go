@@ -34,7 +34,7 @@ type WaitingSubtreeCancellationCommit struct {
 	ExpectedPending      Pending
 	RemainingPending     *Pending
 	Checkpoint           ExecutorCheckpoint
-	TerminalRuns         []rundomain.Run
+	TerminalRuns         []rundomain.Replacement
 	TerminalItems        []ItemReplacement
 	ParentItem           ItemReplacement
 	ConversationMessages []corechat.Message
@@ -242,7 +242,12 @@ func (w *waitingCancellationValidation) validateTerminalRuns() error {
 			len(w.canceledRunIDs),
 		)
 	}
-	for index, run := range c.TerminalRuns {
+	for index, replacement := range c.TerminalRuns {
+		if err := replacement.Validate(); err != nil {
+			return fmt.Errorf("runs: waiting cancellation Run[%d]: %w", index, err)
+		}
+		expected := replacement.Expected()
+		run := replacement.State()
 		expectedRunID := w.canceledRunIDs[index]
 		continuation := w.continuationByRunID[expectedRunID]
 		switch {
@@ -270,6 +275,13 @@ func (w *waitingCancellationValidation) validateTerminalRuns() error {
 		outcome, terminal := run.Outcome()
 		if !terminal || outcome != rundomain.OutcomeCanceled {
 			return fmt.Errorf("runs: waiting cancellation Run[%d] has no canceled outcome", index)
+		}
+		derived, err := expected.CancelWaiting(run.Detail(), run.FinishedAt(), run.MessageMark())
+		if err != nil {
+			return fmt.Errorf("runs: waiting cancellation Run[%d] transition: %w", index, err)
+		}
+		if !derived.Equal(run) {
+			return fmt.Errorf("runs: waiting cancellation Run[%d] rewrites non-terminal facts", index)
 		}
 		if _, duplicate := w.terminalRunIDs[run.ID()]; duplicate {
 			return fmt.Errorf("runs: waiting cancellation repeats Run %q", run.ID())

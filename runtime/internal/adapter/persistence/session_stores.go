@@ -544,7 +544,7 @@ func (s *SessionStores) terminalizeParkedRuns(ctx context.Context, runs []rundom
 		}
 		switch outcome {
 		case rundomain.OutcomeCanceled:
-			if err := s.runs.Terminalize(ctx, run); err != nil {
+			if err := s.runs.Terminalize(ctx, replacement); err != nil {
 				return err
 			}
 		case rundomain.OutcomeLost:

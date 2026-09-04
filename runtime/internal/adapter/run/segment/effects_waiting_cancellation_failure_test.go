@@ -90,12 +90,12 @@ func (f failingWaitingRunWriter) Resume(
 
 func (f failingWaitingRunWriter) Terminalize(
 	ctx context.Context,
-	run run.Run,
+	replacement run.Replacement,
 ) error {
 	if f.terminalizeErr != nil {
 		return f.terminalizeErr
 	}
-	return f.RunStore.Terminalize(ctx, run)
+	return f.RunStore.Terminalize(ctx, replacement)
 }
 
 type failingWaitingInterruptStore struct {
@@ -185,14 +185,18 @@ func TestCommitWaitingSubtreeCancellationRejectsMismatchedCheckpointBindingWitho
 func TestCommitWaitingSubtreeCancellationRejectsRunContinuationFactDriftWithoutMutation(t *testing.T) {
 	for name, mutate := range map[string]func(*runs.WaitingSubtreeCancellationCommit){
 		"cumulative metrics": func(commit *runs.WaitingSubtreeCancellationCommit) {
-			commit.TerminalRuns[0] = mutatedRun(commit.TerminalRuns[0], func(snapshot *run.Snapshot) {
+			replacement := commit.TerminalRuns[0]
+			state := mutatedRun(replacement.State(), func(snapshot *run.Snapshot) {
 				snapshot.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: snapshot.Metrics.Steps() + 1})
 			})
+			commit.TerminalRuns[0] = testsupport.MustRunReplacement(replacement.Expected(), state)
 		},
 		"frozen limits": func(commit *runs.WaitingSubtreeCancellationCommit) {
-			commit.TerminalRuns[0] = mutatedRun(commit.TerminalRuns[0], func(snapshot *run.Snapshot) {
+			replacement := commit.TerminalRuns[0]
+			state := mutatedRun(replacement.State(), func(snapshot *run.Snapshot) {
 				snapshot.Limits = testsupport.MustRunLimits(run.LimitValues{MaxSteps: testsupport.Pointer(1)})
 			})
+			commit.TerminalRuns[0] = testsupport.MustRunReplacement(replacement.Expected(), state)
 		},
 		"root run capabilities": func(commit *runs.WaitingSubtreeCancellationCommit) {
 			commit.RootRun = mutatedRun(commit.RootRun, func(snapshot *run.Snapshot) {

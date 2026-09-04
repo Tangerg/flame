@@ -41,6 +41,20 @@ func newRunProjectionStores(t *testing.T) (*sqlite.RunStore, *persistence.Interr
 	return sqlite.NewRunStore(db), persistence.NewInterruptStore(sqlite.NewInterruptStore(db)), sqlite.NewTranscriptStore(db)
 }
 
+func storedRunReplacement(
+	t testing.TB,
+	ctx context.Context,
+	store *sqlite.RunStore,
+	state run.Run,
+) run.Replacement {
+	t.Helper()
+	expected, found, err := store.Run(ctx, state.ID())
+	if err != nil || !found {
+		t.Fatalf("load expected Run %q: found=%t err=%v", state.ID(), found, err)
+	}
+	return testsupport.MustRunReplacement(expected, state)
+}
+
 // runCreatedAt is when every fixture Run is admitted. The interrupt record
 // carries the same instant, and a park whose two records disagree about when its
 // Run started is rejected as an incomplete boundary.
@@ -109,13 +123,18 @@ func finishedRun(runID, sessionID string, outcome run.Outcome) run.Run {
 	return finishedRunFromDraft(runDraft(runID, sessionID), outcome)
 }
 
-func finishedRunFromDraft(draft run.Draft, outcome run.Outcome) run.Run {
+func admittedRunFromDraft(draft run.Draft) run.Run {
 	value, err := run.Admit(testsupport.RunDraft(draft))
 	if err != nil {
 		panic(err)
 	}
+	return value
+}
+
+func finishedRunFromDraft(draft run.Draft, outcome run.Outcome) run.Run {
+	value := admittedRunFromDraft(draft)
 	finishedAt := time.Unix(9, 0).UTC()
-	value, err = value.AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1}), 0, finishedAt)
+	value, err := value.AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1}), 0, finishedAt)
 	if err != nil {
 		panic(err)
 	}
@@ -144,12 +163,9 @@ func parkedRun(runID, sessionID string) run.Run {
 }
 
 func parkedRunFromDraft(draft run.Draft) run.Run {
-	value, err := run.Admit(testsupport.RunDraft(draft))
-	if err != nil {
-		panic(err)
-	}
+	value := admittedRunFromDraft(draft)
 	at := time.Unix(5, 0).UTC()
-	value, err = value.AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1}), 0, at)
+	value, err := value.AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1}), 0, at)
 	if err != nil {
 		panic(err)
 	}
@@ -301,7 +317,8 @@ func TestRunAdmitEnforcesOneActivePerSession(t *testing.T) {
 	if err := store.Admit(ctx, runDraft("run_3", "ses_B")); err != nil {
 		t.Fatalf("other-session admit: %v", err)
 	}
-	if err := store.Terminalize(ctx, finishedRun("run_1", "ses_A", run.OutcomeCompleted)); err != nil {
+	finished := finishedRun("run_1", "ses_A", run.OutcomeCompleted)
+	if err := store.Terminalize(ctx, storedRunReplacement(t, ctx, store, finished)); err != nil {
 		t.Fatalf("terminalize: %v", err)
 	}
 	if err := store.Admit(ctx, runDraft("run_4", "ses_A")); err != nil {
@@ -317,7 +334,8 @@ func TestRunLifecyclePrunesPendingInvocationJournals(t *testing.T) {
 		{
 			name: "terminal",
 			settle: func(ctx context.Context, store *sqlite.RunStore, draft run.Draft) error {
-				return store.Terminalize(ctx, finishedRunFromDraft(draft, run.OutcomeCompleted))
+				finished := finishedRunFromDraft(draft, run.OutcomeCompleted)
+				return store.Terminalize(ctx, storedRunReplacement(t, ctx, store, finished))
 			},
 		},
 		{
@@ -400,7 +418,10 @@ func TestRunProgressFootprintSurvivesTerminalRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Terminate: %v", err)
 	}
-	if terminalizeErr := store.Terminalize(ctx, terminal); terminalizeErr != nil {
+	if terminalizeErr := store.Terminalize(
+		ctx,
+		testsupport.MustRunReplacement(current, terminal),
+	); terminalizeErr != nil {
 		t.Fatalf("Terminalize: %v", terminalizeErr)
 	}
 	recovered, found, err := store.Run(ctx, "run_context")
@@ -534,19 +555,43 @@ func TestTerminalizeRequiresExactLiveRun(t *testing.T) {
 	ctx := context.Background()
 	store, _ := newRunStores(t)
 
-	if err := store.Terminalize(ctx, finishedRun("run_unknown", "ses_unknown", run.OutcomeCompleted)); err == nil {
+	unknownDraft := runDraft("run_unknown", "ses_unknown")
+	unknown := finishedRunFromDraft(unknownDraft, run.OutcomeCompleted)
+	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(
+		admittedRunFromDraft(unknownDraft), unknown,
+	)); err == nil {
 		t.Fatal("terminalize unknown run must fail")
 	}
 	if err := store.Admit(ctx, runDraft("run_1", "ses_A")); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
-	if err := store.Terminalize(ctx, finishedRun("run_other", "ses_A", run.OutcomeCompleted)); err == nil {
+	otherDraft := runDraft("run_other", "ses_A")
+	other := finishedRunFromDraft(otherDraft, run.OutcomeCompleted)
+	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(
+		admittedRunFromDraft(otherDraft), other,
+	)); err == nil {
 		t.Fatal("terminalize mismatched run must fail")
 	}
-	if err := store.Terminalize(ctx, finishedRun("run_1", "ses_A", run.OutcomeCompleted)); err != nil {
+	expected, found, err := store.Run(ctx, "run_1")
+	if err != nil || !found {
+		t.Fatalf("load expected Run: found=%t err=%v", found, err)
+	}
+	foreignExpected := withRunSnapshot(expected, func(snapshot *run.Snapshot) {
+		snapshot.ActiveSegmentID = "seg_other"
+	})
+	finished := finishedRun("run_1", "ses_A", run.OutcomeCompleted)
+	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(foreignExpected, finished)); err == nil {
+		t.Fatal("terminalize with a different expected Segment must fail")
+	}
+	unchanged, found, err := store.Run(ctx, "run_1")
+	if err != nil || !found || !unchanged.Equal(expected) {
+		t.Fatalf("Run after rejected replacement = (%+v, %t, %v), want unchanged", unchanged, found, err)
+	}
+	exact := testsupport.MustRunReplacement(expected, finished)
+	if err := store.Terminalize(ctx, exact); err != nil {
 		t.Fatalf("terminalize: %v", err)
 	}
-	if err := store.Terminalize(ctx, finishedRun("run_1", "ses_A", run.OutcomeCompleted)); err == nil {
+	if err := store.Terminalize(ctx, exact); err == nil {
 		t.Fatal("repeated terminalize must fail")
 	}
 }
@@ -610,12 +655,14 @@ func TestTerminalizeParkedRunRejectsNonCancel(t *testing.T) {
 	if err := store.Admit(ctx, runDraft("run_1", "ses_A")); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
-	if err := store.Suspend(ctx, parkedRun("run_1", "ses_A")); err != nil {
+	parked := parkedRun("run_1", "ses_A")
+	if err := store.Suspend(ctx, parked); err != nil {
 		t.Fatalf("suspend: %v", err)
 	}
 	// A parked run cannot complete/error/cap out without resuming — the illegal
 	// transition is surfaced, not silently applied.
-	if err := store.Terminalize(ctx, finishedRun("run_1", "ses_A", run.OutcomeCompleted)); err == nil {
+	completed := finishedRun("run_1", "ses_A", run.OutcomeCompleted)
+	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(parked, completed)); err == nil {
 		t.Fatal("terminalize(completed) of a parked run must be rejected as illegal")
 	}
 	// The row is untouched — still non-terminal, still busy.
@@ -623,7 +670,8 @@ func TestTerminalizeParkedRunRejectsNonCancel(t *testing.T) {
 		t.Fatalf("admit after rejected terminalize = %v, want ErrSessionBusy (row untouched)", err)
 	}
 	// Cancellation of the same parked run is legal (Waiting → Canceled).
-	if err := store.Terminalize(ctx, finishedRun("run_1", "ses_A", run.OutcomeCanceled)); err != nil {
+	canceled := finishedRun("run_1", "ses_A", run.OutcomeCanceled)
+	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(parked, canceled)); err != nil {
 		t.Fatalf("terminalize(canceled) of a parked run: %v", err)
 	}
 	if err := store.Admit(ctx, runDraft("run_3", "ses_A")); err != nil {
@@ -658,7 +706,8 @@ func TestSuspendResumeReusesOneSlot(t *testing.T) {
 		t.Fatalf("admit while resumed = %v, want ErrSessionBusy", err)
 	}
 	// Terminal frees the one reused slot.
-	if err := store.Terminalize(ctx, finishedRun("run_1", "ses_A", run.OutcomeCompleted)); err != nil {
+	finished := finishedRun("run_1", "ses_A", run.OutcomeCompleted)
+	if err := store.Terminalize(ctx, storedRunReplacement(t, ctx, store, finished)); err != nil {
 		t.Fatalf("terminalize: %v", err)
 	}
 	if err := store.Admit(ctx, runDraft("run_4", "ses_A")); err != nil {
@@ -780,9 +829,10 @@ func TestPageRunsReturnsEveryLifecyclePosition(t *testing.T) {
 	if err := store.Suspend(ctx, parked); err != nil {
 		t.Fatalf("suspend: %v", err)
 	}
-	if err := store.Terminalize(ctx, finishedRunFromDraft(run.Draft{
+	finished := finishedRunFromDraft(run.Draft{
 		RunID: "run_done", SessionID: "ses_C", SegmentID: "seg_open", CreatedAt: time.Unix(0, 30),
-	}, run.OutcomeCompleted)); err != nil {
+	}, run.OutcomeCompleted)
+	if err := store.Terminalize(ctx, storedRunReplacement(t, ctx, store, finished)); err != nil {
 		t.Fatalf("terminalize: %v", err)
 	}
 
@@ -1084,7 +1134,7 @@ func TestRunCapabilitiesAreImmutable(t *testing.T) {
 	assertRunCapabilities(t, store, "run_1", admitted, "after resume")
 
 	finished := finishedRunFromDraft(draft, run.OutcomeCompleted)
-	if err := store.Terminalize(ctx, finished); err != nil {
+	if err := store.Terminalize(ctx, storedRunReplacement(t, ctx, store, finished)); err != nil {
 		t.Fatalf("terminalize: %v", err)
 	}
 	assertRunCapabilities(t, store, "run_1", admitted, "after terminal")
