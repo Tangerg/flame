@@ -147,8 +147,12 @@ func TestRunNowCarriesAcceptedRunFactThroughRequestCancellation(t *testing.T) {
 	})
 	firing.now = func() time.Time { return now }
 
-	if _, err := firing.RunNow(ctx, "sch_1"); err != nil {
+	started, err := firing.RunNow(ctx, "sch_1")
+	if err != nil {
 		t.Fatalf("RunNow: %v", err)
+	}
+	if started.SessionID != fixedSessionID() || started.RunID != fixedRunID() {
+		t.Fatalf("started Run = %+v, want request-owned identities", started)
 	}
 	if len(runner.requests) != 1 {
 		t.Fatalf("run requests = %d, want one", len(runner.requests))

@@ -28,7 +28,7 @@ const workerBatchSize = 32
 // ScheduledRunStarter starts one scheduled instruction set as a headless run. It is the
 // application-owned seam between a fired schedule and a run start.
 type ScheduledRunStarter interface {
-	StartScheduledRun(ctx context.Context, request schedule.RunRequest) (StartedRun, error)
+	StartScheduledRun(ctx context.Context, request schedule.RunRequest) error
 }
 
 // StartedRun identifies the Run accepted for one schedule occurrence.
@@ -104,13 +104,13 @@ func Fire(ctx context.Context, runStarter ScheduledRunStarter, request schedule.
 	ctx, span := workerTracer.Start(ctx, "schedule.fire",
 		trace.WithAttributes(attribute.String("schedule.id", request.ScheduleID())))
 	defer span.End()
-	handle, err := runStarter.StartScheduledRun(ctx, request)
+	err := runStarter.StartScheduledRun(ctx, request)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "start run")
 		return StartedRun{}, err
 	}
-	return handle, nil
+	return StartedRun{SessionID: request.SessionID(), RunID: request.RunID()}, nil
 }
 
 func (w worker) fireDue(ctx context.Context, now time.Time) {

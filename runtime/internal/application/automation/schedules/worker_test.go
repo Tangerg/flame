@@ -60,12 +60,9 @@ type recordingScheduledRunStarter struct {
 	startedScheduleIDs []string
 }
 
-func (r *recordingScheduledRunStarter) StartScheduledRun(_ context.Context, request schedule.RunRequest) (StartedRun, error) {
+func (r *recordingScheduledRunStarter) StartScheduledRun(_ context.Context, request schedule.RunRequest) error {
 	r.startedScheduleIDs = append(r.startedScheduleIDs, request.ScheduleID())
-	if r.startErr != nil {
-		return StartedRun{}, r.startErr
-	}
-	return StartedRun{SessionID: "ses_1", RunID: "run_1"}, nil
+	return r.startErr
 }
 
 func TestWorkerFireDueLeavesFailedOccurrenceDue(t *testing.T) {
@@ -257,14 +254,14 @@ type cancelingScheduledRunStarter struct {
 	requests           []schedule.RunRequest
 }
 
-func (c *cancelingScheduledRunStarter) StartScheduledRun(ctx context.Context, request schedule.RunRequest) (StartedRun, error) {
+func (c *cancelingScheduledRunStarter) StartScheduledRun(ctx context.Context, request schedule.RunRequest) error {
 	c.startedScheduleIDs = append(c.startedScheduleIDs, request.ScheduleID())
 	c.requests = append(c.requests, request)
 	c.cancel()
 	if !c.succeed {
-		return StartedRun{}, ctx.Err()
+		return ctx.Err()
 	}
-	return StartedRun{SessionID: "ses_1", RunID: "run_1"}, nil
+	return nil
 }
 
 func dueSchedule(t testing.TB, id string, dueAt time.Time) schedule.Schedule {

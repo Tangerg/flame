@@ -18,7 +18,7 @@ type fakeRunStarter struct {
 func (f *fakeRunStarter) Start(ctx context.Context, cmd runs.StartCommand) (runs.StartResult, error) {
 	f.cmd = cmd
 	context.AfterFunc(ctx, func() { close(f.canceled) })
-	return runs.StartResult{SessionID: "ses_scheduled", RunID: "run_scheduled"}, nil
+	return runs.StartResult{SessionID: cmd.NewSessionID, RunID: cmd.RunID}, nil
 }
 
 func TestRunLauncherUsesApplicationRunEntry(t *testing.T) {
@@ -33,12 +33,8 @@ func TestRunLauncherUsesApplicationRunEntry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ManualRunRequest: %v", err)
 	}
-	startedRun, err := launcher.StartScheduledRun(context.Background(), request)
-	if err != nil {
+	if err := launcher.StartScheduledRun(context.Background(), request); err != nil {
 		t.Fatalf("StartScheduledRun: %v", err)
-	}
-	if startedRun.SessionID != "ses_scheduled" || startedRun.RunID != "run_scheduled" {
-		t.Fatalf("started Run=%+v", startedRun)
 	}
 	if runStarter.cmd.DefaultWorkspacePath != "/default" || runStarter.cmd.NewSessionTitle != "" {
 		t.Fatalf("command defaults = %+v", runStarter.cmd)
