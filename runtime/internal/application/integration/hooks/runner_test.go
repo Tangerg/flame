@@ -18,6 +18,20 @@ type commandStub struct {
 	requests []CommandRequest
 }
 
+type mutatingCommandRunner struct {
+	mutate func()
+	names  []string
+}
+
+func (m *mutatingCommandRunner) RunHookCommand(_ context.Context, req CommandRequest) CommandResult {
+	m.names = append(m.names, req.Input.Tool.Name)
+	if len(m.names) == 1 && m.mutate != nil {
+		m.mutate()
+	}
+	req.Input.Tool.Name = "adapter changed"
+	return CommandResult{Decision: CommandDecision{Verdict: CommandAllow}}
+}
+
 func (c *commandStub) RunHookCommand(_ context.Context, req CommandRequest) CommandResult {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -61,6 +75,29 @@ func TestRunner_CommandReceivesTypedEvent(t *testing.T) {
 	}
 	if len(cmds.requests) != 1 || cmds.requests[0].Input.Event != hookdomain.UserPromptSubmit || cmds.requests[0].Input.Prompt != "hi" {
 		t.Fatalf("request = %+v, want typed prompt event", cmds.requests)
+	}
+}
+
+func TestRunnerOwnsHooksAndInputAcrossCommandCallbacks(t *testing.T) {
+	hooks := []hookdomain.Hook{
+		{Event: hookdomain.PreToolUse, Matcher: "shell", Command: "first"},
+		{Event: hookdomain.PreToolUse, Matcher: "shell", Command: "second"},
+	}
+	input := hookdomain.Input{
+		Event: hookdomain.PreToolUse,
+		Tool:  &hookdomain.ToolInput{Name: "shell"},
+	}
+	commands := &mutatingCommandRunner{mutate: func() {
+		hooks[1].Event = hookdomain.Stop
+		input.Tool.Name = "caller changed"
+	}}
+
+	decision := NewRunner(commands, nil).Run(ctxBG(), hooks, input)
+	if decision.Block || decision.Ask {
+		t.Fatalf("decision = %+v, want both commands to allow", decision)
+	}
+	if len(commands.names) != 2 || commands.names[0] != "shell" || commands.names[1] != "shell" {
+		t.Fatalf("command input names = %v, want two isolated shell snapshots", commands.names)
 	}
 }
 

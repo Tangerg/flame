@@ -99,6 +99,8 @@ func NewRunner(commands CommandRunner, onError func(ctx context.Context, source 
 // project), so the combine rules (first-block-wins, first-rewrite-wins) are
 // deterministic.
 func (r *Runner) Run(ctx context.Context, hooks []domain.Hook, in domain.Input) domain.Decision {
+	hooks = slices.Clone(hooks)
+	in = in.Clone()
 	var dec domain.Decision
 	var commandInput domain.Input
 	var commandInputErr error
@@ -138,7 +140,7 @@ func (r *Runner) runOne(ctx context.Context, h domain.Hook, in domain.Input, dec
 	result := r.commands.RunHookCommand(ctx, CommandRequest{
 		Command: h.Command,
 		CWD:     in.CWD,
-		Input:   in,
+		Input:   in.Clone(),
 		Timeout: timeout,
 	})
 	if result.TimedOut {
