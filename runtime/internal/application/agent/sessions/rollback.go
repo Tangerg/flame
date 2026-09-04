@@ -38,6 +38,15 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 	if err != nil {
 		return err
 	}
+	rollback, err := NewRollbackPlan(
+		sessionID,
+		boundary,
+		parkedCheckpointRootIDs(parked),
+		planReplacement,
+	)
+	if err != nil {
+		return fmt.Errorf("sessions: prepare rollback: %w", err)
+	}
 	// A dropped parked run held the session's durable admission slot; dropping its
 	// record releases the slot, so the session can start a fresh run afterward.
 	return c.withGoalMutation(
@@ -55,13 +64,7 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 					return fmt.Errorf("sessions: discard sandbox copy before history rollback: %w", err)
 				}
 			}
-			return c.writes.ApplyRollback(ctx, RollbackPlan{
-				SessionID:         sessionID,
-				KeepMessageMark:   boundary.KeepMessageMark,
-				DropRunIDs:        dropRunIDs,
-				CheckpointRootIDs: parkedCheckpointRootIDs(parked),
-				PlanReplacement:   planReplacement,
-			})
+			return c.writes.ApplyRollback(ctx, rollback)
 		},
 		func(ctx context.Context) error {
 			// The truncation is committed: the dropped Run subtree is gone and the

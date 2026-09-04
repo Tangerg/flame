@@ -100,8 +100,8 @@ func (c coordinatorStores) ApplyRollback(ctx context.Context, plan RollbackPlan)
 	if c.rolledBack != nil {
 		*c.rolledBack = plan
 	}
-	for _, runID := range plan.DropRunIDs {
-		_ = c.interrupts.Delete(ctx, plan.SessionID, runID)
+	for _, runID := range plan.DropRunIDs() {
+		_ = c.interrupts.Delete(ctx, plan.SessionID(), runID)
 	}
 	return nil
 }

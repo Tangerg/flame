@@ -732,24 +732,25 @@ func (s stubLifecycleStores) ApplyFork(ctx context.Context, plan sessions.ForkPl
 // The atomic write-sets over the stub's in-memory chat log + real sqlite
 // transcript/run/interrupt/session stores, mirroring the persistence adapter.
 func (s stubLifecycleStores) ApplyRollback(ctx context.Context, plan sessions.RollbackPlan) error {
-	if s.rt.plan != nil && plan.PlanReplacement != nil {
-		if err := s.rt.plan.Save(ctx, plan.SessionID, *plan.PlanReplacement); err != nil {
+	sessionID := plan.SessionID()
+	if replacement := plan.PlanReplacement(); s.rt.plan != nil && replacement != nil {
+		if err := s.rt.plan.Save(ctx, sessionID, *replacement); err != nil {
 			return err
 		}
 	}
-	if plan.KeepMessageMark >= 0 {
-		if err := s.rt.TruncateMessages(ctx, plan.SessionID, plan.KeepMessageMark); err != nil {
+	if mark, known := plan.TruncationMark(); known {
+		if err := s.rt.TruncateMessages(ctx, sessionID, mark); err != nil {
 			return err
 		}
 	}
-	for _, runID := range plan.DropRunIDs {
-		if err := s.rt.hist.DeleteRun(ctx, plan.SessionID, runID); err != nil {
+	for _, runID := range plan.DropRunIDs() {
+		if err := s.rt.hist.DeleteRun(ctx, sessionID, runID); err != nil {
 			return err
 		}
-		if err := s.rt.runs.Delete(ctx, plan.SessionID, runID); err != nil {
+		if err := s.rt.runs.Delete(ctx, sessionID, runID); err != nil {
 			return err
 		}
-		if err := s.rt.interrupts.Delete(ctx, plan.SessionID, runID); err != nil {
+		if err := s.rt.interrupts.Delete(ctx, sessionID, runID); err != nil {
 			return err
 		}
 	}

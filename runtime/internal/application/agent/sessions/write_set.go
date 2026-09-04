@@ -18,21 +18,6 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
-// RollbackPlan is the atomic durable command for truncating a session back to a
-// run boundary. A parked run among DropRunIDs needs no terminalization: dropping
-// its record is also how it releases the session's admission slot.
-type RollbackPlan struct {
-	SessionID         string
-	KeepMessageMark   int
-	DropRunIDs        []string
-	CheckpointRootIDs []string
-	// PlanReplacement is the application-decided replacement for the Plan the
-	// boundary held. Applying it is a NEW state commit
-	// (Replace, never delete-and-rewrite): the live revision has to move forward or a
-	// client holding a higher one discards the rolled-back list as stale.
-	PlanReplacement *plan.Replacement
-}
-
 type ForkPlan struct {
 	ParentID string
 	// Child is the complete Domain-derived child Session. Persistence verifies

@@ -245,19 +245,25 @@ func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (
 
 // ApplyRollback persists one resolved rollback plan atomically.
 func (s *SessionStores) ApplyRollback(ctx context.Context, rollback sessions.RollbackPlan) error {
+	if err := rollback.Validate(); err != nil {
+		return fmt.Errorf("persistence: invalid rollback plan: %w", err)
+	}
+	sessionID := rollback.SessionID()
+	dropRunIDs := rollback.DropRunIDs()
+	checkpointRootIDs := rollback.CheckpointRootIDs()
 	return s.tx(ctx, func(ctx context.Context) error {
 		if err := s.republishRollbackState(ctx, rollback); err != nil {
 			return err
 		}
-		if err := s.deleteRolledBackRuns(ctx, rollback.SessionID, rollback.DropRunIDs); err != nil {
+		if err := s.deleteRolledBackRuns(ctx, sessionID, dropRunIDs); err != nil {
 			return err
 		}
-		if len(rollback.CheckpointRootIDs) > 0 {
-			if err := s.executorCheckpoints.DeleteCheckpoints(ctx, rollback.SessionID, rollback.CheckpointRootIDs); err != nil {
+		if len(checkpointRootIDs) > 0 {
+			if err := s.executorCheckpoints.DeleteCheckpoints(ctx, sessionID, checkpointRootIDs); err != nil {
 				return err
 			}
 		}
-		if err := s.deleteChildRunStarts(ctx, rollback.SessionID); err != nil {
+		if err := s.deleteChildRunStarts(ctx, sessionID); err != nil {
 			return err
 		}
 		return nil
@@ -267,16 +273,17 @@ func (s *SessionStores) ApplyRollback(ctx context.Context, rollback sessions.Rol
 func (s *SessionStores) republishRollbackState(ctx context.Context, rollback sessions.RollbackPlan) error {
 	// The application has already decided whether this boundary was recorded and,
 	// if so, computed its new aggregate revision. The adapter only applies it.
-	if err := s.savePlanReplacement(ctx, rollback.SessionID, rollback.PlanReplacement); err != nil {
+	sessionID := rollback.SessionID()
+	if err := s.savePlanReplacement(ctx, sessionID, rollback.PlanReplacement()); err != nil {
 		return err
 	}
 	if s.goals != nil {
-		if err := s.goals.Clear(ctx, rollback.SessionID); err != nil {
+		if err := s.goals.Clear(ctx, sessionID); err != nil {
 			return err
 		}
 	}
-	if rollback.KeepMessageMark >= 0 {
-		return s.history.Truncate(ctx, rollback.SessionID, rollback.KeepMessageMark)
+	if mark, known := rollback.TruncationMark(); known {
+		return s.history.Truncate(ctx, sessionID, mark)
 	}
 	return nil
 }

@@ -96,7 +96,7 @@ func TestRollbackPublishesTheBoundaryPlanList(t *testing.T) {
 	if err := c.applyRollback(t.Context(), "ses_A", droppedBoundary("run_keep", 4)); err != nil {
 		t.Fatalf("applyRollback: %v", err)
 	}
-	steps := replacementSteps(applied.PlanReplacement)
+	steps := replacementSteps(applied.PlanReplacement())
 	if len(steps) != 1 || steps[0].Description != "the plan as of the boundary" {
 		t.Fatalf("rollback Plan replacement = %+v, want the boundary list", steps)
 	}
@@ -144,8 +144,8 @@ func TestRollbackLeavesAnUnrecordedBoundaryAlone(t *testing.T) {
 	if err := c.applyRollback(t.Context(), "ses_A", droppedBoundary("run_imported", 4)); err != nil {
 		t.Fatalf("applyRollback: %v", err)
 	}
-	if applied.PlanReplacement != nil {
-		t.Fatalf("rollback Plan replacement = %+v, want nothing to apply", replacementSteps(applied.PlanReplacement))
+	if applied.PlanReplacement() != nil {
+		t.Fatalf("rollback Plan replacement = %+v, want nothing to apply", replacementSteps(applied.PlanReplacement()))
 	}
 }
 
@@ -161,8 +161,8 @@ func TestRollbackToBeforeEveryRunClearsWithoutALookup(t *testing.T) {
 	if err := c.applyRollback(t.Context(), "ses_A", boundary); err != nil {
 		t.Fatalf("applyRollback: %v", err)
 	}
-	if applied.PlanReplacement == nil || len(replacementSteps(applied.PlanReplacement)) != 0 {
-		t.Fatalf("rollback Plan replacement = %+v, want a known empty list", replacementSteps(applied.PlanReplacement))
+	if applied.PlanReplacement() == nil || len(replacementSteps(applied.PlanReplacement())) != 0 {
+		t.Fatalf("rollback Plan replacement = %+v, want a known empty list", replacementSteps(applied.PlanReplacement()))
 	}
 }
 

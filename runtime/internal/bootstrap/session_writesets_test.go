@@ -66,6 +66,29 @@ func bootstrapRestoreReplacement(
 	return replacement
 }
 
+func bootstrapRollbackPlan(
+	t *testing.T,
+	sessionID string,
+	keepMessageMark int,
+	dropRunIDs []string,
+	checkpointRootIDs []string,
+	planReplacement *plan.Replacement,
+) sessions.RollbackPlan {
+	t.Helper()
+	dropped := make([]transcript.RunNode, len(dropRunIDs))
+	for index, runID := range dropRunIDs {
+		dropped[index] = transcript.RunNode{ID: runID}
+	}
+	rollback, err := sessions.NewRollbackPlan(sessionID, transcript.Boundary{
+		KeepMessageMark: keepMessageMark,
+		Dropped:         dropped,
+	}, checkpointRootIDs, planReplacement)
+	if err != nil {
+		t.Fatalf("prepare rollback plan: %v", err)
+	}
+	return rollback
+}
+
 // bootstrapCheckpoint deliberately treats the executor payload as opaque. These
 // Bootstrap fixtures verify Application write-sets, not Agent Framework wire;
 // only adapter/agentexec may construct or interpret a tree snapshot.
@@ -511,12 +534,9 @@ func TestApplyRollbackDropsRunsAndFreesAdmission(t *testing.T) {
 	replaceFixturePlan(t, ctx, ss.plan, "ses_A", []plan.Step{{Description: "future work", Status: plan.StatusPending}})
 	seedGoal(t, ss, "ses_A")
 
-	if err := ss.ApplyRollback(ctx, sessions.RollbackPlan{
-		SessionID:         "ses_A",
-		KeepMessageMark:   -1,
-		DropRunIDs:        []string{"run_1"},
-		CheckpointRootIDs: []string{memberID},
-	}); err != nil {
+	if err := ss.ApplyRollback(ctx, bootstrapRollbackPlan(
+		t, "ses_A", run.UnknownMessageMark, []string{"run_1"}, []string{memberID}, nil,
+	)); err != nil {
 		t.Fatalf("ApplyRollback: %v", err)
 	}
 	if _, ok, err := readBootstrapGoal(ctx, ss.goals, "ses_A"); err != nil || ok {
@@ -560,13 +580,10 @@ func TestApplyRollbackRepublishesBoundaryPlan(t *testing.T) {
 	}
 
 	boundary := []plan.Step{{Description: "the plan at the boundary", Status: plan.StatusPending}}
-	if applyRollbackErr := ss.ApplyRollback(ctx, sessions.RollbackPlan{
-		SessionID:         "ses_A",
-		KeepMessageMark:   -1,
-		DropRunIDs:        []string{"run_1"},
-		CheckpointRootIDs: []string{memberID},
-		PlanReplacement:   prepareFixturePlan(t, ctx, ss.plan, "ses_A", boundary),
-	}); applyRollbackErr != nil {
+	if applyRollbackErr := ss.ApplyRollback(ctx, bootstrapRollbackPlan(
+		t, "ses_A", run.UnknownMessageMark, []string{"run_1"}, []string{memberID},
+		prepareFixturePlan(t, ctx, ss.plan, "ses_A", boundary),
+	)); applyRollbackErr != nil {
 		t.Fatalf("ApplyRollback: %v", applyRollbackErr)
 	}
 
@@ -597,13 +614,10 @@ func TestApplyRollbackClearsToARecordedEmptyBoundary(t *testing.T) {
 		t.Fatalf("read plan: %v", err)
 	}
 
-	if applyRollbackErr := ss.ApplyRollback(ctx, sessions.RollbackPlan{
-		SessionID:         "ses_A",
-		KeepMessageMark:   -1,
-		DropRunIDs:        []string{"run_1"},
-		CheckpointRootIDs: []string{memberID},
-		PlanReplacement:   prepareFixturePlan(t, ctx, ss.plan, "ses_A", nil),
-	}); applyRollbackErr != nil {
+	if applyRollbackErr := ss.ApplyRollback(ctx, bootstrapRollbackPlan(
+		t, "ses_A", run.UnknownMessageMark, []string{"run_1"}, []string{memberID},
+		prepareFixturePlan(t, ctx, ss.plan, "ses_A", nil),
+	)); applyRollbackErr != nil {
 		t.Fatalf("ApplyRollback: %v", applyRollbackErr)
 	}
 
@@ -833,7 +847,7 @@ func testAllowRule(t *testing.T, scope approval.Scope, scopeKey, toolName string
 	return rule
 }
 
-func TestApplyRollbackRejectsInvalidCheckpointSetAtomically(t *testing.T) {
+func TestRollbackPlanRejectsInvalidCheckpointSetBeforePersistence(t *testing.T) {
 	ss, _, _ := newWriteSetFixture(t)
 	ctx := t.Context()
 	parent := bootstrapSession("ses_parent", "parent", "/repo")
@@ -843,12 +857,12 @@ func TestApplyRollbackRejectsInvalidCheckpointSetAtomically(t *testing.T) {
 		t.Fatalf("seed executor checkpoint: %v", err)
 	}
 
-	err := ss.ApplyRollback(ctx, sessions.RollbackPlan{
-		SessionID: parent.ID(), KeepMessageMark: -1,
-		CheckpointRootIDs: []string{"member_preserve", ""},
-	})
+	_, err := sessions.NewRollbackPlan(parent.ID(), transcript.Boundary{
+		KeepMessageMark: run.UnknownMessageMark,
+		Dropped:         []transcript.RunNode{{ID: "run_drop"}},
+	}, []string{"member_preserve", ""}, nil)
 	if err == nil {
-		t.Fatal("ApplyRollback unexpectedly accepted an invalid checkpoint root member ID")
+		t.Fatal("NewRollbackPlan unexpectedly accepted an invalid checkpoint root member ID")
 	}
 	if _, ok, err := readBootstrapGoal(ctx, ss.goals, parent.ID()); err != nil || !ok {
 		t.Fatalf("goal clear was not rolled back: ok=%v err=%v", ok, err)
