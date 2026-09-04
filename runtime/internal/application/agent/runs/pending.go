@@ -186,6 +186,23 @@ func (p Pending) ValidateForRoot(expectedRootRunID string) error {
 	return nil
 }
 
+// ValidateForSession verifies the complete hand-off and its exact expected
+// Session identity. Session-scoped catalogs use it before stored continuation
+// state can influence lifecycle decisions.
+func (p Pending) ValidateForSession(expectedSessionID string) error {
+	if err := p.Validate(); err != nil {
+		return err
+	}
+	if p.SessionID != expectedSessionID {
+		return fmt.Errorf(
+			"interrupts: pending Session %q does not match requested identity %q",
+			p.SessionID,
+			expectedSessionID,
+		)
+	}
+	return nil
+}
+
 func (p Pending) validateEnvelope() error {
 	if _, err := resourceid.ParseRun(p.RootRunID); err != nil {
 		return fmt.Errorf("interrupts: pending root: %w", err)

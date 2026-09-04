@@ -74,7 +74,7 @@ func (c *Coordinator) ClaimIdleSession(ctx context.Context, sessionID string) (A
 		return Admission{}, ErrSessionBusy
 	}
 	admission := heldSessionAdmission(sessionID, release)
-	open, err := c.interrupts.List(ctx, sessionID)
+	open, err := c.listOpenInterrupts(ctx, sessionID)
 	if err != nil {
 		admission.Release()
 		return Admission{}, err

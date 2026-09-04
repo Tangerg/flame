@@ -128,6 +128,7 @@ type coordinatorInterrupts struct {
 	pending  map[string]runs.Pending
 	deleted  []string
 	onDelete func(string)
+	list     func(string) ([]runs.Pending, error)
 }
 
 func (c *coordinatorInterrupts) Open(_ context.Context, p runs.Pending) error {
@@ -142,6 +143,9 @@ func (c *coordinatorInterrupts) Open(_ context.Context, p runs.Pending) error {
 }
 
 func (c *coordinatorInterrupts) List(_ context.Context, sessionID string) ([]runs.Pending, error) {
+	if c.list != nil {
+		return c.list(sessionID)
+	}
 	out := make([]runs.Pending, 0, len(c.pending))
 	for _, p := range c.pending {
 		if sessionID == "" || p.SessionID == sessionID {

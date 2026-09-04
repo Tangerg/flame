@@ -65,6 +65,37 @@ func (c *Coordinator) lookupOpenInterrupt(ctx context.Context, runID string) (ru
 	return pending, true, nil
 }
 
+func (c *Coordinator) listOpenInterrupts(ctx context.Context, sessionID string) ([]runs.Pending, error) {
+	pending, err := c.interrupts.List(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if err := validatePendingCatalog(pending, sessionID); err != nil {
+		return nil, err
+	}
+	return pending, nil
+}
+
+func validatePendingCatalog(values []runs.Pending, sessionID string) error {
+	seen := make(map[string]struct{}, len(values))
+	for index, pending := range values {
+		var err error
+		if sessionID == "" {
+			err = pending.Validate()
+		} else {
+			err = pending.ValidateForSession(sessionID)
+		}
+		if err != nil {
+			return fmt.Errorf("sessions: interrupt store row %d is invalid: %w", index+1, err)
+		}
+		if _, duplicate := seen[pending.RootRunID]; duplicate {
+			return fmt.Errorf("sessions: interrupt store repeats pending set %q", pending.RootRunID)
+		}
+		seen[pending.RootRunID] = struct{}{}
+	}
+	return nil
+}
+
 // ApplyRunCancel commits the atomic durable abandon write-set. Executor
 // teardown is owned by application/agent/runs for run commands; session rollback and
 // deletion continue to use the coordinator's narrow cleanup collaborator.

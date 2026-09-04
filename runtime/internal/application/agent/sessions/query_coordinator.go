@@ -683,21 +683,13 @@ func validatePendingInterruptPage(rows []runs.Pending, sessionID, rootRunID stri
 	if len(rows) > maximum {
 		return fmt.Errorf("sessions: interrupt store returned %d rows, maximum %d", len(rows), maximum)
 	}
-	seen := make(map[string]struct{}, len(rows))
+	if err := validatePendingCatalog(rows, sessionID); err != nil {
+		return err
+	}
 	for index, pending := range rows {
-		if err := pending.Validate(); err != nil {
-			return fmt.Errorf("sessions: interrupt store row %d is invalid: %w", index+1, err)
-		}
-		if sessionID != "" && pending.SessionID != sessionID {
-			return fmt.Errorf("sessions: pending set %q does not belong to filtered Session %q", pending.RootRunID, sessionID)
-		}
 		if rootRunID != "" && pending.RootRunID != rootRunID {
 			return fmt.Errorf("sessions: pending set %q does not match root Run filter %q", pending.RootRunID, rootRunID)
 		}
-		if _, duplicate := seen[pending.RootRunID]; duplicate {
-			return fmt.Errorf("sessions: interrupt page repeats pending set %q", pending.RootRunID)
-		}
-		seen[pending.RootRunID] = struct{}{}
 		if afterID != "" && !pendingFollowsPosition(pending, afterCreatedAt, afterID) {
 			return fmt.Errorf("sessions: pending set %q does not follow the page cursor", pending.RootRunID)
 		}

@@ -47,7 +47,7 @@ func TestClaimIdleSessionRejectsOpenInterrupt(t *testing.T) {
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{
 			pending: map[string]runs.Pending{
-				"run_1": {RootRunID: "run_1", SessionID: "ses_1"},
+				"run_1": testPending("run_1", "ses_1", time.Unix(1, 0).UTC()),
 			},
 		},
 	}
@@ -82,7 +82,7 @@ func TestClaimSessionMutationAllowsOpenInterrupt(t *testing.T) {
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{
 			pending: map[string]runs.Pending{
-				"run_1": {RootRunID: "run_1", SessionID: "ses_1"},
+				"run_1": testPending("run_1", "ses_1", time.Unix(1, 0).UTC()),
 			},
 		},
 	}
@@ -122,6 +122,35 @@ func TestLookupOpenInterruptProtectsExactPendingIdentity(t *testing.T) {
 			}}
 			if _, found, err := coordinator.LookupOpenInterrupt(t.Context(), requested); err == nil || found {
 				t.Fatalf("LookupOpenInterrupt accepted invalid Pending: found=%t err=%v", found, err)
+			}
+		})
+	}
+}
+
+func TestListOpenInterruptsProtectsSessionCatalog(t *testing.T) {
+	exact := testPending("run_exact", "ses_1", time.Unix(1, 0).UTC())
+	coordinator := &Coordinator{interrupts: &coordinatorInterrupts{
+		list: func(string) ([]runs.Pending, error) { return []runs.Pending{exact}, nil },
+	}}
+	got, err := coordinator.listOpenInterrupts(t.Context(), "ses_1")
+	if err != nil || len(got) != 1 || !got[0].Equal(exact) {
+		t.Fatalf("listOpenInterrupts exact = (%+v, %v)", got, err)
+	}
+
+	for _, test := range []struct {
+		name string
+		rows []runs.Pending
+	}{
+		{name: "invalid Pending", rows: []runs.Pending{{}}},
+		{name: "foreign Session", rows: []runs.Pending{testPending("run_foreign", "ses_other", time.Unix(1, 0).UTC())}},
+		{name: "duplicate root", rows: []runs.Pending{exact, exact}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			coordinator := &Coordinator{interrupts: &coordinatorInterrupts{
+				list: func(string) ([]runs.Pending, error) { return test.rows, nil },
+			}}
+			if _, err := coordinator.listOpenInterrupts(t.Context(), "ses_1"); err == nil {
+				t.Fatal("listOpenInterrupts accepted invalid catalog")
 			}
 		})
 	}

@@ -186,7 +186,7 @@ func TestPendingValidateRequiresOneCanonicalConnectedTree(t *testing.T) {
 	}
 }
 
-func TestPendingValidatesExactRootIdentity(t *testing.T) {
+func TestPendingValidatesExactReadIdentities(t *testing.T) {
 	pending := validTreePending()
 	if err := pending.ValidateForRoot(pending.RootRunID); err != nil {
 		t.Fatalf("ValidateForRoot exact Pending: %v", err)
@@ -196,6 +196,12 @@ func TestPendingValidatesExactRootIdentity(t *testing.T) {
 	}
 	if err := (Pending{}).ValidateForRoot("run_root"); err == nil {
 		t.Fatal("ValidateForRoot accepted invalid Pending")
+	}
+	if err := pending.ValidateForSession(pending.SessionID); err != nil {
+		t.Fatalf("ValidateForSession exact Pending: %v", err)
+	}
+	if err := pending.ValidateForSession("session_other"); err == nil || !strings.Contains(err.Error(), "requested identity") {
+		t.Fatalf("ValidateForSession mismatched Pending error = %v", err)
 	}
 }
 
