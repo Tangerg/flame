@@ -3,6 +3,7 @@ package mcp
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/secrets"
@@ -62,6 +63,22 @@ type ConnectionInput struct {
 	Dir           string
 }
 
+func (c ConnectionInput) clone() ConnectionInput {
+	c.Authorization = clonePointer(c.Authorization)
+	if c.Headers != nil {
+		change := *c.Headers
+		change.Value = maps.Clone(change.Value)
+		c.Headers = &change
+	}
+	c.Args = slices.Clone(c.Args)
+	if c.Environment != nil {
+		change := *c.Environment
+		change.Value = maps.Clone(change.Value)
+		c.Environment = &change
+	}
+	return c
+}
+
 // ServerInput is a complete create/test candidate.
 type ServerInput struct {
 	Name             mcpserver.ServerName
@@ -70,6 +87,11 @@ type ServerInput struct {
 	Connection       ConnectionInput
 	HandshakeTimeout mcpserver.HandshakeTimeout
 	ToolPolicy       mcpserver.ServerToolPolicy
+}
+
+func (s ServerInput) clone() ServerInput {
+	s.Connection = s.Connection.clone()
+	return s
 }
 
 // ServerPatch is an update command. nil preserves the current value; a
@@ -87,6 +109,33 @@ type ServerPatch struct {
 func (s ServerPatch) Empty() bool {
 	return s.Enabled == nil && s.Description == nil && s.Connection == nil &&
 		s.HandshakeTimeout == nil && s.DisabledTools == nil && s.AutoApproveTools == nil
+}
+
+func (s ServerPatch) clone() ServerPatch {
+	s.Enabled = clonePointer(s.Enabled)
+	s.Description = clonePointer(s.Description)
+	if s.Connection != nil {
+		connection := s.Connection.clone()
+		s.Connection = &connection
+	}
+	s.HandshakeTimeout = clonePointer(s.HandshakeTimeout)
+	if s.DisabledTools != nil {
+		tools := slices.Clone(*s.DisabledTools)
+		s.DisabledTools = &tools
+	}
+	if s.AutoApproveTools != nil {
+		tools := slices.Clone(*s.AutoApproveTools)
+		s.AutoApproveTools = &tools
+	}
+	return s
+}
+
+func clonePointer[T any](value *T) *T {
+	if value == nil {
+		return nil
+	}
+	clone := *value
+	return &clone
 }
 
 // Connection is the safe application read model for a connection. Raw

@@ -52,6 +52,7 @@ var ErrAuthorizationUnsupported = errors.New("mcp: MCP authorization requires st
 // CreateServer creates one durable resource and projects it into the live MCP
 // pool. A duplicate name is a conflict, never an implicit update.
 func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Server, error) {
+	input = input.clone()
 	write, err := c.beginMutation(ctx)
 	if err != nil {
 		return Server{}, err
@@ -75,6 +76,7 @@ func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Serv
 // UpdateServer applies an explicit partial update to an existing resource.
 // The mutation lock keeps the read/patch/save sequence atomic inside the runtime.
 func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ServerName, patch ServerPatch) (Server, error) {
+	patch = patch.clone()
 	if patch.Empty() {
 		return Server{}, fmt.Errorf("%w: update contains no changes", ErrInvalidServerConfiguration)
 	}
@@ -304,6 +306,7 @@ func (c *Coordinator) redialServer(ctx context.Context, srv mcpserver.Server, st
 // tools-list failure as OK=false; invalid candidates and unavailable registry
 // capability are returned as errors.
 func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (TestResult, error) {
+	input = input.clone()
 	srv, err := c.validatedServer(ctx, input)
 	if err != nil {
 		return TestResult{}, err
@@ -580,6 +583,7 @@ func resolveEnvironment(
 // when non-empty) for tool discovery, ordered by server then tool name.
 func (c *Coordinator) Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
 	if server != nil {
+		server = clonePointer(server)
 		if err := server.Validate(); err != nil {
 			return nil, fmt.Errorf("mcp: tool catalog server: %w", err)
 		}
@@ -587,7 +591,7 @@ func (c *Coordinator) Tools(ctx context.Context, server *mcpserver.ServerName) (
 	if c.toolCatalog == nil {
 		return nil, nil
 	}
-	tools, err := c.toolCatalog.Tools(ctx, server)
+	tools, err := c.toolCatalog.Tools(ctx, clonePointer(server))
 	if err != nil {
 		return nil, err
 	}

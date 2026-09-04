@@ -84,6 +84,22 @@ func TestToolsOwnCatalogOrder(t *testing.T) {
 	}
 }
 
+func TestToolsKeepsScopeSnapshotFromCatalogMutation(t *testing.T) {
+	name := testMCPServerName("files")
+	ports := &fakePorts{
+		tools:             []mcpserver.AdvertisedTool{{Server: name, Name: testRemoteToolName("read")}},
+		mutateToolsServer: true,
+	}
+
+	tools, err := New(Config{ToolCatalog: ports}).Tools(t.Context(), &name)
+	if err != nil || len(tools) != 1 {
+		t.Fatalf("Tools = (%+v, %v), want one tool", tools, err)
+	}
+	if name.String() != "files" || ports.toolsServer != "files" {
+		t.Fatalf("tool scope = caller %q, port %q; want files", name, ports.toolsServer)
+	}
+}
+
 func TestToolsRejectsBrokenOrOutOfScopeCatalogs(t *testing.T) {
 	files := testMCPServerName("files")
 	read := mcpserver.AdvertisedTool{Server: files, Name: testRemoteToolName("read")}
@@ -549,6 +565,98 @@ func TestTestServerUsesLiveRegistryPort(t *testing.T) {
 	}
 }
 
+func TestServerCommandsSnapshotInputsBeforeRegistryCallbacks(t *testing.T) {
+	t.Run("create", func(t *testing.T) {
+		name := testMCPServerName("create")
+		serverInput := stdioServerInput(name, "original")
+		registry := &testRegistry{
+			servers: make(map[mcpserver.ServerName]mcpserver.Server),
+			getHook: func() {
+				serverInput.Connection.Args[0] = "registry-mutated"
+				serverInput.Connection.Environment.Value["TOKEN"] = "registry-mutated"
+			},
+		}
+
+		if _, err := New(Config{Registry: registry}).CreateServer(t.Context(), serverInput); err != nil {
+			t.Fatal(err)
+		}
+		stored, found, err := registry.Get(t.Context(), name)
+		if err != nil || !found {
+			t.Fatalf("stored server = (%+v, %t, %v)", stored, found, err)
+		}
+		if stored.Args[0] != "original" || stored.Env["TOKEN"] != "original" {
+			t.Fatalf("created server observed registry mutation: %+v", stored)
+		}
+	})
+
+	t.Run("update", func(t *testing.T) {
+		name := testMCPServerName("update")
+		current := mcpserver.Server{
+			Name: name, Transport: mcpserver.TransportStdio, Command: "mcp-files",
+		}
+		description := "original description"
+		connection := stdioServerInput(name, "original").Connection
+		disabled := []mcpserver.RemoteToolName{testRemoteToolName("read")}
+		patch := ServerPatch{Description: &description, Connection: &connection, DisabledTools: &disabled}
+		registry := &testRegistry{
+			servers: map[mcpserver.ServerName]mcpserver.Server{name: current},
+			getHook: func() {
+				description = "registry mutation"
+				connection.Args[0] = "registry-mutated"
+				connection.Environment.Value["TOKEN"] = "registry-mutated"
+				disabled[0] = testRemoteToolName("changed")
+			},
+		}
+
+		if _, err := New(Config{Registry: registry}).UpdateServer(t.Context(), name, patch); err != nil {
+			t.Fatal(err)
+		}
+		stored, found, err := registry.Get(t.Context(), name)
+		if err != nil || !found {
+			t.Fatalf("stored server = (%+v, %t, %v)", stored, found, err)
+		}
+		if stored.Description != "original description" || stored.Args[0] != "original" ||
+			stored.Env["TOKEN"] != "original" ||
+			!slices.Equal(stored.ToolPolicy.DisabledTools(), []mcpserver.RemoteToolName{testRemoteToolName("read")}) {
+			t.Fatalf("updated server observed registry mutation: %+v", stored)
+		}
+	})
+
+	t.Run("test", func(t *testing.T) {
+		name := testMCPServerName("test")
+		serverInput := stdioServerInput(name, "original")
+		registry := &testRegistry{
+			servers: make(map[mcpserver.ServerName]mcpserver.Server),
+			getHook: func() {
+				serverInput.Connection.Args[0] = "registry-mutated"
+				serverInput.Connection.Environment.Value["TOKEN"] = "registry-mutated"
+			},
+		}
+		ports := &fakePorts{}
+
+		result, err := New(Config{Registry: registry, ConnectionLifecycle: ports}).TestServer(t.Context(), serverInput)
+		if err != nil || !result.OK {
+			t.Fatalf("TestServer = (%+v, %v), want success", result, err)
+		}
+		if ports.probe.Args[0] != "original" || ports.probe.Env["TOKEN"] != "original" {
+			t.Fatalf("tested server observed registry mutation: %+v", ports.probe)
+		}
+	})
+}
+
+func stdioServerInput(name mcpserver.ServerName, mutableValue string) ServerInput {
+	return ServerInput{
+		Name: name,
+		Connection: ConnectionInput{
+			Transport: mcpserver.TransportStdio, Command: "mcp-files",
+			Args: []string{mutableValue},
+			Environment: &EnvironmentChange{
+				Kind: SecretSet, Value: map[string]string{"TOKEN": mutableValue},
+			},
+		},
+	}
+}
+
 func TestCreateServerSeparatesDurableAndLiveConnectionOwnership(t *testing.T) {
 	configured := make(chan struct{})
 	ports := &fakePorts{configureDone: configured, mutateConfigure: true}
@@ -590,8 +698,9 @@ type fakePorts struct {
 	tools      []mcpserver.AdvertisedTool
 	statusHook func()
 
-	toolsServer string
-	toolsCalls  int
+	toolsServer       string
+	toolsCalls        int
+	mutateToolsServer bool
 
 	reconnectName    string
 	reconnectDone    chan string
@@ -619,6 +728,9 @@ func (f *fakePorts) Tools(_ context.Context, server *mcpserver.ServerName) ([]mc
 	f.toolsCalls++
 	if server != nil {
 		f.toolsServer = server.String()
+		if f.mutateToolsServer {
+			*server = testMCPServerName("catalog-mutated")
+		}
 	}
 	return f.tools, nil
 }
@@ -745,6 +857,7 @@ type testRegistry struct {
 	releaseSave     chan struct{}
 	removeCommitted chan struct{}
 	releaseRemove   chan struct{}
+	getHook         func()
 }
 
 func (t *testRegistry) List(context.Context) ([]mcpserver.Server, error) {
@@ -764,6 +877,9 @@ func (t *testRegistry) List(context.Context) ([]mcpserver.Server, error) {
 }
 
 func (t *testRegistry) Get(_ context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
+	if t.getHook != nil {
+		t.getHook()
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	server, ok := t.servers[name]
