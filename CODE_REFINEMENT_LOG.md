@@ -188,6 +188,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 228 | `0d634992` + CLI dependency update | Required every open Tool invocation still owned by an active Run to resolve its exact Running ToolCall Item before recovery planning; terminal-Run journal orphans remain cleanup-only records. |
 | 229 | `05443025` + CLI dependency update | Bound every model and Tool invocation mutation in RecoveryCommit to the exact recovered Session ownership set, including cleanup-only rows whose Runs were already terminal. |
 | 230 | `fa0f957a` + CLI dependency update | Made checkpoint-deletion Sessions the exact canonical projection of recovery-lost root trees, rejecting omissions, foreign deletion scope, and multiple lost roots for one Session. |
+| 231 | `23aa1f84` + CLI dependency update | Deleted the writable recovered-Session duplicate and unconsumed preserved-checkpoint marker; callback cleanup now derives its exact Session scope from lost roots plus preserved waiting Sessions. |
 
 ## Verification contract
 
