@@ -227,6 +227,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 267 | `a97ef620` + CLI dependency update | Froze every Session edit field before workspace admission and lifecycle claims, so model resolution, resource retirement, aggregate mutation, and persistence share one caller-independent command snapshot. |
 | 268 | `2645a6a9` + CLI dependency update | Froze caller capabilities before durable Segment resolution, so subscription admission and live event attachment use one caller-independent capability fact. |
 | 269 | `e45ae5d3` + CLI dependency update | Froze pending-interrupt query capabilities before validation and storage reads, so the set admitted at entry remains the exact set authorizing the returned waiting trees. |
+| 270 | `b6a67b59` + CLI dependency update | Deep-cloned every Pending row returned by interrupt pagination, isolating nested capabilities, interrupt payloads, bindings, and continuations from store-owned state. |
 
 ## Verification contract
 
