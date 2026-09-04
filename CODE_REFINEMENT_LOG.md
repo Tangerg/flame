@@ -194,6 +194,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 234 | `addb8d3c` + CLI dependency update | Removed the remaining terminal-only non-Event Run write path; waiting-subtree cancellation and parked Session termination now carry validated exact expected→replacement aggregates into SQLite CAS, while Event termination retains its Segment/commit fence. |
 | 235 | `3188bad3` + CLI dependency update | Collapsed the two Run suspension entrypoints; every tree-barrier member is now read- and write-fenced to its exact active Segment, while the root additionally records the barrier commit receipt. |
 | 236 | `3bf46d43` + CLI dependency update | Deleted the compaction-specific expected/replacement Run pair and routed Application plans, persistence validation, and SQLite watermark CAS through the canonical Run replacement value. |
+| 237 | `8d646633` + CLI dependency update | Replaced the mutable Application Item pair and two-argument transcript CAS with one validated Domain-owned Item replacement value across recovery, waiting cancellation, questions, approvals, and SQLite. |
 
 ## Verification contract
 
