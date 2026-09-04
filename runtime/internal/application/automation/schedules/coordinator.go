@@ -24,8 +24,12 @@ type ManagementStore interface {
 	ListPage(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]schedule.Schedule, error)
 	Get(ctx context.Context, id string) (schedule.Schedule, error)
 	Insert(ctx context.Context, scheduled schedule.Schedule) error
-	Update(ctx context.Context, scheduled schedule.Schedule, expectedRevision uint64) (schedule.Schedule, error)
+	Update(ctx context.Context, scheduled schedule.Schedule, expectedRevision uint64) error
 	Delete(ctx context.Context, id string) (bool, error)
+}
+
+type scheduleReader interface {
+	Get(ctx context.Context, id string) (schedule.Schedule, error)
 }
 
 // Coordinator owns editable scheduled-run management over its narrow store.
@@ -241,7 +245,7 @@ func (c *Coordinator) Update(ctx context.Context, cmd UpdateCommand) (schedule.S
 	if cmd.ExpectedRevision == 0 {
 		return schedule.Schedule{}, schedule.ErrRevisionRequired
 	}
-	existing, err := c.store.Get(ctx, cmd.ID)
+	existing, err := loadSchedule(ctx, c.store, cmd.ID)
 	if err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: get %q for update: %w", cmd.ID, err)
 	}
@@ -277,12 +281,25 @@ func (c *Coordinator) updateExisting(
 	if err != nil {
 		return schedule.Schedule{}, err
 	}
-	updated, err = c.store.Update(ctx, updated, expectedRevision)
-	if err != nil {
+	if err := c.store.Update(ctx, updated, expectedRevision); err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: update %q: %w", existing.ID(), err)
 	}
 	c.invalidations.Notify(invalidation.ForSchedules(updated.ID()))
 	return updated, nil
+}
+
+func loadSchedule(ctx context.Context, store scheduleReader, id string) (schedule.Schedule, error) {
+	scheduled, err := store.Get(ctx, id)
+	if err != nil {
+		return schedule.Schedule{}, err
+	}
+	if err := scheduled.ValidateStored(); err != nil {
+		return schedule.Schedule{}, fmt.Errorf("schedules: store Get(%q) returned an invalid Schedule: %w", id, err)
+	}
+	if scheduled.ID() != id {
+		return schedule.Schedule{}, fmt.Errorf("schedules: store Get(%q) returned Schedule %q", id, scheduled.ID())
+	}
+	return scheduled, nil
 }
 
 // Delete removes a schedule by id.

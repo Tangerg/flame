@@ -43,15 +43,15 @@ func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule)
 	return nil
 }
 
-func (s *ScheduleStore) Update(ctx context.Context, sc schedule.Schedule, expectedRevision uint64) (schedule.Schedule, error) {
+func (s *ScheduleStore) Update(ctx context.Context, sc schedule.Schedule, expectedRevision uint64) error {
 	if err := sc.ValidateStored(); err != nil {
-		return schedule.Schedule{}, fmt.Errorf("sqlite: validate schedule: %w", err)
+		return fmt.Errorf("sqlite: validate schedule: %w", err)
 	}
 	if expectedRevision == 0 {
-		return schedule.Schedule{}, schedule.ErrRevisionRequired
+		return schedule.ErrRevisionRequired
 	}
 	if err := exactint.Follows(expectedRevision, sc.Revision()); err != nil {
-		return schedule.Schedule{}, fmt.Errorf("sqlite: replacement revision %d does not follow expected revision %d: %w", sc.Revision(), expectedRevision, schedule.ErrRevisionConflict)
+		return fmt.Errorf("sqlite: replacement revision %d does not follow expected revision %d: %w", sc.Revision(), expectedRevision, schedule.ErrRevisionConflict)
 	}
 	snapshot := sc.Snapshot()
 	res, err := conn(ctx, s.db).ExecContext(ctx,
@@ -62,19 +62,19 @@ func (s *ScheduleStore) Update(ctx context.Context, sc schedule.Schedule, expect
 		snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron,
 		boolToInt(snapshot.Enabled), toMillis(snapshot.NextRunAt), snapshot.Revision, snapshot.ID, expectedRevision)
 	if err != nil {
-		return schedule.Schedule{}, fmt.Errorf("sqlite: update schedule: %w", err)
+		return fmt.Errorf("sqlite: update schedule: %w", err)
 	}
 	changed, err := res.RowsAffected()
 	if err != nil {
-		return schedule.Schedule{}, fmt.Errorf("sqlite: inspect schedule update: %w", err)
+		return fmt.Errorf("sqlite: inspect schedule update: %w", err)
 	}
 	if changed == 0 {
 		if _, getErr := s.Get(ctx, sc.ID()); getErr != nil {
-			return schedule.Schedule{}, getErr
+			return getErr
 		}
-		return schedule.Schedule{}, schedule.ErrRevisionConflict
+		return schedule.ErrRevisionConflict
 	}
-	return s.Get(ctx, sc.ID())
+	return nil
 }
 
 func (s *ScheduleStore) Get(ctx context.Context, id string) (schedule.Schedule, error) {

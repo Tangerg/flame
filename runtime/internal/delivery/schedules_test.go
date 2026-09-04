@@ -42,9 +42,9 @@ func (f *fakeScheduleRegistry) Insert(_ context.Context, scheduled schedule.Sche
 	return nil
 }
 
-func (f *fakeScheduleRegistry) Update(_ context.Context, scheduled schedule.Schedule, _ uint64) (schedule.Schedule, error) {
+func (f *fakeScheduleRegistry) Update(_ context.Context, scheduled schedule.Schedule, _ uint64) error {
 	f.updated = append(f.updated, scheduled)
-	return scheduled, nil
+	return nil
 }
 
 func (f *fakeScheduleRegistry) Delete(_ context.Context, id string) (bool, error) {

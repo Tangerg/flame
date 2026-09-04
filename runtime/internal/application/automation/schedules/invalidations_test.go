@@ -28,11 +28,11 @@ func (i *invalidationScheduleStore) Insert(_ context.Context, scheduled schedule
 	return nil
 }
 
-func (i *invalidationScheduleStore) Update(_ context.Context, scheduled schedule.Schedule, _ uint64) (schedule.Schedule, error) {
+func (i *invalidationScheduleStore) Update(_ context.Context, scheduled schedule.Schedule, _ uint64) error {
 	if i.fail == "update" {
-		return schedule.Schedule{}, errScheduleMutation
+		return errScheduleMutation
 	}
-	return scheduled, nil
+	return nil
 }
 
 func (i *invalidationScheduleStore) Delete(context.Context, string) (bool, error) {

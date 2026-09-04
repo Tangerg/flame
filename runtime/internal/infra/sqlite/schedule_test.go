@@ -161,7 +161,7 @@ func TestScheduleCRUD(t *testing.T) {
 	if editErr != nil {
 		t.Fatalf("edit: %v", editErr)
 	}
-	if _, updateErr := s.Update(ctx, replacement, got.Revision()); updateErr != nil {
+	if updateErr := s.Update(ctx, replacement, got.Revision()); updateErr != nil {
 		t.Fatalf("update: %v", updateErr)
 	}
 	reread, _ := s.Get(ctx, created.ID())
@@ -331,8 +331,7 @@ func TestScheduleClaimRejectsStaleRevisionWithUnchangedCursor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Edit: %v", err)
 	}
-	updated, err = store.Update(ctx, updated, created.Revision())
-	if err != nil {
+	if err = store.Update(ctx, updated, created.Revision()); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 	if !updated.NextRunAt().Equal(dueAt) {
@@ -563,7 +562,7 @@ func TestScheduleUpdateNotFound(t *testing.T) {
 	if restoreErr != nil {
 		t.Fatalf("Restore unknown replacement: %v", restoreErr)
 	}
-	_, err := s.Update(context.Background(), unknown, 1)
+	err := s.Update(context.Background(), unknown, 1)
 	if err != schedule.ErrNotFound {
 		t.Errorf("update unknown id err = %v, want ErrNotFound", err)
 	}

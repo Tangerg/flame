@@ -203,6 +203,21 @@ func TestRunNowRejectsInvalidRunFactBeforeStarting(t *testing.T) {
 	}
 }
 
+func TestRunNowRejectsMismatchedStoreScheduleBeforeStarting(t *testing.T) {
+	store := &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{
+		ID: "sch_other", Instructions: "review",
+	})}
+	runner := &recordingScheduledRunStarter{}
+	firing := mustFiring(t, FiringDependencies{Store: store, RunStarter: runner})
+
+	if _, err := firing.RunNow(t.Context(), "sch_requested"); err == nil {
+		t.Fatal("RunNow accepted a Schedule belonging to another request")
+	}
+	if len(runner.startedScheduleIDs) != 0 {
+		t.Fatalf("started schedules = %v, want none", runner.startedScheduleIDs)
+	}
+}
+
 type cwdResolverFunc func(string) (string, error)
 
 func (c cwdResolverFunc) ResolveExistingDir(path string) (string, error) {
@@ -296,6 +311,33 @@ func TestUpdateRequiresAnExplicitRevision(t *testing.T) {
 	}
 }
 
+func TestUpdateRejectsInvalidOrMismatchedStoreScheduleBeforeWriting(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		scheduled schedule.Schedule
+	}{
+		{name: "invalid Schedule"},
+		{name: "mismatched Schedule", scheduled: mustStoredSchedule(t, schedule.Snapshot{
+			ID: "sch_other", Instructions: "review",
+		})},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			store := &runNowStore{schedule: test.scheduled}
+			coordinator := mustCoordinator(t, Dependencies{Store: store, Models: allowModels{}})
+			title := "after"
+
+			if _, err := coordinator.Update(t.Context(), UpdateCommand{
+				ID: "sch_requested", ExpectedRevision: 1, Patch: schedule.Patch{Title: &title},
+			}); err == nil {
+				t.Fatal("Update accepted an invalid persistence result")
+			}
+			if store.updated.ID() != "" {
+				t.Fatalf("store Update received %+v before point-read validation", store.updated)
+			}
+		})
+	}
+}
+
 func TestCreateValidatesBeforeResolvingCWD(t *testing.T) {
 	resolved := false
 	c := mustCoordinator(t, Dependencies{
@@ -332,9 +374,9 @@ func (r *runNowStore) Insert(_ context.Context, scheduled schedule.Schedule) err
 	r.created = scheduled
 	return nil
 }
-func (r *runNowStore) Update(_ context.Context, scheduled schedule.Schedule, _ uint64) (schedule.Schedule, error) {
+func (r *runNowStore) Update(_ context.Context, scheduled schedule.Schedule, _ uint64) error {
 	r.updated = scheduled
-	return scheduled, nil
+	return nil
 }
 func (r *runNowStore) Delete(context.Context, string) (bool, error) { return false, nil }
 func (r *runNowStore) Due(context.Context, time.Time, int) ([]schedule.Schedule, error) {

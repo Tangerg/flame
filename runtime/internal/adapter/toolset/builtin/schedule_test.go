@@ -216,12 +216,12 @@ func (m *memoryScheduleRegistry) Insert(_ context.Context, sc scheduledomain.Sch
 	return nil
 }
 
-func (m *memoryScheduleRegistry) Update(_ context.Context, sc scheduledomain.Schedule, _ uint64) (scheduledomain.Schedule, error) {
+func (m *memoryScheduleRegistry) Update(_ context.Context, sc scheduledomain.Schedule, _ uint64) error {
 	if _, ok := m.items[sc.ID()]; !ok {
-		return scheduledomain.Schedule{}, scheduledomain.ErrNotFound
+		return scheduledomain.ErrNotFound
 	}
 	m.items[sc.ID()] = sc
-	return sc, nil
+	return nil
 }
 
 func (m *memoryScheduleRegistry) Delete(_ context.Context, id string) (bool, error) {
