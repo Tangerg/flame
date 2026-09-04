@@ -329,12 +329,13 @@ func (t treePublisher) publishTreeBarrier(
 		return reductionPublication{}, err
 	}
 	committed, err := t.owner.commitInterrupt(ctx, func(interruptCtx context.Context) error {
-		if commitTreeBarrierErr := t.publications.commitTreeBarrier(interruptCtx, TreeBarrierCommit{
-			CommitID:   newRunCommitID(),
-			Pending:    projection.pending,
-			Runs:       projection.commits,
-			Checkpoint: barrier.Checkpoint,
-		}); commitTreeBarrierErr != nil {
+		commit, commitErr := NewTreeBarrierCommit(
+			newRunCommitID(), projection.pending, projection.commits, barrier.Checkpoint,
+		)
+		if commitErr != nil {
+			return commitErr
+		}
+		if commitTreeBarrierErr := t.publications.commitTreeBarrier(interruptCtx, commit); commitTreeBarrierErr != nil {
 			return commitTreeBarrierErr
 		}
 		for _, projected := range projection.reductions {

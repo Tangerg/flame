@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 func TestEventCommitUsesCompleteRunStateInvariant(t *testing.T) {
@@ -311,14 +312,70 @@ func TestCompositeCommitsRejectNestedTopLevelEventIdentity(t *testing.T) {
 	checkpoint.ModelSelection = root.ModelSelection
 	checkpoint.Limits = root.Limits
 	checkpoint.Capabilities = pending.Capabilities
-	barrier := TreeBarrierCommit{
-		CommitID: testCommitID("run_commit_barrier_parent"), Pending: pending, Checkpoint: checkpoint,
-		Runs: []EventCommit{{
+	_, err := NewTreeBarrierCommit(
+		testCommitID("run_commit_barrier_parent"),
+		pending,
+		[]EventCommit{{
 			RunID: waiting.ID(), SessionID: waiting.SessionID(), SegmentID: "segment_root",
 			CommitID: testCommitID("run_commit_barrier_nested"), State: StateSuspend, Run: &waiting,
 		}},
-	}
-	if err := barrier.Validate(); err == nil {
+		checkpoint,
+	)
+	if err == nil {
 		t.Fatal("TreeBarrierCommit accepted a nested top-level event identity")
+	}
+}
+
+func TestTreeBarrierCommitOwnsItsValidatedWriteSet(t *testing.T) {
+	createdAt := time.Date(2026, 9, 5, 1, 2, 3, 0, time.UTC)
+	pending := testApprovalPending("member_root", createdAt)
+	waiting := runForPending(pending)
+	checkpoint := testExecutorCheckpoint()
+	root, _ := pending.RootContinuation()
+	checkpoint.ModelSelection = root.ModelSelection
+	checkpoint.Limits = root.Limits
+	checkpoint.Capabilities = pending.Capabilities
+	commits := []EventCommit{{
+		RunID: waiting.ID(), SessionID: waiting.SessionID(), SegmentID: "segment_root",
+		State: StateSuspend, Run: &waiting,
+		ConversationMessages: []corechat.Message{
+			corechat.NewUserMessage(corechat.NewTextPart("original")),
+		},
+	}}
+
+	barrier, err := NewTreeBarrierCommit(
+		testCommitID("run_commit_owned_barrier"), pending, commits, checkpoint,
+	)
+	if err != nil {
+		t.Fatalf("NewTreeBarrierCommit: %v", err)
+	}
+
+	pending.Bindings[0].MemberID = "member_changed"
+	commits[0].Run = nil
+	commits[0].ConversationMessages[0].Parts[0].Text = "changed"
+	checkpoint.Payload[0] = 'x'
+
+	projectedPending := barrier.Pending()
+	projectedPending.Bindings[0].MemberID = "member_projected"
+	projectedRuns := barrier.Runs()
+	projectedRuns[0].Run = nil
+	projectedRuns[0].ConversationMessages[0].Parts[0].Text = "projected"
+	projectedCheckpoint := barrier.Checkpoint()
+	projectedCheckpoint.Payload[0] = 'y'
+
+	ownedPending := barrier.Pending()
+	ownedRuns := barrier.Runs()
+	ownedCheckpoint := barrier.Checkpoint()
+	if ownedPending.Bindings[0].MemberID != "member_root" {
+		t.Fatalf("owned Pending member = %q, want member_root", ownedPending.Bindings[0].MemberID)
+	}
+	if ownedRuns[0].Run == nil || ownedRuns[0].ConversationMessages[0].Text() != "original" {
+		t.Fatalf("owned Run commit = %+v, want isolated Run and message", ownedRuns[0])
+	}
+	if string(ownedCheckpoint.Payload) != `{"root":"member_root"}` {
+		t.Fatalf("owned checkpoint payload = %q", ownedCheckpoint.Payload)
+	}
+	if err := barrier.Validate(); err != nil {
+		t.Fatalf("owned barrier no longer validates: %v", err)
 	}
 }

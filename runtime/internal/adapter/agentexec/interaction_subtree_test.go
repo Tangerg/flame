@@ -26,17 +26,18 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 		t.Fatal("waiting Delegate did not park")
 	}
 	barrier := fixture.waitForBarrier(t, time.Second)
-	if len(barrier.Pending.Interrupts) != 1 || len(barrier.Pending.Continuations) != 2 {
+	pending := barrier.Pending()
+	if len(pending.Interrupts) != 1 || len(pending.Continuations) != 2 {
 		t.Fatalf("waiting Delegate boundary = %#v", barrier)
 	}
-	ref := runs.ExecutorRef{SessionID: barrier.Pending.SessionID, ExecutorID: barrier.Pending.ExecutorID}
+	ref := runs.ExecutorRef{SessionID: pending.SessionID, ExecutorID: pending.ExecutorID}
 	if err := fixture.executor.Release(t.Context(), ref); err != nil {
 		t.Fatal(err)
 	}
-	target := barrier.Pending.Interrupts[0]
+	target := pending.Interrupts[0]
 	request := runs.WaitingSubtreeCancellationRequest{
 		Continuation:   waitingDelegateContinuation(barrier),
-		TargetMemberID: memberIDForRun(t, barrier.Pending, target.RunID),
+		TargetMemberID: memberIDForRun(t, pending, target.RunID),
 		Reason:         "caller canceled the waiting delegate",
 	}
 	prepareCtx, cancelPrepare := context.WithTimeout(t.Context(), 2*time.Second)
@@ -180,8 +181,9 @@ func memberIDForRun(t *testing.T, pending runs.Pending, runID string) string {
 }
 
 func waitingDelegateContinuation(barrier runs.TreeBarrierCommit) runs.WaitingContinuation {
-	members := make([]runs.WaitingMember, 0, len(barrier.Pending.Continuations))
-	for _, member := range barrier.Pending.Continuations {
+	pending := barrier.Pending()
+	members := make([]runs.WaitingMember, 0, len(pending.Continuations))
+	for _, member := range pending.Continuations {
 		members = append(members, runs.WaitingMember{
 			RunID: member.RunID, MemberID: member.MemberID,
 			ParentRunID: member.Lineage.ParentRunID, SpawnedByItemID: member.Lineage.SpawnedByItemID,
@@ -189,9 +191,9 @@ func waitingDelegateContinuation(barrier runs.TreeBarrierCommit) runs.WaitingCon
 		})
 	}
 	return runs.WaitingContinuation{
-		SessionID: barrier.Pending.SessionID, ExecutorID: barrier.Pending.ExecutorID,
-		RootRunID: barrier.Pending.RootRunID, Members: members,
-		Checkpoint: barrier.Checkpoint, Capabilities: barrier.Pending.Capabilities,
-		ChildRunAdmissionEnabled: barrier.Pending.Capabilities.ChildRuns,
+		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
+		RootRunID: pending.RootRunID, Members: members,
+		Checkpoint: barrier.Checkpoint(), Capabilities: pending.Capabilities,
+		ChildRunAdmissionEnabled: pending.Capabilities.ChildRuns,
 	}
 }

@@ -1113,11 +1113,11 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		ItemID: "item_tool", ItemOccurredAt: toolStartedAt,
 		CallID: "tool_ask", Name: "ask_user", Arguments: "{}",
 	}}
-	barrier := runs.TreeBarrierCommit{
-		CommitID:   testCommitID("run_commit_durable_barrier"),
-		Pending:    pending,
-		Checkpoint: checkpoint,
-		Runs: []runs.EventCommit{{
+	barrier := mustTreeBarrier(
+		t,
+		testCommitID("run_commit_durable_barrier"),
+		pending,
+		[]runs.EventCommit{{
 			RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", State: runs.StateSuspend,
 			Items: []transcript.Item{
 				testsupport.MustRestoreItem(testsupport.ItemInput{
@@ -1140,7 +1140,8 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 				Capabilities:   pending.Capabilities,
 				CreatedAt:      createdAt, UpdatedAt: parkedAt, MessageMark: -1})),
 		}},
-	}
+		checkpoint,
+	)
 	if commitTreeBarrierErr := effects.CommitTreeBarrier(commitCtx, barrier); commitTreeBarrierErr != nil {
 		t.Fatalf("park: %v", commitTreeBarrierErr)
 	}
@@ -1148,7 +1149,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		t.Fatalf("exact barrier replay = %v, want idempotent success", commitTreeBarrierErr)
 	}
 	matched, err := state.RunCommitCommitted(
-		ctx, "ses_1", "run_1", "seg_open", barrier.CommitID,
+		ctx, "ses_1", "run_1", "seg_open", barrier.CommitID(),
 	)
 	if err != nil || !matched {
 		t.Fatalf("barrier marker matched=%t err=%v, want true/nil", matched, err)
@@ -1209,16 +1210,25 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 		"run_missing", "ses_rollback", rootMemberID, "request-"+rootMemberID, "item_question",
 		createdAt, parkedAt,
 	)
-	parkedRun := parkedRunRecord("run_missing", "ses_rollback", createdAt)
-	err = effects.CommitTreeBarrier(ctx, runs.TreeBarrierCommit{
-		CommitID:   testCommitID("run_commit_rollback_barrier"),
-		Pending:    pending,
-		Checkpoint: checkpoint,
-		Runs: []runs.EventCommit{{
+	parkedRun := testsupport.MustRestoreRun(run.Snapshot{
+		ID: "run_missing", SessionID: "ses_rollback", State: run.Waiting,
+		ModelSelection: pending.Continuations[0].ModelSelection,
+		Capabilities:   pending.Capabilities,
+		CreatedAt:      createdAt,
+		UpdatedAt:      parkedAt,
+		MessageMark:    run.UnknownMessageMark,
+	})
+	barrier := mustTreeBarrier(
+		t,
+		testCommitID("run_commit_rollback_barrier"),
+		pending,
+		[]runs.EventCommit{{
 			RunID: "run_missing", SessionID: "ses_rollback", SegmentID: "seg_open", State: runs.StateSuspend,
 			Run: &parkedRun,
 		}},
-	})
+		checkpoint,
+	)
+	err = effects.CommitTreeBarrier(ctx, barrier)
 	if err == nil {
 		t.Fatal("CommitTreeBarrier succeeded without an admitted Run")
 	}

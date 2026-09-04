@@ -13,32 +13,58 @@ import (
 // Runs contains one StateSuspend commit for every active Run in deterministic
 // postorder. No individual Run commit may write or consume the root-owned set.
 type TreeBarrierCommit struct {
-	CommitID   runtimeidentity.CommitID
-	Pending    Pending
-	Runs       []EventCommit
-	Checkpoint ExecutorCheckpoint
+	commitID   runtimeidentity.CommitID
+	pending    Pending
+	runs       []EventCommit
+	checkpoint ExecutorCheckpoint
+}
+
+// NewTreeBarrierCommit binds the root-owned waiting hand-off, opaque executor
+// checkpoint, and every Run suspension into one immutable transaction.
+func NewTreeBarrierCommit(
+	commitID runtimeidentity.CommitID,
+	pending Pending,
+	runs []EventCommit,
+	checkpoint ExecutorCheckpoint,
+) (TreeBarrierCommit, error) {
+	barrier := TreeBarrierCommit{
+		commitID: commitID, pending: pending.Clone(),
+		runs: cloneEventCommits(runs), checkpoint: checkpoint.Clone(),
+	}
+	if err := barrier.Validate(); err != nil {
+		return TreeBarrierCommit{}, err
+	}
+	return barrier, nil
+}
+
+func cloneEventCommits(commits []EventCommit) []EventCommit {
+	owned := make([]EventCommit, len(commits))
+	for index, commit := range commits {
+		owned[index] = commit.clone()
+	}
+	return owned
 }
 
 // Validate proves that the barrier is the complete interruption projection for
 // the pending continuation tree and that its checkpoint belongs to the same
 // run. The Effects port only persists this already-defined write-set.
 func (t TreeBarrierCommit) Validate() error {
-	if err := t.CommitID.Validate(); err != nil {
+	if err := t.commitID.Validate(); err != nil {
 		return fmt.Errorf("runs: tree barrier: %w", err)
 	}
-	if err := t.Pending.Validate(); err != nil {
+	if err := t.pending.Validate(); err != nil {
 		return fmt.Errorf("runs: tree barrier Pending: %w", err)
 	}
-	rootContinuation, found := t.Pending.RootContinuation()
+	rootContinuation, found := t.pending.RootContinuation()
 	if !found {
 		return errors.New("runs: tree barrier has no root continuation")
 	}
 	validator := treeBarrierValidator{
 		barrier:       t,
-		continuations: make(map[string]Continuation, len(t.Pending.Continuations)),
-		seenRunIDs:    make(map[string]struct{}, len(t.Runs)),
+		continuations: make(map[string]Continuation, len(t.pending.Continuations)),
+		seenRunIDs:    make(map[string]struct{}, len(t.runs)),
 	}
-	for _, continuation := range t.Pending.Continuations {
+	for _, continuation := range t.pending.Continuations {
 		validator.continuations[continuation.RunID] = continuation
 	}
 	if err := validator.validateCheckpoint(rootContinuation); err != nil {
@@ -47,6 +73,18 @@ func (t TreeBarrierCommit) Validate() error {
 	return validator.validateRuns()
 }
 
+// CommitID returns the stable tree-barrier transaction identity.
+func (t TreeBarrierCommit) CommitID() runtimeidentity.CommitID { return t.commitID }
+
+// Pending returns an isolated snapshot of the complete waiting hand-off.
+func (t TreeBarrierCommit) Pending() Pending { return t.pending.Clone() }
+
+// Runs returns isolated nested Run commits in canonical tree postorder.
+func (t TreeBarrierCommit) Runs() []EventCommit { return cloneEventCommits(t.runs) }
+
+// Checkpoint returns an isolated copy of the opaque executor continuation.
+func (t TreeBarrierCommit) Checkpoint() ExecutorCheckpoint { return t.checkpoint.Clone() }
+
 type treeBarrierValidator struct {
 	barrier       TreeBarrierCommit
 	continuations map[string]Continuation
@@ -54,8 +92,8 @@ type treeBarrierValidator struct {
 }
 
 func (t treeBarrierValidator) validateCheckpoint(rootContinuation Continuation) error {
-	checkpoint := t.barrier.Checkpoint
-	pending := t.barrier.Pending
+	checkpoint := t.barrier.checkpoint
+	pending := t.barrier.pending
 	if err := checkpoint.ValidateOwnership(rootContinuation.MemberID, pending.SessionID); err != nil {
 		return fmt.Errorf("runs: tree barrier checkpoint ownership: %w", err)
 	}
@@ -77,14 +115,14 @@ func (t treeBarrierValidator) validateCheckpoint(rootContinuation Continuation) 
 }
 
 func (t treeBarrierValidator) validateRuns() error {
-	if len(t.barrier.Runs) != len(t.barrier.Pending.Continuations) {
+	if len(t.barrier.runs) != len(t.barrier.pending.Continuations) {
 		return fmt.Errorf(
 			"runs: tree barrier has %d Run commits for %d continuations",
-			len(t.barrier.Runs),
-			len(t.barrier.Pending.Continuations),
+			len(t.barrier.runs),
+			len(t.barrier.pending.Continuations),
 		)
 	}
-	for index, runCommit := range t.barrier.Runs {
+	for index, runCommit := range t.barrier.runs {
 		if err := t.validateRun(index, runCommit); err != nil {
 			return err
 		}
@@ -102,7 +140,7 @@ func (t treeBarrierValidator) validateRun(index int, runCommit EventCommit) erro
 	if runCommit.State != StateSuspend || runCommit.Run == nil || runCommit.Run.State() != run.Waiting {
 		return fmt.Errorf("runs: tree barrier Run[%d] is not a waiting Run projection", index)
 	}
-	pending := t.barrier.Pending
+	pending := t.barrier.pending
 	if runCommit.SessionID != pending.SessionID || runCommit.Run.SessionID() != pending.SessionID {
 		return fmt.Errorf("runs: tree barrier Run[%d] Session differs from Pending", index)
 	}

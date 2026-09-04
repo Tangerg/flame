@@ -559,18 +559,22 @@ func (e *Effects) CommitTreeBarrier(ctx context.Context, barrier runs.TreeBarrie
 	if err := barrier.Validate(); err != nil {
 		return fmt.Errorf("segment: invalid tree barrier: %w", err)
 	}
+	pending := barrier.Pending()
+	checkpoint := barrier.Checkpoint()
+	commits := barrier.Runs()
+	commitID := barrier.CommitID()
 
 	err := e.runInTx(ctx, func(ctx context.Context) error {
-		if err := e.executorCheckpoints.SaveCheckpoint(ctx, barrier.Checkpoint); err != nil {
+		if err := e.executorCheckpoints.SaveCheckpoint(ctx, checkpoint); err != nil {
 			return fmt.Errorf("segment: persist tree barrier executor checkpoint: %w", err)
 		}
-		if err := e.openInterrupt(ctx, barrier.Pending); err != nil {
+		if err := e.openInterrupt(ctx, pending); err != nil {
 			return err
 		}
-		for _, original := range barrier.Runs {
+		for _, original := range commits {
 			commit := original
-			if commit.RunID == barrier.Pending.RootRunID {
-				commit.CommitID = barrier.CommitID
+			if commit.RunID == pending.RootRunID {
+				commit.CommitID = commitID
 			}
 			if err := e.applyCommit(ctx, commit); err != nil {
 				return err
@@ -582,8 +586,8 @@ func (e *Effects) CommitTreeBarrier(ctx context.Context, barrier runs.TreeBarrie
 		return nil
 	}
 	rootSegmentID := ""
-	for _, commit := range barrier.Runs {
-		if commit.RunID == barrier.Pending.RootRunID {
+	for _, commit := range commits {
+		if commit.RunID == pending.RootRunID {
 			rootSegmentID = commit.SegmentID
 			break
 		}
@@ -592,13 +596,13 @@ func (e *Effects) CommitTreeBarrier(ctx context.Context, barrier runs.TreeBarrie
 		return errors.Join(err, errors.New("segment: tree barrier has no root Run commit"))
 	}
 	settled, settleErr := e.reconcileRunCommit(
-		ctx, barrier.Pending.SessionID, barrier.Pending.RootRunID, rootSegmentID, barrier.CommitID,
+		ctx, pending.SessionID, pending.RootRunID, rootSegmentID, commitID,
 	)
 	if settled {
 		return nil
 	}
 	err = errors.Join(err, settleErr)
-	for _, commit := range barrier.Runs {
+	for _, commit := range commits {
 		err = e.compensateFailedCommit(ctx, commit, err)
 	}
 	return err

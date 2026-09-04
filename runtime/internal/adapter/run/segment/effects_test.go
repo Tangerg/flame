@@ -90,6 +90,21 @@ func singleRunPending(
 	}
 }
 
+func mustTreeBarrier(
+	t testing.TB,
+	commitID runtimeidentity.CommitID,
+	pending runs.Pending,
+	commits []runs.EventCommit,
+	checkpoint runs.ExecutorCheckpoint,
+) runs.TreeBarrierCommit {
+	t.Helper()
+	barrier, err := runs.NewTreeBarrierCommit(commitID, pending, commits, checkpoint)
+	if err != nil {
+		t.Fatalf("NewTreeBarrierCommit: %v", err)
+	}
+	return barrier
+}
+
 // TestCommitEventPersistsTranscriptAndTerminalizes: a terminal commit appends the
 // item projection AND terminalizes the Run with its resolved message watermark —
 // all through one CommitEvent, atomically inside the wired transactor.
@@ -388,11 +403,11 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 	}}
 	pending.Continuations[0].Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2})
 
-	err := effects.CommitTreeBarrier(context.Background(), runs.TreeBarrierCommit{
-		CommitID:   testCommitID("run_commit_barrier"),
-		Pending:    pending,
-		Checkpoint: testRootExecutorCheckpoint(),
-		Runs: []runs.EventCommit{{
+	barrier := mustTreeBarrier(
+		t,
+		testCommitID("run_commit_barrier"),
+		pending,
+		[]runs.EventCommit{{
 			RunID:     "run_1",
 			SessionID: "ses_1",
 			SegmentID: "segment_1",
@@ -412,7 +427,9 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 				OccurredAt: barrierCreatedAt, Question: pending.Interrupts[0].Question,
 			})},
 		}},
-	})
+		testRootExecutorCheckpoint(),
+	)
+	err := effects.CommitTreeBarrier(context.Background(), barrier)
 	if err != nil {
 		t.Fatalf("CommitTreeBarrier: %v", err)
 	}
@@ -438,36 +455,23 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 // executor identities. An incomplete continuation fails before the transaction,
 // so no partial pending set or Run transition is visible.
 func TestCommitTreeBarrierRejectsIncompleteContinuation(t *testing.T) {
-	stores := &fakeStores{interrupts: &fakeInterrupts{}}
-	runState := &fakeRunState{}
-	tx := &fakeTx{}
-	effects := testEffects(stores, Config{State: runState, Tx: tx.run})
 	createdAt := time.Unix(1, 0).UTC()
 	pending := singleRunPending(t, "run_1", "ses_1", "member_1", "request_1", "int_1", createdAt, createdAt.Add(time.Second))
 	pending.Continuations[0].MemberID = ""
 
-	err := effects.CommitTreeBarrier(context.Background(), runs.TreeBarrierCommit{
-		CommitID:   testCommitID("run_commit_barrier_invalid"),
-		Pending:    pending,
-		Checkpoint: testRootExecutorCheckpoint(),
-		Runs: []runs.EventCommit{{
+	_, err := runs.NewTreeBarrierCommit(
+		testCommitID("run_commit_barrier_invalid"),
+		pending,
+		[]runs.EventCommit{{
 			RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", State: runs.StateSuspend,
 			Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
 				CreatedAt:   createdAt,
 				MessageMark: run.UnknownMessageMark})),
 		}},
-	})
+		testRootExecutorCheckpoint(),
+	)
 	if err == nil || !strings.Contains(err.Error(), "executor member identity") {
-		t.Fatalf("CommitTreeBarrier error = %v, want missing member id", err)
-	}
-	if stores.interrupts.pending.RootRunID != "" {
-		t.Fatalf("invalid pending set was persisted: %+v", stores.interrupts.pending)
-	}
-	if len(runState.suspended) != 0 {
-		t.Fatalf("suspended = %v, want none", runState.suspended)
-	}
-	if tx.calls != 0 {
-		t.Fatalf("transactions = %d, want validation before transaction", tx.calls)
+		t.Fatalf("NewTreeBarrierCommit error = %v, want missing member id", err)
 	}
 }
 
@@ -498,27 +502,21 @@ func TestCommitTreeBarrierRejectsMismatchedCheckpointBindingBeforeTransaction(t 
 	}
 	for _, mutation := range mutations {
 		t.Run(mutation.name, func(t *testing.T) {
-			stores := &fakeStores{interrupts: &fakeInterrupts{}}
-			tx := &fakeTx{}
-			effects := testEffects(stores, Config{State: &fakeRunState{}, Tx: tx.run})
 			checkpoint := testRootExecutorCheckpoint()
 			mutation.mutate(&checkpoint)
-			err := effects.CommitTreeBarrier(t.Context(), runs.TreeBarrierCommit{
-				CommitID:   testCommitID(runtimeidentity.CommitPrefix + "barrier_binding_" + mutation.identity),
-				Pending:    pending,
-				Checkpoint: checkpoint,
-				Runs: []runs.EventCommit{{
+			_, err := runs.NewTreeBarrierCommit(
+				testCommitID(runtimeidentity.CommitPrefix+"barrier_binding_"+mutation.identity),
+				pending,
+				[]runs.EventCommit{{
 					RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", State: runs.StateSuspend,
 					Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
 						CreatedAt:   createdAt,
 						MessageMark: run.UnknownMessageMark})),
 				}},
-			})
+				checkpoint,
+			)
 			if !errors.Is(err, runs.ErrInvalidExecutorCheckpoint) {
-				t.Fatalf("CommitTreeBarrier error = %v, want ErrInvalidExecutorCheckpoint", err)
-			}
-			if tx.calls != 0 {
-				t.Fatalf("transactions = %d, want validation before transaction", tx.calls)
+				t.Fatalf("NewTreeBarrierCommit error = %v, want ErrInvalidExecutorCheckpoint", err)
 			}
 		})
 	}
@@ -601,23 +599,17 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 			checkpoint := testRootExecutorCheckpoint()
 			checkpoint.Scope.GoalIncarnationID = pending.GoalIncarnationID
 			checkpoint.Limits = pending.Continuations[0].Limits
-			stores := &fakeStores{interrupts: &fakeInterrupts{}}
-			tx := &fakeTx{}
-			effects := testEffects(stores, Config{State: &fakeRunState{}, Tx: tx.run})
-
-			err := effects.CommitTreeBarrier(t.Context(), runs.TreeBarrierCommit{
-				CommitID: testCommitID(runtimeidentity.CommitPrefix + "barrier_fact_" + test.identity),
-				Pending:  pending, Checkpoint: checkpoint,
-				Runs: []runs.EventCommit{{
+			_, err := runs.NewTreeBarrierCommit(
+				testCommitID(runtimeidentity.CommitPrefix+"barrier_fact_"+test.identity),
+				pending,
+				[]runs.EventCommit{{
 					RunID: run.ID(), SessionID: run.SessionID(), SegmentID: "segment_1",
 					State: runs.StateSuspend, Run: &run,
 				}},
-			})
+				checkpoint,
+			)
 			if err == nil {
-				t.Fatal("CommitTreeBarrier accepted contradictory Run and continuation facts")
-			}
-			if tx.calls != 0 || stores.interrupts.pending.RootRunID != "" {
-				t.Fatalf("invalid barrier reached persistence: tx=%d pending=%+v", tx.calls, stores.interrupts.pending)
+				t.Fatal("NewTreeBarrierCommit accepted contradictory Run and continuation facts")
 			}
 		})
 	}

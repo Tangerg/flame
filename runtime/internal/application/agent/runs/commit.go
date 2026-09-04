@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
@@ -225,6 +226,35 @@ type EventCommit struct {
 	// ObsoleteCheckpointRootID identifies the executor checkpoint aggregate the
 	// root Run terminal makes obsolete. Child terminal commits leave it empty.
 	ObsoleteCheckpointRootID string
+}
+
+// clone returns an ownership-isolated copy of one complete event write-set.
+func (e EventCommit) clone() EventCommit {
+	e.Items = slices.Clone(e.Items)
+	e.ConversationMessages = cloneCommitMessages(e.ConversationMessages)
+	e.ModelInvocations = slices.Clone(e.ModelInvocations)
+	e.ToolInvocations = slices.Clone(e.ToolInvocations)
+	if e.Progress != nil {
+		progress := *e.Progress
+		e.Progress = &progress
+	}
+	if e.Run != nil {
+		run := *e.Run
+		e.Run = &run
+	}
+	if e.GoalRun != nil {
+		goalRun := *e.GoalRun
+		e.GoalRun = &goalRun
+	}
+	return e
+}
+
+func cloneCommitMessages(messages []corechat.Message) []corechat.Message {
+	owned := make([]corechat.Message, len(messages))
+	for index, message := range messages {
+		owned[index] = message.Clone()
+	}
+	return owned
 }
 
 // Validate proves that one event projection is owner-bound and that any Goal

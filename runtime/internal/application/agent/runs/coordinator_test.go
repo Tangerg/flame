@@ -623,7 +623,7 @@ func (f *fakeEffects) CommitTreeBarrier(ctx context.Context, barrier TreeBarrier
 		return f.commitErr
 	}
 	f.barriers = append(f.barriers, barrier)
-	f.commits = append(f.commits, barrier.Runs...)
+	f.commits = append(f.commits, barrier.Runs()...)
 	return nil
 }
 
@@ -2350,19 +2350,21 @@ func requireWaitingTreeBarrierPostorder(
 	wantRunIDs []string,
 ) {
 	t.Helper()
-	if len(barrier.Runs) != len(wantRunIDs) ||
-		len(barrier.Pending.Continuations) != len(wantRunIDs) {
+	commits := barrier.Runs()
+	pending := barrier.Pending()
+	if len(commits) != len(wantRunIDs) ||
+		len(pending.Continuations) != len(wantRunIDs) {
 		t.Fatalf(
 			"barrier Runs/continuations = %d/%d, want %d/%d",
-			len(barrier.Runs),
-			len(barrier.Pending.Continuations),
+			len(commits),
+			len(pending.Continuations),
 			len(wantRunIDs),
 			len(wantRunIDs),
 		)
 	}
 	for index, wantRunID := range wantRunIDs {
-		commit := barrier.Runs[index]
-		continuation := barrier.Pending.Continuations[index]
+		commit := commits[index]
+		continuation := pending.Continuations[index]
 		if commit.RunID != wantRunID || continuation.RunID != wantRunID {
 			t.Fatalf(
 				"barrier order[%d] = commit %q continuation %q, want %q",
@@ -2498,14 +2500,14 @@ func TestCoordinatorCommitsCompleteTreeBarrierInDeterministicPostorder(t *testin
 		t.Fatalf("tree barrier commits = %d, want exactly one", len(barriers))
 	}
 	barrier := barriers[0]
-	if barrier.CommitID.IsZero() {
+	if barrier.CommitID().IsZero() {
 		t.Fatal("tree barrier has no commit identity")
 	}
 	wantOrder := []string{"run_grandchild", "run_child_a", "run_child_b", "run_1"}
 	requireWaitingTreeBarrierPostorder(t, barrier, wantOrder)
 	requirePendingInterruptOrder(
 		t,
-		barrier.Pending,
+		barrier.Pending(),
 		[]string{"run_grandchild", "run_child_b"},
 		[]string{grandchild.MemberID, childB.MemberID},
 	)
@@ -2545,10 +2547,14 @@ func TestCoordinatorPersistsExactApprovalCallIdentityInTreeBarrier(t *testing.T)
 	collectEvents(stream)
 
 	barriers := effects.barrierSnapshot()
-	if len(barriers) != 1 || len(barriers[0].Pending.Bindings) != 1 {
+	if len(barriers) != 1 {
 		t.Fatalf("tree barriers = %+v, want one approval binding", barriers)
 	}
-	binding := barriers[0].Pending.Bindings[0]
+	pending := barriers[0].Pending()
+	if len(pending.Bindings) != 1 {
+		t.Fatalf("tree barriers = %+v, want one approval binding", barriers)
+	}
+	binding := pending.Bindings[0]
 	if binding.MemberID != root.MemberID ||
 		binding.RequestID != "request_approval" ||
 		binding.ToolCallID != "call_approval" {

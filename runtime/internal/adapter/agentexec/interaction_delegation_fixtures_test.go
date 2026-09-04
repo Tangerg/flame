@@ -331,7 +331,7 @@ func (d *delegateProjection) CommitTreeBarrier(
 		return err
 	}
 	d.mu.Lock()
-	for _, commit := range barrier.Runs {
+	for _, commit := range barrier.Runs() {
 		d.applyCommit(commit)
 	}
 	d.barriers = append(d.barriers, barrier)
@@ -346,7 +346,7 @@ func (d *delegateProjection) ReadWaitingCheckpoint(
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	for index := len(d.barriers) - 1; index >= 0; index-- {
-		checkpoint := d.barriers[index].Checkpoint
+		checkpoint := d.barriers[index].Checkpoint()
 		if checkpoint.RootMemberID == rootMemberID {
 			return checkpoint.Clone(), nil
 		}

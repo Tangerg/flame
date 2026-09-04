@@ -17,10 +17,11 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 	go func() { initialEventsReady <- slices.Collect(started.Events) }()
 
 	barrier := fixture.waitForBarrier(t, 2*time.Second)
+	pending := barrier.Pending()
 	reservationsBeforeRestore, outcomesBeforeRestore := fixture.admissionCounts()
 	assertWaitingDelegateBoundary(t, barrier)
 	if err := fixture.executor.Release(t.Context(), runs.ExecutorRef{
-		SessionID: barrier.Pending.SessionID, ExecutorID: barrier.Pending.ExecutorID,
+		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -35,12 +36,12 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 		t.Fatal(err)
 	}
 	eventsReady := collectInteractionEvents(sequence)
-	binding := barrier.Pending.Bindings[0]
+	binding := pending.Bindings[0]
 	if err := fixture.executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: binding.InterruptItemID, MemberID: binding.MemberID,
 		RequestID:  binding.RequestID,
 		Resolution: interrupt.Resolution{Answers: [][]string{{"restored value"}}},
-	}}, nil, barrier.Pending.Capabilities.InterruptKinds); err != nil {
+	}}, nil, pending.Capabilities.InterruptKinds); err != nil {
 		t.Fatal(err)
 	}
 	var observed []runs.ExecutorEvent
@@ -74,11 +75,12 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 
 func assertWaitingDelegateBoundary(t *testing.T, barrier runs.TreeBarrierCommit) {
 	t.Helper()
-	if len(barrier.Pending.Continuations) != 2 || len(barrier.Pending.Interrupts) != 1 ||
-		len(barrier.Pending.Bindings) != 1 || barrier.Pending.Interrupts[0].RunID != "run_child" {
-		t.Fatalf("waiting Delegate boundary = %#v", barrier.Pending)
+	pending := barrier.Pending()
+	if len(pending.Continuations) != 2 || len(pending.Interrupts) != 1 ||
+		len(pending.Bindings) != 1 || pending.Interrupts[0].RunID != "run_child" {
+		t.Fatalf("waiting Delegate boundary = %#v", pending)
 	}
-	checkpointState, err := decodeInteractionCheckpointPayload(barrier.Checkpoint.Payload)
+	checkpointState, err := decodeInteractionCheckpointPayload(barrier.Checkpoint().Payload)
 	if err != nil {
 		t.Fatal(err)
 	}
