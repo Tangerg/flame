@@ -158,6 +158,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 198 | `6fea3bdf` + CLI dependency update | Closed MCP connection-status state/count invariants and replaced silent duplicate-map overwrite or presenter panic with explicit Application contract errors. |
 | 199 | `44c562dd` + CLI dependency update | Protected Goal point reads and startup reconciliation from invalid, mismatched, or duplicate persistence results before any lifecycle side effect. |
 | 200 | `2612b288` + CLI dependency update | Removed the redundant Goal value from CAS acknowledgements so Domain-decided replacements remain the only state authority. |
+| 201 | `96fe1b57` + CLI dependency update | Validated complete pending-occurrence and due-schedule worker batches before any Run dispatch or cursor claim. |
 
 ## Verification contract
 
