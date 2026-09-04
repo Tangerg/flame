@@ -185,6 +185,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 225 | `c0b5778e` + CLI dependency update | Enforced one lifecycle state and root-owned capabilities across every active recovery-tree member before transcript reads, resumability probes, or terminal planning. |
 | 226 | `34e604fa` + CLI dependency update | Bound transcript admission to its active recovery tree so every Running Item must have a live Run owner, while completed historical Items remain valid Session history. |
 | 227 | `2a6d6ecf` + CLI dependency update | Bound every claimed open invocation that still names an active Run to that Run's exact Session and active Segment before recovery planning, while retaining cleanup of orphan rows for already-terminal Runs. |
+| 228 | `0d634992` + CLI dependency update | Required every open Tool invocation still owned by an active Run to resolve its exact Running ToolCall Item before recovery planning; terminal-Run journal orphans remain cleanup-only records. |
 
 ## Verification contract
 
