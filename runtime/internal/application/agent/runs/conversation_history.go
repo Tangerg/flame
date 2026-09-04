@@ -68,17 +68,16 @@ func (m *ConversationHistory) Seed(ctx context.Context, sessionID string, messag
 	if len(messages) == 0 {
 		return nil
 	}
+	seeded, err := (conversation.Conversation{}).Seed(messages)
+	if err != nil {
+		return err
+	}
 	count, err := m.store.Count(ctx, sessionID)
 	if err != nil {
 		return fmt.Errorf("runs: inspect conversation seed target %q: %w", sessionID, err)
 	}
-	current := conversation.Conversation{}
 	if count != 0 {
 		return conversation.ErrNotEmpty
-	}
-	seeded, err := current.Seed(messages)
-	if err != nil {
-		return err
 	}
 	if err := m.store.Write(ctx, sessionID, seeded.Messages()...); err != nil {
 		return fmt.Errorf("runs: seed conversation for Session %q: %w", sessionID, err)
@@ -94,6 +93,10 @@ func (m *ConversationHistory) Append(ctx context.Context, sessionID string, mess
 	if len(messages) == 0 {
 		return nil
 	}
+	addition, err := conversation.New(messages)
+	if err != nil {
+		return err
+	}
 	stored, err := m.Read(ctx, sessionID)
 	if err != nil {
 		return err
@@ -102,7 +105,7 @@ func (m *ConversationHistory) Append(ctx context.Context, sessionID string, mess
 	if err != nil {
 		return err
 	}
-	extended, err := history.Append(messages...)
+	extended, err := history.Append(addition.Messages()...)
 	if err != nil {
 		return err
 	}

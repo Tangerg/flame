@@ -19,6 +19,26 @@ type recordingCompactions struct {
 	plan ConversationCompactionPlan
 }
 
+type mutatingConversationStore struct {
+	*testsupport.ConversationStore
+	onRead  func()
+	onCount func()
+}
+
+func (m *mutatingConversationStore) Read(ctx context.Context, sessionID string) ([]chat.Message, error) {
+	if m.onRead != nil {
+		m.onRead()
+	}
+	return m.ConversationStore.Read(ctx, sessionID)
+}
+
+func (m *mutatingConversationStore) Count(ctx context.Context, sessionID string) (int, error) {
+	if m.onCount != nil {
+		m.onCount()
+	}
+	return m.ConversationStore.Count(ctx, sessionID)
+}
+
 func (r *recordingCompactions) ListRuns(context.Context, string) ([]run.Run, error) {
 	return append([]run.Run(nil), r.runs...), nil
 }
@@ -50,6 +70,32 @@ func TestMessagesCoordinatesDurableHistory(t *testing.T) {
 	got, err := messages.Read(t.Context(), "ses_1")
 	if err != nil || len(got) != 3 || got[1].Text() != "two" || got[2].Text() != "four" {
 		t.Fatalf("Read = %#v, %v", got, err)
+	}
+}
+
+func TestMessagesOwnWriteInputsBeforePersistenceReads(t *testing.T) {
+	seed := []chat.Message{chat.NewUserMessage(chat.NewTextPart("seed"))}
+	store := &mutatingConversationStore{
+		ConversationStore: testsupport.NewConversationStore(),
+		onCount:           func() { seed[0].Parts[0].Text = "changed seed" },
+	}
+	history := NewConversationHistory(store, nil)
+	if err := history.Seed(t.Context(), "ses_1", seed); err != nil {
+		t.Fatal(err)
+	}
+
+	addition := []chat.Message{chat.NewAssistantMessage(chat.NewTextPart("addition"))}
+	store.onRead = func() { addition[0].Parts[0].Text = "changed addition" }
+	if err := history.Append(t.Context(), "ses_1", addition...); err != nil {
+		t.Fatal(err)
+	}
+
+	stored, err := store.ConversationStore.Read(t.Context(), "ses_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stored) != 2 || stored[0].Text() != "seed" || stored[1].Text() != "addition" {
+		t.Fatalf("conversation after persistence callbacks changed caller input = %#v", stored)
 	}
 }
 
