@@ -283,6 +283,18 @@ type EmbeddingUpdate struct {
 	Vector        []float32
 }
 
+// Clone returns an ownership-isolated cache update.
+func (e EmbeddingUpdate) Clone() EmbeddingUpdate {
+	e.Vector = slices.Clone(e.Vector)
+	return e
+}
+
+// Clone returns an ownership-isolated memory item.
+func (i Item) Clone() Item {
+	i.Embedding = slices.Clone(i.Embedding)
+	return i
+}
+
 // NewEmbeddingUpdate binds a vector to the exact item content and embedding
 // space that produced it.
 func NewEmbeddingUpdate(item Item, space string, vector []float32) (EmbeddingUpdate, error) {

@@ -79,10 +79,10 @@ func (c *Coordinator) List(ctx context.Context, scope domain.Scope, cwd string) 
 	if err != nil {
 		return nil, err
 	}
+	items = cloneItems(items)
 	if err := validateManagementTargetCatalog(items, scope, project); err != nil {
 		return nil, err
 	}
-	items = slices.Clone(items)
 	slices.SortFunc(items, compareManagementItems)
 	return items, nil
 }
@@ -150,6 +150,7 @@ func (c *Coordinator) Update(ctx context.Context, id string, content *string, pi
 	if err != nil {
 		return domain.Item{}, err
 	}
+	item = item.Clone()
 	if err := validateUpdatedItem(item, itemID, content, pinned); err != nil {
 		return domain.Item{}, err
 	}
@@ -190,6 +191,7 @@ func (c *Coordinator) Add(ctx context.Context, scope domain.Scope, cwd, content 
 	if err != nil {
 		return domain.Item{}, err
 	}
+	item = item.Clone()
 	if err := validateAddedItem(item, scope, project, content); err != nil {
 		return domain.Item{}, err
 	}

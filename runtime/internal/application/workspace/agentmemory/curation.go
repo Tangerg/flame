@@ -133,10 +133,10 @@ func (c *Curation) Items(ctx context.Context, scope domain.Scope, project string
 	if err != nil {
 		return nil, err
 	}
+	items = cloneItems(items)
 	if err := validateActiveTargetCatalog(items, scope, project); err != nil {
 		return nil, err
 	}
-	items = slices.Clone(items)
 	slices.SortFunc(items, compareActiveItems)
 	return items, nil
 }

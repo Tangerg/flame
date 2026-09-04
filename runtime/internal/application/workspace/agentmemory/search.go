@@ -52,10 +52,11 @@ func (r *ReadModel) Items(ctx context.Context, scope domain.Scope, project strin
 	if err != nil {
 		return nil, err
 	}
+	items = cloneItems(items)
 	if err := validateActiveTargetCatalog(items, scope, project); err != nil {
 		return nil, err
 	}
-	return slices.Clone(items), nil
+	return items, nil
 }
 
 // Search returns up to topK relevant project- and user-scoped memory items for
@@ -72,6 +73,7 @@ func (r *ReadModel) Search(ctx context.Context, project, query string, topK int)
 	if err != nil || len(items) == 0 {
 		return nil, err
 	}
+	items = cloneItems(items)
 	if err := validateSearchCatalog(items, project); err != nil {
 		return nil, err
 	}
@@ -108,7 +110,7 @@ func (r *ReadModel) resolveSemanticQuery(ctx context.Context, query string) (sem
 	return semanticQuery{
 		embedder:    embedder,
 		space:       space,
-		queryVector: queryVectors[0],
+		queryVector: slices.Clone(queryVectors[0]),
 	}, true
 }
 
@@ -150,12 +152,20 @@ func (r *ReadModel) refreshEmbeddings(ctx context.Context, semantic semanticQuer
 	}
 	for offset, index := range stale {
 		items[index].EmbeddingSpace = updates[offset].Space
-		items[index].Embedding = updates[offset].Vector
+		items[index].Embedding = slices.Clone(updates[offset].Vector)
 	}
 	// The cache is derived state: the current request already owns exact
 	// vectors, so a failed or losing conditional write must not turn a useful
 	// search into an application failure.
-	_ = r.store.SetEmbeddings(ctx, updates)
+	_ = r.store.SetEmbeddings(ctx, cloneEmbeddingUpdates(updates))
+}
+
+func cloneEmbeddingUpdates(updates []domain.EmbeddingUpdate) []domain.EmbeddingUpdate {
+	owned := make([]domain.EmbeddingUpdate, len(updates))
+	for index, update := range updates {
+		owned[index] = update.Clone()
+	}
+	return owned
 }
 
 func buildEmbeddingUpdates(

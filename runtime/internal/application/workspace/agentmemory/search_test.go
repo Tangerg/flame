@@ -11,10 +11,11 @@ import (
 )
 
 type fakeItemSource struct {
-	items    []domain.Item
-	err      error
-	cacheErr error
-	updates  []domain.EmbeddingUpdate
+	items         []domain.Item
+	err           error
+	cacheErr      error
+	mutateUpdates bool
+	updates       []domain.EmbeddingUpdate
 }
 
 func (f *fakeItemSource) SearchCorpus(context.Context, string) ([]domain.Item, error) {
@@ -26,6 +27,9 @@ func (f *fakeItemSource) Items(context.Context, domain.Scope, string) ([]domain.
 }
 
 func (f *fakeItemSource) SetEmbeddings(_ context.Context, updates []domain.EmbeddingUpdate) error {
+	if f.mutateUpdates && len(updates) > 0 && len(updates[0].Vector) > 0 {
+		updates[0].Vector[0] = 0
+	}
 	f.updates = append(f.updates, updates...)
 	if f.cacheErr != nil {
 		return f.cacheErr
@@ -148,6 +152,31 @@ func TestReadModelItemsProtectsExactActiveCatalog(t *testing.T) {
 	}
 }
 
+func TestReadModelOwnsReturnedItemEmbeddings(t *testing.T) {
+	item := readModelItem(t, '1', domain.ScopeProject, "/repo", "valid fact")
+	item.EmbeddingSpace, item.Embedding = "fake", []float32{1, 0}
+	store := &fakeItemSource{items: []domain.Item{item}}
+	reader := mustNewReadModel(t, store, nil)
+
+	listed, err := reader.Items(t.Context(), domain.ScopeProject, "/repo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	listed[0].Embedding[0] = 9
+	if store.items[0].Embedding[0] != 1 {
+		t.Fatalf("store embedding changed through returned Item: %v", store.items[0].Embedding)
+	}
+
+	searched, err := reader.Search(t.Context(), "/repo", "valid fact", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	searched[0].Embedding[0] = 8
+	if store.items[0].Embedding[0] != 1 {
+		t.Fatalf("store embedding changed through search result: %v", store.items[0].Embedding)
+	}
+}
+
 func TestReadModelSearchProtectsCombinedCatalog(t *testing.T) {
 	projectItem := readModelItem(t, '1', domain.ScopeProject, "/repo", "project fact")
 	userItem := readModelItem(t, '2', domain.ScopeUser, "", "user fact")
@@ -239,6 +268,28 @@ func TestSearchDoesNotReuseCorpusVectorsFromAnotherEmbeddingSpace(t *testing.T) 
 	}
 	if len(store.updates) != 2 || store.updates[0].Space != "provider:new-space" {
 		t.Fatalf("cache updates = %+v, want both items bound to the current space", store.updates)
+	}
+}
+
+func TestSearchOwnsVectorsAcrossEmbeddingCacheWrite(t *testing.T) {
+	a := readModelItem(t, 'a', domain.ScopeProject, "/repo", "alpha memory")
+	b := readModelItem(t, 'b', domain.ScopeProject, "/repo", "beta memory")
+	store := &fakeItemSource{items: items(a, b), mutateUpdates: true}
+	resolve := func(context.Context) (Embedder, error) {
+		return fakeEmbedder{vectors: map[string][]float32{
+			"find target":  {1, 0},
+			"alpha memory": {1, 0},
+			"beta memory":  {0, 1},
+		}}, nil
+	}
+	reader := mustNewReadModel(t, store, resolve)
+
+	got, err := reader.Search(t.Context(), "/repo", "find target", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].ID != a.ID {
+		t.Fatalf("search after cache store mutated its update = %+v, want alpha", got)
 	}
 }
 
