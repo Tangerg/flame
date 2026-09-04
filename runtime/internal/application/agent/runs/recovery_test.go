@@ -157,10 +157,15 @@ func TestRecoveryRejectsInvalidTranscriptBeforePlanning(t *testing.T) {
 			Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}},
 		},
 	})
+	orphanRunning := testsupport.MustRestoreItem(testsupport.ItemInput{
+		ID: "item_orphan", SessionID: active.SessionID(), RunID: "run_terminal",
+		Kind: transcript.ToolCall, Status: transcript.ItemRunning, OccurredAt: createdAt,
+	})
 	for name, items := range map[string][]transcript.Item{
-		"invalid aggregate":  {{}},
-		"foreign Session":    {foreign},
-		"duplicate identity": {duplicate, duplicate},
+		"invalid aggregate":                 {{}},
+		"foreign Session":                   {foreign},
+		"duplicate identity":                {duplicate, duplicate},
+		"Running Item without active owner": {orphanRunning},
 	} {
 		t.Run(name, func(t *testing.T) {
 			store := &recoveryStoreStub{

@@ -6,7 +6,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-func validateRecoveryTranscript(sessionID string, items []transcript.Item) error {
+func validateRecoveryTranscript(tree recoveryRunTree, items []transcript.Item) error {
+	sessionID := tree.root.SessionID()
 	seen := make(map[string]int, len(items))
 	for index, item := range items {
 		if err := item.Validate(); err != nil {
@@ -30,6 +31,16 @@ func validateRecoveryTranscript(sessionID string, items []transcript.Item) error
 			)
 		}
 		seen[item.ID()] = index
+		if item.Status() == transcript.ItemRunning {
+			if _, active := tree.runsByID[item.RunID()]; !active {
+				return fmt.Errorf(
+					"runs: recovery transcript Running Item[%d] %q has no owner in active tree %q",
+					index,
+					item.ID(),
+					tree.root.ID(),
+				)
+			}
+		}
 	}
 	return nil
 }

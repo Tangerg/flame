@@ -431,7 +431,7 @@ func newRecoveryPlanner(
 	// before constructing any terminal facts so a later Item in one tree cannot
 	// advance the shared recovery timestamp after another tree was planned.
 	for _, tree := range trees {
-		if _, err := planner.transcript(tree.root.SessionID()); err != nil {
+		if _, err := planner.transcript(tree); err != nil {
 			return nil, err
 		}
 	}
@@ -524,7 +524,7 @@ func compareToolInvocationRecoveries(left, right ToolInvocationRecovery) int {
 
 func (r *recoveryPlanner) planTree(rootRunID string) error {
 	tree := r.trees[rootRunID]
-	items, err := r.transcript(tree.root.SessionID())
+	items, err := r.transcript(tree)
 	if err != nil {
 		return err
 	}
@@ -596,7 +596,8 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 	return nil
 }
 
-func (r *recoveryPlanner) transcript(sessionID string) ([]transcript.Item, error) {
+func (r *recoveryPlanner) transcript(tree recoveryRunTree) ([]transcript.Item, error) {
+	sessionID := tree.root.SessionID()
 	if items, ok := r.transcripts[sessionID]; ok {
 		return items, nil
 	}
@@ -604,7 +605,7 @@ func (r *recoveryPlanner) transcript(sessionID string) ([]transcript.Item, error
 	if err != nil {
 		return nil, fmt.Errorf("runs: load recovery transcript for Session %q: %w", sessionID, err)
 	}
-	if err := validateRecoveryTranscript(sessionID, items); err != nil {
+	if err := validateRecoveryTranscript(tree, items); err != nil {
 		return nil, err
 	}
 	for _, item := range items {
