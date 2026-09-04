@@ -176,6 +176,18 @@ func TestAgentMemoryReviewLifecycle(t *testing.T) {
 	if err := store.Review(t.Context(), approve.ID, agentmemory.ReviewReject, now); !errors.Is(err, agentmemory.ErrNotPending) {
 		t.Fatalf("second review = %v, want ErrNotPending", err)
 	}
+	rewritten := "rewritten tombstone"
+	pinned := true
+	if _, err := store.Update(t.Context(), reject.ID, &rewritten, &pinned, now.Add(time.Minute)); !errors.Is(err, agentmemory.ErrNotVisible) {
+		t.Fatalf("rejected update = %v, want ErrNotVisible", err)
+	}
+	if err := store.Delete(t.Context(), reject.ID); !errors.Is(err, agentmemory.ErrNotVisible) {
+		t.Fatalf("rejected delete = %v, want ErrNotVisible", err)
+	}
+	tombstone, found, err := store.Get(t.Context(), reject.ID)
+	if err != nil || !found || tombstone.Content == rewritten || tombstone.Pinned {
+		t.Fatalf("rejected update changed tombstone = (%+v, %t, %v)", tombstone, found, err)
+	}
 
 	// Only the approved item is injected; List hides the rejected tombstone.
 	active, _ := store.Items(t.Context(), agentmemory.ScopeProject, "/repo")
@@ -298,11 +310,10 @@ func TestAgentMemoryManagementOps(t *testing.T) {
 	if setEmbeddingsErr := store.SetEmbeddings(t.Context(), []agentmemory.EmbeddingUpdate{embedding}); setEmbeddingsErr != nil {
 		t.Fatal(setEmbeddingsErr)
 	}
-	if setPinnedErr := store.SetPinned(t.Context(), item.ID, true, now); setPinnedErr != nil {
-		t.Fatal(setPinnedErr)
-	}
-	if updateContentErr := store.UpdateContent(t.Context(), item.ID, "always run make lint before commit", now); updateContentErr != nil {
-		t.Fatal(updateContentErr)
+	content := "always run make lint before commit"
+	pinned := true
+	if _, updateErr := store.Update(t.Context(), item.ID, &content, &pinned, now); updateErr != nil {
+		t.Fatal(updateErr)
 	}
 	got, ok, err := store.Get(t.Context(), item.ID)
 	if err != nil || !ok || !got.Pinned || got.Content != "always run make lint before commit" {
@@ -315,10 +326,10 @@ func TestAgentMemoryManagementOps(t *testing.T) {
 	}
 	// A combined review update is all-or-nothing: invalid content must not leave
 	// a requested pin behind.
-	if setPinnedErr := store.SetPinned(t.Context(), item.ID, false, now); setPinnedErr != nil {
-		t.Fatal(setPinnedErr)
+	unpinned := false
+	if _, updateErr := store.Update(t.Context(), item.ID, nil, &unpinned, now); updateErr != nil {
+		t.Fatal(updateErr)
 	}
-	pinned := true
 	blank := "  "
 	if _, updateErr := store.Update(t.Context(), item.ID, &blank, &pinned, now.Add(time.Second)); updateErr == nil {
 		t.Fatal("Update accepted blank content")
@@ -625,8 +636,9 @@ func TestAgentMemoryLateEmbeddingDoesNotOverwriteEditedContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updateContentErr := store.UpdateContent(t.Context(), item.ID, "new content", now.Add(time.Second)); updateContentErr != nil {
-		t.Fatal(updateContentErr)
+	content := "new content"
+	if _, updateErr := store.Update(t.Context(), item.ID, &content, nil, now.Add(time.Second)); updateErr != nil {
+		t.Fatal(updateErr)
 	}
 	if setEmbeddingsErr := store.SetEmbeddings(t.Context(), []agentmemory.EmbeddingUpdate{late}); setEmbeddingsErr != nil {
 		t.Fatal(setEmbeddingsErr)

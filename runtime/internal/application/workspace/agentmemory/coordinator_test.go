@@ -24,15 +24,26 @@ func testMemoryItemID(digit byte) domain.ItemID {
 }
 
 type fakeStore struct {
-	listScope   domain.Scope
-	listProject string
-	listed      []domain.Item
-	updatedAt   time.Time
-	content     *string
-	pinned      *bool
-	decision    domain.ReviewDecision
-	err         error
-	addChanged  bool
+	listScope    domain.Scope
+	listProject  string
+	listed       []domain.Item
+	updatedAt    time.Time
+	content      *string
+	pinned       *bool
+	decision     domain.ReviewDecision
+	err          error
+	addChanged   bool
+	updateResult *domain.Item
+	addResult    *domain.Item
+}
+
+func validMemoryItem(id domain.ItemID, scope domain.Scope, project, content string, pinned bool, now time.Time) domain.Item {
+	item, err := domain.NewUserItem(id, scope, project, content, now)
+	if err != nil {
+		panic(err)
+	}
+	item.Pinned = pinned
+	return item
 }
 
 func (f *fakeStore) List(_ context.Context, scope domain.Scope, project string) ([]domain.Item, error) {
@@ -40,7 +51,10 @@ func (f *fakeStore) List(_ context.Context, scope domain.Scope, project string) 
 	if f.listed != nil {
 		return f.listed, f.err
 	}
-	return []domain.Item{{ID: testMemoryItemID('1'), Scope: scope, Project: project}}, nil
+	return []domain.Item{validMemoryItem(
+		testMemoryItemID('1'), scope, project, "fact", false,
+		time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC),
+	)}, f.err
 }
 
 func (f *fakeStore) Review(_ context.Context, _ domain.ItemID, decision domain.ReviewDecision, _ time.Time) error {
@@ -48,15 +62,29 @@ func (f *fakeStore) Review(_ context.Context, _ domain.ItemID, decision domain.R
 	return f.err
 }
 
-func (f *fakeStore) Update(_ context.Context, _ domain.ItemID, content *string, pinned *bool, now time.Time) (domain.Item, error) {
+func (f *fakeStore) Update(_ context.Context, id domain.ItemID, content *string, pinned *bool, now time.Time) (domain.Item, error) {
 	f.content, f.pinned, f.updatedAt = content, pinned, now
-	return domain.Item{ID: testMemoryItemID('1')}, f.err
+	if f.updateResult != nil {
+		return *f.updateResult, f.err
+	}
+	text := "fact"
+	if content != nil {
+		text = *content
+	}
+	isPinned := false
+	if pinned != nil {
+		isPinned = *pinned
+	}
+	return validMemoryItem(id, domain.ScopeUser, "", text, isPinned, now), f.err
 }
 
 func (f *fakeStore) Delete(context.Context, domain.ItemID) error { return f.err }
 
-func (f *fakeStore) Add(context.Context, domain.Scope, string, string, time.Time) (domain.Item, bool, error) {
-	return domain.Item{}, f.addChanged, f.err
+func (f *fakeStore) Add(_ context.Context, scope domain.Scope, project, content string, now time.Time) (domain.Item, bool, error) {
+	if f.addResult != nil {
+		return *f.addResult, f.addChanged, f.err
+	}
+	return validMemoryItem(testMemoryItemID('2'), scope, project, content, false, now), f.addChanged, f.err
 }
 
 type rootResolver struct {
@@ -134,6 +162,39 @@ func TestListOwnsManagementOrder(t *testing.T) {
 	}
 }
 
+func TestListRejectsCorruptManagementCatalog(t *testing.T) {
+	now := time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC)
+	valid := validMemoryItem(testMemoryItemID('1'), domain.ScopeProject, "/repo", "fact", false, now)
+	foreign := validMemoryItem(testMemoryItemID('2'), domain.ScopeProject, "/other", "foreign", false, now)
+	rejected := valid
+	rejected.Origin = domain.OriginAuto
+	rejected.Status = domain.StatusRejected
+	invalid := valid
+	invalid.Content = " invalid "
+	for _, test := range []struct {
+		name  string
+		items []domain.Item
+	}{
+		{name: "invalid item", items: []domain.Item{invalid}},
+		{name: "foreign target", items: []domain.Item{foreign}},
+		{name: "hidden tombstone", items: []domain.Item{rejected}},
+		{name: "duplicate identity", items: []domain.Item{valid, valid}},
+		{name: "duplicate content", items: []domain.Item{
+			valid,
+			validMemoryItem(testMemoryItemID('3'), domain.ScopeProject, "/repo", "fact", false, now),
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			coordinator := New(Config{
+				Store: &fakeStore{listed: test.items}, Roots: rootResolver{root: "/repo"},
+			})
+			if _, err := coordinator.List(t.Context(), domain.ScopeProject, "/repo"); err == nil {
+				t.Fatal("corrupt management catalog was accepted")
+			}
+		})
+	}
+}
+
 func TestUpdateDelegatesOneAtomicPatchWithApplicationClock(t *testing.T) {
 	store := &fakeStore{}
 	now := time.Date(2026, 7, 23, 9, 0, 0, 0, time.UTC)
@@ -144,8 +205,41 @@ func TestUpdateDelegatesOneAtomicPatchWithApplicationClock(t *testing.T) {
 	if _, err := c.Update(context.Background(), testMemoryItemID('1').String(), &content, &pinned); err != nil {
 		t.Fatal(err)
 	}
-	if store.content != &content || store.pinned != &pinned || !store.updatedAt.Equal(now) {
+	if store.content == nil || *store.content != content || store.pinned != &pinned || !store.updatedAt.Equal(now) {
 		t.Fatalf("patch = content=%p pinned=%p at=%s", store.content, store.pinned, store.updatedAt)
+	}
+}
+
+func TestMutationRejectsInvalidAcknowledgements(t *testing.T) {
+	now := time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC)
+	requestedID := testMemoryItemID('1')
+	wrongID := validMemoryItem(testMemoryItemID('2'), domain.ScopeUser, "", "fact", false, now)
+	coordinator := New(Config{Store: &fakeStore{updateResult: &wrongID}, Now: func() time.Time { return now }})
+	if _, err := coordinator.Update(t.Context(), requestedID.String(), nil, nil); err == nil {
+		t.Fatal("mismatched Update acknowledgement was accepted")
+	}
+	wrongContent := validMemoryItem(requestedID, domain.ScopeUser, "", "old fact", false, now)
+	coordinator = New(Config{Store: &fakeStore{updateResult: &wrongContent}, Now: func() time.Time { return now }})
+	content := "new fact"
+	if _, err := coordinator.Update(t.Context(), requestedID.String(), &content, nil); err == nil {
+		t.Fatal("stale Update content acknowledgement was accepted")
+	}
+
+	foreign := validMemoryItem(testMemoryItemID('3'), domain.ScopeProject, "/other", "fact", false, now)
+	coordinator = New(Config{
+		Store: &fakeStore{addResult: &foreign}, Roots: rootResolver{root: "/repo"},
+		Now: func() time.Time { return now },
+	})
+	if _, err := coordinator.Add(t.Context(), domain.ScopeProject, "/repo", "fact"); err == nil {
+		t.Fatal("foreign Add acknowledgement was accepted")
+	}
+	wrongContent = validMemoryItem(testMemoryItemID('4'), domain.ScopeProject, "/repo", "other fact", false, now)
+	coordinator = New(Config{
+		Store: &fakeStore{addResult: &wrongContent}, Roots: rootResolver{root: "/repo"},
+		Now: func() time.Time { return now },
+	})
+	if _, err := coordinator.Add(t.Context(), domain.ScopeProject, "/repo", "fact"); err == nil {
+		t.Fatal("stale Add content acknowledgement was accepted")
 	}
 }
 

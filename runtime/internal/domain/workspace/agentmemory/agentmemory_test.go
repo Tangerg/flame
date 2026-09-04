@@ -185,6 +185,42 @@ func TestItemActivateFromUserPreservesIdentityAndClearsProposalState(t *testing.
 	}
 }
 
+func TestItemEditProtectsVisibilityAndDerivedState(t *testing.T) {
+	createdAt := time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC)
+	item, err := NewUserItem(testItemID(t, '4'), ScopeProject, "/repo", "old fact", createdAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item.EmbeddingSpace = "provider:model"
+	item.Embedding = []float32{1, 2}
+	content := "new fact"
+	pinned := true
+	edited, changed, err := item.Edit(&content, &pinned, createdAt.Add(time.Hour))
+	if err != nil || !changed {
+		t.Fatalf("Edit = (%+v, %t, %v)", edited, changed, err)
+	}
+	if edited.Content != content || !edited.Pinned || !edited.UpdatedAt.Equal(createdAt.Add(time.Hour)) {
+		t.Fatalf("edited item = %+v", edited)
+	}
+	if edited.EmbeddingSpace != "" || edited.Embedding != nil {
+		t.Fatalf("content edit retained derived embedding: %+v", edited)
+	}
+	if same, changed, err := edited.Edit(&content, &pinned, createdAt); err != nil || changed ||
+		same.ID != edited.ID || same.Content != edited.Content || same.Pinned != edited.Pinned ||
+		!same.UpdatedAt.Equal(edited.UpdatedAt) || !slices.Equal(same.Embedding, edited.Embedding) {
+		t.Fatalf("no-op Edit = (%+v, %t, %v)", same, changed, err)
+	}
+	rejected := item
+	rejected.Origin = OriginAuto
+	rejected.Status = StatusRejected
+	if _, _, err := rejected.Edit(&content, nil, createdAt.Add(time.Hour)); !errors.Is(err, ErrNotVisible) {
+		t.Fatalf("rejected Edit error = %v, want ErrNotVisible", err)
+	}
+	if _, _, err := item.Edit(&content, nil, createdAt.Add(-time.Second)); err == nil {
+		t.Fatal("Edit accepted a timestamp before the current item")
+	}
+}
+
 func TestCurationStateOwnsWatermarkTimestampCoherence(t *testing.T) {
 	epoch := time.Unix(0, 0).UTC()
 	for _, test := range []struct {

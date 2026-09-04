@@ -362,24 +362,38 @@ func (a *AgentMemoryStore) Get(ctx context.Context, id agentmemory.ItemID) (agen
 func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, content *string, pinned *bool, now time.Time) (agentmemory.Item, error) {
 	var updated agentmemory.Item
 	err := RunInTx(ctx, a.db, func(ctx context.Context) error {
-		if content != nil {
-			if err := a.UpdateContent(ctx, id, *content, now); err != nil {
-				return err
-			}
-		}
-		if pinned != nil {
-			if err := a.SetPinned(ctx, id, *pinned, now); err != nil {
-				return err
-			}
-		}
-		item, found, err := a.Get(ctx, id)
+		current, found, err := a.Get(ctx, id)
 		if err != nil {
 			return err
 		}
 		if !found {
 			return agentmemory.ErrNotFound
 		}
-		updated = item
+		replacement, changed, err := current.Edit(content, pinned, now)
+		if err != nil {
+			return err
+		}
+		if !changed {
+			updated = current
+			return nil
+		}
+		if replacement.Content != current.Content {
+			if err := a.updateContent(ctx, id, replacement.Content, replacement.UpdatedAt); err != nil {
+				return err
+			}
+		}
+		if replacement.Pinned != current.Pinned {
+			if err := a.setPinned(ctx, id, replacement.Pinned, replacement.UpdatedAt); err != nil {
+				return err
+			}
+		}
+		updated, found, err = a.Get(ctx, id)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return agentmemory.ErrNotFound
+		}
 		return nil
 	})
 	if err != nil {
@@ -449,9 +463,7 @@ func (a *AgentMemoryStore) pruneRejectedItems(ctx context.Context, preservedID a
 	return nil
 }
 
-// SetPinned pins or unpins an item; pinned items are always injected and never
-// auto-pruned.
-func (a *AgentMemoryStore) SetPinned(ctx context.Context, id agentmemory.ItemID, pinned bool, now time.Time) error {
+func (a *AgentMemoryStore) setPinned(ctx context.Context, id agentmemory.ItemID, pinned bool, now time.Time) error {
 	result, err := conn(ctx, a.db).ExecContext(ctx,
 		`UPDATE agent_memory_items SET pinned = ?, updated_at = ? WHERE id = ?`,
 		boolToInt(pinned), now.UTC().UnixNano(), id.String())
@@ -461,9 +473,7 @@ func (a *AgentMemoryStore) SetPinned(ctx context.Context, id agentmemory.ItemID,
 	return affectedOne(result, "pin")
 }
 
-// UpdateContent edits an item's content, recomputes its digest, and clears the
-// now-stale embedding so a later fold re-embeds it.
-func (a *AgentMemoryStore) UpdateContent(ctx context.Context, id agentmemory.ItemID, content string, now time.Time) error {
+func (a *AgentMemoryStore) updateContent(ctx context.Context, id agentmemory.ItemID, content string, now time.Time) error {
 	content, err := agentmemory.NormalizeContent(content)
 	if err != nil {
 		return fmt.Errorf("sqlite: edit agent memory: %w", err)
@@ -477,14 +487,26 @@ func (a *AgentMemoryStore) UpdateContent(ctx context.Context, id agentmemory.Ite
 	return affectedOne(result, "edit")
 }
 
-// Delete removes an item outright.
+// Delete removes one visible management item without exposing retained tombstones.
 func (a *AgentMemoryStore) Delete(ctx context.Context, id agentmemory.ItemID) error {
-	result, err := conn(ctx, a.db).ExecContext(ctx,
-		`DELETE FROM agent_memory_items WHERE id = ?`, id.String())
-	if err != nil {
-		return fmt.Errorf("sqlite: delete agent memory: %w", err)
-	}
-	return affectedOne(result, "delete")
+	return RunInTx(ctx, a.db, func(ctx context.Context) error {
+		item, found, err := a.Get(ctx, id)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return agentmemory.ErrNotFound
+		}
+		if err := item.ValidateVisible(); err != nil {
+			return err
+		}
+		result, err := conn(ctx, a.db).ExecContext(ctx,
+			`DELETE FROM agent_memory_items WHERE id = ?`, id.String())
+		if err != nil {
+			return fmt.Errorf("sqlite: delete agent memory: %w", err)
+		}
+		return affectedOne(result, "delete")
+	})
 }
 
 // Add stores a user-authored active item. An existing active digest is

@@ -79,6 +79,9 @@ func (c *Coordinator) List(ctx context.Context, scope domain.Scope, cwd string) 
 	if err != nil {
 		return nil, err
 	}
+	if err := validateManagementTargetCatalog(items, scope, project); err != nil {
+		return nil, err
+	}
 	items = slices.Clone(items)
 	slices.SortFunc(items, compareManagementItems)
 	return items, nil
@@ -132,8 +135,18 @@ func (c *Coordinator) Update(ctx context.Context, id string, content *string, pi
 	if err != nil {
 		return domain.Item{}, err
 	}
+	if content != nil {
+		canonical, err := domain.NormalizeContent(*content)
+		if err != nil {
+			return domain.Item{}, err
+		}
+		content = &canonical
+	}
 	item, err := c.store.Update(ctx, itemID, content, pinned, c.now())
 	if err != nil {
+		return domain.Item{}, err
+	}
+	if err := validateUpdatedItem(item, itemID, content, pinned); err != nil {
 		return domain.Item{}, err
 	}
 	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
@@ -165,8 +178,15 @@ func (c *Coordinator) Add(ctx context.Context, scope domain.Scope, cwd, content 
 	if err != nil {
 		return domain.Item{}, err
 	}
+	content, err = domain.NormalizeContent(content)
+	if err != nil {
+		return domain.Item{}, err
+	}
 	item, changed, err := c.store.Add(ctx, scope, project, content, c.now())
 	if err != nil {
+		return domain.Item{}, err
+	}
+	if err := validateAddedItem(item, scope, project, content); err != nil {
 		return domain.Item{}, err
 	}
 	if changed {
@@ -185,5 +205,12 @@ func (c *Coordinator) project(scope domain.Scope, cwd string) (string, error) {
 	if c.roots == nil {
 		return "", ErrUnavailable
 	}
-	return c.roots.ResolveRoot(cwd)
+	project, err := c.roots.ResolveRoot(cwd)
+	if err != nil {
+		return "", err
+	}
+	if err := domain.ValidateTarget(scope, project); err != nil {
+		return "", err
+	}
+	return project, nil
 }

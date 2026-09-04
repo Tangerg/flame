@@ -63,6 +63,9 @@ func (r *recordingAgentMemory) Update(_ context.Context, id string, content *str
 	if pinned != nil {
 		r.pinnedID, r.pinned = id, *pinned
 	}
+	if r.err != nil {
+		return agentmemory.Item{}, r.err
+	}
 	return r.getItem, nil
 }
 
@@ -192,5 +195,18 @@ func TestAgentMemoryTargetFullMapsToInvalidParams(t *testing.T) {
 	})
 	if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, agentmemory.ErrTargetFull) {
 		t.Fatalf("AddAgentMemory error = %v, want invalid_params wrapping ErrTargetFull", err)
+	}
+}
+
+func TestHiddenAgentMemoryMapsToInvalidParams(t *testing.T) {
+	s := newTestHandler(&stubRuntime{})
+	s.agentMemory = &recordingAgentMemory{err: agentmemory.ErrNotVisible}
+	s.features.agentMemory = true
+	pinned := true
+	_, err := s.UpdateAgentMemory(t.Context(), protocol.AgentMemoryUpdateRequest{
+		ID: serverAgentMemoryItemID('1').String(), Pinned: &pinned,
+	})
+	if !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("UpdateAgentMemory error = %v, want invalid_params", err)
 	}
 }

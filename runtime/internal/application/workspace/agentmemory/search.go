@@ -3,7 +3,6 @@ package agentmemory
 import (
 	"context"
 	"errors"
-	"fmt"
 	"reflect"
 	"slices"
 
@@ -82,62 +81,6 @@ func (r *ReadModel) Search(ctx context.Context, project, query string, topK int)
 	}
 	r.refreshEmbeddings(ctx, semantic, items)
 	return domain.Rank(query, semantic.queryVector, items, topK), nil
-}
-
-func validateActiveTargetCatalog(items []domain.Item, scope domain.Scope, project string) error {
-	if len(items) > domain.MaxVisiblePerTarget {
-		return fmt.Errorf("agentmemory: %s target catalog exceeds %d items", scope, domain.MaxVisiblePerTarget)
-	}
-	seenIDs := make(map[domain.ItemID]struct{}, len(items))
-	seenContent := make(map[string]struct{}, len(items))
-	for index, item := range items {
-		if err := item.ValidateFor(scope, project); err != nil {
-			return fmt.Errorf("agentmemory: target catalog row %d is invalid: %w", index+1, err)
-		}
-		if item.Status != domain.StatusActive {
-			return fmt.Errorf("agentmemory: target catalog row %q is not active", item.ID)
-		}
-		if _, duplicate := seenIDs[item.ID]; duplicate {
-			return fmt.Errorf("agentmemory: target catalog repeats item %q", item.ID)
-		}
-		seenIDs[item.ID] = struct{}{}
-		digest := domain.Digest(item.Content)
-		if _, duplicate := seenContent[digest]; duplicate {
-			return fmt.Errorf("agentmemory: target catalog repeats content %q", digest)
-		}
-		seenContent[digest] = struct{}{}
-	}
-	return nil
-}
-
-func validateSearchCatalog(items []domain.Item, project string) error {
-	byTarget := map[domain.Scope][]domain.Item{
-		domain.ScopeProject: nil,
-		domain.ScopeUser:    nil,
-	}
-	seen := make(map[domain.ItemID]struct{}, len(items))
-	for index, item := range items {
-		if item.Scope != domain.ScopeProject && item.Scope != domain.ScopeUser {
-			return fmt.Errorf("agentmemory: search catalog row %d has unsupported scope %q", index+1, item.Scope)
-		}
-		if _, duplicate := seen[item.ID]; duplicate {
-			return fmt.Errorf("agentmemory: search catalog repeats item %q", item.ID)
-		}
-		seen[item.ID] = struct{}{}
-		byTarget[item.Scope] = append(byTarget[item.Scope], item)
-	}
-	for _, target := range []struct {
-		scope   domain.Scope
-		project string
-	}{
-		{scope: domain.ScopeProject, project: project},
-		{scope: domain.ScopeUser},
-	} {
-		if err := validateActiveTargetCatalog(byTarget[target.scope], target.scope, target.project); err != nil {
-			return fmt.Errorf("agentmemory: search catalog: %w", err)
-		}
-	}
-	return nil
 }
 
 type semanticQuery struct {

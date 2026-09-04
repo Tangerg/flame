@@ -123,7 +123,7 @@ func mapAgentMemoryErr(err error, method string) error {
 		return nil
 	case errors.Is(err, agentmemoryapp.ErrUnavailable):
 		return capabilityNotNegotiated(method)
-	case errors.Is(err, agentmemory.ErrNotFound):
+	case errors.Is(err, agentmemory.ErrNotFound), errors.Is(err, agentmemory.ErrNotVisible):
 		return fmt.Errorf("%w: no such memory item", protocol.ErrInvalidParams)
 	case errors.Is(err, agentmemory.ErrNotPending):
 		return fmt.Errorf("%w: memory item is not pending review", protocol.ErrInvalidParams)

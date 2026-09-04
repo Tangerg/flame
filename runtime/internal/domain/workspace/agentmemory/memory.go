@@ -94,6 +94,10 @@ var ErrNotFound = errors.New("agentmemory: item not found")
 // has already been resolved or that was user-authored as active.
 var ErrNotPending = errors.New("agentmemory: item is not pending review")
 
+// ErrNotVisible reports that a hidden tombstone was targeted through the
+// active/pending management surface.
+var ErrNotVisible = errors.New("agentmemory: item is not visible")
+
 // ErrTargetFull reports that a new visible item would exceed the finite
 // complete-list capacity of its project or user target.
 var ErrTargetFull = errors.New("agentmemory: target is full")
@@ -379,6 +383,56 @@ func (i Item) ActivateFromUser(content string, now time.Time) (Item, error) {
 		return Item{}, fmt.Errorf("agentmemory: activate item: %w", err)
 	}
 	return i, nil
+}
+
+// Edit applies a management-surface content and pin change while protecting
+// hidden tombstones and derived embedding identity. It returns changed=false
+// when the requested values already match the aggregate.
+func (i Item) Edit(content *string, pinned *bool, now time.Time) (Item, bool, error) {
+	if err := i.ValidateVisible(); err != nil {
+		return Item{}, false, fmt.Errorf("agentmemory: edit existing item: %w", err)
+	}
+	changed := false
+	if content != nil {
+		canonical, err := NormalizeContent(*content)
+		if err != nil {
+			return Item{}, false, err
+		}
+		if canonical != i.Content {
+			i.Content = canonical
+			i.EmbeddingSpace = ""
+			i.Embedding = nil
+			changed = true
+		}
+	}
+	if pinned != nil && i.Pinned != *pinned {
+		i.Pinned = *pinned
+		changed = true
+	}
+	if !changed {
+		return i, false, nil
+	}
+	now = now.UTC()
+	if now.IsZero() || now.Before(i.UpdatedAt) {
+		return Item{}, false, errors.New("agentmemory: edit time precedes current item")
+	}
+	i.UpdatedAt = now
+	if err := i.Validate(); err != nil {
+		return Item{}, false, fmt.Errorf("agentmemory: edit item: %w", err)
+	}
+	return i, true, nil
+}
+
+// ValidateVisible protects operations exposed only for active and pending
+// memory. Rejected items are retained tombstones, not management targets.
+func (i Item) ValidateVisible() error {
+	if err := i.Validate(); err != nil {
+		return err
+	}
+	if i.Status == StatusRejected {
+		return ErrNotVisible
+	}
+	return nil
 }
 
 func newItem(id ItemID, scope Scope, project, content string, origin Origin, status Status, now time.Time) (Item, error) {
