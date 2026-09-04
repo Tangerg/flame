@@ -30,17 +30,17 @@ func (e *Effects) CommitWaitingSubtreeCancellation(
 		if err := e.persistWaitingCancellationProjection(ctx, commit); err != nil {
 			return err
 		}
-		terminalByID, err := e.terminalizeWaitingCancellationRuns(ctx, commit.TerminalRuns)
+		terminalByID, err := e.terminalizeWaitingCancellationRuns(ctx, commit.TerminalRuns())
 		if err != nil {
 			return err
 		}
 		var targetFound bool
-		target, targetFound = terminalByID[commit.TargetRunID]
+		target, targetFound = terminalByID[commit.TargetRunID()]
 		if !targetFound {
-			return fmt.Errorf("segment: target Run %q was not terminalized", commit.TargetRunID)
+			return fmt.Errorf("segment: target Run %q was not terminalized", commit.TargetRunID())
 		}
 
-		root = commit.RootRun
+		root = commit.RootRun()
 		return e.persistWaitingCancellationDisposition(ctx, commit, &root)
 	})
 	if err != nil {
@@ -53,8 +53,8 @@ func (e *Effects) CommitWaitingSubtreeCancellation(
 		}
 		return runs.WaitingSubtreeCancellationResult{}, fmt.Errorf(
 			"segment: commit waiting child Run %q cancellation in root Run %q: %w",
-			commit.TargetRunID,
-			commit.RootRunID,
+			commit.TargetRunID(),
+			commit.RootRunID(),
 			err,
 		)
 	}
@@ -65,11 +65,11 @@ func (e *Effects) claimWaitingCancellation(
 	ctx context.Context,
 	commit runs.WaitingSubtreeCancellationCommit,
 ) error {
-	pending, found, err := e.interrupts.Consume(ctx, commit.SessionID, commit.RootRunID)
+	pending, found, err := e.interrupts.Consume(ctx, commit.SessionID(), commit.RootRunID())
 	if err != nil {
 		return fmt.Errorf(
 			"segment: claim waiting cancellation interrupt for root Run %q: %w",
-			commit.RootRunID,
+			commit.RootRunID(),
 			err,
 		)
 	}
@@ -77,14 +77,14 @@ func (e *Effects) claimWaitingCancellation(
 		return fmt.Errorf(
 			"%w: waiting cancellation interrupt for root Run %q is no longer open",
 			runs.ErrSessionBusy,
-			commit.RootRunID,
+			commit.RootRunID(),
 		)
 	}
-	if !pending.Equal(commit.ExpectedPending) {
+	if !pending.Equal(commit.ExpectedPending()) {
 		return fmt.Errorf(
 			"%w: waiting cancellation interrupt for root Run %q changed after preparation",
 			runs.ErrSessionBusy,
-			commit.RootRunID,
+			commit.RootRunID(),
 		)
 	}
 	return nil
@@ -94,31 +94,32 @@ func (e *Effects) persistWaitingCancellationProjection(
 	ctx context.Context,
 	commit runs.WaitingSubtreeCancellationCommit,
 ) error {
-	if len(commit.ConversationMessages) != 0 {
-		if err := e.conversation.Write(ctx, commit.SessionID, commit.ConversationMessages...); err != nil {
+	messages := commit.ConversationMessages()
+	if len(messages) != 0 {
+		if err := e.conversation.Write(ctx, commit.SessionID(), messages...); err != nil {
 			return fmt.Errorf("segment: append waiting cancellation conversation result: %w", err)
 		}
 	}
-	if err := e.executorCheckpoints.SaveCheckpoint(ctx, commit.Checkpoint); err != nil {
+	if err := e.executorCheckpoints.SaveCheckpoint(ctx, commit.Checkpoint()); err != nil {
 		return fmt.Errorf(
 			"segment: persist checkpoint for waiting child Run %q in root Run %q: %w",
-			commit.TargetRunID,
-			commit.RootRunID,
+			commit.TargetRunID(),
+			commit.RootRunID(),
 			err,
 		)
 	}
 	if err := e.itemReplacer.ReplaceItem(
 		ctx,
-		commit.ParentItem,
+		commit.ParentItem(),
 	); err != nil {
 		return fmt.Errorf(
 			"segment: replace spawning Item %q for waiting child Run %q: %w",
-			commit.ParentItem.Expected().ID(),
-			commit.TargetRunID,
+			commit.ParentItem().Expected().ID(),
+			commit.TargetRunID(),
 			err,
 		)
 	}
-	for _, item := range commit.TerminalItems {
+	for _, item := range commit.TerminalItems() {
 		if err := e.itemReplacer.ReplaceItem(ctx, item); err != nil {
 			return fmt.Errorf(
 				"segment: settle interrupted Item %q for canceled Run %q: %w",
@@ -168,34 +169,38 @@ func (e *Effects) persistWaitingCancellationDisposition(
 	if root == nil {
 		return errors.New("segment: waiting cancellation root projection is required")
 	}
-	if commit.RemainingPending != nil {
-		if err := e.interrupts.Open(ctx, *commit.RemainingPending); err != nil {
+	if remaining, stillWaiting := commit.RemainingPending(); stillWaiting {
+		if err := e.interrupts.Open(ctx, remaining); err != nil {
 			return fmt.Errorf(
 				"segment: persist reduced interrupt for root Run %q: %w",
-				commit.RootRunID,
+				commit.RootRunID(),
 				err,
 			)
 		}
 		if err := e.runState.RecordWaitingRunCommit(
-			ctx, commit.SessionID, commit.RootRunID, commit.CommitID,
+			ctx, commit.SessionID(), commit.RootRunID(), commit.CommitID(),
 		); err != nil {
 			return fmt.Errorf("segment: record waiting cancellation commit receipt: %w", err)
 		}
 		return nil
 	}
-	for _, draft := range commit.Resume.Runs {
-		if err := e.runState.Resume(ctx, commit.Resume.SessionID, draft, commit.Resume.ResumedAt); err != nil {
+	resume, resuming := commit.Resume()
+	if !resuming {
+		return errors.New("segment: waiting cancellation has no surviving disposition")
+	}
+	for _, draft := range resume.Runs {
+		if err := e.runState.Resume(ctx, resume.SessionID, draft, resume.ResumedAt); err != nil {
 			return fmt.Errorf("segment: resume surviving Run %q: %w", draft.RunID, err)
 		}
-		if draft.RunID == commit.RootRunID {
-			resumed, err := root.Resume(draft.SegmentID, commit.Resume.ResumedAt)
+		if draft.RunID == commit.RootRunID() {
+			resumed, err := root.Resume(draft.SegmentID, resume.ResumedAt)
 			if err != nil {
 				return fmt.Errorf("segment: project resumed root Run %q: %w", draft.RunID, err)
 			}
 			*root = resumed
 		}
 	}
-	for _, event := range commit.OpeningEvents {
+	for _, event := range commit.OpeningEvents() {
 		if err := e.applyCommit(ctx, event); err != nil {
 			return fmt.Errorf(
 				"segment: persist opening projection for surviving Run %q: %w",
@@ -209,7 +214,7 @@ func (e *Effects) persistWaitingCancellationDisposition(
 		return err
 	}
 	if err := e.runState.RecordRunCommit(
-		ctx, commit.SessionID, commit.RootRunID, segmentID, commit.CommitID,
+		ctx, commit.SessionID(), commit.RootRunID(), segmentID, commit.CommitID(),
 	); err != nil {
 		return fmt.Errorf("segment: record resumed waiting cancellation commit receipt: %w", err)
 	}
@@ -217,14 +222,15 @@ func (e *Effects) persistWaitingCancellationDisposition(
 }
 
 func waitingCancellationRootSegmentID(commit runs.WaitingSubtreeCancellationCommit) (string, error) {
-	if commit.RemainingPending != nil {
+	if _, stillWaiting := commit.RemainingPending(); stillWaiting {
 		return "", nil
 	}
-	if commit.Resume == nil {
+	resume, resuming := commit.Resume()
+	if !resuming {
 		return "", errors.New("segment: waiting cancellation has no surviving disposition")
 	}
-	for _, draft := range commit.Resume.Runs {
-		if draft.RunID == commit.RootRunID {
+	for _, draft := range resume.Runs {
+		if draft.RunID == commit.RootRunID() {
 			return draft.SegmentID, nil
 		}
 	}
@@ -245,7 +251,7 @@ func (e *Effects) reconcileWaitingCancellation(
 	)
 	defer cancel()
 	settled, err := e.runState.RunCommitCommitted(
-		reconcileCtx, commit.SessionID, commit.RootRunID, segmentID, commit.CommitID,
+		reconcileCtx, commit.SessionID(), commit.RootRunID(), segmentID, commit.CommitID(),
 	)
 	if err != nil {
 		return false, runs.WaitingSubtreeCancellationResult{}, fmt.Errorf(
@@ -256,32 +262,32 @@ func (e *Effects) reconcileWaitingCancellation(
 	if !settled {
 		return false, runs.WaitingSubtreeCancellationResult{}, nil
 	}
-	target, found, err := e.runState.Run(reconcileCtx, commit.TargetRunID)
+	target, found, err := e.runState.Run(reconcileCtx, commit.TargetRunID())
 	if err != nil {
 		return false, runs.WaitingSubtreeCancellationResult{}, fmt.Errorf(
 			"segment: read reconciled target Run %q: %w",
-			commit.TargetRunID,
+			commit.TargetRunID(),
 			err,
 		)
 	}
-	if !found || target.SessionID() != commit.SessionID {
+	if !found || target.SessionID() != commit.SessionID() {
 		return false, runs.WaitingSubtreeCancellationResult{}, fmt.Errorf(
 			"segment: reconciled target Run %q is unavailable",
-			commit.TargetRunID,
+			commit.TargetRunID(),
 		)
 	}
-	root, found, err := e.runState.Run(reconcileCtx, commit.RootRunID)
+	root, found, err := e.runState.Run(reconcileCtx, commit.RootRunID())
 	if err != nil {
 		return false, runs.WaitingSubtreeCancellationResult{}, fmt.Errorf(
 			"segment: read reconciled root Run %q: %w",
-			commit.RootRunID,
+			commit.RootRunID(),
 			err,
 		)
 	}
-	if !found || root.SessionID() != commit.SessionID {
+	if !found || root.SessionID() != commit.SessionID() {
 		return false, runs.WaitingSubtreeCancellationResult{}, fmt.Errorf(
 			"segment: reconciled root Run %q is unavailable",
-			commit.RootRunID,
+			commit.RootRunID(),
 		)
 	}
 	return true, runs.WaitingSubtreeCancellationResult{TargetRun: target, RootRun: root}, nil

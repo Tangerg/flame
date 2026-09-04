@@ -129,7 +129,7 @@ func (f failingWaitingTranscriptStore) AppendItem(
 
 func TestCommitWaitingSubtreeCancellationRejectsStalePendingWithoutMutation(t *testing.T) {
 	fixture := newWaitingCancellationSQLiteFixture(t)
-	changedPending := fixture.commit.ExpectedPending
+	changedPending := fixture.commit.ExpectedPending()
 	changedPending.ExecutorID = "turn_replaced"
 	if _, found, err := fixture.interrupts.Consume(fixture.ctx, changedPending.SessionID, changedPending.RootRunID); err != nil || !found {
 		t.Fatalf("consume original Pending fixture: found=%t err=%v", found, err)
@@ -168,12 +168,13 @@ func TestCommitWaitingSubtreeCancellationRejectsMismatchedCheckpointBindingWitho
 	} {
 		t.Run(name, func(t *testing.T) {
 			fixture := newWaitingCancellationSQLiteFixture(t)
-			mutate(&fixture.commit.Checkpoint)
-			_, err := fixture.effects.CommitWaitingSubtreeCancellation(fixture.ctx, fixture.commit)
+			draft := waitingCancellationDraft(fixture.commit)
+			mutate(&draft.checkpoint)
+			_, err := draft.build()
 			if !errors.Is(err, runs.ErrInvalidExecutorCheckpoint) {
 				t.Fatalf("ownership error = %v, want ErrInvalidExecutorCheckpoint", err)
 			}
-			assertWaitingCancellationUnchanged(t, fixture, fixture.commit.ExpectedPending)
+			assertWaitingCancellationUnchanged(t, fixture, fixture.commit.ExpectedPending())
 		})
 	}
 }
@@ -182,35 +183,36 @@ func TestCommitWaitingSubtreeCancellationRejectsMismatchedCheckpointBindingWitho
 // proves parked_continuation_matches_run_facts at the waiting-subtree transaction:
 // a forged terminal projection cannot rewrite the canceled Run's admitted facts.
 func TestCommitWaitingSubtreeCancellationRejectsRunContinuationFactDriftWithoutMutation(t *testing.T) {
-	for name, mutate := range map[string]func(*runs.WaitingSubtreeCancellationCommit){
-		"cumulative metrics": func(commit *runs.WaitingSubtreeCancellationCommit) {
-			replacement := commit.TerminalRuns[0]
+	for name, mutate := range map[string]func(*waitingCancellationCommitDraft){
+		"cumulative metrics": func(draft *waitingCancellationCommitDraft) {
+			replacement := draft.terminalRuns[0]
 			state := mutatedRun(replacement.State(), func(snapshot *run.Snapshot) {
 				snapshot.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: snapshot.Metrics.Steps() + 1})
 			})
-			commit.TerminalRuns[0] = testsupport.MustRunReplacement(replacement.Expected(), state)
+			draft.terminalRuns[0] = testsupport.MustRunReplacement(replacement.Expected(), state)
 		},
-		"frozen limits": func(commit *runs.WaitingSubtreeCancellationCommit) {
-			replacement := commit.TerminalRuns[0]
+		"frozen limits": func(draft *waitingCancellationCommitDraft) {
+			replacement := draft.terminalRuns[0]
 			state := mutatedRun(replacement.State(), func(snapshot *run.Snapshot) {
 				snapshot.Limits = testsupport.MustRunLimits(run.LimitValues{MaxSteps: testsupport.Pointer(1)})
 			})
-			commit.TerminalRuns[0] = testsupport.MustRunReplacement(replacement.Expected(), state)
+			draft.terminalRuns[0] = testsupport.MustRunReplacement(replacement.Expected(), state)
 		},
-		"root run capabilities": func(commit *runs.WaitingSubtreeCancellationCommit) {
-			commit.RootRun = mutatedRun(commit.RootRun, func(snapshot *run.Snapshot) {
+		"root run capabilities": func(draft *waitingCancellationCommitDraft) {
+			draft.rootRun = mutatedRun(draft.rootRun, func(snapshot *run.Snapshot) {
 				snapshot.Capabilities.ChildRuns = false
 			})
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			fixture := newWaitingCancellationSQLiteFixture(t)
-			mutate(&fixture.commit)
+			draft := waitingCancellationDraft(fixture.commit)
+			mutate(&draft)
 
-			if _, err := fixture.effects.CommitWaitingSubtreeCancellation(fixture.ctx, fixture.commit); err == nil {
+			if _, err := draft.build(); err == nil {
 				t.Fatal("waiting subtree cancellation accepted contradictory Run and continuation facts")
 			}
-			assertWaitingCancellationUnchanged(t, fixture, fixture.commit.ExpectedPending)
+			assertWaitingCancellationUnchanged(t, fixture, fixture.commit.ExpectedPending())
 		})
 	}
 }
@@ -287,10 +289,11 @@ func TestCommitWaitingSubtreeCancellationRollsBackEveryPreCommitFailure(t *testi
 			name:      "opening Item",
 			operation: "persist opening projection",
 			configure: func(fixture *waitingCancellationSQLiteFixture, injected error) {
-				fixture.commit.OpeningEvents = []runs.EventCommit{{
+				draft := waitingCancellationDraft(fixture.commit)
+				draft.openingEvents = []runs.EventCommit{{
 					RunID:     fixture.rootRun.ID(),
 					SessionID: fixture.rootRun.SessionID(),
-					SegmentID: fixture.commit.Resume.Runs[0].SegmentID,
+					SegmentID: draft.resume.Runs[0].SegmentID,
 					Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 						ID:         "item_root_continuation",
 						SessionID:  fixture.rootRun.SessionID(),
@@ -304,6 +307,7 @@ func TestCommitWaitingSubtreeCancellationRollsBackEveryPreCommitFailure(t *testi
 						}},
 					})},
 				}}
+				fixture.commit = mustWaitingCancellationCommit(t, draft)
 				fixture.replaceEffects(func(config *Config) {
 					config.Transcript = failingWaitingTranscriptStore{
 						TranscriptStore: fixture.transcript,
@@ -383,7 +387,7 @@ func TestCommitWaitingSubtreeCancellationRollsBackEveryPreCommitFailure(t *testi
 			assertWaitingCancellationUnchanged(
 				t,
 				fixture,
-				fixture.commit.ExpectedPending,
+				fixture.commit.ExpectedPending(),
 			)
 		})
 	}
@@ -453,7 +457,7 @@ func assertWaitingCancellationUnchanged(
 		}
 	}
 
-	for _, continuation := range fixture.commit.ExpectedPending.Continuations {
+	for _, continuation := range fixture.commit.ExpectedPending().Continuations {
 		assertStoredRunState(t, fixture.db, continuation.RunID, "waiting")
 	}
 

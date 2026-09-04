@@ -19,6 +19,10 @@ import (
 // WaitingSubtreeCancellationCommit is the immutable write-set for canceling a
 // child while its Run tree is waiting.
 type WaitingSubtreeCancellationCommit struct {
+	state waitingSubtreeCancellationState
+}
+
+type waitingSubtreeCancellationState struct {
 	// CommitID identifies the complete cancellation transaction. A cancellation
 	// that resumes the surviving tree reuses its OpeningCommit identity.
 	CommitID             runtimeidentity.CommitID
@@ -40,13 +44,155 @@ type WaitingSubtreeCancellationCommit struct {
 	OpeningEvents []EventCommit
 }
 
+// NewParkedSubtreeCancellationCommit constructs a cancellation that leaves the
+// surviving tree behind one reduced waiting barrier.
+func NewParkedSubtreeCancellationCommit(
+	commitID runtimeidentity.CommitID,
+	targetRunID string,
+	rootRun rundomain.Run,
+	expectedPending Pending,
+	remainingPending Pending,
+	checkpoint ExecutorCheckpoint,
+	terminalRuns []rundomain.Replacement,
+	terminalItems []transcript.Replacement,
+	parentItem transcript.Replacement,
+	conversationMessages []corechat.Message,
+) (WaitingSubtreeCancellationCommit, error) {
+	return newWaitingSubtreeCancellationCommit(waitingSubtreeCancellationState{
+		CommitID: commitID, RootRunID: expectedPending.RootRunID,
+		TargetRunID: targetRunID, SessionID: expectedPending.SessionID,
+		RootRun: rootRun, ExpectedPending: expectedPending,
+		RemainingPending: &remainingPending, Checkpoint: checkpoint,
+		TerminalRuns: terminalRuns, TerminalItems: terminalItems,
+		ParentItem: parentItem, ConversationMessages: conversationMessages,
+	})
+}
+
+// NewResumingSubtreeCancellationCommit constructs a cancellation that resumes
+// every surviving Run through one opening transaction.
+func NewResumingSubtreeCancellationCommit(
+	commitID runtimeidentity.CommitID,
+	targetRunID string,
+	rootRun rundomain.Run,
+	expectedPending Pending,
+	checkpoint ExecutorCheckpoint,
+	terminalRuns []rundomain.Replacement,
+	terminalItems []transcript.Replacement,
+	parentItem transcript.Replacement,
+	conversationMessages []corechat.Message,
+	resume rundomain.TreeResumeDraft,
+	openingEvents []EventCommit,
+) (WaitingSubtreeCancellationCommit, error) {
+	return newWaitingSubtreeCancellationCommit(waitingSubtreeCancellationState{
+		CommitID: commitID, RootRunID: expectedPending.RootRunID,
+		TargetRunID: targetRunID, SessionID: expectedPending.SessionID,
+		RootRun: rootRun, ExpectedPending: expectedPending,
+		Checkpoint: checkpoint, TerminalRuns: terminalRuns,
+		TerminalItems: terminalItems, ParentItem: parentItem,
+		ConversationMessages: conversationMessages,
+		Resume:               &resume, OpeningEvents: openingEvents,
+	})
+}
+
+func newWaitingSubtreeCancellationCommit(
+	state waitingSubtreeCancellationState,
+) (WaitingSubtreeCancellationCommit, error) {
+	state.ExpectedPending = state.ExpectedPending.Clone()
+	if state.RemainingPending != nil {
+		remaining := state.RemainingPending.Clone()
+		state.RemainingPending = &remaining
+	}
+	state.Checkpoint = state.Checkpoint.Clone()
+	state.TerminalRuns = slices.Clone(state.TerminalRuns)
+	state.TerminalItems = slices.Clone(state.TerminalItems)
+	state.ConversationMessages = cloneCommitMessages(state.ConversationMessages)
+	if state.Resume != nil {
+		resume := cloneOpeningResume(*state.Resume)
+		state.Resume = &resume
+	}
+	state.OpeningEvents = cloneEventCommits(state.OpeningEvents)
+	commit := WaitingSubtreeCancellationCommit{state: state}
+	if err := commit.Validate(); err != nil {
+		return WaitingSubtreeCancellationCommit{}, err
+	}
+	return commit, nil
+}
+
+// CommitID returns the stable cancellation transaction identity.
+func (w WaitingSubtreeCancellationCommit) CommitID() runtimeidentity.CommitID {
+	return w.state.CommitID
+}
+
+// RootRunID returns the root of the affected waiting tree.
+func (w WaitingSubtreeCancellationCommit) RootRunID() string { return w.state.RootRunID }
+
+// TargetRunID returns the child subtree root being canceled.
+func (w WaitingSubtreeCancellationCommit) TargetRunID() string { return w.state.TargetRunID }
+
+// SessionID returns the Session that owns the complete tree.
+func (w WaitingSubtreeCancellationCommit) SessionID() string { return w.state.SessionID }
+
+// RootRun returns the root Run snapshot before the disposition is applied.
+func (w WaitingSubtreeCancellationCommit) RootRun() rundomain.Run { return w.state.RootRun }
+
+// ExpectedPending returns an isolated copy of the waiting barrier being claimed.
+func (w WaitingSubtreeCancellationCommit) ExpectedPending() Pending {
+	return w.state.ExpectedPending.Clone()
+}
+
+// RemainingPending returns the reduced barrier when the surviving tree stays waiting.
+func (w WaitingSubtreeCancellationCommit) RemainingPending() (Pending, bool) {
+	if w.state.RemainingPending == nil {
+		return Pending{}, false
+	}
+	return w.state.RemainingPending.Clone(), true
+}
+
+// Checkpoint returns an isolated executor checkpoint for the surviving tree.
+func (w WaitingSubtreeCancellationCommit) Checkpoint() ExecutorCheckpoint {
+	return w.state.Checkpoint.Clone()
+}
+
+// TerminalRuns returns the canceled subtree's canonical Run replacements.
+func (w WaitingSubtreeCancellationCommit) TerminalRuns() []rundomain.Replacement {
+	return slices.Clone(w.state.TerminalRuns)
+}
+
+// TerminalItems returns the canceled subtree's terminal Tool Item replacements.
+func (w WaitingSubtreeCancellationCommit) TerminalItems() []transcript.Replacement {
+	return slices.Clone(w.state.TerminalItems)
+}
+
+// ParentItem returns the spawning Tool Item replacement owned by the parent Run.
+func (w WaitingSubtreeCancellationCommit) ParentItem() transcript.Replacement {
+	return w.state.ParentItem
+}
+
+// ConversationMessages returns isolated provider-context projections.
+func (w WaitingSubtreeCancellationCommit) ConversationMessages() []corechat.Message {
+	return cloneCommitMessages(w.state.ConversationMessages)
+}
+
+// Resume returns the complete surviving-tree continuation when execution resumes.
+func (w WaitingSubtreeCancellationCommit) Resume() (rundomain.TreeResumeDraft, bool) {
+	if w.state.Resume == nil {
+		return rundomain.TreeResumeDraft{}, false
+	}
+	return cloneOpeningResume(*w.state.Resume), true
+}
+
+// OpeningEvents returns isolated projections committed with a resumed disposition.
+func (w WaitingSubtreeCancellationCommit) OpeningEvents() []EventCommit {
+	return cloneEventCommits(w.state.OpeningEvents)
+}
+
 type WaitingSubtreeCancellationResult struct {
 	TargetRun rundomain.Run
 	RootRun   rundomain.Run
 }
 
 type waitingCancellationValidation struct {
-	commit              WaitingSubtreeCancellationCommit
+	commit              waitingSubtreeCancellationState
 	continuationByRunID map[string]Continuation
 	canceledRunIDs      []string
 	canceledMemberIDs   map[string]struct{}
@@ -88,28 +234,29 @@ func (w WaitingSubtreeCancellationCommit) Validate() error {
 func newWaitingCancellationValidation(
 	c WaitingSubtreeCancellationCommit,
 ) (waitingCancellationValidation, error) {
-	if err := validateWaitingCancellationBoundary(c); err != nil {
+	state := c.state
+	if err := validateWaitingCancellationBoundary(state); err != nil {
 		return waitingCancellationValidation{}, err
 	}
-	if err := validateWaitingCancellationDispositionEnvelope(c); err != nil {
+	if err := validateWaitingCancellationDispositionEnvelope(state); err != nil {
 		return waitingCancellationValidation{}, err
 	}
-	topology, err := buildWaitingCancellationTopology(c)
+	topology, err := buildWaitingCancellationTopology(state)
 	if err != nil {
 		return waitingCancellationValidation{}, err
 	}
 	return waitingCancellationValidation{
-		commit:              c,
+		commit:              state,
 		continuationByRunID: topology.continuationByRunID,
 		canceledRunIDs:      topology.canceledRunIDs,
 		canceledMemberIDs:   topology.canceledMemberIDs,
 		survivingRunIDs:     topology.survivingRunIDs,
-		terminalRunIDs:      make(map[string]struct{}, len(c.TerminalRuns)),
-		finishedAtByRunID:   make(map[string]time.Time, len(c.TerminalRuns)),
+		terminalRunIDs:      make(map[string]struct{}, len(state.TerminalRuns)),
+		finishedAtByRunID:   make(map[string]time.Time, len(state.TerminalRuns)),
 	}, nil
 }
 
-func validateWaitingCancellationBoundary(c WaitingSubtreeCancellationCommit) error {
+func validateWaitingCancellationBoundary(c waitingSubtreeCancellationState) error {
 	if err := c.CommitID.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting cancellation: %w", err)
 	}
@@ -159,7 +306,7 @@ func validateWaitingCancellationBoundary(c WaitingSubtreeCancellationCommit) err
 	return nil
 }
 
-func validateWaitingCancellationDispositionEnvelope(c WaitingSubtreeCancellationCommit) error {
+func validateWaitingCancellationDispositionEnvelope(c waitingSubtreeCancellationState) error {
 	if (c.RemainingPending == nil) == (c.Resume == nil) {
 		return errors.New("runs: waiting cancellation requires exactly one surviving disposition")
 	}
@@ -192,7 +339,7 @@ type waitingCancellationTopology struct {
 }
 
 func buildWaitingCancellationTopology(
-	c WaitingSubtreeCancellationCommit,
+	c waitingSubtreeCancellationState,
 ) (waitingCancellationTopology, error) {
 	members := make([]rundomain.TreeMember, 0, len(c.ExpectedPending.Continuations))
 	continuationByRunID := make(map[string]Continuation, len(c.ExpectedPending.Continuations))

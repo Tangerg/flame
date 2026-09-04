@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -311,8 +310,11 @@ func TestCancelWaitingChildCommitsReducedPendingBeforeRuntimeTransition(t *testi
 			prepared.discarded,
 		)
 	}
-	if len(effects.waitingCancels) != 1 || effects.waitingCancels[0].CommitID.IsZero() ||
-		effects.waitingCancels[0].RemainingPending == nil {
+	remaining := false
+	if len(effects.waitingCancels) == 1 {
+		_, remaining = effects.waitingCancels[0].RemainingPending()
+	}
+	if len(effects.waitingCancels) != 1 || effects.waitingCancels[0].CommitID().IsZero() || !remaining {
 		t.Fatalf("durable waiting commits = %+v, want one reduced Pending", effects.waitingCancels)
 	}
 	if control.prepared != plan.executor {
@@ -545,40 +547,106 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 		t.Fatalf("durable waiting commits = %d, want 1", len(effects.waitingCancels))
 	}
 	commit := effects.waitingCancels[0]
-	if commit.CommitID.IsZero() || commit.RemainingPending != nil || commit.Resume == nil {
+	_, remaining := commit.RemainingPending()
+	resume, resuming := commit.Resume()
+	if commit.CommitID().IsZero() || remaining || !resuming {
 		t.Fatalf("continuation commit = %+v, want a tree Resume", commit)
 	}
 	if err := commit.Validate(); err != nil {
 		t.Fatalf("continuation commit: %v", err)
 	}
 	rootSegmentID := ""
-	for _, draft := range commit.Resume.Runs {
-		if draft.RunID == commit.RootRunID {
+	for _, draft := range resume.Runs {
+		if draft.RunID == commit.RootRunID() {
 			rootSegmentID = draft.SegmentID
 			break
 		}
 	}
 	openingItem := testsupport.MustRestoreItem(testsupport.ItemInput{
-		SessionID: commit.SessionID, RunID: commit.RootRunID, ID: "item_resume_projection",
+		SessionID: commit.SessionID(), RunID: commit.RootRunID(), ID: "item_resume_projection",
 		OccurredAt: time.Date(2026, 7, 30, 2, 3, 5, 0, time.UTC),
 	})
-	invalid := commit
-	invalid.OpeningEvents = []EventCommit{{
-		RunID: commit.RootRunID, SessionID: commit.SessionID, SegmentID: rootSegmentID,
+	openingEvents := []EventCommit{{
+		RunID: commit.RootRunID(), SessionID: commit.SessionID(), SegmentID: rootSegmentID,
 		Items: []transcript.Item{openingItem},
 	}}
-	if err := invalid.Validate(); err != nil {
+	expectedPending := commit.ExpectedPending()
+	checkpoint := commit.Checkpoint()
+	terminalRuns := commit.TerminalRuns()
+	terminalItems := commit.TerminalItems()
+	messages := commit.ConversationMessages()
+	withOpening, err := NewResumingSubtreeCancellationCommit(
+		commit.CommitID(), commit.TargetRunID(), commit.RootRun(), expectedPending,
+		checkpoint, terminalRuns, terminalItems, commit.ParentItem(), messages, resume, openingEvents,
+	)
+	if err != nil {
 		t.Fatalf("waiting cancellation with opening projection: %v", err)
 	}
-	invalid.OpeningEvents[0].CommitID = testCommitID("run_commit_waiting_cancel_nested")
-	if err := invalid.Validate(); err == nil {
+	if len(expectedPending.Bindings) == 0 || len(checkpoint.Payload) == 0 ||
+		len(terminalRuns) == 0 || len(terminalItems) == 0 || len(messages) == 0 {
+		t.Fatal("waiting cancellation ownership fixture lacks mutable projections")
+	}
+	wantMemberID := expectedPending.Bindings[0].MemberID
+	wantPayload := string(checkpoint.Payload)
+	wantTerminalRunID := terminalRuns[0].State().ID()
+	wantTerminalItemID := terminalItems[0].State().ID()
+	wantMessage := messages[0].Text()
+	wantResumeSegmentID := resume.Runs[0].SegmentID
+	expectedPending.Bindings[0].MemberID = "member_changed"
+	checkpoint.Payload[0] = 'x'
+	terminalRuns[0] = run.Replacement{}
+	terminalItems[0] = transcript.Replacement{}
+	messages[0].Parts[0].Text = "changed"
+	resume.Runs[0].SegmentID = "segment_changed"
+	openingEvents[0].Items = nil
+
+	projectedPending := withOpening.ExpectedPending()
+	projectedPending.Bindings[0].MemberID = "member_projected"
+	projectedCheckpoint := withOpening.Checkpoint()
+	projectedCheckpoint.Payload[0] = 'y'
+	projectedRuns := withOpening.TerminalRuns()
+	projectedRuns[0] = run.Replacement{}
+	projectedItems := withOpening.TerminalItems()
+	projectedItems[0] = transcript.Replacement{}
+	projectedMessages := withOpening.ConversationMessages()
+	projectedMessages[0].Parts[0].Text = "projected"
+	projectedResume, _ := withOpening.Resume()
+	projectedResume.Runs[0].SegmentID = "segment_projected"
+	projectedOpening := withOpening.OpeningEvents()
+	projectedOpening[0].Items = nil
+
+	ownedResume, _ := withOpening.Resume()
+	ownedOpening := withOpening.OpeningEvents()
+	if withOpening.ExpectedPending().Bindings[0].MemberID != wantMemberID ||
+		string(withOpening.Checkpoint().Payload) != wantPayload ||
+		withOpening.TerminalRuns()[0].State().ID() != wantTerminalRunID ||
+		withOpening.TerminalItems()[0].State().ID() != wantTerminalItemID ||
+		withOpening.ConversationMessages()[0].Text() != wantMessage ||
+		ownedResume.Runs[0].SegmentID != wantResumeSegmentID ||
+		len(ownedOpening[0].Items) != 1 {
+		t.Fatal("waiting cancellation write-set followed caller or accessor mutation")
+	}
+	if err := withOpening.Validate(); err != nil {
+		t.Fatalf("owned waiting cancellation no longer validates: %v", err)
+	}
+	nested := withOpening.OpeningEvents()
+	nested[0].CommitID = testCommitID("run_commit_waiting_cancel_nested")
+	if _, err := NewResumingSubtreeCancellationCommit(
+		commit.CommitID(), commit.TargetRunID(), commit.RootRun(), commit.ExpectedPending(),
+		commit.Checkpoint(), commit.TerminalRuns(), commit.TerminalItems(), commit.ParentItem(),
+		commit.ConversationMessages(), ownedResume, nested,
+	); err == nil {
 		t.Fatal("waiting cancellation accepted a nested top-level event identity")
 	}
-	invalid.OpeningEvents[0].CommitID = runtimeidentity.CommitID{}
-	invalid.OpeningEvents[0].Progress = &ProgressCommit{
+	observed := withOpening.OpeningEvents()
+	observed[0].Progress = &ProgressCommit{
 		SegmentID: rootSegmentID, UpdatedAt: openingItem.OccurredAt(), Metrics: run.Metrics{},
 	}
-	if err := invalid.Validate(); err == nil {
+	if _, err := NewResumingSubtreeCancellationCommit(
+		commit.CommitID(), commit.TargetRunID(), commit.RootRun(), commit.ExpectedPending(),
+		commit.Checkpoint(), commit.TerminalRuns(), commit.TerminalItems(), commit.ParentItem(),
+		commit.ConversationMessages(), ownedResume, observed,
+	); err == nil {
 		t.Fatal("waiting cancellation accepted an execution observation in an opening event")
 	}
 	if _, live := coordinator.segments.lookup(plan.root.run.ID()); !live {

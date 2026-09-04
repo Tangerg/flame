@@ -548,19 +548,25 @@ func inputRequestIdentity(memberID, requestID string) inputRequestKey {
 func (w waitingCancellationTransformation) durableCommit(
 	expected Pending,
 	commitID runtimeidentity.CommitID,
-) WaitingSubtreeCancellationCommit {
-	return WaitingSubtreeCancellationCommit{
-		CommitID:             commitID,
-		RootRunID:            expected.RootRunID,
-		TargetRunID:          w.targetRunID,
-		SessionID:            expected.SessionID,
-		RootRun:              w.root,
-		ExpectedPending:      expected,
-		RemainingPending:     w.remaining,
-		Checkpoint:           w.checkpoint,
-		TerminalRuns:         slices.Clone(w.terminalRuns),
-		TerminalItems:        slices.Clone(w.terminalItems),
-		ParentItem:           w.parentItem,
-		ConversationMessages: appendClonedMessages(nil, w.conversationMessages...),
+) (WaitingSubtreeCancellationCommit, error) {
+	if w.remaining == nil {
+		return WaitingSubtreeCancellationCommit{}, errors.New("runs: waiting cancellation has no reduced Pending")
 	}
+	return NewParkedSubtreeCancellationCommit(
+		commitID, w.targetRunID, w.root, expected, *w.remaining,
+		w.checkpoint, w.terminalRuns, w.terminalItems, w.parentItem, w.conversationMessages,
+	)
+}
+
+func (w waitingCancellationTransformation) resumedDurableCommit(
+	expected Pending,
+	commitID runtimeidentity.CommitID,
+	resume rundomain.TreeResumeDraft,
+	openingEvents []EventCommit,
+) (WaitingSubtreeCancellationCommit, error) {
+	return NewResumingSubtreeCancellationCommit(
+		commitID, w.targetRunID, w.root, expected, w.checkpoint,
+		w.terminalRuns, w.terminalItems, w.parentItem, w.conversationMessages,
+		resume, openingEvents,
+	)
 }

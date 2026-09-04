@@ -189,7 +189,7 @@ func assertRestartedTerminalItems(
 	transcriptStore *sqlite.TranscriptStore,
 ) {
 	t.Helper()
-	for _, replacement := range fixture.commit.TerminalItems {
+	for _, replacement := range fixture.commit.TerminalItems() {
 		item, found, err := transcriptStore.Item(fixture.ctx, replacement.Expected().ID())
 		if err != nil || !found || !sameItemSnapshot(item, replacement.State()) {
 			t.Fatalf(
@@ -263,16 +263,17 @@ func assertRestartedWaitingBoundary(
 ) {
 	t.Helper()
 	pending, found, err := interruptStore.Get(fixture.ctx, fixture.rootRun.ID())
+	remaining, hasRemaining := fixture.commit.RemainingPending()
 	if err != nil ||
 		!found ||
-		fixture.commit.RemainingPending == nil ||
-		!pending.Equal(*fixture.commit.RemainingPending) {
+		!hasRemaining ||
+		!pending.Equal(remaining) {
 		t.Fatalf(
 			"restarted reduced Pending = found:%t value:%+v err:%v, want %+v",
 			found,
 			pending,
 			err,
-			fixture.commit.RemainingPending,
+			remaining,
 		)
 	}
 	siblingQuestion := pending.Interrupts[0]
