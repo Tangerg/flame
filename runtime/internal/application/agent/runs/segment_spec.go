@@ -25,7 +25,7 @@ type segmentSpec struct {
 	ModelSelection     modelref.Selection
 	GoalIncarnationID  string
 	InitialSession     *session.Session
-	SessionReplacement *SessionReplacement
+	SessionReplacement *session.Replacement
 	ScheduleFiring     string
 	ManualScheduleRun  *schedule.RunRecord
 	CreatedAt          time.Time

@@ -32,7 +32,7 @@ import (
 // transaction. Application and Domain have already decided each aggregate.
 type SessionStore interface {
 	Insert(ctx context.Context, value session.Session) error
-	Save(ctx context.Context, expectedRevision uint64, replacement session.Session) error
+	Save(ctx context.Context, replacement session.Replacement) error
 }
 
 // ScheduleStore commits the schedule fact owned by a Run opening. Cron

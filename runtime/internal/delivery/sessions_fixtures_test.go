@@ -766,7 +766,7 @@ func (s stubLifecycleStores) ApplyRestore(ctx context.Context, plan sessions.Res
 		if err := s.rt.sess.Insert(ctx, restored); err != nil {
 			return err
 		}
-	} else if err := s.rt.sess.Save(ctx, plan.Session.ExpectedRevision(), restored); err != nil {
+	} else if err := s.rt.sess.Save(ctx, plan.Session); err != nil {
 		return err
 	}
 	if err := s.deleteInterrupts(ctx, id); err != nil {
@@ -1001,7 +1001,7 @@ func (inertRuntimeStores) Get(context.Context, string) (session.Session, error) 
 	return session.Session{}, session.ErrNotFound
 }
 func (inertRuntimeStores) Insert(context.Context, session.Session) error { return nil }
-func (inertRuntimeStores) Save(context.Context, uint64, session.Session) error {
+func (inertRuntimeStores) Save(context.Context, session.Replacement) error {
 	return nil
 }
 func (inertRuntimeStores) ListRuns(context.Context, string) ([]run.Run, error) { return nil, nil }

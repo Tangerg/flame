@@ -177,6 +177,10 @@ func (c *Coordinator) Update(ctx context.Context, id string, patch Patch) (sessi
 	if !changed {
 		return current, nil
 	}
+	replacement, err := session.NextReplacement(current, updated)
+	if err != nil {
+		return session.Session{}, fmt.Errorf("sessions: prepare Session replacement: %w", err)
+	}
 	executionPolicyChanged := current.Workspace() != updated.Workspace() || current.Isolated() != updated.Isolated()
 	if executionPolicyChanged {
 		if err := c.transientState.QuiesceSession(id); err != nil {
@@ -192,7 +196,7 @@ func (c *Coordinator) Update(ctx context.Context, id string, patch Patch) (sessi
 		// context, while carrying evidence across a successful relocation is unsafe.
 		c.transientState.ForgetSessionContext(id)
 	}
-	if err := c.sessions.Save(ctx, current.Revision(), updated); err != nil {
+	if err := c.sessions.Save(ctx, replacement); err != nil {
 		return session.Session{}, err
 	}
 	c.publishSessionMoved(id)
@@ -229,7 +233,11 @@ func (c *Coordinator) ApplyGeneratedTitle(ctx context.Context, id, title string)
 		if !changed {
 			return nil
 		}
-		if err := c.sessions.Save(ctx, current.Revision(), updated); err == nil {
+		replacement, err := session.NextReplacement(current, updated)
+		if err != nil {
+			return fmt.Errorf("sessions: prepare generated title replacement: %w", err)
+		}
+		if err := c.sessions.Save(ctx, replacement); err == nil {
 			c.publishSessionMoved(id)
 			return nil
 		} else if !errors.Is(err, session.ErrRevisionConflict) {

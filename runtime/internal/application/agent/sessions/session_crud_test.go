@@ -62,11 +62,10 @@ func (r *rawPointSessionStore) Get(_ context.Context, id string) (session.Sessio
 
 func (g *generatedTitleRaceStore) Save(
 	_ context.Context,
-	_ uint64,
-	replacement session.Session,
+	replacement session.Replacement,
 ) error {
 	g.saveCalls++
-	g.candidate = replacement
+	g.candidate = replacement.State()
 	userTitle := "User title"
 	committed, changed, err := g.current.Apply(
 		session.Patch{Title: &userTitle},
@@ -85,16 +84,16 @@ func (c *crudSessionStore) Insert(_ context.Context, value session.Session) erro
 	return nil
 }
 
-func (c *crudSessionStore) Save(_ context.Context, expected uint64, replacement session.Session) error {
+func (c *crudSessionStore) Save(_ context.Context, replacement session.Replacement) error {
 	if c.operations != nil {
 		*c.operations = append(*c.operations, "session.save")
 	}
-	c.expected = expected
-	c.saved = replacement
+	c.expected = replacement.ExpectedRevision()
+	c.saved = replacement.State()
 	if c.saveErr != nil {
 		return c.saveErr
 	}
-	c.current = replacement
+	c.current = replacement.State()
 	return nil
 }
 

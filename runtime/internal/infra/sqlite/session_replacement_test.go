@@ -25,7 +25,11 @@ func TestSessionStorePersistsExactReplacement(t *testing.T) {
 	if err != nil || !changed {
 		t.Fatalf("Apply changed=%v err=%v", changed, err)
 	}
-	if saveErr := store.Save(t.Context(), current.Revision(), replacement); saveErr != nil {
+	change, err := session.NextReplacement(current, replacement)
+	if err != nil {
+		t.Fatalf("NextReplacement: %v", err)
+	}
+	if saveErr := store.Save(t.Context(), change); saveErr != nil {
 		t.Fatalf("Save: %v", saveErr)
 	}
 	got, err := store.Get(t.Context(), current.ID())
@@ -45,12 +49,20 @@ func TestSessionStoreRejectsStaleReplacement(t *testing.T) {
 	}
 	title := "First"
 	first, _, _ := current.Apply(session.Patch{Title: &title}, time.Unix(2, 0))
-	if err := store.Save(t.Context(), current.Revision(), first); err != nil {
+	firstChange, err := session.NextReplacement(current, first)
+	if err != nil {
+		t.Fatalf("prepare first replacement: %v", err)
+	}
+	if err := store.Save(t.Context(), firstChange); err != nil {
 		t.Fatalf("Save first: %v", err)
 	}
 	title = "Stale"
 	stale, _, _ := current.Apply(session.Patch{Title: &title}, time.Unix(3, 0))
-	if err := store.Save(t.Context(), current.Revision(), stale); !errors.Is(err, session.ErrRevisionConflict) {
+	staleChange, err := session.NextReplacement(current, stale)
+	if err != nil {
+		t.Fatalf("prepare stale replacement: %v", err)
+	}
+	if err := store.Save(t.Context(), staleChange); !errors.Is(err, session.ErrRevisionConflict) {
 		t.Fatalf("stale Save error = %v, want ErrRevisionConflict", err)
 	}
 	got, err := store.Get(t.Context(), current.ID())
@@ -62,8 +74,12 @@ func TestSessionStoreRejectsStaleReplacement(t *testing.T) {
 func TestSessionStoreRejectsInvalidWriteShape(t *testing.T) {
 	store := newTempDB(t)
 	initial := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")})
-	if err := store.Save(t.Context(), 1, initial); !errors.Is(err, session.ErrInvalid) {
-		t.Fatalf("non-advancing Save error = %v, want ErrInvalid", err)
+	initialChange, err := session.InitialReplacement(initial)
+	if err != nil {
+		t.Fatalf("InitialReplacement: %v", err)
+	}
+	if err := store.Save(t.Context(), initialChange); !errors.Is(err, session.ErrInvalid) {
+		t.Fatalf("initial Save error = %v, want ErrInvalid", err)
 	}
 	title := "Revision two"
 	replacement, _, _ := initial.Apply(session.Patch{Title: &title}, time.Unix(2, 0))

@@ -30,17 +30,15 @@ func (s *SessionStore) Insert(ctx context.Context, value session.Session) error 
 // assigns the next revision.
 func (s *SessionStore) Save(
 	ctx context.Context,
-	expectedRevision uint64,
-	replacement session.Session,
+	change session.Replacement,
 ) error {
-	if err := replacement.Validate(); err != nil {
+	if err := change.Validate(); err != nil {
 		return fmt.Errorf("sqlite: validate Session replacement: %w", err)
 	}
-	if expectedRevision == 0 || exactint.Follows(expectedRevision, replacement.Revision()) != nil {
-		return fmt.Errorf(
-			"sqlite: Session replacement revision %d does not follow expected revision %d: %w",
-			replacement.Revision(), expectedRevision, session.ErrInvalid,
-		)
+	expectedRevision := change.ExpectedRevision()
+	replacement := change.State()
+	if expectedRevision == 0 {
+		return fmt.Errorf("sqlite: initial Session replacement passed to Save: %w", session.ErrInvalid)
 	}
 	snapshot := replacement.Snapshot()
 	titleSearch, err := session.NormalizeCatalogText(snapshot.Title)

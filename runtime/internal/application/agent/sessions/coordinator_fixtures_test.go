@@ -352,7 +352,7 @@ func (emptySessionStore) Get(context.Context, string) (session.Session, error) {
 	return session.Session{}, session.ErrNotFound
 }
 func (emptySessionStore) Insert(context.Context, session.Session) error { return nil }
-func (emptySessionStore) Save(context.Context, uint64, session.Session) error {
+func (emptySessionStore) Save(context.Context, session.Replacement) error {
 	return nil
 }
 

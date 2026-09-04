@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/exactint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
@@ -50,66 +49,12 @@ type ForkPlan struct {
 	PlanReplacement *PlanReplacement
 }
 
-// Replacement is an immutable Application decision to insert a restored
-// Session at revision one or replace the target's current revision exactly.
-type Replacement struct {
-	expectedRevision uint64
-	state            session.Session
-}
-
-// InitialReplacement prepares an initial restored Session write.
-func InitialReplacement(state session.Session) (Replacement, error) {
-	replacement := Replacement{state: state}
-	if err := replacement.Validate(); err != nil {
-		return Replacement{}, err
-	}
-	return replacement, nil
-}
-
-// NextReplacement prepares an exact replacement of current.
-func NextReplacement(current, state session.Session) (Replacement, error) {
-	replacement := Replacement{expectedRevision: current.Revision(), state: state}
-	if err := replacement.Validate(); err != nil {
-		return Replacement{}, err
-	}
-	return replacement, nil
-}
-
-// ExpectedRevision returns zero for an initial insert or the target revision
-// an exact replacement was based on.
-func (s Replacement) ExpectedRevision() uint64 { return s.expectedRevision }
-
-// State returns the complete already-decided Session aggregate.
-func (s Replacement) State() session.Session { return s.state }
-
-// Validate proves that s is either one initial aggregate or one monotonic
-// replacement of an existing aggregate.
-func (s Replacement) Validate() error {
-	if err := s.state.Validate(); err != nil {
-		return fmt.Errorf("sessions: invalid Session replacement: %w", err)
-	}
-	if s.expectedRevision == 0 {
-		firstRevision := exactint.First().Value()
-		if s.state.Revision() != firstRevision {
-			return fmt.Errorf("sessions: initial Session revision is %d, want %d", s.state.Revision(), firstRevision)
-		}
-		return nil
-	}
-	if err := exactint.Follows(s.expectedRevision, s.state.Revision()); err != nil {
-		return fmt.Errorf(
-			"sessions: Session replacement revision %d does not follow expected revision %d",
-			s.state.Revision(), s.expectedRevision,
-		)
-	}
-	return nil
-}
-
 // RestorePlan is the atomic durable command for replacing a session aggregate.
 // It is intentionally distinct from Snapshot, the export read model: the
 // explicit command makes the persistence boundary's destructive operation
 // visible instead of silently accepting every snapshot-shaped value.
 type RestorePlan struct {
-	Session     Replacement
+	Session     session.Replacement
 	Messages    []chat.Message
 	Items       []transcript.Item
 	Runs        []rundomain.Run
@@ -121,7 +66,7 @@ type RestorePlan struct {
 
 func restorePlan(
 	snapshot Snapshot,
-	sessionReplacement Replacement,
+	sessionReplacement session.Replacement,
 	planReplacement *PlanReplacement,
 ) RestorePlan {
 	return RestorePlan{

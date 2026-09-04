@@ -7,7 +7,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/exactint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
@@ -20,31 +19,10 @@ type OpeningCommit struct {
 	Admit              *run.Draft
 	Resume             *run.TreeResumeDraft
 	InitialSession     *session.Session
-	SessionReplacement *SessionReplacement
+	SessionReplacement *session.Replacement
 	ScheduleFiring     string
 	ManualScheduleRun  *schedule.RunRecord
 	Events             []EventCommit
-}
-
-// SessionReplacement is the exact Session aggregate replacement committed with
-// the Run admission whose configured model produced it.
-type SessionReplacement struct {
-	ExpectedRevision uint64
-	State            session.Session
-}
-
-// Validate proves that the replacement advances the same Session once.
-func (s SessionReplacement) Validate(sessionID string) error {
-	if err := s.State.Validate(); err != nil {
-		return fmt.Errorf("runs: invalid Session replacement: %w", err)
-	}
-	if s.State.ID() != sessionID {
-		return errors.New("runs: opening Session replacement differs from admitted Run")
-	}
-	if s.ExpectedRevision == 0 || exactint.Follows(s.ExpectedRevision, s.State.Revision()) != nil {
-		return errors.New("runs: opening Session replacement does not advance one revision")
-	}
-	return nil
 }
 
 // Validate proves that the opening is exactly one fresh admission or one tree
@@ -93,8 +71,12 @@ func (o OpeningCommit) validateAdmission() error {
 		}
 	}
 	if o.SessionReplacement != nil {
-		if err := o.SessionReplacement.Validate(o.Admit.SessionID); err != nil {
-			return err
+		if err := o.SessionReplacement.Validate(); err != nil {
+			return fmt.Errorf("runs: invalid opening Session replacement: %w", err)
+		}
+		if o.SessionReplacement.ExpectedRevision() == 0 ||
+			o.SessionReplacement.State().ID() != o.Admit.SessionID {
+			return errors.New("runs: opening Session replacement differs from admitted Run")
 		}
 	}
 	if o.InitialSession != nil && o.SessionReplacement != nil {

@@ -436,7 +436,7 @@ func (m *mutationStores) Get(context.Context, string) (session.Session, error) {
 	return session.Session{}, session.ErrNotFound
 }
 func (*mutationStores) Insert(context.Context, session.Session) error { panic("unused") }
-func (*mutationStores) Save(context.Context, uint64, session.Session) error {
+func (*mutationStores) Save(context.Context, session.Replacement) error {
 	panic("unused")
 }
 

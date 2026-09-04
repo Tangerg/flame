@@ -1118,17 +1118,18 @@ func (f *fakeSession) Insert(_ context.Context, value session.Session) error {
 	return nil
 }
 
-func (f *fakeSession) Save(_ context.Context, expected uint64, replacement session.Session) error {
-	if replacement.ID() != f.sess.ID() {
+func (f *fakeSession) Save(_ context.Context, replacement session.Replacement) error {
+	state := replacement.State()
+	if state.ID() != f.sess.ID() {
 		return session.ErrNotFound
 	}
-	if f.sess.Revision() != expected {
+	if f.sess.Revision() != replacement.ExpectedRevision() {
 		return session.ErrRevisionConflict
 	}
 	if f.modelErr != nil {
 		return f.modelErr
 	}
-	f.sess = replacement
+	f.sess = state
 	return nil
 }
 

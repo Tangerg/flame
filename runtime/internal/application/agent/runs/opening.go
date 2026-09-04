@@ -189,7 +189,7 @@ func (c *Coordinator) prepareRootStart(
 func prepareStartSessionReplacement(
 	preparation rootStartPreparation,
 	createdAt time.Time,
-) (*SessionReplacement, error) {
+) (*session.Replacement, error) {
 	if preparation.initialSession != nil || !preparation.requestedSelection.Configured() {
 		return nil, nil
 	}
@@ -202,9 +202,11 @@ func prepareStartSessionReplacement(
 	if !changed {
 		return nil, nil
 	}
-	return &SessionReplacement{
-		ExpectedRevision: preparation.session.Revision(), State: next,
-	}, nil
+	replacement, err := session.NextReplacement(preparation.session, next)
+	if err != nil {
+		return nil, fmt.Errorf("runs: prepare Session replacement: %w", err)
+	}
+	return &replacement, nil
 }
 
 func (c *Coordinator) resolveOpeningError(ctx context.Context, sessionID string, err error) error {

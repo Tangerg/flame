@@ -140,7 +140,11 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	writerDone := make(chan error, 1)
 	go func() {
 		writerDone <- sqlite.RunInTx(ctx, writerDB, func(ctx context.Context) error {
-			if saveErr := writerSessionStore.Save(ctx, original.Revision(), updatedSession); saveErr != nil {
+			replacement, replacementErr := session.NextReplacement(original, updatedSession)
+			if replacementErr != nil {
+				return replacementErr
+			}
+			if saveErr := writerSessionStore.Save(ctx, replacement); saveErr != nil {
 				return saveErr
 			}
 			originalCurrent, currentErr := plan.CurrentOf(originalPlan)

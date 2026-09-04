@@ -36,7 +36,7 @@ type Store interface {
 	ListPage(ctx context.Context, read session.CatalogRead) ([]session.Session, error)
 	Get(ctx context.Context, id string) (session.Session, error)
 	Insert(ctx context.Context, value session.Session) error
-	Save(ctx context.Context, expectedRevision uint64, replacement session.Session) error
+	Save(ctx context.Context, replacement session.Replacement) error
 }
 
 // ModelAdmitter validates an exact model choice before it becomes durable

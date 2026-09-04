@@ -597,8 +597,8 @@ func TestStartOwnsCompleteAdmissionSequence(t *testing.T) {
 	} else if opening.Admit.Limits != wantLimits {
 		t.Fatalf("opening limits = %+v, want %+v", opening.Admit.Limits, wantLimits)
 	} else if opening.SessionReplacement == nil ||
-		opening.SessionReplacement.State.ID() != "ses_1" ||
-		opening.SessionReplacement.State.Selection() != mustUseCaseSelection("provider", "model") {
+		opening.SessionReplacement.State().ID() != "ses_1" ||
+		opening.SessionReplacement.State().Selection() != mustUseCaseSelection("provider", "model") {
 		t.Fatalf("opening Session replacement = %+v, want ses_1/model", opening.SessionReplacement)
 	}
 }

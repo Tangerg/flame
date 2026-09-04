@@ -435,10 +435,7 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 		return err
 	}
 	if opening.SessionReplacement != nil {
-		if err := e.sessions.Save(
-			ctx, opening.SessionReplacement.ExpectedRevision,
-			opening.SessionReplacement.State,
-		); err != nil {
+		if err := e.sessions.Save(ctx, *opening.SessionReplacement); err != nil {
 			return fmt.Errorf("segment: persist opening Session replacement: %w", err)
 		}
 	}

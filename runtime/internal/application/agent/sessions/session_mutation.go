@@ -163,19 +163,19 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 func (c *Coordinator) prepareSessionRestore(
 	ctx context.Context,
 	restored session.Session,
-) (Replacement, error) {
+) (session.Replacement, error) {
 	current, err := c.Get(ctx, restored.ID())
 	if errors.Is(err, session.ErrNotFound) {
-		return InitialReplacement(restored)
+		return session.InitialReplacement(restored)
 	}
 	if err != nil {
-		return Replacement{}, err
+		return session.Replacement{}, err
 	}
 	next, err := current.ReplaceWithRestore(restored, c.now())
 	if err != nil {
-		return Replacement{}, err
+		return session.Replacement{}, err
 	}
-	return NextReplacement(current, next)
+	return session.NextReplacement(current, next)
 }
 
 // RestorePortableSession rebuilds and restores one transport-neutral archive.

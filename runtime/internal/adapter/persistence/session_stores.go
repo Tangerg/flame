@@ -337,12 +337,12 @@ func (s *SessionStores) ApplyRestore(ctx context.Context, restore sessions.Resto
 
 func (s *SessionStores) saveSessionReplacement(
 	ctx context.Context,
-	replacement sessions.Replacement,
+	replacement session.Replacement,
 ) error {
 	if replacement.ExpectedRevision() == 0 {
 		return s.sessions.Insert(ctx, replacement.State())
 	}
-	return s.sessions.Save(ctx, replacement.ExpectedRevision(), replacement.State())
+	return s.sessions.Save(ctx, replacement)
 }
 
 func (s *SessionStores) restorePlanAndHistory(ctx context.Context, sessionID string, restore sessions.RestorePlan) error {
