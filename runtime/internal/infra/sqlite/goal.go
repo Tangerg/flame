@@ -75,10 +75,12 @@ func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Current, er
 // adapter atomically persists the exact replacement.
 // INSERT-if-absent (not INSERT OR REPLACE) is deliberate — a stale writer whose
 // row was cleared must not resurrect it.
-func (g *GoalStore) Save(ctx context.Context, record goal.Goal, expected goal.Version) (bool, error) {
-	if err := expected.AdvancesTo(record); err != nil {
-		return false, fmt.Errorf("sqlite: validate Goal replacement: %w", err)
+func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (bool, error) {
+	if err := replacement.Validate(); err != nil {
+		return false, fmt.Errorf("sqlite: validate goal replacement: %w", err)
 	}
+	record := replacement.State()
+	expected := replacement.ExpectedVersion()
 	snapshot := record.Snapshot()
 	budget, err := encodeGoalBudget(snapshot.Budget)
 	if err != nil {
@@ -178,7 +180,11 @@ func (g *GoalStore) RecordRun(ctx context.Context, record goal.RunRecord) error 
 		if err != nil {
 			return fmt.Errorf("sqlite: apply Goal Run: %w", err)
 		}
-		applied, err := g.Save(ctx, replacement, expected)
+		change, err := goal.NewReplacement(expected, replacement)
+		if err != nil {
+			return fmt.Errorf("sqlite: prepare goal run replacement: %w", err)
+		}
+		applied, err := g.Save(ctx, change)
 		if err != nil {
 			return err
 		}

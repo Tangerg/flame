@@ -403,7 +403,11 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if applied, saveErr := goalStore.Save(ctx, goalValue, unwritten.Version()); saveErr != nil || !applied {
+	goalReplacement, err := goal.NewReplacement(unwritten.Version(), goalValue)
+	if err != nil {
+		t.Fatalf("prepare Goal replacement: %v", err)
+	}
+	if applied, saveErr := goalStore.Save(ctx, goalReplacement); saveErr != nil || !applied {
 		t.Fatalf("Save Goal: applied=%t err=%v", applied, saveErr)
 	}
 	if admitErr := runStore.Admit(ctx, run.Draft{

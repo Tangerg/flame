@@ -280,11 +280,15 @@ func (d *Driver) Start(
 	if err != nil {
 		return goal.Goal{}, err
 	}
+	change, err := goal.NewReplacement(expected, g)
+	if err != nil {
+		return goal.Goal{}, err
+	}
 	driveLease, ok := d.tryDriveLease(sessionID)
 	if !ok {
 		return goal.Goal{}, ErrGoalOwned
 	}
-	applied, err := d.goals.Save(ctx, g, expected)
+	applied, err := d.goals.Save(ctx, change)
 	if err != nil {
 		driveLease.Release()
 		return goal.Goal{}, err
@@ -352,11 +356,15 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 	if resumeErr != nil {
 		return goal.Goal{}, resumeErr
 	}
+	change, err := goal.NewReplacement(expected, replacement)
+	if err != nil {
+		return goal.Goal{}, err
+	}
 	driveLease, ok := d.tryDriveLease(sessionID)
 	if !ok {
 		return goal.Goal{}, ErrGoalOwned
 	}
-	applied, err := d.goals.Save(ctx, replacement, expected)
+	applied, err := d.goals.Save(ctx, change)
 	if err != nil {
 		driveLease.Release()
 		return goal.Goal{}, err
@@ -429,7 +437,11 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 	if transitionErr != nil {
 		return goal.Goal{}, errors.Join(transitionErr, quiesceErr)
 	}
-	applied, err := d.goals.Save(ctx, replacement, expected)
+	change, replacementErr := goal.NewReplacement(expected, replacement)
+	if replacementErr != nil {
+		return goal.Goal{}, errors.Join(replacementErr, quiesceErr)
+	}
+	applied, err := d.goals.Save(ctx, change)
 	if err != nil {
 		return goal.Goal{}, errors.Join(err, quiesceErr)
 	}
@@ -496,7 +508,11 @@ func (d *Driver) UpdateObjective(
 			return goal.Goal{}, errors.Join(err, quiesceErr)
 		}
 	}
-	applied, err := d.goals.Save(ctx, replacement, expected)
+	change, replacementErr := goal.NewReplacement(expected, replacement)
+	if replacementErr != nil {
+		return goal.Goal{}, errors.Join(replacementErr, quiesceErr)
+	}
+	applied, err := d.goals.Save(ctx, change)
 	if err != nil {
 		return goal.Goal{}, errors.Join(err, quiesceErr)
 	}
@@ -682,7 +698,12 @@ func (d *Driver) Reconcile(ctx context.Context) error {
 				lease.Release()
 				return transitionErr
 			}
-			if applied, err := d.goals.Save(ctx, replacement, expected); err != nil {
+			change, replacementErr := goal.NewReplacement(expected, replacement)
+			if replacementErr != nil {
+				lease.Release()
+				return replacementErr
+			}
+			if applied, err := d.goals.Save(ctx, change); err != nil {
 				lease.Release()
 				return err
 			} else if !applied {

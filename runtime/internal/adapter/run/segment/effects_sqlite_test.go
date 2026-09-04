@@ -964,7 +964,11 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saved, saveErr := goals.Save(ctx, g, unwritten.Version()); saveErr != nil || !saved {
+	goalReplacement, err := goal.NewReplacement(unwritten.Version(), g)
+	if err != nil {
+		t.Fatalf("prepare Goal replacement: %v", err)
+	}
+	if saved, saveErr := goals.Save(ctx, goalReplacement); saveErr != nil || !saved {
 		t.Fatalf("seed goal saved=%v err=%v", saved, saveErr)
 	}
 	state := sqlite.NewRunStore(db)

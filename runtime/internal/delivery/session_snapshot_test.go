@@ -88,7 +88,11 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if applied, saveErr := rt.goals.Save(t.Context(), standingGoal, unwritten.Version()); saveErr != nil || !applied {
+	goalReplacement, err := goal.NewReplacement(unwritten.Version(), standingGoal)
+	if err != nil {
+		t.Fatalf("prepare Goal replacement: %v", err)
+	}
+	if applied, saveErr := rt.goals.Save(t.Context(), goalReplacement); saveErr != nil || !applied {
 		t.Fatalf("save Goal: applied=%t err=%v", applied, saveErr)
 	}
 

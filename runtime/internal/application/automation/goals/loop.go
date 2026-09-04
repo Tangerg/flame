@@ -454,7 +454,11 @@ func (d *Driver) pauseOwned(
 		if transitionErr != nil {
 			return "", transitionErr
 		}
-		applied, err := d.goals.Save(ctx, candidate, expected)
+		change, replacementErr := goal.NewReplacement(expected, candidate)
+		if replacementErr != nil {
+			return "", replacementErr
+		}
+		applied, err := d.goals.Save(ctx, change)
 		if err != nil {
 			return "", err
 		}

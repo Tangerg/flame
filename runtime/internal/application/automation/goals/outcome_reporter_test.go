@@ -22,7 +22,9 @@ func (r *reportingStore) Get(_ context.Context, sessionID string) (goal.Current,
 	}
 	return goal.CurrentOf(r.goal)
 }
-func (r *reportingStore) Save(_ context.Context, next goal.Goal, expected goal.Version) (bool, error) {
+func (r *reportingStore) Save(_ context.Context, replacement goal.Replacement) (bool, error) {
+	next := replacement.State()
+	expected := replacement.ExpectedVersion()
 	if r.conflict || !r.present || r.goal.Version() != expected {
 		return false, nil
 	}

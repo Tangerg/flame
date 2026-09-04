@@ -31,10 +31,12 @@ func (m *memStore) Get(_ context.Context, id string) (goalstate.Current, error) 
 // put seeds a goal directly (test setup), bypassing the CAS.
 func (m *memStore) put(g goalstate.Goal) { m.goals[g.SessionID()] = g }
 
-func (m *memStore) Save(_ context.Context, g goalstate.Goal, expected goalstate.Version) (bool, error) {
-	if err := expected.AdvancesTo(g); err != nil {
+func (m *memStore) Save(_ context.Context, replacement goalstate.Replacement) (bool, error) {
+	if err := replacement.Validate(); err != nil {
 		return false, err
 	}
+	g := replacement.State()
+	expected := replacement.ExpectedVersion()
 	cur, ok := m.goals[g.SessionID()]
 	if expected.IsUnwritten() {
 		if ok {

@@ -85,7 +85,11 @@ func (o *OutcomeReporter) Report(ctx context.Context, cmd ReportCommand) (Report
 	if err != nil {
 		return "", err
 	}
-	applied, err := o.goals.Save(ctx, replacement, expected)
+	change, err := goal.NewReplacement(expected, replacement)
+	if err != nil {
+		return "", err
+	}
+	applied, err := o.goals.Save(ctx, change)
 	if err != nil {
 		return "", err
 	}

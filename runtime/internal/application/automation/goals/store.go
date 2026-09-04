@@ -13,10 +13,10 @@ import (
 // reconciled.
 type Store interface {
 	Get(ctx context.Context, sessionID string) (goal.Current, error)
-	// Save executes the domain-decided next durable revision. Expected is the
-	// sole CAS authority; persistence never assigns or rewrites Goal identity.
+	// Save executes one domain-decided exact durable replacement. Persistence
+	// never assigns or rewrites Goal identity.
 	// A lost compare-and-swap returns applied=false.
-	Save(ctx context.Context, g goal.Goal, expected goal.Version) (applied bool, err error)
+	Save(ctx context.Context, replacement goal.Replacement) (applied bool, err error)
 	ClearIf(ctx context.Context, sessionID string, expected goal.Version) (applied bool, err error)
 	List(ctx context.Context) ([]goal.Goal, error)
 }
