@@ -174,6 +174,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 214 | `ded0a709` + CLI dependency update | Completed Session Snapshot validation for Conversation and Plan values, making restore/export share one aggregate gate and removing the portable restore's duplicate Plan check. |
 | 215 | `2099e61f` + CLI dependency update | Validated and ownership-isolated Plan boundary reads so contradictory unrecorded steps cannot seed forks and invalid recorded values cannot reach rollback or persistence. |
 | 216 | `9a68ff21` + CLI dependency update | Added Domain row validation and bounded Application gates for discovered, managed, and proposed Skill catalogs, including exact proposal submission acknowledgements and review identity checks. |
+| 217 | `ff413d95` + CLI dependency update | Bounded the complete visible Approval-rule relation across Domain authorization, one-row SQLite overfetch, generated Runtime Protocol validation, and CLI consumption. |
 
 ## Verification contract
 
