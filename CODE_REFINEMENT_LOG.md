@@ -193,6 +193,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 233 | `1ab79caf` + CLI dependency update | Replaced terminal-only lost-Run commands with exact expected→replacement aggregates across boot recovery and parked Session termination, binding invocation cleanup to the recovered active Segment and giving SQLite an exact pre-transition CAS fence. |
 | 234 | `addb8d3c` + CLI dependency update | Removed the remaining terminal-only non-Event Run write path; waiting-subtree cancellation and parked Session termination now carry validated exact expected→replacement aggregates into SQLite CAS, while Event termination retains its Segment/commit fence. |
 | 235 | `3188bad3` + CLI dependency update | Collapsed the two Run suspension entrypoints; every tree-barrier member is now read- and write-fenced to its exact active Segment, while the root additionally records the barrier commit receipt. |
+| 236 | `3bf46d43` + CLI dependency update | Deleted the compaction-specific expected/replacement Run pair and routed Application plans, persistence validation, and SQLite watermark CAS through the canonical Run replacement value. |
 
 ## Verification contract
 
