@@ -55,17 +55,17 @@ type RecoveryAdmissions interface {
 // reconciliation. LostRuns are ordered child-before-parent. Checkpoint and
 // callback cleanup names only Sessions whose writer lease was acquired.
 type RecoveryCommit struct {
-	LostRuns                   []rundomain.Run
-	ItemReplacements           []ItemReplacement
-	ConversationTransitions    []RecoveryConversationTransition
-	ModelInvocations           []ModelInvocationRecovery
-	ToolInvocations            []ToolInvocationRecovery
-	GoalRuns                   []goal.RunRecord
-	DeleteInterrupts           []InterruptOwner
-	PreservedCheckpointRootIDs []string
-	// RecoveredSessionIDs is the exact set whose abandoned callback ledger
-	// may be retired. It never names a Session whose writer lease was contended.
-	RecoveredSessionIDs []string
+	LostRuns                []rundomain.Run
+	ItemReplacements        []ItemReplacement
+	ConversationTransitions []RecoveryConversationTransition
+	ModelInvocations        []ModelInvocationRecovery
+	ToolInvocations         []ToolInvocationRecovery
+	GoalRuns                []goal.RunRecord
+	DeleteInterrupts        []InterruptOwner
+	// PreservedSessionIDs names waiting trees whose compatible checkpoint keeps
+	// them live. Together with lost-tree Sessions it owns the exact callback
+	// cleanup scope.
+	PreservedSessionIDs []string
 	// DeleteCheckpointSessionIDs names recovered lost trees. A preserved waiting
 	// tree is intentionally absent so its opaque checkpoint remains available.
 	DeleteCheckpointSessionIDs []string
@@ -410,10 +410,6 @@ func newRecoveryPlanner(
 		preserved:     make(map[string]struct{}, len(trees)),
 		finishedAt:    recovery.now().UTC(),
 	}
-	for sessionID := range claims.sessionIDs {
-		planner.commit.RecoveredSessionIDs = append(planner.commit.RecoveredSessionIDs, sessionID)
-	}
-	slices.Sort(planner.commit.RecoveredSessionIDs)
 	// Recovery is a new durable observation in the same timelines as every
 	// fact it closes. Wall time can move backward across a reboot, so derive the
 	// observation timestamp from the complete boot snapshot instead of allowing
@@ -478,11 +474,7 @@ func (r *recoveryPlanner) plan() (RecoveryCommit, int, error) {
 	}
 	for _, open := range r.pending {
 		if _, preserved := r.preserved[open.RootRunID]; preserved {
-			root, _ := open.RootContinuation()
-			r.commit.PreservedCheckpointRootIDs = append(
-				r.commit.PreservedCheckpointRootIDs,
-				root.MemberID,
-			)
+			r.commit.PreservedSessionIDs = append(r.commit.PreservedSessionIDs, open.SessionID)
 		}
 	}
 	slices.SortFunc(r.commit.DeleteInterrupts, func(left, right InterruptOwner) int {
@@ -493,7 +485,7 @@ func (r *recoveryPlanner) plan() (RecoveryCommit, int, error) {
 	})
 	slices.SortFunc(r.commit.ModelInvocations, compareModelInvocationRecoveries)
 	slices.SortFunc(r.commit.ToolInvocations, compareToolInvocationRecoveries)
-	slices.Sort(r.commit.PreservedCheckpointRootIDs)
+	slices.Sort(r.commit.PreservedSessionIDs)
 	slices.Sort(r.commit.DeleteCheckpointSessionIDs)
 	if err := r.commit.Validate(); err != nil {
 		return RecoveryCommit{}, 0, err

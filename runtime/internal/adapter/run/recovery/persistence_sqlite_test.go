@@ -314,7 +314,6 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 		DeleteInterrupts: []runs.InterruptOwner{{
 			SessionID: active.SessionID(), RootRunID: active.ID(),
 		}},
-		RecoveredSessionIDs:        []string{"session_abandoned"},
 		DeleteCheckpointSessionIDs: []string{"session_abandoned"},
 	}
 	if commitRecoveryErr := failingStore.CommitRecovery(ctx, commit); !errors.Is(commitRecoveryErr, cleanupFailure) {

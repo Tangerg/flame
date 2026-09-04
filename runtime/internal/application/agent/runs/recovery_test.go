@@ -505,9 +505,9 @@ func TestRecoverySkipsFactsOwnedByAnotherRuntime(t *testing.T) {
 	if len(store.commit.ModelInvocations) != 1 || store.commit.ModelInvocations[0].RunID != recoverable.ID() {
 		t.Fatalf("recovery touched foreign invocation: %+v", store.commit.ModelInvocations)
 	}
-	if !reflect.DeepEqual(store.commit.RecoveredSessionIDs, []string{recoverable.SessionID()}) ||
+	if !reflect.DeepEqual(store.commit.RecoveredSessionIDs(), []string{recoverable.SessionID()}) ||
 		!reflect.DeepEqual(store.commit.DeleteCheckpointSessionIDs, []string{recoverable.SessionID()}) {
-		t.Fatalf("recovery cleanup scope = sessions:%v checkpoints:%v", store.commit.RecoveredSessionIDs, store.commit.DeleteCheckpointSessionIDs)
+		t.Fatalf("recovery cleanup scope = sessions:%v checkpoints:%v", store.commit.RecoveredSessionIDs(), store.commit.DeleteCheckpointSessionIDs)
 	}
 	if admissions.released[recoverable.SessionID()] != 1 || admissions.released[foreign.SessionID()] != 0 {
 		t.Fatalf("recovery releases = %+v", admissions.released)
@@ -851,8 +851,8 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 		store.commit.ItemReplacements[0].Replacement.Status() != transcript.ItemIncomplete {
 		t.Fatalf("Item replacements = %+v, want only the open Tool Item abandoned", store.commit.ItemReplacements)
 	}
-	if len(store.commit.PreservedCheckpointRootIDs) != 0 {
-		t.Fatalf("preserved checkpoints = %v, want none", store.commit.PreservedCheckpointRootIDs)
+	if len(store.commit.PreservedSessionIDs) != 0 {
+		t.Fatalf("preserved Sessions = %v, want none", store.commit.PreservedSessionIDs)
 	}
 	if len(store.commit.ModelInvocations) != 2 || len(store.commit.ToolInvocations) != 1 {
 		t.Fatalf(
@@ -1105,9 +1105,12 @@ func TestRecoveryPreservesOnlyCoherentInterruptedTree(t *testing.T) {
 	if recovered != 0 || !reflect.DeepEqual(validated, wantContinuation) || len(store.commit.LostRuns) != 0 {
 		t.Fatalf("recovery = %d validated=%+v commit=%+v", recovered, validated, store.commit)
 	}
-	if !reflect.DeepEqual(store.commit.PreservedCheckpointRootIDs, []string{"member_root"}) ||
+	if !reflect.DeepEqual(store.commit.PreservedSessionIDs, []string{run.SessionID()}) ||
 		len(store.commit.DeleteInterrupts) != 0 {
 		t.Fatalf("ownership plan = %+v", store.commit)
+	}
+	if got := store.commit.RecoveredSessionIDs(); !reflect.DeepEqual(got, []string{run.SessionID()}) {
+		t.Fatalf("recovered Session projection = %v, want preserved Session", got)
 	}
 }
 
@@ -1145,7 +1148,7 @@ func TestRecoveryPreservesQuestionToolWhileItsCheckpointIsResumable(t *testing.T
 		t.Fatalf("Reconcile: %v", err)
 	}
 	if recovered != 0 || checkpointCalls != 1 || len(store.commit.LostRuns) != 0 ||
-		!reflect.DeepEqual(store.commit.PreservedCheckpointRootIDs, []string{"member_root"}) {
+		!reflect.DeepEqual(store.commit.PreservedSessionIDs, []string{run.SessionID()}) {
 		t.Fatalf("recovery = %d checkpointCalls=%d commit=%+v", recovered, checkpointCalls, store.commit)
 	}
 }
@@ -1201,7 +1204,7 @@ func TestRecoveryTreatsUnavailableExecutorCheckpointAsResourceLoss(t *testing.T)
 	}
 	if recovered != 1 || len(store.commit.LostRuns) != 1 ||
 		!reflect.DeepEqual(store.commit.DeleteInterrupts, []InterruptOwner{{SessionID: run.SessionID(), RootRunID: run.ID()}}) ||
-		len(store.commit.PreservedCheckpointRootIDs) != 0 {
+		len(store.commit.PreservedSessionIDs) != 0 {
 		t.Fatalf("resource-loss recovery = %d, commit %+v", recovered, store.commit)
 	}
 }
@@ -1228,7 +1231,7 @@ func TestRecoveryTreatsInvalidExecutorCheckpointAsResourceLoss(t *testing.T) {
 		t.Fatalf("Reconcile: %v", err)
 	}
 	if recovered != 1 || checkpointCalls != 0 || len(store.commit.LostRuns) != 1 ||
-		len(store.commit.PreservedCheckpointRootIDs) != 0 {
+		len(store.commit.PreservedSessionIDs) != 0 {
 		t.Fatalf("invalid-checkpoint recovery = %d checkpointCalls=%d commit=%+v", recovered, checkpointCalls, store.commit)
 	}
 }
@@ -1311,7 +1314,7 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 				t.Fatalf("Reconcile: %v", err)
 			}
 			if recovered != 1 || probeCalls != 0 || len(store.commit.LostRuns) != 1 ||
-				len(store.commit.PreservedCheckpointRootIDs) != 0 {
+				len(store.commit.PreservedSessionIDs) != 0 {
 				t.Fatalf(
 					"mismatched checkpoint recovery=%d probeCalls=%d commit=%+v",
 					recovered,

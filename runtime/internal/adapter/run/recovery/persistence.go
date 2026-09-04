@@ -380,7 +380,7 @@ func (p *Persistence) deleteExecutorCheckpoints(ctx context.Context, commit runs
 }
 
 func (p *Persistence) deleteChildRunStartReservations(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, sessionID := range commit.RecoveredSessionIDs {
+	for _, sessionID := range commit.RecoveredSessionIDs() {
 		if err := p.childRunStarts.DeleteSession(ctx, sessionID); err != nil {
 			return fmt.Errorf(
 				"recovery: delete child Run start reservations for Session %q: %w",
