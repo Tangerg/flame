@@ -33,11 +33,14 @@ func TestRuntimeKnowledgePorts(t *testing.T) {
 	ctx := context.Background()
 	var notices []invalidation.Notice
 	store := &fakeKnowledgeStore{
-		entries: []knowledge.Entry{{
-			Scope:   knowledge.ScopeHome,
-			Content: "prefs",
-		}},
-		entry: knowledge.Entry{Scope: knowledge.ScopeProjectRoot, Content: "project notes", Revision: "rev-1"},
+		entries: []knowledge.Entry{
+			{Scope: knowledge.ScopeHome, Path: "/home/.flame/FLAME.md", Content: "prefs", Revision: "rev-home"},
+			{Scope: knowledge.ScopeCWD, Path: "/repo/work/FLAME.md", Revision: "rev-cwd"},
+		},
+		entry: knowledge.Entry{
+			Scope: knowledge.ScopeProjectRoot, Path: "/repo/FLAME.md",
+			Content: "project notes", Revision: "rev-1",
+		},
 	}
 	c := NewKnowledge(
 		NewScope("", "", testPaths{}),
@@ -52,7 +55,7 @@ func TestRuntimeKnowledgePorts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Entries err = %v", err)
 	}
-	if len(entries) != 1 || entries[0].Content != "prefs" || store.listCWD != "/repo/work" || store.listProjectRoot != "/repo" {
+	if len(entries) != 2 || entries[0].Content != "prefs" || store.listCWD != "/repo/work" || store.listProjectRoot != "/repo" {
 		t.Fatalf("Entries = %+v, cwd = %q, projectRoot = %q", entries, store.listCWD, store.listProjectRoot)
 	}
 
@@ -115,6 +118,42 @@ func TestRuntimeKnowledgeRejectsOversizedContentBeforeStore(t *testing.T) {
 	}
 }
 
+func TestRuntimeKnowledgeRejectsInvalidDurableMaterial(t *testing.T) {
+	validHome := knowledge.Entry{
+		Scope: knowledge.ScopeHome, Path: "/home/.flame/FLAME.md", Revision: "rev-home",
+	}
+	validCWD := knowledge.Entry{
+		Scope: knowledge.ScopeCWD, Path: "/repo/work/FLAME.md", Revision: "rev-cwd",
+	}
+	store := &fakeKnowledgeStore{entries: []knowledge.Entry{validCWD, validHome}}
+	var notices []invalidation.Notice
+	curation := NewKnowledge(
+		NewScope("", "", testPaths{}),
+		knowledgeInspector{resolved: Resolved{Path: "/repo/work", ProjectRoot: "/repo"}},
+		store, nil, func(notice invalidation.Notice) { notices = append(notices, notice) },
+	)
+
+	if _, err := curation.Entries(t.Context(), "/repo/work"); err == nil {
+		t.Fatal("out-of-order knowledge cascade was accepted")
+	}
+	store.entry = knowledge.Entry{
+		Scope: knowledge.ScopeHome, Path: validHome.Path, Revision: validHome.Revision,
+	}
+	if _, err := curation.Read(t.Context(), knowledge.ScopeCWD, "/repo/work"); err == nil {
+		t.Fatal("foreign knowledge entry was accepted")
+	}
+
+	store.updateEntry = knowledge.Entry{
+		Scope: knowledge.ScopeHome, Path: validHome.Path, Content: "different", Revision: "rev-2",
+	}
+	if _, err := curation.Update(t.Context(), knowledge.ScopeHome, "", "rev-1", "requested"); err == nil {
+		t.Fatal("incorrect knowledge update acknowledgement was accepted")
+	}
+	if len(notices) != 0 {
+		t.Fatalf("invalid acknowledgement published invalidations: %+v", notices)
+	}
+}
+
 func TestRuntimeKnowledgeMapsInfraContainmentWithoutLeakingFilesystemMechanics(t *testing.T) {
 	store := &fakeKnowledgeStore{err: knowledge.ErrPathOutsideScope}
 	c := NewKnowledge(
@@ -135,9 +174,10 @@ func TestRuntimeKnowledgeMapsInfraContainmentWithoutLeakingFilesystemMechanics(t
 }
 
 type fakeKnowledgeStore struct {
-	entries []knowledge.Entry
-	entry   knowledge.Entry
-	err     error
+	entries     []knowledge.Entry
+	entry       knowledge.Entry
+	updateEntry knowledge.Entry
+	err         error
 
 	listCWD         string
 	listProjectRoot string
@@ -171,7 +211,12 @@ func (f *fakeKnowledgeStore) Update(_ context.Context, scope knowledge.Scope, cw
 	if f.err != nil {
 		return knowledge.Entry{}, f.err
 	}
-	return knowledge.Entry{Scope: scope, Content: content, Revision: "rev-2"}, nil
+	if f.updateEntry != (knowledge.Entry{}) {
+		return f.updateEntry, nil
+	}
+	return knowledge.Entry{
+		Scope: scope, Path: "/home/.flame/FLAME.md", Content: content, Revision: "rev-2",
+	}, nil
 }
 
 type knowledgeInspector struct {

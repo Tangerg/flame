@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
@@ -64,7 +65,13 @@ func (k *Knowledge) Entries(ctx context.Context, cwd string) ([]knowledge.Entry,
 		return nil, err
 	}
 	entries, err := k.store.List(ctx, root, projectRoot)
-	return entries, knowledgePathError(err)
+	if err = knowledgePathError(err); err != nil {
+		return nil, err
+	}
+	if err := validateKnowledgeCascade(entries); err != nil {
+		return nil, err
+	}
+	return slices.Clone(entries), nil
 }
 
 // Read returns the FLAME.md content for one scope.
@@ -77,7 +84,10 @@ func (k *Knowledge) Read(ctx context.Context, scope knowledge.Scope, cwd string)
 	}
 	if scope == knowledge.ScopeHome {
 		entry, err := k.store.Get(ctx, scope, "")
-		return entry, knowledgePathError(err)
+		if err = knowledgePathError(err); err != nil {
+			return knowledge.Entry{}, err
+		}
+		return validateKnowledgeEntry(entry, scope)
 	}
 	root, err := k.scope.root(cwd)
 	if err != nil {
@@ -90,7 +100,10 @@ func (k *Knowledge) Read(ctx context.Context, scope knowledge.Scope, cwd string)
 		}
 	}
 	entry, err := k.store.Get(ctx, scope, root)
-	return entry, knowledgePathError(err)
+	if err = knowledgePathError(err); err != nil {
+		return knowledge.Entry{}, err
+	}
+	return validateKnowledgeEntry(entry, scope)
 }
 
 // Update conditionally replaces one FLAME.md document and returns the committed fact.
@@ -125,15 +138,53 @@ func (k *Knowledge) Update(ctx context.Context, scope knowledge.Scope, cwd, expe
 
 func (k *Knowledge) update(ctx context.Context, scope knowledge.Scope, root, expectedRevision, content string) (knowledge.Entry, error) {
 	entry, err := k.store.Update(ctx, scope, root, expectedRevision, content)
-	if err == nil {
-		if k.observations != nil {
-			k.observations.Accept(AuthoredChange{
-				Resource: AuthoredKnowledge, Identities: []string{entry.Path},
-			})
-		}
-		k.invalidations.Notify(invalidation.Notice{Resource: invalidation.Knowledge})
+	if err = knowledgePathError(err); err != nil {
+		return knowledge.Entry{}, err
 	}
-	return entry, knowledgePathError(err)
+	entry, err = validateKnowledgeEntry(entry, scope)
+	if err != nil {
+		return knowledge.Entry{}, err
+	}
+	if entry.Content != content {
+		return knowledge.Entry{}, fmt.Errorf("workspace: knowledge update did not acknowledge its content")
+	}
+	if k.observations != nil {
+		k.observations.Accept(AuthoredChange{
+			Resource: AuthoredKnowledge, Identities: []string{entry.Path},
+		})
+	}
+	k.invalidations.Notify(invalidation.Notice{Resource: invalidation.Knowledge})
+	return entry, nil
+}
+
+func validateKnowledgeEntry(entry knowledge.Entry, scope knowledge.Scope) (knowledge.Entry, error) {
+	if err := entry.Validate(); err != nil {
+		return knowledge.Entry{}, fmt.Errorf("workspace: invalid knowledge entry: %w", err)
+	}
+	if entry.Scope != scope {
+		return knowledge.Entry{}, fmt.Errorf(
+			"workspace: knowledge entry has scope %q, expected %q", entry.Scope, scope,
+		)
+	}
+	return entry, nil
+}
+
+func validateKnowledgeCascade(entries []knowledge.Entry) error {
+	var expected []knowledge.Scope
+	switch len(entries) {
+	case 2:
+		expected = []knowledge.Scope{knowledge.ScopeHome, knowledge.ScopeCWD}
+	case 3:
+		expected = []knowledge.Scope{knowledge.ScopeHome, knowledge.ScopeProjectRoot, knowledge.ScopeCWD}
+	default:
+		return fmt.Errorf("workspace: knowledge cascade has %d entries, expected 2 or 3", len(entries))
+	}
+	for index, entry := range entries {
+		if _, err := validateKnowledgeEntry(entry, expected[index]); err != nil {
+			return fmt.Errorf("workspace: knowledge cascade entry %d: %w", index+1, err)
+		}
+	}
+	return nil
 }
 
 func knowledgePathError(err error) error {

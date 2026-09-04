@@ -50,7 +50,9 @@ func (f *fakeKnowledgeStore) Update(_ context.Context, scope knowledge.Scope, cw
 	if f.updateErr != nil {
 		return knowledge.Entry{}, f.updateErr
 	}
-	return knowledge.Entry{Scope: scope, Content: content, Revision: "rev-2"}, nil
+	return knowledge.Entry{
+		Scope: scope, Path: "/home/.flame/FLAME.md", Content: content, Revision: "rev-2",
+	}, nil
 }
 
 // handlerWithKnowledge builds a test Handler whose knowledge use case is backed by
@@ -92,12 +94,13 @@ func TestListKnowledgeMapsEntriesToWire(t *testing.T) {
 	captured := time.Date(2026, 7, 5, 9, 0, 0, 0, time.UTC)
 	repo := t.TempDir()
 	store := &fakeKnowledgeStore{
-		entries: []knowledge.Entry{{
-			Scope:     knowledge.ScopeHome,
-			Content:   "Use short answers",
-			Revision:  "rev-1",
-			UpdatedAt: captured,
-		}},
+		entries: []knowledge.Entry{
+			{
+				Scope: knowledge.ScopeHome, Path: "/home/.flame/FLAME.md",
+				Content: "Use short answers", Revision: "rev-1", UpdatedAt: captured,
+			},
+			{Scope: knowledge.ScopeCWD, Path: filepath.Join(repo, "FLAME.md"), Revision: "rev-cwd"},
+		},
 	}
 	s := handlerWithKnowledge(store)
 
@@ -110,14 +113,15 @@ func TestListKnowledgeMapsEntriesToWire(t *testing.T) {
 	if store.listCWD != canonicalWorkspacePath(t, repo) {
 		t.Fatalf("cwd = %q, want %q", store.listCWD, canonicalWorkspacePath(t, repo))
 	}
-	if len(got.Data) != 1 || got.Data[0].Scope != protocol.KnowledgeScopeHome || got.Data[0].UpdatedAt != captured {
+	if len(got.Data) != 2 || got.Data[0].Scope != protocol.KnowledgeScopeHome || got.Data[0].UpdatedAt != captured {
 		t.Fatalf("wire knowledge = %+v", got.Data)
 	}
 }
 
 func TestGetAndUpdateKnowledgeMapScopeToRuntime(t *testing.T) {
 	store := &fakeKnowledgeStore{getEntry: knowledge.Entry{
-		Scope: knowledge.ScopeProjectRoot, Content: "project notes", Revision: "rev-1",
+		Scope: knowledge.ScopeProjectRoot, Path: "/repo/FLAME.md",
+		Content: "project notes", Revision: "rev-1",
 	}}
 	s := handlerWithKnowledge(store)
 	repo := t.TempDir()

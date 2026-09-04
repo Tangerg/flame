@@ -7,6 +7,7 @@ package knowledge
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -83,4 +84,23 @@ type Entry struct {
 	Content   string
 	Revision  string
 	UpdatedAt time.Time
+}
+
+// Validate rejects a knowledge entry that cannot safely enter management or
+// prompt projections. UpdatedAt is optional because an absent document and a
+// committed replacement whose post-rename stat failed have no reliable time.
+func (e Entry) Validate() error {
+	if err := e.Scope.Validate(); err != nil {
+		return err
+	}
+	if strings.TrimSpace(e.Path) == "" {
+		return fmt.Errorf("knowledge: entry path is required")
+	}
+	if err := ValidateDocument(e.Content); err != nil {
+		return err
+	}
+	if strings.TrimSpace(e.Revision) == "" {
+		return fmt.Errorf("knowledge: entry revision is required")
+	}
+	return nil
 }

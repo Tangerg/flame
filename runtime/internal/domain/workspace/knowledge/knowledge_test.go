@@ -30,3 +30,27 @@ func TestKnowledgeDocumentEnvelope(t *testing.T) {
 		t.Fatalf("oversized document error = %v, want ErrDocumentTooLarge", err)
 	}
 }
+
+func TestEntryValidation(t *testing.T) {
+	valid := Entry{Scope: ScopeHome, Path: "/home/FLAME.md", Revision: "rev-1"}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("valid entry: %v", err)
+	}
+
+	tests := map[string]Entry{
+		"scope":    {Scope: Scope("other"), Path: valid.Path, Revision: valid.Revision},
+		"path":     {Scope: valid.Scope, Revision: valid.Revision},
+		"revision": {Scope: valid.Scope, Path: valid.Path},
+		"content": {
+			Scope: valid.Scope, Path: valid.Path, Revision: valid.Revision,
+			Content: strings.Repeat("x", int(MaxDocumentBytes)+1),
+		},
+	}
+	for name, entry := range tests {
+		t.Run(name, func(t *testing.T) {
+			if err := entry.Validate(); err == nil {
+				t.Fatal("invalid entry was accepted")
+			}
+		})
+	}
+}
