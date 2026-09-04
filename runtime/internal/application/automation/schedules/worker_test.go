@@ -98,7 +98,7 @@ func TestWorkerFireDueLeavesFailedOccurrenceDue(t *testing.T) {
 
 func TestWorkerFireDueRejectsAnInvalidAggregate(t *testing.T) {
 	now := time.Date(2026, 6, 30, 10, 0, 0, 0, time.UTC)
-	store := &workerStore{due: []schedule.Schedule{{}}}
+	store := &workerStore{due: []schedule.Schedule{dueSchedule(t, "sch_valid", now), {}}}
 	runner := &recordingScheduledRunStarter{}
 
 	newWorker(workerDependencies{Store: store, RunStarter: runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID}).fireDue(context.Background(), now)
@@ -108,6 +108,71 @@ func TestWorkerFireDueRejectsAnInvalidAggregate(t *testing.T) {
 	}
 	if len(store.claims) != 0 {
 		t.Fatalf("claims = %+v, want none", store.claims)
+	}
+}
+
+func TestWorkerFireDueValidatesCompletePendingBatchBeforeDispatch(t *testing.T) {
+	now := time.Date(2026, 6, 30, 10, 0, 0, 0, time.UTC)
+	store := &workerStore{pending: []schedule.Occurrence{
+		pendingOccurrence(t, "sch_valid", now.Add(-time.Minute)),
+		{},
+	}}
+	runner := &recordingScheduledRunStarter{}
+
+	newWorker(workerDependencies{
+		Store: store, RunStarter: runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID,
+	}).fireDue(t.Context(), now)
+
+	if len(runner.startedScheduleIDs) != 0 {
+		t.Fatalf("started = %v, want none", runner.startedScheduleIDs)
+	}
+}
+
+func TestValidatePendingBatchRejectsBrokenStoreResults(t *testing.T) {
+	now := time.Date(2026, 6, 30, 10, 0, 0, 0, time.UTC)
+	first := pendingOccurrence(t, "sch_1", now.Add(-2*time.Minute))
+	second := pendingOccurrence(t, "sch_2", now.Add(-time.Minute))
+	sameSchedule := pendingOccurrence(t, "sch_1", now.Add(-time.Minute))
+	for name, test := range map[string]struct {
+		rows    []schedule.Occurrence
+		maximum int
+	}{
+		"excess rows":          {rows: []schedule.Occurrence{first, second}, maximum: 1},
+		"invalid after valid":  {rows: []schedule.Occurrence{first, {}}, maximum: 2},
+		"duplicate occurrence": {rows: []schedule.Occurrence{first, first}, maximum: 2},
+		"duplicate Schedule":   {rows: []schedule.Occurrence{first, sameSchedule}, maximum: 2},
+		"out of order":         {rows: []schedule.Occurrence{second, first}, maximum: 2},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := validatePendingBatch(test.rows, test.maximum); err == nil {
+				t.Fatal("validatePendingBatch accepted a broken store result")
+			}
+		})
+	}
+}
+
+func TestValidateDueBatchRejectsBrokenStoreResults(t *testing.T) {
+	now := time.Date(2026, 6, 30, 10, 0, 0, 0, time.UTC)
+	first := dueSchedule(t, "sch_1", now.Add(-2*time.Minute))
+	second := dueSchedule(t, "sch_2", now.Add(-time.Minute))
+	for name, test := range map[string]struct {
+		rows    []schedule.Schedule
+		maximum int
+	}{
+		"excess rows":         {rows: []schedule.Schedule{first, second}, maximum: 1},
+		"invalid after valid": {rows: []schedule.Schedule{first, {}}, maximum: 2},
+		"duplicate Schedule":  {rows: []schedule.Schedule{first, first}, maximum: 2},
+		"not due":             {rows: []schedule.Schedule{dueSchedule(t, "sch_future", now.Add(time.Minute))}, maximum: 1},
+		"cursor out of order": {rows: []schedule.Schedule{second, first}, maximum: 2},
+		"id tie out of order": {rows: []schedule.Schedule{
+			dueSchedule(t, "sch_b", now), dueSchedule(t, "sch_a", now),
+		}, maximum: 2},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := validateDueBatch(test.rows, now, test.maximum); err == nil {
+				t.Fatal("validateDueBatch accepted a broken store result")
+			}
+		})
 	}
 }
 
@@ -210,4 +275,18 @@ func dueSchedule(t testing.TB, id string, dueAt time.Time) schedule.Schedule {
 		ID: id, Instructions: "review", Cron: "* * * * *", Enabled: true,
 		CreatedAt: dueAt.Add(-time.Hour), NextRunAt: dueAt, Revision: 1,
 	})
+}
+
+func pendingOccurrence(t testing.TB, scheduleID string, dueAt time.Time) schedule.Occurrence {
+	t.Helper()
+	claim, err := schedule.NewClaim(
+		dueSchedule(t, scheduleID, dueAt),
+		"ses_"+scheduleID,
+		"run_"+scheduleID+"_"+dueAt.Format("150405"),
+		dueAt,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return claim.Occurrence()
 }

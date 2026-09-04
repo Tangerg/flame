@@ -122,6 +122,10 @@ func (w worker) fireDue(ctx context.Context, now time.Time) {
 		recordWorkerError(ctx, "pending query failed", err)
 		return
 	}
+	if err := validatePendingBatch(occurrences, workerBatchSize); err != nil {
+		recordWorkerError(ctx, "invalid pending batch", err)
+		return
+	}
 	batch := occurrenceBatch{ctx: ctx, runStarter: w.runStarter, invalidations: w.invalidations}
 	if !batch.dispatchAll(occurrences) || batch.full() {
 		return
@@ -129,6 +133,10 @@ func (w worker) fireDue(ctx context.Context, now time.Time) {
 	due, err := w.schedules.Due(ctx, now, batch.remaining())
 	if err != nil {
 		recordWorkerError(ctx, "due query failed", err)
+		return
+	}
+	if err := validateDueBatch(due, now, batch.remaining()); err != nil {
+		recordWorkerError(ctx, "invalid due batch", err)
 		return
 	}
 	for _, scheduled := range due {
@@ -143,6 +151,64 @@ func (w worker) fireDue(ctx context.Context, now time.Time) {
 			return
 		}
 	}
+}
+
+func validatePendingBatch(occurrences []schedule.Occurrence, maximum int) error {
+	if len(occurrences) > maximum {
+		return fmt.Errorf("schedules: store returned %d pending occurrences, maximum %d", len(occurrences), maximum)
+	}
+	seenOccurrences := make(map[string]struct{}, len(occurrences))
+	seenSchedules := make(map[string]struct{}, len(occurrences))
+	for index, occurrence := range occurrences {
+		if err := occurrence.Validate(); err != nil {
+			return fmt.Errorf("schedules: pending occurrence[%d] is invalid: %w", index, err)
+		}
+		if _, duplicate := seenOccurrences[occurrence.ID()]; duplicate {
+			return fmt.Errorf("schedules: pending batch repeats occurrence %q", occurrence.ID())
+		}
+		seenOccurrences[occurrence.ID()] = struct{}{}
+		if _, duplicate := seenSchedules[occurrence.ScheduleID()]; duplicate {
+			return fmt.Errorf("schedules: pending batch repeats Schedule %q", occurrence.ScheduleID())
+		}
+		seenSchedules[occurrence.ScheduleID()] = struct{}{}
+		if index == 0 {
+			continue
+		}
+		previous := occurrences[index-1]
+		if occurrence.DueAt().Before(previous.DueAt()) ||
+			occurrence.DueAt().Equal(previous.DueAt()) && occurrence.ID() <= previous.ID() {
+			return fmt.Errorf("schedules: pending occurrence %q is out of order after %q", occurrence.ID(), previous.ID())
+		}
+	}
+	return nil
+}
+
+func validateDueBatch(due []schedule.Schedule, now time.Time, maximum int) error {
+	if len(due) > maximum {
+		return fmt.Errorf("schedules: store returned %d due schedules, maximum %d", len(due), maximum)
+	}
+	seen := make(map[string]struct{}, len(due))
+	for index, scheduled := range due {
+		if err := scheduled.ValidateStored(); err != nil {
+			return fmt.Errorf("schedules: due schedule[%d] is invalid: %w", index, err)
+		}
+		if !scheduled.Enabled() || scheduled.NextRunAt().IsZero() || scheduled.NextRunAt().After(now) {
+			return fmt.Errorf("schedules: Schedule %q is not due", scheduled.ID())
+		}
+		if _, duplicate := seen[scheduled.ID()]; duplicate {
+			return fmt.Errorf("schedules: due batch repeats Schedule %q", scheduled.ID())
+		}
+		seen[scheduled.ID()] = struct{}{}
+		if index == 0 {
+			continue
+		}
+		previous := due[index-1]
+		if scheduled.NextRunAt().Before(previous.NextRunAt()) ||
+			scheduled.NextRunAt().Equal(previous.NextRunAt()) && scheduled.ID() <= previous.ID() {
+			return fmt.Errorf("schedules: due Schedule %q is out of order after %q", scheduled.ID(), previous.ID())
+		}
+	}
+	return nil
 }
 
 type occurrenceBatch struct {
