@@ -83,11 +83,8 @@ func (r RecoveryCommit) Validate() error {
 	if err := validateRecoveryModelInvocations(r.ModelInvocations, lostByID, recoveredSessions); err != nil {
 		return err
 	}
-	if err := validateRecoveryToolInvocations(r.ToolInvocations, lostByID, recoveredSessions); err != nil {
-		return err
-	}
 
-	replacedItems := make(map[string]struct{}, len(r.ItemReplacements))
+	replacedItems := make(map[string]ItemReplacement, len(r.ItemReplacements))
 	for index, replacement := range r.ItemReplacements {
 		owner, found := lostByID[replacement.Expected.RunID()]
 		if !found || replacement.Expected.SessionID() != owner.SessionID() {
@@ -102,7 +99,15 @@ func (r RecoveryCommit) Validate() error {
 		if _, duplicate := replacedItems[replacement.Expected.ID()]; duplicate {
 			return fmt.Errorf("runs: recovery commit repeats Item replacement %q", replacement.Expected.ID())
 		}
-		replacedItems[replacement.Expected.ID()] = struct{}{}
+		replacedItems[replacement.Expected.ID()] = replacement
+	}
+	if err := validateRecoveryToolInvocations(
+		r.ToolInvocations,
+		lostByID,
+		recoveredSessions,
+		replacedItems,
+	); err != nil {
+		return err
 	}
 	if err := validateRecoveryGoalRuns(r.GoalRuns, lostByID); err != nil {
 		return err
@@ -163,6 +168,7 @@ func validateRecoveryToolInvocations(
 	invocations []ToolInvocationRecovery,
 	lostByID map[string]rundomain.Run,
 	recoveredSessions map[string]struct{},
+	replacedItems map[string]ItemReplacement,
 ) error {
 	seen := make(map[recoverySegmentResourceKey]struct{}, len(invocations))
 	seenItems := make(map[recoverySegmentResourceKey]struct{}, len(invocations))
@@ -181,6 +187,16 @@ func validateRecoveryToolInvocations(
 		}
 		if _, err := resourceid.ParseItem(invocation.ItemID); err != nil {
 			return fmt.Errorf("runs: recovery commit Tool invocation[%d]: %w", index, err)
+		}
+		if _, lost := lostByID[invocation.RunID]; lost {
+			replacement, present := replacedItems[invocation.ItemID]
+			if !present || replacement.Expected.RunID() != invocation.RunID {
+				return fmt.Errorf(
+					"runs: recovery commit Tool invocation[%d] %q has no matching lost-Run Item replacement",
+					index,
+					invocation.CallID,
+				)
+			}
 		}
 		key := recoverySegmentResourceKey{resourceID: invocation.CallID, segmentID: invocation.SegmentID}
 		if _, duplicate := seen[key]; duplicate {

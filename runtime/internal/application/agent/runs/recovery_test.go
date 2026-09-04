@@ -895,6 +895,11 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 	if err := foreignCheckpointDeletion.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted checkpoint cleanup for an unrelated Session")
 	}
+	missingToolReplacement := store.commit
+	missingToolReplacement.ItemReplacements = nil
+	if err := missingToolReplacement.Validate(); err == nil {
+		t.Fatal("RecoveryCommit.Validate accepted a lost-Run Tool journal without its Item replacement")
+	}
 }
 
 func TestRecoveryDoesNotMoveDurableTimeBackwardWhenTheClockRegresses(t *testing.T) {
