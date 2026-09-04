@@ -57,7 +57,7 @@ type RecoveryAdmissions interface {
 // Sessions whose writer lease was acquired.
 type RecoveryCommit struct {
 	LostRuns                []rundomain.Replacement
-	ItemReplacements        []ItemReplacement
+	ItemReplacements        []transcript.Replacement
 	ConversationTransitions []RecoveryConversationTransition
 	ModelInvocations        []ModelInvocationRecovery
 	ToolInvocations         []ToolInvocationRecovery
@@ -703,9 +703,9 @@ func recoverLostTree(
 	items []transcript.Item,
 	messageMark int,
 	finishedAt time.Time,
-) ([]rundomain.Replacement, []ItemReplacement, error) {
+) ([]rundomain.Replacement, []transcript.Replacement, error) {
 	lostRuns := make([]rundomain.Replacement, 0, len(tree.postorder))
-	var replacements []ItemReplacement
+	var replacements []transcript.Replacement
 	for _, runID := range tree.postorder {
 		active := tree.runsByID[runID]
 		for _, item := range items {
@@ -720,7 +720,11 @@ func recoverLostTree(
 			if err != nil {
 				return nil, nil, fmt.Errorf("runs: recover lost Item %q: %w", item.ID(), err)
 			}
-			replacements = append(replacements, ItemReplacement{Expected: item, Replacement: replacement})
+			itemReplacement, err := transcript.NewReplacement(item, replacement)
+			if err != nil {
+				return nil, nil, fmt.Errorf("runs: prepare lost Item %q replacement: %w", item.ID(), err)
+			}
+			replacements = append(replacements, itemReplacement)
 		}
 
 		lost, err := active.RecoverLost(rundomain.Failure{

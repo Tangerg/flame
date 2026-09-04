@@ -1302,10 +1302,10 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	if err != nil || !found {
 		t.Fatalf("stored question Item = found:%t err:%v", found, err)
 	}
-	if !reflect.DeepEqual(storedQuestion.Snapshot(), replacements[0].Expected.Snapshot()) {
+	if !reflect.DeepEqual(storedQuestion.Snapshot(), replacements[0].Expected().Snapshot()) {
 		storedValue, _ := storedQuestion.Question()
-		expectedValue, _ := replacements[0].Expected.Question()
-		t.Fatalf("stored/expected question differ:\n stored: %#v\nexpected: %#v\nitems: %#v / %#v", storedValue, expectedValue, storedQuestion.Snapshot(), replacements[0].Expected.Snapshot())
+		expectedValue, _ := replacements[0].Expected().Question()
+		t.Fatalf("stored/expected question differ:\n stored: %#v\nexpected: %#v\nitems: %#v / %#v", storedValue, expectedValue, storedQuestion.Snapshot(), replacements[0].Expected().Snapshot())
 	}
 
 	stale := pending
@@ -1962,15 +1962,15 @@ func TestCommitWaitingSubtreeCancellationCommitsCompleteWriteSet(t *testing.T) {
 		t.Fatalf("conversation after child cancellation = %+v err=%v, want %+v", messages, err, fixture.commit.ConversationMessages)
 	}
 	for _, terminal := range fixture.commit.TerminalItems {
-		item, found, itemErr := fixture.transcript.Item(fixture.ctx, terminal.Expected.ID())
-		if itemErr != nil || !found || !sameItemSnapshot(item, terminal.Replacement) {
+		item, found, itemErr := fixture.transcript.Item(fixture.ctx, terminal.Expected().ID())
+		if itemErr != nil || !found || !sameItemSnapshot(item, terminal.State()) {
 			t.Fatalf(
 				"terminal interrupt Item %q = found:%t value:%+v err:%v, want %+v",
-				terminal.Expected.ID(),
+				terminal.Expected().ID(),
 				found,
 				item,
 				itemErr,
-				terminal.Replacement,
+				terminal.State(),
 			)
 		}
 	}
@@ -2084,13 +2084,16 @@ func TestCommitWaitingSubtreeCancellationReconcilesAmbiguousCommit(t *testing.T)
 
 func TestCommitWaitingSubtreeCancellationRollsBackCheckpointAndApplicationFacts(t *testing.T) {
 	fixture := newWaitingCancellationSQLiteFixture(t)
-	staleSnapshot := fixture.commit.ParentItem.Expected.Snapshot()
+	staleSnapshot := fixture.commit.ParentItem.Expected().Snapshot()
 	staleSnapshot.Identity.OccurredAt = fixture.parentItem.OccurredAt().Add(-time.Second)
 	stale, err := transcript.RestoreItem(staleSnapshot)
 	if err != nil {
 		t.Fatalf("restore stale parent Item: %v", err)
 	}
-	fixture.commit.ParentItem.Expected = stale
+	fixture.commit.ParentItem = testsupport.MustItemReplacement(
+		stale,
+		fixture.commit.ParentItem.State(),
+	)
 
 	if _, commitWaitingSubtreeCancellationErr := fixture.effects.CommitWaitingSubtreeCancellation(
 		fixture.ctx,
@@ -2458,7 +2461,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 	if err != nil {
 		t.Fatalf("settle parent Item: %v", err)
 	}
-	var terminalItems []runs.ItemReplacement
+	var terminalItems []transcript.Replacement
 	var (
 		remainingPending *runs.Pending
 		resume           *run.TreeResumeDraft
@@ -2548,9 +2551,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 				testsupport.MustRunReplacement(childRun, terminalChild),
 			},
 			TerminalItems: terminalItems,
-			ParentItem: runs.ItemReplacement{
-				Expected: parentItem, Replacement: replacementItem,
-			},
+			ParentItem:    testsupport.MustItemReplacement(parentItem, replacementItem),
 			ConversationMessages: []chat.Message{chat.NewToolMessage(chat.ToolResult{
 				ID: "provider_child", Name: "delegate_task",
 				Output: chat.NewTextToolOutput("error: tool \"delegate_task\" failed: stop delegated branch"), IsError: true,

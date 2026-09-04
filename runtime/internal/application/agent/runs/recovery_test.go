@@ -852,8 +852,8 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 		}
 	}
 	if len(store.commit.ItemReplacements) != 1 ||
-		store.commit.ItemReplacements[0].Expected.ID() != toolItem.ID() ||
-		store.commit.ItemReplacements[0].Replacement.Status() != transcript.ItemIncomplete {
+		store.commit.ItemReplacements[0].Expected().ID() != toolItem.ID() ||
+		store.commit.ItemReplacements[0].State().Status() != transcript.ItemIncomplete {
 		t.Fatalf("Item replacements = %+v, want only the open Tool Item abandoned", store.commit.ItemReplacements)
 	}
 	if len(store.commit.PreservedSessionIDs) != 0 {
@@ -1003,8 +1003,8 @@ func TestRecoveryDoesNotMoveDurableTimeBackwardWhenTheClockRegresses(t *testing.
 				}
 			}
 			for _, replacement := range store.commit.ItemReplacements {
-				if !replacement.Replacement.FinishedAt().Equal(test.want) {
-					t.Fatalf("Item finish = %v, want %v", replacement.Replacement.FinishedAt(), test.want)
+				if !replacement.State().FinishedAt().Equal(test.want) {
+					t.Fatalf("Item finish = %v, want %v", replacement.State().FinishedAt(), test.want)
 				}
 			}
 		})

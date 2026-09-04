@@ -151,28 +151,18 @@ func (t *TranscriptStore) Item(ctx context.Context, itemID string) (transcript.I
 // overwritten by a cancellation built from an older parked projection.
 func (t *TranscriptStore) ReplaceItem(
 	ctx context.Context,
-	expected transcript.Item,
-	replacement transcript.Item,
+	change transcript.Replacement,
 ) error {
-	if expected.ID() == "" || replacement.ID() == "" {
-		return errors.New("sqlite: replace history item requires both item ids")
+	if err := change.Validate(); err != nil {
+		return fmt.Errorf("sqlite: replace history Item: %w", err)
 	}
-	if expected.ID() != replacement.ID() ||
-		expected.SessionID() != replacement.SessionID() ||
-		expected.RunID() != replacement.RunID() {
-		return fmt.Errorf("%w: replacement changes item %q ownership", transcript.ErrIdentityConflict, expected.ID())
-	}
+	expected := change.Expected()
+	replacement := change.State()
 	expectedTool, expectedHasTool := expected.ToolInvocation()
 	replacementTool, replacementHasTool := replacement.ToolInvocation()
 	if (expectedHasTool && expectedTool.Offload != nil) ||
 		(replacementHasTool && replacementTool.Offload != nil) {
 		return errors.New("sqlite: replace history item does not support offloaded tool results")
-	}
-	if err := expected.Validate(); err != nil {
-		return fmt.Errorf("sqlite: replace history item %q expected value: %w", expected.ID(), err)
-	}
-	if err := replacement.Validate(); err != nil {
-		return fmt.Errorf("sqlite: replace history item %q replacement: %w", replacement.ID(), err)
 	}
 	return RunInTx(ctx, t.db, func(ctx context.Context) error {
 		current, found, err := t.Item(ctx, expected.ID())

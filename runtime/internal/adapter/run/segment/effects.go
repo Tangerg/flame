@@ -78,7 +78,7 @@ type TranscriptStore interface {
 }
 
 type ItemReplacer interface {
-	ReplaceItem(ctx context.Context, expected transcript.Item, replacement transcript.Item) error
+	ReplaceItem(ctx context.Context, replacement transcript.Replacement) error
 }
 
 // ToolApprovalStore is the exact transcript read/CAS surface used at the
@@ -86,7 +86,7 @@ type ItemReplacer interface {
 // domain transition, and replaces that same immutable value atomically.
 type ToolApprovalStore interface {
 	Item(ctx context.Context, itemID string) (transcript.Item, bool, error)
-	ReplaceItem(ctx context.Context, expected transcript.Item, replacement transcript.Item) error
+	ReplaceItem(ctx context.Context, replacement transcript.Replacement) error
 }
 
 type ToolResultStore interface {

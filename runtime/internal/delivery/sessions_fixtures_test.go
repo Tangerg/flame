@@ -1030,7 +1030,7 @@ func (inertRuntimeStores) AppendItem(context.Context, transcript.Item) error    
 func (inertRuntimeStores) Item(context.Context, string) (transcript.Item, bool, error) {
 	return transcript.Item{}, false, nil
 }
-func (inertRuntimeStores) ReplaceItem(context.Context, transcript.Item, transcript.Item) error {
+func (inertRuntimeStores) ReplaceItem(context.Context, transcript.Replacement) error {
 	return nil
 }
 func (inertRuntimeStores) StartModelInvocation(context.Context, string, string, string, string, time.Time) error {

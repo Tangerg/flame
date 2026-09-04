@@ -148,12 +148,12 @@ func (r ResumeClaimCommit) ToolApprovalResolutions() ([]ToolApprovalResolution, 
 // every accepted Question answer. It is computed by the Application from the
 // exact Pending snapshot and validated resolutions; the persistence port only
 // executes these replacements in the same transaction as the claim.
-func (r ResumeClaimCommit) QuestionReplacements() ([]ItemReplacement, error) {
+func (r ResumeClaimCommit) QuestionReplacements() ([]transcript.Replacement, error) {
 	answersByItem := make(map[string]InterruptAnswer, len(r.Answers))
 	for _, answer := range r.Answers {
 		answersByItem[answer.InterruptItemID] = answer
 	}
-	replacements := make([]ItemReplacement, 0, len(r.Expected.Interrupts))
+	replacements := make([]transcript.Replacement, 0, len(r.Expected.Interrupts))
 	for _, request := range r.Expected.Interrupts {
 		if request.Kind != interrupt.Question {
 			continue
@@ -178,9 +178,11 @@ func (r ResumeClaimCommit) QuestionReplacements() ([]ItemReplacement, error) {
 		if err != nil {
 			return nil, fmt.Errorf("answer question item %q: %w", request.ItemID, err)
 		}
-		replacements = append(replacements, ItemReplacement{
-			Expected: expected, Replacement: replacement,
-		})
+		itemReplacement, err := transcript.NewReplacement(expected, replacement)
+		if err != nil {
+			return nil, fmt.Errorf("prepare question item %q replacement: %w", request.ItemID, err)
+		}
+		replacements = append(replacements, itemReplacement)
 	}
 	return replacements, nil
 }

@@ -85,22 +85,26 @@ func (r RecoveryCommit) Validate() error {
 		return err
 	}
 
-	replacedItems := make(map[string]ItemReplacement, len(r.ItemReplacements))
+	replacedItems := make(map[string]transcript.Replacement, len(r.ItemReplacements))
 	for index, replacement := range r.ItemReplacements {
-		owner, found := lostByID[replacement.Expected.RunID()]
-		if !found || replacement.Expected.SessionID() != owner.State().SessionID() {
+		if err := replacement.Validate(); err != nil {
+			return fmt.Errorf("runs: recovery commit Item replacement[%d]: %w", index, err)
+		}
+		expected := replacement.Expected()
+		owner, found := lostByID[expected.RunID()]
+		if !found || expected.SessionID() != owner.State().SessionID() {
 			return fmt.Errorf(
 				"runs: recovery commit Item %q is not owned by a lost Run",
-				replacement.Expected.ID(),
+				expected.ID(),
 			)
 		}
 		if err := validateRecoveryItemReplacement(replacement, owner.State().FinishedAt()); err != nil {
 			return fmt.Errorf("runs: recovery commit Item replacement[%d]: %w", index, err)
 		}
-		if _, duplicate := replacedItems[replacement.Expected.ID()]; duplicate {
-			return fmt.Errorf("runs: recovery commit repeats Item replacement %q", replacement.Expected.ID())
+		if _, duplicate := replacedItems[expected.ID()]; duplicate {
+			return fmt.Errorf("runs: recovery commit repeats Item replacement %q", expected.ID())
 		}
-		replacedItems[replacement.Expected.ID()] = replacement
+		replacedItems[expected.ID()] = replacement
 	}
 	if err := validateRecoveryToolInvocations(
 		r.ToolInvocations,
@@ -189,7 +193,7 @@ func validateRecoveryToolInvocations(
 	invocations []ToolInvocationRecovery,
 	lostByID map[string]rundomain.Replacement,
 	recoveredSessions map[string]struct{},
-	replacedItems map[string]ItemReplacement,
+	replacedItems map[string]transcript.Replacement,
 ) error {
 	seen := make(map[recoverySegmentResourceKey]struct{}, len(invocations))
 	seenItems := make(map[recoverySegmentResourceKey]struct{}, len(invocations))
@@ -211,7 +215,7 @@ func validateRecoveryToolInvocations(
 		}
 		if _, lost := lostByID[invocation.RunID]; lost {
 			replacement, present := replacedItems[invocation.ItemID]
-			if !present || replacement.Expected.RunID() != invocation.RunID {
+			if !present || replacement.Expected().RunID() != invocation.RunID {
 				return fmt.Errorf(
 					"runs: recovery commit Tool invocation[%d] %q has no matching lost-Run Item replacement",
 					index,
@@ -406,15 +410,9 @@ func validateRecoveryClosureMessages(rootID string, messages []corechat.Message)
 	return nil
 }
 
-func validateRecoveryItemReplacement(replacement ItemReplacement, finishedAt time.Time) error {
-	expected := replacement.Expected
-	actual := replacement.Replacement
-	if err := expected.Validate(); err != nil {
-		return fmt.Errorf("expected Item: %w", err)
-	}
-	if err := actual.Validate(); err != nil {
-		return fmt.Errorf("replacement Item: %w", err)
-	}
+func validateRecoveryItemReplacement(replacement transcript.Replacement, finishedAt time.Time) error {
+	expected := replacement.Expected()
+	actual := replacement.State()
 	if expected.ID() == "" || expected.SessionID() == "" || expected.RunID() == "" {
 		return errors.New("expected Item identity is incomplete")
 	}

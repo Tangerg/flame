@@ -153,8 +153,8 @@ func TestPrepareWaitingCancellationKeepsSurvivingExternalBoundary(t *testing.T) 
 		t.Fatalf("terminal Runs = %v, want canonical postorder %v", got, want)
 	}
 	if len(transformation.terminalItems) != 1 ||
-		transformation.terminalItems[0].Expected.ID() != "item_target_tool" ||
-		transformation.terminalItems[0].Replacement.Status() != transcript.ItemIncomplete {
+		transformation.terminalItems[0].Expected().ID() != "item_target_tool" ||
+		transformation.terminalItems[0].State().Status() != transcript.ItemIncomplete {
 		t.Fatalf("terminal Tool Items = %+v, want canceled branch Tool settled once", transformation.terminalItems)
 	}
 	if len(transformation.conversationMessages) != 1 ||
@@ -931,7 +931,7 @@ func assertSettledParentTool(
 	callID string,
 ) {
 	t.Helper()
-	replacement := transformation.parentItem.Replacement
+	replacement := transformation.parentItem.State()
 	failure, failed := replacement.Failure()
 	if replacement.ID() != itemID || replacement.Status() != transcript.ItemIncomplete ||
 		!failed || failure.Kind != tool.FailureChildRunCanceled {

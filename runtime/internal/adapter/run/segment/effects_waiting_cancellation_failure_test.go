@@ -35,13 +35,12 @@ type failingWaitingItemReplacer struct {
 
 func (f failingWaitingItemReplacer) ReplaceItem(
 	ctx context.Context,
-	expected transcript.Item,
-	replacement transcript.Item,
+	replacement transcript.Replacement,
 ) error {
-	if f.failItemID == "" || f.failItemID == expected.ID() {
+	if f.failItemID == "" || f.failItemID == replacement.Expected().ID() {
 		return f.err
 	}
-	return f.ItemReplacer.ReplaceItem(ctx, expected, replacement)
+	return f.ItemReplacer.ReplaceItem(ctx, replacement)
 }
 
 type failingWaitingRunWriter struct {

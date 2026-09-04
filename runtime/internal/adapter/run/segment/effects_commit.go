@@ -147,7 +147,7 @@ type childRunStartReservationPayload struct {
 type preparedResumeClaim struct {
 	claim                runs.ResumeClaimCommit
 	root                 runs.Continuation
-	questionReplacements []runs.ItemReplacement
+	questionReplacements []transcript.Replacement
 	approvalResolutions  []runs.ToolApprovalResolution
 }
 
@@ -231,8 +231,8 @@ func (e *Effects) applyResumeClaim(
 		}
 	}
 	for _, replacement := range prepared.questionReplacements {
-		if err := e.itemReplacer.ReplaceItem(ctx, replacement.Expected, replacement.Replacement); err != nil {
-			return fmt.Errorf("segment: record answered question %q: %w", replacement.Expected.ID(), err)
+		if err := e.itemReplacer.ReplaceItem(ctx, replacement); err != nil {
+			return fmt.Errorf("segment: record answered question %q: %w", replacement.Expected().ID(), err)
 		}
 	}
 	if err := e.executorCheckpoints.DeleteCheckpoints(
@@ -334,7 +334,11 @@ func (e *Effects) resolveToolApproval(
 	if err != nil {
 		return err
 	}
-	return e.toolApprovals.ReplaceItem(ctx, current, replacement)
+	change, err := transcript.NewReplacement(current, replacement)
+	if err != nil {
+		return fmt.Errorf("prepare Tool approval Item replacement: %w", err)
+	}
+	return e.toolApprovals.ReplaceItem(ctx, change)
 }
 
 func claimedResumeResult(claim runs.ResumeClaimCommit, checkpoint runs.ExecutorCheckpoint) runs.ClaimedResume {

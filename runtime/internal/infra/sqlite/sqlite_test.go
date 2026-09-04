@@ -369,7 +369,10 @@ func TestTranscriptStoreReplaceItemUsesExactOptimisticSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("classify Item: %v", err)
 	}
-	if replaceItemErr := store.ReplaceItem(t.Context(), original, replacement); replaceItemErr != nil {
+	if replaceItemErr := store.ReplaceItem(
+		t.Context(),
+		testsupport.MustItemReplacement(original, replacement),
+	); replaceItemErr != nil {
 		t.Fatalf("ReplaceItem: %v", replaceItemErr)
 	}
 	stored, found, err := store.Item(t.Context(), original.ID())
@@ -389,7 +392,10 @@ func TestTranscriptStoreReplaceItemUsesExactOptimisticSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("classify stale Item: %v", err)
 	}
-	err = store.ReplaceItem(t.Context(), original, staleReplacement)
+	err = store.ReplaceItem(
+		t.Context(),
+		testsupport.MustItemReplacement(original, staleReplacement),
+	)
 	if !errors.Is(err, transcript.ErrIdentityConflict) {
 		t.Fatalf("stale ReplaceItem error = %v, want ErrIdentityConflict", err)
 	}

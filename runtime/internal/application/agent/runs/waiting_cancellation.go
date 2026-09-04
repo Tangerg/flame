@@ -79,8 +79,8 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 
 type waitingCancellationTransformation struct {
 	terminalRuns         []rundomain.Replacement
-	terminalItems        []ItemReplacement
-	parentItem           ItemReplacement
+	terminalItems        []transcript.Replacement
+	parentItem           transcript.Replacement
 	remaining            *Pending
 	continuation         *treeContinuation
 	checkpoint           ExecutorCheckpoint
@@ -161,13 +161,15 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 }
 
 func (w waitingCancellationBuilder) parentConversationMessages(
-	parentItem ItemReplacement,
+	parentItem transcript.Replacement,
 	continuations []Continuation,
 ) ([]corechat.Message, error) {
-	if parentItem.Expected.RunID() != w.plan.root.run.ID() {
+	expectedParent := parentItem.Expected()
+	parentState := parentItem.State()
+	if expectedParent.RunID() != w.plan.root.run.ID() {
 		return nil, nil
 	}
-	failure, failed := parentItem.Replacement.Failure()
+	failure, failed := parentState.Failure()
 	if !failed {
 		return nil, errors.New("runs: waiting cancellation parent Tool has no failure")
 	}
@@ -176,7 +178,7 @@ func (w waitingCancellationBuilder) parentConversationMessages(
 			continue
 		}
 		for _, committed := range continuation.CommittedTools {
-			if committed.ItemID != parentItem.Expected.ID() {
+			if committed.ItemID != expectedParent.ID() {
 				continue
 			}
 			if committed.SourceCallID == "" {
@@ -190,7 +192,7 @@ func (w waitingCancellationBuilder) parentConversationMessages(
 	}
 	return nil, fmt.Errorf(
 		"runs: root spawning Tool %q has no committed continuation",
-		parentItem.Expected.ID(),
+		expectedParent.ID(),
 	)
 }
 
@@ -310,7 +312,7 @@ func (w waitingCancellationBuilder) terminalProjection(
 
 func (w waitingCancellationBuilder) settleWaitingItems(
 	canceledMembers map[string]struct{},
-) ([]ItemReplacement, ItemReplacement, []Continuation, error) {
+) ([]transcript.Replacement, transcript.Replacement, []Continuation, error) {
 	failure := tool.Failure{
 		Kind:   tool.FailureChildRunCanceled,
 		Detail: w.reason,
@@ -318,9 +320,13 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 	parentItem := w.plan.spawningItem
 	replacement, err := parentItem.AbandonToolCall(&failure, w.finishedAt)
 	if err != nil {
-		return nil, ItemReplacement{}, nil, fmt.Errorf("runs: classify spawning Item: %w", err)
+		return nil, transcript.Replacement{}, nil, fmt.Errorf("runs: classify spawning Item: %w", err)
 	}
-	terminalItems := make([]ItemReplacement, 0, len(w.plan.targetInterruptItems)+len(w.plan.targetDrainedItems))
+	parentReplacement, err := transcript.NewReplacement(parentItem, replacement)
+	if err != nil {
+		return nil, transcript.Replacement{}, nil, fmt.Errorf("runs: prepare spawning Item replacement: %w", err)
+	}
+	terminalItems := make([]transcript.Replacement, 0, len(w.plan.targetInterruptItems)+len(w.plan.targetDrainedItems))
 	toolItems := slices.Clone(w.plan.targetDrainedItems)
 	for _, item := range w.plan.targetInterruptItems {
 		if item.Kind() == transcript.ToolCall {
@@ -334,12 +340,13 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 		}
 		settled, err := item.AbandonToolCall(&itemFailure, w.finishedAt)
 		if err != nil {
-			return nil, ItemReplacement{}, nil, fmt.Errorf("runs: settle waiting Item %q: %w", item.ID(), err)
+			return nil, transcript.Replacement{}, nil, fmt.Errorf("runs: settle waiting Item %q: %w", item.ID(), err)
 		}
-		terminalItems = append(terminalItems, ItemReplacement{
-			Expected:    item,
-			Replacement: settled,
-		})
+		itemReplacement, err := transcript.NewReplacement(item, settled)
+		if err != nil {
+			return nil, transcript.Replacement{}, nil, fmt.Errorf("runs: prepare waiting Item %q replacement: %w", item.ID(), err)
+		}
+		terminalItems = append(terminalItems, itemReplacement)
 	}
 
 	continuations := make([]Continuation, 0, len(w.plan.survivingTree))
@@ -354,7 +361,7 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 		if continuation.RunID == w.plan.target.run.Lineage().ParentRunID {
 			parentInvocation, present := parentItem.ToolInvocation()
 			if !present {
-				return nil, ItemReplacement{}, nil, fmt.Errorf("runs: spawning Item %q has no invocation", parentItem.ID())
+				return nil, transcript.Replacement{}, nil, fmt.Errorf("runs: spawning Item %q has no invocation", parentItem.ID())
 			}
 			var matches []DrainedTool
 			clone.DrainedTools = slices.DeleteFunc(clone.DrainedTools, func(tool DrainedTool) bool {
@@ -365,7 +372,7 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 				return true
 			})
 			if len(matches) != 1 {
-				return nil, ItemReplacement{}, nil, fmt.Errorf(
+				return nil, transcript.Replacement{}, nil, fmt.Errorf(
 					"runs: parent Run %q continuation has %d drained tools for spawning Item %q",
 					continuation.RunID,
 					len(matches),
@@ -375,7 +382,7 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 			tool := matches[0]
 			if tool.Name != parentInvocation.Name ||
 				tool.Arguments != parentInvocation.Arguments.Canonical() {
-				return nil, ItemReplacement{}, nil, fmt.Errorf(
+				return nil, transcript.Replacement{}, nil, fmt.Errorf(
 					"runs: spawning Item %q differs from its drained tool identity",
 					parentItem.ID(),
 				)
@@ -393,12 +400,12 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 		continuations = append(continuations, clone)
 	}
 	if !parentToolMoved {
-		return nil, ItemReplacement{}, nil, fmt.Errorf(
+		return nil, transcript.Replacement{}, nil, fmt.Errorf(
 			"runs: waiting cancellation did not settle spawning Item %q",
 			parentItem.ID(),
 		)
 	}
-	return terminalItems, ItemReplacement{Expected: parentItem, Replacement: replacement}, continuations, nil
+	return terminalItems, parentReplacement, continuations, nil
 }
 
 func (w waitingCancellationBuilder) remainingInterruptions(

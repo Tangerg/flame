@@ -103,3 +103,14 @@ func MustRestoreItem(input ItemInput) transcript.Item {
 	}
 	return item
 }
+
+// MustItemReplacement returns one validated exact Item replacement or panics.
+// Production callers handle construction errors; fixtures use this helper to
+// keep their intended state transition readable.
+func MustItemReplacement(expected, state transcript.Item) transcript.Replacement {
+	replacement, err := transcript.NewReplacement(expected, state)
+	if err != nil {
+		panic(err)
+	}
+	return replacement
+}

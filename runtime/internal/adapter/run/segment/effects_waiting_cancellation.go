@@ -109,22 +109,21 @@ func (e *Effects) persistWaitingCancellationProjection(
 	}
 	if err := e.itemReplacer.ReplaceItem(
 		ctx,
-		commit.ParentItem.Expected,
-		commit.ParentItem.Replacement,
+		commit.ParentItem,
 	); err != nil {
 		return fmt.Errorf(
 			"segment: replace spawning Item %q for waiting child Run %q: %w",
-			commit.ParentItem.Expected.ID(),
+			commit.ParentItem.Expected().ID(),
 			commit.TargetRunID,
 			err,
 		)
 	}
 	for _, item := range commit.TerminalItems {
-		if err := e.itemReplacer.ReplaceItem(ctx, item.Expected, item.Replacement); err != nil {
+		if err := e.itemReplacer.ReplaceItem(ctx, item); err != nil {
 			return fmt.Errorf(
 				"segment: settle interrupted Item %q for canceled Run %q: %w",
-				item.Expected.ID(),
-				item.Expected.RunID(),
+				item.Expected().ID(),
+				item.Expected().RunID(),
 				err,
 			)
 		}

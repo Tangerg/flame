@@ -125,7 +125,7 @@ func (inertItems) Item(context.Context, string) (transcript.Item, bool, error) {
 	return transcript.Item{}, false, nil
 }
 
-func (inertItems) ReplaceItem(context.Context, transcript.Item, transcript.Item) error {
+func (inertItems) ReplaceItem(context.Context, transcript.Replacement) error {
 	return nil
 }
 

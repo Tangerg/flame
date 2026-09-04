@@ -33,7 +33,7 @@ type InterruptStore interface {
 
 type TranscriptStore interface {
 	List(ctx context.Context, sessionID string) ([]transcript.Item, error)
-	ReplaceItem(ctx context.Context, expected transcript.Item, replacement transcript.Item) error
+	ReplaceItem(ctx context.Context, replacement transcript.Replacement) error
 }
 
 type ConversationStore interface {
@@ -333,8 +333,8 @@ func (p *Persistence) applyConversationTransitions(ctx context.Context, commit r
 
 func (p *Persistence) replaceTranscriptItems(ctx context.Context, commit runs.RecoveryCommit) error {
 	for _, replacement := range commit.ItemReplacements {
-		if err := p.transcript.ReplaceItem(ctx, replacement.Expected, replacement.Replacement); err != nil {
-			return fmt.Errorf("recovery: replace transcript Item %q: %w", replacement.Expected.ID(), err)
+		if err := p.transcript.ReplaceItem(ctx, replacement); err != nil {
+			return fmt.Errorf("recovery: replace transcript Item %q: %w", replacement.Expected().ID(), err)
 		}
 	}
 	return nil

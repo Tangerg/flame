@@ -16,11 +16,6 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-type ItemReplacement struct {
-	Expected    transcript.Item
-	Replacement transcript.Item
-}
-
 // WaitingSubtreeCancellationCommit is the immutable write-set for canceling a
 // child while its Run tree is waiting.
 type WaitingSubtreeCancellationCommit struct {
@@ -35,8 +30,8 @@ type WaitingSubtreeCancellationCommit struct {
 	RemainingPending     *Pending
 	Checkpoint           ExecutorCheckpoint
 	TerminalRuns         []rundomain.Replacement
-	TerminalItems        []ItemReplacement
-	ParentItem           ItemReplacement
+	TerminalItems        []transcript.Replacement
+	ParentItem           transcript.Replacement
 	ConversationMessages []corechat.Message
 	Resume               *rundomain.TreeResumeDraft
 	// OpeningEvents are nested projections of this cancellation transaction.
@@ -326,22 +321,26 @@ func (w waitingCancellationValidation) validateTerminalItems() error {
 	}
 	seen := make(map[string]struct{}, len(c.TerminalItems))
 	for index, replacement := range c.TerminalItems {
-		expectedTool, expected := expectedByItemID[replacement.Expected.ID()]
-		if !expected || replacement.Expected.SessionID() != c.SessionID ||
-			replacement.Expected.RunID() != expectedTool.runID || replacement.Expected.Status() != transcript.ItemRunning {
+		if err := replacement.Validate(); err != nil {
+			return fmt.Errorf("runs: waiting cancellation terminal Item[%d]: %w", index, err)
+		}
+		expectedItem := replacement.Expected()
+		expectedTool, expected := expectedByItemID[expectedItem.ID()]
+		if !expected || expectedItem.SessionID() != c.SessionID ||
+			expectedItem.RunID() != expectedTool.runID || expectedItem.Status() != transcript.ItemRunning {
 			return fmt.Errorf("runs: waiting cancellation terminal Item[%d] is outside canceled Tools", index)
 		}
-		if _, duplicate := seen[replacement.Expected.ID()]; duplicate {
-			return fmt.Errorf("runs: waiting cancellation repeats terminal Item %q", replacement.Expected.ID())
+		if _, duplicate := seen[expectedItem.ID()]; duplicate {
+			return fmt.Errorf("runs: waiting cancellation repeats terminal Item %q", expectedItem.ID())
 		}
-		seen[replacement.Expected.ID()] = struct{}{}
+		seen[expectedItem.ID()] = struct{}{}
 		if err := validateTerminalItemReplacement(
 			expectedTool.name,
 			expectedTool.arguments,
 			replacement,
 			w.finishedAtByRunID[expectedTool.runID],
 		); err != nil {
-			return fmt.Errorf("runs: waiting cancellation terminal Item %q: %w", replacement.Expected.ID(), err)
+			return fmt.Errorf("runs: waiting cancellation terminal Item %q: %w", expectedItem.ID(), err)
 		}
 	}
 	return nil
@@ -350,23 +349,25 @@ func (w waitingCancellationValidation) validateTerminalItems() error {
 func validateTerminalItemReplacement(
 	toolName string,
 	arguments string,
-	replacement ItemReplacement,
+	replacement transcript.Replacement,
 	finishedAt time.Time,
 ) error {
-	invocation, present := replacement.Expected.ToolInvocation()
-	if replacement.Expected.Kind() != transcript.ToolCall || !present ||
+	expectedItem := replacement.Expected()
+	replacementItem := replacement.State()
+	invocation, present := expectedItem.ToolInvocation()
+	if expectedItem.Kind() != transcript.ToolCall || !present ||
 		invocation.Name != toolName || invocation.Arguments.Canonical() != arguments {
 		return errors.New("tool Item differs from its pending identity")
 	}
-	failure, failed := replacement.Replacement.Failure()
+	failure, failed := replacementItem.Failure()
 	if !failed || failure.Kind != tool.FailureExecution {
 		return errors.New("tool replacement has an invalid failure")
 	}
-	expected, err := replacement.Expected.AbandonToolCall(&failure, finishedAt)
+	expected, err := expectedItem.AbandonToolCall(&failure, finishedAt)
 	if err != nil {
 		return err
 	}
-	if !reflect.DeepEqual(expected.Snapshot(), replacement.Replacement.Snapshot()) {
+	if !reflect.DeepEqual(expected.Snapshot(), replacementItem.Snapshot()) {
 		return errors.New("replacement changes facts beyond terminal status")
 	}
 	return nil
@@ -441,13 +442,13 @@ func (w waitingCancellationValidation) validateSurvivingContinuations() error {
 	for _, actual := range c.RemainingPending.Continuations {
 		expected := w.continuationByRunID[actual.RunID]
 		if actual.RunID == target.Lineage.ParentRunID {
-			failure, failed := c.ParentItem.Replacement.Failure()
+			failure, failed := c.ParentItem.State().Failure()
 			if !failed {
 				return errors.New("runs: waiting cancellation parent replacement has no failure")
 			}
 			var matched []DrainedTool
 			expected.DrainedTools = slices.DeleteFunc(slices.Clone(expected.DrainedTools), func(candidate DrainedTool) bool {
-				if candidate.ItemID != c.ParentItem.Expected.ID() {
+				if candidate.ItemID != c.ParentItem.Expected().ID() {
 					return false
 				}
 				matched = append(matched, candidate)
@@ -497,7 +498,10 @@ func (w waitingCancellationValidation) validateOpeningEvents() error {
 
 func (w waitingCancellationValidation) validateParentItem() error {
 	c := w.commit
-	expected, replacement := c.ParentItem.Expected, c.ParentItem.Replacement
+	if err := c.ParentItem.Validate(); err != nil {
+		return fmt.Errorf("runs: waiting cancellation parent Item: %w", err)
+	}
+	expected, replacement := c.ParentItem.Expected(), c.ParentItem.State()
 	target := w.continuationByRunID[c.TargetRunID]
 	if expected.ID() == "" || expected.ID() != replacement.ID() ||
 		expected.ID() != target.Lineage.SpawnedByItemID || expected.SessionID() != c.SessionID ||
@@ -528,7 +532,9 @@ func (w waitingCancellationValidation) validateParentItem() error {
 
 func (w waitingCancellationValidation) validateConversationMessages() error {
 	c := w.commit
-	if c.ParentItem.Expected.RunID() != c.RootRunID {
+	parentExpected := c.ParentItem.Expected()
+	parentState := c.ParentItem.State()
+	if parentExpected.RunID() != c.RootRunID {
 		if len(c.ConversationMessages) != 0 {
 			return errors.New("runs: non-root child cancellation carries root conversation messages")
 		}
@@ -538,7 +544,7 @@ func (w waitingCancellationValidation) validateConversationMessages() error {
 	var committed CommittedTool
 	found := false
 	for _, drained := range parentContinuation.DrainedTools {
-		if drained.ItemID != c.ParentItem.Expected.ID() {
+		if drained.ItemID != parentExpected.ID() {
 			continue
 		}
 		committed = CommittedTool{
@@ -548,7 +554,7 @@ func (w waitingCancellationValidation) validateConversationMessages() error {
 		found = true
 		break
 	}
-	failure, failed := c.ParentItem.Replacement.Failure()
+	failure, failed := parentState.Failure()
 	if !found || committed.SourceCallID == "" || !failed {
 		return errors.New("runs: root child cancellation cannot correlate its model-context Tool result")
 	}
