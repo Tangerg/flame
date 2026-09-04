@@ -176,6 +176,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 216 | `9a68ff21` + CLI dependency update | Added Domain row validation and bounded Application gates for discovered, managed, and proposed Skill catalogs, including exact proposal submission acknowledgements and review identity checks. |
 | 217 | `ff413d95` + CLI dependency update | Bounded the complete visible Approval-rule relation across Domain authorization, one-row SQLite overfetch, generated Runtime Protocol validation, and CLI consumption. |
 | 218 | `78d59b77` + CLI dependency update | Unified exact workspace inspection validation across Discovery, Session views, Knowledge, and authored observation, rejecting contradictory aliases before public projection. |
+| 219 | `aceef0e3` + CLI dependency update | Replaced raw diagnostic-call JSON across Delivery, Application, and the tool adapter with the canonical Tool arguments value, and moved shared Tool metadata validation into Domain. |
 
 ## Verification contract
 
