@@ -125,6 +125,10 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 	if err != nil {
 		return View{}, err
 	}
+	restore, err := NewRestorePlan(snapshot, sessionReplacement, planReplacement)
+	if err != nil {
+		return View{}, err
+	}
 	committedSession := sessionReplacement.State()
 	var view View
 	err = c.withGoalMutation(
@@ -142,7 +146,7 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 					return fmt.Errorf("sessions: discard sandbox copy before restore: %w", discardErr)
 				}
 			}
-			return c.writes.ApplyRestore(ctx, restorePlan(snapshot, sessionReplacement, planReplacement))
+			return c.writes.ApplyRestore(ctx, restore)
 		},
 		func(context.Context) error {
 			// Restore replaced the whole history, so process-local read evidence

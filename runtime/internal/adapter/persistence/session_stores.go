@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/scope/core/chat"
+
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
@@ -309,37 +311,40 @@ func (s *SessionStores) deleteRolledBackRuns(ctx context.Context, sessionID stri
 // ApplyRestore replaces every durable projection for a restored session in one
 // transaction.
 func (s *SessionStores) ApplyRestore(ctx context.Context, restore sessions.RestorePlan) error {
-	if s.toolResults == nil && len(restore.ToolResults) > 0 {
+	if err := restore.Validate(); err != nil {
+		return fmt.Errorf("persistence: invalid restore plan: %w", err)
+	}
+	sessionReplacement := restore.SessionReplacement()
+	snapshot := restore.Snapshot()
+	planReplacement := restore.PlanReplacement()
+	if s.toolResults == nil && len(snapshot.ToolResults) > 0 {
 		return errors.New("persistence: cannot restore tool results without blob persistence")
 	}
 	return s.tx(ctx, func(ctx context.Context) error {
-		if err := restore.Session.Validate(); err != nil {
-			return fmt.Errorf("persistence: invalid Session restore replacement: %w", err)
-		}
-		restoredSession := restore.Session.State()
+		restoredSession := sessionReplacement.State()
 		sessionID := restoredSession.ID()
-		if err := s.saveSessionReplacement(ctx, restore.Session); err != nil {
+		if err := s.saveSessionReplacement(ctx, sessionReplacement); err != nil {
 			return err
 		}
 		// Keep the live Plan row when a replacement was prepared: deleting it would
 		// reset the session's revision space before the CAS update.
-		if restore.PlanReplacement == nil {
+		if planReplacement == nil {
 			if err := s.clearSessionOwnedState(ctx, sessionID); err != nil {
 				return err
 			}
 		} else if err := s.clearSessionOwnedStateExceptPlan(ctx, sessionID); err != nil {
 			return err
 		}
-		if err := s.restorePlanAndHistory(ctx, sessionID, restore); err != nil {
+		if err := s.restorePlanAndHistory(ctx, sessionID, snapshot.Messages, planReplacement); err != nil {
 			return err
 		}
-		if err := s.restoreRuns(ctx, restore.Runs); err != nil {
+		if err := s.restoreRuns(ctx, snapshot.Runs); err != nil {
 			return err
 		}
-		if err := s.appendTranscriptItems(ctx, restore.Items); err != nil {
+		if err := s.appendTranscriptItems(ctx, snapshot.Items); err != nil {
 			return err
 		}
-		return s.restoreToolResults(ctx, restore.ToolResults)
+		return s.restoreToolResults(ctx, snapshot.ToolResults)
 	})
 }
 
@@ -353,11 +358,16 @@ func (s *SessionStores) saveSessionReplacement(
 	return s.sessions.Save(ctx, replacement)
 }
 
-func (s *SessionStores) restorePlanAndHistory(ctx context.Context, sessionID string, restore sessions.RestorePlan) error {
-	if err := s.savePlanReplacement(ctx, sessionID, restore.PlanReplacement); err != nil {
+func (s *SessionStores) restorePlanAndHistory(
+	ctx context.Context,
+	sessionID string,
+	messages []chat.Message,
+	planReplacement *plan.Replacement,
+) error {
+	if err := s.savePlanReplacement(ctx, sessionID, planReplacement); err != nil {
 		return err
 	}
-	return s.history.Seed(ctx, sessionID, restore.Messages)
+	return s.history.Seed(ctx, sessionID, messages)
 }
 
 func (s *SessionStores) savePlanReplacement(ctx context.Context, sessionID string, replacement *plan.Replacement) error {

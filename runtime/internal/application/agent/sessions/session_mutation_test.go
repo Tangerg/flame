@@ -272,7 +272,7 @@ func TestRestoreSessionAppliesPlan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RestoreSession: %v", err)
 	}
-	if len(stores.restored) != 1 || stores.restored[0].Session.State().ID() != "ses_1" || len(stores.restored[0].Messages) != 1 {
+	if len(stores.restored) != 1 || stores.restored[0].SessionReplacement().State().ID() != "ses_1" || len(stores.restored[0].Snapshot().Messages) != 1 {
 		t.Fatalf("restored = %+v, want one plan for ses_1 with 1 message", stores.restored)
 	}
 	want := []string{"interrupt.read", "session.quiesce", "sandbox.discard:ses_1", "apply.restore", "session.context.forget"}
@@ -303,7 +303,7 @@ func TestRestoreSessionPresentsTheCommittedReplacementRevision(t *testing.T) {
 	if view.Revision != 5 {
 		t.Fatalf("restored view revision = %d, want committed replacement revision 5", view.Revision)
 	}
-	if len(stores.restored) != 1 || stores.restored[0].Session.State().Revision() != view.Revision {
+	if len(stores.restored) != 1 || stores.restored[0].SessionReplacement().State().Revision() != view.Revision {
 		t.Fatalf("restored write/view revisions differ: plans=%+v view=%+v", stores.restored, view)
 	}
 }

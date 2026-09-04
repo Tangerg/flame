@@ -11,39 +11,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
-
-// RestorePlan is the atomic durable command for replacing a session aggregate.
-// It is intentionally distinct from Snapshot, the export read model: the
-// explicit command makes the persistence boundary's destructive operation
-// visible instead of silently accepting every snapshot-shaped value.
-type RestorePlan struct {
-	Session     session.Replacement
-	Messages    []chat.Message
-	Items       []transcript.Item
-	Runs        []rundomain.Run
-	ToolResults []toolresult.Blob
-	// PlanReplacement is the already-decided restored Plan transition. It updates
-	// the live row in place so the target session's revision space never restarts.
-	PlanReplacement *plan.Replacement
-}
-
-func restorePlan(
-	snapshot Snapshot,
-	sessionReplacement session.Replacement,
-	planReplacement *plan.Replacement,
-) RestorePlan {
-	return RestorePlan{
-		Session: sessionReplacement, Messages: snapshot.Messages, Items: snapshot.Items,
-		Runs: runsInParentFirstOrder(snapshot.Runs), ToolResults: snapshot.ToolResults,
-		PlanReplacement: planReplacement,
-	}
-}
 
 // runsInParentFirstOrder gives persistence a creation-safe tree order while
 // preserving the archive's order among peers. Snapshot validation has already

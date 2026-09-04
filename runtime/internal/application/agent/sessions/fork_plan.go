@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
@@ -32,9 +29,9 @@ func NewForkPlan(
 	if err != nil {
 		return ForkPlan{}, fmt.Errorf("sessions: fork plan parent: %w", err)
 	}
-	owned, err := ownForkSnapshot(snapshot)
+	owned, err := ownWriteSnapshot(snapshot)
 	if err != nil {
-		return ForkPlan{}, err
+		return ForkPlan{}, fmt.Errorf("sessions: fork plan snapshot: %w", err)
 	}
 	replacement, err := ownForkPlanReplacement(owned.Plan, planReplacement)
 	if err != nil {
@@ -48,26 +45,6 @@ func NewForkPlan(
 		return ForkPlan{}, err
 	}
 	return fork, nil
-}
-
-func ownForkSnapshot(snapshot Snapshot) (Snapshot, error) {
-	normalized, err := snapshot.NormalizeForRestore()
-	if err != nil {
-		return Snapshot{}, fmt.Errorf("sessions: fork plan snapshot normalization: %w", err)
-	}
-	history, err := conversation.New(normalized.Messages)
-	if err != nil {
-		return Snapshot{}, fmt.Errorf("sessions: fork plan conversation: %w", err)
-	}
-	owned := Snapshot{
-		Session: normalized.Session, Messages: history.Messages(),
-		Runs: runsInParentFirstOrder(normalized.Runs), Items: slices.Clone(normalized.Items),
-		ToolResults: slices.Clone(normalized.ToolResults), Plan: slices.Clone(normalized.Plan),
-	}
-	if err := owned.Validate(); err != nil {
-		return Snapshot{}, fmt.Errorf("sessions: fork plan snapshot: %w", err)
-	}
-	return owned, nil
 }
 
 func ownForkPlanReplacement(steps []plan.Step, replacement *plan.Replacement) (*plan.Replacement, error) {
@@ -136,18 +113,10 @@ func (f ForkPlan) Snapshot() Snapshot {
 		steps = f.planReplacement.State().Steps()
 	}
 	return Snapshot{
-		Session: f.snapshot.Session, Messages: cloneForkMessages(f.snapshot.Messages),
+		Session: f.snapshot.Session, Messages: cloneSnapshotMessages(f.snapshot.Messages),
 		Runs: slices.Clone(f.snapshot.Runs), Items: slices.Clone(f.snapshot.Items),
 		ToolResults: slices.Clone(f.snapshot.ToolResults), Plan: steps,
 	}
-}
-
-func cloneForkMessages(messages []chat.Message) []chat.Message {
-	owned := make([]chat.Message, len(messages))
-	for index, message := range messages {
-		owned[index] = message.Clone()
-	}
-	return owned
 }
 
 // PlanReplacement returns an isolated initial Plan transition when the fork

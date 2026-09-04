@@ -756,16 +756,19 @@ func (s stubLifecycleStores) ApplyRollback(ctx context.Context, plan sessions.Ro
 }
 
 func (s stubLifecycleStores) ApplyRestore(ctx context.Context, plan sessions.RestorePlan) error {
-	if err := plan.Session.Validate(); err != nil {
+	if err := plan.Validate(); err != nil {
 		return err
 	}
-	restored := plan.Session.State()
+	sessionReplacement := plan.SessionReplacement()
+	snapshot := plan.Snapshot()
+	planReplacement := plan.PlanReplacement()
+	restored := sessionReplacement.State()
 	id := restored.ID()
-	if plan.Session.ExpectedRevision() == 0 {
+	if sessionReplacement.ExpectedRevision() == 0 {
 		if err := s.rt.sess.Insert(ctx, restored); err != nil {
 			return err
 		}
-	} else if err := s.rt.sess.Save(ctx, plan.Session); err != nil {
+	} else if err := s.rt.sess.Save(ctx, sessionReplacement); err != nil {
 		return err
 	}
 	if err := s.deleteInterrupts(ctx, id); err != nil {
@@ -785,20 +788,20 @@ func (s stubLifecycleStores) ApplyRestore(ctx context.Context, plan sessions.Res
 	if err := s.rt.TruncateMessages(ctx, id, 0); err != nil {
 		return err
 	}
-	if err := s.rt.SeedHistory(ctx, id, plan.Messages); err != nil {
+	if err := s.rt.SeedHistory(ctx, id, snapshot.Messages); err != nil {
 		return err
 	}
-	for _, r := range plan.Runs {
+	for _, r := range snapshot.Runs {
 		if err := s.rt.runs.Restore(ctx, r); err != nil {
 			return err
 		}
 	}
-	for _, it := range plan.Items {
+	for _, it := range snapshot.Items {
 		if err := s.rt.hist.AppendItem(ctx, it); err != nil {
 			return err
 		}
 	}
-	for _, blob := range plan.ToolResults {
+	for _, blob := range snapshot.ToolResults {
 		if s.rt.toolResults == nil {
 			return errors.New("test runtime: tool-result persistence is unavailable")
 		}
@@ -808,8 +811,8 @@ func (s stubLifecycleStores) ApplyRestore(ctx context.Context, plan sessions.Res
 	}
 	// Replaced, never deleted-and-reinserted: the revision has to come out greater
 	// than what this session already published.
-	if s.rt.plan != nil && plan.PlanReplacement != nil {
-		if err := s.rt.plan.Save(ctx, id, *plan.PlanReplacement); err != nil {
+	if s.rt.plan != nil && planReplacement != nil {
+		if err := s.rt.plan.Save(ctx, id, *planReplacement); err != nil {
 			return err
 		}
 	}

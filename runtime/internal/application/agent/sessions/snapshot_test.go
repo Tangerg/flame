@@ -107,20 +107,33 @@ func TestRestorePlanOrdersRunTreeParentsBeforeChildren(t *testing.T) {
 	grandchildSnapshot.Lineage = run.Lineage{SpawnedByItemID: "item_child_task", ParentRunID: "run_child", RootRunID: "run_root"}
 	grandchild := testsupport.MustRestoreRun(grandchildSnapshot)
 	snapshot.Runs = []run.Run{grandchild, child, root}
+	snapshot.Items = []transcript.Item{
+		testsupport.MustRestoreItem(testsupport.ItemInput{
+			SessionID: "ses_1", ID: "item_root_task", RunID: "run_root",
+			Status: transcript.ItemCompleted, Kind: transcript.ToolCall, OccurredAt: time.Unix(1, 0),
+		}),
+		testsupport.MustRestoreItem(testsupport.ItemInput{
+			SessionID: "ses_1", ID: "item_child_task", RunID: "run_child",
+			Status: transcript.ItemCompleted, Kind: transcript.ToolCall, OccurredAt: time.Unix(1, 0),
+		}),
+	}
 
 	replacement, err := session.InitialReplacement(snapshot.Session)
 	if err != nil {
 		t.Fatalf("initial Session replacement: %v", err)
 	}
-	plan := restorePlan(snapshot, replacement, nil)
-	got := make([]string, 0, len(plan.Runs))
-	for _, run := range plan.Runs {
+	restore, err := NewRestorePlan(snapshot, replacement, nil)
+	if err != nil {
+		t.Fatalf("NewRestorePlan: %v", err)
+	}
+	got := make([]string, 0, len(restore.Snapshot().Runs))
+	for _, run := range restore.Snapshot().Runs {
 		got = append(got, run.ID())
 	}
 	if !slices.Equal(got, []string{"run_root", "run_child", "run_grandchild"}) {
 		t.Fatalf("restore run order = %v, want parent-first", got)
 	}
 	if snapshot.Runs[0].ID() != "run_grandchild" {
-		t.Fatal("restorePlan mutated the source snapshot order")
+		t.Fatal("NewRestorePlan mutated the source snapshot order")
 	}
 }

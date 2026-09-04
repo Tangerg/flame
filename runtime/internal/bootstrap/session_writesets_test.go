@@ -802,12 +802,18 @@ func TestApplyRestoreClearsSessionOwnedProjections(t *testing.T) {
 		t.Fatalf("seed permission mode: %v", err)
 	}
 
-	if err := ss.ApplyRestore(ctx, sessions.RestorePlan{
-		Session: bootstrapRestoreReplacement(
-			t, currentSession, bootstrapSession("ses_A", "", "/repo"),
-		),
-		PlanReplacement: prepareFixturePlan(t, ctx, ss.plan, "ses_A", nil),
-	}); err != nil {
+	sessionReplacement := bootstrapRestoreReplacement(
+		t, currentSession, bootstrapSession("ses_A", "", "/repo"),
+	)
+	restore, err := sessions.NewRestorePlan(
+		sessions.Snapshot{Session: sessionReplacement.State()},
+		sessionReplacement,
+		prepareFixturePlan(t, ctx, ss.plan, "ses_A", nil),
+	)
+	if err != nil {
+		t.Fatalf("NewRestorePlan: %v", err)
+	}
+	if err := ss.ApplyRestore(ctx, restore); err != nil {
 		t.Fatalf("ApplyRestore: %v", err)
 	}
 	if got, err := ss.plan.List(ctx, "ses_A"); err != nil || len(got) != 0 {
@@ -903,13 +909,18 @@ func TestApplyRestoreRollsBackOnRunIdentityConflict(t *testing.T) {
 		t.Fatalf("seed target history: %v", err)
 	}
 
-	err := ss.ApplyRestore(ctx, sessions.RestorePlan{
-		Session: bootstrapRestoreReplacement(
-			t, targetSession, bootstrapSession("ses_B", "replacement", "/replacement"),
-		),
+	sessionReplacement := bootstrapRestoreReplacement(
+		t, targetSession, bootstrapSession("ses_B", "replacement", "/replacement"),
+	)
+	restore, err := sessions.NewRestorePlan(sessions.Snapshot{
+		Session:  sessionReplacement.State(),
 		Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("after"))},
 		Runs:     []run.Run{restoredRun("ses_B", "run_shared", now)},
-	})
+	}, sessionReplacement, nil)
+	if err != nil {
+		t.Fatalf("NewRestorePlan: %v", err)
+	}
+	err = ss.ApplyRestore(ctx, restore)
 	if !errors.Is(err, run.ErrIdentityConflict) {
 		t.Fatalf("ApplyRestore error = %v, want run.ErrIdentityConflict", err)
 	}
