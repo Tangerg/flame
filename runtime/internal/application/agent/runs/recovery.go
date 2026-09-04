@@ -314,16 +314,10 @@ func (r *Recovery) claimAbandonedSessions(
 	if err != nil {
 		return nil, fmt.Errorf("runs: load recovery candidates: %w", err)
 	}
-	ids := make([]string, 0, len(candidates))
-	seen := make(map[string]struct{}, len(candidates))
-	for _, candidate := range candidates {
-		if _, ok := seen[candidate.SessionID()]; ok {
-			continue
-		}
-		seen[candidate.SessionID()] = struct{}{}
-		ids = append(ids, candidate.SessionID())
+	ids, err := recoveryRunCatalogSessionIDs(candidates)
+	if err != nil {
+		return nil, err
 	}
-	slices.Sort(ids)
 	claims := &recoverySessionClaims{
 		sessionIDs: make(map[string]struct{}, len(ids)),
 		releases:   make([]func(), 0, len(ids)),
@@ -697,53 +691,6 @@ func recoveredGoalRun(rootRunID string, lostRuns []rundomain.Run) (goal.RunRecor
 	}
 	record.Cost = cost
 	return record, nil
-}
-
-type recoveryRunTree struct {
-	root      rundomain.Run
-	runsByID  map[string]rundomain.Run
-	postorder []string
-}
-
-func groupRecoveryRunTrees(active []rundomain.Run) (map[string]recoveryRunTree, error) {
-	grouped := make(map[string][]rundomain.Run)
-	for index, run := range active {
-		if err := run.Validate(); err != nil {
-			return nil, fmt.Errorf("runs: validate recovery Run[%d] %q: %w", index, run.ID(), err)
-		}
-		rootRunID := run.Lineage().TreeRootID(run.ID())
-		grouped[rootRunID] = append(grouped[rootRunID], run)
-	}
-
-	trees := make(map[string]recoveryRunTree, len(grouped))
-	for rootRunID, runs := range grouped {
-		members := make([]rundomain.TreeMember, 0, len(runs))
-		runsByID := make(map[string]rundomain.Run, len(runs))
-		for _, run := range runs {
-			members = append(members, rundomain.TreeMember{RunID: run.ID(), Lineage: run.Lineage()})
-			runsByID[run.ID()] = run
-		}
-		topology, err := rundomain.NewTree(rootRunID, members)
-		if err != nil {
-			return nil, fmt.Errorf("runs: assemble recovery Run tree %q: %w", rootRunID, err)
-		}
-		root, found := runsByID[rootRunID]
-		if !found {
-			return nil, fmt.Errorf("runs: assemble recovery Run tree %q: root is missing", rootRunID)
-		}
-		for _, run := range runs {
-			if run.SessionID() != root.SessionID() {
-				return nil, fmt.Errorf(
-					"runs: recovery Run %q belongs to Session %q, want tree Session %q",
-					run.ID(),
-					run.SessionID(),
-					root.SessionID(),
-				)
-			}
-		}
-		trees[rootRunID] = recoveryRunTree{root: root, runsByID: runsByID, postorder: topology.Postorder()}
-	}
-	return trees, nil
 }
 
 func recoverLostTree(

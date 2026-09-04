@@ -187,13 +187,63 @@ func (w waitingExecutionResumabilityFunc) CanResumeWaitingExecution(
 type selectiveRecoveryAdmissions struct {
 	busy     map[string]bool
 	released map[string]int
+	acquired []string
 }
 
 func (s *selectiveRecoveryAdmissions) AcquireSession(sessionID string) (func(), bool) {
+	s.acquired = append(s.acquired, sessionID)
 	if s.busy[sessionID] {
 		return nil, false
 	}
 	return func() { s.released[sessionID]++ }, true
+}
+
+func TestRecoveryRejectsInvalidRunCatalogBeforeAdmission(t *testing.T) {
+	createdAt := time.Date(2026, 8, 14, 0, 0, 0, 0, time.UTC)
+	active := testsupport.MustRestoreRun(rundomain.Snapshot{
+		ID: "run_active", SessionID: "session_active", State: rundomain.Running,
+		ActiveSegmentID: "segment_active", CreatedAt: createdAt,
+		MessageMark: rundomain.UnknownMessageMark,
+	})
+	terminal, err := active.Terminate(rundomain.Termination{
+		Outcome: rundomain.OutcomeCompleted, FinishedAt: createdAt.Add(time.Second), MessageMark: 0,
+	})
+	if err != nil {
+		t.Fatalf("Terminate fixture: %v", err)
+	}
+	for name, candidates := range map[string][]rundomain.Run{
+		"invalid aggregate":      {{}},
+		"terminal row":           {terminal},
+		"duplicate Run identity": {active, active},
+	} {
+		t.Run(name, func(t *testing.T) {
+			store := &recoveryStoreStub{runs: candidates}
+			admissions := &selectiveRecoveryAdmissions{released: map[string]int{}}
+			recovery, err := NewRecovery(
+				store,
+				waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
+					return false, nil
+				}),
+				admissions,
+				nil,
+			)
+			if err != nil {
+				t.Fatalf("NewRecovery: %v", err)
+			}
+
+			if _, err := recovery.Reconcile(t.Context()); err == nil {
+				t.Fatal("Reconcile accepted an invalid Run catalog")
+			}
+			if len(admissions.acquired) != 0 || store.transcriptReads != 0 || store.commits != 0 {
+				t.Fatalf(
+					"invalid catalog reached admission or planning: acquired=%v transcriptReads=%d commits=%d",
+					admissions.acquired,
+					store.transcriptReads,
+					store.commits,
+				)
+			}
+		})
+	}
 }
 
 func TestNewRecoveryRejectsTypedNilDependencies(t *testing.T) {
