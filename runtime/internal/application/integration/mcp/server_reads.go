@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -21,7 +22,10 @@ func (c *Coordinator) Servers(ctx context.Context) ([]Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	servers = slices.Clone(servers)
+	servers, err = validateRegistryCatalog(servers)
+	if err != nil {
+		return nil, err
+	}
 	slices.SortFunc(servers, func(first, second mcpserver.Server) int {
 		return cmp.Compare(first.Name.String(), second.Name.String())
 	})
@@ -50,11 +54,39 @@ func (c *Coordinator) Server(ctx context.Context, name mcpserver.ServerName) (Se
 	if !found {
 		return Server{}, ErrUnknownServer
 	}
+	if err := validateRegistryServer("get", name, server); err != nil {
+		return Server{}, err
+	}
 	status, ok := c.statusesByName()[name]
 	if ok {
 		return serverView(server, &status), nil
 	}
 	return serverView(server, nil), nil
+}
+
+func validateRegistryCatalog(servers []mcpserver.Server) ([]mcpserver.Server, error) {
+	servers = slices.Clone(servers)
+	seen := make(map[mcpserver.ServerName]struct{}, len(servers))
+	for index, server := range servers {
+		if err := server.Validate(); err != nil {
+			return nil, fmt.Errorf("mcp: registry row %d is invalid: %w", index+1, err)
+		}
+		if _, duplicate := seen[server.Name]; duplicate {
+			return nil, fmt.Errorf("mcp: registry repeats server %q", server.Name)
+		}
+		seen[server.Name] = struct{}{}
+	}
+	return servers, nil
+}
+
+func validateRegistryServer(operation string, expected mcpserver.ServerName, server mcpserver.Server) error {
+	if err := server.Validate(); err != nil {
+		return fmt.Errorf("mcp: registry %s for %q returned an invalid server: %w", operation, expected, err)
+	}
+	if server.Name != expected {
+		return fmt.Errorf("mcp: registry %s for %q returned %q", operation, expected, server.Name)
+	}
+	return nil
 }
 
 func (c *Coordinator) statusesByName() map[mcpserver.ServerName]ServerStatus {

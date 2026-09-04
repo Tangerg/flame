@@ -61,6 +61,82 @@ func TestToolsOwnCatalogOrder(t *testing.T) {
 	}
 }
 
+func TestServersRejectsBrokenRegistryCatalog(t *testing.T) {
+	server := mcpserver.Server{
+		Name: testMCPServerName("files"), Enabled: true,
+		Transport: mcpserver.TransportStdio, Command: "mcp-files",
+	}
+	for name, listed := range map[string][]mcpserver.Server{
+		"invalid server":     {{}},
+		"duplicate identity": {server, server},
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := New(Config{Registry: &testRegistry{listed: listed}})
+			if servers, err := c.Servers(t.Context()); err == nil || servers != nil {
+				t.Fatalf("Servers = (%+v, %v), want nil/error", servers, err)
+			}
+		})
+	}
+}
+
+func TestMCPRegistryReadsRejectMismatchedIdentity(t *testing.T) {
+	requested := testMCPServerName("requested")
+	foreign := mcpserver.Server{
+		Name: testMCPServerName("foreign"), Enabled: true,
+		Transport: mcpserver.TransportStdio, Command: "mcp-foreign",
+	}
+	registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{requested: foreign}}
+	ports := &fakePorts{}
+	c := New(Config{
+		Registry: registry, StatusReader: ports, ConnectionControl: ports,
+		ConnectionLifecycle: ports,
+	})
+
+	if server, err := c.Server(t.Context(), requested); err == nil || server.Name.String() != "" {
+		t.Fatalf("Server = (%+v, %v), want zero/error", server, err)
+	}
+	if err := c.ReconnectServer(t.Context(), requested); err == nil {
+		t.Fatal("ReconnectServer accepted a mismatched registry row")
+	}
+	candidate := mcpserver.Server{
+		Name: requested, Enabled: true,
+		Transport: mcpserver.TransportStdio, Command: "mcp-requested",
+	}
+	if server, err := c.CreateServer(t.Context(), input(candidate)); err == nil || server.Name.String() != "" {
+		t.Fatalf("CreateServer = (%+v, %v), want zero/error", server, err)
+	}
+	if result, err := c.TestServer(t.Context(), input(candidate)); err == nil || result != (TestResult{}) {
+		t.Fatalf("TestServer = (%+v, %v), want zero/error", result, err)
+	}
+	enabled := false
+	if server, err := c.UpdateServer(t.Context(), requested, ServerPatch{Enabled: &enabled}); err == nil || server.Name.String() != "" {
+		t.Fatalf("UpdateServer = (%+v, %v), want zero/error", server, err)
+	}
+	if err := c.DeleteServer(t.Context(), requested); err == nil {
+		t.Fatal("DeleteServer accepted a mismatched registry row")
+	}
+}
+
+func TestBrokenRegistryCatalogCannotReplaceToolPolicy(t *testing.T) {
+	server := mcpserver.Server{
+		Name: testMCPServerName("files"), Enabled: true,
+		Transport: mcpserver.TransportStdio, Command: "mcp-files",
+	}
+	policy := NewToolPolicyState(mcpserver.NewToolPolicy([]mcpserver.Server{server}))
+	ref := mcpserver.ToolRef{Server: server.Name, Tool: testRemoteToolName("read")}
+	c := New(Config{Registry: &testRegistry{listed: []mcpserver.Server{{}}}, Policy: policy})
+
+	if policy.ToolDisabled(ref) {
+		t.Fatal("initial policy unexpectedly disabled configured server")
+	}
+	if err := c.refreshToolPolicy(t.Context()); err == nil {
+		t.Fatal("refreshToolPolicy accepted a broken registry catalog")
+	}
+	if policy.ToolDisabled(ref) {
+		t.Fatal("failed refresh replaced the last valid tool policy")
+	}
+}
+
 func TestDeleteServerPublishesRemovalAfterProjectionFailure(t *testing.T) {
 	projectionErr := errors.New("projection detach failed")
 	ports := &fakePorts{
@@ -182,7 +258,7 @@ func TestConnectionRejectsDurablyDisabledServer(t *testing.T) {
 		statuses: []mcpserver.ConnectionStatus{{Name: name, State: mcpserver.ConnectionConnected}},
 	}
 	registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{
-		name: {Name: name, Enabled: false},
+		name: {Name: name, Enabled: false, Transport: mcpserver.TransportStdio, Command: "mcp-fs"},
 	}}
 	c := New(Config{
 		Registry:            registry,
@@ -502,6 +578,7 @@ func awaitAuthorizationAttempt(t *testing.T, c *Coordinator, id AuthorizationAtt
 type testRegistry struct {
 	mu              sync.Mutex
 	servers         map[mcpserver.ServerName]mcpserver.Server
+	listed          []mcpserver.Server
 	saveCommitted   chan struct{}
 	releaseSave     chan struct{}
 	removeCommitted chan struct{}
@@ -511,6 +588,9 @@ type testRegistry struct {
 func (t *testRegistry) List(context.Context) ([]mcpserver.Server, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if t.listed != nil {
+		return slices.Clone(t.listed), nil
+	}
 	servers := make([]mcpserver.Server, 0, len(t.servers))
 	for _, server := range t.servers {
 		servers = append(servers, server)

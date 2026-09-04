@@ -58,6 +58,9 @@ func (c *Coordinator) connectionTarget(ctx context.Context, name mcpserver.Serve
 	if !ok {
 		return mcpserver.Server{}, ErrUnknownServer
 	}
+	if err := validateRegistryServer("get", name, srv); err != nil {
+		return mcpserver.Server{}, err
+	}
 	if !srv.Enabled {
 		return mcpserver.Server{}, ErrServerDisabled
 	}
@@ -200,6 +203,11 @@ func (command *connectionDispatch) prepareConnecting(ctx context.Context) (*stat
 			err,
 		)
 	}
+	if ok {
+		if err := validateRegistryServer("get before connection", command.name, srv); err != nil {
+			return nil, false, err
+		}
+	}
 	if !ok || !srv.Enabled || !coordinator.currentDial(command.name, command.operation) {
 		return nil, false, nil
 	}
@@ -227,6 +235,11 @@ func (command *connectionDispatch) prepareSettled(
 			command.name,
 			err,
 		)
+	}
+	if ok {
+		if err := validateRegistryServer("get after connection", command.name, srv); err != nil {
+			return nil, false, err
+		}
 	}
 	if !ok || !srv.Enabled || !coordinator.currentDial(command.name, command.operation) {
 		return nil, false, nil

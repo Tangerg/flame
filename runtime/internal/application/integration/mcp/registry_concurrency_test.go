@@ -178,7 +178,7 @@ func input(server mcpserver.Server) ServerInput {
 
 func TestRemoveDoesNotWaitForInteractiveConnection(t *testing.T) {
 	name := testMCPServerName("files")
-	server := mcpserver.Server{Name: name, Enabled: true}
+	server := mcpserver.Server{Name: name, Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
 	registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{name: server}}
 	live := &blockingProjection{
 		liveSet:          liveSet{servers: map[mcpserver.ServerName]bool{name: true}},
@@ -229,7 +229,7 @@ func TestRemoveDoesNotWaitForInteractiveConnection(t *testing.T) {
 
 func TestQueuedReconnectCannotReviveRemovedServer(t *testing.T) {
 	name := testMCPServerName("files")
-	server := mcpserver.Server{Name: name, Enabled: true}
+	server := mcpserver.Server{Name: name, Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
 	registry := &testRegistry{
 		servers:         map[mcpserver.ServerName]mcpserver.Server{name: server},
 		removeCommitted: make(chan struct{}),

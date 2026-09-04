@@ -57,9 +57,12 @@ func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Serv
 		return Server{}, err
 	}
 	defer write.close()
-	if _, found, getErr := c.registry.Get(write.requestCtx, input.Name); getErr != nil {
+	if existing, found, getErr := c.registry.Get(write.requestCtx, input.Name); getErr != nil {
 		return Server{}, getErr
 	} else if found {
+		if err := validateRegistryServer("get", input.Name, existing); err != nil {
+			return Server{}, err
+		}
 		return Server{}, ErrServerAlreadyExists
 	}
 	srv, err := serverCandidate(input, nil)
@@ -86,6 +89,9 @@ func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ServerNam
 	}
 	if !found {
 		return Server{}, ErrUnknownServer
+	}
+	if err := validateRegistryServer("get", name, current); err != nil {
+		return Server{}, err
 	}
 	updated, err := applyServerPatch(current, patch)
 	if err != nil {
@@ -159,10 +165,12 @@ func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ServerNam
 		return err
 	}
 	defer write.close()
-	if _, found, err := c.registry.Get(write.requestCtx, name); err != nil {
+	if existing, found, err := c.registry.Get(write.requestCtx, name); err != nil {
 		return err
 	} else if !found {
 		return ErrUnknownServer
+	} else if err := validateRegistryServer("get", name, existing); err != nil {
+		return err
 	}
 	if err := c.registry.Remove(write.requestCtx, name); err != nil {
 		return err
@@ -312,6 +320,9 @@ func (c *Coordinator) validatedServer(ctx context.Context, input ServerInput) (m
 			return mcpserver.Server{}, err
 		}
 		if found {
+			if err := validateRegistryServer("get", input.Name, stored); err != nil {
+				return mcpserver.Server{}, err
+			}
 			current = &stored
 		}
 	}
@@ -583,6 +594,10 @@ func (c *Coordinator) Tools(ctx context.Context, server *mcpserver.ServerName) (
 // just-mutated registry for the next tool resolution and approval decision.
 func (c *Coordinator) refreshToolPolicy(ctx context.Context) error {
 	servers, err := c.registry.List(ctx)
+	if err != nil {
+		return err
+	}
+	servers, err = validateRegistryCatalog(servers)
 	if err != nil {
 		return err
 	}
