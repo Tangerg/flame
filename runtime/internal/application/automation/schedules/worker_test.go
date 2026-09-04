@@ -30,9 +30,9 @@ type claimRecord struct {
 func (w *workerStore) Get(context.Context, string) (schedule.Schedule, error) {
 	return schedule.Schedule{}, schedule.ErrNotFound
 }
-func (w *workerStore) Insert(context.Context, schedule.Schedule) error         { return nil }
-func (w *workerStore) Update(context.Context, schedule.Schedule, uint64) error { return nil }
-func (w *workerStore) Delete(context.Context, string) (bool, error)            { return false, nil }
+func (w *workerStore) Insert(context.Context, schedule.Schedule) error    { return nil }
+func (w *workerStore) Update(context.Context, schedule.Replacement) error { return nil }
+func (w *workerStore) Delete(context.Context, string) (bool, error)       { return false, nil }
 func (w *workerStore) Due(_ context.Context, _ time.Time, _ int) ([]schedule.Schedule, error) {
 	return w.due, w.dueErr
 }

@@ -378,8 +378,8 @@ func (r *runNowStore) Insert(_ context.Context, scheduled schedule.Schedule) err
 	r.created = scheduled
 	return nil
 }
-func (r *runNowStore) Update(_ context.Context, scheduled schedule.Schedule, _ uint64) error {
-	r.updated = scheduled
+func (r *runNowStore) Update(_ context.Context, replacement schedule.Replacement) error {
+	r.updated = replacement.State()
 	return nil
 }
 func (r *runNowStore) Delete(context.Context, string) (bool, error) { return false, nil }

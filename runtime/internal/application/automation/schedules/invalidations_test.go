@@ -28,7 +28,7 @@ func (i *invalidationScheduleStore) Insert(_ context.Context, scheduled schedule
 	return nil
 }
 
-func (i *invalidationScheduleStore) Update(_ context.Context, scheduled schedule.Schedule, _ uint64) error {
+func (i *invalidationScheduleStore) Update(_ context.Context, _ schedule.Replacement) error {
 	if i.fail == "update" {
 		return errScheduleMutation
 	}

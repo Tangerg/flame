@@ -24,7 +24,7 @@ type ManagementStore interface {
 	ListPage(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]schedule.Schedule, error)
 	Get(ctx context.Context, id string) (schedule.Schedule, error)
 	Insert(ctx context.Context, scheduled schedule.Schedule) error
-	Update(ctx context.Context, scheduled schedule.Schedule, expectedRevision uint64) error
+	Update(ctx context.Context, replacement schedule.Replacement) error
 	Delete(ctx context.Context, id string) (bool, error)
 }
 
@@ -281,7 +281,11 @@ func (c *Coordinator) updateExisting(
 	if err != nil {
 		return schedule.Schedule{}, err
 	}
-	if err := c.store.Update(ctx, updated, expectedRevision); err != nil {
+	replacement, err := schedule.NewReplacement(existing, updated)
+	if err != nil {
+		return schedule.Schedule{}, fmt.Errorf("schedules: prepare update %q: %w", existing.ID(), err)
+	}
+	if err := c.store.Update(ctx, replacement); err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: update %q: %w", existing.ID(), err)
 	}
 	c.invalidations.Notify(invalidation.ForSchedules(updated.ID()))

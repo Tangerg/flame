@@ -43,16 +43,12 @@ func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule)
 	return nil
 }
 
-func (s *ScheduleStore) Update(ctx context.Context, sc schedule.Schedule, expectedRevision uint64) error {
-	if err := sc.ValidateStored(); err != nil {
-		return fmt.Errorf("sqlite: validate schedule: %w", err)
+func (s *ScheduleStore) Update(ctx context.Context, replacement schedule.Replacement) error {
+	if err := replacement.Validate(); err != nil {
+		return fmt.Errorf("sqlite: validate schedule replacement: %w", err)
 	}
-	if expectedRevision == 0 {
-		return schedule.ErrRevisionRequired
-	}
-	if err := exactint.Follows(expectedRevision, sc.Revision()); err != nil {
-		return fmt.Errorf("sqlite: replacement revision %d does not follow expected revision %d: %w", sc.Revision(), expectedRevision, schedule.ErrRevisionConflict)
-	}
+	expectedRevision := replacement.ExpectedRevision()
+	sc := replacement.State()
 	snapshot := sc.Snapshot()
 	res, err := conn(ctx, s.db).ExecContext(ctx,
 		`UPDATE schedules

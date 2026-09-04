@@ -216,7 +216,8 @@ func (m *memoryScheduleRegistry) Insert(_ context.Context, sc scheduledomain.Sch
 	return nil
 }
 
-func (m *memoryScheduleRegistry) Update(_ context.Context, sc scheduledomain.Schedule, _ uint64) error {
+func (m *memoryScheduleRegistry) Update(_ context.Context, replacement scheduledomain.Replacement) error {
+	sc := replacement.State()
 	if _, ok := m.items[sc.ID()]; !ok {
 		return scheduledomain.ErrNotFound
 	}

@@ -161,7 +161,11 @@ func TestScheduleCRUD(t *testing.T) {
 	if editErr != nil {
 		t.Fatalf("edit: %v", editErr)
 	}
-	if updateErr := s.Update(ctx, replacement, got.Revision()); updateErr != nil {
+	change, err := schedule.NewReplacement(got, replacement)
+	if err != nil {
+		t.Fatalf("prepare replacement: %v", err)
+	}
+	if updateErr := s.Update(ctx, change); updateErr != nil {
 		t.Fatalf("update: %v", updateErr)
 	}
 	reread, _ := s.Get(ctx, created.ID())
@@ -331,7 +335,11 @@ func TestScheduleClaimRejectsStaleRevisionWithUnchangedCursor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Edit: %v", err)
 	}
-	if err = store.Update(ctx, updated, created.Revision()); err != nil {
+	change, err := schedule.NewReplacement(created, updated)
+	if err != nil {
+		t.Fatalf("prepare replacement: %v", err)
+	}
+	if err = store.Update(ctx, change); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 	if !updated.NextRunAt().Equal(dueAt) {
@@ -558,6 +566,13 @@ func TestScheduleStoreRejectsDuplicatePendingRows(t *testing.T) {
 // TestScheduleUpdateNotFound: updating an unknown id reports ErrNotFound.
 func TestScheduleUpdateNotFound(t *testing.T) {
 	s := newScheduleStore(t)
+	expected, restoreErr := schedule.Restore(schedule.Snapshot{
+		ID: "sch_nope", Instructions: "x", Cron: "@daily",
+		CreatedAt: time.Unix(1, 0), Revision: 1,
+	})
+	if restoreErr != nil {
+		t.Fatalf("Restore unknown expected: %v", restoreErr)
+	}
 	unknown, restoreErr := schedule.Restore(schedule.Snapshot{
 		ID: "sch_nope", Instructions: "x", Cron: "@daily",
 		CreatedAt: time.Unix(1, 0), Revision: 2,
@@ -565,7 +580,11 @@ func TestScheduleUpdateNotFound(t *testing.T) {
 	if restoreErr != nil {
 		t.Fatalf("Restore unknown replacement: %v", restoreErr)
 	}
-	err := s.Update(context.Background(), unknown, 1)
+	replacement, replacementErr := schedule.NewReplacement(expected, unknown)
+	if replacementErr != nil {
+		t.Fatalf("prepare unknown replacement: %v", replacementErr)
+	}
+	err := s.Update(context.Background(), replacement)
 	if err != schedule.ErrNotFound {
 		t.Errorf("update unknown id err = %v, want ErrNotFound", err)
 	}

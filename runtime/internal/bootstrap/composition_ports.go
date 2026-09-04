@@ -46,7 +46,7 @@ type ScheduleStore interface {
 	ListPage(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]schedule.Schedule, error)
 	Get(ctx context.Context, id string) (schedule.Schedule, error)
 	Insert(ctx context.Context, sc schedule.Schedule) error
-	Update(ctx context.Context, sc schedule.Schedule, expectedRevision uint64) error
+	Update(ctx context.Context, replacement schedule.Replacement) error
 	Delete(ctx context.Context, id string) (bool, error)
 	Due(ctx context.Context, now time.Time, limit int) ([]schedule.Schedule, error)
 	Claim(ctx context.Context, claim schedule.Claim) (bool, error)

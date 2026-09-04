@@ -16,7 +16,7 @@ import (
 func TestScheduleDomainValuesOwnAllMutableState(t *testing.T) {
 	t.Parallel()
 
-	for _, value := range []any{Schedule{}, Execution{}, Occurrence{}, Claim{}, Acceptance{}, RunRecord{}, RunRequest{}} {
+	for _, value := range []any{Schedule{}, Replacement{}, Execution{}, Occurrence{}, Claim{}, Acceptance{}, RunRecord{}, RunRequest{}} {
 		typ := reflect.TypeOf(value)
 		for index := range typ.NumField() {
 			field := typ.Field(index)
