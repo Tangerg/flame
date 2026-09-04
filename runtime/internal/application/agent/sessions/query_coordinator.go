@@ -624,6 +624,7 @@ func statusFilter(statuses []run.Status) string {
 // rootRunID must name a root. A child id is [transcript.ErrNotRoot], because the
 // set it belongs to exists — under the root — and an empty page would say otherwise.
 func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, sessionID, rootRunID string, caller run.Capabilities, cursor string, limit pagination.RequestedLimit) (pagination.Page[runs.Pending], error) {
+	caller = caller.Clone()
 	if err := caller.Validate(); err != nil {
 		return pagination.Page[runs.Pending]{}, fmt.Errorf("sessions: query interrupts page caller capabilities: %w", err)
 	}

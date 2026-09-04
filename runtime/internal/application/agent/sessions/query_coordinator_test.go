@@ -203,10 +203,14 @@ type fakeInterrupts struct {
 
 type rawInterruptPageReader struct {
 	*fakeInterrupts
-	page []runs.Pending
+	page       []runs.Pending
+	beforeRead func()
 }
 
 func (r *rawInterruptPageReader) ListPage(context.Context, string, string, int64, string, int) ([]runs.Pending, error) {
+	if r.beforeRead != nil {
+		r.beforeRead()
+	}
 	return r.page, nil
 }
 
@@ -866,6 +870,28 @@ func TestListPendingInterruptPageValidatesCallerAndIsolatesStoreSlice(t *testing
 	page.Rows[0] = runs.Pending{}
 	if got := stored[0].RootRunID; got != "run_1" {
 		t.Fatalf("interrupt store row changed through page result: %q", got)
+	}
+}
+
+func TestListPendingInterruptPageOwnsValidatedCallerCapabilities(t *testing.T) {
+	caller := approvalCapabilities()
+	reader := &rawInterruptPageReader{
+		fakeInterrupts: &fakeInterrupts{},
+		page:           testSessionPendingRuns("run_1"),
+		beforeRead: func() {
+			caller.InterruptKinds[0] = interrupt.Question
+		},
+	}
+	coordinator := newQueryCoordinator(t, QueryDependencies{
+		Transcript: &fakeTranscript{}, Interrupts: reader,
+		Runs: &fakeRuns{}, Sessions: &fakeSessions{},
+	})
+
+	page, err := coordinator.ListPendingInterruptPage(
+		t.Context(), "ses_1", "", caller, "", pagination.DefaultLimit(),
+	)
+	if err != nil || len(page.Rows) != 1 {
+		t.Fatalf("ListPendingInterruptPage() = %d rows, %v; want caller snapshot admitted", len(page.Rows), err)
 	}
 }
 
