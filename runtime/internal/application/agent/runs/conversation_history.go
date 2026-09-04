@@ -22,16 +22,6 @@ type ConversationStore interface {
 	Replace(ctx context.Context, sessionID string, messages ...chat.Message) error
 }
 
-// ConversationCompactionPlan is the complete cross-aggregate write-set for one history
-// rewrite. Runs includes non-terminal records unchanged so persistence can
-// reject a lifecycle transition that raced the plan instead of committing a
-// history and Run projection from different snapshots.
-type ConversationCompactionPlan struct {
-	SessionID  string
-	Compaction conversation.Compaction
-	Runs       []run.Replacement
-}
-
 // ConversationCompactionStore is the exact persistence capability for coordinate-changing
 // conversation rewrites. Reading Runs and applying the decided replacement are
 // separate because summary generation must happen outside a database
@@ -178,9 +168,11 @@ func (m *ConversationHistory) RewriteForCompaction(
 			return fmt.Errorf("runs: prepare conversation Run %q replacement: %w", current.ID(), err)
 		}
 	}
-	if err := m.compactions.ApplyCompaction(ctx, ConversationCompactionPlan{
-		SessionID: sessionID, Compaction: compaction, Runs: planned,
-	}); err != nil {
+	plan, err := NewConversationCompactionPlan(sessionID, compaction, planned)
+	if err != nil {
+		return fmt.Errorf("runs: prepare conversation compaction for Session %q: %w", sessionID, err)
+	}
+	if err := m.compactions.ApplyCompaction(ctx, plan); err != nil {
 		return fmt.Errorf("runs: compact conversation for Session %q: %w", sessionID, err)
 	}
 	return nil

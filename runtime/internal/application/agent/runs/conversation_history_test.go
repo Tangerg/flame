@@ -88,15 +88,16 @@ func TestMessagesPlansCompactionRunWatermarks(t *testing.T) {
 	if err := messages.RewriteForCompaction(t.Context(), "ses_1", 8, 6, 1, replacement...); err != nil {
 		t.Fatal(err)
 	}
-	if len(compactions.plan.Runs) != 4 {
-		t.Fatalf("planned Runs = %d, want 4", len(compactions.plan.Runs))
+	planned := compactions.plan.Runs()
+	if len(planned) != 4 {
+		t.Fatalf("planned Runs = %d, want 4", len(planned))
 	}
 	wantMarks := []int{1, 1, 3, run.UnknownMessageMark}
-	for index, planned := range compactions.plan.Runs {
-		if !planned.Expected().Equal(compactions.runs[index]) {
+	for index, replacement := range planned {
+		if !replacement.Expected().Equal(compactions.runs[index]) {
 			t.Fatalf("planned Run %d lost its expected CAS aggregate", index)
 		}
-		if got := planned.State().MessageMark(); got != wantMarks[index] {
+		if got := replacement.State().MessageMark(); got != wantMarks[index] {
 			t.Errorf("replacement mark[%d] = %d, want %d", index, got, wantMarks[index])
 		}
 	}
