@@ -217,8 +217,8 @@ func (p Pending) validateEnvelope() error {
 		return fmt.Errorf("interrupts: pending: %w", err)
 	}
 	switch {
-	case p.CreatedAt.IsZero():
-		return errors.New("interrupts: pending creation time is required")
+	case p.CreatedAt.IsZero() || p.CreatedAt.Location() != time.UTC:
+		return errors.New("interrupts: pending creation time is required in UTC")
 	case len(p.Interrupts) == 0:
 		return errors.New("interrupts: pending set has no interrupts")
 	case len(p.Continuations) == 0:

@@ -103,6 +103,13 @@ func TestPendingValidateRequiresOneCanonicalConnectedTree(t *testing.T) {
 			want: "executor identity must contain 1 to 256 URI-safe ASCII bytes",
 		},
 		{
+			name: "pending creation time is not UTC",
+			mutate: func(p *Pending) {
+				p.CreatedAt = p.CreatedAt.In(time.FixedZone("offset", 60))
+			},
+			want: "pending creation time is required in UTC",
+		},
+		{
 			name: "continuation identity is not canonical",
 			mutate: func(p *Pending) {
 				p.Continuations[0].MemberID += " "

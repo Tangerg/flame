@@ -44,6 +44,7 @@ type recoveryStoreStub struct {
 	checkpoint      *ExecutorCheckpoint
 	checkpointErr   error
 	aliasOpen       bool
+	aliasPending    bool
 	transcriptReads int
 }
 
@@ -52,6 +53,9 @@ func (r *recoveryStoreStub) ListNonTerminalRuns(context.Context) ([]rundomain.Ru
 }
 
 func (r *recoveryStoreStub) ListPendingInterrupts(context.Context) ([]Pending, error) {
+	if r.aliasPending {
+		return r.pending, nil
+	}
 	return append([]Pending(nil), r.pending...), nil
 }
 
@@ -319,6 +323,61 @@ func TestRecoveryOwnsOpenInvocationCatalogsBeforeFiltering(t *testing.T) {
 	}
 	if !reflect.DeepEqual(store.models, wantModels) || !reflect.DeepEqual(store.tools, wantTools) {
 		t.Fatalf("recovery mutated store-owned catalogs: models=%+v tools=%+v", store.models, store.tools)
+	}
+}
+
+func TestRecoveryOwnsPendingCatalogBeforeFiltering(t *testing.T) {
+	run, pending, item := coherentRecoveryPark(t)
+	catalog := []Pending{{RootRunID: "run_foreign"}, pending}
+	want := append([]Pending(nil), catalog...)
+	store := &recoveryStoreStub{
+		runs: []rundomain.Run{run}, pending: catalog, aliasPending: true,
+		transcripts: map[string][]transcript.Item{run.SessionID(): {item}},
+	}
+	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
+		func(context.Context, WaitingContinuation) (bool, error) { return true, nil },
+	))
+	if err != nil {
+		t.Fatalf("NewRecovery: %v", err)
+	}
+
+	if _, err := recovery.Reconcile(t.Context()); err != nil {
+		t.Fatalf("Reconcile: %v", err)
+	}
+	if !reflect.DeepEqual(store.pending, want) {
+		t.Fatalf("recovery mutated store-owned Pending catalog: got %+v, want %+v", store.pending, want)
+	}
+}
+
+func TestRecoveryRejectsInvalidClaimedPendingBeforePlanning(t *testing.T) {
+	_, pending, _ := coherentRecoveryPark(t)
+	rootContinuation, ok := pending.RootContinuation()
+	if !ok {
+		t.Fatal("Pending fixture has no root continuation")
+	}
+	pending.Interrupts[0].ItemID = ""
+	active := testsupport.MustRestoreRun(rundomain.Snapshot{
+		ID: pending.RootRunID, SessionID: pending.SessionID, State: rundomain.Running,
+		ActiveSegmentID: "segment_active", ModelSelection: rootContinuation.ModelSelection,
+		Capabilities: pending.Capabilities, CreatedAt: rootContinuation.RunCreatedAt,
+		MessageMark: rundomain.UnknownMessageMark,
+	})
+	store := &recoveryStoreStub{
+		runs: []rundomain.Run{active}, pending: []Pending{pending},
+		transcripts: map[string][]transcript.Item{}, messageMarks: map[string]int{},
+	}
+	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(
+		func(context.Context, WaitingContinuation) (bool, error) { return false, nil },
+	))
+	if err != nil {
+		t.Fatalf("NewRecovery: %v", err)
+	}
+
+	if _, err := recovery.Reconcile(t.Context()); err == nil {
+		t.Fatal("Reconcile accepted an invalid claimed Pending catalog")
+	}
+	if store.transcriptReads != 0 || store.commits != 0 {
+		t.Fatalf("invalid Pending reached planning or commit: transcriptReads=%d commits=%d", store.transcriptReads, store.commits)
 	}
 }
 

@@ -371,11 +371,11 @@ func newRecoveryPlanner(
 	if err != nil {
 		return nil, fmt.Errorf("runs: load open Tool invocations for recovery: %w", err)
 	}
-	activeRoots := make(map[string]struct{}, len(claims.active))
+	activeRoots := make(map[string]string, len(claims.active))
 	for _, value := range claims.active {
-		activeRoots[value.Lineage().TreeRootID(value.ID())] = struct{}{}
+		activeRoots[value.Lineage().TreeRootID(value.ID())] = value.SessionID()
 	}
-	pending = slices.DeleteFunc(pending, func(open Pending) bool {
+	pending = slices.DeleteFunc(slices.Clone(pending), func(open Pending) bool {
 		_, ok := activeRoots[open.RootRunID]
 		return !ok
 	})
@@ -391,26 +391,9 @@ func newRecoveryPlanner(
 	if err := validateOpenToolInvocations(toolInvocations); err != nil {
 		return nil, err
 	}
-	pendingByRun := make(map[string]Pending, len(pending))
-	checkpointOwners := make(map[string]string, len(pending))
-	for _, open := range pending {
-		if _, duplicate := pendingByRun[open.RootRunID]; duplicate {
-			return nil, fmt.Errorf("runs: recovery has duplicate Pending for root Run %q", open.RootRunID)
-		}
-		root, ok := open.RootContinuation()
-		if !ok {
-			return nil, fmt.Errorf("runs: recovery interrupt %q has no root continuation", open.RootRunID)
-		}
-		if owner, duplicate := checkpointOwners[root.MemberID]; duplicate {
-			return nil, fmt.Errorf(
-				"runs: recovery checkpoint %q is owned by interrupts %q and %q",
-				root.MemberID,
-				owner,
-				open.RootRunID,
-			)
-		}
-		checkpointOwners[root.MemberID] = open.RootRunID
-		pendingByRun[open.RootRunID] = open
+	pendingByRun, err := indexRecoveryPending(pending, activeRoots)
+	if err != nil {
+		return nil, err
 	}
 
 	trees, err := groupRecoveryRunTrees(claims.active)
