@@ -180,6 +180,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 220 | `89297db2` + CLI dependency update | Isolated claimed open-invocation snapshots and validated canonical identities, UTC start times, and journal uniqueness before they can affect boot-recovery time or planning. |
 | 221 | `cc46862e` + CLI dependency update | Isolated and fully validated claimed Pending barriers, enforcing exact root/Session ownership, UTC creation time, and unique root/checkpoint identity before boot-recovery planning. |
 | 222 | `b457fa3c` + CLI dependency update | Admitted complete non-terminal Run catalogs before writer leasing or planning, rejecting invalid aggregates, terminal contamination, and globally duplicated Run identities through one shared validator. |
+| 223 | `d3779a1d` + CLI dependency update | Admitted each complete Session transcript before time observation or planning, rejecting invalid Items, cross-Session rows, and duplicate Item identities at the recovery read boundary. |
 
 ## Verification contract
 
