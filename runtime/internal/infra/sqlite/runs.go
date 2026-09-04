@@ -558,18 +558,14 @@ func (r *RunStore) terminalize(
 // RebaseMessageMark applies an exact Application-decided coordinate rewrite to
 // one terminal Run. Compaction does not change when the Run happened or any of
 // its lifecycle facts, so updated_at deliberately remains untouched.
-func (r *RunStore) RebaseMessageMark(ctx context.Context, expected, replacement rundomain.Run) error {
-	if err := expected.Validate(); err != nil {
-		return fmt.Errorf("sqlite: rebase Run message watermark: expected Run: %w", err)
+func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Replacement) error {
+	if err := change.Validate(); err != nil {
+		return fmt.Errorf("sqlite: rebase Run message watermark: %w", err)
 	}
-	if err := replacement.Validate(); err != nil {
-		return fmt.Errorf("sqlite: rebase Run message watermark: replacement Run: %w", err)
-	}
+	expected := change.Expected()
+	replacement := change.State()
 	if !expected.State().IsTerminal() || !replacement.State().IsTerminal() {
 		return errors.New("sqlite: rebase Run message watermark: terminal Run is required")
-	}
-	if expected.ID() != replacement.ID() || expected.SessionID() != replacement.SessionID() {
-		return errors.New("sqlite: rebase Run message watermark changes identity")
 	}
 	derived, err := expected.WithMessageMark(replacement.MessageMark())
 	if err != nil {

@@ -93,10 +93,10 @@ func TestMessagesPlansCompactionRunWatermarks(t *testing.T) {
 	}
 	wantMarks := []int{1, 1, 3, run.UnknownMessageMark}
 	for index, planned := range compactions.plan.Runs {
-		if !planned.Expected.Equal(compactions.runs[index]) {
+		if !planned.Expected().Equal(compactions.runs[index]) {
 			t.Fatalf("planned Run %d lost its expected CAS aggregate", index)
 		}
-		if got := planned.Replacement.MessageMark(); got != wantMarks[index] {
+		if got := planned.State().MessageMark(); got != wantMarks[index] {
 			t.Errorf("replacement mark[%d] = %d, want %d", index, got, wantMarks[index])
 		}
 	}

@@ -22,14 +22,6 @@ type ConversationStore interface {
 	Replace(ctx context.Context, sessionID string, messages ...chat.Message) error
 }
 
-// ConversationCompactionRun is one exact Run replacement in a conversation coordinate
-// rewrite. Expected is the committed aggregate the Application read;
-// Replacement differs only in its message watermark.
-type ConversationCompactionRun struct {
-	Expected    run.Run
-	Replacement run.Run
-}
-
 // ConversationCompactionPlan is the complete cross-aggregate write-set for one history
 // rewrite. Runs includes non-terminal records unchanged so persistence can
 // reject a lifecycle transition that raced the plan instead of committing a
@@ -37,7 +29,7 @@ type ConversationCompactionRun struct {
 type ConversationCompactionPlan struct {
 	SessionID  string
 	Compaction conversation.Compaction
-	Runs       []ConversationCompactionRun
+	Runs       []run.Replacement
 }
 
 // ConversationCompactionStore is the exact persistence capability for coordinate-changing
@@ -168,21 +160,23 @@ func (m *ConversationHistory) RewriteForCompaction(
 	if err != nil {
 		return fmt.Errorf("runs: read conversation compaction Runs for Session %q: %w", sessionID, err)
 	}
-	planned := make([]ConversationCompactionRun, len(runs))
+	planned := make([]run.Replacement, len(runs))
 	for index, current := range runs {
-		planned[index] = ConversationCompactionRun{Expected: current, Replacement: current}
-		if !current.State().IsTerminal() {
-			continue
+		replacement := current
+		if current.State().IsTerminal() {
+			mark, err := compaction.RebaseMessageMark(current.MessageMark())
+			if err != nil {
+				return fmt.Errorf("runs: rebase conversation Run %q: %w", current.ID(), err)
+			}
+			replacement, err = current.WithMessageMark(mark)
+			if err != nil {
+				return fmt.Errorf("runs: rebase conversation Run %q: %w", current.ID(), err)
+			}
 		}
-		mark, err := compaction.RebaseMessageMark(current.MessageMark())
+		planned[index], err = run.NewReplacement(current, replacement)
 		if err != nil {
-			return fmt.Errorf("runs: rebase conversation Run %q: %w", current.ID(), err)
+			return fmt.Errorf("runs: prepare conversation Run %q replacement: %w", current.ID(), err)
 		}
-		replacement, err := current.WithMessageMark(mark)
-		if err != nil {
-			return fmt.Errorf("runs: rebase conversation Run %q: %w", current.ID(), err)
-		}
-		planned[index].Replacement = replacement
 	}
 	if err := m.compactions.ApplyCompaction(ctx, ConversationCompactionPlan{
 		SessionID: sessionID, Compaction: compaction, Runs: planned,

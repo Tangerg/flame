@@ -18,7 +18,7 @@ type conversationHistory interface {
 
 type conversationRuns interface {
 	ListRuns(ctx context.Context, sessionID string) ([]run.Run, error)
-	RebaseMessageMark(ctx context.Context, expected, replacement run.Run) error
+	RebaseMessageMark(ctx context.Context, replacement run.Replacement) error
 }
 
 // ConversationCompactions applies an Application-decided conversation rewrite
@@ -77,10 +77,10 @@ func (c *ConversationCompactions) applyCompaction(
 		return err
 	}
 	for _, planned := range plan.Runs {
-		if planned.Expected.Equal(planned.Replacement) {
+		if planned.Expected().Equal(planned.State()) {
 			continue
 		}
-		if err := c.runs.RebaseMessageMark(ctx, planned.Expected, planned.Replacement); err != nil {
+		if err := c.runs.RebaseMessageMark(ctx, planned); err != nil {
 			return err
 		}
 	}
@@ -89,7 +89,7 @@ func (c *ConversationCompactions) applyCompaction(
 
 func validateCompactionRuns(
 	sessionID string,
-	planned []runsapp.ConversationCompactionRun,
+	planned []run.Replacement,
 	current []run.Run,
 ) error {
 	if len(current) != len(planned) {
@@ -99,14 +99,16 @@ func validateCompactionRuns(
 		)
 	}
 	for index, candidate := range planned {
-		if !current[index].Equal(candidate.Expected) {
-			return fmt.Errorf("persistence: conversation compaction Run %q changed", candidate.Expected.ID())
+		if err := candidate.Validate(); err != nil {
+			return fmt.Errorf("persistence: conversation compaction Run[%d]: %w", index, err)
 		}
-		if candidate.Expected.SessionID() != sessionID || candidate.Replacement.SessionID() != sessionID {
-			return fmt.Errorf("persistence: conversation compaction Run %q belongs to another session", candidate.Expected.ID())
+		expected := candidate.Expected()
+		replacement := candidate.State()
+		if !current[index].Equal(expected) {
+			return fmt.Errorf("persistence: conversation compaction Run %q changed", expected.ID())
 		}
-		if candidate.Expected.ID() != candidate.Replacement.ID() {
-			return fmt.Errorf("persistence: conversation compaction changes Run %q identity", candidate.Expected.ID())
+		if expected.SessionID() != sessionID || replacement.SessionID() != sessionID {
+			return fmt.Errorf("persistence: conversation compaction Run %q belongs to another session", expected.ID())
 		}
 	}
 	return nil
