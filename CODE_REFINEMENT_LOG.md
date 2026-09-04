@@ -238,6 +238,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 278 | `8ae88d55` + CLI dependency update | Isolated the normalized Agent Memory fact batch before ledger persistence, so a store cannot rewrite the Application-owned acknowledgement validation snapshot. |
 | 279 | `36490dc3` + CLI dependency update | Snapshotted optional Agent Memory update fields before the Application clock and persistence callbacks, removing pointer identity from the patch contract. |
 | 280 | `5d0fbc1b` + CLI dependency update | Added deep MCP Server snapshots and isolated Registry, probe, and live-configuration crossings so mutable headers, arguments, and environment values cannot leak between owners. |
+| 281 | `cff64af2` + CLI dependency update | Deep-snapshotted MCP create, update, and test commands before Registry callbacks and isolated optional tool scopes from catalog mutation and acknowledgement validation. |
 
 ## Verification contract
 
