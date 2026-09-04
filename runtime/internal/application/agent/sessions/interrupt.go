@@ -32,7 +32,7 @@ func (r RunExecutionBinding) executorRef() runs.ExecutorRef {
 // or admitted before a restart, is just as much "the Run this Session already has",
 // and the registry knows neither.
 func (c *Coordinator) ActiveRun(ctx context.Context, sessionID string) (rundomain.Run, bool, error) {
-	runs, err := c.runs.ListRuns(ctx, sessionID)
+	runs, err := listSessionRuns(ctx, c.runs, sessionID)
 	if err != nil {
 		return rundomain.Run{}, false, err
 	}

@@ -66,6 +66,12 @@ func (c *Coordinator) Activities(ctx context.Context, sessionIDs []string) (map[
 	if err != nil {
 		return nil, err
 	}
+	if err := validateRunCatalog(activeRuns, ""); err != nil {
+		return nil, err
+	}
+	if err := validateRunAdmissionOrder(activeRuns); err != nil {
+		return nil, err
+	}
 	for _, activeRun := range activeRuns {
 		sessionID := activeRun.SessionID()
 		if _, ok := requested[sessionID]; !ok {

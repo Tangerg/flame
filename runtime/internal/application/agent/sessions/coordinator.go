@@ -84,10 +84,11 @@ type PlanReplacements interface {
 // derived from the Run timeline, so it reads the Runs themselves rather than
 // inferring them from the items they produced.
 type RunStore interface {
+	// ListRuns returns one Session's complete valid aggregates in admission order.
 	ListRuns(ctx context.Context, sessionID string) ([]run.Run, error)
 	// ListNonTerminalRuns returns the durable activity facts for every Session in
-	// one read. Session list pages filter this set to their own IDs; keeping the
-	// read batched avoids one Run query per visible Session.
+	// admission order in one read. Session list pages filter this set to their own
+	// IDs; keeping the read batched avoids one Run query per visible Session.
 	ListNonTerminalRuns(ctx context.Context) ([]run.Run, error)
 }
 

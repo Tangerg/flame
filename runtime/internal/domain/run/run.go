@@ -236,6 +236,23 @@ func (r Run) Validate() error {
 	return r.validateOpen()
 }
 
+// ValidateForSession verifies the complete aggregate and its exact expected
+// Session identity. Session-scoped catalogs use it before stored Run state can
+// influence a use case.
+func (r Run) ValidateForSession(expectedSessionID string) error {
+	if err := r.Validate(); err != nil {
+		return err
+	}
+	if r.sessionID != expectedSessionID {
+		return fmt.Errorf(
+			"run: Session %q does not match requested identity %q",
+			r.sessionID,
+			expectedSessionID,
+		)
+	}
+	return nil
+}
+
 func (r Run) validateOpen() error {
 	switch {
 	case r.outcome != nil:

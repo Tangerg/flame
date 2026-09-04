@@ -3,6 +3,7 @@ package sessions
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"testing"
 	"time"
@@ -72,9 +73,8 @@ func mustUsageCost(t *testing.T, usd float64) accounting.Cost {
 
 func finishedRun(t *testing.T, provider, model string, at time.Time, usage accounting.Usage) run.Run {
 	t.Helper()
-	return testsupport.MustRestoreRun(run.Snapshot{ID: "run_x", ModelSelection: mustUsageSelection(t, provider, model), State: run.Completed,
+	return testsupport.MustRestoreRun(run.Snapshot{ID: fmt.Sprintf("run_%d", at.UnixNano()), SessionID: "session-1", ModelSelection: mustUsageSelection(t, provider, model), State: run.Completed,
 		FinishedAt: at, Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &usage})})
-
 }
 
 func mustUsageSelection(t testing.TB, provider, model string) modelref.Selection {

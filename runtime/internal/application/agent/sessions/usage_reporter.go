@@ -14,7 +14,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// UsageRunReader reads the durable run history for one session.
+// UsageRunReader reads the durable Run history for one Session in admission
+// order.
 type UsageRunReader interface {
 	ListRuns(ctx context.Context, sessionID string) ([]run.Run, error)
 }
@@ -83,7 +84,7 @@ func NewUsageReporter(deps UsageDependencies) (*UsageReporter, error) {
 
 // Session returns one session's cumulative metering and per-model split.
 func (r *UsageReporter) Session(ctx context.Context, sessionID string) (UsageReport, error) {
-	runs, err := r.runs.ListRuns(ctx, sessionID)
+	runs, err := listSessionRuns(ctx, r.runs, sessionID)
 	if err != nil {
 		return UsageReport{}, err
 	}
@@ -122,7 +123,7 @@ func (r *UsageReporter) Summary(ctx context.Context, period UsageSummaryPeriod) 
 	byDay := map[string]*usageAccumulator{}
 	sessionCount := 0
 	for _, sess := range sessions {
-		runs, err := r.runs.ListRuns(ctx, sess.ID())
+		runs, err := listSessionRuns(ctx, r.runs, sess.ID())
 		if err != nil {
 			return UsageSummary{}, err
 		}

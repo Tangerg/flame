@@ -53,6 +53,25 @@ func TestRunAdmissionRequiresExactModelSelection(t *testing.T) {
 	}
 }
 
+func TestRunValidatesExactSessionIdentity(t *testing.T) {
+	value, err := Admit(Draft{
+		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",
+		ModelSelection: mustRunSelection(t), CreatedAt: time.Unix(1, 0).UTC(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := value.ValidateForSession("session_1"); err != nil {
+		t.Fatalf("ValidateForSession exact Run: %v", err)
+	}
+	if err := value.ValidateForSession("session_2"); err == nil || !strings.Contains(err.Error(), "requested identity") {
+		t.Fatalf("ValidateForSession mismatched Run error = %v", err)
+	}
+	if err := (Run{}).ValidateForSession("session_1"); err == nil {
+		t.Fatal("ValidateForSession accepted invalid Run")
+	}
+}
+
 func TestRunLifecyclePreservesAdmissionFactsAndAdvancesMetrics(t *testing.T) {
 	createdAt := time.Unix(1, 0).UTC()
 	capabilities := Capabilities{ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question}}

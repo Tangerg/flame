@@ -188,7 +188,7 @@ func (c *Coordinator) resolveRollbackBoundary(
 	if err != nil {
 		return resolvedRollbackBoundary{}, err
 	}
-	runs, err := c.runs.ListRuns(ctx, sessionID)
+	runs, err := listSessionRuns(ctx, c.runs, sessionID)
 	if err != nil {
 		return resolvedRollbackBoundary{}, err
 	}
@@ -298,7 +298,7 @@ func (c *Coordinator) RecoverWorkspaceMutations(ctx context.Context) error {
 func (c *Coordinator) recoverRollback(ctx context.Context, m WorkspaceMutation) error {
 	var boundary transcript.Boundary
 	if m.RestoreHistory {
-		runs, err := c.runs.ListRuns(ctx, m.SessionID)
+		runs, err := listSessionRuns(ctx, c.runs, m.SessionID)
 		if err != nil {
 			return err
 		}

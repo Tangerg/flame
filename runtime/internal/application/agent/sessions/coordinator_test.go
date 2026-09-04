@@ -156,6 +156,37 @@ func TestListOpenInterruptsProtectsSessionCatalog(t *testing.T) {
 	}
 }
 
+func TestListSessionRunsProtectsAdmissionCatalog(t *testing.T) {
+	first := testsupport.MustRestoreRun(run.Snapshot{
+		ID: "run_1", SessionID: "ses_1", CreatedAt: time.Unix(1, 0).UTC(),
+	})
+	second := testsupport.MustRestoreRun(run.Snapshot{
+		ID: "run_2", SessionID: "ses_1", CreatedAt: time.Unix(2, 0).UTC(),
+	})
+	got, err := listSessionRuns(t.Context(), activityRunStore{runs: []run.Run{first, second}}, "ses_1")
+	if err != nil || len(got) != 2 || !got[0].Equal(first) || !got[1].Equal(second) {
+		t.Fatalf("listSessionRuns exact = (%+v, %v)", got, err)
+	}
+
+	for _, test := range []struct {
+		name string
+		rows []run.Run
+	}{
+		{name: "invalid Run", rows: []run.Run{{}}},
+		{name: "foreign Session", rows: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
+			ID: "run_foreign", SessionID: "ses_other", CreatedAt: time.Unix(1, 0).UTC(),
+		})}},
+		{name: "duplicate identity", rows: []run.Run{first, first}},
+		{name: "admission order", rows: []run.Run{second, first}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := listSessionRuns(t.Context(), activityRunStore{runs: test.rows}, "ses_1"); err == nil {
+				t.Fatal("listSessionRuns accepted invalid catalog")
+			}
+		})
+	}
+}
+
 func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 	finishedAt := time.Date(2026, 7, 13, 2, 3, 4, 0, time.UTC)
 	createdAt := finishedAt.Add(-time.Minute)

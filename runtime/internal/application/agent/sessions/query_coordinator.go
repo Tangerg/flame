@@ -556,24 +556,16 @@ func validateRunPage(rows []run.Run, filter RunPageFilter, beforeCreatedAt int64
 	if len(rows) > maximum {
 		return fmt.Errorf("sessions: Run store returned %d rows, maximum %d", len(rows), maximum)
 	}
-	seen := make(map[string]struct{}, len(rows))
+	if err := validateRunCatalog(rows, filter.SessionID); err != nil {
+		return err
+	}
 	for index, value := range rows {
-		if err := value.Validate(); err != nil {
-			return fmt.Errorf("sessions: Run store row %d is invalid: %w", index+1, err)
-		}
-		if filter.SessionID != "" && value.SessionID() != filter.SessionID {
-			return fmt.Errorf("sessions: Run %q does not belong to filtered Session %q", value.ID(), filter.SessionID)
-		}
 		if len(filter.Statuses) > 0 && !slices.Contains(filter.Statuses, value.State().Status()) {
 			return fmt.Errorf("sessions: Run %q does not match the status filter", value.ID())
 		}
 		if !filter.IncludeDescendants && value.Lineage().IsChild() {
 			return fmt.Errorf("sessions: root Run page contains child %q", value.ID())
 		}
-		if _, duplicate := seen[value.ID()]; duplicate {
-			return fmt.Errorf("sessions: Run page repeats %q", value.ID())
-		}
-		seen[value.ID()] = struct{}{}
 		if beforeID != "" && !runFollowsPosition(value, beforeCreatedAt, beforeID) {
 			return fmt.Errorf("sessions: Run %q does not follow the page cursor", value.ID())
 		}
