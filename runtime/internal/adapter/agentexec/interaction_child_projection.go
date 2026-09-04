@@ -124,8 +124,12 @@ func (i *interactionSession) projectDelegateResult(
 				return errors.New("agentexec: completed delegated child has no committed model reply")
 			}
 			if !messageRequestsTools(committedReply) {
+				completion, err := runs.NewAssistantMessageCompleted(committedReply)
+				if err != nil {
+					return fmt.Errorf("agentexec: construct delegated child answer: %w", err)
+				}
 				if err := i.commitFact(
-					ctx, member, runs.AssistantMessageCompleted{Message: committedReply},
+					ctx, member, completion,
 				); err != nil {
 					return fmt.Errorf("agentexec: commit delegated child answer: %w", err)
 				}

@@ -139,7 +139,11 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		t.Fatalf("Tool calls after answer = %d, want 1; failure=%+v events=%#v", toolCalls, failure, events)
 	}
 	completed := payloadsOf[runs.AssistantMessageCompleted](events)
-	if len(completed) != 1 || completed[0].Message.Text() != "completed" {
+	if len(completed) != 1 {
+		t.Fatalf("completion = %#v", completed)
+	}
+	message := completed[0].Message()
+	if message.Text() != "completed" {
 		t.Fatalf("completion = %#v", completed)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)

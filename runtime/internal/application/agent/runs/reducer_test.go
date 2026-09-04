@@ -96,7 +96,7 @@ func TestReducerEarlyExecutorFinalWaitsForAuthoritativeModelResponse(t *testing.
 		corechat.NewReasoningPart("authoritative reasoning", nil),
 		corechat.NewTextPart("authoritative answer"),
 	)
-	if reduced := mustReduce(t, reducer, AssistantMessageCompleted{Message: message}); len(reduced) != 0 {
+	if reduced := mustReduce(t, reducer, mustAssistantMessageCompleted(t, message)); len(reduced) != 0 {
 		t.Fatalf("early executor confirmation projected transcript content: %#v", reduced)
 	}
 	reduced := mustReduce(t, reducer, ModelCallCompleted{
@@ -182,7 +182,7 @@ func TestReducerClassifiesToolPreambleAndTerminalAnswerAtTheModelBoundary(t *tes
 	if final[0].MessagePhase() != transcript.MessageFinalAnswer {
 		t.Fatalf("final phase = %q, want final answer", final[0].MessagePhase())
 	}
-	if confirmation := mustReduce(t, reducer, AssistantMessageCompleted{Message: answer}); len(confirmation) != 0 {
+	if confirmation := mustReduce(t, reducer, mustAssistantMessageCompleted(t, answer)); len(confirmation) != 0 {
 		t.Fatalf("executor confirmation duplicated the classified final answer: %#v", confirmation)
 	}
 }
@@ -245,7 +245,7 @@ func TestReducerDoesNotDuplicateModelFinalWhenExecutorConfirmsSameMessage(t *tes
 	if len(conversation) != 1 || conversation[0].Text() != "authoritative answer" {
 		t.Fatalf("model conversation projection = %#v", conversation)
 	}
-	processBatch := mustReduce(t, reducer, AssistantMessageCompleted{Message: message})
+	processBatch := mustReduce(t, reducer, mustAssistantMessageCompleted(t, message))
 	if len(processBatch) != 0 {
 		t.Fatalf("executor confirmation duplicated model final: %#v", processBatch)
 	}
@@ -265,7 +265,7 @@ func TestReducerIgnoresStreamingObservationAfterAuthoritativeModelCompletion(t *
 	if late := mustReduce(t, reducer, MessageDelta{Text: "authoritative answer"}); len(late) != 0 {
 		t.Fatalf("late stream observation reopened a transcript Item: %#v", late)
 	}
-	if confirmation := mustReduce(t, reducer, AssistantMessageCompleted{Message: message}); len(confirmation) != 0 {
+	if confirmation := mustReduce(t, reducer, mustAssistantMessageCompleted(t, message)); len(confirmation) != 0 {
 		t.Fatalf("executor confirmation duplicated the model final: %#v", confirmation)
 	}
 }

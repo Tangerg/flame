@@ -71,7 +71,7 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 	case ReasoningDelta:
 		return value, true
 	case AssistantMessageCompleted:
-		value.Message = value.Message.Clone()
+		value.message = value.message.Clone()
 		return value, true
 	case ModelCallStarted:
 		return value, true

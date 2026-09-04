@@ -41,6 +41,31 @@ func TestUnknownEffectsDetectedRequiresConstruction(t *testing.T) {
 	}
 }
 
+func mustAssistantMessageCompleted(t testing.TB, message corechat.Message) AssistantMessageCompleted {
+	t.Helper()
+	completed, err := NewAssistantMessageCompleted(message)
+	if err != nil {
+		t.Fatalf("NewAssistantMessageCompleted: %v", err)
+	}
+	return completed
+}
+
+func TestAssistantMessageCompletedOwnsValidatedMessage(t *testing.T) {
+	message := corechat.NewAssistantMessage(corechat.NewTextPart("original"))
+	completed := mustAssistantMessageCompleted(t, message)
+	message.Parts[0].Text = "changed"
+	projected := completed.Message()
+	projected.Parts[0].Text = "projected"
+	if owned := completed.Message(); owned.Text() != "original" {
+		t.Fatalf("owned assistant message = %+v", owned)
+	}
+	if _, err := NewAssistantMessageCompleted(
+		corechat.NewUserMessage(corechat.NewTextPart("not an assistant")),
+	); err == nil {
+		t.Fatal("completed assistant message accepted a user role")
+	}
+}
+
 func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
 	model := ModelCallCompleted{
 		Message: corechat.NewAssistantMessage(corechat.NewTextPart("original")),

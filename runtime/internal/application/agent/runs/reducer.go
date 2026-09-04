@@ -338,8 +338,9 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 }
 
 func (r *reducer) reduceAssistantMessage(completed AssistantMessageCompleted) (factReduction, error) {
+	message := completed.Message()
 	if r.lastModelMessage != nil {
-		if !reflect.DeepEqual(*r.lastModelMessage, completed.Message) {
+		if !reflect.DeepEqual(*r.lastModelMessage, message) {
 			return factReduction{}, fmt.Errorf(
 				"%w: executor final assistant message differs from the last committed model response",
 				errExecutorContract,
@@ -354,7 +355,6 @@ func (r *reducer) reduceAssistantMessage(completed AssistantMessageCompleted) (f
 			errExecutorContract,
 		)
 	}
-	message := completed.Message.Clone()
 	r.earlyAssistantMessage = &message
 	return factReduction{}, nil
 }

@@ -262,7 +262,11 @@ func TestInteractionExecutorRunsRootFromCompleteWorkingContext(t *testing.T) {
 		t.Fatalf("non-streaming execution emitted message deltas: %#v", deltas)
 	}
 	completed := payloadsOf[runs.AssistantMessageCompleted](events)
-	if len(completed) != 1 || completed[0].Message.Text() != "complete answer" {
+	if len(completed) != 1 {
+		t.Fatalf("authoritative assistant completion = %#v", completed)
+	}
+	message := completed[0].Message()
+	if message.Text() != "complete answer" {
 		t.Fatalf("authoritative assistant completion = %#v", completed)
 	}
 	ended := payloadsOf[runs.SegmentEnded](events)

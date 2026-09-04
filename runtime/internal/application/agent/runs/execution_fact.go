@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -114,7 +115,26 @@ type ReasoningDelta struct {
 // transcript Item.
 type AssistantMessageCompleted struct {
 	executionFactBase
-	Message corechat.Message
+	message corechat.Message
+}
+
+// NewAssistantMessageCompleted captures one validated final assistant message.
+func NewAssistantMessageCompleted(message corechat.Message) (AssistantMessageCompleted, error) {
+	if message.Role != corechat.RoleAssistant {
+		return AssistantMessageCompleted{}, errors.New("runs: completed assistant message must have assistant role")
+	}
+	if err := message.Validate(); err != nil {
+		return AssistantMessageCompleted{}, fmt.Errorf("runs: completed assistant message: %w", err)
+	}
+	if err := conversation.ValidateMessageIdentities(message); err != nil {
+		return AssistantMessageCompleted{}, fmt.Errorf("runs: completed assistant message: %w", err)
+	}
+	return AssistantMessageCompleted{message: message.Clone()}, nil
+}
+
+// Message returns an ownership-independent final assistant message.
+func (a AssistantMessageCompleted) Message() corechat.Message {
+	return a.message.Clone()
 }
 
 // UnknownEffectsDetected is the executor's fail-closed control observation that

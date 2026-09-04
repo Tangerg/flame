@@ -514,8 +514,12 @@ func (i *interactionSession) publishResult(result agent.Result) error {
 		if modelOutput == nil || modelOutput.Message == nil {
 			return errors.New("agentexec: Interaction output has no assistant message")
 		}
+		completion, err := runs.NewAssistantMessageCompleted(*modelOutput.Message)
+		if err != nil {
+			return err
+		}
 		if !i.lifetime.send(runs.ExecutorEvent{
-			Member: member, Payload: runs.AssistantMessageCompleted{Message: modelOutput.Message.Clone()},
+			Member: member, Payload: completion,
 		}) {
 			return nil
 		}
