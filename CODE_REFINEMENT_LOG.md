@@ -213,6 +213,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 253 | `df3efe06` + CLI dependency update | Encapsulated waiting-subtree cancellation behind parked/resuming constructors, deep-isolated Pending, checkpoint, message, resume, opening-event, and terminal projections, and moved contradictory write-set rejection before persistence. |
 | 254 | `5425b2c8` + CLI dependency update | Made authoritative execution facts private and exhaustively cloned at receipt construction and access, rejected reducer-unsupported representations early, and covered mutable model, Tool, interrupt, usage, and steer projections under race. |
 | 255 | `fede4925` + CLI dependency update | Encapsulated recovery write-sets behind one validating constructor and isolated accessors, kept planner mutation private, and proved storage-side projection mutation cannot diverge committed facts from published Run, interrupt, Session, or Goal invalidations. |
+| 256 | `df85ac68` + CLI dependency update | Encapsulated executor tree-interruption snapshots behind one validating constructor, deep-isolated checkpoint and nested interruption projections, and migrated the full asynchronous barrier handoff to owned accessors. |
 
 ## Verification contract
 
