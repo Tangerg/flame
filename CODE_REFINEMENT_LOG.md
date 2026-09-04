@@ -201,6 +201,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 241 | `f3f59d2f` + CLI dependency update | Replaced split Goal state/version writes with one Domain-owned exact replacement across lifecycle, recovery, terminal accounting, invalidation, and SQLite CAS. |
 | 242 | `0e7dc8ce` + CLI dependency update | Replaced the five-part Agent Memory generation call with one Domain-owned publication that binds target, expected and successor states, canonical contents, and monotonic time through SQLite CAS. |
 | 243 | `772eab24` + CLI dependency update | Bound each Knowledge file CAS precondition and replacement body into one Domain-owned value while preserving workspace routing and public protocol input at their existing owners. |
+| 244 | `7b02affc` + CLI dependency update | Made the conversation compaction write-set own its valid Session, isolated coordinate rewrite, and unique same-Session Run replacement set before persistence CAS. |
 
 ## Verification contract
 
