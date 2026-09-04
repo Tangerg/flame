@@ -56,6 +56,10 @@ type RecoveryAdmissions interface {
 // child-before-parent replacement. Checkpoint and callback cleanup name only
 // Sessions whose writer lease was acquired.
 type RecoveryCommit struct {
+	state recoveryCommitState
+}
+
+type recoveryCommitState struct {
 	LostRuns                []rundomain.Replacement
 	ItemReplacements        []transcript.Replacement
 	ConversationTransitions []RecoveryConversationTransition
@@ -164,7 +168,7 @@ type recoveryPlanner struct {
 	sessions      map[string]session.Session
 	conversations map[string]recoveryConversationSnapshot
 	preserved     map[string]struct{}
-	commit        RecoveryCommit
+	commit        recoveryCommitState
 	finishedAt    time.Time
 	reconciled    int
 }
@@ -260,7 +264,7 @@ func (r *Recovery) publishRecoveredReadModels(commit RecoveryCommit) {
 		goal    bool
 	}
 	changes := make(map[string]*sessionChanges)
-	for _, recovery := range commit.LostRuns {
+	for _, recovery := range commit.LostRuns() {
 		lost := recovery.State()
 		scope := changes[lost.SessionID()]
 		if scope == nil {
@@ -272,12 +276,12 @@ func (r *Recovery) publishRecoveredReadModels(commit RecoveryCommit) {
 	if len(changes) == 0 {
 		return
 	}
-	for _, owner := range commit.DeleteInterrupts {
+	for _, owner := range commit.DeleteInterrupts() {
 		if scope := changes[owner.SessionID]; scope != nil {
 			scope.rootIDs = append(scope.rootIDs, owner.RootRunID)
 		}
 	}
-	for _, record := range commit.GoalRuns {
+	for _, record := range commit.GoalRuns() {
 		if scope := changes[record.SessionID]; scope != nil {
 			scope.goal = true
 		}
@@ -489,10 +493,11 @@ func (r *recoveryPlanner) plan() (RecoveryCommit, int, error) {
 	slices.SortFunc(r.commit.ToolInvocations, compareToolInvocationRecoveries)
 	slices.Sort(r.commit.PreservedSessionIDs)
 	slices.Sort(r.commit.DeleteCheckpointSessionIDs)
-	if err := r.commit.Validate(); err != nil {
+	commit, err := newRecoveryCommit(r.commit)
+	if err != nil {
 		return RecoveryCommit{}, 0, err
 	}
-	return r.commit, r.reconciled, nil
+	return commit, r.reconciled, nil
 }
 
 func compareModelInvocationRecoveries(left, right ModelInvocationRecovery) int {

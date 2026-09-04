@@ -17,13 +17,111 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
+// NewRecoveryCommit constructs one complete, immutable boot-recovery write-set.
+func NewRecoveryCommit(
+	lostRuns []rundomain.Replacement,
+	itemReplacements []transcript.Replacement,
+	conversationTransitions []RecoveryConversationTransition,
+	modelInvocations []ModelInvocationRecovery,
+	toolInvocations []ToolInvocationRecovery,
+	goalRuns []goal.RunRecord,
+	deleteInterrupts []InterruptOwner,
+	preservedSessionIDs []string,
+	deleteCheckpointSessionIDs []string,
+) (RecoveryCommit, error) {
+	return newRecoveryCommit(recoveryCommitState{
+		LostRuns: lostRuns, ItemReplacements: itemReplacements,
+		ConversationTransitions: conversationTransitions,
+		ModelInvocations:        modelInvocations, ToolInvocations: toolInvocations,
+		GoalRuns: goalRuns, DeleteInterrupts: deleteInterrupts,
+		PreservedSessionIDs:        preservedSessionIDs,
+		DeleteCheckpointSessionIDs: deleteCheckpointSessionIDs,
+	})
+}
+
+func newRecoveryCommit(state recoveryCommitState) (RecoveryCommit, error) {
+	state = cloneRecoveryCommitState(state)
+	commit := RecoveryCommit{state: state}
+	if err := commit.Validate(); err != nil {
+		return RecoveryCommit{}, err
+	}
+	return commit, nil
+}
+
+func cloneRecoveryCommitState(state recoveryCommitState) recoveryCommitState {
+	state.LostRuns = slices.Clone(state.LostRuns)
+	state.ItemReplacements = slices.Clone(state.ItemReplacements)
+	state.ConversationTransitions = cloneRecoveryConversationTransitions(state.ConversationTransitions)
+	state.ModelInvocations = slices.Clone(state.ModelInvocations)
+	state.ToolInvocations = slices.Clone(state.ToolInvocations)
+	state.GoalRuns = slices.Clone(state.GoalRuns)
+	state.DeleteInterrupts = slices.Clone(state.DeleteInterrupts)
+	state.PreservedSessionIDs = slices.Clone(state.PreservedSessionIDs)
+	state.DeleteCheckpointSessionIDs = slices.Clone(state.DeleteCheckpointSessionIDs)
+	return state
+}
+
+func cloneRecoveryConversationTransitions(
+	transitions []RecoveryConversationTransition,
+) []RecoveryConversationTransition {
+	owned := slices.Clone(transitions)
+	for index := range owned {
+		owned[index].Messages = cloneCommitMessages(owned[index].Messages)
+	}
+	return owned
+}
+
+// LostRuns returns the exact child-before-parent Run replacements.
+func (r RecoveryCommit) LostRuns() []rundomain.Replacement {
+	return slices.Clone(r.state.LostRuns)
+}
+
+// ItemReplacements returns the Tool Items closed by recovery.
+func (r RecoveryCommit) ItemReplacements() []transcript.Replacement {
+	return slices.Clone(r.state.ItemReplacements)
+}
+
+// ConversationTransitions returns isolated lost-tree context closures.
+func (r RecoveryCommit) ConversationTransitions() []RecoveryConversationTransition {
+	return cloneRecoveryConversationTransitions(r.state.ConversationTransitions)
+}
+
+// ModelInvocations returns provider attempts closed as unknown.
+func (r RecoveryCommit) ModelInvocations() []ModelInvocationRecovery {
+	return slices.Clone(r.state.ModelInvocations)
+}
+
+// ToolInvocations returns Tool attempts closed as incomplete.
+func (r RecoveryCommit) ToolInvocations() []ToolInvocationRecovery {
+	return slices.Clone(r.state.ToolInvocations)
+}
+
+// GoalRuns returns terminal Goal accounting projections.
+func (r RecoveryCommit) GoalRuns() []goal.RunRecord { return slices.Clone(r.state.GoalRuns) }
+
+// DeleteInterrupts returns the lost root-owned Pending records to remove.
+func (r RecoveryCommit) DeleteInterrupts() []InterruptOwner {
+	return slices.Clone(r.state.DeleteInterrupts)
+}
+
+// PreservedSessionIDs returns waiting Sessions whose checkpoints remain live.
+func (r RecoveryCommit) PreservedSessionIDs() []string {
+	return slices.Clone(r.state.PreservedSessionIDs)
+}
+
+// DeleteCheckpointSessionIDs returns lost Sessions whose checkpoints are obsolete.
+func (r RecoveryCommit) DeleteCheckpointSessionIDs() []string {
+	return slices.Clone(r.state.DeleteCheckpointSessionIDs)
+}
+
 // Validate proves that a boot-recovery write-set is self-contained and
 // owner-bound before its transaction begins.
 func (r RecoveryCommit) Validate() error {
-	lostByID := make(map[string]rundomain.Replacement, len(r.LostRuns))
+	state := r.state
+	lostByID := make(map[string]rundomain.Replacement, len(state.LostRuns))
 	treeMembers := make(map[string][]rundomain.TreeMember)
-	actualOrder := make([]string, 0, len(r.LostRuns))
-	for index, recovery := range r.LostRuns {
+	actualOrder := make([]string, 0, len(state.LostRuns))
+	for index, recovery := range state.LostRuns {
 		if err := validateLostRunReplacement(recovery); err != nil {
 			return fmt.Errorf("runs: recovery commit lost Run[%d]: %w", index, err)
 		}
@@ -53,7 +151,7 @@ func (r RecoveryCommit) Validate() error {
 	if err != nil {
 		return err
 	}
-	expectedOrder := make([]string, 0, len(r.LostRuns))
+	expectedOrder := make([]string, 0, len(state.LostRuns))
 	for _, rootID := range rootIDs {
 		members := treeMembers[rootID]
 		tree, err := rundomain.NewTree(rootID, members)
@@ -66,14 +164,14 @@ func (r RecoveryCommit) Validate() error {
 		return errors.New("runs: recovery commit lost Runs are not in canonical tree/postorder")
 	}
 	if err := validateRecoveryConversationTransitions(
-		r.ConversationTransitions,
+		state.ConversationTransitions,
 		rootIDs,
 		treeMembers,
 		lostByID,
 	); err != nil {
 		return err
 	}
-	recoveredSessionIDs, err := recoverySessionIDs(r.PreservedSessionIDs, lostSessionIDs)
+	recoveredSessionIDs, err := recoverySessionIDs(state.PreservedSessionIDs, lostSessionIDs)
 	if err != nil {
 		return err
 	}
@@ -81,12 +179,12 @@ func (r RecoveryCommit) Validate() error {
 	for _, sessionID := range recoveredSessionIDs {
 		recoveredSessions[sessionID] = struct{}{}
 	}
-	if err := validateRecoveryModelInvocations(r.ModelInvocations, lostByID, recoveredSessions); err != nil {
+	if err := validateRecoveryModelInvocations(state.ModelInvocations, lostByID, recoveredSessions); err != nil {
 		return err
 	}
 
-	replacedItems := make(map[string]transcript.Replacement, len(r.ItemReplacements))
-	for index, replacement := range r.ItemReplacements {
+	replacedItems := make(map[string]transcript.Replacement, len(state.ItemReplacements))
+	for index, replacement := range state.ItemReplacements {
 		if err := replacement.Validate(); err != nil {
 			return fmt.Errorf("runs: recovery commit Item replacement[%d]: %w", index, err)
 		}
@@ -107,21 +205,21 @@ func (r RecoveryCommit) Validate() error {
 		replacedItems[expected.ID()] = replacement
 	}
 	if err := validateRecoveryToolInvocations(
-		r.ToolInvocations,
+		state.ToolInvocations,
 		lostByID,
 		recoveredSessions,
 		replacedItems,
 	); err != nil {
 		return err
 	}
-	if err := validateRecoveryGoalRuns(r.GoalRuns, lostByID); err != nil {
+	if err := validateRecoveryGoalRuns(state.GoalRuns, lostByID); err != nil {
 		return err
 	}
-	if err := validateRecoveryInterruptDeletions(r.DeleteInterrupts, lostByID); err != nil {
+	if err := validateRecoveryInterruptDeletions(state.DeleteInterrupts, lostByID); err != nil {
 		return err
 	}
 	if err := validateRecoveryCheckpointDeletions(
-		r.DeleteCheckpointSessionIDs,
+		state.DeleteCheckpointSessionIDs,
 		lostSessionIDs,
 	); err != nil {
 		return err
@@ -586,8 +684,8 @@ func recoverySessionIDs(preserved, lost []string) ([]string, error) {
 // RecoveredSessionIDs derives the exact Sessions whose abandoned callback
 // ledgers may be retired. Validate must succeed before this projection is used.
 func (r RecoveryCommit) RecoveredSessionIDs() []string {
-	values := slices.Clone(r.PreservedSessionIDs)
-	for _, recovery := range r.LostRuns {
+	values := slices.Clone(r.state.PreservedSessionIDs)
+	for _, recovery := range r.state.LostRuns {
 		lost := recovery.State()
 		if lost.Lineage().IsRoot() {
 			values = append(values, lost.SessionID())

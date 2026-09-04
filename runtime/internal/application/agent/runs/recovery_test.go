@@ -10,7 +10,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -47,6 +46,16 @@ type recoveryStoreStub struct {
 	aliasPending      bool
 	transcriptReads   int
 	conversationReads int
+	mutateCommitViews bool
+}
+
+func invalidRecoveryCommit(
+	commit RecoveryCommit,
+	mutate func(*recoveryCommitState),
+) RecoveryCommit {
+	state := cloneRecoveryCommitState(commit.state)
+	mutate(&state)
+	return RecoveryCommit{state: state}
 }
 
 func (r *recoveryStoreStub) ListNonTerminalRuns(context.Context) ([]rundomain.Run, error) {
@@ -295,6 +304,26 @@ func (r *recoveryStoreStub) LoadExecutorCheckpoint(
 func (r *recoveryStoreStub) CommitRecovery(_ context.Context, commit RecoveryCommit) error {
 	r.commits++
 	r.commit = commit
+	if r.mutateCommitViews {
+		if values := commit.LostRuns(); len(values) != 0 {
+			values[0] = rundomain.Replacement{}
+		}
+		if values := commit.ModelInvocations(); len(values) != 0 {
+			values[0].SessionID = "session_mutated"
+		}
+		if values := commit.DeleteInterrupts(); len(values) != 0 {
+			values[0].SessionID = "session_mutated"
+		}
+		if values := commit.DeleteCheckpointSessionIDs(); len(values) != 0 {
+			values[0] = "session_mutated"
+		}
+		if values := commit.ConversationTransitions(); len(values) != 0 {
+			values[0].SessionID = "session_mutated"
+			if len(values[0].Messages) != 0 {
+				values[0].Messages[0].Parts[0].ToolResult.Name = "mutated"
+			}
+		}
+	}
 	return r.commitErr
 }
 
@@ -471,7 +500,8 @@ func TestRecoverySkipsFactsOwnedByAnotherRuntime(t *testing.T) {
 		MessageMark: rundomain.UnknownMessageMark,
 	})
 	store := &recoveryStoreStub{
-		runs: []rundomain.Run{recoverable, foreign},
+		runs:              []rundomain.Run{recoverable, foreign},
+		mutateCommitViews: true,
 		models: []OpenModelInvocation{
 			{SessionID: recoverable.SessionID(), RunID: recoverable.ID(), SegmentID: "segment_recoverable", CallID: "call_recoverable", StartedAt: createdAt},
 			{SessionID: foreign.SessionID(), RunID: foreign.ID(), SegmentID: "segment_foreign", CallID: "call_foreign", StartedAt: createdAt},
@@ -499,15 +529,17 @@ func TestRecoverySkipsFactsOwnedByAnotherRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
-	if reconciled != 1 || len(store.commit.LostRuns) != 1 || store.commit.LostRuns[0].State().ID() != recoverable.ID() {
-		t.Fatalf("recovery touched wrong Runs: reconciled=%d lost=%+v", reconciled, store.commit.LostRuns)
+	lostRuns := store.commit.LostRuns()
+	if reconciled != 1 || len(lostRuns) != 1 || lostRuns[0].State().ID() != recoverable.ID() {
+		t.Fatalf("recovery touched wrong Runs: reconciled=%d lost=%+v", reconciled, lostRuns)
 	}
-	if len(store.commit.ModelInvocations) != 1 || store.commit.ModelInvocations[0].RunID != recoverable.ID() {
-		t.Fatalf("recovery touched foreign invocation: %+v", store.commit.ModelInvocations)
+	modelInvocations := store.commit.ModelInvocations()
+	if len(modelInvocations) != 1 || modelInvocations[0].RunID != recoverable.ID() {
+		t.Fatalf("recovery touched foreign invocation: %+v", modelInvocations)
 	}
 	if !reflect.DeepEqual(store.commit.RecoveredSessionIDs(), []string{recoverable.SessionID()}) ||
-		!reflect.DeepEqual(store.commit.DeleteCheckpointSessionIDs, []string{recoverable.SessionID()}) {
-		t.Fatalf("recovery cleanup scope = sessions:%v checkpoints:%v", store.commit.RecoveredSessionIDs(), store.commit.DeleteCheckpointSessionIDs)
+		!reflect.DeepEqual(store.commit.DeleteCheckpointSessionIDs(), []string{recoverable.SessionID()}) {
+		t.Fatalf("recovery cleanup scope = sessions:%v checkpoints:%v", store.commit.RecoveredSessionIDs(), store.commit.DeleteCheckpointSessionIDs())
 	}
 	if admissions.released[recoverable.SessionID()] != 1 || admissions.released[foreign.SessionID()] != 0 {
 		t.Fatalf("recovery releases = %+v", admissions.released)
@@ -836,14 +868,15 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 	if recovered != 2 || store.commits != 1 || checkpointCalls != 0 {
 		t.Fatalf("recovered/commits/checkpointCalls = %d/%d/%d, want 2/1/0", recovered, store.commits, checkpointCalls)
 	}
-	if got := []string{store.commit.LostRuns[0].State().ID(), store.commit.LostRuns[1].State().ID()}; !reflect.DeepEqual(got, []string{child.ID(), root.ID()}) {
+	lostRuns := store.commit.LostRuns()
+	if got := []string{lostRuns[0].State().ID(), lostRuns[1].State().ID()}; !reflect.DeepEqual(got, []string{child.ID(), root.ID()}) {
 		t.Fatalf("lost Run order = %v, want child-before-parent", got)
 	}
-	if !store.commit.LostRuns[0].Expected().Equal(child) ||
-		!store.commit.LostRuns[1].Expected().Equal(root) {
-		t.Fatalf("lost Run replacements discarded their exact pre-recovery states: %+v", store.commit.LostRuns)
+	if !lostRuns[0].Expected().Equal(child) ||
+		!lostRuns[1].Expected().Equal(root) {
+		t.Fatalf("lost Run replacements discarded their exact pre-recovery states: %+v", lostRuns)
 	}
-	for _, replacement := range store.commit.LostRuns {
+	for _, replacement := range lostRuns {
 		lost := replacement.State()
 		if lost.State() != rundomain.Failed || !runHasOutcome(lost, rundomain.OutcomeLost) ||
 			!runHasFailureKind(lost, rundomain.FailureLost) ||
@@ -851,70 +884,67 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 			t.Fatalf("lost Run = %+v", lost)
 		}
 	}
-	if len(store.commit.ItemReplacements) != 1 ||
-		store.commit.ItemReplacements[0].Expected().ID() != toolItem.ID() ||
-		store.commit.ItemReplacements[0].State().Status() != transcript.ItemIncomplete {
-		t.Fatalf("Item replacements = %+v, want only the open Tool Item abandoned", store.commit.ItemReplacements)
+	itemReplacements := store.commit.ItemReplacements()
+	if len(itemReplacements) != 1 ||
+		itemReplacements[0].Expected().ID() != toolItem.ID() ||
+		itemReplacements[0].State().Status() != transcript.ItemIncomplete {
+		t.Fatalf("Item replacements = %+v, want only the open Tool Item abandoned", itemReplacements)
 	}
-	if len(store.commit.PreservedSessionIDs) != 0 {
-		t.Fatalf("preserved Sessions = %v, want none", store.commit.PreservedSessionIDs)
+	if preserved := store.commit.PreservedSessionIDs(); len(preserved) != 0 {
+		t.Fatalf("preserved Sessions = %v, want none", preserved)
 	}
-	if len(store.commit.ModelInvocations) != 2 || len(store.commit.ToolInvocations) != 1 {
+	modelInvocations := store.commit.ModelInvocations()
+	toolInvocations := store.commit.ToolInvocations()
+	if len(modelInvocations) != 2 || len(toolInvocations) != 1 {
 		t.Fatalf(
 			"recovered invocations = model:%+v Tool:%+v",
-			store.commit.ModelInvocations,
-			store.commit.ToolInvocations,
+			modelInvocations,
+			toolInvocations,
 		)
 	}
-	for _, invocation := range store.commit.ModelInvocations {
+	for _, invocation := range modelInvocations {
 		if !invocation.FinishedAt.Equal(finishedAt) {
 			t.Fatalf("model invocation recovery = %+v", invocation)
 		}
 	}
-	if !store.commit.ToolInvocations[0].FinishedAt.Equal(finishedAt) {
-		t.Fatalf("Tool invocation recovery = %+v", store.commit.ToolInvocations[0])
+	if !toolInvocations[0].FinishedAt.Equal(finishedAt) {
+		t.Fatalf("Tool invocation recovery = %+v", toolInvocations[0])
 	}
-	foreignOrphan := store.commit
-	foreignOrphan.ModelInvocations = append(
-		[]ModelInvocationRecovery(nil),
-		store.commit.ModelInvocations...,
-	)
-	for index := range foreignOrphan.ModelInvocations {
-		if foreignOrphan.ModelInvocations[index].RunID == "run_already_terminal" {
-			foreignOrphan.ModelInvocations[index].SessionID = "session_foreign"
+	foreignOrphan := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
+		for index := range state.ModelInvocations {
+			if state.ModelInvocations[index].RunID == "run_already_terminal" {
+				state.ModelInvocations[index].SessionID = "session_foreign"
+			}
 		}
-	}
+	})
 	if err := foreignOrphan.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted an orphan invocation outside recovered Session ownership")
 	}
-	missingCheckpointDeletion := store.commit
-	missingCheckpointDeletion.DeleteCheckpointSessionIDs = nil
+	missingCheckpointDeletion := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
+		state.DeleteCheckpointSessionIDs = nil
+	})
 	if err := missingCheckpointDeletion.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted a lost tree without checkpoint cleanup")
 	}
-	foreignCheckpointDeletion := store.commit
-	foreignCheckpointDeletion.DeleteCheckpointSessionIDs = append(
-		append([]string(nil), store.commit.DeleteCheckpointSessionIDs...),
-		"session_foreign",
-	)
+	foreignCheckpointDeletion := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
+		state.DeleteCheckpointSessionIDs = append(state.DeleteCheckpointSessionIDs, "session_foreign")
+	})
 	if err := foreignCheckpointDeletion.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted checkpoint cleanup for an unrelated Session")
 	}
-	missingToolReplacement := store.commit
-	missingToolReplacement.ItemReplacements = nil
+	missingToolReplacement := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
+		state.ItemReplacements = nil
+	})
 	if err := missingToolReplacement.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted a lost-Run Tool journal without its Item replacement")
 	}
-	wrongInvocationSegment := store.commit
-	wrongInvocationSegment.ModelInvocations = append(
-		[]ModelInvocationRecovery(nil),
-		store.commit.ModelInvocations...,
-	)
-	for index := range wrongInvocationSegment.ModelInvocations {
-		if wrongInvocationSegment.ModelInvocations[index].RunID == root.ID() {
-			wrongInvocationSegment.ModelInvocations[index].SegmentID = "segment_wrong"
+	wrongInvocationSegment := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
+		for index := range state.ModelInvocations {
+			if state.ModelInvocations[index].RunID == root.ID() {
+				state.ModelInvocations[index].SegmentID = "segment_wrong"
+			}
 		}
-	}
+	})
 	if err := wrongInvocationSegment.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted an invocation outside its recovered active Segment")
 	}
@@ -989,20 +1019,20 @@ func TestRecoveryDoesNotMoveDurableTimeBackwardWhenTheClockRegresses(t *testing.
 			if _, err := recovery.Reconcile(t.Context()); err != nil {
 				t.Fatalf("Reconcile with regressed clock: %v", err)
 			}
-			if got := store.commit.LostRuns[0].State().FinishedAt(); !got.Equal(test.want) {
+			if got := store.commit.LostRuns()[0].State().FinishedAt(); !got.Equal(test.want) {
 				t.Fatalf("lost Run finish = %v, want durable high watermark %v", got, test.want)
 			}
-			for _, invocation := range store.commit.ModelInvocations {
+			for _, invocation := range store.commit.ModelInvocations() {
 				if !invocation.FinishedAt.Equal(test.want) {
 					t.Fatalf("model finish = %v, want %v", invocation.FinishedAt, test.want)
 				}
 			}
-			for _, invocation := range store.commit.ToolInvocations {
+			for _, invocation := range store.commit.ToolInvocations() {
 				if !invocation.FinishedAt.Equal(test.want) {
 					t.Fatalf("Tool finish = %v, want %v", invocation.FinishedAt, test.want)
 				}
 			}
-			for _, replacement := range store.commit.ItemReplacements {
+			for _, replacement := range store.commit.ItemReplacements() {
 				if !replacement.State().FinishedAt().Equal(test.want) {
 					t.Fatalf("Item finish = %v, want %v", replacement.State().FinishedAt(), test.want)
 				}
@@ -1044,10 +1074,11 @@ func TestRecoveryChargesLostGoalOwnedRootToItsAdmissionLease(t *testing.T) {
 	if _, err := recovery.Reconcile(t.Context()); err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
-	if len(store.commit.GoalRuns) != 1 {
-		t.Fatalf("Goal Runs = %+v, want one", store.commit.GoalRuns)
+	goalRuns := store.commit.GoalRuns()
+	if len(goalRuns) != 1 {
+		t.Fatalf("Goal Runs = %+v, want one", goalRuns)
 	}
-	goalRun := store.commit.GoalRuns[0]
+	goalRun := goalRuns[0]
 	goalCost, goalCostAvailable := goalRun.Cost.USD()
 	if goalRun.SessionID != run.SessionID() || goalRun.IncarnationID != run.GoalIncarnationID() ||
 		goalRun.RunID != run.ID() || goalRun.Outcome != rundomain.OutcomeLost ||
@@ -1065,24 +1096,22 @@ func TestRecoveryChargesLostGoalOwnedRootToItsAdmissionLease(t *testing.T) {
 		t.Fatalf("recovery notices = %+v, want %+v", notices, wantNotices)
 	}
 
-	missingCharge := store.commit
-	missingCharge.GoalRuns = nil
+	missingCharge := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
+		state.GoalRuns = nil
+	})
 	if err := missingCharge.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted a lost goal-owned Run without its charge")
 	}
-	mismatchedCharge := store.commit
-	mismatchedCharge.GoalRuns = append([]goal.RunRecord(nil), store.commit.GoalRuns...)
-	mismatchedCharge.GoalRuns[0].IncarnationID = "other-lease"
+	mismatchedCharge := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
+		state.GoalRuns[0].IncarnationID = "other-lease"
+	})
 	if err := mismatchedCharge.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted a Goal Run from another incarnation")
 	}
-	foreignDeletion := store.commit
-	foreignDeletion.DeleteInterrupts = append(
-		[]InterruptOwner(nil),
-		store.commit.DeleteInterrupts...,
-	)
-	foreignDeletion.DeleteInterrupts = append(foreignDeletion.DeleteInterrupts, InterruptOwner{
-		SessionID: "other-session", RootRunID: "run_foreign",
+	foreignDeletion := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
+		state.DeleteInterrupts = append(state.DeleteInterrupts, InterruptOwner{
+			SessionID: "other-session", RootRunID: "run_foreign",
+		})
 	})
 	if err := foreignDeletion.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted deletion of an unrelated Pending set")
@@ -1125,11 +1154,11 @@ func TestRecoveryPreservesOnlyCoherentInterruptedTree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("waitingContinuationFromPending: %v", err)
 	}
-	if recovered != 0 || !reflect.DeepEqual(validated, wantContinuation) || len(store.commit.LostRuns) != 0 {
+	if recovered != 0 || !reflect.DeepEqual(validated, wantContinuation) || len(store.commit.LostRuns()) != 0 {
 		t.Fatalf("recovery = %d validated=%+v commit=%+v", recovered, validated, store.commit)
 	}
-	if !reflect.DeepEqual(store.commit.PreservedSessionIDs, []string{run.SessionID()}) ||
-		len(store.commit.DeleteInterrupts) != 0 {
+	if !reflect.DeepEqual(store.commit.PreservedSessionIDs(), []string{run.SessionID()}) ||
+		len(store.commit.DeleteInterrupts()) != 0 {
 		t.Fatalf("ownership plan = %+v", store.commit)
 	}
 	if got := store.commit.RecoveredSessionIDs(); !reflect.DeepEqual(got, []string{run.SessionID()}) {
@@ -1170,8 +1199,8 @@ func TestRecoveryPreservesQuestionToolWhileItsCheckpointIsResumable(t *testing.T
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
-	if recovered != 0 || checkpointCalls != 1 || len(store.commit.LostRuns) != 0 ||
-		!reflect.DeepEqual(store.commit.PreservedSessionIDs, []string{run.SessionID()}) {
+	if recovered != 0 || checkpointCalls != 1 || len(store.commit.LostRuns()) != 0 ||
+		!reflect.DeepEqual(store.commit.PreservedSessionIDs(), []string{run.SessionID()}) {
 		t.Fatalf("recovery = %d checkpointCalls=%d commit=%+v", recovered, checkpointCalls, store.commit)
 	}
 }
@@ -1201,7 +1230,7 @@ func TestRecoveryMarksIsolatedParkLostWithoutProbingExecutorCheckpoint(t *testin
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
-	if recovered != 1 || checkpointCalls != 0 || len(store.commit.LostRuns) != 1 {
+	if recovered != 1 || checkpointCalls != 0 || len(store.commit.LostRuns()) != 1 {
 		t.Fatalf("recovered=%d checkpointCalls=%d commit=%+v", recovered, checkpointCalls, store.commit)
 	}
 }
@@ -1225,9 +1254,9 @@ func TestRecoveryTreatsUnavailableExecutorCheckpointAsResourceLoss(t *testing.T)
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
-	if recovered != 1 || len(store.commit.LostRuns) != 1 ||
-		!reflect.DeepEqual(store.commit.DeleteInterrupts, []InterruptOwner{{SessionID: run.SessionID(), RootRunID: run.ID()}}) ||
-		len(store.commit.PreservedSessionIDs) != 0 {
+	if recovered != 1 || len(store.commit.LostRuns()) != 1 ||
+		!reflect.DeepEqual(store.commit.DeleteInterrupts(), []InterruptOwner{{SessionID: run.SessionID(), RootRunID: run.ID()}}) ||
+		len(store.commit.PreservedSessionIDs()) != 0 {
 		t.Fatalf("resource-loss recovery = %d, commit %+v", recovered, store.commit)
 	}
 }
@@ -1253,8 +1282,8 @@ func TestRecoveryTreatsInvalidExecutorCheckpointAsResourceLoss(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
-	if recovered != 1 || checkpointCalls != 0 || len(store.commit.LostRuns) != 1 ||
-		len(store.commit.PreservedSessionIDs) != 0 {
+	if recovered != 1 || checkpointCalls != 0 || len(store.commit.LostRuns()) != 1 ||
+		len(store.commit.PreservedSessionIDs()) != 0 {
 		t.Fatalf("invalid-checkpoint recovery = %d checkpointCalls=%d commit=%+v", recovered, checkpointCalls, store.commit)
 	}
 }
@@ -1336,8 +1365,8 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 			if err != nil {
 				t.Fatalf("Reconcile: %v", err)
 			}
-			if recovered != 1 || probeCalls != 0 || len(store.commit.LostRuns) != 1 ||
-				len(store.commit.PreservedSessionIDs) != 0 {
+			if recovered != 1 || probeCalls != 0 || len(store.commit.LostRuns()) != 1 ||
+				len(store.commit.PreservedSessionIDs()) != 0 {
 				t.Fatalf(
 					"mismatched checkpoint recovery=%d probeCalls=%d commit=%+v",
 					recovered,
@@ -1386,10 +1415,13 @@ func TestRecoveryAtomicallyClosesLostQuestionToolContext(t *testing.T) {
 	if _, err := recovery.Reconcile(t.Context()); err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
-	if len(store.commit.ConversationTransitions) != 1 || len(store.commit.ItemReplacements) != 1 {
+	conversationTransitions := store.commit.ConversationTransitions()
+	itemReplacements := store.commit.ItemReplacements()
+	lostRuns := store.commit.LostRuns()
+	if len(conversationTransitions) != 1 || len(itemReplacements) != 1 {
 		t.Fatalf("recovery commit = %+v", store.commit)
 	}
-	transition := store.commit.ConversationTransitions[0]
+	transition := conversationTransitions[0]
 	if transition.RootRunID != run.ID() || transition.SessionID != run.SessionID() ||
 		transition.ExpectedCount != 2 || len(transition.Messages) != 1 {
 		t.Fatalf("conversation transition = %+v", transition)
@@ -1401,21 +1433,19 @@ func TestRecoveryAtomicallyClosesLostQuestionToolContext(t *testing.T) {
 	resultText, textual := result.Output.Text()
 	if result.ID != "provider_call_open" || result.Name != "ask_user" ||
 		!textual || resultText != recoveryLostToolResult || !result.IsError ||
-		store.commit.LostRuns[0].State().MessageMark() != 3 {
-		t.Fatalf("closure/lost Run = %#v / %+v", result, store.commit.LostRuns[0])
+		lostRuns[0].State().MessageMark() != 3 {
+		t.Fatalf("closure/lost Run = %#v / %+v", result, lostRuns[0])
 	}
 
-	missingClosure := store.commit
-	missingClosure.ConversationTransitions = nil
+	missingClosure := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
+		state.ConversationTransitions = nil
+	})
 	if err := missingClosure.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted a lost tree without its conversation transition")
 	}
-	wrongWatermark := store.commit
-	wrongWatermark.ConversationTransitions = append(
-		[]RecoveryConversationTransition(nil),
-		store.commit.ConversationTransitions...,
-	)
-	wrongWatermark.ConversationTransitions[0].ExpectedCount++
+	wrongWatermark := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
+		state.ConversationTransitions[0].ExpectedCount++
+	})
 	if err := wrongWatermark.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted a conversation watermark that differs from the lost Run")
 	}

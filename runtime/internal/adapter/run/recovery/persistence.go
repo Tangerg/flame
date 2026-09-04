@@ -260,7 +260,7 @@ func (p *Persistence) applyRecovery(ctx context.Context, commit runs.RecoveryCom
 }
 
 func (p *Persistence) markModelInvocationsUnknown(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, invocation := range commit.ModelInvocations {
+	for _, invocation := range commit.ModelInvocations() {
 		if err := p.modelInvocations.MarkModelInvocationUnknown(
 			ctx,
 			invocation.SessionID,
@@ -281,7 +281,7 @@ func (p *Persistence) markModelInvocationsUnknown(ctx context.Context, commit ru
 }
 
 func (p *Persistence) markToolInvocationsIncomplete(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, invocation := range commit.ToolInvocations {
+	for _, invocation := range commit.ToolInvocations() {
 		if err := p.toolInvocations.MarkToolInvocationIncomplete(
 			ctx,
 			invocation.SessionID,
@@ -303,7 +303,7 @@ func (p *Persistence) markToolInvocationsIncomplete(ctx context.Context, commit 
 }
 
 func (p *Persistence) applyConversationTransitions(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, transition := range commit.ConversationTransitions {
+	for _, transition := range commit.ConversationTransitions() {
 		count, err := p.messages.Count(ctx, transition.SessionID)
 		if err != nil {
 			return fmt.Errorf(
@@ -332,7 +332,7 @@ func (p *Persistence) applyConversationTransitions(ctx context.Context, commit r
 }
 
 func (p *Persistence) replaceTranscriptItems(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, replacement := range commit.ItemReplacements {
+	for _, replacement := range commit.ItemReplacements() {
 		if err := p.transcript.ReplaceItem(ctx, replacement); err != nil {
 			return fmt.Errorf("recovery: replace transcript Item %q: %w", replacement.Expected().ID(), err)
 		}
@@ -341,7 +341,7 @@ func (p *Persistence) replaceTranscriptItems(ctx context.Context, commit runs.Re
 }
 
 func (p *Persistence) recoverLostRuns(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, replacement := range commit.LostRuns {
+	for _, replacement := range commit.LostRuns() {
 		if err := p.runs.RecoverLost(ctx, replacement); err != nil {
 			return fmt.Errorf("recovery: recover lost Run %q: %w", replacement.State().ID(), err)
 		}
@@ -350,7 +350,7 @@ func (p *Persistence) recoverLostRuns(ctx context.Context, commit runs.RecoveryC
 }
 
 func (p *Persistence) recordGoalRuns(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, record := range commit.GoalRuns {
+	for _, record := range commit.GoalRuns() {
 		if p.goalRuns == nil {
 			return errors.New("recovery: Goal Run store is unavailable for a Goal-owned lost Run")
 		}
@@ -362,7 +362,7 @@ func (p *Persistence) recordGoalRuns(ctx context.Context, commit runs.RecoveryCo
 }
 
 func (p *Persistence) deleteInterrupts(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, owner := range commit.DeleteInterrupts {
+	for _, owner := range commit.DeleteInterrupts() {
 		if err := p.interrupts.Delete(ctx, owner.SessionID, owner.RootRunID); err != nil {
 			return fmt.Errorf("recovery: delete interrupt for root Run %q: %w", owner.RootRunID, err)
 		}
@@ -371,7 +371,7 @@ func (p *Persistence) deleteInterrupts(ctx context.Context, commit runs.Recovery
 }
 
 func (p *Persistence) deleteExecutorCheckpoints(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, sessionID := range commit.DeleteCheckpointSessionIDs {
+	for _, sessionID := range commit.DeleteCheckpointSessionIDs() {
 		if err := p.executorCheckpoints.DeleteSessionCheckpoints(ctx, sessionID); err != nil {
 			return fmt.Errorf("recovery: delete executor checkpoints for Session %q: %w", sessionID, err)
 		}

@@ -309,15 +309,23 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New failing persistence: %v", err)
 	}
-	commit := runs.RecoveryCommit{
-		LostRuns: []run.Replacement{testsupport.MustRunReplacement(active, lost)},
-		ConversationTransitions: []runs.RecoveryConversationTransition{{
+	commit, err := runs.NewRecoveryCommit(
+		[]run.Replacement{testsupport.MustRunReplacement(active, lost)},
+		nil,
+		[]runs.RecoveryConversationTransition{{
 			RootRunID: active.ID(), SessionID: active.SessionID(), ExpectedCount: 0,
 		}},
-		DeleteInterrupts: []runs.InterruptOwner{{
+		nil,
+		nil,
+		nil,
+		[]runs.InterruptOwner{{
 			SessionID: active.SessionID(), RootRunID: active.ID(),
 		}},
-		DeleteCheckpointSessionIDs: []string{"session_abandoned"},
+		nil,
+		[]string{"session_abandoned"},
+	)
+	if err != nil {
+		t.Fatalf("NewRecoveryCommit: %v", err)
 	}
 	if commitRecoveryErr := failingStore.CommitRecovery(ctx, commit); !errors.Is(commitRecoveryErr, cleanupFailure) {
 		t.Fatalf("failed CommitRecovery = %v, want %v", commitRecoveryErr, cleanupFailure)
