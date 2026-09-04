@@ -215,6 +215,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 255 | `fede4925` + CLI dependency update | Encapsulated recovery write-sets behind one validating constructor and isolated accessors, kept planner mutation private, and proved storage-side projection mutation cannot diverge committed facts from published Run, interrupt, Session, or Goal invalidations. |
 | 256 | `df85ac68` + CLI dependency update | Encapsulated executor tree-interruption snapshots behind one validating constructor, deep-isolated checkpoint and nested interruption projections, and migrated the full asynchronous barrier handoff to owned accessors. |
 | 257 | `c4540950` + CLI dependency update | Collapsed unknown-Effect reporting to one constructed control fact, kept executor-only Effect identities out of Application, and removed sorting, deduplication, mutable catalog state, and tests for unused diagnostics. |
+| 258 | `980e995d` + CLI dependency update | Encapsulated final assistant confirmations behind role, message, and correlation validation; deep-isolated construction and access; and migrated both root raw delivery and child authoritative delivery. |
 
 ## Verification contract
 
