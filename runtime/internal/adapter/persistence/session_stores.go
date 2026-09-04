@@ -64,7 +64,7 @@ type Transactor func(context.Context, func(context.Context) error) error
 type planProjection interface {
 	List(ctx context.Context, sessionID string) ([]plan.Step, error)
 	State(ctx context.Context, sessionID string) (plan.Current, error)
-	Save(ctx context.Context, sessionID string, expected plan.Version, replacement plan.State) error
+	Save(ctx context.Context, sessionID string, replacement plan.Replacement) error
 	DeleteSession(ctx context.Context, sessionID string) error
 }
 
@@ -352,7 +352,7 @@ func (s *SessionStores) restorePlanAndHistory(ctx context.Context, sessionID str
 	return s.history.Seed(ctx, sessionID, restore.Messages)
 }
 
-func (s *SessionStores) savePlanReplacement(ctx context.Context, sessionID string, replacement *sessions.PlanReplacement) error {
+func (s *SessionStores) savePlanReplacement(ctx context.Context, sessionID string, replacement *plan.Replacement) error {
 	if replacement == nil {
 		return nil
 	}
@@ -362,7 +362,7 @@ func (s *SessionStores) savePlanReplacement(ctx context.Context, sessionID strin
 	if err := replacement.Validate(); err != nil {
 		return fmt.Errorf("persistence: invalid Plan replacement: %w", err)
 	}
-	return s.plan.Save(ctx, sessionID, replacement.ExpectedVersion(), replacement.State())
+	return s.plan.Save(ctx, sessionID, *replacement)
 }
 
 func (s *SessionStores) restoreRuns(ctx context.Context, restored []rundomain.Run) error {

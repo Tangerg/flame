@@ -21,9 +21,9 @@ type planStoreFake struct {
 func (f *planStoreFake) State(context.Context, string) (plan.Current, error) {
 	return f.state, f.readErr
 }
-func (f *planStoreFake) Save(_ context.Context, _ string, expected plan.Version, replacement plan.State) error {
-	f.expectedVersion = expected
-	owned := replacement
+func (f *planStoreFake) Save(_ context.Context, _ string, replacement plan.Replacement) error {
+	f.expectedVersion = replacement.ExpectedVersion()
+	owned := replacement.State()
 	f.saved = &owned
 	return f.saveErr
 }

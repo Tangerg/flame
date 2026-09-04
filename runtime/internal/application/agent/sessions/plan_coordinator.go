@@ -14,7 +14,7 @@ import (
 // PlanStore is the use case's consumer-owned persistence port.
 type PlanStore interface {
 	State(ctx context.Context, sessionID string) (plan.Current, error)
-	Save(ctx context.Context, sessionID string, expected plan.Version, replacement plan.State) error
+	Save(ctx context.Context, sessionID string, replacement plan.Replacement) error
 }
 
 // PlanClock supplies the commit time for a Plan replacement.
@@ -71,7 +71,7 @@ func (c *PlanCoordinator) Replace(ctx context.Context, sessionID string, steps [
 	if err != nil {
 		return plan.State{}, err
 	}
-	if err := c.store.Save(ctx, sessionID, replacement.ExpectedVersion(), replacement.State()); err != nil {
+	if err := c.store.Save(ctx, sessionID, replacement); err != nil {
 		return plan.State{}, err
 	}
 	c.invalidations.Notify(invalidation.InSession(invalidation.PlanState, sessionID))
@@ -81,58 +81,27 @@ func (c *PlanCoordinator) Replace(ctx context.Context, sessionID string, steps [
 // PrepareReplacement decides a replacement without committing it. Cross-
 // aggregate use cases use this to include the exact Plan transition in their
 // own atomic write set.
-func (c *PlanCoordinator) PrepareReplacement(ctx context.Context, sessionID string, steps []plan.Step) (PlanReplacement, error) {
+func (c *PlanCoordinator) PrepareReplacement(ctx context.Context, sessionID string, steps []plan.Step) (plan.Replacement, error) {
 	current, err := c.State(ctx, sessionID)
 	if err != nil {
-		return PlanReplacement{}, err
+		return plan.Replacement{}, err
 	}
 	return c.replace(current, steps)
 }
 
 // PrepareInitial decides the first Plan state for a not-yet-created session.
 // It is used when a cross-aggregate write set assigns the session identity.
-func (c *PlanCoordinator) PrepareInitial(steps []plan.Step) (PlanReplacement, error) {
+func (c *PlanCoordinator) PrepareInitial(steps []plan.Step) (plan.Replacement, error) {
 	if c == nil {
-		return PlanReplacement{}, errors.New("sessions: Plan coordinator is unavailable")
+		return plan.Replacement{}, errors.New("sessions: Plan coordinator is unavailable")
 	}
 	return c.replace(plan.Current{}, steps)
 }
 
-func (c *PlanCoordinator) replace(current plan.Current, steps []plan.Step) (PlanReplacement, error) {
+func (c *PlanCoordinator) replace(current plan.Current, steps []plan.Step) (plan.Replacement, error) {
 	next, err := current.Replace(steps, c.now())
 	if err != nil {
-		return PlanReplacement{}, err
+		return plan.Replacement{}, err
 	}
-	return newPlanReplacement(current.Version(), next)
-}
-
-// PlanReplacement is an immutable, application-decided Plan state transition.
-// Persistence implementations may execute it but may not enrich or reinterpret it.
-type PlanReplacement struct {
-	expectedVersion plan.Version
-	state           plan.State
-}
-
-func newPlanReplacement(expectedVersion plan.Version, state plan.State) (PlanReplacement, error) {
-	replacement := PlanReplacement{expectedVersion: expectedVersion, state: state}
-	if err := replacement.Validate(); err != nil {
-		return PlanReplacement{}, err
-	}
-	return replacement, nil
-}
-
-// ExpectedVersion returns the optional state identity this replacement was based on.
-func (r PlanReplacement) ExpectedVersion() plan.Version { return r.expectedVersion }
-
-// State returns the already-decided replacement state.
-func (r PlanReplacement) State() plan.State {
-	return r.state
-}
-
-// Validate verifies that the replacement advances its expected revision once.
-func (r PlanReplacement) Validate() error {
-	if err := r.expectedVersion.AdvancesTo(r.state); err != nil {
-		return fmt.Errorf("sessions: invalid Plan replacement: %w", err)
-	}
-	return nil
+	return plan.NewReplacement(current.Version(), next)
 }

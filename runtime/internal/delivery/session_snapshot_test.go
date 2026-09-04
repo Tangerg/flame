@@ -70,7 +70,11 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("prepare Plan: %v", err)
 	}
-	if saveErr := rt.plan.Save(t.Context(), "ses_1", (plan.Current{}).Version(), state); saveErr != nil {
+	replacement, err := plan.NewReplacement((plan.Current{}).Version(), state)
+	if err != nil {
+		t.Fatalf("prepare Plan replacement: %v", err)
+	}
+	if saveErr := rt.plan.Save(t.Context(), "ses_1", replacement); saveErr != nil {
 		t.Fatalf("save Plan: %v", saveErr)
 	}
 	standingGoal, err := goal.New(

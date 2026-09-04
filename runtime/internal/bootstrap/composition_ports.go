@@ -27,7 +27,7 @@ type TerminalResource interface {
 type PlanStore interface {
 	List(ctx context.Context, sessionID string) ([]plan.Step, error)
 	State(ctx context.Context, sessionID string) (plan.Current, error)
-	Save(ctx context.Context, sessionID string, expected plan.Version, replacement plan.State) error
+	Save(ctx context.Context, sessionID string, replacement plan.Replacement) error
 	Boundary(ctx context.Context, runID string) ([]plan.Step, bool, error)
 	DeleteSession(ctx context.Context, sessionID string) error
 }

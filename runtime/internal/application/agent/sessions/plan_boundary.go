@@ -67,7 +67,7 @@ func (c *Coordinator) prepareBoundaryPlanReplacement(
 	ctx context.Context,
 	sessionID string,
 	boundary PlanBoundary,
-) (*PlanReplacement, error) {
+) (*plan.Replacement, error) {
 	if !boundary.Recorded {
 		return nil, nil
 	}
@@ -78,7 +78,7 @@ func (c *Coordinator) prepareBoundaryPlanReplacement(
 	return &replacement, nil
 }
 
-func (c *Coordinator) prepareInitialPlanReplacement(steps []plan.Step) (*PlanReplacement, error) {
+func (c *Coordinator) prepareInitialPlanReplacement(steps []plan.Step) (*plan.Replacement, error) {
 	if len(steps) == 0 {
 		return nil, nil
 	}
@@ -96,7 +96,7 @@ func (c *Coordinator) prepareRestoredPlanReplacement(
 	ctx context.Context,
 	sessionID string,
 	steps []plan.Step,
-) (*PlanReplacement, error) {
+) (*plan.Replacement, error) {
 	if c.plan == nil {
 		if len(steps) > 0 {
 			return nil, errors.New("sessions: cannot restore a Plan when Plan support is disabled")

@@ -58,11 +58,11 @@ type boundaryPlanStore struct{}
 func (boundaryPlanStore) State(context.Context, string) (plan.Current, error) {
 	return plan.Current{}, nil
 }
-func (boundaryPlanStore) Save(context.Context, string, plan.Version, plan.State) error {
+func (boundaryPlanStore) Save(context.Context, string, plan.Replacement) error {
 	return nil
 }
 
-func replacementSteps(replacement *PlanReplacement) []plan.Step {
+func replacementSteps(replacement *plan.Replacement) []plan.Step {
 	if replacement == nil {
 		return nil
 	}

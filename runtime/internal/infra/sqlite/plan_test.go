@@ -38,7 +38,11 @@ func savePlan(t *testing.T, ctx context.Context, store *sqlite.PlanStore, sessio
 	if err != nil {
 		t.Fatalf("decide Plan replacement: %v", err)
 	}
-	if err := store.Save(ctx, sessionID, current.Version(), replacement); err != nil {
+	change, err := plan.NewReplacement(current.Version(), replacement)
+	if err != nil {
+		t.Fatalf("prepare Plan replacement: %v", err)
+	}
+	if err := store.Save(ctx, sessionID, change); err != nil {
 		t.Fatalf("save Plan replacement: %v", err)
 	}
 	return replacement
@@ -340,7 +344,11 @@ func TestPlanStoreRejectsStaleReplacement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saveErr := store.Save(ctx, "ses_A", firstCurrent.Version(), stale); !errors.Is(saveErr, plan.ErrRevisionConflict) {
+	staleChange, err := plan.NewReplacement(firstCurrent.Version(), stale)
+	if err != nil {
+		t.Fatalf("prepare stale replacement: %v", err)
+	}
+	if saveErr := store.Save(ctx, "ses_A", staleChange); !errors.Is(saveErr, plan.ErrRevisionConflict) {
 		t.Fatalf("stale Save error = %v, want ErrRevisionConflict", saveErr)
 	}
 	current, err := store.State(ctx, "ses_A")

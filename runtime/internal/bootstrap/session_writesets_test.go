@@ -178,7 +178,7 @@ func replaceFixturePlan(t *testing.T, ctx context.Context, store *sqlite.PlanSto
 	return state
 }
 
-func prepareFixturePlan(t *testing.T, ctx context.Context, store *sqlite.PlanStore, sessionID string, steps []plan.Step) *sessions.PlanReplacement {
+func prepareFixturePlan(t *testing.T, ctx context.Context, store *sqlite.PlanStore, sessionID string, steps []plan.Step) *plan.Replacement {
 	t.Helper()
 	replacement, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{Store: store, Now: time.Now}).PrepareReplacement(ctx, sessionID, steps)
 	if err != nil {

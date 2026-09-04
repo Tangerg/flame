@@ -21,5 +21,9 @@ func saveTestPlan(ctx context.Context, store *sqlite.PlanStore, sessionID string
 	if err != nil {
 		return err
 	}
-	return store.Save(ctx, sessionID, current.Version(), replacement)
+	change, err := plan.NewReplacement(current.Version(), replacement)
+	if err != nil {
+		return err
+	}
+	return store.Save(ctx, sessionID, change)
 }

@@ -96,19 +96,17 @@ func decodePlanSteps(stepsJSON string) ([]plan.Step, error) {
 	return steps, nil
 }
 
-// Save persists one application-decided replacement iff expectedRevision is
-// still current. It assigns neither time nor revision; both belong to the Plan
-// aggregate and its application use case.
-func (p *PlanStore) Save(ctx context.Context, sessionID string, expected plan.Version, replacement plan.State) error {
+// Save persists one Domain-decided replacement iff its expected version is
+// still current. It assigns neither time nor revision.
+func (p *PlanStore) Save(ctx context.Context, sessionID string, change plan.Replacement) error {
 	if err := validateSessionResource("save Session Plan", sessionID); err != nil {
 		return err
 	}
-	if err := replacement.Validate(); err != nil {
+	if err := change.Validate(); err != nil {
 		return fmt.Errorf("sqlite: validate Plan replacement: %w", err)
 	}
-	if err := expected.AdvancesTo(replacement); err != nil {
-		return fmt.Errorf("sqlite: validate Plan replacement version: %w", err)
-	}
+	expected := change.ExpectedVersion()
+	replacement := change.State()
 	steps := replacement.Steps()
 	rows := make([]planStepRow, len(steps))
 	for index, step := range steps {

@@ -722,7 +722,7 @@ func (s stubLifecycleStores) ApplyFork(ctx context.Context, plan sessions.ForkPl
 		}
 	}
 	if s.rt.plan != nil && plan.PlanReplacement != nil {
-		if err := s.rt.plan.Save(ctx, child.ID(), plan.PlanReplacement.ExpectedVersion(), plan.PlanReplacement.State()); err != nil {
+		if err := s.rt.plan.Save(ctx, child.ID(), *plan.PlanReplacement); err != nil {
 			return session.Session{}, err
 		}
 	}
@@ -733,7 +733,7 @@ func (s stubLifecycleStores) ApplyFork(ctx context.Context, plan sessions.ForkPl
 // transcript/run/interrupt/session stores, mirroring the persistence adapter.
 func (s stubLifecycleStores) ApplyRollback(ctx context.Context, plan sessions.RollbackPlan) error {
 	if s.rt.plan != nil && plan.PlanReplacement != nil {
-		if err := s.rt.plan.Save(ctx, plan.SessionID, plan.PlanReplacement.ExpectedVersion(), plan.PlanReplacement.State()); err != nil {
+		if err := s.rt.plan.Save(ctx, plan.SessionID, *plan.PlanReplacement); err != nil {
 			return err
 		}
 	}
@@ -810,7 +810,7 @@ func (s stubLifecycleStores) ApplyRestore(ctx context.Context, plan sessions.Res
 	// Replaced, never deleted-and-reinserted: the revision has to come out greater
 	// than what this session already published.
 	if s.rt.plan != nil && plan.PlanReplacement != nil {
-		if err := s.rt.plan.Save(ctx, id, plan.PlanReplacement.ExpectedVersion(), plan.PlanReplacement.State()); err != nil {
+		if err := s.rt.plan.Save(ctx, id, *plan.PlanReplacement); err != nil {
 			return err
 		}
 	}

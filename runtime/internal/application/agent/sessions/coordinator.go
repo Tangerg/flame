@@ -75,8 +75,8 @@ type PlanBoundaries interface {
 // session write sets. Persistence receives the decided replacement and may only
 // apply its CAS; it never assigns a revision or update time itself.
 type PlanReplacements interface {
-	PrepareReplacement(ctx context.Context, sessionID string, steps []plan.Step) (PlanReplacement, error)
-	PrepareInitial(steps []plan.Step) (PlanReplacement, error)
+	PrepareReplacement(ctx context.Context, sessionID string, steps []plan.Step) (plan.Replacement, error)
+	PrepareInitial(steps []plan.Step) (plan.Replacement, error)
 }
 
 // RunStore is the lifecycle coordinator's read view of a session's Runs. Every

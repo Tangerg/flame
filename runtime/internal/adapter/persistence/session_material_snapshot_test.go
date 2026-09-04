@@ -63,7 +63,11 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	if err != nil {
 		t.Fatalf("prepare Plan: %v", err)
 	}
-	if saveErr := writerPlanStore.Save(ctx, original.ID(), (plan.Current{}).Version(), originalPlan); saveErr != nil {
+	originalPlanReplacement, err := plan.NewReplacement((plan.Current{}).Version(), originalPlan)
+	if err != nil {
+		t.Fatalf("prepare initial Plan replacement: %v", err)
+	}
+	if saveErr := writerPlanStore.Save(ctx, original.ID(), originalPlanReplacement); saveErr != nil {
 		t.Fatalf("seed Plan: %v", saveErr)
 	}
 	readerGoalStore := sqlite.NewGoalStore(readerDB)
@@ -151,7 +155,11 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 			if currentErr != nil {
 				return currentErr
 			}
-			if saveErr := writerPlanStore.Save(ctx, original.ID(), originalCurrent.Version(), updatedPlan); saveErr != nil {
+			planReplacement, replacementErr := plan.NewReplacement(originalCurrent.Version(), updatedPlan)
+			if replacementErr != nil {
+				return replacementErr
+			}
+			if saveErr := writerPlanStore.Save(ctx, original.ID(), planReplacement); saveErr != nil {
 				return saveErr
 			}
 			applied, saveErr := writerGoalStore.Save(ctx, updatedGoal, originalGoal.Version())
