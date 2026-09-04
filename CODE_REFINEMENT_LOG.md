@@ -190,6 +190,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 230 | `fa0f957a` + CLI dependency update | Made checkpoint-deletion Sessions the exact canonical projection of recovery-lost root trees, rejecting omissions, foreign deletion scope, and multiple lost roots for one Session. |
 | 231 | `23aa1f84` + CLI dependency update | Deleted the writable recovered-Session duplicate and unconsumed preserved-checkpoint marker; callback cleanup now derives its exact Session scope from lost roots plus preserved waiting Sessions. |
 | 232 | `f759e265` + CLI dependency update | Required each lost-Run Tool journal recovery to carry the matching Running Item replacement, while retaining cleanup-only journal orphans for already-terminal Runs. |
+| 233 | `1ab79caf` + CLI dependency update | Replaced terminal-only lost-Run commands with exact expected→replacement aggregates across boot recovery and parked Session termination, binding invocation cleanup to the recovered active Segment and giving SQLite an exact pre-transition CAS fence. |
 
 ## Verification contract
 
