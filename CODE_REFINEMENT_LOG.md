@@ -153,6 +153,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 193 | `7552fbaf` + CLI dependency update | Protected pending-interrupt caller capabilities and bounded, valid, scoped, unique, strictly cursor-ordered store pages. |
 | 194 | `cc3b1de9` + CLI dependency update | Applied the Domain Session-catalog contract to complete reads, isolated results, and routed usage aggregation through that semantic owner. |
 | 195 | `1d758c44` + CLI dependency update | Made Provider aggregates self-validating and rejected corrupt, duplicate, or identity-mismatched provider registry and supported-catalog results before projection or probing. |
+| 196 | `754a4db1` + CLI dependency update | Rejected invalid, duplicate, or identity-mismatched MCP registry reads across catalogs, commands, connection settlement, and tool-policy replacement. |
 
 ## Verification contract
 
