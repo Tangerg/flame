@@ -757,7 +757,7 @@ func TestInteractionExecutorReconcilesModelFinalCommitFailureAsUnknown(t *testin
 		t.Fatalf("provider calls = %d, want 1", calls)
 	}
 	unknown := payloadsOf[runs.UnknownEffectsDetected](events)
-	if len(unknown) != 1 || len(unknown[0].IDs) != 1 {
+	if len(unknown) != 1 {
 		t.Fatalf("unknown observations = %#v, want one Effect", unknown)
 	}
 	if len(payloadsOf[runs.SegmentEnded](events)) != 0 {
@@ -815,7 +815,7 @@ func TestInteractionExecutorPollingFindsUnknownWhenDirectWakeIsLost(t *testing.T
 	case <-time.After(time.Second):
 		t.Fatal("periodic reconciliation did not report unknown Effect")
 	}
-	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 || len(unknown[0].IDs) != 1 {
+	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 {
 		t.Fatalf("unknown observations = %#v, want polling fallback", unknown)
 	}
 	if err := executor.Release(context.Background(), ref); err != nil {
@@ -851,7 +851,7 @@ func TestInteractionExecutorReconcilesToolResultCommitFailureAsUnknown(t *testin
 	if toolCalls != 1 {
 		t.Fatalf("Tool calls = %d, want 1", toolCalls)
 	}
-	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 || len(unknown[0].IDs) != 1 {
+	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 {
 		t.Fatalf("unknown observations = %#v, want one Effect", unknown)
 	}
 	if len(payloadsOf[runs.ToolCallFinished](events)) != 1 {
@@ -983,7 +983,7 @@ func TestInteractionExecutorMakesWholeConcurrentEffectUnknownWhenOneResultWriteF
 	if gotCalls != 2 {
 		t.Fatalf("external Tool calls = %d, want both exactly once", gotCalls)
 	}
-	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 || len(unknown[0].IDs) != 1 {
+	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 {
 		t.Fatalf("unknown observations = %#v, want whole Effect unknown", unknown)
 	}
 	if len(payloadsOf[runs.SegmentEnded](events)) != 0 {
@@ -1080,7 +1080,7 @@ func TestInteractionExecutorMakesConcurrentEffectUnknownWhenDeniedSiblingProject
 	if externalCalls != 1 {
 		t.Fatalf("external Tool calls = %d, want 1", externalCalls)
 	}
-	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 || len(unknown[0].IDs) != 1 {
+	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 {
 		t.Fatalf("unknown observations = %#v, want whole concurrent Effect unknown", unknown)
 	}
 	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 0 {

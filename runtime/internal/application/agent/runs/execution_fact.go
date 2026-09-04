@@ -118,27 +118,23 @@ type AssistantMessageCompleted struct {
 }
 
 // UnknownEffectsDetected is the executor's fail-closed control observation that
-// one or more externally attempted Effects have no provable settlement. IDs are
-// opaque diagnostics. The Run pump—not the executor—maps this condition to the
-// product's RunLost transaction before resource teardown.
+// one or more externally attempted Effects have no provable settlement. The Run
+// pump—not the executor—maps this condition to the product's RunLost transaction
+// before resource teardown. Effect identities stay with the executor because no
+// Application decision, durable record, or public projection consumes them.
 type UnknownEffectsDetected struct {
 	executorPayloadBase
-	IDs []string
+	detected bool
+}
+
+// NewUnknownEffectsDetected records a proven unknown-settlement condition.
+func NewUnknownEffectsDetected() UnknownEffectsDetected {
+	return UnknownEffectsDetected{detected: true}
 }
 
 func (u UnknownEffectsDetected) validate() error {
-	if len(u.IDs) == 0 {
+	if !u.detected {
 		return errors.New("runs: unknown Effect observation is empty")
-	}
-	previous := ""
-	for index, id := range u.IDs {
-		if _, err := runtimeidentity.ParseEffect(id); err != nil {
-			return fmt.Errorf("runs: unknown Effect id[%d]: %w", index, err)
-		}
-		if index > 0 && id <= previous {
-			return errors.New("runs: unknown Effect ids must be unique and sorted")
-		}
-		previous = id
 	}
 	return nil
 }

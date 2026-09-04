@@ -64,7 +64,7 @@ func (c *concurrentToolExecutor) Observe(
 		if firstErr != nil || secondErr != nil {
 			yield(ExecutorEvent{
 				Member:  member,
-				Payload: UnknownEffectsDetected{IDs: []string{"effect_tools"}},
+				Payload: NewUnknownEffectsDetected(),
 			})
 			return
 		}
@@ -108,10 +108,8 @@ func (a *authoritativeFailureExecutor) Observe(
 		}
 		a.receipts <- completionReceipt.Await(ctx)
 		yield(ExecutorEvent{
-			Member: member,
-			Payload: UnknownEffectsDetected{
-				IDs: []string{"effect_1"},
-			},
+			Member:  member,
+			Payload: NewUnknownEffectsDetected(),
 		})
 	}, nil
 }

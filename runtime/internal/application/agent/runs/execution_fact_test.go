@@ -32,6 +32,15 @@ func TestNewExecutionFactCommitRejectsUnsupportedFactRepresentation(t *testing.T
 	}
 }
 
+func TestUnknownEffectsDetectedRequiresConstruction(t *testing.T) {
+	if err := (UnknownEffectsDetected{}).validate(); err == nil {
+		t.Fatal("zero unknown-Effect observation validated")
+	}
+	if err := NewUnknownEffectsDetected().validate(); err != nil {
+		t.Fatalf("constructed unknown-Effect observation: %v", err)
+	}
+}
+
 func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
 	model := ModelCallCompleted{
 		Message: corechat.NewAssistantMessage(corechat.NewTextPart("original")),

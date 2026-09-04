@@ -461,7 +461,7 @@ func TestInteractionExecutorReportsDispatcherPanicAsUnknownEffect(t *testing.T) 
 		t, executor, interactionTestStart(), func(runs.ExecutionFact) error { return nil },
 	)
 	unknown := payloadsOf[runs.UnknownEffectsDetected](events)
-	if len(unknown) != 1 || len(unknown[0].IDs) != 1 {
+	if len(unknown) != 1 {
 		t.Fatalf("panic unknown effects = %#v", unknown)
 	}
 	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 0 {

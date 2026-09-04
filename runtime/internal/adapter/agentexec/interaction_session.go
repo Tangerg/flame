@@ -462,12 +462,6 @@ func (i *interactionSession) reportUnknownEffects() bool {
 	if err != nil || len(ids) == 0 {
 		return false
 	}
-	values := make([]string, len(ids))
-	for index, id := range ids {
-		values[index] = id.String()
-	}
-	slices.Sort(values)
-	values = slices.Compact(values)
 	i.state.mu.Lock()
 	if i.state.unknownReported {
 		i.state.mu.Unlock()
@@ -477,7 +471,7 @@ func (i *interactionSession) reportUnknownEffects() bool {
 	member := runs.ExecutorMember{MemberID: i.state.process.Relation().ProcessID().String()}
 	i.state.mu.Unlock()
 	return i.lifetime.send(runs.ExecutorEvent{
-		Member: member, Payload: runs.UnknownEffectsDetected{IDs: values},
+		Member: member, Payload: runs.NewUnknownEffectsDetected(),
 	})
 }
 
