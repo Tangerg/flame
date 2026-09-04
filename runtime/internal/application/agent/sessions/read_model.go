@@ -239,7 +239,7 @@ func (c *Coordinator) views(ctx context.Context, values []session.Session) ([]Vi
 }
 
 func (c *Coordinator) view(value session.Session, activity Activity) (View, error) {
-	workspace, err := c.paths.Inspect(value.Workspace().Path())
+	workspace, err := c.InspectWorkspace(value.Workspace().Path())
 	if err != nil {
 		return View{}, fmt.Errorf("sessions: inspect workspace %q: %w", value.Workspace().Path(), err)
 	}

@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
@@ -61,6 +63,29 @@ type Resolved struct {
 	Missing     bool
 }
 
+// Validate checks one complete live workspace identity. Missing describes
+// availability only; the canonical path and its containing project root remain
+// stable identities even after the directory disappears.
+func (r Resolved) Validate() error {
+	for _, candidate := range []struct {
+		label string
+		path  string
+	}{
+		{label: "path", path: r.Path},
+		{label: "project root", path: r.ProjectRoot},
+	} {
+		label, path := candidate.label, candidate.path
+		if path == "" || !utf8.ValidString(path) || !filepath.IsAbs(path) || filepath.Clean(path) != path {
+			return fmt.Errorf("workspace: resolved %s %q is not a canonical absolute path", label, path)
+		}
+	}
+	relative, err := filepath.Rel(r.ProjectRoot, r.Path)
+	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
+		return fmt.Errorf("workspace: resolved path %q is outside project root %q", r.Path, r.ProjectRoot)
+	}
+	return nil
+}
+
 // Summary is a distinct workspace identity derived from user-facing sessions.
 type Summary struct {
 	Name         string
@@ -69,6 +94,23 @@ type Summary struct {
 	Missing      bool
 	SessionCount int
 	LastActiveAt time.Time
+}
+
+// Validate checks one complete user-facing workspace summary.
+func (s Summary) Validate() error {
+	if err := (Resolved{Path: s.Path, ProjectRoot: s.ProjectRoot, Missing: s.Missing}).Validate(); err != nil {
+		return err
+	}
+	if s.Name != filepath.Base(s.Path) || !utf8.ValidString(s.Name) {
+		return fmt.Errorf("workspace: summary name %q does not match path %q", s.Name, s.Path)
+	}
+	if s.SessionCount <= 0 {
+		return fmt.Errorf("workspace: summary %q has invalid Session count %d", s.Path, s.SessionCount)
+	}
+	if s.LastActiveAt.IsZero() {
+		return fmt.Errorf("workspace: summary %q has no activity time", s.Path)
+	}
+	return nil
 }
 
 // Catalog supplies the user-facing sessions and their current workspace
@@ -91,9 +133,10 @@ func (d *Discovery) Resolve(path string) (Resolved, error) {
 	if err != nil {
 		return Resolved{}, err
 	}
-	return Resolved{
-		Path: identity.Path, ProjectRoot: identity.ProjectRoot, Missing: identity.Missing,
-	}, nil
+	if err := identity.Validate(); err != nil {
+		return Resolved{}, err
+	}
+	return identity, nil
 }
 
 // Workspaces returns each non-empty session workspace once, newest-active first
@@ -114,11 +157,17 @@ func (d *Discovery) Workspaces(ctx context.Context) ([]Summary, error) {
 		if err != nil {
 			return nil, err
 		}
+		if err := identity.Validate(); err != nil {
+			return nil, err
+		}
 		workspace.Path = identity.Path
 		workspace.ProjectRoot = identity.ProjectRoot
 		workspace.Missing = identity.Missing
 		workspace.Name = filepath.Base(identity.Path)
 		if index, exists := byPath[identity.Path]; exists {
+			if resolved[index].ProjectRoot != workspace.ProjectRoot || resolved[index].Missing != workspace.Missing {
+				return nil, fmt.Errorf("workspace: aliases for %q disagree on live identity", identity.Path)
+			}
 			resolved[index].SessionCount += workspace.SessionCount
 			if workspace.LastActiveAt.After(resolved[index].LastActiveAt) {
 				resolved[index].LastActiveAt = workspace.LastActiveAt
@@ -129,6 +178,11 @@ func (d *Discovery) Workspaces(ctx context.Context) ([]Summary, error) {
 		resolved = append(resolved, workspace)
 	}
 	slices.SortFunc(resolved, compareWorkspaceSummaries)
+	for index, workspace := range resolved {
+		if err := workspace.Validate(); err != nil {
+			return nil, fmt.Errorf("workspace: catalog row %d: %w", index+1, err)
+		}
+	}
 	return resolved, nil
 }
 

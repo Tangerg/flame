@@ -357,9 +357,10 @@ func (emptySessionStore) Save(context.Context, uint64, session.Session) error {
 }
 
 type testWorkspaceResolver struct {
-	resolved string
-	missing  bool
-	err      error
+	resolved   string
+	missing    bool
+	err        error
+	inspection *workspace.Resolved
 }
 
 func (t testWorkspaceResolver) ResolveExistingDir(path string) (string, error) {
@@ -375,6 +376,9 @@ func (t testWorkspaceResolver) ResolveExistingDir(path string) (string, error) {
 func (t testWorkspaceResolver) Inspect(path string) (workspace.Resolved, error) {
 	if t.err != nil {
 		return workspace.Resolved{}, t.err
+	}
+	if t.inspection != nil {
+		return *t.inspection, nil
 	}
 	if t.resolved != "" {
 		path = t.resolved

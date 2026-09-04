@@ -202,6 +202,9 @@ func (k *Knowledge) projectRoot(cwd string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%w: inspect %s: %w", ErrCWDUnavailable, cwd, err)
 	}
+	if err := resolved.Validate(); err != nil {
+		return "", fmt.Errorf("%w: inspect %s: %w", ErrCWDUnavailable, cwd, err)
+	}
 	if resolved.Missing || resolved.ProjectRoot == "" {
 		return "", fmt.Errorf("%w: %s", ErrCWDUnavailable, cwd)
 	}

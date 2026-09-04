@@ -61,7 +61,14 @@ func (c *Coordinator) Get(ctx context.Context, id string) (session.Session, erro
 // filesystem failures remain errors so callers never receive a fabricated
 // workspace identity.
 func (c *Coordinator) InspectWorkspace(cwd string) (workspaceapp.Resolved, error) {
-	return c.paths.Inspect(cwd)
+	resolved, err := c.paths.Inspect(cwd)
+	if err != nil {
+		return workspaceapp.Resolved{}, err
+	}
+	if err := resolved.Validate(); err != nil {
+		return workspaceapp.Resolved{}, err
+	}
+	return resolved, nil
 }
 
 // Create starts and persists a fresh root Session in an admitted workspace.

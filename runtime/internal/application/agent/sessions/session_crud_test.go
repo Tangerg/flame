@@ -338,6 +338,16 @@ func TestViewPresentsExactSessionSelectionAndWorkspace(t *testing.T) {
 	}
 }
 
+func TestInspectWorkspaceRejectsInvalidAdapterIdentity(t *testing.T) {
+	invalid := workspaceapp.Resolved{Path: "/repo", ProjectRoot: "/other"}
+	c := mustNewCoordinator(testDependencies(&crudStores{session: &crudSessionStore{}}, Dependencies{
+		Paths: testWorkspaceResolver{inspection: &invalid},
+	}))
+	if _, err := c.InspectWorkspace("/repo"); err == nil {
+		t.Fatal("InspectWorkspace accepted invalid adapter identity")
+	}
+}
+
 func TestCoordinatorUpdateAppliesPatch(t *testing.T) {
 	store := &crudSessionStore{}
 	claims := new(testClaimer)

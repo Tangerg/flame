@@ -93,6 +93,63 @@ func TestWorkspacesCollapseLiveAliasesIntoCanonicalIdentity(t *testing.T) {
 	}
 }
 
+func TestResolvedWorkspaceAndSummaryValidateExactIdentity(t *testing.T) {
+	active := time.Unix(1, 0).UTC()
+	valid := Summary{
+		Name: "work", Path: "/repo/work", ProjectRoot: "/repo",
+		SessionCount: 1, LastActiveAt: active,
+	}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("valid Summary.Validate() error = %v", err)
+	}
+	for name, summary := range map[string]Summary{
+		"relative path":  {Name: "work", Path: "repo/work", ProjectRoot: "/repo", SessionCount: 1, LastActiveAt: active},
+		"outside root":   {Name: "work", Path: "/other/work", ProjectRoot: "/repo", SessionCount: 1, LastActiveAt: active},
+		"noncanonical":   {Name: "work", Path: "/repo/../repo/work", ProjectRoot: "/repo", SessionCount: 1, LastActiveAt: active},
+		"wrong name":     {Name: "other", Path: "/repo/work", ProjectRoot: "/repo", SessionCount: 1, LastActiveAt: active},
+		"empty catalog":  {Name: "work", Path: "/repo/work", ProjectRoot: "/repo", LastActiveAt: active},
+		"missing active": {Name: "work", Path: "/repo/work", ProjectRoot: "/repo", SessionCount: 1},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := summary.Validate(); err == nil {
+				t.Fatal("Summary.Validate() error = nil, want invalid identity")
+			}
+		})
+	}
+}
+
+func TestWorkspaceDiscoveryRejectsInvalidOrContradictoryInspection(t *testing.T) {
+	t0 := time.Unix(1, 0).UTC()
+	sessions := []session.Session{
+		testsupport.MustRestoreSession(session.Snapshot{ID: "s1", Workspace: testsupport.MustWorkspace("/aliases/one"), UpdatedAt: t0}),
+		testsupport.MustRestoreSession(session.Snapshot{ID: "s2", Workspace: testsupport.MustWorkspace("/aliases/two"), UpdatedAt: t0}),
+	}
+	for name, resolved := range map[string]map[string]Resolved{
+		"outside root": {
+			"/aliases/one": {Path: "/outside", ProjectRoot: "/repo"},
+		},
+		"contradictory aliases": {
+			"/aliases/one": {Path: "/real/project", ProjectRoot: "/real"},
+			"/aliases/two": {Path: "/real/project", ProjectRoot: "/real/project"},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			catalog := workspaceCatalogStub{sessions: sessions, resolved: resolved}
+			discovery := NewDiscovery(nil, catalog, nil, nil)
+			if _, err := discovery.Workspaces(t.Context()); err == nil {
+				t.Fatal("Workspaces accepted invalid inspection")
+			}
+		})
+	}
+
+	catalog := workspaceCatalogStub{resolved: map[string]Resolved{
+		"/requested": {Path: "/other", ProjectRoot: "/repo"},
+	}}
+	if _, err := NewDiscovery(nil, catalog, nil, nil).Resolve("/requested"); err == nil {
+		t.Fatal("Resolve accepted invalid inspection")
+	}
+}
+
 func TestAgentDocsPreservesDiscoveryProvenance(t *testing.T) {
 	finder := staticAgentDocFinder{files: []AgentDocFile{
 		{Path: "/home/.flame/AGENTS.md", Content: "home", Scope: AgentDocScopeHome},

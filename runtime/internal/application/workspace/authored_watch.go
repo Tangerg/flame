@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"slices"
 	"sync"
@@ -110,6 +111,9 @@ func (a *AuthoredWatch) Watch(cwds []string, resources []AuthoredResource, notif
 		resolved, err := a.workspaces.Inspect(root)
 		if err != nil {
 			return nil, err
+		}
+		if err := resolved.Validate(); err != nil {
+			return nil, fmt.Errorf("workspace: inspect authored scope %q: %w", root, err)
 		}
 		if resolved.Missing || resolved.ProjectRoot == "" {
 			return nil, ErrCWDUnavailable

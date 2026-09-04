@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -49,6 +50,20 @@ func TestAuthoredWatchResolvesAndDeduplicatesScopes(t *testing.T) {
 	}
 	if !reflect.DeepEqual(watcher.resources, []AuthoredResource{AuthoredKnowledge, AuthoredHooks, AuthoredSkills}) {
 		t.Fatalf("resources = %+v", watcher.resources)
+	}
+}
+
+func TestAuthoredWatchRejectsInvalidWorkspaceInspection(t *testing.T) {
+	root := t.TempDir()
+	watcher := &recordingAuthoredWatcher{}
+	useCases := NewAuthoredWatch(NewScope(root, root, testPaths{}), staticWorkspaceInspector{
+		resolved: Resolved{Path: root, ProjectRoot: filepath.Join(root, "nested")},
+	}, watcher)
+	if _, err := useCases.Watch([]string{root}, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {}); err == nil {
+		t.Fatal("Watch accepted invalid workspace inspection")
+	}
+	if watcher.scopes != nil {
+		t.Fatal("invalid workspace inspection reached watcher")
 	}
 }
 
