@@ -219,6 +219,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 259 | `6702019d` + CLI dependency update | Made terminal Failure and cumulative per-model Usage constructor-owned, exposed only isolated projections, and confined executor outcome assembly to a private draft before one final SegmentEnded snapshot. |
 | 260 | `49870903` + CLI dependency update | Froze waiting continuations and subtree-cancellation requests at Application/executor boundaries, deep-isolated member, checkpoint, and capability projections, and made every restore, resume, and recovery-probe entry take its own snapshot. |
 | 261 | `1d50ba99` + CLI dependency update | Encapsulated prepared waiting-subtree results behind one validating constructor, isolated every returned tree projection, and made the value itself own Apply, Continue, and Discard instead of exposing its one-shot executor capability. |
+| 262 | `78f89307` + CLI dependency update | Removed the duplicate Start input materializer and unused root Message/Media projections, derived prompt text from the one canonical user message, and deep-froze working context, model options, and interrupt capabilities at StageRoot. |
 
 ## Verification contract
 
