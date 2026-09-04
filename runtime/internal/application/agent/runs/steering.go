@@ -15,6 +15,7 @@ import (
 // has been replaced" is one answer with one spelling rather than two entry
 // points each guessing from the live registry.
 func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) error {
+	cmd = cmd.clone()
 	live, err := c.addressLiveSegment(ctx, cmd.RunID, cmd.ExpectedSegmentID)
 	if err != nil {
 		return err

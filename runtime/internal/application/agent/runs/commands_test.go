@@ -82,6 +82,23 @@ func TestResumeCommandCloneOwnsMutableInput(t *testing.T) {
 	}
 }
 
+func TestSteerCommandCloneOwnsMutableInput(t *testing.T) {
+	command := SteerCommand{Input: []transcript.ContentBlock{{
+		Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("image"),
+	}}}
+	owned := command.clone()
+
+	command.Input[0].MediaType = "image/jpeg"
+	command.Input[0].Bytes[0] = 'x'
+
+	if got := owned.Input[0].MediaType; got != "image/png" {
+		t.Fatalf("owned media type = %q", got)
+	}
+	if got := string(owned.Input[0].Bytes); got != "image" {
+		t.Fatalf("owned input bytes = %q", got)
+	}
+}
+
 func TestStartExecutionValidateDelegatesCoreOptions(t *testing.T) {
 	t.Parallel()
 

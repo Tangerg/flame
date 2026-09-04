@@ -378,6 +378,11 @@ type SteerCommand struct {
 	Input             []transcript.ContentBlock
 }
 
+func (s SteerCommand) clone() SteerCommand {
+	s.Input = transcript.CloneContent(s.Input)
+	return s
+}
+
 // SubscribeRequest attaches a caller to a run's live segment.
 type SubscribeRequest struct {
 	RunID string
