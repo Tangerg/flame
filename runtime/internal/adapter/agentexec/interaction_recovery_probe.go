@@ -21,6 +21,7 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	if i == nil {
 		return false, errors.New("agentexec: Interaction executor is nil")
 	}
+	continuation = continuation.Clone()
 	if err := continuation.Validate(); err != nil {
 		return false, nil
 	}

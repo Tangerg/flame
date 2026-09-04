@@ -19,16 +19,17 @@ func (i *InteractionExecutor) PrepareWaitingSubtreeCancellation(
 	if err := request.Validate(); err != nil {
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
+	continuation := request.Continuation()
 	ref := runs.ExecutorRef{
-		SessionID:  request.Continuation.SessionID,
-		ExecutorID: request.Continuation.ExecutorID,
+		SessionID:  continuation.SessionID,
+		ExecutorID: continuation.ExecutorID,
 	}
 	session, err := i.session(ref)
 	if errors.Is(err, runs.ErrExecutorNotLive) {
 		if restoreErr := i.restoreWaitingTree(
 			ctx,
 			ref,
-			request.Continuation,
+			continuation,
 			interactionBoundaryWaiting,
 		); restoreErr != nil {
 			return runs.PreparedWaitingSubtreeCancellation{}, restoreErr
@@ -40,9 +41,9 @@ func (i *InteractionExecutor) PrepareWaitingSubtreeCancellation(
 	}
 	return session.prepareWaitingSubtreeCancellation(
 		ctx,
-		request.Continuation.Checkpoint,
-		request.TargetMemberID,
-		request.Reason,
+		continuation.Checkpoint,
+		request.TargetMemberID(),
+		request.Reason(),
 	)
 }
 

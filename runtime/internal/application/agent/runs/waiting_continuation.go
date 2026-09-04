@@ -15,26 +15,69 @@ import (
 // may claim the live tree or restore this exact checkpoint, but cannot reread
 // Application persistence.
 type WaitingSubtreeCancellationRequest struct {
-	Continuation   WaitingContinuation
-	TargetMemberID string
-	Reason         string
+	continuation   WaitingContinuation
+	targetMemberID string
+	reason         string
+}
+
+// NewWaitingSubtreeCancellationRequest captures one validated cancellation
+// request without retaining the caller's continuation slices.
+func NewWaitingSubtreeCancellationRequest(
+	continuation WaitingContinuation,
+	targetMemberID string,
+	reason string,
+) (WaitingSubtreeCancellationRequest, error) {
+	request := WaitingSubtreeCancellationRequest{
+		continuation:   continuation.Clone(),
+		targetMemberID: targetMemberID,
+		reason:         reason,
+	}
+	if err := request.Validate(); err != nil {
+		return WaitingSubtreeCancellationRequest{}, err
+	}
+	return request, nil
+}
+
+// Continuation returns an ownership-independent waiting tree.
+func (w WaitingSubtreeCancellationRequest) Continuation() WaitingContinuation {
+	return w.continuation.Clone()
+}
+
+func (w WaitingSubtreeCancellationRequest) TargetMemberID() string { return w.targetMemberID }
+func (w WaitingSubtreeCancellationRequest) Reason() string         { return w.reason }
+
+// NewWaitingContinuation freezes and validates one complete waiting-tree draft.
+func NewWaitingContinuation(draft WaitingContinuation) (WaitingContinuation, error) {
+	continuation := draft.Clone()
+	if err := continuation.Validate(); err != nil {
+		return WaitingContinuation{}, err
+	}
+	return continuation, nil
+}
+
+// Clone returns an ownership-independent waiting-tree value.
+func (w WaitingContinuation) Clone() WaitingContinuation {
+	w.Members = append([]WaitingMember(nil), w.Members...)
+	w.Checkpoint = w.Checkpoint.Clone()
+	w.Capabilities = w.Capabilities.Clone()
+	return w
 }
 
 // Validate verifies the Application-owned waiting subtree command without
 // interpreting the executor checkpoint payload.
 func (w WaitingSubtreeCancellationRequest) Validate() error {
-	if err := w.Continuation.Validate(); err != nil {
+	if err := w.continuation.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting subtree continuation: %w", err)
 	}
-	if _, err := runtimeidentity.ParseMember(w.TargetMemberID); err != nil {
+	if _, err := runtimeidentity.ParseMember(w.targetMemberID); err != nil {
 		return fmt.Errorf("runs: waiting subtree target: %w", err)
 	}
-	if strings.TrimSpace(w.Reason) == "" || w.Reason != strings.TrimSpace(w.Reason) {
+	if strings.TrimSpace(w.reason) == "" || w.reason != strings.TrimSpace(w.reason) {
 		return errors.New("runs: waiting subtree reason is required without surrounding whitespace")
 	}
 	targetFound := false
-	for _, member := range w.Continuation.Members {
-		if member.MemberID != w.TargetMemberID {
+	for _, member := range w.continuation.Members {
+		if member.MemberID != w.targetMemberID {
 			continue
 		}
 		if member.ParentRunID == "" {
@@ -65,16 +108,12 @@ func waitingContinuationFromPending(
 			ModelSelection:  continuation.ModelSelection, Metrics: continuation.Metrics,
 		}
 	}
-	result := WaitingContinuation{
+	return NewWaitingContinuation(WaitingContinuation{
 		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
 		RootRunID: pending.RootRunID, Members: members, Checkpoint: checkpoint.Clone(),
 		Capabilities:             pending.Capabilities,
 		ChildRunAdmissionEnabled: pending.Capabilities.ChildRuns,
-	}
-	if err := result.Validate(); err != nil {
-		return WaitingContinuation{}, err
-	}
-	return result, nil
+	})
 }
 
 // Validate verifies one surviving product member without interpreting executor

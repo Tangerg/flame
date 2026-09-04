@@ -35,11 +35,23 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 		t.Fatal(err)
 	}
 	target := pending.Interrupts[0]
-	request := runs.WaitingSubtreeCancellationRequest{
-		Continuation:   waitingDelegateContinuation(barrier),
-		TargetMemberID: memberIDForRun(t, pending, target.RunID),
-		Reason:         "caller canceled the waiting delegate",
+	targetMemberID := memberIDForRun(t, pending, target.RunID)
+	continuation := waitingDelegateContinuation(barrier)
+	request, err := runs.NewWaitingSubtreeCancellationRequest(
+		continuation,
+		targetMemberID,
+		"caller canceled the waiting delegate",
+	)
+	if err != nil {
+		t.Fatal(err)
 	}
+	continuation.Members[0].MemberID = "member_changed"
+	continuation.Checkpoint.Payload[0] = 'x'
+	continuation.Capabilities.InterruptKinds[0] = "changed"
+	projected := request.Continuation()
+	projected.Members[0].MemberID = "member_projected"
+	projected.Checkpoint.Payload[0] = 'y'
+	projected.Capabilities.InterruptKinds[0] = "projected"
 	prepareCtx, cancelPrepare := context.WithTimeout(t.Context(), 2*time.Second)
 	prepared, err := fixture.executor.PrepareWaitingSubtreeCancellation(prepareCtx, request)
 	if err != nil {
@@ -77,7 +89,7 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 		cancelPrepare()
 		t.Fatal(err)
 	}
-	assertPreparedWaitingCancellation(t, prepared, request.TargetMemberID, cancelPrepare)
+	assertPreparedWaitingCancellation(t, prepared, targetMemberID, cancelPrepare)
 	sequence, err := fixture.executor.Observe(context.Background(), ref)
 	if err != nil {
 		cancelPrepare()
@@ -103,7 +115,7 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 	case <-time.After(3 * time.Second):
 		t.Fatal("root did not finish after waiting Delegate cancellation")
 	}
-	assertCanceledDelegateIsNotReprojected(t, observed, request.TargetMemberID)
+	assertCanceledDelegateIsNotReprojected(t, observed, targetMemberID)
 	if fixture.model.Calls() != 3 {
 		t.Fatalf("provider calls = %d, want 3 without canceled-child replay", fixture.model.Calls())
 	}

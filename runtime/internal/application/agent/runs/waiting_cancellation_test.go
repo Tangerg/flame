@@ -463,7 +463,7 @@ func TestCancelWaitingChildPassesDurableTreeToExecutorAfterRuntimeRestart(t *tes
 		t.Fatalf("Cancel restored waiting child: %v", err)
 	}
 	rootContinuation, _ := plan.pending.RootContinuation()
-	continuation := request.Continuation
+	continuation := request.Continuation()
 	if continuation.SessionID != plan.pending.SessionID ||
 		continuation.ExecutorID != plan.pending.ExecutorID ||
 		continuation.Checkpoint.RootMemberID != rootContinuation.MemberID ||
@@ -805,17 +805,18 @@ func waitingCancellationCoordinator(
 	control.prepareWaiting = func(
 		request WaitingSubtreeCancellationRequest,
 	) (PreparedWaitingSubtreeCancellation, error) {
+		continuation := request.Continuation()
 		ref := ExecutorRef{
-			SessionID:  request.Continuation.SessionID,
-			ExecutorID: request.Continuation.ExecutorID,
+			SessionID:  continuation.SessionID,
+			ExecutorID: continuation.ExecutorID,
 		}
 		if ref != plan.executor {
 			return PreparedWaitingSubtreeCancellation{}, errors.New("prepared the wrong execution")
 		}
-		if request.TargetMemberID != plan.target.memberID {
+		if request.TargetMemberID() != plan.target.memberID {
 			return PreparedWaitingSubtreeCancellation{}, errors.New("prepared the wrong executor member subtree")
 		}
-		if request.Reason == "" {
+		if request.Reason() == "" {
 			return PreparedWaitingSubtreeCancellation{}, errors.New("prepared without a cancellation reason")
 		}
 		return prepared.value(), nil

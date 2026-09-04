@@ -488,6 +488,7 @@ func (i *InteractionExecutor) StageContinuation(
 	ctx context.Context,
 	continuation runs.WaitingContinuation,
 ) (runs.ExecutorRef, error) {
+	continuation = continuation.Clone()
 	if err := continuation.Validate(); err != nil {
 		return runs.ExecutorRef{}, err
 	}
@@ -528,6 +529,7 @@ func (i *InteractionExecutor) RestoreWaitingExecution(
 	ctx context.Context,
 	continuation runs.WaitingContinuation,
 ) (runs.ExecutorRef, error) {
+	continuation = continuation.Clone()
 	if err := continuation.Validate(); err != nil {
 		return runs.ExecutorRef{}, err
 	}

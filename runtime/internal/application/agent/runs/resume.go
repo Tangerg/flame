@@ -69,13 +69,17 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if !ok {
 		return StartResult{}, errors.New("runs: pending interrupt set has no root continuation")
 	}
-	ref, err := c.continuation.StageContinuation(ctx, WaitingContinuation{
+	waiting, err := NewWaitingContinuation(WaitingContinuation{
 		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
 		RootRunID: pending.RootRunID, Members: waitingMembersFromPending(pending),
 		Checkpoint:               claimed.Checkpoint,
 		Capabilities:             pending.Capabilities,
 		ChildRunAdmissionEnabled: pending.Capabilities.ChildRuns,
 	})
+	if err != nil {
+		return StartResult{}, fmt.Errorf("runs: prepare waiting continuation: %w", err)
+	}
+	ref, err := c.continuation.StageContinuation(ctx, waiting)
 	if err != nil {
 		return StartResult{}, err
 	}

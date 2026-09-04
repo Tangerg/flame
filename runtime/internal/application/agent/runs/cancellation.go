@@ -203,11 +203,17 @@ func (c *Coordinator) cancelWaitingChild(
 	if err != nil {
 		return CancelResult{}, err
 	}
+	request, err := NewWaitingSubtreeCancellationRequest(
+		continuation,
+		plan.target.memberID,
+		cmd.Reason,
+	)
+	if err != nil {
+		return CancelResult{}, fmt.Errorf("runs: prepare waiting child cancellation request: %w", err)
+	}
 	prepared, err := c.waitingSubtreeCancellationPreparer.PrepareWaitingSubtreeCancellation(
 		cleanupCtx,
-		WaitingSubtreeCancellationRequest{
-			Continuation: continuation, TargetMemberID: plan.target.memberID, Reason: cmd.Reason,
-		},
+		request,
 	)
 	if err != nil {
 		return CancelResult{}, err
