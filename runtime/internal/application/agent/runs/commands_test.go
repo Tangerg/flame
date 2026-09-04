@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -31,9 +32,9 @@ func TestStartExecutionValidateDelegatesCoreOptions(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := (RootExecutionStart{
-				Message: "hello", ModelSelection: mustSelection("provider", "model"), Options: &test.options,
-			}).Validate()
+			execution := validRootExecutionStart()
+			execution.Options = &test.options
+			err := execution.Validate()
 			if !errors.Is(err, ErrInvalidRunOptions) {
 				t.Fatalf("Validate() error = %v, want ErrInvalidRunOptions", err)
 			}
@@ -56,9 +57,9 @@ func TestStartExecutionValidateKeepsModelSelectionOutsideOptions(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := (RootExecutionStart{
-				Message: "hello", ModelSelection: mustSelection("provider", "model"), Options: &test.options,
-			}).Validate()
+			execution := validRootExecutionStart()
+			execution.Options = &test.options
+			err := execution.Validate()
 			if !errors.Is(err, ErrInvalidRunOptions) {
 				t.Fatalf("Validate() error = %v, want ErrInvalidRunOptions", err)
 			}
@@ -66,10 +67,10 @@ func TestStartExecutionValidateKeepsModelSelectionOutsideOptions(t *testing.T) {
 	}
 }
 
-func TestStartExecutionValidateRejectsWhitespaceOnlyMessage(t *testing.T) {
+func TestStartExecutionValidateRequiresWorkingContext(t *testing.T) {
 	t.Parallel()
 
-	if err := (RootExecutionStart{Message: " \n\t"}).Validate(); !errors.Is(err, ErrInputRequired) {
+	if err := (RootExecutionStart{}).Validate(); !errors.Is(err, ErrInputRequired) {
 		t.Fatalf("Validate() error = %v, want ErrInputRequired", err)
 	}
 }
@@ -77,7 +78,9 @@ func TestStartExecutionValidateRejectsWhitespaceOnlyMessage(t *testing.T) {
 func TestStartExecutionValidateRequiresExactModelSelection(t *testing.T) {
 	t.Parallel()
 
-	err := (RootExecutionStart{Message: "hello"}).Validate()
+	execution := validRootExecutionStart()
+	execution.ModelSelection = modelref.Selection{}
+	err := execution.Validate()
 	if err == nil || !strings.Contains(err.Error(), "model selection is required") {
 		t.Fatalf("Validate() error = %v, want required model selection", err)
 	}
@@ -91,33 +94,42 @@ func TestStartExecutionValidateRejectsNonCanonicalAdmissionPolicy(t *testing.T) 
 		execution RootExecutionStart
 	}{
 		{name: "duplicate interrupt kind", execution: RootExecutionStart{
-			Message: "hello",
 			InterruptKinds: []interrupt.Kind{
 				interrupt.Approval,
 				interrupt.Approval,
 			},
 		}},
 		{name: "goal incarnation surrounding whitespace", execution: RootExecutionStart{
-			Message: "hello", GoalIncarnationID: " lease",
+			GoalIncarnationID: " lease",
 		}},
 		{name: "goal incarnation interior whitespace", execution: RootExecutionStart{
-			Message: "hello", GoalIncarnationID: "goal incarnation",
+			GoalIncarnationID: "goal incarnation",
 		}},
 		{name: "goal incarnation non-printing", execution: RootExecutionStart{
-			Message: "hello", GoalIncarnationID: "goal\u200bincarnation",
+			GoalIncarnationID: "goal\u200bincarnation",
 		}},
 		{name: "goal incarnation oversized", execution: RootExecutionStart{
-			Message: "hello", GoalIncarnationID: strings.Repeat("界", goalref.MaximumIncarnationCharacters+1),
+			GoalIncarnationID: strings.Repeat("界", goalref.MaximumIncarnationCharacters+1),
 		}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			test.execution.ModelSelection = mustSelection("provider", "model")
+			test.execution.WorkingContext = validRootExecutionStart().WorkingContext
 			if err := test.execution.Validate(); err == nil {
 				t.Fatal("Validate accepted non-canonical admission policy")
 			}
 		})
+	}
+}
+
+func validRootExecutionStart() RootExecutionStart {
+	return RootExecutionStart{
+		ModelSelection: mustSelection("provider", "model"),
+		WorkingContext: []corechat.Message{
+			corechat.NewUserMessage(corechat.NewTextPart("hello")),
+		},
 	}
 }
 

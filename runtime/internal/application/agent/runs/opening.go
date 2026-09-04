@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
@@ -20,6 +21,7 @@ type rootStartPreparation struct {
 	initialSession     *session.Session
 	draft              RootExecutionStart
 	currentMessage     corechat.Message
+	promptText         string
 	openingUserText    string
 }
 
@@ -59,7 +61,7 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 	draft.WorkingContext, err = c.workingContexts.ComposeWorkingContext(ctx, WorkingContextInput{
 		SessionID:  preparation.session.ID(),
 		CWD:        execCWD,
-		PromptText: draft.Message,
+		PromptText: preparation.promptText,
 		Seed:       draft.WorkingContext,
 	})
 	if err != nil {
@@ -146,28 +148,23 @@ func (c *Coordinator) prepareRootStart(
 		return rootStartPreparation{}, err
 	}
 	requestedSelection := cmd.ModelSelection
-	message, media, openingUserText, err := cmd.MaterializeInput()
+	currentMessage, err := MaterializeUserMessage(cmd.Input)
 	if err != nil {
 		return rootStartPreparation{}, err
 	}
+	promptText := userMessageText(currentMessage)
 	sess, initialSession, effectiveSelection, err := c.resolveSessionSelection(ctx, cmd)
 	if err != nil {
 		return rootStartPreparation{}, err
 	}
 	cmd.ModelSelection = effectiveSelection
 	draft := RootExecutionStart{
-		Message:                  message,
-		Media:                    media,
 		ModelSelection:           effectiveSelection,
 		Limits:                   cmd.Limits,
 		Options:                  cmd.Options,
 		InterruptKinds:           cmd.Capabilities.InterruptKinds,
 		ChildRunAdmissionEnabled: cmd.Capabilities.ChildRuns,
 		GoalIncarnationID:        cmd.GoalIncarnationID,
-	}
-	currentMessage, err := MaterializeUserMessage(cmd.Input)
-	if err != nil {
-		return rootStartPreparation{}, err
 	}
 	draft.WorkingContext = []corechat.Message{currentMessage}
 	if err := draft.Validate(); err != nil {
@@ -182,8 +179,18 @@ func (c *Coordinator) prepareRootStart(
 	return rootStartPreparation{
 		command: cmd, requestedSelection: requestedSelection, session: sess,
 		initialSession: initialSession, draft: draft, currentMessage: currentMessage,
-		openingUserText: openingUserText,
+		promptText: promptText, openingUserText: strings.TrimSpace(promptText),
 	}, nil
+}
+
+func userMessageText(message corechat.Message) string {
+	texts := make([]string, 0, len(message.Parts))
+	for _, part := range message.Parts {
+		if part.Kind == corechat.PartText {
+			texts = append(texts, part.Text)
+		}
+	}
+	return strings.Join(texts, "\n")
 }
 
 func prepareStartSessionReplacement(

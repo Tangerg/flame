@@ -106,59 +106,58 @@ func TestRunInputFromWireReportsTheInvalidBlockField(t *testing.T) {
 	}
 }
 
-// TestStartCommandMaterializeInput covers the Application-owned conversion from
-// canonical input blocks to executor media and opening text.
-func TestStartCommandMaterializeInput(t *testing.T) {
+// TestMaterializeUserMessage covers the single Application-owned conversion
+// from canonical input blocks to the provider-neutral executor message.
+func TestMaterializeUserMessage(t *testing.T) {
 	imageBytes := []byte("semantic image bytes")
 
-	// text + image: text joins, one media with decoded bytes carried through.
-	text, imgs, _, err := (runs.StartCommand{Input: []transcript.ContentBlock{
+	message, err := runs.MaterializeUserMessage([]transcript.ContentBlock{
 		{Kind: transcript.TextContent, Text: "look at"},
 		{Kind: transcript.TextContent, Text: "this"},
 		{Kind: transcript.ImageContent, MediaType: "image/png", Bytes: imageBytes},
-	}}).MaterializeInput()
+	})
 	if err != nil {
 		t.Fatalf("text+image: %v", err)
 	}
-	if text != "look at\nthis" {
-		t.Fatalf("text = %q, want joined", text)
+	if len(message.Parts) != 3 || message.Parts[0].Text != "look at" || message.Parts[1].Text != "this" {
+		t.Fatalf("message parts = %+v, want ordered text and image", message.Parts)
 	}
-	if len(imgs) != 1 {
-		t.Fatalf("want 1 media, got %d", len(imgs))
+	image := message.Parts[2].Media
+	if image == nil {
+		t.Fatal("materialized message has no image")
 	}
-	if got, err := imgs[0].Bytes(); err != nil || !bytes.Equal(got, imageBytes) {
+	if got, err := image.Bytes(); err != nil || !bytes.Equal(got, imageBytes) {
 		t.Fatalf("media data = %q, %v; want bytes %q", got, err, imageBytes)
 	}
-	if imgs[0].MIME != "image/png" {
-		t.Fatalf("media mime = %q, want image/png", imgs[0].MIME)
+	if image.MIME != "image/png" {
+		t.Fatalf("media mime = %q, want image/png", image.MIME)
 	}
 
-	// image-only: no text is fine (the StartRun guard accepts media-only).
-	if text, imgs, _, err := (runs.StartCommand{Input: []transcript.ContentBlock{
+	imageOnly, err := runs.MaterializeUserMessage([]transcript.ContentBlock{
 		{Kind: transcript.ImageContent, MediaType: "image/jpeg", Bytes: imageBytes},
-	}}).MaterializeInput(); err != nil || text != "" || len(imgs) != 1 {
-		t.Fatalf("image-only: text=%q imgs=%d err=%v", text, len(imgs), err)
+	})
+	if err != nil || len(imageOnly.Parts) != 1 || imageOnly.Parts[0].Media == nil {
+		t.Fatalf("image-only message = %+v, err=%v", imageOnly, err)
 	}
 
-	// A non-image mime, an unparseable mime, and empty data are all rejected.
-	if _, _, _, err := (runs.StartCommand{Input: []transcript.ContentBlock{
+	if _, err := runs.MaterializeUserMessage([]transcript.ContentBlock{
 		{Kind: transcript.ImageContent, MediaType: "text/plain", Bytes: imageBytes},
-	}}).MaterializeInput(); !errors.Is(err, runs.ErrUnsupportedMedia) {
+	}); !errors.Is(err, runs.ErrUnsupportedMedia) {
 		t.Fatalf("non-image mime: err = %v, want ErrUnsupportedMedia", err)
 	}
-	if _, _, _, err := (runs.StartCommand{Input: []transcript.ContentBlock{
+	if _, err := runs.MaterializeUserMessage([]transcript.ContentBlock{
 		{Kind: transcript.ImageContent, MediaType: "not-a-mime", Bytes: imageBytes},
-	}}).MaterializeInput(); !errors.Is(err, runs.ErrUnsupportedMedia) {
+	}); !errors.Is(err, runs.ErrUnsupportedMedia) {
 		t.Fatalf("bad mime: err = %v, want ErrUnsupportedMedia", err)
 	}
-	if _, _, _, err := (runs.StartCommand{Input: []transcript.ContentBlock{
+	if _, err := runs.MaterializeUserMessage([]transcript.ContentBlock{
 		{Kind: transcript.ImageContent, MediaType: "image/png"},
-	}}).MaterializeInput(); !errors.Is(err, runs.ErrUnsupportedMedia) {
+	}); !errors.Is(err, runs.ErrUnsupportedMedia) {
 		t.Fatalf("empty data: err = %v, want ErrUnsupportedMedia", err)
 	}
-	if _, _, _, err := (runs.StartCommand{Input: []transcript.ContentBlock{
+	if _, err := runs.MaterializeUserMessage([]transcript.ContentBlock{
 		{Kind: transcript.TextContent, Text: " \n\t"},
-	}}).MaterializeInput(); !errors.Is(err, runs.ErrInputRequired) {
+	}); !errors.Is(err, runs.ErrInputRequired) {
 		t.Fatalf("blank text: err = %v, want ErrInputRequired", err)
 	}
 }

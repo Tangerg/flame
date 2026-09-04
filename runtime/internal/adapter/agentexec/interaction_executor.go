@@ -181,9 +181,6 @@ func (i *InteractionExecutor) ValidateRootStart(start runs.RootExecutionStart) e
 	if err := validateModelOutputReservation(start.ModelSelection, start.Options); err != nil {
 		return err
 	}
-	if len(start.WorkingContext) == 0 {
-		return errors.New("agentexec: Interaction requires a complete working context")
-	}
 	_, err := i.maxModelCalls(start)
 	return err
 }
@@ -221,6 +218,7 @@ func (i *InteractionExecutor) StageRoot(
 	if i == nil {
 		return runs.ExecutorRef{}, errors.New("agentexec: Interaction executor is nil")
 	}
+	start = start.Clone()
 	if _, err := resourceid.ParseSession(start.SessionID); err != nil {
 		return runs.ExecutorRef{}, fmt.Errorf("agentexec: Interaction: %w", err)
 	}
@@ -252,7 +250,6 @@ func (i *InteractionExecutor) assembleInteraction(
 	ref runs.ExecutorRef,
 	start runs.RootExecutionStart,
 ) (*interactionSession, error) {
-	start.InterruptKinds = slices.Clone(start.InterruptKinds)
 	resolved, err := i.resolveChat(ctx, start.ModelSelection)
 	if err != nil {
 		return nil, err

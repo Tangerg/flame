@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -165,6 +166,46 @@ func TestInteractionExecutorRequiresExactRootModelSelection(t *testing.T) {
 	start.ModelSelection = modelref.Selection{}
 	if err := executor.ValidateRootStart(start); err == nil {
 		t.Fatal("Interaction executor accepted a root without an exact model selection")
+	}
+}
+
+func TestInteractionExecutorStageRootOwnsInput(t *testing.T) {
+	executor := newTestInteractionExecutorWithLifetime(
+		t,
+		t.Context(),
+		chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+			return interactionTextResponse("unused"), nil
+		}),
+	)
+	maxOutputTokens := int64(256)
+	start := interactionTestStart()
+	start.Options = &chat.Options{MaxOutputTokens: &maxOutputTokens}
+	start.InterruptKinds = []interrupt.Kind{interrupt.Question}
+	ref, err := executor.StageRoot(t.Context(), start)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if releaseErr := executor.Release(context.Background(), ref); releaseErr != nil {
+			t.Errorf("release staged root: %v", releaseErr)
+		}
+	})
+
+	start.WorkingContext[0].Parts[0].Text = "changed"
+	*start.Options.MaxOutputTokens = 512
+	start.InterruptKinds[0] = interrupt.Approval
+	session, err := executor.session(ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := session.start.WorkingContext[0].Parts[0].Text; got != "current question" {
+		t.Fatalf("owned working context text = %q", got)
+	}
+	if got := *session.start.Options.MaxOutputTokens; got != 256 {
+		t.Fatalf("owned max output tokens = %d", got)
+	}
+	if got := session.start.InterruptKinds; !slices.Equal(got, []interrupt.Kind{interrupt.Question}) {
+		t.Fatalf("owned interrupt kinds = %v", got)
 	}
 }
 
@@ -569,7 +610,7 @@ func newTestInteractionExecutorWithLifetime(
 
 func interactionTestStart() runs.RootExecutionStart {
 	return runs.RootExecutionStart{
-		SessionID: "session_1", Message: "current question", ModelSelection: testDefaultSelection(),
+		SessionID: "session_1", ModelSelection: testDefaultSelection(),
 		WorkingContext: []chat.Message{chat.NewUserMessage(chat.NewTextPart("current question"))},
 	}
 }

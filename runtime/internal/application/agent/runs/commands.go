@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -217,27 +218,6 @@ func MaterializeUserMessage(input []transcript.ContentBlock) (corechat.Message, 
 	return message, nil
 }
 
-// MaterializeInput projects the validated user message onto the executor's
-// opening prompt plus image-attachment boundary and derives the durable opening
-// text. Steering consumes the ordered message directly.
-func (s StartCommand) MaterializeInput() (message string, images []*media.Media, openingText string, err error) {
-	userMessage, err := MaterializeUserMessage(s.Input)
-	if err != nil {
-		return "", nil, "", err
-	}
-	texts := make([]string, 0, len(userMessage.Parts))
-	for _, part := range userMessage.Parts {
-		switch part.Kind {
-		case corechat.PartText:
-			texts = append(texts, part.Text)
-		case corechat.PartMedia:
-			images = append(images, part.Media)
-		}
-	}
-	message = strings.Join(texts, "\n")
-	return message, images, strings.TrimSpace(message), nil
-}
-
 // ResumeCommand is the complete input for resuming a waiting Run.
 type ResumeCommand struct {
 	RunID     string
@@ -404,7 +384,7 @@ type StartResult struct {
 // created or mutated. The Coordinator performs selected-model input admission
 // separately because external capability policy belongs behind its own port.
 func (r RootExecutionStart) Validate() error {
-	if len(r.WorkingContext) == 0 && strings.TrimSpace(r.Message) == "" && len(r.Media) == 0 {
+	if len(r.WorkingContext) == 0 {
 		return ErrInputRequired
 	}
 	for index, message := range r.WorkingContext {
@@ -434,6 +414,21 @@ func (r RootExecutionStart) Validate() error {
 		return fmt.Errorf("runs: %w", err)
 	}
 	return validateOptions(r.Options)
+}
+
+// Clone returns an ownership-independent executor staging input.
+func (r RootExecutionStart) Clone() RootExecutionStart {
+	if r.Options != nil {
+		options := r.Options.Clone()
+		r.Options = &options
+	}
+	messages := r.WorkingContext
+	r.WorkingContext = make([]corechat.Message, len(messages))
+	for index, message := range messages {
+		r.WorkingContext[index] = message.Clone()
+	}
+	r.InterruptKinds = slices.Clone(r.InterruptKinds)
+	return r
 }
 
 func validateOptions(options *corechat.Options) error {

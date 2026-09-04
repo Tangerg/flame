@@ -6,7 +6,6 @@ import (
 	"time"
 
 	corechat "github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/media"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -266,8 +265,6 @@ type ItemProjection interface {
 // the Application fills them before passing the value to StageRoot.
 type RootExecutionStart struct {
 	SessionID string
-	Message   string
-	Media     []*media.Media
 	// CWD is the execution directory — the sandbox copy for an isolated
 	// run, else the session's project directory. The durable run record keeps the
 	// project directory; only the executor sees the copy.
