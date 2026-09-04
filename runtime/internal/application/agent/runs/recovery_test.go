@@ -882,6 +882,19 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 	if err := foreignOrphan.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted an orphan invocation outside recovered Session ownership")
 	}
+	missingCheckpointDeletion := store.commit
+	missingCheckpointDeletion.DeleteCheckpointSessionIDs = nil
+	if err := missingCheckpointDeletion.Validate(); err == nil {
+		t.Fatal("RecoveryCommit.Validate accepted a lost tree without checkpoint cleanup")
+	}
+	foreignCheckpointDeletion := store.commit
+	foreignCheckpointDeletion.DeleteCheckpointSessionIDs = append(
+		append([]string(nil), store.commit.DeleteCheckpointSessionIDs...),
+		"session_foreign",
+	)
+	if err := foreignCheckpointDeletion.Validate(); err == nil {
+		t.Fatal("RecoveryCommit.Validate accepted checkpoint cleanup for an unrelated Session")
+	}
 }
 
 func TestRecoveryDoesNotMoveDurableTimeBackwardWhenTheClockRegresses(t *testing.T) {

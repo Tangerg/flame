@@ -253,10 +253,30 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	ctx := t.Context()
+	createdAt := time.Unix(1, 0).UTC()
+	draft := run.Draft{
+		RunID: "run_abandoned", SessionID: "session_abandoned", SegmentID: "segment_abandoned",
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
+	}
+	active, err := run.Admit(draft)
+	if err != nil {
+		t.Fatalf("Admit domain Run: %v", err)
+	}
+	runStore := sqlite.NewRunStore(db)
+	if err := runStore.Admit(ctx, draft); err != nil {
+		t.Fatalf("Admit stored Run: %v", err)
+	}
+	finishedAt := createdAt.Add(time.Second)
+	lost, err := active.RecoverLost(run.Failure{
+		Kind: run.FailureLost, Detail: "run lost on restart",
+	}, finishedAt, 0)
+	if err != nil {
+		t.Fatalf("RecoverLost: %v", err)
+	}
 	childStarts := sqlite.NewChildRunStartReservationStore(db)
 	if reserveErr := childStarts.Reserve(ctx, sqlite.ChildRunStartReservationRecord{
 		MemberID: "member_abandoned", SessionID: "session_abandoned",
-		Payload: []byte(`{"run":"child_abandoned"}`), CreatedAt: time.Unix(1, 0).UTC(),
+		Payload: []byte(`{"run":"child_abandoned"}`), CreatedAt: createdAt,
 	}); reserveErr != nil {
 		t.Fatalf("Reserve: %v", reserveErr)
 	}
@@ -287,6 +307,13 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 		t.Fatalf("New failing persistence: %v", err)
 	}
 	commit := runs.RecoveryCommit{
+		LostRuns: []run.Run{lost},
+		ConversationTransitions: []runs.RecoveryConversationTransition{{
+			RootRunID: active.ID(), SessionID: active.SessionID(), ExpectedCount: 0,
+		}},
+		DeleteInterrupts: []runs.InterruptOwner{{
+			SessionID: active.SessionID(), RootRunID: active.ID(),
+		}},
 		RecoveredSessionIDs:        []string{"session_abandoned"},
 		DeleteCheckpointSessionIDs: []string{"session_abandoned"},
 	}

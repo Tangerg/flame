@@ -108,7 +108,11 @@ func (r RecoveryCommit) Validate() error {
 	if err := validateCanonicalMemberIdentities("preserved checkpoint root", r.PreservedCheckpointRootIDs); err != nil {
 		return err
 	}
-	if err := validateCanonicalSessionIdentities("checkpoint deletion Session", r.DeleteCheckpointSessionIDs); err != nil {
+	if err := validateRecoveryCheckpointDeletions(
+		r.DeleteCheckpointSessionIDs,
+		rootIDs,
+		lostByID,
+	); err != nil {
 		return err
 	}
 	return nil
@@ -461,6 +465,40 @@ func validateRecoveryInterruptDeletions(
 	}
 	if len(seen) != len(expected) {
 		return fmt.Errorf("runs: recovery commit has %d interrupt deletions, want %d lost roots", len(seen), len(expected))
+	}
+	return nil
+}
+
+func validateRecoveryCheckpointDeletions(
+	values []string,
+	rootIDs []string,
+	lostByID map[string]rundomain.Run,
+) error {
+	expected := make([]string, len(rootIDs))
+	seen := make(map[string]string, len(rootIDs))
+	for index, rootID := range rootIDs {
+		sessionID := lostByID[rootID].SessionID()
+		if otherRoot, duplicate := seen[sessionID]; duplicate {
+			return fmt.Errorf(
+				"runs: recovery commit lost roots %q and %q share Session %q",
+				otherRoot,
+				rootID,
+				sessionID,
+			)
+		}
+		seen[sessionID] = rootID
+		expected[index] = sessionID
+	}
+	slices.Sort(expected)
+	if err := validateCanonicalSessionIdentities("checkpoint deletion Session", values); err != nil {
+		return err
+	}
+	if !slices.Equal(values, expected) {
+		return fmt.Errorf(
+			"runs: recovery commit checkpoint deletion Sessions %v differ from lost tree Sessions %v",
+			values,
+			expected,
+		)
 	}
 	return nil
 }
