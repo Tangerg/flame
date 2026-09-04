@@ -3,14 +3,50 @@ package runs
 import (
 	"errors"
 	"math"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
+
+func TestStartCommandCloneOwnsMutableInput(t *testing.T) {
+	maxOutputTokens := int64(256)
+	imageBytes := []byte("image")
+	command := StartCommand{
+		Options: &corechat.Options{MaxOutputTokens: &maxOutputTokens},
+		Capabilities: run.Capabilities{
+			InterruptKinds: []interrupt.Kind{interrupt.Question},
+		},
+		Input: []transcript.ContentBlock{{
+			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: imageBytes,
+		}},
+	}
+	owned := command.clone()
+
+	imageBytes[0] = 'x'
+	command.Input[0].MediaType = "image/jpeg"
+	*command.Options.MaxOutputTokens = 512
+	command.Capabilities.InterruptKinds[0] = interrupt.Approval
+
+	if got := string(owned.Input[0].Bytes); got != "image" {
+		t.Fatalf("owned image bytes = %q", got)
+	}
+	if got := owned.Input[0].MediaType; got != "image/png" {
+		t.Fatalf("owned media type = %q", got)
+	}
+	if got := *owned.Options.MaxOutputTokens; got != 256 {
+		t.Fatalf("owned max output tokens = %d", got)
+	}
+	if got := owned.Capabilities.InterruptKinds; !slices.Equal(got, []interrupt.Kind{interrupt.Question}) {
+		t.Fatalf("owned interrupt kinds = %v", got)
+	}
+}
 
 func TestStartExecutionValidateDelegatesCoreOptions(t *testing.T) {
 	t.Parallel()

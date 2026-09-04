@@ -122,6 +122,20 @@ type StartCommand struct {
 	GoalIncarnationID string
 }
 
+func (s StartCommand) clone() StartCommand {
+	if s.ManualScheduleRun != nil {
+		record := *s.ManualScheduleRun
+		s.ManualScheduleRun = &record
+	}
+	if s.Options != nil {
+		options := s.Options.Clone()
+		s.Options = &options
+	}
+	s.Capabilities = s.Capabilities.Clone()
+	s.Input = transcript.CloneContent(s.Input)
+	return s
+}
+
 // ValidateScheduledIdentity ensures a schedule origin is exactly one durable
 // occurrence or one aggregate-owned manual Run fact. Ordinary starts carry
 // neither. Keeping this at the command boundary prevents callers from mixing

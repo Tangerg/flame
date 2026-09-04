@@ -30,6 +30,7 @@ type rootStartPreparation struct {
 // the command's acceptance point; executor activation continues behind the
 // package's lifecycle supervisor and cannot retain the accepted response.
 func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result StartResult, err error) {
+	cmd = cmd.clone()
 	preparation, err := c.prepareRootStart(ctx, cmd)
 	if err != nil {
 		return StartResult{}, err
