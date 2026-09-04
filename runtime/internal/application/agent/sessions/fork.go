@@ -3,7 +3,6 @@ package sessions
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/Tangerg/scope/core/chat"
 
@@ -57,7 +56,7 @@ func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID string) 
 		return ForkBoundary{}, err
 	}
 	return ForkBoundary{
-		Messages: slices.Clone(msgs[:boundary.KeepMessageMark]),
+		Messages: cloneSnapshotMessages(msgs[:boundary.KeepMessageMark]),
 		RunIDs:   boundary.RunIDs,
 		RunID:    boundary.KeepRunID,
 	}, nil

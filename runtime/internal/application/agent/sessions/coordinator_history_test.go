@@ -37,6 +37,14 @@ func TestResolveForkBoundary(t *testing.T) {
 	if len(got.RunIDs) != 1 || got.RunIDs[0] != "run_1" {
 		t.Fatalf("boundary run projection = %v, want [run_1]", got.RunIDs)
 	}
+	msgs[0].Parts[0].Text = "source mutation"
+	if text := got.Messages[0].Text(); text != "one" {
+		t.Fatalf("boundary message after source mutation = %q, want owned snapshot", text)
+	}
+	got.Messages[1].Parts[0].Text = "boundary mutation"
+	if text := msgs[1].Text(); text != "two" {
+		t.Fatalf("source message after boundary mutation = %q, want unchanged", text)
+	}
 }
 
 func TestResolveForkBoundaryExcludesActiveTail(t *testing.T) {
