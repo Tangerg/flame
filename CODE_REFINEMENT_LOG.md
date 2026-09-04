@@ -225,6 +225,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 265 | `b5849dde` + CLI dependency update | Made Steer own a deep command snapshot before live-segment resolution, so model admission and executor delivery observe the same immutable text, media metadata, and image bytes. |
 | 266 | `b194f5ec` + CLI dependency update | Replaced schedule updates' competing resolved and unresolved model inputs with one frozen Application patch; Delivery now supplies that sole input and Domain receives only admitted workspace and model values. |
 | 267 | `a97ef620` + CLI dependency update | Froze every Session edit field before workspace admission and lifecycle claims, so model resolution, resource retirement, aggregate mutation, and persistence share one caller-independent command snapshot. |
+| 268 | `2645a6a9` + CLI dependency update | Froze caller capabilities before durable Segment resolution, so subscription admission and live event attachment use one caller-independent capability fact. |
 
 ## Verification contract
 
