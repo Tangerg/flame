@@ -74,3 +74,20 @@ func TestServerFormattingRedactsCredentials(t *testing.T) {
 		t.Fatalf("formatted server redactions = %d, want 4: %s", got, formatted)
 	}
 }
+
+func TestServerCloneOwnsMutableConnectionFields(t *testing.T) {
+	original := Server{
+		Headers: map[string]string{"X-Key": "header"},
+		Args:    []string{"--root", "/repo"},
+		Env:     map[string]string{"TOKEN": "environment"},
+	}
+
+	clone := original.Clone()
+	clone.Headers["X-Key"] = "changed"
+	clone.Args[0] = "changed"
+	clone.Env["TOKEN"] = "changed"
+
+	if original.Headers["X-Key"] != "header" || original.Args[0] != "--root" || original.Env["TOKEN"] != "environment" {
+		t.Fatalf("Clone mutated original server: %+v", original)
+	}
+}

@@ -90,6 +90,7 @@ func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ServerNam
 	if !found {
 		return Server{}, ErrUnknownServer
 	}
+	current = current.Clone()
 	if err := validateRegistryServer("get", name, current); err != nil {
 		return Server{}, err
 	}
@@ -101,7 +102,7 @@ func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ServerNam
 }
 
 func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (Server, error) {
-	if err := c.registry.Save(write.requestCtx, srv); err != nil {
+	if err := c.registry.Save(write.requestCtx, srv.Clone()); err != nil {
 		return Server{}, err
 	}
 	if !srv.Enabled {
@@ -292,7 +293,7 @@ func (c *Coordinator) redialServer(ctx context.Context, srv mcpserver.Server, st
 		return errConnectionUnavailable
 	}
 	return c.dispatchConnection(ctx, srv.Name, func(dialCtx context.Context) error {
-		return c.connectionLifecycle.Configure(dialCtx, srv)
+		return c.connectionLifecycle.Configure(dialCtx, srv.Clone())
 	}, false, start, nil)
 }
 
@@ -310,7 +311,7 @@ func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (TestRe
 	if c.connectionLifecycle == nil {
 		return TestResult{}, ErrUnknownServer
 	}
-	if err := c.connectionLifecycle.Probe(ctx, srv); err != nil {
+	if err := c.connectionLifecycle.Probe(ctx, srv.Clone()); err != nil {
 		return TestResult{}, nil
 	}
 	return TestResult{OK: true}, nil
@@ -324,6 +325,7 @@ func (c *Coordinator) validatedServer(ctx context.Context, input ServerInput) (m
 			return mcpserver.Server{}, err
 		}
 		if found {
+			stored = stored.Clone()
 			if err := validateRegistryServer("get", input.Name, stored); err != nil {
 				return mcpserver.Server{}, err
 			}

@@ -6,6 +6,8 @@ package mcpserver
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 )
 
 // Transport names an MCP server connection mode using the standard
@@ -70,6 +72,15 @@ type Server struct {
 	// ToolPolicy owns the exact remote identities hidden from the model or
 	// allowed to skip HITL. A tool cannot carry contradictory decisions.
 	ToolPolicy ServerToolPolicy
+}
+
+// Clone returns an owned server snapshot across persistence and live-connection
+// boundaries. ToolPolicy is already immutable and owns its rule relation.
+func (s Server) Clone() Server {
+	s.Headers = maps.Clone(s.Headers)
+	s.Args = slices.Clone(s.Args)
+	s.Env = maps.Clone(s.Env)
+	return s
 }
 
 // Format keeps credential-bearing fields behind a redaction boundary for every

@@ -42,6 +42,25 @@ func TestServersAndToolsUsePorts(t *testing.T) {
 	}
 }
 
+func TestServersSnapshotRegistryRowsBeforeStatusCallbacks(t *testing.T) {
+	name := testMCPServerName("files")
+	server := mcpserver.Server{
+		Name: name, Enabled: true, Transport: mcpserver.TransportStdio,
+		Command: "mcp-files", Args: []string{"--root", "/repo"},
+	}
+	registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{name: server}}
+	ports := &fakePorts{statusHook: func() { server.Args[0] = "status-mutated" }}
+	coordinator := New(Config{Registry: registry, StatusReader: ports})
+
+	servers, err := coordinator.Servers(t.Context())
+	if err != nil || len(servers) != 1 {
+		t.Fatalf("Servers = (%+v, %v), want one server", servers, err)
+	}
+	if got := servers[0].Connection.Args[0]; got != "--root" {
+		t.Fatalf("server args = %q, want pre-callback snapshot", got)
+	}
+}
+
 func TestToolsOwnCatalogOrder(t *testing.T) {
 	ports := &fakePorts{tools: []mcpserver.AdvertisedTool{
 		{Server: testMCPServerName("zeta"), Name: testRemoteToolName("alpha")},
@@ -530,9 +549,46 @@ func TestTestServerUsesLiveRegistryPort(t *testing.T) {
 	}
 }
 
+func TestCreateServerSeparatesDurableAndLiveConnectionOwnership(t *testing.T) {
+	configured := make(chan struct{})
+	ports := &fakePorts{configureDone: configured, mutateConfigure: true}
+	cfg := configWithPorts(ports)
+	registry := cfg.Registry.(*testRegistry)
+	coordinator := New(cfg)
+	t.Cleanup(func() { requireCoordinatorShutdown(t, coordinator) })
+	name := testMCPServerName("files")
+	serverInput := ServerInput{
+		Name: name, Enabled: true,
+		Connection: ConnectionInput{
+			Transport: mcpserver.TransportStdio, Command: "mcp-files",
+			Args: []string{"--root", "/repo"},
+			Environment: &EnvironmentChange{
+				Kind: SecretSet, Value: map[string]string{"TOKEN": "original"},
+			},
+		},
+	}
+
+	if _, err := coordinator.CreateServer(t.Context(), serverInput); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-configured:
+	case <-time.After(time.Second):
+		t.Fatal("live configuration did not run")
+	}
+	stored, found, err := registry.Get(t.Context(), name)
+	if err != nil || !found {
+		t.Fatalf("stored server = (%+v, %t, %v)", stored, found, err)
+	}
+	if stored.Args[0] != "--root" || stored.Env["TOKEN"] != "original" {
+		t.Fatalf("live port mutated durable server: %+v", stored)
+	}
+}
+
 type fakePorts struct {
-	statuses []mcpserver.ConnectionStatus
-	tools    []mcpserver.AdvertisedTool
+	statuses   []mcpserver.ConnectionStatus
+	tools      []mcpserver.AdvertisedTool
+	statusHook func()
 
 	toolsServer string
 	toolsCalls  int
@@ -544,13 +600,20 @@ type fakePorts struct {
 	releaseAuthorize chan struct{}
 	authorizeErr     error
 
-	probe      mcpserver.Server
-	configure  mcpserver.Server
-	removeName string
-	removeErr  error
+	probe           mcpserver.Server
+	configure       mcpserver.Server
+	configureDone   chan struct{}
+	mutateConfigure bool
+	removeName      string
+	removeErr       error
 }
 
-func (f *fakePorts) Statuses() []mcpserver.ConnectionStatus { return f.statuses }
+func (f *fakePorts) Statuses() []mcpserver.ConnectionStatus {
+	if f.statusHook != nil {
+		f.statusHook()
+	}
+	return f.statuses
+}
 
 func (f *fakePorts) Tools(_ context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
 	f.toolsCalls++
@@ -599,7 +662,14 @@ func (f *fakePorts) Probe(_ context.Context, cfg mcpserver.Server) error {
 }
 
 func (f *fakePorts) Configure(_ context.Context, cfg mcpserver.Server) error {
+	if f.mutateConfigure {
+		cfg.Args[0] = "live-mutated"
+		cfg.Env["TOKEN"] = "live-mutated"
+	}
 	f.configure = cfg
+	if f.configureDone != nil {
+		close(f.configureDone)
+	}
 	return nil
 }
 

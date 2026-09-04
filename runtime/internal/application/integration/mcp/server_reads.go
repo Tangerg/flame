@@ -57,6 +57,7 @@ func (c *Coordinator) Server(ctx context.Context, name mcpserver.ServerName) (Se
 	if !found {
 		return Server{}, ErrUnknownServer
 	}
+	server = server.Clone()
 	if err := validateRegistryServer("get", name, server); err != nil {
 		return Server{}, err
 	}
@@ -72,7 +73,11 @@ func (c *Coordinator) Server(ctx context.Context, name mcpserver.ServerName) (Se
 }
 
 func validateRegistryCatalog(servers []mcpserver.Server) ([]mcpserver.Server, error) {
-	servers = slices.Clone(servers)
+	owned := make([]mcpserver.Server, len(servers))
+	for index, server := range servers {
+		owned[index] = server.Clone()
+	}
+	servers = owned
 	seen := make(map[mcpserver.ServerName]struct{}, len(servers))
 	for index, server := range servers {
 		if err := server.Validate(); err != nil {

@@ -58,6 +58,7 @@ func (c *Coordinator) connectionTarget(ctx context.Context, name mcpserver.Serve
 	if !ok {
 		return mcpserver.Server{}, ErrUnknownServer
 	}
+	srv = srv.Clone()
 	if err := validateRegistryServer("get", name, srv); err != nil {
 		return mcpserver.Server{}, err
 	}
