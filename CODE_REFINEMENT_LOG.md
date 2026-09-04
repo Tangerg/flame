@@ -233,6 +233,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 273 | `ee4a1710` + CLI dependency update | Constructed owned conversation values before Seed/Append persistence reads, preventing callbacks from changing nested message parts between command admission and durable writes. |
 | 274 | `56ca8838` + CLI dependency update | Snapshotted authored-watch cwd inputs before inspection and deep-cloned change identities per observer, preventing callbacks from altering later resolution, callers, or sibling observers. |
 | 275 | `39ec33da` + CLI dependency update | Snapshotted Git-watch cwd inputs before path resolution, so resolver callbacks cannot rewrite later roots in the same observation request. |
+| 276 | `fb377b76` + CLI dependency update | Added the hooks Domain's deep Input clone, froze Hook/Input values before matching, and isolated every command request so callbacks cannot alter later policy decisions. |
 
 ## Verification contract
 
