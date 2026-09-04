@@ -55,7 +55,9 @@ func (c *Curation) AppendLedger(ctx context.Context, batch domain.FactBatch) ([]
 	if len(normalized.Facts) == 0 {
 		return nil, nil
 	}
-	facts, err := c.store.AppendLedger(ctx, normalized)
+	storeBatch := normalized
+	storeBatch.Facts = slices.Clone(normalized.Facts)
+	facts, err := c.store.AppendLedger(ctx, storeBatch)
 	if err != nil {
 		return nil, err
 	}

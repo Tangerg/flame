@@ -22,6 +22,7 @@ type fakeCurationStore struct {
 	appendBatch     domain.FactBatch
 	reconcileValues []string
 	reconcileAt     time.Time
+	mutateAppend    bool
 }
 
 type singleWinnerCurationStore struct {
@@ -35,6 +36,9 @@ func (s *singleWinnerCurationStore) Reconcile(context.Context, domain.Publicatio
 
 func (f *fakeCurationStore) AppendLedger(_ context.Context, batch domain.FactBatch) ([]domain.LedgerFact, error) {
 	f.appendBatch = batch
+	if f.mutateAppend && len(batch.Facts) > 0 {
+		batch.Facts[0] = "store-mutated"
+	}
 	return f.appended, f.err
 }
 
@@ -162,6 +166,25 @@ func TestCurationValidatesDurableMaterial(t *testing.T) {
 	if items, err := curation.Items(t.Context(), domain.ScopeProject, "/repo"); err != nil ||
 		len(items) != 2 || items[0].ID != second.ID {
 		t.Fatalf("curation item order = (%+v, %v)", items, err)
+	}
+}
+
+func TestAppendLedgerKeepsItsValidationSnapshotFromStoreMutation(t *testing.T) {
+	store := &fakeCurationStore{
+		appended:     []domain.LedgerFact{validLedgerFact(4, "fact")},
+		mutateAppend: true,
+	}
+	batch := validFactBatch("fact")
+
+	appended, err := NewCuration(CurationConfig{Store: store}).AppendLedger(t.Context(), batch)
+	if err != nil || len(appended) != 1 || appended[0].Content != "fact" {
+		t.Fatalf("AppendLedger = (%+v, %v), want one acknowledged fact", appended, err)
+	}
+	if batch.Facts[0] != "fact" {
+		t.Fatalf("caller batch = %q, want fact", batch.Facts[0])
+	}
+	if store.appendBatch.Facts[0] != "store-mutated" {
+		t.Fatalf("store batch = %q, want proof of mutation", store.appendBatch.Facts[0])
 	}
 }
 
