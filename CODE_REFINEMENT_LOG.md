@@ -164,6 +164,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 204 | `d801a7a7` + CLI dependency update | Made Domain own visible Approval-rule relations, rejected out-of-scope/duplicate rules and invalid/mismatched Session reads before authorization or listing, and isolated returned storage. |
 | 205 | `b3dfbcdd` + CLI dependency update | Centralized valid exact Session point reads in the Session Application entry, migrated Run/Approval/CRUD and snapshot consumers, and rejected invalid or identity-mismatched recovery/snapshot reads. |
 | 206 | `5f5370a3` + CLI dependency update | Made Domain own exact Goal Current identity, routed Reader/drive/report point reads through one validated Application path, and removed prompt-layer duplicate checks. |
+| 207 | `672669d2` + CLI dependency update | Centralized valid exact Pending-interrupt point reads at the Session boundary, removed duplicate Run checks, and deleted the unused list capability from the Run port and fixtures. |
 
 ## Verification contract
 
