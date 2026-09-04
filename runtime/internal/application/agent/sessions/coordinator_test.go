@@ -254,11 +254,11 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 	if appliedRoot.MessageMark() != 2 {
 		t.Fatalf("terminal mark = %d, want 2", appliedRoot.MessageMark())
 	}
-	if len(applied.Items) != 0 {
-		t.Fatalf("interrupt items = %+v, want complete Question prompt left unchanged", applied.Items)
+	if items := applied.Items(); len(items) != 0 {
+		t.Fatalf("interrupt items = %+v, want complete Question prompt left unchanged", items)
 	}
-	if applied.CheckpointRootID != "member_1" {
-		t.Fatalf("checkpoint root = %q, want member_1 in cancel write-set", applied.CheckpointRootID)
+	if applied.CheckpointRootID() != "member_1" {
+		t.Fatalf("checkpoint root = %q, want member_1 in cancel write-set", applied.CheckpointRootID())
 	}
 }
 
@@ -329,15 +329,17 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 	if terminal.State() != run.Canceled || terminal.MessageMark() != 3 {
 		t.Fatalf("terminal Run = %+v, want canceled at message mark 3", terminal)
 	}
-	if len(applied.Items) != 1 || applied.Items[0].ID() != "item_tool" ||
-		applied.Items[0].Status() != transcript.ItemIncomplete {
-		t.Fatalf("terminal Items = %+v, want incomplete item_tool", applied.Items)
+	items := applied.Items()
+	if len(items) != 1 || items[0].ID() != "item_tool" ||
+		items[0].Status() != transcript.ItemIncomplete {
+		t.Fatalf("terminal Items = %+v, want incomplete item_tool", items)
 	}
-	if len(applied.Messages) != 1 || applied.Messages[0].Role != chat.RoleTool ||
-		len(applied.Messages[0].Parts) != 1 || applied.Messages[0].Parts[0].ToolResult == nil {
-		t.Fatalf("terminal Messages = %+v, want one Tool result", applied.Messages)
+	messages := applied.Messages()
+	if len(messages) != 1 || messages[0].Role != chat.RoleTool ||
+		len(messages[0].Parts) != 1 || messages[0].Parts[0].ToolResult == nil {
+		t.Fatalf("terminal Messages = %+v, want one Tool result", messages)
 	}
-	result := *applied.Messages[0].Parts[0].ToolResult
+	result := *messages[0].Parts[0].ToolResult
 	resultText, textual := result.Output.Text()
 	if result.ID != "provider_call_1" || result.Name != "ask_user" || !result.IsError ||
 		!textual || resultText != "tool call canceled before completion: user dismissed the question" {
@@ -422,26 +424,28 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 		failure.Detail != "the parked Run tree's executor checkpoint could not be restored" {
 		t.Fatalf("terminal failure = %+v, want run_lost naming its cause", failure)
 	}
-	if len(applied.Items) != 1 {
-		t.Fatalf("terminal items = %+v, want one incomplete ToolCall", applied.Items)
+	items := applied.Items()
+	if len(items) != 1 {
+		t.Fatalf("terminal items = %+v, want one incomplete ToolCall", items)
 	}
-	toolFailure, toolFailed := applied.Items[0].Failure()
-	if applied.Items[0].Status() != transcript.ItemIncomplete || !toolFailed ||
+	toolFailure, toolFailed := items[0].Failure()
+	if items[0].Status() != transcript.ItemIncomplete || !toolFailed ||
 		toolFailure.Detail != "tool call abandoned because its run could not be resumed" {
-		t.Fatalf("terminal items = %+v, want incomplete failed tool naming its cause", applied.Items)
+		t.Fatalf("terminal items = %+v, want incomplete failed tool naming its cause", items)
 	}
-	if applied.CheckpointRootID != "member_1" || !appliedRoot.FinishedAt().Equal(finishedAt) || appliedRoot.MessageMark() != 1 {
+	if applied.CheckpointRootID() != "member_1" || !appliedRoot.FinishedAt().Equal(finishedAt) || appliedRoot.MessageMark() != 1 {
 		t.Fatalf("terminal plan = %+v", applied)
 	}
-	if applied.GoalRun == nil {
-		t.Fatalf("terminal Goal Run = %+v", applied.GoalRun)
+	goalRun := applied.GoalRun()
+	if goalRun == nil {
+		t.Fatalf("terminal Goal Run = %+v", goalRun)
 	}
-	goalCost, goalCostAvailable := applied.GoalRun.Cost.USD()
-	if applied.GoalRun.SessionID != "ses_1" ||
-		applied.GoalRun.IncarnationID != "lease_1" || applied.GoalRun.RunID != "run_1" ||
-		applied.GoalRun.Outcome != run.OutcomeLost || !goalCostAvailable || goalCost != costUSD ||
-		applied.GoalRun.Steps != 4 || !applied.GoalRun.CompletedAt.Equal(finishedAt) {
-		t.Fatalf("terminal Goal Run = %+v", applied.GoalRun)
+	goalCost, goalCostAvailable := goalRun.Cost.USD()
+	if goalRun.SessionID != "ses_1" ||
+		goalRun.IncarnationID != "lease_1" || goalRun.RunID != "run_1" ||
+		goalRun.Outcome != run.OutcomeLost || !goalCostAvailable || goalCost != costUSD ||
+		goalRun.Steps != 4 || !goalRun.CompletedAt.Equal(finishedAt) {
+		t.Fatalf("terminal Goal Run = %+v", goalRun)
 	}
 }
 
@@ -519,17 +523,18 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 	if err := newCoordinator(corruptStores, nil).ApplyRunLost(t.Context(), "ses_1", "run_root", finishedAt); err == nil {
 		t.Fatal("ApplyRunLost accepted a child Run run capabilities that differs from root admission")
 	}
-	if len(corruptApplied.Runs) != 0 {
+	if len(corruptApplied.Runs()) != 0 {
 		t.Fatalf("child policy drift reached terminal commit: %+v", corruptApplied)
 	}
 
 	if err := newCoordinator(stores, nil).ApplyRunLost(t.Context(), "ses_1", "run_root", finishedAt); err != nil {
 		t.Fatalf("ApplyRunLost: %v", err)
 	}
-	if len(applied.Runs) != 2 || applied.Runs[0].State().ID() != "run_child" || applied.Runs[1].State().ID() != "run_root" {
-		t.Fatalf("terminal Run order = %+v, want child then root", applied.Runs)
+	terminalRuns := applied.Runs()
+	if len(terminalRuns) != 2 || terminalRuns[0].State().ID() != "run_child" || terminalRuns[1].State().ID() != "run_root" {
+		t.Fatalf("terminal Run order = %+v, want child then root", terminalRuns)
 	}
-	for _, replacement := range applied.Runs {
+	for _, replacement := range terminalRuns {
 		record := replacement.State()
 		outcome, terminalized := record.Outcome()
 		failure, failed := record.Failure()
@@ -538,8 +543,8 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 			t.Fatalf("terminal Run = %+v", record)
 		}
 	}
-	if len(applied.Items) != 0 {
-		t.Fatalf("terminal Items = %+v, want complete Question prompt left unchanged", applied.Items)
+	if items := applied.Items(); len(items) != 0 {
+		t.Fatalf("terminal Items = %+v, want complete Question prompt left unchanged", items)
 	}
 }
 
@@ -596,7 +601,7 @@ func TestApplyRunLostRejectsContinuationFactDriftBeforeTerminalCommit(t *testing
 	if err == nil {
 		t.Fatal("ApplyRunLost accepted cumulative metrics that differ from the Run")
 	}
-	if len(applied.Runs) != 0 {
+	if len(applied.Runs()) != 0 {
 		t.Fatalf("contradictory continuation reached terminal commit: %+v", applied)
 	}
 	if _, found := stores.interrupts.pending[pending.RootRunID]; !found {

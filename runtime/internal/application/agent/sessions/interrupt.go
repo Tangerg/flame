@@ -176,8 +176,9 @@ func (c *Coordinator) terminalizePendingRun(
 	// reports both — for a cancel and for a park declared unresumable alike. The run
 	// command layer deliberately does not publish this again: it would be a second
 	// author for the same commit, and only one of them would ever be updated.
-	runIDs := make([]string, len(plan.Runs))
-	for index, replacement := range plan.Runs {
+	terminalRuns := plan.Runs()
+	runIDs := make([]string, len(terminalRuns))
+	for index, replacement := range terminalRuns {
 		runIDs[index] = replacement.State().ID()
 	}
 	notices := []invalidation.Notice{
@@ -185,7 +186,7 @@ func (c *Coordinator) terminalizePendingRun(
 		invalidation.InSession(invalidation.Interrupts, pending.SessionID, pending.RootRunID),
 		invalidation.InSession(invalidation.Sessions, pending.SessionID),
 	}
-	if plan.GoalRun != nil {
+	if plan.GoalRun() != nil {
 		notices = append(notices, invalidation.InSession(invalidation.Goals, pending.SessionID))
 	}
 	c.invalidations.Notify(notices...)

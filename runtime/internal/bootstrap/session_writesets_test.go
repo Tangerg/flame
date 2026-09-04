@@ -89,6 +89,32 @@ func bootstrapRollbackPlan(
 	return rollback
 }
 
+func bootstrapTerminalPlan(
+	t *testing.T,
+	runs []run.Replacement,
+	checkpointRootID string,
+) sessions.TerminalPlan {
+	t.Helper()
+	terminal, err := sessions.NewTerminalPlan(runs, nil, nil, checkpointRootID)
+	if err != nil {
+		t.Fatalf("prepare terminal plan: %v", err)
+	}
+	return terminal
+}
+
+func bootstrapClaimedResumeTerminalPlan(
+	t *testing.T,
+	runs []run.Replacement,
+	checkpointRootID string,
+) sessions.TerminalPlan {
+	t.Helper()
+	terminal, err := sessions.NewClaimedResumeTerminalPlan(runs, nil, nil, checkpointRootID)
+	if err != nil {
+		t.Fatalf("prepare claimed Resume terminal plan: %v", err)
+	}
+	return terminal
+}
+
 // bootstrapCheckpoint deliberately treats the executor payload as opaque. These
 // Bootstrap fixtures verify Application write-sets, not Agent Framework wire;
 // only adapter/agentexec may construct or interpret a tree snapshot.
@@ -324,10 +350,12 @@ func TestApplyTerminalDropsInterruptAndTerminalizes(t *testing.T) {
 		t.Fatalf("cancel parked Run: %v", err)
 	}
 
-	if applyTerminalErr := ss.ApplyTerminal(ctx, sessions.TerminalPlan{
-		CheckpointRootID: memberID,
-		Runs:             []run.Replacement{testsupport.MustRunReplacement(parked, terminal)},
-	}); applyTerminalErr != nil {
+	terminalPlan := bootstrapTerminalPlan(
+		t,
+		[]run.Replacement{testsupport.MustRunReplacement(parked, terminal)},
+		memberID,
+	)
+	if applyTerminalErr := ss.ApplyTerminal(ctx, terminalPlan); applyTerminalErr != nil {
 		t.Fatalf("ApplyTerminal: %v", applyTerminalErr)
 	}
 	if open, _ := ints.List(ctx, "ses_A"); len(open) != 0 {
@@ -363,10 +391,12 @@ func TestApplyTerminalRecoversLostParkAtomically(t *testing.T) {
 		t.Fatalf("recover parked Run: %v", err)
 	}
 
-	if applyTerminalErr := ss.ApplyTerminal(ctx, sessions.TerminalPlan{
-		CheckpointRootID: memberID,
-		Runs:             []run.Replacement{testsupport.MustRunReplacement(parked, terminal)},
-	}); applyTerminalErr != nil {
+	terminalPlan := bootstrapTerminalPlan(
+		t,
+		[]run.Replacement{testsupport.MustRunReplacement(parked, terminal)},
+		memberID,
+	)
+	if applyTerminalErr := ss.ApplyTerminal(ctx, terminalPlan); applyTerminalErr != nil {
 		t.Fatalf("ApplyTerminal run_lost: %v", applyTerminalErr)
 	}
 	if open, _ := ints.List(ctx, "ses_A"); len(open) != 0 {
@@ -424,9 +454,12 @@ func TestApplyTerminalRecoversClaimedResumeAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatalf("recover parked Run: %v", err)
 	}
-	if applyTerminalErr := ss.ApplyTerminal(ctx, sessions.TerminalPlan{
-		Runs: []run.Replacement{testsupport.MustRunReplacement(parked, terminal)}, CheckpointRootID: memberID, ResumeClaimed: true,
-	}); applyTerminalErr != nil {
+	terminalPlan := bootstrapClaimedResumeTerminalPlan(
+		t,
+		[]run.Replacement{testsupport.MustRunReplacement(parked, terminal)},
+		memberID,
+	)
+	if applyTerminalErr := ss.ApplyTerminal(ctx, terminalPlan); applyTerminalErr != nil {
 		t.Fatalf("ApplyTerminal claimed Resume: %v", applyTerminalErr)
 	}
 	if requireResumeClaimErr := ints.RequireResumeClaim(ctx, pending.SessionID, pending.RootRunID); requireResumeClaimErr == nil {
@@ -476,7 +509,6 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 	}
 
 	costUSD := 0.75
-	outcome := run.OutcomeLost
 	finishedAt := parkCreatedAt.Add(time.Minute)
 	parked, found, err := runs.Run(ctx, "run_goal")
 	if err != nil || !found {
@@ -493,13 +525,12 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 		t.Fatalf("recover parked Goal Run: %v", err)
 	}
 
-	goalRun := goal.RunRecord{
-		SessionID: "ses_A", IncarnationID: incarnationID, RunID: terminal.ID(),
-		Outcome: outcome, Cost: bootstrapGoalRunCost(t, costUSD), Steps: 4, CompletedAt: finishedAt,
-	}
-	if applyTerminalErr := ss.ApplyTerminal(ctx, sessions.TerminalPlan{
-		Runs: []run.Replacement{testsupport.MustRunReplacement(expected, terminal)}, CheckpointRootID: memberID, GoalRun: &goalRun,
-	}); applyTerminalErr != nil {
+	terminalPlan := bootstrapTerminalPlan(
+		t,
+		[]run.Replacement{testsupport.MustRunReplacement(expected, terminal)},
+		memberID,
+	)
+	if applyTerminalErr := ss.ApplyTerminal(ctx, terminalPlan); applyTerminalErr != nil {
 		t.Fatalf("ApplyTerminal: %v", applyTerminalErr)
 	}
 

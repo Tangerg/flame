@@ -51,30 +51,108 @@ func runsInParentFirstOrder(runs []rundomain.Run) []rundomain.Run {
 // root-owned Pending, executor checkpoint, admission, and optional Goal charge
 // all move in one transaction.
 type TerminalPlan struct {
-	Runs  []rundomain.Replacement
-	Items []transcript.Item
+	runs  []rundomain.Replacement
+	items []transcript.Item
 	// Messages close model-context Tool calls that cannot receive their ordinary
 	// result because the parked tree is being abandoned. They are appended in
 	// the same transaction before the terminal Run watermark is committed.
-	Messages         []chat.Message
-	CheckpointRootID string
+	messages         []chat.Message
+	checkpointRootID runtimeidentity.MemberID
 	// ResumeClaimed requires persistence to consume the resuming interrupt owned
 	// by a failed Resume attempt. Ordinary parked termination consumes an open
 	// interrupt instead.
-	ResumeClaimed bool
+	resumeClaimed bool
 	// GoalRun is present exactly when the root Run was admitted by an autonomous Goal.
 	// Keeping it in the same write-set makes every terminal path—not only the
 	// normal reducer path—charge the incarnation atomically with the Run transition.
-	GoalRun *goal.RunRecord
+	goalRun *goal.RunRecord
+}
+
+// NewTerminalPlan owns the complete durable projection for an ordinary parked
+// Run termination. Goal accounting is derived from the root Run so callers
+// cannot supply a second version of the same terminal fact.
+func NewTerminalPlan(
+	runs []rundomain.Replacement,
+	items []transcript.Item,
+	messages []chat.Message,
+	checkpointRootID string,
+) (TerminalPlan, error) {
+	return newTerminalPlan(runs, items, messages, checkpointRootID, false)
+}
+
+// NewClaimedResumeTerminalPlan owns the complete durable projection for a
+// Resume claim whose executor state proved unrestorable.
+func NewClaimedResumeTerminalPlan(
+	runs []rundomain.Replacement,
+	items []transcript.Item,
+	messages []chat.Message,
+	checkpointRootID string,
+) (TerminalPlan, error) {
+	return newTerminalPlan(runs, items, messages, checkpointRootID, true)
+}
+
+func newTerminalPlan(
+	runs []rundomain.Replacement,
+	items []transcript.Item,
+	messages []chat.Message,
+	checkpointRootID string,
+	resumeClaimed bool,
+) (TerminalPlan, error) {
+	checkpointRoot, err := runtimeidentity.ParseMember(checkpointRootID)
+	if err != nil {
+		return TerminalPlan{}, fmt.Errorf("sessions: terminal plan checkpoint root: %w", err)
+	}
+	terminal := TerminalPlan{
+		runs:             slices.Clone(runs),
+		items:            slices.Clone(items),
+		messages:         cloneSnapshotMessages(messages),
+		checkpointRootID: checkpointRoot,
+		resumeClaimed:    resumeClaimed,
+	}
+	if root, ok := terminal.RootRun(); ok && root.GoalIncarnationID() != "" {
+		record, err := terminalGoalRun(root)
+		if err != nil {
+			return TerminalPlan{}, err
+		}
+		terminal.goalRun = &record
+	}
+	if err := terminal.Validate(); err != nil {
+		return TerminalPlan{}, err
+	}
+	return terminal, nil
 }
 
 // RootRun returns the root terminal projection. A valid plan always has one.
 func (t TerminalPlan) RootRun() (rundomain.Run, bool) {
-	if len(t.Runs) == 0 {
+	if len(t.runs) == 0 {
 		return rundomain.Run{}, false
 	}
-	root := t.Runs[len(t.Runs)-1].State()
+	root := t.runs[len(t.runs)-1].State()
 	return root, root.Lineage().IsRoot()
+}
+
+// Runs returns an isolated canonical postorder of exact Run replacements.
+func (t TerminalPlan) Runs() []rundomain.Replacement { return slices.Clone(t.runs) }
+
+// Items returns the isolated incomplete transcript projections committed with the Runs.
+func (t TerminalPlan) Items() []transcript.Item { return slices.Clone(t.items) }
+
+// Messages returns isolated model-context closures committed with the Runs.
+func (t TerminalPlan) Messages() []chat.Message { return cloneSnapshotMessages(t.messages) }
+
+// CheckpointRootID returns the canonical executor checkpoint root consumed by the plan.
+func (t TerminalPlan) CheckpointRootID() string { return t.checkpointRootID.String() }
+
+// ConsumesClaimedResume reports whether the plan consumes a claimed Resume hand-off.
+func (t TerminalPlan) ConsumesClaimedResume() bool { return t.resumeClaimed }
+
+// GoalRun returns the root-derived Goal accounting record, when the Run was Goal-owned.
+func (t TerminalPlan) GoalRun() *goal.RunRecord {
+	if t.goalRun == nil {
+		return nil
+	}
+	record := *t.goalRun
+	return &record
 }
 
 // Validate proves that the parked-tree terminal write-set is complete,
@@ -85,10 +163,10 @@ func (t TerminalPlan) Validate() error {
 	if !ok {
 		return errors.New("sessions: terminal plan must end with one root Run")
 	}
-	members := make([]rundomain.TreeMember, 0, len(t.Runs))
-	ownedRuns := make(map[string]struct{}, len(t.Runs))
-	actualOrder := make([]string, 0, len(t.Runs))
-	for index, replacement := range t.Runs {
+	members := make([]rundomain.TreeMember, 0, len(t.runs))
+	ownedRuns := make(map[string]struct{}, len(t.runs))
+	actualOrder := make([]string, 0, len(t.runs))
+	for index, replacement := range t.runs {
 		if err := validateTerminalRunReplacement(replacement); err != nil {
 			return fmt.Errorf("sessions: terminal plan Run[%d]: %w", index, err)
 		}
@@ -109,7 +187,7 @@ func (t TerminalPlan) Validate() error {
 		members = append(members, rundomain.TreeMember{RunID: run.ID(), Lineage: run.Lineage()})
 	}
 	rootOutcome, _ := root.Outcome()
-	if t.ResumeClaimed && rootOutcome != rundomain.OutcomeLost {
+	if t.resumeClaimed && rootOutcome != rundomain.OutcomeLost {
 		return errors.New("sessions: claimed Resume terminal plan must recover a lost Run")
 	}
 	tree, err := rundomain.NewTree(root.ID(), members)
@@ -119,11 +197,11 @@ func (t TerminalPlan) Validate() error {
 	if !slices.Equal(actualOrder, tree.Postorder()) {
 		return errors.New("sessions: terminal plan Runs are not in canonical postorder")
 	}
-	if _, err := runtimeidentity.ParseMember(t.CheckpointRootID); err != nil {
+	if err := t.checkpointRootID.Validate(); err != nil {
 		return fmt.Errorf("sessions: terminal plan checkpoint root: %w", err)
 	}
-	seenItems := make(map[string]struct{}, len(t.Items))
-	for index, item := range t.Items {
+	seenItems := make(map[string]struct{}, len(t.items))
+	for index, item := range t.items {
 		_, owned := ownedRuns[item.RunID()]
 		if item.ID() == "" || item.SessionID() != root.SessionID() || !owned || item.Status() != transcript.ItemIncomplete {
 			return fmt.Errorf("sessions: terminal plan Item[%d] is not an incomplete Item owned by its Run tree", index)
@@ -136,12 +214,30 @@ func (t TerminalPlan) Validate() error {
 			return fmt.Errorf("sessions: terminal plan Item %q: %w", item.ID(), err)
 		}
 	}
-	for index, message := range t.Messages {
+	for index, message := range t.messages {
 		if err := message.Validate(); err != nil {
 			return fmt.Errorf("sessions: terminal plan Message[%d]: %w", index, err)
 		}
 	}
-	return validateTerminalGoalRun(root, t.GoalRun)
+	return validateTerminalGoalRun(root, t.goalRun)
+}
+
+func terminalGoalRun(root rundomain.Run) (goal.RunRecord, error) {
+	outcome, _ := root.Outcome()
+	record := goal.RunRecord{
+		SessionID:     root.SessionID(),
+		IncarnationID: root.GoalIncarnationID(),
+		RunID:         root.ID(),
+		Outcome:       outcome,
+		Steps:         root.Metrics().Steps(),
+		CompletedAt:   root.FinishedAt(),
+	}
+	cost, err := goalRunCost(root.Metrics())
+	if err != nil {
+		return goal.RunRecord{}, fmt.Errorf("sessions: terminal Goal Run cost: %w", err)
+	}
+	record.Cost = cost
+	return record, nil
 }
 
 func validateTerminalRunReplacement(replacement rundomain.Replacement) error {

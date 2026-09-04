@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -78,18 +77,12 @@ func (p parkedRunTerminalization) build() (TerminalPlan, rundomain.Run, error) {
 			p.rootRunID,
 		)
 	}
-	plan := TerminalPlan{
-		Runs: terminalRuns, Items: items, Messages: conversationMessages,
-		CheckpointRootID: root.MemberID, ResumeClaimed: p.resumeClaimed,
+	constructor := NewTerminalPlan
+	if p.resumeClaimed {
+		constructor = NewClaimedResumeTerminalPlan
 	}
-	if rootRun.GoalIncarnationID() != "" {
-		record, err := terminalGoalRun(rootRun)
-		if err != nil {
-			return TerminalPlan{}, rundomain.Run{}, err
-		}
-		plan.GoalRun = &record
-	}
-	if err := plan.Validate(); err != nil {
+	plan, err := constructor(terminalRuns, items, conversationMessages, root.MemberID)
+	if err != nil {
 		return TerminalPlan{}, rundomain.Run{}, err
 	}
 	return plan, rootRun, nil
@@ -407,22 +400,4 @@ func (p parkedRunTerminalization) terminalConversationMessages() ([]corechat.Mes
 		)
 	}
 	return appended, nil
-}
-
-func terminalGoalRun(root rundomain.Run) (goal.RunRecord, error) {
-	outcome, _ := root.Outcome()
-	record := goal.RunRecord{
-		SessionID:     root.SessionID(),
-		IncarnationID: root.GoalIncarnationID(),
-		RunID:         root.ID(),
-		Outcome:       outcome,
-		Steps:         root.Metrics().Steps(),
-		CompletedAt:   root.FinishedAt(),
-	}
-	cost, err := goalRunCost(root.Metrics())
-	if err != nil {
-		return goal.RunRecord{}, fmt.Errorf("sessions: terminal Goal Run cost: %w", err)
-	}
-	record.Cost = cost
-	return record, nil
 }

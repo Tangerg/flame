@@ -482,27 +482,31 @@ func (s *SessionStores) ApplyTerminal(ctx context.Context, terminal sessions.Ter
 		return fmt.Errorf("persistence: invalid terminal plan: %w", err)
 	}
 	root, _ := terminal.RootRun()
+	items := terminal.Items()
+	messages := terminal.Messages()
+	runs := terminal.Runs()
+	goalRun := terminal.GoalRun()
 	return s.tx(ctx, func(ctx context.Context) error {
-		if err := s.appendTranscriptItems(ctx, terminal.Items); err != nil {
+		if err := s.appendTranscriptItems(ctx, items); err != nil {
 			return err
 		}
-		if len(terminal.Messages) != 0 {
-			if err := s.history.Append(ctx, root.SessionID(), terminal.Messages...); err != nil {
+		if len(messages) != 0 {
+			if err := s.history.Append(ctx, root.SessionID(), messages...); err != nil {
 				return fmt.Errorf("persistence: append terminal conversation messages: %w", err)
 			}
 		}
 		if err := s.clearParkedRunState(
 			ctx,
 			root,
-			terminal.CheckpointRootID,
-			terminal.ResumeClaimed,
+			terminal.CheckpointRootID(),
+			terminal.ConsumesClaimedResume(),
 		); err != nil {
 			return err
 		}
-		if err := s.terminalizeParkedRuns(ctx, terminal.Runs); err != nil {
+		if err := s.terminalizeParkedRuns(ctx, runs); err != nil {
 			return err
 		}
-		return s.recordGoalTerminalRun(ctx, root.ID(), terminal.GoalRun)
+		return s.recordGoalTerminalRun(ctx, root.ID(), goalRun)
 	})
 }
 
