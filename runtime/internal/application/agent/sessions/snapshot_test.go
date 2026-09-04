@@ -5,9 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/scope/core/chat"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -32,6 +35,10 @@ func TestValidateSnapshotRejectsInconsistentPortableState(t *testing.T) {
 		mutate func(*Snapshot)
 	}{
 		{"invalid session", func(s *Snapshot) { s.Session = session.Session{} }},
+		{"invalid conversation", func(s *Snapshot) { s.Messages = []chat.Message{{}} }},
+		{"invalid Plan", func(s *Snapshot) {
+			s.Plan = []plan.Step{{Description: "", Status: plan.StatusPending}}
+		}},
 		{"duplicate run", func(s *Snapshot) { s.Runs = append(s.Runs, s.Runs[0]) }},
 		{"wrong item session", func(s *Snapshot) {
 			item := s.Items[0].Snapshot()

@@ -5,7 +5,9 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
 // ExportResult is the complete result of a session archive use case. The
@@ -53,6 +55,12 @@ func (c *Coordinator) ExportSession(ctx context.Context, sessionID string) (Expo
 func (s Snapshot) Validate() error {
 	if err := s.Session.Validate(); err != nil {
 		return fmt.Errorf("sessions: snapshot session: %w", err)
+	}
+	if _, err := conversation.New(s.Messages); err != nil {
+		return fmt.Errorf("sessions: snapshot conversation: %w", err)
+	}
+	if err := plan.ValidateSteps(s.Plan); err != nil {
+		return fmt.Errorf("sessions: snapshot Plan: %w", err)
 	}
 	runs, err := s.validateRuns()
 	if err != nil {
