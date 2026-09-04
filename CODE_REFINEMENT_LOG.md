@@ -237,6 +237,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 277 | `6474feab` + CLI dependency update | Added deep Item/EmbeddingUpdate ownership and applied it at every Agent Memory read, result, ranking, and cache-write boundary so mutable vectors cannot leak across owners. |
 | 278 | `8ae88d55` + CLI dependency update | Isolated the normalized Agent Memory fact batch before ledger persistence, so a store cannot rewrite the Application-owned acknowledgement validation snapshot. |
 | 279 | `36490dc3` + CLI dependency update | Snapshotted optional Agent Memory update fields before the Application clock and persistence callbacks, removing pointer identity from the patch contract. |
+| 280 | `5d0fbc1b` + CLI dependency update | Added deep MCP Server snapshots and isolated Registry, probe, and live-configuration crossings so mutable headers, arguments, and environment values cannot leak between owners. |
 
 ## Verification contract
 
