@@ -8,7 +8,7 @@ export function SidebarPanel() {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <AgentSurfaceHeader divider={false} className="agent-drawer-header">
+      <AgentSurfaceHeader divider={false} corner="drawer">
         <span className="min-w-2 flex-1" />
       </AgentSurfaceHeader>
 

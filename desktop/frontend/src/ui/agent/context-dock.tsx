@@ -1,8 +1,16 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { cn } from "@/lib/classNames";
 import { Icon, type IconName } from "@/ui/icons";
 import { ContextMenu } from "@/ui/atoms/menu";
 import { IconButton } from "@/ui/atoms/icon-button";
+import { ResizeHandle, type ResizeHandleProps } from "@/ui/atoms/resize-handle";
 import { TabsPrimitive } from "@/ui/primitives";
 
 export interface AgentDockTab {
@@ -27,7 +35,45 @@ export interface AgentDockTabsProps {
 }
 
 export function AgentContextDock({ children }: { children: ReactNode }) {
-  return <aside className="agent-context-dock agent-pane-split">{children}</aside>;
+  return <aside className="agent-context-dock pane-split">{children}</aside>;
+}
+
+/** Lays the transcript, the resizer and the dock side by side. The collapsed state lives here
+ *  rather than on the dock because descendant rules — the dock's own slide and the header's
+ *  end padding — both read it. */
+export function AgentDockRow({
+  open,
+  ref,
+  style,
+  children,
+}: {
+  open: boolean;
+  ref?: Ref<HTMLDivElement>;
+  style?: CSSProperties;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      ref={ref}
+      className="agent-dock-row flex min-h-0 flex-1"
+      data-dock={open ? "open" : "collapsed"}
+      style={style}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Sits on the dock's inner edge, so the edge and the placement belong to the dock; the caller
+ *  brings only the geometry it stores. */
+export function AgentDockResizer(props: Omit<ResizeHandleProps, "edge" | "className">) {
+  return <ResizeHandle {...props} edge="start" className="agent-pane-resizer" />;
+}
+
+/** The dock element inside a row. Exported so the class stays this file's alone: a consumer
+ *  keeping its own copy of the selector goes silently blind when the class moves. */
+export function agentDockElement(row: HTMLElement): HTMLElement | null {
+  return row.querySelector<HTMLElement>(".agent-context-dock");
 }
 
 function reflectDockTabOverflow(element: HTMLElement): void {

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { API } from "typescript/unstable/sync";
 import * as ts from "typescript/unstable/ast";
@@ -67,6 +68,27 @@ const TONED_BADGE = [
 // A recessed block of verbatim machine text is `Well`. Nine call sites drew it in six
 // spellings before it had an atom; the mono is what separates it from a plain sunken panel.
 const WELL_SHAPE = [/(?<![:\]-])\bbg-sunken\b/, /\brounded-\S+/, /\bfont-mono\b/];
+
+// An `agent-*` class is ui/agent's private vocabulary, and a class name is NOT an export: the
+// layer guard reads imports, so a consumer that spells one couples upward through a string no
+// tool can see. That is how `ui/atoms` came to draw the shell's pane seam, one ring below the
+// owner, invisibly. A boundary mechanism genuinely shared across rings drops the prefix
+// (`pane-split`, `panel-scroll`) instead of lying about who owns it.
+//
+// Derived from the stylesheet, never listed here: the list is what would drift, and deriving it
+// is also what keeps the many plugin ids that merely begin with `agent-` (`agent-memory`,
+// `agent-fold`, `agent-session`) out of a check about CSS.
+const AGENT_RING = "ui/agent/";
+const GLOBALS = new URL("../src/styles/globals.css", import.meta.url);
+const AGENT_CLASSES = new Map(
+  [
+    ...new Set(
+      [...readFileSync(GLOBALS, "utf8").matchAll(/\.(agent-[a-z0-9-]+)/g)].map((m) => m[1]),
+    ),
+  ]
+    .sort()
+    .map((cls) => [cls, new RegExp(String.raw`(?<![\w-])${cls}(?![\w-])`)]),
+);
 
 function isTestFile(path) {
   return /\.(?:spec|test)\.[jt]sx?$/.test(path) || path.includes("/__tests__/");
@@ -152,13 +174,25 @@ for (const fileName of project.program.getSourceFileNames()) {
 
   visit(sourceFile);
 
+  const lines = sourceFile.getFullText().split("\n");
+
+  if (!rel.startsWith(AGENT_RING)) {
+    for (const [index, line] of lines.entries()) {
+      for (const [cls, named] of AGENT_CLASSES) {
+        if (!named.test(line)) continue;
+        violations.push(
+          `${rel}:${index + 1} names \`${cls}\` — ui/agent owns that class; take a component or a prop from @/ui/agent`,
+        );
+      }
+    }
+  }
+
   if (!insideDesignSystem) {
     const rebuilt = [
       [TAG_SHAPE, "hand-rolls a Tag/Badge — use <Tag> for a literal, <Badge> for a state"],
       [TONED_BADGE, "paints a tone itself — emit a `Tone` and let <Badge> pick fill and ink"],
       [WELL_SHAPE, 'hand-rolls a Well — use <Well>, or <TextArea variant="well"> to edit one'],
     ];
-    const lines = sourceFile.getFullText().split("\n");
     for (const [index, line] of lines.entries()) {
       for (const [shape, message] of rebuilt) {
         if (shape.every((fragment) => fragment.test(line))) {
@@ -186,6 +220,15 @@ if (examined < MIN_FILES_EXAMINED) {
   process.exit(2);
 }
 
+// The same floor for the derived half: an empty set reads as a clean pass.
+const MIN_AGENT_CLASSES = 20;
+if (AGENT_CLASSES.size < MIN_AGENT_CLASSES) {
+  console.error(
+    `check-design-system-boundaries: derived only ${AGENT_CLASSES.size} agent-* classes (floor ${MIN_AGENT_CLASSES}) — globals.css is not being read.`,
+  );
+  process.exit(2);
+}
+
 console.log(
-  `check-design-system-boundaries: ${examined} files read; native interaction and Base UI stay behind design-system rings`,
+  `check-design-system-boundaries: ${examined} files read; native interaction and Base UI stay behind design-system rings, and ${AGENT_CLASSES.size} agent-* classes stay inside ui/agent`,
 );

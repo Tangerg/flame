@@ -6,7 +6,7 @@ import {
   MENTION_LISTBOX_ID,
   mentionOptionId,
 } from "@/plugins/builtin/chat/composer/application/fileMentions";
-import { AgentComposerSurface } from "@/ui/agent";
+import { AgentComposerFooter, AgentComposerSurface } from "@/ui/agent";
 import { FileMentionPopup } from "./FileMentionPopup";
 import { useT } from "@/lib/i18n";
 import { Slot } from "@/plugins/host/Slot";
@@ -115,16 +115,11 @@ export function Composer({
           className="max-h-[6lh] min-h-[1.5lh] p-0 placeholder:tracking-normal"
         />
       </div>
-      <div
-        ref={toolbarRef}
-        data-slot="composer-footer"
-        data-labelled={toolbarLabelled ? "" : undefined}
-        className="agent-composer-footer flex flex-nowrap items-center gap-1.5 pr-[var(--density-composer-footer-end)] pb-[var(--density-composer-footer)] pl-[var(--density-composer-footer)]"
-      >
+      <AgentComposerFooter ref={toolbarRef} labelled={toolbarLabelled}>
         <Slot name="composer.toolbar.start" />
         <div className="flex-1 min-w-2" />
         <Slot name="composer.toolbar.end" />
-      </div>
+      </AgentComposerFooter>
     </AgentComposerSurface>
   );
 }

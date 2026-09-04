@@ -64,7 +64,7 @@ export function AgentViewNavigator({
   children: ReactNode;
 }) {
   return (
-    <aside aria-label={label} className="agent-view-navigator agent-pane-split">
+    <aside aria-label={label} className="agent-view-navigator pane-split">
       {header && <div className="agent-view-navigator-header">{header}</div>}
       {children}
     </aside>

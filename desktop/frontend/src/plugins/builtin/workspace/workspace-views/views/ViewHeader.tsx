@@ -63,7 +63,7 @@ function FullViewBar({ icon, title, sub, actions, titleStrong }: ViewHeaderProps
   const t = useT();
 
   return (
-    <AgentSurfaceHeader className="gap-2" windowCorner>
+    <AgentSurfaceHeader className="gap-2" corner="window">
       <Icon name={icon} size="md" className="shrink-0 text-fg-muted" />
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <span

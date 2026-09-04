@@ -7,6 +7,7 @@ import {
   AgentContentCard,
   AgentContextDock,
   AgentDockCatalog,
+  AgentDockRow,
   type AgentDockTab,
   AgentDockTabs,
   AgentDockToggle,
@@ -222,14 +223,9 @@ export function ChatPanel({ onSend }: Props) {
         </SessionOwnedWorkspaceState>
       )}
       <Activity mode={activeMainView === null ? "visible" : "hidden"}>
-        <div
-          ref={dockRowRef}
-          className="agent-dock-row flex min-h-0 flex-1"
-          data-dock={dockOpen ? "open" : "collapsed"}
-          style={dockWidthRow(dockWidthRatio ?? 1)}
-        >
+        <AgentDockRow ref={dockRowRef} open={dockOpen} style={dockWidthRow(dockWidthRatio ?? 1)}>
           <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-            <AgentSurfaceHeader windowCorner>
+            <AgentSurfaceHeader corner="window">
               <SessionIdentity
                 sessionId={activeSessionId}
                 title={activeSession?.title.trim() || t("sidebar.action.newSession")}
@@ -265,19 +261,17 @@ export function ChatPanel({ onSend }: Props) {
               </div>
             </AgentContextDock>
           </SessionOwnedWorkspaceState>
-          <div className="agent-dock-control">
-            {hasDockOwner && (
-              <AgentDockToggle
-                open={dockOpen}
-                onToggle={dockOpen ? collapseWorkspaceDock : showWorkspaceDock}
-                showLabel={t("dock.action.show")}
-                hideLabel={t("dock.action.hide")}
-                disabled={!dockAvailable}
-                unavailableLabel={t("dock.action.unavailable")}
-              />
-            )}
-          </div>
-        </div>
+          {hasDockOwner && (
+            <AgentDockToggle
+              open={dockOpen}
+              onToggle={dockOpen ? collapseWorkspaceDock : showWorkspaceDock}
+              showLabel={t("dock.action.show")}
+              hideLabel={t("dock.action.hide")}
+              disabled={!dockAvailable}
+              unavailableLabel={t("dock.action.unavailable")}
+            />
+          )}
+        </AgentDockRow>
       </Activity>
     </AgentContentCard>
   );

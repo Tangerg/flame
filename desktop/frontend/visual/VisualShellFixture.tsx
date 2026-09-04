@@ -47,7 +47,7 @@ export function VisualShellFixture({ state }: { state: VisualWorkIndexState }) {
       sidebar={<SidebarPanel />}
       main={
         <AgentContentCard label="Shell and Work Index visual fixture">
-          <AgentSurfaceHeader windowCorner>
+          <AgentSurfaceHeader corner="window">
             <span className="font-mono text-ui-md text-fg-faint">scope</span>
             <span className="text-ui-md text-fg-faint">/</span>
             <span className="truncate text-ui-md font-semibold text-fg">Work Index</span>

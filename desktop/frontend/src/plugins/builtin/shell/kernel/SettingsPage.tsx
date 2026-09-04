@@ -113,7 +113,7 @@ function SettingsRailHeader({
   const t = useT();
   return (
     <div className="flex flex-col">
-      <AgentSurfaceHeader divider={false} windowCorner aria-hidden />
+      <AgentSurfaceHeader divider={false} corner="window" aria-hidden />
       <div className="px-4 pb-4">
         <Button
           type="button"

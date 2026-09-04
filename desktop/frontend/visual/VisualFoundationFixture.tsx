@@ -84,7 +84,7 @@ function ComposerFixture() {
 function FoundationSurface({ sidebarOpen }: { sidebarOpen: boolean }) {
   return (
     <AgentContentCard label="Visual foundation" data-testid="content-card">
-      <AgentSurfaceHeader windowCorner>
+      <AgentSurfaceHeader corner="window">
         <IconButton icon="panel-l" size="sm" aria-label="Toggle work index" />
         <span className="font-mono text-ui-sm text-fg-faint">scope</span>
         <span className="text-ui-md text-fg-faint">/</span>

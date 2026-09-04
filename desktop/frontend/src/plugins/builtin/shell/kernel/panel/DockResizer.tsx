@@ -6,7 +6,7 @@ import {
   maxDockWidth,
 } from "@/lib/shellGeometry";
 import { useT } from "@/lib/i18n";
-import { ResizeHandle } from "@/ui";
+import { AgentDockResizer, agentDockElement } from "@/ui/agent";
 import { useDockWidth } from "@/plugins/builtin/workspace/public/sidebarDrawer";
 import { DOCK_RATIO_PROPERTY } from "./dockWidth";
 
@@ -18,10 +18,8 @@ export function DockResizer() {
   const { width: ratio, setWidth: setRatio } = useDockWidth();
 
   return (
-    <ResizeHandle
+    <AgentDockResizer
       aria-label={t("dock.action.resize")}
-      className="agent-pane-resizer"
-      edge="start"
       value={ratio ?? 1}
       container={(rail) => rail.parentElement}
       property={DOCK_RATIO_PROPERTY}
@@ -35,7 +33,7 @@ export function DockResizer() {
 }
 
 function readDockWidth(row: HTMLElement): number {
-  const dock = row.querySelector<HTMLElement>(".agent-context-dock");
+  const dock = agentDockElement(row);
   const renderedWidth = dock?.getBoundingClientRect().width ?? 0;
   if (renderedWidth > 0) return clampDockWidth(renderedWidth, row.clientWidth);
   const storedRatio = Number.parseFloat(
