@@ -15,6 +15,7 @@ type fakeSkillProposals struct {
 	approved   []skills.ProposalRef
 	rejected   []skills.ProposalRef
 	submitErr  error
+	submitRef  *skills.ProposalRef
 	approveErr error
 	rejectErr  error
 }
@@ -24,6 +25,9 @@ func (f *fakeSkillProposals) SubmitProposal(_ context.Context, projectRoot strin
 	f.proposal = proposal
 	if f.submitErr != nil {
 		return skills.ProposalRef{}, nil, f.submitErr
+	}
+	if f.submitRef != nil {
+		return *f.submitRef, []string{"/repo/.flame/skills/_proposals/skill-name/SKILL.md"}, nil
 	}
 	return skills.NewProposalRef(proposal.Scope, proposal.Name, []byte(proposal.Instructions)), []string{"/repo/.flame/skills/_proposals/skill-name/SKILL.md"}, nil
 }
@@ -106,9 +110,9 @@ func TestSkillProposalsOwnCurrentSlotOrder(t *testing.T) {
 	projectZeta := skills.NewProposalRef(skills.ScopeProject, "zeta", []byte("project zeta"))
 	userAlpha := skills.NewProposalRef(skills.ScopeUser, "alpha", []byte("user alpha"))
 	fake := &fakeSkillProposals{list: []skills.ProposalReview{
-		{Ref: userAlpha},
-		{Ref: projectZeta},
-		{Ref: projectAlpha},
+		validProposalReview(userAlpha),
+		validProposalReview(projectZeta),
+		validProposalReview(projectAlpha),
 	}}
 	c := NewSkills(NewScope("", "", testPaths{}), nil, nil, fake, nil, nil)
 
@@ -124,10 +128,82 @@ func TestSkillProposalsOwnCurrentSlotOrder(t *testing.T) {
 func TestSkillProposalsRejectDuplicateCurrentSlot(t *testing.T) {
 	first := skills.NewProposalRef(skills.ScopeProject, "review", []byte("first"))
 	second := skills.NewProposalRef(skills.ScopeProject, "review", []byte("second"))
-	fake := &fakeSkillProposals{list: []skills.ProposalReview{{Ref: first}, {Ref: second}}}
+	fake := &fakeSkillProposals{list: []skills.ProposalReview{
+		validProposalReview(first), validProposalReview(second),
+	}}
 	c := NewSkills(NewScope("", "", testPaths{}), nil, nil, fake, nil, nil)
 
 	if _, err := c.Proposals(t.Context(), "/repo"); err == nil {
 		t.Fatal("Proposals accepted two current revisions for one scoped Skill name")
+	}
+}
+
+func TestSkillProposalsRejectInvalidOrUnboundedCatalog(t *testing.T) {
+	ref := skills.NewProposalRef(skills.ScopeProject, "review", []byte("proposal"))
+	invalid := validProposalReview(ref)
+	invalid.Instructions = ""
+	for name, list := range map[string][]skills.ProposalReview{
+		"invalid row": {invalid},
+		"capacity":    make([]skills.ProposalReview, 2*skills.MaxPendingProposalsPerScope+1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			fake := &fakeSkillProposals{list: list}
+			c := NewSkills(NewScope("", "", testPaths{}), nil, nil, fake, nil, nil)
+			if _, err := c.Proposals(t.Context(), "/repo"); err == nil {
+				t.Fatal("Proposals error = nil, want rejected catalog")
+			}
+		})
+	}
+}
+
+func TestSkillProposalMutationsValidateIdentity(t *testing.T) {
+	proposal := skills.Proposal{
+		Scope: skills.ScopeProject, Name: "review",
+		Description: "Review the current project changes.", Instructions: "Inspect the diff.",
+	}
+	invalidProposal := proposal
+	invalidProposal.Instructions = ""
+	unreached := &fakeSkillProposals{}
+	c := NewSkills(NewScope("", "", testPaths{}), nil, nil, unreached, nil, nil)
+	if _, err := c.SubmitProposal(t.Context(), "/repo", invalidProposal); err == nil {
+		t.Fatal("SubmitProposal accepted invalid content")
+	}
+	if unreached.root != "" {
+		t.Fatal("invalid proposal reached store")
+	}
+
+	mismatch := skills.NewProposalRef(skills.ScopeUser, proposal.Name, []byte("proposal"))
+	invalidAck := skills.ProposalRef{Scope: proposal.Scope, Name: proposal.Name, Revision: "invalid"}
+	for name, returned := range map[string]skills.ProposalRef{
+		"mismatch": mismatch,
+		"invalid":  invalidAck,
+	} {
+		t.Run(name+" acknowledgement", func(t *testing.T) {
+			fake := &fakeSkillProposals{submitRef: &returned}
+			c := NewSkills(NewScope("", "", testPaths{}), nil, nil, fake, nil, nil)
+			if _, err := c.SubmitProposal(t.Context(), "/repo", proposal); err == nil {
+				t.Fatal("SubmitProposal accepted invalid store acknowledgement")
+			}
+		})
+	}
+
+	invalid := skills.ProposalRef{Scope: skills.ScopeProject, Name: "review", Revision: "invalid"}
+	fake := &fakeSkillProposals{}
+	c = NewSkills(NewScope("", "", testPaths{}), nil, nil, fake, nil, nil)
+	if err := c.ApproveProposal(t.Context(), "/repo", invalid); err == nil {
+		t.Fatal("ApproveProposal accepted invalid reference")
+	}
+	if err := c.RejectProposal(t.Context(), "/repo", invalid); err == nil {
+		t.Fatal("RejectProposal accepted invalid reference")
+	}
+	if len(fake.approved) != 0 || len(fake.rejected) != 0 {
+		t.Fatal("invalid proposal reference reached store")
+	}
+}
+
+func validProposalReview(ref skills.ProposalRef) skills.ProposalReview {
+	return skills.ProposalReview{
+		Ref: ref, Description: "Review this reusable Skill workflow.",
+		Instructions: "Follow the reusable workflow.",
 	}
 }

@@ -75,7 +75,15 @@ func (s *Skills) List(ctx context.Context, cwd string) ([]SkillSummary, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(found) > 2*skills.MaxSkillsPerSource {
+		return nil, fmt.Errorf("%w: discovered catalog contains %d Skills", skills.ErrLibraryCapacity, len(found))
+	}
 	found = slices.Clone(found)
+	for index, entry := range found {
+		if err := validateSkillSummary(entry); err != nil {
+			return nil, fmt.Errorf("workspace: discovered Skill %d is invalid: %w", index+1, err)
+		}
+	}
 	slices.SortFunc(found, func(first, second SkillSummary) int {
 		return cmp.Compare(first.Name, second.Name)
 	})
@@ -97,7 +105,15 @@ func (s *Skills) Managed(ctx context.Context) ([]skills.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(entries) > skills.MaxSkillsPerSource {
+		return nil, fmt.Errorf("%w: managed catalog contains %d Skills", skills.ErrLibraryCapacity, len(entries))
+	}
 	entries = slices.Clone(entries)
+	for index, entry := range entries {
+		if err := entry.Validate(); err != nil {
+			return nil, fmt.Errorf("workspace: managed Skill %d is invalid: %w", index+1, err)
+		}
+	}
 	slices.SortFunc(entries, func(first, second skills.Entry) int {
 		return cmp.Or(
 			cmp.Compare(string(first.Lifecycle), string(second.Lifecycle)),
@@ -139,13 +155,28 @@ func (s *Skills) SubmitProposal(ctx context.Context, cwd string, proposal skills
 	if s.proposals == nil {
 		return skills.ProposalRef{}, ErrSkillProposalsUnavailable
 	}
+	if err := proposal.Validate(); err != nil {
+		return skills.ProposalRef{}, err
+	}
 	root, err := s.scope.root(cwd)
 	if err != nil {
 		return skills.ProposalRef{}, err
 	}
 	ref, identities, err := s.proposals.SubmitProposal(ctx, root, proposal)
 	s.publishSkillMutation(identities)
-	return ref, err
+	if err != nil {
+		return ref, err
+	}
+	if err := ref.Validate(); err != nil {
+		return skills.ProposalRef{}, fmt.Errorf("workspace: submitted proposal reference is invalid: %w", err)
+	}
+	if ref.Scope != proposal.Scope || ref.Name != proposal.Name {
+		return skills.ProposalRef{}, fmt.Errorf(
+			"workspace: submitted proposal reference %s/%s does not acknowledge %s/%s",
+			ref.Scope, ref.Name, proposal.Scope, proposal.Name,
+		)
+	}
+	return ref, nil
 }
 
 // Proposals returns the current immutable Skill proposals visible from cwd,
@@ -162,7 +193,15 @@ func (s *Skills) Proposals(ctx context.Context, cwd string) ([]skills.ProposalRe
 	if err != nil {
 		return nil, err
 	}
+	if len(proposals) > 2*skills.MaxPendingProposalsPerScope {
+		return nil, fmt.Errorf("%w: review catalog contains %d proposals", skills.ErrProposalQueueFull, len(proposals))
+	}
 	proposals = slices.Clone(proposals)
+	for index, proposal := range proposals {
+		if err := proposal.Validate(); err != nil {
+			return nil, fmt.Errorf("workspace: Skill proposal %d is invalid: %w", index+1, err)
+		}
+	}
 	slices.SortFunc(proposals, func(first, second skills.ProposalReview) int {
 		return cmp.Or(
 			cmp.Compare(string(first.Ref.Scope), string(second.Ref.Scope)),
@@ -178,10 +217,24 @@ func (s *Skills) Proposals(ctx context.Context, cwd string) ([]skills.ProposalRe
 	return proposals, nil
 }
 
+func validateSkillSummary(summary SkillSummary) error {
+	switch summary.Scope {
+	case SkillScopeProject, SkillScopeUser:
+	default:
+		return fmt.Errorf("unknown scope %q", summary.Scope)
+	}
+	return (skills.Entry{
+		Name: summary.Name, Description: summary.Description, Lifecycle: skills.Active,
+	}).Validate()
+}
+
 // ApproveProposal accepts a Skill proposal into its target library.
 func (s *Skills) ApproveProposal(ctx context.Context, cwd string, ref skills.ProposalRef) error {
 	if s.proposals == nil {
 		return ErrSkillProposalsUnavailable
+	}
+	if err := ref.Validate(); err != nil {
+		return err
 	}
 	root, err := s.scope.root(cwd)
 	if err != nil {
@@ -196,6 +249,9 @@ func (s *Skills) ApproveProposal(ctx context.Context, cwd string, ref skills.Pro
 func (s *Skills) RejectProposal(ctx context.Context, cwd string, ref skills.ProposalRef) error {
 	if s.proposals == nil {
 		return ErrSkillProposalsUnavailable
+	}
+	if err := ref.Validate(); err != nil {
+		return err
 	}
 	root, err := s.scope.root(cwd)
 	if err != nil {

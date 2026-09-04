@@ -103,11 +103,28 @@ const (
 	Archived Lifecycle = "archived"
 )
 
+// Validate rejects lifecycle values that cannot be represented by the managed
+// library or protocol projections.
+func (l Lifecycle) Validate() error {
+	if l != Active && l != Archived {
+		return fmt.Errorf("skills: invalid lifecycle %q", l)
+	}
+	return nil
+}
+
 // Entry describes one approved Skill in the managed user library.
 type Entry struct {
 	Name        string
 	Description string
 	Lifecycle   Lifecycle
+}
+
+// Validate checks one complete managed-library entry.
+func (e Entry) Validate() error {
+	if err := (skillspec.Frontmatter{Name: e.Name, Description: e.Description}).Validate(); err != nil {
+		return err
+	}
+	return e.Lifecycle.Validate()
 }
 
 // Proposal is immutable Skill content awaiting an explicit review decision.
@@ -171,6 +188,20 @@ type ProposalReview struct {
 	Origin        ProposalOrigin
 	SourceSession string
 	Revises       bool
+}
+
+// Validate checks the identity and complete reviewable content returned by a
+// proposal store. The revision remains bound to the original rendered bytes,
+// which are intentionally opaque outside persistence.
+func (p ProposalReview) Validate() error {
+	if err := p.Ref.Validate(); err != nil {
+		return err
+	}
+	return (Proposal{
+		Scope: p.Ref.Scope, Name: p.Ref.Name, Description: p.Description,
+		Instructions: p.Instructions, Origin: p.Origin,
+		SourceSession: p.SourceSession, Revises: p.Revises,
+	}).Validate()
 }
 
 // Validate checks proposal scope, provenance, frontmatter, and instructions.

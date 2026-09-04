@@ -29,8 +29,8 @@ func TestListUsesCatalogPort(t *testing.T) {
 
 func TestListOwnsVisibleSkillOrder(t *testing.T) {
 	catalog := &fakeSkillCatalog{skills: []SkillSummary{
-		{Name: "zeta", Scope: SkillScopeUser},
-		{Name: "alpha", Scope: SkillScopeProject},
+		{Name: "zeta", Description: "Check the final result.", Scope: SkillScopeUser},
+		{Name: "alpha", Description: "Inspect the project first.", Scope: SkillScopeProject},
 	}}
 	c := NewSkills(NewScope("", "", testPaths{}), catalog, nil, nil, nil, nil)
 
@@ -48,13 +48,27 @@ func TestListOwnsVisibleSkillOrder(t *testing.T) {
 
 func TestListRejectsShadowedSkillLeak(t *testing.T) {
 	catalog := &fakeSkillCatalog{skills: []SkillSummary{
-		{Name: "review", Scope: SkillScopeProject},
-		{Name: "review", Scope: SkillScopeUser},
+		{Name: "review", Description: "Review the project changes.", Scope: SkillScopeProject},
+		{Name: "review", Description: "Review the user changes.", Scope: SkillScopeUser},
 	}}
 	c := NewSkills(NewScope("", "", testPaths{}), catalog, nil, nil, nil, nil)
 
 	if _, err := c.List(t.Context(), "/repo"); err == nil {
 		t.Fatal("List accepted two visible Skills with one precedence-resolved name")
+	}
+}
+
+func TestListRejectsInvalidOrUnboundedCatalog(t *testing.T) {
+	for name, found := range map[string][]SkillSummary{
+		"invalid row": {{Name: "review", Description: "Review the project changes.", Scope: SkillScope("unknown")}},
+		"capacity":    make([]SkillSummary, 2*skills.MaxSkillsPerSource+1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := NewSkills(NewScope("", "", testPaths{}), &fakeSkillCatalog{skills: found}, nil, nil, nil, nil)
+			if _, err := c.List(t.Context(), "/repo"); err == nil {
+				t.Fatal("List error = nil, want rejected catalog")
+			}
+		})
 	}
 }
 
@@ -184,10 +198,10 @@ func (f *fakeSkillCatalog) List(_ context.Context, cwd string) ([]SkillSummary, 
 
 func TestManagedSkillsOwnLifecycleAndNameOrder(t *testing.T) {
 	curator := &fakeSkillCurator{entries: []skills.Entry{
-		{Name: "omega", Lifecycle: skills.Archived},
-		{Name: "zeta", Lifecycle: skills.Active},
-		{Name: "alpha", Lifecycle: skills.Active},
-		{Name: "beta", Lifecycle: skills.Archived},
+		{Name: "omega", Description: "Run the omega workflow.", Lifecycle: skills.Archived},
+		{Name: "zeta", Description: "Run the zeta workflow.", Lifecycle: skills.Active},
+		{Name: "alpha", Description: "Run the alpha workflow.", Lifecycle: skills.Active},
+		{Name: "beta", Description: "Run the beta workflow.", Lifecycle: skills.Archived},
 	}}
 	c := NewSkills(NewScope("", "", testPaths{}), nil, curator, nil, nil, nil)
 
@@ -205,12 +219,26 @@ func TestManagedSkillsOwnLifecycleAndNameOrder(t *testing.T) {
 
 func TestManagedSkillsRejectDuplicateNameAcrossLifecycles(t *testing.T) {
 	curator := &fakeSkillCurator{entries: []skills.Entry{
-		{Name: "review", Lifecycle: skills.Active},
-		{Name: "review", Lifecycle: skills.Archived},
+		{Name: "review", Description: "Review active changes.", Lifecycle: skills.Active},
+		{Name: "review", Description: "Review archived changes.", Lifecycle: skills.Archived},
 	}}
 	c := NewSkills(NewScope("", "", testPaths{}), nil, curator, nil, nil, nil)
 
 	if _, err := c.Managed(t.Context()); err == nil {
 		t.Fatal("Managed accepted one Skill name in two lifecycles")
+	}
+}
+
+func TestManagedSkillsRejectInvalidOrUnboundedCatalog(t *testing.T) {
+	for name, entries := range map[string][]skills.Entry{
+		"invalid row": {{Name: "review", Description: "Review the project changes.", Lifecycle: skills.Lifecycle("unknown")}},
+		"capacity":    make([]skills.Entry, skills.MaxSkillsPerSource+1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			c := NewSkills(NewScope("", "", testPaths{}), nil, &fakeSkillCurator{entries: entries}, nil, nil, nil)
+			if _, err := c.Managed(t.Context()); err == nil {
+				t.Fatal("Managed error = nil, want rejected catalog")
+			}
+		})
 	}
 }

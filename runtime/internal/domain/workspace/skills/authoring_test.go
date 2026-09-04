@@ -53,3 +53,47 @@ func TestProposalValidatesMeaningAndSafety(t *testing.T) {
 		t.Fatalf("oversized Validate() error = %v, want ErrDocumentTooLarge", err)
 	}
 }
+
+func TestEntryValidatesManagedLibraryRows(t *testing.T) {
+	valid := Entry{Name: "review", Description: "Review the current project changes.", Lifecycle: Active}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("valid Entry.Validate() error = %v", err)
+	}
+
+	for name, entry := range map[string]Entry{
+		"frontmatter": {Name: "review", Lifecycle: Active},
+		"lifecycle":   {Name: "review", Description: valid.Description, Lifecycle: Lifecycle("unknown")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := entry.Validate(); err == nil {
+				t.Fatal("Entry.Validate() error = nil, want invalid row")
+			}
+		})
+	}
+}
+
+func TestProposalReviewValidatesReferenceAndContent(t *testing.T) {
+	ref := NewProposalRef(ScopeProject, "review", []byte("proposal"))
+	valid := ProposalReview{
+		Ref: ref, Description: "Review the current project changes.",
+		Instructions: "Inspect the diff and report actionable findings.",
+	}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("valid ProposalReview.Validate() error = %v", err)
+	}
+
+	invalidRef := valid
+	invalidRef.Ref.Revision = "invalid"
+	invalidContent := valid
+	invalidContent.Instructions = ""
+	for name, review := range map[string]ProposalReview{
+		"reference": invalidRef,
+		"content":   invalidContent,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := review.Validate(); err == nil {
+				t.Fatal("ProposalReview.Validate() error = nil, want invalid review")
+			}
+		})
+	}
+}
