@@ -3,6 +3,7 @@ package workspace
 import (
 	"errors"
 	"io"
+	"slices"
 )
 
 // ErrFileWatchUnavailable reports that Git-state observation is unavailable.
@@ -32,6 +33,7 @@ func (g *GitWatch) Watch(cwds []string, notify func()) (io.Closer, error) {
 	if g.watcher == nil {
 		return nil, ErrFileWatchUnavailable
 	}
+	cwds = slices.Clone(cwds)
 	seen := make(map[string]struct{}, len(cwds))
 	roots := make([]string, 0, len(cwds))
 	for _, cwd := range cwds {
