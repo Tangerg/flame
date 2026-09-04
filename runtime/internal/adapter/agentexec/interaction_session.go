@@ -375,6 +375,11 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 		i.publishProjectionFailure(err)
 		return false
 	}
+	barrier, err := runs.NewTreeInterrupted(checkpoint, interruptions)
+	if err != nil {
+		i.publishProjectionFailure(err)
+		return false
+	}
 	i.state.mu.Lock()
 	if i.state.finished || i.state.boundary != interactionBoundaryInactive ||
 		i.state.process != process || process.Status() != agent.StatusWaiting {
@@ -385,10 +390,8 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	i.state.waitingCheckpoint = checkpoint.Clone()
 	i.state.mu.Unlock()
 	published := i.lifetime.send(runs.ExecutorEvent{
-		Member: i.executorMember(process.Relation()),
-		Payload: runs.TreeInterrupted{
-			Checkpoint: checkpoint, Interruptions: interruptions,
-		},
+		Member:  i.executorMember(process.Relation()),
+		Payload: barrier,
 	})
 	if published && i.lifecycleHooks != nil {
 		i.lifecycleHooks.NotifyWaiting(

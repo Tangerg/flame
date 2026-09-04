@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -75,6 +76,22 @@ type Interrupt struct {
 	Kind     interrupt.Kind
 	Approval *ApprovalPrompt
 	Question *QuestionPrompt
+}
+
+func cloneInterrupt(value Interrupt) Interrupt {
+	if value.Approval != nil {
+		approval := *value.Approval
+		value.Approval = &approval
+	}
+	if value.Question != nil {
+		question := *value.Question
+		question.Fields = slices.Clone(question.Fields)
+		for index := range question.Fields {
+			question.Fields[index].Options = slices.Clone(question.Fields[index].Options)
+		}
+		value.Question = &question
+	}
+	return value
 }
 
 // Tool returns the logical tool call that owns this interrupt.

@@ -330,7 +330,7 @@ func (t treePublisher) publishTreeBarrier(
 	}
 	committed, err := t.owner.commitInterrupt(ctx, func(interruptCtx context.Context) error {
 		commit, commitErr := NewTreeBarrierCommit(
-			newRunCommitID(), projection.pending, projection.commits, barrier.Checkpoint,
+			newRunCommitID(), projection.pending, projection.commits, barrier.Checkpoint(),
 		)
 		if commitErr != nil {
 			return commitErr
@@ -376,7 +376,7 @@ func (t treePublisher) reduceTreeBarrier(
 	); err != nil {
 		return treeBarrierProjection{}, err
 	}
-	interruptionsByMemberID, err := activeInterruptionsByMemberID(routes, barrier.Interruptions)
+	interruptionsByMemberID, err := activeInterruptionsByMemberID(routes, barrier.Interruptions())
 	if err != nil {
 		return treeBarrierProjection{}, err
 	}

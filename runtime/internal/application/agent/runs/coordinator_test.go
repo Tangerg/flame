@@ -2470,7 +2470,7 @@ func TestCoordinatorCommitsCompleteTreeBarrierInDeterministicPostorder(t *testin
 		{Member: grandchild, Payload: requestGrandchild},
 		// Deliberately report sibling B before the deeper descendant. Durable
 		// and public ordering follows Run-tree postorder, not executor arrival.
-		{Member: root, Payload: TreeInterrupted{Checkpoint: testExecutorCheckpoint(), Interruptions: []MemberInterruption{
+		{Member: root, Payload: mustTreeInterrupted(t, testExecutorCheckpoint(), []MemberInterruption{
 			{
 				MemberID: childB.MemberID, RequestID: "request_b",
 				Interrupt: treeBarrierQuestion("Continue sibling B?"),
@@ -2479,7 +2479,7 @@ func TestCoordinatorCommitsCompleteTreeBarrierInDeterministicPostorder(t *testin
 				MemberID: grandchild.MemberID, RequestID: "request_grandchild",
 				Interrupt: treeBarrierQuestion("Continue grandchild?"),
 			},
-		}}},
+		})},
 	}}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
@@ -2539,16 +2539,13 @@ func TestCoordinatorPersistsExactApprovalCallIdentityInTreeBarrier(t *testing.T)
 			CallID: "call_approval", ToolName: "shell", Arguments: `{"command":"pwd"}`,
 			SafetyClass: tool.SafetyClassExec,
 		}},
-		{Member: root, Payload: TreeInterrupted{
-			Checkpoint: testExecutorCheckpoint(),
-			Interruptions: []MemberInterruption{{
-				MemberID: root.MemberID, RequestID: "request_approval",
-				Interrupt: Interrupt{Kind: interrupt.Approval, Approval: &ApprovalPrompt{
-					CallID: "call_approval", ToolName: "shell", Arguments: `{"command":"pwd"}`,
-					SafetyClass: tool.SafetyClassExec, Risk: tool.RiskMedium,
-				}},
+		{Member: root, Payload: mustTreeInterrupted(t, testExecutorCheckpoint(), []MemberInterruption{{
+			MemberID: root.MemberID, RequestID: "request_approval",
+			Interrupt: Interrupt{Kind: interrupt.Approval, Approval: &ApprovalPrompt{
+				CallID: "call_approval", ToolName: "shell", Arguments: `{"command":"pwd"}`,
+				SafetyClass: tool.SafetyClassExec, Risk: tool.RiskMedium,
 			}},
-		}},
+		}})},
 	}}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
@@ -2581,10 +2578,10 @@ func TestCoordinatorTreeBarrierCommitFailurePublishesNoInterruptedFact(t *testin
 	root := ExecutorMember{MemberID: "member_root"}
 	executor := &fakeExecutor{executorEvents: []ExecutorEvent{{
 		Member: root,
-		Payload: TreeInterrupted{Checkpoint: testExecutorCheckpoint(), Interruptions: []MemberInterruption{{
+		Payload: mustTreeInterrupted(t, testExecutorCheckpoint(), []MemberInterruption{{
 			MemberID: root.MemberID, RequestID: "request_root",
 			Interrupt: treeBarrierQuestion("Continue root?"),
-		}}},
+		}}),
 	}}}
 	effects := &fakeEffects{
 		commitErr:   errors.New("tree barrier store unavailable"),

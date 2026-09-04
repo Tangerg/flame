@@ -83,7 +83,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	}
 
 	continuation := rootInteractionWaitingContinuation(
-		barrier.Checkpoint,
+		barrier.Checkpoint(),
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
 	)
@@ -110,7 +110,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		t.Fatal(err)
 	}
 	resumedEvents := collectInteractionEvents(sequence)
-	binding := barrier.Interruptions[0]
+	binding := barrier.Interruptions()[0]
 	answers := []runs.InterruptAnswer{{
 		InterruptItemID: "item_question", MemberID: binding.MemberID,
 		RequestID:  binding.RequestID,
@@ -196,16 +196,17 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 		return executor.BeginRoot(t.Context(), ref)
 	})
 	starts := payloadsOf[runs.ToolCallStarted](beforeAnswer)
-	if len(barrier.Interruptions) != 1 || barrier.Interruptions[0].Interrupt.Question == nil ||
-		barrier.Interruptions[0].Interrupt.Question.ToolName != domaintool.AskUser ||
-		len(starts) != 1 || barrier.Interruptions[0].Interrupt.Question.CallID != starts[0].CallID {
-		t.Fatalf("ask_user interruption = %#v", barrier.Interruptions)
+	interruptions := barrier.Interruptions()
+	if len(interruptions) != 1 || interruptions[0].Interrupt.Question == nil ||
+		interruptions[0].Interrupt.Question.ToolName != domaintool.AskUser ||
+		len(starts) != 1 || interruptions[0].Interrupt.Question.CallID != starts[0].CallID {
+		t.Fatalf("ask_user interruption = %#v", interruptions)
 	}
 	if releaseErr := executor.Release(t.Context(), ref); releaseErr != nil {
 		t.Fatal(releaseErr)
 	}
 	if _, stageContinuationErr := executor.StageContinuation(t.Context(), rootInteractionWaitingContinuation(
-		barrier.Checkpoint,
+		barrier.Checkpoint(),
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
 	)); stageContinuationErr != nil {
@@ -216,7 +217,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 		t.Fatal(err)
 	}
 	events := collectInteractionEvents(sequence)
-	binding := barrier.Interruptions[0]
+	binding := barrier.Interruptions()[0]
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: "item_ask_user", MemberID: binding.MemberID,
 		RequestID:  binding.RequestID,
@@ -273,7 +274,7 @@ func TestInteractionExecutorRestoresInteractiveApprovalWithoutRepeatingPolicyOrH
 		t.Fatal(releaseErr)
 	}
 	continuation := rootInteractionWaitingContinuation(
-		barrier.Checkpoint,
+		barrier.Checkpoint(),
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
 	)
@@ -286,7 +287,7 @@ func TestInteractionExecutorRestoresInteractiveApprovalWithoutRepeatingPolicyOrH
 		t.Fatal(err)
 	}
 	events := collectInteractionEvents(sequence)
-	binding := barrier.Interruptions[0]
+	binding := barrier.Interruptions()[0]
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: "item_approval", MemberID: binding.MemberID,
 		RequestID:  binding.RequestID,
@@ -339,7 +340,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 		return executor.BeginRoot(t.Context(), ref)
 	})
 	continuation := rootInteractionWaitingContinuation(
-		barrier.Checkpoint,
+		barrier.Checkpoint(),
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
 	)
@@ -351,7 +352,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 		t.Fatal(err)
 	}
 	events := collectInteractionEvents(sequence)
-	binding := barrier.Interruptions[0]
+	binding := barrier.Interruptions()[0]
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: "item_approval", MemberID: binding.MemberID,
 		RequestID: binding.RequestID, Resolution: interrupt.Resolution{Approved: true},
@@ -414,7 +415,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 		return executor.BeginRoot(t.Context(), ref)
 	})
 	continuation := rootInteractionWaitingContinuation(
-		barrier.Checkpoint,
+		barrier.Checkpoint(),
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
 	)
@@ -426,7 +427,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 		t.Fatal(err)
 	}
 	events := collectInteractionEvents(sequence)
-	binding := barrier.Interruptions[0]
+	binding := barrier.Interruptions()[0]
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: "item_approval", MemberID: binding.MemberID,
 		RequestID: binding.RequestID, Resolution: interrupt.Resolution{Approved: true},
@@ -507,7 +508,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 		t.Fatal(releaseErr)
 	}
 	if _, stageContinuationErr := executor.StageContinuation(t.Context(), rootInteractionWaitingContinuation(
-		barrier.Checkpoint,
+		barrier.Checkpoint(),
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
 	)); stageContinuationErr != nil {
@@ -518,7 +519,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 		t.Fatal(err)
 	}
 	events := collectInteractionEvents(sequence)
-	binding := barrier.Interruptions[0]
+	binding := barrier.Interruptions()[0]
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: "item_question", MemberID: binding.MemberID,
 		RequestID:  binding.RequestID,
@@ -1003,7 +1004,7 @@ func captureInteractionQuestionCheckpoint(t *testing.T, workspace string) runs.E
 	if err := executor.Release(t.Context(), ref); err != nil {
 		t.Fatal(err)
 	}
-	return barrier.Checkpoint
+	return barrier.Checkpoint()
 }
 
 func newQuestionCheckpointTool(t *testing.T) toolcontract.Tool {
@@ -1062,7 +1063,7 @@ func observeInteractionUntilWaiting(
 		t.Fatal(err)
 	}
 	value := <-ready
-	if len(value.barrier.Interruptions) != 1 {
+	if len(value.barrier.Interruptions()) != 1 {
 		t.Fatalf("waiting barrier = %#v", value.barrier)
 	}
 	return value.events, value.barrier

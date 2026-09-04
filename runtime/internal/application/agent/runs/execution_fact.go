@@ -230,22 +230,55 @@ type MemberInterruption struct {
 // in one transaction.
 type TreeInterrupted struct {
 	executorPayloadBase
-	// Checkpoint is the immutable executor state captured at the same waiting
-	// boundary as Interruptions. The Coordinator never interprets it; it only
-	// places its write into the tree-barrier transaction.
-	Checkpoint    ExecutorCheckpoint
-	Interruptions []MemberInterruption
+	checkpoint    ExecutorCheckpoint
+	interruptions []MemberInterruption
+}
+
+// NewTreeInterrupted captures one validated, ownership-independent executor
+// waiting boundary. The Coordinator never interprets the checkpoint; it only
+// places its write into the tree-barrier transaction.
+func NewTreeInterrupted(
+	checkpoint ExecutorCheckpoint,
+	interruptions []MemberInterruption,
+) (TreeInterrupted, error) {
+	barrier := TreeInterrupted{
+		checkpoint:    checkpoint.Clone(),
+		interruptions: cloneMemberInterruptions(interruptions),
+	}
+	if err := barrier.validate(); err != nil {
+		return TreeInterrupted{}, err
+	}
+	return barrier, nil
+}
+
+// Checkpoint returns an ownership-independent executor snapshot.
+func (t TreeInterrupted) Checkpoint() ExecutorCheckpoint {
+	return t.checkpoint.Clone()
+}
+
+// Interruptions returns ownership-independent external-input bindings.
+func (t TreeInterrupted) Interruptions() []MemberInterruption {
+	return cloneMemberInterruptions(t.interruptions)
+}
+
+func cloneMemberInterruptions(values []MemberInterruption) []MemberInterruption {
+	interruptions := make([]MemberInterruption, len(values))
+	for index, value := range values {
+		value.Interrupt = cloneInterrupt(value.Interrupt)
+		interruptions[index] = value
+	}
+	return interruptions
 }
 
 func (t TreeInterrupted) validate() error {
-	if err := t.Checkpoint.Validate(); err != nil {
+	if err := t.checkpoint.Validate(); err != nil {
 		return fmt.Errorf("runs: executor tree interrupt has an invalid checkpoint: %w", err)
 	}
-	if len(t.Interruptions) == 0 {
+	if len(t.interruptions) == 0 {
 		return errors.New("runs: executor emitted an empty tree interrupt")
 	}
-	seen := make(map[inputRequestKey]struct{}, len(t.Interruptions))
-	for index, request := range t.Interruptions {
+	seen := make(map[inputRequestKey]struct{}, len(t.interruptions))
+	for index, request := range t.interruptions {
 		if _, err := runtimeidentity.ParseMember(request.MemberID); err != nil {
 			return fmt.Errorf("runs: tree interrupt request[%d] member: %w", index, err)
 		}
@@ -277,21 +310,21 @@ func (t TreeInterrupted) validateFor(
 	if err := t.validate(); err != nil {
 		return err
 	}
-	if err := t.Checkpoint.ValidateOwnership(rootMemberID, sessionID); err != nil {
+	if err := t.checkpoint.ValidateOwnership(rootMemberID, sessionID); err != nil {
 		return fmt.Errorf("runs: executor tree interrupt checkpoint ownership: %w", err)
 	}
-	if t.Checkpoint.Scope.GoalIncarnationID != goalIncarnationID {
+	if t.checkpoint.Scope.GoalIncarnationID != goalIncarnationID {
 		return fmt.Errorf(
 			"runs: executor tree interrupt checkpoint goal incarnation %q does not match Run %q: %w",
-			t.Checkpoint.Scope.GoalIncarnationID,
+			t.checkpoint.Scope.GoalIncarnationID,
 			goalIncarnationID,
 			ErrInvalidExecutorCheckpoint,
 		)
 	}
-	if !t.Checkpoint.ModelSelection.Equal(selection) {
+	if !t.checkpoint.ModelSelection.Equal(selection) {
 		return fmt.Errorf(
 			"runs: executor tree interrupt checkpoint model %q does not match Run %q: %w",
-			t.Checkpoint.ModelSelection,
+			t.checkpoint.ModelSelection,
 			selection,
 			ErrInvalidExecutorCheckpoint,
 		)

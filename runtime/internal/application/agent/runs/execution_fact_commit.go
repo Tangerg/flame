@@ -107,7 +107,7 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 	case SegmentInterrupted:
 		interrupts := make([]Interrupt, len(value.Interrupts))
 		for index, request := range value.Interrupts {
-			interrupts[index] = cloneExecutionInterrupt(request)
+			interrupts[index] = cloneInterrupt(request)
 		}
 		value.Interrupts = interrupts
 		return value, true
@@ -136,22 +136,6 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 	default:
 		return nil, false
 	}
-}
-
-func cloneExecutionInterrupt(value Interrupt) Interrupt {
-	if value.Approval != nil {
-		approval := *value.Approval
-		value.Approval = &approval
-	}
-	if value.Question != nil {
-		question := *value.Question
-		question.Fields = slices.Clone(question.Fields)
-		for index := range question.Fields {
-			question.Fields[index].Options = slices.Clone(question.Fields[index].Options)
-		}
-		value.Question = &question
-	}
-	return value
 }
 
 // Complete resolves the producer receipt after the consumer has committed or

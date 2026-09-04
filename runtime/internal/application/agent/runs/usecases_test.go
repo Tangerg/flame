@@ -2380,7 +2380,7 @@ func TestCancelLetsCommittedInterruptOwnDurableFirstTeardown(t *testing.T) {
 			CallID: "call_1", ToolName: "shell", Arguments: `{"command":"pwd","description":"Print the working directory"}`,
 			SafetyClass: "write",
 		},
-		TreeInterrupted{Checkpoint: testExecutorCheckpoint(), Interruptions: []MemberInterruption{{
+		mustTreeInterrupted(t, testExecutorCheckpoint(), []MemberInterruption{{
 			MemberID: "member_root", RequestID: "request_1",
 			Interrupt: Interrupt{
 				Kind: interrupt.Approval,
@@ -2389,7 +2389,7 @@ func TestCancelLetsCommittedInterruptOwnDurableFirstTeardown(t *testing.T) {
 					SafetyClass: "write", Risk: "medium",
 				},
 			},
-		}}},
+		}}),
 	}}
 	effects := &fakeEffects{
 		suspendStarted: suspendStarted, suspendCanceled: suspendCanceled,
