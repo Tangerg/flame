@@ -121,6 +121,48 @@ func TestServersRejectsBrokenRegistryCatalog(t *testing.T) {
 	}
 }
 
+func TestServersRejectsBrokenLiveStatusCatalog(t *testing.T) {
+	name := testMCPServerName("files")
+	server := mcpserver.Server{
+		Name: name, Enabled: true,
+		Transport: mcpserver.TransportStdio, Command: "mcp-files",
+	}
+	valid := mcpserver.ConnectionStatus{Name: name, State: mcpserver.ConnectionConnected, ToolCount: 1}
+	for caseName, statuses := range map[string][]mcpserver.ConnectionStatus{
+		"invalid status":     {{}},
+		"duplicate identity": {valid, valid},
+		"discarded count":    {{Name: name, State: mcpserver.ConnectionFailed, ToolCount: 1}},
+	} {
+		t.Run(caseName, func(t *testing.T) {
+			ports := &fakePorts{statuses: statuses}
+			c := New(Config{
+				Registry:     &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{name: server}},
+				StatusReader: ports,
+			})
+			if servers, err := c.Servers(t.Context()); err == nil || servers != nil {
+				t.Fatalf("Servers = (%+v, %v), want nil/error", servers, err)
+			}
+		})
+	}
+}
+
+func TestServerStatusRejectsCorruptApplicationOverride(t *testing.T) {
+	name := testMCPServerName("files")
+	c := New(Config{})
+	c.statusOverrides[name] = ServerStatus{Name: name, Known: true, State: mcpserver.ConnectionConnected}
+
+	if status, err := c.ServerStatus(t.Context(), name); err == nil || status != (ServerStatus{}) {
+		t.Fatalf("ServerStatus = (%+v, %v), want zero/error", status, err)
+	}
+}
+
+func TestServerStatusRejectsInvalidRequestedIdentity(t *testing.T) {
+	c := New(Config{StatusReader: &fakePorts{}})
+	if status, err := c.ServerStatus(t.Context(), mcpserver.ServerName{}); err == nil || status != (ServerStatus{}) {
+		t.Fatalf("ServerStatus = (%+v, %v), want zero/error", status, err)
+	}
+}
+
 func TestMCPRegistryReadsRejectMismatchedIdentity(t *testing.T) {
 	requested := testMCPServerName("requested")
 	foreign := mcpserver.Server{
@@ -210,7 +252,7 @@ func TestReconnectServerUsesPort(t *testing.T) {
 	var c *Coordinator
 	cfg := configWithPorts(ports)
 	cfg.Invalidations = func(notice invalidation.Notice) {
-		status := c.ServerStatus(t.Context(), testMCPServerName(notice.ServerIDs[0]))
+		status := testServerStatus(c, testMCPServerName(notice.ServerIDs[0]))
 		if status.State != mcpserver.ConnectionConnecting {
 			settled <- status.Name.String()
 		}
@@ -339,7 +381,7 @@ func TestStatusCallbackMayReenterMutationWithoutDeadlock(t *testing.T) {
 	}
 	var c *Coordinator
 	cfg.Invalidations = func(notice invalidation.Notice) {
-		status := c.ServerStatus(t.Context(), testMCPServerName(notice.ServerIDs[0]))
+		status := testServerStatus(c, testMCPServerName(notice.ServerIDs[0]))
 		statuses <- status
 		if status.State == mcpserver.ConnectionConnecting {
 			// A status consumer is application-external code. It may synchronously
@@ -384,7 +426,7 @@ func TestConnectionInvalidationReadsConnectingThenSettled(t *testing.T) {
 		if notice.Resource != invalidation.MCP || len(notice.ServerIDs) != 1 || notice.ServerIDs[0] != name.String() {
 			t.Fatalf("notice = %+v, want MCP/fs", notice)
 		}
-		states <- c.ServerStatus(t.Context(), name).State
+		states <- testServerStatus(c, name).State
 	}
 	c = New(cfg)
 
@@ -405,9 +447,17 @@ func TestConnectionInvalidationReadsConnectingThenSettled(t *testing.T) {
 	// the application overlay.
 	ports.statuses[0].State = mcpserver.ConnectionFailed
 	ports.statuses[0].ToolCount = 0
-	if status := c.ServerStatus(t.Context(), name); status.State != mcpserver.ConnectionFailed {
+	if status := testServerStatus(c, name); status.State != mcpserver.ConnectionFailed {
 		t.Fatalf("passive live status = %+v, want failed", status)
 	}
+}
+
+func testServerStatus(c *Coordinator, name mcpserver.ServerName) ServerStatus {
+	status, err := c.ServerStatus(context.Background(), name)
+	if err != nil {
+		panic(err)
+	}
+	return status
 }
 
 func TestConnectionRequiresCompleteDependencies(t *testing.T) {

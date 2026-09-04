@@ -1,6 +1,8 @@
 package mcp
 
 import (
+	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/secrets"
@@ -157,6 +159,34 @@ type ServerStatus struct {
 	ToolCount *int
 }
 
+func (s ServerStatus) Validate() error {
+	if err := s.Name.Validate(); err != nil {
+		return fmt.Errorf("mcp: invalid server status: %w", err)
+	}
+	if !s.Known {
+		if s.State != "" || s.ToolCount != nil {
+			return errors.New("mcp: unknown server status carries live state")
+		}
+		return nil
+	}
+	if err := s.State.Validate(); err != nil {
+		return err
+	}
+	if s.State == mcpserver.ConnectionConnected {
+		if s.ToolCount == nil {
+			return errors.New("mcp: connected server status has no tool count")
+		}
+		if err := mcpserver.ValidateRemoteToolCount(*s.ToolCount); err != nil {
+			return err
+		}
+		return nil
+	}
+	if s.ToolCount != nil {
+		return fmt.Errorf("mcp: server status %q carries a tool count", s.State)
+	}
+	return nil
+}
+
 // TestResult is the semantic outcome of a non-persisting connection probe.
 type TestResult struct {
 	OK bool
@@ -218,11 +248,14 @@ func serverView(server mcpserver.Server, status *ServerStatus) Server {
 	return view
 }
 
-func statusView(status mcpserver.ConnectionStatus) ServerStatus {
+func statusView(status mcpserver.ConnectionStatus) (ServerStatus, error) {
+	if err := status.Validate(); err != nil {
+		return ServerStatus{}, err
+	}
 	view := ServerStatus{Name: status.Name, Known: true, State: status.State}
 	if status.State == mcpserver.ConnectionConnected {
 		count := status.ToolCount
 		view.ToolCount = &count
 	}
-	return view
+	return view, nil
 }

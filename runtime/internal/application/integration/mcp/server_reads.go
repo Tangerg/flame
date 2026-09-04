@@ -29,7 +29,10 @@ func (c *Coordinator) Servers(ctx context.Context) ([]Server, error) {
 	slices.SortFunc(servers, func(first, second mcpserver.Server) int {
 		return cmp.Compare(first.Name.String(), second.Name.String())
 	})
-	statuses := c.statusesByName()
+	statuses, err := c.statusesByName()
+	if err != nil {
+		return nil, err
+	}
 	out := make([]Server, 0, len(servers))
 	for _, server := range servers {
 		status, ok := statuses[server.Name]
@@ -57,7 +60,11 @@ func (c *Coordinator) Server(ctx context.Context, name mcpserver.ServerName) (Se
 	if err := validateRegistryServer("get", name, server); err != nil {
 		return Server{}, err
 	}
-	status, ok := c.statusesByName()[name]
+	statuses, err := c.statusesByName()
+	if err != nil {
+		return Server{}, err
+	}
+	status, ok := statuses[name]
 	if ok {
 		return serverView(server, &status), nil
 	}
@@ -89,11 +96,20 @@ func validateRegistryServer(operation string, expected mcpserver.ServerName, ser
 	return nil
 }
 
-func (c *Coordinator) statusesByName() map[mcpserver.ServerName]ServerStatus {
-	statuses := c.liveStatusesByName()
+func (c *Coordinator) statusesByName() (map[mcpserver.ServerName]ServerStatus, error) {
+	statuses, err := c.liveStatusesByName()
+	if err != nil {
+		return nil, err
+	}
 	c.statusMu.Lock()
 	defer c.statusMu.Unlock()
 	for name, status := range c.statusOverrides {
+		if err := status.Validate(); err != nil {
+			return nil, fmt.Errorf("mcp: status override for %q is invalid: %w", name, err)
+		}
+		if status.Name != name {
+			return nil, fmt.Errorf("mcp: status override for %q belongs to %q", name, status.Name)
+		}
 		if !status.Known {
 			if _, staleLiveEntry := statuses[name]; !staleLiveEntry {
 				// The live port has caught up with disable/delete. Absence already
@@ -104,38 +120,58 @@ func (c *Coordinator) statusesByName() map[mcpserver.ServerName]ServerStatus {
 		}
 		statuses[name] = cloneServerStatus(status)
 	}
-	return statuses
+	return statuses, nil
 }
 
 // liveStatusesByName reads the status-port projection without the application's
 // transition overlay. Connection settlement must use this source: reading the
 // public model there would merely observe the synthetic connecting state that
 // the same operation published before dialing.
-func (c *Coordinator) liveStatusesByName() map[mcpserver.ServerName]ServerStatus {
+func (c *Coordinator) liveStatusesByName() (map[mcpserver.ServerName]ServerStatus, error) {
 	statuses := make(map[mcpserver.ServerName]ServerStatus)
 	if c.statusReader == nil {
-		return statuses
+		return statuses, nil
 	}
-	for _, status := range c.statusReader.Statuses() {
-		view := statusView(status)
+	for index, status := range c.statusReader.Statuses() {
+		view, err := statusView(status)
+		if err != nil {
+			return nil, fmt.Errorf("mcp: live status row %d is invalid: %w", index+1, err)
+		}
+		if _, duplicate := statuses[view.Name]; duplicate {
+			return nil, fmt.Errorf("mcp: live status catalog repeats server %q", view.Name)
+		}
 		statuses[view.Name] = view
 	}
-	return statuses
+	return statuses, nil
 }
 
-func (c *Coordinator) liveStatus(name mcpserver.ServerName) ServerStatus {
-	if status, ok := c.liveStatusesByName()[name]; ok {
-		return status
+func (c *Coordinator) liveStatus(name mcpserver.ServerName) (ServerStatus, error) {
+	if err := name.Validate(); err != nil {
+		return ServerStatus{}, fmt.Errorf("mcp: live status server: %w", err)
 	}
-	return ServerStatus{Name: name}
+	statuses, err := c.liveStatusesByName()
+	if err != nil {
+		return ServerStatus{}, err
+	}
+	if status, ok := statuses[name]; ok {
+		return status, nil
+	}
+	return ServerStatus{Name: name}, nil
 }
 
 // ServerStatus resolves one safe live status notification read model.
-func (c *Coordinator) ServerStatus(_ context.Context, name mcpserver.ServerName) ServerStatus {
-	if status, ok := c.statusesByName()[name]; ok {
-		return status
+func (c *Coordinator) ServerStatus(_ context.Context, name mcpserver.ServerName) (ServerStatus, error) {
+	if err := name.Validate(); err != nil {
+		return ServerStatus{}, fmt.Errorf("mcp: server status: %w", err)
 	}
-	return ServerStatus{Name: name}
+	statuses, err := c.statusesByName()
+	if err != nil {
+		return ServerStatus{}, err
+	}
+	if status, ok := statuses[name]; ok {
+		return status, nil
+	}
+	return ServerStatus{Name: name}, nil
 }
 
 // acceptStatus makes a transition readable before publishing its invalidation.

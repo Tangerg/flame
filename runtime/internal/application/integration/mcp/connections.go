@@ -162,7 +162,11 @@ func (command *connectionDispatch) run(ctx context.Context) {
 	if ctx.Err() != nil {
 		return
 	}
-	status := command.coordinator.liveStatus(command.name)
+	status, err := command.coordinator.liveStatus(command.name)
+	if err != nil {
+		command.fail(ctx, err)
+		return
+	}
 	settled, current, err := command.prepareSettled(ctx, status)
 	if err != nil {
 		command.fail(ctx, err)

@@ -150,7 +150,11 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 	if redialErr != nil {
 		return Server{}, redialErr
 	}
-	status, ok := c.statusesByName()[srv.Name]
+	statuses, err := c.statusesByName()
+	if err != nil {
+		return Server{}, err
+	}
+	status, ok := statuses[srv.Name]
 	if ok {
 		return serverView(srv, &status), nil
 	}
