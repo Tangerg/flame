@@ -285,7 +285,11 @@ interface Props {
 const SIZE_STYLE = Object.fromEntries(
   (["xs", "sm", "md", "lg", "xl"] as const).map((size) => [
     size,
-    { width: `var(--icon-${size})`, height: `var(--icon-${size})` },
+    {
+      width: `var(--icon-${size})`,
+      height: `var(--icon-${size})`,
+      strokeWidth: `var(--icon-stroke-${size})`,
+    },
   ]),
 ) as Readonly<Record<IconSize, CSSProperties>>;
 
@@ -300,9 +304,10 @@ export const Icon = memo(function Icon({ name, size = "sm", style, className }: 
       aria-hidden="true"
       data-icon-name={name}
       className={className}
-      // Lucide draws on a 24 grid at stroke 2, so the stroke scales with the box: ~1.2px at
-      // the 14px step, ~1px at 12. Pinning it (`absoluteStrokeWidth`) would make a 12px glyph
-      // carry the same weight as a 28px one, which is what makes small icons read as blobs.
+      // Box AND stroke come from the ladder, which owns both: the stroke scales with the box
+      // down to 12px and stops growing past the weight a line reads as drawn rather than
+      // filled. Pinning it instead (`absoluteStrokeWidth`) would give a 12px glyph a 28px
+      // glyph's weight, which is what makes small icons read as blobs.
       style={style ? { ...SIZE_STYLE[size], ...style } : SIZE_STYLE[size]}
     />
   );

@@ -384,6 +384,15 @@
   --icon-lg: 20px;
   --icon-xl: 28px;
 
+  /* Lucide GRID units, from `lib/iconScale` — the pre-paint defaults for the 14px base. The
+     first three are Lucide's own 2; the last two are where the rendered stroke reaches its
+     cap and stops growing with the box. */
+  --icon-stroke-xs: 2;
+  --icon-stroke-sm: 2;
+  --icon-stroke-md: 2;
+  --icon-stroke-lg: 1.8;
+  --icon-stroke-xl: 1.286;
+
   --fw-regular: 430;
   --fw-medium: 500;
   --fw-semibold: 600;
