@@ -164,7 +164,7 @@ func (c *Coordinator) prepareSessionRestore(
 	ctx context.Context,
 	restored session.Session,
 ) (Replacement, error) {
-	current, err := c.sessions.Get(ctx, restored.ID())
+	current, err := c.Get(ctx, restored.ID())
 	if errors.Is(err, session.ErrNotFound) {
 		return InitialReplacement(restored)
 	}

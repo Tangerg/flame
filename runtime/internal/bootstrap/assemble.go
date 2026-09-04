@@ -345,7 +345,7 @@ func buildAssemblyCore(
 		}
 	}
 
-	approvalCoordinator := approvals.New(policy.approvals, cfg.SessionStore)
+	approvalCoordinator := approvals.New(policy.approvals, sessionCoordinator)
 
 	toolCoordinator := workspace.NewDiagnosticTools(execution.toolRegistry, workspaceServices.scope)
 

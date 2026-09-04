@@ -117,6 +117,9 @@ func (c *Coordinator) terminalizePendingRun(
 	if err != nil {
 		return rundomain.Run{}, err
 	}
+	if err := snapshot.Session.ValidateFor(pending.SessionID); err != nil {
+		return rundomain.Run{}, fmt.Errorf("sessions: terminal snapshot identity: %w", err)
+	}
 	plan, rootRun, err := (parkedRunTerminalization{
 		sessionID: pending.SessionID, rootRunID: pending.RootRunID, finishedAt: finishedAt,
 		outcome: outcome, detail: detail, pending: pending, snapshot: snapshot,

@@ -1,6 +1,7 @@
 package sessions
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -15,9 +16,24 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
+type fixedMaterialSnapshotReader struct {
+	snapshot MaterialSnapshot
+}
+
+func (f fixedMaterialSnapshotReader) ReadMaterialSnapshot(context.Context, string) (MaterialSnapshot, error) {
+	return f.snapshot, nil
+}
+
 func TestMaterialSnapshotAcceptsOneCoherentMountedReadModel(t *testing.T) {
 	if err := validMaterialSnapshot().Validate(); err != nil {
 		t.Fatalf("Validate() error = %v, want coherent snapshot", err)
+	}
+}
+
+func TestCoordinatorMaterialSnapshotRejectsMismatchedSession(t *testing.T) {
+	coordinator := &Coordinator{materialSnapshots: fixedMaterialSnapshotReader{snapshot: validMaterialSnapshot()}}
+	if _, err := coordinator.MaterialSnapshot(t.Context(), "ses_other"); err == nil || !strings.Contains(err.Error(), "does not match requested identity") {
+		t.Fatalf("MaterialSnapshot error = %v, want identity mismatch", err)
 	}
 }
 

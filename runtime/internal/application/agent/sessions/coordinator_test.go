@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -124,6 +125,7 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 			},
 		}},
 		snapshot: Snapshot{
+			Session:  testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
 			Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("hello")), chat.NewAssistantMessage(chat.NewTextPart("hi"))},
 			Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
 				ID: "run_1", SessionID: "ses_1", State: run.Waiting,
@@ -201,6 +203,7 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 			},
 		}},
 		snapshot: Snapshot{
+			Session: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
 			Messages: []chat.Message{
 				chat.NewUserMessage(chat.NewTextPart("ask me")),
 				chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
@@ -286,6 +289,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 			},
 		}},
 		snapshot: Snapshot{
+			Session:  testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
 			Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("hello"))},
 			Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
 				ID: "run_1", SessionID: "ses_1", State: run.Waiting,
@@ -385,6 +389,7 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{"run_root": pending}},
 		snapshot: Snapshot{
+			Session:  testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
 			Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("hello"))},
 			Runs: []run.Run{
 				testsupport.MustRestoreRun(run.Snapshot{
@@ -480,6 +485,7 @@ func TestApplyRunLostRejectsContinuationFactDriftBeforeTerminalCommit(t *testing
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{"run_root": pending}},
 		snapshot: Snapshot{
+			Session: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
 			Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
 				ID: "run_root", SessionID: "ses_1", State: run.Waiting,
 				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1}), Capabilities: capabilities,

@@ -295,6 +295,18 @@ func (s Session) Validate() error {
 	return nil
 }
 
+// ValidateFor verifies the complete aggregate and its exact expected identity.
+// Point reads use it before a stored Session can influence another use case.
+func (s Session) ValidateFor(expectedID string) error {
+	if err := s.Validate(); err != nil {
+		return err
+	}
+	if s.id != expectedID {
+		return fmt.Errorf("%w: id %q does not match requested identity %q", ErrInvalid, s.id, expectedID)
+	}
+	return nil
+}
+
 // Snapshot returns the complete technical representation of s.
 func (s Session) Snapshot() Snapshot {
 	return Snapshot{

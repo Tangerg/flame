@@ -95,7 +95,7 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 	}
 	restoreFiles := spec.Scope.RestoresFiles()
 	restoreHistory := spec.Scope.RestoresHistory()
-	currentSession, err := c.sessions.Get(ctx, spec.SessionID)
+	currentSession, err := c.Get(ctx, spec.SessionID)
 	if err != nil {
 		return RollbackResult{}, err
 	}

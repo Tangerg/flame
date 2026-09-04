@@ -75,6 +75,9 @@ func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec) (session.Session,
 	if err != nil {
 		return session.Session{}, err
 	}
+	if err := snapshot.Session.ValidateFor(spec.ParentID); err != nil {
+		return session.Session{}, fmt.Errorf("sessions: fork snapshot identity: %w", err)
+	}
 	boundary, err := ResolveForkBoundary(snapshot.Messages, snapshot.Runs, spec.FromRunID)
 	if err != nil {
 		return session.Session{}, err

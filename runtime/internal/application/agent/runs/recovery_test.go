@@ -68,6 +68,30 @@ func (r *recoveryStoreStub) SessionByID(_ context.Context, sessionID string) (se
 	return testsupport.MustRestoreSession(session.Snapshot{ID: sessionID, Workspace: testsupport.MustWorkspace("/workspace")}), nil
 }
 
+func TestRecoveryPlannerProtectsSessionPointRead(t *testing.T) {
+	tests := []struct {
+		name  string
+		value session.Session
+	}{
+		{name: "invalid aggregate"},
+		{
+			name: "mismatched identity",
+			value: testsupport.MustRestoreSession(session.Snapshot{
+				ID: "ses_other", Workspace: testsupport.MustWorkspace("/workspace"),
+			}),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			store := &recoveryStoreStub{sessions: map[string]session.Session{"ses_1": test.value}}
+			planner := &recoveryPlanner{ctx: t.Context(), store: store, sessions: make(map[string]session.Session)}
+			if _, err := planner.session("ses_1"); !errors.Is(err, session.ErrInvalid) {
+				t.Fatalf("session error = %v, want ErrInvalid", err)
+			}
+		})
+	}
+}
+
 func (r *recoveryStoreStub) ListTranscript(_ context.Context, sessionID string) ([]transcript.Item, error) {
 	return append([]transcript.Item(nil), r.transcripts[sessionID]...), nil
 }

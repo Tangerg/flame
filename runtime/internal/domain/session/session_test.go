@@ -85,6 +85,21 @@ func TestSessionConstructionRejectsInvalidState(t *testing.T) {
 	}
 }
 
+func TestSessionValidateForRequiresExactIdentity(t *testing.T) {
+	value := mustNew(t, Draft{
+		ID: "ses_1", Workspace: mustWorkspace(t, "/work"), StartedAt: time.Unix(1, 0),
+	})
+	if err := value.ValidateFor("ses_1"); err != nil {
+		t.Fatalf("ValidateFor exact identity: %v", err)
+	}
+	if err := value.ValidateFor("ses_other"); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("ValidateFor mismatched identity error = %v, want ErrInvalid", err)
+	}
+	if err := (Session{}).ValidateFor("ses_1"); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("ValidateFor invalid aggregate error = %v, want ErrInvalid", err)
+	}
+}
+
 func TestWorkspaceRejectsNonExactPaths(t *testing.T) {
 	for name, path := range map[string]string{
 		"missing": "", "relative": "relative/work", "unclean": "/work/../work",

@@ -169,7 +169,7 @@ func (c *Coordinator) ListViewPage(
 
 // View resolves one session's complete application read model.
 func (c *Coordinator) View(ctx context.Context, id string) (View, error) {
-	value, err := c.sessions.Get(ctx, id)
+	value, err := c.Get(ctx, id)
 	if err != nil {
 		return View{}, err
 	}

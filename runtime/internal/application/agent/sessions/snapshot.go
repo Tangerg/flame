@@ -2,7 +2,6 @@ package sessions
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -32,6 +31,9 @@ func (c *Coordinator) ExportSession(ctx context.Context, sessionID string) (Expo
 	if err != nil {
 		return ExportResult{}, err
 	}
+	if validateErr := snapshot.Session.ValidateFor(sessionID); validateErr != nil {
+		return ExportResult{}, fmt.Errorf("sessions: export snapshot identity: %w", validateErr)
+	}
 	if validateErr := snapshot.Validate(); validateErr != nil {
 		return ExportResult{}, validateErr
 	}
@@ -46,11 +48,11 @@ func (c *Coordinator) ExportSession(ctx context.Context, sessionID string) (Expo
 	return ExportResult{Session: view, Snapshot: portable, Items: snapshot.Items}, nil
 }
 
-// Validate checks a snapshot's referential integrity — the session id is present
-// and every run/item belongs to it — before the coordinator hands it out.
+// Validate checks the complete Session and the snapshot's referential integrity
+// before the coordinator hands it out.
 func (s Snapshot) Validate() error {
-	if s.Session.ID() == "" {
-		return errors.New("sessions: snapshot session id is required")
+	if err := s.Session.Validate(); err != nil {
+		return fmt.Errorf("sessions: snapshot session: %w", err)
 	}
 	runs, err := s.validateRuns()
 	if err != nil {

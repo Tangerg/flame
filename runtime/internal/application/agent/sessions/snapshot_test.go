@@ -31,6 +31,7 @@ func TestValidateSnapshotRejectsInconsistentPortableState(t *testing.T) {
 		name   string
 		mutate func(*Snapshot)
 	}{
+		{"invalid session", func(s *Snapshot) { s.Session = session.Session{} }},
 		{"duplicate run", func(s *Snapshot) { s.Runs = append(s.Runs, s.Runs[0]) }},
 		{"wrong item session", func(s *Snapshot) {
 			item := s.Items[0].Snapshot()

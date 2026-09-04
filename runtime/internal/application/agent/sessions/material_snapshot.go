@@ -33,6 +33,9 @@ func (c *Coordinator) MaterialSnapshot(ctx context.Context, sessionID string) (M
 	if err != nil {
 		return MaterialSnapshot{}, err
 	}
+	if err := snapshot.Session.ValidateFor(sessionID); err != nil {
+		return MaterialSnapshot{}, fmt.Errorf("sessions: material snapshot identity: %w", err)
+	}
 	if err := snapshot.Validate(); err != nil {
 		return MaterialSnapshot{}, err
 	}

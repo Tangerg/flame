@@ -44,9 +44,16 @@ func (c *Coordinator) List(ctx context.Context) ([]session.Session, error) {
 	return slices.Clone(values), nil
 }
 
-// Get returns one saved Session by identity.
+// Get returns one valid saved Session whose identity exactly matches id.
 func (c *Coordinator) Get(ctx context.Context, id string) (session.Session, error) {
-	return c.sessions.Get(ctx, id)
+	value, err := c.sessions.Get(ctx, id)
+	if err != nil {
+		return session.Session{}, err
+	}
+	if err := value.ValidateFor(id); err != nil {
+		return session.Session{}, fmt.Errorf("sessions: read session %q: %w", id, err)
+	}
+	return value, nil
 }
 
 // InspectWorkspace resolves the live filesystem projection of an admitted cwd.
@@ -87,7 +94,7 @@ func (c *Coordinator) PrepareScheduled(
 	id, title, cwd string,
 	selection modelref.Selection,
 ) (current session.Session, initial *session.Session, err error) {
-	existing, err := c.sessions.Get(ctx, id)
+	existing, err := c.Get(ctx, id)
 	if err == nil {
 		return existing, nil, nil
 	}
@@ -137,7 +144,7 @@ func (c *Coordinator) Update(ctx context.Context, id string, patch Patch) (sessi
 		}
 		defer admission.Release()
 	}
-	current, err := c.sessions.Get(ctx, id)
+	current, err := c.Get(ctx, id)
 	if err != nil {
 		return session.Session{}, err
 	}
@@ -204,7 +211,7 @@ func (c *Coordinator) ApplyGeneratedTitle(ctx context.Context, id, title string)
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		current, err := c.sessions.Get(ctx, id)
+		current, err := c.Get(ctx, id)
 		if err != nil {
 			return err
 		}
