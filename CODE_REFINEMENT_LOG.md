@@ -170,6 +170,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 210 | `1868abc8` + CLI dependency update | Unified pinned and searched Agent Memory behind one Application read model that rejects invalid, inactive, foreign, duplicate, or over-capacity catalogs before model context. |
 | 211 | `12c83ff8` + CLI dependency update | Made Domain own visible Agent Memory edits, blocked rejected tombstone update/delete, removed bypassing SQLite writes, and validated exact management catalogs and mutation acknowledgements. |
 | 212 | `076c9352` + CLI dependency update | Normalized and validated exact bounded Agent Memory curation batches, ledger/state reads, fold inputs, and watermark transitions before model use or persistence. |
+| 213 | `35447fc5` + CLI dependency update | Made Domain validate Knowledge entries and Application enforce the complete ordered cascade plus exact read/update scope and content acknowledgements before prompt, protocol, or invalidation use. |
 
 ## Verification contract
 
