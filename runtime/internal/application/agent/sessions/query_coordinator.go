@@ -657,7 +657,11 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 	if err := validatePendingInterruptPage(rows, sessionID, rootRunID, afterCreatedAt, afterID, size+1); err != nil {
 		return pagination.Page[runs.Pending]{}, err
 	}
-	rows = slices.Clone(rows)
+	owned := make([]runs.Pending, len(rows))
+	for index, pending := range rows {
+		owned[index] = pending.Clone()
+	}
+	rows = owned
 	page, err := pagination.PageOf(rows, size, interruptPageNamespace, filters, func(pending runs.Pending) []string {
 		return []string{strconv.FormatInt(pending.CreatedAt.UnixNano(), 10), pending.RootRunID}
 	})

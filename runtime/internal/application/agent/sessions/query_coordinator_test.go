@@ -867,9 +867,17 @@ func TestListPendingInterruptPageValidatesCallerAndIsolatesStoreSlice(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
+	page.Rows[0].Capabilities.InterruptKinds[0] = interrupt.Question
+	page.Rows[0].Interrupts[0].Approval.Tool.Name = "changed"
+	page.Rows[0].Bindings[0].RequestID = "changed"
+	page.Rows[0].Continuations[0].MemberID = "changed"
 	page.Rows[0] = runs.Pending{}
-	if got := stored[0].RootRunID; got != "run_1" {
-		t.Fatalf("interrupt store row changed through page result: %q", got)
+	if got := stored[0]; got.RootRunID != "run_1" ||
+		got.Capabilities.InterruptKinds[0] != interrupt.Approval ||
+		got.Interrupts[0].Approval.Tool.Name != "shell" ||
+		got.Bindings[0].RequestID != "request_1" ||
+		got.Continuations[0].MemberID != "member_1" {
+		t.Fatalf("interrupt store row changed through page result: %+v", got)
 	}
 }
 
