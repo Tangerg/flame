@@ -12,17 +12,17 @@ type toolRegistryFixture struct {
 }
 
 func (t toolRegistryFixture) List(context.Context) ([]tool.Tool, error) { return t.tools, nil }
-func (toolRegistryFixture) Invoke(context.Context, string, string, string) (tool.Result, error) {
+func (toolRegistryFixture) Invoke(context.Context, string, string, tool.Arguments) (tool.Result, error) {
 	return tool.Result{}, nil
 }
 
 type toolRegistryRecorder struct {
 	root      string
 	name      string
-	arguments string
+	arguments tool.Arguments
 }
 
-func (t *toolRegistryRecorder) Invoke(_ context.Context, root, name string, arguments string) (tool.Result, error) {
+func (t *toolRegistryRecorder) Invoke(_ context.Context, root, name string, arguments tool.Arguments) (tool.Result, error) {
 	t.root = root
 	t.name = name
 	t.arguments = arguments
@@ -65,9 +65,11 @@ func TestListOwnsSafeUniqueNameOrder(t *testing.T) {
 
 func TestListRejectsInvalidCatalogs(t *testing.T) {
 	for name, tools := range map[string][]tool.Tool{
-		"empty name":  {{SafetyClass: tool.SafetyClassSafe}},
-		"padded name": {{Name: " read ", SafetyClass: tool.SafetyClassSafe}},
-		"unsafe":      {{Name: "write", SafetyClass: tool.SafetyClassWrite}},
+		"empty name":          {{SafetyClass: tool.SafetyClassSafe}},
+		"padded name":         {{Name: " read ", SafetyClass: tool.SafetyClassSafe}},
+		"invalid description": {{Name: "read", Description: string([]byte{0xff}), SafetyClass: tool.SafetyClassSafe}},
+		"unknown safety":      {{Name: "read", SafetyClass: tool.SafetyClass("future")}},
+		"unsafe":              {{Name: "write", SafetyClass: tool.SafetyClassWrite}},
 		"duplicate name": {
 			{Name: "read", SafetyClass: tool.SafetyClassSafe},
 			{Name: "read", SafetyClass: tool.SafetyClassSafe},
@@ -87,11 +89,15 @@ func TestInvokeUsesRegistry(t *testing.T) {
 	roots := &rootRecorder{}
 	c := NewDiagnosticTools(invoker, roots)
 
-	got, err := c.Invoke(context.Background(), DiagnosticToolInvocation{Name: "read", Arguments: `{"path":"main.go"}`, CWD: "/requested"})
+	arguments, err := tool.ParseArguments(`{"path":"main.go"}`)
+	if err != nil {
+		t.Fatalf("ParseArguments: %v", err)
+	}
+	got, err := c.Invoke(context.Background(), DiagnosticToolInvocation{Name: "read", Arguments: arguments, CWD: "/requested"})
 	if err != nil {
 		t.Fatalf("Invoke: %v", err)
 	}
-	if text, ok := got.String(); !ok || text != "ok" || roots.root != "/requested" || invoker.root != "/workspace" || invoker.name != "read" || invoker.arguments != `{"path":"main.go"}` {
-		t.Fatalf("result=%#v cwd=%q root=%q name=%q arguments=%q", got, roots.root, invoker.root, invoker.name, invoker.arguments)
+	if text, ok := got.String(); !ok || text != "ok" || roots.root != "/requested" || invoker.root != "/workspace" || invoker.name != "read" || invoker.arguments.Canonical() != `{"path":"main.go"}` {
+		t.Fatalf("result=%#v cwd=%q root=%q name=%q arguments=%q", got, roots.root, invoker.root, invoker.name, invoker.arguments.Canonical())
 	}
 }

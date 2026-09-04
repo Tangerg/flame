@@ -2,7 +2,8 @@ package delivery
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
+	"math"
 	"testing"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -15,7 +16,7 @@ type toolRegistryFake struct {
 	tools          []tool.Tool
 	invokedCWD     string
 	invokedName    string
-	invokedPayload string
+	invokedPayload tool.Arguments
 }
 
 func (t *toolRegistryFake) List(context.Context) ([]tool.Tool, error) { return t.tools, nil }
@@ -74,11 +75,23 @@ func TestInvokeToolPassesJSONArgumentsToRuntime(t *testing.T) {
 	if rt.invokedName != "read" || rt.invokedCWD != "/workspace" {
 		t.Fatalf("invocation = %q in %q, want read in /workspace", rt.invokedName, rt.invokedCWD)
 	}
-	var payload map[string]string
-	if err := json.Unmarshal([]byte(rt.invokedPayload), &payload); err != nil {
-		t.Fatalf("payload %q is not JSON: %v", rt.invokedPayload, err)
-	}
+	payload := rt.invokedPayload.Map()
 	if payload["path"] != "main.go" {
 		t.Fatalf("payload = %+v, want path=main.go", payload)
+	}
+}
+
+func TestInvokeToolRejectsUnrepresentableArgumentsBeforeApplication(t *testing.T) {
+	rt := &toolRegistryFake{}
+	s := handlerWithTools(rt)
+
+	_, err := s.InvokeTool(context.Background(), protocol.InvokeToolRequest{
+		Name: "read", Arguments: map[string]any{"depth": math.Inf(1)},
+	})
+	if !errors.Is(err, protocol.ErrInvalidParams) {
+		t.Fatalf("InvokeTool error = %v, want invalid params", err)
+	}
+	if rt.invokedName != "" {
+		t.Fatal("application was invoked with unrepresentable arguments")
 	}
 }

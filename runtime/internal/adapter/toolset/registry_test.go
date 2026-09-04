@@ -50,7 +50,7 @@ func TestDiagnosticRegistryInvokesWithinRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	registry := toolset.NewDiagnosticRegistry()
-	output, err := registry.Invoke(t.Context(), root, "read", `{"path":"note.txt"}`)
+	output, err := registry.Invoke(t.Context(), root, "read", diagnosticArguments(t, `{"path":"note.txt"}`))
 	if err != nil {
 		t.Fatalf("Invoke: %v", err)
 	}
@@ -61,17 +61,17 @@ func TestDiagnosticRegistryInvokesWithinRoot(t *testing.T) {
 
 func TestDiagnosticRegistryRejectsUnknownOrEscapingTool(t *testing.T) {
 	registry := toolset.NewDiagnosticRegistry()
-	if _, err := registry.Invoke(t.Context(), t.TempDir(), "shell", "{}"); err == nil {
+	if _, err := registry.Invoke(t.Context(), t.TempDir(), "shell", diagnosticArguments(t, `{}`)); err == nil {
 		t.Fatal("Invoke error = nil, want unknown-tool error")
 	}
 	outside := t.TempDir()
-	if _, err := registry.Invoke(t.Context(), outside, "read", `{"path":"../escape"}`); err == nil {
+	if _, err := registry.Invoke(t.Context(), outside, "read", diagnosticArguments(t, `{"path":"../escape"}`)); err == nil {
 		t.Fatal("Invoke escaping path error = nil")
 	}
-	if _, err := registry.Invoke(t.Context(), outside, "glob", `{"pattern":"../**/*"}`); err == nil {
+	if _, err := registry.Invoke(t.Context(), outside, "glob", diagnosticArguments(t, `{"pattern":"../**/*"}`)); err == nil {
 		t.Fatal("Invoke escaping glob pattern error = nil")
 	}
-	if _, err := registry.Invoke(t.Context(), outside, "read", `{"path":"safe.txt","file_path":"ignored.txt"}`); err == nil {
+	if _, err := registry.Invoke(t.Context(), outside, "read", diagnosticArguments(t, `{"path":"safe.txt","file_path":"ignored.txt"}`)); err == nil {
 		t.Fatal("Invoke read with removed file_path error = nil")
 	}
 }
@@ -86,8 +86,17 @@ func TestDiagnosticRegistryRejectsSymlinkEscape(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := toolset.NewDiagnosticRegistry().Invoke(t.Context(), root, "read", `{"path":"outside/secret.txt"}`)
+	_, err := toolset.NewDiagnosticRegistry().Invoke(t.Context(), root, "read", diagnosticArguments(t, `{"path":"outside/secret.txt"}`))
 	if !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
 		t.Fatalf("Invoke symlink escape error = %v, want ErrPathOutsideRoot", err)
 	}
+}
+
+func diagnosticArguments(t *testing.T, raw string) tool.Arguments {
+	t.Helper()
+	arguments, err := tool.ParseArguments(raw)
+	if err != nil {
+		t.Fatalf("ParseArguments: %v", err)
+	}
+	return arguments
 }

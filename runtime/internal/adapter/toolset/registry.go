@@ -55,7 +55,7 @@ func (DiagnosticRegistry) List(context.Context) ([]tool.Tool, error) {
 	return out, nil
 }
 
-func (DiagnosticRegistry) Invoke(ctx context.Context, root, name, arguments string) (tool.Result, error) {
+func (DiagnosticRegistry) Invoke(ctx context.Context, root, name string, arguments tool.Arguments) (tool.Result, error) {
 	if name == "" {
 		return tool.Result{}, errors.New("toolset: direct tool name must not be empty")
 	}
@@ -64,7 +64,7 @@ func (DiagnosticRegistry) Invoke(ctx context.Context, root, name, arguments stri
 		trace.WithAttributes(attribute.String(attrGenAIToolName, name)))
 	defer span.End()
 
-	arguments, err := normalizeDirectArguments(root, name, arguments)
+	normalized, err := normalizeDirectArguments(root, name, arguments.Canonical())
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -82,7 +82,7 @@ func (DiagnosticRegistry) Invoke(ctx context.Context, root, name, arguments stri
 		if bindErr != nil {
 			return tool.Result{}, fmt.Errorf("toolset: bind direct tool %q: %w", name, bindErr)
 		}
-		invocation, prepareErr := binding.Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: arguments})
+		invocation, prepareErr := binding.Prepare(chat.ToolCall{ID: "direct", Name: name, Arguments: normalized})
 		if prepareErr != nil {
 			return tool.Result{}, fmt.Errorf("toolset: prepare direct tool %q: %w", name, prepareErr)
 		}

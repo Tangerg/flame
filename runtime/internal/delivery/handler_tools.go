@@ -2,9 +2,10 @@ package delivery
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	toolsvc "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -31,12 +32,12 @@ func (s *Handler) ListTools(ctx context.Context) (*protocol.Page[protocol.ToolSp
 // admits cwd before the adapter confines tool paths beneath it; the result is
 // a canonical JSON value projected only at this Delivery boundary.
 func (s *Handler) InvokeTool(ctx context.Context, in protocol.InvokeToolRequest) (any, error) {
-	args, err := json.Marshal(in.Arguments)
+	args, err := toolsvc.ArgumentsFromMap(in.Arguments)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", protocol.ErrInvalidParams, err)
 	}
 	result, err := s.tools.Invoke(ctx, workspaceapp.DiagnosticToolInvocation{
-		Name: in.Name, Arguments: string(args), CWD: workspaceRefPath(in.Workspace),
+		Name: in.Name, Arguments: args, CWD: workspaceRefPath(in.Workspace),
 	})
 	if err != nil {
 		return nil, wireWorkspaceError(err)

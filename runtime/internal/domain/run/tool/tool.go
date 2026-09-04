@@ -1,6 +1,17 @@
 // Package tool defines the runtime's model-facing tool vocabulary.
 package tool
 
+import (
+	"errors"
+	"fmt"
+	"strings"
+	"unicode/utf8"
+)
+
+// ErrInvalidDefinition reports registered Tool metadata that cannot be used as
+// one stable model- and client-facing capability definition.
+var ErrInvalidDefinition = errors.New("tool: invalid definition")
+
 // Group identifies the model-facing Tool surface assigned to one Interaction
 // deployment layer.
 type Group string
@@ -59,6 +70,20 @@ type Tool struct {
 	Description string
 	Schema      Schema
 	SafetyClass SafetyClass
+}
+
+// Validate checks the metadata invariants shared by every Tool catalog.
+func (t Tool) Validate() error {
+	if !utf8.ValidString(t.Name) || strings.TrimSpace(t.Name) == "" || t.Name != strings.TrimSpace(t.Name) {
+		return fmt.Errorf("%w: name %q is empty, invalid UTF-8, or not canonical", ErrInvalidDefinition, t.Name)
+	}
+	if !utf8.ValidString(t.Description) {
+		return fmt.Errorf("%w: Tool %q description is not valid UTF-8", ErrInvalidDefinition, t.Name)
+	}
+	if !t.SafetyClass.Valid() {
+		return fmt.Errorf("%w: Tool %q has unknown safety class %q", ErrInvalidDefinition, t.Name, t.SafetyClass)
+	}
+	return nil
 }
 
 // SafetyClass classifies how aggressively the runtime gates a tool call

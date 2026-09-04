@@ -3,10 +3,8 @@ package workspace
 import (
 	"cmp"
 	"context"
-	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
 	toolsvc "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -16,7 +14,7 @@ import (
 // outside a Run and must honor the supplied workspace root.
 type DiagnosticToolRegistry interface {
 	List(ctx context.Context) ([]toolsvc.Tool, error)
-	Invoke(ctx context.Context, root, name, arguments string) (toolsvc.Result, error)
+	Invoke(ctx context.Context, root, name string, arguments toolsvc.Arguments) (toolsvc.Result, error)
 }
 
 // DiagnosticToolRoots resolves the workspace root an external diagnostic invocation is
@@ -29,7 +27,7 @@ type DiagnosticToolRoots interface {
 // DiagnosticToolInvocation is one direct, read-only diagnostic tool call.
 type DiagnosticToolInvocation struct {
 	Name      string
-	Arguments string
+	Arguments toolsvc.Arguments
 	CWD       string
 }
 
@@ -53,11 +51,8 @@ func (c *DiagnosticTools) List(ctx context.Context) ([]toolsvc.Tool, error) {
 	}
 	tools = slices.Clone(tools)
 	for _, candidate := range tools {
-		if strings.TrimSpace(candidate.Name) == "" {
-			return nil, errors.New("workspace: diagnostic tool catalog contains an empty name")
-		}
-		if candidate.Name != strings.TrimSpace(candidate.Name) {
-			return nil, fmt.Errorf("workspace: diagnostic tool catalog contains non-canonical name %q", candidate.Name)
+		if err := candidate.Validate(); err != nil {
+			return nil, fmt.Errorf("workspace: diagnostic tool catalog contains an invalid definition: %w", err)
 		}
 		if candidate.SafetyClass != toolsvc.SafetyClassSafe {
 			return nil, fmt.Errorf("workspace: diagnostic tool %q is not safe for direct invocation", candidate.Name)
