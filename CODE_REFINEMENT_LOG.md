@@ -231,6 +231,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 271 | `9f54a815` + CLI dependency update | Snapshotted and normalized Run-page statuses before validation, then passed storage an isolated copy so cursor identity and returned-row checks cannot be changed across the read. |
 | 272 | `d0ad579d` + CLI dependency update | Froze Plan steps before current-state reads and clock callbacks, so initial and existing replacements validate, version, and persist one caller-independent command snapshot. |
 | 273 | `ee4a1710` + CLI dependency update | Constructed owned conversation values before Seed/Append persistence reads, preventing callbacks from changing nested message parts between command admission and durable writes. |
+| 274 | `56ca8838` + CLI dependency update | Snapshotted authored-watch cwd inputs before inspection and deep-cloned change identities per observer, preventing callbacks from altering later resolution, callers, or sibling observers. |
 
 ## Verification contract
 
