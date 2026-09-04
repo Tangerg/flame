@@ -159,6 +159,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 199 | `44c562dd` + CLI dependency update | Protected Goal point reads and startup reconciliation from invalid, mismatched, or duplicate persistence results before any lifecycle side effect. |
 | 200 | `2612b288` + CLI dependency update | Removed the redundant Goal value from CAS acknowledgements so Domain-decided replacements remain the only state authority. |
 | 201 | `96fe1b57` + CLI dependency update | Validated complete pending-occurrence and due-schedule worker batches before any Run dispatch or cursor claim. |
+| 202 | `923e7fda` + CLI dependency update | Protected Schedule point-read identity and removed the redundant store-owned update result. |
 
 ## Verification contract
 
