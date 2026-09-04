@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -37,7 +38,7 @@ func (c *Coordinator) planBoundary(ctx context.Context, runID string) (PlanBound
 		return PlanBoundary{}, nil
 	}
 	if runID == "" {
-		return PlanBoundary{Recorded: true}, nil
+		return newPlanBoundary(nil, true)
 	}
 	if _, err := resourceid.ParseRun(runID); err != nil {
 		return PlanBoundary{}, fmt.Errorf("sessions: Plan boundary: %w", err)
@@ -46,7 +47,20 @@ func (c *Coordinator) planBoundary(ctx context.Context, runID string) (PlanBound
 	if err != nil {
 		return PlanBoundary{}, err
 	}
-	return PlanBoundary{Steps: steps, Recorded: recorded}, nil
+	return newPlanBoundary(steps, recorded)
+}
+
+func newPlanBoundary(steps []plan.Step, recorded bool) (PlanBoundary, error) {
+	if !recorded {
+		if len(steps) != 0 {
+			return PlanBoundary{}, errors.New("sessions: unrecorded Plan boundary carries steps")
+		}
+		return PlanBoundary{}, nil
+	}
+	if err := plan.ValidateSteps(steps); err != nil {
+		return PlanBoundary{}, fmt.Errorf("sessions: invalid Plan boundary: %w", err)
+	}
+	return PlanBoundary{Steps: slices.Clone(steps), Recorded: true}, nil
 }
 
 func (c *Coordinator) prepareBoundaryPlanReplacement(

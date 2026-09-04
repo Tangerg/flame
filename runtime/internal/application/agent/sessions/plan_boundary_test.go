@@ -33,6 +33,15 @@ func (refusingBoundaries) Boundary(context.Context, string) ([]plan.Step, bool, 
 	return nil, false, errors.New("boundary lookup should not have been needed")
 }
 
+type fixedBoundary struct {
+	steps    []plan.Step
+	recorded bool
+}
+
+func (f fixedBoundary) Boundary(context.Context, string) ([]plan.Step, bool, error) {
+	return f.steps, f.recorded, nil
+}
+
 func boundaryCoordinator(stores testStores, boundaries PlanBoundaries) *Coordinator {
 	deps := testDependencies(stores, Dependencies{Paths: testWorkspaceResolver{}})
 	deps.Plan = &PlanServices{
@@ -90,6 +99,38 @@ func TestRollbackPublishesTheBoundaryPlanList(t *testing.T) {
 	steps := replacementSteps(applied.PlanReplacement)
 	if len(steps) != 1 || steps[0].Description != "the plan as of the boundary" {
 		t.Fatalf("rollback Plan replacement = %+v, want the boundary list", steps)
+	}
+}
+
+func TestPlanBoundaryRejectsContradictoryOrInvalidStoreMaterial(t *testing.T) {
+	tests := map[string]fixedBoundary{
+		"unrecorded steps": {
+			steps: []plan.Step{{Description: "unowned", Status: plan.StatusPending}},
+		},
+		"invalid recorded steps": {
+			steps: []plan.Step{{Status: plan.StatusPending}}, recorded: true,
+		},
+	}
+	for name, boundary := range tests {
+		t.Run(name, func(t *testing.T) {
+			coordinator := boundaryCoordinator(idleStores(nil), boundary)
+			if _, err := coordinator.planBoundary(t.Context(), "run_1"); err == nil {
+				t.Fatal("invalid Plan boundary was accepted")
+			}
+		})
+	}
+}
+
+func TestPlanBoundaryOwnsRecordedSteps(t *testing.T) {
+	steps := []plan.Step{{Description: "owned", Status: plan.StatusPending}}
+	coordinator := boundaryCoordinator(idleStores(nil), fixedBoundary{steps: steps, recorded: true})
+	boundary, err := coordinator.planBoundary(t.Context(), "run_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps[0].Description = "mutated"
+	if boundary.Steps[0].Description != "owned" {
+		t.Fatalf("Plan boundary retained store-owned steps: %+v", boundary.Steps)
 	}
 }
 
