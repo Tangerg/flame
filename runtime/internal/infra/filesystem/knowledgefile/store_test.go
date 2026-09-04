@@ -26,6 +26,15 @@ func newKnowledgeStore(t *testing.T, userScopeDirectory, defaultWorkspaceDirecto
 	return store
 }
 
+func knowledgeReplacement(t *testing.T, scope knowledge.Scope, expectedRevision, content string) knowledge.Replacement {
+	t.Helper()
+	replacement, err := knowledge.NewReplacement(scope, expectedRevision, content)
+	if err != nil {
+		t.Fatalf("prepare Knowledge replacement: %v", err)
+	}
+	return replacement
+}
+
 func TestStoreUpdateAndGet(t *testing.T) {
 	store := newKnowledgeStore(t, t.TempDir(), t.TempDir())
 	ctx := context.Background()
@@ -35,7 +44,7 @@ func TestStoreUpdateAndGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get fresh: %v", err)
 	}
-	written, err := store.Update(ctx, knowledge.ScopeHome, "", fresh.Revision, userBody)
+	written, err := store.Update(ctx, "", knowledgeReplacement(t, knowledge.ScopeHome, fresh.Revision, userBody))
 	if err != nil {
 		t.Fatalf("Update: %v", err)
 	}
@@ -57,8 +66,8 @@ func TestStoreRejectsOversizedKnowledgeDocuments(t *testing.T) {
 			t.Fatal(err)
 		}
 		content := strings.Repeat("x", int(knowledge.MaxDocumentBytes)+1)
-		if _, err := store.Update(t.Context(), knowledge.ScopeHome, "", fresh.Revision, content); !errors.Is(err, knowledge.ErrDocumentTooLarge) {
-			t.Fatalf("Update error = %v, want ErrDocumentTooLarge", err)
+		if _, err := knowledge.NewReplacement(knowledge.ScopeHome, fresh.Revision, content); !errors.Is(err, knowledge.ErrDocumentTooLarge) {
+			t.Fatalf("NewReplacement error = %v, want ErrDocumentTooLarge", err)
 		}
 		if _, err := os.Stat(filepath.Join(home, "FLAME.md")); !errors.Is(err, os.ErrNotExist) {
 			t.Fatalf("oversized Update changed storage: %v", err)
@@ -85,7 +94,7 @@ func TestStoreRejectsOversizedKnowledgeDocuments(t *testing.T) {
 			t.Fatal(err)
 		}
 		content := strings.Repeat("x", int(knowledge.MaxDocumentBytes))
-		if _, updateErr := store.Update(t.Context(), knowledge.ScopeHome, "", fresh.Revision, content); updateErr != nil {
+		if _, updateErr := store.Update(t.Context(), "", knowledgeReplacement(t, knowledge.ScopeHome, fresh.Revision, content)); updateErr != nil {
 			t.Fatalf("Update exact boundary: %v", updateErr)
 		}
 		got, err := store.Get(t.Context(), knowledge.ScopeHome, "")
@@ -111,7 +120,7 @@ func TestStorePersistsAcrossInstances(t *testing.T) {
 	defaultWorkspaceDirectory := t.TempDir()
 	first := newKnowledgeStore(t, userScopeDirectory, defaultWorkspaceDirectory)
 	fresh, _ := first.Get(context.Background(), knowledge.ScopeHome, "")
-	_, _ = first.Update(context.Background(), knowledge.ScopeHome, "", fresh.Revision, "remember me")
+	_, _ = first.Update(context.Background(), "", knowledgeReplacement(t, knowledge.ScopeHome, fresh.Revision, "remember me"))
 
 	second := newKnowledgeStore(t, userScopeDirectory, defaultWorkspaceDirectory)
 	got, _ := second.Get(context.Background(), knowledge.ScopeHome, "")
@@ -137,7 +146,7 @@ func TestStoreRejectsKnowledgeSymlinkOutsideScope(t *testing.T) {
 	if _, err := store.List(t.Context(), "", ""); !errors.Is(err, knowledge.ErrPathOutsideScope) {
 		t.Fatalf("List error = %v, want ErrPathOutsideScope", err)
 	}
-	if _, err := store.Update(t.Context(), knowledge.ScopeHome, "", "sha256:untrusted", "overwrite"); !errors.Is(err, knowledge.ErrPathOutsideScope) {
+	if _, err := store.Update(t.Context(), "", knowledgeReplacement(t, knowledge.ScopeHome, "sha256:untrusted", "overwrite")); !errors.Is(err, knowledge.ErrPathOutsideScope) {
 		t.Fatalf("Update error = %v, want ErrPathOutsideScope", err)
 	}
 	got, err := os.ReadFile(outside)
@@ -171,7 +180,7 @@ func TestStoreUsesInScopeSymlinkPhysicalIdentityAndPreservesMode(t *testing.T) {
 	if fresh.Content != "before" {
 		t.Fatalf("Get content = %q, want physical target content", fresh.Content)
 	}
-	written, err := store.Update(t.Context(), knowledge.ScopeHome, "", fresh.Revision, "after")
+	written, err := store.Update(t.Context(), "", knowledgeReplacement(t, knowledge.ScopeHome, fresh.Revision, "after"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +218,7 @@ func TestStoreCreatesMissingInScopeSymlinkTarget(t *testing.T) {
 	if fresh.Content != "" || fresh.Revision == "" {
 		t.Fatalf("fresh target = %+v, want addressable empty document", fresh)
 	}
-	if _, err := store.Update(t.Context(), knowledge.ScopeHome, "", fresh.Revision, "created"); err != nil {
+	if _, err := store.Update(t.Context(), "", knowledgeReplacement(t, knowledge.ScopeHome, fresh.Revision, "created")); err != nil {
 		t.Fatal(err)
 	}
 	if info, err := os.Lstat(alias); err != nil || info.Mode()&os.ModeSymlink == 0 {
@@ -234,7 +243,7 @@ func TestStoreUpdatePreservesRegularFileMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, updateErr := store.Update(t.Context(), knowledge.ScopeHome, "", fresh.Revision, "after"); updateErr != nil {
+	if _, updateErr := store.Update(t.Context(), "", knowledgeReplacement(t, knowledge.ScopeHome, fresh.Revision, "after")); updateErr != nil {
 		t.Fatal(updateErr)
 	}
 	info, err := os.Stat(path)
@@ -263,7 +272,7 @@ func TestStoreUsesPrivateModeForNewHomeAndReadableModeForNewWorkspace(t *testing
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, updateErr := store.Update(t.Context(), scope.value, scope.dir, fresh.Revision, "created"); updateErr != nil {
+		if _, updateErr := store.Update(t.Context(), scope.dir, knowledgeReplacement(t, scope.value, fresh.Revision, "created")); updateErr != nil {
 			t.Fatal(updateErr)
 		}
 		info, err := os.Stat(scope.path)
@@ -299,9 +308,8 @@ func TestStoreConcurrentUpdatesRejectStaleRevisionsWithoutTornWrites(t *testing.
 		body := fmt.Sprintf("knowledge from writer %02d", index)
 		wantBodies[body] = struct{}{}
 		writes.Go(func() {
-			entry, updateErr := store.Update(
-				t.Context(), knowledge.ScopeHome, "", fresh.Revision, body,
-			)
+			entry, updateErr := store.Update(t.Context(), "",
+				knowledgeReplacement(t, knowledge.ScopeHome, fresh.Revision, body))
 			if updateErr != nil {
 				writeErrors <- updateErr
 				return
@@ -354,10 +362,8 @@ func TestStoreCrossProcessUpdatesHaveOneCASWinner(t *testing.T) {
 			}
 			time.Sleep(time.Millisecond)
 		}
-		_, err := store.Update(
-			t.Context(), knowledge.ScopeHome, "",
-			os.Getenv("FLAME_TEST_KNOWLEDGE_REVISION"), os.Getenv("FLAME_TEST_KNOWLEDGE_BODY"),
-		)
+		_, err := store.Update(t.Context(), "", knowledgeReplacement(t, knowledge.ScopeHome,
+			os.Getenv("FLAME_TEST_KNOWLEDGE_REVISION"), os.Getenv("FLAME_TEST_KNOWLEDGE_BODY")))
 		switch {
 		case err == nil:
 			_, _ = os.Stdout.WriteString("written")
@@ -439,10 +445,8 @@ func TestStoreRecoversAfterWriterProcessDiesDuringStaging(t *testing.T) {
 		if err := os.WriteFile(os.Getenv("FLAME_TEST_KNOWLEDGE_READY"), nil, 0o600); err != nil {
 			t.Fatal(err)
 		}
-		_, err := store.Update(
-			t.Context(), knowledge.ScopeHome, "",
-			os.Getenv("FLAME_TEST_KNOWLEDGE_REVISION"), body,
-		)
+		_, err := store.Update(t.Context(), "", knowledgeReplacement(t, knowledge.ScopeHome,
+			os.Getenv("FLAME_TEST_KNOWLEDGE_REVISION"), body))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -455,7 +459,7 @@ func TestStoreRecoversAfterWriterProcessDiesDuringStaging(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	written, err := store.Update(t.Context(), knowledge.ScopeHome, "", fresh.Revision, "before")
+	written, err := store.Update(t.Context(), "", knowledgeReplacement(t, knowledge.ScopeHome, fresh.Revision, "before"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -527,7 +531,7 @@ func TestStoreRecoversAfterWriterProcessDiesDuringStaging(t *testing.T) {
 	if _, statErr := os.Stat(staged); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("cold read did not remove orphan staging file: %v", statErr)
 	}
-	recovered, err := restarted.Update(t.Context(), knowledge.ScopeHome, "", written.Revision, "after")
+	recovered, err := restarted.Update(t.Context(), "", knowledgeReplacement(t, knowledge.ScopeHome, written.Revision, "after"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -573,7 +577,7 @@ func TestStoreListIncludesEmptyAddressableScopes(t *testing.T) {
 	ctx := context.Background()
 
 	fresh, _ := store.Get(ctx, knowledge.ScopeHome, "")
-	_, _ = store.Update(ctx, knowledge.ScopeHome, "", fresh.Revision, "only user")
+	_, _ = store.Update(ctx, "", knowledgeReplacement(t, knowledge.ScopeHome, fresh.Revision, "only user"))
 
 	entries, err := store.List(ctx, "", "")
 	if err != nil {
@@ -613,7 +617,7 @@ func TestStoreListPreservesDistinctCascadeScopes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Get(%s): %v", write.scope, err)
 		}
-		if _, err := store.Update(t.Context(), write.scope, write.dir, fresh.Revision, write.body); err != nil {
+		if _, err := store.Update(t.Context(), write.dir, knowledgeReplacement(t, write.scope, fresh.Revision, write.body)); err != nil {
 			t.Fatalf("Update(%s): %v", write.scope, err)
 		}
 	}
@@ -660,7 +664,7 @@ func TestStoreRejectsUnknownScope(t *testing.T) {
 	if _, err := store.Get(t.Context(), unknown, t.TempDir()); err == nil {
 		t.Fatal("Get accepted an unknown scope")
 	}
-	if _, err := store.Update(t.Context(), unknown, t.TempDir(), "revision", "notes"); err == nil {
+	if _, err := knowledge.NewReplacement(unknown, "revision", "notes"); err == nil {
 		t.Fatal("Update accepted an unknown scope")
 	}
 }
@@ -672,7 +676,7 @@ func TestStoreProjectScopeUsesConfiguredDefault(t *testing.T) {
 	store := newKnowledgeStore(t, t.TempDir(), projectDir)
 	ctx := context.Background()
 	fresh, _ := store.Get(ctx, knowledge.ScopeCWD, "")
-	_, _ = store.Update(ctx, knowledge.ScopeCWD, "", fresh.Revision, "project body")
+	_, _ = store.Update(ctx, "", knowledgeReplacement(t, knowledge.ScopeCWD, fresh.Revision, "project body"))
 
 	// File should live at <projectDir>/FLAME.md
 	body, err := os.ReadFile(filepath.Join(projectDir, "FLAME.md"))
@@ -693,7 +697,7 @@ func TestStoreProjectScopeFollowsDir(t *testing.T) {
 	dirA, dirB := t.TempDir(), t.TempDir()
 	ctx := context.Background()
 	fresh, _ := store.Get(ctx, knowledge.ScopeCWD, dirA)
-	if _, err := store.Update(ctx, knowledge.ScopeCWD, dirA, fresh.Revision, "alpha knowledge"); err != nil {
+	if _, err := store.Update(ctx, dirA, knowledgeReplacement(t, knowledge.ScopeCWD, fresh.Revision, "alpha knowledge")); err != nil {
 		t.Fatalf("Update dirA: %v", err)
 	}
 

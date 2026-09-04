@@ -16,7 +16,7 @@ var ErrKnowledgeUnavailable = errors.New("workspace: knowledge unavailable")
 // KnowledgeStore is the complete persistence surface consumed by Knowledge.
 type KnowledgeStore interface {
 	Get(ctx context.Context, scope knowledge.Scope, dir string) (knowledge.Entry, error)
-	Update(ctx context.Context, scope knowledge.Scope, dir, expectedRevision, content string) (knowledge.Entry, error)
+	Update(ctx context.Context, dir string, replacement knowledge.Replacement) (knowledge.Entry, error)
 	List(ctx context.Context, cwd, projectRoot string) ([]knowledge.Entry, error)
 }
 
@@ -108,44 +108,39 @@ func (k *Knowledge) Read(ctx context.Context, scope knowledge.Scope, cwd string)
 
 // Update conditionally replaces one FLAME.md document and returns the committed fact.
 func (k *Knowledge) Update(ctx context.Context, scope knowledge.Scope, cwd, expectedRevision, content string) (knowledge.Entry, error) {
-	if err := scope.Validate(); err != nil {
-		return knowledge.Entry{}, err
-	}
-	if expectedRevision == "" {
-		return knowledge.Entry{}, knowledge.ErrRevisionRequired
-	}
-	if err := knowledge.ValidateDocument(content); err != nil {
+	replacement, err := knowledge.NewReplacement(scope, expectedRevision, content)
+	if err != nil {
 		return knowledge.Entry{}, err
 	}
 	if k.store == nil {
 		return knowledge.Entry{}, ErrKnowledgeUnavailable
 	}
-	if scope == knowledge.ScopeHome {
-		return k.update(ctx, scope, "", expectedRevision, content)
+	if replacement.Scope() == knowledge.ScopeHome {
+		return k.update(ctx, "", replacement)
 	}
 	root, err := k.scope.root(cwd)
 	if err != nil {
 		return knowledge.Entry{}, err
 	}
-	if scope == knowledge.ScopeProjectRoot {
+	if replacement.Scope() == knowledge.ScopeProjectRoot {
 		root, err = k.projectRoot(root)
 		if err != nil {
 			return knowledge.Entry{}, err
 		}
 	}
-	return k.update(ctx, scope, root, expectedRevision, content)
+	return k.update(ctx, root, replacement)
 }
 
-func (k *Knowledge) update(ctx context.Context, scope knowledge.Scope, root, expectedRevision, content string) (knowledge.Entry, error) {
-	entry, err := k.store.Update(ctx, scope, root, expectedRevision, content)
+func (k *Knowledge) update(ctx context.Context, root string, replacement knowledge.Replacement) (knowledge.Entry, error) {
+	entry, err := k.store.Update(ctx, root, replacement)
 	if err = knowledgePathError(err); err != nil {
 		return knowledge.Entry{}, err
 	}
-	entry, err = validateKnowledgeEntry(entry, scope)
+	entry, err = validateKnowledgeEntry(entry, replacement.Scope())
 	if err != nil {
 		return knowledge.Entry{}, err
 	}
-	if entry.Content != content {
+	if entry.Content != replacement.Content() {
 		return knowledge.Entry{}, fmt.Errorf("workspace: knowledge update did not acknowledge its content")
 	}
 	if k.observations != nil {

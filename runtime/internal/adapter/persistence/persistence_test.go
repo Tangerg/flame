@@ -45,8 +45,12 @@ func TestOpenRequiresAndUsesExplicitProcessPaths(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read default project knowledge: %v", err)
 	}
+	replacement, err := knowledge.NewReplacement(knowledge.ScopeCWD, fresh.Revision, "project")
+	if err != nil {
+		t.Fatalf("prepare project knowledge replacement: %v", err)
+	}
 	if _, err := bundle.Knowledge.Update(
-		t.Context(), knowledge.ScopeCWD, "", fresh.Revision, "project",
+		t.Context(), "", replacement,
 	); err != nil {
 		t.Fatalf("write default project knowledge: %v", err)
 	}

@@ -42,16 +42,16 @@ func (f *fakeKnowledgeStore) Get(_ context.Context, scope knowledge.Scope, cwd s
 	return f.getEntry, nil
 }
 
-func (f *fakeKnowledgeStore) Update(_ context.Context, scope knowledge.Scope, cwd, expectedRevision, content string) (knowledge.Entry, error) {
-	f.updateScope = scope
+func (f *fakeKnowledgeStore) Update(_ context.Context, cwd string, replacement knowledge.Replacement) (knowledge.Entry, error) {
+	f.updateScope = replacement.Scope()
 	f.updateCWD = cwd
-	f.updateRevision = expectedRevision
-	f.updateContent = content
+	f.updateRevision = replacement.ExpectedRevision()
+	f.updateContent = replacement.Content()
 	if f.updateErr != nil {
 		return knowledge.Entry{}, f.updateErr
 	}
 	return knowledge.Entry{
-		Scope: scope, Path: "/home/.flame/FLAME.md", Content: content, Revision: "rev-2",
+		Scope: replacement.Scope(), Path: "/home/.flame/FLAME.md", Content: replacement.Content(), Revision: "rev-2",
 	}, nil
 }
 

@@ -209,13 +209,13 @@ func initialDirectoryMode(scope knowledge.Scope) os.FileMode {
 	return 0o755
 }
 
-func (s *Store) Update(ctx context.Context, scope knowledge.Scope, dir, expectedRevision, content string) (knowledge.Entry, error) {
-	if expectedRevision == "" {
-		return knowledge.Entry{}, knowledge.ErrRevisionRequired
-	}
-	if err := knowledge.ValidateDocument(content); err != nil {
+func (s *Store) Update(ctx context.Context, dir string, replacement knowledge.Replacement) (knowledge.Entry, error) {
+	if err := replacement.Validate(); err != nil {
 		return knowledge.Entry{}, err
 	}
+	scope := replacement.Scope()
+	expectedRevision := replacement.ExpectedRevision()
+	content := replacement.Content()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rootPath, err := s.rootFor(scope, dir)
