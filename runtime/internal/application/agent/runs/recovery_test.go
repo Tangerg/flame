@@ -869,6 +869,19 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 	if !store.commit.ToolInvocations[0].FinishedAt.Equal(finishedAt) {
 		t.Fatalf("Tool invocation recovery = %+v", store.commit.ToolInvocations[0])
 	}
+	foreignOrphan := store.commit
+	foreignOrphan.ModelInvocations = append(
+		[]ModelInvocationRecovery(nil),
+		store.commit.ModelInvocations...,
+	)
+	for index := range foreignOrphan.ModelInvocations {
+		if foreignOrphan.ModelInvocations[index].RunID == "run_already_terminal" {
+			foreignOrphan.ModelInvocations[index].SessionID = "session_foreign"
+		}
+	}
+	if err := foreignOrphan.Validate(); err == nil {
+		t.Fatal("RecoveryCommit.Validate accepted an orphan invocation outside recovered Session ownership")
+	}
 }
 
 func TestRecoveryDoesNotMoveDurableTimeBackwardWhenTheClockRegresses(t *testing.T) {

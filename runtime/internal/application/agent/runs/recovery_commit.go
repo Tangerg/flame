@@ -68,10 +68,17 @@ func (r RecoveryCommit) Validate() error {
 	); err != nil {
 		return err
 	}
-	if err := validateRecoveryModelInvocations(r.ModelInvocations, lostByID); err != nil {
+	if err := validateCanonicalSessionIdentities("recovered Session", r.RecoveredSessionIDs); err != nil {
 		return err
 	}
-	if err := validateRecoveryToolInvocations(r.ToolInvocations, lostByID); err != nil {
+	recoveredSessions := make(map[string]struct{}, len(r.RecoveredSessionIDs))
+	for _, sessionID := range r.RecoveredSessionIDs {
+		recoveredSessions[sessionID] = struct{}{}
+	}
+	if err := validateRecoveryModelInvocations(r.ModelInvocations, lostByID, recoveredSessions); err != nil {
+		return err
+	}
+	if err := validateRecoveryToolInvocations(r.ToolInvocations, lostByID, recoveredSessions); err != nil {
 		return err
 	}
 
@@ -101,9 +108,6 @@ func (r RecoveryCommit) Validate() error {
 	if err := validateCanonicalMemberIdentities("preserved checkpoint root", r.PreservedCheckpointRootIDs); err != nil {
 		return err
 	}
-	if err := validateCanonicalSessionIdentities("recovered Session", r.RecoveredSessionIDs); err != nil {
-		return err
-	}
 	if err := validateCanonicalSessionIdentities("checkpoint deletion Session", r.DeleteCheckpointSessionIDs); err != nil {
 		return err
 	}
@@ -113,6 +117,7 @@ func (r RecoveryCommit) Validate() error {
 func validateRecoveryModelInvocations(
 	invocations []ModelInvocationRecovery,
 	lostByID map[string]rundomain.Run,
+	recoveredSessions map[string]struct{},
 ) error {
 	seen := make(map[string]struct{}, len(invocations))
 	for index, invocation := range invocations {
@@ -124,6 +129,7 @@ func validateRecoveryModelInvocations(
 			invocation.StartedAt,
 			invocation.FinishedAt,
 			lostByID,
+			recoveredSessions,
 		); err != nil {
 			return fmt.Errorf("runs: recovery commit model invocation[%d]: %w", index, err)
 		}
@@ -151,6 +157,7 @@ type recoveryInterruptOwnerKey struct {
 func validateRecoveryToolInvocations(
 	invocations []ToolInvocationRecovery,
 	lostByID map[string]rundomain.Run,
+	recoveredSessions map[string]struct{},
 ) error {
 	seen := make(map[recoverySegmentResourceKey]struct{}, len(invocations))
 	seenItems := make(map[recoverySegmentResourceKey]struct{}, len(invocations))
@@ -163,6 +170,7 @@ func validateRecoveryToolInvocations(
 			invocation.StartedAt,
 			invocation.FinishedAt,
 			lostByID,
+			recoveredSessions,
 		); err != nil {
 			return fmt.Errorf("runs: recovery commit Tool invocation[%d]: %w", index, err)
 		}
@@ -198,9 +206,13 @@ func validateRecoveryInvocation(
 	sessionID, runID, segmentID, callID string,
 	startedAt, finishedAt time.Time,
 	lostByID map[string]rundomain.Run,
+	recoveredSessions map[string]struct{},
 ) error {
 	if _, err := resourceid.ParseSession(sessionID); err != nil {
 		return err
+	}
+	if _, recovered := recoveredSessions[sessionID]; !recovered {
+		return fmt.Errorf("invocation Session %q is outside this recovery ownership", sessionID)
 	}
 	if _, err := resourceid.ParseRun(runID); err != nil {
 		return err
