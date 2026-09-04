@@ -23,7 +23,8 @@ type PlanReader interface {
 }
 
 // GoalReader is the working-context adapter's read-only view of the current
-// autonomous Goal aggregate.
+// autonomous Goal aggregate. A found Goal is valid and belongs to the requested
+// Session.
 type GoalReader interface {
 	Current(ctx context.Context, sessionID string) (goal.Goal, bool, error)
 }

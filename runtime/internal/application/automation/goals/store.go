@@ -26,15 +26,8 @@ func loadGoal(ctx context.Context, store Store, sessionID string) (goal.Goal, bo
 	if err != nil {
 		return goal.Goal{}, false, err
 	}
-	if err := current.Validate(); err != nil {
+	if err := current.ValidateFor(sessionID); err != nil {
 		return goal.Goal{}, false, fmt.Errorf("goals: store Get(%q) returned invalid Current: %w", sessionID, err)
-	}
-	if current.SessionID() != sessionID {
-		return goal.Goal{}, false, fmt.Errorf(
-			"goals: store Get(%q) returned Session %q",
-			sessionID,
-			current.SessionID(),
-		)
 	}
 	value, exists := current.Goal()
 	return value, exists, nil

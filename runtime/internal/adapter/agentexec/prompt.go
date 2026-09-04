@@ -167,12 +167,6 @@ func (w *WorkingContextComposer) CurrentSessionState(
 			return nil, fmt.Errorf("agentexec: load current Session Goal: %w", err)
 		}
 		if found {
-			if err := current.ValidateSnapshot(); err != nil {
-				return nil, fmt.Errorf("agentexec: current Session Goal is invalid: %w", err)
-			}
-			if current.SessionID() != sessionID {
-				return nil, errors.New("agentexec: current Session Goal belongs to another Session")
-			}
 			var prompt promptComposition
 			prompt.append(
 				"## Current Autonomous Goal\n\nObjective: "+strconv.Quote(current.Objective())+

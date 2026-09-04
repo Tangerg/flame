@@ -131,6 +131,24 @@ func (c Current) Validate() error {
 	return c.goal.ValidateSnapshot()
 }
 
+// ValidateFor verifies the complete current value and its exact expected
+// Session identity. Point reads use it before stored Goal state can influence a
+// use case.
+func (c Current) ValidateFor(expectedSessionID string) error {
+	if err := c.Validate(); err != nil {
+		return err
+	}
+	if c.sessionID != expectedSessionID {
+		return fmt.Errorf(
+			"%w: Current Session %q does not match requested identity %q",
+			ErrInvalid,
+			c.sessionID,
+			expectedSessionID,
+		)
+	}
+	return nil
+}
+
 func (c Current) Goal() (Goal, bool) {
 	if c.goal == nil {
 		return Goal{}, false

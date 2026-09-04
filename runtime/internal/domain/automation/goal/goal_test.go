@@ -230,6 +230,22 @@ func TestCurrentAndVersionDistinguishAbsenceFromCommittedState(t *testing.T) {
 	}
 }
 
+func TestCurrentValidatesExactSessionIdentity(t *testing.T) {
+	unwritten, err := Unwritten("ses_1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := unwritten.ValidateFor("ses_1"); err != nil {
+		t.Fatalf("ValidateFor exact unwritten Current: %v", err)
+	}
+	if err := unwritten.ValidateFor("ses_2"); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("ValidateFor mismatched Current error = %v, want ErrInvalid", err)
+	}
+	if err := (Current{}).ValidateFor("ses_1"); err == nil {
+		t.Fatal("ValidateFor accepted invalid Current")
+	}
+}
+
 func TestLifecycleTransitionsAreImmutableAndMonotonic(t *testing.T) {
 	now := time.Unix(10, 0).UTC()
 	active := testGoalAt(t, UnlimitedBudget(), run.Capabilities{}, now)

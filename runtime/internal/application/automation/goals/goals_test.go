@@ -732,6 +732,37 @@ func TestDriverCurrentRejectsInvalidOrMismatchedStoreValue(t *testing.T) {
 	}
 }
 
+func TestReaderRejectsInvalidOrMismatchedStoreValue(t *testing.T) {
+	mismatched, err := goal.Unwritten("other-session")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name    string
+		current goal.Current
+	}{
+		{name: "invalid current"},
+		{name: "mismatched session", current: mismatched},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			store := boundaryGoalStore{
+				Store: newMemStore(),
+				get: func(context.Context, string) (goal.Current, error) {
+					return test.current, nil
+				},
+			}
+			reader := goals.NewReader(store)
+
+			if _, _, err := reader.Current(t.Context(), "requested-session"); err == nil {
+				t.Fatal("Current accepted an invalid persistence result")
+			}
+			if _, err := reader.Active(t.Context(), "requested-session"); err == nil {
+				t.Fatal("Active accepted an invalid persistence result")
+			}
+		})
+	}
+}
+
 func unwrittenGoalVersion(t *testing.T, sessionID string) goal.Version {
 	t.Helper()
 	current, err := goal.Unwritten(sessionID)
