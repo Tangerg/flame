@@ -48,6 +48,40 @@ func TestStartCommandCloneOwnsMutableInput(t *testing.T) {
 	}
 }
 
+func TestResumeCommandCloneOwnsMutableInput(t *testing.T) {
+	command := ResumeCommand{
+		Responses: []ResumeResponse{
+			{Kind: ApprovalResponseKind, Approval: &ApprovalResponse{Arguments: "{}"}},
+			{Kind: QuestionResponseKind, Question: &QuestionResponse{Answers: [][]string{{"yes"}}}},
+		},
+		Input: []transcript.ContentBlock{{
+			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("image"),
+		}},
+		CallerCapabilities: run.Capabilities{
+			InterruptKinds: []interrupt.Kind{interrupt.Question},
+		},
+	}
+	owned := command.clone()
+
+	command.Responses[0].Approval.Arguments = "changed"
+	command.Responses[1].Question.Answers[0][0] = "changed"
+	command.Input[0].Bytes[0] = 'x'
+	command.CallerCapabilities.InterruptKinds[0] = interrupt.Approval
+
+	if got := owned.Responses[0].Approval.Arguments; got != "{}" {
+		t.Fatalf("owned approval arguments = %q", got)
+	}
+	if got := owned.Responses[1].Question.Answers[0][0]; got != "yes" {
+		t.Fatalf("owned question answer = %q", got)
+	}
+	if got := string(owned.Input[0].Bytes); got != "image" {
+		t.Fatalf("owned input bytes = %q", got)
+	}
+	if got := owned.CallerCapabilities.InterruptKinds; !slices.Equal(got, []interrupt.Kind{interrupt.Question}) {
+		t.Fatalf("owned caller capabilities = %v", got)
+	}
+}
+
 func TestStartExecutionValidateDelegatesCoreOptions(t *testing.T) {
 	t.Parallel()
 

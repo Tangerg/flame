@@ -246,6 +246,27 @@ type ResumeCommand struct {
 	CallerCapabilities run.Capabilities
 }
 
+func (r ResumeCommand) clone() ResumeCommand {
+	r.Responses = slices.Clone(r.Responses)
+	for index := range r.Responses {
+		if r.Responses[index].Approval != nil {
+			approval := *r.Responses[index].Approval
+			r.Responses[index].Approval = &approval
+		}
+		if r.Responses[index].Question != nil {
+			question := *r.Responses[index].Question
+			question.Answers = make([][]string, len(question.Answers))
+			for answerIndex, answers := range r.Responses[index].Question.Answers {
+				question.Answers[answerIndex] = slices.Clone(answers)
+			}
+			r.Responses[index].Question = &question
+		}
+	}
+	r.Input = transcript.CloneContent(r.Input)
+	r.CallerCapabilities = r.CallerCapabilities.Clone()
+	return r
+}
+
 // CommittedUserInput is optional follow-up content whose transcript Item has
 // already committed with a continuation opening. The executor must make it
 // visible at the first root model boundary after the answered Tool result,
