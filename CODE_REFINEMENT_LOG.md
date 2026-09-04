@@ -200,6 +200,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 240 | `11917559` + CLI dependency update | Replaced split Schedule state/revision updates with one Domain-owned management replacement that preserves identity, creation time, and the accepted-Run cursor through SQLite CAS. |
 | 241 | `f3f59d2f` + CLI dependency update | Replaced split Goal state/version writes with one Domain-owned exact replacement across lifecycle, recovery, terminal accounting, invalidation, and SQLite CAS. |
 | 242 | `0e7dc8ce` + CLI dependency update | Replaced the five-part Agent Memory generation call with one Domain-owned publication that binds target, expected and successor states, canonical contents, and monotonic time through SQLite CAS. |
+| 243 | `772eab24` + CLI dependency update | Bound each Knowledge file CAS precondition and replacement body into one Domain-owned value while preserving workspace routing and public protocol input at their existing owners. |
 
 ## Verification contract
 
