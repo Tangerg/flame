@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 
 	domain "github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
@@ -17,6 +18,10 @@ type fakeItemSource struct {
 }
 
 func (f *fakeItemSource) SearchCorpus(context.Context, string) ([]domain.Item, error) {
+	return slices.Clone(f.items), f.err
+}
+
+func (f *fakeItemSource) Items(context.Context, domain.Scope, string) ([]domain.Item, error) {
 	return slices.Clone(f.items), f.err
 }
 
@@ -51,17 +56,29 @@ func (*pointerEmbedder) Embed(context.Context, []string) ([][]float32, error) {
 	return nil, nil
 }
 
-func mustNewSearcher(
+func mustNewReadModel(
 	t *testing.T,
-	store SearchStore,
+	store ReadStore,
 	resolve func(context.Context) (Embedder, error),
-) *Searcher {
+) *ReadModel {
 	t.Helper()
-	searcher, err := NewSearcher(store, resolve)
+	reader, err := NewReadModel(store, resolve)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return searcher
+	return reader
+}
+
+func readModelItem(t *testing.T, digit byte, scope domain.Scope, project, content string) domain.Item {
+	t.Helper()
+	item, err := domain.NewUserItem(
+		testMemoryItemID(digit), scope, project, content,
+		time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return item
 }
 
 func (f fakeEmbedder) ID() string {
@@ -86,11 +103,11 @@ func items(specs ...domain.Item) []domain.Item { return specs }
 
 func TestSearchKeywordOnlyWhenNoEmbedder(t *testing.T) {
 	store := &fakeItemSource{items: items(
-		domain.Item{ID: testMemoryItemID('a'), Content: "- run make test to build"},
-		domain.Item{ID: testMemoryItemID('b'), Content: "- prefer tabs over spaces"},
-		domain.Item{ID: testMemoryItemID('c'), Content: "- deploy with kubectl apply"},
+		readModelItem(t, 'a', domain.ScopeProject, "/repo", "- run make test to build"),
+		readModelItem(t, 'b', domain.ScopeProject, "/repo", "- prefer tabs over spaces"),
+		readModelItem(t, 'c', domain.ScopeProject, "/repo", "- deploy with kubectl apply"),
 	)}
-	s := mustNewSearcher(t, store, nil)
+	s := mustNewReadModel(t, store, nil)
 	got, err := s.Search(context.Background(), "/repo", "how do we run tests", 2)
 	if err != nil {
 		t.Fatal(err)
@@ -100,10 +117,63 @@ func TestSearchKeywordOnlyWhenNoEmbedder(t *testing.T) {
 	}
 }
 
+func TestReadModelItemsProtectsExactActiveCatalog(t *testing.T) {
+	valid := readModelItem(t, '1', domain.ScopeProject, "/repo", "valid fact")
+	pending, err := domain.NewProposal(
+		testMemoryItemID('2'), "/repo", "pending fact",
+		time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreign := readModelItem(t, '3', domain.ScopeProject, "/other", "foreign fact")
+	invalid := valid
+	invalid.Content = " canonical violation "
+	for _, test := range []struct {
+		name  string
+		items []domain.Item
+	}{
+		{name: "invalid item", items: []domain.Item{invalid}},
+		{name: "foreign target", items: []domain.Item{foreign}},
+		{name: "non-active item", items: []domain.Item{pending}},
+		{name: "duplicate identity", items: []domain.Item{valid, valid}},
+		{name: "duplicate content", items: []domain.Item{valid, readModelItem(t, '4', domain.ScopeProject, "/repo", "valid fact")}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			reader := mustNewReadModel(t, &fakeItemSource{items: test.items}, nil)
+			if _, err := reader.Items(t.Context(), domain.ScopeProject, "/repo"); err == nil {
+				t.Fatal("corrupt target catalog was accepted")
+			}
+		})
+	}
+}
+
+func TestReadModelSearchProtectsCombinedCatalog(t *testing.T) {
+	projectItem := readModelItem(t, '1', domain.ScopeProject, "/repo", "project fact")
+	userItem := readModelItem(t, '2', domain.ScopeUser, "", "user fact")
+	reader := mustNewReadModel(t, &fakeItemSource{items: []domain.Item{projectItem, userItem}}, nil)
+	if got, err := reader.Search(t.Context(), "/repo", "fact", 2); err != nil || len(got) != 2 {
+		t.Fatalf("Search valid combined catalog = (%+v, %v)", got, err)
+	}
+
+	foreign := readModelItem(t, '3', domain.ScopeProject, "/other", "foreign fact")
+	reader = mustNewReadModel(t, &fakeItemSource{items: []domain.Item{foreign}}, nil)
+	if _, err := reader.Search(t.Context(), "/repo", "fact", 1); err == nil {
+		t.Fatal("foreign project search item was accepted")
+	}
+
+	duplicateAcrossTargets := userItem
+	duplicateAcrossTargets.ID = projectItem.ID
+	reader = mustNewReadModel(t, &fakeItemSource{items: []domain.Item{projectItem, duplicateAcrossTargets}}, nil)
+	if _, err := reader.Search(t.Context(), "/repo", "fact", 2); err == nil {
+		t.Fatal("cross-target duplicate identity was accepted")
+	}
+}
+
 func TestSearchDegradesWhenEmbedderFails(t *testing.T) {
-	store := &fakeItemSource{items: items(domain.Item{ID: testMemoryItemID('a'), Content: "- run make test"})}
+	store := &fakeItemSource{items: items(readModelItem(t, 'a', domain.ScopeProject, "/repo", "- run make test"))}
 	resolve := func(context.Context) (Embedder, error) { return fakeEmbedder{err: errors.New("no model")}, nil }
-	s := mustNewSearcher(t, store, resolve)
+	s := mustNewReadModel(t, store, resolve)
 	got, err := s.Search(context.Background(), "/repo", "run the tests", 5)
 	if err != nil {
 		t.Fatalf("embed failure must not fail the search: %v", err)
@@ -115,14 +185,15 @@ func TestSearchDegradesWhenEmbedderFails(t *testing.T) {
 
 func TestSearchFusesVectorMatchWithoutKeywordOverlap(t *testing.T) {
 	// "b" shares no query terms but is the nearest vector — fusion must surface it.
-	store := &fakeItemSource{items: items(
-		domain.Item{ID: testMemoryItemID('a'), Content: "- unrelated note about tabs", EmbeddingSpace: "fake", Embedding: []float32{0, 1}},
-		domain.Item{ID: testMemoryItemID('b'), Content: "- the build pipeline lives in ci", EmbeddingSpace: "fake", Embedding: []float32{1, 0}},
-	)}
+	a := readModelItem(t, 'a', domain.ScopeProject, "/repo", "- unrelated note about tabs")
+	a.EmbeddingSpace, a.Embedding = "fake", []float32{0, 1}
+	b := readModelItem(t, 'b', domain.ScopeProject, "/repo", "- the build pipeline lives in ci")
+	b.EmbeddingSpace, b.Embedding = "fake", []float32{1, 0}
+	store := &fakeItemSource{items: items(a, b)}
 	resolve := func(context.Context) (Embedder, error) {
 		return fakeEmbedder{vectors: map[string][]float32{"where is the pipeline": {1, 0}}}, nil
 	}
-	s := mustNewSearcher(t, store, resolve)
+	s := mustNewReadModel(t, store, resolve)
 	got, err := s.Search(context.Background(), "/repo", "where is the pipeline", 2)
 	if err != nil {
 		t.Fatal(err)
@@ -143,10 +214,11 @@ func TestSearchDoesNotReuseCorpusVectorsFromAnotherEmbeddingSpace(t *testing.T) 
 	// The current role gives the same-dimensional space different semantics: b
 	// is now the nearest item. Reusing the unlabelled cache silently returns the
 	// wrong memory instead of refreshing it or degrading to keyword ranking.
-	store := &fakeItemSource{cacheErr: errors.New("cache write lost"), items: items(
-		domain.Item{ID: testMemoryItemID('a'), Content: "alpha memory", EmbeddingSpace: "provider:old-space", Embedding: []float32{1, 0}},
-		domain.Item{ID: testMemoryItemID('b'), Content: "beta memory", EmbeddingSpace: "provider:old-space", Embedding: []float32{0, 1}},
-	)}
+	a := readModelItem(t, 'a', domain.ScopeProject, "/repo", "alpha memory")
+	a.EmbeddingSpace, a.Embedding = "provider:old-space", []float32{1, 0}
+	b := readModelItem(t, 'b', domain.ScopeProject, "/repo", "beta memory")
+	b.EmbeddingSpace, b.Embedding = "provider:old-space", []float32{0, 1}
+	store := &fakeItemSource{cacheErr: errors.New("cache write lost"), items: items(a, b)}
 	resolve := func(context.Context) (Embedder, error) {
 		return fakeEmbedder{
 			id: "provider:new-space",
@@ -157,7 +229,7 @@ func TestSearchDoesNotReuseCorpusVectorsFromAnotherEmbeddingSpace(t *testing.T) 
 			},
 		}, nil
 	}
-	s := mustNewSearcher(t, store, resolve)
+	s := mustNewReadModel(t, store, resolve)
 	got, err := s.Search(t.Context(), "/repo", "find the target", 1)
 	if err != nil {
 		t.Fatal(err)
@@ -171,7 +243,7 @@ func TestSearchDoesNotReuseCorpusVectorsFromAnotherEmbeddingSpace(t *testing.T) 
 }
 
 func TestSearchEmptyCorpus(t *testing.T) {
-	s := mustNewSearcher(t, &fakeItemSource{}, nil)
+	s := mustNewReadModel(t, &fakeItemSource{}, nil)
 	got, err := s.Search(context.Background(), "/repo", "anything", 5)
 	if err != nil || got != nil {
 		t.Fatalf("empty corpus search = (%+v, %v)", got, err)
@@ -179,22 +251,22 @@ func TestSearchEmptyCorpus(t *testing.T) {
 }
 
 func TestSearchDegradesWhenResolverReturnsTypedNilEmbedder(t *testing.T) {
-	store := &fakeItemSource{items: items(domain.Item{ID: testMemoryItemID('a'), Content: "run make test"})}
+	store := &fakeItemSource{items: items(readModelItem(t, 'a', domain.ScopeProject, "/repo", "run make test"))}
 	resolve := func(context.Context) (Embedder, error) {
 		var embedder *pointerEmbedder
 		return embedder, nil
 	}
-	searcher := mustNewSearcher(t, store, resolve)
+	reader := mustNewReadModel(t, store, resolve)
 
-	got, err := searcher.Search(t.Context(), "/repo", "make test", 1)
+	got, err := reader.Search(t.Context(), "/repo", "make test", 1)
 	if err != nil || len(got) != 1 {
 		t.Fatalf("typed-nil embedder fallback = (%+v, %v), want keyword result", got, err)
 	}
 }
 
-func TestNewSearcherRejectsTypedNilStore(t *testing.T) {
+func TestNewReadModelRejectsTypedNilStore(t *testing.T) {
 	var store *fakeItemSource
-	if searcher, err := NewSearcher(store, nil); err == nil || searcher != nil {
-		t.Fatalf("NewSearcher typed-nil store = (%v, %v), want invalid construction", searcher, err)
+	if reader, err := NewReadModel(store, nil); err == nil || reader != nil {
+		t.Fatalf("NewReadModel typed-nil store = (%v, %v), want invalid construction", reader, err)
 	}
 }

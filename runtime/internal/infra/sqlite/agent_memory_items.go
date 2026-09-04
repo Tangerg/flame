@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
@@ -664,18 +663,8 @@ func (a *AgentMemoryStore) itemByDigest(ctx context.Context, scope agentmemory.S
 }
 
 func memoryPartition(scope agentmemory.Scope, project string) (string, error) {
-	if err := scope.Validate(); err != nil {
+	if err := agentmemory.ValidateTarget(scope, project); err != nil {
 		return "", err
-	}
-	switch scope {
-	case agentmemory.ScopeProject:
-		if strings.TrimSpace(project) == "" {
-			return "", errors.New("agentmemory: project scope requires a project")
-		}
-	case agentmemory.ScopeUser:
-		if project != "" {
-			return "", errors.New("agentmemory: user scope forbids a project")
-		}
 	}
 	return scope.String(), nil
 }

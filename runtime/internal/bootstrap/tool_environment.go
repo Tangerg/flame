@@ -30,17 +30,17 @@ type toolEnvironment struct {
 // process-owned tool runtime. Keeping the contract as one value lets Assembly
 // transfer every acquisition to hostLifetime even when construction fails.
 type toolEnvironmentDependencies struct {
-	lifetime            context.Context
-	config              Config
-	approvalPolicy      *approvals.RuntimePolicy
-	mcp                 mcpEnvironment
-	agentMemorySearcher *agentmemory.Searcher
-	schedules           *schedules.Coordinator
-	goalReader          *goals.Reader
-	goalReporter        *goals.OutcomeReporter
-	plan                *sessions.PlanCoordinator
-	skillStore          *skillauthoring.Store
-	skillProposals      builtin.SkillProposalSubmitter
+	lifetime          context.Context
+	config            Config
+	approvalPolicy    *approvals.RuntimePolicy
+	mcp               mcpEnvironment
+	agentMemoryReader *agentmemory.ReadModel
+	schedules         *schedules.Coordinator
+	goalReader        *goals.Reader
+	goalReporter      *goals.OutcomeReporter
+	plan              *sessions.PlanCoordinator
+	skillStore        *skillauthoring.Store
+	skillProposals    builtin.SkillProposalSubmitter
 }
 
 type toolEnvironmentBuilder func(context.Context, toolEnvironmentDependencies) (toolEnvironment, error)
@@ -110,10 +110,10 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		buildConfig.GoalReporter = deps.goalReporter
 	}
 	// search_memory searches exact-project and user-scoped curated memory. Set
-	// only when a concrete searcher exists, so a nil *Searcher never reaches the
+	// only when the concrete read model exists, so a typed nil never reaches the
 	// tool builder as a non-nil interface.
-	if deps.agentMemorySearcher != nil {
-		buildConfig.AgentMemorySearch = deps.agentMemorySearcher
+	if deps.agentMemoryReader != nil {
+		buildConfig.AgentMemorySearch = deps.agentMemoryReader
 	}
 	// search_conversations recalls past conversation transcripts (the durable Item
 	// history). Set only when the concrete store is present, for the same

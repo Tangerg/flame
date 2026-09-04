@@ -3,17 +3,18 @@ package agentmemory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
+	"slices"
 
 	domain "github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
 
-// SearchStore supplies the active memory corpus visible from one project
-// context: exact-project items plus user-scoped items. It also owns the derived
-// embedding cache. Cache writes are conditional on the exact content digest, so
-// a late model response cannot overwrite an item edited while embedding was in
-// flight.
-type SearchStore interface {
+// ReadStore supplies the active memory views used in model context. Search
+// combines the exact project with user memory; Items reads one exact target.
+// The derived embedding cache remains conditional on exact content identity.
+type ReadStore interface {
+	Items(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error)
 	SearchCorpus(ctx context.Context, project string) ([]domain.Item, error)
 	SetEmbeddings(ctx context.Context, updates []domain.EmbeddingUpdate) error
 }
@@ -27,39 +28,116 @@ type Embedder interface {
 	Embed(ctx context.Context, texts []string) ([][]float32, error)
 }
 
-// Searcher coordinates corpus I/O and optional embedding, then delegates pure
-// ranking to the agent-memory domain.
-type Searcher struct {
-	store           SearchStore
+// ReadModel is the sole Application boundary for Agent Memory entering model
+// context, whether pinned directly or recalled by search.
+type ReadModel struct {
+	store           ReadStore
 	resolveEmbedder func(context.Context) (Embedder, error)
 }
 
-// NewSearcher constructs the search use case over a required corpus store. A
-// nil resolver selects keyword-only search.
-func NewSearcher(store SearchStore, resolveEmbedder func(context.Context) (Embedder, error)) (*Searcher, error) {
+// NewReadModel constructs model-context reads over a required store. A nil
+// resolver selects keyword-only search.
+func NewReadModel(store ReadStore, resolveEmbedder func(context.Context) (Embedder, error)) (*ReadModel, error) {
 	if nilSearchDependency(store) {
-		return nil, errors.New("agentmemory: search store is required")
+		return nil, errors.New("agentmemory: read store is required")
 	}
-	return &Searcher{store: store, resolveEmbedder: resolveEmbedder}, nil
+	return &ReadModel{store: store, resolveEmbedder: resolveEmbedder}, nil
+}
+
+// Items returns the complete active catalog for one exact target.
+func (r *ReadModel) Items(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error) {
+	if err := domain.ValidateTarget(scope, project); err != nil {
+		return nil, err
+	}
+	items, err := r.store.Items(ctx, scope, project)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateActiveTargetCatalog(items, scope, project); err != nil {
+		return nil, err
+	}
+	return slices.Clone(items), nil
 }
 
 // Search returns up to topK relevant project- and user-scoped memory items for
 // one project context. Ranking happens over the combined corpus so neither
 // partition receives a separate top-k quota or query embedding.
-func (s *Searcher) Search(ctx context.Context, project, query string, topK int) ([]domain.Item, error) {
-	if s == nil || topK <= 0 {
+func (r *ReadModel) Search(ctx context.Context, project, query string, topK int) ([]domain.Item, error) {
+	if r == nil || topK <= 0 {
 		return nil, nil
 	}
-	items, err := s.store.SearchCorpus(ctx, project)
+	if err := domain.ValidateTarget(domain.ScopeProject, project); err != nil {
+		return nil, err
+	}
+	items, err := r.store.SearchCorpus(ctx, project)
 	if err != nil || len(items) == 0 {
 		return nil, err
 	}
-	semantic, ok := s.resolveSemanticQuery(ctx, query)
+	if err := validateSearchCatalog(items, project); err != nil {
+		return nil, err
+	}
+	semantic, ok := r.resolveSemanticQuery(ctx, query)
 	if !ok {
 		return domain.Rank(query, nil, items, topK), nil
 	}
-	s.refreshEmbeddings(ctx, semantic, items)
+	r.refreshEmbeddings(ctx, semantic, items)
 	return domain.Rank(query, semantic.queryVector, items, topK), nil
+}
+
+func validateActiveTargetCatalog(items []domain.Item, scope domain.Scope, project string) error {
+	if len(items) > domain.MaxVisiblePerTarget {
+		return fmt.Errorf("agentmemory: %s target catalog exceeds %d items", scope, domain.MaxVisiblePerTarget)
+	}
+	seenIDs := make(map[domain.ItemID]struct{}, len(items))
+	seenContent := make(map[string]struct{}, len(items))
+	for index, item := range items {
+		if err := item.ValidateFor(scope, project); err != nil {
+			return fmt.Errorf("agentmemory: target catalog row %d is invalid: %w", index+1, err)
+		}
+		if item.Status != domain.StatusActive {
+			return fmt.Errorf("agentmemory: target catalog row %q is not active", item.ID)
+		}
+		if _, duplicate := seenIDs[item.ID]; duplicate {
+			return fmt.Errorf("agentmemory: target catalog repeats item %q", item.ID)
+		}
+		seenIDs[item.ID] = struct{}{}
+		digest := domain.Digest(item.Content)
+		if _, duplicate := seenContent[digest]; duplicate {
+			return fmt.Errorf("agentmemory: target catalog repeats content %q", digest)
+		}
+		seenContent[digest] = struct{}{}
+	}
+	return nil
+}
+
+func validateSearchCatalog(items []domain.Item, project string) error {
+	byTarget := map[domain.Scope][]domain.Item{
+		domain.ScopeProject: nil,
+		domain.ScopeUser:    nil,
+	}
+	seen := make(map[domain.ItemID]struct{}, len(items))
+	for index, item := range items {
+		if item.Scope != domain.ScopeProject && item.Scope != domain.ScopeUser {
+			return fmt.Errorf("agentmemory: search catalog row %d has unsupported scope %q", index+1, item.Scope)
+		}
+		if _, duplicate := seen[item.ID]; duplicate {
+			return fmt.Errorf("agentmemory: search catalog repeats item %q", item.ID)
+		}
+		seen[item.ID] = struct{}{}
+		byTarget[item.Scope] = append(byTarget[item.Scope], item)
+	}
+	for _, target := range []struct {
+		scope   domain.Scope
+		project string
+	}{
+		{scope: domain.ScopeProject, project: project},
+		{scope: domain.ScopeUser},
+	} {
+		if err := validateActiveTargetCatalog(byTarget[target.scope], target.scope, target.project); err != nil {
+			return fmt.Errorf("agentmemory: search catalog: %w", err)
+		}
+	}
+	return nil
 }
 
 type semanticQuery struct {
@@ -68,11 +146,11 @@ type semanticQuery struct {
 	queryVector []float32
 }
 
-func (s *Searcher) resolveSemanticQuery(ctx context.Context, query string) (semanticQuery, bool) {
-	if s.resolveEmbedder == nil {
+func (r *ReadModel) resolveSemanticQuery(ctx context.Context, query string) (semanticQuery, bool) {
+	if r.resolveEmbedder == nil {
 		return semanticQuery{}, false
 	}
-	embedder, err := s.resolveEmbedder(ctx)
+	embedder, err := r.resolveEmbedder(ctx)
 	if err != nil || nilSearchDependency(embedder) {
 		return semanticQuery{}, false
 	}
@@ -104,7 +182,7 @@ func nilSearchDependency(value any) bool {
 	}
 }
 
-func (s *Searcher) refreshEmbeddings(ctx context.Context, semantic semanticQuery, items []domain.Item) {
+func (r *ReadModel) refreshEmbeddings(ctx context.Context, semantic semanticQuery, items []domain.Item) {
 	stale := make([]int, 0, len(items))
 	texts := make([]string, 0, len(items))
 	for index := range items {
@@ -134,7 +212,7 @@ func (s *Searcher) refreshEmbeddings(ctx context.Context, semantic semanticQuery
 	// The cache is derived state: the current request already owns exact
 	// vectors, so a failed or losing conditional write must not turn a useful
 	// search into an application failure.
-	_ = s.store.SetEmbeddings(ctx, updates)
+	_ = r.store.SetEmbeddings(ctx, updates)
 }
 
 func buildEmbeddingUpdates(

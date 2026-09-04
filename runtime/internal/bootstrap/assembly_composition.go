@@ -207,17 +207,17 @@ func buildExecutionComposition(
 		}))
 	}
 	toolRuntime, err := buildTools(ctx, toolEnvironmentDependencies{
-		lifetime:            lifetime.context,
-		config:              cfg,
-		approvalPolicy:      policy.approvals,
-		mcp:                 policy.mcp,
-		agentMemorySearcher: modelServices.agentMemorySearch,
-		schedules:           policy.schedules,
-		goalReader:          policy.goalReader,
-		goalReporter:        policy.goalReporter,
-		plan:                policy.plans,
-		skillStore:          workspaceServices.skillStore,
-		skillProposals:      workspaceServices.skills,
+		lifetime:          lifetime.context,
+		config:            cfg,
+		approvalPolicy:    policy.approvals,
+		mcp:               policy.mcp,
+		agentMemoryReader: modelServices.agentMemoryRead,
+		schedules:         policy.schedules,
+		goalReader:        policy.goalReader,
+		goalReporter:      policy.goalReporter,
+		plan:              policy.plans,
+		skillStore:        workspaceServices.skillStore,
+		skillProposals:    workspaceServices.skills,
 	})
 	lifetime.toolResources = append(lifetime.toolResources, toolRuntime.closers...)
 	if err != nil {
@@ -226,8 +226,8 @@ func buildExecutionComposition(
 	workingContexts := agentexec.NewWorkingContextComposer(agentexec.WorkingContextConfig{
 		UserHome:          cfg.UserHome,
 		Knowledge:         workspaceServices.knowledge,
-		AgentMemory:       cfg.AgentMemoryStore,
-		AgentMemorySearch: modelServices.agentMemorySearch,
+		AgentMemory:       modelServices.agentMemoryRead,
+		AgentMemorySearch: modelServices.agentMemoryRead,
 		Plan:              cfg.PlanStore,
 		Goal:              policy.goalReader,
 		Hooks:             cfg.HooksResolver,

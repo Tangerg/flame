@@ -133,6 +133,26 @@ func ParseScope(value string) (Scope, error) {
 	return scope, scope.Validate()
 }
 
+// ValidateTarget protects the exact partition selected by a memory use case.
+// Project paths are already admitted by the workspace owner, so this domain
+// rule only distinguishes project-scoped storage from the single user scope.
+func ValidateTarget(scope Scope, project string) error {
+	if err := scope.Validate(); err != nil {
+		return err
+	}
+	switch scope {
+	case ScopeProject:
+		if strings.TrimSpace(project) == "" {
+			return errors.New("agentmemory: project scope requires a project")
+		}
+	case ScopeUser:
+		if project != "" {
+			return errors.New("agentmemory: user scope forbids a project")
+		}
+	}
+	return nil
+}
+
 // Status is a memory item's place in the human-in-the-loop review lifecycle.
 type Status string
 
@@ -395,18 +415,8 @@ func (i Item) Validate() error {
 			return fmt.Errorf("agentmemory: item provenance: %w", err)
 		}
 	}
-	if err := i.Scope.Validate(); err != nil {
+	if err := ValidateTarget(i.Scope, i.Project); err != nil {
 		return err
-	}
-	switch i.Scope {
-	case ScopeProject:
-		if strings.TrimSpace(i.Project) == "" {
-			return errors.New("agentmemory: project scope requires a project")
-		}
-	case ScopeUser:
-		if i.Project != "" {
-			return errors.New("agentmemory: user scope forbids a project")
-		}
 	}
 	content, err := NormalizeContent(i.Content)
 	if err != nil {
@@ -435,6 +445,23 @@ func (i Item) Validate() error {
 	}
 	if err := validateEmbedding(i.EmbeddingSpace, i.Embedding); err != nil {
 		return fmt.Errorf("agentmemory: item embedding: %w", err)
+	}
+	return nil
+}
+
+// ValidateFor protects a durable item read from one exact memory partition.
+func (i Item) ValidateFor(scope Scope, project string) error {
+	if err := ValidateTarget(scope, project); err != nil {
+		return err
+	}
+	if err := i.Validate(); err != nil {
+		return err
+	}
+	if i.Scope != scope || i.Project != project {
+		return fmt.Errorf(
+			"agentmemory: item %q belongs to %s target %q, not %s target %q",
+			i.ID, i.Scope, i.Project, scope, project,
+		)
 	}
 	return nil
 }

@@ -20,7 +20,7 @@ type modelEnvironment struct {
 	embeddingRoleState *models.RoleState
 	embeddingResolver  *modeladapter.EmbeddingResolver
 	liveEmbedder       *modeladapter.RoleEmbedder
-	agentMemorySearch  *agentmemoryapp.Searcher
+	agentMemoryRead    *agentmemoryapp.ReadModel
 }
 
 func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection modelref.Selection) (modelEnvironment, error) {
@@ -59,7 +59,7 @@ func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection mod
 		liveEmbedder:       liveEmbedder,
 	}
 	if cfg.AgentMemoryStore != nil {
-		environment.agentMemorySearch, err = agentmemoryapp.NewSearcher(cfg.AgentMemoryStore, liveEmbedder.ResolveMemory)
+		environment.agentMemoryRead, err = agentmemoryapp.NewReadModel(cfg.AgentMemoryStore, liveEmbedder.ResolveMemory)
 		if err != nil {
 			return modelEnvironment{}, err
 		}

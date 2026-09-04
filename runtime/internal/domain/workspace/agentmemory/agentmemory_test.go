@@ -132,6 +132,32 @@ func TestItemConstructionRejectsInvalidPartition(t *testing.T) {
 	}
 }
 
+func TestItemValidateForProtectsExactTarget(t *testing.T) {
+	now := time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC)
+	item, err := NewUserItem(testItemID(t, '3'), ScopeProject, "/repo", "fact", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := item.ValidateFor(ScopeProject, "/repo"); err != nil {
+		t.Fatalf("ValidateFor exact target: %v", err)
+	}
+	for _, target := range []struct {
+		scope   Scope
+		project string
+	}{
+		{scope: ScopeProject, project: "/other"},
+		{scope: ScopeUser},
+		{scope: ScopeProject},
+	} {
+		if err := item.ValidateFor(target.scope, target.project); err == nil {
+			t.Fatalf("ValidateFor(%q, %q) accepted mismatched or invalid target", target.scope, target.project)
+		}
+	}
+	if err := (Item{}).ValidateFor(ScopeProject, "/repo"); err == nil {
+		t.Fatal("zero item was accepted for an exact target")
+	}
+}
+
 func TestItemActivateFromUserPreservesIdentityAndClearsProposalState(t *testing.T) {
 	createdAt := time.Date(2026, time.August, 20, 9, 0, 0, 0, time.UTC)
 	updatedAt := createdAt.Add(time.Hour)
