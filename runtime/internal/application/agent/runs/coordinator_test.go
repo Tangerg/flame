@@ -829,7 +829,7 @@ func mustSelection(provider, model string) modelref.Selection {
 
 func testAdmittedSegment(t *testing.T, c *Coordinator, spec segmentSpec) segmentSpec {
 	t.Helper()
-	admission, ok := c.admission.AcquireRun(spec.SessionID, spec.CWD)
+	admission, ok, _ := c.admission.AcquireRun(spec.SessionID, spec.CWD)
 	if !ok {
 		t.Fatal("acquire test run admission")
 	}
@@ -980,7 +980,7 @@ func TestCoordinatorHoldsSessionAdmissionThroughTerminalMaintenance(t *testing.T
 	if !hasActiveSession(coordinator, "ses_1") {
 		t.Fatal("session admission was released before terminal maintenance completed")
 	}
-	if _, ok := coordinator.admission.AcquireSession("ses_1"); ok {
+	if _, ok, _ := coordinator.admission.AcquireSession("ses_1"); ok {
 		t.Fatal("new run admission crossed the terminal-maintenance fence")
 	}
 	select {

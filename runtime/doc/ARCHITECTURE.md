@@ -47,6 +47,8 @@ SQLite stores current Application and Domain state, not live framework objects, 
 
 Checkpoint and waiting facts commit in the Application order required to recover the same logical Run. Terminalization and checkpoint cleanup preserve one durable winner. Recovery reconstructs from durable Runtime state and public framework checkpoints; it does not infer state from event delivery or client caches.
 
+Lease acquisition distinguishes contention from operational failure. Only a contended lease proves another owner is live; filesystem and lock errors abort admission or reconciliation with their cause. External database observation reports outages through Runtime telemetry and retries without inventing a change notification.
+
 The active development contract has one current storage shape. SQLite installs that shape directly and does not maintain a schema-version or migration graph. A breaking schema change replaces the old shape completely; incompatible development state is reset explicitly unless the user authorizes a real migration requirement.
 
 ## Provider and integration boundaries

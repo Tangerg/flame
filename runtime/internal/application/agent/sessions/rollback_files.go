@@ -110,7 +110,10 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 	var cwd string
 	if restoreFiles {
 		cwd = currentSession.Workspace().Path()
-		workingTreeMutation, claimed := c.ClaimWorkingTreeMutation(cwd)
+		workingTreeMutation, claimed, leaseErr := c.ClaimWorkingTreeMutation(cwd)
+		if leaseErr != nil {
+			return result, leaseErr
+		}
 		if !claimed {
 			return result, fmt.Errorf("%w: working tree %q has a run admission in flight", ErrSessionBusy, cwd)
 		}

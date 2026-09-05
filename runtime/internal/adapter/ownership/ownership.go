@@ -53,32 +53,35 @@ func New(dataDirectory string) (*LeaseSet, error) {
 }
 
 // TrySession acquires the exclusive writer lease for one Session.
-func (l *LeaseSet) TrySession(sessionID string) (appownership.Lease, bool) {
+func (l *LeaseSet) TrySession(sessionID string) (appownership.Lease, bool, error) {
 	return tryLease(l.sessions, sessionID, false)
 }
 
 // TryWorkingTree acquires a shared Run lease or exclusive destructive-mutation
 // lease for one physical working-tree identity.
-func (l *LeaseSet) TryWorkingTree(cwd string, shared bool) (appownership.Lease, bool) {
+func (l *LeaseSet) TryWorkingTree(cwd string, shared bool) (appownership.Lease, bool, error) {
 	physical, err := pathidentity.Resolve("", cwd)
 	if err != nil {
-		return nil, false
+		return nil, false, fmt.Errorf("runtime ownership: resolve working tree: %w", err)
 	}
 	return tryLease(l.workingTrees, physical, shared)
 }
 
 // TryGoalDrive acquires the single autonomous driver lease for one Session.
-func (l *LeaseSet) TryGoalDrive(sessionID string) (goals.DriveLease, bool) {
+func (l *LeaseSet) TryGoalDrive(sessionID string) (goals.DriveLease, bool, error) {
 	return tryLease(l.goalDrives, sessionID, false)
 }
 
 // TryRecoverySweep elects one Runtime to reconcile abandoned Runs before Goals.
-func (l *LeaseSet) TryRecoverySweep() (appownership.Lease, bool) {
+func (l *LeaseSet) TryRecoverySweep() (appownership.Lease, bool, error) {
 	lease, err := advisorylock.TryDirectory(l.recovery)
-	if err != nil {
-		return nil, false
+	if errors.Is(err, advisorylock.ErrContended) {
+		return nil, false, nil
 	}
-	return advisoryLease{lease: lease}, true
+	if err != nil {
+		return nil, false, fmt.Errorf("runtime ownership: recovery sweep: %w", err)
+	}
+	return advisoryLease{lease: lease}, true, nil
 }
 
 // AcquireRecoverySweep waits for the ordered startup recovery owner.
@@ -109,15 +112,15 @@ func (f *fileLease) Release() {
 	_ = f.file.Close()
 }
 
-func tryLease(directory, identity string, shared bool) (*fileLease, bool) {
+func tryLease(directory, identity string, shared bool) (appownership.Lease, bool, error) {
 	if identity == "" {
-		return nil, false
+		return nil, false, errors.New("runtime ownership: lease identity is required")
 	}
 	digest := sha256.Sum256([]byte(identity))
 	path := filepath.Join(directory, hex.EncodeToString(digest[:])+".lock")
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
-		return nil, false
+		return nil, false, err
 	}
 	var lease *advisorylock.Lease
 	if shared {
@@ -126,10 +129,13 @@ func tryLease(directory, identity string, shared bool) (*fileLease, bool) {
 		lease, err = advisorylock.TryFile(file)
 	}
 	if err != nil {
-		_ = file.Close()
-		return nil, false
+		closeErr := file.Close()
+		if errors.Is(err, advisorylock.ErrContended) && closeErr == nil {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("runtime ownership: acquire lease: %w", errors.Join(err, closeErr))
 	}
-	return &fileLease{file: file, lease: lease}, true
+	return &fileLease{file: file, lease: lease}, true, nil
 }
 
 var (

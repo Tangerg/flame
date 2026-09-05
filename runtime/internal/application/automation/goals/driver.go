@@ -15,6 +15,7 @@ package goals
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -102,7 +103,7 @@ type DriveLease interface {
 // DriveOwnership supplies non-blocking leases without leaking filesystem or
 // process mechanisms into Application.
 type DriveOwnership interface {
-	TryGoalDrive(sessionID string) (DriveLease, bool)
+	TryGoalDrive(sessionID string) (DriveLease, bool, error)
 }
 
 // RunInstructionInput is the semantic context required to construct one
@@ -146,7 +147,10 @@ func (g *goalCommandLease) acquire(driver *Driver, sessionID string) error {
 	if g.lease != nil {
 		return nil
 	}
-	lease, acquired := driver.tryDriveLease(sessionID)
+	lease, acquired, leaseErr := driver.tryDriveLease(sessionID)
+	if leaseErr != nil {
+		return leaseErr
+	}
 	if !acquired {
 		return ErrGoalOwned
 	}
@@ -284,7 +288,10 @@ func (d *Driver) Start(
 	if err != nil {
 		return goal.Goal{}, err
 	}
-	driveLease, ok := d.tryDriveLease(sessionID)
+	driveLease, ok, leaseErr := d.tryDriveLease(sessionID)
+	if leaseErr != nil {
+		return goal.Goal{}, leaseErr
+	}
 	if !ok {
 		return goal.Goal{}, ErrGoalOwned
 	}
@@ -360,7 +367,10 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 	if err != nil {
 		return goal.Goal{}, err
 	}
-	driveLease, ok := d.tryDriveLease(sessionID)
+	driveLease, ok, leaseErr := d.tryDriveLease(sessionID)
+	if leaseErr != nil {
+		return goal.Goal{}, leaseErr
+	}
 	if !ok {
 		return goal.Goal{}, ErrGoalOwned
 	}
@@ -400,7 +410,11 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 	var foreignLease DriveLease
 	if wasActive && drive == nil {
 		var ok bool
-		foreignLease, ok = d.tryDriveLease(sessionID)
+		var leaseErr error
+		foreignLease, ok, leaseErr = d.tryDriveLease(sessionID)
+		if leaseErr != nil {
+			return goal.Goal{}, leaseErr
+		}
 		if !ok {
 			return goal.Goal{}, ErrGoalOwned
 		}
@@ -423,7 +437,11 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 	}
 	if current.Status() == goal.StatusActive && drive == nil && foreignLease == nil {
 		var acquired bool
-		foreignLease, acquired = d.tryDriveLease(sessionID)
+		var leaseErr error
+		foreignLease, acquired, leaseErr = d.tryDriveLease(sessionID)
+		if leaseErr != nil {
+			return goal.Goal{}, errors.Join(leaseErr, quiesceErr)
+		}
 		if !acquired {
 			return goal.Goal{}, errors.Join(ErrGoalOwned, quiesceErr)
 		}
@@ -588,7 +606,11 @@ func (d *Driver) Clear(ctx context.Context, sessionID string) error {
 	var commandLease DriveLease
 	if wasActive && drive == nil {
 		var acquired bool
-		commandLease, acquired = d.tryDriveLease(sessionID)
+		var leaseErr error
+		commandLease, acquired, leaseErr = d.tryDriveLease(sessionID)
+		if leaseErr != nil {
+			return leaseErr
+		}
 		if !acquired {
 			return ErrGoalOwned
 		}
@@ -611,7 +633,11 @@ func (d *Driver) Clear(ctx context.Context, sessionID string) error {
 	}
 	if current.Status() == goal.StatusActive && commandLease == nil {
 		var acquired bool
-		commandLease, acquired = d.tryDriveLease(sessionID)
+		var leaseErr error
+		commandLease, acquired, leaseErr = d.tryDriveLease(sessionID)
+		if leaseErr != nil {
+			return errors.Join(leaseErr, quiesceErr)
+		}
 		if !acquired {
 			return errors.Join(ErrGoalOwned, quiesceErr)
 		}
@@ -666,7 +692,10 @@ func (d *Driver) Reconcile(ctx context.Context) error {
 		return err
 	}
 	for _, g := range all {
-		lease, acquired := d.tryDriveLease(g.SessionID())
+		lease, acquired, leaseErr := d.tryDriveLease(g.SessionID())
+		if leaseErr != nil {
+			return fmt.Errorf("goals: acquire recovery drive %q: %w", g.SessionID(), leaseErr)
+		}
 		if !acquired {
 			// A different Runtime still owns the live drive. Its Goal and Run
 			// facts are not crash leftovers for this process to rewrite.
@@ -726,9 +755,9 @@ func (d *Driver) Reconcile(ctx context.Context) error {
 	return nil
 }
 
-func (d *Driver) tryDriveLease(sessionID string) (DriveLease, bool) {
+func (d *Driver) tryDriveLease(sessionID string) (DriveLease, bool, error) {
 	if d.ownership == nil {
-		return noopDriveLease{}, true
+		return noopDriveLease{}, true, nil
 	}
 	return d.ownership.TryGoalDrive(sessionID)
 }

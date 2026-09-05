@@ -14,15 +14,19 @@ type testLease struct{ release func() }
 func (t testLease) Release() { t.release() }
 
 type testOwnership struct {
+	err      error
 	acquired bool
 	released int
 }
 
-func (t *testOwnership) TryRecoverySweep() (ownership.Lease, bool) {
-	if !t.acquired {
-		return nil, false
+func (t *testOwnership) TryRecoverySweep() (ownership.Lease, bool, error) {
+	if t.err != nil {
+		return nil, false, t.err
 	}
-	return testLease{release: func() { t.released++ }}, true
+	if !t.acquired {
+		return nil, false, nil
+	}
+	return testLease{release: func() { t.released++ }}, true, nil
 }
 
 func (t *testOwnership) AcquireRecoverySweep(context.Context) (ownership.Lease, error) {
@@ -115,5 +119,20 @@ func TestCoordinatorSkipsContendedSweepAndReleasesAfterFailure(t *testing.T) {
 	acquired, err = coordinator.Reconcile(t.Context())
 	if !acquired || err == nil || backend.released != 1 {
 		t.Fatalf("failed sweep: acquired=%t releases=%d err=%v", acquired, backend.released, err)
+	}
+}
+
+func TestRecoveryReportsOwnershipFailureBeforeReconciliation(t *testing.T) {
+	cause := errors.New("lock storage failed")
+	coordinator, err := ownership.NewRecovery(
+		runReconciler(func(context.Context) (int, error) { t.Fatal("reconciled without ownership"); return 0, nil }),
+		nil, &testOwnership{err: cause},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	acquired, err := coordinator.Reconcile(t.Context())
+	if acquired || !errors.Is(err, cause) {
+		t.Fatalf("Reconcile = (%t, %v), want ownership cause", acquired, err)
 	}
 }

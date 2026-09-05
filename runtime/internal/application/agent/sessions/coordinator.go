@@ -417,10 +417,10 @@ func nilDependency(value any) bool {
 
 // ClaimWorkingTreeMutation reserves exclusive access to cwd's working tree for a
 // destructive mutation such as file rollback.
-func (c *Coordinator) ClaimWorkingTreeMutation(cwd string) (WorkingTreeAdmission, bool) {
-	release, ok := c.admissions.AcquireWorkingTreeMutation(cwd)
-	if !ok {
-		return WorkingTreeAdmission{}, false
+func (c *Coordinator) ClaimWorkingTreeMutation(cwd string) (WorkingTreeAdmission, bool, error) {
+	release, ok, err := c.admissions.AcquireWorkingTreeMutation(cwd)
+	if err != nil || !ok {
+		return WorkingTreeAdmission{}, false, err
 	}
-	return heldWorkingTreeAdmission(release), true
+	return heldWorkingTreeAdmission(release), true, nil
 }

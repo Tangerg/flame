@@ -9,8 +9,8 @@ import (
 // working-tree admission state. A file rollback's `git reset --hard` must see
 // both a sibling's segment admission and its already-live run on the same cwd.
 type Admissions interface {
-	AcquireSession(sessionID string) (release func(), ok bool)
-	AcquireWorkingTreeMutation(cwd string) (release func(), ok bool)
+	AcquireSession(sessionID string) (release func(), ok bool, err error)
+	AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, err error)
 }
 
 // WorkingTreeAdmission is a held working-tree slot. Release is idempotent
@@ -69,7 +69,10 @@ func heldWorkingTreeAdmission(release func()) WorkingTreeAdmission {
 // coherent with an existing executor continuation, such as export, import, or
 // editing execution workspace policy.
 func (c *Coordinator) ClaimIdleSession(ctx context.Context, sessionID string) (Admission, error) {
-	release, ok := c.admissions.AcquireSession(sessionID)
+	release, ok, leaseErr := c.admissions.AcquireSession(sessionID)
+	if leaseErr != nil {
+		return Admission{}, leaseErr
+	}
 	if !ok {
 		return Admission{}, ErrSessionBusy
 	}
@@ -90,7 +93,10 @@ func (c *Coordinator) ClaimIdleSession(ctx context.Context, sessionID string) (A
 // explicitly consumes or terminalizes any parked Run it finds. It deliberately
 // does not reject open interrupts; callers must own that disposition atomically.
 func (c *Coordinator) ClaimSessionMutation(sessionID string) (Admission, error) {
-	release, ok := c.admissions.AcquireSession(sessionID)
+	release, ok, leaseErr := c.admissions.AcquireSession(sessionID)
+	if leaseErr != nil {
+		return Admission{}, leaseErr
+	}
 	if !ok {
 		return Admission{}, ErrSessionBusy
 	}

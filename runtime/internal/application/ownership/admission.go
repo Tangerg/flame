@@ -23,10 +23,11 @@ type Gate struct {
 }
 
 // AdmissionBackend maps product identities to non-blocking cross-process leases.
-// Implementations live outside Application and must fail closed.
+// Acquired=false with no error means contention. Operational failures must
+// return their cause so callers never present them as ordinary contention.
 type AdmissionBackend interface {
-	TrySession(sessionID string) (Lease, bool)
-	TryWorkingTree(cwd string, shared bool) (Lease, bool)
+	TrySession(sessionID string) (Lease, bool, error)
+	TryWorkingTree(cwd string, shared bool) (Lease, bool, error)
 }
 
 // NewGate constructs a Gate whose single-writer and working-tree invariants span
@@ -120,15 +121,15 @@ func (r RunAdmission) Release() {
 
 // AcquireSession reserves one session's single-writer slot. Release is safe to
 // call more than once and affects only this acquisition.
-func (g *Gate) AcquireSession(sessionID string) (release func(), ok bool) {
+func (g *Gate) AcquireSession(sessionID string) (release func(), ok bool, err error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.activeSessionLocked(sessionID) {
-		return nil, false
+		return nil, false, nil
 	}
-	lease, ok := g.trySessionLease(sessionID)
-	if !ok {
-		return nil, false
+	lease, ok, err := g.trySessionLease(sessionID)
+	if err != nil || !ok {
+		return nil, false, err
 	}
 	releaseLocal := g.addClaimLocked(sessionID)
 	var once sync.Once
@@ -137,40 +138,40 @@ func (g *Gate) AcquireSession(sessionID string) (release func(), ok bool) {
 			releaseLocal()
 			lease.Release()
 		})
-	}, true
+	}, true, nil
 }
 
 // AcquireRun atomically reserves a fresh run's session and working tree. The
 // returned admission must be either admitted after the durable opening commit
 // or released when admission fails.
-func (g *Gate) AcquireRun(sessionID, cwd string) (RunAdmission, bool) {
+func (g *Gate) AcquireRun(sessionID, cwd string) (RunAdmission, bool, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.initLocked()
 	if g.activeSessionLocked(sessionID) {
-		return RunAdmission{}, false
+		return RunAdmission{}, false, nil
 	}
-	sessionLease, ok := g.trySessionLease(sessionID)
-	if !ok {
-		return RunAdmission{}, false
+	sessionLease, ok, err := g.trySessionLease(sessionID)
+	if err != nil || !ok {
+		return RunAdmission{}, false, err
 	}
 	leases := []Lease{sessionLease}
 	if cwd != "" {
 		if _, busy := g.treeMutations[cwd]; busy {
 			releaseLeases(leases)
-			return RunAdmission{}, false
+			return RunAdmission{}, false, nil
 		}
-		treeLease, acquired := g.tryWorkingTreeLease(cwd, true)
-		if !acquired {
+		treeLease, acquired, err := g.tryWorkingTreeLease(cwd, true)
+		if err != nil || !acquired {
 			releaseLeases(leases)
-			return RunAdmission{}, false
+			return RunAdmission{}, false, err
 		}
 		leases = append(leases, treeLease)
 		g.addTreeRunLocked(cwd)
 	}
 	admission := &runAdmissionLease{gate: g}
 	g.pending[admission] = pendingRun{sessionID: sessionID, cwd: cwd, leases: leases}
-	return RunAdmission{lease: admission}, true
+	return RunAdmission{lease: admission}, true, nil
 }
 
 // BeginMaintenance converts a live run into a maintenance reservation. Both
@@ -199,19 +200,19 @@ func (g *Gate) BeginMaintenance(runID string) (release func(), ok bool) {
 // AcquireWorkingTreeMutation reserves exclusive access for a destructive
 // operation such as a checkpoint restore. It rejects a run while it is pending,
 // live, or executing synchronous terminal maintenance on that working tree.
-func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool) {
+func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, err error) {
 	if cwd == "" {
-		return func() {}, true
+		return func() {}, true, nil
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.initLocked()
 	if _, busy := g.treeMutations[cwd]; busy || g.treeRuns[cwd] > 0 || g.hasLiveRunOnTreeLocked(cwd) {
-		return nil, false
+		return nil, false, nil
 	}
-	lease, ok := g.tryWorkingTreeLease(cwd, false)
-	if !ok {
-		return nil, false
+	lease, ok, err := g.tryWorkingTreeLease(cwd, false)
+	if err != nil || !ok {
+		return nil, false, err
 	}
 	g.treeMutations[cwd] = struct{}{}
 	releaseLocal := g.releaseTreeMutation(cwd)
@@ -221,19 +222,19 @@ func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool) 
 			releaseLocal()
 			lease.Release()
 		})
-	}, true
+	}, true, nil
 }
 
-func (g *Gate) trySessionLease(sessionID string) (Lease, bool) {
+func (g *Gate) trySessionLease(sessionID string) (Lease, bool, error) {
 	if g.ownership == nil {
-		return noopLease{}, true
+		return noopLease{}, true, nil
 	}
 	return g.ownership.TrySession(sessionID)
 }
 
-func (g *Gate) tryWorkingTreeLease(cwd string, shared bool) (Lease, bool) {
+func (g *Gate) tryWorkingTreeLease(cwd string, shared bool) (Lease, bool, error) {
 	if g.ownership == nil {
-		return noopLease{}, true
+		return noopLease{}, true, nil
 	}
 	return g.ownership.TryWorkingTree(cwd, shared)
 }

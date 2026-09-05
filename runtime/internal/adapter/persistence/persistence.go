@@ -76,9 +76,9 @@ const externalChangePollInterval = 100 * time.Millisecond
 // The baseline is read before this method returns, so a caller can expose its
 // Runtime without leaving an unobserved startup window. Cancel ctx and wait on
 // the returned channel to join the observer.
-func (b *Bundle) StartExternalChangeObserver(ctx context.Context, notify func()) (<-chan struct{}, error) {
-	if b == nil || b.db == nil || notify == nil {
-		return nil, errors.New("persistence: external change observer requires a Bundle and callback")
+func (b *Bundle) StartExternalChangeObserver(ctx context.Context, notify func(), report func(error)) (<-chan struct{}, error) {
+	if b == nil || b.db == nil || notify == nil || report == nil {
+		return nil, errors.New("persistence: external change observer requires a Bundle, notification, and error callback")
 	}
 	var previous int64
 	if err := b.db.QueryRowContext(ctx, `PRAGMA data_version`).Scan(&previous); err != nil {
@@ -87,6 +87,7 @@ func (b *Bundle) StartExternalChangeObserver(ctx context.Context, notify func())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
+		failed := false
 		ticker := time.NewTicker(externalChangePollInterval)
 		defer ticker.Stop()
 		for {
@@ -96,8 +97,16 @@ func (b *Bundle) StartExternalChangeObserver(ctx context.Context, notify func())
 			case <-ticker.C:
 				var current int64
 				if err := b.db.QueryRowContext(ctx, `PRAGMA data_version`).Scan(&current); err != nil {
+					if ctx.Err() != nil {
+						return
+					}
+					if !failed {
+						report(fmt.Errorf("persistence: observe external changes: %w", err))
+					}
+					failed = true
 					continue
 				}
+				failed = false
 				if current != previous {
 					previous = current
 					notify()

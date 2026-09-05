@@ -284,7 +284,10 @@ func (c *Coordinator) resolveSession(
 }
 
 func (c *Coordinator) claimFreshRun(ctx context.Context, sess session.Session) (ownership.RunAdmission, error) {
-	runAdmission, ok := c.admission.AcquireRun(sess.ID(), sess.Workspace().Path())
+	runAdmission, ok, leaseErr := c.admission.AcquireRun(sess.ID(), sess.Workspace().Path())
+	if leaseErr != nil {
+		return ownership.RunAdmission{}, leaseErr
+	}
 	if !ok {
 		// The in-process gate also guards working-tree mutations, so what it refuses is
 		// not always a Run and cannot always be named.

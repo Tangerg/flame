@@ -100,7 +100,7 @@ func TestUpdateSession(t *testing.T) {
 	if out.Workspace.Ref.Path != canonicalWorkspacePath(t, newCWD) {
 		t.Errorf("workspace = %q, want relocated %q", out.Workspace.Ref.Path, canonicalWorkspacePath(t, newCWD))
 	}
-	releaseSession, ok := rt.admissions.AcquireSession(created.ID())
+	releaseSession, ok, _ := rt.admissions.AcquireSession(created.ID())
 	if !ok {
 		t.Fatal("claim active session")
 	}
@@ -195,7 +195,7 @@ func TestDeleteSession_RejectsActiveSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	releaseSession, ok := rt.admissions.AcquireSession(created.ID())
+	releaseSession, ok, _ := rt.admissions.AcquireSession(created.ID())
 	if !ok {
 		t.Fatal("claim session")
 	}

@@ -185,21 +185,23 @@ type testClaimer struct {
 	released []string
 }
 
-func (t *testClaimer) AcquireSession(sessionID string) (func(), bool) {
+func (t *testClaimer) AcquireSession(sessionID string) (func(), bool, error) {
 	if t.claimed == nil {
 		t.claimed = map[string]bool{}
 	}
 	if t.claimed[sessionID] {
-		return nil, false
+		return nil, false, nil
 	}
 	t.claimed[sessionID] = true
 	return func() {
 		t.released = append(t.released, sessionID)
 		delete(t.claimed, sessionID)
-	}, true
+	}, true, nil
 }
 
-func (*testClaimer) AcquireWorkingTreeMutation(string) (func(), bool) { return func() {}, true }
+func (*testClaimer) AcquireWorkingTreeMutation(string) (func(), bool, error) {
+	return func() {}, true, nil
+}
 
 func (*testClaimer) ActiveSessions() map[string]bool { return nil }
 

@@ -342,12 +342,12 @@ type selectiveRecoveryAdmissions struct {
 	acquired []string
 }
 
-func (s *selectiveRecoveryAdmissions) AcquireSession(sessionID string) (func(), bool) {
+func (s *selectiveRecoveryAdmissions) AcquireSession(sessionID string) (func(), bool, error) {
 	s.acquired = append(s.acquired, sessionID)
 	if s.busy[sessionID] {
-		return nil, false
+		return nil, false, nil
 	}
-	return func() { s.released[sessionID]++ }, true
+	return func() { s.released[sessionID]++ }, true, nil
 }
 
 func TestRecoveryRejectsInvalidRunCatalogBeforeAdmission(t *testing.T) {

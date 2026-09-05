@@ -35,7 +35,10 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if err != nil {
 		return StartResult{}, err
 	}
-	runAdmission, ok := c.admission.AcquireRun(pending.SessionID, sess.Workspace().Path())
+	runAdmission, ok, leaseErr := c.admission.AcquireRun(pending.SessionID, sess.Workspace().Path())
+	if leaseErr != nil {
+		return StartResult{}, leaseErr
+	}
 	if !ok {
 		return StartResult{}, fmt.Errorf("%w: session %q or working tree %q has a run or mutation in flight", ErrSessionBusy, pending.SessionID, sess.Workspace().Path())
 	}

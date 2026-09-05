@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -164,6 +167,12 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	databaseChangesDone, err := stores.StartExternalChangeObserver(
 		runtimeContext,
 		host.application.notifyExternalChange,
+		func(err error) {
+			_, span := otel.Tracer("flame/persistence").Start(runtimeContext, "persistence.external-change.error")
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "external change observation failed")
+			span.End()
+		},
 	)
 	if err != nil {
 		return nil, config.Settings{}, err

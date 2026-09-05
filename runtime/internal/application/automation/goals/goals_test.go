@@ -1779,14 +1779,36 @@ type selectiveDriveOwnership struct {
 	busy     map[string]bool
 	released map[string]int
 	calls    int
+	err      error
 }
 
-func (s *selectiveDriveOwnership) TryGoalDrive(sessionID string) (goals.DriveLease, bool) {
+func (s *selectiveDriveOwnership) TryGoalDrive(sessionID string) (goals.DriveLease, bool, error) {
 	s.calls++
-	if s.busy[sessionID] {
-		return nil, false
+	if s.err != nil {
+		return nil, false, s.err
 	}
-	return testDriveLease{release: func() { s.released[sessionID]++ }}, true
+	if s.busy[sessionID] {
+		return nil, false, nil
+	}
+	return testDriveLease{release: func() { s.released[sessionID]++ }}, true, nil
+}
+
+func TestReconcilePreservesOwnershipFailureAndActiveGoal(t *testing.T) {
+	store := newMemStore()
+	active, err := goal.New("session", "objective", testGoalModelSelection(), goal.UnlimitedBudget(), run.Capabilities{}, "incarnation", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	seedStoredGoal(t, store, active)
+	cause := errors.New("lease filesystem unavailable")
+	driver := mustDriver(t, store, &fakeRuns{t: t, store: store}, &fakeSessions{}, goals.NewSessionMutations(), &selectiveDriveOwnership{err: cause}, testPrompt)
+	cleanupDriver(t, driver)
+	if err := driver.Reconcile(t.Context()); !errors.Is(err, cause) {
+		t.Fatalf("Reconcile error = %v, want ownership cause", err)
+	}
+	if got, _, err := loadStoredGoal(t.Context(), store, active.SessionID()); err != nil || got.Status() != goal.StatusActive {
+		t.Fatalf("Goal after failed ownership = %+v, %v", got, err)
+	}
 }
 
 func TestReconcileValidatesCompleteCatalogBeforeAcquiringOwnership(t *testing.T) {

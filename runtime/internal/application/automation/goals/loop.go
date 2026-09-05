@@ -81,7 +81,11 @@ func (d *Driver) launchLocked(
 ) error {
 	if lease == nil {
 		var acquired bool
-		lease, acquired = d.tryDriveLease(sessionID)
+		var err error
+		lease, acquired, err = d.tryDriveLease(sessionID)
+		if err != nil {
+			return err
+		}
 		if !acquired {
 			return ErrGoalOwned
 		}

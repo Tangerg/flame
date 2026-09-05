@@ -211,7 +211,7 @@ func TestRollbackSession_Busy(t *testing.T) {
 	s, rt := rollbackHarness(t)
 	ctx := context.Background()
 	sess, _ := insertSessionFixture(ctx, rt.sess, "s", "/w")
-	_, _ = rt.admissions.AcquireSession(sess.ID()) // simulate a run in flight (admission slot held)
+	_, _, _ = rt.admissions.AcquireSession(sess.ID()) // simulate a run in flight (admission slot held)
 
 	if _, err := s.RollbackSession(ctx, protocol.RollbackSessionRequest{SessionID: sess.ID()}); !errors.Is(err, protocol.ErrSessionBusy) {
 		t.Fatalf("rollback under live run = %v, want ErrSessionBusy", err)
@@ -262,14 +262,14 @@ func TestPersistRunCarriesCreatedAt(t *testing.T) {
 // release reopens the slot.
 func TestAcquireSession(t *testing.T) {
 	_, rt := rollbackHarness(t)
-	releaseS1, ok := rt.admissions.AcquireSession("s1")
+	releaseS1, ok, _ := rt.admissions.AcquireSession("s1")
 	if !ok {
 		t.Fatal("first claim must succeed")
 	}
-	if _, ok := rt.admissions.AcquireSession("s1"); ok {
+	if _, ok, _ := rt.admissions.AcquireSession("s1"); ok {
 		t.Fatal("second claim on the same session must fail while the first is outstanding")
 	}
-	if _, ok := rt.admissions.AcquireSession("s2"); !ok {
+	if _, ok, _ := rt.admissions.AcquireSession("s2"); !ok {
 		t.Fatal("a different session must claim independently")
 	}
 	if !rt.admissions.ActiveSessions()["s1"] {
@@ -279,7 +279,7 @@ func TestAcquireSession(t *testing.T) {
 	if rt.admissions.ActiveSessions()["s1"] {
 		t.Fatal("a released session must no longer read as active")
 	}
-	if _, ok := rt.admissions.AcquireSession("s1"); !ok {
+	if _, ok, _ := rt.admissions.AcquireSession("s1"); !ok {
 		t.Fatal("claim must succeed again after release")
 	}
 }

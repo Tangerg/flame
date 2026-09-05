@@ -180,7 +180,10 @@ func (c *Coordinator) cancelWaitingChild(
 	if err != nil {
 		return CancelResult{}, err
 	}
-	runAdmission, ok := c.admission.AcquireRun(sess.ID(), sess.Workspace().Path())
+	runAdmission, ok, leaseErr := c.admission.AcquireRun(sess.ID(), sess.Workspace().Path())
+	if leaseErr != nil {
+		return CancelResult{}, leaseErr
+	}
 	if !ok {
 		return CancelResult{}, fmt.Errorf(
 			"%w: session %q or working tree %q has a run or mutation in flight",
@@ -618,7 +621,10 @@ func (c *Coordinator) cancelWithoutLiveSegment(ctx context.Context, cmd CancelCo
 // Session decides the one durable transition, and the loser observes busy or
 // the resulting terminal state instead of misreporting run_not_found.
 func (c *Coordinator) cancelParkedRun(ctx context.Context, cmd CancelCommand, value rundomain.Run) (CancelResult, error) {
-	releaseSession, ok := c.admission.AcquireSession(value.SessionID())
+	releaseSession, ok, leaseErr := c.admission.AcquireSession(value.SessionID())
+	if leaseErr != nil {
+		return CancelResult{}, leaseErr
+	}
 	if !ok {
 		return CancelResult{}, ErrSessionBusy
 	}
@@ -669,7 +675,10 @@ func (c *Coordinator) cancelKnownParkedRun(
 			cmd.RunID, value.SessionID(), ref.SessionID,
 		)
 	}
-	releaseSession, ok := c.admission.AcquireSession(value.SessionID())
+	releaseSession, ok, leaseErr := c.admission.AcquireSession(value.SessionID())
+	if leaseErr != nil {
+		return CancelResult{}, leaseErr
+	}
 	if !ok {
 		return CancelResult{}, ErrSessionBusy
 	}

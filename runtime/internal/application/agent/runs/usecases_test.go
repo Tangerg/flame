@@ -438,7 +438,7 @@ func mustUseCaseSelection(provider, model string) modelref.Selection {
 func TestWaitSessionStartableResolvesWorkingTreeBoundary(t *testing.T) {
 	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")})}
 	c := newUseCaseCoordinator(&fakeExecutor{}, &fakeExecutionPorts{}, sessions, &fakeEffects{})
-	release, ok := c.admission.AcquireWorkingTreeMutation("/work")
+	release, ok, _ := c.admission.AcquireWorkingTreeMutation("/work")
 	if !ok {
 		t.Fatal("acquire working-tree mutation")
 	}
@@ -945,7 +945,7 @@ func TestStartReleasesStagedExecutionWhenSessionReplacementPreparationFails(t *t
 	if control.activated || len(effects.openings) != 0 {
 		t.Fatalf("failed preparation reached opening: activated=%v openings=%d", control.activated, len(effects.openings))
 	}
-	if admission, ok := coordinator.admission.AcquireRun("ses_1", "/work"); !ok {
+	if admission, ok, _ := coordinator.admission.AcquireRun("ses_1", "/work"); !ok {
 		t.Fatal("failed Start retained Session admission")
 	} else {
 		admission.Release()
@@ -1023,7 +1023,7 @@ func TestFastStartReleaseCannotCrossTerminalMaintenance(t *testing.T) {
 	if !hasActiveSession(c, "ses_1") {
 		t.Fatal("Start release erased the in-flight terminal-maintenance claim")
 	}
-	if release, ok := c.admission.AcquireSession("ses_1"); ok {
+	if release, ok, _ := c.admission.AcquireSession("ses_1"); ok {
 		release()
 		t.Fatal("new admission crossed terminal maintenance after Start returned")
 	}

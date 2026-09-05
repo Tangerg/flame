@@ -27,7 +27,7 @@ func TestObserveExternalChangesIgnoresLocalAndReportsOtherRuntimeCommit(t *testi
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	changed := make(chan struct{}, 4)
-	done, err := first.StartExternalChangeObserver(ctx, func() { changed <- struct{}{} })
+	done, err := first.StartExternalChangeObserver(ctx, func() { changed <- struct{}{} }, func(err error) { t.Errorf("observer: %v", err) })
 	if err != nil {
 		t.Fatalf("start external change observer: %v", err)
 	}
@@ -55,5 +55,36 @@ func TestObserveExternalChangesIgnoresLocalAndReportsOtherRuntimeCommit(t *testi
 	case <-done:
 	case <-time.After(time.Second):
 		t.Fatal("observer did not stop with its context")
+	}
+}
+
+func TestExternalChangeObserverReportsDatabaseFailure(t *testing.T) {
+	bundle, err := Open(t.Context(), Config{DataDirectory: t.TempDir(), DefaultWorkspacePath: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	failures := make(chan error, 1)
+	done, err := bundle.StartExternalChangeObserver(ctx, func() { t.Error("failed read reported a commit") }, func(err error) { failures <- err })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := bundle.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-failures:
+		if err == nil {
+			t.Fatal("observer omitted failure cause")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("observer silently ignored database failure")
+	}
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("observer did not stop after a failure")
 	}
 }

@@ -16,7 +16,7 @@ const recoveryInterval = time.Second
 
 // RecoveryBackend elects one Runtime process to perform a recovery sweep.
 type RecoveryBackend interface {
-	TryRecoverySweep() (Lease, bool)
+	TryRecoverySweep() (Lease, bool, error)
 	AcquireRecoverySweep(ctx context.Context) (Lease, error)
 }
 
@@ -59,7 +59,7 @@ func NewRecovery(runs RunRecovery, goals GoalRecovery, ownership RecoveryBackend
 
 type localOwnership struct{}
 
-func (localOwnership) TryRecoverySweep() (Lease, bool) { return localLease{}, true }
+func (localOwnership) TryRecoverySweep() (Lease, bool, error) { return localLease{}, true, nil }
 
 func (localOwnership) AcquireRecoverySweep(context.Context) (Lease, error) {
 	return localLease{}, nil
@@ -73,7 +73,10 @@ func (localLease) Release() {}
 // another Runtime already owns the sweep; that process is responsible for the
 // current pass.
 func (c *RecoveryCoordinator) Reconcile(ctx context.Context) (acquired bool, err error) {
-	lease, ok := c.ownership.TryRecoverySweep()
+	lease, ok, err := c.ownership.TryRecoverySweep()
+	if err != nil {
+		return false, fmt.Errorf("ownership recovery: acquire sweep: %w", err)
+	}
 	if !ok {
 		return false, nil
 	}
