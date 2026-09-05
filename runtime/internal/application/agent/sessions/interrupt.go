@@ -154,7 +154,7 @@ func (c *Coordinator) terminalizePendingRun(
 	detail string,
 	resumeClaimed bool,
 ) (rundomain.Run, error) {
-	snapshot, err := c.readSnapshot(ctx, pending.SessionID)
+	snapshot, err := c.snapshots.ReadSnapshot(ctx, pending.SessionID)
 	if err != nil {
 		return rundomain.Run{}, err
 	}

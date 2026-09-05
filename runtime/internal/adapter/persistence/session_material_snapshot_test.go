@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -108,23 +109,15 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	})
 
 	snapshotResult := make(chan struct {
-		snapshotRevision uint64
-		planRevision     uint64
-		goalRevision     int64
-		err              error
+		snapshot sessions.MaterialSnapshot
+		err      error
 	}, 1)
 	go func() {
 		snapshot, readMaterialSnapshotErr := stores.ReadMaterialSnapshot(ctx, original.ID())
-		committedPlan, committed := snapshot.Plan.State()
-		if readMaterialSnapshotErr == nil && !committed {
-			readMaterialSnapshotErr = errors.New("snapshot Plan is unwritten")
-		}
 		snapshotResult <- struct {
-			snapshotRevision uint64
-			planRevision     uint64
-			goalRevision     int64
-			err              error
-		}{snapshot.Session.Revision(), committedPlan.Revision(), snapshot.Goal.Revision(), readMaterialSnapshotErr}
+			snapshot sessions.MaterialSnapshot
+			err      error
+		}{snapshot, readMaterialSnapshotErr}
 	}()
 	<-blockingGoal.entered
 
@@ -186,12 +179,6 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	if read.err != nil {
 		t.Fatalf("ReadMaterialSnapshot: %v", read.err)
 	}
-	if read.snapshotRevision != 1 || read.planRevision != 1 || read.goalRevision != 1 {
-		t.Fatalf(
-			"snapshot revisions = Session:%d Plan:%d Goal:%d, want 1/1/1",
-			read.snapshotRevision, read.planRevision, read.goalRevision,
-		)
-	}
 	stores.goals = readerGoalStore
 	after, err := stores.ReadMaterialSnapshot(ctx, original.ID())
 	if err != nil {
@@ -202,6 +189,13 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 		t.Fatalf(
 			"successor revisions = Session:%d Plan:%d Goal:%d, want 2/2/2",
 			after.Session.Revision(), afterPlan.Revision(), after.Goal.Revision(),
+		)
+	}
+	firstPlan, committed := read.snapshot.Plan.State()
+	if !committed || read.snapshot.Session.Revision() != 1 || firstPlan.Revision() != 1 || read.snapshot.Goal.Revision() != 1 {
+		t.Fatalf(
+			"first snapshot after successor read = Session:%d Plan:%d Goal:%d, want 1/1/1",
+			read.snapshot.Session.Revision(), firstPlan.Revision(), read.snapshot.Goal.Revision(),
 		)
 	}
 }

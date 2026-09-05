@@ -93,31 +93,6 @@ func TestValidateSnapshotAcceptsCanonicalTerminalState(t *testing.T) {
 	}
 }
 
-func TestReadSnapshotOwnsStoreProjection(t *testing.T) {
-	source := portableSnapshotWithCollections()
-	coordinator := &Coordinator{snapshots: coordinatorStores{snapshot: source}}
-
-	snapshot, err := coordinator.readSnapshot(t.Context(), "ses_1")
-	if err != nil {
-		t.Fatalf("readSnapshot: %v", err)
-	}
-	source.Messages[0].Parts[0].Text = "source mutation"
-	source.Items[0] = transcript.Item{}
-	source.Runs[0] = run.Run{}
-	source.ToolResults[0].Body = "source mutation"
-	source.Plan[0].Description = "source mutation"
-
-	if text := snapshot.Messages[0].Text(); text != "original" {
-		t.Fatalf("snapshot message = %q, want owned projection", text)
-	}
-	if snapshot.Items[0].ID() != "item_1" || snapshot.Runs[0].ID() != "run_1" {
-		t.Fatalf("snapshot aggregates changed with store slices: Items=%+v Runs=%+v", snapshot.Items, snapshot.Runs)
-	}
-	if snapshot.ToolResults[0].Body != "full body" || snapshot.Plan[0].Description != "keep ownership" {
-		t.Fatalf("snapshot values changed with store slices: ToolResults=%+v Plan=%+v", snapshot.ToolResults, snapshot.Plan)
-	}
-}
-
 func TestRestorePlanOrdersRunTreeParentsBeforeChildren(t *testing.T) {
 	snapshot := portableSnapshot()
 	rootSnapshot := snapshot.Runs[0].Snapshot()

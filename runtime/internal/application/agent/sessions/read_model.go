@@ -3,7 +3,6 @@ package sessions
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strconv"
 	"time"
 
@@ -154,7 +153,6 @@ func (c *Coordinator) ListViewPage(
 	if err != nil {
 		return pagination.Page[View]{}, err
 	}
-	values = slices.Clone(values)
 	if err := read.ValidatePage(values); err != nil {
 		return pagination.Page[View]{}, err
 	}

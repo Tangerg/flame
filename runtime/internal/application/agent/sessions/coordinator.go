@@ -31,6 +31,7 @@ import (
 // Store is the coordinator's consumer-owned Session persistence port. Domain
 // behavior decides every initial or replacement aggregate; the Store only
 // inserts that initial value or saves an exact replacement with CAS.
+// Read results belong to the caller; later store calls must not mutate them.
 type Store interface {
 	List(ctx context.Context) ([]session.Session, error)
 	ListPage(ctx context.Context, read session.CatalogRead) ([]session.Session, error)
@@ -58,6 +59,7 @@ type InterruptStore interface {
 // history. The Runs those items belong to come from [RunStore] — one record, one
 // owner — and the coordinator reads both inside one storage transaction when it
 // needs them to agree.
+// List transfers its result to the caller without retaining mutable aliases.
 type TranscriptStore interface {
 	List(ctx context.Context, sessionID string) ([]transcript.Item, error)
 }
@@ -122,7 +124,8 @@ type WriteSets interface {
 }
 
 // SnapshotReader returns the canonical session aggregate from one storage
-// transaction.
+// transaction. The returned snapshot belongs to the caller; the reader must not
+// retain mutable aliases to its collections or nested data.
 type SnapshotReader interface {
 	ReadSnapshot(ctx context.Context, sessionID string) (Snapshot, error)
 }
@@ -130,6 +133,7 @@ type SnapshotReader interface {
 // MaterialSnapshotReader returns the live Session read model from one storage
 // transaction. Unlike the portable archive snapshot, it includes active Runs,
 // open interrupts, and the Plan's ordering metadata.
+// The returned snapshot and its nested data belong to the caller.
 type MaterialSnapshotReader interface {
 	ReadMaterialSnapshot(ctx context.Context, sessionID string) (MaterialSnapshot, error)
 }

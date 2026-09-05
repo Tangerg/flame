@@ -70,7 +70,7 @@ func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec) (session.Session,
 	if _, err := resourceid.ParseSession(spec.ParentID); err != nil {
 		return session.Session{}, fmt.Errorf("sessions: fork: %w", err)
 	}
-	snapshot, err := c.readSnapshot(ctx, spec.ParentID)
+	snapshot, err := c.snapshots.ReadSnapshot(ctx, spec.ParentID)
 	if err != nil {
 		return session.Session{}, err
 	}
