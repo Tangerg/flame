@@ -4365,3 +4365,71 @@ rather than a guess.
 The agent fixture's own coverage: sixteen states there, all of the transcript.
 Whether the same "registered but never rendered" gap exists on that side has not
 been asked.
+
+---
+
+## Round 81 — twenty-four tool previews nothing had ever rendered
+
+Status: **complete**
+
+The same question as round 75, asked on the other side. Thirty tool names carry a
+preview; the agent fixture calls six. **Twenty-four of those panels — their
+placeholders, their overflow rules, their inks — had never been rendered.**
+
+A first four in a new `tool-search` state: `glob`, `search_memory`,
+`search_conversations`, `search_tools`, with the result strings each projection
+actually parses rather than prose about them. All four render, and the third one
+was wrong.
+
+### The date that truncated to nothing
+
+`search_conversations` puts speaker and day in one 7.5rem cell and truncates the
+pair as one string, so what it cut was the **day**:
+
+```
+user · 2026-0…        assistant · 2…
+```
+
+Two rows that do not even agree on where they stopped, and the one fact you would
+scan the column for — when — destroyed in both.
+
+Split, the date is `shrink-0` and the speaker gives way instead. The column is
+9.5rem, not the 11.13 that would fit "assistant" whole: measured, that is 26% of
+the row spent on metadata, and the speaker is a two-value enum whose first four
+characters already tell them apart.
+
+### A false positive it also exposed
+
+`closure`'s horizontal-clipping check then failed on the new state, reporting the
+whole content card as cutting text. It was not: the snippet's box sits wholly
+inside the card, clipped with an ellipsis the reader can see. The check's
+text-node branch measures a RANGE — the laid-out text, which runs past a
+`truncate` box by design — and did not grant that branch the ellipsis exemption
+its element branch already grants.
+
+Fixed where the text lives, and **mutation-verified in both directions**: with
+the exemption the false positive is gone; replacing `truncate` with clipping that
+has no ellipsis brings the failure straight back.
+
+### And a flake I had introduced in round 78
+
+`agent golden light waves` failed right after being regenerated. The sidebar
+scrolls now, and `scrollIntoView` answers in fractions: the browser clamps to a
+fractional maximum — this list can scroll 18.6px — so the readback rounded to 18
+on one run and 19 on the next, moving every row a pixel.
+
+Integer offsets decide the target, flooring **after** the clamp decides the
+landing, and a `ResizeObserver` re-lands it when fonts finish. Measured six runs
+per state across five states: one value each.
+
+### Verification
+
+Visual **572/572**, twice consecutively, after regeneration. Guards green, unit
+2370/4.
+
+### Next
+
+Twenty more previews with no fixture call: the schedule family, the goal family,
+`http_request`, `web_search`, `web_fetch`, `read_shell_output`, `stop_shell`, the
+skill family, `lsp`, `ask_user`, `enter_plan_mode`/`exit_plan_mode`,
+`read_tool_result`.

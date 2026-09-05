@@ -57,10 +57,19 @@ function ConversationRecallPreview({ tool }: ToolPreviewProps) {
       {hits.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((hit, i) => (
         <div
           key={i}
-          className="grid grid-cols-[minmax(0,7.5rem)_minmax(0,1fr)] gap-3 rounded-2xs px-1 py-0.5 transition-colors hover:bg-hover"
+          className="grid grid-cols-[minmax(0,9.5rem)_minmax(0,1fr)] gap-3 rounded-2xs px-1 py-0.5 transition-colors hover:bg-hover"
         >
-          <span className="truncate text-fg-faint">
-            {hit.speaker} · {hit.day}
+          {/* The pair used to truncate as one string, and what it cut was the DAY —
+              "user · 2026-0…", "assistant · 2…", two rows not even agreeing on where they
+              stopped. Split, the date is `shrink-0` and the speaker gives way instead.
+              The column is 9.5rem rather than the 11.13 that would fit "assistant" whole:
+              measured, that is 26% of the row spent on metadata, and the speaker is a
+              two-value enum whose first four characters already tell them apart. What must
+              never be lost is the date, and it no longer is. Each row is its own grid, so the
+              width has to be a literal for the columns to line up at all. */}
+          <span className="flex min-w-0 items-baseline gap-1 text-fg-faint">
+            <span className="min-w-0 truncate">{hit.speaker}</span>
+            <span className="shrink-0">· {hit.day}</span>
           </span>
           <span className="min-w-0 truncate text-fg-soft">{hit.snippet}</span>
         </div>

@@ -23,14 +23,36 @@ const STATE_LABELS: Record<VisualAgentState, string> = {
   "long-content": "Long content",
   narrative: "Narrative",
   "tool-shells": "Tool shells",
+  "tool-search": "Tool search",
   waves: "Waves",
 };
 
 function StateSidebar({ state }: { state: VisualAgentState }) {
   const listRef = useRef<HTMLDivElement>(null);
-  // Keep the state this fixture is about on screen once the list outgrows the window.
+  // Keep the state this fixture is about on screen once the list outgrows the window, and land
+  // on the same pixel every time. Two things fight that: `scrollIntoView` answers in fractions,
+  // and the browser clamps to a FRACTIONAL maximum — this list can scroll 18.6px — so reading
+  // it back rounded to 18 on one run and 19 on the next, moving every row a pixel and blowing
+  // past the goldens' tolerance. Integer offsets decide the target, flooring after the clamp
+  // decides the landing, and the observer re-lands it when fonts finish and the height changes.
   useLayoutEffect(() => {
-    listRef.current?.querySelector("[data-active]")?.scrollIntoView({ block: "nearest" });
+    const list = listRef.current;
+    if (!list) return;
+    const land = () => {
+      const active = list.querySelector<HTMLElement>("[data-active]");
+      if (!active) return;
+      const top = active.offsetTop;
+      const bottom = top + active.offsetHeight;
+      if (top < list.scrollTop) list.scrollTop = top;
+      else if (bottom > list.scrollTop + list.clientHeight) {
+        list.scrollTop = bottom - list.clientHeight;
+      }
+      list.scrollTop = Math.floor(list.scrollTop);
+    };
+    land();
+    const observer = new ResizeObserver(land);
+    observer.observe(list);
+    return () => observer.disconnect();
   }, [state]);
   return (
     <div className="flex min-h-0 flex-1 flex-col">

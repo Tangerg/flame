@@ -462,6 +462,27 @@ async function horizontallyClippedText(page: Page): Promise<string[]> {
         return false;
       };
       const crossesEdge = (box: DOMRect) => box.left < edge - 1 && box.right > edge + 1;
+      // The same admission the outer loop accepts, applied where the text actually lives. A
+      // range measures the LAID-OUT text, which runs past a `truncate` box the reader never
+      // sees past — the box sat wholly inside this edge and the glyphs beyond it were already
+      // replaced by an ellipsis. Without this, any long-enough string in a truncating cell
+      // reports the whole card as cutting text, which is the opposite of what it is doing.
+      const saysItStopped = (subject: Element) => {
+        for (
+          let owner: Element | null = subject;
+          owner instanceof HTMLElement && owner !== el;
+          owner = owner.parentElement
+        ) {
+          const s = getComputedStyle(owner);
+          if (!(s.overflowX === "hidden" || s.overflowX === "clip")) continue;
+          if (owner.getBoundingClientRect().right > edge + 1) continue;
+          const mask = s.maskImage === "none" ? s.webkitMaskImage : s.maskImage;
+          if (s.textOverflow === "ellipsis" || mask?.startsWith("linear-gradient(to right")) {
+            return true;
+          }
+        }
+        return false;
+      };
 
       for (const child of el.querySelectorAll<HTMLElement>("*")) {
         if (getComputedStyle(child).visibility === "hidden") continue;
@@ -476,7 +497,11 @@ async function horizontallyClippedText(page: Page): Promise<string[]> {
         const owner = node.parentElement;
         if (!owner || getComputedStyle(owner).visibility === "hidden") continue;
         range.selectNodeContents(node);
-        if (crossesEdge(range.getBoundingClientRect()) && !readableByNestedScroller(owner)) {
+        if (
+          crossesEdge(range.getBoundingClientRect()) &&
+          !readableByNestedScroller(owner) &&
+          !saysItStopped(owner)
+        ) {
           return true;
         }
       }

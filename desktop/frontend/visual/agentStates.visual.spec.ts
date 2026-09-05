@@ -21,6 +21,7 @@ const EXPECTED_ATTENTION: Record<VisualAgentState, string> = {
   "long-content": "finished",
   narrative: "finished",
   "tool-shells": "finished",
+  "tool-search": "finished",
   waves: "running",
 };
 

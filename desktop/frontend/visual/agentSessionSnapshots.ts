@@ -26,6 +26,7 @@ export const VISUAL_AGENT_STATES = [
   "long-content",
   "narrative",
   "tool-shells",
+  "tool-search",
   "waves",
 ] as const;
 
@@ -233,6 +234,73 @@ const PENDING_APPROVAL_TOOL: Item = {
 // tool row has to survive on the SAME narrative line. That sameness is the thing under test:
 // the differentiation lives in the verb, the diffstat and the inline lifecycle text, so a
 // golden that only held successful reads would not notice a failure growing card chrome.
+// Four searching tools, none of which any fixture had ever called. Thirty tool names carry a
+// preview and six were exercised, so twenty-four of these panels — their placeholders, their
+// overflow rules, their inks — had never been rendered, let alone photographed or audited.
+// The result strings are the shapes each projection parses, not prose about them.
+function searchTool(
+  id: string,
+  name: string,
+  args: Record<string, unknown>,
+  result: unknown,
+): Item {
+  return {
+    type: "toolCall",
+    safetyClass: "safe",
+    id,
+    runId: ROOT_RUN_ID,
+    status: "completed",
+    startedAt: CREATED_AT,
+    durationMillis: 120,
+    finishedAt: "2026-07-31T08:00:00.120Z",
+    tool: { name, arguments: args, result },
+  };
+}
+
+const GLOB_CALL = searchTool(
+  "item_search_glob",
+  "glob",
+  { pattern: "runtime/**/*_test.go" },
+  JSON.stringify({
+    hits: [
+      { path: "runtime/internal/session/store_test.go" },
+      { path: "runtime/internal/session/atomicity_test.go" },
+      { path: "runtime/internal/run/segment_test.go" },
+    ],
+  }),
+);
+
+const MEMORY_CALL = searchTool(
+  "item_search_memory",
+  "search_memory",
+  { query: "compaction cutpoint" },
+  [
+    "1. The compaction cutpoint is chosen by the Runtime, never by the client.",
+    "2. A steer arriving during compaction is queued, not dropped.",
+  ].join("\n"),
+);
+
+const CONVERSATIONS_CALL = searchTool(
+  "item_search_conversations",
+  "search_conversations",
+  { query: "atomicity" },
+  [
+    "1. [user · 2026-07-24] Where does the transaction boundary sit?",
+    "2. [assistant · 2026-07-24] Around the store call, so a failed flush rolls the write back.",
+  ].join("\n"),
+);
+
+const TOOL_SEARCH_CALL = searchTool(
+  "item_search_tools",
+  "search_tools",
+  { query: "schedule" },
+  [
+    "Not loaded:",
+    "  [flame] create_schedule, list_schedules, delete_schedule",
+    "  [mcp:github] create_issue",
+  ].join("\n"),
+);
+
 const SHELL_READ: Item = {
   type: "toolCall",
   safetyClass: "safe",
@@ -1013,6 +1081,18 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       },
     ],
   },
+  "tool-search": {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:04.000Z",
+        outcome: { type: "completed" },
+        metrics: { steps: 4, activeDurationMillis: 4_000 },
+      }),
+    ],
+    items: [PROMPT, GLOB_CALL, MEMORY_CALL, CONVERSATIONS_CALL, TOOL_SEARCH_CALL, RESPONSE],
+    pendingInterruptSets: [],
+  },
+
   "tool-shells": {
     runs: [
       run("finished", {
@@ -1114,6 +1194,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   "long-content": [],
   narrative: [],
   "tool-shells": [],
+  "tool-search": [],
   // The live round arrives as started items, not as snapshot history: a snapshot holds
   // only what has reached a terminal state.
   waves: [
