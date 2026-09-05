@@ -1085,6 +1085,10 @@ export const es: Record<string, string> = {
   "schedules.runNow": "Ejecutar ahora",
   "schedules.edit": "Editar programación",
   "schedules.delete": "Eliminar programación",
+  "schedules.delete.title": "¿Eliminar esta programación?",
+  "schedules.delete.body":
+    "«{{title}}» y sus instrucciones desaparecen. Esto no se puede deshacer.",
+  "schedules.delete.confirm": "Eliminar",
   "schedules.empty": "No hay programaciones",
   "schedules.empty.sub":
     "Añade una para lanzar un prompt con un disparador cron: por ejemplo un standup en días laborables o una revisión nocturna.",

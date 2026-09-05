@@ -1020,6 +1020,9 @@ export const ja: Record<string, string> = {
   "schedules.runNow": "今すぐ実行",
   "schedules.edit": "スケジュールを編集",
   "schedules.delete": "スケジュールを削除",
+  "schedules.delete.title": "このスケジュールを削除しますか？",
+  "schedules.delete.body": "「{{title}}」とその指示は削除され、元に戻せません。",
+  "schedules.delete.confirm": "削除",
   "schedules.empty": "スケジュールがありません",
   "schedules.empty.sub":
     "cron トリガーでプロンプトを実行するスケジュールを追加します — 平日の朝会や毎晩のレビューなど。",

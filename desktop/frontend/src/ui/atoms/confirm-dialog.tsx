@@ -31,6 +31,11 @@ export function ConfirmDialog({
         <DialogPrimitive.Backdrop data-slot="confirm-dialog-backdrop" className={MODAL_SCRIM} />
         <DialogPrimitive.Popup
           data-slot="confirm-dialog"
+          // A destructive confirmation IS an alert: it interrupts to demand an answer before
+          // something goes away for good, which is the one thing `alertdialog` is for. Plain
+          // `dialog` announces it as another window and loses the urgency the copy is
+          // carrying. A confirmation that only asks — none exists yet — is not an alert.
+          role={destructive ? "alertdialog" : undefined}
           className={cn(
             "fixed inset-0 z-[var(--layer-modal)] m-auto h-fit w-[min(400px,calc(100vw-32px))]",
             "rounded-[var(--floating-panel-radius)] bg-canvas p-4 shadow-[var(--shadow-modal)] outline-none",

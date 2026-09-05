@@ -886,6 +886,9 @@ export const en: Record<string, string> = {
   "schedules.runNow": "Run now",
   "schedules.edit": "Edit schedule",
   "schedules.delete": "Delete schedule",
+  "schedules.delete.title": "Delete this schedule?",
+  "schedules.delete.body": '"{{title}}" and its instructions go away. This cannot be undone.',
+  "schedules.delete.confirm": "Delete",
   "schedules.empty": "No schedules",
   "schedules.empty.sub":
     "Add one to run a prompt on a cron trigger — e.g. a weekday standup or a nightly review.",

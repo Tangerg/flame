@@ -58,7 +58,7 @@ describe("GoalModeIndicator", () => {
     owner.requestReplacement("session-a", "old objective", vi.fn());
     render(<GoalModeIndicator />);
 
-    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
     expect(screen.getByText(/old objective/)).toBeTruthy();
     expect(screen.queryAllByRole("textbox")).toHaveLength(0);
     expect(screen.queryAllByRole("spinbutton")).toHaveLength(0);

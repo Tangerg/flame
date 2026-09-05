@@ -5061,3 +5061,52 @@ form is not in any frame, which is exactly why it took a click to find. The
 
 The schedules pane's empty list — the only shape of it left — and the row's edit
 mode, which reuses this form with a schedule already in it.
+
+---
+
+## Round 93 — one click, and the schedule was gone
+
+Status: **complete**
+
+A saved schedule is a prompt somebody wrote, a cron they chose and a working
+directory they set. Deleting one took **a single click on a quiet trash icon**
+wedged between Run and Edit in a dense row — no menu in front of it, no
+confirmation, no undo behind it.
+
+It was the least-protected destructive action in the app. The comparison is in
+the app already:
+
+| | in front of it | asks first |
+| --- | --- | --- |
+| delete a session | a context menu | yes, naming the session |
+| delete an MCP server | opening it, then a labelled red button | no |
+| **delete a schedule** | **nothing** | **no** |
+
+It asks now, named, in the words the session dialog uses: *"Nightly dependency
+audit" and its instructions go away. This cannot be undone.*
+
+### And the dialog it asks in
+
+Writing the guard, `getByRole("alertdialog")` found nothing. `ConfirmDialog`
+announces as a plain `dialog` — another window — for all three of its uses, and
+every one of them is destructive. A confirmation that interrupts to ask before
+something goes for good is the one thing `alertdialog` names.
+
+| | before | after |
+| --- | --- | --- |
+| role | `dialog` | `alertdialog` when `destructive` |
+| non-destructive confirm | — | would stay `dialog`; none exists yet |
+
+Two tests moved with it, and the move is the assertion getting more specific.
+
+### Verification
+
+The guard holds that the click ASKS — the row survives until the dialog is
+answered — and names the button it answers with, so the dialog cannot be settled
+by whichever control happens to be first. Mutated back to a direct delete, it
+fails. Visual **625/625** with no golden moved; the 20-script gate is green;
+unit 2395/4 outside the runtime-contract e2e.
+
+### Next
+
+The schedules pane's empty list, the last shape of it nothing has drawn.

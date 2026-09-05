@@ -753,3 +753,23 @@ test("a chosen cron preset stays chosen while the pointer crosses the others", a
     }
   }
 });
+
+// A saved schedule is instructions somebody wrote, and its delete was one click on a quiet
+// icon wedged between Run and Edit — no menu in front, no undo behind. What this holds is
+// that the click ASKS: the row is still there until the dialog is answered.
+test("deleting a schedule asks first, and a declined ask changes nothing", async ({ page }) => {
+  await openWorkspace(page, { state: "settings", pane: "schedules" });
+  await waitForWorkspaceState(page, "settings");
+
+  const rows = page.getByRole("button", { name: "Delete schedule" });
+  await expect(rows).toHaveCount(2);
+  await rows.first().click();
+
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog).toContainText("Nightly dependency audit");
+  await expect(dialog).toContainText("cannot be undone");
+  // Named, so the dialog cannot be answered by whichever button happens to be first.
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+
+  await expect(rows).toHaveCount(2);
+});

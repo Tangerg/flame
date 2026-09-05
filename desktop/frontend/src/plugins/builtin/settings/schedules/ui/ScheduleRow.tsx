@@ -1,6 +1,6 @@
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
-import { IconButton, Switch, Tag, type IconName } from "@/ui";
+import { ConfirmDialog, IconButton, Switch, Tag, type IconName } from "@/ui";
 import {
   deleteSchedule,
   runScheduleNow,
@@ -53,6 +53,7 @@ function ScheduleActionButton({
 export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
   const t = useT();
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const { busy, run } = useCommandAction({
     wasRetired: wasGenerationRetired,
@@ -123,7 +124,7 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
             title={t("schedules.delete")}
             tone="negative"
             busy={busy}
-            onClick={() => run(() => deleteSchedule(schedule.id))}
+            onClick={() => setConfirmingDelete(true)}
           />
         </div>
       </div>
@@ -137,6 +138,21 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
           />
         </div>
       )}
+
+      {/* The least-protected destructive action in the app until now: one click on a quiet
+          icon between Run and Edit, no menu in front of it, no undo behind it. A session's
+          delete — the app's other row-level one — asks first, and it is already behind a
+          context menu. This is a saved schedule and its instructions, gone on a slip. */}
+      <ConfirmDialog
+        open={confirmingDelete}
+        onOpenChange={setConfirmingDelete}
+        title={t("schedules.delete.title")}
+        body={t("schedules.delete.body", { title: schedule.title || t("schedules.untitled") })}
+        confirmLabel={t("schedules.delete.confirm")}
+        cancelLabel={t("common.cancel")}
+        destructive
+        onConfirm={() => run(() => deleteSchedule(schedule.id))}
+      />
     </div>
   );
 }

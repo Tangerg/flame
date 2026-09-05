@@ -1092,6 +1092,10 @@ export const fr: Record<string, string> = {
   "schedules.runNow": "Exécuter maintenant",
   "schedules.edit": "Modifier la planification",
   "schedules.delete": "Supprimer la planification",
+  "schedules.delete.title": "Supprimer cette planification ?",
+  "schedules.delete.body":
+    "« {{title}} » et ses instructions disparaissent. Cette action est irréversible.",
+  "schedules.delete.confirm": "Supprimer",
   "schedules.empty": "Aucune planification",
   "schedules.empty.sub":
     "Ajoutez-en une pour déclencher un prompt via cron — par ex. un point quotidien en semaine ou une revue nocturne.",

@@ -1013,6 +1013,9 @@ export const ko: Record<string, string> = {
   "schedules.runNow": "지금 실행",
   "schedules.edit": "일정 편집",
   "schedules.delete": "일정 삭제",
+  "schedules.delete.title": "이 일정을 삭제할까요?",
+  "schedules.delete.body": '"{{title}}"과(와) 해당 지시가 사라지며 되돌릴 수 없습니다.',
+  "schedules.delete.confirm": "삭제",
   "schedules.empty": "일정이 없습니다",
   "schedules.empty.sub":
     "cron 트리거로 프롬프트를 실행할 일정을 추가하세요 — 예: 평일 스탠드업이나 야간 리뷰.",

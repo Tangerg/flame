@@ -1061,6 +1061,10 @@ export const de: Record<string, string> = {
   "schedules.runNow": "Jetzt ausführen",
   "schedules.edit": "Zeitplan bearbeiten",
   "schedules.delete": "Zeitplan löschen",
+  "schedules.delete.title": "Diesen Zeitplan löschen?",
+  "schedules.delete.body":
+    "„{{title}}“ und die zugehörigen Anweisungen verschwinden. Das lässt sich nicht rückgängig machen.",
+  "schedules.delete.confirm": "Löschen",
   "schedules.empty": "Keine Zeitpläne",
   "schedules.empty.sub":
     "Füge einen hinzu, um einen Prompt per Cron auszulösen — etwa ein Standup an Wochentagen oder ein nächtlicher Review.",

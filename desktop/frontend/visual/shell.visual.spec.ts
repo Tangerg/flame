@@ -122,7 +122,8 @@ test("destructive session dialog traps, dismisses, and returns focus", async ({ 
   await session.click({ button: "right" });
   await page.getByRole("menuitem", { name: "Delete" }).click();
 
-  const dialog = page.getByRole("dialog", { name: "Delete this session?" });
+  // `alertdialog`, not `dialog`: this one interrupts to ask before something goes for good.
+  const dialog = page.getByRole("alertdialog", { name: "Delete this session?" });
   const cancel = dialog.getByRole("button", { name: "Cancel" });
   const remove = dialog.getByRole("button", { name: "Delete" });
   await expect(dialog).toBeVisible();
@@ -139,7 +140,7 @@ test("destructive session dialog traps, dismisses, and returns focus", async ({ 
   await session.click({ button: "right" });
   await page.getByRole("menuitem", { name: "Delete" }).click();
   await page.locator('[data-slot="confirm-dialog-backdrop"]').click({ position: { x: 4, y: 4 } });
-  await expect(page.getByRole("dialog", { name: "Delete this session?" })).toHaveCount(0);
+  await expect(page.getByRole("alertdialog", { name: "Delete this session?" })).toHaveCount(0);
   await expect(session).toBeFocused();
 });
 
