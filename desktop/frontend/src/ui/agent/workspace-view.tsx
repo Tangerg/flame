@@ -24,8 +24,8 @@ export function AgentViewSplit({
   children: ReactNode;
 }) {
   return (
-    <div className="agent-view-split">
-      <div className="agent-view-body">{children}</div>
+    <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
       {navigator}
     </div>
   );

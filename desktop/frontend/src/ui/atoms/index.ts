@@ -30,7 +30,6 @@ export { Pressable } from "./pressable";
 export { Gauge } from "./gauge";
 export { ProgressBar } from "./progress-bar";
 export { ProviderIcon, providerDisplayName } from "./provider-icon";
-export { ResizeHandle } from "./resize-handle";
 export { ScrollArea } from "./scroll-area";
 export { SearchField } from "./text-field";
 export { Sparkline } from "./sparkline";

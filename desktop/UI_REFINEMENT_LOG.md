@@ -2171,3 +2171,121 @@ for an icon swap and large enough for one letter.
 - 1897 tests passing.
 - `visual` — 429 of 430, the one failure being the round-17 `empty` flake. Both
   delegated card frames passed inside the full run.
+
+## Round 36 — globals.css was holding three facts that already had owners
+
+Opened after the `agent-*` ownership refactor (`25de9d4b`) as a deliberate sweep
+of the stylesheet itself. All three findings are the same shape: a fact whose
+owner exists somewhere else, kept as literals here instead.
+
+### A — the layer ladder does not reach the shell (已完成)
+
+`--layer-*` has exactly two rungs, `floating: 50` and `modal: 100`, and
+`check-design-tokens` refuses a raw `z-` at any CALL SITE. The stylesheet that
+owns the ladder carries six raw multi-digit values for the whole shell stacking
+order — 40, 30, 10, 25, 15, 25 — and **25 appears twice**, on the drawer seam
+rail and the dock resizer, sharing a rung by coincidence rather than by
+declaration. Nothing states why the drawer is 10 and the card backing 15.
+
+This is the defect `check-design-tokens`' own header describes for type sizes,
+in a property the guard never reads because it only reads `src/**/*.tsx`.
+
+Acceptance: every shell rung named in `--layer-*`; no multi-digit raw `z-index`
+left in `src/styles/`; the guard reads the stylesheets so the ladder's owner is
+held to the ladder.
+
+### B — the drag region is spelled two ways (已完成 · null result)
+
+`-webkit-app-region` + `--wails-draggable` always travel together — they are one
+fact, the Wails/WebKit pair. Written as raw CSS four times in `globals.css` and
+once as arbitrary Tailwind in `ChatSearchOverlay.tsx:89`. `globals.css` already
+uses `@utility` for `media-edge`, so the mechanism to give this one owner is
+present and unused.
+
+Acceptance: one `@utility` per intent; no call site spells the pair.
+
+### C — pure layout written as global CSS classes (已完成 · 3 of 4)
+
+`CLAUDE.md` §4 is "Tailwind first … 不写新 .css 文件". Four `agent-*` classes
+carry nothing but layout Tailwind already expresses — `.agent-view-split` is
+`display:flex; min-height:0; flex:1`. Each is a global name that can collide,
+that the layer guard cannot see, and that now needs the round-35 guard to police.
+Deleting them removes the collision instead of guarding it. The classes that stay
+are the ones Tailwind genuinely cannot reach: ancestor-state descendants, mask
+ladders, `::-webkit-scrollbar`, and the `box-shadow` seams that
+`check-design-tokens` requires to go through `--shadow-*`.
+
+Acceptance: the four are gone from `globals.css` and expressed at their single
+owner; the visual suite is unchanged, since none of this is a visual change.
+
+### What actually changed
+
+| | 修改前 | 修改后 |
+| --- | --- | --- |
+| A `--layer-*` | 2 rungs (`floating` 50, `modal` 100) | 6 rungs; `drawer` 10, `card` 15, `resizer` 25, `chrome-control` 30 added |
+| A shell stacking | 6 raw values in `globals.css`; `25` on two elements by coincidence | every rung named; the two resizers share `--layer-resizer` **by declaration** |
+| A window vs dock control | 40 and 30 — two rungs for elements that sit at opposite ends of one strip and cannot overlap | one `--layer-chrome-control` |
+| A guard | `check-design-tokens` read `src/**/*.tsx` only; `globals.css` exempt from every stylesheet rule | new `EVERY_STYLESHEET_RULES` applies to `globals.css` too; multi-digit `z-index` refused, single digits still legal |
+| C `.agent-card-backing` | global class | `relative flex h-screen min-h-0 min-w-0 flex-1 z-[var(--layer-card)]` at `app-shell.tsx` |
+| C `.agent-view-split` | global class | `flex min-h-0 flex-1` at `workspace-view.tsx` |
+| C `.agent-view-body` | global class | `flex min-w-0 min-h-0 flex-1 flex-col` at `workspace-view.tsx` |
+| dead export | `ResizeHandle` re-exported from `ui/atoms/index.ts` | removed — orphaned by round 35, both real consumers import the module directly |
+
+`globals.css` 1331 → 1314 lines. Guarded `agent-*` set 28 → 25.
+
+### B was withdrawn, on the evidence
+
+The plan called the `-webkit-app-region` / `--wails-draggable` pair a duplicated
+fact. Reading it again: it is a **vendor pair**, written where it applies, exactly
+like the `-webkit-mask-image` / `mask-image` pair this same file repeats eight
+times without anyone calling it duplication. `@apply` appears nowhere in the
+repo, and a `@utility` consumed by one call site is the abstraction this prompt
+forbids manufacturing. One call site does spell it as arbitrary Tailwind
+(`ChatSearchOverlay.tsx:89`); that is the documented escape, not a defect.
+
+### C stopped at three, and the fourth taught the criterion
+
+`.agent-drawer-header` was migrated to `ps-[var(--window-controls-gutter)] pe-3`
+and then **reverted**. It is not standalone layout — it overrides
+`.agent-surface-header`'s `padding-inline`, and that base class is UNLAYERED
+while Tailwind utilities live in `@layer utilities`. Unlayered wins, so the
+migrated version would have silently lost the traffic-light gutter.
+
+Confirmed in the built stylesheet rather than argued:
+
+```
+.agent-surface-header{   UNLAYERED
+.agent-drawer-header{    UNLAYERED
+.h-screen{               @layer utilities
+```
+
+**The criterion, for the next pass:** a class that overrides another class's
+property cannot move to Tailwind. Only classes nothing else targets can.
+
+### Verification
+
+- `prettier --check`, `typecheck`, `lint` — green.
+- All fifteen guards — green. `check-design-tokens` now reports the layer ladder;
+  negative-tested by restoring `z-index: 10` on `.agent-drawer`, which it refused
+  (`styles/globals.css:851`).
+- `knip` — green after removing the dead `ResizeHandle` re-export it caught.
+- `check:bundle` — 981 emitted utilities, every class renders; entry CSS 112.3 KB.
+- Unit: 2360 passing. 9 failures, all in `src/rpc/`
+  (`segment.finished.json` vs `RunEvent`, plus the Go-runtime e2e) — confirmed
+  pre-existing by stashing this branch's desktop changes and re-running.
+- **Visual: 430/430, no golden regenerated** — the correct result, since nothing
+  here is a visual change.
+
+### Resources reclaimed
+
+Port 4174 freed, no stray `visual:dev` or Playwright processes, `test-results`
+empty, temp backups removed, `playwright.visual.config.ts` unmodified.
+
+### Next round
+
+The Codex composer geometry audit this round was opened with and set aside:
+Codex switches the composer's radius by content height —
+`[data-composer-layout=single-line]` → `--radius-full`,
+`[data-composer-layout=multiline]` → `--radius-3xl` — where ours is a fixed
+`--shape-composer: 20px` at every height. Whether 20px on a single-line box reads
+as an unresolved almost-pill needs measuring before it is called a defect.

@@ -67,7 +67,7 @@ export function AgentAppShell({
           />
         </div>
       )}
-      <div className="agent-card-backing">
+      <div className="relative flex h-screen min-h-0 min-w-0 flex-1 z-[var(--layer-card)]">
         {hasSidebar && sidebarOpen && (
           <AgentSeamRail label={sidebarResizeLabel} width={sidebarWidth} onCommit={onResize} />
         )}

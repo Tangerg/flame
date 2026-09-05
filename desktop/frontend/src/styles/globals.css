@@ -496,6 +496,16 @@
   --icon-swap-start-scale: 0.25;
   --icon-swap-ease: ease-in-out;
 
+  /* The shell's stacking order, bottom to top. Every rung is here because two elements
+     that can overlap needed an order between them; a rung nothing overlaps is a number
+     pretending to be a system, which is why the two chrome controls share one — they sit
+     at opposite ends of the same strip and cannot meet. `z-index: 1` is deliberately NOT
+     a rung: it means "above my own siblings" inside a local stacking context and takes
+     part in no order beyond it. */
+  --layer-drawer: 10;
+  --layer-card: 15;
+  --layer-resizer: 25;
+  --layer-chrome-control: 30;
   --layer-floating: 50;
   --layer-modal: 100;
 
@@ -804,7 +814,7 @@ html.theme-dark {
   position: absolute;
   inset-block-start: 0;
   inset-inline-start: var(--window-controls-gutter);
-  z-index: 40;
+  z-index: var(--layer-chrome-control);
   display: flex;
   height: calc(var(--window-controls-centre) * 2);
   align-items: center;
@@ -816,7 +826,7 @@ html.theme-dark {
   position: absolute;
   inset-block-start: 0;
   inset-inline-end: 6px;
-  z-index: 30;
+  z-index: var(--layer-chrome-control);
   display: flex;
   height: var(--surface-header-height);
   align-items: center;
@@ -838,7 +848,7 @@ html.theme-dark {
   position: fixed;
   inset-block: 0;
   left: 0;
-  z-index: 10;
+  z-index: var(--layer-drawer);
   display: flex;
   width: var(--sidebar-width);
   height: 100vh;
@@ -878,7 +888,7 @@ html.theme-dark {
   position: absolute;
   inset-block: 0;
   left: 0;
-  z-index: 25;
+  z-index: var(--layer-resizer);
   width: 10px;
   transform: translateX(-5px);
   cursor: col-resize;
@@ -889,16 +899,6 @@ html.theme-dark {
 }
 .agent-shell[data-sidebar="collapsed"] .agent-seam-rail {
   display: none;
-}
-
-.agent-card-backing {
-  position: relative;
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-  flex: 1;
-  height: 100vh;
-  z-index: 15;
 }
 
 @property --shell-boundary {
@@ -940,7 +940,7 @@ html.theme-dark {
   position: absolute;
   inset-block: 0;
   inset-inline-end: var(--dock-measure);
-  z-index: 25;
+  z-index: var(--layer-resizer);
   width: 10px;
   transform: translateX(5px);
   cursor: col-resize;
@@ -1056,20 +1056,6 @@ html.theme-dark {
 
 .agent-workspace-view {
   container: workspace-view / inline-size;
-}
-
-.agent-view-split {
-  display: flex;
-  min-height: 0;
-  flex: 1;
-}
-
-.agent-view-body {
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-  flex: 1;
-  flex-direction: column;
 }
 
 .agent-view-navigator {

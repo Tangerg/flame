@@ -149,6 +149,23 @@ const STYLESHEET_RULES = [
   },
 ];
 
+// Holds in EVERY stylesheet, globals.css included, because a ladder whose owner is exempt
+// from it is not a ladder. The rungs are declared as `--layer-*` custom properties, so a
+// literal `z-index` here is always a consumer and never a definition — unlike `--fs-*` or
+// `--shape-*`, where globals.css genuinely has to spell the number out.
+//
+// The hole this closes: the markup rule below refused a double-digit `z-` at every call
+// site while the stylesheet carried six of them — 40, 30, 10, 25, 15, 25 — for the whole
+// shell order, with 25 landing on two elements by coincidence rather than by declaration.
+// Single digits stay legal: `z-index: 1` means "above my own siblings" inside a local
+// stacking context and takes part in no order beyond it.
+const EVERY_STYLESHEET_RULES = [
+  {
+    pattern: /z-index:\s*-?\d\d+/g,
+    message: "unnamed stacking rung — declare a `--layer-*` step and use `var(--layer-*)`",
+  },
+];
+
 // globals.css owns the ladders, so it is the one file allowed to spell the
 // numbers out.
 const STYLESHEET_EXEMPT = new Set(["styles/globals.css"]);
@@ -164,7 +181,11 @@ function* walk(dir) {
 function rulesFor(path) {
   const ext = extname(path);
   if (ext === ".tsx" || ext === ".ts") return MARKUP_RULES;
-  if (ext === ".css") return STYLESHEET_EXEMPT.has(relative(SRC, path)) ? [] : STYLESHEET_RULES;
+  if (ext === ".css") {
+    return STYLESHEET_EXEMPT.has(relative(SRC, path))
+      ? EVERY_STYLESHEET_RULES
+      : [...EVERY_STYLESHEET_RULES, ...STYLESHEET_RULES];
+  }
   return [];
 }
 
@@ -211,5 +232,5 @@ if (violations.length > 0) {
   process.exit(1);
 }
 console.log(
-  "check-design-tokens: type + leading + radius + tone + colour + depth + edge ladders clean",
+  "check-design-tokens: type + leading + radius + tone + colour + depth + edge + layer ladders clean",
 );
