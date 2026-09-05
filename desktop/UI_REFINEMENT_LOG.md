@@ -3163,3 +3163,82 @@ The blocked six if `runtime/.../sessions/` has settled. Otherwise the same
 question asked of the rest of `ui/atoms`: a `variant` union the product never
 exercises is invisible to every guard here, and `Loader` is unlikely to have been
 the only one.
+
+## Round 47 — six null results, one of them a rule I rebuilt without noticing
+
+Round 46 ended on a hypothesis: `Loader` carried six variants nothing asked for,
+so *"`Loader` is unlikely to have been the only one."* **That was wrong**, and the
+rest of the round went the same way. Recording it so none of these is re-opened.
+
+### 1. `cva` variant values nothing passes — inconclusive
+
+A sweep of every `cva` variants block in `ui/` reported ten unused values. Every
+one was a false positive: `Well`'s `wrap` arrives through
+`wrap={body.isJson ? "pre" : "anywhere"}`, `StatusDot`'s and `Badge`'s tones
+through lookup tables (`STATUS_TONE[phase]`, `SCOPE_TONE[scope]`), `Button`'s
+`icon-*` sizes through `IconButton`'s own record.
+
+Broadening "asked for" to *the literal appears anywhere outside the defining
+file* took it to zero — and that is not evidence of health, it is the test
+becoming useless, since `"md"` and `"error"` appear everywhere for unrelated
+reasons. Deciding this properly needs type analysis, not grep. **Left undecided
+rather than reported either way.**
+
+### 2. Other hand-rolled variant switches — none
+
+`Loader` was found because its union was a hand-written `switch`, which makes the
+call sites enumerable. There is no other `switch` on a variant prop anywhere in
+`ui/`. The hypothesis is closed.
+
+### 3. Dead catalog keys — 0, and **already guarded**
+
+Measured directly: of 1099 `en` keys, 185 literals never appear in source, which
+falls to **zero** once i18next plural suffixes and seventeen template prefixes
+(`` t(`rpcError.${type}`) ``) are discounted.
+
+I then built that measurement into `check-locales` as a new rule — and only after
+it reported five orphans did I find **rule 9 already there**, documented in the
+header and implemented at line 618, doing exactly this. The five were my own bug:
+`NAMED_STRING` used `"([^"\n]+)"`, and an adjacent EMPTY literal —
+`lines.push("", t("a.b"))` — leaves the engine unable to pair `""`, so it pairs
+the second quote with the key's opening one and swallows the key. Rule 9 uses
+`blob.includes()` and has no such seam. **Reverted in full.**
+
+### 4. Plural forms — already guarded
+
+Round 28 fixed 22 keys interpolating a count with no plural form by hand. A guard
+does exist: `check-locales` compares plural FAMILIES rather than keys and holds
+each locale to `Intl.PluralRules`, and rule 15 refuses `{{count}} task(s)`.
+
+### 5. Overlays outside the viewport — 0
+
+`ui_rules 12`. Right-clicked every trigger within 220px of an edge across five
+states and measured every open menu, dialog, listbox and tooltip. Nothing escapes.
+
+### 6. The `1x1` input from round 40 — not a target
+
+`HiddenFileInput` is `className="hidden"`, so `display: none`: no box on a fine
+pointer and none under the 44px coarse floor either, which does apply to it.
+Loose end closed.
+
+### What this round produced
+
+No code change. Six directions closed, one existing rule found that I had been
+about to duplicate, and one wrong hypothesis retracted. The log is the artifact.
+
+### Verification
+
+`check-locales` clean at 1106 keys across 8 locales; the working tree carries no
+change from this round.
+
+### Resources reclaimed
+
+All four probes deleted, `check-locales.mjs` restored to HEAD, port 4174 freed,
+no stray processes.
+
+### Next round
+
+The blocked six if `runtime/.../sessions/` has settled — it is still 7 files
+uncommitted. Otherwise the honest note from this round is that grep-shaped audits
+are running out: what is left needs the type checker, which is how
+`check-design-system-boundaries` already reads the tree.
