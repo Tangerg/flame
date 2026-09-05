@@ -25,13 +25,13 @@ type modelEnvironment struct {
 
 func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection modelref.Selection) (modelEnvironment, error) {
 	chatResolver := cfg.ChatResolver
-	utilityRole, err := loadUtilityRole(ctx, cfg.UtilityRoleStore)
+	utilityRole, err := loadUtilityRole(ctx, cfg.Stores.UtilityRole)
 	if err != nil {
 		return modelEnvironment{}, err
 	}
 	utilityRoleState := models.NewRoleState(utilityRole)
 
-	embeddingRole, err := loadEmbeddingRole(ctx, cfg.EmbeddingRoleStore)
+	embeddingRole, err := loadEmbeddingRole(ctx, cfg.Stores.EmbeddingRole)
 	if err != nil {
 		return modelEnvironment{}, err
 	}
@@ -58,11 +58,9 @@ func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection mod
 		embeddingResolver:  embeddingResolver,
 		liveEmbedder:       liveEmbedder,
 	}
-	if cfg.AgentMemoryStore != nil {
-		environment.agentMemoryRead, err = agentmemoryapp.NewReadModel(cfg.AgentMemoryStore, liveEmbedder.ResolveMemory)
-		if err != nil {
-			return modelEnvironment{}, err
-		}
+	environment.agentMemoryRead, err = agentmemoryapp.NewReadModel(cfg.Stores.AgentMemory, liveEmbedder.ResolveMemory)
+	if err != nil {
+		return modelEnvironment{}, err
 	}
 	return environment, nil
 }

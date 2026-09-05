@@ -46,7 +46,7 @@ func TestSeedUtilityRoleOnlySeedsAnAbsentDurableChoice(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			store := &utilityRoleSeedStore{role: test.stored, present: test.present}
+			store := &utilityRoleSeedStoreFake{role: test.stored, present: test.present}
 			if err := SeedUtilityRole(t.Context(), store, test.configured); err != nil {
 				t.Fatal(err)
 			}
@@ -57,17 +57,17 @@ func TestSeedUtilityRoleOnlySeedsAnAbsentDurableChoice(t *testing.T) {
 	}
 }
 
-type utilityRoleSeedStore struct {
+type utilityRoleSeedStoreFake struct {
 	role    modelref.Role
 	present bool
 	saves   int
 }
 
-func (s *utilityRoleSeedStore) LoadUtilityRole(context.Context) (modelref.Role, bool, error) {
+func (s *utilityRoleSeedStoreFake) LoadUtilityRole(context.Context) (modelref.Role, bool, error) {
 	return s.role, s.present, nil
 }
 
-func (s *utilityRoleSeedStore) SaveUtilityRole(_ context.Context, role modelref.Role) error {
+func (s *utilityRoleSeedStoreFake) SaveUtilityRole(_ context.Context, role modelref.Role) error {
 	s.role = role
 	s.present = true
 	s.saves++

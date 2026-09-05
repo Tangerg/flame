@@ -49,10 +49,8 @@ func assemble(ctx context.Context, cfg Config, lifetime *runtimeLifetime, buildT
 	// following model round can read them immediately. A process crash may leave
 	// that short-lived stage behind; startup is the only point with no live tool
 	// calls, so reconcile it before constructing the engine.
-	if cfg.ToolResultStore != nil {
-		if _, err := cfg.ToolResultStore.PurgeUnbound(ctx); err != nil {
-			return nil, fmt.Errorf("runtime: reconcile staged tool results: %w", err)
-		}
+	if _, err := cfg.Stores.ToolResults.PurgeUnbound(ctx); err != nil {
+		return nil, fmt.Errorf("runtime: reconcile staged tool results: %w", err)
 	}
 	policy, err := buildPolicyComposition(ctx, cfg)
 	if err != nil {
@@ -93,19 +91,19 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: session admission: %w", err)
 	}
 	sessionStores := persistence.NewSessionStores(persistence.SessionStoresConfig{
-		Sessions:            cfg.SessionStore,
-		Transcript:          cfg.TranscriptStore,
-		Interrupts:          cfg.InterruptStore,
-		Runs:                cfg.RunStore,
-		ExecutorCheckpoints: cfg.ExecutorCheckpoints,
+		Sessions:            cfg.Stores.Sessions,
+		Transcript:          cfg.Stores.Transcript,
+		Interrupts:          cfg.Stores.Interrupts,
+		Runs:                cfg.Stores.Runs,
+		ExecutorCheckpoints: cfg.Stores.ExecutorCheckpoints,
 		History:             execution.conversation.messages,
-		Plan:                cfg.PlanStore,
-		ApprovalRules:       cfg.ApprovalRuleStore,
-		PermissionModes:     cfg.PermissionModeStore,
-		ToolResults:         cfg.ToolResultStore,
-		ChildRunStarts:      cfg.ChildRunStartStore,
-		Goals:               cfg.GoalStore,
-		Tx:                  persistence.Transactor(cfg.Transactor),
+		Plan:                cfg.Stores.Plan,
+		ApprovalRules:       cfg.Stores.ApprovalRules,
+		PermissionModes:     cfg.Stores.PermissionModes,
+		ToolResults:         cfg.Stores.ToolResults,
+		ChildRunStarts:      cfg.Stores.ChildRunStarts,
+		Goals:               cfg.Stores.Goals,
+		Tx:                  persistence.Transactor(cfg.Stores.Transactor),
 	})
 	modelCapabilities := modeladapter.Capabilities{}
 	modelCoordinator := models.New(models.Config{
@@ -115,17 +113,17 @@ func buildAssemblyCore(
 		Lister:             modelCapabilities,
 		UtilityRoleState:   execution.models.utilityRoleState,
 		UtilityValidator:   execution.models.chatResolver,
-		UtilityStore:       cfg.UtilityRoleStore,
+		UtilityStore:       cfg.Stores.UtilityRole,
 		EmbeddingRoleState: execution.models.embeddingRoleState,
 		EmbeddingValidator: execution.models.embeddingResolver,
-		EmbeddingStore:     cfg.EmbeddingRoleStore,
+		EmbeddingStore:     cfg.Stores.EmbeddingRole,
 		Invalidations:      policy.invalidations.Publish,
 	})
 	sessionDependencies := sessions.Dependencies{
-		Sessions:              cfg.SessionStore,
-		Interrupts:            cfg.InterruptStore,
-		Transcript:            cfg.TranscriptStore,
-		Runs:                  cfg.RunStore,
+		Sessions:              cfg.Stores.Sessions,
+		Interrupts:            cfg.Stores.Interrupts,
+		Transcript:            cfg.Stores.Transcript,
+		Runs:                  cfg.Stores.Runs,
 		Snapshots:             sessionStores,
 		MaterialSnapshots:     sessionStores,
 		Writes:                sessionStores,
@@ -143,14 +141,10 @@ func buildAssemblyCore(
 		NewItemID:             newItemID,
 		NewToolResultID:       toolresult.NewID,
 	}
-	if cfg.PlanStore != nil {
-		sessionDependencies.Plan = &sessions.PlanServices{
-			Boundaries: cfg.PlanStore, Replacements: policy.plans,
-		}
+	sessionDependencies.Plan = &sessions.PlanServices{
+		Boundaries: cfg.Stores.Plan, Replacements: policy.plans,
 	}
-	if cfg.WorkspaceMutationStore != nil {
-		sessionDependencies.Mutations = cfg.WorkspaceMutationStore
-	}
+	sessionDependencies.Mutations = cfg.Stores.WorkspaceMutations
 	// Set only when present so a nil *Isolator never reaches the coordinator as a
 	// non-nil interface (which would defeat its own nil check).
 	if execution.isolation != nil {
@@ -159,11 +153,8 @@ func buildAssemblyCore(
 	// The shared Goal/session mutation coordinator is created before either
 	// lifecycle owner. The Driver is constructed later because it consumes Runs;
 	// no Bootstrap proxy or post-construction mutation is needed.
-	var goalMutations *goals.SessionMutations
-	if cfg.GoalStore != nil {
-		goalMutations = goals.NewSessionMutations()
-		sessionDependencies.Goals = goalMutations
-	}
+	goalMutations := goals.NewSessionMutations()
+	sessionDependencies.Goals = goalMutations
 	sessionCoordinator, err := sessions.New(sessionDependencies)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Session coordinator: %w", err)
@@ -174,30 +165,24 @@ func buildAssemblyCore(
 	runEffectTasks := &taskgroup.Group{}
 	lifetime.runEffectTasks = runEffectTasks
 	runSegmentConfig := segment.Config{
-		Interrupts:          cfg.InterruptStore,
-		ResumeClaims:        cfg.InterruptStore,
-		Sessions:            cfg.SessionStore,
-		Transcript:          cfg.TranscriptStore,
-		ItemReplacer:        cfg.TranscriptStore,
-		ToolApprovals:       cfg.TranscriptStore,
-		ModelInvocations:    cfg.ModelInvocationStore,
-		ToolInvocations:     cfg.ToolInvocationStore,
+		Interrupts:          cfg.Stores.Interrupts,
+		ResumeClaims:        cfg.Stores.Interrupts,
+		Sessions:            cfg.Stores.Sessions,
+		Transcript:          cfg.Stores.Transcript,
+		ItemReplacer:        cfg.Stores.Transcript,
+		ToolApprovals:       cfg.Stores.Transcript,
+		ModelInvocations:    cfg.Stores.ModelInvocations,
+		ToolInvocations:     cfg.Stores.ToolInvocations,
 		Conversation:        execution.conversation.store,
-		State:               cfg.RunStore,
-		RunProgress:         cfg.RunStore,
-		ExecutorCheckpoints: cfg.ExecutorCheckpoints,
-		ChildRunStarts:      cfg.ChildRunStartStore,
-		Tx:                  segment.Transactor(cfg.Transactor),
+		State:               cfg.Stores.Runs,
+		RunProgress:         cfg.Stores.Runs,
+		ExecutorCheckpoints: cfg.Stores.ExecutorCheckpoints,
+		ChildRunStarts:      cfg.Stores.ChildRunStarts,
+		Tx:                  segment.Transactor(cfg.Stores.Transactor),
 	}
-	if cfg.ScheduleStore != nil {
-		runSegmentConfig.Schedules = cfg.ScheduleStore
-	}
-	if cfg.GoalStore != nil {
-		runSegmentConfig.GoalRuns = cfg.GoalStore
-	}
-	if cfg.ToolResultStore != nil {
-		runSegmentConfig.ToolResults = cfg.ToolResultStore
-	}
+	runSegmentConfig.Schedules = cfg.Stores.Schedules
+	runSegmentConfig.GoalRuns = cfg.Stores.Goals
+	runSegmentConfig.ToolResults = cfg.Stores.ToolResults
 	runSegmentEffects, err := segment.New(runSegmentConfig)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Run-segment effects: %w", err)
@@ -245,8 +230,8 @@ func buildAssemblyCore(
 			Workspace:                   workspaceNotifier,
 			Finalizer:                   runFinalizer,
 		},
-		Runs:          cfg.RunStore,
-		Items:         cfg.TranscriptStore,
+		Runs:          cfg.Stores.Runs,
+		Items:         cfg.Stores.Transcript,
 		Admissions:    admissionGate,
 		Now:           time.Now,
 		NewRunID:      newRunID,
@@ -263,18 +248,15 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct Run coordinator: %w", err)
 	}
 	lifetime.runCoordinator = runCoordinator
-	scheduleFiring := schedules.DisabledFiring()
-	if cfg.ScheduleStore != nil {
-		scheduleFiring, err = schedules.NewFiring(schedules.FiringDependencies{
-			Store:         cfg.ScheduleStore,
-			RunStarter:    schedules.NewRunLauncher(runCoordinator, cfg.DefaultWorkspacePath),
-			NewSessionID:  newSessionID,
-			NewRunID:      newRunID,
-			Invalidations: policy.invalidations.Publish,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("runtime: construct Schedule firing: %w", err)
-		}
+	scheduleFiring, err := schedules.NewFiring(schedules.FiringDependencies{
+		Store:         cfg.Stores.Schedules,
+		RunStarter:    schedules.NewRunLauncher(runCoordinator, cfg.DefaultWorkspacePath),
+		NewSessionID:  newSessionID,
+		NewRunID:      newRunID,
+		Invalidations: policy.invalidations.Publish,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("runtime: construct Schedule firing: %w", err)
 	}
 
 	approvalCoordinator := approvals.New(policy.approvals, sessionCoordinator)
@@ -282,7 +264,7 @@ func buildAssemblyCore(
 	toolCoordinator := workspace.NewDiagnosticTools(execution.toolRegistry, workspaceServices.scope)
 
 	mcpCoordinator := mcpapp.New(mcpapp.Config{
-		Registry:            cfg.MCPRegistry,
+		Registry:            cfg.Stores.MCPServers,
 		StatusReader:        execution.tools.mcp,
 		ToolCatalog:         execution.tools.mcp,
 		ConnectionControl:   execution.tools.mcp,
@@ -293,46 +275,42 @@ func buildAssemblyCore(
 	lifetime.mcpCoordinator = mcpCoordinator
 
 	// Goal mode: the autonomous-execution loop driver over the run coordinator.
-	// nil store → nil driver → goals.* report capability_not_negotiated.
-	var goalDriver *goals.Driver
-	if cfg.GoalStore != nil {
-		goalDriver, err = goals.NewDriver(
-			policy.goals,
-			runCoordinator,
-			cfg.SessionStore,
-			goalMutations,
-			cfg.GoalDriveOwnership,
-			builtin.RunInstructions,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("runtime: construct Goal driver: %w", err)
-		}
-		lifetime.goalDriver = goalDriver
-		// create_goal is the only Goal tool that needs the Driver. Inject the
-		// generic tool after Runs and the Driver exist. This must precede Run
-		// recovery because it is part of the exact Deployment configuration used
-		// to validate a durable executor checkpoint.
-		createGoalTool, newCreateErr := builtin.NewCreate(goalDriver)
-		if newCreateErr != nil {
-			return nil, fmt.Errorf("runtime: build create_goal: %w", newCreateErr)
-		}
-		if execution.tools.tools.Resolver != nil {
-			execution.tools.tools.Resolver.UseCreateGoalTool(createGoalTool)
-		}
+	goalDriver, err := goals.NewDriver(
+		policy.goals,
+		runCoordinator,
+		cfg.Stores.Sessions,
+		goalMutations,
+		cfg.GoalDriveOwnership,
+		builtin.RunInstructions,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: construct Goal driver: %w", err)
+	}
+	lifetime.goalDriver = goalDriver
+	// create_goal is the only Goal tool that needs the Driver. Inject the
+	// generic tool after Runs and the Driver exist. This must precede Run
+	// recovery because it is part of the exact Deployment configuration used
+	// to validate a durable executor checkpoint.
+	createGoalTool, newCreateErr := builtin.NewCreate(goalDriver)
+	if newCreateErr != nil {
+		return nil, fmt.Errorf("runtime: build create_goal: %w", newCreateErr)
+	}
+	if execution.tools.tools.Resolver != nil {
+		execution.tools.tools.Resolver.UseCreateGoalTool(createGoalTool)
 	}
 
 	recoveryPersistence, err := recovery.New(recovery.Config{
-		Sessions:            cfg.SessionStore,
-		Runs:                cfg.RunStore,
-		Interrupts:          cfg.InterruptStore,
-		Transcript:          cfg.TranscriptStore,
+		Sessions:            cfg.Stores.Sessions,
+		Runs:                cfg.Stores.Runs,
+		Interrupts:          cfg.Stores.Interrupts,
+		Transcript:          cfg.Stores.Transcript,
 		Messages:            execution.conversation.store,
-		GoalRuns:            cfg.GoalStore,
-		ExecutorCheckpoints: cfg.ExecutorCheckpoints,
-		ModelInvocations:    cfg.ModelInvocationStore,
-		ToolInvocations:     cfg.ToolInvocationStore,
-		ChildRunStarts:      cfg.ChildRunStartStore,
-		Tx:                  recovery.Transactor(cfg.Transactor),
+		GoalRuns:            cfg.Stores.Goals,
+		ExecutorCheckpoints: cfg.Stores.ExecutorCheckpoints,
+		ModelInvocations:    cfg.Stores.ModelInvocations,
+		ToolInvocations:     cfg.Stores.ToolInvocations,
+		ChildRunStarts:      cfg.Stores.ChildRunStarts,
+		Tx:                  recovery.Transactor(cfg.Stores.Transactor),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: boot recovery persistence: %w", err)
@@ -346,11 +324,8 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: boot recovery: %w", err)
 	}
-	var goalRecovery ownership.GoalRecovery
-	if goalDriver != nil {
-		goalRecovery = goalDriver
-	}
-	ownershipRecovery, err := ownership.NewRecovery(bootRecovery, goalRecovery, cfg.RecoveryOwnership)
+
+	ownershipRecovery, err := ownership.NewRecovery(bootRecovery, goalDriver, cfg.RecoveryOwnership)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: ownership recovery: %w", err)
 	}
@@ -363,29 +338,29 @@ func buildAssemblyCore(
 		workspaceServices.scope, sessionCoordinator, promptsource.AgentDocs{}, promptsource.NewWorkspaceRecipes(cfg.RecipesGlobalDir),
 	)
 	workspaceHooks := workspace.NewHooks(
-		workspaceServices.scope, cfg.HooksResolver, cfg.HookTrustStore, policy.invalidations.Publish,
+		workspaceServices.scope, cfg.HooksResolver, cfg.Stores.Trust, policy.invalidations.Publish,
 	)
 	workspaceWatch := workspace.NewGitWatch(
 		workspaceServices.scope,
 		workspaceadapter.NewGitWatcher(lifetime.context),
 	)
 	queries, err := sessions.NewQueryCoordinator(sessions.QueryDependencies{
-		Transcript: cfg.TranscriptStore,
-		Interrupts: cfg.InterruptStore,
-		Runs:       cfg.RunStore,
-		Sessions:   cfg.SessionStore,
-		Plan:       cfg.PlanStore,
+		Transcript: cfg.Stores.Transcript,
+		Interrupts: cfg.Stores.Interrupts,
+		Runs:       cfg.Stores.Runs,
+		Sessions:   cfg.Stores.Sessions,
+		Plan:       cfg.Stores.Plan,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct session queries: %w", err)
 	}
 	usage, err := sessions.NewUsageReporter(sessions.UsageDependencies{
-		Runs: cfg.RunStore, Sessions: sessionCoordinator,
+		Runs: cfg.Stores.Runs, Sessions: sessionCoordinator,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct usage reporter: %w", err)
 	}
-	feedback, err := sessions.NewFeedbackRecorder(cfg.FeedbackStore)
+	feedback, err := sessions.NewFeedbackRecorder(cfg.Stores.Feedback)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct feedback recorder: %w", err)
 	}
@@ -416,7 +391,7 @@ func buildAssemblyCore(
 				Goals:                  goalDriver,
 				AgentMemory:            workspaceServices.agentMemory,
 				GitAvailable:           workspaceadapter.GitAvailable(),
-				PlanEnabled:            cfg.PlanStore != nil,
+				PlanEnabled:            true,
 			},
 			sessions: sessionCoordinator,
 			workers: runtimeWorkers{
@@ -424,7 +399,7 @@ func buildAssemblyCore(
 				recovery:      ownershipRecovery,
 				invalidations: policy.invalidations.Publish,
 			},
-			idempotencyStore: cfg.IdempotencyStore,
+			idempotencyStore: cfg.Stores.Idempotency,
 		},
 		lifetime: lifetime,
 	}

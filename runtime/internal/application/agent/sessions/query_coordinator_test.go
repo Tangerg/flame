@@ -228,6 +228,9 @@ func newQueryCoordinator(t *testing.T, deps QueryDependencies) *QueryCoordinator
 	if deps.Sessions == nil {
 		deps.Sessions = &fakeSessions{}
 	}
+	if deps.Plan == nil {
+		deps.Plan = &planStoreFake{}
+	}
 	coordinator, err := NewQueryCoordinator(deps)
 	if err != nil {
 		t.Fatal(err)
@@ -253,7 +256,7 @@ func TestNewQueryCoordinatorRejectsIncompleteDependencies(t *testing.T) {
 	complete.Transcript = &fakeTranscript{}
 	var typedNilPlan *PlanCoordinator
 	complete.Plan = typedNilPlan
-	if _, err := NewQueryCoordinator(complete); err == nil || !strings.Contains(err.Error(), "Plan reader must not be typed nil") {
+	if _, err := NewQueryCoordinator(complete); err == nil || !strings.Contains(err.Error(), "Plan reader is required") {
 		t.Fatalf("typed-nil Plan error = %v", err)
 	}
 }

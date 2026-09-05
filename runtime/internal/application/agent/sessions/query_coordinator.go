@@ -109,14 +109,12 @@ func NewQueryCoordinator(deps QueryDependencies) (*QueryCoordinator, error) {
 		{"interrupt reader", deps.Interrupts},
 		{"Run reader", deps.Runs},
 		{"session reader", deps.Sessions},
+		{"Plan reader", deps.Plan},
 	}
 	for _, dependency := range required {
 		if nilDependency(dependency.value) {
 			return nil, fmt.Errorf("sessions: query %s is required", dependency.name)
 		}
-	}
-	if deps.Plan != nil && nilDependency(deps.Plan) {
-		return nil, errors.New("sessions: optional query Plan reader must not be typed nil")
 	}
 	return &QueryCoordinator{
 		transcript: deps.Transcript,

@@ -45,12 +45,17 @@ func SeedConfiguredProvider(ctx context.Context, registry models.ProviderRegistr
 	return err
 }
 
+type utilityRoleSeedStore interface {
+	LoadUtilityRole(ctx context.Context) (modelref.Role, bool, error)
+	SaveUtilityRole(ctx context.Context, role modelref.Role) error
+}
+
 // SeedUtilityRole writes the config-file utility model into the store on first
 // run (when no row exists yet), pinned to the default provider. A role already
 // persisted via models.setUtilityRole is left untouched — runtime edits win
 // over the config file. An empty / identical-to-main UtilityModel seeds
 // nothing (maintenance then runs on the main model).
-func SeedUtilityRole(ctx context.Context, store UtilityRoleStore, cfg config.Settings) error {
+func SeedUtilityRole(ctx context.Context, store utilityRoleSeedStore, cfg config.Settings) error {
 	_, present, err := store.LoadUtilityRole(ctx)
 	if err != nil {
 		return err

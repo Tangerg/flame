@@ -336,8 +336,7 @@ func (s stubRuntime) queriesCoordinator() *sessions.QueryCoordinator {
 		deps.Sessions = s.sess
 	}
 	// The composition root passes the same store to both the write path and the
-	// query one, because features.plan IS "the store exists" — so a harness that
-	// wired only the writes could not reach plan.get at all.
+	// query one so mutations and reads observe the same Plan.
 	if s.plan != nil {
 		deps.Plan = s.plan
 	}
@@ -1116,7 +1115,14 @@ func (inertQueryInterrupts) ListPage(context.Context, string, string, int64, str
 	return nil, nil
 }
 
+func (inertQueryStores) State(context.Context, string) (plan.Current, error) {
+	return plan.Current{}, nil
+}
+
 func mustQueryCoordinator(deps sessions.QueryDependencies) *sessions.QueryCoordinator {
+	if deps.Plan == nil {
+		deps.Plan = inertQueryStores{}
+	}
 	if deps.Transcript == nil {
 		deps.Transcript = inertQueryStores{}
 	}

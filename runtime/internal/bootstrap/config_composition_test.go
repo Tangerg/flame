@@ -5,17 +5,20 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/config"
-	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 func TestComposeConfigInjectsDurableRuntimePolicy(t *testing.T) {
 	const buildID = "sha256:2222222222222222222222222222222222222222222222222222222222222222"
-	agentMemory := sqlitestore.NewAgentMemoryStore(nil)
-	got := ComposeConfig(config.Settings{}, &persistence.Bundle{DataDirectory: t.TempDir(), AgentMemory: agentMemory}, nil, nil, nil, buildID)
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir(), DefaultWorkspacePath: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = stores.Close() })
+	got := ComposeConfig(config.Settings{}, stores, nil, nil, nil, buildID)
 	if got.BuildID != buildID {
 		t.Fatalf("BuildID = %q, want %q", got.BuildID, buildID)
 	}
-	if got.AgentMemoryStore != agentMemory {
-		t.Fatal("agent memory was not wired to consolidation and prompt composition")
+	if got.Stores != stores {
+		t.Fatal("composition replaced the durable graph")
 	}
 }

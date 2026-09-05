@@ -31,6 +31,11 @@ func TestNewRequiresRuntimeDependencies(t *testing.T) {
 		want string
 	}{
 		{
+			name: "stores",
+			edit: func(cfg *Config) { cfg.Stores = nil },
+			want: "runtime: Stores is required",
+		},
+		{
 			name: "user home",
 			edit: func(cfg *Config) {
 				cfg.UserHome = ""
@@ -101,74 +106,11 @@ func TestNewRequiresRuntimeDependencies(t *testing.T) {
 			want: "runtime: ChatResolver is required",
 		},
 		{
-			name: "conversation store",
-			edit: func(cfg *Config) {
-				cfg.ConversationStore = nil
-			},
-			want: "runtime: ConversationStore is required",
-		},
-		{
 			name: "provider registry",
 			edit: func(cfg *Config) {
 				cfg.ProviderRegistry = nil
 			},
 			want: "runtime: ProviderRegistry is required",
-		},
-		{
-			name: "mcp registry",
-			edit: func(cfg *Config) {
-				cfg.MCPRegistry = nil
-			},
-			want: "runtime: MCPRegistry is required",
-		},
-		{
-			name: "mcp oauth sessions",
-			edit: func(cfg *Config) {
-				cfg.MCPOAuthSessions = nil
-			},
-			want: "runtime: MCPOAuthSessions is required",
-		},
-		{
-			name: "session store",
-			edit: func(cfg *Config) {
-				cfg.SessionStore = nil
-			},
-			want: "runtime: SessionStore is required",
-		},
-		{
-			name: "interrupt store",
-			edit: func(cfg *Config) {
-				cfg.InterruptStore = nil
-			},
-			want: "runtime: InterruptStore is required",
-		},
-		{
-			name: "transcript store",
-			edit: func(cfg *Config) {
-				cfg.TranscriptStore = nil
-			},
-			want: "runtime: TranscriptStore is required",
-		},
-		{
-			name: "run store",
-			edit: func(cfg *Config) {
-				cfg.RunStore = nil
-			},
-			want: "runtime: RunStore is required",
-		},
-		{
-			name: "executor checkpoint store",
-			edit: func(cfg *Config) {
-				cfg.ExecutorCheckpoints = nil
-			},
-			want: "runtime: ExecutorCheckpoints is required",
-		},
-		{
-			name: "transactor",
-			edit: func(cfg *Config) {
-				cfg.Transactor = nil
-			},
-			want: "runtime: Transactor is required",
 		},
 	}
 
@@ -241,7 +183,7 @@ func TestAssemblyRejectsInvalidDefaultModelBeforeStartupReconciliation(t *testin
 	}); err != nil {
 		t.Fatalf("stage tool result: %v", err)
 	}
-	cfg.ToolResultStore = store
+	cfg.Stores.ToolResults = store
 	cfg.Provider = ""
 
 	_, err = assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
@@ -372,38 +314,22 @@ func runtimeConfigWithRequiredDeps(t *testing.T) Config {
 		t.Fatalf("chat client: %v", err)
 	}
 
-	db, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	workspace := t.TempDir()
+	stores, err := persistence.Open(t.Context(), persistence.Config{
+		DataDirectory: t.TempDir(), DefaultWorkspacePath: workspace,
+	})
 	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
+		t.Fatal(err)
 	}
-
-	checkpoints := persistence.NewExecutorCheckpointStore(sqlitestore.NewExecutorCheckpointStore(db))
-	mcpServers := sqlitestore.NewMCPServerStore(db)
+	t.Cleanup(func() { _ = stores.Close() })
 	return Config{
-		Provider:             "anthropic",
-		Model:                "claude-test",
-		ApprovalMode:         approval.ModeSafe,
-		UserHome:             t.TempDir(),
-		KnowledgeDirectory:   t.TempDir(),
-		DefaultWorkspacePath: t.TempDir(),
-		ChatResolver:         testChatResolver(client),
-		BuildID:              "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-		ConversationStore:    sqlitestore.NewMessageStore(db),
-		ProviderRegistry:     sqlitestore.NewProviderStore(db),
-		MCPRegistry:          mcpServers,
-		MCPOAuthSessions:     mcpServers,
-		SessionStore:         sqlitestore.NewSessionStore(db),
-		InterruptStore:       persistence.NewInterruptStore(sqlitestore.NewInterruptStore(db)),
-		TranscriptStore:      sqlitestore.NewTranscriptStore(db),
-		FeedbackStore:        sqlitestore.NewFeedbackStore(db),
-		RunStore:             sqlitestore.NewRunStore(db),
-		ModelInvocationStore: sqlitestore.NewModelInvocationStore(db),
-		ToolInvocationStore:  sqlitestore.NewToolInvocationStore(db),
-		ChildRunStartStore:   sqlitestore.NewChildRunStartReservationStore(db),
-		ExecutorCheckpoints:  checkpoints,
-		Transactor: func(ctx context.Context, fn func(context.Context) error) error {
-			return sqlitestore.RunInTx(ctx, db, fn)
-		},
+		Stores:   stores,
+		Provider: "anthropic", Model: "claude-test",
+		ApprovalMode: approval.ModeSafe,
+		UserHome:     t.TempDir(), DefaultWorkspacePath: workspace,
+		ChatResolver:     testChatResolver(client),
+		BuildID:          "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+		ProviderRegistry: stores.Providers,
 	}
 }
 
@@ -421,33 +347,33 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 	value := testsupport.MustRestoreSession(session.Snapshot{
 		ID: sessionID, Workspace: testsupport.MustWorkspace(t.TempDir()), StartedAt: createdAt, UpdatedAt: createdAt,
 	})
-	if err := cfg.SessionStore.Insert(ctx, value); err != nil {
+	if err := cfg.Stores.Sessions.Insert(ctx, value); err != nil {
 		t.Fatalf("insert Session: %v", err)
 	}
 	profile := run.Capabilities{
 		InterruptKinds: []interrupt.Kind{interrupt.Question},
 	}
-	if err := cfg.RunStore.Admit(ctx, run.Draft{
+	if err := cfg.Stores.Runs.Admit(ctx, run.Draft{
 		RunID: runID, SessionID: sessionID, SegmentID: "seg_open",
 		Capabilities: profile, ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
-	if err := cfg.RunStore.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Waiting,
+	if err := cfg.Stores.Runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Waiting,
 		Capabilities: profile,
 		CreatedAt:    createdAt, MessageMark: run.UnknownMessageMark}),
 		"seg_open", runtimeidentity.CommitID{},
 	); err != nil {
 		t.Fatalf("suspend: %v", err)
 	}
-	if err := cfg.TranscriptStore.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
+	if err := cfg.Stores.Transcript.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_park", RunID: runID, SessionID: sessionID,
 		Kind:     transcript.QuestionItem,
 		Question: question, OccurredAt: parkedAt,
 	})); err != nil {
 		t.Fatalf("put transcript item: %v", err)
 	}
-	if err := cfg.InterruptStore.Open(ctx, bootstrapPending(
+	if err := cfg.Stores.Interrupts.Open(ctx, bootstrapPending(
 		runID,
 		sessionID,
 		memberID,
@@ -458,7 +384,7 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 	)); err != nil {
 		t.Fatalf("open interrupt: %v", err)
 	}
-	if err := cfg.ExecutorCheckpoints.SaveCheckpoint(ctx, bootstrapCheckpoint(memberID, sessionID)); err != nil {
+	if err := cfg.Stores.ExecutorCheckpoints.SaveCheckpoint(ctx, bootstrapCheckpoint(memberID, sessionID)); err != nil {
 		t.Fatalf("save executor checkpoint: %v", err)
 	}
 
@@ -468,13 +394,13 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = host.Close() })
 
-	if pending, listErr := cfg.InterruptStore.List(ctx, sessionID); listErr != nil || len(pending) != 0 {
+	if pending, listErr := cfg.Stores.Interrupts.List(ctx, sessionID); listErr != nil || len(pending) != 0 {
 		t.Fatalf("pending after assemble = (%+v, %v), want none", pending, listErr)
 	}
-	if _, loadCheckpointErr := cfg.ExecutorCheckpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
+	if _, loadCheckpointErr := cfg.Stores.ExecutorCheckpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("executor checkpoint after assemble = %v, want not found", loadCheckpointErr)
 	}
-	runs, err := cfg.RunStore.ListRuns(ctx, sessionID)
+	runs, err := cfg.Stores.Runs.ListRuns(ctx, sessionID)
 	failure, failed := run.Failure{}, false
 	if len(runs) == 1 {
 		failure, failed = runs[0].Failure()

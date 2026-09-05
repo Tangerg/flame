@@ -46,30 +46,27 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 	invalidations := newNotificationRelay[invalidation.Notice]()
 	approvalPolicy, err := approvals.NewRuntimePolicy(
 		cfg.ApprovalMode,
-		cfg.ApprovalRuleStore,
-		cfg.PermissionModeStore,
+		cfg.Stores.ApprovalRules,
+		cfg.Stores.PermissionModes,
 		invalidations.Publish,
 	)
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: approval policy: %w", err)
 	}
-	mcpSettings, err := buildMCPEnvironment(ctx, cfg.MCPRegistry)
+	mcpSettings, err := buildMCPEnvironment(ctx, cfg.Stores.MCPServers)
 	if err != nil {
 		return policyComposition{}, err
 	}
-	goalStore := goals.WithInvalidations(cfg.GoalStore, invalidations.Publish)
-	scheduleCoordinator := schedules.Disabled()
-	if cfg.ScheduleStore != nil {
-		scheduleCoordinator, err = schedules.New(schedules.Dependencies{
-			Store:         cfg.ScheduleStore,
-			Paths:         workspaceadapter.Resolver{},
-			Models:        modeladapter.Capabilities{},
-			NewScheduleID: newScheduleID,
-			Invalidations: invalidations.Publish,
-		})
-		if err != nil {
-			return policyComposition{}, fmt.Errorf("runtime: construct Schedule coordinator: %w", err)
-		}
+	goalStore := goals.WithInvalidations(cfg.Stores.Goals, invalidations.Publish)
+	scheduleCoordinator, err := schedules.New(schedules.Dependencies{
+		Store:         cfg.Stores.Schedules,
+		Paths:         workspaceadapter.Resolver{},
+		Models:        modeladapter.Capabilities{},
+		NewScheduleID: newScheduleID,
+		Invalidations: invalidations.Publish,
+	})
+	if err != nil {
+		return policyComposition{}, fmt.Errorf("runtime: construct Schedule coordinator: %w", err)
 	}
 	return policyComposition{
 		invalidations: invalidations,
@@ -78,7 +75,7 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 		goalReader:    goals.NewReader(goalStore),
 		goalReporter:  goals.NewOutcomeReporter(goalStore),
 		plans: sessions.NewPlanCoordinator(sessions.PlanDependencies{
-			Store: cfg.PlanStore, Now: time.Now, Invalidations: invalidations.Publish,
+			Store: cfg.Stores.Plan, Now: time.Now, Invalidations: invalidations.Publish,
 		}),
 		mcp:       mcpSettings,
 		schedules: scheduleCoordinator,
@@ -105,7 +102,7 @@ func buildWorkspaceComposition(
 ) (workspaceComposition, error) {
 	scope := workspace.NewScope(cfg.DefaultWorkspacePath, cfg.UserHome, workspaceadapter.Resolver{})
 	authoredWatcher, err := workspaceadapter.NewAuthoredWatcher(
-		cfg.KnowledgeDirectory,
+		cfg.Stores.DataDirectory,
 		cfg.UserHome,
 		cfg.SkillsUserDir,
 	)
@@ -116,7 +113,7 @@ func buildWorkspaceComposition(
 	knowledge := workspace.NewKnowledge(
 		scope,
 		workspaceadapter.Resolver{},
-		cfg.KnowledgeStore,
+		cfg.Stores.Knowledge,
 		authoredWatch,
 		publish,
 	)
@@ -138,10 +135,10 @@ func buildWorkspaceComposition(
 	return workspaceComposition{
 		scope: scope,
 		agentMemory: agentmemoryapp.New(agentmemoryapp.Config{
-			Store: cfg.AgentMemoryStore, Roots: scope, Invalidations: publish,
+			Store: cfg.Stores.AgentMemory, Roots: scope, Invalidations: publish,
 		}),
 		memoryCuration: agentmemoryapp.NewCuration(agentmemoryapp.CurationConfig{
-			Store: cfg.AgentMemoryStore, Invalidations: publish,
+			Store: cfg.Stores.AgentMemory, Invalidations: publish,
 		}),
 		authoredWatch: authoredWatch,
 		knowledge:     knowledge,
@@ -179,11 +176,11 @@ func buildExecutionComposition(
 	workspaceServices workspaceComposition,
 ) (executionComposition, error) {
 	conversation, err := buildConversationEnvironment(
-		cfg.ConversationStore,
+		cfg.Stores.ChatHistory,
 		persistence.NewConversationCompactions(
-			cfg.ConversationStore,
-			cfg.RunStore,
-			persistence.Transactor(cfg.Transactor),
+			cfg.Stores.ChatHistory,
+			cfg.Stores.Runs,
+			persistence.Transactor(cfg.Stores.Transactor),
 		),
 	)
 	if err != nil {
@@ -228,7 +225,7 @@ func buildExecutionComposition(
 		Knowledge:         workspaceServices.knowledge,
 		AgentMemory:       modelServices.agentMemoryRead,
 		AgentMemorySearch: modelServices.agentMemoryRead,
-		Plan:              cfg.PlanStore,
+		Plan:              cfg.Stores.Plan,
 		Goal:              policy.goalReader,
 		Hooks:             cfg.HooksResolver,
 	})
@@ -289,7 +286,7 @@ func buildExecutionComposition(
 	}
 	if cfg.ToolResultOffloadEnabled {
 		toolResultThreshold := cfg.ToolResultThreshold
-		interactionConfig.ToolResultStore = cfg.ToolResultStore
+		interactionConfig.ToolResultStore = cfg.Stores.ToolResults
 		interactionConfig.ToolResultOffload = agentexec.ToolResultOffloadPolicyValues{
 			Threshold:  &toolResultThreshold,
 			ReaderName: tool.ReadToolResult,

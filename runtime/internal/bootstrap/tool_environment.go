@@ -51,7 +51,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		ctx,
 		deps.lifetime,
 		deps.mcp.servers,
-		cfg.MCPOAuthSessions,
+		cfg.Stores.MCPServers,
 	)
 	if err != nil {
 		return toolEnvironment{}, fmt.Errorf("runtime: open MCP connections: %w", err)
@@ -86,41 +86,14 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		SandboxShell:         cfg.SandboxShell,
 		SandboxReadOnlyPaths: cfg.SandboxReadOnlyPaths,
 	}
-	// Plan mode is usable only when both durable pieces exist: the permission
-	// overlay and the canonical Plan it eventually presents for approval. Keep
-	// the mode tools absent in partial test configurations instead of exposing a
-	// capability that can enter but cannot exit.
-	if cfg.PermissionModeStore != nil && cfg.PlanStore != nil {
-		buildConfig.PlanMode = deps.approvalPolicy
-	}
-	if cfg.ScheduleStore != nil {
-		buildConfig.Schedules = deps.schedules
-	}
-	// Set the read-back store only when concretely present, so a nil store never
-	// reaches the tool builder as a non-nil interface holding a nil pointer.
-	if cfg.ToolResultStore != nil {
-		buildConfig.ToolResults = cfg.ToolResultStore
-	}
-	// Goal reads, outcome reports, and the active gate come from separate
-	// application boundaries. create_goal is injected later when the Driver exists.
-	if deps.goalReader != nil {
-		buildConfig.GoalReader = deps.goalReader
-	}
-	if deps.goalReporter != nil {
-		buildConfig.GoalReporter = deps.goalReporter
-	}
-	// search_memory searches exact-project and user-scoped curated memory. Set
-	// only when the concrete read model exists, so a typed nil never reaches the
-	// tool builder as a non-nil interface.
-	if deps.agentMemoryReader != nil {
-		buildConfig.AgentMemorySearch = deps.agentMemoryReader
-	}
-	// search_conversations recalls past conversation transcripts (the durable Item
-	// history). Set only when the concrete store is present, for the same
-	// nil-interface reason.
-	if cfg.TranscriptStore != nil {
-		buildConfig.ConversationSearch = cfg.TranscriptStore
-	}
+	buildConfig.PlanMode = deps.approvalPolicy
+	buildConfig.Schedules = deps.schedules
+	buildConfig.ToolResults = cfg.Stores.ToolResults
+	// create_goal is injected after Runs and the Driver exist.
+	buildConfig.GoalReader = deps.goalReader
+	buildConfig.GoalReporter = deps.goalReporter
+	buildConfig.AgentMemorySearch = deps.agentMemoryReader
+	buildConfig.ConversationSearch = cfg.Stores.Transcript
 	builtToolset, err := toolset.Build(ctx, buildConfig)
 	if err != nil {
 		return environment, fmt.Errorf("runtime: build tools: %w", err)
