@@ -115,6 +115,16 @@ const MARKUP_RULES = [
     message: "arbitrary line height — use a `leading-*` step",
   },
   {
+    // A duration written at a motion call site cannot scale. `lib/motion` publishes every
+    // preset with a live getter so the user's motion preference reaches each animation with
+    // no hook per call site — and the one call site that spelled its own out went on
+    // animating for 25 style frames with that preference at zero, alone in the app.
+    // `0.3` was this ladder's `slowMs` all along.
+    pattern: /transition\s*[=:]\s*\{\{?[^}]*\bduration:\s*[\d.]+/g,
+    message: "literal animation duration — use a preset from `lib/motion`, or add the rung there",
+    appliesTo: (rel) => rel !== "lib/motion.ts",
+  },
+  {
     // An ink or accent wash mixed by hand in an arbitrary value. The mermaid
     // block had built two panels this way, out of four alphas of its own — which
     // also opted them out of the contrast preference, since `--depth-step` is
@@ -252,5 +262,5 @@ if (violations.length > 0) {
   process.exit(1);
 }
 console.log(
-  "check-design-tokens: type + leading + radius + tone + colour + depth + edge + layer ladders clean",
+  "check-design-tokens: type + leading + radius + tone + colour + depth + edge + layer + motion ladders clean",
 );

@@ -5,7 +5,7 @@ import type { Transition } from "motion/react";
 import { motionScale, visualStyleMotion } from "./appearance";
 
 // `duration` is a live getter; framer-motion samples it once per animation start.
-function scaled(duration: "fastMs" | "mediumMs"): Transition {
+function scaled(duration: "fastMs" | "mediumMs" | "slowMs"): Transition {
   const t = {} as Transition;
   Object.defineProperty(t, "duration", {
     enumerable: true,
@@ -26,6 +26,25 @@ export const disclosureTransition: Transition = scaled("mediumMs");
 /** A selection travelling BETWEEN elements — the one motion CSS cannot express, since a
  *  transition animates a property within one element. */
 export const selectionTransition: Transition = scaled("fastMs");
+
+/** A glyph REPLACING another in the same box. A spring rather than a tween because the two
+ *  travel through one 16px square and an eased cross-fade reads as a dissolve; `bounce: 0`
+ *  so a control this small settles without overshoot.
+ *
+ *  Here rather than at the call site because a literal duration there does not scale: the
+ *  theme toggle carried `{ type: "spring", duration: 0.3, bounce: 0 }`, and with the motion
+ *  preference at zero it went on animating — 25 style frames — while every other animation
+ *  in the app stopped. 0.3s was never arbitrary; it is this ladder's `slowMs`. */
+function scaledSpring(duration: "fastMs" | "mediumMs" | "slowMs"): Transition {
+  const t = { type: "spring", bounce: 0 } as Transition;
+  Object.defineProperty(t, "duration", {
+    enumerable: true,
+    get: () => (visualStyleMotion()[duration] / 1000) * motionScale(),
+  });
+  return t;
+}
+
+export const glyphSwapTransition: Transition = scaledSpring("slowMs");
 
 /** PRESENCE only. Adding `layout` costs a measurement on every render of the holder — and
  *  the composer re-renders on every keystroke. */

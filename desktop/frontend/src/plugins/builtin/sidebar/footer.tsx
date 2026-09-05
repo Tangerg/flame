@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
+import { glyphSwapTransition } from "@/lib/motion";
 import { AgentRow, AgentWorkIndexFooter } from "@/ui/agent";
 import { Button, Icon } from "@/ui";
 import { useT } from "@/lib/i18n";
@@ -27,7 +28,7 @@ function ThemeToggle() {
           initial={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
           animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
           exit={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
-          transition={{ type: "spring", duration: 0.3, bounce: 0 }}
+          transition={glyphSwapTransition}
         >
           <Icon name={isLight ? "moon" : "sun"} size="sm" />
         </motion.span>

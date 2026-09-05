@@ -3023,3 +3023,76 @@ layout has more that has never been rendered: `[data-reveal="rest"]` is
 permanently hidden there, so every row's detail — counts, timestamps — is gone on
 a touch screen, and nothing says whether that was intended or is just what the
 pair rule does when it cannot fade.
+
+## Round 45 — the one animation that ignored the motion preference
+
+`ui_rules 9` requires motion to respect the user's preference. This app has two:
+the OS `prefers-reduced-motion`, and its own Settings slider published as
+`--motion-scale`. Both halves looked handled — `MotionConfig reducedMotion="user"`
+in `App.tsx` for the first, and `lib/motion.ts` for the second, whose header
+states the contract:
+
+> Every preset's duration multiplies by the published motion scale AT READ TIME,
+> so the user's preference reaches every animation **without a hook at each call
+> site**.
+
+### The finding (已完成)
+
+One call site did not use a preset. `sidebar/footer.tsx` — the theme toggle's
+sun/moon swap — carried `transition={{ type: "spring", duration: 0.3, bounce: 0 }}`.
+
+Measured by watching inline-style mutations during the swap with the preference
+at zero: **25 style frames**, scale interpolating 1 -> 0.86 -> 0.74 -> 0.62 ->
+0.51, while every other animation in the app was already still. After:
+
+| | `--motion-scale` | style mutations during the swap |
+| --- | --- | --- |
+| motion off | 0 | **25 -> 3** |
+| motion on | 1 | **25**, unchanged |
+
+`0.3s` was never arbitrary: it is this ladder's `slowMs`. The rung existed and
+only the preset was missing, which is the exact shape `check-design-tokens`'
+header describes — *"a value the ladder cannot express is a signal the ladder
+needs a step, not that this callsite needs an exception"*. `lib/motion.ts` gained
+`glyphSwapTransition`, a scaled spring at `slowMs`, so the feel at full motion is
+byte-identical and the preference now reaches it.
+
+The spring shape is kept rather than folded into the existing tween presets: the
+two glyphs travel through one 16px square, and an eased cross-fade there reads as
+a dissolve rather than a swap.
+
+### The guard
+
+`check-design-tokens` gained a rule for a literal `duration` inside a
+`transition`, exempting `lib/motion.ts` where the ladder is authored. Negative-
+tested by restoring the literal, which it reports at `footer.tsx:31`.
+
+### Two things looked at and left alone
+
+- **`[data-reveal="rest"]` under `@media (hover: none)`** is permanently hidden,
+  so on a touch screen every row loses its detail — counts, timestamps — while
+  its action is permanently shown. That is what the pair rule *must* do when it
+  cannot fade, and whether the trade is right is a product decision, not a defect.
+  Recorded, not changed.
+- Every other `motion` call site already takes a preset from `lib/motion.ts`; the
+  scan found exactly one literal.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, all fifteen guards — green.
+- Unit: **2365 passing**; the 8 failures are the `src/rpc/` set blocked in round 38
+  (`runtime/.../sessions/` still 7 files uncommitted).
+- Visual: **436/436**, none regenerated. The suite runs with motion at zero, where
+  the fixed animation is now instant — which is why no golden moved.
+
+### Resources reclaimed
+
+Probes deleted, port 4174 freed, no stray processes,
+`playwright.visual.config.ts` unmodified.
+
+### Next round
+
+The blocked six if `runtime/.../sessions/` has settled. Otherwise: `App.tsx` sets
+`MotionConfig reducedMotion="user"`, which answers the OS preference, and
+`lib/motion.ts` answers the app's — but nothing checks the two agree when they
+disagree, e.g. OS reduced-motion ON with the app slider at full.
