@@ -94,9 +94,7 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <div className="truncate text-ui-md font-semibold text-fg">{proposal.name}</div>
-            <Tag ink="faint" className="tabular-nums">
-              {proposal.revision.slice(0, 8)}
-            </Tag>
+            <Tag className="tabular-nums">{proposal.revision.slice(0, 8)}</Tag>
             <Badge>{t(`skillProposals.scope.${proposal.scope}`)}</Badge>
             {proposal.revises && <Badge tone="warning">{t("skillProposals.revises")}</Badge>}
           </div>

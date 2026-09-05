@@ -49,7 +49,7 @@ export function SkillsTab() {
               <div key={s.id} className="px-[var(--density-column-gutter-wide)] py-2">
                 <div className="flex items-center gap-2">
                   <div className="text-ui-md font-semibold text-fg truncate">{s.name}</div>
-                  {s.scope && <Tag ink="faint">{s.scope}</Tag>}
+                  {s.scope && <Tag>{s.scope}</Tag>}
                 </div>
                 {s.description && (
                   <div className="mt-0.5 text-ui-sm leading-body text-fg-muted">

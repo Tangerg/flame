@@ -34,7 +34,17 @@ import {
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_READ_FILE_KEY,
+  WORKSPACE_AGENT_DOCS_KEY,
+  WORKSPACE_MANAGED_SKILLS_KEY,
+  WORKSPACE_RECIPES_KEY,
+  WORKSPACE_SKILLS_KEY,
+  WORKSPACE_SKILL_PROPOSALS_KEY,
   type BuiltinToolSummary,
+  type ManagedSkill,
+  type SkillProposal,
+  type WorkspaceAgentDoc,
+  type WorkspaceRecipe,
+  type WorkspaceSkill,
   type WorkspaceDiff,
   type WorkspaceFileChange,
   type WorkspaceFileContent,
@@ -258,6 +268,96 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
           ] satisfies WorkspaceFileChange[];
         },
       });
+      // Five catalogues that had no provider at all, so five views rendered "Couldn't load"
+      // — which is what a missing provider looks like from the inside, and what every one of
+      // them showed the first time a fixture opened it. Each sample spans what its view sorts
+      // on rather than repeating one row: both scopes, both lifecycles, both origins.
+      ctx.contribute(DATA_PROVIDER, {
+        key: WORKSPACE_SKILLS_KEY,
+        fetcher: async (): Promise<WorkspaceSkill[]> => [
+          {
+            name: "review-diff",
+            description: "Read a change the way a reviewer does, worst risk first.",
+            scope: "project",
+          },
+          {
+            name: "write-commit-message",
+            description: "State why the change exists, not what the diff already says.",
+            scope: "user",
+          },
+        ],
+      });
+      ctx.contribute(DATA_PROVIDER, {
+        key: WORKSPACE_MANAGED_SKILLS_KEY,
+        fetcher: async (): Promise<ManagedSkill[]> => [
+          {
+            name: "review-diff",
+            description: "Read a change the way a reviewer does, worst risk first.",
+            lifecycle: "active",
+          },
+          {
+            name: "summarise-standup",
+            description: "Superseded by the run digest.",
+            lifecycle: "archived",
+          },
+        ],
+      });
+      ctx.contribute(DATA_PROVIDER, {
+        key: WORKSPACE_SKILL_PROPOSALS_KEY,
+        fetcher: async (): Promise<SkillProposal[]> => [
+          {
+            workspace: "/Users/visual/scope",
+            name: "review-diff",
+            revision: "rev_02",
+            scope: "project",
+            description: "Read a change the way a reviewer does, worst risk first.",
+            instructions: "Start from the riskiest hunk. Name the invariant it could break.",
+            origin: "requested",
+            // A proposal that would overwrite a Skill already loading is the one shape the
+            // reviewer has to be able to see before deciding.
+            revises: true,
+            sourceSession: VISUAL_SESSION_ID,
+          },
+          {
+            workspace: "/Users/visual/scope",
+            name: "trace-flaky-test",
+            revision: "rev_01",
+            scope: "user",
+            description: "Find the shared state behind a test that passes alone.",
+            instructions: "Run it in isolation, then with its file, then with its package.",
+            origin: "mined",
+            revises: false,
+            sourceSession: VISUAL_SESSION_ID,
+          },
+        ],
+      });
+      ctx.contribute(DATA_PROVIDER, {
+        key: WORKSPACE_RECIPES_KEY,
+        fetcher: async (): Promise<WorkspaceRecipe[]> => [
+          {
+            name: "review",
+            description: "Review the working tree against the base.",
+            argumentHint: "[path]",
+            body: "Read the diff, then the tests that cover it.",
+            scope: "project",
+            source: ".flame/recipes/review.md",
+          },
+          {
+            name: "digest",
+            body: "Summarise the run for someone who was not watching it.",
+            scope: "global",
+            source: "~/.flame/recipes/digest.md",
+          },
+        ],
+      });
+      ctx.contribute(DATA_PROVIDER, {
+        key: WORKSPACE_AGENT_DOCS_KEY,
+        fetcher: async (): Promise<WorkspaceAgentDoc[]> => [
+          { path: "FLAME.md", title: "Workspace instructions", scope: "cwd" },
+          { path: "../FLAME.md", title: "Project instructions", scope: "projectRoot" },
+          { path: "~/.flame/FLAME.md", title: "Personal instructions", scope: "home" },
+        ],
+      });
       // The catalog the Tools view groups. A subset, but a subset that spans the
       // shapes: every safety class, a family with one member and a family with
       // several, and a name the local family table has never heard of — which is
@@ -429,7 +529,17 @@ async function loadVisualPlugins(plugins: readonly AnyPlugin[]): Promise<void> {
 // there are four of them and they differ in their data, not in their destination.
 // Views that are not part of every workspace's default strip. Kept as a set rather than a
 // branch per view: the rule is one, and it was being restated once per addition.
-const OPENED_BY_ITS_OWN_STATE = new Set(["inbox", "tool-stats", "tools", "search", "files"]);
+const OPENED_BY_ITS_OWN_STATE = new Set([
+  "inbox",
+  "tool-stats",
+  "tools",
+  "search",
+  "files",
+  "skill-proposals",
+  "skill-library",
+  "recipes",
+  "agent-docs",
+]);
 
 const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-light": "plan",
@@ -440,6 +550,10 @@ const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-terminal": "terminal",
   "dock-search": "search",
   "dock-files": "files",
+  "dock-skill-proposals": "skill-proposals",
+  "dock-skill-library": "skill-library",
+  "dock-recipes": "recipes",
+  "dock-agent-docs": "agent-docs",
   "dock-tools": "tools",
   "dock-file": "file",
   "dock-catalog": WORKSPACE_DOCK_CATALOG,

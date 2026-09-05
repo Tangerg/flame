@@ -124,6 +124,19 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     await expect(view.getByRole("img", { name: "err" })).toBeVisible();
     return;
   }
+  // Four catalogues that had no provider until this round; ready is the count each header
+  // states, which only the seeded data can produce.
+  const CATALOGUE_READY: Partial<Record<VisualWorkspaceState, string>> = {
+    "dock-skill-proposals": "2 awaiting review",
+    "dock-skill-library": "1 active",
+    "dock-recipes": "2 available",
+    "dock-agent-docs": "3 found",
+  };
+  const catalogueReady = CATALOGUE_READY[state];
+  if (catalogueReady !== undefined) {
+    await expect(page.locator(".agent-workspace-view:visible")).toContainText(catalogueReady);
+    return;
+  }
   if (state === "dock-search") {
     // Nothing has been searched, so ready is the view explaining what it searches — the empty
     // state is the whole surface here, and the only one a fixture can photograph honestly.

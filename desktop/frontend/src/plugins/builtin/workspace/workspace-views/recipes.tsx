@@ -34,7 +34,11 @@ export function RecipesTab() {
             {rows.map((r) => (
               <div key={r.id} className="px-[var(--density-column-gutter-wide)] py-2">
                 <div className="flex items-center gap-2">
-                  <span className="truncate font-mono text-ui-md font-semibold text-accent">
+                  {/* The command's own name, in the ink the command menu gives it. Accent here
+                      measured 3.4:1 on this surface in dark — an emphasis that costs the
+                      reader the thing being emphasised. Mono and semibold already say
+                      "something you can run". */}
+                  <span className="truncate font-mono text-ui-md font-semibold text-fg">
                     {r.command}
                   </span>
                   {r.argumentHint && (
@@ -42,9 +46,7 @@ export function RecipesTab() {
                       {r.argumentHint}
                     </span>
                   )}
-                  <Tag ink="faint" className="ml-auto">
-                    {r.scope}
-                  </Tag>
+                  <Tag className="ml-auto">{r.scope}</Tag>
                 </div>
                 {r.description && (
                   <div className="mt-0.5 text-ui-sm leading-body text-fg-muted">

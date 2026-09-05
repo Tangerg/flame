@@ -4250,3 +4250,58 @@ where it was.
 The five views that render "Couldn't load" — skills, skill-proposals,
 skill-library, recipes, agent-docs — need query data seeded before their surfaces
 mean anything. The sidebar can hold them now.
+
+---
+
+## Round 79 — five catalogues with no provider, and the contrast they were hiding
+
+Status: **complete**
+
+Five views rendered "Couldn't load" the first time a fixture opened them, which
+is what a missing DATA_PROVIDER looks like from the inside. Seeded, each sample
+spanning what its view sorts on rather than repeating one row: both scopes, both
+lifecycles, both proposal origins, all three knowledge scopes.
+
+Four now render — skill proposals, skill library, recipes, agent docs — and each
+got a state. Skills still shows "Skills are off": that is a capability gate, not
+missing data, and the fixture advertises only `git` and `plan`.
+
+### And the WCAG audit failed on two of them immediately
+
+Both `serious`, both dark-only, in views no audit had ever run against:
+
+| element | measured | needs |
+| --- | --- | --- |
+| `Tag ink="faint"` on `bg-surface-2` | 3.99:1 | 4.5:1 |
+| the recipe name in `text-accent` on a card | 3.40:1 | 4.5:1 |
+
+The Tag one is a design-system defect, not a call site's: measured against the
+same surface, `fg-faint` is 3.99, `fg-muted` 5.13, `fg` 9.05. The atom's own
+comment says a Tag "carries a VALUE the reader must be able to copy back" — an
+ink that renders it below AA contradicts the reason the atom exists. **The
+`faint` ink is gone**; the surface already does the quieting and `muted` is quiet
+AND legible, which is why it was already the default. Three call sites.
+
+The recipe name takes `text-fg`, the ink the command menu gives a command. Accent
+there was an emphasis that cost the reader the thing being emphasised.
+
+`text-accent` as small text on a card is 3.4:1 in dark generally, and two other
+views use it — `agentMemory` and `run-summary`, both still unaudited. Noted, not
+guessed at: it will be measured when their states exist.
+
+### Also
+
+`layoutShift`'s workspace test began timing out — 19 routes in one 30s budget.
+The budget is derived from the route count now, because a fixed one fails as a
+timeout, which reads like a shift that was never measured.
+
+### Verification
+
+60/60 workspace WCAG audits green. Visual **516/516** (484 before). Guards green,
+unit 2370/4.
+
+### Next
+
+The capability gate: `skills`, `knowledge` and `agent-memory` render their "off"
+ramp because the fixture advertises two features. Both sides are real states and
+only one of them has ever been photographed.

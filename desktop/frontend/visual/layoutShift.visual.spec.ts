@@ -108,7 +108,12 @@ function report(entries: { route: string; shift: Shift }[]): string {
     .join("");
 }
 
+// Each route is a page load plus the settle window, and the state lists only grow — a fixed
+// budget here fails as a timeout, which reads like a shift that was never measured.
+const ROUTE_BUDGET_MS = 4_000;
+
 async function expectSettled(page: Page, routes: string[]) {
+  test.setTimeout(routes.length * ROUTE_BUDGET_MS + 10_000);
   await page.addInitScript(OBSERVER);
   const found: { route: string; shift: Shift }[] = [];
   for (const route of routes) {

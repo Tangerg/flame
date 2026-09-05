@@ -19,9 +19,12 @@ const styles = cva("shrink-0 rounded-xs bg-surface-2 px-1.5 font-mono", {
       // Inline in a sentence, where the tag has to sit on the prose it interrupts.
       md: "py-px text-ui-md",
     },
+    // No `faint`. A Tag carries a value the reader has to be able to copy back, and
+    // `--color-fg-faint` on this surface measures 3.99:1 in dark — below AA, for the one
+    // element on the row whose whole job is to be read exactly. The surface already does the
+    // quieting; `muted` is quiet AND legible, which is why it is the default.
     ink: {
       muted: "text-fg-muted",
-      faint: "text-fg-faint",
       strong: "text-fg",
     },
   },
