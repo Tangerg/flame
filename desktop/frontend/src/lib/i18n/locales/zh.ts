@@ -1132,6 +1132,7 @@ export const zh: Record<string, string> = {
   "tool.doing.reportGoalOutcome": "正在汇报目标",
   "tool.done.reportGoalOutcome": "汇报目标",
   "tool.meta.matches_other": "{{count}} 处匹配",
+  "tool.meta.results_other": "{{count}} 条结果",
   "tool.meta.lines_other": "{{count}} 行",
   "tool.meta.files_other": "{{count}} 个文件",
   "tool.meta.exit": "退出码 {{code}}",

@@ -1166,6 +1166,7 @@ export const ja: Record<string, string> = {
   "tool.doing.reportGoalOutcome": "目標を報告中",
   "tool.done.reportGoalOutcome": "目標を報告",
   "tool.meta.matches_other": "{{count}} 件一致",
+  "tool.meta.results_other": "{{count}} 件の結果",
   "tool.meta.lines_other": "{{count}} 行",
   "tool.meta.files_other": "{{count}} 個のファイル",
   "tool.meta.exit": "終了コード {{code}}",

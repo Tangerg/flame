@@ -1229,6 +1229,8 @@ export const en: Record<string, string> = {
   "tool.done.reportGoalOutcome": "Reported goal",
   "tool.meta.matches_one": "{{count}} match",
   "tool.meta.matches_other": "{{count}} matches",
+  "tool.meta.results_one": "{{count}} result",
+  "tool.meta.results_other": "{{count}} results",
   "tool.meta.lines_one": "{{count}} line",
   "tool.meta.lines_other": "{{count}} lines",
   "tool.meta.files_one": "{{count}} file",

@@ -1132,6 +1132,7 @@ export const zhTW: Record<string, string> = {
   "tool.doing.reportGoalOutcome": "正在回報目標",
   "tool.done.reportGoalOutcome": "回報目標",
   "tool.meta.matches_other": "{{count}} 處符合",
+  "tool.meta.results_other": "{{count}} 筆結果",
   "tool.meta.lines_other": "{{count}} 行",
   "tool.meta.files_other": "{{count}} 個檔案",
   "tool.meta.exit": "結束碼 {{code}}",

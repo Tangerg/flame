@@ -4757,3 +4757,64 @@ gate is green; unit 2388/4 outside the runtime-contract e2e.
 Runtime returns `{hits: […]}` — the same class of lie, in a state that folds the
 row so nothing has shown it yet. Then the delegated run past one level, and the
 banner family.
+
+---
+
+## Round 88 — a settled call that answered nothing
+
+Status: **complete**
+
+Two suspicions, both refuted by reading rather than by changing anything:
+
+- the shell preview passes `tool.result` raw while the shape-keyed one extracts
+  `.output` — **correct**, because the fold already extracts for `toolCategory
+  === "command"`, which only `shell` is;
+- `ToolOutputPanel` receiving an envelope — it does not; it takes a string and
+  gets one.
+
+The real one was the lead left over from round 87. `grep` in the narrative
+fixture answered the string `"7 matches"` where the Runtime sends `{hits: […]}`,
+so the fold read no hits and the row was photographed without its count.
+
+### The guard, not the fix
+
+The Runtime declares a result shape per tool name, and the generated contract can
+validate all four. So rather than correcting one fixture, assert the rule:
+
+> a settled call to a tool whose result shape the Runtime declares must carry a
+> result of that shape
+
+It found a second one on its first run, which no golden could have — `waves`
+folds its rows, so a `grep` there had gone settled-with-no-result unseen.
+
+| | before | after |
+| --- | --- | --- |
+| narrative `grep` | `"7 matches"` | `{hits: […3]}` |
+| narrative `read` ×3 | no result | `{content, total_lines}` |
+| narrative `web_search` | no result | `{results: […2]}` |
+| `waves` `grep` | **no result** | `{hits: […2]}` |
+
+### And what an honest result then showed
+
+`web_search` had never carried one, so its row had never rendered a count. Given
+one, it read **2 matches**. `hits` is one field because a count is one fact, but
+a web search returns *results* — the Runtime's own word — and matches claims a
+precision the search never offered.
+
+| | before | after |
+| --- | --- | --- |
+| `web_search` | 2 matches | 2 results |
+| `grep` / `glob` | 2 matches | unchanged |
+| `tool.meta.results` | — | added to 8 locales |
+
+### Verification
+
+Both guards mutation-checked: the shape guard fails on a restored `"7 matches"`,
+the wording guard on a shared label. Visual **605/605**, only the narrative
+goldens moved; the 20-script gate is green; unit 2390/4 outside the
+runtime-contract e2e.
+
+### Next
+
+The delegated run past one level, and the banner family — recovery, cwd-missing,
+run-error — of which one state each is photographed.

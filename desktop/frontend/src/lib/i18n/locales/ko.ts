@@ -1153,6 +1153,7 @@ export const ko: Record<string, string> = {
   "tool.doing.reportGoalOutcome": "목표 보고 중",
   "tool.done.reportGoalOutcome": "목표 보고",
   "tool.meta.matches_other": "{{count}}건 일치",
+  "tool.meta.results_other": "{{count}}건 결과",
   "tool.meta.lines_other": "{{count}}줄",
   "tool.meta.files_other": "파일 {{count}}개",
   "tool.meta.exit": "종료 코드 {{code}}",

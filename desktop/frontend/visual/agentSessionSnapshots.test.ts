@@ -79,4 +79,38 @@ describe("the visual agent fixtures", () => {
     expect(called.size, "the sweep has to be looking at real calls").toBeGreaterThan(10);
     expect(uncalled, "tool previews no fixture ever renders").toEqual([]);
   });
+
+  // A settled call carries a RESULT, and the Runtime declares its shape per tool name in
+  // `toolResultPresentations`. Nothing typed that: the fixture's `grep` answered the string
+  // "7 matches" where the Runtime sends `{hits: […]}`, so the fold read no hits and the row
+  // was photographed without the count production always shows. Only the four tools whose
+  // shape the Runtime actually declares are checked — the rest genuinely return prose.
+  const DECLARED_RESULT_SHAPE: Record<
+    string,
+    "SearchResult" | "PatchResult" | "CommandResult" | "WebSearchResult"
+  > = {
+    glob: "SearchResult",
+    grep: "SearchResult",
+    apply_patch: "PatchResult",
+    shell: "CommandResult",
+    web_search: "WebSearchResult",
+  };
+
+  it("answer each declared tool with the result shape the Runtime sends", () => {
+    const violations = VISUAL_AGENT_STATES.flatMap((state) =>
+      RUNTIME_AGENT_SESSION_SNAPSHOTS[state].items.flatMap((item) => {
+        if (item.type !== "toolCall" || item.status !== "completed") return [];
+        const shape = DECLARED_RESULT_SHAPE[item.tool.name];
+        if (shape === undefined) return [];
+        const result = item.tool.result;
+        if (result === undefined)
+          return [`${state}/${item.id}: settled ${item.tool.name} with no result`];
+        return validateWire(shape, typeof result === "string" ? JSON.parse(result) : result).map(
+          (violation) => `${state}/${item.id}: ${violation.path} ${violation.detail}`,
+        );
+      }),
+    );
+
+    expect(violations).toEqual([]);
+  });
 });

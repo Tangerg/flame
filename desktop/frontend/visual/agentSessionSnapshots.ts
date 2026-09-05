@@ -706,7 +706,24 @@ const WAVE_GREP: Item = {
   startedAt: CREATED_AT,
   durationMillis: 88,
   finishedAt: "2026-07-31T08:00:00.088Z",
-  tool: { name: "grep", arguments: { pattern: "RunInTx", path: "runtime" } },
+  tool: {
+    name: "grep",
+    arguments: { pattern: "RunInTx", path: "runtime" },
+    result: {
+      hits: [
+        {
+          path: "runtime/internal/session/store.go",
+          lineNumber: 88,
+          snippet: "func (s *Store) RunInTx(ctx context.Context) error {",
+        },
+        {
+          path: "runtime/internal/run/segment.go",
+          lineNumber: 143,
+          snippet: "\treturn s.store.RunInTx(ctx)",
+        },
+      ],
+    },
+  },
 };
 
 const WAVE_ANSWER_ONE = message(
@@ -1338,13 +1355,43 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       // — a disclosure nested inside a disclosure. Every defect this shape has
       // shipped (a row overflowing its parent's rounded corner, an inner rail
       // with nowhere to go) survived because no fixture rendered one.
-      narrativeTool("item_n_read", "read", { path: "src/checkout/checkout.tsx" }),
-      narrativeTool("item_n_read_2", "read", {
-        file_path:
-          "/Users/visual/scope/desktop/frontend/src/plugins/builtin/chat/tools/ui/ToolGroup.tsx",
-      }),
-      narrativeTool("item_n_read_3", "read", { path: "src/checkout/api/pay.ts" }),
-      narrativeTool("item_n_grep", "grep", { pattern: "retry|backoff", path: "src" }, "7 matches"),
+      narrativeTool(
+        "item_n_read",
+        "read",
+        { path: "src/checkout/checkout.tsx" },
+        { content: "export function Checkout() {\n  …\n}\n", total_lines: 212 },
+      ),
+      narrativeTool(
+        "item_n_read_2",
+        "read",
+        {
+          file_path:
+            "/Users/visual/scope/desktop/frontend/src/plugins/builtin/chat/tools/ui/ToolGroup.tsx",
+        },
+        { content: "export function ToolGroup() {\n  …\n}\n", total_lines: 148 },
+      ),
+      narrativeTool(
+        "item_n_read_3",
+        "read",
+        { path: "src/checkout/api/pay.ts" },
+        { content: "export async function pay() {\n  …\n}\n", total_lines: 96 },
+      ),
+      narrativeTool(
+        "item_n_grep",
+        "grep",
+        { pattern: "retry|backoff", path: "src" },
+        {
+          hits: [
+            { path: "src/checkout/api/pay.ts", lineNumber: 41, snippet: "  const retry = () => {" },
+            { path: "src/checkout/api/pay.ts", lineNumber: 58, snippet: "    backoff(attempt);" },
+            {
+              path: "src/checkout/hooks/useRetryPayment.ts",
+              lineNumber: 12,
+              snippet: "export function useRetryPayment() {",
+            },
+          ],
+        },
+      ),
       // `apply_patch` because it is the only file mutation the Runtime exposes. This call
       // used to name a tool called `edit`, which does not exist and never has — so the one
       // write in the narrative was drawn with the fallback glyph and the generic verb.
@@ -1357,7 +1404,25 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       NARRATIVE_ANSWER_1,
       NARRATIVE_TURN_2,
       NARRATIVE_COMPACTION,
-      narrativeTool("item_n_search", "web_search", { query: "stripe idempotency key retry" }),
+      narrativeTool(
+        "item_n_search",
+        "web_search",
+        { query: "stripe idempotency key retry" },
+        {
+          results: [
+            {
+              title: "Idempotent requests",
+              url: "https://docs.stripe.com/api/idempotent_requests",
+              snippet: "Keys expire after 24 hours; a replay returns the original response.",
+            },
+            {
+              title: "Handling retries safely",
+              url: "https://stripe.com/blog/idempotency",
+              snippet: "Mint the key at the point the user commits, not at send time.",
+            },
+          ],
+        },
+      ),
       NARRATIVE_ANSWER_2,
       NARRATIVE_TURN_3,
     ],

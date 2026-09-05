@@ -123,6 +123,18 @@ describe("toolPresentation", () => {
     ]);
   });
 
+  // Same count, different noun. `hits` is one field because a count is one fact, but a web
+  // search returns RESULTS — the Runtime's own word for them — and calling those matches
+  // claims a precision the search never offered.
+  it("counts web search results as results and pattern hits as matches", () => {
+    expect(toolMetaItems(t, tool({ name: "web_search", fn: "web_search", hits: 2 }))).toEqual([
+      { id: "hits", label: "2 results", tone: "muted" },
+    ]);
+    expect(toolMetaItems(t, tool({ name: "grep", fn: "grep", hits: 2 }))).toEqual([
+      { id: "hits", label: "2 matches", tone: "muted" },
+    ]);
+  });
+
   it("reports a plan's progress and a partial read's span as notation", () => {
     expect(toolMetaItems(t, tool({ progress: { done: 3, total: 7 } }))).toEqual([
       { id: "progress", label: "3/7", tone: "muted" },

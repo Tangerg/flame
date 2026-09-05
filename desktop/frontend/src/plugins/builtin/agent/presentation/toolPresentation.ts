@@ -2,6 +2,7 @@ import type { Translate } from "@/lib/i18n";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { fmtDuration } from "@/lib/format";
 import { toolVerbId } from "@/lib/toolFamilies";
+import { toolCategory } from "@/plugins/builtin/agent/domain/toolCategory";
 
 // Typed, not a bare string: a path truncates from the OTHER end, and a plain string leaves
 // the renderer guessing — every path then loses its filename to an ellipsis.
@@ -86,7 +87,12 @@ export function toolMetaItems(t: Translate, tool: ToolCall): ToolMetaItem[] {
     items.push({ id: "files", label: t("tool.meta.files", { count: tool.files }), tone: "muted" });
   }
   if (tool.hits != null) {
-    items.push({ id: "hits", label: t("tool.meta.matches", { count: tool.hits }), tone: "muted" });
+    // One count, two words for what was counted. `grep` and `glob` match a pattern; a web
+    // search returns results, which is the Runtime's own name for them — reporting those as
+    // matches states a precision the search never claimed.
+    const found =
+      toolCategory(tool.name) === "webSearch" ? "tool.meta.results" : "tool.meta.matches";
+    items.push({ id: "hits", label: t(found, { count: tool.hits }), tone: "muted" });
   }
   if (tool.range != null) {
     items.push({ id: "range", label: `L${tool.range.start}-${tool.range.end}`, tone: "muted" });

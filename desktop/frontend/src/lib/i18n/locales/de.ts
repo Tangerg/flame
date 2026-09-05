@@ -1215,6 +1215,8 @@ export const de: Record<string, string> = {
   "tool.done.reportGoalOutcome": "Ziel gemeldet",
   "tool.meta.matches_one": "{{count}} Treffer",
   "tool.meta.matches_other": "{{count}} Treffer",
+  "tool.meta.results_one": "{{count}} Ergebnis",
+  "tool.meta.results_other": "{{count}} Ergebnisse",
   "tool.meta.lines_one": "{{count}} Zeile",
   "tool.meta.lines_other": "{{count}} Zeilen",
   "tool.meta.files_one": "{{count}} Datei",
