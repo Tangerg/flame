@@ -39,7 +39,7 @@
 | 工具身份 + safetyClass + 进行中文案 | `runtime/internal/adapter/toolset/catalog/` |
 | 被归一化的工具 result | `runtime/internal/adapter/toolset/presentation.go` |
 | 未归一化工具的入参/出参 | `tools/**` 与 `runtime/internal/adapter/toolset/<tool>/` |
-| 协议为什么长这样 | `runtime/doc/API.md` |
+| 协议为什么长这样 | `runtime/doc/ARCHITECTURE.md` |
 
 本文档**只写渲染**：不写视觉 token（见 `DESIGN.md`）、不写插件装配（见 `ARCHITECTURE.md`）。
 
