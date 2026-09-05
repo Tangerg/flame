@@ -539,7 +539,7 @@ export const ja: Record<string, string> = {
   "timeline.kind.runStart": "実行開始",
   "timeline.kind.runEnd": "実行終了",
   "timeline.kind.runError": "実行エラー",
-  "timeline.kind.toolStart": "ツール",
+  "timeline.kind.toolStart": "ツール開始",
   "timeline.kind.toolEnd": "ツール終了",
   "timeline.kind.approvalRequest": "承認リクエスト",
   "timeline.kind.approvalResult": "承認判断",

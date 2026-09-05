@@ -122,6 +122,8 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     const view = page.locator(".agent-workspace-view:visible");
     await expect(view).toContainText("7 runs");
     await expect(view).toContainText("parent run_child");
+    // The one event kind every other fixture settles past: a call still in flight.
+    await expect(view).toContainText("Tool started");
     // Every state a run can end in, which is why this state exists.
     for (const status of ["Canceled", "Error", "Limit reached", "Finished"]) {
       await expect(view.getByText(status, { exact: true }).first()).toBeVisible();

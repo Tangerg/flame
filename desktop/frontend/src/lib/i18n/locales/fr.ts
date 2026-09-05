@@ -572,7 +572,7 @@ export const fr: Record<string, string> = {
   "timeline.kind.runStart": "Exécution démarrée",
   "timeline.kind.runEnd": "Exécution terminée",
   "timeline.kind.runError": "Erreur d'exécution",
-  "timeline.kind.toolStart": "Outil",
+  "timeline.kind.toolStart": "Outil démarré",
   "timeline.kind.toolEnd": "Outil terminé",
   "timeline.kind.approvalRequest": "Approbation demandée",
   "timeline.kind.approvalResult": "Approbation traitée",

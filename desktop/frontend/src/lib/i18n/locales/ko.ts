@@ -537,7 +537,7 @@ export const ko: Record<string, string> = {
   "timeline.kind.runStart": "실행 시작",
   "timeline.kind.runEnd": "실행 종료",
   "timeline.kind.runError": "실행 오류",
-  "timeline.kind.toolStart": "도구",
+  "timeline.kind.toolStart": "도구 시작",
   "timeline.kind.toolEnd": "도구 종료",
   "timeline.kind.approvalRequest": "승인 요청",
   "timeline.kind.approvalResult": "승인 처리됨",

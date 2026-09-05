@@ -560,7 +560,7 @@ export const de: Record<string, string> = {
   "timeline.kind.runStart": "Lauf gestartet",
   "timeline.kind.runEnd": "Lauf beendet",
   "timeline.kind.runError": "Lauf-Fehler",
-  "timeline.kind.toolStart": "Tool",
+  "timeline.kind.toolStart": "Tool gestartet",
   "timeline.kind.toolEnd": "Tool beendet",
   "timeline.kind.approvalRequest": "Freigabe angefordert",
   "timeline.kind.approvalResult": "Freigabe entschieden",

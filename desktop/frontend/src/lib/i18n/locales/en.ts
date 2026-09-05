@@ -712,7 +712,7 @@ export const en: Record<string, string> = {
   "timeline.kind.runStart": "Run started",
   "timeline.kind.runEnd": "Run finished",
   "timeline.kind.runError": "Run error",
-  "timeline.kind.toolStart": "Tool",
+  "timeline.kind.toolStart": "Tool started",
   "timeline.kind.toolEnd": "Tool finished",
   "timeline.kind.approvalRequest": "Approval requested",
   "timeline.kind.approvalResult": "Approval settled",

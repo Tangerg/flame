@@ -675,7 +675,7 @@ export const zh: Record<string, string> = {
   "timeline.kind.runStart": "运行开始",
   "timeline.kind.runEnd": "运行结束",
   "timeline.kind.runError": "运行错误",
-  "timeline.kind.toolStart": "工具",
+  "timeline.kind.toolStart": "工具开始",
   "timeline.kind.toolEnd": "工具结束",
   "timeline.kind.approvalRequest": "审批请求",
   "timeline.kind.approvalResult": "审批已答复",

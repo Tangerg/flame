@@ -569,7 +569,7 @@ export const es: Record<string, string> = {
   "timeline.kind.runStart": "Ejecución iniciada",
   "timeline.kind.runEnd": "Ejecución finalizada",
   "timeline.kind.runError": "Error de ejecución",
-  "timeline.kind.toolStart": "Herramienta",
+  "timeline.kind.toolStart": "Herramienta iniciada",
   "timeline.kind.toolEnd": "Herramienta finalizada",
   "timeline.kind.approvalRequest": "Aprobación solicitada",
   "timeline.kind.approvalResult": "Aprobación resuelta",

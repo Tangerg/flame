@@ -5483,3 +5483,51 @@ magnitude-stable, identity-unstable flake this file already records for
 `delegated`. The 20-script gate is green; unit 2395/4 outside the
 runtime-contract e2e — one of which was mine: a new hook the timeline's own unit
 test had to be told about.
+
+---
+
+## Round 101 — the seventh event kind
+
+Status: **complete**
+
+Six of the timeline's seven event kinds had been drawn by the end of last round.
+The seventh is `tool-start`, which exists only while a call is **in flight** —
+and every fixture item is settled, so no state's timeline had ever held one.
+
+Its label was the odd one out in all eight languages:
+
+| kind | label |
+| --- | --- |
+| run-start | Run started |
+| run-end | Run finished |
+| tool-end | Tool finished |
+| approval-request | Approval requested |
+| **tool-start** | **Tool** |
+
+A bare noun where every sibling is a statement — the same shape as the
+"Approval" row two rounds ago, without that one's mistranslation. "Tool started",
+and the same in the other seven.
+
+### Making it render without paying for a state
+
+`waiting` is the only fixture whose timeline holds a `tool-start`, and no
+workspace state binds it — and adding one costs ~50 goldens, because the fixture's
+state rail is in every workspace frame. `dock-runs` already has a delegated run
+that is *running* with nothing in it, so the call goes there: the grandchild is
+now searching while its parent waits on an approval, which is what a two-level
+delegation looks like mid-flight anyway.
+
+| | before | after |
+| --- | --- | --- |
+| dock-runs timeline | 15 events | 16 — the last one still open |
+| its ready boundary | four terminal statuses | + "Tool started", the kind nothing settles past |
+
+### Verification
+
+Visual **648/648**; two goldens moved, both `dock-runs`; the 20-script gate is
+green; unit 2395/4 outside the runtime-contract e2e.
+
+### Next
+
+Every timeline kind is drawn and every entry status but one — questions still
+record nothing, which round 100 wrote down rather than took.

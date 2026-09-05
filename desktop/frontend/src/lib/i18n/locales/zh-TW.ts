@@ -538,7 +538,7 @@ export const zhTW: Record<string, string> = {
   "timeline.kind.runStart": "執行開始",
   "timeline.kind.runEnd": "執行結束",
   "timeline.kind.runError": "執行錯誤",
-  "timeline.kind.toolStart": "工具",
+  "timeline.kind.toolStart": "工具開始",
   "timeline.kind.toolEnd": "工具結束",
   "timeline.kind.approvalRequest": "核准請求",
   "timeline.kind.approvalResult": "審批已回覆",

@@ -1406,6 +1406,20 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         "commentary",
       ),
       FANOUT_DELEGATE,
+      // The grandchild's call, still running. Every other fixture item is settled, so the
+      // timeline's `tool-start` — one of its seven event kinds — had never been drawn.
+      {
+        type: "toolCall",
+        id: "item_nested_running",
+        runId: "run_nested",
+        status: "running",
+        startedAt: "2026-07-31T08:00:06.000Z",
+        safetyClass: "safe",
+        tool: {
+          name: "grep",
+          arguments: { pattern: "grid-cols-subgrid", path: "runtime" },
+        },
+      },
     ],
     pendingInterruptSets: [
       {
