@@ -35,6 +35,8 @@ const css = read("../src/styles/globals.css");
 const store = read("../src/plugins/builtin/theme/adapters/appearanceStore.ts");
 const painter = read("../src/plugins/builtin/theme/adapters/documentAppearance.ts");
 const shell = read("../../main.go");
+const host = read("../../desktop_host.go");
+const endpoint = read("../src/plugins/builtin/runtime/application/runtimeEndpoint.ts");
 
 const failures = [];
 
@@ -119,6 +121,19 @@ expect(
   `main.go opens the window ${shellCanvases.join(" / ")} where --color-bg is ${canvasTokens.join(" / ")}`,
 );
 
+// ── 6. Where the local Runtime listens ───────────────────────────────────────
+// Stated once in each language, and the two are compared by string: `container.ts` attaches
+// the local gate token ONLY to a client whose endpoint equals the one `Bootstrap()` handed
+// over. A drift between these does not fail to connect — it connects with no token, and
+// nothing on either side says why. The Runtime owns the port and publishes no constant for
+// it, so the shell cannot read the value; what it can do is stop stating it twice unwatched.
+const shellEndpoint = host.match(/localRuntimeEndpoint\s*=\s*"([^"]+)"/)?.[1];
+const appEndpoint = endpoint.match(/DEFAULT_RUNTIME_ENDPOINT\s*=\s*"([^"]+)"/)?.[1];
+expect(
+  shellEndpoint !== undefined && shellEndpoint === appEndpoint,
+  `desktop_host.go hands over ${shellEndpoint} where the app defaults to ${appEndpoint}`,
+);
+
 // The runtime-derived mirrors — the type ladder, the depth step, the motion ladder and the
 // palette — used to be checked here too, by regex over the modules that own them. They are
 // now checked by importing those modules (`theme/stylesheetMirror.test.ts` and
@@ -128,7 +143,7 @@ expect(
 // the painter's source.
 //
 // What stays here is what no test can import: the pre-paint `<script>` in `index.html` and
-// the Go shell's window colour.
+// the two values the Go shell states in its own language.
 
 if (failures.length > 0) {
   console.error(`[check-bootstrap] ${failures.length} boot-contract drift(s):\n`);
