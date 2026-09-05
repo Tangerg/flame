@@ -3,8 +3,11 @@ package runtimebinding
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -471,9 +474,17 @@ func requireSessionMutation(t *testing.T, runtime *Connection, created agent.Ses
 
 func requireRuntimeCatalogs(t *testing.T, runtime *Connection, sessionID, workspace string) {
 	t.Helper()
+	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "discovery unavailable", http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(endpoint.Close)
+	baseURL := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: endpoint.URL}
+	if _, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "ollama", BaseURL: &baseURL}); err != nil {
+		t.Fatal(err)
+	}
 	models, err := runtime.ListModels(t.Context())
-	if err != nil {
-		t.Fatalf("ListModels: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "ollama:") {
+		t.Fatalf("ListModels discovery failure = %v, want ollama failure", err)
 	}
 	if len(models) == 0 {
 		t.Fatal("ListModels returned no provider-qualified models")

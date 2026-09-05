@@ -2,11 +2,15 @@ package runtimebinding
 
 import (
 	"context"
+	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
+
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type approvalBindingRecorder struct {
@@ -17,6 +21,58 @@ type approvalBindingRecorder struct {
 	forgetCalls   int
 	setMode       protocol.ApprovalMode
 	listResult    *protocol.ListApprovalRulesResult
+}
+
+func TestModelCatalogRetainsSuccessfulProvidersAndReportsDiscoveryFailures(t *testing.T) {
+	t.Parallel()
+	unavailable := errors.New("endpoint unavailable")
+	denied := errors.New("discovery denied")
+	stub := modelCatalogBindingStub{
+		providers: protocol.NewPage([]protocol.Provider{
+			{ID: "alpha", CredentialRequirement: protocol.ProviderAPIKeyOptional},
+			{ID: "beta", CredentialRequirement: protocol.ProviderAPIKeyOptional},
+			{ID: "gamma", CredentialRequirement: protocol.ProviderAPIKeyOptional},
+		}),
+		models: map[string]*protocol.Page[protocol.Model]{
+			"beta": protocol.NewPage([]protocol.Model{{ID: "chat", Provider: "beta"}}),
+		},
+		modelErrors: map[string]error{"alpha": unavailable, "gamma": denied},
+	}
+	connection := &Connection{modelCatalog: stub, meta: requestMeta("test")}
+	models, err := connection.ListModels(t.Context())
+	if len(models) != 1 || models[0].Provider != "beta" || models[0].ID != "chat" {
+		t.Fatalf("successful discovery = %+v", models)
+	}
+	if !errors.Is(err, unavailable) || !errors.Is(err, denied) ||
+		!strings.Contains(err.Error(), "alpha: endpoint unavailable") || !strings.Contains(err.Error(), "gamma: discovery denied") {
+		t.Fatalf("discovery errors = %v", err)
+	}
+}
+
+func TestModelCatalogAbortsPartialResultsWhenTheReadIsInvalid(t *testing.T) {
+	t.Parallel()
+	for _, cause := range []error{context.Canceled, context.DeadlineExceeded, flameruntime.ErrClosed, protocol.ErrCapabilityNotNeg} {
+		t.Run(cause.Error(), func(t *testing.T) {
+			t.Parallel()
+			connection := &Connection{modelCatalog: modelCatalogBindingStub{
+				providers: protocol.NewPage([]protocol.Provider{
+					{ID: "alpha", CredentialRequirement: protocol.ProviderAPIKeyOptional},
+					{ID: "beta", CredentialRequirement: protocol.ProviderAPIKeyOptional},
+				}),
+				models: map[string]*protocol.Page[protocol.Model]{
+					"alpha": protocol.NewPage([]protocol.Model{{ID: "chat", Provider: "alpha"}}),
+				},
+				modelErrors: map[string]error{"beta": cause},
+			}, meta: requestMeta("test")}
+			models, err := connection.ListModels(t.Context())
+			if models != nil || !errors.Is(err, cause) {
+				t.Fatalf("ListModels = (%+v, %v), want no models and %v", models, err, cause)
+			}
+			if cause == flameruntime.ErrClosed && !errors.Is(err, agent.ErrDisconnected) {
+				t.Fatalf("closed Runtime lost classification: %v", err)
+			}
+		})
+	}
 }
 
 func (*approvalBindingRecorder) GetApprovalMode(context.Context, flameruntime.CallOptions) (*protocol.ApprovalModeResult, error) {

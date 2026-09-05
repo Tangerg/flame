@@ -1,6 +1,8 @@
 package terminal
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -9,6 +11,30 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
+
+type partialModelCatalog struct {
+	Runtime
+}
+
+func (p partialModelCatalog) ListModels(ctx context.Context) ([]protocol.Model, error) {
+	models, err := p.Runtime.ListModels(ctx)
+	return models, errors.Join(err, errors.New("offline: discovery unavailable"))
+}
+
+func TestModelCatalogDisplaysPartialResultsAndDiscoveryErrors(t *testing.T) {
+	for _, command := range []string{"/models", "/model"} {
+		t.Run(command, func(t *testing.T) {
+			host, stop := runUIWithRuntimeServices(t, Config{Runtime: partialModelCatalog{Runtime: runtimefixture.New()}})
+			t.Cleanup(stop)
+			host.Shows(t, "Ask flame")
+			host.Type(command)
+			host.Press(input.Enter)
+			host.Shows(t, "Models")
+			host.Shows(t, "mock/balanced")
+			host.Shows(t, "offline: discovery unavailable")
+		})
+	}
+}
 
 func TestModelCatalogDocumentConsumesCompleteModelMetadata(t *testing.T) {
 	t.Parallel()

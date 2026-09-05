@@ -29,6 +29,7 @@ type Runtime interface {
 	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
 	SteerRun(context.Context, agent.SteerRun) error
 	CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error)
+	// ListModels may return discovered models and provider-specific errors together.
 	ListModels(context.Context) ([]protocol.Model, error)
 	GetApprovalMode(context.Context) (protocol.ApprovalMode, error)
 	SetApprovalMode(context.Context, protocol.ApprovalMode) (protocol.ApprovalMode, error)

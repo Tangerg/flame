@@ -39,6 +39,8 @@ The production process opens at most one concrete Runtime, fans its binding adap
 
 `runtimebinding.Connection` owns binding lifecycle, capability negotiation, exact protocol translation, and safe error classification. It does not own product state. The adapter preserves exact provider/model identity and never stores credentials in CLI state, history, frames, errors, or logs.
 
+The terminal model catalog aggregates Runtime's per-provider discovery results. A provider discovery failure remains visible beside successfully discovered models; the CLI never invents fallback models. Cancellation, Runtime closure, and invalid protocol responses abort the aggregate read.
+
 ## Commands
 
 Each command tree is built by a factory. A command declares syntax and flags, converts input to a typed request, calls one CLI use case with `cmd.Context()`, and writes through Cobra streams. Runtime failures return through `RunE`; the process boundary chooses the exit status once.

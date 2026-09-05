@@ -100,7 +100,7 @@ func (a *app) loadModelPicker(reset bool) {
 	a.runOperation(pickerCatalogOperation, true,
 		func(ctx context.Context) ([]protocol.Model, error) { return a.runtime.ListModels(ctx) },
 		func(models []protocol.Model, err error) {
-			if err != nil {
+			if err != nil && len(models) == 0 {
 				a.message("could not load models: " + err.Error())
 				return
 			}
@@ -110,6 +110,9 @@ func (a *app) loadModelPicker(reset bool) {
 			a.dialogs.modelPicker.SetItems(models)
 			a.dialogs.modelDialog.Show()
 			a.status.note("choose a provider-qualified model")
+			if err != nil {
+				a.message("model catalog incomplete: " + err.Error())
+			}
 		},
 	)
 }

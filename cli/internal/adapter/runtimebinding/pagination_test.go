@@ -169,8 +169,9 @@ func TestCursorTraversalRejectsInvalidCapacityWithoutCreatingState(t *testing.T)
 }
 
 type modelCatalogBindingStub struct {
-	providers *protocol.Page[protocol.Provider]
-	models    map[string]*protocol.Page[protocol.Model]
+	providers   *protocol.Page[protocol.Provider]
+	models      map[string]*protocol.Page[protocol.Model]
+	modelErrors map[string]error
 }
 
 func (m modelCatalogBindingStub) ListProviders(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.Provider], error) {
@@ -178,7 +179,7 @@ func (m modelCatalogBindingStub) ListProviders(context.Context, flameruntime.Cal
 }
 
 func (m modelCatalogBindingStub) ListModels(_ context.Context, request protocol.ListModelsRequest, _ flameruntime.CallOptions) (*protocol.Page[protocol.Model], error) {
-	return m.models[request.Provider], nil
+	return m.models[request.Provider], m.modelErrors[request.Provider]
 }
 
 func TestModelCatalogRejectsEveryUnconsumableContinuation(t *testing.T) {

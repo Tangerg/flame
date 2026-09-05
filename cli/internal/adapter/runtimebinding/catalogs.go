@@ -9,6 +9,8 @@ import (
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
+
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type modelCatalogBinding interface {
@@ -23,6 +25,9 @@ type approvalBinding interface {
 	ForgetApprovalRule(context.Context, protocol.ForgetApprovalRuleRequest, flameruntime.CommandOptions) error
 }
 
+// ListModels returns every successfully discovered provider catalog together
+// with provider-qualified discovery errors. Cancellation, a closed Runtime, or
+// a protocol violation invalidates the whole read and returns no models.
 func (r *Connection) ListModels(ctx context.Context) ([]protocol.Model, error) {
 	providers, err := r.modelCatalog.ListProviders(ctx, r.callOptions())
 	if err != nil {
@@ -34,6 +39,7 @@ func (r *Connection) ListModels(ctx context.Context) ([]protocol.Model, error) {
 	}
 
 	var models []protocol.Model
+	var discoveryErrors []error
 	seenProviders := make(map[string]struct{}, len(providerValues))
 	seenModels := make(map[string]struct{})
 	for providerIndex, provider := range providerValues {
@@ -53,7 +59,16 @@ func (r *Connection) ListModels(ctx context.Context) ([]protocol.Model, error) {
 		}
 		page, err := r.modelCatalog.ListModels(ctx, protocol.ListModelsRequest{Provider: provider.ID}, r.callOptions())
 		if err != nil {
-			return nil, classifyError(err)
+			err = classifyError(err)
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) ||
+				errors.Is(err, agent.ErrDisconnected) || errors.Is(err, agent.ErrIncompatibleRuntime) {
+				return nil, err
+			}
+			discoveryErrors = append(discoveryErrors, fmt.Errorf("%s: %w", provider.ID, err))
+			continue
 		}
 		values, err := requireCompletePage("list models for "+provider.ID, page)
 		if err != nil {
@@ -82,7 +97,7 @@ func (r *Connection) ListModels(ctx context.Context) ([]protocol.Model, error) {
 			models = append(models, cloneProtocolModel(value))
 		}
 	}
-	return models, nil
+	return models, errors.Join(discoveryErrors...)
 }
 
 func cloneProtocolModel(value protocol.Model) protocol.Model {

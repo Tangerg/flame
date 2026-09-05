@@ -18,10 +18,17 @@ func (a *app) modelsReaderQuery() runtimeReaderQuery {
 		status: "loading model catalog", mode: runtimeReaderModels,
 		read: func(ctx context.Context) (readerDocument, error) {
 			models, err := a.runtime.ListModels(ctx)
-			if err != nil {
+			if err != nil && len(models) == 0 {
 				return readerDocument{}, err
 			}
-			return modelCatalogDocument(models), nil
+			document := modelCatalogDocument(models)
+			if err != nil {
+				document.Detail += " · incomplete catalog"
+				document.Sections = append([]ToolSection{{
+					Title: "Provider discovery failed", Style: toolSectionCode, Language: "text", Text: err.Error(),
+				}}, document.Sections...)
+			}
+			return document, nil
 		},
 	}
 }

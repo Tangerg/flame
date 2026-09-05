@@ -12,7 +12,7 @@ import (
 )
 
 // ListModels projects the application-owned unique, ID-ordered model-discovery
-// result onto the protocol page. Discovery policy, remote fallback, and catalog
+// result onto the protocol page. Authoritative discovery and catalog
 // enrichment all remain in application/integration/models.
 func (s *Handler) ListModels(ctx context.Context, in protocol.ListModelsRequest) (*protocol.Page[protocol.Model], error) {
 	models, err := s.models.ListModels(ctx, in.Provider)
