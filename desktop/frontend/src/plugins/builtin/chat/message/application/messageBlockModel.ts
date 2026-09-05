@@ -39,9 +39,10 @@ export function messageBlockRenderUnits(
   blocks: ContentBlock[],
   toolCalls: Record<string, ToolCall>,
   answerFollows = false,
+  delegating?: ReadonlySet<string>,
 ): MessageRenderUnit[] {
   const lastIndex = blocks.length - 1;
-  return planRenderUnits(blocks, toolCalls, answerFollows).map((unit) => {
+  return planRenderUnits(blocks, toolCalls, answerFollows, delegating).map((unit) => {
     if (unit.kind !== "block") return unit;
     const { block, index } = unit;
     if (block.kind === "text" && block.status === "running" && index !== lastIndex) {

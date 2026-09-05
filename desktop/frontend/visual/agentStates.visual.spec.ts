@@ -217,7 +217,8 @@ test("a delegated sub-agent reads as a nested line, not a card", async ({ page }
   await page.locator("html[data-visual-ready]").waitFor();
 
   const rows = page.getByRole("button", { name: /Sub-agent/ });
-  await expect(rows).toHaveCount(2);
+  // Two nested under the first delegation, four siblings under the second.
+  await expect(rows).toHaveCount(6);
 
   // Each carries its own child Run's state, and the nested one renders inside the subtree of
   // the item that spawned the first — the tree this state is named for.
@@ -1558,6 +1559,35 @@ test("a multi-file patch receipt puts every path on one left edge", async ({ pag
     expect(edge.verb).toBeCloseTo(edges[0]!.verb, 1);
     expect(edge.path).toBeCloseTo(edges[0]!.path, 1);
   }
+});
+
+// A turn that delegates TWICE. Both calls are read-only by safety class, so the planner
+// folded them together as glances — and a delegation is not a glance: it owns a sub-agent
+// below it. Grouped, all six sub-agents left the transcript, the pending approval among
+// them, and no fixture had ever delegated more than once so nothing said so.
+test("a second delegation keeps every sub-agent, and its own status column", async ({ page }) => {
+  await page.goto("/visual/?fixture=agent&theme=light&state=delegated");
+  await page.locator("html[data-visual-ready]").waitFor();
+
+  await expect(page.getByRole("button", { name: /\d+ calls/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Sub-agent/ })).toHaveCount(6);
+  await expect(page.locator('[data-slot="approval-surface"]')).toBeVisible();
+
+  // Every state a delegated run can end in, which is where a reader looks for the one that
+  // failed — so they share a right edge. The row without a detail used to drop out of that
+  // column entirely, 440px to the left of the three beside it.
+  const ends = await page
+    .locator("#item_fanout [data-slot='agent-activity-disclosure']")
+    .evaluateAll((rows) =>
+      rows.flatMap((row) => {
+        const steps = [...row.querySelectorAll("span")].find((span) =>
+          /steps?$/.test((span.textContent ?? "").trim()),
+        );
+        return steps ? [Math.round(steps.getBoundingClientRect().right)] : [];
+      }),
+    );
+  expect(ends).toHaveLength(4);
+  expect(new Set(ends).size).toBe(1);
 });
 
 // Four Goal statuses, and two of them had never been drawn. What each one OFFERS is the part

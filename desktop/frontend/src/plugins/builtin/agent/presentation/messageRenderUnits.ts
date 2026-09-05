@@ -32,10 +32,16 @@ interface PositionedBlock {
  * ever did at one weight. The run still in flight is NEVER folded — that is the one the
  * reader is watching.
  */
+const EMPTY_DELEGATING: ReadonlySet<string> = new Set();
+
 export function planRenderUnits(
   blocks: ContentBlock[],
   toolCalls: Record<string, ToolCall>,
   answerFollows = false,
+  /** Tool calls that spawned a Run. Their narrative hangs off the row, so folding one into a
+   *  group of glances takes the sub-agent — its reply, its status and any decision it is
+   *  waiting on — out of the transcript entirely. */
+  delegating: ReadonlySet<string> = EMPTY_DELEGATING,
 ): MessageRenderUnit[] {
   const hasQuestion = blocks.some((block) => block.kind === "question");
   const approvalOwnedToolCallIds = findApprovalOwnedToolCallIds(blocks, toolCalls);
@@ -45,7 +51,14 @@ export function planRenderUnits(
 
   const flushWave = () => {
     if (wave.length === 0) return;
-    const inner = planWithinWave(wave, toolCalls, hasQuestion, approvalOwnedToolCallIds, answered);
+    const inner = planWithinWave(
+      wave,
+      toolCalls,
+      hasQuestion,
+      approvalOwnedToolCallIds,
+      answered,
+      delegating,
+    );
     const last = wave[wave.length - 1]!;
     // Two units minimum: a run that already plans to one row folds on its own, and
     // wrapping it would only add a level to open through.
@@ -89,6 +102,7 @@ function planWithinWave(
   hasQuestion: boolean,
   approvalOwnedToolCallIds: ReadonlySet<string>,
   answered: readonly boolean[],
+  delegating: ReadonlySet<string>,
 ): MessageRenderUnit[] {
   const units: MessageRenderUnit[] = [];
   let reads: PositionedBlock[] = [];
@@ -130,7 +144,11 @@ function planWithinWave(
       flushReads();
       continue;
     }
-    if (tool && isReadOnlyTool(tool)) {
+    // A delegation is read-only by safety class and is not a glance: it owns a whole
+    // sub-agent below it. Folded in with the reads it became one line of a "2 calls" row and
+    // took the sub-agent with it, approval and all — which only ever happened once a turn
+    // delegated TWICE, because a lone read never reaches the two a group needs.
+    if (tool && isReadOnlyTool(tool) && !delegating.has(tool.id)) {
       reads.push(item);
       continue;
     }

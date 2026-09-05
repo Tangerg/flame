@@ -5224,3 +5224,63 @@ set, the guard fails.
 
 The Goal budget readout — the collapsed row reports the axis that will stop the
 loop first, and only one arrangement of that has been photographed.
+
+---
+
+## Round 96 — a second delegation, and the sub-agents disappeared
+
+Status: **complete**
+
+Chased the Goal budget readout first — `used` and `budget` ride the read model
+end to end and nothing renders them. Then found the test that says so on purpose:
+*the Goal surface stays quiet and omits Runtime constraints*, asserting the row
+shows no `$4.50/$5.00`, no `7/20`, no progressbar. A decision, guarded. Dropped.
+
+Then the closed set: `AgentRunPresentationState` has **six** values and the
+fixtures drew **two**. Adding a fan-out — one delegation spawning four children
+that finished, failed, were canceled and hit a limit — did not render four new
+rows. It rendered **none**.
+
+### What one extra delegation did
+
+| | |
+| --- | --- |
+| before | one `delegate_task`, one sub-agent below it |
+| after | two `delegate_task` calls, **"2 calls"**, and every sub-agent gone |
+| including | the approval a person had to answer |
+
+`delegate_task` is `safe`, and the planner folds read-only calls into a group of
+glances. A delegation is read-only and is **not** a glance: it owns a whole
+sub-agent. One delegation never reached the two a group needs, so no fixture had
+ever shown it — and the renderer's grouped branch never consults
+`facts.delegatedRuns` at all.
+
+Excluded by DATA, not by name: the planner now takes the set of calls that
+spawned a Run, which is `Object.keys(facts.delegatedRuns)`. A plugin's own
+delegating tool is covered the same way `delegate_task` is.
+
+### And the column that was not one
+
+With four siblings finally on screen, their statuses sat at x **967, 989, 932 and
+548**. The last is the row with no detail: `flex-1` lived on the detail element,
+so a row without one stopped pushing its trailing right and put its status
+wherever its label ended — 440px from the column a reader scans to find the
+sub-agent that failed.
+
+The slot is always present now, empty or not. Same element either way, so rows
+that do have a detail are untouched; rows that do not gain the alignment the
+component already gave everything else. Across the goldens it turns `3 steps`,
+`2 steps`, `exit 1 8.4s`, `3 files` and `denied` into one right-hand column.
+
+### Verification
+
+Both halves mutation-checked: restore the grouping and six sub-agents vanish;
+remove the empty spring and the four ends stop agreeing. Visual **637/637**; 28
+goldens moved, every one of them a row whose trailing found its column; the
+20-script gate is green; unit 2395/4 outside the runtime-contract e2e.
+
+### Next
+
+`Canceled`, `Error` and `Limit reached` now exist as delegated rows. The run
+TREE view in the workspace dock draws the same six states from the same model —
+and its fixture has the same two.

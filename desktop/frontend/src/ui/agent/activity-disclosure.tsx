@@ -131,10 +131,18 @@ export function AgentActivityDisclosure({
           >
             {label}
           </span>
-          {detail != null && (
+          {/* The slot is always here, empty or not: `flex-1` lived on the detail, so a row
+              without one stopped pushing its trailing to the right and put its status
+              wherever the label happened to end. One row of a four-row fan-out did that,
+              440px left of the three beside it, which is the column a reader scans to find
+              the sub-agent that failed. Same element either way, so the gap count — and
+              every row that does have a detail — is unchanged. */}
+          {detail != null ? (
             <span className="flex min-w-0 flex-1 items-center overflow-hidden text-ellipsis whitespace-nowrap text-ui-sm leading-snug text-fg-muted group-hover/activity-header:text-fg">
               {detail}
             </span>
+          ) : (
+            <span aria-hidden className="min-w-0 flex-1" />
           )}
           {trailing != null && (
             <span className="flex shrink-0 items-center gap-1.5 font-mono text-ui-2xs text-fg-faint">

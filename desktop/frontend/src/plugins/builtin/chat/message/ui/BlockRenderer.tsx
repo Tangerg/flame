@@ -138,6 +138,7 @@ export function renderMessageBlocks(
     narratedBlocks(message.blocks, facts.toolCalls, standingTool),
     facts.toolCalls,
     answerFollows,
+    new Set(Object.keys(facts.delegatedRuns)),
   );
   return units.map((unit, index) => {
     const anchor = renderUnitAnchor(message.id, unit);

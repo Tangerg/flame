@@ -1003,6 +1003,68 @@ const BASE: RuntimeAgentSessionSnapshot = {
 /** The RAW wire form, before `runtimeItem` projects it. Exported so a test can hold it to
  *  the contract: the projected form below is a different shape by design, so validating that
  *  one proves nothing about what the Runtime would actually have sent. */
+// A turn that fans out, because one delegation per item is the only shape ever drawn: the
+// row says "Sub-agent" and never "Sub-agent 2 of 4", and four of the six states a delegated
+// run can end in — finished, error, canceled and limit — had appeared in no frame. A failed
+// sub-agent is the one a reader most needs to find.
+const FANOUT_OUTCOMES: ReadonlyArray<{ id: string; summary: string; outcome: RunRef["outcome"] }> =
+  [
+    {
+      id: "run_fan_ok",
+      summary: "Check the module graph",
+      outcome: { type: "completed" },
+    },
+    {
+      id: "run_fan_err",
+      summary: "Rebuild the provider fixtures",
+      outcome: {
+        type: "failed",
+        error: { type: "tool_failed", detail: "The fixture generator exited 1." },
+      },
+    },
+    {
+      id: "run_fan_canceled",
+      summary: "Survey the CLI surface",
+      outcome: { type: "canceled", detail: "Stopped once the answer was already known." },
+    },
+    {
+      id: "run_fan_limit",
+      summary: "Trace every call path",
+      outcome: { type: "maxSteps", detail: "Reached the step ceiling for one delegation." },
+    },
+  ];
+
+const FANOUT_RUNS: RunRef[] = FANOUT_OUTCOMES.map((fan, index) => ({
+  id: fan.id,
+  sessionId: SESSION_ID,
+  status: "finished",
+  createdAt: "2026-07-31T08:00:07.000Z",
+  finishedAt: `2026-07-31T08:00:${String(8 + index).padStart(2, "0")}.000Z`,
+  outcome: fan.outcome,
+  metrics: { steps: 2 + index, activeDurationMillis: 4_000 },
+  protocolProfile: PROFILE,
+  provider: RUN_PROVIDER,
+  model: RUN_MODEL,
+  parentRunId: ROOT_RUN_ID,
+  rootRunId: ROOT_RUN_ID,
+  spawnedByItemId: "item_fanout",
+}));
+
+const FANOUT_DELEGATE: Item = {
+  type: "toolCall",
+  id: "item_fanout",
+  runId: ROOT_RUN_ID,
+  status: "completed",
+  startedAt: "2026-07-31T08:00:07.000Z",
+  durationMillis: 5_000,
+  finishedAt: "2026-07-31T08:00:12.000Z",
+  safetyClass: "safe",
+  tool: {
+    name: "delegate_task",
+    arguments: { summary: "Survey the boundary in parallel", instructions: "…" },
+  },
+};
+
 export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
   Record<VisualAgentState, RuntimeAgentSessionSnapshot>
 > = {
@@ -1282,6 +1344,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         rootRunId: ROOT_RUN_ID,
         spawnedByItemId: "item_delegate",
       },
+      ...FANOUT_RUNS,
       {
         id: "run_nested",
         sessionId: SESSION_ID,
@@ -1342,6 +1405,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         "run_nested",
         "commentary",
       ),
+      FANOUT_DELEGATE,
     ],
     pendingInterruptSets: [
       {
