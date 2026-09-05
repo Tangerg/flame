@@ -10,8 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// stubCatalog reports a single provider's metadata (only ProbeModels matters to
-// ListModels' merge branch).
+// stubCatalog declares the model source of one provider.
 type stubCatalog struct {
 	meta models.ProviderMetadata
 }
@@ -77,10 +76,6 @@ func listTestProviderModels(t *testing.T, s *Handler) []protocol.Model {
 	return page.Data
 }
 
-// "testprov" has no entry in the static catalog, so the static-fallback paths
-// yield an empty page — letting each test assert the branch it exercises without
-// coupling to the embedded catalog's contents.
-
 func TestListModelsProbesEndpointAuthoritativeProvider(t *testing.T) {
 	lister := &stubLister{ids: []string{"m-alpha", "m-beta"}}
 	got := listTestProviderModels(t, probeHandler(serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()), lister))
@@ -95,25 +90,24 @@ func TestListModelsProbesEndpointAuthoritativeProvider(t *testing.T) {
 	}
 }
 
-func TestListModelsFallsBackWhenProbeEmpty(t *testing.T) {
+func TestListModelsPreservesEmptyEndpoint(t *testing.T) {
 	lister := &stubLister{ids: nil}
 	got := listTestProviderModels(t, probeHandler(serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()), lister))
 	if lister.calls != 1 {
 		t.Fatalf("lister calls = %d, want 1 (probe attempted)", lister.calls)
 	}
 	if len(got) != 0 {
-		t.Fatalf("models = %+v, want empty (static-catalog fallback)", got)
+		t.Fatalf("models = %+v, want empty endpoint result", got)
 	}
 }
 
-func TestListModelsFallsBackWhenProbeErrors(t *testing.T) {
-	lister := &stubLister{err: errors.New("unreachable")}
-	got := listTestProviderModels(t, probeHandler(serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()), lister))
-	if lister.calls != 1 {
-		t.Fatalf("lister calls = %d, want 1", lister.calls)
-	}
-	if len(got) != 0 {
-		t.Fatalf("models = %+v, want empty; a probe error must not surface as an RPC error", got)
+func TestListModelsPreservesEndpointFailure(t *testing.T) {
+	cause := errors.New("unreachable")
+	lister := &stubLister{err: cause}
+	handler := probeHandler(serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()), lister)
+	page, err := handler.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "testprov"})
+	if !errors.Is(err, cause) || page != nil || lister.calls != 1 {
+		t.Fatalf("ListModels = (%+v, %v), calls=%d; want endpoint failure", page, err, lister.calls)
 	}
 }
 

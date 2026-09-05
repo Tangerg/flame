@@ -415,23 +415,34 @@ func TestListModelsPrefersRemoteModelsAndEnrichesKnownEntries(t *testing.T) {
 	}
 }
 
-func TestListModelsFallsBackToStaticCatalogWhenProbeCannotAnswer(t *testing.T) {
+func TestListModelsPreservesEndpointOutcome(t *testing.T) {
 	catalog := testCatalog{
 		metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability())},
-		models:   map[string][]Model{"ollama": {catalogModelFixture(t, "ollama", "fallback", &Details{})}},
+		models:   map[string][]Model{"ollama": {catalogModelFixture(t, "ollama", "catalog-only", &Details{})}},
 	}
-	c := New(Config{
-		Providers: &testProviderRegistry{},
-		Catalog:   catalog,
-		Lister:    &fakeLister{err: errors.New("offline")},
-	})
-
-	got, err := c.ListModels(t.Context(), "ollama")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 1 || got[0].ID() != "fallback" {
-		t.Fatalf("models = %+v, want static fallback", got)
+	offline := errors.New("offline")
+	for _, tt := range []struct {
+		name    string
+		lister  ProviderModelLister
+		wantErr bool
+		cause   error
+	}{
+		{name: "empty", lister: &fakeLister{}},
+		{name: "offline", lister: &fakeLister{err: offline}, wantErr: true, cause: offline},
+		{name: "invalid identity", lister: &fakeLister{ids: []string{""}}, wantErr: true},
+		{name: "duplicate identity", lister: &fakeLister{ids: []string{"local", "local"}}, wantErr: true},
+		{name: "missing discovery", wantErr: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			c := New(Config{Providers: &testProviderRegistry{}, Catalog: catalog, Lister: tt.lister})
+			got, err := c.ListModels(t.Context(), "ollama")
+			if (err != nil) != tt.wantErr || len(got) != 0 {
+				t.Fatalf("ListModels = (%+v, %v), want empty result, error=%v", got, err, tt.wantErr)
+			}
+			if tt.cause != nil && !errors.Is(err, tt.cause) {
+				t.Fatalf("ListModels error = %v, want cause %v", err, tt.cause)
+			}
+		})
 	}
 }
 

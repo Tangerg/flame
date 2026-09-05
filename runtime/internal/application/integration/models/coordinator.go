@@ -20,7 +20,7 @@ const defaultProviderProbeTimeout = 10 * time.Second
 
 // ProviderCatalog supplies static provider and model reference data. The
 // coordinator owns visible identity, public order, and the use-case policy that
-// consumes the projection.
+// consumes the projection. Slice results transfer ownership to the caller.
 type ProviderCatalog interface {
 	Supported() []ProviderMetadata
 	Metadata(id string) (ProviderMetadata, bool)
@@ -51,7 +51,7 @@ type ProviderProber interface {
 // ProviderModelLister discovers a provider's available model identities by
 // probing its live endpoint — used for local / bring-your-own-endpoint providers
 // whose model set is not in the static catalog (dynamic discovery from an Ollama
-// daemon or a compatible passthrough). A nil lister disables live discovery;
+// daemon or a compatible passthrough). Endpoint results are authoritative;
 // the coordinator validates identity and owns public order for every result.
 type ProviderModelLister interface {
 	ListModels(ctx context.Context, entry provider.Provider) ([]string, error)

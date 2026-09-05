@@ -161,11 +161,9 @@ func (c *Coordinator) TestProvider(ctx context.Context, id string) (ProviderTest
 	return ProviderTestSucceeded, nil
 }
 
-// ListModels applies the model-discovery policy for one supported provider and
-// returns one entry per model ID in ascending ID order. Providers with
-// endpoint-owned model sets prefer a successful non-empty remote list; every
-// other outcome falls back to the static catalog, so restart behavior never
-// depends on an in-memory probe result.
+// ListModels uses the provider's declared source of model identity. Endpoint
+// discovery is authoritative, including an empty result; the catalog only
+// enriches discovered identities with known metadata.
 func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Model, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -174,39 +172,42 @@ func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Mode
 	if err != nil {
 		return nil, err
 	}
-	if meta.DiscoversModelsAtEndpoint() && c.lister != nil {
-		entry, err := c.modelDiscoveryProvider(ctx, providerID)
-		if err != nil {
-			return nil, err
-		}
-		ids, probeErr := c.lister.ListModels(ctx, entry)
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		if probeErr == nil && len(ids) > 0 {
-			out := make([]Model, 0, len(ids))
-			for _, id := range ids {
-				if model, ok := c.lookupModel(providerID, id); ok {
-					out = append(out, model)
-					continue
-				}
-				model, modelErr := NewModel(providerID, id, nil)
-				if modelErr != nil {
-					return c.catalogModels(providerID)
-				}
-				out = append(out, model)
-			}
-			return orderedModels(providerID, out)
-		}
+	if !meta.DiscoversModelsAtEndpoint() {
+		return c.catalogModels(providerID)
 	}
-	return c.catalogModels(providerID)
+	if c.lister == nil {
+		return nil, errors.New("models: endpoint discovery is unavailable")
+	}
+	entry, err := c.modelDiscoveryProvider(ctx, providerID)
+	if err != nil {
+		return nil, err
+	}
+	ids, err := c.lister.ListModels(ctx, entry)
+	if contextErr := ctx.Err(); contextErr != nil {
+		return nil, contextErr
+	}
+	if err != nil {
+		return nil, fmt.Errorf("models: discover provider %q: %w", providerID, err)
+	}
+	out := make([]Model, 0, len(ids))
+	for _, id := range ids {
+		model, err := NewModel(providerID, id, nil)
+		if err != nil {
+			return nil, fmt.Errorf("models: discover provider %q: %w", providerID, err)
+		}
+		if known, ok := c.lookupModel(providerID, id); ok {
+			model = known
+		}
+		out = append(out, model)
+	}
+	return orderedModels(providerID, out)
 }
 
 func (c *Coordinator) supportedProviders() ([]ProviderMetadata, error) {
 	if c.catalog == nil {
 		return nil, nil
 	}
-	metadata := slices.Clone(c.catalog.Supported())
+	metadata := c.catalog.Supported()
 	seen := make(map[string]struct{}, len(metadata))
 	for index, value := range metadata {
 		if err := value.Validate(); err != nil {
@@ -322,7 +323,6 @@ func (c *Coordinator) catalogModels(providerID string) ([]Model, error) {
 }
 
 func orderedModels(providerID string, models []Model) ([]Model, error) {
-	models = slices.Clone(models)
 	slices.SortFunc(models, func(first, second Model) int {
 		return cmp.Compare(first.ID(), second.ID())
 	})
