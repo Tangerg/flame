@@ -4208,3 +4208,45 @@ Five views still render "Couldn't load" because the fixture seeds no data for
 them: skills, skill-proposals, skill-library, recipes, agent-docs. And the
 fixture sidebar is three rows from the bottom of a 720px window — the state list
 has outgrown the scaffolding that lists it.
+
+---
+
+## Round 78 — the scaffolding had outgrown the window it renders in
+
+Status: **complete**
+
+Round 77 stopped three rows short of the bottom of a 720px window. Every round
+that opens a view adds a row to both fixture sidebars, and a state below the fold
+is a state whose golden cannot be taken — so the list becomes the scrollport it
+should always have been, and the active row is scrolled into view.
+
+### The mistake in the middle of it
+
+`min-h-0 flex-1 overflow-y-auto` on the list, and 65 goldens moved. The sibling
+below it was `min-h-4 flex-1` — a spring, from when the list was content-sized —
+so the two split the free height and the list fell from 610px to 326px. The
+spacer is a gap above the caption, not a spring; saying so puts every row back
+where it was.
+
+### Before / after
+
+| | before | after |
+| --- | --- | --- |
+| list height (720px window) | 610, content-sized | 627, fills the free space |
+| capacity | overflows silently past the fold | scrolls |
+| active row when it overflows | wherever it landed | scrolled into view |
+| goldens | — | **unchanged** |
+
+### Verification
+
+- 484/484 with **no golden regenerated**: the change is invisible at the size the
+  suite photographs, which is the point.
+- Proven at 480px, where the list does overflow: scroll range 223px, `empty`
+  holds at the top, `waves` scrolls to 222 and its row lands inside the viewport.
+- Guards green, unit 2370/4.
+
+### Next
+
+The five views that render "Couldn't load" — skills, skill-proposals,
+skill-library, recipes, agent-docs — need query data seeded before their surfaces
+mean anything. The sidebar can hold them now.

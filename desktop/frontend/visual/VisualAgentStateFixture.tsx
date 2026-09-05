@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from "react";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import { selectCurrentRootAttention } from "@/plugins/builtin/agent/application/view/runTree";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
@@ -26,6 +27,11 @@ const STATE_LABELS: Record<VisualAgentState, string> = {
 };
 
 function StateSidebar({ state }: { state: VisualAgentState }) {
+  const listRef = useRef<HTMLDivElement>(null);
+  // Keep the state this fixture is about on screen once the list outgrows the window.
+  useLayoutEffect(() => {
+    listRef.current?.querySelector("[data-active]")?.scrollIntoView({ block: "nearest" });
+  }, [state]);
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Empty, the way the product's drawer header is: the sidebar control is placed at
@@ -33,7 +39,9 @@ function StateSidebar({ state }: { state: VisualAgentState }) {
           anything written here is painted under the control. This caption is scaffolding
           and belongs with the scaffolding below it. */}
       <AgentSurfaceHeader corner="drawer" divider={false} />
-      <div className="flex flex-col gap-0.5 px-2 pt-2">
+      {/* The scrollport, because this list only grows: every view a round opens adds a row, and
+          a state below the fold of a 720px window is a state whose golden cannot be taken. */}
+      <div ref={listRef} className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2 pt-2">
         <span className="px-2 pb-1 text-ui-md font-semibold text-fg">Agent states</span>
         {(Object.keys(STATE_LABELS) as VisualAgentState[]).map((candidate) => (
           <AgentRow
@@ -45,7 +53,8 @@ function StateSidebar({ state }: { state: VisualAgentState }) {
           </AgentRow>
         ))}
       </div>
-      <div className="min-h-4 flex-1" />
+      {/* The list takes the free height now; this is the gap above the caption, not a spring. */}
+      <div className="min-h-4" />
       <div className="px-4 pb-3 text-ui-xs leading-body text-fg-faint">
         Canonical snapshot → production projection
       </div>
