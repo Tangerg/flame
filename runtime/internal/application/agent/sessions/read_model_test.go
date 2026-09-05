@@ -16,6 +16,9 @@ type activityRunStore struct {
 }
 
 func (a activityRunStore) ListRuns(context.Context, string) ([]run.Run, error) {
+	if a.onList != nil {
+		a.onList()
+	}
 	return a.runs, a.err
 }
 

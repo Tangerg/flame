@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -188,6 +189,7 @@ func (c *Coordinator) resolveRollbackBoundary(
 	if err != nil {
 		return resolvedRollbackBoundary{}, err
 	}
+	items = slices.Clone(items)
 	runs, err := listSessionRuns(ctx, c.runs, sessionID)
 	if err != nil {
 		return resolvedRollbackBoundary{}, err

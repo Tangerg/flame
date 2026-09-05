@@ -3,7 +3,20 @@ package sessions
 import (
 	"context"
 	"testing"
+	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
+
+type retainedRollbackTranscript struct {
+	items []transcript.Item
+}
+
+func (r retainedRollbackTranscript) List(context.Context, string) ([]transcript.Item, error) {
+	return r.items, nil
+}
 
 func TestRollbackSpecOwnsClosedRestoreScope(t *testing.T) {
 	valid := []struct {
@@ -44,6 +57,33 @@ func TestRollbackSpecOwnsClosedRestoreScope(t *testing.T) {
 		if err := spec.validate(); err == nil {
 			t.Fatalf("validate(%+v) succeeded", spec)
 		}
+	}
+}
+
+func TestResolveRollbackBoundaryOwnsTranscriptBeforeRunRead(t *testing.T) {
+	at := time.Unix(1, 0).UTC()
+	items := []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+		SessionID: "ses_1", RunID: "run_1", ID: "item_1", Kind: transcript.UserMessage,
+		OccurredAt: at,
+		Content:    []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "original"}},
+	})}
+	coordinator := &Coordinator{
+		transcript: retainedRollbackTranscript{items: items},
+		runs: activityRunStore{
+			runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
+				SessionID: "ses_1", ID: "run_1", State: run.Running, CreatedAt: at,
+			})},
+			onList: func() { items[0] = transcript.Item{} },
+		},
+	}
+
+	boundary, err := coordinator.resolveRollbackBoundary(t.Context(), "ses_1", "")
+	if err != nil {
+		t.Fatalf("resolveRollbackBoundary: %v", err)
+	}
+	if len(boundary.droppedRuns) != 1 || len(boundary.droppedRuns[0].UserInput) != 1 ||
+		boundary.droppedRuns[0].UserInput[0].Text != "original" {
+		t.Fatalf("dropped Run input after store mutation = %+v, want original", boundary.droppedRuns)
 	}
 }
 
