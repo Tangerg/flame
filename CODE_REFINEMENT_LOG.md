@@ -241,6 +241,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 281 | `cff64af2` + CLI dependency update | Deep-snapshotted MCP create, update, and test commands before Registry callbacks and isolated optional tool scopes from catalog mutation and acknowledgement validation. |
 | 282 | `1069e248` + CLI dependency update | Made invalidation constructors own identifier sets and deep-isolated each published Notice so callbacks cannot mutate callers or later notices in the same batch. |
 | 283 | `7b07f217` + CLI dependency update | Deep-cloned the resolved fork conversation prefix so nested message parts and metadata cannot leak mutations between the source snapshot and child boundary. |
+| 284 | `cb6560f8` + CLI dependency update | Deep-isolated conversation messages in both portable archive directions so imports and exports cannot mutate their canonical or transport-owned counterparts. |
 
 ## Verification contract
 
