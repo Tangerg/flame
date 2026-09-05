@@ -63,6 +63,8 @@ export const VISUAL_WORKSPACE_STATES = [
   "dock-timeline",
   "dock-explorer",
   "dock-terminal",
+  "dock-search",
+  "dock-files",
   "dock-tools",
   "dock-file",
   "dock-empty",

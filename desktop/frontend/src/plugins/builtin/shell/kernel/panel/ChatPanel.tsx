@@ -248,7 +248,15 @@ export function ChatPanel({ onSend }: Props) {
                 <DockHeader tabs={dockTabs} groups={catalog} openViewIds={openViewIds} />
               )}
               <div className="relative min-h-0 flex-1">
-                {showingCatalog && <DockCatalogPage groups={catalog} openViewIds={openViewIds} />}
+                {/* The same box its siblings get. Left as a plain child it had no flex parent to
+                    size against, so its own `flex-1` decided nothing and it grew to its content:
+                    at the minimum window the catalogue stood 860px tall in a 720px dock, and the
+                    last four destinations were below the fold with nothing to scroll. */}
+                {showingCatalog && (
+                  <div className="absolute inset-0 flex flex-col">
+                    <DockCatalogPage groups={catalog} openViewIds={openViewIds} />
+                  </div>
+                )}
                 {ownedDockViewIds.map((viewId) => (
                   <Activity key={viewId} mode={viewId === dock.activeViewId ? "visible" : "hidden"}>
                     <div data-dock-view-id={viewId} className="absolute inset-0 flex flex-col">

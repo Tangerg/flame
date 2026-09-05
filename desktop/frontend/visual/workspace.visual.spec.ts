@@ -124,6 +124,20 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     await expect(view.getByRole("img", { name: "err" })).toBeVisible();
     return;
   }
+  if (state === "dock-search") {
+    // Nothing has been searched, so ready is the view explaining what it searches — the empty
+    // state is the whole surface here, and the only one a fixture can photograph honestly.
+    await expect(page.locator(".agent-workspace-view:visible")).toContainText(
+      "regex over the session workspace",
+    );
+    return;
+  }
+  if (state === "dock-files") {
+    const view = page.locator(".agent-workspace-view:visible");
+    await expect(view).toContainText("2 files changed");
+    await expect(view).toContainText("DockResizer.tsx");
+    return;
+  }
   if (state === "dock-explorer") {
     // The tree is seeded, not fetched — ready is the root listing it renders from that seed.
     const view = page.locator(".agent-workspace-view:visible");

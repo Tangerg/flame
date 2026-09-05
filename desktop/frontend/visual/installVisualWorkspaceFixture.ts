@@ -50,6 +50,17 @@ import {
   timelineView,
   toolStatsView,
   toolsView,
+  searchView,
+  filesView,
+  skillsView,
+  skillProposalsView,
+  skillLibraryView,
+  recipesView,
+  knowledgeView,
+  agentMemoryView,
+  agentDocsView,
+  runSummaryView,
+  notificationsView,
 } from "@/plugins/builtin/workspace/workspace-views";
 import { PENDING_WORK_KEY, type PendingWorkItem } from "@/plugins/builtin/agent/public/hitl";
 import { DATA_PROVIDER, SHORTCUT, definePlugin } from "@/plugins/sdk";
@@ -416,6 +427,10 @@ async function loadVisualPlugins(plugins: readonly AnyPlugin[]): Promise<void> {
 
 // Which dock view each state is ABOUT. A state not named here is a diff state —
 // there are four of them and they differ in their data, not in their destination.
+// Views that are not part of every workspace's default strip. Kept as a set rather than a
+// branch per view: the rule is one, and it was being restated once per addition.
+const OPENED_BY_ITS_OWN_STATE = new Set(["inbox", "tool-stats", "tools", "search", "files"]);
+
 const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-light": "plan",
   "dock-inbox": "inbox",
@@ -423,6 +438,8 @@ const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-timeline": "timeline",
   "dock-explorer": "explorer",
   "dock-terminal": "terminal",
+  "dock-search": "search",
+  "dock-files": "files",
   "dock-tools": "tools",
   "dock-file": "file",
   "dock-catalog": WORKSPACE_DOCK_CATALOG,
@@ -456,22 +473,15 @@ export async function installVisualWorkspaceFixture(
   useContextDockStore.setState({
     activeSessionScopeId: VISUAL_SESSION_ID,
     sessionScopes: new Map(),
-    // The inbox is a tab you opened, not one every workspace carries — so it is
-    // present only in the state that is about it. Adding it everywhere moved the
-    // tab strip in every other golden, which is a change to states that have
-    // nothing to do with this feature.
-    // A view this feature added is a tab you opened, not one every workspace
-    // carries. Present only in the state that is about it: adding it everywhere
-    // moved the tab strip in every other golden, which is a change to states
-    // that have nothing to do with the feature.
+    // A tab you opened, not one every workspace carries: present only in the state that is
+    // about it. Adding one everywhere moves the tab strip in every other golden, which is a
+    // change to states that have nothing to do with the feature.
     // A dock nobody has put anything in yet: it opens onto its catalogue.
     dockViewIds:
       state === "dock-catalog"
         ? []
         : [
-            ...(DOCK_VIEW_BY_STATE[state] === "inbox" ? ["inbox"] : []),
-            ...(DOCK_VIEW_BY_STATE[state] === "tool-stats" ? ["tool-stats"] : []),
-            ...(DOCK_VIEW_BY_STATE[state] === "tools" ? ["tools"] : []),
+            ...(OPENED_BY_ITS_OWN_STATE.has(dockViewId) ? [dockViewId] : []),
             "explorer",
             "file",
             "diff",
@@ -516,6 +526,20 @@ export async function installVisualWorkspaceFixture(
     toolsView,
     planView,
     timelineView,
+    // Every remaining view, for the reason the settings panes below are all here: the dock
+    // catalogue a fixture shows should be the one production shows, not the nine somebody
+    // needed on the day. Registering them is also the only way any of them is ever rendered.
+    searchView,
+    filesView,
+    skillsView,
+    skillProposalsView,
+    skillLibraryView,
+    recipesView,
+    knowledgeView,
+    agentMemoryView,
+    agentDocsView,
+    runSummaryView,
+    notificationsView,
     kernelSettings,
     ...localePlugins,
     appearanceSettings,

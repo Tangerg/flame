@@ -4145,3 +4145,66 @@ Eleven views still unopened, all `dock: "workspace"` scope: search, files,
 skills, skill-proposals, skill-library, recipes, knowledge, agent-memory,
 agent-docs, plus `notifications` (session) and `run-summary` (run). Two rounds,
 two views opened, two defects — the ratio argues for continuing.
+
+---
+
+## Round 77 — the catalogue could not reach its own last four rows
+
+Status: **complete**
+
+The fixture registered nine of the twenty workspace views. The reasoning for the
+settings panes sits four lines below it and is the right one — *"every remaining
+pane, so the pane list itself is the one production renders rather than a
+three-row stub"* — and had never been applied here. Every view is registered now,
+and the dock catalogue shows what production shows: twenty destinations across
+Workspace, Run and Session.
+
+**And a 720px-tall dock immediately failed to hold them.** `closure`'s vertical
+clipping sweep caught it the moment the content was production-sized:
+`ASIDE.agent-context-dock 720<878`.
+
+### The chain
+
+| element | box | content | overflow |
+| --- | --- | --- | --- |
+| `.agent-context-dock` | 720 | 860 | hidden |
+| `relative min-h-0 flex-1` | 674 | 814 | visible |
+| the catalogue | **814** | 814 | auto |
+
+The catalogue carries `flex min-h-0 flex-1 overflow-y-auto` and none of it
+applied: its parent is a `position: relative` BLOCK, so `flex-1` had no flex
+container to size against and the element grew to its content. Every sibling in
+that container is wrapped in `absolute inset-0 flex flex-col`, which is what
+bounds them to 674px. The catalogue was the one child left plain.
+
+So at the minimum window, with an empty dock, **Plan, Timeline, Notifications and
+Tool stats rendered below the fold and nothing scrolled** — four of twenty
+destinations unreachable.
+
+### Before / after
+
+| | before | after |
+| --- | --- | --- |
+| dock content height | 860 in a 720 box | 720 |
+| catalogue scroll range | 0 | 140px |
+| last destination | bottom 844, clipped, unreachable | bottom 704 after scrolling, clickable |
+
+### Also this round
+
+Two more states, `dock-search` and `dock-files`, both rendering real content. And
+the tab rule that had been restated once per addition — three near-identical
+branches deciding whether a view is "a tab you opened" — is one set now, with the
+paragraph that explains it written once instead of twice.
+
+### Verification
+
+Measured before and after, including scrolling the catalogue to prove the last
+row lands inside the viewport (`bottom 704, insideViewport: true`). Goldens
+regenerated. Visual **484/484** (468 before). Guards green, unit 2370/4.
+
+### Next
+
+Five views still render "Couldn't load" because the fixture seeds no data for
+them: skills, skill-proposals, skill-library, recipes, agent-docs. And the
+fixture sidebar is three rows from the bottom of a 720px window — the state list
+has outgrown the scaffolding that lists it.
