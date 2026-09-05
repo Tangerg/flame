@@ -23,7 +23,7 @@ import (
 	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
-// Config is the construction-time bundle for [NewAssembly]. It contains Host
+// Config is the construction-time bundle for assembly. It contains Instance
 // capabilities and application adapters only; Bootstrap derives the
 // Agent Framework executor configuration so no second source of Runtime facts exists.
 type ChatResolver interface {
@@ -72,8 +72,8 @@ type Config struct {
 	IdempotencyStore *sqlitestore.IdempotencyStore
 
 	// Resources are one-shot process adapters whose ownership transfers to
-	// Assembly when [NewAssembly] is called. A successful [BuildAssembly]
-	// transfers them to Host. Host bounds each Close call and releases resources
+	// the Runtime lifecycle when construction starts. It bounds each Close
+	// call and releases resources
 	// only after background tasks and execution/tool capabilities have stopped;
 	// a returned error is retained as a diagnostic but cannot make a terminal
 	// Close replayable.

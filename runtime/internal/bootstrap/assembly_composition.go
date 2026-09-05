@@ -157,7 +157,7 @@ func buildWorkspaceComposition(
 }
 
 // executionComposition owns the model/tool execution graph. Every acquired
-// closer is transferred to hostLifetime before an error can escape.
+// closer is transferred to runtimeLifetime before an error can escape.
 type executionComposition struct {
 	conversation      conversationEnvironment
 	models            modelEnvironment
@@ -173,7 +173,7 @@ func buildExecutionComposition(
 	ctx context.Context,
 	cfg Config,
 	defaultSelection modelref.Selection,
-	lifetime *hostLifetime,
+	lifetime *runtimeLifetime,
 	buildTools toolEnvironmentBuilder,
 	policy policyComposition,
 	workspaceServices workspaceComposition,
@@ -194,7 +194,7 @@ func buildExecutionComposition(
 		return executionComposition{}, err
 	}
 	// Isolated working copies are acquired before the shell set that can run in
-	// them. The Host's reverse teardown therefore stops every detached shell
+	// them. The Instance's reverse teardown therefore stops every detached shell
 	// before it destroys the directories those processes use.
 	var isolator *isolation.Isolator
 	if cfg.SandboxDir != "" {

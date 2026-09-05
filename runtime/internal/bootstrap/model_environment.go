@@ -11,7 +11,7 @@ import (
 
 // modelEnvironment is the composition-time graph shared by interactive model
 // execution, utility-model work, and embedding-backed search. Its live role
-// states let configuration changes take effect without rebuilding the Host.
+// states let configuration changes take effect without rebuilding the Instance.
 type modelEnvironment struct {
 	defaultSelection   modelref.Selection
 	chatResolver       ChatResolver

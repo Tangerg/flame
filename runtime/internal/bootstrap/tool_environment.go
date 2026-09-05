@@ -27,8 +27,8 @@ type toolEnvironment struct {
 }
 
 // toolEnvironmentDependencies is the complete construction contract for the
-// process-owned tool runtime. Keeping the contract as one value lets Assembly
-// transfer every acquisition to hostLifetime even when construction fails.
+// process-owned tool runtime. Keeping the contract as one value lets construction
+// transfer every acquisition to runtimeLifetime even when construction fails.
 type toolEnvironmentDependencies struct {
 	lifetime          context.Context
 	config            Config
@@ -61,7 +61,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		// The SDK consumes each ClientSession transport closer even when Close
 		// returns a diagnostic. Step owns the caller deadline; the action itself
 		// must outlive that deadline and return only when the pool generation has
-		// actually settled, so a timed-out Host retains and later joins it.
+		// actually settled, so a timed-out Instance retains and later joins it.
 		closers: []*teardown.Step{teardown.Terminal(func(ctx context.Context) error {
 			return mcpPool.Shutdown(context.WithoutCancel(ctx))
 		})},

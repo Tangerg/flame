@@ -14,7 +14,7 @@ import (
 )
 
 // ComposeConfig translates process settings and already-opened adapters into
-// the construction input consumed by [NewAssembly].
+// the construction input consumed by assembly.
 func ComposeConfig(cfg config.Settings, stores *persistence.Bundle, resolver ChatResolver, providers models.ProviderRegistry, hooks HookResolver, buildID string) Config {
 	return Config{
 		Resources:                []TerminalResource{stores},

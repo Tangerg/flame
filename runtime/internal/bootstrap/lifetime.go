@@ -7,25 +7,23 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
-// Host owns the assembled application tier and its process-level close order
-// (§13.2). Its application capsule exposes behavior only inside Bootstrap;
-// process resources remain in the immutable shared shutdown graph.
-type Host struct {
-	application *hostApplication
-	// lifetime owns the immutable shutdown graph shared by every Host copy.
-	lifetime *hostLifetime
-}
+type runtimeLifetime struct {
+	delivery            *delivery.Endpoint
+	stopRuntime         context.CancelFunc
+	schedulerDone       <-chan struct{}
+	databaseChangesDone <-chan struct{}
+	recoveryDone        <-chan struct{}
 
-type hostLifetime struct {
 	context      context.Context
 	closeMu      sync.Mutex
 	stopping     bool
 	closed       bool
 	shutdownWait shutdownWaitPolicy
-	shutdown     *hostShutdownAttempt
+	shutdown     *shutdownAttempt
 
 	goalDriver     shutdownComponent
 	mcpCoordinator shutdownComponent
@@ -37,7 +35,15 @@ type hostLifetime struct {
 	resourceGraph  *teardown.Sequence
 }
 
-type hostShutdownAttempt struct {
+func newRuntimeLifetime(ctx context.Context, resources []TerminalResource) *runtimeLifetime {
+	return &runtimeLifetime{
+		context:       ctx,
+		shutdownWait:  defaultShutdownWaitPolicy(),
+		hostResources: terminalResources(resources),
+	}
+}
+
+type shutdownAttempt struct {
 	done      chan struct{}
 	err       error
 	completed bool
@@ -56,28 +62,28 @@ type taskOwner interface {
 
 const runEffectDrainTimeout = 5 * time.Second
 
-// Close shuts the assembled application tier down in reverse dependency order
-// (§10.3). The first caller starts one Host-owned generation that stops
+// Close shuts the complete Runtime down in reverse dependency order.
+// The first caller starts one shutdown attempt that stops
 // producers, drains then cancels accepted maintenance, joins components, and
 // finally enters terminal resource teardown.
 // Each caller has a bounded wait, but its deadline cannot abandon or duplicate
 // that generation. A completed component error permits a later Close to start
 // one new generation; terminal resource diagnostics close the graph. Idempotent
-// across Host copies once the graph has fully closed.
-func (h *Host) Close() error {
-	if h == nil || h.lifetime == nil {
+// across Instance copies once the graph has fully closed.
+func (i *Instance) Close() error {
+	if i == nil || i.lifetime == nil {
 		return nil
 	}
-	return closeHostLifetime(h.lifetime)
+	return closeRuntimeLifetime(i.lifetime)
 }
 
-func closeHostLifetime(lifetime *hostLifetime) error {
+func closeRuntimeLifetime(lifetime *runtimeLifetime) error {
 	if lifetime == nil {
 		return nil
 	}
 	// Preserve instance trace values, but never let the caller that happened to
 	// start Close cancel the owner generation. A nil lifetime context occurs only
-	// in direct Host tests and uses the same process-owner root as the wait.
+	// in direct Instance tests and uses the same process-owner root as the wait.
 	ownerCtx := context.Background()
 	if lifetime.context != nil {
 		ownerCtx = context.WithoutCancel(lifetime.context)
@@ -86,7 +92,7 @@ func closeHostLifetime(lifetime *hostLifetime) error {
 	if err != nil {
 		return err
 	}
-	attempt, closed := beginHostShutdown(ownerCtx, lifetime)
+	attempt, closed := beginShutdown(ownerCtx, lifetime)
 	if closed {
 		return nil
 	}
@@ -98,10 +104,10 @@ func closeHostLifetime(lifetime *hostLifetime) error {
 	return attempt.err
 }
 
-func beginHostShutdown(
+func beginShutdown(
 	ownerCtx context.Context,
-	lifetime *hostLifetime,
-) (attempt *hostShutdownAttempt, closed bool) {
+	lifetime *runtimeLifetime,
+) (attempt *shutdownAttempt, closed bool) {
 	lifetime.closeMu.Lock()
 	defer lifetime.closeMu.Unlock()
 	if lifetime.closed {
@@ -109,31 +115,17 @@ func beginHostShutdown(
 	}
 	attempt = lifetime.shutdown
 	if attempt == nil || attempt.completed {
-		attempt = &hostShutdownAttempt{done: make(chan struct{})}
+		attempt = &shutdownAttempt{done: make(chan struct{})}
 		lifetime.shutdown = attempt
-		go runHostShutdown(ownerCtx, lifetime, attempt)
+		go runShutdown(ownerCtx, lifetime, attempt)
 	}
 	return attempt, false
 }
 
-func awaitHostShutdown(ctx context.Context, host *Host) error {
-	if host == nil || host.lifetime == nil {
-		return nil
-	}
-	attempt, closed := beginHostShutdown(ctx, host.lifetime)
-	if closed {
-		return nil
-	}
-	if err := completion.Wait(ctx, attempt.done); err != nil {
-		return err
-	}
-	return attempt.err
-}
-
-func runHostShutdown(
+func runShutdown(
 	ownerCtx context.Context,
-	lifetime *hostLifetime,
-	attempt *hostShutdownAttempt,
+	lifetime *runtimeLifetime,
+	attempt *shutdownAttempt,
 ) {
 	components := []shutdownComponent{
 		lifetime.goalDriver,
@@ -147,6 +139,22 @@ func runHostShutdown(
 	}
 	lifetime.closeMu.Unlock()
 
+	if begin {
+		lifetime.delivery.BeginShutdown()
+		if lifetime.stopRuntime != nil {
+			lifetime.stopRuntime()
+		}
+	}
+	if err := lifetime.delivery.AwaitShutdown(ownerCtx); err != nil {
+		finishShutdown(lifetime, attempt, false, err)
+		return
+	}
+	for _, done := range []<-chan struct{}{lifetime.schedulerDone, lifetime.databaseChangesDone, lifetime.recoveryDone} {
+		if err := completion.Wait(ownerCtx, done); err != nil {
+			finishShutdown(lifetime, attempt, false, err)
+			return
+		}
+	}
 	if begin {
 		for _, component := range components {
 			if component != nil {
@@ -173,14 +181,14 @@ func runHostShutdown(
 		errs = append(errs, lifetime.runEffectTasks.Wait(ownerCtx))
 	}
 	if componentErr := errors.Join(errs...); componentErr != nil {
-		finishHostShutdown(lifetime, attempt, false, componentErr)
+		finishShutdown(lifetime, attempt, false, componentErr)
 		return
 	}
 
 	if lifetime.executor != nil {
 		lifetime.executor.BeginShutdown()
 		if err := lifetime.executor.AwaitShutdown(ownerCtx); err != nil {
-			finishHostShutdown(lifetime, attempt, false, err)
+			finishShutdown(lifetime, attempt, false, err)
 			return
 		}
 	}
@@ -198,15 +206,15 @@ func runHostShutdown(
 	lifetime.closeMu.Unlock()
 	settled, resourceErr := resourceGraph.Shutdown(ownerCtx)
 	if !settled {
-		finishHostShutdown(lifetime, attempt, false, resourceErr)
+		finishShutdown(lifetime, attempt, false, resourceErr)
 		return
 	}
-	finishHostShutdown(lifetime, attempt, true, resourceErr)
+	finishShutdown(lifetime, attempt, true, resourceErr)
 }
 
-func finishHostShutdown(
-	lifetime *hostLifetime,
-	attempt *hostShutdownAttempt,
+func finishShutdown(
+	lifetime *runtimeLifetime,
+	attempt *shutdownAttempt,
 	closed bool,
 	err error,
 ) {

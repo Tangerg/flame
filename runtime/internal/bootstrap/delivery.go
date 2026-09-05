@@ -12,17 +12,17 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// hostApplication is the immutable application capsule owned by Host. Delivery
-// receives its own consumer config; startup recovery and workers stay behind
-// behavior methods instead of leaking a coordinator locator to Instance.
-type hostApplication struct {
+// runtimeApplication is the immutable application capsule owned by Instance. Delivery
+// receives its own consumer config; startup recovery and worker composition
+// remain inside Bootstrap.
+type runtimeApplication struct {
 	delivery         delivery.HandlerConfig
 	sessions         *sessions.Coordinator
-	workers          hostWorkers
+	workers          runtimeWorkers
 	idempotencyStore idempotency.Store
 }
 
-type hostWorkers struct {
+type runtimeWorkers struct {
 	scheduler     *schedules.Firing
 	recovery      *ownership.RecoveryCoordinator
 	invalidations invalidation.Publish
@@ -33,11 +33,11 @@ type workerJoins struct {
 	recovery  <-chan struct{}
 }
 
-func (h *hostApplication) recoverStartup(ctx context.Context) error {
+func (h *runtimeApplication) recoverStartup(ctx context.Context) error {
 	return h.sessions.RecoverWorkspaceMutations(ctx)
 }
 
-func (h *hostApplication) newDeliveryHandler(
+func (h *runtimeApplication) newDeliveryHandler(
 	info protocol.ServerInfo,
 	idempotencyNamespace string,
 ) (*delivery.Handler, error) {
@@ -50,7 +50,7 @@ func (h *hostApplication) newDeliveryHandler(
 	return delivery.NewHandler(cfg)
 }
 
-func (h *hostApplication) newDeliveryEndpoint(
+func (h *runtimeApplication) newDeliveryEndpoint(
 	lifetime context.Context,
 	info protocol.ServerInfo,
 	idempotencyNamespace string,
@@ -70,11 +70,11 @@ func (h *hostApplication) newDeliveryEndpoint(
 	return endpoint, nil
 }
 
-func (h *hostApplication) notifyExternalChange() {
+func (h *runtimeApplication) notifyExternalChange() {
 	h.workers.invalidations.Notify(invalidation.Notice{Resource: invalidation.Resync})
 }
 
-func (h *hostApplication) startWorkers(ctx context.Context) workerJoins {
+func (h *runtimeApplication) startWorkers(ctx context.Context) workerJoins {
 	schedulerDone := make(chan struct{})
 	go func() {
 		defer close(schedulerDone)

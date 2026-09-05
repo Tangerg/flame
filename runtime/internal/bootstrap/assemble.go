@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
@@ -28,88 +27,21 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 )
 
-// Assembly owns configuration resources before construction begins.
-type Assembly struct {
-	mu         sync.Mutex
-	cfg        Config
-	buildTools toolEnvironmentBuilder
-	lifetime   *hostLifetime
-	started    bool
-}
-
-// NewAssembly acquires cfg.Resources and returns a single-use Host builder.
-func NewAssembly(lifetime context.Context, cfg Config) *Assembly {
-	return newAssembly(lifetime, cfg, buildToolEnvironment)
-}
-
-func newAssembly(
-	lifetime context.Context,
-	cfg Config,
-	buildTools toolEnvironmentBuilder,
-) *Assembly {
-	return &Assembly{
-		cfg:        cfg,
-		buildTools: buildTools,
-		lifetime: &hostLifetime{
-			context:       lifetime,
-			shutdownWait:  defaultShutdownWaitPolicy(),
-			hostResources: terminalResources(cfg.Resources),
-		},
-	}
-}
-
-// BuildAssembly constructs and returns a complete Host. On failure it begins a
-// bounded rollback and returns nil. The Host-owned shutdown generation keeps
-// joining components and the terminal resource Sequence after caller timeout;
-// CloseAssembly joins it or starts a new attempt after a settled component
-// error.
-func BuildAssembly(ctx context.Context, a *Assembly) (*Host, error) {
-	if a == nil {
-		return nil, errors.New("runtime: nil Assembly")
-	}
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if a.started {
-		return nil, errors.New("runtime: BuildAssembly called more than once")
-	}
-	if a.lifetime == nil || a.buildTools == nil {
-		return nil, errors.New("runtime: uninitialized Assembly")
-	}
-	if a.lifetime.context == nil {
-		return nil, errors.New("runtime: Assembly lifetime is required")
-	}
-	a.started = true
-	host, err := buildAssembly(ctx, a)
-	if err != nil {
-		if rollbackErr := closeHostLifetime(a.lifetime); rollbackErr != nil {
-			err = errors.Join(err, fmt.Errorf("runtime: rollback assembly: %w", rollbackErr))
+// assemble transfers acquired resources directly to the Runtime lifecycle.
+// Construction state stays on this stack; rollback uses the same shutdown owner
+// as a successfully opened Runtime and survives a caller's timeout.
+func assemble(ctx context.Context, cfg Config, lifetime *runtimeLifetime, buildTools toolEnvironmentBuilder) (_ *Instance, err error) {
+	defer func() {
+		if err != nil {
+			if rollbackErr := closeRuntimeLifetime(lifetime); rollbackErr != nil {
+				err = errors.Join(err, fmt.Errorf("runtime: rollback assembly: %w", rollbackErr))
+			}
 		}
+	}()
+	if err := validateAssemblyConfig(cfg); err != nil {
 		return nil, err
 	}
-	a.lifetime = nil
-	return host, nil
-}
-
-// CloseAssembly releases resources when BuildAssembly has not run, completes
-// rollback after a failed build, and is a no-op after ownership transfers to a
-// successful Host.
-func CloseAssembly(a *Assembly) error {
-	if a == nil {
-		return nil
-	}
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	// Closing an unstarted Assembly consumes its single use. Otherwise a later
-	// BuildAssembly could construct a Host over resources already released.
-	a.started = true
-	return closeHostLifetime(a.lifetime)
-}
-
-func buildAssembly(ctx context.Context, a *Assembly) (*Host, error) {
-	if err := validateAssemblyConfig(a.cfg); err != nil {
-		return nil, err
-	}
-	defaultSelection, err := runtimeDefaultModelSelection(a.cfg)
+	defaultSelection, err := runtimeDefaultModelSelection(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -117,32 +49,32 @@ func buildAssembly(ctx context.Context, a *Assembly) (*Host, error) {
 	// following model round can read them immediately. A process crash may leave
 	// that short-lived stage behind; startup is the only point with no live tool
 	// calls, so reconcile it before constructing the engine.
-	if a.cfg.ToolResultStore != nil {
-		if _, err := a.cfg.ToolResultStore.PurgeUnbound(ctx); err != nil {
+	if cfg.ToolResultStore != nil {
+		if _, err := cfg.ToolResultStore.PurgeUnbound(ctx); err != nil {
 			return nil, fmt.Errorf("runtime: reconcile staged tool results: %w", err)
 		}
 	}
-	policy, err := buildPolicyComposition(ctx, a.cfg)
+	policy, err := buildPolicyComposition(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
-	workspaceServices, err := buildWorkspaceComposition(a.cfg, policy.invalidations.Publish)
+	workspaceServices, err := buildWorkspaceComposition(cfg, policy.invalidations.Publish)
 	if err != nil {
 		return nil, err
 	}
 	execution, err := buildExecutionComposition(
 		ctx,
-		a.cfg,
+		cfg,
 		defaultSelection,
-		a.lifetime,
-		a.buildTools,
+		lifetime,
+		buildTools,
 		policy,
 		workspaceServices,
 	)
 	if err != nil {
 		return nil, err
 	}
-	return buildAssemblyCore(ctx, a.cfg, a.lifetime, policy, workspaceServices, execution)
+	return buildAssemblyCore(ctx, cfg, lifetime, policy, workspaceServices, execution)
 }
 
 // buildAssemblyCore composes the Session/Run lifecycle from three complete
@@ -150,11 +82,11 @@ func buildAssembly(ctx context.Context, a *Assembly) (*Host, error) {
 func buildAssemblyCore(
 	ctx context.Context,
 	cfg Config,
-	lifetime *hostLifetime,
+	lifetime *runtimeLifetime,
 	policy policyComposition,
 	workspaceServices workspaceComposition,
 	execution executionComposition,
-) (*Host, error) {
+) (*Instance, error) {
 	fileChanges := newNotificationRelay[workspace.FileChangeNotice]()
 	admissionGate, err := ownership.NewGate(cfg.SessionOwnership)
 	if err != nil {
@@ -457,8 +389,8 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct feedback recorder: %w", err)
 	}
-	host := &Host{
-		application: &hostApplication{
+	host := &Instance{
+		application: &runtimeApplication{
 			delivery: delivery.HandlerConfig{
 				Sessions:               sessionCoordinator,
 				MCP:                    mcpCoordinator,
@@ -487,7 +419,7 @@ func buildAssemblyCore(
 				PlanEnabled:            cfg.PlanStore != nil,
 			},
 			sessions: sessionCoordinator,
-			workers: hostWorkers{
+			workers: runtimeWorkers{
 				scheduler:     scheduleFiring,
 				recovery:      ownershipRecovery,
 				invalidations: policy.invalidations.Publish,

@@ -5,12 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"sync"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -29,34 +27,16 @@ type InstanceConfig struct {
 	ServerInfo           protocol.ServerInfo
 }
 
-// Instance owns one complete Runtime: its delivery endpoint, workers,
-// application Host and persistence graph.
+// Instance owns one Runtime application and its complete shutdown graph.
+// Copies share the same lifecycle owner.
 type Instance struct {
-	delivery            *delivery.Endpoint
-	serverInfo          protocol.ServerInfo
-	host                *Host
-	stopRuntime         context.CancelFunc
-	schedulerDone       <-chan struct{}
-	databaseChangesDone <-chan struct{}
-	recoveryDone        <-chan struct{}
-
-	closeMu  sync.Mutex
-	stopping bool
-	closed   bool
-	// shutdownWait bounds each Close caller without changing the owner
-	// generation. It is concrete at construction rather than defaulted by zero.
-	shutdownWait shutdownWaitPolicy
-	shutdown     *instanceShutdownAttempt
-}
-
-type instanceShutdownAttempt struct {
-	done      chan struct{}
-	err       error
-	completed bool
+	application *runtimeApplication
+	serverInfo  protocol.ServerInfo
+	lifetime    *runtimeLifetime
 }
 
 // OpenInstance serializes canonical data-directory setup, opens persistence,
-// then releases that setup boundary before assembling and recovering one Host.
+// then releases that setup boundary before assembling and recovering one Instance.
 // Runtime processes may subsequently share the directory; finer application
 // ownership prevents conflicting execution and recovery.
 func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ config.Settings, err error) {
@@ -145,11 +125,9 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 			stopRuntime()
 		}
 	}()
-	assembly := NewAssembly(runtimeContext, assemblyConfig)
+	ownedLifetime := newRuntimeLifetime(runtimeContext, assemblyConfig.Resources)
 	storesOwned = false
-	defer func() { err = errors.Join(err, CloseAssembly(assembly)) }()
-
-	host, err := BuildAssembly(ctx, assembly)
+	host, err := assemble(ctx, assemblyConfig, ownedLifetime, buildToolEnvironment)
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
@@ -181,32 +159,25 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
+	host.lifetime.delivery = endpoint
+	host.lifetime.stopRuntime = stopRuntime
 	databaseChangesDone, err := stores.StartExternalChangeObserver(
 		runtimeContext,
 		host.application.notifyExternalChange,
 	)
 	if err != nil {
-		stopRuntime()
-		endpoint.BeginShutdown()
-		rollbackCtx, cancelRollback := context.WithTimeout(context.Background(), defaultShutdownWaitTimeout)
-		defer cancelRollback()
-		return nil, config.Settings{}, errors.Join(err, endpoint.AwaitShutdown(rollbackCtx))
+		return nil, config.Settings{}, err
 	}
 	workerJoins := host.application.startWorkers(runtimeContext)
 
-	instance := &Instance{
-		delivery:            endpoint,
-		serverInfo:          serverInfo,
-		host:                host,
-		stopRuntime:         stopRuntime,
-		schedulerDone:       workerJoins.scheduler,
-		databaseChangesDone: databaseChangesDone,
-		recoveryDone:        workerJoins.recovery,
-		shutdownWait:        defaultShutdownWaitPolicy(),
-	}
+	host.serverInfo = serverInfo
+	host.lifetime.schedulerDone = workerJoins.scheduler
+	host.lifetime.databaseChangesDone = databaseChangesDone
+	host.lifetime.recoveryDone = workerJoins.recovery
+
 	runtimeOwned = false
 	hostOwned = false
-	return instance, settings, nil
+	return host, settings, nil
 }
 
 func (i InstanceConfig) validate() error {
@@ -244,10 +215,10 @@ func (i InstanceConfig) validate() error {
 // Endpoint returns the instance-owned binding-neutral operation entrypoint.
 // Public bindings keep it private and expose only their typed methods.
 func (i *Instance) Endpoint() *delivery.Endpoint {
-	if i == nil {
+	if i == nil || i.lifetime == nil {
 		return nil
 	}
-	return i.delivery
+	return i.lifetime.delivery
 }
 
 // ServerInfo returns the immutable identity advertised by every binding.
@@ -256,94 +227,4 @@ func (i *Instance) ServerInfo() protocol.ServerInfo {
 		return protocol.ServerInfo{}
 	}
 	return i.serverInfo
-}
-
-// Close starts or joins the Instance-owned delivery-to-Host shutdown
-// generation. Each caller has a bounded wait; its timeout cannot cancel the
-// generation. A completed phase error permits a later Close attempt.
-func (i *Instance) Close() error {
-	if i == nil {
-		return nil
-	}
-	timeout, err := shutdownWaitTimeout(i.shutdownWait)
-	if err != nil {
-		return err
-	}
-	i.closeMu.Lock()
-	if i.closed {
-		i.closeMu.Unlock()
-		return nil
-	}
-	attempt := i.shutdown
-	if attempt == nil || attempt.completed {
-		attempt = &instanceShutdownAttempt{done: make(chan struct{})}
-		i.shutdown = attempt
-		ownerCtx := context.Background()
-		if i.host != nil && i.host.lifetime != nil && i.host.lifetime.context != nil {
-			ownerCtx = context.WithoutCancel(i.host.lifetime.context)
-		}
-		go runInstanceShutdown(ownerCtx, i, attempt)
-	}
-	i.closeMu.Unlock()
-	waitContext, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	if err := completion.Wait(waitContext, attempt.done); err != nil {
-		return err
-	}
-	return attempt.err
-}
-
-func runInstanceShutdown(
-	ownerCtx context.Context,
-	instance *Instance,
-	attempt *instanceShutdownAttempt,
-) {
-	instance.closeMu.Lock()
-	begin := !instance.stopping
-	if begin {
-		instance.stopping = true
-	}
-	instance.closeMu.Unlock()
-	if begin {
-		instance.delivery.BeginShutdown()
-		if instance.stopRuntime != nil {
-			instance.stopRuntime()
-		}
-	}
-
-	if err := instance.delivery.AwaitShutdown(ownerCtx); err != nil {
-		finishInstanceShutdown(instance, attempt, false, err)
-		return
-	}
-	for _, done := range []<-chan struct{}{
-		instance.schedulerDone,
-		instance.databaseChangesDone,
-		instance.recoveryDone,
-	} {
-		if err := completion.Wait(ownerCtx, done); err != nil {
-			finishInstanceShutdown(instance, attempt, false, err)
-			return
-		}
-	}
-	if err := awaitHostShutdown(ownerCtx, instance.host); err != nil {
-		finishInstanceShutdown(instance, attempt, false, err)
-		return
-	}
-	finishInstanceShutdown(instance, attempt, true, nil)
-}
-
-func finishInstanceShutdown(
-	instance *Instance,
-	attempt *instanceShutdownAttempt,
-	closed bool,
-	err error,
-) {
-	instance.closeMu.Lock()
-	defer instance.closeMu.Unlock()
-	attempt.err = err
-	attempt.completed = true
-	if closed {
-		instance.closed = true
-	}
-	close(attempt.done)
 }

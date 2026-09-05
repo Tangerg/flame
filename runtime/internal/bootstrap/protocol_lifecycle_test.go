@@ -83,7 +83,7 @@ type protocolLifecycleFixture struct {
 	home      string
 	ctx       context.Context
 	model     *lifecycleModel
-	host      *Host
+	host      *Instance
 	api       *delivery.Handler
 	stores    *persistence.Bundle
 	sessionID string
@@ -399,7 +399,7 @@ func (noMaintenance) Maintain(
 	return agentexec.RunMaintenanceResult{}
 }
 
-func openProtocolRuntime(t *testing.T, model chat.Model) (*Host, *delivery.Handler) {
+func openProtocolRuntime(t *testing.T, model chat.Model) (*Instance, *delivery.Handler) {
 	t.Helper()
 	dataDirectory := os.Getenv("FLAME_HOME")
 	stores, err := persistence.Open(t.Context(), persistence.Config{
@@ -434,12 +434,10 @@ func protocolRuntimeConfig(t *testing.T, stores *persistence.Bundle, model chat.
 	return cfg
 }
 
-func buildProtocolRuntime(t *testing.T, cfg Config, cwd string) (*Host, *delivery.Handler) {
+func buildProtocolRuntime(t *testing.T, cfg Config, cwd string) (*Instance, *delivery.Handler) {
 	t.Helper()
-	assembly := NewAssembly(t.Context(), cfg)
-	host, err := BuildAssembly(t.Context(), assembly)
+	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
 	if err != nil {
-		_ = CloseAssembly(assembly)
 		t.Fatalf("build runtime: %v", err)
 	}
 	if recoverStartupErr := host.application.recoverStartup(t.Context()); recoverStartupErr != nil {
@@ -454,7 +452,7 @@ func buildProtocolRuntime(t *testing.T, cfg Config, cwd string) (*Host, *deliver
 	return host, api
 }
 
-func protocolHandler(host *Host, cwd string) (*delivery.Handler, error) {
+func protocolHandler(host *Instance, cwd string) (*delivery.Handler, error) {
 	return host.application.newDeliveryHandler(protocol.ServerInfo{
 		Name: "conformance-test", Version: "0.0.0-test", InstanceID: testsupport.RuntimeInstanceID,
 		DefaultWorkspace: protocol.WorkspaceRef{Path: cwd}, Home: cwd,

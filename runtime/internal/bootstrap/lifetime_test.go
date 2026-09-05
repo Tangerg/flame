@@ -31,8 +31,8 @@ func TestHostCloseOwnsReverseOrderAndIsIdempotentAcrossCopies(t *testing.T) {
 	recordWait := func(name string) func(context.Context) error {
 		return func(context.Context) error { return record("wait "+name, nil)() }
 	}
-	host := Host{
-		lifetime: &hostLifetime{
+	host := Instance{
+		lifetime: &runtimeLifetime{
 			shutdownWait:   defaultShutdownWaitPolicy(),
 			goalDriver:     shutdownFunc{stop: recordStop("goals"), wait: recordWait("goals")},
 			mcpCoordinator: shutdownFunc{stop: recordStop("mcp"), wait: recordWait("mcp")},
@@ -104,7 +104,7 @@ func TestHostCloseAdvancesPastCompletedCloserError(t *testing.T) {
 		toolCalls++
 		return closeErr
 	})
-	host := Host{lifetime: &hostLifetime{
+	host := Instance{lifetime: &runtimeLifetime{
 		shutdownWait: defaultShutdownWaitPolicy(),
 		// A2A, LSP, Shells and SQLite all use this one-shot close shape: the
 		// resource reaches its terminal state on the first call even when that
@@ -127,7 +127,7 @@ func TestHostCloseAdvancesPastCompletedCloserError(t *testing.T) {
 		t.Fatalf("dependent resource close calls = %d, want 1 after tool reached its terminal state", resourceCalls)
 	}
 	if err := host.Close(); err != nil {
-		t.Fatalf("second Close = %v, want already-closed Host", err)
+		t.Fatalf("second Close = %v, want already-closed Instance", err)
 	}
 	if toolCalls != 1 || resourceCalls != 1 {
 		t.Fatalf("second Close replayed terminal work: tool=%d resource=%d", toolCalls, resourceCalls)
@@ -137,7 +137,7 @@ func TestHostCloseAdvancesPastCompletedCloserError(t *testing.T) {
 func TestHostCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 	releaseComponent := make(chan struct{})
 	toolClosed := make(chan struct{})
-	host := Host{lifetime: &hostLifetime{
+	host := Instance{lifetime: &runtimeLifetime{
 		shutdownWait: testShutdownWait(t, time.Millisecond),
 		runCoordinator: shutdownFunc{
 			wait: func(ctx context.Context) error {
@@ -163,21 +163,21 @@ func TestHostCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 	default:
 	}
 
-	// A failed Open does not return the Host, so no external caller exists to
-	// issue another Close. The Host generation itself must retain this graph and
+	// A failed Open does not return the Instance, so no external caller exists to
+	// issue another Close. The Instance generation itself must retain this graph and
 	// advance once the component finishes after the caller's wait deadline.
 	close(releaseComponent)
 	select {
 	case <-toolClosed:
 	case <-time.After(time.Second):
-		t.Fatal("Host abandoned its dependent resource graph after caller timeout")
+		t.Fatal("Instance abandoned its dependent resource graph after caller timeout")
 	}
 }
 
 func TestHostCloseStartsNewGenerationAfterComponentError(t *testing.T) {
 	want := errors.New("component did not settle")
 	var stops, attempts, closed int
-	host := Host{lifetime: &hostLifetime{
+	host := Instance{lifetime: &runtimeLifetime{
 		shutdownWait: defaultShutdownWaitPolicy(),
 		runCoordinator: shutdownFunc{
 			stop: func() { stops++ },
@@ -209,7 +209,7 @@ func TestHostCloseBoundsNonCooperativeToolCloserWithoutConcurrentRetry(t *testin
 	started := make(chan struct{})
 	release := make(chan struct{})
 	var calls atomic.Int32
-	host := Host{lifetime: &hostLifetime{
+	host := Instance{lifetime: &runtimeLifetime{
 		shutdownWait: testShutdownWait(t, time.Millisecond),
 		toolResources: []*teardown.Step{teardown.Terminal(func(context.Context) error {
 			calls.Add(1)

@@ -127,13 +127,11 @@ func TestOpenInstanceOwnsOneEndpointAndCanonicalDirectory(t *testing.T) {
 func TestInstanceCloseIsIdempotent(t *testing.T) {
 	done := make(chan struct{})
 	close(done)
-	instance := &Instance{
+	instance := &Instance{lifetime: &runtimeLifetime{
 		shutdownWait:  defaultShutdownWaitPolicy(),
-		delivery:      nil,
-		host:          &Host{},
 		stopRuntime:   func() {},
 		schedulerDone: done,
-	}
+	}}
 	if err := instance.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
 	}
@@ -142,10 +140,10 @@ func TestInstanceCloseIsIdempotent(t *testing.T) {
 	}
 }
 
-func TestInstanceCloseRetainsResourcesUntilHostJoins(t *testing.T) {
+func TestInstanceCloseRetainsResourcesUntilComponentsJoin(t *testing.T) {
 	releaseComponent := make(chan struct{})
 	resourceClosed := make(chan struct{})
-	host := &Host{lifetime: &hostLifetime{
+	host := &Instance{lifetime: &runtimeLifetime{
 		shutdownWait: testShutdownWait(t, time.Millisecond),
 		runCoordinator: shutdownFunc{wait: func(ctx context.Context) error {
 			select {
@@ -160,15 +158,7 @@ func TestInstanceCloseRetainsResourcesUntilHostJoins(t *testing.T) {
 			return nil
 		}}),
 	}}
-	done := make(chan struct{})
-	close(done)
-	instance := &Instance{
-		delivery:      nil,
-		host:          host,
-		stopRuntime:   func() {},
-		schedulerDone: done,
-		shutdownWait:  testShutdownWait(t, time.Millisecond),
-	}
+	instance := host
 	if err := instance.Close(); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("first Close error = %v, want deadline exceeded", err)
 	}
@@ -176,7 +166,7 @@ func TestInstanceCloseRetainsResourcesUntilHostJoins(t *testing.T) {
 	select {
 	case <-resourceClosed:
 	case <-time.After(time.Second):
-		t.Fatal("Instance Host abandoned resources after the first caller timed out")
+		t.Fatal("Runtime abandoned resources after the first caller timed out")
 	}
 	if err := instance.Close(); err != nil {
 		t.Fatalf("join completed Close: %v", err)
@@ -212,18 +202,16 @@ func TestInstanceCloseJoinsAcceptedOperationsBeforeClosingResources(t *testing.T
 	schedulerDone := make(chan struct{})
 	close(schedulerDone)
 	resourceClosed := make(chan struct{})
-	instance := &Instance{
+	instance := &Instance{lifetime: &runtimeLifetime{
 		shutdownWait: defaultShutdownWaitPolicy(),
 		delivery:     endpoint,
-		host: &Host{lifetime: &hostLifetime{hostResources: terminalClosers([]func() error{
-			func() error {
-				close(resourceClosed)
-				return nil
-			},
-		})}},
+		hostResources: terminalClosers([]func() error{func() error {
+			close(resourceClosed)
+			return nil
+		}}),
 		stopRuntime:   stopRuntime,
 		schedulerDone: schedulerDone,
-	}
+	}}
 
 	callDone := make(chan struct{})
 	go func() {
@@ -298,20 +286,16 @@ func TestInstanceCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 	workersDone := make(chan struct{})
 	close(workersDone)
 	resourceClosed := make(chan struct{})
-	instance := &Instance{
-		delivery: endpoint,
-		host: &Host{lifetime: &hostLifetime{hostResources: terminalClosers([]func() error{
-			func() error {
-				close(resourceClosed)
-				return nil
-			},
-		})}},
-		stopRuntime:         stopRuntime,
-		schedulerDone:       workersDone,
-		databaseChangesDone: workersDone,
-		recoveryDone:        workersDone,
-		shutdownWait:        testShutdownWait(t, time.Millisecond),
-	}
+	instance := &Instance{lifetime: &runtimeLifetime{
+		shutdownWait: testShutdownWait(t, time.Millisecond),
+		delivery:     endpoint,
+		hostResources: terminalClosers([]func() error{func() error {
+			close(resourceClosed)
+			return nil
+		}}),
+		stopRuntime:   stopRuntime,
+		schedulerDone: workersDone,
+	}}
 
 	callDone := make(chan struct{})
 	go func() {
@@ -334,7 +318,7 @@ func TestInstanceCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 	}
 	select {
 	case <-resourceClosed:
-		t.Fatal("Host resource closed before the accepted operation returned")
+		t.Fatal("Instance resource closed before the accepted operation returned")
 	default:
 	}
 
@@ -347,6 +331,6 @@ func TestInstanceCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 	select {
 	case <-resourceClosed:
 	case <-time.After(time.Second):
-		t.Fatal("Instance abandoned its Host graph after caller timeout")
+		t.Fatal("Instance abandoned its resource graph after caller timeout")
 	}
 }
