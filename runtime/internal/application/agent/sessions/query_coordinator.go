@@ -63,6 +63,7 @@ type QuerySessionReader interface {
 // QueryInterruptReader is the coordinator's view of the open-interrupt registry. Both
 // filters are optional and independent: empty means "every", and given together they
 // both apply.
+// Returned Pending values, including nested data, belong to the caller.
 type QueryInterruptReader interface {
 	ListPage(ctx context.Context, sessionID, rootRunID string, afterCreatedAt int64, afterRootRunID string, limit int) ([]runs.Pending, error)
 }
@@ -71,6 +72,8 @@ type QueryInterruptReader interface {
 // the ancestor closure of a named set, and a browsable page of Runs. The closure
 // threads a page of items onto a connected tree without loading unrelated Runs
 // from a long session.
+// Read methods borrow their inputs without mutation and transfer results to the
+// caller without retaining mutable aliases.
 type QueryRunReader interface {
 	Run(ctx context.Context, runID string) (run.Run, bool, error)
 	RunsWithAncestors(ctx context.Context, runIDs []string) ([]run.Run, error)
@@ -237,7 +240,6 @@ func (c *QueryCoordinator) ListItemPage(ctx context.Context, scope ItemScope, or
 	if err := validateItemRunClosure(scope, items, runs); err != nil {
 		return ItemPage{}, err
 	}
-	runs = slices.Clone(runs)
 	return ItemPage{Items: items, NextCursor: page.NextCursor, Runs: runs}, nil
 }
 
@@ -520,7 +522,7 @@ func (c *QueryCoordinator) ListRunPage(ctx context.Context, filter RunPageFilter
 	rows, err := c.runs.PageRuns(
 		ctx,
 		filter.SessionID,
-		slices.Clone(filter.Statuses),
+		filter.Statuses,
 		filter.IncludeDescendants,
 		beforeCreatedAt,
 		beforeID,
@@ -532,7 +534,6 @@ func (c *QueryCoordinator) ListRunPage(ctx context.Context, filter RunPageFilter
 	if err := validateRunPage(rows, filter, beforeCreatedAt, beforeID, size+1); err != nil {
 		return pagination.Page[run.Run]{}, err
 	}
-	rows = slices.Clone(rows)
 	return pagination.PageOf(rows, size, runPageNamespace, filters, func(run run.Run) []string {
 		return []string{strconv.FormatInt(run.CreatedAt().UnixNano(), 10), run.ID()}
 	})
@@ -657,11 +658,6 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 	if err := validatePendingInterruptPage(rows, sessionID, rootRunID, afterCreatedAt, afterID, size+1); err != nil {
 		return pagination.Page[runs.Pending]{}, err
 	}
-	owned := make([]runs.Pending, len(rows))
-	for index, pending := range rows {
-		owned[index] = pending.Clone()
-	}
-	rows = owned
 	page, err := pagination.PageOf(rows, size, interruptPageNamespace, filters, func(pending runs.Pending) []string {
 		return []string{strconv.FormatInt(pending.CreatedAt.UnixNano(), 10), pending.RootRunID}
 	})

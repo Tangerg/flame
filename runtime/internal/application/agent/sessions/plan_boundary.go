@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -60,7 +59,7 @@ func newPlanBoundary(steps []plan.Step, recorded bool) (PlanBoundary, error) {
 	if err := plan.ValidateSteps(steps); err != nil {
 		return PlanBoundary{}, fmt.Errorf("sessions: invalid Plan boundary: %w", err)
 	}
-	return PlanBoundary{Steps: slices.Clone(steps), Recorded: true}, nil
+	return PlanBoundary{Steps: steps, Recorded: true}, nil
 }
 
 func (c *Coordinator) prepareBoundaryPlanReplacement(

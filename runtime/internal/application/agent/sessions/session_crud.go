@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -60,7 +59,7 @@ func (c *Coordinator) List(ctx context.Context) ([]session.Session, error) {
 	if err := session.ValidateCatalog(values); err != nil {
 		return nil, err
 	}
-	return slices.Clone(values), nil
+	return values, nil
 }
 
 // Get returns one valid saved Session whose identity exactly matches id.

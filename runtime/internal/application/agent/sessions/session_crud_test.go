@@ -237,9 +237,8 @@ func TestCoordinatorListProtectsCompleteCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	listed[0] = session.Session{}
-	if got := stored[0].ID(); got != favoriteB.ID() {
-		t.Fatalf("Session store row changed through List result: %q", got)
+	if !slices.EqualFunc(listed, stored, func(got, want session.Session) bool { return got.ID() == want.ID() }) {
+		t.Fatalf("List = %+v, want the complete ordered catalog", listed)
 	}
 }
 

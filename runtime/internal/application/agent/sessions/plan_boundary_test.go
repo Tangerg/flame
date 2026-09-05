@@ -121,16 +121,15 @@ func TestPlanBoundaryRejectsContradictoryOrInvalidStoreMaterial(t *testing.T) {
 	}
 }
 
-func TestPlanBoundaryOwnsRecordedSteps(t *testing.T) {
+func TestPlanBoundaryReturnsRecordedSteps(t *testing.T) {
 	steps := []plan.Step{{Description: "owned", Status: plan.StatusPending}}
 	coordinator := boundaryCoordinator(idleStores(nil), fixedBoundary{steps: steps, recorded: true})
 	boundary, err := coordinator.planBoundary(t.Context(), "run_1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	steps[0].Description = "mutated"
-	if boundary.Steps[0].Description != "owned" {
-		t.Fatalf("Plan boundary retained store-owned steps: %+v", boundary.Steps)
+	if !boundary.Recorded || len(boundary.Steps) != 1 || boundary.Steps[0] != steps[0] {
+		t.Fatalf("Plan boundary = %+v, want recorded steps", boundary)
 	}
 }
 

@@ -122,14 +122,10 @@ type fakeRuns struct {
 
 type rawRunPageReader struct {
 	*fakeRuns
-	page               []run.Run
-	mutateStatusFilter bool
+	page []run.Run
 }
 
-func (r *rawRunPageReader) PageRuns(_ context.Context, _ string, statuses []run.Status, _ bool, _ int64, _ string, _ int) ([]run.Run, error) {
-	if r.mutateStatusFilter && len(statuses) > 0 {
-		statuses[0] = run.StatusFinished
-	}
+func (r *rawRunPageReader) PageRuns(context.Context, string, []run.Status, bool, int64, string, int) ([]run.Run, error) {
 	return r.page, nil
 }
 
@@ -493,7 +489,7 @@ func TestListItemPageRejectsBrokenRunAncestorClosure(t *testing.T) {
 	}
 }
 
-func TestListItemPageAcceptsReferencedForestAndIsolatesRunSlice(t *testing.T) {
+func TestListItemPageAcceptsReferencedForest(t *testing.T) {
 	first := queryRun("run_first")
 	second := queryRun("run_second")
 	itemRows := []transcript.SequencedItem{
@@ -512,10 +508,6 @@ func TestListItemPageAcceptsReferencedForestAndIsolatesRunSlice(t *testing.T) {
 	}
 	if got := queryRunIDs(page.Runs); !slices.Equal(got, []string{second.ID(), first.ID()}) {
 		t.Fatalf("Run forest = %v", got)
-	}
-	page.Runs[0] = run.Run{}
-	if got := ancestorRows[0].ID(); got != second.ID() {
-		t.Fatalf("ancestor store row changed through page result: %q", got)
 	}
 }
 
@@ -856,7 +848,7 @@ func TestListPendingInterruptPageRejectsBrokenStoreOutput(t *testing.T) {
 	}
 }
 
-func TestListPendingInterruptPageValidatesCallerAndIsolatesStoreSlice(t *testing.T) {
+func TestListPendingInterruptPageValidatesCaller(t *testing.T) {
 	stored := testSessionPendingRuns("run_1")
 	reader := &rawInterruptPageReader{fakeInterrupts: &fakeInterrupts{}, page: stored}
 	coordinator := newQueryCoordinator(t, QueryDependencies{
@@ -871,17 +863,8 @@ func TestListPendingInterruptPageValidatesCallerAndIsolatesStoreSlice(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	page.Rows[0].Capabilities.InterruptKinds[0] = interrupt.Question
-	page.Rows[0].Interrupts[0].Approval.Tool.Name = "changed"
-	page.Rows[0].Bindings[0].RequestID = "changed"
-	page.Rows[0].Continuations[0].MemberID = "changed"
-	page.Rows[0] = runs.Pending{}
-	if got := stored[0]; got.RootRunID != "run_1" ||
-		got.Capabilities.InterruptKinds[0] != interrupt.Approval ||
-		got.Interrupts[0].Approval.Tool.Name != "shell" ||
-		got.Bindings[0].RequestID != "request_1" ||
-		got.Continuations[0].MemberID != "member_1" {
-		t.Fatalf("interrupt store row changed through page result: %+v", got)
+	if len(page.Rows) != 1 || page.Rows[0].RootRunID != "run_1" {
+		t.Fatalf("interrupt page = %+v, want the complete pending set", page.Rows)
 	}
 }
 
@@ -1093,46 +1076,6 @@ func TestListRunPageRejectsRowsOutsideFilterOrCursor(t *testing.T) {
 	}
 }
 
-func TestListRunPageDoesNotExposeStoreSlice(t *testing.T) {
-	reader := &rawRunPageReader{fakeRuns: &fakeRuns{}, page: testSessionRunHistory("run_2", "run_1")}
-	coordinator := newQueryCoordinator(t, QueryDependencies{
-		Transcript: &fakeTranscript{}, Runs: reader, Sessions: &fakeSessions{},
-	})
-	page, err := coordinator.ListRunPage(t.Context(), RunPageFilter{IncludeDescendants: true}, "", explicitPageLimit(t, 2))
-	if err != nil {
-		t.Fatal(err)
-	}
-	page.Rows[0] = run.Run{}
-	if got := reader.page[0].ID(); got != "run_2" {
-		t.Fatalf("store row changed through page result: %q", got)
-	}
-}
-
-func TestListRunPageOwnsStatusFilterAcrossStoreRead(t *testing.T) {
-	statuses := []run.Status{run.StatusRunning, run.StatusRunning}
-	reader := &rawRunPageReader{
-		fakeRuns:           &fakeRuns{},
-		page:               testSessionRunHistory("run_1"),
-		mutateStatusFilter: true,
-	}
-	coordinator := newQueryCoordinator(t, QueryDependencies{
-		Transcript: &fakeTranscript{}, Runs: reader, Sessions: &fakeSessions{},
-	})
-
-	page, err := coordinator.ListRunPage(
-		t.Context(),
-		RunPageFilter{Statuses: statuses, IncludeDescendants: true},
-		"",
-		explicitPageLimit(t, 1),
-	)
-	if err != nil || len(page.Rows) != 1 || page.Rows[0].State().Status() != run.StatusRunning {
-		t.Fatalf("run page after store rewrote its status argument = (%+v, %v)", page, err)
-	}
-	if !slices.Equal(statuses, []run.Status{run.StatusRunning, run.StatusRunning}) {
-		t.Fatalf("caller status filter changed through query: %v", statuses)
-	}
-}
-
 // TestListRunPageReturnsEveryStatusUntilFiltered pins the default: the read is the
 // whole history, not the work in progress. A page that hid finished runs would make
 // "what did this session cost" unanswerable from the run record, which is the one
@@ -1149,11 +1092,10 @@ func TestListRunPageReturnsEveryStatusUntilFiltered(t *testing.T) {
 
 	// A filter is normalized before it selects rows OR mints a cursor: the same set
 	// asked for in a different order is the same query, and it must page as one.
+	statuses := []run.Status{run.StatusWaiting, run.StatusRunning, run.StatusWaiting}
 	filtered, err := c.ListRunPage(ctx, RunPageFilter{
 		SessionID: "ses_1",
-		Statuses: []run.Status{
-			run.StatusWaiting, run.StatusRunning, run.StatusWaiting,
-		},
+		Statuses:  statuses,
 	}, "", pagination.DefaultLimit())
 
 	if err != nil {
@@ -1161,6 +1103,9 @@ func TestListRunPageReturnsEveryStatusUntilFiltered(t *testing.T) {
 	}
 	if want := []run.Status{run.StatusRunning, run.StatusWaiting}; !slices.Equal(runs.statuses, want) {
 		t.Fatalf("store filtered on %v, want the normalized %v", runs.statuses, want)
+	}
+	if !slices.Equal(statuses, []run.Status{run.StatusWaiting, run.StatusRunning, run.StatusWaiting}) {
+		t.Fatalf("caller status filter changed through query: %v", statuses)
 	}
 	if len(filtered.Rows) != 2 {
 		t.Fatalf("filtered page = %d rows, want the running and waiting ones", len(filtered.Rows))

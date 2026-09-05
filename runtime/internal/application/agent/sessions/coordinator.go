@@ -69,6 +69,7 @@ type TranscriptStore interface {
 // the live projection cannot answer: it keeps the latest value and no history. A
 // false ok is "never recorded", not "empty" — see [PlanBoundary]. nil disables it
 // (no Plan to move with a boundary).
+// Boundary transfers the recorded steps to the caller.
 type PlanBoundaries interface {
 	Boundary(ctx context.Context, runID string) ([]plan.Step, bool, error)
 }
