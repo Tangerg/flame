@@ -540,7 +540,7 @@ export const ko: Record<string, string> = {
   "timeline.kind.toolStart": "도구",
   "timeline.kind.toolEnd": "도구 종료",
   "timeline.kind.approvalRequest": "승인 요청",
-  "timeline.kind.approvalResult": "승인",
+  "timeline.kind.approvalResult": "승인 처리됨",
 
   // ── 워크스페이스 뷰: 알림 ──
   "notifications.title": "알림",

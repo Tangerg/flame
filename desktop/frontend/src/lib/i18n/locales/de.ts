@@ -563,7 +563,7 @@ export const de: Record<string, string> = {
   "timeline.kind.toolStart": "Tool",
   "timeline.kind.toolEnd": "Tool beendet",
   "timeline.kind.approvalRequest": "Freigabe angefordert",
-  "timeline.kind.approvalResult": "Freigabe",
+  "timeline.kind.approvalResult": "Freigabe entschieden",
 
   // ── Workspace-Ansicht: Benachrichtigungen ──
   "notifications.title": "Benachrichtigungen",

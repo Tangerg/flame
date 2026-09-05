@@ -5329,3 +5329,62 @@ the runtime-contract e2e.
 
 `TimelineEntry.status` has four values — `ok`, `err`, `approved`, `declined` —
 and the timeline has now photographed two.
+
+---
+
+## Round 98 — a denial filed as an approval, in four languages
+
+Status: **complete**
+
+`TimelineEntry.status` has four values and the timeline had drawn two. `approved`
+looked at first like dead vocabulary — nothing in the app sets it outside tests —
+until the emitter turned up: an `approval-result` entry is appended **locally,
+the moment somebody answers**, which no static snapshot can hold.
+
+`dock-runs` puts a pending approval and the timeline on screen together, so the
+path is reachable at last. Answering it wrote the entry, and the row read:
+
+> 🛡 **Approval**   ✓   14:30:01
+
+Every sibling is a statement — "Run started", "Run finished", "Run error",
+"Approval requested". This one is a bare noun, and the verdict lives only in the
+mark beside it.
+
+### Which is worse than thin
+
+| locale | said | means |
+| --- | --- | --- |
+| zh-TW | 核准 | **granted** |
+| ja | 承認 | **approved** |
+| ko | 승인 | **approved** |
+| es | Aprobación | **approval/granted** |
+
+A *declined* approval was filed under approved in four of the eight languages
+that ship. The English noun is ambiguous enough to hide it; those four are not
+ambiguous at all.
+
+### After
+
+Settled, not granted — the pattern `tool-end` already uses, where the label says
+the call finished and the mark says whether it worked. The verdict stays where
+the file's own comment puts it: two different glyphs, `check` and `x`, so colour
+carries nothing on its own.
+
+| | before | after |
+| --- | --- | --- |
+| en | Approval | Approval settled |
+| zh / zh-TW | 审批 / 核准 | 审批已答复 / 審批已回覆 |
+| ja / ko | 承認 / 승인 | 承認判断 / 승인 처리됨 |
+| fr / de / es | Approbation / Freigabe / Aprobación | traitée / entschieden / resuelta |
+
+### Verification
+
+The guard answers an approval and holds both halves: the mark appears, and the
+label states only that the request was settled. Mutated by dropping the
+optimistic entry, it fails. Visual **646/646**, no golden moved — the row only
+exists after a click; the 20-script gate is green; unit 2395/4 outside the
+runtime-contract e2e.
+
+### Next
+
+`declined` is still undrawn — the same click, answered the other way.

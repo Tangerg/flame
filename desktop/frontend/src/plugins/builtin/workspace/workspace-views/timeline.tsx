@@ -40,6 +40,10 @@ const KIND_I18N: Record<TimelineEntryKind, string> = {
   "tool-start": "timeline.kind.toolStart",
   "tool-end": "timeline.kind.toolEnd",
   "approval-request": "timeline.kind.approvalRequest",
+  // Settled, not "Approval". Every other row is a statement — "Run finished", "Tool
+  // finished" — and the verdict rides the status mark beside it, which is how `tool-end`
+  // already reports a failure. As a bare noun it also lied in four languages: 核准, 承認,
+  // 승인 and Aprobación all mean GRANTED, so a denial was filed under approved.
   "approval-result": "timeline.kind.approvalResult",
 };
 

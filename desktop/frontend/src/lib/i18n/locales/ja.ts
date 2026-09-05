@@ -542,7 +542,7 @@ export const ja: Record<string, string> = {
   "timeline.kind.toolStart": "ツール",
   "timeline.kind.toolEnd": "ツール終了",
   "timeline.kind.approvalRequest": "承認リクエスト",
-  "timeline.kind.approvalResult": "承認",
+  "timeline.kind.approvalResult": "承認判断",
 
   // ── ワークスペースビュー：通知 ──
   "notifications.title": "通知",

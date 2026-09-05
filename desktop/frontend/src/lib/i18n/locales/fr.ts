@@ -575,7 +575,7 @@ export const fr: Record<string, string> = {
   "timeline.kind.toolStart": "Outil",
   "timeline.kind.toolEnd": "Outil terminé",
   "timeline.kind.approvalRequest": "Approbation demandée",
-  "timeline.kind.approvalResult": "Approbation",
+  "timeline.kind.approvalResult": "Approbation traitée",
 
   // ── Vue espace de travail : Notifications ──
   "notifications.title": "Notifications",

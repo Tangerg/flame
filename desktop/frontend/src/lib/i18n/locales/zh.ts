@@ -678,7 +678,7 @@ export const zh: Record<string, string> = {
   "timeline.kind.toolStart": "工具",
   "timeline.kind.toolEnd": "工具结束",
   "timeline.kind.approvalRequest": "审批请求",
-  "timeline.kind.approvalResult": "审批",
+  "timeline.kind.approvalResult": "审批已答复",
 
   // ── 工作区视图：通知 ──
   "notifications.title": "通知",

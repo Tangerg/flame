@@ -786,3 +786,21 @@ test("deleting a schedule asks first, and a declined ask changes nothing", async
 
   await expect(rows).toHaveCount(2);
 });
+
+// The HITL loop's own trace, which no fixture could hold: an approval-result entry exists
+// only once somebody answers, so `approved` was a status the timeline had never drawn.
+test("answering an approval writes a settled entry the timeline can show", async ({ page }) => {
+  await openWorkspace(page, { state: "dock-runs" });
+  await waitForWorkspaceState(page, "dock-runs");
+
+  const timeline = page.locator("[data-dock-view-id='timeline']");
+  await expect(timeline.getByText("Approval requested")).toBeVisible();
+  await expect(timeline.getByRole("img", { name: "approved" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: /Allow once/ }).click();
+
+  // The verdict is the MARK; the label states only that the request was answered — as a
+  // bare noun it read "granted" in four languages, which a denial is not.
+  await expect(timeline.getByRole("img", { name: "approved" })).toBeVisible();
+  await expect(timeline.getByText("Approval settled")).toBeVisible();
+});
