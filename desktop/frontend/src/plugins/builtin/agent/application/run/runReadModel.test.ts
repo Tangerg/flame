@@ -19,6 +19,7 @@ function run(id: string, status: AgentRunView["status"]): AgentRunView {
       usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
     },
     progress: null,
+    contextTokens: null,
     createdAt: "2026-08-18T00:00:00.000Z",
     finishedAt: status === "finished" ? "2026-08-18T00:00:01.000Z" : null,
   };
@@ -41,7 +42,7 @@ describe("CurrentRootMaterial", () => {
   it("publishes the latest prompt footprint independently from cumulative metrics", () => {
     const active = {
       ...run("run-context", "running"),
-      progress: { contextTokens: 198_000 },
+      contextTokens: 198_000,
       metrics: {
         steps: 4,
         activeDurationMillis: 100,

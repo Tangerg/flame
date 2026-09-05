@@ -98,9 +98,10 @@ describe("handler contract — run.*", () => {
     expect(selectCurrentRootRun(out)?.progress).toEqual({
       step: 4,
       activity: "reading",
-      contextTokens: 4200,
       usage: { inputTokens: 100, outputTokens: 5, cacheReadTokens: 0 },
     });
+    // The footprint is a Run fact beside the bag, and a frame that omits it leaves it alone.
+    expect(selectCurrentRootRun(out)?.contextTokens).toBe(4200);
   });
 
   it("segment.progress carrying a subagent envelope runId is an identity no-op", () => {

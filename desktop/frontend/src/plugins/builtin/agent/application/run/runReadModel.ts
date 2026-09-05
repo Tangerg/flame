@@ -42,7 +42,7 @@ export class CurrentRootMaterial {
     this.status = run?.status ?? "idle";
     this.outcome = run?.outcome ?? null;
     this.metrics = run?.metrics ?? null;
-    this.contextTokens = run?.progress?.contextTokens ?? null;
+    this.contextTokens = run?.contextTokens ?? null;
     this.modelSelection = run?.modelSelection ?? null;
     this.startedAt = epochMillis(run?.createdAt);
     this.attention = Object.freeze(

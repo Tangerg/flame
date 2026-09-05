@@ -4,7 +4,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
-import { foldTestEvent as reduce, runFinished } from "./reducer.fixtures";
+import { foldTestEvent as reduce, noMetrics, runFinished } from "./reducer.fixtures";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { selectCurrentRootRun } from "../view/runTree";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
@@ -89,7 +89,7 @@ describe("reducer — segment.progress (mid-run live readout)", () => {
     let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
     s = reduce(s, runStarted("run_1"));
     s = reduce(s, progress({ contextTokens: 45_000 }));
-    expect(selectCurrentRootRun(s)?.progress?.contextTokens).toBe(45_000);
+    expect(selectCurrentRootRun(s)?.contextTokens).toBe(45_000);
   });
 
   it("retains the last context footprint when terminal metrics replace live progress", () => {
@@ -108,6 +108,29 @@ describe("reducer — segment.progress (mid-run live readout)", () => {
       ),
     );
 
-    expect(selectCurrentRootRun(s)?.progress).toEqual({ contextTokens: 45_000 });
+    // The footprint is a Run fact, so it outlives the progress bag that expires with the
+    // segment; the finishing frame states no footprint of its own here.
+    expect(selectCurrentRootRun(s)?.progress).toBeNull();
+    expect(selectCurrentRootRun(s)?.contextTokens).toBe(45_000);
+  });
+
+  // `segment.progress` is ephemeral and suppressible; `segment.finished` is authoritative and
+  // now carries the footprint too. A Run whose progress stream was dropped entirely — a
+  // reconnect, a cold read — must still land its context-window reading.
+  it("takes the footprint from the finishing frame when no progress frame arrived", () => {
+    let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
+    s = reduce(s, runStarted("run_1"));
+    s = reduce(s, runFinished({ type: "completed" }, noMetrics, 61_000));
+
+    expect(selectCurrentRootRun(s)?.contextTokens).toBe(61_000);
+  });
+
+  it("prefers the finishing frame over a stale live reading", () => {
+    let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
+    s = reduce(s, runStarted("run_1"));
+    s = reduce(s, progress({ contextTokens: 45_000 }));
+    s = reduce(s, runFinished({ type: "completed" }, noMetrics, 61_000));
+
+    expect(selectCurrentRootRun(s)?.contextTokens).toBe(61_000);
   });
 });

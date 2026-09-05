@@ -90,6 +90,7 @@ describe("agent view selectors react to session switch", () => {
         usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
       },
       progress: null,
+      contextTokens: null,
       createdAt: "2026-01-01T00:00:00.000Z",
       finishedAt: null,
     };
@@ -128,6 +129,7 @@ describe("agent view selectors react to session switch", () => {
         usage: { inputTokens: 3, outputTokens: 2, cacheReadTokens: 0 },
       },
       progress: null,
+      contextTokens: null,
       createdAt: "2026-01-01T00:00:00.000Z",
       finishedAt: "2026-01-01T00:00:01.000Z",
     };
@@ -183,7 +185,8 @@ describe("agent view selectors react to session switch", () => {
         activeDurationMillis: 10,
         usage: { inputTokens: 3, outputTokens: 2, cacheReadTokens: 0 },
       },
-      progress: { contextTokens: 100 },
+      progress: null,
+      contextTokens: 100,
       createdAt: "2026-01-01T00:00:00.000Z",
       finishedAt: null,
     };
@@ -215,7 +218,7 @@ describe("agent view selectors react to session switch", () => {
                 ...current,
                 view: {
                   ...current.view,
-                  runsById: { [run.id]: { ...run, progress: { contextTokens } } },
+                  runsById: { [run.id]: { ...run, contextTokens } },
                 },
                 viewRevision: current.viewRevision + 1n,
               },

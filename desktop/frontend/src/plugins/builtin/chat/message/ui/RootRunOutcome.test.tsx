@@ -20,6 +20,7 @@ function completedRun(): AgentRunView {
       usage: { inputTokens: 82_400, outputTokens: 1_200, cacheReadTokens: 0, costUsd: 0.14 },
     },
     progress: null,
+    contextTokens: null,
     createdAt: "2026-08-19T00:00:00Z",
     finishedAt: "2026-08-19T00:04:06Z",
   };

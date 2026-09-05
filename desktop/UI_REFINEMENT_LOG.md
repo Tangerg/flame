@@ -2425,3 +2425,99 @@ Playwright processes, `playwright.visual.config.ts` unmodified.
 Pick up the current Runtime protocol — the nine `src/rpc/` failures are the
 contract having moved (`segment.finished.json` no longer satisfies `RunEvent`),
 and the generated wire files are newer than the samples.
+
+## Round 38 — the authoritative carrier of the context footprint was being dropped
+
+Runtime moved `contextTokens` onto `segment.finished` as a REQUIRED field. Tracing
+where the frontend would put it found that it had nowhere to go, because the
+footprint was modelled as a detail of the ephemeral channel.
+
+### The defect (已完成)
+
+`contextTokens` is a Run-level fact. Runtime states it on all three Run frames —
+the started frame's `RunFact`, `segment.progress`, and now `segment.finished` —
+and `RUN_EVENT_RELIABILITY` marks the finishing one **authoritative** while
+`segment.progress` is **ephemeral** and listed in `SuppressibleRunEventType`.
+
+The frontend kept it inside `AgentRunView.progress`, the bag that expires at the
+segment boundary, and dropped two of the three carriers:
+
+| carrier | before |
+| --- | --- |
+| `segment.finished.contextTokens` | **dropped** at `runtimeAgentFacts.ts:326`, never reached the SDK type |
+| `RunFact.contextTokens` (snapshot / cold read) | stuffed into a fake `progress` object by `projectRunRef` |
+| `segment.progress.contextTokens` | kept — the ephemeral, suppressible one |
+
+So a Run whose progress stream was suppressed — a reconnect, a cold read —
+delivered no context-window reading at all, even though Runtime had stated the
+exact number in the frame that cannot be dropped.
+
+The tell was already in the tree. `settledContextProgress` existed only to rescue
+one field from the progress bag at the segment boundary, and its own comment says
+why: *"Activity, step and provisional usage expire at the segment boundary. The
+latest prompt footprint does not."* That comment is the design; the representation
+contradicted it.
+
+### The fix
+
+`AgentRunView.contextTokens: number | null` is now a Run-level fact written by all
+three carriers, and `progress` is typed `Omit<AgentRunProgress, "contextTokens">`
+so the old home is unconstructable rather than merely unused. `progress` becomes
+plain `null` when a segment ends, and `settledContextProgress` is deleted.
+
+One rule governs all three carriers: **zero is not a footprint**. The finishing
+frame carries the field unconditionally, so without it a Run that never reported
+one would erase the value a live frame did state. It is the same reading
+`contextUsageReadout` already refuses — *"a gauge reading zero claims 'empty',
+which here would be false"*.
+
+Two tests pin the behaviour this round exists for: a finished Run with no progress
+frame at all lands its footprint, and a finishing frame beats a stale live one.
+
+### Also fixed: two stale e2e expectations (已完成)
+
+`workspace.files.head` and `workspace.files.read` no longer echo the caller's
+path — runtime commits `834261d3` and `4fdd4697`, and the contract agrees
+(`FileHead { lines }`, `FileContent { content, totalLines, … }`). The e2e still
+asserted the echo.
+
+### 阻塞 — six e2e failures that are runtime behaviour, not frontend shape
+
+| failing test | symptom |
+| --- | --- |
+| MCP + managed-Skill moves after lost responses | `RpcError: internal_error` |
+| skill archive/restore through `skills.changed` | `data: []` |
+| home/project-root/workspace knowledge cascade | timed out waiting for `knowledge.changed` |
+| workspace files, recipes, agent docs, hook trust | `recipes.list()` omits the **global**-scope recipe |
+| durable compaction winner on provider failure | timed out at the cutpoint |
+| durable compaction winner after SIGKILL | timed out at the cutpoint |
+
+None has a matching shape change in `wire.generated.ts`, and no committed runtime
+change explains them. `runtime/internal/application/agent/sessions/` —
+`query_coordinator.go`, `session_crud.go`, `coordinator.go`, `plan_boundary.go` —
+is uncommitted right now, which is where list queries, knowledge and compaction
+live. Editing the frontend to accept the current answers would freeze a
+half-finished backend, so these stay untouched and reported.
+
+`samples.test.ts` / `schema.test.ts` are the same story in miniature:
+`runtime/contract/typescript/samples/segment.finished.json` predates the field and
+needs `"contextTokens": 0`. One line, in `runtime/`, which this scope does not
+modify.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, all fifteen guards — green.
+- `check:bundle` — 981 emitted utilities, every class renders.
+- Unit: **2365 passing**, +4. Failures 9 → **8**, one e2e recovered; the rest are
+  the blocked set above.
+- Visual: **430/430**, no golden regenerated — this is a data-path change and the
+  gauge renders the same numbers from a different owner.
+
+### Resources reclaimed
+
+Port 4174 freed, no stray processes, no probe scripts,
+`playwright.visual.config.ts` unmodified.
+
+### Next round
+
+The blocked six, once `runtime/internal/application/agent/sessions/` settles.

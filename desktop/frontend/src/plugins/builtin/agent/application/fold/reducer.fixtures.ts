@@ -91,14 +91,16 @@ export function foldTestEvent(
 }
 
 /**
- * Metrics ride the `segment.finished` frame beside the outcome, and a per-suite copy of this
- * builder is one more place to remember that.
+ * Metrics and the prompt footprint both ride the `segment.finished` frame beside the outcome,
+ * and a per-suite copy of this builder is one more place to remember that.
  */
 export const runFinished = (
   outcome: SegmentOutcome,
   metrics: Omit<RunMetrics, "usage"> & { usage?: RunMetrics["usage"] } = noMetrics,
+  contextTokens = 0,
 ): StreamEvent => ({
   type: "segment.finished",
+  contextTokens,
   outcome,
   metrics: { ...metrics, usage: metrics.usage ?? noMetrics.usage },
 });

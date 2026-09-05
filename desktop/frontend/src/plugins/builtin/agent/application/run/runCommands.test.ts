@@ -30,6 +30,7 @@ function run(id: string, status: AgentRunView["status"], sessionId = "session-1"
       usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
     },
     progress: null,
+    contextTokens: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     finishedAt: status === "finished" ? "2026-01-01T00:00:01.000Z" : null,
   };

@@ -32,7 +32,8 @@ export function projectRunRef(run: AgentRunFact): AgentRunView {
     outcome: run.outcome,
     modelSelection: run.modelSelection ? { ...run.modelSelection } : null,
     metrics: projectRunMetrics(run.metrics),
-    progress: run.contextTokens === undefined ? null : { contextTokens: run.contextTokens },
+    progress: null,
+    contextTokens: run.contextTokens ?? null,
     createdAt: run.createdAt,
     finishedAt: run.finishedAt,
   };

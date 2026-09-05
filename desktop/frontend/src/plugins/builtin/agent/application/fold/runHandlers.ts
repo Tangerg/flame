@@ -77,6 +77,14 @@ function isDuplicateRunFinish(
   );
 }
 
+/** Zero is not a footprint, it is the absence of one — the same reading `contextUsageReadout`
+ *  refuses, because a gauge at zero claims "empty" and that would be false. The finishing
+ *  frame carries the field unconditionally, so without this a Run that never reported one
+ *  would erase the last value a live frame did state. */
+function statedFootprint(tokens: number | undefined): number | null {
+  return tokens !== undefined && tokens > 0 ? tokens : null;
+}
+
 function updateRun(
   state: AgentSessionView,
   runId: string,
@@ -152,8 +160,10 @@ export function onRunProgress(
         ...(progress.step !== undefined ? { step: progress.step } : {}),
         ...(progress.activity !== undefined ? { activity: progress.activity } : {}),
         ...(progress.usage ? { usage: { ...progress.usage } } : {}),
-        ...(progress.contextTokens !== undefined ? { contextTokens: progress.contextTokens } : {}),
       },
+      ...(statedFootprint(progress.contextTokens) !== null
+        ? { contextTokens: progress.contextTokens }
+        : {}),
     };
   });
 }
@@ -162,6 +172,7 @@ export function onRunFinished(
   state: AgentSessionView,
   outcome: AgentSegmentOutcome,
   metrics: AgentRunMetrics,
+  contextTokens: number,
   source: AgentFoldSource,
 ): AgentSessionView {
   if (isDuplicateRunFinish(state, outcome, metrics, source)) return state;
@@ -183,7 +194,8 @@ export function onRunFinished(
         activeSegmentId: null,
         outcome: null,
         metrics: projectRunMetrics(metrics),
-        progress: settledContextProgress(run.progress),
+        progress: null,
+        contextTokens: statedFootprint(contextTokens) ?? run.contextTokens,
       };
     }
     return {
@@ -192,7 +204,8 @@ export function onRunFinished(
       activeSegmentId: null,
       outcome: projectTerminalSegmentOutcome(outcome),
       metrics: projectRunMetrics(metrics),
-      progress: settledContextProgress(run.progress),
+      progress: null,
+      contextTokens: statedFootprint(contextTokens) ?? run.contextTokens,
       finishedAt: source.timestamp,
     };
   });
@@ -235,15 +248,6 @@ export function onRunFinished(
       summary: terminalOutcomeSummary(projectedOutcome),
     }),
   )(next);
-}
-
-/** Activity, step and provisional usage expire at the segment boundary. The
- * latest prompt footprint does not: it remains the Session's context-window
- * reading until a successor Run publishes its own value. */
-function settledContextProgress(
-  progress: AgentRunProgress | null,
-): Pick<AgentRunProgress, "contextTokens"> | null {
-  return progress?.contextTokens === undefined ? null : { contextTokens: progress.contextTokens };
 }
 
 function terminalOutcomeSummary(outcome: AgentRunOutcome): string | undefined {

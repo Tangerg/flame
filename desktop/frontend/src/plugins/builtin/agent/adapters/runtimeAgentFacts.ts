@@ -326,6 +326,7 @@ export function runtimeAgentEvent(envelope: RunEvent): AgentEventEnvelope {
       case "segment.finished":
         return {
           type: event.type,
+          contextTokens: event.contextTokens,
           metrics: runtimeRunMetrics(event.metrics),
           outcome: runtimeSegmentOutcome(event.outcome),
         } as const;

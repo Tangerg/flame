@@ -52,7 +52,12 @@ describe("reducer — timeline accumulator", () => {
         }),
       ),
     );
-    s = reduce(s, { type: "segment.finished", outcome: { type: "completed" }, metrics: noMetrics });
+    s = reduce(s, {
+      type: "segment.finished",
+      contextTokens: 0,
+      outcome: { type: "completed" },
+      metrics: noMetrics,
+    });
 
     expect(s.timeline.map((t) => t.kind)).toEqual([
       "run-start",
@@ -80,6 +85,7 @@ describe("reducer — timeline accumulator", () => {
     );
     s = reduce(s, {
       type: "segment.finished",
+      contextTokens: 0,
       metrics: noMetrics,
       outcome: {
         type: "interrupt",

@@ -158,7 +158,12 @@ export type AgentSegmentOutcome =
 export type AgentStreamEvent =
   | { type: "segment.started"; run: AgentRunFact }
   | { type: "segment.progress"; progress: AgentRunProgress }
-  | { type: "segment.finished"; metrics: AgentRunMetrics; outcome: AgentSegmentOutcome }
+  | {
+      type: "segment.finished";
+      contextTokens: number;
+      metrics: AgentRunMetrics;
+      outcome: AgentSegmentOutcome;
+    }
   | { type: "item.started"; item: AgentItem }
   | { type: "item.delta"; delta: AgentItemDelta; itemId: string }
   | { type: "item.completed"; item: AgentItem }

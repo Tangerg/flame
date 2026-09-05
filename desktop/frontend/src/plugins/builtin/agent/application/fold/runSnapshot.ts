@@ -17,11 +17,14 @@ export function foldRunSnapshot(state: AgentSessionView, run: AgentRunFact): Age
     previous.activeSegmentId === projected.activeSegmentId
       ? previous.progress
       : projected.progress;
+  // A snapshot states the footprint it knows; a live stream may already have carried a newer
+  // one, and the reading must not fall back to nothing when the snapshot omits it.
+  const contextTokens = projected.contextTokens ?? previous?.contextTokens ?? null;
   let next: AgentSessionView = {
     ...state,
     runsById: {
       ...state.runsById,
-      [run.id]: { ...projected, progress },
+      [run.id]: { ...projected, progress, contextTokens },
     },
   };
   if (!next.timeline.some((entry) => entry.runId === run.id && entry.kind === "run-start")) {

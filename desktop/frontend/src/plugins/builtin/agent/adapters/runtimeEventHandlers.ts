@@ -30,7 +30,13 @@ export const RUNTIME_EVENT_HANDLERS: ReadonlyArray<[string, StreamEventHandler]>
     onRunProgress(state, event.progress, runEventSource(envelope)),
   ),
   bind("segment.finished", (state, event, envelope) =>
-    onRunFinished(state, event.outcome, event.metrics, runEventSource(envelope)),
+    onRunFinished(
+      state,
+      event.outcome,
+      event.metrics,
+      event.contextTokens,
+      runEventSource(envelope),
+    ),
   ),
   bind("item.started", (state, event, envelope) =>
     onItemStarted(state, event.item, runEventSource(envelope)),

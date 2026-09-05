@@ -159,7 +159,14 @@ export interface AgentRunView {
   outcome: AgentRunOutcome | null;
   modelSelection?: AgentModelSelection | null;
   metrics: AgentRunMetrics;
-  progress: AgentRunProgress | null;
+  /** Step, activity and provisional usage — everything that EXPIRES at the segment boundary,
+   *  which is why the footprint below is not in here. */
+  progress: Omit<AgentRunProgress, "contextTokens"> | null;
+  /** The latest prompt footprint, and a Run-level fact: Runtime states it on all three Run
+   *  frames and marks the finishing one authoritative, so it has to survive a segment ending
+   *  and a suppressed progress stream alike. It stays the Session's context-window reading
+   *  until a successor Run publishes its own. */
+  contextTokens: number | null;
   createdAt: string;
   finishedAt: string | null;
 }

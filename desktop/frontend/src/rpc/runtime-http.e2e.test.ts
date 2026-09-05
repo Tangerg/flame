@@ -3621,9 +3621,9 @@ for await (const line of lines) {
     expect(changed.type === "resync" && changed.watchIds).toContain(watchId);
 
     const workspace = client.workspace({ path: workspaceRoot });
+    // `FileContent` no longer echoes the path the caller supplied.
     await expect(workspace.files.read({ path: "tracked.txt" })).resolves.toMatchObject({
       content: "after\n",
-      path: "tracked.txt",
     });
     await expect(workspace.changes.list()).resolves.toMatchObject({
       data: [{ path: "tracked.txt", status: "modified" }],
@@ -4073,8 +4073,8 @@ for await (const line of lines) {
     if (!resolved.projectRoot) throw new Error("nested Git workspace omitted its project root");
 
     const workspace = client.workspace({ path: workspaceRoot });
+    // `FileHead` is the lines alone; the request already names the file.
     await expect(workspace.files.head({ path: "alpha.txt", lines: 2 })).resolves.toEqual({
-      path: "alpha.txt",
       lines: [
         { lineNumber: 1, text: "first" },
         { lineNumber: 2, text: "workspace-side-api-marker" },

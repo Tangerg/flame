@@ -37,6 +37,7 @@ function root(
       usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0 },
     },
     progress: null,
+    contextTokens: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     finishedAt: status === "finished" ? "2026-01-01T00:00:01.000Z" : null,
   };

@@ -67,6 +67,7 @@ function progress(eventId: string, runId: string, segmentId: string, step: numbe
 function finished(eventId: string, runId: string, segmentId: string): RunEvent {
   return envelope(eventId, runId, segmentId, {
     type: "segment.finished",
+    contextTokens: 0,
     outcome: { type: "completed" },
     metrics: { ...METRICS, steps: 7, activeDurationMillis: 50 },
   });
@@ -105,6 +106,7 @@ describe("reducer — source-owned Run tree", () => {
       view,
       envelope("evt_root_wait", root.id, "seg_root", {
         type: "segment.finished",
+        contextTokens: 0,
         outcome: {
           type: "interrupt",
           interrupts: [
@@ -188,21 +190,25 @@ describe("reducer — source-owned Run tree", () => {
         parentRunId: null,
         rootRunId: "root",
         progress: { step: 1, activity: "root work" },
+        contextTokens: null,
       },
       child_a: {
         parentRunId: "root",
         rootRunId: "root",
         progress: { step: 2, activity: "child_a work" },
+        contextTokens: null,
       },
       child_b: {
         parentRunId: "root",
         rootRunId: "root",
         progress: { step: 3, activity: "child_b work" },
+        contextTokens: null,
       },
       nested: {
         parentRunId: "child_a",
         rootRunId: "root",
         progress: { step: 4, activity: "nested work" },
+        contextTokens: null,
       },
     });
 
@@ -299,7 +305,9 @@ describe("reducer — source-owned Run tree", () => {
       finishedAt: "2026-06-03T00:01:00.000Z",
     });
 
-    expect(cold.runsById.root?.progress).toEqual({ contextTokens: 87_900 });
+    // A cold read carries no live progress; the footprint is a Run fact and survives it.
+    expect(cold.runsById.root?.progress).toBeNull();
+    expect(cold.runsById.root?.contextTokens).toBe(87_900);
   });
 
   it("does not let duplicate or late segment.started regress a newer Run state", () => {

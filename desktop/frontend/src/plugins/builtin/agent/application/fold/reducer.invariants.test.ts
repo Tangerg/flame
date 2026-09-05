@@ -184,6 +184,7 @@ const FULL_STREAM: StreamEvent[] = [
   completed(m2),
   {
     type: "segment.finished",
+    contextTokens: 0,
     outcome: { type: "completed" },
     metrics: {
       steps: 1,

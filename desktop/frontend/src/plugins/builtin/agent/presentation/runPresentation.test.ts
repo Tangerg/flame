@@ -18,6 +18,7 @@ function run(overrides: Partial<AgentRunView> = {}): AgentRunView {
       usage: { inputTokens: 10, outputTokens: 2, cacheReadTokens: 0 },
     },
     progress: { step: 4, activity: "Inspecting tests" },
+    contextTokens: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     finishedAt: null,
     ...overrides,
@@ -47,6 +48,7 @@ describe("Run presentation facts", () => {
       status: "finished",
       activeSegmentId: null,
       progress: null,
+      contextTokens: null,
       outcome,
       finishedAt: "2026-01-01T00:00:01.000Z",
     });

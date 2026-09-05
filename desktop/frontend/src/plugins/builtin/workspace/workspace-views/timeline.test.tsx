@@ -26,6 +26,7 @@ const running: AgentRunView = {
     usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0 },
   },
   progress: { step: 3, activity: "Inspecting" },
+  contextTokens: null,
   createdAt: "2026-01-01T00:00:00.000Z",
   finishedAt: null,
 };
