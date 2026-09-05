@@ -458,8 +458,6 @@ export const fr: Record<string, string> = {
 
   "approval.settled.approved": "Approuvé",
   "approval.settled.declined": "Refusé",
-  "approval.identity.terminal": "Terminal",
-  "approval.identity.fileEdits": "Modifier des fichiers",
   "approval.identity.permission": "Demander l’autorisation",
   "approval.action.allowOnce": "Autoriser une fois",
   "approval.action.allowOptions": "Options d’approbation",

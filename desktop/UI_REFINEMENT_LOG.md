@@ -4689,3 +4689,71 @@ The transcript surfaces still at one photographed state each: the approval card
 across the safety classes it can be asked about — `network` appears in no fixture
 at all — the delegated run at depths beyond one, and the banner family, recovery,
 cwd-missing and run-error.
+
+---
+
+## Round 87 — asking permission to run `web_fetch`
+
+Status: **complete**
+
+Started at the approval card, expecting it to vary by safety class. It does not
+read safety class at all — so that suspicion cost one file read and no work. What
+it reads is `toolCategory`, which answers a *different* question: the shape of a
+tool's arguments and result. It names two of its seven cases, and everything else
+falls through to `{ icon: "tool", label: toolName }`.
+
+So the card asked permission to run **`web_fetch`** — the wire identifier, in
+snake_case — while the transcript row beneath it said "Fetched" over a download
+glyph. One call, two identities, and the card had the worse one.
+
+The families already own that word, and the eyebrow's register — `Shell`,
+`Files`, `Network` — is the one the catalogue uses.
+
+### Before / after
+
+| | before | after |
+| --- | --- | --- |
+| eyebrow source | `toolCategory`, 2 of 7 named | `toolFamilyId` + `toolIconFor` |
+| `shell` | Terminal | Shell |
+| `apply_patch` | Edit files, `edit` glyph | Files, `replace` glyph — the row's own |
+| `web_fetch` | **`web_fetch`**, generic glyph | Network, `download` glyph |
+| an MCP tool | its own name | unchanged: nobody has a better word |
+| `approval.identity.terminal` / `.fileEdits` | 8 locales | deleted |
+
+### The fixture was lying
+
+`fetch` is one of six activity families and had never rendered. `tool-remote`
+calls all three network tools — but two fixture helpers assigned safety class by
+two different rules, one hard-coding `safe`, the other falling back to `exec` for
+any name it had not been told about. Three network calls had spent every golden
+counted as searches.
+
+One table now, transcribed from the Runtime's own `descriptors.go`, and an
+unlisted name **throws** instead of defaulting. It threw immediately:
+
+> no Runtime safety class recorded for the tool `edit`
+
+The narrative fixture had been photographing a tool that does not exist — the
+Runtime has a test asserting it never exposes `edit` — so the one write in that
+state was drawn with the fallback glyph and the generic verb. It is `apply_patch`
+now, with the real argument and receipt shapes.
+
+| family | before | after |
+| --- | --- | --- |
+| `fetch` | **never rendered** | tool-remote |
+| `run` | tool-shells | tool-shells, tool-tail |
+| `search` | 8 states incl. tool-remote | 7 — tool-remote's were never searches |
+
+### Verification
+
+Guard: every name in `TOOL_FAMILIES` must approve under a family word, not its
+own. Mutated back to `{ label: toolName }`, 31 of 33 fail. Visual **605/605**;
+12 goldens moved, all of them states whose fixture had been wrong; the 20-script
+gate is green; unit 2388/4 outside the runtime-contract e2e.
+
+### Next
+
+`grep` in the narrative fixture still returns the string `"7 matches"` where the
+Runtime returns `{hits: […]}` — the same class of lie, in a state that folds the
+row so nothing has shown it yet. Then the delegated run past one level, and the
+banner family.

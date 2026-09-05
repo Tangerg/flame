@@ -601,8 +601,6 @@ export const en: Record<string, string> = {
 
   "approval.settled.approved": "Approved",
   "approval.settled.declined": "Declined",
-  "approval.identity.terminal": "Terminal",
-  "approval.identity.fileEdits": "Edit files",
   "approval.identity.permission": "Ask permission",
   "approval.action.allowOnce": "Allow once",
   "approval.action.allowOptions": "Approval options",

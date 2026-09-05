@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { TOOL_FAMILIES } from "@/lib/toolFamilies";
 import { ApprovalCard } from "./ApprovalCard";
 
 const actions = vi.hoisted(() => ({
@@ -65,7 +66,7 @@ describe("ApprovalCard actions", () => {
     );
 
     expect(container.querySelector('[data-slot="approval-surface"]')).toBeTruthy();
-    expect(screen.getByText("Terminal", { exact: true })).toBeTruthy();
+    expect(screen.getByText("Shell", { exact: true })).toBeTruthy();
     expect(
       screen.getByText("Reinstall dependencies from the lockfile.", { exact: true }),
     ).toBeTruthy();
@@ -91,4 +92,25 @@ describe("ApprovalCard actions", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "Allow for this session" }));
     expect(actions.approve).toHaveBeenCalledWith("session");
   });
+
+  // The eyebrow answers "which capability is being authorised", and for a built-in tool the
+  // families already own that word. It used to switch on the tool's RESULT SHAPE and name two
+  // of seven cases, so everything else — every network, skill, recall and schedule tool —
+  // asked permission under its snake_case wire name.
+  it.each(TOOL_FAMILIES.flatMap((family) => family.tools.map((tool) => tool.name)))(
+    "names a family rather than the wire name when approving %s",
+    (name) => {
+      render(
+        <ApprovalCard
+          status="requires-action"
+          runId="run-1"
+          itemId="approval-1"
+          toolName={name}
+          cmd=""
+          reason="Do the thing."
+        />,
+      );
+      expect(screen.queryByText(name, { exact: true })).toBeNull();
+    },
+  );
 });

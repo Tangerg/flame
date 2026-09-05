@@ -434,8 +434,6 @@ export const ja: Record<string, string> = {
 
   "approval.settled.approved": "承認済",
   "approval.settled.declined": "拒否",
-  "approval.identity.terminal": "ターミナル",
-  "approval.identity.fileEdits": "ファイルを編集",
   "approval.identity.permission": "権限を確認",
   "approval.action.allowOnce": "今回のみ許可",
   "approval.action.allowOptions": "承認オプション",

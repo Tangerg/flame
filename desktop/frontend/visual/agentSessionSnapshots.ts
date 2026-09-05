@@ -63,16 +63,51 @@ type RuntimeAgentSessionSnapshot = Omit<
   runs: RunRef[];
 };
 
+/**
+ * The Runtime's own class for every tool these fixtures call, transcribed from its descriptor
+ * table. It is a presentation fact here — the activity summary counts by class, and the
+ * approval card names the family — so a fixture that guesses one photographs a lie.
+ *
+ * Two helpers used to answer this separately: one hard-coded `safe`, the other fell back to
+ * `exec` for any name it had not been told about. That is how three network calls spent every
+ * golden counted as searches, and why an unlisted name now throws instead of defaulting.
+ */
 const SAFETY_CLASS: Record<string, "safe" | "write" | "exec" | "network"> = {
   read: "safe",
   grep: "safe",
   glob: "safe",
   lsp: "safe",
+  read_shell_output: "safe",
+  list_schedules: "safe",
+  list_skills: "safe",
+  load_skill: "safe",
+  read_skill_resource: "safe",
+  propose_skill: "safe",
+  search_memory: "safe",
+  search_conversations: "safe",
+  search_tools: "safe",
+  read_tool_result: "safe",
+  ask_user: "safe",
+  enter_plan_mode: "safe",
+  set_plan: "safe",
   delegate_task: "safe",
-  edit: "write",
-  write: "write",
+  get_goal: "safe",
+  report_goal_outcome: "safe",
+  apply_patch: "write",
   shell: "exec",
+  stop_shell: "exec",
+  web_search: "network",
+  web_fetch: "network",
+  http_request: "network",
 };
+
+function safetyClassOf(name: string): "safe" | "write" | "exec" | "network" {
+  const safetyClass = SAFETY_CLASS[name];
+  if (safetyClass === undefined) {
+    throw new Error(`no Runtime safety class recorded for the tool '${name}'`);
+  }
+  return safetyClass;
+}
 
 function run(status: RunRef["status"], patch: Partial<RunRef> = {}): RunRef {
   return {
@@ -242,7 +277,7 @@ const PENDING_APPROVAL_TOOL: Item = {
 // preview and six were exercised, so twenty-four of these panels — their placeholders, their
 // overflow rules, their inks — had never been rendered, let alone photographed or audited.
 // The result strings are the shapes each projection parses, not prose about them.
-function searchTool(
+function settledTool(
   id: string,
   name: string,
   args: Record<string, unknown>,
@@ -250,7 +285,7 @@ function searchTool(
 ): Item {
   return {
     type: "toolCall",
-    safetyClass: "safe",
+    safetyClass: safetyClassOf(name),
     id,
     runId: ROOT_RUN_ID,
     status: "completed",
@@ -261,7 +296,7 @@ function searchTool(
   };
 }
 
-const GLOB_CALL = searchTool(
+const GLOB_CALL = settledTool(
   "item_search_glob",
   "glob",
   { pattern: "runtime/**/*_test.go" },
@@ -274,7 +309,7 @@ const GLOB_CALL = searchTool(
   }),
 );
 
-const MEMORY_CALL = searchTool(
+const MEMORY_CALL = settledTool(
   "item_search_memory",
   "search_memory",
   { query: "compaction cutpoint" },
@@ -284,7 +319,7 @@ const MEMORY_CALL = searchTool(
   ].join("\n"),
 );
 
-const CONVERSATIONS_CALL = searchTool(
+const CONVERSATIONS_CALL = settledTool(
   "item_search_conversations",
   "search_conversations",
   { query: "atomicity" },
@@ -294,7 +329,7 @@ const CONVERSATIONS_CALL = searchTool(
   ].join("\n"),
 );
 
-const TOOL_SEARCH_CALL = searchTool(
+const TOOL_SEARCH_CALL = settledTool(
   "item_search_tools",
   "search_tools",
   { query: "schedule" },
@@ -308,7 +343,7 @@ const TOOL_SEARCH_CALL = searchTool(
 // A second batch of previews no fixture had called: the ones that answer in JSON rather than
 // prose. Each result is the exact shape its projection reads, so a preview that stops parsing
 // fails here instead of degrading to a blank panel in front of someone.
-const WEB_SEARCH_CALL = searchTool(
+const WEB_SEARCH_CALL = settledTool(
   "item_remote_web_search",
   "web_search",
   { query: "sqlite wal checkpoint starvation" },
@@ -328,7 +363,7 @@ const WEB_SEARCH_CALL = searchTool(
   }),
 );
 
-const WEB_FETCH_CALL = searchTool(
+const WEB_FETCH_CALL = settledTool(
   "item_remote_web_fetch",
   "web_fetch",
   { url: "https://www.sqlite.org/wal.html" },
@@ -339,7 +374,7 @@ const WEB_FETCH_CALL = searchTool(
   }),
 );
 
-const HTTP_CALL = searchTool(
+const HTTP_CALL = settledTool(
   "item_remote_http",
   "http_request",
   { method: "GET", url: "http://127.0.0.1:17171/v2/health/ready" },
@@ -352,7 +387,7 @@ const HTTP_CALL = searchTool(
   }),
 );
 
-const SCHEDULES_CALL = searchTool(
+const SCHEDULES_CALL = settledTool(
   "item_remote_schedules",
   "list_schedules",
   {},
@@ -384,7 +419,7 @@ const SCHEDULES_CALL = searchTool(
 // A third batch: the agent's own machinery — skills it can load, a plan it enters and leaves,
 // a goal it reports on, a background shell it reads back, and the language server. None of
 // these panels had ever been rendered either.
-const LIST_SKILLS_CALL = searchTool(
+const LIST_SKILLS_CALL = settledTool(
   "item_agentic_list_skills",
   "list_skills",
   {},
@@ -398,7 +433,7 @@ const LIST_SKILLS_CALL = searchTool(
 // answers in — CONTENT_RENDERING states both, and the preview prints the text because the text
 // is what arrives. The first draft of this fixture reused the envelope and made the panel look
 // broken; the panel was right and the fixture was lying to it.
-const LOAD_SKILL_CALL = searchTool(
+const LOAD_SKILL_CALL = settledTool(
   "item_agentic_load_skill",
   "load_skill",
   { name: "review-diff" },
@@ -409,7 +444,7 @@ const LOAD_SKILL_CALL = searchTool(
   ].join("\n"),
 );
 
-const ENTER_PLAN_CALL = searchTool(
+const ENTER_PLAN_CALL = settledTool(
   "item_agentic_enter_plan",
   "enter_plan_mode",
   {},
@@ -421,7 +456,7 @@ const ENTER_PLAN_CALL = searchTool(
 // drops the transcript row of any tool registered against one, because a row would be a second
 // telling of what that surface already holds. Kept here so the rule is photographed rather than
 // assumed: this state issues four such calls and the golden shows none of them.
-const GET_GOAL_CALL = searchTool(
+const GET_GOAL_CALL = settledTool(
   "item_agentic_goal",
   "get_goal",
   {},
@@ -433,14 +468,14 @@ const GET_GOAL_CALL = searchTool(
   }),
 );
 
-const REPORT_GOAL_CALL = searchTool(
+const REPORT_GOAL_CALL = settledTool(
   "item_agentic_report_goal",
   "report_goal_outcome",
   { outcome: "achieved" },
   "Goal achieved: the boundary holds.",
 );
 
-const READ_SHELL_CALL = searchTool(
+const READ_SHELL_CALL = settledTool(
   "item_agentic_read_shell",
   "read_shell_output",
   { shell_id: "sh_01" },
@@ -450,7 +485,7 @@ const READ_SHELL_CALL = searchTool(
   ].join("\n"),
 );
 
-const LSP_CALL = searchTool(
+const LSP_CALL = settledTool(
   "item_agentic_lsp",
   "lsp",
   // `character` is required for a position operation; without it the row titles itself
@@ -465,14 +500,14 @@ const LSP_CALL = searchTool(
 
 // The last five previews with no fixture call. Twenty-one tools carry one; these were the
 // panels still never rendered, and a panel nothing has drawn is a panel nothing has audited.
-const PROPOSE_SKILL_CALL = searchTool(
+const PROPOSE_SKILL_CALL = settledTool(
   "item_last_propose_skill",
   "propose_skill",
   { name: "trace-flaky-test" },
   "Proposed trace-flaky-test for review. It will not load until someone approves it.",
 );
 
-const SKILL_RESOURCE_CALL = searchTool(
+const SKILL_RESOURCE_CALL = settledTool(
   "item_last_skill_resource",
   "read_skill_resource",
   { name: "review-diff", path: "checklist.md" },
@@ -481,14 +516,14 @@ const SKILL_RESOURCE_CALL = searchTool(
   ),
 );
 
-const READ_TOOL_RESULT_CALL = searchTool(
+const READ_TOOL_RESULT_CALL = settledTool(
   "item_last_read_tool_result",
   "read_tool_result",
   { item_id: "item_shells_command" },
   ["ok  \tgithub.com/Tangerg/flame/runtime/internal/session\t8.412s", "FAIL"].join("\n"),
 );
 
-const STOP_SHELL_CALL = searchTool(
+const STOP_SHELL_CALL = settledTool(
   "item_last_stop_shell",
   "stop_shell",
   { shell_id: "sh_01" },
@@ -498,7 +533,7 @@ const STOP_SHELL_CALL = searchTool(
 // `ask_user` drops its row while its question block is on screen — the question card is the
 // real thing and the row its shadow. Here the question has been answered, which is the state
 // where the row does render, and the only one where this preview is reachable at all.
-const ASK_USER_CALL = searchTool(
+const ASK_USER_CALL = settledTool(
   "item_last_ask_user",
   "ask_user",
   { question: "Which gate should run next?" },
@@ -875,7 +910,7 @@ function narrativeTool(
     startedAt: "2026-07-31T08:01:04.000Z",
     durationMillis: 120,
     finishedAt: "2026-07-31T08:01:04.120Z",
-    safetyClass: SAFETY_CLASS[name] ?? "exec",
+    safetyClass: safetyClassOf(name),
     tool: { name, arguments: args, ...(result === undefined ? {} : { result }) },
   };
 }
@@ -1310,11 +1345,14 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       }),
       narrativeTool("item_n_read_3", "read", { path: "src/checkout/api/pay.ts" }),
       narrativeTool("item_n_grep", "grep", { pattern: "retry|backoff", path: "src" }, "7 matches"),
+      // `apply_patch` because it is the only file mutation the Runtime exposes. This call
+      // used to name a tool called `edit`, which does not exist and never has — so the one
+      // write in the narrative was drawn with the fallback glyph and the generic verb.
       narrativeTool(
-        "item_n_edit",
-        "edit",
-        { path: "src/checkout/hooks/useRetryPayment.ts" },
-        "Created 85 lines",
+        "item_n_patch",
+        "apply_patch",
+        { patch: "*** Begin Patch\n*** Add File: useRetryPayment.ts\n…\n*** End Patch" },
+        { changes: [{ path: "src/checkout/hooks/useRetryPayment.ts", status: "added" }] },
       ),
       NARRATIVE_ANSWER_1,
       NARRATIVE_TURN_2,

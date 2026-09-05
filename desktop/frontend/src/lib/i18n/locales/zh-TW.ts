@@ -433,8 +433,6 @@ export const zhTW: Record<string, string> = {
 
   "approval.settled.approved": "已核可",
   "approval.settled.declined": "已拒絕",
-  "approval.identity.terminal": "終端機",
-  "approval.identity.fileEdits": "編輯檔案",
   "approval.identity.permission": "請求權限",
   "approval.action.allowOnce": "允許一次",
   "approval.action.allowOptions": "核可選項",

@@ -433,8 +433,6 @@ export const ko: Record<string, string> = {
 
   "approval.settled.approved": "승인됨",
   "approval.settled.declined": "거부됨",
-  "approval.identity.terminal": "터미널",
-  "approval.identity.fileEdits": "파일 편집",
   "approval.identity.permission": "권한 요청",
   "approval.action.allowOnce": "한 번 허용",
   "approval.action.allowOptions": "승인 옵션",

@@ -78,7 +78,10 @@ test("a pending approval uses the Codex neutral request surface", async ({ page 
   // own `rounded-3xl`, the one radius in the tree that was neither a ladder step nor scaled
   // with the rest when the corner curve changed.
   await expect(surface).toHaveCSS("border-radius", "20px");
-  await expect(surface.getByText("Terminal", { exact: true })).toBeVisible();
+  // The tool's FAMILY, the word the catalogue and the transcript already use for it. The
+  // eyebrow used to have a two-name vocabulary of its own, so every tool outside it asked
+  // permission under its wire name.
+  await expect(surface.getByText("Shell", { exact: true })).toBeVisible();
   await expect(
     page.getByText("Run the race detector across the workspace before committing.", {
       exact: true,

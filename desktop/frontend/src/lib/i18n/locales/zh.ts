@@ -571,8 +571,6 @@ export const zh: Record<string, string> = {
 
   "approval.settled.approved": "已批准",
   "approval.settled.declined": "已拒绝",
-  "approval.identity.terminal": "终端",
-  "approval.identity.fileEdits": "编辑文件",
   "approval.identity.permission": "请求权限",
   "approval.action.allowOnce": "允许一次",
   "approval.action.allowOptions": "审批选项",

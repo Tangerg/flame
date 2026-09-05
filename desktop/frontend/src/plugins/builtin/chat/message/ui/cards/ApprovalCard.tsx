@@ -1,5 +1,6 @@
 import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
-import { toolCategory } from "@/plugins/builtin/agent/public/viewState";
+import { toolFamilyId } from "@/lib/toolFamilies";
+import { toolIconFor } from "@/plugins/builtin/chat/tools/public/toolIcon";
 import { type ApprovalDecision, type RememberScope } from "@/plugins/builtin/agent/public/hitl";
 import { approvalSettledDecision } from "@/plugins/builtin/agent/public/messagePresentation";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
@@ -151,6 +152,17 @@ export function ApprovalCard({
   );
 }
 
+/**
+ * The eyebrow above the reason: which FAMILY of capability is being asked for.
+ *
+ * Read off the same table the transcript reads, so the row and the card that authorises it
+ * cannot identify one call two ways. It used to switch on `toolCategory`, which answers a
+ * different question — the SHAPE of a tool's arguments and result — and named two of its seven
+ * cases; every other tool fell through to its wire name, so the card asked permission to run
+ * `web_fetch` while the row beneath it said "Fetched" over a download glyph. A name the
+ * families have never heard of is still shown as itself: for an MCP tool nobody here has a
+ * better word than the one its server chose.
+ */
 function approvalIdentity(
   t: (key: string, params?: Record<string, string | number>) => string,
   toolName: string | undefined,
@@ -158,12 +170,9 @@ function approvalIdentity(
   if (!toolName) {
     return { icon: "shield", label: t("approval.identity.permission") };
   }
-  switch (toolCategory(toolName)) {
-    case "command":
-      return { icon: "terminal", label: t("approval.identity.terminal") };
-    case "fileEdit":
-      return { icon: "edit", label: t("approval.identity.fileEdits") };
-    default:
-      return { icon: "tool", label: toolName };
-  }
+  const family = toolFamilyId(toolName);
+  return {
+    icon: toolIconFor(toolName),
+    label: family === undefined ? toolName : t(`tools.family.${family}`),
+  };
 }
