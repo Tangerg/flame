@@ -25,6 +25,7 @@ test("nothing invisible can be clicked", async ({ page }) => {
 
   for (const route of ROUTES) {
     await page.goto(`/visual/?${route}&theme=light`);
+    await page.waitForSelector("html[data-visual-ready]");
     await page.waitForTimeout(200);
 
     const found = await page.evaluate(() => {

@@ -120,7 +120,7 @@ export function MermaidBlock({ code }: Props) {
         />
         <div
           data-reveal="hover"
-          className="absolute top-1 right-1 z-1 flex gap-1 opacity-0 transition-opacity group-hover/mermaid:opacity-100 focus-within:opacity-100"
+          className="absolute top-1 right-1 z-1 flex gap-1 pointer-events-none opacity-0 transition-opacity group-hover/mermaid:pointer-events-auto group-hover/mermaid:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100"
           data-markdown-copy="exclude"
         >
           <LightboxDialog
