@@ -175,6 +175,19 @@ for (const pane of VISUAL_SETTINGS_PANES) {
   }
 }
 
+// A pane audits the shape it OPENS in, and this one opens showing a list. Its form is a
+// second surface — five fields, a preset group and two actions — that no audit had ever
+// seen, because reaching it takes a click.
+test("WCAG audit the schedules form, which a pane audit never opens", async ({ page }) => {
+  for (const theme of ["light", "dark"] as const) {
+    await openFixture(page, { fixture: "workspace", state: "settings", theme, pane: "schedules" });
+    await page.getByRole("button", { name: /New schedule/ }).click();
+    await expect(page.getByRole("textbox", { name: "Cron expression" })).toBeVisible();
+
+    await expectNoWcagViolations(page);
+  }
+});
+
 test("structural panels share one spring, containment, and reduced-motion authority", async ({
   page,
 }) => {

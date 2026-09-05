@@ -5009,3 +5009,55 @@ outside the runtime-contract e2e.
 
 The schedules pane's remaining shapes — its form, and the empty list — now that
 the pane renders at all.
+
+---
+
+## Round 92 — a group that forgot its own answer under the pointer
+
+Status: **complete**
+
+The schedules form is a second surface behind the pane that only started
+rendering last round, and reaching it takes a click — so no audit had ever
+opened it. Audited now, and clean. What axe cannot see is what was wrong.
+
+Its cron presets are a one-of group, and **both halves of "which one" were
+missing**:
+
+| | before | after |
+| --- | --- | --- |
+| assistive tech | nothing — a plain `<button>` group | `aria-pressed`, as nine other groups do |
+| chosen fill | `bg-selected`, a 4% black wash | unchanged |
+| hover fill | `bg-hover`, a **3%** black wash | unchanged |
+| what says "chosen" under the pointer | nothing | an accent edge |
+
+One percent of alpha apart. Moving the pointer across the group made every
+option it touched look like the one that had been chosen.
+
+### The fix that was wrong first
+
+Accent text separates them by hue, and the approvals list — the app's other
+one-of group — uses exactly that. So did this, until the new audit measured it:
+
+> `.bg-accent-wash`: contrast **2.85** (foreground `#3574f0`, background
+> `#2a3647`), expected 4.5:1
+
+Accent on accent, in dark, at 13px. The audit I had just written caught my own
+change one run after writing it, which is the whole reason to write it.
+
+An **edge** instead: hover only ever deepens a fill, so a border is the one
+channel it cannot forge, and an outlined pill is what the form's own Cancel
+button already is. The label stays `text-fg`, which needs no exemption in either
+theme.
+
+### Verification
+
+The guard asserts the edge, not the fill: whatever the pointer is over, exactly
+one option is outlined and it is the one that answered. Mutated to
+`border-transparent`, it fails. Visual **624/624** with **no golden moved** — the
+form is not in any frame, which is exactly why it took a click to find. The
+20-script gate is green; unit 2395/4 outside the runtime-contract e2e.
+
+### Next
+
+The schedules pane's empty list — the only shape of it left — and the row's edit
+mode, which reuses this form with a schedule already in it.

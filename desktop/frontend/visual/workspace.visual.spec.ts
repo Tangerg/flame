@@ -711,3 +711,45 @@ for (const pane of ["plugins", "providers"] as const) {
     await expect(page).toHaveScreenshot(`workspace-light-settings-${pane}.png`);
   });
 }
+
+// The cron presets are a one-of group, and both halves of "which one" were missing: no
+// `aria-pressed` at all, and a selected fill of 4% black against a hover fill of 3%, so
+// moving the pointer across the group erased the answer for anyone who could see it.
+test("a chosen cron preset stays chosen while the pointer crosses the others", async ({ page }) => {
+  await openWorkspace(page, { state: "settings", pane: "schedules" });
+  await waitForWorkspaceState(page, "settings");
+  await page.getByRole("button", { name: /New schedule/ }).click();
+
+  const presets = page
+    .locator("[aria-pressed]")
+    .filter({ hasText: /Hourly|Daily|Weekdays|Weekly/ });
+  await expect(presets).toHaveCount(4);
+  expect(
+    await presets.evaluateAll(
+      (els) => els.filter((element) => element.getAttribute("aria-pressed") === "true").length,
+    ),
+  ).toBe(1);
+
+  const paint = () =>
+    presets.evaluateAll((els) =>
+      els.map((element) => ({
+        chosen: element.getAttribute("aria-pressed") === "true",
+        edge: getComputedStyle(element).borderTopColor,
+      })),
+    );
+
+  const resting = await paint();
+  await presets.first().hover();
+  const hovered = await paint();
+
+  // The EDGE, because hover cannot forge one: it only ever deepens a fill, and the fills it
+  // deepens between are a percent apart. Whatever the pointer is over, exactly one option is
+  // outlined and it is the one that answered.
+  for (const paints of [resting, hovered]) {
+    const chosen = paints.filter((option) => option.chosen);
+    expect(chosen).toHaveLength(1);
+    for (const other of paints.filter((option) => !option.chosen)) {
+      expect(other.edge).not.toBe(chosen[0]!.edge);
+    }
+  }
+});

@@ -73,14 +73,26 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
         aria-label={t("schedules.form.instructions")}
       />
       <div className="flex flex-wrap items-center gap-1.5">
+        {/* A one-of group, so each option states whether it is the one. The fill was the only
+            answer, which a reader that cannot see fill does not get — and the app says this
+            with `aria-pressed` in nine other places, including the accent swatches, which are
+            the same control with different contents. */}
         {CRON_PRESETS.map((preset) => (
           <Pressable
             key={preset.cron}
             type="button"
+            aria-pressed={draft.cron === preset.cron}
             onClick={() => updateDraft("cron", preset.cron)}
+            // An edge, because it is the one channel hover cannot forge. The fill alone said
+            // this with a 4% black wash against a 3% hover wash, so moving the pointer across
+            // the group erased which option it had answered. Accent TEXT would separate them
+            // too, and fails: measured on the rendered pixels it is 2.85:1 in dark, where this
+            // size needs 4.5. An outlined pill is what the form's own Cancel button already is.
             className={cn(
-              "rounded-pill px-2.5 py-1 text-ui-sm font-medium transition-colors",
-              draft.cron === preset.cron ? "bg-selected text-fg" : "text-fg hover:bg-hover",
+              "rounded-pill border px-2.5 py-1 text-ui-sm font-medium transition-colors",
+              draft.cron === preset.cron
+                ? "border-accent bg-selected text-fg"
+                : "border-transparent text-fg-muted hover:bg-hover hover:text-fg",
             )}
           >
             {t(preset.key)}
