@@ -242,6 +242,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 282 | `1069e248` + CLI dependency update | Made invalidation constructors own identifier sets and deep-isolated each published Notice so callbacks cannot mutate callers or later notices in the same batch. |
 | 283 | `7b07f217` + CLI dependency update | Deep-cloned the resolved fork conversation prefix so nested message parts and metadata cannot leak mutations between the source snapshot and child boundary. |
 | 284 | `cb6560f8` + CLI dependency update | Deep-isolated conversation messages in both portable archive directions so imports and exports cannot mutate their canonical or transport-owned counterparts. |
+| 285 | `b8e22347` + CLI dependency update | Gave portable exports independent Item, tool-result, and Plan collections so archive consumers cannot overwrite the canonical snapshot's backing arrays. |
 
 ## Verification contract
 
