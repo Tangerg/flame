@@ -3,6 +3,7 @@ package sessions
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/Tangerg/scope/core/chat"
@@ -240,9 +241,9 @@ func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
 			Favorite:  normalized.Session.Favorite(),
 		},
 		Messages:    cloneSnapshotMessages(normalized.Messages),
-		Items:       normalized.Items,
-		ToolResults: normalized.ToolResults,
-		Plan:        normalized.Plan,
+		Items:       slices.Clone(normalized.Items),
+		ToolResults: slices.Clone(normalized.ToolResults),
+		Plan:        slices.Clone(normalized.Plan),
 		Runs:        make([]PortableRun, 0, len(normalized.Runs)),
 	}
 	for _, run := range normalized.Runs {

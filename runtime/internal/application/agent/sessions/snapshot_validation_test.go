@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -48,6 +49,41 @@ func TestSnapshotPortableSnapshotOwnsMessages(t *testing.T) {
 	portable.Messages[0].Parts[0].Text = "portable mutation"
 	if text := snapshot.Messages[0].Text(); text != "source mutation" {
 		t.Fatalf("source message after portable mutation = %q, want unchanged", text)
+	}
+}
+
+func TestSnapshotPortableSnapshotOwnsCollections(t *testing.T) {
+	snapshot := portableSnapshotWithMessage()
+	at := time.Unix(2, 0).UTC()
+	result := tool.StringResult("full body")
+	snapshot.Items = append(snapshot.Items, testsupport.MustRestoreItem(testsupport.ItemInput{
+		SessionID: "ses_1", RunID: "run_1", ID: "item_tool", Kind: transcript.ToolCall,
+		Status: transcript.ItemCompleted, OccurredAt: at, FinishedAt: at,
+		Tool: &transcript.ToolInvocation{
+			Name: "shell", Result: &result, Offload: &toolresult.Ref{ID: "BLOB234"},
+		},
+	}))
+	snapshot.ToolResults = []toolresult.Blob{{
+		ID: "BLOB234", SessionID: "ses_1", ItemID: "item_tool", ToolName: "shell",
+		Preview: "bounded preview", Body: "full body", CreatedAt: at,
+	}}
+	snapshot.Plan = []plan.Step{{Description: "keep ownership", Status: plan.StatusPending}}
+
+	portable, err := snapshot.PortableSnapshot()
+	if err != nil {
+		t.Fatalf("PortableSnapshot: %v", err)
+	}
+	snapshot.Items[0] = transcript.Item{}
+	snapshot.ToolResults[0].Body = "source mutation"
+	snapshot.Plan[0].Description = "source mutation"
+	if portable.Items[0].ID() != "item_1" {
+		t.Fatalf("portable Item changed with source slice: %+v", portable.Items[0])
+	}
+	if portable.ToolResults[0].Body != "full body" {
+		t.Fatalf("portable tool result body = %q, want owned snapshot", portable.ToolResults[0].Body)
+	}
+	if portable.Plan[0].Description != "keep ownership" {
+		t.Fatalf("portable Plan description = %q, want owned snapshot", portable.Plan[0].Description)
 	}
 }
 
