@@ -589,11 +589,12 @@ const SHELL_FAILED: Item = {
   error: { type: "tool_failed", detail: "store.go changed on disk after it was read." },
 };
 
-// A patch that reports what it changed. Both halves are here on purpose: a path
-// too long for the row (deep and absolute, which is what the runtime reports), so
-// it MUST clip and which end it clips is visible — and a result carrying the
-// Runtime's exact `{path,status}` receipt. Without an item like this, neither is
-// in any golden; the waves state collapses tool rows into "N steps".
+// A patch that reports what it changed. Every shape the receipt has is in this one list:
+// a path too long for the row (deep and absolute, which is what the runtime reports), so it
+// MUST clip and which end it clips is visible; a delete; and a rename, the only row that
+// draws two paths and an arrow with the source capped at 42% of the width. One patch that
+// modifies, moves and deletes is what a refactor commit actually looks like, and reading
+// the three verbs down one column is the only way their labels are seen to line up.
 const SHELL_PATCH: Item = {
   type: "toolCall",
   safetyClass: "write",
@@ -612,6 +613,12 @@ const SHELL_PATCH: Item = {
           path: "/Users/visual/scope/desktop/frontend/src/plugins/builtin/chat/tools/application/specialisedPreviewProjections.ts",
           status: "modified",
         },
+        {
+          path: "runtime/internal/session/atomicity_and_idempotency.go",
+          status: "moved",
+          from: "runtime/internal/session/store_atomicity.go",
+        },
+        { path: "runtime/internal/session/legacy_store_shim.go", status: "deleted" },
       ],
     },
   },

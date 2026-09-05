@@ -4632,3 +4632,60 @@ The other transcript surfaces and their variants: the approval card across the
 safety classes it can be asked about, the delegated run at depths beyond one, and
 the banner family — recovery, cwd-missing, run-error — of which one state each is
 photographed.
+
+---
+
+## Round 86 — three verbs, three left edges
+
+Status: **complete**
+
+`ToolFileChange.status` has four values. The fixtures had two: every patch receipt
+in every golden carried exactly one row, `added` or `modified`. So `moved` — the
+only row that draws two paths and an arrow — and `deleted` had never been rendered
+once.
+
+The first attempt gave them their own `apply_patch` call. That was wrong twice
+over: it moved `6 calls` to `7` and broke three hard-coded stats assertions and
+eight goldens for nothing, and it put the new verbs in a *different list* from the
+old ones. Folding all three into one receipt is both smaller and the better test —
+a refactor commit really does edit, move and delete at once, and reading three
+verbs down one column is the only way their alignment is visible at all.
+
+It was not aligned. The verb was `shrink-0` with no width, so each path began
+wherever its own verb ended:
+
+| row | path starts at |
+| --- | --- |
+| `Edited` | 393.5 + 6 |
+| `Moved` | 393.5 + 6 |
+| `Deleted` | **393.5 + 24** |
+
+One row per receipt — which is all any fixture had ever had — hides this
+completely.
+
+### Before / after
+
+| | before | after |
+| --- | --- | --- |
+| row | `flex`, verb `shrink-0` | `grid-cols-subgrid`, `col-span-2` |
+| list | (none) | `grid-cols-[auto_minmax(0,1fr)] gap-x-1.5` |
+| verb / path edge | 442.92 / 448.92, 442.92 / 448.92, 460.6 / 466.6 | identical on all three |
+
+`auto` rather than a chosen width: a single-row receipt stays exactly as wide as
+its own verb — which the goldens confirm, none of the single-row states moved —
+and no locale needs a number picked for it.
+
+### Verification
+
+Guard added: a multi-file receipt must put every path on one left edge, and the
+three rows must carry three *different* verbs so identical labels cannot satisfy
+it. Mutated back to `flex` + `shrink-0`, it fails; restored, it passes. Visual
+**605/605**; the golden diff is confined to `tool-shells` light and dark; the
+20-script gate is green; unit 2358/4 outside the runtime-contract e2e.
+
+### Next
+
+The transcript surfaces still at one photographed state each: the approval card
+across the safety classes it can be asked about — `network` appears in no fixture
+at all — the delegated run at depths beyond one, and the banner family, recovery,
+cwd-missing and run-error.

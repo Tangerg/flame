@@ -1490,6 +1490,34 @@ test("completed work folds before the separate final answer owns message actions
   await expect(answer.getByRole("button", { name: "Regenerate response" })).toBeVisible();
 });
 
+// A receipt lists what one patch did, one verb per row. The verbs have different widths, so
+// while they only ever sized themselves each path began at its own verb's end — which nothing
+// could see until a fixture edited, moved and deleted in one call. The rows share a column
+// track now, and this is the assertion that says so: paths on one left edge, verbs on another.
+test("a multi-file patch receipt puts every path on one left edge", async ({ page }) => {
+  await page.goto("/visual/?fixture=agent&theme=light&state=tool-shells");
+  await page.locator("html[data-visual-ready]").waitFor();
+
+  await page.getByRole("button", { name: /6 steps/ }).click();
+  await page.getByText("3 files").first().click();
+
+  const rows = page.locator("[data-patch-change]");
+  await expect(rows).toHaveCount(3);
+  // Three DIFFERENT verbs, or the alignment is trivially satisfied by three identical labels.
+  expect(new Set(await rows.evaluateAll((r) => r.map((e) => e.dataset.patchChange))).size).toBe(3);
+
+  const edges = await rows.evaluateAll((r) =>
+    r.map((row) => ({
+      verb: row.children[0]!.getBoundingClientRect().x,
+      path: row.children[1]!.getBoundingClientRect().x,
+    })),
+  );
+  for (const edge of edges) {
+    expect(edge.verb).toBeCloseTo(edges[0]!.verb, 1);
+    expect(edge.path).toBeCloseTo(edges[0]!.path, 1);
+  }
+});
+
 test("the transcript publishes one heading outline, from the session down", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=narrative");
   await page.locator("html[data-visual-ready]").waitFor();

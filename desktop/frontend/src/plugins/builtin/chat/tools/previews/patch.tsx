@@ -23,19 +23,19 @@ function PatchChangeRow({ change }: { change: PatchChange }) {
   return (
     <div
       data-patch-change={change.status}
-      className="flex min-w-0 items-center gap-1.5 py-0.5 text-ui-md leading-body"
+      className="col-span-2 grid grid-cols-subgrid items-center py-0.5 text-ui-md leading-body"
     >
-      <span className="shrink-0 font-sans text-fg-faint">{t(STATUS_KEY[change.status])}</span>
+      <span className="font-sans text-fg-faint">{t(STATUS_KEY[change.status])}</span>
       {change.status === "moved" && change.from ? (
-        <span className="flex min-w-0 flex-1 items-center gap-1 text-fg-muted">
+        <span className="flex min-w-0 items-center gap-1 text-fg-muted">
           <FilePath path={change.from} className="max-w-[42%]" />
           <span aria-hidden="true" className="shrink-0 text-fg-faint">
             →
           </span>
-          <FilePath path={change.path} className="flex-1" />
+          <FilePath path={change.path} className="min-w-0 flex-1" />
         </span>
       ) : (
-        <FilePath path={change.path} className="flex-1 text-fg-muted" />
+        <FilePath path={change.path} className="min-w-0 text-fg-muted" />
       )}
     </div>
   );
@@ -69,12 +69,19 @@ export function ApplyPatchPreview({ tool, onOpenView }: ToolPreviewProps) {
           idle="tools.preview.idle.noChanges"
         />
       )}
-      {changes.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((change) => (
-        <PatchChangeRow
-          key={`${change.status}:${change.from ?? ""}:${change.path}`}
-          change={change}
-        />
-      ))}
+      {/* One track for the verbs, shared by every row through `subgrid`. The verb used to be a
+          `shrink-0` inline label, so each path began wherever its own verb ended — invisible
+          while a receipt had one row, a ragged left edge as soon as a patch edits, moves and
+          deletes in one call. `auto` means a single-row receipt is still exactly as wide as its
+          own verb, and no locale needs a width picked for it. */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-1.5">
+        {changes.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((change) => (
+          <PatchChangeRow
+            key={`${change.status}:${change.from ?? ""}:${change.path}`}
+            change={change}
+          />
+        ))}
+      </div>
       {proposed.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((change) => (
         <ProposedChangeRow key={change.path} change={change} />
       ))}
