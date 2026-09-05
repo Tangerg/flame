@@ -18,6 +18,7 @@ type RuleStore interface {
 	// Visible returns at most limit rules reachable from a session: its session-scoped
 	// rules (ScopeKey == sessionID), its project's rules (ScopeKey ==
 	// projectDir), and all global rules. Any tool — the domain filters by tool.
+	// The result slice transfers ownership to the caller.
 	Visible(ctx context.Context, sessionID, projectDir string, limit int) ([]approval.Rule, error)
 
 	// Delete removes one rule by id; removing a missing id is not an error.

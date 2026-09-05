@@ -2,9 +2,8 @@ package approvals
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"slices"
+	"reflect"
 	"sync"
 	"sync/atomic"
 
@@ -13,18 +12,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 )
 
-var (
-	ErrModeStoreUnavailable = errors.New("approvals: session mode store unavailable")
-	ErrRuleStoreUnavailable = errors.New("approvals: rule store unavailable")
-)
-
-// New returns a [RuntimePolicy]: a validated runtime default mode, a durable
-// session-mode store, and a persistent rule store. Pass [ModeYolo] for
-// environments where every tool call auto-passes (CI, smoke tests). store may
-// be nil for mode-only environments: Decide never matches and persistence
-// operations return [ErrRuleStoreUnavailable]. modeStore may be nil when Plan
-// mode is unavailable; ordinary calls still use the runtime default. ModePlan
-// is rejected as a default because only a session may enter it.
+// NewRuntimePolicy constructs permission policy over durable session modes and
+// remembered rules. Only a Session may enter Plan mode; the Runtime default
+// must remain one of the ordinary permission modes.
 func NewRuntimePolicy(
 	mode approval.Mode,
 	store RuleStore,
@@ -33,6 +23,17 @@ func NewRuntimePolicy(
 ) (*RuntimePolicy, error) {
 	if !mode.ValidDefault() {
 		return nil, fmt.Errorf("%w: %q", approval.ErrInvalidMode, mode)
+	}
+	for _, dependency := range []struct {
+		name  string
+		value any
+	}{
+		{"rule store", store}, {"session mode store", modeStore},
+	} {
+		value := reflect.ValueOf(dependency.value)
+		if !value.IsValid() || ((value.Kind() == reflect.Pointer || value.Kind() == reflect.Map || value.Kind() == reflect.Func) && value.IsNil()) {
+			return nil, fmt.Errorf("approvals: %s is required", dependency.name)
+		}
 	}
 	p := &RuntimePolicy{store: store, modeStore: modeStore, invalidations: invalidations}
 	p.mode.Store(&defaultModeState{mode: mode})
@@ -95,7 +96,7 @@ func (r *RuntimePolicy) Mode(ctx context.Context, sessionID string) (approval.Mo
 	if err != nil {
 		return "", err
 	}
-	if sessionID == "" || r.modeStore == nil {
+	if sessionID == "" {
 		return fallback, nil
 	}
 	if _, err := resourceid.ParseSession(sessionID); err != nil {
@@ -120,9 +121,6 @@ func (r *RuntimePolicy) EnterPlanMode(ctx context.Context, sessionID string) (ch
 	if _, parseErr := resourceid.ParseSession(sessionID); parseErr != nil {
 		return false, fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, parseErr)
 	}
-	if r.modeStore == nil {
-		return false, ErrModeStoreUnavailable
-	}
 	r.modeMu.Lock()
 	defer r.modeMu.Unlock()
 
@@ -145,9 +143,6 @@ func (r *RuntimePolicy) EnterPlanMode(ctx context.Context, sessionID string) (ch
 func (r *RuntimePolicy) ExitPlanMode(ctx context.Context, sessionID string) (restored approval.Mode, changed bool, err error) {
 	if _, parseErr := resourceid.ParseSession(sessionID); parseErr != nil {
 		return "", false, fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, parseErr)
-	}
-	if r.modeStore == nil {
-		return "", false, ErrModeStoreUnavailable
 	}
 	r.modeMu.Lock()
 	defer r.modeMu.Unlock()
@@ -190,9 +185,6 @@ func (r *RuntimePolicy) Remember(ctx context.Context, req approval.RememberReque
 	if err != nil {
 		return err
 	}
-	if r.store == nil {
-		return ErrRuleStoreUnavailable
-	}
 	if err := r.store.Put(ctx, rule); err != nil {
 		return err
 	}
@@ -205,9 +197,6 @@ func (r *RuntimePolicy) Rules(ctx context.Context, sessionID, projectDir string)
 }
 
 func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID, projectDir string) ([]approval.Rule, error) {
-	if r.store == nil {
-		return nil, nil
-	}
 	rules, err := r.store.Visible(ctx, sessionID, projectDir, approval.MaximumVisibleRules+1)
 	if err != nil {
 		return nil, err
@@ -215,15 +204,12 @@ func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID, projectDir 
 	if err := approval.ValidateVisibleRules(rules, sessionID, projectDir); err != nil {
 		return nil, err
 	}
-	return slices.Clone(rules), nil
+	return rules, nil
 }
 
 func (r *RuntimePolicy) Forget(ctx context.Context, id string) error {
 	if id == "" {
 		return fmt.Errorf("%w: id is required", approval.ErrInvalidRule)
-	}
-	if r.store == nil {
-		return ErrRuleStoreUnavailable
 	}
 	if err := r.store.Delete(ctx, id); err != nil {
 		return err

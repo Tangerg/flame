@@ -3,6 +3,7 @@ package toolset
 import (
 	"context"
 	"encoding/json"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -28,6 +29,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
 type activeGoalStub struct{}
@@ -129,10 +131,7 @@ func assertBuiltInToolContract(t *testing.T, candidate toolcontract.Tool) {
 }
 
 func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
-	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("approval policy: %v", err)
-	}
+	policy := testApprovalPolicy(t)
 	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
 		DefaultCWD:   t.TempDir(),
 		UserHome:     t.TempDir(),
@@ -177,10 +176,7 @@ func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 // The resolver is built with every optional subsystem wired, because a name is
 // only unreachable if NO configuration reaches it.
 func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
-	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("approval policy: %v", err)
-	}
+	policy := testApprovalPolicy(t)
 	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
 		DefaultCWD:         t.TempDir(),
 		UserHome:           t.TempDir(),
@@ -269,4 +265,22 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 		slices.Sort(unclassified)
 		t.Errorf("built-in tools %v rely on unknown-tool fallbacks — describe each one explicitly", unclassified)
 	}
+}
+
+func testApprovalPolicy(t *testing.T) *approvals.RuntimePolicy {
+	t.Helper()
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "approvals.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, sqlite.NewApprovalRuleStore(db), sqlite.NewPermissionModeStore(db), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return policy
 }

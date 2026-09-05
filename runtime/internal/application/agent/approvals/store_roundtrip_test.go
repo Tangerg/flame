@@ -104,7 +104,8 @@ func TestRememberRejectsUnkeyable(t *testing.T) {
 
 func newPolicy(t *testing.T) *approvals.RuntimePolicy {
 	t.Helper()
-	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, newMemoryRuleStore(), nil, nil)
+	store := newMemoryRuleStore()
+	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, store, nil)
 	if err != nil {
 		t.Fatalf("new policy: %v", err)
 	}
@@ -117,10 +118,25 @@ func newPolicy(t *testing.T) *approvals.RuntimePolicy {
 type memoryRuleStore struct {
 	mu    sync.Mutex
 	rules map[string]approval.Rule
+	modes map[string]approval.SessionMode
 }
 
 func newMemoryRuleStore() *memoryRuleStore {
-	return &memoryRuleStore{rules: make(map[string]approval.Rule)}
+	return &memoryRuleStore{rules: make(map[string]approval.Rule), modes: make(map[string]approval.SessionMode)}
+}
+
+func (m *memoryRuleStore) LookupMode(_ context.Context, sessionID string) (approval.SessionMode, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	mode, found := m.modes[sessionID]
+	return mode, found, nil
+}
+
+func (m *memoryRuleStore) PutMode(_ context.Context, sessionID string, mode approval.SessionMode) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.modes[sessionID] = mode
+	return nil
 }
 
 var _ approvals.RuleStore = (*memoryRuleStore)(nil)
@@ -157,6 +173,7 @@ func (m *memoryRuleStore) Delete(_ context.Context, id string) error {
 func (m *memoryRuleStore) DeleteSession(_ context.Context, sessionID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	delete(m.modes, sessionID)
 	for id, rule := range m.rules {
 		if rule.Scope == approval.ScopeSession && rule.ScopeKey == sessionID {
 			delete(m.rules, id)

@@ -53,7 +53,7 @@ func planContext(t *testing.T, sessionID string) context.Context {
 
 func balancedPlanPolicy(t *testing.T) *approvals.RuntimePolicy {
 	t.Helper()
-	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, nil, &modeStore{states: make(map[string]approval.SessionMode)}, nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, emptyPlanRules{}, &modeStore{states: make(map[string]approval.SessionMode)}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,3 +173,11 @@ func TestApprovalRestoresModeCapturedOnEntry(t *testing.T) {
 		t.Fatalf("mode = %v, want captured Balanced", mode)
 	}
 }
+
+type emptyPlanRules struct{}
+
+func (emptyPlanRules) Put(context.Context, approval.Rule) error { return nil }
+func (emptyPlanRules) Visible(context.Context, string, string, int) ([]approval.Rule, error) {
+	return nil, nil
+}
+func (emptyPlanRules) Delete(context.Context, string) error { return nil }

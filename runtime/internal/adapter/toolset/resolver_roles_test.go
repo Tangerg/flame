@@ -6,11 +6,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -40,10 +38,7 @@ func (roleGoalStub) Report(context.Context, goals.ReportCommand) (goals.ReportRe
 }
 
 func TestPlanModeToolsAreRootOnly(t *testing.T) {
-	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, nil, nil, nil)
-	if err != nil {
-		t.Fatalf("approval policy: %v", err)
-	}
+	policy := testApprovalPolicy(t)
 	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
 		DefaultCWD: t.TempDir(),
 		UserHome:   t.TempDir(),

@@ -3,6 +3,7 @@ package approvals
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestDefaultModeGetSet(t *testing.T) {
-	policy := mustStorelessRuntimePolicy(t, approval.ModeYolo)
+	policy := mustRuntimePolicy(t, approval.ModeYolo)
 	if mode, _ := policy.DefaultMode(t.Context()); mode != approval.ModeYolo {
 		t.Fatalf("initial mode = %v, want Yolo", mode)
 	}
@@ -22,33 +23,14 @@ func TestDefaultModeGetSet(t *testing.T) {
 	}
 }
 
-func TestNilRuleStore(t *testing.T) {
-	policy := mustStorelessRuntimePolicy(t, approval.ModeSafe)
-	request := approval.RememberRequest{
-		Scope: approval.ScopeGlobal, Tool: "shell", Subject: "go test", Decision: approval.Allow,
-	}
-	if err := policy.Remember(t.Context(), request); !errors.Is(err, ErrRuleStoreUnavailable) {
-		t.Fatalf("Remember error = %v, want ErrRuleStoreUnavailable", err)
-	}
-	if _, ok, _ := policy.Decide(t.Context(), approval.Query{Tool: "shell", Subject: "go test"}); ok {
-		t.Fatal("nil store matched a rule")
-	}
-	if rules, _ := policy.Rules(t.Context(), "s1", "/p"); rules != nil {
-		t.Fatalf("Rules = %+v, want nil", rules)
-	}
-	if err := policy.Forget(t.Context(), "rule_missing"); !errors.Is(err, ErrRuleStoreUnavailable) {
-		t.Fatalf("Forget error = %v, want ErrRuleStoreUnavailable", err)
-	}
-}
-
 func TestPolicyRejectsInvalidDefaultMode(t *testing.T) {
-	if _, err := NewRuntimePolicy(approval.Mode("invalid"), nil, nil, nil); !errors.Is(err, approval.ErrInvalidMode) {
+	if _, err := newTestRuntimePolicy(approval.Mode("invalid"), nil, nil, nil); !errors.Is(err, approval.ErrInvalidMode) {
 		t.Fatalf("New invalid mode error = %v, want ErrInvalidMode", err)
 	}
-	if _, err := NewRuntimePolicy(approval.ModePlan, nil, nil, nil); !errors.Is(err, approval.ErrInvalidMode) {
+	if _, err := newTestRuntimePolicy(approval.ModePlan, nil, nil, nil); !errors.Is(err, approval.ErrInvalidMode) {
 		t.Fatalf("New Plan default error = %v, want ErrInvalidMode", err)
 	}
-	policy := mustStorelessRuntimePolicy(t, approval.ModeSafe)
+	policy := mustRuntimePolicy(t, approval.ModeSafe)
 	if err := policy.SetDefaultMode(t.Context(), approval.Mode("invalid")); !errors.Is(err, approval.ErrInvalidMode) {
 		t.Fatalf("SetDefaultMode error = %v, want ErrInvalidMode", err)
 	}
@@ -78,7 +60,7 @@ func (m *memoryModeStore) DeleteSession(_ context.Context, sessionID string) err
 
 func TestPlanModeIsSessionScopedAndRestoresEntryMode(t *testing.T) {
 	modes := &memoryModeStore{states: make(map[string]approval.SessionMode)}
-	policy, err := NewRuntimePolicy(approval.ModeBalanced, nil, modes, nil)
+	policy, err := newTestRuntimePolicy(approval.ModeBalanced, nil, modes, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,16 +91,6 @@ func TestPlanModeIsSessionScopedAndRestoresEntryMode(t *testing.T) {
 	}
 }
 
-func TestPlanModeRequiresDurableStore(t *testing.T) {
-	policy := mustStorelessRuntimePolicy(t, approval.ModeBalanced)
-	if _, err := policy.EnterPlanMode(t.Context(), "session-a"); !errors.Is(err, ErrModeStoreUnavailable) {
-		t.Fatalf("EnterPlanMode error = %v, want ErrModeStoreUnavailable", err)
-	}
-	if _, _, err := policy.ExitPlanMode(t.Context(), "session-a"); !errors.Is(err, ErrModeStoreUnavailable) {
-		t.Fatalf("ExitPlanMode error = %v, want ErrModeStoreUnavailable", err)
-	}
-}
-
 type ruleStoreStub struct {
 	rules        []approval.Rule
 	err          error
@@ -134,13 +106,13 @@ func (r ruleStoreStub) Visible(_ context.Context, _, _ string, limit int) ([]app
 	if r.visibleLimit != nil {
 		*r.visibleLimit = limit
 	}
-	return r.rules, r.err
+	return slices.Clone(r.rules), r.err
 }
 func (r ruleStoreStub) Delete(context.Context, string) error { return r.err }
 
 func TestRuntimePolicyRejectsInvalidQueryBeforeRuleStore(t *testing.T) {
 	calls := 0
-	policy, err := NewRuntimePolicy(approval.ModeSafe, ruleStoreStub{visibleCalls: &calls}, nil, nil)
+	policy, err := newTestRuntimePolicy(approval.ModeSafe, ruleStoreStub{visibleCalls: &calls}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +126,7 @@ func TestRuntimePolicyRejectsInvalidQueryBeforeRuleStore(t *testing.T) {
 
 func TestRuntimePolicyOverfetchesAndRejectsRuleCapacity(t *testing.T) {
 	limit := 0
-	policy, err := NewRuntimePolicy(approval.ModeSafe, ruleStoreStub{
+	policy, err := newTestRuntimePolicy(approval.ModeSafe, ruleStoreStub{
 		rules: make([]approval.Rule, approval.MaximumVisibleRules+1), visibleLimit: &limit,
 	}, nil, nil)
 	if err != nil {
@@ -186,7 +158,7 @@ func TestRuntimePolicyProtectsVisibleRuleRelations(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			policy, err := NewRuntimePolicy(approval.ModeSafe, ruleStoreStub{rules: test.rules}, nil, nil)
+			policy, err := newTestRuntimePolicy(approval.ModeSafe, ruleStoreStub{rules: test.rules}, nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -203,7 +175,7 @@ func TestRuntimePolicyProtectsVisibleRuleRelations(t *testing.T) {
 
 func TestRuntimePolicyIsolatesVisibleRuleStorage(t *testing.T) {
 	rule := mustRuntimePolicyRule(t, approval.ScopeGlobal, "", approval.Allow)
-	policy, err := NewRuntimePolicy(approval.ModeSafe, ruleStoreStub{rules: []approval.Rule{rule}}, nil, nil)
+	policy, err := newTestRuntimePolicy(approval.ModeSafe, ruleStoreStub{rules: []approval.Rule{rule}}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,7 +205,7 @@ func mustRuntimePolicyRule(t *testing.T, scope approval.Scope, scopeKey string, 
 
 func TestCommittedApprovalMutationsPublishInvalidations(t *testing.T) {
 	var notices []invalidation.Notice
-	policy, err := NewRuntimePolicy(
+	policy, err := newTestRuntimePolicy(
 		approval.ModeSafe,
 		ruleStoreStub{},
 		nil,
@@ -266,7 +238,7 @@ func TestCommittedApprovalMutationsPublishInvalidations(t *testing.T) {
 func TestFailedApprovalMutationDoesNotPublishInvalidation(t *testing.T) {
 	wantErr := errors.New("store unavailable")
 	var notices []invalidation.Notice
-	policy, err := NewRuntimePolicy(
+	policy, err := newTestRuntimePolicy(
 		approval.ModeSafe,
 		ruleStoreStub{err: wantErr},
 		nil,
@@ -288,11 +260,36 @@ func TestFailedApprovalMutationDoesNotPublishInvalidation(t *testing.T) {
 	}
 }
 
-func mustStorelessRuntimePolicy(t *testing.T, mode approval.Mode) *RuntimePolicy {
+func mustRuntimePolicy(t *testing.T, mode approval.Mode) *RuntimePolicy {
 	t.Helper()
-	policy, err := NewRuntimePolicy(mode, nil, nil, nil)
+	policy, err := newTestRuntimePolicy(mode, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("NewRuntimePolicy: %v", err)
 	}
 	return policy
+}
+
+func newTestRuntimePolicy(mode approval.Mode, rules RuleStore, modes ModeStore, publish invalidation.Publish) (*RuntimePolicy, error) {
+	if rules == nil {
+		rules = ruleStoreStub{}
+	}
+	if modes == nil {
+		modes = &memoryModeStore{states: make(map[string]approval.SessionMode)}
+	}
+	return NewRuntimePolicy(mode, rules, modes, publish)
+}
+
+func TestNewPolicyRequiresDurableStores(t *testing.T) {
+	modes := &memoryModeStore{states: make(map[string]approval.SessionMode)}
+	var typedNil *memoryModeStore
+	for _, test := range []struct {
+		rules RuleStore
+		modes ModeStore
+	}{
+		{nil, modes}, {ruleStoreStub{}, nil}, {ruleStoreStub{}, typedNil},
+	} {
+		if policy, err := NewRuntimePolicy(approval.ModeBalanced, test.rules, test.modes, nil); err == nil || policy != nil {
+			t.Fatalf("NewRuntimePolicy = (%v, %v), want required storage error", policy, err)
+		}
+	}
 }
