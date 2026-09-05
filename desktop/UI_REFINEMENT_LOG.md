@@ -4433,3 +4433,45 @@ Twenty more previews with no fixture call: the schedule family, the goal family,
 `http_request`, `web_search`, `web_fetch`, `read_shell_output`, `stop_shell`, the
 skill family, `lsp`, `ask_user`, `enter_plan_mode`/`exit_plan_mode`,
 `read_tool_result`.
+
+---
+
+## Round 82 — a wire timestamp printed at a reader
+
+Status: **complete**
+
+Second batch of previews no fixture had called, the ones answering in JSON:
+`web_search`, `web_fetch`, `http_request`, `list_schedules`, `create_goal`. Each
+result is the exact shape its projection reads, so a preview that stops parsing
+fails here rather than degrading to a blank panel in front of someone.
+
+Four render correctly. The fifth printed its wire value:
+
+```
+next 2026-08-01T03:00:00Z
+```
+
+The settings pane renders the **same field** as `formatDateTime(schedule.nextRunAt)`
+— "next Aug 1, 11:00 AM", in the reader's locale. The preview handed the string
+straight through, so one fact had two renderings and the tool row got the machine
+one.
+
+### Before / after
+
+| | before | after |
+| --- | --- | --- |
+| schedule preview | `next 2026-08-01T03:00:00Z` | `next Aug 1, 11:00 AM` |
+| formatter | none | the one the settings pane already uses |
+| type | `font-mono` | prose, because a formatted date is not a literal |
+
+### Verification
+
+Read back from the DOM after the change. Visual **580/580** (572 before), twice.
+Guards green including `check:locales` rule 13, which is about exactly this class
+of mistake on the other axis. Unit 2370/4.
+
+### Next
+
+Fifteen previews still uncalled: the skill family, `lsp`, `ask_user`, the plan
+transitions, `read_shell_output`/`stop_shell`, `read_tool_result`,
+`delete_schedule`, `get_goal`, `report_goal_outcome`.

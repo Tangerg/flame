@@ -1,4 +1,5 @@
 import type { ToolPreviewProps } from "@/plugins/sdk";
+import { formatDateTime } from "@/lib/i18n/relativeTime";
 import { Badge, Icon, Tag } from "@/ui";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
 import { definePlugin } from "@/plugins/sdk";
@@ -36,9 +37,13 @@ function ScheduleRows({ tool }: ToolPreviewProps) {
             <Tag>{schedule.cron}</Tag>
             {!schedule.enabled && <Badge tone="warning">{t("schedules.off")}</Badge>}
           </div>
+          {/* Through the same formatter the settings pane reads this field with. Handed
+              straight through it printed the wire value — "next 2026-08-01T03:00:00Z" — a
+              machine timestamp in a reader's row, and the same fact rendered two ways in two
+              places. Mono goes with it: a formatted date is prose, not a literal. */}
           {schedule.nextRunAt && (
-            <div className="mt-0.5 font-mono text-ui-xs text-fg-faint">
-              {t("schedules.next", { time: schedule.nextRunAt })}
+            <div className="mt-0.5 text-ui-xs text-fg-faint">
+              {t("schedules.next", { time: formatDateTime(schedule.nextRunAt) })}
             </div>
           )}
         </div>

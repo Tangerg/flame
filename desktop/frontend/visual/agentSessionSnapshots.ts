@@ -27,6 +27,7 @@ export const VISUAL_AGENT_STATES = [
   "narrative",
   "tool-shells",
   "tool-search",
+  "tool-remote",
   "waves",
 ] as const;
 
@@ -299,6 +300,95 @@ const TOOL_SEARCH_CALL = searchTool(
     "  [flame] create_schedule, list_schedules, delete_schedule",
     "  [mcp:github] create_issue",
   ].join("\n"),
+);
+
+// A second batch of previews no fixture had called: the ones that answer in JSON rather than
+// prose. Each result is the exact shape its projection reads, so a preview that stops parsing
+// fails here instead of degrading to a blank panel in front of someone.
+const WEB_SEARCH_CALL = searchTool(
+  "item_remote_web_search",
+  "web_search",
+  { query: "sqlite wal checkpoint starvation" },
+  JSON.stringify({
+    results: [
+      {
+        url: "https://www.sqlite.org/wal.html",
+        title: "Write-Ahead Logging",
+        snippet: "A checkpoint runs automatically when the WAL passes a threshold.",
+      },
+      {
+        url: "https://sqlite.org/forum/forumpost/2c7b9f",
+        title: "WAL grows without bound under a long reader",
+        snippet: "A reader open across the checkpoint keeps frames alive.",
+      },
+    ],
+  }),
+);
+
+const WEB_FETCH_CALL = searchTool(
+  "item_remote_web_fetch",
+  "web_fetch",
+  { url: "https://www.sqlite.org/wal.html" },
+  JSON.stringify({
+    format: "markdown",
+    content:
+      "# Write-Ahead Logging\n\nA checkpoint moves frames from the WAL back into the database.",
+  }),
+);
+
+const HTTP_CALL = searchTool(
+  "item_remote_http",
+  "http_request",
+  { method: "GET", url: "http://127.0.0.1:17171/v2/health/ready" },
+  JSON.stringify({
+    status: 200,
+    duration: "12ms",
+    truncated: false,
+    headers: { "content-type": "application/json", "cache-control": "no-store" },
+    body: '{"ready":true,"database":"open"}',
+  }),
+);
+
+const SCHEDULES_CALL = searchTool(
+  "item_remote_schedules",
+  "list_schedules",
+  {},
+  JSON.stringify({
+    schedules: [
+      {
+        schedule_id: "sch_nightly",
+        title: "Nightly conformance sweep",
+        cron: "0 3 * * *",
+        instructions: "Run the conformance gates and post the digest.",
+        enabled: true,
+        next_run_at: "2026-08-01T03:00:00Z",
+        last_run_at: "2026-07-31T03:00:00Z",
+      },
+      // Disabled, because the row says so in a way only a disabled one can show.
+      {
+        schedule_id: "sch_weekly",
+        title: "Weekly dependency audit",
+        cron: "0 9 * * 1",
+        instructions: "Check for released framework versions.",
+        enabled: false,
+        next_run_at: "",
+        last_run_at: "2026-07-27T09:00:00Z",
+      },
+    ],
+  }),
+);
+
+const GOAL_CALL = searchTool(
+  "item_remote_goal",
+  "create_goal",
+  { objective: "Keep application-owned atomicity out of the Agent Framework." },
+  JSON.stringify({
+    goal: {
+      objective: "Keep application-owned atomicity out of the Agent Framework.",
+      status: "active",
+    },
+    message: "Goal recorded for this session.",
+  }),
 );
 
 const SHELL_READ: Item = {
@@ -1081,6 +1171,26 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       },
     ],
   },
+  "tool-remote": {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:05.000Z",
+        outcome: { type: "completed" },
+        metrics: { steps: 5, activeDurationMillis: 5_000 },
+      }),
+    ],
+    items: [
+      PROMPT,
+      WEB_SEARCH_CALL,
+      WEB_FETCH_CALL,
+      HTTP_CALL,
+      SCHEDULES_CALL,
+      GOAL_CALL,
+      RESPONSE,
+    ],
+    pendingInterruptSets: [],
+  },
+
   "tool-search": {
     runs: [
       run("finished", {
@@ -1195,6 +1305,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   narrative: [],
   "tool-shells": [],
   "tool-search": [],
+  "tool-remote": [],
   // The live round arrives as started items, not as snapshot history: a snapshot holds
   // only what has reached a terminal state.
   waves: [
