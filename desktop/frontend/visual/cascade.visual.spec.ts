@@ -78,6 +78,18 @@ test("no call site writes a utility the cascade then discards", async ({ page })
         }
       }
 
+      // A rule may spell the same edge logically and a utility physically, and the two collide
+      // in the cascade under different names. The app is LTR everywhere — the one `dir` in the
+      // tree is a code block declaring the same — so start is left and end is right.
+      const physical = (property: string) =>
+        property
+          .replace("-inline-start", "-left")
+          .replace("-inline-end", "-right")
+          .replace("-block-start", "-top")
+          .replace("-block-end", "-bottom");
+      const normalise = (props: Record<string, string>) =>
+        Object.fromEntries(Object.entries(props).map(([key, value]) => [physical(key), value]));
+
       const unlayered = rules.filter((rule) => rule.layer === null);
       const utilities = rules.filter((rule) => rule.layer === "utilities");
       const out: Conflict[] = [];
@@ -95,8 +107,9 @@ test("no call site writes a utility the cascade then discards", async ({ page })
           if (!matches(element, utility.sel)) continue;
           for (const global of unlayered) {
             if (!matches(element, global.sel)) continue;
-            for (const [property, wanted] of Object.entries(utility.props)) {
-              const rendered = global.props[property];
+            const rendered_ = normalise(global.props);
+            for (const [property, wanted] of Object.entries(normalise(utility.props))) {
+              const rendered = rendered_[property];
               if (rendered === undefined || rendered === wanted) continue;
               out.push({
                 property,

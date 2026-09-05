@@ -28,10 +28,13 @@ const STATE_LABELS: Record<VisualAgentState, string> = {
 function StateSidebar({ state }: { state: VisualAgentState }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <AgentSurfaceHeader divider={false} className="pl-[78px]">
-        <span className="text-ui-md font-semibold text-fg">Agent states</span>
-      </AgentSurfaceHeader>
+      {/* Empty, the way the product's drawer header is: the sidebar control is placed at
+          the window-controls gutter and the header content box starts at the same edge, so
+          anything written here is painted under the control. This caption is scaffolding
+          and belongs with the scaffolding below it. */}
+      <AgentSurfaceHeader corner="drawer" divider={false} />
       <div className="flex flex-col gap-0.5 px-2 pt-2">
+        <span className="px-2 pb-1 text-ui-md font-semibold text-fg">Agent states</span>
         {(Object.keys(STATE_LABELS) as VisualAgentState[]).map((candidate) => (
           <AgentRow
             key={candidate}
