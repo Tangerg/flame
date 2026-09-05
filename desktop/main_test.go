@@ -52,6 +52,29 @@ func TestDesktopWindowPinsTheCompactToolbarStyle(t *testing.T) {
 	}
 }
 
+// The frame is what a launch shows before the WebView paints anything, so the colour on it
+// has to be a canvas the app actually paints — not a third value that only exists here. The
+// pair is pinned against `--color-bg` across the language boundary by `check-bootstrap`;
+// this holds the branch itself, which no regex over the file can see.
+func TestDesktopWindowOpensOnACanvasTheAppPaints(t *testing.T) {
+	light := application.NewRGB(255, 255, 255)
+	dark := application.NewRGB(29, 31, 35)
+
+	want := light
+	if systemPrefersDarkAppearance() {
+		want = dark
+	}
+	if got := desktopWindowBackground(); got != want {
+		t.Fatalf("window background = %v, want %v for this appearance", got, want)
+	}
+	if desktopWindowOptions().BackgroundColour != want {
+		t.Fatal("the window options carry a colour the background function did not decide")
+	}
+	if light == dark {
+		t.Fatal("the two canvases must differ, or the appearance read decides nothing")
+	}
+}
+
 func TestDesktopApplicationBindsHostAsItsOnlyService(t *testing.T) {
 	host := mustDesktopHost(t, t.TempDir())
 	services := desktopApplicationOptions(host).Services

@@ -41,6 +41,24 @@ func desktopApplicationOptions(host *DesktopHost) application.Options {
 	}
 }
 
+// The colour the frame carries until the WebView paints over it.
+//
+// It has to be the canvas the app is ABOUT to paint, or a launch opens on one surface and
+// swaps to another. The theme lives in the WebView's storage, which Go cannot read — but
+// its default is "system", and that resolves to the OS appearance read here, so the
+// default user opens on the right one either way round. An explicitly chosen theme that
+// disagrees with the machine still shows a frame of the other canvas; that is one
+// preference against the default, not the default against every dark machine.
+//
+// Both literals ARE `--color-bg` per scheme, the same two `index.html` paints on `<html>`
+// before the stylesheet parses. `check-bootstrap` fails on any drift between the three.
+func desktopWindowBackground() application.RGBA {
+	if !systemPrefersDarkAppearance() {
+		return application.NewRGB(255, 255, 255)
+	}
+	return application.NewRGB(29, 31, 35)
+}
+
 // A real titled window with a transparent, empty title bar and content running full height
 // underneath it. The platform draws its own three controls over that content; the app
 // reserves a gutter for them from measured geometry (DesktopHost.WindowChrome).
@@ -60,7 +78,7 @@ func desktopWindowOptions() application.WebviewWindowOptions {
 		MinWidth:         minimumWindowWidth,
 		MinHeight:        minimumWindowHeight,
 		URL:              "/",
-		BackgroundColour: application.NewRGB(255, 255, 255),
+		BackgroundColour: desktopWindowBackground(),
 		Mac: application.MacWindow{
 			TitleBar: application.MacTitleBar{
 				AppearsTransparent:   true,

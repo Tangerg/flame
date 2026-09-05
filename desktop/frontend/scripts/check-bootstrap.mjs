@@ -96,22 +96,27 @@ expect(
 );
 
 // ── 5. The native window colour ───────────────────────────────────────────────
-// The window opens before the WebView paints, so its colour must be the LIGHT
-// canvas: the shell can't read a preference the WebView owns, and light is the
-// app's default scheme. A dark-theme launch shows this frame briefly — the cost
-// of not giving Go a second copy of the theme to read.
+// The window opens before the WebView paints, so its colour has to be the canvas the app
+// is about to paint. The shell can't read a preference the WebView owns — but that
+// preference DEFAULTS to "system", which resolves to the OS appearance the shell reads, so
+// it states both canvases and picks by appearance rather than opening every dark machine
+// on white.
 // v3 spells this `application.NewRGB(r, g, b)` on the WINDOW's options, where v2 had a
 // `&options.RGBA{...}` literal on the application's. Matching the constructor rather than
-// a struct literal is also why this reads as a call: there is no field to name.
-const rgba = shell.match(
-  /BackgroundColour:\s*application\.NewRGB\(\s*(\d+),\s*(\d+),\s*(\d+)\s*\)/,
+// a struct literal is also why this reads as a call: there is no field to name. Light
+// first, the order the token pair is read in.
+const shellCanvases = [
+  ...shell.matchAll(/application\.NewRGB\(\s*(\d+),\s*(\d+),\s*(\d+)\s*\)/g),
+].map(
+  (rgba) =>
+    `#${[rgba[1], rgba[2], rgba[3]].map((v) => Number(v).toString(16).padStart(2, "0")).join("")}`,
 );
-const shellHex =
-  rgba &&
-  `#${[rgba[1], rgba[2], rgba[3]].map((v) => Number(v).toString(16).padStart(2, "0")).join("")}`;
 expect(
-  shellHex !== null && canvasTokens.length === 2 && shellHex === canvasTokens[0],
-  `main.go opens the window ${shellHex} where the light --color-bg is ${canvasTokens[0]}`,
+  canvasTokens.length === 2 &&
+    shellCanvases.length === 2 &&
+    shellCanvases[0] === canvasTokens[0] &&
+    shellCanvases[1] === canvasTokens[1],
+  `main.go opens the window ${shellCanvases.join(" / ")} where --color-bg is ${canvasTokens.join(" / ")}`,
 );
 
 // The runtime-derived mirrors — the type ladder, the depth step, the motion ladder and the
