@@ -35,6 +35,7 @@ vi.mock("@/plugins/builtin/agent/public/run", () => ({
   cancelSessionRun: projection.cancelRun,
   useActiveSessionRunTree: () => [{ run: running, children: [] }],
   useActiveSessionTimeline: () => [],
+  useActiveSessionToolCalls: () => ({}),
 }));
 
 vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({

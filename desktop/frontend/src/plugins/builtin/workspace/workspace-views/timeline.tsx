@@ -1,7 +1,10 @@
 import type { IconName } from "@/ui";
 import type { TimelineEntry, TimelineEntryKind } from "@/plugins/sdk/types/agentSessionView";
 import { Badge, EmptyState, Icon, IconButton } from "@/ui";
-import { useT } from "@/lib/i18n";
+import { useT, type Translate } from "@/lib/i18n";
+import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
+import { toolIntent } from "@/plugins/builtin/agent/public/messagePresentation";
+import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { cn } from "@/lib/classNames";
 import {
@@ -64,9 +67,26 @@ const STATUS_MARK: Record<
 
 const TREE_INDENT = ["", "ml-3", "ml-6", "ml-9", "ml-12", "ml-16"] as const;
 
-function TimelineRow({ entry }: { entry: TimelineEntry }) {
+/**
+ * What the row is ABOUT.
+ *
+ * The fold puts the identifying argument here and falls back to the tool's wire NAME when it
+ * finds none — deliberately, because a translated string in view state would freeze a
+ * language into it. The transcript resolves that fallback through `toolIntent`; this surface
+ * printed it, so a run's audit trail read `ask_user`, `read_tool_result` and `sh_01` beside
+ * rows that said "Verify package dependencies".
+ */
+function entrySubject(t: Translate, entry: TimelineEntry, tool: ToolCall | undefined): string {
+  if (!tool || entry.summary === undefined || entry.summary !== tool.name)
+    return entry.summary ?? "";
+  const intent = toolIntent(t, tool);
+  return intent.detail?.value ?? intent.label.value;
+}
+
+function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | undefined }) {
   const t = useT();
   const icon = KIND_ICON[entry.kind];
+  const subject = entrySubject(t, entry, tool);
   return (
     <div className="flex items-start gap-2.5 px-[var(--density-column-gutter-wide)] py-1.5">
       <Icon name={icon} size="xs" className="mt-1 shrink-0 text-fg-faint" />
@@ -75,9 +95,9 @@ function TimelineRow({ entry }: { entry: TimelineEntry }) {
           <span className="shrink-0 text-ui-sm font-medium text-fg">
             {t(KIND_I18N[entry.kind])}
           </span>
-          {entry.summary && (
-            <span title={entry.summary} className="truncate font-mono text-ui-sm text-fg-muted">
-              {entry.summary}
+          {subject && (
+            <span title={subject} className="truncate font-mono text-ui-sm text-fg-muted">
+              {subject}
             </span>
           )}
         </div>
@@ -181,6 +201,7 @@ export function TimelineTab() {
   const t = useT();
   const timeline = useActiveSessionTimeline();
   const runTree = useActiveSessionRunTree();
+  const toolCalls = useActiveSessionToolCalls();
   const runtimeAvailable = useRuntimeCommandsAvailable();
   const view = timelineViewModel(timeline, runTree);
 
@@ -218,7 +239,13 @@ export function TimelineTab() {
           >
             <TimelineRunHeader group={group} runtimeAvailable={runtimeAvailable} />
             {group.items.length > 0 ? (
-              group.items.map((entry) => <TimelineRow key={entry.id} entry={entry} />)
+              group.items.map((entry) => (
+                <TimelineRow
+                  key={entry.id}
+                  entry={entry}
+                  tool={entry.refId === undefined ? undefined : toolCalls[entry.refId]}
+                />
+              ))
             ) : (
               <p className="px-[var(--density-column-gutter-wide)] py-2 text-pretty text-ui-xs text-fg-faint">
                 {t("timeline.noEvents")}

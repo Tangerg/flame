@@ -5427,3 +5427,59 @@ the command it settled. Mutated by dropping the summary, both fail. Visual
 
 Both approval decisions are drawn. The question interrupt settles through the
 same local-entry path and has no timeline kind of its own.
+
+---
+
+## Round 100 — `apply_patch`, in the audit trail
+
+Status: **complete**
+
+Two findings, one fixed and one reported.
+
+### Fixed: the timeline printed the fallback the fold hands it
+
+`labelSource` falls back to the tool's **wire name** when a call carries no
+identifying argument, and says why: *"spelling '3 files' here freezes a language
+into view state."* The fold is right to. The transcript resolves that sentinel
+through `toolIntent`; the timeline printed it.
+
+| | before | after |
+| --- | --- | --- |
+| a patch with a multi-file receipt | `apply_patch` | Applied patch |
+| a settled question | `ask_user` | Asked you |
+| a stored result | `read_tool_result` | Read stored result |
+| everything with an argument | unchanged | unchanged |
+
+Same defect as round 87's approval card, in the surface a person opens to
+reconstruct what a run did. Resolved through the same owner rather than a second
+table: the row takes the ToolCall its `refId` names and asks `toolIntent`.
+
+The guard checks against the whole built-in vocabulary rather than the two names
+that happened to appear, so a tool added later is covered without being listed.
+
+### Reported, not changed: questions leave no trace
+
+The timeline records an approval twice — asked, then settled with a verdict and
+a subject. A **question** records nothing:
+
+| state | its whole timeline |
+| --- | --- |
+| `question` | `run-start` |
+| `question-multi` | `run-start` |
+
+A run parked on a question — one of the two ways a run waits for a person —
+shows only "Run started" on the surface whose job is to say where the time went.
+`TimelineEntryKind` simply has no question member, with nothing stating that as
+a decision. Mirroring the approval pair is a small change; it is also new
+product behaviour on an audit surface, so it is written down here rather than
+taken.
+
+### Verification
+
+Mutated by restoring the raw summary, the guard fails on four rows. Visual
+**648/648**; two goldens moved, the rows whose subject changed. Two others and a
+0.0007 layout shift failed once under load and pass in isolation — the same
+magnitude-stable, identity-unstable flake this file already records for
+`delegated`. The 20-script gate is green; unit 2395/4 outside the
+runtime-contract e2e — one of which was mine: a new hook the timeline's own unit
+test had to be told about.

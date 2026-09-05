@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "./test";
 import { freezeVisualClock } from "./frozenClock";
 import { en } from "@/lib/i18n/locales/en";
+import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
 import { DOCK_MIN_WIDTH_PX, DOCK_SAFE_AREA_PX } from "@/lib/shellGeometry";
 import {
   VISUAL_DOCK_WIDTH_RATIO,
@@ -785,6 +786,27 @@ test("deleting a schedule asks first, and a declined ask changes nothing", async
   await dialog.getByRole("button", { name: "Cancel" }).click();
 
   await expect(rows).toHaveCount(2);
+});
+
+// A run's audit trail is read by a person, and the fold hands it the tool's WIRE NAME
+// whenever a call had no identifying argument — deliberately, because a translated string in
+// view state would freeze a language into it. The transcript resolves that fallback; this
+// surface printed it, so rows read `apply_patch` beside rows reading "Verify package
+// dependencies". Checked against the built-in vocabulary rather than the two names that
+// happened to appear, so a tool added later is covered without being listed here.
+test("the timeline names tools the way the transcript does, never by wire name", async ({
+  page,
+}) => {
+  const wireNames = Object.keys(TOOL_ICON_BY_NAME);
+  expect(wireNames.length).toBeGreaterThan(20);
+
+  for (const state of ["dock-timeline", "dock-runs"] as const) {
+    await openWorkspace(page, { state });
+    await waitForWorkspaceState(page, state);
+    const subjects = await page.locator("[data-dock-view-id='timeline'] .truncate").allInnerTexts();
+    expect(subjects.length).toBeGreaterThan(3);
+    expect(subjects.filter((subject) => wireNames.includes(subject.trim()))).toEqual([]);
+  }
 });
 
 // The HITL loop's own trace, which no fixture could hold: an approval-result entry exists
