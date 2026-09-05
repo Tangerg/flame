@@ -3309,3 +3309,76 @@ The blocked six if `runtime/.../sessions/` has settled. Otherwise the same AST
 lens has one more question in it: a prop that IS passed but always with the same
 literal is a variant point that never varied, which is the `Loader` shape one
 level down.
+
+## Round 49 — the six "blocked" e2e were never blocked
+
+Round 38 set six e2e failures aside on the reasoning that
+`runtime/internal/application/agent/sessions/` was uncommitted and editing the
+frontend to accept the current answers would freeze a half-finished backend.
+**That reasoning was wrong, and this round proves it.**
+
+### The experiment
+
+`git worktree add --detach /tmp/flame-head HEAD` — an isolated checkout that
+touches the working tree not at all — with `node_modules` symlinked in. The e2e
+builds the runtime from `../../runtime`, so a clean worktree builds a clean
+runtime.
+
+All six reproduce there. They are not the in-flight work; they are red at HEAD.
+Which also means **`npm run check`, the gate this repo relies on, has been red**,
+since the e2e is in `src/**/*.test.ts` with no skip and no env gate.
+
+One methodological trap on the way: checking out an old commit reverts the
+FRONTEND too, so the first bisect step measured an old pairing and reported
+round 38's already-fixed path-echo failure. The isolation that answers the
+question is tip frontend with `git checkout <old> -- runtime`.
+
+### Four of the six, one cause (已完成)
+
+`FLAME_HOME` is not the data directory. `runtime_bootstrap.go` roots it one level
+deeper:
+
+```go
+dataDirectory, err := localruntime.DataDirectoryAt(filepath.Join(flameHomePath, "runtime"))
+```
+
+Every user-scoped store hangs off THAT — `SkillsUserDir`, `RecipesGlobalDir`,
+`knowledgefile.New(config.DataDirectory, …)`. The suite wrote its fixtures a
+level up, at `$FLAME_HOME/skills`, `$FLAME_HOME/recipes`, `$FLAME_HOME/FLAME.md`,
+where nothing reads them. That single mistake produced four unrelated-looking
+failures:
+
+| symptom | cause |
+| --- | --- |
+| `RpcError: internal_error` moving a managed Skill | the skill was never there |
+| skill archive/restore returns `data: []` | same |
+| `knowledge.changed` never arrives | the user `FLAME.md` was never there |
+| `recipes.list()` omits the global recipe | the global recipe was never there |
+
+A `runtimeStore` derived once, with the layout written down beside it, and the
+one assertion that spelled the old path out. **6 → 2.**
+
+### The two that remain, and why I stopped
+
+Both compaction cutpoints time out: the run never reaches the provider call that
+should carry the summary. Two hypotheses tested and discarded — the trigger
+estimates tokens locally from the request payload, so a fake provider not
+reporting usage cannot be it; and tripling `compactionSteerCount` from 21 to 60
+does not help, so it is not a stale tuning constant. What is left is inside the
+runtime's compaction path, which this scope does not modify and which would cost
+more to diagnose than the finding is worth from here.
+
+The other two failures are the round-38 pair: `segment.finished.json` predates
+its own required `contextTokens` field. One line, in `runtime/`.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, guards — green.
+- Unit: **2369 passing, 4 failing** — up from 2365/8.
+- Worktree removed; `git worktree list` shows only the main tree.
+
+### Next round
+
+The four remaining failures all need `runtime/`. Everything this scope can reach
+in that area is done, and the log should say so plainly rather than keep
+re-listing them as "blocked".

@@ -674,6 +674,12 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
   let root = "";
   let runtimeHome = "";
   let runtimeData = "";
+  // `FLAME_HOME` is not the data directory: the executable roots it at `$FLAME_HOME/runtime`
+  // (`runtime_bootstrap.go`), and every user-scoped store hangs off THAT — skills, global
+  // recipes, the user `FLAME.md`. Fixtures written a level up land where nothing reads them,
+  // which is what made this suite report an empty skill list, a missing global recipe and an
+  // `internal_error` moving a managed skill.
+  let runtimeStore = "";
   let baseUrl = "";
   let mcpFixturePath = "";
   let providerBaseUrl = "";
@@ -754,6 +760,7 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     root = join(environmentRoot, "workspace");
     runtimeHome = join(environmentRoot, "home");
     runtimeData = join(environmentRoot, "runtime-data");
+    runtimeStore = join(runtimeData, "runtime");
     await Promise.all([mkdir(root, { recursive: true }), mkdir(runtimeHome, { recursive: true })]);
     mcpFixturePath = join(environmentRoot, "mcp-fixture.mjs");
     await writeFile(
@@ -800,7 +807,7 @@ for await (const line of lines) {
 }
 `,
     );
-    const managedSkillDirectory = join(runtimeData, "skills", managedSkillName);
+    const managedSkillDirectory = join(runtimeStore, "skills", managedSkillName);
     await mkdir(managedSkillDirectory, { recursive: true });
     await writeFile(
       join(managedSkillDirectory, "SKILL.md"),
@@ -3404,7 +3411,7 @@ for await (const line of lines) {
     });
 
     const userSkillName = "external-user-skill";
-    const userSkillDirectory = join(runtimeData, "skills", userSkillName);
+    const userSkillDirectory = join(runtimeStore, "skills", userSkillName);
     await mkdir(userSkillDirectory, { recursive: true });
     await writeFile(
       join(userSkillDirectory, "SKILL.md"),
@@ -3776,7 +3783,7 @@ for await (const line of lines) {
     for (const change of [
       {
         scope: "home" as const,
-        path: join(runtimeData, "FLAME.md"),
+        path: join(runtimeStore, "FLAME.md"),
         content: "external home\n",
       },
       {
@@ -4025,12 +4032,12 @@ for await (const line of lines) {
     await execFileAsync("git", ["init", "--quiet"], { cwd: projectRoot });
 
     const projectRecipe = join(workspaceRoot, ".flame", "recipes", "project-side-api.md");
-    const globalRecipe = join(runtimeData, "recipes", "global-side-api.md");
+    const globalRecipe = join(runtimeStore, "recipes", "global-side-api.md");
     await Promise.all([
       mkdir(join(workspaceRoot, ".flame", "recipes"), { recursive: true }),
       mkdir(join(projectRoot, ".flame"), { recursive: true }),
       mkdir(join(runtimeHome, ".flame"), { recursive: true }),
-      mkdir(join(runtimeData, "recipes"), { recursive: true }),
+      mkdir(join(runtimeStore, "recipes"), { recursive: true }),
       mkdir(join(workspaceRoot, "nested"), { recursive: true }),
     ]);
     await Promise.all([
@@ -4148,7 +4155,7 @@ for await (const line of lines) {
           description: "Global side API recipe",
           body: "Explain $ARGUMENTS",
           scope: "global",
-          source: join(canonicalRuntimeData, "recipes", "global-side-api.md"),
+          source: join(canonicalRuntimeData, "runtime", "recipes", "global-side-api.md"),
         }),
       ]),
     });
