@@ -4818,3 +4818,63 @@ runtime-contract e2e.
 
 The delegated run past one level, and the banner family — recovery, cwd-missing,
 run-error — of which one state each is photographed.
+
+---
+
+## Round 89 — the error banner's other half
+
+Status: **complete**
+
+The run-error banner offers a Retry action, and **it had never rendered**. The
+one photographed error is `provider_rejected`, which is on the banner's own
+unretryable list, so every golden showed the banner with its recovery action
+missing and nothing said so.
+
+Three suspicions on the way in, all closed by reading rather than by changing:
+
+- the shell preview passing `tool.result` where the shape-keyed one extracts
+  `.output` — each right for its own case, because the fold extracts for
+  `toolCategory === "command"` and only `shell` is;
+- `useActiveSessionProblem` returning a fresh object each render, which would
+  make the countdown's `countdown.problem === error` check never hold — it
+  returns a reference into the stored view;
+- the primary action wearing the banner's negative tone rather than the accent
+  the approval card uses — both banners do it, identically, and the tint groups
+  the action with the problem it resolves. Consistent, so left alone.
+
+And one contradiction that WAS real, in the fixture: its invented detail read
+"Verify the selected model and retry" on the one code the banner refuses to
+retry. Replaced with the Runtime's own wording for that failure.
+
+### Before / after
+
+| | before | after |
+| --- | --- | --- |
+| retryable error | **no state** | `error-retryable`, `provider_error` |
+| Retry action | never rendered | rendered, enabled |
+| `error` detail | "…and retry", invented | the Runtime's own string |
+| countdown | never rendered | unit-tested under fake timers |
+
+### Where each half is tested
+
+The countdown label changes once a second, so a golden photographs whichever
+number it landed on. The *shape* goes in a golden — a retryable error with no
+retry-after, deterministic — and the *ticking* goes to jsdom where time is
+controllable: 3 → 2 → enabled, and a click during the wait sends nothing.
+Mutated by removing `disabled={retryIn > 0}` and the guard in `onRetry`, two of
+the four fail.
+
+One casualty worth recording: `getByRole`'s `name` matches as a SUBSTRING, so
+the sidebar row "Error, retryable" answered a test looking for "Retry". The test
+now scopes to the transcript, which no future state name can reach into.
+
+### Verification
+
+Visual **613/613**; 49 goldens moved, 47 of them because the fixture sidebar
+gained a row and every agent frame includes it; the 20-script gate is green;
+unit 2394/4 outside the runtime-contract e2e.
+
+### Next
+
+The delegated run past one level — `delegated` photographs a single child — and
+the cwd-missing banner, which has an editing mode no state opens.

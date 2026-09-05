@@ -16,6 +16,7 @@ const EXPECTED_ATTENTION: Record<VisualAgentState, string> = {
   terminal: "finished",
   canceled: "finished",
   error: "finished",
+  "error-retryable": "finished",
   recovery: "finished",
   delegated: "running",
   "long-content": "finished",
@@ -615,7 +616,9 @@ test("recovery action dismisses the problem and resends the last user input", as
   await page.goto("/visual/?fixture=agent&theme=light&state=recovery");
   await page.locator("html[data-visual-ready]").waitFor();
 
-  await page.getByRole("button", { name: "Retry" }).click();
+  // Scoped to the transcript: the fixture sidebar lists every state by name, and a state
+  // whose name merely CONTAINS the word would otherwise answer for the action.
+  await page.getByTestId("agent-state").getByRole("button", { name: "Retry" }).click();
 
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page.locator("html")).toHaveAttribute(

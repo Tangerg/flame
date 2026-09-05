@@ -21,6 +21,7 @@ export const VISUAL_AGENT_STATES = [
   "terminal",
   "canceled",
   "error",
+  "error-retryable",
   "recovery",
   "delegated",
   "long-content",
@@ -1209,11 +1210,28 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         finishedAt: "2026-07-31T08:00:12.000Z",
         outcome: {
           type: "failed",
+          // The Runtime's own wording for this failure, not an instruction invented here:
+          // `provider_rejected` is one of the codes the banner refuses to retry, so prose
+          // telling the reader to retry would contradict the button it is standing next to.
           error: {
             type: "provider_rejected",
-            detail: "The provider rejected the request. Verify the selected model and retry.",
+            detail: "served model pricing is unavailable for the configured cost limit",
           },
         },
+      }),
+    ],
+    items: [PROMPT],
+    pendingInterruptSets: [],
+  },
+  // The other half of the error banner, which no state had ever reached: a code that is NOT
+  // in the unretryable set, so the Retry action renders at all. Deliberately without
+  // `retryAfterSeconds` — the countdown ticks once a second and a golden taken inside that
+  // band photographs whichever number it lands on. The ticking is a unit test's job.
+  "error-retryable": {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:12.000Z",
+        outcome: { type: "failed", error: { type: "provider_error" } },
       }),
     ],
     items: [PROMPT],
@@ -1612,6 +1630,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   terminal: [],
   canceled: [],
   error: [],
+  "error-retryable": [],
   recovery: [],
   delegated: [],
   "long-content": [],
