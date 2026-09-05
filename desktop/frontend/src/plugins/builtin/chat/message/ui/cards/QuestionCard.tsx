@@ -224,7 +224,11 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
     <Surface
       ref={requestRef}
       inset="none"
-      tabIndex={0}
+      // Focused programmatically when a question arrives, so the prompt is read and the next
+      // Tab reaches the first option — the same reason a menu popup takes focus. NOT a tab
+      // stop: as one it was a stop that showed nothing, since a card opting out of the ring
+      // has no row state to stand in for it.
+      tabIndex={-1}
       data-slot="question-request-surface"
       data-chrome-focus
       className="overflow-hidden rounded-bubble shadow-[var(--shadow-popover)] outline-none"

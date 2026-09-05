@@ -188,7 +188,11 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
             >
               <TabsPrimitive.Tab
                 value={tab.id}
-                data-chrome-focus=""
+                // NOT `data-chrome-focus`: the row state that would stand in for the ring is
+                // `focus-within:text-fg`, which the ACTIVE tab already has — so keyboard focus
+                // landing on it showed nothing at all. The ring is drawn inward because the
+                // strip scrolls and clips.
+                data-focus-inset=""
                 // The × is a pointer affordance: a focusable sibling inside a `tablist` is
                 // an unallowed child (axe `aria-required-children`, critical), and hiding it
                 // from the keyboard the way `visibility: hidden` does leaves closing with no

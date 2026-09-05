@@ -2790,3 +2790,78 @@ Still the six blocked e2e. Otherwise: the same question asked of `:focus-within`
 rings and of the `[data-chrome-focus]` controls, which opt out of the ring
 entirely on the promise that a row state stands in for it — nothing checks that
 the row state is actually there.
+
+## Round 42 — the promise `data-chrome-focus` makes, and the three that broke it
+
+`data-chrome-focus` turns the focus ring off on a stated promise. `menu.tsx`
+spells it out: a popup takes focus so the keyboard can drive it, *"the highlighted
+ITEM is the indicator here, so the popup opts out the way the design system says a
+row state may"*. Fourteen call sites opt out. **Nothing checked the promise.**
+
+### The measurement, and the two probes that lied first
+
+Press Tab until a control that opted out has focus, photograph it, blur,
+photograph again. Identical bytes mean a keyboard user sees nothing.
+
+Two earlier versions produced findings I nearly reported and did not:
+
+1. **`element.focus()` is not keyboard focus.** Programmatic focus skips the
+   roving-tabindex activation a dock tab uses, so it reported the theme toggle and
+   five dock tabs as silent when a real Tab shows them plainly. **7 findings, 5 of
+   them artifacts.**
+2. **The `Tab` press that arms the ring lands on the first tabbable.** Whatever
+   that was got measured already focused and reported "no change" — that was
+   "Back to app" in settings.
+3. **Reading computed style straight after `.focus()` catches a transition
+   starting.** The row carries `transition-[background-color,color]`, so the
+   colour had not moved yet.
+
+With real Tab, no pre-focus and a settled transition: **2 findings**, and fixing
+those exposed a third.
+
+### The three (已完成)
+
+| control | the promised stand-in | what was there |
+| --- | --- | --- |
+| `QuestionCard`'s surface | — | a `tabIndex={0}` stop showing nothing |
+| `HeaderDiffStat` | — | **no row at all** — it sits in the surface header |
+| the **active** dock tab | `focus-within:text-fg` | the active tab already has `data-[active]:text-fg` |
+
+- The question card is focused **programmatically** (`requestRef.current?.focus()`)
+  when a question arrives, so the prompt is read and the next Tab reaches the
+  first option — the same reason a menu popup takes focus. It is now
+  `tabIndex={-1}`: still a landing target, no longer an invisible tab stop.
+- `HeaderDiffStat` opted out with nothing to opt into. The attribute is gone and
+  it takes the ordinary ring.
+- The dock tab's stand-in works for an inactive tab and is invisible on the active
+  one, which is exactly where a keyboard lands first. It now takes the ring,
+  `data-focus-inset` because the strip scrolls and clips. **Photographed**:
+  `/tmp/round42/active-tab-focused.png`, 3x — a clear ring where there was
+  nothing.
+
+### The detector is now a test
+
+`visual/chromeFocus.visual.spec.ts` walks the real tab order in four states and
+fails with the route, tag and label of anything that opted out and shows nothing.
+Negative-tested by putting the attribute back on `HeaderDiffStat`.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, all fifteen guards — green.
+- Unit: **2365 passing**; the 8 failures are the `src/rpc/` set blocked in round 38
+  (`runtime/.../sessions/` still uncommitted at 7 files).
+- Visual: **434/434** — 430 goldens with none regenerated, plus cascade, reveal,
+  focus-ring and chrome-focus. None of this is visible to a golden: the ring
+  paints only under `html:not([data-pointer])` and goldens do not focus anything.
+
+### Resources reclaimed
+
+Both probes deleted after promotion, port 4174 freed, no stray processes,
+`playwright.visual.config.ts` unmodified.
+
+### Next round
+
+The blocked six, if `runtime/.../sessions/` has settled. Otherwise the fourth
+question in this family: `[data-reveal="rest"]`, the other end of the reveal pair,
+which is supposed to give way at the same moment — nothing checks the two are
+actually synchronised.

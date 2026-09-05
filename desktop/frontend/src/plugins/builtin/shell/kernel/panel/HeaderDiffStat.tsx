@@ -29,7 +29,6 @@ export function HeaderDiffStat({ className }: { className?: string }) {
     <Button
       size="sm"
       press={false}
-      data-chrome-focus=""
       aria-label={t("workspace.view.title.diff")}
       onClick={openDiffViewInDock}
       className={cn("gap-1.5 px-1.5 font-mono text-ui-sm", className)}
