@@ -71,7 +71,7 @@ func TestGeneratedContractHasNoDrift(t *testing.T) {
 }
 
 // Where the runtime publishes its generated TypeScript binding, mirroring the
-// generation directive on dispatch's contract_methods.go. Client modules own how
+// generation directive on the dispatch contract catalog. Client modules own how
 // they consume or vendor this output; the runtime never writes into their trees.
 const (
 	tsWireDir       = "contract/typescript"

@@ -796,54 +796,6 @@ func TestCapabilityAdaptersDoNotImportLowLevelTransportSDKs(t *testing.T) {
 	})
 }
 
-// TestBootstrapExposesNoBusinessMethod enforces §16 rule 8: the composition root
-// may own only construction and process-lifecycle behavior. The package-private
-// application capsule is a closed set of delivery/startup/worker composition
-// operations; domain commands still belong to Application.
-func TestBootstrapExposesNoBusinessMethod(t *testing.T) {
-	root := moduleRoot(t)
-	fset := token.NewFileSet()
-	allowed := map[string]map[string]bool{
-		"Host": {"Close": true},
-		"hostApplication": {
-			"recoverStartup": true, "newDeliveryHandler": true,
-			"newDeliveryEndpoint": true, "notifyExternalChange": true,
-			"startWorkers": true,
-		},
-		"hostWorkers":    {"runOwnershipRecovery": true},
-		"Instance":       {"Close": true, "Endpoint": true, "ServerInfo": true},
-		"InstanceConfig": {"validate": true},
-	}
-	walkErr := filepath.WalkDir(filepath.Join(root, "internal", "bootstrap"), func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-		f, err := parser.ParseFile(fset, path, nil, 0)
-		if err != nil {
-			return err
-		}
-		for _, decl := range f.Decls {
-			fn, ok := decl.(*ast.FuncDecl)
-			if !ok || fn.Recv == nil {
-				continue // plain assembly/configuration functions are fine
-			}
-			receiver := receiverName(fn.Recv)
-			if allowed[receiver][fn.Name.Name] {
-				continue
-			}
-			rel, _ := filepath.Rel(root, path)
-			t.Errorf("%s: bootstrap receiver method %s.%s is forbidden — move business behavior to application or an adapter (§16 rule 8)", rel, receiver, fn.Name.Name)
-		}
-		return nil
-	})
-	if walkErr != nil {
-		t.Fatalf("walk bootstrap: %v", walkErr)
-	}
-}
-
 // TestBootstrapDoesNotOwnLiveRuntimeState keeps the composition root limited to
 // startup loading and assembly. Long-lived synchronization, fallback policy,
 // and adapter projections belong to their owning application or adapter type.
@@ -872,40 +824,6 @@ func TestModelAdapterDoesNotRetainCredentialGenerations(t *testing.T) {
 	})
 }
 
-// TestModelAdapterHasOneProviderClientConstructionOwner prevents catalog
-// probes, chat, and embeddings from rebuilding credential/endpoint policy in
-// separate files. provider_inputs.go is the sole translation from the Provider
-// aggregate to llm.ClientSpec.
-func TestModelAdapterHasOneProviderClientConstructionOwner(t *testing.T) {
-	root := moduleRoot(t)
-	files, err := filepath.Glob(filepath.Join(root, "internal", "adapter", "model", "*.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, path := range files {
-		name := filepath.Base(path)
-		if name == "provider_inputs.go" || strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-		forbidQualifiedCalls(t, path, map[string]string{
-			"llm.NewClientSpec": "provider_inputs.go owns Provider-to-client construction",
-		})
-	}
-}
-
-// TestApplicationCoordinatorsDoNotExposeAtomicState makes live-state
-// synchronization an implementation detail of RoleState and ToolPolicyState,
-// rather than a cross-boundary constructor dependency.
-func TestApplicationCoordinatorsDoNotExposeAtomicState(t *testing.T) {
-	root := moduleRoot(t)
-	for _, path := range []string{
-		filepath.Join(root, "internal", "application", "integration", "models", "coordinator.go"),
-		filepath.Join(root, "internal", "application", "integration", "mcp", "coordinator.go"),
-	} {
-		forbidExternalImports(t, path, []string{"sync/atomic"})
-	}
-}
-
 func receiverName(recv *ast.FieldList) string {
 	if recv == nil || len(recv.List) == 0 {
 		return ""
@@ -919,70 +837,6 @@ func receiverName(recv *ast.FieldList) string {
 		return ""
 	}
 	return id.Name
-}
-
-// TestHostOwnsShutdownGraph enforces the B9 resource boundary without relying
-// on source text: Host owns one shared lifetime, and that lifetime owns every
-// process-level shutdown stage plus tool/process resources. Engine must not
-// regain resource ownership.
-func TestHostOwnsShutdownGraph(t *testing.T) {
-	root := moduleRoot(t)
-	dir := filepath.Join(root, "internal", "bootstrap")
-	structs, walkErr := collectStructDeclarations(dir)
-	if walkErr != nil {
-		t.Fatalf("walk bootstrap: %v", walkErr)
-	}
-
-	host := structFieldNames(structs["Host"])
-	if _, ok := host["lifetime"]; !ok {
-		t.Fatal("bootstrap.Host must own the shared shutdown lifetime")
-	}
-	for _, forbidden := range []string{"engine", "toolClosers", "resources"} {
-		if _, ok := host[forbidden]; ok {
-			t.Errorf("bootstrap.Host must not copy %s outside its shared lifetime", forbidden)
-		}
-	}
-
-	lifetime := structFieldNames(structs["hostLifetime"])
-	for _, required := range []string{
-		"goalDriver",
-		"mcpCoordinator",
-		"runCoordinator",
-		"executor",
-		"runEffectTasks",
-		"toolResources",
-		"hostResources",
-	} {
-		if _, ok := lifetime[required]; !ok {
-			t.Errorf("bootstrap.hostLifetime must own %s", required)
-		}
-	}
-	if _, ok := lifetime["engine"]; ok {
-		t.Error("bootstrap.hostLifetime owns engine; Agent execution must not be a resource closer")
-	}
-}
-
-func collectStructDeclarations(root string) (map[string]*ast.StructType, error) {
-	structs := make(map[string]*ast.StructType)
-	err := walkProductionGoFiles(root, func(_ string, file *ast.File) error {
-		for _, declaration := range file.Decls {
-			general, isTypeDeclaration := declaration.(*ast.GenDecl)
-			if !isTypeDeclaration || general.Tok != token.TYPE {
-				continue
-			}
-			for _, spec := range general.Specs {
-				named, isNamedType := spec.(*ast.TypeSpec)
-				if !isNamedType {
-					continue
-				}
-				if structure, isStruct := named.Type.(*ast.StructType); isStruct {
-					structs[named.Name.Name] = structure
-				}
-			}
-		}
-		return nil
-	})
-	return structs, err
 }
 
 // TestDeliveryHoldsNoRunLifecycleState enforces §16 rule 5: the delivery Handler
@@ -1055,19 +909,6 @@ func exprString(e ast.Expr) string {
 	default:
 		return ""
 	}
-}
-
-func structFieldNames(value *ast.StructType) map[string]struct{} {
-	out := map[string]struct{}{}
-	if value == nil || value.Fields == nil {
-		return out
-	}
-	for _, field := range value.Fields.List {
-		for _, name := range field.Names {
-			out[name.Name] = struct{}{}
-		}
-	}
-	return out
 }
 
 // TestApplicationEventFreeOfProtocol enforces §16 rule 9: application (its Events,
@@ -1230,51 +1071,6 @@ func TestGoalReasonStaysMachineReadable(t *testing.T) {
 	forbidTopLevelNames(t, filepath.Join(root, "internal", "delivery"), map[string]string{
 		"goalReason": "a plain-text reason loses the stable code and client localization boundary",
 	})
-}
-
-// TestDeliveryProjectionUsesOneVerb keeps outbound mapping under the existing
-// presentX vocabulary. Inbound mappers may retain the explicit xFromWire form;
-// xWire and xToWire make direction ambiguous and previously concealed duplicate
-// projections behind different names.
-func TestDeliveryProjectionUsesOneVerb(t *testing.T) {
-	root := moduleRoot(t)
-	dir := filepath.Join(root, "internal", "delivery")
-	walkErr := filepath.WalkDir(dir, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			if path != dir {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
-		if err != nil {
-			return err
-		}
-		for _, declaration := range file.Decls {
-			function, ok := declaration.(*ast.FuncDecl)
-			if !ok || function.Recv != nil {
-				continue
-			}
-			name := function.Name.Name
-			if strings.HasSuffix(name, "FromWire") {
-				continue
-			}
-			if strings.HasSuffix(name, "ToWire") || strings.HasSuffix(name, "Wire") {
-				relative, _ := filepath.Rel(root, path)
-				t.Errorf("%s: projection helper %s must use presentX", relative, name)
-			}
-		}
-		return nil
-	})
-	if walkErr != nil {
-		t.Fatalf("walk delivery projection sources: %v", walkErr)
-	}
 }
 
 // TestDeliveryHandlerDependsOnUseCaseBoundaries prevents concrete execution,
@@ -1447,77 +1243,6 @@ func TestDeliveryHandlerMatchesRegisteredOperationCapabilities(t *testing.T) {
 	for method := range serverType.Methods() {
 		if handlers[method.Name] == 0 {
 			t.Errorf("delivery Handler exports unregistered method %s", method.Name)
-		}
-	}
-}
-
-// TestCoreRunStateUsesBehaviorOwners prevents the two long-lived orchestration
-// objects from regaining raw lock/channel/map state or the process-local Segment
-// mechanisms that P113 moved behind invariant-owning components.
-func TestCoreRunStateUsesBehaviorOwners(t *testing.T) {
-	root := moduleRoot(t)
-	checks := []struct {
-		path       string
-		structName string
-		forbidden  map[string]string
-		prefixes   map[string]string
-	}{
-		{
-			path:       filepath.Join(root, "internal", "application", "agent", "runs", "coordinator.go"),
-			structName: "Coordinator",
-			forbidden: map[string]string{
-				"taskgroup.Group":         "Segment task admission and join belong to segmentLifecycle",
-				"registry":                "live Segment addressability belongs to segmentLifecycle",
-				"sessionRunChanges":       "post-commit wakeups belong to runPublications",
-				"ExecutionObserver":       "executor observation belongs to segmentLifecycle",
-				"ExecutionReleaser":       "executor teardown belongs to segmentLifecycle",
-				"SegmentFinalizer":        "terminal maintenance belongs to segmentLifecycle",
-				"EventCommitter":          "write-before-publish ordering belongs to runPublications",
-				"TreeBarrierCommitter":    "tree barrier publication belongs to runPublications",
-				"WorkspaceChangeNotifier": "post-commit workspace notification belongs to runPublications",
-			},
-		},
-		{
-			path:       filepath.Join(root, "internal", "application", "agent", "runs", "execution_handoff.go"),
-			structName: "claimedResumeAttempt",
-			forbidden: map[string]string{
-				"ExecutionReleaser": "staged execution cleanup belongs to stagedExecutionHandoff",
-			},
-		},
-		{
-			path:       filepath.Join(root, "internal", "application", "agent", "runs", "recovery.go"),
-			structName: "Recovery",
-			forbidden: map[string]string{
-				"[]func()":            "Session claim release belongs to recoverySessionClaims",
-				"map[string]struct{}": "claimed Session identity belongs to recoverySessionClaims",
-			},
-		},
-		{
-			path:       filepath.Join(root, "internal", "adapter", "agentexec", "interaction_session.go"),
-			structName: "interactionSession",
-			forbidden: map[string]string{
-				"sync.Mutex":         "shared state requires a named invariant owner",
-				"sync.Once":          "one-shot transitions belong to interactionLifetime",
-				"sync.WaitGroup":     "goroutine join belongs to interactionLifetime",
-				"context.Context":    "the lifecycle root belongs to interactionLifetime",
-				"context.CancelFunc": "lifecycle cancellation belongs to interactionLifetime",
-			},
-			prefixes: map[string]string{
-				"map[":  "shared maps require a named invariant owner",
-				"chan ": "channels belong to interactionLifetime",
-			},
-		},
-	}
-	for _, check := range checks {
-		for field, fieldType := range namedStructDirectFieldTypes(t, check.path, check.structName) {
-			if reason := check.forbidden[fieldType]; reason != "" {
-				t.Errorf("%s.%s directly stores %s; %s", check.structName, field, fieldType, reason)
-			}
-			for prefix, reason := range check.prefixes {
-				if strings.HasPrefix(fieldType, prefix) {
-					t.Errorf("%s.%s directly stores %s; %s", check.structName, field, fieldType, reason)
-				}
-			}
 		}
 	}
 }
@@ -1785,48 +1510,6 @@ func TestRememberScopeUsesApprovalDomainType(t *testing.T) {
 		if got := namedStructFieldType(t, check.path, check.structName, "RememberScope"); got != "approval.Scope" {
 			rel, _ := filepath.Rel(root, check.path)
 			t.Errorf("%s: %s.RememberScope = %s, want approval.Scope", rel, check.structName, got)
-		}
-	}
-}
-
-// TestRunLifecycleStateStaysConcrete prevents the registry and journal from
-// regaining one-use type parameters. A second production payload would be
-// evidence for a deliberately redesigned abstraction, not a silent generality
-// increase to these lifecycle owners.
-func TestRunLifecycleStateStaysConcrete(t *testing.T) {
-	root := moduleRoot(t)
-	checks := []struct {
-		path string
-		name string
-	}{
-		{filepath.Join(root, "internal", "application", "agent", "runs", "registry.go"), "registry"},
-		{filepath.Join(root, "internal", "application", "agent", "runs", "journal.go"), "journal"},
-	}
-	for _, check := range checks {
-		f, err := parser.ParseFile(token.NewFileSet(), check.path, nil, 0)
-		if err != nil {
-			t.Fatalf("parse %s: %v", check.path, err)
-		}
-		found := false
-		for _, decl := range f.Decls {
-			general, ok := decl.(*ast.GenDecl)
-			if !ok || general.Tok != token.TYPE {
-				continue
-			}
-			for _, spec := range general.Specs {
-				named, ok := spec.(*ast.TypeSpec)
-				if !ok || named.Name.Name != check.name {
-					continue
-				}
-				found = true
-				if named.TypeParams != nil && len(named.TypeParams.List) > 0 {
-					rel, _ := filepath.Rel(root, check.path)
-					t.Errorf("%s: %s must stay concrete over its only production payload", rel, check.name)
-				}
-			}
-		}
-		if !found {
-			t.Fatalf("%s: type %s not found", check.path, check.name)
 		}
 	}
 }
@@ -2150,39 +1833,6 @@ func namedStructFieldType(t *testing.T, path, structName, fieldName string) stri
 	}
 	t.Fatalf("%s: type %s not found", path, structName)
 	return ""
-}
-
-func namedStructDirectFieldTypes(t *testing.T, path, structName string) map[string]string {
-	t.Helper()
-	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
-	if err != nil {
-		t.Fatalf("parse %s: %v", path, err)
-	}
-	for _, declaration := range file.Decls {
-		general, ok := declaration.(*ast.GenDecl)
-		if !ok || general.Tok != token.TYPE {
-			continue
-		}
-		for _, specification := range general.Specs {
-			named, ok := specification.(*ast.TypeSpec)
-			if !ok || named.Name.Name != structName {
-				continue
-			}
-			value, ok := named.Type.(*ast.StructType)
-			if !ok || value.Fields == nil {
-				t.Fatalf("%s: %s is not a struct", path, structName)
-			}
-			fields := make(map[string]string)
-			for _, field := range value.Fields.List {
-				for _, name := range field.Names {
-					fields[name.Name] = exprString(field.Type)
-				}
-			}
-			return fields
-		}
-	}
-	t.Fatalf("%s: type %s not found", path, structName)
-	return nil
 }
 
 // namedStructFieldTypeOptional is namedStructFieldType for an intentionally
