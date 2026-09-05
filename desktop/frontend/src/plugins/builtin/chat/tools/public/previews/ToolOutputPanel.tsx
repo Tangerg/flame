@@ -107,8 +107,8 @@ export function ToolOutputPanel({
           title={t(copied ? "tools.output.copied" : "tools.output.copy")}
           onClick={() => void copy()}
           className={cn(
-            "absolute right-1 top-1 opacity-0 transition-opacity",
-            "group-hover/output:opacity-100 focus-visible:opacity-100",
+            "pointer-events-none absolute right-1 top-1 opacity-0 transition-opacity",
+            "group-hover/output:pointer-events-auto group-hover/output:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100",
           )}
         />
       </div>

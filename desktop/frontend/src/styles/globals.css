@@ -1322,6 +1322,7 @@ html.theme-dark {
   [data-reveal="hover"] {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
   }
   [data-reveal="rest"] {
     opacity: 0;

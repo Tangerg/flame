@@ -136,6 +136,7 @@ export const MessageBlock = memo(MessageBlockInner);
 
 const ACTIONS_VISIBILITY: Record<Exclude<MessageActionsVisibility, "absent">, string> = {
   hidden: "invisible opacity-0",
-  hover: "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
+  hover:
+    "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100",
   pinned: "opacity-100",
 };

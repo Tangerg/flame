@@ -22,7 +22,7 @@ export function Chip({ icon, children, title, onClose }: Props) {
           <ButtonPrimitive
             data-reveal="hover"
             type="button"
-            className="grid h-5 w-5 place-items-center rounded-pill border-0 bg-transparent text-fg-faint opacity-0 scale-[0.96] transition-[opacity,scale,background-color,color] group-hover:opacity-100 group-hover:scale-100 focus-visible:opacity-100 hover:bg-hover hover:text-fg active:scale-[var(--press-scale)]"
+            className="grid h-5 w-5 place-items-center rounded-pill border-0 bg-transparent text-fg-faint pointer-events-none opacity-0 scale-[0.96] transition-[opacity,scale,background-color,color] group-hover:pointer-events-auto group-hover:opacity-100 group-hover:scale-100 focus-visible:pointer-events-auto focus-visible:opacity-100 hover:bg-hover hover:text-fg active:scale-[var(--press-scale)]"
             onClick={onClose}
             aria-label={t("common.remove")}
           >

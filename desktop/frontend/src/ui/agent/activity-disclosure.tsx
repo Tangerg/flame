@@ -143,7 +143,9 @@ export function AgentActivityDisclosure({
             data-slot="agent-activity-chevron"
             data-reveal="hover"
             className={cn(
-              "flex shrink-0 text-fg-faint transition-[transform,opacity] duration-[var(--dur-fast)]",
+              // Decorative: the whole header is the button, so clicks pass through it at every
+              // reveal state rather than landing on a chevron nobody aimed at.
+              "pointer-events-none flex shrink-0 text-fg-faint transition-[transform,opacity] duration-[var(--dur-fast)]",
               // Keyed on the TRIGGER's own `:focus-visible`, not on the header's
               // `:focus-within`: DOM focus outlives the pointer, so a row clicked shut
               // kept its chevron lit while every identical row beside it stayed blank.

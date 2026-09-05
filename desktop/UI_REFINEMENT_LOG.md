@@ -2616,3 +2616,99 @@ The six e2e failures, once `runtime/internal/application/agent/sessions/`
 settles. Failing that, the detector generalises: it currently compares utilities
 against unlayered rules only, and the same question can be asked of inline
 `style` against utilities, which nothing checks today.
+
+## Round 40 — six invisible things that took clicks
+
+`ui_rules 6` asks for hit areas of at least 40x40 and forbids adjacent controls
+from overlapping. Round 39 had just shown that the only rule enforcing a floor
+lives under `pointer: coarse` and never meets a desktop pointer, so nothing was
+checking either half here. Measured both.
+
+### Three refinements before the measurement meant anything
+
+The first pass reported 15 overlapping pairs. Each of the following removed a
+class of phantom, and the count is the honest record of how wrong an unrefined
+probe is:
+
+1. **Element identity has to travel with its box.** `contains()` was indexing a
+   second `querySelectorAll` against boxes built from the first, which had
+   skipped hidden and zero-size elements — so the nesting test compared unrelated
+   elements. 15 -> 10.
+2. **Clip to scrolling ancestors.** Inside `overflow: auto` a rect keeps its full
+   width, so every scrolled dock tab invented an overlap with the chrome beside
+   it. 10 -> 3.
+3. Of the three, two were read and dismissed: `Allow once` / `Approval options`
+   overlap by **1px**, which is the `-ml-px` seam of a split button and the
+   correct way to draw one; the third was the real finding below.
+
+**The 40x40 floor is not met and should not be**: 42 distinct controls are under
+it, nearly all wide-but-short (`104x22`, `90x26`) because `--control-height-*` is
+22/26/30/34 — a visual-style token a theme owns. `DESKTOP_UI_POLISH.md` says
+desktop is not web, and inflating every control to 40px tall is a redensification
+of the whole app, not a defect fix. Recorded as a considered non-conformance.
+
+### The real finding (已完成)
+
+The third overlap was a Work Index row action sitting on the row's right end. It
+led to the mechanism: an element at `opacity: 0` is invisible **and still takes
+clicks**. Measured across six states: **six of seven hover-reveals were invisible
+and clickable.** The largest was a 774x26 strip of message actions; the others
+included two 44x210 columns over markdown tables and the action on every row.
+
+Nine reveal sites, eight spellings, one correct — `context-dock` used `invisible`
+(visibility, which does gate hit-testing). `globals.css` already said so in its
+own words: *"The reveal itself is eleven different class lists — which group,
+which pseudo-class, opacity or visibility"*. And `MessageBlock` had the guard on
+its `hidden` variant and not on its `hover` one, **two adjacent lines apart**,
+which is what says nobody decided they should differ.
+
+Each resting state now carries `pointer-events-none` beside the `opacity-0` it
+guards, and each reveal restores it in the same variant that restores opacity.
+The disclosure chevron is `aria-hidden` decoration inside the header button, so
+it is pointer-transparent at every state rather than switching.
+
+### The regression I wrote, and what it proved
+
+I first put the guard in one place — `[data-reveal="hover"] { pointer-events:
+none }` in `globals.css` — reasoning that a single owner beats nine call sites.
+It broke closing a dock tab, and the cause was **the exact defect rounds 37 and
+39 were about**: an unlayered rule beats `@layer utilities`, so it defeated every
+`group-hover:pointer-events-auto`. Moving it to `@layer base` did not fix it
+either; Playwright's actionability check showed the reveal working
+(`opacity:0 visibility:visible pointer-events:auto`) and the click still failing
+inside `scrollIntoViewIfNeeded`, which scrolls the tab out from under the pointer
+and drops the hover.
+
+The lesson is the placement, not the ownership: a guard that has to be overridden
+by a variant belongs **in the same layer as the variant**. As utilities, the
+resting state and the reveal resolve by ordinary variant order and no layer
+fights anything.
+
+Worth noting that `cascade.visual.spec.ts` could not have caught this: it
+compares selectors that match at rest, and `group-hover:` matches only while
+hovered.
+
+### The detector is now a test
+
+`visual/reveal.visual.spec.ts` walks six states and fails with the box size and
+class list of anything invisible that still takes clicks. Negative-tested by
+removing the guard, which reports the 774x26 strip.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, all fifteen guards — green.
+- Unit: **2365 passing**; the 8 failures are the `src/rpc/` set blocked in round 38.
+- Visual: **432/432** — 430 goldens with none regenerated, plus the cascade and
+  reveal checks. `pointer-events` changes no pixels, which is why the four
+  interaction failures the first attempt caused were real and worth listening to.
+
+### Resources reclaimed
+
+Both probes deleted after promotion, port 4174 freed, no stray processes,
+`playwright.visual.config.ts` unmodified.
+
+### Next round
+
+Still the six blocked e2e. Failing that: the hit-area probe also measured 42
+controls under 40x40 and a `1x1` hidden file input — the latter is worth one look
+to confirm it is a label-driven picker and not a stray target.

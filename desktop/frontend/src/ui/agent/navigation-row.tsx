@@ -15,7 +15,7 @@ const RESTING_GLYPH =
 // stays here: it reveals the action a moment longer than it should after a click, which
 // is the lesser of the two, because the alternative hides it from the keyboard.
 const HOVER_ACTION =
-  "opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100";
+  "pointer-events-none opacity-0 transition-opacity group-hover/row:pointer-events-auto group-hover/row:opacity-100 group-focus-within/row:pointer-events-auto group-focus-within/row:opacity-100";
 
 interface AgentRowProps extends Omit<ButtonProps, "children" | "variant" | "size" | "press"> {
   active?: boolean;

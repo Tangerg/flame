@@ -258,12 +258,15 @@
   display: flex;
   align-items: flex-start;
   opacity: 0;
+  /* Transparent is not gone: without this the strip is an invisible target over the table. */
+  pointer-events: none;
   user-select: none;
   transition: opacity var(--polish-fast);
 }
 .md-table-container:hover .md-table-actions,
 .md-table-container:focus-within .md-table-actions {
   opacity: 1;
+  pointer-events: auto;
 }
 .md table {
   border-collapse: separate;

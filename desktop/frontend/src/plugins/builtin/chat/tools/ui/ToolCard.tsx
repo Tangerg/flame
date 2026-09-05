@@ -83,7 +83,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
               reportPluginError(owner, "command", err, `tool action: ${action.id}`);
             });
           }}
-          className="opacity-0 transition-opacity group-hover/activity-header:opacity-100 focus-visible:opacity-100"
+          className="pointer-events-none opacity-0 transition-opacity group-hover/activity-header:pointer-events-auto group-hover/activity-header:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
         />
       ))}
       open={expanded}
