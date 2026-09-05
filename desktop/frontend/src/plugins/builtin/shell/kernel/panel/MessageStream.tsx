@@ -244,7 +244,6 @@ function WorkingLine({ startedAt }: { startedAt: number | null }) {
   return (
     <div className={cn(READING_GUTTER, "mt-4 flex")} data-slot="agent-working">
       <Loader
-        variant="text-shimmer"
         size="sm"
         text={
           startedAt === null

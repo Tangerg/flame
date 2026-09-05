@@ -1,23 +1,13 @@
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 
-type LoaderVariant =
-  "dots" | "typing" | "pulse-dot" | "wave" | "bars" | "terminal" | "text-shimmer";
-
 type LoaderSize = "sm" | "md" | "lg";
 
 export interface LoaderProps {
-  variant?: LoaderVariant;
   size?: LoaderSize;
   text?: string;
   className?: string;
 }
-
-const CONTAINER: Record<LoaderSize, string> = {
-  sm: "h-4",
-  md: "h-5",
-  lg: "h-6",
-};
 
 const TEXT: Record<LoaderSize, string> = {
   sm: "text-ui-xs",
@@ -25,122 +15,23 @@ const TEXT: Record<LoaderSize, string> = {
   lg: "text-ui-md",
 };
 
-function Loading() {
+/** The label a reader cannot see is the one a screen reader needs: the shimmer is decoration,
+ *  and `role="status"` on `<output>` is what actually announces that something is running. */
+function Announcement() {
   const t = useT();
   return <output className="sr-only">{t("common.loading")}</output>;
 }
 
-function DotsLoader({ size = "md", className }: { size?: LoaderSize; className?: string }) {
-  const dot = { sm: "h-1.5 w-1.5", md: "h-2 w-2", lg: "h-2.5 w-2.5" }[size];
-  return (
-    <div className={cn("flex items-center gap-1", CONTAINER[size], className)}>
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className={cn(
-            "rounded-full bg-fg-muted animate-[flame-loader-bounce_calc(1400ms*var(--motion-scale))_ease-in-out_infinite]",
-            dot,
-          )}
-          style={{ animationDelay: `${i * 160}ms` }}
-        />
-      ))}
-      <Loading />
-    </div>
-  );
-}
-
-function TypingLoader({ size = "md", className }: { size?: LoaderSize; className?: string }) {
-  const dot = { sm: "h-1 w-1", md: "h-1.5 w-1.5", lg: "h-2 w-2" }[size];
-  return (
-    <div className={cn("flex items-center gap-1", CONTAINER[size], className)}>
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className={cn(
-            "rounded-full bg-fg-muted animate-[flame-loader-typing_calc(1000ms*var(--motion-scale))_ease-in-out_infinite]",
-            dot,
-          )}
-          style={{ animationDelay: `${i * 250}ms` }}
-        />
-      ))}
-      <Loading />
-    </div>
-  );
-}
-
-function PulseDotLoader({ size = "md", className }: { size?: LoaderSize; className?: string }) {
-  const dot = { sm: "h-1 w-1", md: "h-2 w-2", lg: "h-3 w-3" }[size];
-  return (
-    <div className={cn("rounded-full bg-fg-muted animate-pulse-dot", dot, className)}>
-      <Loading />
-    </div>
-  );
-}
-
-function WaveLoader({ size = "md", className }: { size?: LoaderSize; className?: string }) {
-  const bar = { sm: "w-0.5", md: "w-0.5", lg: "w-1" }[size];
-  return (
-    <div className={cn("flex items-center gap-0.5", CONTAINER[size], className)}>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <span
-          key={i}
-          className={cn(
-            "h-full origin-center rounded-full bg-fg-muted animate-[flame-loader-wave_calc(1000ms*var(--motion-scale))_ease-in-out_infinite]",
-            bar,
-          )}
-          style={{ animationDelay: `${i * 100}ms` }}
-        />
-      ))}
-      <Loading />
-    </div>
-  );
-}
-
-function BarsLoader({ size = "md", className }: { size?: LoaderSize; className?: string }) {
-  const bar = { sm: "w-1 gap-1", md: "w-1.5 gap-1.5", lg: "w-2 gap-2" }[size];
-  const [width, gap] = bar.split(" ");
-  return (
-    <div className={cn("flex items-center", gap, CONTAINER[size], className)}>
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className={cn(
-            "h-full origin-center rounded-sm bg-fg-muted animate-[flame-loader-bars_calc(1200ms*var(--motion-scale))_ease-in-out_infinite]",
-            width,
-          )}
-          style={{ animationDelay: `${i * 200}ms` }}
-        />
-      ))}
-      <Loading />
-    </div>
-  );
-}
-
-function TerminalLoader({ size = "md", className }: { size?: LoaderSize; className?: string }) {
-  const cursor = { sm: "h-3 w-1.5", md: "h-4 w-2", lg: "h-5 w-2.5" }[size];
-  return (
-    <div className={cn("flex items-center gap-1", CONTAINER[size], className)}>
-      <span className={cn("font-mono text-fg-muted", TEXT[size])}>{">"}</span>
-      <span
-        className={cn(
-          "bg-fg-muted animate-[flame-loader-blink_calc(1000ms*var(--motion-scale))_step-end_infinite]",
-          cursor,
-        )}
-      />
-      <Loading />
-    </div>
-  );
-}
-
-function TextShimmerLoader({
-  text = "Thinking",
-  size = "md",
-  className,
-}: {
-  text?: string;
-  size?: LoaderSize;
-  className?: string;
-}) {
+/**
+ * Waiting, said one way. This carried seven variants — dots, typing, pulse-dot, wave, bars,
+ * terminal, shimmer — and both call sites in the tree asked for the shimmer, so six of them
+ * and five sets of keyframes animated nothing. No guard could see it: a `variant` the product
+ * never passes is still reachable through the union, so `knip` reads the component as used and
+ * `check-dead-utilities` reads every class as emitted.
+ *
+ * A variant this needs again is one rung to add back, which is cheaper than six kept warm.
+ */
+export function Loader({ size = "md", text = "Thinking", className }: LoaderProps) {
   return (
     <span
       className={cn(
@@ -152,26 +43,7 @@ function TextShimmerLoader({
       )}
     >
       {text}
-      <Loading />
+      <Announcement />
     </span>
   );
-}
-
-export function Loader({ variant = "dots", size = "md", text, className }: LoaderProps) {
-  switch (variant) {
-    case "typing":
-      return <TypingLoader size={size} className={className} />;
-    case "pulse-dot":
-      return <PulseDotLoader size={size} className={className} />;
-    case "wave":
-      return <WaveLoader size={size} className={className} />;
-    case "bars":
-      return <BarsLoader size={size} className={className} />;
-    case "terminal":
-      return <TerminalLoader size={size} className={className} />;
-    case "text-shimmer":
-      return <TextShimmerLoader text={text} size={size} className={className} />;
-    default:
-      return <DotsLoader size={size} className={className} />;
-  }
 }

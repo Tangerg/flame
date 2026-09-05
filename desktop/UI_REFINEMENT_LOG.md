@@ -3096,3 +3096,70 @@ The blocked six if `runtime/.../sessions/` has settled. Otherwise: `App.tsx` set
 `MotionConfig reducedMotion="user"`, which answers the OS preference, and
 `lib/motion.ts` answers the app's — but nothing checks the two agree when they
 disagree, e.g. OS reduced-motion ON with the app slider at full.
+
+## Round 46 — seven ways to say "waiting", one of them shipped
+
+### First, a null result on the round's stated direction
+
+Round 45 ended asking what happens when the two motion preferences disagree.
+Measured across the matrix rather than reasoned about:
+
+| | `--motion-scale` | OS reduce | JS frames | CSS transition | keyframes |
+| --- | --- | --- | --- | --- | --- |
+| os normal + app full | 1 | false | 25 | 0.1s | 1.6s |
+| os normal + app off | 0 | false | **3** | 0.001s | 0.001s |
+| os reduce + app full | 1 | true | **7** | 0.001s | 0.001s |
+| os reduce + app off | 0 | true | **3** | 0.001s | 0.001s |
+
+All four cells correct. The 7 rather than 3 is not a leak:
+`MotionConfig reducedMotion="user"` suppresses transform and layout by design and
+keeps opacity, because the OS preference is about vestibular motion while the
+app's slider at zero means no motion at all. **Two preferences, two meanings, two
+behaviours — recorded and left alone.**
+
+### The finding (已完成)
+
+`Loader` offered seven variants — `dots`, `typing`, `pulse-dot`, `wave`, `bars`,
+`terminal`, `text-shimmer`. Every `<Loader>` in the tree, both of them, asks for
+`text-shimmer`. Six implementations and five sets of `@keyframes` animated
+nothing.
+
+`ui_rules 2` forbids one function having several treatments, and nothing here
+could see it: a `variant` the product never passes is still reachable through the
+union, so `knip` reads `Loader` as used and `check-dead-utilities` reads every
+`animate-[flame-loader-*]` class as emitted — each is named in the source that
+renders it, which is exactly the check's question.
+
+`animate-pulse-dot` was checked separately before deleting `PulseDotLoader`: it
+has **eight** users across the tree, so `flame-pulse` and its theme entry stay.
+The five `flame-loader-*` keyframes each had exactly one, inside `loader.tsx`.
+
+| | before | after |
+| --- | --- | --- |
+| `loader.tsx` | 177 lines | **49** |
+| `globals.css` | 1349 lines | **1292** |
+| emitted utilities | 981 | **971** |
+| entry CSS | 112.3 KB | **111.8 KB** |
+| entry JS | 2476.7 KB | **2474.8 KB** |
+
+The component says one thing now, and the header says why a variant that comes
+back is one rung to add rather than six kept warm.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, all fifteen guards — green.
+- Unit: **2365 passing**; the 8 failures are the `src/rpc/` set blocked in round 38.
+- Visual: **436/436**, none regenerated — the one variant that shipped is
+  untouched, so nothing moved.
+
+### Resources reclaimed
+
+Probe deleted, port 4174 freed, no stray processes,
+`playwright.visual.config.ts` unmodified.
+
+### Next round
+
+The blocked six if `runtime/.../sessions/` has settled. Otherwise the same
+question asked of the rest of `ui/atoms`: a `variant` union the product never
+exercises is invisible to every guard here, and `Loader` is unlikely to have been
+the only one.
