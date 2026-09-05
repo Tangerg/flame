@@ -39,11 +39,15 @@ import {
   WORKSPACE_RECIPES_KEY,
   WORKSPACE_SKILLS_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
+  WORKSPACE_AGENT_MEMORY_KEY,
+  WORKSPACE_KNOWLEDGE_KEY,
+  type AgentMemoryEntry,
   type BuiltinToolSummary,
   type ManagedSkill,
   type SkillProposal,
   type WorkspaceAgentDoc,
   type WorkspaceRecipe,
+  type WorkspaceKnowledgeEntry,
   type WorkspaceSkill,
   type WorkspaceDiff,
   type WorkspaceFileChange,
@@ -211,10 +215,20 @@ function feature(enabled: boolean): FeatureCapability {
   return { enabled, clientOptIn: false, requiredByRunProtocol: false };
 }
 
+// A Runtime that has its features, because that is the one a user connects to. Advertising
+// two of them left `skills`, `knowledge` and `agentMemory` rendering their off-ramp in every
+// state, and their actual surfaces in none — three views the suite could not photograph
+// because the fixture said the runtime could not serve them.
 const VISUAL_CAPABILITIES: ServerCapabilities = {
   runEvents: [],
   runtimeTopics: [],
-  features: { git: feature(true), plan: feature(true) },
+  features: {
+    git: feature(true),
+    plan: feature(true),
+    skills: feature(true),
+    knowledge: feature(true),
+    agentMemory: feature(true),
+  },
   streamingMethods: [],
   limits: {
     runReplay: { scope: "runtimeInstanceRootSegment", maxEvents: 2_048, maxBytes: 16_777_216 },
@@ -347,6 +361,54 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
             body: "Summarise the run for someone who was not watching it.",
             scope: "global",
             source: "~/.flame/recipes/digest.md",
+          },
+        ],
+      });
+      ctx.contribute(DATA_PROVIDER, {
+        key: WORKSPACE_KNOWLEDGE_KEY,
+        fetcher: async (): Promise<WorkspaceKnowledgeEntry[]> => [
+          {
+            scope: "cwd",
+            content: "Run the session suite before touching the store.",
+            revision: "rev_07",
+            updatedAt: "2026-07-31T10:00:00Z",
+          },
+          {
+            scope: "projectRoot",
+            content: "Runtime owns durable semantics; the desktop consumes them.",
+            revision: "rev_02",
+            updatedAt: "2026-07-24T09:12:00Z",
+          },
+        ],
+      });
+      ctx.contribute(DATA_PROVIDER, {
+        key: WORKSPACE_AGENT_MEMORY_KEY,
+        // Both statuses and both origins, because the view sorts on them: a pinned project
+        // memory the agent wrote, and a user one still awaiting a decision.
+        fetcher: async (): Promise<AgentMemoryEntry[]> => [
+          {
+            id: "mem_01",
+            scope: "project",
+            content: "The compaction cutpoint is chosen by the Runtime, never by the client.",
+            origin: "auto",
+            status: "active",
+            pinned: true,
+            sessionId: VISUAL_SESSION_ID,
+            day: "2026-07-31",
+            createdAt: "2026-07-31T10:00:00Z",
+            updatedAt: "2026-07-31T10:00:00Z",
+          },
+          {
+            id: "mem_02",
+            scope: "user",
+            content: "Prefers the diff read worst-risk-first.",
+            origin: "user",
+            status: "pending",
+            pinned: false,
+            sessionId: VISUAL_SESSION_ID,
+            day: "2026-07-30",
+            createdAt: "2026-07-30T16:20:00Z",
+            updatedAt: "2026-07-30T16:20:00Z",
           },
         ],
       });
@@ -539,6 +601,11 @@ const OPENED_BY_ITS_OWN_STATE = new Set([
   "skill-library",
   "recipes",
   "agent-docs",
+  "skills",
+  "knowledge",
+  "agent-memory",
+  "run-summary",
+  "notifications",
 ]);
 
 const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
@@ -554,6 +621,12 @@ const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-skill-library": "skill-library",
   "dock-recipes": "recipes",
   "dock-agent-docs": "agent-docs",
+  "dock-skills": "skills",
+  "dock-knowledge": "knowledge",
+  "dock-agent-memory": "agent-memory",
+  "dock-feature-off": "skills",
+  "dock-run-summary": "run-summary",
+  "dock-notifications": "notifications",
   "dock-tools": "tools",
   "dock-file": "file",
   "dock-catalog": WORKSPACE_DOCK_CATALOG,
@@ -576,7 +649,14 @@ export async function installVisualWorkspaceFixture(
   );
 
   installWorkspaceErrorClassifier();
-  useRuntimeConnectionStore.setState({ capabilities: VISUAL_CAPABILITIES });
+  // …and one state for the Runtime that does not, so the off-ramp every feature draws stays
+  // photographed rather than being whatever the fixture happened to leave switched off.
+  useRuntimeConnectionStore.setState({
+    capabilities:
+      state === "dock-feature-off"
+        ? { ...VISUAL_CAPABILITIES, features: { git: feature(true), plan: feature(true) } }
+        : VISUAL_CAPABILITIES,
+  });
   queryClient.setQueryDefaults([WORKSPACE_DIFF_KEY], {
     retry: false,
     staleTime: Infinity,

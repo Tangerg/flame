@@ -131,6 +131,13 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     "dock-skill-library": "1 active",
     "dock-recipes": "2 available",
     "dock-agent-docs": "3 found",
+    "dock-skills": "2 available",
+    "dock-knowledge": "2 scopes",
+    "dock-agent-memory": "1 pending",
+    // The other side of the same view: a Runtime that does not advertise the feature.
+    "dock-feature-off": "Skills are off",
+    "dock-run-summary": "run_root",
+    "dock-notifications": "No notifications",
   };
   const catalogueReady = CATALOGUE_READY[state];
   if (catalogueReady !== undefined) {

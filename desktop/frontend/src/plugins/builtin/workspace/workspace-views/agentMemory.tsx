@@ -116,8 +116,11 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
           )}
           <div className="mt-1 flex items-center gap-2">
             {item.pinned && (
-              <span className="flex shrink-0 items-center gap-1 text-ui-sm text-accent">
-                <Icon name="star" size="xs" />
+              // The accent is a functional highlight — play, active, CTA — not an ink for
+              // prose: on a card in dark it measures 3.4:1, below AA at this size. The mark
+              // keeps it, where 3:1 is the bar a graphic answers to; the word does not.
+              <span className="flex shrink-0 items-center gap-1 text-ui-sm text-fg-muted">
+                <Icon name="star" size="xs" className="text-accent" />
                 {t("agentMemory.pinnedLabel")}
               </span>
             )}

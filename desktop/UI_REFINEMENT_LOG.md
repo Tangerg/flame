@@ -4305,3 +4305,63 @@ unit 2370/4.
 The capability gate: `skills`, `knowledge` and `agent-memory` render their "off"
 ramp because the fixture advertises two features. Both sides are real states and
 only one of them has ever been photographed.
+
+---
+
+## Round 80 — a fixture that said the Runtime could not serve its own features
+
+Status: **complete**
+
+The fixture advertised two capabilities, `git` and `plan`. Three views therefore
+rendered their off-ramp in every state and their actual surface in none — not
+because anything was wrong with them, but because the fixture told the app the
+Runtime could not serve them.
+
+It advertises what a Runtime has now, and **one state, `dock-feature-off`, is the
+Runtime that does not** — so the off-ramp stays photographed deliberately rather
+than as a side effect of an under-declared fixture.
+
+With that and two more providers seeded, every one of the **twenty registered
+workspace views now renders in a fixture state**. It was seven when round 75
+started.
+
+### The third instance of one mistake
+
+`dock-agent-memory`'s WCAG audit failed on the same thing recipes did:
+
+```
+.text-accent — 3.4:1 (#3574f0 on #27292e, 13px)
+```
+
+Three call sites now: the recipe name, this pinned label, and `run-summary`'s
+tone map. The Accent setting states its own scope — *"Functional highlight color
+— play / active / CTA"* — which does not include prose, and the command menu
+renders a command's name in `text-fg`. So these are call-site drift, not a
+missing token: adding an accessible accent ink would sanction a use the design
+system deliberately does not have.
+
+The pinned label keeps the accent on its **mark**, where 3:1 is the bar a graphic
+answers to, and gives the **word** an ink that can be read.
+
+`run-summary` opened clean — measured, not assumed, which is why it got a state
+rather than a guess.
+
+### Before / after
+
+| | before | after |
+| --- | --- | --- |
+| workspace views rendered by a fixture | 7 of 20 | **20 of 20** |
+| capabilities advertised | git, plan | git, plan, skills, knowledge, agentMemory |
+| the "feature is off" ramp | every state, by accident | one state, on purpose |
+| accent as prose ink | three call sites, 3.4:1 in dark | none |
+
+### Verification
+
+78/78 workspace WCAG audits green across every state and both themes. Visual
+**564/564** (516 before, 444 when round 75 started). Guards green, unit 2370/4.
+
+### Next
+
+The agent fixture's own coverage: sixteen states there, all of the transcript.
+Whether the same "registered but never rendered" gap exists on that side has not
+been asked.
