@@ -1021,12 +1021,16 @@ html.theme-dark {
   padding-inline-end: var(--dock-control-span);
 }
 
-.agent-context-dock .agent-workspace-view {
-  background: transparent;
-}
-
+/* A view paints the canvas it is read on — except in the dock, where the card behind it is
+   already the surface. One owner states the rule and its exception; a `bg-canvas` at the call
+   site could only ever be overruled here. */
 .agent-workspace-view {
   container: workspace-view / inline-size;
+  background: var(--color-bg);
+}
+
+.agent-context-dock .agent-workspace-view {
+  background: transparent;
 }
 
 .agent-view-navigator {

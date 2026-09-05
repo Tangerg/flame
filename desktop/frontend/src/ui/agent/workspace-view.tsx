@@ -10,7 +10,7 @@ export function AgentWorkspaceView({
   className?: string;
 }) {
   return (
-    <div className={cn("agent-workspace-view flex min-h-0 flex-1 flex-col bg-canvas", className)}>
+    <div className={cn("agent-workspace-view flex min-h-0 flex-1 flex-col", className)}>
       {children}
     </div>
   );

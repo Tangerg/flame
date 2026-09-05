@@ -39,7 +39,7 @@ function DockViewBar({
 }: Pick<ViewHeaderProps, "sub" | "actions"> & { identity?: ReactNode }) {
   if (identity === undefined && sub === undefined && actions === undefined) return null;
   return (
-    <AgentSurfaceHeader className="gap-2">
+    <AgentSurfaceHeader>
       <div className="flex min-w-0 flex-1 items-center gap-2 font-mono text-ui-md text-fg-muted">
         {identity !== undefined && <span className="min-w-0 flex-1">{identity}</span>}
         {identity !== undefined && sub !== undefined && (
@@ -63,7 +63,7 @@ function FullViewBar({ icon, title, sub, actions, titleStrong }: ViewHeaderProps
   const t = useT();
 
   return (
-    <AgentSurfaceHeader className="gap-2" corner="window">
+    <AgentSurfaceHeader corner="window">
       <Icon name={icon} size="md" className="shrink-0 text-fg-muted" />
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <span

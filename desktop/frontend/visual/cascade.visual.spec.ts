@@ -37,6 +37,7 @@ test("no call site writes a utility the cascade then discards", async ({ page })
 
   for (const route of ROUTES) {
     await page.goto(`/visual/?${route}&theme=light`);
+    await page.waitForSelector("html[data-visual-ready]");
     await page.waitForTimeout(200);
 
     const found = await page.evaluate(() => {
