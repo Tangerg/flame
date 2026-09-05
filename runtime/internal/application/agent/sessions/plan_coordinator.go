@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -81,9 +80,9 @@ func (c *PlanCoordinator) Replace(ctx context.Context, sessionID string, steps [
 
 // PrepareReplacement decides a replacement without committing it. Cross-
 // aggregate use cases use this to include the exact Plan transition in their
-// own atomic write set.
+// own atomic write set. Steps are borrowed until the synchronous call returns;
+// the decided State owns its snapshot.
 func (c *PlanCoordinator) PrepareReplacement(ctx context.Context, sessionID string, steps []plan.Step) (plan.Replacement, error) {
-	steps = slices.Clone(steps)
 	current, err := c.State(ctx, sessionID)
 	if err != nil {
 		return plan.Replacement{}, err
@@ -94,7 +93,6 @@ func (c *PlanCoordinator) PrepareReplacement(ctx context.Context, sessionID stri
 // PrepareInitial decides the first Plan state for a not-yet-created session.
 // It is used when a cross-aggregate write set assigns the session identity.
 func (c *PlanCoordinator) PrepareInitial(steps []plan.Step) (plan.Replacement, error) {
-	steps = slices.Clone(steps)
 	if c == nil {
 		return plan.Replacement{}, errors.New("sessions: Plan coordinator is unavailable")
 	}

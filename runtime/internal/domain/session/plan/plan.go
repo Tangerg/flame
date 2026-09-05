@@ -75,9 +75,9 @@ type Snapshot struct {
 	UpdatedAt time.Time
 }
 
-// State is one committed complete Plan replacement. Unlike the former zero
-// sentinel, every State has a positive revision and update time. Whether a
-// Session has ever committed a Plan belongs to [Current].
+// State is one immutable committed Plan replacement. Its private representation
+// may be shared by value; mutable step input and output are copied at the boundary.
+// Whether a Session has ever committed a Plan belongs to [Current].
 type State struct {
 	steps     []Step
 	revision  exactint.Counter
@@ -120,8 +120,7 @@ func CurrentOf(state State) (Current, error) {
 	if err := state.Validate(); err != nil {
 		return Current{}, err
 	}
-	owned := state.clone()
-	return Current{state: &owned}, nil
+	return Current{state: &state}, nil
 }
 
 // Validate verifies the optional aggregate and its committed State.
@@ -132,12 +131,12 @@ func (c Current) Validate() error {
 	return c.state.Validate()
 }
 
-// State returns an owned committed State and whether one has been written.
+// State returns the immutable committed State and whether one has been written.
 func (c Current) State() (State, bool) {
 	if c.state == nil {
 		return State{}, false
 	}
-	return c.state.clone(), true
+	return *c.state, true
 }
 
 // Steps returns the latest ordered value. Unwritten and explicitly cleared
@@ -235,10 +234,6 @@ func (s State) UpdatedAt() time.Time { return s.updatedAt }
 // Snapshot returns a defensive persistence representation.
 func (s State) Snapshot() Snapshot {
 	return Snapshot{Steps: cloneSteps(s.steps), Revision: s.revision.Value(), UpdatedAt: s.updatedAt}
-}
-
-func (s State) clone() State {
-	return State{steps: cloneSteps(s.steps), revision: s.revision, updatedAt: s.updatedAt}
 }
 
 // IsUnwritten reports whether v identifies the absence of a committed Plan.

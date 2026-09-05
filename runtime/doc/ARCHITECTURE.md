@@ -89,6 +89,10 @@ Working-tree checkpoints are scoped by both Session and canonical workspace iden
 
 Process-local notifications carry no product truth. They wake consumers, which reread durable projections.
 
+## Internal value ownership
+
+Synchronous calls borrow mutable inputs until return. A store or adapter that returns a newly decoded slice transfers it to the caller; retaining or asynchronously using mutable data requires an independent snapshot. Immutable Domain values share their private representation across containers and copy mutable inputs or projections only at their boundary. Validation protects external input and persistent decoding, rather than repeatedly reconstructing an already-valid value.
+
 ## Package shape
 
 Large rings may use `ring/context/package` where a context contains several peer packages. Namespace directories contain no Go facade. Direct ring packages are reserved for ring-wide mechanisms or aggregates that also name their context.

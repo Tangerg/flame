@@ -12,7 +12,7 @@ type Replacement struct {
 
 // NewReplacement constructs one exact Plan version advance.
 func NewReplacement(expected Version, state State) (Replacement, error) {
-	replacement := Replacement{expected: expected, state: state.clone()}
+	replacement := Replacement{expected: expected, state: state}
 	if err := replacement.Validate(); err != nil {
 		return Replacement{}, err
 	}
@@ -22,8 +22,8 @@ func NewReplacement(expected Version, state State) (Replacement, error) {
 // ExpectedVersion returns the optional Plan version this state follows.
 func (r Replacement) ExpectedVersion() Version { return r.expected }
 
-// State returns an owned copy of the already-decided replacement state.
-func (r Replacement) State() State { return r.state.clone() }
+// State returns the immutable, already-decided replacement state.
+func (r Replacement) State() State { return r.state }
 
 // Validate proves that the state advances its expected version exactly once.
 func (r Replacement) Validate() error {

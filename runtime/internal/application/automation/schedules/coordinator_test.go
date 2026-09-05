@@ -462,7 +462,7 @@ type rawPagedStore struct {
 }
 
 func (p *rawPagedStore) ListPage(context.Context, time.Time, string, int) ([]schedule.Schedule, error) {
-	return p.rows, nil
+	return slices.Clone(p.rows), nil
 }
 
 func (p *pagedStore) ListPage(_ context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]schedule.Schedule, error) {

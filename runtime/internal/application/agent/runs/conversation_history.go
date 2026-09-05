@@ -14,7 +14,9 @@ import (
 var errConversationSessionIDRequired = errors.New("runs: conversation session ID is required")
 
 // ConversationStore is the exact persistence capability consumed by conversation use
-// cases. Replace must atomically install the complete sequence.
+// cases. Read transfers ownership of decoded messages to the caller. Write and
+// Replace borrow messages only until return; retained values must be copied.
+// Replace must atomically install the complete sequence.
 type ConversationStore interface {
 	Read(ctx context.Context, sessionID string) ([]chat.Message, error)
 	Write(ctx context.Context, sessionID string, messages ...chat.Message) error
@@ -52,11 +54,10 @@ func (m *ConversationHistory) Read(ctx context.Context, sessionID string) ([]cha
 	if err != nil {
 		return nil, fmt.Errorf("runs: read conversation for Session %q: %w", sessionID, err)
 	}
-	history, err := conversation.New(messages)
-	if err != nil {
+	if err := conversation.ValidateMessages(messages); err != nil {
 		return nil, fmt.Errorf("runs: validate conversation for Session %q: %w", sessionID, err)
 	}
-	return history.Messages(), nil
+	return messages, nil
 }
 
 // Seed installs a prefix into a fresh conversation. Existing history is never
@@ -68,8 +69,7 @@ func (m *ConversationHistory) Seed(ctx context.Context, sessionID string, messag
 	if len(messages) == 0 {
 		return nil
 	}
-	seeded, err := (conversation.Conversation{}).Seed(messages)
-	if err != nil {
+	if err := conversation.ValidateMessages(messages); err != nil {
 		return err
 	}
 	count, err := m.store.Count(ctx, sessionID)
@@ -79,7 +79,7 @@ func (m *ConversationHistory) Seed(ctx context.Context, sessionID string, messag
 	if count != 0 {
 		return conversation.ErrNotEmpty
 	}
-	if err := m.store.Write(ctx, sessionID, seeded.Messages()...); err != nil {
+	if err := m.store.Write(ctx, sessionID, messages...); err != nil {
 		return fmt.Errorf("runs: seed conversation for Session %q: %w", sessionID, err)
 	}
 	return nil
@@ -93,23 +93,10 @@ func (m *ConversationHistory) Append(ctx context.Context, sessionID string, mess
 	if len(messages) == 0 {
 		return nil
 	}
-	addition, err := conversation.New(messages)
-	if err != nil {
+	if err := conversation.ValidateMessages(messages); err != nil {
 		return err
 	}
-	stored, err := m.Read(ctx, sessionID)
-	if err != nil {
-		return err
-	}
-	history, err := conversation.New(stored)
-	if err != nil {
-		return err
-	}
-	extended, err := history.Append(addition.Messages()...)
-	if err != nil {
-		return err
-	}
-	if err := m.store.Write(ctx, sessionID, extended.Messages()[len(stored):]...); err != nil {
+	if err := m.store.Write(ctx, sessionID, messages...); err != nil {
 		return fmt.Errorf("runs: append conversation for Session %q: %w", sessionID, err)
 	}
 	return nil
@@ -187,14 +174,10 @@ func (m *ConversationHistory) Truncate(ctx context.Context, sessionID string, ke
 	if err != nil {
 		return err
 	}
-	history, err := conversation.New(stored)
-	if err != nil {
-		return err
-	}
-	if keepN >= history.Count() {
+	if keepN >= len(stored) {
 		return nil
 	}
-	if err := m.store.Replace(ctx, sessionID, history.Truncate(keepN).Messages()...); err != nil {
+	if err := m.store.Replace(ctx, sessionID, stored[:max(keepN, 0)]...); err != nil {
 		return fmt.Errorf("runs: truncate conversation for Session %q to %d messages: %w", sessionID, max(keepN, 0), err)
 	}
 	return nil

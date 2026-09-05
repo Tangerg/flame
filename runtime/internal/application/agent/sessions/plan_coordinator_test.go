@@ -16,13 +16,9 @@ type planStoreFake struct {
 	saved           *plan.State
 	readErr         error
 	saveErr         error
-	onState         func()
 }
 
 func (f *planStoreFake) State(context.Context, string) (plan.Current, error) {
-	if f.onState != nil {
-		f.onState()
-	}
 	return f.state, f.readErr
 }
 func (f *planStoreFake) Save(_ context.Context, _ string, replacement plan.Replacement) error {
@@ -76,39 +72,18 @@ func TestPrepareReplacementDoesNotWrite(t *testing.T) {
 	}
 }
 
-func TestPrepareReplacementOwnsStepsBeforeReadingCurrentState(t *testing.T) {
+func TestPreparedPlanOwnsStepsAfterReturn(t *testing.T) {
 	steps := []plan.Step{{Description: "original", Status: plan.StatusPending}}
-	store := &planStoreFake{onState: func() { steps[0].Description = "changed" }}
-	coordinator := NewPlanCoordinator(PlanDependencies{
-		Store: store,
-		Now:   func() time.Time { return time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC) },
-	})
-
+	coordinator := NewPlanCoordinator(PlanDependencies{Store: &planStoreFake{}, Now: time.Now})
 	replacement, err := coordinator.PrepareReplacement(t.Context(), "ses_1", steps)
 	if err != nil {
 		t.Fatal(err)
 	}
+	steps[0].Description = "changed"
+	projected := replacement.State().Steps()
+	projected[0].Description = "changed projection"
 	if got := replacement.State().Steps()[0].Description; got != "original" {
-		t.Fatalf("replacement step after store changed caller input = %q, want original", got)
-	}
-}
-
-func TestPrepareInitialOwnsStepsBeforeReadingClock(t *testing.T) {
-	steps := []plan.Step{{Description: "original", Status: plan.StatusPending}}
-	coordinator := NewPlanCoordinator(PlanDependencies{
-		Store: &planStoreFake{},
-		Now: func() time.Time {
-			steps[0].Description = "changed"
-			return time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC)
-		},
-	})
-
-	replacement, err := coordinator.PrepareInitial(steps)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := replacement.State().Steps()[0].Description; got != "original" {
-		t.Fatalf("initial step after clock changed caller input = %q, want original", got)
+		t.Fatalf("prepared step = %q, want original", got)
 	}
 }
 

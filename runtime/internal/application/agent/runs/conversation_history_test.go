@@ -19,26 +19,6 @@ type recordingCompactions struct {
 	plan ConversationCompactionPlan
 }
 
-type mutatingConversationStore struct {
-	*testsupport.ConversationStore
-	onRead  func()
-	onCount func()
-}
-
-func (m *mutatingConversationStore) Read(ctx context.Context, sessionID string) ([]chat.Message, error) {
-	if m.onRead != nil {
-		m.onRead()
-	}
-	return m.ConversationStore.Read(ctx, sessionID)
-}
-
-func (m *mutatingConversationStore) Count(ctx context.Context, sessionID string) (int, error) {
-	if m.onCount != nil {
-		m.onCount()
-	}
-	return m.ConversationStore.Count(ctx, sessionID)
-}
-
 func (r *recordingCompactions) ListRuns(context.Context, string) ([]run.Run, error) {
 	return append([]run.Run(nil), r.runs...), nil
 }
@@ -73,29 +53,19 @@ func TestMessagesCoordinatesDurableHistory(t *testing.T) {
 	}
 }
 
-func TestMessagesOwnWriteInputsBeforePersistenceReads(t *testing.T) {
-	seed := []chat.Message{chat.NewUserMessage(chat.NewTextPart("seed"))}
-	store := &mutatingConversationStore{
-		ConversationStore: testsupport.NewConversationStore(),
-		onCount:           func() { seed[0].Parts[0].Text = "changed seed" },
-	}
-	history := NewConversationHistory(store, nil)
-	if err := history.Seed(t.Context(), "ses_1", seed); err != nil {
+func TestMessagesRejectsInvalidAppendWithoutChangingHistory(t *testing.T) {
+	history := NewConversationHistory(testsupport.NewConversationStore(), nil)
+	valid := chat.NewUserMessage(chat.NewTextPart("original"))
+	if err := history.Append(t.Context(), "ses_1", valid); err != nil {
 		t.Fatal(err)
 	}
-
-	addition := []chat.Message{chat.NewAssistantMessage(chat.NewTextPart("addition"))}
-	store.onRead = func() { addition[0].Parts[0].Text = "changed addition" }
-	if err := history.Append(t.Context(), "ses_1", addition...); err != nil {
-		t.Fatal(err)
+	if err := history.Append(t.Context(), "ses_1", chat.Message{}); !errors.Is(err, conversation.ErrInvalid) {
+		t.Fatalf("Append invalid message = %v", err)
 	}
-
-	stored, err := store.ConversationStore.Read(t.Context(), "ses_1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(stored) != 2 || stored[0].Text() != "seed" || stored[1].Text() != "addition" {
-		t.Fatalf("conversation after persistence callbacks changed caller input = %#v", stored)
+	valid.Parts[0].Text = "changed"
+	got, err := history.Read(t.Context(), "ses_1")
+	if err != nil || len(got) != 1 || got[0].Text() != "original" {
+		t.Fatalf("history = %#v, %v", got, err)
 	}
 }
 

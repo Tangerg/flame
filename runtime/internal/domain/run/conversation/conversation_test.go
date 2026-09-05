@@ -1,7 +1,6 @@
 package conversation
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 
@@ -13,23 +12,19 @@ func TestConversationOwnsSequenceTransitions(t *testing.T) {
 		chat.NewUserMessage(chat.NewTextPart("one")),
 		chat.NewAssistantMessage(chat.NewTextPart("two")),
 	}
-	history, err := (Conversation{}).Seed(seed)
+	history, err := New(seed)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if history.Count() != 2 {
 		t.Fatalf("count = %d, want 2", history.Count())
 	}
-	if _, seedErr := history.Seed(seed); !errors.Is(seedErr, ErrNotEmpty) {
-		t.Fatalf("second seed error = %v, want ErrNotEmpty", seedErr)
-	}
-	history = history.Truncate(1)
 	history, err = history.Append(chat.NewAssistantMessage(chat.NewTextPart("four")))
 	if err != nil {
 		t.Fatal(err)
 	}
 	messages := history.Messages()
-	if len(messages) != 2 || messages[0].Text() != "one" || messages[1].Text() != "four" {
+	if len(messages) != 3 || messages[0].Text() != "one" || messages[2].Text() != "four" {
 		t.Fatalf("messages = %#v", messages)
 	}
 	messages[0] = chat.NewUserMessage(chat.NewTextPart("changed"))

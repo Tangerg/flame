@@ -23,16 +23,27 @@ type Conversation struct {
 	messages []chat.Message
 }
 
-// New validates and owns messages as one conversation value.
-func New(messages []chat.Message) (Conversation, error) {
-	owned := make([]chat.Message, len(messages))
+// ValidateMessages borrows a sequence while checking the model-context contract.
+// Persistence and synchronous use cases can validate without changing representation.
+func ValidateMessages(messages []chat.Message) error {
 	for index, message := range messages {
 		if err := message.Validate(); err != nil {
-			return Conversation{}, fmt.Errorf("%w: message[%d]: %w", ErrInvalid, index, err)
+			return fmt.Errorf("%w: message[%d]: %w", ErrInvalid, index, err)
 		}
 		if err := ValidateMessageIdentities(message); err != nil {
-			return Conversation{}, fmt.Errorf("%w: message[%d]: %w", ErrInvalid, index, err)
+			return fmt.Errorf("%w: message[%d]: %w", ErrInvalid, index, err)
 		}
+	}
+	return nil
+}
+
+// New validates and copies borrowed messages into an immutable conversation.
+func New(messages []chat.Message) (Conversation, error) {
+	if err := ValidateMessages(messages); err != nil {
+		return Conversation{}, err
+	}
+	owned := make([]chat.Message, len(messages))
+	for index, message := range messages {
 		owned[index] = message.Clone()
 	}
 	return Conversation{messages: owned}, nil
@@ -50,20 +61,16 @@ func (c Conversation) Messages() []chat.Message {
 // Count returns the current message watermark.
 func (c Conversation) Count() int { return len(c.messages) }
 
-// Seed replaces an empty conversation with a validated fork/import prefix.
-func (c Conversation) Seed(messages []chat.Message) (Conversation, error) {
-	if len(c.messages) != 0 {
-		return Conversation{}, ErrNotEmpty
-	}
-	return New(messages)
-}
-
 // Append returns the conversation extended by messages in model-context order.
 func (c Conversation) Append(messages ...chat.Message) (Conversation, error) {
-	combined := make([]chat.Message, 0, len(c.messages)+len(messages))
+	addition, err := New(messages)
+	if err != nil {
+		return Conversation{}, err
+	}
+	combined := make([]chat.Message, 0, len(c.messages)+len(addition.messages))
 	combined = append(combined, c.messages...)
-	combined = append(combined, messages...)
-	return New(combined)
+	combined = append(combined, addition.messages...)
+	return Conversation{messages: combined}, nil
 }
 
 // CloseOpenToolCalls returns the conversation with one error result appended
@@ -231,13 +238,4 @@ func (results completedToolResults) first() (string, bool) {
 		return id, true
 	}
 	return "", false
-}
-
-// Truncate returns the prefix ending at keepN. Values below zero clear the
-// conversation; values beyond the current watermark are a no-op.
-func (c Conversation) Truncate(keepN int) Conversation {
-	keepN = max(keepN, 0)
-	keepN = min(keepN, len(c.messages))
-	truncated, _ := New(c.messages[:keepN])
-	return truncated
 }

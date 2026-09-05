@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strconv"
 	"time"
 
@@ -19,7 +18,8 @@ import (
 )
 
 // ManagementStore is the editable-schedule persistence slice owned by this
-// use case. Firing and worker cursor updates intentionally remain separate.
+// use case. ListPage transfers ownership of its result slice to the caller.
+// Firing and worker cursor updates intentionally remain separate.
 type ManagementStore interface {
 	ListPage(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]schedule.Schedule, error)
 	Get(ctx context.Context, id string) (schedule.Schedule, error)
@@ -198,7 +198,6 @@ func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit paginat
 	if err := validateManagementPage(rows, afterCreatedAt, afterID, size+1); err != nil {
 		return pagination.Page[schedule.Schedule]{}, err
 	}
-	rows = slices.Clone(rows)
 	return pagination.PageOf(rows, size, listPageNamespace, nil, func(scheduled schedule.Schedule) []string {
 		return []string{strconv.FormatInt(scheduled.CreatedAt().UnixNano(), 10), scheduled.ID()}
 	})
