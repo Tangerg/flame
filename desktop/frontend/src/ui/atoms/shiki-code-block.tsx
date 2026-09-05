@@ -9,6 +9,19 @@ import { cn } from "@/lib/classNames";
 import { toggleCodeWrapPreference, useCodeWrapPreference } from "./codeWrapPreference";
 import { useT } from "@/lib/i18n";
 import { IconButton } from "./icon-button";
+import type { ShikiTransformer } from "shiki";
+
+// Shiki gives the `<pre>` it emits a `tabindex`, so the scrollable code takes keyboard focus like
+// any other scroll region. The rounded block wrapping it clips, which leaves the global ring with
+// nowhere to draw; `data-focus-inset` is how a clipped control asks for it on the inside. Only
+// this call site keeps that `<pre>` — the diff and file views strip the wrapper away.
+const FOCUS_INSET: ShikiTransformer[] = [
+  {
+    pre(node) {
+      node.properties["data-focus-inset"] = "";
+    },
+  },
+];
 
 interface Props {
   lang: string;
@@ -61,6 +74,7 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
           const out = h.codeToHtml(debouncedCode, {
             lang: resolvedLang,
             theme: shikiTheme,
+            transformers: FOCUS_INSET,
           });
           measureShikiHighlight(performance.now() - start, resolvedLang);
           setCachedHighlight(lang, shikiTheme, debouncedCode, out);

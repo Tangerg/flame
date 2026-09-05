@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "./test";
+import { CONTROL } from "./controls";
 
 // Narrower than "no overflow": wide blocks and the message action bar overhang the reading
 // column on purpose, and nothing clips them. What is never fine is a control cut in half — the
@@ -12,9 +13,9 @@ const FIXTURES = [
   "fixture=workspace&theme=light&state=dock-light",
   "fixture=workspace&theme=light&state=settings",
   "fixture=shell&theme=light&state=populated",
+  "fixture=shell&theme=light&state=populated&overlay=finder",
+  "fixture=shell&theme=light&state=populated&overlay=commands",
 ];
-
-const INTERACTIVE = 'button, a[href], input, textarea, select, [role="tab"], [role="option"]';
 
 interface Clipped {
   label: string;
@@ -67,9 +68,9 @@ for (const query of FIXTURES) {
     await page.waitForTimeout(400);
 
     // Not vacuous: the sweep has to be looking at real controls.
-    const considered = await page.locator(INTERACTIVE).count();
+    const considered = await page.locator(CONTROL).count();
     expect(considered).toBeGreaterThan(3);
 
-    expect(await clippedControls(page, INTERACTIVE)).toEqual([]);
+    expect(await clippedControls(page, CONTROL)).toEqual([]);
   });
 }

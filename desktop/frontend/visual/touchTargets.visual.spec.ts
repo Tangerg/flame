@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { CONTROL } from "./controls";
 
 // `@media (pointer: coarse)` puts a 44px floor under every control, and two spans in
 // `globals.css` reserve room for exactly one chrome control each. The spans were written as
@@ -24,10 +25,13 @@ const ROUTES = [
   "fixture=workspace&state=dock-tools",
   "fixture=workspace&state=dock-light",
   "fixture=workspace&state=settings",
+  "fixture=shell&state=populated&overlay=finder",
+  "fixture=shell&state=populated&overlay=commands",
 ];
 
 test("no two neighbouring controls share a tap under a coarse pointer", async ({ page }) => {
   const overlapping: string[] = [];
+  let reached = 0;
 
   for (const route of ROUTES) {
     await page.goto(`/visual/?${route}&theme=light`);
@@ -37,9 +41,9 @@ test("no two neighbouring controls share a tap under a coarse pointer", async ({
     const coarse = await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches);
     expect(coarse, "the context must actually report a coarse pointer").toBe(true);
 
-    const pairs = await page.evaluate(() => {
-      const SELECTOR =
-        'button, a[href], input:not([type="hidden"]), textarea, select, [role="button"], [role="tab"], [role="menuitem"], [role="option"], [role="switch"]';
+    reached += await page.locator(CONTROL).count();
+
+    const pairs = await page.evaluate((SELECTOR) => {
       const boxes: {
         el: Element;
         left: number;
@@ -97,10 +101,11 @@ test("no two neighbouring controls share a tap under a coarse pointer", async ({
         }
       }
       return out;
-    });
+    }, CONTROL);
     overlapping.push(...pairs.map((pair) => `${route}  ${pair}`));
   }
 
+  expect(reached, "the sweep has to be looking at real controls").toBeGreaterThan(20);
   expect(
     [...new Set(overlapping)],
     "neighbouring controls whose tap targets intersect on a touch screen",

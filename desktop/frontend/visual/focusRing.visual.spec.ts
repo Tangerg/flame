@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { FOCUSABLE } from "./controls";
 
 // One rule draws every focus ring: 1.5px at `outline-offset: 1px`, so it reaches 2.5px past the
 // border box. `[data-focus-inset]` is the compensation for a control flush against something
@@ -24,19 +25,22 @@ const ROUTES = [
   "fixture=shell&state=populated",
   "fixture=workspace&state=dock-light",
   "fixture=workspace&state=settings",
+  "fixture=shell&state=populated&overlay=finder",
+  "fixture=shell&state=populated&overlay=commands",
 ];
 
 test("no focus ring is cut off by something that clips", async ({ page }) => {
   const cut: string[] = [];
+  let reached = 0;
 
   for (const route of ROUTES) {
     await page.goto(`/visual/?${route}&theme=light`);
+    await page.waitForSelector("html[data-visual-ready]");
     await page.waitForTimeout(200);
+    reached += await page.locator(FOCUSABLE).count();
 
-    const found = await page.evaluate(() => {
+    const found = await page.evaluate((FOCUSABLE) => {
       const REACH = 2.5;
-      const FOCUSABLE =
-        'button, a[href], [role="button"], [role="tab"], [role="menuitem"], [role="option"], [role="switch"], [tabindex]:not([tabindex="-1"])';
       const out: string[] = [];
       for (const element of document.querySelectorAll(FOCUSABLE)) {
         if (element.hasAttribute("data-chrome-focus")) continue;
@@ -86,10 +90,11 @@ test("no focus ring is cut off by something that clips", async ({ page }) => {
         }
       }
       return out;
-    });
+    }, FOCUSABLE);
     cut.push(...found);
   }
 
+  expect(reached, "the sweep has to be looking at real controls").toBeGreaterThan(20);
   expect(
     [...new Set(cut)],
     "focus rings with nowhere to draw — mark the control `data-focus-inset`",
