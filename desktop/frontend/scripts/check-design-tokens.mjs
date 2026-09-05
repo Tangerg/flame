@@ -120,7 +120,11 @@ const MARKUP_RULES = [
     // no hook per call site — and the one call site that spelled its own out went on
     // animating for 25 style frames with that preference at zero, alone in the app.
     // `0.3` was this ladder's `slowMs` all along.
+    // Prettier breaks the object as soon as it carries a second key, so the line-by-line pass
+    // this file is built on reads `duration:` with no `transition` in sight. The rule is scanned
+    // against whole file text instead — the one shape it exists to catch is the one that wraps.
     pattern: /transition\s*[=:]\s*\{\{?[^}]*\bduration:\s*[\d.]+/g,
+    spansLines: true,
     message: "literal animation duration — use a preset from `lib/motion`, or add the rung there",
     appliesTo: (rel) => rel !== "lib/motion.ts",
   },
@@ -242,15 +246,30 @@ function unmergedLadderSteps() {
 }
 
 const violations = unmergedLadderSteps();
+let examined = 0;
 for (const path of walk(SRC)) {
   const rules = rulesFor(path);
   if (rules.length === 0) continue;
-  const lines = readFileSync(path, "utf8").split("\n");
+  examined += 1;
+  const rel = relative(SRC, path);
+  const source = readFileSync(path, "utf8");
+  const lines = source.split("\n");
+
+  for (const { pattern, message, appliesTo, spansLines } of rules) {
+    if (!spansLines) continue;
+    if (appliesTo && !appliesTo(rel)) continue;
+    for (const match of source.matchAll(pattern)) {
+      const line = source.slice(0, match.index).split("\n").length;
+      violations.push(`${rel}:${line}  ${match[0].replace(/\s+/g, " ")}  — ${message}`);
+    }
+  }
+
   lines.forEach((line, index) => {
-    for (const { pattern, message, appliesTo } of rules) {
-      if (appliesTo && !appliesTo(relative(SRC, path))) continue;
+    for (const { pattern, message, appliesTo, spansLines } of rules) {
+      if (spansLines) continue;
+      if (appliesTo && !appliesTo(rel)) continue;
       for (const match of line.matchAll(pattern)) {
-        violations.push(`${relative(SRC, path)}:${index + 1}  ${match[0]}  — ${message}`);
+        violations.push(`${rel}:${index + 1}  ${match[0]}  — ${message}`);
       }
     }
   });
@@ -261,6 +280,14 @@ if (violations.length > 0) {
   for (const violation of violations) console.error(`  ${violation}`);
   process.exit(1);
 }
+// Floor, not a target: a guard that read nothing prints the same OK as one that read everything.
+const MIN_FILES_EXAMINED = 500;
+if (examined < MIN_FILES_EXAMINED) {
+  console.error(
+    `check-design-tokens: only read ${examined} files (floor ${MIN_FILES_EXAMINED}) — the walk is broken.`,
+  );
+  process.exit(2);
+}
 console.log(
-  "check-design-tokens: type + leading + radius + tone + colour + depth + edge + layer + motion ladders clean",
+  `check-design-tokens: ${examined} files read; type + leading + radius + tone + colour + depth + edge + layer + motion ladders clean`,
 );
