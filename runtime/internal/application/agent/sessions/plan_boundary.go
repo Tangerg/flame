@@ -9,9 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
-// PlanServices is the complete optional Plan capability. Grouping the two
-// collaborators prevents a runtime where boundary history is enabled but the
-// corresponding aggregate transition cannot be committed.
+// PlanServices supplies boundary reads and aggregate replacement decisions.
 type PlanServices struct {
 	Boundaries   PlanBoundaries
 	Replacements PlanReplacements
@@ -33,9 +31,6 @@ type PlanBoundary struct {
 // which the caller must not turn into emptiness (an imported run's boundaries were
 // never captured; see [PlanBoundaries]).
 func (c *Coordinator) planBoundary(ctx context.Context, runID string) (PlanBoundary, error) {
-	if c.plan == nil {
-		return PlanBoundary{}, nil
-	}
 	if runID == "" {
 		return newPlanBoundary(nil, true)
 	}
@@ -81,9 +76,6 @@ func (c *Coordinator) prepareInitialPlanReplacement(steps []plan.Step) (*plan.Re
 	if len(steps) == 0 {
 		return nil, nil
 	}
-	if c.plan == nil {
-		return nil, errors.New("sessions: cannot seed a Plan when Plan support is disabled")
-	}
 	replacement, err := c.plan.Replacements.PrepareInitial(steps)
 	if err != nil {
 		return nil, err
@@ -96,12 +88,6 @@ func (c *Coordinator) prepareRestoredPlanReplacement(
 	sessionID string,
 	steps []plan.Step,
 ) (*plan.Replacement, error) {
-	if c.plan == nil {
-		if len(steps) > 0 {
-			return nil, errors.New("sessions: cannot restore a Plan when Plan support is disabled")
-		}
-		return nil, nil
-	}
 	replacement, err := c.plan.Replacements.PrepareReplacement(ctx, sessionID, steps)
 	if err != nil {
 		return nil, err

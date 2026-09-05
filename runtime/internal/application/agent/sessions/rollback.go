@@ -49,7 +49,7 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 	}
 	// A dropped parked run held the session's durable admission slot; dropping its
 	// record releases the slot, so the session can start a fresh run afterward.
-	return c.withGoalMutation(
+	return c.goals.WithSessionMutation(
 		ctx,
 		[]string{sessionID},
 		func(ctx context.Context) error {

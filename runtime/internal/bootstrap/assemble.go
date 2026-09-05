@@ -141,7 +141,7 @@ func buildAssemblyCore(
 		NewItemID:             newItemID,
 		NewToolResultID:       toolresult.NewID,
 	}
-	sessionDependencies.Plan = &sessions.PlanServices{
+	sessionDependencies.Plan = sessions.PlanServices{
 		Boundaries: cfg.Stores.Plan, Replacements: policy.plans,
 	}
 	sessionDependencies.Mutations = cfg.Stores.WorkspaceMutations

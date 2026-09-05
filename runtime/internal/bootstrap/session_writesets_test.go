@@ -220,7 +220,7 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 
 func replaceFixturePlan(t *testing.T, ctx context.Context, store *sqlite.PlanStore, sessionID string, steps []plan.Step) plan.State {
 	t.Helper()
-	state, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{Store: store, Now: time.Now}).Replace(ctx, sessionID, steps)
+	state, err := mustPlanCoordinator(sessions.PlanDependencies{Store: store, Now: time.Now}).Replace(ctx, sessionID, steps)
 	if err != nil {
 		t.Fatalf("replace fixture Plan: %v", err)
 	}
@@ -229,7 +229,7 @@ func replaceFixturePlan(t *testing.T, ctx context.Context, store *sqlite.PlanSto
 
 func prepareFixturePlan(t *testing.T, ctx context.Context, store *sqlite.PlanStore, sessionID string, steps []plan.Step) *plan.Replacement {
 	t.Helper()
-	replacement, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{Store: store, Now: time.Now}).PrepareReplacement(ctx, sessionID, steps)
+	replacement, err := mustPlanCoordinator(sessions.PlanDependencies{Store: store, Now: time.Now}).PrepareReplacement(ctx, sessionID, steps)
 	if err != nil {
 		t.Fatalf("prepare fixture Plan: %v", err)
 	}
@@ -678,7 +678,7 @@ func TestApplyForkBranchesAndSeeds(t *testing.T) {
 		t.Fatalf("derive child: %v", err)
 	}
 
-	initial, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{Store: ss.plan, Now: time.Now}).PrepareInitial([]plan.Step{{Description: "inherited plan", Status: plan.StatusInProgress}})
+	initial, err := mustPlanCoordinator(sessions.PlanDependencies{Store: ss.plan, Now: time.Now}).PrepareInitial([]plan.Step{{Description: "inherited plan", Status: plan.StatusInProgress}})
 	if err != nil {
 		t.Fatalf("prepare child Plan: %v", err)
 	}
@@ -1020,4 +1020,12 @@ func TestApplyDeleteClearsSessionGoal(t *testing.T) {
 	if _, ok, err := readBootstrapGoal(ctx, ss.goals, "ses_goal"); err != nil || ok {
 		t.Fatalf("goal survived the delete cascade: ok=%v err=%v", ok, err)
 	}
+}
+
+func mustPlanCoordinator(deps sessions.PlanDependencies) *sessions.PlanCoordinator {
+	coordinator, err := sessions.NewPlanCoordinator(deps)
+	if err != nil {
+		panic(err)
+	}
+	return coordinator
 }

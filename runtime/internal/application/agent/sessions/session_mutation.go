@@ -28,7 +28,7 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 	defer admission.Release()
 
 	var pending []runs.Pending
-	return c.withGoalMutation(
+	return c.goals.WithSessionMutation(
 		ctx,
 		[]string{sessionID},
 		func(commitCtx context.Context) error {
@@ -83,21 +83,6 @@ func (c *Coordinator) dropSessionResources(sessionIDs []string, action string) [
 	return errs
 }
 
-func (c *Coordinator) withGoalMutation(
-	ctx context.Context,
-	sessionIDs []string,
-	commit func(context.Context) error,
-	afterCommit func(context.Context) error,
-) error {
-	if c.goals == nil {
-		if err := commit(ctx); err != nil {
-			return err
-		}
-		return afterCommit(ctx)
-	}
-	return c.goals.WithSessionMutation(ctx, sessionIDs, commit, afterCommit)
-}
-
 // restoreSession applies a canonical archive and, when requested, derives its
 // session view before releasing the mutation admission. A restoration must not
 // expose a separately-read view because another mutation could otherwise
@@ -136,7 +121,7 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 	}
 	committedSession := sessionReplacement.State()
 	var view View
-	err = c.withGoalMutation(
+	err = c.goals.WithSessionMutation(
 		ctx,
 		[]string{sessionID},
 		func(ctx context.Context) error {

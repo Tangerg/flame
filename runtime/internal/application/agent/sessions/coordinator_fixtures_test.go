@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -40,7 +41,7 @@ func TestNewRejectsMalformedDependencies(t *testing.T) {
 		Paths:             testWorkspaceResolver{},
 		MaterialSnapshots: emptyMaterialSnapshotReader{},
 	})
-	deps.Plan = &PlanServices{}
+	deps.Plan = PlanServices{}
 	if _, err := New(deps); err == nil || !strings.Contains(err.Error(), "plan boundary reader") {
 		t.Fatalf("New incomplete Plan error = %v", err)
 	}
@@ -248,6 +249,18 @@ func testDependencies(stores testStores, deps Dependencies) Dependencies {
 	if deps.Models == nil {
 		deps.Models = testModelAdmitter{}
 	}
+	if deps.Plan.Boundaries == nil {
+		deps.Plan.Boundaries = recordedBoundaries{}
+	}
+	if deps.Plan.Replacements == nil {
+		deps.Plan.Replacements = mustPlanCoordinator(PlanDependencies{Store: &planStoreFake{}})
+	}
+	if deps.Mutations == nil {
+		deps.Mutations = &observingMutations{}
+	}
+	if deps.Goals == nil {
+		deps.Goals = goals.NewSessionMutations()
+	}
 	deps.Sessions = stores.Session()
 	deps.Interrupts = stores.Interrupts()
 	deps.Transcript = stores.Transcript()
@@ -313,6 +326,18 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	}
 	if deps.Models == nil {
 		deps.Models = testModelAdmitter{}
+	}
+	if deps.Plan.Boundaries == nil {
+		deps.Plan.Boundaries = recordedBoundaries{}
+	}
+	if deps.Plan.Replacements == nil {
+		deps.Plan.Replacements = mustPlanCoordinator(PlanDependencies{Store: &planStoreFake{}})
+	}
+	if deps.Mutations == nil {
+		deps.Mutations = &observingMutations{}
+	}
+	if deps.Goals == nil {
+		deps.Goals = goals.NewSessionMutations()
 	}
 	coordinator, err := New(deps)
 	if err != nil {

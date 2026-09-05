@@ -68,17 +68,21 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: construct Schedule coordinator: %w", err)
 	}
+	plans, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{
+		Store: cfg.Stores.Plan, Now: time.Now, Invalidations: invalidations.Publish,
+	})
+	if err != nil {
+		return policyComposition{}, err
+	}
 	return policyComposition{
 		invalidations: invalidations,
 		approvals:     approvalPolicy,
 		goals:         goalStore,
 		goalReader:    goals.NewReader(goalStore),
 		goalReporter:  goals.NewOutcomeReporter(goalStore),
-		plans: sessions.NewPlanCoordinator(sessions.PlanDependencies{
-			Store: cfg.Stores.Plan, Now: time.Now, Invalidations: invalidations.Publish,
-		}),
-		mcp:       mcpSettings,
-		schedules: scheduleCoordinator,
+		plans:         plans,
+		mcp:           mcpSettings,
+		schedules:     scheduleCoordinator,
 	}, nil
 }
 

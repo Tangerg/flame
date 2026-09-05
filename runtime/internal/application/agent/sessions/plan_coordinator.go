@@ -34,23 +34,19 @@ type PlanDependencies struct {
 	Invalidations invalidation.Publish
 }
 
-// NewPlanCoordinator returns a Plan Coordinator. A nil Store means the optional capability is
-// unavailable; callers should omit its tools and application wiring.
-func NewPlanCoordinator(deps PlanDependencies) *PlanCoordinator {
-	if deps.Store == nil {
-		return nil
+// NewPlanCoordinator constructs the Plan use cases over a required store.
+func NewPlanCoordinator(deps PlanDependencies) (*PlanCoordinator, error) {
+	if nilDependency(deps.Store) {
+		return nil, errors.New("sessions: Plan store is required")
 	}
 	if deps.Now == nil {
 		deps.Now = time.Now
 	}
-	return &PlanCoordinator{store: deps.Store, now: deps.Now, invalidations: deps.Invalidations}
+	return &PlanCoordinator{store: deps.Store, now: deps.Now, invalidations: deps.Invalidations}, nil
 }
 
 // State returns the canonical optional Plan aggregate for one session.
 func (c *PlanCoordinator) State(ctx context.Context, sessionID string) (plan.Current, error) {
-	if c == nil || c.store == nil {
-		return plan.Current{}, errors.New("sessions: Plan store is unavailable")
-	}
 	if _, err := resourceid.ParseSession(sessionID); err != nil {
 		return plan.Current{}, fmt.Errorf("sessions: Plan: %w", err)
 	}
@@ -93,9 +89,6 @@ func (c *PlanCoordinator) PrepareReplacement(ctx context.Context, sessionID stri
 // PrepareInitial decides the first Plan state for a not-yet-created session.
 // It is used when a cross-aggregate write set assigns the session identity.
 func (c *PlanCoordinator) PrepareInitial(steps []plan.Step) (plan.Replacement, error) {
-	if c == nil {
-		return plan.Replacement{}, errors.New("sessions: Plan coordinator is unavailable")
-	}
 	return c.replace(plan.Current{}, steps)
 }
 

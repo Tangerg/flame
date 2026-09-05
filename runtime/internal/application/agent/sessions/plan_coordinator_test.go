@@ -18,6 +18,15 @@ type planStoreFake struct {
 	saveErr         error
 }
 
+func TestNewPlanCoordinatorRequiresStore(t *testing.T) {
+	var typedNil *planStoreFake
+	for _, store := range []PlanStore{nil, typedNil} {
+		if coordinator, err := NewPlanCoordinator(PlanDependencies{Store: store}); err == nil || coordinator != nil {
+			t.Fatalf("NewPlanCoordinator = (%v, %v), want missing store error", coordinator, err)
+		}
+	}
+}
+
 func (f *planStoreFake) State(context.Context, string) (plan.Current, error) {
 	return f.state, f.readErr
 }
@@ -43,7 +52,7 @@ func TestCommittedPlanChangeReachesOtherWindows(t *testing.T) {
 	}
 	store := &planStoreFake{state: currentProjection}
 	var notices []invalidation.Notice
-	coordinator := NewPlanCoordinator(PlanDependencies{
+	coordinator := mustPlanCoordinator(PlanDependencies{
 		Store: store, Now: func() time.Time { return now },
 		Invalidations: func(notice invalidation.Notice) { notices = append(notices, notice) },
 	})
@@ -62,7 +71,7 @@ func TestCommittedPlanChangeReachesOtherWindows(t *testing.T) {
 
 func TestPrepareReplacementDoesNotWrite(t *testing.T) {
 	store := &planStoreFake{}
-	coordinator := NewPlanCoordinator(PlanDependencies{Store: store, Now: func() time.Time { return time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC) }})
+	coordinator := mustPlanCoordinator(PlanDependencies{Store: store, Now: func() time.Time { return time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC) }})
 	replacement, err := coordinator.PrepareReplacement(t.Context(), "ses_1", nil)
 	if err != nil {
 		t.Fatalf("PrepareReplacement: %v", err)
@@ -74,7 +83,7 @@ func TestPrepareReplacementDoesNotWrite(t *testing.T) {
 
 func TestPreparedPlanOwnsStepsAfterReturn(t *testing.T) {
 	steps := []plan.Step{{Description: "original", Status: plan.StatusPending}}
-	coordinator := NewPlanCoordinator(PlanDependencies{Store: &planStoreFake{}, Now: time.Now})
+	coordinator := mustPlanCoordinator(PlanDependencies{Store: &planStoreFake{}, Now: time.Now})
 	replacement, err := coordinator.PrepareReplacement(t.Context(), "ses_1", steps)
 	if err != nil {
 		t.Fatal(err)
@@ -90,7 +99,7 @@ func TestPreparedPlanOwnsStepsAfterReturn(t *testing.T) {
 func TestReplacePropagatesRevisionConflict(t *testing.T) {
 	store := &planStoreFake{saveErr: plan.ErrRevisionConflict}
 	var published bool
-	coordinator := NewPlanCoordinator(PlanDependencies{
+	coordinator := mustPlanCoordinator(PlanDependencies{
 		Store: store, Now: time.Now,
 		Invalidations: func(invalidation.Notice) { published = true },
 	})
@@ -105,10 +114,18 @@ func TestReplacePropagatesRevisionConflict(t *testing.T) {
 
 func TestStateRejectsInvalidSessionIdentityBeforePersistence(t *testing.T) {
 	store := &planStoreFake{}
-	coordinator := NewPlanCoordinator(PlanDependencies{Store: store, Now: time.Now})
+	coordinator := mustPlanCoordinator(PlanDependencies{Store: store, Now: time.Now})
 	for _, sessionID := range []string{"", " ses_1", "ses_1 "} {
 		if _, err := coordinator.State(t.Context(), sessionID); err == nil {
 			t.Errorf("State(%q) succeeded", sessionID)
 		}
 	}
+}
+
+func mustPlanCoordinator(deps PlanDependencies) *PlanCoordinator {
+	coordinator, err := NewPlanCoordinator(deps)
+	if err != nil {
+		panic(err)
+	}
+	return coordinator
 }

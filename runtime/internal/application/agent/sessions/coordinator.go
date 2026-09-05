@@ -197,7 +197,6 @@ type SandboxDiscarder interface {
 // GoalMutationGuard serializes a session write-set with Goal lifecycle
 // commands. It owns the complete commit boundary: afterCommit runs exactly
 // once after commit succeeds, even when quiescing an affected Goal fails.
-// nil disables it (Goal mode off).
 type GoalMutationGuard interface {
 	WithSessionMutation(
 		ctx context.Context,
@@ -214,8 +213,7 @@ type GoalMutationGuard interface {
 // returns interrupted operations for boot recovery. Its store commits writes
 // independently (not joined to any rollback
 // transaction) — the log is precisely the marker that the two resources change
-// out of transaction. nil disables the log (rollback runs without a recovery
-// record, degrading to best-effort).
+// out of transaction.
 type WorkspaceMutations interface {
 	Record(ctx context.Context, m WorkspaceMutation) error
 	Complete(ctx context.Context, sessionID string) error
@@ -239,7 +237,7 @@ type Coordinator struct {
 	interrupts            InterruptStore
 	transcript            TranscriptStore
 	runs                  RunStore
-	plan                  *PlanServices
+	plan                  PlanServices
 	snapshots             SnapshotReader
 	materialSnapshots     MaterialSnapshotReader
 	writes                WriteSets
@@ -256,10 +254,10 @@ type Coordinator struct {
 	// policy or durable history stops owning that scratch state; nil disables it.
 	sandbox SandboxDiscarder
 	// goals serializes a session write-set with Goal lifecycle commands and
-	// quiesces its loop after a successful commit; nil disables Goal mode.
+	// quiesces its loop after a successful commit.
 	goals GoalMutationGuard
 	// mutations is the §8.5 recoverable operation log guarding a file+history
-	// rollback across the working tree and the durable history; nil disables it.
+	// rollback across the working tree and the durable history.
 	mutations WorkspaceMutations
 	// admissions is shared with Runs and owns the process-local session and
 	// working-tree facts.
@@ -280,13 +278,11 @@ type Coordinator struct {
 // mutations cross one cohesive WriteSets transaction; reads and process-local
 // cleanup are independent ports rather than accessor methods on a store bag.
 type Dependencies struct {
-	Sessions   Store
-	Interrupts InterruptStore
-	Transcript TranscriptStore
-	Runs       RunStore
-	// Plan is nil when Plan support is disabled. When enabled, both the boundary
-	// history and replacement behavior are one capability and must be present.
-	Plan                  *PlanServices
+	Sessions              Store
+	Interrupts            InterruptStore
+	Transcript            TranscriptStore
+	Runs                  RunStore
+	Plan                  PlanServices
 	Snapshots             SnapshotReader
 	MaterialSnapshots     MaterialSnapshotReader
 	Writes                WriteSets
@@ -328,6 +324,10 @@ func New(deps Dependencies) (*Coordinator, error) {
 		value any
 	}{
 		{"session store", deps.Sessions},
+		{"plan boundary reader", deps.Plan.Boundaries},
+		{"plan replacements", deps.Plan.Replacements},
+		{"goal mutation guard", deps.Goals},
+		{"workspace mutations", deps.Mutations},
 		{"interrupt store", deps.Interrupts},
 		{"transcript store", deps.Transcript},
 		{"run store", deps.Runs},
@@ -355,20 +355,10 @@ func New(deps Dependencies) (*Coordinator, error) {
 	}{
 		{"workspace checkpoints", deps.Checkpoints},
 		{"sandbox discarder", deps.Sandbox},
-		{"goal mutation guard", deps.Goals},
-		{"workspace mutations", deps.Mutations},
 	}
 	for _, dependency := range optional {
 		if dependency.value != nil && nilDependency(dependency.value) {
 			return nil, fmt.Errorf("sessions: optional %s must not be typed nil", dependency.name)
-		}
-	}
-	if deps.Plan != nil {
-		if nilDependency(deps.Plan.Boundaries) {
-			return nil, errors.New("sessions: plan boundary reader is required when Plan support is enabled")
-		}
-		if nilDependency(deps.Plan.Replacements) {
-			return nil, errors.New("sessions: plan replacements are required when Plan support is enabled")
 		}
 	}
 	if err := deps.DefaultModelSelection.ValidateExact(); err != nil {

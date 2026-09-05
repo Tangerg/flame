@@ -14,6 +14,7 @@ import (
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
@@ -946,9 +947,9 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 		NewToolResultID: toolresult.NewID,
 	}
 	if s.plan != nil {
-		deps.Plan = &sessions.PlanServices{
+		deps.Plan = sessions.PlanServices{
 			Boundaries: s.plan,
-			Replacements: sessions.NewPlanCoordinator(sessions.PlanDependencies{
+			Replacements: mustPlanCoordinator(sessions.PlanDependencies{
 				Store: s.plan, Now: time.Now,
 			}),
 		}
@@ -956,6 +957,13 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 	if s.muts != nil {
 		deps.Mutations = s.muts
 	}
+	if deps.Plan.Boundaries == nil {
+		deps.Plan = sessions.PlanServices{Boundaries: inertQueryStores{}, Replacements: mustPlanCoordinator(sessions.PlanDependencies{Store: inertQueryStores{}})}
+	}
+	if deps.Mutations == nil {
+		deps.Mutations = inertWorkspaceMutations{}
+	}
+	deps.Goals = goals.NewSessionMutations()
 	coordinator, err := sessions.New(deps)
 	if err != nil {
 		panic(err)
@@ -1335,4 +1343,25 @@ func newSessionHandler(t *testing.T) (*Handler, *sqlite.SessionStore, *stubRunti
 	// the wire status now reads it (liveStatus), so give the stub a real store.
 	runtime := &stubRuntime{sess: svc, model: "default-model", interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db))}
 	return newTestHandler(runtime), svc, runtime
+}
+
+func mustPlanCoordinator(deps sessions.PlanDependencies) *sessions.PlanCoordinator {
+	coordinator, err := sessions.NewPlanCoordinator(deps)
+	if err != nil {
+		panic(err)
+	}
+	return coordinator
+}
+
+func (inertQueryStores) Boundary(context.Context, string) ([]plan.Step, bool, error) {
+	return nil, false, nil
+}
+func (inertQueryStores) Save(context.Context, string, plan.Replacement) error { return nil }
+
+type inertWorkspaceMutations struct{}
+
+func (inertWorkspaceMutations) Record(context.Context, sessions.WorkspaceMutation) error { return nil }
+func (inertWorkspaceMutations) Complete(context.Context, string) error                   { return nil }
+func (inertWorkspaceMutations) ListPending(context.Context) ([]sessions.WorkspaceMutation, error) {
+	return nil, nil
 }

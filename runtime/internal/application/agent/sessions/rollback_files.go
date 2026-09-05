@@ -219,7 +219,7 @@ func (c *Coordinator) quiesceRollbackWorkspace(sessionID, cwd string) error {
 }
 
 func (c *Coordinator) recordRollbackMutation(ctx context.Context, spec RollbackSpec, cwd string) (bool, error) {
-	if !spec.Scope.RestoresFiles() || c.mutations == nil {
+	if !spec.Scope.RestoresFiles() {
 		return false, nil
 	}
 	err := c.mutations.Record(ctx, WorkspaceMutation{
@@ -283,9 +283,6 @@ func projectDroppedRuns(boundary transcript.Boundary, runs []run.Run, inputs map
 // recovery aborts startup (returned loud) rather than serving a session whose
 // tree and history disagree.
 func (c *Coordinator) RecoverWorkspaceMutations(ctx context.Context) error {
-	if c.mutations == nil {
-		return nil
-	}
 	pending, err := c.mutations.ListPending(ctx)
 	if err != nil {
 		return err
@@ -331,9 +328,6 @@ func (c *Coordinator) recoverRollback(ctx context.Context, m WorkspaceMutation) 
 }
 
 func (c *Coordinator) completeMutation(ctx context.Context, sessionID string) error {
-	if c.mutations == nil {
-		return nil
-	}
 	return c.mutations.Complete(ctx, sessionID)
 }
 

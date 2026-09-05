@@ -214,7 +214,7 @@ func createSessionWithInitialPlan(
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sessions.NewPlanCoordinator(sessions.PlanDependencies{Store: stores.Plan}).Replace(
+	if _, err := mustPlanCoordinator(sessions.PlanDependencies{Store: stores.Plan}).Replace(
 		ctx,
 		session.ID,
 		[]plandomain.Step{{Description: stalePlanText, Status: plandomain.StatusInProgress}},

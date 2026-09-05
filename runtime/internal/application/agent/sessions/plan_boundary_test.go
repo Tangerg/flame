@@ -44,9 +44,9 @@ func (f fixedBoundary) Boundary(context.Context, string) ([]plan.Step, bool, err
 
 func boundaryCoordinator(stores testStores, boundaries PlanBoundaries) *Coordinator {
 	deps := testDependencies(stores, Dependencies{Paths: testWorkspaceResolver{}})
-	deps.Plan = &PlanServices{
+	deps.Plan = PlanServices{
 		Boundaries: boundaries,
-		Replacements: NewPlanCoordinator(PlanDependencies{
+		Replacements: mustPlanCoordinator(PlanDependencies{
 			Store: boundaryPlanStore{}, Now: func() time.Time { return time.Unix(100, 0) },
 		}),
 	}

@@ -6,7 +6,7 @@ import (
 )
 
 // The session lifecycle's invalidations. Each is published from a post-commit
-// boundary — for the write-sets, the afterCommit half of [Coordinator.withGoalMutation],
+// boundary — for the write-sets, the Goal guard's afterCommit callback,
 // which runs exactly once and only after the transaction landed.
 
 // publishSessionMoved reports a change to the session row itself: created,
