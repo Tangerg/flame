@@ -189,29 +189,49 @@ function rulesFor(path) {
   return [];
 }
 
-// Every `--text-*` step has to be named in lib/classNames.ts, or Tailwind Merge
-// reads it as a colour: the step is then DROPPED when an ink utility follows it
-// and IGNORED when another size does — silently, in both directions, with the
-// element rendering at whatever it inherited. A newly added `prose` step hit both
-// halves of that before this check existed. The UI half of the list is derived
-// from the ladder; this holds the editorial half, which lives only in globals.css.
-function unmergedTypeSteps() {
+// Every step `@theme inline` publishes has to be named in lib/classNames.ts, or Tailwind Merge
+// cannot disambiguate it — and an unknown value does not conflict with ANYTHING, so both
+// classes survive and stylesheet order silently picks the winner. Each ladder fails its own
+// way: an unnamed `--text-*` is read as a colour, so the step is DROPPED when an ink utility
+// follows and IGNORED when another size does; unnamed `--leading-*` and `--radius-*` simply
+// stop resolving against each other. All three have happened here.
+//
+// Read from `@theme inline` alone, because that block is exactly what Tailwind turns into
+// utilities: `--radius-scale` is a multiplier and `--leading-markdown-*` are stylesheet
+// values, and neither is a class anyone can write.
+const MERGED_LADDERS = [
+  ["text", "read as a colour — dropped when an ink utility follows, ignored when a size does"],
+  ["leading", "does not resolve against another leading — stylesheet order picks the winner"],
+  ["radius", "does not resolve against another radius — stylesheet order picks the winner"],
+];
+
+function unmergedLadderSteps() {
   const globals = readFileSync(join(SRC, "styles/globals.css"), "utf8");
-  // Both halves: classNames.ts spells the editorial steps, typography.ts owns the
-  // UI ladder that classNames.ts spreads.
+  const block = globals.match(/@theme inline\s*\{([\s\S]*?)\n\}/);
+  if (!block) throw new Error("globals.css no longer declares a `@theme inline` block");
+  // Both halves: classNames.ts spells the ladders, typography.ts owns the UI type steps that
+  // classNames.ts spreads.
   const named =
     readFileSync(join(SRC, "lib/classNames.ts"), "utf8") +
     readFileSync(join(SRC, "lib/typography.ts"), "utf8");
-  const declared = [...globals.matchAll(/^\s*--text-([a-z0-9-]+):/gm)]
-    .map(([, step]) => step)
-    .filter((step) => !step.includes("--"));
-  return [...new Set(declared)].filter((step) => !named.includes(`"${step}"`));
+
+  const missing = [];
+  for (const [ladder, failure] of MERGED_LADDERS) {
+    const declared = [...block[1].matchAll(new RegExp(`^\\s*--${ladder}-([a-z0-9-]+):`, "gm"))]
+      .map(([, step]) => step)
+      .filter((step) => !step.includes("--"));
+    for (const step of new Set(declared)) {
+      if (!named.includes(`"${step}"`)) {
+        missing.push(
+          `styles/globals.css  --${ladder}-${step}  — step missing from lib/classNames.ts, where Tailwind Merge ${failure}`,
+        );
+      }
+    }
+  }
+  return missing;
 }
 
-const violations = unmergedTypeSteps().map(
-  (step) =>
-    `styles/globals.css  --text-${step}  — type step missing from lib/classNames.ts, where Tailwind Merge would read it as a colour`,
-);
+const violations = unmergedLadderSteps();
 for (const path of walk(SRC)) {
   const rules = rulesFor(path);
   if (rules.length === 0) continue;

@@ -596,23 +596,31 @@ body {
   font-feature-settings: "tnum" 1;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-weight: 600;
-  text-wrap: balance;
-}
+/* IN `base`, not unlayered, because these are defaults a call site has to be able to refuse.
+   Unlayered rules outrank `@layer utilities`, so this block silently defeated three intents
+   at once: `truncate` on the session title (`white-space` and `text-wrap` are both shorthands
+   for `text-wrap-mode`, so `balance` reset the `nowrap` and the header title WRAPPED instead
+   of truncating — invisible at the default type size, three lines deep in a 46px header at
+   the largest), and both `text-pretty` and `font-medium` on the question card's heading. */
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 600;
+    text-wrap: balance;
+  }
 
-p,
-li,
-dd,
-figcaption,
-blockquote,
-summary {
-  text-wrap: pretty;
+  p,
+  li,
+  dd,
+  figcaption,
+  blockquote,
+  summary {
+    text-wrap: pretty;
+  }
 }
 
 .font-mono {

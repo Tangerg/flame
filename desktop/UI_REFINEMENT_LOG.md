@@ -2289,3 +2289,139 @@ Codex switches the composer's radius by content height —
 `[data-composer-layout=multiline]` → `--radius-3xl` — where ours is a fixed
 `--shape-composer: 20px` at every height. Whether 20px on a single-line box reads
 as an unresolved almost-pill needs measuring before it is called a defect.
+
+## Round 37 — three declared intents that never reached the screen
+
+Opened as a pixel-alignment audit against `study/chatgpt`, which produced two
+null results and then a probe that found something the golden suite could not
+see. Everything below was measured in a browser, not argued.
+
+### Null results, recorded so they are not re-opened
+
+**Composer radius.** Codex switches it by content height —
+`[data-composer-layout=single-line]` → `--radius-full`, `multiline` →
+`--radius-3xl`. Ours is fixed. Measured: our composer is **96.69px tall when
+empty**, because the chip row always sits under the input, so 25px of radius is
+**52% of a pill** and never reads as an unresolved almost-pill. Codex's rule
+presumes a slim single-line bar we do not have.
+
+**Composer type.** The textarea renders at 16px against 14px chrome — it is the
+`prose` ladder step (`<TextArea size="prose">`), the same step the transcript
+uses. Deliberate, not drift. The 2px left/right asymmetry is also declared
+(`--density-composer-footer-end` exists to make the end differ).
+
+### The probe, and what it found
+
+Walked all 31 fixture states at 1120x720 (the narrowest window the shell allows)
+with the UI font at 18px (the largest a person can pick), looking for boxes
+shorter than their own text. **7 findings at 18px, 0 at 14px.**
+
+Horizontal overflow was checked first and came back clean once the probe learned
+to skip `visibility: hidden` subtrees (the collapsed dock parks itself off-screen
+by design) and horizontal scrollers (the dock tab strip).
+
+### A — an element default outranked every call site (已完成)
+
+`h1..h6 { font-weight: 600; text-wrap: balance }` sat UNLAYERED. Utilities live
+in `@layer utilities`, and unlayered beats layered, so the block silently
+defeated three declared intents:
+
+| call site | wrote | got |
+| --- | --- | --- |
+| `SessionIdentity.tsx:45` | `truncate` | **wrapped** — `white-space` and `text-wrap` are both shorthands for `text-wrap-mode`, so `balance` reset the `nowrap` |
+| `QuestionCard.tsx:235` | `text-pretty` | `balance` |
+| `QuestionCard.tsx:235` | `font-medium` | **600** |
+| `ChatStream.tsx:119` | `font-medium` | **600** |
+
+The title one is the sharp end: at 18px the `<h1>` grew to **53px inside a 46px
+header** (header `scrollHeight` 49 vs `clientHeight` 46). Invisible at the
+default size, because one line fits either way — **and no golden had ever
+photographed it**, since the `font18` goldens are other states.
+
+Moved into `@layer base`, which is where element defaults belong and why Tailwind
+puts its own preflight there. After: `<h1>` 53px → **26px**, header back to 46.
+
+### B — `cn()` believed something untrue about our type steps (已完成)
+
+`Button`'s cva base declares `leading-tight`. It never reached the DOM:
+
+```
+cn("leading-tight", "text-ui-sm")  ->  "text-ui-sm"
+cn("text-ui-sm", "leading-tight")  ->  "text-ui-sm leading-tight"
+```
+
+Tailwind Merge models a font-size utility as also setting line height, because
+Tailwind's own steps do. **Ours do not** — `@theme inline` gives `--text-ui-*` a
+size and a tracking and no leading. So every `leading-*` written before a size in
+the same expression was dropped, silently and order-dependently, and the element
+fell back to the body's PROSE rhythm.
+
+Two live victims: every `Button` (its box was then shorter than its own line at
+18px), and `MessageBlock.tsx:93`, where the transcript lost the `leading-prose`
+it declares. Reordering the classes would have been a patch that the next edit
+undoes, so the fix is to stop `cn()` believing it:
+`override: { conflictingClassGroups: { "font-size": [] } }`.
+
+Measured after: Button 26.35px → **19.55px** line (17px x 1.15, the
+`leading-tight` it asked for) and its 20px box no longer overflows;
+`.msg-content` 24.8px → **24px**, exactly `calc(1em + 8px)` as
+`--leading-prose` declares.
+
+### C — two more ladders Tailwind Merge could not see (已完成)
+
+The same question asked of every ladder found two more:
+
+```
+cn("leading-body", "leading-prose")   ->  both kept
+cn("rounded-sm", "rounded-composer")  ->  both kept
+```
+
+`classNames.ts` declared the `text` ladder and not `leading` or `radius`, so our
+own steps did not conflict with anything and stylesheet order picked the winner.
+Both now declared. **No golden changed**, so this removed a latent hazard rather
+than a live symptom — worth saying plainly.
+
+`check-design-tokens` was holding only the type half, and reading the whole file.
+It now reads `@theme inline` alone — which is exactly what Tailwind turns into
+utilities, so `--radius-scale` (a multiplier) and `--leading-markdown-*`
+(stylesheet values) correctly stay out — and holds all three ladders.
+Negative-tested by removing a step from each.
+
+### What was NOT fixed, and why
+
+Six boxes remain 2-3px short of their text at 18px: three `<span>`s whose glyph
+box exceeds a `leading-none` line box (normal font metrics, `overflow: visible`,
+nothing clipped) and controls whose pinned height is a deliberate choice —
+`typography.ts` keeps geometry in absolute px on purpose. Growing them would be a
+redesign, not a fix.
+
+Giving `--text-ui-*` its own line height was considered and rejected on
+measurement: **90 multi-line `ui-md` elements** currently rely on the inherited
+1.55 body rhythm, so a tighter step value would restyle the app rather than fix
+a defect.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, all fifteen guards — green.
+- `check-design-tokens` now reports the layer, leading and radius ladders;
+  negative-tested on all three.
+- `check:bundle` — 981 emitted utilities, every class renders; entry CSS 112.3 KB.
+- Unit: **2362 passing**, +2 from the new `cn()` contract tests. The 9 failures
+  are all `src/rpc/` (`segment.finished.json` vs `RunEvent`, plus the Go-runtime
+  e2e), confirmed pre-existing by stashing this branch and re-running.
+- Visual: **430/430**. 17 goldens regenerated for A and B, each verified by
+  pixel bounding box to be confined to the text whose leading or weight changed;
+  C changed none.
+- Evidence: `/tmp/round37/{before,after}` (3x crops of the header before and
+  after truncation) and the bounding-box report per golden.
+
+### Resources reclaimed
+
+All six probe scripts deleted, port 4174 freed, no stray `visual:dev` or
+Playwright processes, `playwright.visual.config.ts` unmodified.
+
+### Next round
+
+Pick up the current Runtime protocol — the nine `src/rpc/` failures are the
+contract having moved (`segment.finished.json` no longer satisfies `RunEvent`),
+and the generated wire files are newer than the samples.
