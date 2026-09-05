@@ -1,6 +1,8 @@
 import { memo } from "react";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
+import { hasAnsi } from "@/lib/ansi";
+import { AnsiText } from "@/ui";
 import type { WorkspaceCommandActivity } from "@/plugins/builtin/workspace/application/toolActivity";
 
 export const CommandLog = memo(function CommandLog({
@@ -42,8 +44,14 @@ export const CommandLog = memo(function CommandLog({
                 </span>
               )}
             </div>
+            {/* A command that thought it was on a TTY sends its colours as escape codes. Printed
+                verbatim they are the loudest thing in the pane — `[32m` before every PASS —
+                and the failure they were marking is the hardest to find. Read as tone, which
+                the transcript's own output panel has always done. */}
             {c.output ? (
-              <pre className="mt-1.5 whitespace-pre-wrap break-words text-fg-muted">{c.output}</pre>
+              <pre className="mt-1.5 whitespace-pre-wrap break-words text-fg-muted">
+                {hasAnsi(c.output) ? <AnsiText text={c.output} /> : c.output}
+              </pre>
             ) : null}
           </div>
         );

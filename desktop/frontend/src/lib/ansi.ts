@@ -1,5 +1,10 @@
 // Hand-written rather than `anser` / `ansi-to-html`: those emit literal colours, which cannot
 // follow the scheme or a contributed theme. This emits spans plus a TONE.
+//
+// In `lib` because two contexts read command output — the transcript's tool panel and the
+// workspace terminal — and neither owns what an SGR code means. It lived under the chat
+// plugin's domain ring, out of the terminal view's reach, which is why that view rendered
+// escape codes as text for as long as it did.
 
 export type AnsiTone = "negative" | "success" | "warning" | "info" | "accent" | "muted";
 

@@ -124,6 +124,21 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     await expect(view.getByRole("img", { name: "err" })).toBeVisible();
     return;
   }
+  if (state === "dock-explorer") {
+    // The tree is seeded, not fetched — ready is the root listing it renders from that seed.
+    const view = page.locator(".agent-workspace-view:visible");
+    await expect(view).toContainText("go.mod");
+    await expect(view).toContainText("README.md");
+    return;
+  }
+  if (state === "dock-terminal") {
+    // The failing line, in the tone its escape codes ask for: this state exists because that
+    // pane used to print the codes instead of reading them.
+    const view = page.locator(".agent-workspace-view:visible");
+    await expect(view).toContainText("exit 1");
+    await expect(view.locator(".text-negative", { hasText: "FAIL:" }).first()).toBeVisible();
+    return;
+  }
   if (state === "dock-error") {
     await expect(page.getByText("Couldn't load the diff", { exact: true })).toBeVisible();
     return;

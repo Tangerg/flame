@@ -46,6 +46,7 @@ export { TextArea, TextField } from "./text-field";
 export { TextEditorDialog } from "./text-editor-dialog";
 export { TextButton } from "./text-button";
 export { Slider } from "./slider";
+export { AnsiText } from "./ansi-text";
 export { StatusDot } from "./status-dot";
 export { StepMark, StepRow } from "./step-row";
 export { Surface } from "./surface";

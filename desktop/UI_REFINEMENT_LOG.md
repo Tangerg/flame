@@ -4085,3 +4085,63 @@ failed patch's own mark, the thing the state exists to photograph.
 
 The other twelve unopened views. Each is a surface the suite has never seen, and
 the first one opened had a `ui_rules 5` defect in it.
+
+---
+
+## Round 76 — the terminal printed its colours instead of wearing them
+
+Status: **complete**
+
+Round 75's finding said the unopened views were where to look. Two of the nine
+dock destinations had never been opened — Explorer and Terminal — so both got a
+state. Explorer renders its tree and is clean. Terminal was not.
+
+`go test` sends its colours as SGR escapes when it thinks it is on a TTY, and the
+fixture seeds exactly that, because it is what a Runtime capturing a command
+actually receives. `CommandLog.tsx` put the string in a bare `<pre>`:
+
+```
+[1m=== RUN   TestCommitAtomicity[0m
+[32m--- PASS: TestCommitAtomicity (0.01s)[0m
+[31m--- FAIL: TestRollbackOnFlushFailure (0.02s)[0m
+```
+
+Printed verbatim, the codes are the loudest thing in the pane and the failure
+they were marking is the hardest thing to find.
+
+### The app already knew how
+
+`ToolOutputPanel` has read these correctly all along, through a hand-written
+parser that emits TONES rather than literal colours so they follow the scheme.
+Its own comment even sends the reader to the terminal view for the full output —
+to the pane that could not read them.
+
+The parser sat in `chat/tools/domain/`, out of the workspace plugin's reach. It
+is a technical mechanism neither context owns, so it now lives in `lib/ansi.ts`,
+and the tone→token map — the answer to "what colour is a failure" — is one atom,
+`ui/atoms/ansi-text.tsx`, that both surfaces render through.
+
+### Before / after
+
+| | before | after |
+| --- | --- | --- |
+| terminal view | escape codes as text, 10 lines of them | tone: green PASS, red FAIL, amber warning |
+| ESC bytes in the DOM | present | 0 |
+| tone→token map | one copy in the chat plugin | one atom, two consumers |
+| ANSI parser | `chat/tools/domain/` | `lib/` |
+
+### Verification
+
+- Captured before and after at 2×. `esc bytes in DOM: 0, visible colour codes: 0`.
+- Both new states declare their own ready boundary; `dock-terminal`'s is the
+  failing line *in its tone*, which is the thing the state exists to hold.
+- Visual **468/468** (452 before). Guards green including `check:layers` and
+  `check:published-boundaries` — the move is legal in both directions. Unit
+  2370/4 pre-existing.
+
+### Next
+
+Eleven views still unopened, all `dock: "workspace"` scope: search, files,
+skills, skill-proposals, skill-library, recipes, knowledge, agent-memory,
+agent-docs, plus `notifications` (session) and `run-summary` (run). Two rounds,
+two views opened, two defects — the ratio argues for continuing.

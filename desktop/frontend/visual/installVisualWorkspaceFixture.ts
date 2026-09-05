@@ -421,6 +421,8 @@ const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-inbox": "inbox",
   "dock-stats": "tool-stats",
   "dock-timeline": "timeline",
+  "dock-explorer": "explorer",
+  "dock-terminal": "terminal",
   "dock-tools": "tools",
   "dock-file": "file",
   "dock-catalog": WORKSPACE_DOCK_CATALOG,
@@ -437,7 +439,7 @@ export async function installVisualWorkspaceFixture(
   await installVisualAgentFixture(
     state === "dock-light"
       ? "running"
-      : state === "dock-stats" || state === "dock-timeline"
+      : state === "dock-stats" || state === "dock-timeline" || state === "dock-terminal"
         ? "tool-shells"
         : "idle",
   );

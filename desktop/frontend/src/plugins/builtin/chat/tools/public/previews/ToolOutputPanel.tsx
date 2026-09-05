@@ -1,14 +1,9 @@
 import { useMemo, useState } from "react";
-import {
-  type AnsiSpan,
-  type AnsiTone,
-  hasAnsi,
-  parseAnsi,
-} from "@/plugins/builtin/chat/tools/domain/ansi";
+import { hasAnsi } from "@/lib/ansi";
 import { cn } from "@/lib/classNames";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { useT } from "@/lib/i18n";
-import { Icon, IconButton, TextButton, Well } from "@/ui";
+import { AnsiText, Icon, IconButton, TextButton, Well } from "@/ui";
 import { LinkedText } from "@/plugins/builtin/chat/file-references/public/LinkedText";
 import { PreviewPlaceholder } from "./PreviewPlaceholder";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
@@ -21,36 +16,13 @@ const COLLAPSED_LINES = 9;
 // a frame rather than a freeze.
 const EXPANDED_LINES = 1_000;
 
-const TONE_CLASS: Record<AnsiTone, string> = {
-  negative: "text-negative",
-  success: "text-success",
-  warning: "text-warning",
-  info: "text-info",
-  accent: "text-accent",
-  muted: "text-fg-faint",
-};
-
-function spanClass(span: AnsiSpan): string | undefined {
-  const parts = [
-    span.tone ? TONE_CLASS[span.tone] : undefined,
-    span.bold ? "font-semibold" : undefined,
-    span.dim ? "opacity-70" : undefined,
-    span.underline ? "underline" : undefined,
-  ].filter(Boolean);
-  return parts.length > 0 ? parts.join(" ") : undefined;
-}
-
+// Plain lines go through `LinkedText`, which turns a path into somewhere to click. A line
+// carrying escape codes does not: the link scanner would have to be taught the codes, and a
+// coloured `go test` line is the one shape where the path is already the least of what is
+// there.
 function OutputLine({ text }: { text: string }) {
   if (!hasAnsi(text)) return <LinkedText text={text || " "} />;
-  return (
-    <>
-      {parseAnsi(text).map((span, index) => (
-        <span key={index} className={spanClass(span)}>
-          {span.text}
-        </span>
-      ))}
-    </>
-  );
+  return <AnsiText text={text} />;
 }
 
 interface ToolOutputPanelProps {
