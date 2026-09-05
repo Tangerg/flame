@@ -788,19 +788,27 @@ test("deleting a schedule asks first, and a declined ask changes nothing", async
 });
 
 // The HITL loop's own trace, which no fixture could hold: an approval-result entry exists
-// only once somebody answers, so `approved` was a status the timeline had never drawn.
-test("answering an approval writes a settled entry the timeline can show", async ({ page }) => {
-  await openWorkspace(page, { state: "dock-runs" });
-  await waitForWorkspaceState(page, "dock-runs");
+// only once somebody answers, so neither `approved` nor `declined` had ever been drawn.
+for (const answer of [
+  { button: "Allow once", mark: "approved" },
+  { button: "Deny", mark: "declined" },
+] as const) {
+  test(`answering an approval with ${answer.button} writes a settled entry`, async ({ page }) => {
+    await openWorkspace(page, { state: "dock-runs" });
+    await waitForWorkspaceState(page, "dock-runs");
 
-  const timeline = page.locator("[data-dock-view-id='timeline']");
-  await expect(timeline.getByText("Approval requested")).toBeVisible();
-  await expect(timeline.getByRole("img", { name: "approved" })).toHaveCount(0);
+    const timeline = page.locator("[data-dock-view-id='timeline']");
+    await expect(timeline.getByText("Approval requested")).toBeVisible();
+    await expect(timeline.getByRole("img", { name: answer.mark })).toHaveCount(0);
 
-  await page.getByRole("button", { name: /Allow once/ }).click();
+    await page.getByRole("button", { name: answer.button, exact: true }).click();
 
-  // The verdict is the MARK; the label states only that the request was answered — as a
-  // bare noun it read "granted" in four languages, which a denial is not.
-  await expect(timeline.getByRole("img", { name: "approved" })).toBeVisible();
-  await expect(timeline.getByText("Approval settled")).toBeVisible();
-});
+    // The verdict is the MARK; the label states only that the request was answered — as a
+    // bare noun it read "granted" in four languages, which a denial is not.
+    await expect(timeline.getByRole("img", { name: answer.mark })).toBeVisible();
+    const settled = timeline.getByText("Approval settled").locator("xpath=ancestor::*[2]");
+    // And WHICH approval, taken from the request rather than restated: two answered
+    // approvals in one run are otherwise two identical rows.
+    await expect(settled).toContainText("go list -deps ./...");
+  });
+}

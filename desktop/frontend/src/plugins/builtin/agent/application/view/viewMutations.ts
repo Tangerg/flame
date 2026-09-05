@@ -152,6 +152,12 @@ export function resolveInterrupt(
     );
   }
   if (settled.decision && touchedApproval && ownerRunId) {
+    // The subject comes from the REQUEST rather than being restated: it is the same
+    // approval, and a run that asked twice would otherwise settle into two rows reading
+    // "Approval settled" with nothing to say which command each one answered.
+    const requested = next.timeline.find(
+      (entry) => entry.kind === "approval-request" && entry.refId === itemId,
+    );
     next = appendTimelineEntry({
       id: `timeline:local:approval-result:${itemId}:${settled.decision}`,
       ts: resolvedAt,
@@ -159,6 +165,7 @@ export function resolveInterrupt(
       runId: ownerRunId,
       refId: itemId,
       status: settled.decision,
+      ...(requested?.summary !== undefined ? { summary: requested.summary } : {}),
     })(next);
   }
   return next;

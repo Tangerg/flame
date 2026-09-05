@@ -5388,3 +5388,42 @@ runtime-contract e2e.
 ### Next
 
 `declined` is still undrawn — the same click, answered the other way.
+
+---
+
+## Round 99 — settled, but which one?
+
+Status: **complete**
+
+Answered the same approval the other way. `declined` draws correctly — an amber
+`✗` against the `✓` of an allow, two glyphs rather than two colours — and the
+label now says the same neutral thing either way, which was last round's fix.
+
+Drawing it showed what the row still would not say. Every neighbour names its
+subject:
+
+| | |
+| --- | --- |
+| Approval requested | `go list -deps ./...` |
+| Tool finished | `Verify package dependencies` |
+| **Approval settled** | **—** |
+
+A run that asks twice settles into two rows reading "Approval settled" with
+nothing to tell them apart, and the mark says only *how* it was answered.
+
+The subject comes from the REQUEST rather than being restated: same approval,
+same `refId`, one owner for the fact. Restating it would have been a second
+answer to "what was this about" that could drift from the first.
+
+### Verification
+
+The guard now runs both decisions and holds three things each time: the mark
+appears, the label states only that the request was settled, and the row names
+the command it settled. Mutated by dropping the summary, both fail. Visual
+**647/647**, no golden moved — these rows exist only after a click; the
+20-script gate is green; unit 2395/4 outside the runtime-contract e2e.
+
+### Next
+
+Both approval decisions are drawn. The question interrupt settles through the
+same local-entry path and has no timeline kind of its own.
