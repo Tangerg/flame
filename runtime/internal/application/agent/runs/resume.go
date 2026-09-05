@@ -87,7 +87,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if err != nil {
 		return StartResult{}, err
 	}
-	attempt.ownStagedExecution(&c.segments, ref)
+	attempt.ownStagedExecution(c.releases, ref)
 	if validateForErr := attempt.staged.validateFor(pending.SessionID); validateForErr != nil {
 		return StartResult{}, validateForErr
 	}

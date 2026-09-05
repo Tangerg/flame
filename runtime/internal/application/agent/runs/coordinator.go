@@ -12,6 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
+	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -58,11 +59,16 @@ type Coordinator struct {
 	runs Projection
 	// items resolves the exact parent tool projection a waiting child
 	// cancellation replaces.
-	items ItemProjection
-	// segments owns process-local Segment admission, replay and teardown;
-	// publications owns durable-write-before-notify ordering.
-	segments     segmentLifecycle
+	items        ItemProjection
+	observations ExecutionObserver
+	releases     ExecutionReleaser
+	finalizer    SegmentFinalizer
+	retention    Retention
+	epoch        replayEpoch
+	tasks        taskgroup.Group
+	registry     registry
 	admission    *ownership.Gate
+	// publications owns durable-write-before-notify ordering.
 	publications runPublications
 }
 
@@ -187,13 +193,12 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		isolation:                          deps.Isolation,
 		newRunID:                           deps.NewRunID,
 		newSegmentID:                       deps.NewSegmentID,
-		segments: newSegmentLifecycle(
-			deps.Observations,
-			deps.Releases,
-			deps.Projection.Finalizer,
-			deps.Retention,
-		),
-		admission: deps.Admissions,
+		observations:                       deps.Observations,
+		releases:                           deps.Releases,
+		finalizer:                          deps.Projection.Finalizer,
+		retention:                          deps.Retention,
+		epoch:                              newReplayEpoch(),
+		admission:                          deps.Admissions,
 		publications: newRunPublications(
 			deps.Projection,
 			deps.Invalidations,
@@ -215,7 +220,7 @@ func nilDependency(value any) bool {
 // ReplayRetention is the window this Coordinator enforces. Discovery publishes
 // it from here rather than from a constant of its own: a number the client is
 // told and a number the runtime evicts by must be the same number.
-func (c *Coordinator) ReplayRetention() Retention { return c.segments.replayRetention() }
+func (c *Coordinator) ReplayRetention() Retention { return c.retention }
 
 // WaitSessionStartable lets an application-owned continuation wait until both
 // the live admission gate and the durable Session Run projection are
@@ -293,7 +298,7 @@ func (c *Coordinator) prepareSegmentStartup(
 	requestContext context.Context,
 	spec segmentSpec,
 ) (*segmentStartup, error) {
-	taskContext, releaseTask, attached := c.segments.attach(requestContext)
+	taskContext, releaseTask, attached := c.tasks.Attach(requestContext)
 	if !attached {
 		if spec.Continuation == nil {
 			return nil, c.rejectUnadmittedExecution(requestContext, spec.executorRef(), ErrClosed)
@@ -309,12 +314,12 @@ func (c *Coordinator) prepareSegmentStartup(
 		cancelRun:   cancelRun,
 		releaseTask: releaseTask,
 	}
-	executorEvents, err := c.segments.observe(runContext, spec.executorRef())
+	executorEvents, err := c.observations.Observe(runContext, spec.executorRef())
 	if err != nil {
 		return nil, startup.abort(err)
 	}
 	startup.executorEvents = executorEvents
-	startup.journal, err = c.segments.newJournal(spec.RunID, spec.SegmentID)
+	startup.journal, err = c.newJournal(spec.RunID, spec.SegmentID)
 	if err != nil {
 		return nil, startup.abort(err)
 	}
@@ -368,7 +373,7 @@ func (s *segmentStartup) activate(
 	if spec.admission != nil && !spec.admission.Admit(spec.RunID) {
 		panic("runs: committed opening without a pending admission")
 	}
-	s.coordinator.segments.open(Record{
+	s.coordinator.registry.Open(Record{
 		ID:             spec.RunID,
 		SegmentID:      spec.SegmentID,
 		SessionID:      spec.SessionID,
@@ -553,7 +558,7 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 func (c *Coordinator) rejectUnadmittedExecution(ctx context.Context, ref ExecutorRef, cause error) error {
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), runCleanupTimeout)
 	defer cancel()
-	if err := c.segments.release(cleanupCtx, ref); err != nil {
+	if err := c.releases.Release(cleanupCtx, ref); err != nil {
 		cleanupErr := fmt.Errorf("runs: release unadmitted executor %q: %w", ref.ExecutorID, err)
 		return errors.Join(cause, cleanupErr)
 	}
@@ -629,7 +634,7 @@ func (c *Coordinator) addressLiveSegment(ctx context.Context, runID, segmentID s
 	if run.ActiveSegmentID() != segmentID {
 		return liveSegment{}, fmt.Errorf("%w: run %q is executing %q", ErrStaleSegment, runID, run.ActiveSegmentID())
 	}
-	live, ok := c.segments.lookup(runID)
+	live, ok := c.registry.Get(runID)
 	if !ok || live.owner == nil || live.owner.hub == nil {
 		// A Running record whose segment this process does not own. Restart recovery
 		// terminalizes orphans before the runtime serves, so this is a broken
@@ -654,9 +659,17 @@ func (c *Coordinator) addressLiveSegment(ctx context.Context, runID, segmentID s
 }
 
 // BeginShutdown prevents new runs and cancels every in-flight pump.
-func (c *Coordinator) BeginShutdown() { c.segments.beginShutdown() }
+func (c *Coordinator) BeginShutdown() { c.tasks.Cancel() }
 
 // AwaitShutdown joins every in-flight pump after [BeginShutdown].
 func (c *Coordinator) AwaitShutdown(ctx context.Context) error {
-	return c.segments.awaitShutdown(ctx)
+	return c.tasks.Wait(ctx)
+}
+
+func (c *Coordinator) newJournal(runID, segmentID string) (*journal, error) {
+	scope, err := newStreamScope(c.epoch, runID, segmentID)
+	if err != nil {
+		return nil, err
+	}
+	return newJournal(scope, c.retention)
 }

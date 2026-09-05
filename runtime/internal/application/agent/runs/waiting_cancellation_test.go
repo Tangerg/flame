@@ -709,7 +709,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	); err == nil {
 		t.Fatal("waiting cancellation accepted an execution observation in an opening event")
 	}
-	if _, live := coordinator.segments.lookup(plan.root.run.ID()); !live {
+	if _, live := coordinator.registry.Get(plan.root.run.ID()); !live {
 		t.Fatal("continued root has no live segment owner")
 	}
 }
@@ -804,7 +804,7 @@ func TestCancelWaitingChildTerminalizesCommittedTreeWhenActivationFails(t *testi
 			t.Fatalf("failed continuation terminal = %+v, want internal error outcome", commit.Run)
 		}
 	}
-	if _, live := coordinator.segments.lookup(plan.root.run.ID()); live {
+	if _, live := coordinator.registry.Get(plan.root.run.ID()); live {
 		t.Fatal("failed continuation retained a live root owner")
 	}
 	if hasActiveSession(coordinator, plan.pending.SessionID) {

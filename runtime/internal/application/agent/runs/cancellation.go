@@ -72,10 +72,10 @@ func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResu
 		if errors.Is(requestErr, ErrRunFinished) {
 			return CancelResult{}, errors.Join(requestErr, entry.owner.wait(cleanupCtx))
 		}
-		c.segments.markCancel(plan.root.run.ID(), cmd.Reason)
+		c.registry.MarkCancel(plan.root.run.ID(), cmd.Reason)
 		return CancelResult{}, errors.Join(requestErr, entry.owner.wait(cleanupCtx))
 	}
-	c.segments.markCancel(plan.root.run.ID(), cmd.Reason)
+	c.registry.MarkCancel(plan.root.run.ID(), cmd.Reason)
 	if interruptCommitted {
 		// The interrupt transaction won before cancellation. Its pump owns the
 		// live admission until it has published and closed the parked segment;
@@ -468,7 +468,7 @@ func (c *Coordinator) recoverCommittedWaitingCancellation(
 	if err != nil {
 		return c.failCommittedWaitingCancellationRecovery(recoveryCtx, plan, err)
 	}
-	if releaseErr := c.segments.release(recoveryCtx, plan.executor); releaseErr != nil &&
+	if releaseErr := c.releases.Release(recoveryCtx, plan.executor); releaseErr != nil &&
 		!errors.Is(releaseErr, ErrExecutorNotLive) {
 		return fmt.Errorf(
 			"runs: release obsolete executor %q before restoring committed root Run %q: %w",
@@ -695,7 +695,7 @@ func (c *Coordinator) cancelClaimedParkedRun(ctx context.Context, cmd CancelComm
 	// ends the run and drops the interrupt, and it is reached from here and from a
 	// resume that finds the park unresumable. Signaling here too would be a second
 	// author for one commit.
-	if err := c.segments.release(ctx, ref); err != nil && !errors.Is(err, ErrExecutorNotLive) {
+	if err := c.releases.Release(ctx, ref); err != nil && !errors.Is(err, ErrExecutorNotLive) {
 		return CancelResult{}, fmt.Errorf("runs: clean up canceled parked Run %q executor: %w", cmd.RunID, err)
 	}
 	return rootCancelResult(terminal)

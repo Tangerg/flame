@@ -637,7 +637,7 @@ func (s *segmentPump) synthesizeRoute(ctx context.Context, route *executorRoute)
 func (s *segmentPump) tearDownExecutor() {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(s.ownerCtx), runCleanupTimeout)
 	defer cancel()
-	if err := s.coordinator.segments.release(ctx, s.spec.executorRef()); err != nil && !errors.Is(err, ErrExecutorNotLive) {
+	if err := s.coordinator.releases.Release(ctx, s.spec.executorRef()); err != nil && !errors.Is(err, ErrExecutorNotLive) {
 		s.owner.completionErr = fmt.Errorf("runs: tear down executor %q: %w", s.spec.ExecutorID, err)
 		recordRunCleanupError(ctx, s.owner.completionErr)
 	}
@@ -645,13 +645,13 @@ func (s *segmentPump) tearDownExecutor() {
 
 func (s *segmentPump) finishBoundary() {
 	releaseMaintenance, maintenanceHeld := s.coordinator.admission.BeginMaintenance(s.spec.RunID)
-	entry, tracked := s.coordinator.segments.lookup(s.spec.RunID)
+	entry, tracked := s.coordinator.registry.Get(s.spec.RunID)
 	if tracked && !s.rootParked && entry.owner != nil {
 		entry.owner.stop()
 	}
 	if s.rootFinished {
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(s.ownerCtx), runCleanupTimeout)
-		if err := s.coordinator.segments.finish(ctx, Finish{
+		if err := s.coordinator.finalizer.Finish(ctx, Finish{
 			SessionID:       s.spec.SessionID,
 			RunID:           s.spec.RunID,
 			CWD:             s.spec.CWD,
@@ -671,7 +671,7 @@ func (s *segmentPump) finishBoundary() {
 		s.owner.completionErr = fmt.Errorf("runs: close replay journal: %w", err)
 		recordRunCleanupError(s.ownerCtx, s.owner.completionErr)
 	}
-	s.coordinator.segments.remove(s.spec.RunID, s.spec.SegmentID)
+	s.coordinator.registry.RemoveSegment(s.spec.RunID, s.spec.SegmentID)
 }
 
 func engineEventEndsSegment(event ExecutionFact) bool {

@@ -75,7 +75,7 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 	if err != nil {
 		return StartResult{}, err
 	}
-	staged := c.segments.ownStagedExecution(ref)
+	staged := ownStagedExecution(c.releases, ref)
 	defer func() {
 		err = staged.abandon(ctx, err, "staged root execution")
 		if err != nil {

@@ -1050,7 +1050,7 @@ func TestStartRejectsForeignExecutorIdentityAndReleasesIt(t *testing.T) {
 	if len(control.released) != 1 || control.released[0] != control.startRef {
 		t.Fatalf("canceled control = %+v, want invalid started execution", control.released)
 	}
-	if _, ok := c.segments.lookup("run_new"); len(effects.openings) != 0 || ok {
+	if _, ok := c.registry.Get("run_new"); len(effects.openings) != 0 || ok {
 		t.Fatal("invalid execution identity reached Run admission")
 	}
 }
@@ -2051,7 +2051,7 @@ func requireChildCancellationProjection(
 
 func requireLiveJournalHead(t *testing.T, coordinator *Coordinator, runID string) (*journal, string) {
 	t.Helper()
-	entry, live := coordinator.segments.lookup(runID)
+	entry, live := coordinator.registry.Get(runID)
 	if !live || entry.owner == nil || entry.owner.hub == nil {
 		t.Fatalf("continued Run %q has no event journal", runID)
 	}
@@ -2164,7 +2164,7 @@ func TestCancelRunningChildCommitsExactSubtreeBoundaryAndKeepsRootRunning(t *tes
 	}
 	requireCanceledChildResult(t, result, childRun, "stop delegated work")
 	requireChildCancellationProjection(t, effects.commitSnapshot(), childRun, "stop delegated work")
-	if _, live := coordinator.segments.lookup("run_1"); !live {
+	if _, live := coordinator.registry.Get("run_1"); !live {
 		t.Fatal("child cancellation stopped the root segment")
 	}
 	eventJournal, cancellationCursor := requireLiveJournalHead(t, coordinator, "run_1")
@@ -2351,7 +2351,7 @@ func TestCancelLosesToACommittedNaturalTerminal(t *testing.T) {
 		_, cancelErr := c.Cancel(t.Context(), CancelCommand{RunID: "run_1", Reason: "too late"})
 		cancelDone <- cancelErr
 	}()
-	entry, live := c.segments.lookup("run_1")
+	entry, live := c.registry.Get("run_1")
 	if !live {
 		t.Fatal("terminal commit lost its live cancellation join")
 	}

@@ -11,13 +11,13 @@ import (
 // before a Segment accepts it. Transfer is irreversible; abandonment releases
 // the exact staged identity on a request-detached cleanup context.
 type stagedExecutionHandoff struct {
-	lifecycle *segmentLifecycle
-	ref       ExecutorRef
-	owned     bool
+	releases ExecutionReleaser
+	ref      ExecutorRef
+	owned    bool
 }
 
-func (s *segmentLifecycle) ownStagedExecution(ref ExecutorRef) *stagedExecutionHandoff {
-	return &stagedExecutionHandoff{lifecycle: s, ref: ref, owned: true}
+func ownStagedExecution(releases ExecutionReleaser, ref ExecutorRef) *stagedExecutionHandoff {
+	return &stagedExecutionHandoff{releases: releases, ref: ref, owned: true}
 }
 
 func (s *stagedExecutionHandoff) validateFor(sessionID string) error {
@@ -54,7 +54,7 @@ func (s *stagedExecutionHandoff) abandonWithin(
 		return cause
 	}
 	s.owned = false
-	if err := s.lifecycle.release(ctx, s.ref); err != nil {
+	if err := s.releases.Release(ctx, s.ref); err != nil {
 		return errors.Join(
 			cause,
 			fmt.Errorf("runs: release %s %q: %w", description, s.ref.ExecutorID, err),
@@ -83,13 +83,13 @@ func (c *Coordinator) ownClaimedResume(pending Pending) *claimedResumeAttempt {
 }
 
 func (c *claimedResumeAttempt) ownStagedExecution(
-	lifecycle *segmentLifecycle,
+	releases ExecutionReleaser,
 	ref ExecutorRef,
 ) {
 	if c.staged != nil {
 		panic("runs: claimed resume staged more than one execution")
 	}
-	c.staged = lifecycle.ownStagedExecution(ref)
+	c.staged = ownStagedExecution(releases, ref)
 }
 
 func (c *claimedResumeAttempt) accept() {
