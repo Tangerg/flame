@@ -65,15 +65,7 @@ function CatalogTrigger({
   );
 }
 
-function CatalogSearch({
-  placeholder,
-  onEscape,
-  ref,
-}: {
-  placeholder: string;
-  onEscape?: (event: React.KeyboardEvent) => void;
-  ref?: Ref<HTMLInputElement>;
-}) {
+function CatalogSearch({ placeholder, ref }: { placeholder: string; ref?: Ref<HTMLInputElement> }) {
   return (
     <div className="mb-1 flex h-[var(--field-height-md)] shrink-0 items-center gap-2 rounded-[var(--field-radius)] border-[length:var(--control-edge-width)] border-field bg-canvas px-2.5 text-fg-muted focus-within:border-field-strong focus-within:text-fg">
       <Icon name="search" size="sm" className="shrink-0" />
@@ -81,7 +73,6 @@ function CatalogSearch({
         ref={ref}
         aria-label={placeholder}
         placeholder={placeholder}
-        onKeyDown={onEscape}
         className="h-full min-w-0 flex-1 border-0 bg-transparent font-sans text-ui-md text-fg outline-none placeholder:text-fg-faint"
       />
     </div>

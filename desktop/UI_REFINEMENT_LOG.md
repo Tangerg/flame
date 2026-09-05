@@ -3242,3 +3242,70 @@ The blocked six if `runtime/.../sessions/` has settled — it is still 7 files
 uncommitted. Otherwise the honest note from this round is that grep-shaped audits
 are running out: what is left needs the type checker, which is how
 `check-design-system-boundaries` already reads the tree.
+
+## Round 48 — the question round 47 could not answer, asked with the AST
+
+Round 47 abandoned "which component API does nothing exercise?" because grep
+cannot tell which component an attribute belongs to. The AST can, and
+`check-design-system-boundaries` already reads the tree that way.
+
+### Two false starts, both from the probe
+
+- `project.program.getTypeChecker` does not exist on the sync API, and the
+  `project.checker` that does exposes `getTypeAtLocation` and reference lookups
+  but no `getPropertiesOfType`. So props are read syntactically instead, from the
+  `interface *Props` or inline type literal each component annotates — **own
+  members only**, since a component extending `ComponentPropsWithoutRef<"div">`
+  inherits hundreds of DOM props nothing passes and nothing should.
+- The first run reported twelve components, **nine of them declaring `text`**.
+  `interface Props` is the commonest local name in this tree, and keying the
+  props map by name alone let the last file parsed answer for every component
+  annotated with it. Keyed by file and name: **twelve → five**.
+
+### The five, each read before touching anything (已完成)
+
+Every one is declared, wired internally, and passed by no call site.
+
+| prop | what it does | verdict |
+| --- | --- | --- |
+| `CatalogSearch.onEscape` | wired to `onKeyDown` | **deleted** — the name promises Escape and the wiring takes any key; the one call site passes neither |
+| `ShikiCodeBlock.file` | renders a filename header | **deleted**, header and all — a branch that never ran |
+| `SkeletonList.style` | forwarded to the element | **deleted** — CLAUDE.md §4 allows inline style only for a value computed at runtime, and offering the prop invites what the rule discourages |
+| `ScrollArea.style` | forwarded to the element | **deleted**, same |
+| `Checkbox.disabled` | styles the label and disables the primitive | **kept** |
+
+`Checkbox.disabled` was checked for the more interesting failure first — a prop
+that styles a control as disabled without disabling it — and it does pass
+`disabled` to `CheckboxPrimitive.Root`, so there is no latent bug. It stays
+because `disabled` is a state every control in the library has (`Button` inherits
+it from the DOM props it extends), and a closed interface omitting it would make
+the checkbox the one control that cannot be turned off. The reason is now written
+at the declaration so the next audit does not re-open it.
+
+### Why this did not become a guard
+
+The audit is worth running and wrong as a gate. A prop legitimately precedes its
+first call site inside a single change, and the one survivor —
+`Checkbox.disabled` — would need an exception. A hand-maintained exception list is
+the thing this log keeps removing, and it would be worse than re-running the
+audit when someone wants it.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, all fifteen guards — green.
+- Unit: **2365 passing**; the 8 failures are the `src/rpc/` set blocked in round 38
+  (`runtime/.../sessions/` still 7 files uncommitted).
+- Visual: **436/436**, none regenerated — four of the five props were never
+  passed, so nothing they controlled was ever on screen.
+
+### Resources reclaimed
+
+Probe deleted, port 4174 freed, no stray processes,
+`playwright.visual.config.ts` unmodified.
+
+### Next round
+
+The blocked six if `runtime/.../sessions/` has settled. Otherwise the same AST
+lens has one more question in it: a prop that IS passed but always with the same
+literal is a variant point that never varied, which is the `Loader` shape one
+level down.

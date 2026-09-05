@@ -1,5 +1,3 @@
-import type { CSSProperties } from "react";
-
 function SkeletonLine({ width = "100%", height = 10 }: { width?: string; height?: number }) {
   return (
     <span
@@ -38,12 +36,10 @@ export type SkeletonListVariant = "stacked" | "compact";
 
 export function SkeletonList({
   count = 4,
-  style,
   label = "Loading…",
   variant = "stacked",
 }: {
   count?: number;
-  style?: CSSProperties;
   label?: string;
   variant?: SkeletonListVariant;
 }) {
@@ -52,7 +48,6 @@ export function SkeletonList({
       className={
         variant === "compact" ? "flex flex-col gap-0.5 py-1" : "flex flex-col gap-2 px-3 py-2"
       }
-      style={style}
       aria-busy="true"
       aria-live="polite"
     >

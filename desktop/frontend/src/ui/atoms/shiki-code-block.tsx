@@ -13,7 +13,6 @@ import { IconButton } from "./icon-button";
 interface Props {
   lang: string;
   code: string;
-  file?: string;
   preview?: ReactNode;
   previewLabel?: string;
 }
@@ -25,7 +24,7 @@ interface HighlightedCode {
   html: string;
 }
 
-export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Props) {
+export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
   const t = useT();
   const shikiTheme = useShikiTheme();
   const isPreview = preview !== undefined;
@@ -107,9 +106,6 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
         >
           {lang || "text"}
         </span>
-        {file && (
-          <span className="min-w-0 flex-1 truncate font-sans text-ui-md text-fg-muted">{file}</span>
-        )}
         <span className="min-w-1 flex-1" />
         {!isPreview && (
           <IconButton
