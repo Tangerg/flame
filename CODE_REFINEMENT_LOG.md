@@ -245,6 +245,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 285 | `b8e22347` + CLI dependency update | Gave portable exports independent Item, tool-result, and Plan collections so archive consumers cannot overwrite the canonical snapshot's backing arrays. |
 | 286 | `9ded61da` + CLI dependency update | Took an owned material-session snapshot at the persistence port, isolating aggregate collections, deeply nested Pending state, and the optional Goal before validation and delivery. |
 | 287 | `dca1eb60` + CLI dependency update | Unified export, fork, and parked-run terminalization behind one owned SnapshotReader path that deep-isolates messages and every projection collection before use-case validation. |
+| 288 | `e9357109` + CLI dependency update | Snapshotted paged Session rows before live Run and filesystem projections so later callbacks cannot replace already-validated catalog entries. |
 
 ## Verification contract
 
