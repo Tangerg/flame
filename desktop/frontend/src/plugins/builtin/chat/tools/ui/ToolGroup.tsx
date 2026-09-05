@@ -25,7 +25,7 @@ export function ToolGroup({ tools, onSelectTool, expandedIds, onToggleExpand, su
       shell="line"
       label={model.summary}
       trailing={
-        <span className="font-mono text-ui-xs font-medium tabular-nums text-fg-muted">
+        <span className="font-mono text-ui-xs font-medium text-fg-muted">
           {t("tools.group.calls", { count: model.count })}
         </span>
       }

@@ -128,7 +128,7 @@ function TimelineRunHeader({
               {t("timeline.parentRun", { id: parentRunId })}
             </span>
           )}
-          <span className="ml-auto shrink-0 font-mono tabular-nums">
+          <span className="ml-auto shrink-0 font-mono">
             {t("agent.steps", { count: status.stepCount })}
           </span>
         </div>

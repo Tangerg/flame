@@ -38,13 +38,11 @@ function HttpRequestPreview({ tool, onOpenView }: ToolPreviewProps) {
   return (
     <div className="pt-1">
       <div className="mb-1.5 flex items-center gap-2">
-        <Badge tone={statusTone(response.status)} className="font-mono tabular-nums">
+        <Badge tone={statusTone(response.status)} className="font-mono">
           {response.status}
         </Badge>
         {response.duration && (
-          <span className="font-mono text-ui-xs tabular-nums text-fg-faint">
-            {response.duration}
-          </span>
+          <span className="font-mono text-ui-xs text-fg-faint">{response.duration}</span>
         )}
         {response.headers.length > 0 && (
           <span className="text-ui-sm text-fg-faint">

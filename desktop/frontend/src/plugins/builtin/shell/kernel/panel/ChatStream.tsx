@@ -114,7 +114,7 @@ export function ChatStream({ onSend }: Props) {
     return (
       <>
         <ChatBanners sessionId={sessionId} />
-        <div className="panel-scroll flex flex-1 flex-col items-center justify-center gap-5 pb-[6vh]">
+        <div className="panel-scroll flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto overscroll-contain pb-[6vh]">
           <div className={cn(READING_COLUMN, READING_GUTTER)}>
             <h2 className="mx-auto max-w-[620px] text-balance text-center text-display-md font-medium text-fg">
               <EmptyChatHeading />

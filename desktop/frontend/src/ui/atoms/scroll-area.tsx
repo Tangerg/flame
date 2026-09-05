@@ -14,8 +14,9 @@ export function ScrollArea({ className, style, children, hideScrollbar, ref }: P
     <div
       ref={ref}
       className={cn(
+        "min-h-0 flex-1 overflow-y-auto overscroll-contain",
         hideScrollbar
-          ? "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          ? "overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           : "panel-scroll",
         className,
       )}

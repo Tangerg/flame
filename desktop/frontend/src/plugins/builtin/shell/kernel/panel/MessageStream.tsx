@@ -191,12 +191,12 @@ export function MessageStream({ rows, ctx, sessionId, controllerRef }: Props) {
     <StickToBottom
       key={sessionId}
       contextRef={stickContextRef}
-      className="panel-scroll msg-scroll"
+      className="panel-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"
       initial="instant"
       resize="instant"
     >
       <StickToBottom.Content
-        scrollClassName="panel-scroll msg-scroll-viewport"
+        scrollClassName="panel-scroll msg-scroll-viewport min-h-0 flex-1 overflow-y-auto overscroll-contain"
         className={cn(READING_COLUMN, COMPOSER_CLEARANCE, "relative flex flex-col pt-8")}
       >
         <AnimatePresence initial={false}>

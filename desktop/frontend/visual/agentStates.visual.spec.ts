@@ -622,7 +622,7 @@ test("long content remains inside the reading column without horizontal overflow
   await page.goto("/visual/?fixture=agent&theme=light&state=long-content");
   await page.locator("html[data-visual-ready]").waitFor();
 
-  const stream = page.locator(".msg-scroll > .panel-scroll");
+  const stream = page.locator(".msg-scroll-viewport");
   const overflow = await stream.evaluate((element) => element.scrollWidth - element.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
   await expect(page.locator('[data-slot="composer-root"]')).toBeVisible();

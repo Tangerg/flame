@@ -102,10 +102,7 @@ function ToolMeta({ items }: { items: ToolMetaItem[] }) {
       {items.map((item) => (
         <span
           key={item.id}
-          className={cn(
-            "font-mono text-ui-xs font-medium tabular-nums",
-            toolMetaToneClass(item.tone),
-          )}
+          className={cn("font-mono text-ui-xs font-medium", toolMetaToneClass(item.tone))}
         >
           {item.label}
         </span>

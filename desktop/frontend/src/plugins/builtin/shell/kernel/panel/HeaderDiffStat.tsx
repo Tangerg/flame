@@ -32,7 +32,7 @@ export function HeaderDiffStat({ className }: { className?: string }) {
       data-chrome-focus=""
       aria-label={t("workspace.view.title.diff")}
       onClick={openDiffViewInDock}
-      className={cn("gap-1.5 px-1.5 font-mono text-ui-sm tabular-nums", className)}
+      className={cn("gap-1.5 px-1.5 font-mono text-ui-sm", className)}
     >
       <span className="text-success">+{totals.added}</span>
       <span className="text-negative">−{totals.removed}</span>

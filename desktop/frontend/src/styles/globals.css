@@ -623,6 +623,9 @@ body {
   }
 }
 
+/* Mono means tabular figures, decided here so no call site has to remember: a `tabular-nums`
+   written beside `font-mono` is inert, and inert classes read as if they were doing something.
+   `tabular-nums` on a PROPORTIONAL face is a real instruction and stays at its call site. */
 .font-mono {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
@@ -1195,11 +1198,11 @@ html.theme-dark {
   );
 }
 
+/* SCROLLBAR APPEARANCE ONLY. The layout of a scroller — filling its parent, clipping, holding
+   its overscroll — is stated in utilities at `ScrollArea`, because bundling the two here forced
+   the hidden-scrollbar variant to restate all four properties and put an unlayered rule in
+   charge of geometry that call sites also spell. */
 .panel-scroll {
-  flex: 1 1 0;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
   scrollbar-width: thin;
   transition: scrollbar-color var(--dur-fast) ease;
   scrollbar-color: transparent transparent;

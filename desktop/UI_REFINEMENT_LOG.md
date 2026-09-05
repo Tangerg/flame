@@ -2521,3 +2521,98 @@ Port 4174 freed, no stray processes, no probe scripts,
 ### Next round
 
 The blocked six, once `runtime/internal/application/agent/sessions/` settles.
+
+## Round 39 — every class the cascade throws away, not just the three I found
+
+Round 37 found three call sites whose declared utility was silently overruled by
+an unlayered rule, and I left the rest of the element defaults alone on the
+argument that "no utility competes with them". That was reasoning, not
+measurement. This round measured it.
+
+### The detector
+
+An unlayered rule beats `@layer utilities` whatever its specificity —
+`:where(...)` at zero specificity included. So: walk every stylesheet rule with
+the layer it sits in, and for every element, find a property that both an
+unlayered rule and a matching utility declare **with different values**. That is
+a call site being overruled.
+
+Two refinements were needed before the output meant anything:
+
+- **Compare values, not properties.** 22 pairs dropped to 13 once identical
+  values stopped counting as conflicts.
+- **Evaluate conditions.** 13 dropped to 4 once `@media`/`@supports` blocks that
+  do not apply were skipped — the touch hit-area floor
+  (`:where(button, …) { min-width: 44px }`) lives under `pointer: coarse` and
+  never meets a desktop pointer. Without that, it looked like the largest defect
+  in the tree.
+
+### What survived, and what it was (已完成)
+
+Four, all the same shape: a stylesheet rule had already decided the property, and
+the call site's class decided nothing.
+
+| call site wrote | already decided by | inert call sites |
+| --- | --- | --- |
+| `tabular-nums` | `.font-mono` — sets `font-variant-numeric` and `"tnum" 1` | **24** |
+| `gap-1` | `.agent-context-dock > .agent-surface-header:first-child { gap: 4px }` | 1 |
+| `flex-1` | `.panel-scroll { flex: 1 1 0 }` | 2 |
+
+None of the three changed a pixel. That is what makes them worth removing: each
+reads as an instruction, and editing it does nothing.
+
+`.font-mono`'s rule now says who owns the decision, and `tabular-nums` on a
+PROPORTIONAL face — a real instruction — stays at its 14 remaining call sites.
+
+### The `panel-scroll` split (已完成)
+
+The `flex-1` conflict had a cause worth fixing rather than deleting around.
+`.panel-scroll` bundled the LAYOUT of a scroller (`flex: 1 1 0`, `min-height: 0`,
+`overflow-y`, `overscroll-behavior`) with its scrollbar APPEARANCE. Because of
+that, `ScrollArea`'s hidden-scrollbar branch had to restate all four properties
+as utilities — the same contract written twice — and an unlayered rule was in
+charge of geometry that call sites also spell.
+
+`.panel-scroll` is now appearance only. `ScrollArea` states the layout once for
+both branches, and the three direct users of the class carry it explicitly.
+Pixel-identical, because every property was preserved.
+
+### Two things the change exposed
+
+`msg-scroll` had no rule anywhere — a class used purely as a Playwright locator,
+where every other hook in this tree is a `data-*` attribute. `.msg-scroll >
+.panel-scroll` selects exactly the element that already carries the styled
+`.msg-scroll-viewport`, so the class is gone and both locators name the real one.
+`check-dead-utilities` had never objected; the enlarged class list is what made
+it look.
+
+I also broke two assertions with the bulk edit: `container.querySelector(
+".font-mono.tabular-nums")` is a CSS selector, not a class list, and the stripper
+took the token out of it. Caught by the suite, repaired to `.font-mono`, which is
+what the assertion means now.
+
+### The detector is now a test
+
+`visual/cascade.visual.spec.ts` runs the same walk over six fixture states and
+fails with the offending property, both values, and a sample element.
+Negative-tested by putting one inert `tabular-nums` back.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, all fifteen guards — green.
+- `check:bundle` — 981 emitted utilities, every class renders.
+- Unit: **2365 passing**; the 8 failures are the `src/rpc/` set blocked in round 38.
+- Visual: **431/431** — 430 goldens with none regenerated, plus the new cascade
+  check. A refactor that changes no pixels is the correct outcome here.
+
+### Resources reclaimed
+
+Probe deleted after promotion to a spec, port 4174 freed, no stray processes,
+`playwright.visual.config.ts` unmodified.
+
+### Next round
+
+The six e2e failures, once `runtime/internal/application/agent/sessions/`
+settles. Failing that, the detector generalises: it currently compares utilities
+against unlayered rules only, and the same question can be asked of inline
+`style` against utilities, which nothing checks today.

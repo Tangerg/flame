@@ -132,7 +132,7 @@ function DockHeader({
 }) {
   const t = useT();
   return (
-    <AgentSurfaceHeader className="gap-1" divider={false}>
+    <AgentSurfaceHeader divider={false}>
       <AgentDockTabs
         tabs={tabs}
         ariaLabel={t("dock.tabs.label")}

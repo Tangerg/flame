@@ -52,7 +52,7 @@ function ToolStatRow({ row, summary }: { row: ToolStat; summary: ToolStatsSummar
           <Badge tone="negative">{t("toolStats.failed", { n: row.failed })}</Badge>
         )}
         {row.denied > 0 && <Badge tone="warning">{t("toolStats.denied", { n: row.denied })}</Badge>}
-        <span className="shrink-0 font-mono text-ui-xs tabular-nums text-fg-muted">
+        <span className="shrink-0 font-mono text-ui-xs text-fg-muted">
           {row.timed > 0 ? fmtDuration(row.totalMs) : "—"}
         </span>
       </div>

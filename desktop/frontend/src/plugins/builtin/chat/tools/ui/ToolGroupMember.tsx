@@ -45,7 +45,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
         {headline && (
           <span
             className={cn(
-              "shrink-0 font-mono text-ui-2xs tabular-nums",
+              "shrink-0 font-mono text-ui-2xs",
               headline.tone === "negative" ? "text-negative" : "text-fg-faint",
             )}
           >

@@ -249,9 +249,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
             onClick={() => setZoomIndex((current) => Math.max(0, current - 1))}
             className="size-10 text-on-media hover:bg-media-scrim"
           />
-          <span className="min-w-14 px-1 text-center font-mono text-ui-sm tabular-nums">
-            {zoomPercent}%
-          </span>
+          <span className="min-w-14 px-1 text-center font-mono text-ui-sm">{zoomPercent}%</span>
           <IconButton
             icon="zoom-in"
             size="lg"

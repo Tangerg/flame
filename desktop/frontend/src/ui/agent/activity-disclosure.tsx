@@ -134,7 +134,7 @@ export function AgentActivityDisclosure({
             </span>
           )}
           {trailing != null && (
-            <span className="flex shrink-0 items-center gap-1.5 font-mono text-ui-2xs text-fg-faint tabular-nums">
+            <span className="flex shrink-0 items-center gap-1.5 font-mono text-ui-2xs text-fg-faint">
               {trailing}
             </span>
           )}

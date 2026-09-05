@@ -92,7 +92,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
         </div>
         <div className="flex items-center gap-2.5">
           {active && (
-            <span className="font-mono text-ui-md tabular-nums text-fg-muted">
+            <span className="font-mono text-ui-md text-fg-muted">
               {t("mcp.toolCount", { count: server.toolCount ?? 0 })}
             </span>
           )}

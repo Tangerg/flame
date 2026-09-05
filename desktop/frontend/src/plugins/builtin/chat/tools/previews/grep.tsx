@@ -37,7 +37,7 @@ function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
                 <LinkedText text={group.file} />
               </span>
               {group.matches.length > 1 && (
-                <span className="shrink-0 font-mono text-ui-2xs tabular-nums text-fg-faint">
+                <span className="shrink-0 font-mono text-ui-2xs text-fg-faint">
                   {t("tools.grep.matchCount", { count: group.matches.length })}
                 </span>
               )}
@@ -47,7 +47,7 @@ function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
                 key={index}
                 className="grid grid-cols-[3rem_minmax(0,1fr)] items-start gap-2 rounded-2xs px-1 transition-colors hover:bg-hover"
               >
-                <span className="text-right font-mono text-ui-2xs tabular-nums text-fg-faint select-none">
+                <span className="text-right font-mono text-ui-2xs text-fg-faint select-none">
                   {match.line}
                 </span>
                 <span className="min-w-0 whitespace-pre-wrap wrap-anywhere font-mono text-ui-sm text-fg-muted">

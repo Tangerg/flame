@@ -328,10 +328,7 @@ export function RailCatalogPicker({
                     {group.leading}
                     <span className="min-w-0 flex-1 truncate">{group.label}</span>
                     {group.count !== undefined && (
-                      <span
-                        aria-hidden
-                        className="shrink-0 font-mono text-ui-xs text-fg-faint tabular-nums"
-                      >
+                      <span aria-hidden className="shrink-0 font-mono text-ui-xs text-fg-faint">
                         {group.count}
                       </span>
                     )}

@@ -28,11 +28,7 @@ export function ProjectRow({
       onClick={() => onToggle()}
       title={project.id}
       aria-expanded={open}
-      trailing={
-        <span className="font-mono text-ui-sm leading-none text-fg-faint tabular-nums">
-          {count}
-        </span>
-      }
+      trailing={<span className="font-mono text-ui-sm leading-none text-fg-faint">{count}</span>}
       action={
         <IconButton
           icon="plus"

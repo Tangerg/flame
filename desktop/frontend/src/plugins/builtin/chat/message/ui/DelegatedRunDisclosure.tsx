@@ -62,9 +62,7 @@ export function DelegatedRunDisclosure({
             <StatusDot tone={model.dotTone} />
             {model.statusLabel}
           </span>
-          <span className="font-mono text-ui-xs tabular-nums text-fg-faint">
-            {model.stepsLabel}
-          </span>
+          <span className="font-mono text-ui-xs text-fg-faint">{model.stepsLabel}</span>
         </>
       }
       actions={

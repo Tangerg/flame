@@ -62,7 +62,7 @@ describe("MessageBlock turn identity", () => {
     );
 
     expect(screen.getByRole("heading", { name: "You" }).classList.contains("sr-only")).toBe(true);
-    expect(container.querySelector(".font-mono.tabular-nums")).toBeNull();
+    expect(container.querySelector(".font-mono")).toBeNull();
 
     rerender(
       <MessageBlock
@@ -77,7 +77,7 @@ describe("MessageBlock turn identity", () => {
     expect(screen.getByRole("heading", { name: "Assistant" }).classList.contains("sr-only")).toBe(
       true,
     );
-    expect(container.querySelector(".font-mono.tabular-nums")).toBeNull();
+    expect(container.querySelector(".font-mono")).toBeNull();
   });
 
   it("marks only the human turn as the user-message bubble", () => {

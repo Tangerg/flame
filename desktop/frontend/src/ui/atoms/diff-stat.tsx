@@ -11,7 +11,7 @@ export function DiffStat({
   binary?: string;
   className?: string;
 }) {
-  const base = cn("shrink-0 items-center gap-1.5 font-mono tabular-nums", className);
+  const base = cn("shrink-0 items-center gap-1.5 font-mono", className);
 
   if (binary !== undefined) {
     return <span className={cn("inline-flex text-fg-faint", base)}>{binary}</span>;

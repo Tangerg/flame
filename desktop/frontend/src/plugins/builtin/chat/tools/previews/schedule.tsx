@@ -37,7 +37,7 @@ function ScheduleRows({ tool }: ToolPreviewProps) {
             {!schedule.enabled && <Badge tone="warning">{t("schedules.off")}</Badge>}
           </div>
           {schedule.nextRunAt && (
-            <div className="mt-0.5 font-mono text-ui-xs tabular-nums text-fg-faint">
+            <div className="mt-0.5 font-mono text-ui-xs text-fg-faint">
               {t("schedules.next", { time: schedule.nextRunAt })}
             </div>
           )}

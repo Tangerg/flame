@@ -209,7 +209,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                 {tab.icon && <Icon name={tab.icon} size="sm" className="shrink-0 opacity-70" />}
                 <span className="truncate">{tab.title}</span>
                 {tab.badge != null && (
-                  <span className="shrink-0 font-mono text-ui-2xs leading-none text-fg-faint tabular-nums">
+                  <span className="shrink-0 font-mono text-ui-2xs leading-none text-fg-faint">
                     {tab.badge}
                   </span>
                 )}
