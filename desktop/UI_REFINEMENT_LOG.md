@@ -4585,3 +4585,50 @@ Every registered preview and every registered workspace view now renders in a
 fixture, both pinned by a guard. The transcript's own surfaces — approval cards,
 question cards, delegated runs, banners — have states, but whether every VARIANT
 of them does has not been asked.
+
+---
+
+## Round 85 — three blank circles asking for several answers
+
+Status: **complete**
+
+Same question as the last four rounds, asked of the transcript's own surfaces
+rather than its tool rows. The question card draws four shapes; the one questioned
+state carries two of them — a single `choice` and a `text` field. **`multiple` and
+`allowCustom` had never been rendered.**
+
+Given a state, the multi-select is wrong in the way that matters before anything
+is clicked:
+
+| | single choice | multi-select |
+| --- | --- | --- |
+| unchecked mark | circle with the option's NUMBER | **empty circle** |
+| checked mark | circle with a dot | circle with a check |
+| what it says | pick one, press 1–3 | *pick one* |
+
+`ChoiceOption` gave both modes `rounded-full`. A multi-select's unchecked mark
+carries no number and no check, so three of them read as three blank radios — and
+the app's own `Checkbox` atom is square, so the same question was being asked two
+different ways in two places.
+
+### Before / after
+
+| | before | after |
+| --- | --- | --- |
+| many-of mark | `rounded-full` | `rounded-2xs`, the radius `Checkbox` uses |
+| one-of mark | `rounded-full` | unchanged |
+
+Round for one-of, square for many-of — the distinction every platform makes.
+
+### Verification
+
+Captured both modes at 2×: squares with room to check, circles with their
+ordinals. Visual **604/604** (596 before); guards green; unit 2313/2 outside the
+runtime-contract e2e.
+
+### Next
+
+The other transcript surfaces and their variants: the approval card across the
+safety classes it can be asked about, the delegated run at depths beyond one, and
+the banner family — recovery, cwd-missing, run-error — of which one state each is
+photographed.

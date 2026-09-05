@@ -101,9 +101,17 @@ export function ChoiceOption({
 
   const content = (
     <>
+      {/* Round for one-of, square for many-of — the distinction every platform makes, and the
+          one this list needs most before anything is selected: a multi-select's unchecked mark
+          carries no number and no check, so a circle there is three blank radios telling the
+          reader to pick one. `rounded-2xs` is the radius `Checkbox` already uses, so the two
+          places the app asks for several answers now ask the same way. */}
       <span
         aria-hidden
-        className="grid size-5 shrink-0 place-items-center rounded-full border border-field bg-surface-2 text-ui-xs leading-none font-medium text-fg-muted group-data-[checked]/choice:border-fg group-data-[checked]/choice:bg-fg group-data-[checked]/choice:text-canvas"
+        className={cn(
+          "grid size-5 shrink-0 place-items-center border border-field bg-surface-2 text-ui-xs leading-none font-medium text-fg-muted group-data-[checked]/choice:border-fg group-data-[checked]/choice:bg-fg group-data-[checked]/choice:text-canvas",
+          multiple ? "rounded-2xs" : "rounded-full",
+        )}
       >
         {multiple ? (
           <CheckboxPrimitive.Indicator>

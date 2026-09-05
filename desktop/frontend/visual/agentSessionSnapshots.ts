@@ -30,6 +30,7 @@ export const VISUAL_AGENT_STATES = [
   "tool-remote",
   "tool-agentic",
   "tool-tail",
+  "question-multi",
   "waves",
 ] as const;
 
@@ -1023,6 +1024,60 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       },
     ],
   },
+  // The other two question shapes. `multiple` turns the options into checkboxes and adds a
+  // submit — a single-choice field commits on click, so the two are different interactions,
+  // not a styling flag — and `allowCustom` adds the field for an answer that is not on the
+  // list. Neither had ever been rendered: the one questioned state carries a single-choice
+  // field and a text field, which is two of the four shapes this card draws.
+  "question-multi": {
+    runs: [run("waiting")],
+    items: [PROMPT, COMMENTARY_RESPONSE],
+    pendingInterruptSets: [
+      {
+        rootRunId: ROOT_RUN_ID,
+        sessionId: SESSION_ID,
+        createdAt: "2026-07-31T08:00:09.000Z",
+        interrupts: [
+          {
+            type: "question",
+            itemId: "item_question_multi",
+            runId: ROOT_RUN_ID,
+            payload: {
+              question: {
+                fields: [
+                  {
+                    type: "choice",
+                    multiple: true,
+                    allowCustom: true,
+                    header: "Gates",
+                    prompt: "Which gates should run before the release?",
+                    options: [
+                      {
+                        label: "Race detector",
+                        description: "Exercise concurrency and cancellation paths.",
+                        preview: "go test -race ./...",
+                      },
+                      {
+                        label: "Visual suite",
+                        description: "Verify light, dark, long-content, and HITL states.",
+                        preview: "npm run test:visual",
+                      },
+                      {
+                        label: "Conformance",
+                        description: "Replay the canonical wire samples against the schema.",
+                        preview: "npm run check:api-consumers",
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      },
+    ],
+  },
+
   question: {
     runs: [run("waiting")],
     items: [PROMPT, COMMENTARY_RESPONSE],
@@ -1456,6 +1511,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   "tool-remote": [],
   "tool-agentic": [],
   "tool-tail": [],
+  "question-multi": [],
   // The live round arrives as started items, not as snapshot history: a snapshot holds
   // only what has reached a terminal state.
   waves: [

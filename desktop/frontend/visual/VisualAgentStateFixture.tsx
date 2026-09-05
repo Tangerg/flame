@@ -27,6 +27,7 @@ const STATE_LABELS: Record<VisualAgentState, string> = {
   "tool-remote": "Tool remote",
   "tool-agentic": "Tool agentic",
   "tool-tail": "Tool tail",
+  "question-multi": "Question · multi",
   waves: "Waves",
 };
 
