@@ -4475,3 +4475,63 @@ of mistake on the other axis. Unit 2370/4.
 Fifteen previews still uncalled: the skill family, `lsp`, `ask_user`, the plan
 transitions, `read_shell_output`/`stop_shell`, `read_tool_result`,
 `delete_schedule`, `get_goal`, `report_goal_outcome`.
+
+---
+
+## Round 83 — three tool families that should never have had a row
+
+Status: **complete**
+
+A third batch of previews no fixture had called turned into a design correction the
+user stated directly: **Plan, Goal and Schedule tools do not belong in the
+transcript at all — each family has a surface of its own.**
+
+`BlockRenderer` already implements that: a tool registered against a
+`TOOL_STANDING_SURFACE` has its row dropped. Only four of the nine were
+registered.
+
+| family | surface | registered before | now |
+| --- | --- | --- | --- |
+| Plan | the plan bar | `set_plan` | all three |
+| Goal | the goal bar | `create_goal`, `get_goal` | all three |
+| Schedule | the Schedules pane | none | all three |
+
+`report_goal_outcome` is named in CONTENT_RENDERING §7.6 as one of the three whose
+row is dropped and had simply been left out of the loop.
+
+### What that made dead
+
+A preview for a row that cannot exist is a component nobody can reach and a claim,
+to the next reader, that the transcript shows one. Removed with everything that
+only fed them: two preview plugins (`goal`, `plan`, `schedule` — three), five
+preview components, `projectGoalToolPreview`, `projectSchedulePreviews`,
+`projectDeletedScheduleId`, `planStepsFromToolArgs`, `ToolResultProse`, their
+tests, and three orphaned locale keys.
+
+### Two corrections I made on the way
+
+- **I over-read the spec.** "无展开体" also applies to `delete_schedule` and
+  `read_tool_result`, and I removed their previews too — which makes them *worse*,
+  because `ToolPreview` falls back to a generic inspector. Every row in this
+  component model expands; a tailored preview is the smaller body, not the larger.
+  Reverted.
+- **The schedules registration only worked in production.** It lives in the
+  Schedules plugin, which the agent fixture did not load — so the fixture drew a
+  `list_schedules` row the app never draws. The fixture loads it now, for the rule
+  it declares rather than for its pane, and the workspace fixture stops loading it
+  twice.
+
+### The test the change had to teach
+
+`toolRendering.test.ts` asserted "a preview for every known tool". It now asserts
+both halves — every tool the transcript draws has one, every tool a standing
+surface answers for has none — with the names read from the three surface owners
+rather than copied, because which tools a surface answers for is theirs to say.
+
+### Verification
+
+Rendered rows, measured per state: `tool-agentic` draws `list_skills`,
+`load_skill`, `read_shell_output`, `lsp`; `tool-remote` draws `web_search`,
+`web_fetch`, `http_request`; `running` draws `read`, `grep`. No plan, goal or
+schedule row anywhere. Visual **588/588** twice; guards green; unit 2312/2 outside
+the runtime-contract e2e.

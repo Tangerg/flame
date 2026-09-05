@@ -23,6 +23,7 @@ const EXPECTED_ATTENTION: Record<VisualAgentState, string> = {
   "tool-shells": "finished",
   "tool-search": "finished",
   "tool-remote": "finished",
+  "tool-agentic": "finished",
   waves: "running",
 };
 

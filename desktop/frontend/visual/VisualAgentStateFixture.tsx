@@ -25,6 +25,7 @@ const STATE_LABELS: Record<VisualAgentState, string> = {
   "tool-shells": "Tool shells",
   "tool-search": "Tool search",
   "tool-remote": "Tool remote",
+  "tool-agentic": "Tool agentic",
   waves: "Waves",
 };
 

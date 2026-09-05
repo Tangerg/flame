@@ -28,6 +28,7 @@ export const VISUAL_AGENT_STATES = [
   "tool-shells",
   "tool-search",
   "tool-remote",
+  "tool-agentic",
   "waves",
 ] as const;
 
@@ -378,17 +379,86 @@ const SCHEDULES_CALL = searchTool(
   }),
 );
 
-const GOAL_CALL = searchTool(
-  "item_remote_goal",
-  "create_goal",
-  { objective: "Keep application-owned atomicity out of the Agent Framework." },
+// A third batch: the agent's own machinery — skills it can load, a plan it enters and leaves,
+// a goal it reports on, a background shell it reads back, and the language server. None of
+// these panels had ever been rendered either.
+const LIST_SKILLS_CALL = searchTool(
+  "item_agentic_list_skills",
+  "list_skills",
+  {},
+  [
+    "<skill><name>review-diff</name><description>Read a change the way a reviewer does, worst risk first.</description></skill>",
+    "<skill><name>trace-flaky-test</name><description>Find the shared state behind a test that passes alone.</description></skill>",
+  ].join("\n"),
+);
+
+// `LoadSkillResult` is the Skill's own instructions, not the catalogue envelope `list_skills`
+// answers in — CONTENT_RENDERING states both, and the preview prints the text because the text
+// is what arrives. The first draft of this fixture reused the envelope and made the panel look
+// broken; the panel was right and the fixture was lying to it.
+const LOAD_SKILL_CALL = searchTool(
+  "item_agentic_load_skill",
+  "load_skill",
+  { name: "review-diff" },
+  [
+    "Start from the riskiest hunk, not the first one.",
+    "Name the invariant the change could break, then look for the test that would catch it.",
+    "A diff with no test change is a claim that nothing observable changed. Check it.",
+  ].join("\n"),
+);
+
+const ENTER_PLAN_CALL = searchTool(
+  "item_agentic_enter_plan",
+  "enter_plan_mode",
+  {},
+  "Planning only from here: no edits until the plan is accepted.",
+);
+
+// Three families that deliberately render NO row. Plan, Goal and Schedule each have a
+// dedicated surface — the plan bar, the goal bar, the Schedules pane — and `BlockRenderer`
+// drops the transcript row of any tool registered against one, because a row would be a second
+// telling of what that surface already holds. Kept here so the rule is photographed rather than
+// assumed: this state issues four such calls and the golden shows none of them.
+const GET_GOAL_CALL = searchTool(
+  "item_agentic_goal",
+  "get_goal",
+  {},
   JSON.stringify({
     goal: {
       objective: "Keep application-owned atomicity out of the Agent Framework.",
       status: "active",
     },
-    message: "Goal recorded for this session.",
   }),
+);
+
+const REPORT_GOAL_CALL = searchTool(
+  "item_agentic_report_goal",
+  "report_goal_outcome",
+  { outcome: "achieved" },
+  "Goal achieved: the boundary holds.",
+);
+
+const READ_SHELL_CALL = searchTool(
+  "item_agentic_read_shell",
+  "read_shell_output",
+  { shell_id: "sh_01" },
+  [
+    "waiting for the build to settle",
+    "ok  \tgithub.com/Tangerg/flame/runtime/internal/run\t2.104s",
+  ].join("\n"),
+);
+
+const LSP_CALL = searchTool(
+  "item_agentic_lsp",
+  "lsp",
+  // `character` is required for a position operation; without it the row titles itself
+  // `store.go:214:?`, which is the app being honest about an argument the caller left out.
+  { operation: "references", path: "runtime/internal/session/store.go", line: 214, character: 6 },
+  [
+    "runtime/internal/session/store.go:214:6",
+    "runtime/internal/session/atomicity.go:88:14",
+    "runtime/internal/run/segment.go:41:9",
+  ].join("\n"),
 );
 
 const SHELL_READ: Item = {
@@ -1171,23 +1241,38 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       },
     ],
   },
+  "tool-agentic": {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:06.000Z",
+        outcome: { type: "completed" },
+        metrics: { steps: 6, activeDurationMillis: 6_000 },
+      }),
+    ],
+    items: [
+      PROMPT,
+      LIST_SKILLS_CALL,
+      LOAD_SKILL_CALL,
+      ENTER_PLAN_CALL,
+      GET_GOAL_CALL,
+      REPORT_GOAL_CALL,
+      SCHEDULES_CALL,
+      READ_SHELL_CALL,
+      LSP_CALL,
+      RESPONSE,
+    ],
+    pendingInterruptSets: [],
+  },
+
   "tool-remote": {
     runs: [
       run("finished", {
         finishedAt: "2026-07-31T08:00:05.000Z",
         outcome: { type: "completed" },
-        metrics: { steps: 5, activeDurationMillis: 5_000 },
+        metrics: { steps: 3, activeDurationMillis: 5_000 },
       }),
     ],
-    items: [
-      PROMPT,
-      WEB_SEARCH_CALL,
-      WEB_FETCH_CALL,
-      HTTP_CALL,
-      SCHEDULES_CALL,
-      GOAL_CALL,
-      RESPONSE,
-    ],
+    items: [PROMPT, WEB_SEARCH_CALL, WEB_FETCH_CALL, HTTP_CALL, SCHEDULES_CALL, RESPONSE],
     pendingInterruptSets: [],
   },
 
@@ -1306,6 +1391,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   "tool-shells": [],
   "tool-search": [],
   "tool-remote": [],
+  "tool-agentic": [],
   // The live round arrives as started items, not as snapshot history: a snapshot holds
   // only what has reached a terminal state.
   waves: [

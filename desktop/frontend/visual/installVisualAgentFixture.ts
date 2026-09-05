@@ -44,6 +44,7 @@ import { defaultAccents } from "@/plugins/builtin/defaults";
 import goal from "@/plugins/builtin/chat/goal";
 import type { GoalState } from "@/plugins/builtin/chat/goal/application/goalReadModel";
 import planProgress from "@/plugins/builtin/chat/plan-progress";
+import schedulesPane from "@/plugins/builtin/settings/schedules";
 import { kernelChat } from "@/plugins/builtin/shell/kernel";
 import { MODELS_KEY, SelectableModel } from "@/plugins/builtin/settings/providers/public/queries";
 import { installWorkspaceNavigationPort } from "@/plugins/builtin/workspace/adapters/navigationStatePort";
@@ -289,6 +290,10 @@ export async function installVisualAgentFixture(
     messageFeedback,
     goal,
     planProgress,
+    // Loaded for the rule it declares, not for its pane: the Schedules plugin is what tells the
+    // transcript that a schedule tool is answered by that pane and needs no row. Production
+    // loads it, so a fixture that does not shows rows production never draws.
+    schedulesPane,
     // Production's own tool-rendering list, not a hand-picked subset of it: the
     // subset held four of fifteen, so the previews for edit, read and grep — all of
     // which the canonical snapshots carry results for — rendered as raw JSON here

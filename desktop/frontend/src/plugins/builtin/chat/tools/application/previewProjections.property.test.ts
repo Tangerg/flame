@@ -3,13 +3,10 @@ import { forEachSeed } from "@/test/arbitrary";
 import {
   projectAskUserAnswer,
   projectConversationHits,
-  projectDeletedScheduleId,
   projectFetchedPage,
   projectGlobPreview,
-  projectGoalToolPreview,
   projectHttpPreview,
   projectRecalledMemories,
-  projectSchedulePreviews,
   projectSkillPreview,
   projectToolSearchGroups,
   projectWebSearchPreview,
@@ -30,11 +27,8 @@ const PROJECTIONS = [
   ["recalledMemories", projectRecalledMemories],
   ["conversationHits", projectConversationHits],
   ["toolSearchGroups", projectToolSearchGroups],
-  ["schedulePreviews", projectSchedulePreviews],
-  ["deletedScheduleId", projectDeletedScheduleId],
   ["httpPreview", projectHttpPreview],
   ["fetchedPage", projectFetchedPage],
-  ["goalToolPreview", projectGoalToolPreview],
 ] as const;
 
 function payloads(): string[] {
@@ -104,7 +98,6 @@ describe("every specialised tool preview projection", () => {
       projectRecalledMemories,
       projectConversationHits,
       projectToolSearchGroups,
-      projectSchedulePreviews,
     ];
     forEachSeed(200, (a) => {
       for (const project of listy) {
@@ -116,7 +109,7 @@ describe("every specialised tool preview projection", () => {
 
   it("answers a string-shaped projection with a string", () => {
     forEachSeed(200, (a) => {
-      for (const project of [projectAskUserAnswer, projectDeletedScheduleId]) {
+      for (const project of [projectAskUserAnswer]) {
         expect(typeof project(a.text())).toBe("string");
         expect(typeof project(undefined)).toBe("string");
       }

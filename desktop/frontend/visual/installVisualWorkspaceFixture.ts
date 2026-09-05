@@ -13,7 +13,6 @@ import hooksSettings from "@/plugins/builtin/settings/hooks";
 import mcpServersSettings from "@/plugins/builtin/settings/mcp-servers";
 import personalizationSettings from "@/plugins/builtin/settings/personalization";
 import pluginsSettings from "@/plugins/builtin/settings/plugins-pane";
-import schedulesSettings from "@/plugins/builtin/settings/schedules";
 import usageSettings from "@/plugins/builtin/settings/usage";
 import { configureUsageGateway } from "@/plugins/builtin/settings/usage/application/ports/usageGateway";
 import {
@@ -748,7 +747,8 @@ export async function installVisualWorkspaceFixture(
     mcpServersSettings,
     personalizationSettings,
     pluginsSettings,
-    schedulesSettings,
+    // Not here: the agent installer this fixture builds on already loads it, for the
+    // transcript rule it declares, and loading a plugin twice reports `skipped`.
     usageSettings,
     visualNotifier,
     visualShortcuts,

@@ -91,17 +91,6 @@ export function planStepsFromArguments(args: unknown): readonly PlanStep[] {
   return projected;
 }
 
-// Unparseable text (a call still streaming) is not an empty plan, but it renders as one:
-// a half-written plan is not a thing to draw, and the preview's pending state covers it.
-export function planStepsFromToolArgs(args: string): readonly PlanStep[] {
-  if (args === "") return NO_STEPS;
-  try {
-    return planStepsFromArguments(JSON.parse(args));
-  } catch {
-    return NO_STEPS;
-  }
-}
-
 // The MARK outranks position: "first one not done" agrees on the common plan but names the
 // wrong step when an active step sits after an untouched one — exactly the plan where a
 // reader most needs to be told.

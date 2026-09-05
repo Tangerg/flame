@@ -24,6 +24,9 @@ import type { GoalState } from "./application/goalReadModel";
 
 const GOAL_SURFACE = "composer.overlay.top:goal";
 
+/** The tools this surface answers for — see the note in plan-progress. */
+export const GOAL_STANDING_TOOLS = ["create_goal", "get_goal", "report_goal_outcome"] as const;
+
 const GOAL_SLASH_COMMAND: SlashCommandSpec = {
   description: "slash.goal",
 };
@@ -49,7 +52,10 @@ export default definePlugin({
       order: 4,
       component: GoalModeIndicator,
     });
-    for (const key of ["create_goal", "get_goal"]) {
+    // All three Goal tools, not two: CONTENT_RENDERING §7.6 says the row of every one of them
+    // is dropped because the Goal bar states the conclusion. `report_goal_outcome` had been
+    // left out, so it rendered a row — and a preview under it — that the design does not have.
+    for (const key of GOAL_STANDING_TOOLS) {
       ctx.contribute(TOOL_STANDING_SURFACE, GOAL_SURFACE, { key });
     }
     ctx.contribute(

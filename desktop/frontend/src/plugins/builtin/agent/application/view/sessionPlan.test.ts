@@ -4,7 +4,6 @@ import {
   planProgress,
   planSteps,
   planStepsFromArguments,
-  planStepsFromToolArgs,
   SessionPlan,
 } from "./sessionPlan";
 
@@ -98,21 +97,6 @@ describe("planStepsFromArguments", () => {
     );
     expect(planStepsFromArguments({ steps: "nope" })).toEqual([]);
     expect(planStepsFromArguments(null)).toEqual([]);
-  });
-});
-
-describe("planStepsFromToolArgs", () => {
-  it("parses the accumulated argument text", () => {
-    expect(
-      planStepsFromToolArgs(
-        JSON.stringify({ steps: [{ description: "Ship", status: "pending" }] }),
-      ),
-    ).toEqual([{ id: "0", text: "Ship", status: "pending" }]);
-  });
-
-  it("reads a half-streamed call as no plan, not as a broken one", () => {
-    expect(planStepsFromToolArgs('{"steps":[{"desc')).toEqual([]);
-    expect(planStepsFromToolArgs("")).toEqual([]);
   });
 });
 

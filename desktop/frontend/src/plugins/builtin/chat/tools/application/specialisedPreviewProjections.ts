@@ -133,42 +133,6 @@ export function projectToolSearchGroups(result: string | undefined): ToolSearchG
   return groups;
 }
 
-export interface SchedulePreview {
-  id: string;
-  title: string;
-  cron: string;
-  instructions: string;
-  enabled: boolean;
-  nextRunAt: string;
-  lastRunAt: string;
-}
-
-/** `list_schedules` answers `{schedules: [...]}`, `create_schedule` `{schedule: {...}}`
- *  — one reader, because a preview showing one row and a preview showing many
- *  differ only in how many rows they got. */
-export function projectSchedulePreviews(result: string | undefined): SchedulePreview[] {
-  const parsed = parseJsonResult(result);
-  const many = parsed?.schedules;
-  const rows = Array.isArray(many) ? many : parsed?.schedule ? [parsed.schedule] : [];
-  return rows.map((row) => {
-    const s = record(row);
-    return {
-      id: text(s.schedule_id),
-      title: text(s.title),
-      cron: text(s.cron),
-      instructions: text(s.instructions),
-      enabled: s.enabled !== false,
-      nextRunAt: text(s.next_run_at),
-      lastRunAt: text(s.last_run_at),
-    };
-  });
-}
-
-/** `delete_schedule` answers the exact identity it removed. */
-export function projectDeletedScheduleId(result: string | undefined): string {
-  return text(parseJsonResult(result)?.schedule_id);
-}
-
 export interface HttpPreview {
   status: number;
   duration: string;
@@ -201,26 +165,6 @@ export function projectFetchedPage(result: string | undefined): FetchedPage | un
   const parsed = parseJsonResult(result);
   if (typeof parsed?.content !== "string") return undefined;
   return { content: parsed.content, format: text(parsed.format) || "text" };
-}
-
-export interface GoalToolPreview {
-  objective: string;
-  status: string;
-  message: string;
-}
-
-/** `create_goal` and `get_goal` share the same model-facing goal view. */
-export function projectGoalToolPreview(result: string | undefined): GoalToolPreview | undefined {
-  const parsed = parseJsonResult(result);
-  const goal = record(parsed?.goal);
-  const objective = text(goal.objective);
-  const message = text(parsed?.message);
-  if (!objective && !message) return undefined;
-  return {
-    objective,
-    status: text(goal.status),
-    message,
-  };
 }
 
 function text(value: unknown): string {
