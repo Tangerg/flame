@@ -20,6 +20,7 @@ const STATE_LABELS: Record<VisualAgentState, string> = {
   error: "Error",
   "error-retryable": "Error, recoverable",
   recovery: "Recovery",
+  "cwd-missing": "Folder gone",
   delegated: "Delegated tree",
   "long-content": "Long content",
   narrative: "Narrative",

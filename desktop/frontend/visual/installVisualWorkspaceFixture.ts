@@ -53,6 +53,9 @@ import {
   type WorkspaceFileContent,
   type WorkspaceFileEntry,
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
+import { visualFeatureCapabilities } from "./agentFixtureFacts";
+import { SCHEDULES_KEY } from "@/plugins/builtin/settings/schedules/application/scheduleQueries";
+import type { ScheduleConfig } from "@/plugins/builtin/settings/schedules/application/scheduleConfig";
 import {
   diffView,
   fileView,
@@ -221,13 +224,7 @@ function feature(enabled: boolean): FeatureCapability {
 const VISUAL_CAPABILITIES: ServerCapabilities = {
   runEvents: [],
   runtimeTopics: [],
-  features: {
-    git: feature(true),
-    plan: feature(true),
-    skills: feature(true),
-    knowledge: feature(true),
-    agentMemory: feature(true),
-  },
+  features: visualFeatureCapabilities(),
   streamingMethods: [],
   limits: {
     runReplay: { scope: "runtimeInstanceRootSegment", maxEvents: 2_048, maxBytes: 16_777_216 },
@@ -236,6 +233,33 @@ const VISUAL_CAPABILITIES: ServerCapabilities = {
     mcpAuthorizationAttempts: { retentionSeconds: 600 },
   },
 };
+
+// Two saved schedules: one running, one switched off, because the row draws the pair
+// differently and a list of only-enabled rows never shows the other.
+const VISUAL_SCHEDULES: ScheduleConfig[] = [
+  {
+    id: "sch_nightly",
+    title: "Nightly dependency audit",
+    instructions: "Check the lockfile for advisories and open an issue for anything new.",
+    cwd: "/Users/visual/scope",
+    cron: "0 3 * * *",
+    enabled: true,
+    revision: 3,
+    createdAt: "2026-07-20T09:00:00.000Z",
+    nextRunAt: "2026-08-01T03:00:00.000Z",
+    lastRunAt: "2026-07-31T03:00:00.000Z",
+  },
+  {
+    id: "sch_weekly",
+    title: "Weekly changelog draft",
+    instructions: "Summarise the week's merged work into a draft release note.",
+    cwd: "/Users/visual/scope",
+    cron: "0 9 * * 1",
+    enabled: false,
+    revision: 1,
+    createdAt: "2026-07-06T09:00:00.000Z",
+  },
+];
 
 function pending<T>(): Promise<T> {
   return new Promise<T>(() => {
@@ -247,6 +271,12 @@ function workspaceDataPlugin(state: VisualWorkspaceState): AnyPlugin {
   return definePlugin({
     name: "flame.visual.workspace-data",
     setup(ctx) {
+      // Seeded because the pane it feeds only started rendering when `schedules` was
+      // advertised; before that the fixture's whole answer was "unavailable".
+      ctx.contribute(DATA_PROVIDER, {
+        key: SCHEDULES_KEY,
+        fetcher: async () => VISUAL_SCHEDULES,
+      });
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_DIFF_KEY,
         fetcher: async () => {

@@ -4878,3 +4878,73 @@ unit 2394/4 outside the runtime-contract e2e.
 
 The delegated run past one level — `delegated` photographs a single child — and
 the cwd-missing banner, which has an editing mode no state opens.
+
+---
+
+## Round 90 — a fixture that switched the product off
+
+Status: **complete**
+
+The cwd-missing banner had never rendered — no fixture ever set a workspace to
+`missing`. Setting one showed the banner but **not its relocate action**, which
+is gated on a Runtime capability the agent fixture did not advertise. It
+advertised none at all.
+
+That is the failure mode the workspace fixture had already written down for
+`skills`, `knowledge` and `agentMemory` — and when that lesson was paid for,
+`schedules` and `relocate` were still missing. The whole schedules settings pane
+read **"Schedules unavailable — the connected runtime doesn't expose scheduled
+runs yet"**, in every golden, and its list, form and rows had never been drawn.
+
+A fixture that omits a capability does not photograph *nothing*. It photographs
+the app refusing to work, which looks exactly like the app.
+
+### Before / after
+
+| | before | after |
+| --- | --- | --- |
+| agent fixture features | **none** | the shared list |
+| workspace fixture features | 5 | 7 — `schedules`, `relocate` added |
+| capability list | inline in one fixture | `VISUAL_RUNTIME_FEATURES`, shared |
+| cwd banner | never rendered | `cwd-missing` state; relocate editor drawn |
+| schedules pane | "unavailable" | two seeded rows, one on, one off |
+
+The guard reads the required list off the app's own `useRuntimeCapability` call
+sites, so a new gate arrives as a failure rather than as a surface that quietly
+never renders. Mutated by dropping `schedules`, it fails.
+
+### What rendering them then found
+
+**The apply button's label was `"…"`.** Untranslated in eight locales, and it is
+the button's accessible name, so a reader heard "ellipsis" where the app meant
+"working". It also collapsed the button's width mid-click and shoved Cancel
+left. The app's own convention — the approval card's — is to keep the label and
+shut the control.
+
+**A switched-off schedule dimmed itself out of legibility.** `opacity-60` on the
+whole row put its run, edit and delete buttons *below* the `opacity-64` the app
+draws a genuinely disabled control at, while they stayed perfectly clickable.
+Scoping the dim to the text was not enough either — the contrast audit, running
+on this pane for the first time, measured it:
+
+| | ratio | needs |
+| --- | --- | --- |
+| title | 4.36 | 4.5 |
+| cron chip | 2.43 | 4.5 |
+| instructions | 2.68 | 4.5 |
+
+A row marked inactive by making itself unreadable. The state is a step down the
+token ladder now — contrast the design system owns, rather than a multiplier
+landing wherever two colours leave it — and the Switch beside it says the rest.
+
+### Verification
+
+Visual **621/621**; 51 goldens moved, most because the fixture sidebar gained a
+row that every agent frame includes; the 20-script gate is green; unit 2394/4
+outside the runtime-contract e2e (a fifth, a cursor e2e, passes in isolation and
+is runtime-side).
+
+### Next
+
+The delegated run past one level — `delegated` photographs a single child — and
+the schedules pane's own remaining shapes: its form, and the empty list.

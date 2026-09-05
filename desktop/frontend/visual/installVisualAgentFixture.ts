@@ -57,6 +57,8 @@ import { queryClient } from "@/lib/queryClient";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { toolRenderingPlugins } from "@/plugins/builtin";
 import { DATA_PROVIDER, definePlugin } from "@/plugins/sdk";
+import { useRuntimeConnectionStore } from "@/plugins/builtin/runtime/adapters/runtimeConnectionProjection";
+import { visualFeatureCapabilities } from "./agentFixtureFacts";
 import {
   WORKSPACE_PROJECTS_KEY,
   type WorkspaceProjectSummary,
@@ -120,7 +122,12 @@ function visualSession(state: VisualAgentState): AgentSessionSummary {
     provider: VISUAL_MODELS[0]!.provider,
     model: VISUAL_MODELS[0]!.id,
     reasoningEffort: VISUAL_MODELS[0]!.reasoningDefaultLevel,
-    workspace: { path: "/Users/visual/scope", availability: "available" },
+    // The cwd banner is gated on this alone, and no state had ever set it — an entire
+    // banner, its relocate action and its editor had never been drawn.
+    workspace: {
+      path: "/Users/visual/scope",
+      availability: state === "cwd-missing" ? "missing" : "available",
+    },
     time: "2026-07-31T08:00:00.000Z",
   };
 }
@@ -232,6 +239,23 @@ export async function installVisualAgentFixture(
   const projectless = state === "empty";
   queryClient.clear();
   installRuntimeCapabilityPort();
+  // The agent fixture advertised NOTHING, so every capability-gated affordance in the chat
+  // panel was switched off by omission rather than by decision — the cwd banner's relocate
+  // action among them.
+  useRuntimeConnectionStore.setState({
+    capabilities: {
+      runEvents: [],
+      runtimeTopics: [],
+      features: visualFeatureCapabilities(),
+      streamingMethods: [],
+      limits: {
+        runReplay: { scope: "runtimeInstanceRootSegment", maxEvents: 2_048, maxBytes: 16_777_216 },
+        runtimeSubscription: { maxTopics: 32, maxWatches: 32 },
+        idempotency: { namespace: "idp_visual_agent", retentionSeconds: 86_400 },
+        mcpAuthorizationAttempts: { retentionSeconds: 600 },
+      },
+    },
+  });
   installVisualRuntimeServiceStatusPort();
   installAgentStatePorts();
   installWorkspaceNavigationPort();

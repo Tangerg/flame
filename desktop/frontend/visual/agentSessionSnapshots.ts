@@ -23,6 +23,7 @@ export const VISUAL_AGENT_STATES = [
   "error",
   "error-retryable",
   "recovery",
+  "cwd-missing",
   "delegated",
   "long-content",
   "narrative",
@@ -1253,6 +1254,18 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
     items: [PROMPT],
     pendingInterruptSets: [],
   },
+  // Nothing is wrong with the RUN here: the session's folder is gone, which is a workspace
+  // fact, and the transcript underneath stays exactly as it was.
+  "cwd-missing": {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:12.000Z",
+        outcome: { type: "completed" },
+      }),
+    ],
+    items: [PROMPT, RESPONSE],
+    pendingInterruptSets: [],
+  },
   delegated: {
     runs: [
       run("running"),
@@ -1631,6 +1644,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   canceled: [],
   error: [],
   "error-retryable": [],
+  "cwd-missing": [],
   recovery: [],
   delegated: [],
   "long-content": [],

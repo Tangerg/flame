@@ -61,15 +61,21 @@ export function CwdMissingBanner() {
                   autoFocus
                   className="w-72 max-w-full"
                 />
+                {/* In flight, the label STAYS and the control shuts — the same way the
+                    approval card reports a decision it is waiting on. Swapping the label for
+                    "…" made the button's accessible name an ellipsis, left it untranslated in
+                    eight locales, and collapsed its width mid-click so Cancel jumped left. */}
                 <BannerAction
-                  label={busy ? "…" : t("cwdMissing.action.apply")}
+                  label={t("cwdMissing.action.apply")}
                   onClick={() => void submit()}
+                  disabled={busy}
                   primary
                   tone="warning"
                 />
                 <BannerAction
                   label={t("cwdMissing.action.cancel")}
                   onClick={() => setEditing(false)}
+                  disabled={busy}
                 />
               </div>
             ) : (

@@ -18,6 +18,7 @@ const EXPECTED_ATTENTION: Record<VisualAgentState, string> = {
   error: "finished",
   "error-retryable": "finished",
   recovery: "finished",
+  "cwd-missing": "finished",
   delegated: "running",
   "long-content": "finished",
   narrative: "finished",

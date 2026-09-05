@@ -13,3 +13,35 @@ export const VISUAL_CONTEXT_TOKENS = 96_000;
  * frame differed by a whole line of text. Freezing to this instead makes it exactly 390m.
  */
 export const VISUAL_NOW = Date.parse("2026-07-31T14:30:00Z");
+
+/**
+ * The Runtime every fixture connects to, and the one place its features are listed.
+ *
+ * A feature the fixture omits is not neutral: the surface gated on it renders its off-ramp
+ * and its real content is never drawn. That cost `skills`, `knowledge` and `agentMemory`
+ * once; when it was paid, `schedules` and `relocate` were still missing, so the whole
+ * schedules pane read "Schedules unavailable" and the cwd banner's relocate action — its
+ * editor, its apply, its cancel — had never existed in a golden. `capabilityGate.test.ts`
+ * now derives the required list from the app's own `useRuntimeCapability` call sites.
+ */
+export const VISUAL_RUNTIME_FEATURES = [
+  "git",
+  "plan",
+  "skills",
+  "knowledge",
+  "agentMemory",
+  "schedules",
+  "relocate",
+] as const;
+
+export function visualFeatureCapabilities(): Record<
+  string,
+  { enabled: boolean; clientOptIn: boolean; requiredByRunProtocol: boolean }
+> {
+  return Object.fromEntries(
+    VISUAL_RUNTIME_FEATURES.map((name) => [
+      name,
+      { enabled: true, clientOptIn: false, requiredByRunProtocol: false },
+    ]),
+  );
+}

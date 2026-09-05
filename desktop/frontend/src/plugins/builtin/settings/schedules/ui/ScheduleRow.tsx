@@ -60,11 +60,23 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
   });
 
   return (
-    <div className={cn(!schedule.enabled && "opacity-60")}>
+    <div>
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-hover">
+        {/* Only what the row SAYS steps back, never what it offers. `opacity-60` on the whole
+            row put its run, edit and delete controls BELOW the opacity the app draws a
+            genuinely disabled control at, and measured on the rendered pixels it took the
+            title to 4.36:1, the cron to 2.43 and the instructions to 2.68 — a row marked
+            inactive by making itself unreadable. A step down the token ladder is the same
+            signal with contrast the design system owns rather than a multiplier landing
+            wherever the two colours happen to leave it. */}
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="truncate text-ui-md font-medium text-fg">
+            <span
+              className={cn(
+                "truncate text-ui-md font-medium",
+                schedule.enabled ? "text-fg" : "text-fg-muted",
+              )}
+            >
               {schedule.title || t("schedules.untitled")}
             </span>
             <Tag size="sm">{schedule.cron}</Tag>
