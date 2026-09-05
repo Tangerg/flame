@@ -5,7 +5,7 @@ import { MotionConfig } from "motion/react";
 import { TooltipProvider } from "@/ui";
 import { publishMotionScale } from "@/lib/appearance";
 import { queryClient } from "@/lib/queryClient";
-import { setLocale } from "@/lib/i18n";
+import { setLocale, t } from "@/lib/i18n";
 import { configureNavigator } from "@/lib/navigation";
 import { createMemoryNavigator } from "@/lib/navigation.testkit";
 import { uiTypeLadderCssVariables } from "@/plugins/builtin/theme/kit/typeLadder";
@@ -79,6 +79,7 @@ const workspaceState: VisualWorkspaceState = isVisualWorkspaceState(requestedSta
 const rootElement = document.documentElement;
 const motionScale = query.get("motion") === "full" ? 1 : 0;
 const requestedFontSize = query.get("font-size");
+const requestedLocale = query.get("locale") ?? "en";
 
 rootElement.classList.remove("theme-light", "theme-dark");
 rootElement.classList.add(`theme-${theme}`);
@@ -145,6 +146,29 @@ async function fixtureNode(): Promise<ReactNode> {
   ]);
   const view = await installVisualAgentFixture(state);
   return <VisualAgentStateFixture state={state} view={view} />;
+}
+
+// English unless a spec asks otherwise, so every existing golden is untouched. The
+// dictionaries are lazy plugins, so the switch has to happen after the fixture has loaded
+// them and be awaited before the first render — set it earlier and the frame is photographed
+// in English while the requested language arrives behind it.
+if (requestedLocale !== "en") {
+  // The production cold-start path, in its own order: a language plugin fetches its
+  // dictionary during setup only when it is ALREADY the selected one, so selecting after
+  // loading leaves every string on the English fallback with `html lang` saying otherwise.
+  setLocale(requestedLocale);
+  const [{ localePlugins }, { loadPluginsForTest }] = await Promise.all([
+    import("@/plugins/builtin/i18n"),
+    import("@/plugins/sdk/testKernel"),
+  ]);
+  for (const plugin of localePlugins) await loadPluginsForTest(plugin);
+  // The fetch is a promise the plugin does not hand back, so wait for its EFFECT. A frame
+  // photographed mid-fetch is the English one, which is the bug this whole parameter exists
+  // to look for in other languages.
+  const { en } = await import("@/lib/i18n/locales/en");
+  for (let attempt = 0; attempt < 400 && t("common.cancel") === en["common.cancel"]; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
 }
 
 const node = await fixtureNode();

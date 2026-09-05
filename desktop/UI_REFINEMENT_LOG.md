@@ -5110,3 +5110,62 @@ unit 2395/4 outside the runtime-contract e2e.
 ### Next
 
 The schedules pane's empty list, the last shape of it nothing has drawn.
+
+---
+
+## Round 94 — seven languages nobody had ever looked at
+
+Status: **complete**
+
+Started by sweeping every fixture state for off-ramp and loading text, the
+question that found the schedules pane. It found nothing new: the three
+persistent `Loading` regions behind the settings page are inside `display: none`
+`Activity` trees, hidden from the accessibility tree as well as the eye.
+
+So a different question: **the app ships eight languages and every check runs in
+one.** The fixture pins `setLocale("en")` and no spec had ever asked for
+another — while the chrome is full of fixed columns, pills and `truncate` whose
+widths were all chosen, and checked, against the shortest language the product
+has.
+
+### Getting there
+
+| | |
+| --- | --- |
+| fixture | a `locale` parameter, English by default so no golden moves |
+| order | select FIRST, then load the plugins — a language plugin fetches its dictionary during setup only when it is already the selected one, so the other way round leaves every string English with `html lang` claiming otherwise |
+| settling | wait for the fetch's EFFECT; a frame photographed mid-fetch is the English one, which is the bug the parameter exists to look for |
+| shell readiness | the gate named an English string, so the one surface most likely to overflow in German could not be reached; it counts a numeral now |
+
+Not goldens: eight times the frames to review, and one translation edit would
+move them all. The two clipping detectors already answer the only question that
+matters — can a reader see the whole word — and they answer it in any language.
+
+### What it found
+
+Seven locales across seven routes: **the layout holds**. What did not was the
+detector.
+
+> `agent/waiting →: MAIN.agent-content-card 845<1338`, Japanese only
+
+The straddling text was `あなた` — "You" — in an `sr-only` label. A range
+measures laid-out text, and a screen-reader-only node is a 1px clipped box whose
+glyphs still lay out at full width. Three narrow Latin characters landed inside
+the card's edge; the same word in Japanese did not. A fact about font metrics,
+reported as text a reader cannot see being cut off.
+
+The outer loop already had the rule — "a 1-2px box holds no readable text by
+construction" — and the text scan did not apply it. It does now, to the owner
+chain, which cannot hide a real clip: a clipped-but-visible label has a
+normal-sized box.
+
+### Verification
+
+**632/632**, no golden moved; 7 locales × 7 routes now run on every suite, in
+about thirteen seconds; the 20-script gate is green; unit 2395/4 outside the
+runtime-contract e2e.
+
+### Next
+
+The locale sweep on the surfaces it does not reach yet — the composer's model and
+mode pickers, the dock tab strip — where a fixed pill row meets German.

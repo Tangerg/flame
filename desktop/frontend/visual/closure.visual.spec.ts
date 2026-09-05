@@ -48,6 +48,7 @@ interface FixtureRoute {
   motion?: "full";
   fontSize?: number;
   overlay?: VisualShellOverlay;
+  locale?: string;
 }
 
 async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
@@ -70,6 +71,7 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
   if (route.fontSize !== undefined) query.set("font-size", String(route.fontSize));
   if (route.overlay) query.set("overlay", route.overlay);
   if (route.pane) query.set("pane", route.pane);
+  if (route.locale) query.set("locale", route.locale);
 
   await page.goto(`${VISUAL_URL}?${query}`);
   await page.locator("html[data-visual-ready]").waitFor();
@@ -102,10 +104,11 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
       .toBe(0);
   }
   if (route.fixture === "shell" && route.state === "populated") {
+    // The project row's own count, which is a numeral in every language — the name that
+    // used to gate this is translated, so the settle check only worked in English and the
+    // locale sweep could not use the one surface most likely to overflow in German.
     await expect(
-      page.getByRole("complementary", { name: "Work index" }).getByRole("button", {
-        name: "scope 6",
-      }),
+      page.getByRole("complementary").getByRole("button", { name: /\b6\b/ }).first(),
     ).toBeVisible();
   }
   if (route.fixture === "workspace" && route.state === "dock-review") {
@@ -187,6 +190,43 @@ test("WCAG audit the schedules form, which a pane audit never opens", async ({ p
     await expectNoWcagViolations(page);
   }
 });
+
+// Eight languages ship and one had ever been rendered. The chrome is full of fixed columns,
+// pills and `truncate`, and German and French labels run about a third longer than the
+// English the goldens were measured against — so every one of those widths was chosen, and
+// checked, against the shortest language the product has.
+//
+// Not goldens: eight times the frames to review, and a translation edit would move them all.
+// The two clipping detectors already say the thing that matters — whether a reader can see
+// the whole word — and they say it in any language.
+const SHIPPED_LOCALES = ["zh", "zh-TW", "ja", "ko", "es", "fr", "de"] as const;
+
+const LOCALE_ROUTES: FixtureRoute[] = [
+  { fixture: "agent", state: "waiting" },
+  { fixture: "agent", state: "tool-shells" },
+  { fixture: "agent", state: "question" },
+  { fixture: "shell", state: "populated" },
+  { fixture: "workspace", state: "dock-stats" },
+  { fixture: "workspace", state: "settings", pane: "schedules" },
+  { fixture: "workspace", state: "settings", pane: "providers" },
+];
+
+for (const locale of SHIPPED_LOCALES) {
+  test(`text survives its own language — ${locale}`, async ({ page }) => {
+    const clipped: string[] = [];
+    for (const route of LOCALE_ROUTES) {
+      await page.setViewportSize({ width: 1120, height: 720 });
+      await openFixture(page, { ...route, locale });
+      const where = `${route.fixture}/${route.pane ?? route.state}`;
+      clipped.push(
+        ...(await horizontallyClippedText(page)).map((hit) => `${where} →: ${hit}`),
+        ...(await verticallyClippedText(page)).map((hit) => `${where} ↓: ${hit}`),
+      );
+    }
+
+    expect(clipped).toEqual([]);
+  });
+}
 
 test("structural panels share one spring, containment, and reduced-motion authority", async ({
   page,
@@ -416,24 +456,26 @@ for (const route of ACCESSIBILITY_ROUTES.filter((r) => r.theme === "light")) {
     await page.setViewportSize({ width: 1120, height: 720 });
     await openFixture(page, { ...route, fontSize: 18 });
 
-    const cut = await page.evaluate(() => {
-      const out: string[] = [];
-      for (const el of document.querySelectorAll<HTMLElement>("*")) {
-        if (el.clientHeight <= 2 || el.clientWidth <= 2) continue;
-        if (el.scrollHeight <= el.clientHeight + 1) continue;
-        const style = getComputedStyle(el);
-        if (!(style.overflowY === "hidden" || style.overflowY === "clip")) continue;
-        if (style.webkitLineClamp !== "none") continue;
-        if (el.closest("[inert]")) continue;
-        if (!el.textContent?.trim()) continue;
-        out.push(
-          `${el.tagName}.${String(el.className).slice(0, 44)} ${el.clientHeight}<${el.scrollHeight}`,
-        );
-      }
-      return out;
-    });
+    expect(await verticallyClippedText(page)).toEqual([]);
+  });
+}
 
-    expect(cut).toEqual([]);
+async function verticallyClippedText(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const out: string[] = [];
+    for (const el of document.querySelectorAll<HTMLElement>("*")) {
+      if (el.clientHeight <= 2 || el.clientWidth <= 2) continue;
+      if (el.scrollHeight <= el.clientHeight + 1) continue;
+      const style = getComputedStyle(el);
+      if (!(style.overflowY === "hidden" || style.overflowY === "clip")) continue;
+      if (style.webkitLineClamp !== "none") continue;
+      if (el.closest("[inert]")) continue;
+      if (!el.textContent?.trim()) continue;
+      out.push(
+        `${el.tagName}.${String(el.className).slice(0, 44)} ${el.clientHeight}<${el.scrollHeight}`,
+      );
+    }
+    return out;
   });
 }
 
@@ -503,12 +545,29 @@ async function horizontallyClippedText(page: Page): Promise<string[]> {
           return true;
         }
       }
+      // The outer loop's own rule for "this box holds no readable text by construction",
+      // applied to the OWNER chain. A screen-reader-only label is a 1px clipped box whose
+      // text still lays out at full width, so a range over it reports wherever those glyphs
+      // would have fallen. Three narrow Latin characters landed inside the edge and the same
+      // word in Japanese did not, which is a fact about font metrics and not about anything
+      // a reader can see.
+      const screenReaderOnly = (subject: Element) => {
+        for (
+          let owner: Element | null = subject;
+          owner instanceof HTMLElement && owner !== el;
+          owner = owner.parentElement
+        ) {
+          if (owner.clientWidth <= 2 || owner.clientHeight <= 2) return true;
+        }
+        return false;
+      };
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       const range = document.createRange();
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         if (!node.nodeValue?.trim()) continue;
         const owner = node.parentElement;
         if (!owner || getComputedStyle(owner).visibility === "hidden") continue;
+        if (screenReaderOnly(owner)) continue;
         range.selectNodeContents(node);
         if (
           crossesEdge(range.getBoundingClientRect()) &&
