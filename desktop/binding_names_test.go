@@ -17,7 +17,13 @@ import (
 //
 // Also the reason `useWindow` is unexported. It takes a raw window handle; exported, it
 // would be callable from JavaScript.
-func TestDesktopHostBindsExactlyFourMethods(t *testing.T) {
+// The surface itself, named once. Both tests below read it: one holds the set, the other
+// holds each name's spelling on the far side. Written twice, adding a fifth method would
+// update the set the failing test points at and leave the new name unchecked on the
+// boundary it actually crosses.
+var boundMethods = []string{"Bootstrap", "ChooseWorkingDirectory", "SaveImage", "WindowChrome"}
+
+func TestDesktopHostBindsExactlyTheDeclaredMethods(t *testing.T) {
 	hostType := reflect.TypeFor[*DesktopHost]()
 
 	exported := make([]string, 0, hostType.NumMethod())
@@ -26,7 +32,8 @@ func TestDesktopHostBindsExactlyFourMethods(t *testing.T) {
 	}
 	slices.Sort(exported)
 
-	want := []string{"Bootstrap", "ChooseWorkingDirectory", "SaveImage", "WindowChrome"}
+	want := slices.Clone(boundMethods)
+	slices.Sort(want)
 	if !slices.Equal(exported, want) {
 		t.Fatalf("DesktopHost exposes %v over IPC, want exactly %v", exported, want)
 	}
@@ -66,7 +73,7 @@ func TestDesktopHostMethodNamesMatchTheFrontend(t *testing.T) {
 		t.Fatalf("read the frontend's host bridge: %v", err)
 	}
 
-	for _, method := range []string{"Bootstrap", "ChooseWorkingDirectory", "SaveImage", "WindowChrome"} {
+	for _, method := range boundMethods {
 		if _, ok := hostType.MethodByName(method); !ok {
 			t.Errorf("DesktopHost has no exported %s method to bind", method)
 			continue
