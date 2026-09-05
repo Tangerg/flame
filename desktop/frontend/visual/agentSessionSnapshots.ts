@@ -29,6 +29,7 @@ export const VISUAL_AGENT_STATES = [
   "tool-search",
   "tool-remote",
   "tool-agentic",
+  "tool-tail",
   "waves",
 ] as const;
 
@@ -459,6 +460,48 @@ const LSP_CALL = searchTool(
     "runtime/internal/session/atomicity.go:88:14",
     "runtime/internal/run/segment.go:41:9",
   ].join("\n"),
+);
+
+// The last five previews with no fixture call. Twenty-one tools carry one; these were the
+// panels still never rendered, and a panel nothing has drawn is a panel nothing has audited.
+const PROPOSE_SKILL_CALL = searchTool(
+  "item_last_propose_skill",
+  "propose_skill",
+  { name: "trace-flaky-test" },
+  "Proposed trace-flaky-test for review. It will not load until someone approves it.",
+);
+
+const SKILL_RESOURCE_CALL = searchTool(
+  "item_last_skill_resource",
+  "read_skill_resource",
+  { name: "review-diff", path: "checklist.md" },
+  ["- Riskiest hunk first.", "- Name the invariant.", "- Find the test that would catch it."].join(
+    "\n",
+  ),
+);
+
+const READ_TOOL_RESULT_CALL = searchTool(
+  "item_last_read_tool_result",
+  "read_tool_result",
+  { item_id: "item_shells_command" },
+  ["ok  \tgithub.com/Tangerg/flame/runtime/internal/session\t8.412s", "FAIL"].join("\n"),
+);
+
+const STOP_SHELL_CALL = searchTool(
+  "item_last_stop_shell",
+  "stop_shell",
+  { shell_id: "sh_01" },
+  "Stopped sh_01 after 2.1s.",
+);
+
+// `ask_user` drops its row while its question block is on screen — the question card is the
+// real thing and the row its shadow. Here the question has been answered, which is the state
+// where the row does render, and the only one where this preview is reachable at all.
+const ASK_USER_CALL = searchTool(
+  "item_last_ask_user",
+  "ask_user",
+  { question: "Which gate should run next?" },
+  JSON.stringify({ answer: "Race detector" }),
 );
 
 const SHELL_READ: Item = {
@@ -1241,6 +1284,26 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       },
     ],
   },
+  "tool-tail": {
+    runs: [
+      run("finished", {
+        finishedAt: "2026-07-31T08:00:05.000Z",
+        outcome: { type: "completed" },
+        metrics: { steps: 5, activeDurationMillis: 5_000 },
+      }),
+    ],
+    items: [
+      PROMPT,
+      PROPOSE_SKILL_CALL,
+      SKILL_RESOURCE_CALL,
+      READ_TOOL_RESULT_CALL,
+      STOP_SHELL_CALL,
+      ASK_USER_CALL,
+      RESPONSE,
+    ],
+    pendingInterruptSets: [],
+  },
+
   "tool-agentic": {
     runs: [
       run("finished", {
@@ -1392,6 +1455,7 @@ export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState
   "tool-search": [],
   "tool-remote": [],
   "tool-agentic": [],
+  "tool-tail": [],
   // The live round arrives as started items, not as snapshot history: a snapshot holds
   // only what has reached a terminal state.
   waves: [

@@ -102,9 +102,14 @@ function FoundationSurface({ sidebarOpen }: { sidebarOpen: boolean }) {
           <h1 className="mt-2 text-display-lg font-semibold leading-tight text-fg">
             One visual language, one source of truth.
           </h1>
+          {/* Two lines with room to spare on the second, on purpose. `text-wrap: pretty` — which
+              `globals.css` gives every paragraph — optimises the last lines, and Chromium falls
+              back to greedy wrapping under load. A caption sitting on the break boundary
+              therefore wrapped one way when the suite ran alone and another when it ran with
+              everything else, and the golden could not be photographed twice the same. One line
+              is the only width at which no algorithm gets a vote. */}
           <p className="mt-3 max-w-[62ch] text-ui-md leading-relaxed text-fg-soft">
-            Production primitives render this fixture. The route owns only stable test content,
-            viewport, locale, and appearance—never a parallel business model.
+            Production primitives, with viewport, locale and appearance held still.
           </p>
 
           <div className="mt-8 grid grid-cols-2 gap-4">

@@ -4535,3 +4535,53 @@ Rendered rows, measured per state: `tool-agentic` draws `list_skills`,
 `web_fetch`, `http_request`; `running` draws `read`, `grep`. No plan, goal or
 schedule row anywhere. Visual **588/588** twice; guards green; unit 2312/2 outside
 the runtime-contract e2e.
+
+---
+
+## Round 84 — the last five previews, and the golden that could not be taken twice
+
+Status: **complete**
+
+Five previews still had no fixture call: `propose_skill`, `read_skill_resource`,
+`read_tool_result`, `stop_shell`, `ask_user`. All five render correctly — the one
+suspicion, `ask_user` showing "answer · Race detector", is a translated label
+(`回答 · ` in Chinese), not a leaked JSON key. Checked before reporting.
+
+**21 of 21 registered previews are now rendered by a fixture.** It was six when
+round 81 started, and the fifteen between held a raw XML dump, a wire timestamp,
+a date truncated to "2026-0…" and a row of escape codes.
+
+`agentSessionSnapshots.test.ts` keeps it closed: every tool with a preview must
+be called by some state. Mutation-verified — removing one call names it.
+
+### The flake it uncovered
+
+`foundation dark collapsed` failed in the full suite, passed 3/3 alone, and
+failed again immediately after being regenerated. The caption re-wrapped by one
+word.
+
+`globals.css` gives every paragraph `text-wrap: pretty`, and Chromium falls back
+to greedy wrapping under load. A caption sitting on the break boundary therefore
+wraps one way when the suite runs alone and another when it runs with everything
+else — the golden could not be photographed twice the same.
+
+| | before | after |
+| --- | --- | --- |
+| caption | two lines, 539px + 148px in a 578px box | **one line, 432px** |
+| wrapping decisions | one, on a knife edge | none |
+
+One line is the only width at which no algorithm gets a vote. The product's
+typography is untouched; what changed is a fixture caption that should not have
+been standing on the boundary.
+
+### Verification
+
+Visual **596/596**, twice consecutively after regeneration. Guards green; unit
+2313/2 outside the runtime-contract e2e.
+
+### Next
+
+Every registered preview and every registered workspace view now renders in a
+fixture, both pinned by a guard. The transcript's own surfaces — approval cards,
+question cards, delegated runs, banners — have states, but whether every VARIANT
+of them does has not been asked.
