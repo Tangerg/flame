@@ -95,7 +95,11 @@ function FontSizeField({
   return (
     <div className="grid grid-cols-[60px_1fr] items-center gap-2">
       <span className="text-ui-md font-semibold text-fg-faint">{label}</span>
+      {/* The pane hangs every control off the card's inner edge — `SettingRow` does it for the
+          rows this one nests inside. A content-width control left in its cell stops short of
+          that edge and reads as the one row that missed the line. */}
       <Segmented
+        className="justify-self-end"
         value={value === null ? SIZE_RESET : String(value)}
         options={options}
         onChange={(v) => onChange(v === SIZE_RESET ? null : Number(v))}
