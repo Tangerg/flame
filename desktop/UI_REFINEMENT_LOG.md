@@ -2712,3 +2712,81 @@ Both probes deleted after promotion, port 4174 freed, no stray processes,
 Still the six blocked e2e. Failing that: the hit-area probe also measured 42
 controls under 40x40 and a `1x1` hidden file input — the latter is worth one look
 to confirm it is a label-driven picker and not a stray target.
+
+## Round 41 — a compensation that existed, was commented, and had no users
+
+`ui_rules 8` asks for a focus state that is clear, continuous and **not
+occluded**. One rule draws every ring: `1.5px` at `outline-offset: 1px`, so it
+reaches 2.5px past the border box. `globals.css` also carries
+`[data-focus-inset]`, which redraws it inward at `-2px` — the compensation for a
+control flush against something that clips.
+
+`data-focus-inset` had **zero users in `src/`**. `check-dead-styles` never
+objected because it reads classes, not attribute selectors.
+
+### What was measured
+
+For every focusable element that takes the default ring, expand its box by 2.5px
+and ask whether a clipping ancestor cuts it. Three refinements before the answer
+meant anything:
+
+1. **Only the RING may poke out.** An element scrolled out of its own container
+   reported a 1096px "cut", which is not a defect — the container scrolls to it.
+   7 findings -> 4.
+2. **A scrollable ancestor pins nothing.** The compaction banner sat 1px under
+   the content card's clip edge, but it lives in the transcript scroller, and
+   focusing it scrolls it clear — `.msg-scroll-viewport` even carries
+   `scroll-padding-top`. So the walk stops at the first scroller instead of
+   blaming the clip beyond it.
+3. Viewport matters: the suite runs at 1120x720 and the first probe at 1280x800,
+   which is why the spec found one the probe had not.
+
+### The finding (已完成)
+
+Three controls, all flush against a box that cannot scroll:
+
+| control | clipped by | effect |
+| --- | --- | --- |
+| the tool-summary disclosure trigger | `min-w-0 overflow-clip rounded-*` | **no ring at all** |
+| `.agent-seam-rail` (drawer resize) | `.agent-shell { overflow: hidden }` | ring caps cut |
+| `.agent-pane-resizer` (dock resize) | `.agent-content-card { overflow: clip }` | ring caps cut |
+| shiki preview body | `.shiki-block { overflow: hidden }` | 1.5px cut |
+
+**The disclosure is the one that matters, and it is photographed**:
+`/tmp/round41/disclosure-{before,after}.png`, 3x, the trigger focused by keyboard
+in both. Before there is **no ring whatever**; after there is a clear one. That
+control repeats down the whole transcript, so a keyboard user had no focus
+indicator on the most frequent thing in the app.
+
+The two resize handles are honestly smaller: they run the full height or width of
+their pane, so the caps that were cut fall outside the viewport anyway. They are
+fixed because a handle is by definition flush against what it drags — and arrow
+keys resize it, so it is a keyboard control with a keyboard-invisible focus. The
+marker is on `ResizeHandle` itself rather than remembered at two call sites.
+
+### The detector is now a test
+
+`visual/focusRing.visual.spec.ts` walks eight states and fails with the cut in
+pixels, the control, and the box that clips it. Negative-tested by removing the
+disclosure's marker.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, all fifteen guards — green.
+- Unit: **2365 passing**; the 8 failures are the `src/rpc/` set blocked in round 38
+  (`runtime/internal/application/agent/sessions/` is still uncommitted).
+- Visual: **433/433** — 430 goldens with none regenerated, plus the cascade,
+  reveal and focus-ring checks. The ring paints only under
+  `html:not([data-pointer])`, so no golden could have caught any of this.
+
+### Resources reclaimed
+
+Probe deleted after promotion, port 4174 freed, no stray processes,
+`playwright.visual.config.ts` unmodified.
+
+### Next round
+
+Still the six blocked e2e. Otherwise: the same question asked of `:focus-within`
+rings and of the `[data-chrome-focus]` controls, which opt out of the ring
+entirely on the promise that a row state stands in for it — nothing checks that
+the row state is actually there.

@@ -138,6 +138,7 @@ export function ShikiCodeBlock({ lang, code, file, preview, previewLabel }: Prop
       {isPreview ? (
         <div
           data-slot="shiki-preview-body"
+          data-focus-inset=""
           className="grid max-h-[calc(15lh+16px)] place-items-center overflow-auto p-2"
           role="region"
           aria-label={previewLabel}

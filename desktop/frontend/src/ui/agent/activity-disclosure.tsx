@@ -99,6 +99,9 @@ export function AgentActivityDisclosure({
           aria-expanded={open}
           aria-controls={panelId}
           aria-label={toggleLabel}
+          // The trigger fills the disclosure, which clips, so an outward ring is cut on
+          // three sides.
+          data-focus-inset=""
           onClick={onToggle}
           className={cn(
             "group/activity-trigger flex min-w-0 flex-1 items-center text-left",

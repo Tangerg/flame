@@ -190,6 +190,9 @@ export function ResizeHandle({
   return (
     <SeparatorPrimitive
       {...props}
+      // The handle sits ON the seam it drags, so an outward ring is always clipped by the pane
+      // on one side of it. Arrow keys resize, so a keyboard user needs to see this one.
+      data-focus-inset=""
       ref={handleRef}
       orientation="vertical"
       tabIndex={0}
