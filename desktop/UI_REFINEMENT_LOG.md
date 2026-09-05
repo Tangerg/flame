@@ -3382,3 +3382,501 @@ its own required `contextTokens` field. One line, in `runtime/`.
 The four remaining failures all need `runtime/`. Everything this scope can reach
 in that area is done, and the log should say so plainly rather than keep
 re-listing them as "blocked".
+
+---
+
+## Round 50 — every state "jumped", and the ruler was wrong
+
+`ui_rules 12` asks that loading and content replacement not visibly jump, and
+nothing in the suite had ever read the browser's own record of it. A probe over
+all 31 fixture states, collecting `layout-shift` entries with their sources,
+reported **31 of 31 shifting after first paint** — a universal `3,3 → 0,0` on
+`#root` plus reading-column blocks moving ~122px.
+
+Neither was real, and finding that out was the round:
+
+- The `#root` shift is the dev server delivering CSS through the module graph,
+  so the first paint is an unstyled root. `dist/index.html` links the stylesheet
+  in `<head>`, where it blocks paint — production cannot do this. CLAUDE.md §5
+  names exactly this trap.
+- The 122px move lands at t=448ms against a first-contentful-paint at t=472ms:
+  before content exists, so nothing the user can see moved.
+
+Re-measured from first contentful paint: **0 of 31**. The load path was already
+correct.
+
+### Changed
+
+`visual/layoutShift.visual.spec.ts` — the measurement kept as a standing
+instrument, three tests over the fixture-exported state lists plus a negative
+test that injects a post-paint jump, so the observer is known to fire rather
+than passing because it never installed.
+
+### Verification
+
+`npm run check` guards green, unit 2369/4 (pre-existing), visual 436 → 440.
+
+### Next
+
+The instruments themselves — the round's lesson was that a probe reports
+whatever its baseline lets it.
+
+---
+
+## Round 51 — a model's own words could not break the line
+
+A model writes hashes, base64 and paths with no space in them, and no fixture
+contains one: snapshots are prose, so a renderer that forbids the break paints
+correctly in every golden. Injecting a 217-character unbreakable run into every
+text-holding element found the case.
+
+First pass over `p, li, code, pre, …` reported nothing. Widening to *any*
+element that directly holds text — which is where the tool previews live, in
+`div` and `span` — found two:
+
+| site | what it renders |
+| --- | --- |
+| `QuestionCard.tsx` `<h3>` | the model's own question |
+| `ApprovalCard.tsx` title | the tool's approval title, often a command |
+
+Both paint ~1200px outside their card. Both had hand-copied the same class
+string, which is how the property went missing in both at once.
+
+### Changed
+
+`wrap-anywhere` at both — the spelling that also shrinks min-content, so the fix
+survives either card later becoming a flex track. `visual/unbreakableContent.visual.spec.ts`
+holds it, auditing the panel only: the agent fixture writes its own drawer
+caption, and scaffolding failing a product rule teaches the wrong lesson.
+
+### Verification
+
+Guards green, unit 2369/4, visual 442 — no golden moved, because no fixture
+contains the input.
+
+---
+
+## Round 52 — the sweeps were walking past most of the controls
+
+Three audits ask the same question — a control cut in half, a control too small
+to hit, a control drawing its own focus ring — and each had written its own
+answer:
+
+| audit | names |
+| --- | --- |
+| clipping | button, a[href], input, textarea, select, tab, option |
+| touch targets | …plus role=button, menuitem, switch |
+| focus ring | …plus tabindex, minus input/textarea/select |
+
+The clipping list was the narrowest and never named `[role="button"]`,
+`[role="menuitem"]`, `[role="checkbox"]` or `[role="radio"]`. Worse, **none of
+the three ever opened an overlay**: the finder and the command palette — 23
+options across the two most keyboard-driven surfaces in the app — were audited
+by nobody.
+
+The focus sweep also waited a flat 200ms instead of for the fixture, and Shiki
+highlights asynchronously: it had **never once seen a highlighted code block**.
+
+### Changed
+
+`visual/controls.ts` names the two sets once — a control, and focusable, which
+is wider because a scroll region carries `tabindex` without being a target.
+Overlay routes added to all three. Both remaining sweeps assert their own reach,
+so a selector that stops matching fails instead of passing against an empty tree.
+
+Given a code block, the focus sweep reports a real defect: Shiki gives its
+`<pre>` a tabindex, so the scrollable code takes keyboard focus, and the rounded
+block wrapping it clips the ring by 2.5px. The `<pre>` now declares
+`data-focus-inset` through a transformer — what the preview body three lines
+below already says in JSX.
+
+### Verification
+
+Guards green, unit 2369/4, visual 444 — the `data-focus-inset` attribute changes
+no pixel until something is focused.
+
+---
+
+## Round 53 — the workspace surface had two owners
+
+Same defect class as round 52, one file over: `cascade.visual.spec.ts` waited a
+flat 200ms and had been walking a partial tree. Given the whole one it reports
+two call sites writing a class the cascade discards.
+
+`AgentWorkspaceView` asked for `bg-canvas` while `.agent-context-dock
+.agent-workspace-view` read the same fact off DOM ancestry and rendered it
+transparent inside the dock. The placement is already owned — `ViewPlacement`
+says "full" or "dock" — so the ancestry rule was a second answer to a question
+that had one.
+
+The view header restated `gap-2` over a header that had already fixed the same
+8px: same pixels either way, one of them a decision and the other a copy.
+
+### Changed
+
+The surface sits with the rule that already owns the class, stating the canvas
+and its one exception together. `gap-2` removed from both `ViewHeader` sites.
+
+### Verification
+
+Guards green, visual 444 — pixel-identical, which is the point: moving a value to
+its owner should change nothing on screen.
+
+---
+
+## Round 54 — a diagram's hidden actions took clicks
+
+Third audit in a row navigating without waiting for the fixture. `reveal.visual.spec.ts`
+has two tests; the second waits properly, the first did not, and had never seen
+a rendered mermaid diagram.
+
+Given one, it reports what the contract exists to prevent: the diagram's zoom
+and copy actions sit at `opacity-0` while still taking the pointer, so a click
+in that corner lands on a control nobody can see.
+
+### Changed
+
+`MermaidBlock.tsx` pairs both halves — invisible means `pointer-events-none`,
+and hover and focus restore them together — the way `shiki-code-block.tsx`
+already does three files over.
+
+### Verification
+
+Guards green, unit 2369/4, visual 444.
+
+---
+
+## Round 55 — twelve of thirteen ladder rules fired
+
+Mutation testing on `check-design-tokens`: one injected violation per rule, in a
+temporary file under `src/`. Twelve fired. The silent one is the rule that exists
+because a literal duration escaped once already and animated for 25 style frames
+with the user's motion preference at zero.
+
+It reads `transition` and `duration:` from a **single line**, and prettier breaks
+that object as soon as it carries a second key.
+
+### Changed
+
+That rule now runs against whole file text and reports the line the match starts
+on. Nothing in the tree violates it today; the shape that would have is no longer
+invisible. The walk also states its own reach — 1246 files — so a broken glob
+fails instead of printing the same OK as a full pass.
+
+### Verification
+
+Re-mutated in both shapes: single-line and wrapped, both caught.
+
+---
+
+## Round 56 — the §5 rule nothing was watching
+
+CLAUDE.md §5 requires `disposeOnHmr` for any module-scope subscription. The
+helper exists and all three call sites use it — and nothing kept it that way.
+
+The failure mode is why it needs a guard rather than care: correct in
+production, correct on a fresh dev boot, slower the longer someone works. No
+error, no failing test, nothing visible in a diff, and by the time it is felt the
+cause is thirty reloads back.
+
+### Changed
+
+`scripts/check-hmr-disposal.mjs`, wired into `npm run check`. It runs its own
+detector against four fixtures before walking anything — a bare subscribe, one
+with disposal, one nested in a function, a module-scope listener — because a
+pattern that quietly stops matching reads exactly like a clean tree.
+
+### Verification
+
+878 files, 3 registrations, all disposed. Mutation-verified: dropping the
+disposal fails the guard.
+
+---
+
+## Round 57 — content-visibility works; the estimate of its margin did not
+
+`transcriptTurnContentVisibility` gives every non-tail turn `content-visibility:
+auto`. Measured with `checkVisibility({contentVisibilityAuto: true})`, nothing
+was ever skipped, including turns 706px above the viewport.
+
+Three probe corrections before the answer:
+
+1. The element carrying `content-visibility` is itself rendered — only its
+   contents are skipped. The question has to be asked of a descendant.
+2. `contain-intrinsic-size: auto 220px` REMEMBERS the last rendered size, so
+   height is not a skip signal either.
+3. Calibrated against a synthetic block 5000px below the fold, the descendant
+   test flips true. The real turns needed the same distance: pushed to −4825px,
+   a turn skips.
+
+Chrome's relevance margin is far wider than the 50%-of-viewport I assumed, and
+the fixtures are too short to reach past it. **No defect, no change** — and no
+false report, which was the round's actual product.
+
+---
+
+## Round 58 — the large-refactor sweep says nothing needs doing
+
+`REFACTORING.md` calls for a whole-tree pass every fifteen to twenty rounds.
+
+- Largest non-locale module: 670 lines. No oversized file.
+- A 7-line clone detector over `src/` finds 8 duplicated blocks: theme palettes
+  (data), a fact and its projection sharing identity fields (idiomatic here), and
+  two consumers calling one owner (not duplication).
+- The session-command prologue repeats twice — below the 3+ threshold.
+- knip, circular, layer and context guards clean.
+
+**No structural change.**
+
+---
+
+## Round 59 — thirteen locale rules, all still firing
+
+Mutation testing on `check-locales`, the densest rule set left. Seven code-facing
+rules exercised from a temporary file in each ring; six catalog-facing rules from
+a locale perturbation reverted with `git checkout` immediately after.
+
+All thirteen fire. **No dead rules, no change.**
+
+---
+
+## Round 60 — every dark machine opened on a white frame
+
+First audit of the Go shell. The window carries a colour until the WebView
+paints, and it was the light canvas unconditionally. The reasoning recorded with
+it — Go cannot read a preference the WebView owns — is true and was the right
+call. But that preference DEFAULTS to "system", and system resolves to the OS
+appearance, which Go can read without holding a second copy of anything.
+
+### Changed
+
+`system_appearance_darwin.go` reads `AppleInterfaceStyle` through NSUserDefaults
+(the window's colour is decided before there is an NSApplication to ask).
+`desktopWindowBackground()` states both canvases and picks. macOS only: other
+desktops answer the scheme question through GTK, Qt and the portal separately
+and disagree.
+
+`check-bootstrap` pins the pair rather than the single value; a Go test holds the
+branch, which no regex over the file can see.
+
+### Verification
+
+Mutation-verified on both literals. The appearance read itself only ran light
+here — this machine reports no `AppleInterfaceStyle`, and flipping a real user's
+system appearance to test it is not mine to do.
+
+---
+
+## Round 61 — the endpoint stated twice, compared by string
+
+`desktop_host.go` and `runtimeEndpoint.ts` each state where the local Runtime
+listens. `container.ts` attaches the local gate token **only** to a client whose
+endpoint equals the one `Bootstrap()` handed over.
+
+A drift between them does not fail to connect. It connects with no token, and
+neither side says why.
+
+### Changed
+
+`check-bootstrap` pins the two. The Runtime owns the port and publishes no
+constant for it, so the shell cannot read the value rather than restate it —
+what it can stop doing is restating it unwatched. Mutation-verified.
+
+---
+
+## Round 62 — the IPC surface, named once
+
+`binding_names_test.go` pins the exported method set of `DesktopHost`, because
+in v3 that set IS the application's entire IPC surface. Mutation-verified: an
+ordinary-looking setter fails it.
+
+The list was written twice in that file — once as the set, once as the names
+checked against the frontend's spelling. Only the first fails when the surface
+widens, so a deliberate addition would update it and leave the new name unchecked
+on the boundary it actually crosses. One declaration now, read by both; the test
+name loses its count with it.
+
+---
+
+## Round 63 — no nested scroller anywhere
+
+A scroller inside a scroller sends the wheel to the wrong box. Eight states
+audited for a scrollable ancestor containing a scrollable descendant: **zero**.
+Self-tested by injecting a nested pair, which reports 3. No change.
+
+---
+
+## Round 64 — placeholder parity holds
+
+A translation that drops `{{count}}` renders a sentence missing its number, in
+one language only. `check-locales` rule 7 compares placeholder sets against `en`.
+Mutation-verified by removing one from `zh`: caught. No change.
+
+---
+
+## Round 65 — the bundle is already tuned
+
+Entry payload 2474.8 KB against a 2719.7 KB budget; syntax highlighting (737 KB),
+diagrams (1542 KB), settings panes, workspace views and the math stylesheet all
+lazy. Seven of eight locale catalogs are lazy plugins; only `en` is static.
+
+The budget's own comment records that it once sat at 3.5× the actual payload —
+a gate measuring nothing — and was corrected. No measurement here shows startup
+parse to be a bottleneck, and AGENTS.md forbids optimising without one.
+**No change.**
+
+---
+
+## Round 66 — a control painted under the caption beside it, in 57 goldens
+
+Found by looking at a golden rather than at code. A grey square sat behind the
+"e" of "Agent states" in every one: the sidebar collapse control, drawn under the
+caption.
+
+Both fixtures had asked for the clearance — `pl-[78px]` — and neither got it.
+`.agent-surface-header` is unlayered and spells that edge logically,
+`padding-inline`, and an unlayered rule beats `@layer utilities` whatever its
+specificity.
+
+**The cascade audit exists to catch precisely that and could not see it**: it
+compares the two rules by property NAME, and `padding-left` is not
+`padding-inline-start`.
+
+### Changed
+
+The audit folds logical properties onto their physical edges before comparing.
+With that it finds this and nothing else — no product call site writes a utility
+that loses this way.
+
+The caption moves rather than growing a bigger padding: the product's own drawer
+header is EMPTY in that band, because the control is placed at the same gutter
+the header's content box starts at. Scaffolding that mirrors the product cannot
+teach the wrong thing.
+
+### Verification
+
+57 goldens regenerated. Verified confined: above the antialiasing floor, no
+golden changes a pixel outside the drawer. (The raw difference box reached the
+whole frame; thresholding at 24/255 to ignore antialiasing is what made the claim
+checkable.)
+
+---
+
+## Round 67 — one row out of alignment in a column of seven
+
+Every control in the appearance pane ends at the card's inner edge —
+`SettingRow` puts them there. The font size segments sat in a nested grid that
+`SettingRow` does not reach, content-width and left-aligned, so they stopped 28px
+short while the two fields directly above and the three segmented controls around
+them all landed on the line.
+
+| control | right edge |
+| --- | --- |
+| Accent tint, Density, Corners, both font fields | 1007 |
+| Font size | 979 |
+
+### Changed
+
+`justify-self-end` on the one control the pane's own idiom had missed.
+
+### Verification
+
+All four segmented controls now share 1007. Checked at the largest UI text the
+app allows, where the segments are widest: 23px still between them and their
+label, page overflow 0. Four goldens regenerated, each differing only across that
+row.
+
+---
+
+## Round 68 — a sparkline and a tab strip, both correct
+
+Two candidates from reading the dock goldens, both refuted by measurement:
+
+- The zigzag crossing the `apply_patch` bar is a 48×16 sparkline — `polygon` +
+  `polyline`, drawn only when a tool has more than one call — and it does not
+  overflow its own box.
+- Four dock tabs sit past the panel's right edge at the minimum window. The
+  strip's parent `.agent-dock-tabs` is `overflow-x: auto` with 414px of scroll,
+  and the half-visible tab at the edge is the affordance. Reachable.
+
+**No change.** The round's value is the two reports not filed.
+
+---
+
+## Round 69 — 390 minutes is not a reading on any clock
+
+`Working · 390m 0s`. Both duration formatters — `fmtDuration` and the translated
+`durationText` — stopped at minutes, and neither's tests had ever gone past
+twelve. The repository names long execution as a thing to hold.
+
+### Changed
+
+Both roll up the way a clock does, dropping the finest unit as the coarsest
+grows: 59m 59s, then 1h 00m. Eight catalogs carry the hour string; the
+untranslated one pads minutes the way it already pads seconds, so the column
+still aligns.
+
+### The instrument round 50 built, re-anchored
+
+Regenerating the goldens exposed it. Its baseline was first CONTENTFUL paint — a
+browser milestone racing the app's own staged loading. `dock-tools` fills in
+waves, and whether one landed before or after that milestone decided the run:
+three failures in four, then none in the next.
+
+It now cuts at the fixture's ready signal, the app's own claim that it has
+finished, which is the only line a jump can be judged against.
+
+The first attempt at that armed a `MutationObserver` on a document element the
+init script runs before, so the stamp never landed and every shift was filtered
+— **an instrument reporting a perfectly still page because it was not looking.**
+The negative test caught it. Arming now waits for the element, the cut is made
+from timestamps after the fact, and a missing stamp throws instead of passing.
+
+### Verification
+
+Ten goldens regenerated, each differing only across a 48×9px box. Spec run three
+times consecutively: 4/4 each. Disarming it deliberately fails all four.
+
+---
+
+## Round 70 — the protocol references pointed at three files that do not exist
+
+Four documents sent the reader to `runtime/doc/API.md`, `runtime/doc/AUX_API.md`
+and `runtime/doc/TRANSPORT.md` for the authoritative protocol. None of the three
+exists. The Runtime moved that material:
+
+| was | is |
+| --- | --- |
+| `doc/API.md` | `contract/API_REFERENCE.md` (generated) over `manifest.json` / `openrpc.json` / `schema.json` |
+| `doc/AUX_API.md` | the same file's HTTP endpoints section — where the sidecars are |
+| `doc/TRANSPORT.md` | `doc/ARCHITECTURE.md`, which holds transport and projection boundaries |
+
+Ten references repointed at what each was actually reaching for. Every markdown
+link in the desktop documentation set now resolves.
+
+---
+
+## Round 71 — the rest of the documentation holds
+
+Same lens, the remaining surfaces:
+
+- 44 design tokens named across four documents, two apparently missing. Both
+  false: `--font-ui` is named to say it does NOT exist, and `--sidebar-width` is
+  written from `app-shell.tsx` in a `useLayoutEffect`, so it is set before paint
+  rather than declared in the sheet.
+- Every directory the architecture documents name exists, except `src/domain/`,
+  which `FRONTEND_PLUGIN_CONTEXTS.md` names to argue it should not.
+
+**No change.**
+
+### Resources reclaimed, rounds 50–71
+
+Vite fixture servers on 4174 stopped after each probe; all `visual/probe-*.mjs`
+scratch files deleted; the temporary mutation files in `src/` and the locale
+perturbations removed and verified with `git status`; the round-49 worktree
+already gone.
+
+### Next
+
+This log itself was the gap: it stopped at round 49 while twenty-two rounds ran.
+Written now, and the loop's own bookkeeping is part of the loop.
