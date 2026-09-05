@@ -7,6 +7,8 @@ completed history through Round 289 was condensed again on 2026-09-05.
 
 ## Current state
 
+- Round 291 completes the storage-read ownership milestone. This refinement
+  stream is stopped at the user's request; no further round is queued.
 - Every round through the last completed table row is pushed to `origin/main`.
   Public Runtime changes are followed by their exact CLI dependency update.
 - Authorized code scope remains `runtime` and `cli`. Desktop work is concurrent
@@ -83,6 +85,7 @@ not a claim that every intermediate defense remains necessary.
 | Round | Commit | Result and verification |
 | --- | --- | --- |
 | 290 | `d2312206` + CLI dependency update | Removed duplicate Application copies of fresh SQLite results and four mutation-only fake tests (net −168 Go lines); documented read ownership and verified old snapshots survive successor reads. No public/wire change. Focused sessions/persistence/bootstrap: 0.637/1.481/2.185 s; module/workspace matrix passed. Real CLI: `ROUND290_OK` (9,259/20 tokens, 596 ms provider duration), invalid-key zero-usage failure, cold show/list, and fork with preserved transcript and distinct identities. Temporary resources moved to Trash; history condensed to themed ranges. |
+| 291 | `2c4e14b0` + CLI dependency update | Removed redundant Session/Run/Pending/Plan read copies and the second normalized-filter copy; retained validation and caller-input normalization (net −62 Go lines). No public/wire change. Module/workspace matrix passed: workspace tests 74.08 s, standalone CLI tests 39.50 s, isolated-cache Runtime/CLI lint 6.42/5.38 s. Live CLI: `ROUND291_OK` (9,259/20 tokens, 708 ms provider duration), invalid-key zero-usage failure, cold show/list, fork, and two distinct Run cursor pages; standalone snapshot matched exactly. Offline lifecycle tests cover Item reads and Pending recovery. Cache trimming delayed lint; a temporary proxy 500 was resolved using another download source. All round-owned resources moved to Trash. Stopped at this milestone; no next round. |
 
 ## Verification contract
 
@@ -123,12 +126,13 @@ command output out of this index.
 
 ## Remaining direction
 
-- Reassess defensive copies against actual storage ownership before adding more
-  validation or mutation-only fake tests. Preserve real aggregate boundaries and
-  transactional consistency; remove duplicate defenses on fresh read results.
-- Treat missing output-resource identity constraints as candidates only after the
-  owning use case, protocol projection, and every in-scope consumer prove the
-  required shape; do not add speculative validation.
+- Further work requires fresh user direction. Possible choices, not queued
+  tasks: a real-product lifecycle/terminal review, a broader evidence-backed
+  simplification audit, or new product behavior. Do not continue copy-by-copy
+  changes merely because a static pattern or hostile fake can be constructed.
+- This milestone does not claim to revalidate every long-running live Goal,
+  steer, compaction, and recovery scenario. Its bounded live checks and offline
+  lifecycle coverage are recorded above.
 - Keep this log compact. Add at most one concise row per completed round, then
   periodically consolidate rows into a themed range. Do not paste full command
   output, repeated validation boilerplate, credentials, or per-file narration.
