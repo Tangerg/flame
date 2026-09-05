@@ -96,9 +96,9 @@ type RunStore interface {
 }
 
 // WriteSets are the atomic durable write-sets the coordinator commits through the
-// persistence boundary (§8.1): each applies its whole multi-store mutation in ONE
+// persistence boundary: each applies its whole multi-store mutation in ONE
 // transaction, so the coordinator never stitches a transaction across table-CRUD
-// calls with the boundary hidden in the context (§8.4). The application decides
+// calls with the boundary hidden in the context. The application decides
 // the plan; the implementation executes it atomically, enriching nothing.
 type WriteSets interface {
 	// ApplyFork branches a child session off the plan's parent, seeds its chat log
@@ -169,7 +169,7 @@ type Snapshot struct {
 
 // WorkspaceCheckpoints is the coordinator's view of a session's working-tree
 // checkpoint store (shadow git): Restore resets the tree to a run-boundary
-// snapshot — the filesystem half of a file rollback (§8.5) — and DropSession
+// snapshot — the filesystem half of a file rollback — and DropSession
 // discards a deleted session's snapshots as the last step of the delete cascade.
 // Restore is reentrant (a git reset to an already-restored tree is a no-op), so
 // the recoverable operation can re-drive it at boot. A disabled store or missing
@@ -206,7 +206,7 @@ type GoalMutationGuard interface {
 	) error
 }
 
-// WorkspaceMutations is the recoverable operation log for file rollbacks (§8.5):
+// WorkspaceMutations is the recoverable operation log for file rollbacks:
 // a Git reset is not atomic across paths, and the optional durable-history cut
 // cannot share its transaction. Record logs the intent before the tree is
 // touched, Complete clears it once all requested effects commit, and ListPending
@@ -256,7 +256,7 @@ type Coordinator struct {
 	// goals serializes a session write-set with Goal lifecycle commands and
 	// quiesces its loop after a successful commit.
 	goals GoalMutationGuard
-	// mutations is the §8.5 recoverable operation log guarding a file+history
+	// mutations is the recoverable operation log guarding a file+history
 	// rollback across the working tree and the durable history.
 	mutations WorkspaceMutations
 	// admissions is shared with Runs and owns the process-local session and

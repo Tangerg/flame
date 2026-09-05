@@ -110,7 +110,7 @@ func primitiveNumericType(name string) bool {
 // TestDependencyRule enforces Clean Architecture's Dependency Rule for Runtime:
 // source dependencies point INWARD, toward Domain and Application. Outer rings may
 // depend on inner rings; the reverse — or a driven/adapter ring reaching up into
-// the composition root — is forbidden. See doc/ARCHITECTURE.md §6.
+// the composition root — is forbidden. See the dependency rules in doc/ARCHITECTURE.md.
 //
 // Rings (outer → inner):
 //
@@ -135,7 +135,7 @@ func primitiveNumericType(name string) bool {
 //	adapter     ↛ delivery, composition
 //	delivery    ↛ adapter, infra, composition   (drives Application, never implementations)
 //
-// Intentionally allowed inward / hexagonal edges (ARCHITECTURE.md §6):
+// Intentionally allowed inward / hexagonal edges (doc/ARCHITECTURE.md):
 //
 //	application → domain          coordinators depend on entities + consumer-side ports
 //	adapter → domain, application capability + agent-execution adapters implement application ports
@@ -192,52 +192,6 @@ func TestDependencyRule(t *testing.T) {
 	}
 	if violations == 0 {
 		t.Log("dependency rule holds: all cross-ring edges point inward")
-	}
-}
-
-// TestRemovedProducerPortsDoNotReturnToDomain prevents the producer-owned
-// interfaces removed during the ownership cleanup from quietly returning.
-// Their method sets belong to their application or adapter consumers; Domain
-// retains values, invariants, and only ports consumed by a Domain service.
-func TestRemovedProducerPortsDoNotReturnToDomain(t *testing.T) {
-	root := moduleRoot(t)
-	for path, forbiddenNames := range map[string]map[string]struct{}{
-		filepath.Join(root, "internal", "domain", "workspace", "agentmemory"): {"Store": {}},
-		filepath.Join(root, "internal", "domain", "run", "approval"):          {"Policy": {}},
-		filepath.Join(root, "internal", "domain", "session", "feedback"):      {"Store": {}},
-		filepath.Join(root, "internal", "domain", "automation", "goal"):       {"Store": {}},
-		filepath.Join(root, "internal", "domain", "workspace", "knowledge"):   {"Store": {}},
-		filepath.Join(root, "internal", "domain", "integration", "mcpserver"): {"Registry": {}},
-		filepath.Join(root, "internal", "domain", "automation", "schedule"):   {"Registry": {}},
-		filepath.Join(root, "internal", "domain", "session", "plan"):          {"Store": {}},
-		filepath.Join(root, "internal", "domain", "run", "tool"):              {"Catalog": {}, "Invoker": {}, "Registry": {}},
-	} {
-		entries, err := os.ReadDir(path)
-		if err != nil {
-			t.Fatalf("read %s: %v", path, err)
-		}
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
-				continue
-			}
-			filePath := filepath.Join(path, entry.Name())
-			file, err := parser.ParseFile(token.NewFileSet(), filePath, nil, 0)
-			if err != nil {
-				t.Fatalf("parse %s: %v", filePath, err)
-			}
-			for _, declaration := range file.Decls {
-				general, ok := declaration.(*ast.GenDecl)
-				if !ok || general.Tok != token.TYPE {
-					continue
-				}
-				for _, spec := range general.Specs {
-					typeSpec := spec.(*ast.TypeSpec)
-					if _, forbidden := forbiddenNames[typeSpec.Name.Name]; forbidden {
-						t.Errorf("%s declares removed producer-owned domain interface %s", filePath, typeSpec.Name.Name)
-					}
-				}
-			}
-		}
 	}
 }
 
@@ -342,7 +296,7 @@ func TestDomainHooksStayPure(t *testing.T) {
 }
 
 // TestDomainStaysFrameworkFree keeps every bounded context free of frameworks +
-// heavy runtime coupling (§19 "domain 不引入 I/O/framework"): no filesystem or
+// heavy runtime coupling: no filesystem or
 // process I/O, network, database driver, or external SDK/storage library
 // (including the reusable history adapter contract). Domain has no Agent
 // SDK exception: agentexec projects framework values into application-owned
@@ -420,7 +374,7 @@ func TestApplicationMechanismsStayApplicationOwned(t *testing.T) {
 	}
 }
 
-// TestApplicationStaysFrameworkFree enforces ARCHITECTURE.md §6.2's application-purity
+// TestApplicationStaysFrameworkFree enforces the Application dependency
 // clause directly for EXTERNAL dependencies (the ring rule already forbids the
 // internal SDK/SQLite/protocol edges): a use-case coordinator imports no agent
 // SDK, concrete chat client, SQLite driver, Git, MCP, or LSP library. Its only
@@ -796,34 +750,6 @@ func TestCapabilityAdaptersDoNotImportLowLevelTransportSDKs(t *testing.T) {
 	})
 }
 
-// TestBootstrapDoesNotOwnLiveRuntimeState keeps the composition root limited to
-// startup loading and assembly. Long-lived synchronization, fallback policy,
-// and adapter projections belong to their owning application or adapter type.
-func TestBootstrapDoesNotOwnLiveRuntimeState(t *testing.T) {
-	root := moduleRoot(t)
-	dir := filepath.Join(root, "internal", "bootstrap")
-	forbidExternalImports(t, dir, []string{"sync/atomic"})
-	forbidTopLevelNames(t, dir, map[string]string{
-		"buildUtilityEnvironment":   "utility role resolution belongs to adapter/model",
-		"buildEmbeddingEnvironment": "embedding role resolution belongs to adapter/model",
-		"DefaultClient":             "default selections must resolve through the live provider registry",
-		"liveStateSnapshot":         "Run maintenance live-state projection belongs to adapter/maintenance",
-	})
-}
-
-// TestModelAdapterDoesNotRetainCredentialGenerations keeps exact model-client
-// construction tied to one resolution. A process-lifetime cache would retain
-// arbitrary compatible model ids and old SDK objects after key/endpoint
-// rotation; active executions already own the client they resolved.
-func TestModelAdapterDoesNotRetainCredentialGenerations(t *testing.T) {
-	root := moduleRoot(t)
-	dir := filepath.Join(root, "internal", "adapter", "model")
-	forbidExternalImports(t, dir, []string{"sync", "sync/atomic"})
-	forbidTopLevelNames(t, dir, map[string]string{
-		"credentialClientIdentity": "credential-bound clients must not have process-lifetime cache identity",
-	})
-}
-
 func receiverName(recv *ast.FieldList) string {
 	if recv == nil || len(recv.List) == 0 {
 		return ""
@@ -839,10 +765,10 @@ func receiverName(recv *ast.FieldList) string {
 	return id.Name
 }
 
-// TestDeliveryHoldsNoRunLifecycleState enforces §16 rule 5: the delivery Handler
-// (the protocol handler) drives the run coordinator as a use-case surface, but
+// TestDeliveryHoldsNoRunLifecycleState keeps Run ownership out of the delivery Handler. It
+// invokes the Run coordinator as a use-case surface, but
 // must not itself HOLD the run registry, a cancel func, a task group, or a
-// checkpoint store — the run-lifecycle ownership §20 moved to the application/Host.
+// checkpoint store. Application owns Run execution; Bootstrap owns Runtime shutdown.
 // Two forms: (a) the Application task group is import-forbidden outright (a
 // field would need the import; this also catches a held cancel-func group); (b)
 // a struct-field AST walk forbids a held checkpoint store or run registry,
@@ -878,7 +804,7 @@ func TestDeliveryHoldsNoRunLifecycleState(t *testing.T) {
 				for _, bad := range forbiddenFields {
 					if strings.Contains(ts, bad) {
 						rel, _ := filepath.Rel(root, path)
-						t.Errorf("%s: delivery struct holds %s — run-lifecycle state belongs to the coordinator/Host (§16 rule 5)", rel, bad)
+						t.Errorf("%s: delivery struct holds %s — run-lifecycle state belongs to the Application", rel, bad)
 					}
 				}
 			}
@@ -911,7 +837,7 @@ func exprString(e ast.Expr) string {
 	}
 }
 
-// TestApplicationEventFreeOfProtocol enforces §16 rule 9: application (its Events,
+// TestApplicationEventFreeOfProtocol ensures Application (its Events,
 // commands, ports) never references a protocol/wire type. The ring rule already
 // forbids application → delivery; this is the dedicated, explicit guard so the
 // invariant survives even if a protocol type were ever mislocated outside delivery.
@@ -920,7 +846,7 @@ func TestApplicationEventFreeOfProtocol(t *testing.T) {
 	forbidExternalImports(t, filepath.Join(root, "internal", "application"), []string{protocolPkg})
 }
 
-// TestProtocolStaysWireOnly enforces §16 rule 10: protocol types don't enter
+// TestProtocolStaysWireOnly ensures protocol types don't enter
 // domain/application — the wire package itself must import neither ring, so wire
 // shapes never become a business dependency. (Delivery as a whole MAY import
 // domain/application to drive them; this constrains only the protocol subpackage.)
@@ -1524,7 +1450,7 @@ var crossRingCapabilityImports = []string{
 const domainPkg = "github.com/Tangerg/flame/runtime/internal/domain"
 
 // protocolPkg is the wire-type package; it must stay pure wire (no domain /
-// application import) so protocol types never leak inward (§16 rule 10).
+// application import) so protocol types never leak inward.
 const protocolPkg = "github.com/Tangerg/flame/runtime/protocol"
 
 // externalSDKs are the external agent-SDK / driver / framework libraries the

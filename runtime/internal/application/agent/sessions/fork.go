@@ -63,8 +63,8 @@ func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID string) 
 }
 
 // Fork creates a child session, seeds it with the resolved parent history prefix
-// and the Plan that boundary held, and renames it as ONE atomic write-set
-// (§8.1). The application resolves the boundary and commits the branch through
+// and the Plan that boundary held, and renames it as one atomic write-set.
+// The application resolves the boundary and commits the branch through
 // its persistence port.
 func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec) (session.Session, error) {
 	if _, err := resourceid.ParseSession(spec.ParentID); err != nil {

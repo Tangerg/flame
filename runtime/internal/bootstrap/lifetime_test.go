@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
-func TestHostCloseOwnsReverseOrderAndIsIdempotentAcrossCopies(t *testing.T) {
+func TestInstanceShutdownOwnsReverseOrderAndIsIdempotentAcrossCopies(t *testing.T) {
 	var (
 		mu    sync.Mutex
 		calls []string
@@ -53,7 +53,7 @@ func TestHostCloseOwnsReverseOrderAndIsIdempotentAcrossCopies(t *testing.T) {
 			}),
 		},
 	}
-	copyOfHost := host
+	copyOfInstance := host
 
 	var wg sync.WaitGroup
 	errs := make(chan error, 8)
@@ -65,7 +65,7 @@ func TestHostCloseOwnsReverseOrderAndIsIdempotentAcrossCopies(t *testing.T) {
 				errs <- host.Close()
 				return
 			}
-			errs <- copyOfHost.Close()
+			errs <- copyOfInstance.Close()
 		}()
 	}
 	wg.Wait()
@@ -97,7 +97,7 @@ func TestHostCloseOwnsReverseOrderAndIsIdempotentAcrossCopies(t *testing.T) {
 	}
 }
 
-func TestHostCloseAdvancesPastCompletedCloserError(t *testing.T) {
+func TestInstanceShutdownAdvancesPastCompletedCloserError(t *testing.T) {
 	closeErr := errors.New("terminal close diagnostic")
 	var toolCalls, resourceCalls int
 	oneShotToolClose := sync.OnceValue(func() error {
@@ -134,7 +134,7 @@ func TestHostCloseAdvancesPastCompletedCloserError(t *testing.T) {
 	}
 }
 
-func TestHostCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
+func TestInstanceShutdownContinuesGraphAfterCallerTimeout(t *testing.T) {
 	releaseComponent := make(chan struct{})
 	toolClosed := make(chan struct{})
 	host := Instance{lifetime: &runtimeLifetime{
@@ -174,7 +174,7 @@ func TestHostCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 	}
 }
 
-func TestHostCloseStartsNewGenerationAfterComponentError(t *testing.T) {
+func TestInstanceShutdownStartsNewGenerationAfterComponentError(t *testing.T) {
 	want := errors.New("component did not settle")
 	var stops, attempts, closed int
 	host := Instance{lifetime: &runtimeLifetime{
@@ -205,7 +205,7 @@ func TestHostCloseStartsNewGenerationAfterComponentError(t *testing.T) {
 	}
 }
 
-func TestHostCloseBoundsNonCooperativeToolCloserWithoutConcurrentRetry(t *testing.T) {
+func TestInstanceShutdownBoundsNonCooperativeToolCloserWithoutConcurrentRetry(t *testing.T) {
 	started := make(chan struct{})
 	release := make(chan struct{})
 	var calls atomic.Int32

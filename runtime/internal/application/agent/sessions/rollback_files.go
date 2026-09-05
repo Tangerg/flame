@@ -49,8 +49,7 @@ func (r RestoreScope) RestoresHistory() bool {
 
 // RollbackSpec is the rollback intent: which Run to keep to and what the
 // rollback rewinds. Every file restore is recoverable; RestoreBoth coordinates
-// the working tree and durable history through the operation log described in
-// §8.5.
+// the working tree and durable history through the recoverable operation log.
 type RollbackSpec struct {
 	SessionID string
 	ToRunID   string
@@ -275,7 +274,7 @@ func projectDroppedRuns(boundary transcript.Boundary, runs []run.Run, inputs map
 }
 
 // RecoverWorkspaceMutations re-drives every file rollback a crash left
-// unfinished (§8.5): for each logged intent it re-restores the working tree
+// unfinished: for each logged intent it re-restores the working tree
 // (reentrant), conditionally re-applies the durable truncation (idempotent — an
 // already-committed cut recomputes an empty boundary), then clears the intent.
 // It runs at boot before the server serves, so no run contends for the session

@@ -162,7 +162,7 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Session coordinator: %w", err)
 	}
-	// The Run coordinator owns the Run lifecycle (§20). Its driven persistence
+	// The Run coordinator owns the Run lifecycle. Its driven persistence
 	// adapter receives only Domain/Application-decided Session values; generated
 	// title maintenance returns through the Session Application capability.
 	runEffectTasks := &taskgroup.Group{}

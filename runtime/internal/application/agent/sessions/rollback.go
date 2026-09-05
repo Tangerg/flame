@@ -9,7 +9,7 @@ import (
 )
 
 // applyRollback truncates the chat history log to the boundary watermark and drops each run's
-// durable record + dangling interrupt as ONE atomic write-set (§8.1), then cancels
+// durable record + dangling interrupt as ONE atomic write-set, then cancels
 // any in-process parked executions that were abandoned. Delegated work is represented
 // by first-class child Runs in this same session, so there is no parallel hidden
 // Session tree to infer or purge. A keepMark < 0 (unknown watermark —

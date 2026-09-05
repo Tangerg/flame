@@ -255,9 +255,9 @@ func TestAssemblyFailureRollbackContinuesAfterCloseTimeout(t *testing.T) {
 	lifetime := newRuntimeLifetime(t.Context(), cfg.Resources)
 	lifetime.shutdownWait = testShutdownWait(t, time.Millisecond)
 
-	failedHost, err := assemble(t.Context(), cfg, lifetime, buildTools)
-	if failedHost != nil || !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("failed Build = (%v, %v), want nil Instance and bounded rollback timeout", failedHost, err)
+	failedInstance, err := assemble(t.Context(), cfg, lifetime, buildTools)
+	if failedInstance != nil || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("failed Build = (%v, %v), want nil Instance and bounded rollback timeout", failedInstance, err)
 	}
 	<-closerStarted
 	if err := closeRuntimeLifetime(lifetime); !errors.Is(err, context.DeadlineExceeded) {
@@ -268,7 +268,7 @@ func TestAssemblyFailureRollbackContinuesAfterCloseTimeout(t *testing.T) {
 	select {
 	case <-resourceClosed:
 	case <-time.After(time.Second):
-		t.Fatal("failed Assembly lost its dependent resource owner after rollback timeout")
+		t.Fatal("failed construction lost its dependent resource owner after rollback timeout")
 	}
 }
 
