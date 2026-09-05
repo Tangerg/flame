@@ -4006,3 +4006,82 @@ the goldens — they are protected by looking, which is how this one was found.
 The same question of the other status marks: the breadcrumb chip names its state
 in words, which is fine; the tool-stats badges and the dock tab dots have not
 been checked.
+
+---
+
+## Round 75 — the view no fixture had ever opened
+
+Status: **complete**
+
+Round 74's fix raised the general question, so the sweep: every painted mark
+under 18px with no text of its own, across twelve states. Ten distinct marks,
+eight without an accessible name — and all but one of those sit beside their own
+word ("Running", "Needs input"), which is what the rule asks for.
+
+Reading the last one led somewhere else. `timeline.tsx` maps four statuses onto
+three colours and nothing else:
+
+```
+ok → bg-success    err → bg-negative    approved → bg-success    declined → bg-warning
+```
+
+`tool-start` and `tool-end` carry the same kind icon and the same label, so **a
+succeeded tool call and a failed one differed by one 6px circle being green
+instead of red** — the pair colour vision fails on, with nothing else in the row
+to read instead.
+
+### Why it survived
+
+`timeline` is one of **13 of the 20 registered workspace views that no fixture
+state ever opens.** It is listed as a tab — which is why "Timeline" appears in
+the strip — but never made active, so nothing in the suite had rendered it. Not
+the goldens, not the WCAG audits, not the contrast or clipping sweeps.
+
+| | rendered by a fixture | never rendered |
+| --- | --- | --- |
+| views | plan, inbox, tool-stats, tools, file, diff, catalogue | search, explorer, files, terminal, skills, skill-proposals, skill-library, recipes, knowledge, agent-memory, agent-docs, run-summary, timeline, notifications |
+
+### Before / after
+
+| | before | after |
+| --- | --- | --- |
+| ok / approved | green dot | `check` glyph, success |
+| err | red dot | `alert` glyph, negative |
+| declined | amber dot | `x` glyph, warning |
+| in greyscale | one circle, four meanings | three distinguishable marks |
+
+The row's left-hand kind mark already speaks in glyphs; this answers in the same
+vocabulary, and `ok` beside `approved` stays legible because their kind marks
+differ.
+
+### The regression on the way, and the guard for it
+
+First attempt moved `aria-label={entry.status}` onto the `Icon`. It compiles —
+**TypeScript does not check hyphenated JSX attributes against a component's
+props** — and `Icon` renders `aria-hidden` and destructures four props, so the
+name was silently dropped. Types passed, tests passed, and only a screen reader
+would have noticed.
+
+The label now lives on a wrapper that claims `role="img"`. `check-chrome` grew
+one rule for the trap, mutation-verified: `<Icon … aria-label=` fails the build.
+
+### Coverage added
+
+`dock-timeline`, which brings the view into every sweep the state list drives.
+`workspace.visual.spec.ts` refuses a state with no declared ready boundary — a
+good refusal, because this view resolves a query and takes ~3s; ready is the
+failed patch's own mark, the thing the state exists to photograph.
+
+### Verification
+
+- Captured at 2× and converted to greyscale, before and after.
+- Accessible names read back from the DOM: `ok ×5, err, declined`.
+- 20 goldens moved by the added sidebar row; verified confined — 0 change a pixel
+  outside the fixture sidebar. Regenerated.
+- Visual **452/452** (444 before; the new state adds eight). Guards green, unit
+  2370/4 pre-existing.
+
+### Next
+
+The other twelve unopened views. Each is a surface the suite has never seen, and
+the first one opened had a `ui_rules 5` defect in it.

@@ -114,6 +114,16 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     ).toBeVisible();
     return;
   }
+  if (state === "dock-timeline") {
+    // The view reads the session's run tree, which resolves a query — so the header count is
+    // not ready, it is the first thing painted. Ready is a row that only the resolved data can
+    // produce: the failed patch, which is also the entry whose status mark this state exists to
+    // photograph.
+    const view = page.locator(".agent-workspace-view:visible");
+    await expect(view).toContainText("8 events");
+    await expect(view.getByRole("img", { name: "err" })).toBeVisible();
+    return;
+  }
   if (state === "dock-error") {
     await expect(page.getByText("Couldn't load the diff", { exact: true })).toBeVisible();
     return;

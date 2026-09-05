@@ -43,11 +43,19 @@ const KIND_I18N: Record<TimelineEntryKind, string> = {
   "approval-result": "timeline.kind.approvalResult",
 };
 
-const STATUS_DOT: Record<NonNullable<TimelineEntry["status"]>, string> = {
-  ok: "bg-success",
-  err: "bg-negative",
-  approved: "bg-success",
-  declined: "bg-warning",
+// A glyph, not a dot. `tool-start` and `tool-end` carry the same kind icon and the same label,
+// so a succeeded call and a failed one used to differ by one 6px circle being green instead of
+// red — the pair colour vision fails on, with nothing else in the row to read instead. The kind
+// mark on the left already speaks in glyphs; this answers in the same vocabulary, and `ok` beside
+// `approved` stays legible because their kind marks differ.
+const STATUS_MARK: Record<
+  NonNullable<TimelineEntry["status"]>,
+  { icon: IconName; tone: string }
+> = {
+  ok: { icon: "check", tone: "text-success" },
+  err: { icon: "alert", tone: "text-negative" },
+  approved: { icon: "check", tone: "text-success" },
+  declined: { icon: "x", tone: "text-warning" },
 };
 
 const TREE_INDENT = ["", "ml-3", "ml-6", "ml-9", "ml-12", "ml-16"] as const;
@@ -71,10 +79,16 @@ function TimelineRow({ entry }: { entry: TimelineEntry }) {
         </div>
       </div>
       {entry.status && (
+        // `Icon` is `aria-hidden` by design and takes no name, so the label lives on a wrapper
+        // that claims the role. Passing `aria-label` to the component compiles — TypeScript does
+        // not check hyphenated JSX attributes against a component's props — and is dropped.
         <span
+          role="img"
           aria-label={entry.status}
-          className={cn("mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full", STATUS_DOT[entry.status])}
-        />
+          className={cn("mt-1 shrink-0 leading-none", STATUS_MARK[entry.status].tone)}
+        >
+          <Icon name={STATUS_MARK[entry.status].icon} size="xs" />
+        </span>
       )}
       <span className="mt-0.5 shrink-0 font-mono text-ui-xs text-fg-faint">
         {timelineTimeOfDay(entry.ts)}

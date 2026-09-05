@@ -106,6 +106,15 @@ const RULES = [
     appliesTo: () => true,
   },
   {
+    // `Icon` renders `aria-hidden` and destructures four props; a name handed to it compiles and
+    // is thrown away, because TypeScript does not check hyphenated JSX attributes against a
+    // component's props. Types pass, tests pass, and only a screen reader notices — so the
+    // callsite claims the role on a wrapper instead.
+    pattern: /<Icon\b[^>]*\saria-label=/gs,
+    message: '`Icon` drops a name it accepts — wrap it in `<span role="img" aria-label=…>`',
+    appliesTo: () => true,
+  },
+  {
     pattern: /\btransition-all\b/g,
     message:
       "`transition-all` couples unrelated properties — enumerate only the properties that move",

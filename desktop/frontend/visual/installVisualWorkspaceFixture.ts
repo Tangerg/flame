@@ -420,6 +420,7 @@ const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-light": "plan",
   "dock-inbox": "inbox",
   "dock-stats": "tool-stats",
+  "dock-timeline": "timeline",
   "dock-tools": "tools",
   "dock-file": "file",
   "dock-catalog": WORKSPACE_DOCK_CATALOG,
@@ -434,7 +435,11 @@ export async function installVisualWorkspaceFixture(
   // the quiet one. `tool-shells` is the state with a read, a command, a patch, a
   // failure and a refusal in it — five outcomes, which is what the view sorts.
   await installVisualAgentFixture(
-    state === "dock-light" ? "running" : state === "dock-stats" ? "tool-shells" : "idle",
+    state === "dock-light"
+      ? "running"
+      : state === "dock-stats" || state === "dock-timeline"
+        ? "tool-shells"
+        : "idle",
   );
 
   installWorkspaceErrorClassifier();
