@@ -421,7 +421,7 @@ func newTestHandler(rt testRuntime) *Handler {
 	}
 	// Capability handler tests replace this coordinator through handlerWithModels;
 	// session projection reads its complete model choice from the session use case.
-	s.models = models.New(models.Config{})
+	s.models = newModelCoordinator(models.Config{})
 	// Default to a disabled schedules coordinator (schedules.* report
 	// capability_not_negotiated); schedule tests replace it with a fake registry.
 	s.schedules = schedules.Disabled()
@@ -431,7 +431,7 @@ func newTestHandler(rt testRuntime) *Handler {
 // handlerWithModels builds a Handler whose only wired coordinator is the models one
 // — enough for the providers / models handler tests.
 func handlerWithModels(cfg models.Config) *Handler {
-	return &Handler{models: models.New(cfg)}
+	return &Handler{models: newModelCoordinator(cfg)}
 }
 
 // handlerWithTools builds a Handler whose only wired coordinator is the tools one —
@@ -1365,3 +1365,46 @@ func (inertWorkspaceMutations) Complete(context.Context, string) error          
 func (inertWorkspaceMutations) ListPending(context.Context) ([]sessions.WorkspaceMutation, error) {
 	return nil, nil
 }
+
+func newModelCoordinator(cfg models.Config) *models.Coordinator {
+	if cfg.Providers == nil {
+		cfg.Providers = stubRegistry{}
+	}
+	if cfg.Catalog == nil {
+		cfg.Catalog = &modelProviderFake{}
+	}
+	if cfg.Prober == nil {
+		cfg.Prober = &providerFake{}
+	}
+	if cfg.Lister == nil {
+		cfg.Lister = &stubLister{}
+	}
+	if cfg.UtilityRoleState == nil {
+		cfg.UtilityRoleState = models.NewRoleState(modelref.Role{})
+	}
+	if cfg.UtilityValidator == nil {
+		cfg.UtilityValidator = okChatModelValidator{}
+	}
+	if cfg.UtilityStore == nil {
+		cfg.UtilityStore = &utilitySaverRecorder{}
+	}
+	if cfg.EmbeddingRoleState == nil {
+		cfg.EmbeddingRoleState = models.NewRoleState(modelref.Role{})
+	}
+	if cfg.EmbeddingValidator == nil {
+		cfg.EmbeddingValidator = inertEmbeddingRoles{}
+	}
+	if cfg.EmbeddingStore == nil {
+		cfg.EmbeddingStore = inertEmbeddingRoles{}
+	}
+	c, err := models.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+type inertEmbeddingRoles struct{}
+
+func (inertEmbeddingRoles) ValidateEmbeddingModel(context.Context, string, string) error { return nil }
+func (inertEmbeddingRoles) SaveEmbeddingRole(context.Context, modelref.Role) error       { return nil }

@@ -147,7 +147,7 @@ func (t testCatalog) LookupModel(providerID, modelID string) (Model, bool) {
 }
 
 func TestListProvidersOwnsCatalogOrder(t *testing.T) {
-	c := New(Config{
+	c := newTestCoordinator(Config{
 		Providers: &testProviderRegistry{},
 		Catalog: testCatalog{metadata: []ProviderMetadata{
 			providerMetadataFixture(t, "zeta", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability()),
@@ -171,7 +171,7 @@ func TestListProvidersRejectsBrokenRegistryCatalog(t *testing.T) {
 		"duplicate identity": {alpha, alpha},
 	} {
 		t.Run(name, func(t *testing.T) {
-			c := New(Config{
+			c := newTestCoordinator(Config{
 				Providers: &testProviderRegistry{listed: listed},
 				Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(
 					t, "alpha", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability(),
@@ -191,7 +191,7 @@ func TestListProvidersRejectsBrokenSupportedCatalog(t *testing.T) {
 		"duplicate identity": {alpha, alpha},
 	} {
 		t.Run(name, func(t *testing.T) {
-			c := New(Config{Providers: &testProviderRegistry{}, Catalog: testCatalog{metadata: metadata}})
+			c := newTestCoordinator(Config{Providers: &testProviderRegistry{}, Catalog: testCatalog{metadata: metadata}})
 			if providers, err := c.ListProviders(t.Context()); err == nil || providers != nil {
 				t.Fatalf("ListProviders = (%+v, %v), want nil/error", providers, err)
 			}
@@ -200,7 +200,7 @@ func TestListProvidersRejectsBrokenSupportedCatalog(t *testing.T) {
 }
 
 func TestListProvidersOmitsValidRegistryOnlyProviders(t *testing.T) {
-	c := New(Config{
+	c := newTestCoordinator(Config{
 		Providers: &testProviderRegistry{listed: []provider.Provider{modelProvider(t, "extension", "", "")}},
 		Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(
 			t, "supported", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability(),
@@ -227,7 +227,7 @@ func TestListModelsOwnsCatalogOrderAndSnapshot(t *testing.T) {
 			catalogModelFixture(t, providerID, "alpha", &Details{DisplayName: "Alpha"}),
 		}},
 	}
-	c := New(Config{Catalog: catalog})
+	c := newTestCoordinator(Config{Catalog: catalog})
 
 	models, err := c.ListModels(t.Context(), providerID)
 	if err != nil {
@@ -249,7 +249,7 @@ func TestListModelsRejectsContradictoryCatalogIdentity(t *testing.T) {
 		"foreign provider": {catalogModelFixture(t, "other", "alpha", &Details{})},
 	} {
 		t.Run(name, func(t *testing.T) {
-			c := New(Config{Catalog: testCatalog{
+			c := newTestCoordinator(Config{Catalog: testCatalog{
 				metadata: []ProviderMetadata{providerMetadataFixture(
 					t, providerID, ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability(),
 				)},
@@ -297,7 +297,7 @@ func (waitingProber) Probe(ctx context.Context, _ provider.Provider) error {
 
 func TestOptionalAPIKeyProviderIsConfiguredWithoutRegistryRow(t *testing.T) {
 	prober := &fakeProber{}
-	c := New(Config{
+	c := newTestCoordinator(Config{
 		Providers: &testProviderRegistry{},
 		Catalog: testCatalog{metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(
 			t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, EmbeddingCapabilityWithoutDefault(),
@@ -322,7 +322,7 @@ func TestOptionalAPIKeyProviderIsConfiguredWithoutRegistryRow(t *testing.T) {
 
 func TestProviderProbePreservesCallerCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
-	c := New(Config{
+	c := newTestCoordinator(Config{
 		Providers: &testProviderRegistry{},
 		Catalog: testCatalog{metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(
 			t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability(),
@@ -342,7 +342,7 @@ func TestProviderProbePreservesCallerCancellation(t *testing.T) {
 func TestProviderProbeOwnsASettlementDeadline(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
-	c := New(Config{
+	c := newTestCoordinator(Config{
 		Providers: &testProviderRegistry{},
 		Catalog: testCatalog{metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(
 			t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability(),
@@ -365,7 +365,7 @@ func TestProviderProbeOwnsASettlementDeadline(t *testing.T) {
 
 func TestProviderProbePreservesRegistryFailure(t *testing.T) {
 	sentinel := errors.New("registry unavailable")
-	c := New(Config{
+	c := newTestCoordinator(Config{
 		Providers: &testProviderRegistry{getErr: sentinel},
 		Catalog: testCatalog{metadata: []ProviderMetadata{optionalAPIKeyProviderMetadataFixture(
 			t, "ollama", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability(),
@@ -399,7 +399,7 @@ func TestListModelsPrefersRemoteModelsAndEnrichesKnownEntries(t *testing.T) {
 		models:   map[string][]Model{"ollama": {catalogModelFixture(t, "ollama", "known", &Details{DisplayName: "Known"})}},
 	}
 	lister := &fakeLister{ids: []string{"local", "known"}}
-	c := New(Config{Providers: registry, Catalog: catalog, Lister: lister})
+	c := newTestCoordinator(Config{Providers: registry, Catalog: catalog, Lister: lister})
 
 	got, err := c.ListModels(t.Context(), "ollama")
 	if err != nil {
@@ -431,10 +431,9 @@ func TestListModelsPreservesEndpointOutcome(t *testing.T) {
 		{name: "offline", lister: &fakeLister{err: offline}, wantErr: true, cause: offline},
 		{name: "invalid identity", lister: &fakeLister{ids: []string{""}}, wantErr: true},
 		{name: "duplicate identity", lister: &fakeLister{ids: []string{"local", "local"}}, wantErr: true},
-		{name: "missing discovery", wantErr: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			c := New(Config{Providers: &testProviderRegistry{}, Catalog: catalog, Lister: tt.lister})
+			c := newTestCoordinator(Config{Providers: &testProviderRegistry{}, Catalog: catalog, Lister: tt.lister})
 			got, err := c.ListModels(t.Context(), "ollama")
 			if (err != nil) != tt.wantErr || len(got) != 0 {
 				t.Fatalf("ListModels = (%+v, %v), want empty result, error=%v", got, err, tt.wantErr)
@@ -448,7 +447,7 @@ func TestListModelsPreservesEndpointOutcome(t *testing.T) {
 
 func TestListModelsSkipsRemoteProbeForStaticProvider(t *testing.T) {
 	lister := &fakeLister{ids: []string{"must-not-appear"}}
-	c := New(Config{
+	c := newTestCoordinator(Config{
 		Catalog: testCatalog{
 			metadata: []ProviderMetadata{providerMetadataFixture(t, "anthropic", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability())},
 			models:   map[string][]Model{"anthropic": {catalogModelFixture(t, "anthropic", "cataloged", &Details{})}},
@@ -467,7 +466,7 @@ func TestListModelsSkipsRemoteProbeForStaticProvider(t *testing.T) {
 
 func TestListModelsRejectsUnsupportedProvider(t *testing.T) {
 	lister := &fakeLister{ids: []string{"must-not-appear"}}
-	c := New(Config{
+	c := newTestCoordinator(Config{
 		Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(
 			t, "supported", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability(),
 		)}},
@@ -489,7 +488,7 @@ func TestProviderReadsRejectMismatchedCatalogAndRegistryIdentities(t *testing.T)
 	foreignProvider := modelProvider(t, "foreign", "key", "https://example.test")
 
 	t.Run("metadata lookup", func(t *testing.T) {
-		c := New(Config{Catalog: testCatalog{metadataByID: map[string]ProviderMetadata{"requested": foreignMetadata}}})
+		c := newTestCoordinator(Config{Catalog: testCatalog{metadataByID: map[string]ProviderMetadata{"requested": foreignMetadata}}})
 		if models, err := c.ListModels(t.Context(), "requested"); err == nil || models != nil {
 			t.Fatalf("ListModels = (%+v, %v), want nil/error", models, err)
 		}
@@ -497,7 +496,7 @@ func TestProviderReadsRejectMismatchedCatalogAndRegistryIdentities(t *testing.T)
 
 	t.Run("provider lookup", func(t *testing.T) {
 		prober := &fakeProber{}
-		c := New(Config{
+		c := newTestCoordinator(Config{
 			Providers: &testProviderRegistry{entries: map[string]provider.Provider{"requested": foreignProvider}},
 			Catalog:   testCatalog{metadata: []ProviderMetadata{requested}},
 			Prober:    prober,
@@ -513,7 +512,7 @@ func TestProviderReadsRejectMismatchedCatalogAndRegistryIdentities(t *testing.T)
 
 func TestUpdateProviderOwnsSupportAndBaseURLPolicy(t *testing.T) {
 	registry := &testProviderRegistry{}
-	c := New(Config{
+	c := newTestCoordinator(Config{
 		Providers: registry,
 		Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(
 			t, "compat", ProviderEndpointRequired, ProviderModelsEndpoint, NoEmbeddingCapability(),
@@ -555,7 +554,7 @@ func TestUpdateProviderOwnsSupportAndBaseURLPolicy(t *testing.T) {
 
 func TestTestProviderRequiresAConfiguredSupportedProvider(t *testing.T) {
 	prober := &fakeProber{}
-	c := New(Config{
+	c := newTestCoordinator(Config{
 		Providers: &testProviderRegistry{entries: map[string]provider.Provider{
 			"anthropic": modelProvider(t, "anthropic", "sk-secret", ""),
 		}},
@@ -576,7 +575,7 @@ func TestTestProviderRequiresAConfiguredSupportedProvider(t *testing.T) {
 
 func TestCommittedProviderUpdatePublishesModelsInvalidation(t *testing.T) {
 	var notices []invalidation.Notice
-	c := New(Config{
+	c := newTestCoordinator(Config{
 		Providers: &testProviderRegistry{},
 		Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(
 			t, "compat", ProviderEndpointRequired, ProviderModelsEndpoint, NoEmbeddingCapability(),
@@ -594,7 +593,7 @@ func TestCommittedProviderUpdatePublishesModelsInvalidation(t *testing.T) {
 
 func TestFailedProviderUpdateDoesNotPublishInvalidation(t *testing.T) {
 	var notices []invalidation.Notice
-	c := New(Config{
+	c := newTestCoordinator(Config{
 		Providers: &testProviderRegistry{updateErr: errors.New("store unavailable")},
 		Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(
 			t, "compat", ProviderEndpointRequired, ProviderModelsEndpoint, NoEmbeddingCapability(),
@@ -619,7 +618,7 @@ func TestProviderUpdateRejectsInvalidRegistryAcknowledgement(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			var notices []invalidation.Notice
-			c := New(Config{
+			c := newTestCoordinator(Config{
 				Providers: &testProviderRegistry{updateResult: &result},
 				Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(
 					t, "compat", ProviderEndpointRequired, ProviderModelsEndpoint, NoEmbeddingCapability(),

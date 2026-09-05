@@ -106,7 +106,7 @@ func buildAssemblyCore(
 		Tx:                  persistence.Transactor(cfg.Stores.Transactor),
 	})
 	modelCapabilities := modeladapter.Capabilities{}
-	modelCoordinator := models.New(models.Config{
+	modelCoordinator, err := models.New(models.Config{
 		Providers:          cfg.ProviderRegistry,
 		Catalog:            modelCapabilities,
 		Prober:             modelCapabilities,
@@ -119,6 +119,9 @@ func buildAssemblyCore(
 		EmbeddingStore:     cfg.Stores.EmbeddingRole,
 		Invalidations:      policy.invalidations.Publish,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("runtime: construct model coordinator: %w", err)
+	}
 	sessionDependencies := sessions.Dependencies{
 		Sessions:              cfg.Stores.Sessions,
 		Interrupts:            cfg.Stores.Interrupts,

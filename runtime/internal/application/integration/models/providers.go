@@ -57,9 +57,6 @@ const (
 // ListProviders returns the supported-provider set annotated with its current
 // configuration. Registry-only unknown providers are intentionally omitted.
 func (c *Coordinator) ListProviders(ctx context.Context) ([]ProviderSummary, error) {
-	if c.providers == nil {
-		return nil, errors.New("models: provider registry is unavailable")
-	}
 	entries, err := c.providers.List(ctx)
 	if err != nil {
 		return nil, err
@@ -85,9 +82,6 @@ func (c *Coordinator) UpdateProvider(ctx context.Context, cmd UpdateProviderComm
 	meta, err := c.supportedProvider(cmd.ID)
 	if err != nil {
 		return ProviderSummary{}, err
-	}
-	if c.providers == nil {
-		return ProviderSummary{}, errors.New("models: provider registry is unavailable")
 	}
 	patch := provider.Patch{APIKey: cmd.APIKey, BaseURL: cmd.BaseURL}
 	if patch.Empty() {
@@ -144,10 +138,6 @@ func (c *Coordinator) TestProvider(ctx context.Context, id string) (ProviderTest
 		}
 		return "", err
 	}
-	if c.prober == nil {
-		trace.SpanFromContext(ctx).RecordError(errors.New("models: provider probe is unavailable"))
-		return ProviderTestFailed, nil
-	}
 	probeContext, cancelProbe := context.WithTimeout(ctx, c.probeTimeout)
 	defer cancelProbe()
 	probeErr := c.prober.Probe(probeContext, entry)
@@ -175,9 +165,6 @@ func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Mode
 	if !meta.DiscoversModelsAtEndpoint() {
 		return c.catalogModels(providerID)
 	}
-	if c.lister == nil {
-		return nil, errors.New("models: endpoint discovery is unavailable")
-	}
 	entry, err := c.modelDiscoveryProvider(ctx, providerID)
 	if err != nil {
 		return nil, err
@@ -195,7 +182,7 @@ func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Mode
 		if err != nil {
 			return nil, fmt.Errorf("models: discover provider %q: %w", providerID, err)
 		}
-		if known, ok := c.lookupModel(providerID, id); ok {
+		if known, ok := c.catalog.LookupModel(providerID, id); ok {
 			model = known
 		}
 		out = append(out, model)
@@ -204,9 +191,6 @@ func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Mode
 }
 
 func (c *Coordinator) supportedProviders() ([]ProviderMetadata, error) {
-	if c.catalog == nil {
-		return nil, nil
-	}
 	metadata := c.catalog.Supported()
 	seen := make(map[string]struct{}, len(metadata))
 	for index, value := range metadata {
@@ -224,15 +208,8 @@ func (c *Coordinator) supportedProviders() ([]ProviderMetadata, error) {
 	return metadata, nil
 }
 
-func (c *Coordinator) providerMetadata(id string) (ProviderMetadata, bool) {
-	if c.catalog == nil {
-		return ProviderMetadata{}, false
-	}
-	return c.catalog.Metadata(id)
-}
-
 func (c *Coordinator) supportedProvider(id string) (ProviderMetadata, error) {
-	meta, ok := c.providerMetadata(id)
+	meta, ok := c.catalog.Metadata(id)
 	if !ok {
 		return ProviderMetadata{}, fmt.Errorf("%w: provider %q", ErrProviderUnsupported, id)
 	}
@@ -249,9 +226,6 @@ func (c *Coordinator) configuredProvider(ctx context.Context, id string) (Provid
 	meta, err := c.supportedProvider(id)
 	if err != nil {
 		return ProviderMetadata{}, provider.Provider{}, err
-	}
-	if c.providers == nil {
-		return ProviderMetadata{}, provider.Provider{}, errors.New("models: provider registry is unavailable")
 	}
 	entry, ok, err := c.providers.Get(ctx, id)
 	if err != nil {
@@ -276,18 +250,17 @@ func (c *Coordinator) modelDiscoveryProvider(ctx context.Context, providerID str
 	if err != nil {
 		return provider.Provider{}, err
 	}
-	if c.providers != nil {
-		configured, ok, getErr := c.providers.Get(ctx, providerID)
-		if getErr != nil {
-			return provider.Provider{}, getErr
-		}
-		if ok {
-			if err := validateProviderResult("get", providerID, configured); err != nil {
-				return provider.Provider{}, err
-			}
-			entry = configured
-		}
+	configured, ok, getErr := c.providers.Get(ctx, providerID)
+	if getErr != nil {
+		return provider.Provider{}, getErr
 	}
+	if ok {
+		if err := validateProviderResult("get", providerID, configured); err != nil {
+			return provider.Provider{}, err
+		}
+		entry = configured
+	}
+
 	return entry, nil
 }
 
@@ -316,9 +289,6 @@ func validateProviderResult(operation, id string, entry provider.Provider) error
 }
 
 func (c *Coordinator) catalogModels(providerID string) ([]Model, error) {
-	if c.catalog == nil {
-		return nil, nil
-	}
 	return orderedModels(providerID, c.catalog.Models(providerID))
 }
 
@@ -340,13 +310,6 @@ func orderedModels(providerID string, models []Model) ([]Model, error) {
 		}
 	}
 	return models, nil
-}
-
-func (c *Coordinator) lookupModel(providerID, modelID string) (Model, bool) {
-	if c.catalog == nil {
-		return Model{}, false
-	}
-	return c.catalog.LookupModel(providerID, modelID)
 }
 
 func providerSummary(meta ProviderMetadata, entry provider.Provider) ProviderSummary {

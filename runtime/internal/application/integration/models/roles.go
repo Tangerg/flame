@@ -2,7 +2,6 @@ package models
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -30,18 +29,14 @@ func (c *Coordinator) SetUtilityRole(ctx context.Context, provider, model string
 		if _, _, err := c.configuredProvider(ctx, role.Provider()); err != nil {
 			return modelref.Role{}, err
 		}
-		if c.utilityValidator == nil {
-			return modelref.Role{}, errors.New("models: utility model validation is unavailable")
-		}
 		if err := c.utilityValidator.ValidateChatModel(ctx, role.Provider(), role.Model()); err != nil {
 			return modelref.Role{}, fmt.Errorf("models: utility model %q on %q: %w", role.Model(), role.Provider(), err)
 		}
 	}
-	if c.utilityStore != nil {
-		if err := c.utilityStore.SaveUtilityRole(ctx, role); err != nil {
-			return modelref.Role{}, err
-		}
+	if err := c.utilityStore.SaveUtilityRole(ctx, role); err != nil {
+		return modelref.Role{}, err
 	}
+
 	c.utilityRoleState.Store(role)
 	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.Models})
 	return role, nil
@@ -71,18 +66,14 @@ func (c *Coordinator) SetEmbeddingRole(ctx context.Context, providerID, model st
 		if !meta.Embedding().Supported() {
 			return modelref.Role{}, fmt.Errorf("%w: provider %q", ErrEmbeddingUnsupported, role.Provider())
 		}
-		if c.embeddingValidator == nil {
-			return modelref.Role{}, errors.New("models: embedding model validation is unavailable")
-		}
 		if err := c.embeddingValidator.ValidateEmbeddingModel(ctx, role.Provider(), role.Model()); err != nil {
 			return modelref.Role{}, fmt.Errorf("models: build embedding model %q on %q: %w", role.Model(), role.Provider(), err)
 		}
 	}
-	if c.embeddingStore != nil {
-		if err := c.embeddingStore.SaveEmbeddingRole(ctx, role); err != nil {
-			return modelref.Role{}, fmt.Errorf("models: persist embedding role: %w", err)
-		}
+	if err := c.embeddingStore.SaveEmbeddingRole(ctx, role); err != nil {
+		return modelref.Role{}, fmt.Errorf("models: persist embedding role: %w", err)
 	}
+
 	c.embeddingRoleState.Store(role)
 	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.Models})
 	return role, nil

@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"errors"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -16,7 +15,7 @@ import (
 func TestSetUtilityRoleUsesSaverPort(t *testing.T) {
 	state := NewRoleState(mustModelRole(t, "anthropic", "claude-haiku"))
 	saver := &fakeUtilityRoleSaver{}
-	c := New(Config{UtilityRoleState: state, UtilityStore: saver})
+	c := newTestCoordinator(Config{UtilityRoleState: state, UtilityStore: saver})
 
 	if _, err := c.SetUtilityRole(context.Background(), "", ""); err != nil {
 		t.Fatalf("SetUtilityRole err = %v", err)
@@ -39,7 +38,7 @@ func TestSetUtilityRoleUsesChatModelValidatorPort(t *testing.T) {
 	cfg.UtilityRoleState = state
 	cfg.UtilityValidator = validator
 	cfg.UtilityStore = saver
-	c := New(cfg)
+	c := newTestCoordinator(cfg)
 
 	if _, err := c.SetUtilityRole(context.Background(), "anthropic", "claude-haiku"); err != nil {
 		t.Fatalf("SetUtilityRole err = %v", err)
@@ -59,22 +58,10 @@ func TestSetUtilityRoleReturnsChatModelValidatorError(t *testing.T) {
 	cfg := configuredRoleConfig(t)
 	cfg.UtilityRoleState = state
 	cfg.UtilityValidator = &fakeChatModelValidator{err: fail}
-	c := New(cfg)
+	c := newTestCoordinator(cfg)
 
 	if _, err := c.SetUtilityRole(context.Background(), "anthropic", "claude-haiku"); !errors.Is(err, fail) {
 		t.Fatalf("SetUtilityRole err = %v, want %v", err, fail)
-	}
-}
-
-func TestSetUtilityRoleRequiresChatModelValidator(t *testing.T) {
-	state := NewRoleState(modelref.Role{})
-	cfg := configuredRoleConfig(t)
-	cfg.UtilityRoleState = state
-	c := New(cfg)
-
-	_, err := c.SetUtilityRole(context.Background(), "anthropic", "claude-haiku")
-	if err == nil || !strings.Contains(err.Error(), "validation is unavailable") {
-		t.Fatalf("SetUtilityRole err = %v, want unavailable validation error", err)
 	}
 }
 
@@ -84,7 +71,7 @@ func TestSetUtilityRoleRequiresAConfiguredProvider(t *testing.T) {
 	cfg.Providers = &testProviderRegistry{}
 	cfg.UtilityRoleState = state
 	cfg.UtilityValidator = staticChatModelValidator{}
-	c := New(cfg)
+	c := newTestCoordinator(cfg)
 
 	_, err := c.SetUtilityRole(t.Context(), "anthropic", "claude-haiku")
 	if !errors.Is(err, ErrProviderUnconfigured) {
@@ -95,7 +82,7 @@ func TestSetUtilityRoleRequiresAConfiguredProvider(t *testing.T) {
 func TestSetEmbeddingRoleUsesSaverPort(t *testing.T) {
 	state := NewRoleState(mustModelRole(t, "openai", "text-embedding-3-small"))
 	saver := &fakeEmbeddingRoleSaver{}
-	c := New(Config{EmbeddingRoleState: state, EmbeddingStore: saver})
+	c := newTestCoordinator(Config{EmbeddingRoleState: state, EmbeddingStore: saver})
 
 	if _, err := c.SetEmbeddingRole(context.Background(), "", ""); err != nil {
 		t.Fatalf("SetEmbeddingRole err = %v", err)
@@ -120,7 +107,7 @@ func TestCommittedRoleUpdatesPublishModelsInvalidation(t *testing.T) {
 	cfg.EmbeddingValidator = staticEmbeddingResolver{}
 	cfg.EmbeddingStore = &fakeEmbeddingRoleSaver{}
 	cfg.Invalidations = func(notice invalidation.Notice) { notices = append(notices, notice) }
-	c := New(cfg)
+	c := newTestCoordinator(cfg)
 
 	if _, err := c.SetUtilityRole(t.Context(), "anthropic", "claude-haiku"); err != nil {
 		t.Fatal(err)
@@ -138,18 +125,6 @@ func TestCommittedRoleUpdatesPublishModelsInvalidation(t *testing.T) {
 	}
 }
 
-func TestSetEmbeddingRoleRequiresResolver(t *testing.T) {
-	state := NewRoleState(modelref.Role{})
-	cfg := configuredRoleConfig(t)
-	cfg.EmbeddingRoleState = state
-	c := New(cfg)
-
-	_, err := c.SetEmbeddingRole(context.Background(), "openai", "text-embedding-3-small")
-	if err == nil || !strings.Contains(err.Error(), "validation is unavailable") {
-		t.Fatalf("SetEmbeddingRole err = %v, want unavailable validation error", err)
-	}
-}
-
 func TestSetEmbeddingRoleRejectsProviderWithoutEmbeddings(t *testing.T) {
 	state := NewRoleState(modelref.Role{})
 	cfg := configuredRoleConfig(t)
@@ -158,7 +133,7 @@ func TestSetEmbeddingRoleRejectsProviderWithoutEmbeddings(t *testing.T) {
 	}}
 	cfg.EmbeddingRoleState = state
 	cfg.EmbeddingValidator = staticEmbeddingResolver{}
-	c := New(cfg)
+	c := newTestCoordinator(cfg)
 
 	_, err := c.SetEmbeddingRole(t.Context(), "anthropic", "embedding")
 	if !errors.Is(err, ErrEmbeddingUnsupported) {
@@ -173,7 +148,7 @@ func TestSetUtilityRoleSerializesPersistAndPublish(t *testing.T) {
 	cfg.UtilityRoleState = state
 	cfg.UtilityValidator = staticChatModelValidator{}
 	cfg.UtilityStore = saver
-	c := New(cfg)
+	c := newTestCoordinator(cfg)
 
 	assertRoleMutationSerializesPersistAndPublish(t, state, saver.blockingRoleSaver, c.SetUtilityRole)
 }
@@ -185,7 +160,7 @@ func TestSetEmbeddingRoleSerializesPersistAndPublish(t *testing.T) {
 	cfg.EmbeddingRoleState = state
 	cfg.EmbeddingValidator = staticEmbeddingResolver{}
 	cfg.EmbeddingStore = saver
-	c := New(cfg)
+	c := newTestCoordinator(cfg)
 
 	assertRoleMutationSerializesPersistAndPublish(t, state, saver.blockingRoleSaver, c.SetEmbeddingRole)
 }
@@ -346,4 +321,64 @@ func newBlockingEmbeddingSaver() *blockingEmbeddingSaver {
 func (b *blockingEmbeddingSaver) SaveEmbeddingRole(_ context.Context, role modelref.Role) error {
 	b.save(role.Model())
 	return nil
+}
+
+func completeTestConfig(cfg Config) Config {
+	if cfg.Providers == nil {
+		cfg.Providers = &testProviderRegistry{}
+	}
+	if cfg.Catalog == nil {
+		cfg.Catalog = testCatalog{}
+	}
+	if cfg.Prober == nil {
+		cfg.Prober = &fakeProber{}
+	}
+	if cfg.Lister == nil {
+		cfg.Lister = &fakeLister{}
+	}
+	if cfg.UtilityRoleState == nil {
+		cfg.UtilityRoleState = NewRoleState(modelref.Role{})
+	}
+	if cfg.UtilityValidator == nil {
+		cfg.UtilityValidator = staticChatModelValidator{}
+	}
+	if cfg.UtilityStore == nil {
+		cfg.UtilityStore = &fakeUtilityRoleSaver{}
+	}
+	if cfg.EmbeddingRoleState == nil {
+		cfg.EmbeddingRoleState = NewRoleState(modelref.Role{})
+	}
+	if cfg.EmbeddingValidator == nil {
+		cfg.EmbeddingValidator = staticEmbeddingResolver{}
+	}
+	if cfg.EmbeddingStore == nil {
+		cfg.EmbeddingStore = &fakeEmbeddingRoleSaver{}
+	}
+	return cfg
+}
+
+func TestNewRejectsMissingModelImplementation(t *testing.T) {
+	var typedNilLister *fakeLister
+	for _, prepare := range []func(*Config){
+		func(cfg *Config) { cfg.Lister = nil },
+		func(cfg *Config) { cfg.Lister = typedNilLister },
+		func(cfg *Config) { cfg.UtilityValidator = nil },
+		func(cfg *Config) { cfg.EmbeddingValidator = nil },
+		func(cfg *Config) { cfg.UtilityStore = nil },
+		func(cfg *Config) { cfg.EmbeddingStore = nil },
+	} {
+		cfg := completeTestConfig(Config{})
+		prepare(&cfg)
+		if coordinator, err := New(cfg); err == nil || coordinator != nil {
+			t.Fatalf("New = (%v, %v), want incomplete composition error", coordinator, err)
+		}
+	}
+}
+
+func newTestCoordinator(cfg Config) *Coordinator {
+	c, err := New(completeTestConfig(cfg))
+	if err != nil {
+		panic(err)
+	}
+	return c
 }

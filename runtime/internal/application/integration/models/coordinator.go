@@ -8,6 +8,8 @@ package models
 import (
 	"context"
 	"errors"
+	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -69,20 +71,17 @@ type EmbeddingModelValidator interface {
 	ValidateEmbeddingModel(ctx context.Context, providerID, model string) error
 }
 
-// UtilityRoleSaver persists the utility-model role across restarts. nil disables
-// persistence (the role stays in-process only).
+// UtilityRoleSaver persists the utility-model role across restarts.
 type UtilityRoleSaver interface {
 	SaveUtilityRole(ctx context.Context, role modelref.Role) error
 }
 
-// EmbeddingRoleSaver persists the embedding-model role across restarts. nil
-// disables persistence.
+// EmbeddingRoleSaver persists the embedding-model role across restarts.
 type EmbeddingRoleSaver interface {
 	SaveEmbeddingRole(ctx context.Context, role modelref.Role) error
 }
 
-// Coordinator owns provider + model configuration. Any nil dependency disables
-// the corresponding capability.
+// Coordinator owns provider configuration and durable model roles.
 type Coordinator struct {
 	providers ProviderRegistry
 	catalog   ProviderCatalog
@@ -130,12 +129,26 @@ type Config struct {
 }
 
 // New returns a models Coordinator over cfg.
-func New(cfg Config) *Coordinator {
-	if cfg.UtilityRoleState == nil {
-		cfg.UtilityRoleState = NewRoleState(modelref.Role{})
-	}
-	if cfg.EmbeddingRoleState == nil {
-		cfg.EmbeddingRoleState = NewRoleState(modelref.Role{})
+func New(cfg Config) (*Coordinator, error) {
+	for _, dependency := range []struct {
+		name  string
+		value any
+	}{
+		{"providers", cfg.Providers},
+		{"catalog", cfg.Catalog},
+		{"prober", cfg.Prober},
+		{"lister", cfg.Lister},
+		{"utility role state", cfg.UtilityRoleState},
+		{"utility validator", cfg.UtilityValidator},
+		{"utility store", cfg.UtilityStore},
+		{"embedding role state", cfg.EmbeddingRoleState},
+		{"embedding validator", cfg.EmbeddingValidator},
+		{"embedding store", cfg.EmbeddingStore},
+	} {
+		value := reflect.ValueOf(dependency.value)
+		if !value.IsValid() || ((value.Kind() == reflect.Pointer || value.Kind() == reflect.Func || value.Kind() == reflect.Map || value.Kind() == reflect.Slice || value.Kind() == reflect.Chan || value.Kind() == reflect.Interface) && value.IsNil()) {
+			return nil, fmt.Errorf("models: %s is required", dependency.name)
+		}
 	}
 	if cfg.ProbeTimeout <= 0 {
 		cfg.ProbeTimeout = defaultProviderProbeTimeout
@@ -153,5 +166,5 @@ func New(cfg Config) *Coordinator {
 		embeddingValidator: cfg.EmbeddingValidator,
 		embeddingStore:     cfg.EmbeddingStore,
 		invalidations:      cfg.Invalidations,
-	}
+	}, nil
 }
