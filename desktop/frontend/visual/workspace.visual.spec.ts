@@ -114,6 +114,19 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     ).toBeVisible();
     return;
   }
+  if (state === "dock-runs") {
+    // The other half of the same view. Ready is the deepest node — a run whose parent is
+    // itself delegated — because the tree paints outside-in and a two-level lineage is the
+    // last thing to arrive.
+    const view = page.locator(".agent-workspace-view:visible");
+    await expect(view).toContainText("7 runs");
+    await expect(view).toContainText("parent run_child");
+    // Every state a run can end in, which is why this state exists.
+    for (const status of ["Canceled", "Error", "Limit reached", "Finished"]) {
+      await expect(view.getByText(status, { exact: true }).first()).toBeVisible();
+    }
+    return;
+  }
   if (state === "dock-timeline") {
     // The view reads the session's run tree, which resolves a query — so the header count is
     // not ready, it is the first thing painted. Ready is a row that only the resolved data can

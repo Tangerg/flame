@@ -642,6 +642,7 @@ const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-inbox": "inbox",
   "dock-stats": "tool-stats",
   "dock-timeline": "timeline",
+  "dock-runs": "timeline",
   "dock-explorer": "explorer",
   "dock-terminal": "terminal",
   "dock-search": "search",
@@ -672,9 +673,14 @@ export async function installVisualWorkspaceFixture(
   await installVisualAgentFixture(
     state === "dock-light"
       ? "running"
-      : state === "dock-stats" || state === "dock-timeline" || state === "dock-terminal"
-        ? "tool-shells"
-        : "idle",
+      : // The same view, asked the other half of its question. `tool-shells` gives the
+        // timeline five tool OUTCOMES to sort; its run tree is one finished root, which is
+        // one of the six states a run can be in. `delegated` is seven runs across all six.
+        state === "dock-runs"
+        ? "delegated"
+        : state === "dock-stats" || state === "dock-timeline" || state === "dock-terminal"
+          ? "tool-shells"
+          : "idle",
   );
 
   installWorkspaceErrorClassifier();

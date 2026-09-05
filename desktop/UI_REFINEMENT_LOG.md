@@ -5284,3 +5284,48 @@ goldens moved, every one of them a row whose trailing found its column; the
 `Canceled`, `Error` and `Limit reached` now exist as delegated rows. The run
 TREE view in the workspace dock draws the same six states from the same model —
 and its fixture has the same two.
+
+---
+
+## Round 97 — the run tree that had drawn one node
+
+Status: **complete**
+
+The timeline dock asks two questions with one view: what happened, in order, and
+which Runs it happened in. Its fixture answered the first — `tool-shells` has
+five tool outcomes to sort — and the second read **"8 events · 1 run"**, a single
+finished root. One of the six states a Run can be in, and no lineage at all.
+
+`dock-runs` points the same view at `delegated`, which after last round is seven
+runs across all six states and two levels deep. It draws:
+
+| | |
+| --- | --- |
+| header | 15 events · 7 runs |
+| lineage | `parent run_root`, `parent run_child` — nesting the old fixture had none of |
+| statuses | Running, Needs input, Canceled, Error, Limit reached, Finished |
+| events | run started, tool finished, **approval requested**, run finished, run error |
+
+### One suspicion, refuted by measurement
+
+A canceled run's terminal row reads "✓ Run finished — Stopped once the answer was
+already known", and a check beside a stopped run looked like two channels
+disagreeing. Measured instead: that row carries **one** icon, at x 931 — the
+event-kind glyph — where a tool row and the error row carry **two**, the second
+at 1373. The status column abstains, exactly as `terminalTimelinePatch` says it
+should: `completed` is `ok`, a failure is `err`, and canceled or limit-reached
+gets a summary and no verdict at all.
+
+### Verification
+
+The suite refused the new state until it declared its own ready boundary, which
+is the deepest node — a run whose parent is itself delegated, the last thing the
+tree paints — plus all four terminal statuses by name. Visual **645/645**; 52
+goldens moved, 50 of them because the fixture's state rail gained a row that
+every workspace frame includes; the 20-script gate is green; unit 2395/4 outside
+the runtime-contract e2e.
+
+### Next
+
+`TimelineEntry.status` has four values — `ok`, `err`, `approved`, `declined` —
+and the timeline has now photographed two.
