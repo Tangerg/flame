@@ -3,6 +3,7 @@ package sessions
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
@@ -19,6 +20,19 @@ type ExportResult struct {
 	Items    []transcript.Item
 }
 
+func (c *Coordinator) readSnapshot(ctx context.Context, sessionID string) (Snapshot, error) {
+	snapshot, err := c.snapshots.ReadSnapshot(ctx, sessionID)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	snapshot.Messages = cloneSnapshotMessages(snapshot.Messages)
+	snapshot.Items = slices.Clone(snapshot.Items)
+	snapshot.Runs = slices.Clone(snapshot.Runs)
+	snapshot.ToolResults = slices.Clone(snapshot.ToolResults)
+	snapshot.Plan = slices.Clone(snapshot.Plan)
+	return snapshot, nil
+}
+
 // ExportSession reserves the session's single-writer slot and derives its
 // portable archive and presentation from one coherent canonical state. Active
 // and parked runs are rejected because their executor state is process-local
@@ -29,7 +43,7 @@ func (c *Coordinator) ExportSession(ctx context.Context, sessionID string) (Expo
 		return ExportResult{}, err
 	}
 	defer admission.Release()
-	snapshot, err := c.snapshots.ReadSnapshot(ctx, sessionID)
+	snapshot, err := c.readSnapshot(ctx, sessionID)
 	if err != nil {
 		return ExportResult{}, err
 	}
