@@ -38,6 +38,8 @@ describe("deriveLatestRun", () => {
     expect(durationText(t, 1_000, 31_400)).toBe("30s");
     expect(durationText(t, 1_000, 61_000)).toBe("1m 0s");
     expect(durationText(t, 1_000, 155_000)).toBe("2m 34s");
+    expect(durationText(t, 1_000, 3_601_000)).toBe("1h 0m");
+    expect(durationText(t, 1_000, 23_401_000)).toBe("6h 30m");
   });
 
   it("returns null when no run has started", () => {

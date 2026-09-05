@@ -1157,6 +1157,7 @@ export const zhTW: Record<string, string> = {
 
   "duration.seconds": "{{sec}} 秒",
   "duration.minutes": "{{min}} 分 {{sec}} 秒",
+  "duration.hours": "{{hr}} 小時 {{min}} 分",
   "runDigest.plaintext.run": "執行 {{id}} —— {{status}}",
   "runDigest.plaintext.changedFiles": "變更的檔案：",
   "runDigest.plaintext.commands": "命令：",

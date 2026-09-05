@@ -39,5 +39,9 @@ export function fmtDuration(ms: number): string {
   const whole = Math.round(seconds);
   if (whole < 60) return `${whole}s`;
   const minutes = Math.floor(whole / 60);
-  return `${minutes}m ${String(whole - minutes * 60).padStart(2, "0")}s`;
+  if (minutes < 60) return `${minutes}m ${String(whole - minutes * 60).padStart(2, "0")}s`;
+  // A clock drops its finest unit as its coarsest grows: a tool call that ran for six and a
+  // half hours reads 6h 30m, not 390m 00s. Agent work is expected to run this long.
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${String(minutes - hours * 60).padStart(2, "0")}m`;
 }

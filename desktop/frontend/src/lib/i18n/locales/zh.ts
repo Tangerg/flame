@@ -1157,6 +1157,7 @@ export const zh: Record<string, string> = {
 
   "duration.seconds": "{{sec}} 秒",
   "duration.minutes": "{{min}} 分 {{sec}} 秒",
+  "duration.hours": "{{hr}} 小时 {{min}} 分",
   "runDigest.plaintext.run": "运行 {{id}} —— {{status}}",
   "runDigest.plaintext.changedFiles": "改动的文件：",
   "runDigest.plaintext.commands": "命令：",

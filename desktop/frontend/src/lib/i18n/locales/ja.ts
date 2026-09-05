@@ -1192,6 +1192,7 @@ export const ja: Record<string, string> = {
 
   "duration.seconds": "{{sec}}秒",
   "duration.minutes": "{{min}}分{{sec}}秒",
+  "duration.hours": "{{hr}}時間{{min}}分",
   "runDigest.plaintext.run": "実行 {{id}} — {{status}}",
   "runDigest.plaintext.changedFiles": "変更されたファイル:",
   "runDigest.plaintext.commands": "コマンド:",

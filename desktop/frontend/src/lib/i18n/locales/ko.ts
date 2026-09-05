@@ -1178,6 +1178,7 @@ export const ko: Record<string, string> = {
 
   "duration.seconds": "{{sec}}초",
   "duration.minutes": "{{min}}분 {{sec}}초",
+  "duration.hours": "{{hr}}시간 {{min}}분",
   "runDigest.plaintext.run": "실행 {{id}} — {{status}}",
   "runDigest.plaintext.changedFiles": "변경된 파일:",
   "runDigest.plaintext.commands": "명령:",

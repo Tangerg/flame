@@ -193,7 +193,11 @@ export function durationText(t: Translate, start: number, end: number | null): s
   const sec = Math.round((end - start) / 1000);
   if (sec < 60) return t("duration.seconds", { sec });
   const min = Math.floor(sec / 60);
-  return t("duration.minutes", { min, sec: sec % 60 });
+  if (min < 60) return t("duration.minutes", { min, sec: sec % 60 });
+  // The wait as lived, and it can be hours: this reads the wall clock across approval pauses.
+  // A clock drops its finest unit as its coarsest grows — 6h 30m, never 390m 0s.
+  const hr = Math.floor(min / 60);
+  return t("duration.hours", { hr, min: min % 60 });
 }
 
 /** Section captions are translated — this is what the user copies out of the app. The

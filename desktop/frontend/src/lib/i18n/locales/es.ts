@@ -1265,6 +1265,7 @@ export const es: Record<string, string> = {
 
   "duration.seconds": "{{sec}} s",
   "duration.minutes": "{{min}} min {{sec}} s",
+  "duration.hours": "{{hr}} h {{min}} min",
   "runDigest.plaintext.run": "Ejecución {{id}} — {{status}}",
   "runDigest.plaintext.changedFiles": "Archivos modificados:",
   "runDigest.plaintext.commands": "Comandos:",

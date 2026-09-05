@@ -7,31 +7,60 @@ import { VISUAL_WORKSPACE_STATES } from "./workspaceFixtureStates";
 // `layout-shift` is the browser's own record of that jump — the entries CLS is computed from —
 // and it names the element that moved and where it moved from.
 //
-// The baseline is FIRST CONTENTFUL PAINT, not first paint, and the distinction is the whole
-// check. Two shifts land before content exists and neither is visible: the dev server delivers
-// CSS through the module graph, so the first paint is an unstyled `#root` that then settles
-// (production links the stylesheet in `<head>`, where it blocks paint and the shift cannot
-// happen), and React's mount pass moves rows into a transcript nobody has seen yet. Measuring
-// from first paint reports every state as jumping and points the fix at production code that is
-// already correct.
+// The baseline is the fixture's own READY signal, and choosing it is the whole check. Three
+// earlier candidates all measure the wrong thing:
 //
-// What survives the baseline is a real one: content the user is reading moved under them,
-// typically a measurement published from `useEffect` where layout order demanded
+//   * first paint — the dev server delivers CSS through the module graph, so the first frame is
+//     an unstyled `#root` that then settles. Production links the stylesheet in `<head>`, where
+//     it blocks paint and the shift cannot happen. Every state "jumps", and the fix would be
+//     pointed at production code that is already correct.
+//   * first CONTENTFUL paint — closer, and wrong in a way that only shows up as a flake: it is a
+//     browser milestone racing the app's own staged loading. `dock-tools` fills in waves, and
+//     whether its second wave lands before or after that milestone decides whether the run passes.
+//     Measured: three failures in four runs, then none in the next.
+//   * "no `aria-busy` left" — the dock keeps skeletons a fixture seeds no data for, so it never
+//     arrives.
+//
+// Ready is the app's own claim that it has finished, which is the only line a jump can be judged
+// against: before it the user is watching something load, after it they are reading. What
+// survives is a real one — a measurement published from `useEffect` where layout order demanded
 // `useLayoutEffect`, or an image given no width to reserve.
 
 const OBSERVER = `
   window.__shifts = [];
-  window.__contentPaintedAt = Infinity;
-  new PerformanceObserver((list) => {
-    for (const entry of list.getEntries()) {
-      if (entry.name === "first-contentful-paint") window.__contentPaintedAt = entry.startTime;
+  window.__readyAt = null;
+
+  // The init script runs before the document has an element to observe, so arming waits for one.
+  // Nothing here filters: every shift is kept with its timestamp and the cut is made once the
+  // ready stamp is known, so an observer armed a beat late cannot silently drop or keep the wrong
+  // side of the line.
+  const stamp = () => {
+    if (window.__readyAt === null) window.__readyAt = performance.now();
+  };
+  const arm = () => {
+    const root = document.documentElement;
+    if (!root) {
+      setTimeout(arm, 0);
+      return;
     }
-  }).observe({ type: "paint", buffered: true });
+    if (root.hasAttribute("data-visual-ready")) {
+      stamp();
+      return;
+    }
+    new MutationObserver((_, observer) => {
+      if (root.hasAttribute("data-visual-ready")) {
+        stamp();
+        observer.disconnect();
+      }
+    }).observe(root, { attributes: true });
+  };
+  arm();
+
   new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
       if (entry.hadRecentInput) continue;
-      if (entry.startTime <= window.__contentPaintedAt) continue;
       window.__shifts.push({
+        at: entry.startTime,
         value: entry.value,
         moved: (entry.sources ?? []).map((source) => {
           const node = source.node;
@@ -46,15 +75,28 @@ const OBSERVER = `
 `;
 
 interface Shift {
+  at: number;
   value: number;
   moved: string[];
+}
+
+/** Everything the page recorded, cut at the moment the app said it was ready. Throws rather than
+ *  reports nothing when the stamp is missing: an instrument that never armed reads exactly like a
+ *  page that never moved, and this one has already failed that way once. */
+async function shiftsAfterReady(page: Page): Promise<Shift[]> {
+  const { shifts, readyAt } = await page.evaluate(() => {
+    const w = window as unknown as { __shifts: Shift[]; __readyAt: number | null };
+    return { shifts: w.__shifts ?? [], readyAt: w.__readyAt };
+  });
+  if (readyAt === null) throw new Error("the ready stamp never landed — the observer did not arm");
+  return shifts.filter((shift) => shift.at > readyAt);
 }
 
 async function settleAndCollect(page: Page, route: string): Promise<Shift[]> {
   await page.goto(`/visual/?${route}&theme=light`);
   await page.waitForSelector("html[data-visual-ready]");
   await page.waitForTimeout(700);
-  return page.evaluate(() => (window as unknown as { __shifts: Shift[] }).__shifts ?? []);
+  return shiftsAfterReady(page);
 }
 
 function report(entries: { route: string; shift: Shift }[]): string {
@@ -75,28 +117,28 @@ async function expectSettled(page: Page, routes: string[]) {
   expect(found, report(found)).toEqual([]);
 }
 
-test("agent states paint their content once", async ({ page }) => {
+test("agent states hold still once the app says it is ready", async ({ page }) => {
   await expectSettled(
     page,
     VISUAL_AGENT_STATES.map((state) => `fixture=agent&state=${state}`),
   );
 });
 
-test("work index states paint their content once", async ({ page }) => {
+test("work index states hold still once the app says it is ready", async ({ page }) => {
   await expectSettled(
     page,
     VISUAL_WORK_INDEX_STATES.map((state) => `fixture=shell&state=${state}`),
   );
 });
 
-test("workspace states paint their content once", async ({ page }) => {
+test("workspace states hold still once the app says it is ready", async ({ page }) => {
   await expectSettled(
     page,
     VISUAL_WORKSPACE_STATES.map((state) => `fixture=workspace&state=${state}`),
   );
 });
 
-test("a jump after content is painted is caught", async ({ page }) => {
+test("a jump after the app says it is ready is caught", async ({ page }) => {
   await page.addInitScript(OBSERVER);
   await page.goto("/visual/?fixture=agent&state=narrative&theme=light");
   await page.waitForSelector("html[data-visual-ready]");
@@ -109,8 +151,5 @@ test("a jump after content is painted is caught", async ({ page }) => {
   });
   await page.waitForTimeout(200);
 
-  const shifts = await page.evaluate(
-    () => (window as unknown as { __shifts: Shift[] }).__shifts ?? [],
-  );
-  expect(shifts.length).toBeGreaterThan(0);
+  expect((await shiftsAfterReady(page)).length).toBeGreaterThan(0);
 });

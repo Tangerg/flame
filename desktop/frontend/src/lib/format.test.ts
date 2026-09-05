@@ -19,6 +19,13 @@ describe("fmtDuration", () => {
     expect(fmtDuration(246_000)).toBe("4m 06s");
     expect(fmtDuration(738_000)).toBe("12m 18s");
   });
+
+  // Agent work runs for hours; a clock drops its finest unit as its coarsest grows.
+  it("rolls up to hours instead of counting minutes past sixty", () => {
+    expect(fmtDuration(3_599_000)).toBe("59m 59s");
+    expect(fmtDuration(3_600_000)).toBe("1h 00m");
+    expect(fmtDuration(23_400_000)).toBe("6h 30m");
+  });
 });
 
 describe("fmtTokens", () => {

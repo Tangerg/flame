@@ -1242,6 +1242,7 @@ export const de: Record<string, string> = {
 
   "duration.seconds": "{{sec}} s",
   "duration.minutes": "{{min}} min {{sec}} s",
+  "duration.hours": "{{hr}} Std. {{min}} min",
   "runDigest.plaintext.run": "Lauf {{id}} — {{status}}",
   "runDigest.plaintext.changedFiles": "Geänderte Dateien:",
   "runDigest.plaintext.commands": "Befehle:",
