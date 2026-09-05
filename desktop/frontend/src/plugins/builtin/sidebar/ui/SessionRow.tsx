@@ -100,10 +100,18 @@ export function SessionRow({
             <span className="flex shrink-0 items-center gap-1.5">
               {session.favorite && <Icon name="star" size="xs" className="text-accent" />}
               {session.attention !== "none" ? (
+                // Shape, not only hue. The pulse is the running mark's other channel and
+                // `prefers-reduced-motion` takes it away, which would leave two 6px dots telling
+                // two states apart by colour alone — and the accent is the user's to pick, with
+                // an orange 22° from the warning tone in the swatch row. Hollow reads as "under
+                // way", solid as "your turn", which is also the right weight for the one that
+                // wants an answer.
                 <span
                   className={cn(
                     "h-1.5 w-1.5 shrink-0 rounded-full",
-                    session.attention === "running" ? "bg-accent animate-pulse-dot" : "bg-warning",
+                    session.attention === "running"
+                      ? "border border-accent animate-pulse-dot"
+                      : "bg-warning",
                   )}
                   title={accessibleStatus}
                 />

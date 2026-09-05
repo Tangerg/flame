@@ -3940,3 +3940,69 @@ findings.
 
 Back inside the scope the prompt draws: visible state, interaction, and the
 components that render them.
+
+---
+
+## Round 74 — two states, one channel, and the preference that removes it
+
+Status: **complete**
+
+`ui_rules 5`: a state change may not be carried by colour alone. The Work Index
+marks a session's attention with a 6px dot:
+
+```tsx
+session.attention === "running" ? "bg-accent animate-pulse-dot" : "bg-warning"
+```
+
+Two channels, colour and motion — and `globals.css` answers
+`prefers-reduced-motion` by setting `animation-iteration-count: 1` and
+`animation-duration: 1ms` on everything. **The pulse is the only non-colour
+difference, and the preference takes it away.**
+
+The accent is also the user's to pick. Measured against `--color-warning` in
+CIE Lab:
+
+| accent | ΔE light | ΔE dark | hue apart |
+| --- | --- | --- | --- |
+| Blue (default) | 111.9 | 121.3 | 179° |
+| Purple | 140.1 | 141.5 | 214° |
+| Green | 56.4 | 65.5 | 120° |
+| **Orange** | **37.3** | **49.0** | **22°** |
+
+Orange is in the swatch row. Two 6px marks 22° apart in the same warm family is
+hard for anyone, before considering colour vision at all.
+
+### Before / after
+
+| | before | after |
+| --- | --- | --- |
+| running | filled accent dot, pulsing | accent **ring**, pulsing |
+| needs input | filled warning dot | unchanged |
+| under reduced motion | two dots, hue only | ring vs solid |
+| in greyscale | indistinguishable | distinguishable |
+
+Hollow reads as "under way" and solid as "your turn", which is also the right
+weight: the state that wants an answer is the heavier mark.
+
+### Verification
+
+- Captured at 1×, 2×, light and dark, then converted to greyscale — the proof
+  the rule actually asks for. `/tmp/dots-{1x,2x,dark}-gray.png` at capture time;
+  the reproducible form is the fixture route plus the three-line probe in this
+  entry's commit message.
+- `typecheck`, `lint`, `format:check`, guards green. Unit 2370/4 (pre-existing).
+- Visual 444/444, **including every WCAG audit** — the accent ring on the sidebar
+  surface holds contrast in both themes.
+
+### A note on what the goldens did not catch
+
+No golden moved. A 6px mark changing from filled to ring differs by fewer pixels
+than `maxDiffPixels: 40`, so the pixel suite tolerates it. That tolerance exists
+for antialiasing and is correct, but it means small marks are not protected by
+the goldens — they are protected by looking, which is how this one was found.
+
+### Next
+
+The same question of the other status marks: the breadcrumb chip names its state
+in words, which is fine; the tool-stats badges and the dock tab dots have not
+been checked.
