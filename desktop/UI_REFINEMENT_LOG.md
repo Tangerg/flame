@@ -5169,3 +5169,58 @@ runtime-contract e2e.
 
 The locale sweep on the surfaces it does not reach yet — the composer's model and
 mode pickers, the dock tab strip — where a fixed pill row meets German.
+
+---
+
+## Round 95 — the worst case, and two statuses nobody drew
+
+Status: **complete**
+
+First, pushed last round's locale sweep to the combination the product actually
+ships and nothing had ever checked together: **the smallest window, the largest
+type, in the longest language.** Each had been checked alone.
+
+| | |
+| --- | --- |
+| routes | 7 → 10, adding the preview-heavy states where the literal widths live |
+| axes | + font size 18 |
+| result | **holds** — no clipping in any of the seven languages |
+
+Then a targeted probe for what the clipping detectors deliberately exempt: a
+label that FITS in English and truncates elsewhere, which is what a column
+measured against "assistant" invites. Ten routes, four languages, nothing. The
+recall grid's 9.5rem survives because its content is result data, not chrome —
+so the locale axis cannot stress it at all, which is worth knowing.
+
+### Goal, and its four statuses
+
+`GoalStatus` is `active | paused | blocked | completing`. **Two had ever been
+rendered.** What each one offers is different, and the code's own comment worries
+about exactly this: *"Naming them here rather than in a bare set is what stops the
+row from removing the resume control in silence."*
+
+| status | says | offers |
+| --- | --- | --- |
+| active | Pursuing goal | clear, pause, edit |
+| blocked, resumable | **Goal stalled** | clear, resume, edit |
+| paused by a spent cap | Cost budget reached | clear, edit — the Runtime refuses to resume, so the row does not offer it |
+| completing | **Finishing goal** | clear only |
+
+`completing` is the Runtime's word for the settlement window after the model has
+declared success and before the drive has charged the final Run. Withholding
+pause and edit there is right: there is nothing left to pause and the objective
+is already being cleared. All four carry proper accessible names.
+
+Nothing was wrong. The two that had never been drawn are drawn now, and what
+each status offers is pinned — mutated by dropping `blocked` from the resumable
+set, the guard fails.
+
+### Verification
+
+**636/636**; four goldens moved, the two states that gained a Goal row; the
+20-script gate is green; unit 2395/4 outside the runtime-contract e2e.
+
+### Next
+
+The Goal budget readout — the collapsed row reports the axis that will stop the
+loop first, and only one arrangement of that has been photographed.

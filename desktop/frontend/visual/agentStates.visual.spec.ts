@@ -1560,6 +1560,34 @@ test("a multi-file patch receipt puts every path on one left edge", async ({ pag
   }
 });
 
+// Four Goal statuses, and two of them had never been drawn. What each one OFFERS is the part
+// that cannot drift quietly: a blocked goal the Runtime would resume must keep its resume
+// control, and a completing goal — the settlement window after the model declared success —
+// must not offer to pause or edit an objective that is already being charged and cleared.
+const GOAL_CONTROLS: ReadonlyArray<{ state: string; label: string; actions: string[] }> = [
+  { state: "running", label: "Pursuing goal", actions: ["Clear goal", "Pause goal", "Edit goal"] },
+  { state: "canceled", label: "Goal stalled", actions: ["Clear goal", "Resume goal", "Edit goal"] },
+  // Paused by a cap that is spent: the Runtime refuses to resume, so the row says why and
+  // drops the control rather than offering an action that would be rejected.
+  { state: "terminal", label: "Cost budget reached", actions: ["Clear goal", "Edit goal"] },
+  { state: "steer", label: "Finishing goal", actions: ["Clear goal"] },
+];
+
+for (const goal of GOAL_CONTROLS) {
+  test(`a goal offers only what its status allows — ${goal.state}`, async ({ page }) => {
+    await page.goto(`/visual/?fixture=agent&theme=light&state=${goal.state}`);
+    await page.locator("html[data-visual-ready]").waitFor();
+
+    const row = page.locator('[data-slot="goal-status-row"]');
+    await expect(row).toContainText(goal.label);
+    expect(
+      await row
+        .locator('[data-slot="goal-actions"] button')
+        .evaluateAll((buttons) => buttons.map((button) => button.getAttribute("aria-label"))),
+    ).toEqual(goal.actions);
+  });
+}
+
 test("the transcript publishes one heading outline, from the session down", async ({ page }) => {
   await page.goto("/visual/?fixture=agent&theme=light&state=narrative");
   await page.locator("html[data-visual-ready]").waitFor();

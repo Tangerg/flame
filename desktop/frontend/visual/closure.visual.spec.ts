@@ -205,6 +205,11 @@ const LOCALE_ROUTES: FixtureRoute[] = [
   { fixture: "agent", state: "waiting" },
   { fixture: "agent", state: "tool-shells" },
   { fixture: "agent", state: "question" },
+  // The preview-heavy states, because that is where the literal widths are: the recall grid
+  // reserves 9.5rem for a speaker and a date, and 9.5 was measured against "assistant".
+  { fixture: "agent", state: "tool-search" },
+  { fixture: "agent", state: "tool-remote" },
+  { fixture: "agent", state: "tool-tail" },
   { fixture: "shell", state: "populated" },
   { fixture: "workspace", state: "dock-stats" },
   { fixture: "workspace", state: "settings", pane: "schedules" },
@@ -215,13 +220,18 @@ for (const locale of SHIPPED_LOCALES) {
   test(`text survives its own language — ${locale}`, async ({ page }) => {
     const clipped: string[] = [];
     for (const route of LOCALE_ROUTES) {
-      await page.setViewportSize({ width: 1120, height: 720 });
-      await openFixture(page, { ...route, locale });
-      const where = `${route.fixture}/${route.pane ?? route.state}`;
-      clipped.push(
-        ...(await horizontallyClippedText(page)).map((hit) => `${where} →: ${hit}`),
-        ...(await verticallyClippedText(page)).map((hit) => `${where} ↓: ${hit}`),
-      );
+      // The worst case the product actually ships, not a comfortable one: the smallest
+      // window at the largest type, in the language whose labels run longest. Each of those
+      // three was already checked alone, and a column only fails when they arrive together.
+      for (const fontSize of [undefined, 18]) {
+        await page.setViewportSize({ width: 1120, height: 720 });
+        await openFixture(page, { ...route, locale, ...(fontSize ? { fontSize } : {}) });
+        const where = `${route.fixture}/${route.pane ?? route.state}${fontSize ? "@18" : ""}`;
+        clipped.push(
+          ...(await horizontallyClippedText(page)).map((hit) => `${where} →: ${hit}`),
+          ...(await verticallyClippedText(page)).map((hit) => `${where} ↓: ${hit}`),
+        );
+      }
     }
 
     expect(clipped).toEqual([]);

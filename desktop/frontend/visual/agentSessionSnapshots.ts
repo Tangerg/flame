@@ -1711,6 +1711,35 @@ export const VISUAL_GOALS: Partial<Record<VisualAgentState, GoalReadModel>> = {
     createdAt: "2026-08-12T08:00:00Z",
     updatedAt: "2026-08-12T08:02:00Z",
   },
+  // The two statuses no fixture had: `blocked` where the Runtime WILL resume — the goal is
+  // waiting on a person, not on a spent cap, so the row keeps its resume control — and
+  // `completing`, the one status that takes the objective away from editing entirely.
+  canceled: {
+    sessionId: SESSION_ID,
+    objective: "Get the desktop suite green on Linux",
+    status: "blocked",
+    stop: { code: "awaitingInput", detail: "The run asked a question and is waiting." },
+    budget: { maxRuns: 20, maxCostUsd: 5 },
+    used: { runs: 4, costUsd: 1.2, steps: 18 },
+    provider: "openai",
+    model: "gpt-5",
+    reasoningEffort: "high",
+    createdAt: "2026-08-12T08:00:00Z",
+    updatedAt: "2026-08-12T08:03:00Z",
+  },
+  steer: {
+    sessionId: SESSION_ID,
+    objective: "Get the desktop suite green on Linux",
+    status: "completing",
+    stop: null,
+    budget: { maxRuns: 20, maxCostUsd: 5 },
+    used: { runs: 19, costUsd: 4.9, steps: 96 },
+    provider: "openai",
+    model: "gpt-5",
+    reasoningEffort: "high",
+    createdAt: "2026-08-12T08:00:00Z",
+    updatedAt: "2026-08-12T08:04:00Z",
+  },
 };
 
 export const VISUAL_SESSION_ID = SESSION_ID;
