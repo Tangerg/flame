@@ -246,6 +246,7 @@ record. The original 1,371-line narrative for Rounds 1–25 was consolidated on
 | 286 | `9ded61da` + CLI dependency update | Took an owned material-session snapshot at the persistence port, isolating aggregate collections, deeply nested Pending state, and the optional Goal before validation and delivery. |
 | 287 | `dca1eb60` + CLI dependency update | Unified export, fork, and parked-run terminalization behind one owned SnapshotReader path that deep-isolates messages and every projection collection before use-case validation. |
 | 288 | `e9357109` + CLI dependency update | Snapshotted paged Session rows before live Run and filesystem projections so later callbacks cannot replace already-validated catalog entries. |
+| 289 | `ae2736a8` + CLI dependency update | Copied rollback transcript rows before Run reads; verification passed standalone/workspace test, vet, build, staticcheck, cross-builds, and lint. Live CLI returned `ROUND289_OK` (9,259/21 tokens, 543 ms provider duration); invalid credentials returned `invalid_api_key` with zero usage. Round-owned resources moved to Trash. The next audit will reassess whether these storage-read copies protect a real ownership boundary. |
 
 ## Verification contract
 
@@ -283,9 +284,9 @@ repeated here.
 
 ## Remaining direction
 
-- Continue after Round 177 by auditing complete Runtime catalogs and CLI
-  projections for aggregate invariants that element-level wire validation cannot
-  express.
+- Reassess defensive copies against actual storage ownership before adding more
+  validation or mutation-only fake tests. Preserve real aggregate boundaries and
+  transactional consistency; remove duplicate defenses on fresh read results.
 - Treat missing output-resource identity constraints as candidates only after the
   owning use case, protocol projection, and every in-scope consumer prove the
   required shape; do not add speculative validation.
