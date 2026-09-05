@@ -107,7 +107,6 @@ type feedbackUseCases interface {
 }
 
 type scheduleManagementUseCases interface {
-	Available() bool
 	Create(ctx context.Context, cmd schedules.CreateCommand) (schedule.Schedule, error)
 	Delete(ctx context.Context, id string) error
 	ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[schedule.Schedule], error)
@@ -115,7 +114,6 @@ type scheduleManagementUseCases interface {
 }
 
 type scheduleFiringUseCases interface {
-	Available() bool
 	RunNow(ctx context.Context, id string) (schedules.StartedRun, error)
 }
 

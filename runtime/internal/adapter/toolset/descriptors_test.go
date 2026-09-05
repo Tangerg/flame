@@ -60,7 +60,6 @@ func wireCreateGoal(t *testing.T, resolver *Resolver) {
 // nothing to do with drift.
 type allWiredSchedules struct{}
 
-func (allWiredSchedules) Available() bool { return true }
 func (allWiredSchedules) ListPage(context.Context, string, pagination.RequestedLimit) (pagination.Page[schedule.Schedule], error) {
 	return pagination.Page[schedule.Schedule]{}, nil
 }

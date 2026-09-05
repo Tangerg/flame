@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
@@ -422,9 +421,6 @@ func newTestHandler(rt testRuntime) *Handler {
 	// Capability handler tests replace this coordinator through handlerWithModels;
 	// session projection reads its complete model choice from the session use case.
 	s.models = newModelCoordinator(models.Config{})
-	// Default to a disabled schedules coordinator (schedules.* report
-	// capability_not_negotiated); schedule tests replace it with a fake registry.
-	s.schedules = schedules.Disabled()
 	return s
 }
 

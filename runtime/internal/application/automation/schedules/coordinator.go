@@ -5,7 +5,6 @@ package schedules
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -55,10 +54,6 @@ type CWDResolver interface {
 type ModelAdmitter interface {
 	AdmitSelection(selection modelref.Selection) error
 }
-
-// ErrUnavailable reports that scheduled-run management was not assembled in
-// this Runtime.
-var ErrUnavailable = errors.New("schedules: unavailable")
 
 // Dependencies is the collaborator set [New] wires into a Coordinator.
 type Dependencies struct {
@@ -123,9 +118,6 @@ func (u UpdateCommand) clone() UpdateCommand {
 	return u
 }
 
-// Disabled returns an explicitly unavailable schedule-management capability.
-func Disabled() *Coordinator { return &Coordinator{} }
-
 // New returns a fully wired Coordinator or rejects partial construction.
 func New(deps Dependencies) (*Coordinator, error) {
 	for _, required := range []struct {
@@ -150,9 +142,6 @@ func New(deps Dependencies) (*Coordinator, error) {
 		invalidations: deps.Invalidations,
 	}, nil
 }
-
-// Available reports whether schedule-management use cases are wired.
-func (c *Coordinator) Available() bool { return c != nil && c.store != nil }
 
 // listPageNamespace binds cursors to this schedule read independently of other
 // paged reads.
@@ -187,9 +176,6 @@ func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit paginat
 	size, err := limit.Resolve(listPageLimit)
 	if err != nil {
 		return pagination.Page[schedule.Schedule]{}, err
-	}
-	if !c.Available() {
-		return pagination.Page[schedule.Schedule]{}, ErrUnavailable
 	}
 	rows, err := c.store.ListPage(ctx, afterCreatedAt, afterID, size+1)
 	if err != nil {
@@ -235,9 +221,6 @@ func validateManagementPage(rows []schedule.Schedule, afterCreatedAt time.Time, 
 
 // Create validates, normalizes, schedules, and persists a new schedule.
 func (c *Coordinator) Create(ctx context.Context, cmd CreateCommand) (schedule.Schedule, error) {
-	if !c.Available() {
-		return schedule.Schedule{}, ErrUnavailable
-	}
 	if err := c.models.AdmitSelection(cmd.ModelSelection); err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: model selection is not admitted: %w", err)
 	}
@@ -272,9 +255,6 @@ func (c *Coordinator) Create(ctx context.Context, cmd CreateCommand) (schedule.S
 // and timestamps while recomputing its next due time.
 func (c *Coordinator) Update(ctx context.Context, cmd UpdateCommand) (schedule.Schedule, error) {
 	cmd = cmd.clone()
-	if !c.Available() {
-		return schedule.Schedule{}, ErrUnavailable
-	}
 	if err := schedule.ValidateID(cmd.ID); err != nil {
 		return schedule.Schedule{}, err
 	}
@@ -348,9 +328,6 @@ func loadSchedule(ctx context.Context, store scheduleReader, id string) (schedul
 
 // Delete removes a schedule by id.
 func (c *Coordinator) Delete(ctx context.Context, id string) error {
-	if !c.Available() {
-		return ErrUnavailable
-	}
 	if err := schedule.ValidateID(id); err != nil {
 		return err
 	}
@@ -367,9 +344,6 @@ func (c *Coordinator) Delete(ctx context.Context, id string) error {
 func (c *Coordinator) resolveCWD(cwd string) (string, error) {
 	if cwd == "" {
 		return "", nil
-	}
-	if c.paths == nil {
-		return "", errors.Join(workspaceapp.ErrCWDUnavailable, errors.New("schedules: cwd resolver is unavailable"))
 	}
 	resolved, err := c.paths.ResolveExistingDir(cwd)
 	if err != nil {

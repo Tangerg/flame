@@ -61,10 +61,10 @@ func TestSchedulesCreateListDelete(t *testing.T) {
 	}
 }
 
-func TestSchedulesDisabledCapabilityBuildsNoTools(t *testing.T) {
-	tools, err := BuildSchedules(scheduleapp.Disabled())
+func TestSchedulesOmittedFromToolsetWithoutManagementPort(t *testing.T) {
+	tools, err := BuildSchedules(nil)
 	if err != nil || len(tools) != 0 {
-		t.Fatalf("BuildSchedules(disabled) = (%d tools, %v), want none", len(tools), err)
+		t.Fatalf("BuildSchedules(nil) = (%d tools, %v), want none", len(tools), err)
 	}
 }
 

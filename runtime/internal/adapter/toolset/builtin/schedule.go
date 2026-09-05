@@ -64,7 +64,6 @@ type scheduleView struct {
 // ScheduleManagement is the schedule family's narrow application use case.
 // It intentionally excludes revisioned updates and firing operations.
 type ScheduleManagement interface {
-	Available() bool
 	ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[scheduledomain.Schedule], error)
 	Create(ctx context.Context, cmd scheduleapp.CreateCommand) (scheduledomain.Schedule, error)
 	Delete(ctx context.Context, id string) error
@@ -75,7 +74,7 @@ type scheduleManagementTools struct{ coordinator ScheduleManagement }
 // BuildSchedules constructs one tool per schedule action. Each schema therefore contains
 // only fields that action can consume. A nil coordinator disables the family.
 func BuildSchedules(coordinator ScheduleManagement) ([]toolcontract.Tool, error) {
-	if coordinator == nil || !coordinator.Available() {
+	if coordinator == nil {
 		return nil, nil
 	}
 	t := &scheduleManagementTools{coordinator: coordinator}

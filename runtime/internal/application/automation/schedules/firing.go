@@ -44,9 +44,6 @@ type FiringDependencies struct {
 	Invalidations invalidation.Publish
 }
 
-// DisabledFiring returns an explicitly unavailable execution capability.
-func DisabledFiring() *Firing { return &Firing{} }
-
 // NewFiring builds a complete schedule execution use case and rejects partial
 // construction.
 func NewFiring(deps FiringDependencies) (*Firing, error) {
@@ -70,18 +67,10 @@ func NewFiring(deps FiringDependencies) (*Firing, error) {
 	}, nil
 }
 
-// Available reports whether schedule-firing use cases are wired.
-func (f *Firing) Available() bool {
-	return f != nil && f.runNowStore != nil
-}
-
 // RunNow starts one off-cycle schedule firing without advancing the cron
 // cursor. The request carries its aggregate-owned Run record into the same
 // transaction as Run opening, so success and LastRunAt cannot diverge.
 func (f *Firing) RunNow(ctx context.Context, id string) (StartedRun, error) {
-	if !f.Available() {
-		return StartedRun{}, ErrUnavailable
-	}
 	if err := schedule.ValidateID(id); err != nil {
 		return StartedRun{}, err
 	}
@@ -103,9 +92,6 @@ func (f *Firing) RunNow(ctx context.Context, id string) (StartedRun, error) {
 
 // RunWorker starts the due-schedule scanner until ctx is canceled.
 func (f *Firing) RunWorker(ctx context.Context) {
-	if !f.Available() {
-		return
-	}
 	newWorker(workerDependencies{
 		Store: f.workerStore, RunStarter: f.runStarter,
 		NewSessionID: f.newSessionID, NewRunID: f.newRunID,

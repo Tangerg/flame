@@ -60,36 +60,6 @@ func mustFiring(t testing.TB, deps FiringDependencies) *Firing {
 	return value
 }
 
-// TestNilRegistryDisablesCRUD: a coordinator built without a store reports
-// every CRUD op as unavailable (the no-scheduling build), rather than panicking.
-func TestNilRegistryDisablesCRUD(t *testing.T) {
-	c := Disabled()
-	ctx := context.Background()
-
-	if c.Available() {
-		t.Fatal("Available = true, want false")
-	}
-	if _, err := c.ListPage(ctx, "", explicitPageLimit(t, 1)); !errors.Is(err, ErrUnavailable) {
-		t.Fatalf("ListPage err = %v, want ErrUnavailable", err)
-	}
-	if _, err := c.Create(ctx, CreateCommand{}); !errors.Is(err, ErrUnavailable) {
-		t.Fatalf("Create err = %v, want ErrUnavailable", err)
-	}
-	if _, err := c.Update(ctx, UpdateCommand{}); !errors.Is(err, ErrUnavailable) {
-		t.Fatalf("Update err = %v, want ErrUnavailable", err)
-	}
-	if err := c.Delete(ctx, "sch_1"); !errors.Is(err, ErrUnavailable) {
-		t.Fatalf("Delete err = %v, want ErrUnavailable", err)
-	}
-	firing := DisabledFiring()
-	if firing.Available() {
-		t.Fatal("firing Available = true, want false")
-	}
-	if _, err := firing.RunNow(ctx, "sch_1"); !errors.Is(err, ErrUnavailable) {
-		t.Fatalf("RunNow err = %v, want ErrUnavailable", err)
-	}
-}
-
 func TestScheduleConstructorsRejectPartialAndTypedNilDependencies(t *testing.T) {
 	store := &runNowStore{}
 	runner := &cancelingScheduledRunStarter{cancel: func() {}, succeed: true}
@@ -427,22 +397,6 @@ func (r *runNowStore) Due(context.Context, time.Time, int) ([]schedule.Schedule,
 func (r *runNowStore) Claim(context.Context, schedule.Claim) (bool, error) { return false, nil }
 func (r *runNowStore) Pending(context.Context, int) ([]schedule.Occurrence, error) {
 	return nil, nil
-}
-
-// TestRunWorkerNoOpWithoutScheduling ensures a disabled schedule capability
-// returns at once rather than entering a scan loop.
-func TestRunWorkerNoOpWithoutWorker(t *testing.T) {
-	firing := DisabledFiring()
-	done := make(chan struct{})
-	go func() {
-		firing.RunWorker(context.Background())
-		close(done)
-	}()
-	select {
-	case <-done:
-	case <-time.After(time.Second):
-		t.Fatal("RunWorker blocked without a worker store")
-	}
 }
 
 // pagedStore seeks the way the store does: newest created first, id last so the

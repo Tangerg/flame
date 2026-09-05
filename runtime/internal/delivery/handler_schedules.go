@@ -109,9 +109,6 @@ func mapScheduleErr(err error, method, id string) error {
 	if err == nil {
 		return nil
 	}
-	if errors.Is(err, scheduleapp.ErrUnavailable) {
-		return capabilityNotNegotiated(method)
-	}
 	if errors.Is(err, schedule.ErrNotFound) {
 		return fmt.Errorf("%w: schedule %q not found", protocol.ErrInvalidParams, id)
 	}

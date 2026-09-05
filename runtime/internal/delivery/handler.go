@@ -55,7 +55,6 @@ type HandlerConfig struct {
 	WorkspaceAuthoredWatch workspaceAuthoredWatchUseCases
 
 	GitAvailable bool
-	PlanEnabled  bool
 }
 
 // Handler is the complete protocol-to-application translation target used by
@@ -195,10 +194,10 @@ func deriveContractFacts(cfg HandlerConfig) (contractFacts, error) {
 			knowledge:   cfg.WorkspaceKnowledge.Available(),
 			git:         cfg.GitAvailable,
 			fileWatch:   cfg.WorkspaceWatch.Available(),
-			plan:        cfg.PlanEnabled,
+			plan:        true,
 			goals:       capabilityAvailable(cfg.Goals),
 			agentMemory: capabilityAvailable(cfg.AgentMemory) && cfg.AgentMemory.Available(),
-			schedules:   cfg.Schedules.Available() && cfg.ScheduleFiring.Available(),
+			schedules:   true,
 		},
 		replay: replayLimitsFrom(cfg.Runs.ReplayRetention()),
 		mcpAuthorizationAttempts: protocol.MCPAuthorizationAttemptLimits{

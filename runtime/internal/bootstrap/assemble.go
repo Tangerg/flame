@@ -394,7 +394,6 @@ func buildAssemblyCore(
 				Goals:                  goalDriver,
 				AgentMemory:            workspaceServices.agentMemory,
 				GitAvailable:           workspaceadapter.GitAvailable(),
-				PlanEnabled:            true,
 			},
 			sessions: sessionCoordinator,
 			workers: runtimeWorkers{

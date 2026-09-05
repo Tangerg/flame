@@ -253,12 +253,13 @@ func mustServerSchedule(t testing.TB, snapshot schedule.Snapshot) schedule.Sched
 	return scheduled
 }
 
-func TestScheduleUnavailableIsCapabilityNotNegotiated(t *testing.T) {
-	reg := &fakeScheduleRegistry{listErr: schedules.ErrUnavailable}
+func TestScheduleStorageFailurePreservesCause(t *testing.T) {
+	cause := errors.New("schedule storage failure")
+	reg := &fakeScheduleRegistry{listErr: cause}
 	s := handlerWithSchedules(t, reg)
 
 	_, err := s.ListSchedules(context.Background(), protocol.PageQuery{})
-	if !errors.Is(err, protocol.ErrCapabilityNotNeg) {
-		t.Fatalf("list unavailable err = %v, want capability_not_negotiated", err)
+	if !errors.Is(err, cause) {
+		t.Fatalf("list error = %v, want storage cause", err)
 	}
 }
