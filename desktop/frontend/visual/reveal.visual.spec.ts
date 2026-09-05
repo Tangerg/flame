@@ -48,3 +48,76 @@ test("nothing invisible can be clicked", async ({ page }) => {
 
   expect([...new Set(traps)], "invisible elements that still take clicks").toEqual([]);
 });
+
+// The other half of the same idea: a reveal has TWO ends. `globals.css` says it — "`rest` is
+// the other end of it: what the reveal displaces, which has to give way at the same moment or
+// the two overlap" — and nothing checked the two were driven by the same condition. They were
+// not: the resting glyph watched the TRIGGER's `:focus-visible` while the action watched the
+// row's `:focus-within`, so focus landing on the action itself left the row showing both.
+//
+// Two mechanisms carry a pair here, `[data-reveal]` and `.t-icon-swap`'s `[data-glyph]`, and
+// both are asked the same question in each state a person can put the row in.
+const PAIRS = [
+  { rest: '[data-reveal="rest"]', shown: '[data-reveal="hover"]', within: ".group\\/row" },
+  { rest: '[data-glyph="rest"]', shown: '[data-glyph="hover"]', within: ".t-icon-swap" },
+];
+
+test("a reveal and the thing it displaces never show at once", async ({ page }) => {
+  const both: string[] = [];
+
+  for (const route of ROUTES) {
+    await page.goto(`/visual/?${route}&theme=light`);
+    await page.waitForSelector("html[data-visual-ready]");
+
+    for (const pair of PAIRS) {
+      const containers = await page.locator(pair.within).elementHandles();
+      for (const container of containers.slice(0, 6)) {
+        const box = await container.boundingBox();
+        if (!box || box.width === 0) continue;
+
+        const sample = async (state: string) => {
+          const reading = await container.evaluate(
+            (node: Element, selectors) => {
+              const rest = node.querySelector(selectors.rest);
+              const shown = node.querySelector(selectors.shown);
+              if (!rest || !shown) return null;
+              return {
+                rest: Number(getComputedStyle(rest).opacity),
+                shown: Number(getComputedStyle(shown).opacity),
+              };
+            },
+            { rest: pair.rest, shown: pair.shown },
+          );
+          // Both substantially visible is the failure; a cross-fade mid-flight is not.
+          if (reading && reading.rest > 0.6 && reading.shown > 0.6) {
+            both.push(
+              `${route} ${state}: rest=${reading.rest} shown=${reading.shown} in ${pair.within}`,
+            );
+          }
+        };
+
+        await sample("at rest");
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await page.waitForTimeout(220);
+        await sample("hovered");
+        // The pointer has to leave first, or `:hover` retires the resting end and hides the
+        // disagreement this step exists to find.
+        await page.mouse.move(0, 0);
+        await page.waitForTimeout(180);
+        // The REVEALED end, not the first control in the row: focus landing on the action is
+        // the state the two ends disagreed about, and focusing the trigger hides the
+        // disagreement because both conditions happen to hold there.
+        await container.evaluate((node: Element, selector) => {
+          const revealed = node.querySelector<HTMLElement>(selector);
+          (revealed?.querySelector<HTMLElement>("button, [tabindex]") ?? revealed)?.focus();
+        }, pair.shown);
+        await page.waitForTimeout(220);
+        await sample("the revealed end focused");
+        await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+        await page.waitForTimeout(180);
+      }
+    }
+  }
+
+  expect([...new Set(both)], "a reveal showing at the same time as what it displaces").toEqual([]);
+});

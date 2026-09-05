@@ -6,8 +6,13 @@ import { AgentOverflowLabel } from "./overflow-label";
 
 const ROW_GROUP = "group/row";
 
+// The SAME conditions as `HOVER_ACTION` below, and it has to be the same: one is what the
+// other displaces, so a state that reveals the action without retiring this leaves the row
+// showing both — which happened whenever focus landed on the action itself, because this end
+// used to watch the TRIGGER's `:focus-visible` while the other watched the row's
+// `:focus-within`. Nobody chose that asymmetry; the two ends were simply written apart.
 const RESTING_GLYPH =
-  "transition-opacity group-hover/row:pointer-events-none group-hover/row:opacity-0 group-focus-visible/row-trigger:pointer-events-none group-focus-visible/row-trigger:opacity-0";
+  "transition-opacity group-hover/row:pointer-events-none group-hover/row:opacity-0 group-focus-within/row:pointer-events-none group-focus-within/row:opacity-0";
 
 // The action is the caller's node in a sibling span, so only the SPAN can react to it
 // having focus — and `:has(:focus-visible)` is not a working way to say that (Chromium
@@ -51,7 +56,7 @@ export function AgentRow({
       press={false}
       data-active={active ? "" : undefined}
       className={cn(
-        "group/row-trigger agent-row w-full justify-start rounded-[var(--row-radius)] text-left text-ui-md font-normal",
+        "agent-row w-full justify-start rounded-[var(--row-radius)] text-left text-ui-md font-normal",
         "gap-[var(--density-row-gap)]",
         "text-fg transition-[background-color,color] duration-[var(--dur-color)]",
         "hover:bg-hover hover:text-fg focus-visible:bg-hover",

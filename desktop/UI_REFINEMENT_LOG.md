@@ -2865,3 +2865,74 @@ The blocked six, if `runtime/.../sessions/` has settled. Otherwise the fourth
 question in this family: `[data-reveal="rest"]`, the other end of the reveal pair,
 which is supposed to give way at the same moment — nothing checks the two are
 actually synchronised.
+
+## Round 43 — the other end of the reveal, and a spec that could not fail
+
+`globals.css` describes the pair: *"`rest` is the other end of it: what the reveal
+displaces, which has to give way at the same moment or the two overlap."* Nothing
+checked the two ends were driven by the same condition.
+
+### The finding (已完成)
+
+They were not, and the two lines say so plainly when read together:
+
+```
+RESTING_GLYPH  retires on:  group-hover/row  +  group-focus-visible/row-trigger
+HOVER_ACTION   appears on:  group-hover/row  +  group-focus-within/row
+```
+
+Different pseudo-class, different group. So a state exists where the action
+appears and the resting glyph does not retire — **focus landing on the action
+itself**, which is where a keyboard puts it. Measured: `restOpacity: 1` and
+`actionOpacity: 1` together.
+
+Honestly sized: the two do **not** collide geometrically — 3px apart, so this is
+not the overlap the comment warns about. What it is, is a row that looks
+different under keyboard than under a pointer, showing its detail and its action
+at once in a combination hover never produces.
+
+Both ends now watch `group-hover/row` and `group-focus-within/row`. The
+`group/row-trigger` marker existed for that one reference and is gone with it.
+After: at rest `1/0`, action focused `0/1`, hovered `0/1`.
+
+The transitions were checked too and are symmetric — same property, duration,
+delay and easing on both ends. No finding there.
+
+### The spec that could not fail, twice
+
+Written, passing, and worthless until a negative test said so:
+
+1. **It focused the first control in the row** — the trigger — where BOTH
+   conditions hold, so the disagreement never appeared. It has to focus the
+   revealed end, which is where the two disagree.
+2. **It never moved the pointer away before focusing.** `:hover` had already
+   retired the resting end, masking exactly what the step was there to find.
+
+Only after both did removing the fix produce
+`rest=1 shown=1 in .group/row`. The lesson is the one this log keeps
+re-learning: a check is worth nothing until it has been seen to fail for the
+reason it exists.
+
+The pair check covers both mechanisms that carry two ends here, `[data-reveal]`
+and `.t-icon-swap`'s `[data-glyph]`, and lives beside the click-trap check in
+`visual/reveal.visual.spec.ts`.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, all fifteen guards — green.
+- Unit: **2365 passing**; the 8 failures are the `src/rpc/` set blocked in round 38
+  (`runtime/.../sessions/` still 7 files uncommitted).
+- Visual: **435/435** — 430 goldens with none regenerated, plus cascade, reveal
+  (now two checks), focus-ring and chrome-focus.
+
+### Resources reclaimed
+
+Probes deleted, port 4174 freed, no stray processes,
+`playwright.visual.config.ts` unmodified.
+
+### Next round
+
+The blocked six once `runtime/.../sessions/` settles. Otherwise the family is
+running out of unexamined members: what remains is `[data-reveal="hover"]` under
+`@media (hover: none)`, where the marker forces everything visible — nothing
+checks that the row still fits once every action is permanently shown.
