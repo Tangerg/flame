@@ -20,10 +20,7 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-const interactionCheckpointSchemaVersion uint16 = 6
-
 type interactionCheckpointPayloadWire struct {
-	SchemaVersion       uint16                              `json:"schema_version"`
 	Tree                json.RawMessage                     `json:"tree"`
 	Instructions        []corechat.Message                  `json:"instructions,omitempty"`
 	Members             []interactionMemberCallsWire        `json:"members,omitempty"`
@@ -117,9 +114,8 @@ func encodeInteractionCheckpointPayload(
 		return nil, errors.New("agentexec: encode invalid Interaction tree checkpoint")
 	}
 	wire := interactionCheckpointPayloadWire{
-		SchemaVersion: interactionCheckpointSchemaVersion,
-		Tree:          tree.JSON(),
-		Instructions:  cloneChatMessages(instructions),
+		Tree:         tree.JSON(),
+		Instructions: cloneChatMessages(instructions),
 	}
 	if _, err := interactionInstructionContext(wire.Instructions); err != nil {
 		return nil, err
@@ -355,11 +351,6 @@ func decodeInteractionCheckpointWire(payload []byte) (interactionCheckpointPaylo
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&wire); err != nil {
 		return interactionCheckpointPayloadWire{}, fmt.Errorf("agentexec: decode Interaction checkpoint: %w", err)
-	}
-	if wire.SchemaVersion != interactionCheckpointSchemaVersion {
-		return interactionCheckpointPayloadWire{}, fmt.Errorf(
-			"agentexec: Interaction checkpoint schema %d is not supported", wire.SchemaVersion,
-		)
 	}
 	return wire, nil
 }

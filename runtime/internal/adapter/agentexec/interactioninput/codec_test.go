@@ -127,8 +127,8 @@ func TestResolutionCodecUsesAgentWireVocabulary(t *testing.T) {
 
 func TestContinuationCodecRejectsAliasesAndDuplicates(t *testing.T) {
 	for _, raw := range [][]byte{
-		[]byte(`{"SchemaVersion":1}`),
-		[]byte(`{"schema_version":1,"schema_version":2}`),
+		[]byte(`{"Key":"approval.shell"}`),
+		[]byte(`{"key":"first","key":"second"}`),
 	} {
 		var continuation continuationWire
 		if err := decode(raw, &continuation); err == nil {

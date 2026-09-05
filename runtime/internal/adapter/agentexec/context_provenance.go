@@ -2,17 +2,13 @@ package agentexec
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	corechat "github.com/Tangerg/scope/core/chat"
 	coremetadata "github.com/Tangerg/scope/core/metadata"
 )
 
-const (
-	contextProvenanceSchemaVersion uint16 = 1
-	contextProvenanceMetadataKey          = "scope/context_provenance"
-)
+const contextProvenanceMetadataKey = "scope/context_provenance"
 
 type contextSourceKind string
 
@@ -63,28 +59,17 @@ type contextSource struct {
 	Purpose   contextPurpose    `json:"purpose"`
 }
 
-type contextProvenance struct {
-	SchemaVersion uint16          `json:"schema_version"`
-	Sources       []contextSource `json:"sources"`
-}
-
-func (c contextProvenance) validate() error {
-	if c.SchemaVersion != contextProvenanceSchemaVersion || len(c.Sources) == 0 {
-		return fmt.Errorf("agentexec: invalid context provenance schema or empty source set")
-	}
-	_, err := contextSources(c.Sources).provenance()
-	return err
-}
+type contextSources []contextSource
 
 // replaceableSessionState reports the isolated state kind carried by this
 // message. Goal and Plan must never share a message with each other or with
 // frozen deployment instructions because each can change mid-Interaction.
-func (c contextProvenance) replaceableSessionState() (contextSourceKind, bool, error) {
+func (c contextSources) replaceableSessionState() (contextSourceKind, bool, error) {
 	if err := c.validate(); err != nil {
 		return "", false, err
 	}
 	var stateKind contextSourceKind
-	for _, source := range c.Sources {
+	for _, source := range c {
 		if source.Kind == contextSourceSessionGoal || source.Kind == contextSourceSessionPlan {
 			stateKind = source.Kind
 			break
@@ -93,41 +78,33 @@ func (c contextProvenance) replaceableSessionState() (contextSourceKind, bool, e
 	if stateKind == "" {
 		return "", false, nil
 	}
-	if len(c.Sources) != 1 || c.Sources[0].Kind != stateKind {
+	if len(c) != 1 || c[0].Kind != stateKind {
 		return "", false, fmt.Errorf("agentexec: replaceable Session state must be an isolated source")
 	}
 	return stateKind, true, nil
 }
 
-type contextSources []contextSource
-
-func (c contextSources) provenance() (contextProvenance, error) {
+func (c contextSources) validate() error {
+	if len(c) == 0 {
+		return fmt.Errorf("agentexec: empty context source set")
+	}
 	for index, source := range c {
 		expectedPurpose := source.Kind.purpose()
 		if expectedPurpose == "" || source.Purpose != expectedPurpose {
-			return contextProvenance{}, fmt.Errorf(
-				"agentexec: invalid context source[%d] kind %q purpose %q",
-				index,
-				source.Kind,
-				source.Purpose,
-			)
+			return fmt.Errorf("agentexec: invalid context source[%d] kind %q purpose %q", index, source.Kind, source.Purpose)
 		}
 	}
-	return contextProvenance{
-		SchemaVersion: contextProvenanceSchemaVersion,
-		Sources:       slices.Clone(c),
-	}, nil
+	return nil
 }
 
 func (c contextSources) attach(target *coremetadata.Map, targetName string) error {
 	if len(c) == 0 {
 		return nil
 	}
-	provenance, err := c.provenance()
-	if err != nil {
+	if err := c.validate(); err != nil {
 		return err
 	}
-	if err := target.Set(contextProvenanceMetadataKey, provenance); err != nil {
+	if err := target.Set(contextProvenanceMetadataKey, c); err != nil {
 		return fmt.Errorf("agentexec: attach %s context provenance: %w", targetName, err)
 	}
 	return nil

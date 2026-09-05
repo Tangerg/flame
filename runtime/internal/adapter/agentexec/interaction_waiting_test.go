@@ -669,7 +669,7 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 		mutate func(*runs.ExecutorCheckpoint)
 	}{
 		{name: "corrupt payload", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.Payload = []byte(`{"schema_version":5}`)
+			checkpoint.Payload = []byte(`{"tree":null}`)
 		}},
 		{name: "wrong build", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
 			checkpoint.BuildID = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"

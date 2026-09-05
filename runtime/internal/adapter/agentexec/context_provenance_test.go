@@ -56,16 +56,16 @@ func TestSystemPromptProvenanceMatchesVisibleComposition(t *testing.T) {
 		contextSourceProjectKnowledge,
 		contextSourceAgentDocument,
 	}
-	gotKinds := make([]contextSourceKind, len(provenance.Sources))
-	for index, source := range provenance.Sources {
+	gotKinds := make([]contextSourceKind, len(provenance))
+	for index, source := range provenance {
 		gotKinds[index] = source.Kind
 	}
 	if !slices.Equal(gotKinds, wantKinds) {
 		t.Fatalf("source kinds=%v, want %v", gotKinds, wantKinds)
 	}
-	if provenance.Sources[2].Reference != pinnedMemoryID.String() ||
-		provenance.Sources[2].Purpose != contextPurposeData ||
-		provenance.Sources[4].Reference != canonicalDocument {
+	if provenance[2].Reference != pinnedMemoryID.String() ||
+		provenance[2].Purpose != contextPurposeData ||
+		provenance[4].Reference != canonicalDocument {
 		t.Fatalf("provenance=%+v", provenance)
 	}
 	currentState, stateErr := composer.CurrentSessionState(t.Context(), "session:one")
@@ -73,10 +73,10 @@ func TestSystemPromptProvenanceMatchesVisibleComposition(t *testing.T) {
 		t.Fatalf("CurrentSessionState messages=%d error=%v", len(currentState), stateErr)
 	}
 	planProvenance := decodeContextProvenance(t, currentState[0].Metadata)
-	if len(planProvenance.Sources) != 1 ||
-		planProvenance.Sources[0].Kind != contextSourceSessionPlan ||
-		planProvenance.Sources[0].Reference != "session:one" ||
-		planProvenance.Sources[0].Purpose != contextPurposeData {
+	if len(planProvenance) != 1 ||
+		planProvenance[0].Kind != contextSourceSessionPlan ||
+		planProvenance[0].Reference != "session:one" ||
+		planProvenance[0].Purpose != contextPurposeData {
 		t.Fatalf("Plan provenance=%+v", planProvenance)
 	}
 }
@@ -125,19 +125,19 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 	}
 
 	system := decodeContextProvenance(t, messages[0].Metadata)
-	if len(system.Sources) != 1 || system.Sources[0].Kind != contextSourceBasePrompt {
+	if len(system) != 1 || system[0].Kind != contextSourceBasePrompt {
 		t.Fatalf("system provenance=%+v", system)
 	}
 	recalled := decodeContextProvenance(t, messages[1].Metadata)
-	if len(recalled.Sources) != 1 || recalled.Sources[0].Kind != contextSourceRecalledMemory ||
-		recalled.Sources[0].Reference != recalledMemoryID.String() ||
-		recalled.Sources[0].Purpose != contextPurposeData {
+	if len(recalled) != 1 || recalled[0].Kind != contextSourceRecalledMemory ||
+		recalled[0].Reference != recalledMemoryID.String() ||
+		recalled[0].Purpose != contextPurposeData {
 		t.Fatalf("recall provenance=%+v", recalled)
 	}
 	hook := decodeContextProvenance(t, messages[2].Parts[0].Metadata)
-	if len(hook.Sources) != 2 ||
-		hook.Sources[0].Reference != string(domainhooks.SessionStart) ||
-		hook.Sources[1].Reference != string(domainhooks.UserPromptSubmit) {
+	if len(hook) != 2 ||
+		hook[0].Reference != string(domainhooks.SessionStart) ||
+		hook[1].Reference != string(domainhooks.UserPromptSubmit) {
 		t.Fatalf("hook provenance=%+v", hook)
 	}
 	if len(messages[2].Parts) != 2 || messages[2].Parts[1].Text != "question" {
@@ -196,13 +196,13 @@ func TestInteractionInstructionContextStopsBeforeReplaceableSessionPlan(t *testi
 	}
 }
 
-func decodeContextProvenance(t *testing.T, values metadata.Map) contextProvenance {
+func decodeContextProvenance(t *testing.T, values metadata.Map) contextSources {
 	t.Helper()
-	provenance, found, err := values.Decode[contextProvenance](contextProvenanceMetadataKey)
+	provenance, found, err := values.Decode[contextSources](contextProvenanceMetadataKey)
 	if err != nil || !found {
 		t.Fatalf("decode context provenance found=%t error=%v", found, err)
 	}
-	if provenance.SchemaVersion != contextProvenanceSchemaVersion || len(provenance.Sources) == 0 {
+	if len(provenance) == 0 {
 		t.Fatalf("context provenance=%+v", provenance)
 	}
 	return provenance

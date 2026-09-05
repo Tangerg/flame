@@ -10,18 +10,17 @@ import (
 func FuzzContinuationCodec(f *testing.F) {
 	prompt := json.RawMessage(`{"kind":"approval","approval":{"toolName":"shell","arguments":"{}","safetyClass":"exec"}}`)
 	valid, err := json.Marshal(continuationWire{
-		SchemaVersion: continuationSchemaVersion,
-		Key:           "approval.shell",
-		PromptDigest:  promptDigest(prompt),
-		Prompt:        prompt,
+		Key:          "approval.shell",
+		PromptDigest: promptDigest(prompt),
+		Prompt:       prompt,
 	})
 	if err != nil {
 		f.Fatalf("encode continuation seed: %v", err)
 	}
 	f.Add(valid)
 	for _, seed := range [][]byte{
-		[]byte(`{"SchemaVersion":1}`),
-		[]byte(`{"schema_version":1,"schema_version":2}`),
+		[]byte(`{"Key":"approval.shell"}`),
+		[]byte(`{"key":"first","key":"second"}`),
 		[]byte(`{}`),
 	} {
 		f.Add(seed)
@@ -31,7 +30,7 @@ func FuzzContinuationCodec(f *testing.F) {
 		if err := decode(raw, &continuation); err != nil {
 			return
 		}
-		if continuation.SchemaVersion != continuationSchemaVersion || continuation.Key == "" || continuation.Prompt == nil {
+		if continuation.Key == "" || continuation.Prompt == nil {
 			return
 		}
 		prompt, err := DecodePrompt(continuation.Prompt)

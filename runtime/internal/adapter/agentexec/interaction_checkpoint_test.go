@@ -124,9 +124,9 @@ func TestDecodeInteractionPendingSteersRejectsNoncanonicalWire(t *testing.T) {
 	}
 }
 
-func TestDecodeInteractionCheckpointRejectsPreviousSchema(t *testing.T) {
-	if _, err := decodeInteractionCheckpointPayload([]byte(`{"schema_version":5}`)); err == nil {
-		t.Fatal("decode accepted previous checkpoint schema")
+func TestDecodeInteractionCheckpointRejectsUnknownFields(t *testing.T) {
+	if _, err := decodeInteractionCheckpointPayload([]byte(`{"unexpected":true}`)); err == nil {
+		t.Fatal("decode accepted an unknown checkpoint field")
 	}
 }
 
@@ -139,12 +139,12 @@ func TestDecodeInteractionCheckpointRejectsDuplicateJSONMembers(t *testing.T) {
 	}{
 		{
 			name:    "root",
-			payload: `{"schema_version":6,"schema_version":6}`,
-			want:    `duplicate JSON member "schema_version" at $`,
+			payload: `{"tree":{},"tree":{}}`,
+			want:    `duplicate JSON member "tree" at $`,
 		},
 		{
 			name:    "nested tree",
-			payload: `{"schema_version":6,"tree":{"state":"first","state":"second"}}`,
+			payload: `{"tree":{"state":"first","state":"second"}}`,
 			want:    `duplicate JSON member "state" at $.tree`,
 		},
 	} {

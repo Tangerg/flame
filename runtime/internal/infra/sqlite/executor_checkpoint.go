@@ -131,7 +131,6 @@ type executorCapabilitiesWire struct {
 }
 
 type executorPolicyWire struct {
-	SchemaVersion   uint16                    `json:"schema_version"`
 	Scope           executorScopeWire         `json:"scope"`
 	Provider        string                    `json:"provider"`
 	Model           string                    `json:"model"`
@@ -139,8 +138,6 @@ type executorPolicyWire struct {
 	Limits          executorLimitsWire        `json:"limits"`
 	Capabilities    *executorCapabilitiesWire `json:"capabilities"`
 }
-
-const executorPolicySchemaVersion uint16 = 4
 
 type executorModelUsageWire struct {
 	Model            string   `json:"model"`
@@ -326,7 +323,6 @@ func encodeExecutorPolicy(checkpoint ExecutorCheckpointRecord) ([]byte, error) {
 	}
 	limits := runLimitsRowOf(checkpoint.Limits)
 	return json.Marshal(executorPolicyWire{
-		SchemaVersion: executorPolicySchemaVersion,
 		Scope: executorScopeWire{
 			SessionID:         checkpoint.Scope.SessionID,
 			CWD:               checkpoint.Scope.CWD,
@@ -354,13 +350,6 @@ func decodeExecutorPolicy(data string) (ExecutorCheckpointRecord, error) {
 	var wire executorPolicyWire
 	if err := decoder.Decode(&wire); err != nil {
 		return ExecutorCheckpointRecord{}, err
-	}
-	if wire.SchemaVersion != executorPolicySchemaVersion {
-		return ExecutorCheckpointRecord{}, fmt.Errorf(
-			"policy schema version is %d, want %d",
-			wire.SchemaVersion,
-			executorPolicySchemaVersion,
-		)
 	}
 	if wire.Capabilities == nil {
 		return ExecutorCheckpointRecord{}, errors.New("policy capabilities are required")

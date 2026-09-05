@@ -211,7 +211,7 @@ func withoutReplaceableSessionState(messages []corechat.Message) ([]corechat.Mes
 	goalSeen := false
 	planSeen := false
 	for len(candidate) > 0 && candidate[0].Role == corechat.RoleSystem {
-		provenance, found, err := candidate[0].Metadata.Decode[contextProvenance](
+		provenance, found, err := candidate[0].Metadata.Decode[contextSources](
 			contextProvenanceMetadataKey,
 		)
 		if err != nil {

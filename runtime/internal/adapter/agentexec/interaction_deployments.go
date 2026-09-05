@@ -289,7 +289,7 @@ func interactionInstructionContext(messages []corechat.Message) ([]corechat.Mess
 		if err := messages[index].Validate(); err != nil {
 			return nil, fmt.Errorf("agentexec: invalid Interaction instruction[%d]: %w", index, err)
 		}
-		provenance, found, decodeErr := messages[index].Metadata.Decode[contextProvenance](
+		provenance, found, decodeErr := messages[index].Metadata.Decode[contextSources](
 			contextProvenanceMetadataKey,
 		)
 		if decodeErr != nil {
@@ -297,9 +297,6 @@ func interactionInstructionContext(messages []corechat.Message) ([]corechat.Mess
 		}
 		if !found {
 			break
-		}
-		if validationErr := provenance.validate(); validationErr != nil {
-			return nil, fmt.Errorf("agentexec: Interaction instruction[%d] provenance: %w", index, validationErr)
 		}
 		_, sessionState, err := provenance.replaceableSessionState()
 		if err != nil {

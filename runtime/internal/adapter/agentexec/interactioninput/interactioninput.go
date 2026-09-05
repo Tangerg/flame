@@ -18,8 +18,6 @@ import (
 	"github.com/Tangerg/scope/agent/interaction"
 )
 
-const continuationSchemaVersion = 1
-
 var resolutionSchema = json.RawMessage(`{
   "type": "object",
   "additionalProperties": false,
@@ -51,10 +49,9 @@ func WithCapabilities(ctx context.Context, allowed []interrupt.Kind) context.Con
 }
 
 type continuationWire struct {
-	SchemaVersion uint16          `json:"schema_version"`
-	Key           string          `json:"key"`
-	PromptDigest  string          `json:"prompt_digest"`
-	Prompt        json.RawMessage `json:"prompt"`
+	Key          string          `json:"key"`
+	PromptDigest string          `json:"prompt_digest"`
+	Prompt       json.RawMessage `json:"prompt"`
 }
 
 // Continuation is the validated product input restored while Agent Framework re-enters
@@ -76,7 +73,7 @@ func Restore(ctx context.Context) (Continuation, bool, error) {
 	if err := decode(continuation.State(), &state); err != nil {
 		return Continuation{}, true, fmt.Errorf("agentexec interaction input: decode continuation: %w", err)
 	}
-	if state.SchemaVersion != continuationSchemaVersion || state.Key == "" || !json.Valid(state.Prompt) {
+	if state.Key == "" || !json.Valid(state.Prompt) {
 		return Continuation{}, true, errors.New("agentexec interaction input: invalid continuation identity or prompt")
 	}
 	prompt, err := DecodePrompt(state.Prompt)
@@ -156,10 +153,9 @@ func restoredResolution(
 
 func encodeRequirementState(key string, promptJSON json.RawMessage) (json.RawMessage, error) {
 	stateJSON, err := json.Marshal(continuationWire{
-		SchemaVersion: continuationSchemaVersion,
-		Key:           key,
-		PromptDigest:  promptDigest(promptJSON),
-		Prompt:        promptJSON,
+		Key:          key,
+		PromptDigest: promptDigest(promptJSON),
+		Prompt:       promptJSON,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("agentexec interaction input: encode continuation: %w", err)

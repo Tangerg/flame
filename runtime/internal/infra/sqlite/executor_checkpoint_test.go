@@ -266,13 +266,8 @@ func TestExecutorCheckpointStorePersistsUnlimitedPolicyWithoutCaps(t *testing.T)
 func TestExecutorCheckpointStoreRejectsRetiredOrMalformedPolicy(t *testing.T) {
 	const limits = `"limits":{"type":"limited","max_total_tokens":8192,"max_budget_usd":2.5,"max_steps":16}`
 	tests := map[string]func(string) string{
-		"unversioned policy": func(policy string) string {
-			comma := bytes.IndexByte([]byte(policy), ',')
-			return "{" + policy[comma+1:]
-		},
-		"retired policy version": func(policy string) string {
-			comma := bytes.IndexByte([]byte(policy), ',')
-			return `{"schema_version":0` + policy[comma:]
+		"unknown policy field": func(policy string) string {
+			return `{"unexpected":true,` + policy[1:]
 		},
 		"retired lease field": func(policy string) string {
 			return strings.Replace(policy, `"goal_incarnation_id"`, `"goal_lease_id"`, 1)
