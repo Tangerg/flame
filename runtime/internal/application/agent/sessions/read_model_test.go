@@ -10,8 +10,9 @@ import (
 )
 
 type activityRunStore struct {
-	runs []run.Run
-	err  error
+	runs   []run.Run
+	err    error
+	onList func()
 }
 
 func (a activityRunStore) ListRuns(context.Context, string) ([]run.Run, error) {
@@ -19,6 +20,9 @@ func (a activityRunStore) ListRuns(context.Context, string) ([]run.Run, error) {
 }
 
 func (a activityRunStore) ListNonTerminalRuns(context.Context) ([]run.Run, error) {
+	if a.onList != nil {
+		a.onList()
+	}
 	return a.runs, a.err
 }
 

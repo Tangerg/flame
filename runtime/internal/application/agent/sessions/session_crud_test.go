@@ -711,3 +711,26 @@ func TestListViewPageRejectsBrokenStorePageBeforeLiveProjection(t *testing.T) {
 		t.Fatal("ListViewPage accepted an out-of-order store page")
 	}
 }
+
+func TestListViewPageOwnsStorePageBeforeLiveProjection(t *testing.T) {
+	store := &rawPagedSessionStore{
+		crudSessionStore: &crudSessionStore{},
+		rows:             sessionRows("ses_1", "ses_2"),
+	}
+	coordinator := mustNewCoordinator(testDependencies(&crudStores{session: store}, Dependencies{
+		Paths: testWorkspaceResolver{resolved: "/repo"},
+		Runs: activityRunStore{onList: func() {
+			store.rows[0] = session.Session{}
+		}},
+	}))
+
+	page, err := coordinator.ListViewPage(
+		t.Context(), session.AllCatalogEntries(), "", explicitPageLimit(t, 2),
+	)
+	if err != nil {
+		t.Fatalf("ListViewPage: %v", err)
+	}
+	if len(page.Rows) != 2 || page.Rows[0].ID != "ses_1" || page.Rows[1].ID != "ses_2" {
+		t.Fatalf("page after store mutation = %+v, want owned ses_1/ses_2 projection", page.Rows)
+	}
+}
