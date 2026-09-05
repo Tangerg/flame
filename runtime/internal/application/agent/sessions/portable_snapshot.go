@@ -119,7 +119,7 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 	}
 	snapshot := Snapshot{
 		Session:     restoredSession,
-		Messages:    p.Messages,
+		Messages:    cloneSnapshotMessages(p.Messages),
 		Items:       append([]transcript.Item(nil), p.Items...),
 		ToolResults: append([]toolresult.Blob(nil), p.ToolResults...),
 		Runs:        make([]run.Run, 0, len(p.Runs)),
@@ -239,7 +239,7 @@ func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
 			UpdatedAt: normalized.Session.UpdatedAt(),
 			Favorite:  normalized.Session.Favorite(),
 		},
-		Messages:    normalized.Messages,
+		Messages:    cloneSnapshotMessages(normalized.Messages),
 		Items:       normalized.Items,
 		ToolResults: normalized.ToolResults,
 		Plan:        normalized.Plan,

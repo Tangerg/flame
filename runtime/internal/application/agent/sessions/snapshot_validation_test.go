@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/scope/core/chat"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -30,6 +32,52 @@ func TestSnapshotNormalizeForRestoreProjectsPreviewWithoutMutatingSource(t *test
 	if got, _ := sourceTool.Result.String(); got != "full body" {
 		t.Fatalf("source result mutated to %q", got)
 	}
+}
+
+func TestSnapshotPortableSnapshotOwnsMessages(t *testing.T) {
+	snapshot := portableSnapshotWithMessage()
+
+	portable, err := snapshot.PortableSnapshot()
+	if err != nil {
+		t.Fatalf("PortableSnapshot: %v", err)
+	}
+	snapshot.Messages[0].Parts[0].Text = "source mutation"
+	if text := portable.Messages[0].Text(); text != "original" {
+		t.Fatalf("portable message after source mutation = %q, want owned snapshot", text)
+	}
+	portable.Messages[0].Parts[0].Text = "portable mutation"
+	if text := snapshot.Messages[0].Text(); text != "source mutation" {
+		t.Fatalf("source message after portable mutation = %q, want unchanged", text)
+	}
+}
+
+func TestPortableSnapshotCanonicalSnapshotOwnsMessages(t *testing.T) {
+	portable, err := portableSnapshotWithMessage().PortableSnapshot()
+	if err != nil {
+		t.Fatalf("PortableSnapshot: %v", err)
+	}
+
+	canonical, err := portable.CanonicalSnapshot()
+	if err != nil {
+		t.Fatalf("CanonicalSnapshot: %v", err)
+	}
+	portable.Messages[0].Parts[0].Text = "portable mutation"
+	if text := canonical.Messages[0].Text(); text != "original" {
+		t.Fatalf("canonical message after portable mutation = %q, want owned snapshot", text)
+	}
+	canonical.Messages[0].Parts[0].Text = "canonical mutation"
+	if text := portable.Messages[0].Text(); text != "portable mutation" {
+		t.Fatalf("portable message after canonical mutation = %q, want unchanged", text)
+	}
+}
+
+func portableSnapshotWithMessage() Snapshot {
+	snapshot := portableSnapshot()
+	snapshot.Messages = []chat.Message{chat.NewUserMessage(chat.NewTextPart("original"))}
+	root := snapshot.Runs[0].Snapshot()
+	root.MessageMark = 1
+	snapshot.Runs[0] = testsupport.MustRestoreRun(root)
+	return snapshot
 }
 
 func TestSnapshotValidateToolResultsRejectsBrokenRelationships(t *testing.T) {
