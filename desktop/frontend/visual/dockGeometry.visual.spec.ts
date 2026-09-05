@@ -56,6 +56,7 @@ const RATIOS = [0, 0.25, 0.5, 0.75, 1];
 test.describe("the dock measure agrees between TypeScript and CSS", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/visual/?fixture=foundation&theme=light");
+    await page.waitForSelector("html[data-visual-ready]");
   });
 
   test("resolves to the width the drag arithmetic assumes, across the range", async ({ page }) => {
