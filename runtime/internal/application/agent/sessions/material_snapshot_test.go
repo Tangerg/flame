@@ -37,6 +37,42 @@ func TestCoordinatorMaterialSnapshotRejectsMismatchedSession(t *testing.T) {
 	}
 }
 
+func TestCoordinatorMaterialSnapshotOwnsStoreProjection(t *testing.T) {
+	source := validMaterialSnapshot()
+	currentGoal, err := goal.New(
+		"ses_1", "finish the work", testsupport.DefaultModelSelection(), goal.UnlimitedBudget(),
+		run.Capabilities{}, "goal_1", source.Runs[0].CreatedAt(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source.Goal = &currentGoal
+	coordinator := &Coordinator{materialSnapshots: fixedMaterialSnapshotReader{snapshot: source}}
+
+	snapshot, err := coordinator.MaterialSnapshot(t.Context(), "ses_1")
+	if err != nil {
+		t.Fatalf("MaterialSnapshot: %v", err)
+	}
+	source.Items[0] = transcript.Item{}
+	source.Runs[0] = run.Run{}
+	source.Interrupts[0].Capabilities.InterruptKinds[0] = interrupt.Approval
+	source.Interrupts[0].Interrupts[0].Question.Fields[0].Prompt = "source mutation"
+	*source.Goal = goal.Goal{}
+
+	if snapshot.Items[0].ID() != "item_question" || snapshot.Runs[0].ID() != "run_root" {
+		t.Fatalf("snapshot aggregates changed with store projection: Items=%+v Runs=%+v", snapshot.Items, snapshot.Runs)
+	}
+	if kind := snapshot.Interrupts[0].Capabilities.InterruptKinds[0]; kind != interrupt.Question {
+		t.Fatalf("snapshot capability kind = %q, want question", kind)
+	}
+	if prompt := snapshot.Interrupts[0].Interrupts[0].Question.Fields[0].Prompt; prompt != "Continue?" {
+		t.Fatalf("snapshot question prompt = %q, want owned projection", prompt)
+	}
+	if snapshot.Goal == nil || snapshot.Goal.Objective() != "finish the work" {
+		t.Fatalf("snapshot Goal = %+v, want owned projection", snapshot.Goal)
+	}
+}
+
 func TestMaterialSnapshotRejectsOpenInterruptWithoutTranscriptItem(t *testing.T) {
 	snapshot := validMaterialSnapshot()
 	snapshot.Items = nil

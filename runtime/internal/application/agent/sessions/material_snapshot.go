@@ -3,6 +3,7 @@ package sessions
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
@@ -24,6 +25,21 @@ type MaterialSnapshot struct {
 	Goal       *goal.Goal
 }
 
+func cloneMaterialSnapshot(snapshot MaterialSnapshot) MaterialSnapshot {
+	snapshot.Items = slices.Clone(snapshot.Items)
+	snapshot.Runs = slices.Clone(snapshot.Runs)
+	interrupts := snapshot.Interrupts
+	snapshot.Interrupts = make([]runs.Pending, len(interrupts))
+	for index, pending := range interrupts {
+		snapshot.Interrupts[index] = pending.Clone()
+	}
+	if snapshot.Goal != nil {
+		cloned := snapshot.Goal.Clone()
+		snapshot.Goal = &cloned
+	}
+	return snapshot
+}
+
 // MaterialSnapshot reads the complete mounted-session projection at one
 // database snapshot. No process-local admission is required: concurrent writes
 // either precede or follow the storage transaction and can never split the
@@ -33,6 +49,7 @@ func (c *Coordinator) MaterialSnapshot(ctx context.Context, sessionID string) (M
 	if err != nil {
 		return MaterialSnapshot{}, err
 	}
+	snapshot = cloneMaterialSnapshot(snapshot)
 	if err := snapshot.Session.ValidateFor(sessionID); err != nil {
 		return MaterialSnapshot{}, fmt.Errorf("sessions: material snapshot identity: %w", err)
 	}
