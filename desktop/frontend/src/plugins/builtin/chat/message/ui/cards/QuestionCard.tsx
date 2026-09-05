@@ -236,7 +236,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
       <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-2">
         <h3
           id={promptId}
-          className="min-w-0 text-pretty text-ui-md font-medium leading-body text-fg"
+          className="min-w-0 text-pretty wrap-anywhere text-ui-md font-medium leading-body text-fg"
         >
           {activeQuestion.prompt}
         </h3>

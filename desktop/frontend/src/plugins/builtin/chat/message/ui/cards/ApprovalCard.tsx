@@ -75,7 +75,9 @@ export function ApprovalCard({
           <Icon name={identity.icon} size="sm" className="shrink-0 text-fg-faint" />
           <span className="truncate">{identity.label}</span>
         </div>
-        <div className="mt-2 text-pretty text-ui-md font-medium leading-body text-fg">{title}</div>
+        <div className="mt-2 text-pretty wrap-anywhere text-ui-md font-medium leading-body text-fg">
+          {title}
+        </div>
       </div>
 
       {(cmd.trim() || hasArgs) && (
