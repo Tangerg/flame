@@ -1,4 +1,3 @@
-import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 
 type LoaderSize = "sm" | "md" | "lg";
@@ -15,13 +14,6 @@ const TEXT: Record<LoaderSize, string> = {
   lg: "text-ui-md",
 };
 
-/** The label a reader cannot see is the one a screen reader needs: the shimmer is decoration,
- *  and `role="status"` on `<output>` is what actually announces that something is running. */
-function Announcement() {
-  const t = useT();
-  return <output className="sr-only">{t("common.loading")}</output>;
-}
-
 /**
  * Waiting, said one way. This carried seven variants — dots, typing, pulse-dot, wave, bars,
  * terminal, shimmer — and both call sites in the tree asked for the shimmer, so six of them
@@ -30,6 +22,13 @@ function Announcement() {
  * `check-dead-utilities` reads every class as emitted.
  *
  * A variant this needs again is one rung to add back, which is cheaper than six kept warm.
+ *
+ * No live region of its own. It carried an `<output>` saying "Loading", which said less than
+ * the visible text beside it and less than `RunAnnouncer` — the one owner of "what is the run
+ * doing" — already says. It also never spoke: this mounts WITH its content, and a region a
+ * reader first meets already carrying a message announces nothing, which is the rule the
+ * announcer's own test is built on. The visible label cannot take its place either, since it
+ * counts elapsed time and would announce a new one every second.
  */
 export function Loader({ size = "md", text = "Thinking", className }: LoaderProps) {
   return (
@@ -43,7 +42,6 @@ export function Loader({ size = "md", text = "Thinking", className }: LoaderProp
       )}
     >
       {text}
-      <Announcement />
     </span>
   );
 }

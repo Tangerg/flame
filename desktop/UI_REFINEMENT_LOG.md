@@ -4948,3 +4948,64 @@ is runtime-side).
 
 The delegated run past one level — `delegated` photographs a single child — and
 the schedules pane's own remaining shapes: its form, and the empty list.
+
+---
+
+## Round 91 — four suspicions, one deletion
+
+Status: **complete**
+
+The delegated state was the last "one photographed shape" on the list. It turned
+out to be right about almost everything, and the round is mostly a record of
+things that survived being checked.
+
+**A stuck `Loading` in a static fixture.** It was an `sr-only <output>` inside
+the shimmer. Not a hung query — but worth reading, and reading it found the one
+real defect below.
+
+**A grandchild's reply missing from the DOM.** `item_nested_response` is not
+rendered. Traced through the projection — `selectDelegatedRunNarratives` buckets
+it correctly, `readTurnFacts` walks into it, `BlockRenderer` has its narrative —
+to `autoExpanded: status === "waiting"`. A *running* delegated run collapses,
+and a closed disclosure does not mount its children. Deliberate, commented, and
+correct.
+
+**A nested run's content reading as its parent's.** Measured instead: root
+content sits at x 393.5 w 768, the child at 405.5 w 744, the grandchild at 417.5
+w 720. One 12px step per level, from both sides, exactly.
+
+**An approval attributed to the wrong agent.** Its anchor is
+`turn:item_child_response:i:item_child_approval` inside the depth-1 disclosure,
+at the depth-1 indent. Correct; the eye was wrong because a running grandchild's
+block has no visible end.
+
+### The one real find
+
+`Loader` carried its own live region saying "Loading".
+
+| | |
+| --- | --- |
+| what it announced | less than the visible text beside it |
+| who already owns that | `RunAnnouncer`, the app's one `aria-live` for run state |
+| when it spoke | never — it mounts WITH its content, and by the announcer's own test a region a reader first meets already carrying a message says nothing |
+| could the visible label take its place | no: it counts elapsed time and would announce a new one every second |
+
+Deleted. `common.loading` keeps five other readers.
+
+### What was locked instead
+
+Depth-2 nesting had never been asserted or photographed, because the only
+grandchild in the fixtures is `running` and therefore closed. The new test opens
+it and pins the step: each level indents by the same amount, from both sides, or
+a deeper reply is drawn wider than the one it belongs to. Mutated by removing
+the disclosure's horizontal padding, it fails.
+
+### Verification
+
+Visual **622/622**, no golden moved; the 20-script gate is green; unit 2395/4
+outside the runtime-contract e2e.
+
+### Next
+
+The schedules pane's remaining shapes — its form, and the empty list — now that
+the pane renders at all.

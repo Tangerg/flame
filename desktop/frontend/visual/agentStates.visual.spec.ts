@@ -237,6 +237,41 @@ test("a delegated sub-agent reads as a nested line, not a card", async ({ page }
   expect(shell.background).toBe("rgba(0, 0, 0, 0)");
 });
 
+// A sub-agent that delegates again is the deepest thing the transcript draws, and until this
+// nothing had ever seen it OPEN: a running child auto-collapses, so the grandchild's own
+// content — and the indent that says whose it is — was in no golden and no assertion. Each
+// level steps in by the same amount from both sides; a step that stops arriving is a reply
+// attributed to the wrong agent.
+test("a sub-agent's own delegation indents one step further, from both sides", async ({ page }) => {
+  await page.goto("/visual/?fixture=agent&theme=light&state=delegated");
+  await page.locator("html[data-visual-ready]").waitFor();
+
+  await page.locator("[aria-expanded='false']").filter({ hasText: "Sub-agent" }).first().click();
+  await expect(page.getByText("Package graph verification is still running.")).toBeVisible();
+
+  const boxes = await page.evaluate(() =>
+    Object.fromEntries(
+      [...document.querySelectorAll("[data-block-anchor]")].map((element) => [
+        element.getAttribute("data-block-anchor"),
+        {
+          x: Math.round(element.getBoundingClientRect().x),
+          width: Math.round(element.getBoundingClientRect().width),
+        },
+      ]),
+    ),
+  );
+
+  const root = boxes["turn:item_response:b:0"]!;
+  const child = boxes["turn:item_child_response:b:0"]!;
+  const grandchild = boxes["turn:item_nested_response:b:0"]!;
+  const step = child.x - root.x;
+  expect(step).toBeGreaterThan(0);
+  expect(grandchild.x - child.x).toBe(step);
+  // Both sides, or the deeper reply is wider than the one it belongs to.
+  expect(root.width - child.width).toBe(step * 2);
+  expect(child.width - grandchild.width).toBe(step * 2);
+});
+
 test("running composer exposes both steer and stop actions without unnamed controls", async ({
   page,
 }) => {
