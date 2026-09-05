@@ -686,8 +686,8 @@ textarea:focus-visible {
     textarea,
     select
   ) {
-    min-width: 44px;
-    min-height: 44px;
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
   }
 }
 
@@ -760,8 +760,15 @@ html.theme-dark {
   --color-media-preview: rgb(0 0 0 / 0.9);
   --color-media-canvas: #ffffff;
   --color-on-media: #ffffff;
-  --window-sidebar-control-span: 36px;
-  --dock-control-span: 36px;
+  /* The floor a coarse pointer puts under every control. Named because the two spans below
+     have to grow with it: each reserves room for ONE chrome control, and a span sized for the
+     26px one leaves a 44px target overlapping its neighbour by exactly the difference — 14px,
+     measured, between the dock's browse button and its collapse control. */
+  --touch-target: 44px;
+  /* One chrome control, plus its 6px inset and 4px of clearance. Derived rather than written
+     so a visual style that resizes controls moves the reservation with them. */
+  --window-sidebar-control-span: calc(var(--control-height-sm) + 10px);
+  --dock-control-span: calc(var(--control-height-sm) + 10px);
   --surface-header-height: 46px;
   --dur-drawer: calc(var(--dur-drawer-base) * var(--motion-scale));
   --ease-drawer: linear(
@@ -787,6 +794,16 @@ html.theme-dark {
     1.00119,
     1
   );
+}
+
+/* AFTER the block above, not beside the floor that motivates it: both declare on `:root`, so
+   at equal specificity the later one is the one that lands. Written the other way round this
+   silently kept the desktop reservation on a touch screen — which is the whole defect. */
+@media (pointer: coarse) {
+  :root {
+    --window-sidebar-control-span: calc(var(--touch-target) + 10px);
+    --dock-control-span: calc(var(--touch-target) + 10px);
+  }
 }
 
 html,

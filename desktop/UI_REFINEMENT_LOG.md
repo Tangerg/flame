@@ -2936,3 +2936,90 @@ The blocked six once `runtime/.../sessions/` settles. Otherwise the family is
 running out of unexamined members: what remains is `[data-reveal="hover"]` under
 `@media (hover: none)`, where the marker forces everything visible — nothing
 checks that the row still fits once every action is permanently shown.
+
+## Round 44 — the reservation that did not know the control had grown
+
+`@media (pointer: coarse)` puts a 44px floor under every control, and
+`@media (hover: none)` forces every hover-reveal permanently visible. Together
+they are a layout **nothing in the suite had ever rendered**: 436 tests, all with
+a fine pointer.
+
+### The probe that measured nothing while appearing to work
+
+`Emulation.setEmulatedMedia` accepts a `features` array and silently ignores
+`hover` and `pointer`. The first probe ran, produced a tidy report of row heights
+and spills, and `matchMedia("(hover: none)").matches` was **false in both modes** —
+the whole thing was noise. A touch CONTEXT (`hasTouch`, `isMobile`) is what
+Chromium derives those features from.
+
+Once it worked the difference was plain: `min-height` 0 -> 44px, row 34 -> 44px,
+the row action's opacity 0 -> 1, the resting glyph 1 -> 0.
+
+### What turned out NOT to be a defect
+
+Fifteen controls measured 44px inside a 28px `--dock-tab-height` row — an eye-
+catching "8px of overflow on every dock tab". Photographed at 3x before calling
+it anything, and it is **the floor working as designed**: a 44px transparent
+target centred on a 28px visible pill, invisible in the render. The screenshots
+also show the touch layout doing the right thing — every tab's × permanently
+shown, because a touch user has no other way to close one.
+
+### The defect (已完成)
+
+```
+14x44px  button "Browse panels"  <->  button "Collapse right workspace"
+```
+
+Two controls that belong to different subtrees, sharing 14px of tap target on a
+touch screen: a tap aimed at the dock's browse button can collapse the whole
+workspace. Zero such pairs with a fine pointer.
+
+The arithmetic is exact. `.agent-dock-control` sits at `inset-inline-end: 6px`
+and the tabstrip reserves `--dock-control-span: 36px` for it. The control is
+26px, so it occupies 32px and the reservation covers it. Under a coarse pointer
+the control is 44px and occupies 50px — **50 − 36 = 14**.
+
+One fact, how wide a chrome control is, written in two places. Both spans now
+derive from it: `calc(var(--control-height-sm) + 10px)` normally, and
+`calc(var(--touch-target) + 10px)` under a coarse pointer, with `--touch-target`
+now naming the floor the rule applies. A visual style that resizes controls moves
+the reservations with them.
+
+**And I wrote the override in the wrong place first** — beside the floor rule
+that motivates it, which is *earlier* in the file than the `:root` block it had
+to beat. Same specificity, so the base declaration won and the fix silently did
+nothing, which is the defect over again. The probe caught it; the comment now
+says why the override sits where it does.
+
+The two remaining overlaps are a row and the action stacked on it. Round 40 read
+that as composition rather than ambiguity and this round keeps that reading: the
+action is on top and wins inside its own box.
+
+### The detector is now a test
+
+`visual/touchTargets.visual.spec.ts` runs with `test.use({ hasTouch, isMobile })`
+and asserts the context really reports a coarse pointer before measuring
+anything — the failure mode above is too quiet otherwise. Composition is told
+from adjacency by **containment**, not by a list of known pairs. Negative-tested
+by pinning the span back to 36px, which reports the 14x44px pair in two states.
+
+### Verification
+
+- `typecheck`, `lint`, `format:check`, `knip`, all fifteen guards — green.
+- Unit: **2365 passing**; the 8 failures are the `src/rpc/` set blocked in round 38.
+- Visual: **436/436** — 430 goldens with none regenerated (the desktop values of
+  both spans are unchanged at 36px), plus cascade, reveal x2, focus-ring,
+  chrome-focus and touch targets.
+
+### Resources reclaimed
+
+Probes deleted, port 4174 freed, no stray processes,
+`playwright.visual.config.ts` unmodified.
+
+### Next round
+
+The blocked six if `runtime/.../sessions/` has settled. Otherwise the coarse
+layout has more that has never been rendered: `[data-reveal="rest"]` is
+permanently hidden there, so every row's detail — counts, timestamps — is gone on
+a touch screen, and nothing says whether that was intended or is just what the
+pair rule does when it cannot fade.
