@@ -36,21 +36,21 @@ func (s *Handler) UpdateGoal(ctx context.Context, in protocol.UpdateGoalRequest)
 		return nil, capabilityGap(uncovered.Missing)
 	}
 	if err != nil {
-		return nil, mapGoalErr(err, "goals.update")
+		return nil, mapGoalErr(err)
 	}
 	return presentGoal(g)
 }
 
 // ClearGoal removes the current objective and stops its drive (goals.clear).
 func (s *Handler) ClearGoal(ctx context.Context, in protocol.GoalRequest) error {
-	return mapGoalErr(s.goals.Clear(ctx, in.SessionID), "goals.clear")
+	return mapGoalErr(s.goals.Clear(ctx, in.SessionID))
 }
 
 // StartGoal opens and begins driving a goal for the session (goals.start).
 func (s *Handler) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (*protocol.Goal, error) {
 	selection, err := modelref.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
-		return nil, mapGoalErr(err, "goals.start")
+		return nil, mapGoalErr(err)
 	}
 	capabilities, err := s.negotiateCapabilities(ctx)
 	if err != nil {
@@ -58,11 +58,11 @@ func (s *Handler) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (
 	}
 	budget, err := budgetFromWire(in.Budget)
 	if err != nil {
-		return nil, mapGoalErr(err, "goals.start")
+		return nil, mapGoalErr(err)
 	}
 	g, err := s.goals.Start(ctx, in.SessionID, in.Objective, selection, budget, capabilities)
 	if err != nil {
-		return nil, mapGoalErr(err, "goals.start")
+		return nil, mapGoalErr(err)
 	}
 	return presentGoal(g)
 }
@@ -71,7 +71,7 @@ func (s *Handler) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (
 func (s *Handler) GetGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
 	g, ok, err := s.goals.Current(ctx, in.SessionID)
 	if err != nil {
-		return nil, mapGoalErr(err, "goals.get")
+		return nil, mapGoalErr(err)
 	}
 	if !ok {
 		return nil, nil
@@ -83,7 +83,7 @@ func (s *Handler) GetGoal(ctx context.Context, in protocol.GoalRequest) (*protoc
 func (s *Handler) StopGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
 	g, err := s.goals.Stop(ctx, in.SessionID)
 	if err != nil {
-		return nil, mapGoalErr(err, "goals.stop")
+		return nil, mapGoalErr(err)
 	}
 	return presentGoal(g)
 }
@@ -99,18 +99,16 @@ func (s *Handler) ResumeGoal(ctx context.Context, in protocol.GoalRequest) (*pro
 		return nil, capabilityGap(uncovered.Missing)
 	}
 	if err != nil {
-		return nil, mapGoalErr(err, "goals.resume")
+		return nil, mapGoalErr(err)
 	}
 	return presentGoal(g)
 }
 
-func mapGoalErr(err error, method string) error {
+func mapGoalErr(err error) error {
 	if err == nil {
 		return nil
 	}
 	switch {
-	case errors.Is(err, goals.ErrUnavailable):
-		return capabilityNotNegotiated(method)
 	case errors.Is(err, goals.ErrGoalActive), errors.Is(err, goals.ErrGoalOwned):
 		return fmt.Errorf("%w: a goal is already active for this session — stop it first", protocol.ErrSessionBusy)
 	case errors.Is(err, goals.ErrNoGoal):

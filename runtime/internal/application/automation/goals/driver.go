@@ -48,11 +48,6 @@ var (
 	// work. A caller must never be told an active Goal was accepted when no drive
 	// can be attached to drive it.
 	ErrClosed = errors.New("goals: driver closed")
-	// ErrUnavailable reports that this runtime assembled no goal store, so goal
-	// mode does not exist here. The driver answers it itself rather than leaving a
-	// nil receiver for a caller to remember to check — "not assembled" is a state
-	// the owner of the capability reports, not a precondition it delegates.
-	ErrUnavailable = errors.New("goals: goal mode unavailable")
 	// ErrInsufficientCapabilities reports a caller that cannot observe every
 	// optional behavior already frozen on the Goal incarnation.
 	ErrInsufficientCapabilities = errors.New("goals: caller capabilities are insufficient")
@@ -71,11 +66,6 @@ func (i *InsufficientCapabilitiesError) Error() string {
 func (i *InsufficientCapabilitiesError) Is(target error) bool {
 	return target == ErrInsufficientCapabilities
 }
-
-// Available reports whether goal mode is assembled in this runtime. Nil-safe: a
-// runtime with no goal store leaves the driver nil, and asking an absent
-// capability whether it exists must answer, not panic.
-func (d *Driver) Available() bool { return d != nil && d.goals != nil }
 
 // AutonomousRuns is the Goal driver's narrow view of the Run entry point.
 type AutonomousRuns interface {
@@ -225,9 +215,6 @@ func (d *Driver) Start(
 	budget goal.Budget,
 	capabilities run.Capabilities,
 ) (goal.Goal, error) {
-	if !d.Available() {
-		return goal.Goal{}, ErrUnavailable
-	}
 	release := d.mutations.acquire(sessionID)
 	defer release()
 	if d.closed.Load() {
@@ -315,9 +302,6 @@ func (d *Driver) Start(
 // incarnation: a Run parked for HITL remains part of this Goal when it resumes,
 // while quiesceDrive is the process-local boundary between old and new drives.
 func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabilities) (goal.Goal, error) {
-	if !d.Available() {
-		return goal.Goal{}, ErrUnavailable
-	}
 	release := d.mutations.acquire(sessionID)
 	defer release()
 	if d.closed.Load() {
@@ -393,9 +377,6 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 // post-terminal snapshot. This ordering preserves terminal accounting and makes
 // the user stop the final lifecycle transition rather than racing it.
 func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) {
-	if !d.Available() {
-		return goal.Goal{}, ErrUnavailable
-	}
 	release := d.mutations.acquire(sessionID)
 	defer release()
 	if d.closed.Load() {
@@ -479,9 +460,6 @@ func (d *Driver) UpdateObjective(
 	sessionID, objective string,
 	caller run.Capabilities,
 ) (goal.Goal, error) {
-	if !d.Available() {
-		return goal.Goal{}, ErrUnavailable
-	}
 	release := d.mutations.acquire(sessionID)
 	defer release()
 	if d.closed.Load() {
@@ -586,9 +564,6 @@ func (d *Driver) quiesceObjectiveUpdate(
 // Goal aggregate. An already-absent Goal is a successful idempotent clear, which
 // lets a stale UI intent converge with automatic completion.
 func (d *Driver) Clear(ctx context.Context, sessionID string) error {
-	if !d.Available() {
-		return ErrUnavailable
-	}
 	release := d.mutations.acquire(sessionID)
 	defer release()
 	if d.closed.Load() {
@@ -655,9 +630,6 @@ func (d *Driver) Clear(ctx context.Context, sessionID string) error {
 
 // Current returns the session's Goal, or (zero, false, nil) when it has none.
 func (d *Driver) Current(ctx context.Context, sessionID string) (goal.Goal, bool, error) {
-	if !d.Available() {
-		return goal.Goal{}, false, ErrUnavailable
-	}
 	return loadGoal(ctx, d.goals, sessionID)
 }
 

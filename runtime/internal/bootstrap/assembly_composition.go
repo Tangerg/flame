@@ -58,6 +58,14 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 		return policyComposition{}, err
 	}
 	goalStore := goals.WithInvalidations(cfg.Stores.Goals, invalidations.Publish)
+	goalReader, err := goals.NewReader(goalStore)
+	if err != nil {
+		return policyComposition{}, fmt.Errorf("runtime: build goal reader: %w", err)
+	}
+	goalReporter, err := goals.NewOutcomeReporter(goalStore)
+	if err != nil {
+		return policyComposition{}, fmt.Errorf("runtime: build goal outcome reporter: %w", err)
+	}
 	scheduleCoordinator, err := schedules.New(schedules.Dependencies{
 		Store:         cfg.Stores.Schedules,
 		Paths:         workspaceadapter.Resolver{},
@@ -78,8 +86,8 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 		invalidations: invalidations,
 		approvals:     approvalPolicy,
 		goals:         goalStore,
-		goalReader:    goals.NewReader(goalStore),
-		goalReporter:  goals.NewOutcomeReporter(goalStore),
+		goalReader:    goalReader,
+		goalReporter:  goalReporter,
 		plans:         plans,
 		mcp:           mcpSettings,
 		schedules:     scheduleCoordinator,

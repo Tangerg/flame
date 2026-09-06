@@ -756,7 +756,10 @@ func TestReaderRejectsInvalidOrMismatchedStoreValue(t *testing.T) {
 					return test.current, nil
 				},
 			}
-			reader := goals.NewReader(store)
+			reader, err := goals.NewReader(store)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if _, _, err := reader.Current(t.Context(), "requested-session"); err == nil {
 				t.Fatal("Current accepted an invalid persistence result")
@@ -1175,7 +1178,10 @@ func TestResumeObservesOutstandingGoalRunTerminalReport(t *testing.T) {
 	// transaction releases the Session. Resume must preserve that Run's
 	// incarnation so the report applies, then the waiting drive must settle it
 	// without launching another Run from its pre-wait snapshot.
-	reporter := goals.NewOutcomeReporter(store)
+	reporter, err := goals.NewOutcomeReporter(store)
+	if err != nil {
+		t.Fatal(err)
+	}
 	result, err := reporter.Report(t.Context(), goals.ReportCommand{
 		SessionID:     "s1",
 		IncarnationID: g.IncarnationID(),

@@ -198,8 +198,6 @@ func (c *creator) create(ctx context.Context, args createArgs) (goalResult, erro
 			return goalResult{Message: "An active Goal already exists for this session. Inspect it with get_goal before deciding what to do."}, nil
 		case errors.Is(err, goals.ErrNoSession):
 			return goalResult{Message: "The current session no longer exists; no Goal was created."}, nil
-		case errors.Is(err, goals.ErrUnavailable):
-			return goalResult{Message: "Autonomous Goals are unavailable."}, nil
 		case errors.Is(err, goals.ErrClosed):
 			return goalResult{Message: "The service is shutting down; no Goal was created."}, nil
 		case errors.Is(err, goals.ErrGoalConflict):

@@ -55,7 +55,6 @@ func TestArtifactVersionMatchesCurrentContractBaseline(t *testing.T) {
 //     forgets is missing from the second document.
 func TestArtifactV24RoundTripsEveryFieldItCarries(t *testing.T) {
 	s, rt := rollbackHarness(t)
-	s.features.plan = true // this composition offers Plan, so it may restore it
 	ctx := t.Context()
 	sessionID := seedMaximalSession(t, rt)
 

@@ -69,6 +69,8 @@ MCP, LSP, Git, filesystem, execution, and other integrations are grouped by the 
 
 The Contract Registry is the method and policy source used by delivery and contract generation. Generated artifacts in `contract` are the machine truth for methods, schemas, capabilities, errors, unions, and transport endpoints. Discovery identity and capability-catalog constraints are declared there and enforced by the generated validators, so consumers do not maintain another schema.
 
+Plan, Goal, Schedule, and agent-memory use cases are present in every complete Runtime. Discovery advertises them directly; Session snapshots include the current Plan and any current Goal, and portable import restores Plan as part of the atomic Session write. Capability negotiation still governs optional client behavior and host-dependent integrations.
+
 The module-root Go binding and HTTP/JSON-RPC binding enter the same delivery endpoint before:
 
 1. request validation and capability admission;

@@ -12,7 +12,7 @@ import (
 )
 
 func TestMapGoalErrPreservesInvalidModelIdentity(t *testing.T) {
-	err := mapGoalErr(modelref.ErrModelIdentity, "goals.start")
+	err := mapGoalErr(modelref.ErrModelIdentity)
 	if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, modelref.ErrModelIdentity) {
 		t.Fatalf("err = %v, want ErrInvalidParams and ErrModelIdentity", err)
 	}

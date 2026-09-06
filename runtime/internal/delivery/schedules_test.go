@@ -89,7 +89,6 @@ func handlerWithSchedules(t testing.TB, reg *fakeScheduleRegistry) *Handler {
 		t.Fatalf("construct Schedule firing: %v", err)
 	}
 	s.scheduleFiring = firing
-	s.features.schedules = true
 	return s
 }
 

@@ -86,7 +86,6 @@ func TestAgentMemoryListResolvesTargetAndMapsWire(t *testing.T) {
 	}}
 	s := newTestHandler(&stubRuntime{})
 	s.agentMemory = rec
-	s.features.agentMemory = true
 
 	out, err := s.ListAgentMemory(context.Background(), protocol.AgentMemoryListRequest{
 		Scope: "project", Workspace: &protocol.WorkspaceRef{Path: "/repo/"},
@@ -130,7 +129,6 @@ func TestAgentMemoryReviewMapsDecision(t *testing.T) {
 	rec := &recordingAgentMemory{}
 	s := newTestHandler(&stubRuntime{})
 	s.agentMemory = rec
-	s.features.agentMemory = true
 
 	approveID := serverAgentMemoryItemID('a').String()
 	if err := s.ReviewAgentMemory(context.Background(), protocol.AgentMemoryReviewRequest{ID: approveID, Decision: "approve"}); err != nil {
@@ -158,7 +156,6 @@ func TestAgentMemoryUpdateAndAdd(t *testing.T) {
 	}}
 	s := newTestHandler(&stubRuntime{})
 	s.agentMemory = rec
-	s.features.agentMemory = true
 
 	content := "- edited"
 	pinned := true
@@ -187,7 +184,6 @@ func TestAgentMemoryUpdateAndAdd(t *testing.T) {
 func TestAgentMemoryTargetFullMapsToInvalidParams(t *testing.T) {
 	s := newTestHandler(&stubRuntime{})
 	s.agentMemory = &recordingAgentMemory{err: agentmemory.ErrTargetFull}
-	s.features.agentMemory = true
 	_, err := s.AddAgentMemory(t.Context(), protocol.AgentMemoryAddRequest{
 		Scope: protocol.AgentMemoryScopeUser, Content: "new memory",
 	})
@@ -199,7 +195,6 @@ func TestAgentMemoryTargetFullMapsToInvalidParams(t *testing.T) {
 func TestHiddenAgentMemoryMapsToInvalidParams(t *testing.T) {
 	s := newTestHandler(&stubRuntime{})
 	s.agentMemory = &recordingAgentMemory{err: agentmemory.ErrNotVisible}
-	s.features.agentMemory = true
 	pinned := true
 	_, err := s.UpdateAgentMemory(t.Context(), protocol.AgentMemoryUpdateRequest{
 		ID: serverAgentMemoryItemID('1').String(), Pinned: &pinned,

@@ -87,12 +87,20 @@ func testGoalRunCapabilities() run.Capabilities {
 
 func newGetter(t *testing.T, store goals.Store) *getter {
 	t.Helper()
-	return &getter{goals: goals.NewReader(store)}
+	reader, err := goals.NewReader(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &getter{goals: reader}
 }
 
 func newReporter(t *testing.T, store goals.Store) *outcomeReporter {
 	t.Helper()
-	return &outcomeReporter{goals: goals.NewOutcomeReporter(store)}
+	reporter, err := goals.NewOutcomeReporter(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &outcomeReporter{goals: reporter}
 }
 
 func TestReportGoalOutcomeCompleted(t *testing.T) {
@@ -321,8 +329,14 @@ func costLimit(value float64) *float64 { return &value }
 
 func TestGoalToolContractsUseOnePreciseVocabulary(t *testing.T) {
 	mem := newMemStore()
-	reader := goals.NewReader(mem)
-	reporter := goals.NewOutcomeReporter(mem)
+	reader, err := goals.NewReader(mem)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reporter, err := goals.NewOutcomeReporter(mem)
+	if err != nil {
+		t.Fatal(err)
+	}
 	create, err := NewCreate(&fakeStarter{})
 	if err != nil {
 		t.Fatal(err)

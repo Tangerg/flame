@@ -12,10 +12,7 @@ import (
 func TestCapabilitiesAdvertiseOnlyProducedRunEvents(t *testing.T) {
 	t.Parallel()
 
-	caps := capabilitiesFor(featureAvailability{
-		knowledge: true, git: true, fileWatch: true, plan: true,
-		goals: true, agentMemory: true, schedules: true,
-	}, replayLimitsFrom(runs.DefaultRetention()), protocol.IdempotencyLimits{RetentionSeconds: 86_400, Namespace: testsupport.IdempotencyNamespace}, protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 73})
+	caps := capabilitiesFor(featureAvailability{}, replayLimitsFrom(runs.DefaultRetention()), protocol.IdempotencyLimits{RetentionSeconds: 86_400, Namespace: testsupport.IdempotencyNamespace}, protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 73})
 	want := []protocol.StreamEventType{
 		protocol.StreamSegmentStarted,
 		protocol.StreamSegmentProgress,
@@ -33,7 +30,7 @@ func TestCapabilitiesAdvertiseOnlyProducedRunEvents(t *testing.T) {
 	}
 	for _, feature := range []string{"plan", "goals", "agentMemory", "schedules"} {
 		if !caps.Features[feature].Enabled {
-			t.Fatalf("wired feature %q was not advertised: %+v", feature, caps.Features)
+			t.Fatalf("core feature %q was not advertised: %+v", feature, caps.Features)
 		}
 	}
 	if caps.Limits.MaxConcurrentRuns != nil {

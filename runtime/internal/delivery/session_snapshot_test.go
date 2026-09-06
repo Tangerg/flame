@@ -20,8 +20,6 @@ import (
 
 func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	s, rt := rollbackHarness(t)
-	s.features.plan = true
-	s.features.goals = true
 	putTestSession(t, rt)
 
 	createdAt := time.Date(2026, 8, 14, 2, 0, 0, 0, time.UTC)

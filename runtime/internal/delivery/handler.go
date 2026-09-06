@@ -2,7 +2,6 @@ package delivery
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -36,8 +35,7 @@ type HandlerConfig struct {
 	ScheduleFiring scheduleFiringUseCases
 	Invalidations  func(func(invalidation.Notice))
 
-	// Goals exposes the autonomous Goal use cases. nil
-	// makes goals.* report capability_not_negotiated.
+	// Goals exposes the autonomous Goal use cases.
 	Goals goalUseCases
 
 	// AgentMemory is the HITL review use-case surface over the agent's
@@ -102,13 +100,9 @@ type Handler struct {
 // shape both capability discovery and delivery gates. Construction derives it
 // once; handlers do not rediscover availability by attempting a call.
 type featureAvailability struct {
-	knowledge   bool
-	git         bool
-	fileWatch   bool
-	plan        bool
-	goals       bool
-	agentMemory bool
-	schedules   bool
+	knowledge bool
+	git       bool
+	fileWatch bool
 }
 
 // beginShutdown rejects new runtime subscriptions. Endpoint is its sole caller.
@@ -153,6 +147,7 @@ func (c HandlerConfig) validate() error {
 		{name: "Schedules", value: c.Schedules},
 		{name: "ScheduleFiring", value: c.ScheduleFiring},
 		{name: "AgentMemory", value: c.AgentMemory},
+		{name: "Goals", value: c.Goals},
 		{name: "WorkspaceFiles", value: c.WorkspaceFiles},
 		{name: "WorkspaceVCS", value: c.WorkspaceVCS},
 		{name: "WorkspaceDiscovery", value: c.WorkspaceDiscovery},
@@ -191,13 +186,9 @@ type contractFacts struct {
 func deriveContractFacts(cfg HandlerConfig) (contractFacts, error) {
 	facts := contractFacts{
 		features: featureAvailability{
-			knowledge:   cfg.WorkspaceKnowledge.Available(),
-			git:         cfg.GitAvailable,
-			fileWatch:   cfg.WorkspaceWatch.Available(),
-			plan:        true,
-			goals:       capabilityAvailable(cfg.Goals),
-			agentMemory: true,
-			schedules:   true,
+			knowledge: cfg.WorkspaceKnowledge.Available(),
+			git:       cfg.GitAvailable,
+			fileWatch: cfg.WorkspaceWatch.Available(),
 		},
 		replay: replayLimitsFrom(cfg.Runs.ReplayRetention()),
 		mcpAuthorizationAttempts: protocol.MCPAuthorizationAttemptLimits{
@@ -303,22 +294,14 @@ func capabilitiesFor(
 		protocol.StreamItemStarted,
 		protocol.StreamItemDelta,
 		protocol.StreamItemCompleted,
-	}
-	if features.plan {
-		runEvents = append(runEvents, protocol.StreamPlanUpdated)
-	}
-	runtimeTopics := protocol.RuntimeTopics()
-	if !features.plan {
-		runtimeTopics = slices.DeleteFunc(runtimeTopics, func(topic protocol.RuntimeTopic) bool {
-			return topic == protocol.TopicPlanChanged
-		})
+		protocol.StreamPlanUpdated,
 	}
 	return protocol.ServerCapabilities{
 		RunEvents: runEvents,
 		// The subscribable topics, read from the one closed list the subscribe request
 		// is validated against. A second list here is how discovery comes to offer a
 		// topic the runtime then refuses.
-		RuntimeTopics: runtimeTopics,
+		RuntimeTopics: protocol.RuntimeTopics(),
 		// The two bounds a client cannot discover by trying: what a reconnect can expect
 		// to get back, and how wide one subscription may be.
 		Limits: protocol.RuntimeLimits{
@@ -356,11 +339,11 @@ func capabilitiesFor(
 			protocol.FeatureCheckpoints: features.git,
 			protocol.FeatureMultimodal:  true,
 			protocol.FeatureRelocate:    true,
-			protocol.FeaturePlan:        features.plan,
+			protocol.FeaturePlan:        true,
 			protocol.FeatureCompaction:  true,
-			protocol.FeatureGoals:       features.goals,
-			protocol.FeatureAgentMemory: features.agentMemory,
-			protocol.FeatureSchedules:   features.schedules,
+			protocol.FeatureGoals:       true,
+			protocol.FeatureAgentMemory: true,
+			protocol.FeatureSchedules:   true,
 			protocol.FeatureSubagents:   true,
 		}),
 	}

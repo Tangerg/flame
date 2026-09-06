@@ -51,8 +51,14 @@ func TestOutcomeReporterOwnsTerminalGoalTransition(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := &reportingStore{goal: g, present: true}
-	reader := NewReader(store)
-	reporter := NewOutcomeReporter(store)
+	reader, err := NewReader(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reporter, err := NewOutcomeReporter(store)
+	if err != nil {
+		t.Fatal(err)
+	}
 	reporter.now = func() time.Time { return now }
 	if result, reportErr := reporter.Report(t.Context(), ReportCommand{
 		SessionID: "ses_1", IncarnationID: "lease current", Outcome: goal.StatusComplete,
@@ -91,5 +97,17 @@ func TestOutcomeReporterOwnsTerminalGoalTransition(t *testing.T) {
 	if store.goal.Status() != goal.StatusBlocked || store.goal.Reason().Code() != goal.ReasonBlockedByModel ||
 		store.goal.Reason().Detail() != "needs credentials" || !store.goal.UpdatedAt().Equal(now) {
 		t.Fatalf("stored goal = %+v, want blocked state at %s", store.goal, now)
+	}
+}
+
+func TestGoalStateUseCasesRequireStorage(t *testing.T) {
+	var missingStore *reportingStore
+	for _, store := range []Store{nil, missingStore} {
+		if reader, err := NewReader(store); reader != nil || err == nil {
+			t.Fatalf("NewReader = (%v, %v), want construction failure", reader, err)
+		}
+		if reporter, err := NewOutcomeReporter(store); reporter != nil || err == nil {
+			t.Fatalf("NewOutcomeReporter = (%v, %v), want construction failure", reporter, err)
+		}
 	}
 }

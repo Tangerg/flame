@@ -54,18 +54,6 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 	}, nil
 }
 
-// validateArtifactPlanCapability rejects a Plan when this composition does not own
-// Plan. Import must not restore the conversation while silently dropping companion
-// product material.
-func (s *Handler) validateArtifactPlanCapability(plan []protocol.PlanStep) error {
-	if len(plan) == 0 || s.features.plan {
-		return nil
-	}
-	return NewCapabilityGapError(protocol.CapabilityRequirement{
-		Type: protocol.RequirementFeature, Name: protocol.FeaturePlan,
-	})
-}
-
 // ImportSession recreates a Session from a SessionArtifact under its original
 // identity. Re-importing the same artifact is idempotent; importing over an
 // existing Session restores it atomically.
@@ -77,11 +65,6 @@ func (s *Handler) ImportSession(ctx context.Context, request protocol.ImportSess
 	portable, err := portableArtifactFromWire(artifact)
 	if err != nil {
 		return nil, err
-	}
-	// Before any write: restoring the conversation while dropping its Plan would
-	// import a session the archive does not describe.
-	if validateArtifactPlanCapabilityErr := s.validateArtifactPlanCapability(artifact.Plan); validateArtifactPlanCapabilityErr != nil {
-		return nil, validateArtifactPlanCapabilityErr
 	}
 	sessionID := artifact.Session.ID
 

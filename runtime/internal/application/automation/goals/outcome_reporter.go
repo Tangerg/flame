@@ -2,6 +2,7 @@ package goals
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -42,20 +43,16 @@ type OutcomeReporter struct {
 	now   func() time.Time
 }
 
-// NewOutcomeReporter returns the outcome boundary over store. A nil store leaves
-// Goal mode unavailable, so composition should omit the reporter.
-func NewOutcomeReporter(store Store) *OutcomeReporter {
-	if store == nil {
-		return nil
+// NewOutcomeReporter constructs terminal outcome reporting over the required store.
+func NewOutcomeReporter(store Store) (*OutcomeReporter, error) {
+	if missingDependency(store) {
+		return nil, errors.New("goals: outcome store is required")
 	}
-	return &OutcomeReporter{goals: store, now: time.Now}
+	return &OutcomeReporter{goals: store, now: time.Now}, nil
 }
 
 // Report applies one model-declared terminal outcome to the active Goal.
 func (o *OutcomeReporter) Report(ctx context.Context, cmd ReportCommand) (ReportResult, error) {
-	if o == nil || o.goals == nil {
-		return ReportNoActiveGoal, nil
-	}
 	if _, _, err := goalref.ParseOptionalIncarnation(cmd.IncarnationID); err != nil {
 		return "", fmt.Errorf("goals: report: %w", err)
 	}

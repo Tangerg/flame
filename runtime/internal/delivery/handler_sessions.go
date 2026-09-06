@@ -119,11 +119,9 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 			CreatedAt:  pending.CreatedAt,
 		})
 	}
-	if s.features.plan {
-		plan := presentStoredPlan(in.SessionID, snapshot.Plan)
-		out.Plan = &plan
-	}
-	if s.features.goals && snapshot.Goal != nil {
+	plan := presentStoredPlan(in.SessionID, snapshot.Plan)
+	out.Plan = &plan
+	if snapshot.Goal != nil {
 		out.Goal, err = presentGoal(*snapshot.Goal)
 		if err != nil {
 			return nil, err

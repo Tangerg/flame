@@ -604,7 +604,6 @@ func TestSessionImportRejectsAFailedRunWithoutItsFailure(t *testing.T) {
 // the imported value as stale.
 func TestSessionExportImportCarriesThePlanForward(t *testing.T) {
 	s, rt := rollbackHarness(t)
-	s.features.plan = true // this composition owns Plan, so it may restore it
 	ctx := t.Context()
 	ses, err := insertSessionFixture(ctx, rt.sess, "planned", t.TempDir())
 	if err != nil {
@@ -690,39 +689,5 @@ func TestSessionImportAdvancesTargetRevision(t *testing.T) {
 	if after.Title() != "Archived" || after.Revision() != before.Revision()+1 ||
 		!after.UpdatedAt().After(before.UpdatedAt()) {
 		t.Fatalf("restored Session before=%+v after=%+v", before.Snapshot(), after.Snapshot())
-	}
-}
-
-// A build without Plan cannot restore it, and importing the conversation while
-// dropping the checklist would restore a session the archive does not describe.
-func TestSessionImportRefusesPlanWhenFeatureIsDisabled(t *testing.T) {
-	s, rt := rollbackHarness(t)
-	ctx := t.Context()
-	s.features.plan = false
-	ses, err := insertSessionFixture(ctx, rt.sess, "planned", t.TempDir())
-	if err != nil {
-		t.Fatalf("create: %v", err)
-	}
-
-	artifact := protocol.SessionArtifact{
-		Version: protocol.SessionArtifactVersion,
-		Session: protocol.ArtifactSession{
-			ID: ses.ID(), Title: "planned", Provider: "test-provider", Model: "test-model",
-			Workspace: protocol.WorkspaceRef{Path: ses.Workspace().Path()}, CreatedAt: ses.StartedAt(), UpdatedAt: ses.UpdatedAt(),
-		},
-		Plan: []protocol.PlanStep{{ID: "0", Description: "plan", Status: protocol.PlanStatusPending}},
-	}
-	_, err = s.ImportSession(ctx, protocol.ImportSessionRequest{Artifact: artifact})
-	if !errors.Is(err, protocol.ErrCapabilityNotNeg) {
-		t.Fatalf("import err = %v, want capability_not_negotiated", err)
-	}
-	gap, ok := errors.AsType[*CapabilityGapError](err)
-	if !ok || len(gap.Requirements) != 1 {
-		t.Fatalf("gap = %+v, want one requirement", gap)
-	}
-	if gap.Requirements[0] != (protocol.CapabilityRequirement{
-		Type: protocol.RequirementFeature, Name: protocol.FeaturePlan,
-	}) {
-		t.Fatalf("requirement = %+v, want the plan feature", gap.Requirements[0])
 	}
 }
