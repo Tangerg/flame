@@ -77,7 +77,7 @@ Provider identity is the exact provider/model pair plus model-owned options. Cre
 
 The ordinary chat contract owns complete and streaming calls. Complete-request token counting and other provider-specific capabilities remain separate narrow contracts discovered at the provider boundary. Runtime advertises only exact implemented behavior; it does not guess from a provider name, approximate unavailable behavior, or add optional methods to every client.
 
-A provider declares whether its model identities come from the bundled catalog or its endpoint. Endpoint discovery is authoritative even when empty, and failures remain errors; bundled metadata may enrich discovered identities without supplying replacement results. Catalog slice results transfer ownership to the caller.
+A provider declares whether its model identities come from the bundled catalog or its endpoint. Endpoint discovery is authoritative even when empty, and failures remain errors; missing required endpoint or credential configuration is a parameter error. Bundled metadata may enrich discovered identities without supplying replacement results. Catalog slice results transfer ownership to the caller.
 
 MCP, LSP, Git, filesystem, execution, and other integrations are grouped by the external system they translate. A wrapper remains only when it owns policy, translation, confinement, authority, or resource lifecycle.
 

@@ -1,12 +1,14 @@
 package model
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/Tangerg/scope/models/catalog"
 
+	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 )
@@ -20,6 +22,29 @@ func TestCatalogContainsProviderDefaults(t *testing.T) {
 		if _, ok := catalog.Default.Lookup(string(provider.ID()), model); !ok {
 			t.Errorf("catalog has no default model %q for provider %q", model, provider.ID())
 		}
+	}
+}
+
+func TestListModelsPreservesMissingCredentialCause(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		t.Error("model discovery reached the endpoint without a required credential")
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"data":[]}`))
+	}))
+	t.Cleanup(server.Close)
+
+	for _, providerID := range []string{"openai-compatible", "anthropic-compatible", "azureopenai"} {
+		t.Run(providerID, func(t *testing.T) {
+			entry := catalogProvider(t, providerID, "test-key", server.URL)
+			entry, err := entry.Apply(provider.Patch{APIKey: provider.Clear[provider.APIKey]()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			models, err := (Capabilities{}).ListModels(t.Context(), entry)
+			if models != nil || !errors.Is(err, modelsapp.ErrProviderUnconfigured) || !errors.Is(err, ErrCredentialUnavailable) {
+				t.Fatalf("ListModels = (%v, %v), want configuration error preserving its credential cause", models, err)
+			}
+		})
 	}
 }
 

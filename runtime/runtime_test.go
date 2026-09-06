@@ -3,9 +3,12 @@ package runtime
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"slices"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -54,6 +57,72 @@ func TestRuntimePreservesCallerCancellation(t *testing.T) {
 	}
 	if _, err := runtime.ListProviders(t.Context(), CallOptions{}); err != nil {
 		t.Fatalf("query after caller cancellation: %v", err)
+	}
+}
+
+func TestRuntimeModelDiscoveryDistinguishesMissingConfigurationFromEmptyEndpoint(t *testing.T) {
+	for _, name := range []string{
+		"FLAME_MODEL", "FLAME_APIKEY", "FLAME_BASEURL", "ANTHROPIC_API_KEY",
+		"OPENAI_COMPATIBLE_API_KEY", "ANTHROPIC_COMPATIBLE_API_KEY", "AZURE_OPENAI_API_KEY",
+		"FLAME_MCP_SERVERS", "FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS",
+	} {
+		t.Setenv(name, "")
+	}
+	t.Setenv("FLAME_PROVIDER", "anthropic")
+	runtime, err := Open(t.Context(), Config{
+		DataDirectory: t.TempDir(), DefaultWorkspacePath: t.TempDir(),
+		UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := runtime.Close(); err != nil {
+			t.Errorf("close Runtime: %v", err)
+		}
+	})
+	for _, providerID := range []string{"openai-compatible", "anthropic-compatible", "azureopenai"} {
+		t.Run(providerID, func(t *testing.T) {
+			page, err := runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: providerID}, CallOptions{})
+			if page != nil || !errors.Is(err, protocol.ErrInvalidParams) {
+				t.Fatalf("ListModels without endpoint = (%+v, %v), want configuration error", page, err)
+			}
+		})
+	}
+
+	var requests atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		if r.Method != http.MethodGet || r.URL.Path != "/models" {
+			t.Errorf("model discovery request = %s %s", r.Method, r.URL.Path)
+		}
+		if r.Header.Get("Authorization") != "Bearer discovery-test-key" {
+			t.Error("model discovery did not carry the configured test credential")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[]}`))
+	}))
+	t.Cleanup(server.Close)
+	if _, err := runtime.UpdateProvider(t.Context(), protocol.UpdateProviderRequest{
+		Provider: "openai-compatible",
+		BaseURL:  &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: &server.URL},
+	}, CommandOptions{IdempotencyKey: "set-model-discovery-endpoint"}); err != nil {
+		t.Fatal(err)
+	}
+	page, err := runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "openai-compatible"}, CallOptions{})
+	if page != nil || !errors.Is(err, protocol.ErrInvalidParams) || requests.Load() != 0 {
+		t.Fatalf("ListModels without credential = (%+v, %v), requests=%d; want configuration error before discovery", page, err, requests.Load())
+	}
+	key := "discovery-test-key"
+	if _, err := runtime.UpdateProvider(t.Context(), protocol.UpdateProviderRequest{
+		Provider: "openai-compatible",
+		APIKey:   &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: &key},
+	}, CommandOptions{IdempotencyKey: "set-model-discovery-credential"}); err != nil {
+		t.Fatal(err)
+	}
+	page, err = runtime.ListModels(t.Context(), protocol.ListModelsRequest{Provider: "openai-compatible"}, CallOptions{})
+	if err != nil || page == nil || len(page.Data) != 0 || requests.Load() != 1 {
+		t.Fatalf("ListModels with empty endpoint = (%+v, %v), requests=%d; want an authoritative empty catalog", page, err, requests.Load())
 	}
 }
 

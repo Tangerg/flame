@@ -107,12 +107,12 @@ func (Capabilities) ListModels(ctx context.Context, entry provider.Provider) ([]
 func remoteModelIDs(ctx context.Context, inputs providerClientInputs) ([]string, error) {
 	baseURL, hasBaseURL := inputs.endpoint()
 	if !hasBaseURL {
-		return nil, nil
+		return nil, fmt.Errorf("%w: provider %q", modelsapp.ErrProviderBaseURLRequired, inputs.entry.ID())
 	}
 	spec, err := inputs.clientSpec(configurationProbeModel)
 	if err != nil {
 		if errors.Is(err, ErrCredentialUnavailable) {
-			return nil, fmt.Errorf("model: provider %q is not configured", inputs.entry.ID())
+			return nil, fmt.Errorf("%w: provider %q: %w", modelsapp.ErrProviderUnconfigured, inputs.entry.ID(), err)
 		}
 		return nil, err
 	}

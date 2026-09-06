@@ -36,7 +36,7 @@ var (
 	// ErrProviderBaseURLRequired reports a provider that cannot be configured
 	// without its endpoint.
 	ErrProviderBaseURLRequired = errors.New("models: provider base URL is required")
-	// ErrProviderUnconfigured reports a supported provider with no usable key.
+	// ErrProviderUnconfigured reports a supported provider missing required configuration.
 	ErrProviderUnconfigured = errors.New("models: provider is not configured")
 	// ErrProviderUpdateRequired reports a provider update with no changes.
 	ErrProviderUpdateRequired = errors.New("models: provider update has no changes")
