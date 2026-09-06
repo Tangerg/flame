@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -17,7 +16,6 @@ import (
 // agentMemoryUseCases is Delivery's consumer-side port. Its methods express
 // complete review use cases, rather than exposing the domain store workflow.
 type agentMemoryUseCases interface {
-	Available() bool
 	List(ctx context.Context, scope agentmemory.Scope, cwd string) ([]agentmemory.Item, error)
 	Review(ctx context.Context, id string, decision agentmemory.ReviewDecision) error
 	Update(ctx context.Context, id string, content *string, pinned *bool) (agentmemory.Item, error)
@@ -34,7 +32,7 @@ func (s *Handler) ListAgentMemory(ctx context.Context, in protocol.AgentMemoryLi
 	}
 	items, err := s.agentMemory.List(ctx, scope, cwd)
 	if err != nil {
-		return nil, mapAgentMemoryErr(err, "agentMemory.list")
+		return nil, mapAgentMemoryErr(err)
 	}
 	out := protocol.AgentMemoryList{Items: make([]protocol.AgentMemoryItem, 0, len(items))}
 	for _, item := range items {
@@ -58,14 +56,14 @@ func (s *Handler) ReviewAgentMemory(ctx context.Context, in protocol.AgentMemory
 	default:
 		return fmt.Errorf("%w: decision must be \"approve\" or \"reject\"", protocol.ErrInvalidParams)
 	}
-	return mapAgentMemoryErr(s.agentMemory.Review(ctx, in.ID, decision), "agentMemory.review")
+	return mapAgentMemoryErr(s.agentMemory.Review(ctx, in.ID, decision))
 }
 
 // UpdateAgentMemory edits and/or pins an item (agentMemory.update).
 func (s *Handler) UpdateAgentMemory(ctx context.Context, in protocol.AgentMemoryUpdateRequest) (*protocol.AgentMemoryItem, error) {
 	item, err := s.agentMemory.Update(ctx, in.ID, in.Content, in.Pinned)
 	if err != nil {
-		return nil, mapAgentMemoryErr(err, "agentMemory.update")
+		return nil, mapAgentMemoryErr(err)
 	}
 	w, err := presentAgentMemoryItem(item)
 	if err != nil {
@@ -76,7 +74,7 @@ func (s *Handler) UpdateAgentMemory(ctx context.Context, in protocol.AgentMemory
 
 // DeleteAgentMemory removes an item (agentMemory.delete).
 func (s *Handler) DeleteAgentMemory(ctx context.Context, in protocol.AgentMemoryItemRequest) error {
-	return mapAgentMemoryErr(s.agentMemory.Delete(ctx, in.ID), "agentMemory.delete")
+	return mapAgentMemoryErr(s.agentMemory.Delete(ctx, in.ID))
 }
 
 // AddAgentMemory stores a user-authored active item (agentMemory.add).
@@ -87,7 +85,7 @@ func (s *Handler) AddAgentMemory(ctx context.Context, in protocol.AgentMemoryAdd
 	}
 	item, err := s.agentMemory.Add(ctx, scope, cwd, in.Content)
 	if err != nil {
-		return nil, mapAgentMemoryErr(err, "agentMemory.add")
+		return nil, mapAgentMemoryErr(err)
 	}
 	w, err := presentAgentMemoryItem(item)
 	if err != nil {
@@ -117,12 +115,10 @@ func agentMemoryTargetFromWire(scope protocol.AgentMemoryScope, workspace *proto
 	}
 }
 
-func mapAgentMemoryErr(err error, method string) error {
+func mapAgentMemoryErr(err error) error {
 	switch {
 	case err == nil:
 		return nil
-	case errors.Is(err, agentmemoryapp.ErrUnavailable):
-		return capabilityNotNegotiated(method)
 	case errors.Is(err, agentmemory.ErrNotFound), errors.Is(err, agentmemory.ErrNotVisible):
 		return fmt.Errorf("%w: no such memory item", protocol.ErrInvalidParams)
 	case errors.Is(err, agentmemory.ErrNotPending):

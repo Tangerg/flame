@@ -2,6 +2,7 @@ package agentmemory
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -11,7 +12,8 @@ import (
 
 // CurationStore is the persistence port for automatic memory maintenance. The
 // append-only ledger is internal implementation state; only a successful
-// Reconcile changes the public agent-memory generation.
+// Reconcile changes the public agent-memory generation. Calls borrow inputs
+// synchronously and transfer ownership of returned facts and items.
 type CurationStore interface {
 	AppendLedger(ctx context.Context, batch domain.FactBatch) ([]domain.LedgerFact, error)
 	PendingLedger(ctx context.Context, project string, watermark int64, limit int) ([]domain.LedgerFact, error)
@@ -35,19 +37,16 @@ type Curation struct {
 }
 
 // NewCuration builds the automatic memory-maintenance use case.
-func NewCuration(cfg CurationConfig) *Curation {
-	return &Curation{store: cfg.Store, invalidations: cfg.Invalidations}
+func NewCuration(cfg CurationConfig) (*Curation, error) {
+	if nilDependency(cfg.Store) {
+		return nil, errors.New("agentmemory: curation store is required")
+	}
+	return &Curation{store: cfg.Store, invalidations: cfg.Invalidations}, nil
 }
-
-// Available reports whether automatic memory maintenance is wired.
-func (c *Curation) Available() bool { return c != nil && c.store != nil }
 
 // AppendLedger records newly extracted facts. The ledger is not a public read
 // model, so appending it does not invalidate agentMemory.list.
 func (c *Curation) AppendLedger(ctx context.Context, batch domain.FactBatch) ([]domain.LedgerFact, error) {
-	if !c.Available() {
-		return nil, ErrUnavailable
-	}
 	normalized, err := batch.Normalize()
 	if err != nil {
 		return nil, err
@@ -55,23 +54,18 @@ func (c *Curation) AppendLedger(ctx context.Context, batch domain.FactBatch) ([]
 	if len(normalized.Facts) == 0 {
 		return nil, nil
 	}
-	storeBatch := normalized
-	storeBatch.Facts = slices.Clone(normalized.Facts)
-	facts, err := c.store.AppendLedger(ctx, storeBatch)
+	facts, err := c.store.AppendLedger(ctx, normalized)
 	if err != nil {
 		return nil, err
 	}
 	if err := validateAppendedFacts(facts, normalized); err != nil {
 		return nil, err
 	}
-	return slices.Clone(facts), nil
+	return facts, nil
 }
 
 // PendingLedger returns facts not yet incorporated into the curated generation.
 func (c *Curation) PendingLedger(ctx context.Context, project string, watermark int64, limit int) ([]domain.LedgerFact, error) {
-	if !c.Available() {
-		return nil, ErrUnavailable
-	}
 	if err := validatePendingRead(project, watermark, limit); err != nil {
 		return nil, err
 	}
@@ -82,14 +76,11 @@ func (c *Curation) PendingLedger(ctx context.Context, project string, watermark 
 	if err := validatePendingFacts(facts, watermark, limit); err != nil {
 		return nil, err
 	}
-	return slices.Clone(facts), nil
+	return facts, nil
 }
 
 // State returns the current curation watermark.
 func (c *Curation) State(ctx context.Context, project string) (domain.State, error) {
-	if !c.Available() {
-		return domain.State{}, ErrUnavailable
-	}
 	if err := domain.ValidateTarget(domain.ScopeProject, project); err != nil {
 		return domain.State{}, err
 	}
@@ -106,9 +97,6 @@ func (c *Curation) State(ctx context.Context, project string) (domain.State, err
 // PublishGeneration publishes one compare-and-swap-protected curated
 // generation and invalidates the public projection only for the winning fold.
 func (c *Curation) PublishGeneration(ctx context.Context, publication domain.Publication) (bool, error) {
-	if !c.Available() {
-		return false, ErrUnavailable
-	}
 	if err := publication.Validate(); err != nil {
 		return false, err
 	}
@@ -125,9 +113,6 @@ func (c *Curation) PublishGeneration(ctx context.Context, publication domain.Pub
 // Items returns the valid active generation used as input to the next fold,
 // with pinned and newer values first and identity as the stable tie-breaker.
 func (c *Curation) Items(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error) {
-	if !c.Available() {
-		return nil, ErrUnavailable
-	}
 	if err := domain.ValidateTarget(scope, project); err != nil {
 		return nil, err
 	}
@@ -135,7 +120,6 @@ func (c *Curation) Items(ctx context.Context, scope domain.Scope, project string
 	if err != nil {
 		return nil, err
 	}
-	items = cloneItems(items)
 	if err := validateActiveTargetCatalog(items, scope, project); err != nil {
 		return nil, err
 	}

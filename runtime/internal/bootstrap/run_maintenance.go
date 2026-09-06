@@ -36,17 +36,14 @@ func buildRunMaintenance(
 	if cfg.Maintenance != nil {
 		return cfg.Maintenance, compactor, nil
 	}
-	var consolidator *maintenance.MemoryConsolidator
-	if memoryCuration.Available() {
-		consolidator, err = maintenance.NewMemoryConsolidator(
-			conversationServices.store,
-			memoryCuration,
-			resolveUtility,
-			maintenance.MemoryCurationPolicyValues{},
-		)
-		if err != nil {
-			return nil, nil, fmt.Errorf("runtime: build memory consolidator: %w", err)
-		}
+	consolidator, err := maintenance.NewMemoryConsolidator(
+		conversationServices.store,
+		memoryCuration,
+		resolveUtility,
+		maintenance.MemoryCurationPolicyValues{},
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("runtime: build memory consolidator: %w", err)
 	}
 	var skillMiner *maintenance.SkillProposalMiner
 	var skillArchiver *maintenance.IdleSkillArchiver

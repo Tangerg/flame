@@ -64,7 +64,10 @@ func memoryConsolidationFixture(t *testing.T, replies ...scriptedReply) (*Memory
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	memory := sqlite.NewAgentMemoryStore(db)
-	memoryCuration := agentmemoryapp.NewCuration(agentmemoryapp.CurationConfig{Store: memory})
+	memoryCuration, err := agentmemoryapp.NewCuration(agentmemoryapp.CurationConfig{Store: memory})
+	if err != nil {
+		t.Fatal(err)
+	}
 	messages := testsupport.NewConversationStore()
 	if writeErr := messages.Write(t.Context(), "ses_1",
 		chat.NewUserMessage(chat.NewTextPart("first")),

@@ -136,17 +136,25 @@ func buildWorkspaceComposition(
 		authoredWatch,
 		publish,
 	)
+	memoryReview, err := agentmemoryapp.New(agentmemoryapp.Config{
+		Store: cfg.Stores.AgentMemory, Roots: scope, Invalidations: publish,
+	})
+	if err != nil {
+		return workspaceComposition{}, fmt.Errorf("runtime: build memory review: %w", err)
+	}
+	memoryCuration, err := agentmemoryapp.NewCuration(agentmemoryapp.CurationConfig{
+		Store: cfg.Stores.AgentMemory, Invalidations: publish,
+	})
+	if err != nil {
+		return workspaceComposition{}, fmt.Errorf("runtime: build memory curation: %w", err)
+	}
 	return workspaceComposition{
-		scope: scope,
-		agentMemory: agentmemoryapp.New(agentmemoryapp.Config{
-			Store: cfg.Stores.AgentMemory, Roots: scope, Invalidations: publish,
-		}),
-		memoryCuration: agentmemoryapp.NewCuration(agentmemoryapp.CurationConfig{
-			Store: cfg.Stores.AgentMemory, Invalidations: publish,
-		}),
-		authoredWatch: authoredWatch,
-		knowledge:     knowledge,
-		skills:        workspaceSkills,
+		scope:          scope,
+		agentMemory:    memoryReview,
+		memoryCuration: memoryCuration,
+		authoredWatch:  authoredWatch,
+		knowledge:      knowledge,
+		skills:         workspaceSkills,
 		skillMaintenance: workspace.NewSkillMaintenance(
 			idleSkillSweeper,
 			authoredWatch,

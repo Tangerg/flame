@@ -44,8 +44,6 @@ type recordingAgentMemory struct {
 	err     error
 }
 
-func (*recordingAgentMemory) Available() bool { return true }
-
 func (r *recordingAgentMemory) List(_ context.Context, scope agentmemory.Scope, cwd string) ([]agentmemory.Item, error) {
 	r.listScope, r.listCWD = scope, cwd
 	return r.items, nil

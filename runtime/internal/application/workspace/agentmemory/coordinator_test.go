@@ -49,7 +49,7 @@ func validMemoryItem(id domain.ItemID, scope domain.Scope, project, content stri
 func (f *fakeStore) List(_ context.Context, scope domain.Scope, project string) ([]domain.Item, error) {
 	f.listScope, f.listProject = scope, project
 	if f.listed != nil {
-		return f.listed, f.err
+		return cloneMemoryItems(f.listed), f.err
 	}
 	return []domain.Item{validMemoryItem(
 		testMemoryItemID('1'), scope, project, "fact", false,
@@ -63,9 +63,15 @@ func (f *fakeStore) Review(_ context.Context, _ domain.ItemID, decision domain.R
 }
 
 func (f *fakeStore) Update(_ context.Context, id domain.ItemID, content *string, pinned *bool, now time.Time) (domain.Item, error) {
-	f.content, f.pinned, f.updatedAt = content, pinned, now
+	f.content, f.pinned, f.updatedAt = nil, nil, now
+	if content != nil {
+		f.content = new(*content)
+	}
+	if pinned != nil {
+		f.pinned = new(*pinned)
+	}
 	if f.updateResult != nil {
-		return *f.updateResult, f.err
+		return f.updateResult.Clone(), f.err
 	}
 	text := "fact"
 	if content != nil {
@@ -82,7 +88,7 @@ func (f *fakeStore) Delete(context.Context, domain.ItemID) error { return f.err 
 
 func (f *fakeStore) Add(_ context.Context, scope domain.Scope, project, content string, now time.Time) (domain.Item, bool, error) {
 	if f.addResult != nil {
-		return *f.addResult, f.addChanged, f.err
+		return f.addResult.Clone(), f.addChanged, f.err
 	}
 	return validMemoryItem(testMemoryItemID('2'), scope, project, content, false, now), f.addChanged, f.err
 }
@@ -96,7 +102,7 @@ func (r rootResolver) ResolveRoot(string) (string, error) { return r.root, r.err
 
 func TestListResolvesProjectAtApplicationBoundary(t *testing.T) {
 	store := &fakeStore{}
-	c := New(Config{Store: store, Roots: rootResolver{root: "/canonical/repo"}})
+	c := newCoordinator(t, Config{Store: store, Roots: rootResolver{root: "/canonical/repo"}})
 
 	items, err := c.List(context.Background(), domain.ScopeProject, "/repo/../repo")
 	if err != nil || len(items) != 1 {
@@ -136,7 +142,7 @@ func TestListOwnsManagementOrder(t *testing.T) {
 		item('2', domain.StatusPending, true, updated),
 		item('0', domain.StatusPending, true, updated.Add(time.Hour)),
 	}}
-	c := New(Config{Store: store, Roots: rootResolver{root: "/repo"}})
+	c := newCoordinator(t, Config{Store: store, Roots: rootResolver{root: "/repo"}})
 
 	items, err := c.List(t.Context(), domain.ScopeProject, "/repo")
 	if err != nil {
@@ -185,7 +191,7 @@ func TestListRejectsCorruptManagementCatalog(t *testing.T) {
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			coordinator := New(Config{
+			coordinator := newCoordinator(t, Config{
 				Store: &fakeStore{listed: test.items}, Roots: rootResolver{root: "/repo"},
 			})
 			if _, err := coordinator.List(t.Context(), domain.ScopeProject, "/repo"); err == nil {
@@ -198,7 +204,7 @@ func TestListRejectsCorruptManagementCatalog(t *testing.T) {
 func TestUpdateDelegatesOneAtomicPatchWithApplicationClock(t *testing.T) {
 	store := &fakeStore{}
 	now := time.Date(2026, 7, 23, 9, 0, 0, 0, time.UTC)
-	c := New(Config{Store: store, Now: func() time.Time { return now }})
+	c := newCoordinator(t, Config{Store: store, Now: func() time.Time { return now }})
 	content := "- use table-driven tests"
 	pinned := true
 
@@ -210,23 +216,17 @@ func TestUpdateDelegatesOneAtomicPatchWithApplicationClock(t *testing.T) {
 	}
 }
 
-func TestUpdateSnapshotsPatchBeforeClockCallback(t *testing.T) {
+func TestUpdateAllowsCallerReuseAfterReturn(t *testing.T) {
 	store := &fakeStore{}
-	content := "original fact"
-	pinned := true
-	now := time.Date(2026, 7, 23, 9, 0, 0, 0, time.UTC)
-	coordinator := New(Config{Store: store, Now: func() time.Time {
-		content = "clock mutation"
-		pinned = false
-		return now
-	}})
-
+	content, pinned := "original fact", true
+	coordinator := newCoordinator(t, Config{Store: store})
 	item, err := coordinator.Update(t.Context(), testMemoryItemID('1').String(), &content, &pinned)
 	if err != nil {
 		t.Fatal(err)
 	}
+	content, pinned = "caller reuse", false
 	if store.content == nil || *store.content != "original fact" || store.pinned == nil || !*store.pinned {
-		t.Fatalf("stored patch = content=%v pinned=%v", store.content, store.pinned)
+		t.Fatalf("retained patch = content=%v pinned=%v", store.content, store.pinned)
 	}
 	if item.Content != "original fact" || !item.Pinned {
 		t.Fatalf("acknowledged item = %+v, want original patch", item)
@@ -237,19 +237,19 @@ func TestMutationRejectsInvalidAcknowledgements(t *testing.T) {
 	now := time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC)
 	requestedID := testMemoryItemID('1')
 	wrongID := validMemoryItem(testMemoryItemID('2'), domain.ScopeUser, "", "fact", false, now)
-	coordinator := New(Config{Store: &fakeStore{updateResult: &wrongID}, Now: func() time.Time { return now }})
+	coordinator := newCoordinator(t, Config{Store: &fakeStore{updateResult: &wrongID}, Now: func() time.Time { return now }})
 	if _, err := coordinator.Update(t.Context(), requestedID.String(), nil, nil); err == nil {
 		t.Fatal("mismatched Update acknowledgement was accepted")
 	}
 	wrongContent := validMemoryItem(requestedID, domain.ScopeUser, "", "old fact", false, now)
-	coordinator = New(Config{Store: &fakeStore{updateResult: &wrongContent}, Now: func() time.Time { return now }})
+	coordinator = newCoordinator(t, Config{Store: &fakeStore{updateResult: &wrongContent}, Now: func() time.Time { return now }})
 	content := "new fact"
 	if _, err := coordinator.Update(t.Context(), requestedID.String(), &content, nil); err == nil {
 		t.Fatal("stale Update content acknowledgement was accepted")
 	}
 
 	foreign := validMemoryItem(testMemoryItemID('3'), domain.ScopeProject, "/other", "fact", false, now)
-	coordinator = New(Config{
+	coordinator = newCoordinator(t, Config{
 		Store: &fakeStore{addResult: &foreign}, Roots: rootResolver{root: "/repo"},
 		Now: func() time.Time { return now },
 	})
@@ -257,7 +257,7 @@ func TestMutationRejectsInvalidAcknowledgements(t *testing.T) {
 		t.Fatal("foreign Add acknowledgement was accepted")
 	}
 	wrongContent = validMemoryItem(testMemoryItemID('4'), domain.ScopeProject, "/repo", "other fact", false, now)
-	coordinator = New(Config{
+	coordinator = newCoordinator(t, Config{
 		Store: &fakeStore{addResult: &wrongContent}, Roots: rootResolver{root: "/repo"},
 		Now: func() time.Time { return now },
 	})
@@ -268,7 +268,7 @@ func TestMutationRejectsInvalidAcknowledgements(t *testing.T) {
 
 func TestReviewAcceptsDecisionNotTargetState(t *testing.T) {
 	store := &fakeStore{}
-	c := New(Config{Store: store})
+	c := newCoordinator(t, Config{Store: store})
 	if err := c.Review(t.Context(), testMemoryItemID('1').String(), domain.ReviewApprove); err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +282,7 @@ func TestReviewAcceptsDecisionNotTargetState(t *testing.T) {
 
 func TestMutationRejectsNonCanonicalItemIdentityBeforeStore(t *testing.T) {
 	wantStoreErr := errors.New("store must not be reached")
-	c := New(Config{Store: &fakeStore{err: wantStoreErr}})
+	c := newCoordinator(t, Config{Store: &fakeStore{err: wantStoreErr}})
 
 	if err := c.Review(t.Context(), "mem_1", domain.ReviewApprove); !errors.Is(err, domain.ErrInvalidItemID) {
 		t.Fatalf("Review error = %v, want ErrInvalidItemID", err)
@@ -297,23 +297,30 @@ func TestMutationRejectsNonCanonicalItemIdentityBeforeStore(t *testing.T) {
 
 func TestUnknownScopeFailsBeforeRootResolution(t *testing.T) {
 	store := &fakeStore{}
-	c := New(Config{Store: store, Roots: rootResolver{root: "/canonical/repo"}})
+	c := newCoordinator(t, Config{Store: store, Roots: rootResolver{root: "/canonical/repo"}})
 	if _, err := c.List(t.Context(), domain.Scope("unknown"), "/repo"); err == nil {
 		t.Fatal("unknown scope was accepted")
 	}
 }
 
-func TestDisabledCoordinatorFailsExplicitly(t *testing.T) {
-	c := New(Config{})
-	if _, err := c.List(context.Background(), domain.ScopeProject, "/repo"); !errors.Is(err, ErrUnavailable) {
-		t.Fatalf("List error = %v, want ErrUnavailable", err)
+func TestCoordinatorRequiresCompleteDependencies(t *testing.T) {
+	var missingStore *fakeStore
+	for _, cfg := range []Config{
+		{},
+		{Store: &fakeStore{}},
+		{Roots: rootResolver{root: "/repo"}},
+		{Store: missingStore, Roots: rootResolver{root: "/repo"}},
+	} {
+		if c, err := New(cfg); err == nil || c != nil {
+			t.Fatalf("New returned (%v, %v) for incomplete dependencies", c, err)
+		}
 	}
 }
 
 func TestCommittedAgentMemoryMutationsPublishInvalidations(t *testing.T) {
 	var notices []invalidation.Notice
 	store := &fakeStore{addChanged: true}
-	c := New(Config{
+	c := newCoordinator(t, Config{
 		Store: store,
 		Roots: rootResolver{root: "/repo"},
 		Invalidations: func(notice invalidation.Notice) {
@@ -354,7 +361,7 @@ func TestCommittedAgentMemoryMutationsPublishInvalidations(t *testing.T) {
 func TestFailedAgentMemoryMutationDoesNotPublishInvalidation(t *testing.T) {
 	wantErr := errors.New("store unavailable")
 	var notices []invalidation.Notice
-	c := New(Config{
+	c := newCoordinator(t, Config{
 		Store: &fakeStore{err: wantErr},
 		Invalidations: func(notice invalidation.Notice) {
 			notices = append(notices, notice)
@@ -366,4 +373,24 @@ func TestFailedAgentMemoryMutationDoesNotPublishInvalidation(t *testing.T) {
 	if len(notices) != 0 {
 		t.Fatalf("failed mutation published %+v", notices)
 	}
+}
+
+func newCoordinator(t *testing.T, cfg Config) *Coordinator {
+	t.Helper()
+	if cfg.Roots == nil {
+		cfg.Roots = rootResolver{root: "/repo"}
+	}
+	coordinator, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return coordinator
+}
+
+func cloneMemoryItems(items []domain.Item) []domain.Item {
+	owned := make([]domain.Item, len(items))
+	for index, item := range items {
+		owned[index] = item.Clone()
+	}
+	return owned
 }

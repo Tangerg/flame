@@ -13,9 +13,6 @@ import (
 	domain "github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
 
-// ErrUnavailable reports that a requested agent-memory capability is not wired.
-var ErrUnavailable = errors.New("agentmemory: unavailable")
-
 // RootResolver is the narrow workspace dependency this use case consumes.
 // Its implementation belongs to the workspace application component; the
 // agent-memory package does not learn filesystem or path-normalization details.
@@ -26,7 +23,8 @@ type RootResolver interface {
 // Store is the review-oriented persistence port consumed by this coordinator.
 // List returns one complete target without presentation ordering; the
 // coordinator owns that cross-item policy. Extraction and search declare their
-// own narrower consumer views.
+// own narrower consumer views. Calls borrow inputs synchronously; returned items
+// and collections transfer ownership to the caller.
 type Store interface {
 	List(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error)
 	Review(ctx context.Context, id domain.ItemID, decision domain.ReviewDecision, now time.Time) error
@@ -35,9 +33,7 @@ type Store interface {
 	Add(ctx context.Context, scope domain.Scope, project, content string, now time.Time) (item domain.Item, changed bool, err error)
 }
 
-// Config bundles the review use case's driven ports. Store may be nil to
-// disable review. Roots is required only for project-scoped requests; a
-// missing resolver reports an explicit unavailable error.
+// Config supplies the persistence and workspace dependencies required for review.
 type Config struct {
 	Store         Store
 	Roots         RootResolver
@@ -53,24 +49,23 @@ type Coordinator struct {
 	invalidations invalidation.Publish
 }
 
-// New builds the coordinator. Nil stores are valid disabled states so
-// capability negotiation and optional maintenance remain truthful.
-func New(cfg Config) *Coordinator {
+// New constructs the complete review use case before it can accept requests.
+func New(cfg Config) (*Coordinator, error) {
+	if nilDependency(cfg.Store) {
+		return nil, errors.New("agentmemory: review store is required")
+	}
+	if nilDependency(cfg.Roots) {
+		return nil, errors.New("agentmemory: workspace resolver is required")
+	}
 	now := cfg.Now
 	if now == nil {
 		now = time.Now
 	}
-	return &Coordinator{store: cfg.Store, roots: cfg.Roots, now: now, invalidations: cfg.Invalidations}
+	return &Coordinator{store: cfg.Store, roots: cfg.Roots, now: now, invalidations: cfg.Invalidations}, nil
 }
-
-// Available reports whether agent-memory review operations are wired.
-func (c *Coordinator) Available() bool { return c != nil && c.store != nil }
 
 // List returns active and pending memory items for scope/cwd.
 func (c *Coordinator) List(ctx context.Context, scope domain.Scope, cwd string) ([]domain.Item, error) {
-	if !c.Available() {
-		return nil, ErrUnavailable
-	}
 	project, err := c.project(scope, cwd)
 	if err != nil {
 		return nil, err
@@ -79,7 +74,6 @@ func (c *Coordinator) List(ctx context.Context, scope domain.Scope, cwd string) 
 	if err != nil {
 		return nil, err
 	}
-	items = cloneItems(items)
 	if err := validateManagementTargetCatalog(items, scope, project); err != nil {
 		return nil, err
 	}
@@ -112,9 +106,6 @@ func compareActiveItems(a, b domain.Item) int {
 
 // Review accepts or rejects an extracted proposal.
 func (c *Coordinator) Review(ctx context.Context, id string, decision domain.ReviewDecision) error {
-	if !c.Available() {
-		return ErrUnavailable
-	}
 	if _, err := decision.Result(); err != nil {
 		return err
 	}
@@ -132,17 +123,6 @@ func (c *Coordinator) Review(ctx context.Context, id string, decision domain.Rev
 // Update applies the content/pin patch as one use case and returns the saved
 // item. The persistence port commits both requested fields atomically.
 func (c *Coordinator) Update(ctx context.Context, id string, content *string, pinned *bool) (domain.Item, error) {
-	if !c.Available() {
-		return domain.Item{}, ErrUnavailable
-	}
-	if content != nil {
-		value := *content
-		content = &value
-	}
-	if pinned != nil {
-		value := *pinned
-		pinned = &value
-	}
 	itemID, err := domain.ParseItemID(id)
 	if err != nil {
 		return domain.Item{}, err
@@ -158,7 +138,6 @@ func (c *Coordinator) Update(ctx context.Context, id string, content *string, pi
 	if err != nil {
 		return domain.Item{}, err
 	}
-	item = item.Clone()
 	if err := validateUpdatedItem(item, itemID, content, pinned); err != nil {
 		return domain.Item{}, err
 	}
@@ -168,9 +147,6 @@ func (c *Coordinator) Update(ctx context.Context, id string, content *string, pi
 
 // Delete removes one memory item.
 func (c *Coordinator) Delete(ctx context.Context, id string) error {
-	if !c.Available() {
-		return ErrUnavailable
-	}
 	itemID, err := domain.ParseItemID(id)
 	if err != nil {
 		return err
@@ -184,9 +160,6 @@ func (c *Coordinator) Delete(ctx context.Context, id string) error {
 
 // Add creates an immediately-active user-authored memory item.
 func (c *Coordinator) Add(ctx context.Context, scope domain.Scope, cwd, content string) (domain.Item, error) {
-	if !c.Available() {
-		return domain.Item{}, ErrUnavailable
-	}
 	project, err := c.project(scope, cwd)
 	if err != nil {
 		return domain.Item{}, err
@@ -199,7 +172,6 @@ func (c *Coordinator) Add(ctx context.Context, scope domain.Scope, cwd, content 
 	if err != nil {
 		return domain.Item{}, err
 	}
-	item = item.Clone()
 	if err := validateAddedItem(item, scope, project, content); err != nil {
 		return domain.Item{}, err
 	}
@@ -215,9 +187,6 @@ func (c *Coordinator) project(scope domain.Scope, cwd string) (string, error) {
 	}
 	if scope == domain.ScopeUser {
 		return "", nil
-	}
-	if c.roots == nil {
-		return "", ErrUnavailable
 	}
 	project, err := c.roots.ResolveRoot(cwd)
 	if err != nil {

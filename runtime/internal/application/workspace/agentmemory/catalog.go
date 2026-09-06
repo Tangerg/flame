@@ -6,14 +6,6 @@ import (
 	domain "github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
 
-func cloneItems(items []domain.Item) []domain.Item {
-	owned := make([]domain.Item, len(items))
-	for index, item := range items {
-		owned[index] = item.Clone()
-	}
-	return owned
-}
-
 func validateActiveTargetCatalog(items []domain.Item, scope domain.Scope, project string) error {
 	return validateTargetCatalog(items, scope, project, activeStatus)
 }

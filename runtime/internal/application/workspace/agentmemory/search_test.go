@@ -11,26 +11,24 @@ import (
 )
 
 type fakeItemSource struct {
-	items         []domain.Item
-	err           error
-	cacheErr      error
-	mutateUpdates bool
-	updates       []domain.EmbeddingUpdate
+	items    []domain.Item
+	err      error
+	cacheErr error
+	updates  []domain.EmbeddingUpdate
 }
 
 func (f *fakeItemSource) SearchCorpus(context.Context, string) ([]domain.Item, error) {
-	return slices.Clone(f.items), f.err
+	return cloneMemoryItems(f.items), f.err
 }
 
 func (f *fakeItemSource) Items(context.Context, domain.Scope, string) ([]domain.Item, error) {
-	return slices.Clone(f.items), f.err
+	return cloneMemoryItems(f.items), f.err
 }
 
 func (f *fakeItemSource) SetEmbeddings(_ context.Context, updates []domain.EmbeddingUpdate) error {
-	if f.mutateUpdates && len(updates) > 0 && len(updates[0].Vector) > 0 {
-		updates[0].Vector[0] = 0
+	for _, update := range updates {
+		f.updates = append(f.updates, update.Clone())
 	}
-	f.updates = append(f.updates, updates...)
 	if f.cacheErr != nil {
 		return f.cacheErr
 	}
@@ -271,25 +269,29 @@ func TestSearchDoesNotReuseCorpusVectorsFromAnotherEmbeddingSpace(t *testing.T) 
 	}
 }
 
-func TestSearchOwnsVectorsAcrossEmbeddingCacheWrite(t *testing.T) {
+func TestSearchIsolatesProviderVectorsAndReturnedItems(t *testing.T) {
 	a := readModelItem(t, 'a', domain.ScopeProject, "/repo", "alpha memory")
 	b := readModelItem(t, 'b', domain.ScopeProject, "/repo", "beta memory")
-	store := &fakeItemSource{items: items(a, b), mutateUpdates: true}
-	resolve := func(context.Context) (Embedder, error) {
-		return fakeEmbedder{vectors: map[string][]float32{
-			"find target":  {1, 0},
-			"alpha memory": {1, 0},
-			"beta memory":  {0, 1},
-		}}, nil
+	store := &fakeItemSource{items: items(a, b)}
+	vectors := map[string][]float32{
+		"find target": {1, 0}, "alpha memory": {1, 0}, "beta memory": {0, 1},
 	}
+	resolve := func(context.Context) (Embedder, error) { return fakeEmbedder{vectors: vectors}, nil }
 	reader := mustNewReadModel(t, store, resolve)
-
 	got, err := reader.Search(t.Context(), "/repo", "find target", 1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != 1 || got[0].ID != a.ID {
-		t.Fatalf("search after cache store mutated its update = %+v, want alpha", got)
+		t.Fatalf("search = %+v, want alpha", got)
+	}
+	vectors["alpha memory"][0] = 9
+	if got[0].Embedding[0] != 1 {
+		t.Fatal("provider reuse changed returned embedding")
+	}
+	got[0].Embedding[0] = 8
+	if store.items[0].Embedding[0] != 1 || store.updates[0].Vector[0] != 1 {
+		t.Fatal("caller reuse changed retained cache updates")
 	}
 }
 

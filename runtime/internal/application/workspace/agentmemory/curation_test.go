@@ -3,6 +3,7 @@ package agentmemory
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -22,7 +23,6 @@ type fakeCurationStore struct {
 	appendBatch     domain.FactBatch
 	reconcileValues []string
 	reconcileAt     time.Time
-	mutateAppend    bool
 }
 
 type singleWinnerCurationStore struct {
@@ -36,14 +36,12 @@ func (s *singleWinnerCurationStore) Reconcile(context.Context, domain.Publicatio
 
 func (f *fakeCurationStore) AppendLedger(_ context.Context, batch domain.FactBatch) ([]domain.LedgerFact, error) {
 	f.appendBatch = batch
-	if f.mutateAppend && len(batch.Facts) > 0 {
-		batch.Facts[0] = "store-mutated"
-	}
-	return f.appended, f.err
+	f.appendBatch.Facts = slices.Clone(batch.Facts)
+	return slices.Clone(f.appended), f.err
 }
 
 func (f *fakeCurationStore) PendingLedger(context.Context, string, int64, int) ([]domain.LedgerFact, error) {
-	return f.pending, f.err
+	return slices.Clone(f.pending), f.err
 }
 
 func (f *fakeCurationStore) State(context.Context, string) (domain.State, error) {
@@ -57,13 +55,13 @@ func (f *fakeCurationStore) Reconcile(_ context.Context, publication domain.Publ
 }
 
 func (f *fakeCurationStore) Items(context.Context, domain.Scope, string) ([]domain.Item, error) {
-	return f.items, f.err
+	return cloneMemoryItems(f.items), f.err
 }
 
 func TestCurationReconcilePublishesOnlyNewGeneration(t *testing.T) {
 	store := &fakeCurationStore{published: true}
 	var notices []invalidation.Notice
-	c := NewCuration(CurationConfig{Store: store, Invalidations: func(notice invalidation.Notice) {
+	c := newCuration(t, CurationConfig{Store: store, Invalidations: func(notice invalidation.Notice) {
 		notices = append(notices, notice)
 	}})
 
@@ -90,7 +88,7 @@ func TestCurationFailureAndLedgerWritesDoNotPublish(t *testing.T) {
 	wantErr := errors.New("store unavailable")
 	store := &fakeCurationStore{published: true, err: wantErr}
 	var notices []invalidation.Notice
-	c := NewCuration(CurationConfig{Store: store, Invalidations: func(notice invalidation.Notice) {
+	c := newCuration(t, CurationConfig{Store: store, Invalidations: func(notice invalidation.Notice) {
 		notices = append(notices, notice)
 	}})
 
@@ -131,7 +129,7 @@ func testPublication(t *testing.T, expected domain.State, through int64, content
 
 func TestCurationValidatesDurableMaterial(t *testing.T) {
 	store := &fakeCurationStore{appended: []domain.LedgerFact{validLedgerFact(4, "fact")}}
-	curation := NewCuration(CurationConfig{Store: store})
+	curation := newCuration(t, CurationConfig{Store: store})
 	appended, err := curation.AppendLedger(t.Context(), validFactBatch(" fact ", "fact"))
 	if err != nil || len(appended) != 1 || len(store.appendBatch.Facts) != 1 || store.appendBatch.Facts[0] != "fact" {
 		t.Fatalf("AppendLedger = (%+v, %v), normalized batch = %+v", appended, err, store.appendBatch)
@@ -169,28 +167,23 @@ func TestCurationValidatesDurableMaterial(t *testing.T) {
 	}
 }
 
-func TestAppendLedgerKeepsItsValidationSnapshotFromStoreMutation(t *testing.T) {
-	store := &fakeCurationStore{
-		appended:     []domain.LedgerFact{validLedgerFact(4, "fact")},
-		mutateAppend: true,
-	}
+func TestAppendLedgerTransfersResultsAndAllowsCallerReuse(t *testing.T) {
+	store := &fakeCurationStore{appended: []domain.LedgerFact{validLedgerFact(4, "fact")}}
 	batch := validFactBatch("fact")
-
-	appended, err := NewCuration(CurationConfig{Store: store}).AppendLedger(t.Context(), batch)
+	appended, err := newCuration(t, CurationConfig{Store: store}).AppendLedger(t.Context(), batch)
 	if err != nil || len(appended) != 1 || appended[0].Content != "fact" {
 		t.Fatalf("AppendLedger = (%+v, %v), want one acknowledged fact", appended, err)
 	}
-	if batch.Facts[0] != "fact" {
-		t.Fatalf("caller batch = %q, want fact", batch.Facts[0])
-	}
-	if store.appendBatch.Facts[0] != "store-mutated" {
-		t.Fatalf("store batch = %q, want proof of mutation", store.appendBatch.Facts[0])
+	batch.Facts[0] = "caller reuse"
+	appended[0].Content = "result reuse"
+	if store.appendBatch.Facts[0] != "fact" || store.appended[0].Content != "fact" {
+		t.Fatal("caller reuse changed stored facts")
 	}
 }
 
 func TestPublishGenerationNormalizesBeforeStore(t *testing.T) {
 	store := &fakeCurationStore{published: true}
-	curation := NewCuration(CurationConfig{Store: store})
+	curation := newCuration(t, CurationConfig{Store: store})
 	local := time.Date(2026, time.September, 4, 16, 0, 0, 0, time.FixedZone("local", 8*60*60))
 	expected := domain.State{Watermark: 1, UpdatedAt: local.Add(-time.Hour).UTC()}
 	publication := testPublication(t, expected, 2, []string{" fact ", "fact"}, local)
@@ -209,7 +202,7 @@ func TestPublishGenerationNormalizesBeforeStore(t *testing.T) {
 func TestConcurrentCurationPublishesExactlyOneWinningGeneration(t *testing.T) {
 	store := &singleWinnerCurationStore{}
 	var notices atomic.Int32
-	c := NewCuration(CurationConfig{Store: store, Invalidations: func(notice invalidation.Notice) {
+	c := newCuration(t, CurationConfig{Store: store, Invalidations: func(notice invalidation.Notice) {
 		if notice.Resource != invalidation.AgentMemory {
 			t.Errorf("notice = %+v, want AgentMemory", notice)
 		}
@@ -242,12 +235,20 @@ func TestConcurrentCurationPublishesExactlyOneWinningGeneration(t *testing.T) {
 	}
 }
 
-func TestCurationUnavailableFailsExplicitly(t *testing.T) {
-	c := NewCuration(CurationConfig{})
-	if _, err := c.AppendLedger(t.Context(), domain.FactBatch{}); !errors.Is(err, ErrUnavailable) {
-		t.Fatalf("AppendLedger error = %v, want ErrUnavailable", err)
+func TestCurationRequiresStorage(t *testing.T) {
+	var missingStore *fakeCurationStore
+	for _, store := range []CurationStore{nil, missingStore} {
+		if c, err := NewCuration(CurationConfig{Store: store}); err == nil || c != nil {
+			t.Fatalf("NewCuration = (%v, %v), want invalid construction", c, err)
+		}
 	}
-	if _, err := c.PublishGeneration(t.Context(), domain.Publication{}); !errors.Is(err, ErrUnavailable) {
-		t.Fatalf("PublishGeneration error = %v, want ErrUnavailable", err)
+}
+
+func newCuration(t *testing.T, cfg CurationConfig) *Curation {
+	t.Helper()
+	curation, err := NewCuration(cfg)
+	if err != nil {
+		t.Fatal(err)
 	}
+	return curation
 }

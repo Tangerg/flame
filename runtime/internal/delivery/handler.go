@@ -41,8 +41,7 @@ type HandlerConfig struct {
 	Goals goalUseCases
 
 	// AgentMemory is the HITL review use-case surface over the agent's
-	// self-maintained memory (agentMemory.*). nil makes agentMemory.* report
-	// capability_not_negotiated.
+	// self-maintained memory (agentMemory.*).
 	AgentMemory agentMemoryUseCases
 
 	WorkspaceFiles         workspaceFileUseCases
@@ -153,6 +152,7 @@ func (c HandlerConfig) validate() error {
 		{name: "Feedback", value: c.Feedback},
 		{name: "Schedules", value: c.Schedules},
 		{name: "ScheduleFiring", value: c.ScheduleFiring},
+		{name: "AgentMemory", value: c.AgentMemory},
 		{name: "WorkspaceFiles", value: c.WorkspaceFiles},
 		{name: "WorkspaceVCS", value: c.WorkspaceVCS},
 		{name: "WorkspaceDiscovery", value: c.WorkspaceDiscovery},
@@ -196,7 +196,7 @@ func deriveContractFacts(cfg HandlerConfig) (contractFacts, error) {
 			fileWatch:   cfg.WorkspaceWatch.Available(),
 			plan:        true,
 			goals:       capabilityAvailable(cfg.Goals),
-			agentMemory: capabilityAvailable(cfg.AgentMemory) && cfg.AgentMemory.Available(),
+			agentMemory: true,
 			schedules:   true,
 		},
 		replay: replayLimitsFrom(cfg.Runs.ReplayRetention()),
