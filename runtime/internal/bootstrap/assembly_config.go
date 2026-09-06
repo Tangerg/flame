@@ -9,9 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
-	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
-	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -31,16 +29,6 @@ type Config struct {
 
 	// BuildID identifies the running executable at durable executor boundaries.
 	BuildID string
-
-	// SessionOwnership extends Run/session lifecycle and destructive working-tree
-	// admission across Runtime processes sharing one data directory.
-	SessionOwnership ownership.AdmissionBackend
-	// GoalDriveOwnership elects one autonomous Goal driver per Session across
-	// those Runtime processes.
-	GoalDriveOwnership goals.DriveOwnership
-	// RecoveryOwnership elects one process to reconcile abandoned Runs before
-	// Goals, preserving their accounting order across shared Runtime instances.
-	RecoveryOwnership ownership.RecoveryBackend
 
 	// ChatResolver resolves every frozen Run selection against the live provider
 	// registry. Bootstrap never keeps a process-lifetime default client whose

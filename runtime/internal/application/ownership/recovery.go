@@ -38,36 +38,20 @@ type RecoveryCoordinator struct {
 	ownership RecoveryBackend
 }
 
-// NewRecovery constructs the ordered ownership recovery use case. Goals may be nil
-// when autonomous Goal capability is not assembled. A nil RecoveryBackend retains
-// single-process behavior for isolated assembly tests.
+// NewRecovery constructs the ordered recovery use case with both reconcilers and
+// the ownership backend required by every Runtime.
 func NewRecovery(runs RunRecovery, goals GoalRecovery, ownership RecoveryBackend) (*RecoveryCoordinator, error) {
 	if nilDependency(runs) {
 		return nil, errors.New("ownership recovery: Run reconciler is required")
 	}
-	if goals != nil && nilDependency(goals) {
-		return nil, errors.New("ownership recovery: optional Goal reconciler must not be typed nil")
+	if nilDependency(goals) {
+		return nil, errors.New("ownership recovery: Goal reconciler is required")
 	}
-	if ownership != nil && nilDependency(ownership) {
-		return nil, errors.New("ownership recovery: optional backend must not be typed nil")
-	}
-	if ownership == nil {
-		ownership = localOwnership{}
+	if nilDependency(ownership) {
+		return nil, errors.New("ownership recovery: ownership backend is required")
 	}
 	return &RecoveryCoordinator{runs: runs, goals: goals, ownership: ownership}, nil
 }
-
-type localOwnership struct{}
-
-func (localOwnership) TryRecoverySweep() (Lease, bool, error) { return localLease{}, true, nil }
-
-func (localOwnership) AcquireRecoverySweep(context.Context) (Lease, error) {
-	return localLease{}, nil
-}
-
-type localLease struct{}
-
-func (localLease) Release() {}
 
 // Reconcile performs one non-blocking recovery sweep. acquired is false when
 // another Runtime already owns the sweep; that process is responsible for the
@@ -121,10 +105,8 @@ func (c *RecoveryCoordinator) reconcileOwned(ctx context.Context, lease Lease) e
 	if _, err := c.runs.Reconcile(ctx); err != nil {
 		return fmt.Errorf("ownership recovery: reconcile Runs: %w", err)
 	}
-	if c.goals != nil {
-		if err := c.goals.Reconcile(ctx); err != nil {
-			return fmt.Errorf("ownership recovery: reconcile Goals: %w", err)
-		}
+	if err := c.goals.Reconcile(ctx); err != nil {
+		return fmt.Errorf("ownership recovery: reconcile Goals: %w", err)
 	}
 	return nil
 }

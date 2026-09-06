@@ -9,8 +9,8 @@ import (
 )
 
 // Gate serializes one writer per session, records live Runs, and coordinates
-// their working-tree admissions with destructive workspace mutations. Its zero
-// value is ready to use.
+// their working-tree admissions with destructive workspace mutations. Construct
+// it with NewGate so every admission uses the ownership backend.
 type Gate struct {
 	mu            sync.Mutex
 	runs          map[string]liveRun
@@ -31,13 +31,20 @@ type AdmissionBackend interface {
 }
 
 // NewGate constructs a Gate whose single-writer and working-tree invariants span
-// every Runtime process sharing the ownership backend. A nil owner keeps the
-// zero-value process-local behavior used by isolated tests.
+// every Runtime process sharing the required ownership backend.
 func NewGate(ownership AdmissionBackend) (*Gate, error) {
-	if ownership != nil && nilDependency(ownership) {
-		return nil, errors.New("session admission: ownership backend must not be typed nil")
+	if nilDependency(ownership) {
+		return nil, errors.New("session admission: ownership backend is required")
 	}
-	return &Gate{ownership: ownership}, nil
+	return &Gate{
+		ownership:     ownership,
+		runs:          make(map[string]liveRun),
+		pending:       make(map[*runAdmissionLease]pendingRun),
+		claims:        make(map[string]map[*sessionClaim]struct{}),
+		treeRuns:      make(map[string]int),
+		treeMutations: make(map[string]struct{}),
+		changed:       make(chan struct{}),
+	}, nil
 }
 
 type liveRun struct {
@@ -127,7 +134,7 @@ func (g *Gate) AcquireSession(sessionID string) (release func(), ok bool, err er
 	if g.activeSessionLocked(sessionID) {
 		return nil, false, nil
 	}
-	lease, ok, err := g.trySessionLease(sessionID)
+	lease, ok, err := g.ownership.TrySession(sessionID)
 	if err != nil || !ok {
 		return nil, false, err
 	}
@@ -147,11 +154,10 @@ func (g *Gate) AcquireSession(sessionID string) (release func(), ok bool, err er
 func (g *Gate) AcquireRun(sessionID, cwd string) (RunAdmission, bool, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	g.initLocked()
 	if g.activeSessionLocked(sessionID) {
 		return RunAdmission{}, false, nil
 	}
-	sessionLease, ok, err := g.trySessionLease(sessionID)
+	sessionLease, ok, err := g.ownership.TrySession(sessionID)
 	if err != nil || !ok {
 		return RunAdmission{}, false, err
 	}
@@ -161,7 +167,7 @@ func (g *Gate) AcquireRun(sessionID, cwd string) (RunAdmission, bool, error) {
 			releaseLeases(leases)
 			return RunAdmission{}, false, nil
 		}
-		treeLease, acquired, err := g.tryWorkingTreeLease(cwd, true)
+		treeLease, acquired, err := g.ownership.TryWorkingTree(cwd, true)
 		if err != nil || !acquired {
 			releaseLeases(leases)
 			return RunAdmission{}, false, err
@@ -206,11 +212,10 @@ func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, 
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	g.initLocked()
 	if _, busy := g.treeMutations[cwd]; busy || g.treeRuns[cwd] > 0 || g.hasLiveRunOnTreeLocked(cwd) {
 		return nil, false, nil
 	}
-	lease, ok, err := g.tryWorkingTreeLease(cwd, false)
+	lease, ok, err := g.ownership.TryWorkingTree(cwd, false)
 	if err != nil || !ok {
 		return nil, false, err
 	}
@@ -224,24 +229,6 @@ func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, 
 		})
 	}, true, nil
 }
-
-func (g *Gate) trySessionLease(sessionID string) (Lease, bool, error) {
-	if g.ownership == nil {
-		return noopLease{}, true, nil
-	}
-	return g.ownership.TrySession(sessionID)
-}
-
-func (g *Gate) tryWorkingTreeLease(cwd string, shared bool) (Lease, bool, error) {
-	if g.ownership == nil {
-		return noopLease{}, true, nil
-	}
-	return g.ownership.TryWorkingTree(cwd, shared)
-}
-
-type noopLease struct{}
-
-func (noopLease) Release() {}
 
 func releaseLeases(leases []Lease) {
 	for index := len(leases) - 1; index >= 0; index-- {
@@ -278,7 +265,6 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 	}
 	for {
 		g.mu.Lock()
-		g.initLocked()
 		_, treeMutation := g.treeMutations[cwd]
 		if !g.activeSessionLocked(sessionID) && (cwd == "" || !treeMutation) {
 			g.mu.Unlock()
@@ -312,27 +298,6 @@ func (g *Gate) activeSessionLocked(sessionID string) bool {
 	return false
 }
 
-func (g *Gate) initLocked() {
-	if g.runs == nil {
-		g.runs = map[string]liveRun{}
-	}
-	if g.pending == nil {
-		g.pending = map[*runAdmissionLease]pendingRun{}
-	}
-	if g.claims == nil {
-		g.claims = map[string]map[*sessionClaim]struct{}{}
-	}
-	if g.treeRuns == nil {
-		g.treeRuns = map[string]int{}
-	}
-	if g.treeMutations == nil {
-		g.treeMutations = map[string]struct{}{}
-	}
-	if g.changed == nil {
-		g.changed = make(chan struct{})
-	}
-}
-
 func (g *Gate) hasLiveRunOnTreeLocked(cwd string) bool {
 	for _, run := range g.runs {
 		if run.cwd == cwd {
@@ -343,7 +308,6 @@ func (g *Gate) hasLiveRunOnTreeLocked(cwd string) bool {
 }
 
 func (g *Gate) addClaimLocked(sessionID string) func() {
-	g.initLocked()
 	claim := &sessionClaim{sessionID: sessionID}
 	owners := g.claims[sessionID]
 	if owners == nil {
@@ -368,10 +332,6 @@ func (g *Gate) addClaimLocked(sessionID string) func() {
 }
 
 func (g *Gate) notifyLocked() {
-	if g.changed == nil {
-		g.changed = make(chan struct{})
-		return
-	}
 	close(g.changed)
 	g.changed = make(chan struct{})
 }
@@ -380,7 +340,6 @@ func (g *Gate) addTreeRunLocked(cwd string) func() {
 	if cwd == "" {
 		return func() {}
 	}
-	g.initLocked()
 	g.treeRuns[cwd]++
 	return g.releaseTreeRun(cwd)
 }

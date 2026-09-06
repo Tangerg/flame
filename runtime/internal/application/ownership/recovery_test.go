@@ -46,7 +46,7 @@ type goalReconciler func(context.Context) error
 
 func (g goalReconciler) Reconcile(ctx context.Context) error { return g(ctx) }
 
-func TestNewRecoveryRejectsTypedNilCollaborators(t *testing.T) {
+func TestNewRecoveryRequiresCompleteComposition(t *testing.T) {
 	validRuns := runReconciler(func(context.Context) (int, error) { return 0, nil })
 	validGoals := goalReconciler(func(context.Context) error { return nil })
 	validOwnership := &testOwnership{acquired: true}
@@ -58,6 +58,9 @@ func TestNewRecoveryRejectsTypedNilCollaborators(t *testing.T) {
 		goals     ownership.GoalRecovery
 		ownership ownership.RecoveryBackend
 	}{
+		{name: "missing Run reconciler", goals: validGoals, ownership: validOwnership},
+		{name: "missing Goal reconciler", runs: validRuns, ownership: validOwnership},
+		{name: "missing ownership backend", runs: validRuns, goals: validGoals},
 		{name: "Run reconciler", runs: runReconciler(nil), goals: validGoals, ownership: validOwnership},
 		{name: "Goal reconciler", runs: validRuns, goals: goalReconciler(nil), ownership: validOwnership},
 		{name: "ownership backend", runs: validRuns, goals: validGoals, ownership: typedNilOwnership},
@@ -105,7 +108,10 @@ func TestCoordinatorSkipsContendedSweepAndReleasesAfterFailure(t *testing.T) {
 			calls++
 			return 0, errors.New("failed")
 		}),
-		nil,
+		goalReconciler(func(context.Context) error {
+			t.Fatal("reconciled Goals after failed Run recovery")
+			return nil
+		}),
 		backend,
 	)
 	if err != nil {
@@ -126,7 +132,11 @@ func TestRecoveryReportsOwnershipFailureBeforeReconciliation(t *testing.T) {
 	cause := errors.New("lock storage failed")
 	coordinator, err := ownership.NewRecovery(
 		runReconciler(func(context.Context) (int, error) { t.Fatal("reconciled without ownership"); return 0, nil }),
-		nil, &testOwnership{err: cause},
+		goalReconciler(func(context.Context) error {
+			t.Fatal("reconciled Goals without ownership")
+			return nil
+		}),
+		&testOwnership{err: cause},
 	)
 	if err != nil {
 		t.Fatal(err)

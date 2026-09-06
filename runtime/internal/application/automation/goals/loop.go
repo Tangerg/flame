@@ -82,7 +82,7 @@ func (d *Driver) launchLocked(
 	if lease == nil {
 		var acquired bool
 		var err error
-		lease, acquired, err = d.tryDriveLease(sessionID)
+		lease, acquired, err = d.ownership.TryGoalDrive(sessionID)
 		if err != nil {
 			return err
 		}

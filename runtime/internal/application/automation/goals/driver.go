@@ -137,7 +137,7 @@ func (g *goalCommandLease) acquire(driver *Driver, sessionID string) error {
 	if g.lease != nil {
 		return nil
 	}
-	lease, acquired, leaseErr := driver.tryDriveLease(sessionID)
+	lease, acquired, leaseErr := driver.ownership.TryGoalDrive(sessionID)
 	if leaseErr != nil {
 		return leaseErr
 	}
@@ -184,8 +184,8 @@ func NewDriver(
 	if mutations == nil {
 		return nil, errors.New("goals: shared session mutations are required")
 	}
-	if ownership != nil && missingDependency(ownership) {
-		return nil, errors.New("goals: drive ownership is nil")
+	if missingDependency(ownership) {
+		return nil, errors.New("goals: drive ownership is required")
 	}
 	if instructions == nil {
 		return nil, errors.New("goals: run instruction builder is required")
@@ -275,7 +275,7 @@ func (d *Driver) Start(
 	if err != nil {
 		return goal.Goal{}, err
 	}
-	driveLease, ok, leaseErr := d.tryDriveLease(sessionID)
+	driveLease, ok, leaseErr := d.ownership.TryGoalDrive(sessionID)
 	if leaseErr != nil {
 		return goal.Goal{}, leaseErr
 	}
@@ -351,7 +351,7 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 	if err != nil {
 		return goal.Goal{}, err
 	}
-	driveLease, ok, leaseErr := d.tryDriveLease(sessionID)
+	driveLease, ok, leaseErr := d.ownership.TryGoalDrive(sessionID)
 	if leaseErr != nil {
 		return goal.Goal{}, leaseErr
 	}
@@ -392,7 +392,7 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 	if wasActive && drive == nil {
 		var ok bool
 		var leaseErr error
-		foreignLease, ok, leaseErr = d.tryDriveLease(sessionID)
+		foreignLease, ok, leaseErr = d.ownership.TryGoalDrive(sessionID)
 		if leaseErr != nil {
 			return goal.Goal{}, leaseErr
 		}
@@ -419,7 +419,7 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 	if current.Status() == goal.StatusActive && drive == nil && foreignLease == nil {
 		var acquired bool
 		var leaseErr error
-		foreignLease, acquired, leaseErr = d.tryDriveLease(sessionID)
+		foreignLease, acquired, leaseErr = d.ownership.TryGoalDrive(sessionID)
 		if leaseErr != nil {
 			return goal.Goal{}, errors.Join(leaseErr, quiesceErr)
 		}
@@ -582,7 +582,7 @@ func (d *Driver) Clear(ctx context.Context, sessionID string) error {
 	if wasActive && drive == nil {
 		var acquired bool
 		var leaseErr error
-		commandLease, acquired, leaseErr = d.tryDriveLease(sessionID)
+		commandLease, acquired, leaseErr = d.ownership.TryGoalDrive(sessionID)
 		if leaseErr != nil {
 			return leaseErr
 		}
@@ -609,7 +609,7 @@ func (d *Driver) Clear(ctx context.Context, sessionID string) error {
 	if current.Status() == goal.StatusActive && commandLease == nil {
 		var acquired bool
 		var leaseErr error
-		commandLease, acquired, leaseErr = d.tryDriveLease(sessionID)
+		commandLease, acquired, leaseErr = d.ownership.TryGoalDrive(sessionID)
 		if leaseErr != nil {
 			return errors.Join(leaseErr, quiesceErr)
 		}
@@ -664,7 +664,7 @@ func (d *Driver) Reconcile(ctx context.Context) error {
 		return err
 	}
 	for _, g := range all {
-		lease, acquired, leaseErr := d.tryDriveLease(g.SessionID())
+		lease, acquired, leaseErr := d.ownership.TryGoalDrive(g.SessionID())
 		if leaseErr != nil {
 			return fmt.Errorf("goals: acquire recovery drive %q: %w", g.SessionID(), leaseErr)
 		}
@@ -726,17 +726,6 @@ func (d *Driver) Reconcile(ctx context.Context) error {
 	}
 	return nil
 }
-
-func (d *Driver) tryDriveLease(sessionID string) (DriveLease, bool, error) {
-	if d.ownership == nil {
-		return noopDriveLease{}, true, nil
-	}
-	return d.ownership.TryGoalDrive(sessionID)
-}
-
-type noopDriveLease struct{}
-
-func (noopDriveLease) Release() {}
 
 // BeginShutdown cancels every running Goal drive.
 func (d *Driver) BeginShutdown() {

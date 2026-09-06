@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -424,7 +423,7 @@ func newUseCaseCoordinator(exec ExecutionObserver, control *fakeExecutionPorts, 
 		NewRunID:                           func() string { return "run_new" },
 		NewSegmentID:                       func() string { return "seg_new" },
 	}
-	deps.Admissions = new(ownership.Gate)
+	deps.Admissions = testsupport.NewAdmissionGate()
 	return mustNewCoordinator(deps)
 }
 
@@ -1909,7 +1908,7 @@ func TestCancelParkedRunUsesApplicationAdmission(t *testing.T) {
 		Runs: &fakeRunProjection{runs: map[string]run.Run{
 			"run_1": runForPending(pending),
 		}},
-		Admissions: new(ownership.Gate),
+		Admissions: testsupport.NewAdmissionGate(),
 	})
 
 	result, err := c.Cancel(t.Context(), CancelCommand{RunID: "run_1", Reason: "user stopped"})
@@ -1939,7 +1938,7 @@ func TestCancelFinishedRunReportsFinishedInsteadOfNotFound(t *testing.T) {
 		Releases:   &fakeExecutionPorts{},
 		Session:    testSessionPorts(&fakeRunSessions{}),
 		Runs:       &fakeRunProjection{runs: map[string]run.Run{"run_1": finished}},
-		Admissions: new(ownership.Gate),
+		Admissions: testsupport.NewAdmissionGate(),
 	})
 
 	_, err := c.Cancel(t.Context(), CancelCommand{RunID: "run_1", Reason: "too late"})
@@ -1953,7 +1952,7 @@ func TestCancelUnknownRunReportsNotFound(t *testing.T) {
 		Releases:   &fakeExecutionPorts{},
 		Session:    testSessionPorts(&fakeRunSessions{}),
 		Runs:       &fakeRunProjection{},
-		Admissions: new(ownership.Gate),
+		Admissions: testsupport.NewAdmissionGate(),
 	})
 
 	_, err := c.Cancel(t.Context(), CancelCommand{RunID: "run_missing"})
@@ -1968,7 +1967,7 @@ func TestCancelChildRunRequiresExplicitAuthority(t *testing.T) {
 		Releases:   &fakeExecutionPorts{},
 		Session:    testSessionPorts(&fakeRunSessions{}),
 		Runs:       &fakeRunProjection{runs: map[string]run.Run{"run_1": child}},
-		Admissions: new(ownership.Gate),
+		Admissions: testsupport.NewAdmissionGate(),
 	})
 
 	_, err := c.Cancel(t.Context(), CancelCommand{RunID: "run_1"})
@@ -2136,7 +2135,7 @@ func TestCancelRunningChildCommitsExactSubtreeBoundaryAndKeepsRootRunning(t *tes
 		Session:                testSessionPorts(&fakeRunSessions{}),
 		Projection:             testProjectionPorts(effects),
 		Runs:                   projection,
-		Admissions:             new(ownership.Gate),
+		Admissions:             testsupport.NewAdmissionGate(),
 		Now:                    func() time.Time { return time.Date(2026, 7, 30, 1, 2, 3, 0, time.UTC) },
 		NewRunID:               func() string { return "run_child" },
 		NewSegmentID:           func() string { return "seg_child" },
@@ -2187,7 +2186,7 @@ func TestCancelParkedRunReportsExecutorReleaseFailureAfterDurableCommit(t *testi
 		Runs: &fakeRunProjection{runs: map[string]run.Run{
 			"run_1": runForPending(pending),
 		}},
-		Admissions: new(ownership.Gate),
+		Admissions: testsupport.NewAdmissionGate(),
 	})
 
 	_, err := c.Cancel(t.Context(), CancelCommand{RunID: "run_1", Reason: "stop"})
@@ -2209,7 +2208,7 @@ func TestCancelLiveRunReportsExecutorReleaseFailureAndStillTerminalizes(t *testi
 		Runs: &fakeRunProjection{runs: map[string]run.Run{
 			"run_1": runForSegment(testSegment()),
 		}},
-		Admissions: new(ownership.Gate),
+		Admissions: testsupport.NewAdmissionGate(),
 	})
 	stream, err := c.openSegment(t.Context(), testSegment())
 	if err != nil {
@@ -2239,7 +2238,7 @@ func TestCancelLiveRunDefaultsOmittedReasonAtApplicationBoundary(t *testing.T) {
 		Runs: &fakeRunProjection{runs: map[string]run.Run{
 			"run_1": runForSegment(testSegment()),
 		}},
-		Admissions: new(ownership.Gate),
+		Admissions: testsupport.NewAdmissionGate(),
 	})
 	stream, err := c.openSegment(t.Context(), testSegment())
 	if err != nil {
@@ -2330,7 +2329,7 @@ func TestCancelLosesToACommittedNaturalTerminal(t *testing.T) {
 		Runs: &fakeRunProjection{runs: map[string]run.Run{
 			"run_1": runForSegment(testSegment()),
 		}},
-		Admissions: new(ownership.Gate),
+		Admissions: testsupport.NewAdmissionGate(),
 	})
 	stream, err := c.openSegment(t.Context(), testSegment())
 	if err != nil {
@@ -2408,7 +2407,7 @@ func TestCancelLetsCommittedInterruptOwnDurableFirstTeardown(t *testing.T) {
 		Runs: &fakeRunProjection{runs: map[string]run.Run{
 			"run_1": runForSegment(spec),
 		}},
-		Admissions: new(ownership.Gate),
+		Admissions: testsupport.NewAdmissionGate(),
 	})
 	stream, err := c.openSegment(t.Context(), spec)
 	if err != nil {
@@ -2460,7 +2459,7 @@ func TestCancelTreatsAlreadyReleasedExecutorAsIdempotentSuccess(t *testing.T) {
 		Runs: &fakeRunProjection{runs: map[string]run.Run{
 			"run_1": runForPending(pending),
 		}},
-		Admissions: new(ownership.Gate),
+		Admissions: testsupport.NewAdmissionGate(),
 	})
 
 	if _, err := c.Cancel(t.Context(), CancelCommand{RunID: "run_1"}); err != nil {

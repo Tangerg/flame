@@ -345,7 +345,7 @@ func (s stubRuntime) queriesCoordinator() *sessions.QueryCoordinator {
 
 func newTestHandler(rt testRuntime) *Handler {
 	s := &Handler{}
-	admissions := &ownership.Gate{}
+	admissions := testsupport.NewAdmissionGate()
 	var sessionPorts runs.SessionPorts
 	// Wire the session/run lifecycle coordinator over the fake's in-memory stores
 	// when the fake provides one, mirroring the composition root.
@@ -905,7 +905,7 @@ func (s *stubRuntime) sessionsCoordinator(admissions sessions.Admissions) *sessi
 }
 
 func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.WorkspaceCheckpoints, shared ...sessions.Admissions) *sessions.Coordinator {
-	admissions := sessions.Admissions(&ownership.Gate{})
+	admissions := sessions.Admissions(testsupport.NewAdmissionGate())
 	if len(shared) > 0 && shared[0] != nil {
 		admissions = shared[0]
 	}

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/recovery"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
@@ -86,7 +87,11 @@ func buildAssemblyCore(
 	execution executionComposition,
 ) (*Instance, error) {
 	fileChanges := newNotificationRelay[workspace.FileChangeNotice]()
-	admissionGate, err := ownership.NewGate(cfg.SessionOwnership)
+	ownershipLeases, err := ownershipadapter.New(cfg.Stores.DataDirectory)
+	if err != nil {
+		return nil, err
+	}
+	admissionGate, err := ownership.NewGate(ownershipLeases)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: session admission: %w", err)
 	}
@@ -289,7 +294,7 @@ func buildAssemblyCore(
 		runCoordinator,
 		cfg.Stores.Sessions,
 		goalMutations,
-		cfg.GoalDriveOwnership,
+		ownershipLeases,
 		builtin.RunInstructions,
 	)
 	if err != nil {
@@ -334,7 +339,7 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: boot recovery: %w", err)
 	}
 
-	ownershipRecovery, err := ownership.NewRecovery(bootRecovery, goalDriver, cfg.RecoveryOwnership)
+	ownershipRecovery, err := ownership.NewRecovery(bootRecovery, goalDriver, ownershipLeases)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: ownership recovery: %w", err)
 	}

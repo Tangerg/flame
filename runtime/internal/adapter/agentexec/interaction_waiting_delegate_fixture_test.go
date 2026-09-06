@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec/interactioninput"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -73,7 +72,7 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},
-		Admissions: new(ownership.Gate), Now: time.Now,
+		Admissions: testsupport.NewAdmissionGate(), Now: time.Now,
 		NewRunID:     func() string { return takeFirstIdentifier(&runIDs) },
 		NewSegmentID: func() string { return takeFirstIdentifier(&segmentIDs) },
 	})

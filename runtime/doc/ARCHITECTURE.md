@@ -63,6 +63,8 @@ SQLite stores current Application and Domain state, not live framework objects, 
 
 Checkpoint and waiting facts commit in the Application order required to recover the same logical Run. Terminalization and checkpoint cleanup preserve one durable winner. Recovery reconstructs from durable Runtime state and public framework checkpoints; it does not infer state from event delivery or client caches.
 
+Bootstrap creates one file-lease set from the persistence bundle's data directory and supplies it to Session admission, Goal driving, and ordered Run-then-Goal recovery. Each use case requires its ownership backend at construction, and recovery requires both reconcilers.
+
 Lease acquisition distinguishes contention from operational failure. Only a contended lease proves another owner is live; filesystem and lock errors abort admission or reconciliation with their cause. The persistence and authored-file adapters report the first failure in each outage through Runtime logging, including when the embedding host has not configured tracing, and retry without inventing a change notification. A successful resample resumes observation and permits a later outage to be reported again. Filesystem reconciliation reads the backend's current registrations so deleted and recreated directories regain their watches.
 
 The active development contract has one current storage shape. SQLite installs that shape directly and does not maintain a schema-version or migration graph. A breaking schema change replaces the old shape completely; incompatible development state is reset explicitly unless the user authorizes a real migration requirement.

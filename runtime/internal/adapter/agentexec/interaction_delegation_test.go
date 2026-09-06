@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -119,7 +118,7 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},
-		Admissions: new(ownership.Gate), Now: time.Now,
+		Admissions: testsupport.NewAdmissionGate(), Now: time.Now,
 		NewRunID: func() string {
 			id := runIDs[0]
 			runIDs = runIDs[1:]
@@ -270,7 +269,7 @@ func TestInteractionExecutorCancelsRunningDelegateAndKeepsRootRunning(t *testing
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},
 		Runs: projection, Items: projection,
-		Admissions: new(ownership.Gate), Now: time.Now,
+		Admissions: testsupport.NewAdmissionGate(), Now: time.Now,
 		NewRunID: func() string {
 			id := runIDs[0]
 			runIDs = runIDs[1:]
@@ -605,7 +604,7 @@ func startDelegateTree(t *testing.T, model chat.Model, input string) *delegateTr
 			Openings: projection, ChildStarts: projection, Events: projection,
 			Barriers: projection, Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},
-		Admissions: new(ownership.Gate), Now: time.Now,
+		Admissions: testsupport.NewAdmissionGate(), Now: time.Now,
 		NewRunID: func() string {
 			identityMu.Lock()
 			defer identityMu.Unlock()

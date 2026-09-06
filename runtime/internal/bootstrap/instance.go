@@ -108,13 +108,6 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	setupOwned = false
 
 	assemblyConfig := ComposeConfig(settings, stores, chatResolver, providers, buildID)
-	ownershipLeases, err := ownershipadapter.New(stores.DataDirectory)
-	if err != nil {
-		return nil, config.Settings{}, err
-	}
-	assemblyConfig.SessionOwnership = ownershipLeases
-	assemblyConfig.GoalDriveOwnership = ownershipLeases
-	assemblyConfig.RecoveryOwnership = ownershipLeases
 	assemblyConfig.UserHome = cfg.UserHome
 	assemblyConfig.DefaultWorkspacePath = cfg.DefaultWorkspacePath
 	runtimeContext, stopRuntime := context.WithCancel(context.Background())

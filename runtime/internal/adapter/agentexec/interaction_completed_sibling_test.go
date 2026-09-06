@@ -11,7 +11,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -84,7 +83,7 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 			Openings: projection, ChildStarts: projection, Events: projection, Barriers: projection,
 			Checkpoints: projection, Workspace: projection, Finalizer: projection,
 		},
-		Admissions: new(ownership.Gate), Now: time.Now,
+		Admissions: testsupport.NewAdmissionGate(), Now: time.Now,
 		NewRunID:     func() string { runSequence++; return "run_" + strconv.Itoa(runSequence) },
 		NewSegmentID: func() string { segmentSequence++; return "segment_" + strconv.Itoa(segmentSequence) },
 	})

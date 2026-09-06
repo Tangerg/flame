@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -30,7 +29,7 @@ func newTestRecovery(
 	store runs.RecoveryStore,
 	resumability runs.WaitingExecutionResumability,
 ) (*runs.Recovery, error) {
-	return runs.NewRecovery(store, resumability, new(ownership.Gate), nil)
+	return runs.NewRecovery(store, resumability, testsupport.NewAdmissionGate(), nil)
 }
 
 func (alwaysResumable) CanResumeWaitingExecution(
@@ -194,7 +193,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	) (bool, error) {
 		checkpointProbes++
 		return true, nil
-	}), new(ownership.Gate), func(notice invalidation.Notice) {
+	}), testsupport.NewAdmissionGate(), func(notice invalidation.Notice) {
 		notices = append(notices, notice)
 	})
 	if err != nil {

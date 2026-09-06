@@ -23,28 +23,29 @@ func (s *admissionBackendStub) TryWorkingTree(string, bool) (Lease, bool, error)
 	if s.treeErr != nil {
 		return nil, false, s.treeErr
 	}
-	return noopLease{}, true, nil
+	return admissionLeaseFunc(func() {}), true, nil
 }
 
-func TestNewGateDistinguishesAbsentAndTypedNilOwnership(t *testing.T) {
-	gate, err := NewGate(nil)
+func newTestGate(t *testing.T) *Gate {
+	t.Helper()
+	gate, err := NewGate(&admissionBackendStub{})
 	if err != nil {
-		t.Fatalf("NewGate(nil): %v", err)
+		t.Fatal(err)
 	}
-	release, ok, _ := gate.AcquireSession("ses_1")
-	if !ok {
-		t.Fatal("process-local Gate rejected a Session")
-	}
-	release()
+	return gate
+}
 
-	var backend *admissionBackendStub
-	if gate, err := NewGate(backend); err == nil || gate != nil {
-		t.Fatalf("NewGate(typed nil) = %#v, %v", gate, err)
+func TestNewGateRequiresOwnership(t *testing.T) {
+	var typedNil *admissionBackendStub
+	for _, backend := range []AdmissionBackend{nil, typedNil} {
+		if gate, err := NewGate(backend); err == nil || gate != nil {
+			t.Fatalf("NewGate(%T) = %#v, %v", backend, gate, err)
+		}
 	}
 }
 
 func TestGateHoldsSessionThroughMaintenance(t *testing.T) {
-	var gate Gate
+	gate := newTestGate(t)
 	opening, ok, _ := gate.AcquireRun("ses_1", "/repo")
 	if !ok {
 		t.Fatal("opening admission was rejected")
@@ -82,7 +83,7 @@ func TestGateHoldsSessionThroughMaintenance(t *testing.T) {
 }
 
 func TestGateExcludesWorkingTreeRunAdmissionsAndMutations(t *testing.T) {
-	var gate Gate
+	gate := newTestGate(t)
 	const cwd = "/repo"
 
 	first, ok, _ := gate.AcquireRun("ses_1", cwd)
@@ -120,7 +121,7 @@ func TestGateExcludesWorkingTreeRunAdmissionsAndMutations(t *testing.T) {
 }
 
 func TestWaitRunStartableIncludesTerminalMaintenance(t *testing.T) {
-	var gate Gate
+	gate := newTestGate(t)
 	opening, ok, _ := gate.AcquireRun("ses_1", "/repo")
 	if !ok || !opening.Admit("run_1") {
 		t.Fatal("admit run")
@@ -149,7 +150,7 @@ func TestWaitRunStartableIncludesTerminalMaintenance(t *testing.T) {
 }
 
 func TestWaitRunStartableIncludesPendingRun(t *testing.T) {
-	var gate Gate
+	gate := newTestGate(t)
 	opening, ok, _ := gate.AcquireRun("ses_1", "/repo")
 	if !ok {
 		t.Fatal("acquire pending Run")
@@ -174,7 +175,7 @@ func TestWaitRunStartableIncludesPendingRun(t *testing.T) {
 }
 
 func TestWaitRunStartableIncludesWorkingTreeMutation(t *testing.T) {
-	var gate Gate
+	gate := newTestGate(t)
 	release, ok, _ := gate.AcquireWorkingTreeMutation("/repo")
 	if !ok {
 		t.Fatal("acquire working-tree mutation")
@@ -199,7 +200,7 @@ func TestWaitRunStartableIncludesWorkingTreeMutation(t *testing.T) {
 }
 
 func TestWaitRunStartableIsContextBounded(t *testing.T) {
-	var gate Gate
+	gate := newTestGate(t)
 	release, ok, _ := gate.AcquireSession("ses_1")
 	if !ok {
 		t.Fatal("acquire session")
