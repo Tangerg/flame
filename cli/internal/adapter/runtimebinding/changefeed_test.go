@@ -43,13 +43,16 @@ func TestChangefeedAdapterNegotiatesAndProjectsRuntimeEvents(t *testing.T) {
 		protocol.FeatureFileWatch: {Enabled: true},
 	}
 	runtime.profile = requireProfile(t, &discovery, nil)
-	stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{
+	request := changefeed.Subscription{
 		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 		Watches: []changefeed.Watch{{ID: "active", Workspace: "/workspace"}},
-	})
+	}
+	stream, err := runtime.Subscribe(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
+	request.Topics[0] = protocol.TopicRunsChanged
+	request.Watches[0] = changefeed.Watch{ID: "reused", Workspace: "/other"}
 	var events []changefeed.Event
 	for event, err := range stream {
 		if err != nil {
@@ -60,7 +63,8 @@ func TestChangefeedAdapterNegotiatesAndProjectsRuntimeEvents(t *testing.T) {
 	if len(events) != 1 || events[0].Workspace != "/workspace" || events[0].Paths[0] != "main.go" {
 		t.Fatalf("events = %+v", events)
 	}
-	if !stub.called || len(stub.request.Watches) != 1 || stub.request.Watches[0].WatchID != "active" {
+	if !stub.called || !slices.Equal(stub.request.Topics, []protocol.RuntimeTopic{protocol.TopicFilesChanged}) ||
+		len(stub.request.Watches) != 1 || stub.request.Watches[0].WatchID != "active" {
 		t.Fatalf("request = %+v", stub.request)
 	}
 }

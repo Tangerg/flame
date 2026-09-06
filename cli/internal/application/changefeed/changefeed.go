@@ -308,5 +308,7 @@ type EventStream = iter.Seq2[Event, error]
 
 type Source interface {
 	Supports(protocol.RuntimeTopic) bool
+	// Subscribe borrows the request for the call. Implementations own any
+	// declaration retained for the returned stream's lifetime.
 	Subscribe(context.Context, Subscription) (EventStream, error)
 }

@@ -42,8 +42,12 @@ func (r *Connection) Subscribe(ctx context.Context, subscription changefeed.Subs
 			return nil, errors.New("runtime does not support change topic " + string(topic))
 		}
 	}
+	// Event validation retains this declaration after Subscribe returns.
+	// The wire call borrows the same owned topics while registering the stream.
+	subscription.Topics = slices.Clone(subscription.Topics)
+	subscription.Watches = slices.Clone(subscription.Watches)
 	wire := protocol.RuntimeSubscribeRequest{
-		Topics:  slices.Clone(subscription.Topics),
+		Topics:  subscription.Topics,
 		Watches: make([]protocol.WatchSpec, 0, len(subscription.Watches)),
 	}
 	for _, watch := range subscription.Watches {
