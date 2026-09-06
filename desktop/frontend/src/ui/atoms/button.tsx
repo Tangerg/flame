@@ -39,6 +39,18 @@ export const buttonStyles = cva(
         true: "active:scale-[var(--press-scale)]",
         false: "",
       },
+      // Two buttons acting as one control: the primary action and the menu that qualifies it.
+      // The seam is a hairline drawn by the trailing half rather than a border, because a
+      // border would land outside the fill and read as an outline around the pair. The 1px
+      // pull is what closes the gap the two edges would otherwise leave.
+      join: {
+        start: "rounded-r-none",
+        end: [
+          "relative -ml-px rounded-l-none",
+          "before:pointer-events-none before:absolute before:inset-y-1.5 before:left-0",
+          "before:w-px before:bg-cta-text/20",
+        ].join(" "),
+      },
       // Declared AFTER `size` so its neutralising classes win: `cn` is tailwind-merge, which
       // resolves a conflict in favour of the later class. Every other variant sets only ink
       // and fill, which `size` never touches, so the order is invisible to them.
@@ -93,6 +105,7 @@ export function Button({
   size,
   tone,
   press,
+  join,
   className,
   children,
   ref,
@@ -105,7 +118,7 @@ export function Button({
       ref={ref}
       data-slot="button"
       data-variant={resolvedVariant}
-      className={cn(buttonStyles({ variant, size, tone, press }), className)}
+      className={cn(buttonStyles({ variant, size, tone, press, join }), className)}
     >
       {children}
     </ButtonPrimitive>

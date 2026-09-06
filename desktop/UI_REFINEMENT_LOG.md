@@ -6286,3 +6286,71 @@ xs 22 / sm 26 / md 30，`--control-height-lg: 34px` 存在却只被 `icon-lg` �
 
 清场只剩分段按钮（`ApprovalCard` 的 `rounded-l-none` + `before:` 分隔线）。
 清完即可迁 `button` 本身。
+
+---
+
+## Round 114 — 分段按钮：把接缝还给库
+
+### 计划（写在改代码之前）
+
+`ApprovalCard` 的"Allow once ▾"是一个分段按钮：主动作 + 限定它的菜单。
+两半的形状不是由 `Button` 给的，而是调用点用两串 className 手搓出来的 ——
+这是第 113 轮清场后 `Button` 上剩的最后一处形状级 override。
+按 CLAUDE.md §4「业务层不自己拼交互件：缺档就往库里加一档」，这一档叫 `join`。
+
+### 证据
+
+| 位置 | 手搓的 className |
+| --- | --- |
+| `ApprovalCard.tsx` 主按钮 | `rounded-r-none` |
+| `ApprovalCard.tsx` 菜单触发 | `-ml-px rounded-l-none before:absolute before:inset-y-1.5 before:left-0 before:w-px before:bg-cta-text/20` |
+
+调用点在描述**两个按钮如何拼成一个控件** —— 这是控件自己的知识，不是这张卡的。
+
+### 根因
+
+`Button` 只有"独立按钮"一种形态。产品需要第二种：*一对按钮读作一个控件*。
+库里没有这一档，调用点就只能自己画接缝 —— 于是接缝的宽度、颜色、内缩、
+以及"用 `-1px` 收掉两条边留下的缝"这四个决定，全散在业务文件里。
+
+### 改动
+
+`buttonStyles` 新增 `join: "start" | "end"`：
+
+| | start | end |
+| --- | --- | --- |
+| 圆角 | 右侧收平 | 左侧收平 |
+| 接缝 | — | `before:` 画 1px 竖线（`bg-cta-text/20`，上下各内缩 6px） |
+| 贴合 | — | `-ml-px` 收掉两条边之间的缝 |
+
+接缝用伪元素而非 `border`：border 落在填充之外，会读成整对按钮的描边。
+
+### 过程中的真 bug
+
+`join` 变体加进了 `buttonStyles`，但 `Button` 组件**没解构它**，
+于是它顺着 `...props` 落到了 DOM 上，`buttonStyles()` 从没收到过。
+表现是"全绿的 typecheck + 成功的 build + 完全没生效的样式"。
+
+抓住它的是视觉套件：6 张 golden 位移（审批卡在 light/dark × waiting/narrative，
+外加两张 Retina closure）。实测确认两个按钮圆角都还是 6px、`margin-left: 0`。
+修好后重测 —— `tr: 0` / `tl: 0` / `ml: -1px`，650/650 零位移。
+
+**教训**：cva 变体与组件签名是**两处**要同步的地方，类型系统不覆盖第二处
+（多余的 prop 合法地流进 `...props`）。golden 是这里唯一的守卫。
+
+### 验证
+
+`typecheck` / `lint` / `format` / **17 项 `check:*` 全绿**；单测 **2395 通过**
+（4 项失败均为既有 runtime 契约项，属用户并行修改区域）；
+视觉 **650/650，零 golden 位移**。
+
+### 资源回收
+
+关闭 4174 预览服务与探针脚本。
+
+### 下一轮方向
+
+`Button` 上的形状级 override 已清空，但它自己的迁移**还不能开始** ——
+`chip.tsx` 依赖 `group-hover:`，而 StyleX 没有祖先/兄弟状态选择器。
+"祖先态如何在 StyleX 下表达"是一个波及 15 个文件的设计决定，需要先定型。
+在此之前，转向不依赖祖先态的下一批 atom。

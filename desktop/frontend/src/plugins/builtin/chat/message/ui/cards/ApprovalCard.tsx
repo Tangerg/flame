@@ -113,7 +113,7 @@ export function ApprovalCard({
             variant="primary"
             size="sm"
             disabled={disabled}
-            className={rememberable ? "rounded-r-none" : undefined}
+            join={rememberable ? "start" : undefined}
             onClick={() => approve()}
           >
             {t("approval.action.allowOnce")}
@@ -127,7 +127,7 @@ export function ApprovalCard({
                     size="icon-sm"
                     disabled={disabled}
                     aria-label={t("approval.action.allowOptions")}
-                    className="relative -ml-px rounded-l-none before:pointer-events-none before:absolute before:inset-y-1.5 before:left-0 before:w-px before:bg-cta-text/20"
+                    join="end"
                   >
                     <Icon name="chevron-down" size="xs" />
                   </Button>
