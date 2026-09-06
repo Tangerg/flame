@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/kit"
@@ -168,29 +167,30 @@ func runtimeStatusText(profile *runtimebinding.Profile, options agent.RunOptions
 	if len(features) == 0 {
 		features = []string{"none"}
 	}
-	limits := profile.Limits
+	discovery := profile.Discovery()
+	capabilities := discovery.Capabilities
+	limits := capabilities.Limits
 	profileLines := []string{
-		fmt.Sprintf("runtime: %s %s", profile.Server.Name, profile.Server.Version),
-		"protocol: " + profile.Protocol.Version,
-		"default workspace: " + profile.Server.DefaultWorkspace,
-		"home: " + profile.Server.Home,
+		fmt.Sprintf("runtime: %s %s", discovery.ServerInfo.Name, discovery.ServerInfo.Version),
+		"protocol: " + discovery.ProtocolVersion,
+		"default workspace: " + discovery.ServerInfo.DefaultWorkspace.Path,
+		"home: " + discovery.ServerInfo.Home,
 		"available features: " + strings.Join(features, ", "),
-		fmt.Sprintf("run concurrency: %s", runConcurrencyLabel(limits.RunConcurrency)),
+		fmt.Sprintf("run concurrency: %s", runConcurrencyLabel(limits.MaxConcurrentRuns)),
 		fmt.Sprintf("run replay: %d events / %s / %s", limits.RunReplay.MaxEvents, formatRuntimeBytes(limits.RunReplay.MaxBytes), limits.RunReplay.Scope),
-		"command replay retention: " + formatRuntimeSeconds(int(limits.CommandReplay.Retention()/time.Second)),
-		"MCP authorization retention: " + formatRuntimeSeconds(limits.MCPAuthorizationRetentionSeconds),
+		"command replay retention: " + formatRuntimeSeconds(limits.Idempotency.RetentionSeconds),
+		"MCP authorization retention: " + formatRuntimeSeconds(limits.MCPAuthorizationAttempts.RetentionSeconds),
 		fmt.Sprintf("runtime subscriptions: %d topics / %d watches", limits.RuntimeSubscription.MaxTopics, limits.RuntimeSubscription.MaxWatches),
-		fmt.Sprintf("surface: %d run events / %d topics / %d streaming methods", len(profile.RunEvents), len(profile.RuntimeTopics), len(profile.StreamingMethods)),
+		fmt.Sprintf("surface: %d run events / %d topics / %d streaming methods", len(capabilities.RunEvents), len(capabilities.RuntimeTopics), len(capabilities.StreamingMethods)),
 	}
 	return strings.Join(slices.Concat(profileLines, lines), "\n")
 }
 
-func runConcurrencyLabel(limit runtimebinding.RunConcurrencyLimit) string {
-	maximum, bounded := limit.Maximum()
-	if !bounded {
+func runConcurrencyLabel(maximum *int) string {
+	if maximum == nil {
 		return "unbounded"
 	}
-	return fmt.Sprintf("at most %d runs", maximum)
+	return fmt.Sprintf("at most %d runs", *maximum)
 }
 
 func formatRuntimeSeconds(value int) string {

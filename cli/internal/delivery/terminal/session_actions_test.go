@@ -965,20 +965,14 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 
 func steerReplayTestProfile(t *testing.T, workspace string) runtimebinding.Profile {
 	t.Helper()
-	return runtimebinding.Profile{
-		Protocol: runtimebinding.Protocol{Version: "2.0"},
-		Server: runtimebinding.Server{
-			Name: "steer-test", Version: "1.0.0", DefaultWorkspace: workspace, Home: workspace,
-		},
-		Features: map[string]runtimebinding.Feature{},
-		Limits: runtimebinding.Limits{
-			RunConcurrency: boundedRunConcurrency(t, 1),
-			CommandReplay:  testCommandReplay(t, terminalTestReplayNamespace, 10*time.Minute),
-			RunReplay: protocol.RunReplayLimits{
-				Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 128, MaxBytes: 1 << 20,
-			},
-			MCPAuthorizationRetentionSeconds: 600,
-			RuntimeSubscription:              protocol.SubscriptionLimits{MaxTopics: 1, MaxWatches: 1},
-		},
-	}
+	return terminalProfile(t, func(discovery *protocol.DiscoverResponse, _ *protocol.ClientCapabilities) {
+		discovery.ServerInfo.Name = "steer-test"
+		discovery.ServerInfo.Version = "1.0.0"
+		discovery.ServerInfo.DefaultWorkspace.Path = workspace
+		discovery.ServerInfo.Home = workspace
+		discovery.Capabilities.Limits.MaxConcurrentRuns = new(1)
+		discovery.Capabilities.Limits.Idempotency.Namespace = terminalTestReplayNamespace
+		discovery.Capabilities.Limits.RunReplay.MaxEvents = 128
+		discovery.Capabilities.Limits.RuntimeSubscription = protocol.SubscriptionLimits{MaxTopics: 1, MaxWatches: 1}
+	})
 }

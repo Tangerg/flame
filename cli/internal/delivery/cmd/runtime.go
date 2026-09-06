@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/spf13/cobra"
@@ -66,16 +67,12 @@ func newRuntimeInfoCommand(provider runtimeProvider) *cobra.Command {
 			if profile == nil {
 				return errors.New("runtime discovery profile is unavailable")
 			}
-			projected := profile.Clone()
-			if err := projected.Validate(); err != nil {
-				return err
-			}
 			if asJSON {
 				encoder := json.NewEncoder(cmd.OutOrStdout())
 				encoder.SetEscapeHTML(false)
-				return encoder.Encode(projected)
+				return encoder.Encode(*profile)
 			}
-			return writeRuntimeProfile(cmd.OutOrStdout(), projected)
+			return writeRuntimeProfile(cmd.OutOrStdout(), *profile)
 		},
 	}
 	command.Flags().BoolVar(&asJSON, "json", false, "Write the complete profile as JSON")
@@ -84,17 +81,20 @@ func newRuntimeInfoCommand(provider runtimeProvider) *cobra.Command {
 
 func writeRuntimeProfile(output io.Writer, profile runtimebinding.Profile) error {
 	writer := tabwriter.NewWriter(output, 0, 0, 2, ' ', 0)
+	discovery := profile.Discovery()
+	capabilities := discovery.Capabilities
+	client := profile.ClientCapabilities()
 	rows := [][2]string{
-		{"runtime", profile.Server.Name + " " + profile.Server.Version},
-		{"protocol", profile.Protocol.Version},
-		{"default workspace", profile.Server.DefaultWorkspace},
-		{"home", profile.Server.Home},
-		{"run events", joinRuntimeCatalog(profile.RunEvents)},
-		{"runtime topics", joinRuntimeCatalog(profile.RuntimeTopics)},
-		{"streaming methods", joinRuntimeCatalog(profile.StreamingMethods)},
+		{"runtime", discovery.ServerInfo.Name + " " + discovery.ServerInfo.Version},
+		{"protocol", discovery.ProtocolVersion},
+		{"default workspace", discovery.ServerInfo.DefaultWorkspace.Path},
+		{"home", discovery.ServerInfo.Home},
+		{"run events", joinRuntimeCatalog(capabilities.RunEvents)},
+		{"runtime topics", joinRuntimeCatalog(capabilities.RuntimeTopics)},
+		{"streaming methods", joinRuntimeCatalog(capabilities.StreamingMethods)},
 	}
-	for _, name := range slices.Sorted(maps.Keys(profile.Features)) {
-		feature := profile.Features[name]
+	for _, name := range slices.Sorted(maps.Keys(capabilities.Features)) {
+		feature := capabilities.Features[name]
 		var flags []string
 		if feature.Enabled {
 			flags = append(flags, "enabled")
@@ -102,7 +102,7 @@ func writeRuntimeProfile(output io.Writer, profile runtimebinding.Profile) error
 			flags = append(flags, "disabled")
 		}
 		if feature.ClientOptIn {
-			if feature.ClientRequested {
+			if client != nil && client.Features[name].Enabled {
 				flags = append(flags, "client opt-in requested")
 			} else {
 				flags = append(flags, "client opt-in declined")
@@ -111,17 +111,17 @@ func writeRuntimeProfile(output io.Writer, profile runtimebinding.Profile) error
 		if feature.RequiredByRunProtocol {
 			flags = append(flags, "run protocol")
 		}
-		if feature.Available() {
+		if profile.Supports(name) {
 			flags = append(flags, "available")
 		}
 		rows = append(rows, [2]string{"feature " + string(name), strings.Join(flags, " · ")})
 	}
-	limits := profile.Limits
+	limits := capabilities.Limits
 	rows = append(rows,
-		[2]string{"run concurrency", formatRunConcurrency(limits.RunConcurrency)},
-		[2]string{"command replay retention", limits.CommandReplay.Retention().String()},
+		[2]string{"run concurrency", formatRunConcurrency(limits.MaxConcurrentRuns)},
+		[2]string{"command replay retention", (time.Duration(limits.Idempotency.RetentionSeconds) * time.Second).String()},
 		[2]string{"run replay", fmt.Sprintf("%d events · %d bytes · %s", limits.RunReplay.MaxEvents, limits.RunReplay.MaxBytes, limits.RunReplay.Scope)},
-		[2]string{"MCP auth retention", fmt.Sprintf("%d seconds", limits.MCPAuthorizationRetentionSeconds)},
+		[2]string{"MCP auth retention", fmt.Sprintf("%d seconds", limits.MCPAuthorizationAttempts.RetentionSeconds)},
 		[2]string{"runtime subscription", fmt.Sprintf("%d topics · %d watches", limits.RuntimeSubscription.MaxTopics, limits.RuntimeSubscription.MaxWatches)},
 	)
 	for _, row := range rows {
@@ -140,10 +140,9 @@ func joinRuntimeCatalog[String ~string](values []String) string {
 	return strings.Join(items, ", ")
 }
 
-func formatRunConcurrency(limit runtimebinding.RunConcurrencyLimit) string {
-	maximum, bounded := limit.Maximum()
-	if !bounded {
+func formatRunConcurrency(maximum *int) string {
+	if maximum == nil {
 		return "unbounded"
 	}
-	return fmt.Sprintf("at most %d runs", maximum)
+	return fmt.Sprintf("at most %d runs", *maximum)
 }

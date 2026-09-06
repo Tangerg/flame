@@ -134,7 +134,7 @@ func runUIWithState(t *testing.T, backend Runtime, workspace, sessionID, stateDi
 	return host, stop
 }
 
-const terminalTestReplayNamespace = "terminal-test-runtime"
+const terminalTestReplayNamespace = "idp_cccccccccccccccccccccccccccccccc"
 
 func runUIWithReplay(t *testing.T, backend Runtime) (*programtest.Host, func()) {
 	t.Helper()
@@ -1330,7 +1330,7 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 	if stagePendingResumeErr := store.StagePendingResume("ses_demo_1", workbench.PendingResume{
 		Command: command, Interactions: waiting.Interactions,
 		Replay: protectedCommandReplayGuard(
-			t, profile.Limits.CommandReplay.Namespace(), time.Now().UTC().Add(-time.Second),
+			t, profile.Discovery().Capabilities.Limits.Idempotency.Namespace, time.Now().UTC().Add(-time.Second),
 		),
 	}); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
@@ -1398,7 +1398,7 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 	if stagePendingResumeErr := store.StagePendingResume("ses_demo_1", workbench.PendingResume{
 		Command: oldCommand, Interactions: waiting.Interactions,
 		Replay: protectedCommandReplayGuard(
-			t, profile.Limits.CommandReplay.Namespace(), time.Now().UTC().Add(-time.Second),
+			t, profile.Discovery().Capabilities.Limits.Idempotency.Namespace, time.Now().UTC().Add(-time.Second),
 		),
 	}); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
@@ -1442,7 +1442,7 @@ func TestActiveResumeReconcilesWhenReplayExpiresAfterAnUncertainAttempt(t *testi
 	runtime := &expiringUncommittedResumeRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
-	profile.Limits.CommandReplay = testCommandReplay(t, profile.Limits.CommandReplay.Namespace(), time.Second)
+	profile = profileWithReplay(t, profile, profile.Discovery().Capabilities.Limits.Idempotency.Namespace, time.Second)
 	host, stop := runUIFromConfig(t, Config{Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
 		Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory,
 	})

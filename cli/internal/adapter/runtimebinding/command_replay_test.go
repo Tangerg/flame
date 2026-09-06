@@ -29,12 +29,12 @@ func TestCommandReplayPolicyKeepsUnavailableAndInvalidDistinct(t *testing.T) {
 func TestCommandReplayPolicyProjectsTheAdvertisedStoreAndClock(t *testing.T) {
 	t.Parallel()
 
-	capability, err := commandreplay.NewCapability("runtime-a", 10*time.Minute)
+	capability, err := commandreplay.NewCapability(compatibleReplayNamespace, 10*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
 	now := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
-	profile := &Profile{Limits: Limits{CommandReplay: capability}}
+	profile := new(profileWithReplayNamespace(t, capability.Namespace()))
 	policy, err := CommandReplayPolicyWithClock(profile, func() time.Time { return now })
 	if err != nil {
 		t.Fatal(err)

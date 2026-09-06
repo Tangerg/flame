@@ -30,7 +30,7 @@ func (r *Connection) Subscribe(ctx context.Context, subscription changefeed.Subs
 			return nil, err
 		}
 	}
-	limits := r.profile.Limits.RuntimeSubscription
+	limits := r.profile.discovery.Capabilities.Limits.RuntimeSubscription
 	if limits.MaxTopics > 0 && len(subscription.Topics) > limits.MaxTopics {
 		return nil, fmt.Errorf("runtime change subscription has %d topics; maximum is %d", len(subscription.Topics), limits.MaxTopics)
 	}

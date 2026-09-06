@@ -864,18 +864,12 @@ func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T)
 
 	profileOutput := runTestBinary(t, binary, environment, "runtime", "info", "--json")
 	var profile struct {
-		Protocol struct {
-			Version string `json:"version"`
-		} `json:"protocol"`
-		Server struct {
-			Name string `json:"name"`
-		} `json:"server"`
-		RuntimeTopics []string `json:"runtimeTopics"`
+		Discovery protocol.DiscoverResponse `json:"discovery"`
 	}
 	if err := json.Unmarshal(profileOutput, &profile); err != nil {
 		t.Fatalf("decode in-process runtime profile: %v\n%s", err, profileOutput)
 	}
-	if profile.Protocol.Version == "" || profile.Server.Name == "" || len(profile.RuntimeTopics) == 0 {
+	if profile.Discovery.ProtocolVersion == "" || profile.Discovery.ServerInfo.Name == "" || len(profile.Discovery.Capabilities.RuntimeTopics) == 0 {
 		t.Fatalf("incomplete in-process runtime profile: %+v", profile)
 	}
 	if info, err := os.Stat(filepath.Join(flameHome, "runtime", "flame.db")); err != nil || !info.Mode().IsRegular() {

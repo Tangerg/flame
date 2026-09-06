@@ -22,5 +22,13 @@ func CommandReplayPolicyWithClock(
 	if profile == nil {
 		return commandreplay.UnavailablePolicyWithClock(now)
 	}
-	return commandreplay.NewPolicyWithClock(profile.Limits.CommandReplay, now)
+	if err := profile.Validate(); err != nil {
+		return commandreplay.Policy{}, err
+	}
+	limits := profile.discovery.Capabilities.Limits.Idempotency
+	capability, err := commandreplay.NewCapability(limits.Namespace, time.Duration(limits.RetentionSeconds)*time.Second)
+	if err != nil {
+		return commandreplay.Policy{}, err
+	}
+	return commandreplay.NewPolicyWithClock(capability, now)
 }

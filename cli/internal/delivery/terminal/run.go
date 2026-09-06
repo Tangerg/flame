@@ -198,11 +198,11 @@ func openSessionWorkbench(directory string) (*workbench.Store, error) {
 func validatedSessionConfig(cfg Config) (*runtimebinding.Profile, settings.Config, keyBindings, error) {
 	var profile *runtimebinding.Profile
 	if cfg.RuntimeProfile != nil {
-		cloned := cfg.RuntimeProfile.Clone()
-		if err := cloned.Validate(); err != nil {
+		value := *cfg.RuntimeProfile
+		if err := value.Validate(); err != nil {
 			return nil, settings.Config{}, keyBindings{}, fmt.Errorf("session runtime profile: %w", err)
 		}
-		profile = &cloned
+		profile = &value
 	}
 	configured := settings.Default()
 	if cfg.Settings != nil {

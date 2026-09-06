@@ -134,7 +134,7 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 
 func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 	commandID := agent.CommandID("cli_0123456789abcdef0123456789abcdef")
-	const namespace = "idp_test"
+	const namespace = compatibleReplayNamespace
 	stub := runBindingStub{}
 	stub.start = func(_ context.Context, request protocol.StartRunRequest, options flameruntime.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 		if options.IdempotencyKey != string(commandID) || options.IdempotencyNamespace != namespace {
@@ -170,7 +170,7 @@ func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 	}
 	runtime := &Connection{
 		runs: stub, meta: requestMeta("test"),
-		profile: Profile{Limits: Limits{CommandReplay: testCommandReplay(t, namespace)}},
+		profile: profileWithReplayNamespace(t, namespace),
 	}
 	request := unlimitedStartRequest("ses_1", agent.Message{Text: "start"})
 	request.CommandID = commandID

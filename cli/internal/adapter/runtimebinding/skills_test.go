@@ -282,20 +282,22 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 }
 
 func TestConnectionProfileControlsOptionalAdapterAvailability(t *testing.T) {
-	runtime := &Connection{profile: Profile{Features: map[string]Feature{
+	runtime := &Connection{profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
 		protocol.FeatureSkills: {Enabled: true}, protocol.FeatureMCP: {Enabled: true},
 		protocol.FeatureSchedules: {Enabled: true}, protocol.FeatureAgentMemory: {Enabled: true},
 		protocol.FeatureKnowledge: {Enabled: true}, protocol.FeatureSessionExport: {Enabled: true},
-	}}}
+	})}
 	profile := runtime.Profile()
 	if !profile.Supports(protocol.FeatureSkills) || !profile.Supports(protocol.FeatureMCP) ||
 		!profile.Supports(protocol.FeatureSchedules) || profile.Supports(protocol.FeatureGoals) {
-		t.Fatalf("profile features = %+v", profile.Features)
+		t.Fatalf("profile features = %+v", profile.Discovery().Capabilities.Features)
 	}
 	if runtime.AgentMemory() == nil || runtime.Knowledge() == nil {
 		t.Fatal("advertised context adapters were not exposed")
 	}
-	runtime.profile.Features[protocol.FeatureAgentMemory] = Feature{}
+	discovery := runtime.profile.Discovery()
+	discovery.Capabilities.Features[protocol.FeatureAgentMemory] = protocol.FeatureCapability{}
+	runtime.profile = requireProfile(t, &discovery, nil)
 	if runtime.AgentMemory() != nil {
 		t.Fatal("unadvertised agent memory exposed an adapter")
 	}

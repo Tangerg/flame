@@ -36,11 +36,13 @@ func TestChangefeedAdapterNegotiatesAndProjectsRuntimeEvents(t *testing.T) {
 	}}
 	runtime := &Connection{
 		changes: stub, meta: requestMeta("test"),
-		profile: changefeedProfile(protocol.TopicFilesChanged),
+		profile: changefeedProfile(t, protocol.TopicFilesChanged),
 	}
-	runtime.profile.Features = map[string]Feature{
+	discovery := runtime.profile.Discovery()
+	discovery.Capabilities.Features = map[string]protocol.FeatureCapability{
 		protocol.FeatureFileWatch: {Enabled: true},
 	}
+	runtime.profile = requireProfile(t, &discovery, nil)
 	stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{
 		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 		Watches: []changefeed.Watch{{ID: "active", Workspace: "/workspace"}},
@@ -74,7 +76,7 @@ func TestChangefeedAdapterProjectsBroadFileInvalidations(t *testing.T) {
 	}}
 	runtime := &Connection{
 		changes: stub, meta: requestMeta("test"),
-		profile: changefeedProfile(protocol.TopicFilesChanged),
+		profile: changefeedProfile(t, protocol.TopicFilesChanged),
 	}
 	stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{
 		Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged},
@@ -134,12 +136,14 @@ func TestChangefeedAdapterRejectsEventsOutsideTheSubscription(t *testing.T) {
 			}}
 			runtime := &Connection{
 				changes: stub, meta: requestMeta("test"),
-				profile: changefeedProfile(protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged),
+				profile: changefeedProfile(t, protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged),
 			}
 			if len(test.subscription.Watches) != 0 {
-				runtime.profile.Features = map[string]Feature{
+				discovery := runtime.profile.Discovery()
+				discovery.Capabilities.Features = map[string]protocol.FeatureCapability{
 					protocol.FeatureFileWatch: {Enabled: true},
 				}
+				runtime.profile = requireProfile(t, &discovery, nil)
 			}
 			stream, err := runtime.Subscribe(t.Context(), test.subscription)
 			if err != nil {
@@ -170,7 +174,7 @@ func TestChangefeedAdapterRefusesAnUnadvertisedTopic(t *testing.T) {
 func TestChangefeedAdapterRejectsWatchesWithoutFileWatchCapability(t *testing.T) {
 	t.Parallel()
 	stub := &changeBindingStub{}
-	runtime := &Connection{changes: stub, profile: changefeedProfile(protocol.TopicFilesChanged)}
+	runtime := &Connection{changes: stub, profile: changefeedProfile(t, protocol.TopicFilesChanged)}
 	_, err := runtime.Subscribe(t.Context(), changefeed.Subscription{
 		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 		Watches: []changefeed.Watch{{ID: "active", Workspace: "/workspace"}},
@@ -187,9 +191,11 @@ func TestChangefeedAdapterHonorsAdvertisedSubscriptionLimits(t *testing.T) {
 	t.Parallel()
 	stub := &changeBindingStub{}
 	runtime := &Connection{
-		changes: stub, profile: changefeedProfile(protocol.TopicFilesChanged),
+		changes: stub, profile: changefeedProfile(t, protocol.TopicFilesChanged),
 	}
-	runtime.profile.Limits.RuntimeSubscription.MaxWatches = 1
+	discovery := runtime.profile.Discovery()
+	discovery.Capabilities.Limits.RuntimeSubscription.MaxWatches = 1
+	runtime.profile = requireProfile(t, &discovery, nil)
 	_, err := runtime.Subscribe(t.Context(), changefeed.Subscription{
 		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 		Watches: []changefeed.Watch{{ID: "one", Workspace: "/one"}, {ID: "two", Workspace: "/two"}},
@@ -208,7 +214,7 @@ func TestChangefeedAdapterRejectsMalformedWireEvent(t *testing.T) {
 		yield(protocol.RuntimeEvent{Type: protocol.RuntimeFilesChanged}, nil)
 	}}
 	runtime := &Connection{
-		changes: stub, profile: changefeedProfile(protocol.TopicFilesChanged),
+		changes: stub, profile: changefeedProfile(t, protocol.TopicFilesChanged),
 	}
 	stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged}})
 	if err != nil {
@@ -241,7 +247,7 @@ func TestChangefeedAdapterProjectsRuntimeResourceInvalidations(t *testing.T) {
 			stub := &changeBindingStub{events: func(yield func(protocol.RuntimeEvent, error) bool) {
 				yield(protocol.RuntimeEvent{Type: test.event, Sequence: 1}, nil)
 			}}
-			runtime := &Connection{changes: stub, profile: changefeedProfile(test.topic)}
+			runtime := &Connection{changes: stub, profile: changefeedProfile(t, test.topic)}
 			stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{Topics: []protocol.RuntimeTopic{test.topic}})
 			if err != nil {
 				t.Fatal(err)
@@ -263,7 +269,7 @@ func TestChangefeedAdapterProjectsRuntimeResourceInvalidations(t *testing.T) {
 func TestChangefeedAdapterRejectsAnIncompleteRuntimeStream(t *testing.T) {
 	t.Parallel()
 	runtime := &Connection{
-		changes: &changeBindingStub{}, profile: changefeedProfile(protocol.TopicFilesChanged),
+		changes: &changeBindingStub{}, profile: changefeedProfile(t, protocol.TopicFilesChanged),
 	}
 	_, err := runtime.Subscribe(t.Context(), changefeed.Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged}})
 	requireRuntimeContractViolation(t, err)
@@ -278,7 +284,7 @@ func TestChangefeedAdapterProjectsPlanInvalidation(t *testing.T) {
 		}, nil)
 	}}
 	runtime := &Connection{
-		changes: stub, profile: changefeedProfile(protocol.TopicPlanChanged),
+		changes: stub, profile: changefeedProfile(t, protocol.TopicPlanChanged),
 	}
 	stream, err := runtime.Subscribe(t.Context(), changefeed.Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicPlanChanged}})
 	if err != nil {
@@ -296,10 +302,9 @@ func TestChangefeedAdapterProjectsPlanInvalidation(t *testing.T) {
 	t.Fatal("plan change stream yielded no event")
 }
 
-func changefeedProfile(topics ...protocol.RuntimeTopic) Profile {
-	profile := Profile{
-		RuntimeTopics: slices.Clone(topics),
-		Limits:        Limits{RuntimeSubscription: protocol.SubscriptionLimits{MaxTopics: 32, MaxWatches: 32}},
-	}
-	return profile
+func changefeedProfile(t *testing.T, topics ...protocol.RuntimeTopic) Profile {
+	t.Helper()
+	discovery := compatibleDiscovery()
+	discovery.Capabilities.RuntimeTopics = slices.Clone(topics)
+	return requireProfile(t, discovery, nil)
 }

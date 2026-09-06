@@ -9,7 +9,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -134,11 +133,11 @@ func TestCommandsWithUsefulDefaultsDeclareOptionalArguments(t *testing.T) {
 func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 	t.Parallel()
 
-	profile := runtimebinding.Profile{Features: map[string]runtimebinding.Feature{
+	profile := terminalProfileWithFeatures(t, map[string]protocol.FeatureCapability{
 		protocol.FeatureGit:           {},
 		protocol.FeatureRelocate:      {},
 		protocol.FeatureSessionExport: {},
-	}}
+	})
 	application := &app{
 		runtimeProfile: &profile,
 		execution:      executionState{conversation: agent.NewConversation()},
@@ -166,7 +165,7 @@ func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.T) {
 	t.Parallel()
 
-	features := map[string]runtimebinding.Feature{
+	features := map[string]protocol.FeatureCapability{
 		protocol.FeatureGoals:       {},
 		protocol.FeatureSkills:      {},
 		protocol.FeatureMCP:         {},
@@ -174,7 +173,7 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		protocol.FeatureAgentMemory: {},
 		protocol.FeatureKnowledge:   {},
 	}
-	profile := runtimebinding.Profile{Features: features}
+	profile := terminalProfileWithFeatures(t, features)
 	application := &app{
 		runtimeProfile: &profile,
 		goals:          new(goalServiceStub),
@@ -199,6 +198,7 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		capability := features[feature]
 		capability.Enabled = true
 		features[feature] = capability
+		profile = terminalProfileWithFeatures(t, features)
 		if availability := check(application); !availability.Enabled {
 			t.Errorf("enabled %s availability = %+v", feature, availability)
 		}
@@ -215,9 +215,9 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 func TestMessageCapabilitiesRejectImagesOnlyWhenMultimodalWasNotNegotiated(t *testing.T) {
 	t.Parallel()
 
-	application := &app{runtimeProfile: &runtimebinding.Profile{Features: map[string]runtimebinding.Feature{
+	application := &app{runtimeProfile: new(terminalProfileWithFeatures(t, map[string]protocol.FeatureCapability{
 		protocol.FeatureMultimodal: {Enabled: false},
-	}}}
+	}))}
 	text := agent.Message{Attachments: []agent.Attachment{{Kind: protocol.ContentBlockText}}}
 	if err := application.validateMessageCapabilities(text); err != nil {
 		t.Fatalf("text attachment: %v", err)

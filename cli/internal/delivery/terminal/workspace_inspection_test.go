@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
@@ -579,7 +578,7 @@ func TestWorkspaceMonitorWatchesAuthoredResourcesWithoutGitProjection(t *testing
 func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 	t.Parallel()
 
-	features := map[string]runtimebinding.Feature{
+	features := map[string]protocol.FeatureCapability{
 		protocol.FeaturePlan:      {},
 		protocol.FeatureGoals:     {},
 		protocol.FeatureSkills:    {},
@@ -587,7 +586,7 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 		protocol.FeatureSchedules: {},
 		protocol.FeatureKnowledge: {},
 	}
-	profile := runtimebinding.Profile{Features: features}
+	profile := terminalProfileWithFeatures(t, features)
 	application := &app{
 		runtimeProfile: &profile,
 		goals:          new(goalServiceStub),
@@ -605,6 +604,7 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 		capability.Enabled = true
 		features[feature] = capability
 	}
+	profile = terminalProfileWithFeatures(t, features)
 	want := runtimeResourceObservation{
 		plan: true, goals: true, skills: true, mcp: true, schedules: true, knowledge: true, hooks: true,
 		models: true, approvals: true,

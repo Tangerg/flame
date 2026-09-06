@@ -73,11 +73,11 @@ func (r runtimeProvider) Open(cmd *cobra.Command) (Runtime, *runtimebinding.Prof
 		return nil, nil, errors.New("runtime factory returned no agent runtime")
 	}
 	if profile != nil {
-		cloned := profile.Clone()
-		if err := cloned.Validate(); err != nil {
+		value := *profile
+		if err := value.Validate(); err != nil {
 			return nil, nil, err
 		}
-		profile = &cloned
+		profile = &value
 	}
 	return runtime, profile, nil
 }

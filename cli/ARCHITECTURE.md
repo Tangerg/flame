@@ -39,6 +39,8 @@ The production process opens at most one concrete Runtime, fans its binding adap
 
 `runtimebinding.Connection` owns binding lifecycle, capability negotiation, exact protocol translation, and safe error classification. It does not own product state. The adapter preserves exact provider/model identity and never stores credentials in CLI state, history, frames, errors, or logs.
 
+Its immutable `Profile` retains the validated `protocol.DiscoverResponse` and client capability declaration. Runtime owns the wire constraints and feature-negotiation rule; CLI adds only its supported-surface checks and local command-replay policy. Readers receive owned protocol values. `runtime info --json` publishes these values under `discovery` and `clientCapabilities`, using the Runtime field names and limit representations directly.
+
 The terminal model catalog aggregates Runtime's per-provider discovery results. A provider discovery failure remains visible beside successfully discovered models; the CLI never invents fallback models. Cancellation, Runtime closure, and invalid protocol responses abort the aggregate read.
 
 ## Commands

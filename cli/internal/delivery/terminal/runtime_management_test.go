@@ -118,52 +118,56 @@ func TestParseModelRoleUsesRoleSpecificUnconfiguredIntent(t *testing.T) {
 }
 
 func TestRuntimeStatusConsumesTheNegotiatedDiscoveryProfile(t *testing.T) {
-	profile := runtimebinding.Profile{
-		Protocol:  runtimebinding.Protocol{Version: "2.0"},
-		Server:    runtimebinding.Server{Name: "flame-runtime", Version: "1.2.3", DefaultWorkspace: "/workspace", Home: "/home/test"},
-		RunEvents: []protocol.StreamEventType{protocol.StreamSegmentStarted}, RuntimeTopics: []protocol.RuntimeTopic{protocol.TopicFilesChanged},
-		StreamingMethods: []string{"runs.start"},
-		Features: map[string]runtimebinding.Feature{
-			protocol.FeatureMCP: {Enabled: true},
-		},
-		Limits: runtimebinding.Limits{
-			RunConcurrency:                   boundedRunConcurrency(t, 4),
-			CommandReplay:                    testCommandReplay(t, "idp_test", 10*time.Minute),
-			RunReplay:                        protocol.RunReplayLimits{Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1024, MaxBytes: 1 << 20},
-			MCPAuthorizationRetentionSeconds: 600,
-			RuntimeSubscription:              protocol.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
-		},
-	}
+	profile := terminalProfile(t, func(discovery *protocol.DiscoverResponse, _ *protocol.ClientCapabilities) {
+		discovery.Capabilities.RuntimeTopics = []protocol.RuntimeTopic{protocol.TopicFilesChanged}
+		discovery.Capabilities.Features[protocol.FeatureMCP] = protocol.FeatureCapability{Enabled: true}
+	})
 	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), RuntimeProfile: &profile})
 	host.Shows(t, "Ask flame")
 	host.Type("/status")
 	host.Press(input.Enter)
 	for _, want := range []string{
-		"flame-runtime 1.2.3", "protocol: 2.0", "default workspace: /workspace", "available features: mcp",
+		"flame-runtime 1.2.3", "protocol: " + protocol.ProtocolVersion, "default workspace: /workspace", "available features: mcp",
 		"run concurrency: at most 4 runs", "run replay: 1024 events / 1 MiB", "command replay retention: 10m",
-		"runtime subscriptions: 16 topics / 32 watches", "1 run events / 1 topics / 1 streaming methods",
+		"runtime subscriptions: 16 topics / 32 watches", "7 run events / 1 topics / 3 streaming methods",
 	} {
 		host.Shows(t, want)
 	}
 	stop()
 }
 
-func boundedRunConcurrency(t *testing.T, maximum int) runtimebinding.RunConcurrencyLimit {
+func terminalProfile(t *testing.T, edits ...func(*protocol.DiscoverResponse, *protocol.ClientCapabilities)) runtimebinding.Profile {
 	t.Helper()
-	limit, err := runtimebinding.NewBoundedRunConcurrencyLimit(maximum)
+	discovery := runtimefixture.Discovery()
+	client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{}}
+	for _, edit := range edits {
+		edit(discovery, client)
+	}
+	profile, err := runtimebinding.NewProfile(discovery, client)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return limit
+	return profile
 }
 
-func testCommandReplay(t *testing.T, namespace string, retention time.Duration) commandreplay.Capability {
+func terminalProfileWithFeatures(t *testing.T, features map[string]protocol.FeatureCapability) runtimebinding.Profile {
 	t.Helper()
-	capability, err := commandreplay.NewCapability(namespace, retention)
+	return terminalProfile(t, func(discovery *protocol.DiscoverResponse, _ *protocol.ClientCapabilities) {
+		discovery.Capabilities.Features = features
+	})
+}
+
+func profileWithReplay(t *testing.T, profile runtimebinding.Profile, namespace string, retention time.Duration) runtimebinding.Profile {
+	t.Helper()
+	discovery := profile.Discovery()
+	discovery.Capabilities.Limits.Idempotency = protocol.IdempotencyLimits{
+		Namespace: namespace, RetentionSeconds: int(retention / time.Second),
+	}
+	updated, err := runtimebinding.NewProfile(&discovery, profile.ClientCapabilities())
 	if err != nil {
 		t.Fatal(err)
 	}
-	return capability
+	return updated
 }
 
 func protectedCommandReplayGuard(t *testing.T, namespace string, until time.Time) commandreplay.Guard {

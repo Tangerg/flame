@@ -668,8 +668,9 @@ func TestOwnerOpensOnceAndRefusesReopenAfterClose(t *testing.T) {
 	}
 	firstProfile := first.Profile()
 	secondProfile := second.Profile()
-	firstProfile.RuntimeTopics[0] = "mutated"
-	if secondProfile.RuntimeTopics[0] == "mutated" {
+	firstDiscovery := firstProfile.Discovery()
+	firstDiscovery.Capabilities.RuntimeTopics[0] = "mutated"
+	if secondProfile.Discovery().Capabilities.RuntimeTopics[0] == "mutated" {
 		t.Fatal("owner leaked mutable profile state")
 	}
 	if first.AgentMemory() == nil || first.Knowledge() == nil ||

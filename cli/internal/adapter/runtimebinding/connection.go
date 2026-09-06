@@ -9,7 +9,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -144,7 +143,7 @@ func openConnection(ctx context.Context, cfg Config) (*Connection, error) {
 	}
 	discovery, err := connection.discovery.Discover(ctx, connection.callOptions())
 	if err == nil {
-		connection.profile, err = projectRuntimeProfile(discovery, connection.meta.ClientCapabilities)
+		connection.profile, err = NewProfile(discovery, connection.meta.ClientCapabilities)
 	}
 	if err != nil {
 		return connection, classifyError(err)
@@ -179,7 +178,7 @@ func (r *Connection) commandOptions() (flameruntime.CommandOptions, error) {
 	}
 	return flameruntime.CommandOptions{
 		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: key,
-		IdempotencyNamespace: r.profile.Limits.CommandReplay.Namespace(),
+		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
 	}, nil
 }
 
@@ -192,7 +191,7 @@ func (r *Connection) commandOptionsFor(commandID agent.CommandID) (flameruntime.
 	}
 	return flameruntime.CommandOptions{
 		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: string(commandID),
-		IdempotencyNamespace: r.profile.Limits.CommandReplay.Namespace(),
+		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
 	}, nil
 }
 
@@ -203,7 +202,7 @@ func (r *Connection) runCommandOptions() (flameruntime.RunCommandOptions, error)
 	}
 	return flameruntime.RunCommandOptions{
 		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: key,
-		IdempotencyNamespace: r.profile.Limits.CommandReplay.Namespace(),
+		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
 	}, nil
 }
 
@@ -216,7 +215,7 @@ func (r *Connection) runCommandOptionsFor(commandID agent.CommandID) (flamerunti
 	}
 	return flameruntime.RunCommandOptions{
 		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: string(commandID),
-		IdempotencyNamespace: r.profile.Limits.CommandReplay.Namespace(),
+		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
 	}, nil
 }
 
@@ -247,14 +246,7 @@ func cloneRequestMeta(meta protocol.RequestMeta) protocol.RequestMeta {
 	if meta.ClientInfo != nil {
 		cloned.ClientInfo = new(*meta.ClientInfo)
 	}
-	if meta.ClientCapabilities != nil {
-		capabilities := *meta.ClientCapabilities
-		capabilities.Features = make(map[string]protocol.FeaturePreference, len(meta.ClientCapabilities.Features))
-		maps.Copy(capabilities.Features, meta.ClientCapabilities.Features)
-		capabilities.InterruptTypes = slices.Clone(meta.ClientCapabilities.InterruptTypes)
-		capabilities.ExcludedEphemeralEvents = slices.Clone(meta.ClientCapabilities.ExcludedEphemeralEvents)
-		cloned.ClientCapabilities = &capabilities
-	}
+	cloned.ClientCapabilities = cloneClientCapabilities(meta.ClientCapabilities)
 	return cloned
 }
 
@@ -365,7 +357,7 @@ func (o *Owner) rejectOpen(opened *Connection, openErr error) error {
 }
 
 // Profile returns the immutable discovery projection for this connection.
-func (r *Connection) Profile() Profile { return r.profile.Clone() }
+func (r *Connection) Profile() Profile { return r.profile }
 
 func (r *Connection) AgentMemory() *AgentMemory {
 	if !r.supportsFeature(protocol.FeatureAgentMemory) {

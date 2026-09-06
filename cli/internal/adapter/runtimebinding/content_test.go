@@ -27,9 +27,9 @@ func TestProjectInputReadsTypedAttachmentsAtDispatch(t *testing.T) {
 	}
 	runtime := &Connection{
 		loadAttachment: loadAttachmentFile,
-		profile: Profile{Features: map[string]Feature{
+		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
 			protocol.FeatureMultimodal: {Enabled: true},
-		}},
+		}),
 	}
 	blocks, err := runtime.projectInput(t.Context(), agent.Message{
 		Text: "prompt",

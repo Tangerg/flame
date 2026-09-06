@@ -54,11 +54,11 @@ func TestRunCatalogMapsQueriesAndProjectsPages(t *testing.T) {
 	}
 	runtime := &Connection{
 		runCatalog: stub, meta: requestMeta("test"),
-		profile: Profile{Features: map[string]Feature{
+		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
 			protocol.FeatureSubagents: {
-				Enabled: true, ClientOptIn: true, ClientRequested: true,
+				Enabled: true, ClientOptIn: true,
 			},
-		}},
+		}),
 	}
 	got, err := runtime.GetRun(t.Context(), "run_1")
 	if err != nil || got.ID != "run_1" || got.Outcome.Status != agent.OutcomeCompleted {

@@ -871,8 +871,8 @@ func stageDispatchingRun(t *testing.T, store *workbench.Store, command agent.Sta
 func TestCommandReplayGuaranteeExpiresAtItsDeadline(t *testing.T) {
 	deadline := time.Date(2026, 8, 13, 10, 1, 0, 0, time.UTC)
 	profile := steerReplayTestProfile(t, "/workspace")
-	profile.Limits.CommandReplay = testCommandReplay(t, "runtime-a", 10*time.Minute)
-	guard := protectedCommandReplayGuard(t, "runtime-a", deadline)
+	profile = profileWithReplay(t, profile, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 10*time.Minute)
+	guard := protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", deadline)
 	if commandReplaySafeAt(guard, &profile, deadline) {
 		t.Fatal("run command replay remained safe at its retention deadline")
 	}
@@ -881,16 +881,18 @@ func TestCommandReplayGuaranteeExpiresAtItsDeadline(t *testing.T) {
 func TestRecoveredStartStopsBeforeRetryingOutsideItsReplayStore(t *testing.T) {
 	base := runtimefixture.New()
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
-	profile.Limits.CommandReplay = testCommandReplay(t, "runtime-a", 10*time.Minute)
+	profile = profileWithReplay(t, profile, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 10*time.Minute)
 	runtime := &replayingStartRuntime{Runtime: base}
-	runtime.afterFirst = func() { profile.Limits.CommandReplay = testCommandReplay(t, "runtime-b", 10*time.Minute) }
+	runtime.afterFirst = func() {
+		profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
+	}
 	command := agent.StartRun{
 		CommandID: "cli_cccccccccccccccccccccccccccccccc", SessionID: "ses_demo_1",
 		Message: agent.Message{Text: "do not replay outside the owning store"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
 	}
 	_, err := openStartRunWithBackoff(
 		t.Context(), runtime, command,
-		protectedCommandReplayGuard(t, "runtime-a", time.Now().UTC().Add(time.Hour)),
+		protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Now().UTC().Add(time.Hour)),
 		&profile, runtimeRecoveryBackoff,
 	)
 	if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
@@ -922,7 +924,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 				}
 				if err := store.MarkPendingRunDispatching(
 					command.SessionID, command.CommandID,
-					protectedCommandReplayGuard(t, "runtime-a", time.Now().UTC().Add(time.Hour)),
+					protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Now().UTC().Add(time.Hour)),
 				); err != nil {
 					t.Fatal(err)
 				}
@@ -944,7 +946,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 						}},
 					},
 					Interactions: []agent.Interaction{approval},
-					Replay:       protectedCommandReplayGuard(t, "runtime-a", time.Now().UTC().Add(time.Hour)),
+					Replay:       protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Now().UTC().Add(time.Hour)),
 				}
 				if err := store.StagePendingResume("ses_demo_1", pending); err != nil {
 					t.Fatal(err)
@@ -963,7 +965,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 			base := runtimefixture.New()
 			runtime := &recordingRuntime{Runtime: base}
 			profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
-			profile.Limits.CommandReplay = testCommandReplay(t, "runtime-b", 10*time.Minute)
+			profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
 			host, stop := runUIFromConfig(t, Config{Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
 				Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory,
 			})

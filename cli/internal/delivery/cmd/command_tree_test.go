@@ -739,10 +739,11 @@ func TestSessionUpdateRejectsWorkspaceBeforeCallingAnUnnegotiatedRuntime(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	profile := commandRuntimeProfile(t)
-	profile.Features[protocol.FeatureRelocate] = runtimebinding.Feature{}
+	profile := commandRuntimeProfile(t, func(discovery *protocol.DiscoverResponse, client *protocol.ClientCapabilities) {
+		discovery.Capabilities.Features[protocol.FeatureRelocate] = protocol.FeatureCapability{}
+	})
 	provider := runtimeProvider{open: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
-		return base, new(profile.Clone()), nil
+		return base, new(profile), nil
 	}}
 	command := newSessionsUpdateCommand(provider)
 	command.SetOut(&strings.Builder{})

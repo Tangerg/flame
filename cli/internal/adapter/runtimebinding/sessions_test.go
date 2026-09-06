@@ -283,9 +283,9 @@ func TestUpdateSessionProjectsEveryWritableField(t *testing.T) {
 			Availability: protocol.WorkspaceAvailable,
 		}},
 		meta: requestMeta("test"),
-		profile: Profile{Features: map[string]Feature{
+		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
 			protocol.FeatureRelocate: {Enabled: true},
-		}},
+		}),
 	}
 	updated, err := runtime.UpdateSession(t.Context(), agent.UpdateSession{
 		SessionID: "ses_1", Title: &title, Workspace: &workspace, Model: &model,
@@ -357,9 +357,9 @@ func TestUpdateSessionRejectsAcknowledgementsThatDidNotApplyTheMutation(t *testi
 					Availability: protocol.WorkspaceAvailable,
 				}},
 				meta: requestMeta("test"),
-				profile: Profile{Features: map[string]Feature{
+				profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
 					protocol.FeatureRelocate: {Enabled: true},
-				}},
+				}),
 			}
 			_, err := runtime.UpdateSession(t.Context(), request)
 			requireRuntimeContractViolation(t, err)
@@ -401,9 +401,9 @@ func TestSessionMutationsUseResolvedWorkspaceIdentity(t *testing.T) {
 	}
 	runtime := &Connection{
 		sessionCatalog: catalog, workspaces: resolved, meta: requestMeta("test"),
-		profile: Profile{Features: map[string]Feature{
+		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
 			protocol.FeatureRelocate: {Enabled: true},
-		}},
+		}),
 	}
 	if _, err := runtime.CreateSession(t.Context(), agent.CreateSession{
 		Title: result.Title, Workspace: requested,
@@ -500,7 +500,7 @@ func (s sessionCatalogStub) DeleteSession(_ context.Context, request protocol.De
 func TestDeleteSessionUsesTheDurableMutationIdentity(t *testing.T) {
 	t.Parallel()
 	commandID := agent.CommandID("cli_11111111111111111111111111111111")
-	const namespace = "idp_test"
+	const namespace = compatibleReplayNamespace
 	called := false
 	runtime := &Connection{sessionCatalog: sessionCatalogStub{delete: func(request protocol.DeleteSessionRequest, options flameruntime.CommandOptions) error {
 		called = true
@@ -509,9 +509,7 @@ func TestDeleteSessionUsesTheDurableMutationIdentity(t *testing.T) {
 			t.Fatalf("delete request = %+v, options = %+v", request, options)
 		}
 		return nil
-	}}, meta: requestMeta("test"), profile: Profile{
-		Limits: Limits{CommandReplay: testCommandReplay(t, namespace)},
-	}}
+	}}, meta: requestMeta("test"), profile: profileWithReplayNamespace(t, namespace)}
 	if err := runtime.DeleteSession(t.Context(), agent.DeleteSession{CommandID: commandID, SessionID: "ses_1"}); err != nil {
 		t.Fatal(err)
 	}

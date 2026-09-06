@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
@@ -40,16 +39,16 @@ func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 		{
 			name: "JSON", args: []string{"runtime", "info", "--json"},
 			check: func(t *testing.T, output string) {
-				if !strings.Contains(output, `"runConcurrency":{"type":"bounded","maximum":4}`) {
-					t.Fatalf("runtime profile JSON omitted the explicit concurrency policy: %s", output)
+				var decoded struct {
+					Discovery          protocol.DiscoverResponse    `json:"discovery"`
+					ClientCapabilities *protocol.ClientCapabilities `json:"clientCapabilities"`
 				}
-				var decoded runtimebinding.Profile
 				if err := json.Unmarshal([]byte(output), &decoded); err != nil {
 					t.Fatal(err)
 				}
-				if decoded.Server != profile.Server || len(decoded.Features) != len(profile.Features) ||
-					decoded.Limits.CommandReplay != profile.Limits.CommandReplay || decoded.Limits.RunReplay.MaxBytes != 1<<20 {
-					t.Fatalf("runtime profile JSON = %+v", decoded)
+				if !reflect.DeepEqual(decoded.Discovery, profile.Discovery()) ||
+					!reflect.DeepEqual(decoded.ClientCapabilities, profile.ClientCapabilities()) {
+					t.Fatalf("runtime info changed negotiated protocol values: %+v", decoded)
 				}
 			},
 		},
@@ -58,7 +57,7 @@ func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 			t.Parallel()
 			var output bytes.Buffer
 			root := NewRoot(Dependencies{OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
-				return runtimefixture.New(), new(profile.Clone()), nil
+				return runtimefixture.New(), new(profile), nil
 			}})
 			root.SetOut(&output)
 			root.SetErr(&output)
@@ -71,31 +70,21 @@ func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 	}
 }
 
-func commandRuntimeProfile(t *testing.T) runtimebinding.Profile {
+func commandRuntimeProfile(t *testing.T, edits ...func(*protocol.DiscoverResponse, *protocol.ClientCapabilities)) runtimebinding.Profile {
 	t.Helper()
-	concurrency, err := runtimebinding.NewBoundedRunConcurrencyLimit(4)
+	discovery := runtimefixture.Discovery()
+	discovery.Capabilities.Features[protocol.FeatureMCP] = protocol.FeatureCapability{
+		Enabled: true, ClientOptIn: true, RequiredByRunProtocol: true,
+	}
+	client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{
+		protocol.FeatureMCP: {Enabled: true},
+	}}
+	for _, edit := range edits {
+		edit(discovery, client)
+	}
+	profile, err := runtimebinding.NewProfile(discovery, client)
 	if err != nil {
 		t.Fatal(err)
 	}
-	commandReplay, err := commandreplay.NewCapability("idp_test", 10*time.Minute)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return runtimebinding.Profile{
-		Protocol:  runtimebinding.Protocol{Version: "2.0"},
-		Server:    runtimebinding.Server{Name: "flame-runtime", Version: "1.2.3", DefaultWorkspace: "/workspace", Home: "/home/test"},
-		RunEvents: []protocol.StreamEventType{protocol.StreamSegmentStarted}, RuntimeTopics: []protocol.RuntimeTopic{protocol.TopicFilesChanged},
-		StreamingMethods: []string{"runs.start"},
-		Features: map[string]runtimebinding.Feature{
-			"mcp": {
-				Enabled: true, ClientOptIn: true, ClientRequested: true, RequiredByRunProtocol: true,
-			},
-		},
-		Limits: runtimebinding.Limits{
-			RunConcurrency: concurrency, CommandReplay: commandReplay,
-			RunReplay:                        protocol.RunReplayLimits{Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1024, MaxBytes: 1 << 20},
-			MCPAuthorizationRetentionSeconds: 600,
-			RuntimeSubscription:              protocol.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32},
-		},
-	}
+	return profile
 }

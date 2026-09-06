@@ -55,15 +55,13 @@ func snapshotSession(revision uint64) *protocol.Session {
 	}
 }
 
-func snapshotProfile(features ...string) Profile {
-	profile := Profile{Features: make(map[string]Feature)}
+func snapshotProfile(t *testing.T, features ...string) Profile {
+	t.Helper()
+	advertised := make(map[string]protocol.FeatureCapability, len(features))
 	for _, feature := range features {
-		profile.Features[feature] = Feature{
-			Enabled: true, ClientOptIn: feature == protocol.FeatureSubagents,
-			ClientRequested: feature == protocol.FeatureSubagents,
-		}
+		advertised[feature] = protocol.FeatureCapability{Enabled: true, ClientOptIn: feature == protocol.FeatureSubagents}
 	}
-	return profile
+	return profileWithFeatures(t, advertised)
 }
 
 func TestSessionMaterialSnapshotFollowsTheNegotiatedTopology(t *testing.T) {
@@ -72,9 +70,9 @@ func TestSessionMaterialSnapshotFollowsTheNegotiatedTopology(t *testing.T) {
 			stub := &snapshotBindingStub{
 				sessions: []*protocol.Session{snapshotSession(1)}, snapshot: &protocol.SessionSnapshot{},
 			}
-			profile := snapshotProfile()
+			profile := snapshotProfile(t)
 			if enabled {
-				profile = snapshotProfile(protocol.FeatureSubagents)
+				profile = snapshotProfile(t, protocol.FeatureSubagents)
 			}
 			runtime := &Connection{snapshot: stub, profile: profile, meta: requestMeta("test")}
 			if _, err := runtime.GetSession(t.Context(), "ses_1"); err != nil {
@@ -122,13 +120,13 @@ func TestSessionMaterialSnapshotEnforcesThePublishedPlanShape(t *testing.T) {
 		plan    *protocol.Plan
 		wantErr bool
 	}{
-		{name: "disabled and absent", profile: snapshotProfile()},
-		{name: "disabled but present", profile: snapshotProfile(), plan: &protocol.Plan{}, wantErr: true},
+		{name: "disabled and absent", profile: snapshotProfile(t)},
+		{name: "disabled but present", profile: snapshotProfile(t), plan: &protocol.Plan{}, wantErr: true},
 		{
-			name: "enabled and present", profile: snapshotProfile(protocol.FeaturePlan),
+			name: "enabled and present", profile: snapshotProfile(t, protocol.FeaturePlan),
 			plan: &protocol.Plan{SessionID: "ses_1"},
 		},
-		{name: "enabled but absent", profile: snapshotProfile(protocol.FeaturePlan), wantErr: true},
+		{name: "enabled but absent", profile: snapshotProfile(t, protocol.FeaturePlan), wantErr: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -149,7 +147,7 @@ func TestSessionMaterialSnapshotPreservesTheGoalProjection(t *testing.T) {
 		snapshot: &protocol.SessionSnapshot{Goal: goal},
 	}
 	runtime := &Connection{
-		snapshot: stub, profile: snapshotProfile(protocol.FeatureGoals), meta: requestMeta("test"),
+		snapshot: stub, profile: snapshotProfile(t, protocol.FeatureGoals), meta: requestMeta("test"),
 	}
 
 	snapshot, err := runtime.GetSession(t.Context(), "ses_1")
@@ -161,7 +159,7 @@ func TestSessionMaterialSnapshotPreservesTheGoalProjection(t *testing.T) {
 		t.Fatalf("projected Goal = %+v, want %q", snapshot.Goal, goal.Objective)
 	}
 
-	runtime.profile = snapshotProfile()
+	runtime.profile = snapshotProfile(t)
 	if _, err := runtime.readMaterialSnapshot(t.Context(), protocol.GetSessionSnapshotRequest{SessionID: "ses_1"}); err == nil {
 		t.Fatal("accepted a Goal from a Runtime profile without Goal support")
 	}

@@ -127,13 +127,14 @@ func TestRunsListRejectsAnInvalidStatusBeforeOpeningTheRuntime(t *testing.T) {
 
 func TestRunsListRejectsDescendantsBeforeCallingAnUnnegotiatedRuntime(t *testing.T) {
 	t.Parallel()
-	profile := commandRuntimeProfile(t)
-	profile.Features[protocol.FeatureSubagents] = runtimebinding.Feature{
-		ClientOptIn: true,
-	}
+	profile := commandRuntimeProfile(t, func(discovery *protocol.DiscoverResponse, client *protocol.ClientCapabilities) {
+		discovery.Capabilities.Features[protocol.FeatureSubagents] = protocol.FeatureCapability{
+			ClientOptIn: true,
+		}
+	})
 	runtime := &recordingRunCatalog{Runtime: instantRuntime()}
 	provider := runtimeProvider{open: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
-		return runtime, new(profile.Clone()), nil
+		return runtime, new(profile), nil
 	}}
 	command := newRunsListCommand(provider)
 	command.SetOut(&strings.Builder{})
@@ -319,13 +320,14 @@ func TestRunIDCompletionIncludesDescendants(t *testing.T) {
 
 func TestRunIDCompletionFallsBackToRootsWithoutSubagents(t *testing.T) {
 	t.Parallel()
-	profile := commandRuntimeProfile(t)
-	profile.Features[protocol.FeatureSubagents] = runtimebinding.Feature{
-		ClientOptIn: true,
-	}
+	profile := commandRuntimeProfile(t, func(discovery *protocol.DiscoverResponse, client *protocol.ClientCapabilities) {
+		discovery.Capabilities.Features[protocol.FeatureSubagents] = protocol.FeatureCapability{
+			ClientOptIn: true,
+		}
+	})
 	runtime := &recordingRunCatalog{Runtime: instantRuntime()}
 	provider := runtimeProvider{open: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
-		return runtime, new(profile.Clone()), nil
+		return runtime, new(profile), nil
 	}}
 	command := newRunsShowCommand(provider)
 	command.SetContext(t.Context())
