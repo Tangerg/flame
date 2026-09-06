@@ -135,7 +135,6 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
             aria-pressed={wrapCode}
             onClick={toggleCodeWrapPreference}
             title={t(wrapCode ? "message.code.wrap.disable" : "message.code.wrap.enable")}
-            className="text-fg-faint hover:bg-hover hover:text-fg"
           />
         )}
         <IconButton
@@ -145,7 +144,6 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
           onClick={() => void copy()}
           title={copied ? t("message.code.copied") : t("message.code.copy")}
           className={cn(
-            copied ? "text-success" : "text-fg-faint hover:bg-hover hover:text-fg",
             isPreview && cn("transition-opacity", stylex.props(reveal.shown).className),
           )}
         />

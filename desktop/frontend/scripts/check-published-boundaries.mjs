@@ -114,6 +114,7 @@ function reportDuplicateVocabulary() {
 
   for (const use of inlineUnions) {
     if (isWire(use.rel)) continue;
+    if (isStepLadder(use.key)) continue;
     for (const owner of byKey.get(use.key) ?? []) {
       if (isWire(owner.rel)) continue;
       if (boundedContext(owner.rel) !== boundedContext(use.rel) && !isShared(owner.rel)) continue;

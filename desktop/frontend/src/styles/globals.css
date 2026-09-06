@@ -386,6 +386,9 @@
   --control-height-sm: 26px;
   --control-height-md: 30px;
   --control-height-lg: 34px;
+  /* One step past the chrome ladder, for a control laid over an image: it is read at arm's
+     length against a photograph rather than inside a dense row. */
+  --control-height-xl: 40px;
   --field-height-sm: 26px;
   --field-height-md: 28px;
   --field-height-lg: 32px;

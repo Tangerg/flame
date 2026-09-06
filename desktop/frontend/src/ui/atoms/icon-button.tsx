@@ -5,10 +5,10 @@ import { Button, type ButtonProps } from "./button";
 import { GlyphSwap } from "./glyph-swap";
 import { Tooltip } from "./tooltip";
 
-interface IconButtonProps extends Omit<ButtonProps, "children" | "variant" | "size"> {
+interface IconButtonProps extends Omit<ButtonProps, "children" | "size"> {
   icon: IconName;
   hoverIcon?: IconName;
-  size?: "xs" | "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   iconSize?: IconSize;
   active?: boolean;
   quiet?: boolean;
@@ -16,12 +16,25 @@ interface IconButtonProps extends Omit<ButtonProps, "children" | "variant" | "si
   badge?: string | number;
 }
 
-const BOX = { xs: "icon-xs", sm: "icon-sm", md: "icon-md", lg: "icon-lg" } as const;
-const ICON_SIZE: Record<keyof typeof BOX, IconSize> = { xs: "xs", sm: "sm", md: "md", lg: "md" };
+const BOX = {
+  xs: "icon-xs",
+  sm: "icon-sm",
+  md: "icon-md",
+  lg: "icon-lg",
+  xl: "icon-xl",
+} as const;
+const ICON_SIZE: Record<keyof typeof BOX, IconSize> = {
+  xs: "xs",
+  sm: "sm",
+  md: "md",
+  lg: "md",
+  xl: "md",
+};
 
 export function IconButton({
   icon,
   hoverIcon,
+  variant = "ghost",
   size = "md",
   iconSize = ICON_SIZE[size],
   active,
@@ -36,7 +49,7 @@ export function IconButton({
       <Button
         {...props}
         aria-label={props["aria-label"] ?? title}
-        variant="ghost"
+        variant={variant}
         size={BOX[size]}
         data-active={active ? "" : undefined}
         className={cn(

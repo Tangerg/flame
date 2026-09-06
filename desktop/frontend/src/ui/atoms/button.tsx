@@ -14,9 +14,13 @@ export const buttonStyles = cva(
   ].join(" "),
   {
     variants: {
+      // Ink, for a control whose colour reports a state rather than an emphasis: a copy that
+      // just succeeded, a schedule that will delete something. `tonal` reads it as a fill.
       tone: {
         negative: "",
         warning: "",
+        accent: "",
+        success: "",
       },
       size: {
         xs: "h-[var(--control-height-xs)] rounded-[var(--button-radius)] px-[7px] text-ui-sm",
@@ -34,11 +38,17 @@ export const buttonStyles = cva(
           "h-[var(--control-height-md)] w-[var(--control-height-md)] rounded-[var(--button-radius)] p-0",
         "icon-lg":
           "h-[var(--control-height-lg)] w-[var(--control-height-lg)] rounded-[var(--button-radius)] p-0",
+        // The ladder's last step, which only a control laid over an image reaches: it is read
+        // against a photograph rather than inside a dense row.
+        "icon-xl":
+          "h-[var(--control-height-xl)] w-[var(--control-height-xl)] rounded-[var(--button-radius)] p-0",
       },
       press: {
         true: "active:scale-[var(--press-scale)]",
         false: "",
       },
+      /** A round button, for the places a square one would read as a plate. */
+      round: { true: "rounded-full", false: "" },
       // Two buttons acting as one control: the primary action and the menu that qualifies it.
       // The seam is a hairline drawn by the trailing half rather than a border, because a
       // border would land outside the fill and read as an outline around the pair. The 1px
@@ -60,6 +70,15 @@ export const buttonStyles = cva(
         outline: "border-field bg-transparent text-fg-soft hover:bg-hover hover:text-fg",
         primary: "bg-cta text-cta-text hover:bg-cta-hover",
         danger: "bg-transparent text-negative hover:bg-negative-wash",
+        // Laid over an image: the ink is the one that survives any photograph, and the fill is
+        // the scrim that makes it legible. `mediaTray` is the same control inside a tray that
+        // already carries the scrim, so it only takes one on hover.
+        media: "bg-media-scrim text-on-media hover:bg-media-scrim",
+        mediaTray: "bg-transparent text-on-media hover:bg-media-scrim",
+        // Floating above the stream rather than sitting in it, so it carries a cast the flat
+        // variants never do.
+        raised:
+          "border-0 bg-canvas text-fg-soft shadow-[var(--shadow-raised)] hover:bg-surface-2 hover:text-fg",
         tonal: "font-semibold",
         // A control that reads as prose: it sits inside a sentence, wraps with it, and says
         // it can be opened with a dotted underline rather than a plate. The hit area is a
@@ -74,6 +93,8 @@ export const buttonStyles = cva(
       },
     },
     compoundVariants: [
+      { variant: "ghost", tone: "accent", class: "text-fg hover:text-accent" },
+      { variant: "ghost", tone: "success", class: "text-success" },
       {
         variant: "tonal",
         tone: "negative",
@@ -106,6 +127,7 @@ export function Button({
   tone,
   press,
   join,
+  round,
   className,
   children,
   ref,
@@ -118,7 +140,7 @@ export function Button({
       ref={ref}
       data-slot="button"
       data-variant={resolvedVariant}
-      className={cn(buttonStyles({ variant, size, tone, press, join }), className)}
+      className={cn(buttonStyles({ variant, size, tone, press, join, round }), className)}
     >
       {children}
     </ButtonPrimitive>

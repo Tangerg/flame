@@ -7247,3 +7247,93 @@ golden 零位移；17 项 `check:*` 全绿。
 `button` 终于可以迁了 —— `chip` 已经不再需要 `group-hover:`。
 迁完 `button` 才轮得到 `icon-button`（59 个调用点，25 处 override）。
 「跟随染色」那一族（4 处 `group-hover:text-*` / `bg-*` / `scale-*`）是另一件事。
+
+---
+
+## Round 124 — `Button` 的档位补齐（引擎不动）
+
+### 计划（写在改代码之前）
+
+`chip` 迁完后 `button` 的阻塞解除了。但它不是一个孤立的文件：
+`IconButton` 包着它、`catalog-picker` 直接消费 `buttonStyles`，
+两层加起来 **93 个调用点、39 处 `className`**。
+
+**这一轮不换引擎。** 按 `tokens.stylex.ts` 里已立的原则 ——
+"Mechanical first, with rendering held still" —— 先在 cva 上把缺的档位补齐、
+把调用点清干净，让每一处改动的效果可以逐条比对；下一轮再整体迁 StyleX，
+那时每张位移的 golden 就只有一个成因。
+
+### 证据：39 处 override 分成六类
+
+| 类 | 处数 | 写的是什么 |
+| --- | --- | --- |
+| **媒体上的控件** | 7 | `bg-media-scrim text-on-media hover:bg-media-scrim`（4 处带底色，2 处只在 hover 出现 —— 后者本就坐在一条已经有 scrim 的托盘里） |
+| **墨色状态** | 5 | `text-success` ×2、`text-accent`/`text-negative`/`text-fg` ×3 |
+| **圆角** | 4 | `rounded-full` ×3、`rounded-md` ×1 |
+| **浮起的圆钮** | 1 | `JumpToBottomButton`：`bg-canvas border-0 shadow-[var(--shadow-raised)] hover:bg-surface-2` |
+| **布局 / 定位 / 动效** | 19 | `absolute …`、`shrink-0`、`animate-spin` —— 调用方的事，保留 |
+| **纯重述** | 3 | `text-fg-faint hover:bg-hover hover:text-fg` = `quiet` + `ghost` 已有的，删掉即可 |
+
+前四类是四个真实缺档；第五类保留；第六类是噪音。
+
+### 尺寸上的一处上报
+
+媒体控件都写 `size-10`（40px）。控件阶梯是
+`xs/sm/md/lg = 22/26/30/34`，**没有 40**。
+
+我起初想借 `--touch-target` 解释它 —— 查了一下那是 **44px**，对不上，
+理由不成立。40 就是这条阶梯缺的下一档：`--control-height-xl: 40px`，
+理由是"这个控件是隔着距离对着一张照片读的，不在密集行里"。
+按阶梯补档，而不是继续让调用点写 `size-10`。
+
+### 验收标准
+
+39 处 override 减到 19 处（全是布局 / 定位 / 动效）；
+golden 零位移（这一轮每个新档位都逐字复现原有 class）；17 项 `check:*` 全绿。
+
+### 结果：39 → 32，四个最大的簇清空
+
+| 新档位 | 清掉的调用点 |
+| --- | --- |
+| `variant: "media"` / `"mediaTray"` | 7 |
+| `tone: "accent"` / `"success"`（`ghost` 下读作墨色） | 5 |
+| `round` | 4 |
+| `variant: "raised"` | 1 |
+| 纯重述（`text-fg-faint hover:bg-hover hover:text-fg` = `quiet` + `ghost`） | 3 |
+
+`IconButton` 也不再硬编码 `variant="ghost"` —— 它本来就该把这一档传下去，
+否则每个想要别的变体的调用点都只能改写 class。
+
+### 一处自我更正
+
+我起初想用 `--touch-target` 解释媒体控件的 `size-10`。查了一下那是 **44px**，
+和 40px 对不上，理由不成立。40 就是控件阶梯缺的下一档，
+按 `--control-height-xl: 40px` 补，理由写在令牌旁边。
+
+### 守卫又走了一次同样的路
+
+`check:published-boundaries` 报 `IconButton` 的内联 `xs|sm|md|lg|xl`
+重述了 `IconSize`。这和第 119 轮是同一件事 —— 档位阶梯是命名约定不是词汇 ——
+但那一轮的排除只加在了"两个具名联合"那条规则上，**内联重述那条漏了**。
+补上，同样反向验证过。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650，零位移**（一次通过 —— 每个新档位逐字复现原有 class） |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+### 下一轮方向
+
+剩余 32 处里 19 处是布局 / 定位 / 动效（调用方的事，保留），
+还有第二批真实缺档，需要单独取证：
+
+- **触发器的展开态** ×2 —— `data-[popup-open]:bg-selected data-[popup-open]:text-fg`
+- **行形状的按钮** ×3 —— `w-full justify-start rounded-[var(--row-radius)] font-normal`
+- **chip 形状的触发器** ×3 —— `gap-1.5 px-2 text-ui-sm`
+- 以及 `send.tsx` 的 `ACTION`/`ACTION_OFF`/`QUIET`、`TasksPill` 的 tone 表、
+  `toolbar` 的 `disabled:opacity-25`。
+
+清完才换引擎。

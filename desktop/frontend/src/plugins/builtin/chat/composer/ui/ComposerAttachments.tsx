@@ -99,7 +99,7 @@ function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () =>
         onClick={onRemove}
         data-reveal="hover"
         className={cn(
-          "absolute right-0.5 top-0.5 rounded-full bg-media-scrim text-on-media transition-opacity",
+          "absolute right-0.5 top-0.5 transition-opacity",
           stylex.props(reveal.shown).className,
         )}
       />
@@ -136,7 +136,9 @@ function PasteChip({ paste, onRemove }: { paste: PastedText; onRemove: () => voi
           title={t("composer.paste.remove")}
           aria-label={t("composer.paste.remove")}
           onClick={onRemove}
-          className="shrink-0 rounded-full text-fg-faint hover:text-fg"
+          round
+          quiet
+          className="shrink-0"
         />
       </span>
     </Tooltip>

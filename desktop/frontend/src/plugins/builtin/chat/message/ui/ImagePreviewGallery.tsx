@@ -181,44 +181,46 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
         <div className="absolute top-3 right-3 z-1 flex items-center gap-1">
           <IconButton
             icon="download"
-            size="lg"
             title={t("message.image.download")}
             aria-busy={saving}
             disabled={saving}
             onClick={() => void saveActiveImage()}
-            className="size-10 bg-media-scrim text-on-media hover:bg-media-scrim"
+            variant="media"
+            size="xl"
           />
           <IconButton
             icon="x"
-            size="lg"
             title={t("message.image.close")}
             onClick={closePreview}
-            className="size-10 bg-media-scrim text-on-media hover:bg-media-scrim"
+            variant="media"
+            size="xl"
           />
         </div>
         {hasGallery && (
           <>
             <IconButton
               icon="chevron-left"
-              size="lg"
               title={t("message.image.previous")}
               disabled={gallery!.index === 0}
               onClick={(event) => {
                 event.stopPropagation();
                 setGalleryIndex(gallery!.index - 1);
               }}
-              className="absolute top-1/2 left-3 z-1 size-10 -translate-y-1/2 bg-media-scrim text-on-media hover:bg-media-scrim"
+              variant="media"
+              size="xl"
+              className="absolute top-1/2 left-3 z-1 -translate-y-1/2"
             />
             <IconButton
               icon="chevron-right"
-              size="lg"
               title={t("message.image.next")}
               disabled={gallery!.index === gallery!.items.length - 1}
               onClick={(event) => {
                 event.stopPropagation();
                 setGalleryIndex(gallery!.index + 1);
               }}
-              className="absolute top-1/2 right-3 z-1 size-10 -translate-y-1/2 bg-media-scrim text-on-media hover:bg-media-scrim"
+              variant="media"
+              size="xl"
+              className="absolute top-1/2 right-3 z-1 -translate-y-1/2"
             />
           </>
         )}
@@ -243,20 +245,20 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
         <div className="absolute bottom-3 left-1/2 z-1 flex -translate-x-1/2 items-center gap-1 rounded-full bg-media-scrim p-1 text-on-media shadow-[var(--shadow-floating)]">
           <IconButton
             icon="zoom-out"
-            size="lg"
             title={t("message.image.zoomOut")}
             disabled={zoomIndex === 0}
             onClick={() => setZoomIndex((current) => Math.max(0, current - 1))}
-            className="size-10 text-on-media hover:bg-media-scrim"
+            variant="mediaTray"
+            size="xl"
           />
           <span className="min-w-14 px-1 text-center font-mono text-ui-sm">{zoomPercent}%</span>
           <IconButton
             icon="zoom-in"
-            size="lg"
             title={t("message.image.zoomIn")}
             disabled={zoomIndex === ZOOM_STEPS.length - 1}
             onClick={() => setZoomIndex((current) => Math.min(ZOOM_STEPS.length - 1, current + 1))}
-            className="size-10 text-on-media hover:bg-media-scrim"
+            variant="mediaTray"
+            size="xl"
           />
         </div>
       </div>

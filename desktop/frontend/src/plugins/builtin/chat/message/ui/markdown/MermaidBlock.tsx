@@ -155,7 +155,7 @@ export function MermaidBlock({ code }: Props) {
             quiet
             onClick={() => void copy()}
             title={t(copied ? "message.mermaid.copied" : "message.mermaid.copy")}
-            className={cn(copied && "text-success")}
+            tone={copied ? "success" : undefined}
           />
         </div>
         <span className="sr-only">{t("message.mermaid.source")}</span>

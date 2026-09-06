@@ -18,7 +18,8 @@ export function MessageActionButton({ role, className, ...props }: MessageAction
       iconSize="sm"
       size="sm"
       quiet
-      className={cn(role === "user" ? "rounded-full" : "rounded-md", className)}
+      round={role === "user"}
+      className={cn(role !== "user" && "rounded-md", className)}
     />
   );
 }
