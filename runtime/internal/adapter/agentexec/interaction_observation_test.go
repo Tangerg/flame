@@ -732,6 +732,58 @@ func TestInteractionExecutorDoesNotCallToolWhenToolStartCommitFails(t *testing.T
 	assertInternalProjectionTerminal(t, events)
 }
 
+func TestInteractionExecutorStopsWhenPreparationFailureCannotCommit(t *testing.T) {
+	var toolCalls int
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "echo", Description: "Return a value.",
+	}, func(context.Context, struct{}) (string, error) {
+		toolCalls++
+		return "unexpected", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "echo", Arguments: `{}`}, 1, 1),
+		interactionUsageTextResponse("must not run", 1, 1),
+	}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer:  allowInteractionTools{},
+		ToolHooks:       failingPreparationHooks{},
+	})
+	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
+		if _, result := fact.(runs.ToolCallFinished); result {
+			return errors.New("tool result store unavailable")
+		}
+		return nil
+	})
+	if toolCalls != 0 {
+		t.Fatalf("Tool calls = %d, want 0", toolCalls)
+	}
+	model.mu.Lock()
+	remainingResponses := len(model.responses)
+	model.mu.Unlock()
+	if remainingResponses != 1 {
+		t.Fatalf("remaining model responses = %d, want no model turn after rejected preparation result", remainingResponses)
+	}
+	if len(payloadsOf[runs.UnknownEffectsDetected](events)) != 0 {
+		t.Fatalf("preparation failure became an unknown external effect: %#v", events)
+	}
+	assertInternalProjectionTerminal(t, events)
+}
+
+type failingPreparationHooks struct{}
+
+func (failingPreparationHooks) BeforeToolUse(context.Context, InteractionToolHookInput) (InteractionToolHookDecision, error) {
+	return InteractionToolHookDecision{}, errors.New("hook configuration unavailable")
+}
+
+func (failingPreparationHooks) AfterToolUse(context.Context, InteractionToolHookInput) error {
+	return nil
+}
+
 func assertInternalProjectionTerminal(t *testing.T, events []runs.ExecutorEvent) {
 	t.Helper()
 	ended := payloadsOf[runs.SegmentEnded](events)

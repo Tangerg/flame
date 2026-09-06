@@ -49,9 +49,15 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	}
 	call := invocation.ToolCall()
 	ctx = interactioninput.WithCapabilities(ctx, o.start.InterruptKinds)
-	arguments, denied, denialReason, err := o.prepare(ctx, callID, call.Name, arguments)
-	if err != nil {
-		return corechat.ToolOutput{}, err
+	effectiveArguments, denied, denialReason, prepareErr := o.prepare(ctx, callID, call.Name, arguments)
+	if prepareErr != nil {
+		// Only definite model-visible failures enter durable Tool settlement.
+		// Interaction retains ownership of input waits and uncertain effects.
+		if _, present := invocation.ModelResult(corechat.ToolOutput{}, prepareErr); !present {
+			return corechat.ToolOutput{}, prepareErr
+		}
+	} else {
+		arguments = effectiveArguments
 	}
 	rawArguments := arguments.Canonical()
 	member := o.session.executorMember(invocation.Relation())
@@ -77,9 +83,13 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	ctx = toolset.WithMutationRecorder(ctx, func(paths []string) {
 		mutatedPaths = append(mutatedPaths, paths...)
 	})
-	output, callErr := o.invoke(ctx, attempt, corechat.ToolCall{
-		ID: call.ID, Name: call.Name, Arguments: rawArguments,
-	})
+	var output corechat.ToolOutput
+	callErr := prepareErr
+	if callErr == nil {
+		output, callErr = o.invoke(ctx, attempt, corechat.ToolCall{
+			ID: call.ID, Name: call.Name, Arguments: rawArguments,
+		})
+	}
 	if attemptErr := attempt.indeterminateFailure(); attemptErr != nil {
 		return corechat.ToolOutput{}, attemptErr
 	}
@@ -123,12 +133,15 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	defer cancelProjection()
 	commitErr := o.session.commitFact(projectionCtx, member, end)
 	if commitErr != nil {
-		attempt.recordProjectionFailure(commitErr)
-		return corechat.ToolOutput{}, fmt.Errorf("agentexec: commit Tool result: %w", commitErr)
+		failure := interaction.HostFailure(fmt.Errorf("agentexec: commit Tool result: %w", commitErr))
+		attempt.recordProjectionFailure(failure)
+		return corechat.ToolOutput{}, failure
 	}
 	o.session.toolOutcomes.record(call.Name, arguments, modelOutput, callErr)
 	o.projectToolOutcome(projectionCtx, member, call.Name, callErr == nil)
-	o.runAfterToolUseHook(ctx, callID, call.Name, arguments, modelOutput, callErr)
+	if prepareErr == nil {
+		o.runAfterToolUseHook(ctx, callID, call.Name, arguments, modelOutput, callErr)
+	}
 	return modelOutput, callErr
 }
 
