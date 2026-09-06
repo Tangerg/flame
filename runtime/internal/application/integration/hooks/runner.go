@@ -80,9 +80,8 @@ type CommandRunner interface {
 type Runner struct {
 	commands CommandRunner
 	// onError, when set, is called for a hook that failed to run (spawn error,
-	// timeout, or a non-blocking non-zero exit) so the caller can record it on
-	// the Run's span (ctx carries it). nil = swallow. The hooks domain never
-	// imports OTel; observability is the caller's, via this ctx-carrying hook.
+	// timeout, or a non-blocking non-zero exit). The caller owns diagnostics;
+	// lifecycle hooks can run without an active tracing span.
 	onError func(ctx context.Context, source string, err error)
 }
 

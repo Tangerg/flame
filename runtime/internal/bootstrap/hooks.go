@@ -3,9 +3,8 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"reflect"
-
-	"go.opentelemetry.io/otel/trace"
 
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
 )
@@ -37,7 +36,7 @@ func NewHookResolver(userHome string, trust HookTrust) (*adapterhooks.Resolver, 
 			return ok, nil
 		},
 		func(ctx context.Context, source string, err error) {
-			trace.SpanFromContext(ctx).RecordError(fmt.Errorf("hook %s: %w", source, err))
+			slog.ErrorContext(ctx, "hooks: command failed", "source", source, "error", err)
 		},
 	), nil
 }

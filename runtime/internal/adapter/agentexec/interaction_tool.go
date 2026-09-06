@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"slices"
 	"strings"
-
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec/interactioninput"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -227,7 +226,9 @@ func (o *observedInteractionTool) projectToolOutcome(
 ) {
 	projected, err := o.interpreter.ProjectOutcome(ctx, o.start.SessionID, name, succeeded)
 	if err != nil {
-		trace.SpanFromContext(ctx).RecordError(fmt.Errorf("agentexec: project Tool outcome: %w", err))
+		slog.ErrorContext(ctx, "agentexec: project tool outcome failed",
+			"session.id", o.start.SessionID, "tool.name", name, "error", err,
+		)
 		return
 	}
 	if projected != nil {
@@ -254,7 +255,9 @@ func (o *observedInteractionTool) runAfterToolUseHook(
 		SessionID: o.start.SessionID, CWD: o.start.CWD, CallID: callID,
 		ToolName: name, Arguments: arguments, Result: hookToolOutput(output), CallError: callErr,
 	}); err != nil {
-		trace.SpanFromContext(hookCtx).RecordError(fmt.Errorf("agentexec: run post-Tool hook: %w", err))
+		slog.ErrorContext(hookCtx, "agentexec: post-tool hook failed",
+			"session.id", o.start.SessionID, "tool.name", name, "call.id", callID, "error", err,
+		)
 	}
 	cancel()
 }

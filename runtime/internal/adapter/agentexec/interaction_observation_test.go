@@ -1,9 +1,11 @@
 package agentexec
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"iter"
+	"log/slog"
 	"slices"
 	"strconv"
 	"strings"
@@ -637,6 +639,10 @@ func TestInteractionExecutorCommitsDeferredAdvertisementThroughAgentFramework(t 
 }
 
 func TestInteractionExecutorKeepsRefetchableProjectionAndPostHookObservational(t *testing.T) {
+	var diagnostics bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
 		Name: "observe", Description: "Return a value.",
 	}, func(context.Context, struct{}) (string, error) { return "value", nil })
@@ -666,6 +672,11 @@ func TestInteractionExecutorKeepsRefetchableProjectionAndPostHookObservational(t
 	ended := payloadsOf[runs.SegmentEnded](events)
 	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
 		t.Fatalf("terminal = %#v, want completed", ended)
+	}
+	for _, detail := range []string{"projection unavailable", "post-Tool hook unavailable", "session.id=session_1", "tool.name=observe"} {
+		if output := diagnostics.String(); !strings.Contains(output, detail) {
+			t.Fatalf("observational failure lost diagnostic %q: %s", detail, output)
+		}
 	}
 }
 

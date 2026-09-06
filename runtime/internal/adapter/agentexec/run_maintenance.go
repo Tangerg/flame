@@ -2,9 +2,7 @@ package agentexec
 
 import (
 	"context"
-	"fmt"
-
-	"go.opentelemetry.io/otel/trace"
+	"log/slog"
 )
 
 // RunMaintenance owns best-effort housekeeping after a clean Interaction but
@@ -48,8 +46,8 @@ func (i *interactionSession) maintainCompletedRoot() {
 	})
 	for _, err := range result.Errors {
 		if err != nil {
-			trace.SpanFromContext(i.lifetime.execution).RecordError(
-				fmt.Errorf("agentexec: Run maintenance: %w", err),
+			slog.ErrorContext(i.lifetime.execution, "agentexec: run maintenance failed",
+				"session.id", i.start.SessionID, "error", err,
 			)
 		}
 	}

@@ -31,27 +31,44 @@ func TestWorkingContextLifecycleHooksPreserveResolutionFailure(t *testing.T) {
 	}
 }
 
-func TestInteractionExecutorReportsNotificationFailureWithoutChangingCompletion(t *testing.T) {
-	var diagnostics bytes.Buffer
-	previousLogger := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
-	t.Cleanup(func() { slog.SetDefault(previousLogger) })
-	resolveErr := errors.New("terminal hook configuration unavailable")
-	composer := NewWorkingContextComposer(WorkingContextConfig{
-		Hooks: failingLifecycleHookResolver{err: resolveErr},
-	})
-	model := &observationScriptModel{
-		responses: []*chat.Response{interactionUsageTextResponse("done", 2, 1)},
-	}
-	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{LifecycleHooks: composer})
-	events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
-	ended := payloadsOf[runs.SegmentEnded](events)
-	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted || ended[0].Failure() != nil {
-		t.Fatalf("notification failure changed completion: %#v", ended)
-	}
-	if output := diagnostics.String(); !strings.Contains(output, resolveErr.Error()) ||
-		!strings.Contains(output, "session.id=session_1") {
-		t.Fatalf("notification failure was not reported: %s", output)
+func TestInteractionExecutorReportsBestEffortFailuresWithoutChangingCompletion(t *testing.T) {
+	wantErr := errors.New("best-effort operation failed")
+	for _, test := range []struct {
+		name   string
+		config InteractionExecutorConfig
+	}{
+		{
+			name: "terminal notification",
+			config: InteractionExecutorConfig{LifecycleHooks: NewWorkingContextComposer(WorkingContextConfig{
+				Hooks: failingLifecycleHookResolver{err: wantErr},
+			})},
+		},
+		{
+			name: "run maintenance",
+			config: InteractionExecutorConfig{Maintenance: fixedRunMaintenance{
+				result: RunMaintenanceResult{Errors: []error{wantErr}},
+			}},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var diagnostics bytes.Buffer
+			previousLogger := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+			t.Cleanup(func() { slog.SetDefault(previousLogger) })
+			model := &observationScriptModel{
+				responses: []*chat.Response{interactionUsageTextResponse("done", 2, 1)},
+			}
+			executor := newObservedTestInteractionExecutor(t, model, test.config)
+			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+			ended := payloadsOf[runs.SegmentEnded](events)
+			if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted || ended[0].Failure() != nil {
+				t.Fatalf("best-effort failure changed completion: %#v", ended)
+			}
+			if output := diagnostics.String(); !strings.Contains(output, wantErr.Error()) ||
+				!strings.Contains(output, "session.id=session_1") {
+				t.Fatalf("best-effort failure was not reported: %s", output)
+			}
+		})
 	}
 }
 
