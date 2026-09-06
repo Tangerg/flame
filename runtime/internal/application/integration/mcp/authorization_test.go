@@ -51,6 +51,63 @@ func TestAuthorizationAttemptIsCanceledWhenSuperseded(t *testing.T) {
 	}
 }
 
+func TestAuthorizationAttemptIsCanceledWhenSupersededDuringRegistryRead(t *testing.T) {
+	name := testMCPServerName("github")
+	ports := &fakePorts{
+		statuses:         []mcpserver.ConnectionStatus{{Name: name, State: mcpserver.ConnectionConnected}},
+		authorizeStarted: make(chan string, 1),
+		releaseAuthorize: make(chan struct{}),
+	}
+	cfg := configWithPorts(ports)
+	registry := &cancelableRegistryRead{
+		Registry: cfg.Registry,
+		block:    make(chan struct{}, 1),
+		started:  make(chan struct{}),
+	}
+	cfg.Registry = registry
+	c := testCoordinator(t, cfg)
+	created, err := c.CreateAuthorizationAttempt(t.Context(), name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-ports.authorizeStarted:
+	case <-time.After(time.Second):
+		t.Fatal("authorization did not start")
+	}
+	registry.block <- struct{}{}
+	close(ports.releaseAuthorize)
+	select {
+	case <-registry.started:
+	case <-time.After(time.Second):
+		t.Fatal("authorization did not reach the registry read")
+	}
+	if err := c.ReconnectServer(t.Context(), name); err != nil {
+		t.Fatal(err)
+	}
+	settled := awaitAuthorizationAttempt(t, c, created.ID)
+	if settled.Status != AuthorizationAttemptCanceled || settled.FinishedAt == nil {
+		t.Fatalf("superseded attempt = %+v, want canceled", settled)
+	}
+}
+
+type cancelableRegistryRead struct {
+	Registry
+	block   chan struct{}
+	started chan struct{}
+}
+
+func (r *cancelableRegistryRead) Get(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
+	select {
+	case <-r.block:
+		close(r.started)
+		<-ctx.Done()
+		return mcpserver.Server{}, false, ctx.Err()
+	default:
+		return r.Registry.Get(ctx, name)
+	}
+}
+
 func TestAuthorizationAttemptStoreRetainsOnlyTerminalResults(t *testing.T) {
 	now := time.Date(2026, 8, 2, 12, 0, 0, 0, time.UTC)
 	attemptID, err := ParseAuthorizationAttemptID(testAuthorizationAttemptID)

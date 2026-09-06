@@ -249,6 +249,11 @@ func (command *connectionDispatch) prepareSettled(
 }
 
 func (command *connectionDispatch) fail(ctx context.Context, err error) {
+	// Registry reads share the dial's cancellation and must not turn a
+	// superseded authorization attempt into a failed one.
+	if ctx.Err() != nil {
+		return
+	}
 	slog.ErrorContext(ctx, "mcp: connection failed",
 		"server.name", command.name.String(), "error", err,
 	)
