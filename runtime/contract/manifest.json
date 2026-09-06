@@ -8376,6 +8376,44 @@
       ]
     },
     {
+      "type": "ServerInfo",
+      "rules": [
+        {
+          "field": "name",
+          "constraint": "pattern(\"\\\\S\")"
+        },
+        {
+          "field": "version",
+          "constraint": "pattern(\"\\\\S\")"
+        },
+        {
+          "field": "home",
+          "constraint": "pattern(\"\\\\S\")"
+        }
+      ]
+    },
+    {
+      "type": "ServerCapabilities",
+      "rules": [
+        {
+          "field": "runEvents",
+          "constraint": "uniqueItems"
+        },
+        {
+          "field": "runtimeTopics",
+          "constraint": "uniqueItems"
+        },
+        {
+          "field": "streamingMethods",
+          "constraint": "uniqueItems"
+        },
+        {
+          "field": "streamingMethods",
+          "constraint": "patternItems(\"\\\\S\")"
+        }
+      ]
+    },
+    {
       "type": "RuntimeLimits",
       "rules": [
         {

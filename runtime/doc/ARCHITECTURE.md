@@ -67,7 +67,7 @@ MCP, LSP, Git, filesystem, execution, and other integrations are grouped by the 
 
 ## Protocol and bindings
 
-The Contract Registry is the method and policy source used by delivery and contract generation. Generated artifacts in `contract` are the machine truth for methods, schemas, capabilities, errors, unions, and transport endpoints.
+The Contract Registry is the method and policy source used by delivery and contract generation. Generated artifacts in `contract` are the machine truth for methods, schemas, capabilities, errors, unions, and transport endpoints. Discovery identity and capability-catalog constraints are declared there and enforced by the generated validators, so consumers do not maintain another schema.
 
 The module-root Go binding and HTTP/JSON-RPC binding enter the same delivery endpoint before:
 

@@ -2503,6 +2503,25 @@ func (c ClientInfo) ValidateWire() error {
 	)
 }
 
+func (s ServerInfo) ValidateWire() error {
+	return collectWireViolations("ServerInfo",
+		requiredTextPattern("name", s.Name, "\\S"),
+		requiredTextPattern("version", s.Version, "\\S"),
+		requiredTextPattern("home", s.Home, "\\S"),
+	)
+}
+
+func (s ServerCapabilities) ValidateWire() error {
+	return collectWireViolations("ServerCapabilities",
+		uniqueItems("runEvents", s.RunEvents),
+		uniqueItems("runtimeTopics", s.RuntimeTopics),
+		uniqueItems("streamingMethods", s.StreamingMethods),
+		textPatternItems("streamingMethods", s.StreamingMethods, "\\S"),
+		closedEnumItems("runEvents", s.RunEvents, []string{"segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"}),
+		closedEnumItems("runtimeTopics", s.RuntimeTopics, []string{"files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
+	)
+}
+
 func (r RuntimeLimits) ValidateWire() error {
 	return collectWireViolations("RuntimeLimits",
 		optionalPositiveNumber("maxConcurrentRuns", r.MaxConcurrentRuns),
@@ -2597,13 +2616,6 @@ func (p ProviderCredential) ValidateWire() error {
 func (r RememberScope) ValidateWire() error {
 	return collectWireViolations("RememberScope",
 		closedEnum("scope", string(r.Scope), []string{"session", "project", "global"}, false),
-	)
-}
-
-func (s ServerCapabilities) ValidateWire() error {
-	return collectWireViolations("ServerCapabilities",
-		closedEnumItems("runEvents", s.RunEvents, []string{"segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"}),
-		closedEnumItems("runtimeTopics", s.RuntimeTopics, []string{"files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "knowledge.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"}),
 	)
 }
 

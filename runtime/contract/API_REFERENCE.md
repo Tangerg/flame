@@ -999,6 +999,13 @@ TypeScript validator from this single registry projection.
 | `GoalBudget` | `maxSteps` | `positive` |
 | `ClientInfo` | `name` | `nonEmpty` |
 | `ClientInfo` | `version` | `nonEmpty` |
+| `ServerInfo` | `name` | `pattern("\\S")` |
+| `ServerInfo` | `version` | `pattern("\\S")` |
+| `ServerInfo` | `home` | `pattern("\\S")` |
+| `ServerCapabilities` | `runEvents` | `uniqueItems` |
+| `ServerCapabilities` | `runtimeTopics` | `uniqueItems` |
+| `ServerCapabilities` | `streamingMethods` | `uniqueItems` |
+| `ServerCapabilities` | `streamingMethods` | `patternItems("\\S")` |
 | `RuntimeLimits` | `maxConcurrentRuns` | `positive` |
 | `ClientCapabilities` | `interruptTypes` | `uniqueItems` |
 | `ClientCapabilities` | `excludedEphemeralEvents` | `uniqueItems` |

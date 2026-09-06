@@ -941,6 +941,23 @@ func registerGoalValues(s *Shapes) {
 func registerRuntimeValues(s *Shapes) {
 	nonEmpty[protocol.ClientInfo](s, "name", "version")
 	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.ServerInfo](),
+		Constraints: []FieldConstraint{
+			{Field: "name", Kind: ConstraintPattern, Value: `\S`},
+			{Field: "version", Kind: ConstraintPattern, Value: `\S`},
+			{Field: "home", Kind: ConstraintPattern, Value: `\S`},
+		},
+	})
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.ServerCapabilities](),
+		Constraints: []FieldConstraint{
+			{Field: "runEvents", Kind: ConstraintUniqueItems},
+			{Field: "runtimeTopics", Kind: ConstraintUniqueItems},
+			{Field: "streamingMethods", Kind: ConstraintUniqueItems},
+			{Field: "streamingMethods", Kind: ConstraintPatternItems, Value: `\S`},
+		},
+	})
+	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.RuntimeLimits](),
 		Constraints: []FieldConstraint{{Field: "maxConcurrentRuns", Kind: ConstraintPositive}},
 	})

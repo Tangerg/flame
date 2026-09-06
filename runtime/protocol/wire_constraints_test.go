@@ -2309,3 +2309,44 @@ func assertConstraintField(t *testing.T, err error, shape, field string) {
 	}
 	t.Fatalf("violations = %+v, want field %q", constraint.Fields, field)
 }
+
+func TestDiscoveryIdentityAndCapabilityCatalogConstraints(t *testing.T) {
+	t.Parallel()
+	validInfo := ServerInfo{Name: "flame-runtime", Version: "dev", Home: "/home/test"}
+	if err := validInfo.ValidateWire(); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		field   string
+		invalid ServerInfo
+	}{
+		{"name", ServerInfo{Version: "dev", Home: "/home/test"}},
+		{"version", ServerInfo{Name: "flame-runtime", Version: " \t", Home: "/home/test"}},
+		{"home", ServerInfo{Name: "flame-runtime", Version: "dev"}},
+	} {
+		assertConstraintField(t, test.invalid.ValidateWire(), "ServerInfo", test.field)
+	}
+	validCatalog := ServerCapabilities{
+		RunEvents:        []StreamEventType{StreamSegmentStarted, StreamSegmentFinished},
+		RuntimeTopics:    []RuntimeTopic{TopicFilesChanged},
+		StreamingMethods: []string{"runs.start", "runs.resume", "runs.subscribe"},
+	}
+	if err := validCatalog.ValidateWire(); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		field      string
+		invalidate func(*ServerCapabilities)
+	}{
+		{"runEvents", func(c *ServerCapabilities) {
+			c.RunEvents = []StreamEventType{StreamSegmentStarted, StreamSegmentStarted}
+		}},
+		{"runtimeTopics", func(c *ServerCapabilities) { c.RuntimeTopics = []RuntimeTopic{TopicFilesChanged, TopicFilesChanged} }},
+		{"streamingMethods", func(c *ServerCapabilities) { c.StreamingMethods = []string{"runs.start", "runs.start"} }},
+		{"streamingMethods[1]", func(c *ServerCapabilities) { c.StreamingMethods = []string{"runs.start", " \t"} }},
+	} {
+		catalog := validCatalog
+		test.invalidate(&catalog)
+		assertConstraintField(t, catalog.ValidateWire(), "ServerCapabilities", test.field)
+	}
+}

@@ -3302,16 +3302,16 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ServerCapabilities: object({
     features: record(ref(() => CHECKS.FeatureCapability)),
     limits: ref(() => CHECKS.RuntimeLimits),
-    runEvents: array(ref(() => CHECKS.StreamEventType)),
-    runtimeTopics: array(ref(() => CHECKS.RuntimeTopic)),
-    streamingMethods: array(text()),
+    runEvents: allOf([array(ref(() => CHECKS.StreamEventType)), uniqueItems()]),
+    runtimeTopics: allOf([array(ref(() => CHECKS.RuntimeTopic)), uniqueItems()]),
+    streamingMethods: allOf([array(allOf([text(), pattern("\\S")])), uniqueItems()]),
   }, ["features", "limits", "runEvents", "runtimeTopics", "streamingMethods"]),
   ServerInfo: object({
     defaultWorkspace: ref(() => CHECKS.WorkspaceRef),
-    home: text(),
+    home: allOf([text(), pattern("\\S")]),
     instanceId: text(),
-    name: text(),
-    version: text(),
+    name: allOf([text(), pattern("\\S")]),
+    version: allOf([text(), pattern("\\S")]),
   }, ["defaultWorkspace", "home", "instanceId", "name", "version"]),
   Session: object({
     createdAt: text(),

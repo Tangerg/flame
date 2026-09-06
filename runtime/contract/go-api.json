@@ -7455,6 +7455,12 @@
               "type": "string",
               "tag": "json:\"home\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
         },
         {

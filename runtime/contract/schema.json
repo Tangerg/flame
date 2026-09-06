@@ -9049,20 +9049,24 @@
         },
         "runEvents": {
           "type": "array",
+          "uniqueItems": true,
           "items": {
             "$ref": "#/$defs/StreamEventType"
           }
         },
         "runtimeTopics": {
           "type": "array",
+          "uniqueItems": true,
           "items": {
             "$ref": "#/$defs/RuntimeTopic"
           }
         },
         "streamingMethods": {
           "type": "array",
+          "uniqueItems": true,
           "items": {
-            "type": "string"
+            "type": "string",
+            "pattern": "\\S"
           }
         }
       },
@@ -9081,16 +9085,19 @@
           "$ref": "#/$defs/WorkspaceRef"
         },
         "home": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         },
         "instanceId": {
           "type": "string"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         },
         "version": {
-          "type": "string"
+          "type": "string",
+          "pattern": "\\S"
         }
       },
       "required": [
