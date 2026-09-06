@@ -28,14 +28,13 @@ func (a *AuthoringContext) Documents(ctx context.Context, workspacePath string) 
 	if err != nil {
 		return nil, classifyError(err)
 	}
-	values, err := requireCompletePage("list agent documents", page)
+	documents, err := requireCompletePage("list agent documents", page)
 	if err != nil {
 		return nil, err
 	}
-	documents, err := cloneUniqueWireValues("list agent documents", values, func(document protocol.AgentDoc) string {
+	if err := validateUniqueWireValues("list agent documents", documents, func(document protocol.AgentDoc) string {
 		return document.Path
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 	previousPhase := -1

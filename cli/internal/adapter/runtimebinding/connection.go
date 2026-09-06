@@ -1,6 +1,7 @@
 // Package runtimebinding adapts the public in-process Runtime binding and owns
-// the immutable capability profile negotiated for CLI consumers. Protocol DTOs
-// and Runtime lifecycle details stop at this package boundary.
+// the immutable capability profile negotiated for CLI consumers. Validated
+// management and catalog results transfer ownership to the caller. Retained
+// profiles and live event projections acquire their own mutable values.
 package runtimebinding
 
 import (

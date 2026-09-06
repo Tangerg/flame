@@ -30,14 +30,13 @@ func (r *Connection) Discover(ctx context.Context, workspacePath string) ([]prot
 	if err != nil {
 		return nil, classifyError(err)
 	}
-	values, err := requireCompletePage("list discovered skills", page)
+	found, err := requireCompletePage("list discovered skills", page)
 	if err != nil {
 		return nil, err
 	}
-	found, err := cloneUniqueWireValues("list discovered skills", values, func(skill protocol.Skill) string {
+	if err := validateUniqueWireValues("list discovered skills", found, func(skill protocol.Skill) string {
 		return skill.Name
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 	for index := 1; index < len(found); index++ {
@@ -57,14 +56,13 @@ func (r *Connection) Managed(ctx context.Context) ([]protocol.ManagedSkill, erro
 	if err != nil {
 		return nil, classifyError(err)
 	}
-	values, err := requireCompletePage("list managed skills", page)
+	managed, err := requireCompletePage("list managed skills", page)
 	if err != nil {
 		return nil, err
 	}
-	managed, err := cloneUniqueWireValues("list managed skills", values, func(skill protocol.ManagedSkill) string {
+	if err := validateUniqueWireValues("list managed skills", managed, func(skill protocol.ManagedSkill) string {
 		return skill.Name
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 	for index := 1; index < len(managed); index++ {

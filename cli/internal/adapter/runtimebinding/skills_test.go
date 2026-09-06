@@ -2,6 +2,7 @@ package runtimebinding
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
@@ -26,12 +27,22 @@ type invalidSkillBindingStub struct {
 
 func (s *invalidSkillBindingStub) ListDiscoveredSkills(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.Skill], error) {
 	s.assertCall(request.Workspace.Path, options.RequestMeta)
-	return s.discovered, nil
+	if s.discovered == nil {
+		return nil, nil
+	}
+	owned := *s.discovered
+	owned.Data = slices.Clone(owned.Data)
+	return &owned, nil
 }
 
 func (s *invalidSkillBindingStub) ListManagedSkills(_ context.Context, options flameruntime.CallOptions) (*protocol.Page[protocol.ManagedSkill], error) {
 	s.assertMeta(options.RequestMeta)
-	return s.managed, nil
+	if s.managed == nil {
+		return nil, nil
+	}
+	owned := *s.managed
+	owned.Data = slices.Clone(owned.Data)
+	return &owned, nil
 }
 
 func (s *invalidSkillBindingStub) ListSkillProposals(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.SkillProposal], error) {
@@ -151,7 +162,7 @@ func TestSkillAdapterProjectsCatalogsAndExactMutationReferences(t *testing.T) {
 	}
 }
 
-func TestSkillAdapterClonesDirectProtocolCatalogs(t *testing.T) {
+func TestSkillAdapterTransfersOwnedProtocolCatalogs(t *testing.T) {
 	discoveredPage := protocol.NewPage([]protocol.Skill{{
 		Name: "release-checks", Description: "Release safely", Scope: protocol.SkillScopeProject,
 	}})

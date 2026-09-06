@@ -35,7 +35,7 @@ func TestUsageAdapterProjectsSessionAndSummaryReports(t *testing.T) {
 				t.Fatalf("session usage request = %+v, options = %+v", request, options)
 			}
 			return &protocol.Usage{
-				ModelUsage: protocol.ModelUsage{InputTokens: 12, CostUSD: &cost},
+				ModelUsage: protocol.ModelUsage{InputTokens: 12, CostUSD: new(cost)},
 				ByModel: map[string]protocol.ModelUsage{
 					"z/model": {OutputTokens: 2}, "a/model": {InputTokens: 3},
 				},
@@ -443,12 +443,12 @@ func (g *goalBindingStub) UpdateGoal(_ context.Context, request protocol.UpdateG
 	}
 	g.last = "update"
 	if g.updateResult != nil {
-		return g.updateResult, nil
+		return ownedGoalResult(g.updateResult), nil
 	}
 	updated := *g.current
 	updated.Objective = request.Objective
 	g.current = &updated
-	return g.current, nil
+	return ownedGoalResult(g.current), nil
 }
 
 func (g *goalBindingStub) ClearGoal(_ context.Context, request protocol.GoalRequest, options flameruntime.CommandOptions) error {
@@ -462,7 +462,7 @@ func (g *goalBindingStub) ClearGoal(_ context.Context, request protocol.GoalRequ
 
 func (g *goalBindingStub) GetGoal(context.Context, protocol.GoalRequest, flameruntime.CallOptions) (*protocol.Goal, error) {
 	g.getCalls++
-	return g.current, nil
+	return ownedGoalResult(g.current), nil
 }
 
 func (g *goalBindingStub) StartGoal(_ context.Context, request protocol.StartGoalRequest, options flameruntime.CommandOptions) (*protocol.Goal, error) {
@@ -471,36 +471,36 @@ func (g *goalBindingStub) StartGoal(_ context.Context, request protocol.StartGoa
 	}
 	g.last = "start"
 	if g.startResult != nil {
-		return g.startResult, nil
+		return ownedGoalResult(g.startResult), nil
 	}
 	g.current = activeProtocolGoal()
 	g.current.Provider, g.current.Model = request.Provider, request.Model
 	g.current.ReasoningEffort = request.ReasoningEffort
-	return g.current, nil
+	return ownedGoalResult(g.current), nil
 }
 
 func (g *goalBindingStub) StopGoal(context.Context, protocol.GoalRequest, flameruntime.CommandOptions) (*protocol.Goal, error) {
 	g.last = "stop"
 	if g.stopResult != nil {
-		return g.stopResult, nil
+		return ownedGoalResult(g.stopResult), nil
 	}
 	stopped := *g.current
 	stopped.Status = protocol.GoalPaused
 	stopped.Reason = &protocol.GoalReason{Code: protocol.GoalReasonStoppedByUser}
 	g.current = &stopped
-	return g.current, nil
+	return ownedGoalResult(g.current), nil
 }
 
 func (g *goalBindingStub) ResumeGoal(context.Context, protocol.GoalRequest, flameruntime.CommandOptions) (*protocol.Goal, error) {
 	g.last = "resume"
 	if g.resumeResult != nil {
-		return g.resumeResult, nil
+		return ownedGoalResult(g.resumeResult), nil
 	}
 	resumed := *g.current
 	resumed.Status = protocol.GoalActive
 	resumed.Reason = nil
 	g.current = &resumed
-	return g.current, nil
+	return ownedGoalResult(g.current), nil
 }
 
 func activeProtocolGoal() *protocol.Goal {
@@ -733,4 +733,12 @@ func TestGoalAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 func limitedGoalBudget(t testing.TB, maxRuns int) *protocol.GoalBudget {
 	t.Helper()
 	return &protocol.GoalBudget{MaxRuns: &maxRuns}
+}
+
+func ownedGoalResult(value *protocol.Goal) *protocol.Goal {
+	if value == nil {
+		return nil
+	}
+	owned := cloneGoal(*value)
+	return &owned
 }

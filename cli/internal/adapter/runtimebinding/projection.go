@@ -186,3 +186,10 @@ func projectInteractions(values []protocol.Interrupt) ([]agent.Interaction, erro
 	}
 	return interactions, nil
 }
+
+func cloneModelUsage(value protocol.ModelUsage) protocol.ModelUsage {
+	if value.CostUSD != nil {
+		value.CostUSD = new(*value.CostUSD)
+	}
+	return value
+}

@@ -47,7 +47,7 @@ func (s *scheduleBindingStub) CreateSchedule(_ context.Context, request protocol
 	created := wireSchedule(s.now, "sch_created")
 	created.Title, created.Instructions, created.Cron = request.Title, request.Instructions, request.Cron
 	created.Provider, created.Model, created.ReasoningEffort = request.Provider, request.Model, request.ReasoningEffort
-	created.Workspace = request.Workspace
+	created.Workspace = cloneWorkspaceRef(request.Workspace)
 	return &created, nil
 }
 
@@ -67,7 +67,7 @@ func (s *scheduleBindingStub) UpdateSchedule(_ context.Context, request protocol
 		updated.Instructions = *request.Instructions
 	}
 	if request.Workspace != nil {
-		updated.Workspace = request.Workspace
+		updated.Workspace = cloneWorkspaceRef(request.Workspace)
 	} else if request.WorkspaceMode == protocol.ScheduleWorkspaceDefault {
 		updated.Workspace = nil
 	}
@@ -314,4 +314,11 @@ func TestScheduleAdapterRejectsImpossibleScheduleProjection(t *testing.T) {
 			requireRuntimeContractViolation(t, err)
 		})
 	}
+}
+
+func cloneSchedule(value protocol.Schedule) protocol.Schedule {
+	value.Workspace = cloneWorkspaceRef(value.Workspace)
+	value.LastRunAt = clonePointer(value.LastRunAt)
+	value.NextRunAt = clonePointer(value.NextRunAt)
+	return value
 }

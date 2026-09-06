@@ -33,7 +33,7 @@ func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (agent.
 	}
 	report := agent.SessionUsageReport{
 		SessionID: request.SessionID,
-		Total:     cloneModelUsage(result.ModelUsage),
+		Total:     result.ModelUsage,
 		ByModel:   make([]protocol.UsageBucket, 0, len(result.ByModel)),
 	}
 	keys := make([]string, 0, len(result.ByModel))
@@ -42,7 +42,7 @@ func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (agent.
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		report.ByModel = append(report.ByModel, protocol.UsageBucket{Key: key, ModelUsage: cloneModelUsage(result.ByModel[key])})
+		report.ByModel = append(report.ByModel, protocol.UsageBucket{Key: key, ModelUsage: result.ByModel[key]})
 	}
 	if err := report.Validate(); err != nil {
 		return agent.SessionUsageReport{}, runtimeContractViolation("session usage returned an invalid report: %v", err)
@@ -74,30 +74,14 @@ func (r *Connection) Summary(ctx context.Context, period agent.UsageSummaryPerio
 		return agent.UsageSummary{}, runtimeContractViolation("usage summary returned an invalid wire result: %v", err)
 	}
 	summary := agent.UsageSummary{
-		Period: period, Total: cloneModelUsage(result.Total),
-		ByProvider: cloneUsageBuckets(result.ByProvider),
-		ByModel:    cloneUsageBuckets(result.ByModel),
-		ByDay:      cloneUsageBuckets(result.ByDay),
+		Period: period, Total: result.Total,
+		ByProvider: result.ByProvider,
+		ByModel:    result.ByModel,
+		ByDay:      result.ByDay,
 		Sessions:   result.Sessions, Runs: result.Runs,
 	}
 	if err := summary.Validate(); err != nil {
 		return agent.UsageSummary{}, runtimeContractViolation("usage summary returned an invalid report: %v", err)
 	}
 	return summary, nil
-}
-
-func cloneUsageBuckets(values []protocol.UsageBucket) []protocol.UsageBucket {
-	cloned := make([]protocol.UsageBucket, len(values))
-	for index, value := range values {
-		value.ModelUsage = cloneModelUsage(value.ModelUsage)
-		cloned[index] = value
-	}
-	return cloned
-}
-
-func cloneModelUsage(value protocol.ModelUsage) protocol.ModelUsage {
-	if value.CostUSD != nil {
-		value.CostUSD = new(*value.CostUSD)
-	}
-	return value
 }

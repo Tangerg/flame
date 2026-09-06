@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
@@ -85,7 +86,12 @@ type authoringContextBindingStub struct {
 
 func (a *authoringContextBindingStub) ListAgentDocs(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.AgentDoc], error) {
 	assertWorkspaceQuery(a.t, request, options)
-	return a.docs, nil
+	if a.docs == nil {
+		return nil, nil
+	}
+	owned := *a.docs
+	owned.Data = slices.Clone(owned.Data)
+	return &owned, nil
 }
 
 func (a *authoringContextBindingStub) ListRecipes(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.Recipe], error) {

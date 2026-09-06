@@ -3,7 +3,6 @@ package runtimebinding
 import (
 	"crypto/sha256"
 	"fmt"
-	"slices"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -36,27 +35,25 @@ type validWireValue interface {
 	ValidateWire() error
 }
 
-// cloneUniqueWireValues protects flat Runtime catalog values that need no CLI
-// projection of their own. The cloned slice keeps the adapter boundary isolated;
-// callers supply the catalog's authoritative identity.
-func cloneUniqueWireValues[Value validWireValue](
+// validateUniqueWireValues checks catalog rows that need no CLI projection.
+// Their authoritative identity comes from the Runtime contract.
+func validateUniqueWireValues[Value validWireValue](
 	operation string,
 	values []Value,
 	identity func(Value) string,
-) ([]Value, error) {
-	cloned := slices.Clone(values)
-	seen := make(map[string]struct{}, len(cloned))
-	for index, value := range cloned {
+) error {
+	seen := make(map[string]struct{}, len(values))
+	for index, value := range values {
 		if err := value.ValidateWire(); err != nil {
-			return nil, runtimeContractViolation("%s item %d is invalid: %v", operation, index+1, err)
+			return runtimeContractViolation("%s item %d is invalid: %v", operation, index+1, err)
 		}
 		key := identity(value)
 		if _, duplicate := seen[key]; duplicate {
-			return nil, runtimeContractViolation("%s repeats %q", operation, key)
+			return runtimeContractViolation("%s repeats %q", operation, key)
 		}
 		seen[key] = struct{}{}
 	}
-	return cloned, nil
+	return nil
 }
 
 // projectUniqueValues projects, validates, and identity-checks one complete

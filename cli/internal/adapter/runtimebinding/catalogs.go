@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
@@ -94,32 +93,10 @@ func (r *Connection) ListModels(ctx context.Context) ([]protocol.Model, error) {
 					values[index-1].ID,
 				)
 			}
-			models = append(models, cloneProtocolModel(value))
+			models = append(models, value)
 		}
 	}
 	return models, errors.Join(discoveryErrors...)
-}
-
-func cloneProtocolModel(value protocol.Model) protocol.Model {
-	if value.TokenLimits != nil {
-		limits := *value.TokenLimits
-		limits.ContextWindow = clonePointer(limits.ContextWindow)
-		limits.MaxInputTokens = clonePointer(limits.MaxInputTokens)
-		limits.MaxOutputTokens = clonePointer(limits.MaxOutputTokens)
-		value.TokenLimits = &limits
-	}
-	if value.Capabilities != nil {
-		capabilities := *value.Capabilities
-		capabilities.ReasoningLevels = slices.Clone(capabilities.ReasoningLevels)
-		capabilities.InputModalities = slices.Clone(capabilities.InputModalities)
-		capabilities.OutputModalities = slices.Clone(capabilities.OutputModalities)
-		value.Capabilities = &capabilities
-	}
-	if value.Pricing != nil {
-		pricing := *value.Pricing
-		value.Pricing = &pricing
-	}
-	return value
 }
 
 func (r *Connection) GetApprovalMode(ctx context.Context) (protocol.ApprovalMode, error) {
@@ -183,7 +160,7 @@ func (r *Connection) ListApprovalRules(ctx context.Context, sessionID string) ([
 		}
 		seen[rule.ID] = struct{}{}
 	}
-	return slices.Clone(result.Rules), nil
+	return result.Rules, nil
 }
 
 func (r *Connection) DeleteApprovalRule(ctx context.Context, id string) error {

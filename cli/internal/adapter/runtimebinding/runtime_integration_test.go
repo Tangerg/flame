@@ -2,6 +2,7 @@ package runtimebinding
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -58,12 +59,18 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID s
 	if started.Status != protocol.GoalActive || started.Objective != start.Objective {
 		t.Fatalf("started goal: %+v", started)
 	}
+	*start.Budget.MaxRuns = 7
+	if started.Budget == nil || started.Budget.MaxRuns == nil || *started.Budget.MaxRuns != 3 {
+		t.Fatalf("caller reuse changed the accepted goal budget: %+v", started.Budget)
+	}
+	*started.Budget.MaxRuns = 8
 	update := protocol.UpdateGoalRequest{SessionID: sessionID, Objective: "verify revised embedded goal lifecycle"}
 	updated, err := runtime.UpdateGoal(t.Context(), update)
 	if err != nil {
 		t.Fatalf("UpdateGoal: %v", err)
 	}
-	if updated.Objective != update.Objective {
+	if updated.Objective != update.Objective || updated.Budget == nil ||
+		updated.Budget.MaxRuns == nil || *updated.Budget.MaxRuns != 3 {
 		t.Fatalf("updated goal: %+v", updated)
 	}
 	stopped, err := runtime.StopGoal(t.Context(), sessionID)
@@ -489,6 +496,34 @@ func requireRuntimeCatalogs(t *testing.T, runtime *Connection, sessionID, worksp
 	if len(models) == 0 {
 		t.Fatal("ListModels returned no provider-qualified models")
 	}
+	wantModels, err := json.Marshal(models)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for index := range models {
+		model := &models[index]
+		model.DisplayName = "caller reuse"
+		if model.TokenLimits != nil && model.TokenLimits.ContextWindow != nil {
+			*model.TokenLimits.ContextWindow = 1
+		}
+		if model.Capabilities != nil && len(model.Capabilities.ReasoningLevels) > 0 {
+			model.Capabilities.ReasoningLevels[0] = "caller reuse"
+		}
+		if model.Pricing != nil {
+			model.Pricing.InputUSDPerMillionTokens = 99
+		}
+	}
+	refreshedModels, err := runtime.ListModels(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "ollama:") {
+		t.Fatalf("repeated model discovery failure = %v, want ollama failure", err)
+	}
+	gotModels, err := json.Marshal(refreshedModels)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(gotModels) != string(wantModels) {
+		t.Fatal("caller reuse changed the next Runtime model catalog")
+	}
 	providers, err := runtime.Providers(t.Context())
 	if err != nil || len(providers) == 0 {
 		t.Fatalf("Providers = (%+v, %v)", providers, err)
@@ -605,15 +640,24 @@ func requireScheduleLifecycle(t *testing.T, runtime *Connection, workspace strin
 	if err != nil {
 		t.Fatalf("Create schedule: %v", err)
 	}
+	if created.Workspace == nil || created.NextRunAt == nil {
+		t.Fatalf("created schedule is incomplete: %+v", created)
+	}
+	created.Workspace.Path = "/caller-reused-workspace"
+	*created.NextRunAt = time.Time{}
 	listed, err := runtime.Schedules(t.Context())
-	if err != nil || len(listed) != 1 || listed[0].ID != created.ID {
+	if err != nil || len(listed) != 1 || listed[0].ID != created.ID ||
+		listed[0].Workspace == nil || listed[0].Workspace.Path != workspace ||
+		listed[0].NextRunAt == nil || listed[0].NextRunAt.IsZero() {
 		t.Fatalf("Schedules = (%+v, %v)", listed, err)
 	}
+	listed[0].Workspace.Path = "/caller-reused-list"
 	enabled := false
 	updated, err := runtime.Update(t.Context(), protocol.UpdateScheduleRequest{
 		ID: created.ID, ExpectedRevision: created.Revision, Enabled: &enabled,
 	})
-	if err != nil || updated.Enabled || updated.Revision <= created.Revision {
+	if err != nil || updated.Enabled || updated.Revision <= created.Revision ||
+		updated.Workspace == nil || updated.Workspace.Path != workspace {
 		t.Fatalf("Update schedule = (%+v, %v)", updated, err)
 	}
 	if err := runtime.Delete(t.Context(), created.ID); err != nil {

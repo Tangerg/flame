@@ -3,6 +3,7 @@ package runtimebinding
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -179,7 +180,16 @@ func (m modelCatalogBindingStub) ListProviders(context.Context, flameruntime.Cal
 }
 
 func (m modelCatalogBindingStub) ListModels(_ context.Context, request protocol.ListModelsRequest, _ flameruntime.CallOptions) (*protocol.Page[protocol.Model], error) {
-	return m.models[request.Provider], m.modelErrors[request.Provider]
+	page := m.models[request.Provider]
+	if page == nil {
+		return nil, m.modelErrors[request.Provider]
+	}
+	owned := *page
+	owned.Data = make([]protocol.Model, len(page.Data))
+	for index, value := range page.Data {
+		owned.Data[index] = cloneProtocolModel(value)
+	}
+	return &owned, m.modelErrors[request.Provider]
 }
 
 func TestModelCatalogRejectsEveryUnconsumableContinuation(t *testing.T) {
@@ -215,4 +225,26 @@ func TestModelCatalogRejectsEveryUnconsumableContinuation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func cloneProtocolModel(value protocol.Model) protocol.Model {
+	if value.TokenLimits != nil {
+		limits := *value.TokenLimits
+		limits.ContextWindow = clonePointer(limits.ContextWindow)
+		limits.MaxInputTokens = clonePointer(limits.MaxInputTokens)
+		limits.MaxOutputTokens = clonePointer(limits.MaxOutputTokens)
+		value.TokenLimits = &limits
+	}
+	if value.Capabilities != nil {
+		capabilities := *value.Capabilities
+		capabilities.ReasoningLevels = slices.Clone(capabilities.ReasoningLevels)
+		capabilities.InputModalities = slices.Clone(capabilities.InputModalities)
+		capabilities.OutputModalities = slices.Clone(capabilities.OutputModalities)
+		value.Capabilities = &capabilities
+	}
+	if value.Pricing != nil {
+		pricing := *value.Pricing
+		value.Pricing = &pricing
+	}
+	return value
 }

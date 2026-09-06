@@ -172,7 +172,7 @@ func goalResult(operation, expectedSessionID string, result *protocol.Goal, err 
 			expectedSessionID,
 		)
 	}
-	return cloneGoal(*result), nil
+	return *result, nil
 }
 
 func cloneGoal(value protocol.Goal) protocol.Goal {

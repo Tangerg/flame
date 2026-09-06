@@ -67,7 +67,7 @@ func (r *Connection) Schedules(ctx context.Context) ([]protocol.Schedule, error)
 				}
 			}
 			seenIDs[value.ID] = struct{}{}
-			schedules = append(schedules, cloneSchedule(value))
+			schedules = append(schedules, value)
 		}
 		more, err := cursors.Advance(page.NextCursor)
 		if err != nil {
@@ -183,7 +183,7 @@ func scheduleResult(operation, expectedID string, result *protocol.Schedule, err
 	if expectedID != "" && result.ID != expectedID {
 		return protocol.Schedule{}, runtimeContractViolation("%s returned id %q for %q", operation, result.ID, expectedID)
 	}
-	return cloneSchedule(*result), nil
+	return *result, nil
 }
 
 func validateScheduleProjection(result protocol.Schedule) error {
@@ -294,13 +294,6 @@ func cloneUpdateScheduleRequest(value protocol.UpdateScheduleRequest) protocol.U
 	value.ReasoningEffort = clonePointer(value.ReasoningEffort)
 	value.Cron = clonePointer(value.Cron)
 	value.Enabled = clonePointer(value.Enabled)
-	return value
-}
-
-func cloneSchedule(value protocol.Schedule) protocol.Schedule {
-	value.Workspace = cloneWorkspaceRef(value.Workspace)
-	value.LastRunAt = clonePointer(value.LastRunAt)
-	value.NextRunAt = clonePointer(value.NextRunAt)
 	return value
 }
 
