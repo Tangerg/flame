@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { color, radius, space, surface, type } from "@/styles/tokens.stylex";
+import { color, corner, space, surface, type } from "@/styles/tokens.stylex";
 
 const styles = stylex.create({
   row: {
@@ -22,7 +22,6 @@ const styles = stylex.create({
     placeItems: "center",
     height: space.s4_5,
     width: space.s4_5,
-    borderRadius: radius.pill,
     backgroundColor: surface.surface2,
   },
   neutral: { color: color.fgFaint },
@@ -48,7 +47,7 @@ export function Divider({
   return (
     <div {...row} className={cn(row.className, className)}>
       {align === "center" && rule}
-      {icon && <div {...stylex.props(styles.badge, styles[intent])}>{icon}</div>}
+      {icon && <div {...stylex.props(styles.badge, corner.pill, styles[intent])}>{icon}</div>}
       <span {...stylex.props(styles.label)}>{children}</span>
       {rule}
     </div>

@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { DotTone } from "@/lib/tone";
 import { cn } from "@/lib/classNames";
-import { color, motion, radius, space } from "@/styles/tokens.stylex";
+import { color, corner, motion, space } from "@/styles/tokens.stylex";
 
 const styles = stylex.create({
   base: {
@@ -9,7 +9,6 @@ const styles = stylex.create({
     height: space.s1_5,
     width: space.s1_5,
     flexShrink: 0,
-    borderRadius: radius.pill,
   },
   idle: { backgroundColor: color.fgFaint },
   // The only dot that says something is happening right now, so the only one that moves.
@@ -24,6 +23,6 @@ const styles = stylex.create({
 });
 
 export function StatusDot({ tone = "idle", className }: { tone?: DotTone; className?: string }) {
-  const styled = stylex.props(styles.base, styles[tone]);
+  const styled = stylex.props(styles.base, corner.pill, styles[tone]);
   return <span aria-hidden="true" {...styled} className={cn(styled.className, className)} />;
 }

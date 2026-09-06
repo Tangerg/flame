@@ -6570,3 +6570,113 @@ compoundVariants 只对 `boxed` 生效，等价语义靠"某几条 compound 恰�
 atoms 里仍是 Tailwind 的还有 30 个上下，其中 `button` 仍被 `chip.tsx` 的
 `group-hover:` 挡着。下一批挑不依赖祖先态的中型件：`option-row` / `step-row` /
 `empty-state` / `segmented` / `vertical-tabs`。
+
+---
+
+## Round 117 — 自身属性态解锁，迁 `empty-state` / `step-row` / `segmented`
+
+### 先解决的一个未知：StyleX 能不能表达 `data-[active]:`
+
+`option-row` 用 `aria-selected:` 和 `data-[highlighted]:`，`segmented` 用
+`data-[active]:` —— StyleX 的条件键必须以 `:` 或 `@` 开头，属性选择器不行。
+实测 `:is([data-highlighted])` **可以**，而且编译产物把 `:is()` 拆掉了：
+
+```
+.x1ahn7o9[data-highlighted]:not(#\#):not(#\#):not(#\#){background-color:#040506}
+```
+
+这解锁了所有**自身属性态**的组件。解锁不了**祖先态**（`group-hover:`），
+所以 `button` / `chip` 仍然挡着 —— `:is()` 作用在元素自己身上。
+
+### 证据：这批调用点几乎没有对抗
+
+| atom | 调用点 | 带 `className` 的 | 内容 |
+| --- | --- | --- | --- |
+| `EmptyState` | 18 | **0** | — |
+| `StepRow` / `StepMark` | 1 | 0 | — |
+| `Segmented` | 10 | 1 | `justify-self-end`（布局，调用方的事） |
+
+18 个调用点零覆盖，说明 `EmptyState` 的两档尺寸把需求覆盖完了 —— 这次迁移
+是纯机械的，不带设计修正。
+
+### 不做：`option-row`
+
+`menu.tsx` 把 `floatingRowStyles({ size: "sm" })` 当**字符串**拼进
+`MENU_ITEM_CLASSES` —— 和上一轮 `WELL_SURFACE` 同一种耦合。两者必须同批，
+留到下一轮。
+
+### 验收标准
+
+golden 零位移；17 项 `check:*` 全绿。
+
+### 抓到一个跨越前几轮的静默回归：圆角只迁了一半
+
+`empty-state` 的图标圆迁完后，6 张 golden 位移。逐属性比对新旧 computed style，
+唯一的差异是 **`corner-shape`**：
+
+| | OLD | NEW |
+| --- | --- | --- |
+| `border-radius` | `3.35544e+07px` | `9999px` |
+| `corner-shape` | `round` | **`superellipse(1.5)`** |
+
+半径本身不是原因 —— 实测 `9999px` 与 `33554432px` 在 1× 和 2× 下渲染**逐字节相同**。
+真正的原因在 `globals.css`：
+
+```css
+:where(*, *::before, *::after) { corner-shape: superellipse(1.5); }
+.rounded-full, .rounded-pill, .type-caret { corner-shape: round; }
+```
+
+**退出机制挂在 Tailwind 的类名上。** StyleX 组件永远不带那些类名，所以
+只设半径 = 把设计系统里的每一个圆变成圆角方块。
+
+这不是这一轮的问题 —— `status-dot`（6px）、`divider`（18px）、`progress-bar`、
+`badge` 在前几轮就已经这样了。没被发现是因为 golden 的容差是
+`maxDiffPixels: 40`，而这些尺寸上的圆角差异**都在 40 像素以下**。
+只有 `empty-state` 的 40px 图标圆大到足以越过阈值。
+
+### 治本
+
+这是 `type` 步进的同一课，在另一条阶梯上重演：**一个圆角步进携带的是两个决定**。
+所以 pill 变成 bundle，且 `radius` 不再暴露它 —— 两半分不开，因为它们从来
+就不是两个决定：
+
+```ts
+export const corner = stylex.create({
+  pill: { borderRadius: "var(--radius-pill)", "corner-shape": "round" },
+});
+```
+
+（StyleX 不认识驼峰的 `cornerShape`，会静默丢弃；kebab 的 `"corner-shape"` 才发得出。
+这本身也值得记：**StyleX 对不认识的属性是静默丢弃，不是报错。**）
+
+六个已迁组件全部改用 `corner.pill`。`progress-bar` 顺带少了一层重复 ——
+它的 `barFill` / `rowFill` / `seamFill` 只是把轨道的圆角又写了一遍，
+一个形状两处声明就是两个可以互相矛盾的地方，现在是一张 `CORNER` 表。
+
+### 被这个回归污染过的 golden
+
+第 115 轮我重录的那 5 张（`dock-run-summary` ×2 / `dock-tools` ×2 /
+`settings-providers`）在容差内固化了超椭圆的 badge。它们已按修复后的渲染重录。
+其余 golden 从未重录，仍持有迁移前的正确图像 —— 修好后它们只会更接近。
+
+### 守卫抓到的第三件事
+
+`EmptyStateSize` 具名之后，`check:published-boundaries` 看见
+`data-view.tsx` 里内联重写了同一个联合。收敛（和上一轮的 `DotTone` 同一类）。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650，零位移** |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+### 下一轮方向
+
+浮层簇：`floating-surface` 被 `menu` / `popover` / `tooltip` /
+`lightbox-dialog` / `confirm-dialog` / `search-overlay` / `text-editor-dialog`
+以 class 串消费，`option-row` 又被 `menu` 以同样方式消费 —— 九个文件一个单元。
+先迁所有者 `floating-surface`，未迁的消费方用 `stylex.props()` 取类名，
+再逐个迁消费方。

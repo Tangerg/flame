@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import type { Tone } from "@/lib/tone";
 import { cn } from "@/lib/classNames";
-import { color, face, radius, space, surface, type } from "@/styles/tokens.stylex";
+import { color, corner, face, space, surface, type } from "@/styles/tokens.stylex";
 
 /**
  * A small standing label: a status, a count, a scope, a name.
@@ -19,7 +19,6 @@ const styles = stylex.create({
     flexShrink: 0,
     alignItems: "center",
     gap: space.s1,
-    borderRadius: radius.pill,
     fontWeight: 500,
   },
   neutral: { backgroundColor: surface.surface2, color: color.fgMuted },
@@ -53,6 +52,7 @@ export function Badge({
 }: BadgeProps) {
   const styled = stylex.props(
     styles.base,
+    corner.pill,
     styles[tone],
     styles[size],
     SIZE_TYPE[size],

@@ -1,58 +1,67 @@
-import type { VariantProps } from "class-variance-authority";
+import * as stylex from "@stylexjs/stylex";
 import type { CSSProperties, ReactNode } from "react";
-import { cva } from "class-variance-authority";
-import { cn } from "@/lib/classNames";
+import { color, corner, leading, space, surface, type } from "@/styles/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
 
-const root = cva(
-  "flex flex-col items-center justify-center text-center text-fg-faint select-none",
-  {
-    variants: {
-      size: {
-        compact: "gap-1.5 px-4 py-6",
-        comfortable: "gap-2.5 px-5 py-12",
-      },
-    },
-    defaultVariants: { size: "comfortable" },
-  },
-);
+/** How much room the state is given. `data-view` names the same two. */
+export type EmptyStateSize = "compact" | "comfortable";
 
-const iconWrap = cva("grid place-items-center rounded-full bg-surface-2 text-fg-muted", {
-  variants: {
-    size: {
-      compact: "h-7 w-7",
-      comfortable: "h-10 w-10",
-    },
+const styles = stylex.create({
+  root: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    textAlign: "center",
+    color: color.fgFaint,
+    userSelect: "none",
   },
-  defaultVariants: { size: "comfortable" },
+  rootCompact: { gap: space.s1_5, paddingInline: space.s4, paddingBlock: space.s6 },
+  rootComfortable: { gap: space.s2_5, paddingInline: space.s5, paddingBlock: space.s12 },
+  icon: {
+    display: "grid",
+    placeItems: "center",
+    backgroundColor: surface.surface2,
+    color: color.fgMuted,
+  },
+  iconCompact: { height: space.s7, width: space.s7 },
+  iconComfortable: { height: space.s10, width: space.s10 },
+  // The one line the eye lands on first, so it opts out of the UI tracking the step carries:
+  // a heading read alone does not need the crowding that keeps a dense row legible.
+  title: { fontWeight: 500, letterSpacing: "normal", color: color.fg },
+  sub: { maxWidth: "280px", lineHeight: leading.body, color: color.fgMuted },
+  action: { marginTop: space.s1_5 },
 });
 
-type Props = VariantProps<typeof root> & {
+const ROOT = { compact: styles.rootCompact, comfortable: styles.rootComfortable } as const;
+const ICON = { compact: styles.iconCompact, comfortable: styles.iconComfortable } as const;
+const TITLE_TYPE = { compact: type.uiXs, comfortable: type.uiMd } as const;
+
+export function EmptyState({
+  icon,
+  title,
+  sub,
+  action,
+  size = "comfortable",
+  style,
+}: {
   icon?: IconName;
   title: string;
   sub?: string;
   action?: ReactNode;
+  size?: EmptyStateSize;
   style?: CSSProperties;
-};
-
-export function EmptyState({ icon, title, sub, action, size, style }: Props) {
+}) {
   return (
-    <div className={root({ size })} style={style}>
+    <div {...stylex.props(styles.root, ROOT[size])} style={style}>
       {icon && (
-        <div className={iconWrap({ size })}>
+        <div {...stylex.props(styles.icon, corner.pill, ICON[size])}>
           <Icon name={icon} size={size === "compact" ? "md" : "lg"} />
         </div>
       )}
-      <div
-        className={cn(
-          "font-medium tracking-normal text-fg",
-          size === "compact" ? "text-ui-xs" : "text-ui-md",
-        )}
-      >
-        {title}
-      </div>
-      {sub && <div className="max-w-[280px] text-ui-sm leading-body text-fg-muted">{sub}</div>}
-      {action && <div className="mt-1.5">{action}</div>}
+      <div {...stylex.props(TITLE_TYPE[size], styles.title)}>{title}</div>
+      {sub && <div {...stylex.props(type.uiSm, styles.sub)}>{sub}</div>}
+      {action && <div {...stylex.props(styles.action)}>{action}</div>}
     </div>
   );
 }

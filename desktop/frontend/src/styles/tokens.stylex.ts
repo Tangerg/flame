@@ -60,13 +60,14 @@ export const surface = stylex.defineVars({
 export const radius = stylex.defineVars({
   step2xs: "var(--radius-2xs)",
   xs: "var(--radius-xs)",
-  pill: "var(--radius-pill)",
   /** Corners named for the plane they belong to: a card and a transcript bubble differ. */
   card: "var(--surface-card-radius)",
   bubble: "var(--radius-bubble)",
   sm: "var(--radius-sm)",
-  /** A field's own corner, which the visual style may move independently of the shape ladder. */
+  /** Corners a control owns, which the visual style may move independently of the ladder. */
   field: "var(--field-radius)",
+  segmented: "var(--segmented-radius)",
+  segment: "var(--segment-radius)",
 });
 
 /**
@@ -89,6 +90,10 @@ export const space = stylex.defineVars({
   s4: "calc(var(--spacing) * 4)",
   s4_5: "calc(var(--spacing) * 4.5)",
   s5: "calc(var(--spacing) * 5)",
+  s6: "calc(var(--spacing) * 6)",
+  s7: "calc(var(--spacing) * 7)",
+  s10: "calc(var(--spacing) * 10)",
+  s12: "calc(var(--spacing) * 12)",
 });
 
 /**
@@ -106,6 +111,25 @@ export const leading = stylex.defineVars({
   body: "var(--leading-body)",
   relaxed: "var(--leading-relaxed)",
   prose: "var(--leading-prose)",
+});
+
+/**
+ * A corner STEP, not a radius — the same lesson `type` learned, in the other ladder.
+ *
+ * Every corner in the product is a superellipse: `globals.css` sets `corner-shape:
+ * superellipse(1.5)` on everything and compensates the radius by `--corner-scale`. The pill
+ * step opts back out, because a superellipse at pill radius is a rounded square rather than a
+ * circle — and that opt-out was keyed on Tailwind's own class names (`.rounded-full`,
+ * `.rounded-pill`). A StyleX component never carries those, so setting the radius alone turned
+ * every circle in the design system into a squircle: silently, because at a 6px dot or a 12px
+ * ring the difference is sub-pixel, and only the 40px empty-state icon was large enough for a
+ * golden to see it.
+ *
+ * So the pill is a bundle and `radius` no longer exposes it: the two halves cannot be separated
+ * because they were never two decisions.
+ */
+export const corner = stylex.create({
+  pill: { borderRadius: "var(--radius-pill)", "corner-shape": "round" },
 });
 
 export const type = stylex.create({

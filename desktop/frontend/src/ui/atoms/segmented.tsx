@@ -1,7 +1,9 @@
 import { useId } from "react";
-import { motion } from "motion/react";
+import * as stylex from "@stylexjs/stylex";
+import { motion as anim } from "motion/react";
 import { cn } from "@/lib/classNames";
 import { selectionTransition } from "@/lib/motion";
+import { color, motion, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { TabsPrimitive } from "@/ui/primitives";
 
 export interface SegmentedOption<T> {
@@ -9,13 +11,55 @@ export interface SegmentedOption<T> {
   label: string;
 }
 
-interface SegmentedProps<T extends string | number> {
-  value: T;
-  options: SegmentedOption<T>[];
-  onChange: (value: T) => void;
-  ariaLabel: string;
-  className?: string;
-}
+const styles = stylex.create({
+  root: {
+    display: "inline-flex",
+    width: "fit-content",
+    alignItems: "center",
+    gap: space.s0_5,
+    borderRadius: radius.segmented,
+    padding: space.s0_5,
+    borderWidth: "var(--control-edge-width)",
+    borderStyle: "solid",
+    borderColor: surface.field,
+    backgroundColor: surface.sunken,
+    boxShadow: "var(--shadow-well)",
+  },
+  // The list adds no box of its own: the root already IS the track, and a second box between
+  // them would put the tabs one nesting step away from the padding that positions them.
+  list: { display: "contents" },
+  tab: {
+    position: "relative",
+    height: "var(--control-height-xs)",
+    borderRadius: radius.segment,
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    paddingInline: space.s2,
+    fontWeight: 500,
+    transitionProperty: "color",
+    transitionDuration: motion.color,
+    transitionTimingFunction: motion.easeOut,
+    color: {
+      default: color.fgMuted,
+      ":hover": color.fg,
+      ":is([data-active])": color.fg,
+    },
+    outline: { default: null, ":focus-visible": "none" },
+  },
+  // The moving chip is a sibling behind the label rather than the tab's own background, so one
+  // element can travel between tabs — a background cannot animate from one box to another.
+  chip: {
+    position: "absolute",
+    inset: 0,
+    borderRadius: radius.segment,
+    borderWidth: "var(--control-edge-width)",
+    borderStyle: "solid",
+    borderColor: surface.field,
+    backgroundColor: surface.canvas,
+    boxShadow: "var(--shadow-raised-chip)",
+  },
+  label: { position: "relative" },
+});
 
 export function Segmented<T extends string | number>({
   value,
@@ -23,8 +67,15 @@ export function Segmented<T extends string | number>({
   onChange,
   ariaLabel,
   className,
-}: SegmentedProps<T>) {
+}: {
+  value: T;
+  options: SegmentedOption<T>[];
+  onChange: (value: T) => void;
+  ariaLabel: string;
+  className?: string;
+}) {
   const chipId = useId();
+  const root = stylex.props(styles.root);
   return (
     <TabsPrimitive.Root
       value={String(value)}
@@ -32,38 +83,25 @@ export function Segmented<T extends string | number>({
         const opt = options.find((o) => String(o.value) === v);
         if (opt) onChange(opt.value);
       }}
-      className={cn(
-        "inline-flex w-fit items-center gap-0.5 rounded-[var(--segmented-radius)] p-0.5",
-        "border-[length:var(--control-edge-width)] border-field bg-sunken shadow-[var(--shadow-well)]",
-        className,
-      )}
+      {...root}
+      className={cn(root.className, className)}
     >
-      <TabsPrimitive.List aria-label={ariaLabel} className="contents" activateOnFocus>
+      <TabsPrimitive.List aria-label={ariaLabel} {...stylex.props(styles.list)} activateOnFocus>
         {options.map((opt) => (
           <TabsPrimitive.Tab
             key={String(opt.value)}
             value={String(opt.value)}
-            className={cn(
-              "relative h-[var(--control-height-xs)] rounded-[var(--segment-radius)] border-0 bg-transparent px-2 text-ui-sm font-medium",
-              "text-fg-muted transition-colors duration-[var(--dur-color)] ease-out",
-              "hover:text-fg",
-              "data-[active]:text-fg",
-              "focus-visible:outline-none",
-            )}
+            {...stylex.props(styles.tab, typeStep.uiSm)}
           >
             {String(opt.value) === String(value) && (
-              <motion.span
+              <anim.span
                 aria-hidden
                 layoutId={chipId}
                 transition={selectionTransition}
-                className={cn(
-                  "absolute inset-0 rounded-[var(--segment-radius)]",
-                  "border-[length:var(--control-edge-width)] border-field bg-canvas",
-                  "shadow-[var(--shadow-raised-chip)]",
-                )}
+                {...stylex.props(styles.chip)}
               />
             )}
-            <span className="relative">{opt.label}</span>
+            <span {...stylex.props(styles.label)}>{opt.label}</span>
           </TabsPrimitive.Tab>
         ))}
       </TabsPrimitive.List>

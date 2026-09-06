@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
-import { color, motion, radius, space, surface } from "@/styles/tokens.stylex";
+import { color, corner, motion, space, surface } from "@/styles/tokens.stylex";
 import { ProgressPrimitive } from "@/ui/primitives";
 
 /**
@@ -31,23 +31,20 @@ const styles = stylex.create({
     transitionProperty: "width",
     transitionDuration: motion.fast,
   },
-  bar: { height: space.s1_5, borderRadius: radius.pill },
-  row: { height: space.s1, borderRadius: radius.pill },
-  seam: { height: space.s0_5, borderRadius: 0 },
-  barFill: { borderRadius: radius.pill },
-  rowFill: { borderRadius: radius.pill },
-  seamFill: { borderRadius: 0 },
+  bar: { height: space.s1_5 },
+  row: { height: space.s1 },
+  seam: { height: space.s0_5 },
+  // A seam runs edge to edge, so it has no corner to round; the other two are capsules.
+  square: { borderRadius: 0 },
 });
 
-const FILL: Record<ProgressWeight, keyof typeof styles> = {
-  bar: "barFill",
-  row: "rowFill",
-  seam: "seamFill",
-};
+// The fill wears the track's corner. It used to be spelled twice, once per element, which is
+// two places to disagree about one shape.
+const CORNER = { bar: corner.pill, row: corner.pill, seam: styles.square } as const;
 
 export function ProgressBar({ value, label, weight = "bar", className }: ProgressBarProps) {
   const bounded = Math.max(0, Math.min(100, value));
-  const track = stylex.props(styles.track, styles[weight]);
+  const track = stylex.props(styles.track, styles[weight], CORNER[weight]);
   return (
     <ProgressPrimitive.Root
       value={bounded}
@@ -56,7 +53,7 @@ export function ProgressBar({ value, label, weight = "bar", className }: Progres
       className={cn(track.className, className)}
     >
       <ProgressPrimitive.Indicator
-        {...stylex.props(styles.fill, styles[FILL[weight]])}
+        {...stylex.props(styles.fill, CORNER[weight])}
         style={{ width: `${bounded}%` }}
       />
     </ProgressPrimitive.Root>

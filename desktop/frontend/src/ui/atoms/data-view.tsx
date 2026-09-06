@@ -2,14 +2,14 @@ import type { ReactNode } from "react";
 import type { IconName } from "@/ui/icons";
 import { useT } from "@/lib/i18n";
 import { Button } from "./button";
-import { EmptyState } from "./empty-state";
+import { EmptyState, type EmptyStateSize } from "./empty-state";
 import { SkeletonList, type SkeletonListVariant } from "./skeleton";
 
 interface EmptyConfig {
   icon?: IconName;
   title: string;
   sub?: string;
-  size?: "compact" | "comfortable";
+  size?: EmptyStateSize;
 }
 
 interface Props<T> {

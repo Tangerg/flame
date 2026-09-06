@@ -1,22 +1,52 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
+import { color, corner, motion, space, surface, type } from "@/styles/tokens.stylex";
 import { Icon } from "@/ui/icons";
 
 export type StepState = "done" | "active" | "pending";
 
-const MARK = "grid h-4 w-4 shrink-0 place-items-center";
+const styles = stylex.create({
+  mark: { display: "grid", height: space.s4, width: space.s4, flexShrink: 0, placeItems: "center" },
+  ring: {
+    position: "relative",
+    height: space.s3,
+    width: space.s3,
+    borderWidth: "1.5px",
+    borderStyle: "solid",
+  },
+  ringActive: { borderColor: color.accent },
+  ringPending: { borderColor: surface.fieldStrong },
+  // The dot inside the active ring is the only thing on the row that moves: it is what says
+  // this step is the one happening, as opposed to the one that is merely next.
+  pulse: {
+    position: "absolute",
+    inset: space.s0_5,
+    backgroundColor: color.accent,
+    animation: motion.pulseDot,
+  },
+  done: { color: color.success },
+  row: { display: "flex", alignItems: "center", gap: space.s2, paddingBlock: space.s0_5 },
+  inkDone: { color: color.fgFaint },
+  inkActive: { fontWeight: 500, color: color.fg },
+  inkPending: { color: color.fgMuted },
+  label: { minWidth: 0, flex: 1 },
+  struck: { textDecorationLine: "line-through" },
+});
+
+const INK = { done: styles.inkDone, active: styles.inkActive, pending: styles.inkPending } as const;
 
 export function StepMark({ state }: { state: StepState }) {
   return (
-    <div className={MARK}>
-      {state === "done" && <Icon name="check" size="sm" className="text-success" />}
+    <div {...stylex.props(styles.mark)}>
+      {state === "done" && <Icon name="check" size="sm" {...stylex.props(styles.done)} />}
       {state === "active" && (
-        <div className="relative h-3 w-3 rounded-full border-[1.5px] border-accent">
-          <div className="absolute inset-0.5 animate-pulse-dot rounded-full bg-accent" />
+        <div {...stylex.props(styles.ring, corner.pill, styles.ringActive)}>
+          <div {...stylex.props(styles.pulse, corner.pill)} />
         </div>
       )}
       {state === "pending" && (
-        <div className="h-3 w-3 rounded-full border-[1.5px] border-field-strong" />
+        <div {...stylex.props(styles.ring, corner.pill, styles.ringPending)} />
       )}
     </div>
   );
@@ -31,18 +61,11 @@ export function StepRow({
   className?: string;
   children: ReactNode;
 }) {
+  const styled = stylex.props(styles.row, type.uiSm, INK[state]);
   return (
-    <div
-      className={cn(
-        "flex items-center gap-2 py-0.5 text-ui-sm",
-        state === "done" && "text-fg-faint",
-        state === "active" && "font-medium text-fg",
-        state === "pending" && "text-fg-muted",
-        className,
-      )}
-    >
+    <div {...styled} className={cn(styled.className, className)}>
       <StepMark state={state} />
-      <span className={cn("min-w-0 flex-1", state === "done" && "line-through")}>{children}</span>
+      <span {...stylex.props(styles.label, state === "done" && styles.struck)}>{children}</span>
     </div>
   );
 }
