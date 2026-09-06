@@ -6945,3 +6945,70 @@ StyleX 下七条全被 `:not(#\#)` 丢弃。
 `button` 依旧被 `chip.tsx` 的 `group-hover:` 挡着 —— 那是一个需要定型的设计决定，
 不是一次迁移。下一批挑独立件：`icon-button` / `pill-button` / `text-button` /
 `checkbox` / `switch` / `slider` / `collapsible`。
+
+---
+
+## Round 121 — 四个独立控件：`checkbox` / `switch` / `slider` / `collapsible`
+
+### 计划（写在改代码之前）
+
+浮层簇迁完，转向不依赖祖先态、也不被 class 串共享绑住的独立件。
+先审计过全部调用点：
+
+| atom | 调用点 | 带 `className` 的 | 内容 |
+| --- | --- | --- | --- |
+| `Checkbox` | 3 | 1 | `mt-1`（外边距，调用方的事） |
+| `Switch` | 8 | **0** | — |
+| `Slider` | 1 | 0 | — |
+| `Collapsible` | 5 | 0 | — |
+
+零设计缺档 —— 这一轮是纯机械迁移。
+
+### 不做：`IconButton` 与 `TextButton`
+
+| atom | 调用点 | 带 `className` 的 |
+| --- | --- | --- |
+| `IconButton` | 59 | **25** |
+| `TextButton` | 11 | **8** |
+
+两者都够单独成轮。`IconButton` 另有多处依赖 `group-hover:` /
+`group-hover/output:` —— 和 `button` / `chip` 挡在同一件事上：
+**祖先态在 StyleX 下如何表达**，那是一个需要定型的设计决定，不是一次迁移。
+
+### 一处要小心的地方
+
+`Slider` 现在写的是 `className ?? "w-36"` —— 调用方的 `className` **替换**
+默认宽度而不是叠加。迁成样式后这个"替换"语义会消失（StyleX 会赢）。
+唯一的调用点没有传 `className`，所以把 `w-36` 变成 atom 自己的宽度是安全的，
+而且比"默认值藏在一个 `??` 里"更诚实。
+
+### 验收标准
+
+golden 零位移；17 项 `check:*` 全绿。
+
+### 结果
+
+四个文件迁完，**golden 一次通过、零位移**。这一轮没有设计发现 ——
+调用点本来就没在跟这四个控件对抗，所以它就该是纯机械的。
+
+三处 `rounded-full` / `rounded-pill`（switch 的轨道与拇指、slider 的
+轨道 / 填充 / 拇指）走上一轮建的 `corner.pill`，没有再变成超椭圆。
+
+`Slider` 的 `className ?? "w-36"` 改成 atom 自己的宽度 —— 唯一的调用点
+没有传 `className`，而"默认值藏在一个 `??` 里、并且会被调用方整个替换掉"
+本来就不是一个可读的契约。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650，零位移**（一次通过） |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+### 下一轮方向
+
+`TextButton`：11 个调用点里 8 个带 `className`，其中
+`SessionList.tsx` 的注释已经自己说出了根因 ——
+"TextButton has no height of its own, so at the smallest UI size its box is the
+text line"。那是一个真实的缺档，够单独一轮。

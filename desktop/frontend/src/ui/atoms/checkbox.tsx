@@ -1,7 +1,38 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
+import { color, motion, radius, space, surface, type } from "@/styles/tokens.stylex";
 import { Icon } from "@/ui/icons";
 import { CheckboxPrimitive } from "@/ui/primitives";
+
+const styles = stylex.create({
+  row: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: space.s2,
+    color: color.fgMuted,
+    userSelect: "none",
+    // Not a pointer: a checkbox is a control in a form, and this is a desktop app rather than
+    // a page, so the hand cursor would be the odd one out.
+    cursor: "default",
+  },
+  off: { cursor: "not-allowed", opacity: 0.6 },
+  box: {
+    display: "grid",
+    height: "18px",
+    width: "18px",
+    flexShrink: 0,
+    placeItems: "center",
+    borderRadius: radius.step2xs,
+    borderWidth: "var(--control-edge-width)",
+    borderStyle: "solid",
+    borderColor: { default: surface.field, ":is([data-checked])": color.accent },
+    backgroundColor: { default: surface.canvas, ":is([data-checked])": color.accent },
+    transitionProperty: "color, background-color, border-color",
+    transitionDuration: motion.color,
+  },
+  mark: { color: color.onAccent },
+});
 
 interface CheckboxProps {
   checked: boolean;
@@ -16,25 +47,17 @@ interface CheckboxProps {
 }
 
 export function Checkbox({ checked, onCheckedChange, label, disabled, className }: CheckboxProps) {
+  const row = stylex.props(styles.row, type.uiMd, disabled && styles.off);
   return (
-    <label
-      className={cn(
-        "inline-flex items-center gap-2 text-ui-md text-fg-muted select-none",
-        disabled ? "cursor-not-allowed opacity-60" : "cursor-default",
-        className,
-      )}
-    >
+    <label {...row} className={cn(row.className, className)}>
       <CheckboxPrimitive.Root
         checked={checked}
         onCheckedChange={onCheckedChange}
         disabled={disabled}
-        className={cn(
-          "grid h-[18px] w-[18px] shrink-0 place-items-center rounded-2xs border-[length:var(--control-edge-width)] border-field bg-canvas transition-colors duration-[var(--dur-color)]",
-          "data-[checked]:border-accent data-[checked]:bg-accent",
-        )}
+        {...stylex.props(styles.box)}
       >
         <CheckboxPrimitive.Indicator>
-          <Icon name="check" size="xs" className="text-on-accent" />
+          <Icon name="check" size="xs" {...stylex.props(styles.mark)} />
         </CheckboxPrimitive.Indicator>
       </CheckboxPrimitive.Root>
       <span>{label}</span>

@@ -1,5 +1,38 @@
+import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
+import { color, corner, motion, space, surface } from "@/styles/tokens.stylex";
 import { SwitchPrimitive } from "@/ui/primitives";
+
+const styles = stylex.create({
+  track: {
+    position: "relative",
+    display: "inline-flex",
+    height: space.s5,
+    width: space.s8,
+    flexShrink: 0,
+    alignItems: "center",
+    borderWidth: "var(--control-edge-width)",
+    borderStyle: "solid",
+    transitionProperty: "color, background-color, border-color",
+    transitionDuration: motion.color,
+    cursor: { default: null, ":disabled": "not-allowed" },
+    opacity: { default: null, ":disabled": 0.5 },
+  },
+  on: { borderColor: color.accent, backgroundColor: color.accent },
+  off: { borderColor: surface.field, backgroundColor: surface.sunken },
+  // The thumb travels by `translate` rather than by moving in the layout, so the slide is one
+  // compositable property and the track never reflows mid-gesture.
+  thumb: {
+    display: "block",
+    height: space.s4,
+    width: space.s4,
+    backgroundColor: { default: surface.canvas, ":is([data-checked])": color.onAccent },
+    boxShadow: "var(--shadow-control)",
+    transitionProperty: "translate",
+    transitionDuration: motion.fast,
+    translate: { default: space.s0_5, ":is([data-checked])": "14px" },
+  },
+});
 
 interface SwitchProps {
   checked: boolean;
@@ -10,25 +43,17 @@ interface SwitchProps {
 }
 
 export function Switch({ checked, onCheckedChange, disabled, ariaLabel, className }: SwitchProps) {
+  const track = stylex.props(styles.track, corner.pill, checked ? styles.on : styles.off);
   return (
     <SwitchPrimitive.Root
       checked={checked}
       onCheckedChange={onCheckedChange}
       disabled={disabled}
       aria-label={ariaLabel}
-      className={cn(
-        "relative inline-flex h-5 w-8 shrink-0 items-center rounded-pill border-[length:var(--control-edge-width)] transition-colors duration-[var(--dur-color)]",
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        checked ? "border-accent bg-accent" : "border-field bg-sunken",
-        className,
-      )}
+      {...track}
+      className={cn(track.className, className)}
     >
-      <SwitchPrimitive.Thumb
-        className={cn(
-          "block h-4 w-4 rounded-full bg-canvas shadow-[var(--shadow-control)] transition-transform duration-[var(--dur-fast)]",
-          "translate-x-0.5 data-[checked]:translate-x-[14px] data-[checked]:bg-on-accent",
-        )}
-      />
+      <SwitchPrimitive.Thumb {...stylex.props(styles.thumb, corner.pill)} />
     </SwitchPrimitive.Root>
   );
 }

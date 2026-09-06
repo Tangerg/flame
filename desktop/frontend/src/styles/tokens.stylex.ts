@@ -20,6 +20,7 @@ export const color = stylex.defineVars({
   fgMuted: "var(--color-text-muted)",
   fgFaint: "var(--color-text-faint)",
   accent: "var(--color-accent)",
+  onAccent: "var(--color-on-accent)",
   negative: "var(--color-negative)",
   warning: "var(--color-warning)",
   success: "var(--color-success)",
@@ -30,6 +31,7 @@ export const color = stylex.defineVars({
 export const motion = stylex.defineVars({
   fast: "var(--dur-fast)",
   instant: "var(--dur-instant)",
+  med: "var(--dur-med)",
   riseIn: "var(--animate-rise-in)",
   color: "var(--dur-color)",
   easeOut: "var(--ease-out)",

@@ -1,7 +1,23 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { cn } from "@/lib/classNames";
+import { motion } from "@/styles/tokens.stylex";
 import { useScrollLock } from "./use-scroll-lock";
+
+const styles = stylex.create({
+  // The row opens by growing its own track from `0fr` to `1fr`, which is the one way to
+  // animate to a height nobody measured: the child keeps its natural size throughout.
+  row: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr)",
+    transitionProperty: "grid-template-rows",
+    transitionDuration: motion.med,
+    transitionTimingFunction: "var(--ease-out)",
+  },
+  open: { gridTemplateRows: "1fr" },
+  shut: { gridTemplateRows: "0fr" },
+  well: { minHeight: 0, overflow: "clip" },
+});
 
 interface Props {
   open: boolean;
@@ -22,16 +38,12 @@ export function Collapsible({ open, children }: Props) {
   return (
     <div
       ref={rowRef}
-      className={cn(
-        "grid grid-cols-[minmax(0,1fr)]",
-        "transition-[grid-template-rows] duration-[var(--dur-med)] ease-out",
-        open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-      )}
+      {...stylex.props(styles.row, open ? styles.open : styles.shut)}
       onTransitionRun={() => {
         if (open) setRevealed(true);
       }}
     >
-      <div inert={!open} className="min-h-0 overflow-clip">
+      <div inert={!open} {...stylex.props(styles.well)}>
         {(open || revealed) && children}
       </div>
     </div>
