@@ -120,7 +120,9 @@ func (w worker) fireDue(ctx context.Context, now time.Time) {
 	}
 	occurrences, err := w.schedules.Pending(ctx, workerBatchSize)
 	if err != nil {
-		slog.ErrorContext(ctx, "schedule: pending query failed", "error", err)
+		if !errors.Is(err, ctx.Err()) {
+			slog.ErrorContext(ctx, "schedule: pending query failed", "error", err)
+		}
 		return
 	}
 	if err := validatePendingBatch(occurrences, workerBatchSize); err != nil {
@@ -133,7 +135,9 @@ func (w worker) fireDue(ctx context.Context, now time.Time) {
 	}
 	due, err := w.schedules.Due(ctx, now, batch.remaining())
 	if err != nil {
-		slog.ErrorContext(ctx, "schedule: due query failed", "error", err)
+		if !errors.Is(err, ctx.Err()) {
+			slog.ErrorContext(ctx, "schedule: due query failed", "error", err)
+		}
 		return
 	}
 	if err := validateDueBatch(due, now, batch.remaining()); err != nil {
@@ -271,11 +275,9 @@ func (w worker) claimDueOccurrence(
 	}
 	claimed, err := w.schedules.Claim(ctx, claim)
 	if err != nil {
-		slog.ErrorContext(
-			ctx,
-			"schedule: claim due occurrence failed",
-			"schedule.id", scheduled.ID(), "error", err,
-		)
+		if !errors.Is(err, ctx.Err()) {
+			slog.ErrorContext(ctx, "schedule: claim due occurrence failed", "schedule.id", scheduled.ID(), "error", err)
+		}
 		return schedule.Occurrence{}, false
 	}
 	if claimed {

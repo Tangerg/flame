@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"slices"
 	"strings"
@@ -211,6 +212,64 @@ func captureWorkerDiagnostics(t *testing.T) *bytes.Buffer {
 	slog.SetDefault(slog.New(slog.NewTextHandler(&output, nil)))
 	t.Cleanup(func() { slog.SetDefault(previous) })
 	return &output
+}
+
+func TestWorkerDistinguishesShutdownCancellationFromStorageFailure(t *testing.T) {
+	for _, operation := range []string{"pending", "due", "claim"} {
+		for _, cause := range []error{context.Canceled, errors.New("storage unavailable")} {
+			t.Run(operation+"/"+cause.Error(), func(t *testing.T) {
+				output := captureWorkerDiagnostics(t)
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				now := time.Date(2026, 6, 30, 10, 0, 0, 0, time.UTC)
+				base := &workerStore{due: []schedule.Schedule{dueSchedule(t, "sch_1", now)}}
+				store := cancelingWorkerStore{WorkerStore: base, cancel: cancel, operation: operation, err: cause}
+				runner := &recordingScheduledRunStarter{}
+				w := newWorker(workerDependencies{Store: store, RunStarter: runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID})
+
+				w.fireDue(ctx, now)
+
+				if len(runner.startedScheduleIDs) != 0 || len(base.claims) != 0 {
+					t.Fatalf("started=%d claims=%d after failed storage operation, want none", len(runner.startedScheduleIDs), len(base.claims))
+				}
+				if errors.Is(cause, context.Canceled) {
+					if output.Len() != 0 {
+						t.Fatalf("shutdown diagnostics = %q, want no error for cancellation", output.String())
+					}
+				} else if got := output.String(); strings.Count(got, "level=ERROR") != 1 || !strings.Contains(got, cause.Error()) {
+					t.Fatalf("diagnostics = %q, want independent storage failure even during shutdown", got)
+				}
+			})
+		}
+	}
+}
+
+type cancelingWorkerStore struct {
+	WorkerStore
+	cancel    context.CancelFunc
+	operation string
+	err       error
+}
+
+func (c cancelingWorkerStore) Pending(ctx context.Context, limit int) ([]schedule.Occurrence, error) {
+	if c.operation == "pending" {
+		c.cancel()
+		return nil, fmt.Errorf("pending query: %w", c.err)
+	}
+	return c.WorkerStore.Pending(ctx, limit)
+}
+
+func (c cancelingWorkerStore) Due(ctx context.Context, now time.Time, limit int) ([]schedule.Schedule, error) {
+	if c.operation == "due" {
+		c.cancel()
+		return nil, fmt.Errorf("due query: %w", c.err)
+	}
+	return c.WorkerStore.Due(ctx, now, limit)
+}
+
+func (c cancelingWorkerStore) Claim(ctx context.Context, claim schedule.Claim) (bool, error) {
+	c.cancel()
+	return false, fmt.Errorf("claim occurrence: %w", c.err)
 }
 
 func TestWorkerFireDueDoesNotConsumeCancellationAbortedFiring(t *testing.T) {
