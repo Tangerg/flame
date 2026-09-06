@@ -261,20 +261,6 @@ type SubagentInput struct {
 	ResultTruncated bool
 }
 
-// Clone returns an ownership-isolated lifecycle payload.
-func (i Input) Clone() Input {
-	out := i
-	if i.Tool != nil {
-		tool := *i.Tool
-		out.Tool = &tool
-	}
-	if i.Subagent != nil {
-		subagent := *i.Subagent
-		out.Subagent = &subagent
-	}
-	return out
-}
-
 // CommandProjection returns an ownership-isolated, bounded view for external
 // command hooks. Human-readable prompt/result material may use an explicit
 // marked prefix; canonical Tool arguments never truncate because doing so would

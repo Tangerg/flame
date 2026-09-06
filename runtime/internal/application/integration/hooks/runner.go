@@ -69,7 +69,8 @@ type CommandDecision struct {
 	RewriteArguments string
 }
 
-// CommandRunner executes hook commands for the domain runner.
+// CommandRunner executes hook commands with borrowed request data. It neither
+// mutates the request nor retains it after the synchronous call returns.
 type CommandRunner interface {
 	RunHookCommand(ctx context.Context, req CommandRequest) CommandResult
 }
@@ -97,10 +98,8 @@ func NewRunner(commands CommandRunner, onError func(ctx context.Context, source 
 // contributes context with no process spawn; a `command` hook is exec'd with in
 // as JSON on stdin. Hooks run in list order (loader order: global before
 // project), so the combine rules (first-block-wins, first-rewrite-wins) are
-// deterministic.
+// deterministic. Hooks and input are borrowed until the call returns.
 func (r *Runner) Run(ctx context.Context, hooks []domain.Hook, in domain.Input) domain.Decision {
-	hooks = slices.Clone(hooks)
-	in = in.Clone()
 	var dec domain.Decision
 	var commandInput domain.Input
 	var commandInputErr error
@@ -140,7 +139,7 @@ func (r *Runner) runOne(ctx context.Context, h domain.Hook, in domain.Input, dec
 	result := r.commands.RunHookCommand(ctx, CommandRequest{
 		Command: h.Command,
 		CWD:     in.CWD,
-		Input:   in.Clone(),
+		Input:   in,
 		Timeout: timeout,
 	})
 	if result.TimedOut {
@@ -202,7 +201,7 @@ type Bound struct {
 	runner *Runner
 }
 
-// NewBound binds a hook list to the runner that evaluates command hooks.
+// NewBound owns a snapshot of the hook configuration retained for later events.
 func NewBound(hooks []domain.Hook, runner *Runner) *Bound {
 	return &Bound{hooks: slices.Clone(hooks), runner: runner}
 }
