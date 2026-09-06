@@ -1352,7 +1352,7 @@ func TestReducerKeepsQuestionToolLifecycleOpenAcrossHITLResume(t *testing.T) {
 	parked := mustReduceBatch(t, first, SegmentInterrupted{Interrupts: []Interrupt{{
 		Kind: interrupt.Question,
 		Question: &QuestionPrompt{
-			CallID: "call_question", ToolName: "ask_user", Arguments: arguments,
+			ToolName: "ask_user", Arguments: arguments,
 			Fields: []QuestionFieldSpec{{
 				Prompt: "Choose", Header: "Color",
 				Options:     []QuestionOptionSpec{{Label: "Blue"}, {Label: "Green"}},
@@ -1744,7 +1744,7 @@ func TestReducerDrainsToolsInStartOrder(t *testing.T) {
 		mustReduce(t, reducer, event)
 	}
 
-	drained := drainedToolRefs(reducer.tools.ordered(), nil, nil)
+	drained := drainedToolRefs(reducer.tools.ordered(), nil)
 	if len(drained) != 3 {
 		t.Fatalf("drained tool count = %d, want 3", len(drained))
 	}

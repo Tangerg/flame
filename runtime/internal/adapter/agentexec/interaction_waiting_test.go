@@ -174,7 +174,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 
 func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	workspace := t.TempDir()
-	ask, err := builtin.NewAskUser(RequireToolInput)
+	ask, err := builtin.NewAskUser(interactioninput.Require)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +203,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	interruptions := barrier.Interruptions()
 	if len(interruptions) != 1 || interruptions[0].Interrupt.Question == nil ||
 		interruptions[0].Interrupt.Question.ToolName != domaintool.AskUser ||
-		len(starts) != 1 || interruptions[0].Interrupt.Question.CallID != starts[0].CallID {
+		len(starts) != 1 {
 		t.Fatalf("ask_user interruption = %#v", interruptions)
 	}
 	if releaseErr := executor.Release(t.Context(), ref); releaseErr != nil {
@@ -230,7 +230,10 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 		t.Fatal(err)
 	}
 	observed := <-events
-	if len(payloadsOf[runs.ToolCallFinished](observed)) != 1 ||
+	resumed := payloadsOf[runs.ToolCallStarted](observed)
+	finished := payloadsOf[runs.ToolCallFinished](observed)
+	if len(resumed) != 1 || resumed[0].CallID != starts[0].CallID ||
+		len(finished) != 1 || finished[0].CallID != starts[0].CallID ||
 		len(payloadsOf[runs.AssistantMessageCompleted](observed)) != 1 {
 		t.Fatalf("restored ask_user lifecycle = %#v", observed)
 	}

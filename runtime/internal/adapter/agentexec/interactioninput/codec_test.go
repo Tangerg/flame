@@ -15,7 +15,6 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 	question := runs.Interrupt{
 		Kind: interrupt.Question,
 		Question: &runs.QuestionPrompt{
-			CallID:    "tool_question_1",
 			ToolName:  "ask_user",
 			Arguments: `{"questions":[{"question":"Continue?"}]}`,
 			Fields: []runs.QuestionFieldSpec{{
@@ -29,8 +28,7 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 		t.Fatal(err)
 	}
 	encoded := string(raw)
-	if !strings.Contains(encoded, `"callId":"tool_question_1"`) ||
-		!strings.Contains(encoded, `"fields"`) || !strings.Contains(encoded, `"prompt"`) ||
+	if !strings.Contains(encoded, `"fields"`) || !strings.Contains(encoded, `"prompt"`) ||
 		strings.Contains(encoded, `"multiSelect"`) {
 		t.Fatalf("question checkpoint uses stale vocabulary: %s", encoded)
 	}
@@ -38,7 +36,7 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DecodePrompt: %v", err)
 	}
-	if got.Kind != interrupt.Question || got.Question == nil || got.Question.CallID != "tool_question_1" ||
+	if got.Kind != interrupt.Question || got.Question == nil ||
 		got.Question.ToolName != "ask_user" ||
 		!got.Question.Fields[0].AllowCustom {
 		t.Fatalf("decoded = %#v", got)

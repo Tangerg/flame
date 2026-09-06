@@ -30,12 +30,9 @@ func (r *reducer) interrupt(e SegmentInterrupted) (factReduction, error) {
 		approvalItems: make(map[int]transcript.Item),
 	}
 	open := r.tools.drain()
-	matched, err := matchInterruptTools(open, e.Interrupts)
-	if err != nil {
-		return factReduction{}, err
-	}
+	matched := matchToolApprovals(open, e.Interrupts)
 	priorDrained := r.resume.remainingDrainedTools()
-	r.drained = mergeDrainedTools(priorDrained, drainedToolRefs(open, matched, e.Interrupts))
+	r.drained = mergeDrainedTools(priorDrained, drainedToolRefs(open, matched))
 	if err := r.projectInterruptedTools(&projection, open, matched, e.Interrupts); err != nil {
 		return factReduction{}, err
 	}
@@ -64,7 +61,7 @@ func (r *reducer) projectInterruptedTools(
 ) error {
 	for _, ref := range open {
 		if index, ok := matched[ref]; ok {
-			if err := r.projectInterruptedTool(projection, ref, index, interrupts[index]); err != nil {
+			if err := r.projectToolApproval(projection, ref, index, *interrupts[index].Approval); err != nil {
 				return err
 			}
 			continue
@@ -87,33 +84,21 @@ func (r *reducer) projectInterruptedTools(
 	return nil
 }
 
-func (r *reducer) projectInterruptedTool(
+func (r *reducer) projectToolApproval(
 	projection *interruptProjection,
 	ref *openTool,
 	interruptIndex int,
-	pending Interrupt,
+	prompt ApprovalPrompt,
 ) error {
 	if err := r.closeSuspendedToolAttempt(ref); err != nil {
 		return err
 	}
-	switch pending.Kind {
-	case interrupt.Approval:
-		item, publishStart, err := r.approvalItem(*pending.Approval, ref)
-		if err != nil {
-			return err
-		}
-		projection.approvalItems[interruptIndex] = item
-		return projection.appendToolItem(item, publishStart)
-	case interrupt.Question:
-		// The Question is a separate completed prompt Item, while its Tool
-		// remains suspended inside the handler and must resume under one identity.
-		item, err := r.runningToolItem(ref)
-		if err != nil {
-			return err
-		}
-		projection.items = append(projection.items, item)
+	item, publishStart, err := r.approvalItem(prompt, ref)
+	if err != nil {
+		return err
 	}
-	return nil
+	projection.approvalItems[interruptIndex] = item
+	return projection.appendToolItem(item, publishStart)
 }
 
 func (r *reducer) projectPendingInterrupts(
@@ -188,7 +173,7 @@ func (r *reducer) suspend(duration time.Duration) (factReduction, error) {
 	open := r.tools.drain()
 	r.drained = mergeDrainedTools(
 		r.resume.remainingDrainedTools(),
-		drainedToolRefs(open, nil, nil),
+		drainedToolRefs(open, nil),
 	)
 	for _, ref := range open {
 		if ref.end != nil {
@@ -278,58 +263,35 @@ func approvalTranscriptInterrupt(item transcript.Item, prompt ApprovalPrompt) tr
 	}
 }
 
-// matchInterruptTools binds an executor interrupt back to the open tool call
-// that raised it. Approval carries a provider call ID; question-producing tools
-// are correlated by their canonical name and arguments because their handler
-// creates the interrupt below the execution wrapper that owns that ID.
-func matchInterruptTools(open []*openTool, values []Interrupt) (map[*openTool]int, error) {
+// matchToolApprovals binds approvals to their Tool Items. Questions have their
+// own prompt Items; their Tools suspend through the ordinary continuation path.
+func matchToolApprovals(open []*openTool, values []Interrupt) map[*openTool]int {
 	matched := make(map[*openTool]int)
 	for index, value := range values {
-		toolName, rawArguments := value.Tool()
-		if toolName == "" {
+		if value.Kind != interrupt.Approval {
 			continue
 		}
-		arguments, err := parseToolArguments(rawArguments)
-		if err != nil {
-			return nil, fmt.Errorf("%s interrupt tool %q arguments: %w", value.Kind, toolName, err)
-		}
-		callID := ""
-		switch {
-		case value.Approval != nil:
-			callID = value.Approval.CallID
-		case value.Question != nil:
-			callID = value.Question.CallID
-		}
 		for _, ref := range open {
-			if ref.end != nil {
+			if ref.end != nil || ref.callID != value.Approval.CallID {
 				continue
 			}
 			if _, used := matched[ref]; used {
-				continue
-			}
-			if callID != "" {
-				if ref.callID != callID {
-					continue
-				}
-			} else if ref.name != toolName || ref.arguments.Canonical() != arguments.Canonical() {
 				continue
 			}
 			matched[ref] = index
 			break
 		}
 	}
-	return matched, nil
+	return matched
 }
 
 func drainedToolRefs(
 	open []*openTool,
 	matched map[*openTool]int,
-	interrupts []Interrupt,
 ) []DrainedTool {
 	var drained []DrainedTool
 	for _, ref := range open {
-		matchedIndex, matchedInterrupt := matched[ref]
-		activeApproval := matchedInterrupt && interrupts[matchedIndex].Kind == interrupt.Approval
+		_, activeApproval := matched[ref]
 		if ref.end == nil && !activeApproval {
 			drained = append(drained, DrainedTool{
 				ItemID: ref.id, ItemOccurredAt: ref.occurredAt,

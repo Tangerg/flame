@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
+	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec/interactioninput"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
@@ -76,7 +76,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		MCPTools:        mcpTools,
 		A2AAgents:       cfg.A2AAgents,
 		Plan:            deps.plan,
-		Interrupt:       agentexec.RequireToolInput,
+		Interrupt:       interactioninput.Require,
 		MCPToolDisabled: deps.mcp.policy.ToolDisabled,
 		// The authoring store records Skill loads for idle-Skill archival; a
 		// disabled store no-ops RecordUse.

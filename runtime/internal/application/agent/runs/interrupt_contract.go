@@ -42,11 +42,9 @@ type ApprovalPrompt struct {
 }
 
 // QuestionPrompt is the complete durable plan for a question-producing tool
-// call. CallID is filled by the execution ACL when the prompt crosses the Tool
-// boundary; ToolName and Arguments preserve the semantic input for restoring
-// the question-producing handler. Fields are the client-facing answer schema.
+// call. ToolName and Arguments preserve the semantic input for restoring the
+// question-producing handler. Fields are the client-facing answer schema.
 type QuestionPrompt struct {
-	CallID    string
 	ToolName  string
 	Arguments string
 	Fields    []QuestionFieldSpec
@@ -147,9 +145,6 @@ func (a ApprovalPrompt) validate() error {
 }
 
 func (q QuestionPrompt) validate() error {
-	if _, _, err := runtimeidentity.ParseOptionalEffect(q.CallID); err != nil {
-		return fmt.Errorf("runs: question: %w", err)
-	}
 	if strings.TrimSpace(q.ToolName) == "" {
 		return errors.New("runs: question tool name is required")
 	}

@@ -43,6 +43,8 @@ A Delegate retains its admitted child across a human-input barrier. Each continu
 
 Tool continuation uses the executor's stable call identity. Edited approval arguments change the execution input while preserving that identity; a new call with the same name or arguments receives its own Item. One remaining-call index owns whether a suspended Item still needs to resume or settle.
 
+A Question owns its completed prompt Item and answer schema. Its unfinished Tool suspends and resumes through the ordinary Tool continuation path; the prompt retains the handler's semantic input without copying its execution identity.
+
 A child's terminal projection precedes the waiting barrier even when an earlier sibling still needs input. Only parent Tool results wait for the model's declared call order. Completed children leave the product continuation set; the restored Scope tree retains their pending parent Tool results until that order can advance. Application supplies each waiting member's drained Tool identities so restoration does not reopen a parent result that was already committed.
 
 Canceling the final waiting child also opens a continuation Segment. Its observer reopens only surviving parent Tool attempts. The executor supplies the exact model-visible cancellation result during preparation; Application commits that value with the canceled Items and resulting checkpoint before the tree can advance.
