@@ -6846,3 +6846,102 @@ Loader 的 `sm` 是字号步进，行的 `sm` 是行高；把它们收敛等于�
 浮层簇只剩四个 dialog（`lightbox` / `confirm` / `search-overlay` /
 `text-editor`），它们已经在用 StyleX 的 `MODAL_SCRIM` / `FLOATING_MOTION`，
 剩下的是各自的版式。
+
+---
+
+## Round 120 — 浮层簇之三：四个 dialog，与它们各写一遍的同一个面板
+
+### 计划（写在改代码之前）
+
+`MODAL_SCRIM` 被抽出来了，**它遮住的那个东西没有**。四个 dialog 各自
+手写了一遍"模态面板"，而且互相不一致：
+
+| | 定位 | 圆角 | 填充 | 宽度 |
+| --- | --- | --- | --- | --- |
+| `confirm-dialog` | `inset-0 m-auto` | `--floating-panel-radius` | `bg-canvas` | `min(400px,…)` |
+| `text-editor-dialog` | `inset-0 m-auto` | **`--shape-composer`** | `bg-card` | `min(420px,…)` |
+| `lightbox-dialog` | `inset-0 m-auto` | `--floating-panel-radius` | `bg-card` | `w-fit max-w-…` |
+| `search-overlay` | **`inset-x-0 top-24 mx-auto`** | `--floating-panel-radius` | `bg-canvas` | `min(520px,…)` |
+
+四者一致的部分：`position: fixed`、`z-index: var(--layer-modal)`、
+`box-shadow: var(--shadow-modal)`、`outline: none`。这些抽成 `MODAL_PANEL`，
+定位分 `centred` / `top` 两档（3 : 1）。
+
+### 上报，不擅自统一：填充 2 : 2 分裂
+
+`bg-canvas`（`--color-bg`，不透明）两处，`bg-card`（`--color-elevated`）两处。
+两者都不是 `--app-floating-surface`（那是 `--app-content-surface` 的 90% 半透明，
+配 `::before` 的背景模糊，而这四个都没有那层模糊）。
+
+**这是一个没有所有者的分歧**，不是某一处写错。四个模态里两个说自己是画布材质、
+两个说自己是卡片材质 —— 挑哪一个是设计决定，不是迁移能顺手做掉的。
+本轮把它们迁成令牌引用（`surface.canvas` / `surface.card`），
+让分歧从四串 class 变成两个可数的名字，记录在此等定夺。
+
+圆角的 `--shape-composer` 同理：`text-editor-dialog` 是唯一一个用它的，
+理由可能是"它里面装着一个 composer"，也可能只是漂移。一并上报。
+
+### 验收标准
+
+四个 dialog 的 `position` / `z-index` / `shadow` / `outline` 只写一次；
+golden 零位移；17 项 `check:*` 全绿。
+
+### golden 抓到这轮最大的一处对抗：lightbox 的三种用法是三种东西
+
+迁完第一版，两张 golden 报 **"Expected 1120×720, received 272×208"** ——
+对话框塌成了它内容的大小。原因是 `ImagePreviewGallery` 在写：
+
+```
+className="h-[100dvh] w-screen max-h-none max-w-none overflow-hidden
+           rounded-none bg-media-preview p-0 shadow-none"
+```
+
+**一口气取消面板的七条属性。** Tailwind 下靠 `cn()` 后来者优先成立，
+StyleX 下七条全被 `:not(#\#)` 丢弃。
+
+再看另外两个调用点，三者是三种东西，不是一种的三次调整：
+
+| 调用点 | 装的是 | 收敛为 |
+| --- | --- | --- |
+| `MermaidBlock` | 一张图，贴合内容，视口封顶 | `kind="figure"`（默认） |
+| `MarkdownTable` | 一份文档，可读宽度，可滚动 | `kind="document"` |
+| `ImagePreviewGallery` | 整屏的媒体，近黑场 | `kind="media"` |
+
+`media` 没有圆角可倒、没有平面可投影 —— 这正是它此前要逐条取消的原因。
+内距也随之收进各自的档（0 / 6 / 8+12），因为它和"装的是什么"完全同步。
+
+### 第二次位移：`document` 漏了基座的 `w-fit`
+
+第二轮跑，表格预览从 **408px 被撑到 896px**。原因是我给 `document` 写了
+`min-width` / `max-width` 却没写 `width: fit-content` —— 而
+`inset: 0` + `margin: auto` + `width: auto` 会把固定定位的元素拉满可用宽。
+基座类里那个不起眼的 `w-fit` 是有活儿干的。补回后通过。
+
+### 上报，不擅自改
+
+1. **模态填充 2 : 2 分裂** —— `confirm` / `search-overlay` 用 `bg-canvas`，
+   `lightbox` / `text-editor` 用 `bg-card`。两者都不是 `--app-floating-surface`
+   （那是半透明配背景模糊，这四个都没有那层模糊）。没有所有者的分歧。
+2. **`text-editor-dialog` 是唯一用 `--radius-composer` 的模态** ——
+   可能因为它里面装着 composer，也可能只是漂移。
+3. **`document` 档同时有 `border` 和 `--shadow-modal`**（后者含 ring）——
+   这是 DESIGN.md §5 明禁的双边。**原样保留**：去掉哪一条是设计决定。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650，零位移** |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+### 资源回收
+
+关闭 4174 预览服务。
+
+### 下一轮方向
+
+浮层簇迁完。`ui/atoms` 里仍是 Tailwind 的还有二十余个，
+`button` 依旧被 `chip.tsx` 的 `group-hover:` 挡着 —— 那是一个需要定型的设计决定，
+不是一次迁移。下一批挑独立件：`icon-button` / `pill-button` / `text-button` /
+`checkbox` / `switch` / `slider` / `collapsible`。

@@ -1,13 +1,39 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
-import { cn } from "@/lib/classNames";
 import { DialogPrimitive } from "@/ui/primitives";
 import { Icon } from "@/ui/icons";
-import { FLOATING_MOTION, MODAL_SCRIM } from "./floating-surface";
+import { MODAL_SCRIM, modalPanel } from "./floating-surface";
+import { color, radius, space, surface } from "@/styles/tokens.stylex";
 import { Kbd } from "./kbd";
 import { OptionRow } from "./option-row";
 import { TextField } from "./text-field";
+
+const styles = stylex.create({
+  panel: {
+    display: "flex",
+    width: "min(520px, calc(100vw - 32px))",
+    flexDirection: "column",
+    overflow: "hidden",
+    borderRadius: radius.floatingPanel,
+    backgroundColor: surface.canvas,
+  },
+  // The popup is the flex column; this wrapper exists to key the content, not to lay it out.
+  contents: { display: "contents" },
+  queryRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: space.s2_5,
+    borderBottomWidth: "1px",
+    borderBottomStyle: "solid",
+    borderBottomColor: surface.lineSoft,
+    paddingInline: "calc(var(--spacing) * 3.5)",
+    paddingBlock: space.s2_5,
+    color: color.fgMuted,
+  },
+  input: { flex: 1 },
+  list: { maxHeight: "calc(var(--spacing) * 80)", overflowY: "auto", padding: space.s1_5 },
+});
 
 interface SearchOption {
   key: string;
@@ -58,12 +84,7 @@ export function SearchOverlay({
           data-slot="search-overlay"
           aria-label={label}
           finalFocus={() => (opener?.isConnected ? opener : null)}
-          className={cn(
-            "fixed inset-x-0 top-24 z-[var(--layer-modal)] mx-auto flex w-[min(520px,calc(100vw-32px))]",
-            "flex-col overflow-hidden rounded-[var(--floating-panel-radius)] outline-none",
-            "bg-canvas shadow-[var(--shadow-modal)]",
-            stylex.props(FLOATING_MOTION).className,
-          )}
+          {...stylex.props(modalPanel("top"), styles.panel)}
         >
           <SearchOverlayContent
             key={open ? "open" : "closed"}
@@ -104,8 +125,8 @@ function SearchOverlayContent({
   }, [activeId, open]);
 
   return (
-    <div className="contents">
-      <div className="flex items-center gap-2.5 border-b border-line-soft px-3.5 py-2.5 text-fg-muted">
+    <div {...stylex.props(styles.contents)}>
+      <div {...stylex.props(styles.queryRow)}>
         <Icon name="search" size="md" />
         <TextField
           variant="bare"
@@ -135,7 +156,7 @@ function SearchOverlayContent({
           }}
           placeholder={placeholder}
           aria-label={placeholder}
-          className="flex-1"
+          {...stylex.props(styles.input)}
         />
         <Kbd>esc</Kbd>
       </div>
@@ -144,7 +165,7 @@ function SearchOverlayContent({
         id={listboxId}
         role="listbox"
         aria-label={label}
-        className="max-h-80 overflow-y-auto p-1.5"
+        {...stylex.props(styles.list)}
       >
         {rows.length === 0
           ? empty

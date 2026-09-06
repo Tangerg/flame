@@ -127,7 +127,6 @@ export function MermaidBlock({ code }: Props) {
             open={zoomed}
             onOpenChange={setZoomed}
             title={t("markdown.diagram")}
-            className="p-6"
             trigger={
               <IconButton
                 icon="maximize"

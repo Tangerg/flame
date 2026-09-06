@@ -52,6 +52,8 @@ export const surface = stylex.defineVars({
   hover: "var(--color-hover)",
   selected: "var(--color-selected)",
   negativeWashRow: "var(--color-negative-wash)",
+  lineSoft: "var(--color-line-soft)",
+  mediaField: "var(--color-media-preview)",
   /** The app's card plane, and the hairline a fill-less surface uses instead of it. */
   card: "var(--app-card-surface)",
   field: "var(--color-field)",
@@ -78,6 +80,8 @@ export const radius = stylex.defineVars({
   segment: "var(--segment-radius)",
   floatingPanel: "var(--floating-panel-radius)",
   floatingTip: "var(--floating-tip-radius)",
+  composer: "var(--radius-composer)",
+  xl: "var(--radius-xl)",
 });
 
 /**
@@ -102,8 +106,11 @@ export const space = stylex.defineVars({
   s5: "calc(var(--spacing) * 5)",
   s6: "calc(var(--spacing) * 6)",
   s7: "calc(var(--spacing) * 7)",
+  s8: "calc(var(--spacing) * 8)",
+  s9: "calc(var(--spacing) * 9)",
   s10: "calc(var(--spacing) * 10)",
   s12: "calc(var(--spacing) * 12)",
+  s24: "calc(var(--spacing) * 24)",
 });
 
 /**
@@ -148,6 +155,10 @@ export const type = stylex.create({
   uiXs: { fontSize: "var(--text-ui-xs)", letterSpacing: "var(--text-ui-xs--letter-spacing)" },
   uiSm: { fontSize: "var(--text-ui-sm)", letterSpacing: "var(--text-ui-sm--letter-spacing)" },
   uiMd: { fontSize: "var(--text-ui-md)", letterSpacing: "var(--text-ui-md--letter-spacing)" },
+  displaySm: {
+    fontSize: "var(--text-display-sm)",
+    letterSpacing: "var(--text-display-sm--letter-spacing)",
+  },
   code: { fontSize: "var(--text-code)", letterSpacing: "var(--text-code--letter-spacing)" },
   prose: { fontSize: "var(--text-prose)", letterSpacing: "var(--text-prose--letter-spacing)" },
 });

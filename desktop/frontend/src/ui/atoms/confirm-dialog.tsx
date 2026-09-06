@@ -1,9 +1,29 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import { color, leading, radius, space, surface, type } from "@/styles/tokens.stylex";
 import { Button } from "./button";
 import { DialogPrimitive } from "@/ui/primitives";
-import { FLOATING_MOTION, MODAL_SCRIM } from "./floating-surface";
+import { MODAL_SCRIM, modalPanel } from "./floating-surface";
+
+const styles = stylex.create({
+  // `bg-canvas` where the lightbox and the text editor use `bg-card`: a 2:2 split with no owner,
+  // reported rather than picked, since which material a modal is made of is a design decision.
+  panel: {
+    width: "min(400px, calc(100vw - 32px))",
+    borderRadius: radius.floatingPanel,
+    backgroundColor: surface.canvas,
+    padding: space.s4,
+  },
+  title: { fontWeight: 600, color: color.fg },
+  body: { marginTop: space.s1_5, lineHeight: leading.relaxed, color: color.fgMuted },
+  actions: {
+    marginTop: space.s4,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: space.s2,
+  },
+});
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -40,19 +60,15 @@ export function ConfirmDialog({
           // `dialog` announces it as another window and loses the urgency the copy is
           // carrying. A confirmation that only asks — none exists yet — is not an alert.
           role={destructive ? "alertdialog" : undefined}
-          className={cn(
-            "fixed inset-0 z-[var(--layer-modal)] m-auto h-fit w-[min(400px,calc(100vw-32px))]",
-            "rounded-[var(--floating-panel-radius)] bg-canvas p-4 shadow-[var(--shadow-modal)] outline-none",
-            stylex.props(FLOATING_MOTION).className,
-          )}
+          {...stylex.props(modalPanel(), styles.panel)}
         >
-          <DialogPrimitive.Title className="text-display-sm font-semibold text-fg">
+          <DialogPrimitive.Title {...stylex.props(type.displaySm, styles.title)}>
             {title}
           </DialogPrimitive.Title>
-          <DialogPrimitive.Description className="mt-1.5 text-ui-md leading-relaxed text-fg-muted">
+          <DialogPrimitive.Description {...stylex.props(type.uiMd, styles.body)}>
             {body}
           </DialogPrimitive.Description>
-          <div className="mt-4 flex items-center justify-end gap-2">
+          <div {...stylex.props(styles.actions)}>
             <DialogPrimitive.Close render={<Button variant="ghost">{cancelLabel}</Button>} />
             <Button
               variant={destructive ? "tonal" : "primary"}

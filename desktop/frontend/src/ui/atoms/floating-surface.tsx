@@ -82,6 +82,19 @@ const styles = stylex.create({
     },
   },
   rise: { animation: motion.riseIn },
+  // What the scrim sits in front of. Four dialogs had each written this out, so the four agreed
+  // on nothing but these: a modal is fixed, on the modal layer, cast by `--shadow-modal`, and
+  // takes no focus ring of its own because the scrim already says where the attention is.
+  modal: {
+    position: "fixed",
+    zIndex: "var(--layer-modal)",
+    boxShadow: "var(--shadow-modal)",
+    outline: "none",
+  },
+  // Centred is the standing answer; a finder anchors near the top because the list below it
+  // grows downward and a centred one would walk up the screen as results arrive.
+  modalCentred: { inset: 0, margin: "auto", height: "fit-content" },
+  modalTop: { insetInline: 0, top: "calc(var(--spacing) * 24)", marginInline: "auto" },
 });
 
 /** Where a floating thing sits in the stack. Its own layer, not the modal one. */
@@ -98,6 +111,13 @@ export const FLOATING_TIP = [styles.face, styles.motion, styles.tip];
 
 /** What a modal puts between itself and everything behind it. */
 export const MODAL_SCRIM = [styles.scrim];
+
+/** The panel the scrim sits in front of. Width, fill and corner stay with each dialog. */
+export const modalPanel = (place: "centred" | "top" = "centred") => [
+  styles.modal,
+  place === "top" ? styles.modalTop : styles.modalCentred,
+  styles.motion,
+];
 
 export function FloatingSurface({
   className,

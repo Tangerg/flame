@@ -1,10 +1,52 @@
 import * as stylex from "@stylexjs/stylex";
 import { type FormEvent, type KeyboardEvent, type ReactNode, useRef } from "react";
 import { Button } from "./button";
-import { FLOATING_MOTION, MODAL_SCRIM } from "./floating-surface";
+import { MODAL_SCRIM, modalPanel } from "./floating-surface";
+import { color, radius, space, surface, type } from "@/styles/tokens.stylex";
 import { IconButton } from "./icon-button";
 import { TextArea } from "./text-field";
 import { DialogPrimitive } from "@/ui/primitives";
+
+const styles = stylex.create({
+  // The only modal on `--radius-composer` rather than the floating-panel corner. It holds a
+  // composer, so it may be deliberate — or drift. Reported, not changed.
+  panel: {
+    width: "min(420px, calc(100vw - 32px))",
+    overflow: "hidden",
+    borderRadius: radius.composer,
+    backgroundColor: surface.card,
+  },
+  form: { position: "relative", display: "flex", flexDirection: "column", padding: space.s5 },
+  head: {
+    display: "flex",
+    width: "100%",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: space.s3,
+  },
+  icon: {
+    display: "flex",
+    height: space.s9,
+    width: space.s9,
+    flexShrink: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.xl,
+    backgroundColor: surface.surface2,
+    padding: space.s2,
+  },
+  title: { fontWeight: 600, color: color.fg },
+  close: { position: "absolute", top: space.s4, right: space.s4 },
+  field: { display: "flex", width: "100%", flexDirection: "column", paddingTop: space.s3 },
+  actions: {
+    display: "flex",
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: space.s3,
+    paddingTop: space.s3,
+  },
+});
 
 interface TextEditorDialogProps {
   open: boolean;
@@ -65,16 +107,12 @@ export function TextEditorDialog({
         <DialogPrimitive.Popup
           data-slot="text-editor-dialog"
           initialFocus={editorRef}
-          className={`fixed inset-0 z-[var(--layer-modal)] m-auto h-fit w-[min(420px,calc(100vw-32px))] overflow-hidden rounded-[var(--shape-composer)] bg-card shadow-[var(--shadow-modal)] outline-none ${stylex.props(FLOATING_MOTION).className}`}
+          {...stylex.props(modalPanel(), styles.panel)}
         >
-          <form className="relative flex flex-col gap-0 p-5" onSubmit={submit}>
-            <div className="flex w-full flex-col items-start gap-3">
-              {icon && (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--shape-xl)] bg-surface-2 p-2">
-                  {icon}
-                </span>
-              )}
-              <DialogPrimitive.Title className="text-display-sm font-semibold text-fg">
+          <form {...stylex.props(styles.form)} onSubmit={submit}>
+            <div {...stylex.props(styles.head)}>
+              {icon && <span {...stylex.props(styles.icon)}>{icon}</span>}
+              <DialogPrimitive.Title {...stylex.props(type.displaySm, styles.title)}>
                 {title}
               </DialogPrimitive.Title>
             </div>
@@ -86,11 +124,11 @@ export function TextEditorDialog({
                   iconSize="xs"
                   quiet
                   title={closeLabel}
-                  className="absolute top-4 right-4"
+                  {...stylex.props(styles.close)}
                 />
               }
             />
-            <div className="flex w-full flex-col pt-3">
+            <div {...stylex.props(styles.field)}>
               <TextArea
                 ref={editorRef}
                 rows={12}
@@ -102,7 +140,7 @@ export function TextEditorDialog({
                 onChange={(event) => onChange(event.target.value)}
               />
             </div>
-            <div className="flex w-full items-center justify-end gap-3 pt-3">
+            <div {...stylex.props(styles.actions)}>
               <Button
                 type="button"
                 variant="soft"

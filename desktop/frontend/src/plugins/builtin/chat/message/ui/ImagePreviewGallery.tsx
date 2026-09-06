@@ -167,7 +167,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
         }
       }}
       title={active.alt || titleFallback}
-      className="h-[100dvh] w-screen max-h-none max-w-none overflow-hidden rounded-none bg-media-preview p-0 shadow-none"
+      kind="media"
       trigger={trigger({
         "data-message-image-preview-trigger": "true",
         onClick: (event) => {
