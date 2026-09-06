@@ -94,14 +94,14 @@ export function ThemeSection() {
               label={triggerLabel}
               leading={triggerSwatch}
               aria-label={t("settings.theme")}
-              className="min-w-[220px]"
+              className="min-w-[var(--select-min-width)]"
             />
           }
         />
         <DropdownMenu.Content
           align="start"
           sideOffset={4}
-          className="max-h-[min(60vh,380px)] min-w-[240px] overflow-y-auto"
+          className="max-h-[min(60vh,380px)] min-w-[var(--menu-min-width)] overflow-y-auto"
         >
           <ThemeItem
             swatch={<SystemSwatch />}

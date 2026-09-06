@@ -237,7 +237,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
           return (
             <ContextMenu.Root key={tab.id}>
               <ContextMenu.Trigger render={row} />
-              <ContextMenu.Content className="min-w-[168px]">
+              <ContextMenu.Content className="min-w-[var(--menu-min-width)]">
                 {tab.onClose && (
                   <ContextMenu.IconItem icon="x" onSelect={close}>
                     {tab.closeLabel}

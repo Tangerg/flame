@@ -390,6 +390,14 @@
   --field-height-md: 28px;
   --field-height-lg: 32px;
   --menu-row-height: 30px;
+  /* The floor a popup opens at, not its width: content wider than this expands it. It had no
+     owner, so seventeen call sites each picked a number and the ten they picked span 160 to
+     248 — the same context menu opening 8px narrower than the one beside it. */
+  --menu-min-width: 12rem;
+  /* A settings select is a form FIELD, not a menu, and its floor answers a different
+     question: how wide the control sits in the row whether or not it is open. Three of them
+     carried two values; this is the wider, so no label narrows. */
+  --select-min-width: 220px;
   --dock-tab-height: 28px;
   --composer-attachment-radius: max(
     0px,

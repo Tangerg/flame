@@ -21,7 +21,7 @@ function CopyButton() {
           }
         />
       </Tooltip>
-      <DropdownMenu.Content align="end" sideOffset={4} className="min-w-[160px]">
+      <DropdownMenu.Content align="end" sideOffset={4} className="min-w-[var(--menu-min-width)]">
         <CopyItem
           label={t("msgActions.copyMarkdown")}
           hint={t("msgActions.copyMarkdownHint")}

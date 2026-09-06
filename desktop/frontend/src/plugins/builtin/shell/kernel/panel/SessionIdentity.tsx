@@ -49,7 +49,7 @@ export function SessionIdentity({ sessionId, title, workspacePath }: Props): Rea
           </div>
         }
       />
-      <ContextMenu.Content className="min-w-[200px]">
+      <ContextMenu.Content className="min-w-[var(--menu-min-width)]">
         {workspacePath && (
           <ContextMenu.IconItem
             icon="copy"

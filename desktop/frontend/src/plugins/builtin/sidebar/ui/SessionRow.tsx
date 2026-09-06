@@ -144,7 +144,7 @@ export function SessionRow({
     <>
       <ContextMenu.Root>
         <ContextMenu.Trigger render={row} />
-        <ContextMenu.Content className="min-w-[160px]">
+        <ContextMenu.Content className="min-w-[var(--menu-min-width)]">
           {onToggleFavorite && (
             <ContextMenu.IconItem
               icon="star"

@@ -133,7 +133,11 @@ export function ApprovalCard({
                   </Button>
                 }
               />
-              <DropdownMenu.Content align="end" sideOffset={4} className="min-w-[196px]">
+              <DropdownMenu.Content
+                align="end"
+                sideOffset={4}
+                className="min-w-[var(--menu-min-width)]"
+              >
                 {REMEMBER_ACTIONS.map((action) => (
                   <DropdownMenu.Item
                     key={action.scope}

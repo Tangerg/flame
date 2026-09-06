@@ -36,14 +36,17 @@ function FontPicker({ label, mono, value, onChange, defaultLabel }: FontPickerPr
               label={triggerLabel}
               disabled={!customEnabled}
               style={customEnabled ? { fontFamily: `"${value}"` } : undefined}
-              className={cn("min-w-[220px] max-w-[280px]", mono && customEnabled && "font-mono")}
+              className={cn(
+                "min-w-[var(--select-min-width)] max-w-[280px]",
+                mono && customEnabled && "font-mono",
+              )}
             />
           }
         />
         <DropdownMenu.Content
           align="start"
           sideOffset={4}
-          className="max-h-[280px] min-w-[220px] overflow-auto"
+          className="max-h-[280px] min-w-[var(--menu-min-width)] overflow-auto"
         >
           {fonts.map((f) => (
             <DropdownMenu.Item

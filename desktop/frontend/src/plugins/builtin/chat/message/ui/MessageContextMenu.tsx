@@ -28,7 +28,7 @@ export function MessageContextMenu({ msg, children }: Props) {
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger render={children as ReactElement} />
-      <ContextMenu.Content className="min-w-[180px]">
+      <ContextMenu.Content className="min-w-[var(--menu-min-width)]">
         {menu.copyMarkdown && (
           <ContextMenu.IconItem
             icon="copy"
@@ -84,7 +84,7 @@ export function MessageContextMenu({ msg, children }: Props) {
                   align="start"
                   sideOffset={2}
                   alignOffset={-4}
-                  className="min-w-[170px]"
+                  className="min-w-[var(--menu-min-width)]"
                 >
                   <ContextMenu.IconItem
                     icon="skip-back"

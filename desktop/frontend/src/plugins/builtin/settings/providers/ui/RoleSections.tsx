@@ -102,7 +102,7 @@ export function UtilityModelSection() {
         <DropdownMenu.Content
           align="end"
           sideOffset={6}
-          className="max-h-[320px] min-w-[220px] overflow-y-auto"
+          className="max-h-[320px] min-w-[var(--menu-min-width)] overflow-y-auto"
         >
           <DropdownMenu.Item onClick={() => void pick(null)} className={itemClass}>
             <span />
@@ -186,7 +186,7 @@ export function EmbeddingModelSection() {
         <DropdownMenu.Content
           align="end"
           sideOffset={6}
-          className="max-h-[320px] min-w-[220px] overflow-y-auto"
+          className="max-h-[320px] min-w-[var(--menu-min-width)] overflow-y-auto"
         >
           <DropdownMenu.Item onClick={() => void pick(null)} className={itemClass}>
             <span />

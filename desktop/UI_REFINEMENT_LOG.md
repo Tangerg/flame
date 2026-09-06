@@ -5567,3 +5567,98 @@ carries both halves, and the abandoned one says so in a single line with no
 request surface left. Visual **650/650**; four goldens moved, the two states that
 gained a question; the 20-script gate is green; unit 2395/4 outside the
 runtime-contract e2e.
+
+---
+
+## Round 103 — ten numbers for one decision
+
+Status: **已完成**
+
+### 本轮待办
+
+| 状态 | 事项 |
+| --- | --- |
+| 进行中 | 弹出面板最小宽度收敛到一个令牌 |
+| 待处理 | 宽于该下限的站点逐个测量，留下的必须有理由 |
+
+### 问题证据
+
+`ui_rules` 4 禁止"用大量相近数值模拟设计系统"。弹出面板的 `min-w` 有 **17 处、10 个值**：
+
+| 值 | 出现 | 站点 |
+| --- | --- | --- |
+| 160px | 2 | 会话行右键菜单、复制菜单 |
+| 168px | 1 | dock 标签右键菜单 |
+| 170px | 1 | 消息右键菜单 |
+| 176px | 1 | 输入区工具栏 |
+| 180px | 3 | 语言选择、消息右键菜单 |
+| 196px | 1 | 审批"记住"下拉 |
+| 200px | 1 | 会话标识右键菜单 |
+| 220px | 5 | 主题、字体、模型角色选择 |
+| 240px | 1 | 主题 |
+| 248px | 1 | 输入区工具栏 |
+
+同一类菜单会因为点开的是哪一个而宽度不同，相邻值相差 4–10px。
+
+### 影响页面与组件
+
+`ContextMenu.Content`、`DropdownMenu.Content`、`Select` 的全部调用点：会话侧栏、消息操作、dock 标签、输入区工具栏、审批卡、外观/模型设置。
+
+### 根因
+
+弹出面板的下限没有所有者。每个调用点各自挑一个数，没有任何一处说明依据。仓库已有 `--menu-row-height`，却没有配套的宽度令牌。
+
+### 依据
+
+参照物 `study/chatgpt` 对同类表面只用两个值：`12rem`(192px) 与 `180px`。取 **12rem** 作为唯一下限——它落在现有 160–248 区间中部，抬高的菜单不会截断内容（内容宽于下限自然撑开），压低的两处仅 4–8px。
+
+### 验收标准
+
+1. `src` 中不再出现弹出面板的裸数值 `min-w-[...]`，除非有实测理由并写明。
+2. 每个受影响菜单在浏览器中打开，内容不被截断。
+3. 类型检查、lint、format、20 项脚本、单测、视觉套件全绿。
+
+### 修改前 / 修改后
+
+| | 修改前 | 修改后 |
+| --- | --- | --- |
+| 弹出面板下限 | 14 处、9 个裸值（160–248） | 全部 `min-w-[var(--menu-min-width)]`，12rem |
+| 设置选择框宽度 | 3 处、2 个裸值（180 / 220） | 全部 `min-w-[var(--select-min-width)]`，220px |
+| `src` 中弹出层裸数值 `min-w-[…]` | 17 | **0** |
+
+### 验证中发现并修回的错误
+
+第一次收敛把两类决策并成了一个令牌：`ThemeSection:97`、`FontSection:39`、`LanguageSection:22`
+是 **SelectTrigger**（表单字段），不是弹层。压到 12rem 后 settings 的四张 golden 全部改变
+——套件当场报出 4 条失败。**菜单下限**与**字段宽度**是两个决策，拆成两个令牌后重跑，
+650 全过且**零 golden 位移**，证明数值本身没错、错的是我把它们并了。
+
+### 测量证据
+
+| 弹层 | 下限 | 实际宽 | 内容自然宽 |
+| --- | --- | --- | --- |
+| 主题选择 | 240 → 192 | 192 | 127 |
+| 模型角色 | 220 → 192 | 192 | 171 |
+| 模型角色（长） | 220 → 192 | **274** | 274 |
+| 审批"记住" | 196 → 192 | 192 | — |
+| 会话行右键 | 160 → 192 | 192 | — |
+
+没有一个较宽的值是内容需要的；内容超出下限的自行撑开，不受影响。全部菜单 `clipped: 0`。
+
+### 验证
+
+`npx tsc --noEmit`、`npm run lint`、`format:check`、20 项 `check:*` 全绿；
+`npm run visual:test` **650/650**，无 golden 位移；单测 2395 通过、4 条失败是既有的
+runtime 合约 e2e（`segment.finished.json` 缺 `contextTokens`、两条 compaction 超时），与本轮无关。
+浏览器验证：1400×900 与 1280×900，light/dark，逐个打开设置面板四个选择框、审批"记住"下拉、
+会话行右键菜单，测量 `scrollWidth > clientWidth` 均为 0。
+
+### 资源回收
+
+关闭 4174 端口的 vite 预览服务；删除本轮临时探针 `probe-*.mjs`；临时截图留在 `/tmp` 未占用仓库。
+
+### 剩余问题与下一轮方向
+
+用户已决定从 Tailwind 迁移到 StyleX。**该方向与 `desktop/CLAUDE.md` §6.1 的强反向不变量直接冲突**
+（"❌ 引入 CSS-in-JS"），按 refactor-prompt `<instruction_priority>` 第 1 条，已记录冲突并等待用户
+对该不变量作出明确修订，未擅自绕过。
