@@ -6230,3 +6230,59 @@ Status: **已完成**
 
 清场继续：分段按钮形态、36px 高度档、`ModelPicker` 的 1px 内距漂移。全部清完再迁 `button`
 本身，届时没有覆盖可与它冲突。
+
+---
+
+## Round 113 — 一行控件差 4px，因为按钮没有那一档
+
+Status: **已完成**
+
+### 实测的缺陷
+
+连接设置里 URL 字段与它旁边两个按钮同处一行：
+
+| | 高度 |
+| --- | --- |
+| `TextField size="lg"` | **32px** |
+| Reset / Apply 按钮 | **36px** |
+
+差 4px。原因是调用点写了 `h-9` —— 而它当时**无档可选**：Button 的尺寸只有
+xs 22 / sm 26 / md 30，`--control-height-lg: 34px` 存在却只被 `icon-lg` 用着。
+没有一档能承起"站在字段旁边的文字按钮"。
+
+### 修改前 / 修改后
+
+| | 修改前 | 修改后 |
+| --- | --- | --- |
+| Button 尺寸 | xs / sm / md + icon-* | 加 **`lg`**（走 `--control-height-lg`） |
+| 调用点 | `size="sm" className="h-9 shrink-0"` ×2 | `size="lg" className="shrink-0"` ×2 |
+| 实测行高 | 32 / **36** / **36** | 32 / **34** / **34** |
+| `ModelPicker` 错误按钮 | `className="gap-1.5 px-2 text-ui-sm text-negative"` | `variant="danger" size="xs"`（内距 8→7px，属漂移） |
+
+### 上报：两条高度阶梯本身不对齐
+
+剩下的 2px 不是调用点的问题：
+
+| 档 | `--control-height-*` | `--field-height-*` |
+| --- | --- | --- |
+| sm | 26 | 26 ✅ |
+| md | **30** | **28** |
+| lg | **34** | **32** |
+
+`sm` 一致，其上各差 2px。所以"同名尺寸的按钮与字段等高"这件事**在令牌层就不成立**。
+改任一条阶梯会波及全部控件，属于设计系统决策 —— 记录，不擅自改。
+
+### 验证
+
+`typecheck` / `lint` / `format` / **20 项 `check:*` 全绿**；单测 **2395 通过**；
+视觉 **650/650，零 golden 位移** —— 连接面板只进 WCAG 审计不进 golden 集，
+所以这处 4px 修正是真实的但未被拍照。
+
+### 资源回收
+
+关闭 4174 预览服务。
+
+### 下一轮方向
+
+清场只剩分段按钮（`ApprovalCard` 的 `rounded-l-none` + `before:` 分隔线）。
+清完即可迁 `button` 本身。

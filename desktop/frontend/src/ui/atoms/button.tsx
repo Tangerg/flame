@@ -22,6 +22,10 @@ export const buttonStyles = cva(
         xs: "h-[var(--control-height-xs)] rounded-[var(--button-radius)] px-[7px] text-ui-sm",
         sm: "h-[var(--control-height-sm)] rounded-[var(--button-radius)] px-[9px] text-ui-md",
         md: "h-[var(--control-height-md)] rounded-[var(--button-radius)] px-[11px] text-ui-md",
+        // The ladder's top step, which only the icon sizes could reach before: a text button
+        // that had to stand beside a field was picking `h-9` off Tailwind's scale instead,
+        // and 36px next to a 32px field is a row that does not line up.
+        lg: "h-[var(--control-height-lg)] rounded-[var(--button-radius)] px-[13px] text-ui-md",
         "icon-xs":
           "h-[var(--control-height-xs)] w-[var(--control-height-xs)] rounded-[var(--button-radius)] p-0",
         "icon-sm":

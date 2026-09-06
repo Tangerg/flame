@@ -124,20 +124,14 @@ export function ConnectionPane() {
             <Button
               type="button"
               variant="soft"
-              size="sm"
+              size="lg"
               disabled={isDefault}
               onClick={reset}
-              className="h-9 shrink-0"
+              className="shrink-0"
             >
               {t("settings.connection.reset")}
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={!dirty}
-              onClick={apply}
-              className="h-9 shrink-0"
-            >
+            <Button type="button" size="lg" disabled={!dirty} onClick={apply} className="shrink-0">
               {t("settings.connection.apply")}
             </Button>
           </div>
