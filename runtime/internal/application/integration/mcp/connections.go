@@ -4,9 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
-
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
@@ -26,7 +25,7 @@ func (c *Coordinator) ReconnectServer(ctx context.Context, name mcpserver.Server
 
 // startConnection validates the server exists, then runs dial on the
 // component task group — detached from the caller's cancellation but keeping
-// its trace values and canceled + joined by
+// its request values and canceled + joined by
 // Close. It enters the application mutation order only for the pre/post registry
 // checks and status publication; the dial itself runs outside that global
 // critical section. The connection command's per-server generation makes a
@@ -153,7 +152,9 @@ func (command *connectionDispatch) run(ctx context.Context) {
 	// immediately; stale completion cannot swap itself back in.
 	connectionErr := command.connect(ctx)
 	if connectionErr != nil && ctx.Err() == nil {
-		recordConnectionError(ctx, fmt.Errorf("mcp: connect MCP server %q: %w", command.name, connectionErr))
+		slog.ErrorContext(ctx, "mcp: connection failed",
+			"server.name", command.name.String(), "error", connectionErr,
+		)
 	}
 	if ctx.Err() != nil {
 		return
@@ -248,7 +249,9 @@ func (command *connectionDispatch) prepareSettled(
 }
 
 func (command *connectionDispatch) fail(ctx context.Context, err error) {
-	recordConnectionError(ctx, err)
+	slog.ErrorContext(ctx, "mcp: connection failed",
+		"server.name", command.name.String(), "error", err,
+	)
 	command.outcome = connectionFailed
 }
 
@@ -289,12 +292,6 @@ func (c *Coordinator) currentDial(name mcpserver.ServerName, dial *activeDial) b
 	c.dialMu.Lock()
 	defer c.dialMu.Unlock()
 	return c.dials[name] == dial
-}
-
-func recordConnectionError(ctx context.Context, err error) {
-	if err != nil {
-		trace.SpanFromContext(ctx).RecordError(err)
-	}
 }
 
 type statusEvent struct {
