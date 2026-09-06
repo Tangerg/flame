@@ -1,7 +1,7 @@
-import type { VariantProps } from "class-variance-authority";
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { cva } from "class-variance-authority";
 import { cn } from "@/lib/classNames";
+import { color, radius, space, surface, type } from "@/styles/tokens.stylex";
 
 // A literal, shown the way the system spells it: a cron expression, a transport name, a
 // hook event, a revision, a scope slug. `<code>` because that is what it is.
@@ -11,27 +11,38 @@ import { cn } from "@/lib/classNames";
 // copy back, so it is rectangular (DESIGN §6 gives `xs` to "anything that is really a tag")
 // and never coloured. Nine hand-rolled spellings of this had drifted across the plugin
 // layer, three of them rendering the same field two different ways in two views.
-const styles = cva("shrink-0 rounded-xs bg-surface-2 px-1.5 font-mono", {
-  variants: {
-    size: {
-      xs: "py-px text-ui-xs",
-      sm: "py-0.5 text-ui-sm",
-      // Inline in a sentence, where the tag has to sit on the prose it interrupts.
-      md: "py-px text-ui-md",
-    },
-    // No `faint`. A Tag carries a value the reader has to be able to copy back, and
-    // `--color-fg-faint` on this surface measures 3.99:1 in dark — below AA, for the one
-    // element on the row whose whole job is to be read exactly. The surface already does the
-    // quieting; `muted` is quiet AND legible, which is why it is the default.
-    ink: {
-      muted: "text-fg-muted",
-      strong: "text-fg",
-    },
+const styles = stylex.create({
+  base: {
+    flexShrink: 0,
+    borderRadius: radius.xs,
+    backgroundColor: surface.surface2,
+    paddingInline: space.s1_5,
+    fontFamily: "var(--font-mono)",
   },
-  defaultVariants: { size: "xs", ink: "muted" },
+  xs: { paddingBlock: "1px" },
+  sm: { paddingBlock: space.s0_5 },
+  // Inline in a sentence, where the tag has to sit on the prose it interrupts.
+  md: { paddingBlock: "1px" },
+  // No `faint`. A Tag carries a value the reader has to be able to copy back, and
+  // `--color-fg-faint` on this surface measures 3.99:1 in dark — below AA, for the one
+  // element on the row whose whole job is to be read exactly. The surface already does the
+  // quieting; `muted` is quiet AND legible, which is why it is the default.
+  muted: { color: color.fgMuted },
+  strong: { color: color.fg },
 });
 
-export type TagProps = VariantProps<typeof styles> & {
+type TagSize = "xs" | "sm" | "md";
+type TagInk = "muted" | "strong";
+
+const SIZE_TYPE: Record<TagSize, (typeof type)[keyof typeof type]> = {
+  xs: type.uiXs,
+  sm: type.uiSm,
+  md: type.uiMd,
+};
+
+export type TagProps = {
+  size?: TagSize;
+  ink?: TagInk;
   /** Optional so a Tag can be handed to `<Trans components>` as the shape for a slot, where
    *  the translated sentence supplies the value. */
   children?: ReactNode;
@@ -39,9 +50,10 @@ export type TagProps = VariantProps<typeof styles> & {
   title?: string;
 };
 
-export function Tag({ size, ink, className, children, title }: TagProps) {
+export function Tag({ size = "xs", ink = "muted", className, children, title }: TagProps) {
+  const styled = stylex.props(styles.base, styles[size], SIZE_TYPE[size], styles[ink]);
   return (
-    <code title={title} className={cn(styles({ size, ink }), className)}>
+    <code title={title} {...styled} className={cn(styled.className, className)}>
       {children}
     </code>
   );

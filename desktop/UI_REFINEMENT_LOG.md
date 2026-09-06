@@ -6132,3 +6132,47 @@ Status: **已完成**
 
 已迁移 **9 个原子**；暴露并修掉 **3 处设计缺陷 + 1 处我自己造成的类型退化**；
 **零 golden 位移**；构建 1.7×。
+
+---
+
+## Round 111 — cva → StyleX 的样板
+
+Status: **已完成**
+
+### 迁移
+
+`tag`。选它是因为它是**第一个 `cva` 组件** —— 迁移它等于确立后面所有变体组件
+（含 `button`）要用的样板。
+
+### 样板
+
+| cva | StyleX |
+| --- | --- |
+| `cva(base, { variants: { size, ink } })` | 一个 `stylex.create`，base 与每个变体各一个键 |
+| `defaultVariants` | 函数参数默认值 |
+| `VariantProps<typeof styles>` | 显式联合类型 + `Record<Union, …>` 映射 |
+| `cn(styles({size, ink}), className)` | `stylex.props(base, styles[size], styles[ink])` 后再拼 `className` |
+
+`Record<Union, …>` 那一步是**刻意的**：上一轮 `ansi-text` 用裸对象丢了穷尽检查，
+这里从一开始就写成映射，少答一个变体是编译错误。
+
+### 调用点审查
+
+三处传 `className`，全部良性：`ml-auto`（布局）、`tabular-nums`（数字变体）、
+以及一处看似覆盖颜色的 `not-italic text-fg` —— 查证在 `<em>` 上，不在 Tag 上；
+那处 Tag 本就正确地用了 `ink="strong"`。**本轮没有暴露新的设计缺陷**，
+这也是有意义的结果：`Tag` 的变体本来就设计对了。
+
+### 验证
+
+`typecheck` / `lint` / `format` / **20 项 `check:*` 全绿**；单测 **2395 通过**；
+视觉 **650/650，零 golden 位移**。
+
+### 资源回收
+
+关闭 4174 预览服务。
+
+### 累计
+
+已迁移 **10 个原子**（含首个 cva 组件）；暴露并修掉 3 处设计缺陷 + 1 处类型退化；
+**零 golden 位移**；构建 1.7×。

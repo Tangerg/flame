@@ -45,6 +45,7 @@ export const surface = stylex.defineVars({
 /** Corner steps, each already carrying the style scale and the superellipse compensation. */
 export const radius = stylex.defineVars({
   step2xs: "var(--radius-2xs)",
+  xs: "var(--radius-xs)",
   pill: "var(--radius-pill)",
 });
 
