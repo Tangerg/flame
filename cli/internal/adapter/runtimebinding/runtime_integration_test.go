@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -100,49 +101,60 @@ func requireGoalMutationLifecycle(t *testing.T, runtime *Connection, sessionID s
 
 func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, workspace string) {
 	t.Helper()
-	for _, topic := range []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged} {
+	for _, topic := range []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged} {
 		if !runtime.Supports(topic) {
 			t.Fatalf("embedded runtime did not advertise %s", topic)
 		}
 	}
 
-	streamContext, cancelStream := context.WithCancel(t.Context())
-	stream, err := runtime.Subscribe(streamContext, changefeed.Subscription{
+	partitions, err := (changefeed.SubscriptionLimits{MaxTopics: 2, MaxWatches: 1}).Partition(changefeed.Subscription{
 		Topics: []protocol.RuntimeTopic{
 			protocol.TopicFilesChanged,
 			protocol.TopicKnowledgeChanged,
 			protocol.TopicHooksChanged,
+			protocol.TopicSkillsChanged,
 		},
 		Watches: []changefeed.Watch{{ID: "authored-resources", Workspace: workspace}},
 	})
 	if err != nil {
-		t.Fatalf("subscribe to authored resources: %v", err)
+		t.Fatalf("partition authored resources: %v", err)
 	}
+	streamContext, cancelStream := context.WithCancel(t.Context())
 	events := make(chan changefeed.Event, 8)
-	streamErrors := make(chan error, 1)
-	streamStopped := make(chan struct{})
-	go func() {
-		defer close(streamStopped)
-		for event, streamErr := range stream {
-			if streamErr != nil {
-				streamErrors <- streamErr
-				return
-			}
-			select {
-			case events <- event:
-			case <-streamContext.Done():
-				return
-			}
-		}
-	}()
+	streamErrors := make(chan error, len(partitions))
+	var stopped []<-chan struct{}
 	defer func() {
 		cancelStream()
-		select {
-		case <-streamStopped:
-		case <-time.After(3 * time.Second):
-			t.Error("authored-resource subscription did not stop")
+		for _, streamStopped := range stopped {
+			select {
+			case <-streamStopped:
+			case <-time.After(3 * time.Second):
+				t.Error("authored-resource subscription did not stop")
+			}
 		}
 	}()
+	for _, partition := range partitions {
+		stream, err := runtime.Subscribe(streamContext, partition)
+		if err != nil {
+			t.Fatalf("subscribe to authored resources: %v", err)
+		}
+		streamStopped := make(chan struct{})
+		stopped = append(stopped, streamStopped)
+		go func() {
+			defer close(streamStopped)
+			for event, streamErr := range stream {
+				if streamErr != nil {
+					streamErrors <- streamErr
+					return
+				}
+				select {
+				case events <- event:
+				case <-streamContext.Done():
+					return
+				}
+			}
+		}()
+	}
 
 	knowledgePath := filepath.Join(workspace, "FLAME.md")
 	if writeFileErr := os.WriteFile(knowledgePath, []byte("# External knowledge\n"), 0o600); writeFileErr != nil {
@@ -173,6 +185,21 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 	catalog, err := runtime.Hooks().Catalog(t.Context(), workspace)
 	if err != nil || len(catalog.Hooks) != 1 || catalog.Hooks[0].Inject != "external context" {
 		t.Fatalf("hooks after external invalidation = (%+v, %v)", catalog, err)
+	}
+
+	skillDirectory := filepath.Join(workspace, ".flame", "skills", "external-observed")
+	if err := os.MkdirAll(skillDirectory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDirectory, "SKILL.md"), []byte("---\nname: external-observed\ndescription: External skill observation\n---\n# Observe edits\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	awaitRuntimeInvalidation(t, events, streamErrors, protocol.TopicSkillsChanged)
+	discovered, err := runtime.Discover(t.Context(), workspace)
+	if err != nil || !slices.ContainsFunc(discovered, func(skill protocol.Skill) bool {
+		return skill.Name == "external-observed" && skill.Description == "External skill observation"
+	}) {
+		t.Fatalf("skills after external invalidation = (%+v, %v)", discovered, err)
 	}
 }
 

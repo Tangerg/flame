@@ -105,7 +105,8 @@ func TestSubscriptionLimitsKeepWorkspaceObservationAtomicAcrossTopicPartitions(t
 	t.Parallel()
 	requested := Subscription{
 		Topics: []protocol.RuntimeTopic{
-			protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged,
+			protocol.TopicFilesChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
+			protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged,
 		},
 		Watches: []Watch{{ID: "active", Workspace: "/workspace"}},
 	}
@@ -116,6 +117,7 @@ func TestSubscriptionLimitsKeepWorkspaceObservationAtomicAcrossTopicPartitions(t
 	want := []Subscription{
 		{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicKnowledgeChanged}, Watches: requested.Watches},
 		{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicHooksChanged}, Watches: requested.Watches},
+		{Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSkillsChanged}, Watches: requested.Watches},
 		{Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged}},
 	}
 	if !slices.EqualFunc(partitions, want, func(got, want Subscription) bool {
@@ -128,13 +130,13 @@ func TestSubscriptionLimitsKeepWorkspaceObservationAtomicAcrossTopicPartitions(t
 func TestSubscriptionLimitsRepeatWorkspaceObservationForEveryWatchPartition(t *testing.T) {
 	t.Parallel()
 	requested := Subscription{
-		Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged},
+		Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged},
 		Watches: []Watch{
 			{ID: "first", Workspace: "/first"},
 			{ID: "second", Workspace: "/second"},
 		},
 	}
-	partitions, err := (SubscriptionLimits{MaxTopics: 3, MaxWatches: 1}).Partition(requested)
+	partitions, err := (SubscriptionLimits{MaxTopics: 4, MaxWatches: 1}).Partition(requested)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,24 +153,39 @@ func TestSubscriptionLimitsRepeatWorkspaceObservationForEveryWatchPartition(t *t
 
 func TestSubscriptionLimitsRejectUnrepresentableWorkspaceObservation(t *testing.T) {
 	t.Parallel()
-	requested := Subscription{
-		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicKnowledgeChanged},
-		Watches: []Watch{{ID: "active", Workspace: "/workspace"}},
-	}
-	if _, err := (SubscriptionLimits{MaxTopics: 1, MaxWatches: 1}).Partition(requested); err == nil ||
-		!strings.Contains(err.Error(), "workspace observation") {
-		t.Fatalf("Partition error = %v, want workspace observation failure", err)
+	for _, topic := range []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged} {
+		requested := Subscription{
+			Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, topic},
+			Watches: []Watch{{ID: "active", Workspace: "/workspace"}},
+		}
+		if _, err := (SubscriptionLimits{MaxTopics: 1, MaxWatches: 1}).Partition(requested); err == nil ||
+			!strings.Contains(err.Error(), "workspace observation") {
+			t.Fatalf("Partition %s error = %v, want workspace observation failure", topic, err)
+		}
 	}
 }
 
 func TestSubscriptionLimitsPreserveEveryDeliveryInvariant(t *testing.T) {
 	t.Parallel()
-	optional := []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged}
+	optional := []struct {
+		topic             protocol.RuntimeTopic
+		observesWorkspace bool
+	}{
+		{topic: protocol.TopicSessionsChanged},
+		{topic: protocol.TopicRunsChanged},
+		{topic: protocol.TopicKnowledgeChanged, observesWorkspace: true},
+		{topic: protocol.TopicHooksChanged, observesWorkspace: true},
+		{topic: protocol.TopicSkillsChanged, observesWorkspace: true},
+	}
 	for mask := 0; mask < 1<<len(optional); mask++ {
 		topics := []protocol.RuntimeTopic{protocol.TopicFilesChanged}
+		var workspaceTopics []protocol.RuntimeTopic
 		for index, topic := range optional {
 			if mask&(1<<index) != 0 {
-				topics = append(topics, topic)
+				topics = append(topics, topic.topic)
+				if topic.observesWorkspace {
+					workspaceTopics = append(workspaceTopics, topic.topic)
+				}
 			}
 		}
 		for watchCount := 1; watchCount <= 3; watchCount++ {
@@ -182,8 +199,7 @@ func TestSubscriptionLimitsPreserveEveryDeliveryInvariant(t *testing.T) {
 					name := fmt.Sprintf("mask-%02x/watches-%d/topics-%d/watch-limit-%d", mask, watchCount, topicLimit, watchLimit)
 					t.Run(name, func(t *testing.T) {
 						partitions, err := (SubscriptionLimits{MaxTopics: topicLimit, MaxWatches: watchLimit}).Partition(requested)
-						observed := workspaceObservedTopics(topics)
-						if len(observed) > 0 && topicLimit == 1 {
+						if len(workspaceTopics) > 0 && topicLimit == 1 {
 							if err == nil {
 								t.Fatalf("unrepresentable workspace observation produced %+v", partitions)
 							}
@@ -192,7 +208,7 @@ func TestSubscriptionLimitsPreserveEveryDeliveryInvariant(t *testing.T) {
 						if err != nil {
 							t.Fatal(err)
 						}
-						assertPartitionDeliveryInvariants(t, requested, partitions, topicLimit, watchLimit)
+						assertPartitionDeliveryInvariants(t, requested, partitions, workspaceTopics, topicLimit, watchLimit)
 					})
 				}
 			}
@@ -204,6 +220,7 @@ func assertPartitionDeliveryInvariants(
 	t *testing.T,
 	requested Subscription,
 	partitions []Subscription,
+	workspaceTopics []protocol.RuntimeTopic,
 	topicLimit int,
 	watchLimit int,
 ) {
@@ -242,7 +259,7 @@ func assertPartitionDeliveryInvariants(
 		}) {
 			t.Fatalf("watch %+v was dropped by %+v", watch, partitions)
 		}
-		for _, topic := range workspaceObservedTopics(requested.Topics) {
+		for _, topic := range workspaceTopics {
 			if !slices.ContainsFunc(partitions, func(partition Subscription) bool {
 				return slices.Contains(partition.Watches, watch) &&
 					slices.Contains(partition.Topics, protocol.TopicFilesChanged) && slices.Contains(partition.Topics, topic)

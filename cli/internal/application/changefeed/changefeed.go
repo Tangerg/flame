@@ -113,9 +113,10 @@ func (s SubscriptionLimits) Partition(subscription Subscription) ([]Subscription
 // runtime wire contract uses files.changed as the anchor that makes a watch
 // legal, so a partitioner must keep that anchor and scope beside each topic.
 func workspaceObservedTopics(topics []protocol.RuntimeTopic) []protocol.RuntimeTopic {
-	observed := make([]protocol.RuntimeTopic, 0, 2)
+	var observed []protocol.RuntimeTopic
 	for _, topic := range topics {
-		if topic == protocol.TopicKnowledgeChanged || topic == protocol.TopicHooksChanged {
+		switch topic {
+		case protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged:
 			observed = append(observed, topic)
 		}
 	}
