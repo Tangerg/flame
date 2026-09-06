@@ -3,7 +3,6 @@ package runtimebinding
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -178,7 +177,7 @@ func (r *Connection) Head(ctx context.Context, request workspace.HeadRequest) (w
 	if value == nil {
 		return workspace.FileHead{}, runtimeContractViolation("get workspace file head returned nil")
 	}
-	result := workspace.FileHead{Lines: slices.Clone(value.Lines)}
+	result := workspace.FileHead{Lines: value.Lines}
 	if err := result.Validate(); err != nil {
 		return workspace.FileHead{}, runtimeContractViolation("get workspace file head returned an invalid projection: %v", err)
 	}
@@ -203,7 +202,7 @@ func (r *Connection) Search(ctx context.Context, request workspace.SearchRequest
 	if value == nil {
 		return workspace.SearchResult{}, runtimeContractViolation("search workspace files returned nil")
 	}
-	result := workspace.SearchResult{Total: value.Total, Matches: slices.Clone(value.Matches)}
+	result := workspace.SearchResult{Total: value.Total, Matches: value.Matches}
 	if err := result.Validate(); err != nil {
 		return workspace.SearchResult{}, runtimeContractViolation("search workspace files returned an invalid projection: %v", err)
 	}
@@ -252,7 +251,7 @@ func (r *Connection) Files(ctx context.Context, request workspace.FilesRequest) 
 				)
 			}
 			projected := workspace.FileEntry{
-				Path: entry.Path, Type: entry.Type, SizeBytes: cloneInt64(entry.SizeBytes),
+				Path: entry.Path, Type: entry.Type, SizeBytes: entry.SizeBytes,
 				ModifiedAt: entry.ModifiedAt,
 			}
 			if len(result.Entries) != 0 {
@@ -342,10 +341,7 @@ func projectWorkspaceSummary(value protocol.WorkspaceSummary) (workspace.Summary
 		return workspace.Summary{}, err
 	}
 	result := workspace.Summary{
-		Workspace: projected, Name: value.Name, Sessions: value.SessionCount,
-	}
-	if value.LastActiveAt != nil {
-		result.LastActive = new(*value.LastActiveAt)
+		Workspace: projected, Name: value.Name, Sessions: value.SessionCount, LastActive: value.LastActiveAt,
 	}
 	if err := result.Validate(); err != nil {
 		return workspace.Summary{}, err
@@ -356,7 +352,7 @@ func projectWorkspaceSummary(value protocol.WorkspaceSummary) (workspace.Summary
 func projectChange(path string, status protocol.FileStatus, previousPath string, added, removed *int, binary bool) (workspace.Change, error) {
 	result := workspace.Change{
 		Path: path, Status: status, PreviousPath: previousPath,
-		Added: cloneInt(added), Removed: cloneInt(removed), Binary: binary,
+		Added: added, Removed: removed, Binary: binary,
 	}
 	if err := result.Validate(); err != nil {
 		return workspace.Change{}, err
@@ -371,24 +367,10 @@ func projectDiff(value protocol.Diff) (workspace.Diff, error) {
 		if err != nil {
 			return workspace.Diff{}, fmt.Errorf("workspace file diff %d: %w", index, err)
 		}
-		result.Files = append(result.Files, workspace.FileDiff{Change: change, Rows: slices.Clone(file.Rows)})
+		result.Files = append(result.Files, workspace.FileDiff{Change: change, Rows: file.Rows})
 	}
 	if err := result.Validate(); err != nil {
 		return workspace.Diff{}, fmt.Errorf("get workspace diff projection: %w", err)
 	}
 	return result, nil
-}
-
-func cloneInt(value *int) *int {
-	if value == nil {
-		return nil
-	}
-	return new(*value)
-}
-
-func cloneInt64(value *int64) *int64 {
-	if value == nil {
-		return nil
-	}
-	return new(*value)
 }

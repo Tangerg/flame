@@ -348,13 +348,25 @@ func requireWorkspaceInspection(t *testing.T, runtime *Connection, path string) 
 	}
 	path = resolved.Path
 	known, err := runtime.List(t.Context())
-	if err != nil || len(known) == 0 {
+	if err != nil || len(known) == 0 || known[0].LastActive == nil {
 		t.Fatalf("List = (%+v, %v)", known, err)
+	}
+	lastActive := *known[0].LastActive
+	*known[0].LastActive = time.Time{}
+	known, err = runtime.List(t.Context())
+	if err != nil || len(known) == 0 || known[0].LastActive == nil || !known[0].LastActive.Equal(lastActive) {
+		t.Fatalf("caller mutation changed Runtime workspace activity: (%+v, %v)", known, err)
 	}
 	files, err := runtime.Files(t.Context(), workspaceapi.FilesRequest{Workspace: path})
 	if err != nil || len(files.Entries) != 2 || files.Entries[0].Path != "empty" ||
-		files.Entries[0].Type != protocol.FileEntryDir || files.Entries[1].Path != "main.go" {
+		files.Entries[0].Type != protocol.FileEntryDir || files.Entries[1].Path != "main.go" || files.Entries[1].SizeBytes == nil {
 		t.Fatalf("Files = (%+v, %v)", files, err)
+	}
+	size := *files.Entries[1].SizeBytes
+	*files.Entries[1].SizeBytes = 0
+	files, err = runtime.Files(t.Context(), workspaceapi.FilesRequest{Workspace: path})
+	if err != nil || len(files.Entries) != 2 || files.Entries[1].SizeBytes == nil || *files.Entries[1].SizeBytes != size {
+		t.Fatalf("caller mutation changed Runtime file size: (%+v, %v)", files, err)
 	}
 	headLimit, err := workspaceapi.NewHeadLineLimit(2)
 	if err != nil {
@@ -364,6 +376,11 @@ func requireWorkspaceInspection(t *testing.T, runtime *Connection, path string) 
 	if err != nil || len(head.Lines) != 2 || head.Lines[0].Text != "package main" {
 		t.Fatalf("Head = (%+v, %v)", head, err)
 	}
+	head.Lines[0].Text = "caller mutation"
+	head, err = runtime.Head(t.Context(), workspaceapi.HeadRequest{Workspace: path, Path: "main.go", LineLimit: headLimit})
+	if err != nil || len(head.Lines) != 2 || head.Lines[0].Text != "package main" {
+		t.Fatalf("caller mutation changed Runtime file preview: (%+v, %v)", head, err)
+	}
 	searchLimit, err := workspaceapi.NewSearchResultLimit(20)
 	if err != nil {
 		t.Fatal(err)
@@ -371,6 +388,12 @@ func requireWorkspaceInspection(t *testing.T, runtime *Connection, path string) 
 	found, err := runtime.Search(t.Context(), workspaceapi.SearchRequest{Workspace: path, Query: "answer", Limit: searchLimit})
 	if err != nil || found.Total != 1 || len(found.Matches) != 1 {
 		t.Fatalf("Search = (%+v, %v)", found, err)
+	}
+	matchText := found.Matches[0].Text
+	found.Matches[0].Text = "caller mutation"
+	found, err = runtime.Search(t.Context(), workspaceapi.SearchRequest{Workspace: path, Query: "answer", Limit: searchLimit})
+	if err != nil || len(found.Matches) != 1 || found.Matches[0].Text != matchText {
+		t.Fatalf("caller mutation changed Runtime search results: (%+v, %v)", found, err)
 	}
 	content, err := runtime.Read(t.Context(), workspaceapi.ReadRequest{
 		Workspace: path, Path: "main.go", Range: workspaceapi.WholeFileReadRange(),

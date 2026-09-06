@@ -3,6 +3,7 @@ package runtimebinding
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -31,16 +32,38 @@ type workspaceBindingStub struct {
 }
 
 func (w *workspaceBindingStub) ResolveWorkspace(context.Context, protocol.ResolveWorkspaceRequest, flameruntime.CallOptions) (*protocol.WorkspaceInfo, error) {
-	return w.resolved, nil
+	if w.resolved == nil {
+		return nil, nil
+	}
+	return new(*w.resolved), nil
 }
 
 func (w *workspaceBindingStub) ListWorkspaces(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error) {
-	return w.known, nil
+	if w.known == nil {
+		return nil, nil
+	}
+	page := *w.known
+	page.Data = slices.Clone(page.Data)
+	for index := range page.Data {
+		if value := page.Data[index].LastActiveAt; value != nil {
+			page.Data[index].LastActiveAt = new(*value)
+		}
+	}
+	return &page, nil
 }
 
 func (w *workspaceBindingStub) ListWorkspaceFileChanges(context.Context, protocol.WorkspaceQuery, flameruntime.CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error) {
 	w.changesCalls++
-	return w.changes, w.changesErr
+	if w.changes == nil {
+		return nil, w.changesErr
+	}
+	page := *w.changes
+	page.Data = slices.Clone(page.Data)
+	for index := range page.Data {
+		page.Data[index].Added = cloneInt(page.Data[index].Added)
+		page.Data[index].Removed = cloneInt(page.Data[index].Removed)
+	}
+	return &page, w.changesErr
 }
 
 func TestWorkspaceAdapterProjectsVersionControlUnavailability(t *testing.T) {
@@ -62,27 +85,76 @@ func TestWorkspaceAdapterProjectsVersionControlUnavailability(t *testing.T) {
 
 func (w *workspaceBindingStub) GetWorkspaceDiff(context.Context, protocol.GetDiffRequest, flameruntime.CallOptions) (*protocol.Diff, error) {
 	w.diffCalls++
-	return w.diff, nil
+	if w.diff == nil {
+		return nil, nil
+	}
+	value := *w.diff
+	value.Files = slices.Clone(value.Files)
+	for index := range value.Files {
+		value.Files[index].Added = cloneInt(value.Files[index].Added)
+		value.Files[index].Removed = cloneInt(value.Files[index].Removed)
+		value.Files[index].Rows = slices.Clone(value.Files[index].Rows)
+	}
+	return &value, nil
 }
 
 func (w *workspaceBindingStub) GetWorkspaceFileHead(context.Context, protocol.GetFileHeadRequest, flameruntime.CallOptions) (*protocol.FileHead, error) {
-	return w.head, nil
+	if w.head == nil {
+		return nil, nil
+	}
+	value := *w.head
+	value.Lines = slices.Clone(value.Lines)
+	return &value, nil
 }
 
 func (w *workspaceBindingStub) SearchWorkspaceFiles(context.Context, protocol.GrepRequest, flameruntime.CallOptions) (*protocol.GrepResult, error) {
-	return w.search, nil
+	if w.search == nil {
+		return nil, nil
+	}
+	value := *w.search
+	value.Matches = slices.Clone(value.Matches)
+	return &value, nil
 }
 
 func (w *workspaceBindingStub) ListWorkspaceFiles(_ context.Context, request protocol.ListFilesRequest, _ flameruntime.CallOptions) (*protocol.Page[protocol.FileEntry], error) {
 	w.fileCalls = append(w.fileCalls, request)
 	if w.filePages != nil {
-		return w.filePages[request.Cursor], nil
+		return ownedWorkspaceFilePage(w.filePages[request.Cursor]), nil
 	}
-	return w.files, nil
+	return ownedWorkspaceFilePage(w.files), nil
+}
+
+func ownedWorkspaceFilePage(source *protocol.Page[protocol.FileEntry]) *protocol.Page[protocol.FileEntry] {
+	if source == nil {
+		return nil
+	}
+	page := *source
+	page.Data = slices.Clone(page.Data)
+	for index := range page.Data {
+		page.Data[index].SizeBytes = cloneInt64(page.Data[index].SizeBytes)
+	}
+	return &page
+}
+
+func cloneInt(value *int) *int {
+	if value == nil {
+		return nil
+	}
+	return new(*value)
+}
+
+func cloneInt64(value *int64) *int64 {
+	if value == nil {
+		return nil
+	}
+	return new(*value)
 }
 
 func (w *workspaceBindingStub) ReadWorkspaceFile(context.Context, protocol.ReadFileRequest, flameruntime.CallOptions) (*protocol.FileContent, error) {
-	return w.content, nil
+	if w.content == nil {
+		return nil, nil
+	}
+	return new(*w.content), nil
 }
 
 func TestWorkspaceAdapterProjectsEveryReadShape(t *testing.T) {
