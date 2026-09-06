@@ -435,6 +435,28 @@ func (i Item) Edit(content *string, pinned *bool, now time.Time) (Item, bool, er
 	return i, true, nil
 }
 
+// Review resolves a pending proposal while preserving its content, provenance,
+// and monotonic update time. A resolved proposal cannot be reviewed again.
+func (i Item) Review(decision ReviewDecision, now time.Time) (Item, error) {
+	status, err := decision.Result()
+	if err != nil {
+		return Item{}, err
+	}
+	if err := i.Validate(); err != nil {
+		return Item{}, fmt.Errorf("agentmemory: review existing item: %w", err)
+	}
+	if i.Status != StatusPending {
+		return Item{}, fmt.Errorf("%w: item %q is %s", ErrNotPending, i.ID, i.Status)
+	}
+	now = now.UTC()
+	if now.IsZero() || now.Before(i.UpdatedAt) {
+		return Item{}, errors.New("agentmemory: review time precedes current item")
+	}
+	i.Status = status
+	i.UpdatedAt = now
+	return i, nil
+}
+
 // ValidateVisible protects operations exposed only for active and pending
 // memory. Rejected items are retained tombstones, not management targets.
 func (i Item) ValidateVisible() error {

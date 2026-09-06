@@ -405,14 +405,21 @@ func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, co
 // Review atomically resolves one pending proposal. A user-authored, already
 // reviewed, or rejected item cannot be rewritten through the review command.
 func (a *AgentMemoryStore) Review(ctx context.Context, id agentmemory.ItemID, decision agentmemory.ReviewDecision, now time.Time) error {
-	status, err := decision.Result()
-	if err != nil {
-		return err
-	}
 	return RunInTx(ctx, a.db, func(ctx context.Context) error {
+		current, found, err := a.Get(ctx, id)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return agentmemory.ErrNotFound
+		}
+		replacement, err := current.Review(decision, now)
+		if err != nil {
+			return err
+		}
 		result, err := conn(ctx, a.db).ExecContext(ctx,
 			`UPDATE agent_memory_items SET status = ?, updated_at = ? WHERE id = ? AND status = 'pending'`,
-			status.String(), now.UTC().UnixNano(), id.String())
+			replacement.Status.String(), replacement.UpdatedAt.UnixNano(), id.String())
 		if err != nil {
 			return fmt.Errorf("sqlite: review agent memory item: %w", err)
 		}
@@ -420,36 +427,17 @@ func (a *AgentMemoryStore) Review(ctx context.Context, id agentmemory.ItemID, de
 		if err != nil {
 			return fmt.Errorf("sqlite: inspect agent memory review: %w", err)
 		}
-		if matched == 1 {
-			if status == agentmemory.StatusRejected {
-				if pruneRejectedItemsErr := a.pruneRejectedItems(ctx, id); pruneRejectedItemsErr != nil {
-					return pruneRejectedItemsErr
-				}
-			}
-			return nil
+		if matched != 1 {
+			return agentmemory.ErrNotPending
 		}
-		var stored string
-		if scanErr := conn(ctx, a.db).QueryRowContext(ctx,
-			`SELECT status FROM agent_memory_items WHERE id = ?`, id.String()).Scan(&stored); errors.Is(scanErr, sql.ErrNoRows) {
-			return agentmemory.ErrNotFound
-		} else if scanErr != nil {
-			return fmt.Errorf("sqlite: inspect agent memory review target: %w", scanErr)
+		if replacement.Status == agentmemory.StatusRejected {
+			return a.pruneRejectedItems(ctx, replacement)
 		}
-		current, err := agentmemory.ParseStatus(stored)
-		if err != nil {
-			return fmt.Errorf("sqlite: decode agent memory review target %q: %w", id, err)
-		}
-		return fmt.Errorf("%w: item %q is %s", agentmemory.ErrNotPending, id, current)
+		return nil
 	})
 }
 
-func (a *AgentMemoryStore) pruneRejectedItems(ctx context.Context, preservedID agentmemory.ItemID) error {
-	var scope, project string
-	if err := conn(ctx, a.db).QueryRowContext(ctx,
-		`SELECT scope, project FROM agent_memory_items WHERE id = ?`, preservedID.String(),
-	).Scan(&scope, &project); err != nil {
-		return fmt.Errorf("sqlite: locate rejected agent memory item: %w", err)
-	}
+func (a *AgentMemoryStore) pruneRejectedItems(ctx context.Context, preserved agentmemory.Item) error {
 	if _, err := conn(ctx, a.db).ExecContext(ctx, `
 		DELETE FROM agent_memory_items
 		WHERE id IN (
@@ -457,7 +445,7 @@ func (a *AgentMemoryStore) pruneRejectedItems(ctx context.Context, preservedID a
 			WHERE scope = ? AND project = ? AND status = 'rejected' AND id != ?
 			ORDER BY updated_at DESC, id DESC
 			LIMIT -1 OFFSET ?
-		)`, scope, project, preservedID.String(), agentmemory.MaxRejectedPerTarget-1); err != nil {
+		)`, preserved.Scope.String(), preserved.Project, preserved.ID.String(), agentmemory.MaxRejectedPerTarget-1); err != nil {
 		return fmt.Errorf("sqlite: prune rejected agent memory items: %w", err)
 	}
 	return nil

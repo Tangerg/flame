@@ -239,6 +239,49 @@ func TestAgentMemoryReviewLifecycle(t *testing.T) {
 	}
 }
 
+func TestAgentMemoryReviewPreservesPendingItemWhenClockRegresses(t *testing.T) {
+	createdAt := time.Date(2026, 7, 19, 4, 0, 0, 0, time.UTC)
+	editedAt := createdAt.Add(time.Minute)
+	for _, decision := range []agentmemory.ReviewDecision{agentmemory.ReviewApprove, agentmemory.ReviewReject} {
+		for _, clock := range []struct {
+			name string
+			now  time.Time
+		}{
+			{name: "before creation", now: createdAt.Add(-time.Second)},
+			{name: "before edit", now: editedAt.Add(-time.Second)},
+		} {
+			t.Run(string(decision)+"/"+clock.name, func(t *testing.T) {
+				store := newAgentMemoryStore(t)
+				facts := appendAgentFacts(t, store, "/repo", "2026-07-19", "fact")
+				publication := agentMemoryPublication(t, "/repo", agentmemory.State{}, facts[0].Sequence, []string{"fact"}, createdAt)
+				if _, err := store.Reconcile(t.Context(), publication); err != nil {
+					t.Fatal(err)
+				}
+				items, err := store.List(t.Context(), agentmemory.ScopeProject, "/repo")
+				if err != nil || len(items) != 1 {
+					t.Fatalf("proposals = (%+v, %v), want one pending item", items, err)
+				}
+				pinned := true
+				item, err := store.Update(t.Context(), items[0].ID, nil, &pinned, editedAt)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := store.Review(t.Context(), item.ID, decision, clock.now); err == nil {
+					t.Error("review accepted a time before the current item")
+				}
+				stored, found, err := store.Get(t.Context(), item.ID)
+				if err != nil || !found || stored.Status != agentmemory.StatusPending || !stored.Pinned ||
+					stored.Content != item.Content || !stored.CreatedAt.Equal(createdAt) || !stored.UpdatedAt.Equal(editedAt) {
+					t.Fatalf("failed review changed pending item = (%+v, %t, %v)", stored, found, err)
+				}
+				if err := store.Review(t.Context(), item.ID, decision, editedAt); err != nil {
+					t.Fatalf("review after clock recovery: %v", err)
+				}
+			})
+		}
+	}
+}
+
 func TestAgentMemorySchemaRejectsInvalidDomainVocabulary(t *testing.T) {
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -119,6 +120,64 @@ func TestReviewDecisionOwnsResultingStatus(t *testing.T) {
 	}
 	if _, err := ReviewDecision("later").Result(); err == nil {
 		t.Fatal("unknown review decision was accepted")
+	}
+}
+
+func TestItemReviewPreservesProposalFacts(t *testing.T) {
+	createdAt := time.Date(2026, time.September, 7, 8, 0, 0, 0, time.UTC)
+	proposal, err := NewProposal(testItemID(t, 'a'), "/repo", "fact", createdAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposal.Pinned = true
+	proposal.SessionID = "session"
+	for _, test := range []struct {
+		decision ReviewDecision
+		status   Status
+	}{
+		{decision: ReviewApprove, status: StatusActive},
+		{decision: ReviewReject, status: StatusRejected},
+	} {
+		t.Run(string(test.decision), func(t *testing.T) {
+			reviewedAt := createdAt.Add(time.Minute).In(time.FixedZone("local", 8*60*60))
+			reviewed, err := proposal.Review(test.decision, reviewedAt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := proposal
+			want.Status = test.status
+			want.UpdatedAt = reviewedAt.UTC()
+			if !reflect.DeepEqual(reviewed, want) || reviewed.Validate() != nil {
+				t.Fatalf("reviewed item = %+v, want %+v", reviewed, want)
+			}
+			if _, err := reviewed.Review(ReviewApprove, reviewedAt); !errors.Is(err, ErrNotPending) {
+				t.Fatalf("second review = %v, want ErrNotPending", err)
+			}
+		})
+	}
+	if proposal.Status != StatusPending || !proposal.UpdatedAt.Equal(createdAt) {
+		t.Fatalf("review changed source proposal: %+v", proposal)
+	}
+	if _, err := proposal.Review(ReviewApprove, createdAt); err != nil {
+		t.Fatalf("review at current update time: %v", err)
+	}
+	for _, now := range []time.Time{{}, createdAt.Add(-time.Second)} {
+		if _, err := proposal.Review(ReviewApprove, now); err == nil {
+			t.Fatalf("review accepted invalid time %v", now)
+		}
+	}
+	if _, err := proposal.Review(ReviewDecision("later"), createdAt); err == nil {
+		t.Fatal("review accepted an unknown decision")
+	}
+	if _, err := (Item{}).Review(ReviewApprove, createdAt); err == nil {
+		t.Fatal("review accepted an invalid item")
+	}
+	user, err := NewUserItem(testItemID(t, 'b'), ScopeUser, "", "fact", createdAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := user.Review(ReviewReject, createdAt); !errors.Is(err, ErrNotPending) {
+		t.Fatalf("user item review = %v, want ErrNotPending", err)
 	}
 }
 
