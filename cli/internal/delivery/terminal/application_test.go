@@ -252,9 +252,10 @@ type blockingAcceptedResumeRuntime struct {
 type invalidAcceptedResumeRuntime struct {
 	Runtime
 
-	mu            sync.Mutex
-	resumes       []agent.ResumeRun
-	cancellations []agent.CancelRun
+	mu                  sync.Mutex
+	resumes             []agent.ResumeRun
+	cancellations       []agent.CancelRun
+	releaseCancellation <-chan struct{}
 }
 
 type corruptingAcceptedResumeRuntime struct {
@@ -691,6 +692,13 @@ func (i *invalidAcceptedResumeRuntime) CancelRun(ctx context.Context, input agen
 	i.mu.Lock()
 	i.cancellations = append(i.cancellations, input)
 	i.mu.Unlock()
+	if i.releaseCancellation != nil {
+		select {
+		case <-i.releaseCancellation:
+		case <-ctx.Done():
+			return agent.RunCancellation{}, context.Cause(ctx)
+		}
+	}
 	return i.Runtime.CancelRun(ctx, input)
 }
 
@@ -1057,15 +1065,19 @@ func TestClosingDuringAnAcceptedResumeCancelsTheRunAndRetiresTheDecision(t *test
 func TestMisdirectedAcceptedResumeReceiptCancelsAndSettlesTheRequestedRun(t *testing.T) {
 	base := runtimefixture.New()
 	base.Instant = true
-	runtime := &invalidAcceptedResumeRuntime{Runtime: base}
+	releaseCancellation := make(chan struct{})
+	release := sync.OnceFunc(func() { close(releaseCancellation) })
+	runtime := &invalidAcceptedResumeRuntime{Runtime: base, releaseCancellation: releaseCancellation}
 	stateDirectory := t.TempDir()
 	host, stop := runUIWithState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	t.Cleanup(release)
 	host.Shows(t, "Ask flame")
 	host.Type("reject a misdirected accepted approval receipt")
 	host.Press(input.Enter)
 	host.Shows(t, "Tool approval")
 	host.Press(input.Enter)
 	host.Shows(t, "does not match")
+	release()
 	host.Until(t, "the misdirected resume receipt cleanup", func() bool {
 		resumes, cancellations := runtime.attempts()
 		if len(resumes) != 1 || len(cancellations) != 1 {
@@ -1091,6 +1103,10 @@ func TestMisdirectedAcceptedResumeReceiptCancelsAndSettlesTheRequestedRun(t *tes
 	if _, active := snapshot.ActiveRun(); active {
 		t.Fatalf("misdirected resume receipt left the requested run active: %+v", snapshot.Runs)
 	}
+	// The fixture completes before cancellation; the recovered projection must
+	// preserve that authoritative outcome.
+	host.Shows(t, "complete")
+	host.Hides(t, "does not match")
 	stop()
 }
 

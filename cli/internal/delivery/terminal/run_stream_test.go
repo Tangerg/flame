@@ -135,11 +135,12 @@ type refusingFirstCommandRuntime struct {
 type invalidAcceptedStartRuntime struct {
 	Runtime
 
-	mu             sync.Mutex
-	starts         []agent.StartRun
-	cancellations  []agent.CancelRun
-	refuseFirst    bool
-	refreshFailure error
+	mu                  sync.Mutex
+	starts              []agent.StartRun
+	cancellations       []agent.CancelRun
+	refuseFirst         bool
+	refreshFailure      error
+	releaseCancellation <-chan struct{}
 }
 
 func (i *invalidAcceptedStartRuntime) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
@@ -163,6 +164,13 @@ func (i *invalidAcceptedStartRuntime) CancelRun(ctx context.Context, input agent
 	i.mu.Unlock()
 	if refuse {
 		return agent.RunCancellation{}, errors.New("temporary malformed-receipt cleanup failure")
+	}
+	if i.releaseCancellation != nil {
+		select {
+		case <-i.releaseCancellation:
+		case <-ctx.Done():
+			return agent.RunCancellation{}, context.Cause(ctx)
+		}
 	}
 	return i.Runtime.CancelRun(ctx, input)
 }
@@ -440,13 +448,17 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		}}}
 	}
-	runtime := &invalidAcceptedStartRuntime{Runtime: base}
+	releaseCancellation := make(chan struct{})
+	release := sync.OnceFunc(func() { close(releaseCancellation) })
+	runtime := &invalidAcceptedStartRuntime{Runtime: base, releaseCancellation: releaseCancellation}
 	stateDirectory := t.TempDir()
 	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	t.Cleanup(release)
 	host.Shows(t, "Ask flame")
 	host.Type("cancel malformed accepted start")
 	host.Press(input.Enter)
 	host.Shows(t, "start segment stream: user item identity is empty")
+	release()
 	host.Until(t, "the malformed accepted start to be canceled", func() bool {
 		starts, cancellations := runtime.attempts()
 		if len(starts) != 1 || len(cancellations) != 1 {
@@ -479,6 +491,8 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 		t.Fatalf("malformed accepted receipt left a runtime run active: %+v", snapshot.Runs)
 	}
 	host.Shows(t, starts[0].Message.Text)
+	host.Shows(t, "canceled")
+	host.Hides(t, "start segment stream: user item identity is empty")
 	stop()
 }
 
@@ -489,17 +503,23 @@ func TestInvalidAcceptedStartReceiptSettlesTheMemoryOnlyQueue(t *testing.T) {
 			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
 		}}}
 	}
-	runtime := &invalidAcceptedStartRuntime{Runtime: base}
+	releaseCancellation := make(chan struct{})
+	release := sync.OnceFunc(func() { close(releaseCancellation) })
+	runtime := &invalidAcceptedStartRuntime{Runtime: base, releaseCancellation: releaseCancellation}
 	host, stop := runUIWith(t, runtime)
+	t.Cleanup(release)
 	host.Shows(t, "Ask flame")
 	host.Type("settle malformed start without files")
 	host.Press(input.Enter)
 	host.Shows(t, "start segment stream: user item identity is empty")
+	release()
 	host.Until(t, "the memory-only malformed start cleanup", func() bool {
 		starts, cancellations := runtime.attempts()
 		return len(starts) == 1 && len(cancellations) == 1 && host.Repaint()
 	})
 	host.Hides(t, "1 queued")
+	host.Shows(t, "canceled")
+	host.Hides(t, "start segment stream: user item identity is empty")
 	stop()
 }
 
