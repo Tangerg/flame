@@ -12,6 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 const (
@@ -20,17 +21,18 @@ const (
 )
 
 type mcpBindingStub struct {
-	t            *testing.T
-	actions      []string
-	created      protocol.MCPServerCandidate
-	updated      protocol.UpdateMCPServerRequest
-	authErr      error
-	authGet      *protocol.MCPAuthorizationAttempt
-	now          time.Time
-	servers      []protocol.MCPServer
-	tools        []protocol.MCPTool
-	createResult *protocol.MCPServer
-	updateResult *protocol.MCPServer
+	t                    *testing.T
+	actions              []string
+	createdAuthorization string
+	updatedEnabled       *bool
+	updatedDescription   *string
+	authErr              error
+	authGet              *protocol.MCPAuthorizationAttempt
+	now                  time.Time
+	servers              []protocol.MCPServer
+	tools                []protocol.MCPTool
+	createResult         *protocol.MCPServer
+	updateResult         *protocol.MCPServer
 }
 
 func (m *mcpBindingStub) ListMCPServers(_ context.Context, options flameruntime.CallOptions) (*protocol.Page[protocol.MCPServer], error) {
@@ -43,7 +45,10 @@ func (m *mcpBindingStub) ListMCPServers(_ context.Context, options flameruntime.
 
 func (m *mcpBindingStub) CreateMCPServer(_ context.Context, request protocol.MCPServerCandidate, options flameruntime.CommandOptions) (*protocol.MCPServer, error) {
 	m.assertCommand("create", options)
-	m.created = request
+	m.createdAuthorization = ""
+	if request.Connection.Authorization != nil {
+		m.createdAuthorization = request.Connection.Authorization.Value
+	}
 	if m.createResult != nil {
 		return m.createResult, nil
 	}
@@ -53,7 +58,8 @@ func (m *mcpBindingStub) CreateMCPServer(_ context.Context, request protocol.MCP
 
 func (m *mcpBindingStub) UpdateMCPServer(_ context.Context, request protocol.UpdateMCPServerRequest, options flameruntime.CommandOptions) (*protocol.MCPServer, error) {
 	m.assertCommand("update", options)
-	m.updated = request
+	m.updatedEnabled = clonePointer(request.Enabled)
+	m.updatedDescription = clonePointer(request.Description)
 	if m.updateResult != nil {
 		return m.updateResult, nil
 	}
@@ -128,7 +134,10 @@ func (m *mcpBindingStub) GetMCPAuthorizationAttempt(_ context.Context, request p
 		return nil, m.authErr
 	}
 	if m.authGet != nil {
-		return m.authGet, nil
+		attempt := *m.authGet
+		attempt.Status.Error = failure.Clone(attempt.Status.Error)
+		attempt.FinishedAt = clonePointer(attempt.FinishedAt)
+		return &attempt, nil
 	}
 	finished := m.now.Add(time.Second)
 	return &protocol.MCPAuthorizationAttempt{
@@ -220,8 +229,8 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 	if _, createServerErr := runtime.CreateServer(t.Context(), candidate); createServerErr != nil {
 		t.Fatal(createServerErr)
 	}
-	if stub.created.Connection.Authorization == nil || stub.created.Connection.Authorization.Value != "Bearer secret" {
-		t.Fatalf("created candidate = %+v", stub.created)
+	if stub.createdAuthorization != "Bearer secret" {
+		t.Fatal("created candidate did not include the authored authorization")
 	}
 	description := "Updated docs"
 	enabled := false
@@ -229,8 +238,8 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 	if _, updateServerErr := runtime.UpdateServer(t.Context(), update); updateServerErr != nil {
 		t.Fatal(updateServerErr)
 	}
-	if stub.updated.Enabled == nil || *stub.updated.Enabled || stub.updated.Description == nil || *stub.updated.Description != description {
-		t.Fatalf("updated request = %+v", stub.updated)
+	if stub.updatedEnabled == nil || *stub.updatedEnabled || stub.updatedDescription == nil || *stub.updatedDescription != description {
+		t.Fatal("updated request did not include the authored enablement and description")
 	}
 	if deleteServerErr := runtime.DeleteServer(t.Context(), "docs"); deleteServerErr != nil {
 		t.Fatal(deleteServerErr)

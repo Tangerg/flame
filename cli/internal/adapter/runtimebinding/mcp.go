@@ -3,17 +3,15 @@ package runtimebinding
 import (
 	"context"
 	"fmt"
-	"maps"
-	"slices"
 	"strings"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
+// Calls borrow requests until return and transfer ownership of their results.
 type mcpBinding interface {
 	ListMCPServers(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.MCPServer], error)
 	CreateMCPServer(context.Context, protocol.MCPServerCandidate, flameruntime.CommandOptions) (*protocol.MCPServer, error)
@@ -90,7 +88,8 @@ func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) 
 		return protocol.MCPServer{}, err
 	}
 	request := protocol.UpdateMCPServerRequest{
-		Server: update.Server, Enabled: clonePointer(update.Enabled), Description: clonePointer(update.Description),
+		Server: update.Server, Enabled: update.Enabled, Description: update.Description,
+		DisabledTools: update.DisabledTools, AutoApproveTools: update.AutoApproveTools,
 	}
 	if update.HandshakeTimeout != nil {
 		timeout := projectMCPHandshakeTimeout(*update.HandshakeTimeout)
@@ -99,14 +98,6 @@ func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) 
 	if update.Connection != nil {
 		connection := projectMCPConnectionInput(*update.Connection)
 		request.Connection = &connection
-	}
-	if update.DisabledTools != nil {
-		values := slices.Clone(*update.DisabledTools)
-		request.DisabledTools = &values
-	}
-	if update.AutoApproveTools != nil {
-		values := slices.Clone(*update.AutoApproveTools)
-		request.AutoApproveTools = &values
 	}
 	if err := protocol.ValidateWireTree(request); err != nil {
 		return protocol.MCPServer{}, fmt.Errorf("MCP update %s violates runtime wire contract: %w", update.Server, err)
@@ -243,7 +234,7 @@ func projectMCPCandidate(candidate mcp.Candidate) (protocol.MCPServerCandidate, 
 	projected := protocol.MCPServerCandidate{
 		Name: candidate.Name, Enabled: candidate.Enabled, Description: candidate.Description,
 		Connection: projectMCPConnectionInput(candidate.Connection), HandshakeTimeout: projectMCPHandshakeTimeout(candidate.HandshakeTimeout),
-		DisabledTools: slices.Clone(candidate.DisabledTools), AutoApproveTools: slices.Clone(candidate.AutoApproveTools),
+		DisabledTools: candidate.DisabledTools, AutoApproveTools: candidate.AutoApproveTools,
 	}
 	if err := protocol.ValidateWireTree(projected); err != nil {
 		return protocol.MCPServerCandidate{}, fmt.Errorf("MCP candidate %s violates runtime wire contract: %w", candidate.Name, err)
@@ -262,7 +253,7 @@ func projectMCPHandshakeTimeout(timeout mcp.HandshakeTimeout) protocol.MCPHandsh
 func projectMCPConnectionInput(connection mcp.ConnectionInput) protocol.MCPConnectionInput {
 	projected := protocol.MCPConnectionInput{
 		Type: connection.Transport, URL: connection.URL,
-		Command: connection.Command, Args: slices.Clone(connection.Args), Dir: connection.Directory,
+		Command: connection.Command, Args: connection.Args, Dir: connection.Directory,
 	}
 	if connection.Authorization != nil {
 		projected.Authorization = &protocol.MCPAuthorizationChange{
@@ -271,12 +262,12 @@ func projectMCPConnectionInput(connection mcp.ConnectionInput) protocol.MCPConne
 	}
 	if connection.Headers != nil {
 		projected.Headers = &protocol.MCPHeadersChange{
-			Type: connection.Headers.Kind, Value: maps.Clone(connection.Headers.Value),
+			Type: connection.Headers.Kind, Value: connection.Headers.Value,
 		}
 	}
 	if connection.Environment != nil {
 		projected.Env = &protocol.MCPEnvironmentChange{
-			Type: connection.Environment.Kind, Value: maps.Clone(connection.Environment.Value),
+			Type: connection.Environment.Kind, Value: connection.Environment.Value,
 		}
 	}
 	return projected
@@ -300,8 +291,6 @@ func projectMCPAuthorizationResult(
 		return protocol.MCPAuthorizationAttempt{}, runtimeContractViolation("%s returned nil", operation)
 	}
 	attempt := *result
-	attempt.Status.Error = failure.Clone(result.Status.Error)
-	attempt.FinishedAt = clonePointer(result.FinishedAt)
 	if err := mcp.ValidateAuthorizationAttempt(attempt); err != nil {
 		return protocol.MCPAuthorizationAttempt{}, runtimeContractViolation(
 			"%s returned an invalid authorization attempt: %v",

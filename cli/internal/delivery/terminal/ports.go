@@ -65,7 +65,8 @@ type ModelConfiguration interface {
 	TestProvider(context.Context, string) (models.TestResult, error)
 }
 
-// MCPManagement transfers owned Runtime observations to readers and editors.
+// MCPManagement borrows synchronous inputs and transfers owned Runtime
+// observations to readers and editors. Retaining inputs requires a snapshot.
 type MCPManagement interface {
 	Servers(context.Context) ([]protocol.MCPServer, error)
 	CreateServer(context.Context, mcp.Candidate) (protocol.MCPServer, error)

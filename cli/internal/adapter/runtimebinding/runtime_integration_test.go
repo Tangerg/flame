@@ -716,6 +716,18 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 			}
 		})
 	}
+	expectedCandidate := candidate.Clone()
+	candidate.DisabledTools[0] = "caller-reused-disabled"
+	candidate.AutoApproveTools[0] = "caller-reused-auto-approved"
+	delete(candidate.Connection.Headers.Value, "X-Key")
+	candidate.Connection.Headers.Value["X-Reused"] = "caller-reused-header"
+	servers, err = runtime.Servers(t.Context())
+	if err != nil || index >= len(servers) {
+		t.Fatalf("list MCP servers after input reuse: (%+v, %v)", servers, err)
+	}
+	if err := expectedCandidate.ValidateResult(servers[index]); err != nil {
+		t.Fatalf("caller input reuse changed the Runtime MCP server: %v", err)
+	}
 	clearAuthorization := mcp.AuthorizationChange{Kind: protocol.MCPSecretClear}
 	clearHeaders := mcp.HeadersChange{Kind: protocol.MCPSecretClear}
 	description := "Updated integration MCP"
@@ -736,6 +748,17 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	}
 	if err := update.ValidateResult(updated); err != nil {
 		t.Fatalf("updated MCP server: %v", err)
+	}
+	description = "caller-reused-description"
+	*update.HandshakeTimeout = mcp.HandshakeTimeout{}
+	servers, err = runtime.Servers(t.Context())
+	if err != nil || index >= len(servers) {
+		t.Fatalf("list MCP servers after update reuse: (%+v, %v)", servers, err)
+	}
+	stored := servers[index]
+	if stored.Description != updated.Description || stored.HandshakeTimeout.Type != updated.HandshakeTimeout.Type ||
+		stored.HandshakeTimeout.Seconds == nil || *stored.HandshakeTimeout.Seconds != *updated.HandshakeTimeout.Seconds {
+		t.Fatalf("caller update reuse changed the Runtime MCP server: %+v", stored)
 	}
 	if err := runtime.DeleteServer(t.Context(), candidate.Name); err != nil {
 		t.Fatalf("Delete MCP server: %v", err)
