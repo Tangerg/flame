@@ -189,7 +189,7 @@ func validateDueBatch(due []schedule.Schedule, now time.Time, maximum int) error
 	}
 	seen := make(map[string]struct{}, len(due))
 	for index, scheduled := range due {
-		if err := scheduled.ValidateStored(); err != nil {
+		if err := scheduled.Validate(); err != nil {
 			return fmt.Errorf("schedules: due schedule[%d] is invalid: %w", index, err)
 		}
 		if !scheduled.Enabled() || scheduled.NextRunAt().IsZero() || scheduled.NextRunAt().After(now) {

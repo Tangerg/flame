@@ -33,10 +33,10 @@ func (r Replacement) State() Schedule { return r.state }
 // Validate proves that a management edit preserves identity and operational
 // lifecycle facts while advancing exactly one revision.
 func (r Replacement) Validate() error {
-	if err := r.expected.ValidateStored(); err != nil {
+	if err := r.expected.Validate(); err != nil {
 		return fmt.Errorf("schedule: replacement expected state: %w", err)
 	}
-	if err := r.state.ValidateStored(); err != nil {
+	if err := r.state.Validate(); err != nil {
 		return fmt.Errorf("schedule: replacement state: %w", err)
 	}
 	if r.expected.ID() != r.state.ID() {

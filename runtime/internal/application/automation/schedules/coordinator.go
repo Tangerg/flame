@@ -171,7 +171,7 @@ func validateManagementPage(rows []schedule.Schedule, afterCreatedAt time.Time, 
 	}
 	seen := make(map[string]struct{}, len(rows))
 	for index, scheduled := range rows {
-		if err := scheduled.ValidateStored(); err != nil {
+		if err := scheduled.Validate(); err != nil {
 			return fmt.Errorf("schedules: store row %d is invalid: %w", index+1, err)
 		}
 		if _, duplicate := seen[scheduled.ID()]; duplicate {
@@ -292,7 +292,7 @@ func loadSchedule(ctx context.Context, store scheduleReader, id string) (schedul
 	if err != nil {
 		return schedule.Schedule{}, err
 	}
-	if err := scheduled.ValidateStored(); err != nil {
+	if err := scheduled.Validate(); err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: store Get(%q) returned an invalid Schedule: %w", id, err)
 	}
 	if scheduled.ID() != id {

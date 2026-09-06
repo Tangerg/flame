@@ -161,7 +161,7 @@ func Restore(snapshot Snapshot) (Schedule, error) {
 // cursor from after, and advances its exact revision once. No caller can observe
 // a replacement whose enabled state and cursor disagree.
 func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Schedule, error) {
-	if err := s.ValidateStored(); err != nil {
+	if err := s.Validate(); err != nil {
 		return Schedule{}, err
 	}
 	if expectedRevision == 0 {
@@ -243,15 +243,11 @@ func validateInstructions(instructions string) error {
 	return nil
 }
 
-// ValidateStored remains the persistence-facing spelling for aggregate
-// validation; unlike the former public-field model, every Schedule is stored.
-func (s Schedule) ValidateStored() error { return s.Validate() }
-
 // NextRevision returns the only legal successor of this stored Schedule's
 // current revision. Persistence paths that mutate operational fields use this
 // behavior instead of spelling arithmetic in SQL.
 func (s Schedule) NextRevision() (uint64, error) {
-	if err := s.ValidateStored(); err != nil {
+	if err := s.Validate(); err != nil {
 		return 0, err
 	}
 	next, err := s.revision.Next()
