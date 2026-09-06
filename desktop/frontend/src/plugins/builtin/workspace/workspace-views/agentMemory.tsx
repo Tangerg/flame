@@ -109,7 +109,7 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
               onChange={(e) => setDraft(e.target.value)}
               spellCheck={false}
               rows={3}
-              className="text-fg-soft"
+              ink="soft"
             />
           ) : (
             <div className="text-ui-md leading-body text-fg">{item.content}</div>
@@ -216,7 +216,7 @@ function AddMemory({ scope, cwd }: { scope: Scope; cwd?: string }) {
         placeholder={t("agentMemory.add.placeholder")}
         spellCheck={false}
         rows={2}
-        className="text-fg-soft"
+        ink="soft"
       />
       <div className="flex items-center gap-2">
         <PillButton size="sm" variant="accent" disabled={!canSave || busy} onClick={submit}>

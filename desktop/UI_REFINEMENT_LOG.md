@@ -6473,3 +6473,100 @@ variant: "card" | "group" | "request" | "prompt"
 `well` + `text-field` 必须同批（`WELL_SURFACE` 是它们共享的一串 Tailwind class）。
 再往后是 reduced-motion 的所有者收敛，以及仍然挡在 `button` 前面的
 `chip.tsx` `group-hover:` 设计决定。
+
+---
+
+## Round 116 — `well` + `text-field` 同批迁移
+
+### 计划（写在改代码之前）
+
+这两个必须同批：`well.tsx` 导出的 `WELL_SURFACE` 是一串 Tailwind class，
+被 `text-field.tsx` 的 `TextArea variant="well"` 消费 —— 那是"well 和它的
+编辑态不能漂开"的实现方式。单迁任一个都会把这条共享断掉。
+
+### 证据：31 个调用点，13 处带 `className`
+
+| 覆盖内容 | 处数 | 判定 |
+| --- | --- | --- |
+| 外边距 / 宽度 / `flex-1` | 8 | 调用方的事（兄弟之间的间距），保留 |
+| `text-fg-soft` | **3** | 缺档 —— 见根因一 |
+| `bg-surface-3 rounded-xs px-1` | 1 | 第三种边 —— 见根因二 |
+| `block`（`as="code"`） | 1 | 原子自己该推导 —— 见根因三 |
+| `tabular-nums`（`type="number"`） | 1 | 设计系统的硬规则，不该由调用点记得 |
+
+### 根因一：`TextArea` 没有 ink 档，而 `Well` 有
+
+`agentMemory` ×2 与 `knowledge` 都写 `text-fg-soft` —— 三处，够一档。
+而 `Well` 早就有 `ink: soft | strong`，且 `TextArea variant="well"` 就是
+同一块面的编辑态。所以不是新造一个维度，是把已有的词汇借过去：
+**一套词汇，两个组件**。Tailwind 下这三处能成立，StyleX 下 `BASE` 的
+`color` 会以 `:not(#\#)` 特异性把它们全部丢弃。
+
+### 根因二：行内就地编辑是第三种边
+
+`SessionRow` 的标题编辑器写 `variant="bare"` 之后又加回
+`rounded-xs bg-surface-3 px-1` —— `bg-surface-3` 与 `bare` 的
+`bg-transparent` 直接冲突。它要的不是"无边框"，是"在一行里就地编辑：
+不占 chrome，但要显示自己可编辑"。这是 `EDGE` 的第三个值 `inline`。
+
+### 根因三：`<code>` 是行内元素，`Well` 却总是块
+
+`ApprovalCard` 写 `className="block"` 只因为它传了 `as="code"`。
+`<pre>` 和 `<div>` 本来就是块，只有 `<code>` 不是 —— 这是原子从 `as`
+就能推导的事，不该让调用点记得。同时 `TracesPanel` 的 `grid gap-2`
+必须继续有效，所以 `Well` 不能无条件设 `display`。
+
+### 改动
+
+| | 新增 |
+| --- | --- |
+| `TextField` / `TextArea` | `ink: "default" \| "soft"`（借 `Well` 的词汇） |
+| `TextField` 的 `variant` | 第三值 `inline` |
+| `TextField` | `type="number"` 时自动 `tabular-nums`（CLAUDE.md §3 的硬规则） |
+| `Well` | `as="code"` 时自动 `display: block` |
+
+### 验收标准
+
+- 上述 6 处形状/字体 className 从调用点消失，8 处布局类保留；
+- `WELL_SURFACE` 从"导出的 class 串"变成两个组件共享的 StyleX 样式对象；
+- golden 零位移（这轮全是让既有渲染在 StyleX 下继续成立，无设计修正）；
+- 17 项 `check:*` 全绿。
+
+### `WELL_SURFACE` 从 class 串变成共享样式
+
+```
+- export const WELL_SURFACE = "rounded-sm bg-sunken px-3 py-2.5 font-mono text-code leading-relaxed";
++ export const WELL_SURFACE = stylex.create({ face: { … } });
+```
+
+共享的东西没变（还是那一张脸），变的是它现在是**编译期产物**而不是一串希望
+调用顺序正确的字符串。`TextArea variant="well"` 把它排在 size 步进之后，
+理由和从前一样：well 自己的内距要压过尺寸档的。
+
+### 顺带清掉的一条不变量
+
+`TextField` 的 `bare` 和 `inline` 都不再声明高度 —— 从前 `size` 的
+compoundVariants 只对 `boxed` 生效，等价语义靠"某几条 compound 恰好没写"
+表达。现在 `variant === "boxed" && INPUT_SIZE[size]` 把它写成了一句话：
+**只有 boxed 自己定高，另外两种由容纳它的东西定。**
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650，零 golden 位移** |
+| 守卫 | 17 项 `check:*` 全绿（含 `check:styles` 与 `cascade`） |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+`cascade.visual.spec.ts` 在整套并行跑时超时过一次（等不到 `data-visual-ready`），
+单跑 9.2s 通过，六条路由逐一手工加载也都正常 —— 是并行下的启动竞争，不是回归。
+
+### 资源回收
+
+关闭 4174 预览服务与探针脚本。
+
+### 下一轮方向
+
+atoms 里仍是 Tailwind 的还有 30 个上下，其中 `button` 仍被 `chip.tsx` 的
+`group-hover:` 挡着。下一批挑不依赖祖先态的中型件：`option-row` / `step-row` /
+`empty-state` / `segmented` / `vertical-tabs`。

@@ -1,7 +1,7 @@
+import * as stylex from "@stylexjs/stylex";
 import type { IconSize } from "@/lib/iconScale";
-import type { VariantProps } from "class-variance-authority";
-import { cva } from "class-variance-authority";
 import { cn } from "@/lib/classNames";
+import { color, leading, radius, space, surface, type } from "@/styles/tokens.stylex";
 import { Icon } from "@/ui/icons";
 import { Button } from "./button";
 import { WELL_SURFACE } from "./well";
@@ -12,118 +12,174 @@ import {
   type TextAreaPrimitiveProps,
 } from "@/ui/primitives";
 
-const EDGE = {
-  boxed:
-    "rounded-[var(--field-radius)] border-[length:var(--control-edge-width)] border-field bg-canvas focus:border-field-strong",
-  bare: "border-0 bg-transparent",
-} as const;
+/**
+ * How much chrome a field carries.
+ *
+ * `boxed` is the standing form. `bare` is a field inside something that already has an edge —
+ * a search box, a composer, a card that IS the input. `inline` edits a value in place inside a
+ * row: it takes no chrome either, but must still read as editable, which is why it has a fill
+ * the row does not. The sidebar's title editor was spelling that out as `bg-surface-3
+ * rounded-xs px-1` on top of `bare`, whose `background: transparent` StyleX would have won.
+ */
+type FieldEdge = "boxed" | "bare" | "inline";
 
-const INVALID = {
-  boxed: "border-negative focus:border-negative",
-  bare: "outline outline-1 outline-negative",
-} as const;
+/** Ink, in the vocabulary `Well` already uses — a textarea can BE a well's editable face. */
+type FieldInk = "default" | "soft";
 
-const BASE =
-  "w-full min-w-0 text-ui-md text-fg outline-none transition-colors placeholder:text-fg-faint " +
-  "disabled:cursor-not-allowed disabled:opacity-60";
-
-const SHARED_VARIANTS = {
-  variant: EDGE,
-  font: { mono: "font-mono", sans: "font-sans" },
-  invalid: { true: "", false: "" },
-} as const;
-
-const INVALID_COMPOUNDS = [
-  { variant: "boxed", invalid: true, class: INVALID.boxed },
-  { variant: "bare", invalid: true, class: INVALID.bare },
-] as const;
-
-const inputStyles = cva(BASE, {
-  variants: {
-    ...SHARED_VARIANTS,
-    size: { sm: "", md: "", lg: "" },
+const styles = stylex.create({
+  base: {
+    width: "100%",
+    minWidth: 0,
+    outline: "none",
+    transitionProperty: "color, background-color, border-color, outline-color",
+    transitionDuration: "0.15s",
+    transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
+    "::placeholder": { color: color.fgFaint },
+    cursor: { default: null, ":disabled": "not-allowed" },
+    opacity: { default: null, ":disabled": 0.6 },
   },
-  compoundVariants: [
-    { variant: "boxed", size: "sm", class: "h-[var(--field-height-sm)] px-2" },
-    { variant: "boxed", size: "md", class: "h-[var(--field-height-md)] px-2.5" },
-    { variant: "boxed", size: "lg", class: "h-[var(--field-height-lg)] px-3" },
-    ...INVALID_COMPOUNDS,
-  ],
-  defaultVariants: { variant: "boxed", size: "md", font: "mono", invalid: false },
+  boxed: {
+    borderRadius: radius.field,
+    borderWidth: "var(--control-edge-width)",
+    borderStyle: "solid",
+    borderColor: { default: surface.field, ":focus": surface.fieldStrong },
+    backgroundColor: surface.canvas,
+  },
+  bare: { borderWidth: 0, backgroundColor: "transparent" },
+  inline: {
+    borderWidth: 0,
+    borderRadius: radius.xs,
+    backgroundColor: surface.surface3,
+    paddingInline: space.s1,
+    lineHeight: leading.body,
+  },
+  inkDefault: { color: color.fg },
+  inkSoft: { color: color.fgSoft },
+  // A field the caller flagged invalid. `boxed` recolours its own edge; `bare` has none to
+  // recolour, so it borrows an outline — the one place a field draws a ring of its own.
+  invalidBoxed: { borderColor: { default: color.negative, ":focus": color.negative } },
+  invalidBare: { outline: `1px solid ${color.negative}` },
+  // Figures in a column have to line up, and a numeric field is always a column of one.
+  numeric: { fontVariantNumeric: "tabular-nums" },
+  faceMono: { fontFamily: "var(--font-mono)" },
+  faceSans: { fontFamily: "var(--font-sans)" },
+  inputSm: { height: "var(--field-height-sm)", paddingInline: space.s2 },
+  inputMd: { height: "var(--field-height-md)", paddingInline: space.s2_5 },
+  inputLg: { height: "var(--field-height-lg)", paddingInline: space.s3 },
+  area: { resize: "vertical", lineHeight: leading.body },
+  areaProse: { lineHeight: leading.prose },
+  areaSm: { paddingInline: space.s2_5, paddingBlock: space.s1_5 },
+  areaMd: { paddingInline: space.s3, paddingBlock: space.s2 },
+  autosize: { fieldSizing: "content", resize: "none" },
+  searchBox: {
+    display: "flex",
+    alignItems: "center",
+    color: { default: color.fgMuted, ":focus-within": color.fg },
+    borderColor: { default: surface.field, ":focus-within": surface.fieldStrong },
+  },
+  searchSm: { height: "var(--field-height-sm)", gap: space.s1_5, paddingInline: space.s2 },
+  searchMd: { height: "var(--field-height-md)", gap: space.s1_5, paddingInline: space.s2_5 },
+  searchLg: { height: "var(--field-height-lg)", gap: space.s2, paddingInline: space.s3 },
+  glyph: { flexShrink: 0 },
+  clear: { marginRight: "calc(var(--spacing) * -1)", flexShrink: 0 },
 });
 
-const textAreaStyles = cva(`${BASE} resize-y leading-body`, {
-  variants: {
-    ...SHARED_VARIANTS,
-    // A textarea can be the editable face of a `Well`; a single-line input never is.
-    variant: { ...EDGE, well: "border-0" },
-    size: {
-      sm: "px-2.5 py-1.5",
-      md: "px-3 py-2",
-      prose: "text-prose leading-prose",
-    },
-    autosize: { true: "field-sizing-content resize-none", false: "" },
-  },
-  compoundVariants: [
-    ...INVALID_COMPOUNDS,
-    // After `size`, so the well's own padding wins over the size step's.
-    { variant: "well", class: WELL_SURFACE },
-  ],
-  defaultVariants: {
-    variant: "boxed",
-    size: "md",
-    font: "mono",
-    invalid: false,
-    autosize: false,
-  },
-});
+const FACE = { mono: styles.faceMono, sans: styles.faceSans } as const;
+const INK = { default: styles.inkDefault, soft: styles.inkSoft } as const;
+const INPUT_SIZE = { sm: styles.inputSm, md: styles.inputMd, lg: styles.inputLg } as const;
+const SEARCH_SIZE = { sm: styles.searchSm, md: styles.searchMd, lg: styles.searchLg } as const;
 
-type FieldVariants = VariantProps<typeof inputStyles>;
+type FieldSize = keyof typeof INPUT_SIZE;
+
+type SharedProps = {
+  variant?: FieldEdge;
+  font?: keyof typeof FACE;
+  ink?: FieldInk;
+  invalid?: boolean;
+  className?: string;
+};
+
+function edge(variant: FieldEdge, invalid: boolean) {
+  return [
+    styles[variant],
+    invalid && (variant === "boxed" ? styles.invalidBoxed : styles.invalidBare),
+  ];
+}
 
 export type TextFieldProps = Omit<InputPrimitiveProps, "size" | "className"> &
-  FieldVariants & { className?: string };
+  SharedProps & { size?: FieldSize };
 
-export function TextField({ variant, size, font, invalid, className, ...props }: TextFieldProps) {
+export function TextField({
+  variant = "boxed",
+  size = "md",
+  font = "mono",
+  ink = "default",
+  invalid = false,
+  className,
+  ...props
+}: TextFieldProps) {
+  const styled = stylex.props(
+    styles.base,
+    type.uiMd,
+    FACE[font],
+    INK[ink],
+    ...edge(variant, invalid),
+    // Only `boxed` states a height: the other two are sized by the thing that contains them.
+    variant === "boxed" && INPUT_SIZE[size],
+    props.type === "number" && styles.numeric,
+  );
   return (
     <InputPrimitive
       {...props}
       data-slot="text-field"
-      data-variant={variant ?? "boxed"}
-      className={cn(inputStyles({ variant, size, font, invalid }), className)}
+      data-variant={variant}
+      {...styled}
+      className={cn(styled.className, className)}
     />
   );
 }
 
+/** A textarea's own steps. `prose` is the composer's: a reading measure, not a control step. */
+type AreaSize = "sm" | "md" | "prose";
+
 export type TextAreaProps = Omit<TextAreaPrimitiveProps, "className"> &
-  VariantProps<typeof textAreaStyles> & { className?: string };
+  Omit<SharedProps, "variant"> & {
+    /** `well` is `bare` wearing the recessed face, so the block and its editor cannot drift. */
+    variant?: FieldEdge | "well";
+    size?: AreaSize;
+    autosize?: boolean;
+  };
 
 export function TextArea({
-  variant,
-  size,
-  font,
-  invalid,
-  autosize,
+  variant = "boxed",
+  size = "md",
+  font = "mono",
+  ink = "default",
+  invalid = false,
+  autosize = false,
   className,
   ...props
 }: TextAreaProps) {
-  return (
-    <TextAreaPrimitive
-      {...props}
-      className={cn(textAreaStyles({ variant, size, font, invalid, autosize }), className)}
-    />
+  const well = variant === "well";
+  const styled = stylex.props(
+    styles.base,
+    styles.area,
+    type.uiMd,
+    FACE[font],
+    INK[ink],
+    ...edge(variant === "well" ? "bare" : variant, invalid),
+    size === "prose" ? [type.prose, styles.areaProse] : styles[size === "sm" ? "areaSm" : "areaMd"],
+    // After the size step, so the well's own padding and face win over it.
+    well && [WELL_SURFACE.face, type.code],
+    autosize && styles.autosize,
   );
+  return <TextAreaPrimitive {...props} {...styled} className={cn(styled.className, className)} />;
 }
 
-const SEARCH_BOX = {
-  sm: "h-[var(--field-height-sm)] gap-1.5 px-2",
-  md: "h-[var(--field-height-md)] gap-1.5 px-2.5",
-  lg: "h-[var(--field-height-lg)] gap-2 px-3",
-} as const;
-
-const SEARCH_GLYPH: Record<keyof typeof SEARCH_BOX, IconSize> = { sm: "xs", md: "sm", lg: "md" };
+const SEARCH_GLYPH: Record<FieldSize, IconSize> = { sm: "xs", md: "sm", lg: "md" };
 
 export type SearchFieldProps = Omit<TextFieldProps, "variant" | "invalid" | "size"> & {
-  size?: keyof typeof SEARCH_BOX;
+  size?: FieldSize;
   onClear?: () => void;
   clearLabel?: string;
 };
@@ -136,17 +192,10 @@ export function SearchField({
   className,
   ...props
 }: SearchFieldProps) {
+  const box = stylex.props(styles.searchBox, styles.boxed, SEARCH_SIZE[size]);
   return (
-    <label
-      className={cn(
-        "flex items-center text-fg-muted focus-within:text-fg",
-        EDGE.boxed,
-        "focus-within:border-field-strong",
-        SEARCH_BOX[size],
-        className,
-      )}
-    >
-      <Icon name="search" size={SEARCH_GLYPH[size]} className="shrink-0" />
+    <label {...box} className={cn(box.className, className)}>
+      <Icon name="search" size={SEARCH_GLYPH[size]} {...stylex.props(styles.glyph)} />
       <TextField {...props} type="search" variant="bare" font={font} size={size} />
       {onClear && props.value !== "" && (
         <Button
@@ -154,7 +203,7 @@ export function SearchField({
           size="icon-sm"
           onClick={onClear}
           aria-label={clearLabel}
-          className="-mr-1 shrink-0"
+          {...stylex.props(styles.clear)}
         >
           <Icon name="x" size="xs" />
         </Button>

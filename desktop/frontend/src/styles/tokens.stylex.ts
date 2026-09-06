@@ -42,9 +42,12 @@ export const surface = stylex.defineVars({
   sunken: "var(--color-sunken)",
   surface2: "var(--color-surface-2)",
   divider: "var(--color-divider)",
+  surface3: "var(--color-surface-3)",
+  canvas: "var(--color-canvas)",
   /** The app's card plane, and the hairline a fill-less surface uses instead of it. */
   card: "var(--app-card-surface)",
   field: "var(--color-field)",
+  fieldStrong: "var(--color-field-strong)",
   /** A tone wash, not the tone: 18% of the hue over whatever is behind it. */
   accentWash: "var(--color-accent-badge)",
   successWash: "var(--color-success-badge)",
@@ -61,6 +64,9 @@ export const radius = stylex.defineVars({
   /** Corners named for the plane they belong to: a card and a transcript bubble differ. */
   card: "var(--surface-card-radius)",
   bubble: "var(--radius-bubble)",
+  sm: "var(--radius-sm)",
+  /** A field's own corner, which the visual style may move independently of the shape ladder. */
+  field: "var(--field-radius)",
 });
 
 /**
@@ -95,11 +101,20 @@ export const space = stylex.defineVars({
  *
  * So a step is a bundle here too, and a call site names the step rather than assembling one.
  */
+/** How tall a line is. A ratio at a call site is not a decision; these are. */
+export const leading = stylex.defineVars({
+  body: "var(--leading-body)",
+  relaxed: "var(--leading-relaxed)",
+  prose: "var(--leading-prose)",
+});
+
 export const type = stylex.create({
   ui2xs: { fontSize: "var(--text-ui-2xs)", letterSpacing: "var(--text-ui-2xs--letter-spacing)" },
   uiXs: { fontSize: "var(--text-ui-xs)", letterSpacing: "var(--text-ui-xs--letter-spacing)" },
   uiSm: { fontSize: "var(--text-ui-sm)", letterSpacing: "var(--text-ui-sm--letter-spacing)" },
   uiMd: { fontSize: "var(--text-ui-md)", letterSpacing: "var(--text-ui-md--letter-spacing)" },
+  code: { fontSize: "var(--text-code)", letterSpacing: "var(--text-code--letter-spacing)" },
+  prose: { fontSize: "var(--text-prose)", letterSpacing: "var(--text-prose--letter-spacing)" },
 });
 
 /**

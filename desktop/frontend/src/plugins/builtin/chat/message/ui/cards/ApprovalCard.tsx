@@ -89,7 +89,7 @@ export function ApprovalCard({
       {(cmd.trim() || hasArgs) && (
         <div className="flex flex-col gap-2 px-4 pb-2">
           {cmd.trim() && (
-            <Well as="code" ink="strong" cap="lg" className="block">
+            <Well as="code" ink="strong" cap="lg">
               {cmd}
             </Well>
           )}

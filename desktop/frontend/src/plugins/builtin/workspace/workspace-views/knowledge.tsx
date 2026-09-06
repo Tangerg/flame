@@ -112,7 +112,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
             }
             spellCheck={false}
             rows={12}
-            className="text-fg-soft"
+            ink="soft"
           />
           <div className="flex items-center gap-2">
             <PillButton size="sm" variant="accent" disabled={!dirty || saving} onClick={save}>

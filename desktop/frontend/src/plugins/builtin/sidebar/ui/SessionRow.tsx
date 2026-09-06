@@ -41,7 +41,7 @@ function SessionTitleField({
 
   return (
     <TextField
-      variant="bare"
+      variant="inline"
       font="sans"
       defaultValue={title}
       aria-label={t("session.row.titleLabel")}
@@ -55,7 +55,7 @@ function SessionTitleField({
         if (e.key === "Enter") commit(e.currentTarget.value);
       }}
       onBlur={(e) => commit(e.currentTarget.value)}
-      className="flex-1 rounded-xs bg-surface-3 px-1 leading-body"
+      className="flex-1"
     />
   );
 }

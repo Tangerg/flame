@@ -219,7 +219,6 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
           value={draft.timeoutSec}
           onChange={(e) => updateDraft("timeoutSec", e.target.value)}
           placeholder={t("mcp.form.timeout.placeholder")}
-          className="tabular-nums"
         />
       </label>
 
