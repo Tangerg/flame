@@ -3,7 +3,6 @@ package workspace
 import (
 	"cmp"
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -16,6 +15,7 @@ import (
 
 // RecipeLister discovers the precedence-resolved recipes visible from a working
 // directory. Application validates visible-name identity and owns public order.
+// List transfers ownership of the returned recipes to its caller.
 type RecipeLister interface {
 	List(ctx context.Context, cwd string) ([]Recipe, error)
 }
@@ -28,8 +28,21 @@ type Discovery struct {
 	recipes    RecipeLister
 }
 
-func NewDiscovery(scope *Scope, workspaces Catalog, agentDocs AgentDocFinder, recipes RecipeLister) *Discovery {
-	return &Discovery{scope: scope, workspaces: workspaces, agentDocs: agentDocs, recipes: recipes}
+func NewDiscovery(scope *Scope, workspaces Catalog, agentDocs AgentDocFinder, recipes RecipeLister) (*Discovery, error) {
+	for _, dependency := range []struct {
+		name  string
+		value any
+	}{
+		{name: "scope", value: scope},
+		{name: "catalog", value: workspaces},
+		{name: "agent document finder", value: agentDocs},
+		{name: "recipe lister", value: recipes},
+	} {
+		if missingDependency(dependency.value) {
+			return nil, fmt.Errorf("workspace: discovery %s is required", dependency.name)
+		}
+	}
+	return &Discovery{scope: scope, workspaces: workspaces, agentDocs: agentDocs, recipes: recipes}, nil
 }
 
 // Recipes enumerates the one precedence-resolved Recipe per visible name,
@@ -39,14 +52,10 @@ func (d *Discovery) Recipes(ctx context.Context, cwd string) ([]Recipe, error) {
 	if err != nil {
 		return nil, err
 	}
-	if d.recipes == nil {
-		return nil, nil
-	}
 	recipes, err := d.recipes.List(ctx, root)
 	if err != nil {
 		return nil, err
 	}
-	recipes = slices.Clone(recipes)
 	if err := ValidateRecipeCascade(recipes); err != nil {
 		return nil, err
 	}
@@ -123,9 +132,6 @@ type Catalog interface {
 // Resolve returns the canonical live workspace identity for path, using the
 // host-provided default when path is empty.
 func (d *Discovery) Resolve(path string) (Resolved, error) {
-	if d.workspaces == nil {
-		return Resolved{}, errors.New("workspace: workspace catalog is not configured")
-	}
 	if path == "" {
 		path = d.scope.defaultWorkspacePath
 	}
@@ -142,9 +148,6 @@ func (d *Discovery) Resolve(path string) (Resolved, error) {
 // Workspaces returns each non-empty session workspace once, newest-active first
 // with canonical path ascending as the stable tie-breaker.
 func (d *Discovery) Workspaces(ctx context.Context) ([]Summary, error) {
-	if d.workspaces == nil {
-		return nil, errors.New("workspace: workspace catalog is not configured")
-	}
 	sessions, err := d.workspaces.List(ctx)
 	if err != nil {
 		return nil, err
@@ -233,9 +236,6 @@ func (d *Discovery) AgentDocs(ctx context.Context, cwd string) ([]AgentDoc, erro
 	root, err := d.scope.root(cwd)
 	if err != nil {
 		return nil, err
-	}
-	if d.agentDocs == nil {
-		return nil, errors.New("workspace: agent document finder is not configured")
 	}
 	files, err := d.agentDocs.Find(ctx, root, d.scope.userHome)
 	if err != nil {

@@ -338,11 +338,17 @@ func buildAssemblyCore(
 	if err := ownershipRecovery.ReconcileStartup(ctx); err != nil {
 		return nil, fmt.Errorf("runtime: reconcile abandoned ownership: %w", err)
 	}
-	workspaceFiles := workspace.NewFiles(workspaceServices.scope, workspaceadapter.FileBrowser{})
+	workspaceFiles, err := workspace.NewFiles(workspaceServices.scope, workspaceadapter.FileBrowser{})
+	if err != nil {
+		return nil, fmt.Errorf("runtime: build workspace files: %w", err)
+	}
 	workspaceVCS := workspace.NewVCS(workspaceServices.scope, workspaceadapter.VCS{})
-	workspaceDiscovery := workspace.NewDiscovery(
+	workspaceDiscovery, err := workspace.NewDiscovery(
 		workspaceServices.scope, sessionCoordinator, promptsource.AgentDocs{}, promptsource.NewWorkspaceRecipes(cfg.RecipesGlobalDir),
 	)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: build workspace discovery: %w", err)
+	}
 	workspaceWatch := workspace.NewGitWatch(
 		workspaceServices.scope,
 		workspaceadapter.NewGitWatcher(lifetime.context),

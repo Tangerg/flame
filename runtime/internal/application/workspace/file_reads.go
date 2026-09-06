@@ -22,8 +22,14 @@ type Files struct {
 	files FileBrowser
 }
 
-func NewFiles(scope *Scope, files FileBrowser) *Files {
-	return &Files{scope: scope, files: files}
+func NewFiles(scope *Scope, files FileBrowser) (*Files, error) {
+	if scope == nil {
+		return nil, errors.New("workspace: file scope is required")
+	}
+	if missingDependency(files) {
+		return nil, errors.New("workspace: file browser is required")
+	}
+	return &Files{scope: scope, files: files}, nil
 }
 
 // FileEntryKind identifies a file-system entry in the workspace browser.
@@ -198,9 +204,6 @@ func (f *Files) List(ctx context.Context, input FileListInput) (FilePage, error)
 			return FilePage{}, err
 		}
 	}
-	if f.files == nil {
-		return FilePage{}, errors.New("workspace: file browser is not configured")
-	}
 	entries, err := f.files.List(ctx, root, FileListOptions{
 		Path: path, Glob: input.Glob, Recursive: input.Recursive, IncludeIgnored: input.IncludeIgnored,
 	})
@@ -276,9 +279,6 @@ func (f *Files) Read(ctx context.Context, cwd string, input FileReadInput) (File
 }
 
 func (f *Files) readFile(ctx context.Context, root string, input FileReadPlan) (FileReadResult, error) {
-	if f.files == nil {
-		return FileReadResult{}, errors.New("workspace: file browser is not configured")
-	}
 	result, err := f.files.Read(ctx, root, input)
 	if err != nil {
 		return FileReadResult{}, err
@@ -356,9 +356,6 @@ func (f *Files) Grep(ctx context.Context, cwd string, input GrepInput) (GrepResu
 	limit, err := input.Limit.Matches()
 	if err != nil {
 		return GrepResult{}, err
-	}
-	if f.files == nil {
-		return GrepResult{}, errors.New("workspace: file browser is not configured")
 	}
 	result, err := f.files.Grep(ctx, root, GrepPlan{Path: input.Path, Pattern: pattern, Limit: limit})
 	if err != nil {

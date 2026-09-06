@@ -3,7 +3,6 @@ package workspace
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -50,15 +49,7 @@ func NewHooks(scope *Scope, inspector HookInspector, trust HookTrustStore, inval
 		{name: "inspector", value: inspector},
 		{name: "trust store", value: trust},
 	} {
-		value := reflect.ValueOf(dependency.value)
-		missing := !value.IsValid()
-		if !missing {
-			switch value.Kind() {
-			case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-				missing = value.IsNil()
-			}
-		}
-		if missing {
+		if missingDependency(dependency.value) {
 			return nil, fmt.Errorf("workspace: hooks %s is required", dependency.name)
 		}
 	}

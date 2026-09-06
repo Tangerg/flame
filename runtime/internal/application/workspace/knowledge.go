@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
@@ -48,15 +47,7 @@ func NewKnowledge(
 		{name: "workspace inspector", value: workspaces},
 		{name: "store", value: store},
 	} {
-		value := reflect.ValueOf(dependency.value)
-		missing := !value.IsValid()
-		if !missing {
-			switch value.Kind() {
-			case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-				missing = value.IsNil()
-			}
-		}
-		if missing {
+		if missingDependency(dependency.value) {
 			return nil, fmt.Errorf("workspace: knowledge %s is required", dependency.name)
 		}
 	}

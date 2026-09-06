@@ -5,7 +5,6 @@ package workspace
 import (
 	"errors"
 	"fmt"
-	"reflect"
 )
 
 // Workspace input failures are stable application errors.
@@ -41,15 +40,8 @@ type Scope struct {
 
 // NewScope constructs the shared workspace root scope.
 func NewScope(defaultWorkspacePath, userHome string, paths Paths) (*Scope, error) {
-	value := reflect.ValueOf(paths)
-	if !value.IsValid() {
+	if missingDependency(paths) {
 		return nil, errors.New("workspace: path resolver is required")
-	}
-	switch value.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		if value.IsNil() {
-			return nil, errors.New("workspace: path resolver is required")
-		}
 	}
 	return &Scope{defaultWorkspacePath: defaultWorkspacePath, userHome: userHome, paths: paths}, nil
 }

@@ -7,12 +7,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -55,6 +58,16 @@ type inertWorkspaceCloser struct{}
 func (inertWorkspaceCloser) Close() error                               { return nil }
 func (inertWorkspaceCloser) Accept([]workspaceapp.AuthoredChange) error { return nil }
 
+type emptyWorkspaceCatalog struct{}
+
+func (emptyWorkspaceCatalog) List(context.Context) ([]session.Session, error) {
+	return nil, nil
+}
+
+func (emptyWorkspaceCatalog) InspectWorkspace(path string) (workspaceapp.Resolved, error) {
+	return (workspaceadapter.Resolver{}).Inspect(path)
+}
+
 func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces {
 	roots, err := workspaceapp.NewScope(cwd, cwd, workspaceadapter.Resolver{})
 	if err != nil {
@@ -94,11 +107,22 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 	if err != nil {
 		panic(err)
 	}
+	files, err := workspaceapp.NewFiles(roots, workspaceadapter.FileBrowser{})
+	if err != nil {
+		panic(err)
+	}
+	if cfg.Recipes == nil {
+		cfg.Recipes = fakeRecipeLister{}
+	}
+	discovery, err := workspaceapp.NewDiscovery(roots, emptyWorkspaceCatalog{}, promptsource.AgentDocs{}, cfg.Recipes)
+	if err != nil {
+		panic(err)
+	}
 	return workspaceSurfaces{
 		roots:         roots,
-		files:         workspaceapp.NewFiles(roots, workspaceadapter.FileBrowser{}),
+		files:         files,
 		vcs:           workspaceapp.NewVCS(roots, workspaceadapter.VCS{}),
-		discovery:     workspaceapp.NewDiscovery(roots, nil, nil, cfg.Recipes),
+		discovery:     discovery,
 		knowledge:     knowledge,
 		skills:        workspaceapp.NewSkills(roots, cfg.Skills, cfg.Curator, cfg.Proposals, authoredWatch, nil),
 		hooks:         hooks,
@@ -449,7 +473,7 @@ func (f fakeSkillCatalog) List(context.Context, string) ([]workspaceapp.SkillSum
 type fakeRecipeLister struct{ recipes []workspaceapp.Recipe }
 
 func (f fakeRecipeLister) List(context.Context, string) ([]workspaceapp.Recipe, error) {
-	return f.recipes, nil
+	return slices.Clone(f.recipes), nil
 }
 
 // TestListDiscoveredSkills maps discovered skills onto the wire,

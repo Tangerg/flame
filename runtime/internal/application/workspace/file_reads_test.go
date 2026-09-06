@@ -7,6 +7,34 @@ import (
 	"testing"
 )
 
+func TestNewFilesRequiresCompleteDependencies(t *testing.T) {
+	scope := newScope(t, "", "", fileReadPaths{})
+	for _, test := range []struct {
+		name  string
+		scope *Scope
+		files FileBrowser
+	}{
+		{name: "scope", files: &fileReadPort{}},
+		{name: "browser", scope: scope},
+		{name: "typed nil browser", scope: scope, files: (*fileReadPort)(nil)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if files, err := NewFiles(test.scope, test.files); err == nil || files != nil {
+				t.Fatalf("NewFiles = (%v, %v), want incomplete construction rejected", files, err)
+			}
+		})
+	}
+}
+
+func newFiles(t *testing.T, scope *Scope, browser FileBrowser) *Files {
+	t.Helper()
+	files, err := NewFiles(scope, browser)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return files
+}
+
 type fileReadPort struct {
 	input      FileReadPlan
 	result     FileReadResult
@@ -42,7 +70,7 @@ func (fileReadPaths) ResolveExistingInRoot(_ string, path string) (string, error
 
 func TestFilesReadNormalizesBudgetBeforeCallingPort(t *testing.T) {
 	port := &fileReadPort{result: FileReadResult{Content: "text", TotalLines: 1, EndLine: 1}}
-	files := NewFiles(newScope(t, t.TempDir(), "", fileReadPaths{}), port)
+	files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
 
 	got, err := files.Read(t.Context(), "", FileReadInput{Path: "file.txt"})
 	if err != nil {
@@ -81,7 +109,7 @@ func TestFilesReadRejectsInvalidPortResults(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			port := &fileReadPort{result: test.result}
-			files := NewFiles(newScope(t, t.TempDir(), "", fileReadPaths{}), port)
+			files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
 			_, err := files.Read(t.Context(), "", FileReadInput{Path: "file.txt"})
 			if err == nil || test.want != nil && !errors.Is(err, test.want) {
 				t.Fatalf("Read error = %v, want %v", err, test.want)
@@ -94,7 +122,7 @@ func TestFilesHeadRejectsByteTruncatedPortResult(t *testing.T) {
 	port := &fileReadPort{result: FileReadResult{
 		Content: "prefix", TotalLines: 2, EndLine: 1, Truncated: true, OutputTruncated: true,
 	}}
-	files := NewFiles(newScope(t, t.TempDir(), "", fileReadPaths{}), port)
+	files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
 
 	_, err := files.Head(t.Context(), "", "file.txt", mustHeadLineLimit(t, 1))
 	if !errors.Is(err, ErrFileReadTooLarge) {
@@ -105,7 +133,7 @@ func TestFilesHeadRejectsByteTruncatedPortResult(t *testing.T) {
 func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {
 	t.Run("invalid regex", func(t *testing.T) {
 		port := &fileReadPort{}
-		files := NewFiles(newScope(t, t.TempDir(), "", fileReadPaths{}), port)
+		files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
 
 		if _, err := files.Grep(t.Context(), "", GrepInput{Query: "["}); err == nil {
 			t.Fatal("Grep accepted an invalid regular expression")
@@ -117,7 +145,7 @@ func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {
 
 	t.Run("oversized query", func(t *testing.T) {
 		port := &fileReadPort{}
-		files := NewFiles(newScope(t, t.TempDir(), "", fileReadPaths{}), port)
+		files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
 
 		if _, err := files.Grep(t.Context(), "", GrepInput{Query: strings.Repeat("x", (64<<10)+1)}); err == nil {
 			t.Fatal("Grep accepted a query larger than 64 KiB")
@@ -129,7 +157,7 @@ func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {
 
 	t.Run("caller limit", func(t *testing.T) {
 		port := &fileReadPort{}
-		files := NewFiles(newScope(t, t.TempDir(), "", fileReadPaths{}), port)
+		files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
 
 		if _, err := files.Grep(t.Context(), "", GrepInput{Query: "needle", Limit: mustGrepResultLimit(t, 100_000)}); err != nil {
 			t.Fatal(err)
@@ -147,7 +175,7 @@ func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {
 			},
 			Total: 1,
 		}}
-		files := NewFiles(newScope(t, t.TempDir(), "", fileReadPaths{}), port)
+		files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
 
 		if _, err := files.Grep(t.Context(), "", GrepInput{Query: "needle", Limit: mustGrepResultLimit(t, 1)}); err == nil {
 			t.Fatal("Grep published a direct-port result beyond its match limit and total")
@@ -161,7 +189,7 @@ func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {
 			matches[index] = GrepMatch{Path: "file.go", LineNumber: index + 1, Text: line}
 		}
 		port := &fileReadPort{grepResult: GrepResult{Matches: matches, Total: len(matches)}}
-		files := NewFiles(newScope(t, t.TempDir(), "", fileReadPaths{}), port)
+		files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
 
 		_, err := files.Grep(t.Context(), "", GrepInput{Query: "needle", Limit: mustGrepResultLimit(t, len(matches))})
 		if !errors.Is(err, ErrGrepResultTooLarge) {
@@ -173,7 +201,7 @@ func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {
 		port := &fileReadPort{grepResult: GrepResult{
 			Matches: []GrepMatch{{Path: "../secret", LineNumber: 1, Text: "needle"}}, Total: 1,
 		}}
-		files := NewFiles(newScope(t, t.TempDir(), "", fileReadPaths{}), port)
+		files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
 
 		if _, err := files.Grep(t.Context(), "", GrepInput{Query: "needle"}); err == nil {
 			t.Fatal("Grep published a direct-port path outside the workspace")

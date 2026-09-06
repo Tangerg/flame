@@ -3,6 +3,7 @@ package workspace
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -10,16 +11,65 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
+func TestNewDiscoveryRequiresCompleteDependencies(t *testing.T) {
+	scope := newScope(t, "", "", testPaths{})
+	for _, test := range []struct {
+		name      string
+		scope     *Scope
+		catalog   Catalog
+		documents AgentDocFinder
+		recipes   RecipeLister
+	}{
+		{name: "scope", catalog: workspaceCatalogStub{}, documents: staticAgentDocFinder{}, recipes: &staticRecipeLister{}},
+		{name: "catalog", scope: scope, documents: staticAgentDocFinder{}, recipes: &staticRecipeLister{}},
+		{name: "typed nil catalog", scope: scope, catalog: (*workspaceCatalogStub)(nil), documents: staticAgentDocFinder{}, recipes: &staticRecipeLister{}},
+		{name: "documents", scope: scope, catalog: workspaceCatalogStub{}, recipes: &staticRecipeLister{}},
+		{name: "typed nil documents", scope: scope, catalog: workspaceCatalogStub{}, documents: (*staticAgentDocFinder)(nil), recipes: &staticRecipeLister{}},
+		{name: "recipes", scope: scope, catalog: workspaceCatalogStub{}, documents: staticAgentDocFinder{}},
+		{name: "typed nil recipes", scope: scope, catalog: workspaceCatalogStub{}, documents: staticAgentDocFinder{}, recipes: (*staticRecipeLister)(nil)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if discovery, err := NewDiscovery(test.scope, test.catalog, test.documents, test.recipes); err == nil || discovery != nil {
+				t.Fatalf("NewDiscovery = (%v, %v), want incomplete construction rejected", discovery, err)
+			}
+		})
+	}
+}
+
+func newDiscovery(t *testing.T, scope *Scope, catalog Catalog, documents AgentDocFinder, recipes RecipeLister) *Discovery {
+	t.Helper()
+	discovery, err := NewDiscovery(scope, catalog, documents, recipes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return discovery
+}
+
+func TestRecipesDistinguishesEmptyCatalogFromFailure(t *testing.T) {
+	lister := &staticRecipeLister{}
+	discovery := newDiscovery(t, newScope(t, "", "", testPaths{}), workspaceCatalogStub{}, staticAgentDocFinder{}, lister)
+	if recipes, err := discovery.Recipes(t.Context(), "/repo"); err != nil || len(recipes) != 0 {
+		t.Fatalf("empty Recipes = (%+v, %v)", recipes, err)
+	}
+	lister.err = errors.New("recipe directory unavailable")
+	if _, err := discovery.Recipes(t.Context(), "/repo"); !errors.Is(err, lister.err) {
+		t.Fatalf("Recipes error = %v, want directory failure", err)
+	}
+}
+
 type staticAgentDocFinder struct{ files []AgentDocFile }
 
 func (s staticAgentDocFinder) Find(context.Context, string, string) ([]AgentDocFile, error) {
 	return s.files, nil
 }
 
-type staticRecipeLister struct{ recipes []Recipe }
+type staticRecipeLister struct {
+	recipes []Recipe
+	err     error
+}
 
 func (s *staticRecipeLister) List(context.Context, string) ([]Recipe, error) {
-	return s.recipes, nil
+	return slices.Clone(s.recipes), s.err
 }
 
 type workspaceCatalogStub struct {
@@ -77,7 +127,7 @@ func TestWorkspacesCollapseLiveAliasesIntoCanonicalIdentity(t *testing.T) {
 			"/aliases/two": {Path: "/real/project", ProjectRoot: "/real", Missing: false},
 		},
 	}
-	discovery := NewDiscovery(nil, catalog, nil, nil)
+	discovery := newDiscovery(t, newScope(t, "", "", testPaths{}), catalog, staticAgentDocFinder{}, &staticRecipeLister{})
 
 	workspaces, err := discovery.Workspaces(t.Context())
 	if err != nil {
@@ -135,7 +185,7 @@ func TestWorkspaceDiscoveryRejectsInvalidOrContradictoryInspection(t *testing.T)
 	} {
 		t.Run(name, func(t *testing.T) {
 			catalog := workspaceCatalogStub{sessions: sessions, resolved: resolved}
-			discovery := NewDiscovery(nil, catalog, nil, nil)
+			discovery := newDiscovery(t, newScope(t, "", "", testPaths{}), catalog, staticAgentDocFinder{}, &staticRecipeLister{})
 			if _, err := discovery.Workspaces(t.Context()); err == nil {
 				t.Fatal("Workspaces accepted invalid inspection")
 			}
@@ -145,7 +195,7 @@ func TestWorkspaceDiscoveryRejectsInvalidOrContradictoryInspection(t *testing.T)
 	catalog := workspaceCatalogStub{resolved: map[string]Resolved{
 		"/requested": {Path: "/other", ProjectRoot: "/repo"},
 	}}
-	if _, err := NewDiscovery(nil, catalog, nil, nil).Resolve("/requested"); err == nil {
+	if _, err := newDiscovery(t, newScope(t, "", "", testPaths{}), catalog, staticAgentDocFinder{}, &staticRecipeLister{}).Resolve("/requested"); err == nil {
 		t.Fatal("Resolve accepted invalid inspection")
 	}
 }
@@ -156,7 +206,7 @@ func TestAgentDocsPreservesDiscoveryProvenance(t *testing.T) {
 		{Path: "/repo/AGENTS.md", Content: "root", Scope: AgentDocScopeProjectRoot},
 		{Path: "/repo/pkg/AGENTS.md", Content: "leaf", Scope: AgentDocScopeCWD},
 	}}
-	discovery := NewDiscovery(newScope(t, "", "/home", testPaths{}), nil, finder, nil)
+	discovery := newDiscovery(t, newScope(t, "", "/home", testPaths{}), workspaceCatalogStub{}, finder, &staticRecipeLister{})
 
 	docs, err := discovery.AgentDocs(t.Context(), "/repo/pkg")
 	if err != nil {
@@ -169,7 +219,7 @@ func TestAgentDocsPreservesDiscoveryProvenance(t *testing.T) {
 
 func TestAgentDocsRejectsUnknownDiscoveryProvenance(t *testing.T) {
 	finder := staticAgentDocFinder{files: []AgentDocFile{{Path: "/repo/AGENTS.md", Content: "rule", Scope: "other"}}}
-	discovery := NewDiscovery(newScope(t, "", "/home", testPaths{}), nil, finder, nil)
+	discovery := newDiscovery(t, newScope(t, "", "/home", testPaths{}), workspaceCatalogStub{}, finder, &staticRecipeLister{})
 
 	if _, err := discovery.AgentDocs(t.Context(), "/repo"); err == nil {
 		t.Fatal("AgentDocs accepted an unknown scope")
@@ -181,7 +231,7 @@ func TestRecipesOwnVisibleCatalogOrderAndSnapshot(t *testing.T) {
 		{Name: "zeta", Body: "zeta body", Scope: RecipeScopeGlobal, Source: "/home/zeta.md"},
 		{Name: "alpha", Body: "alpha body", Scope: RecipeScopeProject, Source: "/repo/alpha.md"},
 	}}
-	discovery := NewDiscovery(newScope(t, "", "", testPaths{}), nil, nil, lister)
+	discovery := newDiscovery(t, newScope(t, "", "", testPaths{}), workspaceCatalogStub{}, staticAgentDocFinder{}, lister)
 
 	recipes, err := discovery.Recipes(t.Context(), "/repo")
 	if err != nil {
@@ -191,8 +241,9 @@ func TestRecipesOwnVisibleCatalogOrderAndSnapshot(t *testing.T) {
 		t.Fatalf("Recipes = %+v, want alpha then zeta", recipes)
 	}
 	recipes[0].Body = "mutated"
-	if lister.recipes[1].Body != "alpha body" {
-		t.Fatal("Recipes result aliases lister storage")
+	again, err := discovery.Recipes(t.Context(), "/repo")
+	if err != nil || len(again) != 2 || again[0].Body != "alpha body" {
+		t.Fatalf("Recipes after caller reuse = (%+v, %v)", again, err)
 	}
 }
 
@@ -201,7 +252,7 @@ func TestRecipesRejectRepeatedVisibleName(t *testing.T) {
 		{Name: "review", Body: "project", Scope: RecipeScopeProject, Source: "/repo/review.md"},
 		{Name: "review", Body: "global", Scope: RecipeScopeGlobal, Source: "/home/review.md"},
 	}}
-	discovery := NewDiscovery(newScope(t, "", "", testPaths{}), nil, nil, lister)
+	discovery := newDiscovery(t, newScope(t, "", "", testPaths{}), workspaceCatalogStub{}, staticAgentDocFinder{}, lister)
 
 	if _, err := discovery.Recipes(t.Context(), "/repo"); !errors.Is(err, ErrInvalidPromptSource) {
 		t.Fatalf("Recipes error = %v, want ErrInvalidPromptSource", err)
