@@ -16,6 +16,8 @@ CLI owns only command and presentation concerns:
 
 A Runtime event may update a preview, but completed Items and authoritative snapshots win after reconnect, gaps, and cold recovery.
 
+One-shot execution reads the complete tree interruption from Conversation after the root Segment closes. Member interrupts alone do not authorize a resume; a stream lost before the root boundary must reconnect or recover the durable snapshot first.
+
 ## Dependency direction
 
 The CLI uses four responsibility rings:

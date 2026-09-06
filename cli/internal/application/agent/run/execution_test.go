@@ -45,6 +45,17 @@ func (t *treeReconnectRuntime) SubscribeRun(_ context.Context, input agent.Subsc
 	return t.rebound, nil
 }
 
+type treeInterruptRuntime struct {
+	treeReconnectRuntime
+	continued   agent.SegmentStream
+	resumptions []agent.ResumeRun
+}
+
+func (t *treeInterruptRuntime) ResumeRun(_ context.Context, input agent.ResumeRun) (agent.SegmentStream, error) {
+	t.resumptions = append(t.resumptions, input.Clone())
+	return t.continued, nil
+}
+
 type refusingCancellationRuntime struct {
 	*runtimefixture.Runtime
 
@@ -470,6 +481,104 @@ func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testin
 		return item.EventID == rootFinished.EventID
 	}) {
 		t.Fatalf("root terminal event was not rendered: %+v", renderer.events)
+	}
+}
+
+func TestExecuteResumesTheCompleteTreeAfterItsRootSuspends(t *testing.T) {
+	for _, disconnect := range []bool{false, true} {
+		t.Run(fmt.Sprintf("disconnect_before_root_suspends=%t", disconnect), func(t *testing.T) {
+			base := runtimefixture.New()
+			session, err := base.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			root := agent.Run{
+				ID: "run_root", SessionID: session.ID, Lineage: agent.RootRunLineage(),
+				Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_root", Limits: agent.UnlimitedRunLimits(),
+			}
+			event := func(id string, run agent.Run, streamSegment string, payload agent.Event) agent.RunEvent {
+				return agent.RunEvent{
+					EventID: id, RunID: run.ID, SegmentID: run.ActiveSegmentID, StreamSegmentID: streamSegment,
+					At: time.Unix(1, 0), Event: payload,
+				}
+			}
+			initial := []agent.RunEvent{event("event_root_started", root, root.ActiveSegmentID, agent.SegmentStarted{Run: root})}
+			resumedRoot := root
+			resumedRoot.ActiveSegmentID = "seg_root_resumed"
+			continued := []agent.RunEvent{event("event_root_resumed", resumedRoot, resumedRoot.ActiveSegmentID, agent.SegmentStarted{Run: resumedRoot})}
+			var wantAnswers []agent.InterruptAnswer
+			for _, suffix := range []string{"a", "b"} {
+				lineage, err := agent.NewChildRunLineage("run_child_"+suffix, "item_delegate_"+suffix, root.ID, root.ID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				child := agent.Run{
+					ID: "run_child_" + suffix, SessionID: session.ID, Lineage: lineage,
+					Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_child_" + suffix, Limits: agent.UnlimitedRunLimits(),
+				}
+				tool := &agent.ToolCall{Kind: agent.ToolRead, Name: "read", Status: agent.ToolRunning}
+				block := agent.Block{ID: "item_approval_" + suffix, RunID: child.ID, Status: agent.BlockStatusRunning, Kind: agent.BlockTool, Tool: tool}
+				approval := agent.Approval{RunID: child.ID, ItemID: block.ID, Title: "Inspect " + suffix, Tool: tool}
+				initial = append(initial,
+					event("event_child_started_"+suffix, child, root.ActiveSegmentID, agent.SegmentStarted{Run: child}),
+					event("event_approval_started_"+suffix, child, root.ActiveSegmentID, agent.BlockStarted{Block: block}),
+					event("event_child_waiting_"+suffix, child, root.ActiveSegmentID, agent.RunInterrupted{Interactions: []agent.Interaction{approval}}),
+				)
+				wantAnswers = append(wantAnswers, agent.InterruptAnswer{ItemID: block.ID, Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove}})
+				child.ActiveSegmentID += "_resumed"
+				block = block.Clone()
+				block.Status, block.Tool.Status = agent.BlockStatusCompleted, agent.ToolOK
+				continued = append(continued,
+					event("event_child_resumed_"+suffix, child, resumedRoot.ActiveSegmentID, agent.SegmentStarted{Run: child}),
+					event("event_approval_completed_"+suffix, child, resumedRoot.ActiveSegmentID, agent.BlockCompleted{Block: block}),
+					event("event_child_finished_"+suffix, child, resumedRoot.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+				)
+			}
+			rootSuspended := event("event_root_suspended", root, root.ActiveSegmentID, agent.RunSuspended{})
+			continued = append(continued, event("event_root_finished", resumedRoot, resumedRoot.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}))
+			stream := func(events []agent.RunEvent, terminal error) agent.EventStream {
+				return func(yield func(agent.RunEvent, error) bool) {
+					for _, item := range events {
+						if !yield(item, nil) {
+							return
+						}
+					}
+					if terminal != nil {
+						yield(agent.RunEvent{}, terminal)
+					}
+				}
+			}
+			var terminal error
+			if disconnect {
+				terminal = agent.ErrDisconnected
+			} else {
+				initial = append(initial, rootSuspended)
+			}
+			runtime := &treeInterruptRuntime{
+				treeReconnectRuntime: treeReconnectRuntime{
+					Runtime: base,
+					initial: agent.SegmentStream{RunID: root.ID, SegmentID: root.ActiveSegmentID, UserItemID: "item_user", Events: stream(initial, terminal)},
+					rebound: agent.SegmentStream{RunID: root.ID, SegmentID: root.ActiveSegmentID, Events: stream([]agent.RunEvent{rootSuspended}, nil)},
+				},
+				continued: agent.SegmentStream{RunID: root.ID, SegmentID: resumedRoot.ActiveSegmentID, Events: stream(continued, nil)},
+			}
+			if err := Execute(t.Context(), Invocation{
+				Runtime: runtime, Renderer: new(recordingRenderer), ReplayPolicy: unavailableReplayPolicy(t),
+				Start: unlimitedStart(session.ID, "approve the delegated tree"), ApproveAll: true, ReconnectAttempts: 1,
+			}); err != nil {
+				t.Fatal(err)
+			}
+			if len(runtime.resumptions) != 1 {
+				t.Fatalf("resumptions = %+v", runtime.resumptions)
+			}
+			resumed := runtime.resumptions[0]
+			if !resumed.Equal(agent.ResumeRun{CommandID: resumed.CommandID, RunID: root.ID, Answers: wantAnswers}) {
+				t.Fatalf("resume lost part of the tree's pending set: %+v", resumed)
+			}
+			if disconnect && (len(runtime.subscriptions) != 1 || runtime.subscriptions[0].AfterEventID != "event_child_waiting_b") {
+				t.Fatalf("subscriptions = %+v", runtime.subscriptions)
+			}
+		})
 	}
 }
 

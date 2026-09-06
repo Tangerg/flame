@@ -236,14 +236,16 @@ type executionDriver struct {
 func (e *executionDriver) run(ctx context.Context) (disposition, error) {
 	for {
 		followed := consume(e.current.Events, e.conversation, e.invocation.Renderer)
-		if followed.outcome != nil {
-			return settled, errorForOutcome(*followed.outcome)
-		}
-		if len(followed.interactions) != 0 {
-			if err := e.resume(ctx, followed.interactions, e.current.RunID); err != nil {
-				return interactionDisposition(err), err
+		if followed.err == nil && e.conversation.RunID() == e.current.RunID {
+			switch e.conversation.Phase() {
+			case agent.ConversationIdle:
+				return settled, errorForOutcome(e.conversation.Outcome())
+			case agent.ConversationWaiting:
+				if err := e.resume(ctx, e.conversation.Interactions(), e.current.RunID); err != nil {
+					return interactionDisposition(err), err
+				}
+				continue
 			}
-			continue
 		}
 		cause := followed.err
 		if cause == nil {
@@ -367,10 +369,8 @@ func validateContinuation(stream agent.SegmentStream, runID string) error {
 }
 
 type followResult struct {
-	interactions []agent.Interaction
-	outcome      *agent.Outcome
-	err          error
-	applied      int
+	err     error
+	applied int
 }
 
 func consume(stream agent.EventStream, conversation *agent.Conversation, renderer Renderer) followResult {
@@ -393,12 +393,12 @@ func consume(stream agent.EventStream, conversation *agent.Conversation, rendere
 			followed.err = err
 			break
 		}
-		switch payload := event.Event.(type) {
-		case agent.RunInterrupted:
-			followed.interactions = agent.CloneInteractions(payload.Interactions)
-		case agent.RunFinished:
+		switch event.Event.(type) {
+		case agent.RunInterrupted, agent.RunSuspended, agent.RunFinished:
 			if event.RunID == conversation.RunID() {
-				followed.outcome = new(payload.Outcome)
+				// The root boundary follows every member's terminal projection.
+				// Conversation now owns the complete outcome or pending set.
+				return followed
 			}
 		}
 	}
