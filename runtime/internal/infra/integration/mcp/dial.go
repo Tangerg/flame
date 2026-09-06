@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -93,6 +94,9 @@ func Dial(
 		configuredServer.config.OAuthHandler = nil
 		session, cleanupSession, derr := dial(ctx, lifetime, client, srv)
 		if derr != nil {
+			slog.ErrorContext(ctx, "mcp: startup connection failed",
+				"server.name", srv.Name.String(), "error", derr,
+			)
 			configuredServer.state = dialStatus(derr)
 			if configuredServer.state == mcpserver.ConnectionNeedsAuth {
 				configuredServer.oauth = nil
@@ -108,11 +112,13 @@ func Dial(
 		}
 		if terr != nil {
 			// A session that cannot produce a valid tool catalog is unusable.
-			// Preserve a close failure in the trace as well as the primary cause;
+			// Preserve a close failure in diagnostics as well as the primary cause;
 			// boot deliberately degrades this one server to failed rather than
 			// aborting every independent MCP connection.
 			failure := errors.Join(terr, c.closeSession(ctx, session))
-			span.RecordError(failure)
+			slog.ErrorContext(ctx, "mcp: startup tool discovery failed",
+				"server.name", srv.Name.String(), "error", failure,
+			)
 			configuredServer.state = mcpserver.ConnectionFailed
 			failures++
 			c.servers = append(c.servers, configuredServer)

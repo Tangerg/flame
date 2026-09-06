@@ -1,11 +1,14 @@
 package mcp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -430,6 +433,11 @@ func ownedSessionCount(c *Connections) int {
 }
 
 func TestDialQuarantinesCrossServerPublicToolNameCollision(t *testing.T) {
+	var diagnostics bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+
 	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "test-server", Version: "v1"}, nil)
 	addRemoteTool(t, remote, "read")
 	httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(
@@ -457,6 +465,54 @@ func TestDialQuarantinesCrossServerPublicToolNameCollision(t *testing.T) {
 	if len(statuses) != 2 || statuses[0].State != mcpserver.ConnectionConnected ||
 		statuses[1].State != mcpserver.ConnectionFailed {
 		t.Fatalf("statuses = %+v, want connected then failed", statuses)
+	}
+	if output := diagnostics.String(); !strings.Contains(output, "server.name=a_b") ||
+		!strings.Contains(output, "public tool name collision") || !strings.Contains(output, "a_b_read") {
+		t.Fatalf("startup catalog failure lost its server or cause: %s", output)
+	}
+}
+
+func TestDialReportsStartupFailureAndKeepsHealthyServers(t *testing.T) {
+	var diagnostics bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+
+	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "healthy", Version: "v1"}, nil)
+	addRemoteTool(t, remote, "read")
+	httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(
+		func(*http.Request) *sdkmcp.Server { return remote }, nil,
+	))
+	t.Cleanup(httpServer.Close)
+	missingCommand := filepath.Join(t.TempDir(), "missing-mcp-server")
+	connections, initial, err := Dial(t.Context(), t.Context(), []ServerConfig{
+		{Name: testMCPServerName("missing"), Transport: TransportStdio, Command: missingCommand},
+		{Name: testMCPServerName("healthy"), Transport: TransportHTTP, Endpoint: httpServer.URL},
+	}, nil)
+	if err != nil {
+		t.Fatalf("Dial: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := connections.Shutdown(context.WithoutCancel(t.Context())); err != nil {
+			t.Errorf("Shutdown: %v", err)
+		}
+	})
+	if names := toolNames(initial); !slices.Equal(names, []string{"healthy_read"}) {
+		t.Fatalf("initial tools = %v, want healthy server's tool", names)
+	}
+	statuses := connections.Statuses()
+	if len(statuses) != 2 || statuses[0].State != mcpserver.ConnectionFailed ||
+		statuses[1].State != mcpserver.ConnectionConnected {
+		t.Fatalf("statuses = %+v, want failed then connected", statuses)
+	}
+	if output := diagnostics.String(); !strings.Contains(output, "server.name=missing") ||
+		!strings.Contains(output, missingCommand) {
+		t.Fatalf("startup connection failure lost its server or cause: %s", output)
+	}
+	name := testMCPServerName("healthy")
+	tools, err := connections.Tools(t.Context(), &name)
+	if err != nil || len(tools) != 1 || tools[0].Name.String() != "read" {
+		t.Fatalf("healthy server tools after startup failure = %+v, %v", tools, err)
 	}
 }
 
