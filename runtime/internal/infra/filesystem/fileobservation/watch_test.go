@@ -3,17 +3,62 @@ package fileobservation
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 )
 
 const testMaxBytes int64 = 1 << 20
 
+func TestWatchCloseJoinsErrorReporting(t *testing.T) {
+	parent := filepath.Join(t.TempDir(), ".flame")
+	started := make(chan struct{}, 1)
+	release := make(chan struct{})
+	unblock := sync.OnceFunc(func() { close(release) })
+	watcher, err := Watch([]Target{{
+		Key: "hooks", Path: filepath.Join(parent, "hooks.json"), MaxBytes: testMaxBytes,
+	}}, nil, func(error) {
+		started <- struct{}{}
+		<-release
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		unblock()
+		_ = watcher.Close()
+	})
+	if err := os.WriteFile(parent, []byte("parent is not a directory"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-started:
+	case <-time.After(3 * time.Second):
+		t.Fatal("error callback did not start")
+	}
+	closed := make(chan error, 1)
+	go func() { closed <- watcher.Close() }()
+	select {
+	case err := <-closed:
+		t.Fatalf("Close returned before the callback completed: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	unblock()
+	select {
+	case err := <-closed:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("Close did not join the completed callback")
+	}
+}
+
 func TestWatchObservesMissingParentsReplacementAndRemoval(t *testing.T) {
 	root := t.TempDir()
 	target := filepath.Join(root, "nested", ".flame", "hooks.json")
 	events := make(chan []string, 8)
-	watcher, err := Watch([]Target{{Key: "hooks", Path: target, MaxBytes: testMaxBytes}}, func(keys []string) { events <- keys })
+	watcher, err := Watch([]Target{{Key: "hooks", Path: target, MaxBytes: testMaxBytes}}, func(keys []string) { events <- keys }, nil)
 	if err != nil {
 		t.Fatalf("watch missing target: %v", err)
 	}
@@ -57,7 +102,7 @@ func TestWatchObservesPhysicalSymlinkTargetAndCloseJoins(t *testing.T) {
 		Key: "knowledge", Path: alias, Boundary: root, MaxBytes: testMaxBytes,
 	}}, func(keys []string) {
 		events <- keys
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("watch symlink: %v", err)
 	}
@@ -139,7 +184,7 @@ func TestAcceptRefreshesOnlyTheExactIdentity(t *testing.T) {
 	watcher, err := Watch([]Target{
 		{Key: "knowledge", Path: first, Boundary: filepath.Dir(first), MaxBytes: testMaxBytes},
 		{Key: "knowledge", Path: second, Boundary: filepath.Dir(second), MaxBytes: testMaxBytes},
-	}, func(keys []string) { events <- keys })
+	}, func(keys []string) { events <- keys }, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +217,7 @@ func TestWatchSuppressesMetadataNoiseWithoutSemanticChange(t *testing.T) {
 		Key: "knowledge", Path: target, Boundary: root, MaxBytes: testMaxBytes,
 	}}, func(keys []string) {
 		events <- keys
-	})
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +248,7 @@ func TestWatchBoundsOversizedContentFingerprints(t *testing.T) {
 	events := make(chan []string, 2)
 	watcher, err := Watch([]Target{{
 		Key: "knowledge", Path: target, Boundary: root, MaxBytes: 1,
-	}}, func(keys []string) { events <- keys })
+	}}, func(keys []string) { events <- keys }, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

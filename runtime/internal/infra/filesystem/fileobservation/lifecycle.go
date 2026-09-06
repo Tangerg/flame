@@ -23,26 +23,26 @@ type acceptance struct {
 type observerLifecycle struct {
 	label     string
 	fsw       *fsnotify.Watcher
-	watched   map[string]struct{}
 	done      chan struct{}
 	exited    chan struct{}
 	closeOnce sync.Once
 	stateMu   sync.Mutex
 	closed    bool
 	reconcile func(acceptance) error
+	report    func(error)
 }
 
-func newObserverLifecycle(label string) (*observerLifecycle, error) {
+func newObserverLifecycle(label string, report func(error)) (*observerLifecycle, error) {
 	fsw, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("%s: create watcher: %w", label, err)
 	}
 	return &observerLifecycle{
-		label:   label,
-		fsw:     fsw,
-		watched: make(map[string]struct{}),
-		done:    make(chan struct{}),
-		exited:  make(chan struct{}),
+		label:  label,
+		report: report,
+		fsw:    fsw,
+		done:   make(chan struct{}),
+		exited: make(chan struct{}),
 	}, nil
 }
 
@@ -59,6 +59,7 @@ func (o *observerLifecycle) run() {
 	}
 	defer timer.Stop()
 	armed := false
+	failed := false
 	armAfter := func(delay time.Duration) {
 		if armed && !timer.Stop() {
 			select {
@@ -88,9 +89,15 @@ func (o *observerLifecycle) run() {
 		case <-timer.C:
 			armed = false
 			if err := o.reconcile(acceptance{}); err != nil {
+				if !failed && o.report != nil {
+					o.report(err)
+				}
+				failed = true
 				// A rename may have produced the final backend event before path
 				// watches were rebuilt, so retry without waiting for another hint.
 				armAfter(retryDelay)
+			} else {
+				failed = false
 			}
 		}
 	}
@@ -118,23 +125,27 @@ func (o *observerLifecycle) Accept(keys, identities []string) error {
 }
 
 func (o *observerLifecycle) replaceDirectories(next map[string]struct{}) error {
+	// The backend removes watches when directories disappear. Its current
+	// registration set must drive reconciliation so recreated paths are watched.
+	watched := make(map[string]struct{})
+	for _, directory := range o.fsw.WatchList() {
+		watched[directory] = struct{}{}
+	}
 	for directory := range next {
-		if _, present := o.watched[directory]; present {
+		if _, present := watched[directory]; present {
 			continue
 		}
 		if err := o.fsw.Add(directory); err != nil {
 			return fmt.Errorf("%s: watch directory %q: %w", o.label, directory, err)
 		}
-		o.watched[directory] = struct{}{}
 	}
-	for directory := range o.watched {
+	for directory := range watched {
 		if _, keep := next[directory]; keep {
 			continue
 		}
 		if err := o.fsw.Remove(directory); err != nil && !errors.Is(err, fsnotify.ErrNonExistentWatch) {
 			return fmt.Errorf("%s: unwatch directory %q: %w", o.label, directory, err)
 		}
-		delete(o.watched, directory)
 	}
 	return nil
 }

@@ -29,8 +29,9 @@ type ChildFileTarget struct {
 // WatchChildFiles observes a dynamic set of exact child files. It watches the
 // root, each admitted immediate child directory, and the nearest existing
 // ancestor of a missing root, so additions, replacements, removals, and
-// in-place writes converge through one content-derived baseline.
-func WatchChildFiles(targets []ChildFileTarget, notify func([]string)) (Observation, error) {
+// in-place writes converge through one content-derived baseline. Error reporting
+// and callback lifetime follow Watch.
+func WatchChildFiles(targets []ChildFileTarget, notify func([]string), report func(error)) (Observation, error) {
 	canonical, err := canonicalChildFileTargets(targets)
 	if err != nil {
 		return nil, err
@@ -46,7 +47,7 @@ func WatchChildFiles(targets []ChildFileTarget, notify func([]string)) (Observat
 	if err != nil {
 		return nil, fmt.Errorf("observe child files: %w", err)
 	}
-	lifecycle, err := newObserverLifecycle("observe child files")
+	lifecycle, err := newObserverLifecycle("observe child files", report)
 	if err != nil {
 		return nil, errors.Join(err, roots.Close())
 	}

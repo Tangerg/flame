@@ -30,6 +30,7 @@ type AuthoredWatcher struct {
 	knowledgeHome string
 	hooksHome     string
 	skillsHome    string
+	report        func(error)
 }
 
 var _ workspaceapp.AuthoredResourceWatcher = AuthoredWatcher{}
@@ -38,7 +39,7 @@ var _ workspaceapp.AuthoredResourceWatcher = AuthoredWatcher{}
 // explicitly. They are intentionally distinct product locations. An empty
 // Skills root disables only global Skill observation; project Skills remain
 // observable from request scopes.
-func NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome string) (AuthoredWatcher, error) {
+func NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome string, report func(error)) (AuthoredWatcher, error) {
 	if knowledgeHome == "" || !filepath.IsAbs(knowledgeHome) {
 		return AuthoredWatcher{}, errors.New("workspace authored watcher: knowledge home must be absolute")
 	}
@@ -52,6 +53,7 @@ func NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome string) (AuthoredWa
 		knowledgeHome: filepath.Clean(knowledgeHome),
 		hooksHome:     filepath.Clean(hooksHome),
 		skillsHome:    cleanOptionalPath(skillsHome),
+		report:        report,
 	}, nil
 }
 
@@ -96,7 +98,7 @@ func (a AuthoredWatcher) Watch(
 				notify(workspaceapp.AuthoredHooks)
 			}
 		}
-	})
+	}, a.report)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +106,7 @@ func (a AuthoredWatcher) Watch(
 		if slices.Contains(keys, authoredSkillsKey) {
 			notify(workspaceapp.AuthoredSkills)
 		}
-	})
+	}, a.report)
 	if err != nil {
 		return nil, errors.Join(err, files.Close())
 	}

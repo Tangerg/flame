@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
@@ -112,6 +115,7 @@ type workspaceComposition struct {
 }
 
 func buildWorkspaceComposition(
+	ctx context.Context,
 	cfg Config,
 	publish invalidation.Publish,
 ) (workspaceComposition, error) {
@@ -131,6 +135,12 @@ func buildWorkspaceComposition(
 		cfg.Stores.DataDirectory,
 		cfg.UserHome,
 		cfg.SkillsUserDir,
+		func(err error) {
+			_, span := otel.Tracer("flame/workspace").Start(ctx, "workspace.authored-observation.error")
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "authored resource observation failed")
+			span.End()
+		},
 	)
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build authored resource watcher: %w", err)

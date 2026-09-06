@@ -1,6 +1,8 @@
 package workspace
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,6 +10,92 @@ import (
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
+
+func TestAuthoredWatcherReportsOutagesAndRecovers(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		resource workspaceapp.AuthoredResource
+		file     string
+	}{
+		{name: "hooks", resource: workspaceapp.AuthoredHooks, file: "hooks.json"},
+		{name: "skills", resource: workspaceapp.AuthoredSkills, file: filepath.Join("skills", "lint", "SKILL.md")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			project := t.TempDir()
+			reports := make(chan error, 8)
+			watcher, err := NewAuthoredWatcher(t.TempDir(), t.TempDir(), "", func(err error) { reports <- err })
+			if err != nil {
+				t.Fatal(err)
+			}
+			events := make(chan workspaceapp.AuthoredResource, 8)
+			observation, err := watcher.Watch(
+				[]workspaceapp.AuthoredScope{{Workspace: project, ProjectRoot: project}},
+				[]workspaceapp.AuthoredResource{test.resource},
+				func(resource workspaceapp.AuthoredResource) { events <- resource },
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = observation.Close() }()
+
+			parent := filepath.Join(project, ".flame")
+			for outage := range 2 {
+				if err := os.RemoveAll(parent); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(parent, []byte("parent is not a directory"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				select {
+				case err := <-reports:
+					var pathError *os.PathError
+					if !errors.As(err, &pathError) {
+						t.Fatalf("outage %d lost filesystem cause: %v", outage, err)
+					}
+				case <-time.After(3 * time.Second):
+					t.Fatalf("outage %d was not reported", outage)
+				}
+				// Repeated background retries must not flood the diagnostic sink.
+				select {
+				case err := <-reports:
+					t.Fatalf("outage %d was reported again: %v", outage, err)
+				case resource := <-events:
+					t.Fatalf("failed observation published %v", resource)
+				case <-time.After(1100 * time.Millisecond):
+				}
+				if err := os.Remove(parent); err != nil {
+					t.Fatal(err)
+				}
+				file := filepath.Join(parent, test.file)
+				if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(file, fmt.Appendf(nil, "recovered after outage %d", outage), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				select {
+				case resource := <-events:
+					if resource != test.resource {
+						t.Fatalf("recovery published %v, want %v", resource, test.resource)
+					}
+				case <-time.After(3 * time.Second):
+					t.Fatalf("outage %d did not recover", outage)
+				}
+			}
+			if err := os.WriteFile(filepath.Join(parent, test.file), []byte("later external edit"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case resource := <-events:
+				if resource != test.resource {
+					t.Fatalf("later edit published %v, want %v", resource, test.resource)
+				}
+			case <-time.After(3 * time.Second):
+				t.Fatal("recovered observer lost subsequent changes")
+			}
+		})
+	}
+}
 
 func TestAuthoredWatcherMapsGlobalAndWorkspaceCascades(t *testing.T) {
 	home := t.TempDir()
@@ -18,7 +106,7 @@ func TestAuthoredWatcherMapsGlobalAndWorkspaceCascades(t *testing.T) {
 	if err := os.MkdirAll(workspace, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	watcher, err := NewAuthoredWatcher(knowledgeHome, home, skillsHome)
+	watcher, err := NewAuthoredWatcher(knowledgeHome, home, skillsHome, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +157,7 @@ func TestAuthoredWatcherScopesSkillsToSelectedWorkspace(t *testing.T) {
 	if err := os.MkdirAll(workspace, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	watcher, err := NewAuthoredWatcher(t.TempDir(), t.TempDir(), t.TempDir())
+	watcher, err := NewAuthoredWatcher(t.TempDir(), t.TempDir(), t.TempDir(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

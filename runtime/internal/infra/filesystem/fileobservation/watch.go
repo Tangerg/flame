@@ -38,8 +38,10 @@ type Observation interface {
 // Watch observes targets and calls notify with the distinct keys whose
 // externally visible filesystem state changed. Missing targets are supported:
 // their nearest existing ancestor is watched until the complete parent path is
-// created. Close joins the observer before returning.
-func Watch(targets []Target, notify func([]string)) (Observation, error) {
+// created. When provided, report receives the first background reconciliation
+// error in each outage while retries continue. Close joins both callbacks before
+// returning; callbacks must return promptly and must not close the observation.
+func Watch(targets []Target, notify func([]string), report func(error)) (Observation, error) {
 	canonical, err := canonicalTargets(targets)
 	if err != nil {
 		return nil, err
@@ -55,7 +57,7 @@ func Watch(targets []Target, notify func([]string)) (Observation, error) {
 	if err != nil {
 		return nil, fmt.Errorf("observe files: %w", err)
 	}
-	lifecycle, err := newObserverLifecycle("observe files")
+	lifecycle, err := newObserverLifecycle("observe files", report)
 	if err != nil {
 		return nil, errors.Join(err, roots.Close())
 	}

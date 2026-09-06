@@ -141,7 +141,7 @@ func TestWorkspaceSubscribe_GlobalAuthoredFilesDoNotRequireWorkspaceWatch(t *tes
 	knowledgeHome := t.TempDir()
 	hooksHome := t.TempDir()
 	skillsHome := t.TempDir()
-	authored, err := workspaceadapter.NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome)
+	authored, err := workspaceadapter.NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +251,7 @@ func TestWorkspaceSubscribe_SkillArchiveDoesNotDoublePublishFromTreeObservation(
 		t.Fatal(err)
 	}
 	curator := skillauthoring.NewStore(skillsHome, skills.ScopeUser)
-	authored, err := workspaceadapter.NewAuthoredWatcher(t.TempDir(), t.TempDir(), skillsHome)
+	authored, err := workspaceadapter.NewAuthoredWatcher(t.TempDir(), t.TempDir(), skillsHome, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
