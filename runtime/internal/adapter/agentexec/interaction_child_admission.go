@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	agent "github.com/Tangerg/scope/agent"
 )
 
@@ -62,13 +61,7 @@ func (i *interactionSession) admitProcess(
 		return nil
 	}
 	parent := i.executorMember(managed.parentRelation)
-	started := runs.ToolCallStarted{
-		CallID: managed.callID.String(), ModelCallSequence: managed.modelCallSequence,
-		ToolCallIndex: managed.toolCallIndex, SourceCallID: managed.call.ID,
-		ToolName: managed.call.Name, Arguments: managed.arguments.Canonical(),
-		Activity: "Delegating " + managed.input.Summary, SafetyClass: tool.SafetyClassExec,
-	}
-	if err := i.commitFact(ctx, parent, started); err != nil {
+	if err := i.commitFact(ctx, parent, managed.toolStart()); err != nil {
 		return fmt.Errorf("agentexec: commit Delegate call start: %w", err)
 	}
 	managed.toolStarted = true

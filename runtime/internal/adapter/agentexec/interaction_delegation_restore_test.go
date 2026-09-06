@@ -108,9 +108,13 @@ func assertDelegateAdmissionUnchanged(
 
 func assertRestoredDelegateEventOrder(t *testing.T, observed []runs.ExecutorEvent, childMemberID string) {
 	t.Helper()
-	childEnd, parentToolEnd, rootEnd := -1, -1, -1
+	parentToolStart, childEnd, parentToolEnd, rootEnd := -1, -1, -1, -1
 	for index, event := range observed {
 		switch payload := event.Payload.(type) {
+		case runs.ToolCallStarted:
+			if !event.Member.Child() {
+				parentToolStart = index
+			}
 		case runs.SegmentEnded:
 			if event.Member.MemberID == childMemberID {
 				childEnd = index
@@ -123,10 +127,10 @@ func assertRestoredDelegateEventOrder(t *testing.T, observed []runs.ExecutorEven
 			}
 		}
 	}
-	if childEnd < 0 || parentToolEnd <= childEnd || rootEnd <= parentToolEnd {
+	if parentToolStart < 0 || childEnd <= parentToolStart || parentToolEnd <= childEnd || rootEnd <= parentToolEnd {
 		t.Fatalf(
-			"restored Delegate order child-end=%d parent-tool=%d root-end=%d events=%#v",
-			childEnd, parentToolEnd, rootEnd, observed,
+			"restored Delegate order parent-start=%d child-end=%d parent-end=%d root-end=%d events=%#v",
+			parentToolStart, childEnd, parentToolEnd, rootEnd, observed,
 		)
 	}
 }

@@ -1,8 +1,10 @@
 package agentexec
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 
@@ -41,6 +43,52 @@ type managedDelegateCall struct {
 	parentToolFinished bool
 	assistantProjected bool
 	segmentProjected   bool
+}
+
+func (m *managedDelegateCall) toolStart() runs.ToolCallStarted {
+	return runs.ToolCallStarted{
+		CallID: m.callID.String(), ModelCallSequence: m.modelCallSequence,
+		ToolCallIndex: m.toolCallIndex, SourceCallID: m.call.ID,
+		ToolName: m.call.Name, Arguments: m.arguments.Canonical(),
+		Activity: "Delegating " + m.input.Summary, SafetyClass: tool.SafetyClassExec,
+	}
+}
+
+// continuedDelegateTools reopens the parent Tool attempt in the new Segment.
+// Scope retains the admitted child, so continuation does not repeat admission
+// and cannot obtain this start from admitProcess again.
+func (i *interactionSession) continuedDelegateTools() []runs.ExecutorEvent {
+	i.state.mu.Lock()
+	if i.state.boundary != interactionBoundaryContinuationStaged {
+		i.state.mu.Unlock()
+		return nil
+	}
+	calls := make([]*managedDelegateCall, 0, len(i.state.delegateChildren))
+	for _, managed := range i.state.delegateChildren {
+		calls = append(calls, managed)
+	}
+	i.state.mu.Unlock()
+	var events []runs.ExecutorEvent
+	for _, managed := range calls {
+		managed.mu.Lock()
+		finished := managed.parentToolFinished
+		parent, start := managed.parentRelation, managed.toolStart()
+		managed.mu.Unlock()
+		if !finished {
+			events = append(events, runs.ExecutorEvent{Member: i.executorMember(parent), Payload: start})
+		}
+	}
+	slices.SortFunc(events, func(left, right runs.ExecutorEvent) int {
+		if parent := strings.Compare(left.Member.MemberID, right.Member.MemberID); parent != 0 {
+			return parent
+		}
+		a, b := left.Payload.(runs.ToolCallStarted), right.Payload.(runs.ToolCallStarted)
+		if call := cmp.Compare(a.ModelCallSequence, b.ModelCallSequence); call != 0 {
+			return call
+		}
+		return cmp.Compare(a.ToolCallIndex, b.ToolCallIndex)
+	})
+	return events
 }
 
 func (i *interactionSession) installDeployments(deployments *interactionDeploymentSet) error {

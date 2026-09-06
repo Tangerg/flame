@@ -429,12 +429,20 @@ func (i *InteractionExecutor) Observe(
 	if !session.state.attachObserver() {
 		return nil, errors.New("agentexec: Interaction execution already has an observer")
 	}
+	continuedTools := session.continuedDelegateTools()
 	stopDetach := context.AfterFunc(ctx, session.state.detachObserver)
 	return func(yield func(runs.ExecutorEvent) bool) {
 		defer func() {
 			stopDetach()
 			session.state.detachObserver()
 		}()
+		// The fresh Segment's reducer must know every continued Delegate before
+		// it consumes buffered child results or new execution facts.
+		for _, event := range continuedTools {
+			if ctx.Err() != nil || !yield(event) {
+				return
+			}
+		}
 		for {
 			select {
 			case event, open := <-session.lifetime.events:
