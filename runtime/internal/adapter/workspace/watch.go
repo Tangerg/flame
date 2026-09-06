@@ -16,6 +16,7 @@ import (
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
+	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
 
@@ -47,7 +48,11 @@ func (g GitWatcher) Watch(roots []string, notify func()) (io.Closer, error) {
 		return nil, errors.New("workspace: Git watcher lifetime is required")
 	}
 	lifetime, stop := context.WithCancel(g.lifetime)
-	repositories := watchedRepositories(lifetime, roots)
+	repositories, err := watchedRepositories(lifetime, roots)
+	if err != nil {
+		stop()
+		return nil, vcsError(err)
+	}
 	if len(repositories) == 0 {
 		stop()
 		return nopWatch{}, nil
@@ -89,7 +94,7 @@ type watchedRepository struct {
 	valid       bool
 }
 
-func watchedRepositories(lifetime context.Context, roots []string) []watchedRepository {
+func watchedRepositories(lifetime context.Context, roots []string) ([]watchedRepository, error) {
 	type repositoryWatchKey struct {
 		workspace string
 		gitDir    string
@@ -97,7 +102,10 @@ func watchedRepositories(lifetime context.Context, roots []string) []watchedRepo
 	seen := make(map[repositoryWatchKey]struct{}, len(roots))
 	repositories := make([]watchedRepository, 0, len(roots))
 	for _, root := range roots {
-		gitDir, commonDir, ok := gitDirectoriesOf(lifetime, root)
+		gitDir, commonDir, ok, err := gitDirectoriesOf(lifetime, root)
+		if err != nil {
+			return nil, fmt.Errorf("discover git watch directories for %q: %w", root, err)
+		}
 		if !ok {
 			continue
 		}
@@ -115,39 +123,47 @@ func watchedRepositories(lifetime context.Context, roots []string) []watchedRepo
 			fingerprint: fingerprint, valid: valid,
 		})
 	}
-	return repositories
+	return repositories, nil
 }
 
-func gitDirectoriesOf(lifetime context.Context, root string) (gitDir, commonDir string, ok bool) {
-	gitDirOutput, ok := gitObservation(lifetime, root, "rev-parse", "--absolute-git-dir")
-	if !ok {
-		return "", "", false
+func gitDirectoriesOf(lifetime context.Context, root string) (gitDir, commonDir string, found bool, err error) {
+	ctx, cancel := context.WithTimeout(lifetime, gitObservationTimeout)
+	defer cancel()
+	found, err = git.IsRepo(ctx, root)
+	if err != nil || !found {
+		return "", "", false, err
+	}
+	gitDirOutput, err := gitObservation(ctx, root, "rev-parse", "--absolute-git-dir")
+	if err != nil {
+		return "", "", false, err
 	}
 	gitDir = strings.TrimRight(string(gitDirOutput), "\r\n")
-	commonDirOutput, ok := gitObservation(lifetime, root, "rev-parse", "--git-common-dir")
-	if !ok {
-		return "", "", false
+	commonDirOutput, err := gitObservation(ctx, root, "rev-parse", "--git-common-dir")
+	if err != nil {
+		return "", "", false, err
 	}
 	commonDir = strings.TrimRight(string(commonDirOutput), "\r\n")
 	if !filepath.IsAbs(commonDir) {
 		commonDir = filepath.Join(root, commonDir)
 	}
-	var err error
 	gitDir, err = pathidentity.Resolve("", gitDir)
 	if err != nil {
-		return "", "", false
+		return "", "", false, fmt.Errorf("resolve git directory: %w", err)
 	}
 	commonDir, err = pathidentity.Resolve("", commonDir)
 	if err != nil {
-		return "", "", false
+		return "", "", false, fmt.Errorf("resolve common git directory: %w", err)
 	}
 	for _, directory := range []string{gitDir, commonDir} {
 		info, err := os.Stat(directory)
-		if err != nil || !info.IsDir() {
-			return "", "", false
+		if err != nil {
+			return "", "", false, fmt.Errorf("stat git directory: %w", err)
+		}
+		if !info.IsDir() {
+			return "", "", false, fmt.Errorf("git directory %q is not a directory", directory)
 		}
 	}
-	return gitDir, commonDir, true
+	return gitDir, commonDir, true, nil
 }
 
 func addGitWatch(watcher *fsnotify.Watcher, added map[string]struct{}, directory string, optional bool) error {
@@ -228,17 +244,17 @@ func (g *gitWatch) semanticStateChanged() bool {
 }
 
 func semanticGitFingerprint(lifetime context.Context, root string) ([sha256.Size]byte, bool) {
-	head, headOK := gitObservation(lifetime, root, "rev-parse", "--verify", "HEAD")
-	if !headOK {
+	head, err := gitObservation(lifetime, root, "rev-parse", "--verify", "HEAD")
+	if err != nil {
 		// An unborn repository has no commit yet. Its symbolic ref still matters:
 		// changing the branch name is a semantic move even before the first commit.
-		head, headOK = gitObservation(lifetime, root, "symbolic-ref", "--quiet", "HEAD")
-		if !headOK {
+		head, err = gitObservation(lifetime, root, "symbolic-ref", "--quiet", "HEAD")
+		if err != nil {
 			return [sha256.Size]byte{}, false
 		}
 	}
-	index, ok := gitObservation(lifetime, root, "ls-files", "--stage", "-z")
-	if !ok {
+	index, err := gitObservation(lifetime, root, "ls-files", "--stage", "-z")
+	if err != nil {
 		return [sha256.Size]byte{}, false
 	}
 	state := make([]byte, 0, len(head)+len(index)+2)
@@ -248,12 +264,18 @@ func semanticGitFingerprint(lifetime context.Context, root string) ([sha256.Size
 	return sha256.Sum256(state), true
 }
 
-func gitObservation(lifetime context.Context, root string, args ...string) ([]byte, bool) {
+func gitObservation(lifetime context.Context, root string, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(lifetime, gitObservationTimeout)
 	defer cancel()
 	full := append([]string{"--no-pager", "--no-optional-locks", "-C", root}, args...)
 	result, err := process.Run(ctx, nil, full...)
-	return result.Stdout, err == nil && result.ExitCode == 0
+	if err != nil {
+		return nil, fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+	}
+	if result.ExitCode != 0 {
+		return nil, fmt.Errorf("git %s: exit code %d: %s", strings.Join(args, " "), result.ExitCode, strings.TrimSpace(result.Stderr))
+	}
+	return result.Stdout, nil
 }
 
 // Close joins the callback goroutine before closing the underlying watcher, so

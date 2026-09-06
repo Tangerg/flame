@@ -1,6 +1,8 @@
 package workspace
 
 import (
+	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,22 +12,64 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 )
 
-func TestGitWatcherRejectsUnwatchableGitDirectory(t *testing.T) {
+func TestGitWatcherAllowsNonRepositoryRoot(t *testing.T) {
+	if !GitAvailable() {
+		t.Skip("git not on PATH")
+	}
 	root := t.TempDir()
-	gitDir := filepath.Join(root, ".git")
-	if err := os.Mkdir(gitDir, 0o755); err != nil {
-		t.Fatalf("mkdir git dir: %v", err)
-	}
-	if err := os.Remove(gitDir); err != nil {
-		t.Fatalf("remove git dir: %v", err)
-	}
-
 	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func() {})
 	if err != nil {
 		t.Fatalf("non-repository root should produce an inert watcher: %v", err)
 	}
 	if err := watcher.Close(); err != nil {
 		t.Fatalf("close inert watcher: %v", err)
+	}
+}
+
+func TestGitWatcherPreservesRegistrationCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	watcher, err := NewGitWatcher(ctx).Watch([]string{t.TempDir()}, func() {})
+	if watcher != nil {
+		_ = watcher.Close()
+		t.Error("canceled registration returned a watcher")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("registration error = %v, want context.Canceled", err)
+	}
+}
+
+func TestGitWatcherRejectsCorruptRepositoryConfiguration(t *testing.T) {
+	if !GitAvailable() {
+		t.Skip("git not on PATH")
+	}
+	root := t.TempDir()
+	gitCommand(t, root, "init", "-b", "main")
+	configPath := filepath.Join(root, ".git", "config")
+	config, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configPath, []byte("["), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func() {})
+	if watcher != nil {
+		_ = watcher.Close()
+		t.Error("failed repository discovery returned a watcher")
+	}
+	if err == nil {
+		t.Fatal("corrupt repository configuration became successful registration")
+	}
+	if err := os.WriteFile(configPath, config, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	watcher, err = NewGitWatcher(t.Context()).Watch([]string{root}, func() {})
+	if err != nil {
+		t.Fatalf("register after repairing configuration: %v", err)
+	}
+	if err := watcher.Close(); err != nil {
+		t.Fatalf("close watcher: %v", err)
 	}
 }
 
@@ -188,7 +232,10 @@ func TestGitWatcherObservesLinkedWorktreeFromNestedWorkspace(t *testing.T) {
 	if err := os.MkdirAll(nested, 0o755); err != nil {
 		t.Fatalf("mkdir nested worktree workspace: %v", err)
 	}
-	gitDir, commonDir, ok := gitDirectoriesOf(t.Context(), nested)
+	gitDir, commonDir, ok, err := gitDirectoriesOf(t.Context(), nested)
+	if err != nil {
+		t.Fatalf("resolve linked worktree: %v", err)
+	}
 	if !ok {
 		t.Fatal("linked worktree was not resolved as a repository")
 	}
@@ -235,7 +282,10 @@ func TestGitWatcherIgnoresAmbientRepositoryRouting(t *testing.T) {
 	t.Setenv("GIT_DIR", filepath.Join(foreign, ".git"))
 	t.Setenv("GIT_WORK_TREE", foreign)
 
-	gitDir, commonDir, ok := gitDirectoriesOf(t.Context(), root)
+	gitDir, commonDir, ok, err := gitDirectoriesOf(t.Context(), root)
+	if err != nil {
+		t.Fatalf("resolve requested workspace: %v", err)
+	}
 	if !ok {
 		t.Fatal("requested workspace was not resolved as a repository")
 	}
