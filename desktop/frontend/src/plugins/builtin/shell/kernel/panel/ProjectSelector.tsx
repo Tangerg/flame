@@ -133,10 +133,10 @@ function ProjectNameTrigger({
       render={
         <Button
           type="button"
-          variant="ghost"
+          variant="link"
           press={false}
           aria-label={t("composer.project.change", { project: projectName })}
-          className="relative inline-block h-auto max-w-full cursor-pointer rounded-none border-0 bg-transparent p-0 font-normal text-fg break-words whitespace-normal underline decoration-fg-faint decoration-dotted decoration-[1px] underline-offset-4 after:absolute after:-inset-x-2 after:-inset-y-1 hover:bg-transparent hover:text-fg-soft"
+          className="max-w-full"
         >
           {children}
         </Button>

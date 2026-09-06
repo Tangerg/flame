@@ -14,14 +14,6 @@ export const buttonStyles = cva(
   ].join(" "),
   {
     variants: {
-      variant: {
-        ghost: "bg-transparent text-fg-muted hover:bg-hover hover:text-fg",
-        soft: "bg-surface-2 text-fg-soft hover:bg-surface-3 hover:text-fg",
-        outline: "border-field bg-transparent text-fg-soft hover:bg-hover hover:text-fg",
-        primary: "bg-cta text-cta-text hover:bg-cta-hover",
-        danger: "bg-transparent text-negative hover:bg-negative-wash",
-        tonal: "font-semibold",
-      },
       tone: {
         negative: "",
         warning: "",
@@ -42,6 +34,27 @@ export const buttonStyles = cva(
       press: {
         true: "active:scale-[var(--press-scale)]",
         false: "",
+      },
+      // Declared AFTER `size` so its neutralising classes win: `cn` is tailwind-merge, which
+      // resolves a conflict in favour of the later class. Every other variant sets only ink
+      // and fill, which `size` never touches, so the order is invisible to them.
+      variant: {
+        ghost: "bg-transparent text-fg-muted hover:bg-hover hover:text-fg",
+        soft: "bg-surface-2 text-fg-soft hover:bg-surface-3 hover:text-fg",
+        outline: "border-field bg-transparent text-fg-soft hover:bg-hover hover:text-fg",
+        primary: "bg-cta text-cta-text hover:bg-cta-hover",
+        danger: "bg-transparent text-negative hover:bg-negative-wash",
+        tonal: "font-semibold",
+        // A control that reads as prose: it sits inside a sentence, wraps with it, and says
+        // it can be opened with a dotted underline rather than a plate. The hit area is a
+        // pseudo-element because the text itself is only as tall as its line.
+        link: [
+          "relative inline-block h-auto rounded-none border-0 bg-transparent p-0",
+          "cursor-pointer font-normal whitespace-normal break-words text-fg",
+          "underline decoration-fg-faint decoration-dotted decoration-[1px] underline-offset-4",
+          "after:absolute after:-inset-x-2 after:-inset-y-1",
+          "hover:bg-transparent hover:text-fg-soft",
+        ].join(" "),
       },
     },
     compoundVariants: [
