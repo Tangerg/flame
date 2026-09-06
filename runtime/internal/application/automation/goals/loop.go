@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"log/slog"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -109,6 +110,10 @@ func (d *Driver) launchLocked(
 		defer release()
 		defer drive.lease.Release()
 		drive.err = d.drive(ctx, sessionID, incarnationID)
+		if drive.err != nil {
+			slog.ErrorContext(ctx, "goal: drive failed",
+				"session.id", sessionID, "goal.incarnation.id", incarnationID, "error", drive.err)
+		}
 		close(drive.done)
 		if drive.err == nil {
 			d.mutations.forget(sessionID, drive)
@@ -287,7 +292,9 @@ func (d *Driver) resolveGoalRunStartError(
 	}
 	span.RecordError(startErr)
 	span.SetStatus(codes.Error, "start run")
-	// A start failure is an operational fact already recorded on the span.
+	slog.ErrorContext(ctx, "goal: run start failed",
+		"session.id", g.SessionID(), "goal.incarnation.id", g.IncarnationID(), "error", startErr)
+	// A start failure is an operational fact already reported in diagnostics.
 	// Persist only its stable cause so Goal status never stores diagnostic
 	// details that cannot be recovered consistently.
 	disposition, err := d.pauseOwned(ctx, g, goal.ReasonRunStartFailed, "")

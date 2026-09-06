@@ -1,10 +1,14 @@
 package ownership_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 )
@@ -144,5 +148,48 @@ func TestRecoveryReportsOwnershipFailureBeforeReconciliation(t *testing.T) {
 	acquired, err := coordinator.Reconcile(t.Context())
 	if acquired || !errors.Is(err, cause) {
 		t.Fatalf("Reconcile = (%t, %v), want ownership cause", acquired, err)
+	}
+}
+
+func TestRecoveryWorkerReportsFailuresAndResumes(t *testing.T) {
+	var output bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&output, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
+	defer cancel()
+	backend := &testOwnership{acquired: true}
+	cause := errors.New("recovery store unavailable")
+	var attempts, goalSweeps int
+	coordinator, err := ownership.NewRecovery(
+		runReconciler(func(context.Context) (int, error) {
+			attempts++
+			switch attempts {
+			case 3:
+				return 0, nil
+			case 5:
+				cancel()
+				return 0, ctx.Err()
+			default:
+				return 0, cause
+			}
+		}),
+		goalReconciler(func(context.Context) error {
+			goalSweeps++
+			return nil
+		}),
+		backend,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	coordinator.RunWorker(ctx)
+
+	if attempts != 5 || backend.released != 5 || goalSweeps != 1 {
+		t.Fatalf("attempts=%d releases=%d Goal sweeps=%d, want 5, 5, 1", attempts, backend.released, goalSweeps)
+	}
+	if got := output.String(); strings.Count(got, "level=ERROR") != 2 || strings.Count(got, cause.Error()) != 2 {
+		t.Fatalf("diagnostics = %q, want one error per outage and none for shutdown", got)
 	}
 }

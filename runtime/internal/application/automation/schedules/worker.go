@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -119,11 +120,11 @@ func (w worker) fireDue(ctx context.Context, now time.Time) {
 	}
 	occurrences, err := w.schedules.Pending(ctx, workerBatchSize)
 	if err != nil {
-		recordWorkerError(ctx, "pending query failed", err)
+		slog.ErrorContext(ctx, "schedule: pending query failed", "error", err)
 		return
 	}
 	if err := validatePendingBatch(occurrences, workerBatchSize); err != nil {
-		recordWorkerError(ctx, "invalid pending batch", err)
+		slog.ErrorContext(ctx, "schedule: invalid pending batch", "error", err)
 		return
 	}
 	batch := occurrenceBatch{ctx: ctx, runStarter: w.runStarter, invalidations: w.invalidations}
@@ -132,11 +133,11 @@ func (w worker) fireDue(ctx context.Context, now time.Time) {
 	}
 	due, err := w.schedules.Due(ctx, now, batch.remaining())
 	if err != nil {
-		recordWorkerError(ctx, "due query failed", err)
+		slog.ErrorContext(ctx, "schedule: due query failed", "error", err)
 		return
 	}
 	if err := validateDueBatch(due, now, batch.remaining()); err != nil {
-		recordWorkerError(ctx, "invalid due batch", err)
+		slog.ErrorContext(ctx, "schedule: invalid due batch", "error", err)
 		return
 	}
 	for _, scheduled := range due {
@@ -244,10 +245,10 @@ func (o *occurrenceBatch) dispatch(occurrence schedule.Occurrence) bool {
 		return false
 	}
 	if err != nil {
-		recordWorkerError(
+		slog.ErrorContext(
 			o.ctx,
-			"run start failed",
-			fmt.Errorf("schedule %s: %w", occurrence.ScheduleID(), err),
+			"schedule: run start failed",
+			"schedule.id", occurrence.ScheduleID(), "error", err,
 		)
 	}
 	return true
@@ -265,15 +266,15 @@ func (w worker) claimDueOccurrence(
 		now,
 	)
 	if err != nil {
-		recordWorkerError(ctx, "prepare due occurrence failed", fmt.Errorf("schedule %s: %w", scheduled.ID(), err))
+		slog.ErrorContext(ctx, "schedule: prepare due occurrence failed", "schedule.id", scheduled.ID(), "error", err)
 		return schedule.Occurrence{}, false
 	}
 	claimed, err := w.schedules.Claim(ctx, claim)
 	if err != nil {
-		recordWorkerError(
+		slog.ErrorContext(
 			ctx,
-			"claim due occurrence failed",
-			fmt.Errorf("schedule %s: %w", scheduled.ID(), err),
+			"schedule: claim due occurrence failed",
+			"schedule.id", scheduled.ID(), "error", err,
 		)
 		return schedule.Occurrence{}, false
 	}
@@ -284,11 +285,4 @@ func (w worker) claimDueOccurrence(
 		w.invalidations.Notify(invalidation.ForSchedules(scheduled.ID()))
 	}
 	return claim.Occurrence(), claimed
-}
-
-func recordWorkerError(ctx context.Context, msg string, err error) {
-	_, span := workerTracer.Start(ctx, "schedule.error")
-	span.RecordError(err)
-	span.SetStatus(codes.Error, msg)
-	span.End()
 }

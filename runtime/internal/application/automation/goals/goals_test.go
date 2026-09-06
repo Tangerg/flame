@@ -1,11 +1,14 @@
 package goals_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"iter"
+	"log/slog"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -1022,6 +1025,36 @@ func TestDriverPausesOnRunError(t *testing.T) {
 	waitTestSessionGoal(t, store, func(g goal.Goal, ok bool) bool { return ok && g.Status() == goal.StatusPaused })
 }
 
+func TestDriverReportsRunStartFailureBeforePausing(t *testing.T) {
+	output := captureGoalDiagnostics(t)
+	store := newMemStore()
+	cause := errors.New("run admission storage unavailable")
+	fake := &fakeRuns{t: t, store: store, startErrs: []error{cause}, script: []scriptedRun{
+		{setStatus: goal.StatusComplete, outcome: run.OutcomeCompleted},
+	}}
+	d := mustDriver(t, store, fake, &fakeSessions{}, goals.NewSessionMutations(), uncontendedDriveOwnership{}, testPrompt)
+	cleanupDriver(t, d)
+	started, err := d.Start(t.Context(), "s1", "do it", testGoalModelSelection(), goal.UnlimitedBudget(), run.Capabilities{})
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	waitTestSessionGoal(t, store, func(g goal.Goal, ok bool) bool { return ok && g.Status() == goal.StatusPaused })
+	g, _, err := loadStoredGoal(t.Context(), store, "s1")
+	if err != nil || g.Reason().Code() != goal.ReasonRunStartFailed || g.Reason().Detail() != "" || g.Used().Runs != 0 {
+		t.Fatalf("paused Goal = %+v, %v, want stable start-failure reason and no consumed Run", g, err)
+	}
+	if _, err := d.Resume(t.Context(), "s1", run.Capabilities{}); err != nil {
+		t.Fatalf("Resume: %v", err)
+	}
+	waitTestSessionGoal(t, store, func(_ goal.Goal, ok bool) bool { return !ok })
+	if err := shutdownDriver(d); err != nil {
+		t.Fatal(err)
+	}
+	if got := output.String(); strings.Count(got, "level=ERROR") != 1 || !strings.Contains(got, cause.Error()) || !strings.Contains(got, "s1") || !strings.Contains(got, started.IncarnationID()) {
+		t.Fatalf("diagnostics = %q, want the start failure with Session and Goal identity", got)
+	}
+}
+
 func TestDriverPausesOnMalformedTerminal(t *testing.T) {
 	store := newMemStore()
 	d := newDriver(t, store, scriptedRun{missingOutcome: true})
@@ -1494,6 +1527,7 @@ func TestDriverFreshStartReplacesStoppedGoal(t *testing.T) {
 }
 
 func TestDriverStoreFailureRemainsAddressableUntilStop(t *testing.T) {
+	output := captureGoalDiagnostics(t)
 	base := newMemStore()
 	storeErr := errors.New("goal store read failed")
 	store := &faultingGoalStore{
@@ -1542,6 +1576,9 @@ func TestDriverStoreFailureRemainsAddressableUntilStop(t *testing.T) {
 	if stopped.Status() != goal.StatusPaused {
 		t.Fatalf("stopped status = %s, want paused", stopped.Status())
 	}
+	if got := output.String(); strings.Count(got, "level=ERROR") != 1 || !strings.Contains(got, storeErr.Error()) || !strings.Contains(got, "s1") || !strings.Contains(got, stopped.IncarnationID()) {
+		t.Fatalf("diagnostics = %q, want the driver failure with Session and Goal identity", got)
+	}
 	if _, err := d.Resume(t.Context(), "s1", run.Capabilities{}); err != nil {
 		t.Fatalf("Resume after observing supervisor fault: %v", err)
 	}
@@ -1552,6 +1589,15 @@ func TestDriverStoreFailureRemainsAddressableUntilStop(t *testing.T) {
 	if calls != 2 {
 		t.Fatalf("run starts = %d, want one before and one after recovery", calls)
 	}
+}
+
+func captureGoalDiagnostics(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var output bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&output, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	return &output
 }
 
 func TestDriverStopSaveFailureDoesNotPublishUserStop(t *testing.T) {

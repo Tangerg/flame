@@ -4,13 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
-
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
 )
-
-var recoveryTracer = otel.Tracer("scope/flame/ownership-recovery")
 
 const recoveryInterval = time.Second
 
@@ -85,16 +81,20 @@ func (c *RecoveryCoordinator) ReconcileStartup(ctx context.Context) error {
 func (c *RecoveryCoordinator) RunWorker(ctx context.Context) {
 	ticker := time.NewTicker(recoveryInterval)
 	defer ticker.Stop()
+	failed := false
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if _, err := c.Reconcile(ctx); err != nil && ctx.Err() == nil {
-				_, span := recoveryTracer.Start(ctx, "ownership-recovery.error")
-				span.RecordError(err)
-				span.SetStatus(codes.Error, "recovery sweep failed")
-				span.End()
+			_, err := c.Reconcile(ctx)
+			if err == nil {
+				failed = false
+			} else if !failed && ctx.Err() == nil {
+				// Persistent storage failures must remain visible without emitting
+				// the same outage on every one-second retry.
+				slog.ErrorContext(ctx, "ownership recovery: sweep failed", "error", err)
+				failed = true
 			}
 		}
 	}

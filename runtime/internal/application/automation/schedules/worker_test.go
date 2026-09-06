@@ -1,9 +1,12 @@
 package schedules
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,6 +69,7 @@ func (r *recordingScheduledRunStarter) StartScheduledRun(_ context.Context, requ
 }
 
 func TestWorkerFireDueLeavesFailedOccurrenceDue(t *testing.T) {
+	output := captureWorkerDiagnostics(t)
 	now := time.Date(2026, 6, 30, 10, 0, 0, 0, time.UTC)
 	prev := now.Add(-time.Minute)
 	store := &workerStore{due: []schedule.Schedule{dueSchedule(t, "sch_1", prev)}}
@@ -88,6 +92,9 @@ func TestWorkerFireDueLeavesFailedOccurrenceDue(t *testing.T) {
 	}
 	if len(notices) != 1 || !slices.Equal(notices[0].ScheduleIDs, []string{"sch_1"}) {
 		t.Fatalf("claim invalidations = %+v, want one cursor change", notices)
+	}
+	if got := output.String(); strings.Count(got, "level=ERROR") != 2 || strings.Count(got, runner.startErr.Error()) != 2 || strings.Count(got, "sch_1") != 2 {
+		t.Fatalf("diagnostics = %q, want both failed starts with the Schedule identity and cause", got)
 	}
 }
 
@@ -172,14 +179,38 @@ func TestValidateDueBatchRejectsBrokenStoreResults(t *testing.T) {
 }
 
 func TestWorkerFireDueStopsOnDueError(t *testing.T) {
+	output := captureWorkerDiagnostics(t)
+	now := time.Date(2026, 6, 30, 10, 0, 0, 0, time.UTC)
 	store := &workerStore{dueErr: errors.New("db down")}
 	runner := &recordingScheduledRunStarter{}
 
-	newWorker(workerDependencies{Store: store, RunStarter: runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID}).fireDue(context.Background(), time.Now())
+	w := newWorker(workerDependencies{Store: store, RunStarter: runner, NewSessionID: fixedSessionID, NewRunID: fixedRunID})
+	w.fireDue(t.Context(), now)
 
 	if len(runner.startedScheduleIDs) != 0 || len(store.claims) != 0 {
 		t.Fatalf("started=%d claims=%d, want none", len(runner.startedScheduleIDs), len(store.claims))
 	}
+	if got := output.String(); strings.Count(got, "level=ERROR") != 1 || !strings.Contains(got, store.dueErr.Error()) {
+		t.Fatalf("diagnostics = %q, want the query failure", got)
+	}
+	store.dueErr = nil
+	store.due = []schedule.Schedule{dueSchedule(t, "sch_1", now)}
+	w.fireDue(t.Context(), now)
+	if len(runner.startedScheduleIDs) != 1 || len(store.claims) != 1 {
+		t.Fatalf("started=%d claims=%d after recovery, want 1, 1", len(runner.startedScheduleIDs), len(store.claims))
+	}
+	if got := output.String(); strings.Count(got, "level=ERROR") != 1 {
+		t.Fatalf("diagnostics = %q, want no additional errors after recovery", got)
+	}
+}
+
+func captureWorkerDiagnostics(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var output bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&output, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	return &output
 }
 
 func TestWorkerFireDueDoesNotConsumeCancellationAbortedFiring(t *testing.T) {
