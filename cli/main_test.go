@@ -894,9 +894,14 @@ func runTestBinary(t *testing.T, binary string, environment []string, arguments 
 	t.Helper()
 	command := exec.CommandContext(t.Context(), binary, arguments...)
 	command.Env = environment
-	output, err := command.CombinedOutput()
+	var diagnostics bytes.Buffer
+	command.Stderr = &diagnostics
+	output, err := command.Output()
 	if err != nil {
-		t.Fatalf("run %s: %v\n%s", strings.Join(arguments, " "), err, output)
+		t.Fatalf("run %s: %v\n%s\n%s", strings.Join(arguments, " "), err, output, diagnostics.String())
+	}
+	if diagnostics.Len() > 0 {
+		t.Logf("flame diagnostics:\n%s", diagnostics.String())
 	}
 	return output
 }
