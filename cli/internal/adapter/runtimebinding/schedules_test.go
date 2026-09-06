@@ -40,6 +40,7 @@ func (s *scheduleBindingStub) ListSchedules(_ context.Context, query protocol.Pa
 func (s *scheduleBindingStub) CreateSchedule(_ context.Context, request protocol.CreateScheduleRequest, options flameruntime.CommandOptions) (*protocol.Schedule, error) {
 	s.assertCommand("create", options)
 	s.created = request
+	s.created.Workspace = cloneWorkspaceRef(request.Workspace)
 	if s.createResult != nil {
 		result := cloneSchedule(*s.createResult)
 		return &result, nil
@@ -54,6 +55,14 @@ func (s *scheduleBindingStub) CreateSchedule(_ context.Context, request protocol
 func (s *scheduleBindingStub) UpdateSchedule(_ context.Context, request protocol.UpdateScheduleRequest, options flameruntime.CommandOptions) (*protocol.Schedule, error) {
 	s.assertCommand("update", options)
 	s.updated = request
+	s.updated.Title = clonePointer(request.Title)
+	s.updated.Instructions = clonePointer(request.Instructions)
+	s.updated.Workspace = cloneWorkspaceRef(request.Workspace)
+	s.updated.Provider = clonePointer(request.Provider)
+	s.updated.Model = clonePointer(request.Model)
+	s.updated.ReasoningEffort = clonePointer(request.ReasoningEffort)
+	s.updated.Cron = clonePointer(request.Cron)
+	s.updated.Enabled = clonePointer(request.Enabled)
 	if s.updateResult != nil {
 		result := cloneSchedule(*s.updateResult)
 		return &result, nil
@@ -230,11 +239,15 @@ func TestScheduleAdapterProjectsWorkspaceChangeSemantics(t *testing.T) {
 		meta: requestMeta("test"),
 	}
 
-	_, err := runtime.Update(t.Context(), protocol.UpdateScheduleRequest{
+	request := protocol.UpdateScheduleRequest{
 		ID: "sch_1", ExpectedRevision: 1, Workspace: &protocol.WorkspaceRef{Path: "/workspace/alias"},
-	})
+	}
+	_, err := runtime.Update(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if request.Workspace.Path != "/workspace/alias" {
+		t.Fatalf("workspace resolution mutated the caller's request to %q", request.Workspace.Path)
 	}
 	if stub.updated.Workspace == nil || stub.updated.Workspace.Path != "/workspace" || stub.updated.WorkspaceMode != "" {
 		t.Fatalf("bound workspace request = %+v", stub.updated)
@@ -321,4 +334,11 @@ func cloneSchedule(value protocol.Schedule) protocol.Schedule {
 	value.LastRunAt = clonePointer(value.LastRunAt)
 	value.NextRunAt = clonePointer(value.NextRunAt)
 	return value
+}
+
+func cloneWorkspaceRef(value *protocol.WorkspaceRef) *protocol.WorkspaceRef {
+	if value == nil {
+		return nil
+	}
+	return &protocol.WorkspaceRef{Path: value.Path}
 }

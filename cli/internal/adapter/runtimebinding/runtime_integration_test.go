@@ -791,14 +791,16 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 
 func requireScheduleLifecycle(t *testing.T, runtime *Connection, workspace string) {
 	t.Helper()
-	created, err := runtime.Create(t.Context(), protocol.CreateScheduleRequest{
+	create := protocol.CreateScheduleRequest{
 		Title: "Adapter schedule", Instructions: "review the workspace",
 		Workspace: &protocol.WorkspaceRef{Path: workspace}, Cron: "0 9 * * 1-5",
-	})
+	}
+	created, err := runtime.Create(t.Context(), create)
 	if err != nil {
 		t.Fatalf("Create schedule: %v", err)
 	}
-	if created.Workspace == nil || created.NextRunAt == nil {
+	create.Workspace.Path = "/caller-reused-create"
+	if created.Workspace == nil || created.Workspace.Path != workspace || created.NextRunAt == nil {
 		t.Fatalf("created schedule is incomplete: %+v", created)
 	}
 	created.Workspace.Path = "/caller-reused-workspace"
@@ -810,13 +812,25 @@ func requireScheduleLifecycle(t *testing.T, runtime *Connection, workspace strin
 		t.Fatalf("Schedules = (%+v, %v)", listed, err)
 	}
 	listed[0].Workspace.Path = "/caller-reused-list"
-	enabled := false
-	updated, err := runtime.Update(t.Context(), protocol.UpdateScheduleRequest{
-		ID: created.ID, ExpectedRevision: created.Revision, Enabled: &enabled,
-	})
+	title, instructions, cron, enabled := "Updated schedule", "review again", "0 15 * * 1-5", false
+	update := protocol.UpdateScheduleRequest{
+		ID: created.ID, ExpectedRevision: created.Revision,
+		Title: &title, Instructions: &instructions, Cron: &cron, Enabled: &enabled,
+		Workspace: &protocol.WorkspaceRef{Path: workspace},
+	}
+	updated, err := runtime.Update(t.Context(), update)
 	if err != nil || updated.Enabled || updated.Revision <= created.Revision ||
+		updated.Title != title || updated.Instructions != instructions || updated.Cron != cron ||
 		updated.Workspace == nil || updated.Workspace.Path != workspace {
 		t.Fatalf("Update schedule = (%+v, %v)", updated, err)
+	}
+	title, instructions, cron, enabled = "reused", "reused", "0 * * * *", true
+	update.Workspace.Path = "/caller-reused-update"
+	listed, err = runtime.Schedules(t.Context())
+	if err != nil || len(listed) != 1 || listed[0].ID != updated.ID || listed[0].Enabled ||
+		listed[0].Title != "Updated schedule" || listed[0].Instructions != "review again" ||
+		listed[0].Cron != "0 15 * * 1-5" || listed[0].Workspace == nil || listed[0].Workspace.Path != workspace {
+		t.Fatalf("Schedules after request reuse = (%+v, %v)", listed, err)
 	}
 	if err := runtime.Delete(t.Context(), created.ID); err != nil {
 		t.Fatalf("Delete schedule: %v", err)

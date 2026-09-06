@@ -98,6 +98,8 @@ type Skills interface {
 	Reject(context.Context, workspace.SkillProposalReference) error
 }
 
+// Schedules borrows mutation inputs until return and transfers owned results.
+// A form hands its fresh request to the operation that invokes this port.
 type Schedules interface {
 	Schedules(context.Context) ([]protocol.Schedule, error)
 	Create(context.Context, protocol.CreateScheduleRequest) (protocol.Schedule, error)

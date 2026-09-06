@@ -80,54 +80,52 @@ func (r *Connection) Schedules(ctx context.Context) ([]protocol.Schedule, error)
 }
 
 func (r *Connection) Create(ctx context.Context, request protocol.CreateScheduleRequest) (protocol.Schedule, error) {
-	validated := cloneCreateScheduleRequest(request)
-	if err := protocol.ValidateWireTree(validated); err != nil {
+	if err := protocol.ValidateWireTree(request); err != nil {
 		return protocol.Schedule{}, fmt.Errorf("create schedule: %w", err)
 	}
 	options, err := r.commandOptions()
 	if err != nil {
 		return protocol.Schedule{}, err
 	}
-	if validated.Workspace != nil {
-		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: validated.Workspace.Path})
+	if request.Workspace != nil {
+		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: request.Workspace.Path})
 		if resolveErr != nil {
 			return protocol.Schedule{}, fmt.Errorf("create schedule workspace: %w", resolveErr)
 		}
-		validated.Workspace = &protocol.WorkspaceRef{Path: resolved.Path}
+		request.Workspace = &protocol.WorkspaceRef{Path: resolved.Path}
 	}
-	created, err := r.schedules.CreateSchedule(ctx, validated, options)
+	created, err := r.schedules.CreateSchedule(ctx, request, options)
 	result, err := scheduleResult("create schedule", "", created, err)
 	if err != nil {
 		return protocol.Schedule{}, err
 	}
-	if err := validateCreateScheduleResult(validated, result); err != nil {
+	if err := validateCreateScheduleResult(request, result); err != nil {
 		return protocol.Schedule{}, runtimeContractViolation("create schedule returned an invalid acknowledgement: %v", err)
 	}
 	return result, nil
 }
 
 func (r *Connection) Update(ctx context.Context, request protocol.UpdateScheduleRequest) (protocol.Schedule, error) {
-	validated := cloneUpdateScheduleRequest(request)
-	if err := protocol.ValidateWireTree(validated); err != nil {
+	if err := protocol.ValidateWireTree(request); err != nil {
 		return protocol.Schedule{}, fmt.Errorf("update schedule: %w", err)
 	}
 	options, err := r.commandOptions()
 	if err != nil {
 		return protocol.Schedule{}, err
 	}
-	if validated.Workspace != nil {
-		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: validated.Workspace.Path})
+	if request.Workspace != nil {
+		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: request.Workspace.Path})
 		if resolveErr != nil {
 			return protocol.Schedule{}, fmt.Errorf("update schedule workspace: %w", resolveErr)
 		}
-		validated.Workspace = &protocol.WorkspaceRef{Path: resolved.Path}
+		request.Workspace = &protocol.WorkspaceRef{Path: resolved.Path}
 	}
-	updated, err := r.schedules.UpdateSchedule(ctx, validated, options)
-	result, err := scheduleResult("update schedule", validated.ID, updated, err)
+	updated, err := r.schedules.UpdateSchedule(ctx, request, options)
+	result, err := scheduleResult("update schedule", request.ID, updated, err)
 	if err != nil {
 		return protocol.Schedule{}, err
 	}
-	if err := validateUpdateScheduleResult(validated, result); err != nil {
+	if err := validateUpdateScheduleResult(request, result); err != nil {
 		return protocol.Schedule{}, runtimeContractViolation("update schedule returned an invalid acknowledgement: %v", err)
 	}
 	return result, nil
@@ -278,28 +276,4 @@ func equalScheduleWorkspace(left, right *protocol.WorkspaceRef) bool {
 		return left == nil && right == nil
 	}
 	return left.Path == right.Path
-}
-
-func cloneCreateScheduleRequest(value protocol.CreateScheduleRequest) protocol.CreateScheduleRequest {
-	value.Workspace = cloneWorkspaceRef(value.Workspace)
-	return value
-}
-
-func cloneUpdateScheduleRequest(value protocol.UpdateScheduleRequest) protocol.UpdateScheduleRequest {
-	value.Title = clonePointer(value.Title)
-	value.Instructions = clonePointer(value.Instructions)
-	value.Workspace = cloneWorkspaceRef(value.Workspace)
-	value.Provider = clonePointer(value.Provider)
-	value.Model = clonePointer(value.Model)
-	value.ReasoningEffort = clonePointer(value.ReasoningEffort)
-	value.Cron = clonePointer(value.Cron)
-	value.Enabled = clonePointer(value.Enabled)
-	return value
-}
-
-func cloneWorkspaceRef(value *protocol.WorkspaceRef) *protocol.WorkspaceRef {
-	if value == nil {
-		return nil
-	}
-	return &protocol.WorkspaceRef{Path: value.Path}
 }
