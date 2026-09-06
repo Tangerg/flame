@@ -15,6 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
@@ -23,6 +24,29 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	workspaceapi "github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
+
+func TestRuntimeConnectionPreservesCallerCancellation(t *testing.T) {
+	configureIntegrationRuntime(t)
+	runtime := openIntegrationRuntime(t, t.TempDir())
+	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
+		t.Run(cause.Error(), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			if cause == context.DeadlineExceeded {
+				cancel()
+				ctx, cancel = context.WithDeadline(t.Context(), time.Time{})
+			}
+			cancel()
+			models, err := runtime.ListModels(ctx)
+			if models != nil || !errors.Is(err, cause) {
+				t.Errorf("ListModels = (%+v, %v), want caller %v", models, err, cause)
+			}
+			created, err := runtime.CreateSession(ctx, agent.CreateSession{Title: "canceled session"})
+			if created.ID != "" || !errors.Is(err, cause) || !mutation.AcknowledgementUncertain(err) {
+				t.Errorf("CreateSession = (%+v, %v), want an unconfirmed canceled command", created, err)
+			}
+		})
+	}
+}
 
 func TestRuntimeConnectionSessionCatalogAndLifecycle(t *testing.T) {
 	configureIntegrationRuntime(t)
