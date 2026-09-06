@@ -167,6 +167,7 @@ type fakeExecutionPorts struct {
 	continuation      WaitingContinuation
 	rehydrateErr      error
 	resumeCheck       func()
+	resumeErr         error
 	resumeStarted     chan<- struct{}
 	resumeRelease     <-chan struct{}
 	activateCheck     func()
@@ -301,7 +302,7 @@ func (f *fakeExecutionPorts) BeginContinuation(
 		f.resumeCheck()
 	}
 	f.resumed = true
-	return nil
+	return f.resumeErr
 }
 
 func (f *fakeExecutionPorts) Release(_ context.Context, ref ExecutorRef) error {

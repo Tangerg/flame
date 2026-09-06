@@ -3,7 +3,6 @@ package runs
 import (
 	"fmt"
 	"maps"
-	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -81,6 +80,13 @@ func (r *resumeBindingBuilder) addInterrupts(interrupts []transcript.Interrupt, 
 		case interrupt.Approval:
 			if pending.Approval != nil && pending.Approval.Tool.Name != "" {
 				resolution := r.approvalResolutions[pending.ItemID]
+				// Accepting the answer settles the verdict, while the Tool Item
+				// stays open until execution finishes or activation is abandoned.
+				r.binding.drained = append(r.binding.drained, DrainedTool{
+					ItemID: pending.ItemID, ItemOccurredAt: pending.ItemOccurredAt,
+					CallID: resolution.CallID, Name: pending.Approval.Tool.Name,
+					Arguments: pending.Approval.Tool.Arguments.Canonical(),
+				})
 				r.addItem(
 					resolution.CallID,
 					pending.Approval.Tool.Name,
@@ -99,7 +105,7 @@ func (r *resumeBindingBuilder) addInterrupts(interrupts []transcript.Interrupt, 
 }
 
 func (r *resumeBindingBuilder) addTools(member Continuation) error {
-	r.binding.drained = slices.Clone(member.DrainedTools)
+	r.binding.drained = append(r.binding.drained, member.DrainedTools...)
 	for _, drained := range member.DrainedTools {
 		if drained.Name == "" || drained.ItemID == "" {
 			continue
