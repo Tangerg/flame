@@ -1,9 +1,8 @@
-// Package mcp defines the CLI-owned MCP server configuration, live status,
-// tool catalog, and interactive authorization values.
+// Package mcp defines CLI-owned MCP authoring and acknowledgement checks.
+// Runtime protocol values carry server, tool, and authorization observations.
 package mcp
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -11,8 +10,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 var (
@@ -25,46 +22,6 @@ var (
 	// ErrAuthorizationAttemptNotFound reports an expired or unknown observation target.
 	ErrAuthorizationAttemptNotFound = errors.New("MCP authorization attempt not found")
 )
-
-type State struct {
-	Type      protocol.MCPServerStateType
-	ToolCount *int
-	Problem   *protocol.ProblemData
-}
-
-func (s State) Validate() error {
-	switch s.Type {
-	case protocol.MCPServerDisabled, protocol.MCPServerDisconnected, protocol.MCPServerConnecting:
-		if s.ToolCount != nil || s.Problem != nil {
-			return fmt.Errorf("MCP %s state carries foreign data", s.Type)
-		}
-	case protocol.MCPServerConnected:
-		if s.ToolCount == nil || *s.ToolCount < 0 || s.Problem != nil {
-			return errors.New("connected MCP state requires a non-negative tool count and no problem")
-		}
-	case protocol.MCPServerFailed, protocol.MCPServerNeedsAuth:
-		if s.ToolCount != nil || s.Problem == nil {
-			return fmt.Errorf("MCP %s state requires only a problem", s.Type)
-		}
-		if err := failure.Validate(s.Problem); err != nil {
-			return err
-		}
-	default:
-		return fmt.Errorf("MCP state %q is invalid", s.Type)
-	}
-	return nil
-}
-
-type Connection struct {
-	Transport           protocol.MCPTransport
-	URL                 string
-	AuthorizationMasked string
-	HeadersMasked       map[string]string
-	Command             string
-	Args                []string
-	EnvironmentMasked   map[string]string
-	Directory           string
-}
 
 // HandshakeTimeout is the CLI's MCP connection deadline policy. Its zero value
 // is explicitly unbounded; a bounded value can only be constructed with a
@@ -103,8 +60,12 @@ func (h HandshakeTimeout) Validate() error {
 	return nil
 }
 
-func (h HandshakeTimeout) Equal(other HandshakeTimeout) bool {
-	return h.bounded == other.bounded && h.seconds == other.seconds
+// Matches compares authored intent with the Runtime acknowledgement.
+func (h HandshakeTimeout) Matches(other protocol.MCPHandshakeTimeout) bool {
+	if !h.bounded {
+		return other.Type == protocol.MCPHandshakeUnbounded && other.Seconds == nil
+	}
+	return other.Type == protocol.MCPHandshakeBounded && other.Seconds != nil && h.seconds == *other.Seconds
 }
 
 func (h HandshakeTimeout) String() string {
@@ -114,75 +75,26 @@ func (h HandshakeTimeout) String() string {
 	return "unbounded"
 }
 
-func (c Connection) Validate() error {
-	switch c.Transport {
-	case protocol.MCPTransportStreamableHTTP:
-		if strings.TrimSpace(c.URL) == "" {
-			return errors.New("HTTP MCP connection URL is empty")
-		}
-		if c.Command != "" || len(c.Args) != 0 || len(c.EnvironmentMasked) != 0 || c.Directory != "" {
-			return errors.New("HTTP MCP connection carries stdio fields")
-		}
-	case protocol.MCPTransportStdio:
-		if strings.TrimSpace(c.Command) == "" {
-			return errors.New("stdio MCP connection command is empty")
-		}
-		if c.URL != "" || c.AuthorizationMasked != "" || len(c.HeadersMasked) != 0 {
-			return errors.New("stdio MCP connection carries HTTP fields")
-		}
-	default:
-		return fmt.Errorf("MCP transport %q is invalid", c.Transport)
-	}
-	if err := validateStringMap("masked MCP headers", c.HeadersMasked); err != nil {
+// ValidateServer checks the Runtime shape and the catalog relationships that
+// span independent wire fields.
+func ValidateServer(server protocol.MCPServer) error {
+	if err := protocol.ValidateWireTree(server); err != nil {
 		return err
 	}
-	return validateStringMap("masked MCP environment", c.EnvironmentMasked)
-}
-
-func (c Connection) Clone() Connection {
-	c.Args = slices.Clone(c.Args)
-	c.HeadersMasked = maps.Clone(c.HeadersMasked)
-	c.EnvironmentMasked = maps.Clone(c.EnvironmentMasked)
-	return c
-}
-
-type Server struct {
-	Name             string
-	Description      string
-	Connection       Connection
-	HandshakeTimeout HandshakeTimeout
-	DisabledTools    []string
-	AutoApproveTools []string
-	State            State
-}
-
-func (s Server) Validate() error {
-	if strings.TrimSpace(s.Name) == "" {
-		return errors.New("MCP server name is empty")
+	connection := server.Connection
+	if connection.Type == protocol.MCPTransportStreamableHTTP && strings.TrimSpace(connection.URL) == "" {
+		return errors.New("HTTP MCP connection URL is empty")
 	}
-	if err := s.HandshakeTimeout.Validate(); err != nil {
-		return fmt.Errorf("MCP server %s: %w", s.Name, err)
+	if connection.Type == protocol.MCPTransportStdio && strings.TrimSpace(connection.Command) == "" {
+		return errors.New("stdio MCP connection command is empty")
 	}
-	if err := s.Connection.Validate(); err != nil {
-		return fmt.Errorf("MCP server %s: %w", s.Name, err)
+	if err := validateStringMap("masked MCP headers", connection.HeadersMasked); err != nil {
+		return err
 	}
-	if err := s.State.Validate(); err != nil {
-		return fmt.Errorf("MCP server %s: %w", s.Name, err)
+	if err := validateStringMap("masked MCP environment", connection.EnvMasked); err != nil {
+		return err
 	}
-	return validateCanonicalToolPolicy(s.DisabledTools, s.AutoApproveTools)
-}
-
-func (s Server) Clone() Server {
-	s.Connection = s.Connection.Clone()
-	s.DisabledTools = slices.Clone(s.DisabledTools)
-	s.AutoApproveTools = slices.Clone(s.AutoApproveTools)
-	if s.State.ToolCount != nil {
-		s.State.ToolCount = new(*s.State.ToolCount)
-	}
-	if s.State.Problem != nil {
-		s.State.Problem = failure.Clone(s.State.Problem)
-	}
-	return s
+	return validateCanonicalToolPolicy(server.DisabledTools, server.AutoApproveTools)
 }
 
 type AuthorizationChange struct {
@@ -336,12 +248,12 @@ func (c Candidate) Clone() Candidate {
 	return c
 }
 
-func (c Candidate) ValidateResult(result Server) error {
+func (c Candidate) ValidateResult(result protocol.MCPServer) error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
 	var problems []error
-	if err := result.Validate(); err != nil {
+	if err := ValidateServer(result); err != nil {
 		problems = append(problems, fmt.Errorf("runtime result: %w", err))
 	}
 	if result.Name != c.Name {
@@ -350,8 +262,8 @@ func (c Candidate) ValidateResult(result Server) error {
 	if result.Description != c.Description {
 		problems = append(problems, fmt.Errorf("runtime returned description %q, want %q", result.Description, c.Description))
 	}
-	if !result.HandshakeTimeout.Equal(c.HandshakeTimeout) {
-		problems = append(problems, fmt.Errorf("runtime returned handshake timeout %s, want %s", result.HandshakeTimeout, c.HandshakeTimeout))
+	if !c.HandshakeTimeout.Matches(result.HandshakeTimeout) {
+		problems = append(problems, fmt.Errorf("runtime did not confirm handshake timeout %s", c.HandshakeTimeout))
 	}
 	if !equalToolNameSet(result.DisabledTools, c.DisabledTools) {
 		problems = append(problems, fmt.Errorf("runtime returned disabled tools %v, want %v", result.DisabledTools, c.DisabledTools))
@@ -359,7 +271,7 @@ func (c Candidate) ValidateResult(result Server) error {
 	if !equalToolNameSet(result.AutoApproveTools, c.AutoApproveTools) {
 		problems = append(problems, fmt.Errorf("runtime returned auto-approved tools %v, want %v", result.AutoApproveTools, c.AutoApproveTools))
 	}
-	problems = append(problems, validateEnabledResult(c.Enabled, result.State))
+	problems = append(problems, validateEnabledResult(c.Enabled, result.Status))
 	problems = append(problems, c.Connection.validateCreateResult(result.Connection))
 	if err := errors.Join(problems...); err != nil {
 		return fmt.Errorf("MCP candidate %s: %w", c.Name, err)
@@ -417,25 +329,25 @@ func (s ServerUpdate) HasChanges() bool {
 		s.DisabledTools != nil || s.AutoApproveTools != nil
 }
 
-func (s ServerUpdate) ValidateResult(result Server) error {
+func (s ServerUpdate) ValidateResult(result protocol.MCPServer) error {
 	if err := s.Validate(); err != nil {
 		return err
 	}
 	var problems []error
-	if err := result.Validate(); err != nil {
+	if err := ValidateServer(result); err != nil {
 		problems = append(problems, fmt.Errorf("runtime result: %w", err))
 	}
 	if result.Name != s.Server {
 		problems = append(problems, fmt.Errorf("runtime returned server %q, want %q", result.Name, s.Server))
 	}
 	if s.Enabled != nil {
-		problems = append(problems, validateEnabledResult(*s.Enabled, result.State))
+		problems = append(problems, validateEnabledResult(*s.Enabled, result.Status))
 	}
 	if s.Description != nil && result.Description != *s.Description {
 		problems = append(problems, fmt.Errorf("runtime returned description %q, want %q", result.Description, *s.Description))
 	}
-	if s.HandshakeTimeout != nil && !result.HandshakeTimeout.Equal(*s.HandshakeTimeout) {
-		problems = append(problems, fmt.Errorf("runtime returned handshake timeout %s, want %s", result.HandshakeTimeout, *s.HandshakeTimeout))
+	if s.HandshakeTimeout != nil && !s.HandshakeTimeout.Matches(result.HandshakeTimeout) {
+		problems = append(problems, fmt.Errorf("runtime did not confirm handshake timeout %s", *s.HandshakeTimeout))
 	}
 	if s.DisabledTools != nil && !equalToolNameSet(result.DisabledTools, *s.DisabledTools) {
 		problems = append(problems, fmt.Errorf("runtime returned disabled tools %v, want %v", result.DisabledTools, *s.DisabledTools))
@@ -452,7 +364,7 @@ func (s ServerUpdate) ValidateResult(result Server) error {
 	return nil
 }
 
-func validateEnabledResult(enabled bool, state State) error {
+func validateEnabledResult(enabled bool, state protocol.MCPServerState) error {
 	disabled := state.Type == protocol.MCPServerDisabled
 	if disabled == enabled {
 		return fmt.Errorf("runtime returned state %q for enabled=%t", state.Type, enabled)
@@ -460,7 +372,7 @@ func validateEnabledResult(enabled bool, state State) error {
 	return nil
 }
 
-func (c ConnectionInput) validateCreateResult(result Connection) error {
+func (c ConnectionInput) validateCreateResult(result protocol.MCPConnection) error {
 	if err := c.validateVisibleResult(result); err != nil {
 		return err
 	}
@@ -471,13 +383,13 @@ func (c ConnectionInput) validateCreateResult(result Connection) error {
 		}
 		return validateMaskedMap("headers", c.Headers, result.HeadersMasked)
 	case protocol.MCPTransportStdio:
-		return validateMaskedMap("environment", c.Environment, result.EnvironmentMasked)
+		return validateMaskedMap("environment", c.Environment, result.EnvMasked)
 	default:
 		return nil
 	}
 }
 
-func (c ConnectionInput) validateUpdateResult(result Connection) error {
+func (c ConnectionInput) validateUpdateResult(result protocol.MCPConnection) error {
 	if err := c.validateVisibleResult(result); err != nil {
 		return err
 	}
@@ -493,16 +405,16 @@ func (c ConnectionInput) validateUpdateResult(result Connection) error {
 		}
 	case protocol.MCPTransportStdio:
 		if c.Environment != nil {
-			return validateMaskedMap("environment", c.Environment, result.EnvironmentMasked)
+			return validateMaskedMap("environment", c.Environment, result.EnvMasked)
 		}
 	}
 	return nil
 }
 
-func (c ConnectionInput) validateVisibleResult(result Connection) error {
+func (c ConnectionInput) validateVisibleResult(result protocol.MCPConnection) error {
 	var problems []error
-	if result.Transport != c.Transport {
-		problems = append(problems, fmt.Errorf("runtime returned transport %q, want %q", result.Transport, c.Transport))
+	if result.Type != c.Transport {
+		problems = append(problems, fmt.Errorf("runtime returned transport %q, want %q", result.Type, c.Transport))
 	}
 	switch c.Transport {
 	case protocol.MCPTransportStreamableHTTP:
@@ -516,8 +428,8 @@ func (c ConnectionInput) validateVisibleResult(result Connection) error {
 		if !slices.Equal(result.Args, c.Args) {
 			problems = append(problems, fmt.Errorf("runtime returned args %v, want %v", result.Args, c.Args))
 		}
-		if result.Directory != c.Directory {
-			problems = append(problems, fmt.Errorf("runtime returned directory %q, want %q", result.Directory, c.Directory))
+		if result.Dir != c.Directory {
+			problems = append(problems, fmt.Errorf("runtime returned directory %q, want %q", result.Dir, c.Directory))
 		}
 	}
 	return errors.Join(problems...)
@@ -571,38 +483,6 @@ func validateMaskedMap[T interface {
 		if masked[key] == "" {
 			return fmt.Errorf("runtime did not confirm masked %s key %q", label, key)
 		}
-	}
-	return nil
-}
-
-type TestResult struct {
-	OK      bool
-	Problem *protocol.ProblemData
-}
-
-func (t TestResult) Validate() error {
-	if t.OK == (t.Problem != nil) {
-		return errors.New("MCP test result must contain exactly one success or problem state")
-	}
-	if t.Problem != nil {
-		return failure.Validate(t.Problem)
-	}
-	return nil
-}
-
-type Tool struct {
-	Server      string
-	Name        string
-	Description string
-	InputSchema json.RawMessage
-}
-
-func (t Tool) Validate() error {
-	if strings.TrimSpace(t.Server) == "" || strings.TrimSpace(t.Name) == "" {
-		return errors.New("MCP tool requires server and name")
-	}
-	if len(t.InputSchema) != 0 && !json.Valid(t.InputSchema) {
-		return fmt.Errorf("MCP tool %s/%s has invalid input schema JSON", t.Server, t.Name)
 	}
 	return nil
 }

@@ -42,26 +42,26 @@ func (a *app) mcpServersReaderQuery() runtimeReaderQuery {
 	}
 }
 
-func mcpServersDocument(servers []mcp.Server) readerDocument {
+func mcpServersDocument(servers []protocol.MCPServer) readerDocument {
 	if len(servers) == 0 {
 		return paragraphDocument("MCP servers", "none configured", []string{"No MCP servers are configured."})
 	}
 	sections := make([]ToolSection, 0, len(servers))
 	for _, server := range servers {
 		sections = append(sections, ToolSection{
-			Title: server.Name + " · " + mcpStateLabel(server.State), Style: toolSectionCode, Language: "text",
+			Title: server.Name + " · " + mcpStateLabel(server.Status), Style: toolSectionCode, Language: "text",
 			Text: mcpServerDetail(server),
 		})
 	}
 	return readerDocument{Title: "MCP servers", Detail: fmt.Sprintf("%d configured", len(servers)), Sections: sections}
 }
 
-func mcpServerDetail(server mcp.Server) string {
+func mcpServerDetail(server protocol.MCPServer) string {
 	lines := []string{}
 	if server.Description != "" {
 		lines = append(lines, "description  "+server.Description)
 	}
-	switch server.Connection.Transport {
+	switch server.Connection.Type {
 	case protocol.MCPTransportStreamableHTTP:
 		lines = append(lines, "transport    streamable HTTP", "url          "+server.Connection.URL)
 		if server.Connection.AuthorizationMasked != "" {
@@ -75,15 +75,15 @@ func mcpServerDetail(server mcp.Server) string {
 		if len(server.Connection.Args) > 0 {
 			lines = append(lines, "args         "+strings.Join(server.Connection.Args, " "))
 		}
-		if server.Connection.Directory != "" {
-			lines = append(lines, "directory    "+server.Connection.Directory)
+		if server.Connection.Dir != "" {
+			lines = append(lines, "directory    "+server.Connection.Dir)
 		}
-		if len(server.Connection.EnvironmentMasked) > 0 {
-			lines = append(lines, "environment  "+formatMaskedMap(server.Connection.EnvironmentMasked))
+		if len(server.Connection.EnvMasked) > 0 {
+			lines = append(lines, "environment  "+formatMaskedMap(server.Connection.EnvMasked))
 		}
 	}
-	if seconds, bounded := server.HandshakeTimeout.Seconds(); bounded {
-		lines = append(lines, fmt.Sprintf("handshake timeout  %ds", seconds))
+	if server.HandshakeTimeout.Type == protocol.MCPHandshakeBounded {
+		lines = append(lines, fmt.Sprintf("handshake timeout  %ds", *server.HandshakeTimeout.Seconds))
 	}
 	if len(server.DisabledTools) > 0 {
 		lines = append(lines, "disabled     "+strings.Join(server.DisabledTools, ", "))
@@ -91,13 +91,13 @@ func mcpServerDetail(server mcp.Server) string {
 	if len(server.AutoApproveTools) > 0 {
 		lines = append(lines, "auto-approve "+strings.Join(server.AutoApproveTools, ", "))
 	}
-	if server.State.Problem != nil {
-		lines = append(lines, "problem      "+failure.String(server.State.Problem))
+	if server.Status.Error != nil {
+		lines = append(lines, "problem      "+failure.String(server.Status.Error))
 	}
 	return strings.Join(lines, "\n")
 }
 
-func mcpStateLabel(state mcp.State) string {
+func mcpStateLabel(state protocol.MCPServerState) string {
 	if state.Type == protocol.MCPServerConnected && state.ToolCount != nil {
 		return fmt.Sprintf("connected · %d tools", *state.ToolCount)
 	}
@@ -141,28 +141,32 @@ func (a *app) mcpToolsReaderQuery(server string) runtimeReaderQuery {
 			if err != nil {
 				return readerDocument{}, err
 			}
-			return mcpToolsDocument(server, tools), nil
+			return mcpToolsDocument(server, tools)
 		},
 	}
 }
 
-func mcpToolsDocument(server string, tools []mcp.Tool) readerDocument {
+func mcpToolsDocument(server string, tools []protocol.MCPTool) (readerDocument, error) {
 	detail := fmt.Sprintf("%d advertised", len(tools))
 	if server != "" {
 		detail += " · " + server
 	}
 	if len(tools) == 0 {
-		return paragraphDocument("MCP tools", detail, []string{"No MCP tools match this server filter."})
+		return paragraphDocument("MCP tools", detail, []string{"No MCP tools match this server filter."}), nil
 	}
 	sections := make([]ToolSection, 0, len(tools)*2)
 	for _, tool := range tools {
 		title := tool.Server + "/" + tool.Name
 		sections = append(sections, ToolSection{Title: title, Style: toolSectionParagraph, Text: tool.Description})
-		if len(tool.InputSchema) > 0 {
-			sections = append(sections, ToolSection{Title: "Input schema", Style: toolSectionCode, Language: "json", Text: prettyJSON(tool.InputSchema)})
+		if tool.InputSchema != nil {
+			schema, err := json.MarshalIndent(tool.InputSchema, "", "  ")
+			if err != nil {
+				return readerDocument{}, fmt.Errorf("format MCP tool %s input schema: %w", title, err)
+			}
+			sections = append(sections, ToolSection{Title: "Input schema", Style: toolSectionCode, Language: "json", Text: string(schema)})
 		}
 	}
-	return readerDocument{Title: "MCP tools", Detail: detail, Sections: sections}
+	return readerDocument{Title: "MCP tools", Detail: detail, Sections: sections}, nil
 }
 
 func prettyJSON(value json.RawMessage) string {
@@ -177,7 +181,7 @@ func (a *app) OpenMCPCreateForm() error {
 	if a.mcp == nil {
 		return errors.New("this runtime composition has no MCP service")
 	}
-	a.openMCPServerForm(mcpFormCreate, mcp.Server{})
+	a.openMCPServerForm(mcpFormCreate, protocol.MCPServer{})
 	return nil
 }
 
@@ -185,7 +189,7 @@ func (a *app) OpenMCPProbeForm() error {
 	if a.mcp == nil {
 		return errors.New("this runtime composition has no MCP service")
 	}
-	a.openMCPServerForm(mcpFormProbe, mcp.Server{})
+	a.openMCPServerForm(mcpFormProbe, protocol.MCPServer{})
 	return nil
 }
 
@@ -200,19 +204,19 @@ func (a *app) EditMCPServer(serverName string) error {
 	presentation := a.session.context
 	a.status.note("loading MCP server " + serverName)
 	started := a.runApplicationOperation(mcpOperation, false,
-		func(ctx context.Context) (mcp.Server, error) {
+		func(ctx context.Context) (protocol.MCPServer, error) {
 			servers, err := a.mcp.Servers(ctx)
 			if err != nil {
-				return mcp.Server{}, err
+				return protocol.MCPServer{}, err
 			}
 			for _, server := range servers {
 				if server.Name == serverName {
 					return server, nil
 				}
 			}
-			return mcp.Server{}, errors.New("MCP server not found: " + serverName)
+			return protocol.MCPServer{}, errors.New("MCP server not found: " + serverName)
 		},
-		func(server mcp.Server, err error) {
+		func(server protocol.MCPServer, err error) {
 			if err != nil {
 				a.message("load MCP server failed: " + err.Error())
 				return
@@ -232,18 +236,18 @@ func (a *app) EditMCPServer(serverName string) error {
 
 func (a *app) createMCPServer(candidate mcp.Candidate) {
 	a.runMCPServerOperation("creating MCP server "+candidate.Name,
-		func(ctx context.Context) (mcp.Server, error) { return a.mcp.CreateServer(ctx, candidate) })
+		func(ctx context.Context) (protocol.MCPServer, error) { return a.mcp.CreateServer(ctx, candidate) })
 }
 
 func (a *app) updateMCPServer(update mcp.ServerUpdate) {
 	a.runMCPServerOperation("updating MCP server "+update.Server,
-		func(ctx context.Context) (mcp.Server, error) { return a.mcp.UpdateServer(ctx, update) })
+		func(ctx context.Context) (protocol.MCPServer, error) { return a.mcp.UpdateServer(ctx, update) })
 }
 
-func (a *app) runMCPServerOperation(label string, change func(context.Context) (mcp.Server, error)) {
+func (a *app) runMCPServerOperation(label string, change func(context.Context) (protocol.MCPServer, error)) {
 	presentation := a.session.context
 	a.status.note(label)
-	started := a.runAdmissionMutation(mcpOperation, false, change, func(server mcp.Server, err error) {
+	started := a.runAdmissionMutation(mcpOperation, false, change, func(server protocol.MCPServer, err error) {
 		if err != nil {
 			a.message(label + " failed: " + err.Error())
 			return
@@ -254,7 +258,7 @@ func (a *app) runMCPServerOperation(label string, change func(context.Context) (
 		}
 		a.setRuntimeReader(runtimeReaderMCPServers)
 		a.dialogs.workspaceReader = workspaceReaderNone
-		a.openReaderDocument(mcpServersDocument([]mcp.Server{server}))
+		a.openReaderDocument(mcpServersDocument([]protocol.MCPServer{server}))
 		a.status.note("MCP server · " + server.Name)
 	})
 	if !started {
@@ -266,8 +270,8 @@ func (a *app) probeMCPServer(candidate mcp.Candidate) {
 	label := "testing MCP candidate " + candidate.Name
 	a.status.note(label)
 	started := a.runApplicationOperation(mcpOperation, false,
-		func(ctx context.Context) (mcp.TestResult, error) { return a.mcp.TestServer(ctx, candidate) },
-		func(result mcp.TestResult, err error) {
+		func(ctx context.Context) (protocol.MCPTestResult, error) { return a.mcp.TestServer(ctx, candidate) },
+		func(result protocol.MCPTestResult, err error) {
 			if err != nil {
 				a.message(label + " failed: " + err.Error())
 				return
@@ -276,7 +280,7 @@ func (a *app) probeMCPServer(candidate mcp.Candidate) {
 				a.message("MCP candidate is reachable · " + candidate.Name)
 				return
 			}
-			a.message("MCP candidate failed · " + failure.String(result.Problem))
+			a.message("MCP candidate failed · " + failure.String(result.Error))
 		},
 	)
 	if !started {

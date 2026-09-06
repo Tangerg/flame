@@ -8,15 +8,13 @@ import (
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/program"
-
-	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 )
 
 func TestMCPFormRejectsSubmissionFromAReplacedStepPresentation(t *testing.T) {
 	transcript := testTranscriptView(t)
 	application := &app{loop: &program.Runtime{}, transcript: transcript}
 	application.stack.SetBase(transcript)
-	flow := newMCPFormFlow(mcpFormCreate, mcp.Server{})
+	flow := newMCPFormFlow(mcpFormCreate, protocol.MCPServer{})
 	flow.draft.name = "docs"
 	flow.draft.transport = protocol.MCPTransportStreamableHTTP
 	application.showMCPFormStep(flow)
@@ -57,7 +55,7 @@ func TestMCPFormFlowRoutesOnlyThroughRelevantConnection(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			flow := newMCPFormFlow(test.mode, mcp.Server{})
+			flow := newMCPFormFlow(test.mode, protocol.MCPServer{})
 			flow.draft.transport = test.transport
 			flow.draft.replaceConnection = test.replaceConnection
 			visited := []mcpFormStep{flow.step}
@@ -81,7 +79,7 @@ func TestMCPFormFlowRoutesOnlyThroughRelevantConnection(t *testing.T) {
 
 func TestMCPFormFlowClearsEverySecretProjection(t *testing.T) {
 	t.Parallel()
-	flow := newMCPFormFlow(mcpFormCreate, mcp.Server{})
+	flow := newMCPFormFlow(mcpFormCreate, protocol.MCPServer{})
 	flow.draft.authorization = "Bearer private"
 	flow.draft.headers = `{"X-Key":"private"}`
 	flow.draft.environment = `{"TOKEN":"private"}`

@@ -3,8 +3,6 @@ package terminal
 import (
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
-
-	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 )
 
 type mcpFormStep uint8
@@ -18,15 +16,16 @@ const (
 
 type mcpFormFlow struct {
 	mode         mcpFormMode
-	server       mcp.Server
+	server       protocol.MCPServer
 	draft        mcpFormDraft
 	step         mcpFormStep
 	secretFields []*headless.Text
 }
 
-func newMCPFormFlow(mode mcpFormMode, server mcp.Server) *mcpFormFlow {
+// newMCPFormFlow takes ownership of the fresh Runtime result selected for editing.
+func newMCPFormFlow(mode mcpFormMode, server protocol.MCPServer) *mcpFormFlow {
 	return &mcpFormFlow{
-		mode: mode, server: server.Clone(), draft: newMCPFormDraft(mode, server), step: mcpFormGeneral,
+		mode: mode, server: server, draft: newMCPFormDraft(mode, server), step: mcpFormGeneral,
 	}
 }
 

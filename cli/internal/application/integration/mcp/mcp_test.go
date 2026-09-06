@@ -36,21 +36,22 @@ func TestConnectionInputsKeepTransportAndSecretScopesClosed(t *testing.T) {
 
 func TestServerAndAuthorizationStatesRejectContradictoryData(t *testing.T) {
 	count := 2
-	server := Server{
-		Name: "docs", Connection: Connection{Transport: protocol.MCPTransportStdio, Command: "docs-server"},
-		State: State{Type: protocol.MCPServerConnected, ToolCount: &count},
+	server := protocol.MCPServer{
+		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
+		Name:             "docs", Connection: protocol.MCPConnection{Type: protocol.MCPTransportStdio, Command: "docs-server"},
+		Status: protocol.MCPServerState{Type: protocol.MCPServerConnected, ToolCount: &count},
 	}
-	if err := server.Validate(); err != nil {
+	if err := ValidateServer(server); err != nil {
 		t.Fatal(err)
 	}
-	server.State.Problem = &protocol.ProblemData{Type: "mcp_dial_failed"}
-	if err := server.Validate(); err == nil {
+	server.Status.Error = &protocol.ProblemData{Type: "mcp_dial_failed"}
+	if err := ValidateServer(server); err == nil {
 		t.Fatal("connected state carrying a problem was accepted")
 	}
-	server.State.Problem = nil
+	server.Status.Error = nil
 	server.DisabledTools = []string{"write"}
 	server.AutoApproveTools = []string{"write"}
-	if err := server.Validate(); err == nil {
+	if err := ValidateServer(server); err == nil {
 		t.Fatal("server accepted contradictory tool policy")
 	}
 	now := time.Now()
@@ -95,33 +96,35 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 		},
 		DisabledTools: []string{"write"}, AutoApproveTools: []string{"search"},
 	}
-	valid := Server{
-		Name: candidate.Name, Description: candidate.Description, HandshakeTimeout: candidate.HandshakeTimeout,
-		Connection: Connection{
-			Transport: protocol.MCPTransportStreamableHTTP, URL: candidate.Connection.URL,
+	valid := protocol.MCPServer{
+		Name: candidate.Name, Description: candidate.Description, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: new(15)},
+		Connection: protocol.MCPConnection{
+			Type: protocol.MCPTransportStreamableHTTP, URL: candidate.Connection.URL,
 			AuthorizationMasked: "****", HeadersMasked: map[string]string{"X-Key": "****"},
 		},
 		DisabledTools: []string{"write"}, AutoApproveTools: []string{"search"},
-		State: State{Type: protocol.MCPServerDisconnected},
+		Status: protocol.MCPServerState{Type: protocol.MCPServerDisconnected},
 	}
 	if err := candidate.ValidateResult(valid); err != nil {
 		t.Fatalf("valid create result: %v", err)
 	}
 	for _, test := range []struct {
 		name   string
-		mutate func(*Server)
+		mutate func(*protocol.MCPServer)
 		want   string
 	}{
-		{name: "description", mutate: func(result *Server) { result.Description = "ignored" }, want: "description"},
-		{name: "timeout", mutate: func(result *Server) { result.HandshakeTimeout = mustHandshakeTimeout(t, 1) }, want: "timeout"},
-		{name: "URL", mutate: func(result *Server) { result.Connection.URL = "https://other.example" }, want: "URL"},
-		{name: "authorization", mutate: func(result *Server) { result.Connection.AuthorizationMasked = "" }, want: "authorization"},
-		{name: "headers", mutate: func(result *Server) { result.Connection.HeadersMasked = nil }, want: "headers"},
-		{name: "enabled", mutate: func(result *Server) { result.State.Type = protocol.MCPServerDisabled }, want: "enabled"},
-		{name: "disabled tools", mutate: func(result *Server) { result.DisabledTools = nil }, want: "disabled tools"},
+		{name: "description", mutate: func(result *protocol.MCPServer) { result.Description = "ignored" }, want: "description"},
+		{name: "timeout", mutate: func(result *protocol.MCPServer) {
+			result.HandshakeTimeout = protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: new(1)}
+		}, want: "timeout"},
+		{name: "URL", mutate: func(result *protocol.MCPServer) { result.Connection.URL = "https://other.example" }, want: "URL"},
+		{name: "authorization", mutate: func(result *protocol.MCPServer) { result.Connection.AuthorizationMasked = "" }, want: "authorization"},
+		{name: "headers", mutate: func(result *protocol.MCPServer) { result.Connection.HeadersMasked = nil }, want: "headers"},
+		{name: "enabled", mutate: func(result *protocol.MCPServer) { result.Status.Type = protocol.MCPServerDisabled }, want: "enabled"},
+		{name: "disabled tools", mutate: func(result *protocol.MCPServer) { result.DisabledTools = nil }, want: "disabled tools"},
 	} {
 		t.Run("create "+test.name, func(t *testing.T) {
-			result := valid.Clone()
+			result := valid
 			test.mutate(&result)
 			err := candidate.ValidateResult(result)
 			if err == nil || !strings.Contains(err.Error(), test.want) {
@@ -137,13 +140,13 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 		Server: candidate.Name, Enabled: &enabled, Description: &description,
 		HandshakeTimeout: &updatedTimeout, DisabledTools: &disabledTools,
 	}
-	updated := valid.Clone()
-	updated.Description, updated.HandshakeTimeout = description, updatedTimeout
-	updated.DisabledTools, updated.State = disabledTools, State{Type: protocol.MCPServerDisabled}
+	updated := valid
+	updated.Description, updated.HandshakeTimeout = description, protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: new(30)}
+	updated.DisabledTools, updated.Status = disabledTools, protocol.MCPServerState{Type: protocol.MCPServerDisabled}
 	if err := update.ValidateResult(updated); err != nil {
 		t.Fatalf("valid update result: %v", err)
 	}
-	wrongUpdate := updated.Clone()
+	wrongUpdate := updated
 	wrongUpdate.Description = "ignored"
 	if err := update.ValidateResult(wrongUpdate); err == nil || !strings.Contains(err.Error(), "description") {
 		t.Fatalf("update result error = %v", err)
@@ -158,13 +161,13 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 			Authorization: &clearAuthorization, Headers: &clearHeaders,
 		},
 	}
-	cleared := valid.Clone()
+	cleared := valid
 	cleared.Connection.AuthorizationMasked = ""
 	cleared.Connection.HeadersMasked = nil
 	if err := connectionUpdate.ValidateResult(cleared); err != nil {
 		t.Fatalf("valid secret clear result: %v", err)
 	}
-	uncleared := cleared.Clone()
+	uncleared := cleared
 	uncleared.Connection.AuthorizationMasked = "****"
 	if err := connectionUpdate.ValidateResult(uncleared); err == nil || !strings.Contains(err.Error(), "authorization") {
 		t.Fatalf("secret clear result error = %v", err)
@@ -178,19 +181,20 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 			Environment: &environment, Directory: "/workspace",
 		},
 	}
-	stdioResult := Server{
-		Name: stdioCandidate.Name,
-		Connection: Connection{
-			Transport: protocol.MCPTransportStdio, Command: "mcp-server", Args: []string{"--stdio"},
-			EnvironmentMasked: map[string]string{"TOKEN": "****"}, Directory: "/workspace",
+	stdioResult := protocol.MCPServer{
+		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
+		Name:             stdioCandidate.Name,
+		Connection: protocol.MCPConnection{
+			Type: protocol.MCPTransportStdio, Command: "mcp-server", Args: []string{"--stdio"},
+			EnvMasked: map[string]string{"TOKEN": "****"}, Dir: "/workspace",
 		},
-		State: State{Type: protocol.MCPServerDisabled},
+		Status: protocol.MCPServerState{Type: protocol.MCPServerDisabled},
 	}
 	if err := stdioCandidate.ValidateResult(stdioResult); err != nil {
 		t.Fatalf("valid stdio result: %v", err)
 	}
-	missingEnvironment := stdioResult.Clone()
-	missingEnvironment.Connection.EnvironmentMasked = nil
+	missingEnvironment := stdioResult
+	missingEnvironment.Connection.EnvMasked = nil
 	if err := stdioCandidate.ValidateResult(missingEnvironment); err == nil || !strings.Contains(err.Error(), "environment") {
 		t.Fatalf("stdio result error = %v", err)
 	}
@@ -203,10 +207,11 @@ func TestMCPMutationResultsAcceptRuntimeToolPolicyCanonicalization(t *testing.T)
 		DisabledTools:    []string{"write", "read"},
 		AutoApproveTools: []string{"search", "fetch"},
 	}
-	result := Server{
-		Name: candidate.Name, Connection: Connection{Transport: protocol.MCPTransportStdio, Command: "docs-server"},
+	result := protocol.MCPServer{
+		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
+		Name:             candidate.Name, Connection: protocol.MCPConnection{Type: protocol.MCPTransportStdio, Command: "docs-server"},
 		DisabledTools: []string{"read", "write"}, AutoApproveTools: []string{"fetch", "search"},
-		State: State{Type: protocol.MCPServerDisconnected},
+		Status: protocol.MCPServerState{Type: protocol.MCPServerDisconnected},
 	}
 	if err := candidate.ValidateResult(result); err != nil {
 		t.Fatalf("canonical create result: %v", err)

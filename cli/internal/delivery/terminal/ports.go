@@ -65,13 +65,14 @@ type ModelConfiguration interface {
 	TestProvider(context.Context, string) (models.TestResult, error)
 }
 
+// MCPManagement transfers owned Runtime observations to readers and editors.
 type MCPManagement interface {
-	Servers(context.Context) ([]mcp.Server, error)
-	CreateServer(context.Context, mcp.Candidate) (mcp.Server, error)
-	UpdateServer(context.Context, mcp.ServerUpdate) (mcp.Server, error)
+	Servers(context.Context) ([]protocol.MCPServer, error)
+	CreateServer(context.Context, mcp.Candidate) (protocol.MCPServer, error)
+	UpdateServer(context.Context, mcp.ServerUpdate) (protocol.MCPServer, error)
 	DeleteServer(context.Context, string) error
-	TestServer(context.Context, mcp.Candidate) (mcp.TestResult, error)
-	Tools(context.Context, string) ([]mcp.Tool, error)
+	TestServer(context.Context, mcp.Candidate) (protocol.MCPTestResult, error)
+	Tools(context.Context, string) ([]protocol.MCPTool, error)
 	ReconnectServer(context.Context, string) error
 	StartAuthorization(context.Context, string) (protocol.MCPAuthorizationAttempt, error)
 	GetAuthorization(context.Context, mcp.AuthorizationReference) (protocol.MCPAuthorizationAttempt, error)

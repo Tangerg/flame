@@ -46,7 +46,7 @@ type mcpFormDraft struct {
 	autoApproveTools  string
 }
 
-func newMCPFormDraft(mode mcpFormMode, server mcp.Server) mcpFormDraft {
+func newMCPFormDraft(mode mcpFormMode, server protocol.MCPServer) mcpFormDraft {
 	draft := mcpFormDraft{
 		enabled: true, replaceConnection: true, transport: protocol.MCPTransportStreamableHTTP,
 		authorizationMode: formChangeKeep, headersMode: formChangeKeep, environmentMode: formChangeKeep,
@@ -55,21 +55,21 @@ func newMCPFormDraft(mode mcpFormMode, server mcp.Server) mcpFormDraft {
 		return draft
 	}
 	draft.name = server.Name
-	if server.State.Type == protocol.MCPServerDisabled {
+	if server.Status.Type == protocol.MCPServerDisabled {
 		draft.enabled = false
 	}
 	draft.description = server.Description
 	draft.replaceConnection = false
-	draft.transport = server.Connection.Transport
+	draft.transport = server.Connection.Type
 	draft.url = server.Connection.URL
 	draft.command = server.Connection.Command
 	if len(server.Connection.Args) > 0 {
 		encoded, _ := json.Marshal(server.Connection.Args)
 		draft.arguments = string(encoded)
 	}
-	draft.directory = server.Connection.Directory
-	if seconds, bounded := server.HandshakeTimeout.Seconds(); bounded {
-		draft.timeoutSeconds = strconv.Itoa(seconds)
+	draft.directory = server.Connection.Dir
+	if server.HandshakeTimeout.Type == protocol.MCPHandshakeBounded {
+		draft.timeoutSeconds = strconv.Itoa(*server.HandshakeTimeout.Seconds)
 	}
 	draft.disabledTools = strings.Join(server.DisabledTools, ", ")
 	draft.autoApproveTools = strings.Join(server.AutoApproveTools, ", ")
@@ -97,7 +97,7 @@ func (m mcpFormDraft) candidate() (mcp.Candidate, error) {
 	return candidate, candidate.Validate()
 }
 
-func (m mcpFormDraft) update(original mcp.Server) (mcp.ServerUpdate, bool, error) {
+func (m mcpFormDraft) update(original protocol.MCPServer) (mcp.ServerUpdate, bool, error) {
 	if err := m.validateSelections(); err != nil {
 		return mcp.ServerUpdate{}, false, err
 	}
@@ -107,14 +107,14 @@ func (m mcpFormDraft) update(original mcp.Server) (mcp.ServerUpdate, bool, error
 	}
 	update := mcp.ServerUpdate{Server: original.Name}
 	enabled := m.enabled
-	if enabled != (original.State.Type != protocol.MCPServerDisabled) {
+	if enabled != (original.Status.Type != protocol.MCPServerDisabled) {
 		update.Enabled = &enabled
 	}
 	description := strings.TrimSpace(m.description)
 	if description != original.Description {
 		update.Description = &description
 	}
-	if !timeout.Equal(original.HandshakeTimeout) {
+	if !timeout.Matches(original.HandshakeTimeout) {
 		update.HandshakeTimeout = &timeout
 	}
 	disabledTools := parseMCPToolNames(m.disabledTools)
@@ -182,7 +182,7 @@ func (m mcpFormDraft) validateSelections() error {
 	return nil
 }
 
-func (a *app) openMCPServerForm(mode mcpFormMode, server mcp.Server) {
+func (a *app) openMCPServerForm(mode mcpFormMode, server protocol.MCPServer) {
 	a.showMCPFormStep(newMCPFormFlow(mode, server))
 }
 

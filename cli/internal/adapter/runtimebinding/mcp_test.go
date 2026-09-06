@@ -209,7 +209,7 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 	stub := &mcpBindingStub{t: t, now: time.Unix(100, 0)}
 	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
 	servers, err := runtime.Servers(t.Context())
-	if err != nil || len(servers) != 1 || servers[0].State.Type != protocol.MCPServerConnected || servers[0].Connection.AuthorizationMasked == "" {
+	if err != nil || len(servers) != 1 || servers[0].Status.Type != protocol.MCPServerConnected || servers[0].Connection.AuthorizationMasked == "" {
 		t.Fatalf("Servers = (%+v, %v)", servers, err)
 	}
 	authorization := mcp.AuthorizationChange{Kind: protocol.MCPSecretSet, Value: "Bearer secret"}
@@ -236,11 +236,11 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 		t.Fatal(deleteServerErr)
 	}
 	tested, err := runtime.TestServer(t.Context(), candidate)
-	if err != nil || tested.OK || tested.Problem == nil || tested.Problem.Type != "mcp_dial_failed" {
+	if err != nil || tested.OK || tested.Error == nil || tested.Error.Type != "mcp_dial_failed" {
 		t.Fatalf("TestServer = (%+v, %v)", tested, err)
 	}
 	tools, err := runtime.Tools(t.Context(), "docs")
-	if err != nil || len(tools) != 1 || string(tools[0].InputSchema) != `{"type":"object"}` {
+	if err != nil || len(tools) != 1 || tools[0].InputSchema["type"] != "object" {
 		t.Fatalf("Tools = (%+v, %v)", tools, err)
 	}
 	if reconnectServerErr := runtime.ReconnectServer(t.Context(), "docs"); reconnectServerErr != nil {
@@ -259,39 +259,39 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 	}
 }
 
-func TestMCPAdapterRejectsOutOfOrderServerCatalog(t *testing.T) {
+func TestMCPAdapterRejectsUnorderedOrDuplicateServerCatalog(t *testing.T) {
 	t.Parallel()
-	first, second := wireMCPServer(), wireMCPServer()
-	first.Name, second.Name = "zeta", "alpha"
-	stub := &mcpBindingStub{t: t, servers: []protocol.MCPServer{first, second}}
-	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
-
-	if _, err := runtime.Servers(t.Context()); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) ||
-		!strings.Contains(err.Error(), "out of catalog order") {
-		t.Fatalf("Servers error = %v, want ordered-catalog contract violation", err)
+	for _, names := range [][2]string{{"zeta", "alpha"}, {"docs", "docs"}} {
+		t.Run(strings.Join(names[:], "/"), func(t *testing.T) {
+			first, second := wireMCPServer(), wireMCPServer()
+			first.Name, second.Name = names[0], names[1]
+			stub := &mcpBindingStub{t: t, servers: []protocol.MCPServer{first, second}}
+			runtime := &Connection{mcp: stub, meta: requestMeta("test")}
+			if values, err := runtime.Servers(t.Context()); values != nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+				t.Fatalf("Servers = (%v, %v), want complete ordered-catalog rejection", values, err)
+			}
+		})
 	}
 }
 
-func TestMCPAdapterRejectsOutOfOrderToolCatalog(t *testing.T) {
+func TestMCPAdapterRejectsUnorderedOrDuplicateToolCatalog(t *testing.T) {
 	t.Parallel()
-	stub := &mcpBindingStub{t: t, tools: []protocol.MCPTool{
-		{Server: "zeta", Name: "alpha"},
-		{Server: "alpha", Name: "zeta"},
-	}}
-	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
-
-	if _, err := runtime.Tools(t.Context(), ""); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) ||
-		!strings.Contains(err.Error(), "out of catalog order") {
-		t.Fatalf("Tools error = %v, want ordered-catalog contract violation", err)
+	for _, rows := range [][]protocol.MCPTool{
+		{{Server: "zeta", Name: "alpha"}, {Server: "alpha", Name: "zeta"}},
+		{{Server: "docs", Name: "zeta"}, {Server: "docs", Name: "alpha"}},
+		{{Server: "docs", Name: "search"}, {Server: "docs", Name: "search"}},
+	} {
+		t.Run(rows[0].Server+"/"+rows[0].Name+"-"+rows[1].Server+"/"+rows[1].Name, func(t *testing.T) {
+			stub := &mcpBindingStub{t: t, tools: rows}
+			runtime := &Connection{mcp: stub, meta: requestMeta("test")}
+			if values, err := runtime.Tools(t.Context(), ""); values != nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+				t.Fatalf("Tools = (%v, %v), want complete ordered-catalog rejection", values, err)
+			}
+		})
 	}
 }
 
 func TestMCPAuthorizationAdapterClassifiesAbsenceAndEnforcesReferenceIdentity(t *testing.T) {
-	server := wireMCPServer()
-	if _, err := projectMCPServerResult("update MCP server", "other", &server, nil); !errors.Is(err, agent.ErrIncompatibleRuntime) {
-		t.Fatalf("mismatched MCP server identity = %v, want ErrIncompatibleRuntime", err)
-	}
-
 	stub := &mcpBindingStub{t: t, now: time.Unix(100, 0), authErr: protocol.ErrMCPAuthorizationAttemptNotFound}
 	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
 	if _, err := runtime.GetAuthorization(t.Context(), mcp.AuthorizationReference{ID: "auth_1", Server: "docs"}); err == nil || !strings.Contains(err.Error(), "attemptId") {
@@ -341,6 +341,8 @@ func TestMCPAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 		t.Fatal(err)
 	}
 	createResult := wireMCPServerFromCandidate(projectedCandidate)
+	wrongIdentity := createResult
+	wrongIdentity.Name = "other"
 	createResult.Description = "ignored"
 	description := "Updated"
 	enabled := false
@@ -356,6 +358,14 @@ func TestMCPAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 		{
 			name: "create fields",
 			stub: &mcpBindingStub{createResult: &createResult},
+			invoke: func(runtime *Connection) error {
+				_, err := runtime.CreateServer(t.Context(), candidate)
+				return err
+			},
+		},
+		{
+			name: "create identity",
+			stub: &mcpBindingStub{createResult: &wrongIdentity},
 			invoke: func(runtime *Connection) error {
 				_, err := runtime.CreateServer(t.Context(), candidate)
 				return err
@@ -484,16 +494,18 @@ func TestMCPAdapterRejectsInvalidServerIdentityBeforeDispatch(t *testing.T) {
 	}
 }
 
-func TestMCPReadProjectionsRejectValuesOutsideRuntimeWireContract(t *testing.T) {
+func TestMCPAdapterRejectsMalformedReadResults(t *testing.T) {
 	t.Parallel()
 	server := wireMCPServer()
 	server.Name = "Docs"
-	if _, err := projectMCPServer(server); err == nil || !strings.Contains(err.Error(), "name") {
-		t.Fatalf("server projection error = %v, want name field", err)
+	stub := &mcpBindingStub{t: t, servers: []protocol.MCPServer{server}}
+	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
+	if values, err := runtime.Servers(t.Context()); values != nil || !errors.Is(err, agent.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "name") {
+		t.Fatalf("Servers = (%v, %v), want no values and a name contract violation", values, err)
 	}
-	tool := protocol.MCPTool{Server: "docs", Name: "invalid tool"}
-	if _, err := projectMCPTool(tool); err == nil || !strings.Contains(err.Error(), "name") {
-		t.Fatalf("tool projection error = %v, want name field", err)
+	stub.tools = []protocol.MCPTool{{Server: "docs", Name: "invalid tool"}}
+	if values, err := runtime.Tools(t.Context(), "docs"); values != nil || !errors.Is(err, agent.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "name") {
+		t.Fatalf("Tools = (%v, %v), want no values and a name contract violation", values, err)
 	}
 }
 

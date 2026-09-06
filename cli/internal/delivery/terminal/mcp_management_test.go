@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -16,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -24,7 +26,7 @@ const terminalMCPAuthorizationAttemptID = "mcpauth_AAAAAAAAAAAAAAAAAAAAAAAAAA"
 
 type mcpServiceStub struct {
 	mu          sync.Mutex
-	servers     []mcp.Server
+	servers     []protocol.MCPServer
 	created     chan mcp.Candidate
 	probed      chan mcp.Candidate
 	updated     chan mcp.ServerUpdate
@@ -88,15 +90,12 @@ func (b *blockingMCPAuthorizationService) GetAuthorization(
 
 func newMCPServiceStub() *mcpServiceStub {
 	count := 1
-	timeout, err := mcp.NewHandshakeTimeout(15)
-	if err != nil {
-		panic(err)
-	}
+	timeout := protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: new(15)}
 	return &mcpServiceStub{
-		servers: []mcp.Server{{
+		servers: []protocol.MCPServer{{
 			Name: "docs", Description: "Documentation", HandshakeTimeout: timeout,
-			Connection: mcp.Connection{Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools", AuthorizationMasked: "Bearer ****"},
-			State:      mcp.State{Type: protocol.MCPServerConnected, ToolCount: &count},
+			Connection: protocol.MCPConnection{Type: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools", AuthorizationMasked: "Bearer ****"},
+			Status:     protocol.MCPServerState{Type: protocol.MCPServerConnected, ToolCount: &count},
 		}},
 		created: make(chan mcp.Candidate, 1), probed: make(chan mcp.Candidate, 1),
 		updated: make(chan mcp.ServerUpdate, 1),
@@ -104,36 +103,39 @@ func newMCPServiceStub() *mcpServiceStub {
 	}
 }
 
-func (m *mcpServiceStub) Servers(context.Context) ([]mcp.Server, error) {
+func (m *mcpServiceStub) Servers(context.Context) ([]protocol.MCPServer, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	servers := make([]mcp.Server, len(m.servers))
+	servers := make([]protocol.MCPServer, len(m.servers))
 	for index := range m.servers {
-		servers[index] = m.servers[index].Clone()
+		servers[index] = cloneMCPServer(m.servers[index])
 	}
 	return servers, nil
 }
 
-func (m *mcpServiceStub) CreateServer(_ context.Context, candidate mcp.Candidate) (mcp.Server, error) {
+func (m *mcpServiceStub) CreateServer(_ context.Context, candidate mcp.Candidate) (protocol.MCPServer, error) {
 	if err := candidate.Validate(); err != nil {
-		return mcp.Server{}, err
+		return protocol.MCPServer{}, err
 	}
 	m.created <- candidate.Clone()
-	server := mcp.Server{
-		Name: candidate.Name, Description: candidate.Description, HandshakeTimeout: candidate.HandshakeTimeout,
-		Connection:    mcp.Connection{Transport: candidate.Connection.Transport, URL: candidate.Connection.URL, Command: candidate.Connection.Command, Args: candidate.Connection.Args, Directory: candidate.Connection.Directory},
+	server := protocol.MCPServer{
+		Name: candidate.Name, Description: candidate.Description, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
+		Connection:    protocol.MCPConnection{Type: candidate.Connection.Transport, URL: candidate.Connection.URL, Command: candidate.Connection.Command, Args: candidate.Connection.Args, Dir: candidate.Connection.Directory},
 		DisabledTools: candidate.DisabledTools, AutoApproveTools: candidate.AutoApproveTools,
-		State: mcp.State{Type: protocol.MCPServerDisconnected},
+		Status: protocol.MCPServerState{Type: protocol.MCPServerDisconnected},
+	}
+	if seconds, bounded := candidate.HandshakeTimeout.Seconds(); bounded {
+		server.HandshakeTimeout = protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: &seconds}
 	}
 	m.mu.Lock()
 	m.servers = append(m.servers, server)
 	m.mu.Unlock()
-	return server.Clone(), nil
+	return cloneMCPServer(server), nil
 }
 
-func (m *mcpServiceStub) UpdateServer(_ context.Context, update mcp.ServerUpdate) (mcp.Server, error) {
+func (m *mcpServiceStub) UpdateServer(_ context.Context, update mcp.ServerUpdate) (protocol.MCPServer, error) {
 	if err := update.Validate(); err != nil {
-		return mcp.Server{}, err
+		return protocol.MCPServer{}, err
 	}
 	m.updated <- update
 	m.mu.Lock()
@@ -145,14 +147,14 @@ func (m *mcpServiceStub) UpdateServer(_ context.Context, update mcp.ServerUpdate
 		}
 		if update.Enabled != nil {
 			if *update.Enabled {
-				server.State = mcp.State{Type: protocol.MCPServerDisconnected}
+				server.Status = protocol.MCPServerState{Type: protocol.MCPServerDisconnected}
 			} else {
-				server.State = mcp.State{Type: protocol.MCPServerDisabled}
+				server.Status = protocol.MCPServerState{Type: protocol.MCPServerDisabled}
 			}
 		}
-		return server.Clone(), nil
+		return cloneMCPServer(*server), nil
 	}
-	return mcp.Server{}, errors.New("server not found")
+	return protocol.MCPServer{}, errors.New("server not found")
 }
 
 func (m *mcpServiceStub) DeleteServer(_ context.Context, name string) error {
@@ -168,19 +170,19 @@ func (m *mcpServiceStub) DeleteServer(_ context.Context, name string) error {
 	return errors.New("server not found")
 }
 
-func (m *mcpServiceStub) TestServer(_ context.Context, candidate mcp.Candidate) (mcp.TestResult, error) {
+func (m *mcpServiceStub) TestServer(_ context.Context, candidate mcp.Candidate) (protocol.MCPTestResult, error) {
 	if err := candidate.Validate(); err != nil {
-		return mcp.TestResult{}, err
+		return protocol.MCPTestResult{}, err
 	}
 	m.probed <- candidate.Clone()
-	return mcp.TestResult{OK: true}, nil
+	return protocol.MCPTestResult{OK: true}, nil
 }
 
-func (*mcpServiceStub) Tools(_ context.Context, server string) ([]mcp.Tool, error) {
+func (*mcpServiceStub) Tools(_ context.Context, server string) ([]protocol.MCPTool, error) {
 	if server != "" && server != "docs" {
 		return nil, errors.New("server not found")
 	}
-	return []mcp.Tool{{Server: "docs", Name: "search", Description: "Search docs", InputSchema: []byte(`{"type":"object"}`)}}, nil
+	return []protocol.MCPTool{{Server: "docs", Name: "search", Description: "Search docs", InputSchema: map[string]any{"type": "object"}}}, nil
 }
 
 func (m *mcpServiceStub) ReconnectServer(_ context.Context, server string) error {
@@ -366,6 +368,31 @@ func TestMCPLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testing
 		t.Fatalf("reconnected server = %q, want docs", server)
 	}
 	stop()
+}
+
+func TestMCPToolsDocumentFormatsRuntimeSchema(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		schema map[string]any
+		want   string
+	}{
+		{name: "empty object", schema: map[string]any{}, want: "{}"},
+		{name: "object", schema: map[string]any{"type": "object"}, want: "{\n  \"type\": \"object\"\n}"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			document, err := mcpToolsDocument("docs", []protocol.MCPTool{{Server: "docs", Name: "search", InputSchema: test.schema}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(document.Sections) != 2 || document.Sections[1].Title != "Input schema" || document.Sections[1].Text != test.want {
+				t.Fatalf("schema document = %+v, want %q", document, test.want)
+			}
+		})
+	}
+	malformed := protocol.MCPTool{Server: "docs", Name: "search", InputSchema: map[string]any{"invalid": func() {}}}
+	if document, err := mcpToolsDocument("docs", []protocol.MCPTool{malformed}); err == nil || len(document.Sections) != 0 {
+		t.Fatalf("malformed schema document = (%+v, %v), want no partial document", document, err)
+	}
 }
 
 func TestMCPReadersFormsAndLifecycleCommands(t *testing.T) {
@@ -572,4 +599,21 @@ func TestMCPChangedRefetchesTheOpenServerReader(t *testing.T) {
 	awaitSignal(t, source.applied, "mcp.changed delivery")
 	host.Shows(t, "Updated documentation server")
 	stop()
+}
+
+// The stub retains its catalog, so each query must transfer an independent result.
+func cloneMCPServer(server protocol.MCPServer) protocol.MCPServer {
+	server.Connection.Args = slices.Clone(server.Connection.Args)
+	server.Connection.HeadersMasked = maps.Clone(server.Connection.HeadersMasked)
+	server.Connection.EnvMasked = maps.Clone(server.Connection.EnvMasked)
+	server.DisabledTools = slices.Clone(server.DisabledTools)
+	server.AutoApproveTools = slices.Clone(server.AutoApproveTools)
+	if server.HandshakeTimeout.Seconds != nil {
+		server.HandshakeTimeout.Seconds = new(*server.HandshakeTimeout.Seconds)
+	}
+	if server.Status.ToolCount != nil {
+		server.Status.ToolCount = new(*server.Status.ToolCount)
+	}
+	server.Status.Error = failure.Clone(server.Status.Error)
+	return server
 }

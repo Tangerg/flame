@@ -655,6 +655,21 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if validateResultErr := candidate.ValidateResult(created); validateResultErr != nil {
 		t.Fatalf("created MCP server: %v", validateResultErr)
 	}
+	maskedHeader := created.Connection.HeadersMasked["X-Key"]
+	created.Connection.HeadersMasked["X-Key"] = "caller-reused-header"
+	created.DisabledTools[0] = "caller-reused-policy"
+	*created.HandshakeTimeout.Seconds = 1
+	servers, err := runtime.Servers(t.Context())
+	if err != nil {
+		t.Fatalf("list MCP servers after result reuse: %v", err)
+	}
+	index := slices.IndexFunc(servers, func(server protocol.MCPServer) bool { return server.Name == candidate.Name })
+	if index < 0 {
+		t.Fatal("created MCP server disappeared after result reuse")
+	}
+	if err := candidate.ValidateResult(servers[index]); err != nil || servers[index].Connection.HeadersMasked["X-Key"] != maskedHeader {
+		t.Fatalf("caller reuse changed the Runtime MCP server: %v", err)
+	}
 	clearAuthorization := mcp.AuthorizationChange{Kind: protocol.MCPSecretClear}
 	clearHeaders := mcp.HeadersChange{Kind: protocol.MCPSecretClear}
 	description := "Updated integration MCP"

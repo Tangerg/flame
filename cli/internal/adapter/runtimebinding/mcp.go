@@ -2,7 +2,6 @@ package runtimebinding
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -28,7 +27,7 @@ type mcpBinding interface {
 	GetMCPAuthorizationAttempt(context.Context, protocol.MCPAuthorizationAttemptRequest, flameruntime.CallOptions) (*protocol.MCPAuthorizationAttempt, error)
 }
 
-func (r *Connection) Servers(ctx context.Context) ([]mcp.Server, error) {
+func (r *Connection) Servers(ctx context.Context) ([]protocol.MCPServer, error) {
 	page, err := r.mcp.ListMCPServers(ctx, r.callOptions())
 	if err != nil {
 		return nil, classifyMCPError(err)
@@ -37,55 +36,59 @@ func (r *Connection) Servers(ctx context.Context) ([]mcp.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	servers, err := projectUniqueValuesFallible("list MCP servers", values, projectMCPServer, func(server mcp.Server) string {
-		return server.Name
-	})
-	if err != nil {
-		return nil, err
-	}
-	for index := 1; index < len(servers); index++ {
-		previous, current := servers[index-1], servers[index]
-		if current.Name < previous.Name {
+	for index, server := range values {
+		if err := mcp.ValidateServer(server); err != nil {
+			return nil, runtimeContractViolation("list MCP servers item %d is invalid: %v", index+1, err)
+		}
+		if index == 0 {
+			continue
+		}
+		previous := values[index-1]
+		if server.Name == previous.Name {
+			return nil, runtimeContractViolation("list MCP servers repeats %q", server.Name)
+		}
+		if server.Name < previous.Name {
 			return nil, runtimeContractViolation(
 				"list MCP servers returned server %q out of catalog order after %q",
-				current.Name,
-				previous.Name,
+				server.Name, previous.Name,
 			)
 		}
 	}
-	return servers, nil
+	return values, nil
 }
 
-func (r *Connection) CreateServer(ctx context.Context, candidate mcp.Candidate) (mcp.Server, error) {
+func (r *Connection) CreateServer(ctx context.Context, candidate mcp.Candidate) (protocol.MCPServer, error) {
 	if err := candidate.Validate(); err != nil {
-		return mcp.Server{}, err
+		return protocol.MCPServer{}, err
 	}
 	request, err := projectMCPCandidate(candidate)
 	if err != nil {
-		return mcp.Server{}, err
+		return protocol.MCPServer{}, err
 	}
 	options, err := r.commandOptions()
 	if err != nil {
-		return mcp.Server{}, err
+		return protocol.MCPServer{}, err
 	}
 	result, err := r.mcp.CreateMCPServer(ctx, request, options)
-	projected, err := projectMCPServerResult("create MCP server", candidate.Name, result, err)
 	if err != nil {
-		return mcp.Server{}, err
+		return protocol.MCPServer{}, classifyMCPError(err)
 	}
-	if err := candidate.ValidateResult(projected); err != nil {
-		return mcp.Server{}, runtimeContractViolation("create MCP server returned an invalid acknowledgement: %v", err)
+	if result == nil {
+		return protocol.MCPServer{}, runtimeContractViolation("create MCP server returned nil")
 	}
-	return projected, nil
+	if err := candidate.ValidateResult(*result); err != nil {
+		return protocol.MCPServer{}, runtimeContractViolation("create MCP server returned an invalid acknowledgement: %v", err)
+	}
+	return *result, nil
 }
 
-func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) (mcp.Server, error) {
+func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) (protocol.MCPServer, error) {
 	if err := update.Validate(); err != nil {
-		return mcp.Server{}, err
+		return protocol.MCPServer{}, err
 	}
 	options, err := r.commandOptions()
 	if err != nil {
-		return mcp.Server{}, err
+		return protocol.MCPServer{}, err
 	}
 	request := protocol.UpdateMCPServerRequest{
 		Server: update.Server, Enabled: clonePointer(update.Enabled), Description: clonePointer(update.Description),
@@ -107,17 +110,19 @@ func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) 
 		request.AutoApproveTools = &values
 	}
 	if err := protocol.ValidateWireTree(request); err != nil {
-		return mcp.Server{}, fmt.Errorf("MCP update %s violates runtime wire contract: %w", update.Server, err)
+		return protocol.MCPServer{}, fmt.Errorf("MCP update %s violates runtime wire contract: %w", update.Server, err)
 	}
 	result, err := r.mcp.UpdateMCPServer(ctx, request, options)
-	projected, err := projectMCPServerResult("update MCP server", update.Server, result, err)
 	if err != nil {
-		return mcp.Server{}, err
+		return protocol.MCPServer{}, classifyMCPError(err)
 	}
-	if err := update.ValidateResult(projected); err != nil {
-		return mcp.Server{}, runtimeContractViolation("update MCP server returned an invalid acknowledgement: %v", err)
+	if result == nil {
+		return protocol.MCPServer{}, runtimeContractViolation("update MCP server returned nil")
 	}
-	return projected, nil
+	if err := update.ValidateResult(*result); err != nil {
+		return protocol.MCPServer{}, runtimeContractViolation("update MCP server returned an invalid acknowledgement: %v", err)
+	}
+	return *result, nil
 }
 
 func (r *Connection) DeleteServer(ctx context.Context, server string) error {
@@ -144,29 +149,31 @@ func (r *Connection) mutateMCPServer(
 	return classifyMCPError(mutate(ctx, request, options))
 }
 
-func (r *Connection) TestServer(ctx context.Context, candidate mcp.Candidate) (mcp.TestResult, error) {
+func (r *Connection) TestServer(ctx context.Context, candidate mcp.Candidate) (protocol.MCPTestResult, error) {
 	if err := candidate.Validate(); err != nil {
-		return mcp.TestResult{}, err
+		return protocol.MCPTestResult{}, err
 	}
 	request, err := projectMCPCandidate(candidate)
 	if err != nil {
-		return mcp.TestResult{}, err
+		return protocol.MCPTestResult{}, err
 	}
 	result, err := r.mcp.TestMCPServer(ctx, request, r.callOptions())
 	if err != nil {
-		return mcp.TestResult{}, classifyMCPError(err)
+		return protocol.MCPTestResult{}, classifyMCPError(err)
 	}
 	if result == nil {
-		return mcp.TestResult{}, runtimeContractViolation("test MCP server returned nil")
+		return protocol.MCPTestResult{}, runtimeContractViolation("test MCP server returned nil")
 	}
-	projected := mcp.TestResult{OK: result.OK, Problem: failure.Clone(result.Error)}
-	if err := projected.Validate(); err != nil {
-		return mcp.TestResult{}, runtimeContractViolation("test MCP server returned an invalid result: %v", err)
+	if err := protocol.ValidateWireTree(*result); err != nil {
+		return protocol.MCPTestResult{}, runtimeContractViolation("test MCP server returned an invalid result: %v", err)
 	}
-	return projected, nil
+	if result.OK == (result.Error != nil) {
+		return protocol.MCPTestResult{}, runtimeContractViolation("test MCP server returned contradictory success and error states")
+	}
+	return *result, nil
 }
 
-func (r *Connection) Tools(ctx context.Context, server string) ([]mcp.Tool, error) {
+func (r *Connection) Tools(ctx context.Context, server string) ([]protocol.MCPTool, error) {
 	request := protocol.MCPListToolsRequest{Server: strings.TrimSpace(server)}
 	if err := request.ValidateWire(); err != nil {
 		return nil, fmt.Errorf("list MCP tools: %w", err)
@@ -179,25 +186,20 @@ func (r *Connection) Tools(ctx context.Context, server string) ([]mcp.Tool, erro
 	if err != nil {
 		return nil, err
 	}
-	tools := make([]mcp.Tool, 0, len(values))
-	seen := make(map[[2]string]struct{}, len(values))
-	for index, value := range values {
-		tool, err := projectMCPTool(value)
-		if err != nil {
+	for index, tool := range values {
+		if err := protocol.ValidateWireTree(tool); err != nil {
 			return nil, runtimeContractViolation("list MCP tools item %d is invalid: %v", index+1, err)
 		}
 		if request.Server != "" && tool.Server != request.Server {
 			return nil, runtimeContractViolation("list MCP tools for %q returned a tool from %q", request.Server, tool.Server)
 		}
-		identity := [2]string{tool.Server, tool.Name}
-		if _, duplicate := seen[identity]; duplicate {
+		if index == 0 {
+			continue
+		}
+		previous, current := values[index-1], tool
+		if current.Server == previous.Server && current.Name == previous.Name {
 			return nil, runtimeContractViolation("list MCP tools repeats %s/%s", tool.Server, tool.Name)
 		}
-		seen[identity] = struct{}{}
-		tools = append(tools, tool)
-	}
-	for index := 1; index < len(tools); index++ {
-		previous, current := tools[index-1], tools[index]
 		if current.Server < previous.Server || current.Server == previous.Server && current.Name < previous.Name {
 			return nil, runtimeContractViolation(
 				"list MCP tools returned tool %s/%s out of catalog order after %s/%s",
@@ -208,25 +210,7 @@ func (r *Connection) Tools(ctx context.Context, server string) ([]mcp.Tool, erro
 			)
 		}
 	}
-	return tools, nil
-}
-
-func projectMCPTool(value protocol.MCPTool) (mcp.Tool, error) {
-	if err := protocol.ValidateWireTree(value); err != nil {
-		return mcp.Tool{}, err
-	}
-	tool := mcp.Tool{Server: value.Server, Name: value.Name, Description: value.Description}
-	if value.InputSchema != nil {
-		schema, err := json.Marshal(value.InputSchema)
-		if err != nil {
-			return mcp.Tool{}, fmt.Errorf("encode input schema: %w", err)
-		}
-		tool.InputSchema = schema
-	}
-	if err := tool.Validate(); err != nil {
-		return mcp.Tool{}, err
-	}
-	return tool, nil
+	return values, nil
 }
 
 func (r *Connection) StartAuthorization(ctx context.Context, server string) (protocol.MCPAuthorizationAttempt, error) {
@@ -256,57 +240,6 @@ func (r *Connection) GetAuthorization(ctx context.Context, reference mcp.Authori
 	)
 }
 
-func projectMCPServerResult(operation, expectedName string, result *protocol.MCPServer, err error) (mcp.Server, error) {
-	if err != nil {
-		return mcp.Server{}, classifyMCPError(err)
-	}
-	if result == nil {
-		return mcp.Server{}, runtimeContractViolation("%s returned nil", operation)
-	}
-	server, projectionErr := projectMCPServer(*result)
-	if projectionErr != nil {
-		return mcp.Server{}, runtimeContractViolation("%s returned an invalid server projection: %v", operation, projectionErr)
-	}
-	if err := server.Validate(); err != nil {
-		return mcp.Server{}, runtimeContractViolation("%s returned an invalid server: %v", operation, err)
-	}
-	if server.Name != expectedName {
-		return mcp.Server{}, runtimeContractViolation(
-			"%s returned server %q for %q",
-			operation,
-			server.Name,
-			expectedName,
-		)
-	}
-	return server, nil
-}
-
-func projectMCPServer(value protocol.MCPServer) (mcp.Server, error) {
-	if err := protocol.ValidateWireTree(value); err != nil {
-		return mcp.Server{}, err
-	}
-	timeout, err := mcpHandshakeTimeoutFromWire(value.HandshakeTimeout)
-	if err != nil {
-		return mcp.Server{}, err
-	}
-	return mcp.Server{
-		Name: value.Name, Description: value.Description,
-		Connection: mcp.Connection{
-			Transport: value.Connection.Type, URL: value.Connection.URL,
-			AuthorizationMasked: value.Connection.AuthorizationMasked,
-			HeadersMasked:       maps.Clone(value.Connection.HeadersMasked),
-			Command:             value.Connection.Command, Args: slices.Clone(value.Connection.Args),
-			EnvironmentMasked: maps.Clone(value.Connection.EnvMasked), Directory: value.Connection.Dir,
-		},
-		HandshakeTimeout: timeout, DisabledTools: slices.Clone(value.DisabledTools),
-		AutoApproveTools: slices.Clone(value.AutoApproveTools),
-		State: mcp.State{
-			Type: value.Status.Type, ToolCount: clonePointer(value.Status.ToolCount),
-			Problem: failure.Clone(value.Status.Error),
-		},
-	}, nil
-}
-
 func projectMCPCandidate(candidate mcp.Candidate) (protocol.MCPServerCandidate, error) {
 	projected := protocol.MCPServerCandidate{
 		Name: candidate.Name, Enabled: candidate.Enabled, Description: candidate.Description,
@@ -325,23 +258,6 @@ func projectMCPHandshakeTimeout(timeout mcp.HandshakeTimeout) protocol.MCPHandsh
 		return protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded}
 	}
 	return protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: &seconds}
-}
-
-func mcpHandshakeTimeoutFromWire(timeout protocol.MCPHandshakeTimeout) (mcp.HandshakeTimeout, error) {
-	switch timeout.Type {
-	case protocol.MCPHandshakeUnbounded:
-		if timeout.Seconds != nil {
-			return mcp.HandshakeTimeout{}, errors.New("unbounded policy carries seconds")
-		}
-		return mcp.HandshakeTimeout{}, nil
-	case protocol.MCPHandshakeBounded:
-		if timeout.Seconds == nil {
-			return mcp.HandshakeTimeout{}, errors.New("bounded policy omits seconds")
-		}
-		return mcp.NewHandshakeTimeout(*timeout.Seconds)
-	default:
-		return mcp.HandshakeTimeout{}, fmt.Errorf("unknown policy %q", timeout.Type)
-	}
 }
 
 func projectMCPConnectionInput(connection mcp.ConnectionInput) protocol.MCPConnectionInput {
