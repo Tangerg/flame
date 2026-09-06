@@ -175,14 +175,7 @@ export function AgentActivityDisclosure({
           <div className="flex shrink-0 items-center gap-0.5 pl-0.5 pr-2">{actions}</div>
         )}
       </div>
-      {progress && (
-        <ProgressBar
-          value={progress.value}
-          label={progress.label}
-          className="h-0.5 rounded-none"
-          indicatorClassName="rounded-none"
-        />
-      )}
+      {progress && <ProgressBar value={progress.value} label={progress.label} weight="seam" />}
       <Collapsible open={open}>
         <div
           id={panelId}

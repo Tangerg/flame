@@ -6031,3 +6031,50 @@ Status: **已完成**
 
 `progress-bar` 的 `indicatorClassName`、以及其余带第二逃生口的原子 —— 每一个都要先问
 "调用方到底在改什么"，答案多半又是一个没被命名的形态。
+
+---
+
+## Round 109 — 第二个逃生口，第三个没被命名的形态
+
+Status: **已完成**
+
+### 迁移
+
+`progress-bar`。它带两个逃生口：`className` 和 `indicatorClassName`。
+
+### 三个调用点要的是三种形态
+
+| 调用点 | 传的类 | 它其实要的 |
+| --- | --- | --- |
+| `activity-disclosure` | `h-0.5 rounded-none` + `indicatorClassName="rounded-none"` | 披露块边缘的**发丝接缝**（方角，因为它与那条边连续，不是躺在上面的物体） |
+| `toolStats` | `h-1 flex-1` | 统计行内的细条 |
+| `TasksPill` | `mt-1.5 ml-[18px]` | **只调位置**，外观不动 |
+
+高度与形状是这个组件的决定；**位置不是**。
+
+### 修改前 / 修改后
+
+| | 修改前 | 修改后 |
+| --- | --- | --- |
+| API | `className` + `indicatorClassName` | `weight: "bar" \| "row" \| "seam"`，`className` 只留给布局 |
+| 第二个逃生口 | 存在 | **删除** |
+| 调用点 | 传高度与圆角 | 说出形态名；只有位置仍用 `className` |
+| 渲染 | — | 650 张 golden 零位移 |
+
+`indicatorClassName` 是个尤其坏的形状：它让调用方伸手进组件**内部的第二个元素**。
+命名形态之后它没有存在理由。
+
+### 验证
+
+`typecheck` / `lint` / `format` / **20 项 `check:*` 全绿**；单测 **2395 通过**；
+视觉 **650/650，零 golden 位移**。
+
+### 资源回收
+
+关闭 4174 预览服务。
+
+### 累计
+
+已迁移 7 个原子（loader、kbd、divider、diff-stat、color-picker-input、file-path、
+section-label、progress-bar）；暴露并修掉 **3 处真实设计缺陷**；**零 golden 位移**；
+构建代价恒定在 1.7×。

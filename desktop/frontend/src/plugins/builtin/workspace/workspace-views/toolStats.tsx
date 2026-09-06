@@ -60,7 +60,8 @@ function ToolStatRow({ row, summary }: { row: ToolStat; summary: ToolStatsSummar
         <ProgressBar
           value={toolTimeShare(row, summary) * 100}
           label={t("toolStats.share", { name: row.name })}
-          className="h-1 flex-1"
+          weight="row"
+          className="flex-1"
         />
         {row.durations.length > 1 && (
           <Sparkline

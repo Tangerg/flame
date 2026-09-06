@@ -59,6 +59,7 @@ export const radius = stylex.defineVars({
  * frame that moves has exactly one cause.
  */
 export const space = stylex.defineVars({
+  s0_5: "calc(var(--spacing) * 0.5)",
   s1: "calc(var(--spacing) * 1)",
   s1_5: "calc(var(--spacing) * 1.5)",
   s2: "calc(var(--spacing) * 2)",
