@@ -1,4 +1,19 @@
+import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
+import { color, space } from "@/styles/tokens.stylex";
+
+const styles = stylex.create({
+  row: {
+    display: "inline-flex",
+    alignItems: "center",
+    flexShrink: 0,
+    gap: space.s1_5,
+    fontFamily: "var(--font-mono)",
+  },
+  quiet: { color: color.fgFaint },
+  added: { color: color.success },
+  removed: { color: color.negative },
+});
 
 export function DiffStat({
   added,
@@ -11,23 +26,29 @@ export function DiffStat({
   binary?: string;
   className?: string;
 }) {
-  const base = cn("shrink-0 items-center gap-1.5 font-mono", className);
-
+  const quiet = stylex.props(styles.row, styles.quiet);
   if (binary !== undefined) {
-    return <span className={cn("inline-flex text-fg-faint", base)}>{binary}</span>;
+    return (
+      <span {...quiet} className={cn(quiet.className, className)}>
+        {binary}
+      </span>
+    );
   }
+  // A measured change of nothing, said once. Absent counts are `undefined` upstream and never
+  // reach here, so a dash means "measured, and it was zero" rather than "not measured".
   if (added === 0 && removed === 0) {
     return (
-      <span aria-hidden className={cn("inline-flex text-fg-faint", base)}>
+      <span aria-hidden {...quiet} className={cn(quiet.className, className)}>
         —
       </span>
     );
   }
 
+  const row = stylex.props(styles.row);
   return (
-    <span className={cn("inline-flex", base)}>
-      {added > 0 && <span className="text-success">+{added}</span>}
-      {removed > 0 && <span className="text-negative">−{removed}</span>}
+    <span {...row} className={cn(row.className, className)}>
+      {added > 0 && <span {...stylex.props(styles.added)}>+{added}</span>}
+      {removed > 0 && <span {...stylex.props(styles.removed)}>−{removed}</span>}
     </span>
   );
 }

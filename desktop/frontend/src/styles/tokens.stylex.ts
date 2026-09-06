@@ -60,6 +60,7 @@ export const radius = stylex.defineVars({
  */
 export const space = stylex.defineVars({
   s1: "calc(var(--spacing) * 1)",
+  s1_5: "calc(var(--spacing) * 1.5)",
   s2: "calc(var(--spacing) * 2)",
   s3: "calc(var(--spacing) * 3)",
   s4_5: "calc(var(--spacing) * 4.5)",

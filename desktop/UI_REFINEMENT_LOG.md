@@ -5913,3 +5913,58 @@ runtime e2e）；视觉 **650/650，零 golden 位移**；`cascade` 守卫由红
 
 `chip` 那类依赖 `group-hover:` 的组件需要单独设计（StyleX 无祖先选择器）——先盘清
 全仓有多少个 `group-*` 依赖，这个数字决定迁移的真实规模。
+
+---
+
+## Round 107 — 迁移的真实规模，和第二批原子
+
+Status: **已完成**
+
+### 先量规模
+
+StyleX 没有祖先/兄弟状态选择器。全仓统计带 `className` 的 **217** 个 tsx 中，
+依赖这类选择器的有 **15 个（7%）**：
+
+| 变体 | 文件数 |
+| --- | --- |
+| `group-hover:` | 6 |
+| `group-focus*` | 3 |
+| `group-data-[…]` | 1 |
+| `[&_…]` / `[&>…]` | 5 |
+| `peer-` / `has-[` / `*:` | 0 |
+
+**93% 可以机械迁移**；其余 15 个要把祖先状态改成 props 或 state，是设计工作而非搬运。
+这个数字之前不存在，迁移规模一直是估的。
+
+### 本批迁移
+
+| 组件 | 结果 |
+| --- | --- |
+| `diff-stat` | 迁移完成；`+N` / `−N` / `—` 三种形态 |
+| `color-picker-input` | 迁移完成 |
+| `external-link` | **无需迁移** —— 它一行样式都没有 |
+| `glyph-swap` | **不可机械迁移** —— 用的是全局类 `t-icon-swap` + 祖先 hover |
+| `hidden-file-input` | 保留 —— 只有一个 `hidden`，换成 StyleX 无收益 |
+
+### 修改前 / 修改后
+
+| | 修改前 | 修改后 |
+| --- | --- | --- |
+| `diff-stat` 的 `gap-1.5` / 颜色 | utility 字符串 | `space.s1_5` / `color.success` / `color.negative` |
+| 令牌 | 5 组 | 6 组（新增 `space.s1_5`、`color.success`） |
+| 渲染 | — | **650 张 golden 零位移** |
+
+### 验证
+
+`typecheck` / `lint` / `format` / **20 项 `check:*` 全绿**；单测 **2395 通过**
+（4 条既有 runtime e2e）；视觉 **650/650，零 golden 位移**。
+
+### 资源回收
+
+关闭 4174 预览服务。
+
+### 下一轮方向
+
+`ui/atoms` 里剩下的机械候选（tag、skeleton、chip 之外的展示型），以及那 15 个
+`group-*` 依赖者的第一个——后者需要先决定"祖先状态"在 StyleX 下的统一表达方式，
+是一次设计决策，不是搬运。
