@@ -1561,6 +1561,39 @@ test("a multi-file patch receipt puts every path on one left edge", async ({ pag
   }
 });
 
+// A question outlives the moment it is asked, and both fixtures that carry one park it at
+// requires-action — so neither settled shape had ever been drawn: the disclosure that keeps
+// each prompt beside what was answered, and the single line for a question the Run was
+// canceled out from under.
+test("an answered question keeps both halves of the exchange", async ({ page }) => {
+  await page.goto("/visual/?fixture=agent&theme=light&state=narrative");
+  await page.locator("html[data-visual-ready]").waitFor();
+
+  const settled = page
+    .locator('[data-slot="agent-activity-disclosure"]')
+    .filter({ hasText: "Asked" })
+    .first();
+  await expect(settled).toContainText("2 questions");
+  // Closed: a settled exchange is history, not something to read past on the way down.
+  await expect(settled).not.toContainText("idempotency key");
+
+  await settled.getByRole("button").first().click();
+  await expect(settled).toContainText("Where should the idempotency key be minted?");
+  await expect(settled).toContainText("At checkout");
+  await expect(settled).toContainText("Ship behind the existing payments flag.");
+});
+
+test("a question the run was canceled out from under says so in one line", async ({ page }) => {
+  await page.goto("/visual/?fixture=agent&theme=light&state=canceled");
+  await page.locator("html[data-visual-ready]").waitFor();
+
+  await expect(page.getByText("Closed without an answer")).toBeVisible();
+  // One line, and no request surface: the prompt itself is gone with the Run that owned it,
+  // so nothing invites an answer that can no longer be given.
+  await expect(page.getByText("Should the review cover the CLI too?")).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: "Scope" })).toHaveCount(0);
+});
+
 // A turn that delegates TWICE. Both calls are read-only by safety class, so the planner
 // folded them together as glances — and a delegation is not a glance: it owns a sub-agent
 // below it. Grouped, all six sub-agents left the transcript, the pending approval among

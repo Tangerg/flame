@@ -5531,3 +5531,39 @@ green; unit 2395/4 outside the runtime-contract e2e.
 
 Every timeline kind is drawn and every entry status but one — questions still
 record nothing, which round 100 wrote down rather than took.
+
+---
+
+## Round 102 — a question, after it is answered
+
+Status: **complete**
+
+Both fixtures that carry a question park it at `requires-action`, so the card had
+only ever been photographed *waiting*. It has two settled shapes, and neither had
+been drawn:
+
+| | |
+| --- | --- |
+| answered | a closed disclosure — "Asked 2 questions" — holding each prompt beside what was said |
+| never answered | one line: "Closed without an answer" |
+
+The second is reachable exactly as the model's own comment says: *"the Run may
+have been canceled without accepting any answer"* — so it belongs in the state
+named for that, and the prompt goes with the Run that owned it. Nothing invites
+an answer that can no longer be given.
+
+### One thing measured, not changed
+
+In the answered disclosure the prompt is `text-fg-muted` and the person's answer
+is `text-fg-faint` — the human's words are the fainter of the two, which inverts
+how this app weights them everywhere else. Measured on the rendered pixels:
+**6.40:1** and **5.58:1**, both clear of AA, one step apart on a ladder the
+design system owns. A deliberate hierarchy in a summary, not a defect.
+
+### Verification
+
+Both guards hold what matters: the exchange stays closed until asked for and then
+carries both halves, and the abandoned one says so in a single line with no
+request surface left. Visual **650/650**; four goldens moved, the two states that
+gained a question; the 20-script gate is green; unit 2395/4 outside the
+runtime-contract e2e.

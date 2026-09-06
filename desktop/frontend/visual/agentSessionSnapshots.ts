@@ -984,6 +984,50 @@ const NARRATIVE_TURN_3 = message(
   "Go with the first one, and add a regression test for the refresh case.",
 );
 
+// A question the reader ANSWERED. Both fixtures that carry one park it at requires-action, so
+// the card's settled shapes — the disclosure holding each prompt beside its answer, and the
+// dismissed row when nobody answered at all — had never been drawn.
+// Settled with NO answer, which the card draws as a single dismissed line rather than a
+// disclosure. Reachable exactly as the model says: the Run was canceled before anybody
+// answered, so it belongs in the state named for that.
+const CANCELED_QUESTION: Item = {
+  type: "question",
+  id: "item_canceled_question",
+  runId: ROOT_RUN_ID,
+  status: "completed",
+  createdAt: "2026-07-31T08:00:08.000Z",
+  question: {
+    fields: [{ type: "text", header: "Scope", prompt: "Should the review cover the CLI too?" }],
+  },
+};
+
+const NARRATIVE_ANSWERED_QUESTION: Item = {
+  type: "question",
+  id: "item_n_question",
+  runId: ROOT_RUN_ID,
+  status: "completed",
+  createdAt: "2026-07-31T08:01:30.000Z",
+  question: {
+    fields: [
+      {
+        type: "choice",
+        header: "Key lifetime",
+        prompt: "Where should the idempotency key be minted?",
+        options: [
+          { label: "At checkout", description: "One key per order, persisted with it." },
+          { label: "At send time", description: "A new key on every attempt." },
+        ],
+      },
+      {
+        type: "text",
+        header: "Rollout",
+        prompt: "Anything to hold back?",
+      },
+    ],
+    answers: [["At checkout"], ["Ship behind the existing payments flag."]],
+  },
+};
+
 const NARRATIVE_COMPACTION: Item = {
   type: "compaction",
   id: "item_n_compaction",
@@ -1264,7 +1308,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         outcome: { type: "canceled", detail: "Stopped after the requested review." },
       }),
     ],
-    items: [PROMPT, COMMENTARY_RESPONSE],
+    items: [PROMPT, COMMENTARY_RESPONSE, CANCELED_QUESTION],
     pendingInterruptSets: [],
   },
   error: {
@@ -1512,6 +1556,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
       ),
       NARRATIVE_ANSWER_1,
       NARRATIVE_TURN_2,
+      NARRATIVE_ANSWERED_QUESTION,
       NARRATIVE_COMPACTION,
       narrativeTool(
         "item_n_search",
