@@ -4,14 +4,7 @@ import { Surface } from "@/ui";
 
 export function SettingsGroup({ className, children, ...props }: ComponentPropsWithoutRef<"div">) {
   return (
-    <Surface
-      {...props}
-      inset="none"
-      className={cn(
-        "overflow-hidden border-[length:var(--control-edge-width)] border-field bg-transparent",
-        className,
-      )}
-    >
+    <Surface {...props} variant="group" inset="none" className={cn("overflow-hidden", className)}>
       {children}
     </Surface>
   );

@@ -29,7 +29,7 @@ function ToolSearchPreview({ tool }: ToolPreviewProps) {
           </span>
           <div className="flex min-w-0 flex-wrap gap-1">
             {group.names.map((name) => (
-              <Badge key={name} className="font-mono">
+              <Badge key={name} face="mono">
                 {name}
               </Badge>
             ))}

@@ -27,7 +27,7 @@ export function ProvidersPane() {
         }}
       >
         {(rows) => (
-          <Surface inset="sm" className="flex flex-col gap-1 p-2">
+          <Surface inset="xs" className="flex flex-col gap-1">
             {rows.map((p) => (
               <ProviderRow key={p.id} p={p} />
             ))}

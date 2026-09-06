@@ -85,7 +85,7 @@ export function RunSummaryTab() {
       }
     >
       <div className="px-4 pb-2 pt-1">
-        <Badge tone={view.statusBadge.tone} className="font-mono font-semibold">
+        <Badge tone={view.statusBadge.tone} face="mono" className="font-semibold">
           {t(view.statusBadge.labelKey)}
         </Badge>
       </div>

@@ -223,6 +223,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
   return (
     <Surface
       ref={requestRef}
+      variant="prompt"
       inset="none"
       // Focused programmatically when a question arrives, so the prompt is read and the next
       // Tab reaches the first option — the same reason a menu popup takes focus. NOT a tab
@@ -231,7 +232,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
       tabIndex={-1}
       data-slot="question-request-surface"
       data-chrome-focus
-      className="overflow-hidden rounded-bubble shadow-[var(--shadow-popover)] outline-none"
+      className="overflow-hidden outline-none"
     >
       <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-2">
         <h3

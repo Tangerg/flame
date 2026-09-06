@@ -31,8 +31,10 @@ export const motion = stylex.defineVars({
   fast: "var(--dur-fast)",
   color: "var(--dur-color)",
   easeOut: "var(--ease-out)",
-  /** The shimmer's whole `animation` shorthand, so its duration keeps tracking motion-scale. */
+  /** Whole `animation` shorthands, so each duration keeps tracking motion-scale. */
   shimmer: "var(--animate-shimmer)",
+  sweep: "var(--animate-sweep)",
+  pulseDot: "var(--animate-pulse-dot)",
 });
 
 /** Surfaces and edges, by role. A name says what a plane IS, never how light it is. */
@@ -40,6 +42,15 @@ export const surface = stylex.defineVars({
   sunken: "var(--color-sunken)",
   surface2: "var(--color-surface-2)",
   divider: "var(--color-divider)",
+  /** The app's card plane, and the hairline a fill-less surface uses instead of it. */
+  card: "var(--app-card-surface)",
+  field: "var(--color-field)",
+  /** A tone wash, not the tone: 18% of the hue over whatever is behind it. */
+  accentWash: "var(--color-accent-badge)",
+  successWash: "var(--color-success-badge)",
+  warningWash: "var(--color-warning-badge)",
+  negativeWash: "var(--color-negative-badge)",
+  infoWash: "var(--color-info-badge)",
 });
 
 /** Corner steps, each already carrying the style scale and the superellipse compensation. */
@@ -47,6 +58,9 @@ export const radius = stylex.defineVars({
   step2xs: "var(--radius-2xs)",
   xs: "var(--radius-xs)",
   pill: "var(--radius-pill)",
+  /** Corners named for the plane they belong to: a card and a transcript bubble differ. */
+  card: "var(--surface-card-radius)",
+  bubble: "var(--radius-bubble)",
 });
 
 /**
@@ -64,7 +78,9 @@ export const space = stylex.defineVars({
   s1: "calc(var(--spacing) * 1)",
   s1_5: "calc(var(--spacing) * 1.5)",
   s2: "calc(var(--spacing) * 2)",
+  s2_5: "calc(var(--spacing) * 2.5)",
   s3: "calc(var(--spacing) * 3)",
+  s4: "calc(var(--spacing) * 4)",
   s4_5: "calc(var(--spacing) * 4.5)",
   s5: "calc(var(--spacing) * 5)",
 });
@@ -84,4 +100,18 @@ export const type = stylex.create({
   uiXs: { fontSize: "var(--text-ui-xs)", letterSpacing: "var(--text-ui-xs--letter-spacing)" },
   uiSm: { fontSize: "var(--text-ui-sm)", letterSpacing: "var(--text-ui-sm--letter-spacing)" },
   uiMd: { fontSize: "var(--text-ui-md)", letterSpacing: "var(--text-ui-md--letter-spacing)" },
+});
+
+/**
+ * The two faces, as the pair of decisions each one actually is.
+ *
+ * A face is never only a family. The UI steps carry `--tracking-ui`, a negative tracking chosen
+ * for a proportional face; mono glyphs are already spaced by the grid and take that tracking as
+ * a crowding defect. Every call site that reached for `font-mono` got the family and kept the
+ * tracking, because tracking is not in that utility — which is exactly why this is a token and
+ * not two properties a component sets side by side.
+ */
+export const face = stylex.create({
+  text: { fontFamily: "var(--font-sans)" },
+  mono: { fontFamily: "var(--font-mono)", letterSpacing: 0 },
 });

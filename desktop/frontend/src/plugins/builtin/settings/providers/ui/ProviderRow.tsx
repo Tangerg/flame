@@ -76,7 +76,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
           size="md"
           tone={fromEnv ? "info" : enabled ? "success" : "neutral"}
           title={fromEnv ? p.credential?.masked : undefined}
-          className="font-mono"
+          face="mono"
         >
           {fromEnv
             ? t("providers.fromEnv")

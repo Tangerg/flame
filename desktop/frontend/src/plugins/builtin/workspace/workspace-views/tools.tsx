@@ -137,7 +137,7 @@ function DiagnosticToolRowPresentation({
           <span className="flex min-w-0 items-baseline gap-2">
             <span className="truncate font-mono text-ui-sm text-fg">{tool.name}</span>
             {tool.safety && (
-              <Badge tone={tool.safety.tone} className="font-mono">
+              <Badge tone={tool.safety.tone} face="mono">
                 {tool.safety.label}
               </Badge>
             )}

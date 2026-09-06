@@ -68,7 +68,7 @@ export function RulesRow() {
                   key={r.id}
                   className="flex items-center gap-2 rounded-md px-2.5 py-2 transition-colors hover:bg-hover"
                 >
-                  <Badge tone={SCOPE_TONE[r.scope]} className="font-mono">
+                  <Badge tone={SCOPE_TONE[r.scope]} face="mono">
                     {t(`approvals.scope.${r.scope}`)}
                   </Badge>
                   <span

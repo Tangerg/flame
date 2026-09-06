@@ -1,3 +1,4 @@
+import type { DotTone } from "@/lib/tone";
 import type { Translate } from "@/lib/i18n";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import {
@@ -6,8 +7,6 @@ import {
   agentRunStepCount,
   type AgentRunPresentationState,
 } from "@/plugins/builtin/agent/public/runPresentation";
-
-type DotTone = "idle" | "running" | "waiting" | "ok" | "err";
 
 export interface DelegatedRunCardModel {
   label: string;

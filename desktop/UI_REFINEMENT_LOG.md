@@ -6354,3 +6354,122 @@ xs 22 / sm 26 / md 30，`--control-height-lg: 34px` 存在却只被 `icon-lg` �
 `chip.tsx` 依赖 `group-hover:`，而 StyleX 没有祖先/兄弟状态选择器。
 "祖先态如何在 StyleX 下表达"是一个波及 15 个文件的设计决定，需要先定型。
 在此之前，转向不依赖祖先态的下一批 atom。
+
+---
+
+## Round 115 — 四个呈现件迁 StyleX，兼两处调用方在纠正的设计
+
+### 计划（写在改代码之前）
+
+`Button` 的迁移被 `chip.tsx` 的 `group-hover:` 挡住（StyleX 无祖先态选择器），
+所以本轮转向不依赖祖先态的一批：`surface` / `badge` / `status-dot` / `skeleton`。
+按前几轮的惯例，先审计调用点在 override 什么 —— override 是设计缺档的指纹。
+
+### 证据
+
+| atom | 调用点 | 带 `className` 的 | 说明 |
+| --- | --- | --- | --- |
+| `Surface` | 12 | 11 | 8 处是 `flex flex-col gap-*`（容器内的排布，合理）；`SettingsGroup` 是另一回事 |
+| `Badge` | 22 | 8 | 8 处全是 `font-mono` |
+| `StatusDot` | 6 | 1 | 唯一一处是 `mt-1.5`（对齐首行，合理） |
+| `SkeletonList` | 3 | 0 | 干净 |
+
+### 根因一：`SettingsGroup` 不是"加了点东西的 Surface"，是第二种面
+
+```
+className="overflow-hidden border-[length:var(--control-edge-width)] border-field bg-transparent"
+```
+
+`bg-transparent` **取消**了 `Surface` 的填充，`border-*` **换掉**了它的边界机制。
+两者都不是装饰，是在把"填充的卡片"改写成"描边的透明组"—— 这是第二种面，
+不是同一种面的调整。Tailwind 下它靠 `cn()` 的后来者优先侥幸成立；
+StyleX 下生成选择器带 `:not(#\#)`，这两条会被静默丢弃。
+
+### 根因二：8 个 badge 在用 UI 字距渲染等宽字形
+
+`--text-ui-xs--letter-spacing: var(--tracking-ui)` = `-0.011em`，
+而 `--text-code--letter-spacing: 0`。调用点写 `font-mono` 只换了字族，
+换不掉字距 —— 于是 HTTP 状态码、工具名、provider id、错误码这 8 处，
+全都是等宽字形套着为比例字体调的负字距。这正是 `well.tsx` 注释里已经
+点名过的同一个错误（"UI tracking that never belonged on mono"）。
+调用点表达不了它，因为字距压根不在 `font-mono` 这个工具类里。
+
+### 改动
+
+| | 新增 |
+| --- | --- |
+| `Surface` | `fill: "card"（默认，填充+主题阴影钩子）\| "outlined"（透明+`--control-edge-width` 描边）` |
+| `Badge` | `face: "text"（默认）\| "mono"`—— 同时换字族**和**归零字距 |
+
+### 验收标准
+
+- `SettingsGroup` 与 8 处 mono badge 的调用点不再出现形状/字体 className；
+- mono badge 的宽度变化可测且被 golden 记录（字距修正是真实的位移，不是回归）；
+- 其余 golden 零位移；17 项 `check:*` 全绿。
+
+### 不做：`Well`
+
+`well.tsx` 导出的 `WELL_SURFACE` 是一串 Tailwind class，被仍是 Tailwind 的
+`text-field.tsx`（`variant="well"`）消费 —— 那行注释的原意就是"well 和它的
+编辑态不能漂开"。单迁 `well` 会把这条共享断掉，所以它和 `text-field` 必须同批。
+本轮不碰，记在下一轮。
+
+### 计划的修订：`fill` 两值 → `variant` 四值
+
+写计划时只看到 `SettingsGroup` 一处在取消填充，于是设计了 `fill: card | outlined`。
+第一次跑视觉，**15 张 golden 位移**，其中 10 张与 badge 无关 —— StyleX 把另外
+两处对抗也顶了出来，而它们在 Tailwind 下一直是静默成立的：
+
+| 调用点 | 覆盖了什么 | StyleX 下的后果 |
+| --- | --- | --- |
+| `ApprovalCard` / `QuestionCard` | `rounded-bubble` | 圆角被丢弃，退回卡片角 |
+| `QuestionCard` | `shadow-[var(--shadow-popover)]` | 浮层投射被丢弃 |
+| `ProvidersPane` | `inset="sm"` 之后又写 `p-2` | 内距 8 → 12px |
+
+于是这个面一共有四种，每一种都是产品里一个有名字的东西：
+
+```
+variant: "card" | "group" | "request" | "prompt"
+```
+
+**没有拆成三个正交属性**（fill / corner / raise）—— 那会拼出 8 种，其中一半无意义
+（没有填充却带浮层投射）。一个面的身份是一个决定，不是三个恰好一致的决定。
+`inset` 同时补上缺的 `xs`（8px）档 —— `ProvidersPane` 要的就是它。
+
+### 守卫抓到的第二件事：`DotTone` 有三份
+
+迁 `status-dot` 时我给联合起了个名，`check:published-boundaries` 立刻报重名同义。
+把它挪进 `lib/tone.ts`（`Tone` 已经住在那里，理由相同：application 环不得导入 ui 环，
+所以词汇要放在两边都够得着的地方）之后，守卫又看见了**第三份** ——
+`ServerRow.tsx` 里内联重写的同一个联合，此前因为这个词汇没有"已发布"位置而看不见。
+一并收敛。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650** |
+| 位移的 golden | 5 张，全部 diff 框在 badge 自身位置（`34×18` 单个 badge、工具列的安全等级列、provider 列），无版式移动 —— 确认后更新 |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项（用户并行修改区域） |
+
+字距修正的量：`--tracking-ui` = `-0.011em`，12px 步进下每字符 `-0.132px`，
+13px 步进下 `-0.143px` —— 每个 badge 累计半个到一个多像素，方向是变宽（负字距被移除）。
+
+### 过程中差点漏掉的
+
+迁 `skeleton` 时我把它原有的 `motion-reduce:animate-none` 丢了。
+这是我引入的行为变化，不是迁移，已补回。
+（顺带发现：`globals.css` 有一条 `!important` 的全局 reduced-motion 规则，
+所以逐组件的 guard 在今天是冗余的 —— 但"一个事实两个所有者"该怎么收敛
+是独立的一件事，不混进这轮机械迁移。记在后面。）
+
+### 资源回收
+
+关闭 4174 预览服务与全部探针脚本。
+
+### 下一轮方向
+
+`well` + `text-field` 必须同批（`WELL_SURFACE` 是它们共享的一串 Tailwind class）。
+再往后是 reduced-motion 的所有者收敛，以及仍然挡在 `button` 前面的
+`chip.tsx` `group-hover:` 设计决定。

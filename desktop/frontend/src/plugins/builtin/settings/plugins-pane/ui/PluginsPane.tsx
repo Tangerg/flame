@@ -108,7 +108,7 @@ function ErrorEntry({ err }: { err: PluginError }) {
   return (
     <div className="rounded-md bg-sunken px-2.5 py-2">
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
-        <Badge tone="negative" className="font-mono">
+        <Badge tone="negative" face="mono">
           {source}
         </Badge>
         <span className="truncate font-medium text-ui-md text-fg" title={err.message}>

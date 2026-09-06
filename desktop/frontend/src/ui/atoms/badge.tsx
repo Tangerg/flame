@@ -1,37 +1,65 @@
-import type { VariantProps } from "class-variance-authority";
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { cva } from "class-variance-authority";
 import type { Tone } from "@/lib/tone";
 import { cn } from "@/lib/classNames";
+import { color, face, radius, space, surface, type } from "@/styles/tokens.stylex";
 
-const styles = cva("inline-flex shrink-0 items-center gap-1 rounded-pill font-medium", {
-  variants: {
-    tone: {
-      neutral: "bg-surface-2 text-fg-muted",
-      accent: "bg-accent-badge text-fg-soft",
-      success: "bg-success-badge text-fg-soft",
-      warning: "bg-warning-badge text-fg-soft",
-      negative: "bg-negative-badge text-fg-soft",
-      info: "bg-info-badge text-fg-soft",
-    },
-    size: {
-      sm: "px-2 py-px text-ui-xs",
-      md: "px-2.5 py-0.5 text-ui-sm",
-    },
+/**
+ * A small standing label: a status, a count, a scope, a name.
+ *
+ * `face` exists because eight of twenty-two call sites were writing `font-mono` — HTTP status
+ * codes, tool names, provider ids, error codes. That utility swaps the family and nothing else,
+ * so all eight were rendering mono glyphs at `--tracking-ui`, a negative tracking chosen for a
+ * proportional face. A call site could not have fixed it: the tracking lives in the type step,
+ * not in the font utility. `face.mono` carries both halves.
+ */
+const styles = stylex.create({
+  base: {
+    display: "inline-flex",
+    flexShrink: 0,
+    alignItems: "center",
+    gap: space.s1,
+    borderRadius: radius.pill,
+    fontWeight: 500,
   },
-  defaultVariants: { tone: "neutral", size: "sm" },
+  neutral: { backgroundColor: surface.surface2, color: color.fgMuted },
+  accent: { backgroundColor: surface.accentWash, color: color.fgSoft },
+  success: { backgroundColor: surface.successWash, color: color.fgSoft },
+  warning: { backgroundColor: surface.warningWash, color: color.fgSoft },
+  negative: { backgroundColor: surface.negativeWash, color: color.fgSoft },
+  info: { backgroundColor: surface.infoWash, color: color.fgSoft },
+  sm: { paddingInline: space.s2, paddingBlock: "1px" },
+  md: { paddingInline: space.s2_5, paddingBlock: space.s0_5 },
 });
 
-export type BadgeProps = Omit<VariantProps<typeof styles>, "tone"> & {
+const SIZE_TYPE = { sm: type.uiXs, md: type.uiSm } as const;
+
+export type BadgeProps = {
   tone?: Tone;
+  size?: keyof typeof SIZE_TYPE;
+  face?: keyof typeof face;
   children: ReactNode;
   className?: string;
   title?: string;
 };
 
-export function Badge({ tone, size, className, children, title }: BadgeProps) {
+export function Badge({
+  tone = "neutral",
+  size = "sm",
+  face: textFace = "text",
+  className,
+  children,
+  title,
+}: BadgeProps) {
+  const styled = stylex.props(
+    styles.base,
+    styles[tone],
+    styles[size],
+    SIZE_TYPE[size],
+    face[textFace],
+  );
   return (
-    <span title={title} className={cn(styles({ tone, size }), className)}>
+    <span title={title} {...styled} className={cn(styled.className, className)}>
       {children}
     </span>
   );

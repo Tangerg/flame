@@ -8,13 +8,11 @@ import {
   useSetMCPServerEnabled,
 } from "../application/mcpServerConfig";
 import { notifyError } from "@/plugins/sdk";
+import type { DotTone } from "@/lib/tone";
 import { useT } from "@/lib/i18n";
 import { ServerForm } from "./ServerForm";
 
-const STATUS_TONE: Record<
-  MCPServerSettings["status"],
-  "ok" | "running" | "waiting" | "err" | "idle"
-> = {
+const STATUS_TONE: Record<MCPServerSettings["status"], DotTone> = {
   disabled: "idle",
   connected: "ok",
   connecting: "running",

@@ -38,7 +38,7 @@ function HttpRequestPreview({ tool, onOpenView }: ToolPreviewProps) {
   return (
     <div className="pt-1">
       <div className="mb-1.5 flex items-center gap-2">
-        <Badge tone={statusTone(response.status)} className="font-mono">
+        <Badge tone={statusTone(response.status)} face="mono">
           {response.status}
         </Badge>
         {response.duration && (
@@ -78,7 +78,7 @@ function WebFetchPreview({ tool, onOpenView }: ToolPreviewProps) {
   return (
     <div className="pt-1">
       <div className="mb-1.5">
-        <Badge className="font-mono">{page.format}</Badge>
+        <Badge face="mono">{page.format}</Badge>
       </div>
       <Well cap="md">{page.content}</Well>
       <PreviewFoot label="tools.preview.viewText" onClick={onOpenView} />

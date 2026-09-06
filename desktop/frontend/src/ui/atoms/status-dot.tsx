@@ -1,22 +1,29 @@
-import type { VariantProps } from "class-variance-authority";
-import { cva } from "class-variance-authority";
+import * as stylex from "@stylexjs/stylex";
+import type { DotTone } from "@/lib/tone";
 import { cn } from "@/lib/classNames";
+import { color, motion, radius, space } from "@/styles/tokens.stylex";
 
-const dotStyles = cva("inline-block h-1.5 w-1.5 shrink-0 rounded-full", {
-  variants: {
-    tone: {
-      idle: "bg-fg-faint",
-      running: "bg-accent shadow-[var(--shadow-live-glow)] animate-pulse-dot",
-      waiting: "bg-warning",
-      ok: "bg-success",
-      err: "bg-negative",
-    },
+const styles = stylex.create({
+  base: {
+    display: "inline-block",
+    height: space.s1_5,
+    width: space.s1_5,
+    flexShrink: 0,
+    borderRadius: radius.pill,
   },
-  defaultVariants: { tone: "idle" },
+  idle: { backgroundColor: color.fgFaint },
+  // The only dot that says something is happening right now, so the only one that moves.
+  running: {
+    backgroundColor: color.accent,
+    boxShadow: "var(--shadow-live-glow)",
+    animation: motion.pulseDot,
+  },
+  waiting: { backgroundColor: color.warning },
+  ok: { backgroundColor: color.success },
+  err: { backgroundColor: color.negative },
 });
 
-type Props = VariantProps<typeof dotStyles> & { className?: string };
-
-export function StatusDot({ tone, className }: Props) {
-  return <span aria-hidden="true" className={cn(dotStyles({ tone }), className)} />;
+export function StatusDot({ tone = "idle", className }: { tone?: DotTone; className?: string }) {
+  const styled = stylex.props(styles.base, styles[tone]);
+  return <span aria-hidden="true" {...styled} className={cn(styled.className, className)} />;
 }
