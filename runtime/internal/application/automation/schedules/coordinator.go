@@ -76,7 +76,8 @@ type CreateCommand struct {
 
 // Patch is the Application input for editing a Schedule. CWD and model fields
 // remain untrusted external spellings until Update admits them; the Domain
-// patch receives only their resolved values.
+// patch receives only their resolved values. Update borrows this input until
+// return; the resulting Schedule retains values rather than these pointers.
 type Patch struct {
 	Title          *string
 	Instructions   *string
@@ -86,36 +87,11 @@ type Patch struct {
 	Enabled        *bool
 }
 
-func (p Patch) clone() Patch {
-	p.Title = clonePointer(p.Title)
-	p.Instructions = clonePointer(p.Instructions)
-	p.CWD = clonePointer(p.CWD)
-	p.ModelSelection.Provider = clonePointer(p.ModelSelection.Provider)
-	p.ModelSelection.Model = clonePointer(p.ModelSelection.Model)
-	p.ModelSelection.ReasoningEffort = clonePointer(p.ModelSelection.ReasoningEffort)
-	p.Cron = clonePointer(p.Cron)
-	p.Enabled = clonePointer(p.Enabled)
-	return p
-}
-
-func clonePointer[T any](value *T) *T {
-	if value == nil {
-		return nil
-	}
-	cloned := *value
-	return &cloned
-}
-
 // UpdateCommand applies a partial edit to one stored schedule.
 type UpdateCommand struct {
 	ID               string
 	Patch            Patch
 	ExpectedRevision uint64
-}
-
-func (u UpdateCommand) clone() UpdateCommand {
-	u.Patch = u.Patch.clone()
-	return u
 }
 
 // New returns a fully wired Coordinator or rejects partial construction.
@@ -254,7 +230,6 @@ func (c *Coordinator) Create(ctx context.Context, cmd CreateCommand) (schedule.S
 // Update applies a patch to an existing schedule, preserving durable identity
 // and timestamps while recomputing its next due time.
 func (c *Coordinator) Update(ctx context.Context, cmd UpdateCommand) (schedule.Schedule, error) {
-	cmd = cmd.clone()
 	if err := schedule.ValidateID(cmd.ID); err != nil {
 		return schedule.Schedule{}, err
 	}

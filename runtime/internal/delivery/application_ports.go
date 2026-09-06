@@ -106,6 +106,8 @@ type feedbackUseCases interface {
 	Record(ctx context.Context, command sessions.FeedbackCommand) error
 }
 
+// scheduleManagementUseCases borrows mutation inputs for each synchronous call.
+// Returned Schedules own their admitted values.
 type scheduleManagementUseCases interface {
 	Create(ctx context.Context, cmd schedules.CreateCommand) (schedule.Schedule, error)
 	Delete(ctx context.Context, id string) error

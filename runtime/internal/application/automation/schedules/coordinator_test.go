@@ -235,7 +235,7 @@ func TestCreateOwnsScheduleAdmission(t *testing.T) {
 	}
 }
 
-func TestUpdateOwnsPatchAndPreservesSnapshotState(t *testing.T) {
+func TestUpdatePreservesAcceptedScheduleAfterCallerReuse(t *testing.T) {
 	lastRun := time.Date(2026, 7, 18, 9, 0, 0, 0, time.UTC)
 	createdAt := time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC)
 	store := &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{
@@ -256,24 +256,46 @@ func TestUpdateOwnsPatchAndPreservesSnapshotState(t *testing.T) {
 			return "/canonical/after", nil
 		}),
 	})
-	cwd, instructions, enabled := "after", "after", false
+	title, instructions, cwd := "Review", "after", "after"
+	provider, model, effort, cron := "provider", "model", "high", "0 15 * * *"
+	enabled := false
 
 	updated, err := c.Update(t.Context(), UpdateCommand{
 		ID: "sch_1", ExpectedRevision: 3,
 		Patch: Patch{
+			Title:        &title,
 			Instructions: &instructions,
 			CWD:          &cwd,
-			Enabled:      &enabled,
+			ModelSelection: modelref.Patch{
+				Provider: &provider, Model: &model, ReasoningEffort: &effort,
+			},
+			Cron:    &cron,
+			Enabled: &enabled,
 		},
 	})
 	if err != nil {
 		t.Fatalf("Update: %v", err)
 	}
-	if updated.ID() != "sch_1" || updated.Instructions() != "after" || updated.CWD() != "/canonical/after" {
+	if updated.ID() != "sch_1" || updated.Title() != title || updated.Instructions() != instructions ||
+		updated.CWD() != "/canonical/after" || updated.Cron() != cron || updated.Enabled() || updated.Revision() != 4 {
 		t.Fatalf("updated = %+v", updated)
+	}
+	if selection := updated.ModelSelection(); selection.Provider() != provider || selection.Model() != model ||
+		selection.ReasoningEffort() != effort {
+		t.Fatalf("updated model selection = %+v", selection)
+	}
+	if cwd != "after" {
+		t.Fatalf("workspace resolution mutated the caller's patch to %q", cwd)
 	}
 	if !updated.LastRunAt().Equal(lastRun) || !updated.CreatedAt().Equal(createdAt) || !updated.NextRunAt().IsZero() {
 		t.Fatalf("updated durable state = %+v", updated)
+	}
+	accepted := updated.Snapshot()
+	title, instructions, cwd = "reused", "reused", "/reused"
+	provider, model, effort, cron = "other-provider", "other-model", "low", "@hourly"
+	enabled = true
+	if updated.Snapshot() != accepted || store.updated.Snapshot() != accepted {
+		t.Fatal("caller reuse changed the returned or stored Schedule")
 	}
 }
 
@@ -309,44 +331,6 @@ func TestUpdateRejectsInvalidOrMismatchedStoreScheduleBeforeWriting(t *testing.T
 				t.Fatalf("store Update received %+v before point-read validation", store.updated)
 			}
 		})
-	}
-}
-
-func TestUpdateCommandCloneOwnsMutablePatch(t *testing.T) {
-	title, instructions, cwd := "before", "review", "/before"
-	provider, model, effort, cron := "provider", "model", "high", "@daily"
-	enabled := true
-	command := UpdateCommand{Patch: Patch{
-		Title: &title, Instructions: &instructions, CWD: &cwd,
-		ModelSelection: modelref.Patch{
-			Provider: &provider, Model: &model, ReasoningEffort: &effort,
-		},
-		Cron: &cron, Enabled: &enabled,
-	}}
-	owned := command.clone()
-
-	*command.Patch.Title = "after"
-	*command.Patch.Instructions = "changed"
-	*command.Patch.CWD = "/after"
-	*command.Patch.ModelSelection.Provider = "other-provider"
-	*command.Patch.ModelSelection.Model = "other-model"
-	*command.Patch.ModelSelection.ReasoningEffort = "low"
-	*command.Patch.Cron = "@hourly"
-	*command.Patch.Enabled = false
-
-	if *owned.Patch.Title != "before" || *owned.Patch.Instructions != "review" || *owned.Patch.CWD != "/before" {
-		t.Fatalf(
-			"owned text patch = title:%q instructions:%q cwd:%q",
-			*owned.Patch.Title, *owned.Patch.Instructions, *owned.Patch.CWD,
-		)
-	}
-	if *owned.Patch.ModelSelection.Provider != "provider" ||
-		*owned.Patch.ModelSelection.Model != "model" ||
-		*owned.Patch.ModelSelection.ReasoningEffort != "high" {
-		t.Fatalf("owned model patch = %+v", owned.Patch.ModelSelection)
-	}
-	if *owned.Patch.Cron != "@daily" || !*owned.Patch.Enabled {
-		t.Fatalf("owned schedule patch = cron:%q enabled:%t", *owned.Patch.Cron, *owned.Patch.Enabled)
 	}
 }
 
