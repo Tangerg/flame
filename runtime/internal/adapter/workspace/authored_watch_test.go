@@ -1,8 +1,11 @@
 package workspace
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,7 +26,10 @@ func TestAuthoredWatcherReportsOutagesAndRecovers(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			project := t.TempDir()
 			reports := make(chan error, 8)
-			watcher, err := NewAuthoredWatcher(t.TempDir(), t.TempDir(), "", func(err error) { reports <- err })
+			previousLogger := slog.Default()
+			slog.SetDefault(slog.New(observationDiagnostics{Handler: slog.NewTextHandler(io.Discard, nil), failures: reports}))
+			t.Cleanup(func() { slog.SetDefault(previousLogger) })
+			watcher, err := NewAuthoredWatcher(t.TempDir(), t.TempDir(), "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -97,6 +103,21 @@ func TestAuthoredWatcherReportsOutagesAndRecovers(t *testing.T) {
 	}
 }
 
+type observationDiagnostics struct {
+	slog.Handler
+	failures chan error
+}
+
+func (d observationDiagnostics) Handle(_ context.Context, record slog.Record) error {
+	record.Attrs(func(attr slog.Attr) bool {
+		if err, ok := attr.Value.Any().(error); attr.Key == "error" && ok {
+			d.failures <- err
+		}
+		return true
+	})
+	return nil
+}
+
 func TestAuthoredWatcherMapsGlobalAndWorkspaceCascades(t *testing.T) {
 	home := t.TempDir()
 	knowledgeHome := t.TempDir()
@@ -106,7 +127,7 @@ func TestAuthoredWatcherMapsGlobalAndWorkspaceCascades(t *testing.T) {
 	if err := os.MkdirAll(workspace, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	watcher, err := NewAuthoredWatcher(knowledgeHome, home, skillsHome, nil)
+	watcher, err := NewAuthoredWatcher(knowledgeHome, home, skillsHome)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +178,7 @@ func TestAuthoredWatcherScopesSkillsToSelectedWorkspace(t *testing.T) {
 	if err := os.MkdirAll(workspace, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	watcher, err := NewAuthoredWatcher(t.TempDir(), t.TempDir(), t.TempDir(), nil)
+	watcher, err := NewAuthoredWatcher(t.TempDir(), t.TempDir(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}

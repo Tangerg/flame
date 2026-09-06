@@ -2,6 +2,9 @@ package persistence
 
 import (
 	"context"
+	"errors"
+	"io"
+	"log/slog"
 	"path/filepath"
 	"testing"
 	"time"
@@ -27,7 +30,7 @@ func TestObserveExternalChangesIgnoresLocalAndReportsOtherRuntimeCommit(t *testi
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	changed := make(chan struct{}, 4)
-	done, err := first.StartExternalChangeObserver(ctx, func() { changed <- struct{}{} }, func(err error) { t.Errorf("observer: %v", err) })
+	done, err := first.StartExternalChangeObserver(ctx, func() { changed <- struct{}{} })
 	if err != nil {
 		t.Fatalf("start external change observer: %v", err)
 	}
@@ -66,20 +69,33 @@ func TestExternalChangeObserverReportsDatabaseFailure(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	failures := make(chan error, 1)
-	done, err := bundle.StartExternalChangeObserver(ctx, func() { t.Error("failed read reported a commit") }, func(err error) { failures <- err })
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(observationDiagnostics{Handler: slog.NewTextHandler(io.Discard, nil), failures: failures}))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+	done, err := bundle.StartExternalChangeObserver(ctx, func() { t.Error("failed read reported a commit") })
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() {
+		cancel()
+		<-done
+	}()
 	if err := bundle.Close(); err != nil {
 		t.Fatal(err)
 	}
+	wantErr := bundle.db.PingContext(t.Context())
 	select {
 	case err := <-failures:
-		if err == nil {
-			t.Fatal("observer omitted failure cause")
+		if err == nil || !errors.Is(err, wantErr) {
+			t.Fatalf("observer error = %v, want database failure %v", err, wantErr)
 		}
 	case <-time.After(time.Second):
 		t.Fatal("observer silently ignored database failure")
+	}
+	select {
+	case err := <-failures:
+		t.Fatalf("observer repeated the same outage: %v", err)
+	case <-time.After(2 * externalChangePollInterval):
 	}
 	cancel()
 	select {
@@ -87,4 +103,19 @@ func TestExternalChangeObserverReportsDatabaseFailure(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("observer did not stop after a failure")
 	}
+}
+
+type observationDiagnostics struct {
+	slog.Handler
+	failures chan error
+}
+
+func (d observationDiagnostics) Handle(_ context.Context, record slog.Record) error {
+	record.Attrs(func(attr slog.Attr) bool {
+		if err, ok := attr.Value.Any().(error); attr.Key == "error" && ok {
+			d.failures <- err
+		}
+		return true
+	})
+	return nil
 }

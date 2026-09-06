@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -75,10 +76,11 @@ const externalChangePollInterval = 100 * time.Millisecond
 // Bundle's own connection, whose use cases already publish precise notices.
 // The baseline is read before this method returns, so a caller can expose its
 // Runtime without leaving an unobserved startup window. Cancel ctx and wait on
-// the returned channel to join the observer.
-func (b *Bundle) StartExternalChangeObserver(ctx context.Context, notify func(), report func(error)) (<-chan struct{}, error) {
-	if b == nil || b.db == nil || notify == nil || report == nil {
-		return nil, errors.New("persistence: external change observer requires a Bundle, notification, and error callback")
+// the returned channel to join the observer. Each outage produces one diagnostic;
+// retries resume notifications only after another successful database read.
+func (b *Bundle) StartExternalChangeObserver(ctx context.Context, notify func()) (<-chan struct{}, error) {
+	if b == nil || b.db == nil || notify == nil {
+		return nil, errors.New("persistence: external change observer requires a Bundle and notification callback")
 	}
 	var previous int64
 	if err := b.db.QueryRowContext(ctx, `PRAGMA data_version`).Scan(&previous); err != nil {
@@ -101,7 +103,7 @@ func (b *Bundle) StartExternalChangeObserver(ctx context.Context, notify func(),
 						return
 					}
 					if !failed {
-						report(fmt.Errorf("persistence: observe external changes: %w", err))
+						slog.ErrorContext(ctx, "persistence: observe external changes", "error", err)
 					}
 					failed = true
 					continue

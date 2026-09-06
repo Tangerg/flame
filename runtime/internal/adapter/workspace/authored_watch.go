@@ -3,6 +3,7 @@ package workspace
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -30,7 +31,6 @@ type AuthoredWatcher struct {
 	knowledgeHome string
 	hooksHome     string
 	skillsHome    string
-	report        func(error)
 }
 
 var _ workspaceapp.AuthoredResourceWatcher = AuthoredWatcher{}
@@ -39,7 +39,7 @@ var _ workspaceapp.AuthoredResourceWatcher = AuthoredWatcher{}
 // explicitly. They are intentionally distinct product locations. An empty
 // Skills root disables only global Skill observation; project Skills remain
 // observable from request scopes.
-func NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome string, report func(error)) (AuthoredWatcher, error) {
+func NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome string) (AuthoredWatcher, error) {
 	if knowledgeHome == "" || !filepath.IsAbs(knowledgeHome) {
 		return AuthoredWatcher{}, errors.New("workspace authored watcher: knowledge home must be absolute")
 	}
@@ -53,7 +53,6 @@ func NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome string, report func
 		knowledgeHome: filepath.Clean(knowledgeHome),
 		hooksHome:     filepath.Clean(hooksHome),
 		skillsHome:    cleanOptionalPath(skillsHome),
-		report:        report,
 	}, nil
 }
 
@@ -89,6 +88,9 @@ func (a AuthoredWatcher) Watch(
 			}
 		}
 	}
+	report := func(err error) {
+		slog.Error("workspace: authored resource observation failed", "error", err)
+	}
 	files, err := fileobservation.Watch(targets, func(keys []string) {
 		for _, key := range keys {
 			switch key {
@@ -98,7 +100,7 @@ func (a AuthoredWatcher) Watch(
 				notify(workspaceapp.AuthoredHooks)
 			}
 		}
-	}, a.report)
+	}, report)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +108,7 @@ func (a AuthoredWatcher) Watch(
 		if slices.Contains(keys, authoredSkillsKey) {
 			notify(workspaceapp.AuthoredSkills)
 		}
-	}, a.report)
+	}, report)
 	if err != nil {
 		return nil, errors.Join(err, files.Close())
 	}

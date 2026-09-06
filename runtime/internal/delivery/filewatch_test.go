@@ -141,7 +141,7 @@ func TestWorkspaceSubscribe_GlobalAuthoredFilesDoNotRequireWorkspaceWatch(t *tes
 	knowledgeHome := t.TempDir()
 	hooksHome := t.TempDir()
 	skillsHome := t.TempDir()
-	authored, err := workspaceadapter.NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome, nil)
+	authored, err := workspaceadapter.NewAuthoredWatcher(knowledgeHome, hooksHome, skillsHome)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,7 +254,7 @@ func TestWorkspaceSubscribe_SkillArchiveDoesNotDoublePublishFromTreeObservation(
 	if err != nil {
 		t.Fatal(err)
 	}
-	authored, err := workspaceadapter.NewAuthoredWatcher(t.TempDir(), t.TempDir(), skillsHome, nil)
+	authored, err := workspaceadapter.NewAuthoredWatcher(t.TempDir(), t.TempDir(), skillsHome)
 	if err != nil {
 		t.Fatal(err)
 	}

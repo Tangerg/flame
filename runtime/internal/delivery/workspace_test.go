@@ -81,7 +81,7 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 	if authoredWatcher == nil {
 		if filepath.IsAbs(cwd) {
 			var err error
-			authoredWatcher, err = workspaceadapter.NewAuthoredWatcher(cwd, cwd, cwd, nil)
+			authoredWatcher, err = workspaceadapter.NewAuthoredWatcher(cwd, cwd, cwd)
 			if err != nil {
 				panic(err)
 			}

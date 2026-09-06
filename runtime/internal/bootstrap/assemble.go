@@ -56,7 +56,7 @@ func assemble(ctx context.Context, cfg Config, lifetime *runtimeLifetime, buildT
 	if err != nil {
 		return nil, err
 	}
-	workspaceServices, err := buildWorkspaceComposition(lifetime.context, cfg, policy.invalidations.Publish)
+	workspaceServices, err := buildWorkspaceComposition(cfg, policy.invalidations.Publish)
 	if err != nil {
 		return nil, err
 	}
