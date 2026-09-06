@@ -80,28 +80,49 @@ func gitPathRelativeToWorkspace(dir, path string) (string, error) {
 
 // mergeBase resolves the merge-base of HEAD with the default branch.
 func mergeBase(ctx context.Context, dir string) (string, error) {
-	branch, err := defaultBranch(ctx, dir)
+	baseTip, err := defaultBranchTip(ctx, dir)
 	if err != nil {
 		return "", err
 	}
-	out, err := run(ctx, dir, "merge-base", "HEAD", branch)
+	head, err := runAllowingExitCode(ctx, dir, 1, "rev-parse", "--verify", "--quiet", "HEAD")
 	if err != nil {
+		return "", err
+	}
+	if len(bytes.TrimSpace(head)) == 0 {
 		return "", ErrNoBase
 	}
-	return strings.TrimSpace(string(out)), nil
+	// Status 1 means the histories have no common ancestor. Invalid objects,
+	// process failures, and cancellation retain their distinct error causes.
+	out, err := runAllowingExitCode(ctx, dir, 1, "merge-base", strings.TrimSpace(string(head)), baseTip)
+	if err != nil {
+		return "", err
+	}
+	base := strings.TrimSpace(string(out))
+	if base == "" {
+		return "", ErrNoBase
+	}
+	return base, nil
 }
 
-// defaultBranch resolves the base branch: origin/HEAD → main → master.
-func defaultBranch(ctx context.Context, dir string) (string, error) {
-	if out, err := run(ctx, dir, "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"); err == nil {
-		ref := strings.TrimSpace(string(out)) // refs/remotes/origin/main
-		if b, ok := strings.CutPrefix(ref, "refs/remotes/"); ok {
-			return b, nil
-		}
+// defaultBranchTip resolves the selected branch tip: origin/HEAD → main → master.
+// Full refs prevent Git's short-name lookup from selecting a shadowing tag or
+// local branch instead of the chosen base.
+func defaultBranchTip(ctx context.Context, dir string) (string, error) {
+	out, err := runAllowingExitCode(ctx, dir, 1, "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD")
+	if err != nil {
+		return "", err
 	}
-	for _, b := range []string{"main", "master"} {
-		if _, err := run(ctx, dir, "rev-parse", "--verify", "--quiet", b); err == nil {
-			return b, nil
+	refs := []string{"refs/heads/main", "refs/heads/master"}
+	if ref := strings.TrimSpace(string(out)); strings.HasPrefix(ref, "refs/remotes/") {
+		refs = []string{ref}
+	}
+	for _, ref := range refs {
+		out, err := runAllowingExitCode(ctx, dir, 1, "rev-parse", "--verify", "--quiet", ref)
+		if err != nil {
+			return "", err
+		}
+		if tip := strings.TrimSpace(string(out)); tip != "" {
+			return tip, nil
 		}
 	}
 	return "", ErrNoBase

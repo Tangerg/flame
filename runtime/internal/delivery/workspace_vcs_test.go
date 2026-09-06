@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace"
@@ -78,5 +79,21 @@ func TestWorkspaceGitWireMapping(t *testing.T) {
 	}
 	if len(diff.Files) != 1 || len(diff.Files[0].Rows) == 0 {
 		t.Fatalf("diff = %+v, want one file with rows", diff.Files)
+	}
+
+	gitCmd("checkout", "-b", "feature")
+	baseRef := filepath.Join(dir, ".git", "refs", "heads", "main")
+	baseCommit, err := os.ReadFile(baseRef)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(baseRef, []byte(strings.Repeat("1", len(strings.TrimSpace(string(baseCommit))))+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, format := range []protocol.DiffFormat{protocol.DiffFormatRaw, protocol.DiffFormatRows} {
+		_, err := s.GetWorkspaceDiff(t.Context(), protocol.GetDiffRequest{Mode: protocol.DiffModeBase, Format: format})
+		if err == nil || errors.Is(err, protocol.ErrInvalidParams) {
+			t.Fatalf("%s broken repository error = %v, want an operational failure", format, err)
+		}
 	}
 }
