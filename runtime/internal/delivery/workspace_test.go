@@ -129,13 +129,23 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 	if err != nil {
 		panic(err)
 	}
+	if cfg.Skills == nil {
+		cfg.Skills = fakeSkillCatalog{}
+	}
+	if cfg.Proposals == nil {
+		cfg.Proposals = &stubSkillProposals{}
+	}
+	skills, err := workspaceapp.NewSkills(roots, cfg.Skills, cfg.Curator, cfg.Proposals, authoredWatch, nil)
+	if err != nil {
+		panic(err)
+	}
 	return workspaceSurfaces{
 		roots:         roots,
 		files:         files,
 		vcs:           vcs,
 		discovery:     discovery,
 		knowledge:     knowledge,
-		skills:        workspaceapp.NewSkills(roots, cfg.Skills, cfg.Curator, cfg.Proposals, authoredWatch, nil),
+		skills:        skills,
 		hooks:         hooks,
 		watch:         watch,
 		authoredWatch: authoredWatch,
@@ -478,7 +488,7 @@ func TestWorkspaceGrep(t *testing.T) {
 type fakeSkillCatalog struct{ skills []workspaceapp.SkillSummary }
 
 func (f fakeSkillCatalog) List(context.Context, string) ([]workspaceapp.SkillSummary, error) {
-	return f.skills, nil
+	return slices.Clone(f.skills), nil
 }
 
 type fakeRecipeLister struct{ recipes []workspaceapp.Recipe }

@@ -261,14 +261,17 @@ func TestWorkspaceSubscribe_SkillArchiveDoesNotDoublePublishFromTreeObservation(
 	s := &Handler{}
 	applyWorkspaceSurfaces(s, surfaces)
 	s.workspaceHub = newWorkspaceHub()
-	s.workspaceSkills = workspaceapp.NewSkills(
-		surfaces.roots, nil, curator, nil, surfaces.authoredWatch,
+	s.workspaceSkills, err = workspaceapp.NewSkills(
+		surfaces.roots, fakeSkillCatalog{}, curator, &stubSkillProposals{}, surfaces.authoredWatch,
 		func(notice invalidation.Notice) {
 			if event, ok := runtimeEventFor(notice); ok {
 				s.workspaceHub.publish(event)
 			}
 		},
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

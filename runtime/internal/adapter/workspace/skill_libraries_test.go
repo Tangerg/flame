@@ -1,15 +1,48 @@
 package workspace_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
+
+func TestProjectSkillsRemainAvailableWithoutUserLibrary(t *testing.T) {
+	projectRoot := t.TempDir()
+	scope, err := workspaceapp.NewScope(projectRoot, "", workspaceadapter.Resolver{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	libraries := workspaceadapter.NewSkillLibraries(skillauthoring.NewStore("", skills.ScopeUser))
+	useCases, err := workspaceapp.NewSkills(scope, promptsource.NewWorkspaceSkills(""), nil, libraries, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := useCases.Managed(t.Context()); !errors.Is(err, workspaceapp.ErrSkillLibraryUnavailable) {
+		t.Fatalf("Managed = %v, want user-library curation disabled", err)
+	}
+	ref, err := useCases.SubmitProposal(t.Context(), projectRoot, proposal(skills.ScopeProject, "project-check"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pending, err := useCases.Proposals(t.Context(), projectRoot)
+	if err != nil || len(pending) != 1 || pending[0].Ref != ref {
+		t.Fatalf("Proposals = (%+v, %v), want submitted project proposal", pending, err)
+	}
+	if err := useCases.ApproveProposal(t.Context(), projectRoot, ref); err != nil {
+		t.Fatal(err)
+	}
+	visible, err := useCases.List(t.Context(), projectRoot)
+	if err != nil || len(visible) != 1 || visible[0].Name != ref.Name || visible[0].Scope != workspaceapp.SkillScopeProject {
+		t.Fatalf("List = (%+v, %v), want approved project skill", visible, err)
+	}
+}
 
 func TestSkillLibrariesRouteProposalsByScope(t *testing.T) {
 	userRoot := filepath.Join(t.TempDir(), "user-skills")

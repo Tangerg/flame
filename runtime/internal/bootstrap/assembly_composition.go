@@ -156,7 +156,7 @@ func buildWorkspaceComposition(
 		skillCurator = skillStore
 		idleSkillSweeper = skillStore
 	}
-	workspaceSkills := workspace.NewSkills(
+	workspaceSkills, err := workspace.NewSkills(
 		scope,
 		promptsource.NewWorkspaceSkills(cfg.SkillsUserDir),
 		skillCurator,
@@ -164,6 +164,9 @@ func buildWorkspaceComposition(
 		authoredWatch,
 		publish,
 	)
+	if err != nil {
+		return workspaceComposition{}, fmt.Errorf("runtime: build skills: %w", err)
+	}
 	memoryReview, err := agentmemoryapp.New(agentmemoryapp.Config{
 		Store: cfg.Stores.AgentMemory, Roots: scope, Invalidations: publish,
 	})

@@ -100,7 +100,7 @@ func (s *Handler) RestoreSkill(ctx context.Context, in protocol.SkillNameRequest
 func (s *Handler) ListSkillProposals(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.SkillProposal], error) {
 	proposals, err := s.workspaceSkills.Proposals(ctx, in.Workspace.Path)
 	if err != nil {
-		return nil, mapSkillProposalErr(err, "skills.proposals.list")
+		return nil, mapSkillProposalErr(err)
 	}
 	out := make([]protocol.SkillProposal, 0, len(proposals))
 	for _, proposal := range proposals {
@@ -132,10 +132,7 @@ func (s *Handler) ApproveSkillProposal(ctx context.Context, in protocol.SkillPro
 	if err != nil {
 		return err
 	}
-	return mapSkillProposalErr(
-		s.workspaceSkills.ApproveProposal(ctx, in.Workspace.Path, ref),
-		"skills.proposals.approve",
-	)
+	return mapSkillProposalErr(s.workspaceSkills.ApproveProposal(ctx, in.Workspace.Path, ref))
 }
 
 // RejectSkillProposal removes exactly the reviewed immutable proposal.
@@ -144,10 +141,7 @@ func (s *Handler) RejectSkillProposal(ctx context.Context, in protocol.SkillProp
 	if err != nil {
 		return err
 	}
-	return mapSkillProposalErr(
-		s.workspaceSkills.RejectProposal(ctx, in.Workspace.Path, ref),
-		"skills.proposals.reject",
-	)
+	return mapSkillProposalErr(s.workspaceSkills.RejectProposal(ctx, in.Workspace.Path, ref))
 }
 
 func skillProposalRef(in protocol.SkillProposalRef) (skills.ProposalRef, error) {
@@ -197,12 +191,10 @@ func presentSkillProposalOrigin(origin skills.ProposalOrigin) (protocol.SkillPro
 	}
 }
 
-func mapSkillProposalErr(err error, method string) error {
+func mapSkillProposalErr(err error) error {
 	switch {
 	case err == nil:
 		return nil
-	case errors.Is(err, workspace.ErrSkillProposalsUnavailable):
-		return capabilityNotNegotiated(method)
 	case errors.Is(err, skills.ErrConflict):
 		return fmt.Errorf("%w: a Skill with that name already exists", protocol.ErrInvalidParams)
 	case errors.Is(err, skills.ErrProposalChanged):

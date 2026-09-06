@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
@@ -24,7 +25,7 @@ func (s *stubSkillProposals) SubmitProposal(context.Context, string, skills.Prop
 
 func (s *stubSkillProposals) ListProposals(_ context.Context, root string) ([]skills.ProposalReview, error) {
 	s.root = root
-	return s.list, nil
+	return slices.Clone(s.list), nil
 }
 
 func (s *stubSkillProposals) ApproveProposal(_ context.Context, root string, ref skills.ProposalRef) ([]string, error) {
@@ -40,21 +41,6 @@ func (s *stubSkillProposals) RejectProposal(_ context.Context, root string, ref 
 	s.root = root
 	s.rejected = append(s.rejected, ref)
 	return []string{filepath.Join(root, "_proposals", ref.Name, "SKILL.md")}, nil
-}
-
-func TestSkillProposalHandlersDisabled(t *testing.T) {
-	s := newWorkspaceHandlerWithConfig("", workspaceTestConfig{})
-	query := protocol.WorkspaceQuery{}
-	if _, err := s.ListSkillProposals(t.Context(), query); !errors.Is(err, protocol.ErrCapabilityNotNeg) {
-		t.Fatalf("list err = %v, want capability_not_negotiated", err)
-	}
-	ref := wireProposalRef("", skills.NewProposalRef(skills.ScopeProject, "run-tests", []byte("content")))
-	if err := s.ApproveSkillProposal(t.Context(), ref); !errors.Is(err, protocol.ErrCapabilityNotNeg) {
-		t.Fatalf("approve err = %v, want capability_not_negotiated", err)
-	}
-	if err := s.RejectSkillProposal(t.Context(), ref); !errors.Is(err, protocol.ErrCapabilityNotNeg) {
-		t.Fatalf("reject err = %v, want capability_not_negotiated", err)
-	}
 }
 
 func TestSkillProposalListMapsCompleteReviewContent(t *testing.T) {
