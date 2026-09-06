@@ -43,6 +43,8 @@ The production process opens at most one concrete Runtime, fans its binding adap
 
 Management, catalog, and workspace queries transfer fresh Runtime results to their consumer after validation. The adapter does not clone them again. Synchronous calls borrow inputs; a component retaining mutable data acquires its own copy at that boundary, including immutable profiles and live event projections. Test bindings follow the same ownership contracts as Runtime.
 
+The connection shares its immutable request metadata with synchronous binding calls. Runtime takes the snapshot retained by each operation or stream. The process owner snapshots configuration directories when it is constructed; Runtime copies them when resolving its configuration.
+
 MCP management consumes Runtime server, tool, probe, and authorization values directly. Runtime also owns MCP error identities; the adapter applies the shared problem formatter without adding synonymous CLI errors. CLI retains form drafts, write intent, and acknowledgement checks; the terminal formats tool schemas when building the displayed document. An editor takes ownership of its fresh server query result.
 
 The binding adapter's immutable `Profile` retains the validated `protocol.DiscoverResponse` and client capability declaration. Runtime owns the wire constraints and feature-negotiation rule; CLI adds only its supported-surface checks and local command-replay policy. Readers receive owned protocol values. `runtime info --json` publishes these values under `discovery` and `clientCapabilities`, using the Runtime field names and limit representations directly.

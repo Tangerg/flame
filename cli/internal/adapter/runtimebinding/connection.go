@@ -2,6 +2,8 @@
 // the immutable capability profile negotiated for CLI consumers. Validated
 // management, catalog, and workspace results transfer ownership to the caller.
 // Retained profiles and live event projections acquire their own mutable values.
+// Calls borrow the connection's immutable request metadata; Runtime owns the
+// snapshot retained by an operation or stream.
 package runtimebinding
 
 import (
@@ -109,7 +111,7 @@ func openConnection(ctx context.Context, cfg Config) (*Connection, error) {
 		DataDirectory:        cfg.DataDirectory,
 		DefaultWorkspacePath: cfg.DefaultWorkspacePath,
 		UserHomePath:         cfg.UserHomePath,
-		ConfigDirectories:    slices.Clone(cfg.ConfigDirectories),
+		ConfigDirectories:    cfg.ConfigDirectories,
 	})
 	if err != nil {
 		return nil, classifyError(err)
@@ -169,7 +171,7 @@ func requestMeta(version string) protocol.RequestMeta {
 }
 
 func (r *Connection) callOptions() flameruntime.CallOptions {
-	return flameruntime.CallOptions{RequestMeta: cloneRequestMeta(r.meta)}
+	return flameruntime.CallOptions{RequestMeta: r.meta}
 }
 
 func (r *Connection) commandOptions() (flameruntime.CommandOptions, error) {
@@ -178,7 +180,7 @@ func (r *Connection) commandOptions() (flameruntime.CommandOptions, error) {
 		return flameruntime.CommandOptions{}, err
 	}
 	return flameruntime.CommandOptions{
-		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: key,
+		RequestMeta: r.meta, IdempotencyKey: key,
 		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
 	}, nil
 }
@@ -191,7 +193,7 @@ func (r *Connection) commandOptionsFor(commandID agent.CommandID) (flameruntime.
 		return flameruntime.CommandOptions{}, err
 	}
 	return flameruntime.CommandOptions{
-		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: string(commandID),
+		RequestMeta: r.meta, IdempotencyKey: string(commandID),
 		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
 	}, nil
 }
@@ -202,7 +204,7 @@ func (r *Connection) runCommandOptions() (flameruntime.RunCommandOptions, error)
 		return flameruntime.RunCommandOptions{}, err
 	}
 	return flameruntime.RunCommandOptions{
-		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: key,
+		RequestMeta: r.meta, IdempotencyKey: key,
 		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
 	}, nil
 }
@@ -215,7 +217,7 @@ func (r *Connection) runCommandOptionsFor(commandID agent.CommandID) (flamerunti
 		return flameruntime.RunCommandOptions{}, err
 	}
 	return flameruntime.RunCommandOptions{
-		RequestMeta: cloneRequestMeta(r.meta), IdempotencyKey: string(commandID),
+		RequestMeta: r.meta, IdempotencyKey: string(commandID),
 		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
 	}, nil
 }
@@ -233,22 +235,13 @@ func (r *Connection) subscriptionOptions(afterEventID string) (flameruntime.RunS
 		}
 	}
 	return flameruntime.RunSubscriptionOptions{
-		RequestMeta:  cloneRequestMeta(r.meta),
+		RequestMeta:  r.meta,
 		AfterEventID: afterEventID,
 	}, nil
 }
 
 func (r *Connection) changeSubscriptionOptions() flameruntime.SubscriptionOptions {
-	return flameruntime.SubscriptionOptions{RequestMeta: cloneRequestMeta(r.meta)}
-}
-
-func cloneRequestMeta(meta protocol.RequestMeta) protocol.RequestMeta {
-	cloned := meta
-	if meta.ClientInfo != nil {
-		cloned.ClientInfo = new(*meta.ClientInfo)
-	}
-	cloned.ClientCapabilities = cloneClientCapabilities(meta.ClientCapabilities)
-	return cloned
+	return flameruntime.SubscriptionOptions{RequestMeta: r.meta}
 }
 
 func newIdempotencyKey() (string, error) {
