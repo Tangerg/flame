@@ -3,8 +3,10 @@ package bootstrap
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"iter"
 	"reflect"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -41,8 +43,14 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, can
 	model := delegateRestartModel{chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 		calls.Add(1)
 		var hasResult, waitingChild, completedChild bool
+		var resultIDs []string
 		for _, message := range request.Messages {
 			hasResult = hasResult || message.Role == chat.RoleTool
+			for _, part := range message.Parts {
+				if part.ToolResult != nil {
+					resultIDs = append(resultIDs, part.ToolResult.ID)
+				}
+			}
 			if message.Role == chat.RoleUser {
 				waitingChild = waitingChild || strings.Contains(message.Text(), "waiting sibling A")
 				completedChild = completedChild || strings.Contains(message.Text(), "completed sibling B")
@@ -52,6 +60,10 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, can
 		finish := chat.FinishReasonStop
 		switch {
 		case hasResult:
+			if !waitingChild && !completedChild &&
+				!slices.Equal(resultIDs, []string{delegateCalls[0].ID, delegateCalls[1].ID}) {
+				return nil, fmt.Errorf("continued parent received tool results %v in place of both ordered siblings", resultIDs)
+			}
 		case waitingChild:
 			select {
 			case <-releaseA:

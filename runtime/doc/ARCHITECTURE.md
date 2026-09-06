@@ -113,6 +113,8 @@ Process-local authority follows the facts that justify it. Replacing, rolling ba
 
 Context compaction is decided only at an imminent main-model call from that call's complete request footprint: instructions, durable and transient messages, Tools, model options, provider limits, and provider-native counting when available. Protocol message count and Run completion are not pressure signals. The same path performs any durable rewrite and emits the observable boundary; post-Run maintenance only consumes the resulting fact.
 
+That boundary first commits completed Delegate results already present in the imminent request. Durable context comparison must observe those results even when background reconciliation has not run yet, including after canceling a waiting sibling and restoring the parent.
+
 Required compaction resolves its current lifecycle Hook policy before calling the summary model or rewriting history. A configuration or trust-read failure stops compaction and preserves its cause. Failures resolving observe-only waiting and terminal hooks are reported through Runtime diagnostics without changing the published lifecycle boundary. Hook command failures retain their separate non-blocking policy.
 
 Working-tree checkpoints are scoped by both Session and canonical workspace identity. A Session relocation may retain independent history for each workspace, but a Run checkpoint can only restore the exact workspace that produced it; the storage adapter verifies the complete persisted identity before any Git mutation.

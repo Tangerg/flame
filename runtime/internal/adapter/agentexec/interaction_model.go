@@ -187,9 +187,6 @@ func (o *observedInteractionModel) begin(
 			allowanceTurn.release()
 		}
 	}()
-	if _, err := o.session.reconcileCompletedDelegateChildren(ctx); err != nil {
-		return interaction.ModelInvocation{}, nil, "", nil, interaction.HostFailure(err)
-	}
 	member := o.session.executorMember(invocation.Relation())
 	if err := o.session.commitAppliedInputs(
 		ctx, member, invocation.Relation().ProcessID(), invocation.AppliedSteerSignalIDs(),

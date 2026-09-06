@@ -50,6 +50,11 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if i == nil || i.session == nil || request == nil || !invocation.Valid() {
 		return nil, errors.New("agentexec: model-context reduction requires an attributed Interaction request")
 	}
+	// Scope can already include completed Delegate results in this request.
+	// Commit their product projection before comparing against durable history.
+	if _, err := i.session.reconcileCompletedDelegateChildren(ctx); err != nil {
+		return nil, err
+	}
 	prefixMatches, err := sameInteractionMessages(
 		request.Messages[:min(len(request.Messages), len(i.instructions))],
 		i.instructions,
