@@ -2,7 +2,6 @@ package runtimebinding
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -30,7 +29,7 @@ type mcpBinding interface {
 func (r *Connection) Servers(ctx context.Context) ([]protocol.MCPServer, error) {
 	page, err := r.mcp.ListMCPServers(ctx, r.callOptions())
 	if err != nil {
-		return nil, classifyMCPError(err)
+		return nil, classifyError(err)
 	}
 	values, err := requireCompletePage("list MCP servers", page)
 	if err != nil {
@@ -71,7 +70,7 @@ func (r *Connection) CreateServer(ctx context.Context, candidate mcp.Candidate) 
 	}
 	result, err := r.mcp.CreateMCPServer(ctx, request, options)
 	if err != nil {
-		return protocol.MCPServer{}, classifyMCPError(err)
+		return protocol.MCPServer{}, classifyError(err)
 	}
 	if result == nil {
 		return protocol.MCPServer{}, runtimeContractViolation("create MCP server returned nil")
@@ -114,7 +113,7 @@ func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) 
 	}
 	result, err := r.mcp.UpdateMCPServer(ctx, request, options)
 	if err != nil {
-		return protocol.MCPServer{}, classifyMCPError(err)
+		return protocol.MCPServer{}, classifyError(err)
 	}
 	if result == nil {
 		return protocol.MCPServer{}, runtimeContractViolation("update MCP server returned nil")
@@ -146,7 +145,7 @@ func (r *Connection) mutateMCPServer(
 	if err != nil {
 		return err
 	}
-	return classifyMCPError(mutate(ctx, request, options))
+	return classifyError(mutate(ctx, request, options))
 }
 
 func (r *Connection) TestServer(ctx context.Context, candidate mcp.Candidate) (protocol.MCPTestResult, error) {
@@ -159,7 +158,7 @@ func (r *Connection) TestServer(ctx context.Context, candidate mcp.Candidate) (p
 	}
 	result, err := r.mcp.TestMCPServer(ctx, request, r.callOptions())
 	if err != nil {
-		return protocol.MCPTestResult{}, classifyMCPError(err)
+		return protocol.MCPTestResult{}, classifyError(err)
 	}
 	if result == nil {
 		return protocol.MCPTestResult{}, runtimeContractViolation("test MCP server returned nil")
@@ -180,7 +179,7 @@ func (r *Connection) Tools(ctx context.Context, server string) ([]protocol.MCPTo
 	}
 	page, err := r.mcp.ListMCPTools(ctx, request, r.callOptions())
 	if err != nil {
-		return nil, classifyMCPError(err)
+		return nil, classifyError(err)
 	}
 	values, err := requireCompletePage("list MCP tools", page)
 	if err != nil {
@@ -295,7 +294,7 @@ func projectMCPAuthorizationResult(
 	err error,
 ) (protocol.MCPAuthorizationAttempt, error) {
 	if err != nil {
-		return protocol.MCPAuthorizationAttempt{}, classifyMCPError(err)
+		return protocol.MCPAuthorizationAttempt{}, classifyError(err)
 	}
 	if result == nil {
 		return protocol.MCPAuthorizationAttempt{}, runtimeContractViolation("%s returned nil", operation)
@@ -327,24 +326,6 @@ func projectMCPAuthorizationResult(
 		)
 	}
 	return attempt, nil
-}
-
-func classifyMCPError(err error) error {
-	classified := classifyError(err)
-	for _, mapping := range []struct {
-		source error
-		target error
-	}{
-		{protocol.ErrMCPServerNotFound, mcp.ErrServerNotFound},
-		{protocol.ErrMCPServerAlreadyExists, mcp.ErrServerAlreadyExists},
-		{protocol.ErrMCPServerDisabled, mcp.ErrServerDisabled},
-		{protocol.ErrMCPAuthorizationAttemptNotFound, mcp.ErrAuthorizationAttemptNotFound},
-	} {
-		if errors.Is(classified, mapping.source) {
-			return fmt.Errorf("%w: %w", mapping.target, classified)
-		}
-	}
-	return classified
 }
 
 func clonePointer[T any](value *T) *T {

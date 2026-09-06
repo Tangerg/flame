@@ -20,6 +20,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	workspaceapi "github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
@@ -669,6 +670,51 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	}
 	if err := candidate.ValidateResult(servers[index]); err != nil || servers[index].Connection.HeadersMasked["X-Key"] != maskedHeader {
 		t.Fatalf("caller reuse changed the Runtime MCP server: %v", err)
+	}
+	for _, test := range []struct {
+		name   string
+		invoke func() error
+		want   error
+	}{
+		{
+			name: "duplicate server", want: protocol.ErrMCPServerAlreadyExists,
+			invoke: func() error {
+				_, err := runtime.CreateServer(t.Context(), candidate)
+				return err
+			},
+		},
+		{
+			name: "disabled server", want: protocol.ErrMCPServerDisabled,
+			invoke: func() error { return runtime.ReconnectServer(t.Context(), candidate.Name) },
+		},
+		{
+			name: "missing server", want: protocol.ErrMCPServerNotFound,
+			invoke: func() error { return runtime.DeleteServer(t.Context(), "missing-mcp-server") },
+		},
+		{
+			name: "missing authorization", want: protocol.ErrMCPAuthorizationAttemptNotFound,
+			invoke: func() error {
+				_, err := runtime.GetAuthorization(t.Context(), mcp.AuthorizationReference{
+					ID: adapterMCPAuthorizationAttemptID, Server: candidate.Name,
+				})
+				return err
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.invoke()
+			if !errors.Is(err, test.want) {
+				t.Fatalf("MCP error = %v, want %v", err, test.want)
+			}
+			problem, ok := errors.AsType[protocol.ProblemError](err)
+			if !ok {
+				t.Fatalf("MCP error lost its Runtime problem: %v", err)
+			}
+			data := problem.Problem()
+			if data.Type != test.want.Error() || err.Error() != failure.String(&data) {
+				t.Fatalf("MCP error = %q, want one projection of %+v", err, data)
+			}
+		})
 	}
 	clearAuthorization := mcp.AuthorizationChange{Kind: protocol.MCPSecretClear}
 	clearHeaders := mcp.HeadersChange{Kind: protocol.MCPSecretClear}

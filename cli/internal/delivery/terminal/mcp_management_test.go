@@ -231,9 +231,9 @@ func TestMCPAuthorizationObserverRecoversTransientReadsAndStopsOnAuthoritativeAb
 	}
 
 	service.authReads.Store(0)
-	service.authErrors <- mcp.ErrAuthorizationAttemptNotFound
-	if _, err := observer.observe(t.Context(), initial); !errors.Is(err, mcp.ErrAuthorizationAttemptNotFound) {
-		t.Fatalf("observe missing attempt = %v, want ErrAuthorizationAttemptNotFound", err)
+	service.authErrors <- protocol.ErrMCPAuthorizationAttemptNotFound
+	if _, err := observer.observe(t.Context(), initial); !errors.Is(err, protocol.ErrMCPAuthorizationAttemptNotFound) {
+		t.Fatalf("observe missing attempt = %v, want ErrMCPAuthorizationAttemptNotFound", err)
 	}
 	if reads := service.authReads.Load(); reads != 1 {
 		t.Fatalf("missing attempt reads = %d, want no retry", reads)

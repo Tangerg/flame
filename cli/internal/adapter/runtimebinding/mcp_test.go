@@ -291,7 +291,7 @@ func TestMCPAdapterRejectsUnorderedOrDuplicateToolCatalog(t *testing.T) {
 	}
 }
 
-func TestMCPAuthorizationAdapterClassifiesAbsenceAndEnforcesReferenceIdentity(t *testing.T) {
+func TestMCPAuthorizationAdapterPreservesAbsenceAndEnforcesReferenceIdentity(t *testing.T) {
 	stub := &mcpBindingStub{t: t, now: time.Unix(100, 0), authErr: protocol.ErrMCPAuthorizationAttemptNotFound}
 	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
 	if _, err := runtime.GetAuthorization(t.Context(), mcp.AuthorizationReference{ID: "auth_1", Server: "docs"}); err == nil || !strings.Contains(err.Error(), "attemptId") {
@@ -301,8 +301,8 @@ func TestMCPAuthorizationAdapterClassifiesAbsenceAndEnforcesReferenceIdentity(t 
 		t.Fatalf("invalid authorization reference reached Runtime: %v", stub.actions)
 	}
 	reference := mcp.AuthorizationReference{ID: adapterMCPAuthorizationAttemptID, Server: "docs"}
-	if _, err := runtime.GetAuthorization(t.Context(), reference); !errors.Is(err, mcp.ErrAuthorizationAttemptNotFound) {
-		t.Fatalf("missing authorization = %v, want ErrAuthorizationAttemptNotFound", err)
+	if _, err := runtime.GetAuthorization(t.Context(), reference); !errors.Is(err, protocol.ErrMCPAuthorizationAttemptNotFound) {
+		t.Fatalf("missing authorization = %v, want ErrMCPAuthorizationAttemptNotFound", err)
 	}
 
 	finished := stub.now.Add(time.Second)
@@ -506,23 +506,5 @@ func TestMCPAdapterRejectsMalformedReadResults(t *testing.T) {
 	stub.tools = []protocol.MCPTool{{Server: "docs", Name: "invalid tool"}}
 	if values, err := runtime.Tools(t.Context(), "docs"); values != nil || !errors.Is(err, agent.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "name") {
 		t.Fatalf("Tools = (%v, %v), want no values and a name contract violation", values, err)
-	}
-}
-
-func TestMCPAdapterClassifiesBoundedContextErrors(t *testing.T) {
-	tests := []struct {
-		source error
-		target error
-	}{
-		{protocol.ErrMCPServerNotFound, mcp.ErrServerNotFound},
-		{protocol.ErrMCPServerAlreadyExists, mcp.ErrServerAlreadyExists},
-		{protocol.ErrMCPServerDisabled, mcp.ErrServerDisabled},
-		{protocol.ErrMCPAuthorizationAttemptNotFound, mcp.ErrAuthorizationAttemptNotFound},
-	}
-	for _, test := range tests {
-		classified := classifyMCPError(test.source)
-		if !errors.Is(classified, test.source) || !errors.Is(classified, test.target) {
-			t.Errorf("classifyMCPError(%v) = %v, want source and bounded-context identities", test.source, classified)
-		}
 	}
 }

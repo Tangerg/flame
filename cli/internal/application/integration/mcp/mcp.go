@@ -12,17 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-var (
-	// ErrServerNotFound reports that the addressed configured server no longer exists.
-	ErrServerNotFound = errors.New("MCP server not found")
-	// ErrServerAlreadyExists reports a create conflict on the server identity.
-	ErrServerAlreadyExists = errors.New("MCP server already exists")
-	// ErrServerDisabled reports that a live operation requires an enabled server.
-	ErrServerDisabled = errors.New("MCP server is disabled")
-	// ErrAuthorizationAttemptNotFound reports an expired or unknown observation target.
-	ErrAuthorizationAttemptNotFound = errors.New("MCP authorization attempt not found")
-)
-
 // HandshakeTimeout is the CLI's MCP connection deadline policy. Its zero value
 // is explicitly unbounded; a bounded value can only be constructed with a
 // strictly positive number of seconds.
