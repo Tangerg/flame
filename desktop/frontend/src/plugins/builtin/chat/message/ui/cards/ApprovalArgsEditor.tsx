@@ -22,10 +22,11 @@ export function ApprovalArgsEditor({
         {!editing && (
           <TextButton
             type="button"
+            shape="link"
             tone="accent"
-            size="sm"
+            size="xs"
             onClick={() => onEditToggle(true)}
-            className="font-mono text-ui-xs font-semibold text-accent hover:underline"
+            className="font-semibold"
           >
             {t("approval.args.edit")}
           </TextButton>

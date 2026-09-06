@@ -80,6 +80,7 @@ export const radius = stylex.defineVars({
   field: "var(--field-radius)",
   segmented: "var(--segmented-radius)",
   segment: "var(--segment-radius)",
+  row: "var(--row-radius)",
   floatingPanel: "var(--floating-panel-radius)",
   floatingTip: "var(--floating-tip-radius)",
   composer: "var(--radius-composer)",

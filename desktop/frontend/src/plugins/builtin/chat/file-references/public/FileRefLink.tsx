@@ -13,8 +13,9 @@ export function FileRefLink({
   return (
     <TextButton
       type="button"
+      shape="link"
+      tone="accent"
       onClick={() => openWorkspaceFile(path, line)}
-      className="border-0 bg-transparent p-0 font-mono text-accent underline decoration-transparent transition-colors hover:decoration-current"
     >
       {line > 0 ? `${path}:${line}${column > 0 ? `:${column}` : ""}` : path}
     </TextButton>

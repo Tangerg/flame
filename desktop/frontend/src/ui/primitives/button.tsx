@@ -20,7 +20,10 @@ export function ButtonPrimitive({
       ref={ref}
       type={type}
       className={cn(
-        "border-0 bg-transparent font-sans text-left focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45",
+        // The browser's own button chrome, off in one place. `p-0` belongs with the rest of it:
+        // without it every atom resets the padding again, and a StyleX atom that does cannot be
+        // re-padded by its caller — the generated selector out-specifies any utility.
+        "border-0 bg-transparent p-0 font-sans text-left focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45",
         className,
       )}
     >

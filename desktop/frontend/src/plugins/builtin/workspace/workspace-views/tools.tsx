@@ -313,6 +313,7 @@ export function ToolsTab() {
         {(rows) => rows.map((s) => <McpRow key={s.id} server={s} />)}
       </DataView>
       <TextButton
+        shape="row"
         size="sm"
         onClick={openMcpSettings}
         className="px-[var(--density-column-gutter-wide)] pt-3.5 pb-4.5 leading-body"

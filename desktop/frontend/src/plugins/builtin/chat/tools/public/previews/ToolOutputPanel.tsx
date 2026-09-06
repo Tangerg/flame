@@ -91,7 +91,9 @@ export function ToolOutputPanel({
           )}
           <TextButton
             onClick={() => setExpanded((value) => !value)}
-            className="w-full justify-center py-1.5 text-ui-sm hover:bg-hover"
+            shape="row"
+            size="sm"
+            className="justify-center py-1.5"
           >
             <Icon name={expanded ? "chevron-up" : "chevron-down"} size="xs" />
             {expanded

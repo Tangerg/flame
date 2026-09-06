@@ -44,12 +44,12 @@ export function SessionList({
       {(hidden > 0 || showAll) && (
         <TextButton
           type="button"
-          size="sm"
           onClick={() => setShowAll((open) => !open)}
+          shape="row"
+          size="xs"
+          tone="faint"
           className={cn(
-            // TextButton has no height of its own, so at the smallest UI size its box is the
-            // text line — under the 24px target minimum for a row control.
-            "min-h-6 rounded-[var(--row-radius)] border-0 bg-transparent px-2 py-1 text-left text-ui-xs text-fg-faint transition-colors hover:bg-hover hover:text-fg",
+            "px-2 py-1",
             indented && "pl-[calc(0.5rem+var(--icon-sm)+var(--density-row-gap))]",
           )}
         >

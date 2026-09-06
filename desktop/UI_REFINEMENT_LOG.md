@@ -7012,3 +7012,111 @@ golden 零位移；17 项 `check:*` 全绿。
 `SessionList.tsx` 的注释已经自己说出了根因 ——
 "TextButton has no height of its own, so at the smallest UI size its box is the
 text line"。那是一个真实的缺档，够单独一轮。
+
+---
+
+## Round 122 — `TextButton`：调用点已经把根因写在注释里了
+
+### 计划（写在改代码之前）
+
+11 个调用点，**8 个带 `className`**。而其中一处的注释自己说出了根因：
+
+```
+// TextButton has no height of its own, so at the smallest UI size its box is the
+// text line — under the 24px target minimum for a row control.
+```
+
+这不是调用点想定制，是 atom 造成了一个可达性缺陷，每个调用点各自打补丁。
+
+### 证据：8 处 override 分成三类
+
+| 类 | 调用点 | 写的是什么 |
+| --- | --- | --- |
+| **行**（3） | `SessionList` | `min-h-6 rounded-[var(--row-radius)] px-2 py-1 text-ui-xs text-fg-faint hover:bg-hover hover:text-fg` |
+| | `ToolOutputPanel` | `w-full justify-center py-1.5 hover:bg-hover` |
+| | `tools.tsx` | `px-[var(--density-column-gutter-wide)] pt-3.5 pb-4.5 leading-body` |
+| **链接**（2） | `FileRefLink` | `font-mono text-accent underline decoration-transparent hover:decoration-current` |
+| | `ApprovalArgsEditor` | `font-mono text-ui-xs font-semibold text-accent hover:underline` |
+| **外边距**（3） | `PluginsPane` / `skillProposals` / `CompactionBlock` | `mt-1.5` / `mt-1.5` / `max-w-full self-start py-1.5` |
+
+前两类是两种没有名字的形状，第三类是调用方自己的事（保留）。
+
+### 改动
+
+`shape: "inline" | "row" | "link"`：
+
+- `inline`（默认）—— 今天的形状：句子里的一段会响应的文字。
+- `row` —— 列表里的一条控件：**自己有最小高度**（满足 24px 目标尺寸）、
+  行圆角、`bg-hover` 行状态、占满宽度。内距**不进** atom ——
+  三处各不相同（`py-1.5` / `px-2 py-1` / `pt-3.5 pb-4.5`），
+  而 StyleX 下 atom 不声明的属性调用点才能补。
+- `link` —— 等宽 + accent + hover 出现下划线。用 `FileRefLink` 的做法
+  （下划线常在但透明，hover 上色），因为它能跟着 `transition-colors` 过渡；
+  两者在未 hover 时渲染一致，所以不会动 golden。
+
+另补两档缺的：`tone: "faint"`（`SessionList` 要的）与 `size: "xs"`。
+
+### 验收标准
+
+8 处 override 减到 3 处（全是外边距/布局）；
+`row` 形状实测最小高度 ≥ 24px；golden 零位移；17 项 `check:*` 全绿。
+
+### 中途 11 张位移，根因不在 `TextButton`
+
+第一版跑完 11 张 golden 位移，`cascade` 守卫把话说得很准：
+
+```
+padding-top: `.py-1.5` asks (shorthand), `.x1717udv:not(#\#)` renders 0px
+padding-left: `.px-2`  asks (shorthand), `.x1717udv:not(#\#)` renders 0px
+```
+
+`TextButton` 的 base 里有 `padding: 0` —— 那是**浏览器按钮内距的重置**。
+Tailwind 下调用方能盖掉它，StyleX 下盖不掉，四个调用点的内距全部消失。
+
+看 `ButtonPrimitive`：
+
+```
+"border-0 bg-transparent font-sans text-left focus-visible:outline-none
+ disabled:cursor-not-allowed disabled:opacity-45"
+```
+
+它已经关掉了 border / background / font / text-align / focus / disabled ——
+**唯独漏了 padding**，于是每个 atom 各自补一遍那半个重置。
+
+治本在这一层：`p-0` 进 `ButtonPrimitive`。它在 primitive 里是普通 utility
+特异性，所以 StyleX atom 和 Tailwind 调用方都能自由覆盖；
+而 `TextButton` 的 base 顺带删掉了四条本就属于 primitive 的声明
+（`background` / `border` / `padding` / `text-align`）。改完 **650 / 650**。
+
+这也是设计系统三环该有的样子：**primitive 关掉浏览器 chrome，atom 穿令牌。**
+重置漏一半，漏掉的那一半就会散到每个 atom 里去。
+
+### 结果
+
+| | Before | After |
+| --- | --- | --- |
+| 带 `className` 的调用点 | 8 / 11 | 6 / 11，且**全是内距 / 外边距 / 字重** |
+| 形状 | 无 | `inline` / `row` / `link` |
+| `row` 的最小高度 | 无（调用点补 `min-h-6`） | `--control-height-sm`，实测 **26px** |
+| 色调 | `muted` / `accent` / `negative` | 加 `faint` |
+| 字号 | `sm` / `md` | 加 `xs` |
+
+### 上报，不擅自改
+
+`TextButton` 的 base 与 `ButtonPrimitive` 都声明 disabled 态，
+但透明度一个 `0.5` 一个 `0.45`。Tailwind 与 StyleX 下都是 `0.5` 赢，
+所以今天没有差异 —— 但这是**一个事实两个所有者**，且两个值不一样。
+收敛到 primitive 会让禁用态从 0.50 变到 0.45，是个视觉决定，记录待定。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650，零位移** |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+### 下一轮方向
+
+`icon-button`（59 个调用点、25 处 override），但其中多处依赖
+`group-hover/output:` 一类祖先态 —— 先把那批数出来，能迁的先迁。
