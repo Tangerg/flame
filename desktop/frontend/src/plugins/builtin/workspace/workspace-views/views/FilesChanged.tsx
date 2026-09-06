@@ -19,7 +19,10 @@ export const FilesChanged = memo(function FilesChanged({ view, onSelect }: Props
 
   return (
     <div className="px-1.5">
-      <SectionLabel trailing={<DiffStat added={view.totalAdded} removed={view.totalRemoved} />}>
+      <SectionLabel
+        className="px-2 py-2"
+        trailing={<DiffStat added={view.totalAdded} removed={view.totalRemoved} />}
+      >
         {t("files.changed", { count: view.fileCount })}
       </SectionLabel>
       {view.rows.map((row) => (

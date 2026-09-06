@@ -63,7 +63,7 @@ export function ProjectsSection() {
   return (
     <>
       <SectionLabel
-        className="pt-0"
+        className="px-2 pb-2 pt-0"
         trailing={
           <IconButton
             icon="plus"

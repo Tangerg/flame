@@ -312,7 +312,9 @@ export function AgentMemoryTab() {
             {pending.length > 0 && (
               <div className="flex flex-col">
                 <div className="px-4 pb-1">
-                  <SectionLabel>{t("agentMemory.section.pending")}</SectionLabel>
+                  <SectionLabel className="px-2 py-2">
+                    {t("agentMemory.section.pending")}
+                  </SectionLabel>
                 </div>
                 {pending.map((m) => (
                   <PendingRow key={m.id} item={m} />
@@ -322,7 +324,9 @@ export function AgentMemoryTab() {
             {active.length > 0 && (
               <div className="flex flex-col">
                 <div className="px-4 pb-1">
-                  <SectionLabel>{t("agentMemory.section.active")}</SectionLabel>
+                  <SectionLabel className="px-2 py-2">
+                    {t("agentMemory.section.active")}
+                  </SectionLabel>
                 </div>
                 {active.map((m) => (
                   <ActiveRow key={m.id} item={m} />

@@ -41,7 +41,7 @@ import {
 function SectionHead({ children, count }: { children: React.ReactNode; count?: number }) {
   return (
     <SectionLabel
-      className="px-[var(--density-column-gutter-wide)] pb-1"
+      className="px-[var(--density-column-gutter-wide)] pb-1 pt-2"
       trailing={count === undefined ? undefined : <span className="font-mono">{count}</span>}
     >
       {children}

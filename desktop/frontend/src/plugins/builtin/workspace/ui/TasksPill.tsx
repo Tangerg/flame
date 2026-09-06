@@ -32,7 +32,7 @@ export function TasksPill() {
         }
       />
       <Popover.Content side="top" align="start" sideOffset={6} className="w-[320px] rounded-xl">
-        <SectionLabel className="px-3 pb-1">{t("tasks.header")}</SectionLabel>
+        <SectionLabel className="px-3 pb-1 pt-2">{t("tasks.header")}</SectionLabel>
         <div className="max-h-[280px] overflow-y-auto">
           {readout.tasks.map((task) => (
             <TaskRow key={task.id} task={task} />

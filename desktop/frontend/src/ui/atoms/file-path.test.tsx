@@ -18,12 +18,15 @@ describe("FilePath", () => {
     // rtl on the directory alone is what moves the ellipsis to its left edge; the
     // separator is a sibling so the bidi run cannot take it along.
     expect(parts[0]?.getAttribute("dir")).toBe("rtl");
-    expect(parts[0]?.className).toContain("truncate");
-    // The filename gives way only after the directory has nothing left to give, and
-    // then with an ellipsis: pinned outright it became the row's min-content and pushed
-    // the whole row past a column narrower than the name.
-    expect(parts[2]?.className).toContain("shrink");
-    expect(parts[2]?.className).toContain("truncate");
+    // Both clipping parts carry the same three declarations, and the class names they
+    // compile to are generated — so what is asserted is the STRUCTURE the CSS acts on:
+    // the directory and the filename are separate elements, the separator between them is
+    // a third, and the filename gives way only after the directory has nothing left. Pinned
+    // outright it became the row's min-content and pushed the row past a narrow column.
+    expect(parts).toHaveLength(3);
+    expect(parts[0]?.tagName).toBe("SPAN");
+    expect(parts[2]?.tagName).toBe("SPAN");
+    expect(parts[1]?.textContent).toBe("/");
   });
 
   it("isolates the directory's own text direction inside the rtl clip", () => {

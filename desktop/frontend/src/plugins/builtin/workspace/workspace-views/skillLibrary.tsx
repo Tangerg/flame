@@ -59,7 +59,7 @@ function SkillSection({ label, skills }: { label: string; skills: ManagedSkill[]
   return (
     <div className="flex flex-col">
       <div className="px-4 pb-1">
-        <SectionLabel>{label}</SectionLabel>
+        <SectionLabel className="px-2 py-2">{label}</SectionLabel>
       </div>
       {skills.map((skill) => (
         <SkillRow key={skill.name} skill={skill} />

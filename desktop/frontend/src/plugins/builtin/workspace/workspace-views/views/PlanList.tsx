@@ -6,7 +6,7 @@ export function PlanList({ steps }: { steps: readonly PlanStep[] }) {
   const t = useT();
   return (
     <div className="px-[var(--density-column-gutter-wide)] py-3.5">
-      <SectionLabel className="px-0 pt-0">{t("plan.list.heading")}</SectionLabel>
+      <SectionLabel className="px-0 pb-2 pt-0">{t("plan.list.heading")}</SectionLabel>
       {steps.map((step) => (
         <StepRow key={step.id} state={step.status}>
           {step.text}

@@ -17,7 +17,7 @@ function RecentsSection() {
 
   return (
     <>
-      <SectionLabel className="pt-0">{t("workIndex.section.recent")}</SectionLabel>
+      <SectionLabel className="px-2 pb-2 pt-0">{t("workIndex.section.recent")}</SectionLabel>
       <SessionList
         sessions={workIndex.recents}
         actions={actions}
