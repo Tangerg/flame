@@ -249,7 +249,7 @@ func (r *reducer) approvalItem(prompt ApprovalPrompt, ref *openTool) (transcript
 	if ref != nil {
 		id, startedAt = ref.id, ref.occurredAt
 	} else {
-		identity, reused, identityErr := r.reuseOrCreateToolItem(prompt.CallID, prompt.ToolName, arguments)
+		identity, reused, identityErr := r.reuseOrCreateToolItem(prompt.CallID)
 		if identityErr != nil {
 			return transcript.Item{}, false, identityErr
 		}
@@ -311,7 +311,7 @@ func matchInterruptTools(open []*openTool, values []Interrupt) (map[*openTool]in
 				if ref.callID != callID {
 					continue
 				}
-			} else if ref.name != toolName || argumentIdentity(ref.arguments) != argumentIdentity(arguments) {
+			} else if ref.name != toolName || ref.arguments.Canonical() != arguments.Canonical() {
 				continue
 			}
 			matched[ref] = index

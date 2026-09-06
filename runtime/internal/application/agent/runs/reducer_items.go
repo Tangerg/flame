@@ -373,7 +373,7 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 	out = append(out, SegmentProgressed{Progress: Progress{
 		Step: &step, Activity: e.Activity,
 	}})
-	identity, reused, err := r.reuseOrCreateToolItem(e.CallID, e.ToolName, arguments)
+	identity, reused, err := r.reuseOrCreateToolItem(e.CallID)
 	if err != nil {
 		return nil, err
 	}

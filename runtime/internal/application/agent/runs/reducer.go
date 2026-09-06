@@ -206,10 +206,7 @@ func cloneResumeBinding(value *resumeBinding) *resumeBinding {
 	}
 	cloned := *value
 	cloned.callItems = maps.Clone(value.callItems)
-	cloned.toolItems = maps.Clone(value.toolItems)
-	cloned.byName = maps.Clone(value.byName)
 	cloned.drained = slices.Clone(value.drained)
-	cloned.consumed = maps.Clone(value.consumed)
 	return &cloned
 }
 
@@ -705,14 +702,14 @@ func (r *reducer) abandonUnconsumedResumeTools() ([]ProjectionEvent, error) {
 			occurredAt:       drained.ItemOccurredAt,
 			name:             drained.Name,
 			arguments:        arguments,
-			approvalDecision: r.resume.approvalDecision(drained.ItemID),
+			approvalDecision: r.resume.approvalDecision(drained.CallID),
 		}
 		completed, err := r.abandonUnstartedToolItem(ref)
 		if err != nil {
 			return nil, err
 		}
 		events = append(events, completed)
-		r.resume.consumeToolItem(drained.ItemID)
+		r.resume.consumeToolCall(drained.CallID)
 	}
 	return events, nil
 }

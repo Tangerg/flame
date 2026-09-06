@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -1058,6 +1059,16 @@ func TestCoordinatorResumeCommitsBeforeActivation(t *testing.T) {
 	spec.SegmentID = "seg_2"
 	pending := testApprovalPending("member_root", spec.CreatedAt)
 	spec.Continuation = mustTreeContinuation(t, pending)
+	request := pending.Interrupts[0]
+	if err := spec.Continuation.bindToolApprovalResolutions([]ToolApprovalResolution{{
+		Identity: transcript.ItemIdentity{
+			SessionID: pending.SessionID, RunID: request.RunID,
+			ItemID: request.ItemID, OccurredAt: request.ItemOccurredAt,
+		},
+		CallID: pending.Bindings[0].ToolCallID, Invocation: request.Approval.Tool, Decision: approval.Allow,
+	}}); err != nil {
+		t.Fatal(err)
+	}
 	activatedAfterOpening := false
 	spec.BeginExecution = func(context.Context) error {
 		_, activatedAfterOpening = effects.opening().Resume()

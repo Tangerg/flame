@@ -43,9 +43,8 @@ type ApprovalPrompt struct {
 
 // QuestionPrompt is the complete durable plan for a question-producing tool
 // call. CallID is filled by the execution ACL when the prompt crosses the Tool
-// boundary; ToolName and Arguments preserve the logical call for compatibility
-// with older checkpoints and non-execution tests. Fields are the client-facing
-// answer schema.
+// boundary; ToolName and Arguments preserve the semantic input for restoring
+// the question-producing handler. Fields are the client-facing answer schema.
 type QuestionPrompt struct {
 	CallID    string
 	ToolName  string

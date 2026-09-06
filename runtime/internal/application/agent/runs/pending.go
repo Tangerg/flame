@@ -64,7 +64,7 @@ type InterruptBinding struct {
 	InterruptItemID string
 	MemberID        string
 	RequestID       string
-	// ToolCallID is the provider call identity of an approval boundary. It is
+	// ToolCallID is the stable executor call identity of an approval boundary. It is
 	// intentionally private continuation data: edited arguments may change the
 	// invocation replayed after approval, so neither name nor arguments can own
 	// the resumed ToolCall identity. Questions leave it empty because their
@@ -111,7 +111,7 @@ type DrainedTool struct {
 	// SourceCallID is the provider ToolCall identity used by model-context results.
 	SourceCallID string
 	Name         string
-	// Arguments is the canonical JSON used for resume correlation.
+	// Arguments preserves the canonical invocation input across suspension.
 	Arguments string
 }
 

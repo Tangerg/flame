@@ -998,12 +998,22 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 	config := testReducerConfig()
 	config.SegmentID = "seg_2"
 	config.Continuation = testTreeContinuation(Pending{
-		RootRunID:  "run_1",
+		RootRunID: "run_1", SessionID: "ses_1",
 		Interrupts: firstInterrupted.Interrupts,
 		Continuations: []Continuation{{
 			RunID: "run_1", DrainedTools: slices.Clone(first.drained),
 		}},
 	})
+	request := firstInterrupted.Interrupts[0]
+	if err := config.Continuation.bindToolApprovalResolutions([]ToolApprovalResolution{{
+		Identity: transcript.ItemIdentity{
+			SessionID: "ses_1", RunID: request.RunID,
+			ItemID: request.ItemID, OccurredAt: request.ItemOccurredAt,
+		},
+		CallID: "call-1", Invocation: request.Approval.Tool, Decision: approval.Allow,
+	}}); err != nil {
+		t.Fatal(err)
+	}
 	resumed := newReducer(config)
 	mustOpen(t, resumed)
 	resumedStart := mustReduce(t, resumed, ToolCallStarted{
@@ -1503,35 +1513,42 @@ func TestReducerRejectsInvalidToolLifecycle(t *testing.T) {
 	})
 }
 
-func TestReducerUsesCanonicalArgumentsForResumeIdentity(t *testing.T) {
-	itemOccurredAt := time.Unix(1, 0).UTC()
-	config := testReducerConfig()
-	config.Continuation = testTreeContinuation(Pending{
-		RootRunID: "run_1", SessionID: "ses_1",
-		Continuations: []Continuation{{
-			RunID: "run_1",
-			DrainedTools: []DrainedTool{{
-				ItemID: "item_original", ItemOccurredAt: itemOccurredAt, CallID: "old_call", Name: "lookup",
-				Arguments: `{"b":2,"a":{"enabled":true}}`,
-			}},
-		}},
-	})
-	reducer := newReducer(config)
-	started := mustReduce(t, reducer, ToolCallStarted{
-		CallID: "new_call", ToolName: "lookup",
-		Arguments: "{\n  \"a\": {\"enabled\": true}, \"b\": 2\n}",
-	})
-	for _, reduction := range started {
-		if _, ok := reduction.Event.(ItemStarted); ok {
-			t.Fatal("resumed canonical Tool Item published a second lifecycle start")
-		}
-	}
-	if itemID, open := reducer.openToolItemID("new_call"); !open || itemID != "item_original" {
-		t.Fatalf("resumed open tool = %q/%t, want item_original", itemID, open)
-	}
-	completed := completedItem(t, mustReduce(t, reducer, ToolCallFinished{CallID: "new_call", Result: testToolResult(t, "ok")}))
-	if completed.ID() != "item_original" || !completed.OccurredAt().Equal(itemOccurredAt) {
-		t.Fatalf("resumed completed tool = %s/%s, want original identity and occurrence", completed.ID(), completed.OccurredAt())
+func TestReducerResumesOnlyTheSameToolCall(t *testing.T) {
+	for _, arguments := range []string{`{"value":1}`, `{"value":2}`} {
+		t.Run(arguments, func(t *testing.T) {
+			itemOccurredAt := time.Unix(1, 0).UTC()
+			config := testReducerConfig()
+			config.Continuation = testTreeContinuation(Pending{
+				RootRunID: "run_1", SessionID: "ses_1",
+				Continuations: []Continuation{{
+					RunID: "run_1",
+					DrainedTools: []DrainedTool{{
+						ItemID: "item_original", ItemOccurredAt: itemOccurredAt,
+						CallID: "call_original", Name: "lookup", Arguments: `{"value":1}`,
+					}},
+				}},
+			})
+			reducer := newReducer(config)
+			started := mustReduce(t, reducer, ToolCallStarted{
+				CallID: "call_new", ToolName: "lookup", Arguments: arguments,
+			})
+			if itemID := startedItemID(t, started); itemID == "item_original" {
+				t.Fatal("a new same-name Tool call reused the suspended Item")
+			}
+			mustReduce(t, reducer, ToolCallFinished{CallID: "call_new", Result: testToolResult(t, "new")})
+			mustReduce(t, reducer, ToolCallStarted{
+				CallID: "call_original", ToolName: "lookup", Arguments: `{"value":1}`,
+			})
+			if itemID, open := reducer.openToolItemID("call_original"); !open || itemID != "item_original" {
+				t.Fatalf("resumed Tool = %q/%t, want original suspended Item", itemID, open)
+			}
+			completed := completedItem(t, mustReduce(t, reducer, ToolCallFinished{
+				CallID: "call_original", Result: testToolResult(t, "original"),
+			}))
+			if completed.ID() != "item_original" || !completed.OccurredAt().Equal(itemOccurredAt) {
+				t.Fatalf("resumed completed Tool changed identity: %+v", completed.Snapshot())
+			}
+		})
 	}
 }
 
