@@ -541,11 +541,11 @@ func cloneOpenTool(current *openTool) *openTool {
 }
 
 func (r *reducer) drainTools() ([]ProjectionEvent, error) {
-	tools := r.tools.drain()
-	if len(tools) == 0 {
-		return nil, nil
+	out, err := r.abandonUnconsumedResumeTools()
+	if err != nil {
+		return nil, err
 	}
-	var out []ProjectionEvent
+	tools := r.tools.drain()
 	for _, ref := range tools {
 		if ref.end != nil {
 			completed, err := r.completeTool(ref, *ref.end)

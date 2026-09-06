@@ -616,11 +616,6 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 	if err != nil {
 		return reductionBatch{}, fmt.Errorf("%w: close streaming: %w", errReducerInvariant, err)
 	}
-	resumedTools, err := r.abandonUnconsumedResumeTools()
-	if err != nil {
-		return reductionBatch{}, fmt.Errorf("%w: abandon resumed tools: %w", errReducerInvariant, err)
-	}
-	out = append(out, resumedTools...)
 	openTools := r.tools.ordered()
 	drained, err := r.drainTools()
 	if err != nil {

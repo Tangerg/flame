@@ -54,12 +54,6 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		return corechat.ToolOutput{}, err
 	}
 	rawArguments := arguments.Canonical()
-	innerInvocation, err := o.binding.Prepare(corechat.ToolCall{
-		ID: call.ID, Name: call.Name, Arguments: rawArguments,
-	})
-	if err != nil {
-		return corechat.ToolOutput{}, fmt.Errorf("agentexec: prepare Tool %q invocation: %w", call.Name, err)
-	}
 	member := o.session.executorMember(invocation.Relation())
 	start := runs.ToolCallStarted{
 		CallID: callID, ModelCallSequence: invocation.ModelCallSequence(),
@@ -79,14 +73,13 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	ctx = toolset.WithToolAdvertiser(ctx, func(names ...string) error {
 		return interaction.AdvertiseTools(ctx, names...)
 	})
-	if err := attempt.beginExternalCall(); err != nil {
-		return corechat.ToolOutput{}, err
-	}
 	var mutatedPaths []string
 	ctx = toolset.WithMutationRecorder(ctx, func(paths []string) {
 		mutatedPaths = append(mutatedPaths, paths...)
 	})
-	output, callErr := o.binding.Call(ctx, innerInvocation)
+	output, callErr := o.invoke(ctx, attempt, corechat.ToolCall{
+		ID: call.ID, Name: call.Name, Arguments: rawArguments,
+	})
 	if attemptErr := attempt.indeterminateFailure(); attemptErr != nil {
 		return corechat.ToolOutput{}, attemptErr
 	}
@@ -137,6 +130,24 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	o.projectToolOutcome(projectionCtx, member, call.Name, callErr == nil)
 	o.runAfterToolUseHook(ctx, callID, call.Name, arguments, modelOutput, callErr)
 	return modelOutput, callErr
+}
+
+// invoke validates the effective arguments before entering the external Tool.
+// A rejected edit still settles the admitted call through the same result
+// projection as an execution failure, preserving its model-visible result.
+func (o *observedInteractionTool) invoke(
+	ctx context.Context,
+	attempt *dispatchAttempt,
+	call corechat.ToolCall,
+) (corechat.ToolOutput, error) {
+	bound, err := o.binding.Prepare(call)
+	if err != nil {
+		return corechat.ToolOutput{}, fmt.Errorf("agentexec: prepare Tool %q invocation: %w", call.Name, err)
+	}
+	if err := attempt.beginExternalCall(); err != nil {
+		return corechat.ToolOutput{}, err
+	}
+	return o.binding.Call(ctx, bound)
 }
 
 func (o *observedInteractionTool) attributedInvocation(

@@ -1535,47 +1535,61 @@ func TestReducerUsesCanonicalArgumentsForResumeIdentity(t *testing.T) {
 	}
 }
 
-func TestReducerTerminalSynthesisClosesUnrestartedResumeTool(t *testing.T) {
-	itemOccurredAt := time.Unix(1, 0).UTC()
-	config := testReducerConfig()
-	config.Continuation = testTreeContinuation(Pending{
-		RootRunID: "run_1", SessionID: "ses_1",
-		Continuations: []Continuation{{
-			RunID: "run_1",
-			DrainedTools: []DrainedTool{{
-				ItemID: "item_original", ItemOccurredAt: itemOccurredAt,
-				CallID: "old_call", SourceCallID: "provider_original",
-				Name: "shell", Arguments: `{"command":"pwd"}`,
-			}},
-		}},
-	})
-	reducer := newReducer(config)
-	if _, err := reducer.open(); err != nil {
-		t.Fatalf("open resumed segment: %v", err)
-	}
-
-	batch, err := reducer.synthesizeTerminal()
-	if err != nil {
-		t.Fatalf("synthesize terminal: %v", err)
-	}
-	var settled transcript.Item
-	for _, reduced := range batch.events {
-		if completed, ok := reduced.Event.(ItemCompleted); ok && completed.Item.ID() == "item_original" {
-			settled = completed.Item
+func TestReducerTerminalizationClosesUnrestartedResumeTool(t *testing.T) {
+	for _, reported := range []bool{false, true} {
+		name := "synthesized"
+		if reported {
+			name = "reported"
 		}
-	}
-	if settled.ID() == "" || settled.Status() != transcript.ItemIncomplete {
-		t.Fatalf("resumed tool terminal item = %+v, want incomplete item_original", settled.Snapshot())
-	}
-	if duration, known := settled.ExecutionDuration(); known {
-		t.Fatalf("unrestarted resume Tool fabricated execution duration %v", duration)
-	}
-	closure := committedConversationMessages(testReductions(batch))
-	if len(closure) != 1 || len(closure[0].Parts) != 1 ||
-		closure[0].Parts[0].ToolResult == nil ||
-		closure[0].Parts[0].ToolResult.ID != "provider_original" ||
-		!closure[0].Parts[0].ToolResult.IsError {
-		t.Fatalf("unrestarted resume Tool conversation closure = %#v", closure)
+		t.Run(name, func(t *testing.T) {
+			itemOccurredAt := time.Unix(1, 0).UTC()
+			config := testReducerConfig()
+			config.Continuation = testTreeContinuation(Pending{
+				RootRunID: "run_1", SessionID: "ses_1",
+				Continuations: []Continuation{{
+					RunID: "run_1",
+					DrainedTools: []DrainedTool{{
+						ItemID: "item_original", ItemOccurredAt: itemOccurredAt,
+						CallID: "old_call", SourceCallID: "provider_original",
+						Name: "shell", Arguments: `{"command":"pwd"}`,
+					}},
+				}},
+			})
+			reducer := newReducer(config)
+			if _, err := reducer.open(); err != nil {
+				t.Fatalf("open resumed segment: %v", err)
+			}
+
+			var batch reductionBatch
+			var err error
+			if reported {
+				batch, err = reducer.reduce(SegmentEnded{Reason: run.OutcomeCanceled})
+			} else {
+				batch, err = reducer.synthesizeTerminal()
+			}
+			if err != nil {
+				t.Fatalf("terminalize resumed segment: %v", err)
+			}
+			var settled transcript.Item
+			for _, reduced := range batch.events {
+				if completed, ok := reduced.Event.(ItemCompleted); ok && completed.Item.ID() == "item_original" {
+					settled = completed.Item
+				}
+			}
+			if settled.ID() == "" || settled.Status() != transcript.ItemIncomplete {
+				t.Fatalf("resumed tool terminal item = %+v, want incomplete item_original", settled.Snapshot())
+			}
+			if duration, known := settled.ExecutionDuration(); known {
+				t.Fatalf("unrestarted resume Tool fabricated execution duration %v", duration)
+			}
+			closure := committedConversationMessages(testReductions(batch))
+			if len(closure) != 1 || len(closure[0].Parts) != 1 ||
+				closure[0].Parts[0].ToolResult == nil ||
+				closure[0].Parts[0].ToolResult.ID != "provider_original" ||
+				!closure[0].Parts[0].ToolResult.IsError {
+				t.Fatalf("unrestarted resume Tool conversation closure = %#v", closure)
+			}
+		})
 	}
 }
 
