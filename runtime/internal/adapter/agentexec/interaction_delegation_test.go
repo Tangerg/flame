@@ -408,6 +408,63 @@ func TestInteractionExecutorProjectsConcurrentDelegateSiblingsExactlyOnce(t *tes
 	result.assertAllRunsCompleted(t)
 }
 
+func TestInteractionExecutorInternalDelegateWaitDoesNotFreezeRunningChild(t *testing.T) {
+	childStarted := make(chan struct{})
+	releaseChild := make(chan struct{})
+	release := sync.OnceFunc(func() { close(releaseChild) })
+	defer release()
+	model := chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+		switch {
+		case hasToolMessage(request.Messages):
+			return interactionUsageTextResponse("root: child done", 2, 1), nil
+		case userMessagesContain(request.Messages, "blocked child"):
+			close(childStarted)
+			select {
+			case <-releaseChild:
+				return interactionUsageTextResponse("child: done", 2, 1), nil
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+		default:
+			return interactionToolBatchResponse([]chat.ToolCall{{
+				ID: "delegate_blocked", Name: "delegate_task",
+				Arguments: `{"summary":"blocked child","instructions":"blocked child"}`,
+			}}, 2, 1), nil
+		}
+	})
+	fixture := startDelegateTree(t, model, "delegate work")
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	defer cancel()
+	select {
+	case <-childStarted:
+	case <-ctx.Done():
+		t.Fatal("delegated child did not start")
+	}
+	active := fixture.executor.sessions.snapshot()
+	if len(active) != 1 {
+		t.Fatalf("active executions = %d, want one root tree", len(active))
+	}
+	execution := active[0]
+	for execution.state.processHandle().Status() != agent.StatusWaiting {
+		select {
+		case <-ctx.Done():
+			t.Fatal("root did not wait for its running child")
+		case <-time.After(time.Millisecond):
+		}
+	}
+	// The child cannot finish until this check returns. Capturing the whole tree
+	// before identifying a Tool input wait would block on that same child.
+	tree, interruptions, found, err := execution.captureHumanInputBarrier(ctx)
+	if err != nil {
+		t.Fatalf("inspect internal Delegate wait: %v", err)
+	}
+	if found || tree.Valid() || len(interruptions) != 0 {
+		t.Fatalf("internal Delegate wait created a human-input barrier: %v", interruptions)
+	}
+	release()
+	fixture.finish(t, 2).assertAllRunsCompleted(t)
+}
+
 type orderedSiblingDelegateModel struct {
 	defaults  *chat.Options
 	bReturned chan struct{}
@@ -507,6 +564,18 @@ func runDelegateTree(
 	wantProcesses int,
 ) delegateTreeResult {
 	t.Helper()
+	return startDelegateTree(t, model, input).finish(t, wantProcesses)
+}
+
+type delegateTreeFixture struct {
+	executor    *InteractionExecutor
+	coordinator *runs.Coordinator
+	projection  *delegateProjection
+	events      <-chan []runs.Event
+}
+
+func startDelegateTree(t *testing.T, model chat.Model, input string) *delegateTreeFixture {
+	t.Helper()
 	client, err := chatclient.New(model, chatclient.Config{})
 	if err != nil {
 		t.Fatal(err)
@@ -557,14 +626,31 @@ func runDelegateTree(
 	if err != nil {
 		t.Fatal(err)
 	}
-	events := slices.Collect(started.Events)
-	coordinator.BeginShutdown()
-	if err := coordinator.AwaitShutdown(t.Context()); err != nil {
+	events := make(chan []runs.Event, 1)
+	go func() { events <- slices.Collect(started.Events) }()
+	t.Cleanup(func() {
+		coordinator.BeginShutdown()
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := coordinator.AwaitShutdown(ctx); err != nil {
+			t.Errorf("shutdown Delegate tree: %v", err)
+		}
+	})
+	return &delegateTreeFixture{
+		executor: executor, coordinator: coordinator, projection: projection, events: events,
+	}
+}
+
+func (d *delegateTreeFixture) finish(t *testing.T, wantProcesses int) delegateTreeResult {
+	t.Helper()
+	events := <-d.events
+	d.coordinator.BeginShutdown()
+	if err := d.coordinator.AwaitShutdown(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	projection.mu.Lock()
-	openings := slices.Clone(projection.openings)
-	projection.mu.Unlock()
+	d.projection.mu.Lock()
+	openings := slices.Clone(d.projection.openings)
+	d.projection.mu.Unlock()
 	if len(openings) != wantProcesses {
 		t.Fatalf("delegate tree openings = %d, want %d", len(openings), wantProcesses)
 	}

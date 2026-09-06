@@ -70,6 +70,12 @@ func (i *interactionSession) captureHumanInputBarrier(
 	if root == nil || root.Status() != agent.StatusWaiting {
 		return agent.TreeSnapshot{}, nil, false, errors.New("agentexec: Interaction root is not waiting")
 	}
+	// CaptureTree freezes dispatch while awaiting in-flight effects. An internal
+	// Delegate join can still need another child to start before an effect returns.
+	pending, err := i.hasPendingToolInput(ctx)
+	if err != nil || !pending {
+		return agent.TreeSnapshot{}, nil, false, err
+	}
 	for {
 		tree, err := i.engine.CaptureTree(ctx, root.Relation().RootID())
 		if err != nil {
@@ -103,6 +109,29 @@ func (i *interactionSession) captureHumanInputBarrier(
 		}
 		return tree, interruptions, true, nil
 	}
+}
+
+func (i *interactionSession) hasPendingToolInput(ctx context.Context) (bool, error) {
+	processes, err := i.managedProcesses()
+	if err != nil {
+		return false, err
+	}
+	for _, process := range processes {
+		if process.Status() != agent.StatusWaiting {
+			continue
+		}
+		_, found, err := interaction.PendingToolInputFromProcess(ctx, process)
+		if errors.Is(err, agent.ErrProcessFinished) {
+			continue
+		}
+		if err != nil {
+			return false, fmt.Errorf("inspect Interaction member %s input: %w", process.ID(), err)
+		}
+		if found {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (i *interactionSession) pendingInterruptions(
@@ -140,7 +169,7 @@ func (i *interactionSession) pendingInterruptions(
 	return interruptions, nil
 }
 
-func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.EffectID, error) {
+func (i *interactionSession) managedProcesses() ([]*agent.Process, error) {
 	i.state.mu.Lock()
 	root := i.state.process
 	children := make([]agent.ProcessID, 0, len(i.state.delegateChildren))
@@ -161,6 +190,14 @@ func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.Effe
 		if found {
 			processes = append(processes, process)
 		}
+	}
+	return processes, nil
+}
+
+func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.EffectID, error) {
+	processes, err := i.managedProcesses()
+	if err != nil {
+		return nil, err
 	}
 	ids := make([]agent.EffectID, 0)
 	for _, process := range processes {
