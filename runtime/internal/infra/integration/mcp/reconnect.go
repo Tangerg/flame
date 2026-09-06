@@ -8,7 +8,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/modelcontextprotocol/go-sdk/auth"
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/httporigin"
@@ -120,7 +119,7 @@ func reusableOAuth(current, candidate ServerConfig, handler auth.OAuthHandler) a
 // is configured. Blocks until the user completes the browser flow or
 // [oauthFlowTimeout] elapses. Returns
 // [ErrUnknownServer] for an unconfigured name. Serialized with the other dials.
-func (c *Connections) Authorize(ctx context.Context, name mcpserver.ServerName) error {
+func (c *Connections) Authorize(ctx context.Context, name mcpserver.ServerName) (err error) {
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
@@ -163,7 +162,7 @@ func (c *Connections) Authorize(ctx context.Context, name mcpserver.ServerName) 
 		c.failAttempt(attempt)
 		return errors.Join(closeErr, err)
 	}
-	defer flow.close(ctx)
+	defer func() { err = errors.Join(err, flow.close(ctx)) }()
 	handler, err := newOAuthHandler(flow, c.lifetime, c.oauthSessions, cfg.Name, cfg.Endpoint)
 	if err != nil {
 		c.failAttempt(attempt)
@@ -296,10 +295,4 @@ func (c *Connections) failAttempt(attempt *connectionAttempt) {
 		attempt.target.attempt = nil
 	}
 	c.mu.Unlock()
-}
-
-func recordCleanupError(ctx context.Context, err error) {
-	if err != nil {
-		trace.SpanFromContext(ctx).RecordError(err)
-	}
 }

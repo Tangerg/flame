@@ -46,7 +46,7 @@ func probe(ctx context.Context, cfg ServerConfig) (err error) {
 	}
 	defer func() {
 		if closeErr := errors.Join(session.Close(), cleanupSession()); closeErr != nil {
-			recordCleanupError(ctx, closeErr)
+			span.RecordError(closeErr)
 			err = errors.Join(err, closeErr)
 		}
 	}()

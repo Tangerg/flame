@@ -120,12 +120,10 @@ func (o *oauthFlow) fetch(ctx context.Context, args *auth.AuthorizationArgs) (*a
 	}
 }
 
-// close tears the loopback callback server down. The flow ctx is done by the
-// time close runs (the deferred cancel fired, or the flow timed out), so we
-// detach cancellation with WithoutCancel — which keeps the trace span/baggage
-// (full-link observability, unlike a bare context.Background) — and bound the
-// graceful Shutdown with its own 1s timeout.
-func (o *oauthFlow) close(ctx context.Context) {
+// close owns callback-server settlement even after the authorization is
+// canceled. Its independent deadline bounds graceful shutdown before a forced
+// close, and its caller owns reporting any cleanup failure.
+func (o *oauthFlow) close(ctx context.Context) error {
 	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), oauthServerShutdownTimeout)
 	defer cancel()
 	shutdownErr := o.server.Shutdown(shutdownCtx)
@@ -137,7 +135,10 @@ func (o *oauthFlow) close(ctx context.Context) {
 	if errors.Is(serveErr, http.ErrServerClosed) {
 		serveErr = nil
 	}
-	recordCleanupError(ctx, errors.Join(shutdownErr, forceErr, serveErr))
+	if err := errors.Join(shutdownErr, forceErr, serveErr); err != nil {
+		return fmt.Errorf("mcp oauth: close callback server: %w", err)
+	}
+	return nil
 }
 
 // newOAuthHandler builds the interactive authorization-code handler for one
