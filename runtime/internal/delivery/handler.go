@@ -100,8 +100,7 @@ type Handler struct {
 // shape both capability discovery and delivery gates. Construction derives it
 // once; handlers do not rediscover availability by attempting a call.
 type featureAvailability struct {
-	git       bool
-	fileWatch bool
+	git bool
 }
 
 // beginShutdown rejects new runtime subscriptions. Endpoint is its sole caller.
@@ -185,8 +184,7 @@ type contractFacts struct {
 func deriveContractFacts(cfg HandlerConfig) (contractFacts, error) {
 	facts := contractFacts{
 		features: featureAvailability{
-			git:       cfg.GitAvailable,
-			fileWatch: cfg.WorkspaceWatch.Available(),
+			git: cfg.GitAvailable,
 		},
 		replay: replayLimitsFrom(cfg.Runs.ReplayRetention()),
 		mcpAuthorizationAttempts: protocol.MCPAuthorizationAttemptLimits{
@@ -328,7 +326,7 @@ func capabilitiesFor(
 			protocol.FeatureKnowledge: true,
 			protocol.FeatureSkills:    true,
 			protocol.FeatureGit:       features.git,
-			protocol.FeatureFileWatch: features.fileWatch,
+			protocol.FeatureFileWatch: true,
 			protocol.FeatureLSP:       true,
 
 			protocol.FeatureSessionExport: true,

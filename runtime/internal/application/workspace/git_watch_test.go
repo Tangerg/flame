@@ -4,31 +4,14 @@ import (
 	"io"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 )
-
-type callbackPaths struct {
-	onFirst func()
-	calls   int
-}
-
-func (c *callbackPaths) ResolveExistingDir(path string) (string, error) {
-	c.calls++
-	if c.calls == 1 && c.onFirst != nil {
-		c.onFirst()
-	}
-	return path, nil
-}
-
-func (*callbackPaths) ResolveInRoot(_, path string) (string, error) { return path, nil }
-func (*callbackPaths) ResolveExistingInRoot(_, path string) (string, error) {
-	return path, nil
-}
 
 type recordingGitWatcher struct{ roots []string }
 
 func (r *recordingGitWatcher) Watch(roots []string, _ func()) (io.Closer, error) {
-	r.roots = roots
+	r.roots = slices.Clone(roots)
 	return nopCloser{}, nil
 }
 
@@ -36,20 +19,42 @@ type nopCloser struct{}
 
 func (nopCloser) Close() error { return nil }
 
-func TestGitWatchOwnsCWDsBeforePathResolution(t *testing.T) {
+func TestNewGitWatchRequiresCompleteDependencies(t *testing.T) {
+	scope := newScope(t, "", "", testPaths{})
+	for _, test := range []struct {
+		name    string
+		scope   *Scope
+		watcher GitStateWatcher
+	}{
+		{name: "scope", watcher: &recordingGitWatcher{}},
+		{name: "watcher", scope: scope},
+		{name: "typed nil watcher", scope: scope, watcher: (*recordingGitWatcher)(nil)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if watch, err := NewGitWatch(test.scope, test.watcher); err == nil || watch != nil {
+				t.Fatalf("NewGitWatch = (%v, %v), want incomplete construction rejected", watch, err)
+			}
+		})
+	}
+}
+
+func TestGitWatchResolvesAndOwnsObservationRoots(t *testing.T) {
 	root := t.TempDir()
-	cwds := []string{filepath.Join(root, "first"), filepath.Join(root, "second")}
-	paths := &callbackPaths{onFirst: func() { cwds[1] = filepath.Join(root, "changed") }}
+	cwds := []string{"", root, filepath.Join(root, "second")}
 	watcher := &recordingGitWatcher{}
-	useCases := NewGitWatch(newScope(t, root, root, paths), watcher)
+	useCases, err := NewGitWatch(newScope(t, root, root, testPaths{}), watcher)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	observation, err := useCases.Watch(cwds, func() {})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = observation.Close() }()
-	want := []string{filepath.Join(root, "first"), filepath.Join(root, "second")}
+	cwds[2] = filepath.Join(root, "changed")
+	want := []string{root, filepath.Join(root, "second")}
 	if !reflect.DeepEqual(watcher.roots, want) {
-		t.Fatalf("Git roots after resolver changed caller input = %v, want %v", watcher.roots, want)
+		t.Fatalf("Git roots after caller reused input = %v, want %v", watcher.roots, want)
 	}
 }

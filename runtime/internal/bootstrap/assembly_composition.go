@@ -135,7 +135,10 @@ func buildWorkspaceComposition(
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build authored resource watcher: %w", err)
 	}
-	authoredWatch := workspace.NewAuthoredWatch(scope, workspaceadapter.Resolver{}, authoredWatcher)
+	authoredWatch, err := workspace.NewAuthoredWatch(scope, workspaceadapter.Resolver{}, authoredWatcher)
+	if err != nil {
+		return workspaceComposition{}, fmt.Errorf("runtime: build authored resource observation: %w", err)
+	}
 	knowledge, err := workspace.NewKnowledge(
 		scope,
 		workspaceadapter.Resolver{},

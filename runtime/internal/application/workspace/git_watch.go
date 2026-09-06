@@ -3,14 +3,11 @@ package workspace
 import (
 	"errors"
 	"io"
-	"slices"
 )
 
-// ErrFileWatchUnavailable reports that Git-state observation is unavailable.
-var ErrFileWatchUnavailable = errors.New("workspace: file watch unavailable")
-
 // GitStateWatcher owns filesystem notification, debounce, repository layout,
-// and goroutine lifetime for Git metadata changes.
+// and goroutine lifetime for Git metadata changes. Watch borrows roots for the
+// call; the implementation owns any retained observation configuration.
 type GitStateWatcher interface {
 	Watch(roots []string, notify func()) (io.Closer, error)
 }
@@ -21,19 +18,18 @@ type GitWatch struct {
 	watcher GitStateWatcher
 }
 
-func NewGitWatch(scope *Scope, watcher GitStateWatcher) *GitWatch {
-	return &GitWatch{scope: scope, watcher: watcher}
+func NewGitWatch(scope *Scope, watcher GitStateWatcher) (*GitWatch, error) {
+	if scope == nil {
+		return nil, errors.New("workspace: git watch scope is required")
+	}
+	if missingDependency(watcher) {
+		return nil, errors.New("workspace: git state watcher is required")
+	}
+	return &GitWatch{scope: scope, watcher: watcher}, nil
 }
 
-// Available reports whether Git-state observation is wired.
-func (g *GitWatch) Available() bool { return g != nil && g.watcher != nil }
-
-// Watch canonicalizes and deduplicates workspace roots before watching.
+// Watch borrows cwds while canonicalizing and deduplicating workspace roots.
 func (g *GitWatch) Watch(cwds []string, notify func()) (io.Closer, error) {
-	if g.watcher == nil {
-		return nil, ErrFileWatchUnavailable
-	}
-	cwds = slices.Clone(cwds)
 	seen := make(map[string]struct{}, len(cwds))
 	roots := make([]string, 0, len(cwds))
 	for _, cwd := range cwds {

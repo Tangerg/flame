@@ -508,7 +508,7 @@ func (s *Handler) SubscribeRuntime(ctx context.Context, request protocol.Runtime
 		if err != nil {
 			unregister()
 			close(events)
-			return nil, nil, mapWorkspaceWatchError(err)
+			return nil, nil, wireWorkspaceError(fmt.Errorf("start git watcher: %w", err))
 		}
 	}
 	var authoredWatcher io.Closer
@@ -668,15 +668,4 @@ func validateWorkspaceWatches(watches []protocol.WatchSpec, topics map[protocol.
 		watchIDs = append(watchIDs, spec.WatchID)
 	}
 	return workingDirectories, watchIDs, nil
-}
-
-// mapWorkspaceWatchError reports an unavailable watcher as the precise missing
-// capability and delegates all other workspace failures to the shared mapper.
-func mapWorkspaceWatchError(err error) error {
-	if errors.Is(err, workspaceapp.ErrFileWatchUnavailable) {
-		return NewCapabilityGapError(protocol.CapabilityRequirement{
-			Type: protocol.RequirementFeature, Name: protocol.FeatureFileWatch,
-		})
-	}
-	return wireWorkspaceError(fmt.Errorf("start git watcher: %w", err))
 }

@@ -3,6 +3,7 @@ package workspace
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 )
@@ -20,7 +21,15 @@ type VCS struct {
 	git   GitReader
 }
 
-func NewVCS(scope *Scope, git GitReader) *VCS { return &VCS{scope: scope, git: git} }
+func NewVCS(scope *Scope, git GitReader) (*VCS, error) {
+	if scope == nil {
+		return nil, errors.New("workspace: vcs scope is required")
+	}
+	if missingDependency(git) {
+		return nil, errors.New("workspace: git reader is required")
+	}
+	return &VCS{scope: scope, git: git}, nil
+}
 
 // FileStatus is the application vocabulary for a working-tree change.
 type FileStatus string
@@ -80,7 +89,8 @@ type StructuredDiffResult struct {
 }
 
 // GitReader is the application-owned port for working-tree status and diff
-// reads. Its error contract uses this package's VCS sentinels.
+// reads. Its error contract uses this package's VCS sentinels. Results transfer
+// ownership to the caller, including the rows within structured diffs.
 type GitReader interface {
 	Changes(ctx context.Context, root string, maxChanges int) ([]FileChange, error)
 	StructuredDiff(ctx context.Context, root, path string, base bool, maxFiles, maxRows, maxBytes int) (StructuredDiffResult, error)
@@ -142,9 +152,6 @@ func (v *VCS) Changes(ctx context.Context, cwd string) ([]FileChange, error) {
 	if err != nil {
 		return nil, err
 	}
-	if v.git == nil {
-		return nil, ErrVCSUnavailable
-	}
 	changes, err := v.git.Changes(ctx, root, MaxWorkspaceChanges)
 	if err != nil {
 		return nil, err
@@ -152,7 +159,6 @@ func (v *VCS) Changes(ctx context.Context, cwd string) ([]FileChange, error) {
 	if len(changes) > MaxWorkspaceChanges {
 		return nil, fmt.Errorf("%w: more than %d workspace changes", ErrVCSResultTooLarge, MaxWorkspaceChanges)
 	}
-	changes = slices.Clone(changes)
 	paths := make(map[string]struct{}, len(changes))
 	for _, change := range changes {
 		if _, duplicate := paths[change.Path]; duplicate {
@@ -177,9 +183,6 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 		if err != nil {
 			return Diff{}, err
 		}
-	}
-	if v.git == nil {
-		return Diff{}, ErrVCSUnavailable
 	}
 	if input.Raw {
 		patch, rawDiffErr := v.git.RawDiff(ctx, root, path, input.Base, MaxWorkspaceDiffBytes)

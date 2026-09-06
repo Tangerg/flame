@@ -342,17 +342,23 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: build workspace files: %w", err)
 	}
-	workspaceVCS := workspace.NewVCS(workspaceServices.scope, workspaceadapter.VCS{})
+	workspaceVCS, err := workspace.NewVCS(workspaceServices.scope, workspaceadapter.VCS{})
+	if err != nil {
+		return nil, fmt.Errorf("runtime: build workspace vcs: %w", err)
+	}
 	workspaceDiscovery, err := workspace.NewDiscovery(
 		workspaceServices.scope, sessionCoordinator, promptsource.AgentDocs{}, promptsource.NewWorkspaceRecipes(cfg.RecipesGlobalDir),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: build workspace discovery: %w", err)
 	}
-	workspaceWatch := workspace.NewGitWatch(
+	workspaceWatch, err := workspace.NewGitWatch(
 		workspaceServices.scope,
 		workspaceadapter.NewGitWatcher(lifetime.context),
 	)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: build workspace git watch: %w", err)
+	}
 	queries, err := sessions.NewQueryCoordinator(sessions.QueryDependencies{
 		Transcript: cfg.Stores.Transcript,
 		Interrupts: cfg.Stores.Interrupts,

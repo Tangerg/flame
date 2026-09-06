@@ -97,7 +97,7 @@ func TestSkillMutationsPublishOnlyCommittedFilesystemFacts(t *testing.T) {
 	curator := &fakeSkillCurator{}
 	proposals := &fakeSkillProposals{}
 	watcher := &recordingAuthoredWatcher{}
-	observations := NewAuthoredWatch(newScope(t, "", "", testPaths{}), staticWorkspaceInspector{
+	observations := newAuthoredWatch(t, newScope(t, "", "", testPaths{}), staticWorkspaceInspector{
 		resolved: Resolved{Path: "/repo", ProjectRoot: "/repo"},
 	}, watcher)
 	observation, err := observations.Watch([]string{"/repo"}, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {})

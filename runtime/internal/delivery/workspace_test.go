@@ -99,7 +99,10 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 	if err != nil {
 		panic(err)
 	}
-	authoredWatch := workspaceapp.NewAuthoredWatch(roots, workspaceadapter.Resolver{}, authoredWatcher)
+	authoredWatch, err := workspaceapp.NewAuthoredWatch(roots, workspaceadapter.Resolver{}, authoredWatcher)
+	if err != nil {
+		panic(err)
+	}
 	if cfg.Knowledge == nil {
 		cfg.Knowledge = &fakeKnowledgeStore{}
 	}
@@ -118,15 +121,23 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 	if err != nil {
 		panic(err)
 	}
+	vcs, err := workspaceapp.NewVCS(roots, workspaceadapter.VCS{})
+	if err != nil {
+		panic(err)
+	}
+	watch, err := workspaceapp.NewGitWatch(roots, watcher)
+	if err != nil {
+		panic(err)
+	}
 	return workspaceSurfaces{
 		roots:         roots,
 		files:         files,
-		vcs:           workspaceapp.NewVCS(roots, workspaceadapter.VCS{}),
+		vcs:           vcs,
 		discovery:     discovery,
 		knowledge:     knowledge,
 		skills:        workspaceapp.NewSkills(roots, cfg.Skills, cfg.Curator, cfg.Proposals, authoredWatch, nil),
 		hooks:         hooks,
-		watch:         workspaceapp.NewGitWatch(roots, watcher),
+		watch:         watch,
 		authoredWatch: authoredWatch,
 	}
 }

@@ -1,7 +1,6 @@
 package workspace
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -9,10 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 )
-
-// ErrAuthoredWatchUnavailable reports that externally-authored workspace
-// resource observation was not composed into this Runtime.
-var ErrAuthoredWatchUnavailable = errors.New("workspace: authored resource watch unavailable")
 
 // AuthoredResource is the closed set of file-backed product resources whose
 // query projections can be changed by another process.
@@ -48,7 +43,8 @@ type AuthoredScope struct {
 
 // AuthoredResourceWatcher adapts external filesystem state into semantic
 // resource changes. Implementations own filenames, cascades, notification
-// mechanisms, and symlink identity.
+// mechanisms, and symlink identity. Watch borrows scopes and resources for the
+// call; implementations own any retained observation configuration.
 type AuthoredResourceWatcher interface {
 	Watch(scopes []AuthoredScope, resources []AuthoredResource, notify func(AuthoredResource)) (AuthoredObservation, error)
 }
@@ -62,6 +58,7 @@ type AuthoredChange struct {
 
 // AuthoredObservation owns one live semantic resource observation. Accept
 // records exact members after another authoritative path announced the change.
+// Accept borrows changes for the call and does not mutate them.
 type AuthoredObservation interface {
 	io.Closer
 	Accept(changes []AuthoredChange) error
@@ -77,23 +74,29 @@ type AuthoredWatch struct {
 	active     map[*managedAuthoredObservation]struct{}
 }
 
-func NewAuthoredWatch(scope *Scope, workspaces KnowledgeWorkspaceInspector, watcher AuthoredResourceWatcher) *AuthoredWatch {
+func NewAuthoredWatch(scope *Scope, workspaces KnowledgeWorkspaceInspector, watcher AuthoredResourceWatcher) (*AuthoredWatch, error) {
+	for _, dependency := range []struct {
+		name  string
+		value any
+	}{
+		{name: "scope", value: scope},
+		{name: "workspace inspector", value: workspaces},
+		{name: "resource watcher", value: watcher},
+	} {
+		if missingDependency(dependency.value) {
+			return nil, fmt.Errorf("workspace: authored watch %s is required", dependency.name)
+		}
+	}
 	return &AuthoredWatch{
 		scope: scope, workspaces: workspaces, watcher: watcher,
 		active: make(map[*managedAuthoredObservation]struct{}),
-	}
+	}, nil
 }
 
 // Watch starts one caller-owned observation. An empty cwd list still observes
-// the implementation's global resource scopes.
+// the implementation's global resource scopes. cwds and resources are borrowed
+// for the call.
 func (a *AuthoredWatch) Watch(cwds []string, resources []AuthoredResource, notify func(AuthoredResource)) (AuthoredObservation, error) {
-	if a == nil || a.watcher == nil {
-		return nil, ErrAuthoredWatchUnavailable
-	}
-	if a.scope == nil || a.workspaces == nil {
-		return nil, ErrCWDUnavailable
-	}
-	cwds = slices.Clone(cwds)
 	resources = distinctAuthoredResources(resources)
 	if len(resources) == 0 {
 		return nopAuthoredWatch{}, nil
@@ -152,7 +155,7 @@ func (a *AuthoredWatch) Accept(change AuthoredChange) {
 	}
 	a.mu.Unlock()
 	for _, observation := range active {
-		_ = observation.inner.Accept([]AuthoredChange{change.clone()})
+		_ = observation.inner.Accept([]AuthoredChange{change})
 	}
 }
 
@@ -163,11 +166,7 @@ type managedAuthoredObservation struct {
 }
 
 func (m *managedAuthoredObservation) Accept(changes []AuthoredChange) error {
-	owned := make([]AuthoredChange, len(changes))
-	for index, change := range changes {
-		owned[index] = change.clone()
-	}
-	return m.inner.Accept(owned)
+	return m.inner.Accept(changes)
 }
 
 func (m *managedAuthoredObservation) Close() error {
@@ -189,11 +188,6 @@ func distinctAuthoredResources(resources []AuthoredResource) []AuthoredResource 
 		}
 	}
 	return out
-}
-
-func (c AuthoredChange) clone() AuthoredChange {
-	c.Identities = slices.Clone(c.Identities)
-	return c
 }
 
 type nopAuthoredWatch struct{}

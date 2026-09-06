@@ -3,6 +3,7 @@ package workspace
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -19,16 +20,48 @@ type resourceGitReader struct {
 
 func (r *resourceGitReader) Changes(_ context.Context, _ string, maxChanges int) ([]FileChange, error) {
 	r.changeMax = maxChanges
-	return r.changes, nil
+	return slices.Clone(r.changes), nil
 }
 
 func (r *resourceGitReader) StructuredDiff(_ context.Context, _, _ string, _ bool, maxFiles, maxRows, maxBytes int) (StructuredDiffResult, error) {
 	r.diffFiles, r.diffRows, r.diffBytes = maxFiles, maxRows, maxBytes
-	return StructuredDiffResult{Files: r.files}, nil
+	files := slices.Clone(r.files)
+	for index := range files {
+		files[index].Rows = slices.Clone(files[index].Rows)
+	}
+	return StructuredDiffResult{Files: files}, nil
 }
 
 func (r *resourceGitReader) RawDiff(context.Context, string, string, bool, int) (string, error) {
 	return r.patch, nil
+}
+
+func TestNewVCSRequiresCompleteDependencies(t *testing.T) {
+	scope := newScope(t, "", "", testPaths{})
+	for _, test := range []struct {
+		name  string
+		scope *Scope
+		git   GitReader
+	}{
+		{name: "scope", git: &resourceGitReader{}},
+		{name: "reader", scope: scope},
+		{name: "typed nil reader", scope: scope, git: (*resourceGitReader)(nil)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if vcs, err := NewVCS(test.scope, test.git); err == nil || vcs != nil {
+				t.Fatalf("NewVCS = (%v, %v), want incomplete construction rejected", vcs, err)
+			}
+		})
+	}
+}
+
+func newVCS(t *testing.T, scope *Scope, git GitReader) *VCS {
+	t.Helper()
+	vcs, err := NewVCS(scope, git)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return vcs
 }
 
 func TestVCSRejectsUnboundedCompleteChangeCatalog(t *testing.T) {
@@ -36,7 +69,7 @@ func TestVCSRejectsUnboundedCompleteChangeCatalog(t *testing.T) {
 	for index := range changes {
 		changes[index] = FileChange{Path: "changed", Status: FileStatusModified}
 	}
-	vcs := NewVCS(newScope(t, "", "", testPaths{}), &resourceGitReader{changes: changes})
+	vcs := newVCS(t, newScope(t, "", "", testPaths{}), &resourceGitReader{changes: changes})
 
 	if _, err := vcs.Changes(t.Context(), "/repo"); !errors.Is(err, ErrVCSResultTooLarge) {
 		t.Fatalf("Changes error = %v, want ErrVCSResultTooLarge", err)
@@ -49,7 +82,7 @@ func TestVCSChangesOwnsStablePathOrder(t *testing.T) {
 		{Path: "zeta.go", Status: FileStatusModified},
 		{Path: "alpha.go", Status: FileStatusAdded},
 	}}
-	vcs := NewVCS(newScope(t, "", "", testPaths{}), reader)
+	vcs := newVCS(t, newScope(t, "", "", testPaths{}), reader)
 
 	changes, err := vcs.Changes(t.Context(), "/repo")
 	if err != nil {
@@ -61,10 +94,15 @@ func TestVCSChangesOwnsStablePathOrder(t *testing.T) {
 	if reader.changes[0].Path != "zeta.go" {
 		t.Fatal("Changes mutated adapter-owned rows")
 	}
+	changes[0].Path = "caller edit"
+	next, err := vcs.Changes(t.Context(), "/repo")
+	if err != nil || len(next) != 2 || next[0].Path != "alpha.go" {
+		t.Fatalf("Changes after caller reused result = (%+v, %v)", next, err)
+	}
 }
 
 func TestVCSRejectsRepeatedChangePath(t *testing.T) {
-	vcs := NewVCS(newScope(t, "", "", testPaths{}), &resourceGitReader{changes: []FileChange{
+	vcs := newVCS(t, newScope(t, "", "", testPaths{}), &resourceGitReader{changes: []FileChange{
 		{Path: "main.go", Status: FileStatusModified},
 		{Path: "main.go", Status: FileStatusModified},
 	}})
@@ -80,7 +118,7 @@ func TestVCSDiffAppliesDefaultBudgetAtTheFirstFileBoundary(t *testing.T) {
 	for index := range rows {
 		rows[index] = DiffRow{Type: DiffRowAdded, Code: "line"}
 	}
-	vcs := NewVCS(newScope(t, "", "", testPaths{}), &resourceGitReader{
+	vcs := newVCS(t, newScope(t, "", "", testPaths{}), &resourceGitReader{
 		files: []FileDiff{{Path: "large.txt", Status: FileStatusModified, Rows: rows}},
 	})
 
@@ -94,7 +132,7 @@ func TestVCSDiffAppliesDefaultBudgetAtTheFirstFileBoundary(t *testing.T) {
 }
 
 func TestVCSDiffAppliesMaterialBudgetAtTheFirstFileBoundary(t *testing.T) {
-	vcs := NewVCS(newScope(t, "", "", testPaths{}), &resourceGitReader{
+	vcs := newVCS(t, newScope(t, "", "", testPaths{}), &resourceGitReader{
 		files: []FileDiff{{
 			Path:   "large.txt",
 			Status: FileStatusModified,
@@ -115,7 +153,7 @@ func TestVCSDiffAppliesMaterialBudgetAtTheFirstFileBoundary(t *testing.T) {
 }
 
 func TestVCSDiffRejectsRepeatedRetainedPath(t *testing.T) {
-	vcs := NewVCS(newScope(t, "", "", testPaths{}), &resourceGitReader{files: []FileDiff{
+	vcs := newVCS(t, newScope(t, "", "", testPaths{}), &resourceGitReader{files: []FileDiff{
 		{Path: "main.go", Status: FileStatusModified},
 		{Path: "main.go", Status: FileStatusModified},
 	}})
@@ -127,7 +165,7 @@ func TestVCSDiffRejectsRepeatedRetainedPath(t *testing.T) {
 }
 
 func TestVCSRejectsUnboundedRawDiffFromDirectPort(t *testing.T) {
-	vcs := NewVCS(newScope(t, "", "", testPaths{}), &resourceGitReader{
+	vcs := newVCS(t, newScope(t, "", "", testPaths{}), &resourceGitReader{
 		patch: strings.Repeat("p", MaxWorkspaceDiffBytes+1),
 	})
 
@@ -138,7 +176,7 @@ func TestVCSRejectsUnboundedRawDiffFromDirectPort(t *testing.T) {
 
 func TestVCSPassesApplicationLimitsToTheGitReader(t *testing.T) {
 	reader := &resourceGitReader{}
-	vcs := NewVCS(newScope(t, "", "", testPaths{}), reader)
+	vcs := newVCS(t, newScope(t, "", "", testPaths{}), reader)
 	if _, err := vcs.Changes(t.Context(), "/repo"); err != nil {
 		t.Fatal(err)
 	}

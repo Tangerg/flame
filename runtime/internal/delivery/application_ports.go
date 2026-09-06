@@ -158,7 +158,6 @@ type workspaceHookUseCases interface {
 }
 
 type workspaceWatchUseCases interface {
-	Available() bool
 	Watch(cwds []string, notify func()) (io.Closer, error)
 }
 
