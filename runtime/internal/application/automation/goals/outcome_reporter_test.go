@@ -60,10 +60,15 @@ func TestOutcomeReporterOwnsTerminalGoalTransition(t *testing.T) {
 		t.Fatal(err)
 	}
 	reporter.now = func() time.Time { return now }
-	if result, reportErr := reporter.Report(t.Context(), ReportCommand{
-		SessionID: "ses_1", IncarnationID: "lease current", Outcome: goal.StatusComplete,
-	}); reportErr == nil || result != "" {
-		t.Fatalf("malformed Report = %v, %v, want empty result and error", result, reportErr)
+	for _, incarnation := range []string{"", "lease current"} {
+		if result, reportErr := reporter.Report(t.Context(), ReportCommand{
+			SessionID: "ses_1", IncarnationID: incarnation, Outcome: goal.StatusComplete,
+		}); reportErr == nil || result != "" {
+			t.Fatalf("Report with incarnation %q = %v, %v, want empty result and error", incarnation, result, reportErr)
+		}
+		if store.goal.Version() != g.Version() {
+			t.Fatal("report without a valid Goal origin changed the current Goal")
+		}
 	}
 
 	active, err := reader.Active(t.Context(), "ses_1")

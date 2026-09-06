@@ -16,6 +16,8 @@ The main aggregate relationships are:
 
 An aggregate validates its complete initial state, keeps mutable representation private, and exposes intention-revealing queries and legal transitions. Application code coordinates aggregates instead of reproducing their rules with switches over exported fields. Wire payloads, storage records, configuration values, provider messages, and read projections remain strict data because they translate facts rather than own them.
 
+A Goal outcome report requires the immutable Goal incarnation that admitted its Run. Application validates that origin before loading or changing the current Goal; a superseded Run cannot complete its replacement.
+
 ## Dependency direction
 
 | Ring | Responsibility |

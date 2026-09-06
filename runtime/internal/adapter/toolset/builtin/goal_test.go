@@ -78,6 +78,12 @@ func testSessionContext() context.Context {
 	return executionctx.WithRunCapabilities(ctx, testGoalRunCapabilities())
 }
 
+func testGoalRunContext() context.Context {
+	return executionctx.WithScope(testSessionContext(), runs.ExecutionScope{
+		SessionID: "s1", GoalIncarnationID: "lease-active",
+	})
+}
+
 func testGoalRunCapabilities() run.Capabilities {
 	return run.Capabilities{
 		ChildRuns:      true,
@@ -107,7 +113,7 @@ func TestReportGoalOutcomeCompleted(t *testing.T) {
 	store := newMemStore()
 	store.put(testSessionActiveGoal())
 
-	out, err := newReporter(t, store).report(testSessionContext(), reportArgs{Outcome: "completed"})
+	out, err := newReporter(t, store).report(testGoalRunContext(), reportArgs{Outcome: "completed"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +130,7 @@ func TestReportGoalOutcomeBlockedRequiresReason(t *testing.T) {
 	store.put(testSessionActiveGoal())
 	tl := newReporter(t, store)
 
-	out, _ := tl.report(testSessionContext(), reportArgs{Outcome: "blocked"})
+	out, _ := tl.report(testGoalRunContext(), reportArgs{Outcome: "blocked"})
 	if !strings.Contains(out, "reason") {
 		t.Fatalf("blocked without reason = %q, want a reason prompt", out)
 	}
@@ -133,7 +139,7 @@ func TestReportGoalOutcomeBlockedRequiresReason(t *testing.T) {
 	}
 
 	reason := " needs a key "
-	out, _ = tl.report(testSessionContext(), reportArgs{Outcome: "blocked", Reason: &reason})
+	out, _ = tl.report(testGoalRunContext(), reportArgs{Outcome: "blocked", Reason: &reason})
 	if !strings.Contains(out, "blocked") {
 		t.Fatalf("output = %q", out)
 	}
@@ -146,7 +152,7 @@ func TestReportGoalOutcomeCompletedRejectsReason(t *testing.T) {
 	store := newMemStore()
 	store.put(testSessionActiveGoal())
 	reason := "partial caveat"
-	out, err := newReporter(t, store).report(testSessionContext(), reportArgs{Outcome: "completed", Reason: &reason})
+	out, err := newReporter(t, store).report(testGoalRunContext(), reportArgs{Outcome: "completed", Reason: &reason})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +166,7 @@ func TestReportGoalOutcomeCompletedRejectsReason(t *testing.T) {
 
 func TestReportGoalOutcomeNoActiveGoal(t *testing.T) {
 	store := newMemStore() // no goal for s1
-	out, err := newReporter(t, store).report(testSessionContext(), reportArgs{Outcome: "completed"})
+	out, err := newReporter(t, store).report(testGoalRunContext(), reportArgs{Outcome: "completed"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +181,7 @@ func TestReportGoalOutcomeDoesNotTouchPausedGoal(t *testing.T) {
 	g, _ = g.Pause(goalstate.ReasonStoppedByUser, "", time.Unix(0, 0))
 	store.put(g)
 
-	out, _ := newReporter(t, store).report(testSessionContext(), reportArgs{Outcome: "completed"})
+	out, _ := newReporter(t, store).report(testGoalRunContext(), reportArgs{Outcome: "completed"})
 	if !strings.Contains(out, "No active Goal") {
 		t.Fatalf("paused goal should be untouchable via report_goal_outcome, got %q", out)
 	}

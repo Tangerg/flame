@@ -11,7 +11,7 @@ import (
 )
 
 // ReportCommand is a model-originated terminal outcome for the active Goal.
-// IncarnationID is the Run's immutable origin stamp; empty targets the current Goal.
+// IncarnationID is required and identifies the Goal that admitted this Run.
 type ReportCommand struct {
 	SessionID     string
 	IncarnationID string
@@ -53,7 +53,7 @@ func NewOutcomeReporter(store Store) (*OutcomeReporter, error) {
 
 // Report applies one model-declared terminal outcome to the active Goal.
 func (o *OutcomeReporter) Report(ctx context.Context, cmd ReportCommand) (ReportResult, error) {
-	if _, _, err := goalref.ParseOptionalIncarnation(cmd.IncarnationID); err != nil {
+	if _, err := goalref.ParseIncarnation(cmd.IncarnationID); err != nil {
 		return "", fmt.Errorf("goals: report: %w", err)
 	}
 	g, ok, err := loadGoal(ctx, o.goals, cmd.SessionID)
@@ -63,7 +63,7 @@ func (o *OutcomeReporter) Report(ctx context.Context, cmd ReportCommand) (Report
 	if !ok || g.Status() != goal.StatusActive {
 		return ReportNoActiveGoal, nil
 	}
-	if cmd.IncarnationID != "" && cmd.IncarnationID != g.IncarnationID() {
+	if cmd.IncarnationID != g.IncarnationID() {
 		return ReportSuperseded, nil
 	}
 	expected := g.Version()
