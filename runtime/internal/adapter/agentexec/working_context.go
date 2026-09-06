@@ -285,18 +285,18 @@ func (w *WorkingContextComposer) AfterToolUse(
 func (w *WorkingContextComposer) BeforeCompaction(
 	ctx context.Context,
 	sessionID, cwd string,
-) bool {
+) (bool, error) {
 	if w == nil || w.config.Hooks == nil {
-		return true
+		return true, nil
 	}
 	bound, err := w.config.Hooks.For(ctx, cwd)
 	if err != nil {
-		return true
+		return false, fmt.Errorf("agentexec: resolve pre-compaction hooks: %w", err)
 	}
 	decision := bound.Run(ctx, domainhooks.Input{
 		Event: domainhooks.PreCompact, SessionID: sessionID, CWD: cwd,
 	})
-	return !decision.Block
+	return !decision.Block, nil
 }
 
 // NotifyWaiting runs the observe-only notification hook for a committed
@@ -304,33 +304,34 @@ func (w *WorkingContextComposer) BeforeCompaction(
 func (w *WorkingContextComposer) NotifyWaiting(
 	ctx context.Context,
 	sessionID, cwd string,
-) {
-	w.runObserveOnlyHook(ctx, domainhooks.Notification, sessionID, cwd, "interrupt")
+) error {
+	return w.runObserveOnlyHook(ctx, domainhooks.Notification, sessionID, cwd, "interrupt")
 }
 
 // NotifyStopped runs the observe-only terminal hook.
 func (w *WorkingContextComposer) NotifyStopped(
 	ctx context.Context,
 	sessionID, cwd, reason string,
-) {
-	w.runObserveOnlyHook(ctx, domainhooks.Stop, sessionID, cwd, reason)
+) error {
+	return w.runObserveOnlyHook(ctx, domainhooks.Stop, sessionID, cwd, reason)
 }
 
 func (w *WorkingContextComposer) runObserveOnlyHook(
 	ctx context.Context,
 	event domainhooks.Event,
 	sessionID, cwd, reason string,
-) {
+) error {
 	if w == nil || w.config.Hooks == nil {
-		return
+		return nil
 	}
 	bound, err := w.config.Hooks.For(ctx, cwd)
 	if err != nil {
-		return
+		return fmt.Errorf("agentexec: resolve lifecycle notification hooks: %w", err)
 	}
 	_ = bound.Run(ctx, domainhooks.Input{
 		Event: event, SessionID: sessionID, CWD: cwd, Reason: reason,
 	})
+	return nil
 }
 
 func (w *WorkingContextComposer) recallMessage(

@@ -108,9 +108,9 @@ func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *test
 		CompactionPolicyValues{MaxTokens: intPointer(threshold)},
 	)
 	preCompactCalls := 0
-	preCompact := func(context.Context) bool {
+	preCompact := func(context.Context) (bool, error) {
 		preCompactCalls++
-		return true
+		return true, nil
 	}
 
 	below, err := compactor.CompactModelContext(
@@ -223,9 +223,9 @@ func TestModelContextCompactionCountsMediaButDoesNotCompactBelowProviderThreshol
 		agentexec.ModelContextTokenCalibration{},
 		counter,
 		0,
-		func(context.Context) bool {
+		func(context.Context) (bool, error) {
 			t.Fatal("PreCompact ran below the provider threshold")
-			return false
+			return false, nil
 		},
 	)
 	if err != nil {
@@ -281,9 +281,9 @@ func TestModelContextCompactionCountFailureLeavesDurableStateUntouched(t *testin
 		agentexec.ModelContextTokenCalibration{},
 		counter,
 		0,
-		func(context.Context) bool {
+		func(context.Context) (bool, error) {
 			t.Fatal("PreCompact ran after provider count failure")
-			return false
+			return false, nil
 		},
 	)
 	if err != nil {
@@ -709,32 +709,46 @@ func TestModelContextCompactionFailsClosedWhenProtectedInputCannotFit(t *testing
 	}
 }
 
-func TestRequiredModelContextCompactionHonorsLifecycleVetoByFailingClosed(t *testing.T) {
-	store := newCompactionTestStore()
-	const sessionID = "session:required-veto"
-	history := completeContextTurns()
-	if err := store.Write(t.Context(), sessionID, history...); err != nil {
-		t.Fatal(err)
-	}
-	instructions := []chat.Message{chat.NewSystemMessage("frozen instructions")}
-	threshold := mustEstimateModelContextTokens(
-		t,
-		append(cloneMessages(instructions), history...),
-		nil,
-		chat.Options{},
-	)
-	compactor := mustNewCompactor(t,
-		store,
-		unexpectedClient,
-		nil,
-		CompactionPolicyValues{
-			MaxTokens: intPointer(threshold),
-		},
-	)
-	request := durableContextRequest(t, sessionID, history, 0, func(context.Context) bool { return false })
-
-	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, ErrModelContextCompactionVetoed) {
-		t.Fatalf("error = %v, want ErrModelContextCompactionVetoed", err)
+func TestRequiredModelContextCompactionRequiresLifecyclePermission(t *testing.T) {
+	resolveErr := errors.New("hook configuration unavailable")
+	for _, test := range []struct {
+		name       string
+		resolveErr error
+		wantErr    error
+	}{
+		{name: "veto", wantErr: ErrModelContextCompactionVetoed},
+		{name: "configuration failure", resolveErr: resolveErr, wantErr: resolveErr},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			store := newCompactionTestStore()
+			const sessionID = "session:required-permission"
+			history := completeContextTurns()
+			if err := store.Write(t.Context(), sessionID, history...); err != nil {
+				t.Fatal(err)
+			}
+			instructions := []chat.Message{chat.NewSystemMessage("frozen instructions")}
+			threshold := mustEstimateModelContextTokens(
+				t,
+				append(cloneMessages(instructions), history...),
+				nil,
+				chat.Options{},
+			)
+			compactor := mustNewCompactor(t,
+				store,
+				unexpectedClient,
+				nil,
+				CompactionPolicyValues{MaxTokens: intPointer(threshold)},
+			)
+			request := durableContextRequest(t, sessionID, history, 0, func(context.Context) (bool, error) {
+				return false, test.resolveErr
+			})
+			if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, test.wantErr) {
+				t.Fatalf("error = %v, want %v", err, test.wantErr)
+			}
+			if store.rewrites != 0 {
+				t.Fatalf("rewrites = %d, want none before lifecycle permission", store.rewrites)
+			}
+		})
 	}
 }
 
@@ -879,7 +893,7 @@ func durableContextRequest(
 	sessionID string,
 	candidate []chat.Message,
 	protectedTail int,
-	preCompact func(context.Context) bool,
+	preCompact func(context.Context) (bool, error),
 ) agentexec.ModelContextCompaction {
 	return durableContextRequestWithCalibration(
 		t,
@@ -897,7 +911,7 @@ func durableContextRequestWithCalibration(
 	candidate []chat.Message,
 	protectedTail int,
 	calibration agentexec.ModelContextTokenCalibration,
-	preCompact func(context.Context) bool,
+	preCompact func(context.Context) (bool, error),
 ) agentexec.ModelContextCompaction {
 	t.Helper()
 	selection, err := modelref.New("anthropic", "claude-test")

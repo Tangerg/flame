@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"sync"
 	"time"
@@ -400,9 +401,13 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 		Payload: barrier,
 	})
 	if published && i.lifecycleHooks != nil {
-		i.lifecycleHooks.NotifyWaiting(
+		if err := i.lifecycleHooks.NotifyWaiting(
 			i.lifetime.execution, i.start.SessionID, i.start.CWD,
-		)
+		); err != nil {
+			slog.ErrorContext(i.lifetime.execution, "agentexec: notify waiting",
+				"session.id", i.start.SessionID, "error", err,
+			)
+		}
 	}
 	return published
 }
@@ -537,9 +542,13 @@ func (i *interactionSession) publishResult(result agent.Result) error {
 	}
 	i.lifetime.send(runs.ExecutorEvent{Member: member, Payload: end})
 	if i.lifecycleHooks != nil {
-		i.lifecycleHooks.NotifyStopped(
+		if err := i.lifecycleHooks.NotifyStopped(
 			i.lifetime.execution, i.start.SessionID, i.start.CWD, string(end.Reason),
-		)
+		); err != nil {
+			slog.ErrorContext(i.lifetime.execution, "agentexec: notify stopped",
+				"session.id", i.start.SessionID, "error", err,
+			)
+		}
 	}
 	return nil
 }

@@ -106,8 +106,11 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		}
 		fixedContext = append(fixedContext, currentState...)
 	}
-	preCompact := func(ctx context.Context) bool {
-		return i.session.lifecycleHooks == nil || i.session.lifecycleHooks.BeforeCompaction(
+	preCompact := func(ctx context.Context) (bool, error) {
+		if i.session.lifecycleHooks == nil {
+			return true, nil
+		}
+		return i.session.lifecycleHooks.BeforeCompaction(
 			ctx,
 			i.start.SessionID,
 			i.start.CWD,

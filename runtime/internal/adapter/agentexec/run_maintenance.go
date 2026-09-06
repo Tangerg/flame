@@ -30,9 +30,9 @@ type RunMaintenanceResult struct {
 // InteractionLifecycleHooks owns the Runtime lifecycle events that are not
 // part of Tool authorization or prompt composition.
 type InteractionLifecycleHooks interface {
-	BeforeCompaction(ctx context.Context, sessionID, cwd string) bool
-	NotifyWaiting(ctx context.Context, sessionID, cwd string)
-	NotifyStopped(ctx context.Context, sessionID, cwd, reason string)
+	BeforeCompaction(ctx context.Context, sessionID, cwd string) (bool, error)
+	NotifyWaiting(ctx context.Context, sessionID, cwd string) error
+	NotifyStopped(ctx context.Context, sessionID, cwd, reason string) error
 }
 
 func (i *interactionSession) maintainCompletedRoot() {

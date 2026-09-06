@@ -94,7 +94,7 @@ type ModelContextCompaction struct {
 	calibration   ModelContextTokenCalibration
 	counter       ModelContextInputTokenCounter
 	protectedTail int
-	preCompact    func(context.Context) bool
+	preCompact    func(context.Context) (bool, error)
 }
 
 // NewDurableModelContextCompaction builds a request whose candidate begins
@@ -110,7 +110,7 @@ func NewDurableModelContextCompaction(
 	calibration ModelContextTokenCalibration,
 	counter ModelContextInputTokenCounter,
 	protectedDurableTail int,
-	preCompact func(context.Context) bool,
+	preCompact func(context.Context) (bool, error),
 ) (ModelContextCompaction, error) {
 	return newModelContextCompaction(
 		modelContextDurable,
@@ -139,7 +139,7 @@ func NewTransientModelContextCompaction(
 	calibration ModelContextTokenCalibration,
 	counter ModelContextInputTokenCounter,
 	protectedTail int,
-	preCompact func(context.Context) bool,
+	preCompact func(context.Context) (bool, error),
 ) (ModelContextCompaction, error) {
 	return newModelContextCompaction(
 		modelContextTransient,
@@ -167,7 +167,7 @@ func newModelContextCompaction(
 	calibration ModelContextTokenCalibration,
 	counter ModelContextInputTokenCounter,
 	protectedTail int,
-	preCompact func(context.Context) bool,
+	preCompact func(context.Context) (bool, error),
 ) (ModelContextCompaction, error) {
 	if persistence != modelContextDurable && persistence != modelContextTransient {
 		return ModelContextCompaction{}, errInvalidModelContextCompaction
@@ -358,8 +358,11 @@ func (m ModelContextCompaction) CountInputTokens(
 func (m ModelContextCompaction) ProtectedTail() int { return m.protectedTail }
 
 // AllowsCompaction applies the product lifecycle veto, when one is configured.
-func (m ModelContextCompaction) AllowsCompaction(ctx context.Context) bool {
-	return m.preCompact == nil || m.preCompact(ctx)
+func (m ModelContextCompaction) AllowsCompaction(ctx context.Context) (bool, error) {
+	if m.preCompact == nil {
+		return true, nil
+	}
+	return m.preCompact(ctx)
 }
 
 // ModelContextCompactionResult is the immutable effective mutable suffix after

@@ -103,7 +103,11 @@ func (c *Compactor) CompactModelContext(
 		}
 		return unchangedModelContextResult(candidate, plan.estimatedTokens)
 	}
-	if !request.AllowsCompaction(ctx) {
+	allowed, err := request.AllowsCompaction(ctx)
+	if err != nil {
+		return agentexec.ModelContextCompactionResult{}, fmt.Errorf("maintenance: pre-compaction hooks: %w", err)
+	}
+	if !allowed {
 		return agentexec.ModelContextCompactionResult{}, ErrModelContextCompactionVetoed
 	}
 
