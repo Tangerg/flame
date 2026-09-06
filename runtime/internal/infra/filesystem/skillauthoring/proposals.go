@@ -21,9 +21,6 @@ import (
 // returns the exact public file identities changed by the call; replaying the
 // same proposal is idempotent and returns no identities.
 func (s *Store) SubmitProposal(ctx context.Context, proposal skills.Proposal) (skills.ProposalRef, []string, error) {
-	if !s.Enabled() {
-		return skills.ProposalRef{}, nil, errors.New("skillauthoring: no scoped skills root configured")
-	}
 	if err := proposal.Validate(); err != nil {
 		return skills.ProposalRef{}, nil, err
 	}
@@ -258,9 +255,6 @@ func (s *Store) replaceActive(ctx context.Context, root *os.Root, ref skills.Pro
 // truncating the review surface. Filesystem encounter order is intentionally
 // preserved; Application owns the public catalog order.
 func (s *Store) ListProposals(ctx context.Context) ([]skills.ProposalReview, error) {
-	if !s.Enabled() {
-		return nil, nil
-	}
 	if err := contextError(ctx, "list proposals"); err != nil {
 		return nil, err
 	}
@@ -378,9 +372,6 @@ func (s *Store) RejectProposal(ctx context.Context, ref skills.ProposalRef) ([]s
 }
 
 func (s *Store) validateRef(ref skills.ProposalRef) error {
-	if !s.Enabled() {
-		return errors.New("skillauthoring: no scoped skills root configured")
-	}
 	if err := ref.Validate(); err != nil {
 		return fmt.Errorf("skillauthoring: invalid proposal reference: %w", err)
 	}

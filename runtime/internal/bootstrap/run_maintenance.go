@@ -47,7 +47,7 @@ func buildRunMaintenance(
 	}
 	var skillMiner *maintenance.SkillProposalMiner
 	var skillArchiver *maintenance.IdleSkillArchiver
-	if skillMaintenance.Available() {
+	if skillMaintenance != nil {
 		skillRepository, repositoryErr := skillspec.NewDirectoryRepository(
 			cfg.SkillsUserDir,
 			skillspec.RepositoryConfig{},

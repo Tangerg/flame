@@ -250,7 +250,10 @@ func TestWorkspaceSubscribe_SkillArchiveDoesNotDoublePublishFromTreeObservation(
 	if err := os.WriteFile(skillPath, []byte("---\nname: lint\ndescription: Run the project linter before completing a change.\n---\nRun the linter.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	curator := skillauthoring.NewStore(skillsHome, skills.ScopeUser)
+	curator, err := skillauthoring.NewStore(skillsHome, skills.ScopeUser)
+	if err != nil {
+		t.Fatal(err)
+	}
 	authored, err := workspaceadapter.NewAuthoredWatcher(t.TempDir(), t.TempDir(), skillsHome, nil)
 	if err != nil {
 		t.Fatal(err)

@@ -49,9 +49,6 @@ func (u usageRecord) lastActivity() int64 {
 // FirstSeen on first sighting), so the curator can tell an actively-used skill
 // from an idle one. Best-effort from the caller's side.
 func (s *Store) RecordUse(ctx context.Context, name string, now time.Time) error {
-	if !s.Enabled() {
-		return nil
-	}
 	if err := contextError(ctx, "record skill use"); err != nil {
 		return err
 	}
@@ -90,9 +87,6 @@ func (s *Store) RecordUse(ctx context.Context, name string, now time.Time) error
 // its first sweep before it can be judged idle. now is explicit so the policy
 // stays testable.
 func (s *Store) SweepIdle(ctx context.Context, now time.Time, archiveAfter time.Duration) ([]string, []string, error) {
-	if !s.Enabled() {
-		return nil, nil, nil
-	}
 	if err := contextError(ctx, "sweep skills"); err != nil {
 		return nil, nil, err
 	}
@@ -168,9 +162,6 @@ func activeSkillNames(ctx context.Context, root *os.Root) ([]string, error) {
 // the active set (archived), so a later restore is judged fresh rather than
 // inheriting a stale last-used time.
 func (s *Store) dropUsage(ctx context.Context, name string) error {
-	if !s.Enabled() {
-		return nil
-	}
 	if err := contextError(ctx, "drop skill usage"); err != nil {
 		return err
 	}

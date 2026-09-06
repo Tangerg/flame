@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
-	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
 
 const (
@@ -32,7 +31,7 @@ func writeActiveSkillFixture(t *testing.T, root, name string) {
 
 func TestRecordUseAccumulatesUsage(t *testing.T) {
 	root := t.TempDir()
-	store := skillauthoring.NewStore(root, skills.ScopeUser)
+	store := newStore(t, root, skills.ScopeUser)
 	base := time.Unix(1_000_000, 0)
 	if err := store.RecordUse(t.Context(), "run-tests", base); err != nil {
 		t.Fatalf("RecordUse: %v", err)
@@ -61,13 +60,6 @@ func TestRecordUseAccumulatesUsage(t *testing.T) {
 	}
 }
 
-func TestRecordUseDisabledStoreNoOps(t *testing.T) {
-	store := skillauthoring.NewStore("", skills.ScopeUser)
-	if err := store.RecordUse(t.Context(), "x", time.Unix(1, 0)); err != nil {
-		t.Fatalf("disabled RecordUse: %v", err)
-	}
-}
-
 func TestRecordUseRejectsOversizedUsageMetadata(t *testing.T) {
 	root := t.TempDir()
 	oversized := `{"` + strings.Repeat("x", governedUsageBytes) + `":{"firstSeen":1}}`
@@ -75,7 +67,7 @@ func TestRecordUseRejectsOversizedUsageMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	store := skillauthoring.NewStore(root, skills.ScopeUser)
+	store := newStore(t, root, skills.ScopeUser)
 	if err := store.RecordUse(t.Context(), "run-tests", time.Unix(2, 0)); !errors.Is(err, skills.ErrUsageTooLarge) {
 		t.Fatalf("RecordUse error = %v, want ErrUsageTooLarge beyond %d bytes", err, governedUsageBytes)
 	}
@@ -95,7 +87,7 @@ func TestRecordUseRejectsOverCapacityUsageMap(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	store := skillauthoring.NewStore(root, skills.ScopeUser)
+	store := newStore(t, root, skills.ScopeUser)
 	if err := store.RecordUse(t.Context(), "run-tests", time.Unix(2, 0)); !errors.Is(err, skills.ErrLibraryCapacity) {
 		t.Fatalf("RecordUse error = %v, want ErrLibraryCapacity beyond %d records", err, skills.MaxSkillsPerSource)
 	}

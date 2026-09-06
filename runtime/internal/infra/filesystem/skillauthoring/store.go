@@ -31,13 +31,16 @@ type Store struct {
 	mu    sync.RWMutex
 }
 
-// NewStore roots the authoring store at one project or user Skill library. An
-// empty root or invalid scope disables authoring.
-func NewStore(root string, scope skills.Scope) *Store { return &Store{root: root, scope: scope} }
-
-// Enabled reports whether a skills root is configured.
-func (s *Store) Enabled() bool {
-	return s != nil && s.root != "" && s.scope.Validate() == nil
+// NewStore roots the authoring store at one project or user Skill library.
+// The absolute root keeps every operation bound to the configured library.
+func NewStore(root string, scope skills.Scope) (*Store, error) {
+	if !filepath.IsAbs(root) {
+		return nil, errors.New("skillauthoring: skills root must be absolute")
+	}
+	if err := scope.Validate(); err != nil {
+		return nil, fmt.Errorf("skillauthoring: store scope: %w", err)
+	}
+	return &Store{root: root, scope: scope}, nil
 }
 
 func (s *Store) openRoot() (*os.Root, error) {

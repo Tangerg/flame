@@ -103,7 +103,7 @@ Bootstrap constructs one endpoint and one resource graph. One Instance lifecycle
 
 Production construction consumes the complete storage bundle opened by persistence. Plan, Goal, permission, Schedule, mutation recovery, role persistence, Knowledge, and agent-memory review and curation are always wired; absent user configuration is stored state, not a missing implementation. Agent-memory search may use keyword ranking without an embedding provider. Narrow use-case tests supply their own collaborators without adding partial production configurations. Hook execution and management share one resolver built from the user home and durable trust store. A project with no hooks or revoked trust still has complete inspection and trust-management use cases.
 
-Skill discovery and proposal review also require complete implementations. An unconfigured user Skill directory disables user-library curation and its scheduled sweeper; project Skill discovery, proposal submission, and review remain available through the same use cases.
+Skill discovery and proposal review also require complete implementations. Bootstrap omits the user Skill store, usage recorder, and maintenance component when the user directory is unconfigured; project Skill discovery, proposal submission, and review remain available through the same use cases. A Skill store requires an absolute library root and a valid scope, and a maintenance component requires its sweeper at construction.
 
 Every goroutine has one owner, stop condition, and join path. Request cancellation governs the request; accepted Run execution uses a Runtime-owned lifetime. Transport disconnect does not implicitly cancel durable execution.
 

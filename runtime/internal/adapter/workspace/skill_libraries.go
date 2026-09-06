@@ -39,7 +39,7 @@ func (l *SkillLibraries) ListProposals(ctx context.Context, projectRoot string) 
 	if err != nil {
 		return nil, err
 	}
-	if l.user == nil || !l.user.Enabled() {
+	if l.user == nil {
 		return projectProposals, nil
 	}
 	userProposals, err := l.user.ListProposals(ctx)
@@ -68,7 +68,7 @@ func (l *SkillLibraries) RejectProposal(ctx context.Context, projectRoot string,
 func (l *SkillLibraries) store(scope skills.Scope, projectRoot string) (*skillauthoring.Store, error) {
 	switch scope {
 	case skills.ScopeUser:
-		if l.user == nil || !l.user.Enabled() {
+		if l.user == nil {
 			return nil, errors.New("workspace Skill libraries: user library is unavailable")
 		}
 		return l.user, nil
@@ -83,7 +83,10 @@ func (l *SkillLibraries) store(scope skills.Scope, projectRoot string) (*skillau
 			}
 			return store, nil
 		}
-		created := skillauthoring.NewStore(promptsource.ProjectSkillDir(projectRoot), skills.ScopeProject)
+		created, err := skillauthoring.NewStore(promptsource.ProjectSkillDir(projectRoot), skills.ScopeProject)
+		if err != nil {
+			return nil, err
+		}
 		loaded, _ := l.projects.LoadOrStore(projectRoot, created)
 		store, ok := loaded.(*skillauthoring.Store)
 		if !ok {

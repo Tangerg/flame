@@ -28,9 +28,12 @@ func TestIdleSkillArchiveNotifiesEveryCommittedPartialSweep(t *testing.T) {
 	wantErr := errors.New("usage metadata unavailable")
 	sweeper := &fakeIdleSkillSweeper{archived: []string{"old-skill"}, err: wantErr}
 	var notices []invalidation.Notice
-	maintenance := NewSkillMaintenance(sweeper, nil, func(notice invalidation.Notice) {
+	maintenance, err := NewSkillMaintenance(sweeper, nil, func(notice invalidation.Notice) {
 		notices = append(notices, notice)
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	now := time.Date(2026, 8, 13, 9, 0, 0, 0, time.UTC)
 
 	archived, err := maintenance.ArchiveIdle(t.Context(), now, 30*24*time.Hour)
@@ -57,9 +60,11 @@ func TestIdleSkillArchiveNotifiesEveryCommittedPartialSweep(t *testing.T) {
 	}
 }
 
-func TestIdleSkillArchiveUnavailableFailsExplicitly(t *testing.T) {
-	maintenance := NewSkillMaintenance(nil, nil, nil)
-	if _, err := maintenance.ArchiveIdle(t.Context(), time.Now(), time.Hour); !errors.Is(err, ErrSkillLibraryUnavailable) {
-		t.Fatalf("ArchiveIdle error = %v, want ErrSkillLibraryUnavailable", err)
+func TestSkillMaintenanceRequiresSweeper(t *testing.T) {
+	var missing *fakeIdleSkillSweeper
+	for _, sweeper := range []IdleSkillSweeper{nil, missing} {
+		if maintenance, err := NewSkillMaintenance(sweeper, nil, nil); err == nil || maintenance != nil {
+			t.Fatalf("NewSkillMaintenance = (%v, %v), want construction failure", maintenance, err)
+		}
 	}
 }

@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -23,20 +24,17 @@ type SkillMaintenance struct {
 }
 
 // NewSkillMaintenance builds the automatic Skill-library curation use case.
-func NewSkillMaintenance(sweeper IdleSkillSweeper, observations *AuthoredWatch, invalidations invalidation.Publish) *SkillMaintenance {
-	return &SkillMaintenance{sweeper: sweeper, observations: observations, invalidations: invalidations}
+func NewSkillMaintenance(sweeper IdleSkillSweeper, observations *AuthoredWatch, invalidations invalidation.Publish) (*SkillMaintenance, error) {
+	if missingDependency(sweeper) {
+		return nil, errors.New("workspace: idle skill sweeper is required")
+	}
+	return &SkillMaintenance{sweeper: sweeper, observations: observations, invalidations: invalidations}, nil
 }
-
-// Available reports whether automatic Skill curation is wired.
-func (s *SkillMaintenance) Available() bool { return s != nil && s.sweeper != nil }
 
 // ArchiveIdle applies automatic user-library curation and reports the names it
 // archived. A sweep may commit file changes before returning an error, so every
 // non-empty identity set invalidates the public Skill projections.
 func (s *SkillMaintenance) ArchiveIdle(ctx context.Context, now time.Time, archiveAfter time.Duration) ([]string, error) {
-	if !s.Available() {
-		return nil, ErrSkillLibraryUnavailable
-	}
 	archived, identities, err := s.sweeper.SweepIdle(ctx, now, archiveAfter)
 	if len(identities) > 0 {
 		if s.observations != nil {

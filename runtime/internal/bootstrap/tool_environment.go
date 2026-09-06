@@ -78,13 +78,13 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		Plan:            deps.plan,
 		Interrupt:       interactioninput.Require,
 		MCPToolDisabled: deps.mcp.policy.ToolDisabled,
-		// The authoring store records Skill loads for idle-Skill archival; a
-		// disabled store no-ops RecordUse.
-		SkillUsage:     deps.skillStore,
-		SkillProposals: deps.skillProposals,
+		SkillProposals:  deps.skillProposals,
 		// Opt-in per-command OS isolation for the shell tools (off by default).
 		SandboxShell:         cfg.SandboxShell,
 		SandboxReadOnlyPaths: cfg.SandboxReadOnlyPaths,
+	}
+	if deps.skillStore != nil {
+		buildConfig.SkillUsage = deps.skillStore
 	}
 	buildConfig.PlanMode = deps.approvalPolicy
 	buildConfig.Schedules = deps.schedules

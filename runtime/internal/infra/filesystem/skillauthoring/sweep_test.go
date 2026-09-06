@@ -38,7 +38,7 @@ func installActiveAgentSkill(t *testing.T, store *skillauthoring.Store, name str
 
 func TestSweepIdleArchivesOnlyIdleAgentSkills(t *testing.T) {
 	root := t.TempDir()
-	store := skillauthoring.NewStore(root, skills.ScopeUser)
+	store := newStore(t, root, skills.ScopeUser)
 	installActiveAgentSkill(t, store, "agent-skill")
 	installActive(t, store, "human-skill", "instructions") // no provenance → human-authored
 
@@ -69,7 +69,7 @@ func TestSweepIdleArchivesOnlyIdleAgentSkills(t *testing.T) {
 }
 
 func TestSweepIdleGivesNeverSweptSkillGrace(t *testing.T) {
-	store := skillauthoring.NewStore(t.TempDir(), skills.ScopeUser)
+	store := newStore(t, t.TempDir(), skills.ScopeUser)
 	installActiveAgentSkill(t, store, "fresh")
 	// A skill first seen at this sweep gets FirstSeen=now, so it can't be idle yet.
 	archived, _, err := store.SweepIdle(t.Context(), sweepBase, sweepArchive)
@@ -83,7 +83,7 @@ func TestSweepIdleGivesNeverSweptSkillGrace(t *testing.T) {
 
 func TestSweepIdleRestoredSkillGetsFreshGrace(t *testing.T) {
 	root := t.TempDir()
-	store := skillauthoring.NewStore(root, skills.ScopeUser)
+	store := newStore(t, root, skills.ScopeUser)
 	installActiveAgentSkill(t, store, "agent-skill")
 	if _, _, err := store.SweepIdle(t.Context(), sweepBase, sweepArchive); err != nil {
 		t.Fatal(err)
@@ -111,7 +111,7 @@ func TestSweepIdleRestoredSkillGetsFreshGrace(t *testing.T) {
 
 func TestManualArchiveThenRestoreGetsFreshGrace(t *testing.T) {
 	root := t.TempDir()
-	store := skillauthoring.NewStore(root, skills.ScopeUser)
+	store := newStore(t, root, skills.ScopeUser)
 	installActiveAgentSkill(t, store, "agent-skill")
 	// Seed a usage record with an old activity time.
 	if _, _, err := store.SweepIdle(t.Context(), sweepBase, sweepArchive); err != nil {
@@ -138,17 +138,9 @@ func TestManualArchiveThenRestoreGetsFreshGrace(t *testing.T) {
 	}
 }
 
-func TestSweepIdleDisabledStoreNoOps(t *testing.T) {
-	store := skillauthoring.NewStore("", skills.ScopeUser)
-	archived, _, err := store.SweepIdle(t.Context(), sweepBase, sweepArchive)
-	if err != nil || archived != nil {
-		t.Fatalf("disabled sweep = %v, %v", archived, err)
-	}
-}
-
 func TestSweepIdleRejectsOverCapacityManagedLibrary(t *testing.T) {
 	root := t.TempDir()
-	store := skillauthoring.NewStore(root, skills.ScopeUser)
+	store := newStore(t, root, skills.ScopeUser)
 	for index := range skills.MaxSkillsPerSource + 1 {
 		writeActiveSkillFixture(t, root, fmt.Sprintf("skill-%03d", index))
 	}

@@ -159,12 +159,19 @@ func buildWorkspaceComposition(
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build knowledge: %w", err)
 	}
-	skillStore := skillauthoring.NewStore(cfg.SkillsUserDir, skills.ScopeUser)
+	var skillStore *skillauthoring.Store
 	var skillCurator workspace.SkillCurator
-	var idleSkillSweeper workspace.IdleSkillSweeper
-	if skillStore.Enabled() {
+	var skillMaintenance *workspace.SkillMaintenance
+	if cfg.SkillsUserDir != "" {
+		skillStore, err = skillauthoring.NewStore(cfg.SkillsUserDir, skills.ScopeUser)
+		if err != nil {
+			return workspaceComposition{}, fmt.Errorf("runtime: build user skill store: %w", err)
+		}
 		skillCurator = skillStore
-		idleSkillSweeper = skillStore
+		skillMaintenance, err = workspace.NewSkillMaintenance(skillStore, authoredWatch, publish)
+		if err != nil {
+			return workspaceComposition{}, fmt.Errorf("runtime: build skill maintenance: %w", err)
+		}
 	}
 	workspaceSkills, err := workspace.NewSkills(
 		scope,
@@ -190,21 +197,17 @@ func buildWorkspaceComposition(
 		return workspaceComposition{}, fmt.Errorf("runtime: build memory curation: %w", err)
 	}
 	return workspaceComposition{
-		scope:          scope,
-		hookResolver:   hookResolver,
-		hooks:          hooks,
-		agentMemory:    memoryReview,
-		memoryCuration: memoryCuration,
-		authoredWatch:  authoredWatch,
-		knowledge:      knowledge,
-		skills:         workspaceSkills,
-		skillMaintenance: workspace.NewSkillMaintenance(
-			idleSkillSweeper,
-			authoredWatch,
-			publish,
-		),
-		skillStore:  skillStore,
-		checkpoints: workspaceadapter.NewCheckpoints(cfg.CheckpointDir),
+		scope:            scope,
+		hookResolver:     hookResolver,
+		hooks:            hooks,
+		agentMemory:      memoryReview,
+		memoryCuration:   memoryCuration,
+		authoredWatch:    authoredWatch,
+		knowledge:        knowledge,
+		skills:           workspaceSkills,
+		skillMaintenance: skillMaintenance,
+		skillStore:       skillStore,
+		checkpoints:      workspaceadapter.NewCheckpoints(cfg.CheckpointDir),
 	}, nil
 }
 

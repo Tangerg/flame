@@ -19,13 +19,16 @@ func TestProjectSkillsRemainAvailableWithoutUserLibrary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	libraries := workspaceadapter.NewSkillLibraries(skillauthoring.NewStore("", skills.ScopeUser))
+	libraries := workspaceadapter.NewSkillLibraries(nil)
 	useCases, err := workspaceapp.NewSkills(scope, promptsource.NewWorkspaceSkills(""), nil, libraries, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := useCases.Managed(t.Context()); !errors.Is(err, workspaceapp.ErrSkillLibraryUnavailable) {
 		t.Fatalf("Managed = %v, want user-library curation disabled", err)
+	}
+	if _, err := useCases.SubmitProposal(t.Context(), projectRoot, proposal(skills.ScopeUser, "personal-check")); err == nil {
+		t.Fatal("user proposal was accepted without a user library")
 	}
 	ref, err := useCases.SubmitProposal(t.Context(), projectRoot, proposal(skills.ScopeProject, "project-check"))
 	if err != nil {
@@ -47,7 +50,11 @@ func TestProjectSkillsRemainAvailableWithoutUserLibrary(t *testing.T) {
 func TestSkillLibrariesRouteProposalsByScope(t *testing.T) {
 	userRoot := filepath.Join(t.TempDir(), "user-skills")
 	projectRoot := filepath.Join(t.TempDir(), "project")
-	libraries := workspaceadapter.NewSkillLibraries(skillauthoring.NewStore(userRoot, skills.ScopeUser))
+	store, err := skillauthoring.NewStore(userRoot, skills.ScopeUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+	libraries := workspaceadapter.NewSkillLibraries(store)
 
 	projectProposal := proposal(skills.ScopeProject, "project-check")
 	projectRef, _, err := libraries.SubmitProposal(t.Context(), projectRoot, projectProposal)
@@ -81,7 +88,11 @@ func TestSkillLibrariesRouteProposalsByScope(t *testing.T) {
 func TestSkillLibrariesRejectProposalFromItsScopedStore(t *testing.T) {
 	userRoot := filepath.Join(t.TempDir(), "user-skills")
 	projectRoot := filepath.Join(t.TempDir(), "project")
-	libraries := workspaceadapter.NewSkillLibraries(skillauthoring.NewStore(userRoot, skills.ScopeUser))
+	store, err := skillauthoring.NewStore(userRoot, skills.ScopeUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+	libraries := workspaceadapter.NewSkillLibraries(store)
 	ref, _, err := libraries.SubmitProposal(t.Context(), projectRoot, proposal(skills.ScopeProject, "throwaway"))
 	if err != nil {
 		t.Fatal(err)

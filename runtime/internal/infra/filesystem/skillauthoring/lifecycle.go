@@ -75,9 +75,6 @@ func (s *Store) Restore(ctx context.Context, name string) ([]string, error) {
 }
 
 func (s *Store) moveLifecycle(ctx context.Context, name string, from, to skills.Lifecycle) ([]string, error) {
-	if !s.Enabled() {
-		return nil, errors.New("skillauthoring: no skills root configured")
-	}
 	if !validName(name) {
 		return nil, fmt.Errorf("skillauthoring: invalid skill name %q", name)
 	}
