@@ -35,6 +35,37 @@ export const motion = stylex.defineVars({
   shimmer: "var(--animate-shimmer)",
 });
 
+/** Surfaces and edges, by role. A name says what a plane IS, never how light it is. */
+export const surface = stylex.defineVars({
+  sunken: "var(--color-sunken)",
+  surface2: "var(--color-surface-2)",
+  divider: "var(--color-divider)",
+});
+
+/** Corner steps, each already carrying the style scale and the superellipse compensation. */
+export const radius = stylex.defineVars({
+  step2xs: "var(--radius-2xs)",
+  pill: "var(--radius-pill)",
+});
+
+/**
+ * The 4px step, mirrored rather than renamed.
+ *
+ * These are numbers and a number is not a decision — the whole argument for moving to StyleX
+ * says so. They stay numbers HERE on purpose: a styling-engine migration and a token-vocabulary
+ * redesign done in one pass make every golden diff ambiguous, because nothing says whether a
+ * frame moved because StyleX renders differently or because a spacing step changed value.
+ * Mechanical first, with rendering held still; the roles come in their own pass, where each
+ * frame that moves has exactly one cause.
+ */
+export const space = stylex.defineVars({
+  s1: "calc(var(--spacing) * 1)",
+  s2: "calc(var(--spacing) * 2)",
+  s3: "calc(var(--spacing) * 3)",
+  s4_5: "calc(var(--spacing) * 4.5)",
+  s5: "calc(var(--spacing) * 5)",
+});
+
 /**
  * A type STEP, not a font size.
  *

@@ -29,13 +29,7 @@ export function SidebarActions() {
         aria-haspopup="dialog"
         aria-keyshortcuts={combo ? ariaKeyShortcuts(combo) : undefined}
         className="bg-sunken font-normal text-fg-muted hover:bg-hover hover:text-fg"
-        trailing={
-          combo ? (
-            <Kbd className="h-auto min-w-0 bg-transparent px-0 font-mono text-ui-2xs font-normal text-fg-faint">
-              {comboGlyph(combo)}
-            </Kbd>
-          ) : undefined
-        }
+        trailing={combo ? <Kbd variant="inline">{comboGlyph(combo)}</Kbd> : undefined}
       >
         {t("sessionSearch.placeholder")}
       </AgentRow>

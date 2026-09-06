@@ -5830,3 +5830,86 @@ Status: **已完成（第一批）**
 按 Polar 的做法逐文件推进。下一批建议从 `ui/atoms` 里**无变体的展示型原子**开始
 （skeleton、divider、tag），再碰 `button` —— 后者是 cva 变体 + 650 张 golden 的交汇点，
 值得单独一轮。
+
+---
+
+## Round 106 — className 逃生口是个漏洞，不是设计
+
+Status: **已完成**
+
+### 本轮待办
+
+| 状态 | 事项 |
+| --- | --- |
+| 已完成 | 补齐本批令牌（surface / radius / space / type 步级） |
+| 已完成 | 迁移 `kbd`、`divider` |
+| 已放弃 | `chip` —— 依赖 `group-hover:`，**StyleX 没有祖先状态选择器**，不属于机械迁移 |
+| 已完成 | 由守卫暴露并修掉一处真实设计缺陷（见下） |
+
+### 刻意不做
+
+间距在 `ui/atoms` 里用了 **13 个档位**（0.5 / 1 / 1.5 / 2 / 2.5 / 3 / 3.5 / 4 / 5 / 6 / 8 / 12），
+是 Tailwind 的 4px 基准。文章主张按角色命名（`xs`/`s`/`m`/`l`），但**本轮不做这件事**：
+
+样式引擎迁移与令牌语义重命名如果同时进行，每一张 golden 的差异就无法归因 —— 分不清是
+StyleX 换了渲染，还是间距换了值。所以本轮只做**机械等价**迁移，令牌镜像现有刻度、
+逐像素守恒；语义化作为独立一轮，届时 golden 的每一次位移都只有一个原因。
+
+`refactor-prompt` 第 4 条（优先复用现有设计语言、不得随意引入另一套视觉体系）也指向同一结论。
+
+### 验收标准
+
+1. 三个原子的计算样式与迁移前逐项相同。
+2. 视觉套件零 golden 位移。
+3. 全部门禁绿。
+
+### 本轮最重要的发现：`className` 逃生口在 StyleX 下不成立
+
+上一轮我保留了 `cn(props.className, className)`，理由是"调用方仍是 Tailwind，要求两端同时改
+就是重写"。`cascade.visual.spec.ts` 立刻证明这条推理是错的：
+
+```
+height:      `.h-auto`        asks auto,        `.x8161z7:not(#\#):not(#\#):not(#\#)` renders var(…)
+min-width:   `.min-w-0`       asks 0px,         `.x1ebxd6j:not(#\#):not(#\#):not(#\#)` renders var(…)
+background:  `.bg-transparent`asks transparent, `.xzzci7k:not(#\#):not(#\#)`          renders var(…)
+font-family: `.font-mono`     asks mono,        `.xhtk421:not(#\#):not(#\#)`          renders sans
+… 九项，全部被丢弃
+```
+
+StyleX 生成的选择器带 `:not(#\#)` 特异性提升，**任何单个工具类都压不过它**。
+所以"组件迁移、调用方不动"这条增量迁移的接缝，对**任何被调用方覆盖过样式的组件都不成立**。
+
+### 而漏洞底下是一处真实的设计缺陷
+
+那个调用方（`sidebar/actions.tsx`）取消了键帽的**九项属性**：高度、最小宽、底色、内距、
+字体、字号、字重、颜色。它要的根本不是键帽，是**行内的快捷键字形**——只借 `<kbd>` 的语义。
+
+这正是 CLAUDE.md §4 说的「缺档就往库里加一档，别在 callsite 手搓」。按第二法则治本：
+
+| | 修改前 | 修改后 |
+| --- | --- | --- |
+| 调用点 | `<Kbd className="h-auto min-w-0 bg-transparent px-0 font-mono text-ui-2xs font-normal text-fg-faint">` | `<Kbd variant="inline">` |
+| 组件 | 一种形态 + 开放的 className | `cap` / `inline` 两种命名形态 |
+| 渲染 | — | **完全一致**，650 张 golden 零位移 |
+
+Tailwind 时代这个漏洞"能用"，所以没人发现调用点在取消一个设计。StyleX 把它变成编译期
+可见的事实——这恰是采用它的理由本身。
+
+### 刻意不做（保留）
+
+间距仍镜像 Tailwind 的 4px 刻度、不做语义重命名：引擎迁移与令牌重命名同时做，
+golden 的每次位移就无法归因。语义化作为独立一轮。
+
+### 验证
+
+`typecheck` / `lint` / `format` / **20 项 `check:*` 全绿**；单测 **2395 通过**（4 条既有
+runtime e2e）；视觉 **650/650，零 golden 位移**；`cascade` 守卫由红转绿。
+
+### 资源回收
+
+关闭 4174 预览服务，删除临时探针。
+
+### 下一轮方向
+
+`chip` 那类依赖 `group-hover:` 的组件需要单独设计（StyleX 无祖先选择器）——先盘清
+全仓有多少个 `group-*` 依赖，这个数字决定迁移的真实规模。
