@@ -209,7 +209,6 @@ func cloneResumeBinding(value *resumeBinding) *resumeBinding {
 	cloned.toolItems = maps.Clone(value.toolItems)
 	cloned.byName = maps.Clone(value.byName)
 	cloned.drained = slices.Clone(value.drained)
-	cloned.committed = maps.Clone(value.committed)
 	cloned.consumed = maps.Clone(value.consumed)
 	return &cloned
 }

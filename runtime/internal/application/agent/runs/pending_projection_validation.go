@@ -152,31 +152,6 @@ func validatePendingContinuationTools(
 			)
 		}
 	}
-	for _, committed := range continuation.CommittedTools {
-		if err := claimPendingItem(rootRunID, continuation.RunID, committed.ItemID, "committed tool", claimedItems); err != nil {
-			return err
-		}
-		item, found := itemsByID[committed.ItemID]
-		invocation, hasInvocation := item.ToolInvocation()
-		failure, hasFailure := item.Failure()
-		if !found ||
-			item.SessionID() != sessionID ||
-			item.RunID() != continuation.RunID ||
-			item.Kind() != transcript.ToolCall ||
-			item.Status() != transcript.ItemIncomplete ||
-			!hasInvocation ||
-			invocation.Name != committed.Name ||
-			invocation.Arguments.Canonical() != committed.Arguments ||
-			!hasFailure ||
-			!failure.Equal(committed.Failure) {
-			return fmt.Errorf(
-				"runs: validate parked Run tree %q: malformed committed tool Item %q in Run %q",
-				rootRunID,
-				committed.ItemID,
-				continuation.RunID,
-			)
-		}
-	}
 	return nil
 }
 

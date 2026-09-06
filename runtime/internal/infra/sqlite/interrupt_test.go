@@ -308,13 +308,9 @@ func TestInterruptStoreRoundTripsAppLineageWithoutExecutorTopology(t *testing.T)
 				MemberID:       "member_root",
 				ModelSelection: testsupport.DefaultModelSelection(),
 				RunCreatedAt:   createdAt,
-				CommittedTools: []runs.CommittedTool{{
-					ItemID: "item_spawn_child", CallID: "call_child", SourceCallID: "provider_child",
+				DrainedTools: []runs.DrainedTool{{
+					ItemID: "item_spawn_child", ItemOccurredAt: createdAt, CallID: "call_child", SourceCallID: "provider_child",
 					Name: "delegate_task", Arguments: "{}",
-					Failure: tool.Failure{
-						Kind:   tool.FailureChildRunCanceled,
-						Detail: "stop delegated branch",
-					},
 				}},
 			},
 		},
@@ -335,12 +331,12 @@ func TestInterruptStoreRoundTripsAppLineageWithoutExecutorTopology(t *testing.T)
 	}
 	root, found := got.RootContinuation()
 	if !found ||
-		len(root.CommittedTools) != 1 ||
-		root.CommittedTools[0].ItemID != "item_spawn_child" ||
-		root.CommittedTools[0].CallID != "call_child" ||
-		root.CommittedTools[0].SourceCallID != "provider_child" ||
-		root.CommittedTools[0].Failure.Kind != tool.FailureChildRunCanceled {
-		t.Fatalf("root committed tools = %+v, want canceled child result hand-off", root.CommittedTools)
+		len(root.DrainedTools) != 1 ||
+		root.DrainedTools[0].ItemID != "item_spawn_child" ||
+		root.DrainedTools[0].CallID != "call_child" ||
+		root.DrainedTools[0].SourceCallID != "provider_child" ||
+		!root.DrainedTools[0].ItemOccurredAt.Equal(createdAt) {
+		t.Fatalf("root drained tools = %+v, want unfinished child call hand-off", root.DrainedTools)
 	}
 }
 

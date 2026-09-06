@@ -589,10 +589,6 @@ func (w waitingCancellationValidation) validateSurvivingContinuations() error {
 	for _, actual := range c.RemainingPending.Continuations {
 		expected := w.continuationByRunID[actual.RunID]
 		if actual.RunID == target.Lineage.ParentRunID {
-			failure, failed := c.ParentItem.State().Failure()
-			if !failed {
-				return errors.New("runs: waiting cancellation parent replacement has no failure")
-			}
 			var matched []DrainedTool
 			expected.DrainedTools = slices.DeleteFunc(slices.Clone(expected.DrainedTools), func(candidate DrainedTool) bool {
 				if candidate.ItemID != c.ParentItem.Expected().ID() {
@@ -604,11 +600,6 @@ func (w waitingCancellationValidation) validateSurvivingContinuations() error {
 			if len(matched) != 1 {
 				return fmt.Errorf("runs: waiting cancellation parent continuation has %d spawning tools", len(matched))
 			}
-			settled := matched[0]
-			expected.CommittedTools = append(slices.Clone(expected.CommittedTools), CommittedTool{
-				ItemID: settled.ItemID, CallID: settled.CallID, SourceCallID: settled.SourceCallID,
-				Name: settled.Name, Arguments: settled.Arguments, Failure: failure,
-			})
 		}
 		if !sameContinuationValue(actual, expected) {
 			return fmt.Errorf("runs: waiting cancellation changed continuation for Run %q", actual.RunID)
@@ -687,20 +678,17 @@ func (w waitingCancellationValidation) validateConversationMessages() error {
 		return nil
 	}
 	parentContinuation := w.continuationByRunID[c.RootRunID]
-	var committed CommittedTool
+	var parentTool DrainedTool
 	found := false
 	for _, drained := range parentContinuation.DrainedTools {
 		if drained.ItemID != parentExpected.ID() {
 			continue
 		}
-		committed = CommittedTool{
-			ItemID: drained.ItemID, CallID: drained.CallID, SourceCallID: drained.SourceCallID,
-			Name: drained.Name, Arguments: drained.Arguments,
-		}
+		parentTool = drained
 		found = true
 		break
 	}
-	if !found || committed.SourceCallID == "" {
+	if !found || parentTool.SourceCallID == "" {
 		return errors.New("runs: root child cancellation cannot correlate its model-context Tool result")
 	}
 	if len(c.ConversationMessages) != 1 {
@@ -712,7 +700,7 @@ func (w waitingCancellationValidation) validateConversationMessages() error {
 		return errors.New("runs: waiting cancellation has an invalid parent tool message")
 	}
 	result := message.Parts[0].ToolResult
-	if !result.IsError || result.ID != committed.SourceCallID || result.Name != committed.Name {
+	if !result.IsError || result.ID != parentTool.SourceCallID || result.Name != parentTool.Name {
 		return errors.New("runs: waiting cancellation conversation result differs from its parent Tool")
 	}
 	return nil
@@ -754,9 +742,6 @@ func normalizeContinuationValue(value Continuation) Continuation {
 	}
 	if len(value.DrainedTools) == 0 {
 		value.DrainedTools = nil
-	}
-	if len(value.CommittedTools) == 0 {
-		value.CommittedTools = nil
 	}
 	return value
 }

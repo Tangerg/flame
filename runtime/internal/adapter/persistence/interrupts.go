@@ -162,17 +162,10 @@ func interruptRecord(pending runs.Pending) sqlite.InterruptRecord {
 				Name: tool.Name, Arguments: tool.Arguments,
 			}
 		}
-		committed := make([]sqlite.CommittedToolRecord, len(continuation.CommittedTools))
-		for toolIndex, tool := range continuation.CommittedTools {
-			committed[toolIndex] = sqlite.CommittedToolRecord{
-				ItemID: tool.ItemID, CallID: tool.CallID, SourceCallID: tool.SourceCallID, Name: tool.Name,
-				Arguments: tool.Arguments, Failure: tool.Failure,
-			}
-		}
 		continuations[index] = sqlite.ContinuationRecord{
 			RunID: continuation.RunID, MemberID: continuation.MemberID,
 			Lineage: continuation.Lineage, ModelSelection: continuation.ModelSelection,
-			DrainedTools: drained, CommittedTools: committed,
+			DrainedTools: drained,
 			RunCreatedAt: continuation.RunCreatedAt,
 			Metrics:      continuation.Metrics, ContextTokens: continuation.ContextTokens,
 			Limits: continuation.Limits,
@@ -210,20 +203,10 @@ func pendingValue(record sqlite.InterruptRecord) runs.Pending {
 				Name: tool.Name, Arguments: tool.Arguments,
 			}
 		}
-		var committed []runs.CommittedTool
-		if len(continuation.CommittedTools) > 0 {
-			committed = make([]runs.CommittedTool, len(continuation.CommittedTools))
-		}
-		for toolIndex, tool := range continuation.CommittedTools {
-			committed[toolIndex] = runs.CommittedTool{
-				ItemID: tool.ItemID, CallID: tool.CallID, SourceCallID: tool.SourceCallID, Name: tool.Name,
-				Arguments: tool.Arguments, Failure: tool.Failure,
-			}
-		}
 		continuations[index] = runs.Continuation{
 			RunID: continuation.RunID, MemberID: continuation.MemberID,
 			Lineage: continuation.Lineage, ModelSelection: continuation.ModelSelection,
-			DrainedTools: drained, CommittedTools: committed,
+			DrainedTools: drained,
 			RunCreatedAt: continuation.RunCreatedAt,
 			Metrics:      continuation.Metrics, ContextTokens: continuation.ContextTokens,
 			Limits: continuation.Limits,

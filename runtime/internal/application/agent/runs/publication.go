@@ -509,7 +509,6 @@ func (t treePublisher) reduceInterruptedRoute(
 		Lineage:        route.lineage,
 		ModelSelection: route.modelSelection,
 		DrainedTools:   slices.Clone(route.reducer.drained),
-		CommittedTools: route.reducer.resume.remainingCommittedTools(),
 		RunCreatedAt:   waitingRun.CreatedAt(),
 		Metrics:        waitingRun.Metrics(),
 		ContextTokens:  waitingRun.ContextTokens(),

@@ -154,7 +154,7 @@ func (w WaitingMember) Validate() error {
 	if err := w.Metrics.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting member metrics: %w", err)
 	}
-	if _, _, err := validateDrainedTools(w.DrainedTools); err != nil {
+	if err := validateDrainedTools(w.DrainedTools); err != nil {
 		return fmt.Errorf("runs: waiting member tools: %w", err)
 	}
 	return nil

@@ -2572,14 +2572,6 @@ func newWaitingCancellationSQLiteFixtureAt(
 		reduced.Bindings = slices.Clone(pending.Bindings[2:])
 		rootContinuation := pending.Continuations[len(pending.Continuations)-1]
 		rootContinuation.DrainedTools = nil
-		rootContinuation.CommittedTools = []runs.CommittedTool{{
-			ItemID:       parentItem.ID(),
-			CallID:       "call_child",
-			SourceCallID: "provider_child",
-			Name:         "delegate_task",
-			Arguments:    "{}",
-			Failure:      failure,
-		}}
 		reduced.Continuations = []runs.Continuation{
 			pending.Continuations[2],
 			rootContinuation,

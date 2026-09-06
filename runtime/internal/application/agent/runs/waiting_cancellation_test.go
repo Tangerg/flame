@@ -1083,14 +1083,9 @@ func assertSettledParentTool(
 		t.Fatal("continuation has no root")
 	}
 	if slices.ContainsFunc(root.DrainedTools, func(tool DrainedTool) bool {
-		return tool.ItemID == itemID
+		return tool.ItemID == itemID || tool.CallID == callID
 	}) {
 		t.Fatalf("settled Item %q remained in drained tools", itemID)
-	}
-	if len(root.CommittedTools) != 1 ||
-		root.CommittedTools[0].ItemID != itemID ||
-		root.CommittedTools[0].CallID != callID {
-		t.Fatalf("committed tools = %+v, want settled parent call", root.CommittedTools)
 	}
 }
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -18,7 +17,6 @@ type resumeBinding struct {
 	toolItems map[resumeToolKey]resumableItem
 	byName    map[string]resumableItem
 	drained   []DrainedTool
-	committed map[string]CommittedTool
 	consumed  map[string]struct{}
 	err       error
 }
@@ -50,7 +48,6 @@ func newResumeBindingBuilder(resolutions map[string]ToolApprovalResolution) *res
 		callItems: make(map[string]resumableItem),
 		toolItems: make(map[resumeToolKey]resumableItem),
 		byName:    make(map[string]resumableItem),
-		committed: make(map[string]CommittedTool),
 		consumed:  make(map[string]struct{}),
 	}}
 }
@@ -120,21 +117,12 @@ func (r *resumeBindingBuilder) addTools(member Continuation) error {
 			"",
 		)
 	}
-	for _, committed := range member.CommittedTools {
-		arguments, err := parseToolArguments(committed.Arguments)
-		if err != nil {
-			return fmt.Errorf("resume committed tool %q arguments: %w", committed.Name, err)
-		}
-		committed.Arguments = argumentIdentity(arguments)
-		r.binding.committed[committed.CallID] = committed
-	}
 	return nil
 }
 
 func (r *resumeBindingBuilder) build() *resumeBinding {
 	binding := &r.binding
-	if len(binding.callItems) == 0 && len(binding.toolItems) == 0 &&
-		len(binding.committed) == 0 {
+	if len(binding.callItems) == 0 && len(binding.toolItems) == 0 {
 		return nil
 	}
 	return binding
@@ -213,73 +201,5 @@ func (r *resumeBinding) remainingDrainedTools() []DrainedTool {
 			out = append(out, tool)
 		}
 	}
-	return out
-}
-
-func (r *resumeBinding) rejectCommittedToolStart(
-	callID string,
-	toolName string,
-	arguments tool.Arguments,
-) error {
-	if r == nil {
-		return nil
-	}
-	committed, exists := r.committed[callID]
-	if !exists {
-		return nil
-	}
-	if committed.Name != toolName || committed.Arguments != argumentIdentity(arguments) {
-		return fmt.Errorf(
-			"committed tool call %q replayed as %q/%s, want %q/%s",
-			callID,
-			toolName,
-			argumentIdentity(arguments),
-			committed.Name,
-			committed.Arguments,
-		)
-	}
-	return fmt.Errorf("committed tool call %q was executed again", callID)
-}
-
-func (r *resumeBinding) consumeCommittedTool(event ToolCallFinished) (bool, error) {
-	if r == nil {
-		return false, nil
-	}
-	committed, exists := r.committed[event.CallID]
-	if !exists {
-		return false, nil
-	}
-	if event.Failure == nil {
-		return true, fmt.Errorf("committed tool call %q published a successful result", event.CallID)
-	}
-	if event.Arguments != "" {
-		arguments, err := parseToolArguments(event.Arguments)
-		if err != nil {
-			return true, fmt.Errorf("committed tool call %q arguments: %w", event.CallID, err)
-		}
-		if argumentIdentity(arguments) != committed.Arguments {
-			return true, fmt.Errorf(
-				"committed tool call %q arguments changed from %s to %s",
-				event.CallID,
-				committed.Arguments,
-				argumentIdentity(arguments),
-			)
-		}
-	}
-	delete(r.committed, event.CallID)
-	return true, nil
-}
-
-func (r *resumeBinding) remainingCommittedTools() []CommittedTool {
-	if r == nil || len(r.committed) == 0 {
-		return nil
-	}
-	out := make([]CommittedTool, 0, len(r.committed))
-	for _, committed := range r.committed {
-		out = append(out, committed)
-	}
-	slices.SortFunc(out, func(left, right CommittedTool) int {
-		return strings.Compare(left.CallID, right.CallID)
-	})
 	return out
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -197,16 +196,6 @@ func TestPendingValidateRequiresOneCanonicalConnectedTree(t *testing.T) {
 			want: "approval Tool call \"call_grandchild\" is also drained",
 		},
 		{
-			name: "approval Tool call is already committed",
-			mutate: func(p *Pending) {
-				p.Continuations[0].CommittedTools = []CommittedTool{{
-					ItemID: "item_committed", CallID: "call_grandchild",
-					Name: "shell", Arguments: `{}`, Failure: tool.Failure{Kind: tool.FailureInternal},
-				}}
-			},
-			want: "approval Tool call \"call_grandchild\" is already committed",
-		},
-		{
 			name: "interrupt identity is not canonical",
 			mutate: func(p *Pending) {
 				p.Interrupts[0].ItemID += " "
@@ -267,7 +256,6 @@ func TestPendingEqualUsesLogicalDurableValue(t *testing.T) {
 	right.CreatedAt = right.CreatedAt.In(time.FixedZone("equal-instant", 8*60*60))
 	right.Continuations = slices.Clone(right.Continuations)
 	right.Continuations[0].DrainedTools = []DrainedTool{}
-	right.Continuations[0].CommittedTools = []CommittedTool{}
 	if !left.Equal(right) {
 		t.Fatal("Equal rejected equivalent time and empty collection representations")
 	}

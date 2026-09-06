@@ -205,7 +205,7 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 	if err != nil {
 		return waitingCancellationTransformation{}, err
 	}
-	conversationMessages, err := w.parentConversationMessages(parentItem, continuations)
+	conversationMessages, err := w.parentConversationMessages(parentItem)
 	if err != nil {
 		return waitingCancellationTransformation{}, err
 	}
@@ -237,22 +237,21 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 
 func (w waitingCancellationBuilder) parentConversationMessages(
 	parentItem transcript.Replacement,
-	continuations []Continuation,
 ) ([]corechat.Message, error) {
 	expectedParent := parentItem.Expected()
-	for _, continuation := range continuations {
+	for _, continuation := range w.plan.pending.Continuations {
 		if continuation.RunID != expectedParent.RunID() {
 			continue
 		}
-		for _, committed := range continuation.CommittedTools {
-			if committed.ItemID != expectedParent.ID() {
+		for _, drained := range continuation.DrainedTools {
+			if drained.ItemID != expectedParent.ID() {
 				continue
 			}
 			result := w.prepared.parentToolResult
-			if committed.SourceCallID == "" || result.ID != committed.SourceCallID || result.Name != committed.Name {
+			if drained.SourceCallID == "" || result.ID != drained.SourceCallID || result.Name != drained.Name {
 				return nil, fmt.Errorf(
 					"runs: spawning tool %q differs from its prepared cancellation result",
-					committed.ItemID,
+					drained.ItemID,
 				)
 			}
 			if expectedParent.RunID() != w.plan.root.run.ID() {
@@ -262,7 +261,7 @@ func (w waitingCancellationBuilder) parentConversationMessages(
 		}
 	}
 	return nil, fmt.Errorf(
-		"runs: spawning tool %q has no committed continuation",
+		"runs: spawning tool %q has no drained continuation",
 		expectedParent.ID(),
 	)
 }
@@ -413,14 +412,13 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 	}
 
 	continuations := make([]Continuation, 0, len(w.plan.survivingTree))
-	parentToolMoved := false
+	parentToolSettled := false
 	for _, continuation := range w.plan.pending.Continuations {
 		if _, canceled := canceledMembers[continuation.MemberID]; canceled {
 			continue
 		}
 		clone := continuation
 		clone.DrainedTools = slices.Clone(continuation.DrainedTools)
-		clone.CommittedTools = slices.Clone(continuation.CommittedTools)
 		if continuation.RunID == w.plan.target.run.Lineage().ParentRunID {
 			parentInvocation, present := parentItem.ToolInvocation()
 			if !present {
@@ -450,19 +448,11 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 					parentItem.ID(),
 				)
 			}
-			clone.CommittedTools = append(clone.CommittedTools, CommittedTool{
-				ItemID:       tool.ItemID,
-				CallID:       tool.CallID,
-				SourceCallID: tool.SourceCallID,
-				Name:         tool.Name,
-				Arguments:    tool.Arguments,
-				Failure:      failure,
-			})
-			parentToolMoved = true
+			parentToolSettled = true
 		}
 		continuations = append(continuations, clone)
 	}
-	if !parentToolMoved {
+	if !parentToolSettled {
 		return nil, transcript.Replacement{}, nil, fmt.Errorf(
 			"runs: waiting cancellation did not settle spawning Item %q",
 			parentItem.ID(),

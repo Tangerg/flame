@@ -49,7 +49,6 @@ type ContinuationRecord struct {
 	Lineage        run.Lineage
 	ModelSelection modelref.Selection
 	DrainedTools   []DrainedToolRecord
-	CommittedTools []CommittedToolRecord
 	RunCreatedAt   time.Time
 	Metrics        run.Metrics
 	ContextTokens  int64
@@ -72,16 +71,6 @@ type DrainedToolRecord struct {
 	SourceCallID   string
 	Name           string
 	Arguments      string
-}
-
-// CommittedToolRecord is the stored identity and outcome of a settled tool.
-type CommittedToolRecord struct {
-	ItemID       string
-	CallID       string
-	SourceCallID string
-	Name         string
-	Arguments    string
-	Failure      tool.Failure
 }
 
 func (i InterruptRecord) rootContinuation() (ContinuationRecord, bool) {
@@ -135,15 +124,6 @@ type drainedToolRow struct {
 	Arguments      string `json:"arguments"`
 }
 
-type committedToolRow struct {
-	ItemID       string             `json:"itemId"`
-	CallID       string             `json:"callId"`
-	SourceCallID string             `json:"sourceCallId,omitempty"`
-	Name         string             `json:"name"`
-	Arguments    string             `json:"arguments"`
-	Failure      toolFailurePayload `json:"failure"`
-}
-
 type interruptPayload struct {
 	ItemID         string           `json:"itemId"`
 	ItemOccurredAt int64            `json:"itemOccurredAt"`
@@ -161,19 +141,18 @@ type approvalPayload struct {
 }
 
 type continuationRow struct {
-	RunID           string             `json:"runId"`
-	MemberID        string             `json:"memberId"`
-	SpawnedByItemID string             `json:"spawnedByItemId,omitempty"`
-	ParentRunID     string             `json:"parentRunId,omitempty"`
-	RootRunID       string             `json:"rootRunId,omitempty"`
-	Provider        string             `json:"provider,omitempty"`
-	Model           string             `json:"model,omitempty"`
-	ReasoningEffort string             `json:"reasoningEffort,omitempty"`
-	DrainedTools    []drainedToolRow   `json:"drainedTools,omitempty"`
-	CommittedTools  []committedToolRow `json:"committedTools,omitempty"`
-	RunCreatedAt    int64              `json:"runCreatedAt"`
-	ContextTokens   int64              `json:"contextTokens,omitempty"`
-	Accounting      runAccountingRow   `json:"accounting"`
+	RunID           string           `json:"runId"`
+	MemberID        string           `json:"memberId"`
+	SpawnedByItemID string           `json:"spawnedByItemId,omitempty"`
+	ParentRunID     string           `json:"parentRunId,omitempty"`
+	RootRunID       string           `json:"rootRunId,omitempty"`
+	Provider        string           `json:"provider,omitempty"`
+	Model           string           `json:"model,omitempty"`
+	ReasoningEffort string           `json:"reasoningEffort,omitempty"`
+	DrainedTools    []drainedToolRow `json:"drainedTools,omitempty"`
+	RunCreatedAt    int64            `json:"runCreatedAt"`
+	ContextTokens   int64            `json:"contextTokens,omitempty"`
+	Accounting      runAccountingRow `json:"accounting"`
 }
 
 type interruptBindingRow struct {
@@ -205,10 +184,7 @@ func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 	if err != nil {
 		return fmt.Errorf("sqlite: encode interrupts: %w", err)
 	}
-	continuationValues, err := continuationRows(p.Continuations)
-	if err != nil {
-		return fmt.Errorf("sqlite: encode interrupt continuations: %w", err)
-	}
+	continuationValues := continuationRows(p.Continuations)
 	continuations, err := json.Marshal(continuationValues)
 	if err != nil {
 		return fmt.Errorf("sqlite: encode interrupt continuations: %w", err)
@@ -652,51 +628,9 @@ func drainedToolsFromRows(rows []drainedToolRow) []DrainedToolRecord {
 	return tools
 }
 
-func committedToolRows(tools []CommittedToolRecord) ([]committedToolRow, error) {
-	rows := make([]committedToolRow, len(tools))
-	for index, committed := range tools {
-		failure, err := encodeToolFailurePayload(committed.Failure)
-		if err != nil {
-			return nil, fmt.Errorf("committed tool[%d] failure: %w", index, err)
-		}
-		rows[index] = committedToolRow{
-			ItemID:       committed.ItemID,
-			CallID:       committed.CallID,
-			SourceCallID: committed.SourceCallID,
-			Name:         committed.Name,
-			Arguments:    committed.Arguments,
-			Failure:      failure,
-		}
-	}
-	return rows, nil
-}
-
-func committedToolsFromRows(rows []committedToolRow) ([]CommittedToolRecord, error) {
-	tools := make([]CommittedToolRecord, len(rows))
-	for index, row := range rows {
-		failure, err := decodeToolFailurePayload(row.Failure)
-		if err != nil {
-			return nil, fmt.Errorf("committed tool[%d] failure: %w", index, err)
-		}
-		tools[index] = CommittedToolRecord{
-			ItemID:       row.ItemID,
-			CallID:       row.CallID,
-			SourceCallID: row.SourceCallID,
-			Name:         row.Name,
-			Arguments:    row.Arguments,
-			Failure:      failure,
-		}
-	}
-	return tools, nil
-}
-
-func continuationRows(values []ContinuationRecord) ([]continuationRow, error) {
+func continuationRows(values []ContinuationRecord) []continuationRow {
 	rows := make([]continuationRow, len(values))
 	for index, value := range values {
-		committedTools, err := committedToolRows(value.CommittedTools)
-		if err != nil {
-			return nil, fmt.Errorf("continuation[%d]: %w", index, err)
-		}
 		rows[index] = continuationRow{
 			RunID:           value.RunID,
 			MemberID:        value.MemberID,
@@ -707,13 +641,12 @@ func continuationRows(values []ContinuationRecord) ([]continuationRow, error) {
 			Model:           value.ModelSelection.Model(),
 			ReasoningEffort: value.ModelSelection.ReasoningEffort(),
 			DrainedTools:    drainedToolRows(value.DrainedTools),
-			CommittedTools:  committedTools,
 			RunCreatedAt:    value.RunCreatedAt.UnixNano(),
 			ContextTokens:   value.ContextTokens,
 			Accounting:      runAccountingRowOf(value.Metrics, value.Limits),
 		}
 	}
-	return rows, nil
+	return rows
 }
 
 func continuationsFromRows(rows []continuationRow) ([]ContinuationRecord, error) {
@@ -727,10 +660,6 @@ func continuationsFromRows(rows []continuationRow) ([]ContinuationRecord, error)
 		if err != nil {
 			return nil, fmt.Errorf("continuation[%d] accounting: %w", index, err)
 		}
-		committedTools, err := committedToolsFromRows(row.CommittedTools)
-		if err != nil {
-			return nil, fmt.Errorf("continuation[%d]: %w", index, err)
-		}
 		values[index] = ContinuationRecord{
 			RunID:    row.RunID,
 			MemberID: row.MemberID,
@@ -741,7 +670,6 @@ func continuationsFromRows(rows []continuationRow) ([]ContinuationRecord, error)
 			},
 			ModelSelection: selection,
 			DrainedTools:   drainedToolsFromRows(row.DrainedTools),
-			CommittedTools: committedTools,
 			RunCreatedAt:   time.Unix(0, row.RunCreatedAt).UTC(),
 			Metrics:        metrics,
 			ContextTokens:  row.ContextTokens,

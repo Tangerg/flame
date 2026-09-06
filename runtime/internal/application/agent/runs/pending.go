@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
@@ -53,12 +52,6 @@ type Continuation struct {
 	Lineage        run.Lineage
 	ModelSelection modelref.Selection
 	DrainedTools   []DrainedTool
-	// CommittedTools are tool results committed to the transcript while the
-	// executor tree stayed parked. The
-	// executor still publishes those results when it re-enters the checkpoint
-	// because the model needs them in its continuation message; the resumed Run
-	// reducer consumes this identity set without appending the Item a second time.
-	CommittedTools []CommittedTool
 	RunCreatedAt   time.Time
 	Metrics        run.Metrics
 	ContextTokens  int64
@@ -122,21 +115,6 @@ type DrainedTool struct {
 	Arguments string
 }
 
-// CommittedTool is the durable hand-off for one tool result already written to
-// the transcript while its executor checkpoint was parked. Failure records the
-// classification that was committed; it is not reconstructed from
-// the executor's lower-level error when the checkpoint later publishes its
-// model-facing result.
-type CommittedTool struct {
-	ItemID       string
-	CallID       string
-	SourceCallID string
-	Name         string
-	// Arguments is the canonical JSON used to reject a mismatched replay.
-	Arguments string
-	Failure   tool.Failure
-}
-
 // RootContinuation returns the root Run's hand-off. A valid Pending always has
 // exactly one.
 func (p Pending) RootContinuation() (Continuation, bool) {
@@ -159,7 +137,6 @@ func (p Pending) Clone() Pending {
 	for index := range p.Continuations {
 		continuation := &p.Continuations[index]
 		continuation.DrainedTools = slices.Clone(continuation.DrainedTools)
-		continuation.CommittedTools = slices.Clone(continuation.CommittedTools)
 	}
 	p.Capabilities = p.Capabilities.Clone()
 	return p
@@ -498,15 +475,6 @@ func validateApprovalToolState(binding InterruptBinding, continuation Continuati
 			)
 		}
 	}
-	for _, tool := range continuation.CommittedTools {
-		if tool.CallID == binding.ToolCallID {
-			return fmt.Errorf(
-				"interrupts: approval Tool call %q is already committed for member %q",
-				binding.ToolCallID,
-				binding.MemberID,
-			)
-		}
-	}
 	return nil
 }
 
@@ -533,11 +501,7 @@ func (c Continuation) Validate() error {
 	if err := c.validateRun(); err != nil {
 		return err
 	}
-	openItems, openCalls, err := validateDrainedTools(c.DrainedTools)
-	if err != nil {
-		return err
-	}
-	return validateCommittedTools(c.CommittedTools, openItems, openCalls)
+	return validateDrainedTools(c.DrainedTools)
 }
 
 func (c Continuation) validateRun() error {
@@ -568,23 +532,23 @@ func (c Continuation) validateRun() error {
 	return nil
 }
 
-func validateDrainedTools(tools []DrainedTool) (map[string]struct{}, map[string]struct{}, error) {
+func validateDrainedTools(tools []DrainedTool) error {
 	items := make(map[string]struct{}, len(tools))
 	calls := make(map[string]struct{}, len(tools))
 	for index, tool := range tools {
 		if err := tool.validate(); err != nil {
-			return nil, nil, fmt.Errorf("drained tool[%d]: %w", index, err)
+			return fmt.Errorf("drained tool[%d]: %w", index, err)
 		}
 		if _, duplicate := items[tool.ItemID]; duplicate {
-			return nil, nil, fmt.Errorf("drained tool item %q is duplicated", tool.ItemID)
+			return fmt.Errorf("drained tool item %q is duplicated", tool.ItemID)
 		}
 		if _, duplicate := calls[tool.CallID]; duplicate {
-			return nil, nil, fmt.Errorf("drained tool call %q is duplicated", tool.CallID)
+			return fmt.Errorf("drained tool call %q is duplicated", tool.CallID)
 		}
 		items[tool.ItemID] = struct{}{}
 		calls[tool.CallID] = struct{}{}
 	}
-	return items, calls, nil
+	return nil
 }
 
 func (d DrainedTool) validate() error {
@@ -596,48 +560,6 @@ func (d DrainedTool) validate() error {
 	}
 	if d.ItemOccurredAt.IsZero() {
 		return errors.New("item occurrence time is required")
-	}
-	return nil
-}
-
-func validateCommittedTools(
-	tools []CommittedTool,
-	openItems map[string]struct{},
-	openCalls map[string]struct{},
-) error {
-	items := make(map[string]struct{}, len(tools))
-	calls := make(map[string]struct{}, len(tools))
-	for index, tool := range tools {
-		if err := tool.validate(); err != nil {
-			return fmt.Errorf("committed tool[%d]: %w", index, err)
-		}
-		if err := tool.Failure.Validate(); err != nil {
-			return fmt.Errorf("committed tool[%d] failure: %w", index, err)
-		}
-		if _, duplicate := items[tool.ItemID]; duplicate {
-			return fmt.Errorf("committed tool item %q is duplicated", tool.ItemID)
-		}
-		if _, duplicate := calls[tool.CallID]; duplicate {
-			return fmt.Errorf("committed tool call %q is duplicated", tool.CallID)
-		}
-		if _, open := openItems[tool.ItemID]; open {
-			return fmt.Errorf("tool item %q is both drained and committed", tool.ItemID)
-		}
-		if _, open := openCalls[tool.CallID]; open {
-			return fmt.Errorf("tool call %q is both drained and committed", tool.CallID)
-		}
-		items[tool.ItemID] = struct{}{}
-		calls[tool.CallID] = struct{}{}
-	}
-	return nil
-}
-
-func (c CommittedTool) validate() error {
-	if err := validateToolIdentity(c.ItemID, c.CallID, c.Name, c.Arguments); err != nil {
-		return err
-	}
-	if _, _, err := conversation.ParseOptionalToolCallIdentity(c.SourceCallID); err != nil {
-		return err
 	}
 	return nil
 }

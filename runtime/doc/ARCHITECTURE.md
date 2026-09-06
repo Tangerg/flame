@@ -45,6 +45,8 @@ A child's terminal projection precedes the waiting barrier even when an earlier 
 
 Canceling the final waiting child also opens a continuation Segment. Its observer reopens only surviving parent Tool attempts. The executor supplies the exact model-visible cancellation result during preparation; Application commits that value with the canceled Items and resulting checkpoint before the tree can advance.
 
+Continuation state retains only unfinished Tool identities. A canceled child's settled parent Item and model-context result remain in their durable owners; the executor retires that call when cancellation applies, so later continuations do not carry a separate result acknowledgment.
+
 Unknown external effects fail closed. Runtime does not guess whether an unconfirmed model or tool effect succeeded and does not silently replay it.
 
 ## Persistence and recovery

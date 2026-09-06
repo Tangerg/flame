@@ -358,9 +358,6 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 	if err != nil {
 		return nil, fmt.Errorf("tool %q arguments: %w", e.ToolName, err)
 	}
-	if rejectCommittedToolStartErr := r.resume.rejectCommittedToolStart(e.CallID, e.ToolName, arguments); rejectCommittedToolStartErr != nil {
-		return nil, rejectCommittedToolStartErr
-	}
 	out, err := r.closeStreaming(transcript.MessageCommentary)
 	if err != nil {
 		return nil, err
@@ -471,9 +468,6 @@ func (r *reducer) toolEnd(e ToolCallFinished) ([]ProjectionEvent, []ToolInvocati
 	}
 	ref, ok := r.tools.get(e.CallID)
 	if !ok {
-		if consumed, err := r.resume.consumeCommittedTool(e); consumed {
-			return nil, nil, nil, err
-		}
 		return nil, nil, nil, fmt.Errorf("tool call %q ended without an open start", e.CallID)
 	}
 	if ref.end != nil {
