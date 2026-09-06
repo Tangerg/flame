@@ -202,6 +202,9 @@ func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.Effe
 	ids := make([]agent.EffectID, 0)
 	for _, process := range processes {
 		unknown, err := process.UnknownEffectIDs(ctx)
+		if errors.Is(err, agent.ErrProcessFinished) {
+			continue
+		}
 		if err != nil {
 			return nil, fmt.Errorf("inspect Interaction member %s effects: %w", process.ID(), err)
 		}

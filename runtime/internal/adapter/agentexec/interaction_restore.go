@@ -123,6 +123,9 @@ func (i *interactionSession) restoreDelegateCalls(
 	calls := make(map[delegateCallIdentity]*managedDelegateCall)
 	children := make(map[agent.ProcessID]*managedDelegateCall)
 	for parentID, parentSnapshot := range snapshots {
+		if _, active := members[parentID]; !active {
+			continue
+		}
 		active, found, err := interaction.ActiveDelegateChildrenFromSnapshot(parentSnapshot)
 		if err != nil {
 			return nil, nil, fmt.Errorf("inspect parent %s: %w", parentID, err)
@@ -131,14 +134,11 @@ func (i *interactionSession) restoreDelegateCalls(
 			continue
 		}
 		for _, child := range active {
-			managedCall, survives, err := restoreManagedDelegateCall(
+			managedCall, err := restoreManagedDelegateCall(
 				deployments, snapshots, members, parentID, parentSnapshot, child,
 			)
 			if err != nil {
 				return nil, nil, err
-			}
-			if !survives {
-				continue
 			}
 			calls[managedCall.identity] = managedCall
 			children[child.ProcessID()] = managedCall
@@ -162,43 +162,43 @@ func restoreManagedDelegateCall(
 	parentID agent.ProcessID,
 	parentSnapshot agent.ProcessSnapshot,
 	child interaction.ActiveDelegateChild,
-) (*managedDelegateCall, bool, error) {
+) (*managedDelegateCall, error) {
 	childSnapshot, exists := snapshots[child.ProcessID()]
 	if !exists {
-		return nil, false, fmt.Errorf("delegate child %s is absent from the tree", child.ProcessID())
+		return nil, fmt.Errorf("delegate child %s is absent from the tree", child.ProcessID())
 	}
 	relation := childSnapshot.Relation()
 	relationParent, hasParent := relation.ParentID()
 	relationKey, hasKey := relation.ChildKey()
 	if !hasParent || !hasKey || relationParent != parentID || relationKey != child.ChildKey() {
-		return nil, false, fmt.Errorf("delegate child %s relation differs from interaction state", child.ProcessID())
+		return nil, fmt.Errorf("delegate child %s relation differs from interaction state", child.ProcessID())
 	}
 	member, survives := members[child.ProcessID()]
-	if !survives {
-		if !childSnapshot.Status().Terminal() {
-			return nil, false, fmt.Errorf("delegate child %s has no surviving run binding", child.ProcessID())
-		}
-		return nil, false, nil
+	if !survives && !childSnapshot.Status().Terminal() {
+		return nil, fmt.Errorf("delegate child %s has no surviving run binding", child.ProcessID())
 	}
 	target, managed := deployments.delegateTarget(parentSnapshot.DeploymentRef(), child.ToolCall().Name)
 	if !managed || target != childSnapshot.DeploymentRef() {
-		return nil, false, fmt.Errorf("delegate child %s changed exact deployment", child.ProcessID())
+		return nil, fmt.Errorf("delegate child %s changed exact deployment", child.ProcessID())
 	}
 	input, arguments, err := decodeDelegateCall(child.ToolCall())
 	if err != nil {
-		return nil, false, fmt.Errorf("decode Delegate child %s input: %w", child.ProcessID(), err)
+		return nil, fmt.Errorf("decode Delegate child %s input: %w", child.ProcessID(), err)
 	}
-	binding := runs.ChildRunBinding{
-		MemberID: child.ProcessID().String(), RunID: member.RunID, ParentRunID: member.ParentRunID,
-	}
-	if err := binding.Validate(); err != nil {
-		return nil, false, err
+	var binding runs.ChildRunBinding
+	if survives {
+		binding = runs.ChildRunBinding{
+			MemberID: child.ProcessID().String(), RunID: member.RunID, ParentRunID: member.ParentRunID,
+		}
+		if err := binding.Validate(); err != nil {
+			return nil, err
+		}
 	}
 	callID, err := delegatedToolCallID(
 		parentSnapshot.Relation(), child.ModelCallSequence(), child.ToolCallIndex(), child.ToolCall(),
 	)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	return &managedDelegateCall{
 		identity:          delegateCallIdentity{parentID: parentID, childKey: child.ChildKey()},
@@ -211,7 +211,11 @@ func restoreManagedDelegateCall(
 		toolCallIndex:     child.ToolCallIndex(),
 		callID:            callID,
 		binding:           binding, childProcessID: child.ProcessID(), toolStarted: true,
-	}, true, nil
+		// Closed children have already published their product terminal. Scope
+		// retains their result until the waiting parent can commit its Tool batch.
+		assistantProjected: !survives,
+		segmentProjected:   !survives,
+	}, nil
 }
 
 func restoreInteractionAccounting(

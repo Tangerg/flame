@@ -370,6 +370,12 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	if !found {
 		return false
 	}
+	// Capture can settle a sibling that was still running at the preflight.
+	// Its product terminal must precede the waiting members from this cut.
+	if _, err := i.reconcileCompletedDelegateChildren(ctx); err != nil {
+		i.publishProjectionFailure(err)
+		return false
+	}
 	checkpoint, err := i.executorCheckpoint(snapshot)
 	if err != nil {
 		i.publishProjectionFailure(err)
