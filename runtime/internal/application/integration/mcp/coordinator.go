@@ -4,6 +4,7 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -11,12 +12,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
-// StatusReader reads the live status projection for configured MCP servers.
+// StatusReader transfers a live status snapshot for configured MCP servers.
 type StatusReader interface {
 	Statuses() []mcpserver.ConnectionStatus
 }
 
-// ToolCatalog reads tools advertised by live MCP connections.
+// ToolCatalog borrows the optional server scope and transfers the returned catalog.
 type ToolCatalog interface {
 	Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error)
 }
@@ -32,14 +33,15 @@ type ConnectionControl interface {
 	Authorize(ctx context.Context, name mcpserver.ServerName) error
 }
 
-// ConnectionLifecycle projects durable server changes into live connections.
+// ConnectionLifecycle borrows server descriptors during each synchronous call.
+// Implementations acquire their own copy before retaining a live configuration.
 type ConnectionLifecycle interface {
 	Probe(ctx context.Context, server mcpserver.Server) error
 	Configure(ctx context.Context, server mcpserver.Server) error
 	Detach(name mcpserver.ServerName) error
 }
 
-// Registry is the durable server configuration owned by this application boundary.
+// Registry transfers List and Get results and borrows Save input for the call.
 type Registry interface {
 	List(ctx context.Context) ([]mcpserver.Server, error)
 	Get(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error)
@@ -48,7 +50,8 @@ type Registry interface {
 }
 
 // Coordinator owns durable server configuration, live connections, and the
-// atomically published tool policy.
+// atomically published tool policy. Commands borrow input until they return;
+// constructing a server acquires the data retained by persistence or a live dial.
 type Coordinator struct {
 	// mutationMu linearizes durable registry -> policy/live reconciliation and
 	// the short pre/post boundaries of asynchronous connection operations.
@@ -71,7 +74,7 @@ type Coordinator struct {
 
 	// tasks is this component's context for post-commit reconcile: MCP registry
 	// mutations outlive the request but are canceled and joined by the
-	// BeginShutdown/AwaitShutdown lifecycle (§10.2 component context, §10.3).
+	// BeginShutdown/AwaitShutdown lifecycle.
 	tasks taskgroup.Group
 }
 
@@ -87,10 +90,11 @@ type Config struct {
 	Invalidations invalidation.Publish
 }
 
-// New returns a Coordinator over cfg.
-func New(cfg Config) *Coordinator {
-	if cfg.Policy == nil {
-		cfg.Policy = NewToolPolicyState(mcpserver.ToolPolicy{})
+// New constructs the complete durable configuration and live-connection use cases.
+func New(cfg Config) (*Coordinator, error) {
+	if cfg.Registry == nil || cfg.StatusReader == nil || cfg.ToolCatalog == nil ||
+		cfg.ConnectionControl == nil || cfg.ConnectionLifecycle == nil || cfg.Policy == nil {
+		return nil, errors.New("mcp: registry, live connections, tool catalog, and policy are required")
 	}
 	coordinator := &Coordinator{
 		registry:              cfg.Registry,
@@ -105,7 +109,7 @@ func New(cfg Config) *Coordinator {
 		invalidations:         cfg.Invalidations,
 	}
 	coordinator.statusQueue = newStatusQueue(coordinator.acceptStatus)
-	return coordinator
+	return coordinator, nil
 }
 
 // activeDial is the cancellation handle for one server's current connection
@@ -115,18 +119,12 @@ type activeDial struct {
 }
 
 // BeginShutdown cancels this component's post-commit reconcile work.
-// Idempotent; safe to call on a nil Coordinator.
+// It is idempotent.
 func (c *Coordinator) BeginShutdown() {
-	if c == nil {
-		return
-	}
 	c.tasks.Cancel()
 }
 
 // AwaitShutdown joins post-commit reconcile work after [BeginShutdown].
 func (c *Coordinator) AwaitShutdown(ctx context.Context) error {
-	if c == nil {
-		return nil
-	}
 	return c.tasks.Wait(ctx)
 }

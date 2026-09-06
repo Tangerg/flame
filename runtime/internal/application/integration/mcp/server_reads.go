@@ -3,7 +3,6 @@ package mcp
 import (
 	"cmp"
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 
@@ -15,15 +14,11 @@ import (
 // status snapshot. The registry determines membership; the live pool is only a
 // projection and therefore cannot make a configured or disabled server vanish.
 func (c *Coordinator) Servers(ctx context.Context) ([]Server, error) {
-	if c.registry == nil {
-		return nil, errors.New("mcp: MCP registry is unavailable")
-	}
 	servers, err := c.registry.List(ctx)
 	if err != nil {
 		return nil, err
 	}
-	servers, err = validateRegistryCatalog(servers)
-	if err != nil {
+	if err := validateRegistryCatalog(servers); err != nil {
 		return nil, err
 	}
 	slices.SortFunc(servers, func(first, second mcpserver.Server) int {
@@ -47,9 +42,6 @@ func (c *Coordinator) Servers(ctx context.Context) ([]Server, error) {
 
 // Server returns one unified server resource.
 func (c *Coordinator) Server(ctx context.Context, name mcpserver.ServerName) (Server, error) {
-	if c.registry == nil {
-		return Server{}, errors.New("mcp: MCP registry is unavailable")
-	}
 	server, found, err := c.registry.Get(ctx, name)
 	if err != nil {
 		return Server{}, err
@@ -57,7 +49,6 @@ func (c *Coordinator) Server(ctx context.Context, name mcpserver.ServerName) (Se
 	if !found {
 		return Server{}, ErrUnknownServer
 	}
-	server = server.Clone()
 	if err := validateRegistryServer("get", name, server); err != nil {
 		return Server{}, err
 	}
@@ -72,23 +63,18 @@ func (c *Coordinator) Server(ctx context.Context, name mcpserver.ServerName) (Se
 	return serverView(server, nil), nil
 }
 
-func validateRegistryCatalog(servers []mcpserver.Server) ([]mcpserver.Server, error) {
-	owned := make([]mcpserver.Server, len(servers))
-	for index, server := range servers {
-		owned[index] = server.Clone()
-	}
-	servers = owned
+func validateRegistryCatalog(servers []mcpserver.Server) error {
 	seen := make(map[mcpserver.ServerName]struct{}, len(servers))
 	for index, server := range servers {
 		if err := server.Validate(); err != nil {
-			return nil, fmt.Errorf("mcp: registry row %d is invalid: %w", index+1, err)
+			return fmt.Errorf("mcp: registry row %d is invalid: %w", index+1, err)
 		}
 		if _, duplicate := seen[server.Name]; duplicate {
-			return nil, fmt.Errorf("mcp: registry repeats server %q", server.Name)
+			return fmt.Errorf("mcp: registry repeats server %q", server.Name)
 		}
 		seen[server.Name] = struct{}{}
 	}
-	return servers, nil
+	return nil
 }
 
 func validateRegistryServer(operation string, expected mcpserver.ServerName, server mcpserver.Server) error {
@@ -134,9 +120,6 @@ func (c *Coordinator) statusesByName() (map[mcpserver.ServerName]ServerStatus, e
 // the same operation published before dialing.
 func (c *Coordinator) liveStatusesByName() (map[mcpserver.ServerName]ServerStatus, error) {
 	statuses := make(map[mcpserver.ServerName]ServerStatus)
-	if c.statusReader == nil {
-		return statuses, nil
-	}
 	for index, status := range c.statusReader.Statuses() {
 		view, err := statusView(status)
 		if err != nil {

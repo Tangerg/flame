@@ -83,7 +83,7 @@ func TestRegistryMutationIsLinearizedThroughLiveApply(t *testing.T) {
 	}
 	live := &liveSet{servers: map[mcpserver.ServerName]bool{}}
 	policy := mcpserver.NewToolPolicy(nil)
-	c := New(Config{Registry: registry, ConnectionLifecycle: live, Policy: NewToolPolicyState(policy)})
+	c := testCoordinator(t, Config{Registry: registry, ConnectionLifecycle: live, Policy: NewToolPolicyState(policy)})
 	server := mcpserver.Server{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
 
 	configured := make(chan error, 1)
@@ -125,7 +125,7 @@ func TestPostCommitReconciliationOutlivesRequestCancellation(t *testing.T) {
 	}
 	live := &liveSet{servers: map[mcpserver.ServerName]bool{}, configured: make(chan string, 1)}
 	policy := mcpserver.NewToolPolicy(nil)
-	c := New(Config{Registry: registry, ConnectionLifecycle: live, Policy: NewToolPolicyState(policy)})
+	c := testCoordinator(t, Config{Registry: registry, ConnectionLifecycle: live, Policy: NewToolPolicyState(policy)})
 	server := mcpserver.Server{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
@@ -187,7 +187,7 @@ func TestRemoveDoesNotWaitForInteractiveConnection(t *testing.T) {
 		releaseReconnect: make(chan struct{}),
 	}
 	policy := mcpserver.NewToolPolicy([]mcpserver.Server{server})
-	c := New(Config{
+	c := testCoordinator(t, Config{
 		Registry:            registry,
 		StatusReader:        live,
 		ConnectionControl:   live,
@@ -242,7 +242,7 @@ func TestQueuedReconnectCannotReviveRemovedServer(t *testing.T) {
 		releaseReconnect: make(chan struct{}),
 	}
 	policy := mcpserver.NewToolPolicy([]mcpserver.Server{server})
-	c := New(Config{
+	c := testCoordinator(t, Config{
 		Registry:            registry,
 		StatusReader:        live,
 		ConnectionControl:   live,

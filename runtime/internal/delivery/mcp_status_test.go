@@ -34,7 +34,7 @@ func TestMCPAuthorizationAttemptWire(t *testing.T) {
 }
 
 func TestListMCPServers(t *testing.T) {
-	s := handlerWithMCP(fakeMCPPortsConfig(&fakeMCPPorts{
+	s := handlerWithMCP(t, fakeMCPPortsConfig(&fakeMCPPorts{
 		statuses: []mcpserver.ConnectionStatus{
 			{Name: testMCPServerName("fs"), State: mcpserver.ConnectionConnected, ToolCount: 2},
 			{Name: testMCPServerName("down"), State: mcpserver.ConnectionFailed},
@@ -104,7 +104,7 @@ func TestMCPServerWireRejectsUnknownDomainState(t *testing.T) {
 }
 
 func TestReconnectMCPServer(t *testing.T) {
-	s := handlerWithMCP(fakeMCPPortsConfig(&fakeMCPPorts{
+	s := handlerWithMCP(t, fakeMCPPortsConfig(&fakeMCPPorts{
 		statuses: []mcpserver.ConnectionStatus{{Name: testMCPServerName("fs"), State: mcpserver.ConnectionConnected, ToolCount: 1}},
 		tools:    []mcpserver.AdvertisedTool{{Server: testMCPServerName("fs"), Name: testRemoteToolName("read")}},
 	}))
@@ -135,7 +135,7 @@ func TestListMCPTools(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseInputSchema: %v", err)
 	}
-	s := handlerWithMCP(fakeMCPPortsConfig(&fakeMCPPorts{tools: []mcpserver.AdvertisedTool{
+	s := handlerWithMCP(t, fakeMCPPortsConfig(&fakeMCPPorts{tools: []mcpserver.AdvertisedTool{
 		{Server: testMCPServerName("fs"), Name: testRemoteToolName("read"), Description: "read a file", InputSchema: readSchema},
 		{Server: testMCPServerName("fs"), Name: testRemoteToolName("write")},
 		{Server: testMCPServerName("git"), Name: testRemoteToolName("log")},

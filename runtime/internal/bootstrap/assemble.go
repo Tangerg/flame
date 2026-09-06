@@ -266,7 +266,7 @@ func buildAssemblyCore(
 
 	toolCoordinator := workspace.NewDiagnosticTools(execution.toolRegistry, workspaceServices.scope)
 
-	mcpCoordinator := mcpapp.New(mcpapp.Config{
+	mcpCoordinator, err := mcpapp.New(mcpapp.Config{
 		Registry:            cfg.Stores.MCPServers,
 		StatusReader:        execution.tools.mcp,
 		ToolCatalog:         execution.tools.mcp,
@@ -275,6 +275,9 @@ func buildAssemblyCore(
 		Policy:              policy.mcp.policy,
 		Invalidations:       policy.invalidations.Publish,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("runtime: construct MCP coordinator: %w", err)
+	}
 	lifetime.mcpCoordinator = mcpCoordinator
 
 	// Goal mode: the autonomous-execution loop driver over the run coordinator.

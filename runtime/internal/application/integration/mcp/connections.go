@@ -33,8 +33,7 @@ func (c *Coordinator) ReconnectServer(ctx context.Context, name mcpserver.Server
 // concurrent configure/remove supersede stale dial completion, while unrelated
 // servers can connect in parallel. The task's context scopes both registry reads
 // and dial.
-// Returns [errConnectionUnavailable] when the coordinator lacks a required
-// connection dependency, [ErrUnknownServer] or [ErrServerDisabled] when
+// Returns [ErrUnknownServer] or [ErrServerDisabled] when
 // durable state refuses the command, or [errClosed] during shutdown.
 func (c *Coordinator) startConnection(ctx context.Context, name mcpserver.ServerName, dial func(context.Context) error) error {
 	if _, err := c.connectionTarget(ctx, name); err != nil {
@@ -44,9 +43,6 @@ func (c *Coordinator) startConnection(ctx context.Context, name mcpserver.Server
 }
 
 func (c *Coordinator) connectionTarget(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, error) {
-	if c.registry == nil || c.statusReader == nil || c.connectionControl == nil {
-		return mcpserver.Server{}, errConnectionUnavailable
-	}
 	if ctx == nil {
 		return mcpserver.Server{}, errors.New("mcp: connection context is required")
 	}
@@ -58,7 +54,6 @@ func (c *Coordinator) connectionTarget(ctx context.Context, name mcpserver.Serve
 	if !ok {
 		return mcpserver.Server{}, ErrUnknownServer
 	}
-	srv = srv.Clone()
 	if err := validateRegistryServer("get", name, srv); err != nil {
 		return mcpserver.Server{}, err
 	}

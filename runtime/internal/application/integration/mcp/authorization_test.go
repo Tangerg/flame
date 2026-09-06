@@ -14,7 +14,7 @@ func TestAuthorizationAttemptReportsFailureWithoutDiscardingResult(t *testing.T)
 		statuses:     []mcpserver.ConnectionStatus{{Name: testMCPServerName("github")}},
 		authorizeErr: errors.New("oauth exchange exposed a secret-bearing response"),
 	}
-	c := New(configWithPorts(ports))
+	c := testCoordinator(t, configWithPorts(ports))
 	defer requireCoordinatorShutdown(t, c)
 
 	created, err := c.CreateAuthorizationAttempt(context.Background(), testMCPServerName("github"))
@@ -34,7 +34,7 @@ func TestAuthorizationAttemptIsCanceledWhenSuperseded(t *testing.T) {
 		authorizeStarted: authorizeStarted,
 		releaseAuthorize: make(chan struct{}),
 	}
-	c := New(configWithPorts(ports))
+	c := testCoordinator(t, configWithPorts(ports))
 	defer requireCoordinatorShutdown(t, c)
 
 	created, err := c.CreateAuthorizationAttempt(context.Background(), testMCPServerName("github"))
@@ -80,7 +80,7 @@ func TestAuthorizationAttemptStoreRetainsOnlyTerminalResults(t *testing.T) {
 }
 
 func TestAuthorizationAttemptRejectsUnknownID(t *testing.T) {
-	c := New(Config{})
+	c := testCoordinator(t, Config{})
 	if _, err := c.AuthorizationAttempt(context.Background(), testAuthorizationAttemptID); !errors.Is(err, ErrAuthorizationAttemptNotFound) {
 		t.Fatalf("AuthorizationAttempt = %v, want ErrAuthorizationAttemptNotFound", err)
 	}
@@ -98,7 +98,7 @@ func TestAuthorizationAttemptRejectsNonHTTPServerBeforeDispatch(t *testing.T) {
 			Transport: mcpserver.TransportStdio, Command: "mcp-filesystem",
 		},
 	}}
-	c := New(Config{
+	c := testCoordinator(t, Config{
 		Registry: registry, StatusReader: ports,
 		ConnectionControl: ports,
 	})

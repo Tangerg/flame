@@ -5,6 +5,8 @@ import (
 	"context"
 	"slices"
 	"sync"
+	"testing"
+	"time"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -21,11 +23,11 @@ type fakeMCPPorts struct {
 	authorizeName string
 }
 
-func (f *fakeMCPPorts) Statuses() []mcpserver.ConnectionStatus { return f.statuses }
+func (f *fakeMCPPorts) Statuses() []mcpserver.ConnectionStatus { return slices.Clone(f.statuses) }
 
 func (f *fakeMCPPorts) Tools(_ context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
 	if server == nil {
-		return f.tools, nil
+		return slices.Clone(f.tools), nil
 	}
 	var out []mcpserver.AdvertisedTool
 	for _, t := range f.tools {
@@ -80,7 +82,7 @@ func (m *mcpRegistryFake) List(context.Context) ([]mcpserver.Server, error) {
 	defer m.mu.Unlock()
 	out := make([]mcpserver.Server, 0, len(m.servers))
 	for _, srv := range m.servers {
-		out = append(out, srv)
+		out = append(out, srv.Clone())
 	}
 	slices.SortFunc(out, func(a, b mcpserver.Server) int {
 		return cmp.Compare(a.Name.String(), b.Name.String())
@@ -95,7 +97,7 @@ func (m *mcpRegistryFake) Get(_ context.Context, name mcpserver.ServerName) (mcp
 		return mcpserver.Server{}, false, m.getErr
 	}
 	srv, ok := m.servers[name]
-	return srv, ok, nil
+	return srv.Clone(), ok, nil
 }
 
 func (m *mcpRegistryFake) Save(_ context.Context, srv mcpserver.Server) error {
@@ -104,8 +106,8 @@ func (m *mcpRegistryFake) Save(_ context.Context, srv mcpserver.Server) error {
 	if m.servers == nil {
 		m.servers = make(map[mcpserver.ServerName]mcpserver.Server)
 	}
-	m.servers[srv.Name] = srv
-	m.saved = append(m.saved, srv)
+	m.servers[srv.Name] = srv.Clone()
+	m.saved = append(m.saved, srv.Clone())
 	return nil
 }
 
@@ -121,14 +123,43 @@ func (m *mcpRegistryFake) Remove(_ context.Context, name mcpserver.ServerName) e
 // reconnect/configure paths publish through — bridged like the composition root
 // via a neutral signal so the coordinator's connecting → settled frames
 // reach the hub.
-func handlerWithMCP(cfg mcpapp.Config) *Handler {
+func handlerWithMCP(t testing.TB, cfg mcpapp.Config) *Handler {
+	t.Helper()
+	ports := &fakeMCPPorts{}
+	if cfg.Registry == nil {
+		cfg.Registry = &mcpRegistryFake{}
+	}
+	if cfg.StatusReader == nil {
+		cfg.StatusReader = ports
+	}
+	if cfg.ToolCatalog == nil {
+		cfg.ToolCatalog = ports
+	}
+	if cfg.ConnectionControl == nil {
+		cfg.ConnectionControl = ports
+	}
+	if cfg.ConnectionLifecycle == nil {
+		cfg.ConnectionLifecycle = ports
+	}
 	if cfg.Policy == nil {
 		policy := mcpserver.NewToolPolicy(nil)
 		cfg.Policy = mcpapp.NewToolPolicyState(policy)
 	}
 	mcpInvalidations := &testNotification[invalidation.Notice]{}
 	cfg.Invalidations = mcpInvalidations.Publish
-	s := &Handler{mcp: mcpapp.New(cfg), workspaceHub: newWorkspaceHub()}
+	coordinator, err := mcpapp.New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		coordinator.BeginShutdown()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		if err := coordinator.AwaitShutdown(ctx); err != nil {
+			t.Fatal(err)
+		}
+	})
+	s := &Handler{mcp: coordinator, workspaceHub: newWorkspaceHub()}
 	s.observeInvalidations(mcpInvalidations.Observe)
 	return s
 }

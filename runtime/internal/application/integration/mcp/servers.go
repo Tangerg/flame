@@ -19,10 +19,6 @@ const reconcileTimeout = 30 * time.Second
 // launched because the component is shutting down.
 var errClosed = errors.New("mcp: closed")
 
-// errConnectionUnavailable reports an incomplete coordinator assembly at the
-// use-case boundary instead of letting a detached task fail asynchronously.
-var errConnectionUnavailable = errors.New("mcp: MCP connection service is unavailable")
-
 // ErrInvalidServerConfiguration marks a malformed MCP configuration command.
 // Callers map it to their validation error without re-running domain
 // validation or inspecting persistence state.
@@ -52,7 +48,6 @@ var ErrAuthorizationUnsupported = errors.New("mcp: MCP authorization requires st
 // CreateServer creates one durable resource and projects it into the live MCP
 // pool. A duplicate name is a conflict, never an implicit update.
 func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Server, error) {
-	input = input.clone()
 	write, err := c.beginMutation(ctx)
 	if err != nil {
 		return Server{}, err
@@ -76,7 +71,6 @@ func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Serv
 // UpdateServer applies an explicit partial update to an existing resource.
 // The mutation lock keeps the read/patch/save sequence atomic inside the runtime.
 func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ServerName, patch ServerPatch) (Server, error) {
-	patch = patch.clone()
 	if patch.Empty() {
 		return Server{}, fmt.Errorf("%w: update contains no changes", ErrInvalidServerConfiguration)
 	}
@@ -92,7 +86,6 @@ func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ServerNam
 	if !found {
 		return Server{}, ErrUnknownServer
 	}
-	current = current.Clone()
 	if err := validateRegistryServer("get", name, current); err != nil {
 		return Server{}, err
 	}
@@ -104,7 +97,7 @@ func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ServerNam
 }
 
 func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (Server, error) {
-	if err := c.registry.Save(write.requestCtx, srv.Clone()); err != nil {
+	if err := c.registry.Save(write.requestCtx, srv); err != nil {
 		return Server{}, err
 	}
 	if !srv.Enabled {
@@ -119,7 +112,7 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 	// projection. Disabled or unreconciled servers install an unknown tombstone
 	// so a stale live entry cannot resurrect the previous connection.
 	status := ServerStatus{Name: srv.Name}
-	shouldRedial := srv.Enabled && reconcileErr == nil && c.connectionLifecycle != nil
+	shouldRedial := srv.Enabled && reconcileErr == nil
 	if shouldRedial {
 		status.Known = true
 		status.State = mcpserver.ConnectionConnecting
@@ -188,10 +181,7 @@ func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ServerNam
 	// Shrink the live set before publishing the new policy: dropping tools can't
 	// expose a hidden one, but publishing first would leave the about-to-be-dropped
 	// tools briefly live under the wrong policy.
-	var projectionErr error
-	if c.connectionLifecycle != nil {
-		projectionErr = c.connectionLifecycle.Detach(name)
-	}
+	projectionErr := c.connectionLifecycle.Detach(name)
 	policyErr := c.refreshToolPolicy(reconcileCtx)
 	event := c.prepareStatus(ServerStatus{Name: name})
 	write.unlock()
@@ -274,10 +264,7 @@ func (c *Coordinator) applyRegistryChange(ctx context.Context, srv mcpserver.Ser
 	if srv.Enabled {
 		return c.refreshToolPolicy(ctx)
 	}
-	var projectionErr error
-	if c.connectionLifecycle != nil {
-		projectionErr = c.connectionLifecycle.Detach(srv.Name)
-	}
+	projectionErr := c.connectionLifecycle.Detach(srv.Name)
 	return errors.Join(projectionErr, c.refreshToolPolicy(ctx))
 }
 
@@ -291,11 +278,9 @@ func (c *Coordinator) applyRegistryChange(ctx context.Context, srv mcpserver.Ser
 // through per-server generation. A dial failure does not fail the originating
 // call; status surfaces it and it remains reconnectable.
 func (c *Coordinator) redialServer(ctx context.Context, srv mcpserver.Server, start <-chan struct{}) error {
-	if c.connectionLifecycle == nil {
-		return errConnectionUnavailable
-	}
+	srv = srv.Clone()
 	return c.dispatchConnection(ctx, srv.Name, func(dialCtx context.Context) error {
-		return c.connectionLifecycle.Configure(dialCtx, srv.Clone())
+		return c.connectionLifecycle.Configure(dialCtx, srv)
 	}, false, start, nil)
 }
 
@@ -303,18 +288,14 @@ func (c *Coordinator) redialServer(ctx context.Context, srv mcpserver.Server, st
 // connection test that touches neither the registry nor the live set, EXCEPT it
 // reuses an active OAuth sign-in for the same-named server (so an authorized
 // OAuth server tests as connected, not "unauthorized"). Returns the dial /
-// tools-list failure as OK=false; invalid candidates and unavailable registry
-// capability are returned as errors.
+// tools-list failure as OK=false; invalid candidates and registry failures
+// are returned as errors.
 func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (TestResult, error) {
-	input = input.clone()
 	srv, err := c.validatedServer(ctx, input)
 	if err != nil {
 		return TestResult{}, err
 	}
-	if c.connectionLifecycle == nil {
-		return TestResult{}, ErrUnknownServer
-	}
-	if err := c.connectionLifecycle.Probe(ctx, srv.Clone()); err != nil {
+	if err := c.connectionLifecycle.Probe(ctx, srv); err != nil {
 		return TestResult{}, nil
 	}
 	return TestResult{OK: true}, nil
@@ -322,13 +303,12 @@ func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (TestRe
 
 func (c *Coordinator) validatedServer(ctx context.Context, input ServerInput) (mcpserver.Server, error) {
 	var current *mcpserver.Server
-	if c.registry != nil && input.Name.Validate() == nil {
+	if input.Name.Validate() == nil {
 		stored, found, err := c.registry.Get(ctx, input.Name)
 		if err != nil {
 			return mcpserver.Server{}, err
 		}
 		if found {
-			stored = stored.Clone()
 			if err := validateRegistryServer("get", input.Name, stored); err != nil {
 				return mcpserver.Server{}, err
 			}
@@ -393,10 +373,10 @@ func applyServerPatch(current mcpserver.Server, patch ServerPatch) (mcpserver.Se
 		disabled := updated.ToolPolicy.DisabledTools()
 		autoApproved := updated.ToolPolicy.AutoApprovedTools()
 		if patch.DisabledTools != nil {
-			disabled = slices.Clone(*patch.DisabledTools)
+			disabled = *patch.DisabledTools
 		}
 		if patch.AutoApproveTools != nil {
-			autoApproved = slices.Clone(*patch.AutoApproveTools)
+			autoApproved = *patch.AutoApproveTools
 		}
 		policy, err := mcpserver.NewServerToolPolicy(disabled, autoApproved)
 		if err != nil {
@@ -583,20 +563,15 @@ func resolveEnvironment(
 // when non-empty) for tool discovery, ordered by server then tool name.
 func (c *Coordinator) Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
 	if server != nil {
-		server = clonePointer(server)
 		if err := server.Validate(); err != nil {
 			return nil, fmt.Errorf("mcp: tool catalog server: %w", err)
 		}
 	}
-	if c.toolCatalog == nil {
-		return nil, nil
-	}
-	tools, err := c.toolCatalog.Tools(ctx, clonePointer(server))
+	tools, err := c.toolCatalog.Tools(ctx, server)
 	if err != nil {
 		return nil, err
 	}
-	tools, err = validateToolCatalog(server, tools)
-	if err != nil {
+	if err := validateToolCatalog(server, tools); err != nil {
 		return nil, err
 	}
 	slices.SortFunc(tools, func(first, second mcpserver.AdvertisedTool) int {
@@ -608,28 +583,27 @@ func (c *Coordinator) Tools(ctx context.Context, server *mcpserver.ServerName) (
 	return tools, nil
 }
 
-func validateToolCatalog(server *mcpserver.ServerName, tools []mcpserver.AdvertisedTool) ([]mcpserver.AdvertisedTool, error) {
-	tools = slices.Clone(tools)
+func validateToolCatalog(server *mcpserver.ServerName, tools []mcpserver.AdvertisedTool) error {
 	seen := make(map[mcpserver.ToolRef]struct{}, len(tools))
 	counts := make(map[mcpserver.ServerName]int)
 	for index, tool := range tools {
 		if err := tool.Validate(); err != nil {
-			return nil, fmt.Errorf("mcp: tool catalog row %d is invalid: %w", index+1, err)
+			return fmt.Errorf("mcp: tool catalog row %d is invalid: %w", index+1, err)
 		}
 		if server != nil && tool.Server != *server {
-			return nil, fmt.Errorf("mcp: tool catalog for %q contains a tool from %q", server, tool.Server)
+			return fmt.Errorf("mcp: tool catalog for %q contains a tool from %q", server, tool.Server)
 		}
 		ref := mcpserver.ToolRef{Server: tool.Server, Tool: tool.Name}
 		if _, duplicate := seen[ref]; duplicate {
-			return nil, fmt.Errorf("mcp: tool catalog repeats %q/%q", tool.Server, tool.Name)
+			return fmt.Errorf("mcp: tool catalog repeats %q/%q", tool.Server, tool.Name)
 		}
 		seen[ref] = struct{}{}
 		counts[tool.Server]++
 		if err := mcpserver.ValidateRemoteToolCount(counts[tool.Server]); err != nil {
-			return nil, fmt.Errorf("mcp: tool catalog for %q: %w", tool.Server, err)
+			return fmt.Errorf("mcp: tool catalog for %q: %w", tool.Server, err)
 		}
 	}
-	return tools, nil
+	return nil
 }
 
 // refreshToolPolicy atomically publishes the policy derived from the
@@ -639,8 +613,7 @@ func (c *Coordinator) refreshToolPolicy(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	servers, err = validateRegistryCatalog(servers)
-	if err != nil {
+	if err := validateRegistryCatalog(servers); err != nil {
 		return err
 	}
 	policy := mcpserver.NewToolPolicy(servers)

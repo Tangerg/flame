@@ -22,7 +22,7 @@ func TestServersAndToolsUsePorts(t *testing.T) {
 		},
 		tools: []mcpserver.AdvertisedTool{{Server: testMCPServerName("fs"), Name: testRemoteToolName("read")}},
 	}
-	c := New(configWithPorts(ports))
+	c := testCoordinator(t, configWithPorts(ports))
 
 	if got, err := c.Servers(context.Background()); err != nil || len(got) != 2 ||
 		got[0].Name.String() != "docs" || got[1].Name.String() != "fs" ||
@@ -42,22 +42,23 @@ func TestServersAndToolsUsePorts(t *testing.T) {
 	}
 }
 
-func TestServersSnapshotRegistryRowsBeforeStatusCallbacks(t *testing.T) {
+func TestServersDoNotExposeStoredMutableValues(t *testing.T) {
 	name := testMCPServerName("files")
 	server := mcpserver.Server{
 		Name: name, Enabled: true, Transport: mcpserver.TransportStdio,
 		Command: "mcp-files", Args: []string{"--root", "/repo"},
 	}
 	registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{name: server}}
-	ports := &fakePorts{statusHook: func() { server.Args[0] = "status-mutated" }}
-	coordinator := New(Config{Registry: registry, StatusReader: ports})
+	ports := &fakePorts{}
+	coordinator := testCoordinator(t, Config{Registry: registry, StatusReader: ports})
 
 	servers, err := coordinator.Servers(t.Context())
 	if err != nil || len(servers) != 1 {
 		t.Fatalf("Servers = (%+v, %v), want one server", servers, err)
 	}
-	if got := servers[0].Connection.Args[0]; got != "--root" {
-		t.Fatalf("server args = %q, want pre-callback snapshot", got)
+	servers[0].Connection.Args[0] = "changed"
+	if server.Args[0] != "--root" {
+		t.Fatal("returned server changed stored arguments")
 	}
 }
 
@@ -67,7 +68,7 @@ func TestToolsOwnCatalogOrder(t *testing.T) {
 		{Server: testMCPServerName("alpha"), Name: testRemoteToolName("zeta")},
 		{Server: testMCPServerName("alpha"), Name: testRemoteToolName("alpha")},
 	}}
-	c := New(Config{ToolCatalog: ports})
+	c := testCoordinator(t, Config{ToolCatalog: ports})
 
 	tools, err := c.Tools(t.Context(), nil)
 	if err != nil {
@@ -84,22 +85,6 @@ func TestToolsOwnCatalogOrder(t *testing.T) {
 	}
 }
 
-func TestToolsKeepsScopeSnapshotFromCatalogMutation(t *testing.T) {
-	name := testMCPServerName("files")
-	ports := &fakePorts{
-		tools:             []mcpserver.AdvertisedTool{{Server: name, Name: testRemoteToolName("read")}},
-		mutateToolsServer: true,
-	}
-
-	tools, err := New(Config{ToolCatalog: ports}).Tools(t.Context(), &name)
-	if err != nil || len(tools) != 1 {
-		t.Fatalf("Tools = (%+v, %v), want one tool", tools, err)
-	}
-	if name.String() != "files" || ports.toolsServer != "files" {
-		t.Fatalf("tool scope = caller %q, port %q; want files", name, ports.toolsServer)
-	}
-}
-
 func TestToolsRejectsBrokenOrOutOfScopeCatalogs(t *testing.T) {
 	files := testMCPServerName("files")
 	read := mcpserver.AdvertisedTool{Server: files, Name: testRemoteToolName("read")}
@@ -109,7 +94,7 @@ func TestToolsRejectsBrokenOrOutOfScopeCatalogs(t *testing.T) {
 		"foreign scope":      {{Server: testMCPServerName("other"), Name: testRemoteToolName("read")}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			c := New(Config{ToolCatalog: &fakePorts{tools: tools}})
+			c := testCoordinator(t, Config{ToolCatalog: &fakePorts{tools: tools}})
 			if result, err := c.Tools(t.Context(), &files); err == nil || result != nil {
 				t.Fatalf("Tools = (%+v, %v), want nil/error", result, err)
 			}
@@ -122,14 +107,14 @@ func TestToolsRejectsBrokenOrOutOfScopeCatalogs(t *testing.T) {
 			Server: files, Name: testRemoteToolName(fmt.Sprintf("tool-%04d", index)),
 		}
 	}
-	c := New(Config{ToolCatalog: &fakePorts{tools: overCapacity}})
+	c := testCoordinator(t, Config{ToolCatalog: &fakePorts{tools: overCapacity}})
 	if result, err := c.Tools(t.Context(), &files); err == nil || result != nil {
 		t.Fatalf("over-capacity Tools = (%d rows, %v), want nil/error", len(result), err)
 	}
 
 	invalidScope := mcpserver.ServerName{}
 	ports := &fakePorts{tools: []mcpserver.AdvertisedTool{read}}
-	c = New(Config{ToolCatalog: ports})
+	c = testCoordinator(t, Config{ToolCatalog: ports})
 	if result, err := c.Tools(t.Context(), &invalidScope); err == nil || result != nil {
 		t.Fatalf("invalid-scope Tools = (%+v, %v), want nil/error", result, err)
 	}
@@ -148,7 +133,7 @@ func TestServersRejectsBrokenRegistryCatalog(t *testing.T) {
 		"duplicate identity": {server, server},
 	} {
 		t.Run(name, func(t *testing.T) {
-			c := New(Config{Registry: &testRegistry{listed: listed}})
+			c := testCoordinator(t, Config{Registry: &testRegistry{listed: listed}})
 			if servers, err := c.Servers(t.Context()); err == nil || servers != nil {
 				t.Fatalf("Servers = (%+v, %v), want nil/error", servers, err)
 			}
@@ -170,7 +155,7 @@ func TestServersRejectsBrokenLiveStatusCatalog(t *testing.T) {
 	} {
 		t.Run(caseName, func(t *testing.T) {
 			ports := &fakePorts{statuses: statuses}
-			c := New(Config{
+			c := testCoordinator(t, Config{
 				Registry:     &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{name: server}},
 				StatusReader: ports,
 			})
@@ -183,7 +168,7 @@ func TestServersRejectsBrokenLiveStatusCatalog(t *testing.T) {
 
 func TestServerStatusRejectsCorruptApplicationOverride(t *testing.T) {
 	name := testMCPServerName("files")
-	c := New(Config{})
+	c := testCoordinator(t, Config{})
 	c.statusOverrides[name] = ServerStatus{Name: name, Known: true, State: mcpserver.ConnectionConnected}
 
 	if status, err := c.ServerStatus(t.Context(), name); err == nil || status != (ServerStatus{}) {
@@ -192,7 +177,7 @@ func TestServerStatusRejectsCorruptApplicationOverride(t *testing.T) {
 }
 
 func TestServerStatusRejectsInvalidRequestedIdentity(t *testing.T) {
-	c := New(Config{StatusReader: &fakePorts{}})
+	c := testCoordinator(t, Config{StatusReader: &fakePorts{}})
 	if status, err := c.ServerStatus(t.Context(), mcpserver.ServerName{}); err == nil || status != (ServerStatus{}) {
 		t.Fatalf("ServerStatus = (%+v, %v), want zero/error", status, err)
 	}
@@ -206,7 +191,7 @@ func TestMCPRegistryReadsRejectMismatchedIdentity(t *testing.T) {
 	}
 	registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{requested: foreign}}
 	ports := &fakePorts{}
-	c := New(Config{
+	c := testCoordinator(t, Config{
 		Registry: registry, StatusReader: ports, ConnectionControl: ports,
 		ConnectionLifecycle: ports,
 	})
@@ -243,7 +228,7 @@ func TestBrokenRegistryCatalogCannotReplaceToolPolicy(t *testing.T) {
 	}
 	policy := NewToolPolicyState(mcpserver.NewToolPolicy([]mcpserver.Server{server}))
 	ref := mcpserver.ToolRef{Server: server.Name, Tool: testRemoteToolName("read")}
-	c := New(Config{Registry: &testRegistry{listed: []mcpserver.Server{{}}}, Policy: policy})
+	c := testCoordinator(t, Config{Registry: &testRegistry{listed: []mcpserver.Server{{}}}, Policy: policy})
 
 	if policy.ToolDisabled(ref) {
 		t.Fatal("initial policy unexpectedly disabled configured server")
@@ -265,7 +250,7 @@ func TestDeleteServerPublishesRemovalAfterProjectionFailure(t *testing.T) {
 	notified := make(chan string, 1)
 	cfg := configWithPorts(ports)
 	cfg.Invalidations = func(notice invalidation.Notice) { notified <- notice.ServerIDs[0] }
-	c := New(cfg)
+	c := testCoordinator(t, cfg)
 
 	if err := c.DeleteServer(t.Context(), testMCPServerName("fs")); !errors.Is(err, projectionErr) {
 		t.Fatalf("DeleteServer = %v, want projection failure", err)
@@ -292,7 +277,7 @@ func TestReconnectServerUsesPort(t *testing.T) {
 			settled <- status.Name.String()
 		}
 	}
-	c = New(cfg)
+	c = testCoordinator(t, cfg)
 	defer requireCoordinatorShutdown(t, c)
 
 	if err := c.ReconnectServer(context.Background(), testMCPServerName("fs")); err != nil {
@@ -318,7 +303,7 @@ func TestAuthorizationAttemptUsesPortAndSettles(t *testing.T) {
 		authorizeStarted: authorizeStarted,
 		releaseAuthorize: releaseAuthorize,
 	}
-	c := New(configWithPorts(ports))
+	c := testCoordinator(t, configWithPorts(ports))
 	defer requireCoordinatorShutdown(t, c)
 
 	attempt, err := c.CreateAuthorizationAttempt(context.Background(), testMCPServerName("github"))
@@ -349,7 +334,7 @@ func TestConnectionValidationUsesDurableRegistry(t *testing.T) {
 	registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{
 		name: {Name: name, Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-fs"},
 	}}
-	c := New(Config{
+	c := testCoordinator(t, Config{
 		Registry:            registry,
 		StatusReader:        ports,
 		ToolCatalog:         ports,
@@ -379,7 +364,7 @@ func TestConnectionRejectsDurablyDisabledServer(t *testing.T) {
 	registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{
 		name: {Name: name, Enabled: false, Transport: mcpserver.TransportStdio, Command: "mcp-fs"},
 	}}
-	c := New(Config{
+	c := testCoordinator(t, Config{
 		Registry:            registry,
 		StatusReader:        ports,
 		ToolCatalog:         ports,
@@ -427,7 +412,7 @@ func TestStatusCallbackMayReenterMutationWithoutDeadlock(t *testing.T) {
 			mutationResult <- err
 		}
 	}
-	c = New(cfg)
+	c = testCoordinator(t, cfg)
 
 	if err := c.ReconnectServer(context.Background(), name); err != nil {
 		t.Fatalf("ReconnectServer: %v", err)
@@ -463,7 +448,7 @@ func TestConnectionInvalidationReadsConnectingThenSettled(t *testing.T) {
 		}
 		states <- testServerStatus(c, name).State
 	}
-	c = New(cfg)
+	c = testCoordinator(t, cfg)
 
 	if err := c.ReconnectServer(t.Context(), name); err != nil {
 		t.Fatal(err)
@@ -495,18 +480,6 @@ func testServerStatus(c *Coordinator, name mcpserver.ServerName) ServerStatus {
 	return status
 }
 
-func TestConnectionRequiresCompleteDependencies(t *testing.T) {
-	ports := &fakePorts{statuses: []mcpserver.ConnectionStatus{{Name: testMCPServerName("fs")}}}
-	c := New(Config{
-		StatusReader:      ports,
-		ConnectionControl: ports,
-	})
-
-	if err := c.ReconnectServer(context.Background(), testMCPServerName("fs")); !errors.Is(err, errConnectionUnavailable) {
-		t.Fatalf("ReconnectServer with incomplete dependencies = %v, want errConnectionUnavailable", err)
-	}
-}
-
 // TestReconnectServerDetachedButComponentOwned: a dial detaches the caller's
 // cancellation (a returning RPC must not abort it) while preserving its trace
 // values, and is canceled + joined by Coordinator.Close; a reconnect requested
@@ -520,7 +493,7 @@ func TestReconnectServerDetachedButComponentOwned(t *testing.T) {
 		stopped:   make(chan struct{}),
 		wantValue: func(ctx context.Context) bool { return ctx.Value(ctxKey{}) == "trace" },
 	}
-	c := New(configWithPorts(ports))
+	c := testCoordinator(t, configWithPorts(ports))
 
 	reqCtx, cancelRequest := context.WithCancel(context.WithValue(context.Background(), ctxKey{}, "trace"))
 	cancelRequest() // the request is done — the dial must keep running
@@ -545,7 +518,7 @@ func TestReconnectServerDetachedButComponentOwned(t *testing.T) {
 
 func TestTestServerUsesLiveRegistryPort(t *testing.T) {
 	ports := &fakePorts{}
-	c := New(configWithPorts(ports))
+	c := testCoordinator(t, configWithPorts(ports))
 
 	result, err := c.TestServer(context.Background(), ServerInput{
 		Name: testMCPServerName("fs"), Connection: ConnectionInput{
@@ -565,27 +538,25 @@ func TestTestServerUsesLiveRegistryPort(t *testing.T) {
 	}
 }
 
-func TestServerCommandsSnapshotInputsBeforeRegistryCallbacks(t *testing.T) {
+func TestServerCommandsOwnInputsAfterReturning(t *testing.T) {
 	t.Run("create", func(t *testing.T) {
 		name := testMCPServerName("create")
 		serverInput := stdioServerInput(name, "original")
 		registry := &testRegistry{
 			servers: make(map[mcpserver.ServerName]mcpserver.Server),
-			getHook: func() {
-				serverInput.Connection.Args[0] = "registry-mutated"
-				serverInput.Connection.Environment.Value["TOKEN"] = "registry-mutated"
-			},
 		}
 
-		if _, err := New(Config{Registry: registry}).CreateServer(t.Context(), serverInput); err != nil {
+		if _, err := testCoordinator(t, Config{Registry: registry}).CreateServer(t.Context(), serverInput); err != nil {
 			t.Fatal(err)
 		}
+		serverInput.Connection.Args[0] = "caller-changed"
+		serverInput.Connection.Environment.Value["TOKEN"] = "caller-changed"
 		stored, found, err := registry.Get(t.Context(), name)
 		if err != nil || !found {
 			t.Fatalf("stored server = (%+v, %t, %v)", stored, found, err)
 		}
 		if stored.Args[0] != "original" || stored.Env["TOKEN"] != "original" {
-			t.Fatalf("created server observed registry mutation: %+v", stored)
+			t.Fatalf("created server changed after the caller reused its input: %+v", stored)
 		}
 	})
 
@@ -600,17 +571,15 @@ func TestServerCommandsSnapshotInputsBeforeRegistryCallbacks(t *testing.T) {
 		patch := ServerPatch{Description: &description, Connection: &connection, DisabledTools: &disabled}
 		registry := &testRegistry{
 			servers: map[mcpserver.ServerName]mcpserver.Server{name: current},
-			getHook: func() {
-				description = "registry mutation"
-				connection.Args[0] = "registry-mutated"
-				connection.Environment.Value["TOKEN"] = "registry-mutated"
-				disabled[0] = testRemoteToolName("changed")
-			},
 		}
 
-		if _, err := New(Config{Registry: registry}).UpdateServer(t.Context(), name, patch); err != nil {
+		if _, err := testCoordinator(t, Config{Registry: registry}).UpdateServer(t.Context(), name, patch); err != nil {
 			t.Fatal(err)
 		}
+		description = "caller-changed"
+		connection.Args[0] = "caller-changed"
+		connection.Environment.Value["TOKEN"] = "caller-changed"
+		disabled[0] = testRemoteToolName("changed")
 		stored, found, err := registry.Get(t.Context(), name)
 		if err != nil || !found {
 			t.Fatalf("stored server = (%+v, %t, %v)", stored, found, err)
@@ -618,7 +587,7 @@ func TestServerCommandsSnapshotInputsBeforeRegistryCallbacks(t *testing.T) {
 		if stored.Description != "original description" || stored.Args[0] != "original" ||
 			stored.Env["TOKEN"] != "original" ||
 			!slices.Equal(stored.ToolPolicy.DisabledTools(), []mcpserver.RemoteToolName{testRemoteToolName("read")}) {
-			t.Fatalf("updated server observed registry mutation: %+v", stored)
+			t.Fatalf("updated server changed after the caller reused its input: %+v", stored)
 		}
 	})
 
@@ -627,19 +596,17 @@ func TestServerCommandsSnapshotInputsBeforeRegistryCallbacks(t *testing.T) {
 		serverInput := stdioServerInput(name, "original")
 		registry := &testRegistry{
 			servers: make(map[mcpserver.ServerName]mcpserver.Server),
-			getHook: func() {
-				serverInput.Connection.Args[0] = "registry-mutated"
-				serverInput.Connection.Environment.Value["TOKEN"] = "registry-mutated"
-			},
 		}
 		ports := &fakePorts{}
 
-		result, err := New(Config{Registry: registry, ConnectionLifecycle: ports}).TestServer(t.Context(), serverInput)
+		result, err := testCoordinator(t, Config{Registry: registry, ConnectionLifecycle: ports}).TestServer(t.Context(), serverInput)
 		if err != nil || !result.OK {
 			t.Fatalf("TestServer = (%+v, %v), want success", result, err)
 		}
+		serverInput.Connection.Args[0] = "caller-changed"
+		serverInput.Connection.Environment.Value["TOKEN"] = "caller-changed"
 		if ports.probe.Args[0] != "original" || ports.probe.Env["TOKEN"] != "original" {
-			t.Fatalf("tested server observed registry mutation: %+v", ports.probe)
+			t.Fatalf("tested server changed after the caller reused its input: %+v", ports.probe)
 		}
 	})
 }
@@ -659,11 +626,10 @@ func stdioServerInput(name mcpserver.ServerName, mutableValue string) ServerInpu
 
 func TestCreateServerSeparatesDurableAndLiveConnectionOwnership(t *testing.T) {
 	configured := make(chan struct{})
-	ports := &fakePorts{configureDone: configured, mutateConfigure: true}
+	ports := &fakePorts{configureDone: configured}
 	cfg := configWithPorts(ports)
 	registry := cfg.Registry.(*testRegistry)
-	coordinator := New(cfg)
-	t.Cleanup(func() { requireCoordinatorShutdown(t, coordinator) })
+	coordinator := testCoordinator(t, cfg)
 	name := testMCPServerName("files")
 	serverInput := ServerInput{
 		Name: name, Enabled: true,
@@ -679,6 +645,8 @@ func TestCreateServerSeparatesDurableAndLiveConnectionOwnership(t *testing.T) {
 	if _, err := coordinator.CreateServer(t.Context(), serverInput); err != nil {
 		t.Fatal(err)
 	}
+	serverInput.Connection.Args[0] = "caller-changed"
+	serverInput.Connection.Environment.Value["TOKEN"] = "caller-changed"
 	select {
 	case <-configured:
 	case <-time.After(time.Second):
@@ -689,18 +657,19 @@ func TestCreateServerSeparatesDurableAndLiveConnectionOwnership(t *testing.T) {
 		t.Fatalf("stored server = (%+v, %t, %v)", stored, found, err)
 	}
 	if stored.Args[0] != "--root" || stored.Env["TOKEN"] != "original" {
-		t.Fatalf("live port mutated durable server: %+v", stored)
+		t.Fatalf("caller changed durable server: %+v", stored)
+	}
+	if ports.configure.Args[0] != "--root" || ports.configure.Env["TOKEN"] != "original" {
+		t.Fatalf("caller changed live configuration: %+v", ports.configure)
 	}
 }
 
 type fakePorts struct {
-	statuses   []mcpserver.ConnectionStatus
-	tools      []mcpserver.AdvertisedTool
-	statusHook func()
+	statuses []mcpserver.ConnectionStatus
+	tools    []mcpserver.AdvertisedTool
 
-	toolsServer       string
-	toolsCalls        int
-	mutateToolsServer bool
+	toolsServer string
+	toolsCalls  int
 
 	reconnectName    string
 	reconnectDone    chan string
@@ -709,30 +678,23 @@ type fakePorts struct {
 	releaseAuthorize chan struct{}
 	authorizeErr     error
 
-	probe           mcpserver.Server
-	configure       mcpserver.Server
-	configureDone   chan struct{}
-	mutateConfigure bool
-	removeName      string
-	removeErr       error
+	probe         mcpserver.Server
+	configure     mcpserver.Server
+	configureDone chan struct{}
+	removeName    string
+	removeErr     error
 }
 
 func (f *fakePorts) Statuses() []mcpserver.ConnectionStatus {
-	if f.statusHook != nil {
-		f.statusHook()
-	}
-	return f.statuses
+	return slices.Clone(f.statuses)
 }
 
 func (f *fakePorts) Tools(_ context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
 	f.toolsCalls++
 	if server != nil {
 		f.toolsServer = server.String()
-		if f.mutateToolsServer {
-			*server = testMCPServerName("catalog-mutated")
-		}
 	}
-	return f.tools, nil
+	return slices.Clone(f.tools), nil
 }
 
 func (f *fakePorts) Reconnect(_ context.Context, name mcpserver.ServerName) error {
@@ -769,16 +731,12 @@ func (f *fakePorts) Authorize(ctx context.Context, name mcpserver.ServerName) er
 }
 
 func (f *fakePorts) Probe(_ context.Context, cfg mcpserver.Server) error {
-	f.probe = cfg
+	f.probe = cfg.Clone()
 	return nil
 }
 
 func (f *fakePorts) Configure(_ context.Context, cfg mcpserver.Server) error {
-	if f.mutateConfigure {
-		cfg.Args[0] = "live-mutated"
-		cfg.Env["TOKEN"] = "live-mutated"
-	}
-	f.configure = cfg
+	f.configure = cfg.Clone()
 	if f.configureDone != nil {
 		close(f.configureDone)
 	}
@@ -857,18 +815,21 @@ type testRegistry struct {
 	releaseSave     chan struct{}
 	removeCommitted chan struct{}
 	releaseRemove   chan struct{}
-	getHook         func()
 }
 
 func (t *testRegistry) List(context.Context) ([]mcpserver.Server, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.listed != nil {
-		return slices.Clone(t.listed), nil
+		servers := make([]mcpserver.Server, len(t.listed))
+		for index, server := range t.listed {
+			servers[index] = server.Clone()
+		}
+		return servers, nil
 	}
 	servers := make([]mcpserver.Server, 0, len(t.servers))
 	for _, server := range t.servers {
-		servers = append(servers, server)
+		servers = append(servers, server.Clone())
 	}
 	slices.SortFunc(servers, func(a, b mcpserver.Server) int {
 		return cmp.Compare(b.Name.String(), a.Name.String())
@@ -877,18 +838,15 @@ func (t *testRegistry) List(context.Context) ([]mcpserver.Server, error) {
 }
 
 func (t *testRegistry) Get(_ context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
-	if t.getHook != nil {
-		t.getHook()
-	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	server, ok := t.servers[name]
-	return server, ok, nil
+	return server.Clone(), ok, nil
 }
 
 func (t *testRegistry) Save(_ context.Context, server mcpserver.Server) error {
 	t.mu.Lock()
-	t.servers[server.Name] = server
+	t.servers[server.Name] = server.Clone()
 	t.mu.Unlock()
 	if t.saveCommitted != nil {
 		close(t.saveCommitted)
