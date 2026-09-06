@@ -4,6 +4,7 @@ package builtin
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -27,9 +28,8 @@ type SkillUsageRecorder interface {
 // loading a skill records a use so the curator can tell active skills from idle
 // ones.
 //
-// Rebuilt per resolution like fs/shell, because the project directory depends on
-// the Run's working directory; the merged source just wraps os.DirFS, so the
-// cost is negligible.
+// Rebuilt per resolution because the project directory depends on the Run's
+// working directory.
 func BuildReaders(cwd, userDir string, recorder SkillUsageRecorder) ([]toolcontract.Tool, error) {
 	var decorateUser func(skillspec.ResourceSource) skillspec.ResourceSource
 	if recorder != nil {
@@ -55,9 +55,8 @@ func BuildReaders(cwd, userDir string, recorder SkillUsageRecorder) ([]toolcontr
 	return tools, nil
 }
 
-// recordingSource records a use each time a user-library Skill loads, then
-// delegates. The record is best-effort: a usage-write failure never fails the
-// skill load.
+// recordingSource records successful user-library Skill loads. A usage-write
+// failure emits a diagnostic without changing the loaded Skill.
 type recordingSource struct {
 	skillspec.ResourceSource
 	recorder SkillUsageRecorder
@@ -66,7 +65,9 @@ type recordingSource struct {
 func (r recordingSource) Load(ctx context.Context, name string) (*skillspec.Skill, error) {
 	skill, err := r.ResourceSource.Load(ctx, name)
 	if err == nil {
-		_ = r.recorder.RecordUse(ctx, name, time.Now())
+		if usageErr := r.recorder.RecordUse(ctx, name, time.Now()); usageErr != nil {
+			slog.ErrorContext(ctx, "skill: record usage failed", "skill.name", name, "error", usageErr)
+		}
 	}
 	return skill, err
 }

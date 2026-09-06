@@ -1,9 +1,11 @@
 package builtin
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +16,8 @@ import (
 	skillspec "github.com/Tangerg/scope/skills"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
 
 type recordingProbe struct{ names []string }
@@ -57,6 +61,62 @@ func TestRecordingSourceSkipsUseOnLoadError(t *testing.T) {
 	}
 	if len(probe.names) != 0 {
 		t.Fatalf("recorded a use for a failed load: %v", probe.names)
+	}
+}
+
+func TestSkillLoadReportsUsageFailureAndRecovers(t *testing.T) {
+	var diagnostics bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+
+	userDir := t.TempDir()
+	const name = "run-tests"
+	writeSkill(t, userDir, name, "Run the project tests before completing a change.")
+	usagePath := filepath.Join(userDir, ".usage.json")
+	if err := os.Mkdir(usagePath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	recorder, err := skillauthoring.NewStore(userDir, skills.ScopeUser)
+	if err != nil {
+		t.Fatal(err)
+	}
+	storageErr := recorder.RecordUse(t.Context(), name, time.Now())
+	if storageErr == nil {
+		t.Fatal("invalid usage file did not fail recording")
+	}
+	tools, err := BuildReaders(t.TempDir(), userDir, recorder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var loader toolcontract.Tool
+	for _, candidate := range tools {
+		if candidate.Definition().Name == "load_skill" {
+			loader = candidate
+		}
+	}
+	if loader == nil {
+		t.Fatal("load_skill was not available")
+	}
+	loaded, err := callTextTool(t.Context(), loader, `{"name":"run-tests"}`)
+	if err != nil || !strings.Contains(loaded, "instructions for "+name) {
+		t.Fatalf("usage failure changed skill load = (%q, %v)", loaded, err)
+	}
+	if output := diagnostics.String(); !strings.Contains(output, name) || !strings.Contains(output, storageErr.Error()) {
+		t.Errorf("usage failure lost its skill or cause: %s", output)
+	}
+	if err := os.Remove(usagePath); err != nil {
+		t.Fatal(err)
+	}
+	diagnostics.Reset()
+	if _, err := callTextTool(t.Context(), loader, `{"name":"run-tests"}`); err != nil {
+		t.Fatalf("load after storage recovery: %v", err)
+	}
+	if info, err := os.Stat(usagePath); err != nil || !info.Mode().IsRegular() {
+		t.Fatalf("usage recording did not recover: %v", err)
+	}
+	if diagnostics.Len() != 0 {
+		t.Fatalf("successful usage recording reported failure: %s", diagnostics.String())
 	}
 }
 
