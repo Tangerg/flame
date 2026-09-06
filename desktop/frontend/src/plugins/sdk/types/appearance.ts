@@ -13,7 +13,7 @@ export interface ColorThemeSpec {
   /**
    * Opt in to having the neutral family follow the LIVE accent; `tokens` stays the family at
    * the default accent and is what a cold boot paints. A palette theme MUST leave this
-   * undefined — Solarized's base3 is Solarized, not a tint of the selected accent.
+   * undefined — a palette theme's own surface is its own, not a tint of the selected accent.
    */
   neutralSteps?: ThemeNeutralSteps;
 }

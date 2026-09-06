@@ -4,30 +4,15 @@
 import type { AnyPlugin } from "dougong";
 import { appearancePainter } from "./appearancePainter";
 import customTheme from "./themes/custom-theme";
-import atomOneDark from "./themes/atom-one-dark";
-import atomOneLight from "./themes/atom-one-light";
-import catppuccinLatte from "./themes/catppuccin-latte";
-import catppuccinMocha from "./themes/catppuccin-mocha";
 import flameDark from "./themes/flame-dark";
 import flameLight from "./themes/flame-light";
-import solarizedDark from "./themes/solarized-dark";
-import solarizedLight from "./themes/solarized-light";
-import tokyoNightLight from "./themes/tokyo-night-light";
-import tokyoNightStorm from "./themes/tokyo-night-storm";
 import { builtinVisualStyles } from "./visualStyles";
 
-const builtinThemes: AnyPlugin[] = [
-  flameDark,
-  flameLight,
-  atomOneDark,
-  atomOneLight,
-  tokyoNightStorm,
-  tokyoNightLight,
-  solarizedDark,
-  solarizedLight,
-  catppuccinMocha,
-  catppuccinLatte,
-];
+// Two presets, and the product's own. Eight others shipped — ports of other editors'
+// palettes — each carrying a full ladder that only flame-light and flame-dark were ever
+// polished or visually regressed against. `custom` stays: it is not a preset but the seam
+// that lets a reader bring their own three colours and derive the rest.
+const builtinThemes: AnyPlugin[] = [flameDark, flameLight];
 
 export const appearancePlugins: AnyPlugin[] = [
   ...builtinThemes,

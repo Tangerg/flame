@@ -50,7 +50,7 @@ let appliedStyleTokens: string[] = [];
 /**
  * A theme's `surfaces` / `borders` literals are already that family at the DEFAULT accent —
  * what the pre-paint script and stylesheet mirror carry — so this returns an OVERRIDE, and
- * nothing at all for a palette theme: Solarized's base3 is Solarized, not a tint.
+ * nothing at all for a palette theme: its own surface is its own, not a tint.
  */
 function neutralOverride(
   spec: ColorThemeSpec | undefined,

@@ -5662,3 +5662,84 @@ runtime 合约 e2e（`segment.finished.json` 缺 `contextTokens`、两条 compac
 用户已决定从 Tailwind 迁移到 StyleX。**该方向与 `desktop/CLAUDE.md` §6.1 的强反向不变量直接冲突**
 （"❌ 引入 CSS-in-JS"），按 refactor-prompt `<instruction_priority>` 第 1 条，已记录冲突并等待用户
 对该不变量作出明确修订，未擅自绕过。
+
+---
+
+## Round 104 — 只留两套主题
+
+Status: **已完成**
+
+### 本轮待办
+
+| 状态 | 事项 |
+| --- | --- |
+| 已完成 | 删除 8 个第三方主题预设，只留 flame-light / flame-dark |
+| 已取消 | ~~删除自定义主题~~ —— 用户中途明确「customTheme 可以留着」，已从 git 恢复 |
+| 已完成 | 清理注册表、明暗解析注释、测试引用 |
+| 已完成 | 修复焦点守卫的超时预算（验证中暴露） |
+
+### 依据
+
+用户明确要求：「我们的主题，全部都删掉，只保留两套 1 light 2 dark」。
+按 `<instruction_priority>` 第 2 条执行。
+
+### 现状证据
+
+`theme/index.ts` 注册 10 个内置主题 + custom + 视觉风格：
+
+| 组 | 成员 |
+| --- | --- |
+| 保留 | flame-light、flame-dark |
+| 删除 | atom-one-light/dark、catppuccin-latte/mocha、solarized-light/dark、tokyo-night-light/storm |
+| 删除 | custom（三色派生 + 实时预览，带 `CustomThemeColors.tsx` 设置分区） |
+| 不动 | 视觉风格本来就只有 `flameStyle` 一套 |
+
+爆炸半径（`grep` 全仓）：8 个预设仅被 `theme/index.ts`、`documentAppearance.test.ts`、
+`themeScheme.ts`（注释举例）引用；custom 另外被设置面板、偏好、store、theme kit
+与两个视觉 fixture 引用。
+
+### 根因
+
+主题是**可选装的贡献**，不是核心能力；十套预设各自维护一整份色板，
+而产品只在 flame-light / flame-dark 上做过打磨与视觉回归。多余的九套是熵。
+
+### 验收标准
+
+1. `COLOR_THEME` 扩展点只注册两个 id。
+2. 明暗解析、主题切换、外观设置面板在删除后仍成立（注册表驱动，不得留硬编码 id）。
+3. 类型检查、lint、format、20 项脚本、单测、视觉套件全绿。
+
+### 修改前 / 修改后
+
+| | 修改前 | 修改后 |
+| --- | --- | --- |
+| `COLOR_THEME` 注册项 | 11（10 预设 + custom） | **3**（flame-light、flame-dark、custom） |
+| `themes/` 文件 | 12 | 3 |
+| 删除的预设 | — | atom-one ×2、catppuccin ×2、solarized ×2、tokyo-night ×2 |
+| `themeScheme.ts` 注释举例 | `"solarized-light"`（已不存在） | `"custom"`（仍成立） |
+| `documentAppearance.test.ts` 里的假主题 | 命名为 solarized | 改名 palette —— 测试自建的 spec，名字不该指向不存在的文件 |
+
+**中途修正**：先按字面「其他都删掉」把 custom 一并删了（含 `CustomThemeColors.tsx`），
+用户随即说明保留，已 `git checkout` 完整恢复三个文件并复原注册。
+
+### 验证中发现并修复的问题
+
+`chromeFocus` 那条守卫（4 条路由 × 40 次 Tab × 110ms 落定）单独跑要 **30.2s**，
+而 Playwright 默认上限正是 30s —— 空载勉强过、有负载必挂。按它自身工作量给预算
+（`ROUTES × TAB_STEPS × 300ms + 20s`），复跑 28.1s 通过。这不是本轮引入的问题，
+但一条只在机器空闲时才成立的守卫不算守卫。
+
+### 验证
+
+`npx tsc --noEmit`、`lint`、17 项 `check:*` 全绿；主题单测 **68/68**；
+整体单测 **2395 通过**（与删除前一致），4 条失败是既有 runtime 合约 e2e；
+`npm run visual:test` **649 通过 + 1 超时**，超时项修复后单独复跑通过，
+**无 golden 位移** —— 主题选择器在 golden 里是收起态，列表长度不进画面。
+
+`format:check` 与 `knip` 的失败**不属于本轮**：来自同一工作树里尚未完成的 StyleX
+脚手架（`postcss.config.mjs`、`tokens.stylex.ts` 与两个依赖暂无人使用），
+已与本轮拆成两次提交。
+
+### 资源回收
+
+关闭 4174 端口预览服务。

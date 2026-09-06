@@ -24,7 +24,15 @@ const ROUTES = [
 
 const SETTLE_MS = 500;
 
+// Four routes, forty tabs each, and a settle wait after every one: the walk alone is the
+// budget. At Playwright's default it finished in 30.2s against a 30s limit, so it passed on
+// an idle machine and timed out under any load — a guard that only holds when nothing else
+// is running is not one. Budgeted from its own work, the way the layout-shift walk is.
+const TAB_STEPS = 40;
+const STEP_BUDGET_MS = 300;
+
 test("a control that turns off the ring shows focus some other way", async ({ page }) => {
+  test.setTimeout(ROUTES.length * TAB_STEPS * STEP_BUDGET_MS + 20_000);
   const silent: string[] = [];
 
   for (const route of ROUTES) {
@@ -32,7 +40,7 @@ test("a control that turns off the ring shows focus some other way", async ({ pa
     await page.waitForSelector("html[data-visual-ready]");
     const seen = new Set<string>();
 
-    for (let step = 0; step < 40; step += 1) {
+    for (let step = 0; step < TAB_STEPS; step += 1) {
       await page.keyboard.press("Tab");
       await page.waitForTimeout(110);
       const meta = await page.evaluate(() => {

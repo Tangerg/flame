@@ -139,15 +139,15 @@ describe("neutral family following the live accent", () => {
   it("does not touch a palette theme that never opted in", async () => {
     await contributeForTest((ctx) => {
       ctx.contribute(COLOR_THEME, {
-        id: "solarized",
-        label: "Solarized",
+        id: "palette",
+        label: "Palette",
         scheme: "light",
         tokens: { "color-accent": "#268bd2", "color-surface": "#eee8d5" },
       });
     });
-    useAppearanceStore.setState({ theme: "solarized", accent: "#7f52ff" });
+    useAppearanceStore.setState({ theme: "palette", accent: "#7f52ff" });
 
-    // Solarized's base2 is Solarized, not a tint of whatever accent is selected.
+    // A palette theme's own surface is its own, not a tint of whatever accent is selected.
     expect(painted("color-surface")).toBe("#eee8d5");
   });
 
@@ -188,14 +188,14 @@ describe("applyTheme — theme-as-plugin contract", () => {
   it("toggles theme-{scheme} class — drives structural CSS overrides", async () => {
     await contributeForTest((ctx) => {
       ctx.contribute(COLOR_THEME, {
-        id: "solarized-light",
-        label: "Solarized Light",
+        id: "palette-light",
+        label: "Palette Light",
         scheme: "light",
         tokens: { "color-bg": "#fdf6e3" },
       });
     });
 
-    useAppearanceStore.getState().setTheme("solarized-light");
+    useAppearanceStore.getState().setTheme("palette-light");
 
     const root = document.documentElement;
     expect(root.classList.contains("theme-light")).toBe(true);
@@ -284,8 +284,8 @@ describe("applyTheme — theme-as-plugin contract", () => {
         tokens: {},
       });
       ctx.contribute(COLOR_THEME, {
-        id: "solarized-light",
-        label: "Solarized Light",
+        id: "palette-light",
+        label: "Palette Light",
         scheme: "light",
         order: 0,
         tokens: {},
@@ -294,7 +294,7 @@ describe("applyTheme — theme-as-plugin contract", () => {
 
     useAppearanceStore.setState({ theme: "dark" });
     toggleThemeScheme();
-    expect(useAppearanceStore.getState().theme).toBe("solarized-light");
+    expect(useAppearanceStore.getState().theme).toBe("palette-light");
 
     toggleThemeScheme();
     expect(useAppearanceStore.getState().theme).toBe("dark");

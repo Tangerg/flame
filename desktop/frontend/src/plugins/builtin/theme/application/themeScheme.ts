@@ -6,7 +6,8 @@ import { appearancePreferencePort } from "./ports/appearancePreference";
 
 /**
  * Callers asking "is this light?" MUST resolve through here rather than comparing the id
- * against `"light"`: a contributed id like `"solarized-light"` mis-classifies. Unregistered
+ * against `"light"`: an id carries no scheme — `"custom"` is whichever the reader's own
+ * colours resolve to, and a third-party palette names itself whatever it likes. Unregistered
  * ids read as dark, which covers early boot and a saved id whose plugin is gone.
  */
 export function resolveThemeScheme(themeId: string): Scheme {

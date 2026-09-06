@@ -76,7 +76,7 @@ export interface ColorThemePluginSpec {
   cta?: Partial<ThemeCta>;
 
   /** Opt in to the neutral family following the LIVE accent. A palette theme must NOT set
-   *  it: Solarized's base3 is Solarized, not a tint of the selected accent. */
+   *  it: a palette theme's own surface is its own, not a tint of the selected accent. */
   neutralSteps?: ThemeNeutralSteps;
 
   /** Keys are CSS-variable names WITHOUT the leading `--`. Geometry, elevation and motion
