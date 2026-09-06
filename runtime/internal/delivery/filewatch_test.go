@@ -197,7 +197,7 @@ func TestWorkspaceSubscribe_KnowledgeUpdateDoesNotDoublePublishFromFileObservati
 	s := &Handler{}
 	applyWorkspaceSurfaces(s, surfaces)
 	s.workspaceHub = newWorkspaceHub()
-	s.workspaceKnowledge = workspaceapp.NewKnowledge(
+	s.workspaceKnowledge, err = workspaceapp.NewKnowledge(
 		surfaces.roots, workspaceadapter.Resolver{}, store, surfaces.authoredWatch,
 		func(notice invalidation.Notice) {
 			if event, ok := runtimeEventFor(notice); ok {
@@ -205,6 +205,10 @@ func TestWorkspaceSubscribe_KnowledgeUpdateDoesNotDoublePublishFromFileObservati
 			}
 		},
 	)
+
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

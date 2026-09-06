@@ -56,7 +56,7 @@ func (f *fakeSkillProposals) RejectProposal(_ context.Context, projectRoot strin
 }
 
 func TestSkillProposalsUnavailableWithoutStore(t *testing.T) {
-	c := NewSkills(NewScope("", "", testPaths{}), nil, nil, nil, nil, nil)
+	c := NewSkills(newScope(t, "", "", testPaths{}), nil, nil, nil, nil, nil)
 	ref := skills.NewProposalRef(skills.ScopeProject, "run-tests", []byte("content"))
 	proposal := skills.Proposal{Scope: skills.ScopeProject, Name: "run-tests", Description: "Run the project tests when verification is requested.", Instructions: "Run the tests."}
 
@@ -78,7 +78,7 @@ func TestSkillProposalsResolveWorkspaceAndDelegate(t *testing.T) {
 	proposal := skills.Proposal{Scope: skills.ScopeProject, Name: "run-tests", Description: "Run the project tests when verification is requested.", Instructions: "Run the tests."}
 	ref := skills.NewProposalRef(proposal.Scope, proposal.Name, []byte(proposal.Instructions))
 	fake := &fakeSkillProposals{list: []skills.ProposalReview{{Ref: ref, Description: proposal.Description, Instructions: proposal.Instructions}}}
-	c := NewSkills(NewScope("", "", testPaths{}), nil, nil, fake, nil, nil)
+	c := NewSkills(newScope(t, "", "", testPaths{}), nil, nil, fake, nil, nil)
 
 	gotRef, err := c.SubmitProposal(t.Context(), "/repo", proposal)
 	if err != nil || gotRef != ref {
@@ -114,7 +114,7 @@ func TestSkillProposalsOwnCurrentSlotOrder(t *testing.T) {
 		validProposalReview(projectZeta),
 		validProposalReview(projectAlpha),
 	}}
-	c := NewSkills(NewScope("", "", testPaths{}), nil, nil, fake, nil, nil)
+	c := NewSkills(newScope(t, "", "", testPaths{}), nil, nil, fake, nil, nil)
 
 	got, err := c.Proposals(t.Context(), "/repo")
 	if err != nil {
@@ -131,7 +131,7 @@ func TestSkillProposalsRejectDuplicateCurrentSlot(t *testing.T) {
 	fake := &fakeSkillProposals{list: []skills.ProposalReview{
 		validProposalReview(first), validProposalReview(second),
 	}}
-	c := NewSkills(NewScope("", "", testPaths{}), nil, nil, fake, nil, nil)
+	c := NewSkills(newScope(t, "", "", testPaths{}), nil, nil, fake, nil, nil)
 
 	if _, err := c.Proposals(t.Context(), "/repo"); err == nil {
 		t.Fatal("Proposals accepted two current revisions for one scoped Skill name")
@@ -148,7 +148,7 @@ func TestSkillProposalsRejectInvalidOrUnboundedCatalog(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			fake := &fakeSkillProposals{list: list}
-			c := NewSkills(NewScope("", "", testPaths{}), nil, nil, fake, nil, nil)
+			c := NewSkills(newScope(t, "", "", testPaths{}), nil, nil, fake, nil, nil)
 			if _, err := c.Proposals(t.Context(), "/repo"); err == nil {
 				t.Fatal("Proposals error = nil, want rejected catalog")
 			}
@@ -164,7 +164,7 @@ func TestSkillProposalMutationsValidateIdentity(t *testing.T) {
 	invalidProposal := proposal
 	invalidProposal.Instructions = ""
 	unreached := &fakeSkillProposals{}
-	c := NewSkills(NewScope("", "", testPaths{}), nil, nil, unreached, nil, nil)
+	c := NewSkills(newScope(t, "", "", testPaths{}), nil, nil, unreached, nil, nil)
 	if _, err := c.SubmitProposal(t.Context(), "/repo", invalidProposal); err == nil {
 		t.Fatal("SubmitProposal accepted invalid content")
 	}
@@ -180,7 +180,7 @@ func TestSkillProposalMutationsValidateIdentity(t *testing.T) {
 	} {
 		t.Run(name+" acknowledgement", func(t *testing.T) {
 			fake := &fakeSkillProposals{submitRef: &returned}
-			c := NewSkills(NewScope("", "", testPaths{}), nil, nil, fake, nil, nil)
+			c := NewSkills(newScope(t, "", "", testPaths{}), nil, nil, fake, nil, nil)
 			if _, err := c.SubmitProposal(t.Context(), "/repo", proposal); err == nil {
 				t.Fatal("SubmitProposal accepted invalid store acknowledgement")
 			}
@@ -189,7 +189,7 @@ func TestSkillProposalMutationsValidateIdentity(t *testing.T) {
 
 	invalid := skills.ProposalRef{Scope: skills.ScopeProject, Name: "review", Revision: "invalid"}
 	fake := &fakeSkillProposals{}
-	c = NewSkills(NewScope("", "", testPaths{}), nil, nil, fake, nil, nil)
+	c = NewSkills(newScope(t, "", "", testPaths{}), nil, nil, fake, nil, nil)
 	if err := c.ApproveProposal(t.Context(), "/repo", invalid); err == nil {
 		t.Fatal("ApproveProposal accepted invalid reference")
 	}

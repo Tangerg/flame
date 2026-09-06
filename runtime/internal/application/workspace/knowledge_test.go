@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -11,22 +12,35 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 )
 
-func TestRuntimeKnowledgeUnavailable(t *testing.T) {
-	c := NewKnowledge(NewScope("", "", nil), nil, nil, nil, nil)
-	ctx := context.Background()
+func TestNewKnowledgeRequiresCompleteDependencies(t *testing.T) {
+	scope := newScope(t, "", "", testPaths{})
+	for _, test := range []struct {
+		name      string
+		scope     *Scope
+		inspector KnowledgeWorkspaceInspector
+		store     KnowledgeStore
+	}{
+		{name: "scope", inspector: knowledgeInspector{}, store: &fakeKnowledgeStore{}},
+		{name: "inspector", scope: scope, store: &fakeKnowledgeStore{}},
+		{name: "typed nil inspector", scope: scope, inspector: (*knowledgeInspector)(nil), store: &fakeKnowledgeStore{}},
+		{name: "store", scope: scope, inspector: knowledgeInspector{}},
+		{name: "typed nil store", scope: scope, inspector: knowledgeInspector{}, store: (*fakeKnowledgeStore)(nil)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if knowledge, err := NewKnowledge(test.scope, test.inspector, test.store, nil, nil); err == nil || knowledge != nil {
+				t.Fatalf("NewKnowledge = (%v, %v), want incomplete construction rejected", knowledge, err)
+			}
+		})
+	}
+}
 
-	if c.Available() {
-		t.Fatal("Available = true, want false")
+func newKnowledge(t *testing.T, scope *Scope, inspector KnowledgeWorkspaceInspector, store KnowledgeStore, observations *AuthoredWatch, publish invalidation.Publish) *Knowledge {
+	t.Helper()
+	knowledge, err := NewKnowledge(scope, inspector, store, observations, publish)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := c.Entries(ctx, "/repo"); !errors.Is(err, ErrKnowledgeUnavailable) {
-		t.Fatalf("Entries err = %v, want ErrKnowledgeUnavailable", err)
-	}
-	if _, err := c.Read(ctx, knowledge.ScopeCWD, "/repo"); !errors.Is(err, ErrKnowledgeUnavailable) {
-		t.Fatalf("Read err = %v, want ErrKnowledgeUnavailable", err)
-	}
-	if _, err := c.Update(ctx, knowledge.ScopeHome, "", "rev-1", "prefs"); !errors.Is(err, ErrKnowledgeUnavailable) {
-		t.Fatalf("Update err = %v, want ErrKnowledgeUnavailable", err)
-	}
+	return knowledge
 }
 
 func TestRuntimeKnowledgePorts(t *testing.T) {
@@ -42,21 +56,23 @@ func TestRuntimeKnowledgePorts(t *testing.T) {
 			Content: "project notes", Revision: "rev-1",
 		},
 	}
-	c := NewKnowledge(
-		NewScope("", "", testPaths{}),
+	c := newKnowledge(t,
+		newScope(t, "", "", testPaths{}),
 		knowledgeInspector{resolved: Resolved{Path: "/repo/work", ProjectRoot: "/repo"}},
 		store, nil, func(notice invalidation.Notice) { notices = append(notices, notice) },
 	)
 
-	if !c.Available() {
-		t.Fatal("Available = false, want true")
-	}
 	entries, err := c.Entries(ctx, "/repo/work")
 	if err != nil {
 		t.Fatalf("Entries err = %v", err)
 	}
 	if len(entries) != 2 || entries[0].Content != "prefs" || store.listCWD != "/repo/work" || store.listProjectRoot != "/repo" {
 		t.Fatalf("Entries = %+v, cwd = %q, projectRoot = %q", entries, store.listCWD, store.listProjectRoot)
+	}
+	entries[0].Content = "caller reuse"
+	again, err := c.Entries(ctx, "/repo/work")
+	if err != nil || len(again) != 2 || again[0].Content != "prefs" {
+		t.Fatalf("Entries after caller reuse = (%+v, %v)", again, err)
 	}
 
 	got, err := c.Read(ctx, knowledge.ScopeProjectRoot, "/repo/work")
@@ -81,7 +97,7 @@ func TestRuntimeKnowledgePorts(t *testing.T) {
 
 func TestRuntimeKnowledgeRejectsUnknownScopeBeforeDispatch(t *testing.T) {
 	store := &fakeKnowledgeStore{}
-	c := NewKnowledge(NewScope("", "", testPaths{}), knowledgeInspector{}, store, nil, nil)
+	c := newKnowledge(t, newScope(t, "", "", testPaths{}), knowledgeInspector{}, store, nil, nil)
 	unknown := knowledge.Scope("workspace")
 
 	if _, err := c.Read(t.Context(), unknown, "/repo"); err == nil {
@@ -98,8 +114,8 @@ func TestRuntimeKnowledgeRejectsUnknownScopeBeforeDispatch(t *testing.T) {
 func TestRuntimeKnowledgeRejectsOversizedContentBeforeStore(t *testing.T) {
 	store := &fakeKnowledgeStore{}
 	var notices []invalidation.Notice
-	c := NewKnowledge(
-		NewScope("", "", testPaths{}),
+	c := newKnowledge(t,
+		newScope(t, "", "", testPaths{}),
 		knowledgeInspector{},
 		store,
 		nil,
@@ -127,8 +143,8 @@ func TestRuntimeKnowledgeRejectsInvalidDurableMaterial(t *testing.T) {
 	}
 	store := &fakeKnowledgeStore{entries: []knowledge.Entry{validCWD, validHome}}
 	var notices []invalidation.Notice
-	curation := NewKnowledge(
-		NewScope("", "", testPaths{}),
+	curation := newKnowledge(t,
+		newScope(t, "", "", testPaths{}),
 		knowledgeInspector{resolved: Resolved{Path: "/repo/work", ProjectRoot: "/repo"}},
 		store, nil, func(notice invalidation.Notice) { notices = append(notices, notice) },
 	)
@@ -156,8 +172,8 @@ func TestRuntimeKnowledgeRejectsInvalidDurableMaterial(t *testing.T) {
 
 func TestRuntimeKnowledgeMapsInfraContainmentWithoutLeakingFilesystemMechanics(t *testing.T) {
 	store := &fakeKnowledgeStore{err: knowledge.ErrPathOutsideScope}
-	c := NewKnowledge(
-		NewScope("", "", testPaths{}),
+	c := newKnowledge(t,
+		newScope(t, "", "", testPaths{}),
 		knowledgeInspector{resolved: Resolved{Path: "/repo", ProjectRoot: "/repo"}},
 		store, nil, nil,
 	)
@@ -194,7 +210,7 @@ type fakeKnowledgeStore struct {
 func (f *fakeKnowledgeStore) List(_ context.Context, cwd, projectRoot string) ([]knowledge.Entry, error) {
 	f.listCWD = cwd
 	f.listProjectRoot = projectRoot
-	return f.entries, f.err
+	return slices.Clone(f.entries), f.err
 }
 
 func (f *fakeKnowledgeStore) Get(_ context.Context, scope knowledge.Scope, cwd string) (knowledge.Entry, error) {

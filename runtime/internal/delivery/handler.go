@@ -100,7 +100,6 @@ type Handler struct {
 // shape both capability discovery and delivery gates. Construction derives it
 // once; handlers do not rediscover availability by attempting a call.
 type featureAvailability struct {
-	knowledge bool
 	git       bool
 	fileWatch bool
 }
@@ -186,7 +185,6 @@ type contractFacts struct {
 func deriveContractFacts(cfg HandlerConfig) (contractFacts, error) {
 	facts := contractFacts{
 		features: featureAvailability{
-			knowledge: cfg.WorkspaceKnowledge.Available(),
 			git:       cfg.GitAvailable,
 			fileWatch: cfg.WorkspaceWatch.Available(),
 		},
@@ -327,7 +325,7 @@ func capabilitiesFor(
 		Features: advertisedFeatures(map[string]bool{
 			protocol.FeatureReasoning: true,
 			protocol.FeatureMCP:       true,
-			protocol.FeatureKnowledge: features.knowledge,
+			protocol.FeatureKnowledge: true,
 			protocol.FeatureSkills:    true,
 			protocol.FeatureGit:       features.git,
 			protocol.FeatureFileWatch: features.fileWatch,

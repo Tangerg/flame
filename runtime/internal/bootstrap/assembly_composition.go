@@ -115,7 +115,10 @@ func buildWorkspaceComposition(
 	cfg Config,
 	publish invalidation.Publish,
 ) (workspaceComposition, error) {
-	scope := workspace.NewScope(cfg.DefaultWorkspacePath, cfg.UserHome, workspaceadapter.Resolver{})
+	scope, err := workspace.NewScope(cfg.DefaultWorkspacePath, cfg.UserHome, workspaceadapter.Resolver{})
+	if err != nil {
+		return workspaceComposition{}, fmt.Errorf("runtime: build workspace scope: %w", err)
+	}
 	hookResolver, err := NewHookResolver(cfg.UserHome, cfg.Stores.Trust)
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build hook resolver: %w", err)
@@ -133,13 +136,16 @@ func buildWorkspaceComposition(
 		return workspaceComposition{}, fmt.Errorf("runtime: build authored resource watcher: %w", err)
 	}
 	authoredWatch := workspace.NewAuthoredWatch(scope, workspaceadapter.Resolver{}, authoredWatcher)
-	knowledge := workspace.NewKnowledge(
+	knowledge, err := workspace.NewKnowledge(
 		scope,
 		workspaceadapter.Resolver{},
 		cfg.Stores.Knowledge,
 		authoredWatch,
 		publish,
 	)
+	if err != nil {
+		return workspaceComposition{}, fmt.Errorf("runtime: build knowledge: %w", err)
+	}
 	skillStore := skillauthoring.NewStore(cfg.SkillsUserDir, skills.ScopeUser)
 	var skillCurator workspace.SkillCurator
 	var idleSkillSweeper workspace.IdleSkillSweeper

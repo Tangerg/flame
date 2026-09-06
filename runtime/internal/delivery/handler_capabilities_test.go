@@ -28,7 +28,7 @@ func TestCapabilitiesAdvertiseOnlyProducedRunEvents(t *testing.T) {
 	if !caps.Features["subagents"].Enabled {
 		t.Fatalf("produced subagent Run trees were not advertised: %+v", caps.Features)
 	}
-	for _, feature := range []string{"plan", "goals", "agentMemory", "schedules"} {
+	for _, feature := range []string{"plan", "goals", "agentMemory", "schedules", "knowledge"} {
 		if !caps.Features[feature].Enabled {
 			t.Fatalf("core feature %q was not advertised: %+v", feature, caps.Features)
 		}

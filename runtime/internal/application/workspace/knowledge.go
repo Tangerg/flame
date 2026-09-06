@@ -4,16 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
+	"reflect"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 )
 
-// ErrKnowledgeUnavailable reports that this runtime has no knowledge store.
-var ErrKnowledgeUnavailable = errors.New("workspace: knowledge unavailable")
-
 // KnowledgeStore is the complete persistence surface consumed by Knowledge.
+// Calls borrow inputs until return and transfer ownership of returned entries.
 type KnowledgeStore interface {
 	Get(ctx context.Context, scope knowledge.Scope, dir string) (knowledge.Entry, error)
 	Update(ctx context.Context, dir string, replacement knowledge.Replacement) (knowledge.Entry, error)
@@ -41,21 +39,35 @@ func NewKnowledge(
 	store KnowledgeStore,
 	observations *AuthoredWatch,
 	invalidations invalidation.Publish,
-) *Knowledge {
+) (*Knowledge, error) {
+	for _, dependency := range []struct {
+		name  string
+		value any
+	}{
+		{name: "scope", value: scope},
+		{name: "workspace inspector", value: workspaces},
+		{name: "store", value: store},
+	} {
+		value := reflect.ValueOf(dependency.value)
+		missing := !value.IsValid()
+		if !missing {
+			switch value.Kind() {
+			case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+				missing = value.IsNil()
+			}
+		}
+		if missing {
+			return nil, fmt.Errorf("workspace: knowledge %s is required", dependency.name)
+		}
+	}
 	return &Knowledge{
 		scope: scope, workspaces: workspaces, store: store,
 		observations: observations, invalidations: invalidations,
-	}
+	}, nil
 }
-
-// Available reports whether this runtime has a long-term knowledge store.
-func (k *Knowledge) Available() bool { return k != nil && k.store != nil }
 
 // Entries enumerates FLAME.md entries across scopes.
 func (k *Knowledge) Entries(ctx context.Context, cwd string) ([]knowledge.Entry, error) {
-	if k.store == nil {
-		return nil, ErrKnowledgeUnavailable
-	}
 	root, err := k.scope.root(cwd)
 	if err != nil {
 		return nil, err
@@ -71,16 +83,13 @@ func (k *Knowledge) Entries(ctx context.Context, cwd string) ([]knowledge.Entry,
 	if err := validateKnowledgeCascade(entries); err != nil {
 		return nil, err
 	}
-	return slices.Clone(entries), nil
+	return entries, nil
 }
 
 // Read returns the FLAME.md content for one scope.
 func (k *Knowledge) Read(ctx context.Context, scope knowledge.Scope, cwd string) (knowledge.Entry, error) {
 	if err := scope.Validate(); err != nil {
 		return knowledge.Entry{}, err
-	}
-	if k.store == nil {
-		return knowledge.Entry{}, ErrKnowledgeUnavailable
 	}
 	if scope == knowledge.ScopeHome {
 		entry, err := k.store.Get(ctx, scope, "")
@@ -111,9 +120,6 @@ func (k *Knowledge) Update(ctx context.Context, scope knowledge.Scope, cwd, expe
 	replacement, err := knowledge.NewReplacement(scope, expectedRevision, content)
 	if err != nil {
 		return knowledge.Entry{}, err
-	}
-	if k.store == nil {
-		return knowledge.Entry{}, ErrKnowledgeUnavailable
 	}
 	if replacement.Scope() == knowledge.ScopeHome {
 		return k.update(ctx, "", replacement)
@@ -190,9 +196,6 @@ func knowledgePathError(err error) error {
 }
 
 func (k *Knowledge) projectRoot(cwd string) (string, error) {
-	if k.workspaces == nil {
-		return "", fmt.Errorf("%w: workspace inspector is not configured", ErrCWDUnavailable)
-	}
 	resolved, err := k.workspaces.Inspect(cwd)
 	if err != nil {
 		return "", fmt.Errorf("%w: inspect %s: %w", ErrCWDUnavailable, cwd, err)

@@ -156,7 +156,7 @@ func TestAgentDocsPreservesDiscoveryProvenance(t *testing.T) {
 		{Path: "/repo/AGENTS.md", Content: "root", Scope: AgentDocScopeProjectRoot},
 		{Path: "/repo/pkg/AGENTS.md", Content: "leaf", Scope: AgentDocScopeCWD},
 	}}
-	discovery := NewDiscovery(NewScope("", "/home", testPaths{}), nil, finder, nil)
+	discovery := NewDiscovery(newScope(t, "", "/home", testPaths{}), nil, finder, nil)
 
 	docs, err := discovery.AgentDocs(t.Context(), "/repo/pkg")
 	if err != nil {
@@ -169,7 +169,7 @@ func TestAgentDocsPreservesDiscoveryProvenance(t *testing.T) {
 
 func TestAgentDocsRejectsUnknownDiscoveryProvenance(t *testing.T) {
 	finder := staticAgentDocFinder{files: []AgentDocFile{{Path: "/repo/AGENTS.md", Content: "rule", Scope: "other"}}}
-	discovery := NewDiscovery(NewScope("", "/home", testPaths{}), nil, finder, nil)
+	discovery := NewDiscovery(newScope(t, "", "/home", testPaths{}), nil, finder, nil)
 
 	if _, err := discovery.AgentDocs(t.Context(), "/repo"); err == nil {
 		t.Fatal("AgentDocs accepted an unknown scope")
@@ -181,7 +181,7 @@ func TestRecipesOwnVisibleCatalogOrderAndSnapshot(t *testing.T) {
 		{Name: "zeta", Body: "zeta body", Scope: RecipeScopeGlobal, Source: "/home/zeta.md"},
 		{Name: "alpha", Body: "alpha body", Scope: RecipeScopeProject, Source: "/repo/alpha.md"},
 	}}
-	discovery := NewDiscovery(NewScope("", "", testPaths{}), nil, nil, lister)
+	discovery := NewDiscovery(newScope(t, "", "", testPaths{}), nil, nil, lister)
 
 	recipes, err := discovery.Recipes(t.Context(), "/repo")
 	if err != nil {
@@ -201,7 +201,7 @@ func TestRecipesRejectRepeatedVisibleName(t *testing.T) {
 		{Name: "review", Body: "project", Scope: RecipeScopeProject, Source: "/repo/review.md"},
 		{Name: "review", Body: "global", Scope: RecipeScopeGlobal, Source: "/home/review.md"},
 	}}
-	discovery := NewDiscovery(NewScope("", "", testPaths{}), nil, nil, lister)
+	discovery := NewDiscovery(newScope(t, "", "", testPaths{}), nil, nil, lister)
 
 	if _, err := discovery.Recipes(t.Context(), "/repo"); !errors.Is(err, ErrInvalidPromptSource) {
 		t.Fatalf("Recipes error = %v, want ErrInvalidPromptSource", err)

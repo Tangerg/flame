@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -14,8 +15,7 @@ import (
 )
 
 // fakeKnowledgeStore is a workspace knowledge store recording the coordinator's
-// calls, so the knowledge delivery handlers can be tested against a wired store
-// (or, when nil, against the disabled path).
+// calls, so the knowledge delivery handlers can be tested against a wired store.
 type fakeKnowledgeStore struct {
 	entries         []knowledge.Entry
 	listCWD         string
@@ -33,7 +33,7 @@ type fakeKnowledgeStore struct {
 func (f *fakeKnowledgeStore) List(_ context.Context, cwd, projectRoot string) ([]knowledge.Entry, error) {
 	f.listCWD = cwd
 	f.listProjectRoot = projectRoot
-	return f.entries, nil
+	return slices.Clone(f.entries), nil
 }
 
 func (f *fakeKnowledgeStore) Get(_ context.Context, scope knowledge.Scope, cwd string) (knowledge.Entry, error) {
@@ -56,38 +56,11 @@ func (f *fakeKnowledgeStore) Update(_ context.Context, cwd string, replacement k
 }
 
 // handlerWithKnowledge builds a test Handler whose knowledge use case is backed by
-// store (nil store means the capability is unavailable).
+// store.
 func handlerWithKnowledge(store workspaceapp.KnowledgeStore) *Handler {
 	s := newTestHandler(&stubRuntime{})
 	applyWorkspaceSurfaces(s, newWorkspaceSurfaces("", workspaceTestConfig{Knowledge: store}))
-	s.features.knowledge = store != nil
 	return s
-}
-
-func TestListKnowledgeWithoutStoreReturnsCapabilityError(t *testing.T) {
-	s := handlerWithKnowledge(nil)
-
-	_, err := s.ListKnowledge(context.Background(), protocol.WorkspaceQuery{
-		Workspace: protocol.WorkspaceRef{Path: "/repo"},
-	})
-	if !errors.Is(err, protocol.ErrCapabilityNotNeg) {
-		t.Fatalf("list knowledge err = %v, want capability_not_negotiated", err)
-	}
-}
-
-func TestKnowledgeHandlersReturnCapabilityErrorWithoutStore(t *testing.T) {
-	s := handlerWithKnowledge(nil)
-
-	_, err := s.GetKnowledge(context.Background(), protocol.GetKnowledgeRequest{Scope: protocol.KnowledgeScopeHome})
-	if !errors.Is(err, protocol.ErrCapabilityNotNeg) {
-		t.Fatalf("get knowledge err = %v, want capability_not_negotiated", err)
-	}
-	_, err = s.UpdateKnowledge(context.Background(), protocol.UpdateKnowledgeRequest{
-		Scope: protocol.KnowledgeScopeHome, ExpectedRevision: "rev-1", Content: "prefs",
-	})
-	if !errors.Is(err, protocol.ErrCapabilityNotNeg) {
-		t.Fatalf("update knowledge err = %v, want capability_not_negotiated", err)
-	}
 }
 
 func TestListKnowledgeMapsEntriesToWire(t *testing.T) {

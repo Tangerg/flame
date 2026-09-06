@@ -41,7 +41,7 @@ func TestGitWatchOwnsCWDsBeforePathResolution(t *testing.T) {
 	cwds := []string{filepath.Join(root, "first"), filepath.Join(root, "second")}
 	paths := &callbackPaths{onFirst: func() { cwds[1] = filepath.Join(root, "changed") }}
 	watcher := &recordingGitWatcher{}
-	useCases := NewGitWatch(NewScope(root, root, paths), watcher)
+	useCases := NewGitWatch(newScope(t, root, root, paths), watcher)
 
 	observation, err := useCases.Watch(cwds, func() {})
 	if err != nil {

@@ -13,7 +13,7 @@ func TestListUsesCatalogPort(t *testing.T) {
 	catalog := &fakeSkillCatalog{
 		skills: []SkillSummary{{Name: "lint", Description: "check code", Scope: SkillScopeProject}},
 	}
-	c := NewSkills(NewScope("", "", testPaths{}), catalog, nil, nil, nil, nil)
+	c := NewSkills(newScope(t, "", "", testPaths{}), catalog, nil, nil, nil, nil)
 
 	got, err := c.List(context.Background(), "/repo")
 	if err != nil {
@@ -32,7 +32,7 @@ func TestListOwnsVisibleSkillOrder(t *testing.T) {
 		{Name: "zeta", Description: "Check the final result.", Scope: SkillScopeUser},
 		{Name: "alpha", Description: "Inspect the project first.", Scope: SkillScopeProject},
 	}}
-	c := NewSkills(NewScope("", "", testPaths{}), catalog, nil, nil, nil, nil)
+	c := NewSkills(newScope(t, "", "", testPaths{}), catalog, nil, nil, nil, nil)
 
 	got, err := c.List(t.Context(), "/repo")
 	if err != nil {
@@ -51,7 +51,7 @@ func TestListRejectsShadowedSkillLeak(t *testing.T) {
 		{Name: "review", Description: "Review the project changes.", Scope: SkillScopeProject},
 		{Name: "review", Description: "Review the user changes.", Scope: SkillScopeUser},
 	}}
-	c := NewSkills(NewScope("", "", testPaths{}), catalog, nil, nil, nil, nil)
+	c := NewSkills(newScope(t, "", "", testPaths{}), catalog, nil, nil, nil, nil)
 
 	if _, err := c.List(t.Context(), "/repo"); err == nil {
 		t.Fatal("List accepted two visible Skills with one precedence-resolved name")
@@ -64,7 +64,7 @@ func TestListRejectsInvalidOrUnboundedCatalog(t *testing.T) {
 		"capacity":    make([]SkillSummary, 2*skills.MaxSkillsPerSource+1),
 	} {
 		t.Run(name, func(t *testing.T) {
-			c := NewSkills(NewScope("", "", testPaths{}), &fakeSkillCatalog{skills: found}, nil, nil, nil, nil)
+			c := NewSkills(newScope(t, "", "", testPaths{}), &fakeSkillCatalog{skills: found}, nil, nil, nil, nil)
 			if _, err := c.List(t.Context(), "/repo"); err == nil {
 				t.Fatal("List error = nil, want rejected catalog")
 			}
@@ -73,7 +73,7 @@ func TestListRejectsInvalidOrUnboundedCatalog(t *testing.T) {
 }
 
 func TestListWithoutCatalogReturnsNil(t *testing.T) {
-	c := NewSkills(NewScope("", "", testPaths{}), nil, nil, nil, nil, nil)
+	c := NewSkills(newScope(t, "", "", testPaths{}), nil, nil, nil, nil, nil)
 	got, err := c.List(context.Background(), "/repo")
 	if err != nil || got != nil {
 		t.Fatalf("List = %v, %v; want nil, nil", got, err)
@@ -81,7 +81,7 @@ func TestListWithoutCatalogReturnsNil(t *testing.T) {
 }
 
 func TestManagedSkillsWithoutCuratorReportUnavailable(t *testing.T) {
-	c := NewSkills(NewScope("", "", testPaths{}), nil, nil, nil, nil, nil)
+	c := NewSkills(newScope(t, "", "", testPaths{}), nil, nil, nil, nil, nil)
 	if _, err := c.Managed(context.Background()); !errors.Is(err, ErrSkillLibraryUnavailable) {
 		t.Fatalf("Managed err = %v, want ErrSkillLibraryUnavailable", err)
 	}
@@ -97,7 +97,7 @@ func TestSkillMutationsPublishOnlyCommittedFilesystemFacts(t *testing.T) {
 	curator := &fakeSkillCurator{}
 	proposals := &fakeSkillProposals{}
 	watcher := &recordingAuthoredWatcher{}
-	observations := NewAuthoredWatch(NewScope("", "", testPaths{}), staticWorkspaceInspector{
+	observations := NewAuthoredWatch(newScope(t, "", "", testPaths{}), staticWorkspaceInspector{
 		resolved: Resolved{Path: "/repo", ProjectRoot: "/repo"},
 	}, watcher)
 	observation, err := observations.Watch([]string{"/repo"}, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {})
@@ -106,7 +106,7 @@ func TestSkillMutationsPublishOnlyCommittedFilesystemFacts(t *testing.T) {
 	}
 	defer func() { _ = observation.Close() }()
 	var notices []invalidation.Notice
-	c := NewSkills(NewScope("", "", testPaths{}), nil, curator, proposals, observations, func(notice invalidation.Notice) {
+	c := NewSkills(newScope(t, "", "", testPaths{}), nil, curator, proposals, observations, func(notice invalidation.Notice) {
 		notices = append(notices, notice)
 	})
 
@@ -203,7 +203,7 @@ func TestManagedSkillsOwnLifecycleAndNameOrder(t *testing.T) {
 		{Name: "alpha", Description: "Run the alpha workflow.", Lifecycle: skills.Active},
 		{Name: "beta", Description: "Run the beta workflow.", Lifecycle: skills.Archived},
 	}}
-	c := NewSkills(NewScope("", "", testPaths{}), nil, curator, nil, nil, nil)
+	c := NewSkills(newScope(t, "", "", testPaths{}), nil, curator, nil, nil, nil)
 
 	got, err := c.Managed(t.Context())
 	if err != nil {
@@ -222,7 +222,7 @@ func TestManagedSkillsRejectDuplicateNameAcrossLifecycles(t *testing.T) {
 		{Name: "review", Description: "Review active changes.", Lifecycle: skills.Active},
 		{Name: "review", Description: "Review archived changes.", Lifecycle: skills.Archived},
 	}}
-	c := NewSkills(NewScope("", "", testPaths{}), nil, curator, nil, nil, nil)
+	c := NewSkills(newScope(t, "", "", testPaths{}), nil, curator, nil, nil, nil)
 
 	if _, err := c.Managed(t.Context()); err == nil {
 		t.Fatal("Managed accepted one Skill name in two lifecycles")
@@ -235,7 +235,7 @@ func TestManagedSkillsRejectInvalidOrUnboundedCatalog(t *testing.T) {
 		"capacity":    make([]skills.Entry, skills.MaxSkillsPerSource+1),
 	} {
 		t.Run(name, func(t *testing.T) {
-			c := NewSkills(NewScope("", "", testPaths{}), nil, &fakeSkillCurator{entries: entries}, nil, nil, nil)
+			c := NewSkills(newScope(t, "", "", testPaths{}), nil, &fakeSkillCurator{entries: entries}, nil, nil, nil)
 			if _, err := c.Managed(t.Context()); err == nil {
 				t.Fatal("Managed error = nil, want rejected catalog")
 			}

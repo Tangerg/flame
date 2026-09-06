@@ -66,7 +66,7 @@ func (m mutatingAuthoredObservation) Accept(changes []AuthoredChange) error {
 func TestAuthoredWatchResolvesAndDeduplicatesScopes(t *testing.T) {
 	root := t.TempDir()
 	watcher := &recordingAuthoredWatcher{}
-	useCases := NewAuthoredWatch(NewScope(root, root, testPaths{}), staticWorkspaceInspector{
+	useCases := NewAuthoredWatch(newScope(t, root, root, testPaths{}), staticWorkspaceInspector{
 		resolved: Resolved{Path: root, ProjectRoot: root},
 	}, watcher)
 	closer, err := useCases.Watch(
@@ -94,7 +94,7 @@ func TestAuthoredWatchOwnsCWDsBeforeWorkspaceInspection(t *testing.T) {
 		projectRoot: root,
 		onFirst:     func() { cwds[1] = filepath.Join(root, "changed") },
 	}
-	useCases := NewAuthoredWatch(NewScope(root, root, testPaths{}), inspector, watcher)
+	useCases := NewAuthoredWatch(newScope(t, root, root, testPaths{}), inspector, watcher)
 
 	observation, err := useCases.Watch(cwds, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {})
 	if err != nil {
@@ -109,7 +109,7 @@ func TestAuthoredWatchOwnsCWDsBeforeWorkspaceInspection(t *testing.T) {
 func TestAuthoredWatchOwnsChangesForEveryObservation(t *testing.T) {
 	root := t.TempDir()
 	watcher := &mutatingAuthoredWatcher{}
-	useCases := NewAuthoredWatch(NewScope(root, root, testPaths{}), staticWorkspaceInspector{
+	useCases := NewAuthoredWatch(newScope(t, root, root, testPaths{}), staticWorkspaceInspector{
 		resolved: Resolved{Path: root, ProjectRoot: root},
 	}, watcher)
 	first, err := useCases.Watch(nil, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {})
@@ -144,7 +144,7 @@ func TestAuthoredWatchOwnsChangesForEveryObservation(t *testing.T) {
 func TestAuthoredWatchRejectsInvalidWorkspaceInspection(t *testing.T) {
 	root := t.TempDir()
 	watcher := &recordingAuthoredWatcher{}
-	useCases := NewAuthoredWatch(NewScope(root, root, testPaths{}), staticWorkspaceInspector{
+	useCases := NewAuthoredWatch(newScope(t, root, root, testPaths{}), staticWorkspaceInspector{
 		resolved: Resolved{Path: root, ProjectRoot: filepath.Join(root, "nested")},
 	}, watcher)
 	if _, err := useCases.Watch([]string{root}, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {}); err == nil {

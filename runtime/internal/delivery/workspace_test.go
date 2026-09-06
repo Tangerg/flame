@@ -56,7 +56,10 @@ func (inertWorkspaceCloser) Close() error                               { return
 func (inertWorkspaceCloser) Accept([]workspaceapp.AuthoredChange) error { return nil }
 
 func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces {
-	roots := workspaceapp.NewScope(cwd, cwd, workspaceadapter.Resolver{})
+	roots, err := workspaceapp.NewScope(cwd, cwd, workspaceadapter.Resolver{})
+	if err != nil {
+		panic(err)
+	}
 	watcher := cfg.Watcher
 	if watcher == nil {
 		watcher = workspaceadapter.NewGitWatcher(context.Background())
@@ -84,12 +87,19 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 		panic(err)
 	}
 	authoredWatch := workspaceapp.NewAuthoredWatch(roots, workspaceadapter.Resolver{}, authoredWatcher)
+	if cfg.Knowledge == nil {
+		cfg.Knowledge = &fakeKnowledgeStore{}
+	}
+	knowledge, err := workspaceapp.NewKnowledge(roots, workspaceadapter.Resolver{}, cfg.Knowledge, authoredWatch, nil)
+	if err != nil {
+		panic(err)
+	}
 	return workspaceSurfaces{
 		roots:         roots,
 		files:         workspaceapp.NewFiles(roots, workspaceadapter.FileBrowser{}),
 		vcs:           workspaceapp.NewVCS(roots, workspaceadapter.VCS{}),
 		discovery:     workspaceapp.NewDiscovery(roots, nil, nil, cfg.Recipes),
-		knowledge:     workspaceapp.NewKnowledge(roots, workspaceadapter.Resolver{}, cfg.Knowledge, authoredWatch, nil),
+		knowledge:     knowledge,
 		skills:        workspaceapp.NewSkills(roots, cfg.Skills, cfg.Curator, cfg.Proposals, authoredWatch, nil),
 		hooks:         hooks,
 		watch:         workspaceapp.NewGitWatch(roots, watcher),
