@@ -76,6 +76,14 @@ function code(text) {
 const isWire = (rel) => rel.startsWith("rpc/");
 const isShared = (rel) => rel.startsWith("lib/");
 
+// The step ladder is a naming CONVENTION, not a vocabulary. Every control in the design system
+// spells its sizes from the same rungs and supports a different subset, so `sm|md|lg` on a
+// loader and on a menu row are not two names for one fact — they are two ladders that happen to
+// share rung names. Converging them would assert that a loader's `sm` (a type step) and a row's
+// `sm` (a height) are one decision, and give every control the union of everyone's steps.
+const STEP_NAMES = new Set(["2xs", "xs", "sm", "md", "lg", "xl", "2xl"]);
+const isStepLadder = (key) => key.split("|").every((rung) => STEP_NAMES.has(rung));
+
 function reportDuplicateVocabulary() {
   const byKey = new Map();
   for (const decl of namedUnions) {
@@ -89,6 +97,7 @@ function reportDuplicateVocabulary() {
       for (let j = i + 1; j < group.length; j++) {
         const [a, b] = [group[i], group[j]];
         if (isWire(a.rel) || isWire(b.rel)) continue;
+        if (isStepLadder(a.key)) continue;
         const oneOwner =
           a.name === b.name ||
           boundedContext(a.rel) === boundedContext(b.rel) ||

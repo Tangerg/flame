@@ -48,6 +48,10 @@ export const surface = stylex.defineVars({
   canvas: "var(--color-canvas)",
   floating: "var(--app-floating-surface)",
   scrim: "var(--color-scrim)",
+  /** Row states are an ink wash whose strength tracks `--depth-step`, not a surface step. */
+  hover: "var(--color-hover)",
+  selected: "var(--color-selected)",
+  negativeWashRow: "var(--color-negative-wash)",
   /** The app's card plane, and the hairline a fill-less surface uses instead of it. */
   card: "var(--app-card-surface)",
   field: "var(--color-field)",

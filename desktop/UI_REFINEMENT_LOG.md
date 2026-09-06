@@ -6768,3 +6768,81 @@ const CLASS_LIST = /[-:]/;
 浮层簇剩下的消费方：`menu` + `option-row`（后者被前者以 class 串消费，
 且 `ContextIconItem` 与两个 `OptionRow` 调用点都在指定网格列 —— 三处，够一档），
 以及四个 dialog。
+
+---
+
+## Round 119 — 浮层簇之二：`option-row` + `menu`
+
+### 计划（写在改代码之前）
+
+`menu.tsx` 把 `floatingRowStyles({ size: "sm" })` 当**字符串**拼进
+`MENU_ITEM_CLASSES` —— 这是浮层簇里最后一处 class 串共享，两者必须同批。
+
+### 证据：三处调用点在替 `layout="grid"` 补它缺的那一半
+
+| 调用点 | 写的网格列 |
+| --- | --- |
+| `FileMentionPopup` | `grid-cols-[auto_1fr]` |
+| `SlashSuggestions` | `grid-cols-[auto_1fr]` |
+| `menu` 的 `ContextIconItem` | `grid-cols-[14px_minmax(0,1fr)]` |
+
+`layout: "grid"` 只给了 `display: grid`。一个没有模板的 grid 是单列，
+所以每一个真正要两列的调用点都得自己补 —— 三处，而且补法还不一致。
+这不是"调用点想定制"，是这一档本身只做了一半。
+
+查过溢出：两处的第二个子元素都带 `truncate`（含 `overflow-hidden`），
+所以 `1fr` 的自动最小尺寸已被压成 0，`1fr` 与 `minmax(0,1fr)` 在此等价 ——
+不是 CLAUDE.md §4 要防的那种撑爆。统一用 `minmax(0,1fr)` 是因为它自己说清楚了。
+
+### 改动
+
+`layout` 从 `grid | flex` 变成 `grid | flex | glyph`，
+`glyph` 携带 `grid-template-columns: auto minmax(0, 1fr)` —— 一个字形，然后是其余。
+
+`menu` 的 `destructive` 也进 `OptionRow`：它是"这一行会毁掉东西"这个状态，
+不是调用点挑的三个 class。
+
+### 验收标准
+
+三处网格列 className 消失；golden 零位移；17 项 `check:*` 全绿。
+
+### 结果
+
+| | Before | After |
+| --- | --- | --- |
+| `floatingRowStyles` | cva，被 `menu` 当字符串拼接 | `stylex.create`，加一个 `floatingRow()` 组合器 |
+| `layout` | `grid \| flex` | `grid \| flex \| glyph` |
+| 三处网格列 className | `grid-cols-[auto_1fr]` ×2、`grid-cols-[14px_minmax(0,1fr)]` ×1 | `layout="glyph"` |
+| `destructive` | 调用点写三个 class | `floatingRowStyles.destructive` |
+| `MENU_ITEM_CLASSES` | 字符串 | `menuItem(layout)` |
+
+`ContextIconItem` 的 `layout` 是穿过 `ContextItem` 传下去的，不是自己再叠一层
+StyleX —— 两次独立的 `stylex.props()` 调用无法互相去重，同一个 `display`
+会退回按源序决胜。一个属性一次组合。
+
+### 又一处守卫的根因
+
+`check:published-boundaries` 报 `LoaderSize` 与新具名的 `RowSize` 是
+"同一个联合的两个名字"（都是 `sm|md|lg`）。
+
+但档位阶梯不是词汇 —— 它是每个控件按构造共享的**命名约定**，各自支持不同子集。
+Loader 的 `sm` 是字号步进，行的 `sm` 是行高；把它们收敛等于断言这两个是
+同一个决定，并且让每个控件拿到所有控件档位的并集。守卫自己的注释写得很清楚，
+它防的是主题值、审批立场、文档范围那类**词汇**。
+
+所以排除"成员全部来自档位名"的联合，narrow 且有理由。
+反向验证过：真的词汇重名（`comfortable|compact` 换个名字）照抓不误。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650，零位移** |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+### 下一轮方向
+
+浮层簇只剩四个 dialog（`lightbox` / `confirm` / `search-overlay` /
+`text-editor`），它们已经在用 StyleX 的 `MODAL_SCRIM` / `FLOATING_MOTION`，
+剩下的是各自的版式。

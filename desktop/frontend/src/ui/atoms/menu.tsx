@@ -1,22 +1,33 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/classNames";
+import { space, surface } from "@/styles/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
 import { ContextMenuPrimitive, MenuPrimitive } from "@/ui/primitives";
 import { FLOATING_LAYER, FLOATING_PANEL } from "./floating-surface";
-import { floatingRowStyles } from "./option-row";
+import { floatingRow, floatingRowStyles, type RowLayout } from "./option-row";
+
+const menuStyles = stylex.create({
+  // A submenu positions itself against its trigger, so the trigger has to be a containing block.
+  item: { position: "relative" },
+  separator: {
+    position: "relative",
+    marginInline: space.s1,
+    marginBlock: space.s1,
+    height: "1px",
+    backgroundColor: surface.divider,
+  },
+  content: { padding: space.s1, outline: { default: null, ":focus-visible": "none" } },
+  label: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+});
 
 // The popup takes focus so the keyboard can drive it, which makes it match `:focus-visible`
 // even when a mouse opened it — a ring around the whole menu, every time, on right-click. The
 // highlighted ITEM is the indicator here, so the popup opts out the way the design system
 // says a row state may: `data-chrome-focus`.
-const MENU_CONTENT_CLASSES = `${stylex.props(FLOATING_PANEL).className} p-1 focus-visible:outline-none`;
+const MENU_CONTENT = [FLOATING_PANEL, menuStyles.content];
 
-const MENU_ITEM_CLASSES = `relative ${floatingRowStyles({ size: "sm" })}`;
-
-const FLOATING_LAYER_CLASS = stylex.props(FLOATING_LAYER).className;
-
-const MENU_SEPARATOR_CLASSES = "relative mx-1 my-1 h-px bg-divider";
+const menuItem = (layout: RowLayout = "grid") => [menuStyles.item, floatingRow(layout, "sm")];
 
 type DropdownPositionerProps = ComponentProps<typeof MenuPrimitive.Positioner>;
 type DropdownPopupProps = ComponentProps<typeof MenuPrimitive.Popup>;
@@ -58,6 +69,7 @@ function DropdownContent({
   alignOffset,
   ...popupProps
 }: DropdownContentProps) {
+  const content = stylex.props(MENU_CONTENT);
   return (
     <MenuPrimitive.Portal>
       <MenuPrimitive.Positioner
@@ -65,12 +77,13 @@ function DropdownContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={FLOATING_LAYER_CLASS}
+        {...stylex.props(FLOATING_LAYER)}
       >
         <MenuPrimitive.Popup
           {...popupProps}
           data-chrome-focus=""
-          className={cn(MENU_CONTENT_CLASSES, className)}
+          {...content}
+          className={cn(content.className, className)}
         >
           {children}
         </MenuPrimitive.Popup>
@@ -88,6 +101,7 @@ function ContextContent({
   alignOffset,
   ...popupProps
 }: ContextContentProps) {
+  const content = stylex.props(MENU_CONTENT);
   return (
     <ContextMenuPrimitive.Portal>
       <ContextMenuPrimitive.Positioner
@@ -95,12 +109,13 @@ function ContextContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={FLOATING_LAYER_CLASS}
+        {...stylex.props(FLOATING_LAYER)}
       >
         <ContextMenuPrimitive.Popup
           {...popupProps}
           data-chrome-focus=""
-          className={cn(MENU_CONTENT_CLASSES, className)}
+          {...content}
+          className={cn(content.className, className)}
         >
           {children}
         </ContextMenuPrimitive.Popup>
@@ -113,33 +128,57 @@ function DropdownSeparator({
   className,
   ...props
 }: ComponentProps<typeof MenuPrimitive.Separator>) {
-  return <MenuPrimitive.Separator {...props} className={cn(MENU_SEPARATOR_CLASSES, className)} />;
+  const separator = stylex.props(menuStyles.separator);
+  return (
+    <MenuPrimitive.Separator
+      {...props}
+      {...separator}
+      className={cn(separator.className, className)}
+    />
+  );
 }
 
 function ContextSeparator({
   className,
   ...props
 }: ComponentProps<typeof ContextMenuPrimitive.Separator>) {
+  const separator = stylex.props(menuStyles.separator);
   return (
-    <ContextMenuPrimitive.Separator {...props} className={cn(MENU_SEPARATOR_CLASSES, className)} />
+    <ContextMenuPrimitive.Separator
+      {...props}
+      {...separator}
+      className={cn(separator.className, className)}
+    />
   );
 }
 
 function DropdownItem({ className, ...props }: DropdownItemProps) {
-  return <MenuPrimitive.Item {...props} className={cn(MENU_ITEM_CLASSES, className)} />;
+  const item = stylex.props(menuItem());
+  return <MenuPrimitive.Item {...props} {...item} className={cn(item.className, className)} />;
 }
 
 function DropdownSubmenuTrigger({ className, ...props }: DropdownSubmenuTriggerProps) {
-  return <MenuPrimitive.SubmenuTrigger {...props} className={cn(MENU_ITEM_CLASSES, className)} />;
+  const item = stylex.props(menuItem());
+  return (
+    <MenuPrimitive.SubmenuTrigger {...props} {...item} className={cn(item.className, className)} />
+  );
 }
 
-function ContextItem({ className, ...props }: ContextItemProps) {
-  return <ContextMenuPrimitive.Item {...props} className={cn(MENU_ITEM_CLASSES, className)} />;
+function ContextItem({ layout, className, ...props }: ContextItemProps & { layout?: RowLayout }) {
+  const item = stylex.props(menuItem(layout));
+  return (
+    <ContextMenuPrimitive.Item {...props} {...item} className={cn(item.className, className)} />
+  );
 }
 
 function ContextSubmenuTrigger({ className, ...props }: ContextSubmenuTriggerProps) {
+  const item = stylex.props(menuItem());
   return (
-    <ContextMenuPrimitive.SubmenuTrigger {...props} className={cn(MENU_ITEM_CLASSES, className)} />
+    <ContextMenuPrimitive.SubmenuTrigger
+      {...props}
+      {...item}
+      className={cn(item.className, className)}
+    />
   );
 }
 
@@ -151,19 +190,16 @@ function ContextIconItem({
   className,
   ...props
 }: ContextIconItemProps) {
+  const tone = stylex.props(destructive && floatingRowStyles.destructive);
   return (
     <ContextItem
       {...props}
+      layout="glyph"
       onClick={onSelect}
-      className={cn(
-        "grid-cols-[14px_minmax(0,1fr)]",
-        destructive &&
-          "text-negative data-[highlighted]:bg-negative-wash data-[highlighted]:text-negative",
-        className,
-      )}
+      className={cn(tone.className, className)}
     >
       <Icon name={icon} size="xs" />
-      <span className="truncate">{children}</span>
+      <span {...stylex.props(menuStyles.label)}>{children}</span>
     </ContextItem>
   );
 }

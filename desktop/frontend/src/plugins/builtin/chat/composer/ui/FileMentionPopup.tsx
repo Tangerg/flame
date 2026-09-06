@@ -29,6 +29,7 @@ export function FileMentionPopup({ items, index, onPick, onHover }: Props) {
         return (
           <OptionRow
             key={path}
+            layout="glyph"
             id={mentionOptionId(i)}
             tabIndex={-1}
             selected={i === index}
@@ -37,7 +38,6 @@ export function FileMentionPopup({ items, index, onPick, onHover }: Props) {
               e.preventDefault();
               onPick(path);
             }}
-            className="grid-cols-[auto_1fr]"
           >
             <Icon name="filetext" size="sm" className="shrink-0 text-fg-muted" />
             <span className="truncate font-mono">

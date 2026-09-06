@@ -27,7 +27,7 @@ export function SlashSuggestions({ value, onPick }: Props) {
     <FloatingSurface className="mb-2 p-1">
       <SectionLabel className="px-2.5 pb-1 pt-1.5">{t("composer.slash.heading")}</SectionLabel>
       {filtered.map(({ cmd, spec }) => (
-        <OptionRow key={cmd} onClick={() => onPick(`${cmd} `)} className="grid-cols-[auto_1fr]">
+        <OptionRow key={cmd} layout="glyph" onClick={() => onPick(`${cmd} `)}>
           <code className="border-0 bg-transparent p-0 font-mono font-semibold text-accent">
             {cmd}
           </code>
