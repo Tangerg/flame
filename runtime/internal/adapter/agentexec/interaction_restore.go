@@ -200,6 +200,21 @@ func restoreManagedDelegateCall(
 	if err != nil {
 		return nil, err
 	}
+	var pending bool
+	for _, drained := range members[parentID].DrainedTools {
+		if drained.CallID != callID.String() {
+			continue
+		}
+		if drained.SourceCallID != child.ToolCall().ID || drained.Name != child.ToolCall().Name ||
+			drained.Arguments != arguments.Canonical() {
+			return nil, fmt.Errorf("delegate child %s differs from its unfinished parent tool", child.ProcessID())
+		}
+		pending = true
+		break
+	}
+	if survives && !pending {
+		return nil, fmt.Errorf("delegate child %s has no unfinished parent tool", child.ProcessID())
+	}
 	return &managedDelegateCall{
 		identity:          delegateCallIdentity{parentID: parentID, childKey: child.ChildKey()},
 		parentRelation:    parentSnapshot.Relation(),
@@ -211,6 +226,7 @@ func restoreManagedDelegateCall(
 		toolCallIndex:     child.ToolCallIndex(),
 		callID:            callID,
 		binding:           binding, childProcessID: child.ProcessID(), toolStarted: true,
+		parentToolFinished: !pending,
 		// Closed children have already published their product terminal. Scope
 		// retains their result until the waiting parent can commit its Tool batch.
 		assistantProjected: !survives,

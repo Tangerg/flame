@@ -204,6 +204,7 @@ func waitingDelegateContinuation(barrier runs.TreeBarrierCommit) runs.WaitingCon
 			RunID: member.RunID, MemberID: member.MemberID,
 			ParentRunID: member.Lineage.ParentRunID, SpawnedByItemID: member.Lineage.SpawnedByItemID,
 			ModelSelection: member.ModelSelection, Metrics: member.Metrics,
+			DrainedTools: slices.Clone(member.DrainedTools),
 		})
 	}
 	return runs.WaitingContinuation{

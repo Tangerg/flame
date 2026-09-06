@@ -41,7 +41,7 @@ Framework observations are wake-ups, not durable commits. Runtime reconciles aut
 
 A Delegate retains its admitted child across a human-input barrier. Each continuation opens fresh Segments, so the executor observation reopens the parent Tool attempt before forwarding child results. Application reuses the durable Tool Item identity; continuation does not admit another child or repeat its completed work.
 
-A child's terminal projection precedes the waiting barrier even when an earlier sibling still needs input. Only parent Tool results wait for the model's declared call order. Completed children leave the product continuation set; the restored Scope tree retains their pending parent Tool results until that order can advance.
+A child's terminal projection precedes the waiting barrier even when an earlier sibling still needs input. Only parent Tool results wait for the model's declared call order. Completed children leave the product continuation set; the restored Scope tree retains their pending parent Tool results until that order can advance. Application supplies each waiting member's drained Tool identities so restoration does not reopen a parent result that was already committed.
 
 Unknown external effects fail closed. Runtime does not guess whether an unconfirmed model or tool effect succeeded and does not silently replay it.
 

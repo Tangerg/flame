@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -58,6 +59,9 @@ func NewWaitingContinuation(draft WaitingContinuation) (WaitingContinuation, err
 // Clone returns an ownership-independent waiting-tree value.
 func (w WaitingContinuation) Clone() WaitingContinuation {
 	w.Members = append([]WaitingMember(nil), w.Members...)
+	for index := range w.Members {
+		w.Members[index].DrainedTools = slices.Clone(w.Members[index].DrainedTools)
+	}
 	w.Checkpoint = w.Checkpoint.Clone()
 	w.Capabilities = w.Capabilities.Clone()
 	return w
@@ -99,6 +103,15 @@ func waitingContinuationFromPending(
 	if err := pending.Validate(); err != nil {
 		return WaitingContinuation{}, err
 	}
+	return NewWaitingContinuation(WaitingContinuation{
+		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
+		RootRunID: pending.RootRunID, Members: waitingMembersFromPending(pending), Checkpoint: checkpoint.Clone(),
+		Capabilities:             pending.Capabilities,
+		ChildRunAdmissionEnabled: pending.Capabilities.ChildRuns,
+	})
+}
+
+func waitingMembersFromPending(pending Pending) []WaitingMember {
 	members := make([]WaitingMember, len(pending.Continuations))
 	for index, continuation := range pending.Continuations {
 		members[index] = WaitingMember{
@@ -106,14 +119,10 @@ func waitingContinuationFromPending(
 			ParentRunID:     continuation.Lineage.ParentRunID,
 			SpawnedByItemID: continuation.Lineage.SpawnedByItemID,
 			ModelSelection:  continuation.ModelSelection, Metrics: continuation.Metrics,
+			DrainedTools: continuation.DrainedTools,
 		}
 	}
-	return NewWaitingContinuation(WaitingContinuation{
-		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
-		RootRunID: pending.RootRunID, Members: members, Checkpoint: checkpoint.Clone(),
-		Capabilities:             pending.Capabilities,
-		ChildRunAdmissionEnabled: pending.Capabilities.ChildRuns,
-	})
+	return members
 }
 
 // Validate verifies one surviving product member without interpreting executor
@@ -144,6 +153,9 @@ func (w WaitingMember) Validate() error {
 	}
 	if err := w.Metrics.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting member metrics: %w", err)
+	}
+	if _, _, err := validateDrainedTools(w.DrainedTools); err != nil {
+		return fmt.Errorf("runs: waiting member tools: %w", err)
 	}
 	return nil
 }

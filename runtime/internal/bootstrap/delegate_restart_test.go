@@ -17,6 +17,20 @@ import (
 )
 
 func TestProtocolResumesWaitingTreeBesideCompletedSiblingAfterRestart(t *testing.T) {
+	waiting := chat.ToolCall{ID: "delegate_a", Name: "delegate_task", Arguments: `{"summary":"A","instructions":"waiting sibling A"}`}
+	completed := chat.ToolCall{ID: "delegate_b", Name: "delegate_task", Arguments: `{"summary":"B","instructions":"completed sibling B"}`}
+	for _, test := range []struct {
+		name  string
+		calls []chat.ToolCall
+	}{
+		{name: "completed successor", calls: []chat.ToolCall{waiting, completed}},
+		{name: "completed predecessor", calls: []chat.ToolCall{completed, waiting}},
+	} {
+		t.Run(test.name, func(t *testing.T) { testProtocolSiblingRestart(t, test.calls) })
+	}
+}
+
+func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	releaseA := make(chan struct{})
@@ -49,8 +63,8 @@ func TestProtocolResumesWaitingTreeBesideCompletedSiblingAfterRestart(t *testing
 			message = chat.NewAssistantMessage(chat.NewTextPart("sibling B completed"))
 		default:
 			message = chat.NewAssistantMessage(
-				chat.NewToolCallPart(chat.ToolCall{ID: "delegate_a", Name: "delegate_task", Arguments: `{"summary":"A","instructions":"waiting sibling A"}`}),
-				chat.NewToolCallPart(chat.ToolCall{ID: "delegate_b", Name: "delegate_task", Arguments: `{"summary":"B","instructions":"completed sibling B"}`}),
+				chat.NewToolCallPart(delegateCalls[0]),
+				chat.NewToolCallPart(delegateCalls[1]),
 			)
 			finish = chat.FinishReasonToolCalls
 		}

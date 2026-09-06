@@ -302,11 +302,14 @@ type WaitingMember struct {
 	SpawnedByItemID string
 	ModelSelection  modelref.Selection
 	Metrics         run.Metrics
+	// DrainedTools distinguishes an unfinished parent Tool from a result already
+	// committed while the executor still retains the child in an active batch.
+	DrainedTools []DrainedTool
 }
 
 // WaitingContinuation is the complete Application-owned input for staging one
 // parked tree. Checkpoint payload interpretation remains executor-private;
-// Members carries only surviving product identities and cumulative accounting.
+// Members carries surviving product identities, accounting, and unfinished Tools.
 type WaitingContinuation struct {
 	SessionID                string
 	ExecutorID               string

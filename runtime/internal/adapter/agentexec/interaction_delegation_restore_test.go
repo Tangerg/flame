@@ -2,6 +2,7 @@ package agentexec
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"testing"
 	"time"
@@ -27,6 +28,31 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 	}
 
 	continuation := waitingDelegateContinuation(barrier)
+	for _, test := range []struct {
+		name   string
+		change func(*runs.WaitingMember)
+	}{
+		{name: "missing parent Tool", change: func(member *runs.WaitingMember) { member.DrainedTools = nil }},
+		{name: "changed parent Tool", change: func(member *runs.WaitingMember) {
+			member.DrainedTools[0].SourceCallID = "different_call"
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			invalid := continuation.Clone()
+			for index := range invalid.Members {
+				if invalid.Members[index].RunID == invalid.RootRunID {
+					test.change(&invalid.Members[index])
+				}
+			}
+			ref, err := fixture.executor.StageContinuation(t.Context(), invalid)
+			if err == nil {
+				_ = fixture.executor.Release(t.Context(), ref)
+			}
+			if !errors.Is(err, runs.ErrExecutorStateLost) {
+				t.Fatalf("changed Delegate attribution error = %v, want ErrExecutorStateLost", err)
+			}
+		})
+	}
 	ref, err := fixture.executor.StageContinuation(t.Context(), continuation)
 	if err != nil {
 		t.Fatal(err)

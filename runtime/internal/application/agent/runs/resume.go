@@ -180,19 +180,3 @@ func validateClaimedResume(
 	}
 	return validateCheckpointSessionScope(claimed.Checkpoint, sess)
 }
-
-func waitingMembersFromPending(pending Pending) []WaitingMember {
-	members := make([]WaitingMember, 0, len(pending.Continuations))
-	for _, continuation := range pending.Continuations {
-		parentRunID := ""
-		if continuation.Lineage.IsChild() {
-			parentRunID = continuation.Lineage.ParentRunID
-		}
-		members = append(members, WaitingMember{
-			RunID: continuation.RunID, MemberID: continuation.MemberID,
-			ParentRunID: parentRunID, SpawnedByItemID: continuation.Lineage.SpawnedByItemID,
-			ModelSelection: continuation.ModelSelection, Metrics: continuation.Metrics,
-		})
-	}
-	return members
-}
