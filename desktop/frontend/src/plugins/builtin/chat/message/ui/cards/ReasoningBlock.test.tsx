@@ -50,7 +50,8 @@ describe("ReasoningBlock disclosure policy", () => {
     renderReasoning("running", "Inspect the protocol boundary");
 
     const trigger = screen.getByRole("button", { name: "Thinking" });
-    expect(trigger.querySelector(".animate-shimmer")).not.toBeNull();
+    // The slot, not the class: the shimmer is StyleX now and its class name is generated.
+    expect(trigger.querySelector('[data-slot="loader"]')).not.toBeNull();
     expect(trigger.querySelector(".animate-pulse-dot")).toBeNull();
   });
 

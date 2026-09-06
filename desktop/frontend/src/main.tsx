@@ -5,6 +5,7 @@ import { DesktopRenderer } from "./main/renderer";
 import { applyWindowChrome, watchWindowChrome } from "./main/windowChrome";
 import { disposeOnHmr } from "./lib/hmr";
 import "./styles/globals.css";
+import "./styles/stylex.css";
 
 const renderer = new DesktopRenderer({
   initializeDesktopHost,

@@ -46,7 +46,7 @@
 ## 2 · 技术栈（选择已定，别轻易换 —— 反向不变量见 §6.1）
 
 - **UI**：React + TypeScript。
-- **样式**：Tailwind（utility-first）+ `cva` / `cn()`；**所有新代码用 utility class，不写新 .css 文件**，全局样式只剩一个 `globals.css`。
+- **样式**：**迁移中 —— StyleX（编译期）+ 语义标记**是目标形态，Tailwind 存量按文件迁移。新组件用 StyleX，令牌走 `src/styles/tokens.stylex.ts`（它包住 `globals.css` 的变量，不内联数值）；未迁移的文件继续用 utility class + `cva` / `cn()`。**仍然不写新 .css 文件**：全局样式只有 `globals.css`，StyleX 只有 `stylex.css` 一张空表。
 - **Headless 基件**：**Base UI primitives first**（带交互 / 焦点 / 键盘 / aria 的一律先用 Base UI，没有的才自写）。Base UI 只作为行为 primitive；视觉、主题 token、阴影、圆角、密度归 Flame 自己。
 - **状态 / 数据 / 路由**：Zustand（多小 store）/ TanStack React Query / TanStack Router。
 - **协议**：自研 Flame Runtime Protocol v2（JSON-RPC 2.0，已弃用 AG-UI），权威定义见 `../runtime/contract/`（`manifest.json` / `openrpc.json` / `schema.json` 是机器真值，`API_REFERENCE.md` 是它们生成的人读索引）。
@@ -78,7 +78,7 @@
 
 机械规则，不需再判断，照做：
 
-- **Tailwind first**：组件样式用 utility class；`style={{}}` 内联只在 token 值真动态时用。
+- **样式二选一，不混写**：已迁移的文件用 StyleX（`stylex.create` + 令牌），未迁移的继续 utility class；同一个组件里不得两者并用。`style={{}}` 内联只在 token 值真动态时用。迁移期组件保留 `className` 逃生口，因为调用方仍是 Tailwind。
 - **不写新 .css 文件**：新样式进 className，`globals.css` 是唯一例外。
 - **设计系统三环，方向单一**（layer 守卫强制）：Base UI 只在 `ui/primitives` 出现（别处 import 它 = 回归）→ `ui/atoms` 给 primitives 穿 token → `ui/agent` 把 atoms 组成 shell 形状。业务层只消费 atoms / agent，**不自己拼交互件**：缺档就往库里加一档（尺寸 / tone / 状态），别在 callsite 手搓 —— 手搓出来的那批就是 hover 有 11 种写法的由来。
 - **Base UI first（硬规则）**：任何带交互 / 焦点 / 键盘 / aria 的组件一律先用 Base UI，在 `ui/atoms` 薄包一层套设计 token，**绝不手写 focus trap / roving tabindex / aria-\* / 键盘事件**。唯一豁免（须注释写明理由）：纯展示无交互、Base UI 版有实测开销且无 a11y 收益、定制行为 Base UI 模型套不进（如 textarea —— Base UI 无此 part 且其 control 类型只对 input）—— 判据是"Base UI 是否带来真实 a11y / 行为收益"，纯为统一不换。
@@ -111,7 +111,7 @@ perf 排查沉淀的硬规则 —— 几个"看似没事其实在累积"的坑�
 
 - ❌ 把 Zustand 换 Redux/Jotai/Effector、React Query 换 SWR/RTK Query、Wails 换 Tauri、或切换前端框架（Vue/Solid/Svelte…）—— 都评估过，切框架 zero-feature 期 + 生态损失换不来收益。
 - ❌ 给内部数据流加 Zod —— 只用在信任边界（§3）。
-- ❌ 引入 CSS-in-JS / 退回手写 CSS、引入完整 UI Kit（shadcn-as-npm / HeroUI / DaisyUI …）—— 跟设计语言打架。
+- ❌ 引入**运行时** CSS-in-JS（emotion / styled-components）/ 退回手写 CSS、引入完整 UI Kit（shadcn-as-npm / HeroUI / DaisyUI …）—— 跟设计语言打架。**StyleX 例外**：编译期原子 CSS，无运行时注入；2026-09 评估后采纳，正在按文件从 Tailwind 迁移（管线与实测代价见 `UI_REFINEMENT_LOG.md` Round 105）。
 - ❌ 把贡献面退回 per-slot 的 `addX/removeX` map —— 已塌进单一 `extensions` 底座；加贡献面 = 定义一个 ExtensionPoint + 一个 selector，不动 registry。
 - ❌ 把分层模块拆成 monorepo、把 VoidZero 栈（OxLint/Vite-Rolldown）退回 ESLint/Rollup —— 触发条件没命中 / 是退步。
 

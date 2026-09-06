@@ -1,0 +1,7 @@
+/* StyleX's own sheet, and the only thing in it.
+
+   Tailwind keeps its Vite plugin and never sees this file: the two both want to own a CSS
+   pipeline, and putting them in one PostCSS chain cost the `@import`s in `globals.css` —
+   `markdown.css` stopped being inlined and every code block lost its padding. Separate
+   entries, separate owners. */
+@stylex;

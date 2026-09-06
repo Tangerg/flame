@@ -27,6 +27,7 @@ import {
   type VisualWorkspaceState,
 } from "./workspaceFixtureStates";
 import "../src/styles/globals.css";
+import "../src/styles/stylex.css";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { VISUAL_NOW } from "./agentFixtureFacts";
 

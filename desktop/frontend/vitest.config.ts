@@ -1,11 +1,16 @@
 /// <reference types="vitest" />
 import { defineConfig } from "vitest/config";
 import path from "node:path";
+import { stylexBabel } from "./stylex.vite.mjs";
 
 // We don't extend vite.config.ts here because that config pulls in the Wails
 // runtime + several browser-only plugins; tests run in happy-dom and only
 // need the path alias.
 export default defineConfig({
+  // Same transform the app and the fixtures get: without it `stylex.defineVars` reaches the
+  // test runtime uncompiled and throws at import, taking every file that touches a migrated
+  // component with it.
+  plugins: [stylexBabel()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),

@@ -5743,3 +5743,90 @@ Status: **已完成**
 ### 资源回收
 
 关闭 4174 端口预览服务。
+
+---
+
+## Round 105 — StyleX，第一块地基
+
+Status: **已完成（第一批）**
+
+用户决定从 Tailwind 迁移到 StyleX，并同意修订 `CLAUDE.md` §6.1。本轮只做**地基 + 一个组件**，
+用它把整条管线的真实代价和坑全部量出来，再谈规模。
+
+### 管线（四个配置，一个来源）
+
+| 文件 | 职责 |
+| --- | --- |
+| `stylex.babel.mjs` | 唯一一份 Babel 配置 |
+| `stylex.vite.mjs` | 唯一一个 Vite 插件封装 |
+| `postcss.config.mjs` | 收集并产出 CSS |
+| `src/styles/stylex.css` | StyleX 自己的表，`@stylex;` 独占 |
+
+三个 Vite 配置（app / visual / vitest）都取同一个插件。**这不是洁癖**：每次写第二份都立刻出事。
+
+### 踩到并修掉的五个坑（都有证据）
+
+1. **Babel 8 装不上** —— `vite-plugin-babel` 与 StyleX 都按 Babel 7 写；降到 `^7`。
+2. **StyleX 不认 `@/` 别名** —— 它自己解析主题文件（变量名由定义它的文件哈希而来），必须给
+   `rootDir` + `aliases`，否则 `Could not resolve the path to the imported file`。
+3. **两份 Babel 配置会静默分叉** —— Vite 那份转 JS、PostCSS 那份产 CSS；不一致时
+   **构建全绿、JS 里有类名、CSS 里没有规则**，组件裸奔。共享同一个对象。
+4. **Tailwind 与 StyleX 抢管线** —— 先把 Tailwind 挪到 PostCSS，结果
+   `globals.css` 的 `@import` 不再内联，`markdown.css` 整份丢失，**38 条视觉失败**，
+   构建还慢到 2×。正解是**各用各的表**：Tailwind 留在 Vite 插件上，StyleX 独占 `stylex.css`。
+5. **排版步级是捆绑，不是字号** —— `text-ui-xs` 同时带 `letter-spacing`。只搬 `fontSize` 的结果：
+
+   | | 原 | 只搬字号 | 修正后 |
+   | --- | --- | --- | --- |
+   | letterSpacing | -0.132px | **normal** | -0.132px |
+   | 宽度 | 95.4 | **97.5** | 95.4 |
+
+   —— 12 张 golden 因此位移。令牌里现在把步级做成 `stylex.create` 的捆绑，调用点只能说步名。
+
+### 代价（实测，非估计）
+
+| | 基线 | StyleX 管线 |
+| --- | --- | --- |
+| `npm run build`（real，×4） | 1.71 / 1.72s | **2.89 / 3.00 / 2.90 / 2.89s** |
+| 倍数 | — | **≈1.7×** |
+| CSS 产物 | 104K | 112K |
+| dist 总体积 | 16M | 16M |
+
+代价来自 Babel 必须过每个 `.tsx`（`include` 只能按路径匹配，无法问"这个文件用没用 StyleX"），
+所以**这个倍数在迁移全程基本恒定**，不会随进度继续恶化。
+
+### 迁移期的两条硬事实
+
+- **`className` 逃生口仍然保留**：`cn(props.className, className)`。所有调用方仍是 Tailwind，
+  要求两端同时改就不是迁移而是重写。
+- **StyleX 不分层**（`useCSSLayers: false`）。本仓库已记过一课：未分层规则胜过任何
+  `@layer`。分层会让 StyleX 被遗留的全局规则压住。
+
+### 修改前 / 修改后
+
+| | 修改前 | 修改后 |
+| --- | --- | --- |
+| `ui/atoms/loader.tsx` | Tailwind utility + `cn()` | `stylex.create` + 令牌 |
+| 渲染 | — | **逐像素一致**（95.4 / 12px / -0.132px / 18.6px） |
+| 组件识别 | `.animate-shimmer`（类名） | `data-slot="loader"`（本仓库既有约定） |
+| 令牌 | — | `color` / `motion` 包住现有 CSS 变量；`type` 是捆绑步级 |
+
+令牌**包住** `globals.css` 的变量而不是内联数值 —— 那些变量是计算出来的
+（`--style-shape-md × --radius-scale × --corner-scale`）且按主题重定义，内联等于把一套主题冻死。
+未被使用的令牌已删（knip 会盯），随迁移进度再加。
+
+### 验证
+
+`typecheck` / `lint` / `format` / **20 项 `check:*` 全绿**；单测 **2395 通过**
+（4 条既有 runtime 合约 e2e 失败）；`visual:test` **650/650，零 golden 位移**。
+浏览器实测：1280×900 light，比对迁移前后 Loader 的 4 项计算样式完全相同。
+
+### 资源回收
+
+关闭 4174 预览服务；删除全部临时探针；卸载误装的 `@tailwindcss/postcss`。
+
+### 下一轮方向
+
+按 Polar 的做法逐文件推进。下一批建议从 `ui/atoms` 里**无变体的展示型原子**开始
+（skeleton、divider、tag），再碰 `button` —— 后者是 cva 变体 + 650 张 golden 的交汇点，
+值得单独一轮。

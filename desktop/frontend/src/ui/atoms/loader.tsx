@@ -1,4 +1,6 @@
+import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
+import { color, motion, type } from "@/styles/tokens.stylex";
 
 type LoaderSize = "sm" | "md" | "lg";
 
@@ -7,12 +9,6 @@ export interface LoaderProps {
   text?: string;
   className?: string;
 }
-
-const TEXT: Record<LoaderSize, string> = {
-  sm: "text-ui-xs",
-  md: "text-ui-sm",
-  lg: "text-ui-md",
-};
 
 /**
  * Waiting, said one way. This carried seven variants — dots, typing, pulse-dot, wave, bars,
@@ -29,19 +25,39 @@ const TEXT: Record<LoaderSize, string> = {
  * reader first meets already carrying a message announces nothing, which is the rule the
  * announcer's own test is built on. The visible label cannot take its place either, since it
  * counts elapsed time and would announce a new one every second.
+ *
+ * First component on StyleX. `className` survives on purpose: every caller is still Tailwind,
+ * and a migration that demands both ends move at once is a rewrite. `stylex.props()` yields a
+ * class list like any other, so the incoming one composes after it and still wins.
  */
-export function Loader({ size = "md", text = "Thinking", className }: LoaderProps) {
+const styles = stylex.create({
+  root: {
+    display: "inline-block",
+    fontWeight: 500,
+    // The gradient is the visible text: it is clipped to the glyphs, which are transparent.
+    backgroundImage: `linear-gradient(90deg, ${color.fgMuted} 35%, ${color.fg} 50%, ${color.fgMuted} 65%)`,
+    backgroundSize: "200% 100%",
+    backgroundClip: "text",
+    color: "transparent",
+    animation: motion.shimmer,
+  },
+  // Not `animation: none`: the token carries a duration that already tracks `--motion-scale`,
+  // and the reduced-motion answer is to stop moving, not to unset what is playing.
+  still: {
+    animation: {
+      default: motion.shimmer,
+      "@media (prefers-reduced-motion: reduce)": "none",
+    },
+  },
+});
+
+const SIZE = { sm: type.uiXs, md: type.uiSm, lg: type.uiMd } as const;
+
+export function Loader({ size = "md", text: label = "Thinking", className }: LoaderProps) {
+  const props = stylex.props(styles.root, styles.still, SIZE[size]);
   return (
-    <span
-      className={cn(
-        "inline-block bg-clip-text font-medium text-transparent animate-shimmer motion-reduce:animate-none",
-        "bg-[linear-gradient(90deg,var(--color-text-muted)_35%,var(--color-text)_50%,var(--color-text-muted)_65%)]",
-        "bg-[length:200%_100%]",
-        TEXT[size],
-        className,
-      )}
-    >
-      {text}
+    <span data-slot="loader" {...props} className={cn(props.className, className)}>
+      {label}
     </span>
   );
 }
