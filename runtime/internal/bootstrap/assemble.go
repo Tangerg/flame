@@ -264,7 +264,10 @@ func buildAssemblyCore(
 
 	approvalCoordinator := approvals.New(policy.approvals, sessionCoordinator)
 
-	toolCoordinator := workspace.NewDiagnosticTools(execution.toolRegistry, workspaceServices.scope)
+	toolCoordinator, err := workspace.NewDiagnosticTools(execution.toolRegistry, workspaceServices.scope)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: build diagnostic tools: %w", err)
+	}
 
 	mcpCoordinator, err := mcpapp.New(mcpapp.Config{
 		Registry:            cfg.Stores.MCPServers,

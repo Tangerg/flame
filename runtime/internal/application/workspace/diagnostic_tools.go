@@ -11,7 +11,8 @@ import (
 
 // DiagnosticToolRegistry is the directly invocable diagnostic-tool catalog. It is deliberately
 // distinct from the agent's full tool set: every entry must be safe to run
-// outside a Run and must honor the supplied workspace root.
+// outside a Run and must honor the supplied workspace root. List transfers
+// ownership of the returned tool definitions to the caller.
 type DiagnosticToolRegistry interface {
 	List(ctx context.Context) ([]toolsvc.Tool, error)
 	Invoke(ctx context.Context, root, name string, arguments toolsvc.Arguments) (toolsvc.Result, error)
@@ -39,8 +40,19 @@ type DiagnosticTools struct {
 
 // NewDiagnosticTools returns diagnostic tool use cases over the direct registry and workspace-root
 // admission boundary.
-func NewDiagnosticTools(registry DiagnosticToolRegistry, roots DiagnosticToolRoots) *DiagnosticTools {
-	return &DiagnosticTools{registry: registry, roots: roots}
+func NewDiagnosticTools(registry DiagnosticToolRegistry, roots DiagnosticToolRoots) (*DiagnosticTools, error) {
+	for _, dependency := range []struct {
+		name  string
+		value any
+	}{
+		{name: "registry", value: registry},
+		{name: "roots", value: roots},
+	} {
+		if missingDependency(dependency.value) {
+			return nil, fmt.Errorf("workspace: diagnostic tool %s is required", dependency.name)
+		}
+	}
+	return &DiagnosticTools{registry: registry, roots: roots}, nil
 }
 
 // List returns the safe direct-invocation catalog, ordered by unique tool name.
@@ -49,7 +61,6 @@ func (c *DiagnosticTools) List(ctx context.Context) ([]toolsvc.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	tools = slices.Clone(tools)
 	for _, candidate := range tools {
 		if err := candidate.Validate(); err != nil {
 			return nil, fmt.Errorf("workspace: diagnostic tool catalog contains an invalid definition: %w", err)
