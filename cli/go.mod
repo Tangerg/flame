@@ -3,7 +3,7 @@ module github.com/Tangerg/flame/cli
 go 1.27.0
 
 require (
-	github.com/Tangerg/flame/runtime v0.0.0-20260906140331-f16417194522
+	github.com/Tangerg/flame/runtime v0.0.0-20260906140959-ffd3adf6462a
 	github.com/Tangerg/oolong/components v0.16.0
 	github.com/Tangerg/oolong/core v0.16.0
 	github.com/Tangerg/oolong/highlight v0.16.0
@@ -22,7 +22,7 @@ require (
 	cloud.google.com/go/auth v0.23.2 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260902111706-d7c3b08cde1e // indirect
+	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260903024108-c2d4ea0a3800 // indirect
 	github.com/Tangerg/scope/a2a v0.14.0 // indirect
 	github.com/Tangerg/scope/agent v0.14.0 // indirect
 	github.com/Tangerg/scope/core v0.14.0 // indirect
