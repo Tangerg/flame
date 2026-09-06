@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
@@ -112,18 +113,21 @@ func TestListModelsPreservesEndpointFailure(t *testing.T) {
 }
 
 func TestListModelsPreservesCallerCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-
-	page, err := probeHandler(
-		serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()),
-		&stubLister{err: context.Canceled},
-	).ListModels(ctx, protocol.ListModelsRequest{Provider: "testprov"})
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("ListModels error = %v, want caller cancellation", err)
-	}
-	if page != nil {
-		t.Fatalf("ListModels page = %+v, want no successful fallback after cancellation", page)
+	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
+		t.Run(cause.Error(), func(t *testing.T) {
+			lister := &stubLister{err: fmt.Errorf("model endpoint: %w", cause)}
+			handler := probeHandler(
+				serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()),
+				lister,
+			)
+			endpoint := mustNewEndpoint(t, handler, EndpointConfig{})
+			page, err := endpoint.Call[protocol.ListModelsRequest, *protocol.Page[protocol.Model]](
+				t.Context(), ModelsList, protocol.ListModelsRequest{Provider: "testprov"}, Options{},
+			)
+			if page != nil || !errors.Is(err, cause) || lister.calls != 1 {
+				t.Fatalf("ListModels = (%+v, %v), calls=%d; want endpoint %v", page, err, lister.calls, cause)
+			}
+		})
 	}
 }
 

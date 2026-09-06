@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -11,6 +12,50 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+func TestRuntimePreservesCallerCancellation(t *testing.T) {
+	for _, name := range []string{
+		"FLAME_PROVIDER", "FLAME_MODEL", "FLAME_APIKEY", "FLAME_BASEURL", "ANTHROPIC_API_KEY",
+		"FLAME_MCP_SERVERS", "FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS",
+	} {
+		t.Setenv(name, "")
+	}
+	t.Setenv("FLAME_PROVIDER", "anthropic")
+	runtime, err := Open(t.Context(), Config{
+		DataDirectory: t.TempDir(), DefaultWorkspacePath: t.TempDir(),
+		UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := runtime.Close(); err != nil {
+			t.Errorf("close Runtime: %v", err)
+		}
+	})
+
+	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
+		t.Run(cause.Error(), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			if cause == context.DeadlineExceeded {
+				cancel()
+				ctx, cancel = context.WithDeadline(t.Context(), time.Time{})
+			}
+			cancel()
+			page, err := runtime.ListProviders(ctx, CallOptions{})
+			if page != nil || !errors.Is(err, cause) {
+				t.Fatalf("ListProviders = (%+v, %v), want caller %v", page, err, cause)
+			}
+			if problem, ok := errors.AsType[protocol.ProblemError](err); !ok ||
+				problem.Problem().Type != protocol.ProblemInternalError {
+				t.Fatalf("canceled call lost its protocol problem: %v", err)
+			}
+		})
+	}
+	if _, err := runtime.ListProviders(t.Context(), CallOptions{}); err != nil {
+		t.Fatalf("query after caller cancellation: %v", err)
+	}
+}
 
 func TestRuntimeRestartDoesNotUndoAStoredProviderClear(t *testing.T) {
 	t.Setenv("FLAME_PROVIDER", "")

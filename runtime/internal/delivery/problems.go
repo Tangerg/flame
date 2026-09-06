@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -67,7 +68,7 @@ func retryingProblem(sentinel error, retryAfterSeconds int) problemSpec {
 }
 
 // Failure is a safely projected operation failure. Bindings expose Problem while
-// errors.Is still reaches the stable protocol sentinel through Cause.
+// errors.Is still reaches stable protocol and context sentinels through Unwrap.
 type Failure struct {
 	cause error
 	data  protocol.ProblemData
@@ -131,7 +132,15 @@ func ProjectError(err error) *Failure {
 		}
 		return failure
 	}
-	return internalFailure()
+	failure := internalFailure()
+	// Keep cancellation actionable for in-process callers without retaining
+	// arbitrary endpoint details or adding request lifetime to the wire problem.
+	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
+		if errors.Is(err, cause) {
+			failure.cause = errors.Join(failure.cause, cause)
+		}
+	}
+	return failure
 }
 
 // InvalidParameters projects strict wire-constraint failures with their field

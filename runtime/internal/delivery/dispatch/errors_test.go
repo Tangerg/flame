@@ -1,12 +1,41 @@
 package dispatch
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
+
+func TestCancellationProjectionPreservesSafeWireProblem(t *testing.T) {
+	for _, cause := range []error{context.Canceled, context.DeadlineExceeded, errors.New("unknown failure")} {
+		t.Run(cause.Error(), func(t *testing.T) {
+			failure := delivery.ProjectError(fmt.Errorf("private endpoint credential: %w", cause))
+			if !errors.Is(failure, protocol.ErrInternalError) {
+				t.Fatalf("failure = %v, want internal_error", failure)
+			}
+			if strings.Contains(failure.Error(), "private") || strings.Contains(errors.Unwrap(failure).Error(), "private") {
+				t.Fatalf("failure retained private endpoint details: %v", failure)
+			}
+			rpcErr := errorToRPC(failure)
+			if rpcErr.Code != codeInternalError || rpcErr.Message != protocol.ProblemInternalError {
+				t.Fatalf("RPC error = %+v, want internal_error", rpcErr)
+			}
+			var problem protocol.ProblemData
+			if err := json.Unmarshal(rpcErr.Data, &problem); err != nil {
+				t.Fatal(err)
+			}
+			if problem.Type != protocol.ProblemInternalError || problem.Detail != "the runtime could not complete the request" {
+				t.Fatalf("wire problem = %+v, want safe internal_error", problem)
+			}
+		})
+	}
+}
 
 // The symbol says the first execution is still running; the backoff says how
 // long to wait. A separate retryable flag said neither and was redundant with
