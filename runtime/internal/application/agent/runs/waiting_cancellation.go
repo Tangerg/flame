@@ -21,6 +21,7 @@ func NewPreparedWaitingSubtreeCancellation(
 	pausedMemberIDs []string,
 	pendingInterruptions []MemberInterruption,
 	checkpoint ExecutorCheckpoint,
+	parentToolResult corechat.ToolResult,
 	change WaitingSubtreeChange,
 ) (PreparedWaitingSubtreeCancellation, error) {
 	prepared := PreparedWaitingSubtreeCancellation{
@@ -28,6 +29,7 @@ func NewPreparedWaitingSubtreeCancellation(
 		pausedMemberIDs:      slices.Clone(pausedMemberIDs),
 		pendingInterruptions: cloneMemberInterruptions(pendingInterruptions),
 		checkpoint:           checkpoint.Clone(),
+		parentToolResult:     parentToolResult.Clone(),
 		change:               change,
 	}
 	if err := prepared.Validate(); err != nil {
@@ -88,6 +90,12 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 	}
 	if err := p.checkpoint.Validate(); err != nil {
 		return err
+	}
+	if err := p.parentToolResult.Validate(); err != nil {
+		return fmt.Errorf("runs: prepared child cancellation result: %w", err)
+	}
+	if !p.parentToolResult.IsError {
+		return errors.New("runs: prepared child cancellation has a successful tool result")
 	}
 	if len(p.canceledMemberIDs) == 0 {
 		return errors.New("runs: prepared waiting subtree cancellation has no canceled members")
@@ -232,43 +240,31 @@ func (w waitingCancellationBuilder) parentConversationMessages(
 	continuations []Continuation,
 ) ([]corechat.Message, error) {
 	expectedParent := parentItem.Expected()
-	parentState := parentItem.State()
-	if expectedParent.RunID() != w.plan.root.run.ID() {
-		return nil, nil
-	}
-	failure, failed := parentState.Failure()
-	if !failed {
-		return nil, errors.New("runs: waiting cancellation parent Tool has no failure")
-	}
 	for _, continuation := range continuations {
-		if continuation.RunID != w.plan.root.run.ID() {
+		if continuation.RunID != expectedParent.RunID() {
 			continue
 		}
 		for _, committed := range continuation.CommittedTools {
 			if committed.ItemID != expectedParent.ID() {
 				continue
 			}
-			if committed.SourceCallID == "" {
+			result := w.prepared.parentToolResult
+			if committed.SourceCallID == "" || result.ID != committed.SourceCallID || result.Name != committed.Name {
 				return nil, fmt.Errorf(
-					"runs: root spawning Tool %q has no provider source call ID",
+					"runs: spawning tool %q differs from its prepared cancellation result",
 					committed.ItemID,
 				)
 			}
-			return []corechat.Message{childCancellationToolMessage(committed, failure)}, nil
+			if expectedParent.RunID() != w.plan.root.run.ID() {
+				return nil, nil
+			}
+			return []corechat.Message{corechat.NewToolMessage(result.Clone())}, nil
 		}
 	}
 	return nil, fmt.Errorf(
-		"runs: root spawning Tool %q has no committed continuation",
+		"runs: spawning tool %q has no committed continuation",
 		expectedParent.ID(),
 	)
-}
-
-func childCancellationToolMessage(committed CommittedTool, failure tool.Failure) corechat.Message {
-	return corechat.NewToolMessage(corechat.ToolResult{
-		ID: committed.SourceCallID, Name: committed.Name,
-		Output:  corechat.NewTextToolOutput(fmt.Sprintf("error: tool %q failed: %s", committed.Name, failure.Detail)),
-		IsError: true,
-	})
 }
 
 func (w waitingCancellationBuilder) validate() error {

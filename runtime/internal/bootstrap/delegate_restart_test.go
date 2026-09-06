@@ -16,21 +16,24 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func TestProtocolResumesWaitingTreeBesideCompletedSiblingAfterRestart(t *testing.T) {
+func TestProtocolContinuesWaitingTreeBesideCompletedSiblingAfterRestart(t *testing.T) {
 	waiting := chat.ToolCall{ID: "delegate_a", Name: "delegate_task", Arguments: `{"summary":"A","instructions":"waiting sibling A"}`}
 	completed := chat.ToolCall{ID: "delegate_b", Name: "delegate_task", Arguments: `{"summary":"B","instructions":"completed sibling B"}`}
 	for _, test := range []struct {
-		name  string
-		calls []chat.ToolCall
+		name          string
+		calls         []chat.ToolCall
+		cancelWaiting bool
 	}{
-		{name: "completed successor", calls: []chat.ToolCall{waiting, completed}},
-		{name: "completed predecessor", calls: []chat.ToolCall{completed, waiting}},
+		{name: "answer with completed successor", calls: []chat.ToolCall{waiting, completed}},
+		{name: "answer with completed predecessor", calls: []chat.ToolCall{completed, waiting}},
+		{name: "cancel with completed successor", calls: []chat.ToolCall{waiting, completed}, cancelWaiting: true},
+		{name: "cancel with completed predecessor", calls: []chat.ToolCall{completed, waiting}, cancelWaiting: true},
 	} {
-		t.Run(test.name, func(t *testing.T) { testProtocolSiblingRestart(t, test.calls) })
+		t.Run(test.name, func(t *testing.T) { testProtocolSiblingRestart(t, test.calls, test.cancelWaiting) })
 	}
 }
 
-func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall) {
+func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, cancelWaiting bool) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	releaseA := make(chan struct{})
@@ -144,32 +147,51 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall) {
 	if len(pending.Data) != 1 || len(pending.Data[0].Interrupts) != 1 {
 		t.Fatalf("restarted tree lost sibling A's question: %+v", pending)
 	}
-	_, resumedEvents, err := api.ResumeRun(ctx, protocol.ResumeRunRequest{
-		RunID: started.RunID,
-		Responses: []protocol.InterruptResponse{{
-			ItemID:   pending.Data[0].Interrupts[0].ItemID,
-			Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseAnswer, Answers: [][]string{{"Yes"}}},
-		}},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, event := range waitForRunEvents(t, collectRunEvents(resumedEvents), "resumed sibling tree") {
-		if event.RunID == bRunID {
-			t.Fatalf("completed sibling B emitted a new event after restart: %+v", event)
+	wantCalls := int32(5)
+	canceledRunID := ""
+	if cancelWaiting {
+		canceledRunID = pending.Data[0].Interrupts[0].RunID
+		if _, err := api.CancelRun(ctx, protocol.CancelRunRequest{RunID: canceledRunID, Reason: "skip sibling A"}); err != nil {
+			t.Fatal(err)
+		}
+		waitForProtocolRunTerminal(t, ctx, api, started.RunID)
+		wantCalls = 4
+	} else {
+		_, resumedEvents, err := api.ResumeRun(ctx, protocol.ResumeRunRequest{
+			RunID: started.RunID,
+			Responses: []protocol.InterruptResponse{{
+				ItemID:   pending.Data[0].Interrupts[0].ItemID,
+				Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseAnswer, Answers: [][]string{{"Yes"}}},
+			}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, event := range waitForRunEvents(t, collectRunEvents(resumedEvents), "resumed sibling tree") {
+			if event.RunID == bRunID {
+				t.Fatalf("completed sibling B emitted a new event after restart: %+v", event)
+			}
 		}
 	}
 	finished, err := api.ListRuns(ctx, protocol.ListRunsRequest{SessionID: session.ID, IncludeDescendants: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(finished.Data) != 3 || calls.Load() != 5 {
-		t.Fatalf("restored tree has %d Runs and %d provider calls, want 3 and 5", len(finished.Data), calls.Load())
+	if len(finished.Data) != 3 {
+		t.Fatalf("restored tree has %d Runs, want 3", len(finished.Data))
 	}
 	for _, value := range finished.Data {
-		if value.Status != protocol.RunStatusFinished || value.Outcome == nil || value.Outcome.Type != protocol.OutcomeCompleted {
-			t.Fatalf("restored Run did not complete: %+v", value)
+		wantOutcome := protocol.OutcomeCompleted
+		if value.ID == canceledRunID {
+			wantOutcome = protocol.OutcomeCanceled
 		}
+		if value.Status != protocol.RunStatusFinished || value.Outcome == nil || value.Outcome.Type != wantOutcome {
+			diagnostic, _ := json.Marshal(value)
+			t.Fatalf("restored Run did not finish as %s: %s", wantOutcome, diagnostic)
+		}
+	}
+	if calls.Load() != wantCalls {
+		t.Fatalf("restored tree made %d provider calls, want %d", calls.Load(), wantCalls)
 	}
 	bAfter, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: bRunID})
 	if err != nil {
@@ -181,6 +203,28 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall) {
 	pending, err = api.ListInterrupts(ctx, protocol.ListInterruptsRequest{RootRunID: started.RunID})
 	if err != nil || len(pending.Data) != 0 {
 		t.Fatalf("completed tree still has pending input: %+v, %v", pending, err)
+	}
+}
+
+func waitForProtocolRunTerminal(t *testing.T, ctx context.Context, api *delivery.Handler, runID string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		value, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: runID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if value.Status == protocol.RunStatusFinished {
+			return
+		}
+		select {
+		case <-ticker.C:
+		case <-ctx.Done():
+			t.Fatal("continued Run did not reach its terminal state")
+		}
 	}
 }
 

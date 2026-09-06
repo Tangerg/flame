@@ -49,6 +49,13 @@ type fakePreparedWaitingCancellation struct {
 	settled     bool
 }
 
+func testChildCancellationResult() corechat.ToolResult {
+	return corechat.ToolResult{
+		ID: "provider_run_a", Name: "delegate_task", IsError: true,
+		Output: corechat.NewTextToolOutput("executor-owned cancellation result"),
+	}
+}
+
 func (f *fakePreparedWaitingCancellation) value(t testing.TB) PreparedWaitingSubtreeCancellation {
 	t.Helper()
 	checkpoint := testExecutorCheckpoint()
@@ -60,6 +67,7 @@ func (f *fakePreparedWaitingCancellation) value(t testing.TB) PreparedWaitingSub
 		nil,
 		f.interruptions,
 		checkpoint,
+		testChildCancellationResult(),
 		f,
 	)
 	if err != nil {
@@ -148,6 +156,7 @@ func TestPreparedWaitingSubtreeCancellationOwnsProjections(t *testing.T) {
 		paused,
 		interruptions,
 		checkpoint,
+		testChildCancellationResult(),
 		change,
 	)
 	if err != nil {
@@ -221,6 +230,9 @@ func TestPrepareWaitingCancellationKeepsSurvivingExternalBoundary(t *testing.T) 
 		transformation.conversationMessages[0].Parts[0].ToolResult == nil ||
 		transformation.conversationMessages[0].Parts[0].ToolResult.ID != "provider_run_a" {
 		t.Fatalf("conversation Messages = %+v, want parent delegate Tool result", transformation.conversationMessages)
+	}
+	if !reflect.DeepEqual(*transformation.conversationMessages[0].Parts[0].ToolResult, testChildCancellationResult()) {
+		t.Fatalf("executor cancellation result was rewritten: %+v", transformation.conversationMessages)
 	}
 	if transformation.remaining == nil ||
 		len(transformation.remaining.Interrupts) != 1 ||

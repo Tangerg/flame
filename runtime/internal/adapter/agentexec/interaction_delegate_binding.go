@@ -56,15 +56,24 @@ func (m *managedDelegateCall) toolStart() runs.ToolCallStarted {
 
 // continuedDelegateTools reopens the parent Tool attempt in the new Segment.
 // Scope retains the admitted child, so continuation does not repeat admission
-// and cannot obtain this start from admitProcess again.
+// and cannot obtain this start from admitProcess again. A prepared cancellation
+// reopens only the parent attempts that survive its committed subtree change.
 func (i *interactionSession) continuedDelegateTools() []runs.ExecutorEvent {
 	i.state.mu.Lock()
-	if i.state.boundary != interactionBoundaryContinuationStaged {
+	var canceled []agent.ProcessID
+	switch i.state.boundary {
+	case interactionBoundaryContinuationStaged:
+	case interactionBoundarySubtreePrepared:
+		canceled = i.state.subtreeChange.canceled
+	default:
 		i.state.mu.Unlock()
 		return nil
 	}
 	calls := make([]*managedDelegateCall, 0, len(i.state.delegateChildren))
-	for _, managed := range i.state.delegateChildren {
+	for processID, managed := range i.state.delegateChildren {
+		if slices.Contains(canceled, processID) || slices.Contains(canceled, managed.identity.parentID) {
+			continue
+		}
 		calls = append(calls, managed)
 	}
 	i.state.mu.Unlock()

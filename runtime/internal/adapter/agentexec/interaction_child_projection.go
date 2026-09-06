@@ -182,15 +182,19 @@ func (i *interactionSession) finishCompletedDelegateTool(
 		}
 	} else {
 		termination := result.Termination()
-		diagnostic := "child ended with " + result.Status().String() +
-			" (" + termination.Cause().String() + ")"
-		if termination.Reason() != "" {
-			diagnostic += ": " + termination.Reason()
-		}
+		diagnostic := delegateTerminationDiagnostic(result.Status(), termination.Cause(), termination.Reason())
 		childFailure = errors.New("delegated " + diagnostic)
 		modelResult = delegateFailureModelResult(managed.call, diagnostic)
 	}
 	return i.finishDelegateTool(ctx, managed, modelResult, childFailure)
+}
+
+func delegateTerminationDiagnostic(status agent.Status, cause agent.TerminationCause, reason string) string {
+	diagnostic := "child ended with " + status.String() + " (" + cause.String() + ")"
+	if reason != "" {
+		diagnostic += ": " + reason
+	}
+	return diagnostic
 }
 
 func messageRequestsTools(message corechat.Message) bool {

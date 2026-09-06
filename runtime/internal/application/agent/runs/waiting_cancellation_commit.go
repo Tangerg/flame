@@ -680,7 +680,6 @@ func (w waitingCancellationValidation) validateParentItem() error {
 func (w waitingCancellationValidation) validateConversationMessages() error {
 	c := w.commit
 	parentExpected := c.ParentItem.Expected()
-	parentState := c.ParentItem.State()
 	if parentExpected.RunID() != c.RootRunID {
 		if len(c.ConversationMessages) != 0 {
 			return errors.New("runs: non-root child cancellation carries root conversation messages")
@@ -701,12 +700,19 @@ func (w waitingCancellationValidation) validateConversationMessages() error {
 		found = true
 		break
 	}
-	failure, failed := parentState.Failure()
-	if !found || committed.SourceCallID == "" || !failed {
+	if !found || committed.SourceCallID == "" {
 		return errors.New("runs: root child cancellation cannot correlate its model-context Tool result")
 	}
-	want := []corechat.Message{childCancellationToolMessage(committed, failure)}
-	if !reflect.DeepEqual(want, c.ConversationMessages) {
+	if len(c.ConversationMessages) != 1 {
+		return errors.New("runs: waiting cancellation requires one parent tool message")
+	}
+	message := c.ConversationMessages[0]
+	if err := message.Validate(); err != nil || message.Role != corechat.RoleTool ||
+		len(message.Parts) != 1 || message.Parts[0].ToolResult == nil {
+		return errors.New("runs: waiting cancellation has an invalid parent tool message")
+	}
+	result := message.Parts[0].ToolResult
+	if !result.IsError || result.ID != committed.SourceCallID || result.Name != committed.Name {
 		return errors.New("runs: waiting cancellation conversation result differs from its parent Tool")
 	}
 	return nil

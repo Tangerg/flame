@@ -105,6 +105,11 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 		)
 	}
 	rootID := i.state.process.Relation().RootID()
+	managed := i.state.delegateChildren[targetID]
+	if managed == nil {
+		i.state.mu.Unlock()
+		return runs.PreparedWaitingSubtreeCancellation{}, errors.New("agentexec: waiting subtree target has no delegate binding")
+	}
 	preparedSignal := make(chan struct{})
 	i.state.boundary = interactionBoundarySubtreePreparing
 	i.state.subtreePrepared = preparedSignal
@@ -156,11 +161,19 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 		session: i, prepared: frameworkChange, checkpoint: checkpoint.Clone(),
 		canceled: slices.Clone(canceled), paused: slices.Clone(paused),
 	}
+	managed.mu.Lock()
+	// The target is the host-canceled root of this prepared subtree. Descendants
+	// carry parent cancellation, but their spawning Tools have no surviving owner.
+	parentResult := delegateFailureModelResult(managed.call, delegateTerminationDiagnostic(
+		agent.StatusCanceled, agent.TerminationCauseHostCancellation, reason,
+	))
+	managed.mu.Unlock()
 	prepared, err := runs.NewPreparedWaitingSubtreeCancellation(
 		canceledMembers,
 		pausedMembers,
 		interruptions,
 		checkpoint,
+		parentResult,
 		change,
 	)
 	if err != nil {

@@ -191,6 +191,8 @@ type PreparedWaitingSubtreeCancellation struct {
 	pendingInterruptions []MemberInterruption
 	// Checkpoint is the opaque complete-tree state that Change.Apply installs.
 	checkpoint ExecutorCheckpoint
+	// parentToolResult is the exact model-visible result the executor will consume.
+	parentToolResult corechat.ToolResult
 	// Change owns the frozen executor source until Apply or Discard resolves it.
 	change WaitingSubtreeChange
 }
