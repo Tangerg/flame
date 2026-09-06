@@ -15,12 +15,11 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// The authoritative Go wire validator: the Go half of contract §11.3's
-// "authoritative/terminal runtime validators".
+// The Go wire validator enforces registered constraints at Runtime boundaries.
 //
 // It replaces hand-written request checks and also guards typed output boundaries.
-// Generating Go, schema and TypeScript checks from the same registry is what makes
-// §11.4 gate 6's three-way equivalence structural rather than aspirational.
+// Generating Go, schema, and TypeScript checks from the same registry prevents
+// the three representations from declaring different constraints.
 //
 // Four rule sources, and none restates another's job:
 //

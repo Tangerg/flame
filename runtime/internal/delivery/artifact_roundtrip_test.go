@@ -26,8 +26,8 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// TestArtifactVersionMatchesCurrentContractBaseline is half of contract §11.4
-// gate 15: the number, stated once.
+// TestArtifactVersionMatchesCurrentContractBaseline checks that session exports
+// and the protocol advertise the same current contract version.
 //
 // It is pinned to a literal on purpose. Comparing the stamped version to the
 // constant proves only that one line reads another; what a version gate has to hold

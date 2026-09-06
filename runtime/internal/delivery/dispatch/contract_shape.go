@@ -25,7 +25,7 @@ import (
 // does not have, or a struct field no variant accounts for, fails at startup
 // instead of silently producing a schema that permits an illegal frame.
 
-// UnionSpec declares one tag-discriminated union (contract §11.2). Literal
+// UnionSpec declares one tag-discriminated union. Literal
 // variants are exact; PatternVariant is its only optional extension seam.
 type UnionSpec struct {
 	GoType reflect.Type
@@ -74,8 +74,8 @@ type AllowedValueSet struct {
 	Values []string
 }
 
-// ObjectConstraintSpec declares cross-field rules inside ONE DTO (contract
-// §11.2). It is deliberately frame-local: an invariant spanning runs, interrupts
+// ObjectConstraintSpec declares cross-field rules inside one DTO.
+// It is deliberately frame-local: an invariant spanning runs, interrupts
 // or the store is a transaction concern and is declared in the application ring,
 // so nothing here ever needs a repository to decide.
 type ObjectConstraintSpec struct {

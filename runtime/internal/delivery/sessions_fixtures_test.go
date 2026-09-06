@@ -198,7 +198,7 @@ type stubRuntime struct {
 	toolResults        *sqlite.ToolResultStore
 	plan               *sqlite.PlanStore                   // exported, restored, and dropped with the Session
 	interrupts         *persistence.InterruptStore         // open-interrupt registry (rollback clears dropped)
-	muts               *persistence.WorkspaceMutationStore // §8.5 recoverable file-rollback log
+	muts               *persistence.WorkspaceMutationStore // recoverable file-rollback log
 	execution          executionRuntime
 	admissions         *ownership.Gate
 	forgotTrees        []string

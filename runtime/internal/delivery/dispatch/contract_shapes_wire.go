@@ -201,7 +201,7 @@ func registerRunUnions(s *Shapes) {
 
 	// A terminal says only why the run stopped; what it consumed is published
 	// beside it as metrics. `detail` is the human-readable note the non-error
-	// terminals may add (§4.2) — the error terminal's note stays on
+	// terminals may add — the error terminal's note stays on
 	// error.detail, never duplicated here.
 	s.union(UnionSpec{
 		GoType:        typeOf[protocol.RunOutcome](),
@@ -342,8 +342,7 @@ func registerItemUnions(s *Shapes) {
 
 func registerInterruptUnions(s *Shapes) {
 	// The variant fields live inside `payload`, so the spec addresses them by
-	// dotted path. Each variant is self-contained — §4.8's whole point is that
-	// rendering a pending interrupt never needs a second request — and every one
+	// dotted path. Rendering a pending interrupt needs no second request. Each variant
 	// carries the identity pair: which item is waiting, and which run asked.
 	identity := []string{"itemId", "runId"}
 	s.union(UnionSpec{
@@ -941,7 +940,7 @@ func registerObjectConstraints(s *Shapes) {
 	// pretend to. Without the first rule `status:"finished"` with no outcome is
 	// representable and a client cannot tell "it ended" from "it ended somehow";
 	// without the others, a waiting run could carry a terminal reason and a client
-	// would stop offering to resume it (§4.2).
+	// would stop offering to resume it.
 	//
 	// These are the SUMMARY's rules, so they hold wherever a summary travels — the
 	// page-level runs of items.list as much as a RunRef, which embeds it.
@@ -964,7 +963,7 @@ func registerObjectConstraints(s *Shapes) {
 	// A RunRef adds the control field, and it exists exactly while a segment is
 	// executing: without the first rule a running run can arrive with nothing to
 	// attach to, and without the second a client can attach to a stream that
-	// already ended (§4.1).
+	// already ended.
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.RunRef](),
 		Rules: []ConditionalRule{{
@@ -980,7 +979,7 @@ func registerObjectConstraints(s *Shapes) {
 	})
 
 	// A pending set with no interrupts is not a thing to resume — it would leave
-	// the client polling a run that will never move (contract §11.2).
+	// the client polling a run that will never move.
 	s.constraint(ObjectConstraintSpec{
 		GoType: typeOf[protocol.PendingInterruptSet](),
 		Rules: []ConditionalRule{{
@@ -1059,13 +1058,13 @@ func artifactProblemRetryRules() []ConditionalRule {
 }
 
 // childLineageRules say the three child edges are all-or-none: a run either
-// carries every one of them or is a root (§4.2). Stated as one rule per edge
+// carries every one of them or is a root. Stated as one rule per edge
 // rather than "root forbids them", because presence is the only thing a
 // ConditionalRule can condition on and each edge is the condition for the other two.
 //
 // The contract's other half — that neither RunId equals the run's own id — is
-// NOT here. JSON Schema cannot compare two fields, so it could not be one of the
-// three equivalent statements §11.2 asks for; it is an identity invariant of the
+// NOT here. JSON Schema cannot compare two fields, so the generated validators
+// cannot enforce this rule uniformly. It is an identity invariant of the
 // child-creation transaction. It is registered as a system invariant and proved
 // by admission and durable-adapter fixtures; fusing an inequality into a
 // conditional rule would be one primitive doing two jobs.

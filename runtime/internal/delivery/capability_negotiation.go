@@ -17,7 +17,7 @@ import (
 // able to follow" can never become two vocabularies that disagree.
 
 // negotiateCapabilities resolves what the caller declared against what this build
-// advertises (§8.1).
+// advertises.
 //
 // A declared capability this build cannot honor is a refusal, never a silent drop.
 // Dropping it is the failure mode the contract names explicitly: a client that
@@ -25,8 +25,8 @@ import (
 // child events could appear in it, and a client whose interrupt type was quietly
 // discarded would be handed a wait it never said it could answer.
 //
-// Absent capabilities map to the Minimal Profile, not an error — §8.3 makes "send a
-// message, watch the reply, reload the history" a complete client.
+// Absent capabilities select the Minimal Profile, which supports sending a
+// message, watching the reply, and reloading history.
 func (s *Handler) negotiateCapabilities(ctx context.Context) (run.Capabilities, error) {
 	caps, ok := ClientCapabilitiesFrom(ctx)
 	if !ok {

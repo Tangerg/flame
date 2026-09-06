@@ -42,7 +42,7 @@ type ProblemError interface {
 }
 
 // RecoveryAction is the default next move a client can safely make for one problem
-// type (§9.3). It is a closed set so an SDK branches exhaustively, and it is a
+// type. It is a closed set so an SDK branches exhaustively, and it is a
 // DEFAULT rather than a policy: it never overrides a method's idempotency rules and
 // never authorizes replaying the user's intent.
 //
@@ -85,8 +85,8 @@ func (r RecoveryAction) Valid() bool {
 	}
 }
 
-// CapabilityRequirementType names which vocabulary a missing capability belongs to
-// (§9.2). Three registries can be short: features, interrupt types, and runtime topics.
+// CapabilityRequirementType names which vocabulary a missing capability belongs to.
+// Three registries can be short: features, interrupt types, and runtime topics.
 type CapabilityRequirementType string
 
 const (
@@ -104,7 +104,7 @@ type CapabilityRequirement struct {
 }
 
 // ActiveRunRef is the run a session already holds, carried by
-// session_has_active_run (§8.2). It is a snapshot taken at the admission boundary,
+// session_has_active_run. It is a snapshot taken at the admission boundary,
 // not a lasting assertion: the client picks its next move from the status — steer a
 // running run, resume or cancel a waiting one — and refreshes with runs.get before
 // acting on it.

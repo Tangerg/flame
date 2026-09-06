@@ -482,9 +482,8 @@ func testServerStatus(c *Coordinator, name mcpserver.ServerName) ServerStatus {
 
 // TestReconnectServerDetachedButComponentOwned: a dial detaches the caller's
 // cancellation (a returning RPC must not abort it) while preserving its trace
-// values, and is canceled + joined by Coordinator.Close; a reconnect requested
-// after Close reports errClosed. This is the component-owned lifecycle §10.2/§10.3
-// the delivery layer used to hold on its own task group.
+// values. BeginShutdown cancels it, AwaitShutdown joins it, and a subsequent
+// reconnect reports errClosed.
 func TestReconnectServerDetachedButComponentOwned(t *testing.T) {
 	type ctxKey struct{}
 	ports := &blockingPorts{

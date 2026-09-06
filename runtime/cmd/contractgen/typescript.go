@@ -19,7 +19,7 @@ import (
 // walk of the Go types.
 //
 // That is the whole design: two independent walks would be two authors of the same
-// shape, and contract §11.4 gate 6 asks that the schema and the TS types agree.
+// shape. The schema and TypeScript types must agree.
 // Deriving one from the other makes agreement structural — there is no path by
 // which a variant can be forbidden in the schema and allowed in TypeScript.
 //

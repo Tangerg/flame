@@ -3,7 +3,7 @@ package transport
 import "context"
 
 // Last-Event-Id is a streaming reconnect cursor — transport metadata, not
-// a business param (TRANSPORT §2/§9.2). The transport reads it off the
+// a business param. The transport reads it off the
 // wire (the HTTP Last-Event-Id header) and carries it on the
 // context with WithLastEventID; the runtime's SubscribeRun reads it with
 // LastEventIDFrom to replay a run's retained, replayable backlog from that point.

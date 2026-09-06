@@ -108,7 +108,7 @@ func TestAuthGateMissingToken(t *testing.T) {
 }
 
 // TestAuthGate401HasChallenge — a 401 carries WWW-Authenticate: Bearer
-// (RFC 9110 §15.5.2 / TRANSPORT §6.3 + §11).
+// (RFC 9110 §15.5.2).
 func TestAuthGate401HasChallenge(t *testing.T) {
 	ts := newGatedServer(t)
 	defer ts.Close()

@@ -245,8 +245,8 @@ type ArtifactRun struct {
 	ContextTokens int64              `json:"contextTokens,omitempty"`
 	// ProtocolProfile is the contract the run published under, required on a root
 	// and absent on a child. An import that dropped it would restore a run claiming
-	// the Minimal Profile, which is a different run: §14.8 requires the round-trip
-	// to preserve it verbatim — never defaulted to empty, never re-derived from the
+	// the Minimal Profile, which is a different run. Import and export must
+	// preserve it verbatim — never defaulted to empty, never re-derived from the
 	// child or interrupt facts, never rewritten to the importing client's
 	// capabilities. A child has none of its own; it reads its root's.
 	ProtocolProfile *RunProtocolProfile `json:"protocolProfile,omitempty"`

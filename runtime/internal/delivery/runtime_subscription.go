@@ -11,7 +11,7 @@ const RuntimeSubscribe Name = "runtime.subscribe"
 
 func registerRuntimeSubscription(registry *Registry) {
 	// Only a subscription that registers watches needs features.fileWatch —
-	// subscribing for the global topics is always available (§7.1). The condition
+	// subscribing for the global topics is always available. The condition
 	// treats `watches: []` as "no watches", so an explicitly empty list and an absent
 	// one behave alike.
 	//

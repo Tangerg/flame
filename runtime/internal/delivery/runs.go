@@ -20,7 +20,7 @@ const (
 func registerRuns(registry *Registry) {
 	// runs.start and runs.resume open a run. A same-key retry must land back on
 	// THAT run — replaying the cached ack alone would give the client a runId with
-	// no stream behind it (TRANSPORT §6.2).
+	// no stream behind it.
 	registry.RunStreamCommand(MethodMeta{
 		Name: RunsStart,
 		Errors: []string{

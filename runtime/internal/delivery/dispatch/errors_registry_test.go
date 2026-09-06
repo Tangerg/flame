@@ -10,7 +10,7 @@ import (
 )
 
 // TestEveryDeclarableProblemTypeHasARecoveryAction is the Error Registry's own
-// completeness check (§9.3): a type a method may return, with no declared action, is a
+// completeness check: a type a method may return, with no declared action, is a
 // failure a client can only guess about — which is the guessing "retryable" used to
 // invite.
 func TestEveryDeclarableProblemTypeHasARecoveryAction(t *testing.T) {

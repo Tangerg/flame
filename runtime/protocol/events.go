@@ -5,7 +5,7 @@ import "time"
 // RunEvent is the params of the notifications.run.event notification —
 // the single downstream stream carrying segment / item / Plan events. RunID is
 // the stable logical run; SegmentID is the streamed
-// segment the event belongs to (§0.3) — a client scopes its stream tree +
+// segment the event belongs to — a client scopes its stream tree +
 // reconnect-replay dedup to it. eventId is monotonic within one segment stream.
 //
 // There is no per-frame reliability flag. Authoritativeness and replayability
@@ -107,7 +107,7 @@ type RunProgress struct {
 
 // Plan is the Session's persisted latest Plan. A root Run publishes it through
 // plan.updated, and plan.get returns the same shape, so live and cold recovery cannot
-// describe the checklist differently (§5.2 / §5.3). A segment that changed the Plan
+// describe the checklist differently. A segment that changed the Plan
 // republishes its final revision immediately before segment.finished; consumers fold
 // identical revision + content idempotently even though the fence has a fresh eventId.
 // State is absent when no Plan replacement has ever been written; a committed empty

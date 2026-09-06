@@ -424,7 +424,7 @@ func TestRunsCancelIsRequest(t *testing.T) {
 
 // TestNotificationReturns204 confirms a client→server notification (no
 // envelope id) is acknowledged with 204 No Content and no response body
-// (TRANSPORT §6.3 picks 204 over 202 — dispatch is already complete).
+// because dispatch has already completed.
 func TestNotificationReturns204(t *testing.T) {
 	ts, _ := newTestServer(t)
 	defer ts.Close()
@@ -448,7 +448,7 @@ func TestNotificationReturns204(t *testing.T) {
 }
 
 // TestBodyTooLargeReturns413 confirms an oversized POST body is rejected
-// with 413 (TRANSPORT §6.3) rather than silently truncated into a parse
+// with 413 rather than silently truncated into a parse
 // error.
 func TestBodyTooLargeReturns413(t *testing.T) {
 	ts, _ := newTestServer(t)
@@ -466,7 +466,7 @@ func TestBodyTooLargeReturns413(t *testing.T) {
 }
 
 // TestUnsupportedMediaTypeReturns415 confirms a non-JSON Content-Type is
-// rejected with 415 (TRANSPORT §6.3).
+// rejected with 415.
 func TestUnsupportedMediaTypeReturns415(t *testing.T) {
 	ts, _ := newTestServer(t)
 	defer ts.Close()
@@ -591,7 +591,7 @@ func TestInvalidRPCEnvelopeReturnsTransportProblem(t *testing.T) {
 
 // TestMethodNotAllowedHasAllow confirms a wrong HTTP method on a known
 // endpoint returns 405 with an Allow header listing the supported methods
-// (RFC 9110 §15.5.6 / TRANSPORT §6.3). chi populates Allow from the route.
+// (RFC 9110 §15.5.6). chi populates Allow from the route.
 func TestMethodNotAllowedHasAllow(t *testing.T) {
 	ts, _ := newTestServer(t)
 	defer ts.Close()

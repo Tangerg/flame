@@ -30,7 +30,7 @@ import (
 // or event to skip a constrained nested DTO.
 //
 // ValidateWire stays a pure function of the value — no storage, dispatcher or
-// executor (contract §11.2 / §14.6 gate 7). "Does this session exist" is not a
+// executor. "Does this session exist" is not a
 // shape constraint and remains a use-case decision.
 type WireValidator interface {
 	ValidateWire() error
@@ -170,7 +170,7 @@ func uniqueFieldErrors(fields []FieldError) []FieldError {
 // "ListItemsRequest.scope.type".
 //
 // Detail strings are programmer diagnostics, not UI copy — a client renders its
-// own localized message keyed by field + type (the §8.2 lookup), exactly as it
+// own localized message keyed by field + type, exactly as it
 // does for a ProblemData.type.
 type ConstraintError struct {
 	Shape  string

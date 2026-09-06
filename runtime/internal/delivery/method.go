@@ -27,7 +27,7 @@ func (n Name) Valid() bool {
 func (n Name) String() string { return string(n) }
 
 // MethodKind separates the two result shapes an operation can have: one value,
-// or a value followed by this call's own event stream (TRANSPORT §6.4).
+// or a value followed by this call's own event stream.
 // It is set by the registration factory, never declared by hand — the factory is
 // the only thing that knows which pipeline it built.
 type MethodKind string
@@ -79,8 +79,8 @@ func (o OperationKind) String() string {
 	return string(o)
 }
 
-// IdempotencyPolicy says what an `Idempotency-Key` retry of this method must do
-// (TRANSPORT §6.2 / §10). It replaces a hand-kept list of replay-protected
+// IdempotencyPolicy says what an `Idempotency-Key` retry of this method must do.
+// It replaces a hand-kept list of replay-protected
 // method names: a method declares its own retry semantics where it is
 // registered, so adding a mutation cannot silently skip replay protection.
 type IdempotencyPolicy string
@@ -160,7 +160,7 @@ const (
 func (c ConditionOperator) Valid() bool { return c == OperatorPresent || c == OperatorEquals }
 
 // FieldCondition tests one field of the request frame. Field is a dotted path
-// into the same frame; it never reaches outside the request (contract §11.2), so
+// into the same frame; it never reaches outside the request, so
 // evaluating a condition can never require a store lookup.
 type FieldCondition struct {
 	Field    string
@@ -172,7 +172,7 @@ type FieldCondition struct {
 //
 // An empty When means the whole method needs them. A non-empty When means only
 // the requests matching it do — which is how a method stays available in its
-// default form while one of its options is gated (contract §11.1).
+// default form while one of its options is gated.
 //
 // The rule is the ONLY statement of the requirement: discovery advertises the
 // same feature map the gate reads, so an advertised feature is callable and a
@@ -212,7 +212,7 @@ type MethodMeta struct {
 	//     because no static rule can describe that trigger.
 	//
 	// It states WHICH errors are possible, never WHEN one fires — the trigger is
-	// a use-case decision and does not belong in wire metadata (contract §11.1).
+	// a use-case decision and does not belong in wire metadata.
 	//
 	// An absent entry means "the contract has not documented it", not "it cannot
 	// happen": this is the audited set, and closing a gap is a contract edit here.

@@ -14,7 +14,7 @@ import (
 // verification never reaches into a client's source tree.
 const samplesDir = "../../contract/typescript/samples"
 
-// TestWireGoldenRoundTrip is the Go half of the §14 drift gate: every canonical
+// TestWireGoldenRoundTrip checks that every canonical
 // sample must unmarshal into the authoritative Go type and re-marshal to a SEMANTICALLY
 // identical object. A Go struct that drops a field (unknown → discarded) or adds
 // a non-omitempty zero diverges from the sample and fails here — catching the
@@ -64,8 +64,8 @@ func TestWireGoldenRoundTrip(t *testing.T) {
 // A sample nobody binds is checked by nothing — it looks like coverage and is not —
 // and a binding whose file was renamed fails on read, which is why only this
 // direction needs saying. Both are written down because the samples directory is
-// the batch: §11.3's "all three check the same fixtures" is a claim about ITS
-// contents, not about whatever the table happens to list.
+// the fixture batch. Coverage must include its contents, not just the files
+// that happen to have bindings.
 func TestEveryCanonicalSampleIsBound(t *testing.T) {
 	entries, err := os.ReadDir(samplesDir)
 	if err != nil {

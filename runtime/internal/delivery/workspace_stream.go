@@ -24,7 +24,7 @@ var errSubscriptionAdmissionsClosed = errors.New("delivery: runtime subscription
 const runtimeSubscriptionQueueCapacity = 64
 
 // workspaceHub fans runtime change signals out to the live runtime.subscribe
-// streams (§7.1). It is the non-run, ephemeral counterpart to the per-run hubs:
+// streams. It is the non-run, ephemeral counterpart to the per-run hubs:
 // coalescing rather than back-pressuring the publisher (a change signal carries no
 // truth of its own, so several of them collapse into "re-read these topics"),
 // connection-scoped (no retained replay), shared by the whole app.
@@ -460,7 +460,7 @@ func cloneRuntimeEvent(event protocol.RuntimeEvent) protocol.RuntimeEvent {
 	return event
 }
 
-// SubscribeRuntime opens the change-signal stream (§7.1). The stream's lifetime is
+// SubscribeRuntime opens the change-signal stream. The stream's lifetime is
 // bounded by the request ctx and by the consumer's range: it ends on client
 // disconnect, transport shutdown (the transport force-closes the connection), or an
 // early range stop.

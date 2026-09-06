@@ -4,7 +4,7 @@
 //	POST /v2/rpc            Request / Notification. A streaming method
 //	                        (runs.start/resume/subscribe)
 //	                        replies text/event-stream — the response body
-//	                        IS the call's event stream (TRANSPORT §6.4);
+//	                        IS the call's event stream;
 //	                        everything else replies application/json.
 //
 // Operational sidecars use typed JSON without an envelope or auth:
@@ -51,7 +51,7 @@ type messageDispatcher interface {
 // Server is the HTTP transport. One instance per process — a thin
 // adapter over the router: it decodes a POST, dispatches, and either
 // writes one application/json reply or (for streaming methods) streams
-// the call's event sequence as text/event-stream (TRANSPORT §6.4). It
+// the call's event sequence as text/event-stream. It
 // holds no per-run state — the event hubs + replay live in the runtime.
 type Server struct {
 	info     RuntimeInfo

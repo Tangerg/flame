@@ -33,7 +33,7 @@ func seedWorkspaceMutationRun(t *testing.T, db *sql.DB, sessionID, runID string)
 }
 
 // TestWorkspaceMutationLogRoundTrip: a recorded intent surfaces in ListPending
-// and clears on Complete — the record/recover/clear cycle §8.5 boots from.
+// and clears on Complete, leaving boot recovery only unfinished mutations.
 func TestWorkspaceMutationLogRoundTrip(t *testing.T) {
 	db, err := Open(t.Context(), ":memory:")
 	if err != nil {

@@ -22,7 +22,7 @@ const maxRPCBodyBytes = 4 << 20
 // EncodeMessage — those wrap the MCP SDK's jsonrpc package, which
 // owns the conformant JSON-RPC 2.0 implementation.
 func (s *Server) serveRPC(w http.ResponseWriter, r *http.Request) {
-	// Transport-layer preconditions (TRANSPORT §6.3): unsupported media
+	// Transport-layer preconditions: unsupported media
 	// type ⇒ 415, oversized body ⇒ 413 — both rejected before we spend
 	// effort decoding. Content-Type is only enforced when present (a
 	// minimal client may omit it); when set it must be application/json.
@@ -61,7 +61,7 @@ func (s *Server) serveRPC(w http.ResponseWriter, r *http.Request) {
 
 	// Carry the streaming reconnect cursor (Last-Event-Id) out-of-band on
 	// the ctx so runs.subscribe replays a run's retained replay window from that
-	// point rather than re-sending it whole (TRANSPORT §9.2). Harmless for
+	// point rather than re-sending it whole. Harmless for
 	// non-streaming methods (they don't read it).
 	ctx := transport.WithLastEventID(r.Context(), r.Header.Get("Last-Event-Id"))
 	ctx = transport.WithIdempotencyKey(ctx, r.Header.Get("Idempotency-Key"))
@@ -72,8 +72,7 @@ func (s *Server) serveRPC(w http.ResponseWriter, r *http.Request) {
 	methodLabel := request.Method
 
 	// Client notifications are dispatched synchronously and acknowledged
-	// with 204 No Content — no body (TRANSPORT §6.3 explicitly picks 204
-	// over 202, since processing is already complete, not pending).
+	// with 204 No Content because processing has already completed.
 	if result.Response == nil {
 		if methodLabel != "" {
 			w.Header().Set("X-Method", methodLabel)
@@ -83,9 +82,9 @@ func (s *Server) serveRPC(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Streaming method (stream opened) → the POST response body IS the
-	// event stream (streamable HTTP, TRANSPORT §6.4). A pre-stream failure
+	// event stream. A pre-stream failure
 	// (session_not_found / invalid_params …) leaves EventStream nil and
-	// falls through to the single-shot application/json reply below — §6.2.
+	// falls through to the single-shot application/json reply below.
 	if result.EventStream != nil {
 		s.serveStream(w, r, result.Response, result.EventStream, methodLabel)
 		return
@@ -140,7 +139,7 @@ func writeProblem(w http.ResponseWriter, status int, typ, detail string, noCache
 
 // isJSONMediaType reports whether a Content-Type header denotes JSON.
 // It tolerates parameters (e.g. "application/json; charset=utf-8") by
-// parsing off the media type before comparing (TRANSPORT §6.3 / §6.2).
+// parsing off the media type before comparing.
 func isJSONMediaType(ct string) bool {
 	mt, _, err := mime.ParseMediaType(ct)
 	if err != nil {

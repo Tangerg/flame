@@ -2,7 +2,7 @@
 // effects of one streamed run segment. It implements the application's
 // runs.Effects port: the run pump hands it a [runs.EventCommit] per event,
 // which it applies ATOMICALLY — the open-interrupt record, transcript
-// projections, and the run-state transition land in one transaction (§8.3/§8.4),
+// projections, and the run-state transition land in one transaction,
 // so a crash never leaves a parked run with no admission mark or a terminal
 // transcript with a still-running row. It also runs the non-durable live
 // workspace nudge and terminal boundary maintenance (checkpoint snapshot,
@@ -141,8 +141,8 @@ type ToolInvocationJournal interface {
 	) error
 }
 
-// RunWriter applies the run's lifecycle transitions inside the event commit
-// (§8.3): an opening admits or resumes it, a park suspends it, and a terminal
+// RunWriter applies the run's lifecycle transitions inside the event commit:
+// an opening admits or resumes it, a park suspends it, and a terminal
 // ends it — each in the SAME transaction as the interrupt / item records it must
 // stay consistent with. Suspend and Terminalize both take the whole Run because
 // a state change and the accounting true at that moment are one fact: a park is

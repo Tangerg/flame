@@ -17,8 +17,8 @@ func withClientCapabilities(caps protocol.ClientCapabilities) context.Context {
 	return WithRequestMeta(context.Background(), protocol.RequestMeta{ClientCapabilities: &caps})
 }
 
-// TestStartRunRefusesCapabilitiesThisBuildDoesNotHave covers the refusals §8.1
-// requires instead of a silent downgrade.
+// TestStartRunRefusesCapabilitiesThisBuildDoesNotHave checks that unsupported
+// capability requests fail before Run admission.
 func TestStartRunRefusesCapabilitiesThisBuildDoesNotHave(t *testing.T) {
 	s, rt := rollbackHarness(t)
 	sess, _ := insertSessionFixture(context.Background(), rt.sess, "s", "/w")
@@ -136,7 +136,7 @@ func TestNegotiationDeclinedFeatureIsNotARefusal(t *testing.T) {
 	}
 }
 
-// TestNegotiationWithoutCapabilitiesIsTheMinimalProfile pins §8.3: a client that
+// TestNegotiationWithoutCapabilitiesIsTheMinimalProfile checks that a client that
 // declares nothing is a complete client, and the empty capability set means
 // "creates no child, commits no external-input wait, never parks on a human" — not a
 // missing declaration to be filled in later.

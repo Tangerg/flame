@@ -9,12 +9,11 @@ import (
 // authGate enforces the local-token check on POST /v2/rpc. Two paths
 // bypass: the operational sidecars and CORS preflights. Under
 // streamable HTTP every stream is a POST, so the gate covers streaming
-// too — there is no header-less EventSource to special-case (TRANSPORT
-// §7/§11).
+// too — there is no header-less EventSource to special-case.
 //
 // On failure, the response is an RFC 9457 application/problem+json 401,
 // not a JSON-RPC envelope, because authentication runs below the protocol
-// layer (TRANSPORT §6.3).
+// layer.
 func (s *Server) authGate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.localToken == "" {
@@ -26,8 +25,7 @@ func (s *Server) authGate(next http.Handler) http.Handler {
 			return
 		}
 		if !validBearer(r.Header.Get("Authorization"), s.localToken) {
-			// RFC 9110 §15.5.2 — a 401 MUST carry a challenge (TRANSPORT
-			// §6.3/§11). The gate is a single bare Bearer scheme.
+			// RFC 9110 §15.5.2 requires a 401 challenge. The gate uses Bearer.
 			w.Header().Set("WWW-Authenticate", "Bearer")
 			writeProblem(w, http.StatusUnauthorized, "unauthorized", "a valid local bearer token is required", true)
 			return

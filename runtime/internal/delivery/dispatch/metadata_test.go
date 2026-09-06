@@ -148,10 +148,10 @@ func TestDispatchDoesNotMutateCallerRequestWhenStrippingMeta(t *testing.T) {
 	}
 }
 
-// TestBindRequestMetaRefusesANonSuppressibleEvent pins §8.1: a client may suppress an
+// TestBindRequestMetaRefusesANonSuppressibleEvent checks that a client may suppress an
 // ephemeral preview, never an authoritative event. Ignoring the illegal entry
 // would leave the client believing it had opted out of a frame it will keep
-// receiving — and a runtime that honored it would break the §5.2 guarantee that
+// receiving — and a runtime that honored it would break the guarantee that
 // discarding every ephemeral event still converges.
 func TestDispatchRefusesANonSuppressibleEvent(t *testing.T) {
 	req := &transport.Request{

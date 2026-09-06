@@ -12,8 +12,8 @@ import (
 )
 
 // heartbeatInterval is how often an idle streaming response emits an SSE
-// comment frame to keep the connection alive through proxies (TRANSPORT
-// §7/§14) — e.g. while a Run waits on a slow LLM round.
+// comment frame to keep the connection alive through proxies while a Run waits
+// for its next event.
 const heartbeatInterval = 15 * time.Second
 
 // streamWriteTimeout bounds a single SSE frame write. ctx cancellation cannot
@@ -26,14 +26,14 @@ const heartbeatInterval = 15 * time.Second
 // detach instead.
 const streamWriteTimeout = 30 * time.Second
 
-// serveStream drives a streamable-HTTP response (TRANSPORT §6.4): the POST
+// serveStream drives a streamable-HTTP response: the POST
 // response body IS this call's event stream. The first SSE frame is the
 // call's JSON-RPC response (carries the envelope id, NOT an SSE id: — a
-// one-shot ack, not a replayable run event, §7); each subsequent frame is
+// one-shot ack, not a replayable run event); each subsequent frame is
 // a notifications.run.event with SSE id: = eventId. The loop ends when the
 // run stream ends (terminal segment.finished → the source sequence is drained)
 // or the client disconnects — a disconnect only detaches; the run keeps
-// running server-side and the client resumes via runs.subscribe (§9.2).
+// running server-side and the client resumes via runs.subscribe.
 func (s *Server) serveStream(w http.ResponseWriter, r *http.Request, resp *transport.Response, events iter.Seq[dispatch.StreamFrame], methodLabel string) {
 	// Proxy hints + observability headers before NewHTTPWriter — the
 	// library adds Content-Type: text/event-stream itself and leaves our
@@ -99,7 +99,7 @@ func (s *Server) serveStream(w http.ResponseWriter, r *http.Request, resp *trans
 				return
 			}
 		case <-ctx.Done():
-			return // client disconnect — detach only (TRANSPORT §6.4 / API §3)
+			return // client disconnect — detach only
 		}
 	}
 }

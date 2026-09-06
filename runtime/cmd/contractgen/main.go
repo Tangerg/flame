@@ -8,7 +8,7 @@
 // it.
 //
 // Run it through `go generate ./...`. CI's drift gate reruns it and fails on a
-// worktree diff (contract §11.4 gate 1): that is the only mechanism that notices
+// worktree diff: that is the only mechanism that notices
 // when the code and the published contract stop agreeing.
 package main
 

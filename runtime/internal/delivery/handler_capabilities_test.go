@@ -64,7 +64,7 @@ func TestCapabilitiesAdvertiseOnlyProducedRunEvents(t *testing.T) {
 // TestCapabilitiesAdvertiseThePublishedVocabulary pins discovery to
 // [protocol.Features].
 //
-// The features map is open — §9 says a client reads an absent key as off — which
+// The features map is open — a client reads an absent key as off — which
 // makes an omission SILENT: a capability this build supports would simply never
 // reach the UI, and nothing would say why. Both directions matter, so a key
 // advertised but never published is caught too: a client cannot gate on a name it

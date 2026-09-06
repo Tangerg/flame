@@ -59,8 +59,8 @@ type methodEntry struct {
 	Materializes []string `json:"materializes,omitempty"`
 }
 
-// errorRegistry is the single source for business error identity (contract §11.4
-// gate 13). Types is the symbolic vocabulary clients branch on; each entry carries
+// errorRegistry is the single source for business error identity. Types is the
+// symbolic vocabulary clients branch on; each entry carries
 // the numeric classification, the default recovery action, whether waiting is
 // meaningful, and which methods may return it.
 //
@@ -303,7 +303,7 @@ func conditions(in []delivery.FieldCondition) []conditionRow {
 	return out
 }
 
-// runEvents emits the §5.2 derivation table by ASKING the code that decides it,
+// runEvents derives event metadata from the owning registry,
 // so the artifact cannot disagree with the hub's replay buffer or the SSE id gate.
 func runEvents(shapes *dispatch.Shapes) []eventEntry {
 	var out []eventEntry

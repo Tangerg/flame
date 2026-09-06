@@ -32,7 +32,7 @@ type GetDiffRequest struct {
 // Diff is the workspace.diff.get result: a sum type where Files is
 // populated for format=rows (per-file structured diff), Patch for format=raw
 // (the unified patch string). Truncated self-describes a row-limit cut at a
-// file boundary ("no silent caps", §7.5).
+// file boundary, so a caller can distinguish a partial result from a complete diff.
 type Diff struct {
 	Files     []FileDiff `json:"files,omitempty"`
 	Patch     string     `json:"patch,omitempty"`
@@ -40,7 +40,7 @@ type Diff struct {
 }
 
 // FileStatus is the past-tense working-tree status vocabulary shared by
-// WorkspaceFileChange and FileDiff (§4.5).
+// WorkspaceFileChange and FileDiff.
 type FileStatus string
 
 const (

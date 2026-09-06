@@ -151,10 +151,8 @@ func TestNotificationValidationRejectsUnpublishableParams(t *testing.T) {
 // machine-readable UnionSpec land. ProblemData includes one namespaced extension
 // branch; that is still a registered union, not an arbitrary string escape hatch.
 //
-// DiffRow is not one of the thirteen §11.2 names: its godoc always described a
-// union and clients always modeled it as one, but nothing on the wire said
-// so, so the published shape allowed a row with a hunk's text and both line
-// numbers. Generating the TypeScript is what surfaced it.
+// DiffRow variants must remain exclusive: a hunk cannot carry a line row's
+// text and line numbers, even if those fields are individually valid.
 func TestEveryWireUnionIsRegistered(t *testing.T) {
 	t.Parallel()
 

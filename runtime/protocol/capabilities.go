@@ -1,10 +1,10 @@
 package protocol
 
-// ClientCapabilities is what the client declares in request metadata (§8.1).
+// ClientCapabilities is what the client declares in request metadata.
 //
 // It declares what the client can HANDLE, not what it wants to receive. There is
 // deliberately no list of renderable event types: a client that cannot follow the
-// authoritative stream cannot be served a shortened one — the §8.3 Minimal
+// authoritative stream cannot be served a shortened one — the Minimal
 // Profile requires it to validate and safely fold or ignore every authoritative
 // frame — so filtering by declaration would hand it a degraded stream while
 // letting it believe the stream was complete.
@@ -12,7 +12,7 @@ type ClientCapabilities struct {
 	Features map[string]FeaturePreference `json:"features,omitempty"`
 	// InterruptTypes are the HITL interrupt types the client can answer. A run
 	// freezes them into its RunProtocolProfile, so the runtime can never park on a
-	// wait nobody will answer (§6.2 anti-deadlock). Omitted and empty mean the
+	// wait nobody will answer. Omitted and empty mean the
 	// same thing: a client that answers nothing.
 	InterruptTypes []InterruptType `json:"interruptTypes,omitempty"`
 	// ExcludedEphemeralEvents lets a client suppress the two high-frequency
@@ -62,7 +62,7 @@ type FeatureCapability struct {
 	// event / resource shape, so a subscriber that does not understand it cannot
 	// follow the Run. Exactly these keys enter [RunProtocolProfile.RequiredFeatures]
 	// and make a later low-capability resume or subscribe a refusal rather than a
-	// downgrade (§8.2).
+	// downgrade.
 	RequiredByRunProtocol bool `json:"requiredByRunProtocol"`
 }
 

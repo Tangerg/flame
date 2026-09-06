@@ -11,7 +11,7 @@ import (
 )
 
 // TestMapRunEvents_FramesWireEventID verifies delivery applies the evt_ wire
-// framing to the stream position the application minted (§11.2), and nothing
+// framing to the stream position the application minted, and nothing
 // else: the cursor's contents are the application's business, and this layer
 // neither parses nor orders them.
 func TestMapRunEvents_FramesWireEventID(t *testing.T) {

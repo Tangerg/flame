@@ -292,7 +292,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_interrupts_root_member
 			ON interrupts(root_member_id)`,
 		// pending_workspace_mutations is the recoverable operation log for file
-		// rollbacks (§8.5). Git reset is non-atomic across paths; files+history also
+		// rollbacks. Git reset is non-atomic across paths; files+history also
 		// spans Git and SQLite. The intent is logged before the tree is touched and
 		// cleared after every requested effect commits. A surviving row is re-driven
 		// at boot. session_id keys it — the mutation slot admits at most one

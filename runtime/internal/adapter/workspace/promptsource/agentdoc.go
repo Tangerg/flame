@@ -2,7 +2,7 @@
 // it discovers the AGENTS.md, skill, and recipe files a session exposes, walking
 // the project tree and the well-known user-level directories. The precedence,
 // render, and parse RULES are the domains' (agentdoc / skills / recipes); the
-// file discovery and reads are here (§4.5).
+// file discovery and reads are here.
 package promptsource
 
 import (

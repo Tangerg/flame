@@ -18,10 +18,8 @@ import (
 // only reason it may exist is that reflection cannot read a const block. That
 // makes it exactly the kind of table that rots: someone adds a RunStatus and the
 // generated schema keeps publishing two values. So the constants are read here —
-// by a TEST, not by the generator, which is why contract §11.2's "AST only reads
-// godoc" rule is not bent: nothing in the artifact pipeline infers vocabulary
-// from source layout; the pipeline reads the declaration, and this proves the
-// declaration is the whole truth.
+// by this test. The artifact pipeline reads the declared vocabulary; this check
+// proves that the declaration contains every constant.
 func TestWireEnumsAreComplete(t *testing.T) {
 	declared := constantsByType(t)
 

@@ -11,17 +11,14 @@ import (
 
 // The canonical wire samples and the shape each one must be.
 //
-// Contract §11.3 asks that the Go side, the TypeScript validator and the JSON Schema
-// each check the SAME batch of hand-written fixtures — and "the same batch" only
-// means something if one statement says which file is which shape. It was written
-// twice: this table, and a parallel list of `wire<T>(sample)` pins on the TypeScript
-// side. Two lists means two answers to "what is method.sessions.rollback.resp.json",
-// and the one that drifts is silently checked against the wrong thing.
+// Go, TypeScript, and JSON Schema validators check the same hand-written fixtures.
+// One binding table maps each file to its shape so all consumers check the same
+// value against the same contract.
 //
 // It lives in non-test code because the artifact pipeline reads it: the generator
 // projects it into the manifest and the published TypeScript sample index.
-// The SAMPLES stay hand-written — §11.3 forbids generating a fixture and then proving
-// it with the same-source schema — and so does this binding.
+// Samples and their bindings stay hand-written so a generator defect cannot
+// produce both an invalid shape and a matching fixture.
 
 // Sample binds one sample file to the published shape it must satisfy.
 type Sample struct {
@@ -35,7 +32,7 @@ type Sample struct {
 func Samples() []Sample {
 	return []Sample{
 
-		// §5 streaming — RunEvent envelope over every StreamEvent variant.
+		// Streaming — RunEvent envelope over every StreamEvent variant.
 		{"segment.started.json", reflect.TypeFor[protocol.RunEvent]()},
 		{"segment.progress.json", reflect.TypeFor[protocol.RunEvent]()},
 		{"segment.finished.json", reflect.TypeFor[protocol.RunEvent]()},
@@ -44,7 +41,7 @@ func Samples() []Sample {
 		{"item.completed.json", reflect.TypeFor[protocol.RunEvent]()},
 		{"plan.updated.json", reflect.TypeFor[protocol.RunEvent]()},
 
-		// §4.3 Item union (bare) + ContentBlock.
+		// Item union (bare) + ContentBlock.
 		{"item.userMessage.json", reflect.TypeFor[protocol.Item]()},
 		{"item.agentMessage.json", reflect.TypeFor[protocol.Item]()},
 		{"item.toolCall.json", reflect.TypeFor[protocol.Item]()},
@@ -53,12 +50,12 @@ func Samples() []Sample {
 		{"item.compaction.json", reflect.TypeFor[protocol.Item]()},
 		{"content.image.json", reflect.TypeFor[protocol.ContentBlock]()},
 
-		// §5.1 ItemDelta union (bare).
+		// ItemDelta union (bare).
 		{"delta.reasoning.json", reflect.TypeFor[protocol.ItemDelta]()},
 		{"delta.toolArguments.json", reflect.TypeFor[protocol.ItemDelta]()},
 		{"delta.toolOutput.json", reflect.TypeFor[protocol.ItemDelta]()},
 
-		// §4.2 Run — RunOutcome union, RunRef, Interrupt union, method envelopes.
+		// Run — RunOutcome union, RunRef, Interrupt union, method envelopes.
 		{"outcome.failed.json", reflect.TypeFor[protocol.RunOutcome]()},
 		{"outcome.maxSteps.json", reflect.TypeFor[protocol.RunOutcome]()},
 		{"outcome.maxBudget.json", reflect.TypeFor[protocol.RunOutcome]()},
@@ -88,7 +85,7 @@ func Samples() []Sample {
 		{"method.runs.subscribe.req.json", reflect.TypeFor[protocol.SubscribeRunRequest]()},
 		{"method.runs.subscribe.resp.json", reflect.TypeFor[protocol.SubscribeRunResponse]()},
 
-		// §4.1 Session — Session/WorkspaceSummary + method envelopes.
+		// Session — Session/WorkspaceSummary + method envelopes.
 		{"session.json", reflect.TypeFor[protocol.Session]()},
 		{"workspace.json", reflect.TypeFor[protocol.WorkspaceSummary]()},
 		{"method.sessions.create.req.json", reflect.TypeFor[protocol.CreateSessionRequest]()},
@@ -99,7 +96,7 @@ func Samples() []Sample {
 		{"method.sessions.export.resp.json", reflect.TypeFor[protocol.ExportSessionResponse]()},
 		{"session.artifact.json", reflect.TypeFor[protocol.SessionArtifact]()},
 
-		// §7.3 RuntimeEvent union — one change signal per topic, plus the frame that
+		// RuntimeEvent union — one change signal per topic, plus the frame that
 		// says the stream lost its place.
 		{"rtevent.files-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},
 		{"rtevent.skills-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},
@@ -108,7 +105,7 @@ func Samples() []Sample {
 		{"rtevent.plan-changed.json", reflect.TypeFor[protocol.RuntimeEvent]()},
 		{"rtevent.resync.json", reflect.TypeFor[protocol.RuntimeEvent]()},
 
-		// §4.5 Workspace — Diff/DiffRow, file shapes, methods.
+		// Workspace — Diff/DiffRow, file shapes, methods.
 		{"ws.diff.json", reflect.TypeFor[protocol.Diff]()},
 		{"ws.fileChange.json", reflect.TypeFor[protocol.WorkspaceFileChange]()},
 		{"ws.fileHead.json", reflect.TypeFor[protocol.FileHead]()},
@@ -119,7 +116,7 @@ func Samples() []Sample {
 		{"method.listFileChanges.resp.json", reflect.TypeFor[protocol.Page[protocol.WorkspaceFileChange]]()},
 		{"method.grep.req.json", reflect.TypeFor[protocol.GrepRequest]()},
 
-		// §4.6 Approval + §4.9 providers/models/usage.
+		// Approval, providers, models, and usage.
 		{"approvalRule.json", reflect.TypeFor[protocol.ApprovalRule]()},
 		{"approvalMode.resp.json", reflect.TypeFor[protocol.ApprovalModeResult]()},
 		{"approvalRules.resp.json", reflect.TypeFor[protocol.ListApprovalRulesResult]()},
@@ -131,7 +128,7 @@ func Samples() []Sample {
 		{"embeddingRole.json", reflect.TypeFor[protocol.EmbeddingRole]()},
 		{"usageSummary.json", reflect.TypeFor[protocol.UsageSummary]()},
 
-		// §3/§9 discovery, request metadata + §4.10 config surfaces.
+		// Discovery, request metadata, and configuration surfaces.
 		{"method.discover.resp.json", reflect.TypeFor[protocol.DiscoverResponse]()},
 		{"request.meta.json", reflect.TypeFor[protocol.RequestMeta]()},
 		{"schedule.json", reflect.TypeFor[protocol.Schedule]()},

@@ -14,13 +14,12 @@ import (
 
 // The TypeScript validator is COMPILED FROM THE SCHEMA TREE, for the same reason
 // the TypeScript types are: two independent walks of the Go types would be two
-// authors of one rule, and contract §11.4 gate 6 asks that the three statements of
-// a constraint agree. Deriving one from the other makes agreement structural —
+// authors of one rule. All three representations of a constraint must agree.
+// Deriving one from the other makes agreement structural —
 // there is no path by which the schema states `minLength` and the validator forgets
 // it.
 //
-// It is the client's half of §11.3's "authoritative/terminal runtime validators",
-// and its scope follows from which side owns which frames. The runtime RECEIVES
+// Validation follows the receiving boundary. The runtime receives
 // requests, and Go's typed decode already fixes their structure, so the generated
 // Go validator enforces the registered value, enum, union and conditional rules. A
 // client RECEIVES results and events with no typing left at runtime at all, so this

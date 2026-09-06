@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// HealthStatus is the per-check / aggregate status. Per TRANSPORT §12.1,
+// HealthStatus is the per-check / aggregate status:
 // `"ok"` maps to HTTP 200; everything else maps to 503.
 type HealthStatus string
 

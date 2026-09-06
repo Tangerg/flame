@@ -15,14 +15,9 @@ import (
 // The method surface, as TypeScript reads it: which methods exist, what each one
 // carries, and what has to be negotiated before one will run.
 //
-// This is the half of contract §11.3's fifth artifact class that has a reader. Go
-// needs no generated method constants — `server` and `dispatch` are the same ring
-// and the Registry itself is their shared source, so a second table of
-// `MethodRunsStart = "runs.start"` that dispatch does not consume would BE the
-// second author it was meant to remove. TypeScript cannot read the Registry at all,
-// and before this it restated every one of those facts by hand: 83 method-name
-// literals, dozens of result types, and a parallel union of the nineteen capability
-// keys.
+// TypeScript cannot read the Go registry, so its method surface is generated.
+// Go consumers read the registry directly; a second table of method constants
+// would duplicate the same facts without serving another boundary.
 //
 // The ergonomic SDK still owns transport handles such as AbortSignal, but it reads
 // operation and idempotency behavior from the policy emitted here. Otherwise every
@@ -129,8 +124,7 @@ func (m *methodsEmitter) methodPolicy(metas []delivery.MethodMeta) {
 }
 
 // policy emits the capability rules the SDK preflights against what the server
-// advertised. Contract §11.1 names three consumers of these rules — the dispatcher,
-// discovery and the SDK — and forbids any of them keeping a second switch. Typing
+// advertised. The dispatcher, discovery, and SDK share the same rules. Typing
 // the table with WireFeature also makes a rule naming an unpublished key a compile
 // error on this side, not only in Go.
 func (m *methodsEmitter) policy(metas []delivery.MethodMeta) {

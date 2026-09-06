@@ -218,7 +218,7 @@ func TestRollbackKeepsRecoveryIntentWhenSandboxRetirementFails(t *testing.T) {
 }
 
 // TestRollback_RestoreBoth_ClearsIntent: a successful files+history rollback
-// leaves no pending operation — the §8.5 intent is recorded then cleared, so
+// leaves no pending operation — the intent is recorded then cleared, so
 // boot recovery has nothing to re-drive.
 func TestRollback_RestoreBoth_ClearsIntent(t *testing.T) {
 	s, rt, cp, sid, cwd := checkpointHarness(t)

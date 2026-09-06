@@ -10,15 +10,14 @@ import (
 
 // The canonical sample index, projected for the side that cannot read Go.
 //
-// Contract §11.3 asks that the Go round-trip, the TypeScript validator and the JSON
-// Schema each check the same batch of hand-written fixtures. "The same batch" needs
+// The Go round-trip, TypeScript validator, and JSON Schema checks consume
+// the same batch of hand-written fixtures. "The same batch" needs
 // one statement of which file is which shape, and the binding is that statement. A
 // generated projection prevents a parallel TypeScript list from becoming a second
 // contract index.
 //
-// The samples themselves stay hand-written. §11.3 forbids generating a fixture and
-// then proving it with a schema from the same source, and it is right to: a fixture
-// derived from the shape can only ever agree with it.
+// Samples stay hand-written: generating fixtures from the same source as their
+// validators would make them agree even when that shared source is wrong.
 const tsSamplesFileName = "wire.samples.generated.ts"
 
 func newWireSamples() string {

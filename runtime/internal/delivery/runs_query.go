@@ -140,7 +140,7 @@ func wireInterruptPageError(err error) error {
 // SubscribeRun opens a fresh event stream onto the root segment the request
 // names for reconnect or crash recovery and subscribes the whole run tree.
 //
-// With a Last-Event-Id (carried out-of-band via ctx, TRANSPORT §9.2) it replays
+// With a Last-Event-Id carried in call metadata, it replays
 // the retained events after that position and then tails live; without one it
 // attaches at the current head and returns it, so a client can read the durable
 // state afterwards and fold this stream on top without a gap. History is NOT
@@ -153,8 +153,8 @@ func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequ
 	attached, err := s.runs.Subscribe(ctx, runs.SubscribeRequest{
 		RunID:     in.RunID,
 		SegmentID: in.SegmentID,
-		// The application's cursor is prefix-free; the evt_ framing is this layer's
-		// (§11.2). TrimPrefix leaves an absent id untouched, which is the tail-only case.
+		// The application's cursor is prefix-free; the evt_ framing is this layer's.
+		// TrimPrefix leaves an absent id untouched, which is the tail-only case.
 		Cursor:             strings.TrimPrefix(AfterEventIDFrom(ctx), protocol.IDPrefixEvent),
 		CallerCapabilities: caller,
 	})

@@ -2,8 +2,7 @@ package delivery
 
 // The machine-readable projection of everything registered here is generated,
 // never hand-written; CI reruns this and fails on a worktree diff, which is the
-// only mechanism that notices when the code and the published contract disagree
-// (contract §11.4 gate 1).
+// only mechanism that notices when the code and the published contract disagree.
 //
 //go:generate go run github.com/Tangerg/flame/runtime/cmd/contractgen -out ../../contract -validators ../../protocol -ts ../../contract/typescript
 

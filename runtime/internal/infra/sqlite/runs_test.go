@@ -236,7 +236,7 @@ func capabilitiesForInterrupts(values []transcript.Interrupt) run.Capabilities {
 	return capabilities.Normalized()
 }
 
-// TestParkCommitsInterruptAndSuspendAtomically proves the §8.3 pairing the
+// TestParkCommitsInterruptAndSuspendAtomically proves the pairing the
 // run-event committer relies on: opening the interrupt record and suspending the
 // run's admission row commit — or roll back — as ONE transaction (both writes
 // join the same conn(ctx)), so a crash can never leave a parked run with an
@@ -304,7 +304,7 @@ func TestParkCommitsInterruptAndSuspendAtomically(t *testing.T) {
 	}
 }
 
-// TestRunAdmitEnforcesOneActivePerSession proves the durable §8.2 guarantee: the
+// TestRunAdmitEnforcesOneActivePerSession proves the durable guarantee: the
 // partial unique index rejects a second non-terminal run for the same session,
 // a different session is independent, and terminalizing frees the slot.
 //
@@ -649,7 +649,7 @@ func TestRecoverLostRequiresExactExpectedRun(t *testing.T) {
 }
 
 // TestTerminalizeParkedRunRejectsNonCancel proves the store defers to the
-// [run.State] machine (§8.2): a parked (waiting) run may terminalize
+// [run.State] machine: a parked (waiting) run may terminalize
 // only via cancellation — any other terminal must resume first — so a non-cancel
 // terminalize of a parked run surfaces an error instead of silently overwriting
 // the row, while a cancel of the same parked run succeeds.

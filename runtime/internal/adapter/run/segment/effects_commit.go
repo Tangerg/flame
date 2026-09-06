@@ -474,7 +474,7 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 	return nil
 }
 
-// CommitEvent applies one run event's durable parts atomically (§8.3/§8.4): the
+// CommitEvent applies one run event's durable parts atomically: the
 // transcript item/run projections and the run-state transition in one
 // transaction. A tree interruption is deliberately excluded: it must use
 // CommitTreeBarrier so no individual Run can publish a partial barrier.

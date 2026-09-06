@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// RunStatus is the lifecycle position of a run (§4.1). The three values answer
+// RunStatus is the lifecycle position of a run. The three values answer
 // what a client has to do next: watch it, answer it, or read it.
 type RunStatus string
 
@@ -20,7 +20,7 @@ const (
 )
 
 // RunSummary is a run's identity, its place in the run tree, and where it is in
-// its lifecycle (§4.2). ID is the STABLE logical run id — a resume continues the
+// its lifecycle. ID is the STABLE logical run id — a resume continues the
 // same run (a new segment), never a new run — so there is no continuation chain
 // to carry.
 //
@@ -56,7 +56,7 @@ type RunSummary struct {
 }
 
 // RunRef is a run's summary plus the control, metering and protocol facts a
-// caller needs in order to drive or account for it (§4.2): what runs.get /
+// caller needs in order to drive or account for it: what runs.get /
 // runs.list and the live segment.started carry.
 //
 // The summary is EMBEDDED, not copied. encoding/json inlines an embedded struct,
@@ -98,11 +98,11 @@ const (
 )
 
 // RunProtocolProfile is the client-observable protocol contract frozen when a run
-// was created (§4.2) — not a preference recomputed per request.
+// was created — not a preference recomputed per request.
 //
 // Both fields are sets: duplicates are illegal, order carries no meaning, and the
 // canonical encoder emits requiredFeatures in lexical order and interruptTypes in
-// registry order. Neither is optional, because an empty set is a MEANING: the §8.3
+// registry order. Neither is optional: an empty set denotes the
 // Minimal Profile — a run that creates no child, publishes no `suspended`, and
 // never parks on a human. `null` would say "unknown" about a run whose contract is
 // perfectly known.
@@ -121,7 +121,7 @@ type RunProtocolProfile struct {
 	InterruptTypes []InterruptType `json:"interruptTypes"`
 }
 
-// RunMetrics is how much a run has consumed (§4.2). Total cost reads
+// RunMetrics is how much a run has consumed. Total cost reads
 // Usage.CostUSD — there is no separate costUsd, which would be a second source
 // of one number.
 type RunMetrics struct {
@@ -133,8 +133,8 @@ type RunMetrics struct {
 	ActiveDurationMillis int64 `json:"activeDurationMillis"`
 }
 
-// RunLimits is a bounded allowance a run may consume before it is stopped
-// (§4.2). Every present field is a strictly positive cap and at least one field
+// RunLimits is a bounded allowance a run may consume before it is stopped.
+// Every present field is a strictly positive cap and at least one field
 // must be present. An omitted RunRef.limits or StartRunRequest.limits is the only
 // unlimited wire representation.
 type RunLimits struct {
@@ -143,7 +143,7 @@ type RunLimits struct {
 	MaxBudgetUSD   *float64 `json:"maxBudgetUsd,omitempty"`
 }
 
-// RunOutcomeType discriminates the RunOutcome union (§4.2).
+// RunOutcomeType discriminates the RunOutcome union.
 type RunOutcomeType string
 
 const (
@@ -156,8 +156,8 @@ const (
 	OutcomeLost      RunOutcomeType = "lost"
 )
 
-// RunOutcome is a tag-discriminated union over why a run STOPPED FOR GOOD
-// (§4.2). It answers only that: what the run consumed is RunMetrics, published
+// RunOutcome is a tag-discriminated union over why a run STOPPED FOR GOOD.
+// It answers only that: what the run consumed is RunMetrics, published
 // beside it, so neither has to be read through the other.
 //
 //	completed                → nothing further
@@ -170,17 +170,17 @@ const (
 type RunOutcome struct {
 	Type RunOutcomeType `json:"type"`
 	// Error explains the error terminal and appears on no other. Its own Detail
-	// carries the human-readable note (§4.6), which is why Detail below stays
+	// carries the human-readable note, which is why Detail below stays
 	// absent here rather than repeating it.
 	Error *ProblemData `json:"error,omitempty"`
 	// Detail is a human-readable note for the non-error terminals
 	// (maxSteps / maxBudget / canceled) — lets the client tell "user
 	// canceled" from "timed out", show "$X / $Y" for maxBudget, etc. The
-	// runs.cancel reason flows here (§4.2).
+	// runs.cancel reason flows here.
 	Detail string `json:"detail,omitempty"`
 }
 
-// SegmentOutcomeType discriminates the SegmentOutcome union (§4.3): every way a
+// SegmentOutcomeType discriminates the SegmentOutcome union: every way a
 // run can stop for good, plus the two ways a segment can stop while its run
 // carries on.
 type SegmentOutcomeType string
@@ -208,7 +208,7 @@ const (
 	SegmentLost      = SegmentOutcomeType(OutcomeLost)
 )
 
-// SegmentOutcome is why a SEGMENT stopped (§4.3): either the run stopped for good
+// SegmentOutcome is why a SEGMENT stopped: either the run stopped for good
 // — in which case this is a RunOutcome — or the run is only pausing.
 //
 //	interrupt                → Interrupts (non-empty)
@@ -247,7 +247,7 @@ type StartRunRequest struct {
 type StartRunResponse struct {
 	RunID string `json:"runId"`
 	// SegmentID is the first streamed segment of this Run. The client keys its
-	// stream tree and reconnect-replay deduplication on it (§0.3).
+	// stream tree and reconnect-replay deduplication on it.
 	SegmentID string `json:"segmentId"`
 	// UserItemID identifies the durable opening userMessage Item. A successful
 	// start always creates that Item, so omitting this field would force clients
@@ -349,7 +349,7 @@ type ListInterruptsRequest struct {
 	PageQuery
 }
 
-// ResumeRunRequest is the runs.resume body (§6.1). RunID is the stable run to
+// ResumeRunRequest is the runs.resume body. RunID is the stable run to
 // continue — its current segment parked with outcome:interrupt.
 type ResumeRunRequest struct {
 	RunID     string              `json:"runId"`
@@ -494,7 +494,7 @@ type InterruptPayload struct {
 	Question     *Question       `json:"question,omitempty"`
 }
 
-// Interrupt is one pending HITL item (§4.8). ItemID is the correlation key — the
+// Interrupt is one pending HITL item. ItemID is the correlation key — the
 // toolCall or question item awaiting resolution — and RunID is the run that raised
 // it, which is not necessarily the run that owns the set: one set can hold
 // interrupts raised anywhere in a run tree, and each is answered in the context of
@@ -507,7 +507,7 @@ type Interrupt struct {
 }
 
 // PendingInterruptSet is everything one waiting run tree needs answered, and the
-// unit both the read and the resume work in (§4.8 / §6.2).
+// unit both the read and the resume work in.
 //
 // It is a SET, not a list of independent items: runs.resume validates and consumes
 // all of it in one transaction, so a page never splits one — half a set is a resume

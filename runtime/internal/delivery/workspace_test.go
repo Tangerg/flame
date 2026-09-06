@@ -536,7 +536,7 @@ func TestWorkspaceSubscribe_EarlyRangeStopReleasesSubscription(t *testing.T) {
 
 // TestWorkspaceSubscribeLifetimeIsTheRequest: a subscription's stream is bounded
 // by its request ctx (client disconnect / the transport's forced shutdown), not
-// by Handler retirement — delivery owns no task group (§16 rule 5). Retirement
+// by Handler retirement — delivery owns no task group. Retirement
 // only gates new subscriptions; an in-flight stream is left to its request ctx.
 func TestWorkspaceSubscribeLifetimeIsTheRequest(t *testing.T) {
 	s := newWorkspaceHandler(t.TempDir())

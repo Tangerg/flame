@@ -1,6 +1,6 @@
 package protocol
 
-// RuntimeEventType discriminates the [RuntimeEvent] union (§7.3): the change
+// RuntimeEventType discriminates the [RuntimeEvent] union: the change
 // signals a client can subscribe to, plus the one frame that is not a change —
 // `resync`, which says the stream lost its place.
 //
@@ -26,7 +26,7 @@ const (
 	RuntimeRunsChanged RuntimeEventType = "runs.changed"
 	// RuntimePlanChanged — a Session's Plan changed, for a client that is not
 	// following the root Run that wrote it. The run stream carries the Plan itself;
-	// this only says "call plan.get again" (§5.6).
+	// this only says "call plan.get again".
 	RuntimePlanChanged RuntimeEventType = "plan.changed"
 	// RuntimeGoalsChanged — a session's goal changed.
 	RuntimeGoalsChanged RuntimeEventType = "goals.changed"
@@ -90,7 +90,7 @@ const (
 	MaxSubscriptionWatches = 32
 )
 
-// RuntimeSubscribeRequest is the runtime.subscribe body (§7.2). Topics is required
+// RuntimeSubscribeRequest is the runtime.subscribe body. Topics is required
 // and non-empty: there is no wildcard and no "subscribe to everything", because a
 // client that has not said what it can fold cannot be sent everything.
 type RuntimeSubscribeRequest struct {
@@ -125,7 +125,7 @@ type RuntimeEventNotification struct {
 // detection lie to the Desktop client.
 const MaximumRuntimeEventSequence = MaximumExactJSONInteger
 
-// RuntimeEvent is one change signal (§7.3): a flat tag-discriminated struct whose
+// RuntimeEvent is one change signal: a flat tag-discriminated struct whose
 // optional fields say WHICH resources moved.
 //
 // Every variant is an invalidation, not a payload. It carries ids so a client can

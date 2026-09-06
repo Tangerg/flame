@@ -27,7 +27,7 @@ func EncodeRunEvent(event protocol.RunEvent) (transport.Message, error) {
 }
 
 // EncodeRuntimeEvent wraps one RuntimeEvent into a notifications.runtime.event
-// notification (§7.3). The single downstream stream carries every topic's change
+// notification. The single downstream stream carries every topic's change
 // signal in the `event` field; clients branch on event.type. Ephemeral by design — no
 // SSE id, no replay: every frame is "this moved, read it again", and a client that
 // missed one refetches rather than replays.
@@ -47,7 +47,7 @@ func (r *Router) handleNotification(context.Context, *transport.Request) {}
 // runEventToFrameFor returns the per-request encoder for RunEvent stream
 // notifications. Every authoritative event goes out; a client's opt-out only
 // suppresses ephemeral previews, so every final fact stays recoverable from the stream
-// alone (§5.2).
+// alone.
 func runEventToFrame(event protocol.RunEvent) (StreamFrame, bool) {
 	notification, err := EncodeRunEvent(event)
 	if err != nil {

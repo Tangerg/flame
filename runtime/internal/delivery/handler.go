@@ -333,9 +333,9 @@ func capabilitiesFor(
 		},
 		// The streaming methods, read from the registry that routes them. A
 		// hand-kept list here would be a second author of "which calls stream" —
-		// and the one clients trust, since this is what discovery advertises (§9).
+		// and the one clients trust, since this is what discovery advertises.
 		StreamingMethods: Contract().StreamMethods(),
-		// Open features map (§9): a client treats an absent key as off. This is the
+		// Open features map: a client treats an absent key as off. This is the
 		// one composition fact per key — whether THIS build offers it — joined with
 		// the feature's own published facts (opt-in and whether it reshapes
 		// the run protocol), which come from protocol's registry. Advertising them

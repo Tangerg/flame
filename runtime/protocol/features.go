@@ -39,7 +39,7 @@ const (
 // Whether this composition offers a feature is a composition fact and lives with
 // the composition ([FeatureCapability.Enabled]). Whether a client must ask for it,
 // and whether asking changes the authoritative Run shape, are properties of the
-// feature itself — §8.2 requires them to be generated from this registry rather
+// feature itself. They are generated from this registry rather
 // than maintained beside the advertised map, because a hand-kept `clientOptIn`
 // would let discovery promise a negotiation the runtime does not perform.
 type Feature struct {
@@ -56,7 +56,7 @@ type Feature struct {
 // features is every key discovery may advertise, in the order the canonical docs
 // group them.
 //
-// The features map is open by design — §9 says a client treats an absent key as
+// The features map is open by design — a client treats an absent key as
 // off — so this is not a closed wire enum a frame may be checked against. It is
 // the published vocabulary: what a client may meaningfully ask about, and what a
 // capability rule may name. [TestFeaturesAreComplete] proves it lists every
@@ -83,7 +83,7 @@ var features = mustFeatures([]Feature{
 	// child runs, child lineage on every summary, and the `suspended` segment
 	// outcome only exist for a Run whose profile carries it. A subscriber that does
 	// not understand them cannot follow such a Run at all, which is why it is
-	// opt-in AND frozen onto the Run (§8.2).
+	// opt-in AND frozen onto the Run.
 	{Key: FeatureSubagents, ClientOptIn: true, RequiredByRunProtocol: true},
 })
 
@@ -117,7 +117,7 @@ func FeatureKeys() []string {
 // in is not an optional feature at all: the runtime would change what a Run
 // publishes without anyone having asked, and every subscriber would need to
 // understand it — which is the definition of stable core, not of a capability.
-// §8.2 makes this a construction failure rather than a runtime check, and there is
+// This fails during construction because there is
 // no request at which it could be reported: the vocabulary is wrong, not the call.
 func mustFeatures(features []Feature) []Feature {
 	seen := make(map[string]bool, len(features))

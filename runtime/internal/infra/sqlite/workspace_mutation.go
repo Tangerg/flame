@@ -14,8 +14,8 @@ type WorkspaceMutationRecord struct {
 	RestoreHistory bool
 }
 
-// WorkspaceMutationStore is the recoverable operation log for file rollbacks
-// (§8.5), backed by the pending_workspace_mutations table. Unlike the write-set
+// WorkspaceMutationStore is the recoverable operation log for file rollbacks,
+// backed by the pending_workspace_mutations table. Unlike the write-set
 // stores, its writes deliberately do NOT join an ambient transaction (they use
 // the *sql.DB directly, never conn(ctx)): the intent must commit on its own
 // before the working tree is touched, and the completion on its own after the

@@ -21,8 +21,8 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// TestGeneratedContractHasNoDrift is contract §11.4 gate 1: rerun the generator
-// and the worktree must be unchanged.
+// TestGeneratedContractHasNoDrift compares freshly generated artifacts with
+// their published copies.
 //
 // It is the only mechanism that notices when the code and the published contract
 // stop agreeing. Every other check in this package guards a structural rule; this
@@ -170,7 +170,7 @@ func TestGeneratedContractIsSubstantive(t *testing.T) {
 	}
 }
 
-// TestWireConstraintsStayPure is contract §11.4 gate 7: a DTO validator's
+// TestWireConstraintsStayPure checks that a DTO validator's
 // dependency graph contains no store, dispatcher or executor. The private,
 // reflection-only contractshape helper is the sole permitted internal import.
 //
@@ -373,7 +373,7 @@ func collectProtocolVersions(node any) []string {
 	}
 }
 
-// TestGeneratedSchemasResolve is contract §11.4 gate 4: the OpenRPC document and
+// TestGeneratedSchemasResolve checks that the OpenRPC document and
 // the JSON Schema bundle parse, and every reference in them lands on a definition
 // that exists.
 //
@@ -614,8 +614,8 @@ func exportedStructs(t *testing.T, dir string) []string {
 	return out
 }
 
-// TestValueConstraintsAgreeAcrossArtifacts is contract §11.4 gate 6: every declared
-// value constraint is stated by all THREE emitters.
+// TestValueConstraintsAgreeAcrossArtifacts checks that every declared value
+// constraint is stated by all three emitters.
 //
 // One declaration feeds three independent emitters — the Go validator writes a
 // matching helper call, the schema writes its value keyword, and the TypeScript

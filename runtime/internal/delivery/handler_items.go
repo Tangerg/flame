@@ -40,10 +40,8 @@ func requestedPageLimit(value *int) (pagination.RequestedLimit, error) {
 // ListItems returns a session's persisted history as durable Items
 // History is the completed Item sequence; there is no
 // separate Message type. The result is a Page[Item] (`data` + `nextCursor`)
-// plus the RunRefs needed to rebuild the run tree (§10.3). Over a page the
-// server backfills nextCursor rather than silently truncating (§4.11 — no
-// silent caps); a returned cursor is the opaque "has more" token the client
-// passes back to continue.
+// plus the RunRefs needed to rebuild the run tree. When more items remain,
+// nextCursor carries an opaque token that the client passes back to continue.
 //
 // The source is the durable Item-history store (a required runtime
 // dependency): the exact Items the runtime streamed (same ids, runId,

@@ -58,8 +58,8 @@ type ListItemsRequest struct {
 
 // ListItemsResponse — items.list result: a Page[Item] (`data` +
 // `nextCursor`) embedded so every list method reads `resp.data`, plus the run
-// summaries needed to rebuild the run tree (§7.4 / §10.3 —
-// `Page<Item> & { runs }`). The embedded Page inlines `data`/`nextCursor`
+// summaries needed to rebuild the run tree (`Page<Item> & { runs }`).
+// The embedded Page inlines `data`/`nextCursor`
 // onto the wire.
 //
 // Summaries, not full RunRefs: threading items onto their runs needs identity
@@ -83,7 +83,7 @@ type ListItemsResponse struct {
 type ItemStatus string
 
 const (
-	ItemStatusRunning    ItemStatus = "running" // in-progress (§2.3: "running" everywhere)
+	ItemStatusRunning    ItemStatus = "running"
 	ItemStatusCompleted  ItemStatus = "completed"
 	ItemStatusIncomplete ItemStatus = "incomplete" // interrupted/canceled before completion
 )
@@ -254,18 +254,18 @@ type QuestionOption struct {
 // canonical JSON value unchanged. Adding a tool requires no protocol union
 // change.
 //
-// Hard constraints (§4.4.1):
+// Hard constraints:
 //   - Arguments is ALWAYS a JSON object, never a JSON string (no double
 //     escaping). Streaming partial args arrive via ItemDelta.argumentsTextDelta
 //     and are unmarshaled into Arguments at item.completed / the approval
-//     payload (§4.8).
+//     payload.
 //   - Result is best-effort JSON, NEVER double-encoded; absent on
-//     item.started, authoritative and persisted on item.completed (§5.2). The
+//     item.started, authoritative and persisted on item.completed. The
 //     command-output preview rides ItemDelta.toolOutput, whose terminal value
-//     is result.output (§5.2) — clients must not treat the streamed
+//     is result.output — clients must not treat the streamed
 //     accumulation as the source of truth.
 //   - Tool-level failure does NOT go in Result — it rides the toolCall
-//     Item's Error + status:"incomplete" (§4.3 / §8).
+//     Item's Error + status:"incomplete".
 type ToolInvocation struct {
 	Name      string         `json:"name"`             // stable tool identity; MCP names are authored by mcpserver.ToolName
 	Arguments map[string]any `json:"arguments"`        // parsed JSON object (always present; never a JSON string)
