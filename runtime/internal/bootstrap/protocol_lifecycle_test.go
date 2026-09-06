@@ -425,7 +425,6 @@ func protocolRuntimeConfig(t *testing.T, stores *persistence.Bundle, model chat.
 		stores,
 		testChatResolver(client),
 		stores.Providers,
-		NewHookResolver(stores.DataDirectory, stores.Trust),
 		"sha256:0000000000000000000000000000000000000000000000000000000000000000",
 	)
 	cfg.UserHome = stores.DataDirectory

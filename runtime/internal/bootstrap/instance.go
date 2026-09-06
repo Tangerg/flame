@@ -110,8 +110,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	}
 	setupOwned = false
 
-	hookResolver := NewHookResolver(cfg.UserHome, stores.Trust)
-	assemblyConfig := ComposeConfig(settings, stores, chatResolver, providers, hookResolver, buildID)
+	assemblyConfig := ComposeConfig(settings, stores, chatResolver, providers, buildID)
 	ownershipLeases, err := ownershipadapter.New(stores.DataDirectory)
 	if err != nil {
 		return nil, config.Settings{}, err

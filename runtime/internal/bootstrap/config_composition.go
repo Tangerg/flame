@@ -15,7 +15,7 @@ import (
 
 // ComposeConfig translates process settings and already-opened adapters into
 // the construction input consumed by assembly.
-func ComposeConfig(cfg config.Settings, stores *persistence.Bundle, resolver ChatResolver, providers models.ProviderRegistry, hooks HookResolver, buildID string) Config {
+func ComposeConfig(cfg config.Settings, stores *persistence.Bundle, resolver ChatResolver, providers models.ProviderRegistry, buildID string) Config {
 	return Config{
 		Stores:                   stores,
 		Resources:                []TerminalResource{stores},
@@ -32,7 +32,6 @@ func ComposeConfig(cfg config.Settings, stores *persistence.Bundle, resolver Cha
 		ProviderRegistry:         providers,
 		Provider:                 cfg.Provider,
 		Model:                    cfg.Model,
-		HooksResolver:            hooks,
 		RecipesGlobalDir:         filepath.Join(stores.DataDirectory, "recipes"),
 		CheckpointDir:            filepath.Join(stores.DataDirectory, "checkpoints"),
 		ToolResultOffloadEnabled: cfg.ToolResultOffload.Enabled,

@@ -2,6 +2,8 @@ package workspace
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -13,7 +15,7 @@ type HookInspector interface {
 	Inspect(ctx context.Context, cwd string) (apphooks.Inspection, error)
 }
 
-// HookTrustStore mutates project hook trust. nil leaves trust read-only.
+// HookTrustStore durably mutates project hook trust.
 type HookTrustStore interface {
 	Trust(ctx context.Context, projectRoot string) error
 	Untrust(ctx context.Context, projectRoot string) error
@@ -39,8 +41,28 @@ type ResolvedHook struct {
 	Active bool
 }
 
-func NewHooks(scope *Scope, inspector HookInspector, trust HookTrustStore, invalidations invalidation.Publish) *Hooks {
-	return &Hooks{scope: scope, inspector: inspector, trust: trust, invalidations: invalidations}
+func NewHooks(scope *Scope, inspector HookInspector, trust HookTrustStore, invalidations invalidation.Publish) (*Hooks, error) {
+	for _, dependency := range []struct {
+		name  string
+		value any
+	}{
+		{name: "scope", value: scope},
+		{name: "inspector", value: inspector},
+		{name: "trust store", value: trust},
+	} {
+		value := reflect.ValueOf(dependency.value)
+		missing := !value.IsValid()
+		if !missing {
+			switch value.Kind() {
+			case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+				missing = value.IsNil()
+			}
+		}
+		if missing {
+			return nil, fmt.Errorf("workspace: hooks %s is required", dependency.name)
+		}
+	}
+	return &Hooks{scope: scope, inspector: inspector, trust: trust, invalidations: invalidations}, nil
 }
 
 // Inspect returns lifecycle hooks and their effective activation state.
@@ -48,9 +70,6 @@ func (h *Hooks) Inspect(ctx context.Context, cwd string) (HookInspection, error)
 	root, err := h.scope.root(cwd)
 	if err != nil {
 		return HookInspection{}, err
-	}
-	if h.inspector == nil {
-		return HookInspection{}, nil
 	}
 	inspection, err := h.inspector.Inspect(ctx, root)
 	if err != nil {
@@ -76,9 +95,6 @@ func (h *Hooks) SetProjectTrust(ctx context.Context, projectRoot string, trusted
 	root, err := h.scope.root(projectRoot)
 	if err != nil {
 		return err
-	}
-	if h.trust == nil {
-		return nil
 	}
 	var changeErr error
 	if trusted {

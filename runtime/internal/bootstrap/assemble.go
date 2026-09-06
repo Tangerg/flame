@@ -343,9 +343,6 @@ func buildAssemblyCore(
 	workspaceDiscovery := workspace.NewDiscovery(
 		workspaceServices.scope, sessionCoordinator, promptsource.AgentDocs{}, promptsource.NewWorkspaceRecipes(cfg.RecipesGlobalDir),
 	)
-	workspaceHooks := workspace.NewHooks(
-		workspaceServices.scope, cfg.HooksResolver, cfg.Stores.Trust, policy.invalidations.Publish,
-	)
 	workspaceWatch := workspace.NewGitWatch(
 		workspaceServices.scope,
 		workspaceadapter.NewGitWatcher(lifetime.context),
@@ -389,7 +386,7 @@ func buildAssemblyCore(
 				WorkspaceDiscovery:     workspaceDiscovery,
 				WorkspaceKnowledge:     workspaceServices.knowledge,
 				WorkspaceSkills:        workspaceServices.skills,
-				WorkspaceHooks:         workspaceHooks,
+				WorkspaceHooks:         workspaceServices.hooks,
 				WorkspaceWatch:         workspaceWatch,
 				WorkspaceAuthoredWatch: workspaceServices.authoredWatch,
 				Schedules:              policy.schedules,

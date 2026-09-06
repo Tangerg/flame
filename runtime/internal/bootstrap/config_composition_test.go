@@ -14,7 +14,7 @@ func TestComposeConfigInjectsDurableRuntimePolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = stores.Close() })
-	got := ComposeConfig(config.Settings{}, stores, nil, nil, nil, buildID)
+	got := ComposeConfig(config.Settings{}, stores, nil, nil, buildID)
 	if got.BuildID != buildID {
 		t.Fatalf("BuildID = %q, want %q", got.BuildID, buildID)
 	}

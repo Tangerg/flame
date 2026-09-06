@@ -73,6 +73,16 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 			authoredWatcher = inertAuthoredWatcher{}
 		}
 	}
+	if cfg.Hooks == nil {
+		cfg.Hooks = emptyHookInspector{}
+	}
+	if cfg.Trust == nil {
+		cfg.Trust = &fakeHookTrust{}
+	}
+	hooks, err := workspaceapp.NewHooks(roots, cfg.Hooks, cfg.Trust, nil)
+	if err != nil {
+		panic(err)
+	}
 	authoredWatch := workspaceapp.NewAuthoredWatch(roots, workspaceadapter.Resolver{}, authoredWatcher)
 	return workspaceSurfaces{
 		roots:         roots,
@@ -81,7 +91,7 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 		discovery:     workspaceapp.NewDiscovery(roots, nil, nil, cfg.Recipes),
 		knowledge:     workspaceapp.NewKnowledge(roots, workspaceadapter.Resolver{}, cfg.Knowledge, authoredWatch, nil),
 		skills:        workspaceapp.NewSkills(roots, cfg.Skills, cfg.Curator, cfg.Proposals, authoredWatch, nil),
-		hooks:         workspaceapp.NewHooks(roots, cfg.Hooks, cfg.Trust, nil),
+		hooks:         hooks,
 		watch:         workspaceapp.NewGitWatch(roots, watcher),
 		authoredWatch: authoredWatch,
 	}

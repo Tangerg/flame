@@ -41,7 +41,6 @@ func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T)
 		stores,
 		testChatResolver(client),
 		stores.Providers,
-		NewHookResolver(stores.DataDirectory, stores.Trust),
 		"sha256:0000000000000000000000000000000000000000000000000000000000000000",
 	)
 	cfg.UserHome = home

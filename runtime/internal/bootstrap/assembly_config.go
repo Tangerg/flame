@@ -103,11 +103,6 @@ type Config struct {
 	Provider string
 	Model    string
 
-	// HooksResolver resolves user-configured lifecycle hooks for a Run's cwd.
-	// nil disables hooks; execution no-ops every hook seam. The composition root
-	// builds the adapter-backed resolver from the storage home + trust store.
-	HooksResolver HookResolver
-
 	// RecipesGlobalDir is the global recipes directory (<FLAME_HOME>/runtime/recipes) the
 	// recipes.list discovery layers under a project's .flame/recipes.
 	// Empty means only project recipes are listed. The composition root sets it.

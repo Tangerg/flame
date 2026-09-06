@@ -11,16 +11,40 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 )
 
-func TestRuntimeInspectReturnsEmptyWhenUnconfigured(t *testing.T) {
-	c := NewHooks(NewScope("", "", testPaths{}), nil, nil, nil)
+func TestNewHooksRequiresCompleteDependencies(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		scope     *Scope
+		inspector HookInspector
+		trust     HookTrustStore
+	}{
+		{name: "scope", inspector: &fakeHookInspector{}, trust: &fakeHookTrust{}},
+		{name: "inspector", scope: NewScope("", "", testPaths{}), trust: &fakeHookTrust{}},
+		{name: "typed nil inspector", scope: NewScope("", "", testPaths{}), inspector: (*fakeHookInspector)(nil), trust: &fakeHookTrust{}},
+		{name: "trust", scope: NewScope("", "", testPaths{}), inspector: &fakeHookInspector{}},
+		{name: "typed nil trust", scope: NewScope("", "", testPaths{}), inspector: &fakeHookInspector{}, trust: (*fakeHookTrust)(nil)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if hooks, err := NewHooks(test.scope, test.inspector, test.trust, nil); err == nil || hooks != nil {
+				t.Fatalf("NewHooks = (%v, %v), want incomplete construction rejected", hooks, err)
+			}
+		})
+	}
+}
 
-	got, err := c.Inspect(context.Background(), "/repo")
+func newHooks(t *testing.T, scope *Scope, inspector HookInspector, trust HookTrustStore, publish invalidation.Publish) *Hooks {
+	t.Helper()
+	if inspector == nil {
+		inspector = &fakeHookInspector{}
+	}
+	if trust == nil {
+		trust = &fakeHookTrust{}
+	}
+	hooks, err := NewHooks(scope, inspector, trust, publish)
 	if err != nil {
-		t.Fatalf("Inspect: %v", err)
+		t.Fatal(err)
 	}
-	if got.ProjectRoot != "" || got.ProjectTrusted || len(got.Hooks) != 0 {
-		t.Fatalf("Inspect = %+v, want empty inspection", got)
-	}
+	return hooks
 }
 
 func TestRuntimeInspectUsesInspectionPort(t *testing.T) {
@@ -36,7 +60,7 @@ func TestRuntimeInspectUsesInspectionPort(t *testing.T) {
 			}},
 		},
 	}
-	c := NewHooks(NewScope("", "", testPaths{}), inspector, nil, nil)
+	c := newHooks(t, NewScope("", "", testPaths{}), inspector, nil, nil)
 
 	got, err := c.Inspect(context.Background(), "/repo")
 	if err != nil {
@@ -51,7 +75,7 @@ func TestRuntimeInspectUsesInspectionPort(t *testing.T) {
 }
 
 func TestRuntimeInspectRejectsInvalidInspection(t *testing.T) {
-	c := NewHooks(NewScope("", "", testPaths{}), &fakeHookInspector{inspection: apphooks.Inspection{
+	c := newHooks(t, NewScope("", "", testPaths{}), &fakeHookInspector{inspection: apphooks.Inspection{
 		ProjectRoot: "/other",
 	}}, nil, nil)
 
@@ -73,7 +97,7 @@ func (f *fakeHookInspector) Inspect(_ context.Context, cwd string) (apphooks.Ins
 
 func TestRuntimeInspectPreservesInspectorFailure(t *testing.T) {
 	wantErr := errors.New("hook trust unavailable")
-	c := NewHooks(NewScope("", "", testPaths{}), &fakeHookInspector{err: wantErr}, nil, nil)
+	c := newHooks(t, NewScope("", "", testPaths{}), &fakeHookInspector{err: wantErr}, nil, nil)
 
 	if _, err := c.Inspect(context.Background(), "/repo"); !errors.Is(err, wantErr) {
 		t.Fatalf("Inspect error = %v, want %v", err, wantErr)
@@ -83,7 +107,7 @@ func TestRuntimeInspectPreservesInspectorFailure(t *testing.T) {
 func TestHookTrustPublishesOnlyCommittedChanges(t *testing.T) {
 	trust := &fakeHookTrust{}
 	var notices []invalidation.Notice
-	hooks := NewHooks(
+	hooks := newHooks(t,
 		NewScope("", "", testPaths{}), nil, trust,
 		func(notice invalidation.Notice) { notices = append(notices, notice) },
 	)

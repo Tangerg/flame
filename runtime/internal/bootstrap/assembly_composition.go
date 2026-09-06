@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
+	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -98,6 +99,8 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 // members share one resolved scope and one authored-resource observer.
 type workspaceComposition struct {
 	scope            *workspace.Scope
+	hookResolver     *adapterhooks.Resolver
+	hooks            *workspace.Hooks
 	agentMemory      *agentmemoryapp.Coordinator
 	memoryCuration   *agentmemoryapp.Curation
 	authoredWatch    *workspace.AuthoredWatch
@@ -113,6 +116,14 @@ func buildWorkspaceComposition(
 	publish invalidation.Publish,
 ) (workspaceComposition, error) {
 	scope := workspace.NewScope(cfg.DefaultWorkspacePath, cfg.UserHome, workspaceadapter.Resolver{})
+	hookResolver, err := NewHookResolver(cfg.UserHome, cfg.Stores.Trust)
+	if err != nil {
+		return workspaceComposition{}, fmt.Errorf("runtime: build hook resolver: %w", err)
+	}
+	hooks, err := workspace.NewHooks(scope, hookResolver, cfg.Stores.Trust, publish)
+	if err != nil {
+		return workspaceComposition{}, fmt.Errorf("runtime: build hook management: %w", err)
+	}
 	authoredWatcher, err := workspaceadapter.NewAuthoredWatcher(
 		cfg.Stores.DataDirectory,
 		cfg.UserHome,
@@ -158,6 +169,8 @@ func buildWorkspaceComposition(
 	}
 	return workspaceComposition{
 		scope:          scope,
+		hookResolver:   hookResolver,
+		hooks:          hooks,
 		agentMemory:    memoryReview,
 		memoryCuration: memoryCuration,
 		authoredWatch:  authoredWatch,
@@ -247,7 +260,7 @@ func buildExecutionComposition(
 		AgentMemorySearch: modelServices.agentMemoryRead,
 		Plan:              cfg.Stores.Plan,
 		Goal:              policy.goalReader,
-		Hooks:             cfg.HooksResolver,
+		Hooks:             workspaceServices.hookResolver,
 	})
 	transientSessions := agentexec.NewTransientSessionState(
 		workingContexts,

@@ -120,3 +120,9 @@ func TestListHooksPreservesInspectionFailure(t *testing.T) {
 		t.Fatalf("ListHooks error = %v, want %v", err, wantErr)
 	}
 }
+
+type emptyHookInspector struct{}
+
+func (emptyHookInspector) Inspect(_ context.Context, cwd string) (apphooks.Inspection, error) {
+	return apphooks.Inspection{ProjectRoot: cwd}, nil
+}
