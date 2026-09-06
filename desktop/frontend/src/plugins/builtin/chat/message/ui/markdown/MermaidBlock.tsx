@@ -1,6 +1,7 @@
+import * as stylex from "@stylexjs/stylex";
 import { useEffect, useMemo, useState } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import { IconButton, LightboxDialog, ShikiCodeBlock } from "@/ui";
+import { IconButton, LightboxDialog, ShikiCodeBlock, reveal } from "@/ui";
 import { measureMermaidRender } from "@/lib/metrics";
 import { useT } from "@/lib/i18n";
 import { useTokenRevision } from "@/lib/appearance";
@@ -106,7 +107,10 @@ export function MermaidBlock({ code }: Props) {
     const svg = rendered.svg!;
     return (
       <div
-        className="group/mermaid relative isolate my-3.5 min-h-25 w-full rounded-lg border-[0.5px] border-field-strong bg-surface"
+        className={cn(
+          stylex.props(reveal.host).className,
+          "relative isolate my-3.5 min-h-25 w-full rounded-lg border-[0.5px] border-field-strong bg-surface",
+        )}
         data-markdown-copy="code-block"
         data-markdown-copy-text={fencedCode}
       >
@@ -120,7 +124,10 @@ export function MermaidBlock({ code }: Props) {
         />
         <div
           data-reveal="hover"
-          className="absolute top-1 right-1 z-1 flex gap-1 pointer-events-none opacity-0 transition-opacity group-hover/mermaid:pointer-events-auto group-hover/mermaid:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100"
+          className={cn(
+            "absolute top-1 right-1 z-1 flex gap-1 transition-opacity",
+            stylex.props(reveal.shown).className,
+          )}
           data-markdown-copy="exclude"
         >
           <LightboxDialog

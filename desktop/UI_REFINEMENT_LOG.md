@@ -7120,3 +7120,130 @@ Tailwind 下调用方能盖掉它，StyleX 下盖不掉，四个调用点的内�
 
 `icon-button`（59 个调用点、25 处 override），但其中多处依赖
 `group-hover/output:` 一类祖先态 —— 先把那批数出来，能迁的先迁。
+
+---
+
+## Round 123 — 「显形」：一个事实的十一种拼法
+
+### 计划（写在改代码之前）
+
+`button` / `chip` / `icon-button` 三个最大的剩余 atom 全部卡在祖先态上 ——
+StyleX 没有祖先选择器。而 `globals.css` 自己早就写下了问题：
+
+> The reveal itself is **eleven different class lists** — which group, which
+> pseudo-class, opacity or visibility — so what is marked here is the one part
+> that is the same decision everywhere.
+
+`data-reveal` 只认领了其中"触屏上一律显形"那一小块，**机制本身仍是十一份**。
+
+### 机制：自定义属性通道（已实测）
+
+StyleX 能设自定义属性、也能读 `var()`，而自定义属性天然继承 —— 于是宿主
+发布自己的指针/焦点状态，任意深度的后代读它，全程不需要祖先选择器：
+
+```
+.x1rzenz2:hover{--reveal:1}
+.x11qyy8r:focus-within{--reveal:1}
+.x15c1u7l:not(#\#):not(#\#):not(#\#){opacity:var(--reveal,1)}
+```
+
+回退值是「显形」，所以不在任何宿主里的目标就是可见的 —— 一个安全的默认。
+
+### 证据：十一处的差异只在"哪些属性参与"
+
+| 参与的属性 | 处数 |
+| --- | --- |
+| opacity + pointer-events | 8 |
+| 仅 opacity | 2 |
+| opacity + **visibility** | 1（`context-dock`） |
+| 另加 scale | 1（`chip`） |
+| 反向（`rest`：显形时让位） | 1（`navigation-row`） |
+
+触发条件也不齐：`group-hover` 八处、`group-focus-visible` 两处、
+`focus-within` 两处、**`context-dock` 一处都没有**。
+
+### 一个我先判错、读代码后更正的点
+
+初看 `context-dock` 的关闭按钮用 `invisible`（`visibility: hidden`）
+且没有任何 focus 触发条件，我判它是"键盘永远关不掉一个 dock tab"的缺陷。
+读了那里的注释后更正 —— 它是**有意为之**：
+
+> a focusable sibling inside a `tablist` is an unallowed child
+> (axe `aria-required-children`, critical) … Delete/Backspace on the focused
+> tab is the ARIA practice for a closable tab and needs no extra stop in the
+> tab order.
+
+× 被刻意排除出 tab 顺序，键盘另有 Delete/Backspace 通路。所以机制要容纳
+**两种藏法**，而不是把它们抹平：
+
+- 用 `opacity` 藏 —— 仍可聚焦，`:focus-within` 会把它显出来（十处）。
+- 用 `visibility` 藏 —— **不可聚焦**，是纯指针可供性，键盘另有通路（一处）。
+
+两者的区别不是风格，是"这个控件该不该占一个 tab 停靠点"。
+
+### 改动
+
+`ui/atoms/reveal.ts`：`host` / `shown` / `displaced` 三个样式。
+宿主发布四个值（`--reveal` / `--reveal-events` / `--rest` / `--rest-events`），
+十一处调用点各自换成其中一个。未迁的 Tailwind 文件用
+`stylex.props(reveal.host).className` 取类名，和浮层簇同一条路。
+
+### 验收标准
+
+十一份 class 列表减到一份；`context-dock` 的关闭按钮键盘可达；
+golden 零位移；17 项 `check:*` 全绿。
+
+### 四轮迭代才收敛，每一次都是同一类根因
+
+这一轮的 golden 从 **80 张位移**跌到 0，中间四次全是"同一个属性被两处声明"：
+
+| 轮 | 位移 | 根因 |
+| --- | --- | --- |
+| 1 | 80 | 通道自带 `transitionProperty`，压掉了元素**自己的过渡列表**（`Button` 的 `background-color,border-color,color,scale`、chip 的 `scale`） |
+| 2 | 79 | `MessageBlock` 的动作区拿了 `reveal.shown` 却**没有宿主** —— 回退值是"显形"，于是消息动作变成常驻可见 |
+| 3 | 5 | 触屏回退（`[data-reveal]` 全局规则）被生成规则压过；`CompactionBlock` 展开时的 `opacity-100` 同理；dock 的 × 被 `:focus-within` 显了出来，而它**刻意**不该 |
+| 4 | 3 | `group/choice` 我判成死标记删了 —— 它其实被 `group-data-[checked]/choice:` 消费，我的 grep 只匹配了 hover/focus |
+
+第 4 条是我的判断错误：**"没有消费方"这个结论必须用足够宽的模式验证**。
+最终用 `group-[a-z-]+(-\[[^]]*\])?/[a-z-]+` 复查了全部命名组。
+
+沉淀成三条：
+
+1. **过渡列表属于元素，不属于通道。** 一个 `transition-property` 声明就是全部；
+   通道只决定 opacity/pointer-events 取什么值，过渡留在各自原本的位置。
+2. **回退值要选安全的一侧，但每个目标都必须真的有宿主。** 回退是"显形"，
+   所以漏配宿主的后果是"永远显形"而不是"永远消失" —— 前者 golden 一眼看见，
+   后者会静默地藏起一个功能。这个选择是刻意的。
+3. **触屏回退随通道一起走。** `[data-reveal]` 那条全局规则出不了 StyleX 的特异性，
+   所以每个目标自带 `@media (hover: none)`。全局规则留着，
+   因为 `MarkdownTable` 还没迁。
+
+### 结果
+
+| | Before | After |
+| --- | --- | --- |
+| 显形的写法 | **11 份** class 列表 | 1 个通道，4 个样式 |
+| 触发条件 | `group-hover` 8 / `group-focus-visible` 2 / `focus-within` 2 / 无 1 | 统一 `:hover` + `:focus-within`（指针可供性只认 `:hover`） |
+| 死的命名组 | `group/code`、`group/code-snippet` | 删除 |
+| 挡住 `button` 的东西 | 祖先态无法表达 | **已解开** |
+
+### 留下的一处例外（有记录的理由）
+
+`activity-disclosure` 的 chevron 要的是**兄弟节点**的 `:focus-visible` ——
+自定义属性只能向下继承，去不了旁边。它原有的注释已经写明
+`:has(:focus-visible)` 在 Chromium 上匹配但不触发子树失效，所以那条路也不通。
+这一处保留 Tailwind 拼法，header 同时挂上通道供 `ToolCard` 的动作使用。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650，零位移** |
+| 守卫 | 17 项 `check:*` 全绿（含 `cascade` 与那两条触屏 / 键盘闭环测试） |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+### 下一轮方向
+
+`button` 终于可以迁了 —— `chip` 已经不再需要 `group-hover:`。
+迁完 `button` 才轮得到 `icon-button`（59 个调用点，25 处 override）。
+「跟随染色」那一族（4 处 `group-hover:text-*` / `bg-*` / `scale-*`）是另一件事。

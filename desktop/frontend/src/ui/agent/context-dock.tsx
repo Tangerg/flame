@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import {
   useLayoutEffect,
   useRef,
@@ -10,6 +11,7 @@ import { cn } from "@/lib/classNames";
 import { Icon, type IconName } from "@/ui/icons";
 import { ContextMenu } from "@/ui/atoms/menu";
 import { IconButton } from "@/ui/atoms/icon-button";
+import { reveal } from "@/ui/atoms/reveal";
 import { ResizeHandle, type ResizeHandleProps } from "@/ui/atoms/resize-handle";
 import { TabsPrimitive } from "@/ui/primitives";
 
@@ -179,7 +181,8 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                 close();
               }}
               className={cn(
-                "group flex h-[var(--dock-tab-height)] min-w-0 shrink-0 items-center rounded-[var(--dock-tab-radius)]",
+                stylex.props(reveal.host).className,
+                "flex h-[var(--dock-tab-height)] min-w-0 shrink-0 items-center rounded-[var(--dock-tab-radius)]",
                 "text-fg-muted transition-[background-color,color,opacity] duration-[var(--dur-color)] ease-out",
                 "hover:bg-hover hover:text-fg focus-within:text-fg",
                 "data-[active]:bg-[var(--dock-tab-active-surface)] data-[active]:text-fg",
@@ -226,7 +229,10 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                   quiet
                   title={tab.closeLabel}
                   onClick={close}
-                  className="mr-0.5 invisible opacity-0 transition-opacity duration-[var(--dur-fast)] group-hover:visible group-hover:opacity-100"
+                  className={cn(
+                    "mr-0.5 transition-opacity duration-[var(--dur-fast)]",
+                    stylex.props(reveal.pointerAffordance).className,
+                  )}
                 />
               )}
             </div>

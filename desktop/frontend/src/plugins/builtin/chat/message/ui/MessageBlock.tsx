@@ -1,3 +1,5 @@
+import * as stylex from "@stylexjs/stylex";
+import { reveal } from "@/ui/atoms/reveal";
 import type { BlockCtx } from "./BlockRenderer";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import { memo, useMemo, type ReactNode } from "react";
@@ -104,7 +106,13 @@ function MessageBlockInner({
         owner={visibleMaterialOwner}
         generation={visibleMaterialGeneration}
       >
-        <div className={cn("group relative flex min-w-0 flex-col gap-2", isUser && "items-end")}>
+        <div
+          className={cn(
+            stylex.props(reveal.host).className,
+            "relative flex min-w-0 flex-col gap-2",
+            isUser && "items-end",
+          )}
+        >
           <h2 className="sr-only select-none">{roleLabel}</h2>
           {msg.phase === "commentary" ? (
             messageContent
@@ -136,7 +144,6 @@ export const MessageBlock = memo(MessageBlockInner);
 
 const ACTIONS_VISIBILITY: Record<Exclude<MessageActionsVisibility, "absent">, string> = {
   hidden: "invisible opacity-0",
-  hover:
-    "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100",
+  hover: stylex.props(reveal.shown).className ?? "",
   pinned: "opacity-100",
 };

@@ -1,5 +1,6 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { DiffStat, IconButton, StatusDot, knownIconName } from "@/ui";
+import { DiffStat, IconButton, StatusDot, knownIconName, reveal } from "@/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { type ToolMetaItem } from "@/plugins/builtin/agent/public/messagePresentation";
 import { cn } from "@/lib/classNames";
@@ -83,7 +84,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
               reportPluginError(owner, "command", err, `tool action: ${action.id}`);
             });
           }}
-          className="pointer-events-none opacity-0 transition-opacity group-hover/activity-header:pointer-events-auto group-hover/activity-header:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
+          className={cn("transition-opacity", stylex.props(reveal.shown).className)}
         />
       ))}
       open={expanded}

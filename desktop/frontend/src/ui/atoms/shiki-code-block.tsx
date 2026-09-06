@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useEffect, useState, type ReactNode } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
@@ -6,6 +7,7 @@ import { getHighlighter, reportHighlightFailure, resolveLang } from "@/lib/highl
 import { getCachedHighlight, setCachedHighlight } from "@/lib/highlight/shikiCache";
 import { useShikiTheme } from "@/lib/highlight/useCodeHighlight";
 import { cn } from "@/lib/classNames";
+import { reveal } from "./reveal";
 import { toggleCodeWrapPreference, useCodeWrapPreference } from "./codeWrapPreference";
 import { useT } from "@/lib/i18n";
 import { IconButton } from "./icon-button";
@@ -100,9 +102,13 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
       data-markdown-copy="code-block"
       data-markdown-copy-text={code}
       className={cn(
-        "shiki-block group/code my-3.5 overflow-hidden font-mono text-code",
+        "shiki-block my-3.5 overflow-hidden font-mono text-code",
+        // Only the preview hides its copy button until pointed at; a full code block keeps it.
         isPreview
-          ? "group/code-snippet rounded-lg border-[0.5px] border-field bg-transparent"
+          ? cn(
+              stylex.props(reveal.host).className,
+              "rounded-lg border-[0.5px] border-field bg-transparent",
+            )
           : "rounded-lg bg-sunken",
       )}
     >
@@ -140,8 +146,7 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
           title={copied ? t("message.code.copied") : t("message.code.copy")}
           className={cn(
             copied ? "text-success" : "text-fg-faint hover:bg-hover hover:text-fg",
-            isPreview &&
-              "pointer-events-none opacity-0 transition-opacity group-hover/code-snippet:pointer-events-auto group-hover/code-snippet:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100",
+            isPreview && cn("transition-opacity", stylex.props(reveal.shown).className),
           )}
         />
       </div>

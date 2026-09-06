@@ -1,26 +1,25 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { Button, type ButtonProps, Icon, type IconName } from "@/ui";
+import { Button, Icon, reveal, type ButtonProps, type IconName } from "@/ui";
 import { Tooltip } from "@/ui/atoms/tooltip";
 import { AgentOverflowLabel } from "./overflow-label";
 
-const ROW_GROUP = "group/row";
+const ROW_GROUP = stylex.props(reveal.host).className;
 
 // The SAME conditions as `HOVER_ACTION` below, and it has to be the same: one is what the
 // other displaces, so a state that reveals the action without retiring this leaves the row
 // showing both — which happened whenever focus landed on the action itself, because this end
 // used to watch the TRIGGER's `:focus-visible` while the other watched the row's
 // `:focus-within`. Nobody chose that asymmetry; the two ends were simply written apart.
-const RESTING_GLYPH =
-  "transition-opacity group-hover/row:pointer-events-none group-hover/row:opacity-0 group-focus-within/row:pointer-events-none group-focus-within/row:opacity-0";
+const RESTING_GLYPH = cn("transition-opacity", stylex.props(reveal.displaced).className);
 
 // The action is the caller's node in a sibling span, so only the SPAN can react to it
 // having focus — and `:has(:focus-visible)` is not a working way to say that (Chromium
 // matches it but does not invalidate on the focus change). `:focus-within` therefore
 // stays here: it reveals the action a moment longer than it should after a click, which
 // is the lesser of the two, because the alternative hides it from the keyboard.
-const HOVER_ACTION =
-  "pointer-events-none opacity-0 transition-opacity group-hover/row:pointer-events-auto group-hover/row:opacity-100 group-focus-within/row:pointer-events-auto group-focus-within/row:opacity-100";
+const HOVER_ACTION = cn("transition-opacity", stylex.props(reveal.shown).className);
 
 interface AgentRowProps extends Omit<ButtonProps, "children" | "variant" | "size" | "press"> {
   active?: boolean;

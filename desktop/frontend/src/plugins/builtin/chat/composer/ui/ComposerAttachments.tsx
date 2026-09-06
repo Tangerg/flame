@@ -1,8 +1,10 @@
+import * as stylex from "@stylexjs/stylex";
+import { cn } from "@/lib/classNames";
 import type { ComposerImage, PastedText } from "@/plugins/builtin/chat/composer/public/attachments";
 import { AnimatePresence, motion } from "motion/react";
 import { chipPresence } from "@/lib/motion";
 import { basename } from "@/lib/path";
-import { Chip, Icon, IconButton, Tooltip } from "@/ui";
+import { Chip, Icon, IconButton, Tooltip, reveal } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { draftMentions, removeMention } from "../application/draftContext";
 
@@ -77,7 +79,12 @@ function DraftContext({ value, onChange }: { value: string; onChange: (v: string
 function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () => void }) {
   const t = useT();
   return (
-    <div className="group relative h-14 w-14 overflow-hidden rounded-[var(--composer-attachment-radius)] media-edge">
+    <div
+      className={cn(
+        stylex.props(reveal.host).className,
+        "relative h-14 w-14 overflow-hidden rounded-[var(--composer-attachment-radius)] media-edge",
+      )}
+    >
       <img
         src={`data:${image.mime};base64,${image.data}`}
         alt={image.name ?? ""}
@@ -91,7 +98,10 @@ function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () =>
         aria-label={t("composer.removeImage")}
         onClick={onRemove}
         data-reveal="hover"
-        className="absolute right-0.5 top-0.5 rounded-full bg-media-scrim text-on-media pointer-events-none opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
+        className={cn(
+          "absolute right-0.5 top-0.5 rounded-full bg-media-scrim text-on-media transition-opacity",
+          stylex.props(reveal.shown).className,
+        )}
       />
     </div>
   );

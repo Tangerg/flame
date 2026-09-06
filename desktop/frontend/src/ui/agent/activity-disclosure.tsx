@@ -1,3 +1,5 @@
+import * as stylex from "@stylexjs/stylex";
+import { reveal } from "@/ui/atoms/reveal";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { Children, useId } from "react";
 import { cn } from "@/lib/classNames";
@@ -89,6 +91,9 @@ export function AgentActivityDisclosure({
     >
       <div
         className={cn(
+          // Publishes the reveal channel for the actions the card hangs here, and keeps
+          // `group/activity-header` for the chevron below, which cannot use the channel.
+          stylex.props(reveal.host).className,
           "group/activity-header flex min-w-0 items-center",
           stickyHeader && ["sticky top-0 z-1", shell === "line" ? "bg-canvas" : "bg-card"],
         )}

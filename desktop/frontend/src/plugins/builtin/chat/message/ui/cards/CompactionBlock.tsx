@@ -1,7 +1,12 @@
+import * as stylex from "@stylexjs/stylex";
 import { useId, useState } from "react";
-import { Collapsible, Icon, TextButton } from "@/ui";
+import { Collapsible, Icon, TextButton, reveal } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
+
+const styles = stylex.create({
+  open: { rotate: "180deg", opacity: 1 },
+});
 
 export function CompactionBlock({ summary }: { summary: string }) {
   const t = useT();
@@ -18,7 +23,7 @@ export function CompactionBlock({ summary }: { summary: string }) {
         aria-label={label}
         aria-expanded={open}
         aria-controls={panelId}
-        className="group/compaction max-w-full self-start py-1.5"
+        className={cn(stylex.props(reveal.host).className, "max-w-full self-start py-1.5")}
       >
         <Icon name="minimize" size="xs" className="shrink-0 text-fg-faint" />
         <span className="min-w-0 truncate">{label}</span>
@@ -27,8 +32,10 @@ export function CompactionBlock({ summary }: { summary: string }) {
           size="xs"
           data-reveal="hover"
           className={cn(
-            "shrink-0 text-fg-faint opacity-0 transition-[opacity,transform] duration-[var(--dur-fast)] group-hover/compaction:opacity-100 group-focus-visible/compaction:opacity-100",
-            open && "rotate-180 opacity-100",
+            "shrink-0 text-fg-faint transition-[opacity,transform] duration-[var(--dur-fast)]",
+            // The open state has to be stated beside the reveal, not on top of it: two rules for
+            // one property in different layers means the generated one simply wins.
+            stylex.props(reveal.shown, open && styles.open).className,
           )}
         />
       </TextButton>

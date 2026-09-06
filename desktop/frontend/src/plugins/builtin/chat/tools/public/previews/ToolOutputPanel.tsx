@@ -1,9 +1,10 @@
+import * as stylex from "@stylexjs/stylex";
 import { useMemo, useState } from "react";
 import { hasAnsi } from "@/lib/ansi";
 import { cn } from "@/lib/classNames";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { useT } from "@/lib/i18n";
-import { AnsiText, Icon, IconButton, TextButton, Well } from "@/ui";
+import { AnsiText, Icon, IconButton, TextButton, Well, reveal } from "@/ui";
 import { LinkedText } from "@/plugins/builtin/chat/file-references/public/LinkedText";
 import { PreviewPlaceholder } from "./PreviewPlaceholder";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
@@ -64,7 +65,7 @@ export function ToolOutputPanel({
 
   return (
     <div className="overflow-hidden rounded-sm bg-sunken">
-      <div className="group/output relative">
+      <div className={cn(stylex.props(reveal.host).className, "relative")}>
         <div className="overflow-x-auto px-3 py-2.5 font-mono text-code leading-relaxed text-fg-soft [font-variant-ligatures:none]">
           {shown.map((line, index) => (
             <div key={index} className="whitespace-pre-wrap wrap-anywhere">
@@ -79,8 +80,8 @@ export function ToolOutputPanel({
           title={t(copied ? "tools.output.copied" : "tools.output.copy")}
           onClick={() => void copy()}
           className={cn(
-            "pointer-events-none absolute right-1 top-1 opacity-0 transition-opacity",
-            "group-hover/output:pointer-events-auto group-hover/output:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100",
+            "absolute right-1 top-1 transition-opacity",
+            stylex.props(reveal.shown).className,
           )}
         />
       </div>
