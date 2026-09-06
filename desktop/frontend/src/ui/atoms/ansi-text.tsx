@@ -1,26 +1,39 @@
+import * as stylex from "@stylexjs/stylex";
 import { type AnsiSpan, type AnsiTone, parseAnsi } from "@/lib/ansi";
-import { cn } from "@/lib/classNames";
+import { color } from "@/styles/tokens.stylex";
 
 /** What an SGR colour means HERE. The parser answers in tones so this stays the one place a
  *  tone becomes a token — two surfaces render command output, and a second copy of this map is
  *  a second answer to "what colour is a failure". */
-const TONE_CLASS: Record<AnsiTone, string> = {
-  negative: "text-negative",
-  success: "text-success",
-  warning: "text-warning",
-  info: "text-info",
-  accent: "text-accent",
-  muted: "text-fg-faint",
+const styles = stylex.create({
+  negative: { color: color.negative },
+  success: { color: color.success },
+  warning: { color: color.warning },
+  info: { color: color.info },
+  accent: { color: color.accent },
+  muted: { color: color.fgFaint },
+  bold: { fontWeight: 600 },
+  dim: { opacity: 0.7 },
+  underline: { textDecorationLine: "underline" },
+});
+
+/** Exhaustive against the tone union: a tone added to the parser and not answered here is a
+ *  compile error, not a span that quietly renders in the surrounding ink. */
+const TONE: Record<AnsiTone, (typeof styles)[keyof typeof styles]> = {
+  negative: styles.negative,
+  success: styles.success,
+  warning: styles.warning,
+  info: styles.info,
+  accent: styles.accent,
+  muted: styles.muted,
 };
 
-function spanClass(span: AnsiSpan): string | undefined {
-  return (
-    cn(
-      span.tone && TONE_CLASS[span.tone],
-      span.bold && "font-semibold",
-      span.dim && "opacity-70",
-      span.underline && "underline",
-    ) || undefined
+function spanStyle(span: AnsiSpan) {
+  return stylex.props(
+    span.tone ? TONE[span.tone] : null,
+    span.bold ? styles.bold : null,
+    span.dim ? styles.dim : null,
+    span.underline ? styles.underline : null,
   );
 }
 
@@ -29,7 +42,7 @@ export function AnsiText({ text }: { text: string }) {
   return (
     <>
       {parseAnsi(text).map((span, index) => (
-        <span key={index} className={spanClass(span)}>
+        <span key={index} {...spanStyle(span)}>
           {span.text}
         </span>
       ))}

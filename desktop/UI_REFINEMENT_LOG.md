@@ -6078,3 +6078,57 @@ Status: **已完成**
 已迁移 7 个原子（loader、kbd、divider、diff-stat、color-picker-input、file-path、
 section-label、progress-bar）；暴露并修掉 **3 处真实设计缺陷**；**零 golden 位移**；
 构建代价恒定在 1.7×。
+
+---
+
+## Round 110 — 迁移不该削弱类型
+
+Status: **已完成**
+
+### 迁移
+
+`gauge`、`ansi-text`。
+
+`Gauge` 的 `className="text-accent"` **不是逃生口**：它用 `currentColor` 描边，墨色本来
+就该由所在行决定。保留。
+
+### 第三次：规格断言 utility 类名
+
+`dock-terminal` 的就绪判据是 `.text-negative` —— 一个生成后不存在的类名。这次它跑在
+真实浏览器里，所以断言可以改得比原来**更强**：不是"有没有这个类"，而是
+
+> 那一行渲染出的 `color`，是否等于 `--color-negative` 解析后的值
+
+这条状态存在的理由本就是"终端面板读转义码而不是把码打印出来"，颜色才是它要证明的东西。
+
+### 自己造成的一处退化，以及是什么抓住它
+
+`ansi-text` 原本是 `Record<AnsiTone, string>` —— **对 tone 联合类型穷尽**。我换成
+`stylex.create` 后，键不再受联合类型约束：新增一个 tone 会静默渲染成周围的墨色。
+`knip` 报出 `AnsiTone` 未被使用，暴露了这件事。
+
+已补回 `Record<AnsiTone, …>` 映射：**少答一个 tone 现在是编译错误**。
+迁移的目的是让决策进类型系统，途中把类型削弱掉是本末倒置。
+
+### 修改前 / 修改后
+
+| | 修改前 | 修改后 |
+| --- | --- | --- |
+| `ansi-text` tone→色 | `Record<AnsiTone, string>` 类名映射 | `stylex.create` + `Record<AnsiTone, …>` 穷尽映射 |
+| `dock-terminal` 就绪判据 | 类名 `.text-negative` | **渲染出的颜色**等于 `--color-negative` |
+| `gauge` | utility 字符串 | StyleX；`currentColor` 与 `className` 墨色保留 |
+
+### 验证
+
+`typecheck` / `lint` / `format` / **20 项 `check:*` 全绿**；单测 **2395 通过**；
+视觉 **650/650，零 golden 位移**；补回穷尽映射后重跑 `dock-terminal` 与
+`WCAG audit workspace dock` 共 83 条全过。
+
+### 资源回收
+
+关闭 4174 预览服务。
+
+### 累计
+
+已迁移 **9 个原子**；暴露并修掉 **3 处设计缺陷 + 1 处我自己造成的类型退化**；
+**零 golden 位移**；构建 1.7×。

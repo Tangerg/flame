@@ -186,7 +186,25 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     // pane used to print the codes instead of reading them.
     const view = page.locator(".agent-workspace-view:visible");
     await expect(view).toContainText("exit 1");
-    await expect(view.locator(".text-negative", { hasText: "FAIL:" }).first()).toBeVisible();
+    // The COLOUR it renders in, not the class that asks for it: the tone travels through a
+    // generated class name now, and what this state exists to prove is that the pane reads
+    // the escape codes rather than printing them.
+    const failing = view.getByText("FAIL:", { exact: false }).first();
+    await expect(failing).toBeVisible();
+    expect(
+      await failing.evaluate((element) => {
+        const ink = getComputedStyle(element).color;
+        const negative = getComputedStyle(document.documentElement).getPropertyValue(
+          "--color-negative",
+        );
+        const probe = document.createElement("span");
+        probe.style.color = negative;
+        document.body.append(probe);
+        const resolved = getComputedStyle(probe).color;
+        probe.remove();
+        return ink === resolved;
+      }),
+    ).toBe(true);
     return;
   }
   if (state === "dock-error") {
