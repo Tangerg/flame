@@ -6680,3 +6680,91 @@ export const corner = stylex.create({
 以 class 串消费，`option-row` 又被 `menu` 以同样方式消费 —— 九个文件一个单元。
 先迁所有者 `floating-surface`，未迁的消费方用 `stylex.props()` 取类名，
 再逐个迁消费方。
+
+---
+
+## Round 118 — 浮层簇：先迁所有者
+
+### 计划（写在改代码之前）
+
+`floating-surface.tsx` 导出五串 Tailwind class（`FLOATING_PANEL` / `FLOATING_TIP` /
+`FLOATING_MOTION` / `MODAL_SCRIM` / `FLOATING_LAYER`），被七个文件消费：
+`menu` / `popover` / `tooltip` / `lightbox-dialog` / `confirm-dialog` /
+`search-overlay` / `text-editor-dialog`。这是本仓库最大的一处 class 串共享。
+
+**不一次迁完九个文件。** StyleX 样式对象可以被未迁文件用 `stylex.props()`
+取出类名来消费 —— 所以所有者先迁，消费方按自己的节奏跟上。这一轮迁
+`floating-surface` 本身，加上两个薄到可以整体迁的消费方：`popover` / `tooltip`。
+
+### 消费方冲突检查（迁之前必须做）
+
+StyleX 生成的选择器带 `:not(#\#)` 特异性，未迁消费方叠加的 Tailwind class
+只要与所有者声明同一属性就会被丢弃。逐个查过：
+
+| 消费方 | 叠加的 class | 与所有者是否同属性 |
+| --- | --- | --- |
+| `menu` | `p-1 focus-visible:outline-none` | 否 |
+| `lightbox-dialog` | `cursor-zoom-out` + 位置/尺寸/圆角/底色/阴影 | 否 |
+| `confirm-dialog` / `search-overlay` / `text-editor-dialog` | 同上 | 否 |
+
+`FLOATING_MOTION` 只声明 transition / scale / translate / opacity，
+`MODAL_SCRIM` 只声明 position / inset / z-index / background / transition —
+没有一个消费方碰这些。安全。
+
+### 验收标准
+
+golden 零位移；17 项 `check:*` 全绿；未迁的四个 dialog 与 `menu` 继续工作。
+
+### 结果：五串 class 变成五个样式对象
+
+| 导出 | Before | After |
+| --- | --- | --- |
+| `FLOATING_PANEL` | 一串 class，靠拼接顺序 | `[face, motion, panel]` |
+| `FLOATING_TIP` | 同上，只有圆角不同 | `[face, motion, tip]` |
+| `FLOATING_MOTION` | 一串 data-variant | `motion` |
+| `MODAL_SCRIM` | 一串 class | `scrim` |
+| `FLOATING_LAYER` | `"z-[var(--layer-floating)]"` | `layer` |
+
+未迁的五个消费方（`menu` 与四个 dialog）改用 `stylex.props(...)` 取类名 ——
+这条路走得通，正是它让"九个文件一个 commit"变成"所有者先走，消费方跟上"。
+
+`tooltip` 的 `TIP_PADDING` 也一并收进样式对象，`Tooltip` 的 `max-w-[280px]`
+成为 `tip.label` —— 它是"标签不是段落"这个决定，不是一个魔法数字。
+
+### 顺带治了一个守卫的根因
+
+`check:locales` 报 `transitionProperty: "opacity, scale, translate"` 是
+"查找表里的文案"。它的逃生口是：
+
+```js
+// 每个 utility 都带连字符或变体冒号，而目录里的句子不会
+const CLASS_LIST = /[-:]/;
+```
+
+这是**按 Tailwind 值恰好长什么样**判的。StyleX 的值没有那个形状 ——
+`"opacity, scale, translate"` 三个"词"，既无连字符也无冒号。
+
+没有把 CSS 写歪去迁就它，而是让守卫认结构：`stylex.create({…})` 块内
+的一切都不是文案，无论长什么样。加了一个括号配对的 `styleBlocks()`，
+把落在块内的 `TABLE_ENTRY` 跳过。
+
+反向验证过：在同一文件的 style block **之外**放 `a: "Recent tasks"`，
+守卫照抓不误。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650，零位移** |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+### 资源回收
+
+关闭 4174 预览服务。
+
+### 下一轮方向
+
+浮层簇剩下的消费方：`menu` + `option-row`（后者被前者以 class 串消费，
+且 `ContextIconItem` 与两个 `OptionRow` 调用点都在指定网格列 —— 三处，够一档），
+以及四个 dialog。

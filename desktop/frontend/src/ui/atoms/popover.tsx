@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { PopoverPrimitive } from "@/ui/primitives";
@@ -27,6 +28,7 @@ function PopoverContent({
   alignOffset,
   ...popupProps
 }: PopoverContentProps) {
+  const panel = stylex.props(FLOATING_PANEL);
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Positioner
@@ -34,9 +36,13 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={FLOATING_LAYER}
+        {...stylex.props(FLOATING_LAYER)}
       >
-        <PopoverPrimitive.Popup {...popupProps} className={cn(FLOATING_PANEL, className)}>
+        <PopoverPrimitive.Popup
+          {...popupProps}
+          {...panel}
+          className={cn(panel.className, className)}
+        >
           {children}
         </PopoverPrimitive.Popup>
       </PopoverPrimitive.Positioner>

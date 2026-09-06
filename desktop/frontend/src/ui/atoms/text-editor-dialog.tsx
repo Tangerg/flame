@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { type FormEvent, type KeyboardEvent, type ReactNode, useRef } from "react";
 import { Button } from "./button";
 import { FLOATING_MOTION, MODAL_SCRIM } from "./floating-surface";
@@ -57,11 +58,14 @@ export function TextEditorDialog({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop data-slot="text-editor-backdrop" className={MODAL_SCRIM} />
+        <DialogPrimitive.Backdrop
+          data-slot="text-editor-backdrop"
+          className={stylex.props(MODAL_SCRIM).className}
+        />
         <DialogPrimitive.Popup
           data-slot="text-editor-dialog"
           initialFocus={editorRef}
-          className={`fixed inset-0 z-[var(--layer-modal)] m-auto h-fit w-[min(420px,calc(100vw-32px))] overflow-hidden rounded-[var(--shape-composer)] bg-card shadow-[var(--shadow-modal)] outline-none ${FLOATING_MOTION}`}
+          className={`fixed inset-0 z-[var(--layer-modal)] m-auto h-fit w-[min(420px,calc(100vw-32px))] overflow-hidden rounded-[var(--shape-composer)] bg-card shadow-[var(--shadow-modal)] outline-none ${stylex.props(FLOATING_MOTION).className}`}
         >
           <form className="relative flex flex-col gap-0 p-5" onSubmit={submit}>
             <div className="flex w-full flex-col items-start gap-3">

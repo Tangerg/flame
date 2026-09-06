@@ -208,6 +208,34 @@ const TABLE_ENTRY = /(?:^|[,{[\s])(?:([A-Za-z_$][\w$]*)|"([^"\n]+)")\s*:\s*"([^"
 const CLASS_LIST = /[-:]/;
 
 /**
+ * The character ranges of every `stylex.create({ … })` call in a file.
+ *
+ * A style block is a table of declarations, so rule 14 reads it as a table of labels —
+ * `transitionProperty: "opacity, scale, translate"` is three "words" and carries neither
+ * hyphen nor colon, so the class-list escape hatch above does not catch it either. That hatch
+ * is keyed on how a TAILWIND value happens to be spelled; a StyleX value has no such shape.
+ *
+ * So the answer is structural rather than lexical: nothing inside a style block is ever copy,
+ * whatever it looks like.
+ */
+function styleBlocks(code) {
+  const ranges = [];
+  for (const match of code.matchAll(/stylex\.create\s*\(/g)) {
+    let depth = 0;
+    let i = match.index + match[0].length - 1;
+    for (; i < code.length; i += 1) {
+      if (code[i] === "(") depth += 1;
+      else if (code[i] === ")") {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    ranges.push([match.index, i]);
+  }
+  return ranges;
+}
+
+/**
  * Does this read as a sentence rather than as data?
  *
  * A space plus a word that starts lowercase. Curated identifier lists live in
@@ -542,9 +570,11 @@ for (const path of sourceFiles(SRC_DIR)) {
 
     // Rule 14 — a table of labels is still copy, wherever the component keeps it.
     if (VIEW_RING.test(relative)) {
+      const styles = styleBlocks(code);
       for (const match of code.matchAll(TABLE_ENTRY)) {
         const value = match[3];
         if (CLASS_LIST.test(value)) continue;
+        if (styles.some(([from, to]) => match.index > from && match.index < to)) continue;
         if (spellsItsOwnKey(code, match.index, value)) continue;
         if (TWO_WORDS.test(value) || TITLE_CASE_COPY.test(value)) {
           failures.push(

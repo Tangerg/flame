@@ -1,5 +1,7 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactElement, ReactNode } from "react";
 import { cn } from "@/lib/classNames";
+import { leading, space, type } from "@/styles/tokens.stylex";
 import { TooltipPrimitive } from "@/ui/primitives";
 import { FLOATING_LAYER, FLOATING_TIP } from "./floating-surface";
 
@@ -8,7 +10,16 @@ import { FLOATING_LAYER, FLOATING_TIP } from "./floating-surface";
 // `FLOATING_TIP` already paints the elevated floating surface, which is what Codex gives a
 // tooltip (`--bg-tooltip: var(--color-surface-elevated)`); an inverted one was a fourth
 // material with no owner.
-const TIP_PADDING = "px-2 py-1.5 font-sans text-ui-md leading-snug";
+const tip = stylex.create({
+  measure: {
+    paddingInline: space.s2,
+    paddingBlock: space.s1_5,
+    fontFamily: "var(--font-sans)",
+    lineHeight: leading.snug,
+  },
+  /** The plain tooltip's own width cap: a label, not a paragraph. */
+  label: { maxWidth: "280px" },
+});
 
 export interface TooltipProviderProps {
   children: ReactNode;
@@ -47,7 +58,7 @@ export function Tooltip({ label, side = "top", sideOffset = 6, delayDuration, ch
       side={side}
       sideOffset={sideOffset}
       delay={delayDuration}
-      className="max-w-[280px]"
+      className={stylex.props(tip.label).className}
     >
       {label}
     </RichTooltip>
@@ -62,14 +73,20 @@ export function RichTooltip({
   delay,
   className,
 }: RichTooltipProps) {
+  const popup = stylex.props(FLOATING_TIP, tip.measure, type.uiMd);
   return (
     <TooltipPrimitive.Root>
       <TooltipPrimitive.Trigger render={trigger} delay={delay} />
       <TooltipPrimitive.Portal>
-        <TooltipPrimitive.Positioner className={FLOATING_LAYER} side={side} sideOffset={sideOffset}>
+        <TooltipPrimitive.Positioner
+          {...stylex.props(FLOATING_LAYER)}
+          side={side}
+          sideOffset={sideOffset}
+        >
           <TooltipPrimitive.Popup
             role="tooltip"
-            className={cn(FLOATING_TIP, TIP_PADDING, className)}
+            {...popup}
+            className={cn(popup.className, className)}
           >
             {children}
           </TooltipPrimitive.Popup>

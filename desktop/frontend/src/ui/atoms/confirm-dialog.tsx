@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { Button } from "./button";
@@ -28,7 +29,10 @@ export function ConfirmDialog({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop data-slot="confirm-dialog-backdrop" className={MODAL_SCRIM} />
+        <DialogPrimitive.Backdrop
+          data-slot="confirm-dialog-backdrop"
+          className={stylex.props(MODAL_SCRIM).className}
+        />
         <DialogPrimitive.Popup
           data-slot="confirm-dialog"
           // A destructive confirmation IS an alert: it interrupts to demand an answer before
@@ -39,7 +43,7 @@ export function ConfirmDialog({
           className={cn(
             "fixed inset-0 z-[var(--layer-modal)] m-auto h-fit w-[min(400px,calc(100vw-32px))]",
             "rounded-[var(--floating-panel-radius)] bg-canvas p-4 shadow-[var(--shadow-modal)] outline-none",
-            FLOATING_MOTION,
+            stylex.props(FLOATING_MOTION).className,
           )}
         >
           <DialogPrimitive.Title className="text-display-sm font-semibold text-fg">

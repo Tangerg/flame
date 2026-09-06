@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { Icon, type IconName } from "@/ui/icons";
@@ -9,9 +10,11 @@ import { floatingRowStyles } from "./option-row";
 // even when a mouse opened it — a ring around the whole menu, every time, on right-click. The
 // highlighted ITEM is the indicator here, so the popup opts out the way the design system
 // says a row state may: `data-chrome-focus`.
-const MENU_CONTENT_CLASSES = `${FLOATING_PANEL} p-1 focus-visible:outline-none`;
+const MENU_CONTENT_CLASSES = `${stylex.props(FLOATING_PANEL).className} p-1 focus-visible:outline-none`;
 
 const MENU_ITEM_CLASSES = `relative ${floatingRowStyles({ size: "sm" })}`;
+
+const FLOATING_LAYER_CLASS = stylex.props(FLOATING_LAYER).className;
 
 const MENU_SEPARATOR_CLASSES = "relative mx-1 my-1 h-px bg-divider";
 
@@ -62,7 +65,7 @@ function DropdownContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={FLOATING_LAYER}
+        className={FLOATING_LAYER_CLASS}
       >
         <MenuPrimitive.Popup
           {...popupProps}
@@ -92,7 +95,7 @@ function ContextContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className={FLOATING_LAYER}
+        className={FLOATING_LAYER_CLASS}
       >
         <ContextMenuPrimitive.Popup
           {...popupProps}

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/classNames";
@@ -49,7 +50,10 @@ export function SearchOverlay({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Backdrop data-slot="search-overlay-backdrop" className={MODAL_SCRIM} />
+        <DialogPrimitive.Backdrop
+          data-slot="search-overlay-backdrop"
+          className={stylex.props(MODAL_SCRIM).className}
+        />
         <DialogPrimitive.Popup
           data-slot="search-overlay"
           aria-label={label}
@@ -58,7 +62,7 @@ export function SearchOverlay({
             "fixed inset-x-0 top-24 z-[var(--layer-modal)] mx-auto flex w-[min(520px,calc(100vw-32px))]",
             "flex-col overflow-hidden rounded-[var(--floating-panel-radius)] outline-none",
             "bg-canvas shadow-[var(--shadow-modal)]",
-            FLOATING_MOTION,
+            stylex.props(FLOATING_MOTION).className,
           )}
         >
           <SearchOverlayContent

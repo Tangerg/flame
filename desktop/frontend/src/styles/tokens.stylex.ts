@@ -29,6 +29,8 @@ export const color = stylex.defineVars({
 /** How long a change takes. Durations are decisions; `150ms` at a call site is not. */
 export const motion = stylex.defineVars({
   fast: "var(--dur-fast)",
+  instant: "var(--dur-instant)",
+  riseIn: "var(--animate-rise-in)",
   color: "var(--dur-color)",
   easeOut: "var(--ease-out)",
   /** Whole `animation` shorthands, so each duration keeps tracking motion-scale. */
@@ -44,6 +46,8 @@ export const surface = stylex.defineVars({
   divider: "var(--color-divider)",
   surface3: "var(--color-surface-3)",
   canvas: "var(--color-canvas)",
+  floating: "var(--app-floating-surface)",
+  scrim: "var(--color-scrim)",
   /** The app's card plane, and the hairline a fill-less surface uses instead of it. */
   card: "var(--app-card-surface)",
   field: "var(--color-field)",
@@ -68,6 +72,8 @@ export const radius = stylex.defineVars({
   field: "var(--field-radius)",
   segmented: "var(--segmented-radius)",
   segment: "var(--segment-radius)",
+  floatingPanel: "var(--floating-panel-radius)",
+  floatingTip: "var(--floating-tip-radius)",
 });
 
 /**
@@ -111,6 +117,7 @@ export const leading = stylex.defineVars({
   body: "var(--leading-body)",
   relaxed: "var(--leading-relaxed)",
   prose: "var(--leading-prose)",
+  snug: "var(--leading-snug)",
 });
 
 /**
