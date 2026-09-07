@@ -77,7 +77,7 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
       toggleLabel={label}
       open={isOpen}
       onToggle={toggle}
-      contentClassName="ml-5 border-l border-field pt-0.5 pl-6"
+      contentClassName="ml-5 border-l border-field pt-0.5 pb-1.5 pl-6"
     >
       <div
         ref={scrollRef}

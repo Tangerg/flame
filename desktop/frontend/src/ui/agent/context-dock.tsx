@@ -8,6 +8,7 @@ import {
   type Ref,
 } from "react";
 import { cn } from "@/lib/classNames";
+import { color, motion, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
 import { ContextMenu } from "@/ui/atoms/menu";
 import { IconButton } from "@/ui/atoms/icon-button";
@@ -36,6 +37,61 @@ export interface AgentDockTabsProps {
   onReorder?: (id: string, toIndex: number) => void;
 }
 
+const styles = stylex.create({
+  // The strip's own row: it holds the tabs and the resizer side by side.
+  row: { display: "flex", minHeight: 0, flex: 1 },
+  tab: {
+    display: "flex",
+    height: "var(--dock-tab-height)",
+    minWidth: 0,
+    flexShrink: 0,
+    alignItems: "center",
+    borderRadius: "var(--dock-tab-radius)",
+    color: {
+      default: color.fgMuted,
+      ":hover": color.fg,
+      ":focus-within": color.fg,
+      ":is([data-active])": color.fg,
+    },
+    backgroundColor: {
+      default: null,
+      ":hover": surface.hover,
+      ":is([data-active])": "var(--dock-tab-active-surface)",
+    },
+    // A tab being dragged steps back so the gap it will leave is legible.
+    opacity: { default: null, ":is([data-dragging])": 0.5 },
+    transitionProperty: "background-color, color, opacity",
+    transitionDuration: motion.color,
+    transitionTimingFunction: "var(--ease-out)",
+  },
+  // The label is capped so one long title cannot take the strip; the corner is inherited
+  // because the tab and its label are one shape.
+  label: {
+    display: "inline-flex",
+    height: "100%",
+    minWidth: 0,
+    maxWidth: "calc(var(--spacing) * 40)",
+    alignItems: "center",
+    gap: space.s1_5,
+    borderRadius: "inherit",
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    paddingBlock: 0,
+    fontWeight: weight.regular,
+    color: "inherit",
+    outline: { default: null, ":focus-visible": "none" },
+  },
+  labelClosable: { paddingLeft: space.s2, paddingRight: space.s1 },
+  labelPlain: { paddingInline: space.s2 },
+  glyph: { flexShrink: 0, opacity: 0.7 },
+  title: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  badge: { flexShrink: 0, fontFamily: "var(--font-mono)", lineHeight: 1, color: color.fgFaint },
+  // The list adds no box: the strip already is one, and a second would put the tabs a nesting
+  // step away from the padding that positions them.
+  contents: { display: "contents" },
+  menu: { minWidth: "var(--menu-min-width)" },
+});
+
 export function AgentContextDock({ children }: { children: ReactNode }) {
   return <aside className="agent-context-dock pane-split">{children}</aside>;
 }
@@ -57,7 +113,7 @@ export function AgentDockRow({
   return (
     <div
       ref={ref}
-      className="agent-dock-row flex min-h-0 flex-1"
+      className={cn("agent-dock-row", stylex.props(styles.row).className)}
       data-dock={open ? "open" : "collapsed"}
       style={style}
     >
@@ -140,7 +196,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
       onValueChange={(id) => tabs.find((tab) => tab.id === id)?.onSelect?.()}
       className="agent-dock-tabs"
     >
-      <TabsPrimitive.List aria-label={ariaLabel} className="contents" activateOnFocus>
+      <TabsPrimitive.List aria-label={ariaLabel} {...stylex.props(styles.contents)} activateOnFocus>
         {tabs.map((tab, index) => {
           const restoreFocus = () => {
             requestAnimationFrame(() => {
@@ -180,14 +236,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                 event.preventDefault();
                 close();
               }}
-              className={cn(
-                stylex.props(reveal.host).className,
-                "flex h-[var(--dock-tab-height)] min-w-0 shrink-0 items-center rounded-[var(--dock-tab-radius)]",
-                "text-fg-muted transition-[background-color,color,opacity] duration-[var(--dur-color)] ease-out",
-                "hover:bg-hover hover:text-fg focus-within:text-fg",
-                "data-[active]:bg-[var(--dock-tab-active-surface)] data-[active]:text-fg",
-                "data-[dragging]:opacity-50",
-              )}
+              {...stylex.props(reveal.host, styles.tab)}
             >
               <TabsPrimitive.Tab
                 value={tab.id}
@@ -208,17 +257,16 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                   event.preventDefault();
                   close();
                 }}
-                className={cn(
-                  "inline-flex h-full min-w-0 max-w-40 items-center gap-1.5 rounded-[inherit] border-0 bg-transparent py-0 text-ui-sm font-normal text-inherit focus-visible:outline-none",
-                  tab.onClose ? "pl-2 pr-1" : "px-2",
+                {...stylex.props(
+                  styles.label,
+                  type.uiSm,
+                  tab.onClose ? styles.labelClosable : styles.labelPlain,
                 )}
               >
-                {tab.icon && <Icon name={tab.icon} size="sm" className="shrink-0 opacity-70" />}
-                <span className="truncate">{tab.title}</span>
+                {tab.icon && <Icon name={tab.icon} size="sm" {...stylex.props(styles.glyph)} />}
+                <span {...stylex.props(styles.title)}>{tab.title}</span>
                 {tab.badge != null && (
-                  <span className="shrink-0 font-mono text-ui-2xs leading-none text-fg-faint">
-                    {tab.badge}
-                  </span>
+                  <span {...stylex.props(styles.badge, type.ui2xs)}>{tab.badge}</span>
                 )}
               </TabsPrimitive.Tab>
               {tab.onClose && (
@@ -240,7 +288,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
           return (
             <ContextMenu.Root key={tab.id}>
               <ContextMenu.Trigger render={row} />
-              <ContextMenu.Content className="min-w-[var(--menu-min-width)]">
+              <ContextMenu.Content className={stylex.props(styles.menu).className}>
                 {tab.onClose && (
                   <ContextMenu.IconItem icon="x" onSelect={close}>
                     {tab.closeLabel}

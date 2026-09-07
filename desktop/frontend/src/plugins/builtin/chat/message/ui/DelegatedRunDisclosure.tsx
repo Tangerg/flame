@@ -37,6 +37,7 @@ export function DelegatedRunDisclosure({
     <AgentActivityDisclosure
       icon="bot"
       shell="card"
+      contentClassName="pb-2.5"
       label={model.label}
       detail={
         model.detail ? (

@@ -3,6 +3,7 @@ import { reveal } from "@/ui/atoms/reveal";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { Children, useId } from "react";
 import { cn } from "@/lib/classNames";
+import { color, leading, motion, radius, space, surface, type } from "@/styles/tokens.stylex";
 import { Collapsible } from "@/ui/atoms/collapsible";
 import { Pressable } from "@/ui/atoms/pressable";
 import { ProgressBar } from "@/ui/atoms/progress-bar";
@@ -21,7 +22,140 @@ type ActivityShell = "line" | "card";
 
 type ActivityLeading = { icon: IconName; leading?: never } | { icon?: never; leading: ReactNode };
 
-const GUTTER = { cardSlot: "w-5" } as const;
+const styles = stylex.create({
+  frame: { minWidth: 0, overflow: "clip" },
+  // A line is a row in the narrative and takes the small corner; a card is a product of its
+  // own and wears the card plane.
+  frameLine: { borderRadius: radius.sm },
+  frameCard: { borderRadius: radius.card, backgroundColor: surface.card },
+  header: { display: "flex", minWidth: 0, alignItems: "center" },
+  // A header that stays put while its own disclosure scrolls under it has to be opaque, and
+  // opaque against whichever plane it is sitting on.
+  stuck: { position: "sticky", top: 0, zIndex: 1 },
+  stuckLine: { backgroundColor: surface.canvas },
+  stuckCard: { backgroundColor: surface.card },
+  trigger: { display: "flex", minWidth: 0, flex: 1, alignItems: "center", textAlign: "left" },
+  triggerLine: {
+    gap: space.s1_5,
+    paddingBlock: space.s0_5,
+    paddingRight: 0,
+    paddingLeft: 0,
+    minHeight: space.s5,
+  },
+  triggerCard: {
+    gap: space.s3,
+    paddingBlock: space.s1_5,
+    paddingRight: space.s3,
+    paddingLeft: space.s3,
+    minHeight: space.s8,
+    backgroundColor: { default: null, ":hover": surface.hover },
+    transitionProperty: "color, background-color",
+    transitionDuration: motion.color,
+  },
+  // The gutter the glyph sits in: a line's is the glyph's own box, a card's is one step wider
+  // because the card's rows have to align down a column.
+  mark: { display: "grid", flexShrink: 0, placeItems: "center", height: space.s4 },
+  markLine: { width: space.s4 },
+  markCard: { width: space.s5 },
+  // A framed mark is a plate the glyph sits on, so it is taller and takes a corner and a wash.
+  markFramed: { height: space.s5, borderRadius: radius.sm },
+  markNeutral: { color: color.fgMuted },
+  markWarning: { color: color.warning },
+  markNegative: { color: color.negative },
+  trayNeutral: { backgroundColor: surface.surface2 },
+  trayWarning: { backgroundColor: surface.warningBadge },
+  trayNegative: { backgroundColor: surface.negativeBadge },
+  label: {
+    display: "flex",
+    minWidth: 0,
+    flexShrink: 1,
+    alignItems: "center",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    color: "var(--row-ink)",
+  },
+  detail: {
+    display: "flex",
+    minWidth: 0,
+    flex: 1,
+    alignItems: "center",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    lineHeight: leading.snug,
+    color: "var(--row-ink)",
+  },
+  spacer: { minWidth: 0, flex: 1 },
+  trailing: {
+    display: "flex",
+    flexShrink: 0,
+    alignItems: "center",
+    gap: space.s1_5,
+    fontFamily: "var(--font-mono)",
+    color: color.fgFaint,
+  },
+  // The chevron answers two different states, so two publishers and one reader.
+  //
+  // The HEADER publishes on hover, because hovering the actions beside the trigger has to
+  // reveal it too. The TRIGGER publishes on `:focus-visible` only — no `default`, so outside
+  // focus the property is simply not set here and the header's value inherits through. DOM
+  // focus outlives the pointer, which is why this cannot be the header's `:focus-within`: a
+  // row clicked shut kept its chevron lit while every identical row beside it stayed blank.
+  //
+  // This replaces a pair of `group/` markers and, with them, the `:has(:focus-visible)`
+  // workaround they existed to avoid — the chevron is INSIDE the trigger, so an inherited
+  // custom property reaches it and no sibling selector is needed.
+  headerPublishes: {
+    "--chevron": { default: "0", ":hover": "1" },
+    // The summary lifts to full ink with the row, so the label and the detail read the same
+    // channel rather than each watching an ancestor.
+    "--row-ink": { default: color.fgMuted, ":hover": color.fg },
+  },
+  triggerPublishes: { "--chevron": { default: null, ":focus-visible": "1" } },
+  // Decorative: the whole header is the button, so clicks pass through the chevron at every
+  // reveal state rather than landing on something nobody aimed at.
+  chevron: {
+    pointerEvents: "none",
+    display: "flex",
+    flexShrink: 0,
+    color: color.fgFaint,
+    transitionProperty: "rotate, opacity",
+    transitionDuration: motion.fast,
+    // A device with no pointer can never hover, so the mark it would have revealed is simply
+    // shown. The `[data-reveal]` rule in `globals.css` said this for everyone and can no
+    // longer outrank a generated one.
+    opacity: { default: "var(--chevron, 1)", "@media (hover: none)": 1 },
+  },
+  chevronOpen: { opacity: 1 },
+  chevronShut: { rotate: "-90deg" },
+  actions: {
+    display: "flex",
+    flexShrink: 0,
+    alignItems: "center",
+    gap: space.s0_5,
+    paddingLeft: space.s0_5,
+    paddingRight: space.s2,
+  },
+  // Only the SIDES. How much room the disclosed material needs above and below it depends on
+  // what it is — a reasoning quote sits tighter under its header than a question's choices do —
+  // and two of the six call sites already said so with a `pt`/`pb` that tailwind-merge let
+  // through. A default that a third of its callers disagree with is not a default.
+  bodyLine: { paddingRight: 0 },
+  bodyCard: { paddingInline: space.s3 },
+});
+
+const MARK_TONE = {
+  neutral: styles.markNeutral,
+  warning: styles.markWarning,
+  negative: styles.markNegative,
+} as const;
+
+const TRAY_TONE = {
+  neutral: styles.trayNeutral,
+  warning: styles.trayWarning,
+  negative: styles.trayNegative,
+} as const;
 
 type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "children"> &
   ActivityLeading & {
@@ -39,18 +173,6 @@ type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "child
     children: ReactNode;
     contentClassName?: string;
   };
-
-const TONE_CLASS: Record<ActivityTone, string> = {
-  neutral: "text-fg-muted",
-  warning: "text-warning",
-  negative: "text-negative",
-};
-
-const TRAY_CLASS: Record<ActivityTone, string> = {
-  neutral: "bg-surface-2",
-  warning: "bg-warning-badge",
-  negative: "bg-negative-badge",
-};
 
 export function AgentActivityDisclosure({
   icon,
@@ -71,6 +193,7 @@ export function AgentActivityDisclosure({
   contentClassName,
   ...props
 }: AgentActivityDisclosureProps) {
+  const line = shell === "line";
   const triggerId = useId();
   const panelId = useId();
   const framed = shell !== "line" && icon !== undefined;
@@ -82,20 +205,24 @@ export function AgentActivityDisclosure({
       data-tone={tone}
       data-shell={shell}
       className={cn(
-        "min-w-0 overflow-clip",
-        shell === "line"
-          ? "rounded-[var(--shape-sm)]"
-          : "rounded-[var(--surface-card-radius)] bg-card",
+        stylex.props(styles.frame, line ? styles.frameLine : styles.frameCard).className,
         className,
       )}
     >
       <div
+        data-slot="agent-activity-header"
+        // Whether this header outlives its own scroll is a decision, so it is said out loud
+        // rather than left to whichever class happened to carry the positioning.
+        data-sticky={stickyHeader ? "" : undefined}
+        // Publishes the reveal channel for the actions the card hangs here, and the chevron's
+        // own channel beside it.
         className={cn(
-          // Publishes the reveal channel for the actions the card hangs here, and keeps
-          // `group/activity-header` for the chevron below, which cannot use the channel.
-          stylex.props(reveal.host).className,
-          "group/activity-header flex min-w-0 items-center",
-          stickyHeader && ["sticky top-0 z-1", shell === "line" ? "bg-canvas" : "bg-card"],
+          stylex.props(
+            reveal.host,
+            styles.header,
+            styles.headerPublishes,
+            stickyHeader && [styles.stuck, line ? styles.stuckLine : styles.stuckCard],
+          ).className,
         )}
       >
         <Pressable
@@ -109,31 +236,33 @@ export function AgentActivityDisclosure({
           data-focus-inset=""
           onClick={onToggle}
           className={cn(
-            "group/activity-trigger flex min-w-0 flex-1 items-center text-left",
-            shell === "line" ? "gap-1.5 py-0.5 pr-0" : "gap-3 py-1.5 pr-3",
-            shell === "line" ? "pl-0" : "pl-3",
-            shell !== "line" && "transition-colors duration-[var(--dur-color)] hover:bg-hover",
-            shell === "line" ? "min-h-5" : "min-h-8",
+            stylex.props(
+              styles.trigger,
+              styles.triggerPublishes,
+              line ? styles.triggerLine : styles.triggerCard,
+            ).className,
           )}
         >
           <span
             aria-hidden
             data-slot="agent-activity-mark"
-            className={cn(
-              "grid shrink-0 place-items-center",
-              shell === "line" ? "h-4 w-4" : GUTTER.cardSlot,
-              framed ? `h-5 rounded-[var(--shape-sm)] ${TRAY_CLASS[tone]}` : "h-4",
+            // The two decisions this mark makes, said out loud: whether it wears a tray, and
+            // which tone. They drive the styles above and they are what a test can hold onto —
+            // a generated class name is not a contract.
+            data-framed={framed ? "" : undefined}
+            data-tone={tone}
+            {...stylex.props(
+              styles.mark,
+              line ? styles.markLine : styles.markCard,
+              framed && [styles.markFramed, TRAY_TONE[tone]],
               // Identity, not decoration: one glyph per tool is the fastest read on the row,
               // and the faintest tone spends that distinction on nothing.
-              shell === "line" && tone === "neutral" ? "text-fg-muted" : TONE_CLASS[tone],
+              line && tone === "neutral" ? styles.markNeutral : MARK_TONE[tone],
             )}
           >
             {leading ?? (icon ? <Icon name={icon} size="xs" /> : null)}
           </span>
-          <span
-            data-slot="agent-activity-label"
-            className="flex min-w-0 shrink items-center overflow-hidden text-ellipsis whitespace-nowrap text-ui-sm text-fg-muted group-hover/activity-header:text-fg"
-          >
+          <span data-slot="agent-activity-label" {...stylex.props(styles.label, type.uiSm)}>
             {label}
           </span>
           {/* The slot is always here, empty or not: `flex-1` lived on the detail, so a row
@@ -143,42 +272,24 @@ export function AgentActivityDisclosure({
               the sub-agent that failed. Same element either way, so the gap count — and
               every row that does have a detail — is unchanged. */}
           {detail != null ? (
-            <span className="flex min-w-0 flex-1 items-center overflow-hidden text-ellipsis whitespace-nowrap text-ui-sm leading-snug text-fg-muted group-hover/activity-header:text-fg">
-              {detail}
-            </span>
+            <span {...stylex.props(styles.detail, type.uiSm)}>{detail}</span>
           ) : (
-            <span aria-hidden className="min-w-0 flex-1" />
+            <span aria-hidden {...stylex.props(styles.spacer)} />
           )}
           {trailing != null && (
-            <span className="flex shrink-0 items-center gap-1.5 font-mono text-ui-2xs text-fg-faint">
-              {trailing}
-            </span>
+            <span {...stylex.props(styles.trailing, type.ui2xs)}>{trailing}</span>
           )}
           <span
             aria-hidden
             data-slot="agent-activity-chevron"
+            data-open={open ? "" : undefined}
             data-reveal="hover"
-            className={cn(
-              // Decorative: the whole header is the button, so clicks pass through it at every
-              // reveal state rather than landing on a chevron nobody aimed at.
-              "pointer-events-none flex shrink-0 text-fg-faint transition-[transform,opacity] duration-[var(--dur-fast)]",
-              // Keyed on the TRIGGER's own `:focus-visible`, not on the header's
-              // `:focus-within`: DOM focus outlives the pointer, so a row clicked shut
-              // kept its chevron lit while every identical row beside it stayed blank.
-              // `:has(:focus-visible)` would say the same thing and does not work —
-              // Chromium matches the selector but never invalidates the subtree when
-              // focus-visible changes inside `:has()`, so the reveal only lands if some
-              // unrelated recalculation happens to follow.
-              "group-focus-visible/activity-trigger:opacity-100 group-hover/activity-header:opacity-100",
-              open ? "opacity-100" : "-rotate-90 opacity-0",
-            )}
+            {...stylex.props(styles.chevron, open ? styles.chevronOpen : styles.chevronShut)}
           >
             <Icon name="chevron-down" size="xs" />
           </span>
         </Pressable>
-        {Children.count(actions) > 0 && (
-          <div className="flex shrink-0 items-center gap-0.5 pl-0.5 pr-2">{actions}</div>
-        )}
+        {Children.count(actions) > 0 && <div {...stylex.props(styles.actions)}>{actions}</div>}
       </div>
       {progress && <ProgressBar value={progress.value} label={progress.label} weight="seam" />}
       <Collapsible open={open}>
@@ -186,7 +297,10 @@ export function AgentActivityDisclosure({
           id={panelId}
           role="region"
           aria-labelledby={triggerId}
-          className={cn(shell === "line" ? "pt-1.5 pb-1.5 pr-0" : "px-3 pb-2.5", contentClassName)}
+          className={cn(
+            stylex.props(line ? styles.bodyLine : styles.bodyCard).className,
+            contentClassName,
+          )}
         >
           {children}
         </div>

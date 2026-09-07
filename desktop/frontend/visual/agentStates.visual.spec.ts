@@ -1689,7 +1689,9 @@ test("an expanded wave keeps its summary while its rows scroll past", async ({ p
   await page.locator("html[data-visual-ready]").waitFor();
   await page.getByRole("button", { name: /steps/ }).first().click();
 
-  const header = page.locator("[data-slot=agent-activity-disclosure] .sticky").first();
+  const header = page
+    .locator("[data-slot=agent-activity-disclosure] [data-slot=agent-activity-header][data-sticky]")
+    .first();
   await expect(header).toBeVisible();
 
   // Measured, not screenshotted: a golden of a scrolled transcript cannot tell

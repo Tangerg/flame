@@ -23,6 +23,7 @@ export function ToolGroup({ tools, onSelectTool, expandedIds, onToggleExpand, su
     <AgentActivityDisclosure
       icon={toolIconFor(model.dominantTool)}
       shell="line"
+      contentClassName="py-1.5"
       label={model.summary}
       trailing={
         <span className="font-mono text-ui-xs font-medium text-fg-muted">

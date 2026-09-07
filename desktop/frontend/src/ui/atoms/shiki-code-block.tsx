@@ -141,6 +141,7 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
 
   const showHighlighted = !isSettling && html !== null;
 
+  const fallback = stylex.props(styles.fallback);
   const block = stylex.props(
     styles.block,
     type.code,
@@ -202,8 +203,8 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
         />
       ) : (
         <pre
-          className="shiki-body shiki-fallback"
-          {...stylex.props(styles.fallback)}
+          {...fallback}
+          className={cn(fallback.className, "shiki-body shiki-fallback")}
           data-wrap={wrapCode}
         >
           {code}

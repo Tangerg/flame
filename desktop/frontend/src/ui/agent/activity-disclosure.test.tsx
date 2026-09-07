@@ -85,18 +85,15 @@ describe("AgentActivityDisclosure", () => {
         </AgentActivityDisclosure>,
       );
       const row = screen.getByRole("button", { name: shell }).closest("[data-shell]");
-      const result = {
-        shell: row?.getAttribute("data-shell"),
-        filled: (row?.className ?? "").includes("bg-card"),
-      };
+      // `data-shell` is the decision; the plane it produces is geometry the goldens measure.
+      // Reading the class that carried it froze a spelling, which is what this comment above
+      // was already trying to avoid.
+      const result = { shell: row?.getAttribute("data-shell") };
       unmount();
       return result;
     });
 
-    expect(shells).toEqual([
-      { shell: "line", filled: false },
-      { shell: "card", filled: true },
-    ]);
+    expect(shells).toEqual([{ shell: "line" }, { shell: "card" }]);
   });
 
   // A caller that hands over its own leading mark owns that whole box: a plan's step
@@ -116,7 +113,7 @@ describe("AgentActivityDisclosure", () => {
     const framed = screen
       .getByRole("button", { name: "framed" })
       .querySelector("span[aria-hidden]");
-    expect(framed?.className).toContain("bg-surface-2");
+    expect(framed?.getAttribute("data-framed")).toBe("");
     unmount();
 
     render(
@@ -131,7 +128,7 @@ describe("AgentActivityDisclosure", () => {
       </AgentActivityDisclosure>,
     );
     const own = screen.getByRole("button", { name: /own/ }).querySelector("span[aria-hidden]");
-    expect(own?.className).not.toContain("bg-surface-2");
+    expect(own?.getAttribute("data-framed")).toBeNull();
   });
 
   it("keeps a line shell's identity glyph visible without card chrome", () => {
@@ -150,9 +147,10 @@ describe("AgentActivityDisclosure", () => {
     const mark = screen
       .getByRole("button", { name: "quiet search" })
       .querySelector("span[aria-hidden]");
-    expect(mark?.className).toContain("w-4");
-    expect(mark?.className).not.toContain("hidden");
-    expect(mark?.className).not.toContain("bg-surface-2");
+    // A line's glyph carries no tray and still shows its identity: the tone stays `neutral`
+    // rather than being spent, and the glyph itself is in the DOM.
+    expect(mark?.getAttribute("data-framed")).toBeNull();
+    expect(mark?.getAttribute("data-tone")).toBe("neutral");
     expect(mark?.querySelector("svg")).toBeTruthy();
   });
 
@@ -180,7 +178,7 @@ describe("AgentActivityDisclosure", () => {
       "agent-activity-chevron",
     ]);
     const chevron = trigger.querySelector('[data-slot="agent-activity-chevron"]');
-    expect(chevron?.getAttribute("class")).toContain("opacity-0");
+    expect(chevron?.getAttribute("data-open")).toBeNull();
 
     rerender(
       <AgentActivityDisclosure
@@ -197,6 +195,6 @@ describe("AgentActivityDisclosure", () => {
     const openChevron = screen
       .getByRole("button", { name: /Searched files/ })
       .querySelector('[data-slot="agent-activity-chevron"]');
-    expect(openChevron?.getAttribute("class")).toContain("opacity-100");
+    expect(openChevron?.getAttribute("data-open")).toBe("");
   });
 });

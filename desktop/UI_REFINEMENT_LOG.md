@@ -7886,3 +7886,93 @@ success → bg-success  |  neutral → bg-fg-faint   + animate-pulse-dot
 
 `ui/agent` 剩三个大文件：`context-dock`（270）/ `activity-disclosure`（196）/
 `navigation-row`（161）—— 它们已部分迁移，剩的是混写。
+
+---
+
+## Round 135 — `ui/agent` 的三个大文件
+
+`navigation-row`（161）/ `activity-disclosure`（196）/ `context-dock`（270）——
+它们此前是 StyleX 与 Tailwind 混写。迁完后 `ui/agent` 保留的 class 只有
+globals.css 的机制键与那一处有记录的 Chromium 阻塞
+（`group-focus-visible/activity-trigger`，`:has(:focus-visible)` 不触发失效）。
+
+### 一处我漏掉的分支
+
+`activity-disclosure` 的字形格原本是
+`shell === "line" ? "h-4 w-4" : "w-5"`，我只把 card 的宽度搬了过去，
+line 的 `w-4` 漏了 —— 格子退回按内容收缩，把整行的文字往左拉。
+1000+ 像素、12 张 golden。补上 `markLine` 后 32 项一次通过。
+
+**教训**：一个三元里两个分支各带两个属性时，很容易只看见后一支。
+迁移时把原表达式抄在旁边逐项勾掉，比凭记忆重写安全。
+
+### 四处单测在冻结 class 名
+
+`activity-disclosure.test.tsx` 里读 `bg-card` / `bg-surface-2` / `w-4` /
+`opacity-0`。其中一条的注释自己写着：
+
+> Asserted on the material rather than on a class name
+
+—— 但它读的正是 class 名。Tailwind 的类名可读，所以"读 class"看起来像在
+读材质；StyleX 一来这层错觉就没了。
+
+治本不是把断言改成读生成的类名，而是**让组件把自己的决定说出来**：
+字形格加 `data-framed` / `data-tone`，chevron 加 `data-open`。
+它们本来就在驱动样式，现在也是可断言的契约 —— 生成的类名不是契约。
+
+### chevron 的 opacity 被三层规则同时争夺
+
+迁完第一版，31 项失败，其中有行为测试 —— 不是颜色偏差。
+`cascade` 之外的两条测试直接点出了根因：
+
+- **触屏回退失效**：`[data-reveal="hover"] { opacity: 1 }` 在
+  `@media (hover: none)` 里，普通特异性，压不过生成规则。
+- **hover / focus-visible 显形失效**：`group-focus-visible/activity-trigger:opacity-100`
+  与 `group-hover/activity-header:opacity-100` 同样压不过。
+
+chevron 的 opacity 此前由**四处**决定：base 的 `opacity-0`、两条 group 规则、
+一条全局媒体查询。StyleX 把它收进一处之后，另外三处全部失效。
+
+**治本发现的一件事**：chevron 就在 trigger **内部** ——
+所以它根本不需要那条有记录的 `:has(:focus-visible)` 变通。两个发布者、一个读者：
+
+```
+header  → --chevron: 0，:hover 时 1     （悬停旁边的动作区也要显形）
+trigger → 无 default，:focus-visible 时 1（无 default，所以平时继承 header 的）
+chevron → opacity: var(--chevron, 1)，@media (hover: none) 下为 1
+```
+
+两个 `group/` 标记因此一起消失，label 与 detail 的 hover 提墨也走同一个通道
+（`--row-ink`）。**祖先态在 StyleX 下不是限制，是把"谁决定什么"问清楚的机会。**
+
+### 又一次同样的写法错误
+
+`<span className="truncate-fade" {...stylex.props(...)}>` —— 第 131 轮记过的
+那个坑，我这轮自己又踩了两次（`navigation-row` 的 label 与 detail、
+`shiki-code-block` 的 fallback）。`truncate-fade` 是裁剪遮罩，丢了它文字就把
+整行撑宽 —— 只在 **es 语言 + 18px 字号 + 1120px 窗口**三者同时出现时越界，
+正是那条闭环测试存在的理由。
+
+已再扫一遍全部 `src/**/*.tsx`，同类 0 处。
+
+### 一处默认值有三分之一的调用点不同意
+
+`activity-disclosure` 的正文纵向内距原本由 atom 给（`pt-1.5 pb-1.5`），
+而 6 个调用点里 2 个用 `pt-*` / `pb-*` 覆盖 —— 靠 tailwind-merge 的后来者优先。
+StyleX 下覆盖不掉。
+
+按第 108 轮 `SectionLabel` 的先例办：**一个三分之一调用点不同意的默认值不是默认值**。
+atom 只留左右内距，纵向由每个调用点自己说 —— 材料需要多少上下空间，
+取决于材料是什么（推理引文比问题选项贴得更紧）。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉全量 | **650 / 650，零位移** |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | `src/ui` 50 项通过 |
+
+### `ui/agent` 终态
+
+15 个文件全部迁完。保留的 class 只有 globals.css 的机制键。
