@@ -865,9 +865,9 @@ func testEffects(stores *fakeStores, cfg Config) *Effects {
 }
 
 func testFinalizer(stores *fakeStores, cfg FinalizerConfig) *Finalizer {
-	cfg.Titles = &TitleMaintenance{
-		Sessions: stores.session, Generator: stores, Tasks: inlineTaskLauncher{},
-	}
+	cfg.Sessions = stores.session
+	cfg.Titles = stores
+	cfg.Tasks = inlineTaskLauncher{}
 	return mustNewFinalizer(cfg)
 }
 

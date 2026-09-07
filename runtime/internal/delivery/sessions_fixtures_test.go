@@ -344,6 +344,10 @@ func (s stubRuntime) queriesCoordinator() *sessions.QueryCoordinator {
 	return mustQueryCoordinator(deps)
 }
 
+type inertRunFinalizer struct{}
+
+func (inertRunFinalizer) Finish(context.Context, runs.Finish) error { return nil }
+
 func newTestHandler(rt testRuntime) *Handler {
 	s := &Handler{}
 	admissions := testsupport.NewAdmissionGate()
@@ -371,10 +375,6 @@ func newTestHandler(rt testRuntime) *Handler {
 		conversation = p.conversationReader()
 	}
 	projectionWriter := rt.RunSegmentEffects()
-	finalizer, err := segment.NewFinalizer(segment.FinalizerConfig{})
-	if err != nil {
-		panic(err)
-	}
 	workspaceNotifier := segment.NewWorkspaceNotifier(nil)
 	runCoordinator, err := runs.NewCoordinator(runs.Dependencies{
 		RootStarts:                         rt,
@@ -399,7 +399,7 @@ func newTestHandler(rt testRuntime) *Handler {
 			Barriers:                    projectionWriter,
 			WaitingSubtreeCancellations: projectionWriter,
 			Workspace:                   workspaceNotifier,
-			Finalizer:                   finalizer,
+			Finalizer:                   inertRunFinalizer{},
 		},
 		Runs:       nonNilRunProjection(runProjection),
 		Items:      itemProjectionFor(rt),

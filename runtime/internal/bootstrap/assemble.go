@@ -200,11 +200,9 @@ func buildAssemblyCore(
 	}
 	runFinalizer, err := segment.NewFinalizer(segment.FinalizerConfig{
 		Checkpoints: workspaceServices.checkpoints,
-		Titles: &segment.TitleMaintenance{
-			Sessions:  sessionCoordinator,
-			Generator: segment.NewTitleGenerator(execution.models.utilityClient),
-			Tasks:     runEffectTasks,
-		},
+		Sessions:    sessionCoordinator,
+		Titles:      segment.NewTitleGenerator(execution.models.utilityClient),
+		Tasks:       runEffectTasks,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Run finalizer: %w", err)

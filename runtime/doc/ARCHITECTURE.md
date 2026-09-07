@@ -111,6 +111,8 @@ Production construction consumes the complete storage bundle opened by persisten
 
 Skill discovery and proposal review also require complete implementations. Bootstrap omits the user Skill store, usage recorder, and maintenance component when the user directory is unconfigured; project Skill discovery, proposal submission, and review remain available through the same use cases. A Skill store requires an absolute library root and a valid scope, and a maintenance component requires its sweeper at construction.
 
+Working context requires its Knowledge, agent-memory content and search, Plan, Goal, and Hook sources at construction. Empty content is source-owned data. Title finalization requires Session title operations, its generator, and a lifecycle-owned task launcher; workspace checkpoint availability remains a host capability.
+
 Every goroutine has one owner, stop condition, and join path. Request cancellation governs the request; accepted Run execution uses a Runtime-owned lifetime. Transport disconnect does not implicitly cancel durable execution.
 
 Detached shells remain Runtime-owned after the Tool call and Run that launched them. Changing a Session's workspace or isolation policy stops that Session's shells and retires its derived context and isolated copy before exposing the replacement. Session deletion and rollback stop the same owned processes; a destructive working-tree restore additionally stops shells below the shared workspace across every Session before touching files. History or file rollback discards the old isolated copy so removed effects cannot reappear in a later Run. Runtime shutdown stops shells before destroying the isolated directories they may still use.

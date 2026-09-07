@@ -24,8 +24,8 @@ import (
 var ErrPromptRejected = errors.New("agentexec: prompt rejected by lifecycle hook")
 
 // WorkingContextConfig supplies the Runtime-owned prompt layers used to build
-// one self-contained fresh-root context. Every reader is optional; the base
-// prompt, FLAME/AGENTS knowledge and enabled readers are combined deterministically.
+// one self-contained fresh-root context. Every source is present; empty stores
+// represent absent user content without removing a product capability.
 type WorkingContextConfig struct {
 	UserHome          string
 	Knowledge         KnowledgeReader
@@ -53,11 +53,24 @@ type WorkingContextComposer struct {
 }
 
 // NewWorkingContextComposer builds a prompt composer. Construction has no I/O.
-func NewWorkingContextComposer(config WorkingContextConfig) *WorkingContextComposer {
+func NewWorkingContextComposer(config WorkingContextConfig) (*WorkingContextComposer, error) {
+	for _, source := range []struct {
+		name  string
+		value any
+	}{
+		{"knowledge", config.Knowledge}, {"agent memory", config.AgentMemory},
+		{"agent memory search", config.AgentMemorySearch}, {"plan", config.Plan},
+		{"goal", config.Goal}, {"hooks", config.Hooks},
+	} {
+		if isNilInteractionCapability(source.value) {
+			return nil, fmt.Errorf("agentexec: working context %s source is required", source.name)
+		}
+	}
+
 	return &WorkingContextComposer{
 		config:       config,
 		seenSessions: make(map[string]struct{}),
-	}
+	}, nil
 }
 
 // ComposeWorkingContext returns an independent, complete context snapshot.
@@ -68,9 +81,6 @@ func (w *WorkingContextComposer) ComposeWorkingContext(
 	ctx context.Context,
 	input runs.WorkingContextInput,
 ) ([]corechat.Message, error) {
-	if w == nil {
-		return nil, errors.New("agentexec: working-context composer is nil")
-	}
 	if _, err := resourceid.ParseSession(input.SessionID); err != nil {
 		return nil, fmt.Errorf("agentexec: working context: %w", err)
 	}
@@ -147,9 +157,6 @@ func (w *WorkingContextComposer) evaluatePromptHooks(
 	ctx context.Context,
 	input runs.WorkingContextInput,
 ) (promptHookResult, error) {
-	if w.config.Hooks == nil {
-		return promptHookResult{}, nil
-	}
 	bound, err := w.config.Hooks.For(ctx, input.CWD)
 	if err != nil {
 		return promptHookResult{}, fmt.Errorf("agentexec: resolve prompt lifecycle hooks: %w", err)
@@ -200,9 +207,6 @@ func (w *WorkingContextComposer) claimSessionStart(sessionID string) bool {
 // ForgetSession releases the process-local SessionStart marker after the
 // Session aggregate is durably deleted.
 func (w *WorkingContextComposer) ForgetSession(sessionID string) {
-	if w == nil {
-		return
-	}
 	w.mu.Lock()
 	delete(w.seenSessions, sessionID)
 	w.mu.Unlock()
@@ -215,9 +219,6 @@ func (w *WorkingContextComposer) BeforeToolUse(
 	ctx context.Context,
 	input InteractionToolHookInput,
 ) (InteractionToolHookDecision, error) {
-	if w == nil || w.config.Hooks == nil {
-		return InteractionToolHookDecision{}, nil
-	}
 	bound, err := w.config.Hooks.For(ctx, input.CWD)
 	if err != nil {
 		return InteractionToolHookDecision{}, fmt.Errorf("agentexec: resolve pre-Tool hooks: %w", err)
@@ -255,9 +256,6 @@ func (w *WorkingContextComposer) AfterToolUse(
 	ctx context.Context,
 	input InteractionToolHookInput,
 ) error {
-	if w == nil || w.config.Hooks == nil {
-		return nil
-	}
 	bound, err := w.config.Hooks.For(ctx, input.CWD)
 	if err != nil {
 		return fmt.Errorf("agentexec: resolve post-Tool hooks: %w", err)
@@ -286,9 +284,6 @@ func (w *WorkingContextComposer) BeforeCompaction(
 	ctx context.Context,
 	sessionID, cwd string,
 ) (bool, error) {
-	if w == nil || w.config.Hooks == nil {
-		return true, nil
-	}
 	bound, err := w.config.Hooks.For(ctx, cwd)
 	if err != nil {
 		return false, fmt.Errorf("agentexec: resolve pre-compaction hooks: %w", err)
@@ -321,9 +316,6 @@ func (w *WorkingContextComposer) runObserveOnlyHook(
 	event domainhooks.Event,
 	sessionID, cwd, reason string,
 ) error {
-	if w == nil || w.config.Hooks == nil {
-		return nil
-	}
 	bound, err := w.config.Hooks.For(ctx, cwd)
 	if err != nil {
 		return fmt.Errorf("agentexec: resolve lifecycle notification hooks: %w", err)
@@ -339,7 +331,7 @@ func (w *WorkingContextComposer) recallMessage(
 	cwd string,
 	query string,
 ) (corechat.Message, bool, error) {
-	if w.config.AgentMemorySearch == nil || strings.TrimSpace(query) == "" || strings.TrimSpace(cwd) == "" {
+	if strings.TrimSpace(query) == "" || strings.TrimSpace(cwd) == "" {
 		return corechat.Message{}, false, nil
 	}
 	ctx, span := recallTracer.Start(ctx, "memory.recall")

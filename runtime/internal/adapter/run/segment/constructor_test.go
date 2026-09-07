@@ -31,7 +31,7 @@ func TestNewRejectsMalformedDependencies(t *testing.T) {
 }
 
 func TestNewFinalizerRejectsPartialTitleMaintenance(t *testing.T) {
-	_, err := NewFinalizer(FinalizerConfig{Titles: &TitleMaintenance{}})
+	_, err := NewFinalizer(FinalizerConfig{})
 	if err == nil || !strings.Contains(err.Error(), "session titles") {
 		t.Fatalf("NewFinalizer error = %v", err)
 	}
@@ -119,6 +119,16 @@ func testEffectsConfig(cfg Config) Config {
 }
 
 func mustNewFinalizer(cfg FinalizerConfig) *Finalizer {
+	if cfg.Sessions == nil {
+		cfg.Sessions = &fakeSession{}
+	}
+	if cfg.Titles == nil {
+		cfg.Titles = &fakeStores{}
+	}
+	if cfg.Tasks == nil {
+		cfg.Tasks = inlineTaskLauncher{}
+	}
+
 	finalizer, err := NewFinalizer(cfg)
 	if err != nil {
 		panic(err)
