@@ -16,7 +16,7 @@ const workspaceWatchID = "flame-active-workspace"
 
 func (a *app) followRuntimeChanges() {
 	a.operations.Cancel(runtimeChangesOperation)
-	workspacePath := a.session.current.Workspace.Path
+	workspacePath := a.session.current.Workspace.Ref.Path
 	var repository WorkspaceChanges
 	if a.runtimeSupports(protocol.FeatureGit) {
 		repository = a.workspaces
@@ -33,7 +33,7 @@ func (a *app) followRuntimeChanges() {
 			resources:  a.observedRuntimeResources(),
 			applyFiles: func(changes []workspace.Change) error {
 				return post(ctx, dispatcher, func() {
-					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Path != workspacePath {
+					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Ref.Path != workspacePath {
 						return
 					}
 					a.applyWorkspaceChanges(changes)
@@ -41,7 +41,7 @@ func (a *app) followRuntimeChanges() {
 			},
 			applyEvent: func(event changefeed.Event) error {
 				return post(ctx, dispatcher, func() {
-					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Path != workspacePath {
+					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Ref.Path != workspacePath {
 						return
 					}
 					a.applyRuntimeInvalidation(event)
@@ -49,7 +49,7 @@ func (a *app) followRuntimeChanges() {
 			},
 			applyResync: func(topics []protocol.RuntimeTopic) error {
 				return post(ctx, dispatcher, func() {
-					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Path != workspacePath {
+					if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Ref.Path != workspacePath {
 						return
 					}
 					a.applyRuntimeResync(topics)
@@ -58,7 +58,7 @@ func (a *app) followRuntimeChanges() {
 		}
 		if err := monitor.run(ctx); err != nil && context.Cause(ctx) == nil {
 			_ = post(ctx, dispatcher, func() {
-				if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Path != workspacePath {
+				if !a.operations.Current(lease) || a.closed || a.session.current.Workspace.Ref.Path != workspacePath {
 					return
 				}
 				a.message("runtime change observation stopped: " + err.Error())
@@ -71,7 +71,7 @@ func (a *app) applyWorkspaceChanges(changes []workspace.Change) {
 	a.header.SetWorkspaceChanges(len(changes))
 	if a.dialogs.workspaceReader == workspaceReaderChanges {
 		follow := a.dialogs.reader.scroll.AtBottom()
-		a.dialogs.reader.replace(workspaceChangesDocument(a.session.current.Workspace.Path, changes), true, follow)
+		a.dialogs.reader.replace(workspaceChangesDocument(a.session.current.Workspace.Ref.Path, changes), true, follow)
 	}
 }
 

@@ -16,7 +16,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 type sessionBindingStub struct {
@@ -64,7 +63,9 @@ func TestSessionControlProjectsTheRollbackAcknowledgement(t *testing.T) {
 				CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
 			},
 			DroppedRuns: []protocol.DroppedRun{{
-				Run: protocol.RunSummary{ID: "run_2", SessionID: "ses_1", Status: protocol.RunStatusFinished},
+				Run: protocol.RunSummary{ID: "run_2", SessionID: "ses_1", Status: protocol.RunStatusFinished,
+					Provider: testSessionProvider, Model: testSessionModel, CreatedAt: testSessionTime, FinishedAt: testSessionTime,
+					Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted}},
 				UserInput: []protocol.ContentBlock{
 					{Type: protocol.ContentBlockText, Text: "try another approach"},
 					{Type: protocol.ContentBlockImage, Mime: "image/png", Data: base64.StdEncoding.EncodeToString(image)},
@@ -388,7 +389,7 @@ func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolvedWorkspace := workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable}
+	resolvedWorkspace := protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/workspace"}, ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable}
 	valid := protocol.Session{
 		ID: artifact.Session.ID, Title: artifact.Session.Title, Status: protocol.SessionStatusIdle,
 		Provider: artifact.Session.Provider, Model: artifact.Session.Model, ReasoningEffort: artifact.Session.ReasoningEffort,
@@ -422,7 +423,7 @@ func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
 			runtime := &Connection{
 				sessions: stub,
 				workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
-					Ref: protocol.WorkspaceRef{Path: resolvedWorkspace.Path}, ProjectRoot: resolvedWorkspace.ProjectRoot,
+					Ref: protocol.WorkspaceRef{Path: resolvedWorkspace.Ref.Path}, ProjectRoot: resolvedWorkspace.ProjectRoot,
 					Availability: protocol.WorkspaceAvailable,
 				}},
 				meta:    requestMeta("test"),

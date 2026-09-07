@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -651,8 +650,8 @@ func reconciliationSnapshot(t testing.TB) agent.SessionSnapshot {
 		{ID: "1", Description: "newer plan", Status: protocol.PlanStatusCompleted},
 	}}}
 	return agent.SessionSnapshot{
-		Session: agent.Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: "mock", Model: "balanced", Workspace: workspace.Workspace{
-			Path: "/tmp/demo", ProjectRoot: "/tmp/demo", Availability: protocol.WorkspaceAvailable,
+		Session: protocol.Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: "mock", Model: "balanced", Workspace: protocol.WorkspaceInfo{
+			Ref: protocol.WorkspaceRef{Path: "/tmp/demo"}, ProjectRoot: "/tmp/demo", Availability: protocol.WorkspaceAvailable,
 		}, Revision: 1},
 		Transcript: []agent.Block{
 			{ID: "old", RunID: "run_old", Status: agent.BlockStatusCompleted, Kind: agent.BlockAssistant, Text: "historical answer"},

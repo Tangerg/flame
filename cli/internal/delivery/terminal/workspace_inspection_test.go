@@ -53,16 +53,16 @@ func (w *workspaceServiceStub) setChanges(changes ...workspace.Change) {
 	w.mu.Unlock()
 }
 
-func (w *workspaceServiceStub) Resolve(_ context.Context, request workspace.ResolveRequest) (workspace.Workspace, error) {
+func (w *workspaceServiceStub) Resolve(_ context.Context, request workspace.ResolveRequest) (protocol.WorkspaceInfo, error) {
 	w.called("resolve")
-	return workspace.Workspace{Path: request.Path, ProjectRoot: request.Path, Availability: protocol.WorkspaceAvailable}, nil
+	return protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: request.Path}, ProjectRoot: request.Path, Availability: protocol.WorkspaceAvailable}, nil
 }
 
 func (w *workspaceServiceStub) List(context.Context) ([]workspace.Summary, error) {
 	w.called("list")
 	lastActive := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
 	return []workspace.Summary{{
-		Workspace: workspace.Workspace{Path: "/tmp/flame-cli-test", ProjectRoot: "/tmp/project-root", Availability: protocol.WorkspaceAvailable},
+		Workspace: protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/tmp/flame-cli-test"}, ProjectRoot: "/tmp/project-root", Availability: protocol.WorkspaceAvailable},
 		Name:      "flame-cli-test", Sessions: 1, LastActive: &lastActive,
 	}}, nil
 }

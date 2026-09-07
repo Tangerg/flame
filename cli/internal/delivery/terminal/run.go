@@ -261,11 +261,11 @@ func openPreparedSession(
 	if activateSessionStateErr := authoring.ActivateSessionState(opened.Session.ID); activateSessionStateErr != nil {
 		return preparedSession{}, fmt.Errorf("activate session authoring state: %w", activateSessionStateErr)
 	}
-	attachments, err := attachment.New(opened.Session.Workspace.Path)
+	attachments, err := attachment.New(opened.Session.Workspace.Ref.Path)
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("session attachments: %w", err)
 	}
-	if rememberWorkspaceErr := authoring.RememberWorkspace(opened.Session.Workspace.Path); rememberWorkspaceErr != nil {
+	if rememberWorkspaceErr := authoring.RememberWorkspace(opened.Session.Workspace.Ref.Path); rememberWorkspaceErr != nil {
 		return preparedSession{}, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}
 	editor, err := configuredDraftEditor()

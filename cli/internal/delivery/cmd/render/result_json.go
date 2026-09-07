@@ -161,10 +161,7 @@ func (r *ResultJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 		r.err = errors.New("reconcile result after close")
 		return r.err
 	}
-	if err := snapshot.Validate(); err != nil {
-		r.err = fmt.Errorf("reconcile result snapshot: %w", err)
-		return r.err
-	}
+
 	r.started = true
 	r.prose.reset()
 	r.frame.Images = nil

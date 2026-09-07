@@ -6,16 +6,15 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestSessionJSONPreservesReasoningSelection(t *testing.T) {
 	t.Parallel()
-	session := agent.Session{
+	session := protocol.Session{
 		ID: "ses_1", Status: protocol.SessionStatusIdle,
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
-		Workspace: workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable},
+		Workspace: protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/workspace"}, ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable},
 		Revision:  1,
 	}
 	var output bytes.Buffer

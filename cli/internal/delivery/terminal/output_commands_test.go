@@ -76,8 +76,8 @@ func (outputTransferStub) ExportSession(_ context.Context, request session.Expor
 	return session.NewDocument(protocol.ExportFormatJSON, []byte(`{"version":17}`))
 }
 
-func (outputTransferStub) ImportSession(context.Context, session.ImportRequest) (agent.Session, error) {
-	return agent.Session{}, errors.New("unexpected import")
+func (outputTransferStub) ImportSession(context.Context, session.ImportRequest) (protocol.Session, error) {
+	return protocol.Session{}, errors.New("unexpected import")
 }
 
 func runUIWithCopyHost(t *testing.T, backend Runtime, workspace string) (*copyTestHost, func()) {

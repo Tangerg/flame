@@ -325,7 +325,7 @@ func TestStreamRecoveryUsesTheFollowerSessionIdentity(t *testing.T) {
 	runtime := &sessionReadRecordingRuntime{Runtime: runtimefixture.New()}
 	application := &app{
 		runtime: runtime,
-		session: sessionState{current: agent.Session{ID: "ses_demo_2"}},
+		session: sessionState{current: protocol.Session{ID: "ses_demo_2"}},
 	}
 	follower := streamFollower{
 		app: application, ctx: t.Context(), sessionID: "ses_demo_1",

@@ -171,9 +171,7 @@ func TestPreviewKeepsTheBoundaryRootDescendants(t *testing.T) {
 	later.ID = "run_later"
 	later.CreatedAt = root.CreatedAt.Add(2 * time.Millisecond)
 	snapshot.Runs = []agent.Run{root, child, later}
-	if validateErr := snapshot.Validate(); validateErr != nil {
-		t.Fatal(validateErr)
-	}
+
 	preview, err := PreviewRollback(snapshot, agent.RollbackSession{
 		SessionID: snapshot.Session.ID, ToRunID: root.ID, Scope: protocol.RestoreHistory,
 	})

@@ -62,12 +62,12 @@ func TestRuntimeConnectionSessionCatalogAndLifecycle(t *testing.T) {
 	requireWorkspaceInspection(t, runtime, workspace)
 	forked := requireSessionMutation(t, runtime, created, t.TempDir())
 	requireSessionPortability(t, runtime, forked.ID)
-	requireRuntimeCatalogs(t, runtime, created.ID, created.Workspace.Path)
+	requireRuntimeCatalogs(t, runtime, created.ID, created.Workspace.Ref.Path)
 	requireProviderMutationLifecycle(t, runtime)
 	requireGoalMutationLifecycle(t, runtime, created.ID)
-	requireContextManagement(t, runtime, created.Workspace.Path)
-	requireAuxiliaryCapabilities(t, runtime, created.ID, created.Workspace.Path)
-	requireExternalAuthoredInvalidations(t, runtime, created.Workspace.Path)
+	requireContextManagement(t, runtime, created.Workspace.Ref.Path)
+	requireAuxiliaryCapabilities(t, runtime, created.ID, created.Workspace.Ref.Path)
+	requireExternalAuthoredInvalidations(t, runtime, created.Workspace.Ref.Path)
 	requireSessionDeletion(t, runtime, created.ID, forked.ID)
 	requireClosedRuntime(t, runtime)
 }
@@ -355,10 +355,10 @@ func requireWorkspaceInspection(t *testing.T, runtime *Connection, path string) 
 		t.Fatal(err)
 	}
 	resolved, err := runtime.Resolve(t.Context(), workspaceapi.ResolveRequest{Path: path})
-	if err != nil || resolved.Path != canonical || !resolved.IsAvailable() {
+	if err != nil || resolved.Ref.Path != canonical || resolved.Availability != protocol.WorkspaceAvailable {
 		t.Fatalf("Resolve = (%+v, %v)", resolved, err)
 	}
-	path = resolved.Path
+	path = resolved.Ref.Path
 	known, err := runtime.List(t.Context())
 	if err != nil || len(known) == 0 || known[0].LastActive == nil {
 		t.Fatalf("List = (%+v, %v)", known, err)
@@ -474,29 +474,27 @@ func openIntegrationRuntime(t *testing.T, workspace string) *Connection {
 	return runtime
 }
 
-func requireSessionCatalog(t *testing.T, runtime *Connection, workspace string) agent.Session {
+func requireSessionCatalog(t *testing.T, runtime *Connection, workspace string) protocol.Session {
 	t.Helper()
 	created, err := runtime.CreateSession(t.Context(), agent.CreateSession{Title: "adapter session", Workspace: workspace})
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
 	page, err := runtime.ListSessions(t.Context(), agent.SessionQuery{
-		PageSize: catalogPageSize(t, 10), Search: "ADAPTER", Workspace: created.Workspace.Path,
+		PageSize: catalogPageSize(t, 10), Search: "ADAPTER", Workspace: created.Workspace.Ref.Path,
 	})
 	if err != nil {
 		t.Fatalf("ListSessions: %v", err)
 	}
-	if len(page.Items) != 1 || page.Items[0].ID != created.ID {
-		t.Fatalf("filtered sessions = %+v, want %s", page.Items, created.ID)
+	if len(page.Data) != 1 || page.Data[0].ID != created.ID {
+		t.Fatalf("filtered sessions = %+v, want %s", page.Data, created.ID)
 	}
 
 	snapshot, err := runtime.GetSession(t.Context(), created.ID)
 	if err != nil {
 		t.Fatalf("GetSession: %v", err)
 	}
-	if validateErr := snapshot.Validate(); validateErr != nil {
-		t.Fatalf("snapshot: %v", validateErr)
-	}
+
 	if snapshot.Session.ID != created.ID || len(snapshot.Runs) != 0 || len(snapshot.Transcript) != 0 {
 		t.Fatalf("snapshot = %+v", snapshot)
 	}
@@ -512,7 +510,7 @@ func requireSessionCatalog(t *testing.T, runtime *Connection, workspace string) 
 	return created
 }
 
-func requireSessionMutation(t *testing.T, runtime *Connection, created agent.Session, workspace string) agent.Session {
+func requireSessionMutation(t *testing.T, runtime *Connection, created protocol.Session, workspace string) protocol.Session {
 	t.Helper()
 	title, favorite := "renamed adapter session", true
 	model := agent.ModelRef{Provider: created.Provider, Model: "integration-model"}
@@ -527,7 +525,7 @@ func requireSessionMutation(t *testing.T, runtime *Connection, created agent.Ses
 	if canonicalErr != nil {
 		t.Fatal(canonicalErr)
 	}
-	if updated.Title != title || updated.Workspace.Path != canonicalWorkspace || updated.Provider != model.Provider || updated.Model != model.Model ||
+	if updated.Title != title || updated.Workspace.Ref.Path != canonicalWorkspace || updated.Provider != model.Provider || updated.Model != model.Model ||
 		!updated.Favorite || updated.Revision <= created.Revision {
 		t.Fatalf("updated = %+v", updated)
 	}

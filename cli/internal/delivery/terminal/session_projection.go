@@ -12,10 +12,7 @@ import (
 )
 
 func (a *app) restore(snapshot agent.SessionSnapshot) {
-	if err := a.execution.conversation.RestoreSnapshot(snapshot); err != nil {
-		a.fail(err)
-		return
-	}
+	a.execution.conversation.RestoreSnapshot(snapshot)
 	if err := presentSnapshot(a.transcript, snapshot, a.registry); err != nil {
 		a.fail(err)
 		return
@@ -53,15 +50,12 @@ func (s sessionProjection) close() {
 }
 
 func (a *app) projectSession(snapshot agent.SessionSnapshot, attached *agent.SegmentStream) (sessionProjection, error) {
-	if err := snapshot.Validate(); err != nil {
-		return sessionProjection{}, err
-	}
 	conversation := agent.NewConversation()
 	var err error
 	if active, ok := snapshot.ActiveRun(); attached != nil && ok && active.Status == protocol.RunStatusRunning {
 		err = conversation.RestoreAttachedSnapshot(snapshot, *attached)
 	} else {
-		err = conversation.RestoreSnapshot(snapshot)
+		conversation.RestoreSnapshot(snapshot)
 	}
 	if err != nil {
 		return sessionProjection{}, err
@@ -196,14 +190,14 @@ func (a *app) settleCurrentRunStatus() {
 	a.status.settled(run)
 }
 
-func displayTitle(session agent.Session) string {
+func displayTitle(session protocol.Session) string {
 	if strings.TrimSpace(session.Title) == "" {
 		return "untitled"
 	}
 	return session.Title
 }
 
-func (a *app) setActiveSession(session agent.Session) {
+func (a *app) setActiveSession(session protocol.Session) {
 	a.session.current = session
 	a.header.SetSession(session)
 	a.brand.SetSession(session)

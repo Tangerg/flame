@@ -361,7 +361,8 @@ func restoreRecoveredConversation(conversation *agent.Conversation, recovered Re
 	if recovered.Run.Status == protocol.RunStatusRunning {
 		return conversation.RestoreAttachedSnapshot(recovered.Snapshot, recovered.Stream)
 	}
-	return conversation.RestoreSnapshot(recovered.Snapshot)
+	conversation.RestoreSnapshot(recovered.Snapshot)
+	return nil
 }
 
 func validateContinuation(stream agent.SegmentStream, runID string) error {

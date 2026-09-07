@@ -574,9 +574,9 @@ func (i importingTransfer) ExportSession(context.Context, session.ExportRequest)
 	return session.Document{}, errors.New("unexpected export")
 }
 
-func (i importingTransfer) ImportSession(ctx context.Context, request session.ImportRequest) (agent.Session, error) {
+func (i importingTransfer) ImportSession(ctx context.Context, request session.ImportRequest) (protocol.Session, error) {
 	if err := request.Validate(); err != nil {
-		return agent.Session{}, err
+		return protocol.Session{}, err
 	}
 	return i.runtime.CreateSession(ctx, agent.CreateSession{Title: "Imported session", Workspace: "/tmp/flame-imported"})
 }

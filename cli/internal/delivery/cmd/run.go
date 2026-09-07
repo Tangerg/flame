@@ -105,7 +105,7 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 		}
 		opened, err = session.Open(cmd.Context(), runtime, r.sessionID, "")
 		if err == nil {
-			message, err = r.buildMessage(cmd.Context(), messageText, opened.Session.Workspace.Path)
+			message, err = r.buildMessage(cmd.Context(), messageText, opened.Session.Workspace.Ref.Path)
 		}
 	}
 	if err != nil {
@@ -234,7 +234,7 @@ func runFileCompletionWorkspace(cmd *cobra.Command, provider runtimeProvider) (s
 	if err != nil {
 		return "", err
 	}
-	return snapshot.Session.Workspace.Path, nil
+	return snapshot.Session.Workspace.Ref.Path, nil
 }
 
 func resolveAttachments(ctx context.Context, workspace string, paths []string) ([]agent.Attachment, error) {

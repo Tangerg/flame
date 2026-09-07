@@ -109,7 +109,7 @@ func firstSession(t *testing.T, rt Runtime) string {
 	if err != nil {
 		t.Fatalf("ListSessions: %v", err)
 	}
-	return sessions.Items[0].ID
+	return sessions.Data[0].ID
 }
 
 func TestRunDeclinesApprovalWhenUnattended(t *testing.T) {
@@ -474,8 +474,8 @@ func TestRunRejectsInvalidAndConflictingOutputFormatsBeforeCreatingASession(t *t
 				t.Fatalf("arguments %v were accepted", args)
 			}
 			after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
-			if len(after.Items) != len(before.Items) {
-				t.Fatalf("invalid output format created a session: %d -> %d", len(before.Items), len(after.Items))
+			if len(after.Data) != len(before.Data) {
+				t.Fatalf("invalid output format created a session: %d -> %d", len(before.Data), len(after.Data))
 			}
 		})
 	}
@@ -652,8 +652,8 @@ func TestRunRejectsInvalidAttachmentBeforeCreatingASession(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 	after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
-	if len(after.Items) != len(before.Items) {
-		t.Fatalf("invalid input created a session: %d -> %d", len(before.Items), len(after.Items))
+	if len(after.Data) != len(before.Data) {
+		t.Fatalf("invalid input created a session: %d -> %d", len(before.Data), len(after.Data))
 	}
 }
 
@@ -697,8 +697,8 @@ func TestRunCreatesASessionWhenNoneIsNamed(t *testing.T) {
 		t.Fatalf("run: %v", err)
 	}
 	after, _ := rt.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
-	if len(after.Items) != len(before.Items)+1 {
-		t.Fatalf("session count went %d -> %d, want one more", len(before.Items), len(after.Items))
+	if len(after.Data) != len(before.Data)+1 {
+		t.Fatalf("session count went %d -> %d, want one more", len(before.Data), len(after.Data))
 	}
 }
 
@@ -721,8 +721,8 @@ func TestWorkspaceFlagIsNormalizedBeforeCreatingASession(t *testing.T) {
 		t.Fatal(err)
 	}
 	after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
-	if len(after.Items) != len(before.Items)+1 || after.Items[0].Workspace.Path != want {
-		t.Fatalf("newest session workspace = %q, want %q", after.Items[0].Workspace.Path, want)
+	if len(after.Data) != len(before.Data)+1 || after.Data[0].Workspace.Ref.Path != want {
+		t.Fatalf("newest session workspace = %q, want %q", after.Data[0].Workspace.Ref.Path, want)
 	}
 }
 
@@ -808,14 +808,10 @@ func requireSessionUpdate(t *testing.T, runtime Runtime, id string) {
 		t.Fatalf("sessions update: %v", err)
 	}
 	var updated struct {
-		ID        string `json:"id"`
-		Workspace struct {
-			Path         string `json:"path"`
-			ProjectRoot  string `json:"projectRoot"`
-			Availability string `json:"availability"`
-		} `json:"workspace"`
-		Model    string `json:"model"`
-		Favorite bool   `json:"favorite"`
+		ID        string                 `json:"id"`
+		Workspace protocol.WorkspaceInfo `json:"workspace"`
+		Model     string                 `json:"model"`
+		Favorite  bool                   `json:"favorite"`
 	}
 	if unmarshalErr := json.Unmarshal([]byte(out), &updated); unmarshalErr != nil {
 		t.Fatalf("sessions update output: %v\n%s", unmarshalErr, out)
@@ -824,7 +820,7 @@ func requireSessionUpdate(t *testing.T, runtime Runtime, id string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.ID != id || updated.Workspace.Path != wantWorkspace || updated.Workspace.ProjectRoot == "" ||
+	if updated.ID != id || updated.Workspace.Ref.Path != wantWorkspace || updated.Workspace.ProjectRoot == "" ||
 		updated.Workspace.Availability != "available" || updated.Model != "deep" || !updated.Favorite {
 		t.Fatalf("updated session = %+v", updated)
 	}
@@ -838,12 +834,8 @@ func TestSessionShowJSONUsesTheCLISnapshotContract(t *testing.T) {
 	}
 	var snapshot struct {
 		Session struct {
-			ID        string `json:"id"`
-			Workspace struct {
-				Path         string `json:"path"`
-				ProjectRoot  string `json:"projectRoot"`
-				Availability string `json:"availability"`
-			} `json:"workspace"`
+			ID        string                 `json:"id"`
+			Workspace protocol.WorkspaceInfo `json:"workspace"`
 		} `json:"session"`
 		Transcript []json.RawMessage `json:"transcript"`
 		Runs       []struct {
@@ -854,7 +846,7 @@ func TestSessionShowJSONUsesTheCLISnapshotContract(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &snapshot); err != nil {
 		t.Fatalf("session snapshot is not JSON: %v\n%s", err, out)
 	}
-	if snapshot.Session.ID == "" || snapshot.Session.Workspace.Path == "" || snapshot.Session.Workspace.ProjectRoot == "" ||
+	if snapshot.Session.ID == "" || snapshot.Session.Workspace.Ref.Path == "" || snapshot.Session.Workspace.ProjectRoot == "" ||
 		snapshot.Session.Workspace.Availability != "available" || len(snapshot.Transcript) != 2 ||
 		len(snapshot.Runs) != 1 || snapshot.Runs[0].Status != "finished" {
 		t.Fatalf("session snapshot = %+v", snapshot)
@@ -1000,16 +992,11 @@ func TestSessionsListJSONKeepsPaginationOnStdout(t *testing.T) {
 	if errOut != "" {
 		t.Fatalf("JSON session list wrote pagination to stderr: %q", errOut)
 	}
-	var page struct {
-		Items []struct {
-			ID string `json:"id"`
-		} `json:"items"`
-		NextCursor string `json:"nextCursor"`
-	}
+	var page protocol.Page[protocol.Session]
 	if err := json.Unmarshal([]byte(out), &page); err != nil {
 		t.Fatalf("session page is not JSON: %v\n%s", err, out)
 	}
-	if len(page.Items) != 1 || page.Items[0].ID == "" || page.NextCursor == "" {
+	if len(page.Data) != 1 || page.Data[0].ID == "" || page.NextCursor == "" {
 		t.Fatalf("session page = %+v", page)
 	}
 }

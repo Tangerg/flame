@@ -249,10 +249,7 @@ func (n *NDJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 	if n.err != nil {
 		return n.err
 	}
-	if err := snapshot.Validate(); err != nil {
-		n.err = fmt.Errorf("render NDJSON snapshot: %w", err)
-		return n.err
-	}
+
 	target, err := resolveSnapshotRun(snapshot, n.scope.rootID)
 	if err != nil {
 		n.err = fmt.Errorf("render NDJSON snapshot: %w", err)

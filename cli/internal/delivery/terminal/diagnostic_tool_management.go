@@ -51,7 +51,7 @@ func (a *app) InvokeDiagnosticTool(argument string) error {
 	if err != nil {
 		return err
 	}
-	workspacePath := a.session.current.Workspace.Path
+	workspacePath := a.session.current.Workspace.Ref.Path
 	a.status.note("invoking diagnostic tool " + identity)
 	started := a.runOperation(diagnosticToolOperation, false,
 		func(ctx context.Context) (diagnosticInvocationResult, error) {

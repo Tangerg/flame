@@ -1,6 +1,9 @@
 package terminal
 
-import "github.com/Tangerg/flame/cli/internal/domain/agent"
+import (
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/runtime/protocol"
+)
 
 type sessionContextLease struct {
 	retired bool
@@ -26,7 +29,7 @@ func (a *app) canPreserveInteractionProjection(next *agent.Conversation) bool {
 		sameInteractions(a.execution.conversation.Interactions(), next.Interactions())
 }
 
-func (a *app) prepareSessionProjectionReplacement(next agent.Session, conversation *agent.Conversation) {
+func (a *app) prepareSessionProjectionReplacement(next protocol.Session, conversation *agent.Conversation) {
 	if next.ID != a.session.current.ID || next.Workspace != a.session.current.Workspace {
 		a.retireSessionContext()
 		return

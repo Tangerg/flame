@@ -14,35 +14,8 @@ import (
 // failure.
 var ErrVersionControlUnavailable = errors.New("version control unavailable")
 
-type Workspace struct {
-	Path         string
-	ProjectRoot  string
-	Availability protocol.WorkspaceAvailability
-}
-
-func (w Workspace) Validate() error {
-	switch {
-	case strings.TrimSpace(w.Path) == "":
-		return errors.New("workspace path is empty")
-	case !filepath.IsAbs(w.Path):
-		return errors.New("workspace path is not absolute")
-	case strings.TrimSpace(w.ProjectRoot) == "":
-		return errors.New("workspace project root is empty")
-	case !filepath.IsAbs(w.ProjectRoot):
-		return errors.New("workspace project root is not absolute")
-	default:
-		return protocol.ValidateWireTree(protocol.WorkspaceInfo{
-			Ref:          protocol.WorkspaceRef{Path: w.Path},
-			ProjectRoot:  w.ProjectRoot,
-			Availability: w.Availability,
-		})
-	}
-}
-
-func (w Workspace) IsAvailable() bool { return w.Availability == protocol.WorkspaceAvailable }
-
 type Summary struct {
-	Workspace  Workspace
+	Workspace  protocol.WorkspaceInfo
 	Name       string
 	Sessions   int
 	LastActive *time.Time
@@ -56,7 +29,7 @@ func (s Summary) Clone() Summary {
 }
 
 func (s Summary) Validate() error {
-	if err := s.Workspace.Validate(); err != nil {
+	if err := protocol.ValidateWireTree(s.Workspace); err != nil {
 		return err
 	}
 	if strings.TrimSpace(s.Name) == "" {

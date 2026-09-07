@@ -47,9 +47,9 @@ func (r *Connection) RollbackSession(ctx context.Context, input agent.RollbackSe
 		return agent.RollbackResult{}, runtimeContractViolation("rollback session returned an incomplete result")
 	}
 	result := agent.RollbackResult{DroppedRunIDs: make([]string, 0, len(response.DroppedRuns))}
-	result.Session, err = projectSession(*response.Session)
-	if err != nil {
-		return agent.RollbackResult{}, runtimeContractViolation("rollback session returned an invalid session: %v", err)
+	result.Session = *response.Session
+	if err := protocol.ValidateWireTree(*response); err != nil {
+		return agent.RollbackResult{}, runtimeContractViolation("rollback session returned an invalid response: %v", err)
 	}
 	if result.Session.ID != input.SessionID {
 		return agent.RollbackResult{}, runtimeContractViolation("rollback session returned session %q for %q", result.Session.ID, input.SessionID)
@@ -120,51 +120,51 @@ func (r *Connection) ExportSession(ctx context.Context, request session.ExportRe
 	return document, nil
 }
 
-func (r *Connection) ImportSession(ctx context.Context, request session.ImportRequest) (agent.Session, error) {
+func (r *Connection) ImportSession(ctx context.Context, request session.ImportRequest) (protocol.Session, error) {
 	if err := request.Validate(); err != nil {
-		return agent.Session{}, err
+		return protocol.Session{}, err
 	}
 	if err := r.requireFeature(protocol.FeatureSessionExport); err != nil {
-		return agent.Session{}, err
+		return protocol.Session{}, err
 	}
 	var artifact protocol.SessionArtifact
 	decoder := json.NewDecoder(bytes.NewReader(request.Artifact.Bytes()))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&artifact); err != nil {
-		return agent.Session{}, fmt.Errorf("import session: decode artifact: %w", err)
+		return protocol.Session{}, fmt.Errorf("import session: decode artifact: %w", err)
 	}
 	if err := requireJSONEnd(decoder); err != nil {
-		return agent.Session{}, fmt.Errorf("import session: %w", err)
+		return protocol.Session{}, fmt.Errorf("import session: %w", err)
 	}
 	if err := protocol.ValidateWireTree(artifact); err != nil {
-		return agent.Session{}, fmt.Errorf("import session: %w", err)
+		return protocol.Session{}, fmt.Errorf("import session: %w", err)
 	}
 	resolvedWorkspace, err := r.Resolve(ctx, workspace.ResolveRequest{Path: artifact.Session.Workspace.Path})
 	if err != nil {
-		return agent.Session{}, fmt.Errorf("import session workspace: %w", err)
+		return protocol.Session{}, fmt.Errorf("import session workspace: %w", err)
 	}
 	options, err := r.commandOptions()
 	if err != nil {
-		return agent.Session{}, err
+		return protocol.Session{}, err
 	}
 	response, err := r.sessions.ImportSession(ctx, protocol.ImportSessionRequest{Artifact: artifact}, options)
 	if err != nil {
-		return agent.Session{}, classifyError(err)
+		return protocol.Session{}, classifyError(err)
 	}
 	if response == nil || response.Session == nil {
-		return agent.Session{}, runtimeContractViolation("import session returned an incomplete result")
+		return protocol.Session{}, runtimeContractViolation("import session returned an incomplete result")
 	}
 	projected, err := projectSessionResult("import session", artifact.Session.ID, response.Session, nil)
 	if err != nil {
-		return agent.Session{}, err
+		return protocol.Session{}, err
 	}
 	if err := validateImportedSession(artifact.Session, resolvedWorkspace, projected); err != nil {
-		return agent.Session{}, runtimeContractViolation("import session returned an invalid acknowledgement: %v", err)
+		return protocol.Session{}, runtimeContractViolation("import session returned an invalid acknowledgement: %v", err)
 	}
 	return projected, nil
 }
 
-func validateImportedSession(archived protocol.ArtifactSession, resolvedWorkspace workspace.Workspace, result agent.Session) error {
+func validateImportedSession(archived protocol.ArtifactSession, resolvedWorkspace protocol.WorkspaceInfo, result protocol.Session) error {
 	var problems []error
 	if result.Title != archived.Title {
 		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, archived.Title))

@@ -17,7 +17,7 @@ import (
 func TestMockIdentitySequenceDoesNotWrapAndOverwriteExistingSession(t *testing.T) {
 	runtime := New()
 	runtime.identities.value.SetUint64(math.MaxUint64)
-	runtime.sessions["ses_mock_0"] = &sessionState{meta: agent.Session{ID: "ses_mock_0", Title: "existing"}}
+	runtime.sessions["ses_mock_0"] = &sessionState{meta: protocol.Session{ID: "ses_mock_0", Title: "existing"}}
 
 	created, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
 	if err != nil {
@@ -54,7 +54,7 @@ func TestMockSessionUpdateRevisionExhaustionIsAtomic(t *testing.T) {
 	}); err == nil {
 		t.Fatal("session update accepted exhausted revision")
 	}
-	if !state.meta.Equal(original) {
+	if state.meta != original {
 		t.Fatalf("session after exhausted update = %+v, want %+v", state.meta, original)
 	}
 }
@@ -73,7 +73,7 @@ func TestMockSessionRollbackRevisionExhaustionIsAtomic(t *testing.T) {
 	}); err == nil {
 		t.Fatal("session rollback accepted exhausted revision")
 	}
-	if !state.meta.Equal(originalMeta) || !slices.Equal(state.runs, originalRuns) ||
+	if state.meta != originalMeta || !slices.Equal(state.runs, originalRuns) ||
 		len(state.items) != originalItems || len(runtime.runs) != originalRuntimeRuns {
 		t.Fatalf("rollback exhaustion partially mutated session: meta %+v runs %v items %d runtime runs %d",
 			state.meta, state.runs, len(state.items), len(runtime.runs))
@@ -244,7 +244,7 @@ func TestMockCancelRevisionExhaustionIsAtomic(t *testing.T) {
 		t.Fatalf("cancel after revision exhaustion error = %v", err)
 	}
 	run := runtime.runs[opened.RunID]
-	if !state.meta.Equal(originalMeta) || !projectRun(run).Equal(originalRun) ||
+	if state.meta != originalMeta || !projectRun(run).Equal(originalRun) ||
 		len(run.segments[opened.SegmentID].events) != originalEvents {
 		t.Fatalf("cancel exhaustion partially mutated session/run: %+v / %+v", state.meta, projectRun(run))
 	}
@@ -390,7 +390,7 @@ func TestMockResumeRevisionExhaustionIsAtomic(t *testing.T) {
 	if !errors.Is(err, errSessionRevisionExhausted) {
 		t.Fatalf("resume after revision exhaustion error = %v", err)
 	}
-	if !state.meta.Equal(originalMeta) || !projectRun(run).Equal(originalRun) || len(state.items) != originalItems ||
+	if state.meta != originalMeta || !projectRun(run).Equal(originalRun) || len(state.items) != originalItems ||
 		len(run.answers) != originalAnswers || len(run.segments) != originalSegments || len(runtime.rules) != originalRules {
 		t.Fatalf("resume exhaustion partially mutated state: meta %+v run %+v items %d answers %d segments %d rules %d",
 			state.meta, projectRun(run), len(state.items), len(run.answers), len(run.segments), len(runtime.rules))

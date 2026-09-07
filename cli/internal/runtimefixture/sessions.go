@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/exactint"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -55,7 +54,7 @@ func (s *sessionState) requireRevisionCapacity(changes sessionRevisionChanges) e
 	return classifySessionRevisionAdvance(err)
 }
 
-func (s *sessionState) commitMeta(candidate agent.Session) error {
+func (s *sessionState) commitMeta(candidate protocol.Session) error {
 	committed, err := nextSessionMeta(s.meta, candidate)
 	if err != nil {
 		return err
@@ -64,14 +63,14 @@ func (s *sessionState) commitMeta(candidate agent.Session) error {
 	return nil
 }
 
-func nextSessionMeta(current, candidate agent.Session) (agent.Session, error) {
+func nextSessionMeta(current, candidate protocol.Session) (protocol.Session, error) {
 	revision, err := exactint.Restore(current.Revision)
 	if err != nil {
-		return agent.Session{}, fmt.Errorf("mock: session revision: %w", err)
+		return protocol.Session{}, fmt.Errorf("mock: session revision: %w", err)
 	}
 	next, err := revision.Next()
 	if err := classifySessionRevisionAdvance(err); err != nil {
-		return agent.Session{}, err
+		return protocol.Session{}, err
 	}
 	candidate.Revision = next.Value()
 	return candidate, nil
@@ -84,30 +83,30 @@ func classifySessionRevisionAdvance(err error) error {
 	return err
 }
 
-func (r *Runtime) ListSessions(ctx context.Context, query agent.SessionQuery) (agent.SessionPage, error) {
+func (r *Runtime) ListSessions(ctx context.Context, query agent.SessionQuery) (protocol.Page[protocol.Session], error) {
 	if err := context.Cause(ctx); err != nil {
-		return agent.SessionPage{}, err
+		return protocol.Page[protocol.Session]{}, err
 	}
 	query, err := query.Normalize()
 	if err != nil {
-		return agent.SessionPage{}, fmt.Errorf("mock: %w", err)
+		return protocol.Page[protocol.Session]{}, fmt.Errorf("mock: %w", err)
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	items := make([]agent.Session, 0, len(r.sessions))
+	items := make([]protocol.Session, 0, len(r.sessions))
 	needle := strings.ToLower(query.Search)
 	workspace := query.Workspace
 	for _, state := range r.sessions {
-		if workspace != "" && state.meta.Workspace.Path != workspace {
+		if workspace != "" && state.meta.Workspace.Ref.Path != workspace {
 			continue
 		}
-		if needle != "" && !strings.Contains(strings.ToLower(state.meta.Title+"\n"+state.meta.Workspace.Path+"\n"+state.meta.Workspace.ProjectRoot), needle) {
+		if needle != "" && !strings.Contains(strings.ToLower(state.meta.Title+"\n"+state.meta.Workspace.Ref.Path+"\n"+state.meta.Workspace.ProjectRoot), needle) {
 			continue
 		}
 		items = append(items, state.meta)
 	}
-	slices.SortStableFunc(items, func(a, b agent.Session) int {
+	slices.SortStableFunc(items, func(a, b protocol.Session) int {
 		if a.Favorite != b.Favorite {
 			if a.Favorite {
 				return -1
@@ -119,14 +118,14 @@ func (r *Runtime) ListSessions(ctx context.Context, query agent.SessionQuery) (a
 
 	offset, err := pageOffset("session", query.Cursor, len(items))
 	if err != nil {
-		return agent.SessionPage{}, err
+		return protocol.Page[protocol.Session]{}, err
 	}
 	limit, err := query.PageSize.Rows()
 	if err != nil {
-		return agent.SessionPage{}, fmt.Errorf("mock: %w", err)
+		return protocol.Page[protocol.Session]{}, fmt.Errorf("mock: %w", err)
 	}
 	end := min(offset+limit, len(items))
-	page := agent.SessionPage{Items: slices.Clone(items[offset:end])}
+	page := protocol.Page[protocol.Session]{Data: slices.Clone(items[offset:end])}
 	if end < len(items) {
 		page.NextCursor = strconv.Itoa(end)
 	}
@@ -171,19 +170,17 @@ func (r *Runtime) GetSession(ctx context.Context, id string) (agent.SessionSnaps
 	if active := r.runs[state.active]; active != nil {
 		snapshot.Interactions = agent.CloneInteractions(active.interactions)
 	}
-	if err := snapshot.Validate(); err != nil {
-		return agent.SessionSnapshot{}, fmt.Errorf("mock: invalid session snapshot: %w", err)
-	}
+
 	return snapshot, nil
 }
 
-func (r *Runtime) CreateSession(ctx context.Context, in agent.CreateSession) (agent.Session, error) {
+func (r *Runtime) CreateSession(ctx context.Context, in agent.CreateSession) (protocol.Session, error) {
 	if err := context.Cause(ctx); err != nil {
-		return agent.Session{}, err
+		return protocol.Session{}, err
 	}
 	workspace := strings.TrimSpace(in.Workspace)
 	if workspace == "" {
-		return agent.Session{}, errors.New("mock: workspace is required")
+		return protocol.Session{}, errors.New("mock: workspace is required")
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -193,7 +190,7 @@ func (r *Runtime) CreateSession(ctx context.Context, in agent.CreateSession) (ag
 		title = "Untitled session"
 	}
 	now := r.now()
-	session := agent.Session{
+	session := protocol.Session{
 		ID: id, Title: title, Status: protocol.SessionStatusIdle,
 		Provider: defaultProvider, Model: defaultModel,
 		Workspace: availableWorkspace(workspace), CreatedAt: now, UpdatedAt: now, Revision: 1,
@@ -202,27 +199,27 @@ func (r *Runtime) CreateSession(ctx context.Context, in agent.CreateSession) (ag
 	return session, nil
 }
 
-func (r *Runtime) UpdateSession(ctx context.Context, in agent.UpdateSession) (agent.Session, error) {
+func (r *Runtime) UpdateSession(ctx context.Context, in agent.UpdateSession) (protocol.Session, error) {
 	if err := in.Validate(); err != nil {
-		return agent.Session{}, fmt.Errorf("mock: %w", err)
+		return protocol.Session{}, fmt.Errorf("mock: %w", err)
 	}
 	if err := context.Cause(ctx); err != nil {
-		return agent.Session{}, err
+		return protocol.Session{}, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	state, ok := r.sessions[in.SessionID]
 	if !ok {
-		return agent.Session{}, fmt.Errorf("%w: %s", protocol.ErrSessionNotFound, in.SessionID)
+		return protocol.Session{}, fmt.Errorf("%w: %s", protocol.ErrSessionNotFound, in.SessionID)
 	}
 	if in.ExpectedRevision != state.meta.Revision {
-		return agent.Session{}, fmt.Errorf("%w: session %s is at revision %d", protocol.ErrRevisionConflict, in.SessionID, state.meta.Revision)
+		return protocol.Session{}, fmt.Errorf("%w: session %s is at revision %d", protocol.ErrRevisionConflict, in.SessionID, state.meta.Revision)
 	}
 	candidate := state.meta
 	if in.Title != nil {
 		title := strings.TrimSpace(*in.Title)
 		if title == "" {
-			return agent.Session{}, errors.New("mock: session title is empty")
+			return protocol.Session{}, errors.New("mock: session title is empty")
 		}
 		candidate.Title = title
 	}
@@ -239,28 +236,28 @@ func (r *Runtime) UpdateSession(ctx context.Context, in agent.UpdateSession) (ag
 	}
 	candidate.UpdatedAt = r.now()
 	if err := state.commitMeta(candidate); err != nil {
-		return agent.Session{}, err
+		return protocol.Session{}, err
 	}
 	return state.meta, nil
 }
 
-func availableWorkspace(path string) workspace.Workspace {
-	return workspace.Workspace{Path: path, ProjectRoot: path, Availability: protocol.WorkspaceAvailable}
+func availableWorkspace(path string) protocol.WorkspaceInfo {
+	return protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: path}, ProjectRoot: path, Availability: protocol.WorkspaceAvailable}
 }
 
-func (r *Runtime) ForkSession(ctx context.Context, in agent.ForkSession) (agent.Session, error) {
+func (r *Runtime) ForkSession(ctx context.Context, in agent.ForkSession) (protocol.Session, error) {
 	if err := context.Cause(ctx); err != nil {
-		return agent.Session{}, err
+		return protocol.Session{}, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	source, ok := r.sessions[in.SessionID]
 	if !ok {
-		return agent.Session{}, fmt.Errorf("%w: %s", protocol.ErrSessionNotFound, in.SessionID)
+		return protocol.Session{}, fmt.Errorf("%w: %s", protocol.ErrSessionNotFound, in.SessionID)
 	}
 	boundary, err := r.resolveForkBoundary(source, in.FromRunID)
 	if err != nil {
-		return agent.Session{}, err
+		return protocol.Session{}, err
 	}
 	id := r.identities.next(sessionIdentity)
 	title := strings.TrimSpace(in.Title)
@@ -268,7 +265,7 @@ func (r *Runtime) ForkSession(ctx context.Context, in agent.ForkSession) (agent.
 		title = source.meta.Title + " (fork)"
 	}
 	now := r.now()
-	meta := agent.Session{
+	meta := protocol.Session{
 		ID: id, Title: title, Status: protocol.SessionStatusIdle,
 		Provider: source.meta.Provider, Model: source.meta.Model, ReasoningEffort: source.meta.ReasoningEffort,
 		Workspace: source.meta.Workspace, CreatedAt: now, UpdatedAt: now, Revision: 1,
@@ -277,7 +274,7 @@ func (r *Runtime) ForkSession(ctx context.Context, in agent.ForkSession) (agent.
 	if boundary.plan != nil {
 		state.plan, err = commitInitialPlan(meta.ID, now, boundary.plan.State.Steps)
 		if err != nil {
-			return agent.Session{}, fmt.Errorf("mock: fork plan: %w", err)
+			return protocol.Session{}, fmt.Errorf("mock: fork plan: %w", err)
 		}
 	}
 	r.sessions[id] = state

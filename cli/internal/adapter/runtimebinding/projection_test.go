@@ -651,9 +651,7 @@ func TestProjectSnapshotMatchesApprovalInvocationWithoutErasingItemLifecycle(t *
 	if err != nil {
 		t.Fatalf("projectSnapshot: %v", err)
 	}
-	if err := snapshot.Validate(); err != nil {
-		t.Fatalf("snapshot: %v", err)
-	}
+
 	approval, ok := snapshot.Interactions[0].(agent.Approval)
 	itemTool := snapshot.Transcript[0].Tool
 	if !ok || itemTool == nil || approval.Tool == nil ||

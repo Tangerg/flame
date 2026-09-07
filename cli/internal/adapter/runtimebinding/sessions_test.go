@@ -228,7 +228,7 @@ func TestUpdateSessionProjectsEveryWritableField(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.Workspace.Path != workspace || updated.Workspace.ProjectRoot != "/workspace" || !updated.Workspace.IsAvailable() ||
+	if updated.Workspace.Ref.Path != workspace || updated.Workspace.ProjectRoot != "/workspace" || updated.Workspace.Availability != protocol.WorkspaceAvailable ||
 		updated.Provider != model.Provider || updated.Model != model.Model || !updated.Favorite || updated.Revision != 8 {
 		t.Fatalf("updated session = %+v", updated)
 	}
@@ -317,25 +317,25 @@ func TestSessionMutationsUseResolvedWorkspaceIdentity(t *testing.T) {
 	}
 }
 
-func TestProjectSessionPreservesResolvedWorkspaceIdentity(t *testing.T) {
+func TestSessionResponsePreservesResolvedWorkspaceIdentity(t *testing.T) {
 	t.Parallel()
 
-	projected, err := projectSession(protocol.Session{
+	projected, err := projectSessionResult("create session", "", &protocol.Session{
 		ID: "ses_1", Status: protocol.SessionStatusIdle,
 		Provider: testSessionProvider, Model: testSessionModel, ReasoningEffort: "high",
 		Workspace: testProtocolWorkspace("/repo/work", "/repo", protocol.WorkspaceMissing),
 		CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
-	})
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if projected.ReasoningEffort != "high" || projected.Workspace.Path != "/repo/work" || projected.Workspace.ProjectRoot != "/repo" ||
-		projected.Workspace.IsAvailable() {
+	if projected.ReasoningEffort != "high" || projected.Workspace.Ref.Path != "/repo/work" || projected.Workspace.ProjectRoot != "/repo" ||
+		projected.Workspace.Availability == protocol.WorkspaceAvailable {
 		t.Fatalf("workspace = %+v", projected.Workspace)
 	}
 }
 
-func TestProjectSessionRejectsIncompleteWorkspaceIdentity(t *testing.T) {
+func TestSessionResponseRejectsIncompleteWorkspaceIdentity(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -348,19 +348,19 @@ func TestProjectSessionRejectsIncompleteWorkspaceIdentity(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := projectSession(protocol.Session{
+			_, err := projectSessionResult("create session", "", &protocol.Session{
 				ID: "ses_1", Status: protocol.SessionStatusIdle,
 				Provider: testSessionProvider, Model: testSessionModel, Workspace: test.workspace,
 				CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
-			})
+			}, nil)
 			if err == nil {
-				t.Fatalf("projectSession accepted %+v", test.workspace)
+				t.Fatalf("session response accepted %+v", test.workspace)
 			}
 		})
 	}
 }
 
-func TestProjectSessionRejectsMissingLifecycleTimes(t *testing.T) {
+func TestSessionResponseRejectsMissingLifecycleTimes(t *testing.T) {
 	t.Parallel()
 
 	valid := protocol.Session{
@@ -381,9 +381,9 @@ func TestProjectSessionRejectsMissingLifecycleTimes(t *testing.T) {
 			t.Parallel()
 			value := valid
 			test.clear(&value)
-			_, err := projectSession(value)
+			_, err := projectSessionResult("create session", "", &value, nil)
 			if err == nil || !strings.Contains(err.Error(), test.field) {
-				t.Fatalf("projectSession error = %v, want %q", err, test.field)
+				t.Fatalf("session response error = %v, want %q", err, test.field)
 			}
 		})
 	}

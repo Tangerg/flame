@@ -30,7 +30,7 @@ trust-boundary checks, resource ownership, and product capabilities remain.
 | R6 | Session restore, fork, and rollback repeatedly normalize, copy, and validate complete snapshots through write-plan construction and application. | Decode and validate external input at its boundary; acquire mutable ownership once per retained owner. Apply an established immutable write plan without another full reconstruction. | Complete |
 | R7 | Restored immutable aggregates are fully revalidated by replacements, queries, snapshots, and persistence. | Aggregate construction owns intrinsic validity. Use cases own cross-aggregate relationships; storage owns decoding and current-state matching. Remove duplicate intrinsic validation while retaining zero-value and external-boundary admission. | Complete |
 | R8 | The live registry writes CancelReason but has no production reader. The Run-tree cancellation arbiter owns the consumed reason. | Remove registry cancellation state and writes. Keep the arbiter as the sole cancellation-reason owner and retain observable cancellation coverage. | Complete |
-| C1 | CLI mirrors Runtime Run/Session rules, projections, and product error identities. | Consume Runtime protocol values and errors directly. Keep CLI-owned conversation folding, drafts, previews, selection, and rendering state. Remove synonymous models, validators, and error translations. | In progress: product errors complete; projections remain |
+| C1 | CLI mirrors Runtime Run/Session rules, projections, and product error identities. | Consume Runtime protocol values and errors directly. Keep CLI-owned conversation folding, drafts, previews, selection, and rendering state. Remove synonymous models, validators, and error translations. | In progress: product errors and Session complete; Run remains |
 | C2 | CLI mutation acknowledgements repeat Session revision/normalization/model rules and MCP/Provider update semantics. | Runtime owns mutation postconditions. CLI retains wire and target-identity checks, local form state, and credential protection. Remove duplicate business-rule validation and its dedicated tests. | Complete |
 | C3 | CLI partitions change subscriptions and coordinates several streams although production requests at most 14 topics and one watch against limits of 32 each. | One terminal subscription with normal gap recovery, cancellation, and resynchronization. Remove partitioning, fan-out, and cross-subscription file ownership. | Complete |
 | T1 | Small unused or test-only methods remain around the preceding mechanisms. | Delete only after checking direct, interface, generated, platform, and serialized consumers; migrate tests to surviving production contracts. | Complete |
@@ -347,3 +347,26 @@ vet, build, and whitespace checks.
 
 If deeper consumer evidence invalidates a proposed deletion, record the
 surviving requirement here instead of weakening it to satisfy a line-count target.
+
+### Direct Session and workspace observations
+
+CLI ports, session catalogs, command results, retained session metadata, and
+snapshot metadata now consume `protocol.Session`, `protocol.Page[protocol.Session]`,
+and `protocol.WorkspaceInfo` directly. The adapter checks wire shape and response
+identity once and transfers the fresh value without a synonymous mapper.
+
+Removed the CLI Session, SessionPage, and Workspace models, their intrinsic
+validators, and the snapshot-wide copy of Runtime lifecycle and tree rules.
+Conversation snapshot restoration only acquires presentation state; attaching a
+stream still checks the observed Run and Segment identities and journal head.
+Terminal metadata comparison retains instant-based timestamp equality locally.
+
+Session JSON now uses the Runtime contract, including `workspace.ref.path` and
+catalog `data`. The command tests decode those public protocol values. Transcript
+rendering and local command inputs remain CLI concerns. The rollback adapter
+validates the complete Runtime response before extracting its acknowledgement.
+
+Verified session catalog and mutation commands, cold restoration, interruption,
+rollback, reconnect, metadata invalidations, workspace selection, and existing
+real-Runtime lifecycle tests. The complete standalone CLI test suite, vet, and
+build pass.

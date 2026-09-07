@@ -22,11 +22,11 @@ import (
 // Individual command implementations still accept narrower local interfaces
 // when they need only one operation.
 type Runtime interface {
-	ListSessions(context.Context, agent.SessionQuery) (agent.SessionPage, error)
+	ListSessions(context.Context, agent.SessionQuery) (protocol.Page[protocol.Session], error)
 	GetSession(context.Context, string) (agent.SessionSnapshot, error)
-	CreateSession(context.Context, agent.CreateSession) (agent.Session, error)
-	UpdateSession(context.Context, agent.UpdateSession) (agent.Session, error)
-	ForkSession(context.Context, agent.ForkSession) (agent.Session, error)
+	CreateSession(context.Context, agent.CreateSession) (protocol.Session, error)
+	UpdateSession(context.Context, agent.UpdateSession) (protocol.Session, error)
+	ForkSession(context.Context, agent.ForkSession) (protocol.Session, error)
 	RollbackSession(context.Context, agent.RollbackSession) (agent.RollbackResult, error)
 	DeleteSession(context.Context, agent.DeleteSession) error
 	GetRun(context.Context, string) (agent.Run, error)

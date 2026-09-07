@@ -6,11 +6,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type runtime interface {
-	CreateSession(context.Context, agent.CreateSession) (agent.Session, error)
+	CreateSession(context.Context, agent.CreateSession) (protocol.Session, error)
 	GetSession(context.Context, string) (agent.SessionSnapshot, error)
 }
 
@@ -21,9 +23,7 @@ func Open(ctx context.Context, rt runtime, id, workspace string) (agent.SessionS
 		if err != nil {
 			return agent.SessionSnapshot{}, fmt.Errorf("open session: %w", err)
 		}
-		if err := snapshot.Validate(); err != nil {
-			return agent.SessionSnapshot{}, fmt.Errorf("open session: %w", err)
-		}
+
 		return snapshot, nil
 	}
 
@@ -32,8 +32,6 @@ func Open(ctx context.Context, rt runtime, id, workspace string) (agent.SessionS
 		return agent.SessionSnapshot{}, fmt.Errorf("create session: %w", err)
 	}
 	snapshot := agent.SessionSnapshot{Session: created}
-	if err := snapshot.Validate(); err != nil {
-		return agent.SessionSnapshot{}, fmt.Errorf("create session: %w", err)
-	}
+
 	return snapshot, nil
 }

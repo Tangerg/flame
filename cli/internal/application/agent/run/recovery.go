@@ -157,8 +157,6 @@ func readSnapshot(ctx context.Context, source SessionReader, sessionID string) (
 	if err != nil {
 		return agent.SessionSnapshot{}, err
 	}
-	if err := snapshot.Validate(); err != nil {
-		return agent.SessionSnapshot{}, fmt.Errorf("recover run: %w", err)
-	}
+
 	return snapshot, nil
 }

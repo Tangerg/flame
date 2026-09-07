@@ -130,9 +130,7 @@ func (c *Conversation) Runs() []Run {
 // historical run catalogs are deliberately outside this comparison.
 func (c *Conversation) MatchesSnapshot(snapshot SessionSnapshot) bool {
 	expected := NewConversation()
-	if err := expected.RestoreSnapshot(snapshot); err != nil {
-		return false
-	}
+	expected.RestoreSnapshot(snapshot)
 	if len(c.blocks) != len(expected.blocks) {
 		return false
 	}

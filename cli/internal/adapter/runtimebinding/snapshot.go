@@ -66,10 +66,8 @@ func (r *Connection) readMaterialSnapshot(
 }
 
 func projectSnapshot(read protocol.SessionSnapshot) (agent.SessionSnapshot, error) {
-	session, err := projectSession(read.Session)
-	if err != nil {
-		return agent.SessionSnapshot{}, err
-	}
+	session := read.Session
+	var err error
 	snapshot := agent.SessionSnapshot{Session: session, Transcript: make([]agent.Block, 0, len(read.Items))}
 	for _, value := range read.Items {
 		block, projectItemErr := projectItem(value)
@@ -121,8 +119,6 @@ func projectSnapshot(read protocol.SessionSnapshot) (agent.SessionSnapshot, erro
 	} else if len(read.Interrupts) != 0 {
 		return agent.SessionSnapshot{}, fmt.Errorf("session %s has interrupts without a waiting root run", session.ID)
 	}
-	if err := snapshot.Validate(); err != nil {
-		return agent.SessionSnapshot{}, fmt.Errorf("cold session projection: %w", err)
-	}
+
 	return snapshot, nil
 }

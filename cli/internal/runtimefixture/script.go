@@ -466,9 +466,9 @@ func words(text string) []string {
 }
 
 // demoSessions seeds the catalog with plainly fake history.
-func demoSessions() []agent.Session {
+func demoSessions() []protocol.Session {
 	now := time.Date(2026, 8, 4, 11, 30, 0, 0, time.UTC)
-	return []agent.Session{
+	return []protocol.Session{
 		{ID: "ses_demo_1", Title: "Flaky cache expiry test", Status: protocol.SessionStatusIdle, Provider: defaultProvider, Model: defaultModel, Workspace: availableWorkspace("/tmp/demo/store"), UpdatedAt: now, Revision: 7},
 		{ID: "ses_demo_2", Title: "Rename the shell tool family", Status: protocol.SessionStatusIdle, Provider: defaultProvider, Model: defaultModel, Workspace: availableWorkspace("/tmp/demo/store"), UpdatedAt: now.Add(-90 * time.Minute), Revision: 3},
 		{ID: "ses_demo_3", Title: "Draft the release notes", Status: protocol.SessionStatusIdle, Provider: defaultProvider, Model: defaultModel, Workspace: availableWorkspace("/tmp/demo/docs"), UpdatedAt: now.Add(-26 * time.Hour), Revision: 12},

@@ -39,9 +39,7 @@ func PreviewRollback(snapshot agent.SessionSnapshot, request agent.RollbackSessi
 	if err := request.Validate(); err != nil {
 		return RollbackPreview{}, err
 	}
-	if err := snapshot.Validate(); err != nil {
-		return RollbackPreview{}, fmt.Errorf("preview rollback: %w", err)
-	}
+
 	if snapshot.Session.ID != request.SessionID {
 		return RollbackPreview{}, errors.New("preview rollback: runtime returned another session")
 	}
@@ -332,9 +330,6 @@ func validateAcknowledged(
 }
 
 func validateSnapshot(pending workbench.PendingSessionRollback, snapshot agent.SessionSnapshot) error {
-	if err := snapshot.Validate(); err != nil {
-		return fmt.Errorf("read rollback outcome: %w", err)
-	}
 	if snapshot.Session.ID != pending.SessionID {
 		return errors.New("read rollback outcome: runtime returned another session")
 	}

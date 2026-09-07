@@ -45,14 +45,11 @@ func (r RollbackSession) HistoryOnly() bool {
 }
 
 type RollbackResult struct {
-	Session       Session
+	Session       runtimeprotocol.Session
 	DroppedRunIDs []string
 }
 
 func (r RollbackResult) Validate() error {
-	if err := r.Session.Validate(); err != nil {
-		return fmt.Errorf("rollback result: %w", err)
-	}
 	seen := make(map[string]struct{}, len(r.DroppedRunIDs))
 	for index, runID := range r.DroppedRunIDs {
 		if err := runtimeprotocol.ValidateRunID(runID); err != nil {

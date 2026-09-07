@@ -484,11 +484,11 @@ type rejectedSessionUpdateRuntime struct {
 	Runtime
 }
 
-func (m *rejectedSessionUpdateRuntime) UpdateSession(ctx context.Context, input agent.UpdateSession) (agent.Session, error) {
+func (m *rejectedSessionUpdateRuntime) UpdateSession(ctx context.Context, input agent.UpdateSession) (protocol.Session, error) {
 	if _, err := m.Runtime.UpdateSession(ctx, input); err != nil {
-		return agent.Session{}, err
+		return protocol.Session{}, err
 	}
-	return agent.Session{}, agent.ErrIncompatibleRuntime
+	return protocol.Session{}, agent.ErrIncompatibleRuntime
 }
 
 func (f *flakyCancellationRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (agent.RunCancellation, error) {
@@ -526,10 +526,10 @@ func (u *uncertainCancellationRuntime) cancelAttempts() []agent.CancelRun {
 	return slices.Clone(u.attempts)
 }
 
-func (t *transientForkProjectionRuntime) ForkSession(ctx context.Context, input agent.ForkSession) (agent.Session, error) {
+func (t *transientForkProjectionRuntime) ForkSession(ctx context.Context, input agent.ForkSession) (protocol.Session, error) {
 	forked, err := t.Runtime.ForkSession(ctx, input)
 	if err != nil {
-		return agent.Session{}, err
+		return protocol.Session{}, err
 	}
 	t.forks.Add(1)
 	t.mu.Lock()
@@ -552,7 +552,7 @@ func (t *transientForkProjectionRuntime) GetSession(ctx context.Context, session
 	return t.Runtime.GetSession(ctx, sessionID)
 }
 
-func (b *blockingSessionChangeRuntime) CreateSession(ctx context.Context, input agent.CreateSession) (agent.Session, error) {
+func (b *blockingSessionChangeRuntime) CreateSession(ctx context.Context, input agent.CreateSession) (protocol.Session, error) {
 	ordinal := b.creates.Add(1)
 	blockAt := b.blockCreateAt
 	if blockAt == 0 {
@@ -565,11 +565,11 @@ func (b *blockingSessionChangeRuntime) CreateSession(ctx context.Context, input 
 	select {
 	case <-b.releaseChange:
 		if b.changeErr != nil {
-			return agent.Session{}, b.changeErr
+			return protocol.Session{}, b.changeErr
 		}
 		return b.Runtime.CreateSession(ctx, input)
 	case <-ctx.Done():
-		return agent.Session{}, context.Cause(ctx)
+		return protocol.Session{}, context.Cause(ctx)
 	}
 }
 
@@ -2734,7 +2734,7 @@ func TestSessionCenterPaginatesAndManagesSelectedSession(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
 	workspace := t.TempDir()
-	var target agent.Session
+	var target protocol.Session
 	for index := range 30 {
 		created, err := backend.CreateSession(t.Context(), agent.CreateSession{
 			Title: fmt.Sprintf("Center target %02d", index), Workspace: workspace,
@@ -2987,7 +2987,7 @@ func TestSessionChangeDoesNotInstallAfterAnInFlightDraftSaveFailure(t *testing.T
 	close(backend.releaseChange)
 	host.Until(t, "failed session transition to settle", func() bool {
 		page, listSessionsErr := base.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
-		return listSessionsErr == nil && len(page.Items) == 4 && host.Repaint()
+		return listSessionsErr == nil && len(page.Data) == 4 && host.Repaint()
 	})
 	host.Shows(t, "saved before transition plus input during transition")
 	host.Shows(t, "Flaky cache expiry test")
@@ -2995,8 +2995,8 @@ func TestSessionChangeDoesNotInstallAfterAnInFlightDraftSaveFailure(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(page.Items) != 4 {
-		t.Fatalf("runtime sessions = %d, want created session to remain discoverable", len(page.Items))
+	if len(page.Data) != 4 {
+		t.Fatalf("runtime sessions = %d, want created session to remain discoverable", len(page.Data))
 	}
 
 	if err := os.Remove(filepath.Join(draftPath, "blocker")); err != nil {
@@ -3055,10 +3055,10 @@ func TestSessionSwitchRebindsWorkspaceAttachmentsAndDropsOldChips(t *testing.T) 
 func firstRuntimeSession(t *testing.T, runtime Runtime) string {
 	t.Helper()
 	page, err := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: catalogPageSize(t, 1)})
-	if err != nil || len(page.Items) != 1 {
+	if err != nil || len(page.Data) != 1 {
 		t.Fatalf("latest session = %+v, %v", page, err)
 	}
-	return page.Items[0].ID
+	return page.Data[0].ID
 }
 
 func TestProviderQualifiedModelAndLimitsApplyToTheNextRun(t *testing.T) {
@@ -3140,10 +3140,10 @@ func TestRelocateMovesTheCurrentSessionAndRebindsWorkspaceState(t *testing.T) {
 	host.Until(t, "the current session to relocate", func() bool {
 		var readErr error
 		snapshot, readErr = backend.GetSession(t.Context(), sessionID)
-		return readErr == nil && snapshot.Session.Workspace.Path == want && host.Repaint()
+		return readErr == nil && snapshot.Session.Workspace.Ref.Path == want && host.Repaint()
 	})
-	if snapshot.Session.Workspace.Path != want {
-		t.Fatalf("relocated workspace = %q, want %q", snapshot.Session.Workspace.Path, want)
+	if snapshot.Session.Workspace.Ref.Path != want {
+		t.Fatalf("relocated workspace = %q, want %q", snapshot.Session.Workspace.Ref.Path, want)
 	}
 
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
@@ -3520,8 +3520,8 @@ func TestSessionChangeStopsBeforeMutationWhenTheSourceDraftCannotBeSaved(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(after.Items) != len(before.Items) {
-		t.Fatalf("failed draft save changed session count from %d to %d", len(before.Items), len(after.Items))
+	if len(after.Data) != len(before.Data) {
+		t.Fatalf("failed draft save changed session count from %d to %d", len(before.Data), len(after.Data))
 	}
 
 	if err := os.Remove(draftsDirectory); err != nil {

@@ -92,7 +92,7 @@ func (r *Connection) Create(ctx context.Context, request protocol.CreateSchedule
 		if resolveErr != nil {
 			return protocol.Schedule{}, fmt.Errorf("create schedule workspace: %w", resolveErr)
 		}
-		request.Workspace = &protocol.WorkspaceRef{Path: resolved.Path}
+		request.Workspace = &protocol.WorkspaceRef{Path: resolved.Ref.Path}
 	}
 	created, err := r.schedules.CreateSchedule(ctx, request, options)
 	result, err := scheduleResult("create schedule", "", created, err)
@@ -118,7 +118,7 @@ func (r *Connection) Update(ctx context.Context, request protocol.UpdateSchedule
 		if resolveErr != nil {
 			return protocol.Schedule{}, fmt.Errorf("update schedule workspace: %w", resolveErr)
 		}
-		request.Workspace = &protocol.WorkspaceRef{Path: resolved.Path}
+		request.Workspace = &protocol.WorkspaceRef{Path: resolved.Ref.Path}
 	}
 	updated, err := r.schedules.UpdateSchedule(ctx, request, options)
 	result, err := scheduleResult("update schedule", request.ID, updated, err)

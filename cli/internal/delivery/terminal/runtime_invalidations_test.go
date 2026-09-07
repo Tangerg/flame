@@ -96,7 +96,7 @@ type blockingSessionCatalogRuntime struct {
 func (b *blockingSessionCatalogRuntime) ListSessions(
 	ctx context.Context,
 	query agent.SessionQuery,
-) (agent.SessionPage, error) {
+) (protocol.Page[protocol.Session], error) {
 	if b.calls.Add(1) != 2 {
 		return b.Runtime.ListSessions(ctx, query)
 	}
@@ -106,7 +106,7 @@ func (b *blockingSessionCatalogRuntime) ListSessions(
 		return b.Runtime.ListSessions(ctx, query)
 	case <-ctx.Done():
 		close(b.refreshCanceled)
-		return agent.SessionPage{}, context.Cause(ctx)
+		return protocol.Page[protocol.Session]{}, context.Cause(ctx)
 	}
 }
 
@@ -472,7 +472,7 @@ func TestSessionCenterMutationOutlivesCurrentSessionProjectionReplacement(t *tes
 		t.Fatal(err)
 	}
 	target, err := base.CreateSession(t.Context(), agent.CreateSession{
-		Title: "Catalog deletion target", Workspace: current.Session.Workspace.Path,
+		Title: "Catalog deletion target", Workspace: current.Session.Workspace.Ref.Path,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -1887,5 +1887,31 @@ func TestRunChangesInvalidateSessionActivityCatalog(t *testing.T) {
 				t.Fatalf("invalidatesSessionCatalog() = %t, want %t", got, test.want)
 			}
 		})
+	}
+}
+
+func TestSessionRefreshComparesTimeInstants(t *testing.T) {
+	created := time.Date(2026, time.August, 13, 8, 30, 0, 0, time.FixedZone("source", 8*60*60))
+	updated := created.Add(time.Minute)
+	session := protocol.Session{
+		ID: "ses_1", Title: "Review", Status: protocol.SessionStatusIdle,
+		Provider: "deepseek", Model: "deepseek-v4-flash",
+		Workspace: protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/tmp/demo"}, ProjectRoot: "/tmp/demo", Availability: protocol.WorkspaceAvailable}, CreatedAt: created, UpdatedAt: updated,
+		Favorite: true, Revision: 3,
+	}
+	equivalent := session
+	equivalent.CreatedAt = created.UTC()
+	equivalent.UpdatedAt = updated.UTC()
+	if !sameSession(session, equivalent) {
+		t.Fatal("equal instants with different locations changed session identity")
+	}
+	equivalent.Revision++
+	if sameSession(session, equivalent) {
+		t.Fatal("a durable session revision change compared equal")
+	}
+	equivalent = session
+	equivalent.ReasoningEffort = "high"
+	if sameSession(session, equivalent) {
+		t.Fatal("a reasoning-effort change compared equal")
 	}
 }

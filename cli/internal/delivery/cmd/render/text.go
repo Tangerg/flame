@@ -213,10 +213,7 @@ func (t *Text) Reconcile(snapshot agent.SessionSnapshot) error {
 	if t.err != nil {
 		return t.err
 	}
-	if err := snapshot.Validate(); err != nil {
-		t.err = fmt.Errorf("render text snapshot: %w", err)
-		return t.err
-	}
+
 	target, err := resolveSnapshotRun(snapshot, t.scope.rootID)
 	if err != nil {
 		t.err = fmt.Errorf("render text snapshot: %w", err)

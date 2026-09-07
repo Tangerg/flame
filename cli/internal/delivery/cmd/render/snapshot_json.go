@@ -11,36 +11,11 @@ import (
 )
 
 type sessionSnapshotRecord struct {
-	Session      sessionFrame       `json:"session"`
+	Session      protocol.Session   `json:"session"`
 	Transcript   []blockFrame       `json:"transcript"`
 	Runs         []runFrame         `json:"runs"`
 	Plan         *planSnapshotFrame `json:"plan,omitempty"`
 	Interactions []interactionJSON  `json:"interactions,omitempty"`
-}
-
-type sessionPageRecord struct {
-	Items      []sessionFrame `json:"items"`
-	NextCursor string         `json:"nextCursor,omitempty"`
-}
-
-type sessionFrame struct {
-	ID              string         `json:"id"`
-	Title           string         `json:"title"`
-	Status          string         `json:"status"`
-	Provider        string         `json:"provider"`
-	Model           string         `json:"model,omitempty"`
-	ReasoningEffort string         `json:"reasoningEffort,omitempty"`
-	Workspace       workspaceFrame `json:"workspace"`
-	CreatedAt       time.Time      `json:"createdAt,omitzero"`
-	UpdatedAt       time.Time      `json:"updatedAt,omitzero"`
-	Favorite        bool           `json:"favorite,omitempty"`
-	Revision        uint64         `json:"revision"`
-}
-
-type workspaceFrame struct {
-	Path         string `json:"path"`
-	ProjectRoot  string `json:"projectRoot"`
-	Availability string `json:"availability"`
 }
 
 type runFrame struct {
@@ -98,35 +73,17 @@ type runCancellationRecord struct {
 
 // WriteSessionJSON writes one session using the same field contract as session
 // pages and cold snapshots.
-func WriteSessionJSON(w io.Writer, session agent.Session) error {
-	if err := session.Validate(); err != nil {
-		return fmt.Errorf("render session: %w", err)
-	}
-	return json.NewEncoder(w).Encode(encodeSession(session))
+func WriteSessionJSON(w io.Writer, session protocol.Session) error {
+	return json.NewEncoder(w).Encode(session)
 }
 
-// WriteSessionPageJSON writes a validated runtime page without losing its
-// opaque continuation cursor.
-func WriteSessionPageJSON(w io.Writer, page agent.SessionPage) error {
-	if err := page.Validate(); err != nil {
-		return fmt.Errorf("render session page: %w", err)
-	}
-	record := sessionPageRecord{Items: make([]sessionFrame, 0, len(page.Items)), NextCursor: page.NextCursor}
-	for _, session := range page.Items {
-		record.Items = append(record.Items, encodeSession(session))
-	}
-	return json.NewEncoder(w).Encode(record)
+func WriteSessionPageJSON(w io.Writer, page protocol.Page[protocol.Session]) error {
+	return json.NewEncoder(w).Encode(page)
 }
 
-// WriteSessionSnapshotJSON writes the CLI's stable cold-read JSON projection.
-// Domain values intentionally carry no encoding tags, so this adapter owns the
-// external field names instead of leaking a delivery format into the core.
 func WriteSessionSnapshotJSON(w io.Writer, snapshot agent.SessionSnapshot) error {
-	if err := snapshot.Validate(); err != nil {
-		return fmt.Errorf("render session snapshot: %w", err)
-	}
 	record := sessionSnapshotRecord{
-		Session:      encodeSession(snapshot.Session),
+		Session:      snapshot.Session,
 		Transcript:   make([]blockFrame, 0, len(snapshot.Transcript)),
 		Runs:         make([]runFrame, 0, len(snapshot.Runs)),
 		Plan:         encodePlanSnapshot(snapshot.Plan),
@@ -141,21 +98,6 @@ func WriteSessionSnapshotJSON(w io.Writer, snapshot agent.SessionSnapshot) error
 	return json.NewEncoder(w).Encode(record)
 }
 
-func encodeSession(session agent.Session) sessionFrame {
-	return sessionFrame{
-		ID: session.ID, Title: session.Title, Status: string(session.Status),
-		Provider: session.Provider, Model: session.Model, ReasoningEffort: session.ReasoningEffort,
-		Workspace: workspaceFrame{
-			Path: session.Workspace.Path, ProjectRoot: session.Workspace.ProjectRoot,
-			Availability: string(session.Workspace.Availability),
-		},
-		CreatedAt: session.CreatedAt, UpdatedAt: session.UpdatedAt,
-		Favorite: session.Favorite, Revision: session.Revision,
-	}
-}
-
-// WriteRunJSON writes one durable run projection using the same field contract
-// as runs embedded in a session snapshot.
 func WriteRunJSON(w io.Writer, run agent.Run) error {
 	if err := run.Validate(); err != nil {
 		return fmt.Errorf("render run: %w", err)
