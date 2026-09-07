@@ -54,11 +54,7 @@ function CatalogTrigger({
       title={label}
       data-slot="button"
       data-variant="ghost"
-      className={cn(
-        buttonStyles({ variant: "ghost", size: "icon-sm" }),
-        "data-[popup-open]:bg-selected data-[popup-open]:text-fg",
-        className,
-      )}
+      className={cn(buttonStyles({ variant: "ghost", size: "icon-sm" }), className)}
     >
       <Icon name="plus" size="sm" />
     </Popover.Trigger>

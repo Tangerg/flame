@@ -7337,3 +7337,55 @@ golden 零位移（这一轮每个新档位都逐字复现原有 class）；17 �
   `toolbar` 的 `disabled:opacity-25`。
 
 清完才换引擎。
+
+---
+
+## Round 125 — `Button` 的第二批档位
+
+### 证据
+
+| 缺档 | 处数 | 调用点写的是 |
+| --- | --- | --- |
+| **触发器的展开态** | 5 | `data-[popup-open]:bg-selected data-[popup-open]:text-fg`（4 处）/ `data-[popup-open]:bg-surface-3`（1 处，select 是另一种面） |
+| **没有盒子的按钮** | 1 + | `h-auto min-h-6 rounded-none border-0 p-0 font-normal hover:bg-transparent` —— 而 `link` 变体里已经有一模一样的一半 |
+
+`data-popup-open` 是 Base UI 自己在触发器上挂的属性，所以"一个打开了浮层的
+按钮要显示自己开着"是 **Button 这一层的事实**，不是四个调用点各自的装饰。
+非触发器上这个属性永远不出现，所以进 `ghost` 是无害的。
+
+`bare` 则是把 `link` 里本来就有的那一半提出来命名：`link` = `bare` + 虚线下划线
++ 扩大的命中区。`GoalStatusSurface` 要的正是不带下划线的那一半。
+
+### 上报：尺寸阶梯把字号和高度绑死了
+
+三处触发器（`GoalModeIndicator` / `HeaderDiffStat` / `composer-chip`）都在写
+`text-ui-sm` 配默认高度。阶梯是 `xs = h22 + px7 + text-ui-sm`、
+`sm = h26 + px9 + text-ui-md`、`md = h30 + px11 + text-ui-md` ——
+**没有"md 的高度配 sm 的字号"这一档**，所以三处都自己拆开写。
+
+这不是一个能顺手补的档：把字号从高度里拆出来会让 `size` 从 8 个值
+变成 8×3 的矩阵。要么承认"字号是独立的一维"，要么承认这三处该用别的组件。
+记录，等定夺。
+
+### 结果
+
+| | Before | After |
+| --- | --- | --- |
+| 写 `data-[popup-open]:` 的调用点 | 5 | 1（`select-trigger`，它用的是另一种面） |
+| `link` 与"无盒按钮"的重复 | `link` 里内联 | 抽成 `BARE`，`link = BARE + 下划线 + 命中区` |
+| `GoalStatusSurface` | 取消 6 条属性 | `variant="bare"` |
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650，零位移**（一次通过） |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+### 下一轮方向
+
+`Button` 上剩下的冲突性 override 已经很少，主要是上报的那一条
+（字号与高度在 `size` 里绑死）以及几处一次性的（`send.tsx` 的三个常量、
+`toolbar` 的 `disabled:opacity-25`、`TasksPill` 的 tone 表）。
+清完即可整体迁 `button` + `icon-button` 到 StyleX。

@@ -30,7 +30,7 @@ export function AgentComposerChip({
       title={title ?? label}
       className={cn(
         "grid grid-cols-[auto_minmax(0,auto)_auto] gap-1.5 px-2",
-        "text-ui-sm text-fg-soft data-[popup-open]:bg-selected data-[popup-open]:text-fg",
+        "text-ui-sm text-fg-soft",
         shrink === "gives" ? "shrink-[12]" : "shrink",
         className,
       )}

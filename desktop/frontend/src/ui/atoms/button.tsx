@@ -4,6 +4,8 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/classNames";
 import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
 
+const BARE = "h-auto rounded-none border-0 bg-transparent p-0 font-normal hover:bg-transparent";
+
 export const buttonStyles = cva(
   [
     "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap",
@@ -65,7 +67,11 @@ export const buttonStyles = cva(
       // resolves a conflict in favour of the later class. Every other variant sets only ink
       // and fill, which `size` never touches, so the order is invisible to them.
       variant: {
-        ghost: "bg-transparent text-fg-muted hover:bg-hover hover:text-fg",
+        // The open state is Base UI's own attribute on a trigger, so a button that has opened
+        // a popup says so here rather than at each of the five call sites that were saying it.
+        // A button that never opens one never carries the attribute.
+        ghost:
+          "bg-transparent text-fg-muted hover:bg-hover hover:text-fg data-[popup-open]:bg-selected data-[popup-open]:text-fg",
         soft: "bg-surface-2 text-fg-soft hover:bg-surface-3 hover:text-fg",
         outline: "border-field bg-transparent text-fg-soft hover:bg-hover hover:text-fg",
         primary: "bg-cta text-cta-text hover:bg-cta-hover",
@@ -80,12 +86,15 @@ export const buttonStyles = cva(
         raised:
           "border-0 bg-canvas text-fg-soft shadow-[var(--shadow-raised)] hover:bg-surface-2 hover:text-fg",
         tonal: "font-semibold",
+        // No box at all: the button IS its text, so it takes the height of the line and none of
+        // the plate. `link` is this plus the underline that says it opens something.
+        bare: BARE,
         // A control that reads as prose: it sits inside a sentence, wraps with it, and says
         // it can be opened with a dotted underline rather than a plate. The hit area is a
         // pseudo-element because the text itself is only as tall as its line.
         link: [
-          "relative inline-block h-auto rounded-none border-0 bg-transparent p-0",
-          "cursor-pointer font-normal whitespace-normal break-words text-fg",
+          BARE,
+          "relative inline-block cursor-pointer whitespace-normal break-words text-fg",
           "underline decoration-fg-faint decoration-dotted decoration-[1px] underline-offset-4",
           "after:absolute after:-inset-x-2 after:-inset-y-1",
           "hover:bg-transparent hover:text-fg-soft",
