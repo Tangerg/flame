@@ -4,11 +4,22 @@ import { cn } from "@/lib/classNames";
 import type { TaskReadoutStatus, TaskReadoutTask } from "../application/ports/taskReadoutPort";
 import { taskProgressPercent, useTaskReadout } from "../application/taskReadout";
 
-const STATUS_ICON: Record<TaskReadoutStatus, { name: "spark" | "check" | "x"; tone: string }> = {
-  running: { name: "spark", tone: "text-fg" },
-  succeeded: { name: "check", tone: "text-accent" },
-  failed: { name: "x", tone: "text-negative" },
+// The icon reports the status, and it inherits the control's ink — so the tone is the button's
+// rather than a class on the glyph. `running` has no tone: it is the ordinary state, and the
+// chrome's own ink is what ordinary looks like.
+const STATUS_ICON: Record<
+  TaskReadoutStatus,
+  { name: "spark" | "check" | "x"; tone?: "accent" | "negative" }
+> = {
+  running: { name: "spark" },
+  succeeded: { name: "check", tone: "accent" },
+  failed: { name: "x", tone: "negative" },
 };
+
+// The row's glyph is a bare `Icon`, which has no tone of its own, so the same vocabulary is
+// projected into a class there. One table still decides; this only spells its answer for a
+// consumer that cannot read it.
+const TONE_INK = { accent: "text-accent", negative: "text-negative" } as const;
 
 export function TasksPill() {
   const readout = useTaskReadout();
@@ -24,10 +35,10 @@ export function TasksPill() {
           <IconButton
             icon={name}
             size="sm"
-            quiet
+            tone={tone}
             badge={readout.runningCount}
             aria-label={readout.label}
-            className={cn(tone, readout.head.status === "running" && "[&_svg]:animate-pulse-dot")}
+            className={cn(readout.head.status === "running" && "[&_svg]:animate-pulse-dot")}
           />
         }
       />
@@ -53,7 +64,10 @@ function TaskRow({ task }: { task: TaskReadoutTask }) {
         <Icon
           name={name}
           size="xs"
-          className={cn(tone, task.status === "running" && "animate-pulse-dot")}
+          className={cn(
+            tone ? TONE_INK[tone] : "text-fg",
+            task.status === "running" && "animate-pulse-dot",
+          )}
         />
         <span className="flex-1 truncate text-ui-md font-semibold text-fg">{task.label}</span>
         {percent !== null && <span className="font-mono text-ui-sm text-fg-faint">{percent}%</span>}

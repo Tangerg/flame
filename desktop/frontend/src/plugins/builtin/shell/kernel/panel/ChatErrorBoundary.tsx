@@ -21,13 +21,7 @@ function ChatErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
         {error instanceof Error ? error.message : String(error)}
       </Well>
       <div className="flex gap-2">
-        <Button
-          type="button"
-          variant="soft"
-          size="sm"
-          onClick={resetErrorBoundary}
-          className="rounded-md bg-canvas px-3 py-1 text-ui-md text-fg font-sans transition-colors hover:bg-surface-2"
-        >
+        <Button type="button" variant="soft" size="sm" onClick={resetErrorBoundary}>
           {t("chat.error.retry")}
         </Button>
       </div>

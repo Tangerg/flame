@@ -52,10 +52,11 @@ export function AgentRow({
       type={type}
       variant="ghost"
       size="sm"
+      shape="row"
       press={false}
       data-active={active ? "" : undefined}
       className={cn(
-        "agent-row w-full justify-start rounded-[var(--row-radius)] text-left text-ui-md font-normal",
+        "agent-row text-left text-ui-md",
         "gap-[var(--density-row-gap)]",
         "text-fg transition-[background-color,color] duration-[var(--dur-color)]",
         "hover:bg-hover hover:text-fg focus-visible:bg-hover",

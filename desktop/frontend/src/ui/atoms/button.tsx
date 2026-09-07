@@ -111,6 +111,13 @@ export const buttonStyles = cva(
       // A control that steps back until it is needed. With a `tone`, the tone moves to hover:
       // the button rests faint and shows what it will do only when the pointer is on it.
       quiet: { true: "text-fg-faint", false: "" },
+      // A control that is a row in a list rather than a button in a bar: it fills the width,
+      // starts at the left, wears the row corner, and its label is content rather than a
+      // command — the same shape `TextButton` names, at this ring.
+      shape: {
+        control: "",
+        row: "w-full justify-start rounded-[var(--row-radius)] font-normal",
+      },
       // Two strengths of "off". The default says the control is unavailable right now; `faded`
       // says it does not apply at all — attaching an image to a model that cannot read one.
       off: { normal: "", faded: "disabled:opacity-25" },
@@ -161,6 +168,7 @@ export function Button({
   chip,
   quiet,
   off,
+  shape,
   className,
   children,
   ref,
@@ -174,7 +182,7 @@ export function Button({
       data-slot="button"
       data-variant={resolvedVariant}
       className={cn(
-        buttonStyles({ variant, size, tone, press, join, round, chip, quiet, off }),
+        buttonStyles({ variant, size, tone, press, join, round, chip, quiet, off, shape }),
         className,
       )}
     >

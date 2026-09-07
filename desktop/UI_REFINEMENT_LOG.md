@@ -7523,3 +7523,61 @@ golden 没有覆盖已复制态，所以没抓到。已修复。
 
 `Button` / `IconButton` 上还与自身声明冲突的只剩 `TasksPill` 一处（已上报）。
 下一轮整体迁 `button` + `icon-button` 到 StyleX。
+
+---
+
+## Round 128 — 清完 `Button` 的最后四处冲突
+
+### `TasksPill`：`quiet` 在那里什么也没决定
+
+```
+quiet                                   → text-fg-faint
+className={cn(tone, …)}  tone="text-fg" → text-fg
+```
+
+`cn()` 是 tailwind-merge，**后来者赢** —— 所以 `quiet` 永远被 tone 的 class 盖掉，
+它在这个调用点上是死的。删掉它，两个真实色调走 `tone`，
+`running` 不带色调（它就是普通状态，chrome 自己的墨色就是普通的样子）。
+
+行内那个裸 `Icon` 没有 `tone` 这个 prop，所以同一套词汇在那里投影成一个 class ——
+表还是只有一张，投影只是替读不懂它的消费方把答案拼出来。
+
+### `navigation-row`：又是「行」这个形状
+
+`w-full justify-start rounded-[var(--row-radius)] font-normal` ——
+和第 122 轮 `TextButton` 命名的是同一件事，只是在另一个环上。
+所以 `Button` 也拿到 `shape: "control" | "row"`。
+
+### 两处在几乎重写整个按钮
+
+| 调用点 | 写了什么 | 判定 |
+| --- | --- | --- |
+| `SettingsPage` 返回按钮 | `h-8 rounded-sm border-0 bg-transparent px-2 font-medium text-fg-muted hover:bg-hover hover:text-fg` | 除 `h-8`/`rounded-sm`/`px-2` 外全是 `ghost` + `size="md"` 已有的 |
+| `ChatErrorBoundary` 重试 | `rounded-md bg-canvas px-3 py-1 text-ui-md text-fg font-sans hover:bg-surface-2` | 除填充外全是 `soft` + `size="sm"` 已有的 |
+
+`h-8` 是 **32px**，而控件阶梯是 22/26/30/34/40 —— 它根本不在阶梯上。
+两处都改用系统的答案。
+
+### 6 张 golden 位移：settings 侧栏整体上移 2px
+
+diff 是 240×640 的一整条侧栏，不是按钮本身 —— 返回按钮 32px → 30px，
+把它下面的一切上移了 2px。30px 是它该在的位置（阶梯上没有 32），
+且仍满足 24px 目标尺寸。已重录。
+
+### 一次并行抖动
+
+`code blocks stay readable and expose the wrap control` 报
+hover 后 opacity 仍为 0；单跑 4.5s 通过。是并行下的 hover 时序抖动，不是回归。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650**（6 张按上述理由重录） |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+### 下一轮
+
+`Button` / `IconButton` 上已无与自身声明冲突的 override ——
+剩下的全是布局 / 定位 / 动效。可以迁 StyleX 了。
