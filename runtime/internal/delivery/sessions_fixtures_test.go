@@ -684,8 +684,8 @@ func (s stubLifecycleStores) ReadMaterialSnapshot(ctx context.Context, id string
 }
 
 func (s stubLifecycleStores) ApplyFork(ctx context.Context, plan sessions.ForkPlan) (session.Session, error) {
-	if err := plan.Validate(); err != nil {
-		return session.Session{}, err
+	if plan.IsZero() {
+		return session.Session{}, errors.New("fork plan is required")
 	}
 	child := plan.Child()
 	snapshot := plan.Snapshot()
@@ -753,8 +753,8 @@ func (s stubLifecycleStores) ApplyRollback(ctx context.Context, plan sessions.Ro
 }
 
 func (s stubLifecycleStores) ApplyRestore(ctx context.Context, plan sessions.RestorePlan) error {
-	if err := plan.Validate(); err != nil {
-		return err
+	if plan.IsZero() {
+		return errors.New("restore plan is required")
 	}
 	sessionReplacement := plan.SessionReplacement()
 	snapshot := plan.Snapshot()

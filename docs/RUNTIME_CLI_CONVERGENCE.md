@@ -27,7 +27,7 @@ trust-boundary checks, resource ownership, and product capabilities remain.
 | R3 | Fixed product policy is represented by optional tuning bags; test-only maintenance and restore-scope overrides create alternate production paths. Shutdown wraps a fixed timeout in repeated validation. | Give fixed policy one owner. Remove replacement paths with no product consumer. Keep narrow test controls only where they isolate an actual external boundary or deterministic lifetime. | Complete |
 | R4 | Executor composition repeats BuildID as ImplementationIdentity and adds a hand-maintained configuration identity beside serialized configuration. | Derive deployment identity from the real executable and configuration facts. Remove synonymous identity inputs and wrappers without weakening Scope deployment compatibility. | Complete |
 | R5 | Recovery and waiting-subtree cancellation validate constructed immutable write sets again in persistence. Some validators replay planner transitions. | One owner constructs each complete decision. Persistence checks transactional expectations, not a second recovery policy. Remove redundant construction surfaces and repeated proof machinery. | Complete |
-| R6 | Session restore, fork, and rollback repeatedly normalize, copy, and validate complete snapshots through write-plan construction and application. | Decode and validate external input at its boundary; acquire mutable ownership once per retained owner. Apply an established immutable write plan without another full reconstruction. | Pending |
+| R6 | Session restore, fork, and rollback repeatedly normalize, copy, and validate complete snapshots through write-plan construction and application. | Decode and validate external input at its boundary; acquire mutable ownership once per retained owner. Apply an established immutable write plan without another full reconstruction. | Complete |
 | R7 | Restored immutable aggregates are fully revalidated by replacements, queries, snapshots, and persistence. | Aggregate construction owns intrinsic validity. Use cases own cross-aggregate relationships; storage owns decoding and current-state matching. Remove duplicate intrinsic validation while retaining zero-value and external-boundary admission. | Pending |
 | R8 | The live registry writes CancelReason but has no production reader. The Run-tree cancellation arbiter owns the consumed reason. | Remove registry cancellation state and writes. Keep the arbiter as the sole cancellation-reason owner and retain observable cancellation coverage. | Complete |
 | C1 | CLI mirrors Runtime Run/Session rules, projections, and product error identities. | Consume Runtime protocol values and errors directly. Keep CLI-owned conversation folding, drafts, previews, selection, and rendering state. Remove synonymous models, validators, and error translations. | Pending |
@@ -221,6 +221,28 @@ Verified lost-tree recovery, preserved waiting trees, Goal accounting, child
 cancellation, stale claims, rollback, replay and lost receipts, including public
 bootstrap lifecycle coverage. Runtime tests, vet, build, and whitespace checks
 passed.
+
+### Session write-plan construction owns normalization and validity
+
+Restore, fork, rollback, deletion, and parked termination now expose immutable
+plans with zero-value admission instead of public full revalidation. The
+constructors establish their complete contract once. Rollback parses and checks
+uniqueness in one pass; fork validates child ownership and initial revision at
+construction. Transaction adapters retain current-state and revision matching,
+atomic writes, and durable failure ordering.
+
+Snapshot normalization validates the complete mutable projection once, converts
+offloaded results to previews, and gives the plan its owned Items. Conversation
+validation borrows messages without constructing a discarded Conversation;
+the plan clones mutable content when it retains it. Removed earlier fork and
+restore normalization, post-construction snapshot rebuilding, and repeated
+Plan-replacement validation in the adapter. External archive decoding and
+returned mutable projections remain explicit ownership boundaries.
+
+Verified malformed snapshot and plan rejection, source/accessor isolation,
+parent-first restore, forked Run/Item/blob identities, rollback, restore failure
+atomicity, and parked termination. Runtime tests, vet, build, and whitespace
+checks passed.
 
 If deeper consumer evidence invalidates a proposed deletion, record the
 surviving requirement here instead of weakening it to satisfy a line-count target.

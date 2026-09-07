@@ -37,7 +37,7 @@ func (c *Coordinator) copyForkSnapshot(
 		return Snapshot{}, err
 	}
 	projection.copyToolResults()
-	return projection.finish()
+	return projection.forked, nil
 }
 
 type forkSnapshotProjection struct {
@@ -200,15 +200,4 @@ func (projection *forkSnapshotProjection) copyToolResults() {
 		blob.ItemID = projection.itemIDs[blob.ItemID]
 		projection.forked.ToolResults = append(projection.forked.ToolResults, blob)
 	}
-}
-
-func (projection *forkSnapshotProjection) finish() (Snapshot, error) {
-	normalized, err := projection.forked.NormalizeForRestore()
-	if err != nil {
-		return Snapshot{}, fmt.Errorf("sessions: normalize fork snapshot: %w", err)
-	}
-	if err := normalized.Validate(); err != nil {
-		return Snapshot{}, fmt.Errorf("sessions: validate fork snapshot: %w", err)
-	}
-	return normalized, nil
 }

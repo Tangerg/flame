@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
@@ -45,6 +46,23 @@ func TestSessionStoresRequireCompleteDurableCapabilities(t *testing.T) {
 			remove(&cfg)
 			if stores, err := NewSessionStores(cfg); err == nil || stores != nil {
 				t.Fatalf("incomplete persistence = %v, %v", stores, err)
+			}
+		})
+	}
+}
+
+func TestSessionWritesRejectUnconstructedPlansBeforeTransaction(t *testing.T) {
+	stores := &SessionStores{}
+	for name, apply := range map[string]func() error{
+		"restore":  func() error { return stores.ApplyRestore(t.Context(), sessions.RestorePlan{}) },
+		"fork":     func() error { _, err := stores.ApplyFork(t.Context(), sessions.ForkPlan{}); return err },
+		"rollback": func() error { return stores.ApplyRollback(t.Context(), sessions.RollbackPlan{}) },
+		"delete":   func() error { return stores.ApplyDelete(t.Context(), sessions.DeletePlan{}) },
+		"terminal": func() error { return stores.ApplyTerminal(t.Context(), sessions.TerminalPlan{}) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := apply(); err == nil {
+				t.Fatal("unconstructed plan reached persistence")
 			}
 		})
 	}
