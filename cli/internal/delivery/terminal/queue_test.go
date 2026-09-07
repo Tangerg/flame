@@ -30,7 +30,7 @@ func testQueueEntryID(t *testing.T, value uint64) promptqueue.EntryID {
 	var entry promptqueue.Entry
 	for index := uint64(0); index < value; index++ {
 		var err error
-		entry, err = queue.Enqueue("ses_test", agent.Message{Text: "test entry"})
+		entry, err = enqueueTestMessage(queue, "ses_test", agent.Message{Text: "test entry"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -140,7 +140,7 @@ func testQueueDrawer(t *testing.T, messages ...agent.Message) (*queueDrawer, *pr
 	t.Helper()
 	queue := promptqueue.New()
 	for _, message := range messages {
-		if _, err := queue.Enqueue("session", message); err != nil {
+		if _, err := enqueueTestMessage(queue, "session", message); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -375,7 +375,7 @@ func TestClosingQueueDrawerReleasesItsEditedEntry(t *testing.T) {
 
 func TestQueueDrawerReleasesTheOriginalSessionWhenSnapshotChanges(t *testing.T) {
 	drawer, queue := testQueueDrawer(t, agent.Message{Text: "old session prompt"})
-	if _, err := queue.Enqueue("next-session", agent.Message{Text: "next session prompt"}); err != nil {
+	if _, err := enqueueTestMessage(queue, "next-session", agent.Message{Text: "next session prompt"}); err != nil {
 		t.Fatal(err)
 	}
 	drawer.Focus(true)
@@ -591,7 +591,7 @@ func TestDurableQueueKeepsTheOpeningCommandAheadOfPriorityEdits(t *testing.T) {
 	if len(pending) != 1 || pending[0].Command.CommandID != commands[1].CommandID || pending[0].State != workbench.PendingRunQueued {
 		t.Fatalf("post-acknowledgement queue = %+v", pending)
 	}
-	if removed, err := queue.CommitDispatch("session"); err != nil || removed.CommandID != commands[0].CommandID {
+	if removed, err := queue.RetireCommand("session", commands[0].CommandID); err != nil || removed.CommandID != commands[0].CommandID {
 		t.Fatalf("committed opening command = %+v, %v", removed, err)
 	}
 }
@@ -1224,4 +1224,12 @@ func TestQueuedFollowUpKeepsItsAttachmentIdentityUntilDispatch(t *testing.T) {
 		t.Fatalf("queued attachment = %+v", attachment)
 	}
 	stop()
+}
+
+func enqueueTestMessage(queue *promptqueue.Queue, sessionID string, message agent.Message) (promptqueue.Entry, error) {
+	commandID, err := agent.NewCommandID()
+	if err != nil {
+		return promptqueue.Entry{}, err
+	}
+	return queue.EnqueueCommand(commandID, sessionID, message, agent.RunOptions{Limits: agent.UnlimitedRunLimits()})
 }

@@ -70,14 +70,6 @@ func New() *Queue {
 	}
 }
 
-func (q *Queue) Enqueue(sessionID string, message agent.Message) (Entry, error) {
-	commandID, err := agent.NewCommandID()
-	if err != nil {
-		return Entry{}, fmt.Errorf("prompt queue: %w", err)
-	}
-	return q.EnqueueCommand(commandID, sessionID, message, agent.RunOptions{Limits: agent.UnlimitedRunLimits()})
-}
-
 // EnqueueCommand preserves a mutation identity already allocated by the
 // authoring transaction. Queue edits allocate a new identity because changing
 // content creates a different runtime operation fingerprint.
@@ -265,23 +257,6 @@ func (q *Queue) Dispatching(sessionID string) (Entry, bool) {
 		return Entry{}, false
 	}
 	return cloneEntry(q.entries[sessionID][index]), true
-}
-
-// CommitDispatch removes only the reserved entry after its SegmentStarted
-// event has been folded into the active conversation.
-func (q *Queue) CommitDispatch(sessionID string) (Entry, error) {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	id, reserved := q.dispatching[sessionID]
-	index := entryIndex(q.entries[sessionID], id)
-	if !reserved || index < 0 {
-		return Entry{}, ErrEntryNotFound
-	}
-	entry := q.entries[sessionID][index]
-	removed := cloneEntry(entry)
-	q.removeAt(sessionID, index)
-	delete(q.dispatching, sessionID)
-	return removed, nil
 }
 
 // RetireCommand removes the exact command settled by runtime recovery. Unlike

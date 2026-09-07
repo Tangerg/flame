@@ -3687,7 +3687,11 @@ func TestApplyingStashDoesNotExposeAnUndurableDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stash, err := store.StashPrompt(agent.Message{Text: "recoverable stash"})
+	message := agent.Message{Text: "recoverable stash"}
+	if err := store.SaveDraft("ses_demo_1", message); err != nil {
+		t.Fatal(err)
+	}
+	stash, err := store.StashDraft("ses_demo_1", message)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -274,38 +274,6 @@ func (s *Store) SaveDraft(sessionID string, message agent.Message) error {
 	return nil
 }
 
-// DiscardDraft retires authoring state for a session that no longer exists.
-// It is intentionally distinct from saving an empty draft at call sites: the
-// caller is expressing a lifecycle transition, not an editor value change.
-func (s *Store) DiscardDraft(sessionID string) error {
-	return s.SaveDraft(sessionID, agent.Message{})
-}
-
-// StashPrompt preserves a prompt independently of its session draft.
-func (s *Store) StashPrompt(message agent.Message) (Stash, error) {
-	message = message.Clone()
-	if message.IsEmpty() {
-		return Stash{}, errors.New("cannot stash an empty prompt")
-	}
-	identity := make([]byte, 8)
-	if _, err := io.ReadFull(s.random, identity); err != nil {
-		return Stash{}, fmt.Errorf("create stash id: %w", err)
-	}
-	stash := Stash{ID: hex.EncodeToString(identity), CreatedAt: s.now().UTC(), Message: message}
-	if err := stash.Validate(); err != nil {
-		return Stash{}, err
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	next := append(slices.Clone(s.stashes), stash)
-	next = tailStashes(next, s.stashCapacity)
-	if err := s.save("stashes.json", next); err != nil {
-		return Stash{}, err
-	}
-	s.stashes = next
-	return cloneStash(stash), nil
-}
-
 // StashDraft transfers one session draft into the bounded stash collection.
 // A durable intent makes the cross-file move restart-safe; synchronous failure
 // restores the complete pre-transaction stash collection so capacity eviction

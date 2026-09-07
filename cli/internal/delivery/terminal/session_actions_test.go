@@ -63,7 +63,7 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 		if saveDraftErr := store.SaveDraft(sessionID, agent.Message{Text: sessionID + " draft"}); saveDraftErr != nil {
 			t.Fatal(saveDraftErr)
 		}
-		if _, enqueueErr := queue.Enqueue(sessionID, agent.Message{Text: sessionID + " queued"}); enqueueErr != nil {
+		if _, enqueueErr := enqueueTestMessage(queue, sessionID, agent.Message{Text: sessionID + " queued"}); enqueueErr != nil {
 			t.Fatal(enqueueErr)
 		}
 		approval := agent.Approval{
@@ -161,7 +161,7 @@ func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 		t.Fatal(saveDraftErr)
 	}
 	queue := promptqueue.New()
-	_, err = queue.Enqueue(sessionID, agent.Message{Text: "keep queued prompt"})
+	_, err = enqueueTestMessage(queue, sessionID, agent.Message{Text: "keep queued prompt"})
 	if err != nil {
 		t.Fatal(err)
 	}
