@@ -106,7 +106,7 @@ func assertWaitingDelegateBoundary(t *testing.T, barrier runs.TreeBarrierCommit)
 		len(pending.Bindings) != 1 || pending.Interrupts[0].RunID != "run_child" {
 		t.Fatalf("waiting Delegate boundary = %#v", pending)
 	}
-	checkpointState, err := decodeInteractionCheckpointPayload(barrier.Checkpoint().Payload)
+	checkpointState, err := decodeInteractionCheckpointPayload(barrier.Checkpoint().Payload())
 	if err != nil {
 		t.Fatal(err)
 	}

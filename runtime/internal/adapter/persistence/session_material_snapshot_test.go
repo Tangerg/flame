@@ -115,7 +115,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 		Sessions: readerSessionStore, Transcript: sqlite.NewTranscriptStore(readerDB),
 		Interrupts: NewInterruptStore(sqlite.NewInterruptStore(readerDB)),
 		Runs:       sqlite.NewRunStore(readerDB), Plan: readerPlanStore, Goals: blockingGoal,
-		ExecutorCheckpoints: NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(readerDB)),
+		ExecutorCheckpoints: sqlite.NewExecutorCheckpointStore(readerDB),
 		History:             history,
 		ApprovalRules:       sqlite.NewApprovalRuleStore(readerDB),
 		PermissionModes:     sqlite.NewPermissionModeStore(readerDB),

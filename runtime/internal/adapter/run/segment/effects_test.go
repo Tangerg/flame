@@ -96,7 +96,7 @@ func mustTreeBarrier(
 	commitID runtimeidentity.CommitID,
 	pending runs.Pending,
 	commits []runs.EventCommit,
-	checkpoint runs.ExecutorCheckpoint,
+	checkpoint run.Checkpoint,
 ) runs.TreeBarrierCommit {
 	t.Helper()
 	barrier, err := runs.NewTreeBarrierCommit(commitID, pending, commits, checkpoint)
@@ -523,25 +523,27 @@ func TestCommitTreeBarrierRejectsMismatchedCheckpointBindingBeforeTransaction(t 
 	mutations := []struct {
 		name     string
 		identity string
-		mutate   func(*runs.ExecutorCheckpoint)
+		mutate   func(*run.CheckpointState)
 	}{
-		{name: "root", identity: "root", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.RootMemberID = "other_proc" }},
-		{name: "session", identity: "session", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.SessionID = "other_session" }},
-		{name: "goal incarnation", identity: "goal_incarnation", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other_goal" }},
-		{name: "limits", identity: "limits", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
+		{name: "root", identity: "root", mutate: func(checkpoint *run.CheckpointState) { checkpoint.RootMemberID = "other_proc" }},
+		{name: "session", identity: "session", mutate: func(checkpoint *run.CheckpointState) { checkpoint.Scope.SessionID = "other_session" }},
+		{name: "goal incarnation", identity: "goal_incarnation", mutate: func(checkpoint *run.CheckpointState) { checkpoint.Scope.GoalIncarnationID = "other_goal" }},
+		{name: "limits", identity: "limits", mutate: func(checkpoint *run.CheckpointState) {
 			checkpoint.Limits = testsupport.MustRunLimits(run.LimitValues{MaxTotalTokens: testsupport.Pointer[int64](1)})
 		}},
-		{name: "provider", identity: "provider", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
+		{name: "provider", identity: "provider", mutate: func(checkpoint *run.CheckpointState) {
 			checkpoint.ModelSelection, _ = modelref.New("openai", checkpoint.ModelSelection.Model())
 		}},
-		{name: "model", identity: "model", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
+		{name: "model", identity: "model", mutate: func(checkpoint *run.CheckpointState) {
 			checkpoint.ModelSelection, _ = modelref.New(checkpoint.ModelSelection.Provider(), "other-model")
 		}},
 	}
 	for _, mutation := range mutations {
 		t.Run(mutation.name, func(t *testing.T) {
 			checkpoint := testRootExecutorCheckpoint()
-			mutation.mutate(&checkpoint)
+			checkpointState := checkpoint.State()
+			mutation.mutate(&checkpointState)
+			checkpoint = testsupport.MustCheckpoint(checkpointState)
 			_, err := runs.NewTreeBarrierCommit(
 				testCommitID(runtimeidentity.CommitPrefix+"barrier_binding_"+mutation.identity),
 				pending,
@@ -553,8 +555,8 @@ func TestCommitTreeBarrierRejectsMismatchedCheckpointBindingBeforeTransaction(t 
 				}},
 				checkpoint,
 			)
-			if !errors.Is(err, runs.ErrInvalidExecutorCheckpoint) {
-				t.Fatalf("NewTreeBarrierCommit error = %v, want ErrInvalidExecutorCheckpoint", err)
+			if !errors.Is(err, run.ErrInvalidCheckpoint) {
+				t.Fatalf("NewTreeBarrierCommit error = %v, want ErrInvalidCheckpoint", err)
 			}
 		})
 	}
@@ -635,8 +637,10 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 
 			test.mutate(&pending, &run)
 			checkpoint := testRootExecutorCheckpoint()
-			checkpoint.Scope.GoalIncarnationID = pending.GoalIncarnationID
-			checkpoint.Limits = pending.Continuations[0].Limits
+			checkpointState := checkpoint.State()
+			checkpointState.Scope.GoalIncarnationID = pending.GoalIncarnationID
+			checkpointState.Limits = pending.Continuations[0].Limits
+			checkpoint = testsupport.MustCheckpoint(checkpointState)
 			_, err := runs.NewTreeBarrierCommit(
 				testCommitID(runtimeidentity.CommitPrefix+"barrier_fact_"+test.identity),
 				pending,

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
@@ -17,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // SessionStores is the SQLite-backed adapter for the session lifecycle's
@@ -27,7 +26,7 @@ type SessionStores struct {
 	transcript          *sqlitestore.TranscriptStore
 	interrupts          *InterruptStore
 	runs                *sqlitestore.RunStore
-	executorCheckpoints *ExecutorCheckpointStore
+	executorCheckpoints *sqlitestore.ExecutorCheckpointStore
 	history             *runsapp.ConversationHistory
 	plan                planProjection
 	approvalRules       sessionStateCleaner
@@ -44,7 +43,7 @@ type SessionStoresConfig struct {
 	Transcript          *sqlitestore.TranscriptStore
 	Interrupts          *InterruptStore
 	Runs                *sqlitestore.RunStore
-	ExecutorCheckpoints *ExecutorCheckpointStore
+	ExecutorCheckpoints *sqlitestore.ExecutorCheckpointStore
 	History             *runsapp.ConversationHistory
 	Plan                planProjection
 	ApprovalRules       sessionStateCleaner

@@ -1059,9 +1059,9 @@ func (inertRuntimeStores) CompleteToolInvocation(context.Context, string, string
 func (inertRuntimeStores) MarkToolInvocationIncomplete(context.Context, string, string, string, string, string, time.Time, time.Time) error {
 	return nil
 }
-func (inertRuntimeStores) SaveCheckpoint(context.Context, runs.ExecutorCheckpoint) error { return nil }
-func (inertRuntimeStores) LoadCheckpoint(context.Context, string) (runs.ExecutorCheckpoint, error) {
-	return runs.ExecutorCheckpoint{}, runs.ErrExecutorCheckpointNotFound
+func (inertRuntimeStores) SaveCheckpoint(context.Context, run.Checkpoint) error { return nil }
+func (inertRuntimeStores) LoadCheckpoint(context.Context, string) (run.Checkpoint, error) {
+	return run.Checkpoint{}, run.ErrCheckpointNotFound
 }
 func (inertRuntimeStores) DeleteCheckpoints(context.Context, string, []string) error { return nil }
 func (inertRuntimeStores) Reserve(context.Context, sqlite.ChildRunStartReservationRecord) error {

@@ -1212,7 +1212,7 @@ func TestResumeRejectsContinuationFactDriftBeforeExecutorPreparation(t *testing.
 	if err == nil {
 		t.Fatal("Resume accepted cumulative metrics that differ from the durable Run")
 	}
-	if control.resumed || control.continuation.Checkpoint.RootMemberID != "" || len(effects.openings) != 0 {
+	if control.resumed || control.continuation.Checkpoint.RootMemberID() != "" || len(effects.openings) != 0 {
 		t.Fatalf("contradictory continuation reached executor/effects: control=%+v openings=%d", control, len(effects.openings))
 	}
 	if _, found := sessions.pending[pending.RootRunID]; !found {
@@ -1407,8 +1407,8 @@ func TestResumeRecoversLostExecutorStateBeforeReturning(t *testing.T) {
 	if len(operations) != 1 || operations[0] != "durable.lost" {
 		t.Fatalf("operations = %v, want one durable lost commit", operations)
 	}
-	if control.continuation.Checkpoint.Scope.CWD != "/work" {
-		t.Fatalf("continuation cwd = %q, want /work", control.continuation.Checkpoint.Scope.CWD)
+	if control.continuation.Checkpoint.Scope().CWD != "/work" {
+		t.Fatalf("continuation cwd = %q, want /work", control.continuation.Checkpoint.Scope().CWD)
 	}
 	if sessionAdmissionBlocked(t, c, "ses_1") {
 		t.Fatal("failed resume leaked its run admission")
@@ -1719,11 +1719,11 @@ func TestResumeRehydrateRestoresChildSourceProjection(t *testing.T) {
 	if !control.continuation.ChildRunAdmissionEnabled {
 		t.Fatalf("rehydrate request = %+v, want child member projection enabled", control.continuation)
 	}
-	if control.continuation.Checkpoint.RootMemberID != "member_root" {
-		t.Fatalf("continuation member = %q, want member_root", control.continuation.Checkpoint.RootMemberID)
+	if control.continuation.Checkpoint.RootMemberID() != "member_root" {
+		t.Fatalf("continuation member = %q, want member_root", control.continuation.Checkpoint.RootMemberID())
 	}
-	if control.continuation.Checkpoint.Scope.GoalIncarnationID != pending.GoalIncarnationID {
-		t.Fatalf("continuation goal incarnation = %q, want %q", control.continuation.Checkpoint.Scope.GoalIncarnationID, pending.GoalIncarnationID)
+	if control.continuation.Checkpoint.Scope().GoalIncarnationID != pending.GoalIncarnationID {
+		t.Fatalf("continuation goal incarnation = %q, want %q", control.continuation.Checkpoint.Scope().GoalIncarnationID, pending.GoalIncarnationID)
 	}
 	wantChildRuns := map[string]ChildRunBinding{
 		"member_grandchild": {MemberID: "member_grandchild", RunID: "run_grandchild", ParentRunID: "run_a"},
@@ -1811,7 +1811,7 @@ func TestResumeRefusesIsolatedRunAfterRuntimeRestart(t *testing.T) {
 	if !errors.Is(err, ErrRunNotFound) || !errors.Is(err, ErrExecutorStateLost) {
 		t.Fatalf("Resume error = %v, want Run not found wrapping executor state lost", err)
 	}
-	if control.continuation.Checkpoint.RootMemberID != "" || len(control.continuation.Members) != 0 {
+	if control.continuation.Checkpoint.RootMemberID() != "" || len(control.continuation.Members) != 0 {
 		t.Fatalf("isolated Run staged continuation %+v, want none", control.continuation)
 	}
 	if sessions.lostRunID != "run_1" || len(operations) != 1 || operations[0] != "durable.lost" {

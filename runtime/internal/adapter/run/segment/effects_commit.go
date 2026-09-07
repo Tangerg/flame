@@ -182,7 +182,7 @@ func (e *Effects) ClaimResume(
 	if err != nil {
 		return runs.ClaimedResume{}, err
 	}
-	var checkpoint runs.ExecutorCheckpoint
+	var checkpoint run.Checkpoint
 	err = e.runInTx(ctx, func(ctx context.Context) error {
 		return e.applyResumeClaim(ctx, prepared, &checkpoint)
 	})
@@ -219,7 +219,7 @@ func prepareResumeClaim(claim runs.ResumeClaimCommit) (preparedResumeClaim, erro
 func (e *Effects) applyResumeClaim(
 	ctx context.Context,
 	prepared preparedResumeClaim,
-	checkpoint *runs.ExecutorCheckpoint,
+	checkpoint *run.Checkpoint,
 ) error {
 	pending := prepared.claim.Pending()
 	loaded, err := e.loadResumeCheckpoint(ctx, prepared)
@@ -244,7 +244,7 @@ func (e *Effects) applyResumeClaim(
 	); err != nil {
 		return fmt.Errorf("segment: invalidate claimed executor checkpoint: %w", err)
 	}
-	*checkpoint = loaded.Clone()
+	*checkpoint = loaded
 	if err := e.runState.RecordWaitingRunCommit(
 		ctx, pending.SessionID, pending.RootRunID, prepared.claim.CommitID(),
 	); err != nil {
@@ -256,21 +256,21 @@ func (e *Effects) applyResumeClaim(
 func (e *Effects) loadResumeCheckpoint(
 	ctx context.Context,
 	prepared preparedResumeClaim,
-) (runs.ExecutorCheckpoint, error) {
+) (run.Checkpoint, error) {
 	pending := prepared.claim.Pending()
 	loaded, err := e.executorCheckpoints.LoadCheckpoint(ctx, prepared.root.MemberID)
 	if err != nil {
-		return runs.ExecutorCheckpoint{}, fmt.Errorf("segment: load claimed executor checkpoint: %w", err)
+		return run.Checkpoint{}, fmt.Errorf("segment: load claimed executor checkpoint: %w", err)
 	}
 	if err := loaded.ValidateOwnership(
 		prepared.root.MemberID, pending.SessionID,
 	); err != nil {
-		return runs.ExecutorCheckpoint{}, err
+		return run.Checkpoint{}, err
 	}
-	if !loaded.ModelSelection.Equal(prepared.root.ModelSelection) || loaded.Limits != prepared.root.Limits ||
-		loaded.Scope.GoalIncarnationID != pending.GoalIncarnationID {
-		return runs.ExecutorCheckpoint{}, fmt.Errorf(
-			"%w: claimed checkpoint policy differs from Pending", runs.ErrInvalidExecutorCheckpoint,
+	if !loaded.ModelSelection().Equal(prepared.root.ModelSelection) || loaded.Limits() != prepared.root.Limits ||
+		loaded.Scope().GoalIncarnationID != pending.GoalIncarnationID {
+		return run.Checkpoint{}, fmt.Errorf(
+			"%w: claimed checkpoint policy differs from Pending", run.ErrInvalidCheckpoint,
 		)
 	}
 	return loaded, nil
@@ -296,7 +296,7 @@ func (e *Effects) consumeResumePending(ctx context.Context, claim runs.ResumeCla
 func (e *Effects) reconcileResumeClaim(
 	ctx context.Context,
 	claim runs.ResumeClaimCommit,
-	checkpoint runs.ExecutorCheckpoint,
+	checkpoint run.Checkpoint,
 	commitErr error,
 ) (runs.ClaimedResume, error) {
 	pending := claim.Pending()
@@ -306,11 +306,11 @@ func (e *Effects) reconcileResumeClaim(
 	if !settled {
 		return runs.ClaimedResume{}, errors.Join(commitErr, settleErr)
 	}
-	if err := checkpoint.Validate(); err != nil {
+	if checkpoint.IsZero() {
 		return runs.ClaimedResume{}, errors.Join(
 			commitErr,
 			errors.New("segment: committed resume claim checkpoint is unavailable to this caller"),
-			err,
+			run.ErrInvalidCheckpoint,
 		)
 	}
 	return claimedResumeResult(claim, checkpoint), nil
@@ -348,7 +348,7 @@ func (e *Effects) resolveToolApproval(
 	return e.toolApprovals.ReplaceItem(ctx, change)
 }
 
-func claimedResumeResult(claim runs.ResumeClaimCommit, checkpoint runs.ExecutorCheckpoint) runs.ClaimedResume {
+func claimedResumeResult(claim runs.ResumeClaimCommit, checkpoint run.Checkpoint) runs.ClaimedResume {
 	return runs.ClaimedResume{
 		Pending: claim.Pending(), Answers: claim.Answers(),
 		Checkpoint: checkpoint,

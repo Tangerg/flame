@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
@@ -83,7 +83,7 @@ func TestSetPlanReplacesAndClearsTheSessionPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "session-1"})
+	ctx := executionctx.WithScope(t.Context(), run.ExecutionScope{SessionID: "session-1"})
 
 	result, err := callTextTool(ctx, tool, `{"steps":[{"description":"inspect","status":"in_progress"}]}`)
 	if err != nil {

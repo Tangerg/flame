@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 )
@@ -25,7 +25,7 @@ func (f *fakeStore) Fetch(_ context.Context, session string, id resultoffload.ID
 }
 
 func sessionCtx(session string) context.Context {
-	return executionctx.WithScope(context.Background(), runs.ExecutionScope{SessionID: session})
+	return executionctx.WithScope(context.Background(), run.ExecutionScope{SessionID: session})
 }
 
 func TestNew_NilStoreOmitted(t *testing.T) {

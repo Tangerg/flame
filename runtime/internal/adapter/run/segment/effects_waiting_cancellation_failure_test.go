@@ -3,8 +3,6 @@ package segment
 import (
 	"context"
 	"errors"
-	"reflect"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -23,7 +21,7 @@ type failingWaitingCheckpointStore struct {
 	err error
 }
 
-func (f failingWaitingCheckpointStore) SaveCheckpoint(context.Context, runs.ExecutorCheckpoint) error {
+func (f failingWaitingCheckpointStore) SaveCheckpoint(context.Context, run.Checkpoint) error {
 	return f.err
 }
 
@@ -152,27 +150,29 @@ func TestCommitWaitingSubtreeCancellationRejectsStalePendingWithoutMutation(t *t
 }
 
 func TestCommitWaitingSubtreeCancellationRejectsMismatchedCheckpointBindingWithoutMutation(t *testing.T) {
-	for name, mutate := range map[string]func(*runs.ExecutorCheckpoint){
-		"root":             func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.RootMemberID = "other_root" },
-		"session":          func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.SessionID = "other_session" },
-		"goal incarnation": func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other_goal" },
-		"limits": func(checkpoint *runs.ExecutorCheckpoint) {
+	for name, mutate := range map[string]func(*run.CheckpointState){
+		"root":             func(checkpoint *run.CheckpointState) { checkpoint.RootMemberID = "other_root" },
+		"session":          func(checkpoint *run.CheckpointState) { checkpoint.Scope.SessionID = "other_session" },
+		"goal incarnation": func(checkpoint *run.CheckpointState) { checkpoint.Scope.GoalIncarnationID = "other_goal" },
+		"limits": func(checkpoint *run.CheckpointState) {
 			checkpoint.Limits = testsupport.MustRunLimits(run.LimitValues{MaxTotalTokens: testsupport.Pointer[int64](1)})
 		},
-		"provider": func(checkpoint *runs.ExecutorCheckpoint) {
+		"provider": func(checkpoint *run.CheckpointState) {
 			checkpoint.ModelSelection, _ = modelref.New("openai", "model")
 		},
-		"model": func(checkpoint *runs.ExecutorCheckpoint) {
+		"model": func(checkpoint *run.CheckpointState) {
 			checkpoint.ModelSelection, _ = modelref.New("anthropic", "other-model")
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			fixture := newWaitingCancellationSQLiteFixture(t)
 			draft := waitingCancellationDraft(fixture.commit)
-			mutate(&draft.checkpoint)
+			checkpointState := draft.checkpoint.State()
+			mutate(&checkpointState)
+			draft.checkpoint = testsupport.MustCheckpoint(checkpointState)
 			_, err := draft.build()
-			if !errors.Is(err, runs.ErrInvalidExecutorCheckpoint) {
-				t.Fatalf("ownership error = %v, want ErrInvalidExecutorCheckpoint", err)
+			if !errors.Is(err, run.ErrInvalidCheckpoint) {
+				t.Fatalf("ownership error = %v, want ErrInvalidCheckpoint", err)
 			}
 			assertWaitingCancellationUnchanged(t, fixture, fixture.commit.ExpectedPending())
 		})
@@ -463,15 +463,12 @@ func assertWaitingCancellationUnchanged(
 
 	checkpoint, err := fixture.checkpoints.LoadCheckpoint(
 		fixture.ctx,
-		fixture.originalCheckpoint.RootMemberID,
+		fixture.originalCheckpoint.RootMemberID(),
 	)
 	if err != nil {
 		t.Fatalf("load executor checkpoint after rollback: %v", err)
 	}
-	if !reflect.DeepEqual(
-		normalizedExecutorCheckpoint(checkpoint),
-		normalizedExecutorCheckpoint(fixture.originalCheckpoint),
-	) {
+	if !checkpoint.Equal(fixture.originalCheckpoint) {
 		t.Fatalf(
 			"executor checkpoint changed after rollback:\ngot  %+v\nwant %+v",
 			checkpoint,
@@ -494,14 +491,4 @@ func assertWaitingCancellationUnchanged(
 	if err != nil || len(messages) != 0 {
 		t.Fatalf("conversation after rollback = %+v err=%v, want empty", messages, err)
 	}
-}
-
-func normalizedExecutorCheckpoint(
-	checkpoint runs.ExecutorCheckpoint,
-) runs.ExecutorCheckpoint {
-	checkpoint.Usage.Models = slices.Clone(checkpoint.Usage.Models)
-	if len(checkpoint.Usage.Models) == 0 {
-		checkpoint.Usage.Models = nil
-	}
-	return checkpoint
 }

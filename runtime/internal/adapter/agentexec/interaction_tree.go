@@ -219,9 +219,9 @@ func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.Effe
 
 func (i *interactionSession) pausedProcessIDs() ([]agent.ProcessID, error) {
 	i.state.mu.Lock()
-	checkpoint := i.state.waitingCheckpoint.Clone()
+	checkpoint := i.state.waitingCheckpoint
 	i.state.mu.Unlock()
-	state, err := decodeInteractionCheckpointPayload(checkpoint.Payload)
+	state, err := decodeInteractionCheckpointPayload(checkpoint.Payload())
 	if err != nil {
 		return nil, err
 	}

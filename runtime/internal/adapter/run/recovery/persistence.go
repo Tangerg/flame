@@ -48,7 +48,7 @@ type GoalRunRecorder interface {
 }
 
 type ExecutorCheckpointStore interface {
-	LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error)
+	LoadCheckpoint(ctx context.Context, rootMemberID string) (run.Checkpoint, error)
 	DeleteSessionCheckpoints(ctx context.Context, sessionID string) error
 }
 
@@ -226,7 +226,7 @@ func (p *Persistence) ReadMessages(ctx context.Context, sessionID string) ([]cor
 func (p *Persistence) LoadExecutorCheckpoint(
 	ctx context.Context,
 	rootMemberID string,
-) (runs.ExecutorCheckpoint, error) {
+) (run.Checkpoint, error) {
 	return p.executorCheckpoints.LoadCheckpoint(ctx, rootMemberID)
 }
 

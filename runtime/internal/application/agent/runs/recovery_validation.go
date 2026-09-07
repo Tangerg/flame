@@ -41,7 +41,7 @@ func validateRecoveryParkedTree(
 	if sess.Isolated() {
 		return false, nil
 	}
-	expected := ExecutorCheckpointExpectation{
+	expected := run.CheckpointExpectation{
 		RootMemberID:      rootContinuation.MemberID,
 		SessionID:         pending.SessionID,
 		CWD:               sess.Workspace().Path(),
@@ -53,7 +53,7 @@ func validateRecoveryParkedTree(
 		Capabilities:      pending.Capabilities,
 	}
 	checkpoint, err := store.LoadExecutorCheckpoint(ctx, rootContinuation.MemberID)
-	if errors.Is(err, ErrExecutorCheckpointNotFound) || errors.Is(err, ErrInvalidExecutorCheckpoint) {
+	if errors.Is(err, run.ErrCheckpointNotFound) || errors.Is(err, run.ErrInvalidCheckpoint) {
 		return false, nil
 	}
 	if err != nil {

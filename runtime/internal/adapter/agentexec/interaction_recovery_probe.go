@@ -26,17 +26,17 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		return false, nil
 	}
 	checkpoint := continuation.Checkpoint
-	if !i.acceptsBuild(checkpoint.BuildID) || checkpoint.Scope.Isolated {
+	if !i.acceptsBuild(checkpoint.BuildID()) || checkpoint.Scope().Isolated {
 		return false, nil
 	}
-	if err := validateRestoreScope(checkpoint.Scope); err != nil {
+	if err := validateRestoreScope(checkpoint.Scope()); err != nil {
 		return false, nil
 	}
-	state, err := decodeInteractionCheckpointPayload(checkpoint.Payload)
+	state, err := decodeInteractionCheckpointPayload(checkpoint.Payload())
 	if err != nil {
 		return false, nil
 	}
-	rootID, err := agent.ParseProcessID(checkpoint.RootMemberID)
+	rootID, err := agent.ParseProcessID(checkpoint.RootMemberID())
 	if err != nil || state.tree.RootID() != rootID {
 		return false, nil
 	}
@@ -46,13 +46,13 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		return false, nil
 	}
 	start := runs.RootExecutionStart{
-		SessionID:                checkpoint.Scope.SessionID,
-		CWD:                      checkpoint.Scope.CWD,
-		WorkspaceCWD:             checkpoint.Scope.WorkspaceCWD,
-		Isolated:                 checkpoint.Scope.Isolated,
-		GoalIncarnationID:        checkpoint.Scope.GoalIncarnationID,
-		ModelSelection:           checkpoint.ModelSelection,
-		Limits:                   checkpoint.Limits,
+		SessionID:                checkpoint.Scope().SessionID,
+		CWD:                      checkpoint.Scope().CWD,
+		WorkspaceCWD:             checkpoint.Scope().WorkspaceCWD,
+		Isolated:                 checkpoint.Scope().Isolated,
+		GoalIncarnationID:        checkpoint.Scope().GoalIncarnationID,
+		ModelSelection:           checkpoint.ModelSelection(),
+		Limits:                   checkpoint.Limits(),
 		InterruptKinds:           continuation.Capabilities.InterruptKinds,
 		ChildRunAdmissionEnabled: continuation.ChildRunAdmissionEnabled,
 		WorkingContext:           cloneChatMessages(state.instructions),

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -19,19 +20,19 @@ func mustCheckpointSelection(provider, model string) modelref.Selection {
 	return selection
 }
 
-func testExecutorCheckpoint() ExecutorCheckpoint {
-	return ExecutorCheckpoint{
+func testExecutorCheckpoint() run.Checkpoint {
+	return testsupport.MustCheckpoint(run.CheckpointState{
 		RootMemberID:   "member_root",
 		Payload:        []byte(`{"root":"member_root"}`),
 		BuildID:        testExecutorBuildID,
-		Scope:          ExecutionScope{SessionID: "ses_1"},
+		Scope:          run.ExecutionScope{SessionID: "ses_1"},
 		ModelSelection: mustCheckpointSelection("openai", "model"),
-	}
+	})
 }
 
 func mustTreeInterrupted(
 	t testing.TB,
-	checkpoint ExecutorCheckpoint,
+	checkpoint run.Checkpoint,
 	interruptions []MemberInterruption,
 ) TreeInterrupted {
 	t.Helper()
@@ -69,8 +70,8 @@ func TestTreeInterruptedRejectsCheckpointBoundToDifferentApplicationFacts(t *tes
 					},
 				},
 			}})
-			if err := barrier.validateFor(test.root, test.session, test.goalIncarnationID, test.selection); !errors.Is(err, ErrInvalidExecutorCheckpoint) {
-				t.Fatalf("validateFor error = %v, want ErrInvalidExecutorCheckpoint", err)
+			if err := barrier.validateFor(test.root, test.session, test.goalIncarnationID, test.selection); !errors.Is(err, run.ErrInvalidCheckpoint) {
+				t.Fatalf("validateFor error = %v, want run.ErrInvalidCheckpoint", err)
 			}
 		})
 	}
@@ -97,19 +98,19 @@ func TestTreeInterruptedOwnsCheckpointAndInterruptions(t *testing.T) {
 	}}
 	barrier := mustTreeInterrupted(t, checkpoint, interruptions)
 
-	checkpoint.Payload[0] = 'x'
+	checkpoint.Payload()[0] = 'x'
 	interruptions[0].MemberID = "member_changed"
 	interruptions[0].Interrupt.Question.Fields[0].Options[0].Label = "Changed"
 	projectedCheckpoint := barrier.Checkpoint()
-	projectedCheckpoint.Payload[0] = 'y'
+	projectedCheckpoint.Payload()[0] = 'y'
 	projectedInterruptions := barrier.Interruptions()
 	projectedInterruptions[0].MemberID = "member_projected"
 	projectedInterruptions[0].Interrupt.Question.Fields[0].Options[0].Label = "Projected"
 
 	ownedCheckpoint := barrier.Checkpoint()
 	ownedInterruptions := barrier.Interruptions()
-	if string(ownedCheckpoint.Payload) != `{"root":"member_root"}` {
-		t.Fatalf("owned checkpoint payload = %q", ownedCheckpoint.Payload)
+	if string(ownedCheckpoint.Payload()) != `{"root":"member_root"}` {
+		t.Fatalf("owned checkpoint payload = %q", ownedCheckpoint.Payload())
 	}
 	if ownedInterruptions[0].MemberID != "member_root" ||
 		ownedInterruptions[0].Interrupt.Question.Fields[0].Options[0].Label != "Yes" {

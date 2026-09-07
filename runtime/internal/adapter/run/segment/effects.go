@@ -192,8 +192,8 @@ type RunProgressWriter interface {
 // checkpoints selected by the Run lifecycle. It never interprets the
 // payload.
 type ExecutorCheckpointStore interface {
-	SaveCheckpoint(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error
-	LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error)
+	SaveCheckpoint(ctx context.Context, checkpoint run.Checkpoint) error
+	LoadCheckpoint(ctx context.Context, rootMemberID string) (run.Checkpoint, error)
 	DeleteCheckpoints(ctx context.Context, sessionID string, rootIDs []string) error
 }
 
@@ -343,10 +343,10 @@ func nilDependency(value any) bool {
 func (e *Effects) ReadWaitingCheckpoint(
 	ctx context.Context,
 	rootMemberID string,
-) (runs.ExecutorCheckpoint, error) {
+) (run.Checkpoint, error) {
 	checkpoint, err := e.executorCheckpoints.LoadCheckpoint(ctx, rootMemberID)
 	if err != nil {
-		return runs.ExecutorCheckpoint{}, fmt.Errorf("segment: load waiting executor checkpoint: %w", err)
+		return run.Checkpoint{}, fmt.Errorf("segment: load waiting executor checkpoint: %w", err)
 	}
-	return checkpoint.Clone(), nil
+	return checkpoint, nil
 }

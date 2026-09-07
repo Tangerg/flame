@@ -494,7 +494,7 @@ func TestInteractionExecutorBindsResolvedRunScopeToManifestAndToolCalls(t *testi
 	start.Isolated = true
 	start.GoalIncarnationID = "goal_lease"
 	want := rootExecutionScope(start)
-	var toolScope runs.ExecutionScope
+	var toolScope run.ExecutionScope
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
 		Name: "scope", Description: "Return the current execution scope.",
 	}, func(ctx context.Context, _ struct{}) (string, error) {
@@ -1291,7 +1291,7 @@ func (s staticInteractionTools) Manifest(context.Context, domaintool.Group) (too
 
 type scopeRecordingInteractionTools struct {
 	manifest toolset.Manifest
-	scope    runs.ExecutionScope
+	scope    run.ExecutionScope
 	ok       bool
 }
 

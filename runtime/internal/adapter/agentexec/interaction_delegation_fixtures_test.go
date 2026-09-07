@@ -342,16 +342,16 @@ func (d *delegateProjection) CommitTreeBarrier(
 func (d *delegateProjection) ReadWaitingCheckpoint(
 	_ context.Context,
 	rootMemberID string,
-) (runs.ExecutorCheckpoint, error) {
+) (run.Checkpoint, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	for index := len(d.barriers) - 1; index >= 0; index-- {
 		checkpoint := d.barriers[index].Checkpoint()
-		if checkpoint.RootMemberID == rootMemberID {
-			return checkpoint.Clone(), nil
+		if checkpoint.RootMemberID() == rootMemberID {
+			return checkpoint, nil
 		}
 	}
-	return runs.ExecutorCheckpoint{}, runs.ErrExecutorCheckpointNotFound
+	return run.Checkpoint{}, run.ErrCheckpointNotFound
 }
 
 func (*delegateProjection) Nudge(string, []string) {}

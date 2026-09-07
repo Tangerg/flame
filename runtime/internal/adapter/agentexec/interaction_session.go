@@ -1,7 +1,6 @@
 package agentexec
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -25,7 +24,7 @@ import (
 
 type interactionSession struct {
 	ref        runs.ExecutorRef
-	scope      runs.ExecutionScope
+	scope      run.ExecutionScope
 	deployment agent.Deployment
 	input      agent.Input
 	engine     *agent.Engine
@@ -61,7 +60,7 @@ type interactionState struct {
 	begun                      bool
 	finished                   bool
 	boundary                   interactionBoundary
-	waitingCheckpoint          runs.ExecutorCheckpoint
+	waitingCheckpoint          run.Checkpoint
 	subtreeChange              *interactionWaitingSubtreeChange
 	subtreePrepared            chan struct{}
 	unknownReported            bool
@@ -389,7 +388,7 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 		return false
 	}
 	i.state.boundary = interactionBoundaryWaiting
-	i.state.waitingCheckpoint = checkpoint.Clone()
+	i.state.waitingCheckpoint = checkpoint
 	i.state.mu.Unlock()
 	published := i.lifetime.send(runs.ExecutorEvent{
 		Member:  i.executorMember(process.Relation()),
@@ -407,9 +406,9 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	return published
 }
 
-func (i *interactionSession) stageContinuation(checkpoint runs.ExecutorCheckpoint) error {
-	if err := checkpoint.Validate(); err != nil {
-		return err
+func (i *interactionSession) stageContinuation(checkpoint run.Checkpoint) error {
+	if checkpoint.IsZero() {
+		return run.ErrInvalidCheckpoint
 	}
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
@@ -420,8 +419,8 @@ func (i *interactionSession) stageContinuation(checkpoint runs.ExecutorCheckpoin
 		!isInteractionWaitingBoundary(i.state.process.Status()) {
 		return runs.ErrExecutionClaimed
 	}
-	if !executorCheckpointsEqual(i.state.waitingCheckpoint, checkpoint) {
-		return fmt.Errorf("%w: live Interaction checkpoint differs from the claimed waiting boundary", runs.ErrInvalidExecutorCheckpoint)
+	if !i.state.waitingCheckpoint.Equal(checkpoint) {
+		return fmt.Errorf("%w: live Interaction checkpoint differs from the claimed waiting boundary", run.ErrInvalidCheckpoint)
 	}
 	i.state.boundary = interactionBoundaryContinuationStaged
 	return nil
@@ -450,15 +449,8 @@ func isInteractionWaitingBoundary(status agent.Status) bool {
 func (i *interactionSession) continuationAccepted() {
 	i.state.mu.Lock()
 	i.state.boundary = interactionBoundaryInactive
-	i.state.waitingCheckpoint = runs.ExecutorCheckpoint{}
+	i.state.waitingCheckpoint = run.Checkpoint{}
 	i.state.mu.Unlock()
-}
-
-func executorCheckpointsEqual(left, right runs.ExecutorCheckpoint) bool {
-	return left.RootMemberID == right.RootMemberID && left.BuildID == right.BuildID &&
-		left.Scope == right.Scope && left.ModelSelection.Equal(right.ModelSelection) &&
-		left.Limits == right.Limits && slices.Equal(left.Usage.Models, right.Usage.Models) &&
-		bytes.Equal(left.Payload, right.Payload)
 }
 
 func (i *interactionSession) reportUnknownEffects() bool {

@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -28,6 +26,7 @@ import (
 	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/google/uuid"
 )
 
 const (
@@ -458,11 +457,11 @@ func (i *InteractionExecutor) StageContinuation(
 	if err := continuation.Validate(); err != nil {
 		return runs.ExecutorRef{}, err
 	}
-	if !i.acceptsBuild(continuation.Checkpoint.BuildID) {
+	if !i.acceptsBuild(continuation.Checkpoint.BuildID()) {
 		return runs.ExecutorRef{}, fmt.Errorf(
 			"%w: checkpoint build %q does not match %q",
 			runs.ErrExecutorStateLost,
-			continuation.Checkpoint.BuildID,
+			continuation.Checkpoint.BuildID(),
 			i.buildID.String(),
 		)
 	}
@@ -499,11 +498,11 @@ func (i *InteractionExecutor) RestoreWaitingExecution(
 	if err := continuation.Validate(); err != nil {
 		return runs.ExecutorRef{}, err
 	}
-	if !i.acceptsBuild(continuation.Checkpoint.BuildID) {
+	if !i.acceptsBuild(continuation.Checkpoint.BuildID()) {
 		return runs.ExecutorRef{}, fmt.Errorf(
 			"%w: checkpoint build %q does not match %q",
 			runs.ErrExecutorStateLost,
-			continuation.Checkpoint.BuildID,
+			continuation.Checkpoint.BuildID(),
 			i.buildID.String(),
 		)
 	}
@@ -530,14 +529,14 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	continuation runs.WaitingContinuation,
 	boundary interactionBoundary,
 ) error {
-	if err := validateRestoreScope(continuation.Checkpoint.Scope); err != nil {
+	if err := validateRestoreScope(continuation.Checkpoint.Scope()); err != nil {
 		return err
 	}
-	checkpoint, err := decodeInteractionCheckpointPayload(continuation.Checkpoint.Payload)
+	checkpoint, err := decodeInteractionCheckpointPayload(continuation.Checkpoint.Payload())
 	if err != nil {
 		return fmt.Errorf("%w: parse Interaction checkpoint: %w", runs.ErrExecutorStateLost, err)
 	}
-	rootID, err := agent.ParseProcessID(continuation.Checkpoint.RootMemberID)
+	rootID, err := agent.ParseProcessID(continuation.Checkpoint.RootMemberID())
 	if err != nil || checkpoint.tree.RootID() != rootID {
 		return fmt.Errorf("%w: checkpoint root differs from its tree", runs.ErrExecutorStateLost)
 	}
@@ -548,9 +547,9 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	}
 	start := runs.RootExecutionStart{
 		SessionID: continuation.SessionID,
-		CWD:       continuation.Checkpoint.Scope.CWD, WorkspaceCWD: continuation.Checkpoint.Scope.WorkspaceCWD,
-		Isolated: continuation.Checkpoint.Scope.Isolated, GoalIncarnationID: continuation.Checkpoint.Scope.GoalIncarnationID,
-		ModelSelection: continuation.Checkpoint.ModelSelection, Limits: continuation.Checkpoint.Limits,
+		CWD:       continuation.Checkpoint.Scope().CWD, WorkspaceCWD: continuation.Checkpoint.Scope().WorkspaceCWD,
+		Isolated: continuation.Checkpoint.Scope().Isolated, GoalIncarnationID: continuation.Checkpoint.Scope().GoalIncarnationID,
+		ModelSelection: continuation.Checkpoint.ModelSelection(), Limits: continuation.Checkpoint.Limits(),
 		InterruptKinds:           continuation.Capabilities.InterruptKinds,
 		ChildRunAdmissionEnabled: continuation.ChildRunAdmissionEnabled,
 		WorkingContext:           cloneChatMessages(checkpoint.instructions),
@@ -597,7 +596,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	return nil
 }
 
-func validateRestoreScope(scope runs.ExecutionScope) error {
+func validateRestoreScope(scope run.ExecutionScope) error {
 	if scope.Isolated {
 		return fmt.Errorf("%w: isolated workspaces are not restorable after executor loss", runs.ErrExecutorStateLost)
 	}
@@ -624,8 +623,8 @@ func discardRestoredInteraction(session *interactionSession, process *agent.Proc
 	_ = session.engine.Close()
 }
 
-func rootExecutionScope(start runs.RootExecutionStart) runs.ExecutionScope {
-	return runs.ExecutionScope{
+func rootExecutionScope(start runs.RootExecutionStart) run.ExecutionScope {
+	return run.ExecutionScope{
 		SessionID: start.SessionID, CWD: start.CWD, WorkspaceCWD: start.WorkspaceCWD,
 		Isolated: start.Isolated, GoalIncarnationID: start.GoalIncarnationID,
 	}
@@ -633,7 +632,7 @@ func rootExecutionScope(start runs.RootExecutionStart) runs.ExecutionScope {
 
 func runExecutionContext(
 	ctx context.Context,
-	scope runs.ExecutionScope,
+	scope run.ExecutionScope,
 	start runs.RootExecutionStart,
 ) context.Context {
 	capabilities := run.Capabilities{

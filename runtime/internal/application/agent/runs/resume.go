@@ -168,9 +168,6 @@ func validateClaimedResume(
 	if !reflect.DeepEqual(claimed.Answers, expectedAnswers) {
 		return errors.New("runs: claimed answers differ from the accepted answer set")
 	}
-	if err := claimed.Checkpoint.Validate(); err != nil {
-		return err
-	}
 	root, ok := expected.RootContinuation()
 	if !ok {
 		return errors.New("runs: claimed continuation has no root")

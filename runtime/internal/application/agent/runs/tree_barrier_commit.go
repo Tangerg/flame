@@ -16,7 +16,7 @@ type TreeBarrierCommit struct {
 	commitID   runtimeidentity.CommitID
 	pending    Pending
 	runs       []EventCommit
-	checkpoint ExecutorCheckpoint
+	checkpoint run.Checkpoint
 }
 
 // NewTreeBarrierCommit binds the root-owned waiting hand-off, opaque executor
@@ -25,11 +25,11 @@ func NewTreeBarrierCommit(
 	commitID runtimeidentity.CommitID,
 	pending Pending,
 	runs []EventCommit,
-	checkpoint ExecutorCheckpoint,
+	checkpoint run.Checkpoint,
 ) (TreeBarrierCommit, error) {
 	barrier := TreeBarrierCommit{
 		commitID: commitID, pending: pending.Clone(),
-		runs: cloneEventCommits(runs), checkpoint: checkpoint.Clone(),
+		runs: cloneEventCommits(runs), checkpoint: checkpoint,
 	}
 	if err := barrier.Validate(); err != nil {
 		return TreeBarrierCommit{}, err
@@ -83,7 +83,7 @@ func (t TreeBarrierCommit) Pending() Pending { return t.pending.Clone() }
 func (t TreeBarrierCommit) Runs() []EventCommit { return cloneEventCommits(t.runs) }
 
 // Checkpoint returns an isolated copy of the opaque executor continuation.
-func (t TreeBarrierCommit) Checkpoint() ExecutorCheckpoint { return t.checkpoint.Clone() }
+func (t TreeBarrierCommit) Checkpoint() run.Checkpoint { return t.checkpoint }
 
 type treeBarrierValidator struct {
 	barrier       TreeBarrierCommit
@@ -97,19 +97,19 @@ func (t treeBarrierValidator) validateCheckpoint(rootContinuation Continuation) 
 	if err := checkpoint.ValidateOwnership(rootContinuation.MemberID, pending.SessionID); err != nil {
 		return fmt.Errorf("runs: tree barrier checkpoint ownership: %w", err)
 	}
-	if checkpoint.Scope.GoalIncarnationID != pending.GoalIncarnationID {
+	if checkpoint.Scope().GoalIncarnationID != pending.GoalIncarnationID {
 		return fmt.Errorf(
 			"runs: tree barrier checkpoint goal incarnation %q does not match Pending %q: %w",
-			checkpoint.Scope.GoalIncarnationID,
+			checkpoint.Scope().GoalIncarnationID,
 			pending.GoalIncarnationID,
-			ErrInvalidExecutorCheckpoint,
+			run.ErrInvalidCheckpoint,
 		)
 	}
-	if !checkpoint.ModelSelection.Equal(rootContinuation.ModelSelection) {
-		return fmt.Errorf("runs: tree barrier checkpoint model differs from root continuation: %w", ErrInvalidExecutorCheckpoint)
+	if !checkpoint.ModelSelection().Equal(rootContinuation.ModelSelection) {
+		return fmt.Errorf("runs: tree barrier checkpoint model differs from root continuation: %w", run.ErrInvalidCheckpoint)
 	}
-	if checkpoint.Limits != rootContinuation.Limits {
-		return fmt.Errorf("runs: tree barrier checkpoint limits differ from root continuation: %w", ErrInvalidExecutorCheckpoint)
+	if checkpoint.Limits() != rootContinuation.Limits {
+		return fmt.Errorf("runs: tree barrier checkpoint limits differ from root continuation: %w", run.ErrInvalidCheckpoint)
 	}
 	return nil
 }

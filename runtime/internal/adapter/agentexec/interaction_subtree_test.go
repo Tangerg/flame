@@ -46,11 +46,11 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 		t.Fatal(err)
 	}
 	continuation.Members[0].MemberID = "member_changed"
-	continuation.Checkpoint.Payload[0] = 'x'
+	continuation.Checkpoint.Payload()[0] = 'x'
 	continuation.Capabilities.InterruptKinds[0] = "changed"
 	projected := request.Continuation()
 	projected.Members[0].MemberID = "member_projected"
-	projected.Checkpoint.Payload[0] = 'y'
+	projected.Checkpoint.Payload()[0] = 'y'
 	projected.Capabilities.InterruptKinds[0] = "projected"
 	prepareCtx, cancelPrepare := context.WithTimeout(t.Context(), 2*time.Second)
 	prepared, err := fixture.executor.PrepareWaitingSubtreeCancellation(prepareCtx, request)
@@ -155,7 +155,7 @@ func assertPreparedWaitingCancellation(
 	if len(canceledMemberIDs) == 1 &&
 		canceledMemberIDs[0] == targetMemberID &&
 		len(pausedMemberIDs) == 1 &&
-		pausedMemberIDs[0] == checkpoint.RootMemberID &&
+		pausedMemberIDs[0] == checkpoint.RootMemberID() &&
 		len(pendingInterruptions) == 0 {
 		return
 	}

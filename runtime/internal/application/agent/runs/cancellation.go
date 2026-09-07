@@ -310,7 +310,7 @@ func (c *Coordinator) waitingChildCancellationContinuation(
 	}
 	checkpoint, err := c.checkpoints.ReadWaitingCheckpoint(ctx, rootContinuation.MemberID)
 	if err != nil {
-		if !errors.Is(err, ErrExecutorStateLost) && !errors.Is(err, ErrExecutorCheckpointNotFound) {
+		if !errors.Is(err, ErrExecutorStateLost) && !errors.Is(err, rundomain.ErrCheckpointNotFound) {
 			return WaitingContinuation{}, err
 		}
 		lostErr := c.terminations.ApplyRunLost(

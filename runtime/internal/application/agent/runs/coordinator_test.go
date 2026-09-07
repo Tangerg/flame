@@ -494,13 +494,15 @@ func (f *fakeEffects) ClaimResume(_ context.Context, claim ResumeClaimCommit) (C
 	checkpoint := testExecutorCheckpoint()
 	pending := claim.Pending()
 	root, _ := pending.RootContinuation()
-	checkpoint.RootMemberID = root.MemberID
-	checkpoint.Scope.SessionID = pending.SessionID
-	checkpoint.Scope.CWD = "/work"
-	checkpoint.Scope.WorkspaceCWD = "/work"
-	checkpoint.Scope.GoalIncarnationID = pending.GoalIncarnationID
-	checkpoint.ModelSelection = root.ModelSelection
-	checkpoint.Limits = root.Limits
+	checkpointState := checkpoint.State()
+	checkpointState.RootMemberID = root.MemberID
+	checkpointState.Scope.SessionID = pending.SessionID
+	checkpointState.Scope.CWD = "/work"
+	checkpointState.Scope.WorkspaceCWD = "/work"
+	checkpointState.Scope.GoalIncarnationID = pending.GoalIncarnationID
+	checkpointState.ModelSelection = root.ModelSelection
+	checkpointState.Limits = root.Limits
+	checkpoint = testsupport.MustCheckpoint(checkpointState)
 	claimed := ClaimedResume{
 		Pending: pending, Answers: claim.Answers(),
 		Checkpoint: checkpoint,
@@ -540,11 +542,13 @@ func testProjectionPorts(ports completeTestProjectionPorts) ProjectionPorts {
 func (f *fakeEffects) ReadWaitingCheckpoint(
 	_ context.Context,
 	rootMemberID string,
-) (ExecutorCheckpoint, error) {
+) (run.Checkpoint, error) {
 	checkpoint := testExecutorCheckpoint()
-	checkpoint.RootMemberID = rootMemberID
-	checkpoint.Scope.CWD = "/work"
-	checkpoint.Scope.WorkspaceCWD = "/work"
+	checkpointState := checkpoint.State()
+	checkpointState.RootMemberID = rootMemberID
+	checkpointState.Scope.CWD = "/work"
+	checkpointState.Scope.WorkspaceCWD = "/work"
+	checkpoint = testsupport.MustCheckpoint(checkpointState)
 	return checkpoint, nil
 }
 

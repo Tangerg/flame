@@ -67,6 +67,8 @@ Conversation history requires its read/write store and atomic compaction persist
 
 Session lifecycle persistence requires the complete durable collaborator graph at construction. Empty Goal or Plan state is returned by its store; a missing store never disables part of a Session read, replacement, or deletion.
 
+`run.Checkpoint` owns the immutable continuation envelope, its execution identity and policy, and monotonic cumulative accounting. Construction copies external data once; ordinary hand-offs share the immutable value. SQLite decodes through that constructor and checks the owner-defined successor rule inside the write transaction. The executor alone interprets the opaque payload.
+
 Checkpoint and waiting facts commit in the Application order required to recover the same logical Run. Terminalization and checkpoint cleanup preserve one durable winner. Recovery reconstructs from durable Runtime state and public framework checkpoints; it does not infer state from event delivery or client caches.
 
 Bootstrap creates one file-lease set from the persistence bundle's data directory and supplies it to Session admission, Goal driving, and ordered Run-then-Goal recovery. Each use case requires its ownership backend at construction, and recovery requires both reconcilers.

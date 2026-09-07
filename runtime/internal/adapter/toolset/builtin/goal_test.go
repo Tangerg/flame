@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	goalstate "github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -75,12 +74,12 @@ func testSelection() modelref.Selection {
 }
 
 func testSessionContext() context.Context {
-	ctx := executionctx.WithScope(context.Background(), runs.ExecutionScope{SessionID: "s1"})
+	ctx := executionctx.WithScope(context.Background(), run.ExecutionScope{SessionID: "s1"})
 	return executionctx.WithRunCapabilities(ctx, testGoalRunCapabilities())
 }
 
 func testGoalRunContext() context.Context {
-	return executionctx.WithScope(testSessionContext(), runs.ExecutionScope{
+	return executionctx.WithScope(testSessionContext(), run.ExecutionScope{
 		SessionID: "s1", GoalIncarnationID: "lease-active",
 	})
 }
@@ -200,7 +199,7 @@ func TestReportGoalOutcomeSupersededStampRefused(t *testing.T) {
 	store.put(current)
 
 	// The Run carries the incarnation it was launched under, since superseded.
-	ctx := executionctx.WithScope(context.Background(), runs.ExecutionScope{
+	ctx := executionctx.WithScope(context.Background(), run.ExecutionScope{
 		SessionID:         "s1",
 		GoalIncarnationID: "lease-stale",
 	})

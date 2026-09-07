@@ -30,7 +30,7 @@ func TestSessionStoresRequireCompleteDurableCapabilities(t *testing.T) {
 	complete := SessionStoresConfig{
 		Sessions: sqlite.NewSessionStore(db), Transcript: sqlite.NewTranscriptStore(db),
 		Interrupts: NewInterruptStore(sqlite.NewInterruptStore(db)), Runs: sqlite.NewRunStore(db),
-		ExecutorCheckpoints: NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
+		ExecutorCheckpoints: sqlite.NewExecutorCheckpointStore(db),
 		History:             history,
 		Plan:                sqlite.NewPlanStore(db),
 		ApprovalRules:       sqlite.NewApprovalRuleStore(db),
