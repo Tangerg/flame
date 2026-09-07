@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -19,7 +20,7 @@ type capabilityRuntime struct {
 
 func newOperationEndpoint(t *testing.T, target any) *delivery.Endpoint {
 	t.Helper()
-	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: t.Context()})
+	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: testsupport.NewIdempotencyStore()})
 	if err != nil {
 		t.Fatal(err)
 	}

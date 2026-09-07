@@ -34,7 +34,7 @@ func (s *streamingLifecycleRuntime) SubscribeRuntime(
 
 func newLifecycleServer(t *testing.T, configure func(*Config)) *Server {
 	t.Helper()
-	endpoint, err := delivery.NewEndpoint(lifecycleRuntime{}, delivery.EndpointConfig{Lifetime: t.Context()})
+	endpoint, err := delivery.NewEndpoint(lifecycleRuntime{}, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: testsupport.NewIdempotencyStore()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestShutdownCancelsLongLivedTransportHandler(t *testing.T) {
 	defer cancelWait()
 	runtime := &streamingLifecycleRuntime{subscribed: make(chan struct{})}
 	srv := newLifecycleServer(t, func(cfg *Config) {
-		endpoint, err := delivery.NewEndpoint(runtime, delivery.EndpointConfig{Lifetime: t.Context()})
+		endpoint, err := delivery.NewEndpoint(runtime, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: testsupport.NewIdempotencyStore()})
 		if err != nil {
 			t.Fatal(err)
 		}

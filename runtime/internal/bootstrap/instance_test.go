@@ -195,7 +195,7 @@ func TestInstanceCloseJoinsAcceptedOperationsBeforeClosingResources(t *testing.T
 		canceled: make(chan struct{}),
 		release:  make(chan struct{}),
 	}
-	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: runtimeContext})
+	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: runtimeContext, IdempotencyStore: testsupport.NewIdempotencyStore()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,7 +279,7 @@ func TestInstanceCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 		canceled: make(chan struct{}),
 		release:  make(chan struct{}),
 	}
-	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: runtimeContext})
+	endpoint, err := delivery.NewEndpoint(target, delivery.EndpointConfig{Lifetime: runtimeContext, IdempotencyStore: testsupport.NewIdempotencyStore()})
 	if err != nil {
 		t.Fatal(err)
 	}

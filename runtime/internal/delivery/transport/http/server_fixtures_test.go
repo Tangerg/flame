@@ -74,6 +74,9 @@ func newTestServer(t *testing.T) (*httptest.Server, *fakeRuntime) {
 func newTestEndpoint(t *testing.T, target any, config delivery.EndpointConfig) *delivery.Endpoint {
 	t.Helper()
 	config.Lifetime = t.Context()
+	if config.IdempotencyStore == nil {
+		config.IdempotencyStore = testsupport.NewIdempotencyStore()
+	}
 	endpoint, err := delivery.NewEndpoint(target, config)
 	if err != nil {
 		t.Fatal(err)

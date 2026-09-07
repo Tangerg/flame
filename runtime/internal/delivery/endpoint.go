@@ -41,8 +41,7 @@ type Endpoint struct {
 	invocations          *invocationGroup
 }
 
-// EndpointConfig supplies durable operation mechanisms. A nil IdempotencyStore
-// selects a Runtime-instance-local store, useful for tests and non-durable hosts.
+// EndpointConfig supplies the required operation mechanisms.
 type EndpointConfig struct {
 	IdempotencyStore     idempotency.Store
 	IdempotencyNamespace string
@@ -61,13 +60,12 @@ func NewEndpoint(target any, config EndpointConfig) (*Endpoint, error) {
 	if err != nil {
 		return nil, fmt.Errorf("delivery endpoint: idempotency namespace: %w", err)
 	}
-	store := config.IdempotencyStore
-	if store == nil {
-		store = newMemoryIdempotencyStore()
+	if !capabilityAvailable(config.IdempotencyStore) {
+		return nil, errors.New("delivery endpoint: idempotency store is required")
 	}
 	return &Endpoint{
 		target:               target,
-		idempotency:          newReplayStore(store),
+		idempotency:          newReplayStore(config.IdempotencyStore),
 		idempotencyNamespace: namespace,
 		invocations:          newInvocationGroup(config.Lifetime),
 	}, nil

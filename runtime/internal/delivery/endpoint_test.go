@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -50,6 +51,9 @@ func mustNewEndpoint(t *testing.T, target any, config EndpointConfig) *Endpoint 
 	if config.Lifetime == nil {
 		config.Lifetime = t.Context()
 	}
+	if config.IdempotencyStore == nil {
+		config.IdempotencyStore = testsupport.NewIdempotencyStore()
+	}
 	endpoint, err := NewEndpoint(target, config)
 	if err != nil {
 		t.Fatal(err)
@@ -60,6 +64,18 @@ func mustNewEndpoint(t *testing.T, target any, config EndpointConfig) *Endpoint 
 func TestEndpointRequiresProcessLifetime(t *testing.T) {
 	if endpoint, err := NewEndpoint(struct{}{}, EndpointConfig{}); err == nil || endpoint != nil {
 		t.Fatalf("New without lifetime = (%v, %v), want nil endpoint and non-nil error", endpoint, err)
+	}
+}
+
+func TestEndpointRequiresIdempotencyStore(t *testing.T) {
+	var typedNil *testsupport.IdempotencyStore
+	for _, store := range []idempotency.Store{nil, typedNil} {
+		endpoint, err := NewEndpoint(struct{}{}, EndpointConfig{
+			Lifetime: t.Context(), IdempotencyStore: store,
+		})
+		if err == nil || endpoint != nil {
+			t.Fatalf("New with missing store = (%v, %v), want nil endpoint and non-nil error", endpoint, err)
+		}
 	}
 }
 

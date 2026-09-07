@@ -40,12 +40,12 @@ type flakyCompletionStore struct {
 }
 
 type claimLostOnceStore struct {
-	backing *memoryIdempotencyStore
+	backing *testsupport.IdempotencyStore
 	once    sync.Once
 }
 
 type competingCompletionStore struct {
-	backing        *memoryIdempotencyStore
+	backing        *testsupport.IdempotencyStore
 	durablePayload []byte
 	durableErr     error
 	once           sync.Once
@@ -70,9 +70,7 @@ func (c *claimLostOnceStore) Claim(
 func (c *claimLostOnceStore) Complete(ctx context.Context, record idempotency.Record) error {
 	lost := false
 	c.once.Do(func() {
-		c.backing.mu.Lock()
-		delete(c.backing.records, record.Key)
-		c.backing.mu.Unlock()
+		c.backing = testsupport.NewIdempotencyStore()
 		lost = true
 	})
 	if lost {
@@ -174,75 +172,9 @@ func TestOperationFingerprintUsesTypedSemanticValue(t *testing.T) {
 	}
 }
 
-func TestMemoryIdempotencyStoreKeepsAbandonedClaimReserved(t *testing.T) {
-	store := newMemoryIdempotencyStore()
-	record, claimed, err := store.Claim(t.Context(), "abandoned", "first")
-	if err != nil || !claimed {
-		t.Fatalf("initial claim = (%+v, %v, %v)", record, claimed, err)
-	}
-	store.mu.Lock()
-	aged := store.records[record.Key]
-	aged.expiresAt = time.Time{}
-	store.records[record.Key] = aged
-	store.mu.Unlock()
-
-	got, claimed, err := store.Claim(t.Context(), record.Key, record.Fingerprint)
-	if err != nil || claimed || len(got.Payload) != 0 {
-		t.Fatalf("aged pending claim = (%+v, %v, %v), want reserved", got, claimed, err)
-	}
-	if _, _, claimErr := store.Claim(t.Context(), record.Key, "second"); !errors.Is(claimErr, idempotency.ErrKeyConflict) {
-		t.Fatalf("reuse aged pending claim = %v, want ErrKeyConflict", claimErr)
-	}
-	record.Payload = []byte(`{"version":1}`)
-	if completeErr := store.Complete(t.Context(), record); completeErr != nil {
-		t.Fatalf("complete aged pending claim: %v", completeErr)
-	}
-	got, claimed, err = store.Claim(t.Context(), record.Key, record.Fingerprint)
-	if err != nil || claimed || string(got.Payload) != string(record.Payload) {
-		t.Fatalf("completed aged claim = (%+v, %v, %v)", got, claimed, err)
-	}
-	store.mu.Lock()
-	aged = store.records[record.Key]
-	aged.expiresAt = time.Time{}
-	store.records[record.Key] = aged
-	store.mu.Unlock()
-	got, claimed, err = store.Claim(t.Context(), record.Key, "second")
-	if err != nil || !claimed || got.Fingerprint != "second" {
-		t.Fatalf("replace expired result = (%+v, %v, %v)", got, claimed, err)
-	}
-}
-
-func TestMemoryIdempotencyStorePrunesExpiredResultsBeforeNewClaim(t *testing.T) {
-	store := newMemoryIdempotencyStore()
-	expired, claimed, err := store.Claim(t.Context(), "expired", "first")
-	if err != nil || !claimed {
-		t.Fatalf("claim expired fixture = (%+v, %v, %v)", expired, claimed, err)
-	}
-	expired.Payload = []byte(`{"version":1}`)
-	if err := store.Complete(t.Context(), expired); err != nil {
-		t.Fatalf("complete expired fixture: %v", err)
-	}
-	store.mu.Lock()
-	stored := store.records[expired.Key]
-	stored.expiresAt = time.Time{}
-	store.records[expired.Key] = stored
-	store.mu.Unlock()
-
-	if _, claimed, err := store.Claim(t.Context(), "fresh", "second"); err != nil || !claimed {
-		t.Fatalf("claim fresh key = (%v, %v)", claimed, err)
-	}
-	store.mu.Lock()
-	_, exists := store.records[expired.Key]
-	count := len(store.records)
-	store.mu.Unlock()
-	if exists || count != 1 {
-		t.Fatalf("records after fresh claim = %d, expired exists = %v", count, exists)
-	}
-}
-
 func TestCompletionFailureRetriesWithoutRepeatingCommand(t *testing.T) {
 	service := &countingCancelService{}
-	store := &flakyCompletionStore{Store: newMemoryIdempotencyStore()}
+	store := &flakyCompletionStore{Store: testsupport.NewIdempotencyStore()}
 	store.failures.Store(1)
 	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: store})
 	options := Options{IdempotencyKey: "cancel-once"}
@@ -265,7 +197,7 @@ func TestCompletionFailureRetriesWithoutRepeatingCommand(t *testing.T) {
 
 func TestAwaitShutdownFlushesKnownCompletionBeforeStoreClosure(t *testing.T) {
 	service := &countingCancelService{}
-	backing := newMemoryIdempotencyStore()
+	backing := testsupport.NewIdempotencyStore()
 	store := &flakyCompletionStore{Store: backing}
 	store.failures.Store(1)
 	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: store})
@@ -297,7 +229,7 @@ func TestAwaitShutdownFlushesKnownCompletionBeforeStoreClosure(t *testing.T) {
 
 func TestAwaitShutdownKeepsFailedPendingCompletionForRetry(t *testing.T) {
 	service := &countingCancelService{}
-	backing := newMemoryIdempotencyStore()
+	backing := testsupport.NewIdempotencyStore()
 	store := &flakyCompletionStore{Store: backing}
 	store.failures.Store(2)
 	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: store})
@@ -327,7 +259,7 @@ func TestAwaitShutdownKeepsFailedPendingCompletionForRetry(t *testing.T) {
 }
 
 func TestAwaitShutdownFlushHonorsOwnerCancellation(t *testing.T) {
-	backing := newMemoryIdempotencyStore()
+	backing := testsupport.NewIdempotencyStore()
 	store := &cancellationAwareCompletionStore{
 		Store: backing, entered: make(chan struct{}), release: make(chan struct{}),
 	}
@@ -365,7 +297,7 @@ func TestAwaitShutdownFlushHonorsOwnerCancellation(t *testing.T) {
 
 func TestLostCompletionClaimIsReacquiredWithoutRepeatingCommand(t *testing.T) {
 	service := &countingCancelService{}
-	store := &claimLostOnceStore{backing: newMemoryIdempotencyStore()}
+	store := &claimLostOnceStore{backing: testsupport.NewIdempotencyStore()}
 	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: store})
 	options := Options{IdempotencyKey: "recover-lost-claim"}
 	request := protocol.CancelRunRequest{RunID: "run_1"}
@@ -417,7 +349,7 @@ func TestPendingCompletionReplaysDurableFirstResult(t *testing.T) {
 	}
 	service := &countingCancelService{}
 	store := &competingCompletionStore{
-		backing:        newMemoryIdempotencyStore(),
+		backing:        testsupport.NewIdempotencyStore(),
 		durablePayload: durablePayload,
 	}
 	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: store})
@@ -441,7 +373,7 @@ func TestPendingCompletionReplaysDurableFirstResult(t *testing.T) {
 }
 
 func TestPendingCompletionRejectsKeyReuse(t *testing.T) {
-	store := &flakyCompletionStore{Store: newMemoryIdempotencyStore()}
+	store := &flakyCompletionStore{Store: testsupport.NewIdempotencyStore()}
 	store.failures.Store(1)
 	endpoint := mustNewEndpoint(t, &countingCancelService{}, EndpointConfig{IdempotencyStore: store})
 	options := Options{IdempotencyKey: "bound-key"}
@@ -460,7 +392,7 @@ func TestReplayRejectsUnversionedStoredOutcome(t *testing.T) {
 	if !ok {
 		t.Fatal("runs.cancel is not registered")
 	}
-	result := newReplayStore(newMemoryIdempotencyStore()).replay(
+	result := newReplayStore(testsupport.NewIdempotencyStore()).replay(
 		t.Context(), method, []byte(`{"value":{}}`), &countingCancelService{},
 	)
 	if !errors.Is(result.Failure, protocol.ErrInternalError) {
@@ -514,7 +446,7 @@ func TestReplayRejectsUnknownStoredOutcomeFields(t *testing.T) {
 	}
 
 	for _, payload := range [][]byte{unknownEnvelope, unknownResultPayload} {
-		result := newReplayStore(newMemoryIdempotencyStore()).replay(
+		result := newReplayStore(testsupport.NewIdempotencyStore()).replay(
 			t.Context(), method, payload, &countingCancelService{},
 		)
 		if !errors.Is(result.Failure, protocol.ErrInternalError) {
