@@ -56,9 +56,12 @@ func executeCommandWithRuntime(
 ) (string, string, error) {
 	t.Helper()
 	var out, errb bytes.Buffer
-	dependencies := Dependencies{OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
-		return runtime, profile, nil
-	}}
+	dependencies := Dependencies{
+		StateDirectory: t.TempDir(),
+		OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
+			return runtime, profile, nil
+		},
+	}
 	root := NewRoot(dependencies)
 	root.SetOut(&out)
 	root.SetErr(&errb)
@@ -78,6 +81,25 @@ func TestCommandRequiresNegotiatedRuntimeProfile(t *testing.T) {
 	out, _, err := executeCommandWithRuntime(t, instantRuntime(), nil, "", "sessions", "ls")
 	if err == nil || !strings.Contains(err.Error(), "profile") || out != "" {
 		t.Fatalf("command without profile = output %q, error %v", out, err)
+	}
+}
+
+func TestSessionsDeleteRequiresWorkbenchDirectoryBeforeMutation(t *testing.T) {
+	runtime := &postCommitDeleteRuntime{Runtime: instantRuntime()}
+	root := NewRoot(Dependencies{
+		OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
+			return runtime, new(commandRuntimeProfile(t)), nil
+		},
+	})
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	root.SetArgs([]string{"sessions", "delete", "--yes", firstSession(t, runtime)})
+	err := root.ExecuteContext(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "state directory") {
+		t.Fatalf("delete without workbench directory: %v", err)
+	}
+	if runtime.request.CommandID != "" {
+		t.Fatal("delete mutated runtime without durable authoring state")
 	}
 }
 

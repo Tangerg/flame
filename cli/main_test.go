@@ -426,6 +426,7 @@ func TestMixedInteractionPTYRuntime(t *testing.T) {
 	backend.Script = func(string) runtimefixture.Script { return mixedInteractionPTYScript() }
 	if err := terminal.Run(t.Context(), terminal.Config{
 		Runtime: backend, RuntimeProfile: new(scriptedRuntimeProfile(t)), Workspace: t.TempDir(),
+		StateDirectory: t.TempDir(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -495,6 +496,7 @@ func TestCancelReentryPTYRuntime(t *testing.T) {
 	}
 	if err := terminal.Run(t.Context(), terminal.Config{
 		Runtime: backend, RuntimeProfile: new(scriptedRuntimeProfile(t)), Workspace: t.TempDir(),
+		StateDirectory: t.TempDir(),
 	}); err != nil {
 		t.Fatal(err)
 	}

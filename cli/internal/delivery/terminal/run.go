@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/oolong/components/headless"
@@ -181,9 +180,6 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 }
 
 func openSessionWorkbench(directory string) (*workbench.Store, error) {
-	if strings.TrimSpace(directory) == "" {
-		return workbench.OpenMemory(workbench.Config{})
-	}
 	persistence, err := statefile.Open(directory)
 	if err != nil {
 		return nil, err

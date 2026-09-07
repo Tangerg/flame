@@ -538,10 +538,11 @@ func TestQueueDrawerCancelsAStalePointerGesture(t *testing.T) {
 }
 
 func TestDurableQueueKeepsTheOpeningCommandAheadOfPriorityEdits(t *testing.T) {
-	store, err := workbench.OpenMemory(workbench.Config{})
+	store, err := openSessionWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = store.Close() })
 	queue := promptqueue.New()
 	commands := []agent.StartRun{
 		{CommandID: agent.CommandID("cli_11111111111111111111111111111111"), SessionID: "session", Message: agent.Message{Text: "opening"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()}},

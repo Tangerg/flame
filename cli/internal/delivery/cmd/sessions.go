@@ -336,9 +336,6 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 }
 
 func openCommandWorkbench(directory string) (*workbench.Store, error) {
-	if strings.TrimSpace(directory) == "" {
-		return workbench.OpenMemory(workbench.Config{})
-	}
 	persistence, err := statefile.Open(directory)
 	if err != nil {
 		return nil, err

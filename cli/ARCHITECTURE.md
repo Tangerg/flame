@@ -73,6 +73,8 @@ Extension plugins install typed contributions into one registry. The registry re
 
 ## Local authoring
 
+Opening a workbench requires persistence. Terminal sessions and session deletion require an absolute state directory supplied by process composition; missing configuration fails before authoring recovery or mutation.
+
 Workbench persistence contains only CLI-authored facts. The workbench aggregate owns record names, the strict current shape, and recovery semantics; its narrow persistence port carries opaque bytes while the filesystem adapter owns rooted paths, regular-file checks, and atomic replacement. Records fail closed on unknown, malformed, oversized, truncated, or trailing content. Queue and replay are CLI aggregates with explicit identities and legal transitions; terminal code commands them instead of mutating slices and flags independently.
 
 Queue admission receives the command identity allocated by its authoring transaction, and settlement retires that exact identity. Stashing transfers an existing draft through the recoverable workbench transaction. Session retirement removes the complete local authoring state together.

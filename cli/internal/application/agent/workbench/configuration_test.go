@@ -1,11 +1,8 @@
 package workbench
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestCapacityRequiresAnExplicitPositiveBound(t *testing.T) {
@@ -34,7 +31,7 @@ func TestStoreRejectsPresentInvalidCapacities(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if _, err := OpenMemory(test.config); err == nil {
+			if _, err := Open(new(closeTrackingPersistence), test.config); err == nil {
 				t.Fatal("present invalid capacity unexpectedly selected a default")
 			}
 		})
@@ -53,35 +50,5 @@ func TestDirectoryPersistenceRequiresAnAbsoluteOwnedRoot(t *testing.T) {
 	var typedNil *removeFailurePersistence
 	if _, err := Open(typedNil, Config{}); err == nil {
 		t.Fatal("typed-nil persistence unexpectedly constructed a Store")
-	}
-}
-
-func TestMemoryPersistenceNeverCreatesWorkbenchFiles(t *testing.T) {
-	workingDirectory := t.TempDir()
-	previousDirectory, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(workingDirectory); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(previousDirectory) })
-
-	store, err := OpenMemory(Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := store.Remember(agent.Message{Text: "process-local prompt"}); err != nil {
-		t.Fatal(err)
-	}
-	if err := store.SaveDraft("session", agent.Message{Text: "process-local draft"}); err != nil {
-		t.Fatal(err)
-	}
-	entries, err := os.ReadDir(workingDirectory)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(entries) != 0 {
-		t.Fatalf("memory Store wrote files: %+v", entries)
 	}
 }

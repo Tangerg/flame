@@ -19,10 +19,11 @@ import (
 )
 
 func TestStoreRejectsInvalidAuthoringMessagesBeforePersistence(t *testing.T) {
-	store, err := OpenMemory(Config{})
+	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = store.Close() })
 	invalid := agent.Message{Attachments: []agent.Attachment{{ID: "invalid"}}}
 	if err := store.Remember(invalid); err == nil || !strings.Contains(err.Error(), "remember prompt") {
 		t.Fatalf("Remember invalid message error = %v", err)
@@ -45,10 +46,11 @@ func TestStoreRejectsInvalidPersistedSessionDraft(t *testing.T) {
 		t.Fatal(err)
 	}
 	const sessionID = "session"
-	memory, err := OpenMemory(Config{})
+	store, err := Open(persistence, Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = store.Close() })
 	invalid := agent.Message{Attachments: []agent.Attachment{{ID: "invalid"}}}
 	encoded, err := json.Marshal(envelope[sessionState]{
 		Version: formatVersion,
@@ -57,7 +59,7 @@ func TestStoreRejectsInvalidPersistedSessionDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := persistence.Replace(memory.sessionStateName(sessionID), encoded); err != nil {
+	if err := persistence.Replace(store.sessionStateName(sessionID), encoded); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Open(persistence, Config{}); err == nil || !strings.Contains(err.Error(), "session draft") {
@@ -568,10 +570,11 @@ func TestStoreRecoversPreparedSessionDeletionWithStableIdentity(t *testing.T) {
 }
 
 func TestStoreDoesNotNormalizeSessionDeletionIdentity(t *testing.T) {
-	store, err := OpenMemory(Config{})
+	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = store.Close() })
 	request := agent.DeleteSession{
 		CommandID: agent.CommandID("cli_33333333333333333333333333333334"),
 		SessionID: " session ",
@@ -764,10 +767,11 @@ func TestRetiringSessionStateAlsoRetiresItsRollbackJournal(t *testing.T) {
 }
 
 func TestStoreDoesNotDeduplicateChangedAttachmentMetadata(t *testing.T) {
-	store, err := OpenMemory(Config{})
+	store, err := OpenDirectory(t.TempDir(), Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = store.Close() })
 	first := agent.Message{Text: "inspect", Attachments: []agent.Attachment{{ID: "file", Path: "/tmp/file", Name: "old.go", Kind: protocol.ContentBlockText}}}
 	second := first.Clone()
 	second.Attachments[0].Name = "new.go"

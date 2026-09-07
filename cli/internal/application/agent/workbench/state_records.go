@@ -101,9 +101,6 @@ func (s *Store) loadDraftTransfer() error {
 }
 
 func (s *Store) load(name string, value any) error {
-	if s.persistence == nil {
-		return fs.ErrNotExist
-	}
 	body, err := s.persistence.Read(name, maximumStateBytes)
 	if err != nil {
 		return err
@@ -145,9 +142,6 @@ func (s *Store) loadOptional(name string, value any) error {
 }
 
 func (s *Store) loadSessionStates() error {
-	if s.persistence == nil {
-		return nil
-	}
 	entries, err := s.persistence.ListFiles("sessions", sessionStateExtension)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
@@ -307,9 +301,6 @@ func (s *Store) save(name string, value any) error {
 	if s.writeBarrier != nil {
 		return s.writeBarrier
 	}
-	if s.persistence == nil {
-		return nil
-	}
 	encoded, err := json.MarshalIndent(envelope[any]{Version: formatVersion, Value: value}, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode state snapshot: %w", err)
@@ -324,9 +315,6 @@ func (s *Store) save(name string, value any) error {
 func (s *Store) remove(name string) error {
 	if s.writeBarrier != nil {
 		return s.writeBarrier
-	}
-	if s.persistence == nil {
-		return nil
 	}
 	return s.persistence.Remove(name)
 }

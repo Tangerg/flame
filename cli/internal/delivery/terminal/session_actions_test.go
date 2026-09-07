@@ -54,10 +54,11 @@ func (p *postCommitSessionDeleteRuntime) deletion() (agent.DeleteSession, int) {
 }
 
 func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
-	store, err := workbench.OpenMemory(workbench.Config{})
+	store, err := openSessionWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = store.Close() })
 	queue := promptqueue.New()
 	for _, sessionID := range []string{"retired", "active"} {
 		if saveDraftErr := store.SaveDraft(sessionID, agent.Message{Text: sessionID + " draft"}); saveDraftErr != nil {
@@ -117,10 +118,11 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 }
 
 func TestSessionDraftTransitionMergesAnExistingDestinationDraft(t *testing.T) {
-	store, err := workbench.OpenMemory(workbench.Config{})
+	store, err := openSessionWorkbench(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = store.Close() })
 	baseline := agent.Message{Text: "source baseline"}
 	current := agent.Message{Text: "source baseline plus input authored during navigation"}
 	destination := agent.Message{Text: "destination draft"}

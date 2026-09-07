@@ -31,6 +31,9 @@ import (
 
 func testSessionConfig(t *testing.T, cfg Config) Config {
 	t.Helper()
+	if cfg.StateDirectory == "" {
+		cfg.StateDirectory = t.TempDir()
+	}
 	if cfg.RuntimeProfile == nil {
 		cfg.RuntimeProfile = new(terminalProfile(t, func(discovery *protocol.DiscoverResponse, client *protocol.ClientCapabilities) {
 			for _, feature := range protocol.Features() {
@@ -61,6 +64,19 @@ func TestSessionRequiresNegotiatedRuntimeProfile(t *testing.T) {
 		if _, _, _, err := validatedSessionConfig(cfg); err == nil {
 			t.Fatal("session accepted an incomplete runtime profile")
 		}
+	}
+}
+
+func TestSessionRequiresWorkbenchDirectory(t *testing.T) {
+	cfg := testSessionConfig(t, Config{Runtime: runtimefixture.New(), Workspace: t.TempDir()})
+	cfg.StateDirectory = ""
+	prepared, err := prepareSession(t.Context(), cfg)
+	if err == nil {
+		_ = prepared.workbench.Close()
+		t.Fatal("session accepted a missing workbench directory")
+	}
+	if !strings.Contains(err.Error(), "state directory") {
+		t.Fatalf("missing workbench directory: %v", err)
 	}
 }
 
