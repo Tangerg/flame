@@ -17,11 +17,7 @@ export function LanguageSection() {
         <DropdownMenu.Trigger
           render={<SelectTrigger label={active.label} aria-label={t("settings.language.label")} />}
         />
-        <DropdownMenu.Content
-          align="start"
-          sideOffset={4}
-          className="min-w-[var(--menu-min-width)]"
-        >
+        <DropdownMenu.Content align="start" sideOffset={4}>
           {locales.map((l) => (
             <DropdownMenu.Item
               key={l.id}

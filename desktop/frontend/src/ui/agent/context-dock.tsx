@@ -89,7 +89,6 @@ const styles = stylex.create({
   // The list adds no box: the strip already is one, and a second would put the tabs a nesting
   // step away from the padding that positions them.
   contents: { display: "contents" },
-  menu: { minWidth: "var(--menu-min-width)" },
 });
 
 export function AgentContextDock({ children }: { children: ReactNode }) {
@@ -288,7 +287,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
           return (
             <ContextMenu.Root key={tab.id}>
               <ContextMenu.Trigger render={row} />
-              <ContextMenu.Content className={stylex.props(styles.menu).className}>
+              <ContextMenu.Content>
                 {tab.onClose && (
                   <ContextMenu.IconItem icon="x" onSelect={close}>
                     {tab.closeLabel}

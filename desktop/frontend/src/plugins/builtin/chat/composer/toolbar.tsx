@@ -41,7 +41,7 @@ function ReasoningEffortPicker() {
           />
         }
       />
-      <DropdownMenu.Content align="start" sideOffset={6} className="min-w-[var(--menu-min-width)]">
+      <DropdownMenu.Content align="start" sideOffset={6}>
         {model.reasoningLevels.map((effort) => (
           <DropdownMenu.Item
             key={effort}
@@ -123,7 +123,7 @@ function ApprovalModePill() {
           />
         }
       />
-      <DropdownMenu.Content align="start" sideOffset={6} className="min-w-[var(--menu-min-width)]">
+      <DropdownMenu.Content align="start" sideOffset={6}>
         {APPROVAL_MODES.map((m) => (
           <DropdownMenu.Item
             key={m.value}

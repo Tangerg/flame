@@ -456,8 +456,10 @@ export function RailCatalogPicker({
           </div>
 
           {/* A measure that does not move: the surface is anchored to a composer control, so a
-              body that grows with its group walks the whole popover up the screen. */}
-          <div {...stylex.props(styles.railBody)}>
+              body that grows with its group walks the whole popover up the screen. Named,
+              because that is a claim about geometry and the only place it can be checked is a
+              browser — a jsdom test can reach the element but never its height. */}
+          <div data-slot="catalog-body" {...stylex.props(styles.railBody)}>
             {!searching && groups.length > 1 && (
               // Toggle buttons, not a tablist: a `tablist` whose panel is the combobox's
               // `listbox` is a pairing axe reports.

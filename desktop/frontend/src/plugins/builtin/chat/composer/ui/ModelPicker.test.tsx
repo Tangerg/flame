@@ -117,16 +117,6 @@ describe("ModelPicker", () => {
     ]);
   });
 
-  it("holds one measure so the surface does not walk up the screen", async () => {
-    render(<ModelPicker />);
-    fireEvent.click(screen.getByRole("button", { name: "Switch model" }));
-
-    await screen.findByPlaceholderText("Search models…");
-    const list = screen.getByRole("listbox");
-    expect(list.parentElement!.className).toContain("h-[240px]");
-    expect(list.className).toContain("overflow-y-auto");
-  });
-
   it("moves to another provider's models by tab", async () => {
     render(<ModelPicker />);
     fireEvent.click(screen.getByRole("button", { name: "Switch model" }));

@@ -7976,3 +7976,100 @@ atom 只留左右内距，纵向由每个调用点自己说 —— 材料需要�
 ### `ui/agent` 终态
 
 15 个文件全部迁完。保留的 class 只有 globals.css 的机制键。
+
+---
+
+## Round 136 —— 菜单不拥有"菜单是什么"
+
+### 计划
+
+进业务层（`src/plugins/**`，263 个文件）。先扫全层重复的整串 class，找**库里缺的档**
+而不是逐文件翻译 —— 业务层的 class 大多是布局噪音（`flex flex-col`、`truncate`），
+真信号只有两处，而且都指向同一个 atom。
+
+### 证据
+
+```
+9  min-w-[var(--menu-min-width)]        ← 13 个业务点 + context-dock 的 styles.menu
+4  max-h-[…] overflow-y-auto            ← 3 个不同值：min(60vh,380px) / 320px / 280px
+```
+
+`--menu-min-width` 在 `globals.css` 里声明**一次**，被读 14 次，其中 13 次在业务层。
+本日志第 5625 行记着它的来历：某轮把 **9 个裸值（160–248）统一成了这一个变量**。
+
+### 根因
+
+那一轮做对了一半 —— **值统一了，归属没有**。一个只为"让调用点共享一个数字"
+而存在的变量，恰恰证明这个数字的主人不是调用点。菜单的最小宽度不是调用点的决定，
+它就是菜单本身；写 14 遍之后它依然可以被第 15 个调用点写成别的。
+
+滚动那一档更糟：atom 从没提供它，于是 4 个调用点各自猜了个数。
+**其中只有一个是视口感知的** —— `max-h-[280px]` 在矮窗口会被屏幕裁掉，
+菜单底部的项点不到。这不是不一致，是 bug 类。
+
+而正解设计系统本来就有：`catalog-picker` 这个 atom 已经在用
+`min(420px, var(--available-height))` —— Base UI 的 Positioner 会**量出**锚点到
+视口边缘的真实空间并发布成变量。`60vh` 只是对它的一次估算，另外三个连估都没估。
+
+### 做法
+
+1. `menuStyles.content` 无条件拥有 `minWidth`，`--menu-min-width` 从 `globals.css` 删除
+   —— 它唯一的职责是被 14 处拼写，主人到位后这个职责就不存在了。
+2. 滚动上限同样**无条件**：`min(380px, var(--available-height))` + `overflowY: auto`。
+   不做成 prop —— 「菜单不该超出为它量好的空间」没有第二种答案，
+   而 `max-height` 对本来就矮的菜单无副作用。380px 取四个值里最大的那个。
+3. 顺带补两处键盘可达性：`overscrollBehavior: contain`（菜单滚到底不接着滚页面）、
+   `scrollPaddingBlock`（高亮项被键盘带进视野时不贴边）—— 后者 `catalog-picker`
+   的 list 也有，同一个理由。
+
+### 验收
+
+14 处 `min-w` 与 4 处 `max-h/overflow` 全部消失；其中 6 个调用点的 `className`
+整个消失（它只装着这一个值）。10 个此前无上限的菜单获得上限。
+
+### 顺带撞出一条主干上的坏测试 —— 以及我自己验证方法的漏洞
+
+把单测范围从 `src/ui` 扩到消费方之后，`ModelPicker.test.tsx` 立刻红了 ——
+**而且在 HEAD 上就是红的**。断言是 `expect(list.parentElement!.className).toContain("h-[240px]")`，
+在 `catalog-picker` 迁到 StyleX 那一轮就失效了，只是我当时把单测范围限在了 `src/ui`。
+
+**方法教训**：迁一个 atom，受影响的测试不只在 atom 自己的目录里。
+断言住在**消费方**的测试文件里 —— 那正是我一直没跑的那部分。
+
+治本不是把 `h-[240px]` 换成生成的 hash。这条不变量（"目录体保持一个不动的尺度，
+否则弹层会随分组变化往上爬"）**完全是几何的，而 jsdom 不加载 CSS** ——
+它在那里永远不可能真的失败，只能靠冻结一个类名假装守住。
+搬到有 CSS 的地方：fixture 里那个只有一行的分组恰好是最好的证据 ——
+没有那个尺度，这个体就只有一行高。
+
+顺带记一条两次踩到的：浮层入场时 `scale(0.97)`，
+`getBoundingClientRect()` 会把 240 读成 233、192 读成 186。**量布局要用 computed style。**
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉全量 | **652 / 652**（650 + 两条新闭环测试），零位移 |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 127 文件 / 656 项通过（`src/ui` + settings + chat） |
+
+| | 之前 | 之后 |
+| --- | --- | --- |
+| 菜单最小宽度 | 14 处拼写 + 1 个只为共享而存在的变量 | atom 无条件拥有，变量删除 |
+| 菜单滚动上限 | 4 处、3 个值，1 个视口感知 | atom 无条件拥有，读 `--available-height` |
+| 无上限的菜单 | 10 个 | 0 个 |
+| 只装着一个值的 `className` | 6 处 | 0 处 |
+
+### 下一轮的材料（已勘察，未动）
+
+- **`active:` 有两套按下机制**：`send.tsx` 的 `NUDGE = "active:translate-y-[0.5px]"`
+  是**有理由的真设计**（"实心圆缩小读起来像 bug，半像素下沉读起来像按下"）——
+  但这个理由适用于任何实心圆按钮，它却以字符串常量住在业务文件里。
+  正确形状是 `Button` 拥有第二档：`press="nudge"`。
+  而 `JumpToBottomButton` 那行 `active:translate-y-0 active:scale-[var(--press-scale)]`
+  是在**重述 atom 已经做的事**，外加一个永远不可能触发的 `translate-y-0`
+  （按钮不可见时 `pointer-events-none`）。
+- **`hover:bg-surface-3`**（`McpRow`）：行状态用了 surface 台阶而不是 ink wash，
+  直接违反 DESIGN.md §5。
+- **业务层 35 处 `hover:bg-hover`**：token 是对的，问题是"一行有 hover"这件事
+  被 35 个地方各自声明。

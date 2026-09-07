@@ -97,11 +97,7 @@ export function ThemeSection() {
             />
           }
         />
-        <DropdownMenu.Content
-          align="start"
-          sideOffset={4}
-          className="max-h-[min(60vh,380px)] min-w-[var(--menu-min-width)] overflow-y-auto"
-        >
+        <DropdownMenu.Content align="start" sideOffset={4}>
           <ThemeItem
             swatch={<SystemSwatch />}
             label={t("settings.theme.system")}

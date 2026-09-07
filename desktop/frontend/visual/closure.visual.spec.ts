@@ -1120,6 +1120,68 @@ test("a mouse-opened menu shows its highlighted item, not a ring around itself",
   await expect(highlighted).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 });
 
+// Neither of a menu's own bounds had an owner. The floor was spelled out at fourteen call
+// sites through a variable that existed only so they could share a number, and the ceiling
+// was never offered at all, so four call sites wrote one and three named a pixel count. A
+// literal cannot know where its trigger sits: `max-h-[280px]` clips a list needlessly in a
+// tall window and runs off the screen in a short one. The positioner MEASURES that space,
+// so the ceiling reads `--available-height` — and the assertion is that the cap EQUALS the
+// measurement, which is the one thing no literal can do in both directions at once.
+//
+// The window is short so the measurement binds under the 380px ceiling. The fixture cannot
+// seed a menu long enough to scroll — a plugin's theme list or a provider's models is where
+// that comes from — but the geometry under test is the same either way.
+test("a menu owns both its own bounds, not its call sites", async ({ page }) => {
+  await page.setViewportSize({ width: 1120, height: 300 });
+  await openFixture(page, { fixture: "agent", state: "idle" });
+
+  await page.locator("[data-user-message-bubble]").first().click({ button: "right" });
+  const popup = page.locator('[role="menu"]');
+  await expect(popup).toBeVisible();
+  // A floating panel arrives at scale 0.97, so its box is not its box until it has landed.
+  await expect.poll(() => popup.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
+
+  const box = await popup.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return {
+      top: rect.top,
+      bottom: rect.bottom,
+      minWidth: getComputedStyle(node).minWidth,
+      maxHeight: getComputedStyle(node).maxHeight,
+      measured: getComputedStyle(node.parentElement as HTMLElement).getPropertyValue(
+        "--available-height",
+      ),
+    };
+  });
+
+  expect(box.minWidth).toBe("192px");
+  expect(Number.parseFloat(box.measured)).toBeLessThan(380);
+  expect(box.maxHeight).toBe(box.measured);
+  expect(box.top).toBeGreaterThanOrEqual(0);
+  expect(box.bottom).toBeLessThanOrEqual(300);
+});
+
+// The catalogue's body holds a fixed measure because the popover is anchored to a composer
+// control at the bottom of the window: a body that grows with its group pushes the whole
+// surface up the screen, and switching groups would walk it. A jsdom test had been asserting
+// `h-[240px]` on a parent element, which stopped meaning anything the moment the atom moved
+// to StyleX — and could never have meant much, since jsdom loads no CSS and the claim is
+// entirely about height. Here the fixture's single one-row group is the proof: without the
+// measure this body would be one row tall.
+test("the catalogue holds its measure whatever its group contains", async ({ page }) => {
+  await openFixture(page, { fixture: "agent", state: "idle" });
+
+  await page.getByRole("button", { name: "Switch model" }).first().click();
+  const body = page.locator('[data-slot="catalog-body"]');
+  await expect(body).toBeVisible();
+
+  const rows = await body.locator('[role="option"]').count();
+  expect(rows).toBeLessThan(4);
+  // The layout height, not the rect: a floating panel arrives at scale 0.97, and a measured
+  // rect would report 233 for a body that is 240 tall.
+  expect(await body.evaluate((node) => getComputedStyle(node).height)).toBe("240px");
+});
+
 test("a text-bearing control meets the minimum target size", async ({ page }) => {
   await openFixture(page, { fixture: "workspace", state: "dock-light" });
   const summary = page.locator('[data-goal="summary"]');

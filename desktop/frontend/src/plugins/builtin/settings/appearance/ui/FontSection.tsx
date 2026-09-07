@@ -40,11 +40,7 @@ function FontPicker({ label, mono, value, onChange, defaultLabel }: FontPickerPr
             />
           }
         />
-        <DropdownMenu.Content
-          align="start"
-          sideOffset={4}
-          className="max-h-[280px] min-w-[var(--menu-min-width)] overflow-auto"
-        >
+        <DropdownMenu.Content align="start" sideOffset={4}>
           {fonts.map((f) => (
             <DropdownMenu.Item
               key={f}

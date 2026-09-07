@@ -95,11 +95,7 @@ export function UtilityModelSection() {
             </Button>
           }
         />
-        <DropdownMenu.Content
-          align="end"
-          sideOffset={6}
-          className="max-h-[320px] min-w-[var(--menu-min-width)] overflow-y-auto"
-        >
+        <DropdownMenu.Content align="end" sideOffset={6}>
           <DropdownMenu.Item onClick={() => void pick(null)} className={itemClass}>
             <span />
             <span className="truncate">{t("providers.utility.main")}</span>
@@ -178,11 +174,7 @@ export function EmbeddingModelSection() {
             </Button>
           }
         />
-        <DropdownMenu.Content
-          align="end"
-          sideOffset={6}
-          className="max-h-[320px] min-w-[var(--menu-min-width)] overflow-y-auto"
-        >
+        <DropdownMenu.Content align="end" sideOffset={6}>
           <DropdownMenu.Item onClick={() => void pick(null)} className={itemClass}>
             <span />
             <span className="truncate">{t("providers.embedding.off")}</span>
