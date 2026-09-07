@@ -102,10 +102,6 @@ func writeBlockIdentityField(encoded *strings.Builder, value string) {
 	encoded.WriteString(value)
 }
 
-func (b Block) Identity() BlockIdentity {
-	return BlockIdentity{RunID: b.RunID, BlockID: b.ID}
-}
-
 // Clone returns a block with no mutable storage shared with the caller.
 func (b Block) Clone() Block {
 	b.Attachments = slices.Clone(b.Attachments)

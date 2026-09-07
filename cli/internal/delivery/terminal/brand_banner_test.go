@@ -75,7 +75,7 @@ func TestTranscriptBrandIsAOneShotEntranceProjection(t *testing.T) {
 	if empty := drawRoot(t, view, 72, 12); !strings.Contains(empty, "Flame CLI  vtest") {
 		t.Fatalf("empty transcript does not show the brand:\n%s", empty)
 	}
-	view.Append(newUserMessageBlock(kit.Dark(), "inspect this repository"))
+	view.Append(newUserMessageBlockAs(kit.Dark(), "you", "inspect this repository", true))
 	filled := drawRoot(t, view, 72, 12)
 	if !strings.Contains(filled, "inspect this repository") || strings.Contains(filled, "Flame CLI") {
 		t.Fatalf("conversation did not replace the brand:\n%s", filled)

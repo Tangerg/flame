@@ -12,7 +12,7 @@ import (
 
 func TestUserMessageBlockUsesAQuietSurfaceWithoutChangingCopiedText(t *testing.T) {
 	theme := kit.Dark()
-	block := newUserMessageBlock(theme, "first line\nsecond line")
+	block := newUserMessageBlockAs(theme, "you", "first line\nsecond line", true)
 	width, height := 28, block.Measure(28)
 	surface := grid.NewSurface(width, height)
 	block.Draw(surface.View())
@@ -41,7 +41,7 @@ func TestUserMessageBlockUsesAQuietSurfaceWithoutChangingCopiedText(t *testing.T
 }
 
 func TestUserMessageBlockDegradesWithoutLosingTextAtMinimalWidth(t *testing.T) {
-	block := newUserMessageBlock(kit.Dark(), "x")
+	block := newUserMessageBlockAs(kit.Dark(), "you", "x", true)
 	for _, width := range []int{1, 2} {
 		height := block.Measure(width)
 		surface := grid.NewSurface(width, height)

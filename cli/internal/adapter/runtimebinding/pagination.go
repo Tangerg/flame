@@ -56,22 +56,8 @@ func validateUniqueWireValues[Value validWireValue](
 	return nil
 }
 
-// projectUniqueValues projects, validates, and identity-checks one complete
-// catalog. The operation returns no partial list: a malformed or repeated row
-// makes the whole Runtime response a contract violation.
-func projectUniqueValues[Source any, Target validProjection](
-	operation string,
-	values []Source,
-	project func(Source) Target,
-	identity func(Target) string,
-) ([]Target, error) {
-	return projectUniqueValuesFallible(operation, values, func(value Source) (Target, error) {
-		return project(value), nil
-	}, identity)
-}
-
-// projectUniqueValuesFallible is the strict variant for projections whose wire
-// union can be malformed independently of the resulting model's validation.
+// projectUniqueValuesFallible rejects malformed or duplicate catalog rows
+// without returning a partial projection.
 func projectUniqueValuesFallible[Source any, Target validProjection](
 	operation string,
 	values []Source,

@@ -52,17 +52,17 @@ func (p testProjection) Validate() error {
 	return nil
 }
 
-func TestProjectUniqueValuesOwnsCatalogValidationAndIdentity(t *testing.T) {
+func TestProjectUniqueValuesFallibleOwnsCatalogValidationAndIdentity(t *testing.T) {
 	t.Parallel()
 
-	project := func(value string) testProjection {
-		return testProjection{identity: value, valid: value != "invalid"}
+	project := func(value string) (testProjection, error) {
+		return testProjection{identity: value, valid: value != "invalid"}, nil
 	}
 	identity := func(value testProjection) string { return value.identity }
 
-	projected, err := projectUniqueValues("list values", []string{"first", "second"}, project, identity)
+	projected, err := projectUniqueValuesFallible("list values", []string{"first", "second"}, project, identity)
 	if err != nil || len(projected) != 2 || projected[1].identity != "second" {
-		t.Fatalf("projectUniqueValues = (%+v, %v)", projected, err)
+		t.Fatalf("projectUniqueValuesFallible = (%+v, %v)", projected, err)
 	}
 	for _, test := range []struct {
 		name   string
@@ -74,9 +74,9 @@ func TestProjectUniqueValuesOwnsCatalogValidationAndIdentity(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := projectUniqueValues("list values", test.values, project, identity)
+			_, err := projectUniqueValuesFallible("list values", test.values, project, identity)
 			if err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("projectUniqueValues error = %v, want %q", err, test.want)
+				t.Fatalf("projectUniqueValuesFallible error = %v, want %q", err, test.want)
 			}
 			requireRuntimeContractViolation(t, err)
 		})

@@ -116,13 +116,6 @@ func (i *interactionReview) Reviewing() bool {
 	return i != nil && len(i.items) > 1 && i.completed()
 }
 
-func (i *interactionReview) Position() (current, total int) {
-	if i == nil {
-		return 0, 0
-	}
-	return min(i.current+1, len(i.items)), len(i.items)
-}
-
 func (i *interactionReview) Responses() ([]agent.InterruptAnswer, error) {
 	if i == nil || len(i.items) == 0 {
 		return nil, errors.New("interaction review is empty")
