@@ -35,7 +35,7 @@ type Result struct {
 // Endpoint executes the one Runtime operation catalog independently of any
 // transport envelope.
 type Endpoint struct {
-	target               any
+	handler              *Handler
 	idempotency          *replayStore
 	idempotencyNamespace runtimeidentity.IdempotencyNamespace
 	invocations          *invocationGroup
@@ -52,7 +52,10 @@ type EndpointConfig struct {
 }
 
 // NewEndpoint constructs the binding-neutral Runtime delivery endpoint.
-func NewEndpoint(target any, config EndpointConfig) (*Endpoint, error) {
+func NewEndpoint(handler *Handler, config EndpointConfig) (*Endpoint, error) {
+	if handler == nil {
+		return nil, errors.New("delivery endpoint: handler is required")
+	}
 	if config.Lifetime == nil {
 		return nil, errors.New("delivery endpoint: lifetime is required")
 	}
@@ -60,11 +63,11 @@ func NewEndpoint(target any, config EndpointConfig) (*Endpoint, error) {
 	if err != nil {
 		return nil, fmt.Errorf("delivery endpoint: idempotency namespace: %w", err)
 	}
-	if !capabilityAvailable(config.IdempotencyStore) {
+	if !dependencyPresent(config.IdempotencyStore) {
 		return nil, errors.New("delivery endpoint: idempotency store is required")
 	}
 	return &Endpoint{
-		target:               target,
+		handler:              handler,
 		idempotency:          newReplayStore(config.IdempotencyStore),
 		idempotencyNamespace: namespace,
 		invocations:          newInvocationGroup(config.Lifetime),
@@ -77,9 +80,7 @@ func (e *Endpoint) BeginShutdown() {
 	if e == nil {
 		return
 	}
-	if target, ok := e.target.(interface{ beginShutdown() }); ok {
-		target.beginShutdown()
-	}
+	e.handler.beginShutdown()
 	if e.invocations == nil {
 		return
 	}
@@ -147,7 +148,7 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	if options.IdempotencyKey == "" || !method.Meta.Idempotency.Replays() {
 		result = execute()
 	} else {
-		result = e.idempotency.invoke(ctx, method, parameters, options.IdempotencyKey, execute, e.target)
+		result = e.idempotency.invoke(ctx, method, parameters, options.IdempotencyKey, execute, e.handler)
 	}
 	if result.Events == nil {
 		release()
@@ -161,7 +162,7 @@ func (e *Endpoint) execute(ctx context.Context, method *Method, parameters any) 
 	if err := e.enforceCapabilities(ctx, method.Meta, parameters); err != nil {
 		return failed(err)
 	}
-	raw := method.invoke(e.target, ctx, parameters)
+	raw := method.invoke(e.handler, ctx, parameters)
 	if raw.err != nil {
 		return failed(ProjectError(raw.err))
 	}

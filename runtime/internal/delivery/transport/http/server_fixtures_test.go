@@ -9,87 +9,110 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	"github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const testRuntimeInstanceID = testsupport.RuntimeInstanceID
 
-// fakeRuntime implements only the operations exercised by transport tests.
-type fakeRuntime struct {
+// fakeRuns supplies deterministic Application results while the real Handler,
+// Endpoint, and Router perform admission and protocol translation.
+type fakeRuns struct {
+	*runs.Coordinator
 	canceledRuns   []string
 	gotLastEventID string
 }
 
-func (f *fakeRuntime) Discover(context.Context) (*protocol.DiscoverResponse, error) {
-	return &protocol.DiscoverResponse{
-		ProtocolVersion: protocol.ProtocolVersion,
-		ServerInfo: protocol.ServerInfo{
-			Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID,
-			DefaultWorkspace: protocol.WorkspaceRef{Path: "/workspace"}, Home: "/home",
-		},
-		Capabilities: validTestCapabilities(),
-	}, nil
+func (*fakeRuns) ReplayRetention() runs.Retention {
+	return runs.Retention{MaxEvents: 100, MaxBytes: 1 << 20}
 }
 
-func (f *fakeRuntime) CancelRun(_ context.Context, in protocol.CancelRunRequest) (*protocol.CancelRunResponse, error) {
+func (f *fakeRuns) Cancel(_ context.Context, in runs.CancelCommand) (runs.CancelResult, error) {
 	f.canceledRuns = append(f.canceledRuns, in.RunID)
-	outcome := protocol.RunOutcome{Type: protocol.OutcomeCanceled}
 	finishedAt := time.Date(2026, 7, 30, 1, 0, 0, 0, time.UTC)
-	return &protocol.CancelRunResponse{
-		Type: protocol.CancelRunRoot,
-		Run: protocol.RunRef{RunSummary: protocol.RunSummary{
-			ID: in.RunID, SessionID: "ses_test", Provider: "mock", Model: "balanced",
-			Status: protocol.RunStatusFinished, Outcome: &outcome,
-			CreatedAt: finishedAt.Add(-time.Second), FinishedAt: finishedAt,
-		}},
-	}, nil
+	value := testsupport.MustRestoreRun(run.Snapshot{
+		ID: in.RunID, SessionID: "ses_test", State: run.Canceled,
+		CreatedAt: finishedAt.Add(-time.Second), FinishedAt: finishedAt, UpdatedAt: finishedAt,
+	})
+	return runs.CancelResult{Run: value}, nil
 }
 
-func validTestCapabilities() protocol.ServerCapabilities {
-	return protocol.ServerCapabilities{
-		RunEvents:        []protocol.StreamEventType{},
-		RuntimeTopics:    []protocol.RuntimeTopic{},
-		StreamingMethods: []string{},
-		Features:         map[string]protocol.FeatureCapability{},
-		Limits: protocol.RuntimeLimits{
-			Idempotency: protocol.IdempotencyLimits{RetentionSeconds: 1, Namespace: testsupport.IdempotencyNamespace},
-			RunReplay: protocol.RunReplayLimits{
-				Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1, MaxBytes: 1,
-			},
-			MCPAuthorizationAttempts: protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 1},
-			RuntimeSubscription:      protocol.SubscriptionLimits{MaxTopics: 1, MaxWatches: 1},
-		},
-	}
-}
+type transportMCP struct{ *mcp.Coordinator }
 
-func newTestServer(t *testing.T) (*httptest.Server, *fakeRuntime) {
+func (*transportMCP) AuthorizationAttemptRetention() time.Duration { return time.Minute }
+
+// Unused use cases retain their concrete method sets; an accidental invocation
+// fails immediately instead of silently supplying a successful fake result.
+func newTransportHandler(t *testing.T, cfg delivery.HandlerConfig) *delivery.Handler {
 	t.Helper()
-	api := &fakeRuntime{}
-	return newTestServerFor(t, api), api
+	cfg.Sessions = &sessions.Coordinator{}
+	cfg.MCP = &transportMCP{}
+	cfg.Approvals = &approvals.Coordinator{}
+	cfg.Models = &models.Coordinator{}
+	cfg.Tools = &workspace.DiagnosticTools{}
+	cfg.Queries = &sessions.QueryCoordinator{}
+	cfg.Usage = &sessions.UsageReporter{}
+	cfg.Feedback = &sessions.FeedbackRecorder{}
+	cfg.Schedules = &schedules.Coordinator{}
+	cfg.ScheduleFiring = &schedules.Firing{}
+	cfg.Goals = &goals.Driver{}
+	cfg.AgentMemory = &agentmemory.Coordinator{}
+	cfg.WorkspaceFiles = &workspace.Files{}
+	cfg.WorkspaceVCS = &workspace.VCS{}
+	cfg.WorkspaceDiscovery = &workspace.Discovery{}
+	cfg.WorkspaceKnowledge = &workspace.Knowledge{}
+	cfg.WorkspaceSkills = &workspace.Skills{}
+	cfg.WorkspaceHooks = &workspace.Hooks{}
+	cfg.WorkspaceWatch = &workspace.GitWatch{}
+	cfg.WorkspaceAuthoredWatch = &workspace.AuthoredWatch{}
+	cfg.ServerInfo = protocol.ServerInfo{
+		Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID,
+		DefaultWorkspace: protocol.WorkspaceRef{Path: "/workspace"}, Home: "/home",
+	}
+	cfg.IdempotencyLimits = protocol.IdempotencyLimits{RetentionSeconds: 60, Namespace: testsupport.IdempotencyNamespace}
+	handler, err := delivery.NewHandler(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return handler
 }
 
-func newTestEndpoint(t *testing.T, target any, config delivery.EndpointConfig) *delivery.Endpoint {
+func newTestServer(t *testing.T) (*httptest.Server, *fakeRuns) {
+	t.Helper()
+	api := &fakeRuns{}
+	return newTestServerFor(t, delivery.HandlerConfig{Runs: api}), api
+}
+
+func newTestEndpoint(t *testing.T, handlerConfig delivery.HandlerConfig, config delivery.EndpointConfig) *delivery.Endpoint {
 	t.Helper()
 	config.Lifetime = t.Context()
 	if config.IdempotencyStore == nil {
 		config.IdempotencyStore = testsupport.NewIdempotencyStore()
 	}
-	endpoint, err := delivery.NewEndpoint(target, config)
+	endpoint, err := delivery.NewEndpoint(newTransportHandler(t, handlerConfig), config)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return endpoint
 }
 
-// newTestServerFor serves a caller-supplied Runtime through the same config, so a
-// test that needs a different fake still exercises one server setup.
-func newTestServerFor(t *testing.T, api any) *httptest.Server {
+// newTestServerFor serves the real delivery pipeline over explicit Application fixtures.
+func newTestServerFor(t *testing.T, handlerConfig delivery.HandlerConfig) *httptest.Server {
 	t.Helper()
 	srv, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint:        newTestEndpoint(t, api, delivery.EndpointConfig{IdempotencyNamespace: testsupport.IdempotencyNamespace}),
+		Endpoint:        newTestEndpoint(t, handlerConfig, delivery.EndpointConfig{IdempotencyNamespace: testsupport.IdempotencyNamespace}),
 		Addr:            ":0",
 		ServerInfo:      protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
 		ProtocolVersion: testProtocolVersion,

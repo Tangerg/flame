@@ -1,9 +1,6 @@
 package delivery
 
 import (
-	"context"
-	"iter"
-
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -30,11 +27,7 @@ func registerRuns(registry *Registry) {
 			protocol.ErrUnsupportedMime.Error(),
 			protocol.ErrCapabilityNotNeg.Error(),
 		},
-	}, func(service interface {
-		StartRun(context.Context, protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq[protocol.RunEvent], error)
-	}, ctx context.Context, request protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq[protocol.RunEvent], error) {
-		return service.StartRun(ctx, request)
-	})
+	}, (*Handler).StartRun)
 
 	registry.RunStreamCommand(MethodMeta{
 		Name: RunsResume,
@@ -43,11 +36,7 @@ func registerRuns(registry *Registry) {
 			protocol.ErrInterruptNotOpen.Error(),
 			protocol.ErrCapabilityNotNeg.Error(),
 		},
-	}, func(service interface {
-		ResumeRun(context.Context, protocol.ResumeRunRequest) (*protocol.ResumeRunResponse, iter.Seq[protocol.RunEvent], error)
-	}, ctx context.Context, request protocol.ResumeRunRequest) (*protocol.ResumeRunResponse, iter.Seq[protocol.RunEvent], error) {
-		return service.ResumeRun(ctx, request)
-	})
+	}, (*Handler).ResumeRun)
 
 	// runs.subscribe opens no run, so a retry is just another subscription.
 	//
@@ -68,11 +57,7 @@ func registerRuns(registry *Registry) {
 			protocol.ErrReplayUnavailable.Error(),
 			protocol.ErrCapabilityNotNeg.Error(),
 		},
-	}, func(service interface {
-		SubscribeRun(context.Context, protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq[protocol.RunEvent], error)
-	}, ctx context.Context, request protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq[protocol.RunEvent], error) {
-		return service.SubscribeRun(ctx, request)
-	})
+	}, (*Handler).SubscribeRun)
 
 	registry.Command(MethodMeta{
 		Name: RunsCancel,
@@ -82,11 +67,7 @@ func registerRuns(registry *Registry) {
 			protocol.ErrSessionBusy.Error(),
 			protocol.ErrCapabilityNotNeg.Error(),
 		},
-	}, func(service interface {
-		CancelRun(context.Context, protocol.CancelRunRequest) (*protocol.CancelRunResponse, error)
-	}, ctx context.Context, request protocol.CancelRunRequest) (*protocol.CancelRunResponse, error) {
-		return service.CancelRun(ctx, request)
-	})
+	}, (*Handler).CancelRun)
 
 	// A steer addresses the same thing a subscribe does — one live segment — so it
 	// refuses with the same vocabulary. There is no best-effort injection: a run
@@ -102,11 +83,7 @@ func registerRuns(registry *Registry) {
 			protocol.ErrRunFinished.Error(),
 			protocol.ErrStaleSegment.Error(),
 		},
-	}, func(service interface {
-		SteerRun(context.Context, protocol.SteerRunRequest) error
-	}, ctx context.Context, request protocol.SteerRunRequest) error {
-		return service.SteerRun(ctx, request)
-	})
+	}, (*Handler).SteerRun)
 
 	// runs.get answers "what is this run" for a runId a client already holds — from
 	// an event, a page, or a link — without it having to know the session first.
@@ -116,11 +93,7 @@ func registerRuns(registry *Registry) {
 			protocol.ErrRunNotFound.Error(),
 			protocol.ErrCapabilityNotNeg.Error(),
 		},
-	}, func(service interface {
-		GetRun(context.Context, protocol.GetRunRequest) (*protocol.RunRef, error)
-	}, ctx context.Context, request protocol.GetRunRequest) (*protocol.RunRef, error) {
-		return service.GetRun(ctx, request)
-	})
+	}, (*Handler).GetRun)
 
 	// Only a request that asks for descendants needs features.subagents; the
 	// default page of root runs is always available. The condition treats
@@ -133,9 +106,5 @@ func registerRuns(registry *Registry) {
 			When:     []FieldCondition{{Field: "includeDescendants", Operator: OperatorPresent}},
 			Requires: []string{protocol.FeatureSubagents},
 		}},
-	}, func(service interface {
-		ListRuns(context.Context, protocol.ListRunsRequest) (*protocol.Page[protocol.RunRef], error)
-	}, ctx context.Context, request protocol.ListRunsRequest) (*protocol.Page[protocol.RunRef], error) {
-		return service.ListRuns(ctx, request)
-	})
+	}, (*Handler).ListRuns)
 }

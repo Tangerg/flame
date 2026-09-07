@@ -2,8 +2,6 @@ package delivery
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 
@@ -16,40 +14,13 @@ func (e *Endpoint) enforceCapabilities(ctx context.Context, meta MethodMeta, par
 		if len(rule.When) != 0 && !matchesAll(rule.When, reflect.ValueOf(parameters)) {
 			continue
 		}
-		missing, err := e.missingFeatureRequirements(ctx, rule.Requires)
-		if err != nil {
-			return ProjectError(err)
-		}
+		client, _ := ClientCapabilitiesFrom(ctx)
+		missing := protocol.MissingFeatureRequirements(e.handler.capabilities().Features, client, rule.Requires...)
 		if len(missing) != 0 {
 			return ProjectError(NewCapabilityGapError(missing...))
 		}
 	}
 	return nil
-}
-
-func (e *Endpoint) missingFeatureRequirements(
-	ctx context.Context,
-	required []string,
-) ([]protocol.CapabilityRequirement, error) {
-	discoverer, ok := e.target.(interface {
-		Discover(context.Context) (*protocol.DiscoverResponse, error)
-	})
-	if !ok || !capabilityAvailable(discoverer) {
-		return nil, errors.New("operation: target cannot handle runtime.discover")
-	}
-	discovered, err := discoverer.Discover(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("operation: read capabilities: %w", err)
-	}
-	if discovered == nil {
-		return nil, errors.New("operation: the runtime reported no capabilities")
-	}
-	client, _ := ClientCapabilitiesFrom(ctx)
-	return protocol.MissingFeatureRequirements(
-		discovered.Capabilities.Features,
-		client,
-		required...,
-	), nil
 }
 
 func matchesAll(conditions []FieldCondition, parameters reflect.Value) bool {

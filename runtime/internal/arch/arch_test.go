@@ -17,7 +17,6 @@ import (
 
 	applicationruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
-	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -1079,98 +1078,6 @@ func TestDeliveryDoesNotDeriveSessionActivity(t *testing.T) {
 		"runningSessionSet": "active-run lookup is an application read model",
 		"waitingSessionSet": "interrupt lookup is an application read model",
 	})
-}
-
-// TestDeliveryHandlerMatchesRegisteredOperationCapabilities keeps each wire
-// operation coupled only to the one handler method it invokes while still
-// proving that the production Handler covers the complete catalog. A monolithic
-// Service interface would make every focused consumer and test fake depend on
-// all operations merely to call one.
-func TestDeliveryHandlerMatchesRegisteredOperationCapabilities(t *testing.T) {
-	root := moduleRoot(t)
-	deliveryDir := filepath.Join(root, "internal", "delivery")
-
-	handlers := make(map[string]int)
-	registrationCount := 0
-	factories := map[string]struct{}{
-		"Query": {}, "Command": {}, "CommandAck": {},
-		"Subscription": {}, "RunSubscription": {}, "RunStreamCommand": {},
-	}
-	walkErr := filepath.WalkDir(deliveryDir, func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			if path != deliveryDir {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
-		if err != nil {
-			return err
-		}
-		ast.Inspect(file, func(node ast.Node) bool {
-			call, ok := node.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			selector, ok := call.Fun.(*ast.SelectorExpr)
-			if !ok {
-				return true
-			}
-			factory := selector.Sel.Name
-			if _, registered := factories[factory]; !registered {
-				return true
-			}
-			registrationCount++
-			if len(call.Args) == 0 {
-				t.Errorf("%s registration has no typed handler", factory)
-				return true
-			}
-			literal, ok := call.Args[len(call.Args)-1].(*ast.FuncLit)
-			if !ok || len(literal.Type.Params.List) == 0 {
-				t.Errorf("%s registration must end in a typed handler closure", factory)
-				return true
-			}
-			capability, ok := literal.Type.Params.List[0].Type.(*ast.InterfaceType)
-			if !ok || len(capability.Methods.List) != 1 || len(capability.Methods.List[0].Names) != 1 {
-				t.Errorf("%s registration handler must declare exactly one method capability", factory)
-				return true
-			}
-			handlers[capability.Methods.List[0].Names[0].Name]++
-			return true
-		})
-		return nil
-	})
-	if walkErr != nil {
-		t.Fatalf("inspect operation registrations: %v", walkErr)
-	}
-
-	registered := delivery.Contract().Metas()
-	if registrationCount != len(registered) {
-		t.Errorf("operation registrations = %d, catalog methods = %d", registrationCount, len(registered))
-	}
-	if len(handlers) != registrationCount {
-		t.Errorf("unique operation handler capabilities = %d, registrations = %d", len(handlers), registrationCount)
-	}
-	serverType := reflect.TypeFor[*delivery.Handler]()
-	for name, count := range handlers {
-		if count != 1 {
-			t.Errorf("handler method %s is declared by %d operation capabilities, want one", name, count)
-		}
-		if _, exists := serverType.MethodByName(name); !exists {
-			t.Errorf("registered handler method %s is absent from delivery Handler", name)
-		}
-	}
-	for method := range serverType.Methods() {
-		if handlers[method.Name] == 0 {
-			t.Errorf("delivery Handler exports unregistered method %s", method.Name)
-		}
-	}
 }
 
 // TestWorkspaceChangeNoticeBelongsToWorkspace prevents the Run use case from

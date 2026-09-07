@@ -1,9 +1,12 @@
 package delivery
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type conditionalParameters struct {
@@ -55,5 +58,46 @@ func TestFieldConditionEqualsRequiresAStringTarget(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "requires a string field") {
 			t.Fatalf("ValidateFieldCondition(%q) error = %v, want string-target requirement", field, err)
 		}
+	}
+}
+
+func TestCapabilityGateUsesHostFactsAndClientOptIn(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		method     Name
+		parameters any
+		git        bool
+		subagents  bool
+		refused    bool
+	}{
+		{name: "git unavailable", method: WorkspaceChangesList, parameters: protocol.WorkspaceQuery{}, refused: true},
+		{name: "git available", method: WorkspaceChangesList, parameters: protocol.WorkspaceQuery{}, git: true},
+		{name: "history rollback without git", method: SessionsRollback, parameters: protocol.RollbackSessionRequest{SessionID: "ses_1"}},
+		{name: "file restore without git", method: SessionsRollback, parameters: protocol.RollbackSessionRequest{SessionID: "ses_1", RestoreType: protocol.RestoreFiles}, refused: true},
+		{name: "complete restore without git", method: SessionsRollback, parameters: protocol.RollbackSessionRequest{SessionID: "ses_1", RestoreType: protocol.RestoreBoth}, refused: true},
+		{name: "file restore with git", method: SessionsRollback, parameters: protocol.RollbackSessionRequest{SessionID: "ses_1", RestoreType: protocol.RestoreFiles}, git: true},
+		{name: "root Runs need no opt-in", method: RunsList, parameters: protocol.ListRunsRequest{}},
+		{name: "descendants require opt-in", method: RunsList, parameters: protocol.ListRunsRequest{IncludeDescendants: true}, refused: true},
+		{name: "descendants opted in", method: RunsList, parameters: protocol.ListRunsRequest{IncludeDescendants: true}, subagents: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			endpoint := mustNewEndpoint(t, &Handler{features: featureAvailability{git: test.git}}, EndpointConfig{})
+			meta, found := Contract().Lookup(test.method)
+			if !found {
+				t.Fatalf("unknown method %q", test.method)
+			}
+			ctx := t.Context()
+			if test.subagents {
+				ctx = WithRequestMeta(ctx, protocol.RequestMeta{ClientCapabilities: &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}}}})
+			}
+			failure := endpoint.enforceCapabilities(ctx, meta, test.parameters)
+			if test.refused {
+				if !errors.Is(failure, protocol.ErrCapabilityNotNeg) {
+					t.Fatalf("capability failure = %v", failure)
+				}
+			} else if failure != nil {
+				t.Fatalf("allowed request failed: %v", failure)
+			}
+		})
 	}
 }

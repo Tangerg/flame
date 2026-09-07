@@ -1,8 +1,6 @@
 package delivery
 
 import (
-	"context"
-
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -23,9 +21,5 @@ func registerItems(registry *Registry) {
 			When:     []FieldCondition{{Field: "scope.includeDescendants", Operator: OperatorPresent}},
 			Requires: []string{protocol.FeatureSubagents},
 		}},
-	}, func(service interface {
-		ListItems(context.Context, protocol.ListItemsRequest) (*protocol.ListItemsResponse, error)
-	}, ctx context.Context, request protocol.ListItemsRequest) (*protocol.ListItemsResponse, error) {
-		return service.ListItems(ctx, request)
-	})
+	}, (*Handler).ListItems)
 }

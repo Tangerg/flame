@@ -13,10 +13,10 @@ package delivery
 // Registrations are grouped into files by domain, mirroring the wire method
 // groups. Adding a method is one registration; there is no
 // second table, name constant, or replay list to update alongside it.
-var contract = buildContract()
+var contract = newRegistry()
 
-func buildContract() *Registry {
-	registry := newRegistry()
+func init() {
+	registry := contract
 	registerLifecycle(registry)
 	registerSessions(registry)
 	registerRuns(registry)
@@ -40,7 +40,6 @@ func buildContract() *Registry {
 	registerKnowledge(registry)
 	registerAgentMemory(registry)
 	registerFeedback(registry)
-	return registry
 }
 
 // requires builds the common rule: the whole method needs these features.

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"iter"
 	stdhttp "net/http"
 	"net/http/httptest"
 	"runtime"
@@ -12,29 +11,27 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
+	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-type lifecycleRuntime struct{}
-
-type streamingLifecycleRuntime struct {
+type streamingLifecycleDispatcher struct {
 	subscribed chan struct{}
 }
 
-func (s *streamingLifecycleRuntime) SubscribeRuntime(
-	ctx context.Context,
-	_ protocol.RuntimeSubscribeRequest,
-) (*protocol.RuntimeSubscribeResponse, iter.Seq[protocol.RuntimeEvent], error) {
+func (s *streamingLifecycleDispatcher) Dispatch(ctx context.Context, message transport.Message) dispatch.Result {
 	close(s.subscribed)
-	return &protocol.RuntimeSubscribeResponse{}, func(_ func(protocol.RuntimeEvent) bool) {
-		<-ctx.Done() // an open, event-less stream bounded by the request context
-	}, nil
+	response, _ := transport.NewResponseResult(message.(*transport.Request).ID, struct{}{})
+	return dispatch.Result{Response: response, EventStream: func(func(dispatch.StreamFrame) bool) {
+		<-ctx.Done()
+	}}
 }
 
 func newLifecycleServer(t *testing.T, configure func(*Config)) *Server {
 	t.Helper()
-	endpoint, err := delivery.NewEndpoint(lifecycleRuntime{}, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: testsupport.NewIdempotencyStore()})
+	endpoint, err := delivery.NewEndpoint(&delivery.Handler{}, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: testsupport.NewIdempotencyStore()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,14 +67,9 @@ func TestShutdownBeforeStartPreventsListen(t *testing.T) {
 func TestShutdownCancelsLongLivedTransportHandler(t *testing.T) {
 	waitCtx, cancelWait := context.WithTimeout(t.Context(), time.Second)
 	defer cancelWait()
-	runtime := &streamingLifecycleRuntime{subscribed: make(chan struct{})}
-	srv := newLifecycleServer(t, func(cfg *Config) {
-		endpoint, err := delivery.NewEndpoint(runtime, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: testsupport.NewIdempotencyStore()})
-		if err != nil {
-			t.Fatal(err)
-		}
-		cfg.Endpoint = endpoint
-	})
+	runtime := &streamingLifecycleDispatcher{subscribed: make(chan struct{})}
+	srv := newLifecycleServer(t, nil)
+	srv.router = runtime
 	body := bytes.NewBufferString(`{"jsonrpc":"2.0","id":"1","method":"runtime.subscribe","params":{"topics":["skills.changed"]}}`)
 	req := httptest.NewRequest(stdhttp.MethodPost, "/v2/rpc", body)
 	req.Header.Set("Accept", "text/event-stream")

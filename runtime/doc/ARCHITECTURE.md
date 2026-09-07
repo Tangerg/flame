@@ -93,7 +93,7 @@ MCP, LSP, Git, filesystem, execution, and other integrations are grouped by the 
 
 ## Protocol and bindings
 
-The Contract Registry is the method and policy source used by delivery and contract generation. Generated artifacts in `contract` are the machine truth for methods, schemas, capabilities, errors, unions, and transport endpoints. Discovery identity and capability-catalog constraints are declared there and enforced by the generated validators, so consumers do not maintain another schema.
+The Contract Registry binds operations directly to the complete Handler and is the method and policy source used by delivery and contract generation. Endpoint requires that Handler at construction; request execution, replay attachment, and shutdown do not discover optional implementations. Generated artifacts in `contract` are the machine truth for methods, schemas, capabilities, errors, unions, and transport endpoints. Discovery identity and capability-catalog constraints are declared there and enforced by the generated validators, so consumers do not maintain another schema.
 
 Plan, Goal, Schedule, Knowledge, agent-memory, and file-observation use cases are present in every complete Runtime. Discovery advertises them directly; Session snapshots include the current Plan and any current Goal, and portable import restores Plan as part of the atomic Session write. Git availability remains a host fact, and repository observation failures remain errors at registration. Capability negotiation still governs optional client behavior and host-dependent integrations.
 

@@ -1,8 +1,6 @@
 package delivery
 
 import (
-	"context"
-
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -12,9 +10,5 @@ func registerRecipes(registry *Registry) {
 	registry.Query(MethodMeta{
 		Name:   RecipesList,
 		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
-	}, func(service interface {
-		ListRecipes(context.Context, protocol.WorkspaceQuery) (*protocol.Page[protocol.Recipe], error)
-	}, ctx context.Context, request protocol.WorkspaceQuery) (*protocol.Page[protocol.Recipe], error) {
-		return service.ListRecipes(ctx, request)
-	})
+	}, (*Handler).ListRecipes)
 }
