@@ -22,37 +22,6 @@ import (
 
 const interactionTestBuildID = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
-func TestInteractionExecutionPolicyPreservesOptionalPresence(t *testing.T) {
-	policy, err := newInteractionExecutionPolicy(InteractionExecutorConfig{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if policy.defaultMaxModelCalls != defaultInteractionModelCalls ||
-		policy.deltaBufferCapacity != defaultInteractionDeltaBuffer ||
-		policy.maxConcurrentToolCalls != defaultInteractionConcurrentToolCalls ||
-		policy.unknownEffectPollInterval != defaultUnknownEffectPollInterval ||
-		policy.statePollInterval != defaultInteractionStatePoll {
-		t.Fatalf("default Interaction execution policy = %+v", policy)
-	}
-
-	zeroUint := uint32(0)
-	zeroInt := 0
-	zeroDuration := time.Duration(0)
-	for name, config := range map[string]InteractionExecutorConfig{
-		"model calls":      {DefaultMaxModelCalls: &zeroUint},
-		"delta buffer":     {DeltaBufferCapacity: &zeroInt},
-		"Tool concurrency": {MaxConcurrentToolCalls: &zeroInt},
-		"unknown poll":     {UnknownEffectPollInterval: &zeroDuration},
-		"state poll":       {StatePollInterval: &zeroDuration},
-	} {
-		t.Run(name, func(t *testing.T) {
-			if _, err := newInteractionExecutionPolicy(config); err == nil {
-				t.Fatal("present zero was treated as an omitted execution policy value")
-			}
-		})
-	}
-}
-
 func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
 	client, err := chatclient.New(chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return interactionTextResponse("unused"), nil
@@ -354,7 +323,6 @@ func TestInteractionExecutorMapsStreamingModelFailure(t *testing.T) {
 	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime:             t.Context(),
 		ChatResolver:         staticInteractionChatResolver(client),
-		DefaultMaxModelCalls: uint32Pointer(4),
 		BuildID:              interactionTestBuildID,
 		StreamModelResponses: true,
 	})
@@ -532,8 +500,8 @@ func newTestInteractionExecutorWithLifetime(
 	}
 	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime:     lifetime,
-		ChatResolver: staticInteractionChatResolver(client), DefaultMaxModelCalls: uint32Pointer(4),
-		BuildID: interactionTestBuildID,
+		ChatResolver: staticInteractionChatResolver(client),
+		BuildID:      interactionTestBuildID,
 	})
 	if err != nil {
 		t.Fatal(err)

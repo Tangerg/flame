@@ -41,10 +41,9 @@ func newWaitingDelegateFixture(t *testing.T) *waitingDelegateFixture {
 		t.Fatal(err)
 	}
 	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
-		Lifetime:             t.Context(),
-		ChatResolver:         staticInteractionChatResolver(client),
-		DefaultMaxModelCalls: uint32Pointer(4),
-		BuildID:              interactionTestBuildID,
+		Lifetime:     t.Context(),
+		ChatResolver: staticInteractionChatResolver(client),
+		BuildID:      interactionTestBuildID,
 		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{question},
 		}},

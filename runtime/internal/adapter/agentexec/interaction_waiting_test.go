@@ -758,9 +758,7 @@ func TestInteractionExecutorCheckpointsWithoutReplayingUnknownEffect(t *testing.
 		calls++
 		return interactionUsageTextResponse("externally completed", 2, 1), nil
 	})
-	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		UnknownEffectPollInterval: durationPointer(5 * time.Millisecond),
-	})
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
 	ref, err := executor.StageRoot(t.Context(), start)

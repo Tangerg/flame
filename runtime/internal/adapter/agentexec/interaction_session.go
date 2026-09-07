@@ -35,8 +35,6 @@ type interactionSession struct {
 	childProjection     interactionChildProjection
 	accounting          interactionAccounting
 	allowance           *interactionAllowance
-	unknownPollInterval time.Duration
-	statePollInterval   time.Duration
 	mcpToolAutoApproved func(server, tool string) bool
 	maintenance         RunMaintenance
 	lifecycleHooks      InteractionLifecycleHooks
@@ -114,7 +112,6 @@ func newInteractionSession(
 	start runs.RootExecutionStart,
 	config InteractionExecutorConfig,
 	buildID runtimeidentity.BuildID,
-	policy interactionExecutionPolicy,
 ) *interactionSession {
 	return &interactionSession{
 		ref: ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
@@ -131,8 +128,6 @@ func newInteractionSession(
 			start.ModelSelection,
 			config.Pricing,
 		),
-		unknownPollInterval: policy.unknownEffectPollInterval,
-		statePollInterval:   policy.statePollInterval,
 		mcpToolAutoApproved: config.MCPToolAutoApproved,
 		maintenance:         config.Maintenance,
 		lifecycleHooks:      config.LifecycleHooks,
@@ -309,7 +304,7 @@ func (i *interactionSession) commitFact(
 }
 
 func (i *interactionSession) reconcileUnknownEffects() {
-	ticker := time.NewTicker(i.unknownPollInterval)
+	ticker := time.NewTicker(interactionUnknownEffectPollInterval)
 	defer ticker.Stop()
 	for {
 		select {
@@ -325,7 +320,7 @@ func (i *interactionSession) reconcileUnknownEffects() {
 }
 
 func (i *interactionSession) reconcileExecutionState() {
-	ticker := time.NewTicker(i.statePollInterval)
+	ticker := time.NewTicker(interactionStatePollInterval)
 	defer ticker.Stop()
 	for {
 		select {

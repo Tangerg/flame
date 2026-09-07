@@ -527,11 +527,10 @@ func TestInteractionExecutorBindsResolvedRunScopeToManifestAndToolCalls(t *testi
 }
 
 func TestInteractionExecutorChunkDropPreservesFinalAndUsage(t *testing.T) {
-	const chunks = 256
+	const chunks = 4 * interactionDeltaBuffer
 	model := streamingObservationModel{chunks: chunks, streamed: make(chan struct{})}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
 		StreamModelResponses: true,
-		DeltaBufferCapacity:  intPointer(1),
 	})
 	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
 	if err != nil {
@@ -833,9 +832,7 @@ func TestInteractionExecutorPollingFindsUnknownWhenDirectWakeIsLost(t *testing.T
 	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return interactionUsageTextResponse("answer", 2, 1), nil
 	})
-	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		UnknownEffectPollInterval: durationPointer(5 * time.Millisecond),
-	})
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
 	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
 	if err != nil {
 		t.Fatal(err)
@@ -876,7 +873,7 @@ func TestInteractionExecutorPollingFindsUnknownWhenDirectWakeIsLost(t *testing.T
 	var events []runs.ExecutorEvent
 	select {
 	case events = <-eventsReady:
-	case <-time.After(time.Second):
+	case <-time.After(3 * interactionUnknownEffectPollInterval):
 		t.Fatal("periodic reconciliation did not report unknown Effect")
 	}
 	if unknown := payloadsOf[runs.UnknownEffectsDetected](events); len(unknown) != 1 {
@@ -953,10 +950,9 @@ func TestInteractionExecutorPreservesConcurrentToolAttributionWhenCompletionIsOu
 		interactionUsageTextResponse("done", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:           staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
-		ToolInterpreter:        testInteractionToolInterpreter{},
-		ToolAuthorizer:         allowInteractionTools{},
-		MaxConcurrentToolCalls: intPointer(2),
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer:  allowInteractionTools{},
 	})
 	var release sync.Once
 	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
@@ -1028,9 +1024,8 @@ func TestInteractionExecutorMakesWholeConcurrentEffectUnknownWhenOneResultWriteF
 		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{
 			concurrentInteractionTool{Tool: inner},
 		}}},
-		ToolInterpreter:        testInteractionToolInterpreter{},
-		ToolAuthorizer:         allowInteractionTools{},
-		MaxConcurrentToolCalls: intPointer(2),
+		ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer:  allowInteractionTools{},
 	})
 	projectionFailure := errors.New("canonical concurrent Tool batch unavailable")
 	var release sync.Once
@@ -1090,7 +1085,6 @@ func TestInteractionExecutorMakesConcurrentEffectUnknownWhenDeniedSiblingProject
 		ToolAuthorizer: selectiveDenyInteractionTools{
 			name: "denied_write", reason: "blocked by policy", waitBeforeDenial: externalResultCommitSeen,
 		},
-		MaxConcurrentToolCalls: intPointer(2),
 	})
 	projectionFailure := errors.New("denial store unavailable")
 	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
@@ -1543,8 +1537,6 @@ func newObservedTestInteractionExecutor(
 	extra.ChatResolver = interactionChatResolver(client, counter)
 	extra.Lifetime = t.Context()
 	extra.BuildID = interactionTestBuildID
-	extra.DefaultMaxModelCalls = uint32Pointer(8)
-	extra.UnknownEffectPollInterval = durationPointer(5 * time.Millisecond)
 	executor, err := newInteractionTestExecutor(t, extra)
 	if err != nil {
 		t.Fatal(err)

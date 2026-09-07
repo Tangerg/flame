@@ -24,7 +24,7 @@ trust-boundary checks, resource ownership, and product capabilities remain.
 | --- | --- | --- | --- |
 | R1 | `sessions.MaterialSnapshot` includes Session in one storage read, but `protocol.SessionSnapshot` omits it. CLI combines separate reads with eight stability attempts. | Runtime returns the complete coherent mounted-session projection. Remove CLI metadata pairing, retry count, and equality machinery; update protocol artifacts and consumers. | Pending |
 | R2 | `SessionStores`, `WorkingContextComposer`, `InteractionExecutor`, and title finalization allow absent dependencies that the production composition always supplies. | Require complete collaborators at construction. Remove impossible missing-capability execution branches. Retain actual checkpoint, sandbox, and tool-result-offload policies. | Complete |
-| R3 | Fixed product policy is represented by optional tuning bags; test-only maintenance and restore-scope overrides create alternate production paths. Shutdown wraps a fixed timeout in repeated validation. | Give fixed policy one owner. Remove replacement paths with no product consumer. Keep narrow test controls only where they isolate an actual external boundary or deterministic lifetime. | In progress: restore-scope override removed |
+| R3 | Fixed product policy is represented by optional tuning bags; test-only maintenance and restore-scope overrides create alternate production paths. Shutdown wraps a fixed timeout in repeated validation. | Give fixed policy one owner. Remove replacement paths with no product consumer. Keep narrow test controls only where they isolate an actual external boundary or deterministic lifetime. | In progress: restore-scope override and executor tuning bags removed |
 | R4 | Executor composition repeats BuildID as ImplementationIdentity and adds a hand-maintained configuration identity beside serialized configuration. | Derive deployment identity from the real executable and configuration facts. Remove synonymous identity inputs and wrappers without weakening Scope deployment compatibility. | Complete |
 | R5 | Recovery and waiting-subtree cancellation validate constructed immutable write sets again in persistence. Some validators replay planner transitions. | One owner constructs each complete decision. Persistence checks transactional expectations, not a second recovery policy. Remove redundant construction surfaces and repeated proof machinery. | Pending |
 | R6 | Session restore, fork, and rollback repeatedly normalize, copy, and validate complete snapshots through write-plan construction and application. | Decode and validate external input at its boundary; acquire mutable ownership once per retained owner. Apply an established immutable write plan without another full reconstruction. | Pending |
@@ -141,6 +141,21 @@ actual response-mode policy to prove incompatible deployment rejection;
 isolated or unavailable workspaces remain rejected by the same host boundary.
 Verified focused executor and bootstrap recovery, then Runtime tests, vet,
 build, and whitespace checks.
+
+### Fixed execution policy
+
+Removed optional executor tuning fields and their resolved-policy bag. The
+executor owns its production Tool concurrency, buffers, reconciliation periods,
+and default model-call allowance directly. A Run's explicit step limit still
+controls its model-call allowance. Delegation constructs one fixed framework
+structural policy and work allocation without optional-value normalization.
+
+Tests exercise the production concurrency and reconciliation cadence. Streaming
+overflow coverage supplies more data than the real buffer can retain. Response
+mode remains an external dispatcher boundary needed to verify both complete
+and streaming model effects; offload retains its actual product configuration.
+Verified focused execution and bootstrap checks, then Runtime tests, vet, build,
+and whitespace checks.
 
 If deeper consumer evidence invalidates a proposed deletion, record the
 surviving requirement here instead of weakening it to satisfy a line-count target.

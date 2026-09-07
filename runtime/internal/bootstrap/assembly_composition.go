@@ -300,18 +300,16 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: build Run maintenance: %w", err)
 	}
-	maxConcurrentToolCalls := 8
 	interactionConfig := agentexec.InteractionExecutorConfig{
-		Lifetime:               lifetime.context,
-		BuildID:                cfg.BuildID,
-		ChatResolver:           cfg.ChatResolver,
-		StreamModelResponses:   true,
-		MaxConcurrentToolCalls: &maxConcurrentToolCalls,
-		ToolResolver:           toolRuntime.tools.Resolver,
-		ToolInterpreter:        toolset.NewInterpreter(policy.plans),
-		ToolPresenter:          toolset.Presenter{},
-		ToolAuthorizer:         toolAuthorizer,
-		ToolHooks:              workingContexts,
+		Lifetime:             lifetime.context,
+		BuildID:              cfg.BuildID,
+		ChatResolver:         cfg.ChatResolver,
+		StreamModelResponses: true,
+		ToolResolver:         toolRuntime.tools.Resolver,
+		ToolInterpreter:      toolset.NewInterpreter(policy.plans),
+		ToolPresenter:        toolset.Presenter{},
+		ToolAuthorizer:       toolAuthorizer,
+		ToolHooks:            workingContexts,
 		MCPToolAutoApproved: func(server, toolName string) bool {
 			name, err := mcpserver.ParseServerName(server)
 			if err != nil {

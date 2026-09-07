@@ -22,13 +22,6 @@ import (
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
-func uint32Pointer(value uint32) *uint32 { return &value }
-func uint64Pointer(value uint64) *uint64 { return &value }
-func intPointer(value int) *int          { return &value }
-func durationPointer(value time.Duration) *time.Duration {
-	return &value
-}
-
 func TestDelegatedInteractionReplyPreservesRefusal(t *testing.T) {
 	message := chat.NewAssistantMessage(chat.NewRefusalPart("I cannot complete that delegated task."))
 	response := chat.Response{Output: &chat.Output{
@@ -43,28 +36,6 @@ func TestDelegatedInteractionReplyPreservesRefusal(t *testing.T) {
 	}
 	if reply != "I cannot complete that delegated task." {
 		t.Fatalf("delegated reply = %q", reply)
-	}
-}
-
-func TestInteractionDelegationPolicyPreservesOptionalPresence(t *testing.T) {
-	defaults, err := effectiveDelegation(InteractionDelegationPolicyValues{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if defaults.treeLimits != (agent.TreeLimits{
-		MaxDepth: defaultDelegateDepth, MaxChildren: defaultDelegateChildren,
-		MaxActiveChildren: defaultActiveDelegateChildren, MaxTreeProcesses: defaultDelegateTreeProcesses,
-	}) || defaults.processBudget != (agent.Budget{
-		Steps: defaultDelegateSteps, Effects: defaultDelegateEffects, Signals: defaultDelegateSignals,
-	}) {
-		t.Fatalf("default delegation policy = %+v", defaults)
-	}
-
-	if _, err := effectiveDelegation(InteractionDelegationPolicyValues{MaxDepth: uint32Pointer(0)}); err == nil {
-		t.Fatal("present zero tree limit was treated as omission")
-	}
-	if _, err := effectiveDelegation(InteractionDelegationPolicyValues{ChildSteps: uint64Pointer(0)}); err == nil {
-		t.Fatal("present zero child budget was treated as omission")
 	}
 }
 
@@ -95,8 +66,8 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 	}
 	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime:     t.Context(),
-		ChatResolver: staticInteractionChatResolver(client), DefaultMaxModelCalls: uint32Pointer(4),
-		BuildID: interactionTestBuildID,
+		ChatResolver: staticInteractionChatResolver(client),
+		BuildID:      interactionTestBuildID,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -233,8 +204,8 @@ func TestInteractionExecutorCancelsRunningDelegateAndKeepsRootRunning(t *testing
 	}
 	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime:     t.Context(),
-		ChatResolver: staticInteractionChatResolver(client), DefaultMaxModelCalls: uint32Pointer(4),
-		BuildID: interactionTestBuildID,
+		ChatResolver: staticInteractionChatResolver(client),
+		BuildID:      interactionTestBuildID,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -577,8 +548,7 @@ func startDelegateTree(t *testing.T, model chat.Model, input string) *delegateTr
 	}
 	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime:     t.Context(),
-		ChatResolver: staticInteractionChatResolver(client), DefaultMaxModelCalls: uint32Pointer(6),
-		MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
+		ChatResolver: staticInteractionChatResolver(client), BuildID: interactionTestBuildID,
 	})
 	if err != nil {
 		t.Fatal(err)
