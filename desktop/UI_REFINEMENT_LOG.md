@@ -7641,3 +7641,62 @@ hover 后 opacity 仍为 0；单跑 4.5s 通过。是并行下的 hover 时序�
 | 视觉 | **650 / 650**（13 张按上述理由重录；两张确认为并行抖动，已回退） |
 | 守卫 | 17 项 `check:*` 全绿（`cascade` 从 20+ 条冲突到 0） |
 | 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+---
+
+## Round 130 — 五个独立件，与 `SelectTrigger` 缺的那一档
+
+### 证据
+
+`button` 迁完后 `ui/atoms` 剩 14 个未迁。审计全部调用点：
+
+| atom | 调用点 | 带 `className` 的 | 内容 |
+| --- | --- | --- | --- |
+| `ProviderIcon` | 9 | **0** | — |
+| `HiddenFileInput` | 1 | 0 | — |
+| `PillButton` | 27 | 1 | `mt-0.5 font-semibold` |
+| `Sparkline` | 1 | 1 | `shrink-0 text-fg-faint` |
+| `SelectTrigger` | 3 | **3** | 全部是 `min-w-[var(--select-min-width)]` |
+
+`SelectTrigger` 的三处写的是同一件事：**一个 select 触发器有它的最小宽度**。
+那个变量本来就叫 `--select-min-width`，却由三个调用点各自去用它 ——
+这一档属于原子。
+
+### 本轮不做
+
+`choice-list`（142 行）/ `data-view`（84）/ `vertical-tabs`（77）留下一轮；
+`Pressable` 本身不声明任何样式（10 行，只是 `ButtonPrimitive` 的一层），
+所以它没有可迁的东西 —— 它 24 个调用点里 23 个带 className 正是因为如此，
+那些 class 不与任何东西冲突。
+
+### 验收标准
+
+三处 `min-w-[…]` 从调用点消失；golden 零位移；17 项 `check:*` 全绿。
+
+### 又两条搬出组件的规则
+
+`provider-icon` 用 `[&>svg]:size-full` 让第三方品牌标记填满图标格。
+子选择器，原子类表达不了 —— 和上一轮按钮字形那条同类，进 `globals.css`，
+键在 `[data-slot="provider-mark"]`。第三方 glyph 的 `size` prop 我们
+故意传 `0`，让盒子决定，所以这条规则是必需的而不是装饰。
+
+### 两处我自己引入的偏差
+
+| 错误 | 症状 | 教训 |
+| --- | --- | --- |
+| `PillButton` 的 `letterSpacing` 写在 base 里 | 被 type 步进的字距盖掉 | Tailwind 的 `tracking-normal` 通过 `--tw-tracking` 间接变量**总是**赢，与顺序无关；StyleX 里顺序是唯一裁判 |
+| `SelectTrigger` 多加了一条 `lineHeight: leading.tight` | select 矮了 3px，把整个外观面板往上顶 | 迁移是复刻，不是顺手补齐 —— **原文没有的东西不要加** |
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650，零位移** |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+### 下一轮方向
+
+`ui/atoms` 剩 9 个：`choice-list`（142）/ `data-view`（84）/ `vertical-tabs`（77）/
+`system-message`（64）/ `resize-handle`（213）/ `scroll-area` / `glyph-swap` /
+`external-link` / `pressable`（后者不声明样式，无可迁）。

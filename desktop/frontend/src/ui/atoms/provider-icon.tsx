@@ -1,4 +1,5 @@
 import { createElement, type ComponentType } from "react";
+import * as stylex from "@stylexjs/stylex";
 import Alibaba from "@lobehub/icons/es/Alibaba/components/Mono";
 import Anthropic from "@lobehub/icons/es/Anthropic/components/Mono";
 import Azure from "@lobehub/icons/es/Azure/components/Mono";
@@ -19,6 +20,10 @@ import XAI from "@lobehub/icons/es/XAI/components/Mono";
 import Zhipu from "@lobehub/icons/es/Zhipu/components/Mono";
 import type { IconSize } from "@/lib/iconScale";
 import { Icon } from "@/ui/icons";
+
+const styles = stylex.create({
+  mark: { display: "inline-grid", flexShrink: 0, placeItems: "center" },
+});
 
 type BrandIcon = ComponentType<{ size?: number }>;
 
@@ -67,7 +72,8 @@ export function ProviderIcon({ provider, size = "md" }: { provider: string; size
     return (
       <span
         aria-hidden
-        className="inline-grid shrink-0 place-items-center [&>svg]:size-full"
+        data-slot="provider-mark"
+        {...stylex.props(styles.mark)}
         style={{ width: `var(--icon-${size})`, height: `var(--icon-${size})` }}
       >
         {/* The mark is one of the module constants above, picked by name — never built

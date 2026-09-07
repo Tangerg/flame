@@ -36,10 +36,7 @@ function FontPicker({ label, mono, value, onChange, defaultLabel }: FontPickerPr
               label={triggerLabel}
               disabled={!customEnabled}
               style={customEnabled ? { fontFamily: `"${value}"` } : undefined}
-              className={cn(
-                "min-w-[var(--select-min-width)] max-w-[280px]",
-                mono && customEnabled && "font-mono",
-              )}
+              className={cn("max-w-[280px]", mono && customEnabled && "font-mono")}
             />
           }
         />

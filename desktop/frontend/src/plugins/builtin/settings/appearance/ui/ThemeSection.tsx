@@ -94,7 +94,6 @@ export function ThemeSection() {
               label={triggerLabel}
               leading={triggerSwatch}
               aria-label={t("settings.theme")}
-              className="min-w-[var(--select-min-width)]"
             />
           }
         />

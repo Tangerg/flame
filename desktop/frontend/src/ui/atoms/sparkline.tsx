@@ -1,5 +1,13 @@
 import { useId } from "react";
+import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
+import { space } from "@/styles/tokens.stylex";
+
+// `overflow: visible` because the stroke is drawn in device pixels and rides the box's edge:
+// clipped to the viewBox it would lose half its width at the top and bottom of the plot.
+const styles = stylex.create({
+  plot: { height: space.s4, width: space.s12, overflow: "visible" },
+});
 
 interface SparklineProps {
   data: readonly number[];
@@ -22,13 +30,15 @@ export function Sparkline({ data, label, className }: SparklineProps) {
     return `${x},${y}`;
   });
 
+  const plot = stylex.props(styles.plot);
   return (
     <svg
       role="img"
       aria-label={label}
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
-      className={cn("h-4 w-12 overflow-visible", className)}
+      {...plot}
+      className={cn(plot.className, className)}
     >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">

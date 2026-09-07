@@ -1,39 +1,86 @@
-import type { VariantProps } from "class-variance-authority";
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { cva } from "class-variance-authority";
 import { cn } from "@/lib/classNames";
+import { color, corner, motion, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
 
-const styles = cva(
-  "inline-flex items-center gap-1.5 rounded-pill font-sans font-medium tracking-normal " +
-    "transition-[background-color,color,scale] duration-[var(--dur-fast)] ease-out active:scale-[var(--press-scale)] " +
-    "disabled:cursor-not-allowed disabled:opacity-50",
-  {
-    variants: {
-      variant: {
-        outlined: "border-[0.5px] border-field text-fg-soft hover:bg-hover hover:text-fg",
-        solid: "bg-cta text-cta-text hover:bg-cta-hover",
-        accent: "bg-cta text-cta-text",
-        danger:
-          "bg-transparent text-negative border-[0.5px] border-negative hover:bg-negative-wash",
-      },
-      size: {
-        sm: "h-6.5 px-3 text-ui-sm",
-        md: "h-8 px-3.5 text-ui-md",
-      },
-    },
-    defaultVariants: { variant: "outlined", size: "md" },
+/** A capsule action, for the places a plate would be too much chrome: a card's own footer. */
+type PillVariant = "outlined" | "solid" | "accent" | "danger";
+
+const styles = stylex.create({
+  base: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: space.s1_5,
+    fontFamily: "var(--font-sans)",
+    fontWeight: weight.medium,
+    transitionProperty: "background-color, color, scale",
+    transitionDuration: motion.fast,
+    transitionTimingFunction: "var(--ease-out)",
+    scale: { default: null, ":active": "var(--press-scale)" },
+    cursor: { default: null, ":disabled": "not-allowed" },
+    opacity: { default: null, ":disabled": 0.5 },
   },
-);
+  outlined: {
+    borderWidth: "0.5px",
+    borderStyle: "solid",
+    borderColor: surface.field,
+    color: { default: color.fgSoft, ":hover": color.fg },
+    backgroundColor: { default: null, ":hover": surface.hover },
+  },
+  solid: {
+    backgroundColor: { default: surface.ctaFill, ":hover": surface.ctaHover },
+    color: color.ctaText,
+  },
+  // The same fill without the hover: a pill that reports rather than invites.
+  accent: { backgroundColor: surface.ctaFill, color: color.ctaText },
+  danger: {
+    backgroundColor: { default: "transparent", ":hover": surface.negativeWash },
+    color: color.negative,
+    borderWidth: "0.5px",
+    borderStyle: "solid",
+    borderColor: color.negative,
+  },
+  // The pill's own tracking, against the UI step's: a capsule reads as a label rather than a
+  // line of interface, and the negative tracking crowds it. Applied AFTER the type step, which
+  // brings its own — under Tailwind the `--tw-tracking` indirection made order not matter, and
+  // here it is the only thing that decides.
+  tracking: { letterSpacing: "var(--tracking-normal)" },
+  sm: { height: "calc(var(--spacing) * 6.5)", paddingInline: space.s3 },
+  md: { height: space.s8, paddingInline: space.s3_5 },
+});
 
-type Props = Omit<ButtonPrimitiveProps, "children"> &
-  VariantProps<typeof styles> & {
-    children: ReactNode;
-  };
+const VARIANT = {
+  outlined: styles.outlined,
+  solid: styles.solid,
+  accent: styles.accent,
+  danger: styles.danger,
+} as const;
 
-export function PillButton({ variant, size, className, children, ...rest }: Props) {
+const SIZE = { sm: [styles.sm, type.uiSm], md: [styles.md, type.uiMd] } as const;
+
+type Props = Omit<ButtonPrimitiveProps, "children"> & {
+  variant?: PillVariant;
+  size?: keyof typeof SIZE;
+  children: ReactNode;
+};
+
+export function PillButton({
+  variant = "outlined",
+  size = "md",
+  className,
+  children,
+  ...rest
+}: Props) {
+  const styled = stylex.props(
+    styles.base,
+    corner.pill,
+    SIZE[size],
+    styles.tracking,
+    VARIANT[variant],
+  );
   return (
-    <ButtonPrimitive {...rest} className={cn(styles({ variant, size }), className)}>
+    <ButtonPrimitive {...rest} {...styled} className={cn(styled.className, className)}>
       {children}
     </ButtonPrimitive>
   );

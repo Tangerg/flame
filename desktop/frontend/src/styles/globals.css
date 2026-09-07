@@ -1306,6 +1306,14 @@ html.theme-dark {
   opacity: 0.8;
 }
 
+/* A vendor's mark fills the box the icon ladder gave it. Here rather than on the component for
+   the same reason as the rule above: it is a CHILD rule, and the mark is a third-party glyph
+   whose own sizing prop we deliberately do not use — `size={0}` so the box decides. */
+[data-slot="provider-mark"] > svg {
+  width: 100%;
+  height: 100%;
+}
+
 @supports (corner-shape: superellipse(1.5)) {
   :root {
     --corner-scale: 1.25;

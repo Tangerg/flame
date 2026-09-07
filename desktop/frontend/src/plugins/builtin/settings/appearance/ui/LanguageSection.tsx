@@ -15,13 +15,7 @@ export function LanguageSection() {
     <SettingRow label={t("settings.language.label")} sub={t("settings.language.sub")}>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger
-          render={
-            <SelectTrigger
-              label={active.label}
-              aria-label={t("settings.language.label")}
-              className="min-w-[var(--select-min-width)]"
-            />
-          }
+          render={<SelectTrigger label={active.label} aria-label={t("settings.language.label")} />}
         />
         <DropdownMenu.Content
           align="start"

@@ -115,6 +115,7 @@ export const space = stylex.defineVars({
   s2: "calc(var(--spacing) * 2)",
   s2_5: "calc(var(--spacing) * 2.5)",
   s3: "calc(var(--spacing) * 3)",
+  s3_5: "calc(var(--spacing) * 3.5)",
   s4: "calc(var(--spacing) * 4)",
   s4_5: "calc(var(--spacing) * 4.5)",
   s5: "calc(var(--spacing) * 5)",
