@@ -2,6 +2,7 @@ package builtin
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -32,8 +33,8 @@ func (m *memStore) Get(_ context.Context, id string) (goalstate.Current, error) 
 func (m *memStore) put(g goalstate.Goal) { m.goals[g.SessionID()] = g }
 
 func (m *memStore) Save(_ context.Context, replacement goalstate.Replacement) (bool, error) {
-	if err := replacement.Validate(); err != nil {
-		return false, err
+	if replacement.IsZero() {
+		return false, errors.New("goal replacement is required")
 	}
 	g := replacement.State()
 	expected := replacement.ExpectedVersion()

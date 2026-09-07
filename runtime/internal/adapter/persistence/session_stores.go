@@ -163,7 +163,6 @@ func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID stri
 		}
 		stored, found := current.Goal()
 		if found {
-			stored = stored.Clone()
 			currentGoal = &stored
 		}
 		snapshot = sessions.MaterialSnapshot{

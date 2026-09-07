@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -185,8 +186,8 @@ func (validator *materialSnapshotValidator) validateWaitingOwnership() error {
 
 func (validator *materialSnapshotValidator) validateGoal() error {
 	if validator.snapshot.Goal != nil {
-		if err := validator.snapshot.Goal.ValidateSnapshot(); err != nil {
-			return fmt.Errorf("sessions: material snapshot Goal: %w", err)
+		if validator.snapshot.Goal.IsZero() {
+			return errors.New("sessions: material snapshot Goal is uninitialized")
 		}
 		if validator.snapshot.Goal.SessionID() != validator.sessionID {
 			return fmt.Errorf(

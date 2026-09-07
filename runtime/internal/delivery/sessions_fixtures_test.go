@@ -673,7 +673,6 @@ func (s stubLifecycleStores) ReadMaterialSnapshot(ctx context.Context, id string
 		}
 		stored, found := current.Goal()
 		if found {
-			stored = stored.Clone()
 			currentGoal = &stored
 		}
 	}

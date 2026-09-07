@@ -36,8 +36,8 @@ func loadGoal(ctx context.Context, store Store, sessionID string) (goal.Goal, bo
 func validateGoalCatalog(values []goal.Goal) error {
 	seen := make(map[string]struct{}, len(values))
 	for index, value := range values {
-		if err := value.ValidateSnapshot(); err != nil {
-			return fmt.Errorf("goals: store List item[%d] is invalid: %w", index, err)
+		if value.IsZero() {
+			return fmt.Errorf("goals: store List item[%d] has no Goal", index)
 		}
 		if _, duplicate := seen[value.SessionID()]; duplicate {
 			return fmt.Errorf("goals: store List returned duplicate Session %q", value.SessionID())
