@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	resultoffload "github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -353,21 +354,16 @@ func TestTranscriptStoreReplaceItemUsesExactOptimisticSnapshot(t *testing.T) {
 		RunID:      "run_1",
 		ID:         "item_child",
 		OccurredAt: now,
-		FinishedAt: now,
-		Status:     transcript.ItemIncomplete,
+		Status:     transcript.ItemRunning,
 		Kind:       transcript.ToolCall,
 		Tool:       &transcript.ToolInvocation{Name: "delegate_task", Arguments: tool.Arguments{}},
 	})
 	if appendItemErr := store.AppendItem(t.Context(), original); appendItemErr != nil {
 		t.Fatalf("seed Item: %v", appendItemErr)
 	}
-	failure := tool.Failure{
-		Kind:   tool.FailureChildRunCanceled,
-		Detail: "stop delegated branch",
-	}
-	replacement, err := original.ClassifyAbandonedToolCall(failure)
+	replacement, err := original.ResolveToolApproval(approval.Allow)
 	if err != nil {
-		t.Fatalf("classify Item: %v", err)
+		t.Fatalf("approve Item: %v", err)
 	}
 	if replaceItemErr := store.ReplaceItem(
 		t.Context(),
@@ -379,18 +375,13 @@ func TestTranscriptStoreReplaceItemUsesExactOptimisticSnapshot(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("Item after replacement found=%t err=%v", found, err)
 	}
-	storedFailure, failed := stored.Failure()
-	if !failed || storedFailure.Kind != tool.FailureChildRunCanceled {
-		t.Fatalf("replaced Item = %+v, want child_run_canceled", stored)
+	if stored.ApprovalDecision() != approval.Allow || stored.Status() != original.Status() {
+		t.Fatalf("replaced Item = %+v, want approved running ToolCall", stored)
 	}
 
-	staleFailure := tool.Failure{
-		Kind:   tool.FailureChildRunCanceled,
-		Detail: "overwrite newer result",
-	}
-	staleReplacement, err := original.ClassifyAbandonedToolCall(staleFailure)
+	staleReplacement, err := original.ResolveToolApproval(approval.Deny)
 	if err != nil {
-		t.Fatalf("classify stale Item: %v", err)
+		t.Fatalf("deny stale Item: %v", err)
 	}
 	err = store.ReplaceItem(
 		t.Context(),
@@ -400,8 +391,7 @@ func TestTranscriptStoreReplaceItemUsesExactOptimisticSnapshot(t *testing.T) {
 		t.Fatalf("stale ReplaceItem error = %v, want ErrIdentityConflict", err)
 	}
 	stored, found, err = store.Item(t.Context(), original.ID())
-	storedFailure, failed = stored.Failure()
-	if err != nil || !found || !failed || storedFailure.Detail != failure.Detail {
+	if err != nil || !found || stored.ApprovalDecision() != approval.Allow {
 		t.Fatalf("Item after stale replacement = %+v found=%t err=%v", stored, found, err)
 	}
 }
