@@ -37,7 +37,7 @@ type recordingRunCatalog struct {
 	queries []agent.RunQuery
 }
 
-func (r *recordingRunCatalog) ListRuns(ctx context.Context, query agent.RunQuery) (agent.RunPage, error) {
+func (r *recordingRunCatalog) ListRuns(ctx context.Context, query agent.RunQuery) (protocol.Page[protocol.RunRef], error) {
 	r.queries = append(r.queries, query)
 	return r.Runtime.ListRuns(ctx, query)
 }
@@ -63,17 +63,11 @@ func TestRunsListConsumesFiltersAndStableJSON(t *testing.T) {
 		!query.IncludeDescendants || rowsErr != nil || rows != 7 {
 		t.Fatalf("query = %+v", query)
 	}
-	var page struct {
-		Items []struct {
-			ID        string `json:"id"`
-			SessionID string `json:"sessionId"`
-			Status    string `json:"status"`
-		} `json:"items"`
-	}
+	var page protocol.Page[protocol.RunRef]
 	if err := json.Unmarshal([]byte(out), &page); err != nil {
 		t.Fatalf("runs list output: %v\n%s", err, out)
 	}
-	if len(page.Items) != 1 || page.Items[0].ID != "run_demo_history" || page.Items[0].SessionID != "ses_demo_1" || page.Items[0].Status != "finished" {
+	if len(page.Data) != 1 || page.Data[0].ID != "run_demo_history" || page.Data[0].SessionID != "ses_demo_1" || page.Data[0].Status != "finished" {
 		t.Fatalf("page = %+v", page)
 	}
 	if strings.Contains(out, `"ID"`) {
@@ -154,17 +148,11 @@ func TestRunsShowUsesDirectRunRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runs show: %v", err)
 	}
-	var run struct {
-		ID      string `json:"id"`
-		Status  string `json:"status"`
-		Outcome struct {
-			Status string `json:"status"`
-		} `json:"outcome"`
-	}
+	var run protocol.RunRef
 	if err := json.Unmarshal([]byte(out), &run); err != nil {
 		t.Fatalf("runs show output: %v\n%s", err, out)
 	}
-	if run.ID != "run_demo_history" || run.Status != "finished" || run.Outcome.Status != "completed" {
+	if run.ID != "run_demo_history" || run.Status != "finished" || run.Outcome.Type != protocol.OutcomeCompleted {
 		t.Fatalf("run = %+v", run)
 	}
 }
@@ -175,7 +163,7 @@ func TestRunsCancelRequiresConfirmationAndReturnsRootSnapshot(t *testing.T) {
 	runtime.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour,
-			Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	opened, err := runtime.StartRun(t.Context(), agent.StartRun{
@@ -197,31 +185,19 @@ func TestRunsCancelRequiresConfirmationAndReturnsRootSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("runs cancel: %v", err)
 	}
-	var result struct {
-		Canceled struct {
-			ID      string `json:"id"`
-			Outcome struct {
-				Status string `json:"status"`
-				Detail string `json:"detail"`
-			} `json:"outcome"`
-		} `json:"canceled"`
-		Root struct {
-			ID     string `json:"id"`
-			Status string `json:"status"`
-		} `json:"root"`
-	}
+	var result protocol.CancelRunResponse
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		t.Fatalf("runs cancel output: %v\n%s", err, out)
 	}
-	if result.Canceled.ID != opened.RunID || result.Canceled.Outcome.Status != "canceled" ||
-		result.Canceled.Outcome.Detail != "operator stopped it" || result.Root.ID != opened.RunID || result.Root.Status != "finished" {
+	if result.Run.ID != opened.RunID || result.Run.Outcome.Type != "canceled" ||
+		result.Run.Outcome.Detail != "operator stopped it" || result.Type != protocol.CancelRunRoot || result.RootRun != nil || result.Run.Status != protocol.RunStatusFinished {
 		t.Fatalf("result = %+v", result)
 	}
 }
 
 type childCancellationRuntime struct {
 	Runtime
-	result agent.RunCancellation
+	result protocol.CancelRunResponse
 }
 
 type uncertainRunCancellationRuntime struct {
@@ -231,13 +207,13 @@ type uncertainRunCancellationRuntime struct {
 	attempts []agent.CancelRun
 }
 
-func (u *uncertainRunCancellationRuntime) CancelRun(ctx context.Context, request agent.CancelRun) (agent.RunCancellation, error) {
+func (u *uncertainRunCancellationRuntime) CancelRun(ctx context.Context, request agent.CancelRun) (protocol.CancelRunResponse, error) {
 	u.mu.Lock()
 	u.attempts = append(u.attempts, request)
 	attempt := len(u.attempts)
 	u.mu.Unlock()
 	if attempt == 1 {
-		return agent.RunCancellation{}, fmt.Errorf("cancellation acknowledgement timed out: %w", context.DeadlineExceeded)
+		return protocol.CancelRunResponse{}, fmt.Errorf("cancellation acknowledgement timed out: %w", context.DeadlineExceeded)
 	}
 	return u.Runtime.CancelRun(ctx, request)
 }
@@ -248,24 +224,17 @@ func (u *uncertainRunCancellationRuntime) cancelAttempts() []agent.CancelRun {
 	return append([]agent.CancelRun(nil), u.attempts...)
 }
 
-func (c childCancellationRuntime) CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error) {
+func (c childCancellationRuntime) CancelRun(context.Context, agent.CancelRun) (protocol.CancelRunResponse, error) {
 	return c.result, nil
 }
 
 func TestRunsCancelPreservesSurvivingRootStateForAChild(t *testing.T) {
-	lineage, err := agent.NewChildRunLineage("run_child", "item_spawn", "run_root", "run_root")
-	if err != nil {
-		t.Fatal(err)
-	}
-	child := agent.Run{
-		ID: "run_child", SessionID: "ses_1",
-		Lineage: lineage,
-		Status:  protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCanceled},
-	}
-	root := agent.Run{ID: "run_root", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusWaiting, Limits: agent.UnlimitedRunLimits()}
+	lineage := protocol.RunSummary{ID: "run_child", SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root"}
+	child := protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_child", SessionID: "ses_1", SpawnedByItemID: (lineage).SpawnedByItemID, ParentRunID: (lineage).ParentRunID, RootRunID: (lineage).RootRunID, Status: protocol.RunStatusFinished, Outcome: (agent.Outcome{Status: protocol.OutcomeCanceled}).RunOutcome()}}
+	root := protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_root", SessionID: "ses_1", Status: protocol.RunStatusWaiting}}
 	runtime := childCancellationRuntime{
 		Runtime: instantRuntime(),
-		result:  agent.RunCancellation{Canceled: child, Root: root},
+		result:  protocol.CancelRunResponse{Type: protocol.CancelRunChild, Run: child, RootRun: &root},
 	}
 	out, _, err := executeCommand(t, runtime, "", "runs", "cancel", "run_child", "--yes", "--json")
 	if err != nil {
@@ -281,7 +250,7 @@ func TestRunsCancelConfirmsTimeoutWithOneMutationIdentity(t *testing.T) {
 	base.Instant = false
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	opened, err := base.StartRun(t.Context(), agent.StartRun{

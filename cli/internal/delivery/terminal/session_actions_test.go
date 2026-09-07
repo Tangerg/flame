@@ -781,7 +781,7 @@ func TestSteerTargetsTheObservedSegmentAndRestoresAttachmentsOnRefusal(t *testin
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &steeringRuntime{Runtime: base, err: protocol.ErrStaleSegment}
@@ -817,7 +817,7 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &blockedSteeringRuntime{
@@ -877,7 +877,7 @@ func TestSteerConfirmsATimedOutAcknowledgementWithOneIdentity(t *testing.T) {
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &uncertainSteeringRuntime{Runtime: base}
@@ -903,7 +903,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	runtime := &committedThenCanceledSteeringRuntime{

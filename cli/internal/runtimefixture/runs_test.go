@@ -12,7 +12,7 @@ import (
 func TestRunCatalogReadsFiltersAndPaginatesNewestFirst(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", "active"))
 	if err != nil {
@@ -28,17 +28,17 @@ func TestRunCatalogReadsFiltersAndPaginatesNewestFirst(t *testing.T) {
 		t.Fatal(err)
 	}
 	page, err := runtime.ListRuns(t.Context(), agent.RunQuery{SessionID: "ses_demo_1", PageSize: pageSize})
-	if err != nil || len(page.Items) != 1 || page.Items[0].ID != opened.RunID || page.NextCursor == "" {
+	if err != nil || len(page.Data) != 1 || page.Data[0].ID != opened.RunID || page.NextCursor == "" {
 		t.Fatalf("first page = %+v, %v", page, err)
 	}
 	next, err := runtime.ListRuns(t.Context(), agent.RunQuery{SessionID: "ses_demo_1", PageSize: pageSize, Cursor: page.NextCursor})
-	if err != nil || len(next.Items) != 1 || next.Items[0].ID != "run_demo_history" || next.NextCursor != "" {
+	if err != nil || len(next.Data) != 1 || next.Data[0].ID != "run_demo_history" || next.NextCursor != "" {
 		t.Fatalf("second page = %+v, %v", next, err)
 	}
 	waiting, err := runtime.ListRuns(t.Context(), agent.RunQuery{
 		PageSize: agent.DefaultPageSize(), Statuses: []protocol.RunStatus{protocol.RunStatusWaiting},
 	})
-	if err != nil || len(waiting.Items) != 0 {
+	if err != nil || len(waiting.Data) != 0 {
 		t.Fatalf("waiting page = %+v, %v", waiting, err)
 	}
 	if _, err := runtime.CancelRun(t.Context(), agent.CancelRun{RunID: opened.RunID}); err != nil {
@@ -51,8 +51,8 @@ func TestRunCatalogRetainsLatestProgressFootprint(t *testing.T) {
 	contextTokens := int64(12_345)
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{
-			eventStep(0, agent.RunProgress{ContextTokens: &contextTokens, Usage: &agent.Usage{InputTokens: 40}}),
-			eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+			eventStep(0, agent.RunProgress{ContextTokens: &contextTokens, Usage: &protocol.Usage{InputTokens: 40}}),
+			eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", "progress"))
@@ -71,7 +71,7 @@ func TestRunCatalogRetainsLatestProgressFootprint(t *testing.T) {
 		}
 	}
 	got, err := runtime.GetRun(t.Context(), opened.RunID)
-	if err != nil || got.ContextTokens != contextTokens || got.Usage.InputTokens != 40 {
+	if err != nil || got.ContextTokens != contextTokens || agent.UsageFromMetrics(got.Metrics).InputTokens != 40 {
 		t.Fatalf("GetRun after progress = %+v, %v", got, err)
 	}
 }
@@ -82,7 +82,7 @@ func TestRunStreamFinishesWithLatestProgressFootprint(t *testing.T) {
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{
 			eventStep(0, agent.RunProgress{ContextTokens: &contextTokens}),
-			eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+			eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", "progress"))
@@ -118,7 +118,7 @@ func TestRunCatalogDoesNotRetainDeletedSessionRuns(t *testing.T) {
 	page, err := runtime.ListRuns(t.Context(), agent.RunQuery{
 		SessionID: "ses_demo_1", PageSize: agent.DefaultPageSize(),
 	})
-	if err != nil || len(page.Items) != 0 {
+	if err != nil || len(page.Data) != 0 {
 		t.Fatalf("ListRuns after session deletion = %+v, %v", page, err)
 	}
 }

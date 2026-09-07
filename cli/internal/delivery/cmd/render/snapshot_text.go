@@ -13,7 +13,7 @@ func WriteSessionTranscript(w io.Writer, snapshot agent.SessionSnapshot) error {
 	renderer := NewText(w)
 	renderer.scope.ensureMembers()
 	for _, run := range snapshot.Runs {
-		renderer.scope.members[run.ID] = run.Lineage
+		renderer.scope.members[run.ID] = run.ParentRunID
 	}
 	for _, block := range snapshot.Transcript {
 		renderer.finish(block)

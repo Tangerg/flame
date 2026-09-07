@@ -103,7 +103,7 @@ type heldCancellationResultRuntime struct {
 func (h *heldCancellationResultRuntime) CancelRun(
 	ctx context.Context,
 	input agent.CancelRun,
-) (agent.RunCancellation, error) {
+) (protocol.CancelRunResponse, error) {
 	result, err := h.Runtime.CancelRun(ctx, input)
 	select {
 	case h.settled <- struct{}{}:
@@ -113,7 +113,7 @@ func (h *heldCancellationResultRuntime) CancelRun(
 	case <-h.release:
 		return result, err
 	case <-ctx.Done():
-		return agent.RunCancellation{}, context.Cause(ctx)
+		return protocol.CancelRunResponse{}, context.Cause(ctx)
 	}
 }
 
@@ -156,19 +156,19 @@ func (i *invalidAcceptedStartRuntime) StartRun(ctx context.Context, input agent.
 	)
 }
 
-func (i *invalidAcceptedStartRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (agent.RunCancellation, error) {
+func (i *invalidAcceptedStartRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (protocol.CancelRunResponse, error) {
 	i.mu.Lock()
 	i.cancellations = append(i.cancellations, input)
 	refuse := i.refuseFirst && len(i.cancellations) == 1
 	i.mu.Unlock()
 	if refuse {
-		return agent.RunCancellation{}, errors.New("temporary malformed-receipt cleanup failure")
+		return protocol.CancelRunResponse{}, errors.New("temporary malformed-receipt cleanup failure")
 	}
 	if i.releaseCancellation != nil {
 		select {
 		case <-i.releaseCancellation:
 		case <-ctx.Done():
-			return agent.RunCancellation{}, context.Cause(ctx)
+			return protocol.CancelRunResponse{}, context.Cause(ctx)
 		}
 	}
 	return i.Runtime.CancelRun(ctx, input)
@@ -305,7 +305,7 @@ func TestRecoveredSessionRetriesATransientAttachRead(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	_, err := base.StartRun(t.Context(), testUnlimitedStartRun("ses_demo_1", "recover attach"))
@@ -347,7 +347,7 @@ func TestRunStatusRetainsRuntimeContextFootprintAfterSettlement(t *testing.T) {
 			{Delay: 10 * time.Millisecond, Event: agent.BlockCompleted{Block: agent.Block{
 				ID: "answer", Kind: agent.BlockAssistant, Text: "context-aware answer",
 			}}},
-			{Delay: 10 * time.Millisecond, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: 10 * time.Millisecond, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	host, stop := runUIWith(t, backend)
@@ -441,7 +441,7 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	releaseCancellation := make(chan struct{})
@@ -496,7 +496,7 @@ func TestInvalidAcceptedStartReceiptSettlesTheMemoryOnlyQueue(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	releaseCancellation := make(chan struct{})
@@ -523,7 +523,7 @@ func TestInvalidAcceptedStartBlocksTheNextRunUntilColdRecoverySucceeds(t *testin
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &invalidAcceptedStartRuntime{
@@ -548,7 +548,7 @@ func TestRetryingInvalidAcceptedStartCleanupRecoversAuthoritativeProjection(t *t
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &invalidAcceptedStartRuntime{Runtime: base, refuseFirst: true}
@@ -613,7 +613,7 @@ func TestLaunchReplaysADispatchingRunFromTheDurableOutbox(t *testing.T) {
 func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	command := agent.StartRun{
 		CommandID: agent.CommandID("cli_abcdef0123456789abcdef0123456789"),
@@ -651,7 +651,7 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	active := testUnlimitedStartRun("ses_demo_1", "already active")
@@ -701,7 +701,7 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	command := agent.StartRun{
@@ -757,7 +757,7 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	command := agent.StartRun{
@@ -831,7 +831,7 @@ func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	command := agent.StartRun{

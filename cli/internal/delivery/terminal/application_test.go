@@ -440,25 +440,25 @@ type invalidCloseCancellationRuntime struct {
 func (i *invalidCloseCancellationRuntime) CancelRun(
 	context.Context,
 	agent.CancelRun,
-) (agent.RunCancellation, error) {
-	return agent.RunCancellation{}, nil
+) (protocol.CancelRunResponse, error) {
+	return protocol.CancelRunResponse{}, nil
 }
 
 func (r *refusingCloseCancellationRuntime) CancelRun(
 	ctx context.Context,
 	input agent.CancelRun,
-) (agent.RunCancellation, error) {
+) (protocol.CancelRunResponse, error) {
 	select {
 	case r.canceled <- input:
 	default:
 	}
-	return agent.RunCancellation{}, r.err
+	return protocol.CancelRunResponse{}, r.err
 }
 
 func (b *blockingCloseCancellationRuntime) CancelRun(
 	ctx context.Context,
 	input agent.CancelRun,
-) (agent.RunCancellation, error) {
+) (protocol.CancelRunResponse, error) {
 	b.mu.Lock()
 	b.attempts = append(b.attempts, input)
 	b.mu.Unlock()
@@ -470,7 +470,7 @@ func (b *blockingCloseCancellationRuntime) CancelRun(
 	case <-b.release:
 		return b.Runtime.CancelRun(ctx, input)
 	case <-ctx.Done():
-		return agent.RunCancellation{}, context.Cause(ctx)
+		return protocol.CancelRunResponse{}, context.Cause(ctx)
 	}
 }
 
@@ -491,17 +491,17 @@ func (m *rejectedSessionUpdateRuntime) UpdateSession(ctx context.Context, input 
 	return protocol.Session{}, agent.ErrIncompatibleRuntime
 }
 
-func (f *flakyCancellationRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (agent.RunCancellation, error) {
+func (f *flakyCancellationRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (protocol.CancelRunResponse, error) {
 	f.attempts.Add(1)
 	for remaining := f.remaining.Load(); remaining > 0; remaining = f.remaining.Load() {
 		if f.remaining.CompareAndSwap(remaining, remaining-1) {
-			return agent.RunCancellation{}, f.failure
+			return protocol.CancelRunResponse{}, f.failure
 		}
 	}
 	return f.Runtime.CancelRun(ctx, input)
 }
 
-func (u *uncertainCancellationRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (agent.RunCancellation, error) {
+func (u *uncertainCancellationRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (protocol.CancelRunResponse, error) {
 	u.mu.Lock()
 	u.attempts = append(u.attempts, input)
 	first := !u.timedOut
@@ -511,11 +511,11 @@ func (u *uncertainCancellationRuntime) CancelRun(ctx context.Context, input agen
 	commitBeforeTimeout := u.commitBeforeTimeout
 	u.mu.Unlock()
 	if first && !commitBeforeTimeout {
-		return agent.RunCancellation{}, fmt.Errorf("cancellation acknowledgement timed out: %w", context.DeadlineExceeded)
+		return protocol.CancelRunResponse{}, fmt.Errorf("cancellation acknowledgement timed out: %w", context.DeadlineExceeded)
 	}
 	result, err := u.Runtime.CancelRun(ctx, input)
 	if first && err == nil {
-		return agent.RunCancellation{}, fmt.Errorf("lost cancellation acknowledgement: %w", context.DeadlineExceeded)
+		return protocol.CancelRunResponse{}, fmt.Errorf("lost cancellation acknowledgement: %w", context.DeadlineExceeded)
 	}
 	return result, err
 }
@@ -739,7 +739,7 @@ func (i *invalidAcceptedResumeRuntime) ResumeRun(ctx context.Context, input agen
 	return stream, agent.NewAcceptedMutationError(stream, stream.ValidateResume(input.RunID, nil))
 }
 
-func (i *invalidAcceptedResumeRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (agent.RunCancellation, error) {
+func (i *invalidAcceptedResumeRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (protocol.CancelRunResponse, error) {
 	i.mu.Lock()
 	i.cancellations = append(i.cancellations, input)
 	i.mu.Unlock()
@@ -747,7 +747,7 @@ func (i *invalidAcceptedResumeRuntime) CancelRun(ctx context.Context, input agen
 		select {
 		case <-i.releaseCancellation:
 		case <-ctx.Done():
-			return agent.RunCancellation{}, context.Cause(ctx)
+			return protocol.CancelRunResponse{}, context.Cause(ctx)
 		}
 	}
 	return i.Runtime.CancelRun(ctx, input)
@@ -781,14 +781,14 @@ func (c *corruptingAcceptedResumeRuntime) ResumeRun(
 func (c *corruptingAcceptedResumeRuntime) CancelRun(
 	ctx context.Context,
 	input agent.CancelRun,
-) (agent.RunCancellation, error) {
+) (protocol.CancelRunResponse, error) {
 	c.mu.Lock()
 	c.cancellations = append(c.cancellations, input)
 	c.mu.Unlock()
 	select {
 	case <-c.releaseCancellation:
 	case <-ctx.Done():
-		return agent.RunCancellation{}, context.Cause(ctx)
+		return protocol.CancelRunResponse{}, context.Cause(ctx)
 	}
 	return c.Runtime.CancelRun(ctx, input)
 }
@@ -1000,7 +1000,7 @@ func TestAcceptedQuestionResumeSettlementRetriesTheExactDurableDecision(t *testi
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
 				return []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-					Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+					Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 				}}}
 			},
 		}
@@ -1076,7 +1076,7 @@ func TestClosingDuringAnAcceptedResumeCancelsTheRunAndRetiresTheDecision(t *test
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
 				return []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-					Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+					Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 				}}}
 			},
 		}
@@ -1178,7 +1178,7 @@ func TestAcceptedResumeProjectionFailureRejectsTheContinuationTail(t *testing.T)
 					{Event: agent.BlockCompleted{Block: agent.Block{
 						ID: "untrusted-tail", Kind: agent.BlockNotice, Text: "UNTRUSTED_CONTINUATION_TAIL",
 					}}},
-					{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+					{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 				}
 			},
 		}
@@ -1240,7 +1240,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 				},
 			},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -1354,7 +1354,7 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
 				return []runtimefixture.Step{{Event: agent.RunFinished{
-					Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+					Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 				}}}
 			},
 		}
@@ -1431,7 +1431,7 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
 				return []runtimefixture.Step{{Event: agent.RunFinished{
-					Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+					Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 				}}}
 			},
 		}
@@ -1501,7 +1501,7 @@ func TestActiveResumeReconcilesWhenReplayExpiresAfterAnUncertainAttempt(t *testi
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
 				return []runtimefixture.Step{{Event: agent.RunFinished{
-					Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+					Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 				}}}
 			},
 		}
@@ -1596,7 +1596,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 				Tool: &agent.ToolCall{Kind: agent.ToolRead, Name: "read", Path: "README.md", Status: agent.ToolRunning},
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -1664,7 +1664,7 @@ func TestShiftEnterInsertsANewlineWithoutSubmitting(t *testing.T) {
 	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
 	backend.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	host, stop := runUIWith(t, backend)
 	host.Shows(t, "Ask flame")
@@ -1687,7 +1687,7 @@ func TestSubmittedPromptPreservesAuthoredOuterWhitespace(t *testing.T) {
 	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
 	backend.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	host, stop := runUIWith(t, backend)
 	host.Shows(t, "Ask flame")
@@ -1720,7 +1720,7 @@ func TestTranscriptReaderSearchesBeyondInlineToolSummary(t *testing.T) {
 					Output: strings.Join(lines, "\n"),
 				},
 			}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	host, stop := runUIWith(t, backend)
@@ -1767,7 +1767,7 @@ func TestConfiguredKeySequencesDriveApplicationActions(t *testing.T) {
 	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
 	backend.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	host, stop := runUIWithSettings(t, backend, configured)
 	host.Shows(t, "Ask flame")
@@ -1820,7 +1820,7 @@ func TestTranscriptFocusDoesNotSubmitAndTypingReturnsToPrompt(t *testing.T) {
 	backend.Script = func(prompt string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: fmt.Sprintf("answer-%d", answerSequence.Add(1)), Kind: agent.BlockAssistant, Text: "focused answer · " + prompt}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	host, stop := runUIWith(t, backend)
@@ -1867,7 +1867,7 @@ func TestCtrlCClearsTheDraftBeforeCancelingAnActiveRun(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &recordingRuntime{Runtime: base}
@@ -1924,7 +1924,7 @@ func TestCancellationFailureLeavesTheRunRetryable(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &flakyCancellationRuntime{
@@ -1960,7 +1960,7 @@ func TestCancellationConfirmsATimedOutAcknowledgementWithOneIdentity(t *testing.
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	backend := &uncertainCancellationRuntime{Runtime: base}
@@ -1984,7 +1984,7 @@ func TestCancelRootRunConfirmsATimedOutAcknowledgement(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	session, err := base.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
@@ -2005,7 +2005,7 @@ func TestCancelRootRunConfirmsATimedOutAcknowledgement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if settled.ID != opened.RunID || settled.Outcome.Status != agent.OutcomeCanceled {
+	if settled.ID != opened.RunID || settled.Outcome.Type != protocol.OutcomeCanceled {
 		t.Fatalf("settled run = %+v", settled)
 	}
 	attempts := backend.cancelAttempts()
@@ -2018,7 +2018,7 @@ func TestEscapeCancelsAnActiveRunWithoutDiscardingTheDraft(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	host, stop := runUIWith(t, base)
@@ -2127,7 +2127,7 @@ func TestClosingTheTerminalCancelsTheOwnedRuntimeRun(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &recordingRuntime{Runtime: base}
@@ -2158,7 +2158,7 @@ func TestClosingDuringAnInvalidAcceptedStartCancelsTheRecoveredRun(t *testing.T)
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	invalid := &invalidAcceptedStartRuntime{Runtime: base}
@@ -2202,7 +2202,7 @@ func TestClosingTheTerminalConfirmsCancellationWithOneIdentity(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	backend := &uncertainCancellationRuntime{Runtime: base}
@@ -2224,7 +2224,7 @@ func TestClosingDuringCancellationReusesThePendingCommandIdentity(t *testing.T) 
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &blockingCloseCancellationRuntime{
@@ -2273,7 +2273,7 @@ func TestClosingTheTerminalPropagatesRuntimeCancellationFailure(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	want := errors.New("runtime rejected terminal close cancellation")
@@ -2314,7 +2314,7 @@ func TestClosingTheTerminalRejectsAnInvalidCancellationReceipt(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	runtime := &invalidCloseCancellationRuntime{Runtime: base}
@@ -2404,7 +2404,7 @@ func TestInteractiveRunRejectsConflictingReplay(t *testing.T) {
 func stableCompletedScript(string) runtimefixture.Script {
 	return runtimefixture.Script{Prelude: []runtimefixture.Step{
 		{Delay: 30 * time.Millisecond, Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "stable answer"}}},
-		{Delay: 100 * time.Millisecond, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+		{Delay: 100 * time.Millisecond, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 	}}
 }
 
@@ -3206,7 +3206,7 @@ func TestQuestionFormSubmitsTypedAnswerAndCanCancel(t *testing.T) {
 			}},
 			Continue: func(answerSet []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- answerSet[0].Answer.(agent.QuestionAnswer)
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -3249,7 +3249,7 @@ func TestQuestionnaireSurvivesResizeBetweenFields(t *testing.T) {
 			}},
 			Continue: func(answerSet []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- answerSet[0].Answer.(agent.QuestionAnswer)
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -3320,7 +3320,7 @@ func TestCustomMultipleQuestionKeepsInvalidInputEditable(t *testing.T) {
 			}},
 			Continue: func(answerSet []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- answerSet[0].Answer.(agent.QuestionAnswer)
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -3375,7 +3375,7 @@ func TestCustomSingleQuestionPreservesOptionsAndSurvivesResize(t *testing.T) {
 			}},
 			Continue: func(answerSet []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- answerSet[0].Answer.(agent.QuestionAnswer)
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -3790,7 +3790,7 @@ func TestApprovalDenialSubmitsOptionalUserFeedback(t *testing.T) {
 			}},
 			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -3831,7 +3831,7 @@ func TestApprovalCanRememberADenialWithoutLosingFeedback(t *testing.T) {
 			}},
 			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(agent.ApprovalAnswer)
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -3894,7 +3894,7 @@ func TestApprovalFormSubmitsEveryDecisionAndRememberScope(t *testing.T) {
 					}},
 					Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 						answers <- provided[0].Answer.(agent.ApprovalAnswer)
-						return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+						return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 					},
 				}
 			}
@@ -3979,7 +3979,7 @@ func TestApprovalCanEditToolArgumentsOnceAcrossValidationAndResize(t *testing.T)
 			}},
 			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(agent.ApprovalAnswer)
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -4045,7 +4045,7 @@ func TestCancelingApprovalArgumentEditReturnsToTheUnchangedApproval(t *testing.T
 			}},
 			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(agent.ApprovalAnswer)
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -4086,7 +4086,7 @@ func TestApprovalStateSurvivesMinimalViewportAndRestores(t *testing.T) {
 			}},
 			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(agent.ApprovalAnswer)
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -4129,7 +4129,7 @@ func TestNonRememberableApprovalOverridesConfiguredRememberDefault(t *testing.T)
 			}},
 			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(agent.ApprovalAnswer)
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -4260,7 +4260,7 @@ func multiInteractionReviewScript(answers chan<- []agent.InterruptAnswer) runtim
 		},
 		Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 			answers <- provided
-			return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+			return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 		},
 	}
 }
@@ -4432,7 +4432,7 @@ func TestWorkspaceFileCompletionCreatesAtomicAttachments(t *testing.T) {
 	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
 	backend.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	host, stop := runUIWithWorkspace(t, backend, workspace)
 	host.Shows(t, "Ask flame")
@@ -4503,7 +4503,7 @@ func TestUndoAfterDetachRestoresTheAttachmentValue(t *testing.T) {
 	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
 	backend.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	host, stop := runUIWithWorkspace(t, backend, workspace)
 	host.Shows(t, "Ask flame")
@@ -4546,7 +4546,7 @@ func TestDetachRejectsAnAmbiguousAttachmentBasename(t *testing.T) {
 	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
 	backend.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	host, stop := runUIWithWorkspace(t, backend, workspace)
 	host.Shows(t, "Ask flame")
@@ -4596,7 +4596,7 @@ func TestToolKindsRenderLiveAndDetailToggleChangesTheTranscript(t *testing.T) {
 				Kind: agent.ToolSearch, Name: "provider.grep", Query: "cache expiry", Summary: "find expiry", Status: agent.ToolOK,
 				Output: "internal/cache.go:22\ninternal/cache_test.go:18",
 			}}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		},
 		}
 	}
@@ -4637,7 +4637,7 @@ func TestRunningToolOutputStreamsIntoAnExpandedTranscript(t *testing.T) {
 				Kind: agent.ToolShell, Command: "go test ./...", Status: agent.ToolOK,
 				Output: "LIVE_TOOL_FIRST\nLIVE_TOOL_SECOND\n", ExitCode: &zero,
 			}}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	host, stop := runUIWith(t, backend)
@@ -4665,7 +4665,7 @@ func TestCancelingARunSettlesItsLiveToolProjection(t *testing.T) {
 			{Delay: time.Hour, Event: agent.BlockCompleted{Block: agent.Block{ID: "shell", Kind: agent.BlockTool, Tool: &agent.ToolCall{
 				Kind: agent.ToolShell, Command: "long command", Status: agent.ToolOK, Output: "never reached",
 			}}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	host, stop := runUIWith(t, backend)
@@ -4759,7 +4759,7 @@ func approvalWidthScript(string) runtimefixture.Script {
 			}
 			return []runtimefixture.Step{
 				{Event: agent.BlockCompleted{Block: agent.Block{ID: "responsive-result", Kind: agent.BlockAssistant, Text: message}}},
-				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 			}
 		},
 	}
@@ -4836,7 +4836,7 @@ func TestStreamingRemainsResponsiveThroughAResizeStorm(t *testing.T) {
 			runtimefixture.Step{Event: agent.BlockCompleted{Block: agent.Block{
 				ID: "stream", Kind: agent.BlockAssistant, Text: "RESIZE_STREAM_COMPLETE",
 			}}},
-			runtimefixture.Step{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			runtimefixture.Step{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		)
 		return runtimefixture.Script{Prelude: steps}
 	}
@@ -4874,7 +4874,7 @@ func TestOpeningAnActiveSessionRecoversAStreamWhoseTransientStartPredatesAttachm
 			{Event: agent.BlockDelta{BlockID: "answer", Text: "provisional"}},
 			{Delay: 200 * time.Millisecond, Event: agent.BlockDelta{BlockID: "answer", Text: " preview"}},
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "RECOVERED_AUTHORITATIVE_ANSWER"}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	session, err := backend.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
@@ -4906,9 +4906,9 @@ func TestOutcomeNotificationMatchesTheRunVerdict(t *testing.T) {
 		outcome agent.Outcome
 		want    string
 	}{
-		{name: "completed", outcome: agent.Outcome{Status: agent.OutcomeCompleted}, want: "flame run completed"},
-		{name: "canceled", outcome: agent.Outcome{Status: agent.OutcomeCanceled}, want: "flame run canceled"},
-		{name: "failed", outcome: agent.Outcome{Status: agent.OutcomeFailed, Problem: &protocol.ProblemData{Type: "provider_error", Detail: "boom"}}, want: "flame run failed"},
+		{name: "completed", outcome: agent.Outcome{Status: protocol.OutcomeCompleted}, want: "flame run completed"},
+		{name: "canceled", outcome: agent.Outcome{Status: protocol.OutcomeCanceled}, want: "flame run canceled"},
+		{name: "failed", outcome: agent.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: "provider_error", Detail: "boom"}}, want: "flame run failed"},
 		{name: "unsettled", outcome: agent.Outcome{}, want: ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {

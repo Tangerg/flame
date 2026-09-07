@@ -63,10 +63,10 @@ func ReplacePlan(delay time.Duration, steps []protocol.PlanStep) Step {
 // Script is one run's worth of events. Prelude plays first; Interactions, when
 // non-empty, park the run as one atomic waiting set.
 type Script struct {
-	Prelude        []Step
-	Interactions   []agent.Interaction
-	InterruptUsage agent.Usage
-	Continue       func([]agent.InterruptAnswer) []Step
+	Prelude          []Step
+	Interactions     []agent.Interaction
+	InterruptMetrics protocol.RunMetrics
+	Continue         func([]agent.InterruptAnswer) []Step
 }
 
 func buildScriptSafely(build func(string) Script, prompt string) (script Script, err error) {
@@ -83,7 +83,7 @@ func buildScriptSafely(build func(string) Script, prompt string) (script Script,
 }
 
 func (s Script) validate() error {
-	if err := s.InterruptUsage.Validate(); err != nil {
+	if err := protocol.ValidateWireTree(s.InterruptMetrics); err != nil {
 		return fmt.Errorf("script interrupt usage: %w", err)
 	}
 	interrupted := s.interrupts()
@@ -167,7 +167,7 @@ func validateSteps(steps []Step, requireFinish bool) error {
 func cloneScript(script Script) Script {
 	script.Prelude = cloneSteps(script.Prelude)
 	script.Interactions = agent.CloneInteractions(script.Interactions)
-	script.InterruptUsage = script.InterruptUsage.Clone()
+	script.InterruptMetrics = agent.CloneRunMetrics(script.InterruptMetrics)
 	return script
 }
 
@@ -349,11 +349,8 @@ func (d defaultScenario) approved() []Step {
 		agent.ToolOK, "ok  \tgithub.com/example/store\t2.104s", "", 2*time.Second+104*time.Millisecond)
 	approved = append(approved, stream("msg_2", agent.BlockAssistant, d.summary)...)
 	approved = append(approved, eventStep(beat, agent.RunFinished{
-		Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
-		Usage: agent.Usage{
-			InputTokens: 18422, OutputTokens: 1163, CacheReadTokens: 12800,
-			CostUSD: new(0.0412), Duration: 21 * time.Second,
-		},
+		Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
+		Metrics: protocol.RunMetrics{ActiveDurationMillis: (21 * time.Second).Milliseconds(), Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 18422, OutputTokens: 1163, CacheReadTokens: 12800, CostUSD: new(0.0412)}}},
 	}))
 	return approved
 }
@@ -365,11 +362,8 @@ func (d defaultScenario) denied() []Step {
 	}}))
 	denied = append(denied, stream("msg_3", agent.BlockAssistant, d.declined)...)
 	denied = append(denied, eventStep(beat, agent.RunFinished{
-		Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
-		Usage: agent.Usage{
-			InputTokens: 14180, OutputTokens: 742, CacheReadTokens: 12800,
-			CostUSD: new(0.0291), Duration: 14 * time.Second,
-		},
+		Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
+		Metrics: protocol.RunMetrics{ActiveDurationMillis: (14 * time.Second).Milliseconds(), Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 14180, OutputTokens: 742, CacheReadTokens: 12800, CostUSD: new(0.0291)}}},
 	}))
 	return denied
 }
@@ -377,8 +371,8 @@ func (d defaultScenario) denied() []Step {
 func (d defaultScenario) script() Script {
 	approved, denied := d.approved(), d.denied()
 	return Script{
-		Prelude:        d.prelude(),
-		InterruptUsage: agent.Usage{InputTokens: 12_800, OutputTokens: 684, CacheReadTokens: 9_600, CostUSD: new(0.0264), Duration: 9 * time.Second},
+		Prelude:          d.prelude(),
+		InterruptMetrics: protocol.RunMetrics{ActiveDurationMillis: (9 * time.Second).Milliseconds(), Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 12_800, OutputTokens: 684, CacheReadTokens: 9_600, CostUSD: new(0.0264)}}},
 		Interactions: []agent.Interaction{agent.Approval{
 			ItemID: "tool_2",
 			Title:  "edit internal/store/cache_test.go",

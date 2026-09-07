@@ -160,17 +160,14 @@ func TestPreviewKeepsTheBoundaryRootDescendants(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := snapshot.Runs[0]
-	child := root.Clone()
+	child := agent.CloneRun(root)
 	child.ID = "run_child"
-	child.Lineage, err = agent.NewChildRunLineage(child.ID, "item_delegate", root.ID, root.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	child.SpawnedByItemID, child.ParentRunID, child.RootRunID = "item_delegate", root.ID, root.ID
 	child.CreatedAt = root.CreatedAt.Add(time.Millisecond)
-	later := root.Clone()
+	later := agent.CloneRun(root)
 	later.ID = "run_later"
 	later.CreatedAt = root.CreatedAt.Add(2 * time.Millisecond)
-	snapshot.Runs = []agent.Run{root, child, later}
+	snapshot.Runs = []protocol.RunRef{root, child, later}
 
 	preview, err := PreviewRollback(snapshot, agent.RollbackSession{
 		SessionID: snapshot.Session.ID, ToRunID: root.ID, Scope: protocol.RestoreHistory,

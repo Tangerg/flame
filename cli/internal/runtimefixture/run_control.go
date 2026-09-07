@@ -49,7 +49,7 @@ func (r *Runtime) StartRun(ctx context.Context, in agent.StartRun) (agent.Segmen
 	runID := r.identities.next(runIdentity)
 	run := &runState{
 		id: runID, sessionID: in.SessionID,
-		lineage:  agent.RootRunLineage(),
+
 		provider: in.Options.Provider, model: in.Options.Model, reasoningEffort: in.Options.ReasoningEffort,
 		limits: in.Options.Limits, status: protocol.RunStatusRunning,
 		segments: make(map[string]*segmentState), script: script, answers: make(map[string]agent.Answer), cancel: make(chan struct{}),
@@ -325,28 +325,28 @@ func cloneAnswers(answers []agent.InterruptAnswer) []agent.InterruptAnswer {
 	return out
 }
 
-func (r *Runtime) CancelRun(ctx context.Context, in agent.CancelRun) (agent.RunCancellation, error) {
+func (r *Runtime) CancelRun(ctx context.Context, in agent.CancelRun) (protocol.CancelRunResponse, error) {
 	if err := in.Validate(); err != nil {
-		return agent.RunCancellation{}, fmt.Errorf("mock: %w", err)
+		return protocol.CancelRunResponse{}, fmt.Errorf("mock: %w", err)
 	}
 	if err := context.Cause(ctx); err != nil {
-		return agent.RunCancellation{}, err
+		return protocol.CancelRunResponse{}, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	run := r.runs[in.RunID]
 	if run == nil {
-		return agent.RunCancellation{}, fmt.Errorf("%w: %s", protocol.ErrRunNotFound, in.RunID)
+		return protocol.CancelRunResponse{}, fmt.Errorf("%w: %s", protocol.ErrRunNotFound, in.RunID)
 	}
 	if run.status == protocol.RunStatusFinished {
-		return agent.RunCancellation{}, fmt.Errorf("%w: %s", protocol.ErrRunFinished, run.id)
+		return protocol.CancelRunResponse{}, fmt.Errorf("%w: %s", protocol.ErrRunFinished, run.id)
 	}
-	if err := r.finishLocked(run, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCanceled, Detail: strings.TrimSpace(in.Reason)}}); err != nil {
-		return agent.RunCancellation{}, err
+	if err := r.finishLocked(run, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCanceled, Detail: strings.TrimSpace(in.Reason)}}); err != nil {
+		return protocol.CancelRunResponse{}, err
 	}
 	run.cancelOnce.Do(func() { close(run.cancel) })
 	projected := projectRun(run)
-	return agent.RunCancellation{Canceled: projected, Root: projected.Clone()}, nil
+	return protocol.CancelRunResponse{Type: protocol.CancelRunRoot, Run: projected}, nil
 }
 
 func (r *Runtime) SteerRun(ctx context.Context, in agent.SteerRun) error {

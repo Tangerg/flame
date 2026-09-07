@@ -501,7 +501,7 @@ func requireSessionCatalog(t *testing.T, runtime *Connection, workspace string) 
 	runs, err := runtime.ListRuns(t.Context(), agent.RunQuery{
 		SessionID: created.ID, IncludeDescendants: true, PageSize: agent.DefaultPageSize(),
 	})
-	if err != nil || len(runs.Items) != 0 {
+	if err != nil || len(runs.Data) != 0 {
 		t.Fatalf("ListRuns = (%+v, %v)", runs, err)
 	}
 	if _, err := runtime.GetRun(t.Context(), "run_missing"); !errors.Is(err, protocol.ErrRunNotFound) {

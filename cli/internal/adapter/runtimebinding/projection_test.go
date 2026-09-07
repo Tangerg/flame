@@ -160,7 +160,7 @@ func TestProjectItemRejectsCompactionWithoutSummary(t *testing.T) {
 
 func TestProjectRunUsagePreservesStepsAndPerModelAttribution(t *testing.T) {
 	totalCost, modelCost := 0.4, 0.25
-	usage := projectUsage(protocol.RunMetrics{
+	usage := agent.UsageFromMetrics(protocol.RunMetrics{
 		Steps: 4, ActiveDurationMillis: 1250,
 		Usage: &protocol.Usage{
 			ModelUsage: protocol.ModelUsage{InputTokens: 100, CostUSD: &totalCost},
@@ -186,18 +186,9 @@ func TestRuntimeDurationProjectionsRejectPositiveOverflow(t *testing.T) {
 	// This value used to wrap to a small positive time.Duration, bypassing the
 	// CLI domain's non-negative duration invariant.
 	const wrapsPositive = int64(18_446_744_073_710)
-	_, err := projectRun(protocol.RunRef{
-		RunSummary: protocol.RunSummary{
-			ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusWaiting,
-		},
-		Metrics: protocol.RunMetrics{ActiveDurationMillis: wrapsPositive},
-	})
-	if err == nil || !strings.Contains(err.Error(), "activeDurationMillis") {
-		t.Fatalf("projectRun overflow error = %v", err)
-	}
 
 	startedAt := time.Unix(1, 0).UTC()
-	_, err = projectItem(protocol.Item{
+	_, err := projectItem(protocol.Item{
 		ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusCompleted,
 		Type: protocol.ItemTypeToolCall, Tool: &protocol.ToolInvocation{
 			Name: "shell", Arguments: map[string]any{},
@@ -220,7 +211,7 @@ func TestProjectOutcomePreservesStructuredProblem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if outcome.Status != agent.OutcomeFailed || outcome.Description() != "quota exhausted" || outcome.Problem == nil ||
+	if outcome.Status != protocol.OutcomeFailed || outcome.Description() != "quota exhausted" || outcome.Problem == nil ||
 		outcome.Problem.RetryAfterSeconds != 2 || outcome.Problem.DocURL != "https://docs.example/rate-limit" {
 		t.Fatalf("outcome = %+v", outcome)
 	}
@@ -530,49 +521,6 @@ func TestProjectEventRejectsMalformedEnvelopeBeforeStreaming(t *testing.T) {
 				t.Fatalf("malformed event = (included %v, error %v), want %q", included, err, test.field)
 			}
 		})
-	}
-}
-
-func TestProjectChildRunPreservesLineage(t *testing.T) {
-	created := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
-	projected, err := projectRun(protocol.RunRef{
-		RunSummary: protocol.RunSummary{
-			ID: "run_child", SessionID: "ses_1", Status: protocol.RunStatusRunning,
-			SpawnedByItemID: "item_delegate", ParentRunID: "run_root", RootRunID: "run_root",
-			Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh", CreatedAt: created,
-		},
-		ActiveSegmentID: "seg_child",
-		ContextTokens:   32_768,
-		ProtocolProfile: protocol.RunProtocolProfile{
-			RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
-			InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
-		},
-	})
-	if err != nil {
-		t.Fatalf("projectRun: %v", err)
-	}
-	want, err := agent.NewChildRunLineage("run_child", "item_delegate", "run_root", "run_root")
-	if err != nil {
-		t.Fatal(err)
-	}
-	wantProfile := &protocol.RunProtocolProfile{
-		RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
-		InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
-	}
-	if projected.Lineage != want || projected.ReasoningEffort != "xhigh" || projected.ContextTokens != 32_768 ||
-		!projected.CreatedAt.Equal(created) || !reflect.DeepEqual(projected.ProtocolProfile, wantProfile) {
-		t.Fatalf("projected run = %+v", projected)
-	}
-}
-
-func TestProjectRunRejectsPartialChildLineage(t *testing.T) {
-	t.Parallel()
-	_, err := projectRun(protocol.RunRef{RunSummary: protocol.RunSummary{
-		ID: "run_child", SessionID: "ses_1", Status: protocol.RunStatusWaiting,
-		ParentRunID: "run_root",
-	}})
-	if err == nil || !strings.Contains(err.Error(), "spawnedByItemId") {
-		t.Fatalf("projectRun partial lineage error = %v", err)
 	}
 }
 

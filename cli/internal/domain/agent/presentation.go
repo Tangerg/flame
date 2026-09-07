@@ -1,10 +1,7 @@
-// Package agent owns the CLI's agent-conversation model and runtime port.
-//
-// The types here are presentation models, deliberately not the runtime's wire
-// contract. A terminal wants a flat, mutable, ordered transcript; the wire is
-// shaped for replay, dedup and pagination. An implementation of [Runtime]
-// translates one into the other — which is also what keeps a second copy of the
-// wire types out of this module.
+// Package agent owns CLI conversation folding, authoring values, and presentation.
+// Durable Session and Run facts use Runtime Protocol values directly. Local
+// models retain the transcript, streaming previews, and interaction state needed
+// by command output and the terminal.
 package agent
 
 import (
@@ -327,22 +324,9 @@ func (t ToolCall) Validate() error {
 	return nil
 }
 
-// OutcomeStatus is how a run ended.
-type OutcomeStatus string
-
-const (
-	OutcomeCompleted OutcomeStatus = "completed"
-	OutcomeTimedOut  OutcomeStatus = "timedOut"
-	OutcomeMaxSteps  OutcomeStatus = "maxSteps"
-	OutcomeMaxBudget OutcomeStatus = "maxBudget"
-	OutcomeCanceled  OutcomeStatus = "canceled"
-	OutcomeFailed    OutcomeStatus = "failed"
-	OutcomeLost      OutcomeStatus = "lost"
-)
-
-// Outcome is a finished run's verdict.
+// Outcome formats the Runtime verdict for command output and terminal status.
 type Outcome struct {
-	Status OutcomeStatus
+	Status protocol.RunOutcomeType
 	// Problem is the single source of failure classification, display text, and
 	// recovery metadata for failed, timed-out, and lost outcomes.
 	Problem *protocol.ProblemData

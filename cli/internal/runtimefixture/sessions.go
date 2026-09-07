@@ -156,7 +156,7 @@ func (r *Runtime) GetSession(ctx context.Context, id string) (agent.SessionSnaps
 	snapshot := agent.SessionSnapshot{
 		Session:    state.meta,
 		Transcript: make([]agent.Block, len(state.items)),
-		Runs:       make([]agent.Run, 0, len(state.runs)),
+		Runs:       make([]protocol.RunRef, 0, len(state.runs)),
 		Plan:       cloneCommittedPlan(state.plan),
 	}
 	for i, item := range state.items {
@@ -408,10 +408,10 @@ func (r *Runtime) seedHistory() {
 	}
 	run := &runState{
 		id: "run_demo_history", sessionID: state.meta.ID, provider: "mock", model: "balanced",
-		lineage: agent.RootRunLineage(),
-		limits:  agent.UnlimitedRunLimits(), status: protocol.RunStatusFinished, segments: make(map[string]*segmentState),
-		outcome: agent.Outcome{Status: agent.OutcomeCompleted},
-		usage:   agent.Usage{InputTokens: 820, OutputTokens: 94, CacheReadTokens: 512, Duration: 3 * time.Second},
+
+		limits: agent.UnlimitedRunLimits(), status: protocol.RunStatusFinished, segments: make(map[string]*segmentState),
+		outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
+		metrics: protocol.RunMetrics{ActiveDurationMillis: 3000, Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 820, OutputTokens: 94, CacheReadTokens: 512}}},
 	}
 	r.runs[run.id] = run
 	r.runOrder = append(r.runOrder, run.id)

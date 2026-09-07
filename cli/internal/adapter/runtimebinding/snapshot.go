@@ -76,18 +76,11 @@ func projectSnapshot(read protocol.SessionSnapshot) (agent.SessionSnapshot, erro
 		}
 		snapshot.Transcript = append(snapshot.Transcript, block)
 	}
-	orderedRuns := slices.Clone(read.Runs)
+	orderedRuns := read.Runs
 	slices.SortFunc(orderedRuns, func(first, second protocol.RunRef) int {
 		return cmp.Or(first.CreatedAt.Compare(second.CreatedAt), cmp.Compare(first.ID, second.ID))
 	})
-	snapshot.Runs = make([]agent.Run, 0, len(orderedRuns))
-	for _, value := range orderedRuns {
-		run, projectRunErr := projectRun(value)
-		if projectRunErr != nil {
-			return agent.SessionSnapshot{}, projectRunErr
-		}
-		snapshot.Runs = append(snapshot.Runs, run)
-	}
+	snapshot.Runs = orderedRuns
 	if read.Plan != nil {
 		snapshot.Plan, err = projectPlan(read.Plan)
 		if err != nil {

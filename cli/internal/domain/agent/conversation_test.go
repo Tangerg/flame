@@ -34,12 +34,12 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	apply(t, conversation, RunEvent{EventID: "question-done", RunID: "run_1", SegmentID: "seg_1", Event: BlockCompleted{Block: Block{
 		ID: question.ItemID, RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockQuestion, Question: &question,
 	}}})
-	interruptedUsage := Usage{InputTokens: 10, OutputTokens: 2}
+	interruptedMetrics := protocol.RunMetrics{Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 10, OutputTokens: 2}}}
 	interruptedContext := int64(8_192)
 	apply(t, conversation, RunEvent{EventID: "opaque:park", RunID: "run_1", SegmentID: "seg_1", Event: RunInterrupted{
-		Interactions: interrupts, Usage: interruptedUsage, ContextTokens: interruptedContext,
+		Interactions: interrupts, Metrics: interruptedMetrics, ContextTokens: interruptedContext,
 	}})
-	if conversation.Phase() != ConversationWaiting || len(conversation.Interactions()) != 2 || !conversation.Usage().Equal(interruptedUsage) {
+	if conversation.Phase() != ConversationWaiting || len(conversation.Interactions()) != 2 || !conversation.Usage().Equal(UsageFromMetrics(interruptedMetrics)) {
 		t.Fatalf("waiting projection = phase %v, interactions %d, usage %+v", conversation.Phase(), len(conversation.Interactions()), conversation.Usage())
 	}
 	if runs := conversation.Runs(); len(runs) != 1 || runs[0].ContextTokens != interruptedContext {
@@ -64,7 +64,7 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	}
 
 	resumed := runningRun("seg_2")
-	resumed.Usage = interruptedUsage
+	resumed.Metrics = interruptedMetrics
 	resumed.ContextTokens = interruptedContext
 	apply(t, conversation, RunEvent{EventID: "different-space:start", RunID: "run_1", SegmentID: "seg_2", Event: SegmentStarted{Run: resumed}})
 	if conversation.Phase() != ConversationRunning || conversation.SegmentID() != "seg_2" || len(conversation.Interactions()) != 0 {
@@ -77,9 +77,9 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	}}})
 	finalContext := int64(4_096)
 	apply(t, conversation, RunEvent{EventID: "different-space:done", RunID: "run_1", SegmentID: "seg_2", Event: RunFinished{
-		Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 14, OutputTokens: 4}, ContextTokens: finalContext,
+		Outcome: Outcome{Status: protocol.OutcomeCompleted}, Metrics: protocol.RunMetrics{Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 14, OutputTokens: 4}}}, ContextTokens: finalContext,
 	}})
-	if conversation.Phase() != ConversationIdle || conversation.Outcome().Status != OutcomeCompleted {
+	if conversation.Phase() != ConversationIdle || conversation.Outcome().Status != protocol.OutcomeCompleted {
 		t.Fatalf("terminal projection = phase %v, outcome %+v", conversation.Phase(), conversation.Outcome())
 	}
 	if blocks := conversation.Blocks(); len(blocks) != 3 || blocks[0].Text != "final" {
@@ -123,7 +123,7 @@ func TestConversationAppendsTextDeltasInEventOrder(t *testing.T) {
 func TestConversationRejectsRegressingRunUsage(t *testing.T) {
 	conversation := NewConversation()
 	run := runningRun("seg_1")
-	run.Usage = Usage{InputTokens: 10}
+	run.Metrics = protocol.RunMetrics{Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 10}}}
 	apply(t, conversation, RunEvent{EventID: "start", RunID: "run_1", SegmentID: "seg_1", Event: SegmentStarted{Run: run}})
 	approval := runningApproval("approval_1", "shell")
 	apply(t, conversation, RunEvent{EventID: "approval", RunID: "run_1", SegmentID: "seg_1", Event: BlockStarted{Block: Block{
@@ -131,7 +131,7 @@ func TestConversationRejectsRegressingRunUsage(t *testing.T) {
 	}}})
 	interrupted := RunInterrupted{
 		Interactions: []Interaction{approval},
-		Usage:        Usage{InputTokens: 9},
+		Metrics:      protocol.RunMetrics{Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 9}}},
 	}
 	if _, err := conversation.ApplyRunEvent(RunEvent{EventID: "wait", RunID: "run_1", SegmentID: "seg_1", Event: interrupted}); !errors.Is(err, ErrInvalidTransition) {
 		t.Fatalf("regressing usage error = %v", err)
@@ -155,7 +155,7 @@ func TestConversationRejectsApprovalForDifferentToolInvocation(t *testing.T) {
 
 	_, err := conversation.ApplyRunEvent(RunEvent{
 		EventID: "wait", RunID: run.ID, SegmentID: run.ActiveSegmentID,
-		Event: RunInterrupted{Interactions: []Interaction{approval}, Usage: run.Usage},
+		Event: RunInterrupted{Interactions: []Interaction{approval}, Metrics: run.Metrics},
 	})
 	if !errors.Is(err, ErrInvalidTransition) {
 		t.Fatalf("different approval invocation error = %v", err)
@@ -166,13 +166,10 @@ func TestConversationFoldsRunProgressWithoutMakingPreviewsDurable(t *testing.T) 
 	conversation := NewConversation()
 	cost := 0.1
 	run := runningRun("seg_1")
-	run.Usage = Usage{
-		InputTokens: 10, CostUSD: &cost, Steps: 2,
-		ByModel: map[string]protocol.ModelUsage{"mock/balanced": {InputTokens: 10}},
-	}
+	run.Metrics = protocol.RunMetrics{Steps: 2, Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 10, CostUSD: &cost}, ByModel: map[string]protocol.ModelUsage{"mock/balanced": {InputTokens: 10}}}}
 	apply(t, conversation, RunEvent{EventID: "start", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: SegmentStarted{Run: run}})
 
-	progressUsage := Usage{
+	progressUsage := protocol.Usage{
 		InputTokens:  14,
 		OutputTokens: 2,
 		ByModel:      map[string]protocol.ModelUsage{"mock/balanced": {InputTokens: 14, OutputTokens: 2}},
@@ -194,11 +191,11 @@ func TestConversationFoldsRunProgressWithoutMakingPreviewsDurable(t *testing.T) 
 	apply(t, conversation, RunEvent{EventID: "context-after-compaction", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: RunProgress{
 		ContextTokens: &compactedContext,
 	}})
-	if runs := conversation.Runs(); len(runs) != 1 || runs[0].ContextTokens != compactedContext || runs[0].Usage.Steps != step {
+	if runs := conversation.Runs(); len(runs) != 1 || runs[0].ContextTokens != compactedContext || UsageFromMetrics(runs[0].Metrics).Steps != step {
 		t.Fatalf("context-only progress did not update the run: %+v", runs)
 	}
 
-	regressed := Usage{InputTokens: 13, OutputTokens: 2}
+	regressed := protocol.Usage{InputTokens: 13, OutputTokens: 2}
 	invalidContext := int64(99_999)
 	if _, err := conversation.ApplyRunEvent(RunEvent{EventID: "regression", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: RunProgress{
 		Usage: &regressed, ContextTokens: &invalidContext,
@@ -243,7 +240,7 @@ func TestConversationFoldsAChildRunWithoutEndingTheRootStream(t *testing.T) {
 
 	child := runningRun("seg_child")
 	child.ID = "run_child"
-	child.Lineage = testChildRunLineage(t, child.ID, delegate.ID, root.ID, root.ID)
+	child.SpawnedByItemID, child.ParentRunID, child.RootRunID = delegate.ID, root.ID, root.ID
 	apply(t, conversation, treeEvent("open-child", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, SegmentStarted{Run: child}))
 	if got := conversation.RunningDescendants(); got != 1 {
 		t.Fatalf("running descendants after child start = %d, want 1", got)
@@ -253,7 +250,7 @@ func TestConversationFoldsAChildRunWithoutEndingTheRootStream(t *testing.T) {
 	apply(t, conversation, treeEvent("child-answer-delta", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, BlockDelta{BlockID: childAnswer.ID, Text: "inspection"}))
 	childAnswer.Status, childAnswer.Text = BlockStatusCompleted, "inspection complete"
 	apply(t, conversation, treeEvent("child-answer-done", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, BlockCompleted{Block: childAnswer}))
-	apply(t, conversation, treeEvent("child-done", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 4}}))
+	apply(t, conversation, treeEvent("child-done", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: protocol.OutcomeCompleted}, Metrics: protocol.RunMetrics{Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 4}}}}))
 	if got := conversation.RunningDescendants(); got != 0 {
 		t.Fatalf("running descendants after child finish = %d, want 0", got)
 	}
@@ -264,8 +261,8 @@ func TestConversationFoldsAChildRunWithoutEndingTheRootStream(t *testing.T) {
 	delegate.Status = BlockStatusCompleted
 	delegate.Tool.Status = ToolOK
 	apply(t, conversation, treeEvent("delegate-done", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, BlockCompleted{Block: delegate}))
-	apply(t, conversation, treeEvent("root-done", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 8}}))
-	if conversation.Phase() != ConversationIdle || conversation.Outcome().Status != OutcomeCompleted {
+	apply(t, conversation, treeEvent("root-done", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: protocol.OutcomeCompleted}, Metrics: protocol.RunMetrics{Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 8}}}}))
+	if conversation.Phase() != ConversationIdle || conversation.Outcome().Status != protocol.OutcomeCompleted {
 		t.Fatalf("root terminal projection = phase %v outcome %+v", conversation.Phase(), conversation.Outcome())
 	}
 	if blocks := conversation.Blocks(); len(blocks) != 2 || blocks[1].RunID != child.ID || blocks[1].Text != "inspection complete" {
@@ -284,7 +281,7 @@ func TestConversationResumesATreeInterruptedByAChild(t *testing.T) {
 	apply(t, conversation, treeEvent("delegate-start", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, BlockStarted{Block: delegate}))
 	child := runningRun("seg_child_1")
 	child.ID = "run_child"
-	child.Lineage = testChildRunLineage(t, child.ID, delegate.ID, root.ID, root.ID)
+	child.SpawnedByItemID, child.ParentRunID, child.RootRunID = delegate.ID, root.ID, root.ID
 	apply(t, conversation, treeEvent("child-start-1", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, SegmentStarted{Run: child}))
 	approval := Approval{
 		RunID: child.ID, ItemID: "child-approval", Title: "Inspect generated output",
@@ -293,18 +290,18 @@ func TestConversationResumesATreeInterruptedByAChild(t *testing.T) {
 	apply(t, conversation, treeEvent("approval-start", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, BlockStarted{Block: Block{
 		ID: approval.ItemID, RunID: child.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: approval.Tool,
 	}}))
-	apply(t, conversation, treeEvent("child-wait", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, RunInterrupted{Interactions: []Interaction{approval}, Usage: Usage{InputTokens: 3}}))
-	apply(t, conversation, treeEvent("root-suspend", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, RunSuspended{Usage: Usage{InputTokens: 5}}))
+	apply(t, conversation, treeEvent("child-wait", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, RunInterrupted{Interactions: []Interaction{approval}, Metrics: protocol.RunMetrics{Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 3}}}}))
+	apply(t, conversation, treeEvent("root-suspend", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, RunSuspended{Metrics: protocol.RunMetrics{Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 5}}}}))
 	if conversation.Phase() != ConversationWaiting || len(conversation.Interactions()) != 1 || conversation.Interactions()[0].(Approval).RunID != child.ID {
 		t.Fatalf("tree wait = phase %v interactions %+v", conversation.Phase(), conversation.Interactions())
 	}
 
 	resumedRoot := root
 	resumedRoot.ActiveSegmentID = "seg_root_2"
-	resumedRoot.Usage = Usage{InputTokens: 5}
+	resumedRoot.Metrics = protocol.RunMetrics{Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 5}}}
 	resumedChild := child
 	resumedChild.ActiveSegmentID = "seg_child_2"
-	resumedChild.Usage = Usage{InputTokens: 3}
+	resumedChild.Metrics = protocol.RunMetrics{Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 3}}}
 	apply(t, conversation, treeEvent("child-start-2", child.ID, resumedChild.ActiveSegmentID, resumedRoot.ActiveSegmentID, SegmentStarted{Run: resumedChild}))
 	apply(t, conversation, treeEvent("root-start-2", root.ID, resumedRoot.ActiveSegmentID, resumedRoot.ActiveSegmentID, SegmentStarted{Run: resumedRoot}))
 	completedApproval := approval.Tool.Clone()
@@ -312,10 +309,10 @@ func TestConversationResumesATreeInterruptedByAChild(t *testing.T) {
 	apply(t, conversation, treeEvent("approval-done", child.ID, resumedChild.ActiveSegmentID, resumedRoot.ActiveSegmentID, BlockCompleted{Block: Block{
 		ID: approval.ItemID, RunID: child.ID, Status: BlockStatusCompleted, Kind: BlockTool, Tool: &completedApproval,
 	}}))
-	apply(t, conversation, treeEvent("child-done", child.ID, resumedChild.ActiveSegmentID, resumedRoot.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 4}}))
+	apply(t, conversation, treeEvent("child-done", child.ID, resumedChild.ActiveSegmentID, resumedRoot.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: protocol.OutcomeCompleted}, Metrics: protocol.RunMetrics{Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 4}}}}))
 	delegate.Status, delegate.Tool.Status = BlockStatusCompleted, ToolOK
 	apply(t, conversation, treeEvent("delegate-done", root.ID, resumedRoot.ActiveSegmentID, resumedRoot.ActiveSegmentID, BlockCompleted{Block: delegate}))
-	apply(t, conversation, treeEvent("root-done", root.ID, resumedRoot.ActiveSegmentID, resumedRoot.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 9}}))
+	apply(t, conversation, treeEvent("root-done", root.ID, resumedRoot.ActiveSegmentID, resumedRoot.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: protocol.OutcomeCompleted}, Metrics: protocol.RunMetrics{Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 9}}}}))
 	if conversation.Phase() != ConversationIdle || conversation.SegmentID() != resumedRoot.ActiveSegmentID {
 		t.Fatalf("resumed tree = phase %v segment %s", conversation.Phase(), conversation.SegmentID())
 	}
@@ -337,7 +334,7 @@ func TestConversationTreatsEventIDAsOpaqueIdentity(t *testing.T) {
 		t.Fatalf("identical replay = %+v, %v", accepted, err)
 	}
 	conflict := event
-	conflict.Event = SegmentStarted{Run: testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_1", Provider: "mock", Model: "other"})}
+	conflict.Event = SegmentStarted{Run: protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusRunning, Provider: "mock", Model: "other"}, ActiveSegmentID: "seg_1"}}
 	if _, err := conversation.ApplyRunEvent(conflict); !errors.Is(err, ErrEventConflict) {
 		t.Fatalf("conflict error = %v", err)
 	}
@@ -350,7 +347,7 @@ func TestConversationRejectsCrossSegmentAndInvalidTransitions(t *testing.T) {
 	if !errors.Is(err, ErrInvalidTransition) && err == nil {
 		t.Fatal("cross-segment event was accepted")
 	}
-	_, err = conversation.ApplyRunEvent(RunEvent{EventID: "finish", RunID: "run_1", SegmentID: "seg_1", Event: RunFinished{Outcome: Outcome{Status: OutcomeCompleted}}})
+	_, err = conversation.ApplyRunEvent(RunEvent{EventID: "finish", RunID: "run_1", SegmentID: "seg_1", Event: RunFinished{Outcome: Outcome{Status: protocol.OutcomeCompleted}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,7 +364,7 @@ func TestConversationStartingWindow(t *testing.T) {
 	if err := conversation.CancelStarting(); err != nil {
 		t.Fatal(err)
 	}
-	if conversation.Outcome().Status != OutcomeCanceled {
+	if conversation.Outcome().Status != protocol.OutcomeCanceled {
 		t.Fatalf("outcome = %+v", conversation.Outcome())
 	}
 }
@@ -379,7 +376,7 @@ func TestConversationSettlesRunningItemsWithOutOfBandCancellation(t *testing.T) 
 		ID: "tool_1", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool,
 		Tool: &ToolCall{Kind: ToolShell, Name: "shell", Status: ToolRunning},
 	}}})
-	if err := conversation.SettleRun(testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: Outcome{Status: OutcomeCanceled}})); err != nil {
+	if err := conversation.SettleRun(protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: (Outcome{Status: protocol.OutcomeCanceled}).RunOutcome()}}); err != nil {
 		t.Fatal(err)
 	}
 	block := conversation.Blocks()[0]
@@ -421,7 +418,7 @@ func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
 	// event. It must not erase the Plan's independent cold-read watermark.
 	apply(t, conversation, RunEvent{
 		EventID: "new-progress", RunID: "run_1", SegmentID: "seg_1",
-		Event: RunProgress{Usage: &Usage{}},
+		Event: RunProgress{Usage: &protocol.Usage{}},
 	})
 	currentPlan := testPlanChanged(t, 2, plan)
 	currentPlan.Plan.State.UpdatedAt = currentPlan.Plan.State.UpdatedAt.Add(time.Minute)
@@ -490,9 +487,9 @@ func attachedReconciliationSnapshot(t testing.TB) SessionSnapshot {
 			{ID: "same", RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockAssistant, Text: "current"},
 			{ID: "live", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: ToolShell, Name: "shell", Status: ToolRunning}},
 		},
-		Runs: []Run{
-			testRootRun(Run{ID: "run_old", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: Outcome{Status: OutcomeCompleted}}),
-			testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_1"}),
+		Runs: []protocol.RunRef{
+			protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_old", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: (Outcome{Status: protocol.OutcomeCompleted}).RunOutcome()}},
+			protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusRunning}, ActiveSegmentID: "seg_1"},
 		},
 		Plan: testPlan(t, 2, []protocol.PlanStep{{Description: "inspect", Status: protocol.PlanStatusInProgress}}),
 	}
@@ -509,8 +506,8 @@ func TestConversationRejectsOrphanPreviewOutsideColdTail(t *testing.T) {
 	}
 }
 
-func runningRun(segmentID string) Run {
-	return testRootRun(Run{ID: "run_1", SessionID: "ses_1", Provider: "mock", Model: "balanced", Status: protocol.RunStatusRunning, ActiveSegmentID: segmentID})
+func runningRun(segmentID string) protocol.RunRef {
+	return protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_1", SessionID: "ses_1", Provider: "mock", Model: "balanced", Status: protocol.RunStatusRunning}, ActiveSegmentID: segmentID}
 }
 
 func apply(t *testing.T, conversation *Conversation, event RunEvent) {

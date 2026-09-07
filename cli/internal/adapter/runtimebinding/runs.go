@@ -36,7 +36,7 @@ func (r *Connection) StartRun(ctx context.Context, input agent.StartRun) (agent.
 		SessionID: input.SessionID, Input: content,
 		Provider: input.Options.Provider, Model: input.Options.Model,
 		ReasoningEffort: input.Options.ReasoningEffort,
-		Limits:          projectRunLimitsToWire(input.Options.Limits),
+		Limits:          input.Options.Limits.Protocol(),
 	}
 	if generationParamsPresent(input.Options.Generation) {
 		params := input.Options.Clone().Generation
@@ -64,23 +64,6 @@ func (r *Connection) StartRun(ctx context.Context, input agent.StartRun) (agent.
 		)
 	}
 	return stream, nil
-}
-
-func projectRunLimitsToWire(limits agent.RunLimits) *protocol.RunLimits {
-	if limits.Unlimited() {
-		return nil
-	}
-	wire := &protocol.RunLimits{}
-	if value, limited := limits.MaxTotalTokens(); limited {
-		wire.MaxTotalTokens = &value
-	}
-	if value, limited := limits.MaxSteps(); limited {
-		wire.MaxSteps = &value
-	}
-	if value, limited := limits.MaxBudgetUSD(); limited {
-		wire.MaxBudgetUSD = &value
-	}
-	return wire
 }
 
 func generationParamsPresent(value protocol.GenerationParams) bool {
@@ -209,48 +192,28 @@ func (r *Connection) SubscribeRun(ctx context.Context, input agent.SubscribeRun)
 	return stream, nil
 }
 
-func (r *Connection) CancelRun(ctx context.Context, input agent.CancelRun) (agent.RunCancellation, error) {
+func (r *Connection) CancelRun(ctx context.Context, input agent.CancelRun) (protocol.CancelRunResponse, error) {
 	if err := input.Validate(); err != nil {
-		return agent.RunCancellation{}, err
+		return protocol.CancelRunResponse{}, err
 	}
 	options, err := r.commandOptionsFor(input.CommandID)
 	if err != nil {
-		return agent.RunCancellation{}, err
+		return protocol.CancelRunResponse{}, err
 	}
 	result, err := r.runs.CancelRun(ctx, protocol.CancelRunRequest{RunID: input.RunID, Reason: input.Reason}, options)
 	if err != nil {
-		return agent.RunCancellation{}, classifyError(err)
+		return protocol.CancelRunResponse{}, classifyError(err)
 	}
 	if result == nil {
-		return agent.RunCancellation{}, runtimeContractViolation("cancel run returned nil")
+		return protocol.CancelRunResponse{}, runtimeContractViolation("cancel run returned nil")
 	}
-	canceled, err := projectRun(result.Run)
-	if err != nil {
-		return agent.RunCancellation{}, runtimeContractViolation("cancel run returned an invalid run: %v", err)
+	if err := protocol.ValidateWireTree(*result); err != nil {
+		return protocol.CancelRunResponse{}, runtimeContractViolation("cancel run returned an invalid response: %v", err)
 	}
-	var root agent.Run
-	switch result.Type {
-	case protocol.CancelRunRoot:
-		if result.RootRun != nil {
-			return agent.RunCancellation{}, runtimeContractViolation("root cancellation carries rootRun")
-		}
-		root = canceled.Clone()
-	case protocol.CancelRunChild:
-		if result.RootRun == nil {
-			return agent.RunCancellation{}, runtimeContractViolation("child cancellation omits rootRun")
-		}
-		root, err = projectRun(*result.RootRun)
-		if err != nil {
-			return agent.RunCancellation{}, runtimeContractViolation("cancel run returned an invalid root: %v", err)
-		}
-	default:
-		return agent.RunCancellation{}, runtimeContractViolation("cancel run returned unknown result type %q", result.Type)
+	if result.Run.ID != input.RunID {
+		return protocol.CancelRunResponse{}, runtimeContractViolation("cancel run returned id %q for %q", result.Run.ID, input.RunID)
 	}
-	projected := agent.RunCancellation{Canceled: canceled, Root: root}
-	if err := projected.ValidateTarget(input.RunID); err != nil {
-		return agent.RunCancellation{}, runtimeContractViolation("cancel run returned an invalid projection: %v", err)
-	}
-	return projected, nil
+	return *result, nil
 }
 
 func (r *Connection) SteerRun(ctx context.Context, input agent.SteerRun) error {

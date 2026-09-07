@@ -245,33 +245,34 @@ func (a *app) cancelRootRun(
 	ctx context.Context,
 	target agent.CancelRun,
 	replay commandreplay.Guard,
-) (agent.Run, error) {
+) (protocol.RunRef, error) {
 	result, err := mutation.ConfirmAdmitted(
 		ctx, runtimeRecoveryBackoff, commandReplayAdmission(replay, a.runtimeProfile),
-		func(ctx context.Context) (agent.RunCancellation, error) {
+		func(ctx context.Context) (protocol.CancelRunResponse, error) {
 			attemptCtx, cancel := context.WithTimeout(ctx, runtimeControlTimeout)
 			defer cancel()
 			return a.runtime.CancelRun(attemptCtx, target)
 		},
 	)
 	if err == nil {
-		if validateTargetErr := result.ValidateTarget(target.RunID); validateTargetErr != nil {
-			return agent.Run{}, fmt.Errorf("cancel run: %w", validateTargetErr)
+		if result.Run.ID != target.RunID {
+			return protocol.RunRef{}, fmt.Errorf("cancel run: returned run %q, want %q", result.Run.ID, target.RunID)
 		}
-		return result.Root, nil
+		if result.RootRun != nil {
+			return *result.RootRun, nil
+		}
+		return result.Run, nil
 	}
 	if !errors.Is(err, protocol.ErrRunFinished) {
-		return agent.Run{}, err
+		return protocol.RunRef{}, err
 	}
 	settled, readErr := a.runtime.GetRun(ctx, target.RunID)
 	if readErr != nil {
-		return agent.Run{}, fmt.Errorf("read run after cancellation race: %w", readErr)
+		return protocol.RunRef{}, fmt.Errorf("read run after cancellation race: %w", readErr)
 	}
-	if validateErr := settled.Validate(); validateErr != nil {
-		return agent.Run{}, fmt.Errorf("validate run after cancellation race: %w", validateErr)
-	}
-	if settled.ID != target.RunID || !settled.Lineage.IsRoot() || settled.Status != protocol.RunStatusFinished {
-		return agent.Run{}, fmt.Errorf("cancellation race returned non-terminal root run %s", settled.ID)
+
+	if settled.ID != target.RunID || settled.ParentRunID != "" || settled.Status != protocol.RunStatusFinished {
+		return protocol.RunRef{}, fmt.Errorf("cancellation race returned non-terminal root run %s", settled.ID)
 	}
 	return settled, nil
 }
@@ -279,7 +280,7 @@ func (a *app) cancelRootRun(
 func (a *app) handleRuntimeCancellation(
 	lease operationLease,
 	pending pendingCancellation,
-	settled agent.Run,
+	settled protocol.RunRef,
 	err error,
 ) {
 	if !a.operations.Current(lease) || a.closed {
@@ -328,9 +329,9 @@ func (a *app) handleRuntimeCancellation(
 		return
 	}
 	a.execution.projectionFailed = false
-	a.transcript.settleLive(settled.Outcome)
+	a.transcript.settleLive(agent.OutcomeFromRun(settled.Outcome))
 	a.settleCurrentRunStatus()
-	a.header.SetUsage(settled.Usage)
+	a.header.SetUsage(agent.UsageFromMetrics(settled.Metrics))
 	a.prompt.SetBusy(false)
 	a.syncAnimation()
 	if a.session.invalidated {
@@ -381,7 +382,7 @@ func (a *app) cancelRuntimeNow(
 	defer cancel()
 	result, err := mutation.ConfirmAdmitted(
 		ctx, runtimeRecoveryBackoff, commandReplayAdmission(replay, a.runtimeProfile),
-		func(ctx context.Context) (agent.RunCancellation, error) {
+		func(ctx context.Context) (protocol.CancelRunResponse, error) {
 			return a.runtime.CancelRun(ctx, target)
 		},
 	)
@@ -391,8 +392,8 @@ func (a *app) cancelRuntimeNow(
 	if err != nil {
 		return err
 	}
-	if err := result.ValidateTarget(target.RunID); err != nil {
-		return fmt.Errorf("validate terminal-close cancellation: %w", err)
+	if result.Run.ID != target.RunID {
+		return fmt.Errorf("validate terminal-close cancellation: returned run %q, want %q", result.Run.ID, target.RunID)
 	}
 	return nil
 }

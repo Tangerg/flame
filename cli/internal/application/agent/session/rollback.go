@@ -45,11 +45,11 @@ func PreviewRollback(snapshot agent.SessionSnapshot, request agent.RollbackSessi
 	}
 	boundary := -1
 	if request.ToRunID != "" {
-		boundary = slices.IndexFunc(snapshot.Runs, func(run agent.Run) bool { return run.ID == request.ToRunID })
+		boundary = slices.IndexFunc(snapshot.Runs, func(run protocol.RunRef) bool { return run.ID == request.ToRunID })
 		if boundary < 0 {
 			return RollbackPreview{}, fmt.Errorf("%w: %s", protocol.ErrRunNotFound, request.ToRunID)
 		}
-		if !snapshot.Runs[boundary].Lineage.IsRoot() {
+		if snapshot.Runs[boundary].ParentRunID != "" {
 			return RollbackPreview{}, fmt.Errorf("rollback run %s is not a root run", request.ToRunID)
 		}
 	}
@@ -66,7 +66,7 @@ func PreviewRollback(snapshot agent.SessionSnapshot, request agent.RollbackSessi
 		if boundary >= 0 {
 			dropFrom = len(snapshot.Runs)
 			for index := boundary + 1; index < len(snapshot.Runs); index++ {
-				if snapshot.Runs[index].Lineage.IsRoot() {
+				if snapshot.Runs[index].ParentRunID == "" {
 					dropFrom = index
 					break
 				}

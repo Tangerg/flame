@@ -102,39 +102,39 @@ func (s SessionQuery) Normalize() (SessionQuery, error) {
 type SessionSnapshot struct {
 	Session      runtimeprotocol.Session
 	Transcript   []Block
-	Runs         []Run
+	Runs         []runtimeprotocol.RunRef
 	Plan         *runtimeprotocol.Plan
 	Goal         *runtimeprotocol.Goal
 	Interactions []Interaction
 }
 
 // LatestRun returns the most recently created root run.
-func (s SessionSnapshot) LatestRun() (Run, bool) {
+func (s SessionSnapshot) LatestRun() (runtimeprotocol.RunRef, bool) {
 	for _, run := range slices.Backward(s.Runs) {
-		if run.Lineage.IsRoot() {
-			return run.Clone(), true
+		if run.ParentRunID == "" {
+			return CloneRun(run), true
 		}
 	}
-	return Run{}, false
+	return runtimeprotocol.RunRef{}, false
 }
 
 // ActiveRun returns the sole running or waiting root run, when one exists.
-func (s SessionSnapshot) ActiveRun() (Run, bool) {
+func (s SessionSnapshot) ActiveRun() (runtimeprotocol.RunRef, bool) {
 	for _, run := range slices.Backward(s.Runs) {
-		if run.Lineage.IsRoot() && run.Status != runtimeprotocol.RunStatusFinished {
-			return run.Clone(), true
+		if run.ParentRunID == "" && run.Status != runtimeprotocol.RunStatusFinished {
+			return CloneRun(run), true
 		}
 	}
-	return Run{}, false
+	return runtimeprotocol.RunRef{}, false
 }
 
-func (s SessionSnapshot) RunByID(id string) (Run, bool) {
+func (s SessionSnapshot) RunByID(id string) (runtimeprotocol.RunRef, bool) {
 	for _, run := range s.Runs {
 		if run.ID == id {
-			return run.Clone(), true
+			return CloneRun(run), true
 		}
 	}
-	return Run{}, false
+	return runtimeprotocol.RunRef{}, false
 }
 
 // LastAssistantText returns the latest durable non-empty assistant response.
@@ -161,7 +161,7 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) {
 	if active, ok := snapshot.ActiveRun(); ok {
 		next.runID = active.ID
 		next.segmentID = active.ActiveSegmentID
-		next.usage = active.Usage.Clone()
+		next.usage = UsageFromMetrics(active.Metrics)
 		if active.Status == runtimeprotocol.RunStatusWaiting {
 			next.phase = ConversationWaiting
 			next.interactions = CloneInteractions(snapshot.Interactions)
@@ -171,8 +171,8 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) {
 		}
 	} else if latest, ok := snapshot.LatestRun(); ok {
 		next.runID = latest.ID
-		next.usage = latest.Usage.Clone()
-		next.outcome = latest.Outcome.Clone()
+		next.usage = UsageFromMetrics(latest.Metrics)
+		next.outcome = OutcomeFromRun(latest.Outcome)
 	}
 	*c = *next
 }

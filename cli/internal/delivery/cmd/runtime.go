@@ -29,13 +29,13 @@ type Runtime interface {
 	ForkSession(context.Context, agent.ForkSession) (protocol.Session, error)
 	RollbackSession(context.Context, agent.RollbackSession) (agent.RollbackResult, error)
 	DeleteSession(context.Context, agent.DeleteSession) error
-	GetRun(context.Context, string) (agent.Run, error)
-	ListRuns(context.Context, agent.RunQuery) (agent.RunPage, error)
+	GetRun(context.Context, string) (protocol.RunRef, error)
+	ListRuns(context.Context, agent.RunQuery) (protocol.Page[protocol.RunRef], error)
 	StartRun(context.Context, agent.StartRun) (agent.SegmentStream, error)
 	ResumeRun(context.Context, agent.ResumeRun) (agent.SegmentStream, error)
 	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
 	SteerRun(context.Context, agent.SteerRun) error
-	CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error)
+	CancelRun(context.Context, agent.CancelRun) (protocol.CancelRunResponse, error)
 	ListModels(context.Context) ([]protocol.Model, error)
 	GetApprovalMode(context.Context) (protocol.ApprovalMode, error)
 	SetApprovalMode(context.Context, protocol.ApprovalMode) (protocol.ApprovalMode, error)

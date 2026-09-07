@@ -72,7 +72,6 @@ type storedRule struct {
 type runState struct {
 	id              string
 	sessionID       string
-	lineage         agent.RunLineage
 	provider        string
 	model           string
 	reasoningEffort string
@@ -86,7 +85,7 @@ type runState struct {
 	answers         map[string]agent.Answer
 	cancel          chan struct{}
 	cancelOnce      sync.Once
-	usage           agent.Usage
+	metrics         protocol.RunMetrics
 	outcome         agent.Outcome
 }
 

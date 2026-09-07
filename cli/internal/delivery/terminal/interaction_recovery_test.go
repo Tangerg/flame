@@ -93,7 +93,7 @@ func TestStreamFailureRetiresTheObsoleteInteractionProjection(t *testing.T) {
 				return runtimefixture.Script{
 					Interactions: []agent.Interaction{test.interaction},
 					Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-						return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+						return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 					},
 				}
 			}
@@ -135,7 +135,7 @@ func TestPendingResumePersistenceFailureReopensTheInteractionForRetry(t *testing
 			}},
 			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(agent.ApprovalAnswer)
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -180,7 +180,7 @@ func TestPendingResumePersistenceFailureReopensTheQuestionForRetry(t *testing.T)
 			}},
 			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided[0].Answer.(agent.QuestionAnswer)
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}

@@ -33,19 +33,15 @@ func NewNDJSON(w io.Writer) *NDJSON {
 
 // Begin binds the stream to the accepted run without emitting a synthetic
 // event. The runtime's segment.started event remains the first output frame.
-func (n *NDJSON) Begin(run agent.Run, _ agent.RunOptions) error {
+func (n *NDJSON) Begin(sessionID, runID string, _ agent.RunOptions) error {
 	if n.err != nil {
 		return n.err
 	}
-	if err := run.Validate(); err != nil {
+	if err := n.scope.bindRoot(runID); err != nil {
 		n.err = fmt.Errorf("begin NDJSON: %w", err)
 		return n.err
 	}
-	if err := n.scope.bind(run); err != nil {
-		n.err = fmt.Errorf("begin NDJSON: %w", err)
-		return n.err
-	}
-	n.sessionID = run.SessionID
+	n.sessionID = sessionID
 	return nil
 }
 
@@ -56,41 +52,41 @@ func (n *NDJSON) Begin(run agent.Run, _ agent.RunOptions) error {
 // lets a reader ignore what it does not use. Type is always set and is the only
 // field a consumer must switch on.
 type eventRecord struct {
-	Type             string            `json:"type"`
-	EventID          string            `json:"eventId,omitzero"`
-	SegmentID        string            `json:"segmentId,omitzero"`
-	StreamSegmentID  string            `json:"streamSegmentId,omitzero"`
-	Status           string            `json:"status,omitzero"`
-	Revision         uint64            `json:"revision,omitzero"`
-	At               time.Time         `json:"at,omitzero"`
-	RunID            string            `json:"runId,omitzero"`
-	SpawnedByBlockID string            `json:"spawnedByBlockId,omitzero"`
-	ParentRunID      string            `json:"parentRunId,omitzero"`
-	RootRunID        string            `json:"rootRunId,omitzero"`
-	SessionID        string            `json:"sessionId,omitzero"`
-	ItemID           string            `json:"itemId,omitzero"`
-	Options          *runOptionsJSON   `json:"options,omitzero"`
-	BlockID          string            `json:"blockId,omitzero"`
-	Text             string            `json:"text,omitzero"`
-	Step             *int              `json:"step,omitempty"`
-	ContextTokens    *int64            `json:"contextTokens,omitempty"`
-	Activity         string            `json:"activity,omitzero"`
-	Name             string            `json:"name,omitzero"`
-	Payload          json.RawMessage   `json:"payload,omitempty"`
-	Block            *blockFrame       `json:"block,omitzero"`
-	Transcript       []blockFrame      `json:"transcript,omitzero"`
-	Runs             []runFrame        `json:"runs,omitzero"`
-	Plan             []planFrame       `json:"plan,omitzero"`
-	Interactions     []interactionJSON `json:"interactions,omitzero"`
-	Outcome          *outcomeJSON      `json:"outcome,omitzero"`
-	Usage            *usageJSON        `json:"usage,omitzero"`
+	Type            string            `json:"type"`
+	EventID         string            `json:"eventId,omitzero"`
+	SegmentID       string            `json:"segmentId,omitzero"`
+	StreamSegmentID string            `json:"streamSegmentId,omitzero"`
+	Status          string            `json:"status,omitzero"`
+	Revision        uint64            `json:"revision,omitzero"`
+	At              time.Time         `json:"at,omitzero"`
+	RunID           string            `json:"runId,omitzero"`
+	SpawnedByItemID string            `json:"spawnedByItemId,omitzero"`
+	ParentRunID     string            `json:"parentRunId,omitzero"`
+	RootRunID       string            `json:"rootRunId,omitzero"`
+	SessionID       string            `json:"sessionId,omitzero"`
+	ItemID          string            `json:"itemId,omitzero"`
+	Options         *runOptionsJSON   `json:"options,omitzero"`
+	BlockID         string            `json:"blockId,omitzero"`
+	Text            string            `json:"text,omitzero"`
+	Step            *int              `json:"step,omitempty"`
+	ContextTokens   *int64            `json:"contextTokens,omitempty"`
+	Activity        string            `json:"activity,omitzero"`
+	Name            string            `json:"name,omitzero"`
+	Payload         json.RawMessage   `json:"payload,omitempty"`
+	Block           *blockFrame       `json:"block,omitzero"`
+	Transcript      []blockFrame      `json:"transcript,omitzero"`
+	Runs            []protocol.RunRef `json:"runs,omitzero"`
+	Plan            []planFrame       `json:"plan,omitzero"`
+	Interactions    []interactionJSON `json:"interactions,omitzero"`
+	Outcome         *outcomeJSON      `json:"outcome,omitzero"`
+	Usage           *usageJSON        `json:"usage,omitzero"`
 }
 
 type runOptionsJSON struct {
 	Provider        string                `json:"provider,omitzero"`
 	Model           string                `json:"model,omitzero"`
 	ReasoningEffort string                `json:"reasoningEffort,omitzero"`
-	Limits          *runLimitsJSON        `json:"limits,omitempty"`
+	Limits          *protocol.RunLimits   `json:"limits,omitempty"`
 	Params          *generationParamsJSON `json:"params,omitempty"`
 }
 
@@ -263,11 +259,11 @@ func (n *NDJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 	frame := eventRecord{
 		Type: "run.snapshot", RunID: target.ID, SessionID: snapshot.Session.ID, Status: string(target.Status),
 		Transcript: make([]blockFrame, 0, len(snapshot.Transcript)),
-		Runs:       make([]runFrame, 0, len(snapshot.Runs)),
+		Runs:       make([]protocol.RunRef, 0, len(snapshot.Runs)),
 	}
 	for _, run := range snapshot.Runs {
-		if run.ID == target.ID || run.Lineage.RootRunID() == target.ID {
-			frame.Runs = append(frame.Runs, encodeRun(run))
+		if run.ID == target.ID || run.RootRunID == target.ID {
+			frame.Runs = append(frame.Runs, run)
 		}
 	}
 	for _, block := range snapshot.Transcript {
@@ -284,7 +280,7 @@ func (n *NDJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 		frame.Interactions = encodeInteractions(snapshot.Interactions)
 	}
 	if target.Status == protocol.RunStatusFinished {
-		finished := encodeFinishedFrame(agent.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
+		finished := encodeFinishedFrame(agent.RunFinished{Outcome: agent.OutcomeFromRun(target.Outcome), Metrics: target.Metrics})
 		frame.Outcome, frame.Usage = finished.Outcome, finished.Usage
 	}
 	n.err = n.enc.Encode(frame)
@@ -296,8 +292,8 @@ func encodeEventFrame(envelope agent.RunEvent) (eventRecord, error) {
 	case agent.SegmentStarted:
 		return eventRecord{
 			Type: "segment.started", RunID: event.Run.ID, SessionID: event.Run.SessionID,
-			SpawnedByBlockID: event.Run.Lineage.SpawnedByBlockID(),
-			ParentRunID:      event.Run.Lineage.ParentRunID(), RootRunID: event.Run.Lineage.RootRunID(),
+			SpawnedByItemID: event.Run.SpawnedByItemID,
+			ParentRunID:     event.Run.ParentRunID, RootRunID: event.Run.RootRunID,
 		}, nil
 	case agent.BlockStarted:
 		return eventRecord{Type: "block.started", Block: encodeBlock(event.Block)}, nil
@@ -312,7 +308,7 @@ func encodeEventFrame(envelope agent.RunEvent) (eventRecord, error) {
 			Type: "run.progress", Step: event.Step, ContextTokens: event.ContextTokens, Activity: event.Activity,
 		}
 		if event.Usage != nil {
-			frame.Usage = encodeUsage(*event.Usage)
+			frame.Usage = encodeUsage(agent.UsageFromMetrics(protocol.RunMetrics{Usage: event.Usage}))
 		}
 		return frame, nil
 	case agent.CustomEvent:
@@ -322,9 +318,9 @@ func encodeEventFrame(envelope agent.RunEvent) (eventRecord, error) {
 	case agent.PlanChanged:
 		return eventRecord{Type: "plan.changed", Revision: event.Plan.State.Revision, Plan: encodePlan(event.Plan.State.Steps)}, nil
 	case agent.RunInterrupted:
-		return eventRecord{Type: "run.interrupted", Interactions: encodeInteractions(event.Interactions), Usage: encodeUsage(event.Usage)}, nil
+		return eventRecord{Type: "run.interrupted", Interactions: encodeInteractions(event.Interactions), Usage: encodeUsage(agent.UsageFromMetrics(event.Metrics))}, nil
 	case agent.RunSuspended:
-		return eventRecord{Type: "run.suspended", Usage: encodeUsage(event.Usage)}, nil
+		return eventRecord{Type: "run.suspended", Usage: encodeUsage(agent.UsageFromMetrics(event.Metrics))}, nil
 	case agent.RunFinished:
 		return encodeFinishedFrame(event), nil
 	default:
@@ -336,7 +332,7 @@ func encodeFinishedFrame(event agent.RunFinished) eventRecord {
 	return eventRecord{
 		Type:    "run.finished",
 		Outcome: encodeOutcome(event.Outcome),
-		Usage:   encodeUsage(event.Usage),
+		Usage:   encodeUsage(agent.UsageFromMetrics(event.Metrics)),
 	}
 }
 
@@ -386,7 +382,7 @@ func encodeRunOptions(options agent.RunOptions) *runOptionsJSON {
 	options = options.Clone()
 	return &runOptionsJSON{
 		Provider: options.Provider, Model: options.Model, ReasoningEffort: options.ReasoningEffort,
-		Limits: encodeRunLimits(options.Limits), Params: encodeGenerationParams(options.Generation),
+		Limits: options.Limits.Protocol(), Params: encodeGenerationParams(options.Generation),
 	}
 }
 
@@ -398,23 +394,6 @@ func encodeGenerationParams(params protocol.GenerationParams) *generationParamsJ
 		Temperature: params.Temperature, MaxTokens: params.MaxTokens, TopP: params.TopP,
 		Stop: slices.Clone(params.Stop),
 	}
-}
-
-func encodeRunLimits(limits agent.RunLimits) *runLimitsJSON {
-	if limits.Unlimited() {
-		return nil
-	}
-	encoded := &runLimitsJSON{}
-	if value, limited := limits.MaxTotalTokens(); limited {
-		encoded.MaxTotalTokens = &value
-	}
-	if value, limited := limits.MaxSteps(); limited {
-		encoded.MaxSteps = &value
-	}
-	if value, limited := limits.MaxBudgetUSD(); limited {
-		encoded.MaxBudgetUSD = &value
-	}
-	return encoded
 }
 
 func encodeInteractions(interactions []agent.Interaction) []interactionJSON {

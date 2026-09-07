@@ -171,7 +171,7 @@ func (a *app) restoreActivity(snapshot agent.SessionSnapshot) {
 	}
 }
 
-func (a *app) showRecoveredRunStatus(activity string, run agent.Run) {
+func (a *app) showRecoveredRunStatus(activity string, run protocol.RunRef) {
 	a.status.observeRun(run)
 	a.status.progress(agent.RunProgress{Activity: activity})
 }
@@ -184,10 +184,8 @@ func (a *app) observeCurrentRunStatus() {
 }
 
 func (a *app) settleCurrentRunStatus() {
-	run, _ := a.execution.conversation.CurrentRun()
-	run.Outcome = a.execution.conversation.Outcome()
-	run.Usage = a.execution.conversation.Usage()
-	a.status.settled(run)
+	a.observeCurrentRunStatus()
+	a.status.settled(a.execution.conversation.Outcome(), a.execution.conversation.Usage())
 }
 
 func displayTitle(session protocol.Session) string {

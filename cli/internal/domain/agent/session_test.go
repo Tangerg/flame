@@ -78,7 +78,7 @@ func TestSessionSnapshotRestoresDurableProjection(t *testing.T) {
 			{ID: "tool_1", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: ToolEdit, Name: "edit", Status: ToolRunning}},
 		},
 		Plan: testPlan(t, 3, []protocol.PlanStep{{Description: "inspect", Status: protocol.PlanStatusInProgress}}),
-		Runs: []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusWaiting})},
+		Runs: []protocol.RunRef{protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusWaiting}}},
 		Interactions: []Interaction{Approval{
 			RunID: "run_1", ItemID: "tool_1", Title: "edit", Rememberable: true,
 			Tool: &ToolCall{Kind: ToolEdit, Name: "edit", Status: ToolRunning},
@@ -147,18 +147,15 @@ func TestSessionMutationsRejectInvalidInput(t *testing.T) {
 }
 
 func TestSessionSnapshotRestoresAChildOwnedInterrupt(t *testing.T) {
-	root := testRootRun(Run{ID: "run_root", SessionID: "ses_1", Status: protocol.RunStatusWaiting})
-	child := testChildRun(Run{
-		ID: "run_child", SessionID: "ses_1", Status: protocol.RunStatusWaiting,
-		Lineage: testChildRunLineage(t, "run_child", "delegate", root.ID, root.ID),
-	})
+	root := protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_root", SessionID: "ses_1", Status: protocol.RunStatusWaiting}}
+	child := protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_child", SessionID: "ses_1", Status: protocol.RunStatusWaiting, SpawnedByItemID: "delegate", ParentRunID: root.ID, RootRunID: root.ID}}
 	approval := Approval{
 		RunID: child.ID, ItemID: "approval", Title: "Read generated output",
 		Tool: &ToolCall{Kind: ToolRead, Name: "read", Status: ToolRunning},
 	}
 	snapshot := SessionSnapshot{
 		Session: protocol.Session{ID: "ses_1", Status: protocol.SessionStatusWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
-		Runs:    []Run{root, child},
+		Runs:    []protocol.RunRef{root, child},
 		Transcript: []Block{
 			{ID: "delegate", RunID: root.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: ToolTask, Name: "delegate_task", Status: ToolRunning}},
 			{ID: approval.ItemID, RunID: child.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: approval.Tool},
@@ -180,14 +177,11 @@ func TestSessionSnapshotRestoresAChildOwnedInterrupt(t *testing.T) {
 func TestSessionSnapshotRestoresLatestFinishedRun(t *testing.T) {
 	snapshot := SessionSnapshot{
 		Session: protocol.Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
-		Runs: []Run{testRootRun(Run{
-			ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished,
-			Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 12, OutputTokens: 3},
-		})},
+		Runs:    []protocol.RunRef{protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: (Outcome{Status: protocol.OutcomeCompleted}).RunOutcome()}, Metrics: protocol.RunMetrics{Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 12, OutputTokens: 3}}}}},
 	}
 	conversation := NewConversation()
 	conversation.RestoreSnapshot(snapshot)
-	if conversation.Phase() != ConversationIdle || conversation.RunID() != "run_1" || conversation.Outcome().Status != OutcomeCompleted || conversation.Usage().InputTokens != 12 {
+	if conversation.Phase() != ConversationIdle || conversation.RunID() != "run_1" || conversation.Outcome().Status != protocol.OutcomeCompleted || conversation.Usage().InputTokens != 12 {
 		t.Fatalf("restored finished conversation = phase %v, run %q, outcome %+v, usage %+v", conversation.Phase(), conversation.RunID(), conversation.Outcome(), conversation.Usage())
 	}
 }
@@ -195,7 +189,7 @@ func TestSessionSnapshotRestoresLatestFinishedRun(t *testing.T) {
 func TestConversationRestoresCursorlessAttachmentHead(t *testing.T) {
 	snapshot := SessionSnapshot{
 		Session: protocol.Session{ID: "ses_1", Status: protocol.SessionStatusRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
-		Runs:    []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_1"})},
+		Runs:    []protocol.RunRef{protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusRunning}, ActiveSegmentID: "seg_1"}},
 	}
 	stream := SegmentStream{
 		RunID: "run_1", SegmentID: "seg_1", HeadEventID: "opaque-head",
@@ -234,10 +228,7 @@ func TestConversationMatchesColdSnapshotSemantics(t *testing.T) {
 			ID: "answer_1", RunID: "run_1", Status: BlockStatusCompleted,
 			Kind: BlockAssistant, Text: "done",
 		}},
-		Runs: []Run{testRootRun(Run{
-			ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished,
-			Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 5},
-		})},
+		Runs: []protocol.RunRef{protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: (Outcome{Status: protocol.OutcomeCompleted}).RunOutcome()}, Metrics: protocol.RunMetrics{Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 5}}}}},
 		Plan: testPlan(t, 2, []protocol.PlanStep{{Description: "inspect", Status: protocol.PlanStatusCompleted}}),
 	}
 	conversation := NewConversation()
@@ -258,15 +249,15 @@ func TestConversationMatchesColdSnapshotSemantics(t *testing.T) {
 			steps[0].Status = protocol.PlanStatusInProgress
 			value.Plan = testPlan(t, value.Plan.State.Revision, steps)
 		}},
-		{name: "usage", mutate: func(value *SessionSnapshot) { value.Runs[0].Usage.InputTokens++ }},
-		{name: "outcome", mutate: func(value *SessionSnapshot) { value.Runs[0].Outcome.Status = OutcomeCanceled }},
+		{name: "usage", mutate: func(value *SessionSnapshot) { value.Runs[0].Metrics.Usage.InputTokens++ }},
+		{name: "outcome", mutate: func(value *SessionSnapshot) { value.Runs[0].Outcome.Type = protocol.OutcomeCanceled }},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			changed := snapshot
 			changed.Transcript = cloneBlocks(snapshot.Transcript)
 			changed.Plan = clonePlan(snapshot.Plan)
-			changed.Runs = []Run{snapshot.Runs[0].Clone()}
+			changed.Runs = []protocol.RunRef{CloneRun(snapshot.Runs[0])}
 			test.mutate(&changed)
 			if conversation.MatchesSnapshot(changed) {
 				t.Fatal("semantic change matched the live conversation")

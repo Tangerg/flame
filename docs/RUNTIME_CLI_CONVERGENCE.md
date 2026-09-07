@@ -30,7 +30,7 @@ trust-boundary checks, resource ownership, and product capabilities remain.
 | R6 | Session restore, fork, and rollback repeatedly normalize, copy, and validate complete snapshots through write-plan construction and application. | Decode and validate external input at its boundary; acquire mutable ownership once per retained owner. Apply an established immutable write plan without another full reconstruction. | Complete |
 | R7 | Restored immutable aggregates are fully revalidated by replacements, queries, snapshots, and persistence. | Aggregate construction owns intrinsic validity. Use cases own cross-aggregate relationships; storage owns decoding and current-state matching. Remove duplicate intrinsic validation while retaining zero-value and external-boundary admission. | Complete |
 | R8 | The live registry writes CancelReason but has no production reader. The Run-tree cancellation arbiter owns the consumed reason. | Remove registry cancellation state and writes. Keep the arbiter as the sole cancellation-reason owner and retain observable cancellation coverage. | Complete |
-| C1 | CLI mirrors Runtime Run/Session rules, projections, and product error identities. | Consume Runtime protocol values and errors directly. Keep CLI-owned conversation folding, drafts, previews, selection, and rendering state. Remove synonymous models, validators, and error translations. | In progress: product errors and Session complete; Run remains |
+| C1 | CLI mirrors Runtime Run/Session rules, projections, and product error identities. | Consume Runtime protocol values and errors directly. Keep CLI-owned conversation folding, drafts, previews, selection, and rendering state. Remove synonymous models, validators, and error translations. | Complete |
 | C2 | CLI mutation acknowledgements repeat Session revision/normalization/model rules and MCP/Provider update semantics. | Runtime owns mutation postconditions. CLI retains wire and target-identity checks, local form state, and credential protection. Remove duplicate business-rule validation and its dedicated tests. | Complete |
 | C3 | CLI partitions change subscriptions and coordinates several streams although production requests at most 14 topics and one watch against limits of 32 each. | One terminal subscription with normal gap recovery, cancellation, and resynchronization. Remove partitioning, fan-out, and cross-subscription file ownership. | Complete |
 | T1 | Small unused or test-only methods remain around the preceding mechanisms. | Delete only after checking direct, interface, generated, platform, and serialized consumers; migrate tests to surviving production contracts. | Complete |
@@ -370,3 +370,36 @@ Verified session catalog and mutation commands, cold restoration, interruption,
 rollback, reconnect, metadata invalidations, workspace selection, and existing
 real-Runtime lifecycle tests. The complete standalone CLI test suite, vet, and
 build pass.
+
+
+### Direct Run observations and lossless metering
+
+CLI Run queries, catalog pages, snapshot members, and cancellation responses
+now carry `protocol.RunRef`, `protocol.Page[protocol.RunRef]`, and
+`protocol.CancelRunResponse` directly. Removed the synonymous Run, RunLineage,
+RunPage, and RunCancellation models, their intrinsic validators, mapper chains,
+and duplicate outcome constants. Cancellation settlement still verifies its
+pending command target; Runtime owns the cancellation result union and tree
+postconditions.
+
+Conversation retains owned Runtime observations. Live progress carries optional
+`protocol.Usage`, and segment boundaries carry complete `protocol.RunMetrics`.
+Folding preserves absent usage, a reported zero, known zero cost, per-model
+attribution, and active duration without converting through display values.
+Only views convert milliseconds into display durations. Removed the inverse
+usage conversion and the display-usage validator left without a production
+consumer. Retained mutable observations and returned Run values are isolated
+at their ownership boundaries.
+
+Run and snapshot JSON use Runtime fields, including `metrics`, `outcome.type`,
+`protocolProfile`, and `spawnedByItemId`; catalog pages use `data`, and cancellation
+JSON preserves the `type`/`run`/`rootRun` union. NDJSON child starts use the same
+`spawnedByItemId` vocabulary. One-shot rendering binds the accepted Run identity
+directly instead of synthesizing a Run from command inputs. CLI transcript and
+human-readable result formatting remain presentation concerns.
+
+Verified Run catalogs, cancellation and pending-intent settlement, child/root
+stream rendering, restart and cold recovery, retained observation isolation,
+and absent/zero/priced-zero metering across live events and cold restoration.
+The complete standalone CLI test suite, vet, build, and whitespace checks pass
+against the published Runtime revision `8777e5462884`.

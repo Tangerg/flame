@@ -58,7 +58,7 @@ func TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	root, ok := snapshot.LatestRun()
-	if !ok || root.Status != protocol.RunStatusFinished || root.Outcome.Status != agent.OutcomeCompleted || len(snapshot.Interactions) != 0 {
+	if !ok || root.Status != protocol.RunStatusFinished || root.Outcome.Type != protocol.OutcomeCompleted || len(snapshot.Interactions) != 0 {
 		t.Fatalf("root after recovery = %+v, interactions = %+v", root, snapshot.Interactions)
 	}
 	if len(snapshot.Runs) != 2 {
@@ -120,9 +120,9 @@ func (r *interruptedRootStream) ResumeRun(ctx context.Context, request agent.Res
 
 type recoveryRenderer struct{ events []agent.RunEvent }
 
-func (*recoveryRenderer) Begin(agent.Run, agent.RunOptions) error { return nil }
-func (*recoveryRenderer) Reconcile(agent.SessionSnapshot) error   { return nil }
-func (*recoveryRenderer) Close() error                            { return nil }
+func (*recoveryRenderer) Begin(string, string, agent.RunOptions) error { return nil }
+func (*recoveryRenderer) Reconcile(agent.SessionSnapshot) error        { return nil }
+func (*recoveryRenderer) Close() error                                 { return nil }
 func (r *recoveryRenderer) Render(event agent.RunEvent) error {
 	r.events = append(r.events, event.Clone())
 	return nil

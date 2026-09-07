@@ -29,7 +29,7 @@ func TestRunEventEqualityUsesDomainValues(t *testing.T) {
 		EventID: "event_1", RunID: "run_1", SegmentID: "segment_1", At: at,
 		Event: RunInterrupted{
 			Interactions: []Interaction{approval, question},
-			Usage:        Usage{InputTokens: 3, CostUSD: &cost, Duration: time.Second},
+			Metrics:      protocol.RunMetrics{ActiveDurationMillis: (time.Second).Milliseconds(), Usage: &protocol.Usage{ModelUsage: protocol.ModelUsage{InputTokens: 3, CostUSD: &cost}}},
 		},
 	}
 
@@ -60,7 +60,7 @@ func TestRunEventEqualityUsesDomainValues(t *testing.T) {
 
 	unknownCost := event.Clone()
 	interrupted = unknownCost.Event.(RunInterrupted)
-	interrupted.Usage.CostUSD = nil
+	interrupted.Metrics.Usage.CostUSD = nil
 	unknownCost.Event = interrupted
 	if event.Equal(unknownCost) {
 		t.Fatal("unknown cost was treated as an explicit zero cost")
@@ -144,7 +144,7 @@ func TestEphemeralEventsCloneOwnedValues(t *testing.T) {
 	step, contextTokens, cost := 2, int64(4_096), 0.5
 	progress := RunProgress{
 		Step: &step, ContextTokens: &contextTokens,
-		Usage: &Usage{InputTokens: 10, CostUSD: &cost}, Activity: "calling tools",
+		Usage: &protocol.Usage{InputTokens: 10, CostUSD: &cost}, Activity: "calling tools",
 	}
 	clone := CloneEvent(progress).(RunProgress)
 	*clone.Step, *clone.ContextTokens, clone.Usage.InputTokens, *clone.Usage.CostUSD = 9, 1, 99, 9
@@ -167,7 +167,7 @@ func TestEphemeralEventsCloneOwnedValues(t *testing.T) {
 
 func TestFinishedEventCloneOwnsOutcomeProblem(t *testing.T) {
 	event := RunFinished{Outcome: Outcome{
-		Status:  OutcomeFailed,
+		Status:  protocol.OutcomeFailed,
 		Problem: &protocol.ProblemData{Type: "rate_limited", Detail: "rate limited", RetryAfterSeconds: 2},
 	}}
 	clone := CloneEvent(event).(RunFinished)
@@ -199,7 +199,7 @@ func TestSegmentBoundariesRejectNegativeContext(t *testing.T) {
 	for _, event := range []Event{
 		RunInterrupted{ContextTokens: -1},
 		RunSuspended{ContextTokens: -1},
-		RunFinished{ContextTokens: -1, Outcome: Outcome{Status: OutcomeCompleted}},
+		RunFinished{ContextTokens: -1, Outcome: Outcome{Status: protocol.OutcomeCompleted}},
 	} {
 		err := ValidateEvent(event)
 		if err == nil || !strings.Contains(err.Error(), "context tokens") {

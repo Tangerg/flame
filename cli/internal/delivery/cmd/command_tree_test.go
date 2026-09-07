@@ -434,8 +434,8 @@ func TestRunReturnsAnErrorForNonCompletedOutcomes(t *testing.T) {
 		outcome agent.Outcome
 		want    string
 	}{
-		{name: "failed", outcome: agent.Outcome{Status: agent.OutcomeFailed, Problem: &protocol.ProblemData{Type: "rate_limited", Detail: "provider refused", RetryAfterSeconds: 9}}, want: "retry after 9s"},
-		{name: "canceled", outcome: agent.Outcome{Status: agent.OutcomeCanceled}, want: "run canceled"},
+		{name: "failed", outcome: agent.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: "rate_limited", Detail: "provider refused", RetryAfterSeconds: 9}}, want: "retry after 9s"},
+		{name: "canceled", outcome: agent.Outcome{Status: protocol.OutcomeCanceled}, want: "run canceled"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			runtime := instantRuntime()
@@ -528,7 +528,7 @@ func TestRunStopsAfterReconnectBudgetIsExhausted(t *testing.T) {
 func shortCompletedScript(string) runtimefixture.Script {
 	return runtimefixture.Script{Prelude: []runtimefixture.Step{
 		{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "done"}}},
-		{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+		{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 	}}
 }
 
@@ -538,7 +538,7 @@ func TestRunReadsAPipedPromptAndCombinesItWithTheArgument(t *testing.T) {
 	rt.Script = func(prompt string) runtimefixture.Script {
 		captured = prompt
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	if _, _, err := executeCommand(t, rt, "file contents\n", "run", "-s", firstSession(t, rt), "explain this"); err != nil {

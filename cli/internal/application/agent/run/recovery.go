@@ -22,7 +22,7 @@ type RecoverySource interface {
 // finished runs.
 type Recovery struct {
 	Snapshot agent.SessionSnapshot
-	Run      agent.Run
+	Run      protocol.RunRef
 	Stream   agent.SegmentStream
 }
 
@@ -109,7 +109,7 @@ func AttachSession(ctx context.Context, source RecoverySource, sessionID string)
 	return Recovery{}, fmt.Errorf("%w: session %s did not hold a stable active segment", protocol.ErrStaleSegment, sessionID)
 }
 
-func attach(ctx context.Context, source RecoverySource, run agent.Run) (agent.SegmentStream, context.CancelFunc, error) {
+func attach(ctx context.Context, source RecoverySource, run protocol.RunRef) (agent.SegmentStream, context.CancelFunc, error) {
 	streamCtx, release := context.WithCancel(ctx)
 	stream, err := source.SubscribeRun(streamCtx, agent.SubscribeRun{RunID: run.ID, SegmentID: run.ActiveSegmentID})
 	if err != nil {
@@ -140,14 +140,14 @@ func stateWithoutStream(snapshot agent.SessionSnapshot) Recovery {
 	return Recovery{Snapshot: snapshot, Run: run}
 }
 
-func read(ctx context.Context, source SessionReader, sessionID, runID string) (agent.SessionSnapshot, agent.Run, error) {
+func read(ctx context.Context, source SessionReader, sessionID, runID string) (agent.SessionSnapshot, protocol.RunRef, error) {
 	snapshot, err := readSnapshot(ctx, source, sessionID)
 	if err != nil {
-		return agent.SessionSnapshot{}, agent.Run{}, err
+		return agent.SessionSnapshot{}, protocol.RunRef{}, err
 	}
 	run, ok := snapshot.RunByID(runID)
 	if !ok {
-		return agent.SessionSnapshot{}, agent.Run{}, fmt.Errorf("%w: %s", protocol.ErrRunNotFound, runID)
+		return agent.SessionSnapshot{}, protocol.RunRef{}, fmt.Errorf("%w: %s", protocol.ErrRunNotFound, runID)
 	}
 	return snapshot, run, nil
 }

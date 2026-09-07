@@ -51,6 +51,15 @@ preserves the Runtime fields (`workspace.ref.path` and page `data`). The binding
 adapter validates external values; cold Conversation restoration only acquires
 CLI presentation state and does not revalidate Runtime lifecycle rules.
 
+Run queries, catalog pages, snapshots, and cancellation acknowledgements use
+`protocol.RunRef`, `protocol.Page[protocol.RunRef]`, and
+`protocol.CancelRunResponse` directly. Runtime owns their states, lineage,
+limits, outcome union, and validation. Conversation retains owned observations
+and folds live `protocol.RunMetrics` without passing through display units;
+absent metering and a reported zero remain distinct through cold recovery.
+Views convert duration units and format outcomes. Run JSON preserves the
+Runtime vocabulary and cancellation union.
+
 Management, catalog, and workspace queries transfer fresh Runtime results to their consumer after validation. The adapter does not clone them again. Synchronous calls borrow inputs; a component retaining mutable data acquires its own copy at that boundary, including immutable profiles and live event projections. Test bindings follow the same ownership contracts as Runtime.
 
 The connection shares its immutable request metadata with synchronous binding calls. Runtime takes the snapshot retained by each operation or stream. The process owner snapshots configuration directories when it is constructed; Runtime copies them when resolving its configuration.

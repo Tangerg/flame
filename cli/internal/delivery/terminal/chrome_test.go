@@ -95,11 +95,7 @@ func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 	if got := drawStatic(t, status, 72, 1); !strings.Contains(got, "using shell") || !strings.Contains(got, "ctx 12,345") {
 		t.Fatalf("sparse activity lost the latest context footprint:\n%s", got)
 	}
-	status.settled(agent.Run{
-		ContextTokens: contextTokens,
-		Outcome:       agent.Outcome{Status: agent.OutcomeCompleted},
-		Usage:         agent.Usage{InputTokens: 20, OutputTokens: 4},
-	})
+	status.settled(agent.Outcome{Status: protocol.OutcomeCompleted}, agent.Usage{InputTokens: 20, OutputTokens: 4})
 	if got := drawStatic(t, status, 72, 1); !strings.Contains(got, "complete") ||
 		!strings.Contains(got, "ctx 12,345") || !strings.Contains(got, "↑20") {
 		t.Fatalf("settled status lost the final Run footprint:\n%s", got)
@@ -112,12 +108,12 @@ func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 
 func TestSettledStatusIncludesRunRecoveryMetadata(t *testing.T) {
 	status := newStatusView(kit.Dark(), kit.Unicode())
-	status.settled(agent.Run{Outcome: agent.Outcome{
-		Status: agent.OutcomeFailed,
+	status.settled(agent.Outcome{
+		Status: protocol.OutcomeFailed,
 		Problem: &protocol.ProblemData{
 			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
 		},
-	}})
+	}, agent.Usage{})
 	for _, want := range []string{"quota exhausted", "retry after 12s"} {
 		if !strings.Contains(status.doing, want) {
 			t.Fatalf("settled status omitted %q: %q", want, status.doing)

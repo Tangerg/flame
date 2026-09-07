@@ -41,7 +41,7 @@ type Conversation struct {
 	segmentID   string
 	checkpoint  string
 	seen        map[string]RunEvent
-	runs        map[string]Run
+	runs        map[string]protocol.RunRef
 	runOrder    []string
 	index       map[string]int
 	open        map[string]bool
@@ -61,7 +61,7 @@ func NewConversation() *Conversation {
 	return &Conversation{
 		phase:       ConversationIdle,
 		seen:        make(map[string]RunEvent),
-		runs:        make(map[string]Run),
+		runs:        make(map[string]protocol.RunRef),
 		index:       make(map[string]int),
 		open:        make(map[string]bool),
 		textStreams: make(map[string]StreamedText),
@@ -85,14 +85,14 @@ func (c *Conversation) SegmentID() string           { return c.segmentID }
 func (c *Conversation) Checkpoint() string          { return c.checkpoint }
 func (c *Conversation) Busy() bool                  { return c.phase != ConversationIdle }
 
-// CurrentRun returns the root Run whose lifecycle the conversation owns.
+// CurrentRun returns the root Run observed by the conversation.
 // Descendant activity never replaces this root identity.
-func (c *Conversation) CurrentRun() (Run, bool) {
+func (c *Conversation) CurrentRun() (protocol.RunRef, bool) {
 	if c == nil || c.runID == "" {
-		return Run{}, false
+		return protocol.RunRef{}, false
 	}
 	run, exists := c.runs[c.runID]
-	return run.Clone(), exists
+	return CloneRun(run), exists
 }
 
 // RunningDescendants reports how much delegated work is live beneath the
@@ -105,7 +105,7 @@ func (c *Conversation) RunningDescendants() int {
 	}
 	running := 0
 	for id, run := range c.runs {
-		if id != c.runID && run.Lineage.RootRunID() == c.runID && run.Status == protocol.RunStatusRunning {
+		if id != c.runID && run.RootRunID == c.runID && run.Status == protocol.RunStatusRunning {
 			running++
 		}
 	}
@@ -115,11 +115,11 @@ func (c *Conversation) RunningDescendants() int {
 // Runs returns the session run catalog in creation order. The conversation
 // retains ordering as part of the aggregate instead of exposing its internal
 // identity map and asking consumers to reconstruct chronology.
-func (c *Conversation) Runs() []Run {
-	runs := make([]Run, 0, len(c.runOrder))
+func (c *Conversation) Runs() []protocol.RunRef {
+	runs := make([]protocol.RunRef, 0, len(c.runOrder))
 	for _, id := range c.runOrder {
 		if run, exists := c.runs[id]; exists {
-			runs = append(runs, run.Clone())
+			runs = append(runs, CloneRun(run))
 		}
 	}
 	return runs
@@ -145,12 +145,12 @@ func (c *Conversation) MatchesSnapshot(snapshot SessionSnapshot) bool {
 		c.segmentID == expected.segmentID && equalRunCatalogs(c.Runs(), expected.Runs())
 }
 
-func equalRunCatalogs(left, right []Run) bool {
+func equalRunCatalogs(left, right []protocol.RunRef) bool {
 	if len(left) != len(right) {
 		return false
 	}
 	for index, run := range left {
-		if !run.Equal(right[index]) {
+		if !equalRuns(run, right[index]) {
 			return false
 		}
 	}
@@ -181,42 +181,39 @@ func (c *Conversation) CancelStarting() error {
 	c.phase = ConversationIdle
 	c.reconciling = false
 	c.coldTail = false
-	c.outcome = Outcome{Status: OutcomeCanceled}
+	c.outcome = Outcome{Status: protocol.OutcomeCanceled}
 	return nil
 }
 
 // SettleRun applies the authoritative result of an out-of-band control such as
 // runs.cancel, whose response is durable even when no segment stream is open.
-func (c *Conversation) SettleRun(run Run) error {
-	if err := run.Validate(); err != nil {
-		return err
-	}
+func (c *Conversation) SettleRun(run protocol.RunRef) error {
 	if run.Status != protocol.RunStatusFinished {
 		return errors.New("cannot settle conversation from an unfinished run")
 	}
-	if !run.Lineage.IsRoot() {
+	if run.ParentRunID != "" {
 		return errors.New("cannot settle conversation from a child-run control result")
 	}
 	if c.runID != "" && c.runID != run.ID {
 		return fmt.Errorf("%w: settled run %s does not match %s", ErrInvalidTransition, run.ID, c.runID)
 	}
 	if c.runID == run.ID {
-		if err := validateUsageProgress(c.usage, run.Usage); err != nil {
+		if err := validateUsageProgress(c.usage, UsageFromMetrics(run.Metrics)); err != nil {
 			return fmt.Errorf("%w: settled run: %w", ErrInvalidTransition, err)
 		}
 	}
 	toolStatus := ToolError
-	if run.Outcome.Status == OutcomeCanceled {
+	if run.Outcome != nil && run.Outcome.Type == protocol.OutcomeCanceled {
 		toolStatus = ToolCanceled
 	}
 	c.settleOpenBlocks(toolStatus)
 	for memberID, member := range c.runs {
-		if member.Lineage.RootRunID() != run.ID || member.Status == protocol.RunStatusFinished {
+		if member.RootRunID != run.ID || member.Status == protocol.RunStatusFinished {
 			continue
 		}
 		member.Status = protocol.RunStatusFinished
 		member.ActiveSegmentID = ""
-		member.Outcome = run.Outcome.Clone()
+		member.Outcome = cloneRunOutcome(run.Outcome)
 		c.runs[memberID] = member
 	}
 	c.rememberRun(run)
@@ -226,8 +223,8 @@ func (c *Conversation) SettleRun(run Run) error {
 	c.interactions = nil
 	c.reconciling = false
 	c.coldTail = false
-	c.outcome = run.Outcome.Clone()
-	c.usage = run.Usage.Clone()
+	c.outcome = OutcomeFromRun(run.Outcome)
+	c.usage = UsageFromMetrics(run.Metrics)
 	return nil
 }
 
@@ -292,7 +289,7 @@ func (c *Conversation) ensureStorage() {
 		c.index = make(map[string]int)
 	}
 	if c.runs == nil {
-		c.runs = make(map[string]Run)
+		c.runs = make(map[string]protocol.RunRef)
 	}
 	if c.open == nil {
 		c.open = make(map[string]bool)
@@ -302,11 +299,11 @@ func (c *Conversation) ensureStorage() {
 	}
 }
 
-func (c *Conversation) rememberRun(run Run) {
+func (c *Conversation) rememberRun(run protocol.RunRef) {
 	if _, exists := c.runs[run.ID]; !exists {
 		c.runOrder = append(c.runOrder, run.ID)
 	}
-	c.runs[run.ID] = run.Clone()
+	c.runs[run.ID] = CloneRun(run)
 }
 
 func (c *Conversation) rebuildBlockIndex() {

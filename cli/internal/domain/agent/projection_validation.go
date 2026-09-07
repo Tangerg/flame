@@ -7,105 +7,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
-
-func (r Run) Validate() error {
-	var problems []error
-	if err := runtimeprotocol.ValidateRunID(r.ID); err != nil {
-		problems = append(problems, err)
-	}
-	if err := runtimeprotocol.ValidateSessionID(r.SessionID); err != nil {
-		problems = append(problems, err)
-	}
-	if err := r.Lineage.validate(r.ID); err != nil {
-		problems = append(problems, err)
-	}
-	if !slices.Contains([]runtimeprotocol.RunStatus{runtimeprotocol.RunStatusRunning, runtimeprotocol.RunStatusWaiting, runtimeprotocol.RunStatusFinished}, r.Status) {
-		problems = append(problems, fmt.Errorf("status %q is invalid", r.Status))
-	}
-	if err := runtimeprotocol.ValidateModelSelection(r.Provider, r.Model, r.ReasoningEffort); err != nil {
-		problems = append(problems, err)
-	}
-	if r.Status == runtimeprotocol.RunStatusRunning {
-		if err := runtimeprotocol.ValidateSegmentID(r.ActiveSegmentID); err != nil {
-			problems = append(problems, fmt.Errorf("running run: %w", err))
-		}
-	}
-	if r.Status != runtimeprotocol.RunStatusRunning && r.ActiveSegmentID != "" {
-		problems = append(problems, errors.New("non-running run carries an active segment"))
-	}
-	if r.Status != runtimeprotocol.RunStatusFinished && !r.FinishedAt.IsZero() {
-		problems = append(problems, errors.New("unfinished run carries a finish time"))
-	}
-	if !r.FinishedAt.IsZero() && r.CreatedAt.IsZero() {
-		problems = append(problems, errors.New("finished run has no creation time"))
-	}
-	if !r.FinishedAt.IsZero() && r.FinishedAt.Before(r.CreatedAt) {
-		problems = append(problems, errors.New("run finish time precedes creation time"))
-	}
-	if err := r.Limits.Validate(); err != nil {
-		problems = append(problems, err)
-	}
-	if r.ContextTokens < 0 {
-		problems = append(problems, errors.New("context tokens cannot be negative"))
-	}
-	if r.Status == runtimeprotocol.RunStatusFinished {
-		if err := r.Outcome.Validate(); err != nil {
-			problems = append(problems, err)
-		}
-	} else if r.Outcome.Status != "" {
-		problems = append(problems, errors.New("unfinished run carries an outcome"))
-	}
-	if err := r.Usage.Validate(); err != nil {
-		problems = append(problems, err)
-	}
-	if r.ProtocolProfile != nil {
-		if err := runtimeprotocol.ValidateWireTree(*r.ProtocolProfile); err != nil {
-			problems = append(problems, err)
-		}
-	}
-	if err := errors.Join(problems...); err != nil {
-		return fmt.Errorf("run: %w", err)
-	}
-	return nil
-}
-
-func (r RunLineage) validate(runID string) error {
-	switch r.kind {
-	case rootRunLineage:
-		if r.spawnedByBlockID != "" || r.parentRunID != "" || r.rootRunID != "" {
-			return errors.New("root run lineage carries child identity")
-		}
-		return nil
-	case childRunLineage:
-		if err := runtimeprotocol.ValidateRunID(runID); err != nil {
-			return fmt.Errorf("child run lineage: %w", err)
-		}
-		if err := runtimeprotocol.ValidateItemID(r.spawnedByBlockID); err != nil {
-			return fmt.Errorf("child run lineage spawn block: %w", err)
-		}
-		if err := runtimeprotocol.ValidateRunID(r.parentRunID); err != nil {
-			return fmt.Errorf("child run lineage parent: %w", err)
-		}
-		if err := runtimeprotocol.ValidateRunID(r.rootRunID); err != nil {
-			return fmt.Errorf("child run lineage root: %w", err)
-		}
-	case 0:
-		return errors.New("run lineage is not initialized")
-	default:
-		return errors.New("run lineage kind is unknown")
-	}
-	switch {
-	case r.parentRunID == runID:
-		return errors.New("run lineage names itself as parent")
-	case r.rootRunID == runID:
-		return errors.New("run lineage names itself as root")
-	default:
-		return nil
-	}
-}
 
 func (r RunOptions) Validate() error {
 	var problems []error
@@ -124,65 +27,9 @@ func (r RunOptions) Validate() error {
 	return nil
 }
 
-func (o Outcome) Validate() error {
-	if o.Problem != nil {
-		if err := failure.Validate(o.Problem); err != nil {
-			return fmt.Errorf("outcome: %w", err)
-		}
-	}
-	switch o.Status {
-	case OutcomeCompleted:
-		if strings.TrimSpace(o.Detail) != "" || o.Problem != nil {
-			return errors.New("completed outcome cannot carry a problem or detail")
-		}
-	case OutcomeTimedOut, OutcomeFailed, OutcomeLost:
-		if o.Problem == nil {
-			return fmt.Errorf("%s outcome has no problem", o.Status)
-		}
-		if strings.TrimSpace(o.Detail) != "" {
-			return fmt.Errorf("%s outcome carries a policy detail", o.Status)
-		}
-	case OutcomeMaxSteps, OutcomeMaxBudget, OutcomeCanceled:
-		if o.Problem != nil {
-			return fmt.Errorf("%s outcome carries a problem", o.Status)
-		}
-	default:
-		return fmt.Errorf("outcome status %q is invalid", o.Status)
-	}
-	return nil
-}
-
-func (u Usage) Validate() error {
-	if err := (runtimeprotocol.ModelUsage{
-		InputTokens: u.InputTokens, OutputTokens: u.OutputTokens,
-		CacheReadTokens: u.CacheReadTokens, CacheWriteTokens: u.CacheWriteTokens,
-		ReasoningTokens: u.ReasoningTokens, CostUSD: u.CostUSD,
-	}).ValidateWire(); err != nil {
-		return fmt.Errorf("total usage: %w", err)
-	}
-	if u.Steps < 0 {
-		return errors.New("usage steps cannot be negative")
-	}
-	if u.Duration < 0 {
-		return errors.New("usage duration cannot be negative")
-	}
-	for model, usage := range u.ByModel {
-		if err := runtimeprotocol.ValidateModelIdentity(model); err != nil {
-			return fmt.Errorf("usage model identity: %w", err)
-		}
-		if err := usage.ValidateWire(); err != nil {
-			return fmt.Errorf("model usage %q: %w", model, err)
-		}
-	}
-	return nil
-}
-
 func ValidateEvent(event Event) error {
 	switch item := event.(type) {
 	case SegmentStarted:
-		if err := item.Run.Validate(); err != nil {
-			return fmt.Errorf("segment started: %w", err)
-		}
 		if item.Run.Status != runtimeprotocol.RunStatusRunning {
 			return errors.New("segment started with a non-running run")
 		}
@@ -210,7 +57,7 @@ func ValidateEvent(event Event) error {
 			return errors.New("run progress context tokens cannot be negative")
 		}
 		if item.Usage != nil {
-			return item.Usage.Validate()
+			return runtimeprotocol.ValidateWireTree(item.Usage)
 		}
 		return nil
 	case CustomEvent:
@@ -233,15 +80,15 @@ func ValidateEvent(event Event) error {
 		return errors.Join(
 			validateSegmentBoundaryContext(item.ContextTokens),
 			ValidateInteractions(item.Interactions),
-			item.Usage.Validate(),
+			runtimeprotocol.ValidateWireTree(item.Metrics),
 		)
 	case RunSuspended:
-		return errors.Join(validateSegmentBoundaryContext(item.ContextTokens), item.Usage.Validate())
+		return errors.Join(validateSegmentBoundaryContext(item.ContextTokens), runtimeprotocol.ValidateWireTree(item.Metrics))
 	case RunFinished:
-		if err := item.Outcome.Validate(); err != nil {
+		if err := runtimeprotocol.ValidateWireTree(runtimeprotocol.RunOutcome{Type: item.Outcome.Status, Detail: item.Outcome.Detail, Error: item.Outcome.Problem}); err != nil {
 			return err
 		}
-		return errors.Join(validateSegmentBoundaryContext(item.ContextTokens), item.Usage.Validate())
+		return errors.Join(validateSegmentBoundaryContext(item.ContextTokens), runtimeprotocol.ValidateWireTree(item.Metrics))
 	case nil:
 		return errors.New("event is nil")
 	default:

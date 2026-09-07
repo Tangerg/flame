@@ -338,12 +338,12 @@ func (s *statusView) Draw(view grid.View) {
 	switch {
 	case s.danger:
 		style = s.theme.Danger
-	case s.outcome.Status == agent.OutcomeCompleted:
+	case s.outcome.Status == protocol.OutcomeCompleted:
 		style = s.theme.Success
-	case s.outcome.Status == agent.OutcomeCanceled || s.outcome.Status == agent.OutcomeTimedOut ||
-		s.outcome.Status == agent.OutcomeMaxSteps || s.outcome.Status == agent.OutcomeMaxBudget:
+	case s.outcome.Status == protocol.OutcomeCanceled || s.outcome.Status == protocol.OutcomeTimedOut ||
+		s.outcome.Status == protocol.OutcomeMaxSteps || s.outcome.Status == protocol.OutcomeMaxBudget:
 		style = s.theme.Warning
-	case s.outcome.Status == agent.OutcomeFailed || s.outcome.Status == agent.OutcomeLost:
+	case s.outcome.Status == protocol.OutcomeFailed || s.outcome.Status == protocol.OutcomeLost:
 		style = s.theme.Danger
 	}
 	left := statusLineText(s.doing)
@@ -449,27 +449,27 @@ func (s *statusView) tick(elapsed time.Duration) {
 	s.elapsed = fmt.Sprintf("%4.1fs", elapsed.Seconds())
 }
 
-func (s *statusView) settled(run agent.Run) {
-	s.observeRun(run)
-	s.outcome, s.elapsed = run.Outcome.Clone(), ""
+func (s *statusView) settled(outcome agent.Outcome, usage agent.Usage) {
+	s.usage = usage.Clone()
+	s.outcome, s.elapsed = outcome.Clone(), ""
 	s.busy = false
 	s.danger = false
 	s.runningDescendants = 0
-	switch run.Outcome.Status {
-	case agent.OutcomeCompleted:
+	switch s.outcome.Status {
+	case protocol.OutcomeCompleted:
 		s.doing = "complete"
-	case agent.OutcomeCanceled:
+	case protocol.OutcomeCanceled:
 		s.doing = "canceled"
-	case agent.OutcomeTimedOut:
+	case protocol.OutcomeTimedOut:
 		s.doing = "timed out"
-	case agent.OutcomeMaxSteps:
+	case protocol.OutcomeMaxSteps:
 		s.doing = "max steps"
-	case agent.OutcomeMaxBudget:
+	case protocol.OutcomeMaxBudget:
 		s.doing = "max budget"
-	case agent.OutcomeFailed:
-		s.doing = "failed: " + run.Outcome.Explanation()
-	case agent.OutcomeLost:
-		s.doing = "lost: " + run.Outcome.Explanation()
+	case protocol.OutcomeFailed:
+		s.doing = "failed: " + s.outcome.Explanation()
+	case protocol.OutcomeLost:
+		s.doing = "lost: " + s.outcome.Explanation()
 	default:
 		s.doing = "ready"
 	}
@@ -481,8 +481,8 @@ func (s *statusView) beginRun(label string) {
 	s.active(label)
 }
 
-func (s *statusView) observeRun(run agent.Run) {
-	s.usage = run.Usage.Clone()
+func (s *statusView) observeRun(run protocol.RunRef) {
+	s.usage = agent.UsageFromMetrics(run.Metrics)
 	s.contextTokens = run.ContextTokens
 }
 
@@ -496,7 +496,7 @@ func (s *statusView) active(label string) {
 
 func (s *statusView) progress(progress agent.RunProgress) {
 	if progress.Usage != nil {
-		s.usage = progress.Usage.Clone()
+		s.usage = agent.UsageFromMetrics(protocol.RunMetrics{Usage: progress.Usage})
 	}
 	if progress.ContextTokens != nil {
 		s.contextTokens = *progress.ContextTokens

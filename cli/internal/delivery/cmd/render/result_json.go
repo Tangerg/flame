@@ -103,7 +103,7 @@ func NewResultJSON(w io.Writer) *ResultJSON {
 
 // Begin records the accepted run before its first subscription opens, so a
 // transport failure can still produce a useful incomplete result.
-func (r *ResultJSON) Begin(run agent.Run, options agent.RunOptions) error {
+func (r *ResultJSON) Begin(sessionID, runID string, options agent.RunOptions) error {
 	if r.err != nil {
 		return r.err
 	}
@@ -111,18 +111,14 @@ func (r *ResultJSON) Begin(run agent.Run, options agent.RunOptions) error {
 		r.err = errors.New("begin result after close")
 		return r.err
 	}
-	if err := run.Validate(); err != nil {
-		r.err = fmt.Errorf("begin result: %w", err)
-		return r.err
-	}
-	if err := r.scope.bind(run); err != nil {
+	if err := r.scope.bindRoot(runID); err != nil {
 		r.err = fmt.Errorf("begin result: %w", err)
 		return r.err
 	}
 	r.started = true
 	r.frame = resultFrame{
-		Type: "result", Status: "incomplete", RunID: run.ID,
-		SessionID: run.SessionID, Options: encodeRunOptions(options),
+		Type: "result", Status: "incomplete", RunID: runID,
+		SessionID: sessionID, Options: encodeRunOptions(options),
 	}
 	return nil
 }
@@ -191,10 +187,10 @@ func (r *ResultJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 	case protocol.RunStatusWaiting:
 		r.frame.Status = "interrupted"
 		r.frame.Interactions = encodeInteractions(snapshot.Interactions)
-		r.frame.Usage = encodeUsage(target.Usage)
+		r.frame.Usage = encodeUsage(agent.UsageFromMetrics(target.Metrics))
 	case protocol.RunStatusFinished:
-		r.frame.Status = string(target.Outcome.Status)
-		finished := encodeFinishedFrame(agent.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
+		r.frame.Status = string(agent.OutcomeFromRun(target.Outcome).Status)
+		finished := encodeFinishedFrame(agent.RunFinished{Outcome: agent.OutcomeFromRun(target.Outcome), Metrics: target.Metrics})
 		r.frame.Outcome, r.frame.Usage = finished.Outcome, finished.Usage
 	case protocol.RunStatusRunning:
 	}
@@ -204,7 +200,7 @@ func (r *ResultJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 func (r *ResultJSON) fold(envelope agent.RunEvent) {
 	switch event := envelope.Event.(type) {
 	case agent.SegmentStarted:
-		if !event.Run.Lineage.IsRoot() {
+		if event.Run.ParentRunID != "" {
 			return
 		}
 		if !r.started {
@@ -229,7 +225,7 @@ func (r *ResultJSON) fold(envelope agent.RunEvent) {
 		}
 	case agent.RunProgress:
 		if r.scope.isRoot(envelope.RunID) && event.Usage != nil {
-			r.frame.Usage = encodeUsage(*event.Usage)
+			r.frame.Usage = encodeUsage(agent.UsageFromMetrics(protocol.RunMetrics{Usage: event.Usage}))
 		}
 	case agent.BlockCompleted:
 		if r.scope.isRoot(envelope.RunID) {
@@ -239,12 +235,12 @@ func (r *ResultJSON) fold(envelope agent.RunEvent) {
 		r.frame.Interactions = append(r.frame.Interactions, encodeInteractions(event.Interactions)...)
 		if r.scope.isRoot(envelope.RunID) {
 			r.frame.Status = "interrupted"
-			r.frame.Usage = encodeUsage(event.Usage)
+			r.frame.Usage = encodeUsage(agent.UsageFromMetrics(event.Metrics))
 		}
 	case agent.RunSuspended:
 		if r.scope.isRoot(envelope.RunID) {
 			r.frame.Status = "interrupted"
-			r.frame.Usage = encodeUsage(event.Usage)
+			r.frame.Usage = encodeUsage(agent.UsageFromMetrics(event.Metrics))
 		}
 	case agent.RunFinished:
 		if r.scope.isRoot(envelope.RunID) {

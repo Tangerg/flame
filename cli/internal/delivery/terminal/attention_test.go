@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
@@ -117,7 +119,7 @@ func TestUnfocusedApprovalRequestsAttention(t *testing.T) {
 				},
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
