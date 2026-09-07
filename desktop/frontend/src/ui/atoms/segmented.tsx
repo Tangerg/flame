@@ -3,7 +3,15 @@ import * as stylex from "@stylexjs/stylex";
 import { motion as anim } from "motion/react";
 import { cn } from "@/lib/classNames";
 import { selectionTransition } from "@/lib/motion";
-import { color, motion, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import {
+  color,
+  motion,
+  radius,
+  space,
+  surface,
+  type as typeStep,
+  weight,
+} from "@/styles/tokens.stylex";
 import { TabsPrimitive } from "@/ui/primitives";
 
 export interface SegmentedOption<T> {
@@ -35,7 +43,7 @@ const styles = stylex.create({
     borderWidth: 0,
     backgroundColor: "transparent",
     paddingInline: space.s2,
-    fontWeight: 500,
+    fontWeight: weight.medium,
     transitionProperty: "color",
     transitionDuration: motion.color,
     transitionTimingFunction: motion.easeOut,

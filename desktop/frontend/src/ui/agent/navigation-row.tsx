@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { Button, Icon, reveal, type ButtonProps, type IconName } from "@/ui";
 import { Tooltip } from "@/ui/atoms/tooltip";
+import { color, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { AgentOverflowLabel } from "./overflow-label";
 
 const ROW_GROUP = stylex.props(reveal.host).className;
@@ -21,6 +22,44 @@ const RESTING_GLYPH = cn("transition-opacity", stylex.props(reveal.displaced).cl
 // is the lesser of the two, because the alternative hides it from the keyboard.
 const HOVER_ACTION = cn("transition-opacity", stylex.props(reveal.shown).className);
 
+// The agent row's own shape, composed INTO the button rather than layered over it: every one of
+// these replaces a property the button declared, which a class list beside it could not do.
+const rowStyles = stylex.create({
+  base: {
+    height: "var(--density-row-height)",
+    gap: "var(--density-row-gap)",
+    paddingInline: space.s2,
+    textAlign: "left",
+    color: { default: color.fg, ":hover": color.fg },
+    backgroundColor: {
+      default: "transparent",
+      ":hover": surface.hover,
+      ":focus-visible": surface.hover,
+      ":is([data-active])": surface.selected,
+    },
+    transitionProperty: "background-color, color",
+    transitionDuration: "var(--dur-color)",
+  },
+  // A row that carries a second line grows instead of clipping, and its content starts at the
+  // top rather than centring against a height it no longer has.
+  stacked: {
+    height: "auto",
+    minHeight: "var(--density-row-height)",
+    alignItems: "flex-start",
+    paddingBlock: space.s2,
+  },
+  nested: { paddingLeft: "calc(0.5rem + var(--icon-sm) + var(--density-row-gap))" },
+  // Room for the action that appears on the right when the row is pointed at.
+  actioned: { paddingRight: space.s8 },
+  // A row whose label is a placeholder rather than a value: it reads back a step, and lifts to
+  // the full ink only when pointed at or current.
+  quiet: {
+    color: { default: color.fgMuted, ":hover": color.fg, ":is([data-active])": color.fg },
+  },
+  // The same, on the recessed plane a search field sits on.
+  search: { backgroundColor: { default: surface.sunken, ":hover": surface.hover } },
+});
+
 interface AgentRowProps extends Omit<ButtonProps, "children" | "variant" | "size" | "press"> {
   active?: boolean;
   icon?: IconName;
@@ -28,6 +67,8 @@ interface AgentRowProps extends Omit<ButtonProps, "children" | "variant" | "size
   trailing?: ReactNode;
   action?: ReactNode;
   indent?: "none" | "nested";
+  /** `quiet` reads a placeholder back a step; `search` puts it on the recessed plane too. */
+  look?: "row" | "quiet" | "search";
   revealOverflow?: boolean;
   children?: ReactNode;
 }
@@ -39,6 +80,7 @@ export function AgentRow({
   trailing,
   action,
   indent = "none",
+  look = "row",
   revealOverflow = false,
   className,
   children,
@@ -54,22 +96,17 @@ export function AgentRow({
       size="sm"
       shape="row"
       press={false}
-      data-active={active ? "" : undefined}
-      className={cn(
-        "agent-row text-left text-ui-md",
-        "gap-[var(--density-row-gap)]",
-        "text-fg transition-[background-color,color] duration-[var(--dur-color)]",
-        "hover:bg-hover hover:text-fg focus-visible:bg-hover",
-        "data-[active]:bg-selected data-[active]:text-fg",
-        detail
-          ? "h-auto min-h-[var(--density-row-height)] items-start py-2"
-          : "h-[var(--density-row-height)]",
-        indent === "nested"
-          ? "px-2 pl-[calc(0.5rem+var(--icon-sm)+var(--density-row-gap))]"
-          : "px-2",
-        action && "pr-8",
-        className,
-      )}
+      active={active}
+      styles={[
+        rowStyles.base,
+        typeStep.uiMd,
+        detail ? rowStyles.stacked : null,
+        indent === "nested" && rowStyles.nested,
+        action ? rowStyles.actioned : null,
+        look !== "row" && rowStyles.quiet,
+        look === "search" && rowStyles.search,
+      ]}
+      className={cn("agent-row", className)}
     >
       {icon && <Icon name={icon} size="sm" className={cn("shrink-0 text-fg", detail && "mt-px")} />}
       <span className="flex min-w-0 flex-1 flex-col gap-px">

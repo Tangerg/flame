@@ -1,6 +1,5 @@
 import type { ComponentPropsWithoutRef, ReactNode, Ref } from "react";
 import { Button as BaseButton } from "@base-ui/react/button";
-import { cn } from "@/lib/classNames";
 
 export type ButtonPrimitiveProps = ComponentPropsWithoutRef<typeof BaseButton> & {
   children?: ReactNode;
@@ -19,13 +18,11 @@ export function ButtonPrimitive({
       {...props}
       ref={ref}
       type={type}
-      className={cn(
-        // The browser's own button chrome, off in one place. `p-0` belongs with the rest of it:
-        // without it every atom resets the padding again, and a StyleX atom that does cannot be
-        // re-padded by its caller — the generated selector out-specifies any utility.
-        "border-0 bg-transparent p-0 font-sans text-left focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45",
-        className,
-      )}
+      // The reset itself lives in `globals.css` under `@layer base`, keyed on this attribute:
+      // as utility classes it sat at the same weight as its own consumers and a ring above had
+      // to out-specify it to state a border or a fill. A layer is what "underneath" means.
+      data-control="button"
+      className={className}
     >
       {children}
     </BaseButton>

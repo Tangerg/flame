@@ -1,5 +1,4 @@
 import { Button } from "@/ui";
-import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { openDiffViewInDock } from "@/plugins/builtin/workspace/public/deeplinks";
@@ -32,7 +31,8 @@ export function HeaderDiffStat({ className }: { className?: string }) {
       aria-label={t("workspace.view.title.diff")}
       onClick={openDiffViewInDock}
       chip
-      className={cn("font-mono", className)}
+      face="mono"
+      className={className}
     >
       <span className="text-success">+{totals.added}</span>
       <span className="text-negative">−{totals.removed}</span>

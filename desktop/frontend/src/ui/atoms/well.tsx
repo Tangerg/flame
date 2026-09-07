@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { color, leading, radius, space, surface, type } from "@/styles/tokens.stylex";
+import { color, leading, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
 
 // A recessed block of text the system produced verbatim: a tool's output, a command awaiting
 // approval, a JSON schema, a stack trace. Nine call sites had drawn it themselves in six
@@ -33,7 +33,7 @@ const styles = stylex.create({
   block: { display: "block" },
   soft: { color: color.fgSoft },
   // The thing being decided on, not reported — an approval's command line.
-  strong: { color: color.fg, fontWeight: 500 },
+  strong: { color: color.fg, fontWeight: weight.medium },
   wrap: { whiteSpace: "pre-wrap", overflowWrap: "break-word" },
   /** Machine text with no spaces to break at: a URL, a base64 blob, a long identifier. */
   anywhere: { whiteSpace: "pre-wrap", wordBreak: "break-all" },

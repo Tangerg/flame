@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import type { Tone } from "@/lib/tone";
 import { cn } from "@/lib/classNames";
-import { color, corner, face, space, surface, type } from "@/styles/tokens.stylex";
+import { color, corner, face, space, surface, type, weight } from "@/styles/tokens.stylex";
 
 /**
  * A small standing label: a status, a count, a scope, a name.
@@ -19,14 +19,14 @@ const styles = stylex.create({
     flexShrink: 0,
     alignItems: "center",
     gap: space.s1,
-    fontWeight: 500,
+    fontWeight: weight.medium,
   },
   neutral: { backgroundColor: surface.surface2, color: color.fgMuted },
-  accent: { backgroundColor: surface.accentWash, color: color.fgSoft },
-  success: { backgroundColor: surface.successWash, color: color.fgSoft },
-  warning: { backgroundColor: surface.warningWash, color: color.fgSoft },
-  negative: { backgroundColor: surface.negativeWash, color: color.fgSoft },
-  info: { backgroundColor: surface.infoWash, color: color.fgSoft },
+  accent: { backgroundColor: surface.accentBadge, color: color.fgSoft },
+  success: { backgroundColor: surface.successBadge, color: color.fgSoft },
+  warning: { backgroundColor: surface.warningBadge, color: color.fgSoft },
+  negative: { backgroundColor: surface.negativeBadge, color: color.fgSoft },
+  info: { backgroundColor: surface.infoBadge, color: color.fgSoft },
   sm: { paddingInline: space.s2, paddingBlock: "1px" },
   md: { paddingInline: space.s2_5, paddingBlock: space.s0_5 },
 });

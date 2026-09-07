@@ -75,7 +75,7 @@ function ComposerFixture() {
           Auto
         </Button>
         <span className="min-w-2 flex-1" />
-        <IconButton icon="arrow-up" size="md" aria-label="Send" className="bg-cta text-cta-text" />
+        <IconButton icon="arrow-up" size="md" aria-label="Send" variant="primary" />
       </div>
     </AgentComposerSurface>
   );

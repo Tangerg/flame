@@ -84,7 +84,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
               reportPluginError(owner, "command", err, `tool action: ${action.id}`);
             });
           }}
-          className={cn("transition-opacity", stylex.props(reveal.shown).className)}
+          className={stylex.props(reveal.shown).className}
         />
       ))}
       open={expanded}

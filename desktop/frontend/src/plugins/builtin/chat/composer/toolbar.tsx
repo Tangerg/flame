@@ -14,7 +14,6 @@ import {
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { contributeLayout, notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/classNames";
 import { definePlugin } from "@/plugins/sdk";
 import { useAddComposerImageFiles } from "./public/attachments";
 import { useSetComposerModelPreference } from "./public/modelPreference";
@@ -117,10 +116,8 @@ function ApprovalModePill() {
           <AgentComposerChip
             type="button"
             aria-label={t("approvals.mode.aria")}
-            className={cn(
-              "font-medium",
-              full ? "text-warning hover:bg-warning-wash" : "hover:bg-hover hover:text-fg",
-            )}
+            variant={full ? "wash" : "ghost"}
+            tone={full ? "warning" : undefined}
             leading={<Icon name={full ? "alert" : "shield"} size="sm" className="opacity-100" />}
             label={t(current.labelKey)}
           />

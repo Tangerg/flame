@@ -12,9 +12,6 @@ import {
 import { useT } from "@/lib/i18n";
 import { useAsyncFeedback } from "../../kit";
 
-const triggerClass =
-  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border-[0.5px] border-field bg-canvas pl-2 pr-2.5 text-ui-md font-medium text-fg whitespace-nowrap transition-colors hover:bg-hover";
-
 const itemClass = "grid-cols-[16px_minmax(0,1fr)_14px] px-2";
 
 function RoleSectionShell({
@@ -78,7 +75,6 @@ export function UtilityModelSection() {
               press={false}
               disabled={busy}
               aria-label={t("providers.utility.title")}
-              className={triggerClass}
             >
               {busy ? (
                 <>
@@ -164,7 +160,6 @@ export function EmbeddingModelSection() {
               press={false}
               disabled={busy}
               aria-label={t("providers.embedding.title")}
-              className={triggerClass}
             >
               {busy ? (
                 <>

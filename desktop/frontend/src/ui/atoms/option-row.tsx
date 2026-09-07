@@ -47,7 +47,7 @@ export const floatingRowStyles = stylex.create({
   // A row that destroys something says so before it is chosen, and keeps saying it once it is.
   destructive: {
     color: { default: color.negative, ":is([data-highlighted])": color.negative },
-    backgroundColor: { default: null, ":is([data-highlighted])": surface.negativeWashRow },
+    backgroundColor: { default: null, ":is([data-highlighted])": surface.negativeWash },
   },
 });
 

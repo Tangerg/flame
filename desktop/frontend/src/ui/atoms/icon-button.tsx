@@ -1,7 +1,9 @@
+import * as stylex from "@stylexjs/stylex";
 import type { IconSize } from "@/lib/iconScale";
 import { cn } from "@/lib/classNames";
+import { color, corner, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
-import { Button, type ButtonProps } from "./button";
+import { Button, type ButtonProps, type ButtonSize } from "./button";
 import { GlyphSwap } from "./glyph-swap";
 import { Tooltip } from "./tooltip";
 
@@ -10,19 +12,18 @@ interface IconButtonProps extends Omit<ButtonProps, "children" | "size"> {
   hoverIcon?: IconName;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   iconSize?: IconSize;
-  active?: boolean;
-  quiet?: boolean;
   title?: string;
   badge?: string | number;
 }
 
-const BOX = {
+const BOX: Record<NonNullable<IconButtonProps["size"]>, ButtonSize> = {
   xs: "icon-xs",
   sm: "icon-sm",
   md: "icon-md",
   lg: "icon-lg",
   xl: "icon-xl",
-} as const;
+};
+
 const ICON_SIZE: Record<keyof typeof BOX, IconSize> = {
   xs: "xs",
   sm: "sm",
@@ -31,29 +32,46 @@ const ICON_SIZE: Record<keyof typeof BOX, IconSize> = {
   xl: "md",
 };
 
+const styles = stylex.create({
+  // The badge hangs off the corner, so the button is its containing block.
+  host: { position: "relative" },
+  badge: {
+    position: "absolute",
+    top: "-2px",
+    right: "-2px",
+    display: "grid",
+    height: "14px",
+    minWidth: "14px",
+    placeItems: "center",
+    backgroundColor: surface.ctaFill,
+    paddingInline: space.s0_5,
+    fontFamily: "var(--font-mono)",
+    fontWeight: weight.semibold,
+    color: color.ctaText,
+  },
+});
+
 export function IconButton({
   icon,
   hoverIcon,
-  variant = "ghost",
   size = "md",
   iconSize = ICON_SIZE[size],
-  active,
-  quiet,
   badge,
   className,
   title,
   ...props
 }: IconButtonProps) {
+  const hasBadge = badge !== undefined && badge !== "" && badge !== 0;
+  // Only a badge needs the button to be a containing block. Declaring it always would pin every
+  // icon button to `relative`, and the one that has to float could not say otherwise.
+  const host = stylex.props(hasBadge && styles.host);
   return (
     <Tooltip label={title}>
       <Button
         {...props}
         aria-label={props["aria-label"] ?? title}
-        variant={variant}
         size={BOX[size]}
-        data-active={active ? "" : undefined}
-        quiet={quiet}
-        className={cn("relative data-[active]:bg-selected data-[active]:text-fg", className)}
+        className={cn(host.className, className)}
       >
         {hoverIcon ? (
           <GlyphSwap
@@ -63,11 +81,7 @@ export function IconButton({
         ) : (
           <Icon name={icon} size={iconSize} />
         )}
-        {badge !== undefined && badge !== "" && badge !== 0 && (
-          <span className="absolute -top-0.5 -right-0.5 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-cta px-0.5 font-mono text-ui-2xs font-semibold text-cta-text">
-            {badge}
-          </span>
-        )}
+        {hasBadge && <span {...stylex.props(styles.badge, corner.pill, type.ui2xs)}>{badge}</span>}
       </Button>
     </Tooltip>
   );

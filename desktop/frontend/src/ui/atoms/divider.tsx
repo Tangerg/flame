@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { color, corner, space, surface, type } from "@/styles/tokens.stylex";
+import { color, corner, space, surface, type, weight } from "@/styles/tokens.stylex";
 
 const styles = stylex.create({
   row: {
@@ -10,7 +10,7 @@ const styles = stylex.create({
     gap: space.s3,
     marginBlock: space.s2,
     color: color.fgFaint,
-    fontWeight: 500,
+    fontWeight: weight.medium,
   },
   rule: {
     height: "1px",

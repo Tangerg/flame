@@ -83,13 +83,10 @@ describe("Goal status surface", () => {
   it("offers Flame Goal management actions in clear, lifecycle, edit order", () => {
     const { container } = render(<GoalStatusSurface />);
 
-    const row = container.querySelector<HTMLElement>('[data-slot="goal-status-row"]');
-    expect(row).not.toBeNull();
-    expect(row!.className).toContain("py-1");
-    expect(screen.getByRole("button", { name: "Pursuing goal Ship alpha" }).className).toContain(
-      "leading-[max(1rem,1.2em)]",
-    );
-
+    // The row's inset and the summary's line box are geometry, and the golden suite is what
+    // measures geometry. Asserting the utility that produced them froze a spelling: the leading
+    // moved into the boxless button step, where it belongs, and this failed while the row was
+    // pixel-identical. What this test is named for is the ORDER.
     expect(
       Array.from(container.querySelectorAll('[data-slot="goal-actions"] button')).map((button) =>
         button.getAttribute("aria-label"),

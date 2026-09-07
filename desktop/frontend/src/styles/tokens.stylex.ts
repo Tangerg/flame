@@ -21,6 +21,9 @@ export const color = stylex.defineVars({
   fgFaint: "var(--color-text-faint)",
   accent: "var(--color-accent)",
   onAccent: "var(--color-on-accent)",
+  /** The ink that reads on the CTA fill. The fill itself is a surface, not an ink. */
+  ctaText: "var(--color-cta-text)",
+  onMedia: "var(--color-on-media)",
   negative: "var(--color-negative)",
   warning: "var(--color-warning)",
   success: "var(--color-success)",
@@ -52,20 +55,27 @@ export const surface = stylex.defineVars({
   scrim: "var(--color-scrim)",
   /** Row states are an ink wash whose strength tracks `--depth-step`, not a surface step. */
   hover: "var(--color-hover)",
+  ctaFill: "var(--color-cta)",
+  ctaHover: "var(--color-cta-hover)",
+  mediaScrim: "var(--color-media-scrim)",
+  /** A row's wash: 10% of the hue, enough to tint without becoming a plate. */
+  negativeWash: "var(--color-negative-wash)",
+  warningWash: "var(--color-warning-wash)",
+  joinSeam: "var(--button-join-seam)",
   selected: "var(--color-selected)",
-  negativeWashRow: "var(--color-negative-wash)",
   lineSoft: "var(--color-line-soft)",
   mediaField: "var(--color-media-preview)",
   /** The app's card plane, and the hairline a fill-less surface uses instead of it. */
   card: "var(--app-card-surface)",
   field: "var(--color-field)",
   fieldStrong: "var(--color-field-strong)",
-  /** A tone wash, not the tone: 18% of the hue over whatever is behind it. */
-  accentWash: "var(--color-accent-badge)",
-  successWash: "var(--color-success-badge)",
-  warningWash: "var(--color-warning-badge)",
-  negativeWash: "var(--color-negative-badge)",
-  infoWash: "var(--color-info-badge)",
+  /** A badge's wash: 18% of the hue over whatever is behind it. Stronger than the row wash
+   *  above, because a badge has to hold its own shape rather than tint a row. */
+  accentBadge: "var(--color-accent-badge)",
+  successBadge: "var(--color-success-badge)",
+  warningBadge: "var(--color-warning-badge)",
+  negativeBadge: "var(--color-negative-badge)",
+  infoBadge: "var(--color-info-badge)",
 });
 
 /** Corner steps, each already carrying the style scale and the superellipse compensation. */
@@ -81,6 +91,7 @@ export const radius = stylex.defineVars({
   segmented: "var(--segmented-radius)",
   segment: "var(--segment-radius)",
   row: "var(--row-radius)",
+  button: "var(--button-radius)",
   floatingPanel: "var(--floating-panel-radius)",
   floatingTip: "var(--floating-tip-radius)",
   composer: "var(--radius-composer)",
@@ -127,11 +138,23 @@ export const space = stylex.defineVars({
  * So a step is a bundle here too, and a call site names the step rather than assembling one.
  */
 /** How tall a line is. A ratio at a call site is not a decision; these are. */
+/**
+ * How heavy a face is. `regular` is 430 rather than 400 — the variable face is set a notch up so
+ * body text holds its colour on a dark ground — which is exactly why these are tokens: a literal
+ * `400` here reads as correct and renders a step light.
+ */
+export const weight = stylex.defineVars({
+  regular: "var(--fw-regular)",
+  medium: "var(--fw-medium)",
+  semibold: "var(--fw-semibold)",
+});
+
 export const leading = stylex.defineVars({
   body: "var(--leading-body)",
   relaxed: "var(--leading-relaxed)",
   prose: "var(--leading-prose)",
   snug: "var(--leading-snug)",
+  tight: "var(--leading-tight)",
 });
 
 /**

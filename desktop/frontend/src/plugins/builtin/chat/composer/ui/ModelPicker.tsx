@@ -164,7 +164,13 @@ export function ModelPicker() {
   if (models.length === 0) {
     if (isError) {
       return (
-        <Button variant="danger" size="xs" disabled title={t("providers.models.error")}>
+        <Button
+          variant="wash"
+          tone="negative"
+          size="xs"
+          disabled
+          title={t("providers.models.error")}
+        >
           <Icon name="alert" size="sm" />
           <span>{t("providers.models.error")}</span>
         </Button>

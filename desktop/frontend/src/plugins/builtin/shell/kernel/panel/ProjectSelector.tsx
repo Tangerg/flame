@@ -98,7 +98,7 @@ export function ComposerProjectTray() {
                 disabled={!actions.canCreateSessionInFolder}
                 aria-label={t("composer.project.choose")}
                 title={t("composer.project.tooltip")}
-                className="min-w-0 gap-1.5 font-normal text-fg-muted hover:text-fg"
+                className="min-w-0"
               >
                 <Icon name="folder" size="sm" className="shrink-0" />
                 <span className="max-w-[240px] truncate">{t("composer.project.choose")}</span>

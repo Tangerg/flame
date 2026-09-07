@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { type FormEvent, type KeyboardEvent, type ReactNode, useRef } from "react";
 import { Button } from "./button";
 import { MODAL_SCRIM, modalPanel } from "./floating-surface";
-import { color, radius, space, surface, type } from "@/styles/tokens.stylex";
+import { color, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { IconButton } from "./icon-button";
 import { TextArea } from "./text-field";
 import { DialogPrimitive } from "@/ui/primitives";
@@ -35,7 +35,7 @@ const styles = stylex.create({
     backgroundColor: surface.surface2,
     padding: space.s2,
   },
-  title: { fontWeight: 600, color: color.fg },
+  title: { fontWeight: weight.semibold, color: color.fg },
   close: { position: "absolute", top: space.s4, right: space.s4 },
   field: { display: "flex", width: "100%", flexDirection: "column", paddingTop: space.s3 },
   actions: {

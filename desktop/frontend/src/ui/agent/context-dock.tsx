@@ -229,10 +229,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                   quiet
                   title={tab.closeLabel}
                   onClick={close}
-                  className={cn(
-                    "mr-0.5 transition-opacity duration-[var(--dur-fast)]",
-                    stylex.props(reveal.pointerAffordance).className,
-                  )}
+                  className={cn("mr-0.5", stylex.props(reveal.pointerAffordance).className)}
                 />
               )}
             </div>

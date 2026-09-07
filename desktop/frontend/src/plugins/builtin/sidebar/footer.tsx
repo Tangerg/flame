@@ -43,7 +43,7 @@ function SidebarFooter() {
 
   return (
     <AgentWorkIndexFooter>
-      <AgentRow icon="settings" className="min-w-0 flex-1" onClick={actions.openSettings}>
+      <AgentRow icon="settings" flex="fill" onClick={actions.openSettings}>
         {t("sidebar.action.settings")}
       </AgentRow>
       <Slot name="sidebar.footer.status" className="flex items-center gap-0.5" />

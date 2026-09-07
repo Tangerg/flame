@@ -107,7 +107,8 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             size="xs"
             press={false}
             disabled={pending !== null || !canEdit}
-            className="min-h-6 min-w-0 flex-1 justify-start leading-[max(1rem,1.2em)] disabled:cursor-default disabled:opacity-100"
+            flex="fill"
+            className="min-h-6 disabled:cursor-default disabled:opacity-100"
             onClick={openEditor}
           >
             <span className="shrink-0 text-fg">

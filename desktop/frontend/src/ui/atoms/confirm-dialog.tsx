@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { color, leading, radius, space, surface, type } from "@/styles/tokens.stylex";
+import { color, leading, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { Button } from "./button";
 import { DialogPrimitive } from "@/ui/primitives";
 import { MODAL_SCRIM, modalPanel } from "./floating-surface";
@@ -14,7 +14,7 @@ const styles = stylex.create({
     backgroundColor: surface.canvas,
     padding: space.s4,
   },
-  title: { fontWeight: 600, color: color.fg },
+  title: { fontWeight: weight.semibold, color: color.fg },
   body: { marginTop: space.s1_5, lineHeight: leading.relaxed, color: color.fgMuted },
   actions: {
     marginTop: space.s4,

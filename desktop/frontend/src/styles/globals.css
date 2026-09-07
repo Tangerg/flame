@@ -374,6 +374,9 @@
   --shape-pill: 9999px;
 
   --button-radius: var(--shape-sm);
+  /* The hairline between the two halves of a split button: the CTA's own ink, thinned until it
+     reads as a seam rather than a border. */
+  --button-join-seam: color-mix(in oklab, var(--color-cta-text) 20%, transparent);
   --field-radius: var(--shape-md);
   --segmented-radius: var(--shape-md);
   --segment-radius: var(--shape-sm);
@@ -574,6 +577,28 @@ body {
   blockquote,
   summary {
     text-wrap: pretty;
+  }
+
+  /* Base UI's button, stripped of the browser's chrome. IN `base` for the same reason as the
+     block above and for one more: this is a lower RING, not a call site. A ring that dresses
+     the control has to be able to state a border, a padding or a fill without fighting a
+     utility class from underneath — `@layer utilities` and StyleX's unlayered rules both
+     outrank this, so an atom simply decides and nothing here is silently discarded. */
+  [data-control="button"] {
+    border: 0 solid;
+    background-color: transparent;
+    padding: 0;
+    font-family: var(--font-sans);
+    text-align: left;
+  }
+
+  [data-control="button"]:focus-visible {
+    outline: none;
+  }
+
+  [data-control="button"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
   }
 }
 
@@ -1088,7 +1113,12 @@ html.theme-dark {
   display: none;
 }
 .agent-composer-footer[data-measuring] > * {
-  flex-shrink: 0;
+  /* `!important` on purpose, and the only one of its kind: measuring is a state that lasts one
+     reflow and has to outrank whatever the chips themselves say about shrinking. Since the chips
+     became StyleX their `flex-shrink` carries `:not(#\#)` specificity, which a plain rule cannot
+     reach — and losing here does not misplace a pixel, it makes the row measure as fitting and
+     the labels never go. */
+  flex-shrink: 0 !important;
 }
 
 .agent-dock-tabs {
@@ -1268,6 +1298,14 @@ html.theme-dark {
    internally consistent ladder: Chromium draws the superellipse at the compensated radius,
    and WebKit — which has no `corner-shape` as of Safari 26.5, so this is inert in the
    WKWebView the desktop app ships in — keeps the arc at the base radius. */
+/* Every glyph inside a button sits a step back from its label, so an icon never outshouts the
+   word beside it. Keyed on the slot rather than written into the button's own styles: it is a
+   DESCENDANT rule, which no atomic class can express. A call site that has decided on an
+   opacity is excluded by name rather than outranked, so the escape works the same either way. */
+[data-slot="button"] svg:not([class*="opacity-"]) {
+  opacity: 0.8;
+}
+
 @supports (corner-shape: superellipse(1.5)) {
   :root {
     --corner-scale: 1.25;

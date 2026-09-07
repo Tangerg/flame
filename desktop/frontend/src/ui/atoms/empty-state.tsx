@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { CSSProperties, ReactNode } from "react";
-import { color, corner, leading, space, surface, type } from "@/styles/tokens.stylex";
+import { color, corner, leading, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons";
 
 /** How much room the state is given. `data-view` names the same two. */
@@ -28,7 +28,7 @@ const styles = stylex.create({
   iconComfortable: { height: space.s10, width: space.s10 },
   // The one line the eye lands on first, so it opts out of the UI tracking the step carries:
   // a heading read alone does not need the crowding that keeps a dense row legible.
-  title: { fontWeight: 500, letterSpacing: "normal", color: color.fg },
+  title: { fontWeight: weight.medium, letterSpacing: "normal", color: color.fg },
   sub: { maxWidth: "280px", lineHeight: leading.body, color: color.fgMuted },
   action: { marginTop: space.s1_5 },
 });

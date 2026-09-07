@@ -122,7 +122,7 @@ function SettingsRailHeader({
           press={false}
           data-chrome-focus=""
           onClick={selectWorkspaceChat}
-          className="mb-3 self-start focus-visible:bg-hover"
+          className="mb-3 self-start"
         >
           <Icon name="arrow-left" size="md" className="opacity-100" />
           <span>{t("settings.backToApp")}</span>

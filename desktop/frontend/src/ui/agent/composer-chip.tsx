@@ -1,9 +1,10 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { Button, type ButtonProps } from "@/ui/atoms";
 import { Icon } from "@/ui/icons";
 
-interface Props extends Omit<ButtonProps, "children" | "variant" | "size"> {
+interface Props extends Omit<ButtonProps, "children" | "size"> {
   leading: ReactNode;
   label: string;
   /** `gives` yields its label first when the row is short; `holds` keeps it as long as it can.
@@ -14,7 +15,16 @@ interface Props extends Omit<ButtonProps, "children" | "variant" | "size"> {
 /** The middle grid track is the only one that may shrink, so a chip bottoms out at its glyph
  *  and chevron instead of a sliver whose contents spill onto the next control. `title` names
  *  the current value because that is where the label survives. */
+// The middle track is the only one that may shrink, and how EAGERLY it does is the chip's own
+// decision — a row of chips that all yield equally truncates every one of them to initials.
+const chipStyles = stylex.create({
+  grid: { display: "grid", gridTemplateColumns: "auto minmax(0, auto) auto" },
+  holds: { flexShrink: 1 },
+  gives: { flexShrink: 12 },
+});
+
 export function AgentComposerChip({
+  variant = "ghost",
   leading,
   label,
   className,
@@ -24,16 +34,13 @@ export function AgentComposerChip({
 }: Props) {
   return (
     <Button
-      variant="ghost"
+      variant={variant}
       size="md"
       chip
       press={false}
       title={title ?? label}
-      className={cn(
-        "grid grid-cols-[auto_minmax(0,auto)_auto]",
-        shrink === "gives" ? "shrink-[12]" : "shrink",
-        className,
-      )}
+      styles={[chipStyles.grid, shrink === "gives" ? chipStyles.gives : chipStyles.holds]}
+      className={cn(className)}
       {...props}
     >
       <span className="flex items-center">{leading}</span>

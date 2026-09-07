@@ -94,7 +94,7 @@ export function SessionRow({
         active={active}
         indent={indented ? "nested" : "none"}
         revealOverflow={!renaming}
-        className="font-normal text-fg-muted hover:text-fg data-[active]:text-fg"
+        look="quiet"
         trailing={
           renaming ? undefined : (
             <span className="flex shrink-0 items-center gap-1.5">

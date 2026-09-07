@@ -28,7 +28,7 @@ export function SidebarActions() {
         onClick={openSessionSearch}
         aria-haspopup="dialog"
         aria-keyshortcuts={combo ? ariaKeyShortcuts(combo) : undefined}
-        className="bg-sunken font-normal text-fg-muted hover:bg-hover hover:text-fg"
+        look="search"
         trailing={combo ? <Kbd variant="inline">{comboGlyph(combo)}</Kbd> : undefined}
       >
         {t("sessionSearch.placeholder")}

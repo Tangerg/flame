@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ComponentPropsWithoutRef } from "react";
 import { cn } from "@/lib/classNames";
-import { color, radius, space, surface, type } from "@/styles/tokens.stylex";
+import { color, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
 
 /**
  * A shortcut, in the two shapes the product actually shows it.
@@ -35,13 +35,13 @@ const styles = stylex.create({
     backgroundColor: surface.sunken,
     color: color.fgMuted,
     fontFamily: "var(--font-sans)",
-    fontWeight: 500,
+    fontWeight: weight.medium,
     lineHeight: 1,
   },
   inline: {
     color: color.fgFaint,
     fontFamily: "var(--font-mono)",
-    fontWeight: "var(--fw-regular)",
+    fontWeight: weight.regular,
     lineHeight: 1,
   },
 });

@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
-import { color, motion, type } from "@/styles/tokens.stylex";
+import { color, motion, type, weight } from "@/styles/tokens.stylex";
 
 type LoaderSize = "sm" | "md" | "lg";
 
@@ -33,7 +33,7 @@ export interface LoaderProps {
 const styles = stylex.create({
   root: {
     display: "inline-block",
-    fontWeight: 500,
+    fontWeight: weight.medium,
     // The gradient is the visible text: it is clipped to the glyphs, which are transparent.
     backgroundImage: `linear-gradient(90deg, ${color.fgMuted} 35%, ${color.fg} 50%, ${color.fgMuted} 65%)`,
     backgroundSize: "200% 100%",

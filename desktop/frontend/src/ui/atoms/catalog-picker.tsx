@@ -1,8 +1,9 @@
+import * as stylex from "@stylexjs/stylex";
 import { type ReactElement, type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/classNames";
 import { ComboboxPrimitive } from "@/ui/primitives";
 import { Icon, type IconName } from "@/ui/icons";
-import { buttonStyles } from "./button";
+import { dress } from "./button";
 import { Popover } from "./popover";
 import { Pressable } from "./pressable";
 
@@ -48,13 +49,15 @@ function CatalogTrigger({
   className?: string;
 }) {
   if (trigger) return <Popover.Trigger render={trigger} />;
+  const trig = stylex.props(dress({ variant: "ghost", size: "icon-sm" }));
   return (
     <Popover.Trigger
       aria-label={label}
       title={label}
       data-slot="button"
       data-variant="ghost"
-      className={cn(buttonStyles({ variant: "ghost", size: "icon-sm" }), className)}
+      {...trig}
+      className={cn(trig.className, className)}
     >
       <Icon name="plus" size="sm" />
     </Popover.Trigger>

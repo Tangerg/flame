@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
-import { color, corner, motion, space, surface, type } from "@/styles/tokens.stylex";
+import { color, corner, motion, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { Icon } from "@/ui/icons";
 
 export type StepState = "done" | "active" | "pending";
@@ -28,7 +28,7 @@ const styles = stylex.create({
   done: { color: color.success },
   row: { display: "flex", alignItems: "center", gap: space.s2, paddingBlock: space.s0_5 },
   inkDone: { color: color.fgFaint },
-  inkActive: { fontWeight: 500, color: color.fg },
+  inkActive: { fontWeight: weight.medium, color: color.fg },
   inkPending: { color: color.fgMuted },
   label: { minWidth: 0, flex: 1 },
   struck: { textDecorationLine: "line-through" },

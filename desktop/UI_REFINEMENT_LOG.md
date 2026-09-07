@@ -7581,3 +7581,63 @@ hover 后 opacity 仍为 0；单跑 4.5s 通过。是并行下的 hover 时序�
 
 `Button` / `IconButton` 上已无与自身声明冲突的 override ——
 剩下的全是布局 / 定位 / 动效。可以迁 StyleX 了。
+
+---
+
+## Round 129 — `button` + `icon-button` 迁 StyleX
+
+最大的一次，93 个调用点。`cascade` 守卫从头到尾是主要工具 —— 它一条条报出
+"某个调用点写了、而层叠丢掉了"的属性，每一条都是一个要么补档、要么删掉的决定。
+
+### 迁移前先把两条规则搬出组件
+
+| 规则 | 为什么不能留在组件里 | 去了哪 |
+| --- | --- | --- |
+| `[&_svg:not([class*='opacity-'])]:opacity-80` | 后代选择器，原子类表达不了 | `globals.css`，键在 `[data-slot="button"]` |
+| `ButtonPrimitive` 的浏览器 chrome 重置 | 它是**下一环**，不是调用点；作为 utility 它和自己的消费方同权重，上一环要"压过"它才能声明一个边或一个填充 | `globals.css` 的 `@layer base`，键在 `[data-control="button"]` |
+
+第二条是这轮最有价值的一处结构修正：`@layer base` 输给 `@layer utilities`
+（未迁移消费方照旧赢）、也输给 StyleX 的无层级规则（已迁移的原子直接声明）——
+**层，正是"下面"的意思**。搬完之后 `cascade` 报的 20 多条重置冲突一次清零。
+
+### 迁移中抓到的自身错误
+
+| 错误 | 症状 | 教训 |
+| --- | --- | --- |
+| 字重写成字面量 `400` / `500` | 119 张 golden 位移 | 本项目 `--fw-regular` 是 **430**，不是 400。**一个看起来正确的字面量比一个缺失的令牌更危险** |
+| `color.cta` 指向填充色而非文字色 | primary 按钮文字与底色同色 | 令牌命名要说清它是墨还是面：填充属于 `surface`，墨属于 `color` |
+| `bare` 用 `padding: 0` 抵消 size 的 `paddingInline` | 无盒按钮仍带 7px 内距 | **物理简写与逻辑属性展开成不同 longhand，不会互相去重** |
+| 临时备份用了 basename | `atoms/button.tsx` 被 `primitives/button.tsx` 覆盖 | 两个同名文件的 `/tmp/$(basename)` 会互相覆盖；已按记录重写恢复 |
+
+### 迁移中暴露的既有问题
+
+- **`.agent-composer-footer[data-measuring] > * { flex-shrink: 0 }` 压不住 StyleX。**
+  那条规则自己的注释就写着"已经收缩过的 flex 行会测出不溢出"—— 而它现在正是
+  这样失效的：chip 的 `flex-shrink` 带 `:not(#\#)` 特异性。加了 `!important`，
+  这是全文件唯一一处，理由是**测量态只持续一次重排、必须压过一切**。
+- **`data-chrome-focus` 此前只在调用点被兑现。** 那是设计系统"用行状态代替焦点环"
+  的标记，所以按钮该自己认它 —— `":is([data-chrome-focus]):focus-visible"`。
+- **`foundation` 展柜 fixture 自己用裸 class 画了个 CTA 按钮。** 展柜更该用系统的词汇。
+- **一处单测在断言 `leading-[max(1rem,1.2em)]` 这个 class 名。** 那是 AGENTS.md
+  明禁冻结的实现细节：行高搬进了 `bare` 档之后它就失败，而那一行像素完全没动。
+  测试名字说的是"顺序"，留下顺序断言，删掉两条被冻结的 utility 断言。
+
+### 一个新的组合入口（不是逃生口）
+
+`ui/agent` 要在原子之上叠自己的形状（agent 行的密度高度与内距）。给 `Button`
+加了 `styles`，接 **StyleX 样式**而不是 class：它在同一次 `stylex.props()` 里组合，
+所以它声明的属性**替换**组件的、而不是输给它 —— 这正是 `className` 做不到的。
+业务调用点要形状仍然是加一档。
+
+### 又一批补齐的档
+
+`wash`（把 `danger` 里编进名字的色调抽出来）/ `fill` / `face` / `active` /
+`shape="row"`，以及 `navigation-row` 的 `look: row | quiet | search`。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650**（13 张按上述理由重录；两张确认为并行抖动，已回退） |
+| 守卫 | 17 项 `check:*` 全绿（`cascade` 从 20+ 条冲突到 0） |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
