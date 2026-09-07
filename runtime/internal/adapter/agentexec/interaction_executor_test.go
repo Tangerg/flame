@@ -6,13 +6,11 @@ import (
 	"errors"
 	"iter"
 	"slices"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -20,7 +18,6 @@ import (
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
-	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 const interactionTestBuildID = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -63,7 +60,7 @@ func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		ChatResolver:           staticInteractionChatResolver(client),
 		ImplementationIdentity: "interaction-executor-test-build",
 		ConfigurationIdentity:  "interaction-executor-test-config",
@@ -75,7 +72,7 @@ func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
 }
 
 func TestInteractionExecutorRequiresChatResolver(t *testing.T) {
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ImplementationIdentity: "interaction-executor-test-build",
 		ConfigurationIdentity:  "interaction-executor-test-config",
@@ -83,51 +80,6 @@ func TestInteractionExecutorRequiresChatResolver(t *testing.T) {
 	})
 	if err == nil || executor != nil {
 		t.Fatalf("NewInteractionExecutor without resolver = (%v, %v), want nil executor and non-nil error", executor, err)
-	}
-}
-
-func TestInteractionToolManifestRequiresPolicyOwners(t *testing.T) {
-	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "echo", Description: "Return a fixed response.",
-	}, func(context.Context, struct{}) (string, error) {
-		return "ok", nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest := toolset.Manifest{Visible: []toolcontract.Tool{executable}}
-
-	for _, test := range []struct {
-		name   string
-		config InteractionExecutorConfig
-		want   string
-	}{
-		{name: "missing interpreter", want: "Interaction Tools require a Tool interpreter"},
-		{
-			name: "missing authorizer",
-			config: InteractionExecutorConfig{
-				ToolInterpreter: testInteractionToolInterpreter{},
-			},
-			want: "Interaction Tools require a Tool authorizer",
-		},
-		{
-			name: "complete policy owners",
-			config: InteractionExecutorConfig{
-				ToolInterpreter: testInteractionToolInterpreter{},
-				ToolAuthorizer:  allowInteractionTools{},
-			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			executor := &InteractionExecutor{config: test.config}
-			err := executor.validateInteractionTools(manifest)
-			if test.want == "" && err != nil {
-				t.Fatalf("validate complete Tool policy = %v", err)
-			}
-			if test.want != "" && (err == nil || !strings.Contains(err.Error(), test.want)) {
-				t.Fatalf("validate Tool policy error = %v, want %q", err, test.want)
-			}
-		})
 	}
 }
 
@@ -225,7 +177,7 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 		t.Fatal(err)
 	}
 	var resolved []modelref.Selection
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime: t.Context(),
 		ChatResolver: interactionChatResolverFunc(func(_ context.Context, selection modelref.Selection) (modeladapter.ResolvedChat, error) {
 			resolved = append(resolved, selection)
@@ -414,7 +366,7 @@ func TestInteractionExecutorMapsStreamingModelFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(client),
 		ImplementationIdentity: "interaction-executor-test-build",
@@ -595,7 +547,7 @@ func newTestInteractionExecutorWithLifetime(
 	if err != nil {
 		t.Fatal(err)
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime:               lifetime,
 		ChatResolver:           staticInteractionChatResolver(client),
 		ImplementationIdentity: "interaction-executor-test-build",

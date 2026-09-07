@@ -400,7 +400,7 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 		Member:  i.executorMember(process.Relation()),
 		Payload: barrier,
 	})
-	if published && i.lifecycleHooks != nil {
+	if published {
 		if err := i.lifecycleHooks.NotifyWaiting(
 			i.lifetime.execution, i.start.SessionID, i.start.CWD,
 		); err != nil {
@@ -541,14 +541,12 @@ func (i *interactionSession) publishResult(result agent.Result) error {
 		return err
 	}
 	i.lifetime.send(runs.ExecutorEvent{Member: member, Payload: end})
-	if i.lifecycleHooks != nil {
-		if err := i.lifecycleHooks.NotifyStopped(
-			i.lifetime.execution, i.start.SessionID, i.start.CWD, string(end.Reason),
-		); err != nil {
-			slog.ErrorContext(i.lifetime.execution, "agentexec: notify stopped",
-				"session.id", i.start.SessionID, "error", err,
-			)
-		}
+	if err := i.lifecycleHooks.NotifyStopped(
+		i.lifetime.execution, i.start.SessionID, i.start.CWD, string(end.Reason),
+	); err != nil {
+		slog.ErrorContext(i.lifetime.execution, "agentexec: notify stopped",
+			"session.id", i.start.SessionID, "error", err,
+		)
 	}
 	return nil
 }

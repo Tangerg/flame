@@ -272,7 +272,7 @@ func TestAssemblyFailureRollbackContinuesAfterCloseTimeout(t *testing.T) {
 	}
 }
 
-func TestAssemblyDirectToolsDoNotDependOnAgentResolver(t *testing.T) {
+func TestAssemblyClosesOwnedToolResources(t *testing.T) {
 	cfg := runtimeConfigWithRequiredDeps(t)
 	var toolClosed atomic.Int32
 
@@ -288,10 +288,6 @@ func TestAssemblyDirectToolsDoNotDependOnAgentResolver(t *testing.T) {
 			toolClosed.Add(1)
 			return nil
 		}))
-		// The agent resolver is intentionally absent. Direct client-invoked
-		// diagnostics have a separate fixed catalog and must not inherit the
-		// model-driven Run's capability catalog.
-		toolRuntime.tools.Resolver = nil
 		return toolRuntime, nil
 	}
 	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildTools)

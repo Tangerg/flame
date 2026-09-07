@@ -110,28 +110,31 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	if config.Lifetime == nil {
 		return nil, errors.New("agentexec: Interaction lifetime is required")
 	}
-	if isNilInteractionCapability(config.ChatResolver) {
-		return nil, errors.New("agentexec: Interaction requires a chat resolver")
-	}
-	if isNilInteractionCapability(config.ModelContextCompactor) !=
-		isNilInteractionCapability(config.ModelContextState) {
-		return nil, errors.New("agentexec: model-context compactor and state source must be configured together")
-	}
 	for _, capability := range []struct {
 		name  string
 		value any
 	}{
 		{name: "chat resolver", value: config.ChatResolver},
-		{name: "restore-scope validator", value: config.RestoreScopeValidator},
 		{name: "Tool resolver", value: config.ToolResolver},
 		{name: "Tool interpreter", value: config.ToolInterpreter},
 		{name: "Tool presenter", value: config.ToolPresenter},
 		{name: "Tool authorizer", value: config.ToolAuthorizer},
 		{name: "Tool hooks", value: config.ToolHooks},
+		{name: "MCP Tool approval policy", value: config.MCPToolAutoApproved},
 		{name: "Run maintenance", value: config.Maintenance},
 		{name: "model-context compactor", value: config.ModelContextCompactor},
 		{name: "model-context state", value: config.ModelContextState},
 		{name: "lifecycle hooks", value: config.LifecycleHooks},
+	} {
+		if isNilInteractionCapability(capability.value) {
+			return nil, fmt.Errorf("agentexec: Interaction requires a %s", capability.name)
+		}
+	}
+	for _, capability := range []struct {
+		name  string
+		value any
+	}{
+		{name: "restore-scope validator", value: config.RestoreScopeValidator},
 		{name: "Tool-result store", value: config.ToolResultStore},
 	} {
 		if capability.value != nil && isNilInteractionCapability(capability.value) {
@@ -297,15 +300,6 @@ func (i *InteractionExecutor) assembleInteraction(
 }
 
 func (i *InteractionExecutor) validateInteractionTools(manifest toolset.Manifest) error {
-	if len(manifest.Visible)+len(manifest.Deferred) == 0 {
-		return nil
-	}
-	if i.config.ToolInterpreter == nil {
-		return errors.New("agentexec: Interaction Tools require a Tool interpreter")
-	}
-	if i.config.ToolAuthorizer == nil {
-		return errors.New("agentexec: Interaction Tools require a Tool authorizer")
-	}
 	for _, tools := range [][]toolcontract.Tool{manifest.Visible, manifest.Deferred} {
 		for _, executable := range tools {
 			name := executable.Definition().Name
@@ -340,8 +334,6 @@ func (i *InteractionExecutor) interactionConfiguration(
 		Streaming              bool                       `json:"streaming"`
 		MaxConcurrentToolCalls int                        `json:"maxConcurrentToolCalls"`
 		ToolResultOffload      *toolResultOffloadIdentity `json:"toolResultOffload,omitempty"`
-		InteractiveApproval    bool                       `json:"interactiveApproval"`
-		ContextCompaction      bool                       `json:"contextCompaction"`
 		VisibleTools           []corechat.ToolDefinition  `json:"visibleTools,omitempty"`
 		DeferredTools          []corechat.ToolDefinition  `json:"deferredTools,omitempty"`
 		Group                  domaintool.Group           `json:"group"`
@@ -355,8 +347,6 @@ func (i *InteractionExecutor) interactionConfiguration(
 		MaxModelCalls: maxModelCalls, Streaming: i.config.StreamModelResponses,
 		MaxConcurrentToolCalls: i.policy.maxConcurrentToolCalls,
 		ToolResultOffload:      i.policy.toolResultOffload.identity(),
-		InteractiveApproval:    i.config.ToolAuthorizer != nil,
-		ContextCompaction:      i.config.ModelContextCompactor != nil,
 		VisibleTools:           toolDefinitions(manifest.Visible), DeferredTools: toolDefinitions(manifest.Deferred),
 		Group: group, Depth: depth, Delegate: delegate.String(), DelegateBudget: delegateBudget,
 		Instructions: cloneChatMessages(instructions),

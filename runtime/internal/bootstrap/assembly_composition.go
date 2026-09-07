@@ -311,6 +311,7 @@ func buildExecutionComposition(
 		ConfigurationIdentity:  interactionDeploymentConfigurationIdentity,
 		StreamModelResponses:   true,
 		MaxConcurrentToolCalls: &maxConcurrentToolCalls,
+		ToolResolver:           toolRuntime.tools.Resolver,
 		ToolInterpreter:        toolset.NewInterpreter(policy.plans),
 		ToolPresenter:          toolset.Presenter{},
 		ToolAuthorizer:         toolAuthorizer,
@@ -331,9 +332,6 @@ func buildExecutionComposition(
 		ModelContextState:     workingContexts,
 		LifecycleHooks:        workingContexts,
 		Pricing:               cfg.Pricing,
-	}
-	if toolRuntime.tools.Resolver != nil {
-		interactionConfig.ToolResolver = toolRuntime.tools.Resolver
 	}
 	if cfg.ToolResultOffloadEnabled {
 		toolResultThreshold := cfg.ToolResultThreshold

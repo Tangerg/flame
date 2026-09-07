@@ -23,7 +23,7 @@ trust-boundary checks, resource ownership, and product capabilities remain.
 | ID | Finding and evidence at the baseline | Target contract and deletion scope | State |
 | --- | --- | --- | --- |
 | R1 | `sessions.MaterialSnapshot` includes Session in one storage read, but `protocol.SessionSnapshot` omits it. CLI combines separate reads with eight stability attempts. | Runtime returns the complete coherent mounted-session projection. Remove CLI metadata pairing, retry count, and equality machinery; update protocol artifacts and consumers. | Pending |
-| R2 | `SessionStores`, `WorkingContextComposer`, `InteractionExecutor`, and title finalization allow absent dependencies that the production composition always supplies. | Require complete collaborators at construction. Remove impossible missing-capability execution branches. Retain actual checkpoint, sandbox, and tool-result-offload policies. | In progress: SessionStores, working context, and title finalization complete |
+| R2 | `SessionStores`, `WorkingContextComposer`, `InteractionExecutor`, and title finalization allow absent dependencies that the production composition always supplies. | Require complete collaborators at construction. Remove impossible missing-capability execution branches. Retain actual checkpoint, sandbox, and tool-result-offload policies. | Complete |
 | R3 | Fixed product policy is represented by optional tuning bags; test-only maintenance and restore-scope overrides create alternate production paths. Shutdown wraps a fixed timeout in repeated validation. | Give fixed policy one owner. Remove replacement paths with no product consumer. Keep narrow test controls only where they isolate an actual external boundary or deterministic lifetime. | Pending |
 | R4 | Executor composition repeats BuildID as ImplementationIdentity and adds a hand-maintained configuration identity beside serialized configuration. | Derive deployment identity from the real executable and configuration facts. Remove synonymous identity inputs and wrappers without weakening Scope deployment compatibility. | Pending |
 | R5 | Recovery and waiting-subtree cancellation validate constructed immutable write sets again in persistence. Some validators replay planner transitions. | One owner constructs each complete decision. Persistence checks transactional expectations, not a second recovery policy. Remove redundant construction surfaces and repeated proof machinery. | Pending |
@@ -112,6 +112,20 @@ Narrow tests supply complete context fixtures or substitute the consumed
 finalization port. Production no longer offers incomplete construction for
 those fixtures. Verified focused context, finalization, and bootstrap checks,
 then Runtime tests, vet, build, and whitespace checks.
+
+### Complete execution collaborators
+
+`InteractionExecutor` requires its Tool catalog, interpretation, presentation,
+authorization, MCP approval policy, Hooks, maintenance, compaction, and current
+Session-state sources. Removed all absent-collaborator execution branches,
+including the unmaintained model-context path and constant configuration flags.
+Tests now exercise the same reducer path with substituted external capabilities.
+Tool-result offload still requires its store only when enabled; model pricing
+availability remains a model capability checked when a monetary limit needs it.
+
+Verified execution, delegation, approval, waiting restoration, Hook failure,
+compaction, maintenance, and bootstrap tests, then Runtime tests, vet, build,
+and whitespace checks.
 
 If deeper consumer evidence invalidates a proposed deletion, record the
 surviving requirement here instead of weakening it to satisfy a line-count target.

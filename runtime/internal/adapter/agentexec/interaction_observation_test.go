@@ -1547,7 +1547,7 @@ func newObservedTestInteractionExecutor(
 	extra.BuildID = interactionTestBuildID
 	extra.DefaultMaxModelCalls = uint32Pointer(8)
 	extra.UnknownEffectPollInterval = durationPointer(5 * time.Millisecond)
-	executor, err := NewInteractionExecutor(extra)
+	executor, err := newInteractionTestExecutor(t, extra)
 	if err != nil {
 		t.Fatal(err)
 	}

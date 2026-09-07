@@ -39,6 +39,8 @@ Scope's Agent Framework is the only process, strategy, child-tree, tool-loop, an
 
 `adapter/agentexec` is the anti-corruption boundary. It maps Runtime commands and values to public Scope contracts, observes framework outcomes, and maps them back to Runtime facts. Application owns product admission, transaction ordering, cancellation intent, durable waiting state, and terminal outcome selection.
 
+Execution construction requires complete Tool policy, presentation, Hooks, maintenance, compaction, and current Session-state sources. Every imminent model request follows the same context reducer; an absent collaborator cannot disable it. Tool-result offload remains an explicit product policy with a required store when enabled.
+
 Framework observations are wake-ups, not durable commits. Runtime reconciles authoritative framework state into an Application write set before publishing durable product facts. A completed durable Item or snapshot wins over a missing or duplicated preview event.
 
 A Delegate retains its admitted child across a human-input barrier. Each continuation opens fresh Segments, so the executor observation reopens the parent Tool attempt before forwarding child results. Application reuses the durable Tool Item identity; continuation does not admit another child or repeat its completed work.

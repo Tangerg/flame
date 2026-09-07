@@ -40,7 +40,7 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 	if err != nil {
 		t.Fatal(err)
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(client),
 		ImplementationIdentity: identity + "-build",

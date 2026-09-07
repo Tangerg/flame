@@ -263,9 +263,6 @@ func (i *InteractionExecutor) resolveInteractionManifest(
 	ctx context.Context,
 	group domaintool.Group,
 ) (toolset.Manifest, error) {
-	if i.config.ToolResolver == nil {
-		return toolset.Manifest{}, nil
-	}
 	manifest, err := i.config.ToolResolver.Manifest(ctx, group)
 	if err != nil {
 		return toolset.Manifest{}, fmt.Errorf("agentexec: resolve Interaction %s Tools: %w", group, err)

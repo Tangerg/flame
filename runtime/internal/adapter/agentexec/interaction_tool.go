@@ -247,9 +247,6 @@ func (o *observedInteractionTool) runAfterToolUseHook(
 	output corechat.ToolOutput,
 	callErr error,
 ) {
-	if o.hooks == nil {
-		return
-	}
 	hookCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), authoritativeProjectionTimeout)
 	if err := o.hooks.AfterToolUse(hookCtx, InteractionToolHookInput{
 		SessionID: o.start.SessionID, CWD: o.start.CWD, CallID: callID,
@@ -275,26 +272,23 @@ func (o *observedInteractionTool) prepare(
 	if resumed {
 		return o.resumePreparedTool(ctx, callID, name, continued)
 	}
-	forceApproval := false
-	if o.hooks != nil {
-		decision, beforeToolUseErr := o.hooks.BeforeToolUse(ctx, InteractionToolHookInput{
-			SessionID: o.start.SessionID, CWD: o.start.CWD,
-			CallID: callID, ToolName: name, Arguments: arguments,
-		})
-		if beforeToolUseErr != nil {
-			return tool.Arguments{}, false, "", fmt.Errorf("agentexec: run pre-Tool hook: %w", beforeToolUseErr)
-		}
-		if validateHookDecisionErr := validateHookDecision(decision); validateHookDecisionErr != nil {
-			return tool.Arguments{}, false, "", validateHookDecisionErr
-		}
-		if decision.EffectiveArguments != nil {
-			arguments = *decision.EffectiveArguments
-		}
-		if decision.Denied {
-			return arguments, true, decision.Reason, nil
-		}
-		forceApproval = decision.RequireApproval
+	decision, beforeToolUseErr := o.hooks.BeforeToolUse(ctx, InteractionToolHookInput{
+		SessionID: o.start.SessionID, CWD: o.start.CWD,
+		CallID: callID, ToolName: name, Arguments: arguments,
+	})
+	if beforeToolUseErr != nil {
+		return tool.Arguments{}, false, "", fmt.Errorf("agentexec: run pre-Tool hook: %w", beforeToolUseErr)
 	}
+	if validateHookDecisionErr := validateHookDecision(decision); validateHookDecisionErr != nil {
+		return tool.Arguments{}, false, "", validateHookDecisionErr
+	}
+	if decision.EffectiveArguments != nil {
+		arguments = *decision.EffectiveArguments
+	}
+	if decision.Denied {
+		return arguments, true, decision.Reason, nil
+	}
+	forceApproval := decision.RequireApproval
 	if !o.interpreter.UsesStandardPolicy(name) {
 		if forceApproval {
 			return arguments, true, "a lifecycle hook requires approval, but approval is unavailable", nil
@@ -305,21 +299,21 @@ func (o *observedInteractionTool) prepare(
 	if err != nil {
 		return tool.Arguments{}, false, "", err
 	}
-	decision, err := o.authorizer.AuthorizeTool(ctx, request)
+	authorization, err := o.authorizer.AuthorizeTool(ctx, request)
 	if err != nil {
 		return tool.Arguments{}, false, "", fmt.Errorf("agentexec: authorize Tool %q: %w", name, err)
 	}
-	if err := validateToolAuthorizationDecision(decision); err != nil {
+	if err := validateToolAuthorizationDecision(authorization); err != nil {
 		return tool.Arguments{}, false, "", err
 	}
-	if decision.EffectiveArguments != nil {
-		arguments = *decision.EffectiveArguments
+	if authorization.EffectiveArguments != nil {
+		arguments = *authorization.EffectiveArguments
 	}
-	if decision.Denied {
-		return arguments, true, decision.Reason, nil
+	if authorization.Denied {
+		return arguments, true, authorization.Reason, nil
 	}
-	if decision.Approval != nil {
-		return o.requestToolApproval(ctx, request, *decision.Approval)
+	if authorization.Approval != nil {
+		return o.requestToolApproval(ctx, request, *authorization.Approval)
 	}
 	return o.applyDoomLoopBrake(ctx, callID, name, arguments, false, "")
 }
@@ -364,11 +358,9 @@ func (o *observedInteractionTool) authorizationRequest(
 		return ToolAuthorizationRequest{}, fmt.Errorf("agentexec: derive Tool %q approval subject: %w", name, err)
 	}
 	autoApproved := false
-	if o.session.mcpToolAutoApproved != nil {
-		if identity, ok := o.inner.(interactionMCPToolIdentity); ok {
-			server, remote := identity.MCPToolIdentity()
-			autoApproved = server != "" && remote != "" && o.session.mcpToolAutoApproved(server, remote)
-		}
+	if identity, ok := o.inner.(interactionMCPToolIdentity); ok {
+		server, remote := identity.MCPToolIdentity()
+		autoApproved = server != "" && remote != "" && o.session.mcpToolAutoApproved(server, remote)
 	}
 	return ToolAuthorizationRequest{
 		SessionID: o.start.SessionID, CWD: o.start.CWD,
@@ -464,10 +456,8 @@ func (o *observedInteractionTool) resolveToolApproval(
 }
 
 func (o *observedInteractionTool) activity(name string, arguments tool.Arguments) string {
-	if o.presenter != nil {
-		if activity := o.presenter.Activity(name, arguments); activity != "" && activity == strings.TrimSpace(activity) {
-			return activity
-		}
+	if activity := o.presenter.Activity(name, arguments); activity != "" && activity == strings.TrimSpace(activity) {
+		return activity
 	}
 	return "Calling " + name
 }
@@ -489,9 +479,7 @@ func (o *observedInteractionTool) finishedFact(
 	}
 	outputText := ""
 	if parsed, present := runtimeToolResult(output); present {
-		if o.presenter != nil {
-			parsed, outputText = o.presenter.Present(o.Definition().Name, arguments, parsed)
-		}
+		parsed, outputText = o.presenter.Present(o.Definition().Name, arguments, parsed)
 		result = &parsed
 	}
 	finished := runs.ToolCallFinished{

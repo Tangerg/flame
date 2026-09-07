@@ -61,7 +61,7 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime: t.Context(), ChatResolver: staticInteractionChatResolver(client),
 		ImplementationIdentity: "completed-sibling-build", ConfigurationIdentity: "completed-sibling-config",
 		DefaultMaxModelCalls: uint32Pointer(6), MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,

@@ -93,7 +93,7 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(client),
 		ImplementationIdentity: "interaction-delegate-test-build",
@@ -233,7 +233,7 @@ func TestInteractionExecutorCancelsRunningDelegateAndKeepsRootRunning(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(client),
 		ImplementationIdentity: "interaction-running-cancel-test-build",
@@ -579,7 +579,7 @@ func startDelegateTree(t *testing.T, model chat.Model, input string) *delegateTr
 	if err != nil {
 		t.Fatal(err)
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(client),
 		ImplementationIdentity: "interaction-delegate-tree-test-build",
