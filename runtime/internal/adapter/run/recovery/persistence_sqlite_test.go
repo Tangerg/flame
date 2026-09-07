@@ -246,9 +246,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	}
 }
 
-// TestRecoveryCleanupIsScopedToClaimedSessions proves one Runtime never sweeps
-// another live Runtime's callback or checkpoint facts from the shared DB.
-func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
+func TestRecoveryRollsBackCheckpointCleanupWhenChildStartCleanupFails(t *testing.T) {
 	db, err := sqlite.Open(t.Context(), ":memory:")
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -260,20 +258,16 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 		RunID: "run_abandoned", SessionID: "session_abandoned", SegmentID: "segment_abandoned",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	active, err := run.Admit(draft)
-	if err != nil {
-		t.Fatalf("Admit domain Run: %v", err)
+	sessionStore := sqlite.NewSessionStore(db)
+	if err := sessionStore.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{
+		ID: draft.SessionID, Workspace: testsupport.MustWorkspace("/workspace"),
+		StartedAt: createdAt, UpdatedAt: createdAt,
+	})); err != nil {
+		t.Fatalf("seed Session: %v", err)
 	}
 	runStore := sqlite.NewRunStore(db)
 	if err := runStore.Admit(ctx, draft); err != nil {
 		t.Fatalf("Admit stored Run: %v", err)
-	}
-	finishedAt := createdAt.Add(time.Second)
-	lost, err := active.RecoverLost(run.Failure{
-		Kind: run.FailureLost, Detail: "run lost on restart",
-	}, finishedAt, 0)
-	if err != nil {
-		t.Fatalf("RecoverLost: %v", err)
 	}
 	childStarts := sqlite.NewChildRunStartReservationStore(db)
 	if reserveErr := childStarts.Reserve(ctx, sqlite.ChildRunStartReservationRecord{
@@ -292,7 +286,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	}
 	cleanupFailure := errors.New("child-start cleanup failed")
 	failingStore, err := New(Config{
-		Sessions: sqlite.NewSessionStore(db), Runs: sqlite.NewRunStore(db),
+		Sessions: sessionStore, Runs: runStore,
 		Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
 		Transcript: sqlite.NewTranscriptStore(db), Messages: sqlite.NewMessageStore(db),
 		ExecutorCheckpoints: checkpointStore,
@@ -308,33 +302,23 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New failing persistence: %v", err)
 	}
-	commit, err := runs.NewRecoveryCommit(
-		[]run.Replacement{testsupport.MustRunReplacement(active, lost)},
-		nil,
-		[]runs.RecoveryConversationTransition{{
-			RootRunID: active.ID(), SessionID: active.SessionID(), ExpectedCount: 0,
-		}},
-		nil,
-		nil,
-		nil,
-		[]runs.InterruptOwner{{
-			SessionID: active.SessionID(), RootRunID: active.ID(),
-		}},
-		nil,
-		[]string{"session_abandoned"},
-	)
+	failingRecovery, err := newTestRecovery(failingStore, alwaysResumable{})
 	if err != nil {
-		t.Fatalf("NewRecoveryCommit: %v", err)
+		t.Fatalf("New failing recovery: %v", err)
 	}
-	if commitRecoveryErr := failingStore.CommitRecovery(ctx, commit); !errors.Is(commitRecoveryErr, cleanupFailure) {
-		t.Fatalf("failed CommitRecovery = %v, want %v", commitRecoveryErr, cleanupFailure)
+	if _, err := failingRecovery.Reconcile(ctx); !errors.Is(err, cleanupFailure) {
+		t.Fatalf("failed Reconcile = %v, want %v", err, cleanupFailure)
+	}
+	stored, found, err := runStore.Run(ctx, draft.RunID)
+	if err != nil || !found || stored.State() != run.Running {
+		t.Fatalf("Run after failed recovery = %+v, found %t, error %v", stored, found, err)
 	}
 	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); loadCheckpointErr != nil {
 		t.Fatalf("cleanup failure did not roll back preceding checkpoint cleanup: %v", loadCheckpointErr)
 	}
 
 	store, err := New(Config{
-		Sessions: sqlite.NewSessionStore(db), Runs: sqlite.NewRunStore(db),
+		Sessions: sessionStore, Runs: runStore,
 		Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
 		Transcript: sqlite.NewTranscriptStore(db), Messages: sqlite.NewMessageStore(db),
 		ExecutorCheckpoints: checkpointStore,
@@ -348,8 +332,17 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New persistence: %v", err)
 	}
-	if err := store.CommitRecovery(ctx, commit); err != nil {
-		t.Fatalf("CommitRecovery: %v", err)
+	recovery, err := newTestRecovery(store, alwaysResumable{})
+	if err != nil {
+		t.Fatalf("New recovery: %v", err)
+	}
+	if count, err := recovery.Reconcile(ctx); err != nil || count != 1 {
+		t.Fatalf("Reconcile = %d, %v, want one recovered Run", count, err)
+	}
+	stored, found, err = runStore.Run(ctx, draft.RunID)
+	outcome, terminal := stored.Outcome()
+	if err != nil || !found || !terminal || outcome != run.OutcomeLost {
+		t.Fatalf("Run after recovery = %+v, found %t, error %v", stored, found, err)
 	}
 	var remaining int
 	if err := db.QueryRowContext(ctx,
