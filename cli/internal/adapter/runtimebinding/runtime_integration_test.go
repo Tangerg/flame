@@ -132,54 +132,41 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 		}
 	}
 
-	partitions, err := (changefeed.SubscriptionLimits{MaxTopics: 2, MaxWatches: 1}).Partition(changefeed.Subscription{
-		Topics: []protocol.RuntimeTopic{
-			protocol.TopicFilesChanged,
-			protocol.TopicKnowledgeChanged,
-			protocol.TopicHooksChanged,
-			protocol.TopicSkillsChanged,
-		},
+	subscription := changefeed.Subscription{
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged},
 		Watches: []changefeed.Watch{{ID: "authored-resources", Workspace: workspace}},
-	})
-	if err != nil {
-		t.Fatalf("partition authored resources: %v", err)
 	}
 	streamContext, cancelStream := context.WithCancel(t.Context())
+	defer cancelStream()
+	stream, err := runtime.Subscribe(streamContext, subscription)
+	if err != nil {
+		t.Fatalf("subscribe to authored resources: %v", err)
+	}
 	events := make(chan changefeed.Event, 8)
-	streamErrors := make(chan error, len(partitions))
-	var stopped []<-chan struct{}
+	streamErrors := make(chan error, 1)
+	stopped := make(chan struct{})
 	defer func() {
 		cancelStream()
-		for _, streamStopped := range stopped {
+		select {
+		case <-stopped:
+		case <-time.After(3 * time.Second):
+			t.Error("authored-resource subscription did not stop")
+		}
+	}()
+	go func() {
+		defer close(stopped)
+		for event, streamErr := range stream {
+			if streamErr != nil {
+				streamErrors <- streamErr
+				return
+			}
 			select {
-			case <-streamStopped:
-			case <-time.After(3 * time.Second):
-				t.Error("authored-resource subscription did not stop")
+			case events <- event:
+			case <-streamContext.Done():
+				return
 			}
 		}
 	}()
-	for _, partition := range partitions {
-		stream, err := runtime.Subscribe(streamContext, partition)
-		if err != nil {
-			t.Fatalf("subscribe to authored resources: %v", err)
-		}
-		streamStopped := make(chan struct{})
-		stopped = append(stopped, streamStopped)
-		go func() {
-			defer close(streamStopped)
-			for event, streamErr := range stream {
-				if streamErr != nil {
-					streamErrors <- streamErr
-					return
-				}
-				select {
-				case events <- event:
-				case <-streamContext.Done():
-					return
-				}
-			}
-		}()
-	}
 
 	knowledgePath := filepath.Join(workspace, "FLAME.md")
 	if writeFileErr := os.WriteFile(knowledgePath, []byte("# External knowledge\n"), 0o600); writeFileErr != nil {

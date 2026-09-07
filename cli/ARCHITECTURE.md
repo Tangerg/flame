@@ -71,6 +71,10 @@ Oolong owns terminal mode, input decoding, cell measurement, and low-level editi
 
 `/Users/tangerg/Desktop/grok-build` is the visual benchmark for information hierarchy, spacing, presentation density, stable streaming, and immediate interaction feedback. Flame keeps its own vocabulary, state ownership, and Oolong primitives. Compare deterministic renders at representative terminal dimensions so visual changes have reviewable evidence instead of subjective claims.
 
+The terminal uses one Runtime change subscription for its supported topics and
+active workspace watch. It registers before refreshing state and resynchronizes
+the observed scope after sequence gaps.
+
 Long-lived terminal features own their cancellation and settlement locally. The application root coordinates them but does not mirror every feature field or become a general service bag.
 
 Extension plugins install typed contributions into one registry. The registry releases an installation's contributions together on setup failure or unload; stale installation handles cannot remove a later reload. The terminal cancels plugin-owned commands before unloading their contributions, and the host preserves dependency order.

@@ -386,7 +386,7 @@ func TestRuntimeChangeMonitorDoesNotRegressAfterAStaleFrame(t *testing.T) {
 	topics := []protocol.RuntimeTopic{protocol.TopicSessionsChanged}
 	consume := func(sequence uint64) bool {
 		t.Helper()
-		applied, err := monitor.consumeChangeEvent(t.Context(), topics, false, tracker, changefeed.Event{
+		applied, err := monitor.consumeChangeEvent(t.Context(), topics, tracker, changefeed.Event{
 			Type: protocol.RuntimeSessionsChanged, Sequence: sequence,
 		})
 		if err != nil {

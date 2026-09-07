@@ -32,7 +32,7 @@ trust-boundary checks, resource ownership, and product capabilities remain.
 | R8 | The live registry writes CancelReason but has no production reader. The Run-tree cancellation arbiter owns the consumed reason. | Remove registry cancellation state and writes. Keep the arbiter as the sole cancellation-reason owner and retain observable cancellation coverage. | Complete |
 | C1 | CLI mirrors Runtime Run/Session rules, projections, and product error identities. | Consume Runtime protocol values and errors directly. Keep CLI-owned conversation folding, drafts, previews, selection, and rendering state. Remove synonymous models, validators, and error translations. | In progress: product errors complete; projections remain |
 | C2 | CLI mutation acknowledgements repeat Session revision/normalization/model rules and MCP/Provider update semantics. | Runtime owns mutation postconditions. CLI retains wire and target-identity checks, local form state, and credential protection. Remove duplicate business-rule validation and its dedicated tests. | Complete |
-| C3 | CLI partitions change subscriptions and coordinates several streams although production requests at most 14 topics and one watch against limits of 32 each. | One terminal subscription with normal gap recovery, cancellation, and resynchronization. Remove partitioning, fan-out, and cross-subscription file ownership. | Pending |
+| C3 | CLI partitions change subscriptions and coordinates several streams although production requests at most 14 topics and one watch against limits of 32 each. | One terminal subscription with normal gap recovery, cancellation, and resynchronization. Remove partitioning, fan-out, and cross-subscription file ownership. | Complete |
 | T1 | Small unused or test-only methods remain around the preceding mechanisms. | Delete only after checking direct, interface, generated, platform, and serialized consumers; migrate tests to surviving production contracts. | In progress: Runtime complete; CLI candidates remain |
 
 ### T1 consumer-checked candidates
@@ -317,6 +317,21 @@ a malformed Runtime result again.
 
 Verified focused Session, MCP, Provider, commands, and terminal behavior, then
 complete CLI tests, vet, build, and whitespace checks.
+
+### One terminal change subscription
+
+The terminal observes its supported topics and active workspace through one
+subscription. Removed the client limit mirror, partition algorithms, multi-stream
+group coordination, repeated workspace registrations, and file-projection owner
+flags. The adapter still enforces Runtime-advertised request limits. Startup
+registers the stream before authoritative reads, sequence gaps trigger one scope
+refresh, and disconnect/cancellation retain their original lifecycle.
+
+Verified the complete supported topic set and one workspace watch, initial and
+changed-file refresh, reconnect, permanent failures, cancellation, sequence gaps,
+and real Runtime external Knowledge/Hook/Skill edits through one subscription.
+Complete CLI tests, vet, build, focused monitor race tests, and whitespace checks
+passed.
 
 If deeper consumer evidence invalidates a proposed deletion, record the
 surviving requirement here instead of weakening it to satisfy a line-count target.

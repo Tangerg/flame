@@ -975,6 +975,5 @@ func steerReplayTestProfile(t *testing.T, workspace string) runtimebinding.Profi
 		discovery.Capabilities.Limits.MaxConcurrentRuns = new(1)
 		discovery.Capabilities.Limits.Idempotency.Namespace = terminalTestReplayNamespace
 		discovery.Capabilities.Limits.RunReplay.MaxEvents = 128
-		discovery.Capabilities.Limits.RuntimeSubscription = protocol.SubscriptionLimits{MaxTopics: 1, MaxWatches: 1}
 	})
 }
