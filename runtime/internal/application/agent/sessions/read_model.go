@@ -23,6 +23,18 @@ const (
 	ActivityIdle    Activity = "idle"
 )
 
+func resolveActivity(current Activity, state run.State) Activity {
+	switch state.Status() {
+	case run.StatusRunning:
+		return ActivityRunning
+	case run.StatusWaiting:
+		if current == ActivityIdle {
+			return ActivityWaiting
+		}
+	}
+	return current
+}
+
 // WorkspaceView is the live filesystem projection of a Session's exact
 // Workspace identity.
 type WorkspaceView struct {
@@ -77,19 +89,10 @@ func (c *Coordinator) Activities(ctx context.Context, sessionIDs []string) (map[
 		if _, ok := requested[sessionID]; !ok {
 			continue
 		}
-		switch activeRun.State().Status() {
-		case run.StatusRunning:
-			activities[sessionID] = ActivityRunning
-		case run.StatusWaiting:
-			if activities[sessionID] == ActivityIdle {
-				activities[sessionID] = ActivityWaiting
-			}
-		case run.StatusFinished:
-			return nil, fmt.Errorf(
-				"sessions: non-terminal Run read returned finished Run %q",
-				activeRun.ID(),
-			)
+		if activeRun.State().IsTerminal() {
+			return nil, fmt.Errorf("sessions: non-terminal Run read returned finished Run %q", activeRun.ID())
 		}
+		activities[sessionID] = resolveActivity(activities[sessionID], activeRun.State())
 	}
 	return activities, nil
 }

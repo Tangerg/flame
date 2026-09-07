@@ -3341,7 +3341,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     items: array(ref(() => CHECKS.Item)),
     plan: ref(() => CHECKS.Plan),
     runs: array(ref(() => CHECKS.RunRef)),
-  }, ["interrupts", "items", "runs"]),
+    session: ref(() => CHECKS.Session),
+  }, ["interrupts", "items", "runs", "session"]),
   SessionStatus: enumOf(["running", "waiting", "idle"]),
   SessionUsageRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),

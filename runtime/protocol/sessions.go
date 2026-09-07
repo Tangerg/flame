@@ -57,6 +57,7 @@ type GetSessionSnapshotRequest struct {
 // the Plan capability. Goal is absent when Goal mode is unavailable or this
 // Session has no standing objective.
 type SessionSnapshot struct {
+	Session    Session               `json:"session"`
 	Items      []Item                `json:"items"`
 	Runs       []RunRef              `json:"runs"`
 	Interrupts []PendingInterruptSet `json:"interrupts"`
