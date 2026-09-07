@@ -253,7 +253,7 @@ func TestAssemblyFailureRollbackContinuesAfterCloseTimeout(t *testing.T) {
 		return toolRuntime, buildErr
 	}
 	lifetime := newRuntimeLifetime(t.Context(), cfg.Resources)
-	lifetime.shutdownWait = testShutdownWait(t, time.Millisecond)
+	lifetime.shutdownWait = time.Millisecond
 
 	failedInstance, err := assemble(t.Context(), cfg, lifetime, buildTools)
 	if failedInstance != nil || !errors.Is(err, context.DeadlineExceeded) {

@@ -22,7 +22,7 @@ type runtimeLifetime struct {
 	closeMu      sync.Mutex
 	stopping     bool
 	closed       bool
-	shutdownWait shutdownWaitPolicy
+	shutdownWait time.Duration
 	shutdown     *shutdownAttempt
 
 	goalDriver     shutdownComponent
@@ -38,7 +38,7 @@ type runtimeLifetime struct {
 func newRuntimeLifetime(ctx context.Context, resources []TerminalResource) *runtimeLifetime {
 	return &runtimeLifetime{
 		context:       ctx,
-		shutdownWait:  defaultShutdownWaitPolicy(),
+		shutdownWait:  shutdownWaitTimeout,
 		hostResources: terminalResources(resources),
 	}
 }
@@ -60,7 +60,10 @@ type taskOwner interface {
 	Wait(ctx context.Context) error
 }
 
-const runEffectDrainTimeout = 5 * time.Second
+const (
+	shutdownWaitTimeout   = 10 * time.Second
+	runEffectDrainTimeout = 5 * time.Second
+)
 
 // Close shuts the complete Runtime down in reverse dependency order.
 // The first caller starts one shutdown attempt that stops
@@ -88,15 +91,11 @@ func closeRuntimeLifetime(lifetime *runtimeLifetime) error {
 	if lifetime.context != nil {
 		ownerCtx = context.WithoutCancel(lifetime.context)
 	}
-	timeout, err := shutdownWaitTimeout(lifetime.shutdownWait)
-	if err != nil {
-		return err
-	}
 	attempt, closed := beginShutdown(ownerCtx, lifetime)
 	if closed {
 		return nil
 	}
-	waitCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	waitCtx, cancel := context.WithTimeout(context.Background(), lifetime.shutdownWait)
 	defer cancel()
 	if err := completion.Wait(waitCtx, attempt.done); err != nil {
 		return err

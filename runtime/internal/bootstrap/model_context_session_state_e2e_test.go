@@ -185,7 +185,6 @@ func newSessionStateE2ERuntime(
 	)
 	cfg.UserHome = home
 	cfg.DefaultWorkspacePath = home
-	cfg.Maintenance = noMaintenance{}
 	host, api := buildProtocolRuntime(t, cfg, home)
 	t.Cleanup(func() {
 		if closeErr := host.Close(); closeErr != nil {
@@ -266,6 +265,10 @@ func (g *goalAndPlanLongContextModel) Call(
 	request *chat.Request,
 ) (*chat.Response, error) {
 	g.mu.Lock()
+	if isMemoryExtractionRequest(request) {
+		g.mu.Unlock()
+		return completedTextResponse("NO_FACTS"), nil
+	}
 	if isCompactionRequest(request) {
 		g.summaryCalls++
 		g.summaryAtMainCalls = append(g.summaryAtMainCalls, g.mainCalls)
@@ -369,6 +372,9 @@ func (p *planChangingLongContextModel) Call(
 ) (*chat.Response, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if isMemoryExtractionRequest(request) {
+		return completedTextResponse("NO_FACTS"), nil
+	}
 	if isCompactionRequest(request) {
 		p.summaryCalls++
 		return completedTextResponse("## Progress\nThe active Tool loop reached its context boundary."), nil

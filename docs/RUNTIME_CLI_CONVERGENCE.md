@@ -24,7 +24,7 @@ trust-boundary checks, resource ownership, and product capabilities remain.
 | --- | --- | --- | --- |
 | R1 | `sessions.MaterialSnapshot` includes Session in one storage read, but `protocol.SessionSnapshot` omits it. CLI combines separate reads with eight stability attempts. | Runtime returns the complete coherent mounted-session projection. Remove CLI metadata pairing, retry count, and equality machinery; update protocol artifacts and consumers. | Pending |
 | R2 | `SessionStores`, `WorkingContextComposer`, `InteractionExecutor`, and title finalization allow absent dependencies that the production composition always supplies. | Require complete collaborators at construction. Remove impossible missing-capability execution branches. Retain actual checkpoint, sandbox, and tool-result-offload policies. | Complete |
-| R3 | Fixed product policy is represented by optional tuning bags; test-only maintenance and restore-scope overrides create alternate production paths. Shutdown wraps a fixed timeout in repeated validation. | Give fixed policy one owner. Remove replacement paths with no product consumer. Keep narrow test controls only where they isolate an actual external boundary or deterministic lifetime. | In progress: restore-scope override and executor tuning bags removed |
+| R3 | Fixed product policy is represented by optional tuning bags; test-only maintenance and restore-scope overrides create alternate production paths. Shutdown wraps a fixed timeout in repeated validation. | Give fixed policy one owner. Remove replacement paths with no product consumer. Keep narrow test controls only where they isolate an actual external boundary or deterministic lifetime. | In progress: executor policy, restore override, maintenance replacement, and shutdown wrapper removed |
 | R4 | Executor composition repeats BuildID as ImplementationIdentity and adds a hand-maintained configuration identity beside serialized configuration. | Derive deployment identity from the real executable and configuration facts. Remove synonymous identity inputs and wrappers without weakening Scope deployment compatibility. | Complete |
 | R5 | Recovery and waiting-subtree cancellation validate constructed immutable write sets again in persistence. Some validators replay planner transitions. | One owner constructs each complete decision. Persistence checks transactional expectations, not a second recovery policy. Remove redundant construction surfaces and repeated proof machinery. | Pending |
 | R6 | Session restore, fork, and rollback repeatedly normalize, copy, and validate complete snapshots through write-plan construction and application. | Decode and validate external input at its boundary; acquire mutable ownership once per retained owner. Apply an established immutable write plan without another full reconstruction. | Pending |
@@ -156,6 +156,21 @@ mode remains an external dispatcher boundary needed to verify both complete
 and streaming model effects; offload retains its actual product configuration.
 Verified focused execution and bootstrap checks, then Runtime tests, vet, build,
 and whitespace checks.
+
+### One maintenance pipeline and bounded shutdown wait
+
+Bootstrap always builds the real post-Run maintenance pipeline. Its memory
+consolidator is required; Skill workers remain conditional on the user Skill
+library. Removed the whole-pipeline override. Long-context test models now
+answer memory extraction separately from compaction instead of suppressing
+maintenance or counting every Tool-free request as a summary.
+
+Removed the shutdown timeout wrapper, constructors, getter validation, and
+wrapper-specific tests. The lifecycle initializes its private caller-wait
+duration directly. Narrow tests still shorten this duration to prove that a
+caller timeout cannot abandon the owned cleanup graph or start another closer.
+Verified maintenance, Goal/Plan compaction, protocol lifecycle, startup rollback,
+and shutdown tests, then Runtime tests, vet, build, and whitespace checks.
 
 If deeper consumer evidence invalidates a proposed deletion, record the
 surviving requirement here instead of weakening it to satisfy a line-count target.

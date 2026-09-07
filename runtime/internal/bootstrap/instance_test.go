@@ -128,7 +128,7 @@ func TestInstanceCloseIsIdempotent(t *testing.T) {
 	done := make(chan struct{})
 	close(done)
 	instance := &Instance{lifetime: &runtimeLifetime{
-		shutdownWait:  defaultShutdownWaitPolicy(),
+		shutdownWait:  shutdownWaitTimeout,
 		stopRuntime:   func() {},
 		schedulerDone: done,
 	}}
@@ -144,7 +144,7 @@ func TestInstanceCloseRetainsResourcesUntilComponentsJoin(t *testing.T) {
 	releaseComponent := make(chan struct{})
 	resourceClosed := make(chan struct{})
 	host := &Instance{lifetime: &runtimeLifetime{
-		shutdownWait: testShutdownWait(t, time.Millisecond),
+		shutdownWait: time.Millisecond,
 		runCoordinator: shutdownFunc{wait: func(ctx context.Context) error {
 			select {
 			case <-releaseComponent:
@@ -203,7 +203,7 @@ func TestInstanceCloseJoinsAcceptedOperationsBeforeClosingResources(t *testing.T
 	close(schedulerDone)
 	resourceClosed := make(chan struct{})
 	instance := &Instance{lifetime: &runtimeLifetime{
-		shutdownWait: defaultShutdownWaitPolicy(),
+		shutdownWait: shutdownWaitTimeout,
 		delivery:     endpoint,
 		hostResources: terminalClosers([]func() error{func() error {
 			close(resourceClosed)
@@ -287,7 +287,7 @@ func TestInstanceCloseContinuesGraphAfterCallerTimeout(t *testing.T) {
 	close(workersDone)
 	resourceClosed := make(chan struct{})
 	instance := &Instance{lifetime: &runtimeLifetime{
-		shutdownWait: testShutdownWait(t, time.Millisecond),
+		shutdownWait: time.Millisecond,
 		delivery:     endpoint,
 		hostResources: terminalClosers([]func() error{func() error {
 			close(resourceClosed)

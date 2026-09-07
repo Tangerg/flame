@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -390,15 +389,6 @@ func (l *lifecycleModel) Stream(ctx context.Context, request *chat.Request) iter
 	return testsupport.StreamResponse(l.Call(ctx, request))
 }
 
-type noMaintenance struct{}
-
-func (noMaintenance) Maintain(
-	context.Context,
-	agentexec.RunMaintenanceInput,
-) agentexec.RunMaintenanceResult {
-	return agentexec.RunMaintenanceResult{}
-}
-
 func openProtocolRuntime(t *testing.T, model chat.Model) (*Instance, *delivery.Handler) {
 	t.Helper()
 	dataDirectory := os.Getenv("FLAME_HOME")
@@ -429,7 +419,6 @@ func protocolRuntimeConfig(t *testing.T, stores *persistence.Bundle, model chat.
 	)
 	cfg.UserHome = stores.DataDirectory
 	cfg.DefaultWorkspacePath = stores.DataDirectory
-	cfg.Maintenance = noMaintenance{}
 	return cfg
 }
 

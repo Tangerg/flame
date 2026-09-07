@@ -45,7 +45,6 @@ func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T)
 	)
 	cfg.UserHome = home
 	cfg.DefaultWorkspacePath = home
-	cfg.Maintenance = noMaintenance{}
 	host, api := buildProtocolRuntime(t, cfg, home)
 	defer func() {
 		if closeErr := host.Close(); closeErr != nil {
@@ -141,6 +140,9 @@ type longContextModel struct {
 func (l *longContextModel) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if isMemoryExtractionRequest(request) {
+		return completedTextResponse("NO_FACTS"), nil
+	}
 	if isCompactionRequest(request) {
 		l.summaryCalls++
 		l.summaryAtMainCalls = append(l.summaryAtMainCalls, l.mainCalls)
@@ -195,7 +197,8 @@ func (l *longContextModel) Snapshot() (
 }
 
 func isCompactionRequest(request *chat.Request) bool {
-	return request != nil && len(request.Messages) > 0 && len(request.Tools) == 0
+	return request != nil && len(request.Messages) > 0 &&
+		strings.HasPrefix(request.Messages[0].Text(), "You are compacting the earlier portion")
 }
 
 func hasToolDefinition(definitions []chat.ToolDefinition, name string) bool {
@@ -221,4 +224,8 @@ func compactionSummaryFromEvents(events []protocol.RunEvent) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+func isMemoryExtractionRequest(request *chat.Request) bool {
+	return request != nil && len(request.Messages) > 0 && strings.HasPrefix(request.Messages[0].Text(), "You are mining a coding-agent conversation")
 }
