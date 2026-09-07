@@ -109,7 +109,7 @@ func newWaitingSubtreeCancellationCommit(
 		resume := cloneOpeningResume(*state.Resume)
 		state.Resume = &resume
 	}
-	state.OpeningEvents = cloneEventCommits(state.OpeningEvents)
+	state.OpeningEvents = slices.Clone(state.OpeningEvents)
 	commit := WaitingSubtreeCancellationCommit{state: state}
 	if err := validateWaitingCancellation(state); err != nil {
 		return WaitingSubtreeCancellationCommit{}, err
@@ -182,7 +182,7 @@ func (w WaitingSubtreeCancellationCommit) Resume() (rundomain.TreeResumeDraft, b
 
 // OpeningEvents returns isolated projections committed with a resumed disposition.
 func (w WaitingSubtreeCancellationCommit) OpeningEvents() []EventCommit {
-	return cloneEventCommits(w.state.OpeningEvents)
+	return slices.Clone(w.state.OpeningEvents)
 }
 
 type WaitingSubtreeCancellationResult struct {
@@ -614,20 +614,20 @@ func (w waitingCancellationValidation) validateOpeningEvents() error {
 		surviving[runID] = struct{}{}
 	}
 	for index, event := range c.OpeningEvents {
-		if !event.CommitID.IsZero() {
+		if !event.CommitID().IsZero() {
 			return fmt.Errorf("runs: waiting cancellation opening event[%d] carries a top-level event commit identity", index)
 		}
-		if err := event.Validate(); err != nil {
-			return fmt.Errorf("runs: waiting cancellation opening event[%d]: %w", index, err)
+		if event.IsZero() {
+			return fmt.Errorf("runs: waiting cancellation opening event[%d] is required", index)
 		}
 		if err := validateOpeningProjection(event); err != nil {
 			return fmt.Errorf("runs: waiting cancellation opening event[%d]: %w", index, err)
 		}
-		if event.SessionID != c.SessionID || len(event.Items) == 0 || len(event.ConversationMessages) != 0 {
+		if event.SessionID() != c.SessionID || len(event.Items()) == 0 || len(event.ConversationMessages()) != 0 {
 			return fmt.Errorf("runs: waiting cancellation opening event[%d] is not item-only", index)
 		}
-		if _, exists := surviving[event.RunID]; !exists {
-			return fmt.Errorf("runs: waiting cancellation opening event[%d] names removed Run %q", index, event.RunID)
+		if _, exists := surviving[event.RunID()]; !exists {
+			return fmt.Errorf("runs: waiting cancellation opening event[%d] names removed Run %q", index, event.RunID())
 		}
 	}
 	return nil

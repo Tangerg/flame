@@ -36,19 +36,35 @@ func (t treePublisher) publish(
 	if err := t.validateIncrementalPublication(route, batch); err != nil {
 		return reductionPublication{}, err
 	}
-	goalCharged := false
-	for _, reduced := range batch.events {
-		charged, err := t.commitIncrementalReduction(ctx, route, reduced)
-		if err != nil {
-			return reductionPublication{}, err
+	commits := make([]EventCommit, len(batch.events))
+	for index, reduced := range batch.events {
+		if reduced.Commit == nil {
+			continue
 		}
-		goalCharged = goalCharged || charged
+		config := *reduced.Commit
+		if config.CommitID.IsZero() {
+			config.CommitID = newRunCommitID()
+		}
+		commit, err := NewEventCommit(config)
+		if err != nil {
+			return reductionPublication{}, fmt.Errorf("runs: assemble %T: %w", reduced.Event, err)
+		}
+		commits[index] = commit
+	}
+	for index, reduced := range batch.events {
+		commit := commits[index]
+		if !commit.IsZero() {
+			// Durable facts must precede both live delivery and replay visibility.
+			if err := t.publications.commitEvent(ctx, commit); err != nil {
+				return reductionPublication{}, fmt.Errorf("runs: commit %T: %w", reduced.Event, err)
+			}
+			for _, item := range commit.Items() {
+				t.owner.recordChildCancellationItem(route.runID, item)
+			}
+		}
 		if err := t.append(route, reduced); err != nil {
 			return reductionPublication{}, err
 		}
-	}
-	if goalCharged {
-		t.publications.publishGoalMoved(t.rootSpec.SessionID)
 	}
 	return reductionPublication{published: true}, nil
 }
@@ -83,39 +99,6 @@ func (t treePublisher) validateIncrementalPublication(
 	return nil
 }
 
-func (t treePublisher) commitIncrementalReduction(
-	ctx context.Context,
-	route *executorRoute,
-	reduced reduction,
-) (bool, error) {
-	if reduced.Commit == nil {
-		return false, nil
-	}
-	// Every durable projection lands before its event is delivered or retained
-	// for replay. A failed commit aborts execution instead of publishing an
-	// event the stores do not yet support.
-	commit := *reduced.Commit
-	if commit.CommitID.IsZero() {
-		commit.CommitID = newRunCommitID()
-	}
-	if commit.State == StateTerminalize && route.member.ParentID == "" {
-		commit.ObsoleteCheckpointRootID = route.member.MemberID
-	}
-	if err := t.publications.commitEvent(ctx, commit); err != nil {
-		return false, fmt.Errorf("runs: commit %T: %w", reduced.Event, err)
-	}
-	if commit.State == StateTerminalize {
-		if commit.Run == nil {
-			return false, errors.New("runs: terminal commit has no run snapshot")
-		}
-		t.owner.recordTerminalRun(*commit.Run)
-	}
-	for _, item := range commit.Items {
-		t.owner.recordChildCancellationItem(route.runID, item)
-	}
-	return commit.GoalRun != nil, nil
-}
-
 // publishAuthoritativeAtomically commits every durable projection derived from
 // one model/tool fact in a single transaction before publishing any live event.
 // The caller reduces against a speculative reducer and swaps that state in only
@@ -138,7 +121,7 @@ func (t treePublisher) publishAuthoritativeAtomically(
 	if batch.parkCommit != nil {
 		return reductionPublication{}, errors.New("runs: authoritative fact unexpectedly produced a park boundary")
 	}
-	combined := EventCommit{
+	combined := EventCommitConfig{
 		RunID: route.runID, SessionID: t.rootSpec.SessionID, SegmentID: route.segmentID,
 		CommitID: newRunCommitID(),
 	}
@@ -152,7 +135,7 @@ func (t treePublisher) publishAuthoritativeAtomically(
 		if reduced.Commit == nil {
 			continue
 		}
-		if reduced.Commit.State != StateUnchanged || reduced.Commit.Run != nil || reduced.Commit.GoalRun != nil {
+		if reduced.Commit.Run != nil {
 			return reductionPublication{}, fmt.Errorf(
 				"runs: authoritative fact event[%d] carries a lifecycle transition",
 				index,
@@ -180,10 +163,11 @@ func (t treePublisher) publishAuthoritativeAtomically(
 		}
 	}
 	if !combined.isEmpty() {
-		if err := combined.Validate(); err != nil {
+		commit, err := NewEventCommit(combined)
+		if err != nil {
 			return reductionPublication{}, fmt.Errorf("runs: validate authoritative fact: %w", err)
 		}
-		if err := t.publications.commitEvent(ctx, combined); err != nil {
+		if err := t.publications.commitEvent(ctx, commit); err != nil {
 			return reductionPublication{}, fmt.Errorf("runs: commit authoritative fact: %w", err)
 		}
 		for _, item := range combined.Items {
@@ -220,13 +204,14 @@ func (t treePublisher) publishTerminalAtomically(
 	if err != nil {
 		return reductionPublication{}, err
 	}
-	if route.member.ParentID == "" {
+	if combined.Run.Lineage().IsRoot() {
 		combined.ObsoleteCheckpointRootID = route.member.MemberID
 	}
-	if err := combined.Validate(); err != nil {
+	commit, err := NewEventCommit(combined)
+	if err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: validate atomic terminal: %w", err)
 	}
-	if err := t.publications.commitEvent(ctx, combined); err != nil {
+	if err := t.publications.commitEvent(ctx, commit); err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: commit atomic terminal: %w", err)
 	}
 	// The database owns one indivisible write-set, while the live tree still
@@ -242,7 +227,7 @@ func (t treePublisher) publishTerminalAtomically(
 		}
 	}
 	t.publications.publishRunMoved(t.rootSpec.SessionID, route.runID)
-	if combined.GoalRun != nil {
+	if commit.GoalRun() != nil {
 		t.publications.publishGoalMoved(t.rootSpec.SessionID)
 	}
 	return reductionPublication{published: true, finished: true}, nil
@@ -253,8 +238,8 @@ func (t treePublisher) publishTerminalAtomically(
 // terminal Run event, but they are not independent persistence boundaries:
 // terminal state, invocation journals, transcript Items, and accounting either
 // all commit or all roll back.
-func combineTerminalEventCommit(batch reductionBatch) (EventCommit, error) {
-	combined := EventCommit{}
+func combineTerminalEventCommit(batch reductionBatch) (EventCommitConfig, error) {
+	combined := EventCommitConfig{}
 	envelopeSet := false
 	terminalCommits := 0
 	for index, reduced := range batch.events {
@@ -269,7 +254,7 @@ func combineTerminalEventCommit(batch reductionBatch) (EventCommit, error) {
 			envelopeSet = true
 		} else if commit.RunID != combined.RunID || commit.SessionID != combined.SessionID ||
 			commit.SegmentID != combined.SegmentID {
-			return EventCommit{}, fmt.Errorf(
+			return EventCommitConfig{}, fmt.Errorf(
 				"runs: atomic terminal event[%d] changes commit ownership",
 				index,
 			)
@@ -283,22 +268,19 @@ func combineTerminalEventCommit(batch reductionBatch) (EventCommit, error) {
 		combined.ToolInvocations = append(combined.ToolInvocations, commit.ToolInvocations...)
 		if commit.Progress != nil {
 			if combined.Progress != nil {
-				return EventCommit{}, errors.New("runs: atomic terminal batch repeats Run progress")
+				return EventCommitConfig{}, errors.New("runs: atomic terminal batch repeats Run progress")
 			}
 			progress := *commit.Progress
 			combined.Progress = &progress
 		}
-		if commit.State == StateTerminalize {
+		if commit.terminates() {
 			terminalCommits++
 			combined.CommitID = commit.CommitID
-			combined.State = commit.State
-			combined.Outcome = commit.Outcome
 			combined.Run = commit.Run
-			combined.GoalRun = commit.GoalRun
 		}
 	}
 	if terminalCommits != 1 || combined.Run == nil {
-		return EventCommit{}, fmt.Errorf(
+		return EventCommitConfig{}, fmt.Errorf(
 			"runs: atomic terminal batch has %d terminal commits",
 			terminalCommits,
 		)
@@ -410,7 +392,11 @@ func (t treePublisher) reduceTreeBarrier(
 		projection.pending.Bindings = append(projection.pending.Bindings, bindings...)
 		projection.pending.Continuations = append(projection.pending.Continuations, continuation)
 		projection.reductions = append(projection.reductions, reduction)
-		projection.commits = append(projection.commits, *reduction.batch.parkCommit)
+		commit, err := NewEventCommit(*reduction.batch.parkCommit)
+		if err != nil {
+			return treeBarrierProjection{}, err
+		}
+		projection.commits = append(projection.commits, commit)
 	}
 	if err := projection.pending.Validate(); err != nil {
 		return treeBarrierProjection{}, fmt.Errorf("runs: build pending interrupt set: %w", err)

@@ -150,18 +150,17 @@ func TestCommitEventPersistsTranscriptAndTerminalizes(t *testing.T) {
 	tx := &fakeTx{}
 	effects := testEffects(stores, Config{State: runState, Tx: tx.run})
 
-	err := effects.CommitEvent(t.Context(), runs.EventCommit{
+	err := effects.CommitEvent(t.Context(), mustEventCommit(t, runs.EventCommitConfig{
 		RunID:     "run_1",
 		SessionID: "ses_1",
 		SegmentID: "segment_1",
 		CommitID:  testCommitID("run_commit_event_1"),
-		State:     runs.StateTerminalize,
-		Outcome:   run.OutcomeCompleted,
+
 		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", RunID: "run_1", ID: "item_1", OccurredAt: time.Unix(1, 0).UTC(),
 		})},
 		Run: finishedRunRecord("run_1", "ses_1", run.OutcomeCompleted),
-	})
+	}))
 	if err != nil {
 		t.Fatalf("CommitEvent: %v", err)
 	}
@@ -194,7 +193,7 @@ func TestCommitEventBindsOffloadedResultWithTranscriptItem(t *testing.T) {
 	ref := &toolresult.Ref{ID: "BLOB234"}
 	preview := tool.StringResult("preview")
 
-	err := effects.CommitEvent(t.Context(), runs.EventCommit{
+	err := effects.CommitEvent(t.Context(), mustEventCommit(t, runs.EventCommitConfig{
 		RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", CommitID: testCommitID("run_commit_event_1"),
 		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", RunID: "run_1", ID: "item_1",
@@ -202,7 +201,7 @@ func TestCommitEventBindsOffloadedResultWithTranscriptItem(t *testing.T) {
 			OccurredAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
 			Tool: &transcript.ToolInvocation{Name: "shell", Result: &preview, Offload: ref},
 		})},
-	})
+	}))
 	if err != nil {
 		t.Fatalf("CommitEvent: %v", err)
 	}
@@ -228,7 +227,7 @@ func TestCommitEventDiscardsStagedOffloadAfterCommitFailure(t *testing.T) {
 	ref := &toolresult.Ref{ID: "BLOB234"}
 	preview := tool.StringResult("preview")
 
-	err := effects.CommitEvent(t.Context(), runs.EventCommit{
+	err := effects.CommitEvent(t.Context(), mustEventCommit(t, runs.EventCommitConfig{
 		RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", CommitID: testCommitID("run_commit_event_1"),
 		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", RunID: "run_1", ID: "item_1",
@@ -236,7 +235,7 @@ func TestCommitEventDiscardsStagedOffloadAfterCommitFailure(t *testing.T) {
 			OccurredAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
 			Tool: &transcript.ToolInvocation{Name: "shell", Result: &preview, Offload: ref},
 		})},
-	})
+	}))
 	if !errors.Is(err, want) {
 		t.Fatalf("CommitEvent error = %v, want %v", err, want)
 	}
@@ -251,15 +250,14 @@ func TestCommitEventRejectsUnresolvedTerminalMessageWatermark(t *testing.T) {
 	runState := &fakeRunState{}
 	effects := testEffects(stores, Config{State: runState, Tx: new(fakeTx).run})
 
-	err := effects.CommitEvent(t.Context(), runs.EventCommit{
+	err := effects.CommitEvent(t.Context(), mustEventCommit(t, runs.EventCommitConfig{
 		RunID:     "run_1",
 		SessionID: "ses_1",
 		SegmentID: "segment_1",
 		CommitID:  testCommitID("run_commit_event_1"),
-		State:     runs.StateTerminalize,
-		Outcome:   run.OutcomeCompleted,
-		Run:       finishedRunRecord("run_1", "ses_1", run.OutcomeCompleted),
-	})
+
+		Run: finishedRunRecord("run_1", "ses_1", run.OutcomeCompleted),
+	}))
 	if !errors.Is(err, want) {
 		t.Fatalf("CommitEvent error = %v, want %v", err, want)
 	}
@@ -268,17 +266,10 @@ func TestCommitEventRejectsUnresolvedTerminalMessageWatermark(t *testing.T) {
 	}
 }
 
-func TestCommitEventRejectsUnknownStateChange(t *testing.T) {
-	effects := testEffects(&fakeStores{transcript: &fakeTranscript{}}, Config{
-		State: &fakeRunState{},
-		Tx:    new(fakeTx).run,
-	})
-	err := effects.CommitEvent(t.Context(), runs.EventCommit{
-		RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", CommitID: testCommitID("run_commit_event_1"), State: runs.StateChange("invalid"),
-		Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1"})),
-	})
-	if err == nil {
-		t.Fatal("CommitEvent accepted an unknown run state change")
+func TestCommitEventRejectsZeroCommit(t *testing.T) {
+	effects := testEffects(&fakeStores{transcript: &fakeTranscript{}}, Config{State: &fakeRunState{}, Tx: new(fakeTx).run})
+	if err := effects.CommitEvent(t.Context(), runs.EventCommit{}); err == nil {
+		t.Fatal("accepted zero event commit")
 	}
 }
 
@@ -294,14 +285,14 @@ func TestCommitOpeningAdmitsAndProjectsInOneTransaction(t *testing.T) {
 
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_opening"), draft,
-		nil, nil, "", nil, []runs.EventCommit{{
+		nil, nil, "", nil, []runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
 			RunID:     "run_1",
 			SessionID: "ses_1",
 			SegmentID: "seg_open",
 			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 				SessionID: "ses_1", RunID: "run_1", ID: "item_1", OccurredAt: time.Unix(1, 0).UTC(),
 			})},
-		}},
+		})},
 	)
 	err := effects.CommitOpening(context.Background(), opening)
 	if err != nil {
@@ -403,14 +394,14 @@ func TestCommitOpeningResumesAfterSeparateAnswerClaim(t *testing.T) {
 	}
 
 	opening := mustResumeOpening(
-		t, testCommitID("run_commit_resume"), resume, []runs.EventCommit{{
+		t, testCommitID("run_commit_resume"), resume, []runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
 			RunID:     "run_1",
 			SessionID: "ses_1",
 			SegmentID: "seg_next",
 			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 				SessionID: "ses_1", RunID: "run_1", ID: "item_1", OccurredAt: now,
 			})},
-		}},
+		})},
 	)
 	err := effects.CommitOpening(context.Background(), opening)
 	if err != nil {
@@ -445,11 +436,11 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 		t,
 		testCommitID("run_commit_barrier"),
 		pending,
-		[]runs.EventCommit{{
+		[]runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
 			RunID:     "run_1",
 			SessionID: "ses_1",
 			SegmentID: "segment_1",
-			State:     runs.StateSuspend,
+
 			Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
 				ModelSelection: pending.Continuations[0].ModelSelection,
 
@@ -464,7 +455,7 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 				Kind:       transcript.QuestionItem,
 				OccurredAt: barrierCreatedAt, Question: pending.Interrupts[0].Question,
 			})},
-		}},
+		})},
 		testRootExecutorCheckpoint(),
 	)
 	err := effects.CommitTreeBarrier(context.Background(), barrier)
@@ -500,12 +491,12 @@ func TestCommitTreeBarrierRejectsIncompleteContinuation(t *testing.T) {
 	_, err := runs.NewTreeBarrierCommit(
 		testCommitID("run_commit_barrier_invalid"),
 		pending,
-		[]runs.EventCommit{{
-			RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", State: runs.StateSuspend,
+		[]runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
+			RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1",
 			Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
 				CreatedAt:   createdAt,
 				MessageMark: run.UnknownMessageMark})),
-		}},
+		})},
 		testRootExecutorCheckpoint(),
 	)
 	if err == nil || !strings.Contains(err.Error(), "executor member identity") {
@@ -547,12 +538,12 @@ func TestCommitTreeBarrierRejectsMismatchedCheckpointBindingBeforeTransaction(t 
 			_, err := runs.NewTreeBarrierCommit(
 				testCommitID(runtimeidentity.CommitPrefix+"barrier_binding_"+mutation.identity),
 				pending,
-				[]runs.EventCommit{{
-					RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", State: runs.StateSuspend,
+				[]runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
+					RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1",
 					Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
 						CreatedAt:   createdAt,
 						MessageMark: run.UnknownMessageMark})),
-				}},
+				})},
 				checkpoint,
 			)
 			if !errors.Is(err, run.ErrInvalidCheckpoint) {
@@ -644,10 +635,10 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 			_, err := runs.NewTreeBarrierCommit(
 				testCommitID(runtimeidentity.CommitPrefix+"barrier_fact_"+test.identity),
 				pending,
-				[]runs.EventCommit{{
+				[]runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
 					RunID: run.ID(), SessionID: run.SessionID(), SegmentID: "segment_1",
-					State: runs.StateSuspend, Run: &run,
-				}},
+					Run: &run,
+				})},
 				checkpoint,
 			)
 			if err == nil {
@@ -1232,4 +1223,13 @@ type inlineTaskLauncher struct{}
 func (inlineTaskLauncher) Start(ctx context.Context, task func(context.Context)) bool {
 	task(ctx)
 	return true
+}
+
+func mustEventCommit(t *testing.T, config runs.EventCommitConfig) runs.EventCommit {
+	t.Helper()
+	commit, err := runs.NewEventCommit(config)
+	if err != nil {
+		t.Fatalf("NewEventCommit: %v", err)
+	}
+	return commit
 }

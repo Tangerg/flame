@@ -855,7 +855,7 @@ func TestStartKeepsGoalControlInputModelOnly(t *testing.T) {
 		t.Fatalf("Goal working context = %#v, want exact model-only instruction", workingContext)
 	}
 	for _, event := range effects.opening().Events() {
-		for _, item := range event.Items {
+		for _, item := range event.Items() {
 			if item.Kind() == transcript.UserMessage {
 				t.Fatalf("Goal control input escaped into transcript Item %q", item.ID())
 			}
@@ -1340,7 +1340,7 @@ func TestResumeWithInputCommitsTheUserItemWithTheContinuation(t *testing.T) {
 	committed := false
 	events := opening.Events()
 	for _, event := range events {
-		for _, item := range event.Items {
+		for _, item := range event.Items() {
 			if item.ID() == withInput.UserItemID && item.Kind() == transcript.UserMessage {
 				committed = true
 			}
@@ -2025,10 +2025,10 @@ func requireChildCancellationProjection(
 	t.Helper()
 	childTerminalCommits, parentCancellationItems := 0, 0
 	for _, commit := range commits {
-		if commit.State == StateTerminalize && commit.RunID == child.ID() {
+		if commit.Terminates() && commit.RunID() == child.ID() {
 			childTerminalCommits++
 		}
-		for _, item := range commit.Items {
+		for _, item := range commit.Items() {
 			failure, failed := item.Failure()
 			if item.ID() == child.Lineage().SpawnedByItemID && item.Status() == transcript.ItemIncomplete &&
 				failed && failure.Kind == tool.FailureChildRunCanceled && failure.Detail == reason {

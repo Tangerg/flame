@@ -234,11 +234,11 @@ func TestPersistRunCarriesCreatedAt(t *testing.T) {
 	terminal := testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: sess.ID(), State: run.Completed, Outcome: &outcome,
 		CreatedAt: started, FinishedAt: started.Add(time.Minute),
 		UpdatedAt: started.Add(time.Minute), MessageMark: run.UnknownMessageMark})
-	commit := appRuns.EventCommit{
-		RunID: "run_1", SessionID: sess.ID(), SegmentID: "seg_open", State: appRuns.StateTerminalize, Outcome: outcome,
+	commit := mustEventCommit(t, appRuns.EventCommitConfig{
+		RunID: "run_1", SessionID: sess.ID(), SegmentID: "seg_open",
 		CommitID: testCommitID("run_commit_event_rollback"),
 		Run:      &terminal,
-	}
+	})
 	if err := rt.RunSegmentEffects().CommitEvent(ctx, commit); err != nil {
 		t.Fatalf("commit terminal run: %v", err)
 	}
@@ -297,4 +297,13 @@ func TestForkSession_FromRun(t *testing.T) {
 	if n := len(rt.history[child.ID]); n != 2 {
 		t.Fatalf("child history = %d, want 2 (run_1 watermark, inclusive)", n)
 	}
+}
+
+func mustEventCommit(t *testing.T, config appRuns.EventCommitConfig) appRuns.EventCommit {
+	t.Helper()
+	commit, err := appRuns.NewEventCommit(config)
+	if err != nil {
+		t.Fatalf("NewEventCommit: %v", err)
+	}
+	return commit
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -16,7 +15,7 @@ import (
 // Event on the journal.
 type reduction struct {
 	Event  ProjectionEvent
-	Commit *EventCommit
+	Commit *EventCommitConfig
 	Nudge  *Nudge
 }
 
@@ -27,7 +26,7 @@ type reduction struct {
 // or a privileged first element in the event slice.
 type reductionBatch struct {
 	events             []reduction
-	parkCommit         *EventCommit
+	parkCommit         *EventCommitConfig
 	settledToolCallIDs []string
 }
 
@@ -44,13 +43,13 @@ type factReduction struct {
 	progress             *ProgressCommit
 }
 
-func (r *reducer) newEventCommit() *EventCommit {
-	return &EventCommit{
+func (r *reducer) newEventCommit() *EventCommitConfig {
+	return &EventCommitConfig{
 		RunID: r.cfg.RunID, SessionID: r.cfg.SessionID, SegmentID: r.cfg.SegmentID,
 	}
 }
 
-func (r *reducer) ensureLastEventCommit(batch *reductionBatch) *EventCommit {
+func (r *reducer) ensureLastEventCommit(batch *reductionBatch) *EventCommitConfig {
 	last := &batch.events[len(batch.events)-1]
 	if last.Commit == nil {
 		last.Commit = r.newEventCommit()
@@ -69,9 +68,6 @@ func (r *reducer) projectFact(reduced factReduction) (reductionBatch, error) {
 			return reductionBatch{}, fmt.Errorf("%w: parked Items have no park boundary", errReducerInvariant)
 		}
 		batch.parkCommit.Items = append(batch.parkCommit.Items, reduced.parkItems...)
-		if err := validateReductionBatch(batch); err != nil {
-			return reductionBatch{}, err
-		}
 	}
 	if err := r.attachDurableItems(&batch, reduced.items); err != nil {
 		return reductionBatch{}, err
@@ -101,7 +97,7 @@ func (r *reducer) attachDurableObservation(
 	if batch == nil || len(batch.events) == 0 {
 		return fmt.Errorf("%w: durable observation has no ordinary reduction", errReducerInvariant)
 	}
-	var commit *EventCommit
+	var commit *EventCommitConfig
 	if batch.parkCommit != nil {
 		commit = batch.parkCommit
 	} else {
@@ -114,7 +110,7 @@ func (r *reducer) attachDurableObservation(
 		cloned := *progress
 		commit.Progress = &cloned
 	}
-	return validateReductionBatch(*batch)
+	return nil
 }
 
 func (r *reducer) attachDurableItems(batch *reductionBatch, items []transcript.Item) error {
@@ -126,7 +122,7 @@ func (r *reducer) attachDurableItems(batch *reductionBatch, items []transcript.I
 	}
 	commit := r.ensureLastEventCommit(batch)
 	commit.Items = append(commit.Items, items...)
-	return validateReductionBatch(*batch)
+	return nil
 }
 
 func (r *reducer) attachConversationMessages(batch *reductionBatch, messages []corechat.Message) error {
@@ -138,7 +134,7 @@ func (r *reducer) attachConversationMessages(batch *reductionBatch, messages []c
 	}
 	commit := r.ensureLastEventCommit(batch)
 	commit.ConversationMessages = appendClonedMessages(commit.ConversationMessages, messages...)
-	return validateReductionBatch(*batch)
+	return nil
 }
 
 func (r *reducer) project(events []ProjectionEvent) (reductionBatch, error) {
@@ -178,7 +174,7 @@ func parkBoundaryIndex(reductions []reduction) (int, error) {
 	parkBoundary := -1
 	for index := range reductions {
 		commit := reductions[index].Commit
-		if commit == nil || commit.State != StateSuspend {
+		if commit == nil || !commit.suspends() {
 			continue
 		}
 		if parkBoundary >= 0 {
@@ -196,7 +192,7 @@ func parkReductionBatch(reductions []reduction, parkBoundary int) (reductionBatc
 	}
 	for index, reduced := range reductions {
 		if index != parkBoundary && reduced.Commit != nil {
-			if reduced.Commit.Run != nil || reduced.Commit.State != StateUnchanged {
+			if reduced.Commit.Run != nil {
 				return reductionBatch{}, fmt.Errorf("%w: park batch contains another lifecycle transition", errReducerInvariant)
 			}
 		}
@@ -255,19 +251,8 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 		}
 	case SegmentFinished:
 		commit.Run = &e.Run
-		if e.Run.State() == run.Waiting {
-			commit.State = StateSuspend
-			return reduction{Event: event, Commit: commit}, nil
-		}
-		commit.State = StateTerminalize
-		commit.CommitID = newRunCommitID()
-		if outcome, terminal := e.Run.Outcome(); terminal {
-			commit.Outcome = outcome
-			goalRun, err := r.goalTurn(e.Run)
-			if err != nil {
-				return reduction{}, err
-			}
-			commit.GoalRun = goalRun
+		if e.Run.State().IsTerminal() {
+			commit.CommitID = newRunCommitID()
 		}
 	case ItemStarted, ItemChanged, SegmentProgressed, PlanSnapshot, SegmentStarted:
 		// These events have no standalone EventCommit. SegmentStarted carries a Run
@@ -278,35 +263,11 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 	default:
 		return reduction{}, fmt.Errorf("%w: unhandled run event %T", errReducerInvariant, event)
 	}
-	var eventCommit *EventCommit
+	var eventCommit *EventCommitConfig
 	if !commit.isEmpty() {
 		eventCommit = commit
 	}
 	return reduction{Event: event, Commit: eventCommit, Nudge: nudge}, nil
-}
-
-func (r *reducer) goalTurn(run run.Run) (*goal.RunRecord, error) {
-	outcome, terminal := run.Outcome()
-	if r.cfg.GoalIncarnationID == "" || !terminal {
-		return nil, nil
-	}
-	record := &goal.RunRecord{
-		SessionID:     r.cfg.SessionID,
-		IncarnationID: r.cfg.GoalIncarnationID,
-		RunID:         r.cfg.RunID,
-		Outcome:       outcome,
-		CompletedAt:   run.FinishedAt(),
-	}
-	if record.CompletedAt.IsZero() {
-		record.CompletedAt = r.now()
-	}
-	record.Steps = run.Metrics().Steps()
-	cost, err := costFromRunMetrics(run.Metrics())
-	if err != nil {
-		return nil, fmt.Errorf("runs: project Goal Run cost: %w", err)
-	}
-	record.Cost = cost
-	return record, nil
 }
 
 func costFromRunMetrics(metrics run.Metrics) (accounting.Cost, error) {

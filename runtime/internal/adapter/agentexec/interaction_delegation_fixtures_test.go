@@ -314,8 +314,8 @@ func (d *delegateProjection) CommitEvent(
 	_ context.Context,
 	commit runs.EventCommit,
 ) error {
-	if err := commit.Validate(); err != nil {
-		return err
+	if commit.IsZero() {
+		return errors.New("event commit is required")
 	}
 	d.mu.Lock()
 	d.applyCommit(commit)
@@ -419,28 +419,28 @@ func (d *delegateProjection) applyOpening(opening runs.OpeningCommit) {
 }
 
 func (d *delegateProjection) applyCommit(commit runs.EventCommit) {
-	for _, message := range commit.ConversationMessages {
+	for _, message := range commit.ConversationMessages() {
 		d.conversation = append(d.conversation, message.Clone())
 	}
-	for _, item := range commit.Items {
+	for _, item := range commit.Items() {
 		d.items[item.ID()] = item
 	}
-	if commit.Run != nil {
-		d.runs[commit.Run.ID()] = *commit.Run
+	if commit.Run() != nil {
+		d.runs[commit.Run().ID()] = *commit.Run()
 		return
 	}
-	if commit.Progress != nil {
-		value, found := d.runs[commit.RunID]
+	if commit.Progress() != nil {
+		value, found := d.runs[commit.RunID()]
 		if found {
 			advanced, err := value.AdvanceProgress(
-				commit.Progress.Metrics,
-				commit.Progress.ContextTokens,
-				commit.Progress.UpdatedAt,
+				commit.Progress().Metrics,
+				commit.Progress().ContextTokens,
+				commit.Progress().UpdatedAt,
 			)
 			if err != nil {
 				panic(err)
 			}
-			d.runs[commit.RunID] = advanced
+			d.runs[commit.RunID()] = advanced
 		}
 	}
 }

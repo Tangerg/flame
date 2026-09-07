@@ -15,21 +15,6 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-type StateChange string
-
-const (
-	// StateUnchanged is the meaningful zero value: the commit advances other
-	// durable Run facts without moving the lifecycle state.
-	StateUnchanged   StateChange = ""
-	StateSuspend     StateChange = "suspend"
-	StateTerminalize StateChange = "terminalize"
-)
-
-// Valid reports whether s is one supported lifecycle mutation.
-func (s StateChange) Valid() bool {
-	return s == StateUnchanged || s == StateSuspend || s == StateTerminalize
-}
-
 // ModelInvocationState records the durable application observation of one
 // provider call. It is deliberately smaller than a model response: semantic
 // output belongs to Transcript Items and accounting belongs to ProgressCommit.
@@ -193,7 +178,9 @@ func (r ProgressCommit) validate() error {
 	return nil
 }
 
-type EventCommit struct {
+// EventCommitConfig supplies one complete event write-set before publication.
+// Run is the sole source of lifecycle and Goal accounting facts.
+type EventCommitConfig struct {
 	RunID     string
 	SessionID string
 	// SegmentID owns the complete event write-set, including projections that do
@@ -207,8 +194,6 @@ type EventCommit struct {
 	// it empty because their parent commit owns the complete transaction identity;
 	// the top-level CommitEvent port boundary requires it.
 	CommitID runtimeidentity.CommitID
-	State    StateChange
-	Outcome  run.Outcome
 	Items    []transcript.Item
 	// ConversationMessages are the provider-neutral messages this root
 	// execution made durable for future model context. Conversation and
@@ -222,32 +207,83 @@ type EventCommit struct {
 	ToolInvocations  []ToolInvocationCommit
 	Progress         *ProgressCommit
 	Run              *run.Run
-	GoalRun          *goal.RunRecord
 	// ObsoleteCheckpointRootID identifies the executor checkpoint aggregate the
 	// root Run terminal makes obsolete. Child terminal commits leave it empty.
 	ObsoleteCheckpointRootID string
 }
 
-// clone returns an ownership-isolated copy of one complete event write-set.
-func (e EventCommit) clone() EventCommit {
-	e.Items = slices.Clone(e.Items)
-	e.ConversationMessages = cloneCommitMessages(e.ConversationMessages)
-	e.ModelInvocations = slices.Clone(e.ModelInvocations)
-	e.ToolInvocations = slices.Clone(e.ToolInvocations)
-	if e.Progress != nil {
-		progress := *e.Progress
-		e.Progress = &progress
-	}
-	if e.Run != nil {
-		run := *e.Run
-		e.Run = &run
-	}
-	if e.GoalRun != nil {
-		goalRun := *e.GoalRun
-		e.GoalRun = &goalRun
-	}
-	return e
+// EventCommit owns a validated, immutable event write-set. Reducer drafts become
+// commits only after all projections of the authoritative fact are assembled.
+type EventCommit struct {
+	data    EventCommitConfig
+	goalRun *goal.RunRecord
 }
+
+func NewEventCommit(config EventCommitConfig) (EventCommit, error) {
+	if err := config.validate(); err != nil {
+		return EventCommit{}, err
+	}
+	record, err := terminalGoalRun(config.Run)
+	if err != nil {
+		return EventCommit{}, err
+	}
+	config.Items = slices.Clone(config.Items)
+	config.ConversationMessages = cloneCommitMessages(config.ConversationMessages)
+	config.ModelInvocations = slices.Clone(config.ModelInvocations)
+	config.ToolInvocations = slices.Clone(config.ToolInvocations)
+	if config.Progress != nil {
+		value := *config.Progress
+		config.Progress = &value
+	}
+	if config.Run != nil {
+		value := *config.Run
+		config.Run = &value
+	}
+	return EventCommit{data: config, goalRun: record}, nil
+}
+
+func (e EventCommit) IsZero() bool                       { return e.data.RunID == "" }
+func (e EventCommit) RunID() string                      { return e.data.RunID }
+func (e EventCommit) SessionID() string                  { return e.data.SessionID }
+func (e EventCommit) SegmentID() string                  { return e.data.SegmentID }
+func (e EventCommit) CommitID() runtimeidentity.CommitID { return e.data.CommitID }
+func (e EventCommit) Items() []transcript.Item           { return slices.Clone(e.data.Items) }
+func (e EventCommit) ConversationMessages() []corechat.Message {
+	return cloneCommitMessages(e.data.ConversationMessages)
+}
+func (e EventCommit) ModelInvocations() []ModelInvocationCommit {
+	return slices.Clone(e.data.ModelInvocations)
+}
+func (e EventCommit) ToolInvocations() []ToolInvocationCommit {
+	return slices.Clone(e.data.ToolInvocations)
+}
+func (e EventCommit) Progress() *ProgressCommit {
+	if e.data.Progress == nil {
+		return nil
+	}
+	value := *e.data.Progress
+	return &value
+}
+func (e EventCommit) Run() *run.Run {
+	if e.data.Run == nil {
+		return nil
+	}
+	value := *e.data.Run
+	return &value
+}
+func (e EventCommit) GoalRun() *goal.RunRecord {
+	if e.goalRun == nil {
+		return nil
+	}
+	value := *e.goalRun
+	return &value
+}
+func (e EventCommit) ObsoleteCheckpointRootID() string { return e.data.ObsoleteCheckpointRootID }
+func (e EventCommit) Suspends() bool                   { return e.data.suspends() }
+func (e EventCommit) Terminates() bool                 { return e.data.terminates() }
+func (e EventCommit) ChangesLifecycle() bool           { return e.data.Run != nil }
+func (e EventCommitConfig) suspends() bool             { return e.Run != nil && e.Run.State() == run.Waiting }
+func (e EventCommitConfig) terminates() bool           { return e.Run != nil && e.Run.State().IsTerminal() }
 
 func cloneCommitMessages(messages []corechat.Message) []corechat.Message {
 	owned := make([]corechat.Message, len(messages))
@@ -257,9 +293,7 @@ func cloneCommitMessages(messages []corechat.Message) []corechat.Message {
 	return owned
 }
 
-// Validate proves that one event projection is owner-bound and that any Goal
-// charge is exactly the accounting fact implied by its terminal Run.
-func (e EventCommit) Validate() error {
+func (e EventCommitConfig) validate() error {
 	if err := e.validateEnvelope(); err != nil {
 		return err
 	}
@@ -283,7 +317,7 @@ func (e EventCommit) Validate() error {
 	return e.validateLifecycle()
 }
 
-func (e EventCommit) validateConversationMessages() error {
+func (e EventCommitConfig) validateConversationMessages() error {
 	for index, message := range e.ConversationMessages {
 		if err := message.Validate(); err != nil {
 			return fmt.Errorf("runs: event commit conversation message[%d]: %w", index, err)
@@ -295,7 +329,7 @@ func (e EventCommit) validateConversationMessages() error {
 	return nil
 }
 
-func (e EventCommit) validateEnvelope() error {
+func (e EventCommitConfig) validateEnvelope() error {
 	if _, err := resourceid.ParseRun(e.RunID); err != nil {
 		return fmt.Errorf("runs: event commit: %w", err)
 	}
@@ -316,7 +350,7 @@ func (e EventCommit) validateEnvelope() error {
 	return nil
 }
 
-func (e EventCommit) validateItems() error {
+func (e EventCommitConfig) validateItems() error {
 	seenItems := make(map[string]struct{}, len(e.Items))
 	for index, item := range e.Items {
 		if item.ID() == "" || item.RunID() != e.RunID || item.SessionID() != e.SessionID {
@@ -330,7 +364,7 @@ func (e EventCommit) validateItems() error {
 	return nil
 }
 
-func (e EventCommit) validateInvocations() error {
+func (e EventCommitConfig) validateInvocations() error {
 	items := make(map[string]transcript.Item, len(e.Items))
 	for _, item := range e.Items {
 		items[item.ID()] = item
@@ -341,7 +375,7 @@ func (e EventCommit) validateInvocations() error {
 	return e.validateToolInvocations(items)
 }
 
-func (e EventCommit) validateModelInvocations() error {
+func (e EventCommitConfig) validateModelInvocations() error {
 	seenInvocations := make(map[string]struct{}, len(e.ModelInvocations))
 	for index, invocation := range e.ModelInvocations {
 		if err := invocation.validate(); err != nil {
@@ -358,7 +392,7 @@ func (e EventCommit) validateModelInvocations() error {
 	return nil
 }
 
-func (e EventCommit) validateToolInvocations(items map[string]transcript.Item) error {
+func (e EventCommitConfig) validateToolInvocations(items map[string]transcript.Item) error {
 	seenTools := make(map[string]struct{}, len(e.ToolInvocations))
 	seenToolItems := make(map[string]struct{}, len(e.ToolInvocations))
 	for index, invocation := range e.ToolInvocations {
@@ -414,82 +448,47 @@ func validateToolInvocationItem(invocation ToolInvocationCommit, item transcript
 	return nil
 }
 
-func (e EventCommit) validateLifecycle() error {
-	switch e.State {
-	case StateUnchanged:
-		if e.Outcome != "" || e.Run != nil || e.GoalRun != nil || e.ObsoleteCheckpointRootID != "" {
-			return errors.New("runs: unchanged event commit carries lifecycle facts")
+func (e EventCommitConfig) validateLifecycle() error {
+	if e.Run == nil {
+		if e.ObsoleteCheckpointRootID != "" {
+			return errors.New("runs: checkpoint retirement requires a terminal root Run")
 		}
 		return nil
-	case StateSuspend:
-		if e.Run == nil || e.Run.State() != run.Waiting {
-			return errors.New("runs: suspend event commit has no waiting Run")
-		}
-		if e.Outcome != "" || e.GoalRun != nil || e.ObsoleteCheckpointRootID != "" {
-			return errors.New("runs: suspend event commit carries terminal facts")
-		}
-	case StateTerminalize:
-		if e.CommitID.IsZero() {
-			return errors.New("runs: terminal event commit has no commit identity")
-		}
-		if e.Run == nil || !e.Run.State().IsTerminal() {
-			return errors.New("runs: terminal event commit has no matching terminal Run")
-		}
-		outcome, ok := e.Run.Outcome()
-		if !ok || outcome != e.Outcome {
-			return errors.New("runs: terminal event commit has no matching terminal outcome")
-		}
-	default:
-		return fmt.Errorf("runs: event commit has unknown state change %q", e.State)
 	}
-
 	if e.Run.ID() != e.RunID || e.Run.SessionID() != e.SessionID {
 		return errors.New("runs: event commit Run ownership differs from its envelope")
 	}
-	if e.State == StateSuspend {
-		return nil
+	if !e.suspends() && !e.terminates() {
+		return errors.New("runs: event commit Run must be waiting or terminal")
 	}
-	return validateTerminalGoalRun(*e.Run, e.GoalRun)
-}
-
-func validateTerminalGoalRun(value run.Run, record *goal.RunRecord) error {
-	if value.GoalIncarnationID() == "" {
-		if record != nil {
-			return fmt.Errorf("runs: non-Goal Run %q carries a Goal Run", value.ID())
-		}
-		return nil
+	if e.terminates() && e.CommitID.IsZero() {
+		return errors.New("runs: terminal event commit has no commit identity")
 	}
-	if !value.Lineage().IsRoot() {
-		return fmt.Errorf("runs: child Run %q carries a root Goal incarnation", value.ID())
-	}
-	if record == nil {
-		return fmt.Errorf("runs: Goal-owned terminal Run %q has no Goal Run", value.ID())
-	}
-	if err := record.Validate(); err != nil {
-		return fmt.Errorf("runs: terminal Goal Run: %w", err)
-	}
-	cost, err := costFromRunMetrics(value.Metrics())
-	if err != nil {
-		return fmt.Errorf("runs: terminal Goal Run cost: %w", err)
-	}
-	outcome, ok := value.Outcome()
-	if !ok || record.SessionID != value.SessionID() || record.IncarnationID != value.GoalIncarnationID() ||
-		record.RunID != value.ID() || record.Outcome != outcome || !record.Cost.Equal(cost) ||
-		record.Steps != value.Metrics().Steps() || !record.CompletedAt.Equal(value.FinishedAt()) {
-		return fmt.Errorf("runs: Goal Run differs from terminal Run %q", value.ID())
+	if e.ObsoleteCheckpointRootID != "" && (!e.terminates() || !e.Run.Lineage().IsRoot()) {
+		return errors.New("runs: checkpoint retirement requires a terminal root Run")
 	}
 	return nil
 }
 
-func (e EventCommit) isEmpty() bool {
-	return len(e.Items) == 0 &&
-		len(e.ConversationMessages) == 0 &&
-		len(e.ModelInvocations) == 0 &&
-		len(e.ToolInvocations) == 0 &&
-		e.Progress == nil &&
-		e.Outcome == "" &&
-		e.Run == nil &&
-		e.GoalRun == nil &&
-		e.ObsoleteCheckpointRootID == "" &&
-		e.State == StateUnchanged
+func terminalGoalRun(value *run.Run) (*goal.RunRecord, error) {
+	if value == nil || !value.State().IsTerminal() || value.GoalIncarnationID() == "" {
+		return nil, nil
+	}
+	if !value.Lineage().IsRoot() {
+		return nil, fmt.Errorf("runs: child Run %q carries a root Goal incarnation", value.ID())
+	}
+	cost, err := costFromRunMetrics(value.Metrics())
+	if err != nil {
+		return nil, fmt.Errorf("runs: terminal Goal Run cost: %w", err)
+	}
+	outcome, _ := value.Outcome()
+	return &goal.RunRecord{
+		SessionID: value.SessionID(), IncarnationID: value.GoalIncarnationID(), RunID: value.ID(),
+		Outcome: outcome, Cost: cost, Steps: value.Metrics().Steps(), CompletedAt: value.FinishedAt(),
+	}, nil
+}
+
+func (e EventCommitConfig) isEmpty() bool {
+	return len(e.Items) == 0 && len(e.ConversationMessages) == 0 && len(e.ModelInvocations) == 0 &&
+		len(e.ToolInvocations) == 0 && e.Progress == nil && e.Run == nil && e.ObsoleteCheckpointRootID == ""
 }

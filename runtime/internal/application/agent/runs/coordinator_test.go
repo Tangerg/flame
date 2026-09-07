@@ -585,7 +585,7 @@ func (f *fakeEffects) CommitOpening(_ context.Context, opening OpeningCommit) er
 }
 
 func (f *fakeEffects) CommitEvent(ctx context.Context, commit EventCommit) error {
-	if commit.State == StateTerminalize {
+	if commit.Terminates() {
 		if f.terminalStarted != nil {
 			f.terminalStarted <- struct{}{}
 		}
@@ -705,7 +705,7 @@ func (f *fakeEffects) terminalized(sessionID, runID string) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for _, commit := range f.commits {
-		if commit.State == StateTerminalize && commit.SessionID == sessionID && commit.RunID == runID {
+		if commit.Terminates() && commit.SessionID() == sessionID && commit.RunID() == runID {
 			return true
 		}
 	}
@@ -1175,8 +1175,8 @@ func TestCoordinatorResumesCompleteRunTreeInOneCanonicalOpening(t *testing.T) {
 	}
 	var checkpointDeletes []string
 	for _, commit := range effects.commitSnapshot() {
-		if commit.ObsoleteCheckpointRootID != "" {
-			checkpointDeletes = append(checkpointDeletes, commit.ObsoleteCheckpointRootID)
+		if commit.ObsoleteCheckpointRootID() != "" {
+			checkpointDeletes = append(checkpointDeletes, commit.ObsoleteCheckpointRootID())
 		}
 	}
 	if !slices.Equal(checkpointDeletes, []string{rootMember.MemberID}) {
@@ -1319,6 +1319,20 @@ func TestCoordinatorTreeActivationFailureTerminalizesInCanonicalPostorder(t *tes
 	if !slices.Equal(finished, wantPostorder) {
 		t.Fatalf("SegmentFinished order = %v, want %v", finished, wantPostorder)
 	}
+	root, _ := pending.RootContinuation()
+	for _, commit := range effects.commitSnapshot() {
+		if !commit.Terminates() {
+			continue
+		}
+		wantCheckpoint := ""
+		if commit.RunID() == root.RunID {
+			wantCheckpoint = root.MemberID
+		}
+		if commit.ObsoleteCheckpointRootID() != wantCheckpoint {
+			t.Fatalf("Run %q retires checkpoint %q, want %q", commit.RunID(), commit.ObsoleteCheckpointRootID(), wantCheckpoint)
+		}
+	}
+
 }
 
 func TestCoordinatorMalformedInterruptAbortsExecutorAndTerminalizes(t *testing.T) {
@@ -1480,14 +1494,14 @@ func TestCoordinatorAtomicallyAdmitsChildRunFromSpawningItem(t *testing.T) {
 		t.Fatalf("child admission draft = %+v", draft)
 	}
 	childEvents := child.Events()
-	if len(childEvents) != 1 || len(childEvents[0].Items) != 1 {
+	if len(childEvents) != 1 || len(childEvents[0].Items()) != 1 {
 		t.Fatalf("child opening events = %+v, want parent spawning item", childEvents)
 	}
 	parentCommit := childEvents[0]
-	spawningItem := parentCommit.Items[0]
+	spawningItem := parentCommit.Items()[0]
 	invocation, present := spawningItem.ToolInvocation()
-	if parentCommit.RunID != "run_1" ||
-		parentCommit.SessionID != "ses_1" ||
+	if parentCommit.RunID() != "run_1" ||
+		parentCommit.SessionID() != "ses_1" ||
 		spawningItem.ID() != draft.SpawnedByItemID ||
 		spawningItem.RunID() != "run_1" ||
 		spawningItem.SessionID() != "ses_1" ||
@@ -1615,10 +1629,10 @@ func requireTerminalCommitOrder(t *testing.T, commits []EventCommit, earlierRunI
 	t.Helper()
 	earlierIndex, laterIndex := -1, -1
 	for index, commit := range commits {
-		if commit.State != StateTerminalize {
+		if !commit.Terminates() {
 			continue
 		}
-		switch commit.RunID {
+		switch commit.RunID() {
 		case earlierRunID:
 			earlierIndex = index
 		case laterRunID:
@@ -2399,16 +2413,16 @@ func requireWaitingTreeBarrierPostorder(
 	for index, wantRunID := range wantRunIDs {
 		commit := commits[index]
 		continuation := pending.Continuations[index]
-		if commit.RunID != wantRunID || continuation.RunID != wantRunID {
+		if commit.RunID() != wantRunID || continuation.RunID != wantRunID {
 			t.Fatalf(
 				"barrier order[%d] = commit %q continuation %q, want %q",
 				index,
-				commit.RunID,
+				commit.RunID(),
 				continuation.RunID,
 				wantRunID,
 			)
 		}
-		if commit.State != StateSuspend || commit.Run == nil || commit.Run.State() != run.Waiting {
+		if !commit.Suspends() || commit.Run() == nil || commit.Run().State() != run.Waiting {
 			t.Fatalf("barrier Run[%d] = %+v, want waiting suspend", index, commit)
 		}
 	}

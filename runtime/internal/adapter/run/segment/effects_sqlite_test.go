@@ -168,7 +168,7 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 		ResumedAt: time.Now().UTC(),
 		Runs:      []run.ResumeDraft{{RunID: "run_1", SegmentID: "seg_next"}},
 	}
-	openingEvents := []runs.EventCommit{{
+	openingEvents := []runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
 		RunID:     "run_1",
 		SessionID: "ses_1",
 		SegmentID: "seg_next",
@@ -177,7 +177,7 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 			Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
 			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "go on"}},
 		})},
-	}}
+	})}
 	opening := mustResumeOpening(t, testCommitID("run_commit_resume"), resume, openingEvents)
 	err = effects.CommitOpening(ctx, opening)
 	if err != nil {
@@ -228,14 +228,14 @@ func TestCommitOpeningReconcilesAmbiguousAdmission(t *testing.T) {
 		RunID: "run_ambiguous_opening", SessionID: "ses_ambiguous_opening",
 		SegmentID: "seg_ambiguous_opening", ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	openingEvents := []runs.EventCommit{{
+	openingEvents := []runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: draft.SessionID, RunID: draft.RunID, ID: "item_opening",
 			OccurredAt: createdAt, Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
 			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
 		})},
-	}}
+	})}
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_ambiguous_opening"), draft,
 		nil, nil, "", nil, openingEvents,
@@ -316,10 +316,10 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 		CallID: "model_call_1", SegmentID: "seg_model",
 		State: runs.ModelInvocationStarted, StartedAt: startedAt,
 	}
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model", CommitID: testCommitID("run_commit_event_model_start"),
 		ModelInvocations: []runs.ModelInvocationCommit{start},
-	}); commitEventErr != nil {
+	})); commitEventErr != nil {
 		t.Fatalf("commit start: %v", commitEventErr)
 	}
 
@@ -333,16 +333,21 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 		StartedAt: startedAt, FinishedAt: finishedAt,
 	}
 	usage := &accounting.Usage{Total: accounting.Totals{InputTokens: 2, OutputTokens: 1}}
-	wrongSegment := runs.ProgressCommit{
-		SegmentID: "seg_wrong", Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, Usage: usage}), UpdatedAt: finishedAt,
+	progress := runs.ProgressCommit{
+		SegmentID: "seg_model", Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, Usage: usage}), UpdatedAt: finishedAt,
 	}
-	err = effects.CommitEvent(ctx, runs.EventCommit{
+	// Fail after transcript and invocation writes to prove transaction rollback.
+	if _, err := db.ExecContext(ctx, `CREATE TEMP TRIGGER reject_progress BEFORE UPDATE OF steps ON runs BEGIN SELECT RAISE(ABORT, 'progress unavailable'); END`); err != nil {
+		t.Fatal(err)
+	}
+
+	err = effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model", CommitID: testCommitID("run_commit_event_model_wrong"),
 		Items:            []transcript.Item{item},
-		ModelInvocations: []runs.ModelInvocationCommit{completion}, Progress: &wrongSegment,
-	})
+		ModelInvocations: []runs.ModelInvocationCommit{completion}, Progress: &progress,
+	}))
 	if err == nil {
-		t.Fatal("commit with a stale segment fence succeeded")
+		t.Fatal("commit with unavailable progress succeeded")
 	}
 	var invocationState string
 	if scanErr := db.QueryRowContext(ctx,
@@ -354,13 +359,14 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 		t.Fatalf("history after rollback = %#v err=%v, want empty", items, listErr)
 	}
 
-	progress := wrongSegment
-	progress.SegmentID = "seg_model"
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if _, err := db.ExecContext(ctx, `DROP TRIGGER reject_progress`); err != nil {
+		t.Fatal(err)
+	}
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model", CommitID: testCommitID("run_commit_event_model_complete"),
 		Items:            []transcript.Item{item},
 		ModelInvocations: []runs.ModelInvocationCommit{completion}, Progress: &progress,
-	}); commitEventErr != nil {
+	})); commitEventErr != nil {
 		t.Fatalf("commit final: %v", commitEventErr)
 	}
 	if scanErr := db.QueryRowContext(ctx,
@@ -427,11 +433,11 @@ func TestCommitEventRejectsTerminalFromReplacedSegment(t *testing.T) {
 			return sqlite.RunInTx(ctx, db, fn)
 		},
 	})
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID,
 		SegmentID: "seg_old", CommitID: testCommitID("run_commit_event_old_segment"),
-		State: runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: &staleTerminal,
-	}); commitEventErr == nil {
+		Run: &staleTerminal,
+	})); commitEventErr == nil {
 		t.Fatal("terminal fact from the replaced Segment ended the resumed Run")
 	}
 	current, found, err := store.Run(ctx, draft.RunID)
@@ -489,13 +495,13 @@ func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t 
 		OccurredAt: startedAt.Add(3 * time.Second),
 		Content:    []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "stale"}},
 	})
-	err = effects.CommitEvent(ctx, runs.EventCommit{
+	err = effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: "seg_old", CommitID: testCommitID("run_commit_event_stale_item"),
 		Items: []transcript.Item{item},
 		ConversationMessages: []chat.Message{
 			chat.NewAssistantMessage(chat.NewTextPart("stale")),
 		},
-	})
+	}))
 	if err == nil {
 		t.Fatal("projection from the replaced Segment committed")
 	}
@@ -547,11 +553,11 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 			Tool:        &transcript.ToolInvocation{Name: name, Arguments: tool.Arguments{}},
 			SafetyClass: tool.SafetyClassSafe,
 		})
-		if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+		if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 			RunID: "run_tools", SessionID: "ses_tools", SegmentID: "seg_tools", CommitID: testCommitID("run_commit_event_tool_start_" + start.CallID),
 			Items:           []transcript.Item{running},
 			ToolInvocations: []runs.ToolInvocationCommit{start},
-		}); commitEventErr != nil {
+		})); commitEventErr != nil {
 			t.Fatalf("commit Tool start %q: %v", start.CallID, commitEventErr)
 		}
 	}
@@ -573,16 +579,21 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 			State: runs.ToolInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt,
 		})
 	}
-	wrongSegment := runs.ProgressCommit{
-		SegmentID: "seg_wrong", Metrics: run.Metrics{}, UpdatedAt: finishedAt,
+	progress := runs.ProgressCommit{
+		SegmentID: "seg_tools", Metrics: run.Metrics{}, UpdatedAt: finishedAt,
 	}
-	err = effects.CommitEvent(ctx, runs.EventCommit{
+	// Fail after transcript and invocation writes to prove transaction rollback.
+	if _, err := db.ExecContext(ctx, `CREATE TEMP TRIGGER reject_progress BEFORE UPDATE OF steps ON runs BEGIN SELECT RAISE(ABORT, 'progress unavailable'); END`); err != nil {
+		t.Fatal(err)
+	}
+
+	err = effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: "run_tools", SessionID: "ses_tools", SegmentID: "seg_tools", CommitID: testCommitID("run_commit_event_tools_wrong"),
 		Items:           items,
-		ToolInvocations: terminals, Progress: &wrongSegment,
-	})
+		ToolInvocations: terminals, Progress: &progress,
+	}))
 	if err == nil {
-		t.Fatal("canonical Tool batch with a stale segment fence succeeded")
+		t.Fatal("canonical Tool batch with unavailable progress succeeded")
 	}
 	if recorded, listErr := history.List(ctx, "ses_tools"); listErr != nil || len(recorded) != 2 ||
 		recorded[0].ID() != "item_first" || recorded[0].Status() != transcript.ItemRunning ||
@@ -598,13 +609,14 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 		}
 	}
 
-	progress := wrongSegment
-	progress.SegmentID = "seg_tools"
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if _, err := db.ExecContext(ctx, `DROP TRIGGER reject_progress`); err != nil {
+		t.Fatal(err)
+	}
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: "run_tools", SessionID: "ses_tools", SegmentID: "seg_tools", CommitID: testCommitID("run_commit_event_tools_complete"),
 		Items:           items,
 		ToolInvocations: terminals, Progress: &progress,
-	}); commitEventErr != nil {
+	})); commitEventErr != nil {
 		t.Fatalf("commit canonical Tool batch: %v", commitEventErr)
 	}
 	recorded, err := history.List(ctx, "ses_tools")
@@ -1015,16 +1027,12 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	}
 	updated = mustResolveMessageMark(t, updated, 0)
 	finished := &updated
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
-		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID, State: runs.StateTerminalize,
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
+		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_goal"),
-		Outcome:  run.OutcomeCompleted,
-		Run:      finished,
-		GoalRun: &goal.RunRecord{
-			SessionID: g.SessionID(), IncarnationID: g.IncarnationID(), RunID: draft.RunID,
-			Outcome: run.OutcomeCompleted, Cost: segmentTestCost(t, costUSD), Steps: 2, CompletedAt: finished.FinishedAt(),
-		},
-	}); commitEventErr != nil {
+
+		Run: finished,
+	})); commitEventErr != nil {
 		t.Fatalf("CommitEvent: %v", commitEventErr)
 	}
 	current, err := goals.Get(ctx, g.SessionID())
@@ -1113,8 +1121,8 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		t,
 		testCommitID("run_commit_durable_barrier"),
 		pending,
-		[]runs.EventCommit{{
-			RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", State: runs.StateSuspend,
+		[]runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
+			RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open",
 			Items: []transcript.Item{
 				testsupport.MustRestoreItem(testsupport.ItemInput{
 					SessionID: "ses_1", ID: "item_tool", RunID: "run_1",
@@ -1135,7 +1143,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 				ModelSelection: pending.Continuations[0].ModelSelection,
 				Capabilities:   pending.Capabilities,
 				CreatedAt:      createdAt, UpdatedAt: parkedAt, MessageMark: -1})),
-		}},
+		})},
 		checkpoint,
 	)
 	if commitTreeBarrierErr := effects.CommitTreeBarrier(commitCtx, barrier); commitTreeBarrierErr != nil {
@@ -1218,10 +1226,10 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 		t,
 		testCommitID("run_commit_rollback_barrier"),
 		pending,
-		[]runs.EventCommit{{
-			RunID: "run_missing", SessionID: "ses_rollback", SegmentID: "seg_open", State: runs.StateSuspend,
+		[]runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
+			RunID: "run_missing", SessionID: "ses_rollback", SegmentID: "seg_open",
 			Run: &parkedRun,
-		}},
+		})},
 		checkpoint,
 	)
 	err = effects.CommitTreeBarrier(ctx, barrier)
@@ -1790,12 +1798,12 @@ func TestCommitTerminalOwnsExecutorCheckpointDeletion(t *testing.T) {
 			finished := finishedRunRecord("run_terminal", "ses_terminal", run.OutcomeCompleted)
 			resolved := mustResolveMessageMark(t, *finished, 0)
 			finished = &resolved
-			err := fixture.effects.CommitEvent(fixture.ctx, runs.EventCommit{
-				RunID: "run_terminal", SessionID: "ses_terminal", SegmentID: "seg_terminal", State: runs.StateTerminalize,
-				CommitID: testCommitID("run_commit_event_checkpoint"),
-				Outcome:  run.OutcomeCompleted, Run: finished,
+			err := fixture.effects.CommitEvent(fixture.ctx, mustEventCommit(t, runs.EventCommitConfig{
+				RunID: "run_terminal", SessionID: "ses_terminal", SegmentID: "seg_terminal",
+				CommitID:                 testCommitID("run_commit_event_checkpoint"),
+				Run:                      finished,
 				ObsoleteCheckpointRootID: fixture.rootMemberID,
-			})
+			}))
 			if test.checkpointDeleteFail || test.childCleanupFail {
 				assertTerminalCheckpointRollback(t, fixture, err)
 				return
@@ -2702,7 +2710,7 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 	second := testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created})
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_busy_opening"), second,
-		nil, nil, "", nil, []runs.EventCommit{{
+		nil, nil, "", nil, []runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
 			RunID:     "run_2",
 			SessionID: "ses_1",
 			SegmentID: second.SegmentID,
@@ -2714,7 +2722,7 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 				Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
 				Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "me too"}},
 			})},
-		}},
+		})},
 	)
 	err = effects.CommitOpening(ctx, opening)
 	if !errors.Is(err, run.ErrSessionBusy) {
@@ -2758,14 +2766,14 @@ func TestCommitEventAppendsConversationBeforeResolvingTerminalWatermark(t *testi
 		Tx:           func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
 	})
 	finished := finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeCompleted)
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_watermark"),
-		State:    runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: finished,
+		Run:      finished,
 		ConversationMessages: []chat.Message{
 			chat.NewAssistantMessage(chat.NewTextPart("done")),
 		},
-	}); commitEventErr != nil {
+	})); commitEventErr != nil {
 		t.Fatalf("CommitEvent: %v", commitEventErr)
 	}
 	stored, err := messages.Read(ctx, draft.SessionID)
@@ -2816,14 +2824,14 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 		},
 	})
 	finished := finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeCompleted)
-	commit := runs.EventCommit{
+	commit := mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_ambiguous"),
-		State:    runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: finished,
+		Run:      finished,
 		ConversationMessages: []chat.Message{
 			chat.NewAssistantMessage(chat.NewTextPart("durable answer")),
 		},
-	}
+	})
 	if commitEventErr := effects.CommitEvent(commitCtx, commit); commitEventErr != nil {
 		t.Fatalf("ambiguous CommitEvent = %v, want reconciled success", commitEventErr)
 	}
@@ -2838,13 +2846,13 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 	).Scan(&terminalSegmentID, &terminalCommitID); scanErr != nil {
 		t.Fatalf("read terminal commit marker: %v", scanErr)
 	}
-	if terminalSegmentID != draft.SegmentID || terminalCommitID != commit.CommitID.String() {
+	if terminalSegmentID != draft.SegmentID || terminalCommitID != commit.CommitID().String() {
 		t.Fatalf(
 			"terminal marker = %q/%q, want %q/%q",
 			terminalSegmentID,
 			terminalCommitID,
 			draft.SegmentID,
-			commit.CommitID,
+			commit.CommitID(),
 		)
 	}
 	for _, test := range []struct {
@@ -2852,7 +2860,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 		segmentID string
 		commitID  runtimeidentity.CommitID
 	}{
-		{label: "other Segment", segmentID: "seg_other", commitID: commit.CommitID},
+		{label: "other Segment", segmentID: "seg_other", commitID: commit.CommitID()},
 		{label: "other terminal attempt", segmentID: draft.SegmentID, commitID: testCommitID("run_commit_terminal_other")},
 	} {
 		matched, matchErr := state.RunCommitCommitted(
@@ -2883,8 +2891,11 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 	conflicting := mutatedRun(*finished, func(snapshot *run.Snapshot) {
 		snapshot.ContextTokens = 1
 	})
-	commit.Run = &conflicting
-	commit.CommitID = testCommitID("run_commit_event_conflicting")
+	commit = mustEventCommit(t, runs.EventCommitConfig{
+		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
+		CommitID: testCommitID("run_commit_event_conflicting"), Run: &conflicting,
+		ConversationMessages: commit.ConversationMessages(),
+	})
 	if commitEventErr := effects.CommitEvent(commitCtx, commit); commitEventErr == nil {
 		t.Fatal("different terminal replay succeeded")
 	}
@@ -2897,11 +2908,11 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 		t.Fatalf("admit other Run: %v", admitErr)
 	}
 	otherFinished := finishedRunRecord(otherDraft.RunID, otherDraft.SessionID, run.OutcomeCompleted)
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: otherDraft.RunID, SessionID: otherDraft.SessionID, SegmentID: otherDraft.SegmentID,
 		CommitID: testCommitID(terminalCommitID),
-		State:    runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: otherFinished,
-	}); commitEventErr == nil {
+		Run:      otherFinished,
+	})); commitEventErr == nil {
 		t.Fatal("terminal commit identity was reused by another Run")
 	}
 	otherStored, found, err := state.Run(ctx, otherDraft.RunID)
@@ -2957,14 +2968,14 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 		return sqlite.RunInTx(ctx, db, fn)
 	}
 	effects := mustNewEffects(baseConfig)
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_authoritative_start"),
 		ModelInvocations: []runs.ModelInvocationCommit{{
 			CallID: "model_call_1", SegmentID: draft.SegmentID,
 			State: runs.ModelInvocationStarted, StartedAt: startedAt,
 		}},
-	}); commitEventErr != nil {
+	})); commitEventErr != nil {
 		t.Fatalf("commit model start: %v", commitEventErr)
 	}
 
@@ -2984,7 +2995,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 	}
 	ambiguousEffects := mustNewEffects(ambiguousConfig)
 	usage := &accounting.Usage{Total: accounting.Totals{InputTokens: 2, OutputTokens: 1}}
-	commit := runs.EventCommit{
+	commit := mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_authoritative_complete"),
 		ConversationMessages: []chat.Message{
@@ -3001,7 +3012,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 			}),
 			UpdatedAt: finishedAt,
 		},
-	}
+	})
 	if commitEventErr := ambiguousEffects.CommitEvent(commitCtx, commit); commitEventErr != nil {
 		t.Fatalf("ambiguous authoritative CommitEvent = %v, want reconciled success", commitEventErr)
 	}
@@ -3022,10 +3033,10 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 	).Scan(&eventSegmentID, &eventCommitID); scanErr != nil {
 		t.Fatalf("read authoritative commit marker: %v", scanErr)
 	}
-	if eventSegmentID != draft.SegmentID || eventCommitID != commit.CommitID.String() {
+	if eventSegmentID != draft.SegmentID || eventCommitID != commit.CommitID().String() {
 		t.Fatalf(
 			"authoritative marker = %q/%q, want %q/%q",
-			eventSegmentID, eventCommitID, draft.SegmentID, commit.CommitID,
+			eventSegmentID, eventCommitID, draft.SegmentID, commit.CommitID(),
 		)
 	}
 	assertSingleMessage := func(label string) {
@@ -3044,17 +3055,17 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 	}
 	assertSingleMessage("exact authoritative replay")
 
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_authoritative_later"),
 		ConversationMessages: []chat.Message{
 			chat.NewAssistantMessage(chat.NewTextPart("later fact")),
 		},
-	}); commitEventErr != nil {
+	})); commitEventErr != nil {
 		t.Fatalf("commit later fact: %v", commitEventErr)
 	}
 	matched, err := state.RunCommitCommitted(
-		ctx, draft.SessionID, draft.RunID, draft.SegmentID, commit.CommitID,
+		ctx, draft.SessionID, draft.RunID, draft.SegmentID, commit.CommitID(),
 	)
 	if err != nil || matched {
 		t.Fatalf("superseded marker matched=%t err=%v, want false/nil", matched, err)
@@ -3125,12 +3136,12 @@ func TestRootTerminalCommitReclaimsChildStartReservations(t *testing.T) {
 		},
 	})
 	finished := finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeCompleted)
-	if err := effects.CommitEvent(ctx, runs.EventCommit{
+	if err := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
-		CommitID: testCommitID("run_commit_event_cleanup"),
-		State:    runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: finished,
+		CommitID:                 testCommitID("run_commit_event_cleanup"),
+		Run:                      finished,
 		ObsoleteCheckpointRootID: "member_root_1",
-	}); err != nil {
+	})); err != nil {
 		t.Fatalf("CommitEvent: %v", err)
 	}
 	var owned, foreign int
@@ -3184,11 +3195,11 @@ func TestCommitEventPersistsTheTerminalRunsResult(t *testing.T) {
 	})
 	updated = mustResolveMessageMark(t, updated, 0)
 	finished = &updated
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
-		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID, State: runs.StateTerminalize,
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
+		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_result"),
-		Outcome:  run.OutcomeFailed, Run: finished,
-	}); commitEventErr != nil {
+		Run:      finished,
+	})); commitEventErr != nil {
 		t.Fatalf("CommitEvent: %v", commitEventErr)
 	}
 

@@ -290,7 +290,7 @@ func TestCommitWaitingSubtreeCancellationRollsBackEveryPreCommitFailure(t *testi
 			operation: "persist opening projection",
 			configure: func(fixture *waitingCancellationSQLiteFixture, injected error) {
 				draft := waitingCancellationDraft(fixture.commit)
-				draft.openingEvents = []runs.EventCommit{{
+				draft.openingEvents = []runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
 					RunID:     fixture.rootRun.ID(),
 					SessionID: fixture.rootRun.SessionID(),
 					SegmentID: draft.resume.Runs[0].SegmentID,
@@ -306,7 +306,7 @@ func TestCommitWaitingSubtreeCancellationRollsBackEveryPreCommitFailure(t *testi
 							Text: "continue",
 						}},
 					})},
-				}}
+				})}
 				fixture.commit = mustWaitingCancellationCommit(t, draft)
 				fixture.replaceEffects(func(config *Config) {
 					config.Transcript = failingWaitingTranscriptStore{

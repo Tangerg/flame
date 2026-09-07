@@ -43,6 +43,8 @@ Execution construction requires complete Tool policy, presentation, Hooks, maint
 
 Framework observations are wake-ups, not durable commits. Runtime reconciles authoritative framework state into an Application write set before publishing durable product facts. A completed durable Item or snapshot wins over a missing or duplicated preview event.
 
+`EventCommit` owns the complete immutable projection of one execution fact. Reducers assemble construction data; publication constructs the commit once before any durable or live effects. Lifecycle and Goal accounting derive from its Run. Composite commits validate tree and admission relationships without revalidating nested event contents. The storage adapter preserves the Segment fence and transaction receipt; checkpoint retirement belongs only to a terminal root identified by Run lineage.
+
 A Delegate retains its admitted child across a human-input barrier. Each continuation opens fresh Segments, so the executor observation reopens the parent Tool attempt before forwarding child results. Application reuses the durable Tool Item identity; continuation does not admit another child or repeat its completed work.
 
 Tool continuation uses the executor's stable call identity. Edited approval arguments change the execution input while preserving that identity; a new call with the same name or arguments receives its own Item. One remaining-call index owns whether a suspended Item still needs to resume or settle.

@@ -636,10 +636,10 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 		SessionID: commit.SessionID(), RunID: commit.RootRunID(), ID: "item_resume_projection",
 		OccurredAt: time.Date(2026, 7, 30, 2, 3, 5, 0, time.UTC),
 	})
-	openingEvents := []EventCommit{{
+	openingEvents := []EventCommit{mustEventCommit(t, EventCommitConfig{
 		RunID: commit.RootRunID(), SessionID: commit.SessionID(), SegmentID: rootSegmentID,
 		Items: []transcript.Item{openingItem},
-	}}
+	})}
 	expectedPending := commit.ExpectedPending()
 	checkpoint := commit.Checkpoint()
 	terminalRuns := commit.TerminalRuns()
@@ -668,7 +668,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	terminalItems[0] = transcript.Replacement{}
 	messages[0].Parts[0].Text = "changed"
 	resume.Runs[0].SegmentID = "segment_changed"
-	openingEvents[0].Items = nil
+	openingEvents[0] = EventCommit{}
 
 	projectedPending := withOpening.ExpectedPending()
 	projectedPending.Bindings[0].MemberID = "member_projected"
@@ -683,7 +683,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	projectedResume, _ := withOpening.Resume()
 	projectedResume.Runs[0].SegmentID = "segment_projected"
 	projectedOpening := withOpening.OpeningEvents()
-	projectedOpening[0].Items = nil
+	projectedOpening[0] = EventCommit{}
 
 	ownedResume, _ := withOpening.Resume()
 	ownedOpening := withOpening.OpeningEvents()
@@ -693,11 +693,14 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 		withOpening.TerminalItems()[0].State().ID() != wantTerminalItemID ||
 		withOpening.ConversationMessages()[0].Text() != wantMessage ||
 		ownedResume.Runs[0].SegmentID != wantResumeSegmentID ||
-		len(ownedOpening[0].Items) != 1 {
+		len(ownedOpening[0].Items()) != 1 {
 		t.Fatal("waiting cancellation write-set followed caller or accessor mutation")
 	}
 	nested := withOpening.OpeningEvents()
-	nested[0].CommitID = testCommitID("run_commit_waiting_cancel_nested")
+	nested[0] = mustEventCommit(t, EventCommitConfig{
+		RunID: nested[0].RunID(), SessionID: nested[0].SessionID(), SegmentID: nested[0].SegmentID(),
+		Items: nested[0].Items(), CommitID: testCommitID("run_commit_waiting_cancel_nested"),
+	})
 	if _, err := NewResumingSubtreeCancellationCommit(
 		commit.CommitID(), commit.TargetRunID(), commit.RootRun(), commit.ExpectedPending(),
 		commit.Checkpoint(), commit.TerminalRuns(), commit.TerminalItems(), commit.ParentItem(),
@@ -706,9 +709,10 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 		t.Fatal("waiting cancellation accepted a nested top-level event identity")
 	}
 	observed := withOpening.OpeningEvents()
-	observed[0].Progress = &ProgressCommit{
-		SegmentID: rootSegmentID, UpdatedAt: openingItem.OccurredAt(), Metrics: run.Metrics{},
-	}
+	observed[0] = mustEventCommit(t, EventCommitConfig{
+		RunID: observed[0].RunID(), SessionID: observed[0].SessionID(), SegmentID: observed[0].SegmentID(), Items: observed[0].Items(),
+		Progress: &ProgressCommit{SegmentID: rootSegmentID, UpdatedAt: openingItem.OccurredAt(), Metrics: run.Metrics{}},
+	})
 	if _, err := NewResumingSubtreeCancellationCommit(
 		commit.CommitID(), commit.TargetRunID(), commit.RootRun(), commit.ExpectedPending(),
 		commit.Checkpoint(), commit.TerminalRuns(), commit.TerminalItems(), commit.ParentItem(),
@@ -800,15 +804,15 @@ func TestCancelWaitingChildTerminalizesCommittedTreeWhenActivationFails(t *testi
 		}
 	}
 	for _, commit := range effects.commitSnapshot() {
-		if commit.State != StateTerminalize || commit.Run == nil {
+		if !commit.Terminates() || commit.Run() == nil {
 			continue
 		}
-		if commit.Run.ID() != "run_b" && commit.Run.ID() != plan.root.run.ID() {
+		if commit.Run().ID() != "run_b" && commit.Run().ID() != plan.root.run.ID() {
 			continue
 		}
-		if !runHasOutcome(*commit.Run, run.OutcomeFailed) ||
-			!runHasFailureKind(*commit.Run, run.FailureInternal) {
-			t.Fatalf("failed continuation terminal = %+v, want internal error outcome", commit.Run)
+		if !runHasOutcome(*commit.Run(), run.OutcomeFailed) ||
+			!runHasFailureKind(*commit.Run(), run.FailureInternal) {
+			t.Fatalf("failed continuation terminal = %+v, want internal error outcome", commit.Run())
 		}
 	}
 	if _, live := coordinator.registry.Get(plan.root.run.ID()); live {

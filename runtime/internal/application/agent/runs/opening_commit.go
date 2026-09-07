@@ -38,7 +38,7 @@ func NewAdmissionOpeningCommit(
 	admit = cloneOpeningAdmission(admit)
 	opening := OpeningCommit{
 		commitID: commitID, admit: &admit,
-		scheduleFiring: scheduleFiring, events: cloneEventCommits(events),
+		scheduleFiring: scheduleFiring, events: slices.Clone(events),
 	}
 	if initialSession != nil {
 		value := *initialSession
@@ -67,7 +67,7 @@ func NewResumeOpeningCommit(
 ) (OpeningCommit, error) {
 	resume = cloneOpeningResume(resume)
 	opening := OpeningCommit{
-		commitID: commitID, resume: &resume, events: cloneEventCommits(events),
+		commitID: commitID, resume: &resume, events: slices.Clone(events),
 	}
 	if err := opening.Validate(); err != nil {
 		return OpeningCommit{}, err
@@ -160,11 +160,11 @@ func (o OpeningCommit) validateAdmission() error {
 
 func (o OpeningCommit) validateEvents() error {
 	for index, commit := range o.events {
-		if !commit.CommitID.IsZero() {
+		if !commit.CommitID().IsZero() {
 			return fmt.Errorf("runs: opening event[%d] carries a top-level event commit identity", index)
 		}
-		if err := commit.Validate(); err != nil {
-			return fmt.Errorf("runs: opening event[%d]: %w", index, err)
+		if commit.IsZero() {
+			return fmt.Errorf("runs: opening event[%d] is required", index)
 		}
 		if err := o.validateEventOwner(commit); err != nil {
 			return fmt.Errorf("runs: opening event[%d]: %w", index, err)
@@ -180,14 +180,13 @@ func (o OpeningCommit) validateEvents() error {
 // that can exist before execution begins. Operational observations belong to
 // later authoritative EventCommits, even when they name the same Segment.
 func validateOpeningProjection(commit EventCommit) error {
-	if commit.State != StateUnchanged || commit.Outcome != "" || commit.Run != nil ||
-		commit.GoalRun != nil || commit.ObsoleteCheckpointRootID != "" {
+	if commit.ChangesLifecycle() {
 		return errors.New("opening projection carries lifecycle facts")
 	}
-	if len(commit.ModelInvocations) != 0 || len(commit.ToolInvocations) != 0 || commit.Progress != nil {
+	if len(commit.ModelInvocations()) != 0 || len(commit.ToolInvocations()) != 0 || commit.Progress() != nil {
 		return errors.New("opening projection carries execution observations")
 	}
-	if len(commit.Items) == 0 && len(commit.ConversationMessages) == 0 {
+	if len(commit.Items()) == 0 && len(commit.ConversationMessages()) == 0 {
 		return errors.New("opening projection has no transcript or conversation facts")
 	}
 	return nil
@@ -195,27 +194,27 @@ func validateOpeningProjection(commit EventCommit) error {
 
 func (o OpeningCommit) validateEventOwner(commit EventCommit) error {
 	if o.admit != nil {
-		if commit.SessionID != o.admit.SessionID {
+		if commit.SessionID() != o.admit.SessionID {
 			return errors.New("event Session differs from admitted Run")
 		}
-		if commit.RunID == o.admit.RunID {
-			if commit.SegmentID != o.admit.SegmentID {
+		if commit.RunID() == o.admit.RunID {
+			if commit.SegmentID() != o.admit.SegmentID {
 				return errors.New("admitted Run event belongs to another Segment")
 			}
 			return nil
 		}
 		lineage := o.admit.Lineage()
-		if lineage.IsChild() && commit.RunID == lineage.ParentRunID {
+		if lineage.IsChild() && commit.RunID() == lineage.ParentRunID {
 			return nil
 		}
 		return errors.New("event belongs to a Run outside the admission")
 	}
-	if commit.SessionID != o.resume.SessionID {
+	if commit.SessionID() != o.resume.SessionID {
 		return errors.New("event Session differs from resumed tree")
 	}
 	for _, resumed := range o.resume.Runs {
-		if commit.RunID == resumed.RunID {
-			if commit.SegmentID != resumed.SegmentID {
+		if commit.RunID() == resumed.RunID {
+			if commit.SegmentID() != resumed.SegmentID {
 				return errors.New("resumed Run event belongs to another Segment")
 			}
 			return nil
@@ -271,4 +270,4 @@ func (o OpeningCommit) ManualScheduleRun() (schedule.RunRecord, bool) {
 }
 
 // Events returns isolated opening projections in their canonical order.
-func (o OpeningCommit) Events() []EventCommit { return cloneEventCommits(o.events) }
+func (o OpeningCommit) Events() []EventCommit { return slices.Clone(o.events) }

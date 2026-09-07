@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -10,7 +11,7 @@ import (
 
 // TreeBarrierCommit is the one durable write-set produced when any executor
 // interruption stops a Run tree. Pending owns the complete continuation hand-off;
-// Runs contains one StateSuspend commit for every active Run in deterministic
+// Runs contains one waiting Run commit for every active Run in deterministic
 // postorder. No individual Run commit may write or consume the root-owned set.
 type TreeBarrierCommit struct {
 	commitID   runtimeidentity.CommitID
@@ -29,20 +30,12 @@ func NewTreeBarrierCommit(
 ) (TreeBarrierCommit, error) {
 	barrier := TreeBarrierCommit{
 		commitID: commitID, pending: pending.Clone(),
-		runs: cloneEventCommits(runs), checkpoint: checkpoint,
+		runs: slices.Clone(runs), checkpoint: checkpoint,
 	}
 	if err := barrier.Validate(); err != nil {
 		return TreeBarrierCommit{}, err
 	}
 	return barrier, nil
-}
-
-func cloneEventCommits(commits []EventCommit) []EventCommit {
-	owned := make([]EventCommit, len(commits))
-	for index, commit := range commits {
-		owned[index] = commit.clone()
-	}
-	return owned
 }
 
 // Validate proves that the barrier is the complete interruption projection for
@@ -80,7 +73,7 @@ func (t TreeBarrierCommit) CommitID() runtimeidentity.CommitID { return t.commit
 func (t TreeBarrierCommit) Pending() Pending { return t.pending.Clone() }
 
 // Runs returns isolated nested Run commits in canonical tree postorder.
-func (t TreeBarrierCommit) Runs() []EventCommit { return cloneEventCommits(t.runs) }
+func (t TreeBarrierCommit) Runs() []EventCommit { return slices.Clone(t.runs) }
 
 // Checkpoint returns an isolated copy of the opaque executor continuation.
 func (t TreeBarrierCommit) Checkpoint() run.Checkpoint { return t.checkpoint }
@@ -131,43 +124,44 @@ func (t treeBarrierValidator) validateRuns() error {
 }
 
 func (t treeBarrierValidator) validateRun(index int, runCommit EventCommit) error {
-	if !runCommit.CommitID.IsZero() {
+	if !runCommit.CommitID().IsZero() {
 		return fmt.Errorf("runs: tree barrier Run[%d] carries a top-level event commit identity", index)
 	}
-	if err := runCommit.Validate(); err != nil {
-		return fmt.Errorf("runs: tree barrier Run[%d]: %w", index, err)
+	if runCommit.IsZero() {
+		return fmt.Errorf("runs: tree barrier Run[%d] is required", index)
 	}
-	if runCommit.State != StateSuspend || runCommit.Run == nil || runCommit.Run.State() != run.Waiting {
+	if !runCommit.Suspends() {
 		return fmt.Errorf("runs: tree barrier Run[%d] is not a waiting Run projection", index)
 	}
+	record := runCommit.Run()
 	pending := t.barrier.pending
-	if runCommit.SessionID != pending.SessionID || runCommit.Run.SessionID() != pending.SessionID {
+	if runCommit.SessionID() != pending.SessionID {
 		return fmt.Errorf("runs: tree barrier Run[%d] Session differs from Pending", index)
 	}
-	continuation, exists := t.continuations[runCommit.RunID]
+	continuation, exists := t.continuations[runCommit.RunID()]
 	if !exists {
 		return fmt.Errorf("runs: tree barrier Run[%d] has no continuation", index)
 	}
-	if runCommit.Run.Lineage() != continuation.Lineage ||
-		!runCommit.Run.ModelSelection().Equal(continuation.ModelSelection) ||
-		!runCommit.Run.CreatedAt().Equal(continuation.RunCreatedAt) ||
-		!runCommit.Run.Metrics().Equal(continuation.Metrics) ||
-		runCommit.Run.Limits() != continuation.Limits {
+	if record.Lineage() != continuation.Lineage ||
+		!record.ModelSelection().Equal(continuation.ModelSelection) ||
+		!record.CreatedAt().Equal(continuation.RunCreatedAt) ||
+		!record.Metrics().Equal(continuation.Metrics) ||
+		record.Limits() != continuation.Limits {
 		return fmt.Errorf("runs: tree barrier Run[%d] differs from its continuation", index)
 	}
-	if !runCommit.Run.Capabilities().Equal(pending.Capabilities) {
+	if !record.Capabilities().Equal(pending.Capabilities) {
 		return fmt.Errorf("runs: tree barrier Run[%d] capabilities differ from Pending", index)
 	}
-	if runCommit.RunID == pending.RootRunID {
-		if runCommit.Run.GoalIncarnationID() != pending.GoalIncarnationID {
+	if runCommit.RunID() == pending.RootRunID {
+		if record.GoalIncarnationID() != pending.GoalIncarnationID {
 			return errors.New("runs: tree barrier root Run goal incarnation differs from Pending")
 		}
-	} else if runCommit.Run.GoalIncarnationID() != "" {
+	} else if record.GoalIncarnationID() != "" {
 		return fmt.Errorf("runs: tree barrier child Run[%d] carries a root Goal incarnation", index)
 	}
-	if _, duplicate := t.seenRunIDs[runCommit.RunID]; duplicate {
-		return fmt.Errorf("runs: tree barrier repeats Run %q", runCommit.RunID)
+	if _, duplicate := t.seenRunIDs[runCommit.RunID()]; duplicate {
+		return fmt.Errorf("runs: tree barrier repeats Run %q", runCommit.RunID())
 	}
-	t.seenRunIDs[runCommit.RunID] = struct{}{}
+	t.seenRunIDs[runCommit.RunID()] = struct{}{}
 	return nil
 }
