@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -45,7 +46,7 @@ func (s sessionBindingStub) ImportSession(ctx context.Context, request protocol.
 	return s.imported(ctx, request, options)
 }
 
-func TestSessionControlProjectsRollbackWithoutLosingInlineInput(t *testing.T) {
+func TestSessionControlProjectsTheRollbackAcknowledgement(t *testing.T) {
 	image := []byte("image body")
 	commandID := agent.CommandID("cli_77777777777777777777777777777777")
 	stub := sessionBindingStub{}
@@ -81,13 +82,8 @@ func TestSessionControlProjectsRollbackWithoutLosingInlineInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, ok := result.FirstOpeningInput()
-	if !ok || len(input.Input) != 2 || string(input.Input[1].Data) != string(image) {
-		t.Fatalf("rollback result = %+v", result)
-	}
-	text, images := input.OpeningText()
-	if text != "try another approach" || images != 1 {
-		t.Fatalf("opening input = %q, %d", text, images)
+	if result.Session.ID != "ses_1" || !slices.Equal(result.DroppedRunIDs, []string{"run_2"}) {
+		t.Fatalf("rollback acknowledgement = %+v", result)
 	}
 }
 
@@ -121,6 +117,42 @@ func TestSessionControlRejectsCrossSessionResponses(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 	_, err = runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: protocol.ExportFormatJSON})
 	requireRuntimeContractViolation(t, err)
+}
+
+func TestSessionControlRejectsInvalidDroppedRunIdentities(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		runs []protocol.RunSummary
+	}{
+		{name: "empty run", runs: []protocol.RunSummary{{SessionID: "ses_1"}}},
+		{name: "duplicate run", runs: []protocol.RunSummary{
+			{ID: "run_2", SessionID: "ses_1"}, {ID: "run_2", SessionID: "ses_1"},
+		}},
+		{name: "foreign session", runs: []protocol.RunSummary{{ID: "run_2", SessionID: "ses_other"}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			stub := sessionBindingStub{
+				rollback: func(context.Context, protocol.RollbackSessionRequest, flameruntime.CommandOptions) (*protocol.RollbackSessionResponse, error) {
+					response := &protocol.RollbackSessionResponse{Session: &protocol.Session{
+						ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel,
+						Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
+						CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
+					}}
+					for _, run := range test.runs {
+						response.DroppedRuns = append(response.DroppedRuns, protocol.DroppedRun{Run: run})
+					}
+					return response, nil
+				},
+			}
+			runtime := &Connection{
+				sessions: stub, meta: requestMeta("test"), profile: sessionControlProfile(t),
+			}
+			_, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
+				SessionID: "ses_1", Scope: protocol.RestoreHistory,
+			})
+			requireRuntimeContractViolation(t, err)
+		})
+	}
 }
 
 func TestSessionTransferPreservesRuntimeNativeFormats(t *testing.T) {

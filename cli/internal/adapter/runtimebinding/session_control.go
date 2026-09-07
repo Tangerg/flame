@@ -3,7 +3,6 @@ package runtimebinding
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -47,7 +46,7 @@ func (r *Connection) RollbackSession(ctx context.Context, input agent.RollbackSe
 	if response == nil || response.Session == nil {
 		return agent.RollbackResult{}, runtimeContractViolation("rollback session returned an incomplete result")
 	}
-	result := agent.RollbackResult{Dropped: make([]agent.DroppedRun, 0, len(response.DroppedRuns))}
+	result := agent.RollbackResult{DroppedRunIDs: make([]string, 0, len(response.DroppedRuns))}
 	result.Session, err = projectSession(*response.Session)
 	if err != nil {
 		return agent.RollbackResult{}, runtimeContractViolation("rollback session returned an invalid session: %v", err)
@@ -62,38 +61,12 @@ func (r *Connection) RollbackSession(ctx context.Context, input agent.RollbackSe
 				input.SessionID, dropped.Run.ID, dropped.Run.SessionID,
 			)
 		}
-		projected, err := projectDroppedRun(dropped)
-		if err != nil {
-			return agent.RollbackResult{}, runtimeContractViolation("rollback session returned an invalid dropped run: %v", err)
-		}
-		result.Dropped = append(result.Dropped, projected)
+		result.DroppedRunIDs = append(result.DroppedRunIDs, dropped.Run.ID)
 	}
 	if err := result.Validate(); err != nil {
 		return agent.RollbackResult{}, runtimeContractViolation("rollback session returned an invalid projection: %v", err)
 	}
 	return result, nil
-}
-
-func projectDroppedRun(value protocol.DroppedRun) (agent.DroppedRun, error) {
-	projected := agent.DroppedRun{RunID: value.Run.ID, Input: make([]agent.InputContent, 0, len(value.UserInput))}
-	for index, content := range value.UserInput {
-		switch content.Type {
-		case protocol.ContentBlockText:
-			projected.Input = append(projected.Input, agent.InputContent{Kind: content.Type, Text: content.Text})
-		case protocol.ContentBlockImage:
-			data, err := base64.StdEncoding.DecodeString(content.Data)
-			if err != nil {
-				return agent.DroppedRun{}, fmt.Errorf("rollback dropped run %s image %d: %w", value.Run.ID, index+1, err)
-			}
-			projected.Input = append(projected.Input, agent.InputContent{Kind: content.Type, MimeType: content.Mime, Data: data})
-		default:
-			return agent.DroppedRun{}, fmt.Errorf("rollback dropped run %s content %d has unsupported type %q", value.Run.ID, index+1, content.Type)
-		}
-	}
-	if err := projected.Validate(); err != nil {
-		return agent.DroppedRun{}, err
-	}
-	return projected, nil
 }
 
 func (r *Connection) ExportSession(ctx context.Context, request session.ExportRequest) (session.Document, error) {

@@ -79,6 +79,8 @@ Workbench persistence contains only CLI-authored facts. The workbench aggregate 
 
 Queue admission receives the command identity allocated by its authoring transaction, and settlement retires that exact identity. Stashing transfers an existing draft through the recoverable workbench transaction. Session retirement removes the complete local authoring state together.
 
+Rollback captures recoverable opening input from the authoritative preview before mutation and persists it with the pending command. Its acknowledgement projects only the Session and dropped Run identities needed to verify settlement.
+
 Attachments are local path references. Dispatch reopens the current file through the filesystem adapter and converts it to Runtime content under explicit size and encoding limits.
 
 ## Package shape

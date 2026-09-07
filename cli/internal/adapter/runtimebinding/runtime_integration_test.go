@@ -353,7 +353,7 @@ func requireSessionPortability(t *testing.T, runtime *Connection, sessionID stri
 	rolledBack, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
 		SessionID: sessionID, Scope: protocol.RestoreHistory,
 	})
-	if err != nil || rolledBack.Session.ID != sessionID || len(rolledBack.Dropped) != 0 {
+	if err != nil || rolledBack.Session.ID != sessionID || len(rolledBack.DroppedRunIDs) != 0 {
 		t.Fatalf("RollbackSession = (%+v, %v)", rolledBack, err)
 	}
 }

@@ -635,7 +635,7 @@ func TestRuntimeForkStartsWithAFreshProjectionAtRunBoundary(t *testing.T) {
 	}
 }
 
-func TestRuntimeRollbackRestoresTheEarliestDroppedOpeningInput(t *testing.T) {
+func TestRuntimeRollbackReportsTheRemovedRuns(t *testing.T) {
 	runtime := New()
 	result, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
@@ -643,13 +643,8 @@ func TestRuntimeRollbackRestoresTheEarliestDroppedOpeningInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Dropped) != 1 {
-		t.Fatalf("dropped runs = %+v", result.Dropped)
-	}
-	input, ok := result.FirstOpeningInput()
-	text, images := input.OpeningText()
-	if !ok || text != "Why is the cache expiry test flaky?" || images != 0 {
-		t.Fatalf("opening input = (%q, %d, %t)", text, images, ok)
+	if !slices.Equal(result.DroppedRunIDs, []string{"run_demo_history"}) {
+		t.Fatalf("dropped runs = %v", result.DroppedRunIDs)
 	}
 	snapshot, err := runtime.GetSession(t.Context(), "ses_demo_1")
 	if err != nil {

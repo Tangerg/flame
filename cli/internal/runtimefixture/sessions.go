@@ -312,18 +312,10 @@ func (r *Runtime) RollbackSession(ctx context.Context, in agent.RollbackSession)
 	}
 	droppedIDs := slices.Clone(state.runs[keep+1:])
 	droppedSet := make(map[string]struct{}, len(droppedIDs))
-	result := agent.RollbackResult{Dropped: make([]agent.DroppedRun, 0, len(droppedIDs))}
+	result := agent.RollbackResult{DroppedRunIDs: droppedIDs}
 	planAtRun := maps.Clone(state.planAtRun)
 	for _, runID := range droppedIDs {
 		droppedSet[runID] = struct{}{}
-		dropped := agent.DroppedRun{RunID: runID}
-		for _, item := range state.items {
-			if item.runID == runID && item.block.Kind == agent.BlockUser && strings.TrimSpace(item.block.Text) != "" {
-				dropped.Input = append(dropped.Input, agent.InputContent{Kind: protocol.ContentBlockText, Text: item.block.Text})
-				break
-			}
-		}
-		result.Dropped = append(result.Dropped, dropped)
 		delete(planAtRun, runID)
 	}
 	runs := slices.Clone(state.runs[:keep+1])

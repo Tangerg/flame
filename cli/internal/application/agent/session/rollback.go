@@ -321,15 +321,11 @@ func validateAcknowledged(
 	if result.Session.ID != pending.SessionID || !slices.Equal(runIDs(snapshot), pending.AfterRunIDs) {
 		return errors.New("rollback acknowledgement and authoritative session disagree")
 	}
-	droppedIDs := make([]string, len(result.Dropped))
-	for index, dropped := range result.Dropped {
-		droppedIDs[index] = dropped.RunID
-	}
 	wantDropped := pending.BeforeRunIDs[len(pending.AfterRunIDs):]
 	if pending.Request().FilesOnly() {
 		wantDropped = nil
 	}
-	if !slices.Equal(droppedIDs, wantDropped) {
+	if !slices.Equal(result.DroppedRunIDs, wantDropped) {
 		return errors.New("rollback acknowledgement reports another dropped run set")
 	}
 	return nil
