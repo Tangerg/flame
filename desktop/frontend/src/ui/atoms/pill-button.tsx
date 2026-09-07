@@ -17,7 +17,9 @@ const styles = stylex.create({
     transitionProperty: "background-color, color, scale",
     transitionDuration: motion.fast,
     transitionTimingFunction: "var(--ease-out)",
-    scale: { default: null, ":active": "var(--press-scale)" },
+    // A disabled control does not answer a press. `Button` had guarded this; this one had not,
+    // so a pill that could not act still shrank under the pointer.
+    scale: { default: null, ":active": "var(--press-scale)", ":is(:disabled):active": 1 },
     cursor: { default: null, ":disabled": "not-allowed" },
     opacity: { default: null, ":disabled": 0.5 },
   },

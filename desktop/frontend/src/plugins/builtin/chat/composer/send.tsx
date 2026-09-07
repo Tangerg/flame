@@ -13,10 +13,6 @@ import { useCanSendToAgent } from "@/plugins/builtin/agent/public/input";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 
-// The primary action nudges rather than shrinks: `press={false}` turns the scale off because a
-// filled circle that shrinks reads as a bug, and a half-pixel drop reads as a press.
-const NUDGE = "active:translate-y-[0.5px]";
-
 function SendButton() {
   const t = useT();
   const value = useComposerText();
@@ -49,13 +45,11 @@ function SendButton() {
     <IconButton
       icon="stop"
       iconSize="xs"
-      press={false}
       disabled={!stop || !runtimeAvailable}
       title={t("composer.action.stop")}
       onClick={() => stop?.()}
       variant={primary ? "primary" : "ghost"}
       round
-      className={primary ? NUDGE : undefined}
     />
   );
 
@@ -63,13 +57,11 @@ function SendButton() {
     <IconButton
       icon="arrow-up"
       iconSize="sm"
-      press={false}
       disabled={!enabled}
       title={label}
       onClick={submit}
       variant="primary"
       round
-      className={NUDGE}
     />
   );
 

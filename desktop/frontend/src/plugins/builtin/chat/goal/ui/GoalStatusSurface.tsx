@@ -105,7 +105,6 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             data-goal="summary"
             variant="bare"
             size="xs"
-            press={false}
             disabled={pending !== null || !canEdit}
             flex="fill"
             className="min-h-6 disabled:cursor-default disabled:opacity-100"

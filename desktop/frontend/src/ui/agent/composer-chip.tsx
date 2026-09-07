@@ -40,7 +40,6 @@ export function AgentComposerChip({
       variant={variant}
       size="md"
       chip
-      press={false}
       title={title ?? label}
       styles={[chipStyles.grid, shrink === "gives" ? chipStyles.gives : chipStyles.holds]}
       className={className}

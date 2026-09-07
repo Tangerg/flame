@@ -94,7 +94,7 @@ export function ComposerProjectTray() {
                 type="button"
                 size="sm"
                 variant="ghost"
-                press={false}
+                press="none"
                 disabled={!actions.canCreateSessionInFolder}
                 aria-label={t("composer.project.choose")}
                 title={t("composer.project.tooltip")}
@@ -134,7 +134,6 @@ function ProjectNameTrigger({
         <Button
           type="button"
           variant="link"
-          press={false}
           aria-label={t("composer.project.change", { project: projectName })}
           className="max-w-full"
         >

@@ -120,7 +120,6 @@ export function AgentRow({
       variant="ghost"
       size="sm"
       shape="row"
-      press={false}
       active={active}
       styles={[
         rowStyles.base,

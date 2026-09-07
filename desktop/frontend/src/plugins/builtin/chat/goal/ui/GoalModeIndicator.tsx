@@ -45,7 +45,6 @@ function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
         type="button"
         variant="ghost"
         size="md"
-        press={false}
         aria-label={t("goal.mode.clear")}
         aria-pressed="true"
         disabled={starting}

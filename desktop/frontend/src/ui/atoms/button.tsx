@@ -118,9 +118,15 @@ const styles = stylex.create({
     padding: 0,
   },
 
-  // A press that a disabled control does not answer.
+  // How a press is answered, and neither step answers one a disabled control cannot accept.
   press: {
     scale: { default: null, ":active": "var(--press-scale)", ":is(:disabled):active": 1 },
+  },
+  // The filled circle's step: a plate that shrinks reads as a bug rather than a press, and a
+  // half-pixel drop reads as one. It had been a string constant in the composer, which made
+  // "how a press is answered" two mechanisms — one here and one in a plugin.
+  nudge: {
+    translate: { default: null, ":active": "0 0.5px", ":is(:disabled):active": null },
   },
 
   ghost: {
@@ -329,7 +335,8 @@ export interface ButtonVariants {
   variant?: ButtonVariant;
   size?: ButtonSize;
   tone?: ButtonTone;
-  press?: boolean;
+  /** Left unset this follows the box, which is what decides it — see `pressFor`. */
+  press?: "scale" | "nudge" | "none";
   join?: "start" | "end";
   round?: boolean;
   chip?: boolean;
@@ -344,12 +351,28 @@ export interface ButtonVariants {
   face?: "text" | "mono";
 }
 
+// A press is answered by the BOX, so the box decides whether there is an answer to give.
+// `link` and `bare` have no box — they are a run of text, and scaling text reads as a glitch.
+// A row's box is the whole row, where two percent moves each edge five pixels and looks like
+// the layout breathing. A chip's box is too small for two percent to read at all. Every one of
+// these had been turning the press off at the call site, all four of them unanimously.
+// The exception is the saturated disc — the composer's send and stop: a solid accent plate that
+// shrinks reads as a bug rather than a press, and a half-pixel drop reads as one. That argument
+// had been made in a comment beside a plugin-level string constant, which left "how a press is
+// answered" with two mechanisms. A `raised` circle is not this case: its fill is the canvas, so
+// it takes the scale like any other box.
+function pressFor({ variant, chip, shape, round }: ButtonVariants): "scale" | "nudge" | "none" {
+  if (variant === "link" || variant === "bare") return "none";
+  if (round && variant === "primary") return "nudge";
+  return chip || shape === "row" ? "none" : "scale";
+}
+
 /** The precedence, in one place. Read it top to bottom: later decides. */
 export function dress({
   variant = "ghost",
   size = "md",
   tone,
-  press = true,
+  press,
   join,
   round,
   chip,
@@ -361,11 +384,13 @@ export function dress({
   face: textFace,
 }: ButtonVariants) {
   const chipStep = chip && (size === "sm" || size === "md") ? size : null;
+  const pressStep = press ?? pressFor({ variant, chip, shape, round });
   return [
     styles.base,
     tone && TONE[tone],
     SIZE[size],
-    press && styles.press,
+    pressStep === "scale" && styles.press,
+    pressStep === "nudge" && styles.nudge,
     round && corner.pill,
     join === "start" && styles.joinStart,
     join === "end" && styles.joinEnd,

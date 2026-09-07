@@ -27,7 +27,6 @@ export function HeaderDiffStat({ className }: { className?: string }) {
   return (
     <Button
       size="sm"
-      press={false}
       aria-label={t("workspace.view.title.diff")}
       onClick={openDiffViewInDock}
       chip

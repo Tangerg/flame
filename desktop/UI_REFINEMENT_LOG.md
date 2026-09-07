@@ -8073,3 +8073,114 @@ atom 只留左右内距，纵向由每个调用点自己说 —— 材料需要�
   直接违反 DESIGN.md §5。
 - **业务层 35 处 `hover:bg-hover`**：token 是对的，问题是"一行有 hover"这件事
   被 35 个地方各自声明。
+
+---
+
+## Round 137 —— 按下有两套机制，其中一套住在业务层
+
+### 证据
+
+```
+press?: boolean                          ← 一个布尔，12 个调用点关掉它
+const NUDGE = "active:translate-y-[0.5px]"  ← send.tsx，业务层的一个字符串常量
+"active:translate-y-0 active:scale-[var(--press-scale)]"  ← JumpToBottomButton
+```
+
+把 12 个 `press={false}` 按调用点已经声明的身份归类：
+
+| 身份 | 关掉按下 | 保留 |
+| --- | --- | --- |
+| `chip` | 3 | 0 |
+| `shape="row"` | 1 | 0 |
+| `variant="link"` | 1 | 0 |
+| `variant="bare"` | 1 | 0 |
+| `press="nudge"` 想要的（send） | 2 | — |
+| 其余（outline / ghost 宽触发器） | 4 | — |
+
+`shape="row"` 另有 3 处看着像反例 —— 其实是 **`TextButton`，另一个组件**，
+它根本没有 `press` prop。所以在 `Button` 的调用点里，四种身份全是 100%。
+
+### 根因
+
+**"按下如何被回应"是控件盒子的属性，不是调用点的开关。** 没有盒子的东西
+（`link` / `bare` 是一段文字）没有可缩放的对象；一个整行宽的盒子缩 2% 是
+两边各动 5px，读起来像布局在呼吸；一个密排 pill 缩 2% 读不出来。
+四种身份各自 100% 关掉它，不是四次巧合。
+
+而 `send.tsx` 的注释写着真正的设计："实心圆缩小读起来像 bug，半像素下沉读起来像按下"
+—— 这条理由对**任何实心圆按钮**都成立，却以 `press={false}` + 一个业务层字符串常量的
+形式存在。同一个事实（按下的回应）于是有了两套机制，一套在 atom 里、一套在插件里。
+
+`JumpToBottomButton` 那行则是在**重述 atom 已经做的事**（`active:scale-[var(--press-scale)]`
+就是 `styles.press`），外加一个 `active:translate-y-0` —— 它永远不可能触发，
+因为按钮不可见时是 `pointer-events-none`，可见时 `translate-y` 已经是 0。
+
+（写到这儿我一度以为"两个实心圆按钮意见相反"，还把这句写进了 atom 注释。
+查了 variant 才发现 `JumpToBottomButton` 是 **`raised`**（canvas 抬起），不是
+`primary`（饱和 CTA 盘）—— 我的正则把两者一起匹配了。它拿到的本来就是默认 `scale`，
+所以删掉那行是零变化。**不是分歧，是两种不同的毛病。** 注释已改。）
+
+顺带一处同一主题的分歧：`PillButton` 处理了 `:disabled` 的 cursor 与 opacity，
+**却没守住按下缩放** —— 禁用的 pill 被点击时仍然会缩。`Button` 守了
+（`":is(:disabled):active": 1`）。同一个事实两个主人，其中一个漏了。
+
+### 做法
+
+1. `press?: boolean` → `press?: "scale" | "nudge" | "none"`（AGENTS.md：用封闭命名值，
+   不用原始哨兵）。默认由身份推出：`link` / `bare` / `chip` / `shape="row"` 为 `none`，
+   其余 `scale`。6 个调用点因此不再需要说话，调用点仍可显式覆盖。
+2. `nudge` 进 atom：`translate` 在 `:active` 时 `0 0.5px`，同样不响应禁用态。
+   `send.tsx` 的字符串常量与 `press={false}` 一起删除。
+3. `JumpToBottomButton` 删掉重述的那一行。
+4. `PillButton` 补上禁用守卫。
+5. ~~`McpRow` 的 `group-hover:bg-surface-3`~~ —— **这条我判断错了，撤销**。
+   细看之后：那一行的状态本来就是 `hover:bg-hover`（正确的 ink wash），
+   `surface-2 → surface-3` 是**行内一块字形底板自己的填充**在随行提亮，
+   不是行状态。surface 台阶用在 surface 上没有问题。
+   grep 出一个 class 名就断定它违规，跳过了"它是谁的属性"这一步。
+
+### 验收
+
+| | 之前 | 之后 |
+| --- | --- | --- |
+| 按下机制 | 2 套（atom 一套、插件一个字符串常量一套） | 1 套，两档命名值 |
+| `press` 类型 | `boolean` | `"scale" \| "nudge" \| "none"` |
+| 说 `press` 的调用点 | 12 | 4 |
+| 重述 atom 默认值的手写类 | 1 处（含 1 条永不触发的规则） | 0 |
+| 禁用时仍会缩的控件 | `PillButton` | 无 |
+
+| | 结果 |
+| --- | --- |
+| 视觉全量 | **652 / 652**，零位移（按下只在 `:active`，静态 golden 本就不该动） |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 136 文件 / 688 项通过 |
+
+### 留给下一轮
+
+"一个控件用不了" 有 **8 个主人、4 个值**，而且根因不只是值不齐 ——
+**基础层已经拥有了其中一半，另外七处不知道**：
+
+`@layer base` 里 `[data-control="button"]:disabled { cursor: not-allowed; opacity: 0.45 }`
+—— 这个属性只由 `ui/primitives/button.tsx` 发放，所以它覆盖了
+`Button` / `TextButton` / `PillButton` / `SelectTrigger` / `Pressable`（全部走
+`ButtonPrimitive`）。
+
+| 主人 | opacity | 被基础层覆盖？ | 它的 `cursor: not-allowed` |
+| --- | --- | --- | --- |
+| `globals.css` `@layer base` | **0.45** | —— 它就是基础层 | 是它在说 |
+| `button.tsx` | 0.64 | 是 | **纯重述** |
+| `text-button.tsx` | 0.5 | 是 | **纯重述** |
+| `pill-button.tsx` | 0.5 | 是 | **纯重述** |
+| `select-trigger.tsx` | 0.5 | 是（走 `Pressable`） | **纯重述** |
+| `text-field.tsx` | 0.6 | 否（`<input>`） | 需要 |
+| `switch.tsx` | 0.5 | 否（Base UI switch） | 需要 |
+| `choice-list.tsx` | 0.64 | 否（checkbox / radio） | 需要 |
+
+`button` 的 `0.25` 不在此列 —— `off="faded"` 是一个**命名档**，说的是"退到背景里"，
+不是"用不了"。它的存在恰好说明禁用档不必兼任"几乎看不见"。
+
+做法：一个 `--control-disabled-opacity` 住在 `globals.css`（可换肤），
+基础层与三个非 button 的 atom 都读它；四处纯重述的 `cursor` 删掉。
+值取 **0.5** —— 四个 atom 已经这么说，且它离基础层的 0.45 最近；
+两个 0.64 的读数偏轻，容易和 muted 墨色混淆，而"更淡"这一档已经由 `faded` 占着。
+（这一档会动到每一个禁用控件的观感，是一个需要用户过目的设计决定。）

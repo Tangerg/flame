@@ -72,7 +72,7 @@ export function UtilityModelSection() {
               type="button"
               variant="outline"
               size="md"
-              press={false}
+              press="none"
               disabled={busy}
               aria-label={t("providers.utility.title")}
             >
@@ -153,7 +153,7 @@ export function EmbeddingModelSection() {
               type="button"
               variant="outline"
               size="md"
-              press={false}
+              press="none"
               disabled={busy}
               aria-label={t("providers.embedding.title")}
             >

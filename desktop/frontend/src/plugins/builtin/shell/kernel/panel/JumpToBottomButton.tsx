@@ -20,7 +20,6 @@ export function JumpToBottomButton() {
       tabIndex={visible ? 0 : -1}
       className={cn(
         "absolute bottom-[calc(100%+0.5rem)] left-1/2 -translate-x-1/2 z-3",
-        "active:translate-y-0 active:scale-[var(--press-scale)]",
         visible
           ? "opacity-100 translate-y-0 pointer-events-auto"
           : "opacity-0 translate-y-1 pointer-events-none",

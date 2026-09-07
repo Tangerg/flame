@@ -119,7 +119,7 @@ function SettingsRailHeader({
           type="button"
           variant="ghost"
           size="md"
-          press={false}
+          press="none"
           data-chrome-focus=""
           onClick={selectWorkspaceChat}
           className="mb-3 self-start"
