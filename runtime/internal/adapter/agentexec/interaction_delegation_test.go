@@ -94,10 +94,8 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
-		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(client),
-		ImplementationIdentity: "interaction-delegate-test-build",
-		ConfigurationIdentity:  "interaction-delegate-test-config", DefaultMaxModelCalls: uint32Pointer(4),
+		Lifetime:     t.Context(),
+		ChatResolver: staticInteractionChatResolver(client), DefaultMaxModelCalls: uint32Pointer(4),
 		BuildID: interactionTestBuildID,
 	})
 	if err != nil {
@@ -234,10 +232,8 @@ func TestInteractionExecutorCancelsRunningDelegateAndKeepsRootRunning(t *testing
 		t.Fatal(err)
 	}
 	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
-		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(client),
-		ImplementationIdentity: "interaction-running-cancel-test-build",
-		ConfigurationIdentity:  "interaction-running-cancel-test-config", DefaultMaxModelCalls: uint32Pointer(4),
+		Lifetime:     t.Context(),
+		ChatResolver: staticInteractionChatResolver(client), DefaultMaxModelCalls: uint32Pointer(4),
 		BuildID: interactionTestBuildID,
 	})
 	if err != nil {
@@ -580,10 +576,8 @@ func startDelegateTree(t *testing.T, model chat.Model, input string) *delegateTr
 		t.Fatal(err)
 	}
 	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
-		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(client),
-		ImplementationIdentity: "interaction-delegate-tree-test-build",
-		ConfigurationIdentity:  "interaction-delegate-tree-test-config", DefaultMaxModelCalls: uint32Pointer(6),
+		Lifetime:     t.Context(),
+		ChatResolver: staticInteractionChatResolver(client), DefaultMaxModelCalls: uint32Pointer(6),
 		MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
 	})
 	if err != nil {

@@ -28,8 +28,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
-const interactionDeploymentConfigurationIdentity = "flame.runtime.interaction.v1"
-
 // policyComposition contains the application policies that share the same
 // process-local invalidation vocabulary. It owns no background task or closer.
 type policyComposition struct {
@@ -307,8 +305,6 @@ func buildExecutionComposition(
 		Lifetime:               lifetime.context,
 		BuildID:                cfg.BuildID,
 		ChatResolver:           cfg.ChatResolver,
-		ImplementationIdentity: cfg.BuildID,
-		ConfigurationIdentity:  interactionDeploymentConfigurationIdentity,
 		StreamModelResponses:   true,
 		MaxConcurrentToolCalls: &maxConcurrentToolCalls,
 		ToolResolver:           toolRuntime.tools.Resolver,

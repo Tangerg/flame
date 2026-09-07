@@ -29,7 +29,7 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	if !i.acceptsBuild(checkpoint.BuildID) || checkpoint.Scope.Isolated {
 		return false, nil
 	}
-	if err := i.validateRestoreScope(ctx, checkpoint.Scope); err != nil {
+	if err := validateRestoreScope(checkpoint.Scope); err != nil {
 		return false, nil
 	}
 	state, err := decodeInteractionCheckpointPayload(checkpoint.Payload)

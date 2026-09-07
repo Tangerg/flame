@@ -47,16 +47,9 @@ type InteractionChatResolver interface {
 	ResolveChat(ctx context.Context, selection modelref.Selection) (modeladapter.ResolvedChat, error)
 }
 
-// RestoreScopeValidator verifies the host facts a durable executor checkpoint
-// cannot prove for itself. It must not mutate or recreate the workspace.
-type RestoreScopeValidator interface {
-	ValidateRestoreScope(ctx context.Context, scope runs.ExecutionScope) error
-}
-
 // InteractionExecutorConfig freezes the host-owned inputs shared by
-// Interaction root executions. Identity strings must change whenever the
-// executable Interaction adapter or behavior-affecting dispatcher configuration
-// changes, so Agent Framework Deployment references remain honest.
+// Interaction root executions. BuildID identifies the executable; deployment
+// configuration digests derive from the actual dispatcher and request policy.
 type InteractionExecutorConfig struct {
 	// Lifetime is the process-owned root for every Interaction staged by this
 	// executor. Request contexts may bound staging and commands, but accepted
@@ -64,9 +57,6 @@ type InteractionExecutorConfig struct {
 	Lifetime                  context.Context
 	BuildID                   string
 	ChatResolver              InteractionChatResolver
-	RestoreScopeValidator     RestoreScopeValidator
-	ImplementationIdentity    string
-	ConfigurationIdentity     string
 	DefaultMaxModelCalls      *uint32
 	StreamModelResponses      bool
 	DeltaBufferCapacity       *int
@@ -93,12 +83,10 @@ type InteractionExecutorConfig struct {
 // root owns an independent Engine and exactly one Interaction Process; the
 // Application owns durable Run state and consumes only [runs.ExecutorEvent].
 type InteractionExecutor struct {
-	lifetime               context.Context
-	config                 InteractionExecutorConfig
-	policy                 interactionExecutionPolicy
-	buildID                runtimeidentity.BuildID
-	implementationIdentity deploymentIdentity
-	configurationIdentity  deploymentIdentity
+	lifetime context.Context
+	config   InteractionExecutorConfig
+	policy   interactionExecutionPolicy
+	buildID  runtimeidentity.BuildID
 
 	sessions interactionSessions
 }
@@ -130,28 +118,12 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 			return nil, fmt.Errorf("agentexec: Interaction requires a %s", capability.name)
 		}
 	}
-	for _, capability := range []struct {
-		name  string
-		value any
-	}{
-		{name: "restore-scope validator", value: config.RestoreScopeValidator},
-		{name: "Tool-result store", value: config.ToolResultStore},
-	} {
-		if capability.value != nil && isNilInteractionCapability(capability.value) {
-			return nil, fmt.Errorf("agentexec: Interaction %s is typed nil", capability.name)
-		}
-	}
-	implementationIdentity, err := parseDeploymentIdentity("deployment implementation identity", config.ImplementationIdentity)
-	if err != nil {
-		return nil, fmt.Errorf("agentexec: Interaction: %w", err)
+	if config.ToolResultStore != nil && isNilInteractionCapability(config.ToolResultStore) {
+		return nil, errors.New("agentexec: Interaction Tool-result store is typed nil")
 	}
 	buildID, err := runtimeidentity.ParseBuild(config.BuildID)
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: Interaction %w", err)
-	}
-	configurationIdentity, err := parseDeploymentIdentity("deployment configuration identity", config.ConfigurationIdentity)
-	if err != nil {
-		return nil, fmt.Errorf("agentexec: Interaction: %w", err)
 	}
 	policy, err := newInteractionExecutionPolicy(config)
 	if err != nil {
@@ -160,14 +132,10 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	lifetime := config.Lifetime
 	config.Lifetime = nil
 	config.BuildID = ""
-	config.ImplementationIdentity = ""
-	config.ConfigurationIdentity = ""
 	return &InteractionExecutor{
 		lifetime: lifetime, config: config, policy: policy,
-		buildID:                buildID,
-		implementationIdentity: implementationIdentity,
-		configurationIdentity:  configurationIdentity,
-		sessions:               newInteractionSessions(),
+		buildID:  buildID,
+		sessions: newInteractionSessions(),
 	}, nil
 }
 
@@ -327,7 +295,6 @@ func (i *InteractionExecutor) interactionConfiguration(
 	instructions []corechat.Message,
 ) ([]byte, error) {
 	configuration, err := json.Marshal(struct {
-		Identity               string                     `json:"identity"`
 		Provider               string                     `json:"provider"`
 		Model                  string                     `json:"model"`
 		MaxModelCalls          uint32                     `json:"maxModelCalls"`
@@ -342,7 +309,6 @@ func (i *InteractionExecutor) interactionConfiguration(
 		DelegateBudget         agent.Budget               `json:"delegateBudget,omitzero"`
 		Instructions           []corechat.Message         `json:"instructions,omitempty"`
 	}{
-		Identity: i.configurationIdentity.String(),
 		Provider: session.accounting.providerName(), Model: session.accounting.modelName(),
 		MaxModelCalls: maxModelCalls, Streaming: i.config.StreamModelResponses,
 		MaxConcurrentToolCalls: i.policy.maxConcurrentToolCalls,
@@ -559,7 +525,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	continuation runs.WaitingContinuation,
 	boundary interactionBoundary,
 ) error {
-	if err := i.validateRestoreScope(ctx, continuation.Checkpoint.Scope); err != nil {
+	if err := validateRestoreScope(continuation.Checkpoint.Scope); err != nil {
 		return err
 	}
 	checkpoint, err := decodeInteractionCheckpointPayload(continuation.Checkpoint.Payload)
@@ -626,18 +592,9 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	return nil
 }
 
-func (i *InteractionExecutor) validateRestoreScope(
-	ctx context.Context,
-	scope runs.ExecutionScope,
-) error {
+func validateRestoreScope(scope runs.ExecutionScope) error {
 	if scope.Isolated {
 		return fmt.Errorf("%w: isolated workspaces are not restorable after executor loss", runs.ErrExecutorStateLost)
-	}
-	if i.config.RestoreScopeValidator != nil {
-		if err := i.config.RestoreScopeValidator.ValidateRestoreScope(ctx, scope); err != nil {
-			return fmt.Errorf("%w: validate restore scope: %v", runs.ErrExecutorStateLost, err)
-		}
-		return nil
 	}
 	for _, path := range []string{scope.CWD, scope.WorkspaceCWD} {
 		if strings.TrimSpace(path) == "" {

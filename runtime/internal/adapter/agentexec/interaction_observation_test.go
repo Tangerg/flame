@@ -1542,8 +1542,6 @@ func newObservedTestInteractionExecutor(
 	}
 	extra.ChatResolver = interactionChatResolver(client, counter)
 	extra.Lifetime = t.Context()
-	extra.ImplementationIdentity = "interaction-observation-test-build"
-	extra.ConfigurationIdentity = "interaction-observation-test-config"
 	extra.BuildID = interactionTestBuildID
 	extra.DefaultMaxModelCalls = uint32Pointer(8)
 	extra.UnknownEffectPollInterval = durationPointer(5 * time.Millisecond)

@@ -61,10 +61,8 @@ func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
 		t.Fatal(err)
 	}
 	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
-		ChatResolver:           staticInteractionChatResolver(client),
-		ImplementationIdentity: "interaction-executor-test-build",
-		ConfigurationIdentity:  "interaction-executor-test-config",
-		BuildID:                interactionTestBuildID,
+		ChatResolver: staticInteractionChatResolver(client),
+		BuildID:      interactionTestBuildID,
 	})
 	if err == nil || executor != nil {
 		t.Fatalf("NewInteractionExecutor without lifetime = (%v, %v), want nil executor and non-nil error", executor, err)
@@ -73,10 +71,8 @@ func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
 
 func TestInteractionExecutorRequiresChatResolver(t *testing.T) {
 	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
-		Lifetime:               t.Context(),
-		ImplementationIdentity: "interaction-executor-test-build",
-		ConfigurationIdentity:  "interaction-executor-test-config",
-		BuildID:                interactionTestBuildID,
+		Lifetime: t.Context(),
+		BuildID:  interactionTestBuildID,
 	})
 	if err == nil || executor != nil {
 		t.Fatalf("NewInteractionExecutor without resolver = (%v, %v), want nil executor and non-nil error", executor, err)
@@ -183,21 +179,10 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 			resolved = append(resolved, selection)
 			return modeladapter.NewResolvedChat(&client, nil)
 		}),
-		ImplementationIdentity: "interaction-executor-test-build",
-		ConfigurationIdentity:  "interaction-executor-test-config",
-		BuildID:                interactionTestBuildID,
+		BuildID: interactionTestBuildID,
 	})
 	if err != nil {
 		t.Fatal(err)
-	}
-	if executor.buildID.String() != interactionTestBuildID ||
-		executor.implementationIdentity.String() != "interaction-executor-test-build" ||
-		executor.configurationIdentity.String() != "interaction-executor-test-config" {
-		t.Fatal("Interaction executor did not retain its parsed deployment identities")
-	}
-	if executor.config.BuildID != "" || executor.config.ImplementationIdentity != "" ||
-		executor.config.ConfigurationIdentity != "" {
-		t.Fatal("Interaction executor retained duplicate raw identity configuration")
 	}
 	got, err := executor.resolveChat(t.Context(), testDefaultSelection())
 	if err != nil || got.Client() != &client || len(resolved) != 1 || resolved[0] != testDefaultSelection() {
@@ -367,13 +352,11 @@ func TestInteractionExecutorMapsStreamingModelFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
-		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(client),
-		ImplementationIdentity: "interaction-executor-test-build",
-		ConfigurationIdentity:  "interaction-executor-test-config",
-		DefaultMaxModelCalls:   uint32Pointer(4),
-		BuildID:                interactionTestBuildID,
-		StreamModelResponses:   true,
+		Lifetime:             t.Context(),
+		ChatResolver:         staticInteractionChatResolver(client),
+		DefaultMaxModelCalls: uint32Pointer(4),
+		BuildID:              interactionTestBuildID,
+		StreamModelResponses: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -548,10 +531,8 @@ func newTestInteractionExecutorWithLifetime(
 		t.Fatal(err)
 	}
 	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
-		Lifetime:               lifetime,
-		ChatResolver:           staticInteractionChatResolver(client),
-		ImplementationIdentity: "interaction-executor-test-build",
-		ConfigurationIdentity:  "interaction-executor-test-config", DefaultMaxModelCalls: uint32Pointer(4),
+		Lifetime:     lifetime,
+		ChatResolver: staticInteractionChatResolver(client), DefaultMaxModelCalls: uint32Pointer(4),
 		BuildID: interactionTestBuildID,
 	})
 	if err != nil {

@@ -75,7 +75,7 @@ Background recovery reports the first consecutive sweep failure through the same
 
 The active development contract has one current storage shape. SQLite installs that shape directly and does not maintain a schema-version or migration graph. A breaking schema change replaces the old shape completely; incompatible development state is reset explicitly unless the user authorizes a real migration requirement.
 
-Executor restore compatibility belongs to the exact BuildID and framework Deployment references. Checkpoint payloads, policy, context sources, and Tool-input continuations encode the current shape without independent hand-maintained schema counters. Decoding still validates complete identities, capabilities, budgets, prompt digests, and structural relationships before restoring execution.
+Executor restore compatibility belongs to the exact BuildID and framework Deployment references. Scope implementation digests use that BuildID directly, and configuration digests encode the real execution inputs without an independent configuration version. Checkpoint payloads, policy, context sources, and Tool-input continuations encode the current shape without independent hand-maintained schema counters. Decoding still validates complete identities, capabilities, budgets, prompt digests, and structural relationships before restoring execution.
 
 ## Provider and integration boundaries
 

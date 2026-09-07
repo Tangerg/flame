@@ -63,7 +63,6 @@ func TestInteractionExecutorRestoresWaitingTreeWithCompletedSibling(t *testing.T
 	}
 	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime: t.Context(), ChatResolver: staticInteractionChatResolver(client),
-		ImplementationIdentity: "completed-sibling-build", ConfigurationIdentity: "completed-sibling-config",
 		DefaultMaxModelCalls: uint32Pointer(6), MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
 		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},

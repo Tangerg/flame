@@ -72,8 +72,6 @@ func TestInteractionRequiresCompleteCapabilities(t *testing.T) {
 			cfg := executor.config
 			cfg.Lifetime = t.Context()
 			cfg.BuildID = interactionTestBuildID
-			cfg.ImplementationIdentity = "test"
-			cfg.ConfigurationIdentity = "test"
 			remove(&cfg)
 			if executor, err := NewInteractionExecutor(cfg); err == nil || executor != nil {
 				t.Fatalf("incomplete executor = %v, %v", executor, err)

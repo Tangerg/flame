@@ -19,7 +19,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	infraexec "github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -702,45 +701,19 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 			}
 		})
 	}
-	t.Run("wrong deployment", func(t *testing.T) {
-		client, err := chatclient.New(chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
-			return nil, errors.New("model must not be called while restoring")
-		}), chatclient.Config{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
-			Lifetime:     t.Context(),
-			ChatResolver: staticInteractionChatResolver(client), BuildID: interactionTestBuildID,
-			ImplementationIdentity: "interaction-observation-test-build",
-			ConfigurationIdentity:  "different-deployment-configuration",
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, err = executor.StageContinuation(t.Context(), rootInteractionWaitingContinuation(
-			checkpoint,
-			"exec_restore",
-			run.Capabilities{},
-		))
-		if !errors.Is(err, runs.ErrExecutorStateLost) {
-			t.Fatalf("StageContinuation error = %v, want ErrExecutorStateLost", err)
-		}
-	})
-	t.Run("isolated workspace cannot be overridden", func(t *testing.T) {
-		candidate := checkpoint.Clone()
-		candidate.Scope.Isolated = true
+	t.Run("changed response mode", func(t *testing.T) {
 		executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 			return nil, errors.New("model must not be called while restoring")
 		}), InteractionExecutorConfig{
-			RestoreScopeValidator: restoreScopeValidatorFunc(func(context.Context, runs.ExecutionScope) error {
-				return nil
-			}),
+			StreamModelResponses: true,
+			ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
+				Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)},
+			}},
 		})
 		_, err := executor.StageContinuation(t.Context(), rootInteractionWaitingContinuation(
-			candidate,
+			checkpoint,
 			"exec_restore",
-			run.Capabilities{},
+			run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
 		))
 		if !errors.Is(err, runs.ErrExecutorStateLost) {
 			t.Fatalf("StageContinuation error = %v, want ErrExecutorStateLost", err)
@@ -957,15 +930,6 @@ type runtimeSteerModel struct {
 	calls   int
 	started chan struct{}
 	release chan struct{}
-}
-
-type restoreScopeValidatorFunc func(context.Context, runs.ExecutionScope) error
-
-func (r restoreScopeValidatorFunc) ValidateRestoreScope(
-	ctx context.Context,
-	scope runs.ExecutionScope,
-) error {
-	return r(ctx, scope)
 }
 
 func (r *runtimeSteerModel) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
