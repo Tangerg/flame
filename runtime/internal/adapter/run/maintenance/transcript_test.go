@@ -17,9 +17,6 @@ func TestTranscriptPreservesRefusalText(t *testing.T) {
 	if !strings.Contains(rendered, "I cannot help with that request.") {
 		t.Fatalf("renderTranscript = %q, want refusal text", rendered)
 	}
-	if measured := transcriptBytes(messages); measured != len(rendered) {
-		t.Fatalf("transcriptBytes = %d, want rendered size %d", measured, len(rendered))
-	}
 }
 
 func TestCapText(t *testing.T) {

@@ -14,9 +14,8 @@ const (
 	// maintenance calls. Transcript rendering uses the smaller allocation below
 	// so fixed instructions and capability-specific framing still fit.
 	maintenanceModelInputBytes = 512 * 1024
-	// maintenanceTranscriptBytes is the aggregate model-input allocation for
-	// one rendered conversation. It mirrors the proven app2 envelope while
-	// keeping the hard request cap in adapter/model as the final guard.
+	// maintenanceTranscriptBytes leaves room in the request envelope for
+	// fixed instructions and capability-specific framing.
 	maintenanceTranscriptBytes = 384 * 1024
 	// maintenanceMessageBytes prevents one message from consuming the whole
 	// transcript when only a few messages are present.
@@ -88,45 +87,6 @@ func renderTranscriptParts(prefix string, values []string, separator string, bud
 		rendered.WriteString(separator)
 	}
 	return capText(rendered.String(), budget)
-}
-
-// transcriptBytes measures the original flattened conversation without
-// materializing it. Compaction triggering must observe the real footprint even
-// though every subsequent model request receives a bounded rendering.
-func transcriptBytes(msgs []chat.Message) int {
-	total := 0
-	for _, msg := range msgs {
-		size := 1 // trailing newline
-		switch msg.Role {
-		case chat.RoleSystem:
-			size = saturatedAdd(size, len("[system] "), transcriptTextBytes(msg))
-		case chat.RoleUser:
-			size = saturatedAdd(size, len("[user] "), transcriptTextBytes(msg))
-		case chat.RoleAssistant:
-			size = saturatedAdd(size, len("[assistant] "), transcriptTextBytes(msg))
-		case chat.RoleTool:
-			size = saturatedAdd(size, len("[tool] "))
-			for _, part := range msg.Parts {
-				if part.Kind == chat.PartToolResult && part.ToolResult != nil {
-					size = saturatedAdd(size, encodedToolOutputBytes(part.ToolResult.Output), 1)
-				}
-			}
-		default:
-			size = saturatedAdd(size, len(msg.Role), len("[] (unrecognized)"))
-		}
-		total = saturatedAdd(total, size)
-	}
-	return total
-}
-
-func transcriptTextBytes(msg chat.Message) int {
-	total := 0
-	for _, part := range msg.Parts {
-		if isTranscriptText(part.Kind) {
-			total = saturatedAdd(total, len(part.Text))
-		}
-	}
-	return total
 }
 
 func isTranscriptText(kind chat.PartKind) bool {
