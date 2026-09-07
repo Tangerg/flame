@@ -977,11 +977,8 @@ func TestCoordinatorHoldsSessionAdmissionThroughTerminalMaintenance(t *testing.T
 	if _, ok := coordinator.registry.Get("run_1"); !ok {
 		t.Fatal("terminal maintenance removed the run's cancellation join identity")
 	}
-	if !hasActiveSession(coordinator, "ses_1") {
+	if !sessionAdmissionBlocked(t, coordinator, "ses_1") {
 		t.Fatal("session admission was released before terminal maintenance completed")
-	}
-	if _, ok, _ := coordinator.admission.AcquireSession("ses_1"); ok {
-		t.Fatal("new run admission crossed the terminal-maintenance fence")
 	}
 	select {
 	case result := <-terminal:
@@ -1005,13 +1002,21 @@ func TestCoordinatorHoldsSessionAdmissionThroughTerminalMaintenance(t *testing.T
 		t.Fatal("stream remained open after its terminal event")
 	}
 	requireCoordinatorShutdown(t, coordinator)
-	if hasActiveSession(coordinator, "ses_1") {
+	if sessionAdmissionBlocked(t, coordinator, "ses_1") {
 		t.Fatal("terminal-maintenance claim was not released")
 	}
 }
 
-func hasActiveSession(c *Coordinator, sessionID string) bool {
-	return c.admission.ActiveSessions()[sessionID]
+func sessionAdmissionBlocked(t *testing.T, c *Coordinator, sessionID string) bool {
+	t.Helper()
+	release, acquired, err := c.admission.AcquireSession(sessionID)
+	if err != nil {
+		t.Fatalf("acquire session %q: %v", sessionID, err)
+	}
+	if acquired {
+		release()
+	}
+	return !acquired
 }
 
 func TestCoordinatorCommitsExecutorStartFailureInCanonicalOrder(t *testing.T) {

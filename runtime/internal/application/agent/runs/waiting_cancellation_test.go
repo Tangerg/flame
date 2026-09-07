@@ -818,7 +818,7 @@ func TestCancelWaitingChildTerminalizesCommittedTreeWhenActivationFails(t *testi
 	if _, live := coordinator.registry.Get(plan.root.run.ID()); live {
 		t.Fatal("failed continuation retained a live root owner")
 	}
-	if hasActiveSession(coordinator, plan.pending.SessionID) {
+	if sessionAdmissionBlocked(t, coordinator, plan.pending.SessionID) {
 		t.Fatal("failed continuation leaked admission")
 	}
 }
@@ -852,7 +852,7 @@ func TestCancelWaitingChildAbortsPreparedOperationWhenDurableCommitFails(t *test
 			prepared.discarded,
 		)
 	}
-	if hasActiveSession(coordinator, plan.pending.SessionID) {
+	if sessionAdmissionBlocked(t, coordinator, plan.pending.SessionID) {
 		t.Fatal("failed waiting cancellation leaked admission")
 	}
 }

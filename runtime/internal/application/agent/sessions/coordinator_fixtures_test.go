@@ -204,8 +204,6 @@ func (*testClaimer) AcquireWorkingTreeMutation(string) (func(), bool, error) {
 	return func() {}, true, nil
 }
 
-func (*testClaimer) ActiveSessions() map[string]bool { return nil }
-
 // newCoordinator builds a Coordinator over test stores and execution release.
 func newCoordinator(stores testStores, executions ExecutionReleaser) *Coordinator {
 	return newCoordinatorWithAdmissions(stores, executions, new(testClaimer))

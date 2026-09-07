@@ -1020,18 +1020,14 @@ func TestFastStartReleaseCannotCrossTerminalMaintenance(t *testing.T) {
 	if outcome.err != nil {
 		t.Fatalf("Start: %v", outcome.err)
 	}
-	if !hasActiveSession(c, "ses_1") {
+	if !sessionAdmissionBlocked(t, c, "ses_1") {
 		t.Fatal("Start release erased the in-flight terminal-maintenance claim")
-	}
-	if release, ok, _ := c.admission.AcquireSession("ses_1"); ok {
-		release()
-		t.Fatal("new admission crossed terminal maintenance after Start returned")
 	}
 
 	close(releaseFinish)
 	consumeEvents(outcome.result.Events)
 	requireCoordinatorShutdown(t, c)
-	if hasActiveSession(c, "ses_1") {
+	if sessionAdmissionBlocked(t, c, "ses_1") {
 		t.Fatal("terminal maintenance did not release its claim")
 	}
 }
@@ -1414,7 +1410,7 @@ func TestResumeRecoversLostExecutorStateBeforeReturning(t *testing.T) {
 	if control.continuation.Checkpoint.Scope.CWD != "/work" {
 		t.Fatalf("continuation cwd = %q, want /work", control.continuation.Checkpoint.Scope.CWD)
 	}
-	if hasActiveSession(c, "ses_1") {
+	if sessionAdmissionBlocked(t, c, "ses_1") {
 		t.Fatal("failed resume leaked its run admission")
 	}
 
@@ -1821,7 +1817,7 @@ func TestResumeRefusesIsolatedRunAfterRuntimeRestart(t *testing.T) {
 	if sessions.lostRunID != "run_1" || len(operations) != 1 || operations[0] != "durable.lost" {
 		t.Fatalf("lost recovery = %q ops=%v, want run_1 marked lost", sessions.lostRunID, operations)
 	}
-	if hasActiveSession(c, "ses_1") {
+	if sessionAdmissionBlocked(t, c, "ses_1") {
 		t.Fatal("failed isolated resume leaked its run admission")
 	}
 }
@@ -1927,7 +1923,7 @@ func TestCancelParkedRunUsesApplicationAdmission(t *testing.T) {
 	if len(operations) != 2 || operations[0] != "durable.cancel" || operations[1] != "executor.release" {
 		t.Fatalf("cancel operations = %v, want durable commit before executor cleanup", operations)
 	}
-	if hasActiveSession(c, "ses_1") {
+	if sessionAdmissionBlocked(t, c, "ses_1") {
 		t.Fatal("parked cancel leaked the session admission claim")
 	}
 }
@@ -2310,7 +2306,7 @@ func TestCancelLiveRunJoinsTerminalMaintenance(t *testing.T) {
 		outcome.result.Run.Detail() != "stop" {
 		t.Fatalf("Cancel result = %+v, want exact canceled terminal snapshot", outcome.result)
 	}
-	if hasActiveSession(c, "ses_1") {
+	if sessionAdmissionBlocked(t, c, "ses_1") {
 		t.Fatal("Cancel returned before releasing session admission")
 	}
 	consumeEvents(result.Events)
