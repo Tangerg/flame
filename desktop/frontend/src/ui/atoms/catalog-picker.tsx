@@ -1,13 +1,179 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactElement, type ReactNode, type Ref, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/classNames";
+import { color, motion, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { ComboboxPrimitive } from "@/ui/primitives";
 import { Icon, type IconName } from "@/ui/icons";
 import { dress } from "./button";
 import { Popover } from "./popover";
 import { Pressable } from "./pressable";
 
-export interface CatalogPickerItem {
+export const styles = stylex.create({
+  // The search box sits INSIDE the popup, so it wears the field's edge rather than the popup's.
+  searchBox: {
+    marginBottom: space.s1,
+    display: "flex",
+    height: "var(--field-height-md)",
+    flexShrink: 0,
+    alignItems: "center",
+    gap: space.s2,
+    borderRadius: radius.field,
+    borderWidth: "var(--control-edge-width)",
+    borderStyle: "solid",
+    backgroundColor: surface.canvas,
+    paddingInline: space.s2_5,
+    // The whole box answers the keyboard, not just the input inside it.
+    borderColor: { default: surface.field, ":focus-within": surface.fieldStrong },
+    color: { default: color.fgMuted, ":focus-within": color.fg },
+  },
+  // A search box with a rule under it instead of a border around it: the two-column popup has
+  // its own frame, and a second box inside it would read as a nested panel.
+  searchRule: {
+    display: "flex",
+    flexShrink: 0,
+    alignItems: "center",
+    gap: space.s2,
+    borderBottomWidth: "1px",
+    borderBottomStyle: "solid",
+    borderBottomColor: surface.divider,
+    paddingInline: space.s3,
+    paddingBlock: space.s2,
+    color: { default: color.fgMuted, ":focus-within": color.fg },
+  },
+  glyph: { flexShrink: 0 },
+  input: {
+    height: "100%",
+    minWidth: 0,
+    flex: 1,
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    fontFamily: "var(--font-sans)",
+    color: color.fg,
+    outline: "none",
+    "::placeholder": { color: color.fgFaint },
+  },
+  inputShort: { height: space.s6 },
+
+  row: {
+    display: "grid",
+    cursor: "default",
+    gridTemplateColumns: "16px minmax(0, 1fr) 14px",
+    alignItems: "center",
+    gap: space.s2,
+    borderRadius: radius.sm,
+    paddingInline: space.s2_5,
+    color: color.fg,
+    outline: "none",
+    userSelect: "none",
+    backgroundColor: { default: null, ":is([data-highlighted])": surface.hover },
+  },
+  // A row that carries a description is two lines tall and needs its own inset; one that does
+  // not is a single line and takes the shorter step.
+  rowTall: { minHeight: "calc(var(--spacing) * 11)", paddingBlock: space.s1_5 },
+  rowShort: { minHeight: space.s9 },
+  rowGlyph: { color: color.fgMuted },
+  rowText: { minWidth: 0 },
+  rowLine: { display: "flex", minWidth: 0, alignItems: "baseline", gap: space.s1_5 },
+  truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  caption: { flexShrink: 0, color: color.fgFaint },
+  mark: { color: color.accent },
+
+  // One scroller for a catalogue short enough to read at once, and a measured popup so a long
+  // label does not decide the width.
+  stackedPopup: {
+    display: "flex",
+    maxHeight: "min(420px, var(--available-height))",
+    width: "300px",
+    maxWidth: "var(--available-width)",
+    flexDirection: "column",
+    overflow: "hidden",
+    padding: space.s1_5,
+  },
+  splitPopup: {
+    display: "flex",
+    width: "400px",
+    maxWidth: "var(--available-width)",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+  empty: {
+    paddingInline: space.s2_5,
+    paddingBlock: space.s6,
+    textAlign: "center",
+    color: color.fgFaint,
+  },
+  emptySplit: {
+    flex: 1,
+    paddingInline: space.s3,
+    paddingBlock: space.s6,
+    textAlign: "center",
+    color: color.fgFaint,
+  },
+  list: {
+    minHeight: 0,
+    flex: 1,
+    overflowY: "auto",
+    overscrollBehavior: "contain",
+    scrollPaddingBlock: space.s1,
+    outline: "none",
+  },
+  listInset: { minWidth: 0, padding: space.s1_5 },
+  group: { paddingBottom: space.s1_5, ":last-child": { paddingBottom: 0 } },
+  groupLabel: {
+    display: "flex",
+    alignItems: "center",
+    gap: space.s2,
+    paddingInline: space.s2_5,
+    paddingBottom: space.s1,
+    paddingTop: space.s2,
+    color: color.fgFaint,
+    fontWeight: weight.medium,
+    userSelect: "none",
+    ":first-child": { paddingTop: space.s1_5 },
+  },
+  groupCount: { marginLeft: "auto", fontVariantNumeric: "tabular-nums" },
+
+  // The split popup's rail: a fixed measure, because the groups are a stable set and a rail
+  // that resizes with the longest label makes the list jump between filters.
+  rail: {
+    display: "flex",
+    width: "132px",
+    flexShrink: 0,
+    flexDirection: "column",
+    gap: space.s0_5,
+    overflowY: "auto",
+    borderRightWidth: "1px",
+    borderRightStyle: "solid",
+    borderRightColor: surface.divider,
+    padding: space.s1_5,
+  },
+  railBody: { display: "flex", height: "240px", minHeight: 0 },
+  railRow: {
+    display: "flex",
+    minHeight: space.s7,
+    alignItems: "center",
+    gap: space.s2,
+    borderRadius: radius.sm,
+    paddingInline: space.s2,
+    transitionProperty: "color, background-color",
+    transitionDuration: motion.color,
+  },
+  railRowOn: { backgroundColor: surface.selected, color: color.fg },
+  railRowOff: {
+    color: { default: color.fgMuted, ":hover": color.fg },
+    backgroundColor: { default: null, ":hover": surface.hover },
+  },
+  railLabel: {
+    minWidth: 0,
+    flex: 1,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  railCount: { flexShrink: 0, fontFamily: "var(--font-mono)", color: color.fgFaint },
+});
+
+interface CatalogPickerItem {
   id: string;
   label: string;
   icon?: IconName;
@@ -66,13 +232,13 @@ function CatalogTrigger({
 
 function CatalogSearch({ placeholder, ref }: { placeholder: string; ref?: Ref<HTMLInputElement> }) {
   return (
-    <div className="mb-1 flex h-[var(--field-height-md)] shrink-0 items-center gap-2 rounded-[var(--field-radius)] border-[length:var(--control-edge-width)] border-field bg-canvas px-2.5 text-fg-muted focus-within:border-field-strong focus-within:text-fg">
-      <Icon name="search" size="sm" className="shrink-0" />
+    <div {...stylex.props(styles.searchBox)}>
+      <Icon name="search" size="sm" {...stylex.props(styles.glyph)} />
       <ComboboxPrimitive.Input
         ref={ref}
         aria-label={placeholder}
         placeholder={placeholder}
-        className="h-full min-w-0 flex-1 border-0 bg-transparent font-sans text-ui-md text-fg outline-none placeholder:text-fg-faint"
+        {...stylex.props(styles.input, type.uiMd)}
       />
     </div>
   );
@@ -85,22 +251,21 @@ function CatalogRow(item: CatalogPickerItem, groupLabel?: string) {
       key={item.id}
       value={item}
       data-current={item.active ? "" : undefined}
-      className={cn(
-        "grid cursor-default grid-cols-[16px_minmax(0,1fr)_14px] items-center gap-2 rounded-[var(--shape-sm)] px-2.5 text-ui-md text-fg outline-none select-none data-[highlighted]:bg-hover",
-        item.description ? "min-h-11 py-1.5" : "min-h-9",
-      )}
+      {...stylex.props(styles.row, type.uiMd, item.description ? styles.rowTall : styles.rowShort)}
     >
-      {item.leading ?? <Icon name={item.icon ?? "panel-r"} size="sm" className="text-fg-muted" />}
-      <span className="min-w-0">
-        <span className="flex min-w-0 items-baseline gap-1.5">
-          <span className="truncate">{item.label}</span>
+      {item.leading ?? (
+        <Icon name={item.icon ?? "panel-r"} size="sm" {...stylex.props(styles.rowGlyph)} />
+      )}
+      <span {...stylex.props(styles.rowText)}>
+        <span {...stylex.props(styles.rowLine)}>
+          <span {...stylex.props(styles.truncate)}>{item.label}</span>
           {showCaption && item.caption && (
-            <span className="shrink-0 text-ui-xs text-fg-faint">{item.caption}</span>
+            <span {...stylex.props(styles.caption, type.uiXs)}>{item.caption}</span>
           )}
         </span>
         {item.description}
       </span>
-      {item.active ? <Icon name="check" size="xs" className="text-accent" /> : <span />}
+      {item.active ? <Icon name="check" size="xs" {...stylex.props(styles.mark)} /> : <span />}
     </ComboboxPrimitive.Item>
   );
 }
@@ -136,10 +301,7 @@ export function CatalogPicker({
         align={align}
         side={side}
         sideOffset={6}
-        className={cn(
-          "flex max-h-[min(420px,var(--available-height))] w-[300px] max-w-[var(--available-width)] flex-col overflow-hidden p-1.5",
-          contentClassName,
-        )}
+        className={cn(stylex.props(styles.stackedPopup).className, contentClassName)}
       >
         <ComboboxPrimitive.Root<CatalogPickerItem>
           items={groups}
@@ -158,21 +320,25 @@ export function CatalogPicker({
         >
           <CatalogSearch placeholder={placeholder} />
 
-          <ComboboxPrimitive.Empty className="empty:hidden px-2.5 py-6 text-center text-ui-sm text-fg-faint">
+          <ComboboxPrimitive.Empty
+            className={cn("empty:hidden", stylex.props(styles.empty, type.uiSm).className)}
+          >
             {emptyLabel}
           </ComboboxPrimitive.Empty>
-          <ComboboxPrimitive.List className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-py-1 outline-none data-empty:p-0">
+          <ComboboxPrimitive.List
+            className={cn("data-empty:p-0", stylex.props(styles.list).className)}
+          >
             {(group: CatalogPickerGroup) => (
               <ComboboxPrimitive.Group
                 key={group.id}
                 items={group.items}
-                className="pb-1.5 last:pb-0"
+                {...stylex.props(styles.group)}
               >
-                <ComboboxPrimitive.GroupLabel className="flex items-center gap-2 px-2.5 pb-1 pt-2 text-ui-xs font-medium text-fg-faint select-none first:pt-1.5">
+                <ComboboxPrimitive.GroupLabel {...stylex.props(styles.groupLabel, type.uiXs)}>
                   {group.leading}
                   <span>{group.label}</span>
                   {group.count !== undefined && (
-                    <span className="ml-auto tabular-nums">{group.count}</span>
+                    <span {...stylex.props(styles.groupCount)}>{group.count}</span>
                   )}
                 </ComboboxPrimitive.GroupLabel>
                 <ComboboxPrimitive.Collection>
@@ -255,10 +421,7 @@ export function RailCatalogPicker({
         align={align}
         side={side}
         sideOffset={8}
-        className={cn(
-          "flex w-[400px] max-w-[var(--available-width)] flex-col overflow-hidden",
-          contentClassName,
-        )}
+        className={cn(stylex.props(styles.splitPopup).className, contentClassName)}
       >
         <ComboboxPrimitive.Root<CatalogPickerItem>
           items={items}
@@ -275,8 +438,8 @@ export function RailCatalogPicker({
           inline
           open
         >
-          <div className="flex shrink-0 items-center gap-2 border-b border-divider px-3 py-2 text-fg-muted focus-within:text-fg">
-            <Icon name="search" size="sm" className="shrink-0" />
+          <div {...stylex.props(styles.searchRule)}>
+            <Icon name="search" size="sm" {...stylex.props(styles.glyph)} />
             <ComboboxPrimitive.Input
               ref={searchRef}
               aria-label={placeholder}
@@ -288,17 +451,17 @@ export function RailCatalogPicker({
                 event.stopPropagation();
                 setQuery("");
               }}
-              className="h-6 min-w-0 flex-1 border-0 bg-transparent font-sans text-ui-md text-fg outline-none placeholder:text-fg-faint"
+              {...stylex.props(styles.input, styles.inputShort, type.uiMd)}
             />
           </div>
 
           {/* A measure that does not move: the surface is anchored to a composer control, so a
               body that grows with its group walks the whole popover up the screen. */}
-          <div className="flex h-[240px] min-h-0">
+          <div {...stylex.props(styles.railBody)}>
             {!searching && groups.length > 1 && (
               // Toggle buttons, not a tablist: a `tablist` whose panel is the combobox's
               // `listbox` is a pairing axe reports.
-              <div className="flex w-[132px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-divider p-1.5">
+              <div {...stylex.props(styles.rail)}>
                 {groups.map((group) => (
                   <Pressable
                     key={group.id}
@@ -307,18 +470,18 @@ export function RailCatalogPicker({
                     onClick={() => {
                       setGroupId(group.id);
                     }}
-                    className={cn(
-                      "flex min-h-7 items-center gap-2 rounded-[var(--shape-sm)] px-2 text-ui-sm",
-                      "transition-colors duration-[var(--dur-color)]",
-                      group.id === active?.id
-                        ? "bg-selected text-fg"
-                        : "text-fg-muted hover:bg-hover hover:text-fg",
-                    )}
+                    className={
+                      stylex.props(
+                        styles.railRow,
+                        type.uiSm,
+                        group.id === active?.id ? styles.railRowOn : styles.railRowOff,
+                      ).className
+                    }
                   >
                     {group.leading}
-                    <span className="min-w-0 flex-1 truncate">{group.label}</span>
+                    <span {...stylex.props(styles.railLabel)}>{group.label}</span>
                     {group.count !== undefined && (
-                      <span aria-hidden className="shrink-0 font-mono text-ui-xs text-fg-faint">
+                      <span aria-hidden {...stylex.props(styles.railCount, type.uiXs)}>
                         {group.count}
                       </span>
                     )}
@@ -327,12 +490,17 @@ export function RailCatalogPicker({
               </div>
             )}
 
-            <ComboboxPrimitive.Empty className="empty:hidden flex-1 px-3 py-6 text-center text-ui-sm text-fg-faint">
+            <ComboboxPrimitive.Empty
+              className={cn("empty:hidden", stylex.props(styles.emptySplit, type.uiSm).className)}
+            >
               {emptyLabel}
             </ComboboxPrimitive.Empty>
             <ComboboxPrimitive.List
               ref={listRef}
-              className="min-w-0 flex-1 overflow-y-auto overscroll-contain scroll-py-1 p-1.5 outline-none data-empty:hidden"
+              className={cn(
+                "data-empty:hidden",
+                stylex.props(styles.list, styles.listInset).className,
+              )}
             >
               {(item: CatalogPickerItem) => CatalogRow(item, searching ? undefined : active?.label)}
             </ComboboxPrimitive.List>
