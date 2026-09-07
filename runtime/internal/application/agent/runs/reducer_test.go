@@ -3,6 +3,7 @@ package runs
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"reflect"
 	"slices"
 	"strings"
@@ -611,6 +612,59 @@ func TestReducerRejectsInconsistentOrRegressingAccounting(t *testing.T) {
 			t.Fatalf("error = %v, want executor protocol violation", err)
 		}
 	})
+
+	for _, test := range []struct {
+		name   string
+		models []accounting.ModelUsage
+	}{
+		{name: "missing model", models: []accounting.ModelUsage{
+			{Model: "beta", TokenUsage: accounting.TokenUsage{PromptTokens: 20}, Calls: 2},
+		}},
+		{name: "regressing model with growing total", models: []accounting.ModelUsage{
+			{Model: "alpha", TokenUsage: accounting.TokenUsage{PromptTokens: 9}, Calls: 1},
+			{Model: "beta", TokenUsage: accounting.TokenUsage{PromptTokens: 11}, Calls: 1},
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			config := testReducerConfig()
+			config.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{
+				Usage: &accounting.Usage{
+					Total:   accounting.Totals{InputTokens: 10},
+					ByModel: map[string]accounting.Totals{"alpha": {InputTokens: 10}},
+				},
+				Steps: 1,
+			})
+			_, err := newReducer(config).reduce(UsageReported{
+				TokenUsage: accounting.TokenUsage{PromptTokens: 20},
+				ByModel:    test.models, Steps: 2,
+			})
+			if !errors.Is(err, errExecutorContract) {
+				t.Fatalf("error = %v, want executor protocol violation", err)
+			}
+		})
+	}
+}
+
+func TestReducerRejectsInvalidCumulativeDuration(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		previous   time.Duration
+		additional time.Duration
+	}{
+		{name: "negative", additional: -time.Nanosecond},
+		{name: "overflow", previous: time.Duration(math.MaxInt64), additional: time.Nanosecond},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			config := testReducerConfig()
+			config.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{ActiveDuration: test.previous})
+			_, err := newReducer(config).reduce(SegmentEnded{
+				Reason: run.OutcomeCompleted, Duration: test.additional,
+			})
+			if !errors.Is(err, errExecutorContract) {
+				t.Fatalf("error = %v, want executor protocol violation", err)
+			}
+		})
+	}
 }
 
 type unsupportedEngineEvent struct{ executionFactBase }
