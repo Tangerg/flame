@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -49,6 +50,48 @@ type childRunStartReservationsFunc func(context.Context, string) error
 
 func (c childRunStartReservationsFunc) DeleteSession(ctx context.Context, sessionID string) error {
 	return c(ctx, sessionID)
+}
+
+func TestNewRequiresGoalRunRecorder(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), ":memory:")
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	cfg := Config{
+		Sessions:            sqlite.NewSessionStore(db),
+		Runs:                sqlite.NewRunStore(db),
+		Interrupts:          persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
+		Transcript:          sqlite.NewTranscriptStore(db),
+		Messages:            sqlite.NewMessageStore(db),
+		GoalRuns:            sqlite.NewGoalStore(db),
+		ExecutorCheckpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
+		ModelInvocations:    sqlite.NewModelInvocationStore(db),
+		ToolInvocations:     sqlite.NewToolInvocationStore(db),
+		ChildRunStarts:      sqlite.NewChildRunStartReservationStore(db),
+		Tx: func(ctx context.Context, fn func(context.Context) error) error {
+			return sqlite.RunInTx(ctx, db, fn)
+		},
+	}
+	if _, err := New(cfg); err != nil {
+		t.Fatalf("New with complete persistence: %v", err)
+	}
+	for _, test := range []struct {
+		name     string
+		recorder GoalRunRecorder
+	}{
+		{"missing", nil},
+		{"typed nil pointer", (*sqlite.GoalStore)(nil)},
+		{"typed nil function", goalRunRecorderFunc(nil)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			incomplete := cfg
+			incomplete.GoalRuns = test.recorder
+			if _, err := New(incomplete); err == nil || !strings.Contains(err.Error(), "goal run recorder") {
+				t.Fatalf("New error = %v, want required goal run recorder", err)
+			}
+		})
+	}
 }
 
 func TestRecoveryMarksClaimedResumeLostAndRemovesItsHiddenRecord(t *testing.T) {
@@ -289,6 +332,7 @@ func TestRecoveryRollsBackCheckpointCleanupWhenChildStartCleanupFails(t *testing
 		Sessions: sessionStore, Runs: runStore,
 		Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
 		Transcript: sqlite.NewTranscriptStore(db), Messages: sqlite.NewMessageStore(db),
+		GoalRuns:            sqlite.NewGoalStore(db),
 		ExecutorCheckpoints: checkpointStore,
 		ModelInvocations:    sqlite.NewModelInvocationStore(db),
 		ToolInvocations:     sqlite.NewToolInvocationStore(db),
@@ -321,6 +365,7 @@ func TestRecoveryRollsBackCheckpointCleanupWhenChildStartCleanupFails(t *testing
 		Sessions: sessionStore, Runs: runStore,
 		Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
 		Transcript: sqlite.NewTranscriptStore(db), Messages: sqlite.NewMessageStore(db),
+		GoalRuns:            sqlite.NewGoalStore(db),
 		ExecutorCheckpoints: checkpointStore,
 		ModelInvocations:    sqlite.NewModelInvocationStore(db),
 		ToolInvocations:     sqlite.NewToolInvocationStore(db),

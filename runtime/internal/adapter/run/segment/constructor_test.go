@@ -2,10 +2,13 @@ package segment
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -35,14 +38,22 @@ func TestNewFinalizerRejectsPartialTitleMaintenance(t *testing.T) {
 }
 
 func mustNewEffects(cfg Config) *Effects {
+	effects, err := New(testEffectsConfig(cfg))
+	if err != nil {
+		panic(err)
+	}
+	return effects
+}
+
+func testEffectsConfig(cfg Config) Config {
 	if nilDependency(cfg.Schedules) {
-		cfg.Schedules = nil
+		cfg.Schedules = &unexpectedSchedules{}
 	}
 	if nilDependency(cfg.GoalRuns) {
-		cfg.GoalRuns = nil
+		cfg.GoalRuns = &unexpectedGoalRuns{}
 	}
 	if nilDependency(cfg.ToolResults) {
-		cfg.ToolResults = nil
+		cfg.ToolResults = &fakeToolResults{}
 	}
 	interrupts := &fakeInterrupts{}
 	if nilDependency(cfg.Interrupts) {
@@ -104,11 +115,7 @@ func mustNewEffects(cfg Config) *Effects {
 	if nilDependency(cfg.Tx) {
 		cfg.Tx = func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }
 	}
-	effects, err := New(cfg)
-	if err != nil {
-		panic(err)
-	}
-	return effects
+	return cfg
 }
 
 func mustNewFinalizer(cfg FinalizerConfig) *Finalizer {
@@ -154,4 +161,56 @@ func (inertToolInvocations) CompleteToolInvocation(context.Context, string, stri
 }
 func (inertToolInvocations) MarkToolInvocationIncomplete(context.Context, string, string, string, string, string, time.Time, time.Time) error {
 	return nil
+}
+
+func TestNewRequiresDurableProductStores(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		omit func(*Config, bool)
+	}{
+		{"schedule store", func(cfg *Config, typedNil bool) {
+			cfg.Schedules = nil
+			if typedNil {
+				cfg.Schedules = (*unexpectedSchedules)(nil)
+			}
+		}},
+		{"goal run recorder", func(cfg *Config, typedNil bool) {
+			cfg.GoalRuns = nil
+			if typedNil {
+				cfg.GoalRuns = (*unexpectedGoalRuns)(nil)
+			}
+		}},
+		{"tool result store", func(cfg *Config, typedNil bool) {
+			cfg.ToolResults = nil
+			if typedNil {
+				cfg.ToolResults = (*fakeToolResults)(nil)
+			}
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			for _, typedNil := range []bool{false, true} {
+				cfg := testEffectsConfig(Config{})
+				test.omit(&cfg, typedNil)
+				if _, err := New(cfg); err == nil || !strings.Contains(err.Error(), test.name) {
+					t.Fatalf("New with typed nil %t error = %v, want %q", typedNil, err, test.name)
+				}
+			}
+		})
+	}
+}
+
+type unexpectedSchedules struct{}
+
+func (*unexpectedSchedules) Accept(context.Context, schedule.Acceptance) error {
+	return errors.New("unexpected schedule acceptance")
+}
+
+func (*unexpectedSchedules) RecordRun(context.Context, schedule.RunRecord) error {
+	return errors.New("unexpected schedule run record")
+}
+
+type unexpectedGoalRuns struct{}
+
+func (*unexpectedGoalRuns) RecordRun(context.Context, goal.RunRecord) error {
+	return errors.New("unexpected goal run record")
 }

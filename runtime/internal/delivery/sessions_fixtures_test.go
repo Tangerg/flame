@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -1076,6 +1077,17 @@ func (inertRuntimeStores) Conclude(
 }
 func (inertRuntimeStores) DeleteSession(context.Context, string) error { return nil }
 
+func (inertRuntimeStores) RecordRun(context.Context, goal.RunRecord) error { return nil }
+func (inertRuntimeStores) Bind(context.Context, string, string, string, toolresult.Ref) error {
+	return nil
+}
+func (inertRuntimeStores) Discard(context.Context, string, toolresult.Ref) error { return nil }
+
+type inertSchedules struct{}
+
+func (inertSchedules) Accept(context.Context, schedule.Acceptance) error   { return nil }
+func (inertSchedules) RecordRun(context.Context, schedule.RunRecord) error { return nil }
+
 type inertSessionInterrupts struct{ inertRuntimeStores }
 
 func (inertSessionInterrupts) List(context.Context, string) ([]runs.Pending, error) {
@@ -1224,6 +1236,9 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 		Interrupts:          nonNilRunsegmentInterrupts(s.interrupts, stores),
 		ResumeClaims:        nonNilRunsegmentResumeClaims(s.interrupts, stores),
 		Sessions:            nonNilRunsegmentSessions(s.sess, stores),
+		Schedules:           inertSchedules{},
+		GoalRuns:            stores,
+		ToolResults:         stores,
 		Transcript:          nonNilRunsegmentTranscript(s.hist, stores),
 		ItemReplacer:        nonNilRunsegmentItems(s.hist, stores),
 		ToolApprovals:       nonNilRunsegmentApprovals(s.hist, stores),
@@ -1235,6 +1250,9 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 		ExecutorCheckpoints: stores,
 		ChildRunStarts:      stores,
 		Tx:                  s.RunInTx,
+	}
+	if s.goals != nil {
+		cfg.GoalRuns = s.goals
 	}
 	if s.toolResults != nil {
 		cfg.ToolResults = s.toolResults

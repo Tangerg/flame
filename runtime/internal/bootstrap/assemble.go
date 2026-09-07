@@ -176,6 +176,9 @@ func buildAssemblyCore(
 		Interrupts:          cfg.Stores.Interrupts,
 		ResumeClaims:        cfg.Stores.Interrupts,
 		Sessions:            cfg.Stores.Sessions,
+		Schedules:           cfg.Stores.Schedules,
+		GoalRuns:            cfg.Stores.Goals,
+		ToolResults:         cfg.Stores.ToolResults,
 		Transcript:          cfg.Stores.Transcript,
 		ItemReplacer:        cfg.Stores.Transcript,
 		ToolApprovals:       cfg.Stores.Transcript,
@@ -188,9 +191,6 @@ func buildAssemblyCore(
 		ChildRunStarts:      cfg.Stores.ChildRunStarts,
 		Tx:                  segment.Transactor(cfg.Stores.Transactor),
 	}
-	runSegmentConfig.Schedules = cfg.Stores.Schedules
-	runSegmentConfig.GoalRuns = cfg.Stores.Goals
-	runSegmentConfig.ToolResults = cfg.Stores.ToolResults
 	runSegmentEffects, err := segment.New(runSegmentConfig)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Run-segment effects: %w", err)
