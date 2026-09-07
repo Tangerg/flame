@@ -1,3 +1,5 @@
+import * as stylex from "@stylexjs/stylex";
+import { cn } from "@/lib/classNames";
 import type { CSSProperties } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
@@ -9,6 +11,11 @@ interface OverflowLabelStyle extends CSSProperties {
 interface Props {
   text: string;
 }
+
+const styles = stylex.create({
+  label: { minWidth: 0, flex: 1 },
+  track: { display: "inline-block", minWidth: "max-content" },
+});
 
 export function AgentOverflowLabel({ text }: Props) {
   const viewportRef = useRef<HTMLSpanElement>(null);
@@ -48,12 +55,13 @@ export function AgentOverflowLabel({ text }: Props) {
   return (
     <span
       ref={viewportRef}
-      className="agent-overflow-label min-w-0 flex-1 truncate-fade"
+      // Both classes are `globals.css` mechanisms: the fade mask and the marquee track.
+      className={cn("agent-overflow-label truncate-fade", stylex.props(styles.label).className)}
       data-overflowing={geometry.distance > 0 ? "" : undefined}
     >
       <span
         ref={trackRef}
-        className="agent-overflow-track inline-block min-w-max"
+        className={cn("agent-overflow-track", stylex.props(styles.track).className)}
         data-overflowing={geometry.distance > 0 ? "" : undefined}
         style={style}
       >

@@ -89,7 +89,7 @@ function FoundationSurface({ sidebarOpen }: { sidebarOpen: boolean }) {
         <span className="font-mono text-ui-sm text-fg-faint">scope</span>
         <span className="text-ui-md text-fg-faint">/</span>
         <span className="truncate text-ui-md font-semibold text-fg">Visual foundation</span>
-        <AgentStatusPill tone="neutral">Ready</AgentStatusPill>
+        <AgentStatusPill tone="idle">Ready</AgentStatusPill>
         <span className="min-w-2 flex-1" />
         <IconButton icon="panel-r" size="sm" aria-label="Open context dock" />
       </AgentSurfaceHeader>
@@ -133,7 +133,7 @@ function FoundationSurface({ sidebarOpen }: { sidebarOpen: boolean }) {
                 <Button variant="outline" size="sm">
                   Review
                 </Button>
-                <AgentStatusPill tone="warning">Needs input</AgentStatusPill>
+                <AgentStatusPill tone="waiting">Needs input</AgentStatusPill>
               </div>
             </section>
           </div>

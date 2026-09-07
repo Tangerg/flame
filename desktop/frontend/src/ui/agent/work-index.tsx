@@ -1,20 +1,47 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { ScrollArea } from "@/ui/atoms/scroll-area";
+
+const styles = stylex.create({
+  // The gutter and the two section gaps are density tokens: the whole index breathes with the
+  // UI size rather than each list picking a spacing.
+  scroll: {
+    paddingInline: "var(--density-navigation-gutter)",
+    paddingBottom: "calc(var(--spacing) * 5)",
+    paddingTop: "calc(var(--spacing) * 2)",
+  },
+  sections: {
+    display: "flex",
+    flexDirection: "column",
+    rowGap: "var(--density-navigation-section-gap)",
+  },
+  group: { display: "flex", flexDirection: "column", gap: "var(--density-navigation-group-gap)" },
+  item: { minWidth: 0 },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    gap: "calc(var(--spacing) * 1)",
+    backgroundColor: "var(--app-drawer-surface)",
+    paddingInline: "var(--density-navigation-gutter)",
+    paddingBottom: "calc(var(--spacing) * 2.5)",
+    paddingTop: "calc(var(--spacing) * 2)",
+  },
+});
 
 export function AgentWorkIndexBody({ children }: { children: ReactNode }) {
   return (
     <ScrollArea
       hideScrollbar
-      className="agent-index-scroll px-[var(--density-navigation-gutter)] pb-5 pt-2"
+      className={cn("agent-index-scroll", stylex.props(styles.scroll).className)}
     >
-      <div className="flex flex-col gap-y-[var(--density-navigation-section-gap)]">{children}</div>
+      <div {...stylex.props(styles.sections)}>{children}</div>
     </ScrollArea>
   );
 }
 
 export function AgentWorkIndexSection({ children }: { children: ReactNode }) {
-  return <div className="min-w-0">{children}</div>;
+  return <div {...stylex.props(styles.item)}>{children}</div>;
 }
 
 export function AgentWorkIndexGroupList({
@@ -24,17 +51,9 @@ export function AgentWorkIndexGroupList({
   children: ReactNode;
   className?: string;
 }) {
-  return (
-    <div className={cn("flex flex-col gap-[var(--density-navigation-group-gap)]", className)}>
-      {children}
-    </div>
-  );
+  return <div className={cn(stylex.props(styles.group).className, className)}>{children}</div>;
 }
 
 export function AgentWorkIndexFooter({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex items-center gap-1 bg-[var(--app-drawer-surface)] px-[var(--density-navigation-gutter)] pb-2.5 pt-2">
-      {children}
-    </div>
-  );
+  return <div {...stylex.props(styles.header)}>{children}</div>;
 }

@@ -7842,3 +7842,47 @@ globals.css 机制的绑定键。
 ### 下一轮方向
 
 `ui/agent`（9 个文件）与业务层。
+
+---
+
+## Round 134 — `ui/agent` 的薄壳层
+
+九个文件里六个是薄壳：布局迁 StyleX，globals.css 的机制键保留为 class。
+保留的每一处都写了理由 —— `agent-composer-glass`（composer 的材质）、
+`agent-composer-footer`（测量键，`globals.css` 靠它把 chip 按住一次重排）、
+`agent-overflow-label` / `truncate-fade` / `agent-overflow-track`（遮罩与跑马轨）、
+`agent-workspace-view` / `agent-view-navigator` / `pane-split` / `agent-shell`。
+
+### `AgentStatusPill` 自己画了一遍 `StatusDot`
+
+```
+running → bg-accent   |  warning → bg-warning
+success → bg-success  |  neutral → bg-fg-faint   + animate-pulse-dot
+```
+
+这四档就是 `StatusDot` 的音阶，写在另一个文件里。一个说"running"的 pill
+和一个说"running"的点必须长得一样 —— 那正是设计系统的意义。
+所以 pill 现在**组合** `StatusDot`，色调用共享的 `DotTone`
+（`neutral → idle`、`warning → waiting`）。
+
+**一处我先判错、查证后更正**：我 grep 完 `src/` 说"另三档从未被用到"。
+漏了 `visual/` —— 两个 fixture 正在用 `neutral` 与 `warning`。
+它们不是死档，是只有 fixture 在拍。已按共享词汇改名。
+
+8 张 golden 位移，全是含 running 状态点的画面：点现在带上了
+`--shadow-live-glow`（88 / 127 像素的淡蓝辉光）。那是设计系统对
+"正在发生"的答案，此前只有 `StatusDot` 用它、pill 没有。已重录。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 受影响 spec | foundation / shell / dock-catalog / composer **36 项通过（25s）** |
+| 视觉全量 | **650 / 650**（8 张按上述理由重录，1 张抖动单跑 5.1s 通过） |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | `src/ui` 50 项通过 |
+
+### 下一轮方向
+
+`ui/agent` 剩三个大文件：`context-dock`（270）/ `activity-disclosure`（196）/
+`navigation-row`（161）—— 它们已部分迁移，剩的是混写。

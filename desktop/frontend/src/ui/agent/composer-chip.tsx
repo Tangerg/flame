@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import { color } from "@/styles/tokens.stylex";
 import { Button, type ButtonProps } from "@/ui/atoms";
 import { Icon } from "@/ui/icons";
 
@@ -19,6 +19,9 @@ interface Props extends Omit<ButtonProps, "children" | "size"> {
 // decision — a row of chips that all yield equally truncates every one of them to initials.
 const chipStyles = stylex.create({
   grid: { display: "grid", gridTemplateColumns: "auto minmax(0, auto) auto" },
+  leading: { display: "flex", alignItems: "center" },
+  label: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  chevron: { color: color.fgFaint },
   holds: { flexShrink: 1 },
   gives: { flexShrink: 12 },
 });
@@ -40,14 +43,14 @@ export function AgentComposerChip({
       press={false}
       title={title ?? label}
       styles={[chipStyles.grid, shrink === "gives" ? chipStyles.gives : chipStyles.holds]}
-      className={cn(className)}
+      className={className}
       {...props}
     >
-      <span className="flex items-center">{leading}</span>
-      <span data-slot="composer-chip-label" className="truncate">
+      <span {...stylex.props(chipStyles.leading)}>{leading}</span>
+      <span data-slot="composer-chip-label" {...stylex.props(chipStyles.label)}>
         {label}
       </span>
-      <Icon name="chevron-down" size="sm" className="text-fg-faint" />
+      <Icon name="chevron-down" size="sm" {...stylex.props(chipStyles.chevron)} />
     </Button>
   );
 }

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { useLayoutEffect, useRef } from "react";
 import { clampSidebarWidth } from "@/lib/shellGeometry";
@@ -17,6 +18,19 @@ interface AgentAppShellProps {
   main: ReactNode;
   overlay?: ReactNode;
 }
+
+const styles = stylex.create({
+  // The card layer, so the drawer's cast lands behind the content rather than on top of it.
+  content: {
+    position: "relative",
+    display: "flex",
+    height: "100vh",
+    minHeight: 0,
+    minWidth: 0,
+    flex: 1,
+    zIndex: "var(--layer-card)",
+  },
+});
 
 export function AgentAppShell({
   sidebar,
@@ -67,7 +81,7 @@ export function AgentAppShell({
           />
         </div>
       )}
-      <div className="relative flex h-screen min-h-0 min-w-0 flex-1 z-[var(--layer-card)]">
+      <div {...stylex.props(styles.content)}>
         {hasSidebar && sidebarOpen && (
           <AgentSeamRail label={sidebarResizeLabel} width={sidebarWidth} onCommit={onResize} />
         )}

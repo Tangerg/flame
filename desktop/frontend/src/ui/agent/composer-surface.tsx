@@ -1,5 +1,26 @@
+import * as stylex from "@stylexjs/stylex";
+import { motion, space } from "@/styles/tokens.stylex";
 import type { ComponentPropsWithoutRef, ReactNode, Ref } from "react";
 import { cn } from "@/lib/classNames";
+
+const styles = stylex.create({
+  surface: {
+    overflow: "hidden",
+    borderRadius: "var(--radius-composer)",
+    transitionProperty: "box-shadow",
+    transitionDuration: motion.med,
+    transitionTimingFunction: "var(--ease-out)",
+  },
+  footer: {
+    display: "flex",
+    flexWrap: "nowrap",
+    alignItems: "center",
+    gap: space.s1_5,
+    paddingRight: "var(--density-composer-footer-end)",
+    paddingBottom: "var(--density-composer-footer)",
+    paddingLeft: "var(--density-composer-footer)",
+  },
+});
 
 export function AgentComposerSurface({
   className,
@@ -9,11 +30,9 @@ export function AgentComposerSurface({
   return (
     <div
       {...props}
-      className={cn(
-        "agent-composer-glass overflow-hidden rounded-composer",
-        "transition-[box-shadow] duration-[var(--dur-med)] ease-out",
-        className,
-      )}
+      // `agent-composer-glass` is the composer's material — a backdrop filter and the edge
+      // the visual style owns — and stays in `globals.css` with the rest of the window's chrome.
+      className={cn("agent-composer-glass", stylex.props(styles.surface).className, className)}
     >
       {children}
     </div>
@@ -38,7 +57,9 @@ export function AgentComposerFooter({
       ref={ref}
       data-slot="composer-footer"
       data-labelled={labelled ? "" : undefined}
-      className="agent-composer-footer flex flex-nowrap items-center gap-1.5 pr-[var(--density-composer-footer-end)] pb-[var(--density-composer-footer)] pl-[var(--density-composer-footer)]"
+      // `agent-composer-footer` is the measuring key: `globals.css` holds the chips still for
+      // one reflow through it, so it is a mechanism binding rather than a style.
+      className={cn("agent-composer-footer", stylex.props(styles.footer).className)}
     >
       {children}
     </div>

@@ -1,6 +1,13 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { IconButton } from "@/ui/atoms/icon-button";
+
+const styles = stylex.create({
+  view: { display: "flex", minHeight: 0, flex: 1, flexDirection: "column" },
+  row: { display: "flex", minHeight: 0, flex: 1 },
+  main: { display: "flex", minHeight: 0, minWidth: 0, flex: 1, flexDirection: "column" },
+});
 
 export function AgentWorkspaceView({
   children,
@@ -10,7 +17,7 @@ export function AgentWorkspaceView({
   className?: string;
 }) {
   return (
-    <div className={cn("agent-workspace-view flex min-h-0 flex-1 flex-col", className)}>
+    <div className={cn("agent-workspace-view", stylex.props(styles.view).className, className)}>
       {children}
     </div>
   );
@@ -24,8 +31,8 @@ export function AgentViewSplit({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-0 flex-1">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
+    <div {...stylex.props(styles.row)}>
+      <div {...stylex.props(styles.main)}>{children}</div>
       {navigator}
     </div>
   );

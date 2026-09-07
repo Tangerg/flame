@@ -1,30 +1,41 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import type { DotTone } from "@/lib/tone";
+import { color, corner, space, surface, type, weight } from "@/styles/tokens.stylex";
+import { StatusDot } from "@/ui/atoms/status-dot";
 
+const styles = stylex.create({
+  pill: {
+    display: "inline-flex",
+    height: "22px",
+    alignItems: "center",
+    gap: space.s1_5,
+    backgroundColor: surface.surface2,
+    paddingInline: space.s2_5,
+    fontFamily: "var(--font-sans)",
+    fontWeight: weight.medium,
+    lineHeight: 1,
+    color: color.fgMuted,
+  },
+});
+
+/**
+ * A run's state, said in a word beside the mark that means it.
+ *
+ * The mark is `StatusDot`: this used to draw its own, with its own four-tone ladder, of which
+ * one tone was ever passed. A pill saying "running" and a dot saying "running" have to look the
+ * same, so there is one vocabulary — `DotTone` — and one thing that draws it.
+ */
 export function AgentStatusPill({
   children,
-  tone = "neutral",
+  tone = "idle",
 }: {
   children: ReactNode;
-  tone?: "neutral" | "running" | "warning" | "success";
+  tone?: DotTone;
 }) {
-  const dotClass =
-    tone === "running"
-      ? "bg-accent"
-      : tone === "warning"
-        ? "bg-warning"
-        : tone === "success"
-          ? "bg-success"
-          : "bg-fg-faint";
   return (
-    <span className="inline-flex h-[22px] items-center gap-1.5 rounded-full bg-surface-2 px-2.5 font-sans text-ui-sm font-medium leading-none text-fg-muted">
-      <span
-        className={cn(
-          "h-1.5 w-1.5 rounded-full",
-          dotClass,
-          tone === "running" && "animate-pulse-dot",
-        )}
-      />
+    <span {...stylex.props(styles.pill, corner.pill, type.uiSm)}>
+      <StatusDot tone={tone} />
       {children}
     </span>
   );

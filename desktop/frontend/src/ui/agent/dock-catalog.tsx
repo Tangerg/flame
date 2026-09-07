@@ -1,5 +1,36 @@
+import * as stylex from "@stylexjs/stylex";
+import { color, space, type, weight } from "@/styles/tokens.stylex";
 import type { CatalogPickerGroup } from "@/ui/atoms";
 import { AgentRow } from "./navigation-row";
+
+const styles = stylex.create({
+  port: {
+    display: "flex",
+    minHeight: 0,
+    flex: 1,
+    flexDirection: "column",
+    overflowY: "auto",
+    paddingInline: space.s2,
+    paddingTop: space.s2,
+    paddingBottom: space.s4,
+  },
+  title: {
+    paddingInline: space.s2,
+    paddingBottom: space.s1,
+    fontWeight: weight.medium,
+    color: color.fgFaint,
+  },
+  group: { paddingTop: space.s2 },
+  // A group's own heading sits a step below the catalogue's, and drops the UI tracking that
+  // crowds a word set in small caps.
+  groupLabel: {
+    paddingInline: space.s2,
+    paddingBottom: space.s1,
+    fontWeight: weight.medium,
+    letterSpacing: "var(--tracking-normal)",
+    color: color.fgFaint,
+  },
+});
 
 export function AgentDockCatalog({
   groups,
@@ -11,13 +42,11 @@ export function AgentDockCatalog({
   onSelect: (id: string) => void;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pt-2 pb-4">
-      <div className="px-2 pb-1 text-ui-xs font-medium text-fg-faint">{title}</div>
+    <div {...stylex.props(styles.port)}>
+      <div {...stylex.props(styles.title, type.uiXs)}>{title}</div>
       {groups.map((group) => (
-        <section key={group.id} className="pt-2">
-          <div className="px-2 pb-1 text-ui-2xs font-medium tracking-normal text-fg-faint">
-            {group.label}
-          </div>
+        <section key={group.id} {...stylex.props(styles.group)}>
+          <div {...stylex.props(styles.groupLabel, type.ui2xs)}>{group.label}</div>
           {group.items.map((item) => (
             <AgentRow
               key={item.id}
