@@ -221,14 +221,13 @@ func buildExecutionComposition(
 	policy policyComposition,
 	workspaceServices workspaceComposition,
 ) (executionComposition, error) {
-	conversation, err := buildConversationEnvironment(
-		cfg.Stores.ChatHistory,
-		persistence.NewConversationCompactions(
-			cfg.Stores.ChatHistory,
-			cfg.Stores.Runs,
-			persistence.Transactor(cfg.Stores.Transactor),
-		),
+	compactions, err := persistence.NewConversationCompactions(
+		cfg.Stores.ChatHistory, cfg.Stores.Runs, persistence.Transactor(cfg.Stores.Transactor),
 	)
+	if err != nil {
+		return executionComposition{}, err
+	}
+	conversation, err := buildConversationEnvironment(cfg.Stores.ChatHistory, compactions)
 	if err != nil {
 		return executionComposition{}, err
 	}
@@ -278,11 +277,14 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, err
 	}
-	transientSessions := agentexec.NewTransientSessionState(
+	transientSessions, err := agentexec.NewTransientSessionState(
 		workingContexts,
 		toolRuntime.tools.Resolver,
 		toolRuntime.tools.Shells,
 	)
+	if err != nil {
+		return executionComposition{}, err
+	}
 	toolAuthorizer, err := agentexec.NewToolAuthorizer(policy.approvals)
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: Tool authorizer: %w", err)

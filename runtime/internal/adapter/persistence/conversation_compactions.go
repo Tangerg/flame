@@ -7,44 +7,31 @@ import (
 
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
-
-type conversationHistory interface {
-	Count(ctx context.Context, sessionID string) (int, error)
-	Replace(ctx context.Context, sessionID string, messages ...chat.Message) error
-}
-
-type conversationRuns interface {
-	ListRuns(ctx context.Context, sessionID string) ([]run.Run, error)
-	RebaseMessageMark(ctx context.Context, replacement run.Replacement) error
-}
 
 // ConversationCompactions applies an Application-decided conversation rewrite
 // and all of its Run-watermark replacements in one storage transaction.
 type ConversationCompactions struct {
-	history conversationHistory
-	runs    conversationRuns
+	history *sqlite.MessageStore
+	runs    *sqlite.RunStore
 	tx      Transactor
 }
 
-func NewConversationCompactions(history conversationHistory, runs conversationRuns, tx Transactor) *ConversationCompactions {
-	return &ConversationCompactions{history: history, runs: runs, tx: tx}
+func NewConversationCompactions(history *sqlite.MessageStore, runs *sqlite.RunStore, tx Transactor) (*ConversationCompactions, error) {
+	if history == nil || runs == nil || tx == nil {
+		return nil, errors.New("persistence: conversation compaction history, Runs, and transaction are required")
+	}
+	return &ConversationCompactions{history: history, runs: runs, tx: tx}, nil
 }
 
 var _ runsapp.ConversationCompactionStore = (*ConversationCompactions)(nil)
 
 func (c *ConversationCompactions) ListRuns(ctx context.Context, sessionID string) ([]run.Run, error) {
-	if c == nil || c.runs == nil {
-		return nil, errors.New("persistence: conversation compaction Run store is unavailable")
-	}
 	return c.runs.ListRuns(ctx, sessionID)
 }
 
 func (c *ConversationCompactions) ApplyCompaction(ctx context.Context, plan runsapp.ConversationCompactionPlan) error {
-	if c == nil || c.history == nil || c.runs == nil || c.tx == nil {
-		return errors.New("persistence: conversation compaction dependencies are unavailable")
-	}
 	if err := plan.Validate(); err != nil {
 		return fmt.Errorf("persistence: conversation compaction: %w", err)
 	}

@@ -41,8 +41,14 @@ type ConversationHistory struct {
 }
 
 // NewConversationHistory returns the conversation use cases backed by store.
-func NewConversationHistory(store ConversationStore, compactions ConversationCompactionStore) *ConversationHistory {
-	return &ConversationHistory{store: store, compactions: compactions}
+func NewConversationHistory(store ConversationStore, compactions ConversationCompactionStore) (*ConversationHistory, error) {
+	if nilDependency(store) {
+		return nil, errors.New("runs: conversation store is required")
+	}
+	if nilDependency(compactions) {
+		return nil, errors.New("runs: conversation compaction store is required")
+	}
+	return &ConversationHistory{store: store, compactions: compactions}, nil
 }
 
 // Read returns the validated durable conversation snapshot.
@@ -128,9 +134,6 @@ func (m *ConversationHistory) RewriteForCompaction(
 ) error {
 	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return err
-	}
-	if m.compactions == nil {
-		return errors.New("runs: conversation compaction persistence is unavailable")
 	}
 	compaction, err := conversation.NewCompaction(expectedCount, cutoff, replacementPrefix, messages)
 	if err != nil {

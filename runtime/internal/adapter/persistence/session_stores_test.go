@@ -16,11 +16,22 @@ func TestSessionStoresRequireCompleteDurableCapabilities(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
+	messages := sqlite.NewMessageStore(db)
+	compactions, err := NewConversationCompactions(messages, sqlite.NewRunStore(db), func(ctx context.Context, fn func(context.Context) error) error {
+		return sqlite.RunInTx(ctx, db, fn)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	history, err := runs.NewConversationHistory(messages, compactions)
+	if err != nil {
+		t.Fatal(err)
+	}
 	complete := SessionStoresConfig{
 		Sessions: sqlite.NewSessionStore(db), Transcript: sqlite.NewTranscriptStore(db),
 		Interrupts: NewInterruptStore(sqlite.NewInterruptStore(db)), Runs: sqlite.NewRunStore(db),
 		ExecutorCheckpoints: NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
-		History:             runs.NewConversationHistory(sqlite.NewMessageStore(db), nil),
+		History:             history,
 		Plan:                sqlite.NewPlanStore(db),
 		ApprovalRules:       sqlite.NewApprovalRuleStore(db),
 		PermissionModes:     sqlite.NewPermissionModeStore(db),
