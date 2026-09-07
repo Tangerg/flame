@@ -28,7 +28,7 @@ trust-boundary checks, resource ownership, and product capabilities remain.
 | R4 | Executor composition repeats BuildID as ImplementationIdentity and adds a hand-maintained configuration identity beside serialized configuration. | Derive deployment identity from the real executable and configuration facts. Remove synonymous identity inputs and wrappers without weakening Scope deployment compatibility. | Complete |
 | R5 | Recovery and waiting-subtree cancellation validate constructed immutable write sets again in persistence. Some validators replay planner transitions. | One owner constructs each complete decision. Persistence checks transactional expectations, not a second recovery policy. Remove redundant construction surfaces and repeated proof machinery. | Complete |
 | R6 | Session restore, fork, and rollback repeatedly normalize, copy, and validate complete snapshots through write-plan construction and application. | Decode and validate external input at its boundary; acquire mutable ownership once per retained owner. Apply an established immutable write plan without another full reconstruction. | Complete |
-| R7 | Restored immutable aggregates are fully revalidated by replacements, queries, snapshots, and persistence. | Aggregate construction owns intrinsic validity. Use cases own cross-aggregate relationships; storage owns decoding and current-state matching. Remove duplicate intrinsic validation while retaining zero-value and external-boundary admission. | Pending |
+| R7 | Restored immutable aggregates are fully revalidated by replacements, queries, snapshots, and persistence. | Aggregate construction owns intrinsic validity. Use cases own cross-aggregate relationships; storage owns decoding and current-state matching. Remove duplicate intrinsic validation while retaining zero-value and external-boundary admission. | Complete |
 | R8 | The live registry writes CancelReason but has no production reader. The Run-tree cancellation arbiter owns the consumed reason. | Remove registry cancellation state and writes. Keep the arbiter as the sole cancellation-reason owner and retain observable cancellation coverage. | Complete |
 | C1 | CLI mirrors Runtime Run/Session rules, projections, and product error identities. | Consume Runtime protocol values and errors directly. Keep CLI-owned conversation folding, drafts, previews, selection, and rendering state. Remove synonymous models, validators, and error translations. | Pending |
 | C2 | CLI mutation acknowledgements repeat Session revision/normalization/model rules and MCP/Provider update semantics. | Runtime owns mutation postconditions. CLI retains wire and target-identity checks, local form state, and credential protection. Remove duplicate business-rule validation and its dedicated tests. | Pending |
@@ -243,6 +243,30 @@ Verified malformed snapshot and plan rejection, source/accessor isolation,
 parent-first restore, forked Run/Item/blob identities, rollback, restore failure
 atomicity, and parked termination. Runtime tests, vet, build, and whitespace
 checks passed.
+
+### Immutable aggregates establish their own validity
+
+Run, Item, Session, and committed Plan states no longer expose full aggregate
+revalidation. Strict restoration validates their complete representation; legal
+transitions validate their changed facts. Consumers admit zero values where
+needed and check expected identity, ownership, ordering, and cross-aggregate
+relationships. Replacements establish their relationship once and storage
+matches the current value or revision without repeating aggregate construction.
+Removed the EventCommit's temporary watermark rewrite used only for validation.
+
+Plan Current is either absent or constructed from a committed State. Plan
+Version derives committed presence from its owned revision, and Session
+replacement derives initial insertion from the absence of an expected revision.
+Removed the two duplicate flags and the contradictory states they enabled.
+Stored-state codecs still use strict constructors. Run restoration explicitly
+rejects unknown states, and Session edits validate exact model selection at the
+point it changes instead of relying on a later whole-aggregate pass.
+
+Verified aggregate lifecycle, immutable accessors, malformed restoration,
+replacement revision and ownership, coherent snapshots, recovery, waiting
+cancellation, and SQLite CAS/round trips. Runtime tests, vet, build, and whitespace
+checks passed; the final constructor simplification also passed focused Domain
+checks.
 
 If deeper consumer evidence invalidates a proposed deletion, record the
 surviving requirement here instead of weakening it to satisfy a line-count target.

@@ -12,32 +12,17 @@ type Replacement struct {
 
 // NewReplacement constructs one exact Item aggregate replacement.
 func NewReplacement(expected, state Item) (Replacement, error) {
-	replacement := Replacement{expected: expected, state: state}
-	if err := replacement.Validate(); err != nil {
-		return Replacement{}, err
+	if expected.IsZero() || state.IsZero() {
+		return Replacement{}, fmt.Errorf("transcript: replacement requires expected and next items")
 	}
-	return replacement, nil
+	if expected.ID() != state.ID() || expected.SessionID() != state.SessionID() || expected.RunID() != state.RunID() {
+		return Replacement{}, fmt.Errorf("%w: replacement changes Item %q ownership", ErrIdentityConflict, expected.ID())
+	}
+	return Replacement{expected: expected, state: state}, nil
 }
 
-// Validate proves both aggregates are valid and retain one Item identity.
-func (r Replacement) Validate() error {
-	if err := r.expected.Validate(); err != nil {
-		return fmt.Errorf("transcript: replacement expected Item: %w", err)
-	}
-	if err := r.state.Validate(); err != nil {
-		return fmt.Errorf("transcript: replacement state Item: %w", err)
-	}
-	if r.expected.ID() != r.state.ID() ||
-		r.expected.SessionID() != r.state.SessionID() ||
-		r.expected.RunID() != r.state.RunID() {
-		return fmt.Errorf(
-			"%w: replacement changes Item %q ownership",
-			ErrIdentityConflict,
-			r.expected.ID(),
-		)
-	}
-	return nil
-}
+// IsZero reports whether no replacement was constructed.
+func (r Replacement) IsZero() bool { return r.state.IsZero() }
 
 // Expected returns the complete Item the replacement was derived from.
 func (r Replacement) Expected() Item { return r.expected }

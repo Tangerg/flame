@@ -50,8 +50,8 @@ func (c *Coordinator) ExportSession(ctx context.Context, sessionID string) (Expo
 // Validate checks the complete Session and the snapshot's referential integrity
 // before the coordinator hands it out.
 func (s Snapshot) Validate() error {
-	if err := s.Session.Validate(); err != nil {
-		return fmt.Errorf("sessions: snapshot session: %w", err)
+	if s.Session.IsZero() {
+		return fmt.Errorf("sessions: session is required")
 	}
 	if err := conversation.ValidateMessages(s.Messages); err != nil {
 		return fmt.Errorf("sessions: snapshot conversation: %w", err)
@@ -87,9 +87,6 @@ func (s Snapshot) validateRuns() (map[string]struct{}, error) {
 		if !run.State().IsTerminal() {
 			return nil, fmt.Errorf("sessions: snapshot run %q is %s, want terminal", run.ID(), run.State())
 		}
-		if err := run.Validate(); err != nil {
-			return nil, fmt.Errorf("sessions: snapshot run %q: %w", run.ID(), err)
-		}
 		if run.MessageMark() > len(s.Messages) {
 			return nil, fmt.Errorf("sessions: snapshot run %q has invalid message watermark %d", run.ID(), run.MessageMark())
 		}
@@ -120,9 +117,6 @@ func (s Snapshot) validateItems(runs map[string]struct{}) (map[string]transcript
 		}
 		if _, failed := item.Failure(); failed && (item.Kind() != transcript.ToolCall || item.Status() != transcript.ItemIncomplete) {
 			return nil, fmt.Errorf("sessions: snapshot item %q has an invalid tool failure", item.ID())
-		}
-		if err := item.Validate(); err != nil {
-			return nil, fmt.Errorf("sessions: snapshot item %q: %w", item.ID(), err)
 		}
 	}
 	return items, nil

@@ -385,8 +385,8 @@ func (w *waitingCancellationValidation) validateTerminalRuns() error {
 		)
 	}
 	for index, replacement := range c.TerminalRuns {
-		if err := replacement.Validate(); err != nil {
-			return fmt.Errorf("runs: waiting cancellation Run[%d]: %w", index, err)
+		if replacement.IsZero() {
+			return fmt.Errorf("runs: run replacement is required")
 		}
 		expected := replacement.Expected()
 		run := replacement.State()
@@ -468,8 +468,8 @@ func (w waitingCancellationValidation) validateTerminalItems() error {
 	}
 	seen := make(map[string]struct{}, len(c.TerminalItems))
 	for index, replacement := range c.TerminalItems {
-		if err := replacement.Validate(); err != nil {
-			return fmt.Errorf("runs: waiting cancellation terminal Item[%d]: %w", index, err)
+		if replacement.IsZero() {
+			return fmt.Errorf("runs: item replacement is required")
 		}
 		expectedItem := replacement.Expected()
 		expectedTool, expected := expectedByItemID[expectedItem.ID()]
@@ -636,8 +636,8 @@ func (w waitingCancellationValidation) validateOpeningEvents() error {
 
 func (w waitingCancellationValidation) validateParentItem() error {
 	c := w.commit
-	if err := c.ParentItem.Validate(); err != nil {
-		return fmt.Errorf("runs: waiting cancellation parent Item: %w", err)
+	if c.ParentItem.IsZero() {
+		return fmt.Errorf("runs: item replacement is required")
 	}
 	expected, replacement := c.ParentItem.Expected(), c.ParentItem.State()
 	target := w.continuationByRunID[c.TargetRunID]

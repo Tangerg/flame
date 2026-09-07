@@ -47,8 +47,8 @@ func NewRollbackPlan(
 	}
 	var ownedPlanReplacement *plan.Replacement
 	if planReplacement != nil {
-		if err := planReplacement.Validate(); err != nil {
-			return RollbackPlan{}, fmt.Errorf("sessions: rollback plan replacement: %w", err)
+		if planReplacement.IsZero() {
+			return RollbackPlan{}, fmt.Errorf("sessions: rollback plan replacement is required")
 		}
 		cloned := *planReplacement
 		ownedPlanReplacement = &cloned

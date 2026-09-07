@@ -64,9 +64,6 @@ func (m MaterialSnapshot) Validate() error {
 	if err := validator.validateWaitingOwnership(); err != nil {
 		return err
 	}
-	if err := m.Plan.Validate(); err != nil {
-		return fmt.Errorf("sessions: material snapshot Plan: %w", err)
-	}
 	return validator.validateGoal()
 }
 
@@ -79,8 +76,8 @@ type materialSnapshotValidator struct {
 }
 
 func newMaterialSnapshotValidator(snapshot MaterialSnapshot) (*materialSnapshotValidator, error) {
-	if err := snapshot.Session.Validate(); err != nil {
-		return nil, fmt.Errorf("sessions: material snapshot Session: %w", err)
+	if snapshot.Session.IsZero() {
+		return nil, fmt.Errorf("sessions: session is required")
 	}
 	return &materialSnapshotValidator{
 		snapshot:         snapshot,
@@ -93,9 +90,6 @@ func newMaterialSnapshotValidator(snapshot MaterialSnapshot) (*materialSnapshotV
 
 func (validator *materialSnapshotValidator) indexRuns() error {
 	for _, record := range validator.snapshot.Runs {
-		if err := record.Validate(); err != nil {
-			return fmt.Errorf("sessions: material snapshot Run %q: %w", record.ID(), err)
-		}
 		if record.SessionID() != validator.sessionID {
 			return fmt.Errorf("sessions: material snapshot Run %q belongs to Session %q, want %q", record.ID(), record.SessionID(), validator.sessionID)
 		}
@@ -109,9 +103,6 @@ func (validator *materialSnapshotValidator) indexRuns() error {
 
 func (validator *materialSnapshotValidator) indexItems() error {
 	for _, item := range validator.snapshot.Items {
-		if err := item.Validate(); err != nil {
-			return fmt.Errorf("sessions: material snapshot Item %q: %w", item.ID(), err)
-		}
 		if item.SessionID() != validator.sessionID {
 			return fmt.Errorf("sessions: material snapshot Item %q belongs to Session %q, want %q", item.ID(), item.SessionID(), validator.sessionID)
 		}

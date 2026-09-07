@@ -71,8 +71,8 @@ func validateForkPlanReplacement(steps []plan.Step, replacement *plan.Replacemen
 	if replacement == nil {
 		return errors.New("sessions: fork plan inherited steps have no initial replacement")
 	}
-	if err := replacement.Validate(); err != nil {
-		return fmt.Errorf("sessions: fork plan replacement: %w", err)
+	if replacement.IsZero() {
+		return fmt.Errorf("sessions: fork plan replacement is required")
 	}
 	if !replacement.ExpectedVersion().IsUnwritten() {
 		return errors.New("sessions: fork plan replacement does not start from an unwritten Plan")

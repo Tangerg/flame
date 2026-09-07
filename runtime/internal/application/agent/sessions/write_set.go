@@ -213,9 +213,6 @@ func (t TerminalPlan) validate() error {
 			return fmt.Errorf("sessions: terminal plan repeats Item %q", item.ID())
 		}
 		seenItems[item.ID()] = struct{}{}
-		if err := item.Validate(); err != nil {
-			return fmt.Errorf("sessions: terminal plan Item %q: %w", item.ID(), err)
-		}
 	}
 	for index, message := range t.messages {
 		if err := message.Validate(); err != nil {
@@ -244,8 +241,8 @@ func terminalGoalRun(root rundomain.Run) (goal.RunRecord, error) {
 }
 
 func validateTerminalRunReplacement(replacement rundomain.Replacement) error {
-	if err := replacement.Validate(); err != nil {
-		return err
+	if replacement.IsZero() {
+		return fmt.Errorf("sessions: run replacement is required")
 	}
 	expected := replacement.Expected()
 	state := replacement.State()

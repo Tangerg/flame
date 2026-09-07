@@ -268,3 +268,11 @@ func mustWorkspace(t *testing.T, path string) Workspace {
 	}
 	return workspace
 }
+
+func TestSessionEditRejectsMissingExactSelection(t *testing.T) {
+	current := mustNew(t, Draft{ID: "ses_1", Workspace: mustWorkspace(t, "/work"), StartedAt: time.Unix(1, 0)})
+	selection := modelref.Selection{}
+	if _, _, err := current.Apply(Patch{Selection: &selection}, time.Unix(2, 0)); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("empty selection edit error = %v, want ErrInvalid", err)
+	}
+}

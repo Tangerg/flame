@@ -90,8 +90,8 @@ func validateRecoveryRunCatalog(values []rundomain.Run) error {
 	seen := make(map[string]int, len(values))
 	rootBySession := make(map[string]int, len(values))
 	for index, value := range values {
-		if err := value.Validate(); err != nil {
-			return fmt.Errorf("runs: validate recovery Run[%d] %q: %w", index, value.ID(), err)
+		if value.IsZero() {
+			return fmt.Errorf("runs: run is required")
 		}
 		if value.State().IsTerminal() {
 			return fmt.Errorf("runs: recovery Run[%d] %q is terminal", index, value.ID())

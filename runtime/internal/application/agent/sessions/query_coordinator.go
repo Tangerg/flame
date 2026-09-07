@@ -250,8 +250,8 @@ func validateItemRows(rows []transcript.SequencedItem, scope ItemScope, order tr
 		if entry.Sequence <= 0 {
 			return fmt.Errorf("sessions: transcript store row %d has invalid sequence %d", index+1, entry.Sequence)
 		}
-		if err := entry.Item.Validate(); err != nil {
-			return fmt.Errorf("sessions: transcript store row %d is invalid: %w", index+1, err)
+		if entry.Item.IsZero() {
+			return fmt.Errorf("sessions: item is required")
 		}
 		if err := scope.validateDirectItem(entry.Item); err != nil {
 			return err
@@ -295,9 +295,9 @@ func sequenceFollows(sequence, previous int64, order transcript.SequenceOrder) b
 
 func validateItemRunClosure(scope ItemScope, items []transcript.Item, values []run.Run) error {
 	runsByID := make(map[string]run.Run, len(values))
-	for index, value := range values {
-		if err := value.Validate(); err != nil {
-			return fmt.Errorf("sessions: Item page Run[%d] is invalid: %w", index, err)
+	for _, value := range values {
+		if value.IsZero() {
+			return fmt.Errorf("sessions: run is required")
 		}
 		if _, duplicate := runsByID[value.ID()]; duplicate {
 			return fmt.Errorf("sessions: Item page repeats Run %q", value.ID())

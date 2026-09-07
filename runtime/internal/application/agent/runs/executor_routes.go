@@ -635,8 +635,8 @@ func (c *Coordinator) prepareChildStart(
 			spec.SessionID,
 		)
 	}
-	if validateErr := spawningItem.Validate(); validateErr != nil {
-		return nil, fmt.Errorf("runs: open child member %q spawning item: %w", member.MemberID, validateErr)
+	if spawningItem.IsZero() {
+		return nil, fmt.Errorf("runs: item is required")
 	}
 	childRunID := c.newRunID()
 	if childRunID == "" {

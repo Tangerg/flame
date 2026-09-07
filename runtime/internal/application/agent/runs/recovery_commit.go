@@ -97,9 +97,9 @@ func validateRecoveryCommit(state recoveryCommitState) error {
 	lostByID := make(map[string]rundomain.Replacement, len(state.LostRuns))
 	treeMembers := make(map[string][]rundomain.TreeMember)
 	actualOrder := make([]string, 0, len(state.LostRuns))
-	for index, recovery := range state.LostRuns {
-		if err := recovery.Validate(); err != nil {
-			return fmt.Errorf("runs: recovery commit lost Run[%d]: %w", index, err)
+	for _, recovery := range state.LostRuns {
+		if recovery.IsZero() {
+			return fmt.Errorf("runs: run replacement is required")
 		}
 		run := recovery.State()
 		outcome, terminal := run.Outcome()
@@ -161,8 +161,8 @@ func validateRecoveryCommit(state recoveryCommitState) error {
 
 	replacedItems := make(map[string]transcript.Replacement, len(state.ItemReplacements))
 	for index, replacement := range state.ItemReplacements {
-		if err := replacement.Validate(); err != nil {
-			return fmt.Errorf("runs: recovery commit Item replacement[%d]: %w", index, err)
+		if replacement.IsZero() {
+			return fmt.Errorf("runs: item replacement is required")
 		}
 		expected := replacement.Expected()
 		owner, found := lostByID[expected.RunID()]

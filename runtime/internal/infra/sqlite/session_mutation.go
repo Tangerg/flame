@@ -12,8 +12,8 @@ import (
 // Insert persists one already-decided initial Session. Identity, timestamps,
 // lineage, editable values, and revision all belong to the aggregate.
 func (s *SessionStore) Insert(ctx context.Context, value session.Session) error {
-	if err := value.Validate(); err != nil {
-		return fmt.Errorf("sqlite: validate initial Session: %w", err)
+	if value.IsZero() {
+		return fmt.Errorf("sqlite: session is required")
 	}
 	firstRevision := exactint.First().Value()
 	if value.Revision() != firstRevision {
@@ -32,8 +32,8 @@ func (s *SessionStore) Save(
 	ctx context.Context,
 	change session.Replacement,
 ) error {
-	if err := change.Validate(); err != nil {
-		return fmt.Errorf("sqlite: validate Session replacement: %w", err)
+	if change.IsZero() {
+		return fmt.Errorf("sqlite: session replacement is required")
 	}
 	expectedRevision := change.ExpectedRevision()
 	replacement := change.State()

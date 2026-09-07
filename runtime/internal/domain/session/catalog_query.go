@@ -248,8 +248,8 @@ func (r CatalogRead) ValidatePage(values []Session) error {
 	}
 	seen := make(map[string]struct{}, len(values))
 	for index, value := range values {
-		if err := value.Validate(); err != nil {
-			return fmt.Errorf("%w: row %d: %w", ErrInvalidCatalogPage, index+1, err)
+		if value.IsZero() {
+			return fmt.Errorf("%w: session is required", ErrInvalidCatalogPage)
 		}
 		matches, err := r.filter.matches(value)
 		if err != nil {

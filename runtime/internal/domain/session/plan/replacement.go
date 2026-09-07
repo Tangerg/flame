@@ -13,8 +13,8 @@ type Replacement struct {
 // NewReplacement constructs one exact Plan version advance.
 func NewReplacement(expected Version, state State) (Replacement, error) {
 	replacement := Replacement{expected: expected, state: state}
-	if err := replacement.Validate(); err != nil {
-		return Replacement{}, err
+	if err := expected.AdvancesTo(state); err != nil {
+		return Replacement{}, fmt.Errorf("plan: invalid replacement: %w", err)
 	}
 	return replacement, nil
 }
@@ -25,10 +25,5 @@ func (r Replacement) ExpectedVersion() Version { return r.expected }
 // State returns the immutable, already-decided replacement state.
 func (r Replacement) State() State { return r.state }
 
-// Validate proves that the state advances its expected version exactly once.
-func (r Replacement) Validate() error {
-	if err := r.expected.AdvancesTo(r.state); err != nil {
-		return fmt.Errorf("plan: invalid replacement: %w", err)
-	}
-	return nil
-}
+// IsZero reports whether no Plan replacement was constructed.
+func (r Replacement) IsZero() bool { return r.state.IsZero() }

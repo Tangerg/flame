@@ -46,9 +46,9 @@ func (p ConversationCompactionPlan) Validate() error {
 		return fmt.Errorf("runs: conversation compaction session: %w", err)
 	}
 	seen := make(map[string]struct{}, len(p.runs))
-	for index, replacement := range p.runs {
-		if err := replacement.Validate(); err != nil {
-			return fmt.Errorf("runs: conversation compaction run[%d]: %w", index, err)
+	for _, replacement := range p.runs {
+		if replacement.IsZero() {
+			return fmt.Errorf("runs: run replacement is required")
 		}
 		expected := replacement.Expected()
 		if expected.SessionID() != p.sessionID.String() {

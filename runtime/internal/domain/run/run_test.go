@@ -330,3 +330,14 @@ func TestMetricsRejectsDurationOverflow(t *testing.T) {
 		t.Fatal("AddActiveDuration accepted overflow")
 	}
 }
+
+func TestRestoreRejectsUnknownRunState(t *testing.T) {
+	_, err := Restore(Snapshot{
+		ID: "run_1", SessionID: "ses_1", ModelSelection: mustRunSelection(t),
+		State: State("unknown"), CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0),
+		MessageMark: UnknownMessageMark,
+	})
+	if err == nil {
+		t.Fatal("Restore accepted an unknown Run state")
+	}
+}

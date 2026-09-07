@@ -24,8 +24,8 @@ func NewRestorePlan(
 	sessionReplacement session.Replacement,
 	planReplacement *plan.Replacement,
 ) (RestorePlan, error) {
-	if err := sessionReplacement.Validate(); err != nil {
-		return RestorePlan{}, fmt.Errorf("sessions: restore plan Session replacement: %w", err)
+	if sessionReplacement.IsZero() {
+		return RestorePlan{}, fmt.Errorf("sessions: session replacement is required")
 	}
 	owned, err := ownWriteSnapshot(snapshot)
 	if err != nil {
@@ -68,8 +68,8 @@ func validateRestorePlanReplacement(steps []plan.Step, replacement *plan.Replace
 		}
 		return nil
 	}
-	if err := replacement.Validate(); err != nil {
-		return fmt.Errorf("sessions: restore plan Plan replacement: %w", err)
+	if replacement.IsZero() {
+		return fmt.Errorf("sessions: restore plan replacement is required")
 	}
 	if !slices.Equal(replacement.State().Steps(), steps) {
 		return errors.New("sessions: restore plan Plan replacement differs from restored steps")
