@@ -14,6 +14,10 @@ CLI owns only command and presentation concerns:
 - drafts, attachments, prompt history, queue intent, stash, and replay intent;
 - projections used to present Runtime facts.
 
+Cold recovery reads one complete Runtime Session snapshot, including Session
+metadata and activity from its coherent material read. It does not pair separate
+queries or retry metadata comparisons.
+
 A Runtime event may update a preview, but completed Items and authoritative snapshots win after reconnect, gaps, and cold recovery.
 
 One-shot execution reads the complete tree interruption from Conversation after the root Segment closes. Member interrupts alone do not authorize a resume; a stream lost before the root boundary must reconnect or recover the durable snapshot first.

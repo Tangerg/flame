@@ -607,19 +607,19 @@ func TestProjectTreeStreamRetainsProducerAndStreamSegments(t *testing.T) {
 	t.Fatal("tree stream yielded no event")
 }
 
-func waitingApprovalColdRead() coldRead {
+func waitingApprovalColdRead() protocol.SessionSnapshot {
 	tool := &protocol.ToolInvocation{Name: "shell", Arguments: map[string]any{
 		"command": "go test ./...", "description": "Run tests",
 	}}
 	startedAt := time.Date(2026, time.August, 31, 6, 0, 0, 0, time.UTC)
-	return coldRead{
-		session: protocol.Session{
+	return protocol.SessionSnapshot{
+		Session: protocol.Session{
 			ID: "ses_1", Status: protocol.SessionStatusWaiting,
 			Provider: testSessionProvider, Model: testSessionModel,
 			Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
 			CreatedAt: startedAt, UpdatedAt: startedAt, Revision: 1,
 		},
-		runs: []protocol.RunRef{{
+		Runs: []protocol.RunRef{{
 			RunSummary: protocol.RunSummary{
 				ID: "run_1", SessionID: "ses_1", Provider: testSessionProvider, Model: testSessionModel,
 				Status: protocol.RunStatusWaiting, CreatedAt: startedAt.Add(-time.Second),
@@ -629,12 +629,12 @@ func waitingApprovalColdRead() coldRead {
 				InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval},
 			},
 		}},
-		items: []protocol.Item{{
+		Items: []protocol.Item{{
 			ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusRunning,
 			Type: protocol.ItemTypeToolCall, Tool: tool, SafetyClass: protocol.SafetyClassExec, StartedAt: startedAt,
 		}},
-		plan: &protocol.Plan{SessionID: "ses_1"},
-		interrupts: []protocol.PendingInterruptSet{{
+		Plan: &protocol.Plan{SessionID: "ses_1"},
+		Interrupts: []protocol.PendingInterruptSet{{
 			RootRunID: "run_1", SessionID: "ses_1", CreatedAt: startedAt,
 			Interrupts: []protocol.Interrupt{{
 				ItemID: "item_1", RunID: "run_1", Type: protocol.InterruptApproval,
@@ -646,7 +646,7 @@ func waitingApprovalColdRead() coldRead {
 
 func TestProjectSnapshotMatchesApprovalInvocationWithoutErasingItemLifecycle(t *testing.T) {
 	read := waitingApprovalColdRead()
-	startedAt := read.items[0].StartedAt
+	startedAt := read.Items[0].StartedAt
 	snapshot, err := projectSnapshot(read)
 	if err != nil {
 		t.Fatalf("projectSnapshot: %v", err)
@@ -669,29 +669,29 @@ func TestProjectSnapshotRejectsUnownedPendingInterruptSets(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		mutate func(*coldRead)
+		mutate func(*protocol.SessionSnapshot)
 		want   string
 	}{
 		{
 			name: "extra set",
-			mutate: func(read *coldRead) {
-				extra := read.interrupts[0]
+			mutate: func(read *protocol.SessionSnapshot) {
+				extra := read.Interrupts[0]
 				extra.RootRunID = "run_other"
-				read.interrupts = append(read.interrupts, extra)
+				read.Interrupts = append(read.Interrupts, extra)
 			},
 			want: "2 pending interrupt sets",
 		},
 		{
 			name: "different session",
-			mutate: func(read *coldRead) {
-				read.interrupts[0].SessionID = "ses_other"
+			mutate: func(read *protocol.SessionSnapshot) {
+				read.Interrupts[0].SessionID = "ses_other"
 			},
 			want: "for session ses_other",
 		},
 		{
 			name: "missing creation time",
-			mutate: func(read *coldRead) {
-				read.interrupts[0].CreatedAt = time.Time{}
+			mutate: func(read *protocol.SessionSnapshot) {
+				read.Interrupts[0].CreatedAt = time.Time{}
 			},
 			want: "createdAt",
 		},

@@ -22,7 +22,7 @@ trust-boundary checks, resource ownership, and product capabilities remain.
 
 | ID | Finding and evidence at the baseline | Target contract and deletion scope | State |
 | --- | --- | --- | --- |
-| R1 | `sessions.MaterialSnapshot` includes Session in one storage read, but `protocol.SessionSnapshot` omits it. CLI combines separate reads with eight stability attempts. | Runtime returns the complete coherent mounted-session projection. Remove CLI metadata pairing, retry count, and equality machinery; update protocol artifacts and consumers. | In progress: Runtime complete; CLI migration follows |
+| R1 | `sessions.MaterialSnapshot` includes Session in one storage read, but `protocol.SessionSnapshot` omits it. CLI combines separate reads with eight stability attempts. | Runtime returns the complete coherent mounted-session projection. Remove CLI metadata pairing, retry count, and equality machinery; update protocol artifacts and consumers. | Complete |
 | R2 | `SessionStores`, `WorkingContextComposer`, `InteractionExecutor`, and title finalization allow absent dependencies that the production composition always supplies. | Require complete collaborators at construction. Remove impossible missing-capability execution branches. Retain actual checkpoint, sandbox, and tool-result-offload policies. | Complete |
 | R3 | Fixed product policy is represented by optional tuning bags; test-only maintenance and restore-scope overrides create alternate production paths. Shutdown wraps a fixed timeout in repeated validation. | Give fixed policy one owner. Remove replacement paths with no product consumer. Keep narrow test controls only where they isolate an actual external boundary or deterministic lifetime. | Complete |
 | R4 | Executor composition repeats BuildID as ImplementationIdentity and adds a hand-maintained configuration identity beside serialized configuration. | Derive deployment identity from the real executable and configuration facts. Remove synonymous identity inputs and wrappers without weakening Scope deployment compatibility. | Complete |
@@ -278,8 +278,10 @@ filesystem observation of the stored workspace path.
 
 Updated the public Go response and generated Runtime contracts. Verified
 Session metadata/activity agreement, one-read Application projection, binding
-responses, then Runtime tests, vet, build, and whitespace checks. CLI migrates
-to this response after the verified Runtime commit is published. Desktop is
+responses, then Runtime tests, vet, build, and whitespace checks. CLI pins the published Runtime commit and consumes this response directly.
+Removed the separate metadata query, eight-attempt stability loop, equality
+function, and intermediate cold-read DTO. CLI focused adapter and complete
+module tests, vet, build, and whitespace checks passed. Desktop is
 outside this batch; its owner must regenerate and consume the required `session`
 field when updating its Runtime protocol contract.
 
