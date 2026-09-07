@@ -82,7 +82,7 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 				!profile.Supports(protocol.FeatureRelocate) {
 				return fmt.Errorf("runtime capability %q was not negotiated", protocol.FeatureRelocate)
 			}
-			updated, err := session.Update(cmd.Context(), runtime, update)
+			updated, err := runtime.UpdateSession(cmd.Context(), update)
 			if err != nil {
 				return err
 			}
@@ -228,7 +228,7 @@ func newSessionsRenameCommand(provider runtimeProvider) *cobra.Command {
 				return err
 			}
 			title := args[1]
-			updated, err := session.Update(cmd.Context(), runtime, agent.UpdateSession{
+			updated, err := runtime.UpdateSession(cmd.Context(), agent.UpdateSession{
 				SessionID: args[0], Title: &title, ExpectedRevision: revision,
 			})
 			if err != nil {

@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/layout"
 
-	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
@@ -248,7 +247,7 @@ func (a *app) relocateSession(path string) {
 			if err != nil {
 				return agent.SessionSnapshot{}, err
 			}
-			if _, err := session.Update(ctx, a.runtime, agent.UpdateSession{
+			if _, err := a.runtime.UpdateSession(ctx, agent.UpdateSession{
 				SessionID: sessionID, Workspace: &path, ExpectedRevision: latest.Session.Revision,
 			}); err != nil {
 				return agent.SessionSnapshot{}, err

@@ -534,29 +534,6 @@ func (c CreateSession) Validate() error {
 	return nil
 }
 
-func (c CreateSession) ValidateResult(result Session) error {
-	if err := c.Validate(); err != nil {
-		return err
-	}
-	var problems []error
-	if err := result.Validate(); err != nil {
-		problems = append(problems, fmt.Errorf("runtime result: %w", err))
-	}
-	if result.Revision != exactint.First().Value() {
-		problems = append(problems, fmt.Errorf("runtime returned initial revision %d, want %d", result.Revision, exactint.First().Value()))
-	}
-	if title := strings.TrimSpace(c.Title); title != "" && result.Title != title {
-		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, title))
-	}
-	if path := strings.TrimSpace(c.Workspace); path != "" && result.Workspace.Path != path {
-		problems = append(problems, fmt.Errorf("runtime returned workspace %q, want %q", result.Workspace.Path, path))
-	}
-	if err := errors.Join(problems...); err != nil {
-		return fmt.Errorf("session create: %w", err)
-	}
-	return nil
-}
-
 type UpdateSession struct {
 	SessionID        string
 	Title            *string
@@ -590,44 +567,6 @@ func (u UpdateSession) Validate() error {
 	return nil
 }
 
-// ValidateResult verifies that a successful update response represents the
-// exact command the caller issued, rather than merely containing a valid but
-// unrelated session projection.
-func (u UpdateSession) ValidateResult(result Session) error {
-	if err := u.Validate(); err != nil {
-		return err
-	}
-	var problems []error
-	if err := result.Validate(); err != nil {
-		problems = append(problems, fmt.Errorf("runtime result: %w", err))
-	}
-	if result.ID != u.SessionID {
-		problems = append(problems, fmt.Errorf("runtime returned session %s, want %s", result.ID, u.SessionID))
-	}
-	if err := exactint.Follows(u.ExpectedRevision, result.Revision); err != nil {
-		problems = append(problems, fmt.Errorf("runtime returned revision %d after expected revision %d: %w", result.Revision, u.ExpectedRevision, err))
-	}
-	if u.Title != nil && result.Title != strings.TrimSpace(*u.Title) {
-		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, strings.TrimSpace(*u.Title)))
-	}
-	if u.Workspace != nil && result.Workspace.Path != strings.TrimSpace(*u.Workspace) {
-		problems = append(problems, fmt.Errorf("runtime returned workspace %q, want %q", result.Workspace.Path, strings.TrimSpace(*u.Workspace)))
-	}
-	if u.Model != nil && (result.Provider != u.Model.Provider || result.Model != u.Model.Model) {
-		problems = append(problems, fmt.Errorf("runtime returned model %q, want %q", (ModelRef{Provider: result.Provider, Model: result.Model}).String(), u.Model.String()))
-	}
-	if u.Model != nil && result.ReasoningEffort != "" {
-		problems = append(problems, fmt.Errorf("runtime retained reasoning effort %q after changing model", result.ReasoningEffort))
-	}
-	if u.Favorite != nil && result.Favorite != *u.Favorite {
-		problems = append(problems, fmt.Errorf("runtime returned favorite %t, want %t", result.Favorite, *u.Favorite))
-	}
-	if err := errors.Join(problems...); err != nil {
-		return fmt.Errorf("session update: %w", err)
-	}
-	return nil
-}
-
 type ForkSession struct {
 	SessionID string
 	FromRunID string
@@ -645,29 +584,6 @@ func (f ForkSession) Validate() error {
 	}
 	if f.Title != "" && strings.TrimSpace(f.Title) == "" {
 		return errors.New("session fork: title is empty")
-	}
-	return nil
-}
-
-func (f ForkSession) ValidateResult(result Session) error {
-	if err := f.Validate(); err != nil {
-		return err
-	}
-	var problems []error
-	if err := result.Validate(); err != nil {
-		problems = append(problems, fmt.Errorf("runtime result: %w", err))
-	}
-	if result.Revision != exactint.First().Value() {
-		problems = append(problems, fmt.Errorf("runtime returned initial revision %d, want %d", result.Revision, exactint.First().Value()))
-	}
-	if result.ID == f.SessionID {
-		problems = append(problems, fmt.Errorf("runtime returned source session %q", result.ID))
-	}
-	if title := strings.TrimSpace(f.Title); title != "" && result.Title != title {
-		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, title))
-	}
-	if err := errors.Join(problems...); err != nil {
-		return fmt.Errorf("session fork: %w", err)
 	}
 	return nil
 }

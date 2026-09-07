@@ -179,83 +179,17 @@ func (s sessionCatalogStub) ForkSession(_ context.Context, request protocol.Fork
 	return nil, errors.New("unexpected ForkSession")
 }
 
-func TestCreateAndForkSessionRejectAcknowledgementDrift(t *testing.T) {
-	t.Parallel()
-	base := protocol.Session{
-		ID: "ses_new", Title: "Requested", Status: protocol.SessionStatusIdle,
-		Provider: testSessionProvider, Model: testSessionModel,
-		Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
-		CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
+func TestForkSessionRejectsSourceIdentity(t *testing.T) {
+	runtime := &Connection{
+		sessionCatalog: sessionCatalogStub{fork: func(request protocol.ForkSessionRequest) (*protocol.Session, error) {
+			result := snapshotSession(1)
+			result.ID = request.SessionID
+			return result, nil
+		}},
+		meta: requestMeta("test"),
 	}
-	tests := []struct {
-		name    string
-		invoke  func(*Connection) error
-		binding sessionCatalogStub
-	}{
-		{
-			name: "create title",
-			binding: sessionCatalogStub{create: func(protocol.CreateSessionRequest) (*protocol.Session, error) {
-				result := base
-				result.Title = "Ignored"
-				return &result, nil
-			}},
-			invoke: func(runtime *Connection) error {
-				_, err := runtime.CreateSession(t.Context(), agent.CreateSession{Title: base.Title, Workspace: "/workspace"})
-				return err
-			},
-		},
-		{
-			name: "create workspace",
-			binding: sessionCatalogStub{create: func(protocol.CreateSessionRequest) (*protocol.Session, error) {
-				result := base
-				result.Workspace = testProtocolWorkspace("/other", "/other", protocol.WorkspaceAvailable)
-				return &result, nil
-			}},
-			invoke: func(runtime *Connection) error {
-				_, err := runtime.CreateSession(t.Context(), agent.CreateSession{Title: base.Title, Workspace: "/workspace"})
-				return err
-			},
-		},
-		{
-			name: "fork title",
-			binding: sessionCatalogStub{fork: func(protocol.ForkSessionRequest) (*protocol.Session, error) {
-				result := base
-				result.Title = "Ignored"
-				return &result, nil
-			}},
-			invoke: func(runtime *Connection) error {
-				_, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: "ses_source", Title: base.Title})
-				return err
-			},
-		},
-		{
-			name: "fork source identity",
-			binding: sessionCatalogStub{fork: func(request protocol.ForkSessionRequest) (*protocol.Session, error) {
-				result := base
-				result.ID = request.SessionID
-				return &result, nil
-			}},
-			invoke: func(runtime *Connection) error {
-				_, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: "ses_source", Title: base.Title})
-				return err
-			},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			runtime := &Connection{
-				sessionCatalog: test.binding,
-				workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
-					Ref:          protocol.WorkspaceRef{Path: "/workspace"},
-					ProjectRoot:  "/workspace",
-					Availability: protocol.WorkspaceAvailable,
-				}},
-				meta: requestMeta("test"),
-			}
-			requireRuntimeContractViolation(t, test.invoke(runtime))
-		})
-	}
+	_, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: "ses_source"})
+	requireRuntimeContractViolation(t, err)
 }
 
 func TestUpdateSessionProjectsEveryWritableField(t *testing.T) {
@@ -318,53 +252,18 @@ func TestUpdateSessionRejectsWorkspaceWithoutRelocateCapability(t *testing.T) {
 	}
 }
 
-func TestUpdateSessionRejectsAcknowledgementsThatDidNotApplyTheMutation(t *testing.T) {
-	t.Parallel()
-	workspace, title, favorite := "/workspace/new", "Renamed", true
-	model := agent.ModelRef{Provider: "deepseek", Model: "deep"}
-	request := agent.UpdateSession{
-		SessionID: "ses_1", Title: &title, Workspace: &workspace, Model: &model,
-		Favorite: &favorite, ExpectedRevision: 7,
+func TestUpdateSessionRejectsMismatchedIdentity(t *testing.T) {
+	runtime := &Connection{
+		sessionCatalog: sessionCatalogStub{update: func(protocol.UpdateSessionRequest) (*protocol.Session, error) {
+			result := snapshotSession(2)
+			result.ID = "ses_other"
+			return result, nil
+		}},
+		meta: requestMeta("test"),
 	}
-	valid := protocol.Session{
-		ID: request.SessionID, Title: title, Status: protocol.SessionStatusIdle, Provider: model.Provider, Model: model.Model,
-		Workspace: testProtocolWorkspace(workspace, "/workspace", protocol.WorkspaceAvailable),
-		CreatedAt: testSessionTime, UpdatedAt: testSessionTime,
-		Favorite: favorite, Revision: 8,
-	}
-	tests := []struct {
-		name   string
-		mutate func(*protocol.Session)
-	}{
-		{name: "stale revision", mutate: func(session *protocol.Session) { session.Revision = 7 }},
-		{name: "title", mutate: func(session *protocol.Session) { session.Title = "Old" }},
-		{name: "workspace", mutate: func(session *protocol.Session) { session.Workspace.Ref.Path = "/workspace/old" }},
-		{name: "model", mutate: func(session *protocol.Session) { session.Model = "shallow" }},
-		{name: "favorite", mutate: func(session *protocol.Session) { session.Favorite = false }},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			result := valid
-			test.mutate(&result)
-			runtime := &Connection{
-				sessionCatalog: sessionCatalogStub{update: func(protocol.UpdateSessionRequest) (*protocol.Session, error) {
-					return &result, nil
-				}},
-				workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
-					Ref:          protocol.WorkspaceRef{Path: workspace},
-					ProjectRoot:  workspace,
-					Availability: protocol.WorkspaceAvailable,
-				}},
-				meta: requestMeta("test"),
-				profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
-					protocol.FeatureRelocate: {Enabled: true},
-				}),
-			}
-			_, err := runtime.UpdateSession(t.Context(), request)
-			requireRuntimeContractViolation(t, err)
-		})
-	}
+	title := "Renamed"
+	_, err := runtime.UpdateSession(t.Context(), agent.UpdateSession{SessionID: "ses_1", Title: &title, ExpectedRevision: 1})
+	requireRuntimeContractViolation(t, err)
 }
 
 func TestSessionMutationsUseResolvedWorkspaceIdentity(t *testing.T) {

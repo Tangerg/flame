@@ -677,8 +677,11 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if err != nil {
 		t.Fatalf("Create MCP server: %v", err)
 	}
-	if validateResultErr := candidate.ValidateResult(created); validateResultErr != nil {
-		t.Fatalf("created MCP server: %v", validateResultErr)
+	if created.Name != candidate.Name || created.Description != candidate.Description ||
+		!candidate.HandshakeTimeout.Matches(created.HandshakeTimeout) ||
+		!slices.Equal(created.DisabledTools, candidate.DisabledTools) || !slices.Equal(created.AutoApproveTools, candidate.AutoApproveTools) ||
+		created.Connection.AuthorizationMasked == "" || created.Connection.AuthorizationMasked == authorization.Value {
+		t.Fatalf("created MCP server did not preserve configuration or credential masking")
 	}
 	maskedHeader := created.Connection.HeadersMasked["X-Key"]
 	created.Connection.HeadersMasked["X-Key"] = "caller-reused-header"
@@ -692,8 +695,9 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if index < 0 {
 		t.Fatal("created MCP server disappeared after result reuse")
 	}
-	if err := candidate.ValidateResult(servers[index]); err != nil || servers[index].Connection.HeadersMasked["X-Key"] != maskedHeader {
-		t.Fatalf("caller reuse changed the Runtime MCP server: %v", err)
+	if servers[index].Connection.HeadersMasked["X-Key"] != maskedHeader ||
+		!slices.Equal(servers[index].DisabledTools, candidate.DisabledTools) || !candidate.HandshakeTimeout.Matches(servers[index].HandshakeTimeout) {
+		t.Fatal("caller reuse changed the Runtime MCP server")
 	}
 	for _, test := range []struct {
 		name   string
@@ -749,8 +753,10 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if err != nil || index >= len(servers) {
 		t.Fatalf("list MCP servers after input reuse: (%+v, %v)", servers, err)
 	}
-	if err := expectedCandidate.ValidateResult(servers[index]); err != nil {
-		t.Fatalf("caller input reuse changed the Runtime MCP server: %v", err)
+	if !slices.Equal(servers[index].DisabledTools, expectedCandidate.DisabledTools) ||
+		!slices.Equal(servers[index].AutoApproveTools, expectedCandidate.AutoApproveTools) ||
+		len(servers[index].Connection.HeadersMasked) != 1 || servers[index].Connection.HeadersMasked["X-Key"] != maskedHeader {
+		t.Fatal("caller input reuse changed the Runtime MCP server")
 	}
 	clearAuthorization := mcp.AuthorizationChange{Kind: protocol.MCPSecretClear}
 	clearHeaders := mcp.HeadersChange{Kind: protocol.MCPSecretClear}
@@ -770,8 +776,9 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if err != nil {
 		t.Fatalf("Update MCP server: %v", err)
 	}
-	if err := update.ValidateResult(updated); err != nil {
-		t.Fatalf("updated MCP server: %v", err)
+	if updated.Description != description || !updatedTimeout.Matches(updated.HandshakeTimeout) ||
+		updated.Connection.AuthorizationMasked != "" || len(updated.Connection.HeadersMasked) != 0 {
+		t.Fatal("updated MCP server did not apply configuration or credential clearing")
 	}
 	description = "caller-reused-description"
 	*update.HandshakeTimeout = mcp.HandshakeTimeout{}

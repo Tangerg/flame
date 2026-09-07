@@ -2,7 +2,6 @@ package runtimebinding
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
@@ -169,50 +168,12 @@ func (r *Connection) UpdateProvider(ctx context.Context, update models.UpdatePro
 	if provider.ID() != update.Provider {
 		return models.Provider{}, runtimeContractViolation("update provider returned id %q for %q", provider.ID(), update.Provider)
 	}
-	if err := validateProviderUpdate(update, provider); err != nil {
-		return models.Provider{}, runtimeContractViolation("update provider returned an invalid acknowledgement: %v", err)
+	if change := update.APIKey; change != nil && change.Kind == protocol.ProviderConfigSet {
+		if credential, present := provider.Credential(); present && credential.Exposes(change.Value) {
+			return models.Provider{}, runtimeContractViolation("update provider exposed the raw API key instead of a mask")
+		}
 	}
 	return provider, nil
-}
-
-func validateProviderUpdate(update models.UpdateProvider, result models.Provider) error {
-	var problems []error
-	if change := update.BaseURL; change != nil {
-		baseURL, present := result.BaseURL()
-		switch change.Kind {
-		case protocol.ProviderConfigSet:
-			if !present || baseURL != change.Value {
-				problems = append(problems, fmt.Errorf("runtime returned base URL %q (present %v), want %q", baseURL, present, change.Value))
-			}
-		case protocol.ProviderConfigClear:
-			if present {
-				problems = append(problems, fmt.Errorf("runtime retained base URL %q after clearing it", baseURL))
-			}
-		}
-	}
-	if change := update.APIKey; change != nil {
-		credential, configured := result.Credential()
-		switch change.Kind {
-		case protocol.ProviderConfigSet:
-			if !configured || !credential.Stored() {
-				problems = append(problems, fmt.Errorf(
-					"runtime returned configured=%v source=%q after setting a stored key",
-					configured,
-					credential.Source(),
-				))
-			}
-			if configured && credential.Exposes(change.Value) {
-				problems = append(problems, errors.New("runtime exposed the raw API key instead of a mask"))
-			}
-		case protocol.ProviderConfigClear:
-			// Clearing a stored key may reveal a read-only environment fallback,
-			// but the effective credential must no longer claim stored ownership.
-			if configured && credential.Stored() {
-				problems = append(problems, errors.New("runtime still reports a stored API key after clearing it"))
-			}
-		}
-	}
-	return errors.Join(problems...)
 }
 
 func (r *Connection) TestProvider(ctx context.Context, providerID string) (models.TestResult, error) {

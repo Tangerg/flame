@@ -73,8 +73,11 @@ func (r *Connection) CreateServer(ctx context.Context, candidate mcp.Candidate) 
 	if result == nil {
 		return protocol.MCPServer{}, runtimeContractViolation("create MCP server returned nil")
 	}
-	if err := candidate.ValidateResult(*result); err != nil {
+	if err := mcp.ValidateServer(*result); err != nil {
 		return protocol.MCPServer{}, runtimeContractViolation("create MCP server returned an invalid acknowledgement: %v", err)
+	}
+	if result.Name != candidate.Name {
+		return protocol.MCPServer{}, runtimeContractViolation("create MCP server returned name %q for %q", result.Name, candidate.Name)
 	}
 	return *result, nil
 }
@@ -109,8 +112,11 @@ func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) 
 	if result == nil {
 		return protocol.MCPServer{}, runtimeContractViolation("update MCP server returned nil")
 	}
-	if err := update.ValidateResult(*result); err != nil {
+	if err := mcp.ValidateServer(*result); err != nil {
 		return protocol.MCPServer{}, runtimeContractViolation("update MCP server returned an invalid acknowledgement: %v", err)
+	}
+	if result.Name != update.Server {
+		return protocol.MCPServer{}, runtimeContractViolation("update MCP server returned name %q for %q", result.Name, update.Server)
 	}
 	return *result, nil
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/oolong/core/layout"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -70,7 +69,7 @@ func (a *app) selectSessionModel(model protocol.Model) {
 			if err != nil {
 				return agent.Session{}, err
 			}
-			return session.Update(ctx, a.runtime, agent.UpdateSession{
+			return a.runtime.UpdateSession(ctx, agent.UpdateSession{
 				SessionID:        sessionID,
 				Model:            &agent.ModelRef{Provider: model.Provider, Model: model.ID},
 				ExpectedRevision: latest.Session.Revision,

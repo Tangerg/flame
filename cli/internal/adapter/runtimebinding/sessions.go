@@ -130,27 +130,16 @@ func (r *Connection) CreateSession(ctx context.Context, input agent.CreateSessio
 	if err != nil {
 		return agent.Session{}, err
 	}
-	validated := input
+	request := protocol.CreateSessionRequest{Title: input.Title}
 	if input.Workspace != "" {
 		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: input.Workspace})
 		if resolveErr != nil {
 			return agent.Session{}, fmt.Errorf("create session workspace: %w", resolveErr)
 		}
-		validated.Workspace = resolved.Path
-	}
-	request := protocol.CreateSessionRequest{Title: input.Title}
-	if validated.Workspace != "" {
-		request.Workspace = &protocol.WorkspaceRef{Path: validated.Workspace}
+		request.Workspace = &protocol.WorkspaceRef{Path: resolved.Path}
 	}
 	created, err := r.sessionCatalog.CreateSession(ctx, request, options)
-	projected, err := projectSessionResult("create session", "", created, err)
-	if err != nil {
-		return agent.Session{}, err
-	}
-	if err := validated.ValidateResult(projected); err != nil {
-		return agent.Session{}, runtimeContractViolation("create session returned an invalid acknowledgement: %v", err)
-	}
-	return projected, nil
+	return projectSessionResult("create session", "", created, err)
 }
 
 func (r *Connection) UpdateSession(ctx context.Context, input agent.UpdateSession) (agent.Session, error) {
@@ -166,14 +155,6 @@ func (r *Connection) UpdateSession(ctx context.Context, input agent.UpdateSessio
 	if err != nil {
 		return agent.Session{}, err
 	}
-	validated := input
-	if input.Workspace != nil {
-		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: *input.Workspace})
-		if resolveErr != nil {
-			return agent.Session{}, fmt.Errorf("update session workspace: %w", resolveErr)
-		}
-		validated.Workspace = &resolved.Path
-	}
 	request := protocol.UpdateSessionRequest{
 		SessionID: input.SessionID, ExpectedRevision: input.ExpectedRevision,
 		Title: input.Title, Favorite: input.Favorite,
@@ -182,18 +163,15 @@ func (r *Connection) UpdateSession(ctx context.Context, input agent.UpdateSessio
 		request.Provider = &input.Model.Provider
 		request.Model = &input.Model.Model
 	}
-	if validated.Workspace != nil {
-		request.Workspace = &protocol.WorkspaceRef{Path: *validated.Workspace}
+	if input.Workspace != nil {
+		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: *input.Workspace})
+		if resolveErr != nil {
+			return agent.Session{}, fmt.Errorf("update session workspace: %w", resolveErr)
+		}
+		request.Workspace = &protocol.WorkspaceRef{Path: resolved.Path}
 	}
 	updated, err := r.sessionCatalog.UpdateSession(ctx, request, options)
-	projected, err := projectSessionResult("update session", input.SessionID, updated, err)
-	if err != nil {
-		return agent.Session{}, err
-	}
-	if err := validated.ValidateResult(projected); err != nil {
-		return agent.Session{}, runtimeContractViolation("update session returned an invalid acknowledgement: %v", err)
-	}
-	return projected, nil
+	return projectSessionResult("update session", input.SessionID, updated, err)
 }
 
 func (r *Connection) ForkSession(ctx context.Context, input agent.ForkSession) (agent.Session, error) {
@@ -211,8 +189,8 @@ func (r *Connection) ForkSession(ctx context.Context, input agent.ForkSession) (
 	if err != nil {
 		return agent.Session{}, err
 	}
-	if err := input.ValidateResult(projected); err != nil {
-		return agent.Session{}, runtimeContractViolation("fork session returned an invalid acknowledgement: %v", err)
+	if projected.ID == input.SessionID {
+		return agent.Session{}, runtimeContractViolation("fork session returned source id %q", input.SessionID)
 	}
 	return projected, nil
 }

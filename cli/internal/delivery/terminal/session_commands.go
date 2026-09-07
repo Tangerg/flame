@@ -161,7 +161,7 @@ func (a *app) updateSessionFromCenter(id, label string, build func(agent.Session
 			if err != nil {
 				return agent.Session{}, err
 			}
-			return session.Update(ctx, a.runtime, build(latest.Session))
+			return a.runtime.UpdateSession(ctx, build(latest.Session))
 		},
 		func(updated agent.Session, err error) {
 			if err != nil {
@@ -245,7 +245,7 @@ func (a *app) RenameSession(title string) {
 			if err != nil {
 				return agent.Session{}, err
 			}
-			return session.Update(ctx, a.runtime, agent.UpdateSession{
+			return a.runtime.UpdateSession(ctx, agent.UpdateSession{
 				SessionID: sessionID, Title: &title, ExpectedRevision: latest.Session.Revision,
 			})
 		},

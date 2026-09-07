@@ -480,16 +480,15 @@ func (b *blockingCloseCancellationRuntime) cancelAttempts() []agent.CancelRun {
 	return slices.Clone(b.attempts)
 }
 
-type mismatchedSessionUpdateRuntime struct {
+type rejectedSessionUpdateRuntime struct {
 	Runtime
-	returned agent.Session
 }
 
-func (m *mismatchedSessionUpdateRuntime) UpdateSession(ctx context.Context, input agent.UpdateSession) (agent.Session, error) {
+func (m *rejectedSessionUpdateRuntime) UpdateSession(ctx context.Context, input agent.UpdateSession) (agent.Session, error) {
 	if _, err := m.Runtime.UpdateSession(ctx, input); err != nil {
 		return agent.Session{}, err
 	}
-	return m.returned, nil
+	return agent.Session{}, agent.ErrIncompatibleRuntime
 }
 
 func (f *flakyCancellationRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (agent.RunCancellation, error) {
@@ -2783,18 +2782,14 @@ func TestSessionCenterPaginatesAndManagesSelectedSession(t *testing.T) {
 	stop()
 }
 
-func TestSessionCenterRejectsAMismatchedUpdateProjection(t *testing.T) {
+func TestSessionCenterShowsAnInvalidRuntimeAcknowledgement(t *testing.T) {
 	base := runtimefixture.New()
 	workspace := t.TempDir()
 	target, err := base.CreateSession(t.Context(), agent.CreateSession{Title: "Update target", Workspace: workspace})
 	if err != nil {
 		t.Fatal(err)
 	}
-	returned, err := base.CreateSession(t.Context(), agent.CreateSession{Title: "Wrong response", Workspace: workspace})
-	if err != nil {
-		t.Fatal(err)
-	}
-	backend := &mismatchedSessionUpdateRuntime{Runtime: base, returned: returned}
+	backend := &rejectedSessionUpdateRuntime{Runtime: base}
 	host, stop := runUIWithWorkspace(t, backend, workspace)
 	host.Shows(t, "Ask flame")
 	host.Send(input.Key{Code: input.Character, Rune: 'r', Mods: input.Ctrl})
@@ -2804,7 +2799,7 @@ func TestSessionCenterRejectsAMismatchedUpdateProjection(t *testing.T) {
 
 	host.Send(input.Key{Code: input.Character, Rune: 'f', Mods: input.Alt})
 	host.Press(input.Esc)
-	host.Shows(t, "updating favorite failed: session update")
+	host.Shows(t, "updating favorite failed: runtime protocol is incompatible")
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
 	stop()
 }
