@@ -7389,3 +7389,64 @@ golden 零位移（这一轮每个新档位都逐字复现原有 class）；17 �
 （字号与高度在 `size` 里绑死）以及几处一次性的（`send.tsx` 的三个常量、
 `toolbar` 的 `disabled:opacity-25`、`TasksPill` 的 tone 表）。
 清完即可整体迁 `button` + `icon-button` 到 StyleX。
+
+---
+
+## Round 126 — `chip` 修饰档，与剩余冲突的盘点
+
+### 决定：`size` 保持绑定，加一个修饰而不是加一档
+
+三处触发器（`GoalModeIndicator` / `HeaderDiffStat` / `composer-chip`）看起来
+各要各的，实测是**同一条规则在两个高度上**：
+
+| | `size` 给的 | 调用点改成 |
+| --- | --- | --- |
+| `sm` | `px-9 text-ui-md` | `px-1.5 text-ui-sm` |
+| `md` | `px-11 text-ui-md` | `px-2 text-ui-sm` |
+
+字号降一档、内距紧一档、墨色从 `muted` 提到 `soft` —— 因为 chip 上的字
+是**当前值**，不是一个可以点的动作。
+
+所以不是新增尺寸档（那会让 `size` 从 9 个值变成矩阵），
+而是 `chip` 修饰已有的档：两条 compoundVariant，高度原样保留，行仍然对齐。
+
+### 中途 98 张位移，成因只有一个：cva 的声明顺序
+
+第一版跑完 98 张位移。逐字段和上一版对比，**只有颜色不同**：
+
+```
+OLD  c: rgb(61, 65, 71)   ← text-fg-soft
+NEW  c: rgb(90, 93, 99)   ← text-fg-muted
+```
+
+`chip` 的 `text-fg-soft` 声明在 `variant` 之前，而 `cn()` 是 tailwind-merge ——
+**后来者赢**，所以 ghost 的 `text-fg-muted` 把它盖掉了。
+
+这条规则 `variant` 自己的注释早就写着（"Declared AFTER `size` so its
+neutralising classes win"）。我加新档时没读它。把 `chip` 移到 `variant` 之后，
+并在那里也写上同一条理由 —— 一个靠声明顺序成立的不变量，
+**必须在每一个依赖它的地方都说出来**，否则下一个人还会踩。
+
+移动之后逐字段与旧版一致，全套 650 / 650。
+
+### 结果
+
+| | Before | After |
+| --- | --- | --- |
+| 三处触发器的 className | `gap-1.5 px-2 text-ui-sm text-fg-soft hover:…` 等 | `chip`（`HeaderDiffStat` 另留 `font-mono`） |
+| `size` 的值 | 9 个 | 9 个（没有变成矩阵） |
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650，零位移** |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+### 下一轮方向
+
+`Button` 上仍与自身声明冲突的调用点只剩三处一次性的：
+`send.tsx` 的 `ACTION` / `ACTION_OFF`（填充与墨色）、
+`toolbar` 的 `disabled:opacity-25`、`TasksPill` 的 tone 查找表。
+清完即可整体迁 `button` + `icon-button` 到 StyleX。

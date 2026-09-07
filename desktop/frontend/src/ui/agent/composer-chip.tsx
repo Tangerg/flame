@@ -26,11 +26,11 @@ export function AgentComposerChip({
     <Button
       variant="ghost"
       size="md"
+      chip
       press={false}
       title={title ?? label}
       className={cn(
-        "grid grid-cols-[auto_minmax(0,auto)_auto] gap-1.5 px-2",
-        "text-ui-sm text-fg-soft",
+        "grid grid-cols-[auto_minmax(0,auto)_auto]",
         shrink === "gives" ? "shrink-[12]" : "shrink",
         className,
       )}

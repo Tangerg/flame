@@ -100,8 +100,17 @@ export const buttonStyles = cva(
           "hover:bg-transparent hover:text-fg-soft",
         ].join(" "),
       },
+      // Declared after `variant` for the reason stated there: `cn` is tailwind-merge, so the
+      // later class wins, and a chip's ink has to outrank the one its variant would give.
+      // A control that reports a current value rather than offering an action: it keeps its
+      // height so the row still lines up, but reads one step quieter and sits one step tighter.
+      // Not a size step — it is the same rule at two heights, so it adjusts the ladder instead
+      // of doubling it.
+      chip: { true: "text-fg-soft", false: "" },
     },
     compoundVariants: [
+      { chip: true, size: "sm", class: "px-1.5 text-ui-sm" },
+      { chip: true, size: "md", class: "px-2 text-ui-sm" },
       { variant: "ghost", tone: "accent", class: "text-fg hover:text-accent" },
       { variant: "ghost", tone: "success", class: "text-success" },
       {
@@ -137,6 +146,7 @@ export function Button({
   press,
   join,
   round,
+  chip,
   className,
   children,
   ref,
@@ -149,7 +159,7 @@ export function Button({
       ref={ref}
       data-slot="button"
       data-variant={resolvedVariant}
-      className={cn(buttonStyles({ variant, size, tone, press, join, round }), className)}
+      className={cn(buttonStyles({ variant, size, tone, press, join, round, chip }), className)}
     >
       {children}
     </ButtonPrimitive>

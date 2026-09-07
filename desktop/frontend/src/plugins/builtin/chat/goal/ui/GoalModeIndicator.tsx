@@ -49,7 +49,7 @@ function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
         aria-label={t("goal.mode.clear")}
         aria-pressed="true"
         disabled={starting}
-        className="gap-1.5 px-2 text-ui-sm text-fg-soft hover:bg-hover hover:text-fg"
+        chip
         onClick={() => owner.deactivate(sessionId)}
       >
         <GlyphSwap

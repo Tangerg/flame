@@ -31,7 +31,8 @@ export function HeaderDiffStat({ className }: { className?: string }) {
       press={false}
       aria-label={t("workspace.view.title.diff")}
       onClick={openDiffViewInDock}
-      className={cn("gap-1.5 px-1.5 font-mono text-ui-sm", className)}
+      chip
+      className={cn("font-mono", className)}
     >
       <span className="text-success">+{totals.added}</span>
       <span className="text-negative">−{totals.removed}</span>
