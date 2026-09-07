@@ -90,7 +90,7 @@ function AttachButton() {
         title={canAttach ? t("composer.attachImage") : t("composer.attachImage.unsupported")}
         disabled={!canAttach}
         onClick={() => inputRef.current?.click()}
-        className="disabled:opacity-25"
+        off="faded"
       />
     </>
   );

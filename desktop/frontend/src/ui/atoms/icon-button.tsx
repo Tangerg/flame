@@ -52,11 +52,8 @@ export function IconButton({
         variant={variant}
         size={BOX[size]}
         data-active={active ? "" : undefined}
-        className={cn(
-          "relative data-[active]:bg-selected data-[active]:text-fg",
-          quiet && "text-fg-faint",
-          className,
-        )}
+        quiet={quiet}
+        className={cn("relative data-[active]:bg-selected data-[active]:text-fg", className)}
       >
         {hoverIcon ? (
           <GlyphSwap

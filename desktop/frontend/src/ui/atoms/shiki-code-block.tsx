@@ -142,6 +142,7 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
           icon={copied ? "check" : "copy"}
           size="xs"
           onClick={() => void copy()}
+          tone={copied ? "success" : undefined}
           title={copied ? t("message.code.copied") : t("message.code.copy")}
           className={cn(
             isPreview && cn("transition-opacity", stylex.props(reveal.shown).className),

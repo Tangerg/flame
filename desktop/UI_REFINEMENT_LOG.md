@@ -7450,3 +7450,76 @@ neutralising classes win"）。我加新档时没读它。把 `chip` 移到 `var
 `send.tsx` 的 `ACTION` / `ACTION_OFF`（填充与墨色）、
 `toolbar` 的 `disabled:opacity-25`、`TasksPill` 的 tone 查找表。
 清完即可整体迁 `button` + `icon-button` 到 StyleX。
+
+---
+
+## Round 127 — `tone` 的语义统一，与我上一轮删掉的一个状态
+
+### 先说我的错
+
+第 124 轮我把 shiki 复制按钮的
+`copied ? "text-success" : "text-fg-faint hover:bg-hover hover:text-fg"`
+整条当成"纯重述"删掉了。**只有后半截是重述**，
+`copied ? "text-success"` 是"刚刚复制成功"这个状态。
+golden 没有覆盖已复制态，所以没抓到。已修复。
+
+### 第二个错：`tone` 在同一个 prop 下有两个意思
+
+同样是第 124 轮，我加了两条 compound：
+
+```
+{ variant: "ghost", tone: "accent",  class: "text-fg hover:text-accent" }   ← hover 色
+{ variant: "ghost", tone: "success", class: "text-success" }                ← 静止色
+```
+
+一个 prop 两个意思。统一成一条规则：
+
+- **`tone` = 这个控件报告的墨色，静止时就生效**（`text-accent` / `text-success` / …）
+- **`quiet` = 退到最淡**；`quiet` + `tone` = 静止时淡、指上去才显出那个色
+
+`quiet` 因此从 `IconButton` 的一个 className 变成 `Button` 的一档 ——
+它本来就是按钮的状态，只是此前只有 `IconButton` 用到。
+`ScheduleRow`（"运行"与"删除"两个安静按钮）现在只写 `tone={tone}`。
+
+### 另外两处一次性冲突
+
+| 调用点 | Before | After |
+| --- | --- | --- |
+| `send.tsx` | `ACTION` / `ACTION_OFF` / `QUIET` 三串 class | `variant="primary"` + `round` + 一个 `NUDGE` |
+| `toolbar` | `disabled:opacity-25` | `off="faded"` |
+
+`ACTION_OFF` 说的其实是"**填充按钮不能用时该长什么样**" ——
+一个实心 CTA 在 64% 不透明度下读起来像坏了，不像关掉了。
+所以那是 `primary` 自己的禁用态，不是调用点的装饰。
+
+`off` 两档："现在用不了"（默认）与"这里根本不适用"（给一个读不了图片的模型
+挂附件按钮）。
+
+### 上报：`TasksPill` 暂不动
+
+`STATUS_ICON` 的 tone 同时喂给按钮和一个裸 `Icon`，改成语义值会让这张表
+有两份表示（语义名 + class）。而 `running` 用的是 `text-fg` ——
+比 ghost 的静止墨色更强，那是"强调"而不是"色调"，Button 没有这一维。
+维持原状，记录为迁 StyleX 前最后一处待定。
+
+### 一处刻意的视觉改动，3 张 golden
+
+`primary` 的禁用态从「64% 的 CTA 填充」变成中性底板。位移的正好是那 3 张
+含**禁用 primary 按钮**的 golden（目标编辑器的 Save ×2、providers 面板 ×1），
+实测颜色 `rgb(116,150,224)` → `rgb(238,241,245)`。
+
+这不是回归，是把应用里最重要的那个按钮（composer 的发送）
+手写了很久的答案变成系统的答案。已重录这 3 张。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650**（3 张按上述理由重录，其余零位移） |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 2395 通过；4 项失败均为既有 runtime 契约项 |
+
+### 下一轮方向
+
+`Button` / `IconButton` 上还与自身声明冲突的只剩 `TasksPill` 一处（已上报）。
+下一轮整体迁 `button` + `icon-button` 到 StyleX。

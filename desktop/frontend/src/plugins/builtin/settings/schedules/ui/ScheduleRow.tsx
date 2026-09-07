@@ -42,8 +42,7 @@ function ScheduleActionButton({
       disabled={busy}
       title={title}
       onClick={onClick}
-      tone={tone === "accent" ? "accent" : undefined}
-      className={cn(tone === "negative" && "hover:text-negative")}
+      tone={tone}
     />
   );
 }

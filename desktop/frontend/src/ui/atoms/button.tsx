@@ -16,13 +16,14 @@ export const buttonStyles = cva(
   ].join(" "),
   {
     variants: {
-      // Ink, for a control whose colour reports a state rather than an emphasis: a copy that
-      // just succeeded, a schedule that will delete something. `tonal` reads it as a fill.
+      // The ink this control reports, at rest: a copy that just succeeded, a task that failed.
+      // `tonal` reads the same word as a fill instead, and `quiet` reads it as what the control
+      // will become when pointed at — see the compounds below.
       tone: {
-        negative: "",
-        warning: "",
-        accent: "",
-        success: "",
+        negative: "text-negative",
+        warning: "text-warning",
+        accent: "text-accent",
+        success: "text-success",
       },
       size: {
         xs: "h-[var(--control-height-xs)] rounded-[var(--button-radius)] px-[7px] text-ui-sm",
@@ -107,12 +108,23 @@ export const buttonStyles = cva(
       // Not a size step — it is the same rule at two heights, so it adjusts the ladder instead
       // of doubling it.
       chip: { true: "text-fg-soft", false: "" },
+      // A control that steps back until it is needed. With a `tone`, the tone moves to hover:
+      // the button rests faint and shows what it will do only when the pointer is on it.
+      quiet: { true: "text-fg-faint", false: "" },
+      // Two strengths of "off". The default says the control is unavailable right now; `faded`
+      // says it does not apply at all — attaching an image to a model that cannot read one.
+      off: { normal: "", faded: "disabled:opacity-25" },
     },
     compoundVariants: [
       { chip: true, size: "sm", class: "px-1.5 text-ui-sm" },
       { chip: true, size: "md", class: "px-2 text-ui-sm" },
-      { variant: "ghost", tone: "accent", class: "text-fg hover:text-accent" },
-      { variant: "ghost", tone: "success", class: "text-success" },
+      { quiet: true, tone: "accent", class: "hover:text-accent" },
+      { quiet: true, tone: "negative", class: "hover:text-negative" },
+      { quiet: true, tone: "success", class: "hover:text-success" },
+      { quiet: true, tone: "warning", class: "hover:text-warning" },
+      // A filled action that cannot act reads as broken at 64% of its own fill, so it takes a
+      // neutral plate instead — the composer's send button had been spelling this out.
+      { variant: "primary", class: "disabled:bg-surface-2 disabled:text-fg-faint" },
       {
         variant: "tonal",
         tone: "negative",
@@ -147,6 +159,8 @@ export function Button({
   join,
   round,
   chip,
+  quiet,
+  off,
   className,
   children,
   ref,
@@ -159,7 +173,10 @@ export function Button({
       ref={ref}
       data-slot="button"
       data-variant={resolvedVariant}
-      className={cn(buttonStyles({ variant, size, tone, press, join, round, chip }), className)}
+      className={cn(
+        buttonStyles({ variant, size, tone, press, join, round, chip, quiet, off }),
+        className,
+      )}
     >
       {children}
     </ButtonPrimitive>

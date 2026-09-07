@@ -13,11 +13,9 @@ import { useCanSendToAgent } from "@/plugins/builtin/agent/public/input";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 
-const ACTION =
-  "size-[var(--control-height-md)] shrink-0 rounded-full bg-cta text-cta-text hover:bg-cta-hover hover:text-cta-text active:translate-y-[0.5px]";
-const ACTION_OFF =
-  "size-[var(--control-height-md)] shrink-0 rounded-full bg-surface-2 text-fg-faint";
-const QUIET = "size-[var(--control-height-md)] shrink-0 rounded-full";
+// The primary action nudges rather than shrinks: `press={false}` turns the scale off because a
+// filled circle that shrinks reads as a bug, and a half-pixel drop reads as a press.
+const NUDGE = "active:translate-y-[0.5px]";
 
 function SendButton() {
   const t = useT();
@@ -55,7 +53,9 @@ function SendButton() {
       disabled={!stop || !runtimeAvailable}
       title={t("composer.action.stop")}
       onClick={() => stop?.()}
-      className={primary ? (stop && runtimeAvailable ? ACTION : ACTION_OFF) : QUIET}
+      variant={primary ? "primary" : "ghost"}
+      round
+      className={primary ? NUDGE : undefined}
     />
   );
 
@@ -67,7 +67,9 @@ function SendButton() {
       disabled={!enabled}
       title={label}
       onClick={submit}
-      className={enabled ? ACTION : ACTION_OFF}
+      variant="primary"
+      round
+      className={NUDGE}
     />
   );
 
