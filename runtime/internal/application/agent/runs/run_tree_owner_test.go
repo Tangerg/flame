@@ -64,7 +64,7 @@ func TestRunTreeOwnerCancelLinearizesAfterInterruptCommit(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("executor cancellation was not requested")
 	}
-	if got := treeOwner.CancelReason(); got != "user canceled" {
+	if got := treeOwner.CancelReasonFor("run_1"); got != "user canceled" {
 		t.Fatalf("cancel reason = %q", got)
 	}
 

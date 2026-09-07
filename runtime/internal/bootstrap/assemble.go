@@ -95,7 +95,7 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: session admission: %w", err)
 	}
-	sessionStores := persistence.NewSessionStores(persistence.SessionStoresConfig{
+	sessionStores, err := persistence.NewSessionStores(persistence.SessionStoresConfig{
 		Sessions:            cfg.Stores.Sessions,
 		Transcript:          cfg.Stores.Transcript,
 		Interrupts:          cfg.Stores.Interrupts,
@@ -110,6 +110,9 @@ func buildAssemblyCore(
 		Goals:               cfg.Stores.Goals,
 		Tx:                  persistence.Transactor(cfg.Stores.Transactor),
 	})
+	if err != nil {
+		return nil, err
+	}
 	modelCapabilities := modeladapter.Capabilities{}
 	modelCoordinator, err := models.New(models.Config{
 		Providers:          cfg.ProviderRegistry,

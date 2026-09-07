@@ -20,7 +20,6 @@ type Record struct {
 	// Capabilities is the Run's frozen optional behavior, carried on the live
 	// record so an insufficient subscriber is refused before attachment.
 	Capabilities run.Capabilities
-	CancelReason string
 }
 
 // liveSegment is the coordinator's process-local state for a currently active
@@ -71,20 +70,6 @@ func (r *registry) Get(id string) (liveSegment, bool) {
 	segment, ok := r.runs[id]
 	segment.record = cloneRecord(segment.record)
 	return segment, ok
-}
-
-// MarkCancel records the human-facing cancel reason and returns the live run.
-func (r *registry) MarkCancel(id, reason string) (liveSegment, bool) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	segment, ok := r.runs[id]
-	if !ok {
-		return liveSegment{}, false
-	}
-	segment.record.CancelReason = reason
-	r.runs[id] = segment
-	segment.record = cloneRecord(segment.record)
-	return segment, true
 }
 
 func cloneRecord(record Record) Record {

@@ -23,17 +23,17 @@ trust-boundary checks, resource ownership, and product capabilities remain.
 | ID | Finding and evidence at the baseline | Target contract and deletion scope | State |
 | --- | --- | --- | --- |
 | R1 | `sessions.MaterialSnapshot` includes Session in one storage read, but `protocol.SessionSnapshot` omits it. CLI combines separate reads with eight stability attempts. | Runtime returns the complete coherent mounted-session projection. Remove CLI metadata pairing, retry count, and equality machinery; update protocol artifacts and consumers. | Pending |
-| R2 | `SessionStores`, `WorkingContextComposer`, `InteractionExecutor`, and title finalization allow absent dependencies that the production composition always supplies. | Require complete collaborators at construction. Remove impossible missing-capability execution branches. Retain actual checkpoint, sandbox, and tool-result-offload policies. | Pending |
+| R2 | `SessionStores`, `WorkingContextComposer`, `InteractionExecutor`, and title finalization allow absent dependencies that the production composition always supplies. | Require complete collaborators at construction. Remove impossible missing-capability execution branches. Retain actual checkpoint, sandbox, and tool-result-offload policies. | In progress: SessionStores complete |
 | R3 | Fixed product policy is represented by optional tuning bags; test-only maintenance and restore-scope overrides create alternate production paths. Shutdown wraps a fixed timeout in repeated validation. | Give fixed policy one owner. Remove replacement paths with no product consumer. Keep narrow test controls only where they isolate an actual external boundary or deterministic lifetime. | Pending |
 | R4 | Executor composition repeats BuildID as ImplementationIdentity and adds a hand-maintained configuration identity beside serialized configuration. | Derive deployment identity from the real executable and configuration facts. Remove synonymous identity inputs and wrappers without weakening Scope deployment compatibility. | Pending |
 | R5 | Recovery and waiting-subtree cancellation validate constructed immutable write sets again in persistence. Some validators replay planner transitions. | One owner constructs each complete decision. Persistence checks transactional expectations, not a second recovery policy. Remove redundant construction surfaces and repeated proof machinery. | Pending |
 | R6 | Session restore, fork, and rollback repeatedly normalize, copy, and validate complete snapshots through write-plan construction and application. | Decode and validate external input at its boundary; acquire mutable ownership once per retained owner. Apply an established immutable write plan without another full reconstruction. | Pending |
 | R7 | Restored immutable aggregates are fully revalidated by replacements, queries, snapshots, and persistence. | Aggregate construction owns intrinsic validity. Use cases own cross-aggregate relationships; storage owns decoding and current-state matching. Remove duplicate intrinsic validation while retaining zero-value and external-boundary admission. | Pending |
-| R8 | The live registry writes CancelReason but has no production reader. The Run-tree cancellation arbiter owns the consumed reason. | Remove registry cancellation state and writes. Keep the arbiter as the sole cancellation-reason owner and retain observable cancellation coverage. | Pending |
+| R8 | The live registry writes CancelReason but has no production reader. The Run-tree cancellation arbiter owns the consumed reason. | Remove registry cancellation state and writes. Keep the arbiter as the sole cancellation-reason owner and retain observable cancellation coverage. | Complete |
 | C1 | CLI mirrors Runtime Run/Session rules, projections, and product error identities. | Consume Runtime protocol values and errors directly. Keep CLI-owned conversation folding, drafts, previews, selection, and rendering state. Remove synonymous models, validators, and error translations. | Pending |
 | C2 | CLI mutation acknowledgements repeat Session revision/normalization/model rules and MCP/Provider update semantics. | Runtime owns mutation postconditions. CLI retains wire and target-identity checks, local form state, and credential protection. Remove duplicate business-rule validation and its dedicated tests. | Pending |
 | C3 | CLI partitions change subscriptions and coordinates several streams although production requests at most 14 topics and one watch against limits of 32 each. | One terminal subscription with normal gap recovery, cancellation, and resynchronization. Remove partitioning, fan-out, and cross-subscription file ownership. | Pending |
-| T1 | Small unused or test-only methods remain around the preceding mechanisms. | Delete only after checking direct, interface, generated, platform, and serialized consumers; migrate tests to surviving production contracts. | Pending |
+| T1 | Small unused or test-only methods remain around the preceding mechanisms. | Delete only after checking direct, interface, generated, platform, and serialized consumers; migrate tests to surviving production contracts. | In progress: Runtime residue removed except compaction result |
 
 ### T1 consumer-checked candidates
 
@@ -85,7 +85,20 @@ the module proxy; no local replacement or alternate production binding is added.
 
 ## Implementation decisions and evidence
 
-Implementation has not started. Update the finding states and record decisive
-verification with each completed ownership batch. If deeper consumer evidence
-invalidates a proposed deletion, record the surviving requirement here instead
-of weakening it to satisfy a line-count target.
+### Complete Session persistence and cancellation ownership
+
++ `SessionStores` now rejects incomplete construction; all production and test
+  callers supply the full durable graph. Session reads, restore, fork, rollback,
+  and deletion no longer interpret missing stores as disabled product features.
++ The live registry no longer stores cancellation reasons. The Run-tree arbiter
+  supplies the reason for the addressed Run through its existing production query.
++ Removed the consumer-checked Runtime T1 candidates except the compaction-result
+  flag, which is handled with its result contract. File-read and cancellation
+  tests now exercise the real observation path. Session-owned reservation cleanup
+  remains covered; the unused whole-table cleanup operation is gone.
++ Verified focused persistence, bootstrap, cancellation, toolset, SQLite, and
+  Domain checks, followed by Runtime `GOWORK=off go test ./... -timeout 3m`,
+  `go vet ./...`, `go build ./...`, and `git diff --check`.
+
+If deeper consumer evidence invalidates a proposed deletion, record the
+surviving requirement here instead of weakening it to satisfy a line-count target.

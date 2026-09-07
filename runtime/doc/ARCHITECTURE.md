@@ -61,6 +61,8 @@ Unknown external effects fail closed. Runtime does not guess whether an unconfir
 
 SQLite stores current Application and Domain state, not live framework objects, goroutines, contexts, SDK clients, or transport connections. Aggregate decoding is strict: unknown fields, invalid states, truncated values, and trailing content are rejected.
 
+Session lifecycle persistence requires the complete durable collaborator graph at construction. Empty Goal or Plan state is returned by its store; a missing store never disables part of a Session read, replacement, or deletion.
+
 Checkpoint and waiting facts commit in the Application order required to recover the same logical Run. Terminalization and checkpoint cleanup preserve one durable winner. Recovery reconstructs from durable Runtime state and public framework checkpoints; it does not infer state from event delivery or client caches.
 
 Bootstrap creates one file-lease set from the persistence bundle's data directory and supplies it to Session admission, Goal driving, and ordered Run-then-Goal recovery. Each use case requires its ownership backend at construction, and recovery requires both reconcilers.

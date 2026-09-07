@@ -47,21 +47,6 @@ func TestRegistryOldSegmentCannotRemoveItsReplacement(t *testing.T) {
 	}
 }
 
-func TestRegistryCancelReason(t *testing.T) {
-	var r registry
-	r.Open(Record{ID: "run_1", SessionID: "ses_1"}, nil)
-	e, ok := r.MarkCancel("run_1", "user asked")
-	if !ok {
-		t.Fatal("mark cancel must find the run")
-	}
-	if e.record.CancelReason != "user asked" {
-		t.Fatalf("cancel reason = %q", e.record.CancelReason)
-	}
-	if _, ok := r.MarkCancel("missing", "x"); ok {
-		t.Fatal("mark cancel must miss unknown runs")
-	}
-}
-
 func TestRegistryOwnsRunCapabilities(t *testing.T) {
 	var reg registry
 	capabilities := run.Capabilities{

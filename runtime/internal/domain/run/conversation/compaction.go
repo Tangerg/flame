@@ -76,6 +76,4 @@ func (c Compaction) RebaseMessageMark(mark int) (int, error) {
 }
 
 func (c Compaction) ExpectedCount() int       { return c.expectedCount }
-func (c Compaction) Cutoff() int              { return c.cutoff }
-func (c Compaction) ReplacementPrefix() int   { return c.prefixAfter }
 func (c Compaction) Messages() []chat.Message { return c.replacement.Messages() }

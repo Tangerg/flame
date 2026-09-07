@@ -206,7 +206,7 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 		childStarts: sqlite.NewChildRunStartReservationStore(db),
 		goals:       sqlite.NewGoalStore(db),
 	}
-	ss.SessionStores = persistence.NewSessionStores(persistence.SessionStoresConfig{
+	ss.SessionStores, err = persistence.NewSessionStores(persistence.SessionStoresConfig{
 		Sessions: ss.sessions, Transcript: ss.transcript, Interrupts: ss.interrupts,
 		Runs: ss.runs, ExecutorCheckpoints: ss.checkpoints, History: ss.history, Plan: ss.plan,
 		ApprovalRules: ss.approvals, PermissionModes: ss.modes, ToolResults: ss.toolResults,
@@ -215,6 +215,9 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 			return sqlite.RunInTx(ctx, db, fn)
 		},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	return ss, runs, ints
 }
 

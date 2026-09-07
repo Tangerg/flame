@@ -2352,7 +2352,7 @@ func TestCancelLosesToACommittedNaturalTerminal(t *testing.T) {
 		t.Fatal("terminal commit lost its live cancellation join")
 	}
 	deadline := time.After(time.Second)
-	for entry.owner.CancelReason() != "too late" {
+	for entry.owner.CancelReasonFor("run_1") != "too late" {
 		select {
 		case <-deadline:
 			t.Fatal("cancel did not join the in-flight terminal commit")
