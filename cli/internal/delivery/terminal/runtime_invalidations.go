@@ -265,7 +265,7 @@ func (a *app) applyInvalidatedSessionRefresh(
 	}
 	if err != nil {
 		a.session.invalidated = true
-		if errors.Is(err, agent.ErrSessionNotFound) && a.execution.conversation.Phase() == agent.ConversationIdle && !a.execution.following {
+		if errors.Is(err, protocol.ErrSessionNotFound) && a.execution.conversation.Phase() == agent.ConversationIdle && !a.execution.following {
 			a.message("the active session was deleted; creating a replacement")
 			a.replaceDeletedSessionInWorkspace(a.session.current.Workspace.Path)
 			return

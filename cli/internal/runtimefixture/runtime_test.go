@@ -675,7 +675,7 @@ func TestRuntimeForkExcludesAnActiveTail(t *testing.T) {
 	if len(snapshot.Transcript) != 0 || len(snapshot.Runs) != 0 {
 		t.Fatalf("fork copied a parent projection: blocks=%+v runs=%+v", snapshot.Transcript, snapshot.Runs)
 	}
-	if _, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: "ses_demo_1", FromRunID: opened.RunID}); !errors.Is(err, agent.ErrRunNotFound) {
+	if _, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: "ses_demo_1", FromRunID: opened.RunID}); !errors.Is(err, protocol.ErrRunNotFound) {
 		t.Fatalf("explicit active boundary error = %v", err)
 	}
 	_, _ = runtime.CancelRun(t.Context(), agent.CancelRun{RunID: opened.RunID})

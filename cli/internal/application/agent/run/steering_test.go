@@ -54,7 +54,7 @@ func TestRecoverReplaysAndAcknowledgesTheExactDurableSteer(t *testing.T) {
 func TestRecoverReturnsAttachmentsAfterAReplayableRefusal(t *testing.T) {
 	fixture := stagedSteer(t)
 	store, pending := fixture.store, fixture.pending
-	runtime := &steerRuntimeStub{err: agent.ErrStaleSegment}
+	runtime := &steerRuntimeStub{err: protocol.ErrStaleSegment}
 	fixture.now = pending.StagedAt().Add(time.Minute)
 	if err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), testBackoff(t)); err != nil {
 		t.Fatal(err)
@@ -139,10 +139,10 @@ func TestRecoverContinuesPastAnUnreplayableSteer(t *testing.T) {
 func TestDeliverPreservesACommandRejectedByAnotherRuntimeStore(t *testing.T) {
 	fixture := stagedSteer(t)
 	pending := fixture.pending
-	runtime := &steerRuntimeStub{err: agent.ErrCommandStoreMismatch}
+	runtime := &steerRuntimeStub{err: protocol.ErrIdempotencyStoreMismatch}
 	fixture.now = pending.StagedAt().Add(time.Minute)
 	result, err := DeliverSteer(t.Context(), runtime, pending, fixture.policy(t), testBackoff(t))
-	if !errors.Is(err, agent.ErrCommandStoreMismatch) || result.Outcome != mutation.Unknown {
+	if !errors.Is(err, protocol.ErrIdempotencyStoreMismatch) || result.Outcome != mutation.Unknown {
 		t.Fatalf("store mismatch settlement = outcome %v, error %v", result.Outcome, err)
 	}
 	if len(runtime.requests) != 1 {

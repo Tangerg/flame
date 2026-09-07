@@ -30,7 +30,7 @@ trust-boundary checks, resource ownership, and product capabilities remain.
 | R6 | Session restore, fork, and rollback repeatedly normalize, copy, and validate complete snapshots through write-plan construction and application. | Decode and validate external input at its boundary; acquire mutable ownership once per retained owner. Apply an established immutable write plan without another full reconstruction. | Complete |
 | R7 | Restored immutable aggregates are fully revalidated by replacements, queries, snapshots, and persistence. | Aggregate construction owns intrinsic validity. Use cases own cross-aggregate relationships; storage owns decoding and current-state matching. Remove duplicate intrinsic validation while retaining zero-value and external-boundary admission. | Complete |
 | R8 | The live registry writes CancelReason but has no production reader. The Run-tree cancellation arbiter owns the consumed reason. | Remove registry cancellation state and writes. Keep the arbiter as the sole cancellation-reason owner and retain observable cancellation coverage. | Complete |
-| C1 | CLI mirrors Runtime Run/Session rules, projections, and product error identities. | Consume Runtime protocol values and errors directly. Keep CLI-owned conversation folding, drafts, previews, selection, and rendering state. Remove synonymous models, validators, and error translations. | Pending |
+| C1 | CLI mirrors Runtime Run/Session rules, projections, and product error identities. | Consume Runtime protocol values and errors directly. Keep CLI-owned conversation folding, drafts, previews, selection, and rendering state. Remove synonymous models, validators, and error translations. | In progress: product errors complete; projections remain |
 | C2 | CLI mutation acknowledgements repeat Session revision/normalization/model rules and MCP/Provider update semantics. | Runtime owns mutation postconditions. CLI retains wire and target-identity checks, local form state, and credential protection. Remove duplicate business-rule validation and its dedicated tests. | Pending |
 | C3 | CLI partitions change subscriptions and coordinates several streams although production requests at most 14 topics and one watch against limits of 32 each. | One terminal subscription with normal gap recovery, cancellation, and resynchronization. Remove partitioning, fan-out, and cross-subscription file ownership. | Pending |
 | T1 | Small unused or test-only methods remain around the preceding mechanisms. | Delete only after checking direct, interface, generated, platform, and serialized consumers; migrate tests to surviving production contracts. | In progress: Runtime complete; CLI candidates remain |
@@ -284,6 +284,19 @@ function, and intermediate cold-read DTO. CLI focused adapter and complete
 module tests, vet, build, and whitespace checks passed. Desktop is
 outside this batch; its owner must regenerate and consume the required `session`
 field when updating its Runtime protocol contract.
+
+### Runtime product errors retain their original identity
+
+Removed fourteen CLI-owned product errors and their identity mapping. Command
+confirmation, reconnect, cold recovery, deletion, rollback, steering, and
+terminal cancellation now branch on Runtime protocol errors directly. Problem
+formatting still preserves the underlying error and structured recovery data;
+connection closure and incompatible-protocol classification remain CLI concerns.
+Test fixtures emit the same Runtime errors as the real binding.
+
+Verified adapter error identity, command replay uncertainty, retries, steering,
+recovery, and Session workflows, then complete CLI tests, vet, build, and
+whitespace checks.
 
 If deeper consumer evidence invalidates a proposed deletion, record the
 surviving requirement here instead of weakening it to satisfy a line-count target.

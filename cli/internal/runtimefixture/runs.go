@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -17,7 +19,7 @@ func (r *Runtime) GetRun(ctx context.Context, runID string) (agent.Run, error) {
 	defer r.mu.Unlock()
 	run := r.runs[runID]
 	if run == nil {
-		return agent.Run{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, runID)
+		return agent.Run{}, fmt.Errorf("%w: %s", protocol.ErrRunNotFound, runID)
 	}
 	return projectRun(run), nil
 }

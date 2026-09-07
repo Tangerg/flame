@@ -21,27 +21,11 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// Errors a [Runtime] reports by identity rather than by message, mirroring the
-// symbolic names the runtime protocol uses for the same conditions. Commands
-// branch on these; nothing branches on error text.
+// CLI observation and connection failures remain distinct from Runtime errors.
 var (
-	ErrSessionNotFound      = errors.New("session not found")
-	ErrRunNotFound          = errors.New("run not found")
-	ErrInterruptNotOpen     = errors.New("interrupt not open")
-	ErrStaleSegment         = errors.New("stale segment")
-	ErrRunWaiting           = errors.New("run is waiting")
-	ErrRunFinished          = errors.New("run is finished")
-	ErrReplayCursorInvalid  = errors.New("event replay cursor is invalid")
-	ErrReplayUnavailable    = errors.New("event replay unavailable")
-	ErrSessionHasActiveRun  = errors.New("session has an active run")
-	ErrSessionBusy          = errors.New("session is busy")
-	ErrRevisionConflict     = errors.New("revision conflict")
-	ErrEventConflict        = errors.New("event identity conflict")
-	ErrCommandInProgress    = errors.New("command is still committing")
-	ErrCommandConflict      = errors.New("command identity conflict")
-	ErrCommandStoreMismatch = errors.New("command belongs to another runtime idempotency store")
-	ErrDisconnected         = errors.New("runtime disconnected")
-	ErrIncompatibleRuntime  = errors.New("runtime protocol is incompatible")
+	ErrEventConflict       = errors.New("event identity conflict")
+	ErrDisconnected        = errors.New("runtime disconnected")
+	ErrIncompatibleRuntime = errors.New("runtime protocol is incompatible")
 )
 
 // BlockKind names what a transcript block is. The set is closed: an item a

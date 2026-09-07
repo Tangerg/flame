@@ -49,7 +49,7 @@ func PreviewRollback(snapshot agent.SessionSnapshot, request agent.RollbackSessi
 	if request.ToRunID != "" {
 		boundary = slices.IndexFunc(snapshot.Runs, func(run agent.Run) bool { return run.ID == request.ToRunID })
 		if boundary < 0 {
-			return RollbackPreview{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, request.ToRunID)
+			return RollbackPreview{}, fmt.Errorf("%w: %s", protocol.ErrRunNotFound, request.ToRunID)
 		}
 		if !snapshot.Runs[boundary].Lineage.IsRoot() {
 			return RollbackPreview{}, fmt.Errorf("rollback run %s is not a root run", request.ToRunID)
@@ -213,7 +213,7 @@ func settleRollback(
 	}
 
 	rollbackResult, rollbackErr := executeRollback(ctx, runtime, pending, policy, backoff)
-	if errors.Is(rollbackErr, agent.ErrCommandStoreMismatch) {
+	if errors.Is(rollbackErr, protocol.ErrIdempotencyStoreMismatch) {
 		result.Outcome = mutation.Unknown
 		return result, fmt.Errorf("rollback session outcome is unknown: %w", rollbackErr)
 	}
@@ -385,7 +385,7 @@ func RecoverRollbacks(
 				return errors.Join(err, rejectErr)
 			}
 		case mutation.Unknown:
-			if errors.Is(err, agent.ErrSessionNotFound) {
+			if errors.Is(err, protocol.ErrSessionNotFound) {
 				if retireErr := authoring.RetireSessionState(pending.SessionID); retireErr != nil {
 					return errors.Join(err, retireErr)
 				}

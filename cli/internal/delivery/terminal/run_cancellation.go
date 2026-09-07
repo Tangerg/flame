@@ -260,7 +260,7 @@ func (a *app) cancelRootRun(
 		}
 		return result.Root, nil
 	}
-	if !errors.Is(err, agent.ErrRunFinished) {
+	if !errors.Is(err, protocol.ErrRunFinished) {
 		return agent.Run{}, err
 	}
 	settled, readErr := a.runtime.GetRun(ctx, target.RunID)
@@ -385,7 +385,7 @@ func (a *app) cancelRuntimeNow(
 			return a.runtime.CancelRun(ctx, target)
 		},
 	)
-	if errors.Is(err, agent.ErrRunFinished) {
+	if errors.Is(err, protocol.ErrRunFinished) {
 		return nil
 	}
 	if err != nil {

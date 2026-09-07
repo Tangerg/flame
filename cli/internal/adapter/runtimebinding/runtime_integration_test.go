@@ -519,7 +519,7 @@ func requireSessionCatalog(t *testing.T, runtime *Connection, workspace string) 
 	if err != nil || len(runs.Items) != 0 {
 		t.Fatalf("ListRuns = (%+v, %v)", runs, err)
 	}
-	if _, err := runtime.GetRun(t.Context(), "run_missing"); !errors.Is(err, agent.ErrRunNotFound) {
+	if _, err := runtime.GetRun(t.Context(), "run_missing"); !errors.Is(err, protocol.ErrRunNotFound) {
 		t.Fatalf("GetRun missing = %v, want ErrRunNotFound", err)
 	}
 	return created
@@ -845,7 +845,7 @@ func requireSessionDeletion(t *testing.T, runtime *Connection, sessionIDs ...str
 		}
 	}
 	_, err := runtime.GetSession(t.Context(), sessionIDs[0])
-	if !errors.Is(err, agent.ErrSessionNotFound) {
+	if !errors.Is(err, protocol.ErrSessionNotFound) {
 		t.Fatalf("GetSession after delete = %v, want ErrSessionNotFound", err)
 	}
 	problem, ok := errors.AsType[protocol.ProblemError](err)

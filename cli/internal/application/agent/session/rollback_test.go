@@ -296,11 +296,11 @@ func TestRecoverRetiresADefinitivelyRejectedHistoryRollback(t *testing.T) {
 	if err := store.StageSessionRollback(pending); err != nil {
 		t.Fatal(err)
 	}
-	runtime := &recordingRuntime{Runtime: underlying, reject: agent.ErrSessionBusy}
+	runtime := &recordingRuntime{Runtime: underlying, reject: protocol.ErrSessionBusy}
 	if err := RecoverRollbacks(t.Context(), runtime, store, policy, testBackoff(t)); err != nil {
 		t.Fatal(err)
 	}
-	if runtime.calls != 1 || !errors.Is(runtime.reject, agent.ErrSessionBusy) {
+	if runtime.calls != 1 || !errors.Is(runtime.reject, protocol.ErrSessionBusy) {
 		t.Fatalf("rejected rollback calls = %d, error %v", runtime.calls, runtime.reject)
 	}
 	if pending := store.PendingSessionRollbacks(); len(pending) != 0 {
@@ -324,9 +324,9 @@ func TestRecoverPreservesHistoryRollbackRejectedByAnotherRuntimeStore(t *testing
 	if stageSessionRollbackErr := store.StageSessionRollback(pending); stageSessionRollbackErr != nil {
 		t.Fatal(stageSessionRollbackErr)
 	}
-	runtime := &recordingRuntime{Runtime: underlying, reject: agent.ErrCommandStoreMismatch}
+	runtime := &recordingRuntime{Runtime: underlying, reject: protocol.ErrIdempotencyStoreMismatch}
 	err = RecoverRollbacks(t.Context(), runtime, store, policy, testBackoff(t))
-	if !errors.Is(err, agent.ErrCommandStoreMismatch) {
+	if !errors.Is(err, protocol.ErrIdempotencyStoreMismatch) {
 		t.Fatalf("store mismatch recovery error = %v", err)
 	}
 	stored, exists := store.PendingSessionRollback(pending.SessionID)

@@ -196,8 +196,8 @@ func consumeSegment(t *testing.T, stream agent.SegmentStream) {
 
 func TestRequiredRecognizesOnlyColdRecoveryConditions(t *testing.T) {
 	for _, err := range []error{
-		agent.ErrStaleSegment, agent.ErrRunWaiting, agent.ErrRunFinished,
-		agent.ErrReplayCursorInvalid, agent.ErrReplayUnavailable,
+		protocol.ErrStaleSegment, protocol.ErrRunWaiting, protocol.ErrRunFinished,
+		protocol.ErrReplayCursorInvalid, protocol.ErrReplayUnavailable,
 	} {
 		if !runworkflow.RecoveryRequired(errors.Join(errors.New("adapter"), err)) {
 			t.Fatalf("RecoveryRequired(%v) = false", err)

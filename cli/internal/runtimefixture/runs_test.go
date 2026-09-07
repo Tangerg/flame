@@ -112,7 +112,7 @@ func TestRunCatalogDoesNotRetainDeletedSessionRuns(t *testing.T) {
 	if err := runtime.DeleteSession(t.Context(), agent.DeleteSession{SessionID: "ses_demo_1"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.GetRun(t.Context(), "run_demo_history"); !errors.Is(err, agent.ErrRunNotFound) {
+	if _, err := runtime.GetRun(t.Context(), "run_demo_history"); !errors.Is(err, protocol.ErrRunNotFound) {
 		t.Fatalf("GetRun after session deletion = %v", err)
 	}
 	page, err := runtime.ListRuns(t.Context(), agent.RunQuery{

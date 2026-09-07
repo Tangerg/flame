@@ -2774,7 +2774,7 @@ func TestSessionCenterPaginatesAndManagesSelectedSession(t *testing.T) {
 	host.Press(input.Enter)
 	host.Hides(t, "Delete session")
 	host.Hides(t, "Renamed center target")
-	if _, err := backend.GetSession(t.Context(), target.ID); !errors.Is(err, agent.ErrSessionNotFound) {
+	if _, err := backend.GetSession(t.Context(), target.ID); !errors.Is(err, protocol.ErrSessionNotFound) {
 		t.Fatalf("deleted session read error = %v", err)
 	}
 

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
@@ -19,7 +21,7 @@ func confirm[T any](ctx context.Context, backoff retry.Backoff, attempt func(con
 func TestAcknowledgementUncertainIncludesMutationTimeouts(t *testing.T) {
 	for _, err := range []error{
 		agent.ErrDisconnected,
-		agent.ErrCommandInProgress,
+		protocol.ErrIdempotencyInProgress,
 		context.Canceled,
 		context.DeadlineExceeded,
 		fmt.Errorf("adapter timeout: %w", context.DeadlineExceeded),
@@ -28,15 +30,15 @@ func TestAcknowledgementUncertainIncludesMutationTimeouts(t *testing.T) {
 			t.Fatalf("AcknowledgementUncertain(%v) = false", err)
 		}
 	}
-	for _, err := range []error{nil, agent.ErrSessionHasActiveRun, agent.ErrCommandConflict} {
+	for _, err := range []error{nil, protocol.ErrSessionHasActiveRun, protocol.ErrIdempotencyConflict} {
 		if AcknowledgementUncertain(err) {
 			t.Fatalf("AcknowledgementUncertain(%v) = true", err)
 		}
 	}
-	if AcknowledgementUncertain(agent.ErrCommandStoreMismatch) {
+	if AcknowledgementUncertain(protocol.ErrIdempotencyStoreMismatch) {
 		t.Fatal("a runtime-store mismatch must not be retried against the same store")
 	}
-	if !OutcomeUnknown(agent.ErrCommandStoreMismatch) {
+	if !OutcomeUnknown(protocol.ErrIdempotencyStoreMismatch) {
 		t.Fatal("a runtime-store mismatch discarded an unknown prior-store outcome")
 	}
 }
@@ -74,9 +76,9 @@ func TestConfirmStopsAtARuntimeStoreMismatch(t *testing.T) {
 	attempts := 0
 	_, err := confirm(t.Context(), testBackoff(t), func(context.Context) (struct{}, error) {
 		attempts++
-		return struct{}{}, agent.ErrCommandStoreMismatch
+		return struct{}{}, protocol.ErrIdempotencyStoreMismatch
 	})
-	if !errors.Is(err, agent.ErrCommandStoreMismatch) || attempts != 1 {
+	if !errors.Is(err, protocol.ErrIdempotencyStoreMismatch) || attempts != 1 {
 		t.Fatalf("confirmation error = %v after %d attempts", err, attempts)
 	}
 }

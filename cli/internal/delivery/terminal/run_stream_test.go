@@ -204,7 +204,7 @@ func (r *refusingFirstCommandRuntime) StartRun(ctx context.Context, input agent.
 	refused := r.refused
 	r.mu.Unlock()
 	if input.CommandID == refused {
-		return agent.SegmentStream{}, fmt.Errorf("runtime refused start: %w", agent.ErrSessionHasActiveRun)
+		return agent.SegmentStream{}, fmt.Errorf("runtime refused start: %w", protocol.ErrSessionHasActiveRun)
 	}
 	return r.Runtime.StartRun(ctx, input)
 }
@@ -226,7 +226,7 @@ func (a *activeConflictRuntime) StartRun(ctx context.Context, input agent.StartR
 	case a.attempted <- input.Clone():
 	default:
 	}
-	return agent.SegmentStream{}, fmt.Errorf("active run owns session: %w", agent.ErrSessionHasActiveRun)
+	return agent.SegmentStream{}, fmt.Errorf("active run owns session: %w", protocol.ErrSessionHasActiveRun)
 }
 
 func (i *idempotentStartRuntime) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {

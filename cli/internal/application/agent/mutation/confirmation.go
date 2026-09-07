@@ -6,6 +6,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
@@ -74,7 +76,7 @@ func ReplayAdmission(policy commandreplay.Policy, guard commandreplay.Guard) Adm
 // command identity; a fresh identity could execute the user's intent twice.
 func AcknowledgementUncertain(err error) bool {
 	return errors.Is(err, agent.ErrDisconnected) ||
-		errors.Is(err, agent.ErrCommandInProgress) ||
+		errors.Is(err, protocol.ErrIdempotencyInProgress) ||
 		errors.Is(err, context.Canceled) ||
 		errors.Is(err, context.DeadlineExceeded)
 }
@@ -85,7 +87,7 @@ func AcknowledgementUncertain(err error) bool {
 // same command's outcome in the store that originally owned it.
 func OutcomeUnknown(err error) bool {
 	return AcknowledgementUncertain(err) ||
-		errors.Is(err, agent.ErrCommandStoreMismatch) ||
+		errors.Is(err, protocol.ErrIdempotencyStoreMismatch) ||
 		errors.Is(err, ErrReplayGuaranteeUnavailable)
 }
 

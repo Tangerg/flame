@@ -152,7 +152,7 @@ func (r *Runtime) GetSession(ctx context.Context, id string) (agent.SessionSnaps
 	defer r.mu.Unlock()
 	state, ok := r.sessions[id]
 	if !ok {
-		return agent.SessionSnapshot{}, fmt.Errorf("%w: %s", agent.ErrSessionNotFound, id)
+		return agent.SessionSnapshot{}, fmt.Errorf("%w: %s", protocol.ErrSessionNotFound, id)
 	}
 	snapshot := agent.SessionSnapshot{
 		Session:    state.meta,
@@ -213,10 +213,10 @@ func (r *Runtime) UpdateSession(ctx context.Context, in agent.UpdateSession) (ag
 	defer r.mu.Unlock()
 	state, ok := r.sessions[in.SessionID]
 	if !ok {
-		return agent.Session{}, fmt.Errorf("%w: %s", agent.ErrSessionNotFound, in.SessionID)
+		return agent.Session{}, fmt.Errorf("%w: %s", protocol.ErrSessionNotFound, in.SessionID)
 	}
 	if in.ExpectedRevision != state.meta.Revision {
-		return agent.Session{}, fmt.Errorf("%w: session %s is at revision %d", agent.ErrRevisionConflict, in.SessionID, state.meta.Revision)
+		return agent.Session{}, fmt.Errorf("%w: session %s is at revision %d", protocol.ErrRevisionConflict, in.SessionID, state.meta.Revision)
 	}
 	candidate := state.meta
 	if in.Title != nil {
@@ -256,7 +256,7 @@ func (r *Runtime) ForkSession(ctx context.Context, in agent.ForkSession) (agent.
 	defer r.mu.Unlock()
 	source, ok := r.sessions[in.SessionID]
 	if !ok {
-		return agent.Session{}, fmt.Errorf("%w: %s", agent.ErrSessionNotFound, in.SessionID)
+		return agent.Session{}, fmt.Errorf("%w: %s", protocol.ErrSessionNotFound, in.SessionID)
 	}
 	boundary, err := r.resolveForkBoundary(source, in.FromRunID)
 	if err != nil {
@@ -295,10 +295,10 @@ func (r *Runtime) RollbackSession(ctx context.Context, in agent.RollbackSession)
 	defer r.mu.Unlock()
 	state := r.sessions[in.SessionID]
 	if state == nil {
-		return agent.RollbackResult{}, fmt.Errorf("%w: %s", agent.ErrSessionNotFound, in.SessionID)
+		return agent.RollbackResult{}, fmt.Errorf("%w: %s", protocol.ErrSessionNotFound, in.SessionID)
 	}
 	if state.active != "" {
-		return agent.RollbackResult{}, fmt.Errorf("%w: %s", agent.ErrSessionBusy, in.SessionID)
+		return agent.RollbackResult{}, fmt.Errorf("%w: %s", protocol.ErrSessionBusy, in.SessionID)
 	}
 	if in.FilesOnly() {
 		return agent.RollbackResult{Session: state.meta}, nil
@@ -307,7 +307,7 @@ func (r *Runtime) RollbackSession(ctx context.Context, in agent.RollbackSession)
 	if in.ToRunID != "" {
 		keep = slices.Index(state.runs, in.ToRunID)
 		if keep < 0 {
-			return agent.RollbackResult{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, in.ToRunID)
+			return agent.RollbackResult{}, fmt.Errorf("%w: %s", protocol.ErrRunNotFound, in.ToRunID)
 		}
 	}
 	droppedIDs := slices.Clone(state.runs[keep+1:])
@@ -366,7 +366,7 @@ func (r *Runtime) resolveForkBoundary(source *sessionState, fromRunID string) (f
 	if fromRunID != "" {
 		boundaryIndex = slices.Index(source.runs, fromRunID)
 		if boundaryIndex < 0 || r.runs[fromRunID] == nil || r.runs[fromRunID].status != protocol.RunStatusFinished {
-			return forkBoundary{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, fromRunID)
+			return forkBoundary{}, fmt.Errorf("%w: %s", protocol.ErrRunNotFound, fromRunID)
 		}
 	} else {
 		for i, runID := range slices.Backward(source.runs) {
@@ -392,10 +392,10 @@ func (r *Runtime) DeleteSession(ctx context.Context, in agent.DeleteSession) err
 	defer r.mu.Unlock()
 	state, ok := r.sessions[in.SessionID]
 	if !ok {
-		return fmt.Errorf("%w: %s", agent.ErrSessionNotFound, in.SessionID)
+		return fmt.Errorf("%w: %s", protocol.ErrSessionNotFound, in.SessionID)
 	}
 	if state.active != "" {
-		return fmt.Errorf("%w: %s", agent.ErrSessionBusy, in.SessionID)
+		return fmt.Errorf("%w: %s", protocol.ErrSessionBusy, in.SessionID)
 	}
 	for _, runID := range state.runs {
 		delete(r.runs, runID)

@@ -238,7 +238,7 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 	if calls != 1 || request.SessionID != target.ID || request.CommandID == "" {
 		t.Fatalf("runtime deletion = %+v, calls %d", request, calls)
 	}
-	if _, getSessionErr := base.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, agent.ErrSessionNotFound) {
+	if _, getSessionErr := base.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, protocol.ErrSessionNotFound) {
 		t.Fatalf("deleted session read = %v", getSessionErr)
 	}
 	reopened, err := openSessionWorkbench(stateDirectory)
@@ -278,7 +278,7 @@ func TestStartupReplaysPreparedSessionDeletionBeforeLoadingDrafts(t *testing.T) 
 	host, stop := runUIWithReplayState(t, backend, workspace, "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	stop()
-	if _, getSessionErr := backend.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, agent.ErrSessionNotFound) {
+	if _, getSessionErr := backend.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, protocol.ErrSessionNotFound) {
 		t.Fatalf("recovered deletion read = %v", getSessionErr)
 	}
 	reopened, err := openSessionWorkbench(stateDirectory)
@@ -784,7 +784,7 @@ func TestSteerTargetsTheObservedSegmentAndRestoresAttachmentsOnRefusal(t *testin
 			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
 		}}
 	}
-	backend := &steeringRuntime{Runtime: base, err: agent.ErrStaleSegment}
+	backend := &steeringRuntime{Runtime: base, err: protocol.ErrStaleSegment}
 	workspace := t.TempDir()
 	attachment := filepath.Join(workspace, "notes.txt")
 	if err := os.WriteFile(attachment, []byte("notes"), 0o600); err != nil {
@@ -821,7 +821,7 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 		}}
 	}
 	backend := &blockedSteeringRuntime{
-		Runtime: base, entered: make(chan agent.SteerRun, 1), release: make(chan struct{}), err: agent.ErrStaleSegment,
+		Runtime: base, entered: make(chan agent.SteerRun, 1), release: make(chan struct{}), err: protocol.ErrStaleSegment,
 	}
 	workspace := t.TempDir()
 	stateDirectory := t.TempDir()

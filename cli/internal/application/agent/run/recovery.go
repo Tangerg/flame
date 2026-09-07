@@ -29,11 +29,11 @@ type Recovery struct {
 // RecoveryRequired reports whether a failed segment subscription must be reconciled
 // from durable reads instead of retried with the same cursor.
 func RecoveryRequired(err error) bool {
-	return errors.Is(err, agent.ErrStaleSegment) ||
-		errors.Is(err, agent.ErrRunWaiting) ||
-		errors.Is(err, agent.ErrRunFinished) ||
-		errors.Is(err, agent.ErrReplayCursorInvalid) ||
-		errors.Is(err, agent.ErrReplayUnavailable)
+	return errors.Is(err, protocol.ErrStaleSegment) ||
+		errors.Is(err, protocol.ErrRunWaiting) ||
+		errors.Is(err, protocol.ErrRunFinished) ||
+		errors.Is(err, protocol.ErrReplayCursorInvalid) ||
+		errors.Is(err, protocol.ErrReplayUnavailable)
 }
 
 // RecoverSegment follows the runtime's attach-then-read rule. For a live run it first
@@ -59,7 +59,7 @@ func RecoverSegment(ctx context.Context, source RecoverySource, sessionID, runID
 	}
 	if current.ActiveSegmentID != stream.SegmentID {
 		release()
-		return Recovery{}, fmt.Errorf("%w: run %s changed from segment %s to %s during recovery", agent.ErrStaleSegment, runID, stream.SegmentID, current.ActiveSegmentID)
+		return Recovery{}, fmt.Errorf("%w: run %s changed from segment %s to %s during recovery", protocol.ErrStaleSegment, runID, stream.SegmentID, current.ActiveSegmentID)
 	}
 	return Recovery{Snapshot: second, Run: current, Stream: releaseWhenDone(stream, release)}, nil
 }
@@ -106,7 +106,7 @@ func AttachSession(ctx context.Context, source RecoverySource, sessionID string)
 			Stream:   releaseWhenDone(stream, release),
 		}, nil
 	}
-	return Recovery{}, fmt.Errorf("%w: session %s did not hold a stable active segment", agent.ErrStaleSegment, sessionID)
+	return Recovery{}, fmt.Errorf("%w: session %s did not hold a stable active segment", protocol.ErrStaleSegment, sessionID)
 }
 
 func attach(ctx context.Context, source RecoverySource, run agent.Run) (agent.SegmentStream, context.CancelFunc, error) {
@@ -147,7 +147,7 @@ func read(ctx context.Context, source SessionReader, sessionID, runID string) (a
 	}
 	run, ok := snapshot.RunByID(runID)
 	if !ok {
-		return agent.SessionSnapshot{}, agent.Run{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, runID)
+		return agent.SessionSnapshot{}, agent.Run{}, fmt.Errorf("%w: %s", protocol.ErrRunNotFound, runID)
 	}
 	return snapshot, run, nil
 }

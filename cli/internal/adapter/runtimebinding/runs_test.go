@@ -627,7 +627,7 @@ func TestSteerRunBindsStructuredInputToTheObservedSegment(t *testing.T) {
 	err := runtime.SteerRun(t.Context(), agent.SteerRun{
 		RunID: "run_1", SegmentID: "seg_2", Message: agent.Message{Text: "focus on the parser"},
 	})
-	if !errors.Is(err, agent.ErrStaleSegment) {
+	if !errors.Is(err, protocol.ErrStaleSegment) {
 		t.Fatalf("SteerRun error = %v, want ErrStaleSegment", err)
 	}
 }

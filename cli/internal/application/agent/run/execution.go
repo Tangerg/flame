@@ -193,7 +193,7 @@ func cancelAbandonedRun(
 			})
 		},
 	)
-	if errors.Is(err, agent.ErrRunFinished) {
+	if errors.Is(err, protocol.ErrRunFinished) {
 		return nil
 	}
 	if err != nil {

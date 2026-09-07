@@ -23,7 +23,7 @@ func (r *Runtime) ListApprovalRules(ctx context.Context, sessionID string) ([]pr
 	defer r.mu.Unlock()
 	session := r.sessions[sessionID]
 	if session == nil {
-		return nil, fmt.Errorf("%w: %s", agent.ErrSessionNotFound, sessionID)
+		return nil, fmt.Errorf("%w: %s", protocol.ErrSessionNotFound, sessionID)
 	}
 	out := make([]protocol.ApprovalRule, 0, len(r.rules))
 	for _, stored := range r.rules {

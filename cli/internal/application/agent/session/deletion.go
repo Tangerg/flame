@@ -88,7 +88,7 @@ func settleDeletion(
 	_, err := mutation.ConfirmAdmitted(ctx, backoff, admit, func(ctx context.Context) (struct{}, error) {
 		return struct{}{}, runtime.DeleteSession(ctx, request)
 	})
-	if err == nil || errors.Is(err, agent.ErrSessionNotFound) {
+	if err == nil || errors.Is(err, runtimeprotocol.ErrSessionNotFound) {
 		return mutation.Confirmed, nil
 	}
 	if errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
@@ -104,7 +104,7 @@ func settleDeletion(
 		return mutation.Unknown, fmt.Errorf("delete session outcome is unknown: %w", err)
 	}
 	_, readErr := runtime.GetSession(ctx, request.SessionID)
-	if errors.Is(readErr, agent.ErrSessionNotFound) {
+	if errors.Is(readErr, runtimeprotocol.ErrSessionNotFound) {
 		return mutation.Confirmed, nil
 	}
 	if readErr != nil {
@@ -193,7 +193,7 @@ func resolveExpired(
 		return mutation.Unknown, errors.New("session deletion belongs to another runtime")
 	}
 	_, err := runtime.GetSession(ctx, sessionID)
-	if errors.Is(err, agent.ErrSessionNotFound) {
+	if errors.Is(err, runtimeprotocol.ErrSessionNotFound) {
 		return mutation.Confirmed, nil
 	}
 	if err != nil {

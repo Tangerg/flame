@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -27,7 +29,7 @@ func TestReconnectRetriesOnlyTransientErrorsWithinBudget(t *testing.T) {
 	if _, ok, err := policy.Next(1, agent.ErrEventConflict); err != nil || ok {
 		t.Fatal("identity conflict was treated as transient")
 	}
-	if _, ok, err := policy.Next(1, agent.ErrReplayUnavailable); err != nil || ok {
+	if _, ok, err := policy.Next(1, protocol.ErrReplayUnavailable); err != nil || ok {
 		t.Fatal("unavailable replay was treated as a retryable disconnect")
 	}
 }
@@ -37,13 +39,13 @@ func TestCommandCommitRetriesHonorTheRuntimeBackoffFloor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if delay, ok, err := policy.Next(1, agent.ErrCommandInProgress); err != nil || !ok || delay != time.Second {
+	if delay, ok, err := policy.Next(1, protocol.ErrIdempotencyInProgress); err != nil || !ok || delay != time.Second {
 		t.Fatalf("command progress retry = %s, %t; want 1s, true", delay, ok)
 	}
-	if !IsReconnectable(agent.ErrCommandInProgress) {
+	if !IsReconnectable(protocol.ErrIdempotencyInProgress) {
 		t.Fatal("command progress was not retryable")
 	}
-	if IsReconnectable(agent.ErrCommandConflict) {
+	if IsReconnectable(protocol.ErrIdempotencyConflict) {
 		t.Fatal("command identity conflict was retryable")
 	}
 }

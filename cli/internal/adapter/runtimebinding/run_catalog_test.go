@@ -177,12 +177,12 @@ func TestRunCatalogRejectsIncompleteBindingResults(t *testing.T) {
 		},
 	}
 	runtime.runCatalog = failing
-	if _, err := runtime.GetRun(t.Context(), "missing"); !errors.Is(err, agent.ErrRunNotFound) {
+	if _, err := runtime.GetRun(t.Context(), "missing"); !errors.Is(err, protocol.ErrRunNotFound) {
 		t.Fatalf("GetRun error = %v", err)
 	}
 	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{
 		SessionID: "missing", PageSize: agent.DefaultPageSize(),
-	}); !errors.Is(err, agent.ErrSessionNotFound) {
+	}); !errors.Is(err, protocol.ErrSessionNotFound) {
 		t.Fatalf("ListRuns error = %v", err)
 	}
 }

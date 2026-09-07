@@ -542,7 +542,7 @@ func TestSessionCenterMutationOutlivesCurrentSessionProjectionReplacement(t *tes
 
 	release()
 	host.Shows(t, "deleted session")
-	if _, err := base.GetSession(t.Context(), target.ID); !errors.Is(err, agent.ErrSessionNotFound) {
+	if _, err := base.GetSession(t.Context(), target.ID); !errors.Is(err, protocol.ErrSessionNotFound) {
 		t.Fatalf("deleted session read error = %v", err)
 	}
 	stop()
@@ -1331,7 +1331,7 @@ func (b *blockedResumeRuntime) ResumeRun(ctx context.Context, input agent.Resume
 	}
 	select {
 	case <-b.release:
-		return agent.SegmentStream{}, agent.ErrInterruptNotOpen
+		return agent.SegmentStream{}, protocol.ErrInterruptNotOpen
 	case <-ctx.Done():
 		return agent.SegmentStream{}, context.Cause(ctx)
 	}

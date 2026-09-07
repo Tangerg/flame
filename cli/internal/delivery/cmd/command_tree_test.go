@@ -301,7 +301,7 @@ func (a *ambiguousControls) StartRun(ctx context.Context, input agent.StartRun) 
 	if a.startID != "" {
 		if a.startID != input.CommandID {
 			a.mu.Unlock()
-			return agent.SegmentStream{}, agent.ErrCommandConflict
+			return agent.SegmentStream{}, protocol.ErrIdempotencyConflict
 		}
 		a.starts++
 		stream := a.startStream
@@ -330,7 +330,7 @@ func (a *ambiguousControls) ResumeRun(ctx context.Context, input agent.ResumeRun
 	if a.resumeID != "" {
 		if a.resumeID != input.CommandID {
 			a.mu.Unlock()
-			return agent.SegmentStream{}, agent.ErrCommandConflict
+			return agent.SegmentStream{}, protocol.ErrIdempotencyConflict
 		}
 		a.resumes++
 		stream := a.resumeStream
@@ -685,7 +685,7 @@ func TestRunWithNothingToSay(t *testing.T) {
 
 func TestRunRejectsAnUnknownSession(t *testing.T) {
 	_, _, err := executeCommand(t, instantRuntime(), "", "run", "-s", "ses_nope", "why?")
-	if !errors.Is(err, agent.ErrSessionNotFound) {
+	if !errors.Is(err, protocol.ErrSessionNotFound) {
 		t.Fatalf("err = %v, want ErrSessionNotFound", err)
 	}
 }
