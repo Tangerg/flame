@@ -73,7 +73,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 	if err != nil {
 		return err
 	}
-	defer func() { runErr = errors.Join(runErr, extensionHost.Close()) }()
+	defer extensionHost.Close()
 	sources := make([]extensions.Source, 0, 1+len(cfg.PluginSources))
 	sources = append(sources, extensions.StaticSource{
 		Name: "terminal", Plugins: append([]extensions.Plugin{builtinPlugin()}, cfg.Plugins...),

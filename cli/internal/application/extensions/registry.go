@@ -10,6 +10,7 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"reflect"
 	"slices"
@@ -101,27 +102,8 @@ type Contribution struct {
 	Order int
 }
 
-// Disposable releases an owned registration. Dispose is idempotent.
-type Disposable interface {
-	Dispose() error
-}
-
-type disposal struct {
-	once sync.Once
-	do   func() error
-	err  error
-}
-
-func (d *disposal) Dispose() error {
-	if d == nil {
-		return nil
-	}
-	d.once.Do(func() { d.err = d.do() })
-	return d.err
-}
-
-// Scope is the capability a plugin receives during setup. It owns every
-// disposable created through Contribute, enabling exact rollback and unload.
+// Scope is the capability a plugin receives during setup. The registry owns
+// its contributions as one plugin installation for rollback and unload.
 // The scope is sealed when setup returns; plugins cannot attach ownership to a
 // completed or rolling-back installation transaction.
 type Scope struct {
@@ -129,33 +111,13 @@ type Scope struct {
 	plugin       string
 	registry     *Registry
 	capabilities map[Capability]struct{}
-	disposables  []Disposable
 	open         bool
 }
 
-// OnDispose binds a plugin-owned side effect to rollback, unload, and reload.
-// Cleanups run in reverse registration order.
-func (s *Scope) OnDispose(cleanup func() error) error {
-	if s == nil || s.registry == nil {
-		return errors.New("extensions: plugin scope is required")
-	}
-	if cleanup == nil {
-		return errors.New("extensions: cleanup is required")
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if !s.open {
-		return errScopeClosed
-	}
-	s.disposables = append(s.disposables, &disposal{do: cleanup})
-	return nil
-}
-
-func (s *Scope) seal() []Disposable {
+func (s *Scope) seal() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.open = false
-	return slices.Clone(s.disposables)
 }
 
 // Plugin is one cohesive set of contributions.
@@ -171,42 +133,19 @@ type Plugin struct {
 	Setup   func(*Scope) error
 }
 
-// Loaded is a successfully initialized plugin. Dispose unloads it in reverse
-// registration order.
+// Loaded identifies one plugin installation. The registry owns its lifetime;
+// an old handle cannot release a later installation of the same plugin.
 type Loaded struct {
-	once        sync.Once
-	disposables []Disposable
-	err         error
+	registry *Registry
+	plugin   string
+	token    registrationSequence
 }
 
-// Dispose unloads a plugin. Every cleanup runs even when another returns an
-// error or panics; the joined result is stable across repeated calls.
-func (l *Loaded) Dispose() error {
-	if l == nil {
-		return nil
+// Dispose removes this installation's contributions. Repeated calls are inert.
+func (l *Loaded) Dispose() {
+	if l != nil {
+		l.registry.release(l.plugin, l.token)
 	}
-	l.once.Do(func() {
-		var failures []error
-		for _, disposable := range slices.Backward(l.disposables) {
-			if err := disposeSafely(disposable); err != nil {
-				failures = append(failures, err)
-			}
-		}
-		l.err = errors.Join(failures...)
-	})
-	return l.err
-}
-
-func disposeSafely(disposable Disposable) (err error) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("plugin cleanup panicked: %v", recovered)
-		}
-	}()
-	if disposable == nil {
-		return nil
-	}
-	return disposable.Dispose()
 }
 
 // Load validates and initializes one plugin. Setup is transactional: a failure
@@ -218,26 +157,23 @@ func Load(registry *Registry, plugin Plugin) (*Loaded, error) {
 	if err := ValidateManifest(plugin); err != nil {
 		return nil, err
 	}
-	release, err := registry.claim(plugin.ID)
+	token, err := registry.claim(plugin.ID)
 	if err != nil {
 		return nil, err
 	}
 	scope := &Scope{
 		plugin: plugin.ID, registry: registry,
 		capabilities: capabilitySet(plugin),
-		disposables:  []Disposable{release},
 		open:         true,
 	}
+	loaded := &Loaded{registry: registry, plugin: plugin.ID, token: token}
 	setupErr := setupSafely(plugin.Setup, scope)
-	disposables := scope.seal()
+	scope.seal()
 	if setupErr != nil {
-		loaded := &Loaded{disposables: disposables}
-		if rollbackErr := loaded.Dispose(); rollbackErr != nil {
-			setupErr = errors.Join(setupErr, fmt.Errorf("rollback plugin %q: %w", plugin.ID, rollbackErr))
-		}
+		loaded.Dispose()
 		return nil, fmt.Errorf("load plugin %q: %w", plugin.ID, setupErr)
 	}
-	return &Loaded{disposables: disposables}, nil
+	return loaded, nil
 }
 
 func setupSafely(setup func(*Scope) error, scope *Scope) (err error) {
@@ -260,64 +196,59 @@ func capabilitySet(plugin Plugin) map[Capability]struct{} {
 	return out
 }
 
-func (r *Registry) claim(plugin string) (Disposable, error) {
+func (r *Registry) claim(plugin string) (registrationSequence, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, exists := r.plugins[plugin]; exists {
-		return nil, fmt.Errorf("extensions: plugin %q is already loaded", plugin)
+		return 0, fmt.Errorf("extensions: plugin %q is already loaded", plugin)
 	}
 	next, ok := r.next.successor()
 	if !ok {
-		return nil, errRegistrationSequenceExhausted
+		return 0, errRegistrationSequenceExhausted
 	}
 	if r.plugins == nil {
 		r.plugins = make(map[string]registrationSequence)
 	}
 	r.next = next
-	token := next
-	r.plugins[plugin] = token
-	return &disposal{do: func() error {
-		r.mu.Lock()
-		defer r.mu.Unlock()
-		if r.plugins[plugin] == token {
-			delete(r.plugins, plugin)
-		}
-		return nil
-	}}, nil
+	r.plugins[plugin] = next
+	return next, nil
 }
 
-// Contribute adds a value to a point and makes its lifetime belong to s.
-func (s *Scope) Contribute[T any](point Point[T], value T, options Contribution) (Disposable, error) {
+func (r *Registry) release(plugin string, token registrationSequence) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.plugins[plugin] != token {
+		return
+	}
+	for _, point := range r.points {
+		maps.DeleteFunc(point.entries, func(_ string, value entry) bool { return value.plugin == plugin })
+	}
+	delete(r.plugins, plugin)
+}
+
+// Contribute adds a value owned by this plugin installation.
+func (s *Scope) Contribute[T any](point Point[T], value T, options Contribution) error {
 	if s == nil || s.registry == nil {
-		return nil, errors.New("extensions: plugin scope is required")
+		return errors.New("extensions: plugin scope is required")
 	}
 	s.mu.Lock()
 	err := s.validateContribution(point)
 	s.mu.Unlock()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// keyOf belongs to the point owner and may execute arbitrary code. Run it
 	// without the scope lock, then recheck the transaction before committing.
 	key, err := point.contributionKey(value, options.Key)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if validateContributionErr := s.validateContribution(point); validateContributionErr != nil {
-		return nil, validateContributionErr
+		return validateContributionErr
 	}
-	key, sequence, err := s.registry.insertContribution(s.plugin, point, key, value, options.Order)
-	if err != nil {
-		return nil, err
-	}
-	d := &disposal{do: func() error {
-		s.registry.removeContribution(point.id, key, sequence)
-		return nil
-	}}
-	s.disposables = append(s.disposables, d)
-	return d, nil
+	return s.registry.insertContribution(s.plugin, point, key, value, options.Order)
 }
 
 func (s *Scope) validateContribution[T any](point Point[T]) error {
@@ -356,22 +287,22 @@ func (r *Registry) insertContribution[T any](
 	key string,
 	value T,
 	order int,
-) (string, registrationSequence, error) {
+) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	state, err := r.pointStateFor(point)
 	if err != nil {
-		return "", 0, err
+		return err
 	}
 	sequence, ok := r.next.successor()
 	if !ok {
-		return "", 0, errRegistrationSequenceExhausted
+		return errRegistrationSequenceExhausted
 	}
 	if point.keying == Multi {
 		key = fmt.Sprintf("%s:%d", plugin, sequence)
 	}
 	if previous, duplicate := state.entries[key]; duplicate {
-		return "", 0, fmt.Errorf("extensions: plugin %q cannot contribute key %q to point %q; owned by %q",
+		return fmt.Errorf("extensions: plugin %q cannot contribute key %q to point %q; owned by %q",
 			plugin, key, point.id, previous.plugin)
 	}
 	if r.points == nil {
@@ -380,7 +311,7 @@ func (r *Registry) insertContribution[T any](
 	r.next = sequence
 	state.entries[key] = entry{plugin: plugin, order: order, seq: sequence, value: value}
 	r.points[point.id] = state
-	return key, sequence, nil
+	return nil
 }
 
 func (r *Registry) pointStateFor[T any](point Point[T]) (pointState, error) {
@@ -393,21 +324,6 @@ func (r *Registry) pointStateFor[T any](point Point[T]) (pointState, error) {
 		state = pointState{typeOf: wantType, keying: point.keying, entries: make(map[string]entry)}
 	}
 	return state, nil
-}
-
-func (r *Registry) removeContribution(pointID, key string, sequence registrationSequence) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	state, ok := r.points[pointID]
-	if !ok {
-		return
-	}
-	current, ok := state.entries[key]
-	if !ok || current.seq != sequence {
-		return
-	}
-	delete(state.entries, key)
-	r.points[pointID] = state
 }
 
 // OwnedValue keeps contribution ownership attached to a typed value so an

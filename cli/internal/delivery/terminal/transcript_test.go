@@ -24,7 +24,7 @@ func TestCustomRuntimeEventsUseNamedTerminalPresenters(t *testing.T) {
 		ID: "test.custom-events", Version: "1.0.0", APIVersion: extensions.HostAPIVersion,
 		Capabilities: []extensions.Capability{CustomEventPresenters.Capability()},
 		Setup: func(scope *extensions.Scope) error {
-			_, err := scope.Contribute(CustomEventPresenters, CustomEventPresenter{
+			err := scope.Contribute(CustomEventPresenters, CustomEventPresenter{
 				Name: "vendor.trace",
 				Present: func(presentation BlockPresentation, event agent.CustomEvent) []headless.Block {
 					return []headless.Block{&kit.Entry{Theme: presentation.Theme, Label: "trace", Body: string(event.PayloadJSON)}}
@@ -36,7 +36,7 @@ func TestCustomRuntimeEventsUseNamedTerminalPresenters(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = loaded.Dispose() })
+	t.Cleanup(loaded.Dispose)
 
 	if err := view.ApplyRunEvent(agent.RunEvent{
 		RunID: "run_1", Event: agent.CustomEvent{Name: "vendor.trace", PayloadJSON: []byte(`{"span":"abc"}`)},
@@ -97,7 +97,7 @@ func TestFollowingLongAnswerDoesNotPinAnExpiredUserLabel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = loaded.Dispose() })
+	t.Cleanup(loaded.Dispose)
 	for _, block := range []agent.Block{
 		{ID: "user", RunID: "run_1", Kind: agent.BlockUser, Text: "list the desktop"},
 		{
@@ -126,7 +126,7 @@ func TestAcceptedQuestionRevealsItsDurableAnswerInPlace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = loaded.Dispose() })
+	t.Cleanup(loaded.Dispose)
 	question := agent.Question{
 		RunID: "run_1", ItemID: "question_1", Title: "Deployment target",
 		Fields: []agent.QuestionField{{Prompt: "Which platform?", Kind: agent.QuestionText}},
@@ -168,7 +168,7 @@ func TestColdCanceledQuestionDoesNotPinTranscriptRetention(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = loaded.Dispose() })
+	t.Cleanup(loaded.Dispose)
 	question := agent.Question{
 		RunID: "run_1", ItemID: "question_1", Title: "Abandoned question",
 		Fields: []agent.QuestionField{{Prompt: "Continue?", Kind: agent.QuestionText}},
