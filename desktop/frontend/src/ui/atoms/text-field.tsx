@@ -36,7 +36,7 @@ const styles = stylex.create({
     transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
     "::placeholder": { color: color.fgFaint },
     cursor: { default: null, ":disabled": "not-allowed" },
-    opacity: { default: null, ":disabled": 0.6 },
+    opacity: { default: null, ":disabled": "var(--control-disabled-opacity)" },
   },
   boxed: {
     borderRadius: radius.field,

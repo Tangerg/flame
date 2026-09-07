@@ -71,8 +71,6 @@ const styles = stylex.create({
     transitionProperty: "background-color, border-color, color, opacity, scale, translate",
     transitionDuration: motion.fast,
     transitionTimingFunction: "var(--ease-out)",
-    cursor: { default: null, ":disabled": "not-allowed" },
-    opacity: { default: null, ":disabled": 0.64 },
   },
 
   toneNegative: { color: color.negative },
@@ -160,6 +158,11 @@ const styles = stylex.create({
       ":disabled": surface.surface2,
     },
     color: { default: color.ctaText, ":disabled": color.fgFaint },
+    // …and having answered, it does not answer twice. The fade a ring below applies is the
+    // GENERIC way to say "cannot be used", for a control with no answer of its own. Stacked on
+    // this plate it took the glyph from 4.9:1 to 1.9:1 — a disabled control still has to be
+    // readable, because reading it is how you work out what would enable it.
+    opacity: { default: null, ":disabled": 1 },
   },
   // The action wears its consequence: no plate at rest, the tone's own wash under the pointer.
   // The tone decides which, so this is one rule rather than a variant named after a colour.

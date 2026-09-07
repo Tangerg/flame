@@ -16,7 +16,7 @@ const styles = stylex.create({
     transitionProperty: "color, background-color, border-color",
     transitionDuration: motion.color,
     cursor: { default: null, ":disabled": "not-allowed" },
-    opacity: { default: null, ":disabled": 0.5 },
+    opacity: { default: null, ":disabled": "var(--control-disabled-opacity)" },
   },
   on: { borderColor: color.accent, backgroundColor: color.accent },
   off: { borderColor: surface.field, backgroundColor: surface.sunken },

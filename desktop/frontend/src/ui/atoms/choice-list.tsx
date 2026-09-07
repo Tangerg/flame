@@ -34,7 +34,7 @@ const styles = stylex.create({
     transitionProperty: "color, background-color, border-color",
     transitionDuration: motion.fast,
     cursor: { default: null, ":disabled": "not-allowed" },
-    opacity: { default: null, ":disabled": 0.64 },
+    opacity: { default: null, ":disabled": "var(--control-disabled-opacity)" },
   },
   // A chosen row keeps the wash whether or not the pointer is on it; an open one only borrows it.
   rowChosen: { backgroundColor: surface.hover },

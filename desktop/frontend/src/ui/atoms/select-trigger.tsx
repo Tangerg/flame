@@ -34,8 +34,6 @@ const styles = stylex.create({
     color: color.fg,
     transitionProperty: "background-color, border-color, color",
     transitionDuration: motion.color,
-    cursor: { default: null, ":disabled": "not-allowed" },
-    opacity: { default: null, ":disabled": 0.5 },
   },
   label: {
     minWidth: 0,

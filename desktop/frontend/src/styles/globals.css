@@ -436,6 +436,16 @@
 
   --dur-instant: calc(var(--dur-instant-base) * var(--motion-scale));
   --press-scale: 0.98;
+  /* What "cannot be used" looks like, once. Eight owners had said it in four values, and the
+     four that render a `<button>` were restating what the base layer below already says —
+     which also kept a call site's own `disabled:` override from ever reaching the element.
+
+     0.64 is the only one of the four that keeps a disabled label above 3:1 in BOTH themes
+     (measured on a settings action: 3.61 light / 4.36 dark; at 0.5 it falls to 2.59 light,
+     and the 0.45 this line used to carry to 2.32). A disabled control still has to be read,
+     because reading it is how you work out what would enable it. The step that means "recede
+     out of the way" is a different, named one — `off="faded"`. */
+  --control-disabled-opacity: 0.64;
 
   --dur-color: calc(var(--dur-color-base) * var(--motion-scale));
   --dur-fast: calc(var(--dur-fast-base) * var(--motion-scale));
@@ -594,7 +604,7 @@ body {
 
   [data-control="button"]:disabled {
     cursor: not-allowed;
-    opacity: 0.45;
+    opacity: var(--control-disabled-opacity);
   }
 }
 
