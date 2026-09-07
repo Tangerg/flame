@@ -3,7 +3,6 @@ package workspace
 import (
 	"errors"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -20,25 +19,6 @@ type Workspace struct {
 	Availability protocol.WorkspaceAvailability
 }
 
-func (w Workspace) Validate() error {
-	switch {
-	case strings.TrimSpace(w.Path) == "":
-		return errors.New("workspace path is empty")
-	case !filepath.IsAbs(w.Path):
-		return errors.New("workspace path is not absolute")
-	case strings.TrimSpace(w.ProjectRoot) == "":
-		return errors.New("workspace project root is empty")
-	case !filepath.IsAbs(w.ProjectRoot):
-		return errors.New("workspace project root is not absolute")
-	default:
-		return protocol.ValidateWireTree(protocol.WorkspaceInfo{
-			Ref:          protocol.WorkspaceRef{Path: w.Path},
-			ProjectRoot:  w.ProjectRoot,
-			Availability: w.Availability,
-		})
-	}
-}
-
 func (w Workspace) IsAvailable() bool { return w.Availability == protocol.WorkspaceAvailable }
 
 type Summary struct {
@@ -53,19 +33,6 @@ func (s Summary) Clone() Summary {
 		s.LastActive = new(*s.LastActive)
 	}
 	return s
-}
-
-func (s Summary) Validate() error {
-	if err := s.Workspace.Validate(); err != nil {
-		return err
-	}
-	if strings.TrimSpace(s.Name) == "" {
-		return errors.New("workspace summary name is empty")
-	}
-	if s.Sessions < 0 {
-		return errors.New("workspace session count is negative")
-	}
-	return nil
 }
 
 type ResolveRequest struct {

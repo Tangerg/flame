@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -315,9 +314,6 @@ type TestResult struct {
 func (t TestResult) Validate() error {
 	if t.OK == (t.Problem != nil) {
 		return errors.New("provider test result must contain exactly one success or problem state")
-	}
-	if t.Problem != nil {
-		return failure.Validate(t.Problem)
 	}
 	return nil
 }

@@ -100,12 +100,10 @@ func (r *Connection) Changes(ctx context.Context, path string) ([]workspace.Chan
 	if err != nil {
 		return nil, err
 	}
-	changes, err := projectUniqueValuesFallible(
+	changes, err := projectUniqueValues(
 		"list workspace changes",
 		values,
-		func(value protocol.WorkspaceFileChange) (workspace.Change, error) {
-			return projectChange(value.Path, value.Status, value.PreviousPath, value.Added, value.Removed, value.Binary)
-		},
+		projectChange,
 		func(change workspace.Change) string { return change.Path },
 	)
 	if err != nil {
@@ -300,10 +298,14 @@ func (r *Connection) Read(ctx context.Context, request workspace.ReadRequest) (w
 	if value == nil {
 		return workspace.FileContent{}, runtimeContractViolation("read workspace file returned nil")
 	}
-	return workspace.FileContent{
+	result := workspace.FileContent{
 		Content: value.Content, TotalLines: value.TotalLines,
 		Truncated: value.Truncated, StartLine: value.StartLine, EndLine: value.EndLine,
-	}, nil
+	}
+	if err := result.Validate(); err != nil {
+		return workspace.FileContent{}, runtimeContractViolation("read workspace file returned an unreadable window: %v", err)
+	}
+	return result, nil
 }
 
 func projectWorkspace(value protocol.WorkspaceInfo) workspace.Workspace {
@@ -321,25 +323,23 @@ func projectWorkspaceSummary(value protocol.WorkspaceSummary) workspace.Summary 
 	}
 }
 
-func projectChange(path string, status protocol.FileStatus, previousPath string, added, removed *int, binary bool) (workspace.Change, error) {
-	result := workspace.Change{
-		Path: path, Status: status, PreviousPath: previousPath,
-		Added: added, Removed: removed, Binary: binary,
+func projectChange(value protocol.WorkspaceFileChange) workspace.Change {
+	return workspace.Change{
+		Path: value.Path, Status: value.Status, PreviousPath: value.PreviousPath,
+		Added: value.Added, Removed: value.Removed, Binary: value.Binary,
 	}
-	if err := result.Validate(); err != nil {
-		return workspace.Change{}, err
-	}
-	return result, nil
 }
 
 func projectDiff(value protocol.Diff) (workspace.Diff, error) {
 	result := workspace.Diff{Patch: value.Patch, Truncated: value.Truncated, Files: make([]workspace.FileDiff, 0, len(value.Files))}
-	for index, file := range value.Files {
-		change, err := projectChange(file.Path, file.Status, file.PreviousPath, file.Added, file.Removed, file.Binary)
-		if err != nil {
-			return workspace.Diff{}, fmt.Errorf("workspace file diff %d: %w", index, err)
-		}
-		result.Files = append(result.Files, workspace.FileDiff{Change: change, Rows: file.Rows})
+	for _, file := range value.Files {
+		result.Files = append(result.Files, workspace.FileDiff{
+			Change: projectChange(protocol.WorkspaceFileChange{
+				Path: file.Path, Status: file.Status, PreviousPath: file.PreviousPath,
+				Added: file.Added, Removed: file.Removed, Binary: file.Binary,
+			}),
+			Rows: file.Rows,
+		})
 	}
 	if err := result.Validate(); err != nil {
 		return workspace.Diff{}, fmt.Errorf("get workspace diff projection: %w", err)

@@ -7,63 +7,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func TestChangeOwnsItsRenameAndBinaryInvariants(t *testing.T) {
-	t.Parallel()
-	added, removed := 3, 2
-	tests := []struct {
-		name   string
-		change Change
-		want   string
-	}{
-		{name: "text", change: Change{Path: "main.go", Status: protocol.FileStatusModified, Added: &added, Removed: &removed}},
-		{name: "rename", change: Change{Path: "new.go", PreviousPath: "old.go", Status: protocol.FileStatusRenamed}},
-		{name: "rename missing source", change: Change{Path: "new.go", Status: protocol.FileStatusRenamed}, want: "previousPath"},
-		{name: "source on modification", change: Change{Path: "new.go", PreviousPath: "old.go", Status: protocol.FileStatusModified}, want: "previousPath"},
-		{name: "binary counts", change: Change{Path: "logo.png", Status: protocol.FileStatusModified, Binary: true, Added: &added}, want: "added"},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			err := test.change.Validate()
-			if test.want == "" && err != nil {
-				t.Fatalf("Validate: %v", err)
-			}
-			if test.want != "" && (err == nil || !strings.Contains(err.Error(), test.want)) {
-				t.Fatalf("Validate = %v, want %q", err, test.want)
-			}
-		})
-	}
-}
-
-func TestWorkspaceOwnsResolvedIdentity(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name      string
-		workspace Workspace
-		want      string
-	}{
-		{name: "available", workspace: Workspace{Path: "/repo/work", ProjectRoot: "/repo", Availability: protocol.WorkspaceAvailable}},
-		{name: "missing", workspace: Workspace{Path: "/gone/work", ProjectRoot: "/gone", Availability: protocol.WorkspaceMissing}},
-		{name: "relative path", workspace: Workspace{Path: "work", ProjectRoot: "/repo", Availability: protocol.WorkspaceAvailable}, want: "not absolute"},
-		{name: "empty project root", workspace: Workspace{Path: "/repo", Availability: protocol.WorkspaceAvailable}, want: "project root is empty"},
-		{name: "relative project root", workspace: Workspace{Path: "/repo/work", ProjectRoot: "repo", Availability: protocol.WorkspaceAvailable}, want: "project root is not absolute"},
-		{name: "unknown availability", workspace: Workspace{Path: "/repo", ProjectRoot: "/repo", Availability: protocol.WorkspaceAvailability("unknown")}, want: "availability"},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			err := test.workspace.Validate()
-			if test.want == "" && err != nil {
-				t.Fatalf("Validate: %v", err)
-			}
-			if test.want != "" && (err == nil || !strings.Contains(err.Error(), test.want)) {
-				t.Fatalf("Validate = %v, want %q", err, test.want)
-			}
-		})
-	}
-}
-
 func TestStructuredDiffValidatesAndRendersEveryRow(t *testing.T) {
 	t.Parallel()
 	diff := Diff{Files: []FileDiff{{
@@ -83,12 +26,11 @@ func TestStructuredDiffValidatesAndRendersEveryRow(t *testing.T) {
 		t.Fatalf("Text = %q, want %q", got, want)
 	}
 
-	invalid := diff
-	invalid.Files = append([]FileDiff(nil), diff.Files...)
-	invalid.Files[0].Rows = append([]protocol.DiffRow(nil), diff.Files[0].Rows...)
-	invalid.Files[0].Rows[1].LeftLine = 0
-	if err := invalid.Validate(); err == nil {
-		t.Fatal("invalid context row was accepted")
+	binary := diff
+	binary.Files = append([]FileDiff(nil), diff.Files...)
+	binary.Files[0].Binary = true
+	if err := binary.Validate(); err == nil {
+		t.Fatal("a binary file with text rows was accepted")
 	}
 }
 
@@ -125,8 +67,7 @@ func TestFileContentOwnsOneCompleteRuntimeWindow(t *testing.T) {
 	}
 
 	for _, content := range []FileContent{
-		{},
-		{TotalLines: 3, StartLine: 2},
+		{TotalLines: 3, StartLine: 3, EndLine: 2},
 		{TotalLines: 3, StartLine: 2, EndLine: 4},
 	} {
 		if err := content.Validate(); err == nil {

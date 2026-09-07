@@ -334,9 +334,6 @@ func (t ToolCall) Validate() error {
 		problems = append(problems, errors.New("result JSON is invalid"))
 	}
 	if t.Problem != nil {
-		if err := failure.Validate(t.Problem); err != nil {
-			problems = append(problems, err)
-		}
 		if t.Status != ToolError && t.Status != ToolCanceled {
 			problems = append(problems, errors.New("successful or running tool carries a problem"))
 		}

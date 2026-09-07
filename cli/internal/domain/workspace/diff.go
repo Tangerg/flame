@@ -17,21 +17,6 @@ type Change struct {
 	Binary       bool
 }
 
-func (c Change) Validate() error {
-	wire := protocol.WorkspaceFileChange{
-		Path: c.Path, Status: c.Status, PreviousPath: c.PreviousPath,
-		Added: c.Added, Removed: c.Removed, Binary: c.Binary,
-	}
-	switch {
-	case strings.TrimSpace(c.Path) == "":
-		return errors.New("changed file path is empty")
-	}
-	if err := wire.ValidateWire(); err != nil {
-		return fmt.Errorf("changed file: %w", err)
-	}
-	return nil
-}
-
 func (c Change) Stat() string {
 	if c.Binary {
 		return "binary"
@@ -133,20 +118,12 @@ func (d Diff) Validate() error {
 	}
 	paths := make(map[string]struct{}, len(d.Files))
 	for index, file := range d.Files {
-		if err := file.Validate(); err != nil {
-			return fmt.Errorf("file diff %d: %w", index, err)
-		}
 		if _, duplicate := paths[file.Path]; duplicate {
 			return fmt.Errorf("file diff %d repeats path %q", index, file.Path)
 		}
 		paths[file.Path] = struct{}{}
 		if file.Binary && len(file.Rows) != 0 {
 			return fmt.Errorf("file diff %d: binary file has text rows", index)
-		}
-		for rowIndex, row := range file.Rows {
-			if err := row.ValidateWire(); err != nil {
-				return fmt.Errorf("file diff %d row %d: %w", index, rowIndex, err)
-			}
 		}
 	}
 	return nil

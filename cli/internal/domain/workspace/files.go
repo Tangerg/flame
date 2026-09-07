@@ -16,29 +16,15 @@ type FileEntry struct {
 	ModifiedAt time.Time
 }
 
-func (f FileEntry) Validate() error {
-	switch {
-	case strings.TrimSpace(f.Path) == "":
-		return errors.New("file entry path is empty")
-	case f.Type != protocol.FileEntryFile && f.Type != protocol.FileEntryDir && f.Type != protocol.FileEntrySymlink:
-		return fmt.Errorf("file entry type %q is invalid", f.Type)
-	case f.SizeBytes != nil && *f.SizeBytes < 0:
-		return errors.New("file entry size is negative")
-	default:
-		return nil
-	}
-}
-
 type FileListing struct {
 	Entries []FileEntry
 }
 
+// Validate rejects a listing whose entries would collapse in the CLI. Every
+// other entry rule belongs to the Runtime wire contract.
 func (f FileListing) Validate() error {
 	paths := make(map[string]struct{}, len(f.Entries))
 	for index, entry := range f.Entries {
-		if err := entry.Validate(); err != nil {
-			return fmt.Errorf("file entry %d: %w", index, err)
-		}
 		if _, exists := paths[entry.Path]; exists {
 			return fmt.Errorf("file entry %d repeats path %q", index, entry.Path)
 		}
@@ -92,13 +78,9 @@ type FileContent struct {
 	EndLine    int
 }
 
+// Validate checks the read window relationships the CLI renders with. The wire
+// contract owns presence and positivity; it cannot compare the two bounds.
 func (f FileContent) Validate() error {
-	if err := (protocol.FileContent{
-		Content: f.Content, TotalLines: f.TotalLines,
-		Truncated: f.Truncated, StartLine: f.StartLine, EndLine: f.EndLine,
-	}).ValidateWire(); err != nil {
-		return fmt.Errorf("file content: %w", err)
-	}
 	switch {
 	case f.EndLine > 0 && f.EndLine < f.StartLine:
 		return errors.New("file content window is reversed")
@@ -168,11 +150,6 @@ type SearchResult struct {
 func (s SearchResult) Validate() error {
 	if s.Total < len(s.Matches) {
 		return errors.New("workspace search total is smaller than its matches")
-	}
-	for index, match := range s.Matches {
-		if err := match.ValidateWire(); err != nil {
-			return fmt.Errorf("workspace search match %d: %w", index, err)
-		}
 	}
 	return nil
 }
