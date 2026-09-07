@@ -26,35 +26,18 @@ func (f *fakeIdleSkillArchiver) ArchiveIdle(_ context.Context, now time.Time, _ 
 	return nil, nil
 }
 
-func mustNewIdleSkillArchiver(t *testing.T, skills idleSkillArchiver, values SkillArchivePolicyValues) *IdleSkillArchiver {
+func mustNewIdleSkillArchiver(t *testing.T, skills idleSkillArchiver) *IdleSkillArchiver {
 	t.Helper()
-	archiver, err := NewIdleSkillArchiver(skills, values)
+	archiver, err := NewIdleSkillArchiver(skills)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return archiver
 }
 
-func TestSkillArchivePolicyPreservesOptionalPresence(t *testing.T) {
-	policy, err := newSkillArchivePolicy(SkillArchivePolicyValues{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if policy.archiveAfter != defaultSkillArchiveAfter || policy.checkInterval != defaultSkillArchiveCheckInterval {
-		t.Fatalf("default skill archive policy = %+v", policy)
-	}
-	zero := time.Duration(0)
-	if _, err := newSkillArchivePolicy(SkillArchivePolicyValues{ArchiveAfter: &zero}); err == nil {
-		t.Fatal("present zero archive duration was treated as omission")
-	}
-	if _, err := newSkillArchivePolicy(SkillArchivePolicyValues{CheckInterval: &zero}); err == nil {
-		t.Fatal("present zero check interval was treated as omission")
-	}
-}
-
 func TestIdleSkillArchiverRateLimitsChecks(t *testing.T) {
 	store := &fakeIdleSkillArchiver{}
-	skillArchiver := mustNewIdleSkillArchiver(t, store, SkillArchivePolicyValues{CheckInterval: durationPointer(time.Hour)})
+	skillArchiver := mustNewIdleSkillArchiver(t, store)
 	base := time.Unix(1_700_000_000, 0)
 	skillArchiver.now = func() time.Time { return base }
 
@@ -70,7 +53,7 @@ func TestIdleSkillArchiverRateLimitsChecks(t *testing.T) {
 		t.Fatalf("calls within the window = %d, want 1", store.calls)
 	}
 	// Past CheckInterval: fires again.
-	skillArchiver.now = func() time.Time { return base.Add(2 * time.Hour) }
+	skillArchiver.now = func() time.Time { return base.Add(skillArchiveCheckInterval + time.Second) }
 	if err := skillArchiver.ArchiveIfDue(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -79,16 +62,9 @@ func TestIdleSkillArchiverRateLimitsChecks(t *testing.T) {
 	}
 }
 
-func TestIdleSkillArchiverNilIsNoOp(t *testing.T) {
-	var skillArchiver *IdleSkillArchiver
-	if err := skillArchiver.ArchiveIfDue(context.Background()); err != nil {
-		t.Fatalf("nil skillArchiver ArchiveIfDue = %v", err)
-	}
-}
-
 func TestIdleSkillArchiverAdmitsOneConcurrentSweepPerWindow(t *testing.T) {
 	skills := &countingIdleSkillArchiver{}
-	archiver := mustNewIdleSkillArchiver(t, skills, SkillArchivePolicyValues{CheckInterval: durationPointer(time.Hour)})
+	archiver := mustNewIdleSkillArchiver(t, skills)
 	archiver.now = func() time.Time { return time.Unix(1_700_000_000, 0) }
 
 	const contenders = 32

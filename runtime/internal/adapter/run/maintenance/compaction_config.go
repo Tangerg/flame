@@ -3,7 +3,6 @@ package maintenance
 import (
 	"fmt"
 	"math"
-	"time"
 
 	"github.com/Tangerg/scope/core/chat"
 
@@ -100,30 +99,4 @@ func tokenLimitInt(value int64) int {
 		return math.MaxInt
 	}
 	return int(value)
-}
-
-func positiveIntOrDefault(value *int, fallback int, field string) (int, error) {
-	if fallback <= 0 {
-		return 0, fmt.Errorf("%s default must be positive", field)
-	}
-	if value == nil {
-		return fallback, nil
-	}
-	if *value <= 0 {
-		return 0, fmt.Errorf("%s must be positive", field)
-	}
-	return *value, nil
-}
-
-func positiveDurationOrDefault(value *time.Duration, fallback time.Duration, field string) (time.Duration, error) {
-	if fallback <= 0 {
-		return 0, fmt.Errorf("%s default must be positive", field)
-	}
-	if value == nil {
-		return fallback, nil
-	}
-	if *value <= 0 {
-		return 0, fmt.Errorf("%s must be positive", field)
-	}
-	return *value, nil
 }

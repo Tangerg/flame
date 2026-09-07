@@ -24,7 +24,7 @@ trust-boundary checks, resource ownership, and product capabilities remain.
 | --- | --- | --- | --- |
 | R1 | `sessions.MaterialSnapshot` includes Session in one storage read, but `protocol.SessionSnapshot` omits it. CLI combines separate reads with eight stability attempts. | Runtime returns the complete coherent mounted-session projection. Remove CLI metadata pairing, retry count, and equality machinery; update protocol artifacts and consumers. | Pending |
 | R2 | `SessionStores`, `WorkingContextComposer`, `InteractionExecutor`, and title finalization allow absent dependencies that the production composition always supplies. | Require complete collaborators at construction. Remove impossible missing-capability execution branches. Retain actual checkpoint, sandbox, and tool-result-offload policies. | Complete |
-| R3 | Fixed product policy is represented by optional tuning bags; test-only maintenance and restore-scope overrides create alternate production paths. Shutdown wraps a fixed timeout in repeated validation. | Give fixed policy one owner. Remove replacement paths with no product consumer. Keep narrow test controls only where they isolate an actual external boundary or deterministic lifetime. | In progress: executor policy, restore override, maintenance replacement, and shutdown wrapper removed |
+| R3 | Fixed product policy is represented by optional tuning bags; test-only maintenance and restore-scope overrides create alternate production paths. Shutdown wraps a fixed timeout in repeated validation. | Give fixed policy one owner. Remove replacement paths with no product consumer. Keep narrow test controls only where they isolate an actual external boundary or deterministic lifetime. | In progress: compaction threshold override remains |
 | R4 | Executor composition repeats BuildID as ImplementationIdentity and adds a hand-maintained configuration identity beside serialized configuration. | Derive deployment identity from the real executable and configuration facts. Remove synonymous identity inputs and wrappers without weakening Scope deployment compatibility. | Complete |
 | R5 | Recovery and waiting-subtree cancellation validate constructed immutable write sets again in persistence. Some validators replay planner transitions. | One owner constructs each complete decision. Persistence checks transactional expectations, not a second recovery policy. Remove redundant construction surfaces and repeated proof machinery. | Pending |
 | R6 | Session restore, fork, and rollback repeatedly normalize, copy, and validate complete snapshots through write-plan construction and application. | Decode and validate external input at its boundary; acquire mutable ownership once per retained owner. Apply an established immutable write plan without another full reconstruction. | Pending |
@@ -171,6 +171,20 @@ duration directly. Narrow tests still shorten this duration to prove that a
 caller timeout cannot abandon the owned cleanup graph or start another closer.
 Verified maintenance, Goal/Plan compaction, protocol lifecycle, startup rollback,
 and shutdown tests, then Runtime tests, vet, build, and whitespace checks.
+
+### Fixed memory and Skill maintenance policy
+
+Memory curation, Skill mining, and idle Skill archival now use their owned
+production bounds directly. Removed the three optional policy bags, normalized
+copies, default-validation helpers, and tests for unsupported tuning modes.
+Tests supply real backlog sizes, model output sizes, completed-Run counts, and
+clock values to exercise the actual gates. Skill revision mining requires its
+active-Skill source; an empty library remains source-owned data.
+
+Verified curation failure/recovery and watermark preservation, Skill proposals
+and revision, archival cadence and concurrent admission, then Runtime tests,
+vet, build, and whitespace checks. The compaction threshold override is handled
+separately at the model-capacity boundary.
 
 If deeper consumer evidence invalidates a proposed deletion, record the
 surviving requirement here instead of weakening it to satisfy a line-count target.
