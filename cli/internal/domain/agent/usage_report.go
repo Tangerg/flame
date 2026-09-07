@@ -1,27 +1,12 @@
 // Usage report values describe durable Run metering presented by the CLI.
 package agent
 
-import (
-	"errors"
-	"fmt"
-
-	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
-)
+import runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 
 type SessionUsageReport struct {
 	SessionID string
 	Total     runtimeprotocol.ModelUsage
 	ByModel   []runtimeprotocol.UsageBucket
-}
-
-func (s SessionUsageReport) Validate() error {
-	if err := runtimeprotocol.ValidateSessionID(s.SessionID); err != nil {
-		return fmt.Errorf("session usage report: %w", err)
-	}
-	if err := s.Total.ValidateWire(); err != nil {
-		return fmt.Errorf("session usage report: %w", err)
-	}
-	return validateBuckets("session usage report", s.ByModel)
 }
 
 type UsageSummary struct {
@@ -32,43 +17,4 @@ type UsageSummary struct {
 	ByDay      []runtimeprotocol.UsageBucket
 	Sessions   int
 	Runs       int
-}
-
-func (s UsageSummary) Validate() error {
-	if s.Sessions < 0 || s.Runs < 0 {
-		return errors.New("usage summary contains a negative count")
-	}
-	if err := s.Period.Validate(); err != nil {
-		return err
-	}
-	if err := s.Total.ValidateWire(); err != nil {
-		return fmt.Errorf("usage summary: %w", err)
-	}
-	for _, breakdown := range []struct {
-		name    string
-		buckets []runtimeprotocol.UsageBucket
-	}{
-		{name: "provider", buckets: s.ByProvider},
-		{name: "model", buckets: s.ByModel},
-		{name: "day", buckets: s.ByDay},
-	} {
-		if err := validateBuckets("usage summary "+breakdown.name, breakdown.buckets); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func validateBuckets(context string, buckets []runtimeprotocol.UsageBucket) error {
-	seen := make(map[string]struct{}, len(buckets))
-	for index, bucket := range buckets {
-		if err := bucket.ValidateWire(); err != nil {
-			return fmt.Errorf("%s bucket %d: %w", context, index+1, err)
-		}
-		if _, duplicate := seen[bucket.Key]; duplicate {
-			return fmt.Errorf("%s repeats bucket %q", context, bucket.Key)
-		}
-		seen[bucket.Key] = struct{}{}
-	}
-	return nil
 }

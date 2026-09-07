@@ -99,18 +99,12 @@ type runCancellationRecord struct {
 // WriteSessionJSON writes one session using the same field contract as session
 // pages and cold snapshots.
 func WriteSessionJSON(w io.Writer, session agent.Session) error {
-	if err := session.Validate(); err != nil {
-		return fmt.Errorf("render session: %w", err)
-	}
 	return json.NewEncoder(w).Encode(encodeSession(session))
 }
 
 // WriteSessionPageJSON writes a validated runtime page without losing its
 // opaque continuation cursor.
 func WriteSessionPageJSON(w io.Writer, page agent.SessionPage) error {
-	if err := page.Validate(); err != nil {
-		return fmt.Errorf("render session page: %w", err)
-	}
 	record := sessionPageRecord{Items: make([]sessionFrame, 0, len(page.Items)), NextCursor: page.NextCursor}
 	for _, session := range page.Items {
 		record.Items = append(record.Items, encodeSession(session))

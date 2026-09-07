@@ -256,9 +256,6 @@ func validateDiscovery(discovery *protocol.DiscoverResponse) error {
 	if discovery == nil {
 		return fmt.Errorf("%w: discovery response is nil", agent.ErrIncompatibleRuntime)
 	}
-	if err := protocol.ValidateWireTree(*discovery); err != nil {
-		return runtimeContractViolation("discovery response violates the wire contract: %v", err)
-	}
 	if discovery.ProtocolVersion != protocol.ProtocolVersion {
 		return fmt.Errorf(
 			"%w: runtime serves %s, CLI requires %s",

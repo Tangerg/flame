@@ -104,22 +104,6 @@ func TestUsageAdapterRejectsUnknownPeriodBeforeCallingRuntime(t *testing.T) {
 	}
 }
 
-func TestUsageAdapterRejectsInvalidRuntimeReports(t *testing.T) {
-	t.Parallel()
-	runtime := &Connection{usage: usageBindingStub{
-		session: func(context.Context, protocol.SessionUsageRequest, flameruntime.CallOptions) (*protocol.Usage, error) {
-			return &protocol.Usage{ByModel: map[string]protocol.ModelUsage{" invalid/model": {}}}, nil
-		},
-		summary: func(context.Context, protocol.UsageSummaryRequest, flameruntime.CallOptions) (*protocol.UsageSummary, error) {
-			return &protocol.UsageSummary{ByModel: []protocol.UsageBucket{{Key: "same"}, {Key: "same"}}}, nil
-		},
-	}, meta: requestMeta("test")}
-	_, err := runtime.SessionUsage(t.Context(), "ses_1")
-	requireRuntimeContractViolation(t, err)
-	_, err = runtime.Summary(t.Context(), recentUsagePeriod(t, 7))
-	requireRuntimeContractViolation(t, err)
-}
-
 func TestSessionUsageRejectsInvalidIdentityBeforeCallingRuntime(t *testing.T) {
 	t.Parallel()
 	called := false
@@ -332,18 +316,6 @@ func TestProjectProviderPreservesConfiguredOptionalCredentialState(t *testing.T)
 	}
 	if _, present := provider.Credential(); present {
 		t.Fatal("optional credential provider invented a credential")
-	}
-}
-
-func TestProjectProviderValidatesDiscardedRuntimeFields(t *testing.T) {
-	t.Parallel()
-	invalidDefault := " default-model"
-	_, err := projectProvider(protocol.Provider{
-		ID: "provider", CredentialRequirement: protocol.ProviderAPIKeyOptional,
-		DefaultEmbeddingModel: &invalidDefault,
-	})
-	if err == nil || !strings.Contains(err.Error(), "defaultEmbeddingModel") {
-		t.Fatalf("projectProvider error = %v, want defaultEmbeddingModel field", err)
 	}
 }
 
@@ -625,43 +597,6 @@ func TestGoalAdapterRejectsInvalidSessionIdentityBeforeCallingRuntime(t *testing
 			}
 			if stub.last != "" || stub.getCalls != 0 {
 				t.Fatalf("invalid session identity reached Runtime: last=%q getCalls=%d", stub.last, stub.getCalls)
-			}
-		})
-	}
-}
-
-func TestGoalAdapterRejectsInvalidNestedUsageInRuntimeResult(t *testing.T) {
-	t.Parallel()
-	goal := activeProtocolGoal()
-	goal.Used.Steps = -1
-	runtime := &Connection{
-		goals: &goalBindingStub{t: t, current: goal},
-		meta:  requestMeta("test"),
-	}
-
-	_, _, err := runtime.GetGoal(t.Context(), "ses_1")
-	requireRuntimeContractViolation(t, err)
-}
-
-func TestGoalAdapterRejectsMissingLifecycleTimes(t *testing.T) {
-	t.Parallel()
-
-	for _, test := range []struct {
-		name  string
-		field string
-		clear func(*protocol.Goal)
-	}{
-		{name: "creation", field: "createdAt", clear: func(value *protocol.Goal) { value.CreatedAt = time.Time{} }},
-		{name: "update", field: "updatedAt", clear: func(value *protocol.Goal) { value.UpdatedAt = time.Time{} }},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			goal := activeProtocolGoal()
-			test.clear(goal)
-			runtime := &Connection{goals: &goalBindingStub{t: t, current: goal}, meta: requestMeta("test")}
-			_, _, err := runtime.GetGoal(t.Context(), "ses_1")
-			if err == nil || !strings.Contains(err.Error(), test.field) {
-				t.Fatalf("GetGoal error = %v, want %q", err, test.field)
 			}
 		})
 	}

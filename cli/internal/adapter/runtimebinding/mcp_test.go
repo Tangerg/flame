@@ -512,8 +512,8 @@ func TestMCPAdapterRejectsMalformedReadResults(t *testing.T) {
 	if values, err := runtime.Servers(t.Context()); values != nil || !errors.Is(err, agent.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "name") {
 		t.Fatalf("Servers = (%v, %v), want no values and a name contract violation", values, err)
 	}
-	stub.tools = []protocol.MCPTool{{Server: "docs", Name: "invalid tool"}}
-	if values, err := runtime.Tools(t.Context(), "docs"); values != nil || !errors.Is(err, agent.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "name") {
-		t.Fatalf("Tools = (%v, %v), want no values and a name contract violation", values, err)
+	stub.tools = []protocol.MCPTool{{Server: "other", Name: "read"}}
+	if values, err := runtime.Tools(t.Context(), "docs"); values != nil || !errors.Is(err, agent.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "other") {
+		t.Fatalf("Tools = (%v, %v), want no values and a server contract violation", values, err)
 	}
 }

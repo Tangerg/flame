@@ -68,10 +68,6 @@ func (r *Connection) Subscribe(ctx context.Context, subscription changefeed.Subs
 				yield(changefeed.Event{}, classifyError(err))
 				return
 			}
-			if err := protocol.ValidateWireTree(event); err != nil {
-				yield(changefeed.Event{}, runtimeContractViolation("runtime change event is invalid: %v", err))
-				return
-			}
 			projected := projectRuntimeEvent(event)
 			if err := subscription.ValidateEvent(projected); err != nil {
 				yield(changefeed.Event{}, runtimeContractViolation("runtime change event cannot be projected: %v", err))

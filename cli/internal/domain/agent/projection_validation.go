@@ -7,64 +7,19 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
+// Validate checks the CLI-owned construction of a Run projection. Runtime owns
+// every wire fact the adapter copied in, so only the closed values this package
+// builds itself are checked here; a zero Run is the state worth rejecting.
 func (r Run) Validate() error {
 	var problems []error
-	if err := runtimeprotocol.ValidateRunID(r.ID); err != nil {
-		problems = append(problems, err)
-	}
-	if err := runtimeprotocol.ValidateSessionID(r.SessionID); err != nil {
-		problems = append(problems, err)
-	}
 	if err := r.Lineage.validate(r.ID); err != nil {
 		problems = append(problems, err)
 	}
-	if !slices.Contains([]runtimeprotocol.RunStatus{runtimeprotocol.RunStatusRunning, runtimeprotocol.RunStatusWaiting, runtimeprotocol.RunStatusFinished}, r.Status) {
-		problems = append(problems, fmt.Errorf("status %q is invalid", r.Status))
-	}
-	if err := runtimeprotocol.ValidateModelSelection(r.Provider, r.Model, r.ReasoningEffort); err != nil {
-		problems = append(problems, err)
-	}
-	if r.Status == runtimeprotocol.RunStatusRunning {
-		if err := runtimeprotocol.ValidateSegmentID(r.ActiveSegmentID); err != nil {
-			problems = append(problems, fmt.Errorf("running run: %w", err))
-		}
-	}
-	if r.Status != runtimeprotocol.RunStatusRunning && r.ActiveSegmentID != "" {
-		problems = append(problems, errors.New("non-running run carries an active segment"))
-	}
-	if r.Status != runtimeprotocol.RunStatusFinished && !r.FinishedAt.IsZero() {
-		problems = append(problems, errors.New("unfinished run carries a finish time"))
-	}
-	if !r.FinishedAt.IsZero() && r.CreatedAt.IsZero() {
-		problems = append(problems, errors.New("finished run has no creation time"))
-	}
-	if !r.FinishedAt.IsZero() && r.FinishedAt.Before(r.CreatedAt) {
-		problems = append(problems, errors.New("run finish time precedes creation time"))
-	}
 	if err := r.Limits.Validate(); err != nil {
 		problems = append(problems, err)
-	}
-	if r.ContextTokens < 0 {
-		problems = append(problems, errors.New("context tokens cannot be negative"))
-	}
-	if r.Status == runtimeprotocol.RunStatusFinished {
-		if err := r.Outcome.Validate(); err != nil {
-			problems = append(problems, err)
-		}
-	} else if r.Outcome.Status != "" {
-		problems = append(problems, errors.New("unfinished run carries an outcome"))
-	}
-	if err := r.Usage.Validate(); err != nil {
-		problems = append(problems, err)
-	}
-	if r.ProtocolProfile != nil {
-		if err := runtimeprotocol.ValidateWireTree(*r.ProtocolProfile); err != nil {
-			problems = append(problems, err)
-		}
 	}
 	if err := errors.Join(problems...); err != nil {
 		return fmt.Errorf("run: %w", err)
@@ -107,6 +62,9 @@ func (r RunLineage) validate(runID string) error {
 	}
 }
 
+// Validate checks authored run options before they reach the Runtime. These
+// values come from CLI flags, preferences and terminal forms, so they are the
+// untrusted input this boundary owns.
 func (r RunOptions) Validate() error {
 	var problems []error
 	if err := runtimeprotocol.ValidateModelSelection(r.Provider, r.Model, r.ReasoningEffort); err != nil {
@@ -124,59 +82,9 @@ func (r RunOptions) Validate() error {
 	return nil
 }
 
-func (o Outcome) Validate() error {
-	if o.Problem != nil {
-		if err := failure.Validate(o.Problem); err != nil {
-			return fmt.Errorf("outcome: %w", err)
-		}
-	}
-	switch o.Status {
-	case OutcomeCompleted:
-		if strings.TrimSpace(o.Detail) != "" || o.Problem != nil {
-			return errors.New("completed outcome cannot carry a problem or detail")
-		}
-	case OutcomeTimedOut, OutcomeFailed, OutcomeLost:
-		if o.Problem == nil {
-			return fmt.Errorf("%s outcome has no problem", o.Status)
-		}
-		if strings.TrimSpace(o.Detail) != "" {
-			return fmt.Errorf("%s outcome carries a policy detail", o.Status)
-		}
-	case OutcomeMaxSteps, OutcomeMaxBudget, OutcomeCanceled:
-		if o.Problem != nil {
-			return fmt.Errorf("%s outcome carries a problem", o.Status)
-		}
-	default:
-		return fmt.Errorf("outcome status %q is invalid", o.Status)
-	}
-	return nil
-}
-
-func (u Usage) Validate() error {
-	if err := (runtimeprotocol.ModelUsage{
-		InputTokens: u.InputTokens, OutputTokens: u.OutputTokens,
-		CacheReadTokens: u.CacheReadTokens, CacheWriteTokens: u.CacheWriteTokens,
-		ReasoningTokens: u.ReasoningTokens, CostUSD: u.CostUSD,
-	}).ValidateWire(); err != nil {
-		return fmt.Errorf("total usage: %w", err)
-	}
-	if u.Steps < 0 {
-		return errors.New("usage steps cannot be negative")
-	}
-	if u.Duration < 0 {
-		return errors.New("usage duration cannot be negative")
-	}
-	for model, usage := range u.ByModel {
-		if err := runtimeprotocol.ValidateModelIdentity(model); err != nil {
-			return fmt.Errorf("usage model identity: %w", err)
-		}
-		if err := usage.ValidateWire(); err != nil {
-			return fmt.Errorf("model usage %q: %w", model, err)
-		}
-	}
-	return nil
-}
-
+// ValidateEvent checks the CLI projection of one runtime event before the
+// conversation folds it. Wire shape belongs to Runtime; what remains here is
+// the CLI's own block vocabulary and the folding facts it depends on.
 func ValidateEvent(event Event) error {
 	switch item := event.(type) {
 	case SegmentStarted:
@@ -190,28 +98,11 @@ func ValidateEvent(event Event) error {
 	case BlockStarted:
 		return item.Block.validateLifecycle(false)
 	case BlockDelta:
-		if err := runtimeprotocol.ValidateItemID(item.BlockID); err != nil {
-			return fmt.Errorf("block delta: %w", err)
-		}
 		if item.Text == "" {
 			return errors.New("block delta without text")
 		}
 		return nil
-	case ToolArgumentsDelta:
-		if err := runtimeprotocol.ValidateItemID(item.BlockID); err != nil {
-			return fmt.Errorf("tool arguments delta: %w", err)
-		}
-		return nil
-	case RunProgress:
-		if item.Step != nil && *item.Step < 0 {
-			return errors.New("run progress step cannot be negative")
-		}
-		if item.ContextTokens != nil && *item.ContextTokens < 0 {
-			return errors.New("run progress context tokens cannot be negative")
-		}
-		if item.Usage != nil {
-			return item.Usage.Validate()
-		}
+	case ToolArgumentsDelta, RunProgress, RunInterrupted, RunSuspended:
 		return nil
 	case CustomEvent:
 		if strings.TrimSpace(item.Name) == "" {
@@ -224,36 +115,15 @@ func ValidateEvent(event Event) error {
 	case BlockCompleted:
 		return item.Block.validateLifecycle(true)
 	case PlanChanged:
-		if err := runtimeprotocol.ValidateWireTree(item.Plan); err != nil {
-			return err
-		}
 		_, err := committedPlanState(&item.Plan)
 		return err
-	case RunInterrupted:
-		return errors.Join(
-			validateSegmentBoundaryContext(item.ContextTokens),
-			ValidateInteractions(item.Interactions),
-			item.Usage.Validate(),
-		)
-	case RunSuspended:
-		return errors.Join(validateSegmentBoundaryContext(item.ContextTokens), item.Usage.Validate())
 	case RunFinished:
-		if err := item.Outcome.Validate(); err != nil {
-			return err
-		}
-		return errors.Join(validateSegmentBoundaryContext(item.ContextTokens), item.Usage.Validate())
+		return nil
 	case nil:
 		return errors.New("event is nil")
 	default:
 		return fmt.Errorf("event %T is unsupported", event)
 	}
-}
-
-func validateSegmentBoundaryContext(contextTokens int64) error {
-	if contextTokens < 0 {
-		return errors.New("segment boundary context tokens cannot be negative")
-	}
-	return nil
 }
 
 func (b Block) validateLifecycle(completed bool) error {
@@ -266,13 +136,9 @@ func (b Block) validateLifecycle(completed bool) error {
 	return b.validateProjection()
 }
 
+// validateEnvelope checks the block vocabulary this package derives from a
+// Runtime Item: kind, status, and which projections each kind may carry.
 func (b Block) validateEnvelope(completed bool) error {
-	if err := runtimeprotocol.ValidateItemID(b.ID); err != nil {
-		return fmt.Errorf("transcript block: %w", err)
-	}
-	if err := runtimeprotocol.ValidateRunID(b.RunID); err != nil {
-		return fmt.Errorf("transcript block %s: %w", b.ID, err)
-	}
 	if !slices.Contains([]BlockStatus{BlockStatusRunning, BlockStatusCompleted, BlockStatusIncomplete}, b.Status) {
 		return fmt.Errorf("block %s has invalid status %q", b.ID, b.Status)
 	}
@@ -301,9 +167,6 @@ func (b Block) validateEnvelope(completed bool) error {
 	if b.Kind != BlockReasoning && b.Redacted {
 		return fmt.Errorf("%s block %s is marked as redacted reasoning", b.Kind, b.ID)
 	}
-	if b.DroppedMessages < 0 {
-		return fmt.Errorf("block %s has a negative dropped-message count", b.ID)
-	}
 	if b.Kind != BlockNotice && b.DroppedMessages != 0 {
 		return fmt.Errorf("%s block %s carries a dropped-message count", b.Kind, b.ID)
 	}
@@ -324,6 +187,8 @@ func (b Block) validateAttachments() error {
 	return nil
 }
 
+// Validate checks an inline image the CLI decoded from Runtime content. Name
+// and MIME type are derived here, so their presentation contract is CLI-owned.
 func (i InlineImage) Validate() error {
 	var problems []error
 	if strings.TrimSpace(i.ID) == "" {
@@ -399,6 +264,8 @@ func (t ToolStatus) blockStatus() BlockStatus {
 	}
 }
 
+// validateUsageProgress protects the conversation fold: cumulative Run metering
+// may only move forward across the events and snapshots the CLI merges.
 func validateUsageProgress(previous, next Usage) error {
 	if err := validateModelUsageProgress("total", runtimeprotocol.ModelUsage{
 		InputTokens: previous.InputTokens, OutputTokens: previous.OutputTokens,
@@ -448,6 +315,9 @@ func validateModelUsageProgress(label string, previous, next runtimeprotocol.Mod
 	}
 }
 
+// validateInteractionItem binds one pending interaction to the transcript block
+// the CLI folded for it. The two projections come from different reads, so this
+// relationship is established here and nowhere else.
 func validateInteractionItem(interaction Interaction, block Block) error {
 	itemID := InteractionItemID(interaction)
 	if block.ID != itemID {

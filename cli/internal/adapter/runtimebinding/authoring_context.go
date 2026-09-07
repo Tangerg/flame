@@ -32,7 +32,7 @@ func (a *AuthoringContext) Documents(ctx context.Context, workspacePath string) 
 	if err != nil {
 		return nil, err
 	}
-	if err := validateUniqueWireValues("list agent documents", documents, func(document protocol.AgentDoc) string {
+	if err := requireUniqueIdentities("list agent documents", documents, func(document protocol.AgentDoc) string {
 		return document.Path
 	}); err != nil {
 		return nil, err
@@ -78,14 +78,11 @@ func (a *AuthoringContext) Recipes(ctx context.Context, workspacePath string) ([
 	if err != nil {
 		return nil, err
 	}
-	recipes, err := projectUniqueValuesFallible("list recipes", values, func(value protocol.Recipe) (workspace.AuthoringRecipe, error) {
-		if err := protocol.ValidateWireTree(value); err != nil {
-			return workspace.AuthoringRecipe{}, err
-		}
+	recipes, err := projectUniqueValues("list recipes", values, func(value protocol.Recipe) workspace.AuthoringRecipe {
 		return workspace.AuthoringRecipe{
 			Name: value.Name, Description: value.Description, ArgumentHint: value.ArgumentHint,
 			Body: value.Body, Scope: value.Scope, Source: value.Source,
-		}, nil
+		}
 	}, func(recipe workspace.AuthoringRecipe) string {
 		return recipe.Name
 	})

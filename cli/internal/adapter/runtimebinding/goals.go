@@ -161,9 +161,6 @@ func goalResult(operation, expectedSessionID string, result *protocol.Goal, err 
 	if result == nil {
 		return protocol.Goal{}, runtimeContractViolation("%s returned nil", operation)
 	}
-	if err := protocol.ValidateWireTree(*result); err != nil {
-		return protocol.Goal{}, runtimeContractViolation("%s returned an invalid goal: %v", operation, err)
-	}
 	if result.SessionID != expectedSessionID {
 		return protocol.Goal{}, runtimeContractViolation(
 			"%s returned session %q for %q",

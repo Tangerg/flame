@@ -132,9 +132,6 @@ func newSessionsListCommand(provider runtimeProvider) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if validateErr := page.Validate(); validateErr != nil {
-				return fmt.Errorf("list sessions: %w", validateErr)
-			}
 			if asJSON {
 				return render.WriteSessionPageJSON(cmd.OutOrStdout(), page)
 			}
@@ -263,9 +260,6 @@ func newSessionsForkCommand(provider runtimeProvider) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if validateErr := forked.Validate(); validateErr != nil {
-				return fmt.Errorf("fork session: %w", validateErr)
-			}
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), forked.ID)
 			return err
 		},
@@ -277,9 +271,7 @@ func newSessionsForkCommand(provider runtimeProvider) *cobra.Command {
 }
 
 func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *cobra.Command {
-	var (
-		yes bool
-	)
+	var yes bool
 	cmd := &cobra.Command{
 		Use:          "delete <session-id>",
 		Short:        "Delete a session",
@@ -368,9 +360,6 @@ func completeSessionIDs(provider runtimeProvider) cobra.CompletionFunc {
 		}
 		page, err := runtime.ListSessions(cmd.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize(), Search: toComplete})
 		if err != nil {
-			return nil, cobra.ShellCompDirectiveError
-		}
-		if err := page.Validate(); err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
 		items := make([]string, 0, len(page.Items))

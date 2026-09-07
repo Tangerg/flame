@@ -2,7 +2,6 @@ package agent
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -31,40 +30,16 @@ func (r RunEvent) StreamSegment() string {
 	return r.SegmentID
 }
 
-// Validate enforces the CLI-owned event envelope and payload identity without
-// depending on the conversation aggregate that later folds the event.
+// Validate enforces the CLI-owned event envelope. Runtime owns the wire
+// identities and the relationship between an envelope and its payload; what
+// remains here is the stream segment this package assigns and the projected
+// payload the conversation is about to fold.
 func (r RunEvent) Validate() error {
-	if err := runtimeprotocol.ValidateRunEventID(r.EventID); err != nil {
-		return fmt.Errorf("run event: %w", err)
-	}
-	if err := runtimeprotocol.ValidateRunID(r.RunID); err != nil {
-		return fmt.Errorf("run event: %w", err)
-	}
-	if err := runtimeprotocol.ValidateSegmentID(r.SegmentID); err != nil {
-		return fmt.Errorf("run event: %w", err)
-	}
 	if err := runtimeprotocol.ValidateSegmentID(r.StreamSegment()); err != nil {
 		return fmt.Errorf("run event stream: %w", err)
 	}
-	if r.Event == nil {
-		return errors.New("run event payload is nil")
-	}
 	if err := ValidateEvent(r.Event); err != nil {
 		return fmt.Errorf("run event payload: %w", err)
-	}
-	switch event := r.Event.(type) {
-	case SegmentStarted:
-		if event.Run.ID != r.RunID || event.Run.ActiveSegmentID != r.SegmentID {
-			return errors.New("run event segment-start identity does not match its envelope")
-		}
-	case BlockStarted:
-		if event.Block.RunID != r.RunID {
-			return fmt.Errorf("run event block %s belongs to run %s, not %s", event.Block.ID, event.Block.RunID, r.RunID)
-		}
-	case BlockCompleted:
-		if event.Block.RunID != r.RunID {
-			return fmt.Errorf("run event block %s belongs to run %s, not %s", event.Block.ID, event.Block.RunID, r.RunID)
-		}
 	}
 	return nil
 }

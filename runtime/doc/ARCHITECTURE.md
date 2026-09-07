@@ -99,6 +99,8 @@ The module-root Go binding and HTTP/JSON-RPC binding enter the same delivery end
 4. Application execution;
 5. response, error, and event projection.
 
+That endpoint is the single authority for the wire contract. It validates every request's parameters and every response and event against the generated validators, so a consumer of either binding never has to recheck a shape Runtime already published. An invalid response or event becomes an internal error instead of reaching the caller.
+
 The Go binding does not serialize through HTTP, but it does not bypass product semantics. Protocol changes publish one current shape without aliases, fallback decoding, dual methods, or dual events.
 
 ## Composition and lifecycle

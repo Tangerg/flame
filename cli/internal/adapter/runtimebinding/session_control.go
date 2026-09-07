@@ -47,10 +47,9 @@ func (r *Connection) RollbackSession(ctx context.Context, input agent.RollbackSe
 	if response == nil || response.Session == nil {
 		return agent.RollbackResult{}, runtimeContractViolation("rollback session returned an incomplete result")
 	}
-	result := agent.RollbackResult{Dropped: make([]agent.DroppedRun, 0, len(response.DroppedRuns))}
-	result.Session, err = projectSession(*response.Session)
-	if err != nil {
-		return agent.RollbackResult{}, runtimeContractViolation("rollback session returned an invalid session: %v", err)
+	result := agent.RollbackResult{
+		Session: projectSession(*response.Session),
+		Dropped: make([]agent.DroppedRun, 0, len(response.DroppedRuns)),
 	}
 	if result.Session.ID != input.SessionID {
 		return agent.RollbackResult{}, runtimeContractViolation("rollback session returned session %q for %q", result.Session.ID, input.SessionID)
@@ -67,9 +66,6 @@ func (r *Connection) RollbackSession(ctx context.Context, input agent.RollbackSe
 			return agent.RollbackResult{}, runtimeContractViolation("rollback session returned an invalid dropped run: %v", err)
 		}
 		result.Dropped = append(result.Dropped, projected)
-	}
-	if err := result.Validate(); err != nil {
-		return agent.RollbackResult{}, runtimeContractViolation("rollback session returned an invalid projection: %v", err)
 	}
 	return result, nil
 }
@@ -89,9 +85,6 @@ func projectDroppedRun(value protocol.DroppedRun) (agent.DroppedRun, error) {
 		default:
 			return agent.DroppedRun{}, fmt.Errorf("rollback dropped run %s content %d has unsupported type %q", value.Run.ID, index+1, content.Type)
 		}
-	}
-	if err := projected.Validate(); err != nil {
-		return agent.DroppedRun{}, err
 	}
 	return projected, nil
 }
@@ -125,9 +118,6 @@ func (r *Connection) ExportSession(ctx context.Context, request session.ExportRe
 	case protocol.ExportFormatJSON:
 		if response.Artifact == nil || response.Markdown != "" {
 			return session.Document{}, runtimeContractViolation("export session returned a malformed JSON result")
-		}
-		if validateWireTreeErr := protocol.ValidateWireTree(*response.Artifact); validateWireTreeErr != nil {
-			return session.Document{}, runtimeContractViolation("export session returned an invalid artifact: %v", validateWireTreeErr)
 		}
 		if response.Artifact.Session.ID != request.SessionID {
 			return session.Document{}, runtimeContractViolation(

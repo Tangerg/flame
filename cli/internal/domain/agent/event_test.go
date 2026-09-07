@@ -2,7 +2,6 @@ package agent
 
 import (
 	"bytes"
-	"strings"
 	"testing"
 	"time"
 
@@ -92,27 +91,11 @@ func TestRunEventValidationOwnsEnvelopeAndPayloadIdentity(t *testing.T) {
 		name   string
 		mutate func(*RunEvent)
 	}{
-		{name: "event id", mutate: func(event *RunEvent) { event.EventID = " " }},
-		{name: "non-exact event id", mutate: func(event *RunEvent) { event.EventID = " event_1" }},
-		{name: "run id", mutate: func(event *RunEvent) { event.RunID = "" }},
-		{name: "segment id", mutate: func(event *RunEvent) { event.SegmentID = "" }},
-		{name: "non-exact run id", mutate: func(event *RunEvent) {
-			event.RunID = " run_1"
-			completed := event.Event.(BlockCompleted)
-			completed.Block.RunID = event.RunID
-			event.Event = completed
-		}},
-		{name: "non-exact segment id", mutate: func(event *RunEvent) { event.SegmentID = "segment_1 " }},
 		{name: "stream segment id", mutate: func(event *RunEvent) { event.StreamSegmentID = " " }},
 		{name: "payload", mutate: func(event *RunEvent) { event.Event = nil }},
-		{name: "non-exact block id", mutate: func(event *RunEvent) {
+		{name: "block lifecycle", mutate: func(event *RunEvent) {
 			completed := event.Event.(BlockCompleted)
-			completed.Block.ID = " answer"
-			event.Event = completed
-		}},
-		{name: "block ownership", mutate: func(event *RunEvent) {
-			completed := event.Event.(BlockCompleted)
-			completed.Block.RunID = "run_2"
+			completed.Block.Status = BlockStatusRunning
 			event.Event = completed
 		}},
 	}
@@ -133,10 +116,6 @@ func TestRunEventValidationOwnsEnvelopeAndPayloadIdentity(t *testing.T) {
 	}
 	if err := started.Validate(); err != nil {
 		t.Fatal(err)
-	}
-	started.RunID = "run_2"
-	if err := started.Validate(); err == nil {
-		t.Fatal("segment-start identity mismatch was accepted")
 	}
 }
 
@@ -178,32 +157,13 @@ func TestFinishedEventCloneOwnsOutcomeProblem(t *testing.T) {
 }
 
 func TestEphemeralEventValidationRejectsMalformedValues(t *testing.T) {
-	negative := -1
-	negativeContext := int64(-1)
-	tests := []Event{
-		RunProgress{Step: &negative},
-		RunProgress{ContextTokens: &negativeContext},
+	for _, event := range []Event{
 		BlockDelta{},
-		ToolArgumentsDelta{},
 		CustomEvent{Name: "vendor.trace", PayloadJSON: []byte(`{`)},
 		CustomEvent{PayloadJSON: []byte(`null`)},
-	}
-	for _, event := range tests {
+	} {
 		if err := ValidateEvent(event); err == nil {
 			t.Fatalf("ValidateEvent(%T) accepted %+v", event, event)
-		}
-	}
-}
-
-func TestSegmentBoundariesRejectNegativeContext(t *testing.T) {
-	for _, event := range []Event{
-		RunInterrupted{ContextTokens: -1},
-		RunSuspended{ContextTokens: -1},
-		RunFinished{ContextTokens: -1, Outcome: Outcome{Status: OutcomeCompleted}},
-	} {
-		err := ValidateEvent(event)
-		if err == nil || !strings.Contains(err.Error(), "context tokens") {
-			t.Fatalf("ValidateEvent(%T) error = %v, want context-token violation", event, err)
 		}
 	}
 }

@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"math"
 	"strings"
 	"testing"
 	"time"
@@ -9,7 +8,7 @@ import (
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
-func TestRunLifecycleShape(t *testing.T) {
+func TestRunProjectionOwnsItsNegotiatedContract(t *testing.T) {
 	running := runningRun("seg_1")
 	running.CreatedAt = time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
 	running.ProtocolProfile = &runtimeprotocol.RunProtocolProfile{
@@ -19,51 +18,13 @@ func TestRunLifecycleShape(t *testing.T) {
 	if err := running.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	waiting := running
-	waiting.Status, waiting.ActiveSegmentID = runtimeprotocol.RunStatusWaiting, ""
-	if err := waiting.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	finished := waiting
-	finished.Status, finished.Outcome = runtimeprotocol.RunStatusFinished, Outcome{Status: OutcomeCompleted}
-	finished.FinishedAt = finished.CreatedAt.Add(time.Second)
-	if err := finished.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	invalid := running
-	invalid.FinishedAt = invalid.CreatedAt.Add(time.Second)
-	if err := invalid.Validate(); err == nil {
-		t.Fatal("running run with a finish time was accepted")
+	if err := (Run{}).Validate(); err == nil {
+		t.Fatal("an unconstructed run projection was accepted")
 	}
 	cloned := running.Clone()
 	cloned.ProtocolProfile.InterruptTypes[0] = runtimeprotocol.InterruptQuestion
 	if running.ProtocolProfile.InterruptTypes[0] != runtimeprotocol.InterruptApproval || running.Equal(cloned) {
 		t.Fatal("run clone shares its negotiated contract")
-	}
-	invalidContract := running.Clone()
-	invalidContract.ProtocolProfile.RequiredFeatures = append(
-		invalidContract.ProtocolProfile.RequiredFeatures,
-		runtimeprotocol.RunProtocolFeatureSubagents,
-	)
-	if err := invalidContract.Validate(); err == nil {
-		t.Fatal("run accepted a duplicate negotiated feature")
-	}
-}
-
-func TestRunRejectsNonExactExecutionIdentity(t *testing.T) {
-	run := runningRun("seg_1")
-	run.ID = " run_1"
-	if err := run.Validate(); err == nil {
-		t.Fatal("Run accepted an identity that requires trimming")
-	}
-	run = runningRun(" seg_1")
-	if err := run.Validate(); err == nil {
-		t.Fatal("Run accepted an active segment identity that requires trimming")
-	}
-	run = runningRun("seg_1")
-	run.ContextTokens = -1
-	if err := run.Validate(); err == nil {
-		t.Fatal("Run accepted negative context tokens")
 	}
 }
 
@@ -177,37 +138,13 @@ func testChildRunLineage(t *testing.T, runID, spawn, parent, root string) RunLin
 	return lineage
 }
 
-func TestOutcomeValidationMatchesRuntimeUnion(t *testing.T) {
-	problem := &runtimeprotocol.ProblemData{Type: "rate_limited", Detail: "deadline exceeded", RetryAfterSeconds: 2}
-	valid := []Outcome{
-		{Status: OutcomeCompleted},
-		{Status: OutcomeTimedOut, Problem: problem},
-		{Status: OutcomeFailed, Problem: &runtimeprotocol.ProblemData{Type: "provider_error", Detail: "provider failed"}},
-		{Status: OutcomeLost, Problem: &runtimeprotocol.ProblemData{Type: "run_lost", Detail: "executor disappeared"}},
-		{Status: OutcomeMaxSteps, Detail: "20 / 20 steps"},
-		{Status: OutcomeMaxBudget, Detail: "$2.00 / $2.00"},
-		{Status: OutcomeCanceled, Detail: "user stopped"},
-	}
-	for _, outcome := range valid {
-		if err := outcome.Validate(); err != nil {
-			t.Fatalf("valid outcome %+v: %v", outcome, err)
-		}
-	}
-	for _, outcome := range []Outcome{
-		{Status: OutcomeTimedOut},
-		{Status: OutcomeFailed, Detail: "wrong channel"},
-		{Status: OutcomeCanceled, Problem: problem},
-		{Status: OutcomeCompleted, Detail: "unexpected"},
-		{Status: OutcomeCompleted, Problem: problem},
-		{Status: OutcomeFailed, Problem: &runtimeprotocol.ProblemData{}},
-	} {
-		if err := outcome.Validate(); err == nil {
-			t.Fatalf("invalid outcome %+v was accepted", outcome)
-		}
-	}
-	cloned := valid[1].Clone()
+func TestOutcomeProblemIsValueOwned(t *testing.T) {
+	original := Outcome{Status: OutcomeTimedOut, Problem: &runtimeprotocol.ProblemData{
+		Type: "rate_limited", Detail: "deadline exceeded", RetryAfterSeconds: 2,
+	}}
+	cloned := original.Clone()
 	cloned.Problem.Detail = "mutated"
-	if valid[1].Equal(cloned) || !valid[1].Equal(valid[1].Clone()) {
+	if original.Equal(cloned) || !original.Equal(original.Clone()) {
 		t.Fatal("outcome problem is not value-owned")
 	}
 }
@@ -230,9 +167,6 @@ func TestUsagePreservesOptionalCostSemantics(t *testing.T) {
 		CostUSD: &knownZero, Steps: 3,
 		ByModel: map[string]runtimeprotocol.ModelUsage{"deepseek/v4": {InputTokens: 12, CostUSD: &modelCost}},
 	}
-	if err := usage.Validate(); err != nil {
-		t.Fatal(err)
-	}
 	cloned := usage.Clone()
 	*usage.CostUSD = 1
 	model := usage.ByModel["deepseek/v4"]
@@ -243,30 +177,12 @@ func TestUsagePreservesOptionalCostSemantics(t *testing.T) {
 		t.Fatalf("cloned usage = %+v", cloned)
 	}
 
-	invalid := math.NaN()
-	if err := (Usage{CostUSD: &invalid}).Validate(); err == nil {
-		t.Fatal("NaN cost was accepted")
-	}
 	if err := validateUsageProgress(Usage{CostUSD: &knownZero}, Usage{}); err != nil {
 		t.Fatalf("known cumulative cost could not become unknown: %v", err)
 	}
 	regressedCost, priorCost := 0.25, 0.5
 	if err := validateUsageProgress(Usage{CostUSD: &priorCost}, Usage{CostUSD: &regressedCost}); err == nil {
 		t.Fatal("known cumulative cost regressed")
-	}
-	if err := (Usage{Steps: -1}).Validate(); err == nil {
-		t.Fatal("negative step usage was accepted")
-	}
-	if err := (Usage{ByModel: map[string]runtimeprotocol.ModelUsage{"": {}}}).Validate(); err == nil {
-		t.Fatal("empty model attribution key was accepted")
-	}
-	if err := (Usage{ByModel: map[string]runtimeprotocol.ModelUsage{"bad model": {}}}).Validate(); err == nil {
-		t.Fatal("non-canonical model attribution key was accepted")
-	}
-	if err := (Usage{ByModel: map[string]runtimeprotocol.ModelUsage{
-		strings.Repeat("m", runtimeprotocol.MaximumModelIdentityCharacters+1): {},
-	}}).Validate(); err == nil {
-		t.Fatal("overlong model attribution key was accepted")
 	}
 	if err := validateUsageProgress(
 		Usage{Steps: 3, ByModel: map[string]runtimeprotocol.ModelUsage{"deepseek/v4": {InputTokens: 12}}},

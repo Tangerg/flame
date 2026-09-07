@@ -43,11 +43,7 @@ func (r *Connection) Resolve(ctx context.Context, request workspace.ResolveReque
 	if resolved == nil {
 		return workspace.Workspace{}, runtimeContractViolation("resolve workspace returned nil")
 	}
-	projected, err := projectWorkspace(*resolved)
-	if err != nil {
-		return workspace.Workspace{}, runtimeContractViolation("resolve workspace returned an invalid workspace: %v", err)
-	}
-	return projected, nil
+	return projectWorkspace(*resolved), nil
 }
 
 func (r *Connection) List(ctx context.Context) ([]workspace.Summary, error) {
@@ -59,7 +55,7 @@ func (r *Connection) List(ctx context.Context) ([]workspace.Summary, error) {
 	if err != nil {
 		return nil, err
 	}
-	summaries, err := projectUniqueValuesFallible(
+	summaries, err := projectUniqueValues(
 		"list workspaces",
 		values,
 		projectWorkspaceSummary,
@@ -241,15 +237,7 @@ func (r *Connection) Files(ctx context.Context, request workspace.FilesRequest) 
 				workspaceFilePageLimit,
 			)
 		}
-		for index, entry := range page.Data {
-			if err := protocol.ValidateWireTree(entry); err != nil {
-				return workspace.FileListing{}, runtimeContractViolation(
-					"list workspace files after cursor %q item %d is invalid: %v",
-					cursor,
-					index+1,
-					err,
-				)
-			}
+		for _, entry := range page.Data {
 			projected := workspace.FileEntry{
 				Path: entry.Path, Type: entry.Type, SizeBytes: entry.SizeBytes,
 				ModifiedAt: entry.ModifiedAt,
@@ -312,41 +300,25 @@ func (r *Connection) Read(ctx context.Context, request workspace.ReadRequest) (w
 	if value == nil {
 		return workspace.FileContent{}, runtimeContractViolation("read workspace file returned nil")
 	}
-	result := workspace.FileContent{
+	return workspace.FileContent{
 		Content: value.Content, TotalLines: value.TotalLines,
 		Truncated: value.Truncated, StartLine: value.StartLine, EndLine: value.EndLine,
-	}
-	if err := result.Validate(); err != nil {
-		return workspace.FileContent{}, runtimeContractViolation("read workspace file returned an invalid projection: %v", err)
-	}
-	return result, nil
+	}, nil
 }
 
-func projectWorkspace(value protocol.WorkspaceInfo) (workspace.Workspace, error) {
-	if err := protocol.ValidateWireTree(value); err != nil {
-		return workspace.Workspace{}, fmt.Errorf("runtime workspace %q: %w", value.Ref.Path, err)
-	}
-	result := workspace.Workspace{
+func projectWorkspace(value protocol.WorkspaceInfo) workspace.Workspace {
+	return workspace.Workspace{
 		Path: value.Ref.Path, ProjectRoot: value.ProjectRoot, Availability: value.Availability,
 	}
-	if err := result.Validate(); err != nil {
-		return workspace.Workspace{}, fmt.Errorf("runtime workspace %q: %w", value.Ref.Path, err)
-	}
-	return result, nil
 }
 
-func projectWorkspaceSummary(value protocol.WorkspaceSummary) (workspace.Summary, error) {
-	projected, err := projectWorkspace(value.Workspace)
-	if err != nil {
-		return workspace.Summary{}, err
+func projectWorkspaceSummary(value protocol.WorkspaceSummary) workspace.Summary {
+	return workspace.Summary{
+		Workspace:  projectWorkspace(value.Workspace),
+		Name:       value.Name,
+		Sessions:   value.SessionCount,
+		LastActive: value.LastActiveAt,
 	}
-	result := workspace.Summary{
-		Workspace: projected, Name: value.Name, Sessions: value.SessionCount, LastActive: value.LastActiveAt,
-	}
-	if err := result.Validate(); err != nil {
-		return workspace.Summary{}, err
-	}
-	return result, nil
 }
 
 func projectChange(path string, status protocol.FileStatus, previousPath string, added, removed *int, binary bool) (workspace.Change, error) {

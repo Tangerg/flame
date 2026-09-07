@@ -52,35 +52,21 @@ func (p testProjection) Validate() error {
 	return nil
 }
 
-func TestProjectUniqueValuesOwnsCatalogValidationAndIdentity(t *testing.T) {
+func TestProjectUniqueValuesOwnsCatalogIdentity(t *testing.T) {
 	t.Parallel()
 
-	project := func(value string) testProjection {
-		return testProjection{identity: value, valid: value != "invalid"}
-	}
+	project := func(value string) testProjection { return testProjection{identity: value} }
 	identity := func(value testProjection) string { return value.identity }
 
 	projected, err := projectUniqueValues("list values", []string{"first", "second"}, project, identity)
 	if err != nil || len(projected) != 2 || projected[1].identity != "second" {
 		t.Fatalf("projectUniqueValues = (%+v, %v)", projected, err)
 	}
-	for _, test := range []struct {
-		name   string
-		values []string
-		want   string
-	}{
-		{name: "invalid row", values: []string{"first", "invalid"}, want: "list values item 2 is invalid"},
-		{name: "duplicate identity", values: []string{"first", "first"}, want: `list values repeats "first"`},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			_, err := projectUniqueValues("list values", test.values, project, identity)
-			if err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("projectUniqueValues error = %v, want %q", err, test.want)
-			}
-			requireRuntimeContractViolation(t, err)
-		})
+	_, err = projectUniqueValues("list values", []string{"first", "first"}, project, identity)
+	if err == nil || !strings.Contains(err.Error(), `list values repeats "first"`) {
+		t.Fatalf("projectUniqueValues error = %v, want a repeated identity", err)
 	}
+	requireRuntimeContractViolation(t, err)
 }
 
 func TestCursorTraversalRejectsDirectAndMultiStepCycles(t *testing.T) {

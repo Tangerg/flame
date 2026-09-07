@@ -10,8 +10,10 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-const skillRevision = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-const otherSkillRevision = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+const (
+	skillRevision      = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	otherSkillRevision = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+)
 
 type skillBindingStub struct {
 	t       *testing.T
@@ -195,13 +197,6 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 		read func(*Connection) error
 	}{
 		{
-			name: "blank discovered name",
-			stub: &invalidSkillBindingStub{discovered: protocol.NewPage([]protocol.Skill{{Scope: protocol.SkillScopeProject}})},
-			read: func(runtime *Connection) error {
-				_, err := runtime.Discover(t.Context(), "/workspace")
-				return err
-			},
-		}, {
 			name: "shadowed discovered name",
 			stub: &invalidSkillBindingStub{discovered: protocol.NewPage([]protocol.Skill{
 				{Name: "review", Scope: protocol.SkillScopeProject},
@@ -219,13 +214,6 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 			})},
 			read: func(runtime *Connection) error {
 				_, err := runtime.Discover(t.Context(), "/workspace")
-				return err
-			},
-		}, {
-			name: "blank managed name",
-			stub: &invalidSkillBindingStub{managed: protocol.NewPage([]protocol.ManagedSkill{{Name: " \t", Lifecycle: protocol.SkillLifecycleActive}})},
-			read: func(runtime *Connection) error {
-				_, err := runtime.Managed(t.Context())
 				return err
 			},
 		}, {
@@ -264,16 +252,6 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 				{Name: "alpha", Revision: skillRevision, Scope: protocol.SkillScopeUser, Description: "User proposal", Instructions: "Review the user proposal."},
 				{Name: "zeta", Revision: otherSkillRevision, Scope: protocol.SkillScopeProject, Description: "Project proposal", Instructions: "Review the project proposal."},
 			})},
-			read: func(runtime *Connection) error {
-				_, err := runtime.Proposals(t.Context(), "/workspace")
-				return err
-			},
-		}, {
-			name: "non-canonical proposal revision",
-			stub: &invalidSkillBindingStub{proposals: protocol.NewPage([]protocol.SkillProposal{{
-				Name: "review", Revision: "ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789",
-				Scope: protocol.SkillScopeUser, Description: "Review code", Instructions: "Inspect code.",
-			}})},
 			read: func(runtime *Connection) error {
 				_, err := runtime.Proposals(t.Context(), "/workspace")
 				return err

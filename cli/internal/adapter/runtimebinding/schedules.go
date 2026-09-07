@@ -47,13 +47,7 @@ func (r *Connection) Schedules(ctx context.Context) ([]protocol.Schedule, error)
 		if len(page.Data) > schedulePageLimit {
 			return nil, runtimeContractViolation("list schedules returned %d rows for limit %d", len(page.Data), schedulePageLimit)
 		}
-		for index, value := range page.Data {
-			if validateErr := protocol.ValidateWireTree(value); validateErr != nil {
-				return nil, runtimeContractViolation("list schedules item %d after cursor %q is invalid: %v", index+1, cursor, validateErr)
-			}
-			if validateErr := validateScheduleProjection(value); validateErr != nil {
-				return nil, runtimeContractViolation("list schedules item %d after cursor %q is invalid: %v", index+1, cursor, validateErr)
-			}
+		for _, value := range page.Data {
 			if _, duplicate := seenIDs[value.ID]; duplicate {
 				return nil, runtimeContractViolation("list schedules repeats %q", value.ID)
 			}
@@ -159,9 +153,6 @@ func (r *Connection) RunNow(ctx context.Context, id string) (protocol.RunSchedul
 	if result == nil {
 		return protocol.RunScheduleNowResponse{}, runtimeContractViolation("run schedule now returned nil")
 	}
-	if err := protocol.ValidateWireTree(*result); err != nil {
-		return protocol.RunScheduleNowResponse{}, runtimeContractViolation("run schedule now returned an invalid response: %v", err)
-	}
 	return *result, nil
 }
 
@@ -172,34 +163,10 @@ func scheduleResult(operation, expectedID string, result *protocol.Schedule, err
 	if result == nil {
 		return protocol.Schedule{}, runtimeContractViolation("%s returned nil", operation)
 	}
-	if err := protocol.ValidateWireTree(*result); err != nil {
-		return protocol.Schedule{}, runtimeContractViolation("%s returned an invalid schedule: %v", operation, err)
-	}
-	if err := validateScheduleProjection(*result); err != nil {
-		return protocol.Schedule{}, runtimeContractViolation("%s returned an invalid schedule: %v", operation, err)
-	}
 	if expectedID != "" && result.ID != expectedID {
 		return protocol.Schedule{}, runtimeContractViolation("%s returned id %q for %q", operation, result.ID, expectedID)
 	}
 	return *result, nil
-}
-
-func validateScheduleProjection(result protocol.Schedule) error {
-	var problems []error
-	if result.LastRunAt != nil {
-		if result.LastRunAt.IsZero() {
-			problems = append(problems, errors.New("last-run time is zero"))
-		} else if result.LastRunAt.Before(result.CreatedAt) {
-			problems = append(problems, errors.New("last run precedes creation"))
-		}
-	}
-	if result.NextRunAt != nil && result.NextRunAt.IsZero() {
-		problems = append(problems, errors.New("next-run time is zero"))
-	}
-	if result.Enabled != (result.NextRunAt != nil) {
-		problems = append(problems, errors.New("enabled state and next-run cursor disagree"))
-	}
-	return errors.Join(problems...)
 }
 
 func validateCreateScheduleResult(request protocol.CreateScheduleRequest, result protocol.Schedule) error {

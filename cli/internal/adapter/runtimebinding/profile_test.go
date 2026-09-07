@@ -3,7 +3,6 @@ package runtimebinding
 import (
 	"errors"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -77,14 +76,7 @@ func TestRuntimeProfileRejectsInvalidDiscoveryAtConstruction(t *testing.T) {
 		invalidate func(*protocol.DiscoverResponse)
 	}{
 		{"protocol", func(d *protocol.DiscoverResponse) { d.ProtocolVersion = "" }},
-		{"identity", func(d *protocol.DiscoverResponse) { d.ServerInfo.Name = "" }},
-		{"duplicate events", func(d *protocol.DiscoverResponse) {
-			d.Capabilities.RunEvents = append(d.Capabilities.RunEvents, d.Capabilities.RunEvents[0])
-		}},
-		{"zero concurrency", func(d *protocol.DiscoverResponse) { d.Capabilities.Limits.MaxConcurrentRuns = new(0) }},
-		{"zero replay bytes", func(d *protocol.DiscoverResponse) { d.Capabilities.Limits.RunReplay.MaxBytes = 0 }},
 		{"unknown replay scope", func(d *protocol.DiscoverResponse) { d.Capabilities.Limits.RunReplay.Scope = "future" }},
-		{"zero subscription topics", func(d *protocol.DiscoverResponse) { d.Capabilities.Limits.RuntimeSubscription.MaxTopics = 0 }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			discovery := compatibleDiscovery()
@@ -108,22 +100,6 @@ func TestRuntimeProfilePreservesUnboundedConcurrency(t *testing.T) {
 	discovery.Capabilities.Limits.MaxConcurrentRuns = nil
 	if requireProfile(t, discovery, nil).Discovery().Capabilities.Limits.MaxConcurrentRuns != nil {
 		t.Fatal("absent runtime concurrency cap became bounded")
-	}
-}
-
-func TestRuntimeProfileRejectsRetentionThatWouldWrapToOneSecond(t *testing.T) {
-	t.Parallel()
-	// Multiplying this value by time.Second modulo 2^64 yields exactly one
-	// second, so validation after conversion cannot detect the overflow.
-	wrapsToOneSecond := int64(36_028_797_018_963_969)
-	if int64(int(wrapsToOneSecond)) != wrapsToOneSecond {
-		t.Skip("int width cannot represent an overflowing duration")
-	}
-	discovery := compatibleDiscovery()
-	discovery.Capabilities.Limits.Idempotency.RetentionSeconds = int(wrapsToOneSecond)
-	_, err := NewProfile(discovery, nil)
-	if !errors.Is(err, agent.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "retentionSeconds") {
-		t.Fatalf("NewProfile overflow error = %v", err)
 	}
 }
 

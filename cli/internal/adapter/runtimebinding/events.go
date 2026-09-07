@@ -9,19 +9,12 @@ import (
 )
 
 func projectEvent(value protocol.RunEvent) (agent.RunEvent, bool, error) {
-	if err := protocol.ValidateWireTree(value); err != nil {
-		return agent.RunEvent{}, false, err
-	}
 	projection := runEventProjection{source: value}
 	projected, err := projection.project()
 	if err != nil || !projected.included {
 		return agent.RunEvent{}, projected.included, err
 	}
-	envelope := projection.envelope(projected.event)
-	if err := envelope.Validate(); err != nil {
-		return agent.RunEvent{}, false, fmt.Errorf("event %s projection: %w", value.EventID, err)
-	}
-	return envelope, true, nil
+	return projection.envelope(projected.event), true, nil
 }
 
 type runEventProjection struct {
@@ -162,12 +155,10 @@ func (r runEventProjection) segmentFinished() (projectedRunEvent, error) {
 	case protocol.SegmentSuspended:
 		return includeRunEvent(agent.RunSuspended{Usage: usage, ContextTokens: contextTokens}), nil
 	default:
-		outcome, err := projectOutcome(*stream.Outcome)
-		if err != nil {
-			return projectedRunEvent{}, fmt.Errorf("event %s: %w", r.source.EventID, err)
-		}
 		return includeRunEvent(agent.RunFinished{
-			Outcome: outcome, Usage: usage, ContextTokens: contextTokens,
+			Outcome:       projectOutcome(stream.Outcome.Type, stream.Outcome.Error, stream.Outcome.Detail),
+			Usage:         usage,
+			ContextTokens: contextTokens,
 		}), nil
 	}
 }

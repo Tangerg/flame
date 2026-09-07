@@ -127,9 +127,6 @@ type RollbackResult struct {
 }
 
 func (r RollbackResult) Validate() error {
-	if err := r.Session.Validate(); err != nil {
-		return fmt.Errorf("rollback result: %w", err)
-	}
 	seen := make(map[string]struct{}, len(r.Dropped))
 	for index, run := range r.Dropped {
 		if err := run.Validate(); err != nil {

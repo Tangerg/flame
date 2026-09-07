@@ -154,9 +154,6 @@ func (r *Connection) TestServer(ctx context.Context, candidate mcp.Candidate) (p
 	if result == nil {
 		return protocol.MCPTestResult{}, runtimeContractViolation("test MCP server returned nil")
 	}
-	if err := protocol.ValidateWireTree(*result); err != nil {
-		return protocol.MCPTestResult{}, runtimeContractViolation("test MCP server returned an invalid result: %v", err)
-	}
 	if result.OK == (result.Error != nil) {
 		return protocol.MCPTestResult{}, runtimeContractViolation("test MCP server returned contradictory success and error states")
 	}
@@ -177,9 +174,6 @@ func (r *Connection) Tools(ctx context.Context, server string) ([]protocol.MCPTo
 		return nil, err
 	}
 	for index, tool := range values {
-		if err := protocol.ValidateWireTree(tool); err != nil {
-			return nil, runtimeContractViolation("list MCP tools item %d is invalid: %v", index+1, err)
-		}
 		if request.Server != "" && tool.Server != request.Server {
 			return nil, runtimeContractViolation("list MCP tools for %q returned a tool from %q", request.Server, tool.Server)
 		}

@@ -25,28 +25,16 @@ func requireCompletePage[T any](operation string, page *protocol.Page[T]) ([]T, 
 	return page.Data, nil
 }
 
-// validProjection is the shared behavior required of every catalog row after
-// the wire value has been projected into the CLI's own model.
-type validProjection interface {
-	Validate() error
-}
-
-type validWireValue interface {
-	ValidateWire() error
-}
-
-// validateUniqueWireValues checks catalog rows that need no CLI projection.
-// Their authoritative identity comes from the Runtime contract.
-func validateUniqueWireValues[Value validWireValue](
+// requireUniqueIdentities checks catalog rows that need no CLI projection. A
+// repeated identity would silently collapse two Runtime rows into one CLI row,
+// which no wire constraint can observe.
+func requireUniqueIdentities[Value any](
 	operation string,
 	values []Value,
 	identity func(Value) string,
 ) error {
 	seen := make(map[string]struct{}, len(values))
-	for index, value := range values {
-		if err := value.ValidateWire(); err != nil {
-			return runtimeContractViolation("%s item %d is invalid: %v", operation, index+1, err)
-		}
+	for _, value := range values {
 		key := identity(value)
 		if _, duplicate := seen[key]; duplicate {
 			return runtimeContractViolation("%s repeats %q", operation, key)
@@ -56,10 +44,10 @@ func validateUniqueWireValues[Value validWireValue](
 	return nil
 }
 
-// projectUniqueValues projects, validates, and identity-checks one complete
-// catalog. The operation returns no partial list: a malformed or repeated row
-// makes the whole Runtime response a contract violation.
-func projectUniqueValues[Source any, Target validProjection](
+// projectUniqueValues projects and identity-checks one complete catalog. The
+// operation returns no partial list: an unprojectable or repeated row makes the
+// whole Runtime response a contract violation.
+func projectUniqueValues[Source any, Target any](
 	operation string,
 	values []Source,
 	project func(Source) Target,
@@ -70,9 +58,9 @@ func projectUniqueValues[Source any, Target validProjection](
 	}, identity)
 }
 
-// projectUniqueValuesFallible is the strict variant for projections whose wire
-// union can be malformed independently of the resulting model's validation.
-func projectUniqueValuesFallible[Source any, Target validProjection](
+// projectUniqueValuesFallible is the variant for projections whose wire union
+// carries a variant the CLI cannot present.
+func projectUniqueValuesFallible[Source any, Target any](
 	operation string,
 	values []Source,
 	project func(Source) (Target, error),
@@ -84,9 +72,6 @@ func projectUniqueValuesFallible[Source any, Target validProjection](
 		row, err := project(value)
 		if err != nil {
 			return nil, runtimeContractViolation("%s item %d cannot be projected: %v", operation, index+1, err)
-		}
-		if err := row.Validate(); err != nil {
-			return nil, runtimeContractViolation("%s item %d is invalid: %v", operation, index+1, err)
 		}
 		key := identity(row)
 		if _, duplicate := seen[key]; duplicate {

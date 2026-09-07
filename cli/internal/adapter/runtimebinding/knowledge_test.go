@@ -47,7 +47,6 @@ func TestKnowledgeAdapterRejectsUnaddressableCatalogs(t *testing.T) {
 		{name: "nil page", nilList: true},
 		{name: "continuation without request cursor", listed: protocol.NewPageWithCursor([]protocol.KnowledgeEntry{}, "next")},
 		{name: "duplicate scope", listed: &protocol.Page[protocol.KnowledgeEntry]{Data: []protocol.KnowledgeEntry{duplicate, duplicate}}},
-		{name: "invalid wire scope", listed: protocol.NewPage([]protocol.KnowledgeEntry{{Scope: protocol.KnowledgeScope("unknown"), Revision: "rev"}})},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			stub := &knowledgeBindingStub{t: t, updated: now, listed: test.listed, nilList: test.nilList}

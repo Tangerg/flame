@@ -19,11 +19,13 @@ func TestProjectToolPreservesStructuredDetails(t *testing.T) {
 	duration := int64(1250)
 	started := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
 	finished := started.Add(2 * time.Second)
-	tool, err := projectTool(toolProjection{invocation: &protocol.ToolInvocation{
-		Name: "shell", Arguments: map[string]any{"command": "go test ./..."},
-		Result: map[string]any{"output": "ok", "exitCode": json.Number("0")},
-	}, status: protocol.ItemStatusCompleted, safety: protocol.SafetyClassExec,
-		startedAt: started, finishedAt: finished, durationMillis: &duration})
+	tool, err := projectTool(toolProjection{
+		invocation: &protocol.ToolInvocation{
+			Name: "shell", Arguments: map[string]any{"command": "go test ./..."},
+			Result: map[string]any{"output": "ok", "exitCode": json.Number("0")},
+		}, status: protocol.ItemStatusCompleted, safety: protocol.SafetyClassExec,
+		startedAt: started, finishedAt: finished, durationMillis: &duration,
+	})
 	if err != nil {
 		t.Fatalf("projectTool: %v", err)
 	}
@@ -180,56 +182,14 @@ func TestProjectRunUsagePreservesStepsAndPerModelAttribution(t *testing.T) {
 	}
 }
 
-func TestRuntimeDurationProjectionsRejectPositiveOverflow(t *testing.T) {
-	t.Parallel()
-
-	// This value used to wrap to a small positive time.Duration, bypassing the
-	// CLI domain's non-negative duration invariant.
-	const wrapsPositive = int64(18_446_744_073_710)
-	_, err := projectRun(protocol.RunRef{
-		RunSummary: protocol.RunSummary{
-			ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusWaiting,
-		},
-		Metrics: protocol.RunMetrics{ActiveDurationMillis: wrapsPositive},
-	})
-	if err == nil || !strings.Contains(err.Error(), "activeDurationMillis") {
-		t.Fatalf("projectRun overflow error = %v", err)
-	}
-
-	startedAt := time.Unix(1, 0).UTC()
-	_, err = projectItem(protocol.Item{
-		ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusCompleted,
-		Type: protocol.ItemTypeToolCall, Tool: &protocol.ToolInvocation{
-			Name: "shell", Arguments: map[string]any{},
-		},
-		StartedAt: startedAt, FinishedAt: startedAt.Add(time.Second), DurationMillis: new(wrapsPositive),
-	})
-	if err == nil || !strings.Contains(err.Error(), "durationMillis") {
-		t.Fatalf("projectItem overflow error = %v", err)
-	}
-}
-
 func TestProjectOutcomePreservesStructuredProblem(t *testing.T) {
-	outcome, err := projectOutcome(protocol.SegmentOutcome{
-		Type: protocol.SegmentFailed,
-		Error: &protocol.ProblemData{
-			Type: protocol.ProblemRateLimited, Detail: "quota exhausted",
-			DocURL: "https://docs.example/rate-limit", RetryAfterSeconds: 2,
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	outcome := projectOutcome(protocol.SegmentFailed, &protocol.ProblemData{
+		Type: protocol.ProblemRateLimited, Detail: "quota exhausted",
+		DocURL: "https://docs.example/rate-limit", RetryAfterSeconds: 2,
+	}, "")
 	if outcome.Status != agent.OutcomeFailed || outcome.Description() != "quota exhausted" || outcome.Problem == nil ||
 		outcome.Problem.RetryAfterSeconds != 2 || outcome.Problem.DocURL != "https://docs.example/rate-limit" {
 		t.Fatalf("outcome = %+v", outcome)
-	}
-}
-
-func TestProjectOutcomeRejectsFailureWithoutRuntimeProblem(t *testing.T) {
-	_, err := projectOutcome(protocol.SegmentOutcome{Type: protocol.SegmentFailed})
-	if !errors.Is(err, agent.ErrIncompatibleRuntime) {
-		t.Fatalf("projectOutcome error = %v, want ErrIncompatibleRuntime", err)
 	}
 }
 
@@ -295,38 +255,6 @@ func TestCompletedQuestionPreservesAcceptedAnswers(t *testing.T) {
 	answers[0][0] = "mutated"
 	if block.Question.Answers[0][0] != "safe" {
 		t.Fatal("question projection aliases runtime answer storage")
-	}
-}
-
-func TestCompletedQuestionCannotReenterTheInterruptChannel(t *testing.T) {
-	t.Parallel()
-
-	_, err := projectInteraction(protocol.Interrupt{
-		ItemID: "item_1", RunID: "run_1", Type: protocol.InterruptQuestion,
-		Payload: &protocol.InterruptPayload{Question: &protocol.Question{
-			Fields:  []protocol.QuestionField{{Prompt: "Target", Type: protocol.QuestionFieldText}},
-			Answers: [][]string{{"linux"}},
-		}},
-	})
-	if err == nil || !strings.Contains(err.Error(), "already has accepted answers") {
-		t.Fatalf("answered question interrupt error = %v", err)
-	}
-}
-
-func TestProjectInteractionRejectsFieldsOutsideTheInterruptVariant(t *testing.T) {
-	t.Parallel()
-
-	_, err := projectInteraction(protocol.Interrupt{
-		ItemID: "item_1", RunID: "run_1", Type: protocol.InterruptQuestion,
-		Payload: &protocol.InterruptPayload{
-			Risk: protocol.ApprovalRiskLow,
-			Question: &protocol.Question{Fields: []protocol.QuestionField{{
-				Prompt: "Target", Type: protocol.QuestionFieldText,
-			}}},
-		},
-	})
-	if err == nil || !strings.Contains(err.Error(), "payload.risk") {
-		t.Fatalf("question interrupt with approval risk error = %v", err)
 	}
 }
 
@@ -482,57 +410,6 @@ func TestProjectEventConsumesAuthoritativeItemAndStateFrames(t *testing.T) {
 	}
 }
 
-func TestProjectPlanRejectsMissingCommitTime(t *testing.T) {
-	t.Parallel()
-
-	_, err := projectPlan(&protocol.Plan{
-		SessionID: "ses_1",
-		State:     &protocol.PlanState{Revision: 1, Steps: []protocol.PlanStep{}},
-	})
-	if err == nil || !strings.Contains(err.Error(), "updatedAt") {
-		t.Fatalf("projectPlan error = %v, want updatedAt", err)
-	}
-}
-
-func TestProjectEventRejectsMalformedEnvelopeBeforeStreaming(t *testing.T) {
-	t.Parallel()
-
-	for _, test := range []struct {
-		name  string
-		event protocol.RunEvent
-		field string
-	}{
-		{
-			name: "missing timestamp", field: "timestamp",
-			event: protocol.RunEvent{
-				EventID: "evt_event_1", RunID: "run_1", SegmentID: "segment_1",
-				Event: protocol.StreamEvent{
-					Type: protocol.StreamSegmentProgress, Progress: &protocol.RunProgress{Activity: "thinking"},
-				},
-			},
-		},
-		{
-			name: "cross-run item", field: "another_run",
-			event: protocol.RunEvent{
-				EventID: "evt_event_1", RunID: "run_1", SegmentID: "segment_1", Timestamp: time.Now(),
-				Event: protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &protocol.Item{
-					ID: "answer", RunID: "another_run", Status: protocol.ItemStatusCompleted, Type: protocol.ItemTypeAgentMessage,
-					CreatedAt: time.Now(), Phase: protocol.MessagePhaseFinalAnswer,
-					Content: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "done"}},
-				}},
-			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			_, included, err := projectEvent(test.event)
-			if err == nil || included || !strings.Contains(err.Error(), test.field) {
-				t.Fatalf("malformed event = (included %v, error %v), want %q", included, err, test.field)
-			}
-		})
-	}
-}
-
 func TestProjectChildRunPreservesLineage(t *testing.T) {
 	created := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
 	projected, err := projectRun(protocol.RunRef{
@@ -571,7 +448,7 @@ func TestProjectRunRejectsPartialChildLineage(t *testing.T) {
 		ID: "run_child", SessionID: "ses_1", Status: protocol.RunStatusWaiting,
 		ParentRunID: "run_root",
 	}})
-	if err == nil || !strings.Contains(err.Error(), "spawnedByItemId") {
+	if err == nil || !strings.Contains(err.Error(), "child run lineage") {
 		t.Fatalf("projectRun partial lineage error = %v", err)
 	}
 }
@@ -687,13 +564,6 @@ func TestProjectSnapshotRejectsUnownedPendingInterruptSets(t *testing.T) {
 				read.interrupts[0].SessionID = "ses_other"
 			},
 			want: "for session ses_other",
-		},
-		{
-			name: "missing creation time",
-			mutate: func(read *coldRead) {
-				read.interrupts[0].CreatedAt = time.Time{}
-			},
-			want: "createdAt",
 		},
 	}
 	for _, test := range tests {

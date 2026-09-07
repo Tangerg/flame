@@ -34,7 +34,7 @@ func (r *Connection) Discover(ctx context.Context, workspacePath string) ([]prot
 	if err != nil {
 		return nil, err
 	}
-	if err := validateUniqueWireValues("list discovered skills", found, func(skill protocol.Skill) string {
+	if err := requireUniqueIdentities("list discovered skills", found, func(skill protocol.Skill) string {
 		return skill.Name
 	}); err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func (r *Connection) Managed(ctx context.Context) ([]protocol.ManagedSkill, erro
 	if err != nil {
 		return nil, err
 	}
-	if err := validateUniqueWireValues("list managed skills", managed, func(skill protocol.ManagedSkill) string {
+	if err := requireUniqueIdentities("list managed skills", managed, func(skill protocol.ManagedSkill) string {
 		return skill.Name
 	}); err != nil {
 		return nil, err
@@ -93,10 +93,7 @@ func (r *Connection) Proposals(ctx context.Context, workspacePath string) ([]wor
 	}
 	projected := make([]workspace.SkillProposal, 0, len(values))
 	seen := make(map[[2]string]struct{}, len(values))
-	for index, value := range values {
-		if err := protocol.ValidateWireTree(value); err != nil {
-			return nil, runtimeContractViolation("list skill proposals item %d is invalid: %v", index+1, err)
-		}
+	for _, value := range values {
 		proposal := workspace.SkillProposal{
 			Name: value.Name, Revision: value.Revision, Scope: value.Scope,
 			Description: value.Description, Instructions: value.Instructions,

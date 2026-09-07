@@ -37,9 +37,6 @@ func (h *Hooks) Catalog(ctx context.Context, workspacePath string) (workspace.Ho
 	if result == nil {
 		return workspace.HookCatalog{}, runtimeContractViolation("list hooks returned nil")
 	}
-	if err := protocol.ValidateWireTree(*result); err != nil {
-		return workspace.HookCatalog{}, runtimeContractViolation("list hooks returned an invalid wire result: %v", err)
-	}
 	if !hookProjectRootContainsWorkspace(result.ProjectRoot, workspacePath) {
 		return workspace.HookCatalog{}, runtimeContractViolation(
 			"list hooks for workspace %q returned unrelated project root %q",
@@ -47,14 +44,10 @@ func (h *Hooks) Catalog(ctx context.Context, workspacePath string) (workspace.Ho
 			result.ProjectRoot,
 		)
 	}
-	catalog := workspace.HookCatalog{
+	return workspace.HookCatalog{
 		ProjectRoot: result.ProjectRoot, ProjectTrusted: result.ProjectTrusted,
 		Hooks: slices.Clone(result.Hooks),
-	}
-	if err := catalog.Validate(); err != nil {
-		return workspace.HookCatalog{}, runtimeContractViolation("list hooks returned an invalid catalog: %v", err)
-	}
-	return catalog, nil
+	}, nil
 }
 
 func hookProjectRootContainsWorkspace(projectRoot, workspace string) bool {

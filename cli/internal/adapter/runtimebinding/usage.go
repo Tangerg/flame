@@ -28,9 +28,6 @@ func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (agent.
 	if result == nil {
 		return agent.SessionUsageReport{}, runtimeContractViolation("session usage returned nil")
 	}
-	if err := protocol.ValidateWireTree(*result); err != nil {
-		return agent.SessionUsageReport{}, runtimeContractViolation("session usage returned an invalid wire result: %v", err)
-	}
 	report := agent.SessionUsageReport{
 		SessionID: request.SessionID,
 		Total:     result.ModelUsage,
@@ -43,9 +40,6 @@ func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (agent.
 	sort.Strings(keys)
 	for _, key := range keys {
 		report.ByModel = append(report.ByModel, protocol.UsageBucket{Key: key, ModelUsage: result.ByModel[key]})
-	}
-	if err := report.Validate(); err != nil {
-		return agent.SessionUsageReport{}, runtimeContractViolation("session usage returned an invalid report: %v", err)
 	}
 	return report, nil
 }
@@ -70,18 +64,12 @@ func (r *Connection) Summary(ctx context.Context, period agent.UsageSummaryPerio
 	if result == nil {
 		return agent.UsageSummary{}, runtimeContractViolation("usage summary returned nil")
 	}
-	if err := protocol.ValidateWireTree(*result); err != nil {
-		return agent.UsageSummary{}, runtimeContractViolation("usage summary returned an invalid wire result: %v", err)
-	}
 	summary := agent.UsageSummary{
 		Period: period, Total: result.Total,
 		ByProvider: result.ByProvider,
 		ByModel:    result.ByModel,
 		ByDay:      result.ByDay,
 		Sessions:   result.Sessions, Runs: result.Runs,
-	}
-	if err := summary.Validate(); err != nil {
-		return agent.UsageSummary{}, runtimeContractViolation("usage summary returned an invalid report: %v", err)
 	}
 	return summary, nil
 }

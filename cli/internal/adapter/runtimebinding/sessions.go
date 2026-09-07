@@ -58,10 +58,7 @@ func projectSessionPage(page *protocol.Page[protocol.Session], query agent.Sessi
 	}
 	result := agent.SessionPage{Items: make([]agent.Session, 0, len(page.Data)), NextCursor: page.NextCursor}
 	for _, value := range page.Data {
-		projected, err := projectSession(value)
-		if err != nil {
-			return agent.SessionPage{}, runtimeContractViolation("list sessions returned an invalid session: %v", err)
-		}
+		projected := projectSession(value)
 		if query.Workspace != "" && projected.Workspace.Path != query.Workspace {
 			return agent.SessionPage{}, runtimeContractViolation(
 				"list sessions for workspace %q returned session %q from %q",
@@ -90,8 +87,10 @@ func projectSessionPage(page *protocol.Page[protocol.Session], query agent.Sessi
 		}
 		result.Items = append(result.Items, projected)
 	}
-	if err := result.Validate(); err != nil {
-		return agent.SessionPage{}, runtimeContractViolation("list sessions returned an invalid projection: %v", err)
+	if err := requireUniqueIdentities("list sessions", result.Items, func(value agent.Session) string {
+		return value.ID
+	}); err != nil {
+		return agent.SessionPage{}, err
 	}
 	return result, nil
 }
@@ -102,24 +101,13 @@ func sessionMatchesSearch(value agent.Session, search string) bool {
 		strings.Contains(strings.ToLower(value.Workspace.Path), search)
 }
 
-func projectSession(value protocol.Session) (agent.Session, error) {
-	if err := protocol.ValidateWireTree(value); err != nil {
-		return agent.Session{}, fmt.Errorf("runtime session %q: %w", value.ID, err)
-	}
-	projectedWorkspace, err := projectWorkspace(value.Workspace)
-	if err != nil {
-		return agent.Session{}, fmt.Errorf("runtime session %q: %w", value.ID, err)
-	}
-	projected := agent.Session{
+func projectSession(value protocol.Session) agent.Session {
+	return agent.Session{
 		ID: value.ID, Title: value.Title, Status: value.Status,
 		Provider: value.Provider, Model: value.Model, ReasoningEffort: value.ReasoningEffort,
-		Workspace: projectedWorkspace, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
+		Workspace: projectWorkspace(value.Workspace), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
 		Favorite: value.Favorite, Revision: value.Revision,
 	}
-	if err := projected.Validate(); err != nil {
-		return agent.Session{}, fmt.Errorf("runtime session %q: %w", value.ID, err)
-	}
-	return projected, nil
 }
 
 func (r *Connection) CreateSession(ctx context.Context, input agent.CreateSession) (agent.Session, error) {
@@ -224,10 +212,7 @@ func projectSessionResult(operation, expectedID string, result *protocol.Session
 	if result == nil {
 		return agent.Session{}, runtimeContractViolation("%s returned nil", operation)
 	}
-	projected, err := projectSession(*result)
-	if err != nil {
-		return agent.Session{}, runtimeContractViolation("%s returned an invalid session: %v", operation, err)
-	}
+	projected := projectSession(*result)
 	if expectedID != "" && projected.ID != expectedID {
 		return agent.Session{}, runtimeContractViolation("%s returned id %q for %q", operation, projected.ID, expectedID)
 	}

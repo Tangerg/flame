@@ -421,72 +421,15 @@ func TestSessionMutationsUseResolvedWorkspaceIdentity(t *testing.T) {
 func TestProjectSessionPreservesResolvedWorkspaceIdentity(t *testing.T) {
 	t.Parallel()
 
-	projected, err := projectSession(protocol.Session{
+	projected := projectSession(protocol.Session{
 		ID: "ses_1", Status: protocol.SessionStatusIdle,
 		Provider: testSessionProvider, Model: testSessionModel, ReasoningEffort: "high",
 		Workspace: testProtocolWorkspace("/repo/work", "/repo", protocol.WorkspaceMissing),
 		CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
 	if projected.ReasoningEffort != "high" || projected.Workspace.Path != "/repo/work" || projected.Workspace.ProjectRoot != "/repo" ||
 		projected.Workspace.IsAvailable() {
 		t.Fatalf("workspace = %+v", projected.Workspace)
-	}
-}
-
-func TestProjectSessionRejectsIncompleteWorkspaceIdentity(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name      string
-		workspace protocol.WorkspaceInfo
-	}{
-		{name: "project root", workspace: testProtocolWorkspace("/workspace", "", protocol.WorkspaceAvailable)},
-		{name: "availability", workspace: testProtocolWorkspace("/workspace", "/workspace", "")},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			_, err := projectSession(protocol.Session{
-				ID: "ses_1", Status: protocol.SessionStatusIdle,
-				Provider: testSessionProvider, Model: testSessionModel, Workspace: test.workspace,
-				CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
-			})
-			if err == nil {
-				t.Fatalf("projectSession accepted %+v", test.workspace)
-			}
-		})
-	}
-}
-
-func TestProjectSessionRejectsMissingLifecycleTimes(t *testing.T) {
-	t.Parallel()
-
-	valid := protocol.Session{
-		ID: "ses_1", Status: protocol.SessionStatusIdle,
-		Provider: testSessionProvider, Model: testSessionModel,
-		Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
-		CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
-	}
-	for _, test := range []struct {
-		name  string
-		field string
-		clear func(*protocol.Session)
-	}{
-		{name: "creation", field: "createdAt", clear: func(value *protocol.Session) { value.CreatedAt = time.Time{} }},
-		{name: "update", field: "updatedAt", clear: func(value *protocol.Session) { value.UpdatedAt = time.Time{} }},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			value := valid
-			test.clear(&value)
-			_, err := projectSession(value)
-			if err == nil || !strings.Contains(err.Error(), test.field) {
-				t.Fatalf("projectSession error = %v, want %q", err, test.field)
-			}
-		})
 	}
 }
 

@@ -77,11 +77,7 @@ func (r *Connection) readSession(ctx context.Context, request protocol.GetSessio
 	if session == nil {
 		return protocol.Session{}, runtimeContractViolation("get session returned nil")
 	}
-	projected, err := projectSession(*session)
-	if err != nil {
-		return protocol.Session{}, runtimeContractViolation("get session returned an invalid session: %v", err)
-	}
-	if projected.ID != request.SessionID {
+	if projected := projectSession(*session); projected.ID != request.SessionID {
 		return protocol.Session{}, runtimeContractViolation(
 			"get session returned id %q for %q", projected.ID, request.SessionID,
 		)
@@ -128,11 +124,10 @@ func (r *Connection) readMaterialSnapshot(
 }
 
 func projectSnapshot(read coldRead) (agent.SessionSnapshot, error) {
-	session, err := projectSession(read.session)
-	if err != nil {
-		return agent.SessionSnapshot{}, err
+	snapshot := agent.SessionSnapshot{
+		Session:    projectSession(read.session),
+		Transcript: make([]agent.Block, 0, len(read.items)),
 	}
-	snapshot := agent.SessionSnapshot{Session: session, Transcript: make([]agent.Block, 0, len(read.items))}
 	for _, value := range read.items {
 		block, projectItemErr := projectItem(value)
 		if projectItemErr != nil {
@@ -153,10 +148,11 @@ func projectSnapshot(read coldRead) (agent.SessionSnapshot, error) {
 		snapshot.Runs = append(snapshot.Runs, run)
 	}
 	if read.plan != nil {
-		snapshot.Plan, err = projectPlan(read.plan)
+		plan, err := projectPlan(read.plan)
 		if err != nil {
 			return agent.SessionSnapshot{}, err
 		}
+		snapshot.Plan = plan
 	}
 	if read.goal != nil {
 		projected := cloneGoal(*read.goal)
@@ -167,24 +163,19 @@ func projectSnapshot(read coldRead) (agent.SessionSnapshot, error) {
 			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has %d pending interrupt sets", active.ID, len(read.interrupts))
 		}
 		set := read.interrupts[0]
-		if err := protocol.ValidateWireTree(set); err != nil {
-			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has an invalid pending interrupt set: %w", active.ID, err)
-		}
-		if set.SessionID != session.ID {
+		if set.SessionID != snapshot.Session.ID {
 			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has a pending interrupt set for session %s", active.ID, set.SessionID)
 		}
 		if set.RootRunID != active.ID {
 			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has a pending interrupt set for root %s", active.ID, set.RootRunID)
 		}
-		snapshot.Interactions, err = projectInteractions(set.Interrupts)
+		interactions, err := projectInteractions(set.Interrupts)
 		if err != nil {
 			return agent.SessionSnapshot{}, err
 		}
+		snapshot.Interactions = interactions
 	} else if len(read.interrupts) != 0 {
-		return agent.SessionSnapshot{}, fmt.Errorf("session %s has interrupts without a waiting root run", session.ID)
-	}
-	if err := snapshot.Validate(); err != nil {
-		return agent.SessionSnapshot{}, fmt.Errorf("cold session projection: %w", err)
+		return agent.SessionSnapshot{}, fmt.Errorf("session %s has interrupts without a waiting root run", snapshot.Session.ID)
 	}
 	return snapshot, nil
 }

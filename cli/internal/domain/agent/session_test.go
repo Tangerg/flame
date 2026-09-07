@@ -97,40 +97,6 @@ func TestSessionEqualityUsesDurableTimeSemantics(t *testing.T) {
 	}
 }
 
-func TestSessionRevisionStaysInsideTheExactJSONEnvelope(t *testing.T) {
-	session := Session{
-		ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel,
-		Workspace: testWorkspace("/tmp/demo"), Revision: exactint.Maximum,
-	}
-	if err := session.Validate(); err != nil {
-		t.Fatalf("maximum exact revision: %v", err)
-	}
-	session.Revision++
-	if err := session.Validate(); err == nil {
-		t.Fatal("Session accepted an inexact JSON revision")
-	}
-}
-
-func TestSessionRejectsNonExactIdentity(t *testing.T) {
-	session := Session{
-		ID: " ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel,
-		Workspace: testWorkspace("/tmp/demo"), Revision: 1,
-	}
-	if err := session.Validate(); err == nil {
-		t.Fatal("Session accepted an identity that requires trimming")
-	}
-}
-
-func TestSessionRejectsReasoningEffortWithoutAModel(t *testing.T) {
-	session := Session{
-		ID: "ses_1", Status: protocol.SessionStatusIdle, ReasoningEffort: "high",
-		Workspace: testWorkspace("/tmp/demo"), Revision: 1,
-	}
-	if err := session.Validate(); err == nil {
-		t.Fatal("Session accepted reasoning effort without a provider and model")
-	}
-}
-
 func TestSessionSnapshotRestoresDurableProjection(t *testing.T) {
 	snapshot := SessionSnapshot{
 		Session: Session{ID: "ses_1", Status: protocol.SessionStatusWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 2},

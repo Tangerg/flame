@@ -250,32 +250,14 @@ func TestApprovalCatalogRejectsNonExactSessionIdentityBeforeRuntimeBoundary(t *t
 	}
 }
 
-func TestApprovalCatalogRejectsInvalidAndDuplicateRules(t *testing.T) {
+func TestApprovalCatalogRejectsDuplicateRules(t *testing.T) {
 	t.Parallel()
 	valid := protocol.ApprovalRule{
 		ID: "rule_1", Scope: protocol.ApprovalRuleScopeGlobal, Tool: "shell",
 		Decision: protocol.ApprovalRuleDecisionAllow,
 	}
-	tests := []struct {
-		name  string
-		rules []protocol.ApprovalRule
-	}{
-		{
-			name: "invalid nested rule",
-			rules: []protocol.ApprovalRule{{
-				ID: "rule_1", Scope: protocol.ApprovalRuleScopeProject, Tool: "shell",
-				Decision: protocol.ApprovalRuleDecisionAllow,
-			}},
-		},
-		{name: "duplicate identity", rules: []protocol.ApprovalRule{valid, valid}},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			stub := &approvalBindingRecorder{listResult: &protocol.ListApprovalRulesResult{Rules: test.rules}}
-			runtime := &Connection{approvals: stub, meta: requestMeta("test")}
-			_, err := runtime.ListApprovalRules(t.Context(), "ses_1")
-			requireRuntimeContractViolation(t, err)
-		})
-	}
+	stub := &approvalBindingRecorder{listResult: &protocol.ListApprovalRulesResult{Rules: []protocol.ApprovalRule{valid, valid}}}
+	runtime := &Connection{approvals: stub, meta: requestMeta("test")}
+	_, err := runtime.ListApprovalRules(t.Context(), "ses_1")
+	requireRuntimeContractViolation(t, err)
 }

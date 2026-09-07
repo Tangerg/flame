@@ -83,9 +83,6 @@ func buildScriptSafely(build func(string) Script, prompt string) (script Script,
 }
 
 func (s Script) validate() error {
-	if err := s.InterruptUsage.Validate(); err != nil {
-		return fmt.Errorf("script interrupt usage: %w", err)
-	}
 	interrupted := s.interrupts()
 	if interrupted {
 		interactions := agent.CloneInteractions(s.Interactions)

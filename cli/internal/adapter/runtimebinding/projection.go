@@ -13,9 +13,6 @@ import (
 )
 
 func projectRun(value protocol.RunRef) (agent.Run, error) {
-	if err := protocol.ValidateWireTree(value); err != nil {
-		return agent.Run{}, fmt.Errorf("run %s wire projection: %w", value.ID, err)
-	}
 	lineage, err := projectRunLineage(value)
 	if err != nil {
 		return agent.Run{}, fmt.Errorf("run %s: %w", value.ID, err)
@@ -40,14 +37,7 @@ func projectRun(value protocol.RunRef) (agent.Run, error) {
 		}
 	}
 	if value.Outcome != nil {
-		outcome, err := projectRunOutcome(*value.Outcome)
-		if err != nil {
-			return agent.Run{}, fmt.Errorf("runtime run %s outcome: %w", value.ID, err)
-		}
-		projected.Outcome = outcome
-	}
-	if err := projected.Validate(); err != nil {
-		return agent.Run{}, fmt.Errorf("runtime run %s: %w", value.ID, err)
+		projected.Outcome = projectRunOutcome(*value.Outcome)
 	}
 	return projected, nil
 }
@@ -101,31 +91,22 @@ func cloneUsageByModel(values map[string]protocol.ModelUsage) map[string]protoco
 	return projected
 }
 
-func projectRunOutcome(value protocol.RunOutcome) (agent.Outcome, error) {
-	return projectOutcome(protocol.SegmentOutcome{
-		Type: protocol.SegmentOutcomeType(value.Type), Error: value.Error, Detail: value.Detail,
-	})
+func projectRunOutcome(value protocol.RunOutcome) agent.Outcome {
+	return projectOutcome(protocol.SegmentOutcomeType(value.Type), value.Error, value.Detail)
 }
 
-func projectOutcome(value protocol.SegmentOutcome) (agent.Outcome, error) {
-	if err := protocol.ValidateWireTree(value); err != nil {
-		return agent.Outcome{}, runtimeContractViolation("runtime outcome is invalid: %v", err)
+// projectOutcome folds a terminal Run or Segment outcome into the CLI's flat
+// presentation value. The wire contract already keeps Error and Detail on
+// disjoint terminals, so each tag carries at most one of them.
+func projectOutcome(status protocol.SegmentOutcomeType, problem *protocol.ProblemData, detail string) agent.Outcome {
+	return agent.Outcome{
+		Status: agent.OutcomeStatus(status), Detail: detail, Problem: failure.Clone(problem),
 	}
-	outcome := agent.Outcome{Status: agent.OutcomeStatus(value.Type), Detail: value.Detail}
-	switch value.Type {
-	case protocol.SegmentTimedOut, protocol.SegmentFailed, protocol.SegmentLost:
-		outcome.Detail = ""
-		outcome.Problem = failure.Clone(value.Error)
-	}
-	return outcome, nil
 }
 
 func projectPlan(plan *protocol.Plan) (*protocol.Plan, error) {
 	if plan == nil {
 		return nil, errors.New("plan projection is nil")
-	}
-	if err := protocol.ValidateWireTree(*plan); err != nil {
-		return nil, err
 	}
 	if plan.State == nil {
 		return nil, nil
@@ -138,9 +119,6 @@ func projectPlan(plan *protocol.Plan) (*protocol.Plan, error) {
 }
 
 func projectInteraction(value protocol.Interrupt) (agent.Interaction, error) {
-	if err := protocol.ValidateWireTree(value); err != nil {
-		return nil, fmt.Errorf("interrupt %s wire projection: %w", value.ItemID, err)
-	}
 	if value.Payload == nil {
 		return nil, fmt.Errorf("interrupt %s has no payload", value.ItemID)
 	}
@@ -150,23 +128,12 @@ func projectInteraction(value protocol.Interrupt) (agent.Interaction, error) {
 		if err != nil {
 			return nil, fmt.Errorf("approval %s: %w", value.ItemID, err)
 		}
-		approval := agent.Approval{
+		return agent.Approval{
 			RunID: value.RunID, ItemID: value.ItemID, Title: "Approve " + tool.Name, Detail: value.Payload.Reason,
 			Tool: &tool, Risk: value.Payload.Risk, Rememberable: value.Payload.Rememberable,
-		}
-		if err := approval.Validate(); err != nil {
-			return nil, err
-		}
-		return approval, nil
+		}, nil
 	case protocol.InterruptQuestion:
-		question, err := projectQuestion(value.RunID, value.ItemID, value.Payload.Question)
-		if err != nil {
-			return nil, err
-		}
-		if err := agent.ValidateInteraction(question); err != nil {
-			return nil, fmt.Errorf("question interrupt %s: %w", value.ItemID, err)
-		}
-		return question, nil
+		return projectQuestion(value.RunID, value.ItemID, value.Payload.Question)
 	default:
 		return nil, fmt.Errorf("%w: interrupt type %q is unsupported", agent.ErrIncompatibleRuntime, value.Type)
 	}
@@ -180,9 +147,6 @@ func projectInteractions(values []protocol.Interrupt) ([]agent.Interaction, erro
 			return nil, err
 		}
 		interactions = append(interactions, projected)
-	}
-	if err := agent.ValidateInteractions(interactions); err != nil {
-		return nil, err
 	}
 	return interactions, nil
 }

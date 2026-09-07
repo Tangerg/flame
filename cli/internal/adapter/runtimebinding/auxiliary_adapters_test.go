@@ -100,7 +100,8 @@ func (a *authoringContextBindingStub) ListRecipes(_ context.Context, request pro
 }
 
 func TestAuthoringContextAdapterProjectsDocumentsAndRecipes(t *testing.T) {
-	stub := &authoringContextBindingStub{t: t,
+	stub := &authoringContextBindingStub{
+		t:    t,
 		docs: protocol.NewPage([]protocol.AgentDoc{{Path: "/workspace/AGENTS.md", Scope: protocol.AgentDocScopeProjectRoot}}),
 		recipes: protocol.NewPage([]protocol.Recipe{{
 			Name: "review", Body: "review $ARGUMENTS", Scope: protocol.RecipeScopeProject, Source: "/workspace/.flame/recipes/review.md",
@@ -128,13 +129,6 @@ func TestAuthoringContextAdapterRejectsInvalidWireValues(t *testing.T) {
 		read func(*AuthoringContext) error
 	}{
 		{
-			name: "blank document path",
-			stub: &authoringContextBindingStub{docs: protocol.NewPage([]protocol.AgentDoc{{Path: " \t", Scope: protocol.AgentDocScopeHome}})},
-			read: func(adapter *AuthoringContext) error {
-				_, err := adapter.Documents(t.Context(), "/workspace")
-				return err
-			},
-		}, {
 			name: "repeated document path",
 			stub: &authoringContextBindingStub{docs: protocol.NewPage([]protocol.AgentDoc{
 				{Path: "/workspace/AGENTS.md", Scope: protocol.AgentDocScopeProjectRoot},
@@ -152,15 +146,6 @@ func TestAuthoringContextAdapterRejectsInvalidWireValues(t *testing.T) {
 			})},
 			read: func(adapter *AuthoringContext) error {
 				_, err := adapter.Documents(t.Context(), "/workspace")
-				return err
-			},
-		}, {
-			name: "blank recipe body",
-			stub: &authoringContextBindingStub{recipes: protocol.NewPage([]protocol.Recipe{{
-				Name: "empty", Body: " \n", Scope: protocol.RecipeScopeGlobal, Source: "/recipe.md",
-			}})},
-			read: func(adapter *AuthoringContext) error {
-				_, err := adapter.Recipes(t.Context(), "/workspace")
 				return err
 			},
 		}, {

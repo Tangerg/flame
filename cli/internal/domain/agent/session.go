@@ -37,31 +37,6 @@ func (s Session) Equal(other Session) bool {
 		s.Favorite == other.Favorite && s.Revision == other.Revision
 }
 
-func (s Session) Validate() error {
-	var problems []error
-	if err := runtimeprotocol.ValidateSessionID(s.ID); err != nil {
-		problems = append(problems, err)
-	}
-	if err := s.Workspace.Validate(); err != nil {
-		problems = append(problems, err)
-	}
-	if s.Status != runtimeprotocol.SessionStatusRunning &&
-		s.Status != runtimeprotocol.SessionStatusWaiting &&
-		s.Status != runtimeprotocol.SessionStatusIdle {
-		problems = append(problems, fmt.Errorf("status %q is invalid", s.Status))
-	}
-	if err := runtimeprotocol.ValidateModelSelection(s.Provider, s.Model, s.ReasoningEffort); err != nil {
-		problems = append(problems, err)
-	}
-	if err := validateCommittedRevision("session", s.Revision); err != nil {
-		problems = append(problems, err)
-	}
-	if err := errors.Join(problems...); err != nil {
-		return fmt.Errorf("session: %w", err)
-	}
-	return nil
-}
-
 func validateCommittedRevision(owner string, value uint64) error {
 	revision, err := exactint.Restore(value)
 	if err != nil {
@@ -150,20 +125,6 @@ type SessionPage struct {
 	NextCursor string
 }
 
-func (s SessionPage) Validate() error {
-	seen := make(map[string]struct{}, len(s.Items))
-	for index, session := range s.Items {
-		if err := session.Validate(); err != nil {
-			return fmt.Errorf("session page item %d: %w", index+1, err)
-		}
-		if _, duplicate := seen[session.ID]; duplicate {
-			return fmt.Errorf("session page repeats id %q", session.ID)
-		}
-		seen[session.ID] = struct{}{}
-	}
-	return nil
-}
-
 // SessionSnapshot is the cold-read projection the CLI restores. Transcript,
 // Runs, Plan, and Goal are durable values, never reconstructed from a historical
 // event stream. Runs contains roots and descendants in creation order.
@@ -216,9 +177,6 @@ func (s SessionSnapshot) LastAssistantText() (string, error) {
 }
 
 func (s SessionSnapshot) Validate() error {
-	if err := s.Session.Validate(); err != nil {
-		return fmt.Errorf("session snapshot: %w", err)
-	}
 	transcript, err := s.validateTranscript()
 	if err != nil {
 		return err
@@ -539,9 +497,6 @@ func (c CreateSession) ValidateResult(result Session) error {
 		return err
 	}
 	var problems []error
-	if err := result.Validate(); err != nil {
-		problems = append(problems, fmt.Errorf("runtime result: %w", err))
-	}
 	if result.Revision != exactint.First().Value() {
 		problems = append(problems, fmt.Errorf("runtime returned initial revision %d, want %d", result.Revision, exactint.First().Value()))
 	}
@@ -598,9 +553,6 @@ func (u UpdateSession) ValidateResult(result Session) error {
 		return err
 	}
 	var problems []error
-	if err := result.Validate(); err != nil {
-		problems = append(problems, fmt.Errorf("runtime result: %w", err))
-	}
 	if result.ID != u.SessionID {
 		problems = append(problems, fmt.Errorf("runtime returned session %s, want %s", result.ID, u.SessionID))
 	}
@@ -654,9 +606,6 @@ func (f ForkSession) ValidateResult(result Session) error {
 		return err
 	}
 	var problems []error
-	if err := result.Validate(); err != nil {
-		problems = append(problems, fmt.Errorf("runtime result: %w", err))
-	}
 	if result.Revision != exactint.First().Value() {
 		problems = append(problems, fmt.Errorf("runtime returned initial revision %d, want %d", result.Revision, exactint.First().Value()))
 	}

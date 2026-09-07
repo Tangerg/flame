@@ -42,9 +42,6 @@ func (r *Connection) ListModels(ctx context.Context) ([]protocol.Model, error) {
 	seenProviders := make(map[string]struct{}, len(providerValues))
 	seenModels := make(map[string]struct{})
 	for providerIndex, provider := range providerValues {
-		if err := protocol.ValidateWireTree(provider); err != nil {
-			return nil, runtimeContractViolation("model catalog returned an invalid provider: %v", err)
-		}
 		if _, duplicate := seenProviders[provider.ID]; duplicate {
 			return nil, runtimeContractViolation("model catalog repeats provider %q", provider.ID)
 		}
@@ -77,9 +74,6 @@ func (r *Connection) ListModels(ctx context.Context) ([]protocol.Model, error) {
 			if value.Provider != provider.ID {
 				return nil, runtimeContractViolation("models for provider %q returned model %q from %q", provider.ID, value.ID, value.Provider)
 			}
-			if err := protocol.ValidateWireTree(value); err != nil {
-				return nil, runtimeContractViolation("models for provider %q returned invalid item %d: %v", provider.ID, index+1, err)
-			}
 			identity := value.Provider + "\x00" + value.ID
 			if _, duplicate := seenModels[identity]; duplicate {
 				return nil, runtimeContractViolation("models for provider %q repeats model %q", provider.ID, value.ID)
@@ -107,9 +101,6 @@ func (r *Connection) GetApprovalMode(ctx context.Context) (protocol.ApprovalMode
 	if result == nil {
 		return "", runtimeContractViolation("get approval mode returned nil")
 	}
-	if err := protocol.ValidateWireTree(protocol.SetApprovalModeRequest{Mode: result.Mode}); err != nil {
-		return "", runtimeContractViolation("get approval mode returned an invalid mode: %v", err)
-	}
 	return result.Mode, nil
 }
 
@@ -130,9 +121,6 @@ func (r *Connection) SetApprovalMode(ctx context.Context, mode protocol.Approval
 		return "", runtimeContractViolation("set approval mode returned nil")
 	}
 	applied := result.Mode
-	if err := protocol.ValidateWireTree(protocol.SetApprovalModeRequest{Mode: applied}); err != nil {
-		return "", runtimeContractViolation("set approval mode returned an invalid mode: %v", err)
-	}
 	if applied != mode {
 		return "", runtimeContractViolation("set approval mode returned %q for %q", applied, mode)
 	}
@@ -149,9 +137,6 @@ func (r *Connection) ListApprovalRules(ctx context.Context, sessionID string) ([
 	}
 	if result == nil {
 		return nil, runtimeContractViolation("list approval rules returned nil")
-	}
-	if err := protocol.ValidateWireTree(*result); err != nil {
-		return nil, runtimeContractViolation("list approval rules returned an invalid result: %v", err)
 	}
 	seen := make(map[string]struct{}, len(result.Rules))
 	for _, rule := range result.Rules {

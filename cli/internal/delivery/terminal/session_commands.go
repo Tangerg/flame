@@ -41,14 +41,7 @@ func (a *app) loadSessionPage(cursor string, appendPage bool) {
 	a.message("loading sessions")
 	a.runOperation(pickerCatalogOperation, true,
 		func(ctx context.Context) (agent.SessionPage, error) {
-			page, err := a.runtime.ListSessions(ctx, agent.SessionQuery{PageSize: agent.DefaultPageSize(), Cursor: cursor})
-			if err != nil {
-				return agent.SessionPage{}, err
-			}
-			if err := page.Validate(); err != nil {
-				return agent.SessionPage{}, fmt.Errorf("list sessions: %w", err)
-			}
-			return page, nil
+			return a.runtime.ListSessions(ctx, agent.SessionQuery{PageSize: agent.DefaultPageSize(), Cursor: cursor})
 		},
 		func(page agent.SessionPage, err error) {
 			if appendPage && !a.dialogs.sessionDialog.Open() {
