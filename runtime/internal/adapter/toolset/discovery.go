@@ -74,7 +74,6 @@ func WithToolAdvertiser(ctx context.Context, advertiser ToolAdvertiser) context.
 type Discovery struct {
 	entries []discoverableTool
 	byName  map[string]discoverableTool
-	names   []string // deferred tool names, in stable source-then-name order
 	inner   toolcontract.Tool
 }
 
@@ -107,10 +106,6 @@ func NewDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
 		}
 		return strings.Compare(a.definition.Name, b.definition.Name)
 	})
-	t.names = make([]string, len(t.entries))
-	for i, e := range t.entries {
-		t.names[i] = e.definition.Name
-	}
 	inner, err := toolcontract.NewFunc(
 		toolcontract.FuncConfig{
 			Name:        tool.SearchTools,
@@ -123,15 +118,6 @@ func NewDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
 	}
 	t.inner = inner
 	return t, nil
-}
-
-// DeferredToolNames exposes the exact executable names represented by this
-// search surface. The Resolver remains the authority for visible/deferred sets.
-func (d *Discovery) DeferredToolNames() []string {
-	if d == nil {
-		return nil
-	}
-	return slices.Clone(d.names)
 }
 
 func (d *Discovery) Definition() chat.ToolDefinition {
