@@ -26,7 +26,7 @@ trust-boundary checks, resource ownership, and product capabilities remain.
 | R2 | `SessionStores`, `WorkingContextComposer`, `InteractionExecutor`, and title finalization allow absent dependencies that the production composition always supplies. | Require complete collaborators at construction. Remove impossible missing-capability execution branches. Retain actual checkpoint, sandbox, and tool-result-offload policies. | Complete |
 | R3 | Fixed product policy is represented by optional tuning bags; test-only maintenance and restore-scope overrides create alternate production paths. Shutdown wraps a fixed timeout in repeated validation. | Give fixed policy one owner. Remove replacement paths with no product consumer. Keep narrow test controls only where they isolate an actual external boundary or deterministic lifetime. | Complete |
 | R4 | Executor composition repeats BuildID as ImplementationIdentity and adds a hand-maintained configuration identity beside serialized configuration. | Derive deployment identity from the real executable and configuration facts. Remove synonymous identity inputs and wrappers without weakening Scope deployment compatibility. | Complete |
-| R5 | Recovery and waiting-subtree cancellation validate constructed immutable write sets again in persistence. Some validators replay planner transitions. | One owner constructs each complete decision. Persistence checks transactional expectations, not a second recovery policy. Remove redundant construction surfaces and repeated proof machinery. | Pending |
+| R5 | Recovery and waiting-subtree cancellation validate constructed immutable write sets again in persistence. Some validators replay planner transitions. | One owner constructs each complete decision. Persistence checks transactional expectations, not a second recovery policy. Remove redundant construction surfaces and repeated proof machinery. | Complete |
 | R6 | Session restore, fork, and rollback repeatedly normalize, copy, and validate complete snapshots through write-plan construction and application. | Decode and validate external input at its boundary; acquire mutable ownership once per retained owner. Apply an established immutable write plan without another full reconstruction. | Pending |
 | R7 | Restored immutable aggregates are fully revalidated by replacements, queries, snapshots, and persistence. | Aggregate construction owns intrinsic validity. Use cases own cross-aggregate relationships; storage owns decoding and current-state matching. Remove duplicate intrinsic validation while retaining zero-value and external-boundary admission. | Pending |
 | R8 | The live registry writes CancelReason but has no production reader. The Run-tree cancellation arbiter owns the consumed reason. | Remove registry cancellation state and writes. Keep the arbiter as the sole cancellation-reason owner and retain observable cancellation coverage. | Complete |
@@ -198,6 +198,29 @@ Removed the unused compaction-result change flag. Tests observe effective
 messages, durable rewrites, and summary calls directly. Verified focused
 compaction, execution, and bootstrap tests, followed by Runtime tests, vet,
 build, and whitespace checks.
+
+### Recovery decisions are established before persistence
+
+Recovery and waiting-subtree cancellation commits no longer expose full
+revalidation. Their constructors own the complete write-set relationship check;
+persistence rejects an unconstructed value before beginning a transaction and
+then enforces exact stored-state matching, commit receipts, and atomic effects.
+Recovery retains a private owned state, including an explicit distinction
+between an empty constructed reconciliation and the zero value.
+
+The private recovery planner already obtains Run and Item transitions from
+Domain behavior, so construction no longer calls those transitions again or
+compares a second reconstructed aggregate. Cross-aggregate ownership, finish
+times, Goal accounting, conversation watermarks, and cleanup scope remain checked.
+The parked/resuming cancellation constructors still admit multiple independently
+supplied facts; their one-time exact transformation proof protects that boundary
+and is retained. Tests cover constructor rejection and isolated accessors rather
+than validating an established commit again.
+
+Verified lost-tree recovery, preserved waiting trees, Goal accounting, child
+cancellation, stale claims, rollback, replay and lost receipts, including public
+bootstrap lifecycle coverage. Runtime tests, vet, build, and whitespace checks
+passed.
 
 If deeper consumer evidence invalidates a proposed deletion, record the
 surviving requirement here instead of weakening it to satisfy a line-count target.

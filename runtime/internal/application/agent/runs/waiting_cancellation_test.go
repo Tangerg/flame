@@ -623,9 +623,6 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	if commit.CommitID().IsZero() || remaining || !resuming {
 		t.Fatalf("continuation commit = %+v, want a tree Resume", commit)
 	}
-	if err := commit.Validate(); err != nil {
-		t.Fatalf("continuation commit: %v", err)
-	}
 	rootSegmentID := ""
 	for _, draft := range resume.Runs {
 		if draft.RunID == commit.RootRunID() {
@@ -696,9 +693,6 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 		ownedResume.Runs[0].SegmentID != wantResumeSegmentID ||
 		len(ownedOpening[0].Items) != 1 {
 		t.Fatal("waiting cancellation write-set followed caller or accessor mutation")
-	}
-	if err := withOpening.Validate(); err != nil {
-		t.Fatalf("owned waiting cancellation no longer validates: %v", err)
 	}
 	nested := withOpening.OpeningEvents()
 	nested[0].CommitID = testCommitID("run_commit_waiting_cancel_nested")

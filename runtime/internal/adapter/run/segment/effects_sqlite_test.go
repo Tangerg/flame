@@ -3258,3 +3258,10 @@ func requireSQLiteHealthy(t *testing.T, ctx context.Context, db *sql.DB) {
 		t.Fatalf("foreign_key_check rows: %v", err)
 	}
 }
+
+func TestWaitingCancellationRejectsUnconstructedCommitBeforeTransaction(t *testing.T) {
+	effects := &Effects{}
+	if _, err := effects.CommitWaitingSubtreeCancellation(t.Context(), runs.WaitingSubtreeCancellationCommit{}); err == nil {
+		t.Fatal("unconstructed waiting cancellation reached persistence")
+	}
+}

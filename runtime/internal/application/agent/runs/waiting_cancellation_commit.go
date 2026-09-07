@@ -112,7 +112,7 @@ func newWaitingSubtreeCancellationCommit(
 	}
 	state.OpeningEvents = cloneEventCommits(state.OpeningEvents)
 	commit := WaitingSubtreeCancellationCommit{state: state}
-	if err := commit.Validate(); err != nil {
+	if err := validateWaitingCancellation(state); err != nil {
 		return WaitingSubtreeCancellationCommit{}, err
 	}
 	return commit, nil
@@ -201,12 +201,13 @@ type waitingCancellationValidation struct {
 	finishedAtByRunID   map[string]time.Time
 }
 
-// Validate proves that the write-set is exactly the canonical transformation
-// of ExpectedPending after TargetRunID's subtree is removed. This is application
-// policy: persistence only claims the frozen Pending snapshot and writes these
-// already-validated facts atomically.
-func (w WaitingSubtreeCancellationCommit) Validate() error {
-	validation, err := newWaitingCancellationValidation(w)
+// IsZero reports whether no cancellation transaction was constructed.
+func (w WaitingSubtreeCancellationCommit) IsZero() bool { return w.state.CommitID.IsZero() }
+
+// validateWaitingCancellation proves the complete transformation once at its
+// construction boundary. Persistence only claims and writes the resulting facts.
+func validateWaitingCancellation(state waitingSubtreeCancellationState) error {
+	validation, err := newWaitingCancellationValidation(state)
 	if err != nil {
 		return err
 	}
@@ -232,9 +233,8 @@ func (w WaitingSubtreeCancellationCommit) Validate() error {
 }
 
 func newWaitingCancellationValidation(
-	c WaitingSubtreeCancellationCommit,
+	state waitingSubtreeCancellationState,
 ) (waitingCancellationValidation, error) {
-	state := c.state
 	if err := validateWaitingCancellationBoundary(state); err != nil {
 		return waitingCancellationValidation{}, err
 	}

@@ -56,7 +56,7 @@ type RecoveryAdmissions interface {
 // child-before-parent replacement. Checkpoint and callback cleanup name only
 // Sessions whose writer lease was acquired.
 type RecoveryCommit struct {
-	state recoveryCommitState
+	state *recoveryCommitState
 }
 
 type recoveryCommitState struct {

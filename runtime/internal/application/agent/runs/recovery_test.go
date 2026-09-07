@@ -51,10 +51,11 @@ type recoveryStoreStub struct {
 func invalidRecoveryCommit(
 	commit RecoveryCommit,
 	mutate func(*recoveryCommitState),
-) RecoveryCommit {
-	state := cloneRecoveryCommitState(commit.state)
+) error {
+	state := cloneRecoveryCommitState(*commit.state)
 	mutate(&state)
-	return RecoveryCommit{state: state}
+	_, err := newRecoveryCommit(state)
+	return err
 }
 
 func (r *recoveryStoreStub) ListNonTerminalRuns(context.Context) ([]rundomain.Run, error) {
@@ -916,26 +917,26 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 			}
 		}
 	})
-	if err := foreignOrphan.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted an orphan invocation outside recovered Session ownership")
+	if foreignOrphan == nil {
+		t.Fatal("recovery constructor accepted an orphan invocation outside recovered Session ownership")
 	}
 	missingCheckpointDeletion := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.DeleteCheckpointSessionIDs = nil
 	})
-	if err := missingCheckpointDeletion.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted a lost tree without checkpoint cleanup")
+	if missingCheckpointDeletion == nil {
+		t.Fatal("recovery constructor accepted a lost tree without checkpoint cleanup")
 	}
 	foreignCheckpointDeletion := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.DeleteCheckpointSessionIDs = append(state.DeleteCheckpointSessionIDs, "session_foreign")
 	})
-	if err := foreignCheckpointDeletion.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted checkpoint cleanup for an unrelated Session")
+	if foreignCheckpointDeletion == nil {
+		t.Fatal("recovery constructor accepted checkpoint cleanup for an unrelated Session")
 	}
 	missingToolReplacement := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.ItemReplacements = nil
 	})
-	if err := missingToolReplacement.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted a lost-Run Tool journal without its Item replacement")
+	if missingToolReplacement == nil {
+		t.Fatal("recovery constructor accepted a lost-Run Tool journal without its Item replacement")
 	}
 	wrongInvocationSegment := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		for index := range state.ModelInvocations {
@@ -944,8 +945,8 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 			}
 		}
 	})
-	if err := wrongInvocationSegment.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted an invocation outside its recovered active Segment")
+	if wrongInvocationSegment == nil {
+		t.Fatal("recovery constructor accepted an invocation outside its recovered active Segment")
 	}
 }
 
@@ -1098,22 +1099,22 @@ func TestRecoveryChargesLostGoalOwnedRootToItsAdmissionLease(t *testing.T) {
 	missingCharge := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.GoalRuns = nil
 	})
-	if err := missingCharge.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted a lost goal-owned Run without its charge")
+	if missingCharge == nil {
+		t.Fatal("recovery constructor accepted a lost goal-owned Run without its charge")
 	}
 	mismatchedCharge := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.GoalRuns[0].IncarnationID = "other-lease"
 	})
-	if err := mismatchedCharge.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted a Goal Run from another incarnation")
+	if mismatchedCharge == nil {
+		t.Fatal("recovery constructor accepted a Goal Run from another incarnation")
 	}
 	foreignDeletion := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.DeleteInterrupts = append(state.DeleteInterrupts, InterruptOwner{
 			SessionID: "other-session", RootRunID: "run_foreign",
 		})
 	})
-	if err := foreignDeletion.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted deletion of an unrelated Pending set")
+	if foreignDeletion == nil {
+		t.Fatal("recovery constructor accepted deletion of an unrelated Pending set")
 	}
 }
 
@@ -1439,14 +1440,14 @@ func TestRecoveryAtomicallyClosesLostQuestionToolContext(t *testing.T) {
 	missingClosure := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.ConversationTransitions = nil
 	})
-	if err := missingClosure.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted a lost tree without its conversation transition")
+	if missingClosure == nil {
+		t.Fatal("recovery constructor accepted a lost tree without its conversation transition")
 	}
 	wrongWatermark := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.ConversationTransitions[0].ExpectedCount++
 	})
-	if err := wrongWatermark.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted a conversation watermark that differs from the lost Run")
+	if wrongWatermark == nil {
+		t.Fatal("recovery constructor accepted a conversation watermark that differs from the lost Run")
 	}
 }
 
