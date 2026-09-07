@@ -17,7 +17,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
-	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
@@ -764,7 +763,7 @@ func TestRuntimeChangeMonitorReconnectsWhenAStreamClosesUnexpectedly(t *testing.
 	}
 	done := make(chan error, 1)
 	go func() {
-		done <- (runtimeChangeMonitor{source: source, recovery: retry.ImmediateBackoff()}).run(ctx)
+		done <- (runtimeChangeMonitor{source: source, recovery: testBackoff(t, time.Nanosecond, time.Nanosecond)}).run(ctx)
 	}()
 
 	awaitSignal(t, source.subscription, "initial runtime subscription")

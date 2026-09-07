@@ -93,7 +93,7 @@ func TestFileRollbackStopsRetryingWhenReplayExpires(t *testing.T) {
 		now = pending.Replay.Until()
 		runtime.reject = nil
 	}
-	result, err := settleRollback(t.Context(), runtime, pending, policy, retry.ImmediateBackoff())
+	result, err := settleRollback(t.Context(), runtime, pending, policy, testBackoff(t))
 	if result.Outcome != mutation.Unknown || !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
 		t.Fatalf("settlement = outcome %v, error %v", result.Outcome, err)
 	}
@@ -136,7 +136,7 @@ func TestRecoverConfirmsAnAlreadyAppliedRollbackWithoutReplay(t *testing.T) {
 		t.Fatal(rollbackSessionErr)
 	}
 	runtime := &recordingRuntime{Runtime: underlying}
-	if recoverErr := RecoverRollbacks(t.Context(), runtime, store, policy, retry.ImmediateBackoff()); recoverErr != nil {
+	if recoverErr := RecoverRollbacks(t.Context(), runtime, store, policy, testBackoff(t)); recoverErr != nil {
 		t.Fatal(recoverErr)
 	}
 	if runtime.calls != 0 {
@@ -208,7 +208,7 @@ func TestRecoverReplaysAPreparedHistoryRollbackWithItsStableIdentity(t *testing.
 		t.Fatal(err)
 	}
 	runtime := &recordingRuntime{Runtime: underlying}
-	if err := RecoverRollbacks(t.Context(), runtime, store, policy, retry.ImmediateBackoff()); err != nil {
+	if err := RecoverRollbacks(t.Context(), runtime, store, policy, testBackoff(t)); err != nil {
 		t.Fatal(err)
 	}
 	if runtime.calls != 1 || runtime.request != pending.Request() {
@@ -265,7 +265,7 @@ func TestRecoverRefusesUnprovenFileRollbackReplay(t *testing.T) {
 			}
 			runtime := &recordingRuntime{Runtime: underlying}
 			policy := advertisedRollbackPolicy(t, test.namespace, time.Minute, func() time.Time { return test.now })
-			err = RecoverRollbacks(t.Context(), runtime, store, policy, retry.ImmediateBackoff())
+			err = RecoverRollbacks(t.Context(), runtime, store, policy, testBackoff(t))
 			if err == nil || !strings.Contains(err.Error(), "replay guarantee") {
 				t.Fatalf("file rollback recovery error = %v", err)
 			}
@@ -297,7 +297,7 @@ func TestRecoverRetiresADefinitivelyRejectedHistoryRollback(t *testing.T) {
 		t.Fatal(err)
 	}
 	runtime := &recordingRuntime{Runtime: underlying, reject: agent.ErrSessionBusy}
-	if err := RecoverRollbacks(t.Context(), runtime, store, policy, retry.ImmediateBackoff()); err != nil {
+	if err := RecoverRollbacks(t.Context(), runtime, store, policy, testBackoff(t)); err != nil {
 		t.Fatal(err)
 	}
 	if runtime.calls != 1 || !errors.Is(runtime.reject, agent.ErrSessionBusy) {
@@ -325,7 +325,7 @@ func TestRecoverPreservesHistoryRollbackRejectedByAnotherRuntimeStore(t *testing
 		t.Fatal(stageSessionRollbackErr)
 	}
 	runtime := &recordingRuntime{Runtime: underlying, reject: agent.ErrCommandStoreMismatch}
-	err = RecoverRollbacks(t.Context(), runtime, store, policy, retry.ImmediateBackoff())
+	err = RecoverRollbacks(t.Context(), runtime, store, policy, testBackoff(t))
 	if !errors.Is(err, agent.ErrCommandStoreMismatch) {
 		t.Fatalf("store mismatch recovery error = %v", err)
 	}
@@ -333,4 +333,13 @@ func TestRecoverPreservesHistoryRollbackRejectedByAnotherRuntimeStore(t *testing
 	if !exists || stored.CommandID != pending.CommandID || stored.Phase != workbench.SessionRollbackPrepared {
 		t.Fatalf("preserved rollback = %+v, present %t", stored, exists)
 	}
+}
+
+func testBackoff(t testing.TB) retry.Backoff {
+	t.Helper()
+	backoff, err := retry.NewBackoff(time.Nanosecond, time.Nanosecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return backoff
 }

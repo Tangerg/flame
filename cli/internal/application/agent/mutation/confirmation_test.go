@@ -72,7 +72,7 @@ func TestOutcomeHasOneSharedStableIdentity(t *testing.T) {
 
 func TestConfirmStopsAtARuntimeStoreMismatch(t *testing.T) {
 	attempts := 0
-	_, err := confirm(t.Context(), retry.ImmediateBackoff(), func(context.Context) (struct{}, error) {
+	_, err := confirm(t.Context(), testBackoff(t), func(context.Context) (struct{}, error) {
 		attempts++
 		return struct{}{}, agent.ErrCommandStoreMismatch
 	})
@@ -95,7 +95,7 @@ func TestConfirmRejectsAnUnconfiguredBackoffBeforeMutationIO(t *testing.T) {
 
 func TestConfirmRetriesAnUncertainMutationWithTheSameOwner(t *testing.T) {
 	attempts := 0
-	result, err := confirm(t.Context(), retry.ImmediateBackoff(), func(context.Context) (string, error) {
+	result, err := confirm(t.Context(), testBackoff(t), func(context.Context) (string, error) {
 		attempts++
 		if attempts < 3 {
 			return "", context.DeadlineExceeded
@@ -110,7 +110,7 @@ func TestConfirmRetriesAnUncertainMutationWithTheSameOwner(t *testing.T) {
 func TestConfirmStopsAtOwnerCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	attempts := 0
-	_, err := confirm(ctx, retry.ImmediateBackoff(), func(context.Context) (struct{}, error) {
+	_, err := confirm(ctx, testBackoff(t), func(context.Context) (struct{}, error) {
 		attempts++
 		cancel()
 		return struct{}{}, context.DeadlineExceeded
@@ -120,11 +120,24 @@ func TestConfirmStopsAtOwnerCancellation(t *testing.T) {
 	}
 }
 
+func TestConfirmRejectsOwnerCancellationBeforeMutationIO(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	attempts := 0
+	_, err := confirm(ctx, testBackoff(t), func(context.Context) (struct{}, error) {
+		attempts++
+		return struct{}{}, nil
+	})
+	if !errors.Is(err, context.Canceled) || attempts != 0 {
+		t.Fatalf("confirmation error = %v after %d attempts", err, attempts)
+	}
+}
+
 func TestConfirmAdmittedFencesEveryRuntimeAttempt(t *testing.T) {
 	replayable := true
 	attempts := 0
 	_, err := ConfirmAdmitted(
-		t.Context(), retry.ImmediateBackoff(),
+		t.Context(), testBackoff(t),
 		func() error {
 			if !replayable {
 				return ErrReplayGuaranteeUnavailable
@@ -185,7 +198,7 @@ func TestReplayAdmissionRechecksClockBeforeEachAttempt(t *testing.T) {
 		t.Fatal(err)
 	}
 	attempts := 0
-	_, err = ConfirmAdmitted(t.Context(), retry.ImmediateBackoff(), ReplayAdmission(policy, guard), func(context.Context) (struct{}, error) {
+	_, err = ConfirmAdmitted(t.Context(), testBackoff(t), ReplayAdmission(policy, guard), func(context.Context) (struct{}, error) {
 		attempts++
 		now = guard.Until()
 		return struct{}{}, agent.ErrDisconnected
@@ -193,4 +206,13 @@ func TestReplayAdmissionRechecksClockBeforeEachAttempt(t *testing.T) {
 	if !errors.Is(err, ErrReplayGuaranteeUnavailable) || attempts != 1 {
 		t.Fatalf("expired confirmation = %v after %d attempts", err, attempts)
 	}
+}
+
+func testBackoff(t testing.TB) retry.Backoff {
+	t.Helper()
+	backoff, err := retry.NewBackoff(time.Nanosecond, time.Nanosecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return backoff
 }

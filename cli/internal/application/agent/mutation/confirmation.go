@@ -107,6 +107,10 @@ func ConfirmAdmitted[T any](
 		return zero, err
 	}
 	for failures := 0; ; {
+		if cause := context.Cause(ctx); cause != nil {
+			var zero T
+			return zero, cause
+		}
 		if admit != nil {
 			if err := admit(); err != nil {
 				var zero T
