@@ -1,5 +1,17 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode, Ref } from "react";
 import { cn } from "@/lib/classNames";
+
+const styles = stylex.create({
+  port: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
+  // A scrollport with no bar of its own: the content is short enough that a bar would read as
+  // chrome, and the axis is locked so a wide child cannot introduce a second one.
+  bare: {
+    overflowX: "hidden",
+    scrollbarWidth: "none",
+    "::-webkit-scrollbar": { display: "none" },
+  },
+});
 
 interface Props {
   className?: string;
@@ -9,16 +21,15 @@ interface Props {
 }
 
 export function ScrollArea({ className, children, hideScrollbar, ref }: Props) {
+  const styled = stylex.props(styles.port, hideScrollbar && styles.bare);
   return (
     <div
       ref={ref}
-      className={cn(
-        "min-h-0 flex-1 overflow-y-auto overscroll-contain",
-        hideScrollbar
-          ? "overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          : "panel-scroll",
-        className,
-      )}
+      {...styled}
+      // `panel-scroll` is the bar's own material — a hover-revealed thumb drawn by
+      // `::-webkit-scrollbar-*`, which is several pseudo-elements deep and stays in
+      // `globals.css` where the rest of the window's chrome lives.
+      className={cn(styled.className, !hideScrollbar && "panel-scroll", className)}
     >
       {children}
     </div>

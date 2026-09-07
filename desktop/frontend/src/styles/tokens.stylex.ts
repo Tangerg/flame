@@ -50,6 +50,7 @@ export const surface = stylex.defineVars({
   surface2: "var(--color-surface-2)",
   divider: "var(--color-divider)",
   surface3: "var(--color-surface-3)",
+  surface: "var(--color-surface)",
   canvas: "var(--color-canvas)",
   floating: "var(--app-floating-surface)",
   scrim: "var(--color-scrim)",
@@ -60,6 +61,8 @@ export const surface = stylex.defineVars({
   mediaScrim: "var(--color-media-scrim)",
   /** A row's wash: 10% of the hue, enough to tint without becoming a plate. */
   negativeWash: "var(--color-negative-wash)",
+  infoWash: "var(--color-info-wash)",
+  successWash: "var(--color-success-wash)",
   warningWash: "var(--color-warning-wash)",
   joinSeam: "var(--button-join-seam)",
   selected: "var(--color-selected)",
@@ -86,6 +89,7 @@ export const radius = stylex.defineVars({
   card: "var(--surface-card-radius)",
   bubble: "var(--radius-bubble)",
   sm: "var(--radius-sm)",
+  lg: "var(--radius-lg)",
   /** Corners a control owns, which the visual style may move independently of the ladder. */
   field: "var(--field-radius)",
   segmented: "var(--segmented-radius)",
@@ -125,6 +129,7 @@ export const space = stylex.defineVars({
   s9: "calc(var(--spacing) * 9)",
   s10: "calc(var(--spacing) * 10)",
   s12: "calc(var(--spacing) * 12)",
+  s16: "calc(var(--spacing) * 16)",
   s24: "calc(var(--spacing) * 24)",
 });
 
@@ -155,6 +160,7 @@ export const leading = stylex.defineVars({
   relaxed: "var(--leading-relaxed)",
   prose: "var(--leading-prose)",
   snug: "var(--leading-snug)",
+  normal: "var(--leading-normal)",
   tight: "var(--leading-tight)",
 });
 

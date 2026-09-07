@@ -7700,3 +7700,59 @@ hover 后 opacity 仍为 0；单跑 4.5s 通过。是并行下的 hover 时序�
 `ui/atoms` 剩 9 个：`choice-list`（142）/ `data-view`（84）/ `vertical-tabs`（77）/
 `system-message`（64）/ `resize-handle`（213）/ `scroll-area` / `glyph-swap` /
 `external-link` / `pressable`（后者不声明样式，无可迁）。
+
+---
+
+## Round 131 — `system-message` / `scroll-area` / `vertical-tabs`
+
+### 先修正上一轮的清单
+
+"未迁 14 个"里有四个根本**不声明任何样式**，只是组合已迁移的原子或绑定
+globals.css 的机制：
+
+| 文件 | 它做什么 |
+| --- | --- |
+| `data-view` | 按 loading / unsupported / error / empty 分支选一个已迁原子 |
+| `external-link` | 给 `AnchorPrimitive` 加 `target` + `rel` |
+| `pressable` | `ButtonPrimitive` 的一层 |
+| `glyph-swap` | 挂 `t-icon-swap` / `t-icon`，机制是 globals.css 里的兄弟选择器 |
+
+它们没有 stylex import 是**正确的**，不是待办。真正剩下有样式的是五个。
+
+### 一处缺档
+
+`SystemMessage` 两个调用点：`FloatingComposer` 只加 `text-pretty`（文案，保留），
+`CwdMissingBanner` 加 `items-start px-3 py-2.5` —— 它装的是一个字段加两个按钮，
+不是一句话。横条对齐方式与纵向内距都跟着"装的是什么"变，这是第二种形状。
+
+### 一个会静默吃掉 class 的写法
+
+```tsx
+<div className="pane-split" {...stylex.props(styles.rail)}>   // ← pane-split 消失
+<div {...rail} className={cn(rail.className, "pane-split")}>  // ← 两者都在
+```
+
+JSX 后写的属性覆盖先写的，而 `stylex.props()` 返回的对象里**就有 `className`**。
+设置面板的整条导轨因此丢了它投向内容区的接缝（`.pane-split` 是键在
+`data-split-side` 上的 globals 机制），4 张 golden 位移。
+
+已用一段脚本扫过全部 `src/**/*.tsx`：同一个 JSX 标签里 `className=` 出现在
+`{...stylex.props` 之前的，只有这一处。
+
+### 验证方式的调整
+
+改为**先 `--grep` 只跑受影响的 spec、全量只在提交前跑一次**，
+单测也只跑受影响的目录（`src/ui` + 相关插件）。全量视觉一轮 10–15 分钟，
+把它当迭代循环用是浪费。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650，零位移**（1 张确认为并行抖动，单跑 20.7s 通过） |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | 受影响范围 82 项全通过 |
+
+### 下一轮方向
+
+`ui/atoms` 只剩 `choice-list`（142 行）与 `resize-handle`（213 行）两个有样式的。
