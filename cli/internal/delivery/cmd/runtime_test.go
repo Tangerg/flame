@@ -73,12 +73,15 @@ func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 func commandRuntimeProfile(t *testing.T, edits ...func(*protocol.DiscoverResponse, *protocol.ClientCapabilities)) runtimebinding.Profile {
 	t.Helper()
 	discovery := runtimefixture.Discovery()
-	discovery.Capabilities.Features[protocol.FeatureMCP] = protocol.FeatureCapability{
-		Enabled: true, ClientOptIn: true, RequiredByRunProtocol: true,
+	client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{}}
+	for _, feature := range protocol.Features() {
+		discovery.Capabilities.Features[feature.Key] = protocol.FeatureCapability{
+			Enabled: true, ClientOptIn: feature.ClientOptIn, RequiredByRunProtocol: feature.RequiredByRunProtocol,
+		}
+		if feature.ClientOptIn {
+			client.Features[feature.Key] = protocol.FeaturePreference{Enabled: true}
+		}
 	}
-	client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{
-		protocol.FeatureMCP: {Enabled: true},
-	}}
 	for _, edit := range edits {
 		edit(discovery, client)
 	}

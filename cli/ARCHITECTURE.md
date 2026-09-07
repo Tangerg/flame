@@ -49,6 +49,8 @@ MCP management consumes Runtime server, tool, probe, and authorization values di
 
 The binding adapter's immutable `Profile` retains the validated `protocol.DiscoverResponse` and client capability declaration. Runtime owns the wire constraints and feature-negotiation rule; CLI adds only its supported-surface checks and local command-replay policy. Readers receive owned protocol values. `runtime info --json` publishes these values under `discovery` and `clientCapabilities`, using the Runtime field names and limit representations directly.
 
+Commands and terminal sessions require a negotiated Runtime profile. Replay admission uses that connection's fixed store identity and checks the recorded deadline before every mutation attempt. Queue-local intent and projection-reconciled history rollback can remain unprotected; that state never grants an unprotected mutation retry.
+
 The terminal model catalog aggregates Runtime's per-provider discovery results. A provider discovery failure remains visible beside successfully discovered models; the CLI never invents fallback models. Cancellation, Runtime closure, and invalid protocol responses abort the aggregate read.
 
 ## Commands

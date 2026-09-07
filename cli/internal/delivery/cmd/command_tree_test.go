@@ -44,7 +44,7 @@ func executeCommand(t *testing.T, rt Runtime, stdin string, args ...string) (str
 	if rt == nil {
 		rt = runtimefixture.New()
 	}
-	return executeCommandWithRuntime(t, rt, nil, stdin, args...)
+	return executeCommandWithRuntime(t, rt, new(commandRuntimeProfile(t)), stdin, args...)
 }
 
 func executeCommandWithRuntime(
@@ -72,6 +72,13 @@ func instantRuntime() *runtimefixture.Runtime {
 	rt := runtimefixture.New()
 	rt.Instant = true
 	return rt
+}
+
+func TestCommandRequiresNegotiatedRuntimeProfile(t *testing.T) {
+	out, _, err := executeCommandWithRuntime(t, instantRuntime(), nil, "", "sessions", "ls")
+	if err == nil || !strings.Contains(err.Error(), "profile") || out != "" {
+		t.Fatalf("command without profile = output %q, error %v", out, err)
+	}
 }
 
 func firstSession(t *testing.T, rt Runtime) string {
@@ -894,7 +901,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	var output bytes.Buffer
 	root := NewRoot(Dependencies{
 		OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
-			return runtime, nil, nil
+			return runtime, new(commandRuntimeProfile(t)), nil
 		},
 		StateDirectory: stateDirectory,
 	})

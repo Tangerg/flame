@@ -1364,7 +1364,7 @@ func runUIWithRuntimeChangeServices(t *testing.T, runtime Runtime, workspaces Wo
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: runtime, Workspaces: workspaces, Changes: source, SessionID: sessionID, Host: host})
+		done <- runTestTerminal(t, ctx, Config{Runtime: runtime, Workspaces: workspaces, Changes: source, SessionID: sessionID, Host: host})
 	}()
 	var once sync.Once
 	stop := func() {

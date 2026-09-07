@@ -20,6 +20,7 @@ import (
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
@@ -27,6 +28,41 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
+
+func testSessionConfig(t *testing.T, cfg Config) Config {
+	t.Helper()
+	if cfg.RuntimeProfile == nil {
+		cfg.RuntimeProfile = new(terminalProfile(t, func(discovery *protocol.DiscoverResponse, client *protocol.ClientCapabilities) {
+			for _, feature := range protocol.Features() {
+				discovery.Capabilities.Features[feature.Key] = protocol.FeatureCapability{
+					Enabled: true, ClientOptIn: feature.ClientOptIn, RequiredByRunProtocol: feature.RequiredByRunProtocol,
+				}
+				if feature.ClientOptIn {
+					client.Features[feature.Key] = protocol.FeaturePreference{Enabled: true}
+				}
+			}
+		}))
+	}
+	return cfg
+}
+
+func runTestTerminal(t *testing.T, ctx context.Context, cfg Config) error {
+	t.Helper()
+	return Run(ctx, testSessionConfig(t, cfg))
+}
+
+func prepareTestSession(t *testing.T, ctx context.Context, cfg Config) (preparedSession, error) {
+	t.Helper()
+	return prepareSession(ctx, testSessionConfig(t, cfg))
+}
+
+func TestSessionRequiresNegotiatedRuntimeProfile(t *testing.T) {
+	for _, cfg := range []Config{{}, {RuntimeProfile: new(runtimebinding.Profile)}} {
+		if _, _, _, err := validatedSessionConfig(cfg); err == nil {
+			t.Fatal("session accepted an incomplete runtime profile")
+		}
+	}
+}
 
 func runUI(t *testing.T, plugins ...extensions.Plugin) (*programtest.Host, func()) {
 	t.Helper()
@@ -73,7 +109,7 @@ func runUIFromConfig(t *testing.T, config Config) (*programtest.Host, func()) {
 	done := make(chan error, 1)
 	config.Host = host
 	go func() {
-		done <- Run(ctx, config)
+		done <- runTestTerminal(t, ctx, config)
 	}()
 
 	var once sync.Once
@@ -95,7 +131,7 @@ func runUIForSession(t *testing.T, backend Runtime, sessionID string) (*programt
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: backend, SessionID: sessionID, Host: host})
+		done <- runTestTerminal(t, ctx, Config{Runtime: backend, SessionID: sessionID, Host: host})
 	}()
 
 	var once sync.Once
@@ -117,7 +153,7 @@ func runUIWithState(t *testing.T, backend Runtime, workspace, sessionID, stateDi
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: backend, Workspace: workspace, SessionID: sessionID,
+		done <- runTestTerminal(t, ctx, Config{Runtime: backend, Workspace: workspace, SessionID: sessionID,
 			StateDirectory: stateDirectory, Host: host,
 		})
 	}()
@@ -2004,7 +2040,7 @@ func TestQuitRequiresAConfirmingSecondPress(t *testing.T) {
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: backend, Workspace: "/tmp/flame-cli-test", Host: host})
+		done <- runTestTerminal(t, ctx, Config{Runtime: backend, Workspace: "/tmp/flame-cli-test", Host: host})
 	}()
 
 	host.Shows(t, "Ask flame")
@@ -2183,7 +2219,7 @@ func TestClosingDuringCancellationReusesThePendingCommandIdentity(t *testing.T) 
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host})
+		done <- runTestTerminal(t, ctx, Config{Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host})
 	}()
 	t.Cleanup(func() {
 		cancel()
@@ -2233,7 +2269,7 @@ func TestClosingTheTerminalPropagatesRuntimeCancellationFailure(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host})
+		done <- runTestTerminal(t, ctx, Config{Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host})
 	}()
 	t.Cleanup(func() {
 		cancel()
@@ -2271,7 +2307,7 @@ func TestClosingTheTerminalRejectsAnInvalidCancellationReceipt(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host})
+		done <- runTestTerminal(t, ctx, Config{Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host})
 	}()
 	t.Cleanup(func() {
 		cancel()
@@ -2305,7 +2341,7 @@ func TestClosingTheTerminalPropagatesFinalDraftPersistenceFailure(t *testing.T) 
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: base, Workspace: "/tmp/flame-cli-test",
+		done <- runTestTerminal(t, ctx, Config{Runtime: base, Workspace: "/tmp/flame-cli-test",
 			StateDirectory: stateDirectory, Host: host,
 		})
 	}()
@@ -3109,7 +3145,7 @@ func TestRunRejectsAnUnresolvableAttachmentWorkspace(t *testing.T) {
 	if err := os.Symlink(workspace, workspace); err != nil {
 		t.Fatal(err)
 	}
-	err := Run(t.Context(), Config{Runtime: runtimefixture.New(), Workspace: workspace,
+	err := runTestTerminal(t, t.Context(), Config{Runtime: runtimefixture.New(), Workspace: workspace,
 		Host:     programtest.New(t, programtest.Config{Width: 80, Height: 24}),
 		Settings: new(settings.Default()),
 	})
@@ -3121,7 +3157,7 @@ func TestRunRejectsAnUnresolvableAttachmentWorkspace(t *testing.T) {
 func TestPrepareSessionDistinguishesDefaultsFromExplicitFalseValues(t *testing.T) {
 	configured := settings.Default()
 	configured.UI.Mouse = false
-	prepared, err := prepareSession(t.Context(), Config{Runtime: runtimefixture.New(), Workspace: t.TempDir(), Settings: new(configured)})
+	prepared, err := prepareTestSession(t, t.Context(), Config{Runtime: runtimefixture.New(), Workspace: t.TempDir(), Settings: new(configured)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3129,7 +3165,7 @@ func TestPrepareSessionDistinguishesDefaultsFromExplicitFalseValues(t *testing.T
 		t.Fatal("explicit mouse=false was replaced by the default")
 	}
 
-	defaults, err := prepareSession(t.Context(), Config{Runtime: runtimefixture.New(), Workspace: t.TempDir()})
+	defaults, err := prepareTestSession(t, t.Context(), Config{Runtime: runtimefixture.New(), Workspace: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -79,12 +79,11 @@ func (s *sessionReadRecordingRuntime) requestedSessionIDs() []string {
 type replayingStartRuntime struct {
 	*runtimefixture.Runtime
 
-	mu         sync.Mutex
-	attempts   int
-	inputs     []agent.StartRun
-	stream     agent.SegmentStream
-	failure    error
-	afterFirst func()
+	mu       sync.Mutex
+	attempts int
+	inputs   []agent.StartRun
+	stream   agent.SegmentStream
+	failure  error
 }
 
 type idempotentStartRuntime struct {
@@ -276,9 +275,6 @@ func (r *replayingStartRuntime) StartRun(ctx context.Context, input agent.StartR
 		r.mu.Lock()
 		r.stream = opened
 		r.mu.Unlock()
-		if r.afterFirst != nil {
-			r.afterFirst()
-		}
 		failure := r.failure
 		if failure == nil {
 			failure = agent.ErrDisconnected
@@ -898,14 +894,11 @@ func TestCommandReplayGuaranteeExpiresAtItsDeadline(t *testing.T) {
 	}
 }
 
-func TestRecoveredStartStopsBeforeRetryingOutsideItsReplayStore(t *testing.T) {
+func TestRecoveredStartRejectsAnotherReplayStoreBeforeIO(t *testing.T) {
 	base := runtimefixture.New()
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
-	profile = profileWithReplay(t, profile, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 10*time.Minute)
+	profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
 	runtime := &replayingStartRuntime{Runtime: base}
-	runtime.afterFirst = func() {
-		profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
-	}
 	command := agent.StartRun{
 		CommandID: "cli_cccccccccccccccccccccccccccccccc", SessionID: "ses_demo_1",
 		Message: agent.Message{Text: "do not replay outside the owning store"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
@@ -918,7 +911,7 @@ func TestRecoveredStartStopsBeforeRetryingOutsideItsReplayStore(t *testing.T) {
 	if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
 		t.Fatalf("recovered start error = %v", err)
 	}
-	if attempts := runtime.startAttempts(); len(attempts) != 1 {
+	if attempts := runtime.startAttempts(); len(attempts) != 0 {
 		t.Fatalf("unowned start reached runtime %d times", len(attempts))
 	}
 }

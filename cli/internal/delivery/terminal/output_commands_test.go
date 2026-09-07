@@ -86,7 +86,7 @@ func runUIWithCopyHost(t *testing.T, backend Runtime, workspace string) (*copyTe
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: backend, Transfers: outputTransferStub{}, Workspace: workspace, Host: host})
+		done <- runTestTerminal(t, ctx, Config{Runtime: backend, Transfers: outputTransferStub{}, Workspace: workspace, Host: host})
 	}()
 	var once sync.Once
 	stop := func() {

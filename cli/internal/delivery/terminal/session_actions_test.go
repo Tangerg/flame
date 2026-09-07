@@ -590,7 +590,7 @@ func TestImportRequiresConfirmationAndInstallsTheAuthoritativeSession(t *testing
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: backend, Transfers: importingTransfer{runtime: backend}, Workspace: workspace, Host: host})
+		done <- runTestTerminal(t, ctx, Config{Runtime: backend, Transfers: importingTransfer{runtime: backend}, Workspace: workspace, Host: host})
 	}()
 	var once sync.Once
 	stop := func() {

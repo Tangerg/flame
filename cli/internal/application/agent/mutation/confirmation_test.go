@@ -16,15 +16,6 @@ func confirm[T any](ctx context.Context, backoff retry.Backoff, attempt func(con
 	return ConfirmAdmitted(ctx, backoff, nil, attempt)
 }
 
-func unavailableReplayPolicy(t testing.TB) commandreplay.Policy {
-	t.Helper()
-	policy, err := commandreplay.UnavailablePolicyWithClock(time.Now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return policy
-}
-
 func TestAcknowledgementUncertainIncludesMutationTimeouts(t *testing.T) {
 	for _, err := range []error{
 		agent.ErrDisconnected,
@@ -179,35 +170,27 @@ func TestReplayAdmissionExpiresAtItsDeadline(t *testing.T) {
 	}
 }
 
-func TestUnavailableRuntimeAdmitsOneFreshAttemptButNoRetryOrRecovery(t *testing.T) {
-	t.Parallel()
-
-	policy := unavailableReplayPolicy(t)
+func TestReplayAdmissionRechecksClockBeforeEachAttempt(t *testing.T) {
+	now := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
+	capability, err := commandreplay.NewCapability("runtime-a", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, err := commandreplay.NewPolicyWithClock(capability, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
 	guard, err := policy.NewGuard()
 	if err != nil {
 		t.Fatal(err)
 	}
 	attempts := 0
-	_, err = ConfirmAdmitted(
-		t.Context(), retry.ImmediateBackoff(), FreshReplayAdmission(policy, guard),
-		func(context.Context) (struct{}, error) {
-			attempts++
-			return struct{}{}, agent.ErrDisconnected
-		},
-	)
+	_, err = ConfirmAdmitted(t.Context(), retry.ImmediateBackoff(), ReplayAdmission(policy, guard), func(context.Context) (struct{}, error) {
+		attempts++
+		now = guard.Until()
+		return struct{}{}, agent.ErrDisconnected
+	})
 	if !errors.Is(err, ErrReplayGuaranteeUnavailable) || attempts != 1 {
-		t.Fatalf("fresh unprotected mutation = %v after %d attempts", err, attempts)
-	}
-
-	attempts = 0
-	_, err = ConfirmAdmitted(
-		t.Context(), retry.ImmediateBackoff(), ReplayAdmission(policy, guard),
-		func(context.Context) (struct{}, error) {
-			attempts++
-			return struct{}{}, nil
-		},
-	)
-	if !errors.Is(err, ErrReplayGuaranteeUnavailable) || attempts != 0 {
-		t.Fatalf("unprotected recovery = %v after %d attempts", err, attempts)
+		t.Fatalf("expired confirmation = %v after %d attempts", err, attempts)
 	}
 }

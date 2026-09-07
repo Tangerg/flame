@@ -145,9 +145,6 @@ func (r runtimeChangeMonitor) run(ctx context.Context) error {
 }
 
 func (a *app) runtimeChangeSubscriptionLimits() changefeed.SubscriptionLimits {
-	if a.runtimeProfile == nil {
-		return changefeed.SubscriptionLimits{}
-	}
 	limits := a.runtimeProfile.Discovery().Capabilities.Limits.RuntimeSubscription
 	return changefeed.SubscriptionLimits{MaxTopics: limits.MaxTopics, MaxWatches: limits.MaxWatches}
 }

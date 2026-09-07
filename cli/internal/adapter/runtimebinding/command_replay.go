@@ -1,14 +1,14 @@
 package runtimebinding
 
 import (
+	"errors"
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
 
-// CommandReplayPolicy projects an optional discovered Runtime profile into
-// one explicit replay policy. A missing profile is unavailable; a present but
-// invalid advertised capability is an error and never degrades to unavailable.
+// CommandReplayPolicy projects the negotiated Runtime profile into the replay
+// policy used by CLI mutations. A complete profile is required.
 func CommandReplayPolicy(profile *Profile) (commandreplay.Policy, error) {
 	return CommandReplayPolicyWithClock(profile, time.Now)
 }
@@ -20,7 +20,7 @@ func CommandReplayPolicyWithClock(
 	now func() time.Time,
 ) (commandreplay.Policy, error) {
 	if profile == nil {
-		return commandreplay.UnavailablePolicyWithClock(now)
+		return commandreplay.Policy{}, errors.New("command replay requires a runtime profile")
 	}
 	if err := profile.Validate(); err != nil {
 		return commandreplay.Policy{}, err

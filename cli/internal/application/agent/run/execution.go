@@ -81,7 +81,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		return fmt.Errorf("prepare one-shot start replay guard: %w", err)
 	}
 	opened, err := openRun(ctx, invocation.Runtime, invocation.Start,
-		mutation.FreshReplayAdmission(invocation.ReplayPolicy, startReplay))
+		mutation.ReplayAdmission(invocation.ReplayPolicy, startReplay))
 	if err != nil {
 		if receipt, accepted := agent.AcceptedMutationReceipt(err); accepted {
 			opened = receipt
@@ -186,7 +186,7 @@ func cancelAbandonedRun(
 		return fmt.Errorf("prepare abandoned run cancellation replay guard: %w", err)
 	}
 	result, err := mutation.ConfirmAdmitted(
-		cancelCtx, mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(replayPolicy, replay),
+		cancelCtx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(replayPolicy, replay),
 		func(ctx context.Context) (agent.RunCancellation, error) {
 			return runtime.CancelRun(ctx, agent.CancelRun{
 				CommandID: commandID, RunID: runID, Reason: "CLI execution ended before the run settled",
@@ -276,7 +276,7 @@ func (e *executionDriver) resume(ctx context.Context, interactions []agent.Inter
 		return fmt.Errorf("prepare one-shot resume replay guard: %w", err)
 	}
 	continued, err := mutation.ConfirmAdmitted(
-		ctx, mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(e.invocation.ReplayPolicy, replay),
+		ctx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(e.invocation.ReplayPolicy, replay),
 		func(ctx context.Context) (agent.SegmentStream, error) {
 			return e.invocation.Runtime.ResumeRun(ctx, command)
 		},
