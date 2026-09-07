@@ -51,17 +51,16 @@ func TestModelContextCompactionRewritesDurableHistoryAndPreservesPendingInput(t 
 		store,
 		constClient(client),
 		nil,
-		CompactionPolicyValues{MaxTokens: intPointer(threshold)},
 		contextState,
 	)
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
-	result, err := compactor.CompactModelContext(t.Context(), request)
+	result, err := compactor.compactModelContext(t.Context(), request, testInputLimits(t, threshold))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.Changed() || !result.Summarized() {
-		t.Fatalf("result = changed:%t summarized:%t", result.Changed(), result.Summarized())
+	if !result.Summarized() {
+		t.Fatalf("result = summarized:%t", result.Summarized())
 	}
 	if result.Summary() != "MID-RUN SUMMARY" {
 		t.Fatalf("summary = %q, want MID-RUN SUMMARY", result.Summary())
@@ -105,7 +104,6 @@ func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *test
 		store,
 		constClient(client),
 		nil,
-		CompactionPolicyValues{MaxTokens: intPointer(threshold)},
 	)
 	preCompactCalls := 0
 	preCompact := func(context.Context) (bool, error) {
@@ -113,17 +111,17 @@ func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *test
 		return true, nil
 	}
 
-	below, err := compactor.CompactModelContext(
+	below, err := compactor.compactModelContext(
 		t.Context(),
-		durableContextRequest(t, sessionID, history, 0, preCompact),
+		durableContextRequest(t, sessionID, history, 0, preCompact), testInputLimits(t, threshold),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if below.Changed() || preCompactCalls != 0 || store.rewrites != 0 || len(model.requests) != 0 {
+	if !reflect.DeepEqual(below.Messages(), history) || preCompactCalls != 0 || store.rewrites != 0 || len(model.requests) != 0 {
 		t.Fatalf(
-			"below threshold = changed:%t hook:%d rewrites:%d summaries:%d, want no work",
-			below.Changed(), preCompactCalls, store.rewrites, len(model.requests),
+			"below threshold = hook:%d rewrites:%d summaries:%d, want no work",
+			preCompactCalls, store.rewrites, len(model.requests),
 		)
 	}
 
@@ -131,18 +129,18 @@ func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *test
 	if writeErr := store.Write(t.Context(), sessionID, current); writeErr != nil {
 		t.Fatal(writeErr)
 	}
-	atThreshold, err := compactor.CompactModelContext(
+	atThreshold, err := compactor.compactModelContext(
 		t.Context(),
-		durableContextRequest(t, sessionID, history, 1, preCompact),
+		durableContextRequest(t, sessionID, history, 1, preCompact), testInputLimits(t, threshold),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !atThreshold.Changed() || !atThreshold.Summarized() ||
+	if !atThreshold.Summarized() ||
 		preCompactCalls != 1 || store.rewrites != 1 || len(model.requests) != 1 {
 		t.Fatalf(
-			"at threshold = changed:%t summarized:%t hook:%d rewrites:%d summaries:%d",
-			atThreshold.Changed(), atThreshold.Summarized(), preCompactCalls,
+			"at threshold = summarized:%t hook:%d rewrites:%d summaries:%d",
+			atThreshold.Summarized(), preCompactCalls,
 			store.rewrites, len(model.requests),
 		)
 	}
@@ -154,17 +152,17 @@ func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *test
 		t.Fatalf("protected threshold message = %q, want %q", stored[len(stored)-1].Text(), current.Text())
 	}
 
-	after, err := compactor.CompactModelContext(
+	after, err := compactor.compactModelContext(
 		t.Context(),
-		durableContextRequest(t, sessionID, stored, 0, preCompact),
+		durableContextRequest(t, sessionID, stored, 0, preCompact), testInputLimits(t, threshold),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after.Changed() || preCompactCalls != 1 || store.rewrites != 1 || len(model.requests) != 1 {
+	if !reflect.DeepEqual(after.Messages(), stored) || preCompactCalls != 1 || store.rewrites != 1 || len(model.requests) != 1 {
 		t.Fatalf(
-			"after compaction = changed:%t hook:%d rewrites:%d summaries:%d, want no immediate repeat",
-			after.Changed(), preCompactCalls, store.rewrites, len(model.requests),
+			"after compaction = hook:%d rewrites:%d summaries:%d, want no immediate repeat",
+			preCompactCalls, store.rewrites, len(model.requests),
 		)
 	}
 }
@@ -179,7 +177,7 @@ func TestDefaultModelContextCompactionDoesNotFailOnLongAssistantSequence(t *test
 	if err := store.Write(t.Context(), sessionID, history...); err != nil {
 		t.Fatal(err)
 	}
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil)
 
 	result, err := compactor.CompactModelContext(
 		t.Context(),
@@ -188,8 +186,8 @@ func TestDefaultModelContextCompactionDoesNotFailOnLongAssistantSequence(t *test
 	if err != nil {
 		t.Fatalf("well-below-token-budget assistant sequence failed: %v", err)
 	}
-	if result.Changed() || store.rewrites != 0 {
-		t.Fatalf("result = changed:%t rewrites:%d, want untouched context", result.Changed(), store.rewrites)
+	if !reflect.DeepEqual(result.Messages(), history) || store.rewrites != 0 {
+		t.Fatalf("result = rewrites:%d, want untouched context", store.rewrites)
 	}
 }
 
@@ -231,11 +229,9 @@ func TestModelContextCompactionCountsMediaButDoesNotCompactBelowProviderThreshol
 	if err != nil {
 		t.Fatal(err)
 	}
-	compactor := mustNewCompactor(t, store, constClient(summaryClient), nil, CompactionPolicyValues{
-		MaxTokens: intPointer(threshold),
-	})
+	compactor := mustNewCompactor(t, store, constClient(summaryClient), nil)
 
-	result, err := compactor.CompactModelContext(t.Context(), request)
+	result, err := compactor.compactModelContext(t.Context(), request, testInputLimits(t, threshold))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,8 +241,8 @@ func TestModelContextCompactionCountsMediaButDoesNotCompactBelowProviderThreshol
 		nil,
 		chat.Options{},
 	)
-	if result.Changed() || result.Summarized() || result.EstimatedTokens() != wantEstimate {
-		t.Fatalf("result = changed:%t summarized:%t tokens:%d", result.Changed(), result.Summarized(), result.EstimatedTokens())
+	if !reflect.DeepEqual(result.Messages(), history) || result.Summarized() || result.EstimatedTokens() != wantEstimate {
+		t.Fatalf("result = summarized:%t tokens:%d", result.Summarized(), result.EstimatedTokens())
 	}
 	if counter.calls != 1 || store.rewrites != 0 || len(summaryModel.requests) != 0 {
 		t.Fatalf("side effects = counts:%d rewrites:%d summaries:%d", counter.calls, store.rewrites, len(summaryModel.requests))
@@ -289,11 +285,9 @@ func TestModelContextCompactionCountFailureLeavesDurableStateUntouched(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	compactor := mustNewCompactor(t, store, constClient(summaryClient), nil, CompactionPolicyValues{
-		MaxTokens: intPointer(10_000),
-	})
+	compactor := mustNewCompactor(t, store, constClient(summaryClient), nil)
 
-	if _, compactErr := compactor.CompactModelContext(t.Context(), request); !errors.Is(compactErr, countErr) {
+	if _, compactErr := compactor.compactModelContext(t.Context(), request, testInputLimits(t, 10_000)); !errors.Is(compactErr, countErr) {
 		t.Fatalf("error = %v, want provider count failure", compactErr)
 	}
 	after, err := store.Read(t.Context(), sessionID)
@@ -351,11 +345,9 @@ func TestModelContextCompactionCompactsMediaOnlyAtProviderThreshold(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	compactor := mustNewCompactor(t, store, constClient(summaryClient), nil, CompactionPolicyValues{
-		MaxTokens: intPointer(threshold),
-	})
+	compactor := mustNewCompactor(t, store, constClient(summaryClient), nil)
 
-	result, err := compactor.CompactModelContext(t.Context(), request)
+	result, err := compactor.compactModelContext(t.Context(), request, testInputLimits(t, threshold))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -365,8 +357,8 @@ func TestModelContextCompactionCompactsMediaOnlyAtProviderThreshold(t *testing.T
 		nil,
 		chat.Options{},
 	)
-	if !result.Changed() || !result.Summarized() || result.EstimatedTokens() != wantEstimate {
-		t.Fatalf("result = changed:%t summarized:%t tokens:%d", result.Changed(), result.Summarized(), result.EstimatedTokens())
+	if !result.Summarized() || result.EstimatedTokens() != wantEstimate {
+		t.Fatalf("result = summarized:%t tokens:%d", result.Summarized(), result.EstimatedTokens())
 	}
 	if counter.calls < 2 || store.rewrites != 1 || len(summaryModel.requests) != 1 {
 		t.Fatalf("side effects = counts:%d rewrites:%d summaries:%d", counter.calls, store.rewrites, len(summaryModel.requests))
@@ -424,24 +416,23 @@ func TestModelContextCompactionCalibratesThresholdFromProviderUsage(t *testing.T
 		store,
 		constClient(client),
 		nil,
-		CompactionPolicyValues{MaxTokens: intPointer(rawEstimate + 100)},
 	)
 
-	below, err := compactor.CompactModelContext(
+	below, err := compactor.compactModelContext(
 		t.Context(),
-		durableContextRequest(t, sessionID, history, 0, nil),
+		durableContextRequest(t, sessionID, history, 0, nil), testInputLimits(t, rawEstimate+100),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if below.Changed() || store.rewrites != 0 || len(model.requests) != 0 {
+	if !reflect.DeepEqual(below.Messages(), history) || store.rewrites != 0 || len(model.requests) != 0 {
 		t.Fatalf(
-			"uncalibrated context = changed:%t rewrites:%d summaries:%d, want below threshold",
-			below.Changed(), store.rewrites, len(model.requests),
+			"uncalibrated context = rewrites:%d summaries:%d, want below threshold",
+			store.rewrites, len(model.requests),
 		)
 	}
 
-	atThreshold, err := compactor.CompactModelContext(
+	atThreshold, err := compactor.compactModelContext(
 		t.Context(),
 		durableContextRequestWithCalibration(
 			t,
@@ -450,16 +441,16 @@ func TestModelContextCompactionCalibratesThresholdFromProviderUsage(t *testing.T
 			0,
 			calibration,
 			nil,
-		),
+		), testInputLimits(t, rawEstimate+100),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !atThreshold.Changed() || !atThreshold.Summarized() ||
+	if !atThreshold.Summarized() ||
 		store.rewrites != 1 || len(model.requests) != 1 {
 		t.Fatalf(
-			"calibrated context = changed:%t summarized:%t rewrites:%d summaries:%d",
-			atThreshold.Changed(), atThreshold.Summarized(), store.rewrites, len(model.requests),
+			"calibrated context = summarized:%t rewrites:%d summaries:%d",
+			atThreshold.Summarized(), store.rewrites, len(model.requests),
 		)
 	}
 }
@@ -532,17 +523,15 @@ func TestModelContextCompactionUsesSelectedModelHardInputLimit(t *testing.T) {
 		store,
 		constClient(client),
 		nil,
-		CompactionPolicyValues{},
 	)
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.Changed() || !result.Summarized() || store.rewrites != 1 || len(model.requests) != 1 {
+	if !result.Summarized() || store.rewrites != 1 || len(model.requests) != 1 {
 		t.Fatalf(
-			"hard-input compaction = changed:%t summarized:%t rewrites:%d summaries:%d",
-			result.Changed(),
+			"hard-input compaction = summarized:%t rewrites:%d summaries:%d",
 			result.Summarized(),
 			store.rewrites,
 			len(model.requests),
@@ -623,17 +612,15 @@ func TestModelContextCompactionReservesExplicitOutputWindow(t *testing.T) {
 		store,
 		constClient(client),
 		nil,
-		CompactionPolicyValues{},
 	)
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.Changed() || !result.Summarized() || store.rewrites != 1 || len(model.requests) != 1 {
+	if !result.Summarized() || store.rewrites != 1 || len(model.requests) != 1 {
 		t.Fatalf(
-			"output-reserved compaction = changed:%t summarized:%t rewrites:%d summaries:%d",
-			result.Changed(),
+			"output-reserved compaction = summarized:%t rewrites:%d summaries:%d",
 			result.Summarized(),
 			store.rewrites,
 			len(model.requests),
@@ -659,11 +646,10 @@ func TestFirstModelContextCompactionPreservesCurrentUserMessageVerbatim(t *testi
 		store,
 		constClient(client),
 		nil,
-		CompactionPolicyValues{MaxTokens: intPointer(threshold)},
 	)
 	request := durableContextRequest(t, sessionID, history, 1, nil)
 
-	result, err := compactor.CompactModelContext(t.Context(), request)
+	result, err := compactor.compactModelContext(t.Context(), request, testInputLimits(t, threshold))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -690,11 +676,10 @@ func TestModelContextCompactionFailsClosedWhenProtectedInputCannotFit(t *testing
 		store,
 		constClient(client),
 		nil,
-		CompactionPolicyValues{MaxTokens: intPointer(1_000)},
 	)
 	request := durableContextRequest(t, sessionID, []chat.Message{current}, 1, nil)
 
-	if _, compactErr := compactor.CompactModelContext(t.Context(), request); !errors.Is(compactErr, ErrModelContextCannotFit) {
+	if _, compactErr := compactor.compactModelContext(t.Context(), request, testInputLimits(t, 1_000)); !errors.Is(compactErr, ErrModelContextCannotFit) {
 		t.Fatalf("error = %v, want ErrModelContextCannotFit", compactErr)
 	}
 	if len(model.requests) != 0 {
@@ -737,12 +722,11 @@ func TestRequiredModelContextCompactionRequiresLifecyclePermission(t *testing.T)
 				store,
 				unexpectedClient,
 				nil,
-				CompactionPolicyValues{MaxTokens: intPointer(threshold)},
 			)
 			request := durableContextRequest(t, sessionID, history, 0, func(context.Context) (bool, error) {
 				return false, test.resolveErr
 			})
-			if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, test.wantErr) {
+			if _, err := compactor.compactModelContext(t.Context(), request, testInputLimits(t, threshold)); !errors.Is(err, test.wantErr) {
 				t.Fatalf("error = %v, want %v", err, test.wantErr)
 			}
 			if store.rewrites != 0 {
@@ -761,7 +745,7 @@ func TestDurableModelContextCompactionRejectsConversationDrift(t *testing.T) {
 	}
 	candidate := cloneMessages(history)
 	candidate[0] = chat.NewUserMessage(chat.NewTextPart("different"))
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil)
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, ErrModelContextDiverged) {
@@ -779,14 +763,14 @@ func TestDurableModelContextCompactionIgnoresProjectionMetadataDrift(t *testing.
 	}
 	candidate := cloneMessages(history)
 	candidate[1].Metadata = nil
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil)
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Changed() {
+	if !reflect.DeepEqual(result.Messages(), candidate) || store.rewrites != 0 {
 		t.Fatal("metadata-only projection drift triggered compaction")
 	}
 }
@@ -810,15 +794,15 @@ func TestDurableModelContextCompactionAcceptsEquivalentToolMessageGrouping(t *te
 	}
 	pending := chat.NewUserMessage(chat.NewTextPart("continue"))
 	candidate := []chat.Message{durable[0].Clone(), durable[1].Clone(), chat.NewToolMessage(first, second), pending}
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil)
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Changed() || !reflect.DeepEqual(result.Messages(), candidate) {
-		t.Fatalf("equivalent grouping result = changed:%t messages:%#v", result.Changed(), result.Messages())
+	if !reflect.DeepEqual(result.Messages(), candidate) {
+		t.Fatalf("equivalent grouping result = messages:%#v", result.Messages())
 	}
 }
 
@@ -836,15 +820,15 @@ func TestDurableModelContextCompactionAcceptsEquivalentStructuredToolResultJSON(
 		ID: "call_1", Name: "get_goal",
 		Output: chat.ToolOutput{Details: []byte(`{"goal":{"usage":{"steps":2,"runs":1},"status":"active"}}`)},
 	})}
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil)
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	result, err := compactor.CompactModelContext(t.Context(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Changed() || !reflect.DeepEqual(result.Messages(), candidate) {
-		t.Fatalf("equivalent structured result = changed:%t messages:%#v", result.Changed(), result.Messages())
+	if !reflect.DeepEqual(result.Messages(), candidate) {
+		t.Fatalf("equivalent structured result = messages:%#v", result.Messages())
 	}
 }
 
@@ -858,7 +842,7 @@ func TestDurableModelContextCompactionRejectsToolResultPayloadDrift(t *testing.T
 	candidate := []chat.Message{
 		chat.NewToolMessage(chat.ToolResult{ID: "call_1", Name: "shell", Output: chat.NewTextToolOutput("candidate")}),
 	}
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil)
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, ErrModelContextDiverged) {
@@ -880,7 +864,7 @@ func TestDurableModelContextCompactionRejectsStructuredToolResultDrift(t *testin
 		ID: "call_1", Name: "get_goal",
 		Output: chat.ToolOutput{Details: []byte(`{"goal":{"status":"paused"}}`)},
 	})}
-	compactor := mustNewCompactor(t, store, unexpectedClient, nil, CompactionPolicyValues{})
+	compactor := mustNewCompactor(t, store, unexpectedClient, nil)
 	request := durableContextRequest(t, sessionID, candidate, 0, nil)
 
 	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, ErrModelContextDiverged) {

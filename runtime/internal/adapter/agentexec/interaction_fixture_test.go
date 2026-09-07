@@ -51,7 +51,7 @@ func interactionTestCapabilities(t testing.TB, cfg InteractionExecutorConfig) In
 type unchangedInteractionContext struct{}
 
 func (unchangedInteractionContext) CompactModelContext(_ context.Context, request ModelContextCompaction) (ModelContextCompactionResult, error) {
-	return NewModelContextCompactionResult(request.Candidate(), false, "", len(request.Candidate()), 100)
+	return NewModelContextCompactionResult(request.Candidate(), "", len(request.Candidate()), 100)
 }
 
 func TestInteractionRequiresCompleteCapabilities(t *testing.T) {

@@ -27,7 +27,6 @@ func buildRunMaintenance(
 		conversationServices.messages,
 		resolveUtility,
 		maintenance.NewLiveStateSnapshotter(shells),
-		maintenance.CompactionPolicyValues{},
 		contextState,
 	)
 	if err != nil {

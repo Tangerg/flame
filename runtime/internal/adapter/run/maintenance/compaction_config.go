@@ -1,7 +1,6 @@
 package maintenance
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/Tangerg/scope/core/chat"
@@ -9,8 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-// compactionDefaults govern model-context reduction. Tunable via
-// [CompactionPolicyValues]. The complete request's token footprint is the only
+// The complete request's token footprint is the only
 // compaction trigger; protocol message count is not a measure of context
 // pressure.
 const (
@@ -30,38 +28,10 @@ const (
 	windowTriggerPct = 80
 )
 
-// CompactionPolicyValues is the construction boundary for the auto-compaction
-// policy. Nil means "use the named product default"; a present numeric zero is
-// invalid and never doubles as absence.
-//
-// A sweep triggers only when the complete model request reaches MaxTokens.
-type CompactionPolicyValues struct {
-	MaxTokens *int // optional explicit token-footprint trigger; capped by the provider's hard input limit
-}
-
-// compactionPolicy is the validated, immutable policy consumed by Compactor.
-type compactionPolicy struct {
-	maxTokens         int
-	maxTokensExplicit bool
-}
-
-func newCompactionPolicy(values CompactionPolicyValues) (compactionPolicy, error) {
-	policy := compactionPolicy{}
-	if values.MaxTokens != nil {
-		if *values.MaxTokens <= 0 {
-			return compactionPolicy{}, fmt.Errorf("compaction policy: maximum tokens must be positive")
-		}
-		policy.maxTokens = *values.MaxTokens
-		policy.maxTokensExplicit = true
-	}
-	return policy, nil
-}
-
-// tokenTrigger resolves the token-footprint compaction threshold for a Run.
-// An explicit maximum wins; otherwise the threshold follows the selected
-// model's window or the coarse fixed fallback for an unknown model.
+// modelContextTokenTrigger follows the selected model's context window or the
+// coarse fixed fallback for an unknown model.
 // A provider's prompt envelope always remains the hard upper bound.
-func (p compactionPolicy) tokenTrigger(limits modelref.TokenLimits, options chat.Options) (int, error) {
+func modelContextTokenTrigger(limits modelref.TokenLimits, options chat.Options) (int, error) {
 	reservation := modelref.OutputReservation{}
 	if options.MaxOutputTokens != nil {
 		var err error
@@ -77,9 +47,7 @@ func (p compactionPolicy) tokenTrigger(limits modelref.TokenLimits, options chat
 	contextWindow, contextWindowKnown := limits.ContextWindow()
 
 	trigger := defaultCompactMaxTokens
-	if p.maxTokensExplicit {
-		trigger = p.maxTokens
-	} else if contextWindowKnown {
+	if contextWindowKnown {
 		window := tokenLimitInt(contextWindow)
 		whole := window / percentageScale * windowTriggerPct
 		fraction := window % percentageScale * windowTriggerPct / percentageScale

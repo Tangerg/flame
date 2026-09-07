@@ -214,7 +214,6 @@ func (c summarizingObservationCompactor) CompactModelContext(
 ) (ModelContextCompactionResult, error) {
 	return NewModelContextCompactionResult(
 		request.Candidate(),
-		true,
 		c.summary,
 		len(request.Candidate()),
 		100,
@@ -257,7 +256,6 @@ func (c *calibrationCaptureCompactor) CompactModelContext(
 	}
 	return NewModelContextCompactionResult(
 		request.Candidate(),
-		false,
 		"",
 		len(request.Candidate()),
 		c.estimatedTokens,
