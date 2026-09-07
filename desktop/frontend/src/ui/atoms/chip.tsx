@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import { color, corner, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { reveal } from "./reveal";
 import { Icon, type IconName } from "@/ui/icons";
 import { useT } from "@/lib/i18n";
@@ -10,6 +10,38 @@ import { Tooltip } from "./tooltip";
 // The close button also grows into place. `--reveal` is 0 or 1, so one channel drives both the
 // fade and the scale without a second custom property.
 const chipStyles = stylex.create({
+  chip: {
+    display: "inline-flex",
+    height: "var(--control-height-sm)",
+    alignItems: "center",
+    gap: space.s1_5,
+    borderWidth: "var(--control-edge-width)",
+    borderStyle: "solid",
+    borderColor: surface.field,
+    backgroundColor: surface.accentBadge,
+    paddingLeft: space.s2_5,
+    paddingRight: space.s1,
+    fontWeight: weight.regular,
+    color: color.fgSoft,
+  },
+  // The value is machine text and it is capped: a chip that grows with its content pushes the
+  // rest of the row off the end instead of yielding.
+  value: {
+    maxWidth: "220px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    fontFamily: "var(--font-mono)",
+  },
+  closeBox: {
+    display: "grid",
+    height: space.s5,
+    width: space.s5,
+    placeItems: "center",
+    borderWidth: 0,
+    backgroundColor: { default: "transparent", ":hover": surface.hover },
+    color: { default: color.fgFaint, ":hover": color.fg },
+  },
   close: {
     scale: "calc(0.96 + 0.04 * var(--reveal, 1))",
     // One transition list, stated once: the fade, the growth and the hover recolour. Split
@@ -30,22 +62,14 @@ export function Chip({ icon, children, title, onClose }: Props) {
   const t = useT();
   return (
     <Tooltip label={title}>
-      <span
-        className={cn(
-          stylex.props(reveal.host).className,
-          "inline-flex h-[var(--control-height-sm)] items-center gap-1.5 rounded-pill border-[length:var(--control-edge-width)] border-field bg-accent-badge pl-2.5 pr-1 text-ui-sm font-normal text-fg-soft",
-        )}
-      >
+      <span {...stylex.props(reveal.host, chipStyles.chip, corner.pill, type.uiSm)}>
         {icon && <Icon name={icon} size="xs" />}
-        <span className="max-w-[220px] truncate font-mono">{children}</span>
+        <span {...stylex.props(chipStyles.value)}>{children}</span>
         {onClose && (
           <ButtonPrimitive
             data-reveal="hover"
             type="button"
-            className={cn(
-              stylex.props(reveal.shown, chipStyles.close).className,
-              "grid h-5 w-5 place-items-center rounded-pill border-0 bg-transparent text-fg-faint hover:bg-hover hover:text-fg",
-            )}
+            {...stylex.props(reveal.shown, chipStyles.closeBox, corner.pill, chipStyles.close)}
             onClick={onClose}
             aria-label={t("common.remove")}
           >

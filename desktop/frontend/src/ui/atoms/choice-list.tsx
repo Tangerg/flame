@@ -1,5 +1,15 @@
+import * as stylex from "@stylexjs/stylex";
 import type { KeyboardEvent, ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import {
+  color,
+  corner,
+  motion,
+  radius,
+  space,
+  surface,
+  type,
+  weight,
+} from "@/styles/tokens.stylex";
 import { Icon } from "@/ui/icons";
 import {
   CheckboxGroupPrimitive,
@@ -8,6 +18,51 @@ import {
   RadioPrimitive,
 } from "@/ui/primitives";
 import { Pressable } from "./pressable";
+
+const styles = stylex.create({
+  list: { display: "flex", flexDirection: "column", gap: space.s1 },
+  row: {
+    display: "flex",
+    minHeight: space.s8,
+    width: "100%",
+    alignItems: "center",
+    gap: space.s2,
+    paddingInline: space.s2,
+    paddingBlock: space.s1_5,
+    textAlign: "left",
+    outline: "none",
+    transitionProperty: "color, background-color, border-color",
+    transitionDuration: motion.fast,
+    cursor: { default: null, ":disabled": "not-allowed" },
+    opacity: { default: null, ":disabled": 0.64 },
+  },
+  // A chosen row keeps the wash whether or not the pointer is on it; an open one only borrows it.
+  rowChosen: { backgroundColor: surface.hover },
+  rowOpen: { backgroundColor: { default: null, ":hover": surface.hover } },
+
+  // Round for one-of, square for many-of — the distinction every platform makes, and the one
+  // this list needs most before anything is selected: a multi-select's unchecked mark carries
+  // no number and no check, so a circle there is three blank radios telling the reader to pick
+  // one. `2xs` is the corner `Checkbox` already uses, so the two places the app asks for
+  // several answers now ask the same way.
+  mark: {
+    display: "grid",
+    height: space.s5,
+    width: space.s5,
+    flexShrink: 0,
+    placeItems: "center",
+    borderWidth: "1px",
+    borderStyle: "solid",
+    borderColor: surface.field,
+    backgroundColor: surface.surface2,
+    lineHeight: 1,
+    fontWeight: weight.medium,
+    color: color.fgMuted,
+  },
+  markSquare: { borderRadius: radius.step2xs },
+  markChosen: { borderColor: color.fg, backgroundColor: color.fg, color: surface.canvas },
+  dot: { display: "block", height: space.s1_5, width: space.s1_5, backgroundColor: "currentColor" },
+});
 
 interface ChoiceListProps {
   multiple: boolean;
@@ -38,7 +93,7 @@ export function ChoiceList({
 
   const shared = {
     "aria-labelledby": labelledBy,
-    className: "flex flex-col gap-1",
+    className: stylex.props(styles.list).className,
     disabled,
     onKeyDown: selectNumberedChoice,
   };
@@ -81,11 +136,12 @@ export function ChoiceOption({
   onReselect,
   children,
 }: ChoiceOptionProps) {
+  // The row's own state, from the state Base UI hands the class function — not from an
+  // ancestor selector. `selected` says the same thing on the React side, and the mark below
+  // reads it: what the row is showing is known here, so nothing has to be inherited for it.
   const className = ({ checked }: { checked: boolean }) =>
-    cn(
-      "group/choice flex min-h-8 w-full items-center gap-2 rounded-full px-2 py-1.5 text-left outline-none transition-colors duration-[var(--dur-fast)] disabled:cursor-not-allowed disabled:opacity-64",
-      checked ? "bg-hover" : "hover:bg-hover",
-    );
+    stylex.props(styles.row, corner.pill, checked ? styles.rowChosen : styles.rowOpen).className ??
+    "";
 
   const common = {
     value,
@@ -108,9 +164,11 @@ export function ChoiceOption({
           places the app asks for several answers now ask the same way. */}
       <span
         aria-hidden
-        className={cn(
-          "grid size-5 shrink-0 place-items-center border border-field bg-surface-2 text-ui-xs leading-none font-medium text-fg-muted group-data-[checked]/choice:border-fg group-data-[checked]/choice:bg-fg group-data-[checked]/choice:text-canvas",
-          multiple ? "rounded-2xs" : "rounded-full",
+        {...stylex.props(
+          styles.mark,
+          type.uiXs,
+          multiple ? styles.markSquare : corner.pill,
+          selected && styles.markChosen,
         )}
       >
         {multiple ? (
@@ -119,9 +177,10 @@ export function ChoiceOption({
           </CheckboxPrimitive.Indicator>
         ) : (
           <>
-            <span className="group-data-[checked]/choice:hidden">{ordinal}</span>
+            {/* The ordinal is the shortcut, so it stands in for the dot until one is chosen. */}
+            {!selected && <span>{ordinal}</span>}
             <RadioPrimitive.Indicator>
-              <span className="block size-1.5 rounded-full bg-current" />
+              <span {...stylex.props(styles.dot, corner.pill)} />
             </RadioPrimitive.Indicator>
           </>
         )}

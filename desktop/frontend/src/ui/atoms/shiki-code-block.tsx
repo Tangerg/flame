@@ -7,6 +7,7 @@ import { getHighlighter, reportHighlightFailure, resolveLang } from "@/lib/highl
 import { getCachedHighlight, setCachedHighlight } from "@/lib/highlight/shikiCache";
 import { useShikiTheme } from "@/lib/highlight/useCodeHighlight";
 import { cn } from "@/lib/classNames";
+import { color, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { reveal } from "./reveal";
 import { toggleCodeWrapPreference, useCodeWrapPreference } from "./codeWrapPreference";
 import { useT } from "@/lib/i18n";
@@ -38,6 +39,51 @@ interface HighlightedCode {
   code: string;
   html: string;
 }
+
+const styles = stylex.create({
+  block: {
+    marginBlock: "calc(var(--spacing) * 3.5)",
+    overflow: "hidden",
+    borderRadius: radius.lg,
+    fontFamily: "var(--font-mono)",
+  },
+  // A preview is framed because it holds something that is not text; a code block is recessed
+  // because it holds text the system produced.
+  framed: {
+    borderWidth: "0.5px",
+    borderStyle: "solid",
+    borderColor: surface.field,
+    backgroundColor: "transparent",
+  },
+  recessed: { backgroundColor: surface.sunken },
+  caption: {
+    display: "flex",
+    alignItems: "center",
+    gap: space.s2,
+    backgroundColor: "transparent",
+    paddingInline: space.s2,
+    paddingBlock: space.s1,
+    fontFamily: "var(--font-sans)",
+  },
+  lang: { flexShrink: 0, color: color.fgMuted, fontFamily: "var(--font-sans)" },
+  langPlain: {
+    letterSpacing: "var(--tracking-normal)",
+    textTransform: "none",
+    fontWeight: weight.regular,
+  },
+  // A flexible gap rather than `justify-between`: the caption's trailing controls appear and
+  // disappear, and a spacer keeps the language where it is either way.
+  spacer: { minWidth: space.s1, flex: 1 },
+  // Fifteen lines and the padding, past which the preview scrolls rather than growing.
+  previewBody: {
+    display: "grid",
+    maxHeight: "calc(15lh + 16px)",
+    placeItems: "center",
+    overflow: "auto",
+    padding: space.s2,
+  },
+  fallback: { margin: 0 },
+});
 
 export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
   const t = useT();
@@ -95,38 +141,27 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
 
   const showHighlighted = !isSettling && html !== null;
 
+  const block = stylex.props(
+    styles.block,
+    type.code,
+    isPreview ? [reveal.host, styles.framed] : styles.recessed,
+  );
   return (
     <div
       dir="ltr"
       data-variant={isPreview ? "preview" : "code"}
       data-markdown-copy="code-block"
       data-markdown-copy-text={code}
-      className={cn(
-        "shiki-block my-3.5 overflow-hidden font-mono text-code",
-        // Only the preview hides its copy button until pointed at; a full code block keeps it.
-        isPreview
-          ? cn(
-              stylex.props(reveal.host).className,
-              "rounded-lg border-[0.5px] border-field bg-transparent",
-            )
-          : "rounded-lg bg-sunken",
-      )}
+      {...block}
+      // `shiki-block` and `shiki-body` are the highlighter's own hooks: Shiki writes the token
+      // spans, and `globals.css` styles them several levels down. They stay classes.
+      className={cn(block.className, "shiki-block")}
     >
-      <div
-        data-markdown-copy="exclude"
-        className="flex items-center gap-2 bg-transparent px-2 py-1 font-sans text-ui-md"
-      >
-        <span
-          className={cn(
-            "shrink-0 text-fg-muted",
-            isPreview
-              ? "font-sans text-ui-md tracking-normal"
-              : "font-sans text-ui-md font-normal tracking-normal normal-case",
-          )}
-        >
-          {lang || "text"}
-        </span>
-        <span className="min-w-1 flex-1" />
+      <div data-markdown-copy="exclude" {...stylex.props(styles.caption, type.uiMd)}>
+        {/* The language, spelled as the highlighter reports it: no capitalising, and the UI
+            tracking off, because a token like `tsx` is machine text wearing a proportional face. */}
+        <span {...stylex.props(styles.lang, type.uiMd, styles.langPlain)}>{lang || "text"}</span>
+        <span {...stylex.props(styles.spacer)} />
         {!isPreview && (
           <IconButton
             icon={wrapCode ? "wrap-text" : "unfold-horizontal"}
@@ -151,7 +186,7 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
         <div
           data-slot="shiki-preview-body"
           data-focus-inset=""
-          className="grid max-h-[calc(15lh+16px)] place-items-center overflow-auto p-2"
+          {...stylex.props(styles.previewBody)}
           role="region"
           aria-label={previewLabel}
           // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
@@ -166,7 +201,11 @@ export function ShikiCodeBlock({ lang, code, preview, previewLabel }: Props) {
           dangerouslySetInnerHTML={{ __html: html! }}
         />
       ) : (
-        <pre className="shiki-body shiki-fallback m-0" data-wrap={wrapCode}>
+        <pre
+          className="shiki-body shiki-fallback"
+          {...stylex.props(styles.fallback)}
+          data-wrap={wrapCode}
+        >
           {code}
         </pre>
       )}

@@ -7756,3 +7756,48 @@ JSX 后写的属性覆盖先写的，而 `stylex.props()` 返回的对象里**�
 ### 下一轮方向
 
 `ui/atoms` 只剩 `choice-list`（142 行）与 `resize-handle`（213 行）两个有样式的。
+
+---
+
+## Round 132 — `ui/atoms` 收尾
+
+### `choice-list`：祖先态其实是多余的
+
+它用 `group-data-[checked]/choice:` 让标记跟着行的选中态变色。但**这件事
+组件自己就知道** —— Base UI 把 `checked` 作为渲染状态传进 `className` 函数，
+而 `selected` 本来就是 `ChoiceOption` 的一个 prop。
+
+所以这里不需要第 123 轮那套自定义属性通道：CSS 里绕一圈表达的东西，
+React 侧是现成的。祖先选择器有时只是"没想到还能这么写"的痕迹。
+
+### 三个混写文件
+
+`catalog-picker` / `chip` / `shiki-code-block` 此前是 StyleX + Tailwind 并用 ——
+违反 CLAUDE.md §4「同一个组件里不得两者并用」。本轮收掉后两个。
+
+`shiki-code-block` 留下两个 class：`shiki-block` / `shiki-body`。
+那是**高亮器自己的钩子** —— Shiki 写 token span，`globals.css` 往下若干层去染它们。
+它们不是这个组件的样式，是它与另一个系统的接口。
+
+### 三个不声明样式的行为组件
+
+`resize-handle`（213 行拖拽与键盘）/ `pressable` / `external-link` ——
+连同上一轮认出的 `data-view` / `glyph-swap`，共五个。它们没有样式可迁。
+
+### 验证方式
+
+按你的要求改成：**`--grep` 只跑受影响的 spec**（question 25 项 23s，
+code/markdown/chip/composer 29 项 45s），全量只在提交前跑一次。
+
+### 验证
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **650 / 650，零位移**（1 张确认抖动，单跑 7.5s 通过） |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | `src/ui` 50 项通过 |
+
+### 下一轮方向
+
+`ui/atoms` 只剩 `catalog-picker`（345 行、18 处 class 串）一个混写文件。
+之后是 `ui/agent`（9 个文件）与业务层。
