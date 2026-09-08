@@ -3,6 +3,7 @@ package workspace
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"slices"
 	"sync"
 
@@ -155,7 +156,9 @@ func (a *AuthoredWatch) Accept(change AuthoredChange) {
 	}
 	a.mu.Unlock()
 	for _, observation := range active {
-		_ = observation.inner.Accept([]AuthoredChange{change})
+		if err := observation.inner.Accept([]AuthoredChange{change}); err != nil {
+			slog.Warn("workspace: accept authored resource change", "resource", change.Resource, "error", err)
+		}
 	}
 }
 

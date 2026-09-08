@@ -1,9 +1,13 @@
 package workspace
 
 import (
+	"bytes"
+	"errors"
+	"log/slog"
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -11,6 +15,7 @@ type recordingAuthoredWatcher struct {
 	scopes    []AuthoredScope
 	resources []AuthoredResource
 	accepted  []AuthoredChange
+	acceptErr error
 }
 
 func (r *recordingAuthoredWatcher) Watch(
@@ -31,7 +36,31 @@ func (r recordingAuthoredObservation) Accept(changes []AuthoredChange) error {
 		change.Identities = slices.Clone(change.Identities)
 		r.owner.accepted = append(r.owner.accepted, change)
 	}
-	return nil
+	return r.owner.acceptErr
+}
+
+func TestAuthoredWatchReportsFailedAcceptanceAndContinuesBroadcast(t *testing.T) {
+	var diagnostics bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+	root := t.TempDir()
+	watcher := &recordingAuthoredWatcher{acceptErr: errors.New("file observation unavailable")}
+	useCases := newAuthoredWatch(t, newScope(t, root, root, testPaths{}), staticWorkspaceInspector{}, watcher)
+	for range 2 {
+		observation, err := useCases.Watch(nil, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = observation.Close() })
+	}
+	useCases.Accept(AuthoredChange{Resource: AuthoredSkills, Identities: []string{filepath.Join(root, "SKILL.md")}})
+	if len(watcher.accepted) != 2 {
+		t.Fatalf("accepted changes = %d, want both observations attempted", len(watcher.accepted))
+	}
+	if output := diagnostics.String(); !strings.Contains(output, watcher.acceptErr.Error()) || !strings.Contains(output, "resource=skills") {
+		t.Fatalf("missing acceptance failure diagnostic: %q", output)
+	}
 }
 
 func TestAuthoredWatchResolvesAndDeduplicatesScopes(t *testing.T) {
