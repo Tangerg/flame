@@ -14,7 +14,7 @@ import { Pressable, type PressableProps } from "./pressable";
  * truncates and an `overflow: hidden` item already has an automatic minimum of zero. The
  * explicit form says so instead of depending on it.
  */
-export type RowLayout = "grid" | "flex" | "glyph";
+export type RowLayout = "grid" | "flex" | "glyph" | "pick" | "pickWide" | "pickPlain";
 type RowSize = "sm" | "md" | "lg";
 
 export const floatingRowStyles = stylex.create({
@@ -41,6 +41,22 @@ export const floatingRowStyles = stylex.create({
   grid: { display: "grid" },
   flex: { display: "flex" },
   glyph: { display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)" },
+  // A row in a one-of list: what it is, its name, and whether it is the one. Six call sites had
+  // each written the template — the mark column in two widths and the glyph in three — so the
+  // labels did not start on one line between two menus and the checks did not either. The glyph
+  // column is a channel because a swatch is wider than an icon; everything else is fixed.
+  pick: {
+    display: "grid",
+    gridTemplateColumns:
+      "var(--menu-glyph, calc(var(--spacing) * 4)) minmax(0, 1fr) calc(var(--spacing) * 3.5)",
+  },
+  /** The same row where the option needs no glyph: a language, a font. */
+  pickPlain: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) calc(var(--spacing) * 3.5)",
+  },
+  /** The same row where the glyph is a swatch rather than an icon, and so is wider. */
+  pickWide: { "--menu-glyph": "calc(var(--spacing) * 6)" },
   sm: { minHeight: "var(--menu-row-height)", paddingBlock: "1px" },
   md: { height: "calc(var(--spacing) * 8)" },
   lg: { minHeight: "calc(var(--spacing) * 9)", paddingBlock: space.s1_5 },
@@ -54,7 +70,10 @@ export const floatingRowStyles = stylex.create({
 export const floatingRow = (layout: RowLayout = "grid", size: RowSize = "md") => [
   floatingRowStyles.base,
   type.uiMd,
-  floatingRowStyles[layout],
+  // `pickWide` is `pick` with a wider glyph column, so it composes both rather than repeating
+  // the template — a second copy is how the six spellings started.
+  layout === "pickWide" ? floatingRowStyles.pick : floatingRowStyles[layout],
+  layout === "pickWide" && floatingRowStyles.pickWide,
   floatingRowStyles[size],
 ];
 

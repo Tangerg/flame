@@ -190,9 +190,22 @@ export const type = stylex.create({
   uiXs: { fontSize: "var(--text-ui-xs)", letterSpacing: "var(--text-ui-xs--letter-spacing)" },
   uiSm: { fontSize: "var(--text-ui-sm)", letterSpacing: "var(--text-ui-sm--letter-spacing)" },
   uiMd: { fontSize: "var(--text-ui-md)", letterSpacing: "var(--text-ui-md--letter-spacing)" },
+  // A display step carries THREE halves, not one: `md` and `lg` bring their own leading
+  // because a heading's line box is tighter than the body's. Six call sites had copied only
+  // the size, which at the largest font size left a 26px heading on the transcript's leading.
   displaySm: {
     fontSize: "var(--text-display-sm)",
     letterSpacing: "var(--text-display-sm--letter-spacing)",
+  },
+  displayMd: {
+    fontSize: "var(--text-display-md)",
+    letterSpacing: "var(--text-display-md--letter-spacing)",
+    lineHeight: "var(--text-display-md--line-height)",
+  },
+  displayLg: {
+    fontSize: "var(--text-display-lg)",
+    letterSpacing: "var(--text-display-lg--letter-spacing)",
+    lineHeight: "var(--text-display-lg--line-height)",
   },
   code: { fontSize: "var(--text-code)", letterSpacing: "var(--text-code--letter-spacing)" },
   prose: { fontSize: "var(--text-prose)", letterSpacing: "var(--text-prose--letter-spacing)" },

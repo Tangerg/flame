@@ -52,7 +52,7 @@ describe("ComposerProjectTray", () => {
     const surface = tray?.closest<HTMLElement>('[data-slot="composer-top-tray-surface"]');
     expect(tray).not.toBeNull();
     expect(surface).not.toBeNull();
-    expect(surface?.className).toContain("w-[calc(100%_-_24px)]");
+    expect(surface?.dataset.tray).toBe("attached");
     expect(tray?.querySelectorAll("svg")).toHaveLength(1);
   });
 

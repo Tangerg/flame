@@ -129,6 +129,16 @@ const MARKUP_RULES = [
     appliesTo: (rel) => rel !== "lib/motion.ts",
   },
   {
+    // HALF a type step, copied. A step is a bundle — `--text-display-md` carries a size, a
+    // tracking AND a leading — and a call site that reaches for the size variable takes one
+    // third of it. Six of them did, which at the largest font size left 26px headings sitting
+    // on the transcript's own leading. `tokens.stylex.ts` is where the bundle is authored.
+    pattern: /fontSize:\s*"var\(--(?:text|fs)-[^)]*\)"/g,
+    message:
+      "half a type step — compose `type.uiMd` / `type.displayMd` from `tokens.stylex.ts`, which carries the tracking and leading with it",
+    appliesTo: (rel) => rel !== "styles/tokens.stylex.ts",
+  },
+  {
     // An ink or accent wash mixed by hand in an arbitrary value. The mermaid
     // block had built two panels this way, out of four alphas of its own — which
     // also opted them out of the contrast preference, since `--depth-step` is

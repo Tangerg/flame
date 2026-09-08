@@ -6,11 +6,6 @@ import { selectLocale } from "../application/localeSelection";
 import { SettingRow } from "../../kit";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
-const a = stylex.create({
-  // The check column holds its width whether or not the row is the chosen one.
-  pickRow: { gridTemplateColumns: "minmax(0, 1fr) 12px" },
-});
-
 export function LanguageSection() {
   const t = useT();
   const locale = useLocale();
@@ -26,11 +21,7 @@ export function LanguageSection() {
         />
         <DropdownMenu.Content align="start" sideOffset={4}>
           {locales.map((l) => (
-            <DropdownMenu.Item
-              key={l.id}
-              onClick={() => void selectLocale(l)}
-              className={stylex.props(a.pickRow).className}
-            >
+            <DropdownMenu.Item key={l.id} onClick={() => void selectLocale(l)} layout="pickPlain">
               <span {...stylex.props(ss.truncate)}>{l.label}</span>
               {locale === l.id ? (
                 <Icon name="check" size="xs" className={stylex.props(ss.accent).className} />

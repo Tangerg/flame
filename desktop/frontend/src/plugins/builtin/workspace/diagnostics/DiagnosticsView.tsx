@@ -34,7 +34,7 @@ const d = stylex.create({
     padding: space.s6,
   },
   masthead: { display: "flex", alignItems: "center", justifyContent: "space-between" },
-  title: { color: color.fg, fontWeight: weight.semibold, fontSize: "var(--text-display-sm)" },
+  title: { color: color.fg, fontWeight: weight.semibold },
   subtitle: { marginTop: space.s0_5, color: color.fgMuted },
   controls: { display: "flex", alignItems: "center", gap: space.s2 },
   logRow: { minHeight: "calc(var(--spacing) * 7)" },
@@ -78,7 +78,7 @@ export function DiagnosticsView() {
     <div {...stylex.props(d.page)}>
       <div {...stylex.props(d.masthead)}>
         <div>
-          <div {...stylex.props(d.title)}>{t("diagnostics.title")}</div>
+          <div {...stylex.props(d.title, typeStep.displaySm)}>{t("diagnostics.title")}</div>
           <div {...stylex.props(d.subtitle, typeStep.uiMd)}>{t("diagnostics.description")}</div>
         </div>
         <div {...stylex.props(d.controls)}>

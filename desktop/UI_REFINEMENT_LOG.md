@@ -8927,3 +8927,65 @@ editorial 档按它们**在默认档已有的比值**进入阶梯：
 | 视觉 | **652 / 652**，零位移零重录 |
 | 守卫 | 17 项全绿 |
 | 单测 | workspace + sidebar + command + `src/ui` 373 通过 |
+
+---
+
+## Round 149 —— shell 清零；顺带修掉一个我自己造了六次的错
+
+`shell/` 17 个文件迁完（只余 `panel-scroll` / `@container` 这类机制键）。
+业务层只剩 `chat/`（250 处）。
+
+### 菜单行的网格，六种拼写
+
+`ProjectSelector` 的选项行网格和 settings 的四处一样。真正的缺口是
+**`DropdownMenu.Item` 没有 `layout` prop** —— 所以每个调用点只能把网格模板当 class 传。
+
+`option-row` 补两档：`pick`（字形 / 名字 / 勾）与 `pickPlain`（名字 / 勾），
+外加 `pickWide` 给色板那一档更宽的字形列。mark 列此前有 12px 与 14px 两个答案，收成一个。
+五个调用点的网格模板消失。
+
+### `readingColumn.ts` 的注释解释了一个不再存在的约束
+
+它导出三个共享的 Tailwind class 字符串，注释写着"两半必须同文件，因为 Tailwind 读源码文本，
+class 必须拼出常量命名的那个属性"。**StyleX 下这个约束消失了** —— 样式本身就是属性。
+转成 `readingColumn` 样式后，`ChatStream` / `MessageStream` / `FloatingComposer` 才能迁。
+
+### 一个我自己造了六次的错：半抄一个类型档
+
+`agent empty` 的 golden 差 24388 像素、settings font-18 差 54150。根因不是布局：
+
+`text-display-md` 这个工具类带**三样东西** —— 字号、字距、`line-height: 1.2`。
+我在 StyleX 里只写了 `fontSize: "var(--text-display-md)"`，**丢掉另外两半**。
+而且这不是这一轮才犯的 —— 前几轮同样的写法在 `UsagePane` / `IconGallery` /
+`DiagnosticsView` / `SettingsPage` / `ChatErrorBoundary` / `ChatStream` **六处**。
+
+治本两步：
+1. `type` bundle 补 `displayMd` / `displayLg`，各自带齐三样（`displaySm` 本来就没有 leading）。
+2. **加一条守卫**：`fontSize: "var(--text-*)"` 出现在 `tokens.stylex.ts` 之外即失败，
+   提示"半个类型档 —— 去组合 `type.displayMd`"。这样抓的是**这一类**错，不是这一次。
+
+（`check:tokens` 此前扫的是"有没有用字面值"，看不见"用了变量但只用了三分之一"。）
+
+### 又一次 `className` 写在 spread 前面
+
+修完上面那条，`agent` 还有 11 张 golden 红着。测量发现空态整列高了 10px ——
+`<div className="panel-scroll" {...stylex.props(cst.empty)}>`：
+**spread 的 className 把 `panel-scroll` 覆盖掉了。**
+
+第 131 / 135 轮记过这个坑，还为它写了扫描器 —— **这一轮我在同一个文件里又造了三处。**
+扫描器现在归零。教训不是"记住顺序"，而是：**这个错误没有类型信号，只有扫描器能拦住它，
+所以扫描器要在每一批迁移之后跑，不是只在想起来的时候跑。**
+
+### 顺带
+
+`ProjectSelector` 的测试断言 `w-[calc(100%_-_24px)]`（又一处冻结类名）。
+组件改成说出决定：`data-tray="attached"`。而那个**几何**主张搬进闭环测试 ——
+托盘必须比 composer 窄、且左右内缩相等，因为 jsdom 里它永远只能读回一个类名。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **654 / 654**（含 2 条新闭环测试），零位移零重录 |
+| 守卫 | 17 项全绿（新增一条"半个类型档"规则） |
+| 单测 | **1781 项**全通过 |

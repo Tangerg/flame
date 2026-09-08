@@ -58,7 +58,6 @@ const th = stylex.create({
   half: { position: "absolute", insetBlock: 0, width: "50%" },
   halfStart: { left: 0 },
   halfEnd: { right: 0 },
-  themeRow: { gridTemplateColumns: "24px minmax(0, 1fr) 14px" },
   name: { color: color.fg },
 });
 
@@ -98,7 +97,7 @@ function ThemeItem({
   onSelect: () => void;
 }) {
   return (
-    <DropdownMenu.Item className={stylex.props(th.themeRow).className} onClick={onSelect}>
+    <DropdownMenu.Item layout="pickWide" onClick={onSelect}>
       {swatch}
       <span {...stylex.props(th.name, ss.truncate, typeStep.uiMd)}>{label}</span>
       {active ? (

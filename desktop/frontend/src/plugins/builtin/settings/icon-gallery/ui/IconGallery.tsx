@@ -26,7 +26,7 @@ const ig = stylex.create({
     paddingInline: space.s5,
     paddingBlock: space.s4,
   },
-  title: { color: color.fg, fontWeight: weight.medium, fontSize: "var(--text-display-sm)" },
+  title: { color: color.fg, fontWeight: weight.medium },
   sub: { marginTop: space.s1, color: color.fgMuted },
   search: { width: "calc(var(--spacing) * 60)" },
   section: {
@@ -81,7 +81,7 @@ export function IconGallery() {
     <div {...stylex.props(ig.page)}>
       <div {...stylex.props(ig.masthead)}>
         <div>
-          <div {...stylex.props(ig.title)}>@lobehub/icons</div>
+          <div {...stylex.props(ig.title, typeStep.displaySm)}>@lobehub/icons</div>
           <div {...stylex.props(ig.sub, typeStep.uiMd)}>
             {t("iconGallery.subtitle", { count: rawToc.length })}
           </div>

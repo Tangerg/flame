@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { Button } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
@@ -6,6 +7,7 @@ import {
   useWorkspaceCapability,
   useWorkspaceFileChanges,
 } from "@/plugins/builtin/workspace/public/queries";
+import { shellStyles as sh } from "../shellStyles";
 
 export function HeaderDiffStat({ className }: { className?: string }) {
   const t = useT();
@@ -33,8 +35,8 @@ export function HeaderDiffStat({ className }: { className?: string }) {
       face="mono"
       className={className}
     >
-      <span className="text-success">+{totals.added}</span>
-      <span className="text-negative">−{totals.removed}</span>
+      <span {...stylex.props(sh.success)}>+{totals.added}</span>
+      <span {...stylex.props(sh.negative)}>−{totals.removed}</span>
     </Button>
   );
 }

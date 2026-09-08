@@ -1182,6 +1182,33 @@ test("the catalogue holds its measure whatever its group contains", async ({ pag
   expect(await body.evaluate((node) => getComputedStyle(node).height)).toBe("240px");
 });
 
+// The project tray tucks UNDER the composer, inset from its edges so the composer's rounded
+// corners stay the outermost thing on that seam. A full-width tray sticks out past them, and
+// the only jsdom check for it was reading `w-[calc(100%_-_24px)]` back off a class attribute —
+// which stopped meaning anything the moment the file moved to StyleX. Here the measure is the
+// measure: narrower than the composer, and centred inside it.
+test("the project tray stays inside the composer's edges", async ({ page }) => {
+  await openFixture(page, { fixture: "agent", state: "empty" });
+
+  const tray = page.locator('[data-tray="attached"]');
+  await expect(tray).toBeVisible();
+  const box = await page.evaluate(() => {
+    const t = document.querySelector('[data-tray="attached"]')!.getBoundingClientRect();
+    const composer = document.querySelector("[data-slot=composer-root]")!.getBoundingClientRect();
+    return {
+      tray: t.width,
+      trayLeft: t.left,
+      composer: composer.width,
+      composerLeft: composer.left,
+    };
+  });
+  expect(box.tray).toBeLessThan(box.composer);
+  expect(box.trayLeft).toBeGreaterThan(box.composerLeft);
+  // Centred: the inset it gives up on the left it gives up on the right too.
+  const right = box.composerLeft + box.composer - (box.trayLeft + box.tray);
+  expect(Math.abs(right - (box.trayLeft - box.composerLeft))).toBeLessThanOrEqual(1);
+});
+
 test("a text-bearing control meets the minimum target size", async ({ page }) => {
   await openFixture(page, { fixture: "workspace", state: "dock-light" });
   const summary = page.locator('[data-goal="summary"]');

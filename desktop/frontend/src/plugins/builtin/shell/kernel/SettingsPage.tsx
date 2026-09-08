@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { Suspense, useState } from "react";
 import { Button, Icon, SearchField, SkeletonList, VerticalTabs, knownIconName } from "@/ui";
@@ -10,6 +11,25 @@ import {
   useWorkspaceSettingsPaneTarget,
 } from "@/plugins/builtin/workspace/public/navigation";
 import { useSettingsPanes } from "@/plugins/sdk";
+import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { shellStyles as sh } from "./shellStyles";
+
+const sp = stylex.create({
+  title: { margin: 0, color: color.fg, fontWeight: weight.semibold },
+  // A reading measure for the blurb: 60 characters, which the pane's width does not decide.
+  blurb: {
+    margin: 0,
+    marginTop: space.s1_5,
+    maxWidth: "60ch",
+    lineHeight: "1.5rem",
+    color: color.fgMuted,
+  },
+  body: { marginTop: space.s6, paddingBottom: space.s12 },
+  backRow: { paddingInline: space.s4, paddingBottom: space.s4 },
+  back: { marginBottom: space.s3, alignSelf: "flex-start" },
+  // The back arrow leads rather than accompanies, so it opts out of the glyph step.
+  backGlyph: { opacity: 1 },
+});
 
 const GROUPS: { id: string; labelKey: string }[] = [
   { id: "general", labelKey: "settings.group.general" },
@@ -89,14 +109,10 @@ function SettingsPaneFrame({
   return (
     <section>
       <header>
-        <h1 className="m-0 text-display-md font-semibold text-fg">{title}</h1>
-        {description && (
-          <p className="m-0 mt-1.5 max-w-[60ch] text-ui-md leading-6 text-fg-muted">
-            {description}
-          </p>
-        )}
+        <h1 {...stylex.props(sp.title, typeStep.displayMd)}>{title}</h1>
+        {description && <p {...stylex.props(sp.blurb, typeStep.uiMd)}>{description}</p>}
       </header>
-      <div className="mt-6 pb-12">{children}</div>
+      <div {...stylex.props(sp.body)}>{children}</div>
     </section>
   );
 }
@@ -112,9 +128,9 @@ function SettingsRailHeader({
 }) {
   const t = useT();
   return (
-    <div className="flex flex-col">
+    <div {...stylex.props(sh.column)}>
       <AgentSurfaceHeader divider={false} corner="window" aria-hidden />
-      <div className="px-4 pb-4">
+      <div {...stylex.props(sp.backRow)}>
         <Button
           type="button"
           variant="ghost"
@@ -122,9 +138,9 @@ function SettingsRailHeader({
           press="none"
           data-chrome-focus=""
           onClick={selectWorkspaceChat}
-          className="mb-3 self-start"
+          className={stylex.props(sp.back).className}
         >
-          <Icon name="arrow-left" size="md" className="opacity-100" />
+          <Icon name="arrow-left" size="md" className={stylex.props(sp.backGlyph).className} />
           <span>{t("settings.backToApp")}</span>
         </Button>
         <SearchField

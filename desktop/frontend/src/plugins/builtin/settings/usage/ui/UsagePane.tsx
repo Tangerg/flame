@@ -29,7 +29,6 @@ const u = stylex.create({
     fontFamily: "var(--font-mono)",
     fontWeight: weight.semibold,
     color: color.fg,
-    fontSize: "var(--text-display-md)",
   },
   breakdown: {
     display: "flex",

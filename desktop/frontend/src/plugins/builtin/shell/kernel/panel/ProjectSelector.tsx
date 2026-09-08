@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { basename } from "@/lib/path";
 import { Trans, useT } from "@/lib/i18n";
@@ -8,6 +9,8 @@ import {
 } from "@/plugins/builtin/navigation/public/workIndex";
 import { Button, DropdownMenu, Icon } from "@/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent";
+import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { shellStyles as sh } from "../shellStyles";
 
 interface ProjectMenuContentProps {
   groups: readonly WorkGroup[] | undefined;
@@ -18,6 +21,43 @@ interface ProjectMenuContentProps {
   onAdd: () => void;
   align: "start" | "center";
 }
+
+const pl = stylex.create({
+  // Wide enough for a path, and never wider than the window with its own margin left over.
+  menu: { width: "min(320px, calc(100vw - 32px))" },
+  heading: {
+    paddingInline: space.s2,
+    paddingTop: space.s1,
+    paddingBottom: space.s1_5,
+    color: color.fgFaint,
+    fontWeight: weight.medium,
+  },
+  item: { paddingInline: space.s2 },
+  tray: { display: "flex", minWidth: 0, alignItems: "center" },
+  // The tray tucks UNDER the composer: it is inset from the composer's edges, overlaps it by
+  // 18px, and pads its own bottom past that overlap so its content clears the composer's top
+  // edge. No blur of its own — the composer above it already carries one, and two stacked
+  // read as a smear where they overlap.
+  traySurface: {
+    position: "relative",
+    top: space.s1,
+    zIndex: 0,
+    marginInline: space.s3,
+    marginBottom: "-18px",
+    width: "calc(100% - 24px)",
+    borderTopLeftRadius: "var(--radius-composer)",
+    borderTopRightRadius: "var(--radius-composer)",
+    borderWidth: 0,
+    backgroundColor: "var(--app-composer-project-tray-surface)",
+    paddingInline: space.s1_5,
+    paddingTop: space.s1_5,
+    paddingBottom: "27px",
+    backdropFilter: "none",
+    WebkitBackdropFilter: "none",
+  },
+  chooseLabel: { maxWidth: "240px" },
+  full: { maxWidth: "100%" },
+});
 
 function ProjectMenuContent({
   groups,
@@ -34,14 +74,12 @@ function ProjectMenuContent({
       side="top"
       align={align}
       sideOffset={8}
-      className="w-[min(320px,calc(100vw-32px))]"
+      className={stylex.props(pl.menu).className}
     >
-      <div className="px-2 pt-1 pb-1.5 text-ui-xs font-medium text-fg-faint">
-        {t("composer.project.select")}
-      </div>
+      <div {...stylex.props(pl.heading, typeStep.uiXs)}>{t("composer.project.select")}</div>
       {loading && !groups ? (
-        <DropdownMenu.Item disabled className="grid-cols-[16px_minmax(0,1fr)] px-2">
-          <Icon name="folder" size="sm" className="text-fg-faint" />
+        <DropdownMenu.Item disabled layout="glyph" className={stylex.props(pl.item).className}>
+          <Icon name="folder" size="sm" className={stylex.props(sh.faint).className} />
           <span>{t("common.loading")}</span>
         </DropdownMenu.Item>
       ) : (
@@ -53,12 +91,13 @@ function ProjectMenuContent({
               if (project.id !== activeCwd) onSelect(project.id);
             }}
             title={project.cwdMissing ? t("project.row.missing") : project.id}
-            className="grid-cols-[16px_minmax(0,1fr)_14px] px-2"
+            layout="pick"
+            className={stylex.props(pl.item).className}
           >
-            <Icon name="folder" size="sm" className="text-fg-muted" />
-            <span className="min-w-0 truncate">{project.name}</span>
+            <Icon name="folder" size="sm" className={stylex.props(sh.muted).className} />
+            <span {...stylex.props(sh.min, sh.truncate)}>{project.name}</span>
             {project.id === activeCwd ? (
-              <Icon name="check" size="xs" className="text-accent" />
+              <Icon name="check" size="xs" className={stylex.props(sh.accent).className} />
             ) : (
               <span aria-hidden />
             )}
@@ -69,9 +108,10 @@ function ProjectMenuContent({
       <DropdownMenu.Item
         disabled={!canCreate}
         onClick={onAdd}
-        className="grid-cols-[16px_minmax(0,1fr)] px-2"
+        layout="glyph"
+        className={stylex.props(pl.item).className}
       >
-        <Icon name="plus" size="sm" className="text-fg-muted" />
+        <Icon name="plus" size="sm" className={stylex.props(sh.muted).className} />
         <span>{t("composer.project.add")}</span>
       </DropdownMenu.Item>
     </DropdownMenu.Content>
@@ -85,8 +125,13 @@ export function ComposerProjectTray() {
   if (workIndex.activeSessionId) return null;
 
   return (
-    <AgentComposerTopTraySurface className="top-1 z-0 mx-3 -mb-[18px] w-[calc(100%_-_24px)] rounded-t-composer border-0 bg-[var(--app-composer-project-tray-surface)] px-1.5 pt-1.5 pb-[27px] [-webkit-backdrop-filter:none] [backdrop-filter:none]">
-      <div data-slot="project-selector-tray" className="flex min-w-0 items-center">
+    // `attached` is the decision, not the width: the tray tucks under the composer inset from
+    // its edges, which a jsdom test can only ever check by reading back a class name.
+    <AgentComposerTopTraySurface
+      data-tray="attached"
+      className={stylex.props(pl.traySurface).className}
+    >
+      <div data-slot="project-selector-tray" {...stylex.props(pl.tray)}>
         <DropdownMenu.Root>
           <DropdownMenu.Trigger
             render={
@@ -98,10 +143,12 @@ export function ComposerProjectTray() {
                 disabled={!actions.canCreateSessionInFolder}
                 aria-label={t("composer.project.choose")}
                 title={t("composer.project.tooltip")}
-                className="min-w-0"
+                className={stylex.props(sh.min).className}
               >
-                <Icon name="folder" size="sm" className="shrink-0" />
-                <span className="max-w-[240px] truncate">{t("composer.project.choose")}</span>
+                <Icon name="folder" size="sm" className={stylex.props(sh.hold).className} />
+                <span {...stylex.props(pl.chooseLabel, sh.truncate)}>
+                  {t("composer.project.choose")}
+                </span>
               </Button>
             }
           />
@@ -135,7 +182,7 @@ function ProjectNameTrigger({
           type="button"
           variant="link"
           aria-label={t("composer.project.change", { project: projectName })}
-          className="max-w-full"
+          className={stylex.props(pl.full).className}
         >
           {children}
         </Button>

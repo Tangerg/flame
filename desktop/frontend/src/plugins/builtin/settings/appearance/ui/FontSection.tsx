@@ -33,7 +33,6 @@ const fsx = stylex.create({
   },
   legend: { color: color.fgFaint, fontWeight: weight.semibold },
   trigger: { maxWidth: "280px" },
-  pickRow: { gridTemplateColumns: "minmax(0, 1fr) 12px" },
   toEdge: { justifySelf: "end" },
   fields: { display: "grid", gap: space.s2 },
   afterFields: { marginTop: space.s1 },
@@ -70,7 +69,7 @@ function FontPicker({ label, mono, value, onChange, defaultLabel }: FontPickerPr
               key={f}
               onClick={() => onChange(f)}
               style={{ fontFamily: `"${f}"` }}
-              className={stylex.props(fsx.pickRow).className}
+              layout="pickPlain"
             >
               <span {...stylex.props(ss.truncate)}>{f}</span>
               {value === f ? (

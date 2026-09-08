@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { useT } from "@/lib/i18n";
 import { useCurrentRootMaterial } from "@/plugins/builtin/agent/public/run";
@@ -13,6 +14,19 @@ import { runAnnouncement, runAnnouncementKey } from "@/plugins/builtin/agent/pub
  * which finished yesterday is told "Response complete" if the text arrives in the same
  * commit as the region, which is an announcement about nothing the reader did.
  */
+const ra = stylex.create({
+  // Announced, never drawn: the box is one pixel and clipped, which is what keeps a screen
+  // reader visiting it while nothing reserves space in the bar.
+  offscreen: {
+    position: "absolute",
+    height: "1px",
+    width: "1px",
+    overflow: "hidden",
+    clipPath: "inset(50%)",
+    whiteSpace: "nowrap",
+  },
+});
+
 export function RunAnnouncer() {
   const t = useT();
   const material = useCurrentRootMaterial();
@@ -23,7 +37,7 @@ export function RunAnnouncer() {
   const key = changed ? runAnnouncementKey(announcement) : null;
 
   return (
-    <output aria-live="polite" className="sr-only" data-slot="run-announcer">
+    <output aria-live="polite" {...stylex.props(ra.offscreen)} data-slot="run-announcer">
       {key === null ? "" : t(key)}
     </output>
   );

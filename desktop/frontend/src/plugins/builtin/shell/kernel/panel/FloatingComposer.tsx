@@ -1,6 +1,6 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode, RefObject } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { disclosureTransition } from "@/lib/motion";
 import { useRuntimeServiceStatus } from "@/plugins/builtin/runtime/public/serviceStatus";
@@ -9,7 +9,26 @@ import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/na
 import { Slot } from "@/plugins/host/Slot";
 import { SystemMessage } from "@/ui";
 import { JumpToBottomButton } from "./JumpToBottomButton";
-import { READING_COLUMN, READING_GUTTER } from "./readingColumn";
+import { space } from "@/styles/tokens.stylex";
+import { readingColumn as rc } from "./readingColumn";
+
+const fc = stylex.create({
+  notice: { marginBottom: space.s2 },
+  pretty: { textWrap: "pretty" },
+  // The tray's own top pixel appears only when something is IN it — a `:has()` on itself,
+  // which is a condition on this element and so does have a StyleX form.
+  tray: {
+    display: "flex",
+    width: "100%",
+    flexDirection: "column",
+    alignItems: "center",
+    paddingTop: { default: null, ":has([data-slot=composer-top-tray-surface])": "1px" },
+  },
+  // Transparent to the pointer so the transcript scrolls under it; the composer inside is not.
+  overlay: { pointerEvents: "none", position: "absolute", insetInline: 0, bottom: 0, zIndex: 2 },
+  holder: { pointerEvents: "auto", position: "relative" },
+  floor: { paddingBottom: { default: space.s3, "@media (min-width: 640px)": space.s4 } },
+});
 
 export function RuntimeConnectionNotice() {
   const t = useT();
@@ -26,14 +45,14 @@ export function RuntimeConnectionNotice() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 2 }}
           transition={disclosureTransition}
-          className="mb-2"
+          className={stylex.props(fc.notice).className}
         >
           <SystemMessage
             variant={unavailable ? "error" : "warning"}
             icon={unavailable ? "alert" : "loop"}
             role={unavailable ? "alert" : "status"}
             aria-live={unavailable ? "assertive" : "polite"}
-            className="text-pretty"
+            className={stylex.props(fc.pretty).className}
             action={
               unavailable
                 ? {
@@ -52,13 +71,7 @@ export function RuntimeConnectionNotice() {
 }
 
 export function ComposerOverlayTop() {
-  return (
-    <Slot
-      name="composer.overlay.top"
-      wrapper
-      className="flex w-full flex-col items-center [&:has([data-slot=composer-top-tray-surface])]:pt-px"
-    />
-  );
+  return <Slot name="composer.overlay.top" wrapper className={stylex.props(fc.tray).className} />;
 }
 
 export function FloatingComposer({
@@ -69,12 +82,9 @@ export function FloatingComposer({
   children: ReactNode;
 }) {
   return (
-    <div
-      ref={overlayRef}
-      className={cn("pointer-events-none absolute inset-x-0 bottom-0 z-2", READING_COLUMN)}
-    >
-      <div className={cn(READING_GUTTER, "pb-3 sm:pb-4")}>
-        <div className="pointer-events-auto relative">
+    <div ref={overlayRef} {...stylex.props(fc.overlay, rc.box)}>
+      <div {...stylex.props(rc.gutter, fc.floor)}>
+        <div {...stylex.props(fc.holder)}>
           <JumpToBottomButton />
           <ComposerOverlayTop />
           <RuntimeConnectionNotice />

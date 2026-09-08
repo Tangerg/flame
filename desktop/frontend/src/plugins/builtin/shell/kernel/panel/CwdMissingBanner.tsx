@@ -1,9 +1,20 @@
+import * as stylex from "@stylexjs/stylex";
 import { useRef, useState } from "react";
 import { SystemMessage, TextField } from "@/ui";
 import { useActiveSession, useRelocateSession } from "@/plugins/builtin/agent/public/session";
 import { BannerAction } from "./BannerAction";
 import { useT } from "@/lib/i18n";
 import { useRuntimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
+import { shellStyles as sh } from "../shellStyles";
+import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+
+const cw = stylex.create({
+  title: { marginBottom: space.s0_5, color: color.warning, fontWeight: weight.semibold },
+  body: { color: color.fgSoft, overflowWrap: "break-word" },
+  form: { marginTop: space.s2 },
+  // Wide enough for a path and no wider: the banner sits inside the reading column.
+  field: { width: "calc(var(--spacing) * 72)", maxWidth: "100%" },
+});
 
 export function CwdMissingBanner() {
   const t = useT();
@@ -32,17 +43,17 @@ export function CwdMissingBanner() {
   };
 
   return (
-    <SystemMessage variant="warning" shape="form" className="my-2.5">
-      <div className="min-w-0">
-        <div className="mb-0.5 text-ui-md font-semibold text-warning">{t("cwdMissing.title")}</div>
-        <div className="text-ui-md text-fg-soft break-words">
-          <code className="font-mono text-ui-md">{session.workspace.path}</code> ·{" "}
+    <SystemMessage variant="warning" shape="form" className={stylex.props(sh.banner).className}>
+      <div {...stylex.props(sh.min)}>
+        <div {...stylex.props(cw.title, typeStep.uiMd)}>{t("cwdMissing.title")}</div>
+        <div {...stylex.props(cw.body, typeStep.uiMd)}>
+          <code {...stylex.props(sh.mono, typeStep.uiMd)}>{session.workspace.path}</code> ·{" "}
           {t("cwdMissing.body")}
         </div>
         {relocateEnabled && (
-          <div className="mt-2">
+          <div {...stylex.props(cw.form)}>
             {editing ? (
-              <div className="flex items-center gap-1.5">
+              <div {...stylex.props(sh.lineTight)}>
                 <TextField
                   type="text"
                   size="sm"
@@ -59,7 +70,7 @@ export function CwdMissingBanner() {
                   spellCheck={false}
                   // oxlint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
-                  className="w-72 max-w-full"
+                  className={stylex.props(cw.field).className}
                 />
                 {/* In flight, the label STAYS and the control shuts — the same way the
                     approval card reports a decision it is waiting on. Swapping the label for

@@ -167,8 +167,8 @@ function ContextSeparator({
   );
 }
 
-function DropdownItem({ className, ...props }: DropdownItemProps) {
-  const item = stylex.props(menuItem());
+function DropdownItem({ layout, className, ...props }: DropdownItemProps & { layout?: RowLayout }) {
+  const item = stylex.props(menuItem(layout));
   return <MenuPrimitive.Item {...props} {...item} className={cn(item.className, className)} />;
 }
 

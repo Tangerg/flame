@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Icon, IconButton } from "@/ui";
@@ -22,6 +23,15 @@ import {
 } from "@/plugins/builtin/workspace/public/deeplinks";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
+import { shellStyles as sh } from "../shellStyles";
+import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+
+const reb = stylex.create({
+  plain: { fontWeight: weight.regular },
+  sans: { fontFamily: "var(--font-sans)" },
+  // On the first line of the text beside it, not on the card's top edge.
+  glyph: { marginTop: space.s0_5, color: color.negative },
+});
 
 function findLastUserText(): string {
   const { messages } = getActiveConversationSnapshot();
@@ -85,22 +95,24 @@ export function RunErrorBanner() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           transition={disclosureTransition}
-          className="my-2.5 grid grid-cols-[auto_1fr_auto] items-start gap-2.5 rounded-lg border border-negative-edge bg-card px-3 py-2.5 font-sans text-fg"
+          className={stylex.props(sh.banner, sh.bannerCard, reb.sans, sh.ink).className}
         >
-          <Icon name="alert" size="sm" className="mt-0.5 text-negative" />
-          <div className="min-w-0">
-            <div className="mb-0.5 flex flex-wrap items-baseline gap-x-2">
-              <span className="text-ui-md font-semibold text-negative">{t("runError.title")}</span>
+          <Icon name="alert" size="sm" className={stylex.props(reb.glyph).className} />
+          <div {...stylex.props(sh.min)}>
+            <div {...stylex.props(sh.bannerHead)}>
+              <span {...stylex.props(sh.negative, sh.strong, typeStep.uiMd)}>
+                {t("runError.title")}
+              </span>
               {error.code && (
-                <span className="font-mono text-ui-xs break-all text-fg-faint select-text">
+                <span {...stylex.props(sh.mono, sh.faint, sh.selectable, typeStep.uiXs)}>
                   {error.code}
                 </span>
               )}
             </div>
-            <div className="whitespace-pre-wrap break-words text-ui-md leading-body text-fg-soft">
+            <div {...stylex.props(sh.bannerBody, typeStep.uiMd)}>
               {error.message ?? describeErrorType(error.code) ?? t("runError.unknown")}
             </div>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <div {...stylex.props(sh.bannerActions)}>
               {canRetry && (
                 <BannerAction
                   icon="loop"

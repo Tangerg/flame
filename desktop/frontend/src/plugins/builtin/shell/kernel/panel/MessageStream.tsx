@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { publishStreamFollow } from "./streamFollow";
 import type { BlockCtx } from "@/plugins/builtin/chat/message/public/rendering";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
@@ -14,7 +15,7 @@ import { cn } from "@/lib/classNames";
 import { dayKey, formatDay } from "@/lib/i18n/relativeTime";
 import { useT } from "@/lib/i18n";
 import { Divider, Loader } from "@/ui";
-import { COMPOSER_CLEARANCE, READING_COLUMN, READING_GUTTER } from "./readingColumn";
+import { readingColumn as rc } from "./readingColumn";
 import {
   useCurrentRootMaterial,
   type CurrentRootMaterial,
@@ -27,6 +28,15 @@ import {
 import { transcriptTurnContentVisibility } from "./transcriptTurnContentVisibility";
 import { durationText } from "@/plugins/builtin/agent/public/runDigest";
 import { useElapsedMillis } from "./useElapsedMillis";
+import { space } from "@/styles/tokens.stylex";
+
+const ms = stylex.create({
+  dayPad: { paddingBlock: space.s1 },
+  content: { position: "relative", display: "flex", flexDirection: "column", paddingTop: space.s8 },
+  working: { marginTop: space.s4, display: "flex" },
+  afterBlock: { marginTop: space.s4 },
+  scroller: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
+});
 
 interface Props {
   rows: readonly TranscriptRow[];
@@ -55,7 +65,7 @@ function DaySeparator({ createdAt }: { createdAt?: string }) {
   const label = formatDay(createdAt);
   if (!label) return null;
   return (
-    <div className={cn(READING_GUTTER, "py-1")}>
+    <div {...stylex.props(rc.gutter, ms.dayPad)}>
       <Divider align="start">{label}</Divider>
     </div>
   );
@@ -117,7 +127,11 @@ const TranscriptTurn = memo(function TranscriptTurn({
         {...enterUp}
         data-turn-id={row.message.id}
         data-turn-role={row.message.role}
-        className={cn(READING_GUTTER, TURN_GAP[gap], transcriptTurnContentVisibility(isLast))}
+        className={cn(
+          stylex.props(rc.gutter).className,
+          TURN_GAP[gap],
+          transcriptTurnContentVisibility(isLast),
+        )}
       >
         <MessageBlock
           row={row}
@@ -128,7 +142,7 @@ const TranscriptTurn = memo(function TranscriptTurn({
           answerFollows={answerFollows}
           terminalFooter={
             terminalRun ? (
-              <div className="mt-4">
+              <div {...stylex.props(ms.afterBlock)}>
                 <RootRunOutcome material={terminalRun} />
               </div>
             ) : undefined
@@ -186,18 +200,20 @@ export function MessageStream({ rows, ctx, sessionId, controllerRef }: Props) {
   );
 
   const dayBreaks = transcriptDayBreaks(rows);
+  const scroller = stylex.props(ms.scroller);
 
   return (
     <StickToBottom
       key={sessionId}
       contextRef={stickContextRef}
-      className="panel-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      {...scroller}
+      className={cn("panel-scroll", scroller.className)}
       initial="instant"
       resize="instant"
     >
       <StickToBottom.Content
         scrollClassName="panel-scroll msg-scroll-viewport min-h-0 flex-1 overflow-y-auto overscroll-contain"
-        className={cn(READING_COLUMN, COMPOSER_CLEARANCE, "relative flex flex-col pt-8")}
+        className={stylex.props(rc.box, rc.clearance, ms.content).className}
       >
         <AnimatePresence initial={false}>
           {rows.map((row, index) => {
@@ -242,7 +258,7 @@ function WorkingLine({ startedAt }: { startedAt: number | null }) {
   const elapsed = useElapsedMillis(startedAt);
   const label = t("agent.working");
   return (
-    <div className={cn(READING_GUTTER, "mt-4 flex")} data-slot="agent-working">
+    <div {...stylex.props(rc.gutter, ms.working)} data-slot="agent-working">
       <Loader
         size="sm"
         text={

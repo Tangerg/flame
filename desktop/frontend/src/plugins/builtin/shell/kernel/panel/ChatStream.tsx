@@ -1,9 +1,10 @@
+import * as stylex from "@stylexjs/stylex";
+import { cn } from "@/lib/classNames";
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useActiveConversationRows } from "@/plugins/builtin/agent/public/conversation";
 import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
-import { cn } from "@/lib/classNames";
 import { Slot } from "@/plugins/host/Slot";
 import {
   reconcileWorkspaceToolSelection,
@@ -15,7 +16,7 @@ import { useStreamRevealStore } from "@/plugins/builtin/chat/message/public/stre
 import { ChatErrorBoundary } from "./ChatErrorBoundary";
 import { ComposerSurface } from "./ComposerSurface";
 import { ComposerOverlayTop, FloatingComposer, RuntimeConnectionNotice } from "./FloatingComposer";
-import { COMPOSER_OVERLAY_PROPERTY, READING_COLUMN, READING_GUTTER } from "./readingColumn";
+import { COMPOSER_OVERLAY_PROPERTY, readingColumn as rc } from "./readingColumn";
 import { CwdMissingBanner } from "./CwdMissingBanner";
 import { MessageStream, type MessageStreamController } from "./MessageStream";
 import { RunErrorBanner } from "./RunErrorBanner";
@@ -24,24 +25,58 @@ import {
   pendingQuestionRequest,
   QuestionCard,
 } from "@/plugins/builtin/chat/message/public/rendering";
+import { shellStyles as sh } from "../shellStyles";
+import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+
+const cst = stylex.create({
+  tray: {
+    pointerEvents: "auto",
+    display: "flex",
+    flexDirection: "column",
+    gap: space.s1_5,
+    paddingBlock: space.s1_5,
+  },
+  // The empty transcript centres its greeting and keeps a sixth of the pane clear beneath it,
+  // so the composer below does not read as the bottom of a full page.
+  empty: {
+    display: "flex",
+    minHeight: 0,
+    flex: 1,
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: space.s5,
+    overflowY: "auto",
+    overscrollBehavior: "contain",
+    paddingBottom: "6vh",
+  },
+  heading: {
+    marginInline: "auto",
+    maxWidth: "620px",
+    textWrap: "balance",
+    textAlign: "center",
+    color: color.fg,
+    fontWeight: weight.medium,
+  },
+});
 
 interface Props {
   onSend: (input: AgentInput) => boolean;
 }
 
+// The rail hangs OUTSIDE the reading column, so it is positioned from the window's centre
+// plus half the column — and only appears once the window is wide enough to have room beside
+// the text. `[&>*]` stays a utility: the rail is transparent to the pointer and its children
+// are not, which is a descendant rule no atomic class can express.
 const RAIL =
   "absolute top-0 bottom-[var(--composer-overlay,0px)] z-1 hidden w-[var(--reading-rail-width)] flex-col @min-[1152px]:flex pointer-events-none [&>*]:pointer-events-auto right-[calc(50%+var(--reading-column-max)/2)]";
 
 const ChatBanners = memo(function ChatBanners({ sessionId }: { sessionId: string }) {
   return (
-    <div className={cn(READING_COLUMN, READING_GUTTER, "shrink-0")}>
+    <div {...stylex.props(rc.box, rc.gutter, sh.hold)}>
       <CwdMissingBanner key={sessionId} />
       <RunErrorBanner />
-      <Slot
-        name="chat.banner.top"
-        wrapper
-        className="pointer-events-auto flex flex-col gap-1.5 py-1.5"
-      />
+      <Slot name="chat.banner.top" wrapper {...stylex.props(cst.tray)} />
     </div>
   );
 });
@@ -111,21 +146,23 @@ export function ChatStream({ onSend }: Props) {
   }, [started]);
 
   if (!started) {
+    const emptyPane = stylex.props(cst.empty);
+    const readingBox = stylex.props(rc.box, rc.gutter);
     return (
       <>
         <ChatBanners sessionId={sessionId} />
-        <div className="panel-scroll flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto overscroll-contain pb-[6vh]">
-          <div className={cn(READING_COLUMN, READING_GUTTER)}>
-            <h2 className="mx-auto max-w-[620px] text-balance text-center text-display-md font-medium text-fg">
+        <div {...emptyPane} className={cn("panel-scroll", emptyPane.className)}>
+          <div {...stylex.props(rc.box, rc.gutter)}>
+            <h2 {...stylex.props(cst.heading, typeStep.displayMd)}>
               <EmptyChatHeading />
             </h2>
           </div>
-          <div className={cn(READING_COLUMN, READING_GUTTER)}>
+          <div {...stylex.props(rc.box, rc.gutter)}>
             <ComposerOverlayTop />
             <RuntimeConnectionNotice />
             {composer}
           </div>
-          <div className={cn(READING_COLUMN, READING_GUTTER, "empty:hidden")}>
+          <div {...readingBox} className={cn("empty:hidden", readingBox.className)}>
             <Slot name="chat.empty" />
           </div>
         </div>
@@ -133,14 +170,15 @@ export function ChatStream({ onSend }: Props) {
     );
   }
 
+  const pane = stylex.props(sh.paneAnchored);
   return (
-    <div ref={paneRef} className="@container relative flex min-h-0 flex-1 flex-col">
+    <div ref={paneRef} {...pane} className={cn("@container", pane.className)}>
       <ChatBanners sessionId={sessionId} />
-      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div {...stylex.props(sh.paneAnchored)}>
         <div className={RAIL}>
           <Slot name="chat.rail.start" />
         </div>
-        <div className="relative flex min-h-0 flex-1 flex-col">
+        <div {...stylex.props(sh.paneAnchored)}>
           <ChatErrorBoundary resetKey={sessionId} label={`session:${sessionId}`}>
             <MessageStream
               rows={rows}

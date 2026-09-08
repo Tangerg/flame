@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { Activity, Fragment, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { dockWidthRow } from "./dockWidth";
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
@@ -50,6 +51,7 @@ import { ViewPlacementProvider } from "@/plugins/builtin/workspace/public/viewPl
 import { WorkspaceViewBody } from "./WorkspaceViewBody";
 import { useT } from "@/lib/i18n";
 import { canPresentDock, defaultDockRatio } from "@/lib/shellGeometry";
+import { shellStyles as sh } from "../shellStyles";
 
 interface Props {
   onSend: (input: AgentInput) => boolean;
@@ -224,7 +226,7 @@ export function ChatPanel({ onSend }: Props) {
       )}
       <Activity mode={activeMainView === null ? "visible" : "hidden"}>
         <AgentDockRow ref={dockRowRef} open={dockOpen} style={dockWidthRow(dockWidthRatio ?? 1)}>
-          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          <div {...stylex.props(sh.paneNarrow)}>
             <AgentSurfaceHeader corner="window">
               <SessionIdentity
                 sessionId={activeSessionId}
@@ -234,7 +236,7 @@ export function ChatPanel({ onSend }: Props) {
               {running && (
                 <AgentStatusPill tone="running">{t("session.status.running")}</AgentStatusPill>
               )}
-              <span className="min-w-4 flex-1" />
+              <span {...stylex.props(sh.spacer)} />
               <Slot name="chat.header.meta" />
               <HeaderDiffStat />
             </AgentSurfaceHeader>
@@ -247,19 +249,19 @@ export function ChatPanel({ onSend }: Props) {
               {hasDockOwner && (
                 <DockHeader tabs={dockTabs} groups={catalog} openViewIds={openViewIds} />
               )}
-              <div className="relative min-h-0 flex-1">
+              <div {...stylex.props(sh.anchor)}>
                 {/* The same box its siblings get. Left as a plain child it had no flex parent to
                     size against, so its own `flex-1` decided nothing and it grew to its content:
                     at the minimum window the catalogue stood 860px tall in a 720px dock, and the
                     last four destinations were below the fold with nothing to scroll. */}
                 {showingCatalog && (
-                  <div className="absolute inset-0 flex flex-col">
+                  <div {...stylex.props(sh.fill)}>
                     <DockCatalogPage groups={catalog} openViewIds={openViewIds} />
                   </div>
                 )}
                 {ownedDockViewIds.map((viewId) => (
                   <Activity key={viewId} mode={viewId === dock.activeViewId ? "visible" : "hidden"}>
-                    <div data-dock-view-id={viewId} className="absolute inset-0 flex flex-col">
+                    <div data-dock-view-id={viewId} {...stylex.props(sh.fill)}>
                       <ViewPlacementProvider value={placementFor(viewId, "dock")}>
                         <WorkspaceViewBody viewId={viewId} />
                       </ViewPlacementProvider>

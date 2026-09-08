@@ -1,8 +1,42 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactElement } from "react";
 import { basename } from "@/lib/path";
 import { ContextMenu } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { writeToClipboard } from "@/lib/clipboard";
+import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+
+const si = stylex.create({
+  bar: { display: "flex", minWidth: 0, flexShrink: 1, alignItems: "center", gap: space.s2 },
+  // The working directory is context, so it is the first thing the bar gives up: hidden below
+  // the wide breakpoint, and capped even above it.
+  cwd: {
+    display: { default: "none", "@media (min-width: 1024px)": "inline" },
+    minWidth: 0,
+    maxWidth: "160px",
+    flexShrink: 1,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    fontFamily: "var(--font-mono)",
+    color: color.fgFaint,
+  },
+  sep: {
+    display: { default: "none", "@media (min-width: 1024px)": "inline" },
+    flexShrink: 0,
+    color: color.fgFaint,
+  },
+  title: {
+    margin: 0,
+    minWidth: 0,
+    maxWidth: "420px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    fontWeight: weight.semibold,
+    color: color.fg,
+  },
+});
 
 interface Props {
   sessionId: string;
@@ -23,16 +57,16 @@ export function SessionIdentity({ sessionId, title, workspacePath }: Props): Rea
     <ContextMenu.Root>
       <ContextMenu.Trigger
         render={
-          <div className="flex min-w-0 shrink items-center gap-2">
+          <div {...stylex.props(si.bar)}>
             {workspacePath && (
               <>
                 <span
                   title={workspacePath}
-                  className="hidden min-w-0 max-w-[160px] shrink truncate font-mono text-ui-sm text-fg-faint lg:inline"
+                  className={stylex.props(si.cwd, typeStep.uiSm).className}
                 >
                   {basename(workspacePath)}
                 </span>
-                <span aria-hidden className="hidden shrink-0 text-ui-sm text-fg-faint lg:inline">
+                <span aria-hidden {...stylex.props(si.sep, typeStep.uiSm)}>
                   /
                 </span>
               </>
@@ -40,10 +74,7 @@ export function SessionIdentity({ sessionId, title, workspacePath }: Props): Rea
             {/* The name of what the reader is looking at, and the only heading above the
                 turns — which are h2. It was a span, so a populated transcript published an
                 outline that started at its second rung. */}
-            <h1
-              title={title}
-              className="m-0 min-w-0 max-w-[420px] truncate text-ui-sm font-semibold text-fg"
-            >
+            <h1 title={title} className={stylex.props(si.title, typeStep.uiSm).className}>
               {title}
             </h1>
           </div>

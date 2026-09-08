@@ -19,7 +19,7 @@ const rs = stylex.create({
   title: { display: "flex", minWidth: 0, flexDirection: "column", gap: space.s1 },
   // A model id is long and the trigger is not: it truncates rather than widening the row.
   model: { maxWidth: "160px" },
-  pickRow: { gridTemplateColumns: "16px minmax(0, 1fr) 14px", paddingInline: space.s2 },
+  pickRow: { paddingInline: space.s2 },
 });
 
 function RoleSectionShell({
@@ -112,6 +112,7 @@ export function UtilityModelSection() {
         <DropdownMenu.Content align="end" sideOffset={6}>
           <DropdownMenu.Item
             onClick={() => void pick(null)}
+            layout="pick"
             className={stylex.props(rs.pickRow).className}
           >
             <span />
@@ -124,6 +125,7 @@ export function UtilityModelSection() {
             <DropdownMenu.Item
               key={`${m.provider}:${m.id}`}
               onClick={() => void pick({ provider: m.provider, model: m.id })}
+              layout="pick"
               className={stylex.props(rs.pickRow).className}
             >
               <ProviderIcon provider={m.provider} size="md" />
@@ -204,6 +206,7 @@ export function EmbeddingModelSection() {
         <DropdownMenu.Content align="end" sideOffset={6}>
           <DropdownMenu.Item
             onClick={() => void pick(null)}
+            layout="pick"
             className={stylex.props(rs.pickRow).className}
           >
             <span />
@@ -216,6 +219,7 @@ export function EmbeddingModelSection() {
             <DropdownMenu.Item
               key={p.id}
               onClick={() => void pick(p)}
+              layout="pick"
               className={stylex.props(rs.pickRow).className}
             >
               <ProviderIcon provider={p.id} size="md" />
