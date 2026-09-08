@@ -6,9 +6,10 @@ import { UI_TYPE_STEPS } from "./typography";
 // Tailwind Merge cannot infer custom `--text-*` theme variables from generated CSS, so
 // without this list it reads `text-ui-md` as a colour and drops a preceding `text-fg-soft`
 // as a conflict. A missing step fails SILENTLY in two directions — dropped when a colour
-// utility follows, ignored when another size does — which is why the UI steps come from the
-// ladder itself and `check-design-tokens` holds the editorial half.
-const EDITORIAL_STEPS = ["display-sm", "display-md", "display-lg"];
+// utility follows, ignored when another size does, which is why the list comes from the
+// ladder rather than being kept by hand beside it. It is a SUPERSET: two of the ladder's
+// steps are read by `markdown.css` as variables and have no utility. A superset costs
+// nothing — a subset is the silent failure above.
 
 // The other two ladders `@theme inline` publishes. Tailwind Merge only disambiguates values it
 // knows, so an unknown step does not CONFLICT with anything: `cn("leading-body",
@@ -21,7 +22,7 @@ const RADIUS_STEPS = ["2xs", "xs", "sm", "md", "lg", "xl", "composer", "bubble",
 const mergeTailwindClasses = extendTailwindMerge({
   extend: {
     theme: {
-      text: [...UI_TYPE_STEPS, ...EDITORIAL_STEPS],
+      text: [...UI_TYPE_STEPS],
       leading: LEADING_STEPS,
       radius: RADIUS_STEPS,
     },

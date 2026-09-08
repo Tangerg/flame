@@ -48,10 +48,10 @@
   margin: 20px 0 10px;
 }
 .md [data-md-level="1"] {
-  font-size: var(--fs-markdown-h1);
+  font-size: var(--fs-display-lg);
 }
 .md [data-md-level="2"] {
-  font-size: var(--fs-markdown-h2);
+  font-size: var(--fs-display-md);
 }
 .md [data-md-level="3"],
 .md [data-md-level="4"] {
@@ -272,7 +272,7 @@
   border-collapse: separate;
   border-spacing: 0;
   table-layout: auto;
-  font-size: var(--fs-markdown-table);
+  font-size: var(--fs-ui-md);
   line-height: var(--leading-markdown-table);
   width: fit-content;
   text-align: start;

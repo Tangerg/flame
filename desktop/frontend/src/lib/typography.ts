@@ -11,7 +11,24 @@ export const UI_FONT_SIZE_MAX_PX = 18;
 
 /** A runtime list, not only a type: `lib/classNames.ts` must name every step for Tailwind
  *  Merge, and a hand-kept copy there silently stops applying when a step is added here. */
-export const UI_TYPE_STEPS = ["ui-2xs", "ui-xs", "ui-sm", "ui-md", "prose", "code"] as const;
+export const UI_TYPE_STEPS = [
+  "ui-2xs",
+  "ui-xs",
+  "ui-sm",
+  "ui-md",
+  "prose",
+  "code",
+  // The editorial steps. They had been fixed pixel values on the grounds that a heading is an
+  // anchor rather than a scaled thing — which held at the small end and inverted at the large
+  // one: at base 18 a `display-sm` heading was 18px above 21px prose, and markdown's own h3 and
+  // h5 were smaller than the paragraphs they headed. An anchor that is sometimes below what it
+  // anchors is not an anchor; the hierarchy has to be one relationship scaled, not two.
+  "markdown-h5",
+  "markdown-h3",
+  "display-sm",
+  "display-md",
+  "display-lg",
+] as const;
 
 export type UiTypeStep = (typeof UI_TYPE_STEPS)[number];
 

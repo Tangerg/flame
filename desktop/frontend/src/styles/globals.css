@@ -126,12 +126,12 @@
   --text-code: var(--fs-code);
   --text-code--letter-spacing: 0;
 
-  --text-display-sm: 18px;
+  --text-display-sm: var(--fs-display-sm);
   --text-display-sm--letter-spacing: var(--tracking-ui);
-  --text-display-md: 20px;
+  --text-display-md: var(--fs-display-md);
   --text-display-md--letter-spacing: var(--tracking-display);
   --text-display-md--line-height: 1.2;
-  --text-display-lg: 24px;
+  --text-display-lg: var(--fs-display-lg);
   --text-display-lg--letter-spacing: var(--tracking-display);
   --text-display-lg--line-height: 1.15;
 
@@ -318,11 +318,14 @@
   --fs-prose: 16px;
   --fs-code: 13px;
 
-  --fs-markdown-h1: 24px;
-  --fs-markdown-h2: 20px;
-  --fs-markdown-h3: 17px;
+  /* The editorial half of the same ladder. `markdown-h1`, `-h2` and `-table` used to be three
+     more variables here holding 24, 20 and 14 — the same three numbers as `display-lg`,
+     `display-md` and `ui-md`, which is to say the heading ladder was written out twice. */
   --fs-markdown-h5: 15px;
-  --fs-markdown-table: 14px;
+  --fs-markdown-h3: 17px;
+  --fs-display-sm: 18px;
+  --fs-display-md: 20px;
+  --fs-display-lg: 24px;
   --leading-markdown-heading: 1.25;
   --leading-markdown-subheading: 22px;
   --leading-markdown-minor: 20px;
