@@ -50,8 +50,6 @@ const (
 
 type compactionPlan struct {
 	action          compactionAction
-	cannotFit       bool
-	messagesBefore  int
 	cutoff          int
 	trimmed         []chat.Message
 	older           []chat.Message
@@ -111,7 +109,7 @@ func (c *Compactor) planCompactionWithProtectedTail(
 		return compactionPlan{estimatedTokens: estimatedTokens}, nil
 	}
 	if protectedTail < 0 || protectedTail > len(messages) {
-		return compactionPlan{cannotFit: true, estimatedTokens: estimatedTokens}, nil
+		return compactionPlan{}, ErrModelContextCannotFit
 	}
 	foldableLimit := len(messages) - protectedTail
 	protectedOverBudget, _, err := budget.exceeded(ctx, messages[foldableLimit:])
@@ -119,14 +117,14 @@ func (c *Compactor) planCompactionWithProtectedTail(
 		return compactionPlan{}, err
 	}
 	if protectedOverBudget {
-		return compactionPlan{cannotFit: true, estimatedTokens: estimatedTokens}, nil
+		return compactionPlan{}, ErrModelContextCannotFit
 	}
 	if foldableLimit == 0 {
-		return compactionPlan{cannotFit: true, estimatedTokens: estimatedTokens}, nil
+		return compactionPlan{}, ErrModelContextCannotFit
 	}
 	cutoff := summaryCutoffWithProtectedTail(messages, protectedTail)
 	if cutoff == 0 {
-		return compactionPlan{cannotFit: true, estimatedTokens: estimatedTokens}, nil
+		return compactionPlan{}, ErrModelContextCannotFit
 	}
 	trimmed, changed := trimForBudgetBefore(messages, cutoff)
 	trimmedOverBudget, trimmedEstimate, err := budget.exceeded(ctx, trimmed)
@@ -135,8 +133,8 @@ func (c *Compactor) planCompactionWithProtectedTail(
 	}
 	if changed && !trimmedOverBudget {
 		return compactionPlan{
-			action:         trimCompaction,
-			messagesBefore: len(messages), trimmed: trimmed,
+			action:          trimCompaction,
+			trimmed:         trimmed,
 			estimatedTokens: trimmedEstimate,
 		}, nil
 	}
@@ -157,15 +155,14 @@ func (c *Compactor) planCompactionWithProtectedTail(
 		}
 		if changed && !trimmedOverBudget {
 			return compactionPlan{
-				action:         trimCompaction,
-				messagesBefore: len(messages), trimmed: trimmed,
+				action:          trimCompaction,
+				trimmed:         trimmed,
 				estimatedTokens: trimmedEstimate,
 			}, nil
 		}
 	}
 	return compactionPlan{
 		action:          summarizeCompaction,
-		messagesBefore:  len(messages),
 		cutoff:          cutoff,
 		older:           trimmed[:cutoff],
 		recent:          trimmed[cutoff:],

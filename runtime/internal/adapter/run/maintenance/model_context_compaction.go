@@ -98,9 +98,6 @@ func (c *Compactor) CompactModelContext(
 		return agentexec.ModelContextCompactionResult{}, err
 	}
 	if plan.action == noCompaction {
-		if plan.cannotFit {
-			return agentexec.ModelContextCompactionResult{}, ErrModelContextCannotFit
-		}
 		return unchangedModelContextResult(candidate, plan.estimatedTokens)
 	}
 	allowed, err := request.AllowsCompaction(ctx)
