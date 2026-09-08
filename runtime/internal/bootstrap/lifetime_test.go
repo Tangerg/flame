@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
@@ -33,6 +34,7 @@ func TestInstanceShutdownOwnsReverseOrderAndIsIdempotentAcrossCopies(t *testing.
 	}
 	host := Instance{
 		lifetime: &runtimeLifetime{
+			context: t.Context(), delivery: testEndpoint(t),
 			shutdownWait:   defaultShutdownWaitPolicy(),
 			goalDriver:     shutdownFunc{stop: recordStop("goals"), wait: recordWait("goals")},
 			mcpCoordinator: shutdownFunc{stop: recordStop("mcp"), wait: recordWait("mcp")},
@@ -105,6 +107,7 @@ func TestInstanceShutdownAdvancesPastCompletedCloserError(t *testing.T) {
 		return closeErr
 	})
 	host := Instance{lifetime: &runtimeLifetime{
+		context: t.Context(), delivery: testEndpoint(t),
 		shutdownWait: defaultShutdownWaitPolicy(),
 		// A2A, LSP, Shells and SQLite all use this one-shot close shape: the
 		// resource reaches its terminal state on the first call even when that
@@ -138,6 +141,7 @@ func TestInstanceShutdownContinuesGraphAfterCallerTimeout(t *testing.T) {
 	releaseComponent := make(chan struct{})
 	toolClosed := make(chan struct{})
 	host := Instance{lifetime: &runtimeLifetime{
+		context: t.Context(), delivery: testEndpoint(t),
 		shutdownWait: testShutdownWait(t, time.Millisecond),
 		runCoordinator: shutdownFunc{
 			wait: func(ctx context.Context) error {
@@ -178,6 +182,7 @@ func TestInstanceShutdownStartsNewGenerationAfterComponentError(t *testing.T) {
 	want := errors.New("component did not settle")
 	var stops, attempts, closed int
 	host := Instance{lifetime: &runtimeLifetime{
+		context: t.Context(), delivery: testEndpoint(t),
 		shutdownWait: defaultShutdownWaitPolicy(),
 		runCoordinator: shutdownFunc{
 			stop: func() { stops++ },
@@ -210,6 +215,7 @@ func TestInstanceShutdownBoundsNonCooperativeToolCloserWithoutConcurrentRetry(t 
 	release := make(chan struct{})
 	var calls atomic.Int32
 	host := Instance{lifetime: &runtimeLifetime{
+		context: t.Context(), delivery: testEndpoint(t),
 		shutdownWait: testShutdownWait(t, time.Millisecond),
 		toolResources: []*teardown.Step{teardown.Terminal(func(context.Context) error {
 			calls.Add(1)
@@ -282,3 +288,14 @@ func (s shutdownFunc) Drain(ctx context.Context) error {
 func (s shutdownFunc) Cancel() { s.BeginShutdown() }
 
 func (s shutdownFunc) Wait(ctx context.Context) error { return s.AwaitShutdown(ctx) }
+
+// testEndpoint builds the delivery entrypoint every assembled lifetime owns, so
+// a shutdown test drives the real graph instead of a half-built one.
+func testEndpoint(t *testing.T) *delivery.Endpoint {
+	t.Helper()
+	endpoint, err := delivery.NewEndpoint(struct{}{}, delivery.EndpointConfig{Lifetime: t.Context()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return endpoint
+}

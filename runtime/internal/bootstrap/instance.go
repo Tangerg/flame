@@ -207,16 +207,8 @@ func (i InstanceConfig) validate() error {
 // Endpoint returns the instance-owned binding-neutral operation entrypoint.
 // Public bindings keep it private and expose only their typed methods.
 func (i *Instance) Endpoint() *delivery.Endpoint {
-	if i == nil || i.lifetime == nil {
-		return nil
-	}
 	return i.lifetime.delivery
 }
 
 // ServerInfo returns the immutable identity advertised by every binding.
-func (i *Instance) ServerInfo() protocol.ServerInfo {
-	if i == nil {
-		return protocol.ServerInfo{}
-	}
-	return i.serverInfo
-}
+func (i *Instance) ServerInfo() protocol.ServerInfo { return i.serverInfo }

@@ -76,14 +76,8 @@ func NewEndpoint(target any, config EndpointConfig) (*Endpoint, error) {
 // BeginShutdown rejects new calls and cancels every accepted call or stream.
 // The Runtime owner follows it with AwaitShutdown before closing dependencies.
 func (e *Endpoint) BeginShutdown() {
-	if e == nil {
-		return
-	}
 	if target, ok := e.target.(interface{ beginShutdown() }); ok {
 		target.beginShutdown()
-	}
-	if e.invocations == nil {
-		return
 	}
 	e.invocations.BeginShutdown()
 }
@@ -93,9 +87,6 @@ func (e *Endpoint) BeginShutdown() {
 // does not begin shutdown so process owners can broadcast all cancellation
 // signals before joining any one component.
 func (e *Endpoint) AwaitShutdown(ctx context.Context) error {
-	if e == nil || e.invocations == nil {
-		return nil
-	}
 	if err := e.invocations.AwaitShutdown(ctx); err != nil {
 		return err
 	}

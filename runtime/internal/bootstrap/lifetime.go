@@ -71,23 +71,13 @@ const runEffectDrainTimeout = 5 * time.Second
 // one new generation; terminal resource diagnostics close the graph. Idempotent
 // across Instance copies once the graph has fully closed.
 func (i *Instance) Close() error {
-	if i == nil || i.lifetime == nil {
-		return nil
-	}
 	return closeRuntimeLifetime(i.lifetime)
 }
 
 func closeRuntimeLifetime(lifetime *runtimeLifetime) error {
-	if lifetime == nil {
-		return nil
-	}
 	// Preserve instance trace values, but never let the caller that happened to
-	// start Close cancel the owner generation. A nil lifetime context occurs only
-	// in direct Instance tests and uses the same process-owner root as the wait.
-	ownerCtx := context.Background()
-	if lifetime.context != nil {
-		ownerCtx = context.WithoutCancel(lifetime.context)
-	}
+	// start Close cancel the owner generation.
+	ownerCtx := context.WithoutCancel(lifetime.context)
 	timeout, err := shutdownWaitTimeout(lifetime.shutdownWait)
 	if err != nil {
 		return err
@@ -139,15 +129,21 @@ func runShutdown(
 	}
 	lifetime.closeMu.Unlock()
 
+	// Delivery is acquired after assembly, so a startup that fails before then
+	// rolls back a graph that never had an endpoint to stop.
 	if begin {
-		lifetime.delivery.BeginShutdown()
+		if lifetime.delivery != nil {
+			lifetime.delivery.BeginShutdown()
+		}
 		if lifetime.stopRuntime != nil {
 			lifetime.stopRuntime()
 		}
 	}
-	if err := lifetime.delivery.AwaitShutdown(ownerCtx); err != nil {
-		finishShutdown(lifetime, attempt, false, err)
-		return
+	if lifetime.delivery != nil {
+		if err := lifetime.delivery.AwaitShutdown(ownerCtx); err != nil {
+			finishShutdown(lifetime, attempt, false, err)
+			return
+		}
 	}
 	for _, done := range []<-chan struct{}{lifetime.schedulerDone, lifetime.databaseChangesDone, lifetime.recoveryDone} {
 		if err := completion.Wait(ownerCtx, done); err != nil {
