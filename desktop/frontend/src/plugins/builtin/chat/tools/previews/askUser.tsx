@@ -1,24 +1,27 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
-import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectAskUserAnswer } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { TEXT_PREVIEW_CLASS } from "./previewChrome";
+
+import { chatStyles as ct } from "../../chatStyles";
+import { TEXT_PREVIEW } from "./previewChrome";
+import { previewStyles as pv } from "./previewStyles";
 
 function AskUserPreview({ tool }: ToolPreviewProps) {
   const t = useT();
   const answer = projectAskUserAnswer(tool.result);
   return (
-    <div className={cn(TEXT_PREVIEW_CLASS, "whitespace-pre-wrap break-words")}>
+    <div {...stylex.props(TEXT_PREVIEW, pv.wrapWords)}>
       {answer ? (
         <>
-          <span className="text-fg-faint">{t("tool.askUser.answerPrefix")}</span>
-          <span className="text-fg-soft">{answer}</span>
+          <span {...stylex.props(ct.faint)}>{t("tool.askUser.answerPrefix")}</span>
+          <span {...stylex.props(ct.soft)}>{answer}</span>
         </>
       ) : (
-        <span className="text-fg-faint">{t("tool.askUser.waiting")}</span>
+        <span {...stylex.props(ct.faint)}>{t("tool.askUser.waiting")}</span>
       )}
     </div>
   );

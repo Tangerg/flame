@@ -35,7 +35,8 @@ describe("ToolOutputPanel copy material ownership", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Show 1000 of 3000/ }));
 
-    const rendered = container.querySelectorAll("div.whitespace-pre-wrap");
+    // By the marker each line puts on itself, not by the class that happens to wrap it.
+    const rendered = container.querySelectorAll("[data-output-line]");
     expect(rendered).toHaveLength(1_000);
     expect(screen.getByText(/2000 more lines/)).toBeTruthy();
   });

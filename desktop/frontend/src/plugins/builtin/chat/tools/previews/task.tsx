@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
@@ -5,15 +6,18 @@ import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { resultLines } from "@/plugins/builtin/chat/tools/application/toolResultParsing";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
+import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
+import { chatStyles as ct } from "../../chatStyles";
+import { previewStyles as pv } from "./previewStyles";
+import { TEXT_PREVIEW } from "./previewChrome";
 
 function TaskPreview({ tool, onOpenView }: ToolPreviewProps) {
   const lines = resultLines(tool.result);
   const reply = lines.slice(0, INLINE_PREVIEW_ROW_LIMIT).join("\n");
   return (
-    <div className={TEXT_PREVIEW_CLASS}>
+    <div {...stylex.props(TEXT_PREVIEW)}>
       {reply ? (
-        <div className="whitespace-pre-wrap break-words text-fg-soft">{reply}</div>
+        <div {...stylex.props(pv.wrapWords, ct.soft)}>{reply}</div>
       ) : (
         <PreviewPlaceholder
           status={tool.status}

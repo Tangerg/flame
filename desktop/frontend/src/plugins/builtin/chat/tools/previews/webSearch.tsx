@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
@@ -7,7 +8,9 @@ import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectWebSearchPreview } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
-import { PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
+import { PreviewOverflow } from "./previewChrome";
+import { previewStyles as pv } from "./previewStyles";
+import { TEXT_PREVIEW } from "./previewChrome";
 
 const MAX_WEB_RESULTS = 8;
 
@@ -15,7 +18,7 @@ function WebSearchPreview({ tool, onOpenView }: ToolPreviewProps) {
   const results = projectWebSearchPreview(tool.result);
   if (results.length === 0) {
     return (
-      <div className={TEXT_PREVIEW_CLASS}>
+      <div {...stylex.props(TEXT_PREVIEW)}>
         <PreviewPlaceholder
           status={tool.status}
           pending="tools.preview.pending.searching"
@@ -25,7 +28,7 @@ function WebSearchPreview({ tool, onOpenView }: ToolPreviewProps) {
     );
   }
   return (
-    <div className="pt-1">
+    <div {...stylex.props(pv.inset)}>
       <SearchResults results={results.slice(0, MAX_WEB_RESULTS)} />
       <PreviewOverflow count={results.length - MAX_WEB_RESULTS} />
       <PreviewFoot label="tools.preview.viewDetails" onClick={onOpenView} />

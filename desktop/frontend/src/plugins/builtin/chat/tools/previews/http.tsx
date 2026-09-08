@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import type { Tone } from "@/lib/tone";
 import { Badge, Well } from "@/ui";
@@ -12,7 +13,17 @@ import {
   projectHttpPreview,
 } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { TEXT_PREVIEW_CLASS } from "./previewChrome";
+import { TEXT_PREVIEW } from "./previewChrome";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
+import { previewStyles as pv } from "./previewStyles";
+
+const hp = stylex.create({
+  head: { marginBottom: space.s1_5, display: "flex", alignItems: "center", gap: space.s2 },
+  headPlain: { marginBottom: space.s1_5 },
+  // Takes the row's spare width so the status and the duration stay at its two ends.
+  spacer: { minWidth: space.s4, flex: 1 },
+});
 
 function statusTone(status: number): Tone | undefined {
   if (status >= 500) return "negative";
@@ -26,7 +37,7 @@ function HttpRequestPreview({ tool, onOpenView }: ToolPreviewProps) {
   const response = projectHttpPreview(tool.result);
   if (!response) {
     return (
-      <div className={TEXT_PREVIEW_CLASS}>
+      <div {...stylex.props(TEXT_PREVIEW)}>
         <PreviewPlaceholder
           status={tool.status}
           pending="tools.preview.pending.requesting"
@@ -36,20 +47,20 @@ function HttpRequestPreview({ tool, onOpenView }: ToolPreviewProps) {
     );
   }
   return (
-    <div className="pt-1">
-      <div className="mb-1.5 flex items-center gap-2">
+    <div {...stylex.props(pv.inset)}>
+      <div {...stylex.props(hp.head)}>
         <Badge tone={statusTone(response.status)} face="mono">
           {response.status}
         </Badge>
         {response.duration && (
-          <span className="font-mono text-ui-xs text-fg-faint">{response.duration}</span>
+          <span {...stylex.props(ct.mono, ct.faint, typeStep.uiXs)}>{response.duration}</span>
         )}
         {response.headers.length > 0 && (
-          <span className="text-ui-sm text-fg-faint">
+          <span {...stylex.props(ct.faint, typeStep.uiSm)}>
             {t("tools.http.headers", { count: response.headers.length })}
           </span>
         )}
-        <div className="min-w-4 flex-1" />
+        <div {...stylex.props(hp.spacer)} />
         {response.truncated && <Badge>{t("tools.overflow.truncated")}</Badge>}
       </div>
       <ToolOutputPanel
@@ -66,7 +77,7 @@ function WebFetchPreview({ tool, onOpenView }: ToolPreviewProps) {
   const page = projectFetchedPage(tool.result);
   if (!page) {
     return (
-      <div className={TEXT_PREVIEW_CLASS}>
+      <div {...stylex.props(TEXT_PREVIEW)}>
         <PreviewPlaceholder
           status={tool.status}
           pending="tools.preview.pending.fetching"
@@ -76,8 +87,8 @@ function WebFetchPreview({ tool, onOpenView }: ToolPreviewProps) {
     );
   }
   return (
-    <div className="pt-1">
-      <div className="mb-1.5">
+    <div {...stylex.props(pv.inset)}>
+      <div {...stylex.props(hp.headPlain)}>
         <Badge face="mono">{page.format}</Badge>
       </div>
       <Well cap="md">{page.content}</Well>

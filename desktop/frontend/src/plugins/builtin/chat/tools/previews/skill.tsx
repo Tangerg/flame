@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
@@ -6,14 +7,22 @@ import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectSkillPreview } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { resultLines } from "@/plugins/builtin/chat/tools/application/toolResultParsing";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
+import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
 import { Tag } from "@/ui";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
+import { previewStyles as pv } from "./previewStyles";
+import { TEXT_PREVIEW } from "./previewChrome";
+
+const sk = stylex.create({
+  row: { display: "flex", alignItems: "baseline", gap: space.s2 },
+});
 
 function SkillCatalogPreview({ tool, onOpenView }: ToolPreviewProps) {
   const entries = projectSkillPreview(tool.result);
   if (entries.length === 0) {
     return (
-      <div className={TEXT_PREVIEW_CLASS}>
+      <div {...stylex.props(TEXT_PREVIEW)}>
         <PreviewPlaceholder
           status={tool.status}
           pending="tools.preview.pending.loadingTools"
@@ -23,14 +32,11 @@ function SkillCatalogPreview({ tool, onOpenView }: ToolPreviewProps) {
     );
   }
   return (
-    <div className={TEXT_PREVIEW_CLASS}>
+    <div {...stylex.props(TEXT_PREVIEW)}>
       {entries.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((s) => (
-        <div
-          key={s.name}
-          className="flex items-baseline gap-2 rounded-2xs px-1 py-0.5 hover:bg-hover transition-colors"
-        >
+        <div key={s.name} className={stylex.props(sk.row, pv.row, pv.rowPad).className}>
           <Tag size="sm">{s.name}</Tag>
-          <span className="truncate text-ui-sm text-fg-muted">{s.description}</span>
+          <span {...stylex.props(ct.truncate, ct.muted, typeStep.uiSm)}>{s.description}</span>
         </div>
       ))}
       <PreviewOverflow count={entries.length - INLINE_PREVIEW_ROW_LIMIT} />
@@ -42,9 +48,9 @@ function SkillCatalogPreview({ tool, onOpenView }: ToolPreviewProps) {
 function SkillTextPreview({ tool, onOpenView }: ToolPreviewProps) {
   const lines = resultLines(tool.result);
   return (
-    <div className={TEXT_PREVIEW_CLASS}>
+    <div {...stylex.props(TEXT_PREVIEW)}>
       {lines.length > 0 ? (
-        <div className="whitespace-pre-wrap break-words text-fg-soft">
+        <div {...stylex.props(pv.wrapWords, ct.soft)}>
           {lines.slice(0, INLINE_PREVIEW_ROW_LIMIT).join("\n")}
         </div>
       ) : (

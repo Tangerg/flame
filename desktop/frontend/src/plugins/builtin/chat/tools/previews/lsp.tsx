@@ -1,17 +1,27 @@
+import * as stylex from "@stylexjs/stylex";
+import type { Tone } from "@/lib/tone";
+import { toneInk } from "@/ui";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
-import { cn } from "@/lib/classNames";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { resultLines } from "@/plugins/builtin/chat/tools/application/toolResultParsing";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
+import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
+import { previewStyles as pv } from "./previewStyles";
+import { TEXT_PREVIEW } from "./previewChrome";
+
+const ls = stylex.create({
+  pair: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: space.s3 },
+});
 
 function LspLocationsPreview({ tool, onOpenView }: ToolPreviewProps) {
   const rows = resultLines(tool.result);
   return (
-    <div className={TEXT_PREVIEW_CLASS}>
+    <div {...stylex.props(TEXT_PREVIEW)}>
       {rows.length === 0 && (
         <PreviewPlaceholder
           status={tool.status}
@@ -25,19 +35,18 @@ function LspLocationsPreview({ tool, onOpenView }: ToolPreviewProps) {
           return (
             <div
               key={i}
-              className="truncate rounded-2xs px-1 py-0.5 text-fg-soft hover:bg-hover transition-colors"
+              className={stylex.props(ct.truncate, pv.row, pv.rowPad, ct.soft).className}
             >
               {row}
             </div>
           );
         }
         return (
-          <div
-            key={i}
-            className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 rounded-2xs px-1 py-0.5 hover:bg-hover transition-colors"
-          >
-            <span className="truncate text-fg-soft">{row.slice(0, sep)}</span>
-            <span className="truncate text-ui-sm text-fg-muted">{row.slice(sep + 3)}</span>
+          <div key={i} className={stylex.props(ls.pair, pv.row, pv.rowPad).className}>
+            <span {...stylex.props(ct.truncate, ct.soft)}>{row.slice(0, sep)}</span>
+            <span {...stylex.props(ct.truncate, ct.muted, typeStep.uiSm)}>
+              {row.slice(sep + 3)}
+            </span>
           </div>
         );
       })}
@@ -50,7 +59,7 @@ function LspLocationsPreview({ tool, onOpenView }: ToolPreviewProps) {
 function LspHoverPreview({ tool, onOpenView }: ToolPreviewProps) {
   const text = tool.result?.trim();
   return (
-    <div className={cn(TEXT_PREVIEW_CLASS, "whitespace-pre-wrap break-words text-fg-soft")}>
+    <div {...stylex.props(TEXT_PREVIEW, pv.wrapWords, ct.soft)}>
       {text || (
         <PreviewPlaceholder
           status={tool.status}
@@ -65,29 +74,30 @@ function LspHoverPreview({ tool, onOpenView }: ToolPreviewProps) {
 
 // Map, not object: keyed by the first word of a tool's output line, so `constructor` would
 // pull an inherited member out and paint its source into the className.
-const SEVERITY_TONE = new Map([
-  ["error", "text-negative"],
-  ["warning", "text-warning"],
+// The severity is a `Tone`, and `toneInk` is the one place that turns one into ink.
+const SEVERITY_TONE = new Map<string, Tone>([
+  ["error", "negative"],
+  ["warning", "warning"],
 ]);
 
 function LspDiagnosticsPreview({ tool, onOpenView }: ToolPreviewProps) {
   const rows = resultLines(tool.result);
   return (
-    <div className={TEXT_PREVIEW_CLASS}>
+    <div {...stylex.props(TEXT_PREVIEW)}>
       {rows.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((row, i) => {
         const space = row.indexOf(" ");
         const severity = space === -1 ? "" : row.slice(0, space);
         const tone = SEVERITY_TONE.get(severity);
         if (!tone) {
           return (
-            <div key={i} className="truncate py-0.5 text-fg-soft">
+            <div key={i} {...stylex.props(ct.truncate, pv.rowPad, ct.soft)}>
               {row}
             </div>
           );
         }
         return (
-          <div key={i} className="truncate py-0.5 text-fg-soft">
-            <span className={cn("font-semibold", tone)}>{severity}</span>
+          <div key={i} {...stylex.props(ct.truncate, pv.rowPad, ct.soft)}>
+            <span {...stylex.props(ct.strong, toneInk[tone])}>{severity}</span>
             {row.slice(space)}
           </div>
         );

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
@@ -5,12 +6,15 @@ import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectGlobPreview } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
+import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
+import { chatStyles as ct } from "../../chatStyles";
+import { previewStyles as pv } from "./previewStyles";
+import { TEXT_PREVIEW } from "./previewChrome";
 
 function GlobPreview({ tool, onOpenView }: ToolPreviewProps) {
   const { paths } = projectGlobPreview(tool.result);
   return (
-    <div className={TEXT_PREVIEW_CLASS}>
+    <div {...stylex.props(TEXT_PREVIEW)}>
       {paths.length === 0 && (
         <PreviewPlaceholder
           status={tool.status}
@@ -19,10 +23,7 @@ function GlobPreview({ tool, onOpenView }: ToolPreviewProps) {
         />
       )}
       {paths.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((p) => (
-        <div
-          key={p}
-          className="truncate rounded-2xs px-1 py-0.5 text-fg-muted hover:bg-hover transition-colors"
-        >
+        <div key={p} className={stylex.props(ct.truncate, pv.row, pv.rowPad, ct.muted).className}>
           {p}
         </div>
       ))}

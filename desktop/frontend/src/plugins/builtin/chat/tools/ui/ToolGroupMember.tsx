@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { DiffStat, Icon, Pressable } from "@/ui";
 import { cn } from "@/lib/classNames";
@@ -6,12 +7,20 @@ import { headlineToolMetaItem, toolCardModel } from "../application/toolCardMode
 import { toolCallIconFor } from "../public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "./ToolText";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
 
 interface Props {
   tool: ToolCall;
   expanded: boolean;
   onToggleExpand: () => void;
 }
+
+const gm = stylex.create({
+  body: { paddingBlock: space.s1_5 },
+  // The member takes the row's ink, which the row itself decides from its state.
+  inherit: { color: "inherit" },
+});
 
 export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
   const t = useT();
@@ -31,12 +40,19 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
           expanded && "text-fg",
         )}
       >
-        <Icon name={toolCallIconFor(tool)} size="xs" className="shrink-0 text-fg-muted" />
-        <ToolText value={model.intent.label} className="shrink-0 text-ui-sm text-inherit" />
+        <Icon
+          name={toolCallIconFor(tool)}
+          size="xs"
+          className={stylex.props(ct.hold, ct.muted).className}
+        />
+        <ToolText
+          value={model.intent.label}
+          className={stylex.props(ct.hold, gm.inherit, typeStep.uiSm).className}
+        />
         {model.detail && (
           <ToolText
             value={model.detail}
-            className="min-w-0 flex-1 font-mono text-ui-sm text-fg-faint"
+            className={stylex.props(ct.fill, ct.mono, ct.faint, typeStep.uiSm).className}
           />
         )}
         {model.diffStat && (
@@ -54,7 +70,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
         )}
       </Pressable>
       {expanded && (
-        <div className="pt-1.5 pb-1.5">
+        <div {...stylex.props(gm.body)}>
           <ToolPreview tool={tool} />
         </div>
       )}

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
@@ -9,7 +10,42 @@ import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPrevi
 import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
 import type { ToolFileChange } from "@/plugins/sdk/types/agentSessionView";
 import { DiffStat, FilePath } from "@/ui";
-import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow, TEXT_PREVIEW_CLASS } from "./previewChrome";
+import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
+import { TEXT_PREVIEW } from "./previewChrome";
+import { color, leading, space, type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
+
+const pt = stylex.create({
+  // One track for the verbs, shared by every row through `subgrid`, so every path begins on
+  // the same left edge however long its own verb is.
+  track: { display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", columnGap: space.s1_5 },
+  changeRow: {
+    gridColumn: "span 2",
+    display: "grid",
+    gridTemplateColumns: "subgrid",
+    alignItems: "center",
+    paddingBlock: space.s0_5,
+    lineHeight: leading.body,
+  },
+  verb: { fontFamily: "var(--font-sans)", color: color.fgFaint },
+  movedLine: {
+    display: "flex",
+    minWidth: 0,
+    alignItems: "center",
+    gap: space.s1,
+    color: color.fgMuted,
+  },
+  // The source path yields most of the room: what matters is where the file went.
+  fromPath: { maxWidth: "42%" },
+  proposedRow: {
+    display: "flex",
+    minWidth: 0,
+    alignItems: "center",
+    gap: space.s1_5,
+    paddingBlock: space.s0_5,
+    lineHeight: leading.body,
+  },
+});
 
 const STATUS_KEY: Record<PatchChange["status"], string> = {
   added: "tools.patch.created",
@@ -21,21 +57,18 @@ const STATUS_KEY: Record<PatchChange["status"], string> = {
 function PatchChangeRow({ change }: { change: PatchChange }) {
   const t = useT();
   return (
-    <div
-      data-patch-change={change.status}
-      className="col-span-2 grid grid-cols-subgrid items-center py-0.5 text-ui-md leading-body"
-    >
-      <span className="font-sans text-fg-faint">{t(STATUS_KEY[change.status])}</span>
+    <div data-patch-change={change.status} {...stylex.props(pt.changeRow, typeStep.uiMd)}>
+      <span {...stylex.props(pt.verb)}>{t(STATUS_KEY[change.status])}</span>
       {change.status === "moved" && change.from ? (
-        <span className="flex min-w-0 items-center gap-1 text-fg-muted">
-          <FilePath path={change.from} className="max-w-[42%]" />
-          <span aria-hidden="true" className="shrink-0 text-fg-faint">
+        <span {...stylex.props(pt.movedLine)}>
+          <FilePath path={change.from} className={stylex.props(pt.fromPath).className} />
+          <span aria-hidden="true" {...stylex.props(ct.hold, ct.faint)}>
             →
           </span>
-          <FilePath path={change.path} className="min-w-0 flex-1" />
+          <FilePath path={change.path} className={stylex.props(ct.fill).className} />
         </span>
       ) : (
-        <FilePath path={change.path} className="min-w-0 text-fg-muted" />
+        <FilePath path={change.path} className={stylex.props(ct.min, ct.muted).className} />
       )}
     </div>
   );
@@ -49,8 +82,8 @@ function PatchChangeRow({ change }: { change: PatchChange }) {
  */
 function ProposedChangeRow({ change }: { change: ToolFileChange }) {
   return (
-    <div className="flex min-w-0 items-center gap-1.5 py-0.5 text-ui-md leading-body">
-      <FilePath path={change.path} className="min-w-0 flex-1 text-fg-muted" />
+    <div {...stylex.props(pt.proposedRow, typeStep.uiMd)}>
+      <FilePath path={change.path} className={stylex.props(ct.fill, ct.muted).className} />
       <DiffStat added={change.added} removed={change.removed} />
     </div>
   );
@@ -61,7 +94,7 @@ export function ApplyPatchPreview({ tool, onOpenView }: ToolPreviewProps) {
   const proposed = tool.status === "running" ? (tool.changes ?? []) : [];
   const rows = changes.length > 0 ? changes.length : proposed.length;
   return (
-    <div className={TEXT_PREVIEW_CLASS}>
+    <div {...stylex.props(TEXT_PREVIEW)}>
       {rows === 0 && (
         <PreviewPlaceholder
           status={tool.status}
@@ -74,7 +107,7 @@ export function ApplyPatchPreview({ tool, onOpenView }: ToolPreviewProps) {
           while a receipt had one row, a ragged left edge as soon as a patch edits, moves and
           deletes in one call. `auto` means a single-row receipt is still exactly as wide as its
           own verb, and no locale needs a width picked for it. */}
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-1.5">
+      <div {...stylex.props(pt.track)}>
         {changes.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((change) => (
           <PatchChangeRow
             key={`${change.status}:${change.from ?? ""}:${change.path}`}

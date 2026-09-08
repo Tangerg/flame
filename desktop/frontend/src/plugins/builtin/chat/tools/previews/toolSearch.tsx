@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { Badge } from "@/ui";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
@@ -5,13 +6,26 @@ import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectToolSearchGroups } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { TEXT_PREVIEW_CLASS } from "./previewChrome";
+
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
+import { previewStyles as pv } from "./previewStyles";
+import { TEXT_PREVIEW } from "./previewChrome";
+
+const ts = stylex.create({
+  // A tool search can return dozens: the list scrolls rather than pushing the transcript.
+  scroller: { maxHeight: "calc(var(--spacing) * 60)", overflowY: "auto" },
+  group: { display: "flex", alignItems: "flex-start", gap: space.s2_5, paddingBlock: space.s1 },
+  // One measure for every source name, so the chips beside them start on one line.
+  source: { width: "calc(var(--spacing) * 20)", flexShrink: 0, paddingTop: space.s0_5 },
+  chips: { display: "flex", minWidth: 0, flexWrap: "wrap", gap: space.s1 },
+});
 
 function ToolSearchPreview({ tool }: ToolPreviewProps) {
   const groups = projectToolSearchGroups(tool.result);
   if (groups.length === 0) {
     return (
-      <div className={TEXT_PREVIEW_CLASS}>
+      <div {...stylex.props(TEXT_PREVIEW)}>
         <PreviewPlaceholder
           status={tool.status}
           pending="tools.preview.pending.loadingTools"
@@ -21,13 +35,13 @@ function ToolSearchPreview({ tool }: ToolPreviewProps) {
     );
   }
   return (
-    <div className="max-h-60 overflow-y-auto pt-1">
+    <div {...stylex.props(ts.scroller, pv.inset)}>
       {groups.map((group) => (
-        <div key={group.source} className="flex items-start gap-2.5 py-1">
-          <span className="w-20 shrink-0 truncate pt-0.5 text-ui-sm text-fg-faint">
+        <div key={group.source} {...stylex.props(ts.group)}>
+          <span {...stylex.props(ts.source, ct.truncate, ct.faint, typeStep.uiSm)}>
             {group.source}
           </span>
-          <div className="flex min-w-0 flex-wrap gap-1">
+          <div {...stylex.props(ts.chips)}>
             {group.names.map((name) => (
               <Badge key={name} face="mono">
                 {name}

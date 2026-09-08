@@ -1,29 +1,27 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { useFileToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewQueries";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
-import { TEXT_PREVIEW_CLASS } from "./previewChrome";
+
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
+import { previewStyles as pv } from "./previewStyles";
+import { TEXT_PREVIEW } from "./previewChrome";
 
 const MAX_FILE_LINES = 40;
 
 function FilePreview({ tool, onOpenView }: ToolPreviewProps) {
   const { data: lines } = useFileToolPreview(tool, MAX_FILE_LINES);
   return (
-    <div className={TEXT_PREVIEW_CLASS}>
-      <div className="font-mono text-ui-sm leading-body">
+    <div {...stylex.props(TEXT_PREVIEW)}>
+      <div {...stylex.props(pv.sheet, typeStep.uiSm)}>
         {(lines ?? []).map((l) => (
-          <div
-            key={l.lineNumber}
-            className="grid grid-cols-[28px_minmax(0,1fr)] items-start gap-2.5 rounded-2xs px-1 transition-colors hover:bg-hover"
-          >
-            <span className="text-right text-ui-sm text-fg-faint tabular-nums select-none">
-              {l.lineNumber}
-            </span>
-            <span className="min-w-0 whitespace-pre-wrap wrap-anywhere text-fg-soft">
-              {l.text || " "}
-            </span>
+          <div key={l.lineNumber} {...stylex.props(pv.numbered, pv.row)}>
+            <span {...stylex.props(pv.gutter, typeStep.uiSm)}>{l.lineNumber}</span>
+            <span {...stylex.props(pv.wrap, ct.soft)}>{l.text || " "}</span>
           </div>
         ))}
       </div>

@@ -17,12 +17,26 @@ import { toolCardActions, toolCardModel, toolCardViewOpener } from "../applicati
 import { toolCallIconFor } from "../public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "./ToolText";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
 
 interface Props {
   tool: ToolCall;
   expanded: boolean;
   onToggleExpand: () => void;
 }
+
+const tc = stylex.create({
+  full: { width: "100%" },
+  sans: { fontFamily: "var(--font-sans)" },
+  // The status only appears once the card is wide enough for it beside the label.
+  status: {
+    display: { default: "none", "@container (min-width: 24rem)": "flex" },
+    flexShrink: 0,
+    alignItems: "center",
+    gap: space.s1_5,
+  },
+});
 
 export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
   const t = useT();
@@ -51,9 +65,11 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
       // back into a status card.
       shell="line"
       contentClassName="py-1.5"
-      label={<ToolText value={model.intent.label} className="w-full" />}
+      label={<ToolText value={model.intent.label} className={stylex.props(tc.full).className} />}
       detail={
-        model.detail ? <ToolText value={model.detail} className="w-full font-mono" /> : undefined
+        model.detail ? (
+          <ToolText value={model.detail} className={stylex.props(tc.full, ct.mono).className} />
+        ) : undefined
       }
       trailing={
         <>
@@ -63,7 +79,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
           <ToolMeta items={model.metaItems} />
           {model.running && <StatusDot tone="running" />}
           {model.denied && (
-            <span data-slot="tool-status" className="font-sans text-ui-xs text-fg-muted">
+            <span data-slot="tool-status" {...stylex.props(tc.sans, ct.muted, typeStep.uiXs)}>
               {t("tool.state.denied")}
             </span>
           )}
@@ -100,7 +116,7 @@ function ToolMeta({ items }: { items: ToolMetaItem[] }) {
   if (items.length === 0) return null;
 
   return (
-    <span className="hidden shrink-0 items-center gap-1.5 @sm:flex">
+    <span {...stylex.props(tc.status)}>
       {items.map((item) => (
         <span
           key={item.id}

@@ -9035,3 +9035,63 @@ class 必须拼出常量命名的那个属性"。**StyleX 下这个约束消失�
 | 视觉 | **656 / 656**（含 3 条新闭环测试），重录 1 张（步骤文字从隐形变可读） |
 | 守卫 | 17 项全绿；`className` 顺序扫描器 0 处 |
 | 单测 | chat + `src/ui` 全通过 |
+
+---
+
+## Round 151 —— chat/tools 清零；一个"整档漏掉"的错
+
+`chat/tools/` 21 个文件迁完。业务层只剩 `chat/message/`（121 处）。
+按 className 计，全库迁移约 **94%**。
+
+### previews 的共享形状
+
+七个预览（file / glob / grep / lsp / recall / skill）渲染同一个行：
+最紧的圆角 + 一档内距 + 行洗色，各自写了一遍，其中两个还用了别的圆角。
+抽成 `previewStyles`（`row` / `numbered` / `gutter` / `wrap`）。
+
+### 又一张把领域词映射成 class 名的表
+
+`lsp` 的 `SEVERITY_TONE` 存 `"text-negative"`。第 144 轮已经把这类表收敛过一次
+（五张），这是第六张 —— 改成存 `Tone`，用 `toneInk`。
+
+### 一个"整档漏掉"的错，golden 抓住了
+
+`TEXT_PREVIEW_CLASS` 是个共享的 class 字符串，20 个消费者：
+
+```
+"max-h-60 overflow-y-auto px-0 pt-1 pb-0 font-mono text-ui-md leading-body text-fg-muted"
+```
+
+我把它转成 `textPreview.block` 时，**七个工具类里漏掉了 `text-ui-md`**。
+后果不在这个块自己身上 —— 它的**子元素**继承了那个字号，于是每个预览的页脚
+从 14px 掉回文档的 16px，行高从 21.7 变成 24.8，整列内容位移 3px。
+
+`tool-shells` 的 golden 差 15740 像素。定位过程记一下，因为走了弯路：
+
+1. 同视口做"全元素几何 + 颜色 + 字号"快照对比 → **零差异**。
+2. 扩到字体族/行高/字距/背景/连字 → **仍然零差异**。
+3. 在 HEAD 上跑同一条 → 通过。所以确实是我的改动，但我量不到。
+4. 读 golden 测试才发现：`tool-shells` 会**先展开一个 apply_patch 预览**再取景，
+   而我一直在比折叠态。
+5. 复现取景步骤后，17 个元素高度有差；最深那个是 `PreviewFoot`：14px → 16px。
+
+**教训不是"小心点"**：一个共享 class 字符串转成样式时，字符串里的每一个工具类
+都必须落到某处，而漏掉的那个如果是**被子元素继承的**，这个块自己看不出任何异常。
+所以按 `FLOATING_PANEL` 的先例导出**数组** `[previewText.block, type.uiMd]` ——
+类型档留在这个 bundle 里，谁组合它就带上它。
+
+上一轮是"抄了三分之一个档"（新守卫能抓），这一轮是"整个档漏掉了"（守卫抓不到，
+因为没有可疑的写法可扫）—— **抓住它的是 golden，前提是 golden 拍的是展开态。**
+
+### 顺带
+
+`ToolOutputPanel.test.tsx` 用 `div.whitespace-pre-wrap` 数行数（又一处冻结类名）。
+行元素改成自报身份：`data-output-line`。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **657 / 657**，零位移零重录 |
+| 守卫 | 17 项全绿；顺序扫描器 0 处 |
+| 单测 | chat 全通过 |

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { LinkedText } from "@/plugins/builtin/chat/file-references/public/LinkedText";
@@ -7,7 +8,15 @@ import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { useGrepToolPreview } from "@/plugins/builtin/chat/tools/application/toolPreviewQueries";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
-import { TEXT_PREVIEW_CLASS } from "./previewChrome";
+
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
+import { previewStyles as pv } from "./previewStyles";
+import { TEXT_PREVIEW } from "./previewChrome";
+
+const gp = stylex.create({
+  head: { display: "flex", alignItems: "baseline", gap: space.s2 },
+});
 
 const MAX_GREP_MATCHES = 4;
 
@@ -28,29 +37,24 @@ function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
   const t = useT();
   const { shown, overflow } = useGrepToolPreview(tool, MAX_GREP_MATCHES);
   return (
-    <div className={TEXT_PREVIEW_CLASS}>
-      <div className="flex flex-col gap-1.5">
+    <div {...stylex.props(TEXT_PREVIEW)}>
+      <div {...stylex.props(ct.stackTight)}>
         {groupByFile(shown).map((group) => (
           <div key={group.file}>
-            <div className="flex items-baseline gap-2">
-              <span className="min-w-0 flex-1 truncate font-mono text-ui-sm text-fg-soft">
+            <div {...stylex.props(gp.head)}>
+              <span {...stylex.props(ct.fill, ct.truncate, ct.mono, ct.soft, typeStep.uiSm)}>
                 <LinkedText text={group.file} />
               </span>
               {group.matches.length > 1 && (
-                <span className="shrink-0 font-mono text-ui-2xs text-fg-faint">
+                <span {...stylex.props(ct.hold, ct.mono, ct.faint, typeStep.ui2xs)}>
                   {t("tools.grep.matchCount", { count: group.matches.length })}
                 </span>
               )}
             </div>
             {group.matches.map((match, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-[3rem_minmax(0,1fr)] items-start gap-2 rounded-2xs px-1 transition-colors hover:bg-hover"
-              >
-                <span className="text-right font-mono text-ui-2xs text-fg-faint select-none">
-                  {match.line}
-                </span>
-                <span className="min-w-0 whitespace-pre-wrap wrap-anywhere font-mono text-ui-sm text-fg-muted">
+              <div key={index} {...stylex.props(pv.numbered, pv.numberedWide, pv.row)}>
+                <span {...stylex.props(pv.gutter, ct.mono, typeStep.ui2xs)}>{match.line}</span>
+                <span {...stylex.props(pv.wrap, ct.mono, ct.muted, typeStep.uiSm)}>
                   {match.text}
                 </span>
               </div>
@@ -58,7 +62,9 @@ function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
           </div>
         ))}
         {overflow > 0 && (
-          <div className="text-fg-faint">… {t("tools.overflow.matches", { count: overflow })}</div>
+          <div {...stylex.props(ct.faint)}>
+            … {t("tools.overflow.matches", { count: overflow })}
+          </div>
         )}
       </div>
       <PreviewFoot label="tools.preview.viewMatches" onClick={onOpenView} />

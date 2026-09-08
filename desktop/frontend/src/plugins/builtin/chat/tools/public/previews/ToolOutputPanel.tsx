@@ -8,6 +8,39 @@ import { AnsiText, Icon, IconButton, TextButton, Well, reveal } from "@/ui";
 import { LinkedText } from "@/plugins/builtin/chat/file-references/public/LinkedText";
 import { PreviewPlaceholder } from "./PreviewPlaceholder";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
+import { color, leading, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+
+const op = stylex.create({
+  panel: { overflow: "hidden", borderRadius: radius.sm, backgroundColor: surface.sunken },
+  // Output scrolls sideways rather than wrapping: a column of a table is a column.
+  sheet: {
+    overflowX: "auto",
+    paddingInline: space.s3,
+    paddingBlock: space.s2_5,
+    fontFamily: "var(--font-mono)",
+    lineHeight: leading.relaxed,
+    color: color.fgSoft,
+    fontVariantLigatures: "none",
+  },
+  line: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
+  anchor: { position: "relative" },
+  // A gradient over the last collapsed line, so a cut looks cut rather than ended.
+  fade: {
+    pointerEvents: "none",
+    position: "absolute",
+    top: "calc(var(--spacing) * -6)",
+    insetInline: 0,
+    height: space.s6,
+    backgroundImage: "linear-gradient(to top, var(--color-sunken), transparent)",
+  },
+  more: { justifyContent: "center", paddingBlock: space.s1_5 },
+  note: {
+    paddingInline: space.s3,
+    paddingBottom: space.s2,
+    textAlign: "center",
+    color: color.fgFaint,
+  },
+});
 
 const COLLAPSED_LINES = 9;
 // Expanding used to render every line there was, and the cost is superlinear: measured at
@@ -64,11 +97,11 @@ export function ToolOutputPanel({
   }
 
   return (
-    <div className="overflow-hidden rounded-sm bg-sunken">
+    <div {...stylex.props(op.panel)}>
       <div className={cn(stylex.props(reveal.host).className, "relative")}>
-        <div className="overflow-x-auto px-3 py-2.5 font-mono text-code leading-relaxed text-fg-soft [font-variant-ligatures:none]">
+        <div {...stylex.props(op.sheet, typeStep.code)}>
           {shown.map((line, index) => (
-            <div key={index} className="whitespace-pre-wrap wrap-anywhere">
+            <div key={index} data-output-line="" {...stylex.props(op.line)}>
               <OutputLine text={line} />
             </div>
           ))}
@@ -83,15 +116,13 @@ export function ToolOutputPanel({
         />
       </div>
       {hidden > 0 && (
-        <div className="relative">
-          {!expanded && (
-            <div className="pointer-events-none absolute -top-6 inset-x-0 h-6 bg-[linear-gradient(to_top,var(--color-sunken),transparent)]" />
-          )}
+        <div {...stylex.props(op.anchor)}>
+          {!expanded && <div {...stylex.props(op.fade)} />}
           <TextButton
             onClick={() => setExpanded((value) => !value)}
             shape="row"
             size="sm"
-            className="justify-center py-1.5"
+            className={stylex.props(op.more).className}
           >
             <Icon name={expanded ? "chevron-up" : "chevron-down"} size="xs" />
             {expanded
@@ -101,7 +132,7 @@ export function ToolOutputPanel({
                 : t("tools.output.showAll", { count: lines.length })}
           </TextButton>
           {expanded && beyond > 0 && (
-            <div className="px-3 pb-2 text-center text-ui-sm text-fg-faint">
+            <div {...stylex.props(op.note, typeStep.uiSm)}>
               {t("tools.output.beyond", { count: beyond })}
             </div>
           )}
