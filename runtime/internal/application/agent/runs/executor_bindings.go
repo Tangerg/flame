@@ -1,7 +1,6 @@
 package runs
 
 import (
-	"errors"
 	"fmt"
 	"maps"
 
@@ -16,9 +15,6 @@ import (
 // closing the otherwise observable gap in which the Run row exists but
 // cancellation cannot address its member.
 func (r *runTreeOwner) bindExecutorMember(runID, memberID string) error {
-	if r == nil {
-		return errors.New("runs: bind executor member without a live Run-tree owner")
-	}
 	if _, err := resourceid.ParseRun(runID); err != nil {
 		return fmt.Errorf("runs: bind executor member: %w", err)
 	}
@@ -49,9 +45,6 @@ func (r *runTreeOwner) bindExecutorMember(runID, memberID string) error {
 			)
 		}
 	}
-	if r.executorMembers == nil {
-		r.executorMembers = make(map[string]string)
-	}
 	r.executorMembers[runID] = memberID
 	return nil
 }
@@ -60,9 +53,6 @@ func (r *runTreeOwner) bindExecutorMember(runID, memberID string) error {
 // only the exact binding this opening installed, so it cannot erase a later
 // owner after a conflict.
 func (r *runTreeOwner) unbindExecutorMember(runID, memberID string) {
-	if r == nil {
-		return
-	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if existing, bound := r.executorMembers[runID]; bound && existing == memberID {
@@ -71,9 +61,6 @@ func (r *runTreeOwner) unbindExecutorMember(runID, memberID string) {
 }
 
 func (r *runTreeOwner) executorMemberSnapshot() map[string]string {
-	if r == nil {
-		return nil
-	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	members := make(map[string]string, len(r.executorMembers))

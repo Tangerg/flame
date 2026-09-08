@@ -90,9 +90,6 @@ func (a Arguments) StringField(name string) (string, bool) {
 func (a Arguments) MarshalJSON() ([]byte, error) { return []byte(a.Canonical()), nil }
 
 func (a *Arguments) UnmarshalJSON(data []byte) error {
-	if a == nil {
-		return fmt.Errorf("%w: nil destination", ErrInvalidArguments)
-	}
 	parsed, err := ParseArguments(string(data))
 	if err != nil {
 		return err
@@ -174,9 +171,6 @@ func (r Result) Equal(other Result) bool { return r.Canonical() == other.Canonic
 func (r Result) MarshalJSON() ([]byte, error) { return []byte(r.Canonical()), nil }
 
 func (r *Result) UnmarshalJSON(data []byte) error {
-	if r == nil {
-		return fmt.Errorf("%w: nil destination", ErrInvalidResult)
-	}
 	parsed, err := ParseResult(data)
 	if err != nil {
 		return err

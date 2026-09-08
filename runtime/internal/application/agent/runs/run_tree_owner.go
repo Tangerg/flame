@@ -52,11 +52,12 @@ type segmentActivation struct {
 // half-built owner or answer for one that was never built.
 func newRunTreeOwner(cancel context.CancelFunc, taskContext context.Context, hub *journal) *runTreeOwner {
 	return &runTreeOwner{
-		cancel:      cancel,
-		taskContext: taskContext,
-		hub:         hub,
-		done:        make(chan struct{}),
-		activation:  segmentActivation{done: make(chan struct{})},
+		cancel:          cancel,
+		taskContext:     taskContext,
+		hub:             hub,
+		done:            make(chan struct{}),
+		activation:      segmentActivation{done: make(chan struct{})},
+		executorMembers: make(map[string]string),
 	}
 }
 

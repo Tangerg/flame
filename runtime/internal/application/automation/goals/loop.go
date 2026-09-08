@@ -37,9 +37,6 @@ type goalDrive struct {
 }
 
 func (g *goalDrive) await(ctx context.Context) error {
-	if g == nil {
-		return nil
-	}
 	if err := completion.Wait(ctx, g.done); err != nil {
 		return err
 	}
@@ -47,9 +44,6 @@ func (g *goalDrive) await(ctx context.Context) error {
 }
 
 func (g *goalDrive) completed() bool {
-	if g == nil {
-		return true
-	}
 	select {
 	case <-g.done:
 		return true
@@ -66,7 +60,7 @@ func (g *goalDrive) resultIfCompleted() (bool, error) {
 }
 
 func (g *goalDrive) quiesce() {
-	if g != nil && g.cancel != nil {
+	if g.cancel != nil {
 		g.cancel()
 	}
 }
