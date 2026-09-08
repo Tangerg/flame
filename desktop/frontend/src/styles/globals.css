@@ -69,7 +69,6 @@
   --color-fg-muted: var(--color-text-muted);
   --color-fg-faint: var(--color-text-faint);
   --color-on-accent: var(--color-text-on-accent);
-  --color-on-fg: var(--color-text-on-fg);
 
   --color-accent: var(--color-accent);
 
@@ -281,7 +280,6 @@
   --color-text-faint: #63666d;
   --color-text-on-accent: #ffffff;
   --color-text-on-warning: #000000;
-  --color-text-on-fg: var(--color-bg);
 
   --color-border: #e9ecf2;
   --color-border-soft: #dee2eb;

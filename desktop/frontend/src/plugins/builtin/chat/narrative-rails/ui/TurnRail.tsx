@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { CSSProperties } from "react";
 import { useState } from "react";
 import { cn } from "@/lib/classNames";
@@ -7,6 +8,39 @@ import { useActiveConversationMessages } from "@/plugins/builtin/agent/public/co
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { Pressable, RichTooltip } from "@/ui";
 import { foldExchanges, scrollToTurn, useTranscriptMap } from "../adapters/transcriptAnchors";
+import { space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
+
+const tr = stylex.create({
+  // The rail hangs beside the transcript and is only as wide as its ticks.
+  rail: {
+    display: "flex",
+    height: "100%",
+    width: "fit-content",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    justifyContent: "center",
+    overflow: "hidden",
+    paddingBlock: space.s6,
+    paddingLeft: space.s6,
+  },
+  card: {
+    width: "276px",
+    borderRadius: "var(--floating-panel-radius)",
+    backgroundColor: surface.card,
+    padding: 0,
+  },
+  // A 9px box for a 1px tick: the height is the rail's rhythm, not the mark's.
+  tick: { display: "flex", height: "9px", flexShrink: 0, alignItems: "center" },
+  preview: {
+    display: "flex",
+    flexDirection: "column",
+    gap: space.s1_5,
+    paddingInline: space.s3_5,
+    paddingBlock: space.s3,
+    textAlign: "left",
+  },
+});
 
 const REACH = 3;
 
@@ -33,7 +67,7 @@ export function TurnRail() {
   return (
     <nav
       aria-label={t("narrative.rail.turns")}
-      className="flex h-full w-fit flex-col items-start justify-center overflow-hidden py-6 pl-6"
+      {...stylex.props(tr.rail)}
       onPointerLeave={() => setReached(null)}
     >
       {turns.map((turn, index) => {
@@ -44,7 +78,7 @@ export function TurnRail() {
             key={turn.id}
             side="right"
             sideOffset={12}
-            className="w-[276px] rounded-[var(--floating-panel-radius)] bg-card p-0"
+            className={stylex.props(tr.card).className}
             trigger={
               <Pressable
                 type="button"
@@ -55,7 +89,7 @@ export function TurnRail() {
                 onFocus={() => setReached(index)}
                 onBlur={() => setReached(null)}
                 onClick={() => scrollToTurn(turn.id)}
-                className="flex h-[9px] shrink-0 items-center"
+                {...stylex.props(tr.tick)}
                 style={{ width: `${TRACK}px` } as CSSProperties}
               >
                 <span
@@ -116,11 +150,15 @@ function TurnPreview({ turn, answer }: { turn: Message; answer: Message | undefi
   const reply = proseOf(answer);
 
   return (
-    <div className="flex flex-col gap-1.5 px-3.5 py-3 text-left">
-      <span className="line-clamp-1 text-ui-md font-medium leading-snug text-fg">
+    <div {...stylex.props(tr.preview)}>
+      <span {...stylex.props(ct.clampOne, ct.medium, ct.snugLeading, ct.ink, typeStep.uiMd)}>
         {question || t("role.user")}
       </span>
-      {reply && <span className="line-clamp-3 text-ui-sm leading-body text-fg-muted">{reply}</span>}
+      {reply && (
+        <span {...stylex.props(ct.clampThree, ct.bodyLeading, ct.muted, typeStep.uiSm)}>
+          {reply}
+        </span>
+      )}
     </div>
   );
 }

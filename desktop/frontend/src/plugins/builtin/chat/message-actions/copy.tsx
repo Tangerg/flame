@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { DropdownMenu, Tooltip } from "@/ui";
 import { writeToClipboard } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
@@ -5,6 +6,8 @@ import { contributeLayout, definePlugin, useCurrentMessage } from "@/plugins/sdk
 import { canCopyMessage } from "./application/messageActionAvailability";
 import { messageCopyPayloads } from "./presentation/copyPayloads";
 import { MessageActionButton } from "./MessageActionButton";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../chatStyles";
 
 function CopyButton() {
   const t = useT();
@@ -53,12 +56,9 @@ function CopyItem({
   onSelect: () => void;
 }) {
   return (
-    <DropdownMenu.Item
-      onClick={onSelect}
-      className="flex flex-col gap-0.5 rounded-sm px-2.5 py-1.5 outline-none data-[highlighted]:bg-surface-2"
-    >
-      <span className="text-ui-md text-fg">{label}</span>
-      <span className="text-ui-sm text-fg-faint">{hint}</span>
+    <DropdownMenu.Item onClick={onSelect} className={stylex.props(ct.panelRow).className}>
+      <span {...stylex.props(ct.ink, typeStep.uiMd)}>{label}</span>
+      <span {...stylex.props(ct.faint, typeStep.uiSm)}>{hint}</span>
     </DropdownMenu.Item>
   );
 }

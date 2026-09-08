@@ -1027,7 +1027,9 @@ async function assertVisibleKeyboardFocus(target: ReturnType<Page["locator"]>): 
 const OVERLAYS: ReadonlyArray<{
   readonly label: string;
   readonly route: FixtureRoute;
-  readonly open: string;
+  readonly open: string | RegExp;
+  /** A tooltip opens under the pointer, not under a click, and answers to a different role. */
+  readonly by?: "hover";
 }> = [
   {
     label: "approval mode menu",
@@ -1040,6 +1042,16 @@ const OVERLAYS: ReadonlyArray<{
     route: { fixture: "agent", state: "idle" },
     open: "Switch reasoning effort",
   },
+  // The plan's step list, which lives in a HOVER tooltip and so had never been audited. Its
+  // steps were drawn in `text-on-fg` — the inverted ink, for a plate filled with the
+  // foreground colour — which on this surface measured 1.00:1 in both themes: the same colour
+  // as the popup behind them. Nothing could have caught that: no golden opens a tooltip.
+  {
+    label: "plan step list",
+    route: { fixture: "agent", state: "running" },
+    open: /^Step \d+ \/ \d+$/,
+    by: "hover",
+  },
 ];
 
 for (const overlay of OVERLAYS) {
@@ -1047,9 +1059,12 @@ for (const overlay of OVERLAYS) {
     test(`WCAG audit ${overlay.label} ${theme}`, async ({ page }) => {
       await openFixture(page, { ...overlay.route, theme });
       const trigger = page.getByRole("button", { name: overlay.open }).first();
-      await trigger.click();
+      if (overlay.by === "hover") await trigger.hover();
+      else await trigger.click();
       // The popup is portalled, so wait for it rather than for the trigger's own state.
-      const popup = page.locator('[role="menu"], [role="dialog"], [role="listbox"]').first();
+      const popup = page
+        .locator('[role="menu"], [role="dialog"], [role="listbox"], [role="tooltip"]')
+        .first();
       await expect(popup).toBeVisible();
       // …and then for it to finish arriving. A floating surface fades in from opacity 0, and
       // `toBeVisible` is satisfied the moment it has layout — Axe would sample a translucent
@@ -1207,6 +1222,22 @@ test("the project tray stays inside the composer's edges", async ({ page }) => {
   // Centred: the inset it gives up on the left it gives up on the right too.
   const right = box.composerLeft + box.composer - (box.trayLeft + box.tray);
   expect(Math.abs(right - (box.trayLeft - box.composerLeft))).toBeLessThanOrEqual(1);
+});
+
+// The plan is a compact strip over the composer, not a card that grows with it: the surface
+// holds one height however many steps the plan has, so the transcript above does not reflow
+// every time the agent adds one. The jsdom check for this read `h-8` off a class attribute.
+test("the plan strip holds one height whatever the plan says", async ({ page }) => {
+  await openFixture(page, { fixture: "agent", state: "running" });
+
+  const strip = page.locator('[data-slot="active-plan-surface"]');
+  await expect(strip).toBeVisible();
+  expect(await strip.evaluate((node) => getComputedStyle(node).height)).toBe("32px");
+
+  // Not vacuous: the plan behind it has more steps than would fit in 32px.
+  await page.locator('[data-slot="active-plan-pill"]').hover();
+  await expect(page.locator('[role="tooltip"] li')).not.toHaveCount(0);
+  expect(await strip.evaluate((node) => getComputedStyle(node).height)).toBe("32px");
 });
 
 test("a text-bearing control meets the minimum target size", async ({ page }) => {

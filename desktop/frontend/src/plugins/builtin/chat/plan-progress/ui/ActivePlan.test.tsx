@@ -86,9 +86,10 @@ describe("ActivePlan", () => {
     expect(screen.getByText("Step 2 / 3")).toBeTruthy();
     expect(screen.queryByRole("progressbar")).toBeNull();
     expect(screen.queryByRole("button", { name: /Expand plan/ })).toBeNull();
-    const surface = container.querySelector<HTMLElement>('[data-slot="active-plan-surface"]');
-    expect(surface).not.toBeNull();
-    expect(surface!.className).toContain("h-8");
-    expect(surface!.className).toContain("w-full");
+    // That the strip holds ONE height whatever the plan says is a geometric claim, and jsdom
+    // loads no CSS — it lives in the closure suite. Here: the pill is what renders, and the
+    // card's own controls do not.
+    expect(container.querySelector('[data-slot="active-plan-surface"]')).not.toBeNull();
+    expect(container.querySelector('[data-slot="active-plan-pill"]')).not.toBeNull();
   });
 });

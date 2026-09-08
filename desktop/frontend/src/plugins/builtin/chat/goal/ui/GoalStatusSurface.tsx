@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useRef, useState } from "react";
 import { Button, IconButton, TextEditorDialog } from "@/ui";
@@ -17,6 +18,27 @@ import {
   useRuntimeCommandsAvailable,
 } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { GoalGlyph } from "./GoalGlyph";
+import { chatStyles as ct } from "../../chatStyles";
+import { space } from "@/styles/tokens.stylex";
+
+const gs = stylex.create({
+  bar: {
+    display: "flex",
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: space.s2,
+    paddingInline: space.s3,
+    paddingBlock: space.s1,
+  },
+  glyph: { height: "var(--icon-sm)", width: "var(--icon-sm)" },
+  bigGlyph: { height: "var(--icon-lg)", width: "var(--icon-lg)" },
+  // The objective is CONTENT, so when it cannot be edited it keeps its ink and its cursor:
+  // the row is telling you what the goal is, not offering a control that is switched off.
+  summary: { minHeight: space.s6, cursor: { ":disabled": "default" }, opacity: { ":disabled": 1 } },
+  objective: { marginInlineStart: space.s1 },
+  actions: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s2 },
+});
 
 export function GoalStatusSurface() {
   const material = useGoalMaterial();
@@ -94,12 +116,9 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
 
   return (
     <>
-      <div
-        data-slot="goal-status-row"
-        className="flex w-full items-center justify-between gap-2 px-3 py-1"
-      >
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <GoalGlyph className="h-[var(--icon-sm)] w-[var(--icon-sm)] shrink-0 text-fg-faint" />
+      <div data-slot="goal-status-row" {...stylex.props(gs.bar)}>
+        <div {...stylex.props(ct.line, ct.fill)}>
+          <GoalGlyph className={stylex.props(gs.glyph, ct.hold, ct.faint).className} />
           <Button
             type="button"
             data-goal="summary"
@@ -107,16 +126,18 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             size="xs"
             disabled={pending !== null || !canEdit}
             flex="fill"
-            className="min-h-6 disabled:cursor-default disabled:opacity-100"
+            className={stylex.props(gs.summary).className}
             onClick={openEditor}
           >
-            <span className="shrink-0 text-fg">
+            <span {...stylex.props(ct.hold, ct.ink)}>
               {t(goalRefusalLabel(goal) ?? GOAL_STATUS_I18N[goal.status].label)}
             </span>
-            <span className="ml-1 min-w-0 truncate text-fg-muted">{goal.objective}</span>
+            <span {...stylex.props(gs.objective, ct.min, ct.truncate, ct.muted)}>
+              {goal.objective}
+            </span>
           </Button>
         </div>
-        <div data-slot="goal-actions" className="flex shrink-0 items-center gap-2">
+        <div data-slot="goal-actions" {...stylex.props(gs.actions)}>
           <IconButton
             type="button"
             size="xs"
@@ -161,10 +182,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
           if (pending !== "edit") setEditing(open);
         }}
         icon={
-          <GoalGlyph
-            aria-hidden="true"
-            className="h-[var(--icon-lg)] w-[var(--icon-lg)] text-fg-muted"
-          />
+          <GoalGlyph aria-hidden="true" className={stylex.props(gs.bigGlyph, ct.muted).className} />
         }
         title={t("goal.edit.title")}
         closeLabel={t("common.close")}

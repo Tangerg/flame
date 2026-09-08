@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { Gauge, Pressable, RichTooltip } from "@/ui";
 import { fmtTokens } from "@/lib/format";
 import { useT } from "@/lib/i18n";
@@ -5,6 +6,26 @@ import { useCurrentRootMaterial } from "@/plugins/builtin/agent/public/run";
 import { useActiveSessionId, useAgentSessions } from "@/plugins/builtin/agent/public/session";
 import { useModels } from "@/plugins/builtin/settings/providers/public/queries";
 import { contextUsageReadout } from "../application/contextUsageReadout";
+import { color, motion, radius, space, surface } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
+
+const cu = stylex.create({
+  // Pulls back into the bar's own inset: the gauge is a glyph, not a control with a box.
+  trigger: {
+    marginInline: "calc(var(--spacing) * -1.5)",
+    display: "inline-flex",
+    height: space.s7,
+    width: space.s7,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.sm,
+    backgroundColor: { default: null, ":hover": surface.hover },
+    color: { default: color.fgMuted, ":hover": color.fg },
+    transitionProperty: "background-color, color",
+    transitionDuration: motion.color,
+  },
+  panel: { width: "calc(var(--spacing) * 38)" },
+});
 
 export function ContextUsageGauge() {
   const t = useT();
@@ -25,19 +46,21 @@ export function ContextUsageGauge() {
 
   const label = t("context.usage.aria", { percent: readout.percent });
   const trigger = (
-    <Pressable
-      aria-label={label}
-      className="-mx-1.5 inline-flex size-7 items-center justify-center rounded-sm text-fg-muted transition-colors duration-[var(--dur-color)] hover:bg-hover hover:text-fg"
-    >
+    <Pressable aria-label={label} className={stylex.props(cu.trigger).className}>
       <Gauge value={readout.ratio} label={t("context.usage.aria", { percent: readout.percent })} />
     </Pressable>
   );
 
   return (
-    <RichTooltip trigger={trigger} side="top" sideOffset={4} className="w-38">
-      <div className="flex flex-col gap-0.5 text-center">
-        <span className="text-fg-muted">{t("context.usage.label")}</span>
-        <span className={readout.percent >= 50 ? "text-fg-muted" : undefined}>
+    <RichTooltip
+      trigger={trigger}
+      side="top"
+      sideOffset={4}
+      className={stylex.props(cu.panel).className}
+    >
+      <div {...stylex.props(ct.stackHairline, ct.centre)}>
+        <span {...stylex.props(ct.muted)}>{t("context.usage.label")}</span>
+        <span {...stylex.props(readout.percent >= 50 && ct.muted)}>
           {t(readout.percent >= 50 ? "context.usage.statusFull" : "context.usage.statusLeft", {
             percent: readout.percent,
             remaining: 100 - readout.percent,

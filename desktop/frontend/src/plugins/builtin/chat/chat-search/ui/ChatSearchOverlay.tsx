@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useEffect, useRef, useState } from "react";
 import { IconButton, TextField } from "@/ui";
 import { cn } from "@/lib/classNames";
@@ -10,6 +11,13 @@ import {
 } from "../adapters/searchHighlights";
 import { setChatSearchOpener } from "../application/openChatSearch";
 import { findMessageRanges } from "../adapters/messageRanges";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
+
+const cs = stylex.create({
+  field: { height: space.s7, width: "calc(var(--spacing) * 56)", paddingInline: space.s2 },
+  count: { paddingInline: space.s1_5 },
+});
 
 export function ChatSearchOverlay() {
   const activeSessionId = useActiveSessionId();
@@ -98,7 +106,7 @@ function SessionChatSearchOverlay() {
         value={query}
         onChange={(event) => changeQuery(event.target.value)}
         placeholder={t("chatSearch.placeholder")}
-        className="h-7 w-56 px-2"
+        className={stylex.props(cs.field).className}
         onKeyDown={(event) => {
           if (event.nativeEvent.isComposing) return;
           if (event.key === "Escape") {
@@ -110,7 +118,7 @@ function SessionChatSearchOverlay() {
           }
         }}
       />
-      <span className="px-1.5 font-mono text-ui-sm text-fg-faint">
+      <span {...stylex.props(cs.count, ct.mono, ct.faint, typeStep.uiSm)}>
         {total > 0 ? `${activeIndex + 1} / ${total}` : query ? "0 / 0" : ""}
       </span>
       <IconButton
