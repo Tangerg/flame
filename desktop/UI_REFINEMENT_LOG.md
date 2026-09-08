@@ -8629,3 +8629,48 @@ editorial 档按它们**在默认档已有的比值**进入阶梯：
 （禁用是 `--control-disabled-opacity` = 0.64，"退到背景"是 `off="faded"` = 0.25）——
 已处理过的通知仍然要能读。三者是三件事，暂各自保留；
 如果之后出现第四个"变淡"的理由，就该收敛成一组命名档。
+
+---
+
+## Round 143 —— 批量迁移：workspace 视图（第二批 6 个文件）
+
+`run-summary` `search` `knowledge` `timeline` `tools` `agentMemory` ——
+本批把这一族里 className 密度最高的六个迁完，`workspace-views` 归零。
+
+### 三件不是"翻译"的事
+
+**1. 两张返回 class 名的查找表，改成返回领域值。**
+`run-summary` 的 `TONE_INK` 和 `timeline` 的 `STATUS_MARK.tone` 都把
+`Tone`（领域词）映射成 `"text-success"` 这样的字符串。而 `runSummaryCommandTone`
+返回的本来就是 `Tone` —— 只有视图那一步把它变成了 class。
+现在 `inkByTone: Record<Tone, StyleXStyles>` 是**唯一**做这件事的地方。
+（`workspace/ui/TasksPill.tsx` 还留着一份两项的副本，下一批收。）
+
+**2. `radius.md` 不存在，而这不是阶梯漏了一档。**
+`timeline` 的运行头是 `rounded-md` 的沉降盘，迁移时发现 `tokens.stylex.ts`
+的 radius 里没有 `md`。查证：`--surface-card-radius` 与 `--radius-md`
+**都是 `var(--shape-md)`** —— 同一个值两个名字。阶梯故意不给 `md`，
+因为这个角属于**卡片这个面**，而 `radius.card` 才是视觉风格可以单独移动的那个。
+改用 `radius.card`。**同一个数值不等于同一个事实**（第 140 轮同一条教训）。
+
+**3. `leading` 没有 `none`，也不该有。**
+状态标记是一个只装字形的盒子，它需要 `line-height: 1` —— 那不是排版档，
+是"这里面没有文字"。写成字面量并注明理由，而不是往类型阶梯里加一档
+引诱别人拿它当字号用。
+
+### 又一处冻结类名的测试
+
+`the timeline names tools…` 用 `.truncate` 定位时间线的条目。迁移后只剩 1 个。
+治本仍是**让组件把自己的决定说出来**：条目主语加 `data-timeline-subject`。
+顺带修正了测试的取样 —— `.truncate` 原本还会捞到 run id 和详情，
+而这条测试问的只是"主语用的是转录名还是 wire 名"。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **652 / 652**（workspace 109 + closure 350 + 其余 193），**零位移、零重录** |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | workspace 299 通过 |
+
+`workspace-views` 全族 className 归零（23 个文件，227 处）。

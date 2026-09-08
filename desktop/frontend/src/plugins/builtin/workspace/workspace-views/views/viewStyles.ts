@@ -1,5 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, space, surface, weight } from "@/styles/tokens.stylex";
+import type { StyleXStyles } from "@stylexjs/stylex";
+import type { Tone } from "@/lib/tone";
+import { color, leading, radius, space, surface, weight } from "@/styles/tokens.stylex";
 
 /**
  * The shapes a dock view is made of.
@@ -50,6 +52,12 @@ export const viewStyles = stylex.create({
   /** Where a row's own trailing text sits, one step below the description above it. */
   origin: { marginTop: space.s1, color: color.fgFaint },
   actions: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s2 },
+  actionsTight: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s0_5 },
+  body: { color: color.fg, lineHeight: leading.body },
+  metaLine: { marginTop: space.s1, display: "flex", alignItems: "center", gap: space.s2 },
+  formLine: { marginTop: space.s2, display: "flex", alignItems: "center", gap: space.s2 },
+  filterLine: { display: "flex", alignItems: "center", gap: space.s1 },
+  pinLine: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1 },
   afterRow: { marginTop: space.s1_5 },
   meterLine: { marginTop: space.s1, display: "flex", alignItems: "center", gap: space.s2_5 },
   dotTop: { marginTop: space.s1_5 },
@@ -94,4 +102,159 @@ export const viewStyles = stylex.create({
   soft: { color: color.fgSoft },
   muted: { color: color.fgMuted },
   mono: { fontFamily: "var(--font-mono)" },
+  negative: { color: color.negative },
+  accent: { color: color.accent },
+  success: { color: color.success },
+  info: { color: color.info },
+  semibold: { fontWeight: weight.semibold },
+
+  /** A section's heading line, and the rhythm between it and the entries under it. */
+  sectionHead: { marginBottom: space.s1_5, display: "flex", alignItems: "baseline", gap: space.s2 },
+  sectionBody: { display: "grid", gap: space.s1 },
+  sectionOuterPad: { paddingBlock: space.s3 },
+  /** One entry in a section: a glyph, the thing, and whatever the thing scored. */
+  entry: {
+    display: "flex",
+    alignItems: "baseline",
+    gap: space.s2,
+    fontFamily: "var(--font-mono)",
+  },
+  entryPlain: { display: "flex", alignItems: "baseline", gap: space.s2 },
+  statusPad: { paddingTop: space.s1, paddingBottom: space.s2 },
+  ink: { color: color.fg },
+  padBottom: { paddingBottom: space.s2 },
+  groupPad: { paddingBlock: space.s1_5 },
+  afterTitle: { marginTop: space.s0_5 },
+  /** The count beside a path reads as a quantity, not as part of the name. */
+  matchCount: { marginInlineStart: space.s1_5, fontWeight: weight.regular, color: color.fgFaint },
+  /** A match: its line number in a fixed column so the text of every match starts level. */
+  matchRow: {
+    display: "grid",
+    width: "100%",
+    gridTemplateColumns: "calc(var(--spacing) * 11) minmax(0, 1fr)",
+    gap: space.s2,
+    borderRadius: radius.xs,
+    paddingBlock: "1px",
+    paddingRight: space.s1,
+    fontFamily: "var(--font-mono)",
+    lineHeight: leading.body,
+  },
+  lineNumber: { textAlign: "right", color: color.fgFaint, userSelect: "none" },
+  /** A row that opens something: a chevron, the name, and what the name belongs to. */
+  discloseRow: {
+    display: "grid",
+    gridTemplateColumns: "calc(var(--spacing) * 3.5) minmax(0, 1fr) auto",
+    alignItems: "center",
+    gap: space.s2,
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    textAlign: "left",
+  },
+  chevron: { color: color.fgFaint, transitionProperty: "rotate" },
+  chevronShut: { rotate: "-90deg" },
+  editorGap: { gap: space.s2 },
+  /** The panel indents past the chevron so its content lines up with the name above it. */
+  editorInset: { paddingBottom: space.s3, paddingLeft: space.s10 },
+});
+
+/**
+ * A run digest speaks in `Tone`, which is the domain's word, and this is the only place that
+ * turns one into ink. `TasksPill` still carries a two-entry copy of the same map.
+ */
+export const inkByTone: Record<Tone, StyleXStyles> = {
+  neutral: viewStyles.muted,
+  accent: viewStyles.accent,
+  success: viewStyles.success,
+  warning: viewStyles.warning,
+  negative: viewStyles.negative,
+  info: viewStyles.info,
+} as const;
+
+/**
+ * The timeline is the one view whose rows nest: a delegated run is drawn inside its parent.
+ * The indent is a ladder rather than `depth × step` because its last rung is a cap — past
+ * five levels a further indent buys nothing and costs the text its width.
+ */
+export const timelineStyles = stylex.create({
+  glyph: { marginTop: space.s1, flexShrink: 0, color: color.fgFaint },
+  kind: { color: color.fg, fontWeight: weight.medium },
+  // The box holds a glyph and no text, so it takes no leading: a type step here would add
+  // descender space under a check mark and push the row taller than the line beside it.
+  mark: { marginTop: space.s1, flexShrink: 0, lineHeight: 1 },
+  stamp: {
+    marginTop: space.s0_5,
+    flexShrink: 0,
+    fontFamily: "var(--font-mono)",
+    color: color.fgFaint,
+  },
+  runHeader: {
+    display: "flex",
+    minHeight: space.s10,
+    alignItems: "center",
+    gap: space.s2,
+    // A run header is a plate, and a plate takes the corner its own plane owns rather than a
+    // rung of the ladder — `--surface-card-radius` and `--radius-md` are the same value under
+    // two names, and only one of them is the one a visual style may move.
+    borderRadius: radius.card,
+    backgroundColor: surface.sunken,
+    paddingLeft: space.s3,
+  },
+  runDetail: {
+    marginTop: space.s0_5,
+    display: "flex",
+    minWidth: 0,
+    gap: space.s2,
+    color: color.fgMuted,
+  },
+  pretty: { textWrap: "pretty" },
+  groupGap: { marginTop: space.s3, paddingTop: space.s1 },
+  nested: {
+    borderLeftWidth: "1px",
+    borderLeftStyle: "solid",
+    borderLeftColor: surface.field,
+    paddingLeft: space.s2,
+  },
+});
+
+const indentStyles = stylex.create({
+  d0: {},
+  d1: { marginLeft: space.s3 },
+  d2: { marginLeft: space.s6 },
+  d3: { marginLeft: space.s9 },
+  d4: { marginLeft: space.s12 },
+  d5: { marginLeft: space.s16 },
+});
+
+export const indent = [
+  indentStyles.d0,
+  indentStyles.d1,
+  indentStyles.d2,
+  indentStyles.d3,
+  indentStyles.d4,
+  indentStyles.d5,
+] as const;
+
+/** The tools view: a catalogue whose rows open a panel that can invoke what the row names. */
+export const toolStyles = stylex.create({
+  headPad: { paddingTop: space.s2, paddingBottom: space.s1 },
+  familyList: { paddingBottom: space.s1_5 },
+  blurb: { paddingBottom: space.s2, color: color.fgMuted, lineHeight: leading.body },
+  toolRow: {
+    display: "grid",
+    gridTemplateColumns: "calc(var(--spacing) * 3.5) auto minmax(0, 1fr)",
+    alignItems: "flex-start",
+    gap: space.s2_5,
+    paddingBlock: space.s1,
+    textAlign: "left",
+  },
+  /** Both glyphs sit on the first line of a two-line cell, not on the cell's top edge. */
+  rowGlyph: { marginTop: space.s1 },
+  toolBlurb: { display: "block", color: color.fgFaint },
+  panelGap: { gap: space.s2_5 },
+  /** The panel starts where the row's NAME does, past both glyphs and their gaps. */
+  panelInset: { paddingTop: space.s1, paddingBottom: space.s3, paddingLeft: "58px" },
+  fieldGap: { gap: space.s1 },
+  fieldLabel: { color: color.fgMuted, fontWeight: weight.medium },
+  afterLabel: { marginTop: space.s1 },
+  footer: { paddingTop: space.s3_5, paddingBottom: "18px", lineHeight: leading.body },
 });

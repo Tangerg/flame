@@ -1,12 +1,14 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatDateTime } from "@/lib/i18n/relativeTime";
 import { Badge, Collapsible, DataView, Icon, PillButton, Pressable, TextArea } from "@/ui";
 import { useT } from "@/lib/i18n";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./views/viewStyles";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { notifyError } from "@/plugins/sdk";
-import { cn } from "@/lib/classNames";
 import {
   KnowledgeDraft,
   loadWorkspaceKnowledge,
@@ -83,27 +85,24 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
   };
 
   return (
-    <div className="flex flex-col">
+    <div {...stylex.props(vs.stack)}>
       <Pressable
         type="button"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={toggle}
-        className="grid grid-cols-[14px_minmax(0,1fr)_auto] items-center gap-2 border-0 bg-transparent px-[var(--density-column-gutter-wide)] py-2 text-left transition-colors hover:bg-hover"
+        className={stylex.props(vs.discloseRow, vs.gutter, vs.rowPad, vs.wash).className}
       >
         <Icon
           name="chevron-down"
           size="xs"
-          className={cn("text-fg-faint transition-transform", !open && "-rotate-90")}
+          className={stylex.props(vs.chevron, !open && vs.chevronShut).className}
         />
-        <span className="truncate font-mono text-ui-md text-fg">{row.path}</span>
+        <span {...stylex.props(vs.ink, vs.mono, vs.truncate, typeStep.uiMd)}>{row.path}</span>
         <Badge>{t(row.scopeLabelKey)}</Badge>
       </Pressable>
       <Collapsible open={open}>
-        <div
-          id={panelId}
-          className="flex flex-col gap-2 px-[var(--density-column-gutter-wide)] pb-3 pl-10"
-        >
+        <div id={panelId} {...stylex.props(vs.stack, vs.editorGap, vs.gutter, vs.editorInset)}>
           <TextArea
             aria-label={t("knowledge.aria", { path: row.path })}
             value={editor.draft}
@@ -114,7 +113,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
             rows={12}
             ink="soft"
           />
-          <div className="flex items-center gap-2">
+          <div {...stylex.props(vs.line)}>
             <PillButton size="sm" variant="accent" disabled={!dirty || saving} onClick={save}>
               {saving ? t("knowledge.saving") : t("knowledge.save")}
             </PillButton>
@@ -126,7 +125,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
               {t("knowledge.revert")}
             </PillButton>
             {editor.updatedAt && (
-              <span className="ml-auto text-ui-xs text-fg-faint">
+              <span {...stylex.props(vs.pushEnd, vs.caption, typeStep.uiXs)}>
                 {t("knowledge.updated")} {formatDateTime(editor.updatedAt)}
               </span>
             )}
@@ -176,7 +175,7 @@ export function KnowledgeTab() {
         }
       >
         {(rows) => (
-          <div className="flex flex-col">
+          <div {...stylex.props(vs.stack)}>
             {rows.map((m) => (
               <KnowledgeRow key={`${cwd ?? ""}:${m.id}`} row={m} cwd={cwd} />
             ))}

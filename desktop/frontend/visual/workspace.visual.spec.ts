@@ -823,7 +823,9 @@ test("the timeline names tools the way the transcript does, never by wire name",
   for (const state of ["dock-timeline", "dock-runs"] as const) {
     await openWorkspace(page, { state });
     await waitForWorkspaceState(page, state);
-    const subjects = await page.locator("[data-dock-view-id='timeline'] .truncate").allInnerTexts();
+    // By the marker the row puts on its subject, not by a utility class: the subject is what
+    // this test is about, and `.truncate` was picking up run ids and details beside it.
+    const subjects = await page.locator("[data-timeline-subject]").allInnerTexts();
     expect(subjects.length).toBeGreaterThan(3);
     expect(subjects.filter((subject) => wireNames.includes(subject.trim()))).toEqual([]);
   }

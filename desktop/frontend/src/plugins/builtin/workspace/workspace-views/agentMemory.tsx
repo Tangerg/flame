@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
 import { formatDay } from "@/lib/i18n/relativeTime";
@@ -17,6 +18,8 @@ import { useCommandAction } from "@/plugins/sdk";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useRuntimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./views/viewStyles";
 import {
   addAgentMemory,
   deleteAgentMemory,
@@ -45,19 +48,19 @@ function PendingRow({ item }: { item: AgentMemoryEntry }) {
     source: "knowledge",
   });
   return (
-    <div className="flex items-start gap-3 px-[var(--density-column-gutter-wide)] py-2.5">
-      <div className="min-w-0 flex-1">
-        <div className="text-ui-md leading-body text-fg">{item.content}</div>
-        <div className="mt-1 flex items-center gap-2">
+    <div {...stylex.props(vs.lineTop, vs.gutter, vs.rowPadTall)}>
+      <div {...stylex.props(vs.fill)}>
+        <div {...stylex.props(vs.body, typeStep.uiMd)}>{item.content}</div>
+        <div {...stylex.props(vs.metaLine)}>
           <OriginBadge origin={item.origin} />
           {item.sessionId && (
-            <span className="truncate text-ui-sm text-fg-faint" title={item.sessionId}>
+            <span {...stylex.props(vs.truncate, vs.caption, typeStep.uiSm)} title={item.sessionId}>
               {t("agentMemory.fromSession")}
             </span>
           )}
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div {...stylex.props(vs.actions)}>
         <PillButton
           size="sm"
           variant="danger"
@@ -99,9 +102,9 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
   };
 
   return (
-    <div className="flex flex-col px-[var(--density-column-gutter-wide)] py-2.5">
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
+    <div {...stylex.props(vs.stack, vs.gutter, vs.rowPadTall)}>
+      <div {...stylex.props(vs.lineTop)}>
+        <div {...stylex.props(vs.fill)}>
           {editing ? (
             <TextArea
               aria-label={t("agentMemory.editAria")}
@@ -112,28 +115,28 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
               ink="soft"
             />
           ) : (
-            <div className="text-ui-md leading-body text-fg">{item.content}</div>
+            <div {...stylex.props(vs.body, typeStep.uiMd)}>{item.content}</div>
           )}
-          <div className="mt-1 flex items-center gap-2">
+          <div {...stylex.props(vs.metaLine)}>
             {item.pinned && (
               // The accent is a functional highlight — play, active, CTA — not an ink for
               // prose: on a card in dark it measures 3.4:1, below AA at this size. The mark
               // keeps it, where 3:1 is the bar a graphic answers to; the word does not.
-              <span className="flex shrink-0 items-center gap-1 text-ui-sm text-fg-muted">
-                <Icon name="star" size="xs" className="text-accent" />
+              <span {...stylex.props(vs.pinLine, vs.muted, typeStep.uiSm)}>
+                <Icon name="star" size="xs" className={stylex.props(vs.accent).className} />
                 {t("agentMemory.pinnedLabel")}
               </span>
             )}
             <OriginBadge origin={item.origin} />
             {item.updatedAt && (
-              <span className="truncate text-ui-sm text-fg-faint">
+              <span {...stylex.props(vs.truncate, vs.caption, typeStep.uiSm)}>
                 {t("agentMemory.updated")} {formatDay(item.updatedAt)}
               </span>
             )}
           </div>
         </div>
         {!editing && (
-          <div className="flex shrink-0 items-center gap-0.5">
+          <div {...stylex.props(vs.actionsTight)}>
             <IconButton
               icon="star"
               size="sm"
@@ -163,7 +166,7 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
         )}
       </div>
       {editing && (
-        <div className="mt-2 flex items-center gap-2">
+        <div {...stylex.props(vs.formLine)}>
           <PillButton size="sm" variant="accent" disabled={!dirty || busy} onClick={save}>
             {t("agentMemory.save")}
           </PillButton>
@@ -189,7 +192,7 @@ function AddMemory({ scope, cwd }: { scope: Scope; cwd?: string }) {
 
   if (!open) {
     return (
-      <div className="px-[var(--density-column-gutter-wide)] pb-1">
+      <div {...stylex.props(vs.gutter, vs.sectionPad)}>
         <PillButton size="sm" variant="outlined" onClick={() => setOpen(true)}>
           <Icon name="plus" size="xs" />
           {t("agentMemory.add")}
@@ -208,7 +211,7 @@ function AddMemory({ scope, cwd }: { scope: Scope; cwd?: string }) {
   };
 
   return (
-    <div className="flex flex-col gap-2 px-[var(--density-column-gutter-wide)] pb-2">
+    <div {...stylex.props(vs.stack, vs.editorGap, vs.gutter, vs.padBottom)}>
       <TextArea
         aria-label={t("agentMemory.add")}
         value={draft}
@@ -218,7 +221,7 @@ function AddMemory({ scope, cwd }: { scope: Scope; cwd?: string }) {
         rows={2}
         ink="soft"
       />
-      <div className="flex items-center gap-2">
+      <div {...stylex.props(vs.line)}>
         <PillButton size="sm" variant="accent" disabled={!canSave || busy} onClick={submit}>
           {t("agentMemory.save")}
         </PillButton>
@@ -241,7 +244,7 @@ function ScopeToggle({ scope, onChange }: { scope: Scope; onChange: (s: Scope) =
   const t = useT();
   const scopes: Scope[] = ["project", "user"];
   return (
-    <div className="flex items-center gap-1 px-[var(--density-column-gutter-wide)] pt-1 pb-2">
+    <div {...stylex.props(vs.filterLine, vs.gutter, vs.statusPad)}>
       {scopes.map((s) => (
         <PillButton
           key={s}
@@ -308,11 +311,11 @@ export function AgentMemoryTab() {
         }
       >
         {() => (
-          <div className="flex flex-col gap-4">
+          <div {...stylex.props(vs.stack, vs.stackGap)}>
             {pending.length > 0 && (
-              <div className="flex flex-col">
-                <div className="px-[var(--density-column-gutter-wide)] pb-1">
-                  <SectionLabel className="px-2 py-2">
+              <div {...stylex.props(vs.stack)}>
+                <div {...stylex.props(vs.gutter, vs.sectionPad)}>
+                  <SectionLabel className={stylex.props(vs.sectionLabel).className}>
                     {t("agentMemory.section.pending")}
                   </SectionLabel>
                 </div>
@@ -322,9 +325,9 @@ export function AgentMemoryTab() {
               </div>
             )}
             {active.length > 0 && (
-              <div className="flex flex-col">
-                <div className="px-[var(--density-column-gutter-wide)] pb-1">
-                  <SectionLabel className="px-2 py-2">
+              <div {...stylex.props(vs.stack)}>
+                <div {...stylex.props(vs.gutter, vs.sectionPad)}>
+                  <SectionLabel className={stylex.props(vs.sectionLabel).className}>
                     {t("agentMemory.section.active")}
                   </SectionLabel>
                 </div>

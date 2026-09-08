@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useId, useRef, useState, useSyncExternalStore } from "react";
 import { useMCPServers } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
@@ -16,10 +17,11 @@ import {
   Well,
 } from "@/ui";
 import { McpRow } from "./views/McpRow";
-import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { toolStyles as os, viewStyles as vs } from "./views/viewStyles";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
 import {
@@ -41,8 +43,8 @@ import {
 function SectionHead({ children, count }: { children: React.ReactNode; count?: number }) {
   return (
     <SectionLabel
-      className="px-[var(--density-column-gutter-wide)] pb-1 pt-2"
-      trailing={count === undefined ? undefined : <span className="font-mono">{count}</span>}
+      className={stylex.props(vs.gutter, os.headPad).className}
+      trailing={count === undefined ? undefined : <span {...stylex.props(vs.mono)}>{count}</span>}
     >
       {children}
     </SectionLabel>
@@ -61,12 +63,10 @@ function BuiltinToolsSection() {
   const view = builtinToolCatalogViewModel(data ?? []);
   if (isLoading || view.isEmpty) return null;
   return (
-    <div className="pb-1.5">
-      <p className="px-[var(--density-column-gutter-wide)] pb-2 text-ui-xs leading-body text-fg-muted">
-        {t("tools.diagnostics.sub")}
-      </p>
+    <div {...stylex.props(os.familyList)}>
+      <p {...stylex.props(vs.gutter, os.blurb, typeStep.uiXs)}>{t("tools.diagnostics.sub")}</p>
       {view.families.map((family) => (
-        <div key={family.id} className="pb-1">
+        <div key={family.id} {...stylex.props(vs.sectionPad)}>
           <SectionHead count={family.rows.length}>{t(family.titleKey)}</SectionHead>
           {family.rows.map((tool) => (
             <DiagnosticToolRow
@@ -116,7 +116,7 @@ function DiagnosticToolRowPresentation({
   const [argumentsError, setArgumentsError] = useState<DiagnosticArgumentsError | null>(null);
 
   return (
-    <div className="flex flex-col">
+    <div {...stylex.props(vs.stack)}>
       <Pressable
         type="button"
         aria-expanded={open}
@@ -125,24 +125,31 @@ function DiagnosticToolRowPresentation({
           tool: tool.name,
         })}
         onClick={() => setOpen((value) => !value)}
-        className="grid grid-cols-[14px_auto_minmax(0,1fr)] items-start gap-2.5 px-[var(--density-column-gutter-wide)] py-1 text-left transition-colors hover:bg-hover"
+        className={stylex.props(os.toolRow, vs.gutter, vs.wash).className}
       >
         <Icon
           name="chevron-down"
           size="xs"
-          className={cn("mt-1 text-fg-faint transition-transform", !open && "-rotate-90")}
+          className={stylex.props(os.rowGlyph, vs.chevron, !open && vs.chevronShut).className}
         />
-        <Icon name={knownIconName(tool.icon) ?? "tool"} size="xs" className="mt-1 text-fg-faint" />
-        <span className="min-w-0">
-          <span className="flex min-w-0 items-baseline gap-2">
-            <span className="truncate font-mono text-ui-sm text-fg">{tool.name}</span>
+        <Icon
+          name={knownIconName(tool.icon) ?? "tool"}
+          size="xs"
+          className={stylex.props(os.rowGlyph, vs.caption).className}
+        />
+        <span {...stylex.props(vs.min)}>
+          <span {...stylex.props(vs.lineBaseline)}>
+            <span {...stylex.props(vs.ink, vs.mono, vs.truncate, typeStep.uiSm)}>{tool.name}</span>
             {tool.safety && (
               <Badge tone={tool.safety.tone} face="mono">
                 {tool.safety.label}
               </Badge>
             )}
           </span>
-          <span className="block truncate text-ui-xs text-fg-faint" title={tool.description}>
+          <span
+            {...stylex.props(os.toolBlurb, vs.truncate, typeStep.uiXs)}
+            title={tool.description}
+          >
             {tool.description}
           </span>
         </span>
@@ -222,11 +229,8 @@ function DiagnosticToolInvocationMaterial({
   };
 
   return (
-    <div
-      id={panelId}
-      className="flex flex-col gap-2.5 px-[var(--density-column-gutter-wide)] pt-1 pb-3 pl-[58px]"
-    >
-      <label className="flex flex-col gap-1 text-ui-xs font-medium text-fg-muted">
+    <div id={panelId} {...stylex.props(vs.stack, os.panelGap, vs.gutter, os.panelInset)}>
+      <label {...stylex.props(vs.stack, os.fieldGap, os.fieldLabel, typeStep.uiXs)}>
         {t("tools.diagnostics.arguments")}
         <TextArea
           value={argumentsText}
@@ -244,14 +248,12 @@ function DiagnosticToolInvocationMaterial({
         />
       </label>
       <div>
-        <span className="text-ui-xs font-medium text-fg-muted">
-          {t("tools.diagnostics.schema")}
-        </span>
-        <Well cap="sm" className="mt-1">
+        <span {...stylex.props(os.fieldLabel, typeStep.uiXs)}>{t("tools.diagnostics.schema")}</span>
+        <Well cap="sm" className={stylex.props(os.afterLabel).className}>
           {schema}
         </Well>
       </div>
-      <div className="flex items-center gap-2">
+      <div {...stylex.props(vs.line)}>
         <PillButton
           size="sm"
           variant="accent"
@@ -261,17 +263,17 @@ function DiagnosticToolInvocationMaterial({
           {running ? t("tools.diagnostics.running") : t("tools.diagnostics.run")}
         </PillButton>
         {error && (
-          <span className="text-ui-xs text-negative" aria-live="polite">
+          <span {...stylex.props(vs.negative, typeStep.uiXs)} aria-live="polite">
             {error}
           </span>
         )}
       </div>
       {result !== null && (
         <div>
-          <span className="text-ui-xs font-medium text-fg-muted">
+          <span {...stylex.props(os.fieldLabel, typeStep.uiXs)}>
             {t("tools.diagnostics.result")}
           </span>
-          <Well cap="md" className="mt-1" aria-live="polite">
+          <Well cap="md" className={stylex.props(os.afterLabel).className} aria-live="polite">
             {result}
           </Well>
         </div>
@@ -316,7 +318,7 @@ export function ToolsTab() {
         shape="row"
         size="sm"
         onClick={openMcpSettings}
-        className="px-[var(--density-column-gutter-wide)] pt-3.5 pb-4.5 leading-body"
+        className={stylex.props(vs.gutter, os.footer).className}
       >
         <Icon name="settings" size="xs" />
         {t("tools.footer")}

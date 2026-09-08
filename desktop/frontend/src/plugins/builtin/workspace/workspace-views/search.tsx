@@ -1,7 +1,10 @@
+import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { DataView, Pressable, SearchField } from "@/ui";
 import { useT } from "@/lib/i18n";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./views/viewStyles";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useWorkspaceGrep } from "@/plugins/builtin/workspace/application/workspaceQueries";
@@ -32,7 +35,7 @@ export function SearchTab() {
       sub={workspaceSearchSubtext(t, view) ?? t("search.noMatches")}
       scrollClassName="py-1"
     >
-      <div className="px-[var(--density-column-gutter-wide)] pt-1 pb-2">
+      <div {...stylex.props(vs.gutter, vs.statusPad)}>
         <SearchField
           font="mono"
           value={input}
@@ -57,24 +60,22 @@ export function SearchTab() {
           }}
         >
           {(groups) => (
-            <div className="flex flex-col pb-2">
+            <div {...stylex.props(vs.stack, vs.padBottom)}>
               {groups.map((group) => (
-                <div key={group.path} className="px-[var(--density-column-gutter-wide)] py-1.5">
-                  <div className="truncate font-mono text-ui-sm font-semibold text-fg">
+                <div key={group.path} {...stylex.props(vs.gutter, vs.groupPad)}>
+                  <div {...stylex.props(vs.title, vs.mono, vs.truncate, typeStep.uiSm)}>
                     {group.path}
-                    <span className="ml-1.5 font-normal text-fg-faint">{group.matchCount}</span>
+                    <span {...stylex.props(vs.matchCount)}>{group.matchCount}</span>
                   </div>
-                  <div className="mt-0.5 flex flex-col">
+                  <div {...stylex.props(vs.stack, vs.afterTitle)}>
                     {group.matches.map((m) => (
                       <Pressable
                         key={m.lineNumber}
                         onClick={() => openWorkspaceFile(group.path, m.lineNumber)}
-                        className="grid w-full grid-cols-[44px_minmax(0,1fr)] gap-2 rounded-xs py-px pr-1 font-mono text-ui-md leading-body transition-colors hover:bg-hover"
+                        className={stylex.props(vs.matchRow, vs.wash, typeStep.uiMd).className}
                       >
-                        <span className="text-right text-ui-sm text-fg-faint select-none">
-                          {m.lineNumber}
-                        </span>
-                        <span className="truncate text-fg-soft" title={m.text}>
+                        <span {...stylex.props(vs.lineNumber, typeStep.uiSm)}>{m.lineNumber}</span>
+                        <span {...stylex.props(vs.truncate, vs.soft)} title={m.text}>
                           {m.text}
                         </span>
                       </Pressable>
@@ -83,7 +84,7 @@ export function SearchTab() {
                 </div>
               ))}
               {view.overflowCount > 0 && (
-                <div className="px-[var(--density-column-gutter-wide)] py-2 text-ui-sm text-fg-faint">
+                <div {...stylex.props(vs.gutter, vs.rowPad, vs.caption, typeStep.uiSm)}>
                   … {t("search.overflow", { count: view.overflowCount })}
                 </div>
               )}

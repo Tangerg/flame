@@ -1,3 +1,5 @@
+import * as stylex from "@stylexjs/stylex";
+import type { Tone } from "@/lib/tone";
 import type { IconName } from "@/ui";
 import type { TimelineEntry, TimelineEntryKind } from "@/plugins/sdk/types/agentSessionView";
 import { Badge, EmptyState, Icon, IconButton } from "@/ui";
@@ -6,7 +8,8 @@ import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { toolIntent } from "@/plugins/builtin/agent/public/messagePresentation";
 import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
-import { cn } from "@/lib/classNames";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { indent, inkByTone, timelineStyles as ts, viewStyles as vs } from "./views/viewStyles";
 import {
   cancelSessionRun,
   useActiveSessionRunTree,
@@ -55,17 +58,14 @@ const KIND_I18N: Record<TimelineEntryKind, string> = {
 // red — the pair colour vision fails on, with nothing else in the row to read instead. The kind
 // mark on the left already speaks in glyphs; this answers in the same vocabulary, and `ok` beside
 // `approved` stays legible because their kind marks differ.
-const STATUS_MARK: Record<
-  NonNullable<TimelineEntry["status"]>,
-  { icon: IconName; tone: string }
-> = {
-  ok: { icon: "check", tone: "text-success" },
-  err: { icon: "alert", tone: "text-negative" },
-  approved: { icon: "check", tone: "text-success" },
-  declined: { icon: "x", tone: "text-warning" },
+// The mark says the same thing the badge beside a run does, so it speaks the same `Tone`
+// rather than carrying an ink of its own.
+const STATUS_MARK: Record<NonNullable<TimelineEntry["status"]>, { icon: IconName; tone: Tone }> = {
+  ok: { icon: "check", tone: "success" },
+  err: { icon: "alert", tone: "negative" },
+  approved: { icon: "check", tone: "success" },
+  declined: { icon: "x", tone: "warning" },
 };
-
-const TREE_INDENT = ["", "ml-3", "ml-6", "ml-9", "ml-12", "ml-16"] as const;
 
 /**
  * What the row is ABOUT.
@@ -88,15 +88,19 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
   const icon = KIND_ICON[entry.kind];
   const subject = entrySubject(t, entry, tool);
   return (
-    <div className="flex items-start gap-2.5 px-[var(--density-column-gutter-wide)] py-1.5">
-      <Icon name={icon} size="xs" className="mt-1 shrink-0 text-fg-faint" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
-          <span className="shrink-0 text-ui-sm font-medium text-fg">
-            {t(KIND_I18N[entry.kind])}
-          </span>
+    <div {...stylex.props(vs.rowTop, vs.gutter, vs.groupPad)}>
+      <Icon name={icon} size="xs" className={stylex.props(ts.glyph).className} />
+      <div {...stylex.props(vs.fill)}>
+        <div {...stylex.props(vs.lineBaseline)}>
+          <span {...stylex.props(vs.hold, ts.kind, typeStep.uiSm)}>{t(KIND_I18N[entry.kind])}</span>
           {subject && (
-            <span title={subject} className="truncate font-mono text-ui-sm text-fg-muted">
+            // Named because it is the one place a tool reaches the timeline by name, and a
+            // closure test checks that the name is the transcript's rather than the wire's.
+            <span
+              data-timeline-subject=""
+              title={subject}
+              {...stylex.props(vs.truncate, vs.mono, vs.muted, typeStep.uiSm)}
+            >
               {subject}
             </span>
           )}
@@ -109,14 +113,12 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
         <span
           role="img"
           aria-label={entry.status}
-          className={cn("mt-1 shrink-0 leading-none", STATUS_MARK[entry.status].tone)}
+          {...stylex.props(ts.mark, inkByTone[STATUS_MARK[entry.status].tone])}
         >
           <Icon name={STATUS_MARK[entry.status].icon} size="xs" />
         </span>
       )}
-      <span className="mt-0.5 shrink-0 font-mono text-ui-xs text-fg-faint">
-        {timelineTimeOfDay(entry.ts)}
-      </span>
+      <span {...stylex.props(ts.stamp, typeStep.uiXs)}>{timelineTimeOfDay(entry.ts)}</span>
     </div>
   );
 }
@@ -132,7 +134,7 @@ function TimelineRunHeader({
   const run = group.run;
   if (!run) {
     return group.runId ? (
-      <div className="px-[var(--density-column-gutter-wide)] pb-1 font-mono text-ui-xs text-fg-faint">
+      <div {...stylex.props(vs.gutter, vs.sectionPad, vs.mono, vs.caption, typeStep.uiXs)}>
         {t("timeline.unknownRun", { id: group.runId })}
       </div>
     ) : null;
@@ -143,30 +145,34 @@ function TimelineRunHeader({
   const spawnedByItemId = run.spawnedByItemId;
   const child = parentRunId !== null;
   return (
-    <div className="flex min-h-10 items-center gap-2 rounded-md bg-sunken pl-3">
-      <Icon name={child ? "bot" : "branch"} size="sm" className="shrink-0 text-fg-muted" />
-      <div className="min-w-0 flex-1 py-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="shrink-0 text-ui-sm font-semibold text-fg">
+    <div {...stylex.props(ts.runHeader)}>
+      <Icon
+        name={child ? "bot" : "branch"}
+        size="sm"
+        className={stylex.props(vs.hold, vs.muted).className}
+      />
+      <div {...stylex.props(vs.fill, vs.rowPad)}>
+        <div {...stylex.props(vs.line)}>
+          <span {...stylex.props(vs.hold, vs.title, typeStep.uiSm)}>
             {t(child ? "timeline.delegatedRun" : "timeline.rootRun")}
           </span>
-          <span title={run.id} className="truncate font-mono text-ui-xs text-fg-faint">
+          <span title={run.id} {...stylex.props(vs.truncate, vs.mono, vs.caption, typeStep.uiXs)}>
             {run.id}
           </span>
           <Badge tone={status.tone}>{t(status.labelKey)}</Badge>
         </div>
-        <div className="mt-0.5 flex min-w-0 gap-2 text-ui-xs text-fg-muted">
+        <div {...stylex.props(ts.runDetail, typeStep.uiXs)}>
           {status.detail && (
-            <span title={status.detail} className="truncate text-pretty">
+            <span title={status.detail} {...stylex.props(vs.truncate, ts.pretty)}>
               {status.detail}
             </span>
           )}
           {child && (
-            <span title={parentRunId} className="truncate font-mono text-fg-faint">
+            <span title={parentRunId} {...stylex.props(vs.truncate, vs.mono, vs.caption)}>
               {t("timeline.parentRun", { id: parentRunId })}
             </span>
           )}
-          <span className="ml-auto shrink-0 font-mono">
+          <span {...stylex.props(vs.pushEnd, vs.hold, vs.mono)}>
             {t("agent.steps", { count: status.stepCount })}
           </span>
         </div>
@@ -231,10 +237,10 @@ export function TimelineTab() {
         view.groups.map((group, index) => (
           <div
             key={timelineGroupKey(group)}
-            className={cn(
-              index > 0 && "mt-3 pt-1",
-              TREE_INDENT[Math.min(group.depth, TREE_INDENT.length - 1)],
-              group.depth > 0 && "border-l border-field pl-2",
+            {...stylex.props(
+              index > 0 && ts.groupGap,
+              indent[Math.min(group.depth, indent.length - 1)],
+              group.depth > 0 && ts.nested,
             )}
           >
             <TimelineRunHeader group={group} runtimeAvailable={runtimeAvailable} />
@@ -247,7 +253,7 @@ export function TimelineTab() {
                 />
               ))
             ) : (
-              <p className="px-[var(--density-column-gutter-wide)] py-2 text-pretty text-ui-xs text-fg-faint">
+              <p {...stylex.props(vs.gutter, vs.rowPad, ts.pretty, vs.caption, typeStep.uiXs)}>
                 {t("timeline.noEvents")}
               </p>
             )}
