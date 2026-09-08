@@ -77,11 +77,7 @@ export function RunSummaryTab() {
       }
     >
       <div {...stylex.props(vs.gutter, vs.statusPad)}>
-        <Badge
-          tone={view.statusBadge.tone}
-          face="mono"
-          className={stylex.props(vocab.strong).className}
-        >
+        <Badge tone={view.statusBadge.tone} face="mono" styles={[vocab.strong]}>
           {t(view.statusBadge.labelKey)}
         </Badge>
       </div>

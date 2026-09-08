@@ -67,7 +67,7 @@ const FileRow = memo(function FileRow({
           )}
         </span>
       }
-      className={stylex.props(face.mono).className}
+      styles={[face.mono]}
     >
       {name}
     </AgentRow>

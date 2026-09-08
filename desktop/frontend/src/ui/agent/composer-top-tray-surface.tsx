@@ -16,11 +16,16 @@ import { cn } from "@/lib/classNames";
  * separately generated class lists and leaves precedence to stylesheet order. There is no right
  * answer to that race; the answer is not to hold one, so what is left here is what neither
  * caller has ever disagreed with.
+ *
+ * WIDTH is not on that list, and used to be. The composer centres its children rather than
+ * stretching them, so a tray that does not state a width is as wide as its content — and the
+ * two callers want different ones: the Goal tray spans the composer, the project tray insets
+ * itself from both edges. Holding `100%` here made the inset one a second declaration of the
+ * same property on the same element, which is the same race as the border, one property over.
  */
 const styles = stylex.create({
   surface: {
     position: "relative",
-    width: "100%",
     minWidth: 0,
     // `clip` and not `hidden`: a scroll container here would swallow the transcript's wheel
     // events at the composer's edge.

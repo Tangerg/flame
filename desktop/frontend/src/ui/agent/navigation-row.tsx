@@ -104,6 +104,11 @@ export function AgentRow({
   look = "row",
   revealOverflow = false,
   className,
+  // Destructured rather than spread: the array below is passed AFTER `{...props}`, so a
+  // caller's `styles` used to be dropped on the floor — which is how a file row asking for
+  // the mono face ended up asking through `className` instead, where its `font-family` and
+  // the button's became two rules for one property with only sheet order between them.
+  styles: callerStyles,
   children,
   type = "button",
   ...props
@@ -129,6 +134,7 @@ export function AgentRow({
         action ? rowStyles.actioned : null,
         look !== "row" && rowStyles.quiet,
         look === "search" && rowStyles.search,
+        callerStyles,
       ]}
       className={cn("agent-row", className)}
     >

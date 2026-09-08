@@ -10,6 +10,9 @@ import { color } from "@/styles/tokens.stylex";
 // composer by a pixel, because the two are one surface where they meet.
 const goalTray = stylex.create({
   material: {
+    // The Goal tray spans the composer. Stated here because the composer centres its children
+    // and the surface deliberately holds no width — the project tray wants a different one.
+    width: "100%",
     marginBottom: "-1px",
     borderTopWidth: "1px",
     borderLeftWidth: "1px",

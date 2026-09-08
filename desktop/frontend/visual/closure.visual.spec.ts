@@ -238,6 +238,78 @@ for (const locale of SHIPPED_LOCALES) {
   });
 }
 
+/**
+ * Two atoms for the same property on one element, and only sheet order decides.
+ *
+ * `stylex.props(...)` resolves precedence WITHIN one call: the last style wins and the losers
+ * are not emitted. Across two calls it cannot — a component joins its own class list to the
+ * one its caller generated, and if both name a property the winner is whichever rule the
+ * bundler happened to write second. There is no right answer to that race, only a stable one.
+ *
+ * The escape hatch that allows it is on 33 components and used by 206 call sites, and the
+ * measured collision count was ONE: a floating button restating `transition-property` as a
+ * SUBSET of the button's own list, which silently dropped the press scale and every colour.
+ * That number is the reason the hatch was not ripped out — and the reason this exists, so the
+ * number stays where it was measured.
+ */
+for (const fixture of ["agent", "workspace"] as const) {
+  const states: readonly string[] =
+    fixture === "agent" ? VISUAL_AGENT_STATES : VISUAL_WORKSPACE_STATES;
+  test(`no ${fixture} element carries two StyleX rules for one property`, async ({ page }) => {
+    // One page load per state, and the budget is per TEST rather than per load.
+    test.setTimeout(states.length * 4_000 + 20_000);
+    const collisions = new Map<string, string>();
+    for (const state of states) {
+      await openFixture(page, { fixture, state });
+      for (const found of await stylexCollisions(page)) collisions.set(found, state);
+    }
+    expect(
+      [...collisions].map(([clash, where]) => `[${where}] ${clash}`),
+      "a property declared twice on one element is decided by bundler order",
+    ).toEqual([]);
+  });
+}
+
+/** Every StyleX rule is one class and one declaration at one specificity, so the sheet is a
+ *  class -> declaration table and a duplicated property on an element is readable from it. */
+async function stylexCollisions(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const decls = new Map<string, { prop: string; value: string }>();
+    const visit = (list: CSSRuleList) => {
+      for (const rule of list) {
+        if (rule instanceof CSSGroupingRule) visit(rule.cssRules);
+        if (!(rule instanceof CSSStyleRule) || rule.style.length !== 1) continue;
+        const named = /^\.([A-Za-z0-9_-]+)(?::not\(#\\#\))+$/.exec(rule.selectorText);
+        if (!named) continue;
+        const prop = rule.style[0]!;
+        decls.set(named[1]!, { prop, value: rule.style.getPropertyValue(prop) });
+      }
+    };
+    for (const sheet of document.styleSheets) {
+      try {
+        visit(sheet.cssRules);
+      } catch {
+        // A cross-origin sheet cannot be read and holds none of our atoms.
+      }
+    }
+    const out: string[] = [];
+    for (const node of document.querySelectorAll<HTMLElement>("*")) {
+      const seen = new Map<string, string>();
+      for (const cls of node.classList) {
+        const decl = decls.get(cls);
+        if (!decl) continue;
+        const prior = seen.get(decl.prop);
+        if (prior !== undefined && prior !== decl.value) {
+          const slot = node.dataset.slot ? `[${node.dataset.slot}]` : "";
+          out.push(`${node.tagName.toLowerCase()}${slot} ${decl.prop}: ${prior} vs ${decl.value}`);
+        }
+        seen.set(decl.prop, decl.value);
+      }
+    }
+    return [...new Set(out)];
+  });
+}
+
 test("structural panels share one spring, containment, and reduced-motion authority", async ({
   page,
 }) => {

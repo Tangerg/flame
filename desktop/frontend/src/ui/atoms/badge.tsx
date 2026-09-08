@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
+import type { StyleXArray, StyleXStyles } from "@stylexjs/stylex";
 import type { Tone } from "@/lib/tone";
-import { cn } from "@/lib/classNames";
 import { color, corner, face, space, surface, type, weight } from "@/styles/tokens.stylex";
 
 /**
@@ -38,7 +38,16 @@ export type BadgeProps = {
   size?: keyof typeof SIZE_TYPE;
   face?: keyof typeof face;
   children: ReactNode;
-  className?: string;
+  /**
+   * A step this badge does not have a name for yet.
+   *
+   * `styles` and not `className`, for the reason `Button` states at its own: composed into the
+   * same `stylex.props()` call, so a property a caller declares REPLACES this component's
+   * instead of racing it. Both call sites that used the old `className` were handing over a
+   * StyleX class list, and one of them — a heavier status badge — was a second `font-weight`
+   * on the same span with only bundler order deciding which weight you saw.
+   */
+  styles?: StyleXArray<StyleXStyles | null | false>;
   title?: string;
 };
 
@@ -46,7 +55,7 @@ export function Badge({
   tone = "neutral",
   size = "sm",
   face: textFace = "text",
-  className,
+  styles: callerStyles,
   children,
   title,
 }: BadgeProps) {
@@ -57,9 +66,10 @@ export function Badge({
     styles[size],
     SIZE_TYPE[size],
     face[textFace],
+    callerStyles,
   );
   return (
-    <span title={title} {...styled} className={cn(styled.className, className)}>
+    <span title={title} {...styled}>
       {children}
     </span>
   );

@@ -176,7 +176,7 @@ export function McpRow({ server }: { server: MCPServerSettings }) {
         <Badge
           size="md"
           tone={status.tone}
-          className={stylex.props(server.status === "connecting" && mr.pulsing).className}
+          styles={[server.status === "connecting" && mr.pulsing]}
           title={server.status === "failed" ? server.errorDetail : undefined}
         >
           {t(status.key)}

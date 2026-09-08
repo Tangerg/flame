@@ -10813,3 +10813,60 @@ toast 是一个**面**。给面拍照。这条测试现在多一张 `toast-error
 | 新增 golden | 1 张（`toast-error`）—— 覆盖一个此前零覆盖的面 |
 | 守卫 | 17 项全绿；`check:classes` 现在有位置 + 形状两条规则 |
 | 重录 | 0 |
+
+## Round 170 — 逃生口该不该拆：先量，再决定
+
+`cn()` 现在就是 `clsx`，`className` 逃生口在 **33 个组件**上、**206 个调用点**用着。
+按第一法则它该拆。但拆之前先问一个能测的问题：**它现在到底错了几处？**
+
+### 竞态是可测的
+
+StyleX 的每条规则是「一个类名 + 一条声明」，特异性全相同。
+所以样式表就是一张 `class → 声明` 的表，
+一个元素上同一个属性出现两次 = **只有打包顺序在决定谁赢**。
+
+`stylex.props(...)` 在**一次调用内**能定优先级（后者胜，败者根本不生成）；
+跨两次调用不能 —— 组件把自己的类名串接上调用方生成的那串，谁赢看 bundler。
+
+| 覆盖 | 命中 |
+| --- | --- |
+| 9 个状态（试探） | 1 |
+| **全部 24 个 agent 状态 + 5 个 workspace 状态** | **4** |
+
+206 个调用点，真正撞车的 **4 个**。
+这就是没有把 33 个组件的契约全改掉的理由 —— 也是把这次测量**变成一条常驻断言**的理由。
+
+### 四处，各自的正确归属
+
+| 位置 | 撞什么 | 治法 |
+| --- | --- | --- |
+| `JumpToBottomButton` | `transition-property`：`opacity, translate` vs 按钮自己的六项 | 删掉。按钮的声明旁边就写着「a call site cannot add to it — it can only replace it」，这个调用点正在**悄悄减项**，把按下的 scale 和所有颜色过渡一起丢了 |
+| `AgentComposerTopTraySurface` | `width`：`100%` vs `calc(100% - 24px)` | 组件不再持有 width。composer 是 `align-items: center`，不 stretch，而两个调用方要的宽度**本来就不同**（Goal 托盘跨满、项目托盘两边内缩）|
+| `FilesChanged` → `AgentRow` | `font-family` + `letter-spacing` | `AgentRow` 把调用方的 `styles` **扔在地上**（数组写在 `{...props}` 之后）。修好转发，调用方改用 `styles={[face.mono]}` |
+| `run-summary` / `McpRow` → `Badge` | `font-weight` | `Badge` 的 `className` 换成 `styles` —— 它仅有的两个 className 调用方**都在传 StyleX 类名串**，要的本来就是这个接缝 |
+
+`Button` 早就有这个接缝，注释也早就写清楚了：
+「composed in the same `stylex.props()` call, so a property it declares **replaces** this
+component's rather than losing to it, which is exactly what a `className` cannot do.」
+缺的不是设计，是把它用起来。
+
+### 重录 2 张，原因说得出来
+
+`workspace dock-files` 两个主题：**文件行现在是等宽字体了**。
+`FilesChanged` 一直在要 `face.mono`，但它走 `className`，输给了按钮的 `font-family` ——
+基准里那两行一直是比例字体。这是修复，不是设计变了。
+
+### 一次没复现的红
+
+`agent golden dark tool-tail` 在一次全量里红过一次，单独跑 4/4 绿、之后全量也绿。
+不当作修好了记 —— 记成一张**边缘基准**：配置里已经写着 `delegated` 有同类问题
+（两个 worker 谁先画决定它差一个像素）。这条待观察。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **672 / 672**（670 + 新增 2 条竞态断言）|
+| StyleX 属性竞态 | 4 → **0**，全部状态覆盖 |
+| 重录 | 2 张（dock-files 两主题）—— 原因：等宽字体本该生效 |
+| 逃生口 | `Badge` 已换成 `styles`；其余 32 个组件**证据不足，不动** |

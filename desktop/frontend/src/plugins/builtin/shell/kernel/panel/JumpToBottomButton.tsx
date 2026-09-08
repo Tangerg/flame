@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { scrollStreamToBottom, useStreamAtBottom } from "./streamFollow";
 import { IconButton } from "@/ui";
 import { useT } from "@/lib/i18n";
-import { motion, space } from "@/styles/tokens.stylex";
+import { space } from "@/styles/tokens.stylex";
 
 /**
  * The centring and the entrance are ONE `translate`.
@@ -13,13 +13,15 @@ import { motion, space } from "@/styles/tokens.stylex";
  * of its own width that was centring it. So each state states both axes.
  */
 const styles = stylex.create({
+  // No transition here. `Button` already names every property a button animates and says why
+  // at its own declaration: the list is the whole list, so a call site restating a SUBSET of
+  // it does not narrow the transition to what it cares about — it silently drops the rest.
+  // This one asked for `opacity, translate` and took the press scale and every colour with it.
   float: {
     position: "absolute",
     left: "50%",
     bottom: "calc(100% + 0.5rem)",
     zIndex: 3,
-    transitionProperty: "opacity, translate",
-    transitionDuration: motion.fast,
   },
   shown: { translate: "-50% 0", opacity: 1, pointerEvents: "auto" },
   hidden: { translate: `-50% ${space.s1}`, opacity: 0, pointerEvents: "none" },
