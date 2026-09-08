@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -352,6 +353,7 @@ func (w *WorkingContextComposer) recallMessage(
 	)
 	if err != nil {
 		span.RecordError(err)
+		slog.WarnContext(ctx, "agentexec: recall memory", "error", err)
 		return corechat.Message{}, false, nil
 	}
 	var body strings.Builder

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -103,11 +104,19 @@ func (w *WorkingContextComposer) composeSystemMessage(
 		// growing corpus never bloats every prompt.
 		var pinned []agentmemory.Item
 		if project := strings.TrimSpace(cwd); project != "" {
-			items, _ := w.config.AgentMemory.Items(ctx, agentmemory.ScopeProject, filepath.Clean(project))
-			pinned = appendPinned(pinned, items)
+			items, err := w.config.AgentMemory.Items(ctx, agentmemory.ScopeProject, filepath.Clean(project))
+			if err != nil {
+				slog.WarnContext(ctx, "agentexec: load pinned memory", "scope", agentmemory.ScopeProject, "error", err)
+			} else {
+				pinned = appendPinned(pinned, items)
+			}
 		}
-		userItems, _ := w.config.AgentMemory.Items(ctx, agentmemory.ScopeUser, "")
-		pinned = appendPinned(pinned, userItems)
+		userItems, err := w.config.AgentMemory.Items(ctx, agentmemory.ScopeUser, "")
+		if err != nil {
+			slog.WarnContext(ctx, "agentexec: load pinned memory", "scope", agentmemory.ScopeUser, "error", err)
+		} else {
+			pinned = appendPinned(pinned, userItems)
+		}
 		newPinnedMemoryPrompt(pinned, agentMemoryInjectBudget).appendTo(&prompt)
 	}
 
