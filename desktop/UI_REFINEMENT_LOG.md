@@ -9935,3 +9935,130 @@ fixture 自己的注释早就警告过同一类事。这不是这一轮该改的
 | 单测 | 1783 项通过 |
 | 重录 | 2 张（`dock-error` 两个主题）—— 只因 fixture 侧栏多了一行 |
 | 新增 golden | 2 张（`full-view` 两个主题）—— `FullViewBar` 第一次被拍到 |
+
+## Round 163 — 设计系统自己的最后一块，以及我亲手造的一个静默回归
+
+### 先纠正我自己的一个判断
+
+我把 `ui/agent/` 里 4 个文件标成「一行 StyleX 都没有」。**其中 3 个已经是终态** ——
+`sidebar.tsx` / `content-card.tsx` / `surface-header.tsx` 里全是 `globals.css` 拥有的
+**机制键**（`agent-drawer` / `agent-seam-rail` / `agent-content-card` /
+`agent-surface-header` / `agent-surface-divider` / `agent-dock-control`）。
+这些是有意留在 CSS 里的：窗口 chrome 的接缝与玻璃是**后代规则**，StyleX 表达不了。
+
+顺手对这些机制键做了一次「有没有对应规则」的核查（一个没有规则的 class 名是静默空操作）：
+23 个键里 21 个 grep 到了，`media-edge` / `media-edge-on-scrim` 两个没有 ——
+但那是我的 grep 错了，它们是 Tailwind v4 的 `@utility` 声明。**代码没问题，我的检查有问题。**
+
+### 但这次核查顺带抓到一个真的
+
+`ThemeSection.tsx` 的注释写着：
+
+> `media-edge` stays a utility because it is a mechanism `globals.css` owns —
+> an inset outline the scheme picks — and **the swatch only asks for it**.
+
+而紧挨着的代码**没有**去要它，它把那个 utility 的内容原样又写了一遍：
+`outline: "1px solid var(--color-media-edge)"` + `outlineOffset: "-1px"`。
+「图片戴什么边」于是有了两个 owner，而注释还在说只有一个。
+（这是 round 148 那条的镜像：注释写在代码之前是假陈述，
+**写在代码之后没跟着改也是**。）
+
+### `JumpToBottomButton`：一个 Tailwind 能叠、CSS 不能叠的属性
+
+```
+"absolute bottom-[calc(100%+0.5rem)] left-1/2 -translate-x-1/2 z-3"
+visible ? "translate-y-0 …" : "translate-y-1 …"
+```
+
+`-translate-x-1/2` 与 `translate-y-*` 在 Tailwind 里能共存，**只因为它们各写一个自定义属性**。
+而 CSS 里 `translate` 是**一个**属性：两条声明不合并，后一条赢，
+按钮会丢掉那半个自身宽度的居中、往右跳。
+所以迁移后每个状态都要**同时说两个轴**：`-50% 0` / `-50% 4px`。
+
+### 一个单测冻住了 class 名（同一个文件里已经记过同样的教训）
+
+`GoalStatusSurface.test.tsx` 断言 tray 的 className 含 `rounded-t-composer` / `border-x` /
+`border-t`、不含 `mb-2`。而它上一个 `it` 里已经写着：
+
+> Asserting the utility that produced them **froze a spelling** … this failed while the row
+> was pixel-identical.
+
+真正的契约是它上一行那句 `data-slot="composer-top-tray-surface"`（用的是**共享的** tray，
+不是手搓的）。那四个 class 名想说的是一个**几何事实** ——
+「tray 与 composer 是一个面，两者之间没有第二条线」—— 那就该到有 CSS 的地方去量。
+
+量出来的真实设计跟我以为的还不一样：tray 的盒子**越过** composer 顶边 5px、
+**塞在它后面**，自己那 27px 的下内边距把内容让开这段重叠。
+所以断言不是「两条边相接」，而是「**tray 绝不缩回去、在两个面之间留出一条线**」。
+
+### 我亲手造了一个静默回归，被自己刚写的那条测试抓住
+
+迁移 tray 时我写了 `borderInlineWidth: "1px"`。**实测**：这个元素算出来的
+`border-left-width` 是 **0px**；换成 `borderLeftWidth` / `borderRightWidth` 之后是 1px。
+
+我没有查明那个逻辑简写为什么没生效（产物里能 grep 到 `border-inline-width`，
+但那份产物早于我这次修改，也可能是 Tailwind 自己的 `border-x` 留下的）——
+**查明的是：没有任何东西报错，唯一注意到的是一条把计算值读回来的测试。**
+
+顺手清了一遍全仓的逻辑属性：`paddingInline`(135) / `paddingBlock`(99) /
+`marginInline`(9) / `marginBlock`(8) / `insetInline`(5) 都在正常工作
+（135 处用了它、656 张 golden 稳定，这就是证据），只有那一处简写是坏的，已修。
+
+### 那个静默回归的真根因，比「一个简写没生效」深得多
+
+视觉套件报了 3 张 unexpected（都在 tray/`empty`，正是我刚迁的那个面），
+其中一条是**命名测试**，给出了确切数字：`composer.y - tray.y` 期望 37、实测 55。
+
+把新旧两版在同一个 fixture 里各量一遍：
+
+| | `border-top` | `margin-bottom` | 高 |
+| --- | --- | --- | --- |
+| **迁移前** | **0px** | **-18px** | 59 |
+| 迁移后 | 1px | -1px | 60 |
+
+**迁移前那两个值，component 自己一个都没说。** 它写的是
+`border-x border-t border-[var(--composer-tray-edge-color)]` 和 `-mb-px`。
+真正在生效的是**调用方**：`ProjectSelector` 的 `pl.traySurface` 里写着
+`borderWidth: 0`、`marginBottom: "-18px"`，还换了另一个背景色
+（`--app-composer-project-tray-surface`，不是 component 的 `--app-composer-tray-surface`）。
+
+**为什么以前看不见**：调用方是 StyleX、component 是 Tailwind ——
+生成类带 `:not(#\#)`，**任何工具类都压不过它**。所以调用方一直在静默地
+取消 component 的边、换掉它的填充，而没有任何东西说出这件事。
+
+我把 component 的材质也迁成 StyleX 之后，两边**平级**了，于是边回来了 ——
+而决定谁赢的是 `cn()`：**它把两串各自生成的 class 拼在一起，
+优先级就交给了样式表顺序**。这个竞争没有正确答案。
+
+### 所以正确的修法不是「让 component 输」
+
+而是：**component 只拥有两个调用方从未分歧的那部分。**
+
+两个调用方长得根本不像 —— Goal tray 有边、有 backdrop 滤镜；项目 tray 没有边、
+另一个填充、另一个内缩、另一个宽度（`calc(100% - 24px)`）。
+所谓「共享的面」只共享一个名字。真正共享的只有**形状**：
+`position: relative`、`overflow: clip`、以及**composer 自己的上圆角**。
+
+- component：留形状，`data-slot` 仍是契约
+- Goal tray：材质搬到它自己名下（外观逐像素不变，因为那本来就是它一个人的样子）
+- 项目 tray：`borderWidth: 0` 和那两行重述的圆角**删掉** —— 已经没有东西要取消了
+
+那条 closure 测试也跟着改对了目标：原来我照着 component 的边去断言，
+而项目 tray **根本没有边**。现在断言的是两者真正都同意的：
+composer 的圆角、越过顶边的重叠、缺席的底边、`overflow: clip`。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **669 / 669**（667 + 新增 2），0 unexpected，0 flaky |
+| 守卫 | 17 项全绿 |
+| 单测 | 1783 项通过 |
+| 存量 | 96 → **89** 条 |
+| **`plugins/` 里「一行 StyleX 都没有」的文件** | 6 → **0** |
+| CSS raw | 133.2 KB（预算 142.6 KB） |
+
+`plugins/` 下已经没有纯 Tailwind 文件了。`ui/` 还剩 3 个，
+而其中的 `sidebar.tsx` / `content-card.tsx` / `surface-header.tsx` 是**机制键包装器**，
+本来就是终态 —— 换句话说，**"没有 StyleX" 这个指标已经走完了**。
+剩下的 89 条是散落在混写文件里的单条，得一处一处看。

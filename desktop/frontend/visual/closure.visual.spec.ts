@@ -1421,3 +1421,39 @@ test("the composer's attachment chips are one component, not two", async ({ page
   expect(chips.every((c) => parseFloat(c.borderWidth) > 0)).toBe(true);
   expect(distinct("fill")).toBe(2);
 });
+
+// Three unit assertions used to say this by freezing `border-x`, `border-t` and the absence of
+// `mb-2` on the tray's class list. Two things were wrong with that. A class name is not a
+// contract — and those particular names were not even the shared surface's to keep: the project
+// tray has no edge at all, and had been cancelling them at the call site. What both trays DO
+// agree on is the shape, so that is what is measured: the composer's own corner, and a box that
+// runs past the composer's top edge rather than stopping short and leaving a rule between them.
+test("the composer's top tray takes the composer's corner and tucks behind it", async ({
+  page,
+}) => {
+  await openFixture(page, { fixture: "agent", state: "empty" });
+
+  const tray = page.locator('[data-slot="composer-top-tray-surface"]');
+  await expect(tray).toBeVisible();
+
+  const seam = await page.evaluate(() => {
+    const t = document.querySelector('[data-slot="composer-top-tray-surface"]')!;
+    const composer = document.querySelector("[data-slot=composer-root]")!;
+    const cs = getComputedStyle(t);
+    return {
+      overlap: Math.round(t.getBoundingClientRect().bottom - composer.getBoundingClientRect().top),
+      topLeftRadius: cs.borderTopLeftRadius,
+      topRightRadius: cs.borderTopRightRadius,
+      composerRadius: getComputedStyle(composer).borderTopLeftRadius,
+      // Whatever edge it wears, the bottom one is absent: that side is the seam.
+      bottomBorder: cs.borderBottomWidth,
+      overflow: cs.overflow,
+    };
+  });
+
+  expect(seam.overlap).toBeGreaterThan(0);
+  expect(seam.topLeftRadius).toBe(seam.composerRadius);
+  expect(seam.topRightRadius).toBe(seam.composerRadius);
+  expect(parseFloat(seam.bottomBorder)).toBe(0);
+  expect(seam.overflow).toBe("clip");
+});

@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { cn } from "@/lib/classNames";
 import type { ReactNode } from "react";
 import type { Scheme } from "@/lib/appearance";
 import type { ColorThemeSpec } from "@/plugins/sdk";
@@ -35,8 +36,6 @@ const th = stylex.create({
     flexShrink: 0,
     overflow: "hidden",
     borderRadius: radius.step2xs,
-    outline: "1px solid var(--color-media-edge)",
-    outlineOffset: "-1px",
   },
   // The inner pane's corner is the outer one less its own inset, floored at zero, so the two
   // stay concentric at every radius scale.
@@ -62,7 +61,10 @@ const th = stylex.create({
 
 function ThemeSwatch({ bg, surface, accent }: { bg: string; surface: string; accent: string }) {
   return (
-    <span {...stylex.props(th.swatch)} style={{ background: bg }}>
+    <span
+      className={cn("media-edge", stylex.props(th.swatch).className)}
+      style={{ background: bg }}
+    >
       <span {...stylex.props(th.swatchPane)} style={{ background: surface }} />
       <span {...stylex.props(th.swatchDot, corner.pill)} style={{ background: accent }} />
     </span>

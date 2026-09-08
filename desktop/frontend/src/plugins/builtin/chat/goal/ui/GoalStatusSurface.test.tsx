@@ -226,11 +226,14 @@ describe("Goal status surface", () => {
     const { container } = render(<GoalStatusSurface />);
 
     const surface = container.querySelector<HTMLElement>('[data-slot="composer-top-tray-surface"]');
+    // `data-slot` is the contract — that this uses the SHARED tray rather than a hand-built
+    // one. The corner it wears is the tray's own decision and belongs where CSS exists; see
+    // the closure suite, which measures the seam between the tray and the composer.
     expect(surface).not.toBeNull();
-    expect(surface?.className).toContain("rounded-t-composer");
-    expect(surface?.className).toContain("border-x");
-    expect(surface?.className).toContain("border-t");
-    expect(surface?.className).not.toContain("mb-2");
+    // What those three frozen class names were saying — sides and top edged, no bottom edge
+    // and no bottom margin, because the tray seams INTO the composer — is a geometric claim,
+    // and the closure suite measures it on the surface itself. See "the composer's top tray
+    // seams into it".
     expect(surface?.querySelector('[data-slot="goal-glyph"]')).not.toBeNull();
   });
 });

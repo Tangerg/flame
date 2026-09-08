@@ -3,6 +3,26 @@ import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useRef, useState } from "react";
 import { Button, IconButton, TextEditorDialog, vocab } from "@/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent";
+import { color } from "@/styles/tokens.stylex";
+
+// The Goal tray's own material: an edge on three sides and the composer's backdrop, which the
+// shared surface used to declare for everyone. Its bottom edge is absent and it overlaps the
+// composer by a pixel, because the two are one surface where they meet.
+const goalTray = stylex.create({
+  material: {
+    marginBottom: "-1px",
+    borderTopWidth: "1px",
+    borderLeftWidth: "1px",
+    borderRightWidth: "1px",
+    borderBottomWidth: 0,
+    borderStyle: "solid",
+    borderColor: "var(--composer-tray-edge-color)",
+    backgroundColor: "var(--app-composer-tray-surface)",
+    color: color.fg,
+    WebkitBackdropFilter: "var(--composer-tray-backdrop)",
+    backdropFilter: "var(--composer-tray-backdrop)",
+  },
+});
 import { useT } from "@/lib/i18n";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { notifyError } from "@/plugins/sdk";
@@ -47,6 +67,7 @@ export function GoalStatusSurface() {
   return (
     <AgentComposerTopTraySurface
       key={JSON.stringify([goal.sessionId, material.generation.toString(), goal.createdAt])}
+      className={stylex.props(goalTray.material).className}
     >
       <GoalRow goal={goal} />
     </AgentComposerTopTraySurface>

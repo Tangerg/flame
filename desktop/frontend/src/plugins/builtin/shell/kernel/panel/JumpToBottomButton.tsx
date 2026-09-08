@@ -1,7 +1,29 @@
+import * as stylex from "@stylexjs/stylex";
 import { scrollStreamToBottom, useStreamAtBottom } from "./streamFollow";
 import { IconButton } from "@/ui";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/classNames";
+import { motion, space } from "@/styles/tokens.stylex";
+
+/**
+ * The centring and the entrance are ONE `translate`.
+ *
+ * Under Tailwind they were two utilities — `-translate-x-1/2` and `translate-y-{0,1}` — which
+ * compose only because each writes its own custom property. In CSS `translate` is a single
+ * property: two declarations do not merge, the later one wins, and the button loses the half
+ * of its own width that was centring it. So each state states both axes.
+ */
+const styles = stylex.create({
+  float: {
+    position: "absolute",
+    left: "50%",
+    bottom: "calc(100% + 0.5rem)",
+    zIndex: 3,
+    transitionProperty: "opacity, translate",
+    transitionDuration: motion.fast,
+  },
+  shown: { translate: "-50% 0", opacity: 1, pointerEvents: "auto" },
+  hidden: { translate: `-50% ${space.s1}`, opacity: 0, pointerEvents: "none" },
+});
 
 export function JumpToBottomButton() {
   const t = useT();
@@ -18,12 +40,7 @@ export function JumpToBottomButton() {
       aria-label={label}
       onClick={scrollStreamToBottom}
       tabIndex={visible ? 0 : -1}
-      className={cn(
-        "absolute bottom-[calc(100%+0.5rem)] left-1/2 -translate-x-1/2 z-3",
-        visible
-          ? "opacity-100 translate-y-0 pointer-events-auto"
-          : "opacity-0 translate-y-1 pointer-events-none",
-      )}
+      className={stylex.props(styles.float, visible ? styles.shown : styles.hidden).className}
     />
   );
 }

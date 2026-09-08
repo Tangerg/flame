@@ -84,6 +84,8 @@ const styles = stylex.create({
   labelClosable: { paddingLeft: space.s2, paddingRight: space.s1 },
   labelPlain: { paddingInline: space.s2 },
   glyph: { flexShrink: 0, opacity: "var(--glyph-step)" },
+  /** The close control sits inside the tab's own inset rather than against its edge. */
+  tabClose: { marginRight: space.s0_5 },
   title: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   badge: { flexShrink: 0, fontFamily: "var(--font-mono)", lineHeight: 1, color: color.fgFaint },
   // The list adds no box: the strip already is one, and a second would put the tabs a nesting
@@ -276,7 +278,7 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
                   quiet
                   title={tab.closeLabel}
                   onClick={close}
-                  className={cn("mr-0.5", stylex.props(reveal.pointerAffordance).className)}
+                  className={stylex.props(styles.tabClose, reveal.pointerAffordance).className}
                 />
               )}
             </div>
