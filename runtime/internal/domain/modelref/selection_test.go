@@ -79,10 +79,6 @@ func TestSelectionValidateExact(t *testing.T) {
 	if err := (Selection{}).ValidateExact(); !errors.Is(err, errExactSelectionRequired) {
 		t.Fatalf("zero selection ValidateExact() error = %v, want %v", err, errExactSelectionRequired)
 	}
-	malformed := Selection{provider: ProviderIdentity{value: "openai"}}
-	if err := malformed.ValidateExact(); !errors.Is(err, ErrIncomplete) {
-		t.Fatalf("malformed selection ValidateExact() error = %v, want %v", err, ErrIncomplete)
-	}
 	selection, err := New("openai", "gpt-5")
 	if err != nil {
 		t.Fatal(err)

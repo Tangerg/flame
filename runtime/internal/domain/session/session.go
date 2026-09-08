@@ -149,9 +149,6 @@ func (s Session) Apply(patch Patch, updatedAt time.Time) (next Session, changed 
 		next.title = title
 	}
 	if patch.Selection != nil {
-		if err := patch.Selection.Validate(); err != nil {
-			return Session{}, false, fmt.Errorf("%w: model selection: %v", ErrInvalid, err)
-		}
 		next.selection = *patch.Selection
 	}
 	if patch.Workspace != nil {

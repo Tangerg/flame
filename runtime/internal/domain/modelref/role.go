@@ -1,9 +1,5 @@
 package modelref
 
-import "errors"
-
-var errRoleReasoningEffort = errors.New("model role does not support reasoning effort")
-
 // Role is an optional provider/model assignment for a specialized Runtime
 // capability. Unlike an execution Selection, it has no model-owned options;
 // its zero value leaves the capability unset or inheriting its main model.
@@ -18,18 +14,6 @@ func NewRole(provider, model string) (Role, error) {
 		return Role{}, err
 	}
 	return Role{selection: selection}, nil
-}
-
-// Validate verifies that r contains only the provider/model pair its role
-// stores and projects.
-func (r Role) Validate() error {
-	if err := r.selection.Validate(); err != nil {
-		return err
-	}
-	if r.selection.ReasoningEffort() != "" {
-		return errRoleReasoningEffort
-	}
-	return nil
 }
 
 // Configured reports whether r assigns an exact provider and model.

@@ -12,9 +12,6 @@ import (
 // the Runtime's immutable Domain value. A catalog miss is not an error because
 // configured compatible endpoints may legitimately expose private model IDs.
 func LookupTokenLimits(selection modelref.Selection) (modelref.TokenLimits, bool, error) {
-	if err := selection.Validate(); err != nil {
-		return modelref.TokenLimits{}, false, fmt.Errorf("model: token-limit selection: %w", err)
-	}
 	if !selection.Configured() {
 		return modelref.TokenLimits{}, false, nil
 	}

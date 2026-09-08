@@ -9,7 +9,6 @@ package schedule
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -59,9 +58,6 @@ type Draft struct {
 // Validate checks user-owned schedule content before workspace resolution or
 // saving begins.
 func (d Draft) Validate() error {
-	if err := d.ModelSelection.Validate(); err != nil {
-		return fmt.Errorf("schedule: model selection: %w", err)
-	}
 	if err := validateInstructions(d.Instructions); err != nil {
 		return err
 	}
@@ -220,9 +216,6 @@ func (s Schedule) Validate() error {
 func (s Schedule) validateProduct() error {
 	if _, err := parseScheduleID(s.id.String()); err != nil {
 		return err
-	}
-	if err := s.modelSelection.Validate(); err != nil {
-		return fmt.Errorf("schedule: model selection: %w", err)
 	}
 	if err := validateInstructions(s.instructions); err != nil {
 		return err

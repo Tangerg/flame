@@ -1,8 +1,6 @@
 package schedule
 
 import (
-	"fmt"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
@@ -49,9 +47,6 @@ func RestoreExecution(snapshot ExecutionSnapshot) (Execution, error) {
 
 // Validate checks the complete captured execution value.
 func (e Execution) Validate() error {
-	if err := e.modelSelection.Validate(); err != nil {
-		return fmt.Errorf("schedule: execution model selection: %w", err)
-	}
 	if err := validateInstructions(e.instructions); err != nil {
 		return err
 	}

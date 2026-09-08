@@ -39,9 +39,6 @@ func (r *roleStore) load(ctx context.Context) (modelref.Role, bool, error) {
 }
 
 func (r *roleStore) save(ctx context.Context, role modelref.Role) error {
-	if err := role.Validate(); err != nil {
-		return fmt.Errorf("sqlite: encode %s: %w", r.label, err)
-	}
 	query := fmt.Sprintf(
 		`INSERT INTO %s (id, provider, model) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET provider = excluded.provider, model = excluded.model`,
 		r.table,

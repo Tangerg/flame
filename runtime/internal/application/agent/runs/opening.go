@@ -237,9 +237,6 @@ func (c *Coordinator) resolveSessionSelection(
 	cmd StartCommand,
 ) (session.Session, *session.Session, modelref.Selection, error) {
 	requested := cmd.ModelSelection
-	if err := requested.Validate(); err != nil {
-		return session.Session{}, nil, modelref.Selection{}, fmt.Errorf("runs: model selection: %w", err)
-	}
 	if requested.Configured() {
 		if err := c.AdmitSelection(requested); err != nil {
 			return session.Session{}, nil, modelref.Selection{}, err

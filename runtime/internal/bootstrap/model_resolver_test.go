@@ -20,9 +20,6 @@ func (r staticTestChatResolver) ResolveChat(
 	_ context.Context,
 	selection modelref.Selection,
 ) (modeladapter.ResolvedChat, error) {
-	if err := selection.Validate(); err != nil {
-		return modeladapter.ResolvedChat{}, err
-	}
 	return modeladapter.NewResolvedChat(r.client, nil)
 }
 

@@ -19,9 +19,6 @@ var ErrUnsupportedReasoningEffort = errors.New("model: unsupported reasoning eff
 // endpoints may expose private models whose capabilities are unavailable
 // locally; their provider remains the execution authority.
 func (Capabilities) AdmitSelection(selection modelref.Selection) error {
-	if err := selection.Validate(); err != nil {
-		return fmt.Errorf("model: selection: %w", err)
-	}
 	effort := selection.ReasoningEffort()
 	if effort == "" {
 		return nil

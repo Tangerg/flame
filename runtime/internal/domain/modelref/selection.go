@@ -92,19 +92,11 @@ func NewWithReasoningEffort(provider, model, reasoningEffort string) (Selection,
 	}, nil
 }
 
-// Validate documents the zero-or-complete invariant at aggregate boundaries.
-// Selection is immutable, so values constructed by New already satisfy it.
-func (s Selection) Validate() error {
-	_, err := NewWithReasoningEffort(s.Provider(), s.Model(), s.ReasoningEffort())
-	return err
-}
-
 // ValidateExact reports whether s names one provider/model pair instead of
-// asking an owning use case to supply its default.
+// asking an owning use case to supply its default. The zero-or-complete
+// invariant itself needs no check here: Selection is immutable and its private
+// identities have one source, so every value is either the default or exact.
 func (s Selection) ValidateExact() error {
-	if err := s.Validate(); err != nil {
-		return err
-	}
 	if !s.Configured() {
 		return errExactSelectionRequired
 	}
