@@ -30,7 +30,6 @@ export function SkillProposalsTab() {
       icon="sparkle"
       title="skillProposals.title"
       sub={t("skillProposals.sub", { count: proposals.length })}
-      scrollClassName="py-1"
     >
       <DataView
         items={proposals}

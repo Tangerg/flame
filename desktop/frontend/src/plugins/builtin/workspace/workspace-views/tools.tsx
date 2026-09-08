@@ -298,12 +298,7 @@ export function ToolsTab() {
   const view = toolCatalogViewModel(data ?? []);
 
   return (
-    <WorkspaceViewLayout
-      icon="tool"
-      title="tools.title"
-      sub={toolCatalogSubtext(t, view)}
-      scrollClassName="py-1"
-    >
+    <WorkspaceViewLayout icon="tool" title="tools.title" sub={toolCatalogSubtext(t, view)}>
       <BuiltinToolsSection />
       <DataView
         items={view.mcpServers}

@@ -4,10 +4,9 @@ import type {
   FileChangesViewModel,
 } from "@/plugins/builtin/workspace/application/fileChangesViewModel";
 import { memo } from "react";
-import { DiffStat, SectionLabel, vocab } from "@/ui";
+import { DiffStat, SectionLabel, toneInk, vocab } from "@/ui";
 import { AgentRow } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/classNames";
 import { splitFilePath } from "@/lib/path";
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 
@@ -58,9 +57,7 @@ const FileRow = memo(function FileRow({
       detail={directory || undefined}
       trailing={
         <span {...stylex.props(vocab.line, vocab.min, typeStep.uiXs)}>
-          <span
-            className={cn(stylex.props(vocab.strong, typeStep.ui2xs).className, row.tag.className)}
-          >
+          <span {...stylex.props(vocab.strong, toneInk[row.tag.tone], typeStep.ui2xs)}>
             {row.tag.letter}
           </span>
           {row.lineStats.kind === "binary" ? (

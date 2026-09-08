@@ -7,7 +7,7 @@ import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { delegatedRunCardModel } from "../application/delegatedRunCardModel";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { face, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { messageStyles } from "./messageStyles";
 
 interface Props {
@@ -19,6 +19,11 @@ interface Props {
   onOpenAudit: () => void;
   children: ReactNode;
 }
+
+/** A delegated run's body clears its own bottom edge; the card above owns the rest. */
+const dr = stylex.create({
+  body: { paddingBottom: space.s2_5 },
+});
 
 export function DelegatedRunDisclosure({
   run,
@@ -39,7 +44,7 @@ export function DelegatedRunDisclosure({
     <AgentActivityDisclosure
       icon="bot"
       shell="card"
-      contentClassName="pb-2.5"
+      contentClassName={stylex.props(dr.body).className}
       label={model.label}
       detail={
         model.detail ? (

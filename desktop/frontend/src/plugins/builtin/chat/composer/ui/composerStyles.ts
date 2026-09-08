@@ -59,7 +59,7 @@ export const composerStyles = stylex.create({
     flexDirection: "column",
     alignItems: "center",
     gap: space.s3,
-    borderRadius: "var(--radius-composer)",
+    borderRadius: "var(--shape-composer)",
     borderWidth: "2px",
     borderStyle: "dashed",
     borderColor: surface.fieldStrong,

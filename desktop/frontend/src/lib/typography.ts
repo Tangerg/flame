@@ -9,8 +9,8 @@ export const UI_FONT_SIZE_DEFAULT_PX = 14;
 export const UI_FONT_SIZE_MIN_PX = 11;
 export const UI_FONT_SIZE_MAX_PX = 18;
 
-/** A runtime list, not only a type: `lib/classNames.ts` must name every step for Tailwind
- *  Merge, and a hand-kept copy there silently stops applying when a step is added here. */
+/** A runtime list, not only a type: `theme/kit/typeLadder` walks it to emit one CSS variable
+ *  per step, so a step added here reaches the stylesheet without a second list to keep. */
 export const UI_TYPE_STEPS = [
   "ui-2xs",
   "ui-xs",

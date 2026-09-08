@@ -20,7 +20,7 @@ export const color = stylex.defineVars({
   fgMuted: "var(--color-text-muted)",
   fgFaint: "var(--color-text-faint)",
   accent: "var(--color-accent)",
-  onAccent: "var(--color-on-accent)",
+  onAccent: "var(--color-text-on-accent)",
   /** The ink that reads on the CTA fill. The fill itself is a surface, not an ink. */
   ctaText: "var(--color-cta-text)",
   onMedia: "var(--color-on-media)",
@@ -51,11 +51,11 @@ export const surface = stylex.defineVars({
   divider: "var(--color-divider)",
   surface3: "var(--color-surface-3)",
   surface: "var(--color-surface)",
-  canvas: "var(--color-canvas)",
+  canvas: "var(--color-bg)",
   floating: "var(--app-floating-surface)",
   scrim: "var(--color-scrim)",
   /** Row states are an ink wash whose strength tracks `--depth-step`, not a surface step. */
-  hover: "var(--color-hover)",
+  hover: "var(--wash-hover)",
   ctaFill: "var(--color-cta)",
   ctaHover: "var(--color-cta-hover)",
   mediaScrim: "var(--color-media-scrim)",
@@ -66,13 +66,13 @@ export const surface = stylex.defineVars({
   successWash: "var(--color-success-wash)",
   warningWash: "var(--color-warning-wash)",
   joinSeam: "var(--button-join-seam)",
-  selected: "var(--color-selected)",
+  selected: "var(--wash-selected)",
   lineSoft: "var(--color-line-soft)",
   mediaField: "var(--color-media-preview)",
   /** The app's card plane, and the hairline a fill-less surface uses instead of it. */
   card: "var(--app-card-surface)",
-  field: "var(--color-field)",
-  fieldStrong: "var(--color-field-strong)",
+  field: "var(--color-border)",
+  fieldStrong: "var(--color-border-soft)",
   /** A badge's wash: 18% of the hue over whatever is behind it. Stronger than the row wash
    *  above, because a badge has to hold its own shape rather than tint a row. */
   accentBadge: "var(--color-accent-badge)",
@@ -84,13 +84,13 @@ export const surface = stylex.defineVars({
 
 /** Corner steps, each already carrying the style scale and the superellipse compensation. */
 export const radius = stylex.defineVars({
-  step2xs: "var(--radius-2xs)",
-  xs: "var(--radius-xs)",
+  step2xs: "var(--shape-2xs)",
+  xs: "var(--shape-xs)",
   /** Corners named for the plane they belong to: a card and a transcript bubble differ. */
   card: "var(--surface-card-radius)",
-  bubble: "var(--radius-bubble)",
-  sm: "var(--radius-sm)",
-  lg: "var(--radius-lg)",
+  bubble: "var(--shape-bubble)",
+  sm: "var(--shape-sm)",
+  lg: "var(--shape-lg)",
   /** Corners a control owns, which the visual style may move independently of the ladder. */
   field: "var(--field-radius)",
   segmented: "var(--segmented-radius)",
@@ -99,8 +99,8 @@ export const radius = stylex.defineVars({
   button: "var(--button-radius)",
   floatingPanel: "var(--floating-panel-radius)",
   floatingTip: "var(--floating-tip-radius)",
-  composer: "var(--radius-composer)",
-  xl: "var(--radius-xl)",
+  composer: "var(--shape-composer)",
+  xl: "var(--shape-xl)",
 });
 
 /**
@@ -183,33 +183,33 @@ export const leading = stylex.defineVars({
  * because they were never two decisions.
  */
 export const corner = stylex.create({
-  pill: { borderRadius: "var(--radius-pill)", "corner-shape": "round" },
+  pill: { borderRadius: "var(--shape-pill)", "corner-shape": "round" },
 });
 
 export const type = stylex.create({
-  ui2xs: { fontSize: "var(--text-ui-2xs)", letterSpacing: "var(--text-ui-2xs--letter-spacing)" },
-  uiXs: { fontSize: "var(--text-ui-xs)", letterSpacing: "var(--text-ui-xs--letter-spacing)" },
-  uiSm: { fontSize: "var(--text-ui-sm)", letterSpacing: "var(--text-ui-sm--letter-spacing)" },
-  uiMd: { fontSize: "var(--text-ui-md)", letterSpacing: "var(--text-ui-md--letter-spacing)" },
+  ui2xs: { fontSize: "var(--fs-ui-2xs)", letterSpacing: "var(--text-ui-2xs--letter-spacing)" },
+  uiXs: { fontSize: "var(--fs-ui-xs)", letterSpacing: "var(--tracking-ui)" },
+  uiSm: { fontSize: "var(--fs-ui-sm)", letterSpacing: "var(--tracking-ui)" },
+  uiMd: { fontSize: "var(--fs-ui-md)", letterSpacing: "var(--tracking-ui)" },
   // A display step carries THREE halves, not one: `md` and `lg` bring their own leading
   // because a heading's line box is tighter than the body's. Six call sites had copied only
   // the size, which at the largest font size left a 26px heading on the transcript's leading.
   displaySm: {
-    fontSize: "var(--text-display-sm)",
-    letterSpacing: "var(--text-display-sm--letter-spacing)",
+    fontSize: "var(--fs-display-sm)",
+    letterSpacing: "var(--tracking-ui)",
   },
   displayMd: {
-    fontSize: "var(--text-display-md)",
-    letterSpacing: "var(--text-display-md--letter-spacing)",
+    fontSize: "var(--fs-display-md)",
+    letterSpacing: "var(--tracking-display)",
     lineHeight: "var(--text-display-md--line-height)",
   },
   displayLg: {
-    fontSize: "var(--text-display-lg)",
-    letterSpacing: "var(--text-display-lg--letter-spacing)",
+    fontSize: "var(--fs-display-lg)",
+    letterSpacing: "var(--tracking-display)",
     lineHeight: "var(--text-display-lg--line-height)",
   },
-  code: { fontSize: "var(--text-code)", letterSpacing: "var(--text-code--letter-spacing)" },
-  prose: { fontSize: "var(--text-prose)", letterSpacing: "var(--text-prose--letter-spacing)" },
+  code: { fontSize: "var(--fs-code)", letterSpacing: "var(--text-code--letter-spacing)" },
+  prose: { fontSize: "var(--fs-prose)", letterSpacing: "var(--tracking-ui)" },
 });
 
 /**

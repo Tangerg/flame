@@ -16,29 +16,26 @@
   src: url("/fonts/jetbrains-mono.woff2") format("woff2-variations");
 }
 
-@custom-variant dark (&:where(.theme-dark, .theme-dark *));
-@custom-variant light (&:where(.theme-light, .theme-light *));
-
 /* An image needs its own edge or a light photo dissolves into a light surface. The colour
    is PURE, never the theme's ink: neutrals here are tinted proportionally to the accent
    (21% saturation on Tokyo Night), and a tinted outline picks up that hue as a dirty rim. */
-@utility media-edge {
+.media-edge {
   outline: 1px solid var(--color-media-edge);
   outline-offset: -1px;
 }
 
 /* For media sitting on the scrim, which is near-black in BOTH schemes — the scheme's own
    edge would be black on black in light mode, which is no edge at all. */
-@utility media-edge-on-scrim {
+.media-edge-on-scrim {
   outline: 1px solid rgb(255 255 255 / 0.1);
   outline-offset: -1px;
 }
 
-/* NOT `@theme inline`, unlike everything below. `inline` compiles a token's value into the
-   utilities that use it, so `font-mono` would emit the literal stack and Settings → Font could
-   only ever reach text that inherits from `html` — every button, chip, code block and path
-   carrying the utility kept the bundled face. */
-@theme {
+/* The two faces. They were in a `@theme` block that deliberately was NOT `inline`, because
+   `inline` compiles a token's value into the utilities that use it and `font-mono` would then
+   emit the literal stack — Settings → Font could only ever have reached text inheriting from
+   `html`. With no utilities left to compile into, that distinction has nothing to protect. */
+:root {
   --font-sans:
     "Geist", -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB",
     system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
@@ -47,59 +44,24 @@
     monospace;
 }
 
-@theme inline {
-  /* Tailwind's own defaults are 150ms and `cubic-bezier(0.4, 0, 0.2, 1)`, neither of which is
-     this design's. `--dur-fast` is the same 150ms, so nothing changes speed — but it carries
-     `--motion-scale`, the four-step Appearance setting, which every utility transition had been
-     deaf to: at "Fast" a migrated control faded in 90ms beside an unmigrated one still taking
-     150. The easing was simply a second curve nobody chose. */
-  --default-transition-duration: var(--dur-fast);
-  --default-transition-timing-function: var(--ease-out);
-
-  --color-canvas: var(--color-bg);
-  --color-surface: var(--color-surface);
-  --color-surface-2: var(--color-surface-2);
-  --color-surface-3: var(--color-surface-3);
-  --color-card: var(--app-card-surface);
-  --color-user-message: var(--app-user-message-surface);
-  --color-sunken: var(--color-sunken);
-
-  --color-fg: var(--color-text);
-  --color-fg-soft: var(--color-text-soft);
-  --color-fg-muted: var(--color-text-muted);
-  --color-fg-faint: var(--color-text-faint);
-  --color-on-accent: var(--color-text-on-accent);
-
-  --color-accent: var(--color-accent);
-
-  --color-negative: var(--color-negative);
-  --color-warning: var(--color-warning);
-  --color-info: var(--color-info);
-  --color-success: var(--color-success);
-
-  --color-cta: var(--color-cta);
-  --color-cta-hover: var(--color-cta-hover);
-  --color-cta-text: var(--color-cta-text);
-
+/*
+ * The values the theme block used to hold, as plain custom properties.
+ *
+ * Eighty-nine declarations lived there and sixty-eight were a bare alias of another variable —
+ * a second name for a fact that already had one, existing only because Tailwind requires its
+ * theme keys spelled `--color-*`, `--text-*`, `--radius-*`. Twelve more were read by nothing at
+ * all: they were there so a utility could be generated from them.
+ *
+ * What is left carries a value: the washes and badges mixed from a tone, the two type steps
+ * whose tracking is zero rather than the UI default, the display steps that bring their own
+ * leading, and the animation shorthands that keep `--motion-scale` inside them.
+ *
+ * The names those aliases invented are not lost — they are in `tokens.stylex.ts`, which is where
+ * a component names a decision. What is gone is the second COPY of each value.
+ */
+:root {
   --color-line: transparent;
   --color-line-soft: transparent;
-  --color-divider: var(--color-divider);
-
-  --color-scrim: var(--color-scrim);
-
-  --color-media-scrim: var(--color-media-scrim);
-  --color-media-preview: var(--color-media-preview);
-  --color-media-canvas: var(--color-media-canvas);
-  --color-on-media: var(--color-on-media);
-
-  --color-media-edge: var(--color-media-edge);
-
-  --color-field: var(--color-border);
-  --color-field-strong: var(--color-border-soft);
-
-  --color-hover: var(--wash-hover);
-  --color-selected: var(--wash-selected);
-
   --color-negative-wash: color-mix(in srgb, var(--tone-negative) 10%, transparent);
   --color-warning-wash: color-mix(in srgb, var(--tone-warning) 10%, transparent);
   --color-success-wash: color-mix(in srgb, var(--tone-success) 10%, transparent);
@@ -111,52 +73,10 @@
   --color-info-badge: color-mix(in srgb, var(--tone-info) 18%, transparent);
   --color-accent-badge: color-mix(in srgb, var(--tone-accent) 18%, transparent);
   --color-negative-edge: color-mix(in srgb, var(--tone-negative) 38%, transparent);
-
-  --text-ui-2xs: var(--fs-ui-2xs);
   --text-ui-2xs--letter-spacing: 0;
-  --text-ui-xs: var(--fs-ui-xs);
-  --text-ui-xs--letter-spacing: var(--tracking-ui);
-  --text-ui-sm: var(--fs-ui-sm);
-  --text-ui-sm--letter-spacing: var(--tracking-ui);
-  --text-ui-md: var(--fs-ui-md);
-  --text-ui-md--letter-spacing: var(--tracking-ui);
-  --text-prose: var(--fs-prose);
-  --text-prose--letter-spacing: var(--tracking-ui);
-  --text-code: var(--fs-code);
   --text-code--letter-spacing: 0;
-
-  --text-display-sm: var(--fs-display-sm);
-  --text-display-sm--letter-spacing: var(--tracking-ui);
-  --text-display-md: var(--fs-display-md);
-  --text-display-md--letter-spacing: var(--tracking-display);
   --text-display-md--line-height: 1.2;
-  --text-display-lg: var(--fs-display-lg);
-  --text-display-lg--letter-spacing: var(--tracking-display);
   --text-display-lg--line-height: 1.15;
-
-  --tracking-ui: var(--tracking-ui);
-  --tracking-display: var(--tracking-display);
-
-  --leading-tight: var(--leading-tight);
-  --leading-snug: var(--leading-snug);
-  --leading-body: var(--leading-body);
-  --leading-relaxed: var(--leading-relaxed);
-  --leading-prose: var(--leading-prose);
-
-  --font-weight-normal: var(--fw-regular);
-  --font-weight-medium: var(--fw-medium);
-  --font-weight-semibold: var(--fw-semibold);
-
-  --radius-2xs: var(--shape-2xs);
-  --radius-xs: var(--shape-xs);
-  --radius-sm: var(--shape-sm);
-  --radius-md: var(--shape-md);
-  --radius-lg: var(--shape-lg);
-  --radius-xl: var(--shape-xl);
-  --radius-composer: var(--shape-composer);
-  --radius-bubble: var(--shape-bubble);
-  --radius-pill: var(--shape-pill);
-
   --animate-sweep: flame-sweep calc(1300ms * var(--motion-scale)) linear infinite;
   --animate-shimmer: flame-shimmer calc(4000ms * var(--motion-scale)) linear infinite;
   --animate-pulse-dot: flame-pulse calc(1600ms * var(--motion-scale)) ease-in-out infinite;

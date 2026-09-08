@@ -221,7 +221,6 @@ export function TimelineTab() {
       icon="history"
       title="timeline.title"
       sub={timelineSubtext(t, view)}
-      scrollClassName="py-1"
       actions={
         <IconButton
           icon="chat"

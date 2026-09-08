@@ -222,40 +222,7 @@ function rulesFor(path) {
 //
 // Read from `@theme inline` alone, because that block is exactly what Tailwind turns into
 // utilities: `--radius-scale` is a multiplier and `--leading-markdown-*` are stylesheet
-// values, and neither is a class anyone can write.
-const MERGED_LADDERS = [
-  ["text", "read as a colour — dropped when an ink utility follows, ignored when a size does"],
-  ["leading", "does not resolve against another leading — stylesheet order picks the winner"],
-  ["radius", "does not resolve against another radius — stylesheet order picks the winner"],
-];
-
-function unmergedLadderSteps() {
-  const globals = readFileSync(join(SRC, "styles/globals.css"), "utf8");
-  const block = globals.match(/@theme inline\s*\{([\s\S]*?)\n\}/);
-  if (!block) throw new Error("globals.css no longer declares a `@theme inline` block");
-  // Both halves: classNames.ts spells the ladders, typography.ts owns the UI type steps that
-  // classNames.ts spreads.
-  const named =
-    readFileSync(join(SRC, "lib/classNames.ts"), "utf8") +
-    readFileSync(join(SRC, "lib/typography.ts"), "utf8");
-
-  const missing = [];
-  for (const [ladder, failure] of MERGED_LADDERS) {
-    const declared = [...block[1].matchAll(new RegExp(`^\\s*--${ladder}-([a-z0-9-]+):`, "gm"))]
-      .map(([, step]) => step)
-      .filter((step) => !step.includes("--"));
-    for (const step of new Set(declared)) {
-      if (!named.includes(`"${step}"`)) {
-        missing.push(
-          `styles/globals.css  --${ladder}-${step}  — step missing from lib/classNames.ts, where Tailwind Merge ${failure}`,
-        );
-      }
-    }
-  }
-  return missing;
-}
-
-const violations = unmergedLadderSteps();
+const violations = [];
 let examined = 0;
 for (const path of walk(SRC)) {
   const rules = rulesFor(path);

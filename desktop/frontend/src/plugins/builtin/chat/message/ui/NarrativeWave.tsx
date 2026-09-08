@@ -29,7 +29,7 @@ export function NarrativeWave({ units, facts, ctx, renderUnit }: Props) {
   return (
     <AgentActivityDisclosure
       shell="line"
-      contentClassName="py-1.5"
+      contentInset="rows"
       icon={waveGlyph(units, facts.toolCalls) ?? "sparkle"}
       label={summary || steps}
       trailing={summary ? steps : undefined}

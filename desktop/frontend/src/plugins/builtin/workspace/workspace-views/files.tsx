@@ -34,7 +34,12 @@ export function FilesView() {
   const notARepo = isVcsUnavailable(error);
 
   return (
-    <WorkspaceViewLayout icon="filetext" title="files.title" sub={fileChangesSubtext(t, view)}>
+    <WorkspaceViewLayout
+      scrollInset="flush"
+      icon="filetext"
+      title="files.title"
+      sub={fileChangesSubtext(t, view)}
+    >
       <DataView
         items={gitEnabled ? items : []}
         isLoading={isLoading || workspace.status === "resolving"}

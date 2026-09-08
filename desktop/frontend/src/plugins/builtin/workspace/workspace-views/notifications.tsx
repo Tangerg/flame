@@ -24,7 +24,6 @@ export function NotificationsTab() {
       icon="chat"
       title="notifications.title"
       sub={notificationsSubtext(t, view)}
-      scrollClassName="py-1"
       actions={
         <IconButton icon="x" iconSize="sm" title={t("notifications.clearAll")} onClick={clearAll} />
       }

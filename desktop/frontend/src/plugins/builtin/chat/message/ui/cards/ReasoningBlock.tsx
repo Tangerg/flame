@@ -5,13 +5,23 @@ import { MarkdownMessage } from "../markdown/MarkdownMessage";
 import { Icon, Loader, vocab } from "@/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
-import { face, space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { messageStyles as ms } from "../messageStyles";
 
 const FADE = "24px";
 
 const rb = stylex.create({
   note: { marginTop: space.s1 },
+  /** The reasoning reads as an aside: indented past the glyph, with a rule marking its extent. */
+  aside: {
+    marginLeft: space.s5,
+    borderLeftWidth: "1px",
+    borderLeftStyle: "solid",
+    borderLeftColor: surface.field,
+    paddingTop: space.s0_5,
+    paddingBottom: space.s1_5,
+    paddingLeft: space.s6,
+  },
   scroller: { position: "relative", overflow: "hidden", paddingRight: space.s2 },
   /** While it streams, the reasoning is a window onto a growing text rather than the whole of it. */
   windowed: { maxHeight: "calc(var(--spacing) * 48)", overflowY: "auto" },
@@ -107,7 +117,7 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
       toggleLabel={label}
       open={isOpen}
       onToggle={toggle}
-      contentClassName="ml-5 border-l border-field pt-0.5 pb-1.5 pl-6"
+      contentClassName={stylex.props(rb.aside).className}
     >
       <div
         ref={scrollRef}

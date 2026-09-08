@@ -21,7 +21,6 @@ export function AgentDocsTab() {
       icon="book"
       title="agentDocs.title"
       sub={t("agentDocs.found", { count: view.count })}
-      scrollClassName="py-1"
     >
       <DataView
         items={view.rows}

@@ -64,7 +64,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
       // the row is opened, and colouring the identity glyph turns a failure or a refusal
       // back into a status card.
       shell="line"
-      contentClassName="py-1.5"
+      contentInset="rows"
       label={<ToolText value={model.intent.label} className={stylex.props(tc.full).className} />}
       detail={
         model.detail ? (

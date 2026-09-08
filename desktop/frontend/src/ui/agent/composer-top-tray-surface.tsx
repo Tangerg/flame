@@ -26,8 +26,8 @@ const styles = stylex.create({
     // events at the composer's edge.
     overflow: "clip",
     // The composer's own corner, so the two read as one surface where they meet.
-    borderTopLeftRadius: "var(--radius-composer)",
-    borderTopRightRadius: "var(--radius-composer)",
+    borderTopLeftRadius: "var(--shape-composer)",
+    borderTopRightRadius: "var(--shape-composer)",
   },
 });
 

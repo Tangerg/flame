@@ -20,7 +20,7 @@ const tr = stylex.create({
   tickLead: { backgroundColor: color.fg },
   // The turns behind the one being read recede rather than disappear: the rail is a map, and a
   // map with only your own position on it says nothing about the distance.
-  tickRest: { backgroundColor: "color-mix(in oklab, var(--color-fg-faint) 55%, transparent)" },
+  tickRest: { backgroundColor: "color-mix(in oklab, var(--color-text-faint) 55%, transparent)" },
   // The rail hangs beside the transcript and is only as wide as its ticks.
   rail: {
     display: "flex",

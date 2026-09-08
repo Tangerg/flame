@@ -23,7 +23,6 @@ export function SkillsTab() {
       icon="sparkle"
       title="skills.title"
       sub={view.enabled ? t("skills.available", { count: view.count }) : t("skills.off")}
-      scrollClassName="py-1"
     >
       <DataView
         items={view.rows}

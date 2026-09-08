@@ -6,7 +6,7 @@ import { cn } from "@/lib/classNames";
 const styles = stylex.create({
   surface: {
     overflow: "hidden",
-    borderRadius: "var(--radius-composer)",
+    borderRadius: "var(--shape-composer)",
     transitionProperty: "box-shadow",
     transitionDuration: motion.med,
     transitionTimingFunction: "var(--ease-out)",

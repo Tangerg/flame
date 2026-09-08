@@ -35,19 +35,19 @@ describe("fileChangesViewModel", () => {
         {
           path: "src/new.ts",
           active: false,
-          tag: { className: "text-success", letter: "A" },
+          tag: { tone: "success", letter: "A" },
           lineStats: { kind: "text", added: 10, removed: 0 },
         },
         {
           path: "src/old.ts",
           active: false,
-          tag: { className: "text-negative", letter: "D" },
+          tag: { tone: "negative", letter: "D" },
           lineStats: { kind: "text", added: 0, removed: 4 },
         },
         {
           path: "src/app.ts",
           active: true,
-          tag: { className: "text-warning", letter: "M" },
+          tag: { tone: "warning", letter: "M" },
           lineStats: { kind: "text", added: 3, removed: 2 },
         },
       ],

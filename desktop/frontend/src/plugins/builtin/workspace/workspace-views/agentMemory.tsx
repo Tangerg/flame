@@ -279,7 +279,7 @@ export function AgentMemoryTab() {
 
   if (!available) {
     return (
-      <WorkspaceViewLayout icon="book" title="agentMemory.title" scrollClassName="py-1">
+      <WorkspaceViewLayout icon="book" title="agentMemory.title">
         <EmptyState
           icon="book"
           title={t("agentMemory.unavailable.title")}
@@ -294,7 +294,6 @@ export function AgentMemoryTab() {
       icon="book"
       title="agentMemory.title"
       sub={t("agentMemory.sub", { pending: pending.length, active: active.length })}
-      scrollClassName="py-1"
     >
       <ScopeToggle scope={scope} onChange={setScope} />
       {enabled && <AddMemory scope={scope} cwd={cwd} />}

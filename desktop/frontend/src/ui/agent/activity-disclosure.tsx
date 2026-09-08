@@ -141,6 +141,7 @@ const styles = stylex.create({
   // through. A default that a third of its callers disagree with is not a default.
   bodyLine: { paddingRight: 0 },
   bodyCard: { paddingInline: space.s3 },
+  bodyRows: { paddingBlock: space.s1_5 },
 });
 
 const TRAY_TONE = {
@@ -163,6 +164,9 @@ type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "child
     tone?: ActivityTone;
     shell: ActivityShell;
     children: ReactNode;
+    /** The standing inset for a disclosure whose body is a list of rows. Three call sites
+     *  spelled the same `py-1.5`; the other nine want none, so it stays opt-in. */
+    contentInset?: "rows";
     contentClassName?: string;
   };
 
@@ -182,6 +186,7 @@ export function AgentActivityDisclosure({
   shell,
   children,
   className,
+  contentInset,
   contentClassName,
   ...props
 }: AgentActivityDisclosureProps) {
@@ -288,7 +293,10 @@ export function AgentActivityDisclosure({
           role="region"
           aria-labelledby={triggerId}
           className={cn(
-            stylex.props(line ? styles.bodyLine : styles.bodyCard).className,
+            stylex.props(
+              line ? styles.bodyLine : styles.bodyCard,
+              contentInset === "rows" && styles.bodyRows,
+            ).className,
             contentClassName,
           )}
         >

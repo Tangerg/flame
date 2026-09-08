@@ -97,7 +97,6 @@
     "shiki": "^4.4.3",
     "sonner": "^2.0.8",
     "streamdown": "^2.6.0",
-    "tailwind-merge": "^3.6.0",
     "tinykeys": "^4.0.0",
     "unist-util-visit": "^5.1.0",
     "use-stick-to-bottom": "^1.1.6",

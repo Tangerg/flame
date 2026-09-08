@@ -1486,6 +1486,24 @@ test("the reasoning window fades the edge it actually clips", async ({ page }) =
     });
 
   const atTop = await readFade();
+  // The reasoning is an aside, not a card: indented past the glyph, with a rule down its left
+  // marking how far it runs. Two unit assertions used to say this by naming `border-l` and
+  // `pl-6`; what they meant is measurable.
+  const aside = await page.evaluate(() => {
+    const body = document.querySelector<HTMLElement>('[role="region"]');
+    if (!body) return null;
+    const cs = getComputedStyle(body);
+    return {
+      leftBorder: parseFloat(cs.borderLeftWidth),
+      leftInset: parseFloat(cs.paddingLeft) + parseFloat(cs.marginLeft),
+      hasFill: cs.backgroundColor !== "rgba(0, 0, 0, 0)" && cs.backgroundColor !== "transparent",
+    };
+  });
+  expect(aside?.leftBorder).toBeGreaterThan(0);
+  expect(aside?.leftInset).toBeGreaterThan(20);
+  // A card would fill; an aside does not.
+  expect(aside?.hasFill).toBe(false);
+
   expect(atTop.overflowing).toBe(true);
   expect(atTop.masked).toBe(true);
   expect(atTop.overlays).toBe(0);

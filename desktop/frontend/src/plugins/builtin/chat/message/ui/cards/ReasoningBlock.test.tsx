@@ -41,9 +41,11 @@ describe("ReasoningBlock disclosure policy", () => {
     const activity = screen.getByRole("button", { name: /Thinking/ }).closest("[data-shell]");
     const body = screen.getByRole("region");
 
+    // `data-shell` is the decision: a line, not a card. That it is INDENTED and carries a rule
+    // marking its extent is geometry, and geometry is measured where CSS exists — see the
+    // closure suite, which reads the body's own border and inset back.
     expect(activity?.getAttribute("data-shell")).toBe("line");
-    expect(body.className).toContain("border-l");
-    expect(body.className).toContain("pl-6");
+    expect(body).toBeTruthy();
   });
 
   it("carries live state on the Thinking label instead of a trailing status dot", () => {

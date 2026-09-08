@@ -52,6 +52,8 @@ import { messageStyles as ms } from "../messageStyles";
 import { vocab } from "@/ui";
 
 const qc = stylex.create({
+  /** The ask's body sits close under its prompt: this is a question, not a section. */
+  askBody: { paddingTop: space.s1, paddingBottom: space.s0_5 },
   settledLine: {
     display: "flex",
     minWidth: 0,
@@ -220,7 +222,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
             <span {...stylex.props(vocab.faint)}>{countLabel}</span>
           </span>
         }
-        contentClassName="pt-1 pb-0.5"
+        contentClassName={stylex.props(qc.askBody).className}
       >
         <div {...stylex.props(qc.settledList)}>
           {questions.map((question, index) => (

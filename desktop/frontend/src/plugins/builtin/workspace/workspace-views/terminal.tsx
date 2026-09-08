@@ -47,6 +47,7 @@ export function TerminalWorkspaceSurface() {
 
   return (
     <WorkspaceViewLayout
+      scrollInset="flush"
       titleFace="mono"
       icon="terminal"
       title="terminal.title"

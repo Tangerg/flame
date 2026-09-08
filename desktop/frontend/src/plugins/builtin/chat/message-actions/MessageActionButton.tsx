@@ -8,7 +8,7 @@ import { IconButton, type IconName, type ButtonTone } from "@/ui";
 // value is preserved exactly rather than quietly normalised to the button's own corner, and
 // left undressed rather than borrowed from `radius.card`, which would name it a card.
 const styles = stylex.create({
-  assistantCorner: { borderRadius: "var(--radius-md)" },
+  assistantCorner: { borderRadius: "var(--shape-md)" },
 });
 
 interface MessageActionButtonProps {

@@ -31,6 +31,9 @@ import { useElapsedMillis } from "./useElapsedMillis";
 import { space } from "@/styles/tokens.stylex";
 
 const ms = stylex.create({
+  /** The transcript's scrollport: it takes the pane and stops its own overscroll from
+   *  reaching the window, which on a webview is what makes the whole app rubber-band. */
+  viewport: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
   dayPad: { paddingBlock: space.s1 },
   content: { position: "relative", display: "flex", flexDirection: "column", paddingTop: space.s8 },
   working: { marginTop: space.s4, display: "flex" },
@@ -212,7 +215,12 @@ export function MessageStream({ rows, ctx, sessionId, controllerRef }: Props) {
       resize="instant"
     >
       <StickToBottom.Content
-        scrollClassName="panel-scroll msg-scroll-viewport min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        scrollClassName={cn(
+          // Two mechanism keys `globals.css` owns: the scrollbar's look, and the viewport the
+          // transcript measures its own scroll against.
+          "panel-scroll msg-scroll-viewport",
+          stylex.props(ms.viewport).className,
+        )}
         className={stylex.props(rc.box, rc.clearance, ms.content).className}
       >
         <AnimatePresence initial={false}>

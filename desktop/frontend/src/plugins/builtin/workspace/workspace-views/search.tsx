@@ -32,7 +32,6 @@ export function SearchTab() {
       icon="search"
       title="search.title"
       sub={workspaceSearchSubtext(t, view) ?? t("search.noMatches")}
-      scrollClassName="py-1"
     >
       <div {...stylex.props(vs.gutter, vs.statusPad)}>
         <SearchField

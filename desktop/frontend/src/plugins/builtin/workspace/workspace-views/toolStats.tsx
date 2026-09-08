@@ -26,7 +26,6 @@ export function ToolStatsTab() {
             })
           : undefined
       }
-      scrollClassName="py-1"
     >
       {summary.rows.length === 0 ? (
         <EmptyState

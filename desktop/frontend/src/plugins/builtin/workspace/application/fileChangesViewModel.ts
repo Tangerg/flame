@@ -1,9 +1,18 @@
+import type { Tone } from "@/lib/tone";
 import type { Translate } from "@/lib/i18n";
 import type { WorkspaceFileChange } from "./workspaceQueries";
 
 interface FileChangeTag {
   letter: "A" | "D" | "M";
-  className: string;
+  /**
+   * What the change MEANS, never what colour it is.
+   *
+   * This was a Tailwind class name — `"text-warning"` — decided in an application model, which
+   * is both a layer violation and a silent one: the moment the theme stopped generating that
+   * utility the badge simply lost its colour, and nothing said so. `toneInk` in the design
+   * system is the one place a tone becomes ink.
+   */
+  tone: Tone;
 }
 
 type FileChangeLineStats = { kind: "binary" } | { kind: "text"; added: number; removed: number };
@@ -24,9 +33,9 @@ export interface FileChangesViewModel {
 }
 
 const TAG_BY_CHANGE: Record<WorkspaceFileChange["change"], FileChangeTag> = {
-  add: { className: "text-success", letter: "A" },
-  del: { className: "text-negative", letter: "D" },
-  mod: { className: "text-warning", letter: "M" },
+  add: { tone: "success", letter: "A" },
+  del: { tone: "negative", letter: "D" },
+  mod: { tone: "warning", letter: "M" },
 };
 
 export function fileChangesViewModel(

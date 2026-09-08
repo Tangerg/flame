@@ -24,7 +24,6 @@ export function SkillLibraryTab() {
       icon="sparkle"
       title="skillLibrary.title"
       sub={t("skillLibrary.sub", { active: activeCount, archived: skills.length - activeCount })}
-      scrollClassName="py-1"
     >
       <DataView
         items={skills}

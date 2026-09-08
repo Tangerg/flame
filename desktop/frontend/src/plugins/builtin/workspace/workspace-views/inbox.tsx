@@ -19,6 +19,7 @@ export function InboxTab() {
 
   return (
     <WorkspaceViewLayout
+      scrollInset="flush"
       icon="bell"
       title="inbox.title"
       sub={items.length > 0 ? t("inbox.waiting", { count: items.length }) : undefined}

@@ -21,7 +21,6 @@ export function RecipesTab() {
       icon="command"
       title="recipes.title"
       sub={t("recipes.available", { count: view.count })}
-      scrollClassName="py-1"
     >
       <DataView
         items={view.rows}

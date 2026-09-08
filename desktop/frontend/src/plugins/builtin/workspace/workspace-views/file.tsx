@@ -38,6 +38,7 @@ export function FileViewTab() {
 
   return (
     <WorkspaceViewLayout
+      scrollInset="flush"
       titleFace="mono"
       icon="filetext"
       title={viewer?.path || t("file.empty.title")}

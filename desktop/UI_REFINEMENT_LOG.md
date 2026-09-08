@@ -10386,3 +10386,97 @@ golden 记录的是它输的那个样子，所以正确的处理是**删掉这�
 Tailwind 拆除的第 ① 层完成。剩下 ②–⑥ 层：`@theme inline` 的 115 行别名、
 `@utility` / `@custom-variant`、Tailwind 自己的 6 个 theme 默认值（`--spacing` 占 89 处）、
 `cn` 里的 `tailwind-merge`、Vite 插件与 devDep。
+
+## Round 167 — 第 ②③⑤ 层：89 个声明里 68 个是别名
+
+### `@theme inline` 的 89 行，逐条分类
+
+| | 条数 | 处理 |
+| --- | --- | --- |
+| **自引用**（`--color-accent: var(--color-accent)`） | 26 | 直接删 —— 主题作用域里已有真值，这行只是把名字注册进 Tailwind |
+| **真正的改名**（`--color-fg → --color-text`、`--radius-lg → --shape-lg`） | 42 | 消费方改指底层名，然后删 |
+| 有真实值（wash / badge / 动画简写 / 两档零字距） | 21 | 搬进普通 `:root` |
+| 谁都没读过 | 12 | 只为生成 utility 而存在 |
+
+**68 个是另一个变量的裸别名** —— 一个已经有名字的事实，第二个名字，
+存在的唯一理由是 Tailwind 要求它的 theme 键必须拼成 `--color-*` / `--text-*` / `--radius-*`。
+
+那些别名发明的名字**没有丢** —— 它们在 `tokens.stylex.ts` 里，
+那才是组件给决定命名的地方。丢掉的是每个值的**第二份拷贝**。
+
+39 处读取改指了底层名，`@theme` / `@theme inline` 两个块都没了。
+
+### 第 ③ 层顺手
+
+`@utility media-edge` / `media-edge-on-scrim` 是 Tailwind 的注册语法，改成普通类规则。
+两条 `@custom-variant dark/light` —— **一个使用者都没有**，删。
+
+### 第 ⑤ 层：`cn` 不再消解冲突，因为没有冲突可消
+
+`cn = twMerge(clsx(...))`，而 `extendTailwindMerge` 配的三条阶梯和一条 override
+**全部是关于 utility class 之间谁压过谁**。utility 清零之后，到这里的每个字符串
+要么是 StyleX 已经合并过的类列表，要么是 `globals.css` 拥有的机制键 —— 没有可消解的。
+
+那份配置值得记下来而不只是删掉，因为每一行当年都是一个静默 bug：
+Tailwind Merge 把 `text-ui-md` 读成**颜色**、丢掉旁边的墨色；
+它假设字号 utility 自带行高（我们的不带），于是每个按钮的 `leading-tight` 被丢掉；
+没注册的档不跟任何东西冲突，`cn("leading-body", "leading-prose")` 两个都留、
+让样式表顺序决定。这些都写进了 `cn` 的注释。
+
+`tailwind-merge` 依赖去掉；`check-design-tokens` 里那段守着这三条阶梯的检查也去掉 ——
+它守的机制已经不存在了。
+
+### 我的扫描器第五次漏了一种形态
+
+`check:utilities` 报 `ReasoningBlock.tsx:110` 的 `border-field` 没有规则 ——
+它在 **`contentClassName`** 里。我的扫描器只认 `className` 和 `cn(`。
+
+全查一遍：`contentClassName` / `scrollClassName` 底下还有 **20 条**。
+
+其中 **`scrollClassName="py-1"` 出现 14 次**（21 个视图里的 14 个）——
+又是「所有调用处都在传同一个值」。改成 `scrollInset?: "rows" | "flush"`，
+默认 `rows`；剩下 7 个（文件、终端、树 —— 内容自带内缩）写 `flush`。
+
+`contentClassName="py-1.5"` 3 次，而 15 个调用处里 9 个什么都不传 ——
+所以它不能当默认，但 3 次正好是仓库自己那条「3+ 才抽象」的线，
+于是成了 `contentInset?: "rows"`，opt-in。
+
+### 第六个盲区：class 串藏在应用层模型里
+
+`dock-files` 的两个变更徽标掉了颜色。查下去：
+
+```ts
+// fileChangesViewModel.ts —— 应用层
+add: { className: "text-success", letter: "A" },
+del: { className: "text-negative", letter: "D" },
+mod: { className: "text-warning", letter: "M" },
+```
+
+**一个 Tailwind 类名，在应用层的视图模型里决定的。** 我的扫描器只看 `.tsx` 的
+`className` / `cn(`，这在 `.ts` 里、还是个对象字段，六个入口一个都没覆盖到。
+
+而 `toneInk` 的文档里就写着这个缺陷：
+
+> five call sites had each written their own `Record<…, string>` of `"text-negative"` and
+> friends, **which is how one of them ended up mapping a domain word straight onto a
+> utility class**.
+
+这就是第六处，一直还在。**而它现在是死的** —— `--color-warning` 从 theme 块里删掉之后，
+`text-warning` 不再生成，徽标就悄悄失色了，没有任何东西报错。
+
+治本：模型发出的是 `Tone`（领域词），视图用 `toneInk` 把它变成墨色。
+既修好了颜色，也把「UI 类名出现在应用层」这个层级违规去掉了。
+
+顺手全仓扫了一遍 `.ts` 里的 class 串 —— **只有这一处**。
+
+### 我在这一波里自己造了一个 bug
+
+`contentInset` 我写成了直接塞进 `cn()`：
+
+```jsx
+className={cn(stylex.props(…).className, contentInset, contentClassName)}
+```
+
+`contentInset` 是字符串 `"rows"`，被当成类名输出了 —— 而 `styles.bodyRows` **从未应用**，
+于是那三个调用处**丢掉了它们的 `py-1.5`**。`tool-shells` / `answer-opening` 四张 golden
+就是这么红的。TS 不会报（`cn` 收 `ClassValue`），只有 golden 说了话。
