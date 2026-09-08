@@ -66,8 +66,8 @@ export const viewStyles = stylex.create({
     alignItems: "center",
     gap: space.s1_5,
   },
-  /** A dismissed notice is still readable — it has been dealt with, not disabled. */
-  dismissed: { opacity: 0.5 },
+  /** Dealt with, still listed. Not disabled — the row is telling you it happened. */
+  dismissed: { opacity: "var(--state-receded)" },
 
   /** A row's first line: what it is, plus whatever sits beside the name. */
   line: { display: "flex", alignItems: "center", gap: space.s2, minWidth: 0 },

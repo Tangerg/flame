@@ -457,6 +457,14 @@
      because reading it is how you work out what would enable it. The step that means "recede
      out of the way" is a different, named one — `off="faded"`. */
   --control-disabled-opacity: 0.64;
+  /* How far a glyph sits behind the word beside it. The rule below applies this to every glyph
+     inside a button; five call sites OUTSIDE one had each picked their own number for the same
+     idea — 0.5, 0.6 and 0.7 — so they read it from here instead. */
+  --glyph-step: 0.8;
+  /* Listed, and not in force: a notice already dealt with, a hook the trust gate has not
+     admitted. Two meanings, one relationship to the rows around them, and they had been 0.5
+     and 0.55 — four points apart, which is nobody's decision. */
+  --state-receded: 0.55;
 
   --dur-color: calc(var(--dur-color-base) * var(--motion-scale));
   --dur-fast: calc(var(--dur-fast-base) * var(--motion-scale));
@@ -1324,7 +1332,7 @@ html.theme-dark {
    DESCENDANT rule, which no atomic class can express. A call site that has decided on an
    opacity is excluded by name rather than outranked, so the escape works the same either way. */
 [data-slot="button"] svg:not([class*="opacity-"]) {
-  opacity: 0.8;
+  opacity: var(--glyph-step);
 }
 
 /* The pill reports a run in flight, and the thing that should pulse is the glyph inside the

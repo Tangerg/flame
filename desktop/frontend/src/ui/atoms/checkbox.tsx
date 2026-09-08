@@ -16,7 +16,8 @@ const styles = stylex.create({
     // a page, so the hand cursor would be the odd one out.
     cursor: "default",
   },
-  off: { cursor: "not-allowed", opacity: 0.6 },
+  // The same step every other control fades to when it cannot be used; this one had 0.6.
+  off: { cursor: "not-allowed", opacity: "var(--control-disabled-opacity)" },
   box: {
     display: "grid",
     height: "18px",

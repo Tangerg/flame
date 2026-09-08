@@ -41,7 +41,7 @@ function TreeRows({
           key={`file:${node.path}`}
           depth={depth}
           selected={node.path === selectedPath}
-          leading={<Icon name="file" size="sm" className="shrink-0 opacity-70" />}
+          leading={<Icon name="file" size="sm" className="shrink-0 opacity-[var(--glyph-step)]" />}
           label={node.name}
           title={node.name}
           trailing={

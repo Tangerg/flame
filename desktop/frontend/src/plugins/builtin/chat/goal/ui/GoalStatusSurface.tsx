@@ -99,7 +99,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
         className="flex w-full items-center justify-between gap-2 px-3 py-1"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <GoalGlyph className="h-[var(--icon-sm)] w-[var(--icon-sm)] shrink-0 text-fg-faint opacity-70" />
+          <GoalGlyph className="h-[var(--icon-sm)] w-[var(--icon-sm)] shrink-0 text-fg-faint" />
           <Button
             type="button"
             data-goal="summary"

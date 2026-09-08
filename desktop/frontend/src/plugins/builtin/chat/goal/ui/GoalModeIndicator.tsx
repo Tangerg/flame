@@ -52,7 +52,7 @@ function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
         onClick={() => owner.deactivate(sessionId)}
       >
         <GlyphSwap
-          rest={<GoalGlyph className="size-[var(--icon-sm)] shrink-0 opacity-70" />}
+          rest={<GoalGlyph className="size-[var(--icon-sm)] shrink-0" />}
           hover={<Icon name="x" size="sm" className="shrink-0" />}
         />
         <span>{t("goal.mode.label")}</span>

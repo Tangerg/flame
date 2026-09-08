@@ -40,7 +40,7 @@ export { SelectTrigger } from "./select-trigger";
 export { Segmented } from "./segmented";
 export type { SegmentedOption } from "./segmented";
 export { ShikiCodeBlock } from "./shiki-code-block";
-export { SkeletonList } from "./skeleton";
+export { SkeletonControl, SkeletonList } from "./skeleton";
 export { SystemMessage } from "./system-message";
 export { Tag } from "./tag";
 export { TextArea, TextField } from "./text-field";

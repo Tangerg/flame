@@ -51,7 +51,7 @@ function FileCard({
           {header.previousPath && (
             <>
               <FilePath path={header.previousPath} className="shrink-[100] text-fg-faint" />
-              <Icon name="arrow-right" size="xs" className="shrink-0 opacity-60" />
+              <Icon name="arrow-right" size="xs" className="shrink-0 opacity-[var(--glyph-step)]" />
             </>
           )}
           <FilePath path={header.path} className="shrink" />
@@ -60,7 +60,10 @@ function FileCard({
         <Icon
           name="chevron-down"
           size="sm"
-          className={cn("shrink-0 opacity-50 transition-transform", collapsed && "-rotate-90")}
+          className={cn(
+            "shrink-0 opacity-[var(--glyph-step)] transition-transform",
+            collapsed && "-rotate-90",
+          )}
         />
       </Pressable>
       {!collapsed && (

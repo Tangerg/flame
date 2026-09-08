@@ -36,8 +36,8 @@ export function ContextUsageGauge() {
   return (
     <RichTooltip trigger={trigger} side="top" sideOffset={4} className="w-38">
       <div className="flex flex-col gap-0.5 text-center">
-        <span className="opacity-60">{t("context.usage.label")}</span>
-        <span className={readout.percent >= 50 ? "opacity-60" : undefined}>
+        <span className="text-fg-muted">{t("context.usage.label")}</span>
+        <span className={readout.percent >= 50 ? "text-fg-muted" : undefined}>
           {t(readout.percent >= 50 ? "context.usage.statusFull" : "context.usage.statusLeft", {
             percent: readout.percent,
             remaining: 100 - readout.percent,

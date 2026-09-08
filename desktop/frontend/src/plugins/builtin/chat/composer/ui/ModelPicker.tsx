@@ -3,17 +3,18 @@ import { useMemo } from "react";
 import { fmtTokens } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import {
+  Button,
+  Icon,
+  ProviderIcon,
+  RailCatalogPicker,
+  SkeletonControl,
+  type CatalogPickerGroup,
+  providerDisplayName,
+} from "@/ui";
+import {
   type SelectableModel,
   useModels,
 } from "@/plugins/builtin/settings/providers/public/queries";
-import {
-  Button,
-  type CatalogPickerGroup,
-  Icon,
-  ProviderIcon,
-  providerDisplayName,
-  RailCatalogPicker,
-} from "@/ui";
 import { useRecentModelsStore, type RecentModel } from "../adapters/recentModels";
 import { AgentComposerChip } from "@/ui/agent";
 import { useSetComposerModelPreference } from "../public/modelPreference";
@@ -133,15 +134,7 @@ function ModelCapabilities({ model }: { model: SelectableModel }) {
 }
 
 function ModelPickerPlaceholder() {
-  return (
-    <div
-      className="inline-flex h-[var(--control-height-md)] shrink-0 items-center gap-1.5 rounded-md px-2.5 opacity-60"
-      aria-hidden
-    >
-      <span className="h-1.5 w-1.5 rounded-full bg-surface-2" />
-      <span className="h-3 w-16 rounded-sm bg-surface-2" />
-    </div>
-  );
+  return <SkeletonControl />;
 }
 
 export function ModelPicker() {

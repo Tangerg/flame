@@ -39,6 +39,17 @@ const styles = stylex.create({
     gap: space.s0_5,
     paddingBlock: space.s1,
   },
+  // A placeholder standing in for one control rather than a list of rows: it holds that
+  // control's measure so the bar it sits in does not resize when the real thing arrives.
+  inline: {
+    display: "inline-flex",
+    height: "var(--control-height-md)",
+    flexShrink: 0,
+    alignItems: "center",
+    gap: space.s1_5,
+    borderRadius: radius.card,
+    paddingInline: space.s2_5,
+  },
 });
 
 function SkeletonLine({ width = "100%", height = 10 }: { width?: string; height?: number }) {
@@ -46,6 +57,28 @@ function SkeletonLine({ width = "100%", height = 10 }: { width?: string; height?
     <span {...stylex.props(styles.line)} style={{ width, height }}>
       <span aria-hidden {...stylex.props(styles.sweep)} />
     </span>
+  );
+}
+
+/**
+ * One control's worth of placeholder, for a bar that must not resize as it loads.
+ *
+ * The composer's model picker had built this itself, out of the same fill and an `opacity-60`
+ * the skeleton deliberately does not have: the fill and the sweep are how this design says
+ * "not yet", and a multiplier on top said it a second time, quieter.
+ */
+export function SkeletonControl({
+  glyph = true,
+  width = "64px",
+}: {
+  glyph?: boolean;
+  width?: string;
+}) {
+  return (
+    <div {...stylex.props(styles.inline)} aria-hidden>
+      {glyph && <SkeletonLine width="6px" height={6} />}
+      <SkeletonLine width={width} height={12} />
+    </div>
   );
 }
 

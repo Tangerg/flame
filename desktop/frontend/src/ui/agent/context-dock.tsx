@@ -83,7 +83,7 @@ const styles = stylex.create({
   },
   labelClosable: { paddingLeft: space.s2, paddingRight: space.s1 },
   labelPlain: { paddingInline: space.s2 },
-  glyph: { flexShrink: 0, opacity: 0.7 },
+  glyph: { flexShrink: 0, opacity: "var(--glyph-step)" },
   title: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   badge: { flexShrink: 0, fontFamily: "var(--font-mono)", lineHeight: 1, color: color.fgFaint },
   // The list adds no box: the strip already is one, and a second would put the tabs a nesting
