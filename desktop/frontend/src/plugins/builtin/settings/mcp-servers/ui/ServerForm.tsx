@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
-import { Icon, PillButton, Segmented, Surface, Switch, TextField, vocab } from "@/ui";
+import { gap, Icon, PillButton, Segmented, Surface, Switch, TextField, vocab } from "@/ui";
 import {
   type MCPServerSettings,
   type MCPTransport,
@@ -222,7 +222,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
         </>
       )}
 
-      <label {...stylex.props(ss.stackTightest)}>
+      <label {...stylex.props(vocab.column, gap.s1_5)}>
         <span {...stylex.props(ss.label, typeStep.uiMd)}>{t("mcp.form.timeout")}</span>
         <TextField
           type="number"
@@ -244,7 +244,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
       />
 
       {server && (
-        <div {...stylex.props(ss.stackTightest)}>
+        <div {...stylex.props(vocab.column, gap.s1_5)}>
           <span {...stylex.props(ss.label, typeStep.uiMd)}>{t("mcp.tools.manage")}</span>
           <ToolControls
             server={server.name}

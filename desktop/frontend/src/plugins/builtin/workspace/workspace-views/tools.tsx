@@ -39,7 +39,7 @@ import {
   toolCatalogViewModel,
   useBuiltinToolConfigs,
 } from "@/plugins/builtin/workspace/application/toolCatalog";
-import { vocab } from "@/ui";
+import { gap, vocab } from "@/ui";
 
 function SectionHead({ children, count }: { children: React.ReactNode; count?: number }) {
   return (
@@ -232,8 +232,8 @@ function DiagnosticToolInvocationMaterial({
   };
 
   return (
-    <div id={panelId} {...stylex.props(vocab.column, os.panelGap, vs.gutter, os.panelInset)}>
-      <label {...stylex.props(vocab.column, os.fieldGap, os.fieldLabel, typeStep.uiXs)}>
+    <div id={panelId} {...stylex.props(vocab.column, gap.s2_5, vs.gutter, os.panelInset)}>
+      <label {...stylex.props(vocab.column, gap.s1, os.fieldLabel, typeStep.uiXs)}>
         {t("tools.diagnostics.arguments")}
         <TextArea
           value={argumentsText}

@@ -194,7 +194,7 @@ function SplitDiff({
       {split.map((row, i) => {
         if ("hunk" in row) return <HunkRow key={`h:${i}`} text={row.hunk} />;
         return (
-          <div key={`s:${i}`} {...stylex.props(cs.split)}>
+          <div key={`s:${i}`} {...stylex.props(cs.sideBySide)}>
             <DiffSide row={row.left} side="left" highlighted={highlighted} />
             <DiffSide row={row.right} side="right" highlighted={highlighted} />
           </div>

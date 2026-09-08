@@ -19,7 +19,6 @@ export const viewStyles = stylex.create({
   rowPad: { paddingBlock: space.s2 },
   rowPadTall: { paddingBlock: space.s2_5 },
   padBlockSm: { paddingBlock: space.s1 },
-  stackGap: { gap: space.s4 },
   /** A group's heading sits closer to its own rows than to the group above it. */
   sectionPad: { paddingBottom: space.s1 },
   sectionLabel: { paddingInline: space.s2, paddingBlock: space.s2 },
@@ -53,7 +52,6 @@ export const viewStyles = stylex.create({
   formLine: { marginTop: space.s2, display: "flex", alignItems: "center", gap: space.s2 },
   filterLine: { display: "flex", alignItems: "center", gap: space.s1 },
   pinLine: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1 },
-  afterRow: { marginTop: space.s1_5 },
   meterLine: { marginTop: space.s1, display: "flex", alignItems: "center", gap: space.s2_5 },
   dotTop: { marginTop: space.s1_5 },
   subLine: {
@@ -130,7 +128,6 @@ export const viewStyles = stylex.create({
   },
   chevron: { color: color.fgFaint, transitionProperty: "rotate" },
   chevronShut: { rotate: "-90deg" },
-  editorGap: { gap: space.s2 },
   /** The panel indents past the chevron so its content lines up with the name above it. */
   editorInset: { paddingBottom: space.s3, paddingLeft: space.s10 },
 });
@@ -214,10 +211,9 @@ export const toolStyles = stylex.create({
   /** Both glyphs sit on the first line of a two-line cell, not on the cell's top edge. */
   rowGlyph: { marginTop: space.s1 },
   toolBlurb: { display: "block", color: color.fgFaint },
-  panelGap: { gap: space.s2_5 },
   /** The panel starts where the row's NAME does, past both glyphs and their gaps. */
   panelInset: { paddingTop: space.s1, paddingBottom: space.s3, paddingLeft: "58px" },
-  fieldGap: { gap: space.s1 },
+  /** A field's own name, muted so the value under it reads first. */
   fieldLabel: { color: color.fgMuted, fontWeight: weight.medium },
   afterLabel: { marginTop: space.s1 },
   footer: { paddingTop: space.s3_5, paddingBottom: "18px", lineHeight: leading.body },
@@ -252,7 +248,10 @@ export const codeStyles = stylex.create({
     paddingBlock: space.s1,
     color: color.fgFaint,
   },
-  split: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" },
+  /** A diff read as two columns. Named apart from `settingStyles.split`, which is a row that
+   *  holds a label and its control at opposite ends — the two shared one word for a grid and
+   *  a flex row. */
+  sideBySide: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" },
   blank: { backgroundColor: surface.sunken },
   prompt: { flexShrink: 0, color: color.fgFaint },
   running: { flexShrink: 0, color: color.accent },

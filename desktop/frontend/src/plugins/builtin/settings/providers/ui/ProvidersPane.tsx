@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { DataView, Surface } from "@/ui";
+import { DataView, gap, Surface, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useProviderConfigs } from "../application/providerConfig";
 import { ProviderRow } from "./ProviderRow";
@@ -11,7 +11,7 @@ export function ProvidersPane() {
   const { data, isLoading, isError, refetch } = useProviderConfigs();
 
   return (
-    <div {...stylex.props(ss.pane)}>
+    <div {...stylex.props(vocab.column, gap.s6)}>
       <div {...stylex.props(ss.stack)}>
         <UtilityModelSection />
         <EmbeddingModelSection />
@@ -29,7 +29,7 @@ export function ProvidersPane() {
         }}
       >
         {(rows) => (
-          <Surface inset="xs" className={stylex.props(ss.stackRows).className}>
+          <Surface inset="xs" className={stylex.props(vocab.column, gap.s1).className}>
             {rows.map((p) => (
               <ProviderRow key={p.id} p={p} />
             ))}

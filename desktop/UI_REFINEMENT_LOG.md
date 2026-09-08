@@ -9432,3 +9432,58 @@ line && tone === "neutral" ? styles.markNeutral : MARK_TONE[tone]
 判据是它会不会误伤 —— 而这两轮已经量出误伤面有多大：
 私有 `styles` 块里 112 个「同名不同值」几乎全是合法的局部命名，
 所以能进守卫的只可能是**导出的共享词汇模块之间**的碰撞，不是全局同名检查。
+
+## Round 156 — 五个「一个名字两个意思」，五个不同的正确答案
+
+### 根因
+
+这五个是从 round 154 欠下来的。它们看起来是同一种缺陷，但**没有一条通用规则能一起治** ——
+每一个的正确答案取决于「那两个意思里，哪个才是这个词该有的意思」，
+而这只能一处一处读出来。
+
+| 名字 | 两个意思 | 答案 |
+| --- | --- | --- |
+| `split` | setting：space-between 一行 · chat：同上但 gap 不同 · **view：两列 grid** | chat 那份**零引用**，删；view 那份改名 `sideBySide`（它是网格，不是行）；setting 保留 `split` —— 「把标签和控件推到两端」就是 split 的本意 |
+| `stackTight` | setting：gap-2 · chat：gap-1.5 | 两个都不留 —— 见下面的阶梯 |
+| `pane` | setting：column + gap-6 · **shell：`flex-1 min-h-0` 的窗格** | setting 那份拆成 `column` + 一档 gap；`pane` 从此只指 shell 的窗格（它才是真的 pane） |
+| `fieldLabel` | setting：flex 竖排容器 · tool：`fgMuted` + medium 的墨色 | setting 那份**零引用**，删；tool 保留 —— 「一个字段的名字」就是它 |
+| `afterRow` | setting：`margin-top: s2_5` · view：`s1_5` | 读了调用处才看清：view 的那个 = setting 的 **`afterLine`**（同值同义），所以它是 `vocab.afterLine`；`afterRow`（s2_5，行下面展开面板前的那一步）留在 setting |
+
+**两个是零引用** —— 也就是说 round 154 报的 9 个冲突里，有两个从来没真正存在过，
+只是两个死档撞了名。这也是为什么「先数引用再动手」比「先归类再动手」重要。
+
+### `gap` 阶梯：13 个名字各说一个数字
+
+`stackTight` `stackTightest` `stackWide` `stackRows` `stackHairline` `stackGap`
+`editorGap` `panelGap` `fieldGap` `lineWide` `lineWrap` `grid2` `pane` ——
+这些名字除了大小之外什么都没说，而**比较级会用尽**：
+`stackTight` 在设置面板是 gap-2、在对话流是 gap-1.5，
+而它想要的那个值（1.5）的名字已经被 `stackTightest` 占了。
+
+行间距**确实**是每个面自己的决定 —— 这正是那个共享名字一直在自相矛盾的原因。
+所以让面自己说是哪一档：`vocab.column, gap.s2`。
+
+**一条硬约束写进了 `gap` 的注释**：它只跟 `vocab.column`（不带 gap）组合，
+**绝不放在一个自带 gap 的档后面** —— `vocab.line` 默认 gap-2，
+两个档都声明 `gap` 就是 round 148 那个「覆盖变隐形」的坑。
+改完 grep 验过：没有任何调用处有两个 `gap.*`，也没有任何 `gap.*` 跟在自带 gap 的档后面。
+
+### TypeScript 又抓到我一个错，而且是同一类
+
+我数「某个档有几处引用」时**手写了模块别名列表**（`vs|ss|ct|sh|cs|tool`），
+漏了 `toolStyles as os`。于是 `panelGap` `fieldGap` `afterLabel` `fieldLabel` 四个
+**活着的**档被我判成零引用删掉了。TS 立刻报 TS2339，已还原。
+
+这跟本轮早先那次 `ct` 写成 `cs` 是**同一个错**：别名是从 import 里读出来的事实，
+我却每次凭记忆重写一遍。治本的做法是先 grep 出 `X as y` 再据此计数 —— 
+上一轮我这么做过一次（正是那次发现了 `ct`），这一轮又偷懒了。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **656 / 656，0 unexpected，0 flaky** |
+| 守卫 | 17 项全绿 |
+| 单测 | 1781 项通过 |
+| 档名减少 | 13 个「各说一个数字」的名字 → 8 档 `gap` 阶梯 |
+| 同名不同值 | 9 → **0** |

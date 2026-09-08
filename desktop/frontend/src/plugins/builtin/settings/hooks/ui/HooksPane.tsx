@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { Badge, DataView, EmptyState, Icon, Surface, Switch, Tag, vocab } from "@/ui";
+import { Badge, DataView, EmptyState, gap, Icon, Surface, Switch, Tag, vocab } from "@/ui";
 import { isUnsupportedMethod, rpcErrorText } from "@/lib/rpcErrors";
 import type { HookReadModel } from "../application/hookConfig";
 import { useHookConfigs } from "../application/hookConfig";
@@ -105,7 +105,7 @@ export function HooksPane() {
   };
 
   return (
-    <div {...stylex.props(ss.stackWide)}>
+    <div {...stylex.props(vocab.column, gap.s4)}>
       <p {...stylex.props(ss.intro, typeStep.uiMd)}>{t("hooks.intro")}</p>
 
       {projectRoot && data?.hasProjectHooks && (
@@ -114,7 +114,13 @@ export function HooksPane() {
             <div {...stylex.props(ss.label, typeStep.uiMd)}>{t("hooks.trust")}</div>
             <div {...stylex.props(hp.sub, typeStep.uiMd)}>{t("hooks.trust.sub")}</div>
             <div
-              {...stylex.props(ss.afterLine, vocab.truncate, vocab.faint, typeStep.uiSm, face.mono)}
+              {...stylex.props(
+                vocab.afterLine,
+                vocab.truncate,
+                vocab.faint,
+                typeStep.uiSm,
+                face.mono,
+              )}
               title={projectRoot}
             >
               {projectRoot}
@@ -138,7 +144,7 @@ export function HooksPane() {
         empty={{ icon: "lightning", title: t("hooks.empty"), sub: t("hooks.empty.sub") }}
       >
         {(rows) => (
-          <div {...stylex.props(vocab.stackHairline)}>
+          <div {...stylex.props(vocab.column, gap.s0_5)}>
             {rows.map((h, i) => (
               <HookRow key={`${h.source}:${h.event}:${i}`} h={h} />
             ))}

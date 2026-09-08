@@ -6,6 +6,7 @@ import {
   Badge,
   DataView,
   EmptyState,
+  gap,
   Icon,
   IconButton,
   PillButton,
@@ -215,7 +216,7 @@ function AddMemory({ scope, cwd }: { scope: Scope; cwd?: string }) {
   };
 
   return (
-    <div {...stylex.props(vocab.column, vs.editorGap, vs.gutter, vs.padBottom)}>
+    <div {...stylex.props(vocab.column, gap.s2, vs.gutter, vs.padBottom)}>
       <TextArea
         aria-label={t("agentMemory.add")}
         value={draft}
@@ -315,7 +316,7 @@ export function AgentMemoryTab() {
         }
       >
         {() => (
-          <div {...stylex.props(vocab.column, vs.stackGap)}>
+          <div {...stylex.props(vocab.column, gap.s4)}>
             {pending.length > 0 && (
               <div {...stylex.props(vocab.column)}>
                 <div {...stylex.props(vs.gutter, vs.sectionPad)}>

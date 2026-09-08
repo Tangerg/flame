@@ -50,7 +50,7 @@ export { Slider } from "./slider";
 export { AnsiText } from "./ansi-text";
 export { StatusDot } from "./status-dot";
 export { toneInk } from "./tone-ink";
-export { vocab } from "./vocabulary";
+export { gap, vocab } from "./vocabulary";
 export { StepMark, StepRow } from "./step-row";
 export { Surface } from "./surface";
 export { Switch } from "./switch";

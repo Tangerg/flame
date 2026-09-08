@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useCallback, useRef, useState } from "react";
-import { DataView, PillButton, SectionLabel, vocab } from "@/ui";
+import { DataView, gap, PillButton, SectionLabel, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./views/viewStyles";
@@ -43,7 +43,7 @@ export function SkillLibraryTab() {
           const active = rows.filter((s) => s.lifecycle === "active");
           const archived = rows.filter((s) => s.lifecycle === "archived");
           return (
-            <div {...stylex.props(vocab.column, vs.stackGap, vs.padBlockSm)}>
+            <div {...stylex.props(vocab.column, gap.s4, vs.padBlockSm)}>
               {active.length > 0 && (
                 <SkillSection label={t("skillLibrary.section.active")} skills={active} />
               )}

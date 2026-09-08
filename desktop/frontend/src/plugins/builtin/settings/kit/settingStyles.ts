@@ -12,10 +12,7 @@ import { color, leading, radius, space, surface, weight } from "@/styles/tokens.
  * this file owns only the arrangement, the same split `viewStyles` makes for the dock.
  */
 export const settingStyles = stylex.create({
-  /** A pane is a column of groups. The wider gap separates GROUPS, the narrower one rows. */
-  pane: { display: "flex", flexDirection: "column", gap: space.s6 },
   stack: { display: "flex", flexDirection: "column", gap: space.s3 },
-  stackTight: { display: "flex", flexDirection: "column", gap: space.s2 },
 
   /** A label and whatever answers it, held apart. */
   split: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: space.s3 },
@@ -63,12 +60,7 @@ export const settingStyles = stylex.create({
   /** A caption on the same line as what it labels, rather than above a group. */
   captionInline: { color: color.fgMuted, fontWeight: weight.medium },
   spin: { animation: "var(--animate-spin)" },
-  stackWide: { display: "flex", flexDirection: "column", gap: space.s4 },
-  stackTightest: { display: "flex", flexDirection: "column", gap: space.s1_5 },
-  stackRows: { display: "flex", flexDirection: "column", gap: space.s1 },
-  fieldLabel: { display: "flex", flexDirection: "column", gap: space.s1_5 },
   afterRow: { marginTop: space.s2_5 },
-  afterLine: { marginTop: space.s1_5 },
 
   /** A row the pointer can act on, inside a group that is already a card. */
   sunkenRow: {

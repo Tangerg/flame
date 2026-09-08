@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { DataView, Icon, PillButton, vocab } from "@/ui";
+import { DataView, gap, Icon, PillButton, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useMCPServers } from "../application/mcpServerQueries";
 import { JsonImport } from "./JsonImport";
@@ -46,7 +46,7 @@ export function McpServersPane() {
         }}
       >
         {(rows) => (
-          <div {...stylex.props(ss.stackTight)}>
+          <div {...stylex.props(vocab.column, gap.s2)}>
             {rows.map((s) => (
               <ServerRow key={s.name} server={s} />
             ))}

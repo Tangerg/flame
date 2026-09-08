@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { EmptyState, ProviderIcon, Segmented, Surface, vocab } from "@/ui";
+import { EmptyState, gap, ProviderIcon, Segmented, Surface, vocab } from "@/ui";
 import { fmtCost, fmtTokens } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import {
@@ -87,7 +87,7 @@ function UsageTotals({
 }) {
   const t = useT();
   return (
-    <Surface className={stylex.props(ss.stackTight).className}>
+    <Surface className={stylex.props(vocab.column, gap.s2).className}>
       <div {...stylex.props(u.totalLine)}>
         <span {...stylex.props(ss.captionInline, typeStep.uiMd)}>{t("usage.total")}</span>
         <span {...stylex.props(u.total, vocab.figures)}>
@@ -130,7 +130,7 @@ export function UsagePane() {
   const hasSpend = totalTokens > 0 || (total?.costUsd ?? 0) > 0;
 
   return (
-    <div {...stylex.props(ss.stackWide)}>
+    <div {...stylex.props(vocab.column, gap.s4)}>
       <div {...stylex.props(ss.selfEnd)}>
         <Segmented
           value={range}

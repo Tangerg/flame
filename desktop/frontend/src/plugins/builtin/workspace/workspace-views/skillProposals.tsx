@@ -136,14 +136,14 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
         <>
           <TextButton
             size="sm"
-            className={stylex.props(vs.afterRow).className}
+            className={stylex.props(vocab.afterLine).className}
             aria-expanded={reading}
             onClick={() => setReading((open) => !open)}
           >
             {reading ? t("skillProposals.hideBody") : t("skillProposals.readBody")}
           </TextButton>
           <Collapsible open={reading}>
-            <Well className={stylex.props(vs.afterRow).className}>{proposal.instructions}</Well>
+            <Well className={stylex.props(vocab.afterLine).className}>{proposal.instructions}</Well>
           </Collapsible>
         </>
       )}

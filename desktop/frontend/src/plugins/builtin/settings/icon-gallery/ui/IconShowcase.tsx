@@ -2,11 +2,10 @@ import * as stylex from "@stylexjs/stylex";
 import { comboGlyph } from "@/lib/combo";
 import { Trans, useT } from "@/lib/i18n";
 import { IconMap, TocById } from "./iconMap";
-import { Tag } from "@/ui";
+import { gap, Tag, vocab } from "@/ui";
 import { COMMAND, useExtensionByKey } from "@/plugins/sdk";
 import { COMMAND_MENU_COMMAND } from "@/plugins/builtin/command/command-menu/public/commandMenu";
 import { color, leading, space, type as typeStep } from "@/styles/tokens.stylex";
-import { settingStyles as ss } from "../../kit/settingStyles";
 import { gallerySpread, galleryStyles as g } from "./galleryStyles";
 
 interface Section {
@@ -132,7 +131,7 @@ export function IconShowcase() {
       </p>
 
       {SECTIONS.map((sec) => (
-        <section key={sec.titleKey} {...stylex.props(ss.stackTight)}>
+        <section key={sec.titleKey} {...stylex.props(vocab.column, gap.s2)}>
           <header {...stylex.props(g.sectionHead, typeStep.uiSm)}>
             <span>{t(sec.titleKey)}</span>
             <span {...stylex.props(g.count)}>{sec.ids.length}</span>

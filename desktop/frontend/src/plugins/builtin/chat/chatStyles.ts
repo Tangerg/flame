@@ -9,8 +9,6 @@ import { leading, radius, space, surface, weight } from "@/styles/tokens.stylex"
  * card is built from: a line that truncates, a part that yields its width, an ink step.
  */
 export const chatStyles = stylex.create({
-  stackTight: { display: "flex", flexDirection: "column", gap: space.s1_5 },
-  split: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: space.s2 },
   centre: { textAlign: "center" },
   medium: { fontWeight: weight.medium },
   /** A reply preview: three lines at most, because the rail is a glance and not the message. */

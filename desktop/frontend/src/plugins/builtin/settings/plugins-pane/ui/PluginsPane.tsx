@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { PluginError, PluginErrorSource } from "@/plugins/sdk";
 import { formatClock } from "@/lib/i18n/relativeTime";
 import { useState } from "react";
-import { Badge, Icon, IconButton, PillButton, TextButton, vocab } from "@/ui";
+import { Badge, gap, Icon, IconButton, PillButton, TextButton, vocab } from "@/ui";
 import { copyText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { useInstalledPlugins, usePluginErrorStore } from "@/plugins/sdk";
@@ -94,7 +94,7 @@ export function PluginsPane() {
 
   return (
     <div>
-      <div {...stylex.props(ss.stackTight)}>
+      <div {...stylex.props(vocab.column, gap.s2)}>
         {rows.map((name) => {
           const errors = errorsByPlugin.get(name) ?? [];
           const errCount = errors.length;
@@ -109,7 +109,7 @@ export function PluginsPane() {
                       tone="negative"
                       onClick={() => toggle(name)}
                       title={open ? t("plugins.errorDetail.hide") : t("plugins.errorDetail.show")}
-                      {...stylex.props(ss.afterLine)}
+                      {...stylex.props(vocab.afterLine)}
                     >
                       <Icon name="bug" size="xs" />
                       {t("plugins.errors", { count: errCount })}

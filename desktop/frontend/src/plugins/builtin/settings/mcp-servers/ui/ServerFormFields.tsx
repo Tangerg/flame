@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { TextArea } from "@/ui";
+import { gap, TextArea, vocab } from "@/ui";
 import { type as typeStep } from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
@@ -12,7 +12,7 @@ interface LinesFieldProps {
 
 export function LinesField({ label, value, onChange, placeholder }: LinesFieldProps) {
   return (
-    <label {...stylex.props(ss.stackTightest)}>
+    <label {...stylex.props(vocab.column, gap.s1_5)}>
       <span {...stylex.props(ss.label, typeStep.uiMd)}>{label}</span>
       <TextArea
         size="sm"
