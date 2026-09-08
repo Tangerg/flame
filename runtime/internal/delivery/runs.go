@@ -31,8 +31,9 @@ func registerRuns(registry *Registry) {
 			protocol.ErrCapabilityNotNeg.Error(),
 		},
 	}, func(service interface {
-		StartRun(context.Context, protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq[protocol.RunEvent], error)
-	}, ctx context.Context, request protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq[protocol.RunEvent], error) {
+		StartRun(context.Context, protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)
+	}, ctx context.Context, request protocol.StartRunRequest,
+	) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 		return service.StartRun(ctx, request)
 	})
 
@@ -44,8 +45,9 @@ func registerRuns(registry *Registry) {
 			protocol.ErrCapabilityNotNeg.Error(),
 		},
 	}, func(service interface {
-		ResumeRun(context.Context, protocol.ResumeRunRequest) (*protocol.ResumeRunResponse, iter.Seq[protocol.RunEvent], error)
-	}, ctx context.Context, request protocol.ResumeRunRequest) (*protocol.ResumeRunResponse, iter.Seq[protocol.RunEvent], error) {
+		ResumeRun(context.Context, protocol.ResumeRunRequest) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
+	}, ctx context.Context, request protocol.ResumeRunRequest,
+	) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 		return service.ResumeRun(ctx, request)
 	})
 
@@ -69,8 +71,9 @@ func registerRuns(registry *Registry) {
 			protocol.ErrCapabilityNotNeg.Error(),
 		},
 	}, func(service interface {
-		SubscribeRun(context.Context, protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq[protocol.RunEvent], error)
-	}, ctx context.Context, request protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq[protocol.RunEvent], error) {
+		SubscribeRun(context.Context, protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
+	}, ctx context.Context, request protocol.SubscribeRunRequest,
+	) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 		return service.SubscribeRun(ctx, request)
 	})
 
@@ -84,7 +87,8 @@ func registerRuns(registry *Registry) {
 		},
 	}, func(service interface {
 		CancelRun(context.Context, protocol.CancelRunRequest) (*protocol.CancelRunResponse, error)
-	}, ctx context.Context, request protocol.CancelRunRequest) (*protocol.CancelRunResponse, error) {
+	}, ctx context.Context, request protocol.CancelRunRequest,
+	) (*protocol.CancelRunResponse, error) {
 		return service.CancelRun(ctx, request)
 	})
 
@@ -104,7 +108,8 @@ func registerRuns(registry *Registry) {
 		},
 	}, func(service interface {
 		SteerRun(context.Context, protocol.SteerRunRequest) error
-	}, ctx context.Context, request protocol.SteerRunRequest) error {
+	}, ctx context.Context, request protocol.SteerRunRequest,
+	) error {
 		return service.SteerRun(ctx, request)
 	})
 
@@ -118,7 +123,8 @@ func registerRuns(registry *Registry) {
 		},
 	}, func(service interface {
 		GetRun(context.Context, protocol.GetRunRequest) (*protocol.RunRef, error)
-	}, ctx context.Context, request protocol.GetRunRequest) (*protocol.RunRef, error) {
+	}, ctx context.Context, request protocol.GetRunRequest,
+	) (*protocol.RunRef, error) {
 		return service.GetRun(ctx, request)
 	})
 
@@ -135,7 +141,8 @@ func registerRuns(registry *Registry) {
 		}},
 	}, func(service interface {
 		ListRuns(context.Context, protocol.ListRunsRequest) (*protocol.Page[protocol.RunRef], error)
-	}, ctx context.Context, request protocol.ListRunsRequest) (*protocol.Page[protocol.RunRef], error) {
+	}, ctx context.Context, request protocol.ListRunsRequest,
+	) (*protocol.Page[protocol.RunRef], error) {
 		return service.ListRuns(ctx, request)
 	})
 }

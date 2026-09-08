@@ -1,13 +1,10 @@
 package delivery
 
 import (
-	"context"
 	"fmt"
 	"iter"
 	"strconv"
 	"time"
-
-	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -101,11 +98,16 @@ func presentPlanStatus(status plan.Status) protocol.PlanStatus {
 	}
 }
 
-func mapRunEvents(ctx context.Context, in iter.Seq[runs.Event]) iter.Seq[protocol.RunEvent] {
-	return func(yield func(protocol.RunEvent) bool) {
+// mapRunEvents publishes the application's run events. A presenter defect ends
+// the stream with its cause rather than with a clean close: a consumer must be
+// able to tell "this run stopped producing events" from "this runtime could not
+// describe one".
+func mapRunEvents(in iter.Seq[runs.Event]) iter.Seq2[protocol.RunEvent, error] {
+	return func(yield func(protocol.RunEvent, error) bool) {
 		for event := range in {
-			presented, ok := safePresentRunEvent(ctx, event.Payload)
-			if !ok {
+			presented, err := presentedRunEvent(event.Payload)
+			if err != nil {
+				yield(protocol.RunEvent{}, err)
 				return
 			}
 			wire := protocol.RunEvent{
@@ -113,22 +115,22 @@ func mapRunEvents(ctx context.Context, in iter.Seq[runs.Event]) iter.Seq[protoco
 				EventID: protocol.IDPrefixEvent + event.Cursor, Timestamp: event.Timestamp,
 				Event: presented,
 			}
-			if !yield(wire) {
+			if !yield(wire, nil) {
 				return
 			}
 		}
 	}
 }
 
-// safePresentRunEvent contains only presenter failures. In particular, it must
-// not recover a panic raised by the downstream range body through yield.
-func safePresentRunEvent(ctx context.Context, event runs.ProjectionEvent) (presented protocol.StreamEvent, ok bool) {
+// presentedRunEvent contains a presenter defect and reports it as the stream's
+// failure. It wraps only the presenter call: a panic raised by the downstream
+// range body travels through yield and must keep travelling.
+func presentedRunEvent(event runs.ProjectionEvent) (presented protocol.StreamEvent, err error) {
 	defer func() {
-		if r := recover(); r != nil {
-			trace.SpanFromContext(ctx).RecordError(fmt.Errorf("delivery: run-event presenter panicked, terminating stream: %v", r))
+		if recovered := recover(); recovered != nil {
 			presented = protocol.StreamEvent{}
-			ok = false
+			err = NewFailure(protocol.ErrInternalError, fmt.Sprintf("the runtime could not present a run event: %v", recovered))
 		}
 	}()
-	return presentRunEvent(event), true
+	return presentRunEvent(event), nil
 }

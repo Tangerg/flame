@@ -11,11 +11,14 @@ import (
 // test can select the next event, its close, or a timeout. These select-based
 // assertions are a test concern, not a production one. ctx also makes the test
 // bridge stoppable while it is waiting to hand an event to the assertion.
-func drainSeq(ctx context.Context, seq iter.Seq[protocol.RuntimeEvent]) <-chan protocol.RuntimeEvent {
+func drainSeq(ctx context.Context, seq iter.Seq2[protocol.RuntimeEvent, error]) <-chan protocol.RuntimeEvent {
 	ch := make(chan protocol.RuntimeEvent)
 	go func() {
 		defer close(ch)
-		for ev := range seq {
+		for ev, err := range seq {
+			if err != nil {
+				return
+			}
 			select {
 			case ch <- ev:
 			case <-ctx.Done():

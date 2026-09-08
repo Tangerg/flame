@@ -25,9 +25,9 @@ type streamingLifecycleRuntime struct {
 func (s *streamingLifecycleRuntime) SubscribeRuntime(
 	ctx context.Context,
 	_ protocol.RuntimeSubscribeRequest,
-) (*protocol.RuntimeSubscribeResponse, iter.Seq[protocol.RuntimeEvent], error) {
+) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error) {
 	close(s.subscribed)
-	return &protocol.RuntimeSubscribeResponse{}, func(_ func(protocol.RuntimeEvent) bool) {
+	return &protocol.RuntimeSubscribeResponse{}, func(_ func(protocol.RuntimeEvent, error) bool) {
 		<-ctx.Done() // an open, event-less stream bounded by the request context
 	}, nil
 }

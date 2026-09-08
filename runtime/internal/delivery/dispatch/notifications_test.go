@@ -52,3 +52,29 @@ func TestEphemeralEventNeverCarriesAnSSEReplayID(t *testing.T) {
 		t.Fatalf("ephemeral SSE id = %q, want none", frame.SSEID)
 	}
 }
+
+// TestStreamEndsOnAnUnpublishableEvent pins the difference between a stream that
+// ended and a stream with a hole in it: a frame the transport cannot encode
+// stops delivery, so the client resubscribes and replays instead of believing
+// it saw everything.
+func TestStreamEndsOnAnUnpublishableEvent(t *testing.T) {
+	t.Parallel()
+
+	events := func(yield func(any, error) bool) {
+		if !yield(protocol.RuntimeEvent{Type: protocol.RuntimeSkillsChanged, Sequence: 1}, nil) {
+			return
+		}
+		if !yield("not a runtime event", nil) {
+			return
+		}
+		yield(protocol.RuntimeEvent{Type: protocol.RuntimeSessionsChanged, Sequence: 2}, nil)
+	}
+
+	var frames int
+	for range adaptOperationEvents(events) {
+		frames++
+	}
+	if frames != 1 {
+		t.Fatalf("frames = %d, want only the events published before the unpublishable one", frames)
+	}
+}

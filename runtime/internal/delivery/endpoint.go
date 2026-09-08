@@ -173,12 +173,16 @@ func (e *Endpoint) execute(ctx context.Context, method *Method, parameters any) 
 	return Result{Value: raw.value, Events: validateEvents(ctx, method.Meta.Event, raw.events)}
 }
 
-func validateEvents(ctx context.Context, eventType reflect.Type, events iter.Seq[any]) iter.Seq2[any, error] {
+func validateEvents(ctx context.Context, eventType reflect.Type, events iter.Seq2[any, error]) iter.Seq2[any, error] {
 	if events == nil {
 		return nil
 	}
 	return func(yield func(any, error) bool) {
-		for event := range events {
+		for event, err := range events {
+			if err != nil {
+				yield(nil, ProjectError(err))
+				return
+			}
 			if reflect.TypeOf(event) != eventType {
 				yield(nil, NewFailure(protocol.ErrInternalError, "the runtime produced an event with an invalid type"))
 				return

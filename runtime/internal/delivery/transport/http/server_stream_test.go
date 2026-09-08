@@ -5,7 +5,6 @@ import (
 	"context"
 	"iter"
 	netHTTP "net/http"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -17,19 +16,23 @@ import (
 // StartRun lets the fake drive the streamable path: it returns a runId ack plus
 // a finite RunEvent sequence so a POST runs.start exercises serveStream
 // end-to-end.
-func (f *fakeRuntime) StartRun(_ context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq[protocol.RunEvent], error) {
-	events := slices.Values([]protocol.RunEvent{
-		{RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000001", Timestamp: time.Unix(1, 0).UTC(),
+func (f *fakeRuntime) StartRun(_ context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+	events := seq2(
+		protocol.RunEvent{
+			RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000001", Timestamp: time.Unix(1, 0).UTC(),
 			Event: protocol.StreamEvent{Type: protocol.StreamSegmentStarted, Run: &protocol.RunRef{
 				RunSummary: protocol.RunSummary{
 					ID: "run_x", SessionID: in.SessionID, Provider: "mock", Model: "balanced",
 					Status: protocol.RunStatusRunning, CreatedAt: time.Unix(1, 0).UTC(),
 				},
 				ActiveSegmentID: "seg_x",
-			}}},
-		{RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000002", Timestamp: time.Unix(2, 0).UTC(),
-			Event: protocol.StreamEvent{Type: protocol.StreamSegmentFinished, Outcome: &protocol.SegmentOutcome{Type: protocol.SegmentOutcomeType(protocol.OutcomeCompleted)}, Metrics: &protocol.RunMetrics{}, ContextTokens: new(int64(0))}},
-	})
+			}},
+		},
+		protocol.RunEvent{
+			RunID: "run_x", SegmentID: "seg_x", EventID: "evt_00000000002", Timestamp: time.Unix(2, 0).UTC(),
+			Event: protocol.StreamEvent{Type: protocol.StreamSegmentFinished, Outcome: &protocol.SegmentOutcome{Type: protocol.SegmentOutcomeType(protocol.OutcomeCompleted)}, Metrics: &protocol.RunMetrics{}, ContextTokens: new(int64(0))},
+		},
+	)
 	return &protocol.StartRunResponse{
 		RunID: "run_x", SegmentID: "seg_x", UserItemID: "item_x",
 	}, events, nil
@@ -105,10 +108,10 @@ func TestStreamableRunStart(t *testing.T) {
 
 // SubscribeRun records the reconnect cursor so the test below can assert the
 // transport plumbed the Last-Event-Id header onto the dispatch ctx.
-func (f *fakeRuntime) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq[protocol.RunEvent], error) {
+func (f *fakeRuntime) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 	f.gotLastEventID = flametransport.LastEventIDFrom(ctx)
 	return &protocol.SubscribeRunResponse{RunID: in.RunID, SegmentID: in.SegmentID},
-		slices.Values([]protocol.RunEvent{}), nil
+		seq2[protocol.RunEvent](), nil
 }
 
 // TestSubscribeCarriesLastEventID confirms the transport lifts the
@@ -135,5 +138,16 @@ func TestSubscribeCarriesLastEventID(t *testing.T) {
 
 	if api.gotLastEventID != "evt_00000000042" {
 		t.Fatalf("SubscribeRun saw Last-Event-Id %q, want evt_00000000042", api.gotLastEventID)
+	}
+}
+
+// seq2 presents a finite event slice as the error-carrying stream contract.
+func seq2[Event any](events ...Event) iter.Seq2[Event, error] {
+	return func(yield func(Event, error) bool) {
+		for _, event := range events {
+			if !yield(event, nil) {
+				return
+			}
+		}
 	}
 }

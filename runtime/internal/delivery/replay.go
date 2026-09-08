@@ -134,7 +134,7 @@ func (r *replayStore) replay(ctx context.Context, method *Method, payload []byte
 		return failed(ProjectError(errors.New("idempotency: stored run-opening result has an invalid shape")))
 	}
 	subscriber, ok := target.(interface {
-		SubscribeRun(context.Context, protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq[protocol.RunEvent], error)
+		SubscribeRun(context.Context, protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error)
 	})
 	if !ok || !capabilityAvailable(subscriber) {
 		return failed(ProjectError(errors.New("operation: target cannot handle runs.subscribe")))

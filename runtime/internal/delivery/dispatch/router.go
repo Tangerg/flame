@@ -99,14 +99,17 @@ func adaptResult(id transport.ID, result delivery.Result) Result {
 	return response
 }
 
+// adaptOperationEvents ends the stream on the first event it cannot deliver.
+// Skipping one frame and continuing would hand the client a complete-looking
+// stream with a hole in it; ending it lets Last-Event-Id resume replay the gap.
 func adaptOperationEvents(events iter.Seq2[any, error]) iter.Seq[StreamFrame] {
 	return func(yield func(StreamFrame) bool) {
 		for event, err := range events {
 			if err != nil {
 				return
 			}
-			frame, keep := frameOperationEvent(event)
-			if keep && !yield(frame) {
+			frame, publishable := frameOperationEvent(event)
+			if !publishable || !yield(frame) {
 				return
 			}
 		}

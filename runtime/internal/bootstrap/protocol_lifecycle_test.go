@@ -458,11 +458,14 @@ func protocolHandler(host *Instance, cwd string) (*delivery.Handler, error) {
 	}, testsupport.IdempotencyNamespace)
 }
 
-func collectRunEvents(events iter.Seq[protocol.RunEvent]) <-chan []protocol.RunEvent {
+func collectRunEvents(events iter.Seq2[protocol.RunEvent, error]) <-chan []protocol.RunEvent {
 	done := make(chan []protocol.RunEvent, 1)
 	go func() {
 		var collected []protocol.RunEvent
-		for event := range events {
+		for event, err := range events {
+			if err != nil {
+				break
+			}
 			collected = append(collected, event)
 		}
 		done <- collected

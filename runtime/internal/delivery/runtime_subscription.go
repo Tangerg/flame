@@ -24,8 +24,9 @@ func registerRuntimeSubscription(registry *Registry) {
 			Requires: []string{protocol.FeatureFileWatch},
 		}},
 	}, func(service interface {
-		SubscribeRuntime(context.Context, protocol.RuntimeSubscribeRequest) (*protocol.RuntimeSubscribeResponse, iter.Seq[protocol.RuntimeEvent], error)
-	}, ctx context.Context, request protocol.RuntimeSubscribeRequest) (*protocol.RuntimeSubscribeResponse, iter.Seq[protocol.RuntimeEvent], error) {
+		SubscribeRuntime(context.Context, protocol.RuntimeSubscribeRequest) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error)
+	}, ctx context.Context, request protocol.RuntimeSubscribeRequest,
+	) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error) {
 		return service.SubscribeRuntime(ctx, request)
 	})
 }

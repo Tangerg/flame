@@ -1,13 +1,14 @@
 package delivery
 
 import (
-	"context"
+	"errors"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // TestMapRunEvents_FramesWireEventID verifies delivery applies the evt_ wire
@@ -23,7 +24,7 @@ func TestMapRunEvents_FramesWireEventID(t *testing.T) {
 	})
 
 	var ids []string
-	for e := range mapRunEvents(context.Background(), in) {
+	for e := range mapRunEvents(in) {
 		if !strings.HasPrefix(e.EventID, "evt_") {
 			t.Fatalf("eventId %q missing evt_ prefix", e.EventID)
 		}
@@ -40,18 +41,26 @@ func TestMapRunEvents_FramesWireEventID(t *testing.T) {
 	}
 }
 
-func TestMapRunEvents_ContainsPresenterPanic(t *testing.T) {
+func TestMapRunEvents_ReportsPresenterFailureAsTheStreamFailure(t *testing.T) {
 	in := slices.Values([]runs.Event{
 		{RunID: "run_1", Cursor: "AAAA"}, // nil payload is invalid
 		{RunID: "run_1", Cursor: "BBBB", Payload: runs.SegmentProgressed{}},
 	})
 
 	var count int
-	for range mapRunEvents(context.Background(), in) {
+	var failure error
+	for _, err := range mapRunEvents(in) {
+		if err != nil {
+			failure = err
+			break
+		}
 		count++
 	}
 	if count != 0 {
-		t.Fatalf("events after presenter panic = %d, want 0", count)
+		t.Fatalf("events before the presenter failure = %d, want 0", count)
+	}
+	if !errors.Is(failure, protocol.ErrInternalError) {
+		t.Fatalf("stream failure = %v, want an internal error", failure)
 	}
 }
 
@@ -66,7 +75,7 @@ func TestMapRunEvents_DoesNotRecoverConsumerPanic(t *testing.T) {
 			t.Fatalf("recovered panic = %v, want %q", got, want)
 		}
 	}()
-	for range mapRunEvents(context.Background(), in) {
+	for range mapRunEvents(in) {
 		panic(want)
 	}
 	t.Fatal("consumer panic was recovered by mapRunEvents")

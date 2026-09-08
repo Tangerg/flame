@@ -16,7 +16,7 @@ import (
 // in the Run model. in.RunID is the stable run to continue; the response
 // decision is delivered to the live executor tree, and the continuation streams
 // under the same runId with a fresh segmentId.
-func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (*protocol.ResumeRunResponse, iter.Seq[protocol.RunEvent], error) {
+func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 	input, err := decodeRunInput(in.Input)
 	if err != nil {
 		return nil, nil, err
@@ -67,7 +67,7 @@ func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (
 	if result.UserItemID != "" {
 		response.UserItemID = &result.UserItemID
 	}
-	return response, mapRunEvents(ctx, result.Events), nil
+	return response, mapRunEvents(result.Events), nil
 }
 
 // decodeResumeResponses maps transport DTOs into the application-owned

@@ -42,8 +42,8 @@ func (b *blockingRuntime) Discover(context.Context) (*protocol.DiscoverResponse,
 	return &protocol.DiscoverResponse{ProtocolVersion: protocol.ProtocolVersion}, nil
 }
 
-func (b *blockingRuntime) StartRun(ctx context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq[protocol.RunEvent], error) {
-	events := func(yield func(protocol.RunEvent) bool) {
+func (b *blockingRuntime) StartRun(ctx context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+	events := func(yield func(protocol.RunEvent, error) bool) {
 		// Signal on the way out, whichever way that is. A disconnect can unwind this
 		// source through its context OR by making yield report false (the bridge
 		// abandoned the range while a frame was in flight) — both are the source
@@ -69,7 +69,7 @@ func (b *blockingRuntime) StartRun(ctx context.Context, in protocol.StartRunRequ
 					ActiveSegmentID: "seg_block",
 				},
 			},
-		}) {
+		}, nil) {
 			return
 		}
 		<-ctx.Done()

@@ -28,7 +28,7 @@ type Method struct {
 
 type rawResult struct {
 	value  any
-	events iter.Seq[any]
+	events iter.Seq2[any, error]
 	err    error
 }
 
@@ -174,7 +174,7 @@ func (r *Registry) CommandAck[Capability, Params any](
 // Subscription registers one live stream that starts from current state.
 func (r *Registry) Subscription[Capability, Params, Ack, Event any](
 	meta MethodMeta,
-	call func(Capability, context.Context, Params) (Ack, iter.Seq[Event], error),
+	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
 ) {
 	meta.ReplayCursor = ReplayCursorNone
 	r.registerSubscription(meta, call)
@@ -182,7 +182,7 @@ func (r *Registry) Subscription[Capability, Params, Ack, Event any](
 
 func (r *Registry) registerSubscription[Capability, Params, Ack, Event any](
 	meta MethodMeta,
-	call func(Capability, context.Context, Params) (Ack, iter.Seq[Event], error),
+	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
 ) {
 	meta.Kind = KindStream
 	meta.Operation = OperationSubscription
@@ -195,7 +195,7 @@ func (r *Registry) registerSubscription[Capability, Params, Ack, Event any](
 // reconnecting those streams deliberately resyncs instead of replaying history.
 func (r *Registry) RunSubscription[Capability, Params, Ack, Event any](
 	meta MethodMeta,
-	call func(Capability, context.Context, Params) (Ack, iter.Seq[Event], error),
+	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
 ) {
 	meta.ReplayCursor = ReplayCursorRun
 	r.registerSubscription(meta, call)
@@ -205,7 +205,7 @@ func (r *Registry) RunSubscription[Capability, Params, Ack, Event any](
 // stream as a single operation.
 func (r *Registry) RunStreamCommand[Capability, Params, Ack, Event any](
 	meta MethodMeta,
-	call func(Capability, context.Context, Params) (Ack, iter.Seq[Event], error),
+	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
 ) {
 	meta.Kind = KindStream
 	meta.Operation = OperationCommand
@@ -216,7 +216,7 @@ func (r *Registry) RunStreamCommand[Capability, Params, Ack, Event any](
 
 func (r *Registry) registerStream[Capability, Params, Ack, Event any](
 	meta MethodMeta,
-	call func(Capability, context.Context, Params) (Ack, iter.Seq[Event], error),
+	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
 ) {
 	meta.Params = reflect.TypeFor[Params]()
 	meta.Result = reflect.TypeFor[Ack]()
@@ -249,13 +249,17 @@ func capabilityAvailable(capability any) bool {
 	}
 }
 
-func eraseEventType[Event any](events iter.Seq[Event]) iter.Seq[any] {
+func eraseEventType[Event any](events iter.Seq2[Event, error]) iter.Seq2[any, error] {
 	if events == nil {
 		return nil
 	}
-	return func(yield func(any) bool) {
-		for event := range events {
-			if !yield(event) {
+	return func(yield func(any, error) bool) {
+		for event, err := range events {
+			if err != nil {
+				yield(nil, err)
+				return
+			}
+			if !yield(event, nil) {
 				return
 			}
 		}

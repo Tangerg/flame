@@ -101,6 +101,8 @@ The module-root Go binding and HTTP/JSON-RPC binding enter the same delivery end
 
 That endpoint is the single authority for the wire contract. It validates every request's parameters and every response and event against the generated validators, so a consumer of either binding never has to recheck a shape Runtime already published. An invalid response or event becomes an internal error instead of reaching the caller.
 
+A stream carries its own failure. An operation's event source reports a delivery-side defect as the stream's error rather than closing cleanly, so a consumer can distinguish a Run that stopped producing events from a Runtime that could not describe one. The JSON-RPC transport has no error frame, so it ends the stream at the first event it cannot publish and lets the client resume from its last event id; it never skips a frame and continues.
+
 The Go binding does not serialize through HTTP, but it does not bypass product semantics. Protocol changes publish one current shape without aliases, fallback decoding, dual methods, or dual events.
 
 ## Composition and lifecycle

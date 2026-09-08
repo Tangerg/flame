@@ -82,7 +82,8 @@ func TestWorkspaceHubEndsOnlyTheSubscriptionWhoseExactSequenceSpaceIsExhausted(t
 	hub.publish(protocol.RuntimeEvent{Type: protocol.RuntimeSessionsChanged})
 
 	releases := 0
-	delivered := slices.Collect(subscriptionEventSequence(
+	var delivered []protocol.RuntimeEvent
+	for event, err := range subscriptionEventSequence(
 		exhaustingEvents,
 		exhausting.exhausted,
 		func() { hub.drained(exhausting) },
@@ -90,7 +91,12 @@ func TestWorkspaceHubEndsOnlyTheSubscriptionWhoseExactSequenceSpaceIsExhausted(t
 			releases++
 			unregisterExhausting()
 		},
-	))
+	) {
+		if err != nil {
+			t.Fatalf("runtime subscription failed: %v", err)
+		}
+		delivered = append(delivered, event)
+	}
 	close(exhaustingEvents)
 	if releases != 1 {
 		t.Fatalf("exhausted subscription releases = %d, want 1", releases)

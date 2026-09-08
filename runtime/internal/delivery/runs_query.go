@@ -145,7 +145,7 @@ func wireInterruptPageError(err error) error {
 // attaches at the current head and returns it, so a client can read the durable
 // state afterwards and fold this stream on top without a gap. History is NOT
 // replayed for a cursorless subscribe — that is what items.list answers.
-func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq[protocol.RunEvent], error) {
+func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 	caller, err := s.negotiateCapabilities(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -168,7 +168,7 @@ func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequ
 	}
 	return &protocol.SubscribeRunResponse{
 		RunID: in.RunID, SegmentID: attached.Record.SegmentID, HeadEventID: head,
-	}, mapRunEvents(ctx, attached.Events), nil
+	}, mapRunEvents(attached.Events), nil
 }
 
 // wireLiveSegmentError maps the refusals of addressing a live segment. Each one

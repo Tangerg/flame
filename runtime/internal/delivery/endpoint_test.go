@@ -224,8 +224,8 @@ func TestEndpointRejectsInvalidRequestsBeforeHandlerAdmission(t *testing.T) {
 	}
 }
 
-func (l *lifetimeService) SubscribeRuntime(ctx context.Context, _ protocol.RuntimeSubscribeRequest) (*protocol.RuntimeSubscribeResponse, iter.Seq[protocol.RuntimeEvent], error) {
-	return &protocol.RuntimeSubscribeResponse{}, func(func(protocol.RuntimeEvent) bool) {
+func (l *lifetimeService) SubscribeRuntime(ctx context.Context, _ protocol.RuntimeSubscribeRequest) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error) {
+	return &protocol.RuntimeSubscribeResponse{}, func(func(protocol.RuntimeEvent, error) bool) {
 		close(l.streamStarted)
 		<-ctx.Done()
 	}, nil
@@ -303,8 +303,8 @@ type joiningStreamService struct {
 func (j *joiningStreamService) SubscribeRuntime(
 	ctx context.Context,
 	_ protocol.RuntimeSubscribeRequest,
-) (*protocol.RuntimeSubscribeResponse, iter.Seq[protocol.RuntimeEvent], error) {
-	return &protocol.RuntimeSubscribeResponse{}, func(func(protocol.RuntimeEvent) bool) {
+) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error) {
+	return &protocol.RuntimeSubscribeResponse{}, func(func(protocol.RuntimeEvent, error) bool) {
 		close(j.started)
 		<-ctx.Done()
 		close(j.canceled)

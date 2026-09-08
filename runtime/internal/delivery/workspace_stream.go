@@ -476,7 +476,7 @@ func cloneRuntimeEvent(event protocol.RuntimeEvent) protocol.RuntimeEvent {
 // re-reads the diff. (Working-tree file
 // edits aren't watched directly — see gitWatcher; the agent's own edits arrive as
 // files.changed from its tools.)
-func (s *Handler) SubscribeRuntime(ctx context.Context, request protocol.RuntimeSubscribeRequest) (*protocol.RuntimeSubscribeResponse, iter.Seq[protocol.RuntimeEvent], error) {
+func (s *Handler) SubscribeRuntime(ctx context.Context, request protocol.RuntimeSubscribeRequest) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error) {
 	topics, err := s.subscribedTopics(request.Topics)
 	if err != nil {
 		return nil, nil, err
@@ -584,8 +584,8 @@ func subscriptionEventSequence(
 	exhausted <-chan struct{},
 	queueDrained func(),
 	stopSubscription func(),
-) iter.Seq[protocol.RuntimeEvent] {
-	return func(yield func(protocol.RuntimeEvent) bool) {
+) iter.Seq2[protocol.RuntimeEvent, error] {
+	return func(yield func(protocol.RuntimeEvent, error) bool) {
 		defer stopSubscription()
 		for {
 			select {
@@ -594,7 +594,7 @@ func subscriptionEventSequence(
 					return
 				}
 				queueDrained()
-				if !yield(event) {
+				if !yield(event, nil) {
 					return
 				}
 			case <-exhausted:
@@ -604,7 +604,7 @@ func subscriptionEventSequence(
 				for {
 					select {
 					case event, open := <-events:
-						if !open || !yield(event) {
+						if !open || !yield(event, nil) {
 							return
 						}
 					default:
