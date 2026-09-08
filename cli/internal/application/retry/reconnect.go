@@ -41,7 +41,7 @@ func newReconnectPolicy(attempts int, base, maximum time.Duration) (ReconnectPol
 	}
 	backoff, err := NewBackoff(base, maximum)
 	if err != nil {
-		return ReconnectPolicy{}, fmt.Errorf("%w: %v", ErrInvalidReconnectPolicy, err)
+		return ReconnectPolicy{}, fmt.Errorf("%w: %w", ErrInvalidReconnectPolicy, err)
 	}
 	return ReconnectPolicy{attempts: attempts, backoff: backoff}, nil
 }
@@ -53,7 +53,7 @@ func (p ReconnectPolicy) Validate() error {
 		return ErrInvalidReconnectPolicy
 	}
 	if err := p.backoff.Validate(); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidReconnectPolicy, err)
+		return fmt.Errorf("%w: %w", ErrInvalidReconnectPolicy, err)
 	}
 	return nil
 }
@@ -71,7 +71,7 @@ func (p ReconnectPolicy) Next(n int, failure error) (time.Duration, bool, error)
 	}
 	delay, err := p.backoff.Delay(n)
 	if err != nil {
-		return 0, false, fmt.Errorf("%w: %v", ErrInvalidReconnectPolicy, err)
+		return 0, false, fmt.Errorf("%w: %w", ErrInvalidReconnectPolicy, err)
 	}
 	if errors.Is(failure, agent.ErrCommandInProgress) {
 		delay = max(delay, min(commandInProgressMinimumWait, p.backoff.maximum))

@@ -65,7 +65,7 @@ func (b Backoff) Delay(failure int) (time.Duration, error) {
 	case backoffBounded:
 		delay := b.base
 		for range failure - 1 {
-			if delay >= b.maximum/2 {
+			if delay > b.maximum/2 {
 				return b.maximum, nil
 			}
 			delay *= 2

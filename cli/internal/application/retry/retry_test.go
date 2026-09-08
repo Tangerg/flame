@@ -3,6 +3,7 @@ package retry
 import (
 	"context"
 	"errors"
+	"math"
 	"testing"
 	"time"
 )
@@ -50,5 +51,29 @@ func TestBackoffRequiresNamedImmediateOrBoundedPolicy(t *testing.T) {
 		if _, err := NewBackoff(bounds[0], bounds[1]); !errors.Is(err, ErrInvalidBackoff) {
 			t.Fatalf("NewBackoff(%s, %s) = %v", bounds[0], bounds[1], err)
 		}
+	}
+}
+
+func TestBackoffDoublesExactlyBeforeAnOddCeiling(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		base    time.Duration
+		maximum time.Duration
+		want    []time.Duration
+	}{
+		{name: "odd nanoseconds", base: 2, maximum: 5, want: []time.Duration{2, 4, 5, 5}},
+		{name: "duration limit", base: time.Duration(math.MaxInt64 / 2), maximum: time.Duration(math.MaxInt64), want: []time.Duration{math.MaxInt64 / 2, math.MaxInt64 - 1, math.MaxInt64}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			backoff, err := NewBackoff(test.base, test.maximum)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for i, want := range test.want {
+				if got, err := backoff.Delay(i + 1); err != nil || got != want {
+					t.Fatalf("Delay(%d) = (%s, %v), want %s", i+1, got, err, want)
+				}
+			}
+		})
 	}
 }

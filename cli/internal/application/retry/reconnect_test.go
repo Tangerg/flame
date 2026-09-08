@@ -87,3 +87,13 @@ func TestIsReconnectableRecognizesOnlyClassifiedDisconnects(t *testing.T) {
 		})
 	}
 }
+
+func TestReconnectPolicyPreservesInvalidBackoffCause(t *testing.T) {
+	_, constructorErr := newReconnectPolicy(1, 0, time.Second)
+	_, _, nextErr := (ReconnectPolicy{}).Next(1, agent.ErrDisconnected)
+	for _, err := range []error{constructorErr, (ReconnectPolicy{}).Validate(), nextErr} {
+		if !errors.Is(err, ErrInvalidReconnectPolicy) || !errors.Is(err, ErrInvalidBackoff) {
+			t.Fatalf("policy error = %v, want policy category and backoff cause", err)
+		}
+	}
+}
