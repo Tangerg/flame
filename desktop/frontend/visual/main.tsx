@@ -9,6 +9,7 @@ import { setLocale, t } from "@/lib/i18n";
 import { configureNavigator } from "@/lib/navigation";
 import { createMemoryNavigator } from "@/lib/navigation.testkit";
 import { uiTypeLadderCssVariables } from "@/plugins/builtin/theme/kit/typeLadder";
+import { UI_DENSITY_MODES } from "@/plugins/builtin/theme/kit/appearance";
 import { installAppearancePreferencePort } from "@/plugins/builtin/theme/adapters/appearancePreferenceBinding";
 import { installDocumentAppearance } from "@/plugins/builtin/theme/adapters/documentAppearance";
 import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
@@ -85,6 +86,10 @@ const workspaceState: VisualWorkspaceState = isVisualWorkspaceState(requestedSta
 const rootElement = document.documentElement;
 const motionScale = query.get("motion") === "full" ? 1 : 0;
 const requestedFontSize = query.get("font-size");
+// Density has no CSS fallback to photograph: `globals.css` states the comfortable values and
+// the pipeline overwrites all thirteen, so a spec can only see the setting by asking for it.
+const requestedDensity = query.get("density");
+const density = UI_DENSITY_MODES.find((mode) => mode === requestedDensity);
 const requestedLocale = query.get("locale") ?? "en";
 
 rootElement.classList.remove("theme-light", "theme-dark");
@@ -191,6 +196,7 @@ useAppearanceStore.setState({
   ...(requestedFontSize !== null && Number.isFinite(Number(requestedFontSize))
     ? { fontSize: Number(requestedFontSize) }
     : {}),
+  ...(density ? { density } : {}),
 });
 // Both halves of what `appearancePainter` installs: the pane and the sidebar footer read
 // the preference through this port, so painting without binding it renders a broken

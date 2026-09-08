@@ -47,6 +47,7 @@ interface FixtureRoute {
   theme?: "light" | "dark";
   motion?: "full";
   fontSize?: number;
+  density?: "compact" | "comfortable" | "spacious";
   overlay?: VisualShellOverlay;
   locale?: string;
 }
@@ -72,6 +73,7 @@ async function openFixture(page: Page, route: FixtureRoute): Promise<void> {
   if (route.overlay) query.set("overlay", route.overlay);
   if (route.pane) query.set("pane", route.pane);
   if (route.locale) query.set("locale", route.locale);
+  if (route.density) query.set("density", route.density);
 
   await page.goto(`${VISUAL_URL}?${query}`);
   await page.locator("html[data-visual-ready]").waitFor();
@@ -309,6 +311,48 @@ async function stylexCollisions(page: Page): Promise<string[]> {
     return [...new Set(out)];
   });
 }
+
+/**
+ * The density setting reaches every navigation rail, or it reaches none of them honestly.
+ *
+ * Its own copy promises "row heights, gutters", and twelve surfaces read the tokens that
+ * deliver them. The Settings rail did not: it was measured in `--control-height-md` with its
+ * own gap and inset, so the one pane where the setting LIVES was the one pane it could not
+ * move. Nothing failed, because nothing asked — the whole setting had no coverage at all, in
+ * a suite of six hundred goldens.
+ */
+test("every navigation rail answers the density setting", async ({ page }) => {
+  const measure = async (density: "compact" | "spacious") => {
+    await openFixture(page, { fixture: "workspace", state: "settings", density });
+    return page.evaluate(() => {
+      const token = getComputedStyle(document.documentElement).getPropertyValue(
+        "--density-row-height",
+      );
+      // A vertical tablist is a navigation RAIL. A horizontal one is a chrome bar, whose
+      // heights `density.ts` says on its first line do not scale — one number across the seam.
+      const rows = [
+        ...document.querySelectorAll<HTMLElement>(
+          '[role="tablist"][aria-orientation="vertical"] [role="tab"], [data-slot="button"].agent-row',
+        ),
+      ].filter((node) => node.getClientRects().length > 0);
+      return {
+        token: token.trim(),
+        rows: rows.length,
+        heights: [...new Set(rows.map((node) => `${node.getBoundingClientRect().height}px`))],
+      };
+    });
+  };
+
+  const compact = await measure("compact");
+  const spacious = await measure("spacious");
+
+  expect(compact.rows).toBeGreaterThan(0);
+  expect(compact.token).not.toBe(spacious.token);
+  // One height, and it is the token's — not "close to it", which is how a rail on its own
+  // measure passes for as long as the two numbers happen to be near each other.
+  expect(compact.heights).toEqual([compact.token]);
+  expect(spacious.heights).toEqual([spacious.token]);
+});
 
 test("structural panels share one spring, containment, and reduced-motion authority", async ({
   page,

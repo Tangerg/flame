@@ -52,15 +52,19 @@ const styles = stylex.create({
     flexDirection: "column",
     gap: "1px",
     overflowY: "auto",
-    paddingInline: space.s2,
+    paddingInline: "var(--density-navigation-gutter)",
     paddingBottom: space.s6,
   },
   group: { display: "flex", flexDirection: "column", gap: "1px" },
+  // A settings pane is chosen from a NAVIGATION rail, so it is measured in the same three
+  // tokens every other rail in the product uses. It was the one rail on `--control-height-md`
+  // with its own gap and inset, which made it the one rail the Appearance density setting
+  // could not reach — a setting whose own copy promises "row heights, gutters".
   tab: {
     display: "flex",
-    height: "var(--control-height-md)",
+    height: "var(--density-row-height)",
     alignItems: "center",
-    gap: space.s2_5,
+    gap: "var(--density-row-gap)",
     borderRadius: radius.button,
     borderWidth: 0,
     backgroundColor: {
@@ -68,7 +72,7 @@ const styles = stylex.create({
       ":hover": surface.hover,
       ":is([data-active])": surface.selected,
     },
-    paddingInline: space.s2_5,
+    paddingInline: space.s2,
     textAlign: "left",
     fontFamily: "var(--font-sans)",
     fontWeight: weight.regular,
