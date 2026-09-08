@@ -66,10 +66,7 @@ func OpenToken(path string) (*Token, error) {
 	if mkdirErr := os.MkdirAll(parent, 0o700); mkdirErr != nil {
 		return nil, fmt.Errorf("local Runtime token: create parent: %w", mkdirErr)
 	}
-	value, err := newTokenValue()
-	if err != nil {
-		return nil, err
-	}
+	value := newTokenValue()
 	temporary, err := os.CreateTemp(parent, tokenCandidatePattern)
 	if err != nil {
 		return nil, fmt.Errorf("local Runtime token: create candidate: %w", err)
@@ -207,12 +204,10 @@ func validateTokenFile(info os.FileInfo) error {
 	return nil
 }
 
-func newTokenValue() (string, error) {
+func newTokenValue() string {
 	var raw [rawTokenBytes]byte
-	if _, err := rand.Read(raw[:]); err != nil {
-		return "", fmt.Errorf("local Runtime token: read random: %w", err)
-	}
-	return base64.RawURLEncoding.EncodeToString(raw[:]), nil
+	rand.Read(raw[:])
+	return base64.RawURLEncoding.EncodeToString(raw[:])
 }
 
 func invalidToken(reason string) error {
