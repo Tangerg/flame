@@ -65,6 +65,8 @@ import {
 } from "@/plugins/builtin/workspace/public/queries";
 import {
   WORKSPACE_FILE_HEAD_KEY,
+  WORKSPACE_LIST_FILES_KEY,
+  type WorkspaceFileEntry,
   type WorkspaceFileLine,
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { useComposerStore } from "@/plugins/builtin/chat/composer/adapters/composerStore";
@@ -161,6 +163,42 @@ function visualAgentRuntimeGateway(state: VisualAgentState): AgentRuntimeGateway
 // not part of the tool result — so without one the preview rendered empty here and the
 // component that draws it appeared in no test. One line is deliberately far longer than
 // the column it is read in to verify that its tail remains reachable.
+// The `@` mention picker is gated on `items.length > 0`, so with no file list the panel could
+// not be opened here AT ALL — which is why it was the one surface with no test and no golden,
+// and why it went on rendering nothing for as long as it did. A fixture a surface cannot be
+// reached from is a fixture that cannot catch anything about that surface.
+const fileListProvider = definePlugin({
+  name: "flame.visual.file-list",
+  setup(ctx) {
+    ctx.contribute(DATA_PROVIDER, {
+      key: WORKSPACE_LIST_FILES_KEY,
+      fetcher: async () =>
+        [
+          { path: "runtime/session/store.go", name: "store.go", type: "file", sizeBytes: 12_288 },
+          {
+            path: "runtime/session/store_test.go",
+            name: "store_test.go",
+            type: "file",
+            sizeBytes: 8_192,
+          },
+          {
+            path: "runtime/contract/openrpc.json",
+            name: "openrpc.json",
+            type: "file",
+            sizeBytes: 40_960,
+          },
+          {
+            path: "desktop/frontend/src/main.tsx",
+            name: "main.tsx",
+            type: "file",
+            sizeBytes: 1_024,
+          },
+          { path: "README.md", name: "README.md", type: "file", sizeBytes: 2_048 },
+        ] satisfies WorkspaceFileEntry[],
+    });
+  },
+});
+
 const fileHeadProvider = definePlugin({
   name: "flame.visual.file-head",
   setup(ctx) {
@@ -324,6 +362,7 @@ export async function installVisualAgentFixture(
     // while the app rendered the real component.
     ...toolRenderingPlugins,
     fileHeadProvider,
+    fileListProvider,
   );
 
   // composerBootstrap synchronizes the active session draft while it loads;

@@ -1330,3 +1330,45 @@ test("a suggestion panel above the composer is not clipped away by it", async ({
   expect(painted.abovecomposer).toBe(true);
   expect(painted.withinComposerWidth).toBe(true);
 });
+
+// The mention picker is the surface that was rendering nothing, and until the agent fixture
+// served a file list it could not be opened here at all. `items.length > 0` gates it, so a
+// fixture with no files is a fixture in which this panel does not exist to be photographed.
+test("the file mention picker paints over the transcript, not under the composer", async ({
+  page,
+}) => {
+  await openFixture(page, { fixture: "agent", state: "idle" });
+
+  const input = page.getByRole("textbox", { name: en["composer.input.label"]! });
+  await input.click();
+  await input.pressSequentially("@store", { delay: 30 });
+
+  const listbox = page.locator("#composer-mention-listbox");
+  await expect(listbox).toBeVisible();
+
+  const geometry = await page.evaluate(() => {
+    const el = document.getElementById("composer-mention-listbox")!;
+    const box = el.getBoundingClientRect();
+    const composer = document.querySelector("[data-slot=composer-root]")!;
+    const cb = composer.getBoundingClientRect();
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + 8);
+    return {
+      rows: el.querySelectorAll('[id^="composer-mention-option-"]').length,
+      // The assertion that catches a clip: the panel is what is drawn where the panel is.
+      paintsItself: el.contains(hit) || el === hit,
+      aboveComposer: Math.round(box.bottom) <= Math.round(cb.top),
+      // It escaped the surface that clips to its own corner.
+      escapedTheClippingSurface: !composer.contains(el),
+      // The textarea still owns focus, because that is what drives the selection.
+      focusStillInInput: document.activeElement?.tagName.toLowerCase() === "textarea",
+      selects: el.querySelectorAll('[aria-selected="true"]').length,
+    };
+  });
+
+  expect(geometry.rows).toBeGreaterThan(0);
+  expect(geometry.paintsItself).toBe(true);
+  expect(geometry.aboveComposer).toBe(true);
+  expect(geometry.escapedTheClippingSurface).toBe(true);
+  expect(geometry.focusStillInInput).toBe(true);
+  expect(geometry.selects).toBe(1);
+});

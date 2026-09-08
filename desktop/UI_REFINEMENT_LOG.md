@@ -9621,3 +9621,45 @@ MENTION {"found":false,"textareaValue":"@","ariaControls":null}
 删组件、两个面板改走 portal、composer 编辑区改成命名档 —— **一张 golden 都没动**。
 说明这些改动确实只换了实现，没换外观（唯一预期会变的是 slash 面板从「顶开 composer」
 变成「浮在上面」，而它本来就没有任何 golden 拍到过）。
+
+## Round 159 — 把「测试到不了」的那格补上
+
+上一轮末尾记的缺口：`@` 面板在 fixture 里打不开，因为 `active = open && items.length > 0`
+而 agent fixture 没接工作区文件的 provider。
+
+fixture 里已经有一段注释把同一种病说得很清楚（讲的是 read preview）：
+
+> without one the preview rendered empty here and **the component that draws it appeared in
+> no test**.
+
+同样的病、同样的药：给 agent fixture 加一个 `WORKSPACE_LIST_FILES_KEY` 的确定性 provider。
+然后那条本来写不出来的测试就写得出来了 —— 它断言的是**真正坏掉的那个面板**：
+
+| 断言 | 为什么 |
+| --- | --- |
+| `paintsItself` | 面板所在的位置画出来的是它自己（不是被裁掉后面的东西） |
+| `escapedTheClippingSurface` | 它不在 `composer-root` 里面 —— 它真的 portal 出去了 |
+| `aboveComposer` | 它坐在 composer 上方 |
+| `focusStillInInput` | 焦点还在 textarea，因为驱动选中的是它的 `aria-activedescendant` |
+| `selects === 1` | 有且只有一行被标为选中 |
+
+**一句话**：一个「表面无法从 fixture 到达」的 fixture，对那个表面什么也验不出来。
+这个 bug 活了这么久，根本原因是它所在的地方测试进不去。
+
+### 下一轮已定位的下一个同类缺陷
+
+`ComposerAttachments.tsx` 里，`Chip` 原子只有**一个**调用处（@ 提及那颗），
+而它下面 40 行 `PasteChip` **手搓了第二颗近乎一样的 chip**：
+
+| | `Chip` 原子 | 手搓的 `PasteChip` |
+| --- | --- | --- |
+| 220px 上限 / 等宽 / pill / `uiSm` / 截断 / 图标 / 关闭 / Tooltip | ✓ | ✓ 全都一样 |
+| 填充 | `accentBadge` + 真 border | `bg-surface-2`，**没有 border** |
+| 墨色 | `fgSoft` | `fgMuted` |
+
+安静一档可能是有意的（提及是「用户引的东西」，粘贴是「附上的内容」），
+但它是**靠重造组件**表达的，而不是靠 `Chip` 的一个 tone。仓库硬规则写着：
+「业务层不自己拼交互件：缺档就往库里加一档，别在 callsite 手搓」。
+
+**而且两颗 chip 都没有任何 golden** —— 所以它们能在同一个文件里分叉而没人发现。
+这一轮的主题一直成立：**composer 是那个没有测试的子树，缺陷就都在那里。**
