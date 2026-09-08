@@ -15,7 +15,7 @@ export interface LoaderProps {
  * terminal, shimmer — and both call sites in the tree asked for the shimmer, so six of them
  * and five sets of keyframes animated nothing. No guard could see it: a `variant` the product
  * never passes is still reachable through the union, so `knip` reads the component as used and
- * `check-dead-utilities` reads every class as emitted.
+ * `check-authored-classes` reads every class as resolving.
  *
  * A variant this needs again is one rung to add back, which is cheaper than six kept warm.
  *

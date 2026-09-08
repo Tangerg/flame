@@ -100,9 +100,6 @@ const styles = stylex.create({
 /** Where a floating thing sits in the stack. Its own layer, not the modal one. */
 export const FLOATING_LAYER = [styles.layer];
 
-/** How a floating thing arrives and leaves. Composed by consumers that bring their own face. */
-export const FLOATING_MOTION = [styles.motion];
-
 /** The panel: a menu, a popover, a suggestion list. */
 export const FLOATING_PANEL = [styles.face, styles.motion, styles.panel];
 

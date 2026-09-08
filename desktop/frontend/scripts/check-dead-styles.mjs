@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// The other half of `check-dead-utilities`: that one fails a class the source names and the
-// stylesheet never emits, this one a class the stylesheet emits and the source never names.
+// The other half of `check-authored-classes`: that one fails a class the source names and no
+// stylesheet defines, this one a class a stylesheet defines and the source never names.
 // Both are invisible — the rule simply never meets an element.
 //
 // Narrow on purpose: only a selector STARTING with one of this app's classes must be applied

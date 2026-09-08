@@ -1,1 +1,1 @@
-export { Composer, SlashSuggestions } from "../ui";
+export { Composer } from "../ui";

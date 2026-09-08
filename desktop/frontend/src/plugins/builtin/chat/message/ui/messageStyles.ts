@@ -8,6 +8,21 @@ import { color, leading, motion, radius, space, surface, weight } from "@/styles
  * actions deeper still — and one line: the thing being asked, which wraps anywhere because
  * it may be a path or a command with no spaces to break at.
  */
+/**
+ * The four distances a seam between two render units can take.
+ *
+ * `renderUnitRhythm` decides WHICH seam a pair makes; this decides what that seam is worth.
+ * Two owners, one fact each — the application knows the relationship, the view knows the step.
+ */
+export const seamStep = stylex.create({
+  /** The first unit has no predecessor, so it has no seam. */
+  none: {},
+  tight: { marginTop: space.s1_5 },
+  close: { marginTop: space.s3 },
+  apart: { marginTop: space.s4 },
+  wide: { marginTop: space.s5 },
+});
+
 export const messageStyles = stylex.create({
   cardClip: { overflow: "hidden" },
   cardHead: { paddingInline: space.s4, paddingTop: space.s4, paddingBottom: space.s3 },

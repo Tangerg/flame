@@ -1,9 +1,9 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
 import type { TranscriptRow, TurnFacts } from "@/plugins/builtin/agent/public/conversation";
 import type { MessageRenderUnit } from "@/plugins/builtin/agent/public/messagePresentation";
 import type { BlockCtx } from "./blockContext";
 export type { BlockCtx } from "./blockContext";
-import { cn } from "@/lib/classNames";
 import { MarkdownMessage } from "./markdown/MarkdownMessage";
 import { ApprovalCard, CompactionBlock, ImageBlock, QuestionCard, ReasoningBlock } from "./cards";
 import { ToolCard, ToolGroup } from "@/plugins/builtin/chat/tools/public/rendering";
@@ -11,7 +11,8 @@ import { lookupExtensionByKey } from "@/plugins/sdk";
 import { TOOL_STANDING_SURFACE } from "@/plugins/sdk/kernelPoints";
 import { messageBlockRenderUnits, narratedBlocks } from "../application/messageBlockModel";
 import { BLOCK_ANCHOR_ATTR, renderUnitAnchor } from "../application/renderUnitAnchor";
-import { unitIndentClass, unitSeamClass } from "../application/renderUnitRhythm";
+import { unitSeam } from "../application/renderUnitRhythm";
+import { seamStep } from "./messageStyles";
 import { DelegatedNarrative } from "./DelegatedNarrative";
 import { NarrativeWave } from "./NarrativeWave";
 
@@ -146,7 +147,7 @@ export function renderMessageBlocks(
       <div
         key={anchor}
         {...{ [BLOCK_ANCHOR_ATTR]: anchor }}
-        className={cn(unitSeamClass(units[index - 1], unit), unitIndentClass(unit))}
+        {...stylex.props(seamStep[unitSeam(units[index - 1], unit) ?? "none"])}
       >
         {renderUnit(unit, facts, ctx)}
       </div>

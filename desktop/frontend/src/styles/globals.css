@@ -1,4 +1,209 @@
-@import "tailwindcss";
+/*
+ * The reset, which `@import "tailwindcss"` used to supply.
+ *
+ * It is a transcription of Preflight's values rather than an improvement on them: every rule
+ * here was already in effect, so replacing the import must not move a pixel. What is NOT
+ * transcribed is the part that normalises browsers this application never runs in — `-moz-*`
+ * rules, `::file-selector-button`, the twelve `::-webkit-datetime-edit-*` rules, `optgroup`,
+ * `progress`, search decorations. This ships in one WebKit webview and renders one markup set.
+ *
+ * The load-bearing line is the first: `border: 0 solid` is why a component may state a
+ * `border-width` alone and get a solid border. Remove it and every edge in the product
+ * disappears at once.
+ */
+@layer base {
+  *,
+  ::before,
+  ::after,
+  ::backdrop {
+    box-sizing: border-box;
+    border: 0 solid;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    tab-size: 4;
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  hr {
+    height: 0;
+    color: inherit;
+    border-top-width: 1px;
+  }
+
+  /* A heading is a level, not a size: this design gives it both from its own ladder. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: inherit;
+  }
+
+  b,
+  strong {
+    font-weight: bolder;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+    font-size: 1em;
+  }
+
+  small {
+    font-size: 80%;
+  }
+
+  sub,
+  sup {
+    position: relative;
+    vertical-align: baseline;
+    font-size: 75%;
+    line-height: 0;
+  }
+
+  sub {
+    bottom: -0.25em;
+  }
+
+  sup {
+    top: -0.5em;
+  }
+
+  table {
+    text-indent: 0;
+    border-color: inherit;
+    border-collapse: collapse;
+  }
+
+  summary {
+    display: list-item;
+  }
+
+  ol,
+  ul,
+  menu {
+    list-style: none;
+  }
+
+  img,
+  svg,
+  video,
+  canvas,
+  audio,
+  iframe,
+  embed,
+  object {
+    display: block;
+    vertical-align: middle;
+  }
+
+  img,
+  video {
+    max-width: 100%;
+    height: auto;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    /* The `font` shorthand above RESETS these two, so they have to be re-inherited by name.
+       `body` sets `font-feature-settings: "tnum" 1`, and without this line every button, input
+       and textarea in the product silently loses tabular figures — which is a width change in
+       every digit, everywhere, and reads as a font-rendering mystery rather than a dropped
+       declaration. Preflight had this line; leaving it out is how I found out why. */
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    opacity: 1;
+    background-color: transparent;
+    border-radius: 0;
+  }
+
+  button,
+  input:where([type="button"], [type="reset"], [type="submit"]) {
+    appearance: button;
+  }
+
+  /* A placeholder is half the ink of what would be typed there, and opaque so the half is the
+     colour's doing rather than the element's. */
+  ::placeholder {
+    opacity: 1;
+    color: color-mix(in oklab, currentcolor 50%, transparent);
+  }
+
+  textarea {
+    resize: vertical;
+  }
+
+  [hidden]:where(:not([hidden="until-found"])) {
+    display: none !important;
+  }
+
+  /* Present to a screen reader, absent to everyone else. It came from Tailwind and now has no
+     other owner: a RECIPE rather than a property, so it stays a class the way `panel-scroll`
+     and `truncate-fade` do, rather than becoming a StyleX step that fourteen call sites would
+     each have to compose. Round 149 tried the other way and made a second owner of it. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+
+/*
+ * The six values Tailwind's own theme supplied, now stated here.
+ *
+ * `--spacing` is the one that matters: every step in `space` is a multiple of it, so without
+ * this line the whole product loses its rhythm at once. The rest were read once or twice each
+ * — the animations by a reconnect glyph and a connecting badge, `--shadow-md` by a markdown
+ * image, and `--tracking-normal` and `--tracking-wide` by a placeholder that opts out of UI
+ * tracking and by the fixture's uppercase specimen labels.
+ */
+:root {
+  --spacing: 0.25rem;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.025em;
+  --leading-normal: 1.5;
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --animate-spin: spin 1s linear infinite;
+  --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
 
 @font-face {
   font-family: "Geist";
@@ -1223,8 +1428,14 @@ html.theme-dark {
   --composer-ring: var(--color-accent);
 }
 
-@import "./markdown.css";
-@import "./overlays.css";
+/* `markdown.css` and `overlays.css` used to be `@import`ed HERE, at the end of the file.
+   CSS ignores an `@import` that follows any other rule — the spec requires them first — and
+   the only reason they worked is that Tailwind's plugin inlined them before the browser ever
+   saw the file. `postcss.config.mjs` had even written down what happens without it: "the
+   `@import`s in `globals.css` stopped being inlined and every code block lost its padding."
+
+   They load from the entry now, immediately after this file, which is the order they need:
+   these two sheets refine what this one establishes. */
 
 /* The corner language, in one place, after the imports so the pill exception below reaches
    the sheets that declare pills.
@@ -1282,6 +1493,15 @@ html.theme-dark {
 [data-slot="provider-mark"] > svg {
   width: 100%;
   height: 100%;
+}
+
+/* The reading rail spans the whole transcript so it can hang a mark beside any turn, which
+   makes it a sheet of glass over the text: it declines the pointer and each thing it carries
+   takes it back. A CHILD rule because the rail is a plugin SLOT — the wrapper is the only
+   party that knows every contribution has to be clickable, and an atomic class cannot say
+   anything about a descendant. */
+[data-slot="chat-rail"] > * {
+  pointer-events: auto;
 }
 
 @supports (corner-shape: superellipse(1.5)) {

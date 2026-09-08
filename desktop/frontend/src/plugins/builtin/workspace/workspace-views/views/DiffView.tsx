@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { intraLineDiff } from "../intraLineDiff";
 import { stripCodeWrapper, useCodeHighlighter } from "@/lib/highlight/useCodeHighlight";
 import { langFromPath, resolveLang } from "@/lib/highlight/shiki";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { color, type as typeStep } from "@/styles/tokens.stylex";
 import { codeStyles as cs } from "./viewStyles";
 
 export type DiffLayout = "unified" | "split";
@@ -70,13 +70,19 @@ function computeWordRanges(rows: WorkspaceDiffRow[]): Map<WorkspaceDiffRow, [num
   return ranges;
 }
 
-const CODE_CELL = "min-w-0 whitespace-pre-wrap wrap-anywhere";
+const dv = stylex.create({
+  /** A diff line wraps rather than scrolls, and breaks mid-token when a token is longer than
+   *  the pane — a minified line or a base64 blob otherwise widens the whole table. */
+  cell: { minWidth: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
+  /** Unhighlighted code is the fallback, and reads a step back so the wait is legible. */
+  plain: { color: color.fgSoft },
+});
 
 function CodeCell({ code, html }: { code: string; html: string | undefined }) {
   return html ? (
-    <span className={CODE_CELL} dangerouslySetInnerHTML={{ __html: html }} />
+    <span {...stylex.props(dv.cell)} dangerouslySetInnerHTML={{ __html: html }} />
   ) : (
-    <span className={`${CODE_CELL} text-fg-soft`}>{code}</span>
+    <span {...stylex.props(dv.cell, dv.plain)}>{code}</span>
   );
 }
 

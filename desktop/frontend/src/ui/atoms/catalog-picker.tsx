@@ -9,11 +9,15 @@ import { Popover } from "./popover";
 import { Pressable } from "./pressable";
 import { vocab } from "./vocabulary";
 
-export const styles = stylex.create({
+const styles = stylex.create({
   // `data-empty:` was Tailwind's variant syntax over a data attribute; StyleX says the same
   // thing natively, and says it at a specificity no utility can undo.
   emptyFlush: { padding: { default: null, ":is([data-empty])": 0 } },
-  hideWhenEmpty: { display: { default: null, ":is([data-empty])": "none" } },
+  // A row with nothing in it takes no space. `:empty` and `[data-empty]` are two different
+  // questions — one asks whether the element has children, the other whether the LIST it heads
+  // is empty — so both live here rather than one standing in for the other.
+  hideWhenEmpty: { display: { default: null, ":empty": "none" } },
+  hideWhenListEmpty: { display: { default: null, ":is([data-empty])": "none" } },
   // The search box sits INSIDE the popup, so it wears the field's edge rather than the popup's.
   searchBox: {
     marginBottom: space.s1,
@@ -325,7 +329,7 @@ export function CatalogPicker({
           <CatalogSearch placeholder={placeholder} />
 
           <ComboboxPrimitive.Empty
-            className={cn("empty:hidden", stylex.props(styles.empty, type.uiSm).className)}
+            className={stylex.props(styles.empty, styles.hideWhenEmpty, type.uiSm).className}
           >
             {emptyLabel}
           </ComboboxPrimitive.Empty>
@@ -500,16 +504,17 @@ export function RailCatalogPicker({
             )}
 
             <ComboboxPrimitive.Empty
-              className={cn("empty:hidden", stylex.props(styles.emptySplit, type.uiSm).className)}
+              className={stylex.props(styles.emptySplit, styles.hideWhenEmpty, type.uiSm).className}
             >
               {emptyLabel}
             </ComboboxPrimitive.Empty>
             <ComboboxPrimitive.List
               ref={listRef}
-              className={cn(
-                stylex.props(styles.hideWhenEmpty).className,
-                stylex.props(styles.list, styles.listInset).className,
-              )}
+              // One `stylex.props` call, not two joined: StyleX resolves precedence WITHIN a
+              // call, and two class lists concatenated leave it to stylesheet order.
+              className={
+                stylex.props(styles.hideWhenListEmpty, styles.list, styles.listInset).className
+              }
             >
               {(item: CatalogPickerItem) => CatalogRow(item, searching ? undefined : active?.label)}
             </ComboboxPrimitive.List>

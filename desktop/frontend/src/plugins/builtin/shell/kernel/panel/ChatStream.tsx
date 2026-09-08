@@ -30,6 +30,26 @@ import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 import { vocab } from "@/ui";
 
 const cst = stylex.create({
+  /** A reading column with nothing in it takes no space, so the gap above it closes. */
+  hideWhenEmpty: { display: { default: null, ":empty": "none" } },
+  // The transcript answers its own width rather than the window's: a tool card decides whether
+  // it can afford its meta column from THIS pane, which the dock resizes independently.
+  queryable: { containerType: "inline-size" },
+  // The rail hangs OUTSIDE the reading column, so it is positioned from the pane's centre plus
+  // half the column — and only appears once the pane is wide enough to have room beside the
+  // text. It spans the transcript and must not take the pointer from it; what it hangs there
+  // takes the pointer back, in the one globals.css rule an atomic class cannot express.
+  rail: {
+    position: "absolute",
+    top: 0,
+    bottom: "var(--composer-overlay, 0px)",
+    right: "calc(50% + var(--reading-column-max) / 2)",
+    zIndex: 1,
+    width: "var(--reading-rail-width)",
+    flexDirection: "column",
+    display: { default: "none", "@container (min-width: 1152px)": "flex" },
+    pointerEvents: "none",
+  },
   tray: {
     pointerEvents: "auto",
     display: "flex",
@@ -64,13 +84,6 @@ const cst = stylex.create({
 interface Props {
   onSend: (input: AgentInput) => boolean;
 }
-
-// The rail hangs OUTSIDE the reading column, so it is positioned from the window's centre
-// plus half the column — and only appears once the window is wide enough to have room beside
-// the text. `[&>*]` stays a utility: the rail is transparent to the pointer and its children
-// are not, which is a descendant rule no atomic class can express.
-const RAIL =
-  "absolute top-0 bottom-[var(--composer-overlay,0px)] z-1 hidden w-[var(--reading-rail-width)] flex-col @min-[1152px]:flex pointer-events-none [&>*]:pointer-events-auto right-[calc(50%+var(--reading-column-max)/2)]";
 
 const ChatBanners = memo(function ChatBanners({ sessionId }: { sessionId: string }) {
   return (
@@ -163,7 +176,10 @@ export function ChatStream({ onSend }: Props) {
             <RuntimeConnectionNotice />
             {composer}
           </div>
-          <div {...readingBox} className={cn("empty:hidden", readingBox.className)}>
+          <div
+            {...readingBox}
+            className={cn(stylex.props(cst.hideWhenEmpty).className, readingBox.className)}
+          >
             <Slot name="chat.empty" />
           </div>
         </div>
@@ -173,10 +189,14 @@ export function ChatStream({ onSend }: Props) {
 
   const pane = stylex.props(sh.paneAnchored);
   return (
-    <div ref={paneRef} {...pane} className={cn("@container", pane.className)}>
+    <div
+      ref={paneRef}
+      {...pane}
+      className={cn(stylex.props(cst.queryable).className, pane.className)}
+    >
       <ChatBanners sessionId={sessionId} />
       <div {...stylex.props(sh.paneAnchored)}>
-        <div className={RAIL}>
+        <div data-slot="chat-rail" {...stylex.props(cst.rail)}>
           <Slot name="chat.rail.start" />
         </div>
         <div {...stylex.props(sh.paneAnchored)}>

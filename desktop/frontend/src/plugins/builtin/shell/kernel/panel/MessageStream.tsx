@@ -94,11 +94,13 @@ function transcriptDayBreaks(rows: readonly TranscriptRow[]): readonly boolean[]
   });
 }
 
-const TURN_GAP = {
-  none: "",
-  sameSpeaker: "mt-1",
-  newSpeaker: "mt-4",
-} as const;
+// The gap between turns, as steps rather than class names. Same reason as `seamStep`: a
+// distance decided here in Tailwind's alphabet stops existing the day that alphabet does.
+const TURN_GAP = stylex.create({
+  none: {},
+  sameSpeaker: { marginTop: space.s1 },
+  newSpeaker: { marginTop: space.s4 },
+});
 
 interface TurnProps {
   row: TranscriptRow;
@@ -130,11 +132,11 @@ const TranscriptTurn = memo(function TranscriptTurn({
         {...enterUp}
         data-turn-id={row.message.id}
         data-turn-role={row.message.role}
-        className={cn(
-          stylex.props(rc.gutter).className,
-          TURN_GAP[gap],
-          transcriptTurnContentVisibility(isLast),
-        )}
+        // The class only: `motion.div` animates through `style`, so spreading StyleX's whole
+        // result here hands the same attribute two owners.
+        className={
+          stylex.props(rc.gutter, TURN_GAP[gap], transcriptTurnContentVisibility(isLast)).className
+        }
       >
         <MessageBlock
           row={row}

@@ -10480,3 +10480,277 @@ className={cn(stylex.props(…).className, contentInset, contentClassName)}
 `contentInset` 是字符串 `"rows"`，被当成类名输出了 —— 而 `styles.bodyRows` **从未应用**，
 于是那三个调用处**丢掉了它们的 `py-1.5`**。`tool-shells` / `answer-opening` 四张 golden
 就是这么红的。TS 不会报（`cn` 收 `ClassValue`），只有 golden 说了话。
+
+## Round 168 — 第 ④⑥ 层：preflight 与最后的依赖
+
+### 先量 preflight 到底给了什么
+
+从产物里把 `@layer base` 整段抠出来读完。承重的是第一条：
+
+```css
+*, ::before, ::after, ::backdrop { box-sizing: border-box; border: 0 solid; margin: 0; padding: 0 }
+```
+
+**`border: 0 solid` 是为什么一个组件只写 `border-width` 就能得到一条实线边。**
+删掉它，产品里每一条边同时消失。
+
+其余是标准的现代 reset：标题的字号字重回到 inherit、`a` 继承颜色、
+`ol/ul` 去掉列表符、`img/svg` 变 block、表单控件 `font: inherit` 与透明背景、
+`table` 折叠边框、`textarea` 只竖向缩放。
+
+### 我们自己的 reset：转写，不是改良
+
+原样照抄 Preflight 的**值**，因为「换掉 import」必须一个像素都不动。
+**没有**照抄的是它为这个应用永远不会跑的浏览器做的归一化 ——
+`-moz-*`、`::file-selector-button`、十二条 `::-webkit-datetime-edit-*`、
+`optgroup`、`progress`、搜索框装饰。这个应用只在一个 WebKit webview 里跑、
+只渲染一套标记（量过：`p` / `code` / `label` / `th` / `td` / `pre` / `button` /
+`table` / `h1-h6` / `ul` / `li` / `strong` / `details` / `summary` / `input` / `textarea` / `img`）。
+
+### Tailwind 自己那 6 个 theme 值
+
+`--spacing` 是要命的那个：`space` 每一档都是它的倍数，少了它整个产品同时失去节奏。
+其余各被读一两次 —— 两个动画（重连字形、connecting 徽标）、
+`--shadow-md`（markdown 图片）、`--tracking-normal`（一个退出 UI 字距的占位符）。
+连同 `@keyframes spin` / `pulse` 一起写进 `globals.css`。
+
+### 拆掉
+
+- `@import "tailwindcss"` → 我们自己的 reset
+- `vite.config.ts` / `vite.visual.config.ts` 的 `tailwindcss()` 插件
+- `package.json` 的 `tailwindcss` 与 `@tailwindcss/vite`
+
+`npm ls tailwindcss` → **empty**。`tailwind-merge` 只剩 `streamdown` 的传递依赖，不是我们的。
+
+### 移除 `@import` 之后 162 张红 —— 而根因只有三个类名
+
+diff 图一眼就说明白了：**`sr-only` 的那些输出全都显示出来了**，
+挤走了整个布局。
+
+`sr-only` **是 Tailwind 自己的 utility**，不是我们的。我把它列进「`globals.css` 拥有的机制键」
+——**列错了**。同样列错的还有 `@container` 和 `empty:hidden`。
+
+写了个专门的检查（把源码里所有 className token 拿去跟我们三张样式表里定义的类名对账），
+结果只有三个真孤儿：
+
+| 类名 | 用了几处 | 归属 |
+| --- | --- | --- |
+| `sr-only` | 14 | Tailwind 的 |
+| `empty:hidden` | 3 | Tailwind 的变体语法 |
+| `@container` | 1 | Tailwind 的 |
+
+后两个是**单个属性**，StyleX 原生就能说（`":empty"` 伪类、`containerType`），
+所以它们变成档而不是类。
+
+`sr-only` 不一样：它是**一段配方**（七条声明），14 个调用处，
+而且是无障碍机械而非设计词汇 —— 所以它留在 `globals.css` 当类，
+跟 `panel-scroll` / `truncate-fade` 一样。round 149 试过把它翻译成本地档，
+结果造出第二个 owner，当时就退回了；这次的区别是**它现在真的没有别的主人了**。
+
+顺带发现同一个文件里两个 `stylex.props()` 被 `cn` 拼在一起 ——
+StyleX 只在**一次调用内**解析优先级，拼接就把优先级交给了样式表顺序。合成了一次调用。
+
+### 第七个盲区，也是最大的一个：转录的整个节奏是一张 Tailwind 类名表
+
+修好 `sr-only` 之后还剩 123 张。这次 diff 很窄：助手那条消息**整体上移 16px**。
+
+走 DOM 祖先链一个个量，第三层就是它：
+
+```
+{"cls": "xvqjf64 xxebm3f mt-4", "mt": "0px"}
+```
+
+**一个字面的 `mt-4`，算出来的 `margin-top` 是 0** —— Tailwind 不再生成它了。
+
+来源是 `renderUnitRhythm.ts`：
+
+```ts
+const SEAM: Record<UnitVoice, Record<UnitVoice, string>> = {
+  process: { process: "mt-1.5", prose: "mt-5", panel: "mt-4" },
+  prose:   { process: "mt-5",   prose: "mt-3", panel: "mt-4" },
+  panel:   { process: "mt-4",   prose: "mt-5", panel: "mt-3" },
+};
+```
+
+**转录的整个垂直节奏，一张 3×3 的 Tailwind 类名表，写在应用层。**
+加上 `MessageStream` 的 `TURN_GAP`（`mt-1` / `mt-4`）。
+
+这个模块的设计其实是对的，注释写得很好：
+
+> Keyed on the PAIR, because a seam is a relationship and **neither side knows the distance
+> alone**. This table is the ONLY owner of the distance.
+
+错的只是它**用 Tailwind 的字母表说那个距离**。治本和 `toneInk` 同形：
+**应用层拥有「关系」，视图层拥有「距离」。**
+
+`SEAM` 现在发出四个接缝名（`tight` / `close` / `apart` / `wide`），
+`messageStyles.seamStep` 把接缝名映射成步长。两张表，各自一个事实 ——
+应用层知道两个单元是什么关系，视图层知道那个关系值多少像素。
+
+`unitIndentClass` 顺手删了：三个键全都回答「没有缩进」，那是一个用三行说出来的空。
+
+### 我的 `.ts` 扫描第一次是错的
+
+上一轮我扫 `.ts` 里的 class 串，只找了 `text-|bg-|border-` 开头的，
+**没找 `mt-*`**。这次把 utility 前缀补全了重扫，剩下的命中全是
+StyleX 的属性**值**（`"flex"` / `"grid"` / `"relative"`）、图标名、或者我自己注释里的引号。
+
+**`.ts` 里再没有真的 class 串了。**
+
+### 第三个根因，而 `postcss.config.mjs` 一字不差地预言过它
+
+节奏修好后还剩 74 张，集中在 markdown 与代码块。看 diff：**代码块丢了内边距。**
+
+`postcss.config.mjs` 的注释里写着：
+
+> with Tailwind on PostCSS the `@import`s in `globals.css` stopped being inlined and
+> **every code block lost its padding**.
+
+`globals.css` 第 **1422 / 1423** 行（全文 1423 行）：
+
+```css
+@import "./markdown.css";
+@import "./overlays.css";
+```
+
+**CSS 规范要求 `@import` 必须在所有其他规则之前** —— 跟在后面的会被忽略。
+它们能生效，唯一的原因是 **Tailwind 的插件在浏览器看到文件之前就把它们内联了**。
+
+改成从入口加载，紧跟在 `globals.css` 之后 —— 那正是它们需要的顺序：
+这两张表是在细化 `globals.css` 立的规矩。不能把 `@import` 移到文件开头，
+那会把它们放到 `globals.css` 的规则**之前**，同特异性的冲突就会反过来。
+
+### 验收（上一轮的表，一次 `cd` 把它写进了 `frontend/UI_REFINEMENT_LOG.md`，这里归位）
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **669 / 669**，0 unexpected，0 flaky，**零重录** |
+| 守卫 | 17 项全绿 |
+| 单测 | 1783 项通过 |
+| `globals.css` 的 Tailwind 指令 | 只剩 `@import "tailwindcss"` |
+| 依赖 | `tailwind-merge` 已移除 |
+
+零重录是这一轮该有的答案：删掉 68 个别名、把消费方改指底层名，
+是**同一个值换个说法**，一个像素都不该动。
+
+## Round 168 — Tailwind 归零，和三个只有像素才看得见的根因
+
+`npm ls tailwindcss` 空了之后，全套视觉从 162 红降到 49。前四个根因上一轮已解。
+最后一个花了整轮，因为**它不在 CSS 里**。
+
+### 排除法：五次测量，每一次都说「没有区别」
+
+| 测什么 | 怎么测 | 结果 |
+| --- | --- | --- |
+| preflight | 分别构建带/不带 Tailwind 的产物，逐条 diff `@layer base` | 只差 `a { -webkit-text-decoration }` 和 `code,kbd,pre,samp` 里三条 `--theme(…)`（浏览器直接丢弃）|
+| 丢失的变量 | 产物里 `var(--x)` 读到的减去定义过的 | 22 个，全是运行时注入（Base UI 锚点、JS 量、markdown alert 的兜底），**没有一个来自 Tailwind** |
+| 计算样式 | `:root` / `body` / 那个 `<p>` 的**每一条**属性逐条 diff | 只差 Tailwind 自己的 `--tw-*`、`--radius-*` 这类没人读的变量 |
+| 几何与绘制 | 从段落到 `<html>` 十四层的 box、`transform` / `opacity` / `filter` / `contain` / `mask` | **完全一致** |
+| 字形 | `Range.getClientRects()` 逐字取 x | **完全一致** |
+
+同样的 DOM、同样的 CSS、同样的盒子、同样的字形位置，像素却不同。
+那就只能问像素本身：**墨量相同到 0.004%，质心左移 0.50 px** —— 一次刚性的半像素平移。
+而气泡的**底板没有动**：244 从 x544 到 x1081，两态逐像素相同。
+
+### 根因：一个类名里藏着的 `[content-visibility:auto]`
+
+线索在 dump 出来的类名末尾：`DIV.xvqjf64 xxebm3f [content-visib…`。
+那是 Tailwind 的 **arbitrary-property** 语法。
+
+```ts
+// transcriptTurnContentVisibility.ts —— 改之前
+return isLast ? undefined : "[content-visibility:auto] [contain-intrinsic-size:auto_220px]";
+```
+
+Tailwind 一走，这两个 class 什么都不生成：off-screen 的 turn 不再跳过渲染，
+整条 transcript 的合成方式变了，气泡的文本因此落在不同的子像素相位上。
+
+**丢掉的不是渲染细节，是一个产品决策**：一条无限长的 transcript 要不要渲染它的全部历史。
+
+治本是让它返回 StyleX style，调用方合进同一个 `stylex.props`
+（顺带消掉 `cn()` 里两串独立生成的 class 抢优先级那个没有正确答案的竞态）。
+
+### 断言字符串，是它能烂掉一整个版本的原因
+
+`MessageStream.test.ts` 断言的是那两个 class 的**字面量**。
+Tailwind 删干净之后，这条断言依然全绿 —— 它测的是「这个函数返回这个字符串」，
+不是「这个 turn 会跳过渲染」。
+
+改成断言「解析得出类名」，真正的断言放到渲染出来的文档上：
+新增 `historical turns skip off-screen rendering and the tail turn never does`，
+读每个 turn 的 computed `content-visibility`。**编译成空的样式在那里无处可藏。**
+
+### 49 → 11：同一个盲区的另外两处
+
+| 位置 | 死掉的东西 | 症状 |
+| --- | --- | --- |
+| `ChatStream.tsx` 的 `const RAIL` | 12 个 utility 一串，含容器查询 `@min-[1152px]:flex` | rail 从绝对定位的浮层变成流内盒子，压在 transcript 上：narrative golden 少一行标题，WCAG 报三个 34×9 触控目标（窄面板下 rail 本该隐藏）|
+| `DiffView.tsx` 的 `const CODE_CELL` + 模板串里的 `text-fg-soft` | 4 个 utility | diff 行不再换行 |
+
+`[&>*]:pointer-events-auto` 是唯一一条 StyleX 表达不了的（后代规则），
+它进 `globals.css`，键在 `[data-slot="chat-rail"] > *` —— 因为 rail 是插件 **slot**，
+只有包裹层知道「每一个贡献都必须可点」，不能指望每个贡献自己记得。
+
+### 守卫为什么在它最该报警的那一刻沉默
+
+`check-dead-utilities` 判断「这串是不是 class 列表」的办法是
+**至少两个 token 能在构建产物里找到规则**。
+Tailwind 一走，一个全是 Tailwind class 的字符串**一个 token 都解析不了**，
+于是被当成散文跳过 —— 问题越彻底，它越安静。
+
+换成 `check-authored-classes`，问反过来的问题：
+**手写的每一个 class，必须是我们自己的样式表定义的。**
+这个集合小、封闭、且属于我们；剩下的要么是已经不存在的框架的 utility，要么是拼错。
+902 个文件 / 69 个 class。造了个含 4 个死 class 的文件验证过它会失败，四条全报，
+常量形式和内联形式都抓到。
+
+### 最后一张红：我上一轮的 import 顺序推反了
+
+`md-table-actions` 在触屏上仍然透明。`globals.css` 最后一段自己写着：
+
+> Last in the file on purpose: a rest state may be declared by any of the sheets imported
+> above, and this has to be the one that wins.
+
+我把 `markdown.css` / `overlays.css` 移到入口时**排在了 `globals.css` 之后**，
+同特异性下后来者赢，markdown 的 rest 状态盖掉了 `@media (hover: none)` 的兜底 ——
+触屏上那条 action strip 没有任何办法出现。
+
+改成 **`globals.css` 最后加载**。上一轮日志里我那句
+「不能把 `@import` 移到文件开头，那会把它们放到 `globals.css` 的规则之前」
+推错了方向：需要在前面的正是那两张表。此处更正。
+
+### 顺手清掉的 Tailwind 时代残留
+
+`class-variance-authority`（零引用，cva 拼的就是 class 串）、
+`classNames.test.ts`（整份文件都在测 tailwind-merge 的冲突消解）、
+4 个死 export（`FLOATING_MOTION` 是我删掉 `FloatingSurface` 之后留下的）。
+
+`cn()` 现在就是 `clsx`。按仓库自己的规矩（包装器不拥有策略就删掉）它该没了 ——
+但它和 67 个文件里的 `className` 逃生口是**同一件事**：
+逃生口存在的理由写在 CLAUDE.md 里，「因为调用方仍是 Tailwind」，这个理由今天不在了。
+两个一起删是下一批，不是这一批。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **670 / 670**（669 + 新增 1），0 unexpected，0 flaky，**零重录** |
+| 守卫 | 17 项全绿（`check:utilities` → `check:classes`）|
+| 单测 | 2393 通过 / 4 失败 —— 全部在 `src/rpc`，本轮 runtime contract 由用户改动，不在范围内 |
+| 入口 CSS | 100.0 KB / 142.6 KB 预算 |
+| `npm ls tailwindcss` | 空 |
+
+零重录：这一轮没有重录任何一张 golden。
+之前那 49 张红全都是**回归**，不是「设计变了」—— 分辨这两者的唯一办法，
+就是先把每一张的因果说清楚，再决定要不要动基准。
+
+### 六层，收尾
+
+| 层 | 状态 |
+| --- | --- |
+| ① utility class（含 arbitrary-property、常量里的整串） | **零** |
+| ② `@theme inline` | 已内联为自己的 `:root` |
+| ③ `@utility` / `@custom-variant` | 已消 |
+| ④ preflight + Tailwind 自带主题默认值 | 已转写并逐条比对 |
+| ⑤ `cn()` 里的 `tailwind-merge` | 已删 |
+| ⑥ Vite 插件 + devDeps | 已删 |

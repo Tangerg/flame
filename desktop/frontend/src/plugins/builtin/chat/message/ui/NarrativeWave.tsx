@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useState, type ReactNode } from "react";
 import type { MessageRenderUnit } from "@/plugins/builtin/agent/public/messagePresentation";
 import {
@@ -8,7 +9,8 @@ import {
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import type { TurnFacts } from "@/plugins/builtin/agent/public/conversation";
-import { unitSeamClass } from "../application/renderUnitRhythm";
+import { unitSeam } from "../application/renderUnitRhythm";
+import { seamStep } from "./messageStyles";
 import type { BlockCtx } from "./blockContext";
 import { waveGlyph } from "./narrativeWaveGlyphs";
 
@@ -38,7 +40,7 @@ export function NarrativeWave({ units, facts, ctx, renderUnit }: Props) {
       stickyHeader
     >
       {units.map((unit, index) => (
-        <div key={index} className={unitSeamClass(units[index - 1], unit)}>
+        <div key={index} {...stylex.props(seamStep[unitSeam(units[index - 1], unit) ?? "none"])}>
           {renderUnit(unit, facts, ctx)}
         </div>
       ))}

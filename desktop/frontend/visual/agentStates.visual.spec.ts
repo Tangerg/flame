@@ -679,6 +679,30 @@ test("long content remains inside the reading column without horizontal overflow
   await expect(page.locator('[data-slot="composer-root"]')).toBeVisible();
 });
 
+// The whole apparatus below — `layOutTranscript`, the frozen clock's fractional-origin wait —
+// exists to absorb `content-visibility`. None of it fails when the property stops arriving:
+// with nothing skipped there is nothing to settle, so the races those helpers guard against
+// simply stop happening and every golden goes on passing. That is how two Tailwind
+// arbitrary-property classes outlived Tailwind unnoticed. The property is a real product
+// decision — an unbounded transcript renders its history or does not — so it gets asserted on
+// the rendered document, where a style that compiles to nothing has nowhere to hide.
+test("historical turns skip off-screen rendering and the tail turn never does", async ({
+  page,
+}) => {
+  await page.goto("/visual/?fixture=agent&theme=light&state=narrative");
+  await page.locator("html[data-visual-ready]").waitFor();
+
+  const turns = page.locator("[data-turn-id]");
+  const count = await turns.count();
+  expect(count).toBeGreaterThan(1);
+
+  const visibility = await turns.evaluateAll((nodes) =>
+    nodes.map((node) => getComputedStyle(node).contentVisibility),
+  );
+  expect(visibility.slice(0, -1)).toEqual(Array(count - 1).fill("auto"));
+  expect(visibility.at(-1)).toBe("visible");
+});
+
 /**
  * Render every turn once, top to bottom.
  *

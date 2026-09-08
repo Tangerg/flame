@@ -26,6 +26,11 @@ import {
   type VisualSettingsPane,
   type VisualWorkspaceState,
 } from "./workspaceFixtureStates";
+import "../src/styles/markdown.css";
+import "../src/styles/overlays.css";
+// LAST of the three, and the same order as `src/main.tsx` for the reason spelled out there:
+// `globals.css` ends with the touch-device reveal override, which has to beat a rest state
+// these two declare.
 import "../src/styles/globals.css";
 import "../src/styles/stylex.css";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";

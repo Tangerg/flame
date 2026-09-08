@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { MessageRenderUnit } from "@/plugins/builtin/agent/public/messagePresentation";
 import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
-import { unitSeamClass, unitVoice } from "./renderUnitRhythm";
+import { unitSeam, unitVoice } from "./renderUnitRhythm";
 
 const block = (kind: ContentBlock["kind"]): MessageRenderUnit => ({
   kind: "block",
@@ -26,24 +26,21 @@ describe("unitVoice", () => {
   });
 });
 
-describe("unitSeamClass", () => {
+describe("unitSeam", () => {
   it("gives the first unit no seam — the turn's own gap already placed it", () => {
-    expect(unitSeamClass(undefined, block("text"))).toBe("");
+    expect(unitSeam(undefined, block("text"))).toBeUndefined();
   });
 
-  // The ratio is the whole feature: work that belongs together stays close, and a
-  // change of voice opens up. Both distances are also both references' measured
-  // answer — 6px between activity rows, 20px where the voice changes.
+  // The ratio is the whole feature: work that belongs together stays close, and a change of
+  // voice opens up. Both distances are also both references' measured answer — 6px between
+  // activity rows, 20px where the voice changes — and those pixels are `seamStep`'s now. What
+  // this module decides, and what this asserts, is WHICH seam the pair makes.
   it("keeps consecutive process rows tight and opens up at a change of voice", () => {
-    const tight = unitSeamClass(block("tool"), block("reasoning"));
-    const open = unitSeamClass(block("tool"), block("text"));
-    expect(tight).toBe("mt-1.5");
-    expect(open).toBe("mt-5");
+    expect(unitSeam(block("tool"), block("reasoning"))).toBe("tight");
+    expect(unitSeam(block("tool"), block("text"))).toBe("wide");
   });
 
   it("is symmetric across the prose seam", () => {
-    expect(unitSeamClass(block("text"), block("tool"))).toBe(
-      unitSeamClass(block("tool"), block("text")),
-    );
+    expect(unitSeam(block("text"), block("tool"))).toBe(unitSeam(block("tool"), block("text")));
   });
 });
