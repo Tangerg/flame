@@ -48,6 +48,14 @@
 }
 
 @theme inline {
+  /* Tailwind's own defaults are 150ms and `cubic-bezier(0.4, 0, 0.2, 1)`, neither of which is
+     this design's. `--dur-fast` is the same 150ms, so nothing changes speed — but it carries
+     `--motion-scale`, the four-step Appearance setting, which every utility transition had been
+     deaf to: at "Fast" a migrated control faded in 90ms beside an unmigrated one still taking
+     150. The easing was simply a second curve nobody chose. */
+  --default-transition-duration: var(--dur-fast);
+  --default-transition-timing-function: var(--ease-out);
+
   --color-canvas: var(--color-bg);
   --color-surface: var(--color-surface);
   --color-surface-2: var(--color-surface-2);

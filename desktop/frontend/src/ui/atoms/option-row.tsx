@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
-import { color, radius, space, surface, type } from "@/styles/tokens.stylex";
+import { color, motion, radius, space, surface, type } from "@/styles/tokens.stylex";
 import { Pressable, type PressableProps } from "./pressable";
 
 /**
@@ -35,8 +35,8 @@ export const floatingRowStyles = stylex.create({
     color: color.fg,
     outline: "none",
     transitionProperty: "color, background-color",
-    transitionDuration: "0.15s",
-    transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
+    transitionDuration: motion.color,
+    transitionTimingFunction: "var(--ease-out)",
   },
   grid: { display: "grid" },
   flex: { display: "flex" },

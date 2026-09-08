@@ -125,7 +125,7 @@ function DiagnosticToolRowPresentation({
           tool: tool.name,
         })}
         onClick={() => setOpen((value) => !value)}
-        className="grid grid-cols-[14px_auto_minmax(0,1fr)] items-start gap-2.5 px-[var(--density-column-gutter-wide)] py-1 text-left hover:bg-hover"
+        className="grid grid-cols-[14px_auto_minmax(0,1fr)] items-start gap-2.5 px-[var(--density-column-gutter-wide)] py-1 text-left transition-colors hover:bg-hover"
       >
         <Icon
           name="chevron-down"

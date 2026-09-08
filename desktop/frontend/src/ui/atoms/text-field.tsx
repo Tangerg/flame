@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { IconSize } from "@/lib/iconScale";
 import { cn } from "@/lib/classNames";
-import { color, leading, radius, space, surface, type } from "@/styles/tokens.stylex";
+import { color, leading, motion, radius, space, surface, type } from "@/styles/tokens.stylex";
 import { Icon } from "@/ui/icons";
 import { Button } from "./button";
 import { WELL_SURFACE } from "./well";
@@ -32,8 +32,8 @@ const styles = stylex.create({
     minWidth: 0,
     outline: "none",
     transitionProperty: "color, background-color, border-color, outline-color",
-    transitionDuration: "0.15s",
-    transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
+    transitionDuration: motion.color,
+    transitionTimingFunction: "var(--ease-out)",
     "::placeholder": { color: color.fgFaint },
     cursor: { default: null, ":disabled": "not-allowed" },
     opacity: { default: null, ":disabled": "var(--control-disabled-opacity)" },

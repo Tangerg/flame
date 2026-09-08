@@ -172,7 +172,7 @@ function InstrumentSection({ group }: { group: NameGroup }) {
         </thead>
         <tbody className="font-mono">
           {group.rows.map((r) => (
-            <tr key={r.id} className="hover:bg-hover">
+            <tr key={r.id} className="transition-colors hover:bg-hover">
               <td className="py-0.5 pr-3 text-fg-muted">{formatAttrs(r.attrs)}</td>
               <td className="py-0.5 pr-3 text-right tabular-nums text-fg">{r.count}</td>
               {group.kind === "histogram" && (

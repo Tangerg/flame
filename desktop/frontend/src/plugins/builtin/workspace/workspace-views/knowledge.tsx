@@ -89,7 +89,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
         aria-expanded={open}
         aria-controls={panelId}
         onClick={toggle}
-        className="grid grid-cols-[14px_minmax(0,1fr)_auto] items-center gap-2 border-0 bg-transparent px-[var(--density-column-gutter-wide)] py-2 text-left hover:bg-hover"
+        className="grid grid-cols-[14px_minmax(0,1fr)_auto] items-center gap-2 border-0 bg-transparent px-[var(--density-column-gutter-wide)] py-2 text-left transition-colors hover:bg-hover"
       >
         <Icon
           name="chevron-down"
