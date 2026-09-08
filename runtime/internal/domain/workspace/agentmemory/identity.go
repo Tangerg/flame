@@ -1,7 +1,6 @@
 package agentmemory
 
 import (
-	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -11,8 +10,8 @@ import (
 
 const (
 	ItemIDPrefix            = "mem_"
-	itemIDEntropyBytes      = 16
-	itemIDHexCharacters     = itemIDEntropyBytes * 2
+	ItemIDEntropyBytes      = 16
+	itemIDHexCharacters     = ItemIDEntropyBytes * 2
 	MaximumItemIDCharacters = len(ItemIDPrefix) + itemIDHexCharacters
 )
 
@@ -29,13 +28,10 @@ var ErrInvalidItemID = errors.New("agentmemory: invalid Item identity")
 // owners, persistence and public operations despite both being called items.
 type ItemID struct{ text string }
 
-// NewItemID creates one cryptographically random canonical memory identity.
-func NewItemID() (ItemID, error) {
-	var entropy [itemIDEntropyBytes]byte
-	if _, err := rand.Read(entropy[:]); err != nil {
-		return ItemID{}, fmt.Errorf("%w: generate entropy: %w", ErrInvalidItemID, err)
-	}
-	return ItemID{text: ItemIDPrefix + hex.EncodeToString(entropy[:])}, nil
+// NewItemID encodes a canonical memory identity from caller-supplied entropy.
+// The persistence boundary owns the cryptographically random source.
+func NewItemID(entropy [ItemIDEntropyBytes]byte) ItemID {
+	return ItemID{text: ItemIDPrefix + hex.EncodeToString(entropy[:])}
 }
 
 // ParseItemID admits only the canonical spelling emitted by [NewItemID].

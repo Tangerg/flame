@@ -24,9 +24,16 @@ func testItemID(t *testing.T, digit byte) ItemID {
 }
 
 func TestItemIdentityIsCanonicalAndBounded(t *testing.T) {
-	id, err := NewItemID()
-	if err != nil || id.Validate() != nil || len(id.String()) != MaximumItemIDCharacters {
-		t.Fatalf("NewItemID = %q, %v", id.String(), err)
+	var entropy [ItemIDEntropyBytes]byte
+	for index := range entropy {
+		entropy[index] = 0xab
+	}
+	id := NewItemID(entropy)
+	if id.Validate() != nil || id.String() != ItemIDPrefix+strings.Repeat("ab", ItemIDEntropyBytes) {
+		t.Fatalf("NewItemID = %q, want canonical entropy encoding", id.String())
+	}
+	if id != NewItemID(entropy) {
+		t.Fatal("identical entropy produced a different identity")
 	}
 	for _, raw := range []string{"", "mem_1", "mem_" + strings.Repeat("A", 32), " mem_" + strings.Repeat("a", 32)} {
 		if _, err := ParseItemID(raw); !errors.Is(err, ErrInvalidItemID) {

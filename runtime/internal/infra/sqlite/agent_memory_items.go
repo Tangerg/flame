@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/binary"
 	"errors"
@@ -11,6 +12,12 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
+
+func newMemoryItemID() agentmemory.ItemID {
+	var entropy [agentmemory.ItemIDEntropyBytes]byte
+	rand.Read(entropy[:])
+	return agentmemory.NewItemID(entropy)
+}
 
 func encodeVec(vector []float32) []byte {
 	encoded := make([]byte, 4*len(vector))
@@ -61,10 +68,7 @@ func (a *AgentMemoryStore) reconcileItems(ctx context.Context, project string, c
 		if visible >= agentmemory.MaxVisiblePerTarget {
 			break
 		}
-		id, err := agentmemory.NewItemID()
-		if err != nil {
-			return err
-		}
+		id := newMemoryItemID()
 		item, err := agentmemory.NewProposal(id, project, content, now)
 		if err != nil {
 			return err
@@ -568,10 +572,7 @@ func (addition *userMemoryAddition) insert(ctx context.Context) error {
 	if err := addition.ensureCapacity(ctx); err != nil {
 		return err
 	}
-	id, err := agentmemory.NewItemID()
-	if err != nil {
-		return err
-	}
+	id := newMemoryItemID()
 	item, err := agentmemory.NewUserItem(id, addition.scope, addition.project, addition.content, addition.now)
 	if err != nil {
 		return err
