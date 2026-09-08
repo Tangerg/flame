@@ -3,6 +3,7 @@ package agentmemory
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"reflect"
 	"slices"
 
@@ -95,7 +96,11 @@ func (r *ReadModel) resolveSemanticQuery(ctx context.Context, query string) (sem
 		return semanticQuery{}, false
 	}
 	embedder, err := r.resolveEmbedder(ctx)
-	if err != nil || nilDependency(embedder) {
+	if err != nil {
+		slog.WarnContext(ctx, "agentmemory: resolve embedding model", "error", err)
+		return semanticQuery{}, false
+	}
+	if nilDependency(embedder) {
 		return semanticQuery{}, false
 	}
 	space := embedder.ID()
@@ -103,7 +108,11 @@ func (r *ReadModel) resolveSemanticQuery(ctx context.Context, query string) (sem
 		return semanticQuery{}, false
 	}
 	queryVectors, err := embedder.Embed(ctx, []string{query})
-	if err != nil || len(queryVectors) != 1 || !usableVector(queryVectors[0], 0) {
+	if err != nil {
+		slog.WarnContext(ctx, "agentmemory: embed search query", "error", err)
+		return semanticQuery{}, false
+	}
+	if len(queryVectors) != 1 || !usableVector(queryVectors[0], 0) {
 		return semanticQuery{}, false
 	}
 	return semanticQuery{
@@ -142,7 +151,11 @@ func (r *ReadModel) refreshEmbeddings(ctx context.Context, semantic semanticQuer
 		return
 	}
 	vectors, err := semantic.embedder.Embed(ctx, texts)
-	if err != nil || len(vectors) != len(stale) {
+	if err != nil {
+		slog.WarnContext(ctx, "agentmemory: embed search corpus", "error", err)
+		return
+	}
+	if len(vectors) != len(stale) {
 		return
 	}
 	updates, ok := buildEmbeddingUpdates(items, stale, semantic, vectors)
@@ -156,7 +169,9 @@ func (r *ReadModel) refreshEmbeddings(ctx context.Context, semantic semanticQuer
 	// The cache is derived state: the current request already owns exact
 	// vectors, so a failed or losing conditional write must not turn a useful
 	// search into an application failure.
-	_ = r.store.SetEmbeddings(ctx, updates)
+	if err := r.store.SetEmbeddings(ctx, updates); err != nil {
+		slog.WarnContext(ctx, "agentmemory: cache corpus embeddings", "error", err)
+	}
 }
 
 func buildEmbeddingUpdates(

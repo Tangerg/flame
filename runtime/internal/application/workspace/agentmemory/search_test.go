@@ -1,9 +1,12 @@
 package agentmemory
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -321,5 +324,55 @@ func TestNewReadModelRejectsTypedNilStore(t *testing.T) {
 	var store *fakeItemSource
 	if reader, err := NewReadModel(store, nil); err == nil || reader != nil {
 		t.Fatalf("NewReadModel typed-nil store = (%v, %v), want invalid construction", reader, err)
+	}
+}
+
+type failingCorpusEmbedder struct{ fakeEmbedder }
+
+func (f failingCorpusEmbedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
+	if len(texts) == 1 && texts[0] == "make test" {
+		return f.fakeEmbedder.Embed(ctx, texts)
+	}
+	return nil, errors.New("corpus embedding unavailable")
+}
+
+func TestSearchDegradationReportsExternalFailures(t *testing.T) {
+	for _, stage := range []string{"resolve", "query", "corpus", "cache", "unconfigured"} {
+		t.Run(stage, func(t *testing.T) {
+			var diagnostics bytes.Buffer
+			previous := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+			t.Cleanup(func() { slog.SetDefault(previous) })
+			store := &fakeItemSource{items: []domain.Item{readModelItem(t, 'a', domain.ScopeProject, "/repo", "run make test")}}
+			embedding := fakeEmbedder{vectors: map[string][]float32{"make test": {1, 0}, "run make test": {1, 0}}}
+			var wantError string
+			resolve := func(context.Context) (Embedder, error) {
+				switch stage {
+				case "resolve":
+					wantError = "embedding resolution unavailable"
+					return nil, errors.New(wantError)
+				case "query":
+					wantError = "query embedding unavailable"
+					embedding.err = errors.New(wantError)
+				case "corpus":
+					wantError = "corpus embedding unavailable"
+					return failingCorpusEmbedder{embedding}, nil
+				case "cache":
+					wantError = "embedding cache unavailable"
+					store.cacheErr = errors.New(wantError)
+				case "unconfigured":
+					return nil, nil
+				}
+				return embedding, nil
+			}
+			reader := mustNewReadModel(t, store, resolve)
+			got, err := reader.Search(t.Context(), "/repo", "make test", 1)
+			if err != nil || len(got) != 1 || got[0].ID != testMemoryItemID('a') {
+				t.Fatalf("degraded search = (%+v, %v), want keyword hit", got, err)
+			}
+			if output := diagnostics.String(); wantError == "" && output != "" || wantError != "" && !strings.Contains(output, wantError) {
+				t.Fatalf("diagnostic = %q, want failure %q", output, wantError)
+			}
+		})
 	}
 }
