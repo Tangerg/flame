@@ -85,18 +85,6 @@ func RestoreServerToolPolicy(rules []ToolPolicyRule) (ServerToolPolicy, error) {
 	return ServerToolPolicy{rules: canonical}, nil
 }
 
-// Validate reports whether the aggregate retains its canonical invariants.
-func (p ServerToolPolicy) Validate() error {
-	restored, err := RestoreServerToolPolicy(p.rules)
-	if err != nil {
-		return err
-	}
-	if !slices.Equal(restored.rules, p.rules) {
-		return fmt.Errorf("%w: rules are not in canonical order", ErrInvalidServerToolPolicy)
-	}
-	return nil
-}
-
 // Rules returns an isolated canonical snapshot for persistence.
 func (p ServerToolPolicy) Rules() []ToolPolicyRule { return slices.Clone(p.rules) }
 

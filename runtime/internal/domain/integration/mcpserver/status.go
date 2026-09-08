@@ -83,8 +83,5 @@ func (a AdvertisedTool) Validate() error {
 	if err := ValidateRemoteToolDescription(a.Description); err != nil {
 		return err
 	}
-	if err := a.InputSchema.Validate(); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidRemoteToolCatalog, err)
-	}
 	return nil
 }

@@ -129,12 +129,14 @@ func NewProviderMetadata(id string, authentication ProviderAuthenticationPolicy,
 
 func (p ProviderMetadata) ID() string { return p.id.String() }
 
-// Validate rechecks static catalog metadata returned through the application
-// port. Production metadata is constructor-built, but the use case must not
-// publish a zero or contradictory value from an alternate implementation.
+// Validate rejects metadata the catalog port never built. Its private fields
+// have one source, so an unidentified provider is the only value that can reach
+// a use case without NewProviderMetadata's checks.
 func (p ProviderMetadata) Validate() error {
-	_, err := NewProviderMetadata(p.ID(), p.authentication, p.endpoint, p.models, p.embedding)
-	return err
+	if p.id.String() == "" {
+		return fmt.Errorf("models: provider metadata is not constructed")
+	}
+	return nil
 }
 
 func (p ProviderMetadata) RequiresAPIKey() bool {

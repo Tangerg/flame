@@ -127,9 +127,6 @@ func (s Server) Validate() error {
 	if err := s.HandshakeTimeout.Validate(); err != nil {
 		return fmt.Errorf("mcpserver %q: %w", s.Name, err)
 	}
-	if err := s.ToolPolicy.Validate(); err != nil {
-		return fmt.Errorf("mcpserver %q: %w", s.Name, err)
-	}
 	switch s.Transport {
 	case TransportStreamableHTTP:
 		if s.URL == "" {
