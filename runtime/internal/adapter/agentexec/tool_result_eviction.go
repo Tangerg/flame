@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"log/slog"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
@@ -89,6 +90,7 @@ func evictToolResult(
 	if err := store.Stage(ctx, toolresult.Stage{
 		ID: id, SessionID: sessionID, ToolName: toolName, Body: output,
 	}); err != nil {
+		slog.WarnContext(ctx, "agentexec: persist offloaded tool result", "session.id", sessionID, "tool.name", toolName, "error", err)
 		return output, nil
 	}
 	return preview, &toolresult.Ref{ID: id}

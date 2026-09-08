@@ -1,8 +1,10 @@
 package agentexec
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -101,10 +103,18 @@ func TestEvict_NoSessionKeepsFullBody(t *testing.T) {
 }
 
 func TestEvict_StageFailureDegradesToFullBody(t *testing.T) {
+	var diagnostics bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+	t.Cleanup(func() { slog.SetDefault(previous) })
 	store := &fakeOffloader{err: errors.New("db down")}
 	body := strings.Repeat("x", 500)
 	if got, ref := evictForTest(t, store, 10, "s", "shell", body); got != body || ref != nil {
 		t.Fatal("a failed offload must degrade to the full body, not a broken preview")
+	}
+	if output := diagnostics.String(); !strings.Contains(output, "db down") ||
+		!strings.Contains(output, "session.id=s") || !strings.Contains(output, "tool.name=shell") || strings.Contains(output, body) {
+		t.Fatalf("invalid offload failure diagnostic: %q", output)
 	}
 }
 
