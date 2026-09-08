@@ -111,9 +111,6 @@ func (u Usage) validate() error {
 }
 
 func (u Usage) add(record RunRecord) (Usage, error) {
-	if err := u.validate(); err != nil {
-		return Usage{}, err
-	}
 	if u.Runs == math.MaxInt || record.Steps > math.MaxInt-u.Steps {
 		return Usage{}, errors.New("goal: usage counter overflow")
 	}
@@ -128,9 +125,6 @@ func (u Usage) add(record RunRecord) (Usage, error) {
 		if err != nil {
 			return Usage{}, fmt.Errorf("goal: aggregate usage cost: %w", err)
 		}
-	}
-	if err := next.validate(); err != nil {
-		return Usage{}, err
 	}
 	return next, nil
 }
@@ -236,7 +230,7 @@ func (g Goal) RecordRun(record RunRecord) (Goal, error) {
 			return Goal{}, err
 		}
 	}
-	return next, next.ValidateSnapshot()
+	return next, nil
 }
 
 func reasonForBudgetLimit(limit BudgetLimit) ReasonCode {

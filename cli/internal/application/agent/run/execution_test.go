@@ -18,15 +18,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func unavailableReplayPolicy(t testing.TB) commandreplay.Policy {
-	t.Helper()
-	policy, err := commandreplay.UnavailablePolicyWithClock(time.Now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return policy
-}
-
 type invalidOpeningRuntime struct{ *runtimefixture.Runtime }
 
 type treeReconnectRuntime struct {
@@ -75,7 +66,7 @@ type uncertainAcknowledgementRuntime struct {
 	cancelAttempts []agent.CancelRun
 	startStream    agent.SegmentStream
 	resumeStream   agent.SegmentStream
-	cancelResult   agent.RunCancellation
+	cancelResult   protocol.CancelRunResponse
 }
 
 func (u *uncertainAcknowledgementRuntime) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
@@ -119,7 +110,7 @@ func (u *uncertainAcknowledgementRuntime) ResumeRun(ctx context.Context, input a
 func (u *uncertainAcknowledgementRuntime) CancelRun(
 	ctx context.Context,
 	input agent.CancelRun,
-) (agent.RunCancellation, error) {
+) (protocol.CancelRunResponse, error) {
 	u.mu.Lock()
 	u.cancelAttempts = append(u.cancelAttempts, input)
 	attempt := len(u.cancelAttempts)
@@ -130,12 +121,12 @@ func (u *uncertainAcknowledgementRuntime) CancelRun(
 	}
 	result, err := u.Runtime.CancelRun(ctx, input)
 	if err != nil {
-		return agent.RunCancellation{}, err
+		return protocol.CancelRunResponse{}, err
 	}
 	u.mu.Lock()
 	u.cancelResult = result
 	u.mu.Unlock()
-	return agent.RunCancellation{}, fmt.Errorf("cancel acknowledgement timed out: %w", context.DeadlineExceeded)
+	return protocol.CancelRunResponse{}, fmt.Errorf("cancel acknowledgement timed out: %w", context.DeadlineExceeded)
 }
 
 func (u *uncertainAcknowledgementRuntime) attempts() ([]agent.StartRun, []agent.ResumeRun) {
@@ -169,11 +160,11 @@ func (i invalidOpeningRuntime) StartRun(ctx context.Context, input agent.StartRu
 func (r *refusingCancellationRuntime) CancelRun(
 	_ context.Context,
 	input agent.CancelRun,
-) (agent.RunCancellation, error) {
+) (protocol.CancelRunResponse, error) {
 	r.mu.Lock()
 	r.attempts = append(r.attempts, input)
 	r.mu.Unlock()
-	return agent.RunCancellation{}, r.failure
+	return protocol.CancelRunResponse{}, r.failure
 }
 
 func (r *refusingCancellationRuntime) cancellationAttempts() []agent.CancelRun {
@@ -185,11 +176,11 @@ func (r *refusingCancellationRuntime) cancellationAttempts() []agent.CancelRun {
 func (m misdirectedCancellationRuntime) CancelRun(
 	ctx context.Context,
 	input agent.CancelRun,
-) (agent.RunCancellation, error) {
+) (protocol.CancelRunResponse, error) {
 	result, err := m.Runtime.CancelRun(ctx, input)
 	if err == nil {
-		result.Canceled.ID = "run_misdirected"
-		result.Root.ID = "run_misdirected"
+		result.Run.ID = "run_misdirected"
+		result.Run.ID = "run_misdirected"
 	}
 	return result, err
 }
@@ -199,7 +190,7 @@ type recordingRenderer struct {
 	err    error
 }
 
-func (r *recordingRenderer) Begin(agent.Run, agent.RunOptions) error { return r.err }
+func (r *recordingRenderer) Begin(string, string, agent.RunOptions) error { return r.err }
 
 func (r *recordingRenderer) Render(event agent.RunEvent) error {
 	if r.err != nil {
@@ -246,7 +237,7 @@ func TestExecuteRejectsInvalidReconnectPolicyBeforeStartingRun(t *testing.T) {
 	runtime := runtimefixture.New()
 	err := Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: new(recordingRenderer), ReconnectAttempts: -1,
-		ReplayPolicy: unavailableReplayPolicy(t),
+		ReplayPolicy: advertisedReplayPolicy(t),
 		Start:        unlimitedStart("ses_demo_1", "must not start"),
 	})
 	if !errors.Is(err, retry.ErrInvalidReconnectPolicy) {
@@ -255,7 +246,7 @@ func TestExecuteRejectsInvalidReconnectPolicyBeforeStartingRun(t *testing.T) {
 	page, listErr := runtime.ListRuns(t.Context(), agent.RunQuery{
 		SessionID: "ses_demo_1", PageSize: agent.DefaultPageSize(),
 	})
-	if listErr != nil || len(page.Items) != 1 {
+	if listErr != nil || len(page.Data) != 1 {
 		t.Fatalf("runs after rejected invocation = (%+v, %v)", page, listErr)
 	}
 }
@@ -290,7 +281,7 @@ func TestExecuteDrivesApprovalAcrossSegments(t *testing.T) {
 	renderer := new(recordingRenderer)
 	err := Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: renderer,
-		ReplayPolicy: unavailableReplayPolicy(t),
+		ReplayPolicy: advertisedReplayPolicy(t),
 		Start:        unlimitedStart(session.ID, "fix it"),
 		ApproveAll:   true, ReconnectAttempts: 2,
 	})
@@ -334,7 +325,7 @@ func TestExecuteConfirmsTimedOutMutationsWithoutChangingIdentity(t *testing.T) {
 	}
 }
 
-func TestExecuteDoesNotRetryATimedOutStartWithoutRuntimeReplayCapability(t *testing.T) {
+func TestExecuteRejectsMissingReplayCapabilityBeforeStartingRun(t *testing.T) {
 	base := runtimefixture.New()
 	base.Instant = true
 	runtime := &uncertainAcknowledgementRuntime{Runtime: base}
@@ -344,15 +335,15 @@ func TestExecuteDoesNotRetryATimedOutStartWithoutRuntimeReplayCapability(t *test
 	}
 	err = Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: new(recordingRenderer),
-		ReplayPolicy: unavailableReplayPolicy(t),
+		ReplayPolicy: commandreplay.Policy{},
 		Start:        unlimitedStart(session.ID, "do not guess at replay"),
 	})
-	if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
+	if err == nil {
 		t.Fatalf("one-shot error = %v", err)
 	}
 	starts, _ := runtime.attempts()
-	if len(starts) != 1 || starts[0].CommandID == "" {
-		t.Fatalf("unprotected one-shot starts = %+v", starts)
+	if len(starts) != 0 {
+		t.Fatalf("unconfigured one-shot starts = %+v", starts)
 	}
 }
 
@@ -366,14 +357,14 @@ func TestExecuteLeavesQuestionsParked(t *testing.T) {
 				Fields: []agent.QuestionField{{Prompt: "Target", Kind: agent.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	err := Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: new(recordingRenderer),
-		ReplayPolicy: unavailableReplayPolicy(t),
+		ReplayPolicy: advertisedReplayPolicy(t),
 		Start:        unlimitedStart(session.ID, "ask"),
 	})
 	if _, ok := errors.AsType[*interactionRequiredError](err); !ok {
@@ -392,13 +383,13 @@ func TestExecuteReconnectsOnlyTheCurrentSegment(t *testing.T) {
 	runtime.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Delay: 30 * time.Millisecond, Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "done"}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	err := Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: new(recordingRenderer),
-		ReplayPolicy:      unavailableReplayPolicy(t),
+		ReplayPolicy:      advertisedReplayPolicy(t),
 		Start:             unlimitedStart(session.ID, "fix"),
 		ReconnectAttempts: 3,
 	})
@@ -413,18 +404,9 @@ func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	root := agent.Run{
-		ID: "run_root", SessionID: session.ID, Lineage: agent.RootRunLineage(),
-		Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_root", Limits: agent.UnlimitedRunLimits(),
-	}
-	lineage, err := agent.NewChildRunLineage("run_child", "item_delegate", root.ID, root.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	child := agent.Run{
-		ID: "run_child", SessionID: session.ID, Lineage: lineage,
-		Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_child", Limits: agent.UnlimitedRunLimits(),
-	}
+	root := protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_root", SessionID: session.ID, Status: protocol.RunStatusRunning}, ActiveSegmentID: "seg_root"}
+	lineage := protocol.RunSummary{ID: "run_child", SpawnedByItemID: "item_delegate", ParentRunID: root.ID, RootRunID: root.ID}
+	child := protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_child", SessionID: session.ID, SpawnedByItemID: (lineage).SpawnedByItemID, ParentRunID: (lineage).ParentRunID, RootRunID: (lineage).RootRunID, Status: protocol.RunStatusRunning}, ActiveSegmentID: "seg_child"}
 	event := func(id, runID, segmentID string, payload agent.Event) agent.RunEvent {
 		return agent.RunEvent{
 			EventID: id, RunID: runID, SegmentID: segmentID, StreamSegmentID: root.ActiveSegmentID,
@@ -435,11 +417,11 @@ func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testin
 		event("event_root_started", root.ID, root.ActiveSegmentID, agent.SegmentStarted{Run: root}),
 		event("event_child_started", child.ID, child.ActiveSegmentID, agent.SegmentStarted{Run: child}),
 		event("event_child_finished", child.ID, child.ActiveSegmentID, agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeMaxSteps, Detail: "child limit"},
+			Outcome: agent.Outcome{Status: protocol.OutcomeMaxSteps, Detail: "child limit"},
 		}),
 	}
 	rootFinished := event("event_root_finished", root.ID, root.ActiveSegmentID, agent.RunFinished{
-		Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+		Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 	})
 	stream := func(events []agent.RunEvent, terminal error) agent.EventStream {
 		return func(yield func(agent.RunEvent, error) bool) {
@@ -467,7 +449,7 @@ func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testin
 	renderer := new(recordingRenderer)
 	err = Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: renderer,
-		ReplayPolicy:      unavailableReplayPolicy(t),
+		ReplayPolicy:      advertisedReplayPolicy(t),
 		Start:             unlimitedStart(session.ID, "delegate then continue"),
 		ReconnectAttempts: 1,
 	})
@@ -492,11 +474,8 @@ func TestExecuteResumesTheCompleteTreeAfterItsRootSuspends(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			root := agent.Run{
-				ID: "run_root", SessionID: session.ID, Lineage: agent.RootRunLineage(),
-				Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_root", Limits: agent.UnlimitedRunLimits(),
-			}
-			event := func(id string, run agent.Run, streamSegment string, payload agent.Event) agent.RunEvent {
+			root := protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_root", SessionID: session.ID, Status: protocol.RunStatusRunning}, ActiveSegmentID: "seg_root"}
+			event := func(id string, run protocol.RunRef, streamSegment string, payload agent.Event) agent.RunEvent {
 				return agent.RunEvent{
 					EventID: id, RunID: run.ID, SegmentID: run.ActiveSegmentID, StreamSegmentID: streamSegment,
 					At: time.Unix(1, 0), Event: payload,
@@ -508,14 +487,8 @@ func TestExecuteResumesTheCompleteTreeAfterItsRootSuspends(t *testing.T) {
 			continued := []agent.RunEvent{event("event_root_resumed", resumedRoot, resumedRoot.ActiveSegmentID, agent.SegmentStarted{Run: resumedRoot})}
 			var wantAnswers []agent.InterruptAnswer
 			for _, suffix := range []string{"a", "b"} {
-				lineage, err := agent.NewChildRunLineage("run_child_"+suffix, "item_delegate_"+suffix, root.ID, root.ID)
-				if err != nil {
-					t.Fatal(err)
-				}
-				child := agent.Run{
-					ID: "run_child_" + suffix, SessionID: session.ID, Lineage: lineage,
-					Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_child_" + suffix, Limits: agent.UnlimitedRunLimits(),
-				}
+				lineage := protocol.RunSummary{ID: "run_child_" + suffix, SpawnedByItemID: "item_delegate_" + suffix, ParentRunID: root.ID, RootRunID: root.ID}
+				child := protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_child_" + suffix, SessionID: session.ID, SpawnedByItemID: (lineage).SpawnedByItemID, ParentRunID: (lineage).ParentRunID, RootRunID: (lineage).RootRunID, Status: protocol.RunStatusRunning}, ActiveSegmentID: "seg_child_" + suffix}
 				tool := &agent.ToolCall{Kind: agent.ToolRead, Name: "read", Status: agent.ToolRunning}
 				block := agent.Block{ID: "item_approval_" + suffix, RunID: child.ID, Status: agent.BlockStatusRunning, Kind: agent.BlockTool, Tool: tool}
 				approval := agent.Approval{RunID: child.ID, ItemID: block.ID, Title: "Inspect " + suffix, Tool: tool}
@@ -531,11 +504,11 @@ func TestExecuteResumesTheCompleteTreeAfterItsRootSuspends(t *testing.T) {
 				continued = append(continued,
 					event("event_child_resumed_"+suffix, child, resumedRoot.ActiveSegmentID, agent.SegmentStarted{Run: child}),
 					event("event_approval_completed_"+suffix, child, resumedRoot.ActiveSegmentID, agent.BlockCompleted{Block: block}),
-					event("event_child_finished_"+suffix, child, resumedRoot.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+					event("event_child_finished_"+suffix, child, resumedRoot.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 				)
 			}
 			rootSuspended := event("event_root_suspended", root, root.ActiveSegmentID, agent.RunSuspended{})
-			continued = append(continued, event("event_root_finished", resumedRoot, resumedRoot.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}))
+			continued = append(continued, event("event_root_finished", resumedRoot, resumedRoot.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}))
 			stream := func(events []agent.RunEvent, terminal error) agent.EventStream {
 				return func(yield func(agent.RunEvent, error) bool) {
 					for _, item := range events {
@@ -563,7 +536,7 @@ func TestExecuteResumesTheCompleteTreeAfterItsRootSuspends(t *testing.T) {
 				continued: agent.SegmentStream{RunID: root.ID, SegmentID: resumedRoot.ActiveSegmentID, Events: stream(continued, nil)},
 			}
 			if err := Execute(t.Context(), Invocation{
-				Runtime: runtime, Renderer: new(recordingRenderer), ReplayPolicy: unavailableReplayPolicy(t),
+				Runtime: runtime, Renderer: new(recordingRenderer), ReplayPolicy: advertisedReplayPolicy(t),
 				Start: unlimitedStart(session.ID, "approve the delegated tree"), ApproveAll: true, ReconnectAttempts: 1,
 			}); err != nil {
 				t.Fatal(err)
@@ -589,7 +562,7 @@ func TestExecutePropagatesRendererFailureAndCancelsRun(t *testing.T) {
 	want := errors.New("write failed")
 	err := Execute(t.Context(), Invocation{
 		Runtime: runtime, Renderer: &recordingRenderer{err: want},
-		ReplayPolicy: unavailableReplayPolicy(t),
+		ReplayPolicy: advertisedReplayPolicy(t),
 		Start:        unlimitedStart(session.ID, "fix"),
 	})
 	if !errors.Is(err, want) {
@@ -601,7 +574,7 @@ func TestExecuteReportsAbandonedRunCancellationFailure(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	cleanupFailure := errors.New("cancellation refused")
@@ -639,7 +612,7 @@ func TestExecuteConfirmsTimedOutCleanupWithoutChangingIdentity(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &uncertainAcknowledgementRuntime{Runtime: base}
@@ -667,7 +640,7 @@ func TestExecuteRejectsAMisdirectedAbandonedRunCancellation(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	session, err := base.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
@@ -677,7 +650,7 @@ func TestExecuteRejectsAMisdirectedAbandonedRunCancellation(t *testing.T) {
 	renderFailure := errors.New("output unavailable")
 	err = Execute(t.Context(), Invocation{
 		Runtime: misdirectedCancellationRuntime{Runtime: base}, Renderer: &recordingRenderer{err: renderFailure},
-		ReplayPolicy: unavailableReplayPolicy(t),
+		ReplayPolicy: advertisedReplayPolicy(t),
 		Start:        unlimitedStart(session.ID, "validate cleanup receipt"),
 	})
 	if !errors.Is(err, renderFailure) || !strings.Contains(err.Error(), "cancel abandoned run") ||
@@ -689,12 +662,12 @@ func TestExecuteRejectsAMisdirectedAbandonedRunCancellation(t *testing.T) {
 func TestExecuteCancelsARunWhoseOpeningStreamIsInvalid(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	session, _ := base.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	err := Execute(t.Context(), Invocation{
 		Runtime: invalidOpeningRuntime{Runtime: base}, Renderer: new(recordingRenderer),
-		ReplayPolicy: unavailableReplayPolicy(t),
+		ReplayPolicy: advertisedReplayPolicy(t),
 		Start:        unlimitedStart(session.ID, "start"),
 	})
 	if err == nil {
@@ -705,7 +678,7 @@ func TestExecuteCancelsARunWhoseOpeningStreamIsInvalid(t *testing.T) {
 		t.Fatal(snapshotErr)
 	}
 	latest, ok := snapshot.LatestRun()
-	if !ok || latest.Status != protocol.RunStatusFinished || latest.Outcome.Status != agent.OutcomeCanceled {
+	if !ok || latest.Status != protocol.RunStatusFinished || latest.Outcome.Type != protocol.OutcomeCanceled {
 		t.Fatalf("invalid opening left run active: %+v", snapshot.Runs)
 	}
 }

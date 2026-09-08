@@ -31,11 +31,11 @@ func (r *Runtime) StartRun(ctx context.Context, in agent.StartRun) (agent.Segmen
 	session := r.sessions[in.SessionID]
 	if session == nil {
 		r.mu.Unlock()
-		return agent.SegmentStream{}, fmt.Errorf("%w: %s", agent.ErrSessionNotFound, in.SessionID)
+		return agent.SegmentStream{}, fmt.Errorf("%w: %s", protocol.ErrSessionNotFound, in.SessionID)
 	}
 	if session.active != "" {
 		r.mu.Unlock()
-		return agent.SegmentStream{}, fmt.Errorf("%w: %s", agent.ErrSessionHasActiveRun, in.SessionID)
+		return agent.SegmentStream{}, fmt.Errorf("%w: %s", protocol.ErrSessionHasActiveRun, in.SessionID)
 	}
 	if err := session.requireRevisionCapacity(startRunRevisionChanges(session)); err != nil {
 		r.mu.Unlock()
@@ -49,7 +49,7 @@ func (r *Runtime) StartRun(ctx context.Context, in agent.StartRun) (agent.Segmen
 	runID := r.identities.next(runIdentity)
 	run := &runState{
 		id: runID, sessionID: in.SessionID,
-		lineage:  agent.RootRunLineage(),
+
 		provider: in.Options.Provider, model: in.Options.Model, reasoningEffort: in.Options.ReasoningEffort,
 		limits: in.Options.Limits, status: protocol.RunStatusRunning,
 		segments: make(map[string]*segmentState), script: script, answers: make(map[string]agent.Answer), cancel: make(chan struct{}),
@@ -140,7 +140,7 @@ func (r resumePreparation) continueScript() ([]Step, error) {
 func (r *Runtime) prepareResumeLocked(in agent.ResumeRun) (resumePreparation, error) {
 	run := r.runs[in.RunID]
 	if run == nil {
-		return resumePreparation{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, in.RunID)
+		return resumePreparation{}, fmt.Errorf("%w: %s", protocol.ErrRunNotFound, in.RunID)
 	}
 	if err := validateResumeSet(run, in.Answers); err != nil {
 		return resumePreparation{}, err
@@ -156,7 +156,7 @@ func (r *Runtime) prepareResumeLocked(in agent.ResumeRun) (resumePreparation, er
 func (r *Runtime) activateResumeLocked(ctx context.Context, message *agent.Message, prepared resumePreparation) (agent.SegmentStream, error) {
 	run := prepared.run
 	if run.status != protocol.RunStatusWaiting {
-		return agent.SegmentStream{}, fmt.Errorf("%w: run %s", agent.ErrInterruptNotOpen, run.id)
+		return agent.SegmentStream{}, fmt.Errorf("%w: run %s", protocol.ErrInterruptNotOpen, run.id)
 	}
 	answeredQuestions, err := r.acceptedQuestionBlocksLocked(run, prepared.answers)
 	if err != nil {
@@ -277,7 +277,7 @@ func completeScriptAnswers(run *runState, provided []agent.InterruptAnswer) ([]a
 
 func validateResumeSet(run *runState, answers []agent.InterruptAnswer) error {
 	if run.status != protocol.RunStatusWaiting {
-		return fmt.Errorf("%w: run %s", agent.ErrInterruptNotOpen, run.id)
+		return fmt.Errorf("%w: run %s", protocol.ErrInterruptNotOpen, run.id)
 	}
 	if len(answers) != len(run.interactions) {
 		return fmt.Errorf("mock: resume answers %d interrupts; waiting set has %d", len(answers), len(run.interactions))
@@ -325,28 +325,28 @@ func cloneAnswers(answers []agent.InterruptAnswer) []agent.InterruptAnswer {
 	return out
 }
 
-func (r *Runtime) CancelRun(ctx context.Context, in agent.CancelRun) (agent.RunCancellation, error) {
+func (r *Runtime) CancelRun(ctx context.Context, in agent.CancelRun) (protocol.CancelRunResponse, error) {
 	if err := in.Validate(); err != nil {
-		return agent.RunCancellation{}, fmt.Errorf("mock: %w", err)
+		return protocol.CancelRunResponse{}, fmt.Errorf("mock: %w", err)
 	}
 	if err := context.Cause(ctx); err != nil {
-		return agent.RunCancellation{}, err
+		return protocol.CancelRunResponse{}, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	run := r.runs[in.RunID]
 	if run == nil {
-		return agent.RunCancellation{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, in.RunID)
+		return protocol.CancelRunResponse{}, fmt.Errorf("%w: %s", protocol.ErrRunNotFound, in.RunID)
 	}
 	if run.status == protocol.RunStatusFinished {
-		return agent.RunCancellation{}, fmt.Errorf("%w: %s", agent.ErrRunFinished, run.id)
+		return protocol.CancelRunResponse{}, fmt.Errorf("%w: %s", protocol.ErrRunFinished, run.id)
 	}
-	if err := r.finishLocked(run, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCanceled, Detail: strings.TrimSpace(in.Reason)}}); err != nil {
-		return agent.RunCancellation{}, err
+	if err := r.finishLocked(run, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCanceled, Detail: strings.TrimSpace(in.Reason)}}); err != nil {
+		return protocol.CancelRunResponse{}, err
 	}
 	run.cancelOnce.Do(func() { close(run.cancel) })
 	projected := projectRun(run)
-	return agent.RunCancellation{Canceled: projected, Root: projected.Clone()}, nil
+	return protocol.CancelRunResponse{Type: protocol.CancelRunRoot, Run: projected}, nil
 }
 
 func (r *Runtime) SteerRun(ctx context.Context, in agent.SteerRun) error {
@@ -360,10 +360,10 @@ func (r *Runtime) SteerRun(ctx context.Context, in agent.SteerRun) error {
 	defer r.mu.Unlock()
 	run := r.runs[in.RunID]
 	if run == nil {
-		return fmt.Errorf("%w: %s", agent.ErrRunNotFound, in.RunID)
+		return fmt.Errorf("%w: %s", protocol.ErrRunNotFound, in.RunID)
 	}
 	if run.status != protocol.RunStatusRunning || run.active != in.SegmentID {
-		return fmt.Errorf("%w: run %s is not executing segment %s", agent.ErrStaleSegment, in.RunID, in.SegmentID)
+		return fmt.Errorf("%w: run %s is not executing segment %s", protocol.ErrStaleSegment, in.RunID, in.SegmentID)
 	}
 	if err := r.sessions[run.sessionID].requireRevisionCapacity(sessionEventRevisionChange()); err != nil {
 		return err

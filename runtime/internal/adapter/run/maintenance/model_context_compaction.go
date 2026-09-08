@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -32,17 +33,23 @@ func (c *Compactor) CompactModelContext(
 	ctx context.Context,
 	request agentexec.ModelContextCompaction,
 ) (agentexec.ModelContextCompactionResult, error) {
-	if c == nil {
-		return agentexec.ModelContextCompactionResult{}, errors.New("maintenance: model-context compactor is nil")
+	limits, _, err := modeladapter.LookupTokenLimits(request.ModelSelection())
+	if err != nil {
+		return agentexec.ModelContextCompactionResult{}, err
 	}
+	return c.compactModelContext(ctx, request, limits)
+}
+
+func (c *Compactor) compactModelContext(
+	ctx context.Context,
+	request agentexec.ModelContextCompaction,
+	limits modelref.TokenLimits,
+) (agentexec.ModelContextCompactionResult, error) {
 	candidate := request.Candidate()
 	history := candidate
 	protectedTail := request.ProtectedTail()
 	var ephemeral []chat.Message
 	if request.Durable() {
-		if c.store == nil {
-			return agentexec.ModelContextCompactionResult{}, errors.New("maintenance: durable compaction store is unavailable")
-		}
 		stored, err := c.store.Read(ctx, request.SessionID())
 		if err != nil {
 			return agentexec.ModelContextCompactionResult{}, fmt.Errorf("maintenance: read model context: %w", err)
@@ -72,12 +79,8 @@ func (c *Compactor) CompactModelContext(
 		ephemeral = cloneMessages(candidate[candidatePrefix:])
 	}
 
-	limits, _, err := modeladapter.LookupTokenLimits(request.ModelSelection())
-	if err != nil {
-		return agentexec.ModelContextCompactionResult{}, err
-	}
 	options := request.Options()
-	trigger, err := c.policy.tokenTrigger(limits, options)
+	trigger, err := modelContextTokenTrigger(limits, options)
 	if err != nil {
 		return agentexec.ModelContextCompactionResult{}, fmt.Errorf(
 			"maintenance: resolve model-context token trigger: %w",
@@ -129,7 +132,6 @@ func (c *Compactor) CompactModelContext(
 	effective := append(cloneMessages(replacement), ephemeral...)
 	result, err := agentexec.NewModelContextCompactionResult(
 		effective,
-		true,
 		summary,
 		len(candidate),
 		estimatedTokens,
@@ -162,7 +164,6 @@ func unchangedModelContextResult(
 ) (agentexec.ModelContextCompactionResult, error) {
 	return agentexec.NewModelContextCompactionResult(
 		candidate,
-		false,
 		"",
 		len(candidate),
 		estimatedTokens,

@@ -13,107 +13,23 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-const (
-	defaultDelegateDepth          = 4
-	defaultDelegateChildren       = 16
-	defaultActiveDelegateChildren = 4
-	defaultDelegateTreeProcesses  = 64
-	defaultDelegateSteps          = 256
-	defaultDelegateEffects        = 256
-	defaultDelegateSignals        = 2048
-)
-
-// InteractionDelegationPolicyValues bounds managed children independently of
-// model/token product limits. Nil fields inherit conservative named defaults;
-// present zero never doubles as absence. The values translate only into Agent
-// Framework structural limits and a minimum per-Process work allocation. A
-// delegated Process receives one allocation unit for itself and one for each
-// remaining recursion level, so the configured depth is reachable without
-// renewing or duplicating Framework budget.
-type InteractionDelegationPolicyValues struct {
-	MaxDepth          *uint32
-	MaxChildren       *uint32
-	MaxActiveChildren *uint32
-	MaxTreeProcesses  *uint32
-	ChildSteps        *uint64
-	ChildEffects      *uint64
-	ChildSignals      *uint64
-}
-
-type effectiveInteractionDelegation struct {
+// delegationPolicy bounds managed children independently of product token and
+// model-call limits. Each remaining recursion level reserves one process budget
+// so delegation never renews or duplicates framework work allocation.
+type delegationPolicy struct {
 	treeLimits    agent.TreeLimits
 	processBudget agent.Budget
 }
 
-func effectiveDelegation(values InteractionDelegationPolicyValues) (effectiveInteractionDelegation, error) {
-	maxDepth, err := positiveUint32OrDefault(values.MaxDepth, defaultDelegateDepth, "maximum depth")
+func newDelegationPolicy() (delegationPolicy, error) {
+	budget, err := agent.NewBudget(agent.BudgetConfig{Steps: 256, Effects: 256, Signals: 2048})
 	if err != nil {
-		return effectiveInteractionDelegation{}, err
+		return delegationPolicy{}, fmt.Errorf("agentexec: Interaction delegation budget: %w", err)
 	}
-	maxChildren, err := positiveUint32OrDefault(values.MaxChildren, defaultDelegateChildren, "maximum children")
-	if err != nil {
-		return effectiveInteractionDelegation{}, err
-	}
-	maxActiveChildren, err := positiveUint32OrDefault(values.MaxActiveChildren, defaultActiveDelegateChildren, "maximum active children")
-	if err != nil {
-		return effectiveInteractionDelegation{}, err
-	}
-	maxTreeProcesses, err := positiveUint32OrDefault(values.MaxTreeProcesses, defaultDelegateTreeProcesses, "maximum tree processes")
-	if err != nil {
-		return effectiveInteractionDelegation{}, err
-	}
-	childSteps, err := positiveUint64OrDefault(values.ChildSteps, defaultDelegateSteps, "child steps")
-	if err != nil {
-		return effectiveInteractionDelegation{}, err
-	}
-	childEffects, err := positiveUint64OrDefault(values.ChildEffects, defaultDelegateEffects, "child effects")
-	if err != nil {
-		return effectiveInteractionDelegation{}, err
-	}
-	childSignals, err := positiveUint64OrDefault(values.ChildSignals, defaultDelegateSignals, "child signals")
-	if err != nil {
-		return effectiveInteractionDelegation{}, err
-	}
-	treeLimits := agent.TreeLimits{
-		MaxDepth: maxDepth, MaxChildren: maxChildren,
-		MaxActiveChildren: maxActiveChildren, MaxTreeProcesses: maxTreeProcesses,
-	}
-	if !treeLimits.Valid() {
-		return effectiveInteractionDelegation{}, errors.New("agentexec: Interaction delegation tree limits are invalid")
-	}
-	budget, err := agent.NewBudget(agent.BudgetConfig{
-		Steps: childSteps, Effects: childEffects, Signals: childSignals,
-	})
-	if err != nil {
-		return effectiveInteractionDelegation{}, fmt.Errorf("agentexec: Interaction delegation budget: %w", err)
-	}
-	return effectiveInteractionDelegation{treeLimits: treeLimits, processBudget: budget}, nil
-}
-
-func positiveUint32OrDefault(value *uint32, fallback uint32, field string) (uint32, error) {
-	if fallback == 0 {
-		return 0, fmt.Errorf("%s default must be positive", field)
-	}
-	if value == nil {
-		return fallback, nil
-	}
-	if *value == 0 {
-		return 0, fmt.Errorf("%s must be positive", field)
-	}
-	return *value, nil
-}
-
-func positiveUint64OrDefault(value *uint64, fallback uint64, field string) (uint64, error) {
-	if fallback == 0 {
-		return 0, fmt.Errorf("%s default must be positive", field)
-	}
-	if value == nil {
-		return fallback, nil
-	}
-	if *value == 0 {
-		return 0, fmt.Errorf("%s must be positive", field)
-	}
-	return *value, nil
+	return delegationPolicy{
+		treeLimits:    agent.TreeLimits{MaxDepth: 4, MaxChildren: 16, MaxActiveChildren: 4, MaxTreeProcesses: 64},
+		processBudget: budget,
+	}, nil
 }
 
 func delegateSubtreeBudget(base agent.Budget, processLevels uint32) (agent.Budget, error) {

@@ -110,8 +110,8 @@ func (ItemCompleted) runEvent()     {}
 func (PlanSnapshot) runEvent()      {}
 
 func (s SegmentStarted) validate() error {
-	if err := s.Run.Validate(); err != nil {
-		return fmt.Errorf("runs: started Segment Run: %w", err)
+	if s.Run.IsZero() {
+		return fmt.Errorf("runs: run is required")
 	}
 	if s.Run.State() != run.Running {
 		return fmt.Errorf("runs: started Segment carries %s Run", s.Run.State())
@@ -122,8 +122,8 @@ func (s SegmentStarted) validate() error {
 func (s SegmentProgressed) validate() error { return s.Progress.validate() }
 
 func (s SegmentFinished) validate() error {
-	if err := s.Run.Validate(); err != nil {
-		return fmt.Errorf("runs: finished Segment Run: %w", err)
+	if s.Run.IsZero() {
+		return fmt.Errorf("runs: run is required")
 	}
 	if s.Run.State() == run.Running {
 		return errors.New("runs: finished Segment carries a running Run")
@@ -147,8 +147,8 @@ func (s SegmentFinished) validate() error {
 func (i ItemStarted) validate() error { return i.Item.validate() }
 
 func (i ItemCompleted) validate() error {
-	if err := i.Item.Validate(); err != nil {
-		return fmt.Errorf("runs: completed Item: %w", err)
+	if i.Item.IsZero() {
+		return fmt.Errorf("runs: item is required")
 	}
 	return nil
 }
@@ -357,5 +357,5 @@ func (i ItemStart) validate() error {
 		item.SafetyClass() != i.SafetyClass {
 		return errors.New("runs: ToolCall start differs from its durable invocation")
 	}
-	return item.Validate()
+	return nil
 }

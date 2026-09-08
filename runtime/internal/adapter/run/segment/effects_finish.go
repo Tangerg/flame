@@ -38,19 +38,12 @@ type TaskLauncher interface {
 	Start(parent context.Context, task func(context.Context)) bool
 }
 
-// TitleMaintenance is the complete optional generated-title capability.
-type TitleMaintenance struct {
-	Sessions  SessionTitles
-	Generator TitleGenerator
-	Tasks     TaskLauncher
-}
-
-// FinalizerConfig declares the two independent terminal-maintenance features.
-// A nil Checkpoints disables workspace snapshots; a nil Titles disables title
-// generation. Enabled features must be complete at construction.
+// FinalizerConfig supplies generated-title maintenance and optional workspace checkpoints.
 type FinalizerConfig struct {
 	Checkpoints Checkpoints
-	Titles      *TitleMaintenance
+	Sessions    SessionTitles
+	Titles      TitleGenerator
+	Tasks       TaskLauncher
 }
 
 // Finalizer owns post-boundary maintenance. It is deliberately separate from
@@ -69,23 +62,19 @@ func NewFinalizer(cfg FinalizerConfig) (*Finalizer, error) {
 	if cfg.Checkpoints != nil && nilDependency(cfg.Checkpoints) {
 		return nil, errors.New("segment: optional checkpoints must not be typed nil")
 	}
-	finalizer := &Finalizer{checkpoints: cfg.Checkpoints}
-	if cfg.Titles == nil {
-		return finalizer, nil
+	if nilDependency(cfg.Sessions) {
+		return nil, errors.New("segment: session titles are required")
 	}
-	if nilDependency(cfg.Titles.Sessions) {
-		return nil, errors.New("segment: session titles are required when title maintenance is enabled")
+	if nilDependency(cfg.Titles) {
+		return nil, errors.New("segment: title generator is required")
 	}
-	if nilDependency(cfg.Titles.Generator) {
-		return nil, errors.New("segment: title generator is required when title maintenance is enabled")
+	if nilDependency(cfg.Tasks) {
+		return nil, errors.New("segment: task launcher is required")
 	}
-	if nilDependency(cfg.Titles.Tasks) {
-		return nil, errors.New("segment: task launcher is required when title maintenance is enabled")
-	}
-	finalizer.sessionTitles = cfg.Titles.Sessions
-	finalizer.titles = cfg.Titles.Generator
-	finalizer.tasks = cfg.Titles.Tasks
-	return finalizer, nil
+	return &Finalizer{
+		checkpoints: cfg.Checkpoints, sessionTitles: cfg.Sessions,
+		titles: cfg.Titles, tasks: cfg.Tasks,
+	}, nil
 }
 
 // Finish establishes the terminal file boundary before returning, then starts
@@ -97,7 +86,7 @@ func NewFinalizer(cfg FinalizerConfig) (*Finalizer, error) {
 // user text so a waiting conversation remains discoverable after process exit.
 func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
 	needsSnapshot := !fin.Parked && f.checkpoints != nil && fin.CWD != ""
-	needsTitle := f.sessionTitles != nil && strings.TrimSpace(fin.OpeningUserText) != ""
+	needsTitle := strings.TrimSpace(fin.OpeningUserText) != ""
 	if !needsSnapshot && !needsTitle {
 		return nil
 	}
@@ -150,9 +139,6 @@ func (f *Finalizer) snapshot(ctx context.Context, sessionID, cwd, runID string) 
 }
 
 func (f *Finalizer) title(ctx context.Context, sessionID, prompt string) error {
-	if f.sessionTitles == nil {
-		return errors.New("segment: Session title use cases are unavailable")
-	}
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" {
 		return nil
@@ -163,9 +149,6 @@ func (f *Finalizer) title(ctx context.Context, sessionID, prompt string) error {
 	}
 	if !needed {
 		return nil
-	}
-	if f.titles == nil {
-		return errors.New("segment: title generation is unavailable")
 	}
 	title, generationErr := f.titles.Generate(ctx, prompt)
 	title = strings.TrimSpace(title)

@@ -95,7 +95,7 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: session admission: %w", err)
 	}
-	sessionStores := persistence.NewSessionStores(persistence.SessionStoresConfig{
+	sessionStores, err := persistence.NewSessionStores(persistence.SessionStoresConfig{
 		Sessions:            cfg.Stores.Sessions,
 		Transcript:          cfg.Stores.Transcript,
 		Interrupts:          cfg.Stores.Interrupts,
@@ -110,6 +110,9 @@ func buildAssemblyCore(
 		Goals:               cfg.Stores.Goals,
 		Tx:                  persistence.Transactor(cfg.Stores.Transactor),
 	})
+	if err != nil {
+		return nil, err
+	}
 	modelCapabilities := modeladapter.Capabilities{}
 	modelCoordinator, err := models.New(models.Config{
 		Providers:          cfg.ProviderRegistry,
@@ -176,6 +179,9 @@ func buildAssemblyCore(
 		Interrupts:          cfg.Stores.Interrupts,
 		ResumeClaims:        cfg.Stores.Interrupts,
 		Sessions:            cfg.Stores.Sessions,
+		Schedules:           cfg.Stores.Schedules,
+		GoalRuns:            cfg.Stores.Goals,
+		ToolResults:         cfg.Stores.ToolResults,
 		Transcript:          cfg.Stores.Transcript,
 		ItemReplacer:        cfg.Stores.Transcript,
 		ToolApprovals:       cfg.Stores.Transcript,
@@ -188,20 +194,15 @@ func buildAssemblyCore(
 		ChildRunStarts:      cfg.Stores.ChildRunStarts,
 		Tx:                  segment.Transactor(cfg.Stores.Transactor),
 	}
-	runSegmentConfig.Schedules = cfg.Stores.Schedules
-	runSegmentConfig.GoalRuns = cfg.Stores.Goals
-	runSegmentConfig.ToolResults = cfg.Stores.ToolResults
 	runSegmentEffects, err := segment.New(runSegmentConfig)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Run-segment effects: %w", err)
 	}
 	runFinalizer, err := segment.NewFinalizer(segment.FinalizerConfig{
 		Checkpoints: workspaceServices.checkpoints,
-		Titles: &segment.TitleMaintenance{
-			Sessions:  sessionCoordinator,
-			Generator: segment.NewTitleGenerator(execution.models.utilityClient),
-			Tasks:     runEffectTasks,
-		},
+		Sessions:    sessionCoordinator,
+		Titles:      segment.NewTitleGenerator(execution.models.utilityClient),
+		Tasks:       runEffectTasks,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Run finalizer: %w", err)

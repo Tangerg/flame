@@ -465,7 +465,7 @@ func validateRouteReductionBatch(
 	return nil
 }
 
-func validateRouteCommit(route *executorRoute, sessionID string, commit *EventCommit) error {
+func validateRouteCommit(route *executorRoute, sessionID string, commit *EventCommitConfig) error {
 	if commit == nil {
 		return nil
 	}
@@ -480,26 +480,12 @@ func validateRouteCommit(route *executorRoute, sessionID string, commit *EventCo
 			commit.SessionID,
 		)
 	}
-	for _, item := range commit.Items {
-		if err := validateRouteItem(route, sessionID, item); err != nil {
-			return err
-		}
-	}
 	if commit.Run != nil {
 		if err := validateRouteRun(route, sessionID, *commit.Run); err != nil {
 			return err
 		}
 	}
-	if commit.GoalRun != nil &&
-		(commit.GoalRun.RunID != route.runID || commit.GoalRun.SessionID != sessionID) {
-		return fmt.Errorf(
-			"%w: route %q carries a Goal Run for run %q in session %q",
-			errReducerInvariant,
-			route.runID,
-			commit.GoalRun.RunID,
-			commit.GoalRun.SessionID,
-		)
-	}
+
 	return nil
 }
 
@@ -635,8 +621,8 @@ func (c *Coordinator) prepareChildStart(
 			spec.SessionID,
 		)
 	}
-	if validateErr := spawningItem.Validate(); validateErr != nil {
-		return nil, fmt.Errorf("runs: open child member %q spawning item: %w", member.MemberID, validateErr)
+	if spawningItem.IsZero() {
+		return nil, fmt.Errorf("runs: item is required")
 	}
 	childRunID := c.newRunID()
 	if childRunID == "" {
@@ -742,18 +728,26 @@ func (c *Coordinator) finalizeChildOpening(
 		Capabilities:    child.capabilities,
 		CreatedAt:       startedAt,
 	}
-	events := []EventCommit{{
+	parentCommit, err := NewEventCommit(EventCommitConfig{
 		RunID:     prepared.parent.runID,
 		SessionID: spec.SessionID,
 		SegmentID: prepared.parent.segmentID,
 		Items:     []transcript.Item{prepared.spawningItem},
-	}}
+	})
+	if err != nil {
+		return err
+	}
+	events := []EventCommit{parentCommit}
 	for _, reduced := range projected.events {
 		if reduced.Event.Terminal() || reduced.Nudge != nil {
 			return fmt.Errorf("runs: child member %q produced an invalid opening event", prepared.member.MemberID)
 		}
 		if reduced.Commit != nil {
-			events = append(events, *reduced.Commit)
+			commit, err := NewEventCommit(*reduced.Commit)
+			if err != nil {
+				return err
+			}
+			events = append(events, commit)
 		}
 	}
 	if err := validateRouteReductionBatch(child, spec.SessionID, projected); err != nil {

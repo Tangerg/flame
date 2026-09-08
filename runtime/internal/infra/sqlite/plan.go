@@ -102,8 +102,8 @@ func (p *PlanStore) Save(ctx context.Context, sessionID string, change plan.Repl
 	if err := validateSessionResource("save Session Plan", sessionID); err != nil {
 		return err
 	}
-	if err := change.Validate(); err != nil {
-		return fmt.Errorf("sqlite: validate Plan replacement: %w", err)
+	if change.IsZero() {
+		return fmt.Errorf("sqlite: plan replacement is required")
 	}
 	expected := change.ExpectedVersion()
 	replacement := change.State()

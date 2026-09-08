@@ -855,7 +855,7 @@ func TestStartKeepsGoalControlInputModelOnly(t *testing.T) {
 		t.Fatalf("Goal working context = %#v, want exact model-only instruction", workingContext)
 	}
 	for _, event := range effects.opening().Events() {
-		for _, item := range event.Items {
+		for _, item := range event.Items() {
 			if item.Kind() == transcript.UserMessage {
 				t.Fatalf("Goal control input escaped into transcript Item %q", item.ID())
 			}
@@ -1020,18 +1020,14 @@ func TestFastStartReleaseCannotCrossTerminalMaintenance(t *testing.T) {
 	if outcome.err != nil {
 		t.Fatalf("Start: %v", outcome.err)
 	}
-	if !hasActiveSession(c, "ses_1") {
+	if !sessionAdmissionBlocked(t, c, "ses_1") {
 		t.Fatal("Start release erased the in-flight terminal-maintenance claim")
-	}
-	if release, ok, _ := c.admission.AcquireSession("ses_1"); ok {
-		release()
-		t.Fatal("new admission crossed terminal maintenance after Start returned")
 	}
 
 	close(releaseFinish)
 	consumeEvents(outcome.result.Events)
 	requireCoordinatorShutdown(t, c)
-	if hasActiveSession(c, "ses_1") {
+	if sessionAdmissionBlocked(t, c, "ses_1") {
 		t.Fatal("terminal maintenance did not release its claim")
 	}
 }
@@ -1216,7 +1212,7 @@ func TestResumeRejectsContinuationFactDriftBeforeExecutorPreparation(t *testing.
 	if err == nil {
 		t.Fatal("Resume accepted cumulative metrics that differ from the durable Run")
 	}
-	if control.resumed || control.continuation.Checkpoint.RootMemberID != "" || len(effects.openings) != 0 {
+	if control.resumed || control.continuation.Checkpoint.RootMemberID() != "" || len(effects.openings) != 0 {
 		t.Fatalf("contradictory continuation reached executor/effects: control=%+v openings=%d", control, len(effects.openings))
 	}
 	if _, found := sessions.pending[pending.RootRunID]; !found {
@@ -1344,7 +1340,7 @@ func TestResumeWithInputCommitsTheUserItemWithTheContinuation(t *testing.T) {
 	committed := false
 	events := opening.Events()
 	for _, event := range events {
-		for _, item := range event.Items {
+		for _, item := range event.Items() {
 			if item.ID() == withInput.UserItemID && item.Kind() == transcript.UserMessage {
 				committed = true
 			}
@@ -1411,10 +1407,10 @@ func TestResumeRecoversLostExecutorStateBeforeReturning(t *testing.T) {
 	if len(operations) != 1 || operations[0] != "durable.lost" {
 		t.Fatalf("operations = %v, want one durable lost commit", operations)
 	}
-	if control.continuation.Checkpoint.Scope.CWD != "/work" {
-		t.Fatalf("continuation cwd = %q, want /work", control.continuation.Checkpoint.Scope.CWD)
+	if control.continuation.Checkpoint.Scope().CWD != "/work" {
+		t.Fatalf("continuation cwd = %q, want /work", control.continuation.Checkpoint.Scope().CWD)
 	}
-	if hasActiveSession(c, "ses_1") {
+	if sessionAdmissionBlocked(t, c, "ses_1") {
 		t.Fatal("failed resume leaked its run admission")
 	}
 
@@ -1723,11 +1719,11 @@ func TestResumeRehydrateRestoresChildSourceProjection(t *testing.T) {
 	if !control.continuation.ChildRunAdmissionEnabled {
 		t.Fatalf("rehydrate request = %+v, want child member projection enabled", control.continuation)
 	}
-	if control.continuation.Checkpoint.RootMemberID != "member_root" {
-		t.Fatalf("continuation member = %q, want member_root", control.continuation.Checkpoint.RootMemberID)
+	if control.continuation.Checkpoint.RootMemberID() != "member_root" {
+		t.Fatalf("continuation member = %q, want member_root", control.continuation.Checkpoint.RootMemberID())
 	}
-	if control.continuation.Checkpoint.Scope.GoalIncarnationID != pending.GoalIncarnationID {
-		t.Fatalf("continuation goal incarnation = %q, want %q", control.continuation.Checkpoint.Scope.GoalIncarnationID, pending.GoalIncarnationID)
+	if control.continuation.Checkpoint.Scope().GoalIncarnationID != pending.GoalIncarnationID {
+		t.Fatalf("continuation goal incarnation = %q, want %q", control.continuation.Checkpoint.Scope().GoalIncarnationID, pending.GoalIncarnationID)
 	}
 	wantChildRuns := map[string]ChildRunBinding{
 		"member_grandchild": {MemberID: "member_grandchild", RunID: "run_grandchild", ParentRunID: "run_a"},
@@ -1815,13 +1811,13 @@ func TestResumeRefusesIsolatedRunAfterRuntimeRestart(t *testing.T) {
 	if !errors.Is(err, ErrRunNotFound) || !errors.Is(err, ErrExecutorStateLost) {
 		t.Fatalf("Resume error = %v, want Run not found wrapping executor state lost", err)
 	}
-	if control.continuation.Checkpoint.RootMemberID != "" || len(control.continuation.Members) != 0 {
+	if control.continuation.Checkpoint.RootMemberID() != "" || len(control.continuation.Members) != 0 {
 		t.Fatalf("isolated Run staged continuation %+v, want none", control.continuation)
 	}
 	if sessions.lostRunID != "run_1" || len(operations) != 1 || operations[0] != "durable.lost" {
 		t.Fatalf("lost recovery = %q ops=%v, want run_1 marked lost", sessions.lostRunID, operations)
 	}
-	if hasActiveSession(c, "ses_1") {
+	if sessionAdmissionBlocked(t, c, "ses_1") {
 		t.Fatal("failed isolated resume leaked its run admission")
 	}
 }
@@ -1927,7 +1923,7 @@ func TestCancelParkedRunUsesApplicationAdmission(t *testing.T) {
 	if len(operations) != 2 || operations[0] != "durable.cancel" || operations[1] != "executor.release" {
 		t.Fatalf("cancel operations = %v, want durable commit before executor cleanup", operations)
 	}
-	if hasActiveSession(c, "ses_1") {
+	if sessionAdmissionBlocked(t, c, "ses_1") {
 		t.Fatal("parked cancel leaked the session admission claim")
 	}
 }
@@ -2029,10 +2025,10 @@ func requireChildCancellationProjection(
 	t.Helper()
 	childTerminalCommits, parentCancellationItems := 0, 0
 	for _, commit := range commits {
-		if commit.State == StateTerminalize && commit.RunID == child.ID() {
+		if commit.Terminates() && commit.RunID() == child.ID() {
 			childTerminalCommits++
 		}
-		for _, item := range commit.Items {
+		for _, item := range commit.Items() {
 			failure, failed := item.Failure()
 			if item.ID() == child.Lineage().SpawnedByItemID && item.Status() == transcript.ItemIncomplete &&
 				failed && failure.Kind == tool.FailureChildRunCanceled && failure.Detail == reason {
@@ -2310,7 +2306,7 @@ func TestCancelLiveRunJoinsTerminalMaintenance(t *testing.T) {
 		outcome.result.Run.Detail() != "stop" {
 		t.Fatalf("Cancel result = %+v, want exact canceled terminal snapshot", outcome.result)
 	}
-	if hasActiveSession(c, "ses_1") {
+	if sessionAdmissionBlocked(t, c, "ses_1") {
 		t.Fatal("Cancel returned before releasing session admission")
 	}
 	consumeEvents(result.Events)
@@ -2356,7 +2352,7 @@ func TestCancelLosesToACommittedNaturalTerminal(t *testing.T) {
 		t.Fatal("terminal commit lost its live cancellation join")
 	}
 	deadline := time.After(time.Second)
-	for entry.owner.CancelReason() != "too late" {
+	for entry.owner.CancelReasonFor("run_1") != "too late" {
 		select {
 		case <-deadline:
 			t.Fatal("cancel did not join the in-flight terminal commit")

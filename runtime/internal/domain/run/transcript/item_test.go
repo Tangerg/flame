@@ -312,8 +312,8 @@ func TestToolCallFailureAndAbandonmentHaveOneWayTransitions(t *testing.T) {
 	if failed.Status() != transcript.ItemIncomplete || !present || gotFailure != failure {
 		t.Fatalf("failed ToolCall = status %v, failure %+v/%t", failed.Status(), gotFailure, present)
 	}
-	if _, classifyAbandonedToolCallErr := failed.ClassifyAbandonedToolCall(failure); classifyAbandonedToolCallErr == nil {
-		t.Fatal("already-classified ToolCall accepted another failure")
+	if _, err := failed.AbandonToolCall(&failure, finishedAt); err == nil {
+		t.Fatal("failed ToolCall accepted another settlement")
 	}
 
 	abandoned, err := running.AbandonToolCall(nil, finishedAt)
@@ -324,12 +324,15 @@ func TestToolCallFailureAndAbandonmentHaveOneWayTransitions(t *testing.T) {
 		t.Fatalf("unstarted abandonment execution duration = %v", duration)
 	}
 	causal := tool.Failure{Kind: tool.FailureChildRunCanceled, Detail: "child canceled"}
-	classified, err := abandoned.ClassifyAbandonedToolCall(causal)
-	if err != nil {
-		t.Fatalf("ClassifyAbandonedToolCall: %v", err)
+	if _, err := abandoned.AbandonToolCall(&causal, finishedAt); err == nil {
+		t.Fatal("abandoned ToolCall accepted a later failure")
 	}
-	gotFailure, present = classified.Failure()
-	if !present || gotFailure != causal || !classified.FinishedAt().Equal(abandoned.FinishedAt()) {
-		t.Fatalf("classified abandoned ToolCall = failure %+v/%t, finished %v", gotFailure, present, classified.FinishedAt())
+	canceled, err := running.AbandonToolCall(&causal, finishedAt)
+	if err != nil {
+		t.Fatalf("AbandonToolCall with cancellation: %v", err)
+	}
+	gotFailure, present = canceled.Failure()
+	if !present || gotFailure != causal || !canceled.FinishedAt().Equal(finishedAt) {
+		t.Fatalf("canceled ToolCall = failure %+v/%t, finished %v", gotFailure, present, canceled.FinishedAt())
 	}
 }

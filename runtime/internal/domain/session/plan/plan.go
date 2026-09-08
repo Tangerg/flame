@@ -93,8 +93,7 @@ type Current struct{ state *State }
 // value is the explicit unwritten version; committed revisions remain private
 // so callers cannot pair a numeric sentinel with unrelated Plan content.
 type Version struct {
-	revision  exactint.Counter
-	committed bool
+	revision exactint.Counter
 }
 
 // Restore reconstructs a Plan aggregate from a trusted persistence boundary
@@ -109,7 +108,7 @@ func Restore(snapshot Snapshot) (State, error) {
 		revision:  revision,
 		updatedAt: canonicalTime(snapshot.UpdatedAt),
 	}
-	if err := state.Validate(); err != nil {
+	if err := state.validate(); err != nil {
 		return State{}, err
 	}
 	return state, nil
@@ -117,18 +116,10 @@ func Restore(snapshot Snapshot) (State, error) {
 
 // CurrentOf wraps one validated committed State as the latest Session value.
 func CurrentOf(state State) (Current, error) {
-	if err := state.Validate(); err != nil {
-		return Current{}, err
+	if state.IsZero() {
+		return Current{}, fmt.Errorf("%w: committed state is required", ErrInvalid)
 	}
 	return Current{state: &state}, nil
-}
-
-// Validate verifies the optional aggregate and its committed State.
-func (c Current) Validate() error {
-	if c.state == nil {
-		return nil
-	}
-	return c.state.Validate()
 }
 
 // State returns the immutable committed State and whether one has been written.
@@ -154,15 +145,12 @@ func (c Current) Version() Version {
 	if c.state == nil {
 		return Version{}
 	}
-	return Version{revision: c.state.revision, committed: true}
+	return Version{revision: c.state.revision}
 }
 
 // Replace decides one committed whole-list replacement. An unwritten Current
 // receives the first revision; an existing State advances once.
 func (c Current) Replace(steps []Step, updatedAt time.Time) (State, error) {
-	if err := c.Validate(); err != nil {
-		return State{}, fmt.Errorf("%w: current value: %v", ErrInvalid, err)
-	}
 	if c.state == nil {
 		return create(steps, updatedAt)
 	}
@@ -173,8 +161,8 @@ func (c Current) Replace(steps []Step, updatedAt time.Time) (State, error) {
 // value; the aggregate owns revision advancement and rejects time travel or
 // revision overflow.
 func (s State) Replace(steps []Step, updatedAt time.Time) (State, error) {
-	if err := s.Validate(); err != nil {
-		return State{}, fmt.Errorf("%w: current state: %v", ErrInvalid, err)
+	if s.IsZero() {
+		return State{}, fmt.Errorf("%w: committed state is required", ErrInvalid)
 	}
 	if err := ValidateSteps(steps); err != nil {
 		return State{}, err
@@ -208,8 +196,11 @@ func create(steps []Step, updatedAt time.Time) (State, error) {
 	return State{steps: cloneSteps(steps), revision: exactint.First(), updatedAt: updatedAt}, nil
 }
 
-// Validate verifies the aggregate's reconstruction and lifecycle invariants.
-func (s State) Validate() error {
+// IsZero reports whether no committed Plan was constructed.
+func (s State) IsZero() bool { return s.revision.IsZero() }
+
+// validate verifies the aggregate's reconstruction and lifecycle invariants.
+func (s State) validate() error {
 	if err := ValidateSteps(s.steps); err != nil {
 		return err
 	}
@@ -237,32 +228,18 @@ func (s State) Snapshot() Snapshot {
 }
 
 // IsUnwritten reports whether v identifies the absence of a committed Plan.
-func (v Version) IsUnwritten() bool { return !v.committed }
+func (v Version) IsUnwritten() bool { return v.revision.IsZero() }
 
 // Revision returns the committed revision and whether one exists.
-func (v Version) Revision() (uint64, bool) { return v.revision.Value(), v.committed }
-
-// Validate verifies that presence and numeric revision cannot contradict.
-func (v Version) Validate() error {
-	if v.committed && v.revision.IsZero() {
-		return fmt.Errorf("%w: committed version must be positive", ErrInvalid)
-	}
-	if !v.committed && !v.revision.IsZero() {
-		return fmt.Errorf("%w: unwritten version carries a revision", ErrInvalid)
-	}
-	return nil
-}
+func (v Version) Revision() (uint64, bool) { return v.revision.Value(), !v.IsUnwritten() }
 
 // AdvancesTo verifies that next is exactly one replacement after v.
 func (v Version) AdvancesTo(next State) error {
-	if err := v.Validate(); err != nil {
-		return err
-	}
-	if err := next.Validate(); err != nil {
-		return err
+	if next.IsZero() {
+		return fmt.Errorf("%w: replacement state is required", ErrInvalid)
 	}
 	expected := exactint.First()
-	if v.committed {
+	if !v.IsUnwritten() {
 		var err error
 		expected, err = v.revision.Next()
 		if err != nil {
@@ -276,7 +253,7 @@ func (v Version) AdvancesTo(next State) error {
 }
 
 func (v Version) String() string {
-	if !v.committed {
+	if v.IsUnwritten() {
 		return "unwritten"
 	}
 	return fmt.Sprintf("revision %d", v.revision.Value())

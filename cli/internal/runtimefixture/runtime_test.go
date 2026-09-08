@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"reflect"
 	"slices"
 	"testing"
 	"time"
@@ -17,7 +18,7 @@ import (
 func TestMockIdentitySequenceDoesNotWrapAndOverwriteExistingSession(t *testing.T) {
 	runtime := New()
 	runtime.identities.value.SetUint64(math.MaxUint64)
-	runtime.sessions["ses_mock_0"] = &sessionState{meta: agent.Session{ID: "ses_mock_0", Title: "existing"}}
+	runtime.sessions["ses_mock_0"] = &sessionState{meta: protocol.Session{ID: "ses_mock_0", Title: "existing"}}
 
 	created, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
 	if err != nil {
@@ -54,7 +55,7 @@ func TestMockSessionUpdateRevisionExhaustionIsAtomic(t *testing.T) {
 	}); err == nil {
 		t.Fatal("session update accepted exhausted revision")
 	}
-	if !state.meta.Equal(original) {
+	if state.meta != original {
 		t.Fatalf("session after exhausted update = %+v, want %+v", state.meta, original)
 	}
 }
@@ -73,7 +74,7 @@ func TestMockSessionRollbackRevisionExhaustionIsAtomic(t *testing.T) {
 	}); err == nil {
 		t.Fatal("session rollback accepted exhausted revision")
 	}
-	if !state.meta.Equal(originalMeta) || !slices.Equal(state.runs, originalRuns) ||
+	if state.meta != originalMeta || !slices.Equal(state.runs, originalRuns) ||
 		len(state.items) != originalItems || len(runtime.runs) != originalRuntimeRuns {
 		t.Fatalf("rollback exhaustion partially mutated session: meta %+v runs %v items %d runtime runs %d",
 			state.meta, state.runs, len(state.items), len(runtime.runs))
@@ -87,7 +88,7 @@ func TestMockSteerRevisionExhaustionDoesNotEmitPartialEvent(t *testing.T) {
 	originalItems := len(session.items)
 	segment := &segmentState{id: "seg_exhausted", changed: make(chan struct{})}
 	run := &runState{
-		id: "run_exhausted", sessionID: session.meta.ID, lineage: agent.RootRunLineage(),
+		id: "run_exhausted", sessionID: session.meta.ID,
 		status: protocol.RunStatusRunning, active: segment.id,
 		segments: map[string]*segmentState{segment.id: segment}, cancel: make(chan struct{}),
 	}
@@ -132,7 +133,7 @@ func TestMockBackgroundEventRevisionExhaustionTerminatesTheSegmentWithoutPartial
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{
 			eventStep(0, agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "must not commit"}}),
-			eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+			eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
@@ -166,7 +167,7 @@ func TestMockParkRevisionExhaustionDoesNotPublishAPartialWaitingSet(t *testing.T
 		return Script{
 			Interactions: []agent.Interaction{approvalFixture("approval", "approve")},
 			Continue: func([]agent.InterruptAnswer) []Step {
-				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}
+				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -196,7 +197,7 @@ func TestMockParkRevisionExhaustionDoesNotPublishAPartialWaitingSet(t *testing.T
 func TestMockFinishRevisionExhaustionLeavesTheRunExecutingAndReportsTheStreamFailure(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
 	if err != nil {
@@ -223,7 +224,7 @@ func TestMockFinishRevisionExhaustionLeavesTheRunExecutingAndReportsTheStreamFai
 func TestMockCancelRevisionExhaustionIsAtomic(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
 	if err != nil {
@@ -244,7 +245,7 @@ func TestMockCancelRevisionExhaustionIsAtomic(t *testing.T) {
 		t.Fatalf("cancel after revision exhaustion error = %v", err)
 	}
 	run := runtime.runs[opened.RunID]
-	if !state.meta.Equal(originalMeta) || !projectRun(run).Equal(originalRun) ||
+	if state.meta != originalMeta || !reflect.DeepEqual(projectRun(run), originalRun) ||
 		len(run.segments[opened.SegmentID].events) != originalEvents {
 		t.Fatalf("cancel exhaustion partially mutated session/run: %+v / %+v", state.meta, projectRun(run))
 	}
@@ -277,7 +278,7 @@ func TestRuntimePreservesAuthoredMessageTextAcrossRunMutations(t *testing.T) {
 		return Script{
 			Interactions: []agent.Interaction{approvalFixture("approval", "Continue")},
 			Continue: func([]agent.InterruptAnswer) []Step {
-				return []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}
+				return []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -359,7 +360,7 @@ func TestMockResumeRevisionExhaustionIsAtomic(t *testing.T) {
 		return Script{
 			Interactions: []agent.Interaction{approvalFixture("approval", "approve")},
 			Continue: func([]agent.InterruptAnswer) []Step {
-				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}
+				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -390,7 +391,7 @@ func TestMockResumeRevisionExhaustionIsAtomic(t *testing.T) {
 	if !errors.Is(err, errSessionRevisionExhausted) {
 		t.Fatalf("resume after revision exhaustion error = %v", err)
 	}
-	if !state.meta.Equal(originalMeta) || !projectRun(run).Equal(originalRun) || len(state.items) != originalItems ||
+	if state.meta != originalMeta || !reflect.DeepEqual(projectRun(run), originalRun) || len(state.items) != originalItems ||
 		len(run.answers) != originalAnswers || len(run.segments) != originalSegments || len(runtime.rules) != originalRules {
 		t.Fatalf("resume exhaustion partially mutated state: meta %+v run %+v items %d answers %d segments %d rules %d",
 			state.meta, projectRun(run), len(state.items), len(run.answers), len(run.segments), len(runtime.rules))
@@ -491,8 +492,8 @@ func requireWaitingProjection(t *testing.T, runtime *Runtime, sessionID string, 
 	}
 	interaction := waiting.Interactions[0]
 	approvalItem, ok := snapshotBlock(waiting, opened.RunID, agent.InteractionItemID(interaction))
-	if !ok || approvalItem.Kind != agent.BlockTool || approvalItem.Status != agent.BlockStatusRunning || waitingRun.Usage.InputTokens == 0 {
-		t.Fatalf("waiting approval projection = item %+v, usage %+v", approvalItem, waitingRun.Usage)
+	if !ok || approvalItem.Kind != agent.BlockTool || approvalItem.Status != agent.BlockStatusRunning || agent.UsageFromMetrics(waitingRun.Metrics).InputTokens == 0 {
+		t.Fatalf("waiting approval projection = item %+v, usage %+v", approvalItem, agent.UsageFromMetrics(waitingRun.Metrics))
 	}
 	return interaction
 }
@@ -513,7 +514,7 @@ func resumeApprovedRun(t *testing.T, runtime *Runtime, opened agent.SegmentStrea
 		t.Fatal("resume reused the first segment")
 	}
 	drain(t, continued, conversation)
-	if conversation.Outcome().Status != agent.OutcomeCompleted {
+	if conversation.Outcome().Status != protocol.OutcomeCompleted {
 		t.Fatalf("outcome = %+v", conversation.Outcome())
 	}
 }
@@ -531,9 +532,7 @@ func requireCompletedColdProjection(t *testing.T, runtime *Runtime, sessionID, r
 	if !ok {
 		t.Fatal("latest run is missing")
 	}
-	steps, stepsLimited := latest.Limits.MaxSteps()
-	budget, budgetLimited := latest.Limits.MaxBudgetUSD()
-	if !stepsLimited || steps != 12 || !budgetLimited || budget != 1.5 {
+	if latest.Limits == nil || latest.Limits.MaxSteps == nil || *latest.Limits.MaxSteps != 12 || latest.Limits.MaxBudgetUSD == nil || *latest.Limits.MaxBudgetUSD != 1.5 {
 		t.Fatalf("latest run limits = %+v", latest.Limits)
 	}
 	approvalItem, ok := snapshotBlock(snapshot, runID, agent.InteractionItemID(interaction))
@@ -552,7 +551,7 @@ func TestRuntimeReconnectUsesOpaqueReplayCheckpoint(t *testing.T) {
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{
 			eventStep(30*time.Millisecond, agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "done"}}),
-			eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+			eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
@@ -585,7 +584,7 @@ func TestRuntimeReconnectUsesOpaqueReplayCheckpoint(t *testing.T) {
 		t.Fatal(err)
 	}
 	drain(t, rebound, conversation)
-	if conversation.Outcome().Status != agent.OutcomeCompleted {
+	if conversation.Outcome().Status != protocol.OutcomeCompleted {
 		t.Fatalf("outcome = %+v", conversation.Outcome())
 	}
 }
@@ -593,7 +592,7 @@ func TestRuntimeReconnectUsesOpaqueReplayCheckpoint(t *testing.T) {
 func TestRuntimeSubscribeWithoutCheckpointAttachesAtHead(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(time.Second, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{eventStep(time.Second, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
 	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "hello"))
@@ -635,7 +634,7 @@ func TestRuntimeForkStartsWithAFreshProjectionAtRunBoundary(t *testing.T) {
 	}
 }
 
-func TestRuntimeRollbackRestoresTheEarliestDroppedOpeningInput(t *testing.T) {
+func TestRuntimeRollbackReportsTheRemovedRuns(t *testing.T) {
 	runtime := New()
 	result, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
@@ -643,13 +642,8 @@ func TestRuntimeRollbackRestoresTheEarliestDroppedOpeningInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Dropped) != 1 {
-		t.Fatalf("dropped runs = %+v", result.Dropped)
-	}
-	input, ok := result.FirstOpeningInput()
-	text, images := input.OpeningText()
-	if !ok || text != "Why is the cache expiry test flaky?" || images != 0 {
-		t.Fatalf("opening input = (%q, %d, %t)", text, images, ok)
+	if !slices.Equal(result.DroppedRunIDs, []string{"run_demo_history"}) {
+		t.Fatalf("dropped runs = %v", result.DroppedRunIDs)
 	}
 	snapshot, err := runtime.GetSession(t.Context(), "ses_demo_1")
 	if err != nil {
@@ -663,7 +657,7 @@ func TestRuntimeRollbackRestoresTheEarliestDroppedOpeningInput(t *testing.T) {
 func TestRuntimeForkExcludesAnActiveTail(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", "active tail"))
 	if err != nil {
@@ -680,7 +674,7 @@ func TestRuntimeForkExcludesAnActiveTail(t *testing.T) {
 	if len(snapshot.Transcript) != 0 || len(snapshot.Runs) != 0 {
 		t.Fatalf("fork copied a parent projection: blocks=%+v runs=%+v", snapshot.Transcript, snapshot.Runs)
 	}
-	if _, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: "ses_demo_1", FromRunID: opened.RunID}); !errors.Is(err, agent.ErrRunNotFound) {
+	if _, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: "ses_demo_1", FromRunID: opened.RunID}); !errors.Is(err, protocol.ErrRunNotFound) {
 		t.Fatalf("explicit active boundary error = %v", err)
 	}
 	_, _ = runtime.CancelRun(t.Context(), agent.CancelRun{RunID: opened.RunID})
@@ -696,7 +690,7 @@ func TestRuntimeForkCopiesThePlanAtItsRunBoundary(t *testing.T) {
 		}
 		return Script{Prelude: []Step{
 			replacePlanStep(0, plan),
-			eventStep(delay, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+			eventStep(delay, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
@@ -743,7 +737,7 @@ func TestRuntimeColdReadTracksAndSettlesRunningItems(t *testing.T) {
 		return Script{Prelude: []Step{
 			eventStep(0, agent.BlockStarted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant}}),
 			eventStep(0, agent.BlockStarted{Block: agent.Block{ID: "tool", Kind: agent.BlockTool, Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Status: agent.ToolRunning}}}),
-			eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+			eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
@@ -797,7 +791,7 @@ func TestScriptContinuationReceivesFixtureLocalItemIDs(t *testing.T) {
 			Interactions: []agent.Interaction{approvalFixture("approval", "approve")},
 			Continue: func(answers []agent.InterruptAnswer) []Step {
 				received = answers[0].ItemID
-				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}
+				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -834,7 +828,7 @@ func TestApprovalArgumentOverrideBecomesTheCompletedToolProjection(t *testing.T)
 				},
 			}},
 			Continue: func([]agent.InterruptAnswer) []Step {
-				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}
+				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -911,7 +905,7 @@ func TestRememberedRulesRemoveOnlyMatchedApprovalsFromThePendingSet(t *testing.T
 			},
 			Continue: func(answers []agent.InterruptAnswer) []Step {
 				continuedWith = cloneAnswers(answers)
-				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}
+				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}

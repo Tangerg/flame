@@ -52,15 +52,7 @@ func environmentKey(key string) string {
 	return key
 }
 
-// Command constructs a Git process that cannot inherit repository-local state
-// or behavior from its parent.
-func Command(args ...string) *exec.Cmd {
-	command := exec.Command("git", args...)
-	command.Env = Environment()
-	return command
-}
-
-// CommandContext is Command with context-driven cancellation.
+// CommandContext constructs a cancellable Git process with an explicit environment.
 func CommandContext(ctx context.Context, args ...string) *exec.Cmd {
 	command := exec.CommandContext(ctx, "git", args...)
 	command.Env = Environment()

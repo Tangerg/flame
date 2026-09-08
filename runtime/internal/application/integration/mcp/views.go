@@ -89,14 +89,6 @@ func (s ServerPatch) Empty() bool {
 		s.HandshakeTimeout == nil && s.DisabledTools == nil && s.AutoApproveTools == nil
 }
 
-func clonePointer[T any](value *T) *T {
-	if value == nil {
-		return nil
-	}
-	clone := *value
-	return &clone
-}
-
 // Connection is the safe application read model for a connection. Raw
 // secret-bearing values never cross the application boundary.
 type Connection struct {

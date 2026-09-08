@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/markdown"
 
@@ -210,7 +212,7 @@ func (t *transcriptView) completeLiveTool(block agent.Block) bool {
 
 func (t *transcriptView) settleLive(outcome agent.Outcome) {
 	toolStatus := agent.ToolError
-	if outcome.Status == agent.OutcomeCanceled {
+	if outcome.Status == protocol.OutcomeCanceled {
 		toolStatus = agent.ToolCanceled
 	}
 	t.settleLivePresentation(toolStatus)
@@ -262,7 +264,7 @@ func (t *transcriptView) settleRun(runID string, outcome agent.Outcome) {
 		delete(t.textStreams, id)
 	}
 	toolStatus := agent.ToolError
-	if outcome.Status == agent.OutcomeCanceled {
+	if outcome.Status == protocol.OutcomeCanceled {
 		toolStatus = agent.ToolCanceled
 	}
 	selectedCollapsed := false

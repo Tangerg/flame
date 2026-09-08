@@ -3,54 +3,30 @@ package delivery
 import (
 	"context"
 	"errors"
-	"iter"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-type lifetimeService struct {
+type lifetimeRuns struct {
+	runUseCases
 	streamStarted chan struct{}
 }
 
-type nilDiscoverService struct{}
-
-type invalidRequestService struct{ calls int }
-
-func (s *invalidRequestService) SetHookTrust(context.Context, protocol.SetHookTrustRequest) error {
-	s.calls++
-	return nil
-}
-
-func (s *invalidRequestService) ArchiveSkill(context.Context, protocol.SkillNameRequest) error {
-	s.calls++
-	return nil
-}
-
-func (s *invalidRequestService) RestoreSkill(context.Context, protocol.SkillNameRequest) error {
-	s.calls++
-	return nil
-}
-
-func (s *invalidRequestService) DeleteSession(context.Context, string) error {
-	s.calls++
-	return nil
-}
-
-func (s *invalidRequestService) ListItems(context.Context, protocol.ListItemsRequest) (*protocol.ListItemsResponse, error) {
-	s.calls++
-	return &protocol.ListItemsResponse{}, nil
-}
-
-func mustNewEndpoint(t *testing.T, target any, config EndpointConfig) *Endpoint {
+func mustNewEndpoint(t *testing.T, handler *Handler, config EndpointConfig) *Endpoint {
 	t.Helper()
 	if config.Lifetime == nil {
 		config.Lifetime = t.Context()
 	}
-	endpoint, err := NewEndpoint(target, config)
+	if config.IdempotencyStore == nil {
+		config.IdempotencyStore = testsupport.NewIdempotencyStore()
+	}
+	endpoint, err := NewEndpoint(handler, config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,13 +34,25 @@ func mustNewEndpoint(t *testing.T, target any, config EndpointConfig) *Endpoint 
 }
 
 func TestEndpointRequiresProcessLifetime(t *testing.T) {
-	if endpoint, err := NewEndpoint(struct{}{}, EndpointConfig{}); err == nil || endpoint != nil {
+	if endpoint, err := NewEndpoint(&Handler{}, EndpointConfig{}); err == nil || endpoint != nil {
 		t.Fatalf("New without lifetime = (%v, %v), want nil endpoint and non-nil error", endpoint, err)
 	}
 }
 
+func TestEndpointRequiresIdempotencyStore(t *testing.T) {
+	var typedNil *testsupport.IdempotencyStore
+	for _, store := range []idempotency.Store{nil, typedNil} {
+		endpoint, err := NewEndpoint(&Handler{}, EndpointConfig{
+			Lifetime: t.Context(), IdempotencyStore: store,
+		})
+		if err == nil || endpoint != nil {
+			t.Fatalf("New with missing store = (%v, %v), want nil endpoint and non-nil error", endpoint, err)
+		}
+	}
+}
+
 func TestEndpointRejectsInvalidDurableStoreNamespace(t *testing.T) {
-	endpoint, err := NewEndpoint(struct{}{}, EndpointConfig{
+	endpoint, err := NewEndpoint(&Handler{}, EndpointConfig{
 		Lifetime:             t.Context(),
 		IdempotencyNamespace: "idp_test",
 	})
@@ -73,30 +61,10 @@ func TestEndpointRejectsInvalidDurableStoreNamespace(t *testing.T) {
 	}
 }
 
-func (*nilDiscoverService) Discover(context.Context) (*protocol.DiscoverResponse, error) {
-	panic("typed-nil operation capability was invoked")
-}
-
-func TestEndpointRejectsMissingMethodCapability(t *testing.T) {
-	var typedNil *nilDiscoverService
-	for _, test := range []struct {
-		name   string
-		target any
-	}{
-		{name: "absent", target: struct{}{}},
-		{name: "typed nil", target: typedNil},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			result := mustNewEndpoint(t, test.target, EndpointConfig{}).Invoke(
-				t.Context(),
-				"runtime.discover",
-				struct{}{},
-				Options{},
-			)
-			if !errors.Is(result.Failure, protocol.ErrInternalError) {
-				t.Fatalf("failure = %v, want internal_error", result.Failure)
-			}
-		})
+func TestEndpointRequiresHandler(t *testing.T) {
+	endpoint, err := NewEndpoint(nil, EndpointConfig{Lifetime: t.Context(), IdempotencyStore: testsupport.NewIdempotencyStore()})
+	if err == nil || endpoint != nil {
+		t.Fatalf("NewEndpoint without Handler = %v, %v", endpoint, err)
 	}
 }
 
@@ -170,7 +138,7 @@ func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *t
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result := mustNewEndpoint(t, struct{}{}, EndpointConfig{}).Invoke(
+			result := mustNewEndpoint(t, &Handler{}, EndpointConfig{}).Invoke(
 				t.Context(),
 				test.method,
 				test.parameters,
@@ -210,34 +178,28 @@ func TestEndpointRejectsInvalidRequestsBeforeHandlerAdmission(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			service := &invalidRequestService{}
-			result := mustNewEndpoint(t, service, EndpointConfig{}).Invoke(
+			result := mustNewEndpoint(t, &Handler{}, EndpointConfig{}).Invoke(
 				t.Context(), test.method, test.parameters, Options{},
 			)
 			if !errors.Is(result.Failure, protocol.ErrInvalidParams) {
 				t.Fatalf("failure = %v, want invalid_params", result.Failure)
 			}
-			if service.calls != 0 {
-				t.Fatalf("handler calls = %d, want 0", service.calls)
-			}
 		})
 	}
 }
 
-func (l *lifetimeService) SubscribeRuntime(ctx context.Context, _ protocol.RuntimeSubscribeRequest) (*protocol.RuntimeSubscribeResponse, iter.Seq[protocol.RuntimeEvent], error) {
-	return &protocol.RuntimeSubscribeResponse{}, func(func(protocol.RuntimeEvent) bool) {
+func (l *lifetimeRuns) Subscribe(ctx context.Context, request runs.SubscribeRequest) (runs.Subscription, error) {
+	return runs.Subscription{Record: runs.Record{SegmentID: request.SegmentID}, Events: func(func(runs.Event) bool) {
 		close(l.streamStarted)
 		<-ctx.Done()
-	}, nil
+	}}, nil
 }
 
 func TestEndpointLifetimeEndsStreamsAndRejectsLaterCalls(t *testing.T) {
 	lifetime, stop := context.WithCancel(context.Background())
-	service := &lifetimeService{streamStarted: make(chan struct{})}
-	endpoint := mustNewEndpoint(t, service, EndpointConfig{Lifetime: lifetime})
-	result := endpoint.Invoke(t.Context(), "runtime.subscribe", protocol.RuntimeSubscribeRequest{
-		Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
-	}, Options{})
+	service := &lifetimeRuns{streamStarted: make(chan struct{})}
+	endpoint := mustNewEndpoint(t, &Handler{runs: service}, EndpointConfig{Lifetime: lifetime})
+	result := endpoint.Invoke(t.Context(), "runs.subscribe", protocol.SubscribeRunRequest{RunID: "run_1", SegmentID: "seg_1"}, Options{})
 	if result.Failure != nil || result.Events == nil {
 		t.Fatalf("subscribe result = %+v", result)
 	}
@@ -256,9 +218,7 @@ func TestEndpointLifetimeEndsStreamsAndRejectsLaterCalls(t *testing.T) {
 		t.Fatal("Runtime lifetime cancellation did not end the stream")
 	}
 
-	result = endpoint.Invoke(t.Context(), "runtime.subscribe", protocol.RuntimeSubscribeRequest{
-		Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
-	}, Options{})
+	result = endpoint.Invoke(t.Context(), "runs.subscribe", protocol.SubscribeRunRequest{RunID: "run_1", SegmentID: "seg_1"}, Options{})
 	if !errors.Is(result.Failure, protocol.ErrInternalError) {
 		t.Fatalf("post-close failure = %v, want internal_error", result.Failure)
 	}
@@ -266,11 +226,9 @@ func TestEndpointLifetimeEndsStreamsAndRejectsLaterCalls(t *testing.T) {
 
 func TestEndpointShutdownClaimsUnstartedStreamAndJoinsItsSource(t *testing.T) {
 	lifetime, stop := context.WithCancel(context.Background())
-	service := &lifetimeService{streamStarted: make(chan struct{})}
-	endpoint := mustNewEndpoint(t, service, EndpointConfig{Lifetime: lifetime})
-	result := endpoint.Invoke(t.Context(), "runtime.subscribe", protocol.RuntimeSubscribeRequest{
-		Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
-	}, Options{})
+	service := &lifetimeRuns{streamStarted: make(chan struct{})}
+	endpoint := mustNewEndpoint(t, &Handler{runs: service}, EndpointConfig{Lifetime: lifetime})
+	result := endpoint.Invoke(t.Context(), "runs.subscribe", protocol.SubscribeRunRequest{RunID: "run_1", SegmentID: "seg_1"}, Options{})
 	if result.Failure != nil || result.Events == nil {
 		t.Fatalf("subscribe result = %+v", result)
 	}
@@ -294,34 +252,30 @@ func TestEndpointShutdownClaimsUnstartedStreamAndJoinsItsSource(t *testing.T) {
 	}
 }
 
-type joiningStreamService struct {
+type joiningStreamRuns struct {
+	runUseCases
 	started  chan struct{}
 	canceled chan struct{}
 	release  chan struct{}
 }
 
-func (j *joiningStreamService) SubscribeRuntime(
-	ctx context.Context,
-	_ protocol.RuntimeSubscribeRequest,
-) (*protocol.RuntimeSubscribeResponse, iter.Seq[protocol.RuntimeEvent], error) {
-	return &protocol.RuntimeSubscribeResponse{}, func(func(protocol.RuntimeEvent) bool) {
+func (j *joiningStreamRuns) Subscribe(ctx context.Context, request runs.SubscribeRequest) (runs.Subscription, error) {
+	return runs.Subscription{Record: runs.Record{SegmentID: request.SegmentID}, Events: func(func(runs.Event) bool) {
 		close(j.started)
 		<-ctx.Done()
 		close(j.canceled)
 		<-j.release
-	}, nil
+	}}, nil
 }
 
 func TestEndpointShutdownWaitsForStartedStreamSourceToReturn(t *testing.T) {
-	service := &joiningStreamService{
+	service := &joiningStreamRuns{
 		started:  make(chan struct{}),
 		canceled: make(chan struct{}),
 		release:  make(chan struct{}),
 	}
-	endpoint := mustNewEndpoint(t, service, EndpointConfig{})
-	result := endpoint.Invoke(t.Context(), "runtime.subscribe", protocol.RuntimeSubscribeRequest{
-		Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
-	}, Options{})
+	endpoint := mustNewEndpoint(t, &Handler{runs: service}, EndpointConfig{})
+	result := endpoint.Invoke(t.Context(), "runs.subscribe", protocol.SubscribeRunRequest{RunID: "run_1", SegmentID: "seg_1"}, Options{})
 	if result.Failure != nil || result.Events == nil {
 		t.Fatalf("subscribe result = %+v", result)
 	}

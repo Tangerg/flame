@@ -53,15 +53,6 @@ func advertisedRollbackPolicy(
 	return policy
 }
 
-func unavailableRollbackPolicy(t *testing.T, now func() time.Time) commandreplay.Policy {
-	t.Helper()
-	policy, err := commandreplay.UnavailablePolicyWithClock(now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return policy
-}
-
 func (r *recordingRuntime) RollbackSession(
 	ctx context.Context,
 	request agent.RollbackSession,
@@ -102,7 +93,7 @@ func TestFileRollbackStopsRetryingWhenReplayExpires(t *testing.T) {
 		now = pending.Replay.Until()
 		runtime.reject = nil
 	}
-	result, err := settleRollback(t.Context(), runtime, pending, policy, retry.ImmediateBackoff(), false)
+	result, err := settleRollback(t.Context(), runtime, pending, policy, testBackoff(t))
 	if result.Outcome != mutation.Unknown || !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
 		t.Fatalf("settlement = outcome %v, error %v", result.Outcome, err)
 	}
@@ -130,7 +121,7 @@ func TestRecoverConfirmsAnAlreadyAppliedRollbackWithoutReplay(t *testing.T) {
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
-	policy := unavailableRollbackPolicy(t, func() time.Time { return now })
+	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
 	pending := preview.journal(
 		agent.CommandID("cli_11111111111111111111111111111111"), commandreplay.UnprotectedGuard(), now,
 	)
@@ -145,7 +136,7 @@ func TestRecoverConfirmsAnAlreadyAppliedRollbackWithoutReplay(t *testing.T) {
 		t.Fatal(rollbackSessionErr)
 	}
 	runtime := &recordingRuntime{Runtime: underlying}
-	if recoverErr := RecoverRollbacks(t.Context(), runtime, store, policy, retry.ImmediateBackoff()); recoverErr != nil {
+	if recoverErr := RecoverRollbacks(t.Context(), runtime, store, policy, testBackoff(t)); recoverErr != nil {
 		t.Fatal(recoverErr)
 	}
 	if runtime.calls != 0 {
@@ -169,20 +160,15 @@ func TestPreviewKeepsTheBoundaryRootDescendants(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := snapshot.Runs[0]
-	child := root.Clone()
+	child := agent.CloneRun(root)
 	child.ID = "run_child"
-	child.Lineage, err = agent.NewChildRunLineage(child.ID, "item_delegate", root.ID, root.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	child.SpawnedByItemID, child.ParentRunID, child.RootRunID = "item_delegate", root.ID, root.ID
 	child.CreatedAt = root.CreatedAt.Add(time.Millisecond)
-	later := root.Clone()
+	later := agent.CloneRun(root)
 	later.ID = "run_later"
 	later.CreatedAt = root.CreatedAt.Add(2 * time.Millisecond)
-	snapshot.Runs = []agent.Run{root, child, later}
-	if validateErr := snapshot.Validate(); validateErr != nil {
-		t.Fatal(validateErr)
-	}
+	snapshot.Runs = []protocol.RunRef{root, child, later}
+
 	preview, err := PreviewRollback(snapshot, agent.RollbackSession{
 		SessionID: snapshot.Session.ID, ToRunID: root.ID, Scope: protocol.RestoreHistory,
 	})
@@ -205,7 +191,7 @@ func TestRecoverReplaysAPreparedHistoryRollbackWithItsStableIdentity(t *testing.
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
-	policy := unavailableRollbackPolicy(t, func() time.Time { return now })
+	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
 	pending := preview.journal(
 		agent.CommandID("cli_22222222222222222222222222222222"), commandreplay.UnprotectedGuard(), now,
 	)
@@ -217,7 +203,7 @@ func TestRecoverReplaysAPreparedHistoryRollbackWithItsStableIdentity(t *testing.
 		t.Fatal(err)
 	}
 	runtime := &recordingRuntime{Runtime: underlying}
-	if err := RecoverRollbacks(t.Context(), runtime, store, policy, retry.ImmediateBackoff()); err != nil {
+	if err := RecoverRollbacks(t.Context(), runtime, store, policy, testBackoff(t)); err != nil {
 		t.Fatal(err)
 	}
 	if runtime.calls != 1 || runtime.request != pending.Request() {
@@ -274,7 +260,7 @@ func TestRecoverRefusesUnprovenFileRollbackReplay(t *testing.T) {
 			}
 			runtime := &recordingRuntime{Runtime: underlying}
 			policy := advertisedRollbackPolicy(t, test.namespace, time.Minute, func() time.Time { return test.now })
-			err = RecoverRollbacks(t.Context(), runtime, store, policy, retry.ImmediateBackoff())
+			err = RecoverRollbacks(t.Context(), runtime, store, policy, testBackoff(t))
 			if err == nil || !strings.Contains(err.Error(), "replay guarantee") {
 				t.Fatalf("file rollback recovery error = %v", err)
 			}
@@ -294,7 +280,7 @@ func TestRecoverRetiresADefinitivelyRejectedHistoryRollback(t *testing.T) {
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
-	policy := unavailableRollbackPolicy(t, func() time.Time { return now })
+	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
 	pending := preview.journal(
 		agent.CommandID("cli_44444444444444444444444444444444"), commandreplay.UnprotectedGuard(), now,
 	)
@@ -305,11 +291,11 @@ func TestRecoverRetiresADefinitivelyRejectedHistoryRollback(t *testing.T) {
 	if err := store.StageSessionRollback(pending); err != nil {
 		t.Fatal(err)
 	}
-	runtime := &recordingRuntime{Runtime: underlying, reject: agent.ErrSessionBusy}
-	if err := RecoverRollbacks(t.Context(), runtime, store, policy, retry.ImmediateBackoff()); err != nil {
+	runtime := &recordingRuntime{Runtime: underlying, reject: protocol.ErrSessionBusy}
+	if err := RecoverRollbacks(t.Context(), runtime, store, policy, testBackoff(t)); err != nil {
 		t.Fatal(err)
 	}
-	if runtime.calls != 1 || !errors.Is(runtime.reject, agent.ErrSessionBusy) {
+	if runtime.calls != 1 || !errors.Is(runtime.reject, protocol.ErrSessionBusy) {
 		t.Fatalf("rejected rollback calls = %d, error %v", runtime.calls, runtime.reject)
 	}
 	if pending := store.PendingSessionRollbacks(); len(pending) != 0 {
@@ -322,7 +308,7 @@ func TestRecoverPreservesHistoryRollbackRejectedByAnotherRuntimeStore(t *testing
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
-	policy := unavailableRollbackPolicy(t, func() time.Time { return now })
+	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
 	pending := preview.journal(
 		agent.CommandID("cli_55555555555555555555555555555555"), commandreplay.UnprotectedGuard(), now,
 	)
@@ -333,13 +319,22 @@ func TestRecoverPreservesHistoryRollbackRejectedByAnotherRuntimeStore(t *testing
 	if stageSessionRollbackErr := store.StageSessionRollback(pending); stageSessionRollbackErr != nil {
 		t.Fatal(stageSessionRollbackErr)
 	}
-	runtime := &recordingRuntime{Runtime: underlying, reject: agent.ErrCommandStoreMismatch}
-	err = RecoverRollbacks(t.Context(), runtime, store, policy, retry.ImmediateBackoff())
-	if !errors.Is(err, agent.ErrCommandStoreMismatch) {
+	runtime := &recordingRuntime{Runtime: underlying, reject: protocol.ErrIdempotencyStoreMismatch}
+	err = RecoverRollbacks(t.Context(), runtime, store, policy, testBackoff(t))
+	if !errors.Is(err, protocol.ErrIdempotencyStoreMismatch) {
 		t.Fatalf("store mismatch recovery error = %v", err)
 	}
 	stored, exists := store.PendingSessionRollback(pending.SessionID)
 	if !exists || stored.CommandID != pending.CommandID || stored.Phase != workbench.SessionRollbackPrepared {
 		t.Fatalf("preserved rollback = %+v, present %t", stored, exists)
 	}
+}
+
+func testBackoff(t testing.TB) retry.Backoff {
+	t.Helper()
+	backoff, err := retry.NewBackoff(time.Nanosecond, time.Nanosecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return backoff
 }

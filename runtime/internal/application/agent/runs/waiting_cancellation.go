@@ -20,7 +20,7 @@ func NewPreparedWaitingSubtreeCancellation(
 	canceledMemberIDs []string,
 	pausedMemberIDs []string,
 	pendingInterruptions []MemberInterruption,
-	checkpoint ExecutorCheckpoint,
+	checkpoint rundomain.Checkpoint,
 	parentToolResult corechat.ToolResult,
 	change WaitingSubtreeChange,
 ) (PreparedWaitingSubtreeCancellation, error) {
@@ -28,7 +28,7 @@ func NewPreparedWaitingSubtreeCancellation(
 		canceledMemberIDs:    slices.Clone(canceledMemberIDs),
 		pausedMemberIDs:      slices.Clone(pausedMemberIDs),
 		pendingInterruptions: cloneMemberInterruptions(pendingInterruptions),
-		checkpoint:           checkpoint.Clone(),
+		checkpoint:           checkpoint,
 		parentToolResult:     parentToolResult.Clone(),
 		change:               change,
 	}
@@ -54,8 +54,8 @@ func (p PreparedWaitingSubtreeCancellation) PendingInterruptions() []MemberInter
 }
 
 // Checkpoint returns an ownership-independent resulting executor snapshot.
-func (p PreparedWaitingSubtreeCancellation) Checkpoint() ExecutorCheckpoint {
-	return p.checkpoint.Clone()
+func (p PreparedWaitingSubtreeCancellation) Checkpoint() rundomain.Checkpoint {
+	return p.checkpoint
 }
 
 // Apply installs the committed product disposition in the prepared executor tree.
@@ -88,8 +88,8 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 	if p.change == nil {
 		return errors.New("runs: prepared waiting subtree cancellation has no executor change")
 	}
-	if err := p.checkpoint.Validate(); err != nil {
-		return err
+	if p.checkpoint.IsZero() {
+		return rundomain.ErrInvalidCheckpoint
 	}
 	if err := p.parentToolResult.Validate(); err != nil {
 		return fmt.Errorf("runs: prepared child cancellation result: %w", err)
@@ -158,7 +158,7 @@ type waitingCancellationTransformation struct {
 	parentItem           transcript.Replacement
 	remaining            *Pending
 	continuation         *treeContinuation
-	checkpoint           ExecutorCheckpoint
+	checkpoint           rundomain.Checkpoint
 	conversationMessages []corechat.Message
 	root                 rundomain.Run
 	targetRunID          string
@@ -227,7 +227,7 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 		parentItem:           parentItem,
 		remaining:            remaining,
 		continuation:         continuation,
-		checkpoint:           w.prepared.checkpoint.Clone(),
+		checkpoint:           w.prepared.checkpoint,
 		conversationMessages: conversationMessages,
 		root:                 w.plan.root.run,
 		targetRunID:          w.plan.target.run.ID(),
@@ -295,28 +295,28 @@ func (w waitingCancellationBuilder) validate() error {
 	); err != nil {
 		return fmt.Errorf("runs: invalid prepared waiting subtree checkpoint ownership: %w", err)
 	}
-	if w.prepared.checkpoint.Scope.GoalIncarnationID != w.plan.pending.GoalIncarnationID {
+	if w.prepared.checkpoint.Scope().GoalIncarnationID != w.plan.pending.GoalIncarnationID {
 		return fmt.Errorf(
 			"runs: prepared waiting subtree checkpoint goal incarnation %q does not match Pending %q: %w",
-			w.prepared.checkpoint.Scope.GoalIncarnationID,
+			w.prepared.checkpoint.Scope().GoalIncarnationID,
 			w.plan.pending.GoalIncarnationID,
-			ErrInvalidExecutorCheckpoint,
+			rundomain.ErrInvalidCheckpoint,
 		)
 	}
-	if !w.prepared.checkpoint.ModelSelection.Equal(rootContinuation.ModelSelection) {
+	if !w.prepared.checkpoint.ModelSelection().Equal(rootContinuation.ModelSelection) {
 		return fmt.Errorf(
 			"runs: prepared waiting subtree checkpoint model %q does not match root continuation %q: %w",
-			w.prepared.checkpoint.ModelSelection,
+			w.prepared.checkpoint.ModelSelection(),
 			rootContinuation.ModelSelection,
-			ErrInvalidExecutorCheckpoint,
+			rundomain.ErrInvalidCheckpoint,
 		)
 	}
-	if w.prepared.checkpoint.Limits != rootContinuation.Limits {
+	if w.prepared.checkpoint.Limits() != rootContinuation.Limits {
 		return fmt.Errorf(
 			"runs: prepared waiting subtree checkpoint limits %+v do not match root continuation %+v: %w",
-			w.prepared.checkpoint.Limits,
+			w.prepared.checkpoint.Limits(),
 			rootContinuation.Limits,
-			ErrInvalidExecutorCheckpoint,
+			rundomain.ErrInvalidCheckpoint,
 		)
 	}
 	return nil

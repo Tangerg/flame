@@ -139,28 +139,12 @@ type Store struct {
 	closeErr          error
 }
 
-// OpenMemory constructs an explicitly process-local Store.
-func OpenMemory(config Config) (*Store, error) {
-	return newStore(nil, config)
-}
-
 // Open loads an explicitly durable Store through its filesystem-neutral port.
 // The returned Store owns and closes storage when it implements io.Closer.
 func Open(storage Persistence, config Config) (*Store, error) {
 	if missingPersistence(storage) {
 		return nil, errors.New("workbench persistence is not configured")
 	}
-	store, err := newStore(storage, config)
-	if err != nil {
-		return nil, err
-	}
-	if err := store.loadState(); err != nil {
-		return nil, err
-	}
-	return store, nil
-}
-
-func newStore(storage Persistence, config Config) (*Store, error) {
 	historyCapacity, err := resolveCapacity(config.HistoryCapacity, defaultHistoryCapacity)
 	if err != nil {
 		return nil, fmt.Errorf("history capacity: %w", err)
@@ -192,6 +176,9 @@ func newStore(storage Persistence, config Config) (*Store, error) {
 	}
 	if store.random == nil {
 		store.random = rand.Reader
+	}
+	if err := store.loadState(); err != nil {
+		return nil, err
 	}
 	return store, nil
 }
@@ -272,38 +259,6 @@ func (s *Store) SaveDraft(sessionID string, message agent.Message) error {
 		s.drafts[sessionID] = message
 	}
 	return nil
-}
-
-// DiscardDraft retires authoring state for a session that no longer exists.
-// It is intentionally distinct from saving an empty draft at call sites: the
-// caller is expressing a lifecycle transition, not an editor value change.
-func (s *Store) DiscardDraft(sessionID string) error {
-	return s.SaveDraft(sessionID, agent.Message{})
-}
-
-// StashPrompt preserves a prompt independently of its session draft.
-func (s *Store) StashPrompt(message agent.Message) (Stash, error) {
-	message = message.Clone()
-	if message.IsEmpty() {
-		return Stash{}, errors.New("cannot stash an empty prompt")
-	}
-	identity := make([]byte, 8)
-	if _, err := io.ReadFull(s.random, identity); err != nil {
-		return Stash{}, fmt.Errorf("create stash id: %w", err)
-	}
-	stash := Stash{ID: hex.EncodeToString(identity), CreatedAt: s.now().UTC(), Message: message}
-	if err := stash.Validate(); err != nil {
-		return Stash{}, err
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	next := append(slices.Clone(s.stashes), stash)
-	next = tailStashes(next, s.stashCapacity)
-	if err := s.save("stashes.json", next); err != nil {
-		return Stash{}, err
-	}
-	s.stashes = next
-	return cloneStash(stash), nil
 }
 
 // StashDraft transfers one session draft into the bounded stash collection.

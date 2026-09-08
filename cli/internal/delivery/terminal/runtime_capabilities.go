@@ -8,11 +8,10 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
-// runtimeSupports is optimistic only for backends without discovery, such as
-// the scripted demo runtime. A discovered runtime is authoritative: a missing,
-// disabled, or declined opt-in feature is unavailable.
+// runtimeSupports reads the negotiated profile. A missing, disabled, or
+// declined opt-in feature is unavailable.
 func (a *app) runtimeSupports(feature string) bool {
-	return a.runtimeProfile == nil || a.runtimeProfile.Supports(feature)
+	return a.runtimeProfile != nil && a.runtimeProfile.Supports(feature)
 }
 
 func (a *app) requireRuntimeFeature(feature string) error {

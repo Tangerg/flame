@@ -69,9 +69,6 @@ type Snapshot struct {
 
 // Admit creates the authoritative aggregate for a fresh root or child Run.
 func Admit(draft Draft) (Run, error) {
-	if err := draft.Validate(); err != nil {
-		return Run{}, err
-	}
 	return Restore(Snapshot{
 		SessionID: draft.SessionID, ID: draft.RunID, Lineage: draft.Lineage(),
 		ModelSelection: draft.ModelSelection, GoalIncarnationID: draft.GoalIncarnationID,
@@ -98,7 +95,7 @@ func Restore(snapshot Snapshot) (Run, error) {
 		createdAt: snapshot.CreatedAt.UTC(), finishedAt: snapshot.FinishedAt.UTC(),
 		updatedAt: snapshot.UpdatedAt.UTC(), messageMark: snapshot.MessageMark,
 	}
-	if err := run.Validate(); err != nil {
+	if err := run.validate(); err != nil {
 		return Run{}, err
 	}
 	return run, nil
@@ -181,9 +178,15 @@ func cloneFailure(failure *Failure) *Failure {
 	return &copy
 }
 
-// Validate reports whether all lifecycle, identity, accounting, and terminal
+// IsZero reports whether no Run was constructed.
+func (r Run) IsZero() bool { return r.id == "" }
+
+// validate reports whether all lifecycle, identity, accounting, and terminal
 // facts agree.
-func (r Run) Validate() error {
+func (r Run) validate() error {
+	if !r.state.Valid() {
+		return fmt.Errorf("run: unknown state %q", r.state)
+	}
 	if _, err := resourceid.ParseRun(r.id); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
@@ -236,12 +239,10 @@ func (r Run) Validate() error {
 	return r.validateOpen()
 }
 
-// ValidateForSession verifies the complete aggregate and its exact expected
-// Session identity. Session-scoped catalogs use it before stored Run state can
-// influence a use case.
+// ValidateForSession checks construction and the exact expected Session owner.
 func (r Run) ValidateForSession(expectedSessionID string) error {
-	if err := r.Validate(); err != nil {
-		return err
+	if r.IsZero() {
+		return errors.New("run: run is required")
 	}
 	if r.sessionID != expectedSessionID {
 		return fmt.Errorf(
@@ -328,6 +329,9 @@ func (r Run) validateTerminal() error {
 // point-in-time prompt footprint and may decrease after compaction; zero means
 // the provider supplied no authoritative footprint, so the prior value remains.
 func (r Run) AdvanceProgress(metrics Metrics, contextTokens int64, updatedAt time.Time) (Run, error) {
+	if r.IsZero() {
+		return Run{}, errors.New("run: run is required")
+	}
 	if r.state.IsTerminal() {
 		return Run{}, errors.New("run: terminal Run cannot advance progress")
 	}
@@ -424,7 +428,7 @@ func (r Run) finish(state State, termination Termination) (Run, error) {
 	r.detail, r.failure = termination.Detail, cloneFailure(termination.Failure)
 	r.finishedAt, r.updatedAt = termination.FinishedAt.UTC(), termination.FinishedAt.UTC()
 	r.messageMark = termination.MessageMark
-	if err := r.Validate(); err != nil {
+	if err := r.validateTerminal(); err != nil {
 		return Run{}, err
 	}
 	return r, nil
@@ -442,9 +446,6 @@ func (r Run) WithMessageMark(messageMark int) (Run, error) {
 		return Run{}, errors.New("run: message watermark must not be negative")
 	}
 	r.messageMark = messageMark
-	if err := r.Validate(); err != nil {
-		return Run{}, err
-	}
 	return r, nil
 }
 

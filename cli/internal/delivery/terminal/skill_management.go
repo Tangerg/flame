@@ -19,7 +19,7 @@ func (a *app) ShowDiscoveredSkills() {
 }
 
 func (a *app) discoveredSkillsReaderQuery() runtimeReaderQuery {
-	workspace := a.session.current.Workspace.Path
+	workspace := a.session.current.Workspace.Ref.Path
 	return runtimeReaderQuery{
 		status: "loading discovered skills",
 		mode:   runtimeReaderDiscoveredSkills,
@@ -94,7 +94,7 @@ func (a *app) ShowSkillProposals() {
 }
 
 func (a *app) skillProposalsReaderQuery() runtimeReaderQuery {
-	workspace := a.session.current.Workspace.Path
+	workspace := a.session.current.Workspace.Ref.Path
 	return runtimeReaderQuery{
 		status: "loading skill proposals",
 		mode:   runtimeReaderSkillProposals,
@@ -200,7 +200,7 @@ func (a *app) PrepareSkillProposalDecision(identity string, approve bool) error 
 	if identity == "" {
 		return errors.New("a proposal name or scope/name is required")
 	}
-	workspace := a.session.current.Workspace.Path
+	workspace := a.session.current.Workspace.Ref.Path
 	a.status.note("loading skill proposal " + identity)
 	started := a.runOperation(skillOperation, false,
 		func(ctx context.Context) (skillProposalDecision, error) {

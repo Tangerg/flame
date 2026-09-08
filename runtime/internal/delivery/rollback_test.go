@@ -234,11 +234,11 @@ func TestPersistRunCarriesCreatedAt(t *testing.T) {
 	terminal := testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: sess.ID(), State: run.Completed, Outcome: &outcome,
 		CreatedAt: started, FinishedAt: started.Add(time.Minute),
 		UpdatedAt: started.Add(time.Minute), MessageMark: run.UnknownMessageMark})
-	commit := appRuns.EventCommit{
-		RunID: "run_1", SessionID: sess.ID(), SegmentID: "seg_open", State: appRuns.StateTerminalize, Outcome: outcome,
+	commit := mustEventCommit(t, appRuns.EventCommitConfig{
+		RunID: "run_1", SessionID: sess.ID(), SegmentID: "seg_open",
 		CommitID: testCommitID("run_commit_event_rollback"),
 		Run:      &terminal,
-	}
+	})
 	if err := rt.RunSegmentEffects().CommitEvent(ctx, commit); err != nil {
 		t.Fatalf("commit terminal run: %v", err)
 	}
@@ -258,8 +258,7 @@ func TestPersistRunCarriesCreatedAt(t *testing.T) {
 // TestAcquireSession is the single-writer-per-session admission guard that closes
 // the runs.start / runs.resume check-then-register TOCTOU: a second claim is
 // rejected while the first is outstanding (even though no run is in s.runs yet),
-// a claimed session reads as active to the rollback/start busy check, and a
-// release reopens the slot.
+// and releasing the claim reopens the slot.
 func TestAcquireSession(t *testing.T) {
 	_, rt := rollbackHarness(t)
 	releaseS1, ok, _ := rt.admissions.AcquireSession("s1")
@@ -272,13 +271,7 @@ func TestAcquireSession(t *testing.T) {
 	if _, ok, _ := rt.admissions.AcquireSession("s2"); !ok {
 		t.Fatal("a different session must claim independently")
 	}
-	if !rt.admissions.ActiveSessions()["s1"] {
-		t.Fatal("a claimed (not-yet-registered) session must read as active")
-	}
 	releaseS1()
-	if rt.admissions.ActiveSessions()["s1"] {
-		t.Fatal("a released session must no longer read as active")
-	}
 	if _, ok, _ := rt.admissions.AcquireSession("s1"); !ok {
 		t.Fatal("claim must succeed again after release")
 	}
@@ -304,4 +297,13 @@ func TestForkSession_FromRun(t *testing.T) {
 	if n := len(rt.history[child.ID]); n != 2 {
 		t.Fatalf("child history = %d, want 2 (run_1 watermark, inclusive)", n)
 	}
+}
+
+func mustEventCommit(t *testing.T, config appRuns.EventCommitConfig) appRuns.EventCommit {
+	t.Helper()
+	commit, err := appRuns.NewEventCommit(config)
+	if err != nil {
+		t.Fatalf("NewEventCommit: %v", err)
+	}
+	return commit
 }

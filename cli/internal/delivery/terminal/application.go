@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/input"
@@ -311,7 +313,7 @@ func (a *app) wireTranscript(transcript *transcriptView) {
 }
 
 func (a *app) buildSessionPicker(theme kit.Theme, glyphs kit.Glyphs) {
-	a.dialogs.sessionCenter = newSessionCenterPane(theme, glyphs, func(session agent.Session) {
+	a.dialogs.sessionCenter = newSessionCenterPane(theme, glyphs, func(session protocol.Session) {
 		a.dialogs.sessionDialog.Dismiss()
 		a.switchSession(session.ID)
 	})

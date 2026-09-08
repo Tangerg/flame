@@ -183,9 +183,11 @@ func TestDeleteSession_Cascade(t *testing.T) {
 	if _, ok := history[id]; ok {
 		t.Errorf("conversation messages not cascaded: still present")
 	}
-	if runtime.admissions.ActiveSessions()[id] {
-		t.Fatal("delete leaked the session mutation claim")
+	release, acquired, err := runtime.admissions.AcquireSession(id)
+	if err != nil || !acquired {
+		t.Fatalf("session admission after delete = %t, %v", acquired, err)
 	}
+	release()
 }
 
 func TestDeleteSession_RejectsActiveSession(t *testing.T) {

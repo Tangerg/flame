@@ -3,14 +3,16 @@ package http_test
 import (
 	"bytes"
 	"context"
-	"iter"
 	netHTTP "net/http"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 // What one streaming connection occupies (Batch D4, the half that does not need a
@@ -30,53 +32,25 @@ import (
 // hostage to net/http's own pooling and would teach whoever hits it to raise the
 // bound rather than find the leak.
 
-// blockingRuntime streams one event and then waits, which is what a run looks
+// blockingRuns streams one event and then waits, which is what a run looks
 // like nearly all the time: an event, then a long wait on the model. A finite
 // sequence would let the bridge exit on its own and prove nothing about
 // disconnect.
-type blockingRuntime struct {
+type blockingRuns struct {
+	fakeRuns
 	released chan struct{}
 }
 
-func (b *blockingRuntime) Discover(context.Context) (*protocol.DiscoverResponse, error) {
-	return &protocol.DiscoverResponse{ProtocolVersion: protocol.ProtocolVersion}, nil
-}
-
-func (b *blockingRuntime) StartRun(ctx context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq[protocol.RunEvent], error) {
-	events := func(yield func(protocol.RunEvent) bool) {
-		// Signal on the way out, whichever way that is. A disconnect can unwind this
-		// source through its context OR by making yield report false (the bridge
-		// abandoned the range while a frame was in flight) — both are the source
-		// letting go, and a test that only recognized one of them would call the
-		// other a leak.
-		defer func() {
-			select {
-			case b.released <- struct{}{}:
-			default:
-			}
-		}()
-		// One event, then park: the test disconnects while this goroutine is here,
-		// which is the state a leak hides in.
-		if !yield(protocol.RunEvent{
-			RunID: "run_block", SegmentID: "seg_block", EventID: "evt_00000000001",
-			Event: protocol.StreamEvent{
-				Type: protocol.StreamSegmentStarted,
-				Run: &protocol.RunRef{
-					RunSummary: protocol.RunSummary{
-						ID: "run_block", SessionID: in.SessionID, Provider: "mock", Model: "balanced",
-						Status: protocol.RunStatusRunning, CreatedAt: time.Unix(1, 0).UTC(),
-					},
-					ActiveSegmentID: "seg_block",
-				},
-			},
-		}) {
+func (b *blockingRuns) Start(ctx context.Context, in runs.StartCommand) (runs.StartResult, error) {
+	events := func(yield func(runs.Event) bool) {
+		defer func() { b.released <- struct{}{} }()
+		started := testsupport.MustRestoreRun(run.Snapshot{ID: "run_block", SessionID: in.SessionID, State: run.Running, ActiveSegmentID: "seg_block", CreatedAt: time.Unix(1, 0).UTC()})
+		if !yield(runs.Event{RunID: "run_block", SegmentID: "seg_block", Cursor: "00000000001", Timestamp: time.Unix(1, 0).UTC(), Payload: runs.SegmentStarted{Run: started}}) {
 			return
 		}
 		<-ctx.Done()
 	}
-	return &protocol.StartRunResponse{
-		RunID: "run_block", SegmentID: "seg_block", UserItemID: "item_block",
-	}, events, nil
+	return runs.StartResult{RunID: "run_block", SegmentID: "seg_block", SessionID: in.SessionID, UserItemID: "item_block", Events: events}, nil
 }
 
 // settledGoroutines polls until the count stops falling, so a residue reading is
@@ -97,8 +71,8 @@ func settledGoroutines() int {
 func TestStreamingConnectionsReleaseTheirGoroutines(t *testing.T) {
 	const connections = 16
 
-	api := &blockingRuntime{released: make(chan struct{}, connections)}
-	ts := newTestServerFor(t, api)
+	api := &blockingRuns{released: make(chan struct{}, connections)}
+	ts := newTestServerFor(t, delivery.HandlerConfig{Runs: api})
 	defer ts.Close()
 
 	// One warm-up connection first: the server's per-connection machinery and the
@@ -128,7 +102,7 @@ func TestStreamingConnectionsReleaseTheirGoroutines(t *testing.T) {
 // openAndAbandon opens one streaming POST, reads far enough to know the server is
 // inside serveStream with a live source, then drops the connection the way a
 // client that loses its network does — without a graceful end-of-stream.
-func openAndAbandon(t *testing.T, url string, api *blockingRuntime) {
+func openAndAbandon(t *testing.T, url string, api *blockingRuns) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

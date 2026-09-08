@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
@@ -16,19 +18,10 @@ func confirm[T any](ctx context.Context, backoff retry.Backoff, attempt func(con
 	return ConfirmAdmitted(ctx, backoff, nil, attempt)
 }
 
-func unavailableReplayPolicy(t testing.TB) commandreplay.Policy {
-	t.Helper()
-	policy, err := commandreplay.UnavailablePolicyWithClock(time.Now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return policy
-}
-
 func TestAcknowledgementUncertainIncludesMutationTimeouts(t *testing.T) {
 	for _, err := range []error{
 		agent.ErrDisconnected,
-		agent.ErrCommandInProgress,
+		protocol.ErrIdempotencyInProgress,
 		context.Canceled,
 		context.DeadlineExceeded,
 		fmt.Errorf("adapter timeout: %w", context.DeadlineExceeded),
@@ -37,15 +30,15 @@ func TestAcknowledgementUncertainIncludesMutationTimeouts(t *testing.T) {
 			t.Fatalf("AcknowledgementUncertain(%v) = false", err)
 		}
 	}
-	for _, err := range []error{nil, agent.ErrSessionHasActiveRun, agent.ErrCommandConflict} {
+	for _, err := range []error{nil, protocol.ErrSessionHasActiveRun, protocol.ErrIdempotencyConflict} {
 		if AcknowledgementUncertain(err) {
 			t.Fatalf("AcknowledgementUncertain(%v) = true", err)
 		}
 	}
-	if AcknowledgementUncertain(agent.ErrCommandStoreMismatch) {
+	if AcknowledgementUncertain(protocol.ErrIdempotencyStoreMismatch) {
 		t.Fatal("a runtime-store mismatch must not be retried against the same store")
 	}
-	if !OutcomeUnknown(agent.ErrCommandStoreMismatch) {
+	if !OutcomeUnknown(protocol.ErrIdempotencyStoreMismatch) {
 		t.Fatal("a runtime-store mismatch discarded an unknown prior-store outcome")
 	}
 }
@@ -81,11 +74,11 @@ func TestOutcomeHasOneSharedStableIdentity(t *testing.T) {
 
 func TestConfirmStopsAtARuntimeStoreMismatch(t *testing.T) {
 	attempts := 0
-	_, err := confirm(t.Context(), retry.ImmediateBackoff(), func(context.Context) (struct{}, error) {
+	_, err := confirm(t.Context(), testBackoff(t), func(context.Context) (struct{}, error) {
 		attempts++
-		return struct{}{}, agent.ErrCommandStoreMismatch
+		return struct{}{}, protocol.ErrIdempotencyStoreMismatch
 	})
-	if !errors.Is(err, agent.ErrCommandStoreMismatch) || attempts != 1 {
+	if !errors.Is(err, protocol.ErrIdempotencyStoreMismatch) || attempts != 1 {
 		t.Fatalf("confirmation error = %v after %d attempts", err, attempts)
 	}
 }
@@ -104,7 +97,7 @@ func TestConfirmRejectsAnUnconfiguredBackoffBeforeMutationIO(t *testing.T) {
 
 func TestConfirmRetriesAnUncertainMutationWithTheSameOwner(t *testing.T) {
 	attempts := 0
-	result, err := confirm(t.Context(), retry.ImmediateBackoff(), func(context.Context) (string, error) {
+	result, err := confirm(t.Context(), testBackoff(t), func(context.Context) (string, error) {
 		attempts++
 		if attempts < 3 {
 			return "", context.DeadlineExceeded
@@ -119,7 +112,7 @@ func TestConfirmRetriesAnUncertainMutationWithTheSameOwner(t *testing.T) {
 func TestConfirmStopsAtOwnerCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	attempts := 0
-	_, err := confirm(ctx, retry.ImmediateBackoff(), func(context.Context) (struct{}, error) {
+	_, err := confirm(ctx, testBackoff(t), func(context.Context) (struct{}, error) {
 		attempts++
 		cancel()
 		return struct{}{}, context.DeadlineExceeded
@@ -129,11 +122,24 @@ func TestConfirmStopsAtOwnerCancellation(t *testing.T) {
 	}
 }
 
+func TestConfirmRejectsOwnerCancellationBeforeMutationIO(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	attempts := 0
+	_, err := confirm(ctx, testBackoff(t), func(context.Context) (struct{}, error) {
+		attempts++
+		return struct{}{}, nil
+	})
+	if !errors.Is(err, context.Canceled) || attempts != 0 {
+		t.Fatalf("confirmation error = %v after %d attempts", err, attempts)
+	}
+}
+
 func TestConfirmAdmittedFencesEveryRuntimeAttempt(t *testing.T) {
 	replayable := true
 	attempts := 0
 	_, err := ConfirmAdmitted(
-		t.Context(), retry.ImmediateBackoff(),
+		t.Context(), testBackoff(t),
 		func() error {
 			if !replayable {
 				return ErrReplayGuaranteeUnavailable
@@ -179,35 +185,36 @@ func TestReplayAdmissionExpiresAtItsDeadline(t *testing.T) {
 	}
 }
 
-func TestUnavailableRuntimeAdmitsOneFreshAttemptButNoRetryOrRecovery(t *testing.T) {
-	t.Parallel()
-
-	policy := unavailableReplayPolicy(t)
+func TestReplayAdmissionRechecksClockBeforeEachAttempt(t *testing.T) {
+	now := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
+	capability, err := commandreplay.NewCapability("runtime-a", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, err := commandreplay.NewPolicyWithClock(capability, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
 	guard, err := policy.NewGuard()
 	if err != nil {
 		t.Fatal(err)
 	}
 	attempts := 0
-	_, err = ConfirmAdmitted(
-		t.Context(), retry.ImmediateBackoff(), FreshReplayAdmission(policy, guard),
-		func(context.Context) (struct{}, error) {
-			attempts++
-			return struct{}{}, agent.ErrDisconnected
-		},
-	)
+	_, err = ConfirmAdmitted(t.Context(), testBackoff(t), ReplayAdmission(policy, guard), func(context.Context) (struct{}, error) {
+		attempts++
+		now = guard.Until()
+		return struct{}{}, agent.ErrDisconnected
+	})
 	if !errors.Is(err, ErrReplayGuaranteeUnavailable) || attempts != 1 {
-		t.Fatalf("fresh unprotected mutation = %v after %d attempts", err, attempts)
+		t.Fatalf("expired confirmation = %v after %d attempts", err, attempts)
 	}
+}
 
-	attempts = 0
-	_, err = ConfirmAdmitted(
-		t.Context(), retry.ImmediateBackoff(), ReplayAdmission(policy, guard),
-		func(context.Context) (struct{}, error) {
-			attempts++
-			return struct{}{}, nil
-		},
-	)
-	if !errors.Is(err, ErrReplayGuaranteeUnavailable) || attempts != 0 {
-		t.Fatalf("unprotected recovery = %v after %d attempts", err, attempts)
+func testBackoff(t testing.TB) retry.Backoff {
+	t.Helper()
+	backoff, err := retry.NewBackoff(time.Nanosecond, time.Nanosecond)
+	if err != nil {
+		t.Fatal(err)
 	}
+	return backoff
 }

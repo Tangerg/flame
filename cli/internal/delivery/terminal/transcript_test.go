@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -24,7 +26,7 @@ func TestCustomRuntimeEventsUseNamedTerminalPresenters(t *testing.T) {
 		ID: "test.custom-events", Version: "1.0.0", APIVersion: extensions.HostAPIVersion,
 		Capabilities: []extensions.Capability{CustomEventPresenters.Capability()},
 		Setup: func(scope *extensions.Scope) error {
-			_, err := scope.Contribute(CustomEventPresenters, CustomEventPresenter{
+			err := scope.Contribute(CustomEventPresenters, CustomEventPresenter{
 				Name: "vendor.trace",
 				Present: func(presentation BlockPresentation, event agent.CustomEvent) []headless.Block {
 					return []headless.Block{&kit.Entry{Theme: presentation.Theme, Label: "trace", Body: string(event.PayloadJSON)}}
@@ -36,7 +38,7 @@ func TestCustomRuntimeEventsUseNamedTerminalPresenters(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = loaded.Dispose() })
+	t.Cleanup(loaded.Dispose)
 
 	if err := view.ApplyRunEvent(agent.RunEvent{
 		RunID: "run_1", Event: agent.CustomEvent{Name: "vendor.trace", PayloadJSON: []byte(`{"span":"abc"}`)},
@@ -97,7 +99,7 @@ func TestFollowingLongAnswerDoesNotPinAnExpiredUserLabel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = loaded.Dispose() })
+	t.Cleanup(loaded.Dispose)
 	for _, block := range []agent.Block{
 		{ID: "user", RunID: "run_1", Kind: agent.BlockUser, Text: "list the desktop"},
 		{
@@ -126,7 +128,7 @@ func TestAcceptedQuestionRevealsItsDurableAnswerInPlace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = loaded.Dispose() })
+	t.Cleanup(loaded.Dispose)
 	question := agent.Question{
 		RunID: "run_1", ItemID: "question_1", Title: "Deployment target",
 		Fields: []agent.QuestionField{{Prompt: "Which platform?", Kind: agent.QuestionText}},
@@ -168,7 +170,7 @@ func TestColdCanceledQuestionDoesNotPinTranscriptRetention(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = loaded.Dispose() })
+	t.Cleanup(loaded.Dispose)
 	question := agent.Question{
 		RunID: "run_1", ItemID: "question_1", Title: "Abandoned question",
 		Fields: []agent.QuestionField{{Prompt: "Continue?", Kind: agent.QuestionText}},
@@ -506,7 +508,7 @@ func TestCancelingASelectedEmptyToolKeepsItsHeaderVisible(t *testing.T) {
 	view.content.Changed(toolID)
 	viewport := scrollBelowSelectedToolHeader(t, view, toolID)
 
-	if err := view.Apply(agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCanceled}}, nil); err != nil {
+	if err := view.Apply(agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCanceled}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	viewport.root.Draw(viewport.surface.View())
@@ -529,7 +531,7 @@ func TestCanceledRunSettlesEveryLiveTranscriptBlock(t *testing.T) {
 	if err := view.Apply(agent.BlockDelta{BlockID: "tool", Text: "partial tool output\n"}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := view.Apply(agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCanceled}}, nil); err != nil {
+	if err := view.Apply(agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCanceled}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if len(view.textStreams) != 0 || len(view.tools) != 0 {
@@ -566,19 +568,14 @@ func TestChildCompletionSettlesOnlyThatRunsCollidingBlockIdentity(t *testing.T) 
 	started := func(runID string) agent.BlockStarted {
 		return agent.BlockStarted{Block: agent.Block{ID: blockID, RunID: runID, Kind: agent.BlockAssistant, Status: agent.BlockStatusRunning}}
 	}
-	apply(rootID, agent.SegmentStarted{Run: agent.Run{ID: rootID, Lineage: agent.RootRunLineage()}})
-	lineage, err := agent.NewChildRunLineage(childID, "spawn", rootID, rootID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	apply(childID, agent.SegmentStarted{Run: agent.Run{
-		ID: childID, Lineage: lineage,
-	}})
+	apply(rootID, agent.SegmentStarted{Run: protocol.RunRef{RunSummary: protocol.RunSummary{ID: rootID}}})
+	lineage := protocol.RunSummary{ID: childID, SpawnedByItemID: "spawn", ParentRunID: rootID, RootRunID: rootID}
+	apply(childID, agent.SegmentStarted{Run: protocol.RunRef{RunSummary: protocol.RunSummary{ID: childID, SpawnedByItemID: (lineage).SpawnedByItemID, ParentRunID: (lineage).ParentRunID, RootRunID: (lineage).RootRunID}}})
 	apply(rootID, started(rootID))
 	apply(rootID, agent.BlockDelta{BlockID: blockID, Text: "root partial"})
 	apply(childID, started(childID))
 	apply(childID, agent.BlockDelta{BlockID: blockID, Text: "child partial"})
-	apply(childID, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})
+	apply(childID, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})
 
 	if _, live := view.textStreams[transcriptBlockKey(childID, blockID)]; live {
 		t.Fatal("child text stream survived child completion")

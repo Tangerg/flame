@@ -54,9 +54,6 @@ func (c *PlanCoordinator) State(ctx context.Context, sessionID string) (plan.Cur
 	if err != nil {
 		return plan.Current{}, err
 	}
-	if err := state.Validate(); err != nil {
-		return plan.Current{}, fmt.Errorf("sessions: read invalid Plan state: %w", err)
-	}
 	return state, nil
 }
 

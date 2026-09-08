@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/oolong/core/layout"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -65,18 +64,18 @@ func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
 func (a *app) selectSessionModel(model protocol.Model) {
 	sessionID := a.session.current.ID
 	a.runSessionChange("selecting model",
-		func(ctx context.Context) (agent.Session, error) {
+		func(ctx context.Context) (protocol.Session, error) {
 			latest, err := a.runtime.GetSession(ctx, sessionID)
 			if err != nil {
-				return agent.Session{}, err
+				return protocol.Session{}, err
 			}
-			return session.Update(ctx, a.runtime, agent.UpdateSession{
+			return a.runtime.UpdateSession(ctx, agent.UpdateSession{
 				SessionID:        sessionID,
 				Model:            &agent.ModelRef{Provider: model.Provider, Model: model.ID},
 				ExpectedRevision: latest.Session.Revision,
 			})
 		},
-		func(updated agent.Session) error {
+		func(updated protocol.Session) error {
 			a.setActiveSession(updated)
 			a.options.Provider, a.options.Model = model.Provider, model.ID
 			a.options.ReasoningEffort = ""
@@ -159,9 +158,6 @@ func runtimeStatusText(profile *runtimebinding.Profile, options agent.RunOptions
 	lines := []string{
 		"model: " + modelLabel(options),
 		"approval mode: " + string(mode) + limitsLabel(options.Limits),
-	}
-	if profile == nil {
-		return strings.Join(lines, "\n")
 	}
 	features := profile.AvailableFeatureNames()
 	if len(features) == 0 {

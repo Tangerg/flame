@@ -78,11 +78,11 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if update.Workspace != nil && profile != nil &&
+			if update.Workspace != nil &&
 				!profile.Supports(protocol.FeatureRelocate) {
 				return fmt.Errorf("runtime capability %q was not negotiated", protocol.FeatureRelocate)
 			}
-			updated, err := session.Update(cmd.Context(), runtime, update)
+			updated, err := runtime.UpdateSession(cmd.Context(), update)
 			if err != nil {
 				return err
 			}
@@ -132,14 +132,12 @@ func newSessionsListCommand(provider runtimeProvider) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if validateErr := page.Validate(); validateErr != nil {
-				return fmt.Errorf("list sessions: %w", validateErr)
-			}
+
 			if asJSON {
 				return render.WriteSessionPageJSON(cmd.OutOrStdout(), page)
 			}
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-			for _, session := range page.Items {
+			for _, session := range page.Data {
 				title := session.Title
 				if title == "" {
 					title = "(untitled)"
@@ -171,11 +169,11 @@ func newSessionsListCommand(provider runtimeProvider) *cobra.Command {
 	return cmd
 }
 
-func sessionWorkspaceLabel(session agent.Session) string {
-	if session.Workspace.IsAvailable() {
-		return session.Workspace.Path
+func sessionWorkspaceLabel(session protocol.Session) string {
+	if session.Workspace.Availability == protocol.WorkspaceAvailable {
+		return session.Workspace.Ref.Path
 	}
-	return session.Workspace.Path + " (missing)"
+	return session.Workspace.Ref.Path + " (missing)"
 }
 
 func newSessionsShowCommand(provider runtimeProvider) *cobra.Command {
@@ -194,9 +192,7 @@ func newSessionsShowCommand(provider runtimeProvider) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := snapshot.Validate(); err != nil {
-				return fmt.Errorf("show session: %w", err)
-			}
+
 			return writeSessionSnapshot(cmd, snapshot, asJSON)
 		},
 	}
@@ -228,7 +224,7 @@ func newSessionsRenameCommand(provider runtimeProvider) *cobra.Command {
 				return err
 			}
 			title := args[1]
-			updated, err := session.Update(cmd.Context(), runtime, agent.UpdateSession{
+			updated, err := runtime.UpdateSession(cmd.Context(), agent.UpdateSession{
 				SessionID: args[0], Title: &title, ExpectedRevision: revision,
 			})
 			if err != nil {
@@ -263,9 +259,7 @@ func newSessionsForkCommand(provider runtimeProvider) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if validateErr := forked.Validate(); validateErr != nil {
-				return fmt.Errorf("fork session: %w", validateErr)
-			}
+
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), forked.ID)
 			return err
 		},
@@ -336,9 +330,6 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 }
 
 func openCommandWorkbench(directory string) (*workbench.Store, error) {
-	if strings.TrimSpace(directory) == "" {
-		return workbench.OpenMemory(workbench.Config{})
-	}
 	persistence, err := statefile.Open(directory)
 	if err != nil {
 		return nil, err
@@ -370,11 +361,9 @@ func completeSessionIDs(provider runtimeProvider) cobra.CompletionFunc {
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
-		if err := page.Validate(); err != nil {
-			return nil, cobra.ShellCompDirectiveError
-		}
-		items := make([]string, 0, len(page.Items))
-		for _, session := range page.Items {
+
+		items := make([]string, 0, len(page.Data))
+		for _, session := range page.Data {
 			if toComplete == "" || strings.HasPrefix(session.ID, toComplete) || strings.Contains(strings.ToLower(session.Title), strings.ToLower(toComplete)) {
 				items = append(items, session.ID+"\t"+session.Title)
 			}

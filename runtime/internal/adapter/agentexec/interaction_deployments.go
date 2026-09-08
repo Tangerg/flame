@@ -72,7 +72,7 @@ type interactionDeploymentBuilder struct {
 	client            *chatclient.Client
 	counter           ModelContextInputTokenCounter
 	maxModelCalls     uint32
-	delegation        effectiveInteractionDelegation
+	delegation        delegationPolicy
 	maxDepth          uint32
 	instructions      []corechat.Message
 	rootManifest      toolset.Manifest
@@ -98,7 +98,7 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 	}
 	builder := &interactionDeploymentBuilder{
 		executor: i, session: session, start: start, client: client, counter: counter,
-		maxModelCalls: maxModelCalls, delegation: i.policy.delegation,
+		maxModelCalls: maxModelCalls, delegation: i.delegation,
 		instructions: instructions, rootManifest: rootManifest,
 		deployments: &interactionDeploymentSet{
 			byRef:             make(map[agent.DeploymentRef]agent.Deployment),
@@ -160,7 +160,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 		manifest,
 		i.session,
 		i.executor.config,
-		i.executor.policy.toolResultOffload,
+		i.executor.toolResultOffload,
 		i.start,
 	)
 	if err != nil {
@@ -180,7 +180,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	}
 	dispatcher, err := interaction.NewDispatcher(definition, interaction.DispatcherConfig{
 		Client: i.client, Tools: visible, DeferredTools: deferred,
-		MaxConcurrentToolCalls: i.executor.policy.maxConcurrentToolCalls,
+		MaxConcurrentToolCalls: interactionConcurrentToolCalls,
 		ResponseMode:           responseMode,
 		ModelContextReducer:    contextReducer,
 	})
@@ -205,7 +205,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	deployment, err := agent.NewDeployment(agent.DeploymentConfig{
 		Definition:           deploymentDefinition,
 		Dispatcher:           &interactionDispatcher{inner: dispatcher, session: i.session},
-		ImplementationDigest: agent.ComputeDigest([]byte(i.executor.implementationIdentity.String())),
+		ImplementationDigest: agent.ComputeDigest([]byte(i.executor.buildID.String())),
 		ConfigurationDigest:  agent.ComputeDigest(configuration),
 	})
 	if err != nil {
@@ -263,9 +263,6 @@ func (i *InteractionExecutor) resolveInteractionManifest(
 	ctx context.Context,
 	group domaintool.Group,
 ) (toolset.Manifest, error) {
-	if i.config.ToolResolver == nil {
-		return toolset.Manifest{}, nil
-	}
 	manifest, err := i.config.ToolResolver.Manifest(ctx, group)
 	if err != nil {
 		return toolset.Manifest{}, fmt.Errorf("agentexec: resolve Interaction %s Tools: %w", group, err)

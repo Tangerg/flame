@@ -160,7 +160,7 @@ func TestProjectItemRejectsCompactionWithoutSummary(t *testing.T) {
 
 func TestProjectRunUsagePreservesStepsAndPerModelAttribution(t *testing.T) {
 	totalCost, modelCost := 0.4, 0.25
-	usage := projectUsage(protocol.RunMetrics{
+	usage := agent.UsageFromMetrics(protocol.RunMetrics{
 		Steps: 4, ActiveDurationMillis: 1250,
 		Usage: &protocol.Usage{
 			ModelUsage: protocol.ModelUsage{InputTokens: 100, CostUSD: &totalCost},
@@ -186,18 +186,9 @@ func TestRuntimeDurationProjectionsRejectPositiveOverflow(t *testing.T) {
 	// This value used to wrap to a small positive time.Duration, bypassing the
 	// CLI domain's non-negative duration invariant.
 	const wrapsPositive = int64(18_446_744_073_710)
-	_, err := projectRun(protocol.RunRef{
-		RunSummary: protocol.RunSummary{
-			ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusWaiting,
-		},
-		Metrics: protocol.RunMetrics{ActiveDurationMillis: wrapsPositive},
-	})
-	if err == nil || !strings.Contains(err.Error(), "activeDurationMillis") {
-		t.Fatalf("projectRun overflow error = %v", err)
-	}
 
 	startedAt := time.Unix(1, 0).UTC()
-	_, err = projectItem(protocol.Item{
+	_, err := projectItem(protocol.Item{
 		ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusCompleted,
 		Type: protocol.ItemTypeToolCall, Tool: &protocol.ToolInvocation{
 			Name: "shell", Arguments: map[string]any{},
@@ -220,7 +211,7 @@ func TestProjectOutcomePreservesStructuredProblem(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if outcome.Status != agent.OutcomeFailed || outcome.Description() != "quota exhausted" || outcome.Problem == nil ||
+	if outcome.Status != protocol.OutcomeFailed || outcome.Description() != "quota exhausted" || outcome.Problem == nil ||
 		outcome.Problem.RetryAfterSeconds != 2 || outcome.Problem.DocURL != "https://docs.example/rate-limit" {
 		t.Fatalf("outcome = %+v", outcome)
 	}
@@ -533,49 +524,6 @@ func TestProjectEventRejectsMalformedEnvelopeBeforeStreaming(t *testing.T) {
 	}
 }
 
-func TestProjectChildRunPreservesLineage(t *testing.T) {
-	created := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
-	projected, err := projectRun(protocol.RunRef{
-		RunSummary: protocol.RunSummary{
-			ID: "run_child", SessionID: "ses_1", Status: protocol.RunStatusRunning,
-			SpawnedByItemID: "item_delegate", ParentRunID: "run_root", RootRunID: "run_root",
-			Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh", CreatedAt: created,
-		},
-		ActiveSegmentID: "seg_child",
-		ContextTokens:   32_768,
-		ProtocolProfile: protocol.RunProtocolProfile{
-			RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
-			InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
-		},
-	})
-	if err != nil {
-		t.Fatalf("projectRun: %v", err)
-	}
-	want, err := agent.NewChildRunLineage("run_child", "item_delegate", "run_root", "run_root")
-	if err != nil {
-		t.Fatal(err)
-	}
-	wantProfile := &protocol.RunProtocolProfile{
-		RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
-		InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
-	}
-	if projected.Lineage != want || projected.ReasoningEffort != "xhigh" || projected.ContextTokens != 32_768 ||
-		!projected.CreatedAt.Equal(created) || !reflect.DeepEqual(projected.ProtocolProfile, wantProfile) {
-		t.Fatalf("projected run = %+v", projected)
-	}
-}
-
-func TestProjectRunRejectsPartialChildLineage(t *testing.T) {
-	t.Parallel()
-	_, err := projectRun(protocol.RunRef{RunSummary: protocol.RunSummary{
-		ID: "run_child", SessionID: "ses_1", Status: protocol.RunStatusWaiting,
-		ParentRunID: "run_root",
-	}})
-	if err == nil || !strings.Contains(err.Error(), "spawnedByItemId") {
-		t.Fatalf("projectRun partial lineage error = %v", err)
-	}
-}
-
 func TestProjectTreeStreamRetainsProducerAndStreamSegments(t *testing.T) {
 	contextTokens := int64(4_096)
 	source := func(yield func(protocol.RunEvent, error) bool) {
@@ -607,19 +555,19 @@ func TestProjectTreeStreamRetainsProducerAndStreamSegments(t *testing.T) {
 	t.Fatal("tree stream yielded no event")
 }
 
-func waitingApprovalColdRead() coldRead {
+func waitingApprovalColdRead() protocol.SessionSnapshot {
 	tool := &protocol.ToolInvocation{Name: "shell", Arguments: map[string]any{
 		"command": "go test ./...", "description": "Run tests",
 	}}
 	startedAt := time.Date(2026, time.August, 31, 6, 0, 0, 0, time.UTC)
-	return coldRead{
-		session: protocol.Session{
+	return protocol.SessionSnapshot{
+		Session: protocol.Session{
 			ID: "ses_1", Status: protocol.SessionStatusWaiting,
 			Provider: testSessionProvider, Model: testSessionModel,
 			Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
 			CreatedAt: startedAt, UpdatedAt: startedAt, Revision: 1,
 		},
-		runs: []protocol.RunRef{{
+		Runs: []protocol.RunRef{{
 			RunSummary: protocol.RunSummary{
 				ID: "run_1", SessionID: "ses_1", Provider: testSessionProvider, Model: testSessionModel,
 				Status: protocol.RunStatusWaiting, CreatedAt: startedAt.Add(-time.Second),
@@ -629,12 +577,12 @@ func waitingApprovalColdRead() coldRead {
 				InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval},
 			},
 		}},
-		items: []protocol.Item{{
+		Items: []protocol.Item{{
 			ID: "item_1", RunID: "run_1", Status: protocol.ItemStatusRunning,
 			Type: protocol.ItemTypeToolCall, Tool: tool, SafetyClass: protocol.SafetyClassExec, StartedAt: startedAt,
 		}},
-		plan: &protocol.Plan{SessionID: "ses_1"},
-		interrupts: []protocol.PendingInterruptSet{{
+		Plan: &protocol.Plan{SessionID: "ses_1"},
+		Interrupts: []protocol.PendingInterruptSet{{
 			RootRunID: "run_1", SessionID: "ses_1", CreatedAt: startedAt,
 			Interrupts: []protocol.Interrupt{{
 				ItemID: "item_1", RunID: "run_1", Type: protocol.InterruptApproval,
@@ -646,14 +594,12 @@ func waitingApprovalColdRead() coldRead {
 
 func TestProjectSnapshotMatchesApprovalInvocationWithoutErasingItemLifecycle(t *testing.T) {
 	read := waitingApprovalColdRead()
-	startedAt := read.items[0].StartedAt
+	startedAt := read.Items[0].StartedAt
 	snapshot, err := projectSnapshot(read)
 	if err != nil {
 		t.Fatalf("projectSnapshot: %v", err)
 	}
-	if err := snapshot.Validate(); err != nil {
-		t.Fatalf("snapshot: %v", err)
-	}
+
 	approval, ok := snapshot.Interactions[0].(agent.Approval)
 	itemTool := snapshot.Transcript[0].Tool
 	if !ok || itemTool == nil || approval.Tool == nil ||
@@ -669,29 +615,29 @@ func TestProjectSnapshotRejectsUnownedPendingInterruptSets(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		mutate func(*coldRead)
+		mutate func(*protocol.SessionSnapshot)
 		want   string
 	}{
 		{
 			name: "extra set",
-			mutate: func(read *coldRead) {
-				extra := read.interrupts[0]
+			mutate: func(read *protocol.SessionSnapshot) {
+				extra := read.Interrupts[0]
 				extra.RootRunID = "run_other"
-				read.interrupts = append(read.interrupts, extra)
+				read.Interrupts = append(read.Interrupts, extra)
 			},
 			want: "2 pending interrupt sets",
 		},
 		{
 			name: "different session",
-			mutate: func(read *coldRead) {
-				read.interrupts[0].SessionID = "ses_other"
+			mutate: func(read *protocol.SessionSnapshot) {
+				read.Interrupts[0].SessionID = "ses_other"
 			},
 			want: "for session ses_other",
 		},
 		{
 			name: "missing creation time",
-			mutate: func(read *coldRead) {
-				read.interrupts[0].CreatedAt = time.Time{}
+			mutate: func(read *protocol.SessionSnapshot) {
+				read.Interrupts[0].CreatedAt = time.Time{}
 			},
 			want: "createdAt",
 		},

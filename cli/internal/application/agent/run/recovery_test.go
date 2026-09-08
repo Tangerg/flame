@@ -34,7 +34,7 @@ func TestRecoverReadsAFinishedRunAfterItsSegmentExpires(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if recovered.Run.Status != protocol.RunStatusFinished || recovered.Run.Outcome.Status != agent.OutcomeCompleted || recovered.Stream.Events != nil {
+	if recovered.Run.Status != protocol.RunStatusFinished || recovered.Run.Outcome.Type != protocol.OutcomeCompleted || recovered.Stream.Events != nil {
 		t.Fatalf("recovered state = %+v", recovered)
 	}
 	if len(recovered.Snapshot.Transcript) != 2 {
@@ -45,7 +45,7 @@ func TestRecoverReadsAFinishedRunAfterItsSegmentExpires(t *testing.T) {
 func TestRecoverAttachesBeforeReadingALiveRun(t *testing.T) {
 	runtime := runtimefixture.New()
 	runtime.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	if err != nil {
@@ -77,7 +77,7 @@ func TestRecoverAttachesBeforeReadingALiveRun(t *testing.T) {
 func TestAttachSessionPerformsTheHeadAttachmentBeforeItsAuthoritativeRead(t *testing.T) {
 	runtime := runtimefixture.New()
 	runtime.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	if err != nil {
@@ -196,8 +196,8 @@ func consumeSegment(t *testing.T, stream agent.SegmentStream) {
 
 func TestRequiredRecognizesOnlyColdRecoveryConditions(t *testing.T) {
 	for _, err := range []error{
-		agent.ErrStaleSegment, agent.ErrRunWaiting, agent.ErrRunFinished,
-		agent.ErrReplayCursorInvalid, agent.ErrReplayUnavailable,
+		protocol.ErrStaleSegment, protocol.ErrRunWaiting, protocol.ErrRunFinished,
+		protocol.ErrReplayCursorInvalid, protocol.ErrReplayUnavailable,
 	} {
 		if !runworkflow.RecoveryRequired(errors.Join(errors.New("adapter"), err)) {
 			t.Fatalf("RecoveryRequired(%v) = false", err)
@@ -211,7 +211,7 @@ func TestRequiredRecognizesOnlyColdRecoveryConditions(t *testing.T) {
 func completedScript(string) runtimefixture.Script {
 	return runtimefixture.Script{Prelude: []runtimefixture.Step{
 		{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "done"}}},
-		{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+		{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 	}}
 }
 

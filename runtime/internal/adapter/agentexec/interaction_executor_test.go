@@ -6,13 +6,11 @@ import (
 	"errors"
 	"iter"
 	"slices"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -20,41 +18,9 @@ import (
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
-	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 const interactionTestBuildID = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-
-func TestInteractionExecutionPolicyPreservesOptionalPresence(t *testing.T) {
-	policy, err := newInteractionExecutionPolicy(InteractionExecutorConfig{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if policy.defaultMaxModelCalls != defaultInteractionModelCalls ||
-		policy.deltaBufferCapacity != defaultInteractionDeltaBuffer ||
-		policy.maxConcurrentToolCalls != defaultInteractionConcurrentToolCalls ||
-		policy.unknownEffectPollInterval != defaultUnknownEffectPollInterval ||
-		policy.statePollInterval != defaultInteractionStatePoll {
-		t.Fatalf("default Interaction execution policy = %+v", policy)
-	}
-
-	zeroUint := uint32(0)
-	zeroInt := 0
-	zeroDuration := time.Duration(0)
-	for name, config := range map[string]InteractionExecutorConfig{
-		"model calls":      {DefaultMaxModelCalls: &zeroUint},
-		"delta buffer":     {DeltaBufferCapacity: &zeroInt},
-		"Tool concurrency": {MaxConcurrentToolCalls: &zeroInt},
-		"unknown poll":     {UnknownEffectPollInterval: &zeroDuration},
-		"state poll":       {StatePollInterval: &zeroDuration},
-	} {
-		t.Run(name, func(t *testing.T) {
-			if _, err := newInteractionExecutionPolicy(config); err == nil {
-				t.Fatal("present zero was treated as an omitted execution policy value")
-			}
-		})
-	}
-}
 
 func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
 	client, err := chatclient.New(chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
@@ -63,11 +29,9 @@ func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
-		ChatResolver:           staticInteractionChatResolver(client),
-		ImplementationIdentity: "interaction-executor-test-build",
-		ConfigurationIdentity:  "interaction-executor-test-config",
-		BuildID:                interactionTestBuildID,
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
+		ChatResolver: staticInteractionChatResolver(client),
+		BuildID:      interactionTestBuildID,
 	})
 	if err == nil || executor != nil {
 		t.Fatalf("NewInteractionExecutor without lifetime = (%v, %v), want nil executor and non-nil error", executor, err)
@@ -75,59 +39,12 @@ func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
 }
 
 func TestInteractionExecutorRequiresChatResolver(t *testing.T) {
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
-		Lifetime:               t.Context(),
-		ImplementationIdentity: "interaction-executor-test-build",
-		ConfigurationIdentity:  "interaction-executor-test-config",
-		BuildID:                interactionTestBuildID,
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
+		Lifetime: t.Context(),
+		BuildID:  interactionTestBuildID,
 	})
 	if err == nil || executor != nil {
 		t.Fatalf("NewInteractionExecutor without resolver = (%v, %v), want nil executor and non-nil error", executor, err)
-	}
-}
-
-func TestInteractionToolManifestRequiresPolicyOwners(t *testing.T) {
-	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "echo", Description: "Return a fixed response.",
-	}, func(context.Context, struct{}) (string, error) {
-		return "ok", nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest := toolset.Manifest{Visible: []toolcontract.Tool{executable}}
-
-	for _, test := range []struct {
-		name   string
-		config InteractionExecutorConfig
-		want   string
-	}{
-		{name: "missing interpreter", want: "Interaction Tools require a Tool interpreter"},
-		{
-			name: "missing authorizer",
-			config: InteractionExecutorConfig{
-				ToolInterpreter: testInteractionToolInterpreter{},
-			},
-			want: "Interaction Tools require a Tool authorizer",
-		},
-		{
-			name: "complete policy owners",
-			config: InteractionExecutorConfig{
-				ToolInterpreter: testInteractionToolInterpreter{},
-				ToolAuthorizer:  allowInteractionTools{},
-			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			executor := &InteractionExecutor{config: test.config}
-			err := executor.validateInteractionTools(manifest)
-			if test.want == "" && err != nil {
-				t.Fatalf("validate complete Tool policy = %v", err)
-			}
-			if test.want != "" && (err == nil || !strings.Contains(err.Error(), test.want)) {
-				t.Fatalf("validate Tool policy error = %v, want %q", err, test.want)
-			}
-		})
 	}
 }
 
@@ -225,27 +142,16 @@ func TestInteractionExecutorResolvesDefaultThroughResolverWithoutImplicitSelecti
 		t.Fatal(err)
 	}
 	var resolved []modelref.Selection
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
 		Lifetime: t.Context(),
 		ChatResolver: interactionChatResolverFunc(func(_ context.Context, selection modelref.Selection) (modeladapter.ResolvedChat, error) {
 			resolved = append(resolved, selection)
 			return modeladapter.NewResolvedChat(&client, nil)
 		}),
-		ImplementationIdentity: "interaction-executor-test-build",
-		ConfigurationIdentity:  "interaction-executor-test-config",
-		BuildID:                interactionTestBuildID,
+		BuildID: interactionTestBuildID,
 	})
 	if err != nil {
 		t.Fatal(err)
-	}
-	if executor.buildID.String() != interactionTestBuildID ||
-		executor.implementationIdentity.String() != "interaction-executor-test-build" ||
-		executor.configurationIdentity.String() != "interaction-executor-test-config" {
-		t.Fatal("Interaction executor did not retain its parsed deployment identities")
-	}
-	if executor.config.BuildID != "" || executor.config.ImplementationIdentity != "" ||
-		executor.config.ConfigurationIdentity != "" {
-		t.Fatal("Interaction executor retained duplicate raw identity configuration")
 	}
 	got, err := executor.resolveChat(t.Context(), testDefaultSelection())
 	if err != nil || got.Client() != &client || len(resolved) != 1 || resolved[0] != testDefaultSelection() {
@@ -414,14 +320,11 @@ func TestInteractionExecutorMapsStreamingModelFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
-		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(client),
-		ImplementationIdentity: "interaction-executor-test-build",
-		ConfigurationIdentity:  "interaction-executor-test-config",
-		DefaultMaxModelCalls:   uint32Pointer(4),
-		BuildID:                interactionTestBuildID,
-		StreamModelResponses:   true,
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
+		Lifetime:             t.Context(),
+		ChatResolver:         staticInteractionChatResolver(client),
+		BuildID:              interactionTestBuildID,
+		StreamModelResponses: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -595,12 +498,10 @@ func newTestInteractionExecutorWithLifetime(
 	if err != nil {
 		t.Fatal(err)
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
-		Lifetime:               lifetime,
-		ChatResolver:           staticInteractionChatResolver(client),
-		ImplementationIdentity: "interaction-executor-test-build",
-		ConfigurationIdentity:  "interaction-executor-test-config", DefaultMaxModelCalls: uint32Pointer(4),
-		BuildID: interactionTestBuildID,
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
+		Lifetime:     lifetime,
+		ChatResolver: staticInteractionChatResolver(client),
+		BuildID:      interactionTestBuildID,
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -343,6 +344,10 @@ func (s stubRuntime) queriesCoordinator() *sessions.QueryCoordinator {
 	return mustQueryCoordinator(deps)
 }
 
+type inertRunFinalizer struct{}
+
+func (inertRunFinalizer) Finish(context.Context, runs.Finish) error { return nil }
+
 func newTestHandler(rt testRuntime) *Handler {
 	s := &Handler{}
 	admissions := testsupport.NewAdmissionGate()
@@ -370,10 +375,6 @@ func newTestHandler(rt testRuntime) *Handler {
 		conversation = p.conversationReader()
 	}
 	projectionWriter := rt.RunSegmentEffects()
-	finalizer, err := segment.NewFinalizer(segment.FinalizerConfig{})
-	if err != nil {
-		panic(err)
-	}
 	workspaceNotifier := segment.NewWorkspaceNotifier(nil)
 	runCoordinator, err := runs.NewCoordinator(runs.Dependencies{
 		RootStarts:                         rt,
@@ -398,7 +399,7 @@ func newTestHandler(rt testRuntime) *Handler {
 			Barriers:                    projectionWriter,
 			WaitingSubtreeCancellations: projectionWriter,
 			Workspace:                   workspaceNotifier,
-			Finalizer:                   finalizer,
+			Finalizer:                   inertRunFinalizer{},
 		},
 		Runs:       nonNilRunProjection(runProjection),
 		Items:      itemProjectionFor(rt),
@@ -672,7 +673,6 @@ func (s stubLifecycleStores) ReadMaterialSnapshot(ctx context.Context, id string
 		}
 		stored, found := current.Goal()
 		if found {
-			stored = stored.Clone()
 			currentGoal = &stored
 		}
 	}
@@ -683,8 +683,8 @@ func (s stubLifecycleStores) ReadMaterialSnapshot(ctx context.Context, id string
 }
 
 func (s stubLifecycleStores) ApplyFork(ctx context.Context, plan sessions.ForkPlan) (session.Session, error) {
-	if err := plan.Validate(); err != nil {
-		return session.Session{}, err
+	if plan.IsZero() {
+		return session.Session{}, errors.New("fork plan is required")
 	}
 	child := plan.Child()
 	snapshot := plan.Snapshot()
@@ -752,8 +752,8 @@ func (s stubLifecycleStores) ApplyRollback(ctx context.Context, plan sessions.Ro
 }
 
 func (s stubLifecycleStores) ApplyRestore(ctx context.Context, plan sessions.RestorePlan) error {
-	if err := plan.Validate(); err != nil {
-		return err
+	if plan.IsZero() {
+		return errors.New("restore plan is required")
 	}
 	sessionReplacement := plan.SessionReplacement()
 	snapshot := plan.Snapshot()
@@ -1059,9 +1059,9 @@ func (inertRuntimeStores) CompleteToolInvocation(context.Context, string, string
 func (inertRuntimeStores) MarkToolInvocationIncomplete(context.Context, string, string, string, string, string, time.Time, time.Time) error {
 	return nil
 }
-func (inertRuntimeStores) SaveCheckpoint(context.Context, runs.ExecutorCheckpoint) error { return nil }
-func (inertRuntimeStores) LoadCheckpoint(context.Context, string) (runs.ExecutorCheckpoint, error) {
-	return runs.ExecutorCheckpoint{}, runs.ErrExecutorCheckpointNotFound
+func (inertRuntimeStores) SaveCheckpoint(context.Context, run.Checkpoint) error { return nil }
+func (inertRuntimeStores) LoadCheckpoint(context.Context, string) (run.Checkpoint, error) {
+	return run.Checkpoint{}, run.ErrCheckpointNotFound
 }
 func (inertRuntimeStores) DeleteCheckpoints(context.Context, string, []string) error { return nil }
 func (inertRuntimeStores) Reserve(context.Context, sqlite.ChildRunStartReservationRecord) error {
@@ -1075,6 +1075,17 @@ func (inertRuntimeStores) Conclude(
 	return true, nil
 }
 func (inertRuntimeStores) DeleteSession(context.Context, string) error { return nil }
+
+func (inertRuntimeStores) RecordRun(context.Context, goal.RunRecord) error { return nil }
+func (inertRuntimeStores) Bind(context.Context, string, string, string, toolresult.Ref) error {
+	return nil
+}
+func (inertRuntimeStores) Discard(context.Context, string, toolresult.Ref) error { return nil }
+
+type inertSchedules struct{}
+
+func (inertSchedules) Accept(context.Context, schedule.Acceptance) error   { return nil }
+func (inertSchedules) RecordRun(context.Context, schedule.RunRecord) error { return nil }
 
 type inertSessionInterrupts struct{ inertRuntimeStores }
 
@@ -1224,6 +1235,9 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 		Interrupts:          nonNilRunsegmentInterrupts(s.interrupts, stores),
 		ResumeClaims:        nonNilRunsegmentResumeClaims(s.interrupts, stores),
 		Sessions:            nonNilRunsegmentSessions(s.sess, stores),
+		Schedules:           inertSchedules{},
+		GoalRuns:            stores,
+		ToolResults:         stores,
 		Transcript:          nonNilRunsegmentTranscript(s.hist, stores),
 		ItemReplacer:        nonNilRunsegmentItems(s.hist, stores),
 		ToolApprovals:       nonNilRunsegmentApprovals(s.hist, stores),
@@ -1235,6 +1249,9 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 		ExecutorCheckpoints: stores,
 		ChildRunStarts:      stores,
 		Tx:                  s.RunInTx,
+	}
+	if s.goals != nil {
+		cfg.GoalRuns = s.goals
 	}
 	if s.toolResults != nil {
 		cfg.ToolResults = s.toolResults

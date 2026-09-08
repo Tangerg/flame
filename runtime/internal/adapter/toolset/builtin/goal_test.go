@@ -2,12 +2,12 @@ package builtin
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	goalstate "github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -32,8 +32,8 @@ func (m *memStore) Get(_ context.Context, id string) (goalstate.Current, error) 
 func (m *memStore) put(g goalstate.Goal) { m.goals[g.SessionID()] = g }
 
 func (m *memStore) Save(_ context.Context, replacement goalstate.Replacement) (bool, error) {
-	if err := replacement.Validate(); err != nil {
-		return false, err
+	if replacement.IsZero() {
+		return false, errors.New("goal replacement is required")
 	}
 	g := replacement.State()
 	expected := replacement.ExpectedVersion()
@@ -74,12 +74,12 @@ func testSelection() modelref.Selection {
 }
 
 func testSessionContext() context.Context {
-	ctx := executionctx.WithScope(context.Background(), runs.ExecutionScope{SessionID: "s1"})
+	ctx := executionctx.WithScope(context.Background(), run.ExecutionScope{SessionID: "s1"})
 	return executionctx.WithRunCapabilities(ctx, testGoalRunCapabilities())
 }
 
 func testGoalRunContext() context.Context {
-	return executionctx.WithScope(testSessionContext(), runs.ExecutionScope{
+	return executionctx.WithScope(testSessionContext(), run.ExecutionScope{
 		SessionID: "s1", GoalIncarnationID: "lease-active",
 	})
 }
@@ -199,7 +199,7 @@ func TestReportGoalOutcomeSupersededStampRefused(t *testing.T) {
 	store.put(current)
 
 	// The Run carries the incarnation it was launched under, since superseded.
-	ctx := executionctx.WithScope(context.Background(), runs.ExecutionScope{
+	ctx := executionctx.WithScope(context.Background(), run.ExecutionScope{
 		SessionID:         "s1",
 		GoalIncarnationID: "lease-stale",
 	})

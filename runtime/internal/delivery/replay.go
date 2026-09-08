@@ -50,7 +50,7 @@ func (r *replayStore) invoke(
 	parameters any,
 	key string,
 	execute func() Result,
-	target any,
+	handler *Handler,
 ) Result {
 	if len(key) > maxIdempotencyKeyBytes {
 		return failed(NewFailure(protocol.ErrInvalidParams, "idempotency key must not exceed 255 bytes"))
@@ -72,7 +72,7 @@ func (r *replayStore) invoke(
 			return failed(r.persistenceFailure(settlePendingCompletionErr))
 		}
 		r.forgetPendingCompletion(key, fingerprint)
-		return r.replay(ctx, method, payload, target)
+		return r.replay(ctx, method, payload, handler)
 	}
 
 	record, claimed, err := r.store.Claim(ctx, key, fingerprint)
@@ -86,7 +86,7 @@ func (r *replayStore) invoke(
 		if len(record.Payload) == 0 {
 			return failed(NewFailure(protocol.ErrIdempotencyInProgress, "the first execution has not completed"))
 		}
-		return r.replay(ctx, method, record.Payload, target)
+		return r.replay(ctx, method, record.Payload, handler)
 	}
 
 	result := execute()
@@ -106,7 +106,7 @@ func (r *replayStore) invoke(
 	return result
 }
 
-func (r *replayStore) replay(ctx context.Context, method *Method, payload []byte, target any) Result {
+func (r *replayStore) replay(ctx context.Context, method *Method, payload []byte, handler *Handler) Result {
 	var stored storedOutcome
 	if err := decodeStoredJSON(payload, &stored); err != nil {
 		return failed(ProjectError(fmt.Errorf("idempotency: decode stored outcome: %w", err)))
@@ -133,13 +133,7 @@ func (r *replayStore) replay(ctx context.Context, method *Method, payload []byte
 	if !ok {
 		return failed(ProjectError(errors.New("idempotency: stored run-opening result has an invalid shape")))
 	}
-	subscriber, ok := target.(interface {
-		SubscribeRun(context.Context, protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq[protocol.RunEvent], error)
-	})
-	if !ok || !capabilityAvailable(subscriber) {
-		return failed(ProjectError(errors.New("operation: target cannot handle runs.subscribe")))
-	}
-	_, events, err := subscriber.SubscribeRun(ctx, protocol.SubscribeRunRequest{RunID: runID, SegmentID: segmentID})
+	_, events, err := handler.SubscribeRun(ctx, protocol.SubscribeRunRequest{RunID: runID, SegmentID: segmentID})
 	switch {
 	case unattachable(err):
 		result.Events = emptyEventStream
@@ -368,62 +362,3 @@ func unattachable(err error) bool {
 }
 
 var emptyEventStream iter.Seq2[any, error] = func(func(any, error) bool) {}
-
-type memoryIdempotencyStore struct {
-	mu      sync.Mutex
-	records map[string]memoryIdempotencyRecord
-}
-
-type memoryIdempotencyRecord struct {
-	idempotency.Record
-	expiresAt time.Time
-}
-
-func newMemoryIdempotencyStore() *memoryIdempotencyStore {
-	return &memoryIdempotencyStore{records: make(map[string]memoryIdempotencyRecord)}
-}
-
-func (m *memoryIdempotencyStore) Claim(_ context.Context, key, fingerprint string) (idempotency.Record, bool, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	now := time.Now()
-	for storedKey, stored := range m.records {
-		if len(stored.Payload) != 0 && !now.Before(stored.expiresAt) {
-			delete(m.records, storedKey)
-		}
-	}
-	stored, ok := m.records[key]
-	if ok {
-		if stored.Fingerprint != fingerprint {
-			return idempotency.Record{}, false, idempotency.ErrKeyConflict
-		}
-		stored.Payload = bytes.Clone(stored.Payload)
-		return stored.Record, false, nil
-	}
-	record := idempotency.Record{Key: key, Fingerprint: fingerprint}
-	m.records[key] = memoryIdempotencyRecord{Record: record}
-	return record, true, nil
-}
-
-func (m *memoryIdempotencyStore) Complete(_ context.Context, record idempotency.Record) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	stored, ok := m.records[record.Key]
-	if !ok {
-		return idempotency.ErrClaimLost
-	}
-	if stored.Fingerprint != record.Fingerprint {
-		return idempotency.ErrKeyConflict
-	}
-	if len(stored.Payload) != 0 {
-		if !time.Now().Before(stored.expiresAt) {
-			delete(m.records, record.Key)
-			return idempotency.ErrClaimLost
-		}
-		return nil
-	}
-	stored.Payload = bytes.Clone(record.Payload)
-	stored.expiresAt = time.Now().Add(idempotency.Retention)
-	m.records[record.Key] = stored
-	return nil
-}

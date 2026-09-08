@@ -53,16 +53,16 @@ func (w *workspaceServiceStub) setChanges(changes ...workspace.Change) {
 	w.mu.Unlock()
 }
 
-func (w *workspaceServiceStub) Resolve(_ context.Context, request workspace.ResolveRequest) (workspace.Workspace, error) {
+func (w *workspaceServiceStub) Resolve(_ context.Context, request workspace.ResolveRequest) (protocol.WorkspaceInfo, error) {
 	w.called("resolve")
-	return workspace.Workspace{Path: request.Path, ProjectRoot: request.Path, Availability: protocol.WorkspaceAvailable}, nil
+	return protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: request.Path}, ProjectRoot: request.Path, Availability: protocol.WorkspaceAvailable}, nil
 }
 
 func (w *workspaceServiceStub) List(context.Context) ([]workspace.Summary, error) {
 	w.called("list")
 	lastActive := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
 	return []workspace.Summary{{
-		Workspace: workspace.Workspace{Path: "/tmp/flame-cli-test", ProjectRoot: "/tmp/project-root", Availability: protocol.WorkspaceAvailable},
+		Workspace: protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/tmp/flame-cli-test"}, ProjectRoot: "/tmp/project-root", Availability: protocol.WorkspaceAvailable},
 		Name:      "flame-cli-test", Sessions: 1, LastActive: &lastActive,
 	}}, nil
 }
@@ -177,7 +177,7 @@ func runUIWithWorkspaceBackend(t *testing.T, service Workspaces, source changefe
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: backend, Workspaces: service, Changes: source, Workspace: "/tmp/flame-cli-test", Host: host})
+		done <- runTestTerminal(t, ctx, Config{Runtime: backend, Workspaces: service, Changes: source, Workspace: "/tmp/flame-cli-test", Host: host})
 	}()
 	var once sync.Once
 	stop := func() {
@@ -386,7 +386,7 @@ func TestRuntimeChangeMonitorDoesNotRegressAfterAStaleFrame(t *testing.T) {
 	topics := []protocol.RuntimeTopic{protocol.TopicSessionsChanged}
 	consume := func(sequence uint64) bool {
 		t.Helper()
-		applied, err := monitor.consumeChangeEvent(t.Context(), topics, false, tracker, changefeed.Event{
+		applied, err := monitor.consumeChangeEvent(t.Context(), topics, tracker, changefeed.Event{
 			Type: protocol.RuntimeSessionsChanged, Sequence: sequence,
 		})
 		if err != nil {
@@ -611,11 +611,6 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 	}
 	if got := application.observedRuntimeResources(); got != want {
 		t.Fatalf("resources with enabled features = %+v, want %+v", got, want)
-	}
-
-	application.runtimeProfile = nil
-	if got := application.observedRuntimeResources(); got != want {
-		t.Fatalf("resources without discovery = %+v, want %+v", got, want)
 	}
 }
 

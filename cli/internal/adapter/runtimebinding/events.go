@@ -81,8 +81,7 @@ func (r runEventProjection) segmentProgress() (projectedRunEvent, error) {
 		progress.ContextTokens = new(*value.ContextTokens)
 	}
 	if value.Usage != nil {
-		usage := projectUsageBreakdown(*value.Usage)
-		progress.Usage = &usage
+		progress.Usage = agent.CloneRunMetrics(protocol.RunMetrics{Usage: value.Usage}).Usage
 	}
 	return includeRunEvent(progress), nil
 }
@@ -91,8 +90,7 @@ func (r runEventProjection) segmentStarted() (projectedRunEvent, error) {
 	if r.source.Event.Run == nil {
 		return projectedRunEvent{}, fmt.Errorf("event %s: segment.started has no run", r.source.EventID)
 	}
-	run, err := projectRun(*r.source.Event.Run)
-	return includeRunEvent(agent.SegmentStarted{Run: run}), err
+	return includeRunEvent(agent.SegmentStarted{Run: agent.CloneRun(*r.source.Event.Run)}), nil
 }
 
 func (r runEventProjection) itemStarted() (projectedRunEvent, error) {
@@ -148,7 +146,7 @@ func (r runEventProjection) segmentFinished() (projectedRunEvent, error) {
 	if stream.Outcome == nil || stream.Metrics == nil || stream.ContextTokens == nil {
 		return projectedRunEvent{}, fmt.Errorf("event %s: segment.finished is incomplete", r.source.EventID)
 	}
-	usage := projectUsage(*stream.Metrics)
+	metrics := agent.CloneRunMetrics(*stream.Metrics)
 	contextTokens := *stream.ContextTokens
 	switch stream.Outcome.Type {
 	case protocol.SegmentInterrupt:
@@ -157,17 +155,17 @@ func (r runEventProjection) segmentFinished() (projectedRunEvent, error) {
 			return projectedRunEvent{}, fmt.Errorf("event %s: %w", r.source.EventID, err)
 		}
 		return includeRunEvent(agent.RunInterrupted{
-			Interactions: interactions, Usage: usage, ContextTokens: contextTokens,
+			Interactions: interactions, Metrics: metrics, ContextTokens: contextTokens,
 		}), nil
 	case protocol.SegmentSuspended:
-		return includeRunEvent(agent.RunSuspended{Usage: usage, ContextTokens: contextTokens}), nil
+		return includeRunEvent(agent.RunSuspended{Metrics: metrics, ContextTokens: contextTokens}), nil
 	default:
 		outcome, err := projectOutcome(*stream.Outcome)
 		if err != nil {
 			return projectedRunEvent{}, fmt.Errorf("event %s: %w", r.source.EventID, err)
 		}
 		return includeRunEvent(agent.RunFinished{
-			Outcome: outcome, Usage: usage, ContextTokens: contextTokens,
+			Outcome: outcome, Metrics: metrics, ContextTokens: contextTokens,
 		}), nil
 	}
 }

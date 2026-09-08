@@ -36,7 +36,7 @@ func TestRecoverReplaysAndAcknowledgesTheExactDurableSteer(t *testing.T) {
 	store, pending := fixture.store, fixture.pending
 	runtime := new(steerRuntimeStub)
 	fixture.now = pending.StagedAt().Add(time.Minute)
-	if err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff()); err != nil {
+	if err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), testBackoff(t)); err != nil {
 		t.Fatal(err)
 	}
 	if len(runtime.requests) != 1 || !runtime.requests[0].Equal(pending.Command()) {
@@ -54,9 +54,9 @@ func TestRecoverReplaysAndAcknowledgesTheExactDurableSteer(t *testing.T) {
 func TestRecoverReturnsAttachmentsAfterAReplayableRefusal(t *testing.T) {
 	fixture := stagedSteer(t)
 	store, pending := fixture.store, fixture.pending
-	runtime := &steerRuntimeStub{err: agent.ErrStaleSegment}
+	runtime := &steerRuntimeStub{err: protocol.ErrStaleSegment}
 	fixture.now = pending.StagedAt().Add(time.Minute)
-	if err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff()); err != nil {
+	if err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), testBackoff(t)); err != nil {
 		t.Fatal(err)
 	}
 	if _, found := store.PendingSteer(pending.SessionID()); found {
@@ -76,7 +76,7 @@ func TestRecoverRefusesToGuessAtOrAfterTheReplayDeadline(t *testing.T) {
 			store, pending := fixture.store, fixture.pending
 			runtime := new(steerRuntimeStub)
 			fixture.now = pending.Replay().Until().Add(offset)
-			err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff())
+			err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), testBackoff(t))
 			if !errors.Is(err, ErrSteerReplayUnavailable) {
 				t.Fatalf("expired replay error = %v, want ErrSteerReplayUnavailable", err)
 			}
@@ -119,7 +119,7 @@ func TestRecoverContinuesPastAnUnreplayableSteer(t *testing.T) {
 	fixture.now = expired.StagedAt().Add(90 * time.Minute)
 	runtime := new(steerRuntimeStub)
 	err = RecoverSteers(
-		t.Context(), runtime, fixture.store, fixture.policy(t), retry.ImmediateBackoff(),
+		t.Context(), runtime, fixture.store, fixture.policy(t), testBackoff(t),
 	)
 	if !errors.Is(err, ErrSteerReplayUnavailable) {
 		t.Fatalf("recovery error = %v, want deferred expired steer", err)
@@ -139,10 +139,10 @@ func TestRecoverContinuesPastAnUnreplayableSteer(t *testing.T) {
 func TestDeliverPreservesACommandRejectedByAnotherRuntimeStore(t *testing.T) {
 	fixture := stagedSteer(t)
 	pending := fixture.pending
-	runtime := &steerRuntimeStub{err: agent.ErrCommandStoreMismatch}
+	runtime := &steerRuntimeStub{err: protocol.ErrIdempotencyStoreMismatch}
 	fixture.now = pending.StagedAt().Add(time.Minute)
-	result, err := DeliverSteer(t.Context(), runtime, pending, fixture.policy(t), retry.ImmediateBackoff())
-	if !errors.Is(err, agent.ErrCommandStoreMismatch) || result.Outcome != mutation.Unknown {
+	result, err := DeliverSteer(t.Context(), runtime, pending, fixture.policy(t), testBackoff(t))
+	if !errors.Is(err, protocol.ErrIdempotencyStoreMismatch) || result.Outcome != mutation.Unknown {
 		t.Fatalf("store mismatch settlement = outcome %v, error %v", result.Outcome, err)
 	}
 	if len(runtime.requests) != 1 {
@@ -160,7 +160,7 @@ func TestRecoverStopsRetryingWhenTheReplayGuaranteeExpires(t *testing.T) {
 		fixture.now = pending.Replay().Until()
 		runtime.err = nil
 	}
-	err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), retry.ImmediateBackoff())
+	err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), testBackoff(t))
 	if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
 		t.Fatalf("recovery error = %v", err)
 	}
@@ -169,42 +169,19 @@ func TestRecoverStopsRetryingWhenTheReplayGuaranteeExpires(t *testing.T) {
 	}
 }
 
-func TestUnavailableRuntimeSeparatesFreshSteerDeliveryFromColdRecovery(t *testing.T) {
-	store, err := openTestWorkbench(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
+func TestExpiredSteerPreservesIntentForBothDeliveryAndRecovery(t *testing.T) {
+	fixture := stagedSteer(t)
+	fixture.now = fixture.pending.Replay().Until()
+	runtime := new(steerRuntimeStub)
+	result, err := DeliverSteer(t.Context(), runtime, fixture.pending, fixture.policy(t), testBackoff(t))
+	if result.Outcome != mutation.Unknown || !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) || len(runtime.requests) != 0 {
+		t.Fatalf("expired delivery = outcome %v, error %v, requests %+v", result.Outcome, err, runtime.requests)
 	}
-	attachment := agent.Attachment{
-		ID: "att_notes", Kind: protocol.ContentBlockText, Name: "notes.txt",
-		Path: filepath.Join(t.TempDir(), "notes.txt"), MimeType: "text/plain", Size: 5,
+	if err := RecoverSteers(t.Context(), runtime, fixture.store, fixture.policy(t), testBackoff(t)); err == nil || len(runtime.requests) != 0 {
+		t.Fatalf("expired recovery = %v, requests %+v", err, runtime.requests)
 	}
-	request := agent.SteerRun{
-		CommandID: "cli_33333333333333333333333333333333",
-		RunID:     "run_1", SegmentID: "seg_1",
-		Message: agent.Message{Text: "inspect ownership", Attachments: []agent.Attachment{attachment}},
-	}
-	source := agent.Message{Text: "/steer inspect ownership", Attachments: []agent.Attachment{attachment}}
-	if err := store.SaveDraft("ses_1", source); err != nil {
-		t.Fatal(err)
-	}
-	policy := unavailableReplayPolicy(t)
-	pending, err := StageSteer(store, "ses_1", request, source, policy)
-	if err != nil {
-		t.Fatal(err)
-	}
-	runtime := &steerRuntimeStub{err: agent.ErrDisconnected}
-	result, err := DeliverSteer(t.Context(), runtime, pending, policy, retry.ImmediateBackoff())
-	if result.Outcome != mutation.Unknown || !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) || len(runtime.requests) != 1 {
-		t.Fatalf("fresh delivery = outcome %v, error %v, requests %+v", result.Outcome, err, runtime.requests)
-	}
-
-	runtime = new(steerRuntimeStub)
-	err = RecoverSteers(t.Context(), runtime, store, policy, retry.ImmediateBackoff())
-	if err == nil || len(runtime.requests) != 0 {
-		t.Fatalf("cold recovery = %v, requests %+v", err, runtime.requests)
-	}
-	if durable, found := store.PendingSteer(pending.SessionID()); !found || !durable.Command().Equal(pending.Command()) {
-		t.Fatalf("unprotected steer = %+v, found %t", durable, found)
+	if durable, found := fixture.store.PendingSteer(fixture.pending.SessionID()); !found || !durable.Command().Equal(fixture.pending.Command()) {
+		t.Fatalf("expired steer = %+v, found %t", durable, found)
 	}
 }
 
@@ -255,4 +232,13 @@ func stagedSteer(t *testing.T) *steerFixture {
 	}
 	fixture.pending = pending
 	return fixture
+}
+
+func testBackoff(t testing.TB) retry.Backoff {
+	t.Helper()
+	backoff, err := retry.NewBackoff(time.Nanosecond, time.Nanosecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return backoff
 }

@@ -1,7 +1,6 @@
 package toolset
 
 import (
-	"crypto/sha256"
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
@@ -19,8 +18,6 @@ type readStamp struct {
 }
 
 type contentFingerprint [32]byte
-
-func fingerprintOf(content []byte) contentFingerprint { return sha256.Sum256(content) }
 
 func newReadTracker() *readTracker {
 	return &readTracker{seen: map[string]map[string]readStamp{}}

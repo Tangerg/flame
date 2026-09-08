@@ -5,13 +5,12 @@ import (
 	"iter"
 	"time"
 
-	corechat "github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 // The ports this package consumes to run a Segment. They are defined here on the
@@ -190,7 +189,7 @@ type PreparedWaitingSubtreeCancellation struct {
 	// PendingInterruptions contains the surviving external waiting boundaries.
 	pendingInterruptions []MemberInterruption
 	// Checkpoint is the opaque complete-tree state that Change.Apply installs.
-	checkpoint ExecutorCheckpoint
+	checkpoint run.Checkpoint
 	// parentToolResult is the exact model-visible result the executor will consume.
 	parentToolResult corechat.ToolResult
 	// Change owns the frozen executor source until Apply or Discard resolves it.
@@ -317,7 +316,7 @@ type WaitingContinuation struct {
 	ExecutorID               string
 	RootRunID                string
 	Members                  []WaitingMember
-	Checkpoint               ExecutorCheckpoint
+	Checkpoint               run.Checkpoint
 	Capabilities             run.Capabilities
 	ChildRunAdmissionEnabled bool
 }

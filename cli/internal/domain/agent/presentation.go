@@ -1,10 +1,7 @@
-// Package agent owns the CLI's agent-conversation model and runtime port.
-//
-// The types here are presentation models, deliberately not the runtime's wire
-// contract. A terminal wants a flat, mutable, ordered transcript; the wire is
-// shaped for replay, dedup and pagination. An implementation of [Runtime]
-// translates one into the other — which is also what keeps a second copy of the
-// wire types out of this module.
+// Package agent owns CLI conversation folding, authoring values, and presentation.
+// Durable Session and Run facts use Runtime Protocol values directly. Local
+// models retain the transcript, streaming previews, and interaction state needed
+// by command output and the terminal.
 package agent
 
 import (
@@ -21,27 +18,11 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// Errors a [Runtime] reports by identity rather than by message, mirroring the
-// symbolic names the runtime protocol uses for the same conditions. Commands
-// branch on these; nothing branches on error text.
+// CLI observation and connection failures remain distinct from Runtime errors.
 var (
-	ErrSessionNotFound      = errors.New("session not found")
-	ErrRunNotFound          = errors.New("run not found")
-	ErrInterruptNotOpen     = errors.New("interrupt not open")
-	ErrStaleSegment         = errors.New("stale segment")
-	ErrRunWaiting           = errors.New("run is waiting")
-	ErrRunFinished          = errors.New("run is finished")
-	ErrReplayCursorInvalid  = errors.New("event replay cursor is invalid")
-	ErrReplayUnavailable    = errors.New("event replay unavailable")
-	ErrSessionHasActiveRun  = errors.New("session has an active run")
-	ErrSessionBusy          = errors.New("session is busy")
-	ErrRevisionConflict     = errors.New("revision conflict")
-	ErrEventConflict        = errors.New("event identity conflict")
-	ErrCommandInProgress    = errors.New("command is still committing")
-	ErrCommandConflict      = errors.New("command identity conflict")
-	ErrCommandStoreMismatch = errors.New("command belongs to another runtime idempotency store")
-	ErrDisconnected         = errors.New("runtime disconnected")
-	ErrIncompatibleRuntime  = errors.New("runtime protocol is incompatible")
+	ErrEventConflict       = errors.New("event identity conflict")
+	ErrDisconnected        = errors.New("runtime disconnected")
+	ErrIncompatibleRuntime = errors.New("runtime protocol is incompatible")
 )
 
 // BlockKind names what a transcript block is. The set is closed: an item a
@@ -116,10 +97,6 @@ func writeBlockIdentityField(encoded *strings.Builder, value string) {
 	encoded.WriteString(strconv.Itoa(len(value)))
 	encoded.WriteByte(blockIdentityLengthSeparator)
 	encoded.WriteString(value)
-}
-
-func (b Block) Identity() BlockIdentity {
-	return BlockIdentity{RunID: b.RunID, BlockID: b.ID}
 }
 
 // Clone returns a block with no mutable storage shared with the caller.
@@ -347,22 +324,9 @@ func (t ToolCall) Validate() error {
 	return nil
 }
 
-// OutcomeStatus is how a run ended.
-type OutcomeStatus string
-
-const (
-	OutcomeCompleted OutcomeStatus = "completed"
-	OutcomeTimedOut  OutcomeStatus = "timedOut"
-	OutcomeMaxSteps  OutcomeStatus = "maxSteps"
-	OutcomeMaxBudget OutcomeStatus = "maxBudget"
-	OutcomeCanceled  OutcomeStatus = "canceled"
-	OutcomeFailed    OutcomeStatus = "failed"
-	OutcomeLost      OutcomeStatus = "lost"
-)
-
-// Outcome is a finished run's verdict.
+// Outcome formats the Runtime verdict for command output and terminal status.
 type Outcome struct {
-	Status OutcomeStatus
+	Status protocol.RunOutcomeType
 	// Problem is the single source of failure classification, display text, and
 	// recovery metadata for failed, timed-out, and lost outcomes.
 	Problem *protocol.ProblemData

@@ -40,7 +40,7 @@ type Bundle struct {
 	WorkspaceMutations  *WorkspaceMutationStore
 	Knowledge           *knowledgefile.Store
 	AgentMemory         *sqlitestore.AgentMemoryStore
-	ExecutorCheckpoints *ExecutorCheckpointStore
+	ExecutorCheckpoints *sqlitestore.ExecutorCheckpointStore
 	Interrupts          *InterruptStore
 	Transcript          *sqlitestore.TranscriptStore
 	Feedback            *sqlitestore.FeedbackStore
@@ -163,7 +163,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		WorkspaceMutations:  NewWorkspaceMutationStore(sqlitestore.NewWorkspaceMutationStore(db)),
 		Knowledge:           knowledgeStore,
 		AgentMemory:         sqlitestore.NewAgentMemoryStore(db),
-		ExecutorCheckpoints: NewExecutorCheckpointStore(sqlitestore.NewExecutorCheckpointStore(db)),
+		ExecutorCheckpoints: sqlitestore.NewExecutorCheckpointStore(db),
 		Interrupts:          NewInterruptStore(sqlitestore.NewInterruptStore(db)),
 		Transcript:          sqlitestore.NewTranscriptStore(db),
 		Feedback:            sqlitestore.NewFeedbackStore(db),

@@ -32,7 +32,7 @@ type waitingSubtreeCancellationState struct {
 	RootRun              rundomain.Run
 	ExpectedPending      Pending
 	RemainingPending     *Pending
-	Checkpoint           ExecutorCheckpoint
+	Checkpoint           rundomain.Checkpoint
 	TerminalRuns         []rundomain.Replacement
 	TerminalItems        []transcript.Replacement
 	ParentItem           transcript.Replacement
@@ -52,7 +52,7 @@ func NewParkedSubtreeCancellationCommit(
 	rootRun rundomain.Run,
 	expectedPending Pending,
 	remainingPending Pending,
-	checkpoint ExecutorCheckpoint,
+	checkpoint rundomain.Checkpoint,
 	terminalRuns []rundomain.Replacement,
 	terminalItems []transcript.Replacement,
 	parentItem transcript.Replacement,
@@ -75,7 +75,7 @@ func NewResumingSubtreeCancellationCommit(
 	targetRunID string,
 	rootRun rundomain.Run,
 	expectedPending Pending,
-	checkpoint ExecutorCheckpoint,
+	checkpoint rundomain.Checkpoint,
 	terminalRuns []rundomain.Replacement,
 	terminalItems []transcript.Replacement,
 	parentItem transcript.Replacement,
@@ -102,7 +102,6 @@ func newWaitingSubtreeCancellationCommit(
 		remaining := state.RemainingPending.Clone()
 		state.RemainingPending = &remaining
 	}
-	state.Checkpoint = state.Checkpoint.Clone()
 	state.TerminalRuns = slices.Clone(state.TerminalRuns)
 	state.TerminalItems = slices.Clone(state.TerminalItems)
 	state.ConversationMessages = cloneCommitMessages(state.ConversationMessages)
@@ -110,9 +109,9 @@ func newWaitingSubtreeCancellationCommit(
 		resume := cloneOpeningResume(*state.Resume)
 		state.Resume = &resume
 	}
-	state.OpeningEvents = cloneEventCommits(state.OpeningEvents)
+	state.OpeningEvents = slices.Clone(state.OpeningEvents)
 	commit := WaitingSubtreeCancellationCommit{state: state}
-	if err := commit.Validate(); err != nil {
+	if err := validateWaitingCancellation(state); err != nil {
 		return WaitingSubtreeCancellationCommit{}, err
 	}
 	return commit, nil
@@ -149,8 +148,8 @@ func (w WaitingSubtreeCancellationCommit) RemainingPending() (Pending, bool) {
 }
 
 // Checkpoint returns an isolated executor checkpoint for the surviving tree.
-func (w WaitingSubtreeCancellationCommit) Checkpoint() ExecutorCheckpoint {
-	return w.state.Checkpoint.Clone()
+func (w WaitingSubtreeCancellationCommit) Checkpoint() rundomain.Checkpoint {
+	return w.state.Checkpoint
 }
 
 // TerminalRuns returns the canceled subtree's canonical Run replacements.
@@ -183,7 +182,7 @@ func (w WaitingSubtreeCancellationCommit) Resume() (rundomain.TreeResumeDraft, b
 
 // OpeningEvents returns isolated projections committed with a resumed disposition.
 func (w WaitingSubtreeCancellationCommit) OpeningEvents() []EventCommit {
-	return cloneEventCommits(w.state.OpeningEvents)
+	return slices.Clone(w.state.OpeningEvents)
 }
 
 type WaitingSubtreeCancellationResult struct {
@@ -201,12 +200,13 @@ type waitingCancellationValidation struct {
 	finishedAtByRunID   map[string]time.Time
 }
 
-// Validate proves that the write-set is exactly the canonical transformation
-// of ExpectedPending after TargetRunID's subtree is removed. This is application
-// policy: persistence only claims the frozen Pending snapshot and writes these
-// already-validated facts atomically.
-func (w WaitingSubtreeCancellationCommit) Validate() error {
-	validation, err := newWaitingCancellationValidation(w)
+// IsZero reports whether no cancellation transaction was constructed.
+func (w WaitingSubtreeCancellationCommit) IsZero() bool { return w.state.CommitID.IsZero() }
+
+// validateWaitingCancellation proves the complete transformation once at its
+// construction boundary. Persistence only claims and writes the resulting facts.
+func validateWaitingCancellation(state waitingSubtreeCancellationState) error {
+	validation, err := newWaitingCancellationValidation(state)
 	if err != nil {
 		return err
 	}
@@ -232,9 +232,8 @@ func (w WaitingSubtreeCancellationCommit) Validate() error {
 }
 
 func newWaitingCancellationValidation(
-	c WaitingSubtreeCancellationCommit,
+	state waitingSubtreeCancellationState,
 ) (waitingCancellationValidation, error) {
-	state := c.state
 	if err := validateWaitingCancellationBoundary(state); err != nil {
 		return waitingCancellationValidation{}, err
 	}
@@ -295,12 +294,12 @@ func validateWaitingCancellationBoundary(c waitingSubtreeCancellationState) erro
 	if err := c.Checkpoint.ValidateOwnership(rootContinuation.MemberID, c.SessionID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation checkpoint ownership: %w", err)
 	}
-	if c.Checkpoint.Scope.GoalIncarnationID != c.ExpectedPending.GoalIncarnationID ||
-		!c.Checkpoint.ModelSelection.Equal(rootContinuation.ModelSelection) ||
-		c.Checkpoint.Limits != rootContinuation.Limits {
+	if c.Checkpoint.Scope().GoalIncarnationID != c.ExpectedPending.GoalIncarnationID ||
+		!c.Checkpoint.ModelSelection().Equal(rootContinuation.ModelSelection) ||
+		c.Checkpoint.Limits() != rootContinuation.Limits {
 		return fmt.Errorf(
 			"runs: waiting cancellation checkpoint differs from root continuation: %w",
-			ErrInvalidExecutorCheckpoint,
+			rundomain.ErrInvalidCheckpoint,
 		)
 	}
 	return nil
@@ -385,8 +384,8 @@ func (w *waitingCancellationValidation) validateTerminalRuns() error {
 		)
 	}
 	for index, replacement := range c.TerminalRuns {
-		if err := replacement.Validate(); err != nil {
-			return fmt.Errorf("runs: waiting cancellation Run[%d]: %w", index, err)
+		if replacement.IsZero() {
+			return fmt.Errorf("runs: run replacement is required")
 		}
 		expected := replacement.Expected()
 		run := replacement.State()
@@ -468,8 +467,8 @@ func (w waitingCancellationValidation) validateTerminalItems() error {
 	}
 	seen := make(map[string]struct{}, len(c.TerminalItems))
 	for index, replacement := range c.TerminalItems {
-		if err := replacement.Validate(); err != nil {
-			return fmt.Errorf("runs: waiting cancellation terminal Item[%d]: %w", index, err)
+		if replacement.IsZero() {
+			return fmt.Errorf("runs: item replacement is required")
 		}
 		expectedItem := replacement.Expected()
 		expectedTool, expected := expectedByItemID[expectedItem.ID()]
@@ -615,20 +614,20 @@ func (w waitingCancellationValidation) validateOpeningEvents() error {
 		surviving[runID] = struct{}{}
 	}
 	for index, event := range c.OpeningEvents {
-		if !event.CommitID.IsZero() {
+		if !event.CommitID().IsZero() {
 			return fmt.Errorf("runs: waiting cancellation opening event[%d] carries a top-level event commit identity", index)
 		}
-		if err := event.Validate(); err != nil {
-			return fmt.Errorf("runs: waiting cancellation opening event[%d]: %w", index, err)
+		if event.IsZero() {
+			return fmt.Errorf("runs: waiting cancellation opening event[%d] is required", index)
 		}
 		if err := validateOpeningProjection(event); err != nil {
 			return fmt.Errorf("runs: waiting cancellation opening event[%d]: %w", index, err)
 		}
-		if event.SessionID != c.SessionID || len(event.Items) == 0 || len(event.ConversationMessages) != 0 {
+		if event.SessionID() != c.SessionID || len(event.Items()) == 0 || len(event.ConversationMessages()) != 0 {
 			return fmt.Errorf("runs: waiting cancellation opening event[%d] is not item-only", index)
 		}
-		if _, exists := surviving[event.RunID]; !exists {
-			return fmt.Errorf("runs: waiting cancellation opening event[%d] names removed Run %q", index, event.RunID)
+		if _, exists := surviving[event.RunID()]; !exists {
+			return fmt.Errorf("runs: waiting cancellation opening event[%d] names removed Run %q", index, event.RunID())
 		}
 	}
 	return nil
@@ -636,8 +635,8 @@ func (w waitingCancellationValidation) validateOpeningEvents() error {
 
 func (w waitingCancellationValidation) validateParentItem() error {
 	c := w.commit
-	if err := c.ParentItem.Validate(); err != nil {
-		return fmt.Errorf("runs: waiting cancellation parent Item: %w", err)
+	if c.ParentItem.IsZero() {
+		return fmt.Errorf("runs: item replacement is required")
 	}
 	expected, replacement := c.ParentItem.Expected(), c.ParentItem.State()
 	target := w.continuationByRunID[c.TargetRunID]

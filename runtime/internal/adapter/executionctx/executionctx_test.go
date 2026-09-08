@@ -4,13 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 func TestScopeAccessorsShareOneImmutableTurnValue(t *testing.T) {
-	want := runs.ExecutionScope{
+	want := run.ExecutionScope{
 		SessionID:         "session-1",
 		CWD:               "/sandbox/project",
 		WorkspaceCWD:      "/workspace/project",

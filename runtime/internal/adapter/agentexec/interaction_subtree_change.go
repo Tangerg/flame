@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	agent "github.com/Tangerg/scope/agent"
 )
 
@@ -15,7 +16,7 @@ type interactionWaitingSubtreeChange struct {
 
 	session    *interactionSession
 	prepared   *agent.PreparedWaitingSubtreeCancellation
-	checkpoint runs.ExecutorCheckpoint
+	checkpoint run.Checkpoint
 	canceled   []agent.ProcessID
 	paused     []agent.ProcessID
 	retired    []*managedDelegateCall
@@ -207,7 +208,7 @@ func (i *interactionSession) commitSubtreeApplication(
 	}
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
-	i.state.waitingCheckpoint = change.checkpoint.Clone()
+	i.state.waitingCheckpoint = change.checkpoint
 	for _, managed := range change.retired {
 		delete(i.state.delegateChildren, managed.childProcessID)
 		delete(i.state.delegateCalls, managed.identity)
@@ -253,7 +254,7 @@ func (i *interactionSession) finishSubtreeContinuation(
 		return
 	}
 	i.state.boundary = interactionBoundaryInactive
-	i.state.waitingCheckpoint = runs.ExecutorCheckpoint{}
+	i.state.waitingCheckpoint = run.Checkpoint{}
 }
 
 func (i *interactionSession) finishSubtreeDiscard(change *interactionWaitingSubtreeChange) {

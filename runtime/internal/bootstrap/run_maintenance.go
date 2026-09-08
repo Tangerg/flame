@@ -27,20 +27,15 @@ func buildRunMaintenance(
 		conversationServices.messages,
 		resolveUtility,
 		maintenance.NewLiveStateSnapshotter(shells),
-		maintenance.CompactionPolicyValues{},
 		contextState,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: build compactor: %w", err)
 	}
-	if cfg.Maintenance != nil {
-		return cfg.Maintenance, compactor, nil
-	}
 	consolidator, err := maintenance.NewMemoryConsolidator(
 		conversationServices.store,
 		memoryCuration,
 		resolveUtility,
-		maintenance.MemoryCurationPolicyValues{},
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: build memory consolidator: %w", err)
@@ -60,15 +55,18 @@ func buildRunMaintenance(
 			skills,
 			skillRepository,
 			resolveUtility,
-			maintenance.SkillMiningPolicyValues{},
 		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("runtime: build skill proposal miner: %w", err)
 		}
-		skillArchiver, err = maintenance.NewIdleSkillArchiver(skillMaintenance, maintenance.SkillArchivePolicyValues{})
+		skillArchiver, err = maintenance.NewIdleSkillArchiver(skillMaintenance)
 		if err != nil {
 			return nil, nil, fmt.Errorf("runtime: build idle skill archiver: %w", err)
 		}
 	}
-	return maintenance.NewPipeline(consolidator, skillMiner, skillArchiver), compactor, nil
+	pipeline, err := maintenance.NewPipeline(consolidator, skillMiner, skillArchiver)
+	if err != nil {
+		return nil, nil, err
+	}
+	return pipeline, compactor, nil
 }

@@ -1,14 +1,17 @@
 package toolset
 
-import "testing"
+import (
+	"crypto/sha256"
+	"testing"
+)
 
 // TestTracker drives the pure read-before-mutation invariant directly: a path must
 // be recorded before it passes Check, a changed fingerprint is stale, and
 // Refresh permits consecutive mutations.
 func TestTracker(t *testing.T) {
 	path := "/workspace/foo.go"
-	one := fingerprintOf([]byte("one"))
-	two := fingerprintOf([]byte("two"))
+	one := sha256.Sum256([]byte("one"))
+	two := sha256.Sum256([]byte("two"))
 	tr := newReadTracker()
 	const sess = "s1"
 
@@ -40,7 +43,7 @@ func TestTracker(t *testing.T) {
 
 func TestResolverForgetsOnlyRequestedSessionHistory(t *testing.T) {
 	path := "/workspace/foo.go"
-	content := fingerprintOf([]byte("content"))
+	content := sha256.Sum256([]byte("content"))
 	tracker := newReadTracker()
 	tracker.record("restored", path, content)
 	tracker.record("untouched", path, content)
@@ -57,7 +60,7 @@ func TestResolverForgetsOnlyRequestedSessionHistory(t *testing.T) {
 }
 
 func TestResolverForgetsWorkspaceReadsAcrossSessions(t *testing.T) {
-	content := fingerprintOf([]byte("content"))
+	content := sha256.Sum256([]byte("content"))
 	tracker := newReadTracker()
 	tracker.record("owner", "/workspace/a.go", content)
 	tracker.record("sibling", "/workspace/nested/b.go", content)

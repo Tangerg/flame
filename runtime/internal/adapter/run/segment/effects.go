@@ -192,8 +192,8 @@ type RunProgressWriter interface {
 // checkpoints selected by the Run lifecycle. It never interprets the
 // payload.
 type ExecutorCheckpointStore interface {
-	SaveCheckpoint(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error
-	LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error)
+	SaveCheckpoint(ctx context.Context, checkpoint run.Checkpoint) error
+	LoadCheckpoint(ctx context.Context, rootMemberID string) (run.Checkpoint, error)
 	DeleteCheckpoints(ctx context.Context, sessionID string, rootIDs []string) error
 }
 
@@ -278,8 +278,7 @@ var (
 const runsegmentTracerName = "scope/flame/segment"
 
 // New returns the durable Run-segment effects. Every dependency needed by the
-// supported write-sets is validated here; optional product capabilities remain
-// explicit through Schedules, GoalRuns, and ToolResults.
+// supported write-sets is validated before any persistence can begin.
 func New(cfg Config) (*Effects, error) {
 	required := []struct {
 		name  string
@@ -288,6 +287,9 @@ func New(cfg Config) (*Effects, error) {
 		{"interrupt store", cfg.Interrupts},
 		{"resume claim store", cfg.ResumeClaims},
 		{"session store", cfg.Sessions},
+		{"schedule store", cfg.Schedules},
+		{"goal run recorder", cfg.GoalRuns},
+		{"tool result store", cfg.ToolResults},
 		{"transcript store", cfg.Transcript},
 		{"item replacer", cfg.ItemReplacer},
 		{"tool approval store", cfg.ToolApprovals},
@@ -303,19 +305,6 @@ func New(cfg Config) (*Effects, error) {
 	for _, dependency := range required {
 		if nilDependency(dependency.value) {
 			return nil, fmt.Errorf("segment: %s is required", dependency.name)
-		}
-	}
-	optional := []struct {
-		name  string
-		value any
-	}{
-		{"schedule store", cfg.Schedules},
-		{"goal run recorder", cfg.GoalRuns},
-		{"tool result store", cfg.ToolResults},
-	}
-	for _, dependency := range optional {
-		if dependency.value != nil && nilDependency(dependency.value) {
-			return nil, fmt.Errorf("segment: optional %s must not be typed nil", dependency.name)
 		}
 	}
 	return &Effects{
@@ -354,10 +343,10 @@ func nilDependency(value any) bool {
 func (e *Effects) ReadWaitingCheckpoint(
 	ctx context.Context,
 	rootMemberID string,
-) (runs.ExecutorCheckpoint, error) {
+) (run.Checkpoint, error) {
 	checkpoint, err := e.executorCheckpoints.LoadCheckpoint(ctx, rootMemberID)
 	if err != nil {
-		return runs.ExecutorCheckpoint{}, fmt.Errorf("segment: load waiting executor checkpoint: %w", err)
+		return run.Checkpoint{}, fmt.Errorf("segment: load waiting executor checkpoint: %w", err)
 	}
-	return checkpoint.Clone(), nil
+	return checkpoint, nil
 }

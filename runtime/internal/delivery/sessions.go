@@ -21,18 +21,12 @@ const (
 
 func registerSessions(registry *Registry) {
 	registry.Query(MethodMeta{Name: SessionsList},
-		func(service interface {
-			ListSessions(context.Context, protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error)
-		}, ctx context.Context, request protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
-			return service.ListSessions(ctx, request)
-		})
+		(*Handler).ListSessions)
 
 	registry.Query(MethodMeta{
 		Name:   SessionsGet,
 		Errors: []string{protocol.ErrSessionNotFound.Error()},
-	}, func(service interface {
-		GetSession(context.Context, string) (*protocol.Session, error)
-	}, ctx context.Context, request protocol.GetSessionRequest) (*protocol.Session, error) {
+	}, func(service *Handler, ctx context.Context, request protocol.GetSessionRequest) (*protocol.Session, error) {
 		return service.GetSession(ctx, request.SessionID)
 	})
 
@@ -44,20 +38,12 @@ func registerSessions(registry *Registry) {
 			When:     []FieldCondition{{Field: "includeDescendants", Operator: OperatorPresent}},
 			Requires: []string{protocol.FeatureSubagents},
 		}},
-	}, func(service interface {
-		GetSessionSnapshot(context.Context, protocol.GetSessionSnapshotRequest) (*protocol.SessionSnapshot, error)
-	}, ctx context.Context, request protocol.GetSessionSnapshotRequest) (*protocol.SessionSnapshot, error) {
-		return service.GetSessionSnapshot(ctx, request)
-	})
+	}, (*Handler).GetSessionSnapshot)
 
 	registry.Command(MethodMeta{
 		Name:   SessionsCreate,
 		Errors: []string{protocol.ErrWorkspaceUnavailable.Error()},
-	}, func(service interface {
-		CreateSession(context.Context, protocol.CreateSessionRequest) (*protocol.Session, error)
-	}, ctx context.Context, request protocol.CreateSessionRequest) (*protocol.Session, error) {
-		return service.CreateSession(ctx, request)
-	})
+	}, (*Handler).CreateSession)
 
 	// Setting workspace is a relocate, which is its own capability — hence a
 	// conditional rule: the rest of sessions.update stays available when relocate
@@ -73,18 +59,12 @@ func registerSessions(registry *Registry) {
 			When:     []FieldCondition{{Field: "workspace", Operator: OperatorPresent}},
 			Requires: []string{protocol.FeatureRelocate},
 		}},
-	}, func(service interface {
-		UpdateSession(context.Context, protocol.UpdateSessionRequest) (*protocol.Session, error)
-	}, ctx context.Context, request protocol.UpdateSessionRequest) (*protocol.Session, error) {
-		return service.UpdateSession(ctx, request)
-	})
+	}, (*Handler).UpdateSession)
 
 	registry.CommandAck(MethodMeta{
 		Name:   SessionsDelete,
 		Errors: []string{protocol.ErrSessionNotFound.Error()},
-	}, func(service interface {
-		DeleteSession(context.Context, string) error
-	}, ctx context.Context, request protocol.DeleteSessionRequest) error {
+	}, func(service *Handler, ctx context.Context, request protocol.DeleteSessionRequest) error {
 		return service.DeleteSession(ctx, request.SessionID)
 	})
 
@@ -94,11 +74,7 @@ func registerSessions(registry *Registry) {
 			protocol.ErrSessionNotFound.Error(),
 			protocol.ErrRunNotFound.Error(),
 		},
-	}, func(service interface {
-		ForkSession(context.Context, protocol.ForkSessionRequest) (*protocol.Session, error)
-	}, ctx context.Context, request protocol.ForkSessionRequest) (*protocol.Session, error) {
-		return service.ForkSession(ctx, request)
-	})
+	}, (*Handler).ForkSession)
 
 	// restoreType files/both rewind the working tree from a shadow-git snapshot,
 	// which needs features.checkpoints; the default history rollback needs nothing
@@ -122,28 +98,16 @@ func registerSessions(registry *Registry) {
 				Requires: []string{protocol.FeatureCheckpoints},
 			},
 		},
-	}, func(service interface {
-		RollbackSession(context.Context, protocol.RollbackSessionRequest) (*protocol.RollbackSessionResponse, error)
-	}, ctx context.Context, request protocol.RollbackSessionRequest) (*protocol.RollbackSessionResponse, error) {
-		return service.RollbackSession(ctx, request)
-	})
+	}, (*Handler).RollbackSession)
 
 	registry.Query(MethodMeta{
 		Name:            SessionsExport,
 		Errors:          []string{protocol.ErrSessionNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureSessionExport),
-	}, func(service interface {
-		ExportSession(context.Context, protocol.ExportSessionRequest) (*protocol.ExportSessionResponse, error)
-	}, ctx context.Context, request protocol.ExportSessionRequest) (*protocol.ExportSessionResponse, error) {
-		return service.ExportSession(ctx, request)
-	})
+	}, (*Handler).ExportSession)
 
 	registry.Command(MethodMeta{
 		Name:            SessionsImport,
 		CapabilityRules: requires(protocol.FeatureSessionExport),
-	}, func(service interface {
-		ImportSession(context.Context, protocol.ImportSessionRequest) (*protocol.ImportSessionResponse, error)
-	}, ctx context.Context, request protocol.ImportSessionRequest) (*protocol.ImportSessionResponse, error) {
-		return service.ImportSession(ctx, request)
-	})
+	}, (*Handler).ImportSession)
 }

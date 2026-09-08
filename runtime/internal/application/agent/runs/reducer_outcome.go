@@ -3,8 +3,6 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"math"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -93,11 +91,11 @@ func (r *reducer) metrics() (run.Metrics, error) {
 	if reported {
 		usageRef = &usage
 	}
-	activeDuration := r.cfg.Metrics.ActiveDuration()
-	if r.segmentDuration < 0 || (r.segmentDuration > 0 && activeDuration > time.Duration(math.MaxInt64)-r.segmentDuration) {
-		return run.Metrics{}, errors.New("segment active duration is invalid or overflows")
+	metrics, err := run.NewMetrics(usageRef, r.step, r.cfg.Metrics.ActiveDuration())
+	if err != nil {
+		return run.Metrics{}, err
 	}
-	return run.NewMetrics(usageRef, r.step, activeDuration+r.segmentDuration)
+	return metrics.AddActiveDuration(r.segmentDuration)
 }
 
 func (r *reducer) applyUsage(reported SegmentUsage) error {
@@ -119,8 +117,10 @@ func (r *reducer) applyUsage(reported SegmentUsage) error {
 	if r.usage != nil {
 		previous = r.usage
 	}
-	if err := validateUsageMonotonic(previous, next); err != nil {
-		return err
+	if previous != nil {
+		if err := next.ValidateAdvanceFrom(*previous); err != nil {
+			return err
+		}
 	}
 	r.usage = next
 	r.step = reported.Steps
@@ -211,41 +211,6 @@ func validatedSegmentUsage(reported SegmentUsage) (*accounting.Usage, error) {
 		}
 	}
 	return transcriptUsage(reported), nil
-}
-
-func validateUsageMonotonic(previous, next *accounting.Usage) error {
-	if previous == nil {
-		return nil
-	}
-	if next == nil {
-		return errors.New("cumulative usage disappeared after it was reported")
-	}
-	if err := validateModelUsageMonotonic("total", previous.Total, next.Total); err != nil {
-		return err
-	}
-	for model, previousModel := range previous.ByModel {
-		nextModel, ok := next.ByModel[model]
-		if !ok {
-			return fmt.Errorf("cumulative usage dropped model %q", model)
-		}
-		if err := validateModelUsageMonotonic(model, previousModel, nextModel); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func validateModelUsageMonotonic(label string, previous, next accounting.Totals) error {
-	if err := next.ValidateAdvanceFrom(previous); err != nil {
-		return fmt.Errorf(
-			"cumulative usage for %q regressed from %+v to %+v: %w",
-			label,
-			previous,
-			next,
-			err,
-		)
-	}
-	return nil
 }
 
 func modelUsageFrom(prompt, completion, reasoning, cacheRead, cacheWrite int64, cost accounting.Cost) accounting.Totals {

@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -155,7 +156,7 @@ func (c HandlerConfig) validate() error {
 		{name: "WorkspaceWatch", value: c.WorkspaceWatch},
 		{name: "WorkspaceAuthoredWatch", value: c.WorkspaceAuthoredWatch},
 	} {
-		if !capabilityAvailable(dependency.value) {
+		if !dependencyPresent(dependency.value) {
 			return fmt.Errorf("delivery: %s is required", dependency.name)
 		}
 	}
@@ -375,4 +376,17 @@ func advertisedFeatures(enabled map[string]bool) map[string]protocol.FeatureCapa
 // — consistent with the feature flag advertised through discovery.
 func capabilityNotNegotiated(method string) error {
 	return fmt.Errorf("%w: %s", protocol.ErrCapabilityNotNeg, method)
+}
+
+func dependencyPresent(dependency any) bool {
+	if dependency == nil {
+		return false
+	}
+	value := reflect.ValueOf(dependency)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return !value.IsNil()
+	default:
+		return true
+	}
 }

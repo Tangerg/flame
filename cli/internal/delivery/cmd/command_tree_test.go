@@ -44,7 +44,7 @@ func executeCommand(t *testing.T, rt Runtime, stdin string, args ...string) (str
 	if rt == nil {
 		rt = runtimefixture.New()
 	}
-	return executeCommandWithRuntime(t, rt, nil, stdin, args...)
+	return executeCommandWithRuntime(t, rt, new(commandRuntimeProfile(t)), stdin, args...)
 }
 
 func executeCommandWithRuntime(
@@ -56,9 +56,12 @@ func executeCommandWithRuntime(
 ) (string, string, error) {
 	t.Helper()
 	var out, errb bytes.Buffer
-	dependencies := Dependencies{OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
-		return runtime, profile, nil
-	}}
+	dependencies := Dependencies{
+		StateDirectory: t.TempDir(),
+		OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
+			return runtime, profile, nil
+		},
+	}
 	root := NewRoot(dependencies)
 	root.SetOut(&out)
 	root.SetErr(&errb)
@@ -74,13 +77,39 @@ func instantRuntime() *runtimefixture.Runtime {
 	return rt
 }
 
+func TestCommandRequiresNegotiatedRuntimeProfile(t *testing.T) {
+	out, _, err := executeCommandWithRuntime(t, instantRuntime(), nil, "", "sessions", "ls")
+	if err == nil || !strings.Contains(err.Error(), "profile") || out != "" {
+		t.Fatalf("command without profile = output %q, error %v", out, err)
+	}
+}
+
+func TestSessionsDeleteRequiresWorkbenchDirectoryBeforeMutation(t *testing.T) {
+	runtime := &postCommitDeleteRuntime{Runtime: instantRuntime()}
+	root := NewRoot(Dependencies{
+		OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
+			return runtime, new(commandRuntimeProfile(t)), nil
+		},
+	})
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+	root.SetArgs([]string{"sessions", "delete", "--yes", firstSession(t, runtime)})
+	err := root.ExecuteContext(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "state directory") {
+		t.Fatalf("delete without workbench directory: %v", err)
+	}
+	if runtime.request.CommandID != "" {
+		t.Fatal("delete mutated runtime without durable authoring state")
+	}
+}
+
 func firstSession(t *testing.T, rt Runtime) string {
 	t.Helper()
 	sessions, err := rt.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.DefaultPageSize()})
 	if err != nil {
 		t.Fatalf("ListSessions: %v", err)
 	}
-	return sessions.Items[0].ID
+	return sessions.Data[0].ID
 }
 
 func TestRunDeclinesApprovalWhenUnattended(t *testing.T) {
@@ -272,7 +301,7 @@ func (a *ambiguousControls) StartRun(ctx context.Context, input agent.StartRun) 
 	if a.startID != "" {
 		if a.startID != input.CommandID {
 			a.mu.Unlock()
-			return agent.SegmentStream{}, agent.ErrCommandConflict
+			return agent.SegmentStream{}, protocol.ErrIdempotencyConflict
 		}
 		a.starts++
 		stream := a.startStream
@@ -301,7 +330,7 @@ func (a *ambiguousControls) ResumeRun(ctx context.Context, input agent.ResumeRun
 	if a.resumeID != "" {
 		if a.resumeID != input.CommandID {
 			a.mu.Unlock()
-			return agent.SegmentStream{}, agent.ErrCommandConflict
+			return agent.SegmentStream{}, protocol.ErrIdempotencyConflict
 		}
 		a.resumes++
 		stream := a.resumeStream
@@ -405,8 +434,8 @@ func TestRunReturnsAnErrorForNonCompletedOutcomes(t *testing.T) {
 		outcome agent.Outcome
 		want    string
 	}{
-		{name: "failed", outcome: agent.Outcome{Status: agent.OutcomeFailed, Problem: &protocol.ProblemData{Type: "rate_limited", Detail: "provider refused", RetryAfterSeconds: 9}}, want: "retry after 9s"},
-		{name: "canceled", outcome: agent.Outcome{Status: agent.OutcomeCanceled}, want: "run canceled"},
+		{name: "failed", outcome: agent.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: "rate_limited", Detail: "provider refused", RetryAfterSeconds: 9}}, want: "retry after 9s"},
+		{name: "canceled", outcome: agent.Outcome{Status: protocol.OutcomeCanceled}, want: "run canceled"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			runtime := instantRuntime()
@@ -445,8 +474,8 @@ func TestRunRejectsInvalidAndConflictingOutputFormatsBeforeCreatingASession(t *t
 				t.Fatalf("arguments %v were accepted", args)
 			}
 			after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
-			if len(after.Items) != len(before.Items) {
-				t.Fatalf("invalid output format created a session: %d -> %d", len(before.Items), len(after.Items))
+			if len(after.Data) != len(before.Data) {
+				t.Fatalf("invalid output format created a session: %d -> %d", len(before.Data), len(after.Data))
 			}
 		})
 	}
@@ -499,7 +528,7 @@ func TestRunStopsAfterReconnectBudgetIsExhausted(t *testing.T) {
 func shortCompletedScript(string) runtimefixture.Script {
 	return runtimefixture.Script{Prelude: []runtimefixture.Step{
 		{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "done"}}},
-		{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+		{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 	}}
 }
 
@@ -509,7 +538,7 @@ func TestRunReadsAPipedPromptAndCombinesItWithTheArgument(t *testing.T) {
 	rt.Script = func(prompt string) runtimefixture.Script {
 		captured = prompt
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	if _, _, err := executeCommand(t, rt, "file contents\n", "run", "-s", firstSession(t, rt), "explain this"); err != nil {
@@ -623,8 +652,8 @@ func TestRunRejectsInvalidAttachmentBeforeCreatingASession(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 	after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
-	if len(after.Items) != len(before.Items) {
-		t.Fatalf("invalid input created a session: %d -> %d", len(before.Items), len(after.Items))
+	if len(after.Data) != len(before.Data) {
+		t.Fatalf("invalid input created a session: %d -> %d", len(before.Data), len(after.Data))
 	}
 }
 
@@ -656,7 +685,7 @@ func TestRunWithNothingToSay(t *testing.T) {
 
 func TestRunRejectsAnUnknownSession(t *testing.T) {
 	_, _, err := executeCommand(t, instantRuntime(), "", "run", "-s", "ses_nope", "why?")
-	if !errors.Is(err, agent.ErrSessionNotFound) {
+	if !errors.Is(err, protocol.ErrSessionNotFound) {
 		t.Fatalf("err = %v, want ErrSessionNotFound", err)
 	}
 }
@@ -668,8 +697,8 @@ func TestRunCreatesASessionWhenNoneIsNamed(t *testing.T) {
 		t.Fatalf("run: %v", err)
 	}
 	after, _ := rt.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
-	if len(after.Items) != len(before.Items)+1 {
-		t.Fatalf("session count went %d -> %d, want one more", len(before.Items), len(after.Items))
+	if len(after.Data) != len(before.Data)+1 {
+		t.Fatalf("session count went %d -> %d, want one more", len(before.Data), len(after.Data))
 	}
 }
 
@@ -692,8 +721,8 @@ func TestWorkspaceFlagIsNormalizedBeforeCreatingASession(t *testing.T) {
 		t.Fatal(err)
 	}
 	after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
-	if len(after.Items) != len(before.Items)+1 || after.Items[0].Workspace.Path != want {
-		t.Fatalf("newest session workspace = %q, want %q", after.Items[0].Workspace.Path, want)
+	if len(after.Data) != len(before.Data)+1 || after.Data[0].Workspace.Ref.Path != want {
+		t.Fatalf("newest session workspace = %q, want %q", after.Data[0].Workspace.Ref.Path, want)
 	}
 }
 
@@ -779,14 +808,10 @@ func requireSessionUpdate(t *testing.T, runtime Runtime, id string) {
 		t.Fatalf("sessions update: %v", err)
 	}
 	var updated struct {
-		ID        string `json:"id"`
-		Workspace struct {
-			Path         string `json:"path"`
-			ProjectRoot  string `json:"projectRoot"`
-			Availability string `json:"availability"`
-		} `json:"workspace"`
-		Model    string `json:"model"`
-		Favorite bool   `json:"favorite"`
+		ID        string                 `json:"id"`
+		Workspace protocol.WorkspaceInfo `json:"workspace"`
+		Model     string                 `json:"model"`
+		Favorite  bool                   `json:"favorite"`
 	}
 	if unmarshalErr := json.Unmarshal([]byte(out), &updated); unmarshalErr != nil {
 		t.Fatalf("sessions update output: %v\n%s", unmarshalErr, out)
@@ -795,7 +820,7 @@ func requireSessionUpdate(t *testing.T, runtime Runtime, id string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.ID != id || updated.Workspace.Path != wantWorkspace || updated.Workspace.ProjectRoot == "" ||
+	if updated.ID != id || updated.Workspace.Ref.Path != wantWorkspace || updated.Workspace.ProjectRoot == "" ||
 		updated.Workspace.Availability != "available" || updated.Model != "deep" || !updated.Favorite {
 		t.Fatalf("updated session = %+v", updated)
 	}
@@ -809,12 +834,8 @@ func TestSessionShowJSONUsesTheCLISnapshotContract(t *testing.T) {
 	}
 	var snapshot struct {
 		Session struct {
-			ID        string `json:"id"`
-			Workspace struct {
-				Path         string `json:"path"`
-				ProjectRoot  string `json:"projectRoot"`
-				Availability string `json:"availability"`
-			} `json:"workspace"`
+			ID        string                 `json:"id"`
+			Workspace protocol.WorkspaceInfo `json:"workspace"`
 		} `json:"session"`
 		Transcript []json.RawMessage `json:"transcript"`
 		Runs       []struct {
@@ -825,7 +846,7 @@ func TestSessionShowJSONUsesTheCLISnapshotContract(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &snapshot); err != nil {
 		t.Fatalf("session snapshot is not JSON: %v\n%s", err, out)
 	}
-	if snapshot.Session.ID == "" || snapshot.Session.Workspace.Path == "" || snapshot.Session.Workspace.ProjectRoot == "" ||
+	if snapshot.Session.ID == "" || snapshot.Session.Workspace.Ref.Path == "" || snapshot.Session.Workspace.ProjectRoot == "" ||
 		snapshot.Session.Workspace.Availability != "available" || len(snapshot.Transcript) != 2 ||
 		len(snapshot.Runs) != 1 || snapshot.Runs[0].Status != "finished" {
 		t.Fatalf("session snapshot = %+v", snapshot)
@@ -894,7 +915,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	var output bytes.Buffer
 	root := NewRoot(Dependencies{
 		OpenRuntime: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
-			return runtime, nil, nil
+			return runtime, new(commandRuntimeProfile(t)), nil
 		},
 		StateDirectory: stateDirectory,
 	})
@@ -971,16 +992,11 @@ func TestSessionsListJSONKeepsPaginationOnStdout(t *testing.T) {
 	if errOut != "" {
 		t.Fatalf("JSON session list wrote pagination to stderr: %q", errOut)
 	}
-	var page struct {
-		Items []struct {
-			ID string `json:"id"`
-		} `json:"items"`
-		NextCursor string `json:"nextCursor"`
-	}
+	var page protocol.Page[protocol.Session]
 	if err := json.Unmarshal([]byte(out), &page); err != nil {
 		t.Fatalf("session page is not JSON: %v\n%s", err, out)
 	}
-	if len(page.Items) != 1 || page.Items[0].ID == "" || page.NextCursor == "" {
+	if len(page.Data) != 1 || page.Data[0].ID == "" || page.NextCursor == "" {
 		t.Fatalf("session page = %+v", page)
 	}
 }

@@ -13,28 +13,9 @@ import (
 )
 
 type snapshotBindingStub struct {
-	sessions         []*protocol.Session
-	sessionAt        func(int) *protocol.Session
-	sessionCalls     int
 	snapshot         *protocol.SessionSnapshot
 	snapshotErr      error
 	snapshotRequests []protocol.GetSessionSnapshotRequest
-}
-
-func (s *snapshotBindingStub) GetSession(
-	context.Context,
-	protocol.GetSessionRequest,
-	flameruntime.CallOptions,
-) (*protocol.Session, error) {
-	s.sessionCalls++
-	if s.sessionAt != nil {
-		return s.sessionAt(s.sessionCalls), nil
-	}
-	if len(s.sessions) == 0 {
-		return nil, nil
-	}
-	index := min(s.sessionCalls-1, len(s.sessions)-1)
-	return s.sessions[index], nil
 }
 
 func (s *snapshotBindingStub) GetSessionSnapshot(
@@ -68,7 +49,7 @@ func TestSessionMaterialSnapshotFollowsTheNegotiatedTopology(t *testing.T) {
 	for _, enabled := range []bool{false, true} {
 		t.Run(map[bool]string{false: "roots", true: "descendants"}[enabled], func(t *testing.T) {
 			stub := &snapshotBindingStub{
-				sessions: []*protocol.Session{snapshotSession(1)}, snapshot: &protocol.SessionSnapshot{},
+				snapshot: &protocol.SessionSnapshot{Session: *snapshotSession(1)},
 			}
 			profile := snapshotProfile(t)
 			if enabled {
@@ -95,21 +76,21 @@ func TestSessionColdReadRejectsInvalidIdentityBeforeCallingRuntime(t *testing.T)
 	if _, err := runtime.GetSession(t.Context(), " ses_1 "); err == nil {
 		t.Fatal("accepted a non-canonical Session identity")
 	}
-	if stub.sessionCalls != 0 || len(stub.snapshotRequests) != 0 {
-		t.Fatalf("invalid request reached Runtime: session=%d snapshot=%d", stub.sessionCalls, len(stub.snapshotRequests))
+	if len(stub.snapshotRequests) != 0 {
+		t.Fatalf("invalid request reached Runtime: snapshot=%d", len(stub.snapshotRequests))
 	}
 }
 
 func TestSessionColdReadRejectsMismatchedMetadataIdentity(t *testing.T) {
 	wrong := snapshotSession(1)
 	wrong.ID = "ses_2"
-	stub := &snapshotBindingStub{sessions: []*protocol.Session{wrong}, snapshot: &protocol.SessionSnapshot{}}
+	stub := &snapshotBindingStub{snapshot: &protocol.SessionSnapshot{Session: *wrong}}
 	runtime := &Connection{snapshot: stub, meta: requestMeta("test")}
 	if _, err := runtime.GetSession(t.Context(), "ses_1"); !errors.Is(err, agent.ErrIncompatibleRuntime) {
 		t.Fatalf("mismatched Session error = %v", err)
 	}
-	if stub.sessionCalls != 1 || len(stub.snapshotRequests) != 0 {
-		t.Fatalf("mismatched metadata was not rejected immediately: session=%d snapshot=%d", stub.sessionCalls, len(stub.snapshotRequests))
+	if len(stub.snapshotRequests) != 1 {
+		t.Fatalf("mismatched snapshot was not rejected immediately: snapshot=%d", len(stub.snapshotRequests))
 	}
 }
 
@@ -130,7 +111,7 @@ func TestSessionMaterialSnapshotEnforcesThePublishedPlanShape(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			stub := &snapshotBindingStub{snapshot: &protocol.SessionSnapshot{Plan: test.plan}}
+			stub := &snapshotBindingStub{snapshot: &protocol.SessionSnapshot{Session: *snapshotSession(1), Plan: test.plan}}
 			runtime := &Connection{snapshot: stub, profile: test.profile, meta: requestMeta("test")}
 			_, err := runtime.readMaterialSnapshot(t.Context(), protocol.GetSessionSnapshotRequest{SessionID: "ses_1"})
 			if (err != nil) != test.wantErr {
@@ -143,8 +124,7 @@ func TestSessionMaterialSnapshotEnforcesThePublishedPlanShape(t *testing.T) {
 func TestSessionMaterialSnapshotPreservesTheGoalProjection(t *testing.T) {
 	goal := activeProtocolGoal()
 	stub := &snapshotBindingStub{
-		sessions: []*protocol.Session{snapshotSession(1)},
-		snapshot: &protocol.SessionSnapshot{Goal: goal},
+		snapshot: &protocol.SessionSnapshot{Session: *snapshotSession(1), Goal: goal},
 	}
 	runtime := &Connection{
 		snapshot: stub, profile: snapshotProfile(t, protocol.FeatureGoals), meta: requestMeta("test"),
@@ -165,60 +145,21 @@ func TestSessionMaterialSnapshotPreservesTheGoalProjection(t *testing.T) {
 	}
 }
 
-func TestSessionColdReadBindsMaterialToOneMetadataProjection(t *testing.T) {
-	stub := &snapshotBindingStub{
-		sessions: []*protocol.Session{snapshotSession(1), snapshotSession(2), snapshotSession(2)},
-		snapshot: &protocol.SessionSnapshot{},
-	}
+func TestSessionColdReadUsesCompleteMaterialSnapshot(t *testing.T) {
+	stub := &snapshotBindingStub{snapshot: &protocol.SessionSnapshot{Session: *snapshotSession(2)}}
 	runtime := &Connection{snapshot: stub, meta: requestMeta("test")}
 	snapshot, err := runtime.GetSession(t.Context(), "ses_1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.Session.Revision != 2 || len(stub.snapshotRequests) != 2 || stub.sessionCalls != 3 {
-		t.Fatalf(
-			"cold read = revision %d, material calls %d, session calls %d; want 2/2/3",
-			snapshot.Session.Revision, len(stub.snapshotRequests), stub.sessionCalls,
-		)
-	}
-}
-
-func TestSessionColdReadTreatsEqualTimestampInstantsAsStable(t *testing.T) {
-	created := time.Date(2026, time.August, 31, 9, 0, 0, 0, time.FixedZone("source", 8*60*60))
-	first := snapshotSession(1)
-	first.CreatedAt, first.UpdatedAt = created, created.Add(time.Minute)
-	second := *first
-	second.CreatedAt, second.UpdatedAt = first.CreatedAt.UTC(), first.UpdatedAt.UTC()
-	stub := &snapshotBindingStub{
-		sessions: []*protocol.Session{first, &second}, snapshot: &protocol.SessionSnapshot{},
-	}
-	runtime := &Connection{snapshot: stub, meta: requestMeta("test")}
-	if _, err := runtime.GetSession(t.Context(), "ses_1"); err != nil {
-		t.Fatal(err)
-	}
-	if len(stub.snapshotRequests) != 1 || stub.sessionCalls != 2 {
-		t.Fatalf("semantically stable cold read made %d material and %d session calls", len(stub.snapshotRequests), stub.sessionCalls)
-	}
-}
-
-func TestSessionColdReadStopsWhenMetadataNeverStabilizes(t *testing.T) {
-	stub := &snapshotBindingStub{
-		sessionAt: func(call int) *protocol.Session { return snapshotSession(uint64(call)) },
-		snapshot:  &protocol.SessionSnapshot{},
-	}
-	runtime := &Connection{snapshot: stub, meta: requestMeta("test")}
-	_, err := runtime.GetSession(t.Context(), "ses_1")
-	if !errors.Is(err, agent.ErrDisconnected) || len(stub.snapshotRequests) != snapshotStabilityAttempts {
-		t.Fatalf("cold read error = %v, material calls = %d", err, len(stub.snapshotRequests))
+	if snapshot.Session.Revision != 2 || len(stub.snapshotRequests) != 1 {
+		t.Fatalf("cold read = revision %d, snapshot calls %d; want 2/1", snapshot.Session.Revision, len(stub.snapshotRequests))
 	}
 }
 
 func TestSessionMaterialSnapshotRejectsMissingResponses(t *testing.T) {
 	stub := &snapshotBindingStub{}
 	runtime := &Connection{snapshot: stub, meta: requestMeta("test")}
-	if _, err := runtime.readSession(t.Context(), protocol.GetSessionRequest{SessionID: "ses_1"}); err == nil {
-		t.Fatal("accepted a nil Session response")
-	}
 	if _, err := runtime.readMaterialSnapshot(t.Context(), protocol.GetSessionSnapshotRequest{SessionID: "ses_1"}); err == nil {
 		t.Fatal("accepted a nil SessionSnapshot response")
 	}
@@ -238,9 +179,9 @@ func TestSessionMaterialSnapshotCanonicalizesRunCreationOrder(t *testing.T) {
 			},
 		}
 	}
-	projected, err := projectSnapshot(coldRead{
-		session: *snapshotSession(1),
-		runs: []protocol.RunRef{
+	projected, err := projectSnapshot(protocol.SessionSnapshot{
+		Session: *snapshotSession(1),
+		Runs: []protocol.RunRef{
 			finishedRun("run_later", created.Add(time.Second)), finishedRun("run_earlier", created),
 		},
 	})

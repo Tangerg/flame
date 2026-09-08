@@ -8,7 +8,6 @@ package executionctx
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
@@ -19,16 +18,16 @@ type modelSelectionKey struct{}
 
 // WithScope returns a context carrying scope. The value is immutable and safe
 // to share across the complete delegation tree.
-func WithScope(ctx context.Context, scope runs.ExecutionScope) context.Context {
+func WithScope(ctx context.Context, scope run.ExecutionScope) context.Context {
 	return context.WithValue(ctx, scopeKey{}, scope)
 }
 
 // Scope returns the application scope attached at the root Run boundary.
-func Scope(ctx context.Context) (runs.ExecutionScope, bool) {
+func Scope(ctx context.Context) (run.ExecutionScope, bool) {
 	if ctx == nil {
-		return runs.ExecutionScope{}, false
+		return run.ExecutionScope{}, false
 	}
-	scope, ok := ctx.Value(scopeKey{}).(runs.ExecutionScope)
+	scope, ok := ctx.Value(scopeKey{}).(run.ExecutionScope)
 	return scope, ok
 }
 

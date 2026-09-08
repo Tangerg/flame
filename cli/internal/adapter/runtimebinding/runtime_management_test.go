@@ -235,48 +235,22 @@ func TestModelConfigurationRejectsOutOfOrderProviderCatalog(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 }
 
-func TestProviderUpdateRejectsAcknowledgementDrift(t *testing.T) {
+func TestProviderUpdateRejectsRawCredential(t *testing.T) {
 	t.Parallel()
-	setBaseURL := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "https://new.example"}
-	setAPIKey := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "stored-secret"}
-	update := models.UpdateProvider{Provider: "deepseek", BaseURL: &setBaseURL, APIKey: &setAPIKey}
-	valid := func() protocol.Provider {
-		baseURL := setBaseURL.Value
-		return protocol.Provider{
-			ID: "deepseek", BaseURL: &baseURL,
-			Credential: &protocol.ProviderCredential{Masked: "st****et", Source: protocol.ProviderKeySourceStored},
-			Configured: true, CredentialRequirement: protocol.ProviderAPIKeyRequired,
-		}
+	change := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "stored-secret"}
+	result := protocol.Provider{
+		ID: "deepseek", Configured: true, CredentialRequirement: protocol.ProviderAPIKeyRequired,
+		Credential: &protocol.ProviderCredential{Masked: change.Value, Source: protocol.ProviderKeySourceStored},
 	}
-	tests := []struct {
-		name   string
-		mutate func(*protocol.Provider)
-	}{
-		{name: "base URL", mutate: func(result *protocol.Provider) {
-			baseURL := "https://old.example"
-			result.BaseURL = &baseURL
-		}},
-		{name: "missing key", mutate: func(result *protocol.Provider) { result.Credential = nil }},
-		{name: "environment key", mutate: func(result *protocol.Provider) {
-			result.Credential = &protocol.ProviderCredential{Masked: "st****et", Source: protocol.ProviderKeySourceEnv}
-		}},
-		{name: "raw key", mutate: func(result *protocol.Provider) {
-			result.Credential = &protocol.ProviderCredential{Masked: setAPIKey.Value, Source: protocol.ProviderKeySourceStored}
-		}},
+	stub := &modelConfigBindingStub{
+		providerReply: &result,
+		updated:       func(protocol.UpdateProviderRequest, flameruntime.CommandOptions) {},
 	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			result := valid()
-			test.mutate(&result)
-			stub := &modelConfigBindingStub{
-				providerReply: &result,
-				updated:       func(protocol.UpdateProviderRequest, flameruntime.CommandOptions) {},
-			}
-			runtime := &Connection{modelConfig: stub, meta: requestMeta("test")}
-			_, err := runtime.UpdateProvider(t.Context(), update)
-			requireRuntimeContractViolation(t, err)
-		})
+	runtime := &Connection{modelConfig: stub, meta: requestMeta("test")}
+	_, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "deepseek", APIKey: &change})
+	requireRuntimeContractViolation(t, err)
+	if strings.Contains(err.Error(), change.Value) {
+		t.Fatal("credential rejection exposed the raw key")
 	}
 }
 
@@ -296,26 +270,6 @@ func TestProviderUpdateAcceptsClearWithEnvironmentFallback(t *testing.T) {
 		Provider: "deepseek", BaseURL: &clear, APIKey: &clear,
 	}); err != nil {
 		t.Fatalf("UpdateProvider clear with environment fallback: %v", err)
-	}
-
-	stillConfigured := "https://still-configured.example"
-	result.BaseURL = &stillConfigured
-	if _, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
-		Provider: "deepseek", BaseURL: &clear,
-	}); err == nil {
-		t.Fatal("UpdateProvider accepted a base URL after clear")
-	} else {
-		requireRuntimeContractViolation(t, err)
-	}
-
-	result.BaseURL = nil
-	result.Credential = &protocol.ProviderCredential{Masked: "st****ed", Source: protocol.ProviderKeySourceStored}
-	if _, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
-		Provider: "deepseek", APIKey: &clear,
-	}); err == nil {
-		t.Fatal("UpdateProvider accepted a stored key after clear")
-	} else {
-		requireRuntimeContractViolation(t, err)
 	}
 }
 

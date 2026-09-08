@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/oolong/components/headless"
@@ -73,7 +72,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 	if err != nil {
 		return err
 	}
-	defer func() { runErr = errors.Join(runErr, extensionHost.Close()) }()
+	defer extensionHost.Close()
 	sources := make([]extensions.Source, 0, 1+len(cfg.PluginSources))
 	sources = append(sources, extensions.StaticSource{
 		Name: "terminal", Plugins: append([]extensions.Plugin{builtinPlugin()}, cfg.Plugins...),
@@ -181,9 +180,6 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 }
 
 func openSessionWorkbench(directory string) (*workbench.Store, error) {
-	if strings.TrimSpace(directory) == "" {
-		return workbench.OpenMemory(workbench.Config{})
-	}
 	persistence, err := statefile.Open(directory)
 	if err != nil {
 		return nil, err
@@ -196,13 +192,12 @@ func openSessionWorkbench(directory string) (*workbench.Store, error) {
 }
 
 func validatedSessionConfig(cfg Config) (*runtimebinding.Profile, settings.Config, keyBindings, error) {
-	var profile *runtimebinding.Profile
-	if cfg.RuntimeProfile != nil {
-		value := *cfg.RuntimeProfile
-		if err := value.Validate(); err != nil {
-			return nil, settings.Config{}, keyBindings{}, fmt.Errorf("session runtime profile: %w", err)
-		}
-		profile = &value
+	if cfg.RuntimeProfile == nil {
+		return nil, settings.Config{}, keyBindings{}, errors.New("session runtime profile is required")
+	}
+	profile := *cfg.RuntimeProfile
+	if err := profile.Validate(); err != nil {
+		return nil, settings.Config{}, keyBindings{}, fmt.Errorf("session runtime profile: %w", err)
 	}
 	configured := settings.Default()
 	if cfg.Settings != nil {
@@ -215,7 +210,7 @@ func validatedSessionConfig(cfg Config) (*runtimebinding.Profile, settings.Confi
 	if err != nil {
 		return nil, settings.Config{}, keyBindings{}, err
 	}
-	return profile, configured, bindings, nil
+	return &profile, configured, bindings, nil
 }
 
 func recoverSessionCommands(
@@ -266,11 +261,11 @@ func openPreparedSession(
 	if activateSessionStateErr := authoring.ActivateSessionState(opened.Session.ID); activateSessionStateErr != nil {
 		return preparedSession{}, fmt.Errorf("activate session authoring state: %w", activateSessionStateErr)
 	}
-	attachments, err := attachment.New(opened.Session.Workspace.Path)
+	attachments, err := attachment.New(opened.Session.Workspace.Ref.Path)
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("session attachments: %w", err)
 	}
-	if rememberWorkspaceErr := authoring.RememberWorkspace(opened.Session.Workspace.Path); rememberWorkspaceErr != nil {
+	if rememberWorkspaceErr := authoring.RememberWorkspace(opened.Session.Workspace.Ref.Path); rememberWorkspaceErr != nil {
 		return preparedSession{}, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}
 	editor, err := configuredDraftEditor()
@@ -338,9 +333,7 @@ func commandReplayAdmission(
 	guard commandreplay.Guard,
 	profile *runtimebinding.Profile,
 ) mutation.Admission {
-	return mutation.FreshDynamicReplayAdmission(func() commandreplay.Policy {
-		return commandReplayPolicy(profile)
-	}, guard)
+	return mutation.ReplayAdmission(commandReplayPolicy(profile), guard)
 }
 
 func requireLoadedPlugin(results []extensions.LifecycleResult, id string) error {

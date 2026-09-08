@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
 
@@ -70,7 +72,7 @@ func runUIWithAttentionHost(t *testing.T, backend Runtime) (*attentionTestHost, 
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: backend, Workspace: "/tmp/flame-attention-test", Host: host})
+		done <- runTestTerminal(t, ctx, Config{Runtime: backend, Workspace: "/tmp/flame-attention-test", Host: host})
 	}()
 	var once sync.Once
 	stop := func() {
@@ -117,7 +119,7 @@ func TestUnfocusedApprovalRequestsAttention(t *testing.T) {
 				},
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}

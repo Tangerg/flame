@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
@@ -45,7 +46,7 @@ func TestRecoverDoesNotReplayADeletionIntoAnotherRuntimeStore(t *testing.T) {
 	runtime := new(deletionRuntimeStub)
 	err = RecoverDeletions(
 		t.Context(), runtime, store,
-		replayPolicy(t, "runtime-b", time.Hour, time.Now), retry.ImmediateBackoff(),
+		replayPolicy(t, "runtime-b", time.Hour, time.Now), testBackoff(t),
 	)
 	if err == nil {
 		t.Fatal("cross-store deletion recovery unexpectedly succeeded")
@@ -84,10 +85,10 @@ func TestRecoverRetiresAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) {
 	if stageSessionDeletionErr := store.StageSessionDeletion(request, protectedGuard(t, "runtime-a", deadline)); stageSessionDeletionErr != nil {
 		t.Fatal(stageSessionDeletionErr)
 	}
-	runtime := &deletionRuntimeStub{readErr: agent.ErrSessionNotFound}
+	runtime := &deletionRuntimeStub{readErr: protocol.ErrSessionNotFound}
 	err = RecoverDeletions(
 		t.Context(), runtime, store,
-		replayPolicy(t, "runtime-a", time.Hour, time.Now), retry.ImmediateBackoff(),
+		replayPolicy(t, "runtime-a", time.Hour, time.Now), testBackoff(t),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -113,10 +114,10 @@ func TestExecuteConfirmsAnExpiredDeletionProvenByTheOwningRuntime(t *testing.T) 
 	); stageSessionDeletionErr != nil {
 		t.Fatal(stageSessionDeletionErr)
 	}
-	runtime := &deletionRuntimeStub{readErr: agent.ErrSessionNotFound}
+	runtime := &deletionRuntimeStub{readErr: protocol.ErrSessionNotFound}
 	result, err := Delete(
 		t.Context(), runtime, store, request.SessionID,
-		replayPolicy(t, "runtime-a", time.Hour, time.Now), retry.ImmediateBackoff(),
+		replayPolicy(t, "runtime-a", time.Hour, time.Now), testBackoff(t),
 	)
 	if err != nil || result.Outcome != mutation.Confirmed || result.Request != request {
 		t.Fatalf("settlement = %+v, %v", result, err)
@@ -142,7 +143,7 @@ func TestExecuteRejectsAnExpiredDeletionWhenTheSessionStillExists(t *testing.T) 
 	runtime := new(deletionRuntimeStub)
 	result, err := Delete(
 		t.Context(), runtime, store, request.SessionID,
-		replayPolicy(t, "runtime-a", time.Hour, time.Now), retry.ImmediateBackoff(),
+		replayPolicy(t, "runtime-a", time.Hour, time.Now), testBackoff(t),
 	)
 	if err != nil || result.Outcome != mutation.Rejected || result.Request != request {
 		t.Fatalf("settlement = %+v, %v", result, err)
@@ -153,7 +154,7 @@ func TestExecuteRejectsAnExpiredDeletionWhenTheSessionStillExists(t *testing.T) 
 }
 
 func TestSettlePreservesDeletionRejectedByAnotherRuntimeStore(t *testing.T) {
-	runtime := &deletionRuntimeStub{deleteErr: agent.ErrCommandStoreMismatch}
+	runtime := &deletionRuntimeStub{deleteErr: protocol.ErrIdempotencyStoreMismatch}
 	request := agent.DeleteSession{
 		CommandID: "cli_66666666666666666666666666666666", SessionID: "ses_1",
 	}
@@ -161,9 +162,9 @@ func TestSettlePreservesDeletionRejectedByAnotherRuntimeStore(t *testing.T) {
 	policy := replayPolicy(t, "runtime-a", time.Hour, time.Now)
 	outcome, err := settleDeletion(
 		t.Context(), runtime, request, protectedGuard(t, "runtime-a", deadline),
-		policy, retry.ImmediateBackoff(), false,
+		policy, testBackoff(t),
 	)
-	if outcome != mutation.Unknown || !errors.Is(err, agent.ErrCommandStoreMismatch) {
+	if outcome != mutation.Unknown || !errors.Is(err, protocol.ErrIdempotencyStoreMismatch) {
 		t.Fatalf("store mismatch settlement = outcome %v, error %v", outcome, err)
 	}
 	if runtime.reads != 0 {
@@ -190,7 +191,7 @@ func TestRecoverRejectsAnUncommittedDeletionWhenReplayExpires(t *testing.T) {
 		now = deadline
 		runtime.deleteErr = nil
 	}
-	if err := RecoverDeletions(t.Context(), runtime, store, policy, retry.ImmediateBackoff()); err != nil {
+	if err := RecoverDeletions(t.Context(), runtime, store, policy, testBackoff(t)); err != nil {
 		t.Fatal(err)
 	}
 	if runtime.deletes != 1 || runtime.reads != 1 {
@@ -218,9 +219,9 @@ func TestRecoverConvergesADeletionCommittedAsReplayExpires(t *testing.T) {
 	runtime := &deletionRuntimeStub{deleteErr: agent.ErrDisconnected}
 	runtime.afterDelete = func() {
 		now = deadline
-		runtime.readErr = agent.ErrSessionNotFound
+		runtime.readErr = protocol.ErrSessionNotFound
 	}
-	if err := RecoverDeletions(t.Context(), runtime, store, policy, retry.ImmediateBackoff()); err != nil {
+	if err := RecoverDeletions(t.Context(), runtime, store, policy, testBackoff(t)); err != nil {
 		t.Fatal(err)
 	}
 	if runtime.deletes != 1 || runtime.reads != 1 {

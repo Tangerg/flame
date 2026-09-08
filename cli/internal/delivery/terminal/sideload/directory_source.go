@@ -364,7 +364,7 @@ func compilePluginMetadata(declared pluginManifest) (extensions.Plugin, error) {
 func contributeCommands(commands []terminal.SlashCommand) func(*extensions.Scope) error {
 	return func(scope *extensions.Scope) error {
 		for i, command := range commands {
-			if _, err := scope.Contribute(terminal.SlashCommands, command, extensions.Contribution{Order: i}); err != nil {
+			if err := scope.Contribute(terminal.SlashCommands, command, extensions.Contribution{Order: i}); err != nil {
 				return err
 			}
 		}

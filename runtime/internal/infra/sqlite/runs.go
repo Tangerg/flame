@@ -286,8 +286,8 @@ func (r *RunStore) Suspend(
 			return err
 		}
 	}
-	if err := value.Validate(); err != nil {
-		return fmt.Errorf("sqlite: suspend run %q: %w", value.ID(), err)
+	if value.IsZero() {
+		return fmt.Errorf("sqlite: run is required")
 	}
 	if value.State() != rundomain.Waiting {
 		return fmt.Errorf("sqlite: suspend run %q: state is %s, want waiting", value.ID(), value.State())
@@ -509,8 +509,8 @@ func (r *RunStore) UpdateProgress(
 // Terminalize ends the exact non-terminal Run snapshot that replacement names,
 // recording the outcome the application reached and the result that explains it.
 func (r *RunStore) Terminalize(ctx context.Context, replacement rundomain.Replacement) error {
-	if err := replacement.Validate(); err != nil {
-		return fmt.Errorf("sqlite: terminalize Run replacement: %w", err)
+	if replacement.IsZero() {
+		return fmt.Errorf("sqlite: run replacement is required")
 	}
 	expected := replacement.Expected()
 	return r.terminalize(ctx, &expected, replacement.State(), nil)
@@ -559,8 +559,8 @@ func (r *RunStore) terminalize(
 // one terminal Run. Compaction does not change when the Run happened or any of
 // its lifecycle facts, so updated_at deliberately remains untouched.
 func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Replacement) error {
-	if err := change.Validate(); err != nil {
-		return fmt.Errorf("sqlite: rebase Run message watermark: %w", err)
+	if change.IsZero() {
+		return fmt.Errorf("sqlite: run replacement is required")
 	}
 	expected := change.Expected()
 	replacement := change.State()
@@ -597,8 +597,8 @@ func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Repla
 // from either Running or Waiting, because it describes a Run nobody is driving
 // rather than one the executor finished.
 func (r *RunStore) RecoverLost(ctx context.Context, replacement rundomain.Replacement) error {
-	if err := replacement.Validate(); err != nil {
-		return fmt.Errorf("sqlite: recover lost Run replacement: %w", err)
+	if replacement.IsZero() {
+		return fmt.Errorf("sqlite: run replacement is required")
 	}
 	expected := replacement.Expected()
 	value := replacement.State()
@@ -625,8 +625,8 @@ func (r *RunStore) finish(
 	marker *runCommitMarker,
 	transition func(rundomain.Run) (rundomain.Run, error),
 ) error {
-	if err := value.Validate(); err != nil {
-		return fmt.Errorf("sqlite: %s run %q: %w", op, value.ID(), err)
+	if value.IsZero() {
+		return fmt.Errorf("sqlite: run is required")
 	}
 	metrics, err := runMetricsRow(value.Metrics())
 	if err != nil {
@@ -722,8 +722,8 @@ func (r *RunStore) finish(
 // state machine. A non-terminal Run is refused — restoring one would hand the
 // session's admission slot to an executor that is not running.
 func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
-	if err := value.Validate(); err != nil {
-		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
+	if value.IsZero() {
+		return fmt.Errorf("sqlite: run is required")
 	}
 	if !value.State().IsTerminal() {
 		return fmt.Errorf("sqlite: restore run %q: state is %s, want terminal", value.ID(), value.State())

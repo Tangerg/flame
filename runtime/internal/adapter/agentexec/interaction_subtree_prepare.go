@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	agent "github.com/Tangerg/scope/agent"
 )
 
@@ -49,7 +50,7 @@ func (i *InteractionExecutor) PrepareWaitingSubtreeCancellation(
 
 func (i *interactionSession) prepareWaitingSubtreeCancellation(
 	ctx context.Context,
-	expectedCheckpoint runs.ExecutorCheckpoint,
+	expectedCheckpoint run.Checkpoint,
 	memberID string,
 	reason string,
 ) (runs.PreparedWaitingSubtreeCancellation, error) {
@@ -97,11 +98,11 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 			status,
 		)
 	}
-	if !executorCheckpointsEqual(i.state.waitingCheckpoint, expectedCheckpoint) {
+	if !i.state.waitingCheckpoint.Equal(expectedCheckpoint) {
 		i.state.mu.Unlock()
 		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf(
 			"%w: live Interaction checkpoint differs from the waiting subtree request",
-			runs.ErrInvalidExecutorCheckpoint,
+			run.ErrInvalidCheckpoint,
 		)
 	}
 	rootID := i.state.process.Relation().RootID()
@@ -158,7 +159,7 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
 	change := &interactionWaitingSubtreeChange{
-		session: i, prepared: frameworkChange, checkpoint: checkpoint.Clone(),
+		session: i, prepared: frameworkChange, checkpoint: checkpoint,
 		canceled: slices.Clone(canceled), paused: slices.Clone(paused),
 	}
 	managed.mu.Lock()

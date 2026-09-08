@@ -16,7 +16,7 @@ import (
 const cancellationTimeout = 5 * time.Second
 
 type Renderer interface {
-	Begin(agent.Run, agent.RunOptions) error
+	Begin(sessionID, runID string, options agent.RunOptions) error
 	Render(agent.RunEvent) error
 	Reconcile(agent.SessionSnapshot) error
 	Close() error
@@ -31,7 +31,7 @@ type RunLifecycle interface {
 	ResumeRun(context.Context, agent.ResumeRun) (agent.SegmentStream, error)
 	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
 	SteerRun(context.Context, agent.SteerRun) error
-	CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error)
+	CancelRun(context.Context, agent.CancelRun) (protocol.CancelRunResponse, error)
 }
 
 type Runtime interface {
@@ -81,7 +81,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		return fmt.Errorf("prepare one-shot start replay guard: %w", err)
 	}
 	opened, err := openRun(ctx, invocation.Runtime, invocation.Start,
-		mutation.FreshReplayAdmission(invocation.ReplayPolicy, startReplay))
+		mutation.ReplayAdmission(invocation.ReplayPolicy, startReplay))
 	if err != nil {
 		if receipt, accepted := agent.AcceptedMutationReceipt(err); accepted {
 			opened = receipt
@@ -101,20 +101,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	if validateStartErr := opened.ValidateStart(); validateStartErr != nil {
 		return fmt.Errorf("start run: %w", validateStartErr)
 	}
-	run := agent.Run{
-		ID: opened.RunID, SessionID: invocation.Start.SessionID,
-		Lineage:  agent.RootRunLineage(),
-		Provider: invocation.Start.Options.Provider, Model: invocation.Start.Options.Model,
-		ReasoningEffort: invocation.Start.Options.ReasoningEffort,
-		Status:          protocol.RunStatusRunning, ActiveSegmentID: opened.SegmentID, Limits: invocation.Start.Options.Limits,
-	}
-	if run.Provider == "" {
-		// The runtime default is intentionally opaque to the caller. Validation
-		// permits the pair to be empty.
-		run.Model = ""
-		run.ReasoningEffort = ""
-	}
-	if beginErr := invocation.Renderer.Begin(run, invocation.Start.Options); beginErr != nil {
+	if beginErr := invocation.Renderer.Begin(invocation.Start.SessionID, opened.RunID, invocation.Start.Options); beginErr != nil {
 		return beginErr
 	}
 
@@ -186,21 +173,21 @@ func cancelAbandonedRun(
 		return fmt.Errorf("prepare abandoned run cancellation replay guard: %w", err)
 	}
 	result, err := mutation.ConfirmAdmitted(
-		cancelCtx, mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(replayPolicy, replay),
-		func(ctx context.Context) (agent.RunCancellation, error) {
+		cancelCtx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(replayPolicy, replay),
+		func(ctx context.Context) (protocol.CancelRunResponse, error) {
 			return runtime.CancelRun(ctx, agent.CancelRun{
 				CommandID: commandID, RunID: runID, Reason: "CLI execution ended before the run settled",
 			})
 		},
 	)
-	if errors.Is(err, agent.ErrRunFinished) {
+	if errors.Is(err, protocol.ErrRunFinished) {
 		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("cancel abandoned run %s: %w", runID, err)
 	}
-	if err := result.ValidateTarget(runID); err != nil {
-		return fmt.Errorf("cancel abandoned run %s: %w", runID, err)
+	if result.Run.ID != runID {
+		return fmt.Errorf("cancel abandoned run %s: returned run %q", runID, result.Run.ID)
 	}
 	return nil
 }
@@ -276,7 +263,7 @@ func (e *executionDriver) resume(ctx context.Context, interactions []agent.Inter
 		return fmt.Errorf("prepare one-shot resume replay guard: %w", err)
 	}
 	continued, err := mutation.ConfirmAdmitted(
-		ctx, mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(e.invocation.ReplayPolicy, replay),
+		ctx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(e.invocation.ReplayPolicy, replay),
 		func(ctx context.Context) (agent.SegmentStream, error) {
 			return e.invocation.Runtime.ResumeRun(ctx, command)
 		},
@@ -346,7 +333,7 @@ func (e *executionDriver) installRecovery(ctx context.Context, recovered Recover
 	}
 	switch recovered.Run.Status {
 	case protocol.RunStatusFinished:
-		return settled, errorForOutcome(recovered.Run.Outcome)
+		return settled, errorForOutcome(agent.OutcomeFromRun(recovered.Run.Outcome))
 	case protocol.RunStatusWaiting:
 		if err := e.resume(ctx, recovered.Snapshot.Interactions, recovered.Run.ID); err != nil {
 			return interactionDisposition(err), err
@@ -361,7 +348,8 @@ func restoreRecoveredConversation(conversation *agent.Conversation, recovered Re
 	if recovered.Run.Status == protocol.RunStatusRunning {
 		return conversation.RestoreAttachedSnapshot(recovered.Snapshot, recovered.Stream)
 	}
-	return conversation.RestoreSnapshot(recovered.Snapshot)
+	conversation.RestoreSnapshot(recovered.Snapshot)
+	return nil
 }
 
 func validateContinuation(stream agent.SegmentStream, runID string) error {
@@ -415,7 +403,7 @@ func (o *outcomeError) Error() string {
 }
 
 func errorForOutcome(outcome agent.Outcome) error {
-	if outcome.Status == agent.OutcomeCompleted {
+	if outcome.Status == protocol.OutcomeCompleted {
 		return nil
 	}
 	return &outcomeError{outcome: outcome}

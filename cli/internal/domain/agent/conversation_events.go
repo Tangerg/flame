@@ -116,10 +116,10 @@ func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 
 func (c *Conversation) validateEventIdentity(envelope RunEvent) error {
 	if started, ok := envelope.Event.(SegmentStarted); ok {
-		if !started.Run.Lineage.IsRoot() && started.Run.Lineage.RootRunID() != c.runID {
-			return fmt.Errorf("conversation: child run %s belongs to root %s, not %s", envelope.RunID, started.Run.Lineage.RootRunID(), c.runID)
+		if started.Run.ParentRunID != "" && started.Run.RootRunID != c.runID {
+			return fmt.Errorf("conversation: child run %s belongs to root %s, not %s", envelope.RunID, started.Run.RootRunID, c.runID)
 		}
-		if c.phase == ConversationWaiting && started.Run.Lineage.IsRoot() && c.runID != envelope.RunID {
+		if c.phase == ConversationWaiting && started.Run.ParentRunID == "" && c.runID != envelope.RunID {
 			return fmt.Errorf("conversation: resumed root run %s does not match waiting run %s", envelope.RunID, c.runID)
 		}
 		return nil
@@ -174,7 +174,7 @@ func (c *Conversation) applySegmentStarted(event SegmentStarted) error {
 	c.coldTail = false
 	run := event.Run
 	previous, exists := c.runs[run.ID]
-	if run.Lineage.IsRoot() {
+	if run.ParentRunID == "" {
 		if err := c.applyRootSegmentStarted(run, previous, exists); err != nil {
 			return err
 		}
@@ -185,7 +185,7 @@ func (c *Conversation) applySegmentStarted(event SegmentStarted) error {
 	return nil
 }
 
-func (c *Conversation) applyRootSegmentStarted(run, previous Run, exists bool) error {
+func (c *Conversation) applyRootSegmentStarted(run, previous protocol.RunRef, exists bool) error {
 	previousUsage := c.usage
 	switch c.phase {
 	case ConversationIdle:
@@ -203,31 +203,32 @@ func (c *Conversation) applyRootSegmentStarted(run, previous Run, exists bool) e
 	if c.runID != "" && c.runID != run.ID {
 		return fmt.Errorf("%w: root run changed from %s to %s", ErrInvalidTransition, c.runID, run.ID)
 	}
-	if err := validateUsageProgress(previousUsage, run.Usage); err != nil {
+	usage := UsageFromMetrics(run.Metrics)
+	if err := validateUsageProgress(previousUsage, usage); err != nil {
 		return fmt.Errorf("%w: root segment started: %w", ErrInvalidTransition, err)
 	}
 	c.runID = run.ID
 	c.phase = ConversationRunning
 	c.interactions = nil
-	c.usage = run.Usage.Clone()
+	c.usage = usage
 	return nil
 }
 
-func (c *Conversation) applyChildSegmentStarted(run, previous Run, exists bool) error {
-	if c.runID == "" || run.Lineage.RootRunID() != c.runID {
+func (c *Conversation) applyChildSegmentStarted(run, previous protocol.RunRef, exists bool) error {
+	if c.runID == "" || run.RootRunID != c.runID {
 		return fmt.Errorf("%w: child run %s has no active root", ErrInvalidTransition, run.ID)
 	}
-	if _, parentExists := c.runs[run.Lineage.ParentRunID()]; !parentExists {
-		return fmt.Errorf("%w: child run %s has unknown parent %s", ErrInvalidTransition, run.ID, run.Lineage.ParentRunID())
+	if _, parentExists := c.runs[run.ParentRunID]; !parentExists {
+		return fmt.Errorf("%w: child run %s has unknown parent %s", ErrInvalidTransition, run.ID, run.ParentRunID)
 	}
-	if exists && previous.Lineage != run.Lineage {
+	if exists && (previous.SpawnedByItemID != run.SpawnedByItemID || previous.ParentRunID != run.ParentRunID || previous.RootRunID != run.RootRunID) {
 		return fmt.Errorf("%w: child run %s changed lineage", ErrInvalidTransition, run.ID)
 	}
 	if exists && previous.Status == protocol.RunStatusRunning {
 		return fmt.Errorf("%w: child run %s started twice", ErrInvalidTransition, run.ID)
 	}
 	if exists {
-		if err := validateUsageProgress(previous.Usage, run.Usage); err != nil {
+		if err := validateUsageProgress(UsageFromMetrics(previous.Metrics), UsageFromMetrics(run.Metrics)); err != nil {
 			return fmt.Errorf("%w: child segment started: %w", ErrInvalidTransition, err)
 		}
 	}
@@ -294,18 +295,17 @@ func (c *Conversation) applyRunProgress(runID string, event RunProgress) error {
 	if event.ContextTokens != nil {
 		run.ContextTokens = *event.ContextTokens
 	}
-	usage := run.Usage.Clone()
+	previousUsage := UsageFromMetrics(run.Metrics)
 	if event.Usage != nil {
-		usage = event.Usage.Clone()
-		usage.Steps, usage.Duration = run.Usage.Steps, run.Usage.Duration
+		run.Metrics.Usage = CloneRunMetrics(protocol.RunMetrics{Usage: event.Usage}).Usage
 	}
 	if event.Step != nil {
-		usage.Steps = *event.Step
+		run.Metrics.Steps = *event.Step
 	}
-	if err := validateUsageProgress(run.Usage, usage); err != nil {
+	usage := UsageFromMetrics(run.Metrics)
+	if err := validateUsageProgress(previousUsage, usage); err != nil {
 		return fmt.Errorf("%w: run progress: %w", ErrInvalidTransition, err)
 	}
-	run.Usage = usage
 	c.runs[runID] = run
 	if runID == c.runID {
 		c.usage = usage.Clone()
@@ -361,7 +361,7 @@ func (c *Conversation) applyInterrupted(runID string, event RunInterrupted) erro
 		}
 	}
 	run := c.runs[runID]
-	if err := validateUsageProgress(run.Usage, event.Usage); err != nil {
+	if err := validateUsageProgress(UsageFromMetrics(run.Metrics), UsageFromMetrics(event.Metrics)); err != nil {
 		return fmt.Errorf("%w: run interrupted: %w", ErrInvalidTransition, err)
 	}
 	pending := append(CloneInteractions(c.interactions), CloneInteractions(event.Interactions)...)
@@ -370,12 +370,12 @@ func (c *Conversation) applyInterrupted(runID string, event RunInterrupted) erro
 	}
 	run.Status = protocol.RunStatusWaiting
 	run.ActiveSegmentID = ""
-	run.Usage = event.Usage.Clone()
+	run.Metrics = CloneRunMetrics(event.Metrics)
 	run.ContextTokens = event.ContextTokens
 	c.runs[runID] = run
 	if runID == c.runID {
 		c.phase = ConversationWaiting
-		c.usage = event.Usage.Clone()
+		c.usage = UsageFromMetrics(event.Metrics)
 	}
 	c.reconciling = false
 	c.coldTail = false
@@ -388,7 +388,7 @@ func (c *Conversation) applySuspended(runID string, event RunSuspended) error {
 		return err
 	}
 	run := c.runs[runID]
-	if err := validateUsageProgress(run.Usage, event.Usage); err != nil {
+	if err := validateUsageProgress(UsageFromMetrics(run.Metrics), UsageFromMetrics(event.Metrics)); err != nil {
 		return fmt.Errorf("%w: run suspended: %w", ErrInvalidTransition, err)
 	}
 	if runID == c.runID {
@@ -398,12 +398,12 @@ func (c *Conversation) applySuspended(runID string, event RunSuspended) error {
 	}
 	run.Status = protocol.RunStatusWaiting
 	run.ActiveSegmentID = ""
-	run.Usage = event.Usage.Clone()
+	run.Metrics = CloneRunMetrics(event.Metrics)
 	run.ContextTokens = event.ContextTokens
 	c.runs[runID] = run
 	if runID == c.runID {
 		c.phase = ConversationWaiting
-		c.usage = event.Usage.Clone()
+		c.usage = UsageFromMetrics(event.Metrics)
 		c.reconciling = false
 		c.coldTail = false
 	}
@@ -415,31 +415,31 @@ func (c *Conversation) applyFinished(runID string, event RunFinished) error {
 	if !exists {
 		return fmt.Errorf("%w: cannot finish unknown run %s", ErrInvalidTransition, runID)
 	}
-	if run.Status == protocol.RunStatusWaiting && event.Outcome.Status != OutcomeCanceled {
+	if run.Status == protocol.RunStatusWaiting && event.Outcome.Status != protocol.OutcomeCanceled {
 		return fmt.Errorf("%w: a waiting run can only finish by cancellation", ErrInvalidTransition)
 	}
-	if event.Outcome.Status == OutcomeCompleted && c.hasOpenBlocksForRun(runID) {
+	if event.Outcome.Status == protocol.OutcomeCompleted && c.hasOpenBlocksForRun(runID) {
 		return fmt.Errorf("%w: completed run %s still has open blocks", ErrInvalidTransition, runID)
 	}
-	if err := validateUsageProgress(run.Usage, event.Usage); err != nil {
+	if err := validateUsageProgress(UsageFromMetrics(run.Metrics), UsageFromMetrics(event.Metrics)); err != nil {
 		return fmt.Errorf("%w: run finished: %w", ErrInvalidTransition, err)
 	}
 	if runID == c.runID {
 		for memberID, member := range c.runs {
-			if memberID != runID && member.Lineage.RootRunID() == runID && member.Status != protocol.RunStatusFinished {
+			if memberID != runID && member.RootRunID == runID && member.Status != protocol.RunStatusFinished {
 				return fmt.Errorf("%w: root run finished while child %s is %s", ErrInvalidTransition, memberID, member.Status)
 			}
 		}
 	}
 	toolStatus := ToolError
-	if event.Outcome.Status == OutcomeCanceled {
+	if event.Outcome.Status == protocol.OutcomeCanceled {
 		toolStatus = ToolCanceled
 	}
 	c.settleOpenBlocksForRun(runID, toolStatus)
 	run.Status = protocol.RunStatusFinished
 	run.ActiveSegmentID = ""
-	run.Outcome = event.Outcome.Clone()
-	run.Usage = event.Usage.Clone()
+	run.Outcome = event.Outcome.RunOutcome()
+	run.Metrics = CloneRunMetrics(event.Metrics)
 	run.ContextTokens = event.ContextTokens
 	c.runs[runID] = run
 	if runID == c.runID {
@@ -448,7 +448,7 @@ func (c *Conversation) applyFinished(runID string, event RunFinished) error {
 		c.coldTail = false
 		c.interactions = nil
 		c.outcome = event.Outcome.Clone()
-		c.usage = event.Usage.Clone()
+		c.usage = UsageFromMetrics(event.Metrics)
 	}
 	return nil
 }

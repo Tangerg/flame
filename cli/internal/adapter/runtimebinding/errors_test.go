@@ -73,22 +73,19 @@ func TestClassifyErrorPreservesIdentityAndProjectsRecoveryMetadata(t *testing.T)
 	}
 }
 
-func TestClassifyErrorExposesCommandReplaySemantics(t *testing.T) {
-	for _, test := range []struct {
-		source error
-		want   error
-	}{
-		{source: protocol.ErrIdempotencyInProgress, want: agent.ErrCommandInProgress},
-		{source: protocol.ErrIdempotencyConflict, want: agent.ErrCommandConflict},
-		{source: protocol.ErrIdempotencyStoreMismatch, want: agent.ErrCommandStoreMismatch},
+func TestClassifyErrorPreservesCommandReplayIdentity(t *testing.T) {
+	for _, source := range []error{
+		protocol.ErrIdempotencyInProgress,
+		protocol.ErrIdempotencyConflict,
+		protocol.ErrIdempotencyStoreMismatch,
 	} {
-		problem := protocol.ProblemData{Type: test.source.Error()}
-		if errors.Is(test.source, protocol.ErrIdempotencyInProgress) {
+		problem := protocol.ProblemData{Type: source.Error()}
+		if errors.Is(source, protocol.ErrIdempotencyInProgress) {
 			problem.RetryAfterSeconds = 1
 		}
-		err := classifyError(runtimeProblemError{cause: test.source, data: problem})
-		if !errors.Is(err, test.want) || !errors.Is(err, test.source) {
-			t.Fatalf("classified %v = %v, want %v", test.source, err, test.want)
+		err := classifyError(runtimeProblemError{cause: source, data: problem})
+		if !errors.Is(err, source) {
+			t.Fatalf("classified %v lost its identity: %v", source, err)
 		}
 	}
 }

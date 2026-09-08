@@ -6,61 +6,12 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/exactint"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
-
-type Session struct {
-	ID              string
-	Title           string
-	Status          runtimeprotocol.SessionStatus
-	Provider        string
-	Model           string
-	ReasoningEffort string
-	Workspace       workspace.Workspace
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	Favorite        bool
-	Revision        uint64
-}
-
-// Equal reports whether two session projections carry the same durable state.
-func (s Session) Equal(other Session) bool {
-	return s.ID == other.ID && s.Title == other.Title && s.Status == other.Status &&
-		s.Provider == other.Provider && s.Model == other.Model && s.ReasoningEffort == other.ReasoningEffort &&
-		s.Workspace == other.Workspace &&
-		s.CreatedAt.Equal(other.CreatedAt) && s.UpdatedAt.Equal(other.UpdatedAt) &&
-		s.Favorite == other.Favorite && s.Revision == other.Revision
-}
-
-func (s Session) Validate() error {
-	var problems []error
-	if err := runtimeprotocol.ValidateSessionID(s.ID); err != nil {
-		problems = append(problems, err)
-	}
-	if err := s.Workspace.Validate(); err != nil {
-		problems = append(problems, err)
-	}
-	if s.Status != runtimeprotocol.SessionStatusRunning &&
-		s.Status != runtimeprotocol.SessionStatusWaiting &&
-		s.Status != runtimeprotocol.SessionStatusIdle {
-		problems = append(problems, fmt.Errorf("status %q is invalid", s.Status))
-	}
-	if err := runtimeprotocol.ValidateModelSelection(s.Provider, s.Model, s.ReasoningEffort); err != nil {
-		problems = append(problems, err)
-	}
-	if err := validateCommittedRevision("session", s.Revision); err != nil {
-		problems = append(problems, err)
-	}
-	if err := errors.Join(problems...); err != nil {
-		return fmt.Errorf("session: %w", err)
-	}
-	return nil
-}
 
 func validateCommittedRevision(owner string, value uint64) error {
 	revision, err := exactint.Restore(value)
@@ -145,64 +96,45 @@ func (s SessionQuery) Normalize() (SessionQuery, error) {
 	return s, nil
 }
 
-type SessionPage struct {
-	Items      []Session
-	NextCursor string
-}
-
-func (s SessionPage) Validate() error {
-	seen := make(map[string]struct{}, len(s.Items))
-	for index, session := range s.Items {
-		if err := session.Validate(); err != nil {
-			return fmt.Errorf("session page item %d: %w", index+1, err)
-		}
-		if _, duplicate := seen[session.ID]; duplicate {
-			return fmt.Errorf("session page repeats id %q", session.ID)
-		}
-		seen[session.ID] = struct{}{}
-	}
-	return nil
-}
-
 // SessionSnapshot is the cold-read projection the CLI restores. Transcript,
 // Runs, Plan, and Goal are durable values, never reconstructed from a historical
 // event stream. Runs contains roots and descendants in creation order.
 type SessionSnapshot struct {
-	Session      Session
+	Session      runtimeprotocol.Session
 	Transcript   []Block
-	Runs         []Run
+	Runs         []runtimeprotocol.RunRef
 	Plan         *runtimeprotocol.Plan
 	Goal         *runtimeprotocol.Goal
 	Interactions []Interaction
 }
 
 // LatestRun returns the most recently created root run.
-func (s SessionSnapshot) LatestRun() (Run, bool) {
+func (s SessionSnapshot) LatestRun() (runtimeprotocol.RunRef, bool) {
 	for _, run := range slices.Backward(s.Runs) {
-		if run.Lineage.IsRoot() {
-			return run.Clone(), true
+		if run.ParentRunID == "" {
+			return CloneRun(run), true
 		}
 	}
-	return Run{}, false
+	return runtimeprotocol.RunRef{}, false
 }
 
 // ActiveRun returns the sole running or waiting root run, when one exists.
-func (s SessionSnapshot) ActiveRun() (Run, bool) {
+func (s SessionSnapshot) ActiveRun() (runtimeprotocol.RunRef, bool) {
 	for _, run := range slices.Backward(s.Runs) {
-		if run.Lineage.IsRoot() && run.Status != runtimeprotocol.RunStatusFinished {
-			return run.Clone(), true
+		if run.ParentRunID == "" && run.Status != runtimeprotocol.RunStatusFinished {
+			return CloneRun(run), true
 		}
 	}
-	return Run{}, false
+	return runtimeprotocol.RunRef{}, false
 }
 
-func (s SessionSnapshot) RunByID(id string) (Run, bool) {
+func (s SessionSnapshot) RunByID(id string) (runtimeprotocol.RunRef, bool) {
 	for _, run := range s.Runs {
 		if run.ID == id {
-			return run.Clone(), true
+			return CloneRun(run), true
 		}
 	}
-	return Run{}, false
+	return runtimeprotocol.RunRef{}, false
 }
 
 // LastAssistantText returns the latest durable non-empty assistant response.
@@ -215,254 +147,7 @@ func (s SessionSnapshot) LastAssistantText() (string, error) {
 	return "", errors.New("the session has no assistant response to copy")
 }
 
-func (s SessionSnapshot) Validate() error {
-	if err := s.Session.Validate(); err != nil {
-		return fmt.Errorf("session snapshot: %w", err)
-	}
-	transcript, err := s.validateTranscript()
-	if err != nil {
-		return err
-	}
-	runs, err := s.validateRuns()
-	if err != nil {
-		return err
-	}
-	if err := s.validateReferences(transcript, runs); err != nil {
-		return err
-	}
-	if s.Plan != nil {
-		if err := runtimeprotocol.ValidateWireTree(*s.Plan); err != nil {
-			return fmt.Errorf("session snapshot: %w", err)
-		}
-		if _, err := committedPlanState(s.Plan); err != nil {
-			return fmt.Errorf("session snapshot: %w", err)
-		}
-		if s.Plan.SessionID != s.Session.ID {
-			return fmt.Errorf("session snapshot: plan belongs to session %q, want %q", s.Plan.SessionID, s.Session.ID)
-		}
-	}
-	if s.Goal != nil {
-		if err := runtimeprotocol.ValidateWireTree(*s.Goal); err != nil {
-			return fmt.Errorf("session snapshot: %w", err)
-		}
-		if s.Goal.SessionID != s.Session.ID {
-			return fmt.Errorf(
-				"session snapshot: goal belongs to session %q, want %q",
-				s.Goal.SessionID, s.Session.ID,
-			)
-		}
-	}
-	return s.validateLifecycle(transcript, runs)
-}
-
-type snapshotTranscript struct {
-	byIdentity map[string]Block
-	running    []Block
-}
-
-func (s SessionSnapshot) validateTranscript() (snapshotTranscript, error) {
-	indexed := snapshotTranscript{byIdentity: make(map[string]Block, len(s.Transcript))}
-	for i, block := range s.Transcript {
-		if err := block.validateLifecycle(block.Status != BlockStatusRunning); err != nil {
-			return snapshotTranscript{}, fmt.Errorf("session snapshot: transcript block %d: %w", i+1, err)
-		}
-		identity := blockIdentity(block.RunID, block.ID)
-		if _, duplicate := indexed.byIdentity[identity]; duplicate {
-			return snapshotTranscript{}, fmt.Errorf("session snapshot: transcript repeats block %q in run %q", block.ID, block.RunID)
-		}
-		indexed.byIdentity[identity] = block
-		if block.Status != BlockStatusRunning {
-			continue
-		}
-		if block.Kind != BlockTool {
-			return snapshotTranscript{}, fmt.Errorf("session snapshot: transcript block %d: only a tool call can be durably running", i+1)
-		}
-		indexed.running = append(indexed.running, block)
-	}
-	return indexed, nil
-}
-
-type snapshotRuns struct {
-	byID        map[string]Run
-	position    map[string]int
-	activeIndex int
-}
-
-func (s SessionSnapshot) validateRuns() (snapshotRuns, error) {
-	indexed := snapshotRuns{
-		byID: make(map[string]Run, len(s.Runs)), position: make(map[string]int, len(s.Runs)),
-		activeIndex: -1,
-	}
-	lastRootIndex, err := indexed.index(s.Session.ID, s.Runs)
-	if err != nil {
-		return snapshotRuns{}, err
-	}
-	if indexed.activeIndex >= 0 && indexed.activeIndex != lastRootIndex {
-		return snapshotRuns{}, errors.New("session snapshot: active run is not the latest root run")
-	}
-	if err := indexed.validateChildLineages(s.Runs); err != nil {
-		return snapshotRuns{}, err
-	}
-	return indexed, nil
-}
-
-func (s *snapshotRuns) index(sessionID string, runs []Run) (int, error) {
-	lastRootIndex := -1
-	for i, run := range runs {
-		if err := run.Validate(); err != nil {
-			return -1, fmt.Errorf("session snapshot: run %d: %w", i+1, err)
-		}
-		if run.SessionID != sessionID {
-			return -1, fmt.Errorf("session snapshot: run %s belongs to session %s", run.ID, run.SessionID)
-		}
-		if _, duplicate := s.byID[run.ID]; duplicate {
-			return -1, fmt.Errorf("session snapshot: repeats run %q", run.ID)
-		}
-		s.byID[run.ID] = run
-		s.position[run.ID] = i
-		if !run.Lineage.IsRoot() {
-			continue
-		}
-		lastRootIndex = i
-		if run.Status == runtimeprotocol.RunStatusFinished {
-			continue
-		}
-		if s.activeIndex >= 0 {
-			return -1, errors.New("session snapshot: more than one root run is active")
-		}
-		s.activeIndex = i
-	}
-	return lastRootIndex, nil
-}
-
-func (s snapshotRuns) validateChildLineages(runs []Run) error {
-	for i, run := range runs {
-		if run.Lineage.IsRoot() {
-			continue
-		}
-		if err := s.validateChildLineage(run, i); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s snapshotRuns) validateChildLineage(run Run, position int) error {
-	parent, parentExists := s.byID[run.Lineage.ParentRunID()]
-	root, rootExists := s.byID[run.Lineage.RootRunID()]
-	if !parentExists || !rootExists || !root.Lineage.IsRoot() {
-		return fmt.Errorf("session snapshot: child run %s has an incomplete lineage", run.ID)
-	}
-	parentRootID := parent.Lineage.RootRunID()
-	if parent.Lineage.IsRoot() {
-		parentRootID = parent.ID
-	}
-	if parentRootID != run.Lineage.RootRunID() {
-		return fmt.Errorf("session snapshot: child run %s crosses run trees", run.ID)
-	}
-	if s.position[parent.ID] >= position {
-		return fmt.Errorf("session snapshot: child run %s precedes parent %s", run.ID, parent.ID)
-	}
-	if root.Status == runtimeprotocol.RunStatusFinished && run.Status != runtimeprotocol.RunStatusFinished {
-		return fmt.Errorf("session snapshot: child run %s outlives finished root %s", run.ID, root.ID)
-	}
-	if root.Status == runtimeprotocol.RunStatusRunning && run.Status == runtimeprotocol.RunStatusWaiting {
-		return fmt.Errorf("session snapshot: child run %s is waiting beneath running root %s", run.ID, root.ID)
-	}
-	if root.Status == runtimeprotocol.RunStatusWaiting && run.Status == runtimeprotocol.RunStatusRunning {
-		return fmt.Errorf("session snapshot: child run %s is running beneath waiting root %s", run.ID, root.ID)
-	}
-	return nil
-}
-
-func (s SessionSnapshot) validateReferences(transcript snapshotTranscript, runs snapshotRuns) error {
-	for _, block := range s.Transcript {
-		if _, exists := runs.byID[block.RunID]; !exists {
-			return fmt.Errorf("session snapshot: block %s references unknown run %s", block.ID, block.RunID)
-		}
-	}
-	if runs.activeIndex < 0 {
-		return nil
-	}
-	for _, block := range transcript.running {
-		run := runs.byID[block.RunID]
-		rootID := run.Lineage.RootRunID()
-		if run.Lineage.IsRoot() {
-			rootID = run.ID
-		}
-		active := s.Runs[runs.activeIndex]
-		if rootID != active.ID || run.Status == runtimeprotocol.RunStatusFinished {
-			return fmt.Errorf("session snapshot: running block %s belongs to inactive run %s", block.ID, block.RunID)
-		}
-	}
-	return nil
-}
-
-func (s SessionSnapshot) validateLifecycle(transcript snapshotTranscript, runs snapshotRuns) error {
-	if runs.activeIndex < 0 {
-		return s.validateIdleLifecycle(transcript)
-	}
-	active := s.Runs[runs.activeIndex]
-	switch active.Status {
-	case runtimeprotocol.RunStatusRunning:
-		if s.Session.Status != runtimeprotocol.SessionStatusRunning {
-			return fmt.Errorf("session snapshot: running run has session status %s", s.Session.Status)
-		}
-		if len(s.Interactions) != 0 {
-			return errors.New("session snapshot: running run carries pending interactions")
-		}
-	case runtimeprotocol.RunStatusWaiting:
-		return s.validateWaitingLifecycle(active, transcript, runs)
-	}
-	return nil
-}
-
-func (s SessionSnapshot) validateIdleLifecycle(transcript snapshotTranscript) error {
-	if len(transcript.running) != 0 {
-		return errors.New("session snapshot: idle session carries a running transcript block")
-	}
-	if len(s.Interactions) != 0 {
-		return errors.New("session snapshot: idle session carries pending interactions")
-	}
-	if s.Session.Status != runtimeprotocol.SessionStatusIdle {
-		return fmt.Errorf("session snapshot: session status is %s without an active run", s.Session.Status)
-	}
-	return nil
-}
-
-func (s SessionSnapshot) validateWaitingLifecycle(active Run, transcript snapshotTranscript, runs snapshotRuns) error {
-	if s.Session.Status != runtimeprotocol.SessionStatusWaiting {
-		return fmt.Errorf("session snapshot: waiting run has session status %s", s.Session.Status)
-	}
-	if err := ValidateInteractions(s.Interactions); err != nil {
-		return fmt.Errorf("session snapshot: waiting run: %w", err)
-	}
-	for _, interaction := range s.Interactions {
-		itemID := InteractionItemID(interaction)
-		runID := InteractionRunID(interaction)
-		run, runExists := runs.byID[runID]
-		block, exists := transcript.byIdentity[blockIdentity(runID, itemID)]
-		rootID := run.Lineage.RootRunID()
-		if run.Lineage.IsRoot() {
-			rootID = run.ID
-		}
-		if !runExists || rootID != active.ID || run.Status != runtimeprotocol.RunStatusWaiting {
-			return fmt.Errorf("session snapshot: waiting interrupt references inactive run %s", runID)
-		}
-		if !exists {
-			return fmt.Errorf("session snapshot: waiting interrupt references unknown item %s", itemID)
-		}
-		if err := validateInteractionItem(interaction, block); err != nil {
-			return fmt.Errorf("session snapshot: waiting run: %w", err)
-		}
-	}
-	return nil
-}
-
-func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
-	if err := snapshot.Validate(); err != nil {
-		return err
-	}
+func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) {
 	next := NewConversation()
 	next.blocks = cloneBlocks(snapshot.Transcript)
 	next.plan = clonePlan(snapshot.Plan)
@@ -476,7 +161,7 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 	if active, ok := snapshot.ActiveRun(); ok {
 		next.runID = active.ID
 		next.segmentID = active.ActiveSegmentID
-		next.usage = active.Usage.Clone()
+		next.usage = UsageFromMetrics(active.Metrics)
 		if active.Status == runtimeprotocol.RunStatusWaiting {
 			next.phase = ConversationWaiting
 			next.interactions = CloneInteractions(snapshot.Interactions)
@@ -486,11 +171,10 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 		}
 	} else if latest, ok := snapshot.LatestRun(); ok {
 		next.runID = latest.ID
-		next.usage = latest.Usage.Clone()
-		next.outcome = latest.Outcome.Clone()
+		next.usage = UsageFromMetrics(latest.Metrics)
+		next.outcome = OutcomeFromRun(latest.Outcome)
 	}
 	*c = *next
-	return nil
 }
 
 // RestoreAttachedSnapshot restores a cold projection that was read after a
@@ -511,9 +195,7 @@ func (c *Conversation) RestoreAttachedSnapshot(snapshot SessionSnapshot, stream 
 			stream.RunID, stream.SegmentID, active.ID, active.ActiveSegmentID,
 		)
 	}
-	if err := c.RestoreSnapshot(snapshot); err != nil {
-		return err
-	}
+	c.RestoreSnapshot(snapshot)
 	c.checkpoint = stream.HeadEventID
 	c.reconciling = true
 	return nil
@@ -529,29 +211,6 @@ func (c CreateSession) Validate() error {
 		return errors.New("session create: title is empty")
 	}
 	if err := (workspace.ResolveRequest{Path: strings.TrimSpace(c.Workspace)}).Validate(); err != nil {
-		return fmt.Errorf("session create: %w", err)
-	}
-	return nil
-}
-
-func (c CreateSession) ValidateResult(result Session) error {
-	if err := c.Validate(); err != nil {
-		return err
-	}
-	var problems []error
-	if err := result.Validate(); err != nil {
-		problems = append(problems, fmt.Errorf("runtime result: %w", err))
-	}
-	if result.Revision != exactint.First().Value() {
-		problems = append(problems, fmt.Errorf("runtime returned initial revision %d, want %d", result.Revision, exactint.First().Value()))
-	}
-	if title := strings.TrimSpace(c.Title); title != "" && result.Title != title {
-		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, title))
-	}
-	if path := strings.TrimSpace(c.Workspace); path != "" && result.Workspace.Path != path {
-		problems = append(problems, fmt.Errorf("runtime returned workspace %q, want %q", result.Workspace.Path, path))
-	}
-	if err := errors.Join(problems...); err != nil {
 		return fmt.Errorf("session create: %w", err)
 	}
 	return nil
@@ -590,44 +249,6 @@ func (u UpdateSession) Validate() error {
 	return nil
 }
 
-// ValidateResult verifies that a successful update response represents the
-// exact command the caller issued, rather than merely containing a valid but
-// unrelated session projection.
-func (u UpdateSession) ValidateResult(result Session) error {
-	if err := u.Validate(); err != nil {
-		return err
-	}
-	var problems []error
-	if err := result.Validate(); err != nil {
-		problems = append(problems, fmt.Errorf("runtime result: %w", err))
-	}
-	if result.ID != u.SessionID {
-		problems = append(problems, fmt.Errorf("runtime returned session %s, want %s", result.ID, u.SessionID))
-	}
-	if err := exactint.Follows(u.ExpectedRevision, result.Revision); err != nil {
-		problems = append(problems, fmt.Errorf("runtime returned revision %d after expected revision %d: %w", result.Revision, u.ExpectedRevision, err))
-	}
-	if u.Title != nil && result.Title != strings.TrimSpace(*u.Title) {
-		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, strings.TrimSpace(*u.Title)))
-	}
-	if u.Workspace != nil && result.Workspace.Path != strings.TrimSpace(*u.Workspace) {
-		problems = append(problems, fmt.Errorf("runtime returned workspace %q, want %q", result.Workspace.Path, strings.TrimSpace(*u.Workspace)))
-	}
-	if u.Model != nil && (result.Provider != u.Model.Provider || result.Model != u.Model.Model) {
-		problems = append(problems, fmt.Errorf("runtime returned model %q, want %q", (ModelRef{Provider: result.Provider, Model: result.Model}).String(), u.Model.String()))
-	}
-	if u.Model != nil && result.ReasoningEffort != "" {
-		problems = append(problems, fmt.Errorf("runtime retained reasoning effort %q after changing model", result.ReasoningEffort))
-	}
-	if u.Favorite != nil && result.Favorite != *u.Favorite {
-		problems = append(problems, fmt.Errorf("runtime returned favorite %t, want %t", result.Favorite, *u.Favorite))
-	}
-	if err := errors.Join(problems...); err != nil {
-		return fmt.Errorf("session update: %w", err)
-	}
-	return nil
-}
-
 type ForkSession struct {
 	SessionID string
 	FromRunID string
@@ -645,29 +266,6 @@ func (f ForkSession) Validate() error {
 	}
 	if f.Title != "" && strings.TrimSpace(f.Title) == "" {
 		return errors.New("session fork: title is empty")
-	}
-	return nil
-}
-
-func (f ForkSession) ValidateResult(result Session) error {
-	if err := f.Validate(); err != nil {
-		return err
-	}
-	var problems []error
-	if err := result.Validate(); err != nil {
-		problems = append(problems, fmt.Errorf("runtime result: %w", err))
-	}
-	if result.Revision != exactint.First().Value() {
-		problems = append(problems, fmt.Errorf("runtime returned initial revision %d, want %d", result.Revision, exactint.First().Value()))
-	}
-	if result.ID == f.SessionID {
-		problems = append(problems, fmt.Errorf("runtime returned source session %q", result.ID))
-	}
-	if title := strings.TrimSpace(f.Title); title != "" && result.Title != title {
-		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, title))
-	}
-	if err := errors.Join(problems...); err != nil {
-		return fmt.Errorf("session fork: %w", err)
 	}
 	return nil
 }

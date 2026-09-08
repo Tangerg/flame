@@ -278,7 +278,7 @@ func (a *app) apply(event agent.RunEvent) error {
 func (a *app) applyPresentationEvent(envelope agent.RunEvent) {
 	switch event := envelope.Event.(type) {
 	case agent.SegmentStarted:
-		if event.Run.Lineage.IsRoot() {
+		if event.Run.ParentRunID == "" {
 			a.observeCurrentRunStatus()
 			if settled := a.settleQueuedDispatch(); settled {
 				a.execution.openingRunID = ""
@@ -288,7 +288,7 @@ func (a *app) applyPresentationEvent(envelope agent.RunEvent) {
 			} else {
 				a.status.note("working · retrying local settlement")
 			}
-			a.execution.clock.start(event.Run.Usage.Duration, time.Now())
+			a.execution.clock.start(agent.UsageFromMetrics(event.Run.Metrics).Duration, time.Now())
 		}
 	case agent.BlockStarted:
 		a.noteBlockStarted(event.Block)
@@ -374,13 +374,13 @@ func (a *app) finishFollowing() {
 
 func outcomeNotification(outcome agent.Outcome) string {
 	switch outcome.Status {
-	case agent.OutcomeCompleted:
+	case runtimeprotocol.OutcomeCompleted:
 		return "flame run completed"
-	case agent.OutcomeCanceled:
+	case runtimeprotocol.OutcomeCanceled:
 		return "flame run canceled"
-	case agent.OutcomeTimedOut, agent.OutcomeMaxSteps, agent.OutcomeMaxBudget:
+	case runtimeprotocol.OutcomeTimedOut, runtimeprotocol.OutcomeMaxSteps, runtimeprotocol.OutcomeMaxBudget:
 		return "flame run stopped: " + string(outcome.Status)
-	case agent.OutcomeFailed, agent.OutcomeLost:
+	case runtimeprotocol.OutcomeFailed, runtimeprotocol.OutcomeLost:
 		return "flame run failed"
 	default:
 		return ""

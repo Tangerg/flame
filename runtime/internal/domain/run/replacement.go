@@ -1,9 +1,6 @@
 package run
 
-import (
-	"errors"
-	"fmt"
-)
+import "errors"
 
 // Replacement binds an already-decided Run state to the exact aggregate it
 // was derived from. Application write-sets use it when persistence must reject
@@ -15,26 +12,17 @@ type Replacement struct {
 
 // NewReplacement constructs one exact Run aggregate replacement.
 func NewReplacement(expected, state Run) (Replacement, error) {
-	replacement := Replacement{expected: expected, state: state}
-	if err := replacement.Validate(); err != nil {
-		return Replacement{}, err
+	if expected.IsZero() || state.IsZero() {
+		return Replacement{}, errors.New("run: replacement requires expected and next runs")
 	}
-	return replacement, nil
+	if expected.ID() != state.ID() || expected.SessionID() != state.SessionID() {
+		return Replacement{}, errors.New("run: replacement changes Run identity")
+	}
+	return Replacement{expected: expected, state: state}, nil
 }
 
-// Validate proves both aggregates are valid and retain one Run identity.
-func (r Replacement) Validate() error {
-	if err := r.expected.Validate(); err != nil {
-		return fmt.Errorf("run: replacement expected state: %w", err)
-	}
-	if err := r.state.Validate(); err != nil {
-		return fmt.Errorf("run: replacement state: %w", err)
-	}
-	if r.expected.ID() != r.state.ID() || r.expected.SessionID() != r.state.SessionID() {
-		return errors.New("run: replacement changes Run identity")
-	}
-	return nil
-}
+// IsZero reports whether no replacement was constructed.
+func (r Replacement) IsZero() bool { return r.state.IsZero() }
 
 // Expected returns the complete aggregate the replacement was derived from.
 func (r Replacement) Expected() Run { return r.expected }

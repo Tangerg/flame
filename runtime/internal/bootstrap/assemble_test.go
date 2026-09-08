@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -253,7 +252,7 @@ func TestAssemblyFailureRollbackContinuesAfterCloseTimeout(t *testing.T) {
 		return toolRuntime, buildErr
 	}
 	lifetime := newRuntimeLifetime(t.Context(), cfg.Resources)
-	lifetime.shutdownWait = testShutdownWait(t, time.Millisecond)
+	lifetime.shutdownWait = time.Millisecond
 
 	failedInstance, err := assemble(t.Context(), cfg, lifetime, buildTools)
 	if failedInstance != nil || !errors.Is(err, context.DeadlineExceeded) {
@@ -272,7 +271,7 @@ func TestAssemblyFailureRollbackContinuesAfterCloseTimeout(t *testing.T) {
 	}
 }
 
-func TestAssemblyDirectToolsDoNotDependOnAgentResolver(t *testing.T) {
+func TestAssemblyClosesOwnedToolResources(t *testing.T) {
 	cfg := runtimeConfigWithRequiredDeps(t)
 	var toolClosed atomic.Int32
 
@@ -288,10 +287,6 @@ func TestAssemblyDirectToolsDoNotDependOnAgentResolver(t *testing.T) {
 			toolClosed.Add(1)
 			return nil
 		}))
-		// The agent resolver is intentionally absent. Direct client-invoked
-		// diagnostics have a separate fixed catalog and must not inherit the
-		// model-driven Run's capability catalog.
-		toolRuntime.tools.Resolver = nil
 		return toolRuntime, nil
 	}
 	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildTools)
@@ -397,7 +392,7 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 	if pending, listErr := cfg.Stores.Interrupts.List(ctx, sessionID); listErr != nil || len(pending) != 0 {
 		t.Fatalf("pending after assemble = (%+v, %v), want none", pending, listErr)
 	}
-	if _, loadCheckpointErr := cfg.Stores.ExecutorCheckpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
+	if _, loadCheckpointErr := cfg.Stores.ExecutorCheckpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, run.ErrCheckpointNotFound) {
 		t.Fatalf("executor checkpoint after assemble = %v, want not found", loadCheckpointErr)
 	}
 	runs, err := cfg.Stores.Runs.ListRuns(ctx, sessionID)

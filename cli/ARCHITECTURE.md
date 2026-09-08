@@ -14,6 +14,10 @@ CLI owns only command and presentation concerns:
 - drafts, attachments, prompt history, queue intent, stash, and replay intent;
 - projections used to present Runtime facts.
 
+Cold recovery reads one complete Runtime Session snapshot, including Session
+metadata and activity from its coherent material read. It does not pair separate
+queries or retry metadata comparisons.
+
 A Runtime event may update a preview, but completed Items and authoritative snapshots win after reconnect, gaps, and cold recovery.
 
 One-shot execution reads the complete tree interruption from Conversation after the root Segment closes. Member interrupts alone do not authorize a resume; a stream lost before the root boundary must reconnect or recover the durable snapshot first.
@@ -41,13 +45,30 @@ The production process opens at most one concrete Runtime, fans its binding adap
 
 `runtimebinding.Connection` owns binding lifecycle, capability negotiation, exact protocol translation, and safe error classification. It does not own product state. The adapter preserves exact provider/model identity and never stores credentials in CLI state, history, frames, errors, or logs.
 
+Session and workspace observations use `protocol.Session` and
+`protocol.WorkspaceInfo` directly, including session catalog pages. Session JSON
+preserves the Runtime fields (`workspace.ref.path` and page `data`). The binding
+adapter validates external values; cold Conversation restoration only acquires
+CLI presentation state and does not revalidate Runtime lifecycle rules.
+
+Run queries, catalog pages, snapshots, and cancellation acknowledgements use
+`protocol.RunRef`, `protocol.Page[protocol.RunRef]`, and
+`protocol.CancelRunResponse` directly. Runtime owns their states, lineage,
+limits, outcome union, and validation. Conversation retains owned observations
+and folds live `protocol.RunMetrics` without passing through display units;
+absent metering and a reported zero remain distinct through cold recovery.
+Views convert duration units and format outcomes. Run JSON preserves the
+Runtime vocabulary and cancellation union.
+
 Management, catalog, and workspace queries transfer fresh Runtime results to their consumer after validation. The adapter does not clone them again. Synchronous calls borrow inputs; a component retaining mutable data acquires its own copy at that boundary, including immutable profiles and live event projections. Test bindings follow the same ownership contracts as Runtime.
 
 The connection shares its immutable request metadata with synchronous binding calls. Runtime takes the snapshot retained by each operation or stream. The process owner snapshots configuration directories when it is constructed; Runtime copies them when resolving its configuration.
 
-MCP management consumes Runtime server, tool, probe, and authorization values directly. Runtime also owns MCP error identities; the adapter applies the shared problem formatter without adding synonymous CLI errors. CLI retains form drafts, write intent, and acknowledgement checks; the terminal formats tool schemas when building the displayed document. An editor takes ownership of its fresh server query result.
+MCP management consumes Runtime server, tool, probe, and authorization values directly. Runtime also owns MCP error identities; the adapter applies the shared problem formatter without adding synonymous CLI errors. CLI retains form drafts and write intent; the adapter checks response shape and target identity. Runtime owns mutation postconditions; the terminal formats tool schemas when building the displayed document. An editor takes ownership of its fresh server query result.
 
 The binding adapter's immutable `Profile` retains the validated `protocol.DiscoverResponse` and client capability declaration. Runtime owns the wire constraints and feature-negotiation rule; CLI adds only its supported-surface checks and local command-replay policy. Readers receive owned protocol values. `runtime info --json` publishes these values under `discovery` and `clientCapabilities`, using the Runtime field names and limit representations directly.
+
+Commands and terminal sessions require a negotiated Runtime profile. Replay admission uses that connection's fixed store identity and checks the recorded deadline before every mutation attempt. Queue-local intent and projection-reconciled history rollback can remain unprotected; that state never grants an unprotected mutation retry.
 
 The terminal model catalog aggregates Runtime's per-provider discovery results. A provider discovery failure remains visible beside successfully discovered models; the CLI never invents fallback models. Cancellation, Runtime closure, and invalid protocol responses abort the aggregate read.
 
@@ -65,11 +86,23 @@ Oolong owns terminal mode, input decoding, cell measurement, and low-level editi
 
 `/Users/tangerg/Desktop/grok-build` is the visual benchmark for information hierarchy, spacing, presentation density, stable streaming, and immediate interaction feedback. Flame keeps its own vocabulary, state ownership, and Oolong primitives. Compare deterministic renders at representative terminal dimensions so visual changes have reviewable evidence instead of subjective claims.
 
+The terminal uses one Runtime change subscription for its supported topics and
+active workspace watch. It registers before refreshing state and resynchronizes
+the observed scope after sequence gaps.
+
 Long-lived terminal features own their cancellation and settlement locally. The application root coordinates them but does not mirror every feature field or become a general service bag.
+
+Extension plugins install typed contributions into one registry. The registry releases an installation's contributions together on setup failure or unload; stale installation handles cannot remove a later reload. The terminal cancels plugin-owned commands before unloading their contributions, and the host preserves dependency order.
 
 ## Local authoring
 
+Opening a workbench requires persistence. Terminal sessions and session deletion require an absolute state directory supplied by process composition; missing configuration fails before authoring recovery or mutation.
+
 Workbench persistence contains only CLI-authored facts. The workbench aggregate owns record names, the strict current shape, and recovery semantics; its narrow persistence port carries opaque bytes while the filesystem adapter owns rooted paths, regular-file checks, and atomic replacement. Records fail closed on unknown, malformed, oversized, truncated, or trailing content. Queue and replay are CLI aggregates with explicit identities and legal transitions; terminal code commands them instead of mutating slices and flags independently.
+
+Queue admission receives the command identity allocated by its authoring transaction, and settlement retires that exact identity. Stashing transfers an existing draft through the recoverable workbench transaction. Session retirement removes the complete local authoring state together.
+
+Rollback captures recoverable opening input from the authoritative preview before mutation and persists it with the pending command. Its acknowledgement projects only the Session and dropped Run identities needed to verify settlement.
 
 Attachments are local path references. Dispatch reopens the current file through the filesystem adapter and converts it to Runtime content under explicit size and encoding limits.
 

@@ -116,11 +116,14 @@ func newTerminalPlan(
 		}
 		terminal.goalRun = &record
 	}
-	if err := terminal.Validate(); err != nil {
+	if err := terminal.validate(); err != nil {
 		return TerminalPlan{}, err
 	}
 	return terminal, nil
 }
+
+// IsZero reports whether no terminal plan was constructed.
+func (t TerminalPlan) IsZero() bool { return t.checkpointRootID.String() == "" }
 
 // RootRun returns the root terminal projection. A valid plan always has one.
 func (t TerminalPlan) RootRun() (rundomain.Run, bool) {
@@ -155,10 +158,10 @@ func (t TerminalPlan) GoalRun() *goal.RunRecord {
 	return &record
 }
 
-// Validate proves that the parked-tree terminal write-set is complete,
+// validate proves that the parked-tree terminal write-set is complete,
 // canonical, owner-bound, and carries exactly the Goal accounting fact implied
 // by its root terminal Run.
-func (t TerminalPlan) Validate() error {
+func (t TerminalPlan) validate() error {
 	root, ok := t.RootRun()
 	if !ok {
 		return errors.New("sessions: terminal plan must end with one root Run")
@@ -210,9 +213,6 @@ func (t TerminalPlan) Validate() error {
 			return fmt.Errorf("sessions: terminal plan repeats Item %q", item.ID())
 		}
 		seenItems[item.ID()] = struct{}{}
-		if err := item.Validate(); err != nil {
-			return fmt.Errorf("sessions: terminal plan Item %q: %w", item.ID(), err)
-		}
 	}
 	for index, message := range t.messages {
 		if err := message.Validate(); err != nil {
@@ -241,8 +241,8 @@ func terminalGoalRun(root rundomain.Run) (goal.RunRecord, error) {
 }
 
 func validateTerminalRunReplacement(replacement rundomain.Replacement) error {
-	if err := replacement.Validate(); err != nil {
-		return err
+	if replacement.IsZero() {
+		return fmt.Errorf("sessions: run replacement is required")
 	}
 	expected := replacement.Expected()
 	state := replacement.State()

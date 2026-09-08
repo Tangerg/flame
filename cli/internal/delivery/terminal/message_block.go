@@ -25,10 +25,6 @@ var (
 	_ headless.TextProjector = (*userMessageBlock)(nil)
 )
 
-func newUserMessageBlock(theme kit.Theme, body string) *userMessageBlock {
-	return newUserMessageBlockAs(theme, "you", body, true)
-}
-
 func newUserMessageBlockAs(theme kit.Theme, speaker, body string, own bool) *userMessageBlock {
 	message := &kit.Entry{Theme: theme, Label: speaker, Body: body}
 	if own {

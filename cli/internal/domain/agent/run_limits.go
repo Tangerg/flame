@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"math"
+
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type runLimitsKind string
@@ -16,7 +18,7 @@ const (
 	limitedRunLimits   runLimitsKind = "limited"
 )
 
-// RunLimits is the immutable accumulated allowance for one Run tree. Its zero
+// RunLimits is the CLI-authored allowance requested for one Run tree. Its zero
 // value is invalid; unlimited and limited policies are both explicit.
 type RunLimits struct {
 	maxTotalTokens int64
@@ -159,4 +161,21 @@ func rejectRunLimitsTrailingJSON(decoder *json.Decoder) error {
 		return fmt.Errorf("run limits: trailing JSON: %w", err)
 	}
 	return errors.New("run limits: trailing JSON value")
+}
+
+func (limits RunLimits) Protocol() *protocol.RunLimits {
+	if limits.Unlimited() {
+		return nil
+	}
+	wire := &protocol.RunLimits{}
+	if value, limited := limits.MaxTotalTokens(); limited {
+		wire.MaxTotalTokens = &value
+	}
+	if value, limited := limits.MaxSteps(); limited {
+		wire.MaxSteps = &value
+	}
+	if value, limited := limits.MaxBudgetUSD(); limited {
+		wire.MaxBudgetUSD = &value
+	}
+	return wire
 }

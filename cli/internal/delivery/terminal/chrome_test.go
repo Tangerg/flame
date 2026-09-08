@@ -14,13 +14,12 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 func TestSessionHeaderUsesSpaceProgressively(t *testing.T) {
-	header := newSessionHeader(kit.Dark(), kit.Unicode(), agent.Session{
+	header := newSessionHeader(kit.Dark(), kit.Unicode(), protocol.Session{
 		Title:     "Architecture review",
-		Workspace: workspace.Workspace{Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable},
+		Workspace: protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/workspace/scope"}, ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable},
 	})
 	header.SetUsage(agent.Usage{InputTokens: 1_234, OutputTokens: 56_789})
 
@@ -47,9 +46,9 @@ func TestSessionHeaderUsesSpaceProgressively(t *testing.T) {
 func TestSessionHeaderExposesMissingWorkspace(t *testing.T) {
 	t.Parallel()
 
-	header := newSessionHeader(kit.Dark(), kit.Unicode(), agent.Session{
-		Title: "History", Workspace: workspace.Workspace{
-			Path: "/gone/work", ProjectRoot: "/gone", Availability: protocol.WorkspaceMissing,
+	header := newSessionHeader(kit.Dark(), kit.Unicode(), protocol.Session{
+		Title: "History", Workspace: protocol.WorkspaceInfo{
+			Ref: protocol.WorkspaceRef{Path: "/gone/work"}, ProjectRoot: "/gone", Availability: protocol.WorkspaceMissing,
 		},
 	})
 	got := drawStatic(t, header, 72, 2)
@@ -61,8 +60,8 @@ func TestSessionHeaderExposesMissingWorkspace(t *testing.T) {
 }
 
 func TestSessionHeaderUsesItsReservedSecondRowForGoalState(t *testing.T) {
-	header := newSessionHeader(kit.Dark(), kit.Unicode(), agent.Session{
-		Title: "Release", Workspace: workspace.Workspace{Path: "/workspace/flame", Availability: protocol.WorkspaceAvailable},
+	header := newSessionHeader(kit.Dark(), kit.Unicode(), protocol.Session{
+		Title: "Release", Workspace: protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/workspace/flame"}, Availability: protocol.WorkspaceAvailable},
 	})
 	current := testGoal(t, "ship the release safely")
 	header.SetGoal(&current)
@@ -96,11 +95,7 @@ func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 	if got := drawStatic(t, status, 72, 1); !strings.Contains(got, "using shell") || !strings.Contains(got, "ctx 12,345") {
 		t.Fatalf("sparse activity lost the latest context footprint:\n%s", got)
 	}
-	status.settled(agent.Run{
-		ContextTokens: contextTokens,
-		Outcome:       agent.Outcome{Status: agent.OutcomeCompleted},
-		Usage:         agent.Usage{InputTokens: 20, OutputTokens: 4},
-	})
+	status.settled(agent.Outcome{Status: protocol.OutcomeCompleted}, agent.Usage{InputTokens: 20, OutputTokens: 4})
 	if got := drawStatic(t, status, 72, 1); !strings.Contains(got, "complete") ||
 		!strings.Contains(got, "ctx 12,345") || !strings.Contains(got, "↑20") {
 		t.Fatalf("settled status lost the final Run footprint:\n%s", got)
@@ -113,12 +108,12 @@ func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 
 func TestSettledStatusIncludesRunRecoveryMetadata(t *testing.T) {
 	status := newStatusView(kit.Dark(), kit.Unicode())
-	status.settled(agent.Run{Outcome: agent.Outcome{
-		Status: agent.OutcomeFailed,
+	status.settled(agent.Outcome{
+		Status: protocol.OutcomeFailed,
 		Problem: &protocol.ProblemData{
 			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
 		},
-	}})
+	}, agent.Usage{})
 	for _, want := range []string{"quota exhausted", "retry after 12s"} {
 		if !strings.Contains(status.doing, want) {
 			t.Fatalf("settled status omitted %q: %q", want, status.doing)
@@ -262,8 +257,8 @@ func TestShellRendersAtSupportedAndConstrainedTerminalSizes(t *testing.T) {
 	}
 	theme, glyphs := kit.Dark(), kit.Unicode()
 	transcript := testTranscriptView(t)
-	header := newSessionHeader(theme, glyphs, agent.Session{Title: "New session", Workspace: workspace.Workspace{
-		Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable,
+	header := newSessionHeader(theme, glyphs, protocol.Session{Title: "New session", Workspace: protocol.WorkspaceInfo{
+		Ref: protocol.WorkspaceRef{Path: "/workspace/scope"}, ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable,
 	}})
 	activity := newActivityView(theme, glyphs)
 	activity.Set([]protocol.PlanStep{{Description: "Inspect", Status: protocol.PlanStatusInProgress}})
@@ -293,8 +288,8 @@ func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 	theme, glyphs := kit.Dark(), kit.Unicode()
 	transcript := testTranscriptView(t)
 	transcript.Append(&kit.Entry{Theme: theme, Label: "flame", Body: "VISIBLE_TRANSCRIPT"})
-	header := newSessionHeader(theme, glyphs, agent.Session{Title: "Hidden title", Workspace: workspace.Workspace{
-		Path: "/hidden/workspace", ProjectRoot: "/hidden/workspace", Availability: protocol.WorkspaceAvailable,
+	header := newSessionHeader(theme, glyphs, protocol.Session{Title: "Hidden title", Workspace: protocol.WorkspaceInfo{
+		Ref: protocol.WorkspaceRef{Path: "/hidden/workspace"}, ProjectRoot: "/hidden/workspace", Availability: protocol.WorkspaceAvailable,
 	}})
 	activity := newActivityView(theme, glyphs)
 	activity.Set([]protocol.PlanStep{{Description: "HIDDEN_PLAN", Status: protocol.PlanStatusInProgress}})
@@ -339,8 +334,8 @@ func TestShortShellYieldsOptionalPanesToTranscriptAndPrompt(t *testing.T) {
 	theme, glyphs := kit.Dark(), kit.Unicode()
 	transcript := testTranscriptView(t)
 	transcript.Append(&kit.Entry{Theme: theme, Label: "flame", Body: "VISIBLE_TRANSCRIPT"})
-	header := newSessionHeader(theme, glyphs, agent.Session{Title: "HIDDEN_TITLE", Workspace: workspace.Workspace{
-		Path: "/hidden/workspace", ProjectRoot: "/hidden/workspace", Availability: protocol.WorkspaceAvailable,
+	header := newSessionHeader(theme, glyphs, protocol.Session{Title: "HIDDEN_TITLE", Workspace: protocol.WorkspaceInfo{
+		Ref: protocol.WorkspaceRef{Path: "/hidden/workspace"}, ProjectRoot: "/hidden/workspace", Availability: protocol.WorkspaceAvailable,
 	}})
 	activity := newActivityView(theme, glyphs)
 	activity.Set([]protocol.PlanStep{{Description: "HIDDEN_PLAN", Status: protocol.PlanStatusInProgress}})
@@ -379,7 +374,7 @@ func TestResponsiveShellPreservesTranscriptFocusAndDraft(t *testing.T) {
 	composer.Editor().SetText("PRESERVED_DRAFT")
 	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
 	shell := newShellView(
-		newSessionHeader(theme, glyphs, agent.Session{}), transcript,
+		newSessionHeader(theme, glyphs, protocol.Session{}), transcript,
 		newActivityView(theme, glyphs), newQueueView(theme, glyphs),
 		newStatusView(theme, glyphs), prompt,
 	)
@@ -412,7 +407,7 @@ func TestShellMovesFocusBetweenPromptAndTranscript(t *testing.T) {
 	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
 	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
 	shell := newShellView(
-		newSessionHeader(theme, glyphs, agent.Session{}), transcript,
+		newSessionHeader(theme, glyphs, protocol.Session{}), transcript,
 		newActivityView(theme, glyphs), newQueueView(theme, glyphs),
 		newStatusView(theme, glyphs), prompt,
 	)

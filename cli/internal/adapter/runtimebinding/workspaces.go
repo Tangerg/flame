@@ -28,9 +28,9 @@ const (
 	maximumWorkspaceFilePageRequests = 40
 )
 
-func (r *Connection) Resolve(ctx context.Context, request workspace.ResolveRequest) (workspace.Workspace, error) {
+func (r *Connection) Resolve(ctx context.Context, request workspace.ResolveRequest) (protocol.WorkspaceInfo, error) {
 	if err := request.Validate(); err != nil {
-		return workspace.Workspace{}, err
+		return protocol.WorkspaceInfo{}, err
 	}
 	wire := protocol.ResolveWorkspaceRequest{}
 	if request.Path != "" {
@@ -38,16 +38,15 @@ func (r *Connection) Resolve(ctx context.Context, request workspace.ResolveReque
 	}
 	resolved, err := r.workspaces.ResolveWorkspace(ctx, wire, r.callOptions())
 	if err != nil {
-		return workspace.Workspace{}, classifyError(err)
+		return protocol.WorkspaceInfo{}, classifyError(err)
 	}
 	if resolved == nil {
-		return workspace.Workspace{}, runtimeContractViolation("resolve workspace returned nil")
+		return protocol.WorkspaceInfo{}, runtimeContractViolation("resolve workspace returned nil")
 	}
-	projected, err := projectWorkspace(*resolved)
-	if err != nil {
-		return workspace.Workspace{}, runtimeContractViolation("resolve workspace returned an invalid workspace: %v", err)
+	if err := protocol.ValidateWireTree(*resolved); err != nil {
+		return protocol.WorkspaceInfo{}, runtimeContractViolation("resolve workspace returned an invalid workspace: %v", err)
 	}
-	return projected, nil
+	return *resolved, nil
 }
 
 func (r *Connection) List(ctx context.Context) ([]workspace.Summary, error) {
@@ -63,7 +62,7 @@ func (r *Connection) List(ctx context.Context) ([]workspace.Summary, error) {
 		"list workspaces",
 		values,
 		projectWorkspaceSummary,
-		func(summary workspace.Summary) string { return summary.Workspace.Path },
+		func(summary workspace.Summary) string { return summary.Workspace.Ref.Path },
 	)
 	if err != nil {
 		return nil, err
@@ -71,7 +70,7 @@ func (r *Connection) List(ctx context.Context) ([]workspace.Summary, error) {
 	for index, summary := range summaries {
 		if summary.LastActive == nil || summary.LastActive.IsZero() {
 			return nil, runtimeContractViolation(
-				"list workspaces returned workspace %q without an activity time", summary.Workspace.Path,
+				"list workspaces returned workspace %q without an activity time", summary.Workspace.Ref.Path,
 			)
 		}
 		if index == 0 {
@@ -79,11 +78,11 @@ func (r *Connection) List(ctx context.Context) ([]workspace.Summary, error) {
 		}
 		previous := summaries[index-1]
 		if summary.LastActive.After(*previous.LastActive) ||
-			summary.LastActive.Equal(*previous.LastActive) && summary.Workspace.Path < previous.Workspace.Path {
+			summary.LastActive.Equal(*previous.LastActive) && summary.Workspace.Ref.Path < previous.Workspace.Ref.Path {
 			return nil, runtimeContractViolation(
 				"list workspaces returned workspace %q out of catalog order after %q",
-				summary.Workspace.Path,
-				previous.Workspace.Path,
+				summary.Workspace.Ref.Path,
+				previous.Workspace.Ref.Path,
 			)
 		}
 	}
@@ -322,26 +321,12 @@ func (r *Connection) Read(ctx context.Context, request workspace.ReadRequest) (w
 	return result, nil
 }
 
-func projectWorkspace(value protocol.WorkspaceInfo) (workspace.Workspace, error) {
-	if err := protocol.ValidateWireTree(value); err != nil {
-		return workspace.Workspace{}, fmt.Errorf("runtime workspace %q: %w", value.Ref.Path, err)
-	}
-	result := workspace.Workspace{
-		Path: value.Ref.Path, ProjectRoot: value.ProjectRoot, Availability: value.Availability,
-	}
-	if err := result.Validate(); err != nil {
-		return workspace.Workspace{}, fmt.Errorf("runtime workspace %q: %w", value.Ref.Path, err)
-	}
-	return result, nil
-}
-
 func projectWorkspaceSummary(value protocol.WorkspaceSummary) (workspace.Summary, error) {
-	projected, err := projectWorkspace(value.Workspace)
-	if err != nil {
+	if err := protocol.ValidateWireTree(value); err != nil {
 		return workspace.Summary{}, err
 	}
 	result := workspace.Summary{
-		Workspace: projected, Name: value.Name, Sessions: value.SessionCount, LastActive: value.LastActiveAt,
+		Workspace: value.Workspace, Name: value.Name, Sessions: value.SessionCount, LastActive: value.LastActiveAt,
 	}
 	if err := result.Validate(); err != nil {
 		return workspace.Summary{}, err

@@ -17,7 +17,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
-	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
@@ -31,12 +30,6 @@ type runtimeChangeSourceStub struct {
 	subscription chan changefeed.Subscription
 	applied      chan changefeed.Event
 	supported    []protocol.RuntimeTopic
-}
-
-type runtimeSubscriptionRegistration struct {
-	subscription changefeed.Subscription
-	events       chan changefeed.Event
-	applied      chan changefeed.Event
 }
 
 func installChangedSessionProjection(
@@ -103,7 +96,7 @@ type blockingSessionCatalogRuntime struct {
 func (b *blockingSessionCatalogRuntime) ListSessions(
 	ctx context.Context,
 	query agent.SessionQuery,
-) (agent.SessionPage, error) {
+) (protocol.Page[protocol.Session], error) {
 	if b.calls.Add(1) != 2 {
 		return b.Runtime.ListSessions(ctx, query)
 	}
@@ -113,7 +106,7 @@ func (b *blockingSessionCatalogRuntime) ListSessions(
 		return b.Runtime.ListSessions(ctx, query)
 	case <-ctx.Done():
 		close(b.refreshCanceled)
-		return agent.SessionPage{}, context.Cause(ctx)
+		return protocol.Page[protocol.Session]{}, context.Cause(ctx)
 	}
 }
 
@@ -479,7 +472,7 @@ func TestSessionCenterMutationOutlivesCurrentSessionProjectionReplacement(t *tes
 		t.Fatal(err)
 	}
 	target, err := base.CreateSession(t.Context(), agent.CreateSession{
-		Title: "Catalog deletion target", Workspace: current.Session.Workspace.Path,
+		Title: "Catalog deletion target", Workspace: current.Session.Workspace.Ref.Path,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -543,7 +536,7 @@ func TestSessionCenterMutationOutlivesCurrentSessionProjectionReplacement(t *tes
 
 	release()
 	host.Shows(t, "deleted session")
-	if _, err := base.GetSession(t.Context(), target.ID); !errors.Is(err, agent.ErrSessionNotFound) {
+	if _, err := base.GetSession(t.Context(), target.ID); !errors.Is(err, protocol.ErrSessionNotFound) {
 		t.Fatalf("deleted session read error = %v", err)
 	}
 	stop()
@@ -606,48 +599,6 @@ func assertSingleRuntimeTopic(t *testing.T, subscriptions <-chan changefeed.Subs
 	if !slices.Equal(subscription.Topics, []protocol.RuntimeTopic{topic}) {
 		t.Fatalf("runtime subscription topics = %v, want [%s]", subscription.Topics, topic)
 	}
-}
-
-type partitionedRuntimeChangeSourceStub struct {
-	supported     []protocol.RuntimeTopic
-	registrations chan runtimeSubscriptionRegistration
-}
-
-func (p *partitionedRuntimeChangeSourceStub) Supports(topic protocol.RuntimeTopic) bool {
-	return slices.Contains(p.supported, topic)
-}
-
-func (p *partitionedRuntimeChangeSourceStub) Subscribe(
-	ctx context.Context,
-	subscription changefeed.Subscription,
-) (changefeed.EventStream, error) {
-	registration := runtimeSubscriptionRegistration{
-		subscription: subscription,
-		events:       make(chan changefeed.Event, 4),
-		applied:      make(chan changefeed.Event, 4),
-	}
-	select {
-	case p.registrations <- registration:
-	case <-ctx.Done():
-		return nil, context.Cause(ctx)
-	}
-	return func(yield func(changefeed.Event, error) bool) {
-		for {
-			select {
-			case event := <-registration.events:
-				if !yield(event, nil) {
-					return
-				}
-				select {
-				case registration.applied <- event:
-				case <-ctx.Done():
-					return
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}, nil
 }
 
 func (r *runtimeChangeSourceStub) Supports(topic protocol.RuntimeTopic) bool {
@@ -764,7 +715,7 @@ func TestRuntimeChangeMonitorReconnectsWhenAStreamClosesUnexpectedly(t *testing.
 	}
 	done := make(chan error, 1)
 	go func() {
-		done <- (runtimeChangeMonitor{source: source, recovery: retry.ImmediateBackoff()}).run(ctx)
+		done <- (runtimeChangeMonitor{source: source, recovery: testBackoff(t, time.Nanosecond, time.Nanosecond)}).run(ctx)
 	}()
 
 	awaitSignal(t, source.subscription, "initial runtime subscription")
@@ -805,245 +756,57 @@ func TestRuntimeChangeMonitorBacksOffRepeatedEmptyStreams(t *testing.T) {
 	}
 }
 
-func TestRuntimeChangeMonitorPartitionsTopicsAtTheNegotiatedLimit(t *testing.T) {
+func TestRuntimeChangeMonitorUsesOneSubscriptionForWorkspaceAndResources(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	supported := []protocol.RuntimeTopic{
-		protocol.TopicSessionsChanged,
-		protocol.TopicRunsChanged,
-		protocol.TopicPlanChanged,
-		protocol.TopicInterruptsChanged,
-		protocol.TopicSkillsChanged,
+	source := &runtimeChangeSourceStub{
+		supported:    changefeed.Topics(),
+		subscription: make(chan changefeed.Subscription, 2),
+		events:       make(chan changefeed.Event, 1),
+		applied:      make(chan changefeed.Event, 1),
 	}
-	source := &partitionedRuntimeChangeSourceStub{
-		supported:     supported,
-		registrations: make(chan runtimeSubscriptionRegistration, 3),
-	}
-	resyncs := make(chan []protocol.RuntimeTopic, 4)
-	applied := make(chan changefeed.Event, 3)
+	files := newWorkspaceServiceStub()
+	refreshed := make(chan struct{}, 2)
+	resynced := make(chan []protocol.RuntimeTopic, 1)
 	monitor := runtimeChangeMonitor{
-		source: source, resources: runtimeResourceObservation{plan: true, skills: true},
-		subscriptionLimits: changefeed.SubscriptionLimits{MaxTopics: 2, MaxWatches: 1},
-		applyResync: func(topics []protocol.RuntimeTopic) error {
-			resyncs <- slices.Clone(topics)
-			return nil
+		workspace: "/workspace", source: source, repository: files, watchFiles: true,
+		resources: runtimeResourceObservation{
+			plan: true, goals: true, skills: true, mcp: true, schedules: true,
+			knowledge: true, hooks: true, models: true, approvals: true, agentMemory: true,
 		},
-		applyEvent: func(event changefeed.Event) error {
-			applied <- event
-			return nil
-		},
+		applyFiles:  func([]workspace.Change) error { refreshed <- struct{}{}; return nil },
+		applyResync: func(topics []protocol.RuntimeTopic) error { resynced <- slices.Clone(topics); return nil },
 	}
 	done := make(chan error, 1)
 	go func() { done <- monitor.run(ctx) }()
-
-	registrations := make([]runtimeSubscriptionRegistration, 0, 3)
-	for range 3 {
-		registrations = append(registrations, awaitValue(t, source.registrations, "partitioned subscription"))
-	}
-	for range 3 {
-		awaitValue(t, resyncs, "partition initial resync")
-	}
-	slices.SortFunc(registrations, func(left, right runtimeSubscriptionRegistration) int {
-		return strings.Compare(string(left.subscription.Topics[0]), string(right.subscription.Topics[0]))
-	})
-	var subscribed []protocol.RuntimeTopic
-	for _, registration := range registrations {
-		if len(registration.subscription.Topics) > 2 {
-			t.Fatalf("subscription topics = %v, exceeds negotiated limit", registration.subscription.Topics)
-		}
-		subscribed = append(subscribed, registration.subscription.Topics...)
-		registration.events <- changefeed.Event{
-			Type: protocol.RuntimeEventType(registration.subscription.Topics[0]), Sequence: 1,
+	subscription := awaitValue(t, source.subscription, "runtime subscription")
+	initial := awaitValue(t, resynced, "initial resync")
+	for _, topic := range changefeed.Topics() {
+		if !slices.Contains(subscription.Topics, topic) || !slices.Contains(initial, topic) {
+			t.Fatalf("subscription or initial refresh omitted %s", topic)
 		}
 	}
-	slices.Sort(subscribed)
-	wantTopics := slices.Clone(supported)
-	slices.Sort(wantTopics)
-	if !slices.Equal(subscribed, wantTopics) {
-		t.Fatalf("subscribed topics = %v, want %v", subscribed, wantTopics)
+	if !slices.Equal(subscription.Watches, []changefeed.Watch{{ID: workspaceWatchID, Workspace: "/workspace"}}) {
+		t.Fatalf("workspace watch = %+v", subscription.Watches)
 	}
-	for range 3 {
-		awaitValue(t, applied, "partitioned event")
+	awaitSignal(t, refreshed, "initial workspace refresh")
+	source.events <- changefeed.Event{
+		Type: protocol.RuntimeFilesChanged, Sequence: 1,
+		WatchID: workspaceWatchID, Workspace: "/workspace", Paths: []string{"main.go"},
+	}
+	awaitSignal(t, refreshed, "changed workspace refresh")
+	awaitValue(t, source.applied, "file event delivery")
+	if reads := files.callCount("changes"); reads != 2 {
+		t.Fatalf("workspace reads = %d, want 2", reads)
 	}
 	select {
-	case unexpected := <-resyncs:
-		t.Fatalf("independent sequence-one frames triggered a gap resync for %v", unexpected)
+	case extra := <-source.subscription:
+		t.Fatalf("unexpected extra subscription: %+v", extra)
 	default:
 	}
 	cancel()
 	if err := <-done; !errors.Is(err, context.Canceled) {
-		t.Fatalf("run error = %v, want context cancellation", err)
-	}
-}
-
-func TestRuntimeChangeMonitorResyncsOnlyThePartitionWithASequenceGap(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	source := &partitionedRuntimeChangeSourceStub{
-		supported: []protocol.RuntimeTopic{
-			protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
-			protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
-		},
-		registrations: make(chan runtimeSubscriptionRegistration, 2),
-	}
-	resyncs := make(chan []protocol.RuntimeTopic, 3)
-	monitor := runtimeChangeMonitor{
-		source:             source,
-		resources:          runtimeResourceObservation{plan: true},
-		subscriptionLimits: changefeed.SubscriptionLimits{MaxTopics: 2, MaxWatches: 1},
-		applyResync: func(topics []protocol.RuntimeTopic) error {
-			resyncs <- slices.Clone(topics)
-			return nil
-		},
-	}
-	done := make(chan error, 1)
-	go func() { done <- monitor.run(ctx) }()
-
-	first := awaitValue(t, source.registrations, "first partition")
-	awaitValue(t, source.registrations, "second partition")
-	for range 2 {
-		awaitValue(t, resyncs, "partition initial resync")
-	}
-	first.events <- changefeed.Event{
-		Type: protocol.RuntimeEventType(first.subscription.Topics[0]), Sequence: 2,
-	}
-	gapScope := awaitValue(t, resyncs, "partition gap resync")
-	if !slices.Equal(gapScope, first.subscription.Topics) {
-		t.Fatalf("gap resync scope = %v, want %v", gapScope, first.subscription.Topics)
-	}
-	select {
-	case unexpected := <-resyncs:
-		t.Fatalf("gap in one partition resynced another scope: %v", unexpected)
-	case <-time.After(25 * time.Millisecond):
-	}
-	cancel()
-	if err := <-done; !errors.Is(err, context.Canceled) {
-		t.Fatalf("run error = %v, want context cancellation", err)
-	}
-}
-
-func TestRuntimeChangeMonitorAssignsTheWorkspaceWatchToOnePartition(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	source := &partitionedRuntimeChangeSourceStub{
-		supported: []protocol.RuntimeTopic{
-			protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
-			protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
-		},
-		registrations: make(chan runtimeSubscriptionRegistration, 5),
-	}
-	var reads atomic.Int32
-	filesApplied := make(chan struct{}, 1)
-	monitor := runtimeChangeMonitor{
-		workspace: "/workspace", source: source, watchFiles: true,
-		resources: runtimeResourceObservation{plan: true},
-		repository: changeReaderFunc(func(context.Context, string) ([]workspace.Change, error) {
-			reads.Add(1)
-			return nil, nil
-		}),
-		subscriptionLimits: changefeed.SubscriptionLimits{MaxTopics: 1, MaxWatches: 1},
-		applyFiles: func([]workspace.Change) error {
-			filesApplied <- struct{}{}
-			return nil
-		},
-	}
-	done := make(chan error, 1)
-	go func() { done <- monitor.run(ctx) }()
-
-	watchSubscriptions := 0
-	for range 5 {
-		registration := awaitValue(t, source.registrations, "single-topic subscription")
-		if len(registration.subscription.Watches) == 0 {
-			continue
-		}
-		watchSubscriptions++
-		if !slices.Equal(registration.subscription.Topics, []protocol.RuntimeTopic{protocol.TopicFilesChanged}) ||
-			!slices.Equal(registration.subscription.Watches, []changefeed.Watch{{ID: workspaceWatchID, Workspace: "/workspace"}}) {
-			t.Fatalf("file subscription = %+v", registration.subscription)
-		}
-	}
-	awaitSignal(t, filesApplied, "initial workspace projection")
-	if watchSubscriptions != 1 || reads.Load() != 1 {
-		t.Fatalf("watch subscriptions = %d, workspace reads = %d; want one of each", watchSubscriptions, reads.Load())
-	}
-	cancel()
-	if err := <-done; !errors.Is(err, context.Canceled) {
-		t.Fatalf("run error = %v, want context cancellation", err)
-	}
-}
-
-func TestRuntimeChangeMonitorPreservesAuthoredWorkspaceScopeAcrossPartitions(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	source := &partitionedRuntimeChangeSourceStub{
-		supported: []protocol.RuntimeTopic{
-			protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
-			protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged,
-		},
-		registrations: make(chan runtimeSubscriptionRegistration, 3),
-	}
-	var fileReads atomic.Int32
-	fileRefreshes := make(chan struct{}, 2)
-	monitor := runtimeChangeMonitor{
-		workspace: "/workspace", source: source, watchFiles: true,
-		repository: changeReaderFunc(func(context.Context, string) ([]workspace.Change, error) {
-			fileReads.Add(1)
-			return nil, nil
-		}),
-		resources: runtimeResourceObservation{knowledge: true, hooks: true},
-		subscriptionLimits: changefeed.SubscriptionLimits{
-			MaxTopics: 2, MaxWatches: 1,
-		},
-		applyFiles: func([]workspace.Change) error {
-			fileRefreshes <- struct{}{}
-			return nil
-		},
-	}
-	done := make(chan error, 1)
-	go func() { done <- monitor.run(ctx) }()
-
-	registrations := make([]runtimeSubscriptionRegistration, 0, 3)
-	for range 3 {
-		registrations = append(registrations, awaitValue(t, source.registrations, "authored-resource partition"))
-	}
-	for _, topic := range []protocol.RuntimeTopic{protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged} {
-		index := slices.IndexFunc(registrations, func(registration runtimeSubscriptionRegistration) bool {
-			return containsTopic(registration.subscription.Topics, topic)
-		})
-		if index < 0 {
-			t.Fatalf("%s partition is missing", topic)
-		}
-		subscription := registrations[index].subscription
-		if !containsTopic(subscription.Topics, protocol.TopicFilesChanged) ||
-			!slices.Equal(subscription.Watches, []changefeed.Watch{{ID: workspaceWatchID, Workspace: "/workspace"}}) {
-			t.Fatalf("%s partition lost workspace scope: %+v", topic, subscription)
-		}
-	}
-
-	awaitSignal(t, fileRefreshes, "owned initial file refresh")
-	if fileReads.Load() != 1 {
-		t.Fatalf("initial file reads = %d, want one projection owner", fileReads.Load())
-	}
-	fileRegistrations := make([]runtimeSubscriptionRegistration, 0, len(registrations))
-	for _, registration := range registrations {
-		if containsTopic(registration.subscription.Topics, protocol.TopicFilesChanged) {
-			fileRegistrations = append(fileRegistrations, registration)
-			registration.events <- changefeed.Event{
-				Type: protocol.RuntimeFilesChanged, Sequence: 1,
-				WatchID: workspaceWatchID, Workspace: "/workspace", Paths: []string{"main.go"},
-			}
-		}
-	}
-	awaitSignal(t, fileRefreshes, "owned changed-file refresh")
-	for _, registration := range fileRegistrations {
-		awaitValue(t, registration.applied, "partitioned files.changed delivery")
-	}
-	if fileReads.Load() != 2 {
-		t.Fatalf("file reads after duplicate partition events = %d, want one owner refresh", fileReads.Load())
-	}
-	cancel()
-	if err := <-done; !errors.Is(err, context.Canceled) {
-		t.Fatalf("run error = %v, want context cancellation", err)
+		t.Fatalf("monitor stop = %v", err)
 	}
 }
 
@@ -1109,7 +872,7 @@ func TestRuntimeInvalidationDefersColdReplacementUntilTheStreamSettles(t *testin
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &snapshotCountingRuntime{Runtime: base, readSignal: make(chan struct{}, 16)}
@@ -1168,7 +931,7 @@ func TestRuntimeInvalidationFencesRunAdmissionUntilRefreshApplies(t *testing.T) 
 	base.Script = func(prompt string) runtimefixture.Script {
 		runStarted <- prompt
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	backend := &blockingSnapshotRuntime{
@@ -1332,7 +1095,7 @@ func (b *blockedResumeRuntime) ResumeRun(ctx context.Context, input agent.Resume
 	}
 	select {
 	case <-b.release:
-		return agent.SegmentStream{}, agent.ErrInterruptNotOpen
+		return agent.SegmentStream{}, protocol.ErrInterruptNotOpen
 	case <-ctx.Done():
 		return agent.SegmentStream{}, context.Cause(ctx)
 	}
@@ -1364,7 +1127,7 @@ func runUIWithRuntimeChangeServices(t *testing.T, runtime Runtime, workspaces Wo
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: runtime, Workspaces: workspaces, Changes: source, SessionID: sessionID, Host: host})
+		done <- runTestTerminal(t, ctx, Config{Runtime: runtime, Workspaces: workspaces, Changes: source, SessionID: sessionID, Host: host})
 	}()
 	var once sync.Once
 	stop := func() {
@@ -1650,7 +1413,7 @@ func TestDeletedSessionReplacementClosesItsQueueEditor(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &snapshotCountingRuntime{Runtime: base, readSignal: make(chan struct{}, 8)}
@@ -1716,7 +1479,7 @@ func TestMatchingInterruptInvalidationPreservesTheOpenApproval(t *testing.T) {
 			}},
 			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -1769,7 +1532,7 @@ func TestAdvancedInterruptInvalidationClosesTheApprovalArgumentEditor(t *testing
 				},
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -1823,7 +1586,7 @@ func TestInterruptInvalidationWinsARejectedStaleResume(t *testing.T) {
 				Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning},
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -2124,5 +1887,31 @@ func TestRunChangesInvalidateSessionActivityCatalog(t *testing.T) {
 				t.Fatalf("invalidatesSessionCatalog() = %t, want %t", got, test.want)
 			}
 		})
+	}
+}
+
+func TestSessionRefreshComparesTimeInstants(t *testing.T) {
+	created := time.Date(2026, time.August, 13, 8, 30, 0, 0, time.FixedZone("source", 8*60*60))
+	updated := created.Add(time.Minute)
+	session := protocol.Session{
+		ID: "ses_1", Title: "Review", Status: protocol.SessionStatusIdle,
+		Provider: "deepseek", Model: "deepseek-v4-flash",
+		Workspace: protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/tmp/demo"}, ProjectRoot: "/tmp/demo", Availability: protocol.WorkspaceAvailable}, CreatedAt: created, UpdatedAt: updated,
+		Favorite: true, Revision: 3,
+	}
+	equivalent := session
+	equivalent.CreatedAt = created.UTC()
+	equivalent.UpdatedAt = updated.UTC()
+	if !sameSession(session, equivalent) {
+		t.Fatal("equal instants with different locations changed session identity")
+	}
+	equivalent.Revision++
+	if sameSession(session, equivalent) {
+		t.Fatal("a durable session revision change compared equal")
+	}
+	equivalent = session
+	equivalent.ReasoningEffort = "high"
+	if sameSession(session, equivalent) {
+		t.Fatal("a reasoning-effort change compared equal")
 	}
 }

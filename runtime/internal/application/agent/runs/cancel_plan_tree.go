@@ -106,15 +106,9 @@ func buildCancellationRunTree(
 
 	byRunID := make(map[string]rundomain.Run, len(runs))
 	treeMembers := make([]rundomain.TreeMember, 0, len(runs))
-	for index, run := range runs {
-		if err := run.Validate(); err != nil {
-			return cancellationRunTree{}, fmt.Errorf(
-				"runs: build cancellation plan for tree %q: Run[%d] %q: %w",
-				rootRunID,
-				index,
-				run.ID(),
-				err,
-			)
+	for _, run := range runs {
+		if run.IsZero() {
+			return cancellationRunTree{}, fmt.Errorf("runs: run is required")
 		}
 		if run.SessionID() != root.SessionID() {
 			return cancellationRunTree{}, fmt.Errorf(

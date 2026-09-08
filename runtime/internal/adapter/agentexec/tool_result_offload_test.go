@@ -123,3 +123,5 @@ func TestEvict_DisabledOnlyByPolicyOrMissingStore(t *testing.T) {
 		t.Error("present zero threshold was treated as disabled policy")
 	}
 }
+
+func intPointer(value int) *int { return &value }

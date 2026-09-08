@@ -93,16 +93,13 @@ func (r *runsListFlags) execute(cmd *cobra.Command, provider runtimeProvider) er
 	if err != nil {
 		return err
 	}
-	if r.includeDescendants && profile != nil &&
+	if r.includeDescendants &&
 		!profile.Supports(protocol.FeatureSubagents) {
 		return fmt.Errorf("runtime capability %q was not negotiated", protocol.FeatureSubagents)
 	}
 	page, err := runtime.ListRuns(cmd.Context(), query)
 	if err != nil {
 		return err
-	}
-	if err := page.Validate(); err != nil {
-		return fmt.Errorf("list runs: %w", err)
 	}
 	if r.asJSON {
 		return render.WriteRunPageJSON(cmd.OutOrStdout(), page)
@@ -116,9 +113,9 @@ func (r *runsListFlags) execute(cmd *cobra.Command, provider runtimeProvider) er
 	return err
 }
 
-func writeRunList(cmd *cobra.Command, page agent.RunPage) error {
+func writeRunList(cmd *cobra.Command, page protocol.Page[protocol.RunRef]) error {
 	writer := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-	for _, run := range page.Items {
+	for _, run := range page.Data {
 		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n",
 			run.ID, runScope(run), run.Status, runModel(run), run.SessionID,
 		); err != nil {
@@ -144,9 +141,6 @@ func newRunsShowCommand(provider runtimeProvider) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := run.Validate(); err != nil {
-				return fmt.Errorf("show run: %w", err)
-			}
 			if asJSON {
 				return render.WriteRunJSON(cmd.OutOrStdout(), run)
 			}
@@ -158,7 +152,7 @@ func newRunsShowCommand(provider runtimeProvider) *cobra.Command {
 	return command
 }
 
-func writeRunDetails(cmd *cobra.Command, run agent.Run) error {
+func writeRunDetails(cmd *cobra.Command, run protocol.RunRef) error {
 	writer := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 	rows := [][2]string{
 		{"id", run.ID},
@@ -171,13 +165,15 @@ func writeRunDetails(cmd *cobra.Command, run agent.Run) error {
 		rows = append(rows, [2]string{"segment", run.ActiveSegmentID})
 	}
 	if run.Status == protocol.RunStatusFinished {
-		outcome := string(run.Outcome.Status)
-		if detail := run.Outcome.Description(); detail != "" {
+		observedOutcome := agent.OutcomeFromRun(run.Outcome)
+		outcome := string(observedOutcome.Status)
+		if detail := observedOutcome.Description(); detail != "" {
 			outcome += " · " + detail
 		}
 		rows = append(rows, [2]string{"outcome", outcome})
 	}
-	rows = append(rows, [2]string{"tokens", fmt.Sprintf("%d in · %d out · %d cached", run.Usage.InputTokens, run.Usage.OutputTokens, run.Usage.CacheReadTokens)})
+	usage := agent.UsageFromMetrics(run.Metrics)
+	rows = append(rows, [2]string{"tokens", fmt.Sprintf("%d in · %d out · %d cached", usage.InputTokens, usage.OutputTokens, usage.CacheReadTokens)})
 	for _, row := range rows {
 		if _, err := fmt.Fprintf(writer, "%s\t%s\n", row[0], row[1]); err != nil {
 			return err
@@ -218,20 +214,24 @@ func newRunsCancelCommand(provider runtimeProvider) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("prepare run cancellation replay guard: %w", err)
 			}
-			result, err := mutation.ConfirmAdmitted(cmd.Context(), mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(replayPolicy, replay), func(ctx context.Context) (agent.RunCancellation, error) {
+			result, err := mutation.ConfirmAdmitted(cmd.Context(), mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(replayPolicy, replay), func(ctx context.Context) (protocol.CancelRunResponse, error) {
 				return runtime.CancelRun(ctx, request)
 			})
 			if err != nil {
 				return err
 			}
-			if validateTargetErr := result.ValidateTarget(args[0]); validateTargetErr != nil {
-				return fmt.Errorf("cancel run: %w", validateTargetErr)
+			if result.Run.ID != args[0] {
+				return fmt.Errorf("cancel run: returned run %q, want %q", result.Run.ID, args[0])
 			}
 			if asJSON {
 				return render.WriteRunCancellationJSON(cmd.OutOrStdout(), result)
 			}
+			root := result.Run
+			if result.RootRun != nil {
+				root = *result.RootRun
+			}
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "canceled\t%s\t%s\nroot\t%s\t%s\n",
-				result.Canceled.ID, result.Canceled.Outcome.Status, result.Root.ID, result.Root.Status,
+				result.Run.ID, result.Run.Outcome.Type, root.ID, root.Status,
 			)
 			return err
 		},
@@ -280,16 +280,15 @@ func completeFirstRunArgument(provider runtimeProvider) cobra.CompletionFunc {
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
-		includeDescendants := profile == nil ||
-			profile.Supports(protocol.FeatureSubagents)
+		includeDescendants := profile.Supports(protocol.FeatureSubagents)
 		page, err := runtime.ListRuns(cmd.Context(), agent.RunQuery{
 			IncludeDescendants: includeDescendants, PageSize: agent.MaximumPageSize(),
 		})
-		if err != nil || page.Validate() != nil {
+		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
-		items := make([]string, 0, len(page.Items))
-		for _, run := range page.Items {
+		items := make([]string, 0, len(page.Data))
+		for _, run := range page.Data {
 			if toComplete != "" && !strings.HasPrefix(run.ID, toComplete) {
 				continue
 			}
@@ -310,14 +309,14 @@ func filterCompletionPrefix(items []string, prefix string) []string {
 	return filtered
 }
 
-func runScope(run agent.Run) string {
-	if run.Lineage.IsRoot() {
+func runScope(run protocol.RunRef) string {
+	if run.ParentRunID == "" {
 		return "root"
 	}
-	return "child of " + run.Lineage.ParentRunID()
+	return "child of " + run.ParentRunID
 }
 
-func runModel(run agent.Run) string {
+func runModel(run protocol.RunRef) string {
 	if run.Provider == "" {
 		return "-"
 	}

@@ -237,15 +237,15 @@ func TestMutationGuardForgetsDeletedFileBeforeExternalRecreation(t *testing.T) {
 	}
 }
 
-func TestFingerprintFilePreservesCancellation(t *testing.T) {
+func TestFileObservationPreservesCancellation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "file.txt")
 	if err := os.WriteFile(path, []byte("content"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := fingerprintFile(ctx, path, 0); !errors.Is(err, context.Canceled) {
-		t.Fatalf("fingerprintFile error = %v, want context.Canceled", err)
+	if _, _, err := observeFingerprintExistingFile(ctx, path, 0); !errors.Is(err, context.Canceled) {
+		t.Fatalf("file observation error = %v, want context.Canceled", err)
 	}
 }
 

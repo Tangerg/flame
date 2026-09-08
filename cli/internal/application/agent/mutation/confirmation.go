@@ -6,6 +6,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
@@ -58,47 +60,10 @@ func (o Outcome) String() string { return string(o) }
 // boundary rather than only when a recovery workflow begins.
 type Admission func() error
 
-// ReplayAdmission admits a durable command only while the currently connected
-// Runtime still owns the exact store and deadline recorded by its guard.
+// ReplayAdmission checks the Runtime store and the recorded deadline before
+// every attempt. The policy clock advances while the connection remains fixed.
 func ReplayAdmission(policy commandreplay.Policy, guard commandreplay.Guard) Admission {
-	return DynamicReplayAdmission(func() commandreplay.Policy { return policy }, guard)
-}
-
-// FreshReplayAdmission admits one never-attempted command even when the
-// Runtime does not advertise replay, then fences any uncertain retry.
-func FreshReplayAdmission(policy commandreplay.Policy, guard commandreplay.Guard) Admission {
-	return FreshDynamicReplayAdmission(func() commandreplay.Policy { return policy }, guard)
-}
-
-// DynamicReplayAdmission re-reads the connected Runtime policy before every
-// attempt. Long-running interactive clients use it because reconnecting can
-// replace the Runtime store while one command acknowledgement is uncertain.
-func DynamicReplayAdmission(current func() commandreplay.Policy, guard commandreplay.Guard) Admission {
 	return func() error {
-		if current == nil || !current().Replayable(guard) {
-			return ErrReplayGuaranteeUnavailable
-		}
-		return nil
-	}
-}
-
-// FreshDynamicReplayAdmission is the reconnect-aware form of
-// FreshReplayAdmission. The first successful admission consumes the command's
-// one unprotected attempt; all later calls require a current replay promise.
-func FreshDynamicReplayAdmission(current func() commandreplay.Policy, guard commandreplay.Guard) Admission {
-	first := true
-	return func() error {
-		if current == nil {
-			return ErrReplayGuaranteeUnavailable
-		}
-		policy := current()
-		if first {
-			if !policy.CanStart(guard) {
-				return ErrReplayGuaranteeUnavailable
-			}
-			first = false
-			return nil
-		}
 		if !policy.Replayable(guard) {
 			return ErrReplayGuaranteeUnavailable
 		}
@@ -111,7 +76,7 @@ func FreshDynamicReplayAdmission(current func() commandreplay.Policy, guard comm
 // command identity; a fresh identity could execute the user's intent twice.
 func AcknowledgementUncertain(err error) bool {
 	return errors.Is(err, agent.ErrDisconnected) ||
-		errors.Is(err, agent.ErrCommandInProgress) ||
+		errors.Is(err, protocol.ErrIdempotencyInProgress) ||
 		errors.Is(err, context.Canceled) ||
 		errors.Is(err, context.DeadlineExceeded)
 }
@@ -122,7 +87,7 @@ func AcknowledgementUncertain(err error) bool {
 // same command's outcome in the store that originally owned it.
 func OutcomeUnknown(err error) bool {
 	return AcknowledgementUncertain(err) ||
-		errors.Is(err, agent.ErrCommandStoreMismatch) ||
+		errors.Is(err, protocol.ErrIdempotencyStoreMismatch) ||
 		errors.Is(err, ErrReplayGuaranteeUnavailable)
 }
 
@@ -144,6 +109,10 @@ func ConfirmAdmitted[T any](
 		return zero, err
 	}
 	for failures := 0; ; {
+		if cause := context.Cause(ctx); cause != nil {
+			var zero T
+			return zero, cause
+		}
 		if admit != nil {
 			if err := admit(); err != nil {
 				var zero T

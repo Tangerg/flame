@@ -3,7 +3,6 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"slices"
 	"time"
 
@@ -11,41 +10,17 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// NewRecoveryCommit constructs one complete, immutable boot-recovery write-set.
-func NewRecoveryCommit(
-	lostRuns []rundomain.Replacement,
-	itemReplacements []transcript.Replacement,
-	conversationTransitions []RecoveryConversationTransition,
-	modelInvocations []ModelInvocationRecovery,
-	toolInvocations []ToolInvocationRecovery,
-	goalRuns []goal.RunRecord,
-	deleteInterrupts []InterruptOwner,
-	preservedSessionIDs []string,
-	deleteCheckpointSessionIDs []string,
-) (RecoveryCommit, error) {
-	return newRecoveryCommit(recoveryCommitState{
-		LostRuns: lostRuns, ItemReplacements: itemReplacements,
-		ConversationTransitions: conversationTransitions,
-		ModelInvocations:        modelInvocations, ToolInvocations: toolInvocations,
-		GoalRuns: goalRuns, DeleteInterrupts: deleteInterrupts,
-		PreservedSessionIDs:        preservedSessionIDs,
-		DeleteCheckpointSessionIDs: deleteCheckpointSessionIDs,
-	})
-}
-
 func newRecoveryCommit(state recoveryCommitState) (RecoveryCommit, error) {
 	state = cloneRecoveryCommitState(state)
-	commit := RecoveryCommit{state: state}
-	if err := commit.Validate(); err != nil {
+	if err := validateRecoveryCommit(state); err != nil {
 		return RecoveryCommit{}, err
 	}
-	return commit, nil
+	return RecoveryCommit{state: &state}, nil
 }
 
 func cloneRecoveryCommitState(state recoveryCommitState) recoveryCommitState {
@@ -114,16 +89,17 @@ func (r RecoveryCommit) DeleteCheckpointSessionIDs() []string {
 	return slices.Clone(r.state.DeleteCheckpointSessionIDs)
 }
 
-// Validate proves that a boot-recovery write-set is self-contained and
-// owner-bound before its transaction begins.
-func (r RecoveryCommit) Validate() error {
-	state := r.state
+// IsZero reports whether no recovery plan was constructed.
+func (r RecoveryCommit) IsZero() bool { return r.state == nil }
+
+// validateRecoveryCommit checks relationships between the planner-owned facts.
+func validateRecoveryCommit(state recoveryCommitState) error {
 	lostByID := make(map[string]rundomain.Replacement, len(state.LostRuns))
 	treeMembers := make(map[string][]rundomain.TreeMember)
 	actualOrder := make([]string, 0, len(state.LostRuns))
-	for index, recovery := range state.LostRuns {
-		if err := validateLostRunReplacement(recovery); err != nil {
-			return fmt.Errorf("runs: recovery commit lost Run[%d]: %w", index, err)
+	for _, recovery := range state.LostRuns {
+		if recovery.IsZero() {
+			return fmt.Errorf("runs: run replacement is required")
 		}
 		run := recovery.State()
 		outcome, terminal := run.Outcome()
@@ -185,8 +161,8 @@ func (r RecoveryCommit) Validate() error {
 
 	replacedItems := make(map[string]transcript.Replacement, len(state.ItemReplacements))
 	for index, replacement := range state.ItemReplacements {
-		if err := replacement.Validate(); err != nil {
-			return fmt.Errorf("runs: recovery commit Item replacement[%d]: %w", index, err)
+		if replacement.IsZero() {
+			return fmt.Errorf("runs: item replacement is required")
 		}
 		expected := replacement.Expected()
 		owner, found := lostByID[expected.RunID()]
@@ -223,26 +199,6 @@ func (r RecoveryCommit) Validate() error {
 		lostSessionIDs,
 	); err != nil {
 		return err
-	}
-	return nil
-}
-
-func validateLostRunReplacement(recovery rundomain.Replacement) error {
-	if err := recovery.Validate(); err != nil {
-		return err
-	}
-	expected := recovery.Expected()
-	lost := recovery.State()
-	failure, failed := lost.Failure()
-	if !failed {
-		return errors.New("lost Run replacement has no failure")
-	}
-	derived, err := expected.RecoverLost(failure, lost.FinishedAt(), lost.MessageMark())
-	if err != nil {
-		return fmt.Errorf("lost Run replacement transition: %w", err)
-	}
-	if !derived.Equal(lost) {
-		return fmt.Errorf("lost Run replacement rewrites facts outside Run %q recovery", expected.ID())
 	}
 	return nil
 }
@@ -517,16 +473,8 @@ func validateRecoveryItemReplacement(replacement transcript.Replacement, finishe
 	if expected.Status() != transcript.ItemRunning || actual.Status() != transcript.ItemIncomplete {
 		return errors.New("replacement must move a Running Item to Incomplete")
 	}
-	failure := tool.Failure{
-		Kind:   tool.FailureExecution,
-		Detail: "tool call interrupted because the run was lost on restart",
-	}
-	want, err := expected.AbandonToolCall(&failure, finishedAt)
-	if err != nil {
-		return fmt.Errorf("expected recovery transition: %w", err)
-	}
-	if !reflect.DeepEqual(actual.Snapshot(), want.Snapshot()) {
-		return fmt.Errorf("replacement rewrites facts other than recovery status for Item %q", expected.ID())
+	if !actual.FinishedAt().Equal(finishedAt) {
+		return fmt.Errorf("recovery Item %q finish time differs from its Run", expected.ID())
 	}
 	return nil
 }

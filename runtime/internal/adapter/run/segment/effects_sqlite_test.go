@@ -168,7 +168,7 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 		ResumedAt: time.Now().UTC(),
 		Runs:      []run.ResumeDraft{{RunID: "run_1", SegmentID: "seg_next"}},
 	}
-	openingEvents := []runs.EventCommit{{
+	openingEvents := []runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
 		RunID:     "run_1",
 		SessionID: "ses_1",
 		SegmentID: "seg_next",
@@ -177,7 +177,7 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 			Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
 			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "go on"}},
 		})},
-	}}
+	})}
 	opening := mustResumeOpening(t, testCommitID("run_commit_resume"), resume, openingEvents)
 	err = effects.CommitOpening(ctx, opening)
 	if err != nil {
@@ -228,14 +228,14 @@ func TestCommitOpeningReconcilesAmbiguousAdmission(t *testing.T) {
 		RunID: "run_ambiguous_opening", SessionID: "ses_ambiguous_opening",
 		SegmentID: "seg_ambiguous_opening", ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	openingEvents := []runs.EventCommit{{
+	openingEvents := []runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: draft.SessionID, RunID: draft.RunID, ID: "item_opening",
 			OccurredAt: createdAt, Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
 			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
 		})},
-	}}
+	})}
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_ambiguous_opening"), draft,
 		nil, nil, "", nil, openingEvents,
@@ -316,10 +316,10 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 		CallID: "model_call_1", SegmentID: "seg_model",
 		State: runs.ModelInvocationStarted, StartedAt: startedAt,
 	}
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model", CommitID: testCommitID("run_commit_event_model_start"),
 		ModelInvocations: []runs.ModelInvocationCommit{start},
-	}); commitEventErr != nil {
+	})); commitEventErr != nil {
 		t.Fatalf("commit start: %v", commitEventErr)
 	}
 
@@ -333,16 +333,21 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 		StartedAt: startedAt, FinishedAt: finishedAt,
 	}
 	usage := &accounting.Usage{Total: accounting.Totals{InputTokens: 2, OutputTokens: 1}}
-	wrongSegment := runs.ProgressCommit{
-		SegmentID: "seg_wrong", Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, Usage: usage}), UpdatedAt: finishedAt,
+	progress := runs.ProgressCommit{
+		SegmentID: "seg_model", Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, Usage: usage}), UpdatedAt: finishedAt,
 	}
-	err = effects.CommitEvent(ctx, runs.EventCommit{
+	// Fail after transcript and invocation writes to prove transaction rollback.
+	if _, err := db.ExecContext(ctx, `CREATE TEMP TRIGGER reject_progress BEFORE UPDATE OF steps ON runs BEGIN SELECT RAISE(ABORT, 'progress unavailable'); END`); err != nil {
+		t.Fatal(err)
+	}
+
+	err = effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model", CommitID: testCommitID("run_commit_event_model_wrong"),
 		Items:            []transcript.Item{item},
-		ModelInvocations: []runs.ModelInvocationCommit{completion}, Progress: &wrongSegment,
-	})
+		ModelInvocations: []runs.ModelInvocationCommit{completion}, Progress: &progress,
+	}))
 	if err == nil {
-		t.Fatal("commit with a stale segment fence succeeded")
+		t.Fatal("commit with unavailable progress succeeded")
 	}
 	var invocationState string
 	if scanErr := db.QueryRowContext(ctx,
@@ -354,13 +359,14 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 		t.Fatalf("history after rollback = %#v err=%v, want empty", items, listErr)
 	}
 
-	progress := wrongSegment
-	progress.SegmentID = "seg_model"
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if _, err := db.ExecContext(ctx, `DROP TRIGGER reject_progress`); err != nil {
+		t.Fatal(err)
+	}
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model", CommitID: testCommitID("run_commit_event_model_complete"),
 		Items:            []transcript.Item{item},
 		ModelInvocations: []runs.ModelInvocationCommit{completion}, Progress: &progress,
-	}); commitEventErr != nil {
+	})); commitEventErr != nil {
 		t.Fatalf("commit final: %v", commitEventErr)
 	}
 	if scanErr := db.QueryRowContext(ctx,
@@ -427,11 +433,11 @@ func TestCommitEventRejectsTerminalFromReplacedSegment(t *testing.T) {
 			return sqlite.RunInTx(ctx, db, fn)
 		},
 	})
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID,
 		SegmentID: "seg_old", CommitID: testCommitID("run_commit_event_old_segment"),
-		State: runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: &staleTerminal,
-	}); commitEventErr == nil {
+		Run: &staleTerminal,
+	})); commitEventErr == nil {
 		t.Fatal("terminal fact from the replaced Segment ended the resumed Run")
 	}
 	current, found, err := store.Run(ctx, draft.RunID)
@@ -489,13 +495,13 @@ func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t 
 		OccurredAt: startedAt.Add(3 * time.Second),
 		Content:    []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "stale"}},
 	})
-	err = effects.CommitEvent(ctx, runs.EventCommit{
+	err = effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: "seg_old", CommitID: testCommitID("run_commit_event_stale_item"),
 		Items: []transcript.Item{item},
 		ConversationMessages: []chat.Message{
 			chat.NewAssistantMessage(chat.NewTextPart("stale")),
 		},
-	})
+	}))
 	if err == nil {
 		t.Fatal("projection from the replaced Segment committed")
 	}
@@ -547,11 +553,11 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 			Tool:        &transcript.ToolInvocation{Name: name, Arguments: tool.Arguments{}},
 			SafetyClass: tool.SafetyClassSafe,
 		})
-		if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+		if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 			RunID: "run_tools", SessionID: "ses_tools", SegmentID: "seg_tools", CommitID: testCommitID("run_commit_event_tool_start_" + start.CallID),
 			Items:           []transcript.Item{running},
 			ToolInvocations: []runs.ToolInvocationCommit{start},
-		}); commitEventErr != nil {
+		})); commitEventErr != nil {
 			t.Fatalf("commit Tool start %q: %v", start.CallID, commitEventErr)
 		}
 	}
@@ -573,16 +579,21 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 			State: runs.ToolInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt,
 		})
 	}
-	wrongSegment := runs.ProgressCommit{
-		SegmentID: "seg_wrong", Metrics: run.Metrics{}, UpdatedAt: finishedAt,
+	progress := runs.ProgressCommit{
+		SegmentID: "seg_tools", Metrics: run.Metrics{}, UpdatedAt: finishedAt,
 	}
-	err = effects.CommitEvent(ctx, runs.EventCommit{
+	// Fail after transcript and invocation writes to prove transaction rollback.
+	if _, err := db.ExecContext(ctx, `CREATE TEMP TRIGGER reject_progress BEFORE UPDATE OF steps ON runs BEGIN SELECT RAISE(ABORT, 'progress unavailable'); END`); err != nil {
+		t.Fatal(err)
+	}
+
+	err = effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: "run_tools", SessionID: "ses_tools", SegmentID: "seg_tools", CommitID: testCommitID("run_commit_event_tools_wrong"),
 		Items:           items,
-		ToolInvocations: terminals, Progress: &wrongSegment,
-	})
+		ToolInvocations: terminals, Progress: &progress,
+	}))
 	if err == nil {
-		t.Fatal("canonical Tool batch with a stale segment fence succeeded")
+		t.Fatal("canonical Tool batch with unavailable progress succeeded")
 	}
 	if recorded, listErr := history.List(ctx, "ses_tools"); listErr != nil || len(recorded) != 2 ||
 		recorded[0].ID() != "item_first" || recorded[0].Status() != transcript.ItemRunning ||
@@ -598,13 +609,14 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 		}
 	}
 
-	progress := wrongSegment
-	progress.SegmentID = "seg_tools"
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if _, err := db.ExecContext(ctx, `DROP TRIGGER reject_progress`); err != nil {
+		t.Fatal(err)
+	}
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: "run_tools", SessionID: "ses_tools", SegmentID: "seg_tools", CommitID: testCommitID("run_commit_event_tools_complete"),
 		Items:           items,
 		ToolInvocations: terminals, Progress: &progress,
-	}); commitEventErr != nil {
+	})); commitEventErr != nil {
 		t.Fatalf("commit canonical Tool batch: %v", commitEventErr)
 	}
 	recorded, err := history.List(ctx, "ses_tools")
@@ -1015,16 +1027,12 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	}
 	updated = mustResolveMessageMark(t, updated, 0)
 	finished := &updated
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
-		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID, State: runs.StateTerminalize,
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
+		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_goal"),
-		Outcome:  run.OutcomeCompleted,
-		Run:      finished,
-		GoalRun: &goal.RunRecord{
-			SessionID: g.SessionID(), IncarnationID: g.IncarnationID(), RunID: draft.RunID,
-			Outcome: run.OutcomeCompleted, Cost: segmentTestCost(t, costUSD), Steps: 2, CompletedAt: finished.FinishedAt(),
-		},
-	}); commitEventErr != nil {
+
+		Run: finished,
+	})); commitEventErr != nil {
 		t.Fatalf("CommitEvent: %v", commitEventErr)
 	}
 	current, err := goals.Get(ctx, g.SessionID())
@@ -1068,7 +1076,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		t.Fatalf("admit: %v", admitErr)
 	}
 	const rootMemberID = "member_1"
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	checkpointStore := sqlite.NewExecutorCheckpointStore(db)
 	toolInvocations := sqlite.NewToolInvocationStore(db)
 	toolStartedAt := createdAt.Add(500 * time.Millisecond)
 	if startToolInvocationErr := toolInvocations.StartToolInvocation(
@@ -1076,9 +1084,9 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 	); startToolInvocationErr != nil {
 		t.Fatalf("start Tool invocation: %v", startToolInvocationErr)
 	}
-	checkpoint := executorCheckpoint(t, rootMemberID, "opaque waiting checkpoint", runs.ExecutorCheckpoint{
+	checkpoint := executorCheckpoint(t, rootMemberID, "opaque waiting checkpoint", run.CheckpointState{
 		BuildID:        checkpointBuildID,
-		Scope:          runs.ExecutionScope{SessionID: "ses_1"},
+		Scope:          run.ExecutionScope{SessionID: "ses_1"},
 		ModelSelection: mustEffectSelection(t, "anthropic", "claude"),
 		Usage:          accounting.Snapshot{},
 	})
@@ -1113,8 +1121,8 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		t,
 		testCommitID("run_commit_durable_barrier"),
 		pending,
-		[]runs.EventCommit{{
-			RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open", State: runs.StateSuspend,
+		[]runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
+			RunID: "run_1", SessionID: "ses_1", SegmentID: "seg_open",
 			Items: []transcript.Item{
 				testsupport.MustRestoreItem(testsupport.ItemInput{
 					SessionID: "ses_1", ID: "item_tool", RunID: "run_1",
@@ -1135,7 +1143,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 				ModelSelection: pending.Continuations[0].ModelSelection,
 				Capabilities:   pending.Capabilities,
 				CreatedAt:      createdAt, UpdatedAt: parkedAt, MessageMark: -1})),
-		}},
+		})},
 		checkpoint,
 	)
 	if commitTreeBarrierErr := effects.CommitTreeBarrier(commitCtx, barrier); commitTreeBarrierErr != nil {
@@ -1151,7 +1159,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		t.Fatalf("barrier marker matched=%t err=%v, want true/nil", matched, err)
 	}
 
-	if stored, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, rootMemberID); loadCheckpointErr != nil || stored.RootMemberID != rootMemberID {
+	if stored, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, rootMemberID); loadCheckpointErr != nil || stored.RootMemberID() != rootMemberID {
 		t.Fatalf("stored executor checkpoint = (%+v, %v)", stored, loadCheckpointErr)
 	}
 	var toolState string
@@ -1183,10 +1191,10 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 	createdAt := time.Unix(1, 0).UTC()
 	parkedAt := time.Unix(2, 0).UTC()
 	const rootMemberID = "member_rollback"
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
-	checkpoint := executorCheckpoint(t, rootMemberID, "opaque rollback checkpoint", runs.ExecutorCheckpoint{
+	checkpointStore := sqlite.NewExecutorCheckpointStore(db)
+	checkpoint := executorCheckpoint(t, rootMemberID, "opaque rollback checkpoint", run.CheckpointState{
 		BuildID:        checkpointBuildID,
-		Scope:          runs.ExecutionScope{SessionID: "ses_rollback"},
+		Scope:          run.ExecutionScope{SessionID: "ses_rollback"},
 		ModelSelection: mustEffectSelection(t, "anthropic", "claude"),
 		Usage:          accounting.Snapshot{},
 	})
@@ -1218,17 +1226,17 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 		t,
 		testCommitID("run_commit_rollback_barrier"),
 		pending,
-		[]runs.EventCommit{{
-			RunID: "run_missing", SessionID: "ses_rollback", SegmentID: "seg_open", State: runs.StateSuspend,
+		[]runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
+			RunID: "run_missing", SessionID: "ses_rollback", SegmentID: "seg_open",
 			Run: &parkedRun,
-		}},
+		})},
 		checkpoint,
 	)
 	err = effects.CommitTreeBarrier(ctx, barrier)
 	if err == nil {
 		t.Fatal("CommitTreeBarrier succeeded without an admitted Run")
 	}
-	if _, loadErr := checkpointStore.LoadCheckpoint(ctx, rootMemberID); !errors.Is(loadErr, runs.ErrExecutorCheckpointNotFound) {
+	if _, loadErr := checkpointStore.LoadCheckpoint(ctx, rootMemberID); !errors.Is(loadErr, run.ErrCheckpointNotFound) {
 		t.Fatalf("checkpoint survived failed tree barrier: %v", loadErr)
 	}
 	if _, found, getErr := interruptStore.Get(ctx, pending.RootRunID); getErr != nil || found {
@@ -1246,7 +1254,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	createdAt := time.Unix(1, 0).UTC()
 	claimedAt := createdAt.Add(2 * time.Second)
 	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	checkpointStore := sqlite.NewExecutorCheckpointStore(db)
 	transcriptStore := sqlite.NewTranscriptStore(db)
 	pending := singleRunPending(
 		t,
@@ -1269,14 +1277,14 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 		t.Fatalf("seed question Item: %v", appendItemErr)
 	}
 	root, _ := pending.RootContinuation()
-	checkpoint := runs.ExecutorCheckpoint{
+	checkpoint := testsupport.MustCheckpoint(run.CheckpointState{
 		RootMemberID:   root.MemberID,
 		Payload:        []byte(`{"opaque":"tree"}`),
 		BuildID:        checkpointBuildID,
-		Scope:          runs.ExecutionScope{SessionID: pending.SessionID},
+		Scope:          run.ExecutionScope{SessionID: pending.SessionID},
 		ModelSelection: root.ModelSelection,
 		Limits:         root.Limits,
-	}
+	})
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
 	}
@@ -1360,7 +1368,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	if _, getFound, getErr := interruptStore.Get(ctx, pending.RootRunID); getErr != nil || getFound {
 		t.Fatalf("open interrupt after claim = found:%t err:%v, want hidden", getFound, getErr)
 	}
-	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, root.MemberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
+	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, root.MemberID); !errors.Is(loadCheckpointErr, run.ErrCheckpointNotFound) {
 		t.Fatalf("checkpoint after claim = %v, want not found", loadCheckpointErr)
 	}
 	answeredItem, found, err := transcriptStore.Item(ctx, questionItem.ID())
@@ -1439,7 +1447,7 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 	}
 
 	interrupts := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
-	checkpoints := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	checkpoints := sqlite.NewExecutorCheckpointStore(db)
 	transcriptStore := sqlite.NewTranscriptStore(db)
 	runStore := sqlite.NewRunStore(db)
 	if openErr := interrupts.Open(ctx, pending); openErr != nil {
@@ -1456,11 +1464,11 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 		t.Fatalf("seed ToolCall: %v", appendItemErr)
 	}
 	root, _ := pending.RootContinuation()
-	checkpoint := runs.ExecutorCheckpoint{
+	checkpoint := testsupport.MustCheckpoint(run.CheckpointState{
 		RootMemberID: root.MemberID, Payload: []byte(`{"opaque":"tree"}`),
-		BuildID: checkpointBuildID, Scope: runs.ExecutionScope{SessionID: pending.SessionID},
+		BuildID: checkpointBuildID, Scope: run.ExecutionScope{SessionID: pending.SessionID},
 		ModelSelection: root.ModelSelection, Limits: root.Limits,
-	}
+	})
 	if saveCheckpointErr := checkpoints.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
 	}
@@ -1533,7 +1541,7 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 	if _, found, err := interrupts.Get(ctx, pending.RootRunID); err != nil || found {
 		t.Fatalf("Pending after commit = found:%t err:%v", found, err)
 	}
-	if _, err := checkpoints.LoadCheckpoint(ctx, root.MemberID); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
+	if _, err := checkpoints.LoadCheckpoint(ctx, root.MemberID); !errors.Is(err, run.ErrCheckpointNotFound) {
 		t.Fatalf("checkpoint after commit = %v, want not found", err)
 	}
 	requireSQLiteHealthy(t, ctx, db)
@@ -1602,7 +1610,7 @@ func TestClaimResumeRollsBackWhenCommitMarkerFails(t *testing.T) {
 	if err != nil || !found || !reflect.DeepEqual(gotPending, fixture.pending) {
 		t.Fatalf("interrupt after marker rollback = found:%t value:%+v err:%v", found, gotPending, err)
 	}
-	gotCheckpoint, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, fixture.checkpoint.RootMemberID)
+	gotCheckpoint, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, fixture.checkpoint.RootMemberID())
 	if err != nil || !executorCheckpointValuesEqual(gotCheckpoint, fixture.checkpoint) {
 		t.Fatalf("checkpoint after marker rollback = %+v err=%v", gotCheckpoint, err)
 	}
@@ -1633,10 +1641,10 @@ type resumeClaimSQLiteFixture struct {
 	pending     runs.Pending
 	answers     []runs.InterruptAnswer
 	claim       runs.ResumeClaimCommit
-	checkpoint  runs.ExecutorCheckpoint
+	checkpoint  run.Checkpoint
 	question    transcript.Item
 	interrupts  *persistence.InterruptStore
-	checkpoints *persistence.ExecutorCheckpointStore
+	checkpoints *sqlite.ExecutorCheckpointStore
 	transcript  *sqlite.TranscriptStore
 	runStore    *sqlite.RunStore
 }
@@ -1651,7 +1659,7 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 	ctx := t.Context()
 	createdAt := time.Unix(10, 0).UTC()
 	interrupts := persistence.NewInterruptStore(sqlite.NewInterruptStore(database))
-	checkpoints := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(database))
+	checkpoints := sqlite.NewExecutorCheckpointStore(database)
 	transcriptStore := sqlite.NewTranscriptStore(database)
 	runStore := sqlite.NewRunStore(database)
 	pending := singleRunPending(
@@ -1683,14 +1691,14 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 	if !found {
 		t.Fatal("fixture Pending has no root continuation")
 	}
-	checkpoint := runs.ExecutorCheckpoint{
+	checkpoint := testsupport.MustCheckpoint(run.CheckpointState{
 		RootMemberID:   root.MemberID,
 		Payload:        []byte(`{"opaque":"tree"}`),
 		BuildID:        checkpointBuildID,
-		Scope:          runs.ExecutionScope{SessionID: pending.SessionID},
+		Scope:          run.ExecutionScope{SessionID: pending.SessionID},
 		ModelSelection: root.ModelSelection,
 		Limits:         root.Limits,
-	}
+	})
 	if saveCheckpointErr := checkpoints.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
 	}
@@ -1751,7 +1759,7 @@ func assertResumeClaimCommitted(t *testing.T, fixture resumeClaimSQLiteFixture) 
 	if _, found, err := fixture.interrupts.Get(fixture.ctx, fixture.pending.RootRunID); err != nil || found {
 		t.Fatalf("open interrupt after claim = found:%t err:%v, want hidden", found, err)
 	}
-	if _, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, fixture.checkpoint.RootMemberID); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
+	if _, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, fixture.checkpoint.RootMemberID()); !errors.Is(err, run.ErrCheckpointNotFound) {
 		t.Fatalf("checkpoint after claim = %v, want not found", err)
 	}
 	answeredItem, found, err := fixture.transcript.Item(fixture.ctx, fixture.question.ID())
@@ -1764,15 +1772,15 @@ func assertResumeClaimCommitted(t *testing.T, fixture resumeClaimSQLiteFixture) 
 	}
 }
 
-func executorCheckpointValuesEqual(left, right runs.ExecutorCheckpoint) bool {
-	return left.RootMemberID == right.RootMemberID &&
-		slices.Equal(left.Payload, right.Payload) &&
-		left.BuildID == right.BuildID &&
-		left.Scope == right.Scope &&
-		left.ModelSelection == right.ModelSelection &&
-		left.Limits == right.Limits &&
-		left.Capabilities.Equal(right.Capabilities) &&
-		slices.Equal(left.Usage.Models, right.Usage.Models)
+func executorCheckpointValuesEqual(left, right run.Checkpoint) bool {
+	return left.RootMemberID() == right.RootMemberID() &&
+		slices.Equal(left.Payload(), right.Payload()) &&
+		left.BuildID() == right.BuildID() &&
+		left.Scope() == right.Scope() &&
+		left.ModelSelection() == right.ModelSelection() &&
+		left.Limits() == right.Limits() &&
+		left.Capabilities().Equal(right.Capabilities()) &&
+		slices.Equal(left.Usage().Models, right.Usage().Models)
 }
 
 func TestCommitTerminalOwnsExecutorCheckpointDeletion(t *testing.T) {
@@ -1790,12 +1798,12 @@ func TestCommitTerminalOwnsExecutorCheckpointDeletion(t *testing.T) {
 			finished := finishedRunRecord("run_terminal", "ses_terminal", run.OutcomeCompleted)
 			resolved := mustResolveMessageMark(t, *finished, 0)
 			finished = &resolved
-			err := fixture.effects.CommitEvent(fixture.ctx, runs.EventCommit{
-				RunID: "run_terminal", SessionID: "ses_terminal", SegmentID: "seg_terminal", State: runs.StateTerminalize,
-				CommitID: testCommitID("run_commit_event_checkpoint"),
-				Outcome:  run.OutcomeCompleted, Run: finished,
+			err := fixture.effects.CommitEvent(fixture.ctx, mustEventCommit(t, runs.EventCommitConfig{
+				RunID: "run_terminal", SessionID: "ses_terminal", SegmentID: "seg_terminal",
+				CommitID:                 testCommitID("run_commit_event_checkpoint"),
+				Run:                      finished,
 				ObsoleteCheckpointRootID: fixture.rootMemberID,
-			})
+			}))
 			if test.checkpointDeleteFail || test.childCleanupFail {
 				assertTerminalCheckpointRollback(t, fixture, err)
 				return
@@ -1809,7 +1817,7 @@ type terminalCheckpointFixture struct {
 	ctx          context.Context
 	database     *sql.DB
 	runStore     *sqlite.RunStore
-	checkpoints  *persistence.ExecutorCheckpointStore
+	checkpoints  *sqlite.ExecutorCheckpointStore
 	pending      runs.Pending
 	rootMemberID string
 	effects      *Effects
@@ -1835,11 +1843,11 @@ func newTerminalCheckpointFixture(
 	}); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(database))
+	checkpointStore := sqlite.NewExecutorCheckpointStore(database)
 	const rootMemberID = "member_terminal"
-	if err := checkpointStore.SaveCheckpoint(ctx, executorCheckpoint(t, rootMemberID, "opaque terminal checkpoint", runs.ExecutorCheckpoint{
+	if err := checkpointStore.SaveCheckpoint(ctx, executorCheckpoint(t, rootMemberID, "opaque terminal checkpoint", run.CheckpointState{
 		BuildID: checkpointBuildID,
-		Scope:   runs.ExecutionScope{SessionID: "ses_terminal"},
+		Scope:   run.ExecutionScope{SessionID: "ses_terminal"},
 		Usage:   accounting.Snapshot{},
 	})); err != nil {
 		t.Fatalf("seed checkpoint: %v", err)
@@ -1938,7 +1946,7 @@ func assertTerminalCheckpointCommit(t *testing.T, fixture terminalCheckpointFixt
 	if commitError != nil {
 		t.Fatalf("CommitEvent: %v", commitError)
 	}
-	if _, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, fixture.rootMemberID); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
+	if _, err := fixture.checkpoints.LoadCheckpoint(fixture.ctx, fixture.rootMemberID); !errors.Is(err, run.ErrCheckpointNotFound) {
 		t.Fatalf("terminal checkpoint survived: %v", err)
 	}
 	var remaining int
@@ -2012,10 +2020,7 @@ func TestCommitWaitingSubtreeCancellationCommitsCompleteWriteSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load replacement executor checkpoint: %v", err)
 	}
-	if !reflect.DeepEqual(
-		normalizedExecutorCheckpoint(checkpoint),
-		normalizedExecutorCheckpoint(fixture.replacementCheckpoint),
-	) {
+	if !checkpoint.Equal(fixture.replacementCheckpoint) {
 		t.Fatalf("replacement executor checkpoint = %+v, want %+v", checkpoint, fixture.replacementCheckpoint)
 	}
 }
@@ -2146,10 +2151,7 @@ func TestWaitingSubtreeCancellationRejectsStaleParentWithoutApplicationMutation(
 	if err != nil {
 		t.Fatalf("load rolled-back executor checkpoint: %v", err)
 	}
-	if !reflect.DeepEqual(
-		normalizedExecutorCheckpoint(checkpoint),
-		normalizedExecutorCheckpoint(fixture.originalCheckpoint),
-	) {
+	if !checkpoint.Equal(fixture.originalCheckpoint) {
 		t.Fatalf("rolled-back executor checkpoint = %+v, want %+v", checkpoint, fixture.originalCheckpoint)
 	}
 }
@@ -2161,15 +2163,15 @@ type waitingCancellationSQLiteFixture struct {
 	interrupts            *persistence.InterruptStore
 	transcript            *sqlite.TranscriptStore
 	conversation          *sqlite.MessageStore
-	checkpoints           *persistence.ExecutorCheckpointStore
+	checkpoints           *sqlite.ExecutorCheckpointStore
 	runState              *sqlite.RunStore
 	rootRun               run.Run
 	childRun              run.Run
 	grandchildRun         run.Run
 	parentItem            transcript.Item
 	originalItems         []transcript.Item
-	originalCheckpoint    runs.ExecutorCheckpoint
-	replacementCheckpoint runs.ExecutorCheckpoint
+	originalCheckpoint    run.Checkpoint
+	replacementCheckpoint run.Checkpoint
 	commit                runs.WaitingSubtreeCancellationCommit
 }
 
@@ -2179,7 +2181,7 @@ type waitingCancellationCommitDraft struct {
 	rootRun              run.Run
 	expectedPending      runs.Pending
 	remainingPending     *runs.Pending
-	checkpoint           runs.ExecutorCheckpoint
+	checkpoint           run.Checkpoint
 	terminalRuns         []run.Replacement
 	terminalItems        []transcript.Replacement
 	parentItem           transcript.Replacement
@@ -2530,11 +2532,11 @@ func newWaitingCancellationSQLiteFixtureAt(
 		t.Fatalf("seed Pending: %v", openErr)
 	}
 
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	checkpointStore := sqlite.NewExecutorCheckpointStore(db)
 	const rootMemberID = "member_root"
-	originalCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint before cancellation", runs.ExecutorCheckpoint{
+	originalCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint before cancellation", run.CheckpointState{
 		BuildID: testsupport.AlternateBuildID,
-		Scope:   runs.ExecutionScope{SessionID: rootRun.SessionID()},
+		Scope:   run.ExecutionScope{SessionID: rootRun.SessionID()},
 		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
 			Model:      "test-model",
 			TokenUsage: accounting.TokenUsage{PromptTokens: 3, CompletionTokens: 2},
@@ -2590,9 +2592,9 @@ func newWaitingCancellationSQLiteFixtureAt(
 			}},
 		}
 	}
-	replacementCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint after cancellation", runs.ExecutorCheckpoint{
+	replacementCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint after cancellation", run.CheckpointState{
 		BuildID: testsupport.AlternateBuildID,
-		Scope:   runs.ExecutionScope{SessionID: rootRun.SessionID()},
+		Scope:   run.ExecutionScope{SessionID: rootRun.SessionID()},
 		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
 			Model:      "test-model",
 			TokenUsage: accounting.TokenUsage{PromptTokens: 8, CompletionTokens: 5},
@@ -2652,19 +2654,14 @@ func newWaitingCancellationSQLiteFixtureAt(
 	}
 }
 
-func executorCheckpoint(
-	t *testing.T,
-	rootMemberID string,
-	payload string,
-	checkpoint runs.ExecutorCheckpoint,
-) runs.ExecutorCheckpoint {
+func executorCheckpoint(t *testing.T, rootMemberID, payload string, state run.CheckpointState) run.Checkpoint {
 	t.Helper()
-	checkpoint.RootMemberID = rootMemberID
-	checkpoint.Payload = []byte(payload)
-	if !checkpoint.ModelSelection.Configured() {
-		checkpoint.ModelSelection = testsupport.DefaultModelSelection()
+	state.RootMemberID, state.Payload = rootMemberID, []byte(payload)
+	if !state.ModelSelection.Configured() {
+		state.ModelSelection = testsupport.DefaultModelSelection()
 	}
-	if err := checkpoint.Validate(); err != nil {
+	checkpoint, err := run.NewCheckpoint(state)
+	if err != nil {
 		t.Fatalf("executor checkpoint: %v", err)
 	}
 	return checkpoint
@@ -2713,7 +2710,7 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 	second := testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created})
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_busy_opening"), second,
-		nil, nil, "", nil, []runs.EventCommit{{
+		nil, nil, "", nil, []runs.EventCommit{mustEventCommit(t, runs.EventCommitConfig{
 			RunID:     "run_2",
 			SessionID: "ses_1",
 			SegmentID: second.SegmentID,
@@ -2725,7 +2722,7 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 				Status: transcript.ItemCompleted, Kind: transcript.UserMessage,
 				Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "me too"}},
 			})},
-		}},
+		})},
 	)
 	err = effects.CommitOpening(ctx, opening)
 	if !errors.Is(err, run.ErrSessionBusy) {
@@ -2769,14 +2766,14 @@ func TestCommitEventAppendsConversationBeforeResolvingTerminalWatermark(t *testi
 		Tx:           func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
 	})
 	finished := finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeCompleted)
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_watermark"),
-		State:    runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: finished,
+		Run:      finished,
 		ConversationMessages: []chat.Message{
 			chat.NewAssistantMessage(chat.NewTextPart("done")),
 		},
-	}); commitEventErr != nil {
+	})); commitEventErr != nil {
 		t.Fatalf("CommitEvent: %v", commitEventErr)
 	}
 	stored, err := messages.Read(ctx, draft.SessionID)
@@ -2827,14 +2824,14 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 		},
 	})
 	finished := finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeCompleted)
-	commit := runs.EventCommit{
+	commit := mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_ambiguous"),
-		State:    runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: finished,
+		Run:      finished,
 		ConversationMessages: []chat.Message{
 			chat.NewAssistantMessage(chat.NewTextPart("durable answer")),
 		},
-	}
+	})
 	if commitEventErr := effects.CommitEvent(commitCtx, commit); commitEventErr != nil {
 		t.Fatalf("ambiguous CommitEvent = %v, want reconciled success", commitEventErr)
 	}
@@ -2849,13 +2846,13 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 	).Scan(&terminalSegmentID, &terminalCommitID); scanErr != nil {
 		t.Fatalf("read terminal commit marker: %v", scanErr)
 	}
-	if terminalSegmentID != draft.SegmentID || terminalCommitID != commit.CommitID.String() {
+	if terminalSegmentID != draft.SegmentID || terminalCommitID != commit.CommitID().String() {
 		t.Fatalf(
 			"terminal marker = %q/%q, want %q/%q",
 			terminalSegmentID,
 			terminalCommitID,
 			draft.SegmentID,
-			commit.CommitID,
+			commit.CommitID(),
 		)
 	}
 	for _, test := range []struct {
@@ -2863,7 +2860,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 		segmentID string
 		commitID  runtimeidentity.CommitID
 	}{
-		{label: "other Segment", segmentID: "seg_other", commitID: commit.CommitID},
+		{label: "other Segment", segmentID: "seg_other", commitID: commit.CommitID()},
 		{label: "other terminal attempt", segmentID: draft.SegmentID, commitID: testCommitID("run_commit_terminal_other")},
 	} {
 		matched, matchErr := state.RunCommitCommitted(
@@ -2894,8 +2891,11 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 	conflicting := mutatedRun(*finished, func(snapshot *run.Snapshot) {
 		snapshot.ContextTokens = 1
 	})
-	commit.Run = &conflicting
-	commit.CommitID = testCommitID("run_commit_event_conflicting")
+	commit = mustEventCommit(t, runs.EventCommitConfig{
+		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
+		CommitID: testCommitID("run_commit_event_conflicting"), Run: &conflicting,
+		ConversationMessages: commit.ConversationMessages(),
+	})
 	if commitEventErr := effects.CommitEvent(commitCtx, commit); commitEventErr == nil {
 		t.Fatal("different terminal replay succeeded")
 	}
@@ -2908,11 +2908,11 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 		t.Fatalf("admit other Run: %v", admitErr)
 	}
 	otherFinished := finishedRunRecord(otherDraft.RunID, otherDraft.SessionID, run.OutcomeCompleted)
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: otherDraft.RunID, SessionID: otherDraft.SessionID, SegmentID: otherDraft.SegmentID,
 		CommitID: testCommitID(terminalCommitID),
-		State:    runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: otherFinished,
-	}); commitEventErr == nil {
+		Run:      otherFinished,
+	})); commitEventErr == nil {
 		t.Fatal("terminal commit identity was reused by another Run")
 	}
 	otherStored, found, err := state.Run(ctx, otherDraft.RunID)
@@ -2968,14 +2968,14 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 		return sqlite.RunInTx(ctx, db, fn)
 	}
 	effects := mustNewEffects(baseConfig)
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_authoritative_start"),
 		ModelInvocations: []runs.ModelInvocationCommit{{
 			CallID: "model_call_1", SegmentID: draft.SegmentID,
 			State: runs.ModelInvocationStarted, StartedAt: startedAt,
 		}},
-	}); commitEventErr != nil {
+	})); commitEventErr != nil {
 		t.Fatalf("commit model start: %v", commitEventErr)
 	}
 
@@ -2995,7 +2995,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 	}
 	ambiguousEffects := mustNewEffects(ambiguousConfig)
 	usage := &accounting.Usage{Total: accounting.Totals{InputTokens: 2, OutputTokens: 1}}
-	commit := runs.EventCommit{
+	commit := mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_authoritative_complete"),
 		ConversationMessages: []chat.Message{
@@ -3012,7 +3012,7 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 			}),
 			UpdatedAt: finishedAt,
 		},
-	}
+	})
 	if commitEventErr := ambiguousEffects.CommitEvent(commitCtx, commit); commitEventErr != nil {
 		t.Fatalf("ambiguous authoritative CommitEvent = %v, want reconciled success", commitEventErr)
 	}
@@ -3033,10 +3033,10 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 	).Scan(&eventSegmentID, &eventCommitID); scanErr != nil {
 		t.Fatalf("read authoritative commit marker: %v", scanErr)
 	}
-	if eventSegmentID != draft.SegmentID || eventCommitID != commit.CommitID.String() {
+	if eventSegmentID != draft.SegmentID || eventCommitID != commit.CommitID().String() {
 		t.Fatalf(
 			"authoritative marker = %q/%q, want %q/%q",
-			eventSegmentID, eventCommitID, draft.SegmentID, commit.CommitID,
+			eventSegmentID, eventCommitID, draft.SegmentID, commit.CommitID(),
 		)
 	}
 	assertSingleMessage := func(label string) {
@@ -3055,17 +3055,17 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 	}
 	assertSingleMessage("exact authoritative replay")
 
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_authoritative_later"),
 		ConversationMessages: []chat.Message{
 			chat.NewAssistantMessage(chat.NewTextPart("later fact")),
 		},
-	}); commitEventErr != nil {
+	})); commitEventErr != nil {
 		t.Fatalf("commit later fact: %v", commitEventErr)
 	}
 	matched, err := state.RunCommitCommitted(
-		ctx, draft.SessionID, draft.RunID, draft.SegmentID, commit.CommitID,
+		ctx, draft.SessionID, draft.RunID, draft.SegmentID, commit.CommitID(),
 	)
 	if err != nil || matched {
 		t.Fatalf("superseded marker matched=%t err=%v, want false/nil", matched, err)
@@ -3129,19 +3129,19 @@ func TestRootTerminalCommitReclaimsChildStartReservations(t *testing.T) {
 		Interrupts:          persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
 		Conversation:        messages,
 		State:               state,
-		ExecutorCheckpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
+		ExecutorCheckpoints: sqlite.NewExecutorCheckpointStore(db),
 		ChildRunStarts:      childStarts,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlite.RunInTx(ctx, db, fn)
 		},
 	})
 	finished := finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeCompleted)
-	if err := effects.CommitEvent(ctx, runs.EventCommit{
+	if err := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
-		CommitID: testCommitID("run_commit_event_cleanup"),
-		State:    runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: finished,
+		CommitID:                 testCommitID("run_commit_event_cleanup"),
+		Run:                      finished,
 		ObsoleteCheckpointRootID: "member_root_1",
-	}); err != nil {
+	})); err != nil {
 		t.Fatalf("CommitEvent: %v", err)
 	}
 	var owned, foreign int
@@ -3195,11 +3195,11 @@ func TestCommitEventPersistsTheTerminalRunsResult(t *testing.T) {
 	})
 	updated = mustResolveMessageMark(t, updated, 0)
 	finished = &updated
-	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
-		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID, State: runs.StateTerminalize,
+	if commitEventErr := effects.CommitEvent(ctx, mustEventCommit(t, runs.EventCommitConfig{
+		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_result"),
-		Outcome:  run.OutcomeFailed, Run: finished,
-	}); commitEventErr != nil {
+		Run:      finished,
+	})); commitEventErr != nil {
 		t.Fatalf("CommitEvent: %v", commitEventErr)
 	}
 
@@ -3256,5 +3256,12 @@ func requireSQLiteHealthy(t *testing.T, ctx context.Context, db *sql.DB) {
 	}
 	if err := foreignKeys.Err(); err != nil {
 		t.Fatalf("foreign_key_check rows: %v", err)
+	}
+}
+
+func TestWaitingCancellationRejectsUnconstructedCommitBeforeTransaction(t *testing.T) {
+	effects := &Effects{}
+	if _, err := effects.CommitWaitingSubtreeCancellation(t.Context(), runs.WaitingSubtreeCancellationCommit{}); err == nil {
+		t.Fatal("unconstructed waiting cancellation reached persistence")
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -49,6 +50,48 @@ type childRunStartReservationsFunc func(context.Context, string) error
 
 func (c childRunStartReservationsFunc) DeleteSession(ctx context.Context, sessionID string) error {
 	return c(ctx, sessionID)
+}
+
+func TestNewRequiresGoalRunRecorder(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), ":memory:")
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	cfg := Config{
+		Sessions:            sqlite.NewSessionStore(db),
+		Runs:                sqlite.NewRunStore(db),
+		Interrupts:          persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
+		Transcript:          sqlite.NewTranscriptStore(db),
+		Messages:            sqlite.NewMessageStore(db),
+		GoalRuns:            sqlite.NewGoalStore(db),
+		ExecutorCheckpoints: sqlite.NewExecutorCheckpointStore(db),
+		ModelInvocations:    sqlite.NewModelInvocationStore(db),
+		ToolInvocations:     sqlite.NewToolInvocationStore(db),
+		ChildRunStarts:      sqlite.NewChildRunStartReservationStore(db),
+		Tx: func(ctx context.Context, fn func(context.Context) error) error {
+			return sqlite.RunInTx(ctx, db, fn)
+		},
+	}
+	if _, err := New(cfg); err != nil {
+		t.Fatalf("New with complete persistence: %v", err)
+	}
+	for _, test := range []struct {
+		name     string
+		recorder GoalRunRecorder
+	}{
+		{"missing", nil},
+		{"typed nil pointer", (*sqlite.GoalStore)(nil)},
+		{"typed nil function", goalRunRecorderFunc(nil)},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			incomplete := cfg
+			incomplete.GoalRuns = test.recorder
+			if _, err := New(incomplete); err == nil || !strings.Contains(err.Error(), "goal run recorder") {
+				t.Fatalf("New error = %v, want required goal run recorder", err)
+			}
+		})
+	}
 }
 
 func TestRecoveryMarksClaimedResumeLostAndRemovesItsHiddenRecord(t *testing.T) {
@@ -170,7 +213,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	); writeErr != nil {
 		t.Fatalf("seed conversation: %v", writeErr)
 	}
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	checkpointStore := sqlite.NewExecutorCheckpointStore(db)
 	store, err := New(Config{
 		Sessions: sessionStore, Runs: runStore, Interrupts: interruptStore,
 		Transcript: transcriptStore, Messages: messageStore,
@@ -246,9 +289,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	}
 }
 
-// TestRecoveryCleanupIsScopedToClaimedSessions proves one Runtime never sweeps
-// another live Runtime's callback or checkpoint facts from the shared DB.
-func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
+func TestRecoveryRollsBackCheckpointCleanupWhenChildStartCleanupFails(t *testing.T) {
 	db, err := sqlite.Open(t.Context(), ":memory:")
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -260,20 +301,16 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 		RunID: "run_abandoned", SessionID: "session_abandoned", SegmentID: "segment_abandoned",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	active, err := run.Admit(draft)
-	if err != nil {
-		t.Fatalf("Admit domain Run: %v", err)
+	sessionStore := sqlite.NewSessionStore(db)
+	if err := sessionStore.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{
+		ID: draft.SessionID, Workspace: testsupport.MustWorkspace("/workspace"),
+		StartedAt: createdAt, UpdatedAt: createdAt,
+	})); err != nil {
+		t.Fatalf("seed Session: %v", err)
 	}
 	runStore := sqlite.NewRunStore(db)
 	if err := runStore.Admit(ctx, draft); err != nil {
 		t.Fatalf("Admit stored Run: %v", err)
-	}
-	finishedAt := createdAt.Add(time.Second)
-	lost, err := active.RecoverLost(run.Failure{
-		Kind: run.FailureLost, Detail: "run lost on restart",
-	}, finishedAt, 0)
-	if err != nil {
-		t.Fatalf("RecoverLost: %v", err)
 	}
 	childStarts := sqlite.NewChildRunStartReservationStore(db)
 	if reserveErr := childStarts.Reserve(ctx, sqlite.ChildRunStartReservationRecord{
@@ -282,19 +319,20 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	}); reserveErr != nil {
 		t.Fatalf("Reserve: %v", reserveErr)
 	}
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
-	checkpoint := runs.ExecutorCheckpoint{
+	checkpointStore := sqlite.NewExecutorCheckpointStore(db)
+	checkpoint := testsupport.MustCheckpoint(run.CheckpointState{
 		RootMemberID: "member_orphan", Payload: []byte(`{"opaque":true}`), BuildID: testsupport.BuildID,
-		Scope: runs.ExecutionScope{SessionID: "session_abandoned"}, ModelSelection: testsupport.DefaultModelSelection(),
-	}
+		Scope: run.ExecutionScope{SessionID: "session_abandoned"}, ModelSelection: testsupport.DefaultModelSelection(),
+	})
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("SaveCheckpoint: %v", saveCheckpointErr)
 	}
 	cleanupFailure := errors.New("child-start cleanup failed")
 	failingStore, err := New(Config{
-		Sessions: sqlite.NewSessionStore(db), Runs: sqlite.NewRunStore(db),
+		Sessions: sessionStore, Runs: runStore,
 		Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
 		Transcript: sqlite.NewTranscriptStore(db), Messages: sqlite.NewMessageStore(db),
+		GoalRuns:            sqlite.NewGoalStore(db),
 		ExecutorCheckpoints: checkpointStore,
 		ModelInvocations:    sqlite.NewModelInvocationStore(db),
 		ToolInvocations:     sqlite.NewToolInvocationStore(db),
@@ -308,35 +346,26 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New failing persistence: %v", err)
 	}
-	commit, err := runs.NewRecoveryCommit(
-		[]run.Replacement{testsupport.MustRunReplacement(active, lost)},
-		nil,
-		[]runs.RecoveryConversationTransition{{
-			RootRunID: active.ID(), SessionID: active.SessionID(), ExpectedCount: 0,
-		}},
-		nil,
-		nil,
-		nil,
-		[]runs.InterruptOwner{{
-			SessionID: active.SessionID(), RootRunID: active.ID(),
-		}},
-		nil,
-		[]string{"session_abandoned"},
-	)
+	failingRecovery, err := newTestRecovery(failingStore, alwaysResumable{})
 	if err != nil {
-		t.Fatalf("NewRecoveryCommit: %v", err)
+		t.Fatalf("New failing recovery: %v", err)
 	}
-	if commitRecoveryErr := failingStore.CommitRecovery(ctx, commit); !errors.Is(commitRecoveryErr, cleanupFailure) {
-		t.Fatalf("failed CommitRecovery = %v, want %v", commitRecoveryErr, cleanupFailure)
+	if _, err := failingRecovery.Reconcile(ctx); !errors.Is(err, cleanupFailure) {
+		t.Fatalf("failed Reconcile = %v, want %v", err, cleanupFailure)
 	}
-	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); loadCheckpointErr != nil {
+	stored, found, err := runStore.Run(ctx, draft.RunID)
+	if err != nil || !found || stored.State() != run.Running {
+		t.Fatalf("Run after failed recovery = %+v, found %t, error %v", stored, found, err)
+	}
+	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID()); loadCheckpointErr != nil {
 		t.Fatalf("cleanup failure did not roll back preceding checkpoint cleanup: %v", loadCheckpointErr)
 	}
 
 	store, err := New(Config{
-		Sessions: sqlite.NewSessionStore(db), Runs: sqlite.NewRunStore(db),
+		Sessions: sessionStore, Runs: runStore,
 		Interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
 		Transcript: sqlite.NewTranscriptStore(db), Messages: sqlite.NewMessageStore(db),
+		GoalRuns:            sqlite.NewGoalStore(db),
 		ExecutorCheckpoints: checkpointStore,
 		ModelInvocations:    sqlite.NewModelInvocationStore(db),
 		ToolInvocations:     sqlite.NewToolInvocationStore(db),
@@ -348,8 +377,17 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New persistence: %v", err)
 	}
-	if err := store.CommitRecovery(ctx, commit); err != nil {
-		t.Fatalf("CommitRecovery: %v", err)
+	recovery, err := newTestRecovery(store, alwaysResumable{})
+	if err != nil {
+		t.Fatalf("New recovery: %v", err)
+	}
+	if count, err := recovery.Reconcile(ctx); err != nil || count != 1 {
+		t.Fatalf("Reconcile = %d, %v, want one recovered Run", count, err)
+	}
+	stored, found, err = runStore.Run(ctx, draft.RunID)
+	outcome, terminal := stored.Outcome()
+	if err != nil || !found || !terminal || outcome != run.OutcomeLost {
+		t.Fatalf("Run after recovery = %+v, found %t, error %v", stored, found, err)
 	}
 	var remaining int
 	if err := db.QueryRowContext(ctx,
@@ -360,7 +398,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	if remaining != 0 {
 		t.Fatalf("child-start reservations after boot recovery = %d, want 0", remaining)
 	}
-	if _, err := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
+	if _, err := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID()); !errors.Is(err, run.ErrCheckpointNotFound) {
 		t.Fatalf("orphan checkpoint after successful recovery = %v, want not found", err)
 	}
 }
@@ -395,7 +433,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	transcriptStore := sqlite.NewTranscriptStore(db)
 	messageStore := sqlite.NewMessageStore(db)
 	goalStore := sqlite.NewGoalStore(db)
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	checkpointStore := sqlite.NewExecutorCheckpointStore(db)
 	modelInvocations := sqlite.NewModelInvocationStore(db)
 	toolInvocations := sqlite.NewToolInvocationStore(db)
 	selection, err := modelref.New("provider", "model")
@@ -451,13 +489,13 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	); startToolInvocationErr != nil {
 		t.Fatalf("start Tool invocation: %v", startToolInvocationErr)
 	}
-	checkpoint := runs.ExecutorCheckpoint{
+	checkpoint := testsupport.MustCheckpoint(run.CheckpointState{
 		RootMemberID:   "orphan_checkpoint",
 		Payload:        []byte(`{"opaque":true}`),
 		BuildID:        testsupport.BuildID,
-		Scope:          runs.ExecutionScope{SessionID: "session"},
+		Scope:          run.ExecutionScope{SessionID: "session"},
 		ModelSelection: testsupport.DefaultModelSelection(),
-	}
+	})
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("SaveCheckpoint: %v", saveCheckpointErr)
 	}
@@ -507,7 +545,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	if err != nil || !found || activeAfterRollback.State() != run.Running {
 		t.Fatalf("Run after rollback = found:%t value:%+v err:%v", found, activeAfterRollback, err)
 	}
-	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); loadCheckpointErr != nil {
+	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID()); loadCheckpointErr != nil {
 		t.Fatalf("checkpoint after rollback: %v", loadCheckpointErr)
 	}
 	var modelState, toolState string
@@ -585,7 +623,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	).Scan(&toolState); !errors.Is(scanErr, sql.ErrNoRows) {
 		t.Fatalf("recovered Tool invocation read = %v, want consumed journal row", scanErr)
 	}
-	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
+	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID()); !errors.Is(loadCheckpointErr, run.ErrCheckpointNotFound) {
 		t.Fatalf("orphan checkpoint after recovery = %v", loadCheckpointErr)
 	}
 	currentGoal, err := goalStore.Get(ctx, goalValue.SessionID())
@@ -614,7 +652,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	}
 	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
 	transcriptStore := sqlite.NewTranscriptStore(db)
-	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
+	checkpointStore := sqlite.NewExecutorCheckpointStore(db)
 	if admitErr := runStore.Admit(ctx, run.Draft{
 		RunID: "run_partial", SessionID: "session", SegmentID: "segment", CreatedAt: createdAt,
 		ModelSelection: testsupport.DefaultModelSelection(),
@@ -657,10 +695,10 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	if openErr := interruptStore.Open(ctx, pending); openErr != nil {
 		t.Fatalf("Open Pending: %v", openErr)
 	}
-	checkpoint := runs.ExecutorCheckpoint{
+	checkpoint := testsupport.MustCheckpoint(run.CheckpointState{
 		RootMemberID: "member_root", Payload: []byte(`{"opaque":true}`), BuildID: testsupport.BuildID,
-		Scope: runs.ExecutionScope{SessionID: "session"}, ModelSelection: testsupport.DefaultModelSelection(),
-	}
+		Scope: run.ExecutionScope{SessionID: "session"}, ModelSelection: testsupport.DefaultModelSelection(),
+	})
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("SaveCheckpoint: %v", saveCheckpointErr)
 	}
@@ -691,7 +729,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	if err != nil || !found || stored.State() != run.Waiting {
 		t.Fatalf("Run after rejection = found:%t value:%+v err:%v", found, stored, err)
 	}
-	if _, err := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); err != nil {
+	if _, err := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID()); err != nil {
 		t.Fatalf("checkpoint after rejection: %v", err)
 	}
 }

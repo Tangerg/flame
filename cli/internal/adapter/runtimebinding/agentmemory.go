@@ -208,7 +208,7 @@ func (a *AgentMemory) resolveTarget(ctx context.Context, target agent.MemoryTarg
 	if err != nil {
 		return agent.MemoryTarget{}, fmt.Errorf("resolve agent memory workspace: %w", err)
 	}
-	return agent.NewMemoryTarget(target.Scope, resolved.Path)
+	return agent.NewMemoryTarget(target.Scope, resolved.Ref.Path)
 }
 
 func agentMemoryResult(

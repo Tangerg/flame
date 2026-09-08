@@ -182,7 +182,7 @@ func (e *Effects) ClaimResume(
 	if err != nil {
 		return runs.ClaimedResume{}, err
 	}
-	var checkpoint runs.ExecutorCheckpoint
+	var checkpoint run.Checkpoint
 	err = e.runInTx(ctx, func(ctx context.Context) error {
 		return e.applyResumeClaim(ctx, prepared, &checkpoint)
 	})
@@ -219,7 +219,7 @@ func prepareResumeClaim(claim runs.ResumeClaimCommit) (preparedResumeClaim, erro
 func (e *Effects) applyResumeClaim(
 	ctx context.Context,
 	prepared preparedResumeClaim,
-	checkpoint *runs.ExecutorCheckpoint,
+	checkpoint *run.Checkpoint,
 ) error {
 	pending := prepared.claim.Pending()
 	loaded, err := e.loadResumeCheckpoint(ctx, prepared)
@@ -244,7 +244,7 @@ func (e *Effects) applyResumeClaim(
 	); err != nil {
 		return fmt.Errorf("segment: invalidate claimed executor checkpoint: %w", err)
 	}
-	*checkpoint = loaded.Clone()
+	*checkpoint = loaded
 	if err := e.runState.RecordWaitingRunCommit(
 		ctx, pending.SessionID, pending.RootRunID, prepared.claim.CommitID(),
 	); err != nil {
@@ -256,21 +256,21 @@ func (e *Effects) applyResumeClaim(
 func (e *Effects) loadResumeCheckpoint(
 	ctx context.Context,
 	prepared preparedResumeClaim,
-) (runs.ExecutorCheckpoint, error) {
+) (run.Checkpoint, error) {
 	pending := prepared.claim.Pending()
 	loaded, err := e.executorCheckpoints.LoadCheckpoint(ctx, prepared.root.MemberID)
 	if err != nil {
-		return runs.ExecutorCheckpoint{}, fmt.Errorf("segment: load claimed executor checkpoint: %w", err)
+		return run.Checkpoint{}, fmt.Errorf("segment: load claimed executor checkpoint: %w", err)
 	}
 	if err := loaded.ValidateOwnership(
 		prepared.root.MemberID, pending.SessionID,
 	); err != nil {
-		return runs.ExecutorCheckpoint{}, err
+		return run.Checkpoint{}, err
 	}
-	if !loaded.ModelSelection.Equal(prepared.root.ModelSelection) || loaded.Limits != prepared.root.Limits ||
-		loaded.Scope.GoalIncarnationID != pending.GoalIncarnationID {
-		return runs.ExecutorCheckpoint{}, fmt.Errorf(
-			"%w: claimed checkpoint policy differs from Pending", runs.ErrInvalidExecutorCheckpoint,
+	if !loaded.ModelSelection().Equal(prepared.root.ModelSelection) || loaded.Limits() != prepared.root.Limits ||
+		loaded.Scope().GoalIncarnationID != pending.GoalIncarnationID {
+		return run.Checkpoint{}, fmt.Errorf(
+			"%w: claimed checkpoint policy differs from Pending", run.ErrInvalidCheckpoint,
 		)
 	}
 	return loaded, nil
@@ -296,7 +296,7 @@ func (e *Effects) consumeResumePending(ctx context.Context, claim runs.ResumeCla
 func (e *Effects) reconcileResumeClaim(
 	ctx context.Context,
 	claim runs.ResumeClaimCommit,
-	checkpoint runs.ExecutorCheckpoint,
+	checkpoint run.Checkpoint,
 	commitErr error,
 ) (runs.ClaimedResume, error) {
 	pending := claim.Pending()
@@ -306,11 +306,11 @@ func (e *Effects) reconcileResumeClaim(
 	if !settled {
 		return runs.ClaimedResume{}, errors.Join(commitErr, settleErr)
 	}
-	if err := checkpoint.Validate(); err != nil {
+	if checkpoint.IsZero() {
 		return runs.ClaimedResume{}, errors.Join(
 			commitErr,
 			errors.New("segment: committed resume claim checkpoint is unavailable to this caller"),
-			err,
+			run.ErrInvalidCheckpoint,
 		)
 	}
 	return claimedResumeResult(claim, checkpoint), nil
@@ -348,7 +348,7 @@ func (e *Effects) resolveToolApproval(
 	return e.toolApprovals.ReplaceItem(ctx, change)
 }
 
-func claimedResumeResult(claim runs.ResumeClaimCommit, checkpoint runs.ExecutorCheckpoint) runs.ClaimedResume {
+func claimedResumeResult(claim runs.ResumeClaimCommit, checkpoint run.Checkpoint) runs.ClaimedResume {
 	return runs.ClaimedResume{
 		Pending: claim.Pending(), Answers: claim.Answers(),
 		Checkpoint: checkpoint,
@@ -394,7 +394,7 @@ func (e *Effects) commitOpening(ctx context.Context, opening runs.OpeningCommit)
 		}
 	}
 	for _, commit := range opening.Events() {
-		if err := e.applyCommit(ctx, commit); err != nil {
+		if err := e.applyCommit(ctx, commit, commit.CommitID()); err != nil {
 			return err
 		}
 	}
@@ -455,9 +455,6 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 	if scheduleFiring == "" && !manual {
 		return nil
 	}
-	if e.schedules == nil {
-		return errors.New("segment: schedule persistence is unavailable")
-	}
 	if manual {
 		if err := e.schedules.RecordRun(ctx, manualScheduleRun); err != nil {
 			return fmt.Errorf("segment: record manual schedule Run: %w", err)
@@ -479,32 +476,29 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 // transaction. A tree interruption is deliberately excluded: it must use
 // CommitTreeBarrier so no individual Run can publish a partial barrier.
 func (e *Effects) CommitEvent(ctx context.Context, commit runs.EventCommit) error {
-	if err := commit.Validate(); err != nil {
-		return fmt.Errorf("segment: invalid event commit: %w", err)
+	if commit.IsZero() {
+		return errors.New("segment: event commit is required")
 	}
-	if commit.CommitID.IsZero() {
+	if commit.CommitID().IsZero() {
 		return errors.New("segment: event commit identity is required")
 	}
-	if commit.State == runs.StateSuspend {
+	if commit.Suspends() {
 		return errors.New("segment: per-Run suspend commit is not allowed")
 	}
-	if commit.ObsoleteCheckpointRootID != "" && commit.State != runs.StateTerminalize {
-		return errors.New("segment: executor checkpoint deletion requires a terminal Run commit")
-	}
 	err := e.runInTx(ctx, func(ctx context.Context) error {
-		if err := e.applyCommit(ctx, commit); err != nil {
+		if err := e.applyCommit(ctx, commit, commit.CommitID()); err != nil {
 			return err
 		}
-		if commit.ObsoleteCheckpointRootID == "" {
+		if commit.ObsoleteCheckpointRootID() == "" {
 			return nil
 		}
-		if err := e.executorCheckpoints.DeleteCheckpoints(ctx, commit.SessionID, []string{commit.ObsoleteCheckpointRootID}); err != nil {
-			return fmt.Errorf("segment: delete terminal executor checkpoint %q: %w", commit.ObsoleteCheckpointRootID, err)
+		if err := e.executorCheckpoints.DeleteCheckpoints(ctx, commit.SessionID(), []string{commit.ObsoleteCheckpointRootID()}); err != nil {
+			return fmt.Errorf("segment: delete terminal executor checkpoint %q: %w", commit.ObsoleteCheckpointRootID(), err)
 		}
-		if err := e.interrupts.Delete(ctx, commit.SessionID, commit.RunID); err != nil {
-			return fmt.Errorf("segment: delete terminal interrupt for root Run %q: %w", commit.RunID, err)
+		if err := e.interrupts.Delete(ctx, commit.SessionID(), commit.RunID()); err != nil {
+			return fmt.Errorf("segment: delete terminal interrupt for root Run %q: %w", commit.RunID(), err)
 		}
-		if err := e.childRunStarts.DeleteSession(ctx, commit.SessionID); err != nil {
+		if err := e.childRunStarts.DeleteSession(ctx, commit.SessionID()); err != nil {
 			return fmt.Errorf("segment: delete terminal child Run start reservations: %w", err)
 		}
 		return nil
@@ -534,7 +528,7 @@ func (e *Effects) reconcileEventCommit(
 	commit runs.EventCommit,
 ) (bool, error) {
 	return e.reconcileRunCommit(
-		ctx, commit.SessionID, commit.RunID, commit.SegmentID, commit.CommitID,
+		ctx, commit.SessionID(), commit.RunID(), commit.SegmentID(), commit.CommitID(),
 	)
 }
 
@@ -579,12 +573,12 @@ func (e *Effects) CommitTreeBarrier(ctx context.Context, barrier runs.TreeBarrie
 		if err := e.openInterrupt(ctx, pending); err != nil {
 			return err
 		}
-		for _, original := range commits {
-			commit := original
-			if commit.RunID == pending.RootRunID {
-				commit.CommitID = commitID
+		for _, commit := range commits {
+			receiptID := runtimeidentity.CommitID{}
+			if commit.RunID() == pending.RootRunID {
+				receiptID = commitID
 			}
-			if err := e.applyCommit(ctx, commit); err != nil {
+			if err := e.applyCommit(ctx, commit, receiptID); err != nil {
 				return err
 			}
 		}
@@ -595,8 +589,8 @@ func (e *Effects) CommitTreeBarrier(ctx context.Context, barrier runs.TreeBarrie
 	}
 	rootSegmentID := ""
 	for _, commit := range commits {
-		if commit.RunID == pending.RootRunID {
-			rootSegmentID = commit.SegmentID
+		if commit.RunID() == pending.RootRunID {
+			rootSegmentID = commit.SegmentID()
 			break
 		}
 	}
@@ -622,13 +616,10 @@ const stagedToolResultCleanupTimeout = 5 * time.Second
 // event. Cleanup is request-detached because cancellation is one of the failure
 // paths; Discard's unbound predicate makes an ambiguous successful commit safe.
 func (e *Effects) compensateFailedCommit(ctx context.Context, commit runs.EventCommit, commitErr error) error {
-	if e.toolResults == nil {
-		return commitErr
-	}
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), stagedToolResultCleanupTimeout)
 	defer cancel()
 	var cleanupErrs []error
-	for _, item := range commit.Items {
+	for _, item := range commit.Items() {
 		invocation, present := item.ToolInvocation()
 		if !present || invocation.Offload == nil {
 			continue
@@ -640,17 +631,19 @@ func (e *Effects) compensateFailedCommit(ctx context.Context, commit runs.EventC
 	return errors.Join(commitErr, errors.Join(cleanupErrs...))
 }
 
-func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) error {
-	if err := e.runState.RequireActiveSegment(ctx, commit.SessionID, commit.RunID, commit.SegmentID); err != nil {
+// Composite projections carry their parent transaction receipt without changing
+// the immutable nested event. Ordinary events use their own commit identity.
+func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit, receiptID runtimeidentity.CommitID) error {
+	if err := e.runState.RequireActiveSegment(ctx, commit.SessionID(), commit.RunID(), commit.SegmentID()); err != nil {
 		return fmt.Errorf("segment: require active event Segment: %w", err)
 	}
-	for _, item := range commit.Items {
+	for _, item := range commit.Items() {
 		if err := e.appendItem(ctx, item); err != nil {
 			return err
 		}
 	}
-	if len(commit.ConversationMessages) != 0 {
-		if err := e.conversation.Write(ctx, commit.SessionID, commit.ConversationMessages...); err != nil {
+	if messages := commit.ConversationMessages(); len(messages) != 0 {
+		if err := e.conversation.Write(ctx, commit.SessionID(), messages...); err != nil {
 			return fmt.Errorf("segment: append conversation messages: %w", err)
 		}
 	}
@@ -663,20 +656,17 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 	if err := e.applyProgress(ctx, commit); err != nil {
 		return err
 	}
-	if err := e.applyState(ctx, commit); err != nil {
+	if err := e.applyState(ctx, commit, receiptID); err != nil {
 		return err
 	}
-	if commit.GoalRun != nil {
-		if e.goalRuns == nil {
-			return errors.New("segment: Goal Run persistence is unavailable")
-		}
-		if err := e.goalRuns.RecordRun(ctx, *commit.GoalRun); err != nil {
+	if record := commit.GoalRun(); record != nil {
+		if err := e.goalRuns.RecordRun(ctx, *record); err != nil {
 			return fmt.Errorf("segment: record Goal Run: %w", err)
 		}
 	}
-	if commit.State == runs.StateUnchanged && !commit.CommitID.IsZero() {
+	if !commit.ChangesLifecycle() && !receiptID.IsZero() {
 		if err := e.runState.RecordRunCommit(
-			ctx, commit.SessionID, commit.RunID, commit.SegmentID, commit.CommitID,
+			ctx, commit.SessionID(), commit.RunID(), commit.SegmentID(), receiptID,
 		); err != nil {
 			return fmt.Errorf("segment: record event commit receipt: %w", err)
 		}
@@ -685,30 +675,27 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 }
 
 func (e *Effects) applyModelInvocations(ctx context.Context, commit runs.EventCommit) error {
-	if len(commit.ModelInvocations) == 0 {
-		return nil
-	}
-	for _, invocation := range commit.ModelInvocations {
+	for _, invocation := range commit.ModelInvocations() {
 		var err error
 		switch invocation.State {
 		case runs.ModelInvocationStarted:
 			err = e.modelInvocations.StartModelInvocation(
-				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
+				ctx, commit.SessionID(), commit.RunID(), invocation.SegmentID,
 				invocation.CallID, invocation.StartedAt,
 			)
 		case runs.ModelInvocationCompleted:
 			err = e.modelInvocations.CompleteModelInvocation(
-				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
+				ctx, commit.SessionID(), commit.RunID(), invocation.SegmentID,
 				invocation.CallID, invocation.StartedAt, invocation.FinishedAt,
 			)
 		case runs.ModelInvocationFailed:
 			err = e.modelInvocations.FailModelInvocation(
-				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
+				ctx, commit.SessionID(), commit.RunID(), invocation.SegmentID,
 				invocation.CallID, invocation.StartedAt, invocation.FinishedAt,
 			)
 		case runs.ModelInvocationUnknown:
 			err = e.modelInvocations.MarkModelInvocationUnknown(
-				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
+				ctx, commit.SessionID(), commit.RunID(), invocation.SegmentID,
 				invocation.CallID, invocation.StartedAt, invocation.FinishedAt,
 			)
 		default:
@@ -722,26 +709,23 @@ func (e *Effects) applyModelInvocations(ctx context.Context, commit runs.EventCo
 }
 
 func (e *Effects) applyToolInvocations(ctx context.Context, commit runs.EventCommit) error {
-	if len(commit.ToolInvocations) == 0 {
-		return nil
-	}
-	for _, invocation := range commit.ToolInvocations {
+	for _, invocation := range commit.ToolInvocations() {
 		var err error
 		switch invocation.State {
 		case runs.ToolInvocationStarted:
 			err = e.toolInvocations.StartToolInvocation(
-				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
+				ctx, commit.SessionID(), commit.RunID(), invocation.SegmentID,
 				invocation.CallID, invocation.ItemID, invocation.StartedAt,
 			)
 		case runs.ToolInvocationCompleted:
 			err = e.toolInvocations.CompleteToolInvocation(
-				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
+				ctx, commit.SessionID(), commit.RunID(), invocation.SegmentID,
 				invocation.CallID, invocation.ItemID,
 				invocation.StartedAt, invocation.FinishedAt,
 			)
 		case runs.ToolInvocationIncomplete:
 			err = e.toolInvocations.MarkToolInvocationIncomplete(
-				ctx, commit.SessionID, commit.RunID, invocation.SegmentID,
+				ctx, commit.SessionID(), commit.RunID(), invocation.SegmentID,
 				invocation.CallID, invocation.ItemID,
 				invocation.StartedAt, invocation.FinishedAt,
 			)
@@ -756,17 +740,18 @@ func (e *Effects) applyToolInvocations(ctx context.Context, commit runs.EventCom
 }
 
 func (e *Effects) applyProgress(ctx context.Context, commit runs.EventCommit) error {
-	if commit.Progress == nil {
+	progress := commit.Progress()
+	if progress == nil {
 		return nil
 	}
 	if err := e.runProgress.UpdateProgress(
 		ctx,
-		commit.SessionID,
-		commit.RunID,
-		commit.Progress.SegmentID,
-		commit.Progress.Metrics,
-		commit.Progress.ContextTokens,
-		commit.Progress.UpdatedAt,
+		commit.SessionID(),
+		commit.RunID(),
+		progress.SegmentID,
+		progress.Metrics,
+		progress.ContextTokens,
+		progress.UpdatedAt,
 	); err != nil {
 		return fmt.Errorf("segment: update Run progress: %w", err)
 	}
@@ -814,46 +799,30 @@ func (e *Effects) appendItem(ctx context.Context, item transcript.Item) error {
 	if !ok {
 		return errors.New("segment: offloaded tool result has no preview string")
 	}
-	if e.toolResults == nil {
-		return errors.New("segment: tool-result persistence is unavailable")
-	}
 	if err := e.toolResults.Bind(ctx, item.SessionID(), item.ID(), preview, *invocation.Offload); err != nil {
 		return fmt.Errorf("segment: bind offloaded tool result: %w", err)
 	}
 	return nil
 }
 
-func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit) error {
-	if commit.State == runs.StateUnchanged {
+func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit, receiptID runtimeidentity.CommitID) error {
+	record := commit.Run()
+	if record == nil {
 		return nil
 	}
-	switch commit.State {
-	case runs.StateSuspend:
-		if commit.Run == nil {
-			return errors.New("segment: park commit carries no run record")
-		}
-		return e.runState.Suspend(ctx, *commit.Run, commit.SegmentID, commit.CommitID)
-	case runs.StateTerminalize:
-		run, err := e.finishedRun(ctx, commit)
-		if err != nil {
-			return err
-		}
-		return e.runState.TerminalizeEvent(ctx, run, commit.SegmentID, commit.CommitID)
-	default:
-		return fmt.Errorf("segment: unknown run state change %q", commit.State)
+	if commit.Suspends() {
+		return e.runState.Suspend(ctx, *record, commit.SegmentID(), receiptID)
 	}
+	finalized, err := e.finishedRun(ctx, *record)
+	if err != nil {
+		return err
+	}
+	return e.runState.TerminalizeEvent(ctx, finalized, commit.SegmentID(), receiptID)
 }
 
-// finishedRun completes the terminal Run record with the two facts the reducer
-// cannot know: the conversation watermark, resolved inside the caller's
-// transaction so it is consistent with the state it terminalizes (the message log
-// is in its terminal post-compaction shape by the time a terminal event arrives),
-// and the row's touch time.
-func (e *Effects) finishedRun(ctx context.Context, commit runs.EventCommit) (run.Run, error) {
-	if commit.Run == nil {
-		return run.Run{}, errors.New("segment: terminal commit carries no run record")
-	}
-	record := *commit.Run
+// finishedRun resolves the conversation watermark inside the transaction so
+// terminal state refers to the final post-compaction message log.
+func (e *Effects) finishedRun(ctx context.Context, record run.Run) (run.Run, error) {
 	if record.MessageMark() < 0 {
 		mark, err := e.conversation.Count(ctx, record.SessionID())
 		if err != nil {

@@ -74,20 +74,6 @@ func classifyError(err error) error {
 		source error
 		target error
 	}{
-		{protocol.ErrSessionNotFound, agent.ErrSessionNotFound},
-		{protocol.ErrRunNotFound, agent.ErrRunNotFound},
-		{protocol.ErrInterruptNotOpen, agent.ErrInterruptNotOpen},
-		{protocol.ErrStaleSegment, agent.ErrStaleSegment},
-		{protocol.ErrRunWaiting, agent.ErrRunWaiting},
-		{protocol.ErrRunFinished, agent.ErrRunFinished},
-		{protocol.ErrReplayCursorInvalid, agent.ErrReplayCursorInvalid},
-		{protocol.ErrReplayUnavailable, agent.ErrReplayUnavailable},
-		{protocol.ErrSessionHasActiveRun, agent.ErrSessionHasActiveRun},
-		{protocol.ErrSessionBusy, agent.ErrSessionBusy},
-		{protocol.ErrRevisionConflict, agent.ErrRevisionConflict},
-		{protocol.ErrIdempotencyInProgress, agent.ErrCommandInProgress},
-		{protocol.ErrIdempotencyConflict, agent.ErrCommandConflict},
-		{protocol.ErrIdempotencyStoreMismatch, agent.ErrCommandStoreMismatch},
 		{protocol.ErrCapabilityNotNeg, agent.ErrIncompatibleRuntime},
 		{protocol.ErrInvalidProtocolVersion, agent.ErrIncompatibleRuntime},
 		{protocol.ErrVcsUnavailable, workspace.ErrVersionControlUnavailable},

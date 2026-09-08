@@ -136,19 +136,6 @@ func TestRoundRobinSpreadsAcrossServers(t *testing.T) {
 	}
 }
 
-func TestDeferredToolNames(t *testing.T) {
-	tool := newSearch(t, catalog())
-	names := tool.DeferredToolNames()
-	if len(names) != 4 {
-		t.Fatalf("DeferredToolNames = %v, want 4 names", names)
-	}
-	// Mutating the returned slice must not corrupt internal state.
-	names[0] = "mutated"
-	if tool.DeferredToolNames()[0] == "mutated" {
-		t.Fatal("DeferredToolNames leaked internal slice")
-	}
-}
-
 func TestDescriptionListsCatalogButNotSchemas(t *testing.T) {
 	tool := newSearch(t, catalog())
 	desc := tool.Definition().Description

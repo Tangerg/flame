@@ -37,7 +37,7 @@ func (f *fakeItemProjection) Item(
 type fakePreparedWaitingCancellation struct {
 	canceled      []string
 	interruptions []MemberInterruption
-	checkpoint    *ExecutorCheckpoint
+	checkpoint    *run.Checkpoint
 	applyErr      error
 	continueErr   error
 
@@ -59,7 +59,7 @@ func (f *fakePreparedWaitingCancellation) value(t testing.TB) PreparedWaitingSub
 	t.Helper()
 	checkpoint := testExecutorCheckpoint()
 	if f.checkpoint != nil {
-		checkpoint = f.checkpoint.Clone()
+		checkpoint = *f.checkpoint
 	}
 	prepared, err := NewPreparedWaitingSubtreeCancellation(
 		f.canceled,
@@ -77,20 +77,22 @@ func (f *fakePreparedWaitingCancellation) value(t testing.TB) PreparedWaitingSub
 
 func TestPrepareWaitingCancellationRejectsCheckpointBoundToDifferentApplicationFacts(t *testing.T) {
 	plan := runACancellationPlan(t, false)
-	for name, mutate := range map[string]func(*ExecutorCheckpoint){
-		"root":             func(checkpoint *ExecutorCheckpoint) { checkpoint.RootMemberID = "other_root" },
-		"session":          func(checkpoint *ExecutorCheckpoint) { checkpoint.Scope.SessionID = "other_session" },
-		"goal incarnation": func(checkpoint *ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other_goal" },
-		"provider": func(checkpoint *ExecutorCheckpoint) {
+	for name, mutate := range map[string]func(*run.CheckpointState){
+		"root":             func(checkpoint *run.CheckpointState) { checkpoint.RootMemberID = "other_root" },
+		"session":          func(checkpoint *run.CheckpointState) { checkpoint.Scope.SessionID = "other_session" },
+		"goal incarnation": func(checkpoint *run.CheckpointState) { checkpoint.Scope.GoalIncarnationID = "other_goal" },
+		"provider": func(checkpoint *run.CheckpointState) {
 			checkpoint.ModelSelection = mustSelection("anthropic", checkpoint.ModelSelection.Model())
 		},
-		"model": func(checkpoint *ExecutorCheckpoint) {
+		"model": func(checkpoint *run.CheckpointState) {
 			checkpoint.ModelSelection = mustSelection(checkpoint.ModelSelection.Provider(), "other-model")
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			checkpoint := testExecutorCheckpoint()
-			mutate(&checkpoint)
+			checkpointState := checkpoint.State()
+			mutate(&checkpointState)
+			checkpoint = testsupport.MustCheckpoint(checkpointState)
 			prepared := &fakePreparedWaitingCancellation{
 				canceled:   []string{"member_a", "member_grandchild"},
 				checkpoint: &checkpoint,
@@ -101,8 +103,8 @@ func TestPrepareWaitingCancellationRejectsCheckpointBoundToDifferentApplicationF
 				time.Date(2026, 7, 30, 2, 3, 4, 0, time.UTC),
 				prepared.value(t),
 			)
-			if !errors.Is(err, ErrInvalidExecutorCheckpoint) {
-				t.Fatalf("prepare error = %v, want ErrInvalidExecutorCheckpoint", err)
+			if !errors.Is(err, run.ErrInvalidCheckpoint) {
+				t.Fatalf("prepare error = %v, want run.ErrInvalidCheckpoint", err)
 			}
 			if prepared.applied != 0 || prepared.discarded != 0 {
 				t.Fatalf("mutation touched before ownership validation: applied=%d discarded=%d", prepared.applied, prepared.discarded)
@@ -166,7 +168,7 @@ func TestPreparedWaitingSubtreeCancellationOwnsProjections(t *testing.T) {
 	paused[0] = "member_changed"
 	interruptions[0].MemberID = "member_changed"
 	interruptions[0].Interrupt.Question.Fields[0].Prompt = "Changed?"
-	checkpoint.Payload[0] = 'x'
+	checkpoint.Payload()[0] = 'x'
 
 	projectedCanceled := prepared.CanceledMemberIDs()
 	projectedPaused := prepared.PausedMemberIDs()
@@ -176,7 +178,7 @@ func TestPreparedWaitingSubtreeCancellationOwnsProjections(t *testing.T) {
 	projectedPaused[0] = "member_projected"
 	projectedInterruptions[0].MemberID = "member_projected"
 	projectedInterruptions[0].Interrupt.Question.Fields[0].Prompt = "Projected?"
-	projectedCheckpoint.Payload[0] = 'y'
+	projectedCheckpoint.Payload()[0] = 'y'
 
 	ownedInterruptions := prepared.PendingInterruptions()
 	if got := prepared.CanceledMemberIDs(); !slices.Equal(got, []string{"member_a"}) {
@@ -190,7 +192,7 @@ func TestPreparedWaitingSubtreeCancellationOwnsProjections(t *testing.T) {
 		ownedInterruptions[0].Interrupt.Question.Fields[0].Prompt != "Continue?" {
 		t.Fatalf("pending interruptions = %+v, want owned input", ownedInterruptions)
 	}
-	if got := prepared.Checkpoint().Payload[0]; got != testExecutorCheckpoint().Payload[0] {
+	if got := prepared.Checkpoint().Payload()[0]; got != testExecutorCheckpoint().Payload()[0] {
 		t.Fatalf("checkpoint payload prefix = %q, want owned input", got)
 	}
 }
@@ -443,7 +445,7 @@ func TestCancelWaitingChildRestoresCommittedTreeWhenRuntimeApplyFails(t *testing
 		t.Fatalf("released execution = %+v, want [%+v]", control.released, plan.executor)
 	}
 	if len(control.restoreWaiting) != 1 ||
-		control.restoreWaiting[0].Checkpoint.RootMemberID != plan.pending.Continuations[len(plan.pending.Continuations)-1].MemberID {
+		control.restoreWaiting[0].Checkpoint.RootMemberID() != plan.pending.Continuations[len(plan.pending.Continuations)-1].MemberID {
 		t.Fatalf("restored waiting continuation = %+v, want committed resulting checkpoint", control.restoreWaiting)
 	}
 	if result.Run.ID() != plan.target.run.ID() || result.RootRun == nil || result.RootRun.ID() != plan.root.run.ID() {
@@ -537,9 +539,9 @@ func TestCancelWaitingChildPassesDurableTreeToExecutorAfterRuntimeRestart(t *tes
 	continuation := request.Continuation()
 	if continuation.SessionID != plan.pending.SessionID ||
 		continuation.ExecutorID != plan.pending.ExecutorID ||
-		continuation.Checkpoint.RootMemberID != rootContinuation.MemberID ||
-		continuation.Checkpoint.Scope.CWD != "/work" ||
-		continuation.Checkpoint.ModelSelection != rootContinuation.ModelSelection {
+		continuation.Checkpoint.RootMemberID() != rootContinuation.MemberID ||
+		continuation.Checkpoint.Scope().CWD != "/work" ||
+		continuation.Checkpoint.ModelSelection() != rootContinuation.ModelSelection {
 		t.Fatalf("waiting subtree request = %+v, want durable root continuation", request)
 	}
 	if prepared.applied != 1 ||
@@ -623,9 +625,6 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	if commit.CommitID().IsZero() || remaining || !resuming {
 		t.Fatalf("continuation commit = %+v, want a tree Resume", commit)
 	}
-	if err := commit.Validate(); err != nil {
-		t.Fatalf("continuation commit: %v", err)
-	}
 	rootSegmentID := ""
 	for _, draft := range resume.Runs {
 		if draft.RunID == commit.RootRunID() {
@@ -637,10 +636,10 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 		SessionID: commit.SessionID(), RunID: commit.RootRunID(), ID: "item_resume_projection",
 		OccurredAt: time.Date(2026, 7, 30, 2, 3, 5, 0, time.UTC),
 	})
-	openingEvents := []EventCommit{{
+	openingEvents := []EventCommit{mustEventCommit(t, EventCommitConfig{
 		RunID: commit.RootRunID(), SessionID: commit.SessionID(), SegmentID: rootSegmentID,
 		Items: []transcript.Item{openingItem},
-	}}
+	})}
 	expectedPending := commit.ExpectedPending()
 	checkpoint := commit.Checkpoint()
 	terminalRuns := commit.TerminalRuns()
@@ -653,28 +652,28 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	if err != nil {
 		t.Fatalf("waiting cancellation with opening projection: %v", err)
 	}
-	if len(expectedPending.Bindings) == 0 || len(checkpoint.Payload) == 0 ||
+	if len(expectedPending.Bindings) == 0 || len(checkpoint.Payload()) == 0 ||
 		len(terminalRuns) == 0 || len(terminalItems) == 0 || len(messages) == 0 {
 		t.Fatal("waiting cancellation ownership fixture lacks mutable projections")
 	}
 	wantMemberID := expectedPending.Bindings[0].MemberID
-	wantPayload := string(checkpoint.Payload)
+	wantPayload := string(checkpoint.Payload())
 	wantTerminalRunID := terminalRuns[0].State().ID()
 	wantTerminalItemID := terminalItems[0].State().ID()
 	wantMessage := messages[0].Text()
 	wantResumeSegmentID := resume.Runs[0].SegmentID
 	expectedPending.Bindings[0].MemberID = "member_changed"
-	checkpoint.Payload[0] = 'x'
+	checkpoint.Payload()[0] = 'x'
 	terminalRuns[0] = run.Replacement{}
 	terminalItems[0] = transcript.Replacement{}
 	messages[0].Parts[0].Text = "changed"
 	resume.Runs[0].SegmentID = "segment_changed"
-	openingEvents[0].Items = nil
+	openingEvents[0] = EventCommit{}
 
 	projectedPending := withOpening.ExpectedPending()
 	projectedPending.Bindings[0].MemberID = "member_projected"
 	projectedCheckpoint := withOpening.Checkpoint()
-	projectedCheckpoint.Payload[0] = 'y'
+	projectedCheckpoint.Payload()[0] = 'y'
 	projectedRuns := withOpening.TerminalRuns()
 	projectedRuns[0] = run.Replacement{}
 	projectedItems := withOpening.TerminalItems()
@@ -684,24 +683,24 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	projectedResume, _ := withOpening.Resume()
 	projectedResume.Runs[0].SegmentID = "segment_projected"
 	projectedOpening := withOpening.OpeningEvents()
-	projectedOpening[0].Items = nil
+	projectedOpening[0] = EventCommit{}
 
 	ownedResume, _ := withOpening.Resume()
 	ownedOpening := withOpening.OpeningEvents()
 	if withOpening.ExpectedPending().Bindings[0].MemberID != wantMemberID ||
-		string(withOpening.Checkpoint().Payload) != wantPayload ||
+		string(withOpening.Checkpoint().Payload()) != wantPayload ||
 		withOpening.TerminalRuns()[0].State().ID() != wantTerminalRunID ||
 		withOpening.TerminalItems()[0].State().ID() != wantTerminalItemID ||
 		withOpening.ConversationMessages()[0].Text() != wantMessage ||
 		ownedResume.Runs[0].SegmentID != wantResumeSegmentID ||
-		len(ownedOpening[0].Items) != 1 {
+		len(ownedOpening[0].Items()) != 1 {
 		t.Fatal("waiting cancellation write-set followed caller or accessor mutation")
 	}
-	if err := withOpening.Validate(); err != nil {
-		t.Fatalf("owned waiting cancellation no longer validates: %v", err)
-	}
 	nested := withOpening.OpeningEvents()
-	nested[0].CommitID = testCommitID("run_commit_waiting_cancel_nested")
+	nested[0] = mustEventCommit(t, EventCommitConfig{
+		RunID: nested[0].RunID(), SessionID: nested[0].SessionID(), SegmentID: nested[0].SegmentID(),
+		Items: nested[0].Items(), CommitID: testCommitID("run_commit_waiting_cancel_nested"),
+	})
 	if _, err := NewResumingSubtreeCancellationCommit(
 		commit.CommitID(), commit.TargetRunID(), commit.RootRun(), commit.ExpectedPending(),
 		commit.Checkpoint(), commit.TerminalRuns(), commit.TerminalItems(), commit.ParentItem(),
@@ -710,9 +709,10 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 		t.Fatal("waiting cancellation accepted a nested top-level event identity")
 	}
 	observed := withOpening.OpeningEvents()
-	observed[0].Progress = &ProgressCommit{
-		SegmentID: rootSegmentID, UpdatedAt: openingItem.OccurredAt(), Metrics: run.Metrics{},
-	}
+	observed[0] = mustEventCommit(t, EventCommitConfig{
+		RunID: observed[0].RunID(), SessionID: observed[0].SessionID(), SegmentID: observed[0].SegmentID(), Items: observed[0].Items(),
+		Progress: &ProgressCommit{SegmentID: rootSegmentID, UpdatedAt: openingItem.OccurredAt(), Metrics: run.Metrics{}},
+	})
 	if _, err := NewResumingSubtreeCancellationCommit(
 		commit.CommitID(), commit.TargetRunID(), commit.RootRun(), commit.ExpectedPending(),
 		commit.Checkpoint(), commit.TerminalRuns(), commit.TerminalItems(), commit.ParentItem(),
@@ -804,21 +804,21 @@ func TestCancelWaitingChildTerminalizesCommittedTreeWhenActivationFails(t *testi
 		}
 	}
 	for _, commit := range effects.commitSnapshot() {
-		if commit.State != StateTerminalize || commit.Run == nil {
+		if !commit.Terminates() || commit.Run() == nil {
 			continue
 		}
-		if commit.Run.ID() != "run_b" && commit.Run.ID() != plan.root.run.ID() {
+		if commit.Run().ID() != "run_b" && commit.Run().ID() != plan.root.run.ID() {
 			continue
 		}
-		if !runHasOutcome(*commit.Run, run.OutcomeFailed) ||
-			!runHasFailureKind(*commit.Run, run.FailureInternal) {
-			t.Fatalf("failed continuation terminal = %+v, want internal error outcome", commit.Run)
+		if !runHasOutcome(*commit.Run(), run.OutcomeFailed) ||
+			!runHasFailureKind(*commit.Run(), run.FailureInternal) {
+			t.Fatalf("failed continuation terminal = %+v, want internal error outcome", commit.Run())
 		}
 	}
 	if _, live := coordinator.registry.Get(plan.root.run.ID()); live {
 		t.Fatal("failed continuation retained a live root owner")
 	}
-	if hasActiveSession(coordinator, plan.pending.SessionID) {
+	if sessionAdmissionBlocked(t, coordinator, plan.pending.SessionID) {
 		t.Fatal("failed continuation leaked admission")
 	}
 }
@@ -852,7 +852,7 @@ func TestCancelWaitingChildAbortsPreparedOperationWhenDurableCommitFails(t *test
 			prepared.discarded,
 		)
 	}
-	if hasActiveSession(coordinator, plan.pending.SessionID) {
+	if sessionAdmissionBlocked(t, coordinator, plan.pending.SessionID) {
 		t.Fatal("failed waiting cancellation leaked admission")
 	}
 }

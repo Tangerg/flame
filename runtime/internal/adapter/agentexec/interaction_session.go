@@ -1,7 +1,6 @@
 package agentexec
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -25,7 +24,7 @@ import (
 
 type interactionSession struct {
 	ref        runs.ExecutorRef
-	scope      runs.ExecutionScope
+	scope      run.ExecutionScope
 	deployment agent.Deployment
 	input      agent.Input
 	engine     *agent.Engine
@@ -35,8 +34,6 @@ type interactionSession struct {
 	childProjection     interactionChildProjection
 	accounting          interactionAccounting
 	allowance           *interactionAllowance
-	unknownPollInterval time.Duration
-	statePollInterval   time.Duration
 	mcpToolAutoApproved func(server, tool string) bool
 	maintenance         RunMaintenance
 	lifecycleHooks      InteractionLifecycleHooks
@@ -63,7 +60,7 @@ type interactionState struct {
 	begun                      bool
 	finished                   bool
 	boundary                   interactionBoundary
-	waitingCheckpoint          runs.ExecutorCheckpoint
+	waitingCheckpoint          run.Checkpoint
 	subtreeChange              *interactionWaitingSubtreeChange
 	subtreePrepared            chan struct{}
 	unknownReported            bool
@@ -114,7 +111,6 @@ func newInteractionSession(
 	start runs.RootExecutionStart,
 	config InteractionExecutorConfig,
 	buildID runtimeidentity.BuildID,
-	policy interactionExecutionPolicy,
 ) *interactionSession {
 	return &interactionSession{
 		ref: ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
@@ -131,8 +127,6 @@ func newInteractionSession(
 			start.ModelSelection,
 			config.Pricing,
 		),
-		unknownPollInterval: policy.unknownEffectPollInterval,
-		statePollInterval:   policy.statePollInterval,
 		mcpToolAutoApproved: config.MCPToolAutoApproved,
 		maintenance:         config.Maintenance,
 		lifecycleHooks:      config.LifecycleHooks,
@@ -309,7 +303,7 @@ func (i *interactionSession) commitFact(
 }
 
 func (i *interactionSession) reconcileUnknownEffects() {
-	ticker := time.NewTicker(i.unknownPollInterval)
+	ticker := time.NewTicker(interactionUnknownEffectPollInterval)
 	defer ticker.Stop()
 	for {
 		select {
@@ -325,7 +319,7 @@ func (i *interactionSession) reconcileUnknownEffects() {
 }
 
 func (i *interactionSession) reconcileExecutionState() {
-	ticker := time.NewTicker(i.statePollInterval)
+	ticker := time.NewTicker(interactionStatePollInterval)
 	defer ticker.Stop()
 	for {
 		select {
@@ -394,13 +388,13 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 		return false
 	}
 	i.state.boundary = interactionBoundaryWaiting
-	i.state.waitingCheckpoint = checkpoint.Clone()
+	i.state.waitingCheckpoint = checkpoint
 	i.state.mu.Unlock()
 	published := i.lifetime.send(runs.ExecutorEvent{
 		Member:  i.executorMember(process.Relation()),
 		Payload: barrier,
 	})
-	if published && i.lifecycleHooks != nil {
+	if published {
 		if err := i.lifecycleHooks.NotifyWaiting(
 			i.lifetime.execution, i.start.SessionID, i.start.CWD,
 		); err != nil {
@@ -412,9 +406,9 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	return published
 }
 
-func (i *interactionSession) stageContinuation(checkpoint runs.ExecutorCheckpoint) error {
-	if err := checkpoint.Validate(); err != nil {
-		return err
+func (i *interactionSession) stageContinuation(checkpoint run.Checkpoint) error {
+	if checkpoint.IsZero() {
+		return run.ErrInvalidCheckpoint
 	}
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
@@ -425,8 +419,8 @@ func (i *interactionSession) stageContinuation(checkpoint runs.ExecutorCheckpoin
 		!isInteractionWaitingBoundary(i.state.process.Status()) {
 		return runs.ErrExecutionClaimed
 	}
-	if !executorCheckpointsEqual(i.state.waitingCheckpoint, checkpoint) {
-		return fmt.Errorf("%w: live Interaction checkpoint differs from the claimed waiting boundary", runs.ErrInvalidExecutorCheckpoint)
+	if !i.state.waitingCheckpoint.Equal(checkpoint) {
+		return fmt.Errorf("%w: live Interaction checkpoint differs from the claimed waiting boundary", run.ErrInvalidCheckpoint)
 	}
 	i.state.boundary = interactionBoundaryContinuationStaged
 	return nil
@@ -455,15 +449,8 @@ func isInteractionWaitingBoundary(status agent.Status) bool {
 func (i *interactionSession) continuationAccepted() {
 	i.state.mu.Lock()
 	i.state.boundary = interactionBoundaryInactive
-	i.state.waitingCheckpoint = runs.ExecutorCheckpoint{}
+	i.state.waitingCheckpoint = run.Checkpoint{}
 	i.state.mu.Unlock()
-}
-
-func executorCheckpointsEqual(left, right runs.ExecutorCheckpoint) bool {
-	return left.RootMemberID == right.RootMemberID && left.BuildID == right.BuildID &&
-		left.Scope == right.Scope && left.ModelSelection.Equal(right.ModelSelection) &&
-		left.Limits == right.Limits && slices.Equal(left.Usage.Models, right.Usage.Models) &&
-		bytes.Equal(left.Payload, right.Payload)
 }
 
 func (i *interactionSession) reportUnknownEffects() bool {
@@ -541,14 +528,12 @@ func (i *interactionSession) publishResult(result agent.Result) error {
 		return err
 	}
 	i.lifetime.send(runs.ExecutorEvent{Member: member, Payload: end})
-	if i.lifecycleHooks != nil {
-		if err := i.lifecycleHooks.NotifyStopped(
-			i.lifetime.execution, i.start.SessionID, i.start.CWD, string(end.Reason),
-		); err != nil {
-			slog.ErrorContext(i.lifetime.execution, "agentexec: notify stopped",
-				"session.id", i.start.SessionID, "error", err,
-			)
-		}
+	if err := i.lifecycleHooks.NotifyStopped(
+		i.lifetime.execution, i.start.SessionID, i.start.CWD, string(end.Reason),
+	); err != nil {
+		slog.ErrorContext(i.lifetime.execution, "agentexec: notify stopped",
+			"session.id", i.start.SessionID, "error", err,
+		)
 	}
 	return nil
 }

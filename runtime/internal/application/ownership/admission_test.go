@@ -61,9 +61,6 @@ func TestGateHoldsSessionThroughMaintenance(t *testing.T) {
 	if !ok {
 		t.Fatal("terminal maintenance did not acquire the run")
 	}
-	if !gate.ActiveSessions()["ses_1"] {
-		t.Fatal("maintenance release erased the session claim")
-	}
 	if _, sessionOk, _ := gate.AcquireSession("ses_1"); sessionOk {
 		t.Fatal("new admission crossed the maintenance boundary")
 	}
@@ -72,9 +69,11 @@ func TestGateHoldsSessionThroughMaintenance(t *testing.T) {
 	}
 
 	releaseMaintenance()
-	if gate.ActiveSessions()["ses_1"] {
-		t.Fatal("maintenance release left the session active")
+	releaseSession, ok, err := gate.AcquireSession("ses_1")
+	if err != nil || !ok {
+		t.Fatalf("admission after maintenance = %t, %v", ok, err)
 	}
+	releaseSession()
 	mutationRelease, ok, _ := gate.AcquireWorkingTreeMutation("/repo")
 	if !ok {
 		t.Fatal("maintenance release left the working tree busy")
@@ -232,7 +231,7 @@ func TestFailedOwnershipDoesNotLeaveAdmissionHeld(t *testing.T) {
 	if _, acquired, err := gate.AcquireRun("ses_1", "/repo"); acquired || !errors.Is(err, cause) {
 		t.Fatalf("Run acquisition = (%t, %v)", acquired, err)
 	}
-	if backend.released != 1 || len(gate.ActiveSessions()) != 0 {
+	if backend.released != 1 {
 		t.Fatal("failed working-tree acquisition retained Session ownership")
 	}
 	if release, acquired, err := gate.AcquireWorkingTreeMutation("/repo"); release != nil || acquired || !errors.Is(err, cause) {

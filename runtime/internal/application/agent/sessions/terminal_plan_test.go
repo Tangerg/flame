@@ -70,9 +70,6 @@ func TestTerminalPlanOwnsProjectionAndDerivesGoalRun(t *testing.T) {
 			gotRuns[0].State().ID(), gotItems[0].ID(), gotMessages[0].Parts[0].Text, gotGoalRun.SessionID,
 		)
 	}
-	if err := plan.Validate(); err != nil {
-		t.Fatalf("Validate after caller mutations: %v", err)
-	}
 }
 
 func TestClaimedResumeTerminalPlanRequiresLostRun(t *testing.T) {

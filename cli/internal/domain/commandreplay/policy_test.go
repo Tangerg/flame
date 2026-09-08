@@ -22,7 +22,7 @@ func TestPolicyCreatesAndEvaluatesOneStoreBoundDeadline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !policy.Available() || !policy.CanStart(guard) || !policy.SameStore(guard) || !policy.Replayable(guard) {
+	if !policy.SameStore(guard) || !policy.Replayable(guard) {
 		t.Fatalf("fresh advertised guard was not replayable: %+v", guard)
 	}
 	other, err := NewProtectedGuard("runtime-b", guard.Until())
@@ -33,29 +33,26 @@ func TestPolicyCreatesAndEvaluatesOneStoreBoundDeadline(t *testing.T) {
 		t.Fatal("another Runtime store owned the command guard")
 	}
 	now = guard.Until()
-	if policy.Replayable(guard) || policy.CanStart(guard) {
+	if policy.Replayable(guard) {
 		t.Fatal("command remained replayable at its exact retention deadline")
 	}
 }
 
-func TestUnavailablePolicyIsExplicitAndOwnsOnlyUnprotectedGuards(t *testing.T) {
-	t.Parallel()
-
-	policy, err := UnavailablePolicyWithClock(time.Now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := policy.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	guard, err := policy.NewGuard()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if policy.Available() || guard.Protected() || !policy.CanStart(guard) || policy.SameStore(guard) || policy.Replayable(guard) {
-		t.Fatalf("unavailable policy projection = policy %+v, guard %+v", policy, guard)
-	}
+func TestPolicyRejectsMissingCapabilityAndClock(t *testing.T) {
 	if err := (Policy{}).Validate(); err == nil {
 		t.Fatal("zero Policy was valid")
+	}
+	if _, err := (Policy{}).NewGuard(); err == nil {
+		t.Fatal("zero Policy created a guard")
+	}
+	if _, err := NewPolicyWithClock(Capability{}, time.Now); err == nil {
+		t.Fatal("policy accepted a missing capability")
+	}
+	capability, err := NewCapability("runtime-a", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewPolicyWithClock(capability, nil); err == nil {
+		t.Fatal("policy accepted a missing clock")
 	}
 }

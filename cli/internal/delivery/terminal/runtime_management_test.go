@@ -925,7 +925,7 @@ func runUIWithRuntimeServices(t *testing.T, config Config) (*programtest.Host, f
 	config.Host = host
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
-	go func() { done <- Run(ctx, config) }()
+	go func() { done <- runTestTerminal(t, ctx, config) }()
 	var once sync.Once
 	stop := func() {
 		once.Do(func() {

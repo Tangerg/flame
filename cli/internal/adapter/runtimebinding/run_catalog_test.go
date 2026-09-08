@@ -61,14 +61,14 @@ func TestRunCatalogMapsQueriesAndProjectsPages(t *testing.T) {
 		}),
 	}
 	got, err := runtime.GetRun(t.Context(), "run_1")
-	if err != nil || got.ID != "run_1" || got.Outcome.Status != agent.OutcomeCompleted {
+	if err != nil || got.ID != "run_1" || got.Outcome.Type != protocol.OutcomeCompleted {
 		t.Fatalf("GetRun = %+v, %v", got, err)
 	}
 	page, err := runtime.ListRuns(t.Context(), agent.RunQuery{
 		SessionID: "ses_1", Statuses: []protocol.RunStatus{protocol.RunStatusFinished},
 		IncludeDescendants: true, Cursor: "opaque", PageSize: agent.MaximumPageSize(),
 	})
-	if err != nil || len(page.Items) != 1 || page.Items[0].ID != "run_1" || page.NextCursor != "next" {
+	if err != nil || len(page.Data) != 1 || page.Data[0].ID != "run_1" || page.NextCursor != "next" {
 		t.Fatalf("ListRuns = %+v, %v", page, err)
 	}
 }
@@ -177,12 +177,12 @@ func TestRunCatalogRejectsIncompleteBindingResults(t *testing.T) {
 		},
 	}
 	runtime.runCatalog = failing
-	if _, err := runtime.GetRun(t.Context(), "missing"); !errors.Is(err, agent.ErrRunNotFound) {
+	if _, err := runtime.GetRun(t.Context(), "missing"); !errors.Is(err, protocol.ErrRunNotFound) {
 		t.Fatalf("GetRun error = %v", err)
 	}
 	if _, err := runtime.ListRuns(t.Context(), agent.RunQuery{
 		SessionID: "missing", PageSize: agent.DefaultPageSize(),
-	}); !errors.Is(err, agent.ErrSessionNotFound) {
+	}); !errors.Is(err, protocol.ErrSessionNotFound) {
 		t.Fatalf("ListRuns error = %v", err)
 	}
 }
@@ -287,5 +287,15 @@ func TestRunCatalogOmitsAnEmptyStatusFilter(t *testing.T) {
 		PageSize: agent.DefaultPageSize(), Statuses: []protocol.RunStatus{},
 	}); err != nil {
 		t.Fatalf("ListRuns: %v", err)
+	}
+}
+
+func TestRunCatalogRejectsDurationOverflow(t *testing.T) {
+	const wrapsPositive = int64(18_446_744_073_710)
+	runtime := &Connection{runCatalog: runCatalogBindingStub{get: func(context.Context, protocol.GetRunRequest, flameruntime.CallOptions) (*protocol.RunRef, error) {
+		return &protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_1", SessionID: "ses_1", Provider: "mock", Model: "balanced", Status: protocol.RunStatusWaiting, CreatedAt: time.Unix(1, 0).UTC()}, Metrics: protocol.RunMetrics{ActiveDurationMillis: wrapsPositive}, ProtocolProfile: protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{}}}, nil
+	}}, meta: requestMeta("test")}
+	if _, err := runtime.GetRun(t.Context(), "run_1"); err == nil || !strings.Contains(err.Error(), "activeDurationMillis") {
+		t.Fatalf("GetRun overflow error = %v", err)
 	}
 }

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
@@ -171,7 +173,7 @@ func (a *app) reconcilePendingRun(pending workbench.PendingRun) {
 				err = a.retireQueuedCommand(command.SessionID, command.CommandID)
 			case accepted:
 				err = fmt.Errorf("pending command %s opened run %s while session projects %s", command.CommandID, observed.RunID, activeRunID)
-			case errors.Is(err, agent.ErrSessionHasActiveRun):
+			case errors.Is(err, protocol.ErrSessionHasActiveRun):
 				_, err = a.workbench.RequeuePendingRun(command.SessionID, command.CommandID)
 			default:
 				err = fmt.Errorf("reconcile pending run: %w", err)

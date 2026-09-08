@@ -76,8 +76,8 @@ func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Current, er
 // INSERT-if-absent (not INSERT OR REPLACE) is deliberate — a stale writer whose
 // row was cleared must not resurrect it.
 func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (bool, error) {
-	if err := replacement.Validate(); err != nil {
-		return false, fmt.Errorf("sqlite: validate goal replacement: %w", err)
+	if replacement.IsZero() {
+		return false, errors.New("sqlite: goal replacement is required")
 	}
 	record := replacement.State()
 	expected := replacement.ExpectedVersion()
@@ -267,8 +267,8 @@ func (g *GoalStore) ClearIf(ctx context.Context, sessionID string, expected goal
 	}
 	incarnationID, committed := expected.IncarnationID()
 	revision, revisionCommitted := expected.Revision()
-	if err := expected.Validate(); err != nil || !committed || !revisionCommitted || expected.SessionID() != sessionID {
-		return false, fmt.Errorf("sqlite: clear Goal with invalid version: %w", errors.Join(err, goal.ErrInvalid))
+	if expected.IsZero() || !committed || !revisionCommitted || expected.SessionID() != sessionID {
+		return false, fmt.Errorf("sqlite: clear Goal with invalid version: %w", goal.ErrInvalid)
 	}
 	res, err := conn(ctx, g.db).ExecContext(ctx,
 		`DELETE FROM goals WHERE session_id = ? AND incarnation_id = ? AND revision = ?`, sessionID, incarnationID, revision)

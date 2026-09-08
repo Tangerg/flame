@@ -28,8 +28,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 )
 
-const interactionDeploymentConfigurationIdentity = "flame.runtime.interaction.v1"
-
 // policyComposition contains the application policies that share the same
 // process-local invalidation vocabulary. It owns no background task or closer.
 type policyComposition struct {
@@ -223,14 +221,13 @@ func buildExecutionComposition(
 	policy policyComposition,
 	workspaceServices workspaceComposition,
 ) (executionComposition, error) {
-	conversation, err := buildConversationEnvironment(
-		cfg.Stores.ChatHistory,
-		persistence.NewConversationCompactions(
-			cfg.Stores.ChatHistory,
-			cfg.Stores.Runs,
-			persistence.Transactor(cfg.Stores.Transactor),
-		),
+	compactions, err := persistence.NewConversationCompactions(
+		cfg.Stores.ChatHistory, cfg.Stores.Runs, persistence.Transactor(cfg.Stores.Transactor),
 	)
+	if err != nil {
+		return executionComposition{}, err
+	}
+	conversation, err := buildConversationEnvironment(cfg.Stores.ChatHistory, compactions)
 	if err != nil {
 		return executionComposition{}, err
 	}
@@ -268,7 +265,7 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, err
 	}
-	workingContexts := agentexec.NewWorkingContextComposer(agentexec.WorkingContextConfig{
+	workingContexts, err := agentexec.NewWorkingContextComposer(agentexec.WorkingContextConfig{
 		UserHome:          cfg.UserHome,
 		Knowledge:         workspaceServices.knowledge,
 		AgentMemory:       modelServices.agentMemoryRead,
@@ -277,11 +274,17 @@ func buildExecutionComposition(
 		Goal:              policy.goalReader,
 		Hooks:             workspaceServices.hookResolver,
 	})
-	transientSessions := agentexec.NewTransientSessionState(
+	if err != nil {
+		return executionComposition{}, err
+	}
+	transientSessions, err := agentexec.NewTransientSessionState(
 		workingContexts,
 		toolRuntime.tools.Resolver,
 		toolRuntime.tools.Shells,
 	)
+	if err != nil {
+		return executionComposition{}, err
+	}
 	toolAuthorizer, err := agentexec.NewToolAuthorizer(policy.approvals)
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: Tool authorizer: %w", err)
@@ -299,19 +302,16 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: build Run maintenance: %w", err)
 	}
-	maxConcurrentToolCalls := 8
 	interactionConfig := agentexec.InteractionExecutorConfig{
-		Lifetime:               lifetime.context,
-		BuildID:                cfg.BuildID,
-		ChatResolver:           cfg.ChatResolver,
-		ImplementationIdentity: cfg.BuildID,
-		ConfigurationIdentity:  interactionDeploymentConfigurationIdentity,
-		StreamModelResponses:   true,
-		MaxConcurrentToolCalls: &maxConcurrentToolCalls,
-		ToolInterpreter:        toolset.NewInterpreter(policy.plans),
-		ToolPresenter:          toolset.Presenter{},
-		ToolAuthorizer:         toolAuthorizer,
-		ToolHooks:              workingContexts,
+		Lifetime:             lifetime.context,
+		BuildID:              cfg.BuildID,
+		ChatResolver:         cfg.ChatResolver,
+		StreamModelResponses: true,
+		ToolResolver:         toolRuntime.tools.Resolver,
+		ToolInterpreter:      toolset.NewInterpreter(policy.plans),
+		ToolPresenter:        toolset.Presenter{},
+		ToolAuthorizer:       toolAuthorizer,
+		ToolHooks:            workingContexts,
 		MCPToolAutoApproved: func(server, toolName string) bool {
 			name, err := mcpserver.ParseServerName(server)
 			if err != nil {
@@ -328,9 +328,6 @@ func buildExecutionComposition(
 		ModelContextState:     workingContexts,
 		LifecycleHooks:        workingContexts,
 		Pricing:               cfg.Pricing,
-	}
-	if toolRuntime.tools.Resolver != nil {
-		interactionConfig.ToolResolver = toolRuntime.tools.Resolver
 	}
 	if cfg.ToolResultOffloadEnabled {
 		toolResultThreshold := cfg.ToolResultThreshold

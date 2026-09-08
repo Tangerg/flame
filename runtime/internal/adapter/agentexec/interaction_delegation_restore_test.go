@@ -12,7 +12,7 @@ import (
 )
 
 func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *testing.T) {
-	fixture := newWaitingDelegateFixture(t, "interaction-waiting-delegate-test")
+	fixture := newWaitingDelegateFixture(t)
 	started := fixture.start(t)
 	initialEventsReady := make(chan []runs.Event, 1)
 	go func() { initialEventsReady <- slices.Collect(started.Events) }()
@@ -106,7 +106,7 @@ func assertWaitingDelegateBoundary(t *testing.T, barrier runs.TreeBarrierCommit)
 		len(pending.Bindings) != 1 || pending.Interrupts[0].RunID != "run_child" {
 		t.Fatalf("waiting Delegate boundary = %#v", pending)
 	}
-	checkpointState, err := decodeInteractionCheckpointPayload(barrier.Checkpoint().Payload)
+	checkpointState, err := decodeInteractionCheckpointPayload(barrier.Checkpoint().Payload())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -82,15 +82,9 @@ func validatePendingRunTree(pending Pending, values []rundomain.Run) error {
 	}
 	all := make(map[string]rundomain.Run, len(values))
 	active := make(map[string]rundomain.Run, len(pending.Continuations))
-	for index, value := range values {
-		if err := value.Validate(); err != nil {
-			return fmt.Errorf(
-				"runs: validate parked Run tree %q: Run[%d] %q: %w",
-				pending.RootRunID,
-				index,
-				value.ID(),
-				err,
-			)
+	for _, value := range values {
+		if value.IsZero() {
+			return fmt.Errorf("runs: run is required")
 		}
 		if _, duplicate := all[value.ID()]; duplicate {
 			return fmt.Errorf("runs: validate parked Run tree %q: duplicate Run %q", pending.RootRunID, value.ID())

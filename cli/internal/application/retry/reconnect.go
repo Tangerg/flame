@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/protocol"
+
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
@@ -73,7 +75,7 @@ func (p ReconnectPolicy) Next(n int, failure error) (time.Duration, bool, error)
 	if err != nil {
 		return 0, false, fmt.Errorf("%w: %v", ErrInvalidReconnectPolicy, err)
 	}
-	if errors.Is(failure, agent.ErrCommandInProgress) {
+	if errors.Is(failure, protocol.ErrIdempotencyInProgress) {
 		delay = max(delay, min(commandInProgressMinimumWait, p.backoff.maximum))
 	}
 	return delay, true, nil
@@ -82,5 +84,5 @@ func (p ReconnectPolicy) Next(n int, failure error) (time.Duration, bool, error)
 // IsReconnectable reports whether another transport attempt can repair the
 // classified failure. Business, validation, and compatibility errors are permanent.
 func IsReconnectable(err error) bool {
-	return errors.Is(err, agent.ErrDisconnected) || errors.Is(err, agent.ErrCommandInProgress)
+	return errors.Is(err, agent.ErrDisconnected) || errors.Is(err, protocol.ErrIdempotencyInProgress)
 }

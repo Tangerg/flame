@@ -13,160 +13,89 @@ import (
 )
 
 type snapshotBinding interface {
-	GetSession(context.Context, protocol.GetSessionRequest, flameruntime.CallOptions) (*protocol.Session, error)
 	GetSessionSnapshot(context.Context, protocol.GetSessionSnapshotRequest, flameruntime.CallOptions) (*protocol.SessionSnapshot, error)
 }
 
-const snapshotStabilityAttempts = 8
-
-type coldRead struct {
-	session    protocol.Session
-	runs       []protocol.RunRef
-	items      []protocol.Item
-	plan       *protocol.Plan
-	goal       *protocol.Goal
-	interrupts []protocol.PendingInterruptSet
-}
-
-// GetSession binds independently owned Session metadata to one transactionally
-// coherent material snapshot. Identical metadata projections around the read
-// prove that its lifecycle cannot belong to a different Session generation.
+// GetSession projects one complete Runtime snapshot into terminal presentation.
 func (r *Connection) GetSession(ctx context.Context, sessionID string) (agent.SessionSnapshot, error) {
-	sessionRequest := protocol.GetSessionRequest{SessionID: sessionID}
-	if err := sessionRequest.ValidateWire(); err != nil {
-		return agent.SessionSnapshot{}, fmt.Errorf("get session: %w", err)
-	}
-	snapshotRequest := protocol.GetSessionSnapshotRequest{
+	request := protocol.GetSessionSnapshotRequest{
 		SessionID: sessionID, IncludeDescendants: r.profile.Supports(protocol.FeatureSubagents),
 	}
-	if err := snapshotRequest.ValidateWire(); err != nil {
+	if err := request.ValidateWire(); err != nil {
 		return agent.SessionSnapshot{}, fmt.Errorf("get session: %w", err)
 	}
-
-	previous, err := r.readSession(ctx, sessionRequest)
+	material, err := r.readMaterialSnapshot(ctx, request)
 	if err != nil {
 		return agent.SessionSnapshot{}, err
 	}
-	for range snapshotStabilityAttempts {
-		material, err := r.readMaterialSnapshot(ctx, snapshotRequest)
-		if err != nil {
-			return agent.SessionSnapshot{}, err
-		}
-		current, err := r.readSession(ctx, sessionRequest)
-		if err != nil {
-			return agent.SessionSnapshot{}, err
-		}
-		if sessionProjectionEqual(previous, current) {
-			material.session = current
-			projected, err := projectSnapshot(material)
-			if err != nil {
-				return agent.SessionSnapshot{}, runtimeContractViolation("get session projection is invalid: %v", err)
-			}
-			return projected, nil
-		}
-		previous = current
-	}
-	return agent.SessionSnapshot{}, fmt.Errorf("%w: session %s changed throughout cold recovery", agent.ErrDisconnected, sessionID)
-}
-
-func (r *Connection) readSession(ctx context.Context, request protocol.GetSessionRequest) (protocol.Session, error) {
-	session, err := r.snapshot.GetSession(ctx, request, r.callOptions())
+	projected, err := projectSnapshot(material)
 	if err != nil {
-		return protocol.Session{}, classifyError(err)
+		return agent.SessionSnapshot{}, runtimeContractViolation("get session projection is invalid: %v", err)
 	}
-	if session == nil {
-		return protocol.Session{}, runtimeContractViolation("get session returned nil")
-	}
-	projected, err := projectSession(*session)
-	if err != nil {
-		return protocol.Session{}, runtimeContractViolation("get session returned an invalid session: %v", err)
-	}
-	if projected.ID != request.SessionID {
-		return protocol.Session{}, runtimeContractViolation(
-			"get session returned id %q for %q", projected.ID, request.SessionID,
-		)
-	}
-	return *session, nil
-}
-
-// sessionProjectionEqual compares durable Session facts rather than Go's
-// in-memory representation. In particular, equal timestamps may arrive with
-// different locations across binding or protocol projections.
-func sessionProjectionEqual(left, right protocol.Session) bool {
-	return left.ID == right.ID && left.Title == right.Title && left.Status == right.Status &&
-		left.Provider == right.Provider && left.Model == right.Model &&
-		left.ReasoningEffort == right.ReasoningEffort && left.Workspace == right.Workspace &&
-		left.CreatedAt.Equal(right.CreatedAt) && left.UpdatedAt.Equal(right.UpdatedAt) &&
-		left.Favorite == right.Favorite && left.Revision == right.Revision
+	return projected, nil
 }
 
 func (r *Connection) readMaterialSnapshot(
 	ctx context.Context,
 	request protocol.GetSessionSnapshotRequest,
-) (coldRead, error) {
+) (protocol.SessionSnapshot, error) {
 	snapshot, err := r.snapshot.GetSessionSnapshot(ctx, request, r.callOptions())
 	if err != nil {
-		return coldRead{}, classifyError(err)
+		return protocol.SessionSnapshot{}, classifyError(err)
 	}
 	if snapshot == nil {
-		return coldRead{}, runtimeContractViolation("get session snapshot returned nil")
+		return protocol.SessionSnapshot{}, runtimeContractViolation("get session snapshot returned nil")
 	}
 	planEnabled := r.profile.Supports(protocol.FeaturePlan)
 	if planEnabled && snapshot.Plan == nil {
-		return coldRead{}, runtimeContractViolation("get session snapshot omitted plan while the plan feature is enabled")
+		return protocol.SessionSnapshot{}, runtimeContractViolation("get session snapshot omitted plan while the plan feature is enabled")
 	}
 	if !planEnabled && snapshot.Plan != nil {
-		return coldRead{}, runtimeContractViolation("get session snapshot returned plan while the plan feature is disabled")
+		return protocol.SessionSnapshot{}, runtimeContractViolation("get session snapshot returned plan while the plan feature is disabled")
 	}
 	if !r.profile.Supports(protocol.FeatureGoals) && snapshot.Goal != nil {
-		return coldRead{}, runtimeContractViolation("get session snapshot returned goal while the goals feature is disabled")
+		return protocol.SessionSnapshot{}, runtimeContractViolation("get session snapshot returned goal while the goals feature is disabled")
 	}
-	return coldRead{
-		runs: snapshot.Runs, items: snapshot.Items, plan: snapshot.Plan, goal: snapshot.Goal,
-		interrupts: snapshot.Interrupts,
-	}, nil
+	if err := protocol.ValidateWireTree(*snapshot); err != nil {
+		return protocol.SessionSnapshot{}, runtimeContractViolation("get session snapshot is invalid: %v", err)
+	}
+	if snapshot.Session.ID != request.SessionID {
+		return protocol.SessionSnapshot{}, runtimeContractViolation("get session snapshot returned id %q for %q", snapshot.Session.ID, request.SessionID)
+	}
+	return *snapshot, nil
 }
 
-func projectSnapshot(read coldRead) (agent.SessionSnapshot, error) {
-	session, err := projectSession(read.session)
-	if err != nil {
-		return agent.SessionSnapshot{}, err
-	}
-	snapshot := agent.SessionSnapshot{Session: session, Transcript: make([]agent.Block, 0, len(read.items))}
-	for _, value := range read.items {
+func projectSnapshot(read protocol.SessionSnapshot) (agent.SessionSnapshot, error) {
+	session := read.Session
+	var err error
+	snapshot := agent.SessionSnapshot{Session: session, Transcript: make([]agent.Block, 0, len(read.Items))}
+	for _, value := range read.Items {
 		block, projectItemErr := projectItem(value)
 		if projectItemErr != nil {
 			return agent.SessionSnapshot{}, projectItemErr
 		}
 		snapshot.Transcript = append(snapshot.Transcript, block)
 	}
-	orderedRuns := slices.Clone(read.runs)
+	orderedRuns := read.Runs
 	slices.SortFunc(orderedRuns, func(first, second protocol.RunRef) int {
 		return cmp.Or(first.CreatedAt.Compare(second.CreatedAt), cmp.Compare(first.ID, second.ID))
 	})
-	snapshot.Runs = make([]agent.Run, 0, len(orderedRuns))
-	for _, value := range orderedRuns {
-		run, projectRunErr := projectRun(value)
-		if projectRunErr != nil {
-			return agent.SessionSnapshot{}, projectRunErr
-		}
-		snapshot.Runs = append(snapshot.Runs, run)
-	}
-	if read.plan != nil {
-		snapshot.Plan, err = projectPlan(read.plan)
+	snapshot.Runs = orderedRuns
+	if read.Plan != nil {
+		snapshot.Plan, err = projectPlan(read.Plan)
 		if err != nil {
 			return agent.SessionSnapshot{}, err
 		}
 	}
-	if read.goal != nil {
-		projected := cloneGoal(*read.goal)
+	if read.Goal != nil {
+		projected := cloneGoal(*read.Goal)
 		snapshot.Goal = &projected
 	}
 	if active, ok := snapshot.ActiveRun(); ok && active.Status == protocol.RunStatusWaiting {
-		if len(read.interrupts) != 1 {
-			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has %d pending interrupt sets", active.ID, len(read.interrupts))
+		if len(read.Interrupts) != 1 {
+			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has %d pending interrupt sets", active.ID, len(read.Interrupts))
 		}
-		set := read.interrupts[0]
+		set := read.Interrupts[0]
 		if err := protocol.ValidateWireTree(set); err != nil {
 			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has an invalid pending interrupt set: %w", active.ID, err)
 		}
@@ -180,11 +109,9 @@ func projectSnapshot(read coldRead) (agent.SessionSnapshot, error) {
 		if err != nil {
 			return agent.SessionSnapshot{}, err
 		}
-	} else if len(read.interrupts) != 0 {
+	} else if len(read.Interrupts) != 0 {
 		return agent.SessionSnapshot{}, fmt.Errorf("session %s has interrupts without a waiting root run", session.ID)
 	}
-	if err := snapshot.Validate(); err != nil {
-		return agent.SessionSnapshot{}, fmt.Errorf("cold session projection: %w", err)
-	}
+
 	return snapshot, nil
 }

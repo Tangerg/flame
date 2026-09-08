@@ -326,7 +326,7 @@ const (
 // The fine [rundomain.State] is rebuilt from the coarse admission state and
 // the terminal reason beside it rather than stored a second time, and the
 // terminal facts are materialized exactly when the state says they exist — the
-// equivalence [rundomain.Run.Validate] enforces on the way in.
+// equivalence [rundomain.Restore] enforces on the way in.
 func scanRun(row scanRow) (rundomain.Run, error) {
 	return scanRunRow(row, requirePendingSet)
 }

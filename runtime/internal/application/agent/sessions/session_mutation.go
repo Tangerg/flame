@@ -88,11 +88,6 @@ func (c *Coordinator) dropSessionResources(sessionIDs []string, action string) [
 // expose a separately-read view because another mutation could otherwise
 // interleave between the durable write and the returned result.
 func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, present bool) (View, error) {
-	normalized, err := snapshot.NormalizeForRestore()
-	if err != nil {
-		return View{}, err
-	}
-	snapshot = normalized
 	sessionID := snapshot.Session.ID()
 	admission, err := c.ClaimIdleSession(ctx, sessionID)
 	if err != nil {

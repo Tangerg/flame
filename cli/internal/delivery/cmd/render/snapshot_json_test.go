@@ -5,17 +5,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestSessionJSONPreservesReasoningSelection(t *testing.T) {
 	t.Parallel()
-	session := agent.Session{
+	session := protocol.Session{
 		ID: "ses_1", Status: protocol.SessionStatusIdle,
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
-		Workspace: workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable},
+		Workspace: protocol.WorkspaceInfo{Ref: protocol.WorkspaceRef{Path: "/workspace"}, ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable},
 		Revision:  1,
 	}
 	var output bytes.Buffer
@@ -30,17 +28,10 @@ func TestSessionJSONPreservesReasoningSelection(t *testing.T) {
 func TestRunJSONPreservesNegotiatedProtocolProfile(t *testing.T) {
 	t.Parallel()
 
-	run := agent.Run{
-		ID: "run_1", SessionID: "session_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "segment_1",
-		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
-		ContextTokens: 32_768,
-		Lineage:       agent.RootRunLineage(),
-		Limits:        agent.UnlimitedRunLimits(),
-		ProtocolProfile: &protocol.RunProtocolProfile{
-			RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
-			InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
-		},
-	}
+	run := protocol.RunRef{RunSummary: protocol.RunSummary{ID: "run_1", SessionID: "session_1", Status: protocol.RunStatusRunning, Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh"}, ActiveSegmentID: "segment_1", ContextTokens: 32_768, ProtocolProfile: protocol.RunProtocolProfile{
+		RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
+		InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
+	}}
 	var output bytes.Buffer
 	if err := WriteRunJSON(&output, run); err != nil {
 		t.Fatal(err)

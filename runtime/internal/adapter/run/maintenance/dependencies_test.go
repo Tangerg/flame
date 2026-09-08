@@ -39,43 +39,43 @@ func TestMaintenanceConstructorsRejectMissingDependencies(t *testing.T) {
 
 	tests := map[string]func() error{
 		"compactor typed-nil conversation store": func() error {
-			_, err := NewCompactor(typedNilHistory, unexpectedClient, nil, CompactionPolicyValues{}, nil)
+			_, err := NewCompactor(typedNilHistory, unexpectedClient, nil, nil)
 			return err
 		},
 		"compactor utility model resolver": func() error {
-			_, err := NewCompactor(history, nil, nil, CompactionPolicyValues{}, nil)
+			_, err := NewCompactor(history, nil, nil, nil)
 			return err
 		},
 		"memory conversation reader": func() error {
-			_, err := NewMemoryConsolidator(nil, memory, unexpectedClient, MemoryCurationPolicyValues{})
+			_, err := NewMemoryConsolidator(nil, memory, unexpectedClient)
 			return err
 		},
 		"memory store": func() error {
-			_, err := NewMemoryConsolidator(history, nil, unexpectedClient, MemoryCurationPolicyValues{})
+			_, err := NewMemoryConsolidator(history, nil, unexpectedClient)
 			return err
 		},
 		"memory utility model resolver": func() error {
-			_, err := NewMemoryConsolidator(history, memory, nil, MemoryCurationPolicyValues{})
+			_, err := NewMemoryConsolidator(history, memory, nil)
 			return err
 		},
 		"skill conversation reader": func() error {
-			_, err := NewSkillProposalMiner(nil, proposals, nil, unexpectedClient, SkillMiningPolicyValues{})
+			_, err := NewSkillProposalMiner(nil, proposals, nil, unexpectedClient)
 			return err
 		},
 		"skill proposal submitter": func() error {
-			_, err := NewSkillProposalMiner(history, nil, nil, unexpectedClient, SkillMiningPolicyValues{})
+			_, err := NewSkillProposalMiner(history, nil, nil, unexpectedClient)
 			return err
 		},
-		"skill typed-nil optional source": func() error {
-			_, err := NewSkillProposalMiner(history, proposals, typedNilSource, unexpectedClient, SkillMiningPolicyValues{})
+		"skill typed-nil source": func() error {
+			_, err := NewSkillProposalMiner(history, proposals, typedNilSource, unexpectedClient)
 			return err
 		},
 		"skill utility model resolver": func() error {
-			_, err := NewSkillProposalMiner(history, proposals, nil, nil, SkillMiningPolicyValues{})
+			_, err := NewSkillProposalMiner(history, proposals, fakeSkillSource{}, nil)
 			return err
 		},
 		"skill archive curator": func() error {
-			_, err := NewIdleSkillArchiver(nil, SkillArchivePolicyValues{})
+			_, err := NewIdleSkillArchiver(nil)
 			return err
 		},
 	}
@@ -86,7 +86,7 @@ func TestMaintenanceConstructorsRejectMissingDependencies(t *testing.T) {
 			}
 		})
 	}
-	if _, err := NewIdleSkillArchiver(skills, SkillArchivePolicyValues{}); err != nil {
+	if _, err := NewIdleSkillArchiver(skills); err != nil {
 		t.Fatalf("valid construction failed: %v", err)
 	}
 }

@@ -98,6 +98,7 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 		}
 	}
 	out := &protocol.SessionSnapshot{
+		Session:    presentSession(snapshot.Session),
 		Items:      make([]protocol.Item, 0, len(snapshot.Items)),
 		Runs:       make([]protocol.RunRef, 0, len(snapshot.Runs)),
 		Interrupts: make([]protocol.PendingInterruptSet, 0, len(snapshot.Interrupts)),

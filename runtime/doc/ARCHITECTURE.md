@@ -39,7 +39,11 @@ Scope's Agent Framework is the only process, strategy, child-tree, tool-loop, an
 
 `adapter/agentexec` is the anti-corruption boundary. It maps Runtime commands and values to public Scope contracts, observes framework outcomes, and maps them back to Runtime facts. Application owns product admission, transaction ordering, cancellation intent, durable waiting state, and terminal outcome selection.
 
+Execution construction requires complete Tool policy, presentation, Hooks, maintenance, compaction, and current Session-state sources. The executor owns its fixed concurrency, buffers, reconciliation cadence, and framework delegation bounds; per-Run model-call limits remain Run-owned. Every imminent model request follows the same context reducer; an absent collaborator cannot disable it. Tool-result offload remains an explicit product policy with a required store when enabled.
+
 Framework observations are wake-ups, not durable commits. Runtime reconciles authoritative framework state into an Application write set before publishing durable product facts. A completed durable Item or snapshot wins over a missing or duplicated preview event.
+
+`EventCommit` owns the complete immutable projection of one execution fact. Reducers assemble construction data; publication constructs the commit once before any durable or live effects. Lifecycle and Goal accounting derive from its Run. Composite commits validate tree and admission relationships without revalidating nested event contents. The storage adapter preserves the Segment fence and transaction receipt; checkpoint retirement belongs only to a terminal root identified by Run lineage.
 
 A Delegate retains its admitted child across a human-input barrier. Each continuation opens fresh Segments, so the executor observation reopens the parent Tool attempt before forwarding child results. Application reuses the durable Tool Item identity; continuation does not admit another child or repeat its completed work.
 
@@ -61,6 +65,12 @@ Unknown external effects fail closed. Runtime does not guess whether an unconfir
 
 SQLite stores current Application and Domain state, not live framework objects, goroutines, contexts, SDK clients, or transport connections. Aggregate decoding is strict: unknown fields, invalid states, truncated values, and trailing content are rejected.
 
+Conversation history requires its read/write store and atomic compaction persistence at construction. The compaction adapter requires its message store, Run store, and transaction. Transient Session state requires every working-context, Tool-authority, and detached-shell cleanup owner; missing dependencies cannot disable compaction or report successful quiescence.
+
+Session lifecycle persistence requires the complete durable collaborator graph at construction. Empty Goal or Plan state is returned by its store; a missing store never disables part of a Session read, replacement, or deletion.
+
+`run.Checkpoint` owns the immutable continuation envelope, its execution identity and policy, and monotonic cumulative accounting. Construction copies external data once; ordinary hand-offs share the immutable value. SQLite decodes through that constructor and checks the owner-defined successor rule inside the write transaction. The executor alone interprets the opaque payload.
+
 Checkpoint and waiting facts commit in the Application order required to recover the same logical Run. Terminalization and checkpoint cleanup preserve one durable winner. Recovery reconstructs from durable Runtime state and public framework checkpoints; it does not infer state from event delivery or client caches.
 
 Bootstrap creates one file-lease set from the persistence bundle's data directory and supplies it to Session admission, Goal driving, and ordered Run-then-Goal recovery. Each use case requires its ownership backend at construction, and recovery requires both reconcilers.
@@ -71,7 +81,7 @@ Background recovery reports the first consecutive sweep failure through the same
 
 The active development contract has one current storage shape. SQLite installs that shape directly and does not maintain a schema-version or migration graph. A breaking schema change replaces the old shape completely; incompatible development state is reset explicitly unless the user authorizes a real migration requirement.
 
-Executor restore compatibility belongs to the exact BuildID and framework Deployment references. Checkpoint payloads, policy, context sources, and Tool-input continuations encode the current shape without independent hand-maintained schema counters. Decoding still validates complete identities, capabilities, budgets, prompt digests, and structural relationships before restoring execution.
+Executor restore compatibility belongs to the exact BuildID and framework Deployment references. Scope implementation digests use that BuildID directly, and configuration digests encode the real execution inputs without an independent configuration version. Checkpoint payloads, policy, context sources, and Tool-input continuations encode the current shape without independent hand-maintained schema counters. Decoding still validates complete identities, capabilities, budgets, prompt digests, and structural relationships before restoring execution.
 
 ## Provider and integration boundaries
 
@@ -87,7 +97,7 @@ MCP, LSP, Git, filesystem, execution, and other integrations are grouped by the 
 
 ## Protocol and bindings
 
-The Contract Registry is the method and policy source used by delivery and contract generation. Generated artifacts in `contract` are the machine truth for methods, schemas, capabilities, errors, unions, and transport endpoints. Discovery identity and capability-catalog constraints are declared there and enforced by the generated validators, so consumers do not maintain another schema.
+The Contract Registry binds operations directly to the complete Handler and is the method and policy source used by delivery and contract generation. Endpoint requires that Handler at construction; request execution, replay attachment, and shutdown do not discover optional implementations. Generated artifacts in `contract` are the machine truth for methods, schemas, capabilities, errors, unions, and transport endpoints. Discovery identity and capability-catalog constraints are declared there and enforced by the generated validators, so consumers do not maintain another schema.
 
 Plan, Goal, Schedule, Knowledge, agent-memory, and file-observation use cases are present in every complete Runtime. Discovery advertises them directly; Session snapshots include the current Plan and any current Goal, and portable import restores Plan as part of the atomic Session write. Git availability remains a host fact, and repository observation failures remain errors at registration. Capability negotiation still governs optional client behavior and host-dependent integrations.
 
@@ -103,11 +113,13 @@ The Go binding does not serialize through HTTP, but it does not bypass product s
 
 ## Composition and lifecycle
 
-Bootstrap constructs one endpoint and one resource graph. One Instance lifecycle owns startup rollback and ordered shutdown: stop delivery, join accepted operations and workers, stop Application producers, drain maintenance, join execution, and release resources. A caller timeout never cancels cleanup; a settled component failure allows a later Close attempt. Construction has no separate builder lifecycle. Public `runtime.Runtime` owns that Bootstrap instance and rejects new work after closing begins.
+Bootstrap constructs one endpoint and one resource graph. One Instance lifecycle owns startup rollback and ordered shutdown: stop delivery, join accepted operations and workers, stop Application producers, drain maintenance, join execution, and release resources. Bootstrap always constructs the post-Run maintenance pipeline, whose memory consolidator remains present even when Skill maintenance is unconfigured. A caller timeout never cancels cleanup; a settled component failure allows a later Close attempt. Construction has no separate builder lifecycle. Public `runtime.Runtime` owns that Bootstrap instance and rejects new work after closing begins.
 
 Production construction consumes the complete storage bundle opened by persistence. Plan, Goal, permission, Schedule, mutation recovery, role persistence, Knowledge, and agent-memory review and curation are always wired; absent user configuration is stored state, not a missing implementation. Agent-memory search may use keyword ranking without an embedding provider. Narrow use-case tests supply their own collaborators without adding partial production configurations. Hook execution and management share one resolver built from the user home and durable trust store. A project with no hooks or revoked trust still has complete inspection and trust-management use cases.
 
 Skill discovery and proposal review also require complete implementations. Bootstrap omits the user Skill store, usage recorder, and maintenance component when the user directory is unconfigured; project Skill discovery, proposal submission, and review remain available through the same use cases. A Skill store requires an absolute library root and a valid scope, and a maintenance component requires its sweeper at construction.
+
+Working context requires its Knowledge, agent-memory content and search, Plan, Goal, and Hook sources at construction. Empty content is source-owned data. Title finalization requires Session title operations, its generator, and a lifecycle-owned task launcher; workspace checkpoint availability remains a host capability.
 
 Every goroutine has one owner, stop condition, and join path. Request cancellation governs the request; accepted Run execution uses a Runtime-owned lifetime. Transport disconnect does not implicitly cancel durable execution.
 

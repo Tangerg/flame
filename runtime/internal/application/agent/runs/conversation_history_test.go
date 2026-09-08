@@ -29,7 +29,10 @@ func (r *recordingCompactions) ApplyCompaction(_ context.Context, plan Conversat
 }
 
 func TestMessagesCoordinatesDurableHistory(t *testing.T) {
-	messages := NewConversationHistory(testsupport.NewConversationStore(), nil)
+	messages, err := NewConversationHistory(testsupport.NewConversationStore(), &recordingCompactions{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	seed := []chat.Message{
 		chat.NewUserMessage(chat.NewTextPart("one")),
 		chat.NewAssistantMessage(chat.NewTextPart("two")),
@@ -54,7 +57,10 @@ func TestMessagesCoordinatesDurableHistory(t *testing.T) {
 }
 
 func TestMessagesRejectsInvalidAppendWithoutChangingHistory(t *testing.T) {
-	history := NewConversationHistory(testsupport.NewConversationStore(), nil)
+	history, err := NewConversationHistory(testsupport.NewConversationStore(), &recordingCompactions{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	valid := chat.NewUserMessage(chat.NewTextPart("original"))
 	if err := history.Append(t.Context(), "ses_1", valid); err != nil {
 		t.Fatal(err)
@@ -70,7 +76,10 @@ func TestMessagesRejectsInvalidAppendWithoutChangingHistory(t *testing.T) {
 }
 
 func TestMessagesRejectsMissingSession(t *testing.T) {
-	messages := NewConversationHistory(testsupport.NewConversationStore(), nil)
+	messages, err := NewConversationHistory(testsupport.NewConversationStore(), &recordingCompactions{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, sessionID := range []string{
 		"",
 		" ses_1",
@@ -95,7 +104,10 @@ func TestMessagesPlansCompactionRunWatermarks(t *testing.T) {
 		testsupport.MustRestoreRun(run.Snapshot{ID: "run_recent", SessionID: "ses_1", State: run.Completed, CreatedAt: at.Add(2 * time.Second), MessageMark: 8}),
 		testsupport.MustRestoreRun(run.Snapshot{ID: "run_active", SessionID: "ses_1", State: run.Running, CreatedAt: at.Add(3 * time.Second)}),
 	}}
-	messages := NewConversationHistory(testsupport.NewConversationStore(), compactions)
+	messages, err := NewConversationHistory(testsupport.NewConversationStore(), compactions)
+	if err != nil {
+		t.Fatal(err)
+	}
 	replacement := []chat.Message{
 		chat.NewSystemMessage("summary"),
 		chat.NewUserMessage(chat.NewTextPart("recent question")),
@@ -116,5 +128,26 @@ func TestMessagesPlansCompactionRunWatermarks(t *testing.T) {
 		if got := replacement.State().MessageMark(); got != wantMarks[index] {
 			t.Errorf("replacement mark[%d] = %d, want %d", index, got, wantMarks[index])
 		}
+	}
+}
+
+func TestConversationHistoryRequiresCompletePersistence(t *testing.T) {
+	for name, construct := range map[string]func() (*ConversationHistory, error){
+		"missing history": func() (*ConversationHistory, error) { return NewConversationHistory(nil, &recordingCompactions{}) },
+		"typed nil history": func() (*ConversationHistory, error) {
+			return NewConversationHistory((*testsupport.ConversationStore)(nil), &recordingCompactions{})
+		},
+		"missing compactions": func() (*ConversationHistory, error) {
+			return NewConversationHistory(testsupport.NewConversationStore(), nil)
+		},
+		"typed nil compactions": func() (*ConversationHistory, error) {
+			return NewConversationHistory(testsupport.NewConversationStore(), (*recordingCompactions)(nil))
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if history, err := construct(); err == nil || history != nil {
+				t.Fatalf("incomplete construction = %v, %v", history, err)
+			}
+		})
 	}
 }

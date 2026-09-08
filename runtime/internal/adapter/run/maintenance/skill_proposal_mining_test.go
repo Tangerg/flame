@@ -43,7 +43,7 @@ func (f *fakeProposalSubmitter) SubmitProposal(_ context.Context, cwd string, pr
 	return skills.NewProposalRef(proposal.Scope, proposal.Name, []byte(proposal.Instructions)), nil
 }
 
-func skillProposalMinerFixture(t *testing.T, reply string, config SkillMiningPolicyValues) (*SkillProposalMiner, *fakeProposalSubmitter, *textStubModel) {
+func skillProposalMinerFixture(t *testing.T, reply string) (*SkillProposalMiner, *fakeProposalSubmitter, *textStubModel) {
 	t.Helper()
 	messages := testsupport.NewConversationStore()
 	if err := messages.Write(t.Context(), "ses_1",
@@ -60,7 +60,7 @@ func skillProposalMinerFixture(t *testing.T, reply string, config SkillMiningPol
 		t.Fatal(err)
 	}
 	proposals := &fakeProposalSubmitter{}
-	skillMiner, err := NewSkillProposalMiner(messages, proposals, nil, constClient(client), config)
+	skillMiner, err := NewSkillProposalMiner(messages, proposals, fakeSkillSource{}, constClient(client))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,33 +86,16 @@ func skillRevisionMinerFixture(t *testing.T, source skillSource, replies ...scri
 		t.Fatal(err)
 	}
 	proposals := &fakeProposalSubmitter{}
-	skillMiner, err := NewSkillProposalMiner(messages, proposals, source, constClient(client), SkillMiningPolicyValues{ComplexityThreshold: intPointer(1), Cadence: intPointer(1)})
+	skillMiner, err := NewSkillProposalMiner(messages, proposals, source, constClient(client))
 	if err != nil {
 		t.Fatal(err)
 	}
 	return skillMiner, proposals
 }
 
-func TestSkillMiningPolicyPreservesOptionalPresence(t *testing.T) {
-	policy, err := newSkillMiningPolicy(SkillMiningPolicyValues{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if policy.complexityThreshold != defaultSkillMiningComplexityThreshold || policy.cadence != defaultSkillMiningCadence {
-		t.Fatalf("default skill mining policy = %+v", policy)
-	}
-	zero := 0
-	if _, err := newSkillMiningPolicy(SkillMiningPolicyValues{ComplexityThreshold: &zero}); err == nil {
-		t.Fatal("present zero complexity threshold was treated as omission")
-	}
-	if _, err := newSkillMiningPolicy(SkillMiningPolicyValues{Cadence: &zero}); err == nil {
-		t.Fatal("present zero cadence was treated as omission")
-	}
-}
-
 func TestSkillMinerBelowComplexityThresholdDoesNotMine(t *testing.T) {
-	skillMiner, proposals, model := skillProposalMinerFixture(t, sampleSkillMD, SkillMiningPolicyValues{ComplexityThreshold: intPointer(5), Cadence: intPointer(1)})
-	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 4); err != nil {
+	skillMiner, proposals, model := skillProposalMinerFixture(t, sampleSkillMD)
+	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", skillMiningComplexityThreshold-1); err != nil {
 		t.Fatal(err)
 	}
 	if model.calls != 0 {
@@ -124,20 +107,20 @@ func TestSkillMinerBelowComplexityThresholdDoesNotMine(t *testing.T) {
 }
 
 func TestSkillMinerCadenceGatesMining(t *testing.T) {
-	skillMiner, proposals, model := skillProposalMinerFixture(t, sampleSkillMD, SkillMiningPolicyValues{ComplexityThreshold: intPointer(2), Cadence: intPointer(2)})
+	skillMiner, proposals, model := skillProposalMinerFixture(t, sampleSkillMD)
 	// A routine Run must not advance the cadence counter.
 	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 1); err != nil {
 		t.Fatal(err)
 	}
-	// First complex Run: due counter reaches 1 of 2 — no mine yet.
-	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 5); err != nil {
-		t.Fatal(err)
+	for range skillMiningCadence - 1 {
+		if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", skillMiningComplexityThreshold); err != nil {
+			t.Fatal(err)
+		}
+		if len(proposals.proposals) != 0 {
+			t.Fatal("mined before the cadence was due")
+		}
 	}
-	if len(proposals.proposals) != 0 {
-		t.Fatalf("mined before the cadence was due: %d proposals", len(proposals.proposals))
-	}
-	// Second complex Run: cadence is due — mine once.
-	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 5); err != nil {
+	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", skillMiningComplexityThreshold); err != nil {
 		t.Fatal(err)
 	}
 	if model.calls != 1 {
@@ -149,8 +132,8 @@ func TestSkillMinerCadenceGatesMining(t *testing.T) {
 }
 
 func TestSkillMinerSubmitsUserProposalWithMinedProvenance(t *testing.T) {
-	skillMiner, proposals, model := skillProposalMinerFixture(t, sampleSkillMD, SkillMiningPolicyValues{ComplexityThreshold: intPointer(1), Cadence: intPointer(1)})
-	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 3); err != nil {
+	skillMiner, proposals, model := skillProposalMinerFixture(t, sampleSkillMD)
+	if err := mineSkillOnCadence(t, skillMiner); err != nil {
 		t.Fatal(err)
 	}
 	if len(proposals.proposals) != 1 {
@@ -181,8 +164,8 @@ func TestSkillMinerSubmitsUserProposalWithMinedProvenance(t *testing.T) {
 }
 
 func TestSkillMinerNoSkillProducesNoProposal(t *testing.T) {
-	skillMiner, proposals, model := skillProposalMinerFixture(t, "NO_SKILL", SkillMiningPolicyValues{ComplexityThreshold: intPointer(1), Cadence: intPointer(1)})
-	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 3); err != nil {
+	skillMiner, proposals, model := skillProposalMinerFixture(t, "NO_SKILL")
+	if err := mineSkillOnCadence(t, skillMiner); err != nil {
 		t.Fatal(err)
 	}
 	if model.calls != 1 {
@@ -194,8 +177,8 @@ func TestSkillMinerNoSkillProducesNoProposal(t *testing.T) {
 }
 
 func TestSkillMinerUnparseableReplyIsDroppedNotErrored(t *testing.T) {
-	skillMiner, proposals, _ := skillProposalMinerFixture(t, "here is a skill but no frontmatter block", SkillMiningPolicyValues{ComplexityThreshold: intPointer(1), Cadence: intPointer(1)})
-	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 3); err != nil {
+	skillMiner, proposals, _ := skillProposalMinerFixture(t, "here is a skill but no frontmatter block")
+	if err := mineSkillOnCadence(t, skillMiner); err != nil {
 		t.Fatalf("unparseable reply surfaced an error: %v", err)
 	}
 	if len(proposals.proposals) != 0 {
@@ -205,8 +188,8 @@ func TestSkillMinerUnparseableReplyIsDroppedNotErrored(t *testing.T) {
 
 func TestSkillMinerFencedReplyStillParses(t *testing.T) {
 	fenced := "```markdown\n" + sampleSkillMD + "\n```"
-	skillMiner, proposals, _ := skillProposalMinerFixture(t, fenced, SkillMiningPolicyValues{ComplexityThreshold: intPointer(1), Cadence: intPointer(1)})
-	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 3); err != nil {
+	skillMiner, proposals, _ := skillProposalMinerFixture(t, fenced)
+	if err := mineSkillOnCadence(t, skillMiner); err != nil {
 		t.Fatal(err)
 	}
 	if len(proposals.proposals) != 1 {
@@ -229,7 +212,7 @@ func TestSkillMinerRevisionLoadsRealBodyAndMarksRevises(t *testing.T) {
 		scriptedReply{text: "REVISE: run-tests"},
 		scriptedReply{text: corrected},
 	)
-	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 3); err != nil {
+	if err := mineSkillOnCadence(t, skillMiner); err != nil {
 		t.Fatal(err)
 	}
 	if len(proposals.proposals) != 1 {
@@ -254,10 +237,20 @@ func TestSkillMinerRevisionUnknownSkillSkipsWithoutPhaseTwo(t *testing.T) {
 	// Only a phase-one reply is scripted: if the skillMiner tried a phase-two call for
 	// an unloadable skill, the scripted model would be exhausted and error.
 	skillMiner, proposals := skillRevisionMinerFixture(t, fakeSkillSource{}, scriptedReply{text: "REVISE: ghost"})
-	if err := skillMiner.MineIfDue(t.Context(), "ses_1", "/repo", 3); err != nil {
+	if err := mineSkillOnCadence(t, skillMiner); err != nil {
 		t.Fatalf("unknown revision target should skip, got %v", err)
 	}
 	if len(proposals.proposals) != 0 {
 		t.Fatalf("revised a non-existent Skill: %d proposals", len(proposals.proposals))
 	}
+}
+
+func mineSkillOnCadence(t *testing.T, miner *SkillProposalMiner) error {
+	t.Helper()
+	for range skillMiningCadence {
+		if err := miner.MineIfDue(t.Context(), "ses_1", "/repo", skillMiningComplexityThreshold); err != nil {
+			return err
+		}
+	}
+	return nil
 }

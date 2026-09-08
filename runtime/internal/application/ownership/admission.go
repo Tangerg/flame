@@ -236,24 +236,6 @@ func releaseLeases(leases []Lease) {
 	}
 }
 
-// ActiveSessions snapshots every session with a pending or live Run, or a held
-// session-only admission.
-func (g *Gate) ActiveSessions() map[string]bool {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	set := make(map[string]bool, len(g.runs)+len(g.pending)+len(g.claims))
-	for id := range g.claims {
-		set[id] = true
-	}
-	for _, pending := range g.pending {
-		set[pending.sessionID] = true
-	}
-	for _, run := range g.runs {
-		set[run.sessionID] = true
-	}
-	return set
-}
-
 // WaitRunStartable blocks until sessionID has no pending, live, maintenance, or
 // session-only admission and cwd has no destructive working-tree mutation. It
 // is an observation boundary, not a reservation: callers must still acquire

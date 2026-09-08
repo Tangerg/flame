@@ -17,13 +17,13 @@ import (
 )
 
 const (
-	// defaultSkillMiningComplexityThreshold is the minimum completed tool-call count
+	// skillMiningComplexityThreshold is the minimum completed tool-call count
 	// for a Run to count as "complex" enough to consider distilling. Below it a
 	// Run is routine and never triggers a mining attempt.
-	defaultSkillMiningComplexityThreshold = 8
-	// defaultSkillMiningCadence mines at most once per this many complex Runs per
+	skillMiningComplexityThreshold = 8
+	// skillMiningCadence mines at most once per this many complex Runs per
 	// session, bounding the extra LLM call and avoiding proposal spam.
-	defaultSkillMiningCadence = 3
+	skillMiningCadence = 3
 	// skillMiningMinMessages skips mining a conversation too short to hold a reusable
 	// procedure.
 	skillMiningMinMessages = 4
@@ -36,35 +36,6 @@ const (
 	skillProposalNew      = "new"
 	skillProposalRevision = "revise"
 )
-
-// SkillMiningPolicyValues tunes when the [SkillProposalMiner] attempts a
-// distillation. Nil selects a named default; present non-positive values are
-// invalid.
-type SkillMiningPolicyValues struct {
-	// ComplexityThreshold is the minimum completed tool-call count for a Run to
-	// count as complex. Only complex Runs advance the cadence counter.
-	ComplexityThreshold *int
-	// Cadence bounds mining to at most once per this many complex Runs, per
-	// session.
-	Cadence *int
-}
-
-type skillMiningPolicy struct {
-	complexityThreshold int
-	cadence             int
-}
-
-func newSkillMiningPolicy(values SkillMiningPolicyValues) (skillMiningPolicy, error) {
-	threshold, err := positiveIntOrDefault(values.ComplexityThreshold, defaultSkillMiningComplexityThreshold, "complexity threshold")
-	if err != nil {
-		return skillMiningPolicy{}, fmt.Errorf("skill mining policy: %w", err)
-	}
-	cadence, err := positiveIntOrDefault(values.Cadence, defaultSkillMiningCadence, "cadence")
-	if err != nil {
-		return skillMiningPolicy{}, fmt.Errorf("skill mining policy: %w", err)
-	}
-	return skillMiningPolicy{complexityThreshold: threshold, cadence: cadence}, nil
-}
 
 // proposalSubmitter is the skillMiner's narrow application boundary. The skillMiner can
 // submit immutable content for review but cannot activate or reject it.
@@ -93,8 +64,6 @@ type SkillProposalMiner struct {
 	proposals proposalSubmitter
 	source    skillSource
 	client    modeladapter.AuxiliaryResolver
-	policy    skillMiningPolicy
-	minMsgs   int
 
 	// mu guards complexRuns, the per-session count of complex Runs since the
 	// last mining attempt. In-memory and reset on restart: it bounds cost, not a
@@ -103,33 +72,26 @@ type SkillProposalMiner struct {
 	complexRuns map[string]int
 }
 
-// NewSkillProposalMiner builds the Run-boundary skill skillMiner over the conversation
-// history reader, the proposal use case, the optional active-Skill source (for the
-// read-before-write refinement guard), and the utility-model client resolver.
-func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, source skillSource, client modeladapter.AuxiliaryResolver, values SkillMiningPolicyValues) (*SkillProposalMiner, error) {
+// NewSkillProposalMiner requires the active Skill source so revision proposals
+// always read the current body before asking the utility model to refine it.
+func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, source skillSource, client modeladapter.AuxiliaryResolver) (*SkillProposalMiner, error) {
 	if nilDependency(history) {
 		return nil, errors.New("skill proposal miner: conversation reader is required")
 	}
 	if nilDependency(proposals) {
 		return nil, errors.New("skill proposal miner: proposal submitter is required")
 	}
-	if source != nil && nilDependency(source) {
-		return nil, errors.New("skill proposal miner: skill source is nil")
+	if nilDependency(source) {
+		return nil, errors.New("skill proposal miner: skill source is required")
 	}
 	if client == nil {
 		return nil, errors.New("skill proposal miner: utility model resolver is required")
-	}
-	policy, err := newSkillMiningPolicy(values)
-	if err != nil {
-		return nil, err
 	}
 	return &SkillProposalMiner{
 		history:     history,
 		proposals:   proposals,
 		source:      source,
 		client:      client,
-		policy:      policy,
-		minMsgs:     skillMiningMinMessages,
 		complexRuns: map[string]int{},
 	}, nil
 }
@@ -140,13 +102,13 @@ func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, s
 // or invalid document, or an obviously-dangerous one is dropped silently
 // (return nil) — only a real read/save/LLM failure surfaces as an error.
 func (s *SkillProposalMiner) MineIfDue(ctx context.Context, sessionID, cwd string, toolCalls int) error {
-	if s == nil || sessionID == "" || cwd == "" {
+	if sessionID == "" || cwd == "" {
 		return nil
 	}
 	if _, err := resourceid.ParseSession(sessionID); err != nil {
 		return fmt.Errorf("skill mining: %w", err)
 	}
-	if toolCalls < s.policy.complexityThreshold {
+	if toolCalls < skillMiningComplexityThreshold {
 		return nil
 	}
 	if !s.due(sessionID) {
@@ -156,7 +118,7 @@ func (s *SkillProposalMiner) MineIfDue(ctx context.Context, sessionID, cwd strin
 	if err != nil {
 		return fmt.Errorf("skill mining: read session %q: %w", sessionID, err)
 	}
-	if len(messages) < s.minMsgs {
+	if len(messages) < skillMiningMinMessages {
 		return nil
 	}
 	verdict, err := s.askForSkill(ctx, messages)
@@ -195,9 +157,6 @@ func (s *SkillProposalMiner) mineNew(ctx context.Context, document, sessionID, c
 // skipped. The proposal keeps the target name and is marked as a revision so
 // approval replaces the active Skill.
 func (s *SkillProposalMiner) mineRevision(ctx context.Context, name string, messages []chat.Message, sessionID, cwd string) error {
-	if s.source == nil {
-		return nil
-	}
 	current, err := s.source.Load(ctx, name)
 	if errors.Is(err, fs.ErrNotExist) || current == nil {
 		return nil // no such skill (or one the library doesn't manage) — drop, don't revise
@@ -266,7 +225,7 @@ func (s *SkillProposalMiner) due(sessionID string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.complexRuns[sessionID]++
-	if s.complexRuns[sessionID] >= s.policy.cadence {
+	if s.complexRuns[sessionID] >= skillMiningCadence {
 		delete(s.complexRuns, sessionID)
 		return true
 	}

@@ -37,7 +37,6 @@ type Compactor struct {
 	client       modeladapter.AuxiliaryResolver
 	liveState    LiveStateSnapshotter // nil = no post-compaction live-state reminder
 	contextState SessionContextInvalidator
-	policy       compactionPolicy
 }
 
 type compactionAction uint8
@@ -69,7 +68,6 @@ func NewCompactor(
 	store compactionStore,
 	client modeladapter.AuxiliaryResolver,
 	liveState LiveStateSnapshotter,
-	values CompactionPolicyValues,
 	contextState SessionContextInvalidator,
 ) (*Compactor, error) {
 	if nilDependency(store) {
@@ -78,16 +76,12 @@ func NewCompactor(
 	if client == nil {
 		return nil, errors.New("compactor: utility model resolver is required")
 	}
-	policy, err := newCompactionPolicy(values)
-	if err != nil {
-		return nil, err
-	}
 	if nilDependency(contextState) {
 		contextState = nil
 	}
 	return &Compactor{
 		store: store, client: client, liveState: liveState,
-		contextState: contextState, policy: policy,
+		contextState: contextState,
 	}, nil
 }
 

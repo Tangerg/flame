@@ -38,5 +38,3 @@ func (p UsageSummaryPeriod) Since(now time.Time) (time.Time, error) {
 	}
 	return now.UTC().AddDate(0, 0, -p.days), nil
 }
-
-func (p UsageSummaryPeriod) Days() (int, bool) { return p.days, p.recent }

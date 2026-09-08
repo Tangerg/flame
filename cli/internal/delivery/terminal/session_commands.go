@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/protocol"
 	"strings"
 	"time"
 
@@ -40,17 +41,15 @@ func (a *app) loadMoreSessions() {
 func (a *app) loadSessionPage(cursor string, appendPage bool) {
 	a.message("loading sessions")
 	a.runOperation(pickerCatalogOperation, true,
-		func(ctx context.Context) (agent.SessionPage, error) {
+		func(ctx context.Context) (protocol.Page[protocol.Session], error) {
 			page, err := a.runtime.ListSessions(ctx, agent.SessionQuery{PageSize: agent.DefaultPageSize(), Cursor: cursor})
 			if err != nil {
-				return agent.SessionPage{}, err
+				return protocol.Page[protocol.Session]{}, err
 			}
-			if err := page.Validate(); err != nil {
-				return agent.SessionPage{}, fmt.Errorf("list sessions: %w", err)
-			}
+
 			return page, nil
 		},
-		func(page agent.SessionPage, err error) {
+		func(page protocol.Page[protocol.Session], err error) {
 			if appendPage && !a.dialogs.sessionDialog.Open() {
 				return
 			}
@@ -70,14 +69,14 @@ func (a *app) loadSessionPage(cursor string, appendPage bool) {
 	)
 }
 
-func (a *app) toggleSessionFavorite(session agent.Session) {
+func (a *app) toggleSessionFavorite(session protocol.Session) {
 	desired := !session.Favorite
-	a.updateSessionFromCenter(session.ID, "updating favorite", func(latest agent.Session) agent.UpdateSession {
+	a.updateSessionFromCenter(session.ID, "updating favorite", func(latest protocol.Session) agent.UpdateSession {
 		return agent.UpdateSession{SessionID: latest.ID, Favorite: &desired, ExpectedRevision: latest.Revision}
 	})
 }
 
-func (a *app) openSessionRename(session agent.Session) {
+func (a *app) openSessionRename(session protocol.Session) {
 	title := displayTitle(session)
 	field := &headless.Text{Label: "Session title", Value: headless.Bind(&title), Check: requiredText}
 	field.Editor().Clipboard = a.loop.Clipboard()
@@ -91,7 +90,7 @@ func (a *app) openSessionRename(session agent.Session) {
 		dialog.Controller().Dismiss()
 		a.dialogs.sessionRenameDialog = nil
 		trimmed := strings.TrimSpace(title)
-		a.updateSessionFromCenter(session.ID, "renaming session", func(latest agent.Session) agent.UpdateSession {
+		a.updateSessionFromCenter(session.ID, "renaming session", func(latest protocol.Session) agent.UpdateSession {
 			return agent.UpdateSession{SessionID: latest.ID, Title: &trimmed, ExpectedRevision: latest.Revision}
 		})
 	}
@@ -114,7 +113,7 @@ func (a *app) openSessionRename(session agent.Session) {
 	dialog.Controller().Show()
 }
 
-func (a *app) openSessionDelete(session agent.Session) {
+func (a *app) openSessionDelete(session protocol.Session) {
 	if session.ID == a.session.current.ID {
 		a.message("switch away before deleting the current session")
 		return
@@ -154,16 +153,16 @@ func (a *app) openSessionDelete(session agent.Session) {
 	dialog.Controller().Show()
 }
 
-func (a *app) updateSessionFromCenter(id, label string, build func(agent.Session) agent.UpdateSession) {
+func (a *app) updateSessionFromCenter(id, label string, build func(protocol.Session) agent.UpdateSession) {
 	started := a.runApplicationOperation(sessionCenterOperation, false,
-		func(ctx context.Context) (agent.Session, error) {
+		func(ctx context.Context) (protocol.Session, error) {
 			latest, err := a.runtime.GetSession(ctx, id)
 			if err != nil {
-				return agent.Session{}, err
+				return protocol.Session{}, err
 			}
-			return session.Update(ctx, a.runtime, build(latest.Session))
+			return a.runtime.UpdateSession(ctx, build(latest.Session))
 		},
-		func(updated agent.Session, err error) {
+		func(updated protocol.Session, err error) {
 			if err != nil {
 				a.message(label + " failed: " + err.Error())
 				return
@@ -225,7 +224,7 @@ func (a *app) deleteSessionFromCenter(id string) {
 }
 
 func (a *app) NewSession() {
-	a.startSessionInWorkspace(a.session.current.Workspace.Path)
+	a.startSessionInWorkspace(a.session.current.Workspace.Ref.Path)
 }
 
 func (a *app) RenameSession(title string) {
@@ -240,16 +239,16 @@ func (a *app) RenameSession(title string) {
 	}
 	sessionID := a.session.current.ID
 	a.runSessionChange("renaming session",
-		func(ctx context.Context) (agent.Session, error) {
+		func(ctx context.Context) (protocol.Session, error) {
 			latest, err := a.runtime.GetSession(ctx, sessionID)
 			if err != nil {
-				return agent.Session{}, err
+				return protocol.Session{}, err
 			}
-			return session.Update(ctx, a.runtime, agent.UpdateSession{
+			return a.runtime.UpdateSession(ctx, agent.UpdateSession{
 				SessionID: sessionID, Title: &title, ExpectedRevision: latest.Session.Revision,
 			})
 		},
-		func(updated agent.Session) error {
+		func(updated protocol.Session) error {
 			a.setActiveSession(updated)
 			a.message("renamed session to " + updated.Title)
 			return nil
@@ -461,7 +460,7 @@ type sessionInstallation struct {
 }
 
 func (a *app) prepareSessionInstallation(snapshot agent.SessionSnapshot) (sessionInstallation, error) {
-	attachments, err := attachment.New(snapshot.Session.Workspace.Path)
+	attachments, err := attachment.New(snapshot.Session.Workspace.Ref.Path)
 	if err != nil {
 		return sessionInstallation{}, fmt.Errorf("session attachments: %w", err)
 	}
@@ -481,7 +480,7 @@ func (a *app) prepareSessionInstallation(snapshot agent.SessionSnapshot) (sessio
 }
 
 func (a *app) prepareDestinationDraft(
-	session agent.Session,
+	session protocol.Session,
 ) (agent.Message, *workbench.SessionRollbackRecovery, error) {
 	current, _, err := a.currentDraft()
 	if err != nil {
@@ -494,7 +493,7 @@ func (a *app) prepareDestinationDraft(
 		return agent.Message{}, nil, fmt.Errorf("activate destination session state: %w", activateSessionStateErr)
 	}
 	draft, _ := a.workbench.Draft(session.ID)
-	if rememberWorkspaceErr := a.workbench.RememberWorkspace(session.Workspace.Path); rememberWorkspaceErr != nil {
+	if rememberWorkspaceErr := a.workbench.RememberWorkspace(session.Workspace.Ref.Path); rememberWorkspaceErr != nil {
 		return agent.Message{}, nil, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}
 	transition := a.session.draftTransition

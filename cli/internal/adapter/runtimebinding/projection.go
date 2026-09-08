@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 
@@ -12,106 +11,11 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
-func projectRun(value protocol.RunRef) (agent.Run, error) {
-	if err := protocol.ValidateWireTree(value); err != nil {
-		return agent.Run{}, fmt.Errorf("run %s wire projection: %w", value.ID, err)
-	}
-	lineage, err := projectRunLineage(value)
-	if err != nil {
-		return agent.Run{}, fmt.Errorf("run %s: %w", value.ID, err)
-	}
-	projected := agent.Run{
-		ID: value.ID, SessionID: value.SessionID,
-		Provider: value.Provider, Model: value.Model, ReasoningEffort: value.ReasoningEffort,
-		Lineage: lineage,
-		Status:  value.Status, ActiveSegmentID: value.ActiveSegmentID,
-		CreatedAt: value.CreatedAt, FinishedAt: value.FinishedAt,
-		Limits: agent.UnlimitedRunLimits(), ContextTokens: value.ContextTokens,
-		Usage: projectUsage(value.Metrics), ProtocolProfile: projectRunProtocolProfile(value.ProtocolProfile),
-	}
-	if value.Limits != nil {
-		projected.Limits, err = agent.NewRunLimits(agent.RunLimitValues{
-			MaxTotalTokens: value.Limits.MaxTotalTokens,
-			MaxSteps:       value.Limits.MaxSteps,
-			MaxBudgetUSD:   value.Limits.MaxBudgetUSD,
-		})
-		if err != nil {
-			return agent.Run{}, fmt.Errorf("runtime run %s limits: %w", value.ID, err)
-		}
-	}
-	if value.Outcome != nil {
-		outcome, err := projectRunOutcome(*value.Outcome)
-		if err != nil {
-			return agent.Run{}, fmt.Errorf("runtime run %s outcome: %w", value.ID, err)
-		}
-		projected.Outcome = outcome
-	}
-	if err := projected.Validate(); err != nil {
-		return agent.Run{}, fmt.Errorf("runtime run %s: %w", value.ID, err)
-	}
-	return projected, nil
-}
-
-func projectRunLineage(value protocol.RunRef) (agent.RunLineage, error) {
-	if value.SpawnedByItemID == "" && value.ParentRunID == "" && value.RootRunID == "" {
-		return agent.RootRunLineage(), nil
-	}
-	return agent.NewChildRunLineage(value.ID, value.SpawnedByItemID, value.ParentRunID, value.RootRunID)
-}
-
-func projectRunProtocolProfile(profile protocol.RunProtocolProfile) *protocol.RunProtocolProfile {
-	projected := profile
-	projected.RequiredFeatures = slices.Clone(profile.RequiredFeatures)
-	projected.InterruptTypes = slices.Clone(profile.InterruptTypes)
-	return &projected
-}
-
-func projectUsage(metrics protocol.RunMetrics) agent.Usage {
-	usage := agent.Usage{
-		Steps: metrics.Steps, Duration: time.Duration(metrics.ActiveDurationMillis) * time.Millisecond,
-	}
-	if metrics.Usage == nil {
-		return usage
-	}
-	projected := projectUsageBreakdown(*metrics.Usage)
-	projected.Steps, projected.Duration = usage.Steps, usage.Duration
-	return projected
-}
-
-func projectUsageBreakdown(value protocol.Usage) agent.Usage {
-	usage := agent.Usage{
-		InputTokens: value.InputTokens, OutputTokens: value.OutputTokens,
-		CacheReadTokens: value.CacheReadTokens, CacheWriteTokens: value.CacheWriteTokens,
-		ReasoningTokens: value.ReasoningTokens, ByModel: cloneUsageByModel(value.ByModel),
-	}
-	if value.CostUSD != nil {
-		usage.CostUSD = new(*value.CostUSD)
-	}
-	return usage
-}
-
-func cloneUsageByModel(values map[string]protocol.ModelUsage) map[string]protocol.ModelUsage {
-	if values == nil {
-		return nil
-	}
-	projected := make(map[string]protocol.ModelUsage, len(values))
-	for model, value := range values {
-		projected[model] = cloneModelUsage(value)
-	}
-	return projected
-}
-
-func projectRunOutcome(value protocol.RunOutcome) (agent.Outcome, error) {
-	return projectOutcome(protocol.SegmentOutcome{
-		Type: protocol.SegmentOutcomeType(value.Type), Error: value.Error, Detail: value.Detail,
-	})
-}
-
 func projectOutcome(value protocol.SegmentOutcome) (agent.Outcome, error) {
 	if err := protocol.ValidateWireTree(value); err != nil {
 		return agent.Outcome{}, runtimeContractViolation("runtime outcome is invalid: %v", err)
 	}
-	outcome := agent.Outcome{Status: agent.OutcomeStatus(value.Type), Detail: value.Detail}
+	outcome := agent.Outcome{Status: protocol.RunOutcomeType(value.Type), Detail: value.Detail}
 	switch value.Type {
 	case protocol.SegmentTimedOut, protocol.SegmentFailed, protocol.SegmentLost:
 		outcome.Detail = ""
@@ -185,11 +89,4 @@ func projectInteractions(values []protocol.Interrupt) ([]agent.Interaction, erro
 		return nil, err
 	}
 	return interactions, nil
-}
-
-func cloneModelUsage(value protocol.ModelUsage) protocol.ModelUsage {
-	if value.CostUSD != nil {
-		value.CostUSD = new(*value.CostUSD)
-	}
-	return value
 }

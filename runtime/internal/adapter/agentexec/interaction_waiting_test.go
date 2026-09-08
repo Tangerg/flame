@@ -18,8 +18,8 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	infraexec "github.com/Tangerg/flame/runtime/internal/infra/process/exec"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/chatclient"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -585,15 +585,15 @@ type promptingInteractionAuthorizer struct {
 }
 
 func rootInteractionWaitingContinuation(
-	checkpoint runs.ExecutorCheckpoint,
+	checkpoint run.Checkpoint,
 	executorID string,
 	capabilities run.Capabilities,
 ) runs.WaitingContinuation {
 	const rootRunID = "run_root"
 
 	metrics := run.Metrics{}
-	if len(checkpoint.Usage.Models) > 0 {
-		total, err := checkpoint.Usage.Total()
+	if len(checkpoint.Usage().Models) > 0 {
+		total, err := checkpoint.Usage().Total()
 		if err != nil {
 			panic(err)
 		}
@@ -603,9 +603,9 @@ func rootInteractionWaitingContinuation(
 				ReasoningTokens: total.ReasoningTokens, CacheReadTokens: total.CacheReadTokens,
 				CacheWriteTokens: total.CacheWriteTokens, CostUSD: total.Cost.OptionalUSD(),
 			},
-			ByModel: make(map[string]accounting.Totals, len(checkpoint.Usage.Models)),
+			ByModel: make(map[string]accounting.Totals, len(checkpoint.Usage().Models)),
 		}
-		for _, model := range checkpoint.Usage.Models {
+		for _, model := range checkpoint.Usage().Models {
 			usage.ByModel[model.Model] = accounting.Totals{
 				InputTokens: model.PromptTokens, OutputTokens: model.CompletionTokens,
 				ReasoningTokens: model.ReasoningTokens, CacheReadTokens: model.CacheReadTokens,
@@ -618,10 +618,10 @@ func rootInteractionWaitingContinuation(
 		}
 	}
 	return runs.WaitingContinuation{
-		SessionID: checkpoint.Scope.SessionID, ExecutorID: executorID, RootRunID: rootRunID,
+		SessionID: checkpoint.Scope().SessionID, ExecutorID: executorID, RootRunID: rootRunID,
 		Members: []runs.WaitingMember{{
-			RunID: rootRunID, MemberID: checkpoint.RootMemberID,
-			ModelSelection: checkpoint.ModelSelection, Metrics: metrics,
+			RunID: rootRunID, MemberID: checkpoint.RootMemberID(),
+			ModelSelection: checkpoint.ModelSelection(), Metrics: metrics,
 		}},
 		Checkpoint: checkpoint, Capabilities: capabilities,
 		ChildRunAdmissionEnabled: capabilities.ChildRuns,
@@ -669,24 +669,26 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 	checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
 	for _, test := range []struct {
 		name   string
-		mutate func(*runs.ExecutorCheckpoint)
+		mutate func(*run.CheckpointState)
 	}{
-		{name: "corrupt payload", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
+		{name: "corrupt payload", mutate: func(checkpoint *run.CheckpointState) {
 			checkpoint.Payload = []byte(`{"tree":null}`)
 		}},
-		{name: "wrong build", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
+		{name: "wrong build", mutate: func(checkpoint *run.CheckpointState) {
 			checkpoint.BuildID = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 		}},
-		{name: "missing workspace", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
+		{name: "missing workspace", mutate: func(checkpoint *run.CheckpointState) {
 			checkpoint.Scope.CWD = workspace + "/gone"
 		}},
-		{name: "isolated workspace", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
+		{name: "isolated workspace", mutate: func(checkpoint *run.CheckpointState) {
 			checkpoint.Scope.Isolated = true
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			candidate := checkpoint.Clone()
-			test.mutate(&candidate)
+			candidate := checkpoint
+			checkpointState := candidate.State()
+			test.mutate(&checkpointState)
+			candidate = testsupport.MustCheckpoint(checkpointState)
 			executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 				return nil, errors.New("model must not be called while restoring")
 			}), InteractionExecutorConfig{})
@@ -702,45 +704,19 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 			}
 		})
 	}
-	t.Run("wrong deployment", func(t *testing.T) {
-		client, err := chatclient.New(chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
-			return nil, errors.New("model must not be called while restoring")
-		}), chatclient.Config{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		executor, err := NewInteractionExecutor(InteractionExecutorConfig{
-			Lifetime:     t.Context(),
-			ChatResolver: staticInteractionChatResolver(client), BuildID: interactionTestBuildID,
-			ImplementationIdentity: "interaction-observation-test-build",
-			ConfigurationIdentity:  "different-deployment-configuration",
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		_, err = executor.StageContinuation(t.Context(), rootInteractionWaitingContinuation(
-			checkpoint,
-			"exec_restore",
-			run.Capabilities{},
-		))
-		if !errors.Is(err, runs.ErrExecutorStateLost) {
-			t.Fatalf("StageContinuation error = %v, want ErrExecutorStateLost", err)
-		}
-	})
-	t.Run("isolated workspace cannot be overridden", func(t *testing.T) {
-		candidate := checkpoint.Clone()
-		candidate.Scope.Isolated = true
+	t.Run("changed response mode", func(t *testing.T) {
 		executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 			return nil, errors.New("model must not be called while restoring")
 		}), InteractionExecutorConfig{
-			RestoreScopeValidator: restoreScopeValidatorFunc(func(context.Context, runs.ExecutionScope) error {
-				return nil
-			}),
+			StreamModelResponses: true,
+			ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
+				Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)},
+			}},
 		})
 		_, err := executor.StageContinuation(t.Context(), rootInteractionWaitingContinuation(
-			candidate,
+			checkpoint,
 			"exec_restore",
-			run.Capabilities{},
+			run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
 		))
 		if !errors.Is(err, runs.ErrExecutorStateLost) {
 			t.Fatalf("StageContinuation error = %v, want ErrExecutorStateLost", err)
@@ -785,9 +761,7 @@ func TestInteractionExecutorCheckpointsWithoutReplayingUnknownEffect(t *testing.
 		calls++
 		return interactionUsageTextResponse("externally completed", 2, 1), nil
 	})
-	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		UnknownEffectPollInterval: durationPointer(5 * time.Millisecond),
-	})
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
 	ref, err := executor.StageRoot(t.Context(), start)
@@ -959,15 +933,6 @@ type runtimeSteerModel struct {
 	release chan struct{}
 }
 
-type restoreScopeValidatorFunc func(context.Context, runs.ExecutionScope) error
-
-func (r restoreScopeValidatorFunc) ValidateRestoreScope(
-	ctx context.Context,
-	scope runs.ExecutionScope,
-) error {
-	return r(ctx, scope)
-}
-
 func (r *runtimeSteerModel) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
 	r.mu.Lock()
 	r.calls++
@@ -989,7 +954,7 @@ func (r *runtimeSteerModel) Call(_ context.Context, request *chat.Request) (*cha
 	return interactionUsageTextResponse("revised", 1, 1), nil
 }
 
-func captureInteractionQuestionCheckpoint(t *testing.T, workspace string) runs.ExecutorCheckpoint {
+func captureInteractionQuestionCheckpoint(t *testing.T, workspace string) run.Checkpoint {
 	t.Helper()
 	question := newQuestionCheckpointTool(t)
 	executor := newObservedTestInteractionExecutor(t, &observationScriptModel{responses: []*chat.Response{

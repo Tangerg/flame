@@ -127,7 +127,7 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 	if _, ok := events[0].Event.(agent.SegmentStarted); !ok {
 		t.Fatalf("first event = %T", events[0].Event)
 	}
-	if finished, ok := events[1].Event.(agent.RunFinished); !ok || finished.Outcome.Status != agent.OutcomeCompleted || finished.ContextTokens != 12_345 {
+	if finished, ok := events[1].Event.(agent.RunFinished); !ok || finished.Outcome.Status != protocol.OutcomeCompleted || finished.ContextTokens != 12_345 {
 		t.Fatalf("second event = %+v", events[1].Event)
 	}
 }
@@ -440,8 +440,8 @@ func TestResumeAndCancelMapControlContracts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CancelRun: %v", err)
 	}
-	if !canceled.Canceled.Equal(canceled.Root) || canceled.Canceled.Status != protocol.RunStatusFinished ||
-		canceled.Canceled.Outcome.Status != agent.OutcomeCanceled || canceled.Canceled.Outcome.Detail != "stop" {
+	if canceled.Type != protocol.CancelRunRoot || canceled.RootRun != nil || canceled.Run.Status != protocol.RunStatusFinished ||
+		canceled.Run.Outcome.Type != protocol.OutcomeCanceled || canceled.Run.Outcome.Detail != "stop" {
 		t.Fatalf("canceled = %+v", canceled)
 	}
 }
@@ -565,8 +565,8 @@ func TestCancelRunProjectsChildAndSurvivingRootAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CancelRun: %v", err)
 	}
-	if result.Canceled.ID != "run_child" || result.Canceled.Lineage.RootRunID() != "run_root" ||
-		result.Root.ID != "run_root" || result.Root.Status != protocol.RunStatusWaiting {
+	if result.Run.ID != "run_child" || result.Run.RootRunID != "run_root" ||
+		result.RootRun.ID != "run_root" || result.RootRun.Status != protocol.RunStatusWaiting {
 		t.Fatalf("result = %+v", result)
 	}
 }
@@ -627,7 +627,7 @@ func TestSteerRunBindsStructuredInputToTheObservedSegment(t *testing.T) {
 	err := runtime.SteerRun(t.Context(), agent.SteerRun{
 		RunID: "run_1", SegmentID: "seg_2", Message: agent.Message{Text: "focus on the parser"},
 	})
-	if !errors.Is(err, agent.ErrStaleSegment) {
+	if !errors.Is(err, protocol.ErrStaleSegment) {
 		t.Fatalf("SteerRun error = %v, want ErrStaleSegment", err)
 	}
 }

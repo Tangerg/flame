@@ -1,8 +1,6 @@
 package delivery
 
 import (
-	"context"
-
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -17,41 +15,21 @@ const (
 func registerAgentMemory(registry *Registry) {
 	registry.Query(MethodMeta{
 		Name: AgentMemoryList, CapabilityRules: requires(protocol.FeatureAgentMemory),
-	}, func(service interface {
-		ListAgentMemory(context.Context, protocol.AgentMemoryListRequest) (*protocol.AgentMemoryList, error)
-	}, ctx context.Context, request protocol.AgentMemoryListRequest) (*protocol.AgentMemoryList, error) {
-		return service.ListAgentMemory(ctx, request)
-	})
+	}, (*Handler).ListAgentMemory)
 
 	registry.CommandAck(MethodMeta{
 		Name: AgentMemoryReview, CapabilityRules: requires(protocol.FeatureAgentMemory),
-	}, func(service interface {
-		ReviewAgentMemory(context.Context, protocol.AgentMemoryReviewRequest) error
-	}, ctx context.Context, request protocol.AgentMemoryReviewRequest) error {
-		return service.ReviewAgentMemory(ctx, request)
-	})
+	}, (*Handler).ReviewAgentMemory)
 
 	registry.Command(MethodMeta{
 		Name: AgentMemoryUpdate, CapabilityRules: requires(protocol.FeatureAgentMemory),
-	}, func(service interface {
-		UpdateAgentMemory(context.Context, protocol.AgentMemoryUpdateRequest) (*protocol.AgentMemoryItem, error)
-	}, ctx context.Context, request protocol.AgentMemoryUpdateRequest) (*protocol.AgentMemoryItem, error) {
-		return service.UpdateAgentMemory(ctx, request)
-	})
+	}, (*Handler).UpdateAgentMemory)
 
 	registry.CommandAck(MethodMeta{
 		Name: AgentMemoryDelete, CapabilityRules: requires(protocol.FeatureAgentMemory),
-	}, func(service interface {
-		DeleteAgentMemory(context.Context, protocol.AgentMemoryItemRequest) error
-	}, ctx context.Context, request protocol.AgentMemoryItemRequest) error {
-		return service.DeleteAgentMemory(ctx, request)
-	})
+	}, (*Handler).DeleteAgentMemory)
 
 	registry.Command(MethodMeta{
 		Name: AgentMemoryAdd, CapabilityRules: requires(protocol.FeatureAgentMemory),
-	}, func(service interface {
-		AddAgentMemory(context.Context, protocol.AgentMemoryAddRequest) (*protocol.AgentMemoryItem, error)
-	}, ctx context.Context, request protocol.AgentMemoryAddRequest) (*protocol.AgentMemoryItem, error) {
-		return service.AddAgentMemory(ctx, request)
-	})
+	}, (*Handler).AddAgentMemory)
 }

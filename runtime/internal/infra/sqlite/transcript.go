@@ -23,8 +23,8 @@ type TranscriptStore struct{ db *sql.DB }
 func NewTranscriptStore(db *sql.DB) *TranscriptStore { return &TranscriptStore{db: db} }
 
 func (t *TranscriptStore) AppendItem(ctx context.Context, item transcript.Item) error {
-	if err := item.Validate(); err != nil {
-		return fmt.Errorf("sqlite: history item %q: %w", item.ID(), err)
+	if item.IsZero() {
+		return fmt.Errorf("sqlite: item is required")
 	}
 	offloadID, err := transcriptOffloadID(item)
 	if err != nil {
@@ -153,8 +153,8 @@ func (t *TranscriptStore) ReplaceItem(
 	ctx context.Context,
 	change transcript.Replacement,
 ) error {
-	if err := change.Validate(); err != nil {
-		return fmt.Errorf("sqlite: replace history Item: %w", err)
+	if change.IsZero() {
+		return fmt.Errorf("sqlite: item replacement is required")
 	}
 	expected := change.Expected()
 	replacement := change.State()

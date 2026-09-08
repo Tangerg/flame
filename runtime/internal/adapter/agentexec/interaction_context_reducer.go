@@ -76,22 +76,6 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if err != nil {
 		return nil, err
 	}
-	if i.compactor == nil {
-		effective := cloneChatMessages(request.Messages)
-		if hasPendingContinuation {
-			message, err := runs.MaterializeUserMessage(pendingContinuation.content)
-			if err != nil {
-				return nil, fmt.Errorf("agentexec: materialize pending continuation input: %w", err)
-			}
-			effective = append(effective, message)
-		}
-		validation := request.Clone()
-		validation.Messages = effective
-		if err := validation.Validate(); err != nil {
-			return nil, fmt.Errorf("agentexec: reduced model context: %w", err)
-		}
-		return effective, nil
-	}
 	candidate, err := withoutReplaceableSessionState(request.Messages[len(i.instructions):])
 	if err != nil {
 		return nil, err
@@ -104,17 +88,12 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		candidate = append(candidate, message)
 	}
 	fixedContext := cloneChatMessages(i.instructions)
-	if i.state != nil {
-		currentState, stateErr := i.state.CurrentSessionState(ctx, i.start.SessionID)
-		if stateErr != nil {
-			return nil, stateErr
-		}
-		fixedContext = append(fixedContext, currentState...)
+	currentState, stateErr := i.state.CurrentSessionState(ctx, i.start.SessionID)
+	if stateErr != nil {
+		return nil, stateErr
 	}
+	fixedContext = append(fixedContext, currentState...)
 	preCompact := func(ctx context.Context) (bool, error) {
-		if i.session.lifecycleHooks == nil {
-			return true, nil
-		}
 		return i.session.lifecycleHooks.BeforeCompaction(
 			ctx,
 			i.start.SessionID,

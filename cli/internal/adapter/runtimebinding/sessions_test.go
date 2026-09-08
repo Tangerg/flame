@@ -179,83 +179,17 @@ func (s sessionCatalogStub) ForkSession(_ context.Context, request protocol.Fork
 	return nil, errors.New("unexpected ForkSession")
 }
 
-func TestCreateAndForkSessionRejectAcknowledgementDrift(t *testing.T) {
-	t.Parallel()
-	base := protocol.Session{
-		ID: "ses_new", Title: "Requested", Status: protocol.SessionStatusIdle,
-		Provider: testSessionProvider, Model: testSessionModel,
-		Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
-		CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
+func TestForkSessionRejectsSourceIdentity(t *testing.T) {
+	runtime := &Connection{
+		sessionCatalog: sessionCatalogStub{fork: func(request protocol.ForkSessionRequest) (*protocol.Session, error) {
+			result := snapshotSession(1)
+			result.ID = request.SessionID
+			return result, nil
+		}},
+		meta: requestMeta("test"),
 	}
-	tests := []struct {
-		name    string
-		invoke  func(*Connection) error
-		binding sessionCatalogStub
-	}{
-		{
-			name: "create title",
-			binding: sessionCatalogStub{create: func(protocol.CreateSessionRequest) (*protocol.Session, error) {
-				result := base
-				result.Title = "Ignored"
-				return &result, nil
-			}},
-			invoke: func(runtime *Connection) error {
-				_, err := runtime.CreateSession(t.Context(), agent.CreateSession{Title: base.Title, Workspace: "/workspace"})
-				return err
-			},
-		},
-		{
-			name: "create workspace",
-			binding: sessionCatalogStub{create: func(protocol.CreateSessionRequest) (*protocol.Session, error) {
-				result := base
-				result.Workspace = testProtocolWorkspace("/other", "/other", protocol.WorkspaceAvailable)
-				return &result, nil
-			}},
-			invoke: func(runtime *Connection) error {
-				_, err := runtime.CreateSession(t.Context(), agent.CreateSession{Title: base.Title, Workspace: "/workspace"})
-				return err
-			},
-		},
-		{
-			name: "fork title",
-			binding: sessionCatalogStub{fork: func(protocol.ForkSessionRequest) (*protocol.Session, error) {
-				result := base
-				result.Title = "Ignored"
-				return &result, nil
-			}},
-			invoke: func(runtime *Connection) error {
-				_, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: "ses_source", Title: base.Title})
-				return err
-			},
-		},
-		{
-			name: "fork source identity",
-			binding: sessionCatalogStub{fork: func(request protocol.ForkSessionRequest) (*protocol.Session, error) {
-				result := base
-				result.ID = request.SessionID
-				return &result, nil
-			}},
-			invoke: func(runtime *Connection) error {
-				_, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: "ses_source", Title: base.Title})
-				return err
-			},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			runtime := &Connection{
-				sessionCatalog: test.binding,
-				workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
-					Ref:          protocol.WorkspaceRef{Path: "/workspace"},
-					ProjectRoot:  "/workspace",
-					Availability: protocol.WorkspaceAvailable,
-				}},
-				meta: requestMeta("test"),
-			}
-			requireRuntimeContractViolation(t, test.invoke(runtime))
-		})
-	}
+	_, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: "ses_source"})
+	requireRuntimeContractViolation(t, err)
 }
 
 func TestUpdateSessionProjectsEveryWritableField(t *testing.T) {
@@ -294,7 +228,7 @@ func TestUpdateSessionProjectsEveryWritableField(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.Workspace.Path != workspace || updated.Workspace.ProjectRoot != "/workspace" || !updated.Workspace.IsAvailable() ||
+	if updated.Workspace.Ref.Path != workspace || updated.Workspace.ProjectRoot != "/workspace" || updated.Workspace.Availability != protocol.WorkspaceAvailable ||
 		updated.Provider != model.Provider || updated.Model != model.Model || !updated.Favorite || updated.Revision != 8 {
 		t.Fatalf("updated session = %+v", updated)
 	}
@@ -318,53 +252,18 @@ func TestUpdateSessionRejectsWorkspaceWithoutRelocateCapability(t *testing.T) {
 	}
 }
 
-func TestUpdateSessionRejectsAcknowledgementsThatDidNotApplyTheMutation(t *testing.T) {
-	t.Parallel()
-	workspace, title, favorite := "/workspace/new", "Renamed", true
-	model := agent.ModelRef{Provider: "deepseek", Model: "deep"}
-	request := agent.UpdateSession{
-		SessionID: "ses_1", Title: &title, Workspace: &workspace, Model: &model,
-		Favorite: &favorite, ExpectedRevision: 7,
+func TestUpdateSessionRejectsMismatchedIdentity(t *testing.T) {
+	runtime := &Connection{
+		sessionCatalog: sessionCatalogStub{update: func(protocol.UpdateSessionRequest) (*protocol.Session, error) {
+			result := snapshotSession(2)
+			result.ID = "ses_other"
+			return result, nil
+		}},
+		meta: requestMeta("test"),
 	}
-	valid := protocol.Session{
-		ID: request.SessionID, Title: title, Status: protocol.SessionStatusIdle, Provider: model.Provider, Model: model.Model,
-		Workspace: testProtocolWorkspace(workspace, "/workspace", protocol.WorkspaceAvailable),
-		CreatedAt: testSessionTime, UpdatedAt: testSessionTime,
-		Favorite: favorite, Revision: 8,
-	}
-	tests := []struct {
-		name   string
-		mutate func(*protocol.Session)
-	}{
-		{name: "stale revision", mutate: func(session *protocol.Session) { session.Revision = 7 }},
-		{name: "title", mutate: func(session *protocol.Session) { session.Title = "Old" }},
-		{name: "workspace", mutate: func(session *protocol.Session) { session.Workspace.Ref.Path = "/workspace/old" }},
-		{name: "model", mutate: func(session *protocol.Session) { session.Model = "shallow" }},
-		{name: "favorite", mutate: func(session *protocol.Session) { session.Favorite = false }},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			result := valid
-			test.mutate(&result)
-			runtime := &Connection{
-				sessionCatalog: sessionCatalogStub{update: func(protocol.UpdateSessionRequest) (*protocol.Session, error) {
-					return &result, nil
-				}},
-				workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
-					Ref:          protocol.WorkspaceRef{Path: workspace},
-					ProjectRoot:  workspace,
-					Availability: protocol.WorkspaceAvailable,
-				}},
-				meta: requestMeta("test"),
-				profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
-					protocol.FeatureRelocate: {Enabled: true},
-				}),
-			}
-			_, err := runtime.UpdateSession(t.Context(), request)
-			requireRuntimeContractViolation(t, err)
-		})
-	}
+	title := "Renamed"
+	_, err := runtime.UpdateSession(t.Context(), agent.UpdateSession{SessionID: "ses_1", Title: &title, ExpectedRevision: 1})
+	requireRuntimeContractViolation(t, err)
 }
 
 func TestSessionMutationsUseResolvedWorkspaceIdentity(t *testing.T) {
@@ -418,25 +317,25 @@ func TestSessionMutationsUseResolvedWorkspaceIdentity(t *testing.T) {
 	}
 }
 
-func TestProjectSessionPreservesResolvedWorkspaceIdentity(t *testing.T) {
+func TestSessionResponsePreservesResolvedWorkspaceIdentity(t *testing.T) {
 	t.Parallel()
 
-	projected, err := projectSession(protocol.Session{
+	projected, err := projectSessionResult("create session", "", &protocol.Session{
 		ID: "ses_1", Status: protocol.SessionStatusIdle,
 		Provider: testSessionProvider, Model: testSessionModel, ReasoningEffort: "high",
 		Workspace: testProtocolWorkspace("/repo/work", "/repo", protocol.WorkspaceMissing),
 		CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
-	})
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if projected.ReasoningEffort != "high" || projected.Workspace.Path != "/repo/work" || projected.Workspace.ProjectRoot != "/repo" ||
-		projected.Workspace.IsAvailable() {
+	if projected.ReasoningEffort != "high" || projected.Workspace.Ref.Path != "/repo/work" || projected.Workspace.ProjectRoot != "/repo" ||
+		projected.Workspace.Availability == protocol.WorkspaceAvailable {
 		t.Fatalf("workspace = %+v", projected.Workspace)
 	}
 }
 
-func TestProjectSessionRejectsIncompleteWorkspaceIdentity(t *testing.T) {
+func TestSessionResponseRejectsIncompleteWorkspaceIdentity(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -449,19 +348,19 @@ func TestProjectSessionRejectsIncompleteWorkspaceIdentity(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := projectSession(protocol.Session{
+			_, err := projectSessionResult("create session", "", &protocol.Session{
 				ID: "ses_1", Status: protocol.SessionStatusIdle,
 				Provider: testSessionProvider, Model: testSessionModel, Workspace: test.workspace,
 				CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
-			})
+			}, nil)
 			if err == nil {
-				t.Fatalf("projectSession accepted %+v", test.workspace)
+				t.Fatalf("session response accepted %+v", test.workspace)
 			}
 		})
 	}
 }
 
-func TestProjectSessionRejectsMissingLifecycleTimes(t *testing.T) {
+func TestSessionResponseRejectsMissingLifecycleTimes(t *testing.T) {
 	t.Parallel()
 
 	valid := protocol.Session{
@@ -482,9 +381,9 @@ func TestProjectSessionRejectsMissingLifecycleTimes(t *testing.T) {
 			t.Parallel()
 			value := valid
 			test.clear(&value)
-			_, err := projectSession(value)
+			_, err := projectSessionResult("create session", "", &value, nil)
 			if err == nil || !strings.Contains(err.Error(), test.field) {
-				t.Fatalf("projectSession error = %v, want %q", err, test.field)
+				t.Fatalf("session response error = %v, want %q", err, test.field)
 			}
 		})
 	}

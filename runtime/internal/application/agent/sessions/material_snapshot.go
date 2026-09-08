@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -24,22 +25,44 @@ type MaterialSnapshot struct {
 	Goal       *goal.Goal
 }
 
-// MaterialSnapshot reads the complete mounted-session projection at one
-// database snapshot. No process-local admission is required: concurrent writes
-// either precede or follow the storage transaction and can never split the
-// returned Run, interrupt, transcript, and Plan facts.
-func (c *Coordinator) MaterialSnapshot(ctx context.Context, sessionID string) (MaterialSnapshot, error) {
+// SnapshotView projects one storage snapshot for a mounted Session. Session
+// activity comes from these Runs; workspace availability is a live observation
+// of the same stored workspace identity.
+type SnapshotView struct {
+	Session    View
+	Items      []transcript.Item
+	Runs       []run.Run
+	Interrupts []runs.Pending
+	Plan       plan.Current
+	Goal       *goal.Goal
+}
+
+// MaterialSnapshot reads and projects the complete mounted-session state from
+// one database snapshot. Concurrent writes cannot split Session metadata from
+// the returned Run, interrupt, transcript, Plan, and Goal facts.
+func (c *Coordinator) MaterialSnapshot(ctx context.Context, sessionID string) (SnapshotView, error) {
 	snapshot, err := c.materialSnapshots.ReadMaterialSnapshot(ctx, sessionID)
 	if err != nil {
-		return MaterialSnapshot{}, err
+		return SnapshotView{}, err
 	}
 	if err := snapshot.Session.ValidateFor(sessionID); err != nil {
-		return MaterialSnapshot{}, fmt.Errorf("sessions: material snapshot identity: %w", err)
+		return SnapshotView{}, fmt.Errorf("sessions: material snapshot identity: %w", err)
 	}
 	if err := snapshot.Validate(); err != nil {
-		return MaterialSnapshot{}, err
+		return SnapshotView{}, err
 	}
-	return snapshot, nil
+	activity := ActivityIdle
+	for _, record := range snapshot.Runs {
+		activity = resolveActivity(activity, record.State())
+	}
+	view, err := c.view(snapshot.Session, activity)
+	if err != nil {
+		return SnapshotView{}, err
+	}
+	return SnapshotView{
+		Session: view, Items: snapshot.Items, Runs: snapshot.Runs,
+		Interrupts: snapshot.Interrupts, Plan: snapshot.Plan, Goal: snapshot.Goal,
+	}, nil
 }
 
 // Validate checks the cross-projection identities a storage transaction must
@@ -64,9 +87,6 @@ func (m MaterialSnapshot) Validate() error {
 	if err := validator.validateWaitingOwnership(); err != nil {
 		return err
 	}
-	if err := m.Plan.Validate(); err != nil {
-		return fmt.Errorf("sessions: material snapshot Plan: %w", err)
-	}
 	return validator.validateGoal()
 }
 
@@ -79,8 +99,8 @@ type materialSnapshotValidator struct {
 }
 
 func newMaterialSnapshotValidator(snapshot MaterialSnapshot) (*materialSnapshotValidator, error) {
-	if err := snapshot.Session.Validate(); err != nil {
-		return nil, fmt.Errorf("sessions: material snapshot Session: %w", err)
+	if snapshot.Session.IsZero() {
+		return nil, fmt.Errorf("sessions: session is required")
 	}
 	return &materialSnapshotValidator{
 		snapshot:         snapshot,
@@ -93,9 +113,6 @@ func newMaterialSnapshotValidator(snapshot MaterialSnapshot) (*materialSnapshotV
 
 func (validator *materialSnapshotValidator) indexRuns() error {
 	for _, record := range validator.snapshot.Runs {
-		if err := record.Validate(); err != nil {
-			return fmt.Errorf("sessions: material snapshot Run %q: %w", record.ID(), err)
-		}
 		if record.SessionID() != validator.sessionID {
 			return fmt.Errorf("sessions: material snapshot Run %q belongs to Session %q, want %q", record.ID(), record.SessionID(), validator.sessionID)
 		}
@@ -109,9 +126,6 @@ func (validator *materialSnapshotValidator) indexRuns() error {
 
 func (validator *materialSnapshotValidator) indexItems() error {
 	for _, item := range validator.snapshot.Items {
-		if err := item.Validate(); err != nil {
-			return fmt.Errorf("sessions: material snapshot Item %q: %w", item.ID(), err)
-		}
 		if item.SessionID() != validator.sessionID {
 			return fmt.Errorf("sessions: material snapshot Item %q belongs to Session %q, want %q", item.ID(), item.SessionID(), validator.sessionID)
 		}
@@ -172,8 +186,8 @@ func (validator *materialSnapshotValidator) validateWaitingOwnership() error {
 
 func (validator *materialSnapshotValidator) validateGoal() error {
 	if validator.snapshot.Goal != nil {
-		if err := validator.snapshot.Goal.ValidateSnapshot(); err != nil {
-			return fmt.Errorf("sessions: material snapshot Goal: %w", err)
+		if validator.snapshot.Goal.IsZero() {
+			return errors.New("sessions: material snapshot Goal is uninitialized")
 		}
 		if validator.snapshot.Goal.SessionID() != validator.sessionID {
 			return fmt.Errorf(

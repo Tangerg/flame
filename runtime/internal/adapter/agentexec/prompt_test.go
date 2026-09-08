@@ -13,15 +13,14 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 )
 
-// TestComposeSystemPrompt_BaseOnly verifies a nil memory store
-// yields the base prompt verbatim (no markdown headers).
+// Empty authored and remembered content does not add section headers.
 func TestComposeSystemPrompt_BaseOnly(t *testing.T) {
 	got := composeSystemPromptText(t, WorkingContextConfig{}, "")
 	if !strings.Contains(got, "You are Flame") {
 		t.Errorf("base prompt missing identity, got %q", got)
 	}
 	if strings.Contains(got, "## User preferences") || strings.Contains(got, "## Project knowledge") {
-		t.Error("nil memory should not produce section headers")
+		t.Error("empty memory should not produce section headers")
 	}
 }
 
@@ -73,7 +72,7 @@ func TestComposePrompt_ProjectMemoryFollowsCWD(t *testing.T) {
 
 func TestComposePromptReturnsKnowledgeReadFailure(t *testing.T) {
 	failure := errors.New("knowledge document is oversized")
-	_, err := NewWorkingContextComposer(WorkingContextConfig{
+	_, err := mustWorkingContextComposer(t, WorkingContextConfig{
 		Knowledge: &stubKnowledgeStore{err: failure},
 	}).composeSystemMessage(t.Context(), "/projects/alpha")
 	if !errors.Is(err, failure) {
@@ -135,7 +134,7 @@ func TestComposePromptRejectsSilentlyDroppedAgentDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := NewWorkingContextComposer(WorkingContextConfig{}).
+	if _, err := mustWorkingContextComposer(t, WorkingContextConfig{}).
 		composeSystemMessage(t.Context(), workspace); !errors.Is(err, workspaceapp.ErrPromptSourceTooLarge) {
 		t.Fatalf("composeSystemMessage error = %v, want ErrPromptSourceTooLarge", err)
 	}
@@ -147,7 +146,7 @@ func TestComposePromptRejectsSilentlyDroppedAgentDocument(t *testing.T) {
 
 func composeSystemPromptText(t *testing.T, config WorkingContextConfig, cwd string) string {
 	t.Helper()
-	message, err := NewWorkingContextComposer(config).composeSystemMessage(t.Context(), cwd)
+	message, err := mustWorkingContextComposer(t, config).composeSystemMessage(t.Context(), cwd)
 	if err != nil {
 		t.Fatal(err)
 	}

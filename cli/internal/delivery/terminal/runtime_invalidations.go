@@ -265,9 +265,9 @@ func (a *app) applyInvalidatedSessionRefresh(
 	}
 	if err != nil {
 		a.session.invalidated = true
-		if errors.Is(err, agent.ErrSessionNotFound) && a.execution.conversation.Phase() == agent.ConversationIdle && !a.execution.following {
+		if errors.Is(err, protocol.ErrSessionNotFound) && a.execution.conversation.Phase() == agent.ConversationIdle && !a.execution.following {
 			a.message("the active session was deleted; creating a replacement")
-			a.replaceDeletedSessionInWorkspace(a.session.current.Workspace.Path)
+			a.replaceDeletedSessionInWorkspace(a.session.current.Workspace.Ref.Path)
 			return
 		}
 		a.message("refresh session after runtime change failed: " + err.Error())
@@ -278,7 +278,7 @@ func (a *app) applyInvalidatedSessionRefresh(
 		return
 	}
 	conversationMatches := a.execution.conversation.MatchesSnapshot(snapshot)
-	sessionMatches := a.session.current.Equal(snapshot.Session)
+	sessionMatches := sameSession(a.session.current, snapshot.Session)
 	if conversationMatches && a.session.current.Workspace == snapshot.Session.Workspace {
 		if !sessionMatches {
 			a.installSessionMetadata(snapshot.Session)
@@ -316,7 +316,7 @@ func (a *app) readInvalidatedSession(ctx context.Context, sessionID string) (age
 	}
 }
 
-func (a *app) installSessionMetadata(session agent.Session) {
+func (a *app) installSessionMetadata(session protocol.Session) {
 	a.setActiveSession(session)
 	a.dialogs.sessionCenter.Upsert(session)
 }
@@ -338,4 +338,10 @@ func (a *app) dismissInteractionProjection() {
 		a.dialogs.reviewDialog.Controller().Dismiss()
 		a.dialogs.reviewDialog = nil
 	}
+}
+
+func sameSession(left, right protocol.Session) bool {
+	left.CreatedAt, right.CreatedAt = left.CreatedAt.UTC(), right.CreatedAt.UTC()
+	left.UpdatedAt, right.UpdatedAt = left.UpdatedAt.UTC(), right.UpdatedAt.UTC()
+	return left == right
 }

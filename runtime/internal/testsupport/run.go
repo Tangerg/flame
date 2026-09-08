@@ -136,3 +136,12 @@ func MustRunReplacement(expected, state run.Run) run.Replacement {
 	}
 	return replacement
 }
+
+// MustCheckpoint constructs a complete continuation fixture.
+func MustCheckpoint(state run.CheckpointState) run.Checkpoint {
+	checkpoint, err := run.NewCheckpoint(state)
+	if err != nil {
+		panic(err)
+	}
+	return checkpoint
+}

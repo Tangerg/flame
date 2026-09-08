@@ -62,12 +62,12 @@ func TestRuntimeConnectionSessionCatalogAndLifecycle(t *testing.T) {
 	requireWorkspaceInspection(t, runtime, workspace)
 	forked := requireSessionMutation(t, runtime, created, t.TempDir())
 	requireSessionPortability(t, runtime, forked.ID)
-	requireRuntimeCatalogs(t, runtime, created.ID, created.Workspace.Path)
+	requireRuntimeCatalogs(t, runtime, created.ID, created.Workspace.Ref.Path)
 	requireProviderMutationLifecycle(t, runtime)
 	requireGoalMutationLifecycle(t, runtime, created.ID)
-	requireContextManagement(t, runtime, created.Workspace.Path)
-	requireAuxiliaryCapabilities(t, runtime, created.ID, created.Workspace.Path)
-	requireExternalAuthoredInvalidations(t, runtime, created.Workspace.Path)
+	requireContextManagement(t, runtime, created.Workspace.Ref.Path)
+	requireAuxiliaryCapabilities(t, runtime, created.ID, created.Workspace.Ref.Path)
+	requireExternalAuthoredInvalidations(t, runtime, created.Workspace.Ref.Path)
 	requireSessionDeletion(t, runtime, created.ID, forked.ID)
 	requireClosedRuntime(t, runtime)
 }
@@ -132,54 +132,41 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 		}
 	}
 
-	partitions, err := (changefeed.SubscriptionLimits{MaxTopics: 2, MaxWatches: 1}).Partition(changefeed.Subscription{
-		Topics: []protocol.RuntimeTopic{
-			protocol.TopicFilesChanged,
-			protocol.TopicKnowledgeChanged,
-			protocol.TopicHooksChanged,
-			protocol.TopicSkillsChanged,
-		},
+	subscription := changefeed.Subscription{
+		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicKnowledgeChanged, protocol.TopicHooksChanged, protocol.TopicSkillsChanged},
 		Watches: []changefeed.Watch{{ID: "authored-resources", Workspace: workspace}},
-	})
-	if err != nil {
-		t.Fatalf("partition authored resources: %v", err)
 	}
 	streamContext, cancelStream := context.WithCancel(t.Context())
+	defer cancelStream()
+	stream, err := runtime.Subscribe(streamContext, subscription)
+	if err != nil {
+		t.Fatalf("subscribe to authored resources: %v", err)
+	}
 	events := make(chan changefeed.Event, 8)
-	streamErrors := make(chan error, len(partitions))
-	var stopped []<-chan struct{}
+	streamErrors := make(chan error, 1)
+	stopped := make(chan struct{})
 	defer func() {
 		cancelStream()
-		for _, streamStopped := range stopped {
+		select {
+		case <-stopped:
+		case <-time.After(3 * time.Second):
+			t.Error("authored-resource subscription did not stop")
+		}
+	}()
+	go func() {
+		defer close(stopped)
+		for event, streamErr := range stream {
+			if streamErr != nil {
+				streamErrors <- streamErr
+				return
+			}
 			select {
-			case <-streamStopped:
-			case <-time.After(3 * time.Second):
-				t.Error("authored-resource subscription did not stop")
+			case events <- event:
+			case <-streamContext.Done():
+				return
 			}
 		}
 	}()
-	for _, partition := range partitions {
-		stream, err := runtime.Subscribe(streamContext, partition)
-		if err != nil {
-			t.Fatalf("subscribe to authored resources: %v", err)
-		}
-		streamStopped := make(chan struct{})
-		stopped = append(stopped, streamStopped)
-		go func() {
-			defer close(streamStopped)
-			for event, streamErr := range stream {
-				if streamErr != nil {
-					streamErrors <- streamErr
-					return
-				}
-				select {
-				case events <- event:
-				case <-streamContext.Done():
-					return
-				}
-			}
-		}()
-	}
 
 	knowledgePath := filepath.Join(workspace, "FLAME.md")
 	if writeFileErr := os.WriteFile(knowledgePath, []byte("# External knowledge\n"), 0o600); writeFileErr != nil {
@@ -353,7 +340,7 @@ func requireSessionPortability(t *testing.T, runtime *Connection, sessionID stri
 	rolledBack, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
 		SessionID: sessionID, Scope: protocol.RestoreHistory,
 	})
-	if err != nil || rolledBack.Session.ID != sessionID || len(rolledBack.Dropped) != 0 {
+	if err != nil || rolledBack.Session.ID != sessionID || len(rolledBack.DroppedRunIDs) != 0 {
 		t.Fatalf("RollbackSession = (%+v, %v)", rolledBack, err)
 	}
 }
@@ -368,10 +355,10 @@ func requireWorkspaceInspection(t *testing.T, runtime *Connection, path string) 
 		t.Fatal(err)
 	}
 	resolved, err := runtime.Resolve(t.Context(), workspaceapi.ResolveRequest{Path: path})
-	if err != nil || resolved.Path != canonical || !resolved.IsAvailable() {
+	if err != nil || resolved.Ref.Path != canonical || resolved.Availability != protocol.WorkspaceAvailable {
 		t.Fatalf("Resolve = (%+v, %v)", resolved, err)
 	}
-	path = resolved.Path
+	path = resolved.Ref.Path
 	known, err := runtime.List(t.Context())
 	if err != nil || len(known) == 0 || known[0].LastActive == nil {
 		t.Fatalf("List = (%+v, %v)", known, err)
@@ -487,45 +474,43 @@ func openIntegrationRuntime(t *testing.T, workspace string) *Connection {
 	return runtime
 }
 
-func requireSessionCatalog(t *testing.T, runtime *Connection, workspace string) agent.Session {
+func requireSessionCatalog(t *testing.T, runtime *Connection, workspace string) protocol.Session {
 	t.Helper()
 	created, err := runtime.CreateSession(t.Context(), agent.CreateSession{Title: "adapter session", Workspace: workspace})
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
 	page, err := runtime.ListSessions(t.Context(), agent.SessionQuery{
-		PageSize: catalogPageSize(t, 10), Search: "ADAPTER", Workspace: created.Workspace.Path,
+		PageSize: catalogPageSize(t, 10), Search: "ADAPTER", Workspace: created.Workspace.Ref.Path,
 	})
 	if err != nil {
 		t.Fatalf("ListSessions: %v", err)
 	}
-	if len(page.Items) != 1 || page.Items[0].ID != created.ID {
-		t.Fatalf("filtered sessions = %+v, want %s", page.Items, created.ID)
+	if len(page.Data) != 1 || page.Data[0].ID != created.ID {
+		t.Fatalf("filtered sessions = %+v, want %s", page.Data, created.ID)
 	}
 
 	snapshot, err := runtime.GetSession(t.Context(), created.ID)
 	if err != nil {
 		t.Fatalf("GetSession: %v", err)
 	}
-	if validateErr := snapshot.Validate(); validateErr != nil {
-		t.Fatalf("snapshot: %v", validateErr)
-	}
+
 	if snapshot.Session.ID != created.ID || len(snapshot.Runs) != 0 || len(snapshot.Transcript) != 0 {
 		t.Fatalf("snapshot = %+v", snapshot)
 	}
 	runs, err := runtime.ListRuns(t.Context(), agent.RunQuery{
 		SessionID: created.ID, IncludeDescendants: true, PageSize: agent.DefaultPageSize(),
 	})
-	if err != nil || len(runs.Items) != 0 {
+	if err != nil || len(runs.Data) != 0 {
 		t.Fatalf("ListRuns = (%+v, %v)", runs, err)
 	}
-	if _, err := runtime.GetRun(t.Context(), "run_missing"); !errors.Is(err, agent.ErrRunNotFound) {
+	if _, err := runtime.GetRun(t.Context(), "run_missing"); !errors.Is(err, protocol.ErrRunNotFound) {
 		t.Fatalf("GetRun missing = %v, want ErrRunNotFound", err)
 	}
 	return created
 }
 
-func requireSessionMutation(t *testing.T, runtime *Connection, created agent.Session, workspace string) agent.Session {
+func requireSessionMutation(t *testing.T, runtime *Connection, created protocol.Session, workspace string) protocol.Session {
 	t.Helper()
 	title, favorite := "renamed adapter session", true
 	model := agent.ModelRef{Provider: created.Provider, Model: "integration-model"}
@@ -540,7 +525,7 @@ func requireSessionMutation(t *testing.T, runtime *Connection, created agent.Ses
 	if canonicalErr != nil {
 		t.Fatal(canonicalErr)
 	}
-	if updated.Title != title || updated.Workspace.Path != canonicalWorkspace || updated.Provider != model.Provider || updated.Model != model.Model ||
+	if updated.Title != title || updated.Workspace.Ref.Path != canonicalWorkspace || updated.Provider != model.Provider || updated.Model != model.Model ||
 		!updated.Favorite || updated.Revision <= created.Revision {
 		t.Fatalf("updated = %+v", updated)
 	}
@@ -677,8 +662,11 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if err != nil {
 		t.Fatalf("Create MCP server: %v", err)
 	}
-	if validateResultErr := candidate.ValidateResult(created); validateResultErr != nil {
-		t.Fatalf("created MCP server: %v", validateResultErr)
+	if created.Name != candidate.Name || created.Description != candidate.Description ||
+		!candidate.HandshakeTimeout.Matches(created.HandshakeTimeout) ||
+		!slices.Equal(created.DisabledTools, candidate.DisabledTools) || !slices.Equal(created.AutoApproveTools, candidate.AutoApproveTools) ||
+		created.Connection.AuthorizationMasked == "" || created.Connection.AuthorizationMasked == authorization.Value {
+		t.Fatalf("created MCP server did not preserve configuration or credential masking")
 	}
 	maskedHeader := created.Connection.HeadersMasked["X-Key"]
 	created.Connection.HeadersMasked["X-Key"] = "caller-reused-header"
@@ -692,8 +680,9 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if index < 0 {
 		t.Fatal("created MCP server disappeared after result reuse")
 	}
-	if err := candidate.ValidateResult(servers[index]); err != nil || servers[index].Connection.HeadersMasked["X-Key"] != maskedHeader {
-		t.Fatalf("caller reuse changed the Runtime MCP server: %v", err)
+	if servers[index].Connection.HeadersMasked["X-Key"] != maskedHeader ||
+		!slices.Equal(servers[index].DisabledTools, candidate.DisabledTools) || !candidate.HandshakeTimeout.Matches(servers[index].HandshakeTimeout) {
+		t.Fatal("caller reuse changed the Runtime MCP server")
 	}
 	for _, test := range []struct {
 		name   string
@@ -749,8 +738,10 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if err != nil || index >= len(servers) {
 		t.Fatalf("list MCP servers after input reuse: (%+v, %v)", servers, err)
 	}
-	if err := expectedCandidate.ValidateResult(servers[index]); err != nil {
-		t.Fatalf("caller input reuse changed the Runtime MCP server: %v", err)
+	if !slices.Equal(servers[index].DisabledTools, expectedCandidate.DisabledTools) ||
+		!slices.Equal(servers[index].AutoApproveTools, expectedCandidate.AutoApproveTools) ||
+		len(servers[index].Connection.HeadersMasked) != 1 || servers[index].Connection.HeadersMasked["X-Key"] != maskedHeader {
+		t.Fatal("caller input reuse changed the Runtime MCP server")
 	}
 	clearAuthorization := mcp.AuthorizationChange{Kind: protocol.MCPSecretClear}
 	clearHeaders := mcp.HeadersChange{Kind: protocol.MCPSecretClear}
@@ -770,8 +761,9 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if err != nil {
 		t.Fatalf("Update MCP server: %v", err)
 	}
-	if err := update.ValidateResult(updated); err != nil {
-		t.Fatalf("updated MCP server: %v", err)
+	if updated.Description != description || !updatedTimeout.Matches(updated.HandshakeTimeout) ||
+		updated.Connection.AuthorizationMasked != "" || len(updated.Connection.HeadersMasked) != 0 {
+		t.Fatal("updated MCP server did not apply configuration or credential clearing")
 	}
 	description = "caller-reused-description"
 	*update.HandshakeTimeout = mcp.HandshakeTimeout{}
@@ -845,7 +837,7 @@ func requireSessionDeletion(t *testing.T, runtime *Connection, sessionIDs ...str
 		}
 	}
 	_, err := runtime.GetSession(t.Context(), sessionIDs[0])
-	if !errors.Is(err, agent.ErrSessionNotFound) {
+	if !errors.Is(err, protocol.ErrSessionNotFound) {
 		t.Fatalf("GetSession after delete = %v, want ErrSessionNotFound", err)
 	}
 	problem, ok := errors.AsType[protocol.ProblemError](err)

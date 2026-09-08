@@ -10,12 +10,11 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 func TestBrandBannerProjectsBuildModelAndWorkspaceResponsively(t *testing.T) {
-	session := agent.Session{Provider: "mock", Model: "balanced", ReasoningEffort: "high", Workspace: workspace.Workspace{
-		Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable,
+	session := protocol.Session{Provider: "mock", Model: "balanced", ReasoningEffort: "high", Workspace: protocol.WorkspaceInfo{
+		Ref: protocol.WorkspaceRef{Path: "/workspace/scope"}, ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable,
 	}}
 	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "1.2.3", session, displayRunOptions(defaultRunOptions(t), session))
 
@@ -60,7 +59,7 @@ func TestLargeBrandMarksFitTheirResponsiveBreakpoint(t *testing.T) {
 }
 
 func TestBrandBannerUsesASCIIMarkForASCIITerminals(t *testing.T) {
-	banner := newBrandBanner(kit.Dark(), kit.ASCII(), "dev", agent.Session{}, agent.RunOptions{Limits: agent.UnlimitedRunLimits()})
+	banner := newBrandBanner(kit.Dark(), kit.ASCII(), "dev", protocol.Session{}, agent.RunOptions{Limits: agent.UnlimitedRunLimits()})
 	got := drawStatic(t, banner, 72, 12)
 	if !strings.Contains(got, "FFFFF L      AAA") || strings.Contains(got, "██") {
 		t.Fatalf("ASCII brand banner used the wrong mark:\n%s", got)
@@ -69,13 +68,13 @@ func TestBrandBannerUsesASCIIMarkForASCIITerminals(t *testing.T) {
 
 func TestTranscriptBrandIsAOneShotEntranceProjection(t *testing.T) {
 	view := testTranscriptView(t)
-	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "test", agent.Session{}, agent.RunOptions{Limits: agent.UnlimitedRunLimits()})
+	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "test", protocol.Session{}, agent.RunOptions{Limits: agent.UnlimitedRunLimits()})
 	view.SetEntrance(banner)
 
 	if empty := drawRoot(t, view, 72, 12); !strings.Contains(empty, "Flame CLI  vtest") {
 		t.Fatalf("empty transcript does not show the brand:\n%s", empty)
 	}
-	view.Append(newUserMessageBlock(kit.Dark(), "inspect this repository"))
+	view.Append(newUserMessageBlockAs(kit.Dark(), "you", "inspect this repository", true))
 	filled := drawRoot(t, view, 72, 12)
 	if !strings.Contains(filled, "inspect this repository") || strings.Contains(filled, "Flame CLI") {
 		t.Fatalf("conversation did not replace the brand:\n%s", filled)
@@ -89,7 +88,7 @@ func TestTranscriptBrandIsAOneShotEntranceProjection(t *testing.T) {
 
 func TestTranscriptResetConsumesAnUnshownEntranceProjection(t *testing.T) {
 	view := testTranscriptView(t)
-	view.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", agent.Session{}, agent.RunOptions{Limits: agent.UnlimitedRunLimits()}))
+	view.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", protocol.Session{}, agent.RunOptions{Limits: agent.UnlimitedRunLimits()}))
 
 	view.Reset()
 	if got := drawRoot(t, view, 72, 12); strings.Contains(got, "Flame CLI") {
@@ -99,7 +98,7 @@ func TestTranscriptResetConsumesAnUnshownEntranceProjection(t *testing.T) {
 
 func TestReplacementTranscriptDoesNotInheritTheBrand(t *testing.T) {
 	initial := testTranscriptView(t)
-	initial.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", agent.Session{}, agent.RunOptions{Limits: agent.UnlimitedRunLimits()}))
+	initial.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", protocol.Session{}, agent.RunOptions{Limits: agent.UnlimitedRunLimits()}))
 	a := &app{transcript: initial, syntax: initial.syntax, settings: settings.Default()}
 
 	replacement := a.newTranscript()

@@ -149,22 +149,22 @@ func TestAuthoritativeProjectionFailurePreservesStartUntilAtomicRunLost(t *testi
 	if len(commits) != 2 {
 		t.Fatalf("committed write-sets = %d, want start + atomic lost", len(commits))
 	}
-	if commits[0].CommitID.IsZero() || commits[1].CommitID.IsZero() || commits[0].CommitID == commits[1].CommitID {
-		t.Fatalf("commit identities = %q, %q; want distinct non-empty write-set identities", commits[0].CommitID, commits[1].CommitID)
+	if commits[0].CommitID().IsZero() || commits[1].CommitID().IsZero() || commits[0].CommitID() == commits[1].CommitID() {
+		t.Fatalf("commit identities = %q, %q; want distinct non-empty write-set identities", commits[0].CommitID(), commits[1].CommitID())
 	}
-	if got := commits[0].ModelInvocations; len(got) != 1 || got[0].State != ModelInvocationStarted {
+	if got := commits[0].ModelInvocations(); len(got) != 1 || got[0].State != ModelInvocationStarted {
 		t.Fatalf("first commit model invocations = %#v", got)
 	}
 	lost := commits[1]
-	if lost.State != StateTerminalize || lost.Outcome != run.OutcomeLost || lost.Run == nil ||
-		!runHasOutcome(*lost.Run, run.OutcomeLost) {
+	if !lost.Terminates() || !runHasOutcome(*lost.Run(), run.OutcomeLost) || lost.Run() == nil ||
+		!runHasOutcome(*lost.Run(), run.OutcomeLost) {
 		t.Fatalf("lost commit = %#v", lost)
 	}
-	if got := lost.ModelInvocations; len(got) != 1 || got[0].State != ModelInvocationUnknown {
+	if got := lost.ModelInvocations(); len(got) != 1 || got[0].State != ModelInvocationUnknown {
 		t.Fatalf("lost model invocations = %#v", got)
 	}
 	for _, commit := range commits {
-		for _, item := range commit.Items {
+		for _, item := range commit.Items() {
 			if item.Kind() == transcript.AgentMessage && len(item.Content()) > 0 {
 				t.Fatalf("failed final projection leaked a completed assistant item: %#v", item)
 			}
@@ -243,30 +243,30 @@ func TestConcurrentToolResultsCommitInModelOrder(t *testing.T) {
 	commits := effects.commitSnapshot()
 	seenCommitIDs := make(map[string]struct{}, len(commits))
 	for index, commit := range commits {
-		if commit.CommitID.IsZero() {
+		if commit.CommitID().IsZero() {
 			t.Fatalf("commit[%d] has no write-set identity", index)
 		}
-		if _, duplicate := seenCommitIDs[commit.CommitID.String()]; duplicate {
-			t.Fatalf("commit[%d] repeats write-set identity %q", index, commit.CommitID)
+		if _, duplicate := seenCommitIDs[commit.CommitID().String()]; duplicate {
+			t.Fatalf("commit[%d] repeats write-set identity %q", index, commit.CommitID())
 		}
-		seenCommitIDs[commit.CommitID.String()] = struct{}{}
+		seenCommitIDs[commit.CommitID().String()] = struct{}{}
 	}
 	for index, name := range []string{"first", "second"} {
 		commit := commits[index]
-		if len(commit.Items) != 1 || commit.Items[0].Status() != transcript.ItemRunning {
-			t.Fatalf("Tool start[%d] Items = %#v, want one running Item", index, commit.Items)
+		if len(commit.Items()) != 1 || commit.Items()[0].Status() != transcript.ItemRunning {
+			t.Fatalf("Tool start[%d] Items = %#v, want one running Item", index, commit.Items())
 		}
-		invocation, present := commit.Items[0].ToolInvocation()
-		if !present || invocation.Name != name || len(commit.ToolInvocations) != 1 ||
-			commit.ToolInvocations[0].State != ToolInvocationStarted ||
-			commit.ToolInvocations[0].ItemID != commit.Items[0].ID() {
-			t.Fatalf("Tool start[%d] = Item:%#v journal:%#v", index, commit.Items[0], commit.ToolInvocations)
+		invocation, present := commit.Items()[0].ToolInvocation()
+		if !present || invocation.Name != name || len(commit.ToolInvocations()) != 1 ||
+			commit.ToolInvocations()[0].State != ToolInvocationStarted ||
+			commit.ToolInvocations()[0].ItemID != commit.Items()[0].ID() {
+			t.Fatalf("Tool start[%d] = Item:%#v journal:%#v", index, commit.Items()[0], commit.ToolInvocations())
 		}
 	}
 
 	var final *EventCommit
 	for _, commit := range commits {
-		if len(commit.ToolInvocations) == 2 && len(commit.Items) == 2 {
+		if len(commit.ToolInvocations()) == 2 && len(commit.Items()) == 2 {
 			cloned := commit
 			final = &cloned
 			break
@@ -275,22 +275,22 @@ func TestConcurrentToolResultsCommitInModelOrder(t *testing.T) {
 	if final == nil {
 		t.Fatalf("no canonical Tool batch in commits: %#v", commits)
 	}
-	first, firstPresent := final.Items[0].ToolInvocation()
-	second, secondPresent := final.Items[1].ToolInvocation()
+	first, firstPresent := final.Items()[0].ToolInvocation()
+	second, secondPresent := final.Items()[1].ToolInvocation()
 	if !firstPresent || first.Name != "first" || !secondPresent || second.Name != "second" {
-		t.Fatalf("Tool Item order = %#v, want first then second", final.Items)
+		t.Fatalf("Tool Item order = %#v, want first then second", final.Items())
 	}
-	if final.ToolInvocations[0].CallID != "tool_first" ||
-		final.ToolInvocations[1].CallID != "tool_second" {
-		t.Fatalf("Tool invocation order = %#v", final.ToolInvocations)
+	if final.ToolInvocations()[0].CallID != "tool_first" ||
+		final.ToolInvocations()[1].CallID != "tool_second" {
+		t.Fatalf("Tool invocation order = %#v", final.ToolInvocations())
 	}
-	if len(final.ConversationMessages) != 1 || final.ConversationMessages[0].Role != corechat.RoleTool ||
-		len(final.ConversationMessages[0].Parts) != 2 ||
-		final.ConversationMessages[0].Parts[0].ToolResult == nil ||
-		final.ConversationMessages[0].Parts[0].ToolResult.ID != "provider_first" ||
-		final.ConversationMessages[0].Parts[1].ToolResult == nil ||
-		final.ConversationMessages[0].Parts[1].ToolResult.ID != "provider_second" {
-		t.Fatalf("Tool conversation projection = %#v, want provider-ordered results", final.ConversationMessages)
+	if len(final.ConversationMessages()) != 1 || final.ConversationMessages()[0].Role != corechat.RoleTool ||
+		len(final.ConversationMessages()[0].Parts) != 2 ||
+		final.ConversationMessages()[0].Parts[0].ToolResult == nil ||
+		final.ConversationMessages()[0].Parts[0].ToolResult.ID != "provider_first" ||
+		final.ConversationMessages()[0].Parts[1].ToolResult == nil ||
+		final.ConversationMessages()[0].Parts[1].ToolResult.ID != "provider_second" {
+		t.Fatalf("Tool conversation projection = %#v, want provider-ordered results", final.ConversationMessages())
 	}
 }
 
@@ -314,17 +314,17 @@ func TestConcurrentToolBatchFailurePublishesOnlyIncompleteRunLost(t *testing.T) 
 		t.Fatalf("committed write-sets = %d, want two starts + RunLost", len(commits))
 	}
 	lost := commits[2]
-	if lost.State != StateTerminalize || lost.Outcome != run.OutcomeLost {
+	if !lost.Terminates() || !runHasOutcome(*lost.Run(), run.OutcomeLost) {
 		t.Fatalf("terminal commit = %#v, want RunLost", lost)
 	}
-	if len(lost.Items) != 2 || len(lost.ToolInvocations) != 2 {
-		t.Fatalf("lost Tool projection = items %#v invocations %#v", lost.Items, lost.ToolInvocations)
+	if len(lost.Items()) != 2 || len(lost.ToolInvocations()) != 2 {
+		t.Fatalf("lost Tool projection = items %#v invocations %#v", lost.Items(), lost.ToolInvocations())
 	}
-	for index := range lost.Items {
-		invocation, present := lost.Items[index].ToolInvocation()
-		if lost.Items[index].Status() != transcript.ItemIncomplete || !present ||
-			invocation.Result != nil || lost.ToolInvocations[index].State != ToolInvocationIncomplete {
-			t.Fatalf("lost Tool[%d] leaked a result: item %#v invocation %#v", index, lost.Items[index], lost.ToolInvocations[index])
+	for index := range lost.Items() {
+		invocation, present := lost.Items()[index].ToolInvocation()
+		if lost.Items()[index].Status() != transcript.ItemIncomplete || !present ||
+			invocation.Result != nil || lost.ToolInvocations()[index].State != ToolInvocationIncomplete {
+			t.Fatalf("lost Tool[%d] leaked a result: item %#v invocation %#v", index, lost.Items()[index], lost.ToolInvocations()[index])
 		}
 	}
 }
@@ -357,17 +357,17 @@ func TestTerminalTransactionFailurePreservesRunningToolsForAtomicRecovery(t *tes
 		t.Fatalf("committed write-sets = %d, want two starts + recovered terminal", len(commits))
 	}
 	terminal := commits[2]
-	if terminal.State != StateTerminalize || terminal.Outcome != run.OutcomeFailed || terminal.Run == nil ||
-		!runHasFailureKind(*terminal.Run, run.FailureInternal) {
+	if !terminal.Terminates() || !runHasOutcome(*terminal.Run(), run.OutcomeFailed) || terminal.Run() == nil ||
+		!runHasFailureKind(*terminal.Run(), run.FailureInternal) {
 		t.Fatalf("recovered terminal = %#v, want internal failure", terminal)
 	}
-	if len(terminal.Items) != 2 || len(terminal.ToolInvocations) != 2 {
-		t.Fatalf("recovered Tool write-set = items %#v invocations %#v", terminal.Items, terminal.ToolInvocations)
+	if len(terminal.Items()) != 2 || len(terminal.ToolInvocations()) != 2 {
+		t.Fatalf("recovered Tool write-set = items %#v invocations %#v", terminal.Items(), terminal.ToolInvocations())
 	}
-	for index := range terminal.Items {
-		if terminal.Items[index].Status() != transcript.ItemIncomplete ||
-			terminal.ToolInvocations[index].State != ToolInvocationIncomplete {
-			t.Fatalf("recovered Tool[%d] = item %#v journal %#v", index, terminal.Items[index], terminal.ToolInvocations[index])
+	for index := range terminal.Items() {
+		if terminal.Items()[index].Status() != transcript.ItemIncomplete ||
+			terminal.ToolInvocations()[index].State != ToolInvocationIncomplete {
+			t.Fatalf("recovered Tool[%d] = item %#v journal %#v", index, terminal.Items()[index], terminal.ToolInvocations()[index])
 		}
 	}
 	terminalEvents := 0

@@ -79,12 +79,11 @@ func (s *sessionReadRecordingRuntime) requestedSessionIDs() []string {
 type replayingStartRuntime struct {
 	*runtimefixture.Runtime
 
-	mu         sync.Mutex
-	attempts   int
-	inputs     []agent.StartRun
-	stream     agent.SegmentStream
-	failure    error
-	afterFirst func()
+	mu       sync.Mutex
+	attempts int
+	inputs   []agent.StartRun
+	stream   agent.SegmentStream
+	failure  error
 }
 
 type idempotentStartRuntime struct {
@@ -104,7 +103,7 @@ type heldCancellationResultRuntime struct {
 func (h *heldCancellationResultRuntime) CancelRun(
 	ctx context.Context,
 	input agent.CancelRun,
-) (agent.RunCancellation, error) {
+) (protocol.CancelRunResponse, error) {
 	result, err := h.Runtime.CancelRun(ctx, input)
 	select {
 	case h.settled <- struct{}{}:
@@ -114,7 +113,7 @@ func (h *heldCancellationResultRuntime) CancelRun(
 	case <-h.release:
 		return result, err
 	case <-ctx.Done():
-		return agent.RunCancellation{}, context.Cause(ctx)
+		return protocol.CancelRunResponse{}, context.Cause(ctx)
 	}
 }
 
@@ -157,19 +156,19 @@ func (i *invalidAcceptedStartRuntime) StartRun(ctx context.Context, input agent.
 	)
 }
 
-func (i *invalidAcceptedStartRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (agent.RunCancellation, error) {
+func (i *invalidAcceptedStartRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (protocol.CancelRunResponse, error) {
 	i.mu.Lock()
 	i.cancellations = append(i.cancellations, input)
 	refuse := i.refuseFirst && len(i.cancellations) == 1
 	i.mu.Unlock()
 	if refuse {
-		return agent.RunCancellation{}, errors.New("temporary malformed-receipt cleanup failure")
+		return protocol.CancelRunResponse{}, errors.New("temporary malformed-receipt cleanup failure")
 	}
 	if i.releaseCancellation != nil {
 		select {
 		case <-i.releaseCancellation:
 		case <-ctx.Done():
-			return agent.RunCancellation{}, context.Cause(ctx)
+			return protocol.CancelRunResponse{}, context.Cause(ctx)
 		}
 	}
 	return i.Runtime.CancelRun(ctx, input)
@@ -205,7 +204,7 @@ func (r *refusingFirstCommandRuntime) StartRun(ctx context.Context, input agent.
 	refused := r.refused
 	r.mu.Unlock()
 	if input.CommandID == refused {
-		return agent.SegmentStream{}, fmt.Errorf("runtime refused start: %w", agent.ErrSessionHasActiveRun)
+		return agent.SegmentStream{}, fmt.Errorf("runtime refused start: %w", protocol.ErrSessionHasActiveRun)
 	}
 	return r.Runtime.StartRun(ctx, input)
 }
@@ -227,7 +226,7 @@ func (a *activeConflictRuntime) StartRun(ctx context.Context, input agent.StartR
 	case a.attempted <- input.Clone():
 	default:
 	}
-	return agent.SegmentStream{}, fmt.Errorf("active run owns session: %w", agent.ErrSessionHasActiveRun)
+	return agent.SegmentStream{}, fmt.Errorf("active run owns session: %w", protocol.ErrSessionHasActiveRun)
 }
 
 func (i *idempotentStartRuntime) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
@@ -276,9 +275,6 @@ func (r *replayingStartRuntime) StartRun(ctx context.Context, input agent.StartR
 		r.mu.Lock()
 		r.stream = opened
 		r.mu.Unlock()
-		if r.afterFirst != nil {
-			r.afterFirst()
-		}
 		failure := r.failure
 		if failure == nil {
 			failure = agent.ErrDisconnected
@@ -309,7 +305,7 @@ func TestRecoveredSessionRetriesATransientAttachRead(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	_, err := base.StartRun(t.Context(), testUnlimitedStartRun("ses_demo_1", "recover attach"))
@@ -329,7 +325,7 @@ func TestStreamRecoveryUsesTheFollowerSessionIdentity(t *testing.T) {
 	runtime := &sessionReadRecordingRuntime{Runtime: runtimefixture.New()}
 	application := &app{
 		runtime: runtime,
-		session: sessionState{current: agent.Session{ID: "ses_demo_2"}},
+		session: sessionState{current: protocol.Session{ID: "ses_demo_2"}},
 	}
 	follower := streamFollower{
 		app: application, ctx: t.Context(), sessionID: "ses_demo_1",
@@ -351,7 +347,7 @@ func TestRunStatusRetainsRuntimeContextFootprintAfterSettlement(t *testing.T) {
 			{Delay: 10 * time.Millisecond, Event: agent.BlockCompleted{Block: agent.Block{
 				ID: "answer", Kind: agent.BlockAssistant, Text: "context-aware answer",
 			}}},
-			{Delay: 10 * time.Millisecond, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: 10 * time.Millisecond, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	host, stop := runUIWith(t, backend)
@@ -445,7 +441,7 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	releaseCancellation := make(chan struct{})
@@ -500,7 +496,7 @@ func TestInvalidAcceptedStartReceiptSettlesTheMemoryOnlyQueue(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	releaseCancellation := make(chan struct{})
@@ -527,7 +523,7 @@ func TestInvalidAcceptedStartBlocksTheNextRunUntilColdRecoverySucceeds(t *testin
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &invalidAcceptedStartRuntime{
@@ -552,7 +548,7 @@ func TestRetryingInvalidAcceptedStartCleanupRecoversAuthoritativeProjection(t *t
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &invalidAcceptedStartRuntime{Runtime: base, refuseFirst: true}
@@ -617,7 +613,7 @@ func TestLaunchReplaysADispatchingRunFromTheDurableOutbox(t *testing.T) {
 func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	command := agent.StartRun{
 		CommandID: agent.CommandID("cli_abcdef0123456789abcdef0123456789"),
@@ -655,7 +651,7 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	active := testUnlimitedStartRun("ses_demo_1", "already active")
@@ -705,7 +701,7 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	command := agent.StartRun{
@@ -761,7 +757,7 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	command := agent.StartRun{
@@ -835,7 +831,7 @@ func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	command := agent.StartRun{
@@ -898,14 +894,11 @@ func TestCommandReplayGuaranteeExpiresAtItsDeadline(t *testing.T) {
 	}
 }
 
-func TestRecoveredStartStopsBeforeRetryingOutsideItsReplayStore(t *testing.T) {
+func TestRecoveredStartRejectsAnotherReplayStoreBeforeIO(t *testing.T) {
 	base := runtimefixture.New()
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
-	profile = profileWithReplay(t, profile, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 10*time.Minute)
+	profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
 	runtime := &replayingStartRuntime{Runtime: base}
-	runtime.afterFirst = func() {
-		profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
-	}
 	command := agent.StartRun{
 		CommandID: "cli_cccccccccccccccccccccccccccccccc", SessionID: "ses_demo_1",
 		Message: agent.Message{Text: "do not replay outside the owning store"}, Options: agent.RunOptions{Limits: agent.UnlimitedRunLimits()},
@@ -918,7 +911,7 @@ func TestRecoveredStartStopsBeforeRetryingOutsideItsReplayStore(t *testing.T) {
 	if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
 		t.Fatalf("recovered start error = %v", err)
 	}
-	if attempts := runtime.startAttempts(); len(attempts) != 1 {
+	if attempts := runtime.startAttempts(); len(attempts) != 0 {
 		t.Fatalf("unowned start reached runtime %d times", len(attempts))
 	}
 }

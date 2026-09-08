@@ -46,9 +46,6 @@ func TestNewBuildsCommittedActiveGoal(t *testing.T) {
 	if !value.Capabilities().Equal(wantCapabilities) {
 		t.Fatalf("capabilities = %v, want %v", value.Capabilities(), wantCapabilities)
 	}
-	if err := value.ValidateSnapshot(); err != nil {
-		t.Fatalf("ValidateSnapshot: %v", err)
-	}
 }
 
 func TestNewRejectsIncompleteIdentityPolicyAndTime(t *testing.T) {
@@ -522,4 +519,28 @@ func testGoalFor(t *testing.T, sessionID, incarnationID string, budget Budget) G
 		t.Fatal(err)
 	}
 	return value
+}
+
+func TestZeroGoalCannotCreateCommittedValues(t *testing.T) {
+	now := time.Unix(1, 0).UTC()
+	if _, err := CurrentOf(Goal{}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("CurrentOf zero Goal error = %v", err)
+	}
+	for name, transition := range map[string]func() (Goal, error){
+		"stop":   func() (Goal, error) { return (Goal{}).Stop(now) },
+		"revise": func() (Goal, error) { return (Goal{}).ReviseObjective("objective", "inc_new", now) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := transition(); !errors.Is(err, ErrInvalid) {
+				t.Fatalf("zero Goal transition error = %v", err)
+			}
+		})
+	}
+	value := testGoal(t, UnlimitedBudget(), run.Capabilities{})
+	if _, err := NewReplacement(Version{}, value); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("zero expected version error = %v", err)
+	}
+	if _, err := NewReplacement(value.Version(), Goal{}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("zero replacement Goal error = %v", err)
+	}
 }

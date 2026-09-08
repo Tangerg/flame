@@ -2,7 +2,6 @@ package agentexec
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -58,9 +57,8 @@ task is ambiguous, ask one focused question rather than guess.`
 //
 // KnowledgeReader is the prompt's human-authored knowledge surface; agentdoc is the
 // read-only cross-tool AGENTS.md convention.
-// Engines built without knowledge or agent memory simply yield the base prompt +
-// discovered files.
-// A configured Knowledge reader supplies one complete cascade, so a read error
+// Empty knowledge and memory retain the base prompt and discovered files.
+// The Knowledge reader supplies one complete cascade, so a read error
 // fails prompt construction instead of silently deleting user instructions.
 // Memory remains best-effort enrichment. Current Goal and Plan are authoritative
 // Session state: configured read failures fail construction instead of silently
@@ -77,39 +75,33 @@ func (w *WorkingContextComposer) composeSystemMessage(
 		contextSourceBasePrompt.source("builtin:flame"),
 	)
 
-	var knowledgeEntries []knowledge.Entry
-	if w.config.Knowledge != nil {
-		var err error
-		knowledgeEntries, err = w.config.Knowledge.Entries(ctx, cwd)
-		if err != nil {
-			return corechat.Message{}, fmt.Errorf("agentexec: load knowledge cascade: %w", err)
+	knowledgeEntries, err := w.config.Knowledge.Entries(ctx, cwd)
+	if err != nil {
+		return corechat.Message{}, fmt.Errorf("agentexec: load knowledge cascade: %w", err)
+	}
+	for _, entry := range knowledgeEntries {
+		if entry.Scope != knowledge.ScopeHome {
+			continue
 		}
-		for _, entry := range knowledgeEntries {
-			if entry.Scope != knowledge.ScopeHome {
-				continue
-			}
-			if content := strings.TrimSpace(entry.Content); content != "" {
-				prompt.append(
-					"## User preferences (from ~/.flame/FLAME.md)\n\n"+content,
-					contextSourceUserKnowledge.source(entry.Path),
-				)
-			}
+		if content := strings.TrimSpace(entry.Content); content != "" {
+			prompt.append(
+				"## User preferences (from ~/.flame/FLAME.md)\n\n"+content,
+				contextSourceUserKnowledge.source(entry.Path),
+			)
 		}
 	}
 
-	if w.config.AgentMemory != nil {
-		// The always-on core is the PINNED items (project + user scope). Non-pinned
-		// approved memory is surfaced per turn by relevance (the recall block), so a
-		// growing corpus never bloats every prompt.
-		var pinned []agentmemory.Item
-		if project := strings.TrimSpace(cwd); project != "" {
-			items, _ := w.config.AgentMemory.Items(ctx, agentmemory.ScopeProject, filepath.Clean(project))
-			pinned = appendPinned(pinned, items)
-		}
-		userItems, _ := w.config.AgentMemory.Items(ctx, agentmemory.ScopeUser, "")
-		pinned = appendPinned(pinned, userItems)
-		newPinnedMemoryPrompt(pinned, agentMemoryInjectBudget).appendTo(&prompt)
+	// The always-on core is the PINNED items (project + user scope). Non-pinned
+	// approved memory is surfaced per turn by relevance (the recall block), so a
+	// growing corpus never bloats every prompt.
+	var pinned []agentmemory.Item
+	if project := strings.TrimSpace(cwd); project != "" {
+		items, _ := w.config.AgentMemory.Items(ctx, agentmemory.ScopeProject, filepath.Clean(project))
+		pinned = appendPinned(pinned, items)
 	}
+	userItems, _ := w.config.AgentMemory.Items(ctx, agentmemory.ScopeUser, "")
+	pinned = appendPinned(pinned, userItems)
+	newPinnedMemoryPrompt(pinned, agentMemoryInjectBudget).appendTo(&prompt)
 
 	for _, entry := range knowledgeEntries {
 		content := strings.TrimSpace(entry.Content)
@@ -157,11 +149,8 @@ func (w *WorkingContextComposer) CurrentSessionState(
 	ctx context.Context,
 	sessionID string,
 ) ([]corechat.Message, error) {
-	if w == nil {
-		return nil, errors.New("agentexec: working-context composer is nil")
-	}
 	messages := make([]corechat.Message, 0, 2)
-	if w.config.Goal != nil && sessionID != "" {
+	if sessionID != "" {
 		current, found, err := w.config.Goal.Current(ctx, sessionID)
 		if err != nil {
 			return nil, fmt.Errorf("agentexec: load current Session Goal: %w", err)
@@ -195,7 +184,7 @@ func (w *WorkingContextComposer) currentSessionPlan(
 	ctx context.Context,
 	sessionID string,
 ) (corechat.Message, bool, error) {
-	if w.config.Plan == nil || sessionID == "" {
+	if sessionID == "" {
 		return corechat.Message{}, false, nil
 	}
 	steps, listErr := w.config.Plan.List(ctx, sessionID)

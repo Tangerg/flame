@@ -39,19 +39,17 @@ func PreviewRollback(snapshot agent.SessionSnapshot, request agent.RollbackSessi
 	if err := request.Validate(); err != nil {
 		return RollbackPreview{}, err
 	}
-	if err := snapshot.Validate(); err != nil {
-		return RollbackPreview{}, fmt.Errorf("preview rollback: %w", err)
-	}
+
 	if snapshot.Session.ID != request.SessionID {
 		return RollbackPreview{}, errors.New("preview rollback: runtime returned another session")
 	}
 	boundary := -1
 	if request.ToRunID != "" {
-		boundary = slices.IndexFunc(snapshot.Runs, func(run agent.Run) bool { return run.ID == request.ToRunID })
+		boundary = slices.IndexFunc(snapshot.Runs, func(run protocol.RunRef) bool { return run.ID == request.ToRunID })
 		if boundary < 0 {
-			return RollbackPreview{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, request.ToRunID)
+			return RollbackPreview{}, fmt.Errorf("%w: %s", protocol.ErrRunNotFound, request.ToRunID)
 		}
-		if !snapshot.Runs[boundary].Lineage.IsRoot() {
+		if snapshot.Runs[boundary].ParentRunID != "" {
 			return RollbackPreview{}, fmt.Errorf("rollback run %s is not a root run", request.ToRunID)
 		}
 	}
@@ -68,7 +66,7 @@ func PreviewRollback(snapshot agent.SessionSnapshot, request agent.RollbackSessi
 		if boundary >= 0 {
 			dropFrom = len(snapshot.Runs)
 			for index := boundary + 1; index < len(snapshot.Runs); index++ {
-				if snapshot.Runs[index].Lineage.IsRoot() {
+				if snapshot.Runs[index].ParentRunID == "" {
 					dropFrom = index
 					break
 				}
@@ -176,7 +174,7 @@ func Rollback(
 	if err := authoring.StageSessionRollback(pending); err != nil {
 		return RollbackResult{}, fmt.Errorf("stage session rollback: %w", err)
 	}
-	return settleRollback(ctx, runtime, pending, policy, backoff, true)
+	return settleRollback(ctx, runtime, pending, policy, backoff)
 }
 
 // settleRollback observes or replays one prepared command. History projections can
@@ -188,7 +186,6 @@ func settleRollback(
 	pending workbench.PendingSessionRollback,
 	policy commandreplay.Policy,
 	backoff retry.Backoff,
-	fresh bool,
 ) (RollbackResult, error) {
 	result := RollbackResult{Pending: pending}
 	if err := pending.Validate(); err != nil {
@@ -208,13 +205,13 @@ func settleRollback(
 		return result, fmt.Errorf("authoritative session matches neither side of the pending rollback: %w", err)
 	}
 	if pending.Request().RestoresFiles() &&
-		!policy.Replayable(pending.Replay) && (!fresh || !policy.CanStart(pending.Replay)) {
+		!policy.Replayable(pending.Replay) {
 		result.Outcome = mutation.Unknown
 		return result, errors.New("file rollback replay guarantee expired or belongs to another runtime")
 	}
 
-	rollbackResult, rollbackErr := executeRollback(ctx, runtime, pending, policy, backoff, fresh)
-	if errors.Is(rollbackErr, agent.ErrCommandStoreMismatch) {
+	rollbackResult, rollbackErr := executeRollback(ctx, runtime, pending, policy, backoff)
+	if errors.Is(rollbackErr, protocol.ErrIdempotencyStoreMismatch) {
 		result.Outcome = mutation.Unknown
 		return result, fmt.Errorf("rollback session outcome is unknown: %w", rollbackErr)
 	}
@@ -236,7 +233,6 @@ func executeRollback(
 	pending workbench.PendingSessionRollback,
 	policy commandreplay.Policy,
 	backoff retry.Backoff,
-	fresh bool,
 ) (agent.RollbackResult, error) {
 	if pending.Request().HistoryOnly() {
 		// History rollback has an authoritative before/after projection. One call
@@ -245,9 +241,6 @@ func executeRollback(
 		return runtime.RollbackSession(ctx, pending.Request())
 	}
 	admit := mutation.ReplayAdmission(policy, pending.Replay)
-	if fresh {
-		admit = mutation.FreshReplayAdmission(policy, pending.Replay)
-	}
 	return mutation.ConfirmAdmitted(ctx, backoff, admit, func(ctx context.Context) (agent.RollbackResult, error) {
 		return runtime.RollbackSession(ctx, pending.Request())
 	})
@@ -326,24 +319,17 @@ func validateAcknowledged(
 	if result.Session.ID != pending.SessionID || !slices.Equal(runIDs(snapshot), pending.AfterRunIDs) {
 		return errors.New("rollback acknowledgement and authoritative session disagree")
 	}
-	droppedIDs := make([]string, len(result.Dropped))
-	for index, dropped := range result.Dropped {
-		droppedIDs[index] = dropped.RunID
-	}
 	wantDropped := pending.BeforeRunIDs[len(pending.AfterRunIDs):]
 	if pending.Request().FilesOnly() {
 		wantDropped = nil
 	}
-	if !slices.Equal(droppedIDs, wantDropped) {
+	if !slices.Equal(result.DroppedRunIDs, wantDropped) {
 		return errors.New("rollback acknowledgement reports another dropped run set")
 	}
 	return nil
 }
 
 func validateSnapshot(pending workbench.PendingSessionRollback, snapshot agent.SessionSnapshot) error {
-	if err := snapshot.Validate(); err != nil {
-		return fmt.Errorf("read rollback outcome: %w", err)
-	}
 	if snapshot.Session.ID != pending.SessionID {
 		return errors.New("read rollback outcome: runtime returned another session")
 	}
@@ -383,7 +369,7 @@ func RecoverRollbacks(
 		if pending.Phase == workbench.SessionRollbackConfirmed {
 			continue
 		}
-		result, err := settleRollback(ctx, runtime, pending, policy, backoff, false)
+		result, err := settleRollback(ctx, runtime, pending, policy, backoff)
 		switch result.Outcome {
 		case mutation.Confirmed:
 			if confirmErr := ConfirmRollback(authoring, result); confirmErr != nil {
@@ -394,7 +380,7 @@ func RecoverRollbacks(
 				return errors.Join(err, rejectErr)
 			}
 		case mutation.Unknown:
-			if errors.Is(err, agent.ErrSessionNotFound) {
+			if errors.Is(err, protocol.ErrSessionNotFound) {
 				if retireErr := authoring.RetireSessionState(pending.SessionID); retireErr != nil {
 					return errors.Join(err, retireErr)
 				}

@@ -26,7 +26,7 @@ type waitingDelegateFixture struct {
 	projection  *delegateProjection
 }
 
-func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFixture {
+func newWaitingDelegateFixture(t *testing.T) *waitingDelegateFixture {
 	t.Helper()
 
 	model := newWaitingDelegateModel()
@@ -40,13 +40,10 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 	if err != nil {
 		t.Fatal(err)
 	}
-	executor, err := NewInteractionExecutor(InteractionExecutorConfig{
-		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(client),
-		ImplementationIdentity: identity + "-build",
-		ConfigurationIdentity:  identity + "-config",
-		DefaultMaxModelCalls:   uint32Pointer(4),
-		BuildID:                interactionTestBuildID,
+	executor, err := newInteractionTestExecutor(t, InteractionExecutorConfig{
+		Lifetime:     t.Context(),
+		ChatResolver: staticInteractionChatResolver(client),
+		BuildID:      interactionTestBuildID,
 		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{question},
 		}},

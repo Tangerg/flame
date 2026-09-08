@@ -39,7 +39,7 @@ type recoveryStoreStub struct {
 	commit            RecoveryCommit
 	commits           int
 	commitErr         error
-	checkpoint        *ExecutorCheckpoint
+	checkpoint        *rundomain.Checkpoint
 	checkpointErr     error
 	aliasOpen         bool
 	aliasPending      bool
@@ -51,10 +51,11 @@ type recoveryStoreStub struct {
 func invalidRecoveryCommit(
 	commit RecoveryCommit,
 	mutate func(*recoveryCommitState),
-) RecoveryCommit {
-	state := cloneRecoveryCommitState(commit.state)
+) error {
+	state := cloneRecoveryCommitState(*commit.state)
 	mutate(&state)
-	return RecoveryCommit{state: state}
+	_, err := newRecoveryCommit(state)
+	return err
 }
 
 func (r *recoveryStoreStub) ListNonTerminalRuns(context.Context) ([]rundomain.Run, error) {
@@ -268,12 +269,12 @@ func TestRecoveryRejectsActiveOpenToolWithoutItsRunningItem(t *testing.T) {
 func (r *recoveryStoreStub) LoadExecutorCheckpoint(
 	_ context.Context,
 	rootMemberID string,
-) (ExecutorCheckpoint, error) {
+) (rundomain.Checkpoint, error) {
 	if r.checkpointErr != nil {
-		return ExecutorCheckpoint{}, r.checkpointErr
+		return rundomain.Checkpoint{}, r.checkpointErr
 	}
 	if r.checkpoint != nil {
-		return r.checkpoint.Clone(), nil
+		return *r.checkpoint, nil
 	}
 	for _, pending := range r.pending {
 		root, found := pending.RootContinuation()
@@ -284,20 +285,20 @@ func (r *recoveryStoreStub) LoadExecutorCheckpoint(
 		if !found {
 			sess = testsupport.MustRestoreSession(session.Snapshot{ID: pending.SessionID, Workspace: testsupport.MustWorkspace("/workspace")})
 		}
-		return ExecutorCheckpoint{
+		return testsupport.MustCheckpoint(rundomain.CheckpointState{
 			RootMemberID: rootMemberID,
 			Payload:      []byte(`{}`),
 			BuildID:      testExecutorBuildID,
-			Scope: ExecutionScope{
+			Scope: rundomain.ExecutionScope{
 				SessionID: pending.SessionID, CWD: sess.Workspace().Path(), WorkspaceCWD: sess.Workspace().Path(),
 				Isolated: sess.Isolated(), GoalIncarnationID: pending.GoalIncarnationID,
 			},
 			ModelSelection: root.ModelSelection,
 			Limits:         root.Limits,
 			Capabilities:   pending.Capabilities,
-		}, nil
+		}), nil
 	}
-	return ExecutorCheckpoint{}, ErrExecutorCheckpointNotFound
+	return rundomain.Checkpoint{}, rundomain.ErrCheckpointNotFound
 }
 
 func (r *recoveryStoreStub) CommitRecovery(_ context.Context, commit RecoveryCommit) error {
@@ -916,26 +917,26 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 			}
 		}
 	})
-	if err := foreignOrphan.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted an orphan invocation outside recovered Session ownership")
+	if foreignOrphan == nil {
+		t.Fatal("recovery constructor accepted an orphan invocation outside recovered Session ownership")
 	}
 	missingCheckpointDeletion := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.DeleteCheckpointSessionIDs = nil
 	})
-	if err := missingCheckpointDeletion.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted a lost tree without checkpoint cleanup")
+	if missingCheckpointDeletion == nil {
+		t.Fatal("recovery constructor accepted a lost tree without checkpoint cleanup")
 	}
 	foreignCheckpointDeletion := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.DeleteCheckpointSessionIDs = append(state.DeleteCheckpointSessionIDs, "session_foreign")
 	})
-	if err := foreignCheckpointDeletion.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted checkpoint cleanup for an unrelated Session")
+	if foreignCheckpointDeletion == nil {
+		t.Fatal("recovery constructor accepted checkpoint cleanup for an unrelated Session")
 	}
 	missingToolReplacement := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.ItemReplacements = nil
 	})
-	if err := missingToolReplacement.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted a lost-Run Tool journal without its Item replacement")
+	if missingToolReplacement == nil {
+		t.Fatal("recovery constructor accepted a lost-Run Tool journal without its Item replacement")
 	}
 	wrongInvocationSegment := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		for index := range state.ModelInvocations {
@@ -944,8 +945,8 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 			}
 		}
 	})
-	if err := wrongInvocationSegment.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted an invocation outside its recovered active Segment")
+	if wrongInvocationSegment == nil {
+		t.Fatal("recovery constructor accepted an invocation outside its recovered active Segment")
 	}
 }
 
@@ -1098,22 +1099,22 @@ func TestRecoveryChargesLostGoalOwnedRootToItsAdmissionLease(t *testing.T) {
 	missingCharge := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.GoalRuns = nil
 	})
-	if err := missingCharge.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted a lost goal-owned Run without its charge")
+	if missingCharge == nil {
+		t.Fatal("recovery constructor accepted a lost goal-owned Run without its charge")
 	}
 	mismatchedCharge := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.GoalRuns[0].IncarnationID = "other-lease"
 	})
-	if err := mismatchedCharge.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted a Goal Run from another incarnation")
+	if mismatchedCharge == nil {
+		t.Fatal("recovery constructor accepted a Goal Run from another incarnation")
 	}
 	foreignDeletion := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.DeleteInterrupts = append(state.DeleteInterrupts, InterruptOwner{
 			SessionID: "other-session", RootRunID: "run_foreign",
 		})
 	})
-	if err := foreignDeletion.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted deletion of an unrelated Pending set")
+	if foreignDeletion == nil {
+		t.Fatal("recovery constructor accepted deletion of an unrelated Pending set")
 	}
 }
 
@@ -1142,14 +1143,14 @@ func TestRecoveryPreservesOnlyCoherentInterruptedTree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reconcile: %v", err)
 	}
-	wantContinuation, err := waitingContinuationFromPending(pending, ExecutorCheckpoint{
+	wantContinuation, err := waitingContinuationFromPending(pending, testsupport.MustCheckpoint(rundomain.CheckpointState{
 		RootMemberID: "member_root", Payload: []byte(`{}`), BuildID: testExecutorBuildID,
-		Scope: ExecutionScope{
+		Scope: rundomain.ExecutionScope{
 			SessionID: run.SessionID(), CWD: "/workspace", WorkspaceCWD: "/workspace",
 			GoalIncarnationID: pending.GoalIncarnationID,
 		},
 		ModelSelection: run.ModelSelection(), Limits: run.Limits(), Capabilities: pending.Capabilities,
-	})
+	}))
 	if err != nil {
 		t.Fatalf("waitingContinuationFromPending: %v", err)
 	}
@@ -1266,7 +1267,7 @@ func TestRecoveryTreatsInvalidExecutorCheckpointAsResourceLoss(t *testing.T) {
 		runs:          []rundomain.Run{run},
 		pending:       []Pending{pending},
 		transcripts:   map[string][]transcript.Item{run.SessionID(): {item}},
-		checkpointErr: fmt.Errorf("corrupt durable policy: %w", ErrInvalidExecutorCheckpoint),
+		checkpointErr: fmt.Errorf("corrupt durable policy: %w", rundomain.ErrInvalidCheckpoint),
 	}
 	checkpointCalls := 0
 	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
@@ -1290,36 +1291,36 @@ func TestRecoveryTreatsInvalidExecutorCheckpointAsResourceLoss(t *testing.T) {
 func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *testing.T) {
 	tests := []struct {
 		name   string
-		mutate func(*ExecutorCheckpoint)
+		mutate func(*rundomain.CheckpointState)
 	}{
-		{name: "root member", mutate: func(checkpoint *ExecutorCheckpoint) {
+		{name: "root member", mutate: func(checkpoint *rundomain.CheckpointState) {
 			checkpoint.RootMemberID = "member_other"
 		}},
-		{name: "session", mutate: func(checkpoint *ExecutorCheckpoint) {
+		{name: "session", mutate: func(checkpoint *rundomain.CheckpointState) {
 			checkpoint.Scope.SessionID = "session_other"
 		}},
-		{name: "working directory", mutate: func(checkpoint *ExecutorCheckpoint) {
+		{name: "working directory", mutate: func(checkpoint *rundomain.CheckpointState) {
 			checkpoint.Scope.CWD = "/other/workspace"
 		}},
-		{name: "workspace", mutate: func(checkpoint *ExecutorCheckpoint) {
+		{name: "workspace", mutate: func(checkpoint *rundomain.CheckpointState) {
 			checkpoint.Scope.WorkspaceCWD = "/other/workspace"
 		}},
-		{name: "isolation", mutate: func(checkpoint *ExecutorCheckpoint) {
+		{name: "isolation", mutate: func(checkpoint *rundomain.CheckpointState) {
 			checkpoint.Scope.Isolated = true
 		}},
-		{name: "goal incarnation", mutate: func(checkpoint *ExecutorCheckpoint) {
+		{name: "goal incarnation", mutate: func(checkpoint *rundomain.CheckpointState) {
 			checkpoint.Scope.GoalIncarnationID = "goal_other"
 		}},
-		{name: "provider", mutate: func(checkpoint *ExecutorCheckpoint) {
+		{name: "provider", mutate: func(checkpoint *rundomain.CheckpointState) {
 			checkpoint.ModelSelection = mustCheckpointSelection("openai", checkpoint.ModelSelection.Model())
 		}},
-		{name: "model", mutate: func(checkpoint *ExecutorCheckpoint) {
+		{name: "model", mutate: func(checkpoint *rundomain.CheckpointState) {
 			checkpoint.ModelSelection = mustCheckpointSelection(checkpoint.ModelSelection.Provider(), "model_other")
 		}},
-		{name: "limits", mutate: func(checkpoint *ExecutorCheckpoint) {
+		{name: "limits", mutate: func(checkpoint *rundomain.CheckpointState) {
 			checkpoint.Limits = testsupport.MustRunLimits(rundomain.LimitValues{MaxSteps: testsupport.Pointer(1)})
 		}},
-		{name: "capabilities", mutate: func(checkpoint *ExecutorCheckpoint) {
+		{name: "capabilities", mutate: func(checkpoint *rundomain.CheckpointState) {
 			checkpoint.Capabilities.ChildRuns = true
 		}},
 	}
@@ -1330,11 +1331,11 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 			if !found {
 				t.Fatal("coherent Pending has no root continuation")
 			}
-			checkpoint := ExecutorCheckpoint{
+			checkpoint := testsupport.MustCheckpoint(rundomain.CheckpointState{
 				RootMemberID: root.MemberID,
 				Payload:      []byte(`{}`),
 				BuildID:      testExecutorBuildID,
-				Scope: ExecutionScope{
+				Scope: rundomain.ExecutionScope{
 					SessionID:    run.SessionID(),
 					CWD:          "/workspace",
 					WorkspaceCWD: "/workspace",
@@ -1342,8 +1343,10 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 				ModelSelection: root.ModelSelection,
 				Limits:         root.Limits,
 				Capabilities:   pending.Capabilities.Clone(),
-			}
-			test.mutate(&checkpoint)
+			})
+			checkpointState := checkpoint.State()
+			test.mutate(&checkpointState)
+			checkpoint = testsupport.MustCheckpoint(checkpointState)
 
 			store := &recoveryStoreStub{
 				runs:        []rundomain.Run{run},
@@ -1439,14 +1442,14 @@ func TestRecoveryAtomicallyClosesLostQuestionToolContext(t *testing.T) {
 	missingClosure := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.ConversationTransitions = nil
 	})
-	if err := missingClosure.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted a lost tree without its conversation transition")
+	if missingClosure == nil {
+		t.Fatal("recovery constructor accepted a lost tree without its conversation transition")
 	}
 	wrongWatermark := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		state.ConversationTransitions[0].ExpectedCount++
 	})
-	if err := wrongWatermark.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted a conversation watermark that differs from the lost Run")
+	if wrongWatermark == nil {
+		t.Fatal("recovery constructor accepted a conversation watermark that differs from the lost Run")
 	}
 }
 

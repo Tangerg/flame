@@ -14,36 +14,35 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-func TestEventCommitUsesCompleteRunStateInvariant(t *testing.T) {
+func TestEventCommitDerivesLifecycleFromRun(t *testing.T) {
 	createdAt := time.Date(2026, 8, 1, 3, 0, 0, 0, time.UTC)
 	waiting := testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "session", State: run.Waiting,
-		CreatedAt: createdAt, UpdatedAt: createdAt,
-		MessageMark: run.UnknownMessageMark})
-
-	valid := EventCommit{
-		RunID: waiting.ID(), SessionID: waiting.SessionID(), SegmentID: "segment_1",
-		State: StateSuspend, Run: &waiting,
+		CreatedAt: createdAt, UpdatedAt: createdAt, MessageMark: run.UnknownMessageMark})
+	config := EventCommitConfig{RunID: waiting.ID(), SessionID: waiting.SessionID(), SegmentID: "segment_1", Run: &waiting}
+	commit := mustEventCommit(t, config)
+	if !commit.Suspends() || commit.Terminates() || !commit.ChangesLifecycle() || commit.GoalRun() != nil {
+		t.Fatalf("waiting lifecycle = %+v", commit)
 	}
-	if err := valid.Validate(); err != nil {
-		t.Fatalf("valid suspend commit: %v", err)
+	config.Run = nil
+	ordinary := mustEventCommit(t, config)
+	if ordinary.Suspends() || ordinary.Terminates() || ordinary.ChangesLifecycle() {
+		t.Fatal("ordinary commit changed lifecycle")
 	}
-	withOutcome := valid
-	withOutcome.Outcome = run.OutcomeCanceled
-	if err := withOutcome.Validate(); err == nil {
-		t.Fatal("suspend commit accepted a terminal outcome")
-	}
-	unchangedWithOutcome := EventCommit{
-		RunID: "run_1", SessionID: "session", SegmentID: "segment_1",
-		Outcome: run.OutcomeCanceled,
-	}
-	if err := unchangedWithOutcome.Validate(); err == nil || unchangedWithOutcome.isEmpty() {
-		t.Fatalf("unchanged commit with outcome = empty:%t error:%v", unchangedWithOutcome.isEmpty(), err)
+	value := testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "session", State: run.Running})
+	config.Run = &value
+	if _, err := NewEventCommit(config); err == nil {
+		t.Fatal("accepted an execution Run as a lifecycle transition")
 	}
 
-	contradictory := waiting.Snapshot()
-	contradictory.ActiveSegmentID = "segment_stale"
-	if _, err := run.Restore(contradictory); err == nil {
-		t.Fatal("Run.Restore accepted a waiting Run with an active Segment")
+	zero := run.Run{}
+	config.Run = &zero
+	if _, err := NewEventCommit(config); err == nil {
+		t.Fatal("accepted zero Run")
+	}
+	config.Run = &waiting
+	config.RunID = "run_other"
+	if _, err := NewEventCommit(config); err == nil {
+		t.Fatal("accepted foreign Run")
 	}
 }
 
@@ -54,15 +53,15 @@ func TestTerminalEventCommitAllowsOnlyTheTransactionalWatermarkPlaceholder(t *te
 		Outcome: &outcome, CreatedAt: createdAt, UpdatedAt: createdAt.Add(time.Second),
 		FinishedAt: createdAt.Add(time.Second), MessageMark: run.UnknownMessageMark})
 
-	commit := EventCommit{
-		RunID: record.ID(), SessionID: record.SessionID(), SegmentID: "segment_1", State: StateTerminalize,
-		CommitID: testCommitID("run_commit_event_1"), Outcome: outcome, Run: &record,
+	config := EventCommitConfig{
+		RunID: record.ID(), SessionID: record.SessionID(), SegmentID: "segment_1",
+		CommitID: testCommitID("run_commit_event_1"), Run: &record,
 	}
-	if err := commit.Validate(); err != nil {
+	if _, err := NewEventCommit(config); err != nil {
 		t.Fatalf("terminal commit awaiting transactional watermark: %v", err)
 	}
-	commit.CommitID = runtimeidentity.CommitID{}
-	if err := commit.Validate(); err == nil {
+	config.CommitID = runtimeidentity.CommitID{}
+	if _, err := NewEventCommit(config); err == nil {
 		t.Fatal("terminal commit without an immutable commit identity passed validation")
 	}
 
@@ -128,10 +127,10 @@ func TestEventCommitToolJournalOwnsMatchingItemState(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := (EventCommit{
+			_, err := NewEventCommit(EventCommitConfig{
 				RunID: "run_1", SessionID: "session", SegmentID: "segment_1", Items: test.items,
 				ToolInvocations: []ToolInvocationCommit{test.invocation},
-			}).Validate()
+			})
 			if (err != nil) != test.wantErr {
 				t.Fatalf("Validate() error = %v, wantErr %t", err, test.wantErr)
 			}
@@ -141,21 +140,21 @@ func TestEventCommitToolJournalOwnsMatchingItemState(t *testing.T) {
 
 func TestEventCommitOwnsInvocationAndProgressSegment(t *testing.T) {
 	startedAt := time.Date(2026, 8, 15, 1, 2, 3, 0, time.UTC)
-	commit := EventCommit{
+	config := EventCommitConfig{
 		RunID: "run_1", SessionID: "session", SegmentID: "segment_1",
 		ModelInvocations: []ModelInvocationCommit{{
 			CallID: "call_1", SegmentID: "segment_2",
 			State: ModelInvocationStarted, StartedAt: startedAt,
 		}},
 	}
-	if err := commit.Validate(); err == nil {
+	if _, err := NewEventCommit(config); err == nil {
 		t.Fatal("EventCommit accepted a model invocation from another Segment")
 	}
-	commit.ModelInvocations = nil
-	commit.Progress = &ProgressCommit{
+	config.ModelInvocations = nil
+	config.Progress = &ProgressCommit{
 		SegmentID: "segment_2", Metrics: run.Metrics{}, UpdatedAt: startedAt,
 	}
-	if err := commit.Validate(); err == nil {
+	if _, err := NewEventCommit(config); err == nil {
 		t.Fatal("EventCommit accepted progress from another Segment")
 	}
 }
@@ -241,10 +240,10 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 		RunID: "run_root", SessionID: "session", SegmentID: "segment_root",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	foreign := EventCommit{
+	foreign := mustEventCommit(t, EventCommitConfig{
 		RunID: "run_foreign", SessionID: "session", SegmentID: "segment_foreign",
 		Items: []transcript.Item{item("run_foreign", "item_foreign")},
-	}
+	})
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_foreign_event"), root,
 		nil, nil, "", nil, []EventCommit{foreign},
@@ -257,24 +256,24 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 		SpawnedByItemID: "item_spawn", ParentRunID: root.RunID, RootRunID: root.RunID,
 		ModelSelection: root.ModelSelection, CreatedAt: createdAt,
 	}
-	parentEvent := EventCommit{
+	parentEvent := mustEventCommit(t, EventCommitConfig{
 		RunID: root.RunID, SessionID: "session", SegmentID: root.SegmentID,
 		Items: []transcript.Item{item(root.RunID, "item_parent")},
-	}
-	childEvent := EventCommit{
+	})
+	childEvent := mustEventCommit(t, EventCommitConfig{
 		RunID: child.RunID, SessionID: "session", SegmentID: child.SegmentID,
 		Items: []transcript.Item{item(child.RunID, "item_child")},
-	}
+	})
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_child_events"), child,
 		nil, nil, "", nil, []EventCommit{parentEvent, childEvent},
 	); err != nil {
 		t.Fatalf("child OpeningCommit rejected its parent/child projections: %v", err)
 	}
-	withProgress := childEvent
-	withProgress.Progress = &ProgressCommit{
-		SegmentID: child.SegmentID, UpdatedAt: createdAt, Metrics: run.Metrics{},
-	}
+	withProgress := mustEventCommit(t, EventCommitConfig{
+		RunID: child.RunID, SessionID: child.SessionID, SegmentID: child.SegmentID, Items: childEvent.Items(),
+		Progress: &ProgressCommit{SegmentID: child.SegmentID, UpdatedAt: createdAt, Metrics: run.Metrics{}},
+	})
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_child_progress"), child,
 		nil, nil, "", nil, []EventCommit{parentEvent, withProgress},
@@ -286,10 +285,10 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 		RootRunID: root.RunID, SessionID: "session", ResumedAt: createdAt,
 		Runs: []run.ResumeDraft{{RunID: root.RunID, SegmentID: "segment_resumed"}},
 	}
-	wrongSegment := EventCommit{
+	wrongSegment := mustEventCommit(t, EventCommitConfig{
 		RunID: root.RunID, SessionID: "session", SegmentID: "segment_stale",
 		Items: []transcript.Item{item(root.RunID, "item_resumed")},
-	}
+	})
 	if _, err := NewResumeOpeningCommit(
 		testCommitID("run_commit_stale_resume_event"), resume, []EventCommit{wrongSegment},
 	); err == nil {
@@ -308,10 +307,10 @@ func TestCompositeCommitsRejectNestedTopLevelEventIdentity(t *testing.T) {
 	}
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_opening_parent"), admission,
-		nil, nil, "", nil, []EventCommit{{
+		nil, nil, "", nil, []EventCommit{mustEventCommit(t, EventCommitConfig{
 			RunID: admission.RunID, SessionID: admission.SessionID, SegmentID: admission.SegmentID,
 			CommitID: testCommitID("run_commit_opening_nested"), Items: []transcript.Item{openingItem},
-		}},
+		})},
 	); err == nil {
 		t.Fatal("OpeningCommit accepted a nested top-level event identity")
 	}
@@ -320,16 +319,18 @@ func TestCompositeCommitsRejectNestedTopLevelEventIdentity(t *testing.T) {
 	waiting := runForPending(pending)
 	checkpoint := testExecutorCheckpoint()
 	root, _ := pending.RootContinuation()
-	checkpoint.ModelSelection = root.ModelSelection
-	checkpoint.Limits = root.Limits
-	checkpoint.Capabilities = pending.Capabilities
+	checkpointState := checkpoint.State()
+	checkpointState.ModelSelection = root.ModelSelection
+	checkpointState.Limits = root.Limits
+	checkpointState.Capabilities = pending.Capabilities
+	checkpoint = testsupport.MustCheckpoint(checkpointState)
 	_, err := NewTreeBarrierCommit(
 		testCommitID("run_commit_barrier_parent"),
 		pending,
-		[]EventCommit{{
+		[]EventCommit{mustEventCommit(t, EventCommitConfig{
 			RunID: waiting.ID(), SessionID: waiting.SessionID(), SegmentID: "segment_root",
-			CommitID: testCommitID("run_commit_barrier_nested"), State: StateSuspend, Run: &waiting,
-		}},
+			CommitID: testCommitID("run_commit_barrier_nested"), Run: &waiting,
+		})},
 		checkpoint,
 	)
 	if err == nil {
@@ -343,16 +344,18 @@ func TestTreeBarrierCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	waiting := runForPending(pending)
 	checkpoint := testExecutorCheckpoint()
 	root, _ := pending.RootContinuation()
-	checkpoint.ModelSelection = root.ModelSelection
-	checkpoint.Limits = root.Limits
-	checkpoint.Capabilities = pending.Capabilities
-	commits := []EventCommit{{
+	checkpointState := checkpoint.State()
+	checkpointState.ModelSelection = root.ModelSelection
+	checkpointState.Limits = root.Limits
+	checkpointState.Capabilities = pending.Capabilities
+	checkpoint = testsupport.MustCheckpoint(checkpointState)
+	commits := []EventCommit{mustEventCommit(t, EventCommitConfig{
 		RunID: waiting.ID(), SessionID: waiting.SessionID(), SegmentID: "segment_root",
-		State: StateSuspend, Run: &waiting,
+		Run: &waiting,
 		ConversationMessages: []corechat.Message{
 			corechat.NewUserMessage(corechat.NewTextPart("original")),
 		},
-	}}
+	})}
 
 	barrier, err := NewTreeBarrierCommit(
 		testCommitID("run_commit_owned_barrier"), pending, commits, checkpoint,
@@ -362,17 +365,17 @@ func TestTreeBarrierCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	}
 
 	pending.Bindings[0].MemberID = "member_changed"
-	commits[0].Run = nil
-	commits[0].ConversationMessages[0].Parts[0].Text = "changed"
-	checkpoint.Payload[0] = 'x'
+	*commits[0].Run() = run.Run{}
+	commits[0].ConversationMessages()[0].Parts[0].Text = "changed"
+	checkpoint.Payload()[0] = 'x'
 
 	projectedPending := barrier.Pending()
 	projectedPending.Bindings[0].MemberID = "member_projected"
 	projectedRuns := barrier.Runs()
-	projectedRuns[0].Run = nil
-	projectedRuns[0].ConversationMessages[0].Parts[0].Text = "projected"
+	*projectedRuns[0].Run() = run.Run{}
+	projectedRuns[0].ConversationMessages()[0].Parts[0].Text = "projected"
 	projectedCheckpoint := barrier.Checkpoint()
-	projectedCheckpoint.Payload[0] = 'y'
+	projectedCheckpoint.Payload()[0] = 'y'
 
 	ownedPending := barrier.Pending()
 	ownedRuns := barrier.Runs()
@@ -380,11 +383,11 @@ func TestTreeBarrierCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	if ownedPending.Bindings[0].MemberID != "member_root" {
 		t.Fatalf("owned Pending member = %q, want member_root", ownedPending.Bindings[0].MemberID)
 	}
-	if ownedRuns[0].Run == nil || ownedRuns[0].ConversationMessages[0].Text() != "original" {
+	if ownedRuns[0].Run() == nil || ownedRuns[0].ConversationMessages()[0].Text() != "original" {
 		t.Fatalf("owned Run commit = %+v, want isolated Run and message", ownedRuns[0])
 	}
-	if string(ownedCheckpoint.Payload) != `{"root":"member_root"}` {
-		t.Fatalf("owned checkpoint payload = %q", ownedCheckpoint.Payload)
+	if string(ownedCheckpoint.Payload()) != `{"root":"member_root"}` {
+		t.Fatalf("owned checkpoint payload = %q", ownedCheckpoint.Payload())
 	}
 	if err := barrier.Validate(); err != nil {
 		t.Fatalf("owned barrier no longer validates: %v", err)
@@ -402,12 +405,12 @@ func TestOpeningCommitOwnsItsValidatedWriteSet(t *testing.T) {
 		ID: "session", Workspace: testsupport.MustWorkspace("/work"),
 		StartedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
 	})
-	events := []EventCommit{{
+	events := []EventCommit{mustEventCommit(t, EventCommitConfig{
 		RunID: admission.RunID, SessionID: admission.SessionID, SegmentID: admission.SegmentID,
 		ConversationMessages: []corechat.Message{
 			corechat.NewUserMessage(corechat.NewTextPart("original")),
 		},
-	}}
+	})}
 
 	opening, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_owned_opening"), admission,
@@ -419,11 +422,11 @@ func TestOpeningCommitOwnsItsValidatedWriteSet(t *testing.T) {
 
 	admission.Capabilities.InterruptKinds[0] = interrupt.Question
 	initialSession = session.Session{}
-	events[0].ConversationMessages[0].Parts[0].Text = "changed"
+	events[0].ConversationMessages()[0].Parts[0].Text = "changed"
 	projectedAdmission, _ := opening.Admission()
 	projectedAdmission.Capabilities.InterruptKinds[0] = interrupt.Question
 	projectedEvents := opening.Events()
-	projectedEvents[0].ConversationMessages[0].Parts[0].Text = "projected"
+	projectedEvents[0].ConversationMessages()[0].Parts[0].Text = "projected"
 
 	ownedAdmission, admitted := opening.Admission()
 	ownedSession, initialized := opening.InitialSession()
@@ -434,7 +437,7 @@ func TestOpeningCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	if !initialized || ownedSession.ID() != "session" {
 		t.Fatalf("owned initial Session = %+v", ownedSession)
 	}
-	if ownedEvents[0].ConversationMessages[0].Text() != "original" {
+	if ownedEvents[0].ConversationMessages()[0].Text() != "original" {
 		t.Fatalf("owned opening events = %+v", ownedEvents)
 	}
 	if err := opening.Validate(); err != nil {
@@ -460,5 +463,90 @@ func TestOpeningCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	}
 	if err := resumed.Validate(); err != nil {
 		t.Fatalf("owned resume opening no longer validates: %v", err)
+	}
+}
+
+func mustEventCommit(t *testing.T, config EventCommitConfig) EventCommit {
+	t.Helper()
+	commit, err := NewEventCommit(config)
+	if err != nil {
+		t.Fatalf("NewEventCommit: %v", err)
+	}
+	return commit
+}
+
+func TestEventCommitOwnsItsWriteSetAndDerivesGoalAccounting(t *testing.T) {
+	startedAt := time.Date(2026, 9, 7, 1, 2, 3, 0, time.UTC)
+	finishedAt := startedAt.Add(time.Second)
+	outcome := run.OutcomeCompleted
+	record := testsupport.MustRestoreRun(run.Snapshot{
+		ID: "run_1", SessionID: "session", State: run.Completed, Outcome: &outcome,
+		GoalIncarnationID: "goal_1", CreatedAt: startedAt, UpdatedAt: finishedAt, FinishedAt: finishedAt,
+		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}),
+	})
+	item := testsupport.MustRestoreItem(testsupport.ItemInput{
+		ID: "item_1", RunID: record.ID(), SessionID: record.SessionID(), Kind: transcript.ToolCall,
+		Status: transcript.ItemCompleted, OccurredAt: startedAt, FinishedAt: finishedAt,
+	})
+	config := EventCommitConfig{
+		RunID: record.ID(), SessionID: record.SessionID(), SegmentID: "segment_1",
+		CommitID: testCommitID("run_commit_owned_event"), Run: &record,
+		Items:                []transcript.Item{item},
+		ConversationMessages: []corechat.Message{corechat.NewAssistantMessage(corechat.NewTextPart("original"))},
+		ModelInvocations:     []ModelInvocationCommit{{CallID: "model_1", SegmentID: "segment_1", State: ModelInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt}},
+		ToolInvocations:      []ToolInvocationCommit{{CallID: "tool_1", ItemID: item.ID(), SegmentID: "segment_1", State: ToolInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt}},
+		Progress:             &ProgressCommit{SegmentID: "segment_1", Metrics: record.Metrics(), UpdatedAt: finishedAt},
+	}
+	commit := mustEventCommit(t, config)
+	config.Items[0] = transcript.Item{}
+	config.ConversationMessages[0].Parts[0].Text = "changed"
+	config.ModelInvocations[0].CallID = "changed"
+	config.ToolInvocations[0].ItemID = "changed"
+	config.Progress.SegmentID = "changed"
+	record = run.Run{}
+	commit.Items()[0] = transcript.Item{}
+	commit.ConversationMessages()[0].Parts[0].Text = "projected"
+	commit.ModelInvocations()[0].CallID = "projected"
+	commit.ToolInvocations()[0].ItemID = "projected"
+	commit.Progress().SegmentID = "projected"
+	*commit.Run() = run.Run{}
+	commit.GoalRun().RunID = "projected"
+	if commit.Items()[0].ID() != item.ID() || commit.ConversationMessages()[0].Text() != "original" ||
+		commit.ModelInvocations()[0].CallID != "model_1" || commit.ToolInvocations()[0].ItemID != item.ID() ||
+		commit.Progress().SegmentID != "segment_1" || commit.Run().ID() != "run_1" {
+		t.Fatal("event commit followed input or output mutation")
+	}
+	charge := commit.GoalRun()
+	if !commit.Terminates() || commit.Suspends() || !commit.ChangesLifecycle() || charge == nil ||
+		charge.RunID != "run_1" || charge.SessionID != "session" || charge.IncarnationID != "goal_1" ||
+		charge.Outcome != outcome || charge.Steps != 2 || !charge.CompletedAt.Equal(finishedAt) {
+		t.Fatalf("terminal Goal accounting = %+v", charge)
+	}
+}
+
+func TestEventCommitRetiresCheckpointsOnlyForTerminalRoots(t *testing.T) {
+	now := time.Date(2026, 9, 7, 1, 2, 3, 0, time.UTC)
+	terminal := testsupport.MustRestoreRun(run.Snapshot{ID: "run_root", SessionID: "session", State: run.Completed, CreatedAt: now, FinishedAt: now})
+	waiting := testsupport.MustRestoreRun(run.Snapshot{ID: "run_root", SessionID: "session", State: run.Waiting, CreatedAt: now})
+	child := testsupport.MustRestoreRun(run.Snapshot{ID: "run_child", SessionID: "session", State: run.Completed, CreatedAt: now, FinishedAt: now,
+		Lineage: run.Lineage{ParentRunID: "run_root", RootRunID: "run_root", SpawnedByItemID: "item_spawn"},
+	})
+	for _, test := range []struct {
+		name   string
+		record *run.Run
+		valid  bool
+	}{
+		{name: "ordinary"}, {name: "waiting", record: &waiting}, {name: "terminal child", record: &child}, {name: "terminal root", record: &terminal, valid: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			config := EventCommitConfig{RunID: "run_root", SessionID: "session", SegmentID: "segment_1", CommitID: testCommitID("run_commit_retire_checkpoint"), Run: test.record, ObsoleteCheckpointRootID: "member_root"}
+			if test.record != nil {
+				config.RunID = test.record.ID()
+			}
+			_, err := NewEventCommit(config)
+			if (err == nil) != test.valid {
+				t.Fatalf("NewEventCommit error = %v, want valid %t", err, test.valid)
+			}
+		})
 	}
 }
