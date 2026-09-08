@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
@@ -71,10 +72,7 @@ func New() *Queue {
 }
 
 func (q *Queue) Enqueue(sessionID string, message agent.Message) (Entry, error) {
-	commandID, err := agent.NewCommandID()
-	if err != nil {
-		return Entry{}, fmt.Errorf("prompt queue: %w", err)
-	}
+	commandID := mutation.NewCommandID()
 	return q.EnqueueCommand(commandID, sessionID, message, agent.RunOptions{Limits: agent.UnlimitedRunLimits()})
 }
 
@@ -361,10 +359,7 @@ func (q *Queue) Release(sessionID string, id EntryID) error {
 }
 
 func (q *Queue) Update(sessionID string, id EntryID, message agent.Message) error {
-	commandID, err := agent.NewCommandID()
-	if err != nil {
-		return fmt.Errorf("prompt queue: %w", err)
-	}
+	commandID := mutation.NewCommandID()
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	index := entryIndex(q.entries[sessionID], id)

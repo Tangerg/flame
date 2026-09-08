@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
@@ -256,17 +257,13 @@ func (p *PendingRun) beginDispatch(replay commandreplay.Guard) error {
 
 func (p *PendingRun) beginCancellation(
 	replay commandreplay.Guard,
-	newCommandID func() (agent.CommandID, error),
 ) (agent.CommandID, error) {
 	if err := replay.Validate(); err != nil {
 		return "", err
 	}
 	switch p.State {
 	case PendingRunDispatching:
-		cancelCommandID, err := newCommandID()
-		if err != nil {
-			return "", err
-		}
+		cancelCommandID := mutation.NewCommandID()
 		p.State = PendingRunCanceling
 		p.CancelCommandID = cancelCommandID
 		p.CancelReplay = replay
@@ -278,14 +275,11 @@ func (p *PendingRun) beginCancellation(
 	}
 }
 
-func (p *PendingRun) requeue(newCommandID func() (agent.CommandID, error)) (agent.CommandID, error) {
+func (p *PendingRun) requeue() (agent.CommandID, error) {
 	if p.State != PendingRunDispatching {
 		return "", fmt.Errorf("pending run cannot be requeued from %q", p.State)
 	}
-	replacement, err := newCommandID()
-	if err != nil {
-		return "", err
-	}
+	replacement := mutation.NewCommandID()
 	p.State = PendingRunQueued
 	p.Command.CommandID = replacement
 	p.CancelCommandID = ""

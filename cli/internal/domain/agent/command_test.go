@@ -1,17 +1,9 @@
 package agent
 
-import (
-	"bytes"
-	"errors"
-	"io"
-	"testing"
-)
+import "testing"
 
 func TestCommandIDHasAStableValidatedWireIdentity(t *testing.T) {
-	id, err := newCommandID(bytes.NewReader(make([]byte, 16)))
-	if err != nil {
-		t.Fatal(err)
-	}
+	id := NewCommandID([CommandIDEntropyBytes]byte{})
 	if got, want := string(id), "cli_00000000000000000000000000000000"; got != want {
 		t.Fatalf("command id = %q, want %q", got, want)
 	}
@@ -22,11 +14,5 @@ func TestCommandIDHasAStableValidatedWireIdentity(t *testing.T) {
 		if err := invalid.Validate(); err == nil {
 			t.Fatalf("invalid command id %q was accepted", invalid)
 		}
-	}
-}
-
-func TestCommandIDReportsEntropyFailure(t *testing.T) {
-	if _, err := newCommandID(bytes.NewReader(nil)); !errors.Is(err, io.EOF) {
-		t.Fatalf("empty entropy error = %v, want EOF", err)
 	}
 }

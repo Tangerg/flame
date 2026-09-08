@@ -59,10 +59,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		return errors.New("one-shot run requires a renderer")
 	}
 	if invocation.Start.CommandID == "" {
-		invocation.Start.CommandID, runErr = agent.NewCommandID()
-		if runErr != nil {
-			return runErr
-		}
+		invocation.Start.CommandID = mutation.NewCommandID()
 	}
 	if err := invocation.Start.Validate(); err != nil {
 		return err
@@ -175,10 +172,7 @@ func cancelAbandonedRun(
 	runID string,
 	replayPolicy commandreplay.Policy,
 ) error {
-	commandID, err := agent.NewCommandID()
-	if err != nil {
-		return fmt.Errorf("prepare abandoned run cancellation: %w", err)
-	}
+	commandID := mutation.NewCommandID()
 	cancelCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cancellationTimeout)
 	defer cancel()
 	replay, err := replayPolicy.NewGuard()
@@ -266,10 +260,7 @@ func (e *executionDriver) resume(ctx context.Context, interactions []agent.Inter
 	if err != nil {
 		return err
 	}
-	commandID, err := agent.NewCommandID()
-	if err != nil {
-		return err
-	}
+	commandID := mutation.NewCommandID()
 	command := agent.ResumeRun{CommandID: commandID, RunID: runID, Answers: answers}
 	replay, err := e.invocation.ReplayPolicy.NewGuard()
 	if err != nil {

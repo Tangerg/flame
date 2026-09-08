@@ -157,10 +157,7 @@ func Rollback(
 	if validateCommitErr := preview.ValidateCommit(latest); validateCommitErr != nil {
 		return RollbackResult{}, validateCommitErr
 	}
-	commandID, err := agent.NewCommandID()
-	if err != nil {
-		return RollbackResult{}, fmt.Errorf("create session rollback identity: %w", err)
-	}
+	commandID := mutation.NewCommandID()
 	if err := policy.Validate(); err != nil {
 		return RollbackResult{}, err
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
@@ -84,10 +85,7 @@ func (s *Store) RequeuePendingResume(
 	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
 		return PendingResume{}, err
 	}
-	replacement, err := agent.NewCommandID()
-	if err != nil {
-		return PendingResume{}, err
-	}
+	replacement := mutation.NewCommandID()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	pending, exists := s.pendingResumes[sessionID]
@@ -263,7 +261,7 @@ func (s *Store) MarkPendingRunCanceling(
 		return s.pendingRuns[sessionID][index].CancelCommandID, nil
 	}
 	next := clonePendingRuns(s.pendingRuns)
-	cancelCommandID, err := next[sessionID][index].beginCancellation(replay, agent.NewCommandID)
+	cancelCommandID, err := next[sessionID][index].beginCancellation(replay)
 	if err != nil {
 		return "", err
 	}
@@ -294,7 +292,7 @@ func (s *Store) RequeuePendingRun(sessionID string, commandID agent.CommandID) (
 		return "", errors.New("pending run is absent")
 	}
 	next := clonePendingRuns(s.pendingRuns)
-	replacement, err := next[sessionID][index].requeue(agent.NewCommandID)
+	replacement, err := next[sessionID][index].requeue()
 	if err != nil {
 		return "", err
 	}

@@ -205,10 +205,7 @@ func newRunsCancelCommand(provider runtimeProvider) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			commandID, err := agent.NewCommandID()
-			if err != nil {
-				return fmt.Errorf("prepare run cancellation: %w", err)
-			}
+			commandID := mutation.NewCommandID()
 			request := agent.CancelRun{CommandID: commandID, RunID: args[0], Reason: reason}
 			replayPolicy, err := runtimebinding.CommandReplayPolicy(profile)
 			if err != nil {

@@ -174,10 +174,7 @@ func (a *app) requeueDefinitivelyRefusedStart(input agent.StartRun, failure erro
 			return fmt.Errorf("requeue refused run: %w", err)
 		}
 	} else {
-		replacement, err = agent.NewCommandID()
-		if err != nil {
-			return fmt.Errorf("prepare refused run for retry: %w", err)
-		}
+		replacement = mutation.NewCommandID()
 	}
 	if err := a.queue.RequeueDispatch(input.SessionID, input.CommandID, replacement); err != nil {
 		return fmt.Errorf("reidentify refused run: %w", err)

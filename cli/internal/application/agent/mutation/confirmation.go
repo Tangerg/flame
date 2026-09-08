@@ -1,4 +1,5 @@
-// Package mutation owns acknowledgement semantics for idempotent commands.
+// Package mutation owns identity allocation and acknowledgement semantics for
+// idempotent commands.
 package mutation
 
 import (

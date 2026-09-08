@@ -8,8 +8,6 @@ package runtimebinding
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"slices"
@@ -19,6 +17,7 @@ import (
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
@@ -175,7 +174,7 @@ func (r *Connection) callOptions() flameruntime.CallOptions {
 }
 
 func (r *Connection) commandOptions() flameruntime.CommandOptions {
-	key := newIdempotencyKey()
+	key := string(mutation.NewCommandID())
 	return flameruntime.CommandOptions{
 		RequestMeta: r.meta, IdempotencyKey: key,
 		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
@@ -196,7 +195,7 @@ func (r *Connection) commandOptionsFor(commandID agent.CommandID) (flameruntime.
 }
 
 func (r *Connection) runCommandOptions() flameruntime.RunCommandOptions {
-	key := newIdempotencyKey()
+	key := string(mutation.NewCommandID())
 	return flameruntime.RunCommandOptions{
 		RequestMeta: r.meta, IdempotencyKey: key,
 		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
@@ -236,12 +235,6 @@ func (r *Connection) subscriptionOptions(afterEventID string) (flameruntime.RunS
 
 func (r *Connection) changeSubscriptionOptions() flameruntime.SubscriptionOptions {
 	return flameruntime.SubscriptionOptions{RequestMeta: r.meta}
-}
-
-func newIdempotencyKey() string {
-	var entropy [16]byte
-	rand.Read(entropy[:])
-	return "cli_" + hex.EncodeToString(entropy[:])
 }
 
 func validateDiscovery(discovery *protocol.DiscoverResponse) error {

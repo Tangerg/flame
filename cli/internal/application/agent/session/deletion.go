@@ -49,10 +49,7 @@ func Delete(
 	}
 	request := pending.Request()
 	if !exists {
-		commandID, err := agent.NewCommandID()
-		if err != nil {
-			return DeletionResult{}, fmt.Errorf("create session deletion identity: %w", err)
-		}
+		commandID := mutation.NewCommandID()
 		request = agent.DeleteSession{CommandID: commandID, SessionID: sessionID}
 		replay, err := policy.NewGuard()
 		if err != nil {

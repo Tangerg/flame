@@ -1288,24 +1288,16 @@ func TestPendingRunCannotBeStagedWithoutAQueuedCommandIdentity(t *testing.T) {
 	}
 }
 
-func TestInvalidPendingRunTransitionsDoNotAllocateMutationIdentity(t *testing.T) {
+func TestInvalidPendingRunTransitionsPreserveMutationIdentity(t *testing.T) {
 	pending := PendingRun{State: PendingRunQueued, Command: agent.StartRun{
 		CommandID: agent.CommandID("cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
 		SessionID: "ses_1", Message: agent.Message{Text: "still queued"},
 	}, Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard()}
-	allocations := 0
-	allocate := func() (agent.CommandID, error) {
-		allocations++
-		return agent.CommandID("cli_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"), nil
-	}
-	if _, err := pending.beginCancellation(commandreplay.UnprotectedGuard(), allocate); err == nil {
+	if _, err := pending.beginCancellation(commandreplay.UnprotectedGuard()); err == nil {
 		t.Fatal("queued run began cancellation")
 	}
-	if _, err := pending.requeue(allocate); err == nil {
+	if _, err := pending.requeue(); err == nil {
 		t.Fatal("queued run was reidentified")
-	}
-	if allocations != 0 {
-		t.Fatalf("invalid transitions allocated %d mutation identities", allocations)
 	}
 	if pending.State != PendingRunQueued || pending.Command.CommandID != agent.CommandID("cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") {
 		t.Fatalf("invalid transitions mutated pending run: %+v", pending)

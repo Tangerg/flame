@@ -328,11 +328,7 @@ func (a *app) resumeInteractions() {
 	}
 	runID := a.execution.conversation.RunID()
 	review := a.dialogs.interactionReview
-	commandID, err := agent.NewCommandID()
-	if err != nil {
-		a.fail(err)
-		return
-	}
+	commandID := mutation.NewCommandID()
 	command := agent.ResumeRun{CommandID: commandID, RunID: runID, Answers: answers}
 	replay := commandReplayGuard(a.runtimeProfile)
 	if a.workbench != nil {

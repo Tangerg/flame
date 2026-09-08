@@ -30,10 +30,7 @@ func (a *app) steerRun(instruction string) error {
 	if validateMessageCapabilitiesErr := a.validateMessageCapabilities(message); validateMessageCapabilitiesErr != nil {
 		return validateMessageCapabilitiesErr
 	}
-	commandID, err := agent.NewCommandID()
-	if err != nil {
-		return err
-	}
+	commandID := mutation.NewCommandID()
 	request := agent.SteerRun{CommandID: commandID, RunID: runID, SegmentID: segmentID, Message: message}
 	if validateErr := request.Validate(); validateErr != nil {
 		return validateErr

@@ -203,11 +203,7 @@ type pendingCancellation struct {
 
 func (a *app) requestRuntimeCancellation(target agent.CancelRun, policy cancellationResultPolicy) {
 	if target.CommandID == "" {
-		commandID, err := agent.NewCommandID()
-		if err != nil {
-			a.message("could not prepare run cancellation: " + err.Error())
-			return
-		}
+		commandID := mutation.NewCommandID()
 		target.CommandID = commandID
 	}
 	replay := commandReplayGuard(a.runtimeProfile)
@@ -370,10 +366,7 @@ func (a *app) cancelRuntimeNow(
 	replay commandreplay.Guard,
 ) error {
 	if target.CommandID == "" {
-		commandID, err := agent.NewCommandID()
-		if err != nil {
-			return fmt.Errorf("prepare terminal-close cancellation: %w", err)
-		}
+		commandID := mutation.NewCommandID()
 		target.CommandID = commandID
 		replay = commandReplayGuard(a.runtimeProfile)
 	}

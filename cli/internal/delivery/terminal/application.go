@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/attachment"
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/sessionartifact"
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
+	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
@@ -436,11 +437,7 @@ func (a *app) dispatchPrompt(message agent.Message) {
 		a.message("wait for the current session change to finish")
 		return
 	}
-	commandID, err := agent.NewCommandID()
-	if err != nil {
-		a.message("prompt submission blocked: " + err.Error())
-		return
-	}
+	commandID := mutation.NewCommandID()
 	if commitPromptSubmissionErr := a.commitPromptSubmission(commandID, message); commitPromptSubmissionErr != nil {
 		a.reportWorkbenchIssue(workbenchRunOutbox, commitPromptSubmissionErr)
 		a.message("prompt submission blocked: " + commitPromptSubmissionErr.Error())
@@ -451,7 +448,7 @@ func (a *app) dispatchPrompt(message agent.Message) {
 		a.enqueueDeferredPrompt(commandID, message)
 		return
 	}
-	_, err = a.queue.EnqueueCommand(commandID, a.session.current.ID, message, a.options)
+	_, err := a.queue.EnqueueCommand(commandID, a.session.current.ID, message, a.options)
 	if err != nil {
 		a.message(err.Error())
 		return

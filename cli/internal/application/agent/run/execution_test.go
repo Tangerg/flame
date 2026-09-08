@@ -624,10 +624,7 @@ func TestExecuteReportsAbandonedRunCancellationFailure(t *testing.T) {
 		attempts[0].Reason != "CLI execution ended before the run settled" {
 		t.Fatalf("abandoned run cleanup attempts = %+v", attempts)
 	}
-	commandID, commandErr := agent.NewCommandID()
-	if commandErr != nil {
-		t.Fatal(commandErr)
-	}
+	commandID := mutation.NewCommandID()
 	if _, cancelErr := base.CancelRun(t.Context(), agent.CancelRun{
 		CommandID: commandID, RunID: attempts[0].RunID, Reason: "test cleanup",
 	}); cancelErr != nil {
