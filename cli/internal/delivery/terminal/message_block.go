@@ -45,17 +45,11 @@ func newUserMessageBlockAs(theme kit.Theme, speaker, body string, own bool) *use
 }
 
 func (u *userMessageBlock) Measure(width int) int {
-	if u == nil {
-		return 0
-	}
 	innerWidth, _ := u.geometry(width)
 	return u.message.Measure(innerWidth)
 }
 
 func (u *userMessageBlock) Draw(view grid.View) {
-	if u == nil {
-		return
-	}
 	width, _ := view.Size()
 	if _, inset := u.geometry(width); inset == 0 {
 		u.message.Draw(view)
@@ -65,9 +59,6 @@ func (u *userMessageBlock) Draw(view grid.View) {
 }
 
 func (u *userMessageBlock) Rows(width int) []text.Row {
-	if u == nil {
-		return nil
-	}
 	innerWidth, inset := u.geometry(width)
 	rows := u.message.Rows(innerWidth)
 	for index := range rows {
@@ -91,16 +82,10 @@ type markdownBlock struct {
 }
 
 func (m *markdownBlock) Measure(width int) int {
-	if m == nil {
-		return 0
-	}
 	return layout.Sum(1, m.doc.Measure(max(width-2, 1)), 1)
 }
 
 func (m *markdownBlock) Draw(view grid.View) {
-	if m == nil {
-		return
-	}
 	width, height := view.Size()
 	if width <= 0 || height <= 0 {
 		return
@@ -110,9 +95,6 @@ func (m *markdownBlock) Draw(view grid.View) {
 }
 
 func (m *markdownBlock) Rows(width int) []text.Row {
-	if m == nil {
-		return nil
-	}
 	rows := []text.Row{{Text: m.speaker}}
 	for _, row := range m.doc.Rows(max(width-2, 1)) {
 		row.Offset += 2

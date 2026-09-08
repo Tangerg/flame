@@ -59,11 +59,10 @@ type draftFlush struct {
 
 // draftPersistence is the single filesystem writer for composer recovery
 // state. Schedule only replaces pending work; Flush is a serialization barrier
-// used by session transitions before they mutate runtime state.
+// used by session transitions before they mutate runtime state. Whether drafts
+// are persisted at all is the application's decision — a terminal with no
+// workbench simply never builds one.
 func newDraftPersistence(repository draftRepository, notify func(draftPersistenceResult)) *draftPersistence {
-	if repository == nil {
-		return nil
-	}
 	persistence := &draftPersistence{
 		repository: repository,
 		notify:     notify,
@@ -80,7 +79,7 @@ func newDraftPersistence(repository draftRepository, notify func(draftPersistenc
 // caller on filesystem latency. A snapshot is cloned at this boundary because
 // attachment slices remain owned by the UI model.
 func (d *draftPersistence) Schedule(sessionID string, message agent.Message) error {
-	if d == nil || sessionID == "" {
+	if sessionID == "" {
 		return nil
 	}
 	d.mu.Lock()
@@ -105,7 +104,7 @@ func (d *draftPersistence) Schedule(sessionID string, message agent.Message) err
 // finished before saving snapshot. This ordering prevents an older writer from
 // winning a rename race after a session transition has committed newer state.
 func (d *draftPersistence) Flush(sessionID string, message agent.Message) error {
-	if d == nil || sessionID == "" {
+	if sessionID == "" {
 		return nil
 	}
 	d.commandMu.Lock()
@@ -124,18 +123,12 @@ func (d *draftPersistence) Flush(sessionID string, message agent.Message) error 
 }
 
 func (d *draftPersistence) Current(revision draftRevision) bool {
-	if d == nil {
-		return false
-	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return !d.closed && revision == d.revision
 }
 
 func (d *draftPersistence) Close() error {
-	if d == nil {
-		return nil
-	}
 	d.commandMu.Lock()
 	defer d.commandMu.Unlock()
 	d.mu.Lock()

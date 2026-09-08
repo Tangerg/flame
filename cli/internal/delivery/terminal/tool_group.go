@@ -38,9 +38,6 @@ func newToolGroupBlock(theme kit.Theme, glyphs kit.Glyphs, expanded bool) *toolG
 }
 
 func (t *toolGroupBlock) Add(tool *toolBlock) {
-	if t == nil || tool == nil {
-		return
-	}
 	t.tools = append(t.tools, tool)
 	tool.SetExpanded(t.expanded)
 	tool.Observe(func(readerDocument) { t.notify() })
@@ -48,7 +45,7 @@ func (t *toolGroupBlock) Add(tool *toolBlock) {
 }
 
 func (t *toolGroupBlock) Seal() {
-	if t == nil || !t.open {
+	if !t.open {
 		return
 	}
 	t.open = false
@@ -56,7 +53,7 @@ func (t *toolGroupBlock) Seal() {
 }
 
 func (t *toolGroupBlock) ReadyToFinish() bool {
-	if t == nil || t.open || len(t.tools) == 0 {
+	if t.open || len(t.tools) == 0 {
 		return false
 	}
 	for _, tool := range t.tools {
@@ -68,9 +65,6 @@ func (t *toolGroupBlock) ReadyToFinish() bool {
 }
 
 func (t *toolGroupBlock) SetExpanded(expanded bool) {
-	if t == nil {
-		return
-	}
 	t.expanded = expanded && t.Expandable()
 	for _, tool := range t.tools {
 		tool.SetExpanded(t.expanded)
@@ -232,16 +226,10 @@ func (t *toolGroupBlock) readerDocument() readerDocument {
 }
 
 func (t *toolGroupBlock) Observe(observer func(readerDocument)) func() {
-	if t == nil || observer == nil {
-		return func() {}
-	}
 	return t.observers.observe(observer, t.readerDocument())
 }
 
 func (t *toolGroupBlock) notify() {
-	if t == nil {
-		return
-	}
 	t.observers.notify(t.readerDocument())
 }
 

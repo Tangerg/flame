@@ -34,14 +34,9 @@ func newQuestionBlock(theme kit.Theme, glyphs kit.Glyphs, question agent.Questio
 	return block
 }
 
-func (q *questionBlock) answered() bool {
-	return q != nil && q.question.Answered()
-}
+func (q *questionBlock) answered() bool { return q.question.Answered() }
 
 func (q *questionBlock) validateAccepted(question agent.Question) error {
-	if q == nil {
-		return fmt.Errorf("question presentation is absent")
-	}
 	if !question.Answered() {
 		return fmt.Errorf("question %s has no accepted answers", question.ItemID)
 	}
