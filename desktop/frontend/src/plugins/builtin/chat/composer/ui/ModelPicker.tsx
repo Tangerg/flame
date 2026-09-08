@@ -1,4 +1,7 @@
 import { useMemo } from "react";
+import * as stylex from "@stylexjs/stylex";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { composerStyles } from "./composerStyles";
 
 import { fmtTokens } from "@/lib/format";
 import { useT } from "@/lib/i18n";
@@ -124,7 +127,7 @@ function ModelCapabilities({ model }: { model: SelectableModel }) {
   if (primary.length === 0) return null;
   return (
     <span
-      className="block min-w-0 truncate text-ui-xs font-normal text-fg-faint"
+      {...stylex.props(composerStyles.modelHint, typeStep.uiXs)}
       title={title}
       aria-label={title}
     >

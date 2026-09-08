@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { activeMention, useFileMentions } from "./fileMentions";
+import { draftMentions } from "./draftContext";
 
 const workspaceFiles = vi.hoisted(() => ({
   current: [] as Array<{ path: string }>,
@@ -66,5 +67,35 @@ describe("useFileMentions", () => {
     workspaceFiles.current = [{ path: "src/delta.ts" }, { path: "src/echo.ts" }];
     rerender({ value: "@s", caret: 2 });
     expect(result.current.index).toBe(0);
+  });
+
+  // `accept` had no test, which is how it came to write a form the chip row cannot read:
+  // `draftMentions` finds `@path`, and accepting replaced the `@` along with the query, so
+  // completing from the picker — the primary way to attach a file — produced no chip at all.
+  it("leaves the @ in place, because that token is what the chip row reads back", () => {
+    const apply = vi.fn();
+    workspaceFiles.current = [{ path: "src/alpha.ts" }];
+    const { result } = renderHook(
+      ({ value, caret }) => useFileMentions({ value, caret, cwd: "/repo", apply }),
+      { initialProps: { value: "see @al", caret: 7 } },
+    );
+
+    act(() => result.current.accept("src/alpha.ts"));
+    expect(apply).toHaveBeenCalledWith("see @src/alpha.ts ", 18);
+    expect(draftMentions("see @src/alpha.ts ")).toEqual([
+      { path: "src/alpha.ts", start: 4, end: 17 },
+    ]);
+  });
+
+  it("closes the token so the picker does not reopen on what was just accepted", () => {
+    const apply = vi.fn();
+    workspaceFiles.current = [{ path: "src/alpha.ts" }];
+    const { result } = renderHook(
+      ({ value, caret }) => useFileMentions({ value, caret, cwd: "/repo", apply }),
+      { initialProps: { value: "@al", caret: 3 } },
+    );
+    act(() => result.current.accept("src/alpha.ts"));
+    const [text, caret] = apply.mock.calls[0]!;
+    expect(activeMention(text as string, caret as number)).toBeNull();
   });
 });

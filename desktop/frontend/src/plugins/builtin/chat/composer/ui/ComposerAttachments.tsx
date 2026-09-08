@@ -4,9 +4,10 @@ import type { ComposerImage, PastedText } from "@/plugins/builtin/chat/composer/
 import { AnimatePresence, motion } from "motion/react";
 import { chipPresence } from "@/lib/motion";
 import { basename } from "@/lib/path";
-import { Chip, Icon, IconButton, Tooltip, reveal } from "@/ui";
+import { Chip, IconButton, gap, reveal } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { draftMentions, removeMention } from "../application/draftContext";
+import { composerStyles } from "./composerStyles";
 
 interface Props {
   images: readonly ComposerImage[];
@@ -29,7 +30,7 @@ export function ComposerAttachments({
     <>
       <DraftContext value={value} onChange={onChange} />
       {images.length > 0 && (
-        <div className="flex flex-wrap gap-2 pb-1 pt-1">
+        <div {...stylex.props(composerStyles.attachmentRow, gap.s2)}>
           <AnimatePresence initial={false}>
             {images.map((img) => (
               <motion.div key={img.id} {...chipPresence}>
@@ -40,7 +41,7 @@ export function ComposerAttachments({
         </div>
       )}
       {pastes.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 pb-1 pt-1">
+        <div {...stylex.props(composerStyles.attachmentRow, gap.s1_5)}>
           <AnimatePresence initial={false}>
             {pastes.map((p) => (
               <motion.div key={p.id} {...chipPresence}>
@@ -58,7 +59,7 @@ function DraftContext({ value, onChange }: { value: string; onChange: (v: string
   const mentions = draftMentions(value);
   if (mentions.length === 0) return null;
   return (
-    <div className="flex flex-wrap gap-1.5 pt-1 pb-0.5">
+    <div {...stylex.props(composerStyles.attachmentRow, gap.s1_5)}>
       <AnimatePresence initial={false}>
         {mentions.map((mention) => (
           <motion.div key={`${mention.start}:${mention.path}`} {...chipPresence}>
@@ -80,16 +81,15 @@ function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () =>
   const t = useT();
   return (
     <div
-      className={cn(
-        stylex.props(reveal.host).className,
-        "relative h-14 w-14 overflow-hidden rounded-[var(--composer-attachment-radius)] media-edge",
-      )}
+      // `media-edge` is the mechanism `globals.css` owns: the hairline an image wears so its
+      // own light edge does not read as the surface behind it.
+      className={cn("media-edge", stylex.props(reveal.host, composerStyles.thumb).className)}
     >
       <img
         src={`data:${image.mime};base64,${image.data}`}
         alt={image.name ?? ""}
         title={image.name}
-        className="h-full w-full object-cover"
+        {...stylex.props(composerStyles.thumbImage)}
       />
       <IconButton
         icon="x"
@@ -98,7 +98,7 @@ function ImageThumb({ image, onRemove }: { image: ComposerImage; onRemove: () =>
         aria-label={t("composer.removeImage")}
         onClick={onRemove}
         data-reveal="hover"
-        className={cn("absolute right-0.5 top-0.5", stylex.props(reveal.shown).className)}
+        className={stylex.props(reveal.shown, composerStyles.thumbRemove).className}
       />
     </div>
   );
@@ -123,21 +123,14 @@ function PasteChip({ paste, onRemove }: { paste: PastedText; onRemove: () => voi
       ? t("composer.paste.lines", { count: paste.lines })
       : t("composer.paste.chars", { count: paste.text.length });
   return (
-    <Tooltip label={preview}>
-      <span className="group inline-flex h-6 max-w-[220px] items-center gap-1.5 rounded-full bg-surface-2 pl-2.5 pr-1.5 font-mono text-ui-sm text-fg-muted">
-        <Icon name="filetext" size="xs" className="shrink-0 text-fg-faint" />
-        <span className="truncate">{label}</span>
-        <IconButton
-          icon="x"
-          size="xs"
-          title={t("composer.paste.remove")}
-          aria-label={t("composer.paste.remove")}
-          onClick={onRemove}
-          round
-          quiet
-          className="shrink-0"
-        />
-      </span>
-    </Tooltip>
+    <Chip
+      icon="filetext"
+      kind="attached"
+      title={preview}
+      onClose={onRemove}
+      closeLabel={t("composer.paste.remove")}
+    >
+      {label}
+    </Chip>
   );
 }

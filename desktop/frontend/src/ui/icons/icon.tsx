@@ -280,6 +280,13 @@ interface Props {
   size?: IconSize;
   style?: CSSProperties;
   className?: string;
+  /**
+   * This glyph IS the statement, not decoration beside one, so it keeps full strength inside a
+   * button where `--glyph-step` would otherwise step it back. The opt-out used to be any
+   * `opacity-*` class, which `globals.css` excluded by name — a hook only a utility-class call
+   * site can reach, and one that a StyleX call site would have lost silently.
+   */
+  full?: boolean;
 }
 
 const SIZE_STYLE = Object.fromEntries(
@@ -296,13 +303,14 @@ const SIZE_STYLE = Object.fromEntries(
 // Memoised because a transcript renders one of these per tool row, per message action and per
 // index row, and re-renders them on every streamed token. The props are four scalars and one
 // hoisted style object, so the comparison is cheap and almost always says no.
-export const Icon = memo(function Icon({ name, size = "sm", style, className }: Props) {
+export const Icon = memo(function Icon({ name, size = "sm", style, className, full }: Props) {
   const Glyph = ICON_MAP[name];
   if (!Glyph) return null;
   return (
     <Glyph
       aria-hidden="true"
       data-icon-name={name}
+      data-glyph={full ? "full" : undefined}
       className={className}
       // Box AND stroke come from the ladder, which owns both: the stroke scales with the box
       // down to 12px and stops growing past the weight a line reads as drawn rather than

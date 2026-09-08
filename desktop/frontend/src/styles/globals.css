@@ -1327,9 +1327,10 @@ html.theme-dark {
    WKWebView the desktop app ships in — keeps the arc at the base radius. */
 /* Every glyph inside a button sits a step back from its label, so an icon never outshouts the
    word beside it. Keyed on the slot rather than written into the button's own styles: it is a
-   DESCENDANT rule, which no atomic class can express. A call site that has decided on an
-   opacity is excluded by name rather than outranked, so the escape works the same either way. */
-[data-slot="button"] svg:not([class*="opacity-"]) {
+   DESCENDANT rule, which no atomic class can express. The escape is `Icon`'s own `full` prop:
+   it was `:not([class*="opacity-"])`, which only a utility-class call site can satisfy — a
+   StyleX one generates a hashed class and would have been re-dimmed without a word. */
+[data-slot="button"] svg:not([data-glyph="full"]) {
   opacity: var(--glyph-step);
 }
 

@@ -1,7 +1,10 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { imageFiles } from "@/plugins/builtin/chat/composer/public/input";
-import { Icon } from "@/ui";
+import * as stylex from "@stylexjs/stylex";
+import { Icon, vocab } from "@/ui";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { composerStyles } from "./composerStyles";
 import { useT } from "@/lib/i18n";
 import { hasComposerImageTransferItems } from "../application/composerInputEvents";
 
@@ -70,10 +73,12 @@ function useWindowImageDrag(onDropImages: (files: File[]) => void): boolean {
 function ImageDropOverlay() {
   const t = useT();
   return createPortal(
-    <div className="fixed inset-0 z-[var(--layer-modal)] grid place-items-center bg-scrim p-10">
-      <div className="animate-rise-in flex flex-col items-center gap-3 rounded-composer border-2 border-dashed border-field-strong bg-canvas px-14 py-12 shadow-[var(--shadow-modal)]">
-        <Icon name="image" size="xl" className="text-fg-muted" />
-        <span className="text-ui-md font-medium text-fg-soft">{t("composer.drop.images")}</span>
+    <div {...stylex.props(composerStyles.dropScrim)}>
+      <div {...stylex.props(composerStyles.dropTarget)}>
+        <Icon name="image" size="xl" className={stylex.props(vocab.muted).className} />
+        <span {...stylex.props(composerStyles.dropLabel, typeStep.uiMd)}>
+          {t("composer.drop.images")}
+        </span>
       </div>
     </div>,
     document.body,

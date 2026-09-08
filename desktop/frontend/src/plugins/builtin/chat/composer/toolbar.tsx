@@ -1,6 +1,9 @@
 import { useRef } from "react";
 
-import { DropdownMenu, HiddenFileInput, Icon, IconButton } from "@/ui";
+import * as stylex from "@stylexjs/stylex";
+import { DropdownMenu, HiddenFileInput, Icon, IconButton, vocab } from "@/ui";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { toolbarStyles } from "./toolbarStyles";
 import { AgentComposerChip } from "@/ui/agent";
 import { imageFiles } from "@/plugins/builtin/chat/composer/public/input";
 import { useSelectedModel, useSelectedModelSelection } from "./public/selectedModel";
@@ -35,8 +38,10 @@ function ReasoningEffortPicker() {
         render={
           <AgentComposerChip
             aria-label={t("composer.switchReasoningEffort")}
-            className="capitalize"
-            leading={<Icon name="sparkle" size="sm" className="text-fg-faint" />}
+            className={stylex.props(toolbarStyles.capitalize).className}
+            leading={
+              <Icon name="sparkle" size="sm" className={stylex.props(vocab.faint).className} />
+            }
             label={selectedEffort}
           />
         }
@@ -53,10 +58,12 @@ function ReasoningEffortPicker() {
                 reasoningEffort: effort,
               })
             }
-            className="grid grid-cols-[minmax(0,1fr)_14px] items-center gap-2 px-2"
+            layout="pickPlain"
           >
-            <span className="truncate capitalize">{effort}</span>
-            {effort === selectedEffort && <Icon name="check" size="xs" className="text-accent" />}
+            <span {...stylex.props(vocab.truncate, toolbarStyles.capitalize)}>{effort}</span>
+            {effort === selectedEffort && (
+              <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
+            )}
           </DropdownMenu.Item>
         ))}
       </DropdownMenu.Content>
@@ -118,7 +125,9 @@ function ApprovalModePill() {
             aria-label={t("approvals.mode.aria")}
             variant={full ? "wash" : "ghost"}
             tone={full ? "warning" : undefined}
-            leading={<Icon name={full ? "alert" : "shield"} size="sm" className="opacity-100" />}
+            // The mode IS what this pill reports, so its glyph does not step back the way a
+            // glyph beside a label does.
+            leading={<Icon name={full ? "alert" : "shield"} size="sm" full />}
             label={t(current.labelKey)}
           />
         }
@@ -128,13 +137,24 @@ function ApprovalModePill() {
           <DropdownMenu.Item
             key={m.value}
             onClick={() => void onSelect(m.value)}
-            className="grid grid-cols-[minmax(0,1fr)_14px] items-start gap-2 rounded-md px-2 py-1.5 outline-none data-[highlighted]:bg-hover"
+            layout="pickPlain"
+            className={stylex.props(toolbarStyles.describedRow).className}
           >
-            <span className="min-w-0">
-              <span className="block text-ui-md font-semibold text-fg">{t(m.labelKey)}</span>
-              <span className="block text-ui-sm leading-snug text-fg-muted">{t(m.descKey)}</span>
+            <span {...stylex.props(vocab.min)}>
+              <span {...stylex.props(toolbarStyles.optionTitle, typeStep.uiMd)}>
+                {t(m.labelKey)}
+              </span>
+              <span {...stylex.props(toolbarStyles.optionDetail, typeStep.uiSm)}>
+                {t(m.descKey)}
+              </span>
             </span>
-            {m.value === mode && <Icon name="check" size="xs" className="mt-0.5 text-accent" />}
+            {m.value === mode && (
+              <Icon
+                name="check"
+                size="xs"
+                className={stylex.props(toolbarStyles.checkTop, vocab.accent).className}
+              />
+            )}
           </DropdownMenu.Item>
         ))}
       </DropdownMenu.Content>

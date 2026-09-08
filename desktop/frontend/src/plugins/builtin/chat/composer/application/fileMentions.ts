@@ -101,7 +101,12 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
   const accept = useCallback(
     (path: string) => {
       if (!mention) return;
-      const insert = path + " ";
+      // The `@` STAYS. It is not decoration: `draftMentions` reads the draft back through the
+      // same rule to build the chip row, so a bare path is a file the reader attached and gets
+      // no confirmation of. Accepting from the picker is the primary way to attach one, and it
+      // was the one way that could not produce a chip. The trailing space closes the token, so
+      // `activeMention` does not reopen the picker on what was just accepted.
+      const insert = `@${path} `;
       apply(
         value.slice(0, mention.start) + insert + value.slice(mention.end),
         mention.start + insert.length,

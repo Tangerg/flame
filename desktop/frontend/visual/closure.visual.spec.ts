@@ -1372,3 +1372,52 @@ test("the file mention picker paints over the transcript, not under the composer
   expect(geometry.focusStillInInput).toBe(true);
   expect(geometry.selects).toBe(1);
 });
+
+// The composer's two chips had no test and no golden between them, which is how a hand-built
+// copy of `Chip` came to sit forty lines below the real one and drift: a quieter fill, and no
+// edge at all where every fixed control in this design wears one. Both are reachable through
+// real interaction, so neither needs the store seeded from outside.
+test("the composer's attachment chips are one component, not two", async ({ page }) => {
+  await openFixture(page, { fixture: "agent", state: "idle" });
+  const input = page.getByRole("textbox", { name: en["composer.input.label"]! });
+
+  // A reference the reader reached for: accept a mention and it becomes a chip.
+  await input.click();
+  await input.pressSequentially("@store", { delay: 30 });
+  await expect(page.locator("#composer-mention-listbox")).toBeVisible();
+  await page.keyboard.press("Tab");
+
+  // Content that came along with the message: a paste long enough to be staged rather than typed.
+  await page.evaluate(() => {
+    const ta = document.querySelector("textarea")!;
+    const data = new DataTransfer();
+    data.setData("text/plain", "x".repeat(2000));
+    ta.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true }));
+  });
+
+  const chips = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll("[data-slot=chip]")];
+    return rows.map((el) => {
+      const cs = getComputedStyle(el);
+      return {
+        kind: el.getAttribute("data-kind"),
+        borderWidth: cs.borderTopWidth,
+        radius: cs.borderTopLeftRadius,
+        height: cs.height,
+        family: cs.fontFamily.split(",")[0],
+        fill: cs.backgroundColor,
+      };
+    });
+  });
+
+  expect(chips.length).toBeGreaterThanOrEqual(2);
+  // One component: every chip agrees on the edge, the corner, the height and the face. Only
+  // the fill says which kind it is, and that is the one thing the atom takes a prop for.
+  const distinct = (key: keyof (typeof chips)[number]) => new Set(chips.map((c) => c[key])).size;
+  expect(distinct("borderWidth")).toBe(1);
+  expect(distinct("radius")).toBe(1);
+  expect(distinct("height")).toBe(1);
+  expect(distinct("family")).toBe(1);
+  expect(chips.every((c) => parseFloat(c.borderWidth) > 0)).toBe(true);
+  expect(distinct("fill")).toBe(2);
+});

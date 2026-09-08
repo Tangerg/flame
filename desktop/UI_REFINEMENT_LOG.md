@@ -9663,3 +9663,92 @@ fixture 里已经有一段注释把同一种病说得很清楚（讲的是 read 
 
 **而且两颗 chip 都没有任何 golden** —— 所以它们能在同一个文件里分叉而没人发现。
 这一轮的主题一直成立：**composer 是那个没有测试的子树，缺陷就都在那里。**
+
+## Round 160 — composer 迁完，路上捡到三个真缺陷
+
+### 缺陷一：`Chip` 只有一个调用处，而它旁边 40 行有人手搓了第二颗
+
+| | `Chip` 原子 | 手搓的 `PasteChip` |
+| --- | --- | --- |
+| 220px 上限 / 等宽 / pill / `uiSm` / 截断 / 图标 / 关闭 / Tooltip | ✓ | ✓ 逐项相同 |
+| 填充 | `accentBadge` | `bg-surface-2` |
+| 边 | 真 border | **没有** |
+| 墨色 | `fgSoft` | `fgMuted` |
+
+安静一档是有意的 —— 提及是「读者引来的东西」，粘贴是「跟着来的内容」 ——
+但它是靠**重造组件**表达的，于是那颗副本也顺手丢掉了这套设计里每个固定控件都该有的边。
+`Chip` 加一个 `kind`（`reference` / `attached`）与 `closeLabel`，`PasteChip` 整个消失。
+
+### 缺陷二：从选择器里选中一个文件，chip 永远不会出现
+
+`draftMentions` 用 `/(^|\s)@(\S+)/g` 读回草稿来渲染 chip 行 ——
+它的单测第一条就叫 **“finds a file the draft attached”**，所以 `@path` 就是「附上一个文件」。
+
+而 `accept` 插入的是 `path + " "`，**`@` 连着查询一起被替换掉了**。
+后果：从选择器里选文件（附文件的**主要**方式）产生一个裸路径，
+chip 行什么都不显示，读者得不到任何「文件已附上」的确认。
+`Chip` 原子那唯一一个调用处，走正常流程根本到不了。
+
+实测（同一个 fixture，改前 / 改后）：
+
+```
+改前  STEP2 {"value":"runtime/session/store.go ", "chips":0}
+改后  STEP2 {"value":"@runtime/session/store.go ","chips":1,"kinds":["reference"]}
+```
+
+`accept` 现在保留 `@`。**这会改变发给模型的文本**（多一个 `@`）—— 但没有任何下游解析它，
+而 chip 行、`removeMention`、一整个测试文件三样机制都是为 `@path` 而存在的，
+它们全都到不了。所以错的是写入方，不是读回方。
+
+`accept` **之前没有任何单测**，这就是它能这样活着的原因。补了两条，
+其中一条在把修复 stash 掉之后确实是红的 —— 证明它抓得住。
+
+### 缺陷三：一个「只有 utility class 才够得着」的逃生口
+
+`globals.css` 里有条降透明度的规则：
+
+```css
+[data-slot="button"] svg:not([class*="opacity-"]) { opacity: var(--glyph-step); }
+```
+
+注释写着「a call site that has decided on an opacity is excluded **by name**」——
+逃生口是**匹配类名子串**。而 StyleX 生成的是 `x1abc…`，
+**任何迁移到 StyleX 的调用处都会静默地被重新压暗。**
+
+全仓只有一个调用处在用它（审批模式 pill 的图标，它报的就是状态本身，不能退后）。
+改成 `Icon` 自己的 `full` prop，发出 `data-glyph="full"`，规则改按属性匹配。
+这条必须**先修再迁** —— 否则迁移会静默改变外观，而 golden 不一定拍到那个 pill。
+
+### 顺带
+
+- 两个 `DropdownMenu.Item` 各自手写了 `grid-cols-[minmax(0,1fr)_14px]`
+  以及**行自己的 hover / 圆角 / outline** —— 而 `floatingRow` 早就有一档
+  `pickPlain`，模板一模一样（3.5 × 4px = 14px）。改成 `layout="pickPlain"`。
+- `space` 阶梯补了 `s14`（56px 缩略图）—— 保留实测值，而不是就近取 `s16` 悄悄改设计。
+- `ComposerImageDrop` 的拖放蒙层、`ModelPicker` 的 provider 提示，都变成命名档。
+
+### 我的第四个错数字
+
+存量我报过 902→0、122、429、287 —— 现在是 **136**。
+这次错的原因跟前三次都不同：**同一个字符串被数了两遍**。
+`className={cn("a","b")}` 会同时被 `className=` 和 `cn(` 两个入口匹配到，
+而两次配平读取都覆盖了那两个字面量。按字面量的**绝对偏移**去重之后才是真数。
+
+已经用手数对账过两个文件（清干净的 `toolbar.tsx` = 0；未迁的 `DiffView.tsx` = 6，
+六条全是 `cn(...)` 里的真 class 串，字面 grep 一条都看不见）。
+**在对账之前我不该再报数字。**
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **659 / 659**（+1 条新增），0 unexpected，0 flaky |
+| 守卫 | 17 项全绿 |
+| 单测 | **1783** 项通过（+2 条 `accept` 的） |
+| CSS raw | 134.6 → **133.7 KB**（预算 142.6 KB） |
+| `chat/composer/` 的 Tailwind | 42 条 → **0** |
+| 全仓存量 | **136** 条 / 331 utility / 39 个文件（14 个一行 StyleX 都没有） |
+
+零像素位移是**应该**的、也是有解释的：新加了边的那颗 chip、改用 `pickPlain` 的那两行菜单，
+**都没有任何 golden 拍到**（这正是它们能分叉的原因）；而审批 pill 的图标
+从 `opacity-100` 换成 `data-glyph="full"` 之后，算出来的透明度还是 1 —— 同一个值，两种说法。

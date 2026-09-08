@@ -18,12 +18,16 @@ const chipStyles = stylex.create({
     borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
     borderColor: surface.field,
-    backgroundColor: surface.accentBadge,
     paddingLeft: space.s2_5,
     paddingRight: space.s1,
     fontWeight: weight.regular,
-    color: color.fgSoft,
   },
+  // What the chip is FOR, in the only two answers the composer needs. A reference the reader
+  // reached for reads as theirs; content that merely came along with the message recedes a
+  // step. This had been said by rebuilding the chip beside the real one, which is how the
+  // second copy also lost the edge every fixed control in this design wears.
+  reference: { backgroundColor: surface.accentBadge, color: color.fgSoft },
+  attached: { backgroundColor: surface.surface2, color: color.fgMuted },
   // The value is machine text and it is capped: a chip that grows with its content pushes the
   // rest of the row off the end instead of yielding.
   value: {
@@ -56,13 +60,23 @@ interface Props {
   children: ReactNode;
   title?: string;
   onClose?: () => void;
+  /** What the chip is for. `reference` is something the reader named; `attached` came along. */
+  kind?: "reference" | "attached";
+  /** Names what is being removed, for a row where "Remove" alone does not say which one. */
+  closeLabel?: string;
 }
 
-export function Chip({ icon, children, title, onClose }: Props) {
+export function Chip({ icon, children, title, onClose, kind = "reference", closeLabel }: Props) {
   const t = useT();
   return (
     <Tooltip label={title}>
-      <span {...stylex.props(reveal.host, chipStyles.chip, corner.pill, type.uiSm)}>
+      <span
+        // What it is and which kind, as attributes: they are what a test can hold onto, and a
+        // generated class name is not a contract.
+        data-slot="chip"
+        data-kind={kind}
+        {...stylex.props(reveal.host, chipStyles.chip, chipStyles[kind], corner.pill, type.uiSm)}
+      >
         {icon && <Icon name={icon} size="xs" />}
         <span {...stylex.props(chipStyles.value)}>{children}</span>
         {onClose && (
@@ -71,7 +85,7 @@ export function Chip({ icon, children, title, onClose }: Props) {
             type="button"
             {...stylex.props(reveal.shown, chipStyles.closeBox, corner.pill, chipStyles.close)}
             onClick={onClose}
-            aria-label={t("common.remove")}
+            aria-label={closeLabel ?? t("common.remove")}
           >
             <Icon name="x" size="xs" />
           </ButtonPrimitive>
