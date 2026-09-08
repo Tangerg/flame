@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -99,14 +100,41 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 	blockingGoal := &blockingGoalProjection{
 		GoalStore: readerGoalStore, entered: make(chan struct{}), release: make(chan struct{}),
 	}
-	stores := NewSessionStores(SessionStoresConfig{
-		Sessions: readerSessionStore, Transcript: sqlite.NewTranscriptStore(readerDB),
-		Interrupts: NewInterruptStore(sqlite.NewInterruptStore(readerDB)),
-		Runs:       sqlite.NewRunStore(readerDB), Plan: readerPlanStore, Goals: blockingGoal,
+	readerMessages := sqlite.NewMessageStore(readerDB)
+	readerCompactions, err := NewConversationCompactions(
+		readerMessages,
+		sqlite.NewRunStore(readerDB),
+		func(ctx context.Context, fn func(context.Context) error) error {
+			return sqlite.RunInTx(ctx, readerDB, fn)
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	readerHistory, err := runsapp.NewConversationHistory(readerMessages, readerCompactions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stores, err := NewSessionStores(SessionStoresConfig{
+		Sessions:            readerSessionStore,
+		Transcript:          sqlite.NewTranscriptStore(readerDB),
+		Interrupts:          NewInterruptStore(sqlite.NewInterruptStore(readerDB)),
+		Runs:                sqlite.NewRunStore(readerDB),
+		ExecutorCheckpoints: NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(readerDB)),
+		History:             readerHistory,
+		Plan:                readerPlanStore,
+		ApprovalRules:       sqlite.NewApprovalRuleStore(readerDB),
+		PermissionModes:     sqlite.NewPermissionModeStore(readerDB),
+		ToolResults:         sqlite.NewToolResultStore(readerDB),
+		ChildRunStarts:      sqlite.NewChildRunStartReservationStore(readerDB),
+		Goals:               blockingGoal,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlite.RunInTx(ctx, readerDB, fn)
 		},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	snapshotResult := make(chan struct {
 		snapshot sessions.MaterialSnapshot

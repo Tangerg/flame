@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -28,23 +27,36 @@ type ConversationCompactions struct {
 	tx      Transactor
 }
 
-func NewConversationCompactions(history conversationHistory, runs conversationRuns, tx Transactor) *ConversationCompactions {
-	return &ConversationCompactions{history: history, runs: runs, tx: tx}
+// NewConversationCompactions binds the compaction write-set to its stores. All
+// three are required: a rewrite and its Run watermark replacements commit
+// together or not at all.
+func NewConversationCompactions(
+	history conversationHistory,
+	runs conversationRuns,
+	tx Transactor,
+) (*ConversationCompactions, error) {
+	for _, dependency := range []struct {
+		name  string
+		value any
+	}{
+		{name: "conversation history", value: history},
+		{name: "Run store", value: runs},
+		{name: "transactor", value: tx},
+	} {
+		if missingSessionStore(dependency.value) {
+			return nil, fmt.Errorf("persistence: conversation compaction %s is required", dependency.name)
+		}
+	}
+	return &ConversationCompactions{history: history, runs: runs, tx: tx}, nil
 }
 
 var _ runsapp.ConversationCompactionStore = (*ConversationCompactions)(nil)
 
 func (c *ConversationCompactions) ListRuns(ctx context.Context, sessionID string) ([]run.Run, error) {
-	if c == nil || c.runs == nil {
-		return nil, errors.New("persistence: conversation compaction Run store is unavailable")
-	}
 	return c.runs.ListRuns(ctx, sessionID)
 }
 
 func (c *ConversationCompactions) ApplyCompaction(ctx context.Context, plan runsapp.ConversationCompactionPlan) error {
-	if c == nil || c.history == nil || c.runs == nil || c.tx == nil {
-		return errors.New("persistence: conversation compaction dependencies are unavailable")
-	}
 	if err := plan.Validate(); err != nil {
 		return fmt.Errorf("persistence: conversation compaction: %w", err)
 	}

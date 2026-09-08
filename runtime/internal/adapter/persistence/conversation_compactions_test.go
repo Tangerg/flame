@@ -26,13 +26,16 @@ func newCompactionFixture(t *testing.T) (*sql.DB, *sqlite.MessageStore, *sqlite.
 	t.Cleanup(func() { _ = db.Close() })
 	messages := sqlite.NewMessageStore(db)
 	runs := sqlite.NewRunStore(db)
-	compactions := persistence.NewConversationCompactions(
+	compactions, err := persistence.NewConversationCompactions(
 		messages,
 		runs,
 		func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlite.RunInTx(ctx, db, fn)
 		},
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
 	service, err := runsapp.NewConversationHistory(messages, compactions)
 	if err != nil {
 		t.Fatal(err)

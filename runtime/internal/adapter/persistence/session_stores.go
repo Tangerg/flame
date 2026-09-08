@@ -2,8 +2,8 @@ package persistence
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/Tangerg/scope/core/chat"
 
@@ -90,8 +90,32 @@ type goalStore interface {
 }
 
 // NewSessionStores returns the SQLite adapter for session snapshots and
-// write-sets. Its dependencies are fixed at construction.
-func NewSessionStores(cfg SessionStoresConfig) *SessionStores {
+// write-sets. Every store is required: a delete, fork, rollback or restore is
+// one complete mutation, and a missing collaborator would silently narrow it
+// rather than fail.
+func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
+	for _, dependency := range []struct {
+		name  string
+		value any
+	}{
+		{name: "session store", value: cfg.Sessions},
+		{name: "transcript store", value: cfg.Transcript},
+		{name: "interrupt store", value: cfg.Interrupts},
+		{name: "Run store", value: cfg.Runs},
+		{name: "executor checkpoint store", value: cfg.ExecutorCheckpoints},
+		{name: "conversation history", value: cfg.History},
+		{name: "Plan projection", value: cfg.Plan},
+		{name: "approval rule store", value: cfg.ApprovalRules},
+		{name: "permission mode store", value: cfg.PermissionModes},
+		{name: "Tool result store", value: cfg.ToolResults},
+		{name: "child Run start reservation store", value: cfg.ChildRunStarts},
+		{name: "Goal store", value: cfg.Goals},
+		{name: "transactor", value: cfg.Tx},
+	} {
+		if missingSessionStore(dependency.value) {
+			return nil, fmt.Errorf("persistence: session %s is required", dependency.name)
+		}
+	}
 	return &SessionStores{
 		sessions:            cfg.Sessions,
 		transcript:          cfg.Transcript,
@@ -106,12 +130,27 @@ func NewSessionStores(cfg SessionStoresConfig) *SessionStores {
 		childRunStarts:      cfg.ChildRunStarts,
 		goals:               cfg.Goals,
 		tx:                  cfg.Tx,
+	}, nil
+}
+
+func missingSessionStore(value any) bool {
+	if value == nil {
+		return true
+	}
+	reflected := reflect.ValueOf(value)
+	switch reflected.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return reflected.IsNil()
+	default:
+		return false
 	}
 }
 
-var _ sessions.SnapshotReader = (*SessionStores)(nil)
-var _ sessions.MaterialSnapshotReader = (*SessionStores)(nil)
-var _ sessions.WriteSets = (*SessionStores)(nil)
+var (
+	_ sessions.SnapshotReader         = (*SessionStores)(nil)
+	_ sessions.MaterialSnapshotReader = (*SessionStores)(nil)
+	_ sessions.WriteSets              = (*SessionStores)(nil)
+)
 
 func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID string) (sessions.MaterialSnapshot, error) {
 	var snapshot sessions.MaterialSnapshot
@@ -132,24 +171,18 @@ func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID stri
 		if err != nil {
 			return err
 		}
-		var state plan.Current
-		if s.plan != nil {
-			state, err = s.plan.State(ctx, sessionID)
-			if err != nil {
-				return err
-			}
+		state, err := s.plan.State(ctx, sessionID)
+		if err != nil {
+			return err
+		}
+		current, err := s.goals.Get(ctx, sessionID)
+		if err != nil {
+			return err
 		}
 		var currentGoal *goal.Goal
-		if s.goals != nil {
-			current, err := s.goals.Get(ctx, sessionID)
-			if err != nil {
-				return err
-			}
-			stored, found := current.Goal()
-			if found {
-				stored = stored.Clone()
-				currentGoal = &stored
-			}
+		if stored, found := current.Goal(); found {
+			stored = stored.Clone()
+			currentGoal = &stored
 		}
 		snapshot = sessions.MaterialSnapshot{
 			Session: ses, Items: items, Runs: runs, Interrupts: interrupts, Plan: state,
@@ -179,19 +212,13 @@ func (s *SessionStores) ReadSnapshot(ctx context.Context, sessionID string) (ses
 		if err != nil {
 			return err
 		}
-		var toolResults []toolresult.Blob
-		if s.toolResults != nil {
-			toolResults, err = s.toolResults.List(ctx, sessionID)
-			if err != nil {
-				return err
-			}
+		toolResults, err := s.toolResults.List(ctx, sessionID)
+		if err != nil {
+			return err
 		}
-		var steps []plan.Step
-		if s.plan != nil {
-			steps, err = s.plan.List(ctx, sessionID)
-			if err != nil {
-				return err
-			}
+		steps, err := s.plan.List(ctx, sessionID)
+		if err != nil {
+			return err
 		}
 		snapshot = sessions.Snapshot{
 			Session: ses, Messages: messages, Items: items, Runs: runs,
@@ -212,9 +239,6 @@ func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (
 	child := fork.Child()
 	parentID := fork.ParentID()
 	planReplacement := fork.PlanReplacement()
-	if s.toolResults == nil && len(snapshot.ToolResults) > 0 {
-		return session.Session{}, errors.New("persistence: cannot fork tool results without blob persistence")
-	}
 	err := s.tx(ctx, func(ctx context.Context) error {
 		if _, err := s.sessions.Get(ctx, parentID); err != nil {
 			return err
@@ -279,10 +303,8 @@ func (s *SessionStores) republishRollbackState(ctx context.Context, rollback ses
 	if err := s.savePlanReplacement(ctx, sessionID, rollback.PlanReplacement()); err != nil {
 		return err
 	}
-	if s.goals != nil {
-		if err := s.goals.Clear(ctx, sessionID); err != nil {
-			return err
-		}
+	if err := s.goals.Clear(ctx, sessionID); err != nil {
+		return err
 	}
 	if mark, known := rollback.TruncationMark(); known {
 		return s.history.Truncate(ctx, sessionID, mark)
@@ -316,9 +338,6 @@ func (s *SessionStores) ApplyRestore(ctx context.Context, restore sessions.Resto
 	sessionReplacement := restore.SessionReplacement()
 	snapshot := restore.Snapshot()
 	planReplacement := restore.PlanReplacement()
-	if s.toolResults == nil && len(snapshot.ToolResults) > 0 {
-		return errors.New("persistence: cannot restore tool results without blob persistence")
-	}
 	return s.tx(ctx, func(ctx context.Context) error {
 		restoredSession := sessionReplacement.State()
 		sessionID := restoredSession.ID()
@@ -373,9 +392,6 @@ func (s *SessionStores) savePlanReplacement(ctx context.Context, sessionID strin
 	if replacement == nil {
 		return nil
 	}
-	if s.plan == nil {
-		return errors.New("persistence: Plan replacement has no store")
-	}
 	if err := replacement.Validate(); err != nil {
 		return fmt.Errorf("persistence: invalid Plan replacement: %w", err)
 	}
@@ -392,9 +408,6 @@ func (s *SessionStores) restoreRuns(ctx context.Context, restored []rundomain.Ru
 }
 
 func (s *SessionStores) restoreToolResults(ctx context.Context, blobs []toolresult.Blob) error {
-	if s.toolResults == nil {
-		return nil
-	}
 	for _, blob := range blobs {
 		if err := s.toolResults.Restore(ctx, blob); err != nil {
 			return err
@@ -425,10 +438,7 @@ func (s *SessionStores) clearSessionOwnedState(ctx context.Context, sessionID st
 	if err := s.clearSessionOwnedStateExceptPlan(ctx, sessionID); err != nil {
 		return err
 	}
-	if s.plan != nil {
-		return s.plan.DeleteSession(ctx, sessionID)
-	}
-	return nil
+	return s.plan.DeleteSession(ctx, sessionID)
 }
 
 func (s *SessionStores) clearSessionOwnedStateExceptPlan(ctx context.Context, sessionID string) error {
@@ -441,33 +451,23 @@ func (s *SessionStores) clearSessionOwnedStateExceptPlan(ctx context.Context, se
 	if err := s.deleteInterrupts(ctx, sessionID); err != nil {
 		return err
 	}
-	if s.executorCheckpoints != nil {
-		if err := s.executorCheckpoints.DeleteSessionCheckpoints(ctx, sessionID); err != nil {
-			return err
-		}
+	if err := s.executorCheckpoints.DeleteSessionCheckpoints(ctx, sessionID); err != nil {
+		return err
 	}
 	if err := s.runs.DeleteForSession(ctx, sessionID); err != nil {
 		return err
 	}
-	if s.approvalRules != nil {
-		if err := s.approvalRules.DeleteSession(ctx, sessionID); err != nil {
-			return err
-		}
+	if err := s.approvalRules.DeleteSession(ctx, sessionID); err != nil {
+		return err
 	}
-	if s.permissionModes != nil {
-		if err := s.permissionModes.DeleteSession(ctx, sessionID); err != nil {
-			return err
-		}
+	if err := s.permissionModes.DeleteSession(ctx, sessionID); err != nil {
+		return err
 	}
-	if s.goals != nil {
-		if err := s.goals.Clear(ctx, sessionID); err != nil {
-			return err
-		}
+	if err := s.goals.Clear(ctx, sessionID); err != nil {
+		return err
 	}
-	if s.toolResults != nil {
-		if err := s.toolResults.DropSession(ctx, sessionID); err != nil {
-			return err
-		}
+	if err := s.toolResults.DropSession(ctx, sessionID); err != nil {
+		return err
 	}
 	if err := s.deleteChildRunStarts(ctx, sessionID); err != nil {
 		return err
@@ -548,9 +548,6 @@ func (s *SessionStores) clearParkedRunState(
 }
 
 func (s *SessionStores) deleteChildRunStarts(ctx context.Context, sessionID string) error {
-	if s.childRunStarts == nil {
-		return errors.New("persistence: child Run start reservation cleanup is unavailable")
-	}
 	if err := s.childRunStarts.DeleteSession(ctx, sessionID); err != nil {
 		return fmt.Errorf("persistence: delete child Run start reservations for Session %q: %w", sessionID, err)
 	}
@@ -583,9 +580,6 @@ func (s *SessionStores) terminalizeParkedRuns(ctx context.Context, runs []rundom
 func (s *SessionStores) recordGoalTerminalRun(ctx context.Context, rootRunID string, record *goal.RunRecord) error {
 	if record == nil {
 		return nil
-	}
-	if s.goals == nil {
-		return errors.New("persistence: Goal Run store is unavailable for a Goal-owned terminal Run")
 	}
 	if err := s.goals.RecordRun(ctx, *record); err != nil {
 		return fmt.Errorf("persistence: record Goal Run for Run %q: %w", rootRunID, err)

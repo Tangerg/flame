@@ -193,9 +193,12 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 	plan := sqlite.NewPlanStore(db)
 	approvals := sqlite.NewApprovalRuleStore(db)
 	messages := sqlite.NewMessageStore(db)
-	compactions := persistence.NewConversationCompactions(messages, runs, func(ctx context.Context, fn func(context.Context) error) error {
+	compactions, err := persistence.NewConversationCompactions(messages, runs, func(ctx context.Context, fn func(context.Context) error) error {
 		return sqlite.RunInTx(ctx, db, fn)
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	history, err := runsapp.NewConversationHistory(messages, compactions)
 	if err != nil {
 		t.Fatal(err)
@@ -214,7 +217,7 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 		childStarts: sqlite.NewChildRunStartReservationStore(db),
 		goals:       sqlite.NewGoalStore(db),
 	}
-	ss.SessionStores = persistence.NewSessionStores(persistence.SessionStoresConfig{
+	sessionStores, err := persistence.NewSessionStores(persistence.SessionStoresConfig{
 		Sessions: ss.sessions, Transcript: ss.transcript, Interrupts: ss.interrupts,
 		Runs: ss.runs, ExecutorCheckpoints: ss.checkpoints, History: ss.history, Plan: ss.plan,
 		ApprovalRules: ss.approvals, PermissionModes: ss.modes, ToolResults: ss.toolResults,
@@ -223,6 +226,10 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 			return sqlite.RunInTx(ctx, db, fn)
 		},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ss.SessionStores = sessionStores
 	return ss, runs, ints
 }
 
@@ -261,10 +268,11 @@ var parkCreatedAt = time.Unix(1, 0).UTC()
 // session from the outside.
 func restoredRun(sessionID, runID string, at time.Time) run.Run {
 	outcome := run.OutcomeCompleted
-	return testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Completed,
+	return testsupport.MustRestoreRun(run.Snapshot{
+		SessionID: sessionID, ID: runID, State: run.Completed,
 		Outcome:   &outcome,
-		CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: 0})
-
+		CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: 0,
+	})
 }
 
 func parkSessionARootRun(
@@ -311,14 +319,16 @@ func parkWithGoalLease(
 	}); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
-	if err := runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Waiting,
+	if err := runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{
+		SessionID: sessionID, ID: runID, State: run.Waiting,
 		GoalIncarnationID: goalIncarnationID,
 		Capabilities: run.Capabilities{
 			InterruptKinds: []interrupt.Kind{interrupt.Question},
 		},
 
 		CreatedAt:   parkCreatedAt,
-		MessageMark: run.UnknownMessageMark}),
+		MessageMark: run.UnknownMessageMark,
+	}),
 		"seg_open", runtimeidentity.CommitID{},
 	); err != nil {
 		t.Fatalf("suspend: %v", err)
@@ -523,8 +533,10 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 		t.Fatalf("read parked Goal Run: found=%t err=%v", found, err)
 	}
 	expected := parked
-	parked, err = parked.AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 4,
-		Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &costUSD}}}), 0, finishedAt)
+	parked, err = parked.AdvanceProgress(testsupport.MustRunMetrics(testsupport.RunMetricsInput{
+		Steps: 4,
+		Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &costUSD}},
+	}), 0, finishedAt)
 	if err != nil {
 		t.Fatalf("advance parked Goal Run metrics: %v", err)
 	}

@@ -221,14 +221,15 @@ func buildExecutionComposition(
 	policy policyComposition,
 	workspaceServices workspaceComposition,
 ) (executionComposition, error) {
-	conversation, err := buildConversationEnvironment(
+	compactions, err := persistence.NewConversationCompactions(
 		cfg.Stores.ChatHistory,
-		persistence.NewConversationCompactions(
-			cfg.Stores.ChatHistory,
-			cfg.Stores.Runs,
-			persistence.Transactor(cfg.Stores.Transactor),
-		),
+		cfg.Stores.Runs,
+		persistence.Transactor(cfg.Stores.Transactor),
 	)
+	if err != nil {
+		return executionComposition{}, err
+	}
+	conversation, err := buildConversationEnvironment(cfg.Stores.ChatHistory, compactions)
 	if err != nil {
 		return executionComposition{}, err
 	}
