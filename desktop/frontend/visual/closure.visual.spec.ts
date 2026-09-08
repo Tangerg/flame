@@ -1457,3 +1457,48 @@ test("the composer's top tray takes the composer's corner and tucks behind it", 
   expect(parseFloat(seam.bottomBorder)).toBe(0);
   expect(seam.overflow).toBe("clip");
 });
+
+// The reasoning block's clipped edges fade. They used to fade with two absolutely positioned
+// gradient overlays inside the scroller, and NEITHER could ever be seen: `top: 0` in an
+// `overflow-y: auto` box anchors to the scrolled content origin, so the top overlay left the
+// viewport at exactly the moment `edges.scrolled` turned it on — measured at -200px after a
+// 200px scroll, against a mask, which does not move. This is the state that had no fixture:
+// a streaming reasoning window with more text than fits.
+test("the reasoning window fades the edge it actually clips", async ({ page }) => {
+  await openFixture(page, { fixture: "agent", state: "answer-opening" });
+
+  const scroller = page.locator('[data-slot="reasoning-scroller"]');
+  await expect(scroller).toBeVisible();
+
+  const readFade = () =>
+    page.evaluate(() => {
+      const el = document.querySelector<HTMLElement>('[data-slot="reasoning-scroller"]')!;
+      const cs = getComputedStyle(el);
+      return {
+        overflowing: el.scrollHeight > el.clientHeight,
+        masked: cs.maskImage !== "none",
+        // The old mechanism is gone: nothing inside is positioned to be scrolled away.
+        overlays: [...el.children].filter((c) => getComputedStyle(c).position === "absolute")
+          .length,
+        top: cs.getPropertyValue("--fade-top").trim(),
+        bottom: cs.getPropertyValue("--fade-bottom").trim(),
+      };
+    });
+
+  const atTop = await readFade();
+  expect(atTop.overflowing).toBe(true);
+  expect(atTop.masked).toBe(true);
+  expect(atTop.overlays).toBe(0);
+  // Nothing is clipped above the first line, so that edge does not fade.
+  expect(atTop.top).toBe("0px");
+  expect(atTop.bottom).toBe("24px");
+
+  // What a reader does. The state is React's, so the read has to come after the re-render
+  // rather than in the same turn as the scroll — a synchronous read here returns the old value
+  // and would have made the assertion look like a bug in the fade.
+  await scroller.evaluate((el) => {
+    el.scrollTop = 20;
+  });
+  await expect.poll(async () => (await readFade()).top).toBe("24px");
+  expect((await readFade()).bottom).toBe("24px");
+});

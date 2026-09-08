@@ -192,7 +192,22 @@ const RUNNING_REASONING: Item = {
   runId: ROOT_RUN_ID,
   status: "running",
   createdAt: CREATED_AT,
-  text: "The framework must expose execution capability without knowing the application’s persistence records.",
+  // Long enough to OVERFLOW the streaming window (`max-height: 12rem`), because the window is
+  // the only state in which its clipped edges fade — and with one sentence here, the fade had
+  // no state in which it could be photographed. Which is how two fade overlays came to be
+  // positioned so that neither could ever be seen.
+  text: [
+    "The framework must expose execution capability without knowing the application’s persistence records.",
+    "That boundary is the whole reason a Run can be replayed: the framework owns the step, the application owns what a step MEANT.",
+    "If the framework knew about records it would have to know about transactions, and then about idempotency keys, and then it would be the application.",
+    "So the seam is drawn where the knowledge stops rather than where the call stack happens to be.",
+    "Which leaves one question open — who decides a step is finished — and the answer has to be the side that can durably say so.",
+    "A step the framework calls finished is a claim; a step the application has written down is a fact, and only the second one survives a restart.",
+    "So the protocol carries the claim and the store carries the fact, and recovery is the act of reconciling the two in that order.",
+    "Everything else in this boundary follows from that ordering, including why an interrupt has to be durable before it is acknowledged.",
+    "Which also settles the compaction question: a summary is application material, so the framework may ask for one but must never assume it happened.",
+    "The same reasoning applies to a Goal, whose budget is a durable fact and whose progress is a claim.",
+  ].join(" "),
 };
 
 // Writing the plan, which the banner above the transcript already holds. The fixture

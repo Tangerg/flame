@@ -58,7 +58,10 @@ describe("ReasoningBlock disclosure policy", () => {
   it("keeps the bounded streaming rationale keyboard-scrollable", () => {
     const { container } = renderReasoning("running", "Inspect the protocol boundary");
 
-    const scrollport = container.querySelector<HTMLElement>(".overflow-y-auto");
+    // The slot, not the class that happened to produce the scrolling: what this is named for
+    // is that the window can be reached by keyboard, and `overflow-y-auto` was only ever the
+    // spelling. Whether it fades its clipped edges is measured in the closure suite.
+    const scrollport = container.querySelector<HTMLElement>('[data-slot="reasoning-scroller"]');
     expect(scrollport).not.toBeNull();
     expect(scrollport!.tabIndex).toBe(0);
   });

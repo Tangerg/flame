@@ -1,16 +1,39 @@
 import * as stylex from "@stylexjs/stylex";
 import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { MarkdownMessage } from "../markdown/MarkdownMessage";
 import { Icon, Loader, vocab } from "@/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/classNames";
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { messageStyles as ms } from "../messageStyles";
 
+const FADE = "24px";
+
 const rb = stylex.create({
   note: { marginTop: space.s1 },
+  scroller: { position: "relative", overflow: "hidden", paddingRight: space.s2 },
+  /** While it streams, the reasoning is a window onto a growing text rather than the whole of it. */
+  windowed: { maxHeight: "calc(var(--spacing) * 48)", overflowY: "auto" },
+  /**
+   * The clipped edges fade out, as a MASK on the scroller.
+   *
+   * Two absolutely-positioned gradient overlays used to do this, and neither could ever be
+   * seen: `position: absolute; top: 0` inside `overflow-y: auto` anchors to the SCROLLED
+   * content origin, so the top fade scrolled out of view exactly when `edges.scrolled` turned
+   * it on — measured at -200px after a 200px scroll. The bottom one sat at the end of the
+   * text, which is below the viewport whenever `!atBottom` said to show it.
+   *
+   * A mask is painted against the element's own box and does not scroll, so it lands where the
+   * clipping actually happens. It also stops needing to know what is behind it: the overlays
+   * hard-coded `--app-content-surface` as their opaque end, which would have painted the wrong
+   * colour the moment this block sat on any other surface. `truncate-fade` in `globals.css` is
+   * the horizontal sibling of this and already worked this way.
+   */
+  fade: {
+    maskImage: `linear-gradient(to bottom, transparent 0, #000 var(--fade-top, 0px), #000 calc(100% - var(--fade-bottom, 0px)), transparent 100%)`,
+    WebkitMaskImage: `linear-gradient(to bottom, transparent 0, #000 var(--fade-top, 0px), #000 calc(100% - var(--fade-bottom, 0px)), transparent 100%)`,
+  },
 });
 
 interface Props {
@@ -88,22 +111,18 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
     >
       <div
         ref={scrollRef}
+        data-slot="reasoning-scroller"
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
         tabIndex={streaming && isOpen ? 0 : undefined}
         onScroll={measure}
-        className={cn(
-          "relative overflow-hidden pr-2",
-          streaming && isOpen && "max-h-48 overflow-y-auto",
-        )}
+        style={
+          {
+            "--fade-top": showTopFade ? FADE : "0px",
+            "--fade-bottom": showBottomFade ? FADE : "0px",
+          } as CSSProperties
+        }
+        {...stylex.props(rb.scroller, rb.fade, streaming && isOpen && rb.windowed)}
       >
-        <div
-          className={cn(
-            "pointer-events-none absolute inset-x-0 top-0 z-1 h-6",
-            "bg-[linear-gradient(to_bottom,var(--app-content-surface),transparent)]",
-            "transition-opacity duration-[var(--dur-fast)]",
-            showTopFade ? "opacity-100" : "opacity-0",
-          )}
-        />
         <div ref={contentRef} className={stylex.props(ms.quote, typeStep.uiSm).className}>
           <MarkdownMessage text={text} streaming={streaming} reveal="smooth" />
           {status === "incomplete" && (
@@ -112,14 +131,6 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
             </div>
           )}
         </div>
-        <div
-          className={cn(
-            "pointer-events-none absolute inset-x-0 bottom-0 z-1 h-6",
-            "bg-[linear-gradient(to_top,var(--app-content-surface),transparent)]",
-            "transition-opacity duration-[var(--dur-fast)]",
-            showBottomFade ? "opacity-100" : "opacity-0",
-          )}
-        />
       </div>
     </AgentActivityDisclosure>
   );

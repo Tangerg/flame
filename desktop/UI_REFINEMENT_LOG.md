@@ -10099,3 +10099,109 @@ composer 的圆角、越过顶边的重叠、缺席的底边、`overflow: clip`�
 | 守卫 | 17 项全绿 |
 | 单测 | 1783 项通过 |
 | `rotate: -90deg` 的 owner | 8 处 4 种拼法 → **1** |
+
+## Round 165 — 两个渐隐遮罩，一个都看不见
+
+按重复度排，`ReasoningBlock` 的两个渐隐层占了剩余 83 条里的 **10 条**，
+而且两者近乎镜像（`to_bottom`/`top-0` 对 `to_top`/`bottom-0`）—— 一个事实写了两遍。
+
+### 先发现：同一个意图，仓库里已经有另一套机制
+
+| | 做法 | 依赖 |
+| --- | --- | --- |
+| `truncate-fade`（`globals.css`，横向） | **mask** —— `mask-image: linear-gradient(...)` | 不依赖背后是什么 |
+| `ReasoningBlock`（纵向） | 两个绝对定位的渐变**覆盖层** | **硬编码 `var(--app-content-surface)`** 当不透明端 |
+
+第二种一旦这个块坐在别的面上，渐隐就会画错颜色。
+
+### 然后实测出：那两层一个都看不见
+
+```
+OVERLAY {"offsetBeforeScroll":0,"offsetAfterScroll":-200}
+```
+
+`position: absolute; top: 0` 在 `overflow-y: auto` 里锚的是**滚动内容的原点**，不是可视上沿。
+滚 200px，覆盖层就跑到可视区外 200px。
+
+而 `showTopFade = isOpen && edges.scrolled` —— **它恰好在滚动之后才打开，
+而滚动正是把它移出视野的那个动作。** 底部那层同理：`bottom: 0` 落在全部内容的末尾，
+而 `showBottomFade` 要求 `!atBottom`（末尾在视口下方）—— 也就是它可见的条件与它被启用的条件互斥。
+
+**两层渐隐、两个 DOM 节点、一个滚动监听喂两个布尔值 —— 没有一处能被看到。**
+
+并排量给出决定性对比：
+
+```
+COMPARE {"before":{"overlayOffset":0,"maskStart":"0"},
+         "after" :{"overlayOffset":-200,"maskStart":"0"}}
+```
+
+覆盖层跑了 200px，**mask 一动不动** —— 它是对着元素自己的盒子画的。
+
+### 治本
+
+改成 scroller 自己身上的一层 mask，两个停点由 `--fade-top` / `--fade-bottom` 驱动。
+去掉了：两个 DOM 节点、颜色依赖、`z-1` / `pointer-events-none` / `absolute` 定位，
+以及 10 条 class 串。
+
+### 这个缺陷为什么能活下来：fixture 里那段推理只有一句话
+
+窗口是 `max-height: 12rem`，而 fixture 的推理文本渲染出来只有 **21px** ——
+**没有任何状态能让那个窗口滚动起来**，所以两层渐隐从来没有被拍到的机会。
+
+把 fixture 的推理文本加长到超过窗口（192px 窗、231px 内容），
+这才第一次有了「流式推理窗口装不下」这个状态。新的 closure 测试断言**两条边**：
+
+| | `--fade-top` | `--fade-bottom` |
+| --- | --- | --- |
+| 刚打开（顶部无遮挡） | `0px` | `24px` |
+| 滚动之后（两边都有遮挡） | `24px` | `24px` |
+
+**测试里踩了一次 round 138 的坑**：滚动之后同一个 `evaluate` 里同步读值，
+读到的是 React 重渲染之前的旧值 —— 看起来像渐隐坏了，其实是我读早了。
+改成 `expect.poll`，并把这条写进注释。
+
+### 又一个单测按 Tailwind class 找元素
+
+`ReasoningBlock.test.tsx` 用 `.overflow-y-auto` 找滚动窗口。
+它测的是「窗口能被键盘到达」，而 `overflow-y-auto` 只是当时的拼法。
+改成 `data-slot="reasoning-scroller"` —— 顺带这个 slot 也让 closure 套件够得着它。
+（同一个文件上一条 `it` 里已经写着「The slot, not the class」。）
+
+### 一个我该自己抓住的错
+
+`0956f4fe` 那次提交**把一个一次性探针文件 `__probe.visual.spec.ts` 一起提交了**。
+它匹配 `*.visual.spec.ts`，所以从那之后它**作为套件的一部分在跑** ——
+也就是说 round 163/164 报的 669 里有 1 条是这个探针的。数字没有让结论作废，
+但它确实不是我以为的那个数。已删除。
+
+根因是我 `git add desktop/frontend/visual`（整个目录），而不是只加我打算提交的文件。
+**探针的生命周期必须比它回答的那个问题短。**
+
+### 渐隐第一次真的画出来了
+
+重录 `answer-opening` / `waves` 四张之前，先看了实际截图确认改动就是我预期的那一处：
+推理块变成一段被窗口截住的长文本，而**最后那一行明显地淡出去了** ——
+这个功能自写下来第一次被画出来。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **669 / 669**，0 unexpected，0 flaky |
+| 守卫 | 17 项全绿 |
+| 单测 | 1783 项通过 |
+| 重录 | 4 张（`answer-opening` / `waves` 两个主题）—— fixture 推理文本加长 |
+
+669 这个数这次是**干净的**：删掉探针（-1）、加上推理渐隐那条（+1），
+跟上一轮的 669 正好对上。
+
+### 存量精确分类（不再给毛数）
+
+71 条里：
+
+| | 条数 | 说明 |
+| --- | --- | --- |
+| **真 Tailwind** | **37** | 15 个文件，还要迁 |
+| `globals.css` 机制键 | 28 | 后代规则 / 接缝 / 遮罩 / shiki —— StyleX 表达不了，**设计上的终态** |
+| 根本不是 class | 6 | 枚举值、prop 值，被扫描器扫进来的 |
