@@ -254,9 +254,6 @@ func (f *formatOutputBuffer) String() string {
 func (f *formatOutputBuffer) Bytes() []byte { return f.buffer.Bytes() }
 
 func writeFormattedFile(path string, data []byte, source os.FileInfo) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".format-*")
 	if err != nil {
 		return err

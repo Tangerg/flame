@@ -107,6 +107,30 @@ func TestWriteFormattedFileRejectsReplacedSource(t *testing.T) {
 	}
 }
 
+func TestWriteFormattedFileDoesNotRecreateDeletedDirectory(t *testing.T) {
+	directory := filepath.Join(t.TempDir(), "removed")
+	if err := os.Mkdir(directory, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(directory, "data.json")
+	if err := os.WriteFile(path, []byte("original"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	source, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(directory); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeFormattedFile(path, []byte("formatted"), source); err == nil {
+		t.Fatal("formatting a removed source succeeded")
+	}
+	if _, err := os.Lstat(directory); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("removed directory was recreated: %v", err)
+	}
+}
+
 func TestFormatPathSurfacesUnexpectedStatFailure(t *testing.T) {
 	parent := filepath.Join(t.TempDir(), "file")
 	if err := os.WriteFile(parent, []byte("not a directory"), 0o644); err != nil {
