@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { EmptyState, ProviderIcon, Segmented, Surface } from "@/ui";
+import { EmptyState, ProviderIcon, Segmented, Surface, vocab } from "@/ui";
 import { fmtCost, fmtTokens } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import {
@@ -54,17 +54,17 @@ function BreakdownSection({
   return (
     <Surface>
       <div {...stylex.props(ss.caption, typeStep.uiMd)}>{title}</div>
-      <div {...stylex.props(ss.column)}>
+      <div {...stylex.props(vocab.column)}>
         {buckets.map((b) => (
           <div key={b.key} {...stylex.props(ss.nameGrid, ss.hoverRow, ss.hoverRowTight)}>
-            <div {...stylex.props(ss.line, ss.min)}>
+            <div {...stylex.props(vocab.line, vocab.min)}>
               {icon?.(b.key)}
-              <span {...stylex.props(ss.truncate, u.ink, typeStep.uiMd)}>{b.key}</span>
+              <span {...stylex.props(vocab.truncate, u.ink, typeStep.uiMd)}>{b.key}</span>
             </div>
             <div {...stylex.props(ss.lineWide, typeStep.uiMd, face.mono)}>
-              <span {...stylex.props(ss.muted)}>{fmtTokens(usageTokens(b))}</span>
+              <span {...stylex.props(vocab.muted)}>{fmtTokens(usageTokens(b))}</span>
               {b.costUsd !== undefined && (
-                <span {...stylex.props(u.cost, ss.figures)}>{fmtCost(b.costUsd)}</span>
+                <span {...stylex.props(u.cost, vocab.figures)}>{fmtCost(b.costUsd)}</span>
               )}
             </div>
           </div>
@@ -91,7 +91,7 @@ function UsageTotals({
     <Surface className={stylex.props(ss.stackTight).className}>
       <div {...stylex.props(u.totalLine)}>
         <span {...stylex.props(ss.captionInline, typeStep.uiMd)}>{t("usage.total")}</span>
-        <span {...stylex.props(u.total, ss.figures)}>
+        <span {...stylex.props(u.total, vocab.figures)}>
           {total.costUsd !== undefined ? fmtCost(total.costUsd) : "—"}
         </span>
       </div>
@@ -99,21 +99,21 @@ function UsageTotals({
         <span>↑{fmtTokens(total.inputTokens ?? 0)}</span>
         <span>↓{fmtTokens(total.outputTokens ?? 0)}</span>
         {(total.cacheReadTokens ?? 0) > 0 && (
-          <span {...stylex.props(ss.faint)}>
+          <span {...stylex.props(vocab.faint)}>
             {t("usage.cache")} {fmtTokens(total.cacheReadTokens ?? 0)}
           </span>
         )}
         {(total.cacheWriteTokens ?? 0) > 0 && (
-          <span {...stylex.props(ss.faint)}>
+          <span {...stylex.props(vocab.faint)}>
             {t("usage.cacheWrite")} {fmtTokens(total.cacheWriteTokens ?? 0)}
           </span>
         )}
         {(total.reasoningTokens ?? 0) > 0 && (
-          <span {...stylex.props(ss.faint)}>
+          <span {...stylex.props(vocab.faint)}>
             {t("usage.reasoning")} {fmtTokens(total.reasoningTokens ?? 0)}
           </span>
         )}
-        <span {...stylex.props(ss.faint)}>
+        <span {...stylex.props(vocab.faint)}>
           · {t("usage.sessions", { count: sessions })} · {t("usage.runs", { count: runs })}
         </span>
       </div>
@@ -141,8 +141,8 @@ export function UsagePane() {
         />
       </div>
 
-      {isLoading && <div {...stylex.props(ss.muted, typeStep.uiMd)}>{t("usage.loading")}</div>}
-      {isError && <div {...stylex.props(ss.negative, typeStep.uiMd)}>{t("usage.error")}</div>}
+      {isLoading && <div {...stylex.props(vocab.muted, typeStep.uiMd)}>{t("usage.loading")}</div>}
+      {isError && <div {...stylex.props(vocab.negative, typeStep.uiMd)}>{t("usage.error")}</div>}
 
       {data && !hasSpend && (
         <EmptyState icon="chart" title={t("usage.empty")} sub={t("usage.empty.sub")} />

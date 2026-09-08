@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
-import { Icon, PillButton, Surface, TextArea, TextButton } from "@/ui";
+import { Icon, PillButton, Surface, TextArea, TextButton, vocab } from "@/ui";
 import { useCreateMCPServer } from "../application/mcpServerConfig";
 import { notifyInfo } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
@@ -56,7 +56,7 @@ export function JsonImport() {
   }
   return (
     <Surface className={stylex.props(ji.form).className}>
-      <span {...stylex.props(ss.muted, typeStep.uiMd)}>{t("mcp.import.hint")}</span>
+      <span {...stylex.props(vocab.muted, typeStep.uiMd)}>{t("mcp.import.hint")}</span>
       <TextArea
         size="sm"
         invalid={error !== undefined}
@@ -70,14 +70,14 @@ export function JsonImport() {
         }
       />
       {error && (
-        <span {...stylex.props(ss.inline, ss.negative, typeStep.uiMd)}>
+        <span {...stylex.props(ss.inline, vocab.negative, typeStep.uiMd)}>
           <Icon name="alert" size="sm" />
-          <span {...stylex.props(ss.truncate)} title={error}>
+          <span {...stylex.props(vocab.truncate)} title={error}>
             {error}
           </span>
         </span>
       )}
-      <div {...stylex.props(ss.line)}>
+      <div {...stylex.props(vocab.line)}>
         <PillButton
           variant="accent"
           size="sm"

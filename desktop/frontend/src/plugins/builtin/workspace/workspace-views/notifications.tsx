@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { EmptyState, IconButton, StatusDot } from "@/ui";
+import { EmptyState, IconButton, StatusDot, vocab } from "@/ui";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { useNotificationStore } from "@/plugins/sdk";
@@ -66,8 +66,8 @@ function NotificationRow({ level, message, plugin, timestamp, dismissed, onDismi
   return (
     <div {...stylex.props(vs.rowTop, vs.gutter, vs.rowPad, dismissed && vs.dismissed)}>
       <StatusDot tone={notificationDotTone(level)} className={stylex.props(vs.dotTop).className} />
-      <div {...stylex.props(vs.fill)}>
-        <div {...stylex.props(vs.wrapText, vs.soft, typeStep.uiMd)}>{message}</div>
+      <div {...stylex.props(vocab.fill)}>
+        <div {...stylex.props(vocab.wrapText, vocab.soft, typeStep.uiMd)}>{message}</div>
         <div {...stylex.props(vs.subCaptionMuted, typeStep.uiSm)}>
           {plugin} · {formatRelative(timestamp)}
         </div>

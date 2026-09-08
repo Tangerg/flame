@@ -6,9 +6,9 @@ import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectAskUserAnswer } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 
-import { chatStyles as ct } from "../../chatStyles";
 import { TEXT_PREVIEW } from "./previewChrome";
 import { previewStyles as pv } from "./previewStyles";
+import { vocab } from "@/ui";
 
 function AskUserPreview({ tool }: ToolPreviewProps) {
   const t = useT();
@@ -17,11 +17,11 @@ function AskUserPreview({ tool }: ToolPreviewProps) {
     <div {...stylex.props(TEXT_PREVIEW, pv.wrapWords)}>
       {answer ? (
         <>
-          <span {...stylex.props(ct.faint)}>{t("tool.askUser.answerPrefix")}</span>
-          <span {...stylex.props(ct.soft)}>{answer}</span>
+          <span {...stylex.props(vocab.faint)}>{t("tool.askUser.answerPrefix")}</span>
+          <span {...stylex.props(vocab.soft)}>{answer}</span>
         </>
       ) : (
-        <span {...stylex.props(ct.faint)}>{t("tool.askUser.waiting")}</span>
+        <span {...stylex.props(vocab.faint)}>{t("tool.askUser.waiting")}</span>
       )}
     </div>
   );

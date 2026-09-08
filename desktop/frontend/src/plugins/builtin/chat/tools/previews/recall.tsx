@@ -11,9 +11,9 @@ import {
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
 import { space } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 import { previewStyles as pv } from "./previewStyles";
 import { TEXT_PREVIEW } from "./previewChrome";
+import { vocab } from "@/ui";
 
 const rc = stylex.create({
   memory: { display: "flex", gap: space.s2_5 },
@@ -39,8 +39,8 @@ function MemoryRecallPreview({ tool }: ToolPreviewProps) {
     <div {...stylex.props(TEXT_PREVIEW)}>
       {memories.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((memory, i) => (
         <div key={i} className={stylex.props(rc.memory, pv.row, pv.rowPad).className}>
-          <span {...stylex.props(ct.hold, ct.figures, ct.faint)}>{i + 1}</span>
-          <span {...stylex.props(pv.wrapWords, ct.soft)}>{memory}</span>
+          <span {...stylex.props(vocab.hold, vocab.figures, vocab.faint)}>{i + 1}</span>
+          <span {...stylex.props(pv.wrapWords, vocab.soft)}>{memory}</span>
         </div>
       ))}
       <PreviewOverflow count={memories.length - INLINE_PREVIEW_ROW_LIMIT} />
@@ -73,11 +73,11 @@ function ConversationRecallPreview({ tool }: ToolPreviewProps) {
               two-value enum whose first four characters already tell them apart. What must
               never be lost is the date, and it no longer is. Each row is its own grid, so the
               width has to be a literal for the columns to line up at all. */}
-          <span {...stylex.props(rc.who, ct.faint)}>
-            <span {...stylex.props(ct.min, ct.truncate)}>{hit.speaker}</span>
-            <span {...stylex.props(ct.hold)}>· {hit.day}</span>
+          <span {...stylex.props(rc.who, vocab.faint)}>
+            <span {...stylex.props(vocab.min, vocab.truncate)}>{hit.speaker}</span>
+            <span {...stylex.props(vocab.hold)}>· {hit.day}</span>
           </span>
-          <span {...stylex.props(ct.min, ct.truncate, ct.soft)}>{hit.snippet}</span>
+          <span {...stylex.props(vocab.min, vocab.truncate, vocab.soft)}>{hit.snippet}</span>
         </div>
       ))}
       <PreviewOverflow count={hits.length - INLINE_PREVIEW_ROW_LIMIT} />

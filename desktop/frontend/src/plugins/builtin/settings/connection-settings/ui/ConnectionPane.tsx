@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { Button, StatusDot, TextField } from "@/ui";
+import { Button, StatusDot, TextField, vocab } from "@/ui";
 import { useT, type Translate } from "@/lib/i18n";
 import {
   applyRuntimeEndpoint,
@@ -127,7 +127,7 @@ export function ConnectionPane() {
           <label htmlFor="runtime-base-url" {...stylex.props(ss.captionInline, typeStep.uiMd)}>
             {t("settings.connection.url")}
           </label>
-          <div {...stylex.props(ss.line)}>
+          <div {...stylex.props(vocab.line)}>
             <TextField
               id="runtime-base-url"
               type="text"
@@ -144,7 +144,7 @@ export function ConnectionPane() {
                 }
               }}
               placeholder={DEFAULT_RUNTIME_ENDPOINT}
-              {...stylex.props(ss.grow)}
+              {...stylex.props(vocab.grow)}
               spellCheck={false}
             />
             {/* Both stay mounted and go disabled instead of appearing. The field beside them is
@@ -156,7 +156,7 @@ export function ConnectionPane() {
               size="lg"
               disabled={isDefault}
               onClick={reset}
-              className={stylex.props(ss.hold).className}
+              className={stylex.props(vocab.hold).className}
             >
               {t("settings.connection.reset")}
             </Button>
@@ -165,20 +165,20 @@ export function ConnectionPane() {
               size="lg"
               disabled={!dirty}
               onClick={apply}
-              className={stylex.props(ss.hold).className}
+              className={stylex.props(vocab.hold).className}
             >
               {t("settings.connection.apply")}
             </Button>
           </div>
           {error ? (
-            <div {...stylex.props(ss.lineTight, ss.negative, typeStep.uiSm)}>
+            <div {...stylex.props(vocab.lineTight, vocab.negative, typeStep.uiSm)}>
               <StatusDot tone="err" />
               <span>{error}</span>
             </div>
           ) : null}
           <div {...stylex.props(cp.status)}>
             <div {...stylex.props(ss.split)} aria-live="polite">
-              <div {...stylex.props(ss.line, ss.min, ss.muted, typeStep.uiMd)}>
+              <div {...stylex.props(vocab.line, vocab.min, vocab.muted, typeStep.uiMd)}>
                 <StatusDot tone={STATUS_TONE[service.phase]} />
                 <span>{t(STATUS_KEY[service.phase])}</span>
               </div>
@@ -196,21 +196,21 @@ export function ConnectionPane() {
             </div>
             {service.observation ? (
               <dl {...stylex.props(cp.facts, typeStep.uiSm)}>
-                <dt {...stylex.props(ss.faint)}>{t("settings.connection.status.server")}</dt>
-                <dd {...stylex.props(ss.truncate, ss.muted, face.mono)}>
+                <dt {...stylex.props(vocab.faint)}>{t("settings.connection.status.server")}</dt>
+                <dd {...stylex.props(vocab.truncate, vocab.muted, face.mono)}>
                   {service.observation.server.name} {service.observation.server.version}
                 </dd>
-                <dt {...stylex.props(ss.faint)}>{t("settings.connection.status.protocol")}</dt>
-                <dd {...stylex.props(ss.truncate, ss.muted, face.mono)}>
+                <dt {...stylex.props(vocab.faint)}>{t("settings.connection.status.protocol")}</dt>
+                <dd {...stylex.props(vocab.truncate, vocab.muted, face.mono)}>
                   {service.observation.protocolVersion}
                 </dd>
                 {unhealthyChecks.length > 0 ? (
                   <>
-                    <dt {...stylex.props(ss.faint)}>{t("settings.connection.status.checks")}</dt>
+                    <dt {...stylex.props(vocab.faint)}>{t("settings.connection.status.checks")}</dt>
                     <dd {...stylex.props(cp.checks)}>
                       {unhealthyChecks.map(([name, health]) => (
                         <span key={name}>
-                          {name} <span {...stylex.props(ss.faint)}>{t(STATUS_KEY[health])}</span>
+                          {name} <span {...stylex.props(vocab.faint)}>{t(STATUS_KEY[health])}</span>
                         </span>
                       ))}
                     </dd>

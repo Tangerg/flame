@@ -1,8 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
-import { SectionLabel, TextArea, TextButton, Well } from "@/ui";
+import { SectionLabel, TextArea, TextButton, vocab, Well } from "@/ui";
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../../chatStyles";
 
 const ae = stylex.create({
   head: { marginBottom: space.s1, display: "flex", alignItems: "center", gap: space.s2 },
@@ -37,7 +36,7 @@ export function ApprovalArgsEditor({
             tone="accent"
             size="xs"
             onClick={() => onEditToggle(true)}
-            className={stylex.props(ct.strong).className}
+            className={stylex.props(vocab.strong).className}
           >
             {t("approval.args.edit")}
           </TextButton>
@@ -57,7 +56,7 @@ export function ApprovalArgsEditor({
             variant="well"
           />
           {invalid && (
-            <div {...stylex.props(ae.error, ct.negative, typeStep.uiXs, face.mono)}>
+            <div {...stylex.props(ae.error, vocab.negative, typeStep.uiXs, face.mono)}>
               {t("approval.args.invalid")}
             </div>
           )}

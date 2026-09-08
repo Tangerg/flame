@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { DataView, Tag } from "@/ui";
+import { DataView, Tag, vocab } from "@/ui";
 import { type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./views/viewStyles";
 import { useT } from "@/lib/i18n";
@@ -47,11 +47,11 @@ export function SkillsTab() {
         }
       >
         {(rows) => (
-          <div {...stylex.props(vs.stack)}>
+          <div {...stylex.props(vocab.column)}>
             {rows.map((s) => (
               <div key={s.id} {...stylex.props(vs.gutter, vs.rowPad)}>
-                <div {...stylex.props(vs.line)}>
-                  <div {...stylex.props(vs.title, vs.truncate, typeStep.uiMd)}>{s.name}</div>
+                <div {...stylex.props(vocab.line, vocab.min)}>
+                  <div {...stylex.props(vs.title, vocab.truncate, typeStep.uiMd)}>{s.name}</div>
                   {s.scope && <Tag>{s.scope}</Tag>}
                 </div>
                 {s.description && (

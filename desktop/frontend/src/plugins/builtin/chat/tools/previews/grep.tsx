@@ -13,6 +13,7 @@ import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../chatStyles";
 import { previewStyles as pv } from "./previewStyles";
 import { TEXT_PREVIEW } from "./previewChrome";
+import { vocab } from "@/ui";
 
 const gp = stylex.create({
   head: { display: "flex", alignItems: "baseline", gap: space.s2 },
@@ -42,11 +43,13 @@ function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
         {groupByFile(shown).map((group) => (
           <div key={group.file}>
             <div {...stylex.props(gp.head)}>
-              <span {...stylex.props(ct.fill, ct.truncate, ct.soft, typeStep.uiSm, face.mono)}>
+              <span
+                {...stylex.props(vocab.fill, vocab.truncate, vocab.soft, typeStep.uiSm, face.mono)}
+              >
                 <LinkedText text={group.file} />
               </span>
               {group.matches.length > 1 && (
-                <span {...stylex.props(ct.hold, ct.faint, typeStep.ui2xs, face.mono)}>
+                <span {...stylex.props(vocab.hold, vocab.faint, typeStep.ui2xs, face.mono)}>
                   {t("tools.grep.matchCount", { count: group.matches.length })}
                 </span>
               )}
@@ -54,7 +57,7 @@ function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
             {group.matches.map((match, index) => (
               <div key={index} {...stylex.props(pv.numbered, pv.numberedWide, pv.row)}>
                 <span {...stylex.props(pv.gutter, typeStep.ui2xs, face.mono)}>{match.line}</span>
-                <span {...stylex.props(pv.wrap, ct.muted, typeStep.uiSm, face.mono)}>
+                <span {...stylex.props(pv.wrap, vocab.muted, typeStep.uiSm, face.mono)}>
                   {match.text}
                 </span>
               </div>
@@ -62,7 +65,7 @@ function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
           </div>
         ))}
         {overflow > 0 && (
-          <div {...stylex.props(ct.faint)}>
+          <div {...stylex.props(vocab.faint)}>
             … {t("tools.overflow.matches", { count: overflow })}
           </div>
         )}

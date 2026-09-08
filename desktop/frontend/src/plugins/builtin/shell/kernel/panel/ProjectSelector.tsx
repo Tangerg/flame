@@ -7,10 +7,9 @@ import {
   useWorkIndexActions,
   type WorkGroup,
 } from "@/plugins/builtin/navigation/public/workIndex";
-import { Button, DropdownMenu, Icon } from "@/ui";
+import { Button, DropdownMenu, Icon, vocab } from "@/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent";
 import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
-import { shellStyles as sh } from "../shellStyles";
 
 interface ProjectMenuContentProps {
   groups: readonly WorkGroup[] | undefined;
@@ -79,7 +78,7 @@ function ProjectMenuContent({
       <div {...stylex.props(pl.heading, typeStep.uiXs)}>{t("composer.project.select")}</div>
       {loading && !groups ? (
         <DropdownMenu.Item disabled layout="glyph" className={stylex.props(pl.item).className}>
-          <Icon name="folder" size="sm" className={stylex.props(sh.faint).className} />
+          <Icon name="folder" size="sm" className={stylex.props(vocab.faint).className} />
           <span>{t("common.loading")}</span>
         </DropdownMenu.Item>
       ) : (
@@ -94,10 +93,10 @@ function ProjectMenuContent({
             layout="pick"
             className={stylex.props(pl.item).className}
           >
-            <Icon name="folder" size="sm" className={stylex.props(sh.muted).className} />
-            <span {...stylex.props(sh.min, sh.truncate)}>{project.name}</span>
+            <Icon name="folder" size="sm" className={stylex.props(vocab.muted).className} />
+            <span {...stylex.props(vocab.min, vocab.truncate)}>{project.name}</span>
             {project.id === activeCwd ? (
-              <Icon name="check" size="xs" className={stylex.props(sh.accent).className} />
+              <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
             ) : (
               <span aria-hidden />
             )}
@@ -111,7 +110,7 @@ function ProjectMenuContent({
         layout="glyph"
         className={stylex.props(pl.item).className}
       >
-        <Icon name="plus" size="sm" className={stylex.props(sh.muted).className} />
+        <Icon name="plus" size="sm" className={stylex.props(vocab.muted).className} />
         <span>{t("composer.project.add")}</span>
       </DropdownMenu.Item>
     </DropdownMenu.Content>
@@ -143,10 +142,10 @@ export function ComposerProjectTray() {
                 disabled={!actions.canCreateSessionInFolder}
                 aria-label={t("composer.project.choose")}
                 title={t("composer.project.tooltip")}
-                className={stylex.props(sh.min).className}
+                className={stylex.props(vocab.min).className}
               >
-                <Icon name="folder" size="sm" className={stylex.props(sh.hold).className} />
-                <span {...stylex.props(pl.chooseLabel, sh.truncate)}>
+                <Icon name="folder" size="sm" className={stylex.props(vocab.hold).className} />
+                <span {...stylex.props(pl.chooseLabel, vocab.truncate)}>
                   {t("composer.project.choose")}
                 </span>
               </Button>

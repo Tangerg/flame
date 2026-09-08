@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { Badge, DataView, EmptyState, Icon, Surface, Switch, Tag } from "@/ui";
+import { Badge, DataView, EmptyState, Icon, Surface, Switch, Tag, vocab } from "@/ui";
 import { isUnsupportedMethod, rpcErrorText } from "@/lib/rpcErrors";
 import type { HookReadModel } from "../application/hookConfig";
 import { useHookConfigs } from "../application/hookConfig";
@@ -34,23 +34,27 @@ function HookRow({ h }: { h: HookReadModel }) {
       <Icon
         name={h.scope === "global" ? "globe" : "folder"}
         size="sm"
-        className={stylex.props(ss.faint).className}
+        className={stylex.props(vocab.faint).className}
       />
-      <div {...stylex.props(ss.line, ss.min)}>
+      <div {...stylex.props(vocab.line, vocab.min)}>
         <Tag>{h.event}</Tag>
         {h.matcher && (
           <span
-            {...stylex.props(ss.hold, ss.accent, typeStep.uiSm, face.mono)}
+            {...stylex.props(vocab.hold, vocab.accent, typeStep.uiSm, face.mono)}
             title={t("hooks.matcher")}
           >
             {h.matcher}
           </span>
         )}
         <span
-          {...stylex.props(ss.fill, ss.monoName, typeStep.uiMd)}
+          {...stylex.props(vocab.fill, ss.monoName, typeStep.uiMd)}
           title={h.command || h.inject || h.source}
         >
-          {h.command ? h.command : <span {...stylex.props(ss.muted, hp.injected)}>{h.inject}</span>}
+          {h.command ? (
+            h.command
+          ) : (
+            <span {...stylex.props(vocab.muted, hp.injected)}>{h.inject}</span>
+          )}
         </span>
       </div>
       {!h.active ? (
@@ -58,7 +62,7 @@ function HookRow({ h }: { h: HookReadModel }) {
           {t("hooks.inactive")}
         </Badge>
       ) : h.inject ? (
-        <span {...stylex.props(ss.hold, hp.scope, typeStep.uiXs)}>{t("hooks.kind.inject")}</span>
+        <span {...stylex.props(vocab.hold, hp.scope, typeStep.uiXs)}>{t("hooks.kind.inject")}</span>
       ) : null}
     </div>
   );
@@ -106,11 +110,11 @@ export function HooksPane() {
 
       {projectRoot && data?.hasProjectHooks && (
         <Surface className={stylex.props(ss.split).className}>
-          <div {...stylex.props(ss.min)}>
+          <div {...stylex.props(vocab.min)}>
             <div {...stylex.props(ss.label, typeStep.uiMd)}>{t("hooks.trust")}</div>
             <div {...stylex.props(hp.sub, typeStep.uiMd)}>{t("hooks.trust.sub")}</div>
             <div
-              {...stylex.props(ss.afterLine, ss.truncate, ss.faint, typeStep.uiSm, face.mono)}
+              {...stylex.props(ss.afterLine, vocab.truncate, vocab.faint, typeStep.uiSm, face.mono)}
               title={projectRoot}
             >
               {projectRoot}
@@ -134,7 +138,7 @@ export function HooksPane() {
         empty={{ icon: "lightning", title: t("hooks.empty"), sub: t("hooks.empty.sub") }}
       >
         {(rows) => (
-          <div {...stylex.props(ss.stackHairline)}>
+          <div {...stylex.props(vocab.stackHairline)}>
             {rows.map((h, i) => (
               <HookRow key={`${h.source}:${h.event}:${i}`} h={h} />
             ))}

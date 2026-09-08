@@ -1,10 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
-import { DropdownMenu, Icon, SelectTrigger } from "@/ui";
+import { DropdownMenu, Icon, SelectTrigger, vocab } from "@/ui";
 import { useLocale, useT } from "@/lib/i18n";
 import { LOCALE, useExtensionPoint } from "@/plugins/sdk";
 import { selectLocale } from "../application/localeSelection";
 import { SettingRow } from "../../kit";
-import { settingStyles as ss } from "../../kit/settingStyles";
 
 export function LanguageSection() {
   const t = useT();
@@ -22,9 +21,9 @@ export function LanguageSection() {
         <DropdownMenu.Content align="start" sideOffset={4}>
           {locales.map((l) => (
             <DropdownMenu.Item key={l.id} onClick={() => void selectLocale(l)} layout="pickPlain">
-              <span {...stylex.props(ss.truncate)}>{l.label}</span>
+              <span {...stylex.props(vocab.truncate)}>{l.label}</span>
               {locale === l.id ? (
-                <Icon name="check" size="xs" className={stylex.props(ss.accent).className} />
+                <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
               ) : (
                 <span aria-hidden />
               )}

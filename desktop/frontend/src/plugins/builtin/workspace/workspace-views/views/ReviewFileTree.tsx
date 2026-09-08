@@ -1,7 +1,16 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
-import { DiffStat, FilePath, Icon, IconButton, Pressable, ScrollArea, TextField } from "@/ui";
+import {
+  DiffStat,
+  FilePath,
+  Icon,
+  IconButton,
+  Pressable,
+  ScrollArea,
+  TextField,
+  vocab,
+} from "@/ui";
 import { AgentViewNavigator } from "@/ui/agent";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
@@ -12,7 +21,6 @@ import {
   filterReviewFiles,
 } from "@/plugins/builtin/workspace/application/reviewFileTree";
 import { space, type as typeStep } from "@/styles/tokens.stylex";
-import { viewStyles as vs } from "./viewStyles";
 
 const rf = stylex.create({
   glyph: { opacity: "var(--glyph-step)" },
@@ -51,7 +59,7 @@ function TreeRows({
           depth={depth}
           selected={node.path === selectedPath}
           leading={
-            <Icon name="file" size="sm" className={stylex.props(vs.hold, rf.glyph).className} />
+            <Icon name="file" size="sm" className={stylex.props(vocab.hold, rf.glyph).className} />
           }
           label={node.name}
           title={node.name}
@@ -79,7 +87,7 @@ function TreeRows({
               className={cn("shrink-0 transition-transform", !open && "-rotate-90")}
             />
           }
-          label={<FilePath path={node.name} className={stylex.props(vs.muted).className} />}
+          label={<FilePath path={node.name} className={stylex.props(vocab.muted).className} />}
           title={node.name}
           expanded={open}
           trailing={
@@ -142,7 +150,7 @@ function TreeRow({
       title={title}
     >
       {leading}
-      <span {...stylex.props(vs.fill, vs.truncate)}>{label}</span>
+      <span {...stylex.props(vocab.fill, vocab.truncate)}>{label}</span>
       {trailing}
     </Pressable>
   );
@@ -203,7 +211,7 @@ export function ReviewFileTree({
     >
       <ScrollArea className={stylex.props(rf.pad).className}>
         {nodes.length === 0 ? (
-          <p {...stylex.props(rf.note, vs.caption, typeStep.uiXs)}>
+          <p {...stylex.props(rf.note, vocab.faint, typeStep.uiXs)}>
             {filtering ? t("diff.files.noMatch") : t("diff.files.none")}
           </p>
         ) : (

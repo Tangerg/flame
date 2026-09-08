@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { DiffStat, Icon, Pressable } from "@/ui";
+import { DiffStat, Icon, Pressable, vocab } from "@/ui";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { headlineToolMetaItem, toolCardModel } from "../application/toolCardModel";
@@ -8,7 +8,6 @@ import { toolCallIconFor } from "../public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "./ToolText";
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 
 interface Props {
   tool: ToolCall;
@@ -43,16 +42,16 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
         <Icon
           name={toolCallIconFor(tool)}
           size="xs"
-          className={stylex.props(ct.hold, ct.muted).className}
+          className={stylex.props(vocab.hold, vocab.muted).className}
         />
         <ToolText
           value={model.intent.label}
-          className={stylex.props(ct.hold, gm.inherit, typeStep.uiSm).className}
+          className={stylex.props(vocab.hold, gm.inherit, typeStep.uiSm).className}
         />
         {model.detail && (
           <ToolText
             value={model.detail}
-            className={stylex.props(ct.fill, ct.faint, typeStep.uiSm, face.mono).className}
+            className={stylex.props(vocab.fill, vocab.faint, typeStep.uiSm, face.mono).className}
           />
         )}
         {model.diffStat && (

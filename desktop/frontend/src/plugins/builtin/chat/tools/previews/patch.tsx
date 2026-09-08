@@ -9,11 +9,10 @@ import { projectPatchChanges, type PatchChange } from "@/plugins/builtin/agent/p
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
 import type { ToolFileChange } from "@/plugins/sdk/types/agentSessionView";
-import { DiffStat, FilePath } from "@/ui";
+import { DiffStat, FilePath, vocab } from "@/ui";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
 import { TEXT_PREVIEW } from "./previewChrome";
 import { color, leading, space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 
 const pt = stylex.create({
   // One track for the verbs, shared by every row through `subgrid`, so every path begins on
@@ -62,13 +61,13 @@ function PatchChangeRow({ change }: { change: PatchChange }) {
       {change.status === "moved" && change.from ? (
         <span {...stylex.props(pt.movedLine)}>
           <FilePath path={change.from} className={stylex.props(pt.fromPath).className} />
-          <span aria-hidden="true" {...stylex.props(ct.hold, ct.faint)}>
+          <span aria-hidden="true" {...stylex.props(vocab.hold, vocab.faint)}>
             →
           </span>
-          <FilePath path={change.path} className={stylex.props(ct.fill).className} />
+          <FilePath path={change.path} className={stylex.props(vocab.fill).className} />
         </span>
       ) : (
-        <FilePath path={change.path} className={stylex.props(ct.min, ct.muted).className} />
+        <FilePath path={change.path} className={stylex.props(vocab.min, vocab.muted).className} />
       )}
     </div>
   );
@@ -83,7 +82,7 @@ function PatchChangeRow({ change }: { change: PatchChange }) {
 function ProposedChangeRow({ change }: { change: ToolFileChange }) {
   return (
     <div {...stylex.props(pt.proposedRow, typeStep.uiMd)}>
-      <FilePath path={change.path} className={stylex.props(ct.fill, ct.muted).className} />
+      <FilePath path={change.path} className={stylex.props(vocab.fill, vocab.muted).className} />
       <DiffStat added={change.added} removed={change.removed} />
     </div>
   );

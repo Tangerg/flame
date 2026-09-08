@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import type { Tone } from "@/lib/tone";
-import { Badge, Well } from "@/ui";
+import { Badge, vocab, Well } from "@/ui";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { ToolOutputPanel } from "@/plugins/builtin/chat/tools/public/previews/ToolOutputPanel";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
@@ -15,7 +15,6 @@ import {
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { TEXT_PREVIEW } from "./previewChrome";
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 import { previewStyles as pv } from "./previewStyles";
 
 const hp = stylex.create({
@@ -53,10 +52,10 @@ function HttpRequestPreview({ tool, onOpenView }: ToolPreviewProps) {
           {response.status}
         </Badge>
         {response.duration && (
-          <span {...stylex.props(ct.faint, typeStep.uiXs, face.mono)}>{response.duration}</span>
+          <span {...stylex.props(vocab.faint, typeStep.uiXs, face.mono)}>{response.duration}</span>
         )}
         {response.headers.length > 0 && (
-          <span {...stylex.props(ct.faint, typeStep.uiSm)}>
+          <span {...stylex.props(vocab.faint, typeStep.uiSm)}>
             {t("tools.http.headers", { count: response.headers.length })}
           </span>
         )}

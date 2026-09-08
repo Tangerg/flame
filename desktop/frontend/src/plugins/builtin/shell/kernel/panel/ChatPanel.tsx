@@ -255,13 +255,13 @@ export function ChatPanel({ onSend }: Props) {
                     at the minimum window the catalogue stood 860px tall in a 720px dock, and the
                     last four destinations were below the fold with nothing to scroll. */}
                 {showingCatalog && (
-                  <div {...stylex.props(sh.fill)}>
+                  <div {...stylex.props(sh.overlay)}>
                     <DockCatalogPage groups={catalog} openViewIds={openViewIds} />
                   </div>
                 )}
                 {ownedDockViewIds.map((viewId) => (
                   <Activity key={viewId} mode={viewId === dock.activeViewId ? "visible" : "hidden"}>
-                    <div data-dock-view-id={viewId} {...stylex.props(sh.fill)}>
+                    <div data-dock-view-id={viewId} {...stylex.props(sh.overlay)}>
                       <ViewPlacementProvider value={placementFor(viewId, "dock")}>
                         <WorkspaceViewBody viewId={viewId} />
                       </ViewPlacementProvider>

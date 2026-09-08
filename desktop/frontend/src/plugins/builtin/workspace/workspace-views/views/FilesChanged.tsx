@@ -4,13 +4,12 @@ import type {
   FileChangesViewModel,
 } from "@/plugins/builtin/workspace/application/fileChangesViewModel";
 import { memo } from "react";
-import { DiffStat, SectionLabel } from "@/ui";
+import { DiffStat, SectionLabel, vocab } from "@/ui";
 import { AgentRow } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import { splitFilePath } from "@/lib/path";
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
-import { viewStyles as vs } from "./viewStyles";
 
 const fc = stylex.create({
   pad: { paddingInline: space.s1_5 },
@@ -58,7 +57,7 @@ const FileRow = memo(function FileRow({
       onClick={() => onSelect(row.path)}
       detail={directory || undefined}
       trailing={
-        <span {...stylex.props(vs.line, typeStep.uiXs)}>
+        <span {...stylex.props(vocab.line, vocab.min, typeStep.uiXs)}>
           <span className={cn("text-ui-2xs font-semibold", row.tag.className)}>
             {row.tag.letter}
           </span>

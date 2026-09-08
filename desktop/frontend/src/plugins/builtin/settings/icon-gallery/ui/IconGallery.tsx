@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useMemo, useState } from "react";
-import { ScrollArea, SearchField } from "@/ui";
+import { ScrollArea, SearchField, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { IconMap, rawToc } from "./iconMap";
 import {
@@ -12,7 +12,6 @@ import {
   type as typeStep,
   weight,
 } from "@/styles/tokens.stylex";
-import { settingStyles as ss } from "../../kit/settingStyles";
 import { gallerySpread, galleryStyles as g } from "./galleryStyles";
 
 // The three groups `@lobehub/icons` sorts its catalogue into.
@@ -141,13 +140,13 @@ function IconCard({ entry }: { entry: (typeof rawToc)[number] }) {
         {Component ? <Component size={28} /> : <span {...stylex.props(g.missing)}>?</span>}
       </div>
       <div {...stylex.props(g.name, typeStep.uiSm)}>{entry.fullTitle}</div>
-      <div {...stylex.props(ss.lineTight, typeStep.uiXs)}>
+      <div {...stylex.props(vocab.lineTight, typeStep.uiXs)}>
         <span
           title={entry.color}
           className={stylex.props(ig.dot, corner.pill).className}
           style={{ background: entry.color }}
         />
-        <code {...stylex.props(ss.muted, typeStep.uiXs, face.mono)}>{entry.id}</code>
+        <code {...stylex.props(vocab.muted, typeStep.uiXs, face.mono)}>{entry.id}</code>
       </div>
     </div>
   );

@@ -1,13 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useSyncExternalStore } from "react";
-import { Button, ConfirmDialog, GlyphSwap, Icon } from "@/ui";
+import { Button, ConfirmDialog, GlyphSwap, Icon, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { useGoalMaterial } from "../application/goalReadModel";
 import { GoalComposerModeOwner } from "../application/goalComposerMode";
 import { goalCanEnterComposerMode } from "../application/goalComposerSubmitMode";
 import { GoalGlyph } from "./GoalGlyph";
-import { chatStyles as ct } from "../../chatStyles";
 
 const gi = stylex.create({
   glyph: { height: "var(--icon-sm)", width: "var(--icon-sm)" },
@@ -58,8 +57,8 @@ function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
         onClick={() => owner.deactivate(sessionId)}
       >
         <GlyphSwap
-          rest={<GoalGlyph className={stylex.props(gi.glyph, ct.hold).className} />}
-          hover={<Icon name="x" size="sm" className={stylex.props(ct.hold).className} />}
+          rest={<GoalGlyph className={stylex.props(gi.glyph, vocab.hold).className} />}
+          hover={<Icon name="x" size="sm" className={stylex.props(vocab.hold).className} />}
         />
         <span>{t("goal.mode.label")}</span>
       </Button>

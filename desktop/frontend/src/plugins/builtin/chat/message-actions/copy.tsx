@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { DropdownMenu, Tooltip } from "@/ui";
+import { DropdownMenu, Tooltip, vocab } from "@/ui";
 import { writeToClipboard } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { contributeLayout, definePlugin, useCurrentMessage } from "@/plugins/sdk";
@@ -57,8 +57,8 @@ function CopyItem({
 }) {
   return (
     <DropdownMenu.Item onClick={onSelect} className={stylex.props(ct.panelRow).className}>
-      <span {...stylex.props(ct.ink, typeStep.uiMd)}>{label}</span>
-      <span {...stylex.props(ct.faint, typeStep.uiSm)}>{hint}</span>
+      <span {...stylex.props(vocab.ink, typeStep.uiMd)}>{label}</span>
+      <span {...stylex.props(vocab.faint, typeStep.uiSm)}>{hint}</span>
     </DropdownMenu.Item>
   );
 }

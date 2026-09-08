@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import { color, leading, space, type } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
+import { vocab } from "@/ui";
 
 const previewText = stylex.create({
   block: {
@@ -32,5 +32,5 @@ export const INLINE_PREVIEW_ROW_LIMIT = 9;
 export function PreviewOverflow({ count }: { count: number }) {
   const t = useT();
   if (count <= 0) return null;
-  return <div {...stylex.props(ct.faint)}>… {t("tools.overflow.more", { count })}</div>;
+  return <div {...stylex.props(vocab.faint)}>… {t("tools.overflow.more", { count })}</div>;
 }

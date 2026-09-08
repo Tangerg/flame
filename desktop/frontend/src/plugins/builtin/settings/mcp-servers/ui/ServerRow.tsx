@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useEffect, useId, useRef, useState } from "react";
-import { IconButton, PillButton, StatusDot, Switch, Tag } from "@/ui";
+import { IconButton, PillButton, StatusDot, Switch, Tag, vocab } from "@/ui";
 import {
   type MCPServerSettings,
   type MCPTransport,
@@ -90,14 +90,14 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
     <div {...stylex.props(ss.hoverRow)}>
       <div {...stylex.props(sr.head)}>
         <StatusDot tone={tone} />
-        <div {...stylex.props(ss.line, ss.min)}>
-          <span {...stylex.props(ss.truncate, ss.label, typeStep.uiMd)} title={server.name}>
+        <div {...stylex.props(vocab.line, vocab.min)}>
+          <span {...stylex.props(vocab.truncate, ss.label, typeStep.uiMd)} title={server.name}>
             {server.name}
           </span>
           <TransportBadge transport={server.type} />
           {server.status === "failed" && server.errorDetail && (
             <span
-              {...stylex.props(ss.truncate, ss.negative, typeStep.uiMd)}
+              {...stylex.props(vocab.truncate, vocab.negative, typeStep.uiMd)}
               title={server.errorDetail}
             >
               {server.errorDetail}
@@ -106,7 +106,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
         </div>
         <div {...stylex.props(sr.actions)}>
           {active && (
-            <span {...stylex.props(ss.muted, typeStep.uiMd, face.mono)}>
+            <span {...stylex.props(vocab.muted, typeStep.uiMd, face.mono)}>
               {t("mcp.toolCount", { count: server.toolCount ?? 0 })}
             </span>
           )}

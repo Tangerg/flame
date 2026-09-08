@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { PluginError, PluginErrorSource } from "@/plugins/sdk";
 import { formatClock } from "@/lib/i18n/relativeTime";
 import { useState } from "react";
-import { Badge, Icon, IconButton, PillButton, TextButton } from "@/ui";
+import { Badge, Icon, IconButton, PillButton, TextButton, vocab } from "@/ui";
 import { copyText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { useInstalledPlugins, usePluginErrorStore } from "@/plugins/sdk";
@@ -117,7 +117,7 @@ export function PluginsPane() {
                     </TextButton>
                   )}
                 </div>
-                <div {...stylex.props(ss.lineTight)}>
+                <div {...stylex.props(vocab.lineTight)}>
                   {errCount > 0 && (
                     <PillButton variant="outlined" size="sm" onClick={() => clearFor(name)}>
                       {t("plugins.clear")}
@@ -162,11 +162,11 @@ function ErrorEntry({ err }: { err: PluginError }) {
         <Badge tone="negative" face="mono">
           {source}
         </Badge>
-        <span {...stylex.props(ss.truncate, ss.label, typeStep.uiMd)} title={err.message}>
+        <span {...stylex.props(vocab.truncate, ss.label, typeStep.uiMd)} title={err.message}>
           {err.message}
         </span>
-        <div {...stylex.props(ss.lineTight)}>
-          <span {...stylex.props(ss.faint, typeStep.uiXs, face.mono)}>{time}</span>
+        <div {...stylex.props(vocab.lineTight)}>
+          <span {...stylex.props(vocab.faint, typeStep.uiXs, face.mono)}>{time}</span>
           <IconButton icon="copy" iconSize="xs" title={t("plugins.copyError")} onClick={copy} />
         </div>
       </div>

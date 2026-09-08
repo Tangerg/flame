@@ -39,6 +39,7 @@ import {
   toolCatalogViewModel,
   useBuiltinToolConfigs,
 } from "@/plugins/builtin/workspace/application/toolCatalog";
+import { vocab } from "@/ui";
 
 function SectionHead({ children, count }: { children: React.ReactNode; count?: number }) {
   return (
@@ -116,7 +117,7 @@ function DiagnosticToolRowPresentation({
   const [argumentsError, setArgumentsError] = useState<DiagnosticArgumentsError | null>(null);
 
   return (
-    <div {...stylex.props(vs.stack)}>
+    <div {...stylex.props(vocab.column)}>
       <Pressable
         type="button"
         aria-expanded={open}
@@ -135,11 +136,11 @@ function DiagnosticToolRowPresentation({
         <Icon
           name={knownIconName(tool.icon) ?? "tool"}
           size="xs"
-          className={stylex.props(os.rowGlyph, vs.caption).className}
+          className={stylex.props(os.rowGlyph, vocab.faint).className}
         />
-        <span {...stylex.props(vs.min)}>
+        <span {...stylex.props(vocab.min)}>
           <span {...stylex.props(vs.lineBaseline)}>
-            <span {...stylex.props(vs.ink, vs.truncate, typeStep.uiSm, face.mono)}>
+            <span {...stylex.props(vocab.ink, vocab.truncate, typeStep.uiSm, face.mono)}>
               {tool.name}
             </span>
             {tool.safety && (
@@ -149,7 +150,7 @@ function DiagnosticToolRowPresentation({
             )}
           </span>
           <span
-            {...stylex.props(os.toolBlurb, vs.truncate, typeStep.uiXs)}
+            {...stylex.props(os.toolBlurb, vocab.truncate, typeStep.uiXs)}
             title={tool.description}
           >
             {tool.description}
@@ -231,8 +232,8 @@ function DiagnosticToolInvocationMaterial({
   };
 
   return (
-    <div id={panelId} {...stylex.props(vs.stack, os.panelGap, vs.gutter, os.panelInset)}>
-      <label {...stylex.props(vs.stack, os.fieldGap, os.fieldLabel, typeStep.uiXs)}>
+    <div id={panelId} {...stylex.props(vocab.column, os.panelGap, vs.gutter, os.panelInset)}>
+      <label {...stylex.props(vocab.column, os.fieldGap, os.fieldLabel, typeStep.uiXs)}>
         {t("tools.diagnostics.arguments")}
         <TextArea
           value={argumentsText}
@@ -255,7 +256,7 @@ function DiagnosticToolInvocationMaterial({
           {schema}
         </Well>
       </div>
-      <div {...stylex.props(vs.line)}>
+      <div {...stylex.props(vocab.line, vocab.min)}>
         <PillButton
           size="sm"
           variant="accent"
@@ -265,7 +266,7 @@ function DiagnosticToolInvocationMaterial({
           {running ? t("tools.diagnostics.running") : t("tools.diagnostics.run")}
         </PillButton>
         {error && (
-          <span {...stylex.props(vs.negative, typeStep.uiXs)} aria-live="polite">
+          <span {...stylex.props(vocab.negative, typeStep.uiXs)} aria-live="polite">
             {error}
           </span>
         )}

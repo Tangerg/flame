@@ -49,6 +49,7 @@ import {
 } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../../chatStyles";
 import { messageStyles as ms } from "../messageStyles";
+import { vocab } from "@/ui";
 
 const qc = stylex.create({
   settledLine: {
@@ -215,8 +216,8 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
         onToggle={() => setSettledOpen((open) => !open)}
         label={
           <span {...stylex.props(qc.settledLine)}>
-            <span {...stylex.props(ct.muted)}>{t("question.settled.asked")}</span>
-            <span {...stylex.props(ct.faint)}>{countLabel}</span>
+            <span {...stylex.props(vocab.muted)}>{t("question.settled.asked")}</span>
+            <span {...stylex.props(vocab.faint)}>{countLabel}</span>
           </span>
         }
         contentClassName="pt-1 pb-0.5"
@@ -400,10 +401,10 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
                         title={option.description}
                         className={
                           stylex.props(
-                            ct.fill,
-                            ct.truncate,
+                            vocab.fill,
+                            vocab.truncate,
                             ct.bodyLeading,
-                            ct.muted,
+                            vocab.muted,
                             typeStep.uiSm,
                           ).className
                         }

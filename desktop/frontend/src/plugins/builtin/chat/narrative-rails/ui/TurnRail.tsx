@@ -6,7 +6,7 @@ import { useT } from "@/lib/i18n";
 import { formatClock } from "@/lib/i18n/relativeTime";
 import { useActiveConversationMessages } from "@/plugins/builtin/agent/public/conversation";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
-import { Pressable, RichTooltip } from "@/ui";
+import { Pressable, RichTooltip, vocab } from "@/ui";
 import { foldExchanges, scrollToTurn, useTranscriptMap } from "../adapters/transcriptAnchors";
 import { space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../chatStyles";
@@ -151,11 +151,11 @@ function TurnPreview({ turn, answer }: { turn: Message; answer: Message | undefi
 
   return (
     <div {...stylex.props(tr.preview)}>
-      <span {...stylex.props(ct.clampOne, ct.medium, ct.snugLeading, ct.ink, typeStep.uiMd)}>
+      <span {...stylex.props(ct.clampOne, ct.medium, ct.snugLeading, vocab.ink, typeStep.uiMd)}>
         {question || t("role.user")}
       </span>
       {reply && (
-        <span {...stylex.props(ct.clampThree, ct.bodyLeading, ct.muted, typeStep.uiSm)}>
+        <span {...stylex.props(ct.clampThree, ct.bodyLeading, vocab.muted, typeStep.uiSm)}>
           {reply}
         </span>
       )}

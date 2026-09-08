@@ -8,6 +8,7 @@ import { toolGroupModel, type ToolGroupPinnedState } from "../application/toolGr
 import { ToolGroupMember } from "./ToolGroupMember";
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../chatStyles";
+import { vocab } from "@/ui";
 
 interface Props {
   tools: ToolCall[];
@@ -33,7 +34,7 @@ export function ToolGroup({ tools, onSelectTool, expandedIds, onToggleExpand, su
       contentClassName="py-1.5"
       label={model.summary}
       trailing={
-        <span {...stylex.props(ct.medium, ct.muted, typeStep.uiXs, face.mono)}>
+        <span {...stylex.props(ct.medium, vocab.muted, typeStep.uiXs, face.mono)}>
           {t("tools.group.calls", { count: model.count })}
         </span>
       }

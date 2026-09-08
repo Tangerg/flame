@@ -2,12 +2,11 @@ import * as stylex from "@stylexjs/stylex";
 import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MarkdownMessage } from "../markdown/MarkdownMessage";
-import { Icon, Loader } from "@/ui";
+import { Icon, Loader, vocab } from "@/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../../chatStyles";
 import { messageStyles as ms } from "../messageStyles";
 
 const rb = stylex.create({
@@ -108,7 +107,7 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
         <div ref={contentRef} className={stylex.props(ms.quote, typeStep.uiSm).className}>
           <MarkdownMessage text={text} streaming={streaming} reveal="smooth" />
           {status === "incomplete" && (
-            <div {...stylex.props(rb.note, ct.faint, typeStep.uiSm, face.mono)}>
+            <div {...stylex.props(rb.note, vocab.faint, typeStep.uiSm, face.mono)}>
               <Icon name="x" size="xs" /> {t("reasoning.interrupted")}
             </div>
           )}

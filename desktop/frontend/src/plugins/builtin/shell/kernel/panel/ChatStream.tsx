@@ -27,6 +27,7 @@ import {
 } from "@/plugins/builtin/chat/message/public/rendering";
 import { shellStyles as sh } from "../shellStyles";
 import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { vocab } from "@/ui";
 
 const cst = stylex.create({
   tray: {
@@ -73,7 +74,7 @@ const RAIL =
 
 const ChatBanners = memo(function ChatBanners({ sessionId }: { sessionId: string }) {
   return (
-    <div {...stylex.props(rc.box, rc.gutter, sh.hold)}>
+    <div {...stylex.props(rc.box, rc.gutter, vocab.hold)}>
       <CwdMissingBanner key={sessionId} />
       <RunErrorBanner />
       <Slot name="chat.banner.top" wrapper {...stylex.props(cst.tray)} />

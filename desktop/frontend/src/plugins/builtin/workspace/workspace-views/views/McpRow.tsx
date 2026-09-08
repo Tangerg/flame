@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { MCP_SERVERS_PANE } from "@/plugins/builtin/settings/kit/panes";
 import { useId, useRef, useState } from "react";
-import { Badge, Icon, IconButton, Pressable, Tag, TextButton, knownIconName } from "@/ui";
+import { Badge, Icon, IconButton, knownIconName, Pressable, Tag, TextButton, vocab } from "@/ui";
 import type { Tone } from "@/lib/tone";
 import { useT } from "@/lib/i18n";
 import { rpcErrorText } from "@/lib/rpcErrors";
@@ -89,10 +89,10 @@ function McpToolList({ server }: { server: string }) {
   const { data: tools, isLoading } = useMCPServerToolConfigs(server);
   if (isLoading)
     return (
-      <p {...stylex.props(mr.toolNote, vs.caption, typeStep.uiSm)}>{t("tools.loadingTools")}</p>
+      <p {...stylex.props(mr.toolNote, vocab.faint, typeStep.uiSm)}>{t("tools.loadingTools")}</p>
     );
   if (!tools?.length)
-    return <p {...stylex.props(mr.toolNote, vs.caption, typeStep.uiSm)}>{t("tools.noTools")}</p>;
+    return <p {...stylex.props(mr.toolNote, vocab.faint, typeStep.uiSm)}>{t("tools.noTools")}</p>;
   return (
     <ul {...stylex.props(mr.toolList)}>
       {tools.map((tool) => (
@@ -100,7 +100,10 @@ function McpToolList({ server }: { server: string }) {
           <Tag size="sm" ink="strong">
             {tool.name}
           </Tag>
-          <span {...stylex.props(vs.truncate, vs.caption, typeStep.uiSm)} title={tool.description}>
+          <span
+            {...stylex.props(vocab.truncate, vocab.faint, typeStep.uiSm)}
+            title={tool.description}
+          >
             {tool.description}
           </span>
         </li>
@@ -115,7 +118,7 @@ function McpAuthGuide({ server }: { server: string }) {
     openWorkspaceSettingsPane(MCP_SERVERS_PANE);
   };
   return (
-    <div {...stylex.props(vs.line, mr.toolFoot)}>
+    <div {...stylex.props(vocab.line, vocab.min, mr.toolFoot)}>
       <TextButton onClick={openConfig}>
         <Icon name="settings" size="sm" />
         {t("tools.auth.configure", { server })}
@@ -162,8 +165,8 @@ export function McpRow({ server }: { server: MCPServerSettings }) {
           onClick={() => setOpen((v) => !v)}
           className={stylex.props(mr.name).className}
         >
-          <div {...stylex.props(vs.title, vs.truncate, typeStep.uiMd)}>{server.name}</div>
-          <div {...stylex.props(mr.desc, vs.truncate, typeStep.uiMd)}>{server.desc}</div>
+          <div {...stylex.props(vs.title, vocab.truncate, typeStep.uiMd)}>{server.name}</div>
+          <div {...stylex.props(mr.desc, vocab.truncate, typeStep.uiMd)}>{server.desc}</div>
         </Pressable>
         <Badge size="md">{t("mcp.toolCount", { count: server.tools })}</Badge>
         <Badge

@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
-import { DataView, Pressable, SearchField } from "@/ui";
+import { DataView, Pressable, SearchField, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./views/viewStyles";
@@ -60,14 +60,14 @@ export function SearchTab() {
           }}
         >
           {(groups) => (
-            <div {...stylex.props(vs.stack, vs.padBottom)}>
+            <div {...stylex.props(vocab.column, vs.padBottom)}>
               {groups.map((group) => (
                 <div key={group.path} {...stylex.props(vs.gutter, vs.groupPad)}>
-                  <div {...stylex.props(vs.title, vs.truncate, typeStep.uiSm, face.mono)}>
+                  <div {...stylex.props(vs.title, vocab.truncate, typeStep.uiSm, face.mono)}>
                     {group.path}
                     <span {...stylex.props(vs.matchCount)}>{group.matchCount}</span>
                   </div>
-                  <div {...stylex.props(vs.stack, vs.afterTitle)}>
+                  <div {...stylex.props(vocab.column, vs.afterTitle)}>
                     {group.matches.map((m) => (
                       <Pressable
                         key={m.lineNumber}
@@ -75,7 +75,7 @@ export function SearchTab() {
                         className={stylex.props(vs.matchRow, vs.wash, typeStep.uiMd).className}
                       >
                         <span {...stylex.props(vs.lineNumber, typeStep.uiSm)}>{m.lineNumber}</span>
-                        <span {...stylex.props(vs.truncate, vs.soft)} title={m.text}>
+                        <span {...stylex.props(vocab.truncate, vocab.soft)} title={m.text}>
                           {m.text}
                         </span>
                       </Pressable>
@@ -84,7 +84,7 @@ export function SearchTab() {
                 </div>
               ))}
               {view.overflowCount > 0 && (
-                <div {...stylex.props(vs.gutter, vs.rowPad, vs.caption, typeStep.uiSm)}>
+                <div {...stylex.props(vs.gutter, vs.rowPad, vocab.faint, typeStep.uiSm)}>
                   … {t("search.overflow", { count: view.overflowCount })}
                 </div>
               )}

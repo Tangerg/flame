@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatDateTime } from "@/lib/i18n/relativeTime";
-import { Badge, Collapsible, DataView, Icon, PillButton, Pressable, TextArea } from "@/ui";
+import { Badge, Collapsible, DataView, Icon, PillButton, Pressable, TextArea, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./views/viewStyles";
@@ -85,7 +85,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
   };
 
   return (
-    <div {...stylex.props(vs.stack)}>
+    <div {...stylex.props(vocab.column)}>
       <Pressable
         type="button"
         aria-expanded={open}
@@ -98,11 +98,13 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
           size="xs"
           className={stylex.props(vs.chevron, !open && vs.chevronShut).className}
         />
-        <span {...stylex.props(vs.ink, vs.truncate, typeStep.uiMd, face.mono)}>{row.path}</span>
+        <span {...stylex.props(vocab.ink, vocab.truncate, typeStep.uiMd, face.mono)}>
+          {row.path}
+        </span>
         <Badge>{t(row.scopeLabelKey)}</Badge>
       </Pressable>
       <Collapsible open={open}>
-        <div id={panelId} {...stylex.props(vs.stack, vs.editorGap, vs.gutter, vs.editorInset)}>
+        <div id={panelId} {...stylex.props(vocab.column, vs.editorGap, vs.gutter, vs.editorInset)}>
           <TextArea
             aria-label={t("knowledge.aria", { path: row.path })}
             value={editor.draft}
@@ -113,7 +115,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
             rows={12}
             ink="soft"
           />
-          <div {...stylex.props(vs.line)}>
+          <div {...stylex.props(vocab.line, vocab.min)}>
             <PillButton size="sm" variant="accent" disabled={!dirty || saving} onClick={save}>
               {saving ? t("knowledge.saving") : t("knowledge.save")}
             </PillButton>
@@ -125,7 +127,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
               {t("knowledge.revert")}
             </PillButton>
             {editor.updatedAt && (
-              <span {...stylex.props(vs.pushEnd, vs.caption, typeStep.uiXs)}>
+              <span {...stylex.props(vs.pushEnd, vocab.faint, typeStep.uiXs)}>
                 {t("knowledge.updated")} {formatDateTime(editor.updatedAt)}
               </span>
             )}
@@ -175,7 +177,7 @@ export function KnowledgeTab() {
         }
       >
         {(rows) => (
-          <div {...stylex.props(vs.stack)}>
+          <div {...stylex.props(vocab.column)}>
             {rows.map((m) => (
               <KnowledgeRow key={`${cwd ?? ""}:${m.id}`} row={m} cwd={cwd} />
             ))}

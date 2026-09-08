@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolPreviewProps } from "@/plugins/sdk";
-import { Badge } from "@/ui";
+import { Badge, vocab } from "@/ui";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
 import { definePlugin } from "@/plugins/sdk";
 import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
@@ -8,7 +8,6 @@ import { projectToolSearchGroups } from "@/plugins/builtin/chat/tools/applicatio
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 
 import { space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 import { previewStyles as pv } from "./previewStyles";
 import { TEXT_PREVIEW } from "./previewChrome";
 
@@ -38,7 +37,7 @@ function ToolSearchPreview({ tool }: ToolPreviewProps) {
     <div {...stylex.props(ts.scroller, pv.inset)}>
       {groups.map((group) => (
         <div key={group.source} {...stylex.props(ts.group)}>
-          <span {...stylex.props(ts.source, ct.truncate, ct.faint, typeStep.uiSm)}>
+          <span {...stylex.props(ts.source, vocab.truncate, vocab.faint, typeStep.uiSm)}>
             {group.source}
           </span>
           <div {...stylex.props(ts.chips)}>

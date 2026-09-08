@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { Tone } from "@/lib/tone";
-import { toneInk } from "@/ui";
+import { toneInk, vocab } from "@/ui";
 import type { ToolPreviewProps } from "@/plugins/sdk";
 import { PreviewFoot } from "@/plugins/builtin/chat/tools/public/previews/PreviewFoot";
 import { PreviewPlaceholder } from "@/plugins/builtin/chat/tools/public/previews/PreviewPlaceholder";
@@ -10,7 +10,6 @@ import { resultLines } from "@/plugins/builtin/chat/tools/application/toolResult
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
 import { space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 import { previewStyles as pv } from "./previewStyles";
 import { TEXT_PREVIEW } from "./previewChrome";
 
@@ -35,7 +34,7 @@ function LspLocationsPreview({ tool, onOpenView }: ToolPreviewProps) {
           return (
             <div
               key={i}
-              className={stylex.props(ct.truncate, pv.row, pv.rowPad, ct.soft).className}
+              className={stylex.props(vocab.truncate, pv.row, pv.rowPad, vocab.soft).className}
             >
               {row}
             </div>
@@ -43,8 +42,8 @@ function LspLocationsPreview({ tool, onOpenView }: ToolPreviewProps) {
         }
         return (
           <div key={i} className={stylex.props(ls.pair, pv.row, pv.rowPad).className}>
-            <span {...stylex.props(ct.truncate, ct.soft)}>{row.slice(0, sep)}</span>
-            <span {...stylex.props(ct.truncate, ct.muted, typeStep.uiSm)}>
+            <span {...stylex.props(vocab.truncate, vocab.soft)}>{row.slice(0, sep)}</span>
+            <span {...stylex.props(vocab.truncate, vocab.muted, typeStep.uiSm)}>
               {row.slice(sep + 3)}
             </span>
           </div>
@@ -59,7 +58,7 @@ function LspLocationsPreview({ tool, onOpenView }: ToolPreviewProps) {
 function LspHoverPreview({ tool, onOpenView }: ToolPreviewProps) {
   const text = tool.result?.trim();
   return (
-    <div {...stylex.props(TEXT_PREVIEW, pv.wrapWords, ct.soft)}>
+    <div {...stylex.props(TEXT_PREVIEW, pv.wrapWords, vocab.soft)}>
       {text || (
         <PreviewPlaceholder
           status={tool.status}
@@ -90,14 +89,14 @@ function LspDiagnosticsPreview({ tool, onOpenView }: ToolPreviewProps) {
         const tone = SEVERITY_TONE.get(severity);
         if (!tone) {
           return (
-            <div key={i} {...stylex.props(ct.truncate, pv.rowPad, ct.soft)}>
+            <div key={i} {...stylex.props(vocab.truncate, pv.rowPad, vocab.soft)}>
               {row}
             </div>
           );
         }
         return (
-          <div key={i} {...stylex.props(ct.truncate, pv.rowPad, ct.soft)}>
-            <span {...stylex.props(ct.strong, toneInk[tone])}>{severity}</span>
+          <div key={i} {...stylex.props(vocab.truncate, pv.rowPad, vocab.soft)}>
+            <span {...stylex.props(vocab.strong, toneInk[tone])}>{severity}</span>
             {row.slice(space)}
           </div>
         );

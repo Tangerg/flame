@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import type { ReactNode } from "react";
-import { Button, DropdownMenu, Icon, ProviderIcon, Surface } from "@/ui";
+import { Button, DropdownMenu, Icon, ProviderIcon, Surface, vocab } from "@/ui";
 import {
   type ProviderConfiguration,
   setEmbeddingRole,
@@ -45,7 +45,7 @@ function RoleSectionShell({
         {children}
       </div>
       {note}
-      {error && <p {...stylex.props(ss.hint, ss.negative, typeStep.uiMd)}>{error}</p>}
+      {error && <p {...stylex.props(ss.hint, vocab.negative, typeStep.uiMd)}>{error}</p>}
     </Surface>
   );
 }
@@ -89,22 +89,26 @@ export function UtilityModelSection() {
                   <Icon
                     name="loop"
                     size="xs"
-                    className={stylex.props(ss.spin, ss.muted).className}
+                    className={stylex.props(ss.spin, vocab.muted).className}
                   />
-                  <span {...stylex.props(ss.muted)}>{t("providers.saving")}</span>
+                  <span {...stylex.props(vocab.muted)}>{t("providers.saving")}</span>
                 </>
               ) : isSet && role?.provider ? (
                 <>
                   <ProviderIcon provider={role.provider} size="sm" />
-                  <span {...stylex.props(rs.model, ss.truncate, typeStep.uiSm, face.mono)}>
+                  <span {...stylex.props(rs.model, vocab.truncate, typeStep.uiSm, face.mono)}>
                     {selected?.label ?? role.model}
                   </span>
                 </>
               ) : (
-                <span {...stylex.props(ss.muted)}>{t("providers.utility.main")}</span>
+                <span {...stylex.props(vocab.muted)}>{t("providers.utility.main")}</span>
               )}
               {!busy && (
-                <Icon name="chevron-down" size="xs" className={stylex.props(ss.muted).className} />
+                <Icon
+                  name="chevron-down"
+                  size="xs"
+                  className={stylex.props(vocab.muted).className}
+                />
               )}
             </Button>
           }
@@ -116,9 +120,9 @@ export function UtilityModelSection() {
             className={stylex.props(rs.pickRow).className}
           >
             <span />
-            <span {...stylex.props(ss.truncate)}>{t("providers.utility.main")}</span>
+            <span {...stylex.props(vocab.truncate)}>{t("providers.utility.main")}</span>
             {!isSet && (
-              <Icon name="check" size="xs" className={stylex.props(ss.accent).className} />
+              <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
             )}
           </DropdownMenu.Item>
           {modelOptions.map((m) => (
@@ -129,9 +133,9 @@ export function UtilityModelSection() {
               className={stylex.props(rs.pickRow).className}
             >
               <ProviderIcon provider={m.provider} size="md" />
-              <span {...stylex.props(ss.truncate)}>{m.label}</span>
+              <span {...stylex.props(vocab.truncate)}>{m.label}</span>
               {role?.provider === m.provider && role?.model === m.id && (
-                <Icon name="check" size="xs" className={stylex.props(ss.accent).className} />
+                <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
               )}
             </DropdownMenu.Item>
           ))}
@@ -183,22 +187,26 @@ export function EmbeddingModelSection() {
                   <Icon
                     name="loop"
                     size="xs"
-                    className={stylex.props(ss.spin, ss.muted).className}
+                    className={stylex.props(ss.spin, vocab.muted).className}
                   />
-                  <span {...stylex.props(ss.muted)}>{t("providers.saving")}</span>
+                  <span {...stylex.props(vocab.muted)}>{t("providers.saving")}</span>
                 </>
               ) : isSet && role?.provider ? (
                 <>
                   <ProviderIcon provider={role.provider} size="sm" />
-                  <span {...stylex.props(rs.model, ss.truncate, typeStep.uiSm, face.mono)}>
+                  <span {...stylex.props(rs.model, vocab.truncate, typeStep.uiSm, face.mono)}>
                     {role.model}
                   </span>
                 </>
               ) : (
-                <span {...stylex.props(ss.muted)}>{t("providers.embedding.off")}</span>
+                <span {...stylex.props(vocab.muted)}>{t("providers.embedding.off")}</span>
               )}
               {!busy && (
-                <Icon name="chevron-down" size="xs" className={stylex.props(ss.muted).className} />
+                <Icon
+                  name="chevron-down"
+                  size="xs"
+                  className={stylex.props(vocab.muted).className}
+                />
               )}
             </Button>
           }
@@ -210,9 +218,9 @@ export function EmbeddingModelSection() {
             className={stylex.props(rs.pickRow).className}
           >
             <span />
-            <span {...stylex.props(ss.truncate)}>{t("providers.embedding.off")}</span>
+            <span {...stylex.props(vocab.truncate)}>{t("providers.embedding.off")}</span>
             {!isSet && (
-              <Icon name="check" size="xs" className={stylex.props(ss.accent).className} />
+              <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
             )}
           </DropdownMenu.Item>
           {capableProviders.map((p) => (
@@ -223,12 +231,12 @@ export function EmbeddingModelSection() {
               className={stylex.props(rs.pickRow).className}
             >
               <ProviderIcon provider={p.id} size="md" />
-              <span {...stylex.props(ss.truncate)}>
+              <span {...stylex.props(vocab.truncate)}>
                 {p.id}
                 {p.defaultEmbeddingModel ? ` · ${p.defaultEmbeddingModel}` : ""}
               </span>
               {role?.provider === p.id && (
-                <Icon name="check" size="xs" className={stylex.props(ss.accent).className} />
+                <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
               )}
             </DropdownMenu.Item>
           ))}

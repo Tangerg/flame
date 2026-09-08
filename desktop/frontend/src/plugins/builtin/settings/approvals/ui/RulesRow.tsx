@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { Badge, DataView, IconButton, TextButton } from "@/ui";
+import { Badge, DataView, IconButton, TextButton, vocab } from "@/ui";
 import type { Tone } from "@/lib/tone";
 import {
   forgetApprovalRule,
@@ -99,25 +99,27 @@ export function RulesRow() {
                   <span
                     {...stylex.props(
                       r.verdict,
-                      rule.decision === "deny" ? ss.negative : r.allow,
+                      rule.decision === "deny" ? vocab.negative : r.allow,
                       typeStep.uiSm,
                     )}
                   >
                     {rule.decision === "deny" ? t("approvals.deny") : t("approvals.allow")}
                   </span>
-                  <span {...stylex.props(ss.fill, ss.truncate, r.tool, typeStep.uiMd, face.mono)}>
+                  <span
+                    {...stylex.props(vocab.fill, vocab.truncate, r.tool, typeStep.uiMd, face.mono)}
+                  >
                     {rule.tool}
                     {rule.subject ? (
-                      <span {...stylex.props(ss.muted)}> · {rule.subject}</span>
+                      <span {...stylex.props(vocab.muted)}> · {rule.subject}</span>
                     ) : null}
-                    {rule.dir ? <span {...stylex.props(ss.faint)}> — {rule.dir}</span> : null}
+                    {rule.dir ? <span {...stylex.props(vocab.faint)}> — {rule.dir}</span> : null}
                   </span>
                   <IconButton
                     icon="x"
                     iconSize="sm"
                     size="xs"
                     quiet
-                    className={stylex.props(ss.hold).className}
+                    className={stylex.props(vocab.hold).className}
                     aria-label={t("approvals.forget", { tool: rule.tool })}
                     aria-busy={busy}
                     disabled={busy}

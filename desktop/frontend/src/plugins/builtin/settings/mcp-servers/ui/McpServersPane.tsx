@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { DataView, Icon, PillButton } from "@/ui";
+import { DataView, Icon, PillButton, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useMCPServers } from "../application/mcpServerQueries";
 import { JsonImport } from "./JsonImport";
@@ -19,7 +19,7 @@ export function McpServersPane() {
     <div {...stylex.props(ss.stack)}>
       <div {...stylex.props(ss.split, adding && mp.splitTop)}>
         {adding ? (
-          <div {...stylex.props(ss.grow)}>
+          <div {...stylex.props(vocab.grow)}>
             <ServerForm onDone={() => setAdding(false)} onCancel={() => setAdding(false)} />
           </div>
         ) : (

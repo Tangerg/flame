@@ -15,7 +15,6 @@ import { color, leading, radius, space, surface, weight } from "@/styles/tokens.
 export const viewStyles = stylex.create({
   /** The dock's own horizontal inset. Every view shares it; see `--density-column-gutter-wide`. */
   gutter: { paddingInline: "var(--density-column-gutter-wide)" },
-  stack: { display: "flex", flexDirection: "column" },
 
   rowPad: { paddingBlock: space.s2 },
   rowPadTall: { paddingBlock: space.s2_5 },
@@ -45,8 +44,6 @@ export const viewStyles = stylex.create({
   glyphTop: { marginTop: space.s0_5 },
   /** A glyph on a baseline row centres itself instead: it has no baseline of its own. */
   glyphInline: { flexShrink: 0, alignSelf: "center", color: color.fgMuted },
-  grow: { flex: 1 },
-  figures: { fontVariantNumeric: "tabular-nums" },
   /** Where a row's own trailing text sits, one step below the description above it. */
   origin: { marginTop: space.s1, color: color.fgFaint },
   actions: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s2 },
@@ -69,8 +66,6 @@ export const viewStyles = stylex.create({
   /** Dealt with, still listed. Not disabled — the row is telling you it happened. */
   dismissed: { opacity: "var(--state-receded)" },
 
-  /** A row's first line: what it is, plus whatever sits beside the name. */
-  line: { display: "flex", alignItems: "center", gap: space.s2, minWidth: 0 },
   lineBaseline: { display: "flex", alignItems: "baseline", gap: space.s2, minWidth: 0 },
   lineTop: { display: "flex", alignItems: "flex-start", gap: space.s3, minWidth: 0 },
   /** A name that gives up its width beside something that keeps its own. */
@@ -81,31 +76,17 @@ export const viewStyles = stylex.create({
     gap: space.s2,
   },
 
-  /** The part of a row that gives up its width so a trailing chip keeps its own. */
-  fill: { minWidth: 0, flex: 1 },
-  hold: { flexShrink: 0 },
   pushEnd: { marginInlineStart: "auto" },
-  truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
 
   title: { color: color.fg, fontWeight: weight.semibold },
   /** The line under a title. `leading.body` because it wraps and a title's leading does not. */
   description: { marginTop: space.s0_5, color: color.fgMuted, lineHeight: leading.body },
-  caption: { color: color.fgFaint },
   /** A caption directly under a title, which owns the gap between them. */
   subCaption: { marginTop: space.s0_5, color: color.fgFaint },
-  min: { minWidth: 0 },
   /** The interpunct between two facts in a header: a glyph-only box, so no leading. */
   dotSep: { lineHeight: 1, color: color.fgFaint },
   subCaptionMuted: { marginTop: space.s0_5, color: color.fgMuted },
-  warning: { color: color.warning },
-  wrapText: { whiteSpace: "pre-wrap", overflowWrap: "break-word" },
-  soft: { color: color.fgSoft },
-  muted: { color: color.fgMuted },
-  negative: { color: color.negative },
-  accent: { color: color.accent },
-  success: { color: color.success },
   info: { color: color.info },
-  semibold: { fontWeight: weight.semibold },
 
   /** A section's heading line, and the rhythm between it and the entries under it. */
   sectionHead: { marginBottom: space.s1_5, display: "flex", alignItems: "baseline", gap: space.s2 },
@@ -120,7 +101,6 @@ export const viewStyles = stylex.create({
   },
   entryPlain: { display: "flex", alignItems: "baseline", gap: space.s2 },
   statusPad: { paddingTop: space.s1, paddingBottom: space.s2 },
-  ink: { color: color.fg },
   padBottom: { paddingBottom: space.s2 },
   groupPad: { paddingBlock: space.s1_5 },
   afterTitle: { marginTop: space.s0_5 },
@@ -192,7 +172,6 @@ export const timelineStyles = stylex.create({
     gap: space.s2,
     color: color.fgMuted,
   },
-  pretty: { textWrap: "pretty" },
   groupGap: { marginTop: space.s3, paddingTop: space.s1 },
   nested: {
     borderLeftWidth: "1px",
@@ -266,7 +245,6 @@ export const codeStyles = stylex.create({
   gutter: { textAlign: "right", color: color.fgFaint, userSelect: "none" },
   /** Machine output wraps rather than scrolling: a long line is still one line of meaning. */
   wrap: { minWidth: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
-  soft: { color: color.fgSoft },
   hunk: {
     marginTop: space.s2_5,
     borderWidth: 0,

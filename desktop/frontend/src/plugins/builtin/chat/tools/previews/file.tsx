@@ -7,9 +7,9 @@ import { useFileToolPreview } from "@/plugins/builtin/chat/tools/application/too
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 
 import { type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 import { previewStyles as pv } from "./previewStyles";
 import { TEXT_PREVIEW } from "./previewChrome";
+import { vocab } from "@/ui";
 
 const MAX_FILE_LINES = 40;
 
@@ -21,7 +21,7 @@ function FilePreview({ tool, onOpenView }: ToolPreviewProps) {
         {(lines ?? []).map((l) => (
           <div key={l.lineNumber} {...stylex.props(pv.numbered, pv.row)}>
             <span {...stylex.props(pv.gutter, typeStep.uiSm)}>{l.lineNumber}</span>
-            <span {...stylex.props(pv.wrap, ct.soft)}>{l.text || " "}</span>
+            <span {...stylex.props(pv.wrap, vocab.soft)}>{l.text || " "}</span>
           </div>
         ))}
       </div>

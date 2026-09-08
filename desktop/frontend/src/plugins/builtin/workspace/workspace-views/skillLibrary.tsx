@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useCallback, useRef, useState } from "react";
-import { DataView, PillButton, SectionLabel } from "@/ui";
+import { DataView, PillButton, SectionLabel, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./views/viewStyles";
@@ -43,7 +43,7 @@ export function SkillLibraryTab() {
           const active = rows.filter((s) => s.lifecycle === "active");
           const archived = rows.filter((s) => s.lifecycle === "archived");
           return (
-            <div {...stylex.props(vs.stack, vs.stackGap, vs.padBlockSm)}>
+            <div {...stylex.props(vocab.column, vs.stackGap, vs.padBlockSm)}>
               {active.length > 0 && (
                 <SkillSection label={t("skillLibrary.section.active")} skills={active} />
               )}
@@ -60,7 +60,7 @@ export function SkillLibraryTab() {
 
 function SkillSection({ label, skills }: { label: string; skills: ManagedSkill[] }) {
   return (
-    <div {...stylex.props(vs.stack)}>
+    <div {...stylex.props(vocab.column)}>
       <div {...stylex.props(vs.gutter, vs.sectionPad)}>
         <SectionLabel className={stylex.props(vs.sectionLabel).className}>{label}</SectionLabel>
       </div>
@@ -96,8 +96,8 @@ function SkillRow({ skill }: { skill: ManagedSkill }) {
 
   return (
     <div {...stylex.props(vs.lineTop, vs.gutter, vs.rowPad)}>
-      <div {...stylex.props(vs.fill)}>
-        <div {...stylex.props(vs.title, vs.truncate, typeStep.uiMd)}>{skill.name}</div>
+      <div {...stylex.props(vocab.fill)}>
+        <div {...stylex.props(vs.title, vocab.truncate, typeStep.uiMd)}>{skill.name}</div>
         {skill.description && (
           <div {...stylex.props(vs.description, typeStep.uiSm)}>{skill.description}</div>
         )}

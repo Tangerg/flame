@@ -7,9 +7,9 @@ import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { resultLines } from "@/plugins/builtin/chat/tools/application/toolResultParsing";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
-import { chatStyles as ct } from "../../chatStyles";
 import { previewStyles as pv } from "./previewStyles";
 import { TEXT_PREVIEW } from "./previewChrome";
+import { vocab } from "@/ui";
 
 function TaskPreview({ tool, onOpenView }: ToolPreviewProps) {
   const lines = resultLines(tool.result);
@@ -17,7 +17,7 @@ function TaskPreview({ tool, onOpenView }: ToolPreviewProps) {
   return (
     <div {...stylex.props(TEXT_PREVIEW)}>
       {reply ? (
-        <div {...stylex.props(pv.wrapWords, ct.soft)}>{reply}</div>
+        <div {...stylex.props(pv.wrapWords, vocab.soft)}>{reply}</div>
       ) : (
         <PreviewPlaceholder
           status={tool.status}

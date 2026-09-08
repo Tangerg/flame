@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useRef, useState } from "react";
-import { Badge, Button, Icon, ProviderIcon, TextField } from "@/ui";
+import { Badge, Button, Icon, ProviderIcon, TextField, vocab } from "@/ui";
 import {
   type ProviderConfiguration,
   useProviderMutationMaterialGeneration,
@@ -88,8 +88,8 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
     <div {...stylex.props(ss.hoverRow, ss.hoverRowTall)}>
       <div {...stylex.props(pr.head)}>
         <ProviderIcon provider={p.id} size="lg" />
-        <div {...stylex.props(ss.min)}>
-          <div {...stylex.props(ss.truncate, ss.label, pr.id, typeStep.uiMd)}>{p.id}</div>
+        <div {...stylex.props(vocab.min)}>
+          <div {...stylex.props(vocab.truncate, ss.label, pr.id, typeStep.uiMd)}>{p.id}</div>
         </div>
         <Badge
           size="md"
@@ -130,7 +130,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
         />
       </div>
 
-      <div {...stylex.props(ss.afterRow, ss.line)}>
+      <div {...stylex.props(ss.afterRow, vocab.line)}>
         <Button variant="primary" size="sm" disabled={!dirty || !valid || saving} onClick={onSave}>
           {saving ? t("providers.saving") : t("providers.save")}
         </Button>
@@ -149,14 +149,14 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
         )}
 
         {feedback.state === "ok" && (
-          <span {...stylex.props(ss.inline, ss.success, typeStep.uiMd)}>
+          <span {...stylex.props(ss.inline, vocab.success, typeStep.uiMd)}>
             <Icon name="check" size="sm" /> {t("providers.connectionOk")}
           </span>
         )}
         {feedback.state === "error" && (
-          <span {...stylex.props(ss.inline, ss.min, ss.negative, typeStep.uiMd)}>
+          <span {...stylex.props(ss.inline, vocab.min, vocab.negative, typeStep.uiMd)}>
             <Icon name="alert" size="sm" />
-            <span {...stylex.props(ss.truncate)} title={feedback.reason}>
+            <span {...stylex.props(vocab.truncate)} title={feedback.reason}>
               {feedback.reason}
             </span>
           </span>

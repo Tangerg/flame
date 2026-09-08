@@ -1,10 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
 import { useId, useState } from "react";
-import { Collapsible, Icon, TextButton, reveal } from "@/ui";
+import { Collapsible, Icon, reveal, TextButton, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import { color, leading, space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../../chatStyles";
 
 const cb = stylex.create({
   host: { display: "flex", minWidth: 0, flexDirection: "column" },
@@ -41,8 +40,12 @@ export function CompactionBlock({ summary }: { summary: string }) {
         aria-controls={panelId}
         className={cn(stylex.props(reveal.host).className, "max-w-full self-start py-1.5")}
       >
-        <Icon name="minimize" size="xs" className={stylex.props(ct.hold, ct.faint).className} />
-        <span {...stylex.props(ct.min, ct.truncate)}>{label}</span>
+        <Icon
+          name="minimize"
+          size="xs"
+          className={stylex.props(vocab.hold, vocab.faint).className}
+        />
+        <span {...stylex.props(vocab.min, vocab.truncate)}>{label}</span>
         <Icon
           name="chevron-down"
           size="xs"

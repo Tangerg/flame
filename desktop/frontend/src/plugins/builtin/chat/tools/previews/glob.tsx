@@ -7,9 +7,9 @@ import { TOOL_PREVIEW } from "@/plugins/sdk/kernelPoints";
 import { projectGlobPreview } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
-import { chatStyles as ct } from "../../chatStyles";
 import { previewStyles as pv } from "./previewStyles";
 import { TEXT_PREVIEW } from "./previewChrome";
+import { vocab } from "@/ui";
 
 function GlobPreview({ tool, onOpenView }: ToolPreviewProps) {
   const { paths } = projectGlobPreview(tool.result);
@@ -23,7 +23,10 @@ function GlobPreview({ tool, onOpenView }: ToolPreviewProps) {
         />
       )}
       {paths.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((p) => (
-        <div key={p} className={stylex.props(ct.truncate, pv.row, pv.rowPad, ct.muted).className}>
+        <div
+          key={p}
+          className={stylex.props(vocab.truncate, pv.row, pv.rowPad, vocab.muted).className}
+        >
           {p}
         </div>
       ))}

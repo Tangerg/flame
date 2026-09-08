@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import type { IconName } from "@/ui";
 import { AgentSurfaceHeader } from "@/ui/agent";
-import { Icon, IconButton } from "@/ui";
+import { Icon, IconButton, vocab } from "@/ui";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { useViewPlacement } from "@/plugins/builtin/workspace/public/viewPlacement";
@@ -43,10 +43,10 @@ function DockViewBar({
   if (identity === undefined && sub === undefined && actions === undefined) return null;
   return (
     <AgentSurfaceHeader>
-      <div {...stylex.props(vs.line, vs.fill, vs.muted, typeStep.uiMd, face.mono)}>
-        {identity !== undefined && <span {...stylex.props(vs.fill)}>{identity}</span>}
+      <div {...stylex.props(vocab.line, vocab.fill, vocab.muted, typeStep.uiMd, face.mono)}>
+        {identity !== undefined && <span {...stylex.props(vocab.fill)}>{identity}</span>}
         {identity !== undefined && sub !== undefined && (
-          <span aria-hidden {...stylex.props(vs.hold, vs.dotSep)}>
+          <span aria-hidden {...stylex.props(vocab.hold, vs.dotSep)}>
             ·
           </span>
         )}
@@ -67,8 +67,8 @@ function FullViewBar({ icon, title, sub, actions, titleStrong }: ViewHeaderProps
 
   return (
     <AgentSurfaceHeader corner="window">
-      <Icon name={icon} size="md" className={stylex.props(vs.hold, vs.muted).className} />
-      <div {...stylex.props(vs.line, vs.fill)}>
+      <Icon name={icon} size="md" className={stylex.props(vocab.hold, vocab.muted).className} />
+      <div {...stylex.props(vocab.line, vocab.fill)}>
         <span
           className={cn(
             "min-w-0 truncate text-ui-md font-medium text-fg",
@@ -79,10 +79,12 @@ function FullViewBar({ icon, title, sub, actions, titleStrong }: ViewHeaderProps
         </span>
         {sub !== undefined && (
           <>
-            <span aria-hidden="true" {...stylex.props(vs.hold, vs.dotSep, typeStep.uiMd)}>
+            <span aria-hidden="true" {...stylex.props(vocab.hold, vs.dotSep, typeStep.uiMd)}>
               ·
             </span>
-            <span {...stylex.props(vs.min, vs.truncate, vs.muted, typeStep.uiMd, face.mono)}>
+            <span
+              {...stylex.props(vocab.min, vocab.truncate, vocab.muted, typeStep.uiMd, face.mono)}
+            >
               {sub}
             </span>
           </>

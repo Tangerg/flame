@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
-import { Icon, PillButton, Segmented, Surface, Switch, TextField } from "@/ui";
+import { Icon, PillButton, Segmented, Surface, Switch, TextField, vocab } from "@/ui";
 import {
   type MCPServerSettings,
   type MCPTransport,
@@ -137,7 +137,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             }
           />
           {hasEnvironmentStored && (
-            <label {...stylex.props(ss.split, ss.muted, typeStep.uiMd)}>
+            <label {...stylex.props(ss.split, vocab.muted, typeStep.uiMd)}>
               <span>{t("mcp.form.env.clear")}</span>
               <Switch
                 checked={draft.environment.disposition === "clear"}
@@ -149,7 +149,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             </label>
           )}
           {needsEnvironmentDisposition && (
-            <span {...stylex.props(ss.warning, typeStep.uiMd)}>
+            <span {...stylex.props(vocab.warning, typeStep.uiMd)}>
               {t("mcp.form.env.targetChanged")}
             </span>
           )}
@@ -180,7 +180,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             placeholder={hasAuthStored ? t("mcp.form.auth.keep") : t("mcp.form.auth.placeholder")}
           />
           {hasAuthStored && (
-            <label {...stylex.props(ss.split, ss.muted, typeStep.uiMd)}>
+            <label {...stylex.props(ss.split, vocab.muted, typeStep.uiMd)}>
               <span>{t("mcp.form.auth.clear")}</span>
               <Switch
                 checked={draft.authorization.disposition === "clear"}
@@ -192,7 +192,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             </label>
           )}
           {needsAuthorizationDisposition && (
-            <span {...stylex.props(ss.warning, typeStep.uiMd)}>
+            <span {...stylex.props(vocab.warning, typeStep.uiMd)}>
               {t("mcp.form.auth.originChanged")}
             </span>
           )}
@@ -205,7 +205,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             }
           />
           {hasHeadersStored && (
-            <label {...stylex.props(ss.split, ss.muted, typeStep.uiMd)}>
+            <label {...stylex.props(ss.split, vocab.muted, typeStep.uiMd)}>
               <span>{t("mcp.form.headers.clear")}</span>
               <Switch
                 checked={draft.headers.disposition === "clear"}
@@ -215,7 +215,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             </label>
           )}
           {needsHeadersDisposition && (
-            <span {...stylex.props(ss.warning, typeStep.uiMd)}>
+            <span {...stylex.props(vocab.warning, typeStep.uiMd)}>
               {t("mcp.form.headers.originChanged")}
             </span>
           )}
@@ -282,14 +282,14 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
         )}
 
         {feedback.state === "ok" && (
-          <span {...stylex.props(ss.inline, ss.success, typeStep.uiMd)}>
+          <span {...stylex.props(ss.inline, vocab.success, typeStep.uiMd)}>
             <Icon name="check" size="sm" /> {t("mcp.connectionOk")}
           </span>
         )}
         {feedback.state === "error" && (
-          <span {...stylex.props(ss.inline, ss.min, ss.negative, typeStep.uiMd)}>
+          <span {...stylex.props(ss.inline, vocab.min, vocab.negative, typeStep.uiMd)}>
             <Icon name="alert" size="sm" />
-            <span {...stylex.props(ss.truncate)} title={feedback.reason}>
+            <span {...stylex.props(vocab.truncate)} title={feedback.reason}>
               {feedback.reason}
             </span>
           </span>

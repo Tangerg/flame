@@ -1,5 +1,4 @@
 import * as stylex from "@stylexjs/stylex";
-import { reveal } from "@/ui/atoms/reveal";
 import type { BlockCtx } from "./BlockRenderer";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import { memo, useMemo, type ReactNode } from "react";
@@ -23,6 +22,7 @@ import {
   MessageVisibleMaterialProvider,
   useVisibleActionMaterialization,
 } from "./messageVisibleMaterial";
+import { reveal } from "@/ui";
 
 function MessageBlockInner({
   row,

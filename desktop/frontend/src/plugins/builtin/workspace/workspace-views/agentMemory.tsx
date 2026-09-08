@@ -30,6 +30,7 @@ import {
   type AgentMemoryEntry,
   type AgentMemoryQuery,
 } from "@/plugins/builtin/workspace/application/agentMemoryConfig";
+import { vocab } from "@/ui";
 
 type Scope = AgentMemoryQuery["scope"];
 
@@ -49,12 +50,15 @@ function PendingRow({ item }: { item: AgentMemoryEntry }) {
   });
   return (
     <div {...stylex.props(vs.lineTop, vs.gutter, vs.rowPadTall)}>
-      <div {...stylex.props(vs.fill)}>
+      <div {...stylex.props(vocab.fill)}>
         <div {...stylex.props(vs.body, typeStep.uiMd)}>{item.content}</div>
         <div {...stylex.props(vs.metaLine)}>
           <OriginBadge origin={item.origin} />
           {item.sessionId && (
-            <span {...stylex.props(vs.truncate, vs.caption, typeStep.uiSm)} title={item.sessionId}>
+            <span
+              {...stylex.props(vocab.truncate, vocab.faint, typeStep.uiSm)}
+              title={item.sessionId}
+            >
               {t("agentMemory.fromSession")}
             </span>
           )}
@@ -102,9 +106,9 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
   };
 
   return (
-    <div {...stylex.props(vs.stack, vs.gutter, vs.rowPadTall)}>
+    <div {...stylex.props(vocab.column, vs.gutter, vs.rowPadTall)}>
       <div {...stylex.props(vs.lineTop)}>
-        <div {...stylex.props(vs.fill)}>
+        <div {...stylex.props(vocab.fill)}>
           {editing ? (
             <TextArea
               aria-label={t("agentMemory.editAria")}
@@ -122,14 +126,14 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
               // The accent is a functional highlight — play, active, CTA — not an ink for
               // prose: on a card in dark it measures 3.4:1, below AA at this size. The mark
               // keeps it, where 3:1 is the bar a graphic answers to; the word does not.
-              <span {...stylex.props(vs.pinLine, vs.muted, typeStep.uiSm)}>
-                <Icon name="star" size="xs" className={stylex.props(vs.accent).className} />
+              <span {...stylex.props(vs.pinLine, vocab.muted, typeStep.uiSm)}>
+                <Icon name="star" size="xs" className={stylex.props(vocab.accent).className} />
                 {t("agentMemory.pinnedLabel")}
               </span>
             )}
             <OriginBadge origin={item.origin} />
             {item.updatedAt && (
-              <span {...stylex.props(vs.truncate, vs.caption, typeStep.uiSm)}>
+              <span {...stylex.props(vocab.truncate, vocab.faint, typeStep.uiSm)}>
                 {t("agentMemory.updated")} {formatDay(item.updatedAt)}
               </span>
             )}
@@ -211,7 +215,7 @@ function AddMemory({ scope, cwd }: { scope: Scope; cwd?: string }) {
   };
 
   return (
-    <div {...stylex.props(vs.stack, vs.editorGap, vs.gutter, vs.padBottom)}>
+    <div {...stylex.props(vocab.column, vs.editorGap, vs.gutter, vs.padBottom)}>
       <TextArea
         aria-label={t("agentMemory.add")}
         value={draft}
@@ -221,7 +225,7 @@ function AddMemory({ scope, cwd }: { scope: Scope; cwd?: string }) {
         rows={2}
         ink="soft"
       />
-      <div {...stylex.props(vs.line)}>
+      <div {...stylex.props(vocab.line, vocab.min)}>
         <PillButton size="sm" variant="accent" disabled={!canSave || busy} onClick={submit}>
           {t("agentMemory.save")}
         </PillButton>
@@ -311,9 +315,9 @@ export function AgentMemoryTab() {
         }
       >
         {() => (
-          <div {...stylex.props(vs.stack, vs.stackGap)}>
+          <div {...stylex.props(vocab.column, vs.stackGap)}>
             {pending.length > 0 && (
-              <div {...stylex.props(vs.stack)}>
+              <div {...stylex.props(vocab.column)}>
                 <div {...stylex.props(vs.gutter, vs.sectionPad)}>
                   <SectionLabel className={stylex.props(vs.sectionLabel).className}>
                     {t("agentMemory.section.pending")}
@@ -325,7 +329,7 @@ export function AgentMemoryTab() {
               </div>
             )}
             {active.length > 0 && (
-              <div {...stylex.props(vs.stack)}>
+              <div {...stylex.props(vocab.column)}>
                 <div {...stylex.props(vs.gutter, vs.sectionPad)}>
                   <SectionLabel className={stylex.props(vs.sectionLabel).className}>
                     {t("agentMemory.section.active")}

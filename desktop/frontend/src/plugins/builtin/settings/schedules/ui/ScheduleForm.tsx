@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
-import { PillButton, Pressable, Surface, TextArea, TextField } from "@/ui";
+import { PillButton, Pressable, Surface, TextArea, TextField, vocab } from "@/ui";
 import {
   createSchedule,
   updateSchedule,
@@ -134,7 +134,7 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
         placeholder={t("schedules.form.cwd")}
         aria-label={t("schedules.form.cwd")}
       />
-      <div {...stylex.props(ss.line)}>
+      <div {...stylex.props(vocab.line)}>
         <PillButton
           variant="accent"
           size="sm"

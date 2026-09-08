@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useRef, useState } from "react";
-import { IconButton, TextField } from "@/ui";
+import { IconButton, TextField, vocab } from "@/ui";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
@@ -12,7 +12,6 @@ import {
 import { setChatSearchOpener } from "../application/openChatSearch";
 import { findMessageRanges } from "../adapters/messageRanges";
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 
 const cs = stylex.create({
   field: { height: space.s7, width: "calc(var(--spacing) * 56)", paddingInline: space.s2 },
@@ -118,7 +117,7 @@ function SessionChatSearchOverlay() {
           }
         }}
       />
-      <span {...stylex.props(cs.count, ct.faint, typeStep.uiSm, face.mono)}>
+      <span {...stylex.props(cs.count, vocab.faint, typeStep.uiSm, face.mono)}>
         {total > 0 ? `${activeIndex + 1} / ${total}` : query ? "0 / 0" : ""}
       </span>
       <IconButton

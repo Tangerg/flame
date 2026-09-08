@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { Gauge, Pressable, RichTooltip } from "@/ui";
+import { Gauge, Pressable, RichTooltip, vocab } from "@/ui";
 import { fmtTokens } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { useCurrentRootMaterial } from "@/plugins/builtin/agent/public/run";
@@ -58,9 +58,9 @@ export function ContextUsageGauge() {
       sideOffset={4}
       className={stylex.props(cu.panel).className}
     >
-      <div {...stylex.props(ct.stackHairline, ct.centre)}>
-        <span {...stylex.props(ct.muted)}>{t("context.usage.label")}</span>
-        <span {...stylex.props(readout.percent >= 50 && ct.muted)}>
+      <div {...stylex.props(vocab.stackHairline, ct.centre)}>
+        <span {...stylex.props(vocab.muted)}>{t("context.usage.label")}</span>
+        <span {...stylex.props(readout.percent >= 50 && vocab.muted)}>
           {t(readout.percent >= 50 ? "context.usage.statusFull" : "context.usage.statusLeft", {
             percent: readout.percent,
             remaining: 100 - readout.percent,

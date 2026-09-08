@@ -19,8 +19,6 @@ export const settingStyles = stylex.create({
 
   /** A label and whatever answers it, held apart. */
   split: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: space.s3 },
-  line: { display: "flex", alignItems: "center", gap: space.s2 },
-  lineTight: { display: "flex", alignItems: "center", gap: space.s1_5 },
   lineWide: { display: "flex", alignItems: "center", gap: space.s3 },
   lineWrap: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: space.s1_5 },
   end: { display: "flex", justifyContent: "flex-end" },
@@ -31,16 +29,6 @@ export const settingStyles = stylex.create({
   /** The same hint where it needs to clear the control above it. */
   hintSpaced: { marginTop: space.s1, color: color.fgMuted, lineHeight: leading.body },
   intro: { color: color.fgMuted, lineHeight: leading.body },
-
-  fill: { minWidth: 0, flex: 1 },
-  hold: { flexShrink: 0 },
-  min: { minWidth: 0 },
-  truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  muted: { color: color.fgMuted },
-  faint: { color: color.fgFaint },
-  accent: { color: color.accent },
-  warning: { color: color.warning },
-  negative: { color: color.negative },
 
   /** A row the pointer can act on inside a pane: the shape eight panes had each written out. */
   hoverRow: {
@@ -70,19 +58,13 @@ export const settingStyles = stylex.create({
   /** A group's own caption, above the rows rather than beside one. */
   caption: { marginBottom: space.s1_5, color: color.fgMuted, fontWeight: weight.medium },
   inline: { display: "inline-flex", alignItems: "center", gap: space.s1 },
-  column: { display: "flex", flexDirection: "column" },
-  grow: { flex: 1 },
   grid2: { display: "grid", gap: space.s2 },
   selfEnd: { alignSelf: "flex-end" },
   /** A caption on the same line as what it labels, rather than above a group. */
   captionInline: { color: color.fgMuted, fontWeight: weight.medium },
-  figures: { fontVariantNumeric: "tabular-nums" },
-  success: { color: color.success },
   spin: { animation: "var(--animate-spin)" },
-  wrapText: { whiteSpace: "pre-wrap", overflowWrap: "break-word" },
   stackWide: { display: "flex", flexDirection: "column", gap: space.s4 },
   stackTightest: { display: "flex", flexDirection: "column", gap: space.s1_5 },
-  stackHairline: { display: "flex", flexDirection: "column", gap: space.s0_5 },
   stackRows: { display: "flex", flexDirection: "column", gap: space.s1 },
   fieldLabel: { display: "flex", flexDirection: "column", gap: space.s1_5 },
   afterRow: { marginTop: space.s2_5 },

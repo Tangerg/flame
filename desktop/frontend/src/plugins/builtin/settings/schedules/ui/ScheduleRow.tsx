@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
-import { ConfirmDialog, IconButton, Switch, Tag, type IconName } from "@/ui";
+import { ConfirmDialog, IconButton, Switch, Tag, type IconName, vocab } from "@/ui";
 import {
   deleteSchedule,
   runScheduleNow,
@@ -22,7 +22,6 @@ import {
   type as typeStep,
   weight,
 } from "@/styles/tokens.stylex";
-import { settingStyles as ss } from "../../kit/settingStyles";
 
 function ScheduleActionButton({
   icon,
@@ -103,13 +102,13 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
             inactive by making itself unreadable. A step down the token ladder is the same
             signal with contrast the design system owns rather than a multiplier landing
             wherever the two colours happen to leave it. */}
-        <div {...stylex.props(ss.min)}>
-          <div {...stylex.props(ss.line)}>
+        <div {...stylex.props(vocab.min)}>
+          <div {...stylex.props(vocab.line)}>
             <span
               {...stylex.props(
-                ss.truncate,
+                vocab.truncate,
                 sr.title,
-                schedule.enabled ? sr.titleOn : ss.muted,
+                schedule.enabled ? sr.titleOn : vocab.muted,
                 typeStep.uiMd,
               )}
             >
@@ -118,7 +117,7 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
             <Tag size="sm">{schedule.cron}</Tag>
           </div>
           <div
-            {...stylex.props(sr.cron, ss.truncate, typeStep.uiMd, face.mono)}
+            {...stylex.props(sr.cron, vocab.truncate, typeStep.uiMd, face.mono)}
             title={schedule.instructions}
           >
             {schedule.instructions}
@@ -132,7 +131,7 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
             )}
           </div>
         </div>
-        <div {...stylex.props(ss.lineTight)}>
+        <div {...stylex.props(vocab.lineTight)}>
           <Switch
             checked={schedule.enabled}
             disabled={busy}

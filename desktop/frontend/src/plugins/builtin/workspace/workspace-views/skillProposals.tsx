@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useCallback, useRef, useState } from "react";
-import { Badge, Collapsible, DataView, PillButton, Tag, TextButton, Well } from "@/ui";
+import { Badge, Collapsible, DataView, PillButton, Tag, TextButton, vocab, Well } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./views/viewStyles";
@@ -46,7 +46,7 @@ export function SkillProposalsTab() {
         }}
       >
         {(rows) => (
-          <div {...stylex.props(vs.stack, vs.padBlockSm)}>
+          <div {...stylex.props(vocab.column, vs.padBlockSm)}>
             {rows.map((proposal) => (
               <SkillProposalRow key={`${proposal.name} ${proposal.revision}`} proposal={proposal} />
             ))}
@@ -94,10 +94,10 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
   return (
     <div {...stylex.props(vs.gutter, vs.rowPadTall)}>
       <div {...stylex.props(vs.lineTop)}>
-        <div {...stylex.props(vs.fill)}>
-          <div {...stylex.props(vs.line)}>
-            <div {...stylex.props(vs.title, vs.truncate, typeStep.uiMd)}>{proposal.name}</div>
-            <Tag className={stylex.props(vs.figures).className}>
+        <div {...stylex.props(vocab.fill)}>
+          <div {...stylex.props(vocab.line, vocab.min)}>
+            <div {...stylex.props(vs.title, vocab.truncate, typeStep.uiMd)}>{proposal.name}</div>
+            <Tag className={stylex.props(vocab.figures).className}>
               {proposal.revision.slice(0, 8)}
             </Tag>
             <Badge>{t(`skillProposals.scope.${proposal.scope}`)}</Badge>
@@ -107,7 +107,7 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
             <div {...stylex.props(vs.description, typeStep.uiSm)}>{proposal.description}</div>
           )}
           <div
-            {...stylex.props(vs.origin, vs.truncate, typeStep.uiSm)}
+            {...stylex.props(vs.origin, vocab.truncate, typeStep.uiSm)}
             title={proposal.sourceSession || undefined}
           >
             {t(`skillProposals.origin.${proposal.origin}`)}

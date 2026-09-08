@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Icon, IconButton } from "@/ui";
+import { Icon, IconButton, vocab } from "@/ui";
 import { BannerAction } from "./BannerAction";
 import { flattenText } from "@/plugins/builtin/agent/public/messageContent";
 import { getActiveConversationSnapshot } from "@/plugins/builtin/agent/public/conversation";
@@ -95,16 +95,16 @@ export function RunErrorBanner() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           transition={disclosureTransition}
-          className={stylex.props(sh.banner, sh.bannerCard, reb.sans, sh.ink).className}
+          className={stylex.props(sh.banner, sh.bannerCard, reb.sans, vocab.ink).className}
         >
           <Icon name="alert" size="sm" className={stylex.props(reb.glyph).className} />
-          <div {...stylex.props(sh.min)}>
+          <div {...stylex.props(vocab.min)}>
             <div {...stylex.props(sh.bannerHead)}>
-              <span {...stylex.props(sh.negative, sh.strong, typeStep.uiMd)}>
+              <span {...stylex.props(vocab.negative, vocab.strong, typeStep.uiMd)}>
                 {t("runError.title")}
               </span>
               {error.code && (
-                <span {...stylex.props(sh.faint, sh.selectable, typeStep.uiXs, face.mono)}>
+                <span {...stylex.props(vocab.faint, sh.selectable, typeStep.uiXs, face.mono)}>
                   {error.code}
                 </span>
               )}

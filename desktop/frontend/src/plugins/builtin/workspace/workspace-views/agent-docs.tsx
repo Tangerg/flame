@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { Badge, DataView } from "@/ui";
+import { Badge, DataView, vocab } from "@/ui";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useT } from "@/lib/i18n";
 import { face, type as typeStep } from "@/styles/tokens.stylex";
@@ -37,12 +37,12 @@ export function AgentDocsTab() {
         }}
       >
         {(rows) => (
-          <div {...stylex.props(vs.stack)}>
+          <div {...stylex.props(vocab.column)}>
             {rows.map((d) => (
               <div key={d.id} {...stylex.props(vs.splitLine, vs.gutter, vs.rowPad)}>
-                <div {...stylex.props(vs.min)}>
-                  <div {...stylex.props(vs.title, vs.truncate, typeStep.uiMd)}>{d.title}</div>
-                  <div {...stylex.props(vs.subCaption, vs.truncate, typeStep.uiSm, face.mono)}>
+                <div {...stylex.props(vocab.min)}>
+                  <div {...stylex.props(vs.title, vocab.truncate, typeStep.uiMd)}>{d.title}</div>
+                  <div {...stylex.props(vs.subCaption, vocab.truncate, typeStep.uiSm, face.mono)}>
                     {d.path}
                   </div>
                 </div>

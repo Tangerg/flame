@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import { useCustomThemePreference } from "../application/appearancePreferences";
 import { SettingRow } from "../../kit";
-import { ColorPickerInput } from "@/ui";
+import { ColorPickerInput, vocab } from "@/ui";
 import { color, corner, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
@@ -34,7 +34,7 @@ function ColorRow({
 }) {
   return (
     <label {...stylex.props(ss.sunkenRow)}>
-      <span {...stylex.props(ss.muted, typeStep.uiMd)}>{label}</span>
+      <span {...stylex.props(vocab.muted, typeStep.uiMd)}>{label}</span>
       <span {...stylex.props(a.swatchLine)}>
         <span {...stylex.props(a.hex, typeStep.uiMd)}>{value}</span>
         <span

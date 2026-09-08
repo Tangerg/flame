@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { PendingWorkItem } from "@/plugins/builtin/agent/public/hitl";
 import { usePendingWork } from "@/plugins/builtin/agent/public/hitl";
 import { selectAgentSession, useAgentSessions } from "@/plugins/builtin/agent/public/session";
-import { Badge, DataView, Icon, Pressable } from "@/ui";
+import { Badge, DataView, Icon, Pressable, vocab } from "@/ui";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { useT } from "@/lib/i18n";
 import { type as typeStep } from "@/styles/tokens.stylex";
@@ -69,19 +69,19 @@ function PendingRow({
       <Icon
         name={item.kind === "question" ? "question" : "shield"}
         size="sm"
-        className={stylex.props(vs.glyphTop, vs.hold, vs.warning).className}
+        className={stylex.props(vs.glyphTop, vocab.hold, vocab.warning).className}
       />
-      <div {...stylex.props(vs.fill)}>
+      <div {...stylex.props(vocab.fill)}>
         <div {...stylex.props(vs.lineBaseline)}>
-          <span {...stylex.props(vs.fill, vs.truncate, typeStep.uiMd)}>{sessionTitle}</span>
-          <span {...stylex.props(vs.hold, vs.muted, typeStep.uiSm)}>
+          <span {...stylex.props(vocab.fill, vocab.truncate, typeStep.uiMd)}>{sessionTitle}</span>
+          <span {...stylex.props(vocab.hold, vocab.muted, typeStep.uiSm)}>
             {formatRelative(item.waitingSince)}
           </span>
         </div>
         <div {...stylex.props(vs.subLine)}>
-          <span {...stylex.props(vs.muted, typeStep.uiSm)}>{ask}</span>
+          <span {...stylex.props(vocab.muted, typeStep.uiSm)}>{ask}</span>
           {item.subject && (
-            <span {...stylex.props(vs.fill, vs.truncate, vs.soft, typeStep.uiSm)}>
+            <span {...stylex.props(vocab.fill, vocab.truncate, vocab.soft, typeStep.uiSm)}>
               {item.subject}
             </span>
           )}

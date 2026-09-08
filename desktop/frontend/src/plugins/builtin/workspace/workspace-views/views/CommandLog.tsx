@@ -3,7 +3,7 @@ import { memo } from "react";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import { hasAnsi } from "@/lib/ansi";
-import { AnsiText } from "@/ui";
+import { AnsiText, vocab } from "@/ui";
 import type { WorkspaceCommandActivity } from "@/plugins/builtin/workspace/application/toolActivity";
 import { type as typeStep } from "@/styles/tokens.stylex";
 import { codeStyles as cs, viewStyles as vs } from "./viewStyles";
@@ -32,7 +32,7 @@ export const CommandLog = memo(function CommandLog({
           >
             <div {...stylex.props(vs.entryPlain)}>
               <span {...stylex.props(cs.prompt)}>$</span>
-              <span {...stylex.props(vs.min, vs.truncate, vs.ink)} title={c.command}>
+              <span {...stylex.props(vocab.min, vocab.truncate, vocab.ink)} title={c.command}>
                 {c.command}
               </span>
               {c.status === "running" && (

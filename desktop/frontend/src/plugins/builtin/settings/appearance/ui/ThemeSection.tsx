@@ -2,13 +2,12 @@ import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import type { Scheme } from "@/lib/appearance";
 import type { ColorThemeSpec } from "@/plugins/sdk";
-import { DropdownMenu, Icon, SelectTrigger } from "@/ui";
+import { DropdownMenu, Icon, SelectTrigger, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { COLOR_THEME, useExtensionPoint } from "@/plugins/sdk";
 import { SettingRow } from "../../kit";
 import { useThemePreference } from "../application/appearancePreferences";
 import { color, corner, radius, space, type as typeStep } from "@/styles/tokens.stylex";
-import { settingStyles as ss } from "../../kit/settingStyles";
 
 const FALLBACK_TOKENS: Record<Scheme, { bg: string; surface: string; accent: string }> = {
   dark: { bg: "#0c0d0f", surface: "#16181b", accent: "#6c97ff" },
@@ -99,9 +98,9 @@ function ThemeItem({
   return (
     <DropdownMenu.Item layout="pickWide" onClick={onSelect}>
       {swatch}
-      <span {...stylex.props(th.name, ss.truncate, typeStep.uiMd)}>{label}</span>
+      <span {...stylex.props(th.name, vocab.truncate, typeStep.uiMd)}>{label}</span>
       {active ? (
-        <Icon name="check" size="sm" className={stylex.props(ss.accent).className} />
+        <Icon name="check" size="sm" className={stylex.props(vocab.accent).className} />
       ) : (
         <span aria-hidden />
       )}

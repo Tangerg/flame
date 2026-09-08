@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { Suspense, useState } from "react";
-import { Button, Icon, SearchField, SkeletonList, VerticalTabs, knownIconName } from "@/ui";
+import { Button, Icon, knownIconName, SearchField, SkeletonList, VerticalTabs, vocab } from "@/ui";
 import { AgentSurfaceHeader } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
@@ -12,7 +12,6 @@ import {
 } from "@/plugins/builtin/workspace/public/navigation";
 import { useSettingsPanes } from "@/plugins/sdk";
 import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
-import { shellStyles as sh } from "./shellStyles";
 
 const sp = stylex.create({
   title: { margin: 0, color: color.fg, fontWeight: weight.semibold },
@@ -128,7 +127,7 @@ function SettingsRailHeader({
 }) {
   const t = useT();
   return (
-    <div {...stylex.props(sh.column)}>
+    <div {...stylex.props(vocab.column)}>
       <AgentSurfaceHeader divider={false} corner="window" aria-hidden />
       <div {...stylex.props(sp.backRow)}>
         <Button

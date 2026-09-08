@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { DataView, Switch } from "@/ui";
+import { DataView, Switch, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useMCPTools } from "../application/mcpServerQueries";
 import { color, radius, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
@@ -84,7 +84,7 @@ export function ToolControls({ server, disabledTools, autoApproveTools, onChange
         empty={{ icon: "tool", title: t("mcp.tools.empty") }}
       >
         {(tools) => (
-          <div {...stylex.props(ss.column)}>
+          <div {...stylex.props(vocab.column)}>
             {tools.map((tool) => {
               const isDisabled = disabled.has(tool.name);
               return (

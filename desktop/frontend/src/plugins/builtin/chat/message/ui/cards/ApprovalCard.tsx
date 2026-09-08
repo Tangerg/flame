@@ -6,14 +6,13 @@ import { type ApprovalDecision, type RememberScope } from "@/plugins/builtin/age
 import { approvalSettledDecision } from "@/plugins/builtin/agent/public/messagePresentation";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { useT } from "@/lib/i18n";
-import { Button, Divider, DropdownMenu, Icon, Surface, type IconName, Well } from "@/ui";
+import { Button, Divider, DropdownMenu, Icon, Surface, type IconName, vocab, Well } from "@/ui";
 import { useApprovalArgsEditor } from "../../application/approvalArgsEditor";
 import { useApprovalCardActions } from "../../application/approvalCardActions";
 import { ApprovalArgsEditor } from "./ApprovalArgsEditor";
 import { approvalHeadline } from "./approvalHeadline";
 import { HitlSettledRow } from "./HitlCard";
 import { type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../../chatStyles";
 import { messageStyles as ms } from "../messageStyles";
 
 const ac = stylex.create({
@@ -89,9 +88,9 @@ export function ApprovalCard({
           <Icon
             name={identity.icon}
             size="sm"
-            className={stylex.props(ct.hold, ct.faint).className}
+            className={stylex.props(vocab.hold, vocab.faint).className}
           />
-          <span {...stylex.props(ct.truncate)}>{identity.label}</span>
+          <span {...stylex.props(vocab.truncate)}>{identity.label}</span>
         </div>
         <div {...stylex.props(ms.prompt, typeStep.uiMd)}>{title}</div>
       </div>
@@ -155,7 +154,7 @@ export function ApprovalCard({
                     onClick={() => approve(action.scope)}
                     layout="pickPlain"
                   >
-                    <span {...stylex.props(ct.truncate)}>{t(action.labelKey)}</span>
+                    <span {...stylex.props(vocab.truncate)}>{t(action.labelKey)}</span>
                   </DropdownMenu.Item>
                 ))}
               </DropdownMenu.Content>

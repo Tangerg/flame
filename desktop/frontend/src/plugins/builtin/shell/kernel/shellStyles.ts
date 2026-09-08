@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, radius, space, surface, weight } from "@/styles/tokens.stylex";
+import { color, leading, radius, space, surface } from "@/styles/tokens.stylex";
 
 /**
  * The shell's own arrangement: the panes that hold the transcript and the dock.
@@ -25,25 +25,12 @@ export const shellStyles = stylex.create({
     flex: 1,
     flexDirection: "column",
   },
-  fill: { position: "absolute", inset: 0, display: "flex", flexDirection: "column" },
+  /** A pane that COVERS its anchor rather than yielding width inside it — the dock's view
+   *  stack, where each view sits on top of the last. Named apart from `vocab.fill` on purpose:
+   *  the two were one word for two facts, and `fill` is the one that lets a neighbour keep
+   *  its width. */
+  overlay: { position: "absolute", inset: 0, display: "flex", flexDirection: "column" },
   anchor: { position: "relative", minHeight: 0, flex: 1 },
-  column: { display: "flex", flexDirection: "column" },
-  line: { display: "flex", alignItems: "center", gap: space.s2 },
-  lineTight: { display: "flex", alignItems: "center", gap: space.s1_5 },
-  min: { minWidth: 0 },
-  hold: { flexShrink: 0 },
-  truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  muted: { color: color.fgMuted },
-  faint: { color: color.fgFaint },
-  soft: { color: color.fgSoft },
-  ink: { color: color.fg },
-  accent: { color: color.accent },
-  negative: { color: color.negative },
-  success: { color: color.success },
-  warning: { color: color.warning },
-  strong: { fontWeight: weight.semibold },
-  wrapText: { whiteSpace: "pre-wrap", overflowWrap: "break-word" },
-  pretty: { textWrap: "pretty" },
   balance: { textWrap: "balance" },
 
   /** Takes the bar's spare width so a title beside it truncates instead of pushing. */

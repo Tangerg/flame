@@ -9223,3 +9223,112 @@ gzip 后 135 KB → 27 KB（填充几乎全被压掉），但这是桌面 webvie
 **10 个同名不同值**（`line` `fill` `split` `stack` `caption` `pane` …）。
 
 后 10 个正是这整轮重构一直在猎的缺陷 —— **一个名字几个意思** —— 而我自己造了四遍。
+
+## Round 154 — 一个名字一个意思：把我自己造的四份词汇副本收成一份
+
+### 根因
+
+上一轮末尾报的那个缺陷，根因不在我手抖，在**结构**：
+
+`check-builtin-contexts` / `check-layers` 禁止一个内置插件 import 另一个上下文的内部实现 ——
+这条守卫是对的（它挡的是插件之间偷偷耦合）。但它的推论是：
+**四个插件之间唯一可能的共享住址是 `ui/` 或 `lib/`，别处都不合法。**
+
+我迁移时是一个插件一个插件迁的，于是每到一个插件就地建了一个 `*Styles.ts`。
+四次都碰到同一批需求 —— 一行会截断的文字、一个让出宽度的部分、一档墨色 ——
+四次都就地写了。守卫从来没报警，因为四份副本各自合法。
+
+### 证据
+
+四个模块共 663 处引用。其中 **363 处（55%）用的是同名同值的 21 个档**：
+
+| 档 | 声明它的模块 | 引用 |
+| --- | --- | --- |
+| `truncate` | view set chat shell | 77 |
+| `muted` | view set chat shell | 56 |
+| `hold` | view set chat shell | 38 |
+| `faint` | set chat shell | 37 |
+| `fill` | view set chat *(shell 不是)* | 26 |
+| `min` | view set chat shell | 23 |
+| `line` | set chat shell *(view 不是)* | 22 |
+| `soft` | view chat shell | 16 |
+| `accent` `negative` | view set chat shell | 13 + 13 |
+| `ink` | view chat shell | 8 |
+| `lineTight` | set chat shell | 6 |
+| `figures` | view set chat | 5 |
+| `grow` `warning` `strong` `success` `column` | 2–3 个模块 | 4+4+3+3+3 |
+| `wrapText` `pretty` `stackHairline` | 2 个模块 | 2+2+2 |
+
+另有 **9 个同名不同值** —— 这一档才是真缺陷，因为**一个名字指了两个东西**：
+
+| 名字 | 一个意思 | 另一个意思 |
+| --- | --- | --- |
+| `fill` | view/set/chat：`min-width:0; flex:1`（让出宽度） | **shell：`position:absolute; inset:0`（铺满）** |
+| `line` | set/chat/shell：flex + center + gap-2 | view：同上**再加** `min-width:0` |
+| `split` | set/chat：space-between（gap 3 / 2 两个值） | **view：两列 grid** |
+| `caption` | view：`fgFaint` 一档墨色 | **set：一个带 margin 和字重的组标题** |
+| `fieldLabel` | view：`fgMuted` + medium 墨色 | **set：一个 flex 竖排容器** |
+| `pane` | set：column + gap-6 | **shell：`flex-1 min-h-0` 的窗格** |
+| `stack` | view：无 gap 的 column | set：gap-3 |
+| `stackTight` | set：gap-2 | chat：gap-1.5 |
+| `afterRow` | view：`margin-top: s1_5` | set：`s2_5` |
+
+`fill` 是最坏的一个：同一个名字，一处叫「把宽度让给旁边」，一处叫「盖住整个父元素」。
+
+### 这一轮做什么
+
+1. 新建 `ui/atoms/vocabulary.ts`（`vocab`），21 个同名同值档一份，363 处引用改指过去。
+   插件边界是真的，所以这是唯一合法的住址 —— 它跟 `reveal.ts` / `tone-ink.ts` 同层。
+2. `vocab` 的收录判据写进文件头：**「每个人都需要、且只有一个说得通的值」进来；
+   「某个面自己决定的排布」（一行的 gap、一张卡的内缩）留在那个面，名字要说出它是哪个面。**
+   所以 `stackTight` 不进（两个模块两个 gap = 没有共识 = 不是共享事实），
+   `medium` / `bodyLeading` 不进（只有 chat 声明，没有重复可消）。
+3. 顺手解掉必然冲突的两个：`vocab.fill` 一进来就跟 `shellStyles.fill` 撞名 ——
+   shell 那个改叫 `overlay`（它就是个浮层）；view 的 `caption` 就是 `vocab.faint`，删掉。
+
+剩下 7 个同名不同值下一轮改名 —— 改名要一处一处看它在那句 JSX 里到底是什么意思，
+跟这一轮的机械替换不是一回事，混在一批里我会把判断当替换做。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **656 / 656，0 unexpected，0 flaky —— 零像素位移** |
+| 守卫 | 17 项全绿 |
+| 单测 | 1781 项通过 |
+| `className` 早于 spread 的扫描 | 0 |
+
+零位移就是这一轮要的那个数：换住址不是设计改动，一张 golden 都不该动。
+
+### 我这轮自己犯的两个错，都值得记下来
+
+**一、跑了三遍视觉套件，三遍都什么也没验。** 我手写 `npx playwright test visual/…`，
+漏了 `--config playwright.visual.config.ts` —— 没有它就没有 `baseURL`、没有 webServer，
+302 个用例里 301 个死在 `Cannot navigate to invalid URL`。而我读到的是「exit 0」，
+因为 `... | tail -18` 之后 `$?` 是 **tail** 的退出码，不是 playwright 的。
+两个错误叠在一起，正好合成一个「绿」。**教训**：套件走仓库自己的入口（`npm run visual:test`），
+别手搓；要退出码就别放在管道尾巴上。
+
+**二、两次在套件运行中改了源文件。** 第一次改 barrel、第二次改 ViewHeader，
+都可能让 dev server 在跑到一半时重编译。这次没造成误判（因为那两次跑的结果本来就是废的），
+但它会污染归因 —— 而「先隔离再归因」是我前几轮才立的规矩。
+
+**三、顺带纠正一个我上一轮报错了的数。** 我说业务层 `className` 从 902 降到 0。
+那个扫描只匹配 `className="…"` 这一种写法，漏掉了 `className={cond ? "a" : "b"}`、
+`cn("…")`、以及作为 prop 传下去的 class 串。按「真正抵达某个 className 且含至少一个
+utility 的字符串」重新数：**33 个文件里还有 122 条 class 串、403 个 utility。**
+迁移完成的是 `className="…"` 这一种形态，不是整个业务层。
+
+### 留给下一轮：`ui/` 自己也在重写 vocab
+
+刚建好 `vocab` 就能反过来量它：**38 个文件里有 86 处把某个 vocab 档的值又写了一遍**。
+但这 86 处要分成两类，只有一类是缺陷：
+
+| | 例子 | 判断 |
+| --- | --- | --- |
+| **只是换个拼法** | `TracesPanel:hold`、`sidebar/projects:column`、`DiagnosticsView:muted`、`SessionRow:grow`、`FloatingComposer:pretty` | **缺陷** —— 本地名没多说任何东西，就是 `vocab` 那一档 |
+| **本地名多说了一层意思** | `text-field:glyph`、`navigation-row:trailing`、`step-row:label`、`button:chip`、`catalog-picker:rowGlyph` | **不是缺陷** —— `trailing` 说的是位置、`glyph` 说的是身份，换成 `vocab.hold` 只会让调用处更难读 |
+
+第三类是真正该治的：`tone-ink.ts`、`button.tsx` 的 tone 表、`ansi-text.tsx` 的 tone 表
+**各自重新声明了一遍墨色阶梯**（`color.negative` 写了四遍）。投影该留着，
+声明只该有一份 —— `toneInk` 应该指向 `vocab.negative`，而不是自己再写一次那个值。

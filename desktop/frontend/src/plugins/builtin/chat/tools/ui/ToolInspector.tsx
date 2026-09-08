@@ -1,10 +1,9 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { SectionLabel, Well } from "@/ui";
+import { SectionLabel, vocab, Well } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { toolInspectorModel, type ToolInspectorBody } from "../application/toolInspectorModel";
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 
 const ti = stylex.create({
   body: { paddingTop: space.s0_5 },
@@ -23,7 +22,7 @@ export function ToolInspector({ tool }: { tool: ToolCall }) {
         <InspectorSection title={t("toolInspector.result")} body={model.result} />
       )}
       {model.showNoResult && (
-        <div {...stylex.props(ct.faint, typeStep.uiSm, face.mono)}>
+        <div {...stylex.props(vocab.faint, typeStep.uiSm, face.mono)}>
           {t("toolInspector.noResult")}
         </div>
       )}

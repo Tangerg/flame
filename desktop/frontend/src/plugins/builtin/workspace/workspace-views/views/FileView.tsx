@@ -6,6 +6,7 @@ import { langFromPath, resolveLang } from "@/lib/highlight/shiki";
 import { cn } from "@/lib/classNames";
 import { type as typeStep } from "@/styles/tokens.stylex";
 import { codeStyles as cs } from "./viewStyles";
+import { vocab } from "@/ui";
 
 function highlightLines(h: Highlighter, code: string, theme: string, path: string): string[] {
   const lang = resolveLang(h, langFromPath(path));
@@ -55,7 +56,7 @@ export function FileView({
             {html !== undefined ? (
               <span {...stylex.props(cs.wrap)} dangerouslySetInnerHTML={{ __html: html }} />
             ) : (
-              <span {...stylex.props(cs.wrap, cs.soft)}>{line || " "}</span>
+              <span {...stylex.props(cs.wrap, vocab.soft)}>{line || " "}</span>
             )}
           </div>
         );

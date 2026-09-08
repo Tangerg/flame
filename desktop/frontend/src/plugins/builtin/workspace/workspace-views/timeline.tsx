@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { Tone } from "@/lib/tone";
 import type { IconName } from "@/ui";
 import type { TimelineEntry, TimelineEntryKind } from "@/plugins/sdk/types/agentSessionView";
-import { Badge, EmptyState, Icon, IconButton, toneInk } from "@/ui";
+import { Badge, EmptyState, Icon, IconButton, toneInk, vocab } from "@/ui";
 import { useT, type Translate } from "@/lib/i18n";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { toolIntent } from "@/plugins/builtin/agent/public/messagePresentation";
@@ -90,16 +90,18 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
   return (
     <div {...stylex.props(vs.rowTop, vs.gutter, vs.groupPad)}>
       <Icon name={icon} size="xs" className={stylex.props(ts.glyph).className} />
-      <div {...stylex.props(vs.fill)}>
+      <div {...stylex.props(vocab.fill)}>
         <div {...stylex.props(vs.lineBaseline)}>
-          <span {...stylex.props(vs.hold, ts.kind, typeStep.uiSm)}>{t(KIND_I18N[entry.kind])}</span>
+          <span {...stylex.props(vocab.hold, ts.kind, typeStep.uiSm)}>
+            {t(KIND_I18N[entry.kind])}
+          </span>
           {subject && (
             // Named because it is the one place a tool reaches the timeline by name, and a
             // closure test checks that the name is the transcript's rather than the wire's.
             <span
               data-timeline-subject=""
               title={subject}
-              {...stylex.props(vs.truncate, vs.muted, typeStep.uiSm, face.mono)}
+              {...stylex.props(vocab.truncate, vocab.muted, typeStep.uiSm, face.mono)}
             >
               {subject}
             </span>
@@ -134,7 +136,7 @@ function TimelineRunHeader({
   const run = group.run;
   if (!run) {
     return group.runId ? (
-      <div {...stylex.props(vs.gutter, vs.sectionPad, vs.caption, typeStep.uiXs, face.mono)}>
+      <div {...stylex.props(vs.gutter, vs.sectionPad, vocab.faint, typeStep.uiXs, face.mono)}>
         {t("timeline.unknownRun", { id: group.runId })}
       </div>
     ) : null;
@@ -149,30 +151,33 @@ function TimelineRunHeader({
       <Icon
         name={child ? "bot" : "branch"}
         size="sm"
-        className={stylex.props(vs.hold, vs.muted).className}
+        className={stylex.props(vocab.hold, vocab.muted).className}
       />
-      <div {...stylex.props(vs.fill, vs.rowPad)}>
-        <div {...stylex.props(vs.line)}>
-          <span {...stylex.props(vs.hold, vs.title, typeStep.uiSm)}>
+      <div {...stylex.props(vocab.fill, vs.rowPad)}>
+        <div {...stylex.props(vocab.line, vocab.min)}>
+          <span {...stylex.props(vocab.hold, vs.title, typeStep.uiSm)}>
             {t(child ? "timeline.delegatedRun" : "timeline.rootRun")}
           </span>
-          <span title={run.id} {...stylex.props(vs.truncate, vs.caption, typeStep.uiXs, face.mono)}>
+          <span
+            title={run.id}
+            {...stylex.props(vocab.truncate, vocab.faint, typeStep.uiXs, face.mono)}
+          >
             {run.id}
           </span>
           <Badge tone={status.tone}>{t(status.labelKey)}</Badge>
         </div>
         <div {...stylex.props(ts.runDetail, typeStep.uiXs)}>
           {status.detail && (
-            <span title={status.detail} {...stylex.props(vs.truncate, ts.pretty)}>
+            <span title={status.detail} {...stylex.props(vocab.truncate, vocab.pretty)}>
               {status.detail}
             </span>
           )}
           {child && (
-            <span title={parentRunId} {...stylex.props(vs.truncate, vs.caption, face.mono)}>
+            <span title={parentRunId} {...stylex.props(vocab.truncate, vocab.faint, face.mono)}>
               {t("timeline.parentRun", { id: parentRunId })}
             </span>
           )}
-          <span {...stylex.props(vs.pushEnd, vs.hold, face.mono)}>
+          <span {...stylex.props(vs.pushEnd, vocab.hold, face.mono)}>
             {t("agent.steps", { count: status.stepCount })}
           </span>
         </div>
@@ -253,7 +258,7 @@ export function TimelineTab() {
                 />
               ))
             ) : (
-              <p {...stylex.props(vs.gutter, vs.rowPad, ts.pretty, vs.caption, typeStep.uiXs)}>
+              <p {...stylex.props(vs.gutter, vs.rowPad, vocab.pretty, vocab.faint, typeStep.uiXs)}>
                 {t("timeline.noEvents")}
               </p>
             )}

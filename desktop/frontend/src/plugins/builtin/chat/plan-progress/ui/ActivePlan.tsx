@@ -1,13 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { AnimatePresence, motion } from "motion/react";
-import { Gauge, Pressable, RichTooltip, StepMark } from "@/ui";
+import { Gauge, Pressable, RichTooltip, StepMark, vocab } from "@/ui";
 import { disclosureTransition } from "@/lib/motion";
 import { useT } from "@/lib/i18n";
 import { type PlanStep, useSessionPlan } from "@/plugins/builtin/agent/public/plan";
 import { useIsCurrentRootRunning } from "@/plugins/builtin/agent/public/run";
 import { activePlanState, type ActivePlanState } from "../application/progress";
 import { color, radius, space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 
 const ap = stylex.create({
   pill: {
@@ -117,9 +116,9 @@ function PlanPill({
       <Gauge
         value={progress.percent / 100}
         label={completionLabel}
-        className={stylex.props(ct.accent).className}
+        className={stylex.props(vocab.accent).className}
       />
-      <span {...stylex.props(ct.truncate, ct.figures)}>{progressLabel}</span>
+      <span {...stylex.props(vocab.truncate, vocab.figures)}>{progressLabel}</span>
     </Pressable>
   );
 
@@ -147,7 +146,7 @@ function PlanPill({
                 <span
                   {...stylex.props(
                     ap.stepText,
-                    step.status === "done" ? ct.muted : ct.soft,
+                    step.status === "done" ? vocab.muted : vocab.soft,
                     typeStep.uiSm,
                   )}
                 >

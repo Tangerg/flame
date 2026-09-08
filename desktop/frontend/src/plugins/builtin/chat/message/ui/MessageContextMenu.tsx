@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import type { ReactElement, ReactNode } from "react";
-import { ContextMenu, Icon } from "@/ui";
+import { ContextMenu, Icon, vocab } from "@/ui";
 import {
   editAndRerunMessage,
   editMessageInComposer,
@@ -15,7 +15,6 @@ import { writeToClipboard } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { space } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 
 const mc = stylex.create({
   submenu: { paddingInline: space.s2 },
@@ -84,11 +83,11 @@ export function MessageContextMenu({ msg, children }: Props) {
               <ContextMenu.SubmenuRoot>
                 <ContextMenu.SubmenuTrigger layout="pick">
                   <Icon name="history" size="xs" />
-                  <span {...stylex.props(ct.truncate)}>{t("msgActions.restore")}</span>
+                  <span {...stylex.props(vocab.truncate)}>{t("msgActions.restore")}</span>
                   <Icon
                     name="chevron-down"
                     size="xs"
-                    className={stylex.props(mc.chevron, ct.faint).className}
+                    className={stylex.props(mc.chevron, vocab.faint).className}
                   />
                 </ContextMenu.SubmenuTrigger>
                 <ContextMenu.Content side="right" align="start" sideOffset={2} alignOffset={-4}>

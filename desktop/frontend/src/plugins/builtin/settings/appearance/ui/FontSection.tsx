@@ -1,13 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import type { SegmentedOption } from "@/ui";
-import { Checkbox, DropdownMenu, Icon, Segmented, SelectTrigger } from "@/ui";
+import { Checkbox, DropdownMenu, Icon, Segmented, SelectTrigger, vocab } from "@/ui";
 import { UI_FONT_SIZE_MAX_PX, UI_FONT_SIZE_MIN_PX } from "@/lib/typography";
 import { useT } from "@/lib/i18n";
 import { useSystemFonts } from "../application/systemFonts";
 import { useFontPreferences } from "../application/appearancePreferences";
 import { SettingRow } from "../../kit";
 import { color, face, space, type as typeStep, weight } from "@/styles/tokens.stylex";
-import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface FontPickerProps {
   label: string;
@@ -71,9 +70,9 @@ function FontPicker({ label, mono, value, onChange, defaultLabel }: FontPickerPr
               style={{ fontFamily: `"${f}"` }}
               layout="pickPlain"
             >
-              <span {...stylex.props(ss.truncate)}>{f}</span>
+              <span {...stylex.props(vocab.truncate)}>{f}</span>
               {value === f ? (
-                <Icon name="check" size="xs" className={stylex.props(ss.accent).className} />
+                <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
               ) : (
                 <span aria-hidden />
               )}

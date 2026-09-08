@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { Icon, Pressable } from "@/ui";
+import { Icon, Pressable, vocab } from "@/ui";
 import { setApprovalMode } from "@/plugins/builtin/agent/public/approvalPolicy";
 import { APPROVAL_MODES, type ApprovalMode } from "../application/approvalConfig";
 import { rpcErrorText } from "@/lib/rpcErrors";
@@ -95,7 +95,7 @@ export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
                 onClick={() => void onChange(o.value)}
                 className={stylex.props(m.option, selected ? m.optionOn : m.optionOff).className}
               >
-                <div {...stylex.props(ss.fill)}>
+                <div {...stylex.props(vocab.fill)}>
                   <div {...stylex.props(selected ? m.nameOn : m.nameOff, typeStep.uiMd)}>
                     {t(o.labelKey)}
                   </div>
@@ -105,14 +105,14 @@ export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
                   <Icon
                     name="loop"
                     size="sm"
-                    className={stylex.props(ss.hold, m.spin, ss.accent).className}
+                    className={stylex.props(vocab.hold, m.spin, vocab.accent).className}
                   />
                 ) : (
                   selected && (
                     <Icon
                       name="check"
                       size="md"
-                      className={stylex.props(ss.hold, ss.accent).className}
+                      className={stylex.props(vocab.hold, vocab.accent).className}
                     />
                   )
                 )}

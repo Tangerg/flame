@@ -2,14 +2,13 @@ import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
-import { IconButton, StatusDot } from "@/ui";
+import { IconButton, StatusDot, vocab } from "@/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import { delegatedRunCardModel } from "../application/delegatedRunCardModel";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { face, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 
 interface Props {
   run: AgentRunView;
@@ -44,7 +43,7 @@ export function DelegatedRunDisclosure({
       label={model.label}
       detail={
         model.detail ? (
-          <span title={model.detail} {...stylex.props(ct.pretty)}>
+          <span title={model.detail} {...stylex.props(vocab.pretty)}>
             {model.detail}
           </span>
         ) : undefined
@@ -66,7 +65,7 @@ export function DelegatedRunDisclosure({
             <StatusDot tone={model.dotTone} />
             {model.statusLabel}
           </span>
-          <span {...stylex.props(ct.faint, typeStep.uiXs, face.mono)}>{model.stepsLabel}</span>
+          <span {...stylex.props(vocab.faint, typeStep.uiXs, face.mono)}>{model.stepsLabel}</span>
         </>
       }
       actions={
@@ -103,7 +102,7 @@ export function DelegatedRunDisclosure({
       {hasMaterial ? (
         children
       ) : (
-        <p {...stylex.props(ct.pretty, ct.muted, typeStep.uiSm)}>
+        <p {...stylex.props(vocab.pretty, vocab.muted, typeStep.uiSm)}>
           {t("agent.runTree.material.empty")}
         </p>
       )}

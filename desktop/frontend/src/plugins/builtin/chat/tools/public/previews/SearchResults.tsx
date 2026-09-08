@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { ExternalLink } from "@/ui";
+import { ExternalLink, vocab } from "@/ui";
 import type { WebSearchPreviewResult } from "../../application/specialisedPreviewProjections";
 import {
   color,
@@ -11,7 +11,6 @@ import {
   type as typeStep,
   weight,
 } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../../chatStyles";
 const sr = stylex.create({
   // Auto-fill: the grid decides its own column count from the transcript's width.
   grid: {
@@ -84,7 +83,7 @@ export function SearchResults({ results }: { results: WebSearchPreviewResult[] }
             <span {...stylex.props(sr.mark, typeStep.ui2xs)}>
               {(r.domain[0] ?? "?").toUpperCase()}
             </span>
-            <span {...stylex.props(ct.truncate)}>{r.domain}</span>
+            <span {...stylex.props(vocab.truncate)}>{r.domain}</span>
           </div>
           <div {...stylex.props(sr.title, typeStep.uiMd)}>{r.title}</div>
           <div {...stylex.props(sr.snippet, typeStep.uiMd)}>{r.snippet}</div>

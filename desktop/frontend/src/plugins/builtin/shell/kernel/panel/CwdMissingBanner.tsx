@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useRef, useState } from "react";
-import { SystemMessage, TextField } from "@/ui";
+import { SystemMessage, TextField, vocab } from "@/ui";
 import { useActiveSession, useRelocateSession } from "@/plugins/builtin/agent/public/session";
 import { BannerAction } from "./BannerAction";
 import { useT } from "@/lib/i18n";
@@ -44,7 +44,7 @@ export function CwdMissingBanner() {
 
   return (
     <SystemMessage variant="warning" shape="form" className={stylex.props(sh.banner).className}>
-      <div {...stylex.props(sh.min)}>
+      <div {...stylex.props(vocab.min)}>
         <div {...stylex.props(cw.title, typeStep.uiMd)}>{t("cwdMissing.title")}</div>
         <div {...stylex.props(cw.body, typeStep.uiMd)}>
           <code {...stylex.props(typeStep.uiMd, face.mono)}>{session.workspace.path}</code> ·{" "}
@@ -53,7 +53,7 @@ export function CwdMissingBanner() {
         {relocateEnabled && (
           <div {...stylex.props(cw.form)}>
             {editing ? (
-              <div {...stylex.props(sh.lineTight)}>
+              <div {...stylex.props(vocab.lineTight)}>
                 <TextField
                   type="text"
                   size="sm"

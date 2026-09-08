@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { ToolStat, ToolStatsSummary } from "../application/toolStats";
 import { toolStats, toolTimeShare } from "../application/toolStats";
 import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
-import { Badge, EmptyState, Icon, ProgressBar, Sparkline, knownIconName } from "@/ui";
+import { Badge, EmptyState, Icon, knownIconName, ProgressBar, Sparkline, vocab } from "@/ui";
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { face, type as typeStep } from "@/styles/tokens.stylex";
@@ -50,12 +50,12 @@ function ToolStatRow({ row, summary }: { row: ToolStat; summary: ToolStatsSummar
     <div {...stylex.props(vs.gutter, vs.rowPad)}>
       <div {...stylex.props(vs.lineBaseline)}>
         <Icon name={icon} size="sm" className={stylex.props(vs.glyphInline).className} />
-        <span {...stylex.props(vs.fill, vs.truncate, typeStep.uiMd)}>{row.name}</span>
+        <span {...stylex.props(vocab.fill, vocab.truncate, typeStep.uiMd)}>{row.name}</span>
         {row.failed > 0 && (
           <Badge tone="negative">{t("toolStats.failed", { n: row.failed })}</Badge>
         )}
         {row.denied > 0 && <Badge tone="warning">{t("toolStats.denied", { n: row.denied })}</Badge>}
-        <span {...stylex.props(vs.hold, vs.muted, typeStep.uiXs, face.mono)}>
+        <span {...stylex.props(vocab.hold, vocab.muted, typeStep.uiXs, face.mono)}>
           {row.timed > 0 ? fmtDuration(row.totalMs) : "—"}
         </span>
       </div>
@@ -64,16 +64,16 @@ function ToolStatRow({ row, summary }: { row: ToolStat; summary: ToolStatsSummar
           value={toolTimeShare(row, summary) * 100}
           label={t("toolStats.share", { name: row.name })}
           weight="row"
-          className={stylex.props(vs.grow).className}
+          className={stylex.props(vocab.grow).className}
         />
         {row.durations.length > 1 && (
           <Sparkline
             data={row.durations}
             label={t("toolStats.trend", { name: row.name })}
-            className={stylex.props(vs.hold, vs.caption).className}
+            className={stylex.props(vocab.hold, vocab.faint).className}
           />
         )}
-        <span {...stylex.props(vs.hold, vs.caption, typeStep.uiSm)}>
+        <span {...stylex.props(vocab.hold, vocab.faint, typeStep.uiSm)}>
           {t("toolStats.calls", { n: row.calls })}
           {row.timed > 0 &&
             ` · ${t("toolStats.slowest", { duration: fmtDuration(row.slowestMs) })}`}

@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useId, useRef, useState } from "react";
-import { DataView, DiffStat, FilePath, Icon, Pressable, ScrollArea, Segmented } from "@/ui";
+import { DataView, DiffStat, FilePath, Icon, Pressable, ScrollArea, Segmented, vocab } from "@/ui";
 import { AgentViewNavigatorToggle, AgentViewSplit, AgentWorkspaceView } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import type { DiffLayout } from "./views/DiffView";
@@ -17,7 +17,7 @@ import {
   useWorkspaceDiffView,
 } from "@/plugins/builtin/workspace/application/diffViewModel";
 import { color, space, type as typeStep } from "@/styles/tokens.stylex";
-import { codeStyles as cs, viewStyles as vs } from "./views/viewStyles";
+import { codeStyles as cs } from "./views/viewStyles";
 const df = stylex.create({
   pathLine: { display: "flex", minWidth: 0, flex: 1, alignItems: "baseline", gap: space.s1_5 },
   // The old path yields first and by a wide margin: what matters is where the file IS now.
@@ -64,7 +64,7 @@ function FileCard({
               <Icon
                 name="arrow-right"
                 size="xs"
-                className={stylex.props(vs.hold, df.glyph).className}
+                className={stylex.props(vocab.hold, df.glyph).className}
               />
             </>
           )}
@@ -142,7 +142,7 @@ export function DiffWorkspaceSurface() {
         titleStrong
         sub={sub}
         actions={
-          <div {...stylex.props(vs.line)}>
+          <div {...stylex.props(vocab.line, vocab.min)}>
             <Segmented
               ariaLabel={t("diff.layoutAria")}
               value={layout}

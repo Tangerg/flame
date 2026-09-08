@@ -2,11 +2,10 @@ import * as stylex from "@stylexjs/stylex";
 import type { IconName } from "@/ui";
 import type { AgentRunOutcome } from "@/plugins/sdk/types/agentSessionView";
 import { isAgentRunFailure } from "@/plugins/builtin/agent/public/viewState";
-import { Icon } from "@/ui";
+import { Icon, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import type { CurrentRootMaterial } from "@/plugins/builtin/agent/public/run";
 import { color, space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 
 const ro = stylex.create({
   // A one-line receipt between turns: it owns the gap on both sides, like a banner.
@@ -30,9 +29,9 @@ export function RootRunOutcome({ material }: { material: CurrentRootMaterial }) 
 
   return (
     <div {...stylex.props(ro.line, typeStep.uiSm)}>
-      <Icon name={face.icon} size="xs" className={stylex.props(ct.hold).className} />
-      <span {...stylex.props(ct.hold)}>{t(face.labelKey)}</span>
-      {detail && <span {...stylex.props(ct.min, ct.truncate)}>· {detail}</span>}
+      <Icon name={face.icon} size="xs" className={stylex.props(vocab.hold).className} />
+      <span {...stylex.props(vocab.hold)}>{t(face.labelKey)}</span>
+      {detail && <span {...stylex.props(vocab.min, vocab.truncate)}>· {detail}</span>}
     </div>
   );
 }

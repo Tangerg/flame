@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { DiffStat, IconButton, StatusDot, knownIconName, reveal } from "@/ui";
+import { DiffStat, IconButton, knownIconName, reveal, StatusDot, vocab } from "@/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { type ToolMetaItem } from "@/plugins/builtin/agent/public/messagePresentation";
 import { cn } from "@/lib/classNames";
@@ -18,7 +18,6 @@ import { toolCallIconFor } from "../public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "./ToolText";
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 
 interface Props {
   tool: ToolCall;
@@ -79,7 +78,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
           <ToolMeta items={model.metaItems} />
           {model.running && <StatusDot tone="running" />}
           {model.denied && (
-            <span data-slot="tool-status" {...stylex.props(tc.sans, ct.muted, typeStep.uiXs)}>
+            <span data-slot="tool-status" {...stylex.props(tc.sans, vocab.muted, typeStep.uiXs)}>
               {t("tool.state.denied")}
             </span>
           )}

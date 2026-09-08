@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useRef, useState } from "react";
-import { Button, IconButton, TextEditorDialog } from "@/ui";
+import { Button, IconButton, TextEditorDialog, vocab } from "@/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { rpcErrorText } from "@/lib/rpcErrors";
@@ -18,7 +18,6 @@ import {
   useRuntimeCommandsAvailable,
 } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { GoalGlyph } from "./GoalGlyph";
-import { chatStyles as ct } from "../../chatStyles";
 import { space } from "@/styles/tokens.stylex";
 
 const gs = stylex.create({
@@ -117,8 +116,8 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
   return (
     <>
       <div data-slot="goal-status-row" {...stylex.props(gs.bar)}>
-        <div {...stylex.props(ct.line, ct.fill)}>
-          <GoalGlyph className={stylex.props(gs.glyph, ct.hold, ct.faint).className} />
+        <div {...stylex.props(vocab.line, vocab.fill)}>
+          <GoalGlyph className={stylex.props(gs.glyph, vocab.hold, vocab.faint).className} />
           <Button
             type="button"
             data-goal="summary"
@@ -129,10 +128,10 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             className={stylex.props(gs.summary).className}
             onClick={openEditor}
           >
-            <span {...stylex.props(ct.hold, ct.ink)}>
+            <span {...stylex.props(vocab.hold, vocab.ink)}>
               {t(goalRefusalLabel(goal) ?? GOAL_STATUS_I18N[goal.status].label)}
             </span>
-            <span {...stylex.props(gs.objective, ct.min, ct.truncate, ct.muted)}>
+            <span {...stylex.props(gs.objective, vocab.min, vocab.truncate, vocab.muted)}>
               {goal.objective}
             </span>
           </Button>
@@ -182,7 +181,10 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
           if (pending !== "edit") setEditing(open);
         }}
         icon={
-          <GoalGlyph aria-hidden="true" className={stylex.props(gs.bigGlyph, ct.muted).className} />
+          <GoalGlyph
+            aria-hidden="true"
+            className={stylex.props(gs.bigGlyph, vocab.muted).className}
+          />
         }
         title={t("goal.edit.title")}
         closeLabel={t("common.close")}

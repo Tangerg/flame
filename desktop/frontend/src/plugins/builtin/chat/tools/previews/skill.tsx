@@ -8,9 +8,8 @@ import { projectSkillPreview } from "@/plugins/builtin/chat/tools/application/sp
 import { resultLines } from "@/plugins/builtin/chat/tools/application/toolResultParsing";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { INLINE_PREVIEW_ROW_LIMIT, PreviewOverflow } from "./previewChrome";
-import { Tag } from "@/ui";
+import { Tag, vocab } from "@/ui";
 import { space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
 import { previewStyles as pv } from "./previewStyles";
 import { TEXT_PREVIEW } from "./previewChrome";
 
@@ -36,7 +35,7 @@ function SkillCatalogPreview({ tool, onOpenView }: ToolPreviewProps) {
       {entries.slice(0, INLINE_PREVIEW_ROW_LIMIT).map((s) => (
         <div key={s.name} className={stylex.props(sk.row, pv.row, pv.rowPad).className}>
           <Tag size="sm">{s.name}</Tag>
-          <span {...stylex.props(ct.truncate, ct.muted, typeStep.uiSm)}>{s.description}</span>
+          <span {...stylex.props(vocab.truncate, vocab.muted, typeStep.uiSm)}>{s.description}</span>
         </div>
       ))}
       <PreviewOverflow count={entries.length - INLINE_PREVIEW_ROW_LIMIT} />
@@ -50,7 +49,7 @@ function SkillTextPreview({ tool, onOpenView }: ToolPreviewProps) {
   return (
     <div {...stylex.props(TEXT_PREVIEW)}>
       {lines.length > 0 ? (
-        <div {...stylex.props(pv.wrapWords, ct.soft)}>
+        <div {...stylex.props(pv.wrapWords, vocab.soft)}>
           {lines.slice(0, INLINE_PREVIEW_ROW_LIMIT).join("\n")}
         </div>
       ) : (
