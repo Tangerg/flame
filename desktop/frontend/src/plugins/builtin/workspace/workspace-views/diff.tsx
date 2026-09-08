@@ -1,6 +1,16 @@
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useId, useRef, useState } from "react";
-import { DataView, DiffStat, FilePath, Icon, Pressable, ScrollArea, Segmented, vocab } from "@/ui";
+import {
+  DataView,
+  DiffStat,
+  FilePath,
+  Icon,
+  Pressable,
+  ScrollArea,
+  Segmented,
+  chevron,
+  vocab,
+} from "@/ui";
 import { AgentViewNavigatorToggle, AgentViewSplit, AgentWorkspaceView } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import type { DiffLayout } from "./views/DiffView";
@@ -22,6 +32,7 @@ const df = stylex.create({
   pathLine: { display: "flex", minWidth: 0, flex: 1, alignItems: "baseline", gap: space.s1_5 },
   // The old path yields first and by a wide margin: what matters is where the file IS now.
   oldPath: { flexShrink: 100, color: color.fgFaint },
+  glyphStep: { opacity: "var(--glyph-step)" },
   newPath: { flexShrink: 1 },
   glyph: { opacity: "var(--glyph-step)" },
   sep: { marginInline: space.s2 },
@@ -74,10 +85,7 @@ function FileCard({
         <Icon
           name="chevron-down"
           size="sm"
-          className={cn(
-            "shrink-0 opacity-[var(--glyph-step)] transition-transform",
-            collapsed && "-rotate-90",
-          )}
+          className={stylex.props(chevron.base, df.glyphStep, collapsed && chevron.shut).className}
         />
       </Pressable>
       {!collapsed && (

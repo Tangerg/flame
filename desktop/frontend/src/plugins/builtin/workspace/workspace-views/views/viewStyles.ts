@@ -128,8 +128,6 @@ export const viewStyles = stylex.create({
     backgroundColor: "transparent",
     textAlign: "left",
   },
-  chevron: { color: color.fgFaint, transitionProperty: "rotate" },
-  chevronShut: { rotate: "-90deg" },
   /** The panel indents past the chevron so its content lines up with the name above it. */
   editorInset: { paddingBottom: space.s3, paddingLeft: space.s10 },
 });

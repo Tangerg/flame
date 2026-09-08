@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { Icon, Pressable, vocab } from "@/ui";
+import { Icon, Pressable, chevron, vocab } from "@/ui";
 import { cn } from "@/lib/classNames";
 import {
   type WorkspaceFileEntry,
@@ -46,7 +46,7 @@ function TreeNode({ entry, cwd, depth, selectedPath, onSelectFile }: NodeProps) 
           <Icon
             name="chevron-down"
             size="xs"
-            className={cn("shrink-0 transition-transform", !expanded && "-rotate-90")}
+            className={stylex.props(chevron.base, !expanded && chevron.shut).className}
           />
         ) : (
           <span {...stylex.props(ft.indent)} />

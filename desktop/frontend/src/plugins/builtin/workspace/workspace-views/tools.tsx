@@ -8,13 +8,14 @@ import {
   Collapsible,
   DataView,
   Icon,
-  knownIconName,
   PillButton,
   Pressable,
   SectionLabel,
   TextArea,
   TextButton,
   Well,
+  chevron,
+  knownIconName,
 } from "@/ui";
 import { McpRow } from "./views/McpRow";
 import { useT } from "@/lib/i18n";
@@ -131,7 +132,9 @@ function DiagnosticToolRowPresentation({
         <Icon
           name="chevron-down"
           size="xs"
-          className={stylex.props(os.rowGlyph, vs.chevron, !open && vs.chevronShut).className}
+          className={
+            stylex.props(os.rowGlyph, chevron.base, vocab.faint, !open && chevron.shut).className
+          }
         />
         <Icon
           name={knownIconName(tool.icon) ?? "tool"}

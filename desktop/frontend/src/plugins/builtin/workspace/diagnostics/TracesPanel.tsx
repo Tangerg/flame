@@ -6,7 +6,7 @@ import { useTelemetryStore } from "@/lib/observability/stores";
 import { Fragment, useCallback, useId, useMemo, useState } from "react";
 import { useT } from "@/lib/i18n";
 import { color, space, surface, type as typeStep } from "@/styles/tokens.stylex";
-import { Icon, Pressable, toneInk, vocab, Well } from "@/ui";
+import { Icon, Pressable, Well, chevron, toneInk, vocab } from "@/ui";
 import { Cell, Empty, Row, VirtualList } from "./primitives";
 
 export function TracesPanel() {
@@ -69,8 +69,6 @@ const tr = stylex.create({
     transitionProperty: "background-color",
   },
   chevronBox: { display: "flex", flexShrink: 0, justifyContent: "center" },
-  chevron: { color: color.fgFaint, transitionProperty: "rotate" },
-  chevronShut: { rotate: "-90deg" },
   start: { textAlign: "left" },
   numeric: { textAlign: "right", fontVariantNumeric: "tabular-nums" },
   error: { color: color.negative },
@@ -121,7 +119,7 @@ function SpanRowItem({
           <Icon
             name="chevron-down"
             size="xs"
-            className={stylex.props(tr.chevron, !open && tr.chevronShut).className}
+            className={stylex.props(chevron.base, vocab.faint, !open && chevron.shut).className}
           />
         </span>
         <span {...stylex.props(spanColumns.name, vocab.truncate, tr.start)}>{span.name}</span>

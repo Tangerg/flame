@@ -4,6 +4,7 @@ import { cn } from "@/lib/classNames";
 import { color, motion, radius, space, surface, type, weight } from "@/styles/tokens.stylex";
 import { Icon } from "@/ui/icons";
 import { Pressable, type PressableProps } from "./pressable";
+import { chevron } from "./chevron";
 
 const styles = stylex.create({
   trigger: {
@@ -42,8 +43,9 @@ const styles = stylex.create({
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
-  // The chevron is `more` turned: one glyph in the set, pointed at the menu it opens.
-  chevron: { flexShrink: 0, rotate: "-90deg", color: color.fgFaint },
+  // A select's chevron never opens downward — it points at the menu it opens, always. The
+  // turn and the width come from `chevron`; this is only the ink.
+  chevronInk: { color: color.fgFaint },
 });
 
 export interface SelectTriggerProps extends Omit<PressableProps, "children"> {
@@ -62,7 +64,11 @@ export function SelectTrigger({ label, leading: lead, className, ...props }: Sel
     >
       {lead}
       <span {...stylex.props(styles.label)}>{label}</span>
-      <Icon name="more" size="xs" {...stylex.props(styles.chevron)} />
+      <Icon
+        name="more"
+        size="xs"
+        {...stylex.props([chevron.base, chevron.shut, styles.chevronInk])}
+      />
     </Pressable>
   );
 }

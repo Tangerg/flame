@@ -9,6 +9,7 @@ import {
   Pressable,
   ScrollArea,
   TextField,
+  chevron,
   vocab,
 } from "@/ui";
 import { AgentViewNavigator } from "@/ui/agent";
@@ -84,7 +85,7 @@ function TreeRows({
             <Icon
               name="chevron-down"
               size="xs"
-              className={cn("shrink-0 transition-transform", !open && "-rotate-90")}
+              className={stylex.props(chevron.base, !open && chevron.shut).className}
             />
           }
           label={<FilePath path={node.name} className={stylex.props(vocab.muted).className} />}

@@ -10062,3 +10062,40 @@ composer 的圆角、越过顶边的重叠、缺席的底边、`overflow: clip`�
 而其中的 `sidebar.tsx` / `content-card.tsx` / `surface-header.tsx` 是**机制键包装器**，
 本来就是终态 —— 换句话说，**"没有 StyleX" 这个指标已经走完了**。
 剩下的 89 条是散落在混写文件里的单条，得一处一处看。
+
+## Round 164 — 换个切法：按「同一个事实被写了几遍」排，而不是按文件
+
+「没有 StyleX 的文件」这个指标走完了（`plugins/` 已经是 0）。剩下 89 条散在混写文件里，
+按文件推进已经没有杠杆了。改成按**重复度**排 —— 把剩下的 utility 拆成 token 数一遍，
+排在最前面的是 `-rotate-90` ×3 配 `transition-transform` ×3。
+
+顺着这个线索查全仓，「**一个 chevron，开着朝下、关着朝右**」这一个事实
+写在 **8 个地方、4 种拼法**：
+
+| 拼法 | 在哪 |
+| --- | --- |
+| `{color: fgFaint, transitionProperty: "rotate"}` + `{rotate: "-90deg"}` | `viewStyles`、`TracesPanel`（**逐字相同的两份**） |
+| `{rotate: "-90deg"}` 单档 | `activity-disclosure`、`MessageContextMenu` |
+| `{flexShrink: 0, rotate: "-90deg", color: fgFaint}` 永久转 | `select-trigger` |
+| `cn("shrink-0 transition-transform", !open && "-rotate-90")` | `FileTree`、`ReviewFileTree`、`diff.tsx` |
+
+**这 8 处之间的差异从来不是决定**，只是当时手边有什么就写了什么。
+收成 `ui/atoms/chevron.ts` 两档：`base`（守住宽度 + 只动 `rotate`）和 `shut`（`-90deg`）。
+
+**墨色没有进来** —— 树的 chevron 是 faint、菜单的继承所在行、diff 头部按 `--glyph-step` 退一步。
+这才是它们真正有分歧的地方，所以留给调用处说。
+
+注释里记了一条：用 `rotate` 而不是 `transform` —— 它们是**两个属性**，
+同一个字形上若还有别的 transform（比如按下时的缩放），写成 `transform` 会互相替换而不是叠加。
+
+**顺带清掉一处死代码**：`MessageContextMenu` 的 `mc.submenu` 零引用，
+删掉 chevron 那档之后整个 `stylex.create` 块就空了。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **669 / 669**，0 unexpected，0 flaky |
+| 守卫 | 17 项全绿 |
+| 单测 | 1783 项通过 |
+| `rotate: -90deg` 的 owner | 8 处 4 种拼法 → **1** |

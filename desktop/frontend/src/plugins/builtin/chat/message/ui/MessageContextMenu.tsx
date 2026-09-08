@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import type { ReactElement, ReactNode } from "react";
-import { ContextMenu, Icon, vocab } from "@/ui";
+import { ContextMenu, Icon, chevron, vocab } from "@/ui";
 import {
   editAndRerunMessage,
   editMessageInComposer,
@@ -14,13 +14,6 @@ import { messageContextMenuModel } from "@/plugins/builtin/chat/message-actions/
 import { writeToClipboard } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
-import { space } from "@/styles/tokens.stylex";
-
-const mc = stylex.create({
-  submenu: { paddingInline: space.s2 },
-  chevron: { rotate: "-90deg" },
-});
-
 interface Props {
   msg: Message;
   children: ReactNode;
@@ -87,7 +80,7 @@ export function MessageContextMenu({ msg, children }: Props) {
                   <Icon
                     name="chevron-down"
                     size="xs"
-                    className={stylex.props(mc.chevron, vocab.faint).className}
+                    className={stylex.props(chevron.base, chevron.shut, vocab.faint).className}
                   />
                 </ContextMenu.SubmenuTrigger>
                 <ContextMenu.Content side="right" align="start" sideOffset={2} alignOffset={-4}>

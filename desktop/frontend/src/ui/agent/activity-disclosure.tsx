@@ -9,6 +9,7 @@ import { Pressable } from "@/ui/atoms/pressable";
 import { ProgressBar } from "@/ui/atoms/progress-bar";
 import { Icon, type IconName } from "@/ui/icons";
 import { toneInk } from "@/ui/atoms/tone-ink";
+import { chevron } from "@/ui/atoms/chevron";
 
 type ActivityTone = "neutral" | "warning" | "negative";
 
@@ -126,7 +127,6 @@ const styles = stylex.create({
     opacity: { default: "var(--chevron, 1)", "@media (hover: none)": 1 },
   },
   chevronOpen: { opacity: 1 },
-  chevronShut: { rotate: "-90deg" },
   actions: {
     display: "flex",
     flexShrink: 0,
@@ -274,7 +274,7 @@ export function AgentActivityDisclosure({
             data-slot="agent-activity-chevron"
             data-open={open ? "" : undefined}
             data-reveal="hover"
-            {...stylex.props(styles.chevron, open ? styles.chevronOpen : styles.chevronShut)}
+            {...stylex.props(styles.chevron, open ? styles.chevronOpen : chevron.shut)}
           >
             <Icon name="chevron-down" size="xs" />
           </span>

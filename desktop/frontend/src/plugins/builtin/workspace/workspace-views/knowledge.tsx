@@ -6,11 +6,12 @@ import {
   Badge,
   Collapsible,
   DataView,
-  gap,
   Icon,
   PillButton,
   Pressable,
   TextArea,
+  chevron,
+  gap,
   vocab,
 } from "@/ui";
 import { useT } from "@/lib/i18n";
@@ -106,7 +107,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
         <Icon
           name="chevron-down"
           size="xs"
-          className={stylex.props(vs.chevron, !open && vs.chevronShut).className}
+          className={stylex.props(chevron.base, vocab.faint, !open && chevron.shut).className}
         />
         <span {...stylex.props(vocab.ink, vocab.truncate, typeStep.uiMd, face.mono)}>
           {row.path}
