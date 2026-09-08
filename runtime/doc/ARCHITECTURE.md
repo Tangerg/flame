@@ -79,6 +79,8 @@ MCP configuration requires its durable registry, live connection ports, tool cat
 
 Provider identity is the exact provider/model pair plus model-owned options. Credential precedence, endpoints, SDK construction, request lowering, capability mapping, and provider-specific failures remain inside provider adapters. Product and delivery code do not infer a provider from a model name.
 
+Auxiliary text generation has one live-role completion boundary. It validates the request envelope before resolving the provider and accepts only a natural stop with non-empty text. Truncated, filtered, refused, or otherwise incomplete output remains a failure; compaction and background curation never persist it as a completed artifact.
+
 The ordinary chat contract owns complete and streaming calls. Complete-request token counting and other provider-specific capabilities remain separate narrow contracts discovered at the provider boundary. Runtime advertises only exact implemented behavior; it does not guess from a provider name, approximate unavailable behavior, or add optional methods to every client.
 
 A provider declares whether its model identities come from the bundled catalog or its endpoint. Endpoint discovery is authoritative even when empty, and failures remain errors; missing required endpoint or credential configuration is a parameter error. Bundled metadata may enrich discovered identities without supplying replacement results. Catalog slice results transfer ownership to the caller.

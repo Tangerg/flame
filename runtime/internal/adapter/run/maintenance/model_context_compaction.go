@@ -205,14 +205,14 @@ func (c *Compactor) materializeModelContextPlan(
 			return nil, "", 0, 0, fmt.Errorf("maintenance: summarize model context: %w", err)
 		}
 		replacement = make([]chat.Message, 0, 2+len(plan.recent))
-		replacement = append(replacement, summary.Message())
+		replacement = append(replacement, chat.NewSystemMessage(compactionModelPrefix+summary))
 		if c.liveState != nil {
 			if reminder, ok := liveStateReminder(c.liveState(ctx, sessionID)); ok {
 				replacement = append(replacement, reminder)
 			}
 		}
 		replacement = append(replacement, cloneMessages(plan.recent)...)
-		return replacement, summary.Text(), plan.cutoff, len(replacement) - len(plan.recent), nil
+		return replacement, summary, plan.cutoff, len(replacement) - len(plan.recent), nil
 	default:
 		return nil, "", 0, 0, errors.New("maintenance: unsupported model-context compaction plan")
 	}

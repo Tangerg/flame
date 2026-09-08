@@ -11,29 +11,15 @@ import (
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
-// Resolver selects the current utility-role client for each call. Resolving at
-// the boundary lets a role configuration change take effect without rebuilding
-// the owning worker.
+// AuxiliaryResolver selects the current utility-role client for each call.
+// Resolving at the boundary lets a role configuration change take effect without
+// rebuilding the owning worker.
 type AuxiliaryResolver func(context.Context) (*chatclient.Client, error)
-
-// Complete resolves the exact live auxiliary selection and performs one call.
-// A configured role that cannot resolve is an error; callers must not silently
-// substitute a different provider/model identity.
-func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt) (string, error) {
-	if r == nil {
-		return "", errors.New("auxiliary model: resolver is required")
-	}
-	client, err := r(ctx)
-	if err != nil {
-		return "", err
-	}
-	return CompleteAuxiliary(ctx, client, prompt)
-}
 
 // callTimeout bounds one auxiliary model request independently of an Agent Run.
 const callTimeout = 2 * time.Minute
 
-// Prompt is the complete resource envelope for one auxiliary model request.
+// AuxiliaryPrompt is the complete resource envelope for one auxiliary model request.
 // Input bytes and output tokens are deliberately mandatory: background
 // maintenance must never inherit a provider's context/output defaults.
 type AuxiliaryPrompt struct {
@@ -61,17 +47,25 @@ func (p AuxiliaryPrompt) validate() error {
 	return nil
 }
 
-// Complete performs one synchronous, middleware-free prompt completion inside
-// the caller's explicit input/output envelope.
-func CompleteAuxiliary(ctx context.Context, client *chatclient.Client, prompt AuxiliaryPrompt) (string, error) {
-	if client == nil {
-		return "", errors.New("auxiliary model: client is required")
+// Complete resolves the live auxiliary selection and returns a complete text
+// generation inside the caller's resource envelope. A rejected or incomplete
+// generation cannot become a durable summary, memory, or skill proposal.
+func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt) (string, error) {
+	if r == nil {
+		return "", errors.New("auxiliary model: resolver is required")
 	}
 	if err := prompt.validate(); err != nil {
 		return "", err
 	}
 	callCtx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
+	client, err := r(callCtx)
+	if err != nil {
+		return "", err
+	}
+	if client == nil {
+		return "", errors.New("auxiliary model: client is required")
+	}
 	response, err := client.Call(callCtx, &chat.Request{Messages: []chat.Message{
 		chat.NewSystemMessage(prompt.SystemPrompt),
 		chat.NewUserMessage(chat.NewTextPart(prompt.UserPrompt)),
@@ -81,6 +75,9 @@ func CompleteAuxiliary(ctx context.Context, client *chatclient.Client, prompt Au
 	}
 	if err := response.Validate(); err != nil {
 		return "", fmt.Errorf("auxiliary model: invalid response: %w", err)
+	}
+	if response.Output.FinishReason != chat.FinishReasonStop {
+		return "", fmt.Errorf("auxiliary model: generation did not complete (finish reason %q)", response.Output.FinishReason)
 	}
 	text := response.Text()
 	if strings.TrimSpace(text) == "" {

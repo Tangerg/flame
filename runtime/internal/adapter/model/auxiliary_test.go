@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"errors"
 	"iter"
 	"strings"
 	"testing"
@@ -39,7 +40,7 @@ func TestCompleteBuildsOneMiddlewareFreePrompt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	text, err := CompleteAuxiliary(t.Context(), &client, AuxiliaryPrompt{
+	text, err := fixedAuxiliaryClient(&client).Complete(t.Context(), AuxiliaryPrompt{
 		SystemPrompt: "system instructions", UserPrompt: "input",
 		MaxInputBytes: 1024, MaxOutputTokens: 123,
 	})
@@ -64,39 +65,52 @@ func TestCompleteBuildsOneMiddlewareFreePrompt(t *testing.T) {
 }
 
 func TestCompleteRejectsMissingClient(t *testing.T) {
-	_, err := CompleteAuxiliary(t.Context(), nil, AuxiliaryPrompt{MaxInputBytes: 1, MaxOutputTokens: 1})
+	_, err := fixedAuxiliaryClient(nil).Complete(t.Context(), AuxiliaryPrompt{MaxInputBytes: 1, MaxOutputTokens: 1})
 	if err == nil || err.Error() != "auxiliary model: client is required" {
 		t.Fatalf("Complete nil client error = %v", err)
 	}
 }
 
-func TestCompleteRejectsInvalidResourceEnvelopeBeforeCallingModel(t *testing.T) {
-	model := &recordingModel{}
-	client, err := chatclient.New(model, chatclient.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestCompleteRejectsInvalidResourceEnvelopeBeforeResolvingModel(t *testing.T) {
+	resolver := AuxiliaryResolver(func(context.Context) (*chatclient.Client, error) {
+		t.Fatal("invalid resource envelope reached the resolver")
+		return nil, nil
+	})
 	for _, prompt := range []AuxiliaryPrompt{
 		{MaxOutputTokens: 1},
 		{MaxInputBytes: 1},
 		{SystemPrompt: "system", UserPrompt: "input", MaxInputBytes: 5, MaxOutputTokens: 1},
 	} {
-		if _, err := CompleteAuxiliary(t.Context(), &client, prompt); err == nil {
+		if _, err := resolver.Complete(t.Context(), prompt); err == nil {
 			t.Fatalf("Complete(%+v) succeeded, want invalid resource envelope", prompt)
 		}
 	}
-	if model.request != nil {
-		t.Fatal("invalid resource envelope reached the model")
+}
+
+func TestCompletePreservesResolutionFailure(t *testing.T) {
+	failure := errors.New("provider unavailable")
+	resolver := AuxiliaryResolver(func(context.Context) (*chatclient.Client, error) {
+		return nil, failure
+	})
+	text, err := resolver.Complete(t.Context(), AuxiliaryPrompt{MaxInputBytes: 1, MaxOutputTokens: 1})
+	if text != "" || !errors.Is(err, failure) {
+		t.Fatalf("Complete = (%q, %v), want exact resolution failure", text, err)
 	}
 }
 
-func TestCompleteRejectsResponsesWithoutOrdinaryText(t *testing.T) {
+func fixedAuxiliaryClient(client *chatclient.Client) AuxiliaryResolver {
+	return func(context.Context) (*chatclient.Client, error) { return client, nil }
+}
+
+func TestCompleteRejectsIncompleteTextGenerations(t *testing.T) {
+	partial := chat.NewAssistantMessage(chat.NewTextPart("unfinished summary"))
 	refusal := chat.NewAssistantMessage(chat.NewRefusalPart("I cannot summarize that."))
-	cases := []struct {
+	type completionCase struct {
 		name       string
 		response   *chat.Response
 		wantReason string
-	}{
+	}
+	cases := []completionCase{
 		{
 			name: "refusal",
 			response: &chat.Response{Output: &chat.Output{
@@ -118,18 +132,28 @@ func TestCompleteRejectsResponsesWithoutOrdinaryText(t *testing.T) {
 		},
 	}
 
+	for _, reason := range []chat.FinishReason{
+		chat.FinishReasonLength, chat.FinishReasonContentFilter, chat.FinishReasonRefusal,
+		chat.FinishReasonToolCalls, chat.FinishReasonOther,
+	} {
+		cases = append(cases, completionCase{
+			name:       string(reason) + " with text",
+			response:   &chat.Response{Output: &chat.Output{Message: &partial, FinishReason: reason}},
+			wantReason: `finish reason "` + string(reason) + `"`,
+		})
+	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			client, err := chatclient.New(auxiliaryResponseModel{response: tc.response}, chatclient.Config{})
 			if err != nil {
 				t.Fatal(err)
 			}
-			_, err = CompleteAuxiliary(t.Context(), &client, AuxiliaryPrompt{
+			text, err := fixedAuxiliaryClient(&client).Complete(t.Context(), AuxiliaryPrompt{
 				SystemPrompt: "summarize", UserPrompt: "history",
 				MaxInputBytes: 1024, MaxOutputTokens: 128,
 			})
-			if err == nil || !strings.Contains(err.Error(), tc.wantReason) {
-				t.Fatalf("CompleteAuxiliary error = %v, want %q", err, tc.wantReason)
+			if text != "" || err == nil || !strings.Contains(err.Error(), tc.wantReason) {
+				t.Fatalf("Complete error = %v, want %q", err, tc.wantReason)
 			}
 		})
 	}

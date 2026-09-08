@@ -2,7 +2,6 @@ package maintenance
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	"github.com/Tangerg/scope/core/chat"
@@ -42,42 +41,16 @@ Remaining work + open questions — concrete and ordered.
 Do NOT echo this instruction or restate the raw transcript; the agent receives
 your sections verbatim.`
 
-var errEmptyCompactionSummary = errors.New("compactor: summary is empty")
-
 const (
 	compactionSummaryOutputTokens int64 = 4096
 	compactionModelPrefix               = "[Earlier conversation summary]\n"
 )
 
-// compactionSummary keeps the user-readable summary separate from the model
-// framing used when the summary is written back into chat history. The raw text
-// crosses the application boundary; the framed message remains an adapter
-// concern.
-type compactionSummary struct {
-	text string
-}
-
-func newCompactionSummary(text string) (compactionSummary, error) {
-	text = strings.TrimSpace(text)
-	if text == "" {
-		return compactionSummary{}, errEmptyCompactionSummary
-	}
-	return compactionSummary{text: text}, nil
-}
-
-func (s compactionSummary) Text() string {
-	return s.text
-}
-
-func (s compactionSummary) Message() chat.Message {
-	return chat.NewSystemMessage(compactionModelPrefix + s.text)
-}
-
 // summarize asks the LLM to fold the older messages into a single
 // system message of bullet points. Failure aborts compaction —
 // keeping the existing history is always preferable to losing it
 // behind a bad summary.
-func (c *Compactor) summarize(ctx context.Context, msgs []chat.Message) (compactionSummary, error) {
+func (c *Compactor) summarize(ctx context.Context, msgs []chat.Message) (string, error) {
 	transcript := renderTranscript(msgs)
 
 	text, err := c.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
@@ -85,7 +58,7 @@ func (c *Compactor) summarize(ctx context.Context, msgs []chat.Message) (compact
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: compactionSummaryOutputTokens,
 	})
 	if err != nil {
-		return compactionSummary{}, err
+		return "", err
 	}
-	return newCompactionSummary(text)
+	return strings.TrimSpace(text), nil
 }
