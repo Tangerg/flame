@@ -172,8 +172,12 @@ function DropdownItem({ layout, className, ...props }: DropdownItemProps & { lay
   return <MenuPrimitive.Item {...props} {...item} className={cn(item.className, className)} />;
 }
 
-function DropdownSubmenuTrigger({ className, ...props }: DropdownSubmenuTriggerProps) {
-  const item = stylex.props(menuItem());
+function DropdownSubmenuTrigger({
+  layout,
+  className,
+  ...props
+}: DropdownSubmenuTriggerProps & { layout?: RowLayout }) {
+  const item = stylex.props(menuItem(layout));
   return (
     <MenuPrimitive.SubmenuTrigger {...props} {...item} className={cn(item.className, className)} />
   );
@@ -186,8 +190,12 @@ function ContextItem({ layout, className, ...props }: ContextItemProps & { layou
   );
 }
 
-function ContextSubmenuTrigger({ className, ...props }: ContextSubmenuTriggerProps) {
-  const item = stylex.props(menuItem());
+function ContextSubmenuTrigger({
+  layout,
+  className,
+  ...props
+}: ContextSubmenuTriggerProps & { layout?: RowLayout }) {
+  const item = stylex.props(menuItem(layout));
   return (
     <ContextMenuPrimitive.SubmenuTrigger
       {...props}

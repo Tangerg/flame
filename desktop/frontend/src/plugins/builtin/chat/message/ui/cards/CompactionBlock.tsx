@@ -3,6 +3,22 @@ import { useId, useState } from "react";
 import { Collapsible, Icon, TextButton, reveal } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
+import { color, leading, space, type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../../chatStyles";
+
+const cb = stylex.create({
+  host: { display: "flex", minWidth: 0, flexDirection: "column" },
+  // The summary indents past the mark and holds a reading measure of its own.
+  summary: {
+    marginTop: space.s1_5,
+    marginLeft: space.s5,
+    maxWidth: "640px",
+    whiteSpace: "pre-wrap",
+    textAlign: "left",
+    lineHeight: leading.prose,
+    color: color.fgMuted,
+  },
+});
 
 const styles = stylex.create({
   open: { rotate: "180deg", opacity: 1 },
@@ -15,7 +31,7 @@ export function CompactionBlock({ summary }: { summary: string }) {
   const label = t("compaction.compacted");
 
   return (
-    <div data-slot="agent-activity-item" className="flex min-w-0 flex-col">
+    <div data-slot="agent-activity-item" {...stylex.props(cb.host)}>
       <TextButton
         type="button"
         size="sm"
@@ -25,8 +41,8 @@ export function CompactionBlock({ summary }: { summary: string }) {
         aria-controls={panelId}
         className={cn(stylex.props(reveal.host).className, "max-w-full self-start py-1.5")}
       >
-        <Icon name="minimize" size="xs" className="shrink-0 text-fg-faint" />
-        <span className="min-w-0 truncate">{label}</span>
+        <Icon name="minimize" size="xs" className={stylex.props(ct.hold, ct.faint).className} />
+        <span {...stylex.props(ct.min, ct.truncate)}>{label}</span>
         <Icon
           name="chevron-down"
           size="xs"
@@ -40,10 +56,7 @@ export function CompactionBlock({ summary }: { summary: string }) {
         />
       </TextButton>
       <Collapsible open={open}>
-        <div
-          id={panelId}
-          className="mt-1.5 ml-5 max-w-[640px] whitespace-pre-wrap text-left text-ui-sm leading-prose text-fg-muted"
-        >
+        <div id={panelId} className={stylex.props(cb.summary, typeStep.uiSm).className}>
           {summary}
         </div>
       </Collapsible>

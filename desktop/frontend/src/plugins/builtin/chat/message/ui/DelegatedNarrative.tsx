@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
@@ -15,6 +16,11 @@ import { DelegatedRunDisclosure } from "./DelegatedRunDisclosure";
 import { MESSAGE_CONTENT_CLASS } from "./messageContent";
 import { cn } from "@/lib/classNames";
 import type { BlockCtx } from "./blockContext";
+import { space } from "@/styles/tokens.stylex";
+
+const dn = stylex.create({
+  stack: { display: "grid", gap: space.s2 },
+});
 
 interface Props {
   narrative: DelegatedRunNarrative;
@@ -46,7 +52,7 @@ export function DelegatedNarrative({
       }}
       onOpenAudit={openTimelineView}
     >
-      <div className="grid gap-2">
+      <div {...stylex.props(dn.stack)}>
         {narrative.messages.map((message) => (
           <DelegatedMessage
             key={message.id}

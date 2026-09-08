@@ -20,6 +20,7 @@ export const chatStyles = stylex.create({
   hold: { flexShrink: 0 },
   truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   centre: { textAlign: "center" },
+  pretty: { textWrap: "pretty" },
   ink: { color: color.fg },
   soft: { color: color.fgSoft },
   muted: { color: color.fgMuted },

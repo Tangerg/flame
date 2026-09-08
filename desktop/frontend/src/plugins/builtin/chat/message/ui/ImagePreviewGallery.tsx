@@ -1,3 +1,5 @@
+import * as stylex from "@stylexjs/stylex";
+import { cn } from "@/lib/classNames";
 import {
   useCallback,
   useEffect,
@@ -11,6 +13,68 @@ import { useT } from "@/lib/i18n";
 import { IconButton, LightboxDialog } from "@/ui";
 import { saveInlineImage } from "../adapters/desktopImageSave";
 import { MESSAGE_CONTENT_SELECTOR } from "./messageContent";
+import { color, corner, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+
+const ig = stylex.create({
+  frame: {
+    position: "relative",
+    display: "flex",
+    height: "100%",
+    width: "100%",
+    flexDirection: "column",
+  },
+  // The controls float over the image on the scrim's own layer, so the image below can be
+  // panned and zoomed without them moving with it.
+  topRight: {
+    position: "absolute",
+    top: space.s3,
+    right: space.s3,
+    zIndex: 1,
+    display: "flex",
+    alignItems: "center",
+    gap: space.s1,
+  },
+  prev: { position: "absolute", top: "50%", left: space.s3, zIndex: 1, translate: "0 -50%" },
+  next: { position: "absolute", top: "50%", right: space.s3, zIndex: 1, translate: "0 -50%" },
+  // The pan surface leaves room at top and bottom for the two control clusters.
+  pan: {
+    minHeight: 0,
+    flex: 1,
+    overflow: "auto",
+    padding: space.s4,
+    paddingTop: space.s12,
+    paddingBottom: space.s16,
+  },
+  centre: { display: "grid", minHeight: "100%", minWidth: "100%", placeItems: "center" },
+  image: {
+    display: "block",
+    maxHeight: "calc(100dvh - 8rem)",
+    maxWidth: "calc(100vw - 2rem)",
+    borderRadius: radius.lg,
+    objectFit: "contain",
+  },
+  tray: {
+    boxShadow: "var(--shadow-floating)",
+    position: "absolute",
+    bottom: space.s3,
+    left: "50%",
+    zIndex: 1,
+    display: "flex",
+    translate: "-50% 0",
+    alignItems: "center",
+    gap: space.s1,
+    backgroundColor: surface.mediaScrim,
+    padding: space.s1,
+    color: color.onMedia,
+  },
+  // A measure the percentage cannot outgrow, so the buttons beside it hold still.
+  zoom: {
+    minWidth: "calc(var(--spacing) * 14)",
+    paddingInline: space.s1,
+    textAlign: "center",
+    fontFamily: "var(--font-mono)",
+  },
+});
 
 const PREVIEW_TRIGGER_ATTR = "data-message-image-preview-trigger";
 const ZOOM_STEPS = [100, 125, 150, 200, 300, 400] as const;
@@ -177,8 +241,8 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
         },
       })}
     >
-      <div className="relative flex size-full flex-col" data-image-zoom={zoomPercent}>
-        <div className="absolute top-3 right-3 z-1 flex items-center gap-1">
+      <div {...stylex.props(ig.frame)} data-image-zoom={zoomPercent}>
+        <div {...stylex.props(ig.topRight)}>
           <IconButton
             icon="download"
             title={t("message.image.download")}
@@ -208,7 +272,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
               }}
               variant="media"
               size="xl"
-              className="absolute top-1/2 left-3 z-1 -translate-y-1/2"
+              className={stylex.props(ig.prev).className}
             />
             <IconButton
               icon="chevron-right"
@@ -220,12 +284,12 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
               }}
               variant="media"
               size="xl"
-              className="absolute top-1/2 right-3 z-1 -translate-y-1/2"
+              className={stylex.props(ig.next).className}
             />
           </>
         )}
-        <div className="min-h-0 flex-1 overflow-auto p-4 pt-12 pb-16">
-          <div className="grid min-h-full min-w-full place-items-center">
+        <div {...stylex.props(ig.pan)}>
+          <div {...stylex.props(ig.centre)}>
             <img
               src={active.src}
               alt={active.alt}
@@ -238,11 +302,11 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
                 const { width, height } = event.currentTarget.getBoundingClientRect();
                 if (width > 0 && height > 0) setFittedSize({ src: active.src, width, height });
               }}
-              className="block max-h-[calc(100dvh-8rem)] max-w-[calc(100vw-2rem)] rounded-lg object-contain media-edge-on-scrim"
+              className={cn("media-edge-on-scrim", stylex.props(ig.image).className)}
             />
           </div>
         </div>
-        <div className="absolute bottom-3 left-1/2 z-1 flex -translate-x-1/2 items-center gap-1 rounded-full bg-media-scrim p-1 text-on-media shadow-[var(--shadow-floating)]">
+        <div {...stylex.props(ig.tray, corner.pill)}>
           <IconButton
             icon="zoom-out"
             title={t("message.image.zoomOut")}
@@ -251,7 +315,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
             variant="mediaTray"
             size="xl"
           />
-          <span className="min-w-14 px-1 text-center font-mono text-ui-sm">{zoomPercent}%</span>
+          <span {...stylex.props(ig.zoom, typeStep.uiSm)}>{zoomPercent}%</span>
           <IconButton
             icon="zoom-in"
             title={t("message.image.zoomIn")}

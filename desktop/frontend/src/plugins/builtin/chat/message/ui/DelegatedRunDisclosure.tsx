@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
@@ -7,6 +8,8 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import { delegatedRunCardModel } from "../application/delegatedRunCardModel";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
 
 interface Props {
   run: AgentRunView;
@@ -41,7 +44,7 @@ export function DelegatedRunDisclosure({
       label={model.label}
       detail={
         model.detail ? (
-          <span title={model.detail} className="text-pretty">
+          <span title={model.detail} {...stylex.props(ct.pretty)}>
             {model.detail}
           </span>
         ) : undefined
@@ -63,7 +66,7 @@ export function DelegatedRunDisclosure({
             <StatusDot tone={model.dotTone} />
             {model.statusLabel}
           </span>
-          <span className="font-mono text-ui-xs text-fg-faint">{model.stepsLabel}</span>
+          <span {...stylex.props(ct.mono, ct.faint, typeStep.uiXs)}>{model.stepsLabel}</span>
         </>
       }
       actions={
@@ -100,7 +103,9 @@ export function DelegatedRunDisclosure({
       {hasMaterial ? (
         children
       ) : (
-        <p className="text-pretty text-ui-sm text-fg-muted">{t("agent.runTree.material.empty")}</p>
+        <p {...stylex.props(ct.pretty, ct.muted, typeStep.uiSm)}>
+          {t("agent.runTree.material.empty")}
+        </p>
       )}
     </AgentActivityDisclosure>
   );

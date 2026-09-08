@@ -9095,3 +9095,55 @@ class 必须拼出常量命名的那个属性"。**StyleX 下这个约束消失�
 | 视觉 | **657 / 657**，零位移零重录 |
 | 守卫 | 17 项全绿；顺序扫描器 0 处 |
 | 单测 | chat 全通过 |
+
+---
+
+## Round 152 —— `chat/message` 清零：业务层迁移完成
+
+`chat/message/` 18 个文件迁完。**业务层 902 处 className 归零**，
+剩下的 52 处全是 `globals.css` / `markdown.css` 拥有的机制键
+（`md` `md-table-*` `md-media-*` `sr-only` `media-edge` `panel-scroll` `[&_svg]:*`）。
+
+### 卡片的内距阶梯
+
+审批卡、问题卡、压缩通知共享一套内距阶梯 —— 头部比正文深、动作区比头部更深 ——
+以及一行"正在问什么"：它 `overflow-wrap: anywhere`，因为那可能是一条没有空格可断的路径。
+抽成 `messageStyles`。
+
+### 第七种菜单行拼写，以及同一个缺口的第二处
+
+`MessageContextMenu` 的 `ContextMenu.SubmenuTrigger` 写着
+`grid-cols-[14px_minmax(0,1fr)_12px]` —— 第七种拼写，mark 列又是 12px。
+上一轮给 `DropdownMenu.Item` 补了 `layout`，**submenu trigger 是同一个缺口的另一半**，
+一并补上。七种拼写现在是两档（`pick` / `pickPlain`）加一个宽字形变体。
+
+### 我自己造的一处重复
+
+第 149 轮我把 `RunAnnouncer` 的 `sr-only` 手写成了一个本地样式
+（`position: absolute; clip-path: inset(50%)` …）。而这一轮发现 `chat/message` 里
+还有三处仍在用 `sr-only` —— **同一件事两种拼写，其中一种是我加的。**
+
+撤回那个本地样式：`sr-only` 是 Tailwind 自带的成熟实现，按机制类对待
+（和 `panel-scroll` / `md` / `media-edge` 一致）。**迁移时把一个机制类"翻译"成
+本地样式，等于给它开了第二个主人。**
+
+### 又一处冻结类名
+
+`QuestionCard.test.tsx` 断言已结算答案带 `whitespace-pre-wrap`。
+意图是"多行答案按多行显示" —— 换行进入 DOM 这半 jsdom 能证（文本匹配已经在做），
+**按换行绘制这半是渲染主张**。答案加 `data-settled-answer`，
+渲染那半加进已有的 `question settlement` 浏览器测试（它此前只拍折叠态）。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **656 / 656**，零位移零重录 |
+| 守卫 | 17 项全绿；顺序扫描器 0 处 |
+| 单测 | **315 文件全通过** |
+
+### 报告，未改
+
+`MarkdownImage` 的图片用 `shadow-md` —— 那是 **Tailwind 自带的阴影**（`--shadow-md`
+由它的主题提供），而设计系统有自己的 `--shadow-popover` / `--shadow-modal` /
+`--shadow-floating` 深度模型。一张 markdown 图片该落在哪一档深度上是设计决定。

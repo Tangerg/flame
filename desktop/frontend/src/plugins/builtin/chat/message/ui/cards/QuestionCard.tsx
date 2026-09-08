@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { BlockStatus, QuestionItem } from "@/plugins/sdk/types/contentBlock";
 import {
   useId,
@@ -35,9 +36,111 @@ import {
   questionCardSettledView,
   useQuestionCardActions,
 } from "../../application/questionCardModel";
-import { cn } from "@/lib/classNames";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { composerCompositionKeyIntent } from "@/plugins/builtin/chat/composer/public/composition";
+import {
+  color,
+  corner,
+  leading,
+  motion,
+  space,
+  surface,
+  type as typeStep,
+} from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../../chatStyles";
+import { messageStyles as ms } from "../messageStyles";
+
+const qc = stylex.create({
+  settledLine: {
+    display: "flex",
+    minWidth: 0,
+    alignItems: "center",
+    gap: space.s1,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  settledList: { display: "flex", flexDirection: "column", gap: space.s3 },
+  settledItem: { display: "flex", flexDirection: "column", gap: space.s1 },
+  // A settled pair reads as a record, so both halves take the tight line box a log does.
+  settledAsk: { whiteSpace: "pre-wrap", lineHeight: "1rem", color: color.fgMuted },
+  settledAnswer: {
+    whiteSpace: "pre-wrap",
+    overflowWrap: "break-word",
+    lineHeight: "1rem",
+    color: color.fgFaint,
+  },
+  // The card takes focus so the keyboard can answer it, and the highlighted OPTION is the
+  // indicator — the same reason a menu popup opts out of the ring.
+  noRing: { outline: "none" },
+  pager: {
+    display: "flex",
+    flexShrink: 0,
+    alignItems: "center",
+    gap: space.s1,
+    color: color.fgFaint,
+  },
+  // A measure the count cannot outgrow, so the arrows beside it do not shift as it counts.
+  pageCount: { minWidth: space.s10, textAlign: "center", fontVariantNumeric: "tabular-nums" },
+  choices: {
+    display: "flex",
+    flexDirection: "column",
+    gap: space.s1,
+    paddingInline: space.s2,
+    paddingTop: space.s1,
+    paddingBottom: space.s2,
+  },
+  optionLine: { display: "flex", minWidth: 0, flex: 1, alignItems: "baseline", gap: space.s2 },
+  // The label may take half the row and no more: the hint beside it has to be readable too.
+  optionLabel: {
+    minWidth: 0,
+    maxWidth: "50%",
+    flexShrink: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    fontWeight: 500,
+    color: color.fg,
+  },
+  field: { paddingInline: space.s2, paddingBlock: space.s1_5 },
+  textArea: { maxHeight: "calc(var(--spacing) * 40)" },
+  freeRow: {
+    display: "flex",
+    minHeight: space.s8,
+    alignItems: "center",
+    gap: space.s2,
+    backgroundColor: { default: null, ":focus-within": surface.hover },
+    paddingInline: space.s2,
+    paddingBlock: space.s1_5,
+    transitionProperty: "background-color",
+    transitionDuration: motion.color,
+  },
+  freeMark: {
+    display: "grid",
+    height: space.s5,
+    width: space.s5,
+    flexShrink: 0,
+    placeItems: "center",
+    borderWidth: "1px",
+    borderStyle: "solid",
+  },
+  // Filled once the reader has chosen to type rather than pick: the mark answers like an option.
+  freeMarkOn: { borderColor: color.fg, backgroundColor: color.fg, color: surface.canvas },
+  freeMarkOff: {
+    borderColor: surface.field,
+    backgroundColor: surface.surface2,
+    color: color.fgMuted,
+  },
+  freeField: { height: space.s5, padding: 0, lineHeight: leading.body },
+  footer: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: space.s2,
+    paddingInline: space.s2,
+    paddingBlock: space.s1,
+  },
+});
 
 interface Props {
   status: BlockStatus;
@@ -111,20 +214,18 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
         open={settledOpen}
         onToggle={() => setSettledOpen((open) => !open)}
         label={
-          <span className="flex min-w-0 items-center gap-1 truncate">
-            <span className="text-fg-muted">{t("question.settled.asked")}</span>
-            <span className="text-fg-faint">{countLabel}</span>
+          <span {...stylex.props(qc.settledLine)}>
+            <span {...stylex.props(ct.muted)}>{t("question.settled.asked")}</span>
+            <span {...stylex.props(ct.faint)}>{countLabel}</span>
           </span>
         }
         contentClassName="pt-1 pb-0.5"
       >
-        <div className="flex flex-col gap-3">
+        <div {...stylex.props(qc.settledList)}>
           {questions.map((question, index) => (
-            <div key={index} className="flex flex-col gap-1">
-              <div className="whitespace-pre-wrap text-ui-sm leading-4 text-fg-muted">
-                {question.prompt}
-              </div>
-              <div className="whitespace-pre-wrap break-words text-ui-sm leading-4 text-fg-faint">
+            <div key={index} {...stylex.props(qc.settledItem)}>
+              <div {...stylex.props(qc.settledAsk, typeStep.uiSm)}>{question.prompt}</div>
+              <div data-settled-answer="" {...stylex.props(qc.settledAnswer, typeStep.uiSm)}>
                 {questionAnswerText(shown, index) || t("question.settled.noAnswer")}
               </div>
             </div>
@@ -232,17 +333,14 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
       tabIndex={-1}
       data-slot="question-request-surface"
       data-chrome-focus
-      className="overflow-hidden outline-none"
+      className={stylex.props(ms.clip, qc.noRing).className}
     >
-      <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-2">
-        <h3
-          id={promptId}
-          className="min-w-0 text-pretty wrap-anywhere text-ui-md font-medium leading-body text-fg"
-        >
+      <div {...stylex.props(ms.headTight)}>
+        <h3 id={promptId} className={stylex.props(ms.promptFlush, typeStep.uiMd).className}>
           {activeQuestion.prompt}
         </h3>
         {questions.length > 1 && (
-          <div className="flex shrink-0 items-center gap-1 text-ui-xs text-fg-faint">
+          <div {...stylex.props(qc.pager, typeStep.uiXs)}>
             <IconButton
               icon="chevron-left"
               size="xs"
@@ -251,7 +349,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
               title={t("question.action.previous")}
               onClick={() => navigateQuestion(activeIndex - 1)}
             />
-            <span className="min-w-10 text-center tabular-nums">
+            <span {...stylex.props(qc.pageCount)}>
               {t("question.progress", { current: activeIndex + 1, total: questions.length })}
             </span>
             <IconButton
@@ -266,7 +364,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
         )}
       </div>
 
-      <div ref={activeQuestionRef} className="flex flex-col gap-1 px-2 pt-1 pb-2">
+      <div ref={activeQuestionRef} {...stylex.props(qc.choices)}>
         {activeQuestion.type === "choice" && (
           <ChoiceList
             multiple={activeQuestion.multiple}
@@ -294,15 +392,21 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
                   disabled={!runtimeAvailable || actions.pending}
                   onReselect={() => selectOptions(activeQuestion, [option.label])}
                 >
-                  <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                    <span className="min-w-0 max-w-1/2 shrink-0 truncate text-ui-md font-medium text-fg">
-                      {label}
-                    </span>
+                  <span {...stylex.props(qc.optionLine)}>
+                    <span {...stylex.props(qc.optionLabel, typeStep.uiMd)}>{label}</span>
                     {recommended && <Badge>{t("question.recommended")}</Badge>}
                     {option.description && (
                       <span
                         title={option.description}
-                        className="min-w-0 flex-1 truncate text-ui-sm leading-body text-fg-muted"
+                        className={
+                          stylex.props(
+                            ct.fill,
+                            ct.truncate,
+                            ct.bodyLeading,
+                            ct.muted,
+                            typeStep.uiSm,
+                          ).className
+                        }
                       >
                         {option.description}
                       </span>
@@ -315,7 +419,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
         )}
 
         {activeQuestion.type === "text" && (
-          <div className="px-2 py-1.5">
+          <div {...stylex.props(qc.field)}>
             <TextArea
               font="sans"
               size="sm"
@@ -331,20 +435,19 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
               onBlur={() => {
                 compositionCommitPendingRef.current = false;
               }}
-              className="max-h-40"
+              className={stylex.props(qc.textArea).className}
             />
           </div>
         )}
 
         {activeQuestion.type === "choice" && activeQuestion.allowCustom && (
-          <div className="flex min-h-8 items-center gap-2 rounded-full px-2 py-1.5 transition-colors duration-[var(--dur-color)] focus-within:bg-hover">
+          <div {...stylex.props(qc.freeRow, corner.pill)}>
             <span
               aria-hidden
-              className={cn(
-                "grid size-5 shrink-0 place-items-center rounded-full border",
-                explicitFreeform
-                  ? "border-fg bg-fg text-canvas"
-                  : "border-field bg-surface-2 text-fg-muted",
+              {...stylex.props(
+                qc.freeMark,
+                corner.pill,
+                explicitFreeform ? qc.freeMarkOn : qc.freeMarkOff,
               )}
             >
               <Icon name="edit" size="xs" />
@@ -363,12 +466,12 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
               onBlur={() => {
                 compositionCommitPendingRef.current = false;
               }}
-              className="h-5 p-0 text-ui-md leading-body"
+              className={stylex.props(qc.freeField, typeStep.uiMd).className}
             />
           </div>
         )}
 
-        <div className="flex items-center justify-end gap-2 px-2 py-1">
+        <div {...stylex.props(qc.footer)}>
           <Button
             variant={actionSkips ? "outline" : "primary"}
             size="sm"

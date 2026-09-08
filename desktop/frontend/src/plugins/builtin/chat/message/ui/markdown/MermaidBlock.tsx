@@ -7,6 +7,36 @@ import { useT } from "@/lib/i18n";
 import { useTokenRevision } from "@/lib/appearance";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { cn } from "@/lib/classNames";
+import { radius, space, surface } from "@/styles/tokens.stylex";
+
+const mb = stylex.create({
+  // Holds the diagram's eventual measure so the transcript does not jump when it resolves.
+  loading: {
+    position: "relative",
+    marginBlock: "calc(var(--spacing) * 3.5)",
+    display: "grid",
+    height: "calc(var(--spacing) * 60)",
+    minHeight: "calc(var(--spacing) * 25)",
+    width: "100%",
+    placeItems: "center",
+    overflow: "hidden",
+    borderRadius: radius.lg,
+    borderWidth: "0.5px",
+    borderStyle: "solid",
+    borderColor: surface.fieldStrong,
+    backgroundColor: surface.surface,
+  },
+  // The diagram is an SVG the renderer produces, so its own sizing is a DESCENDANT rule that
+  // stays a utility — everything about the frame around it is here.
+  stage: { overflowX: "auto", padding: space.s4, textAlign: "center", outline: "none" },
+  pulse: {
+    height: space.s8,
+    width: space.s8,
+    borderRadius: radius.card,
+    backgroundColor: surface.surface3,
+    animation: "var(--animate-pulse)",
+  },
+});
 
 type MermaidRenderer = typeof import("beautiful-mermaid").renderMermaidSVG;
 let rendererPromise: Promise<MermaidRenderer> | null = null;
@@ -119,7 +149,7 @@ export function MermaidBlock({ code }: Props) {
           aria-label={t("markdown.diagram")}
           tabIndex={-1}
           dir="ltr"
-          className="overflow-x-auto p-4 text-center outline-none [&_svg]:h-auto [&_svg]:max-w-full"
+          className={cn("[&_svg]:h-auto [&_svg]:max-w-full", stylex.props(mb.stage).className)}
           dangerouslySetInnerHTML={{ __html: svg }}
         />
         <div
@@ -166,12 +196,8 @@ export function MermaidBlock({ code }: Props) {
 
   if (rendered.status === "loading") {
     return (
-      <div
-        role="status"
-        aria-label={t("message.mermaid.loading")}
-        className="relative my-3.5 grid h-60 min-h-25 w-full place-items-center overflow-hidden rounded-lg border-[0.5px] border-field-strong bg-surface"
-      >
-        <span aria-hidden="true" className="h-8 w-8 rounded-md bg-surface-3 animate-pulse" />
+      <div role="status" aria-label={t("message.mermaid.loading")} {...stylex.props(mb.loading)}>
+        <span aria-hidden="true" {...stylex.props(mb.pulse)} />
       </div>
     );
   }

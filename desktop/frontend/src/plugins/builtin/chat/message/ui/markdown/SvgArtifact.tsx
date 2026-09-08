@@ -1,6 +1,16 @@
+import * as stylex from "@stylexjs/stylex";
 import { useMemo } from "react";
 import { ShikiCodeBlock } from "@/ui";
 import { useT } from "@/lib/i18n";
+
+const sa = stylex.create({
+  preview: {
+    display: "block",
+    maxHeight: "calc(var(--spacing) * 96)",
+    width: "100%",
+    objectFit: "contain",
+  },
+});
 
 export function SvgArtifact({ code, lang }: { code: string; lang: string }) {
   const t = useT();
@@ -12,7 +22,7 @@ export function SvgArtifact({ code, lang }: { code: string; lang: string }) {
       lang={lang}
       code={code}
       previewLabel={label}
-      preview={<img src={src} alt={label} className="block max-h-96 w-full object-contain" />}
+      preview={<img src={src} alt={label} {...stylex.props(sa.preview)} />}
     />
   );
 }

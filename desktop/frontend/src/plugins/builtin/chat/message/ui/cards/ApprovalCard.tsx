@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
 import { toolFamilyId } from "@/lib/toolFamilies";
 import { toolIconFor } from "@/plugins/builtin/chat/tools/public/toolIcon";
@@ -11,6 +12,13 @@ import { useApprovalCardActions } from "../../application/approvalCardActions";
 import { ApprovalArgsEditor } from "./ApprovalArgsEditor";
 import { approvalHeadline } from "./approvalHeadline";
 import { HitlSettledRow } from "./HitlCard";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../../chatStyles";
+import { messageStyles as ms } from "../messageStyles";
+
+const ac = stylex.create({
+  actionLabel: { display: "flex", alignItems: "center" },
+});
 
 interface Props {
   status: BlockStatus;
@@ -74,20 +82,22 @@ export function ApprovalCard({
       variant="request"
       inset="none"
       data-slot="approval-surface"
-      className="overflow-hidden"
+      className={stylex.props(ms.clip).className}
     >
-      <div className="px-4 pt-4 pb-3">
-        <div className="flex min-w-0 items-center gap-2 text-ui-sm leading-body text-fg-muted">
-          <Icon name={identity.icon} size="sm" className="shrink-0 text-fg-faint" />
-          <span className="truncate">{identity.label}</span>
+      <div {...stylex.props(ms.head)}>
+        <div {...stylex.props(ms.identity, typeStep.uiSm)}>
+          <Icon
+            name={identity.icon}
+            size="sm"
+            className={stylex.props(ct.hold, ct.faint).className}
+          />
+          <span {...stylex.props(ct.truncate)}>{identity.label}</span>
         </div>
-        <div className="mt-2 text-pretty wrap-anywhere text-ui-md font-medium leading-body text-fg">
-          {title}
-        </div>
+        <div {...stylex.props(ms.prompt, typeStep.uiMd)}>{title}</div>
       </div>
 
       {(cmd.trim() || hasArgs) && (
-        <div className="flex flex-col gap-2 px-4 pb-2">
+        <div {...stylex.props(ms.body)}>
           {cmd.trim() && (
             <Well as="code" ink="strong" cap="lg">
               {cmd}
@@ -105,14 +115,14 @@ export function ApprovalCard({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-end gap-2 px-4 pt-2 pb-4">
+      <div {...stylex.props(ms.actions)}>
         <Button variant="outline" size="sm" disabled={disabled} onClick={decline}>
           {t("approval.action.deny")}
         </Button>
         <div
           role="group"
           aria-label={t("approval.action.allowOptions")}
-          className="flex items-center"
+          className={stylex.props(ac.actionLabel).className}
         >
           <Button
             variant="primary"
@@ -143,9 +153,9 @@ export function ApprovalCard({
                   <DropdownMenu.Item
                     key={action.scope}
                     onClick={() => approve(action.scope)}
-                    className="grid-cols-[minmax(0,1fr)]"
+                    layout="pickPlain"
                   >
-                    <span className="truncate">{t(action.labelKey)}</span>
+                    <span {...stylex.props(ct.truncate)}>{t(action.labelKey)}</span>
                   </DropdownMenu.Item>
                 ))}
               </DropdownMenu.Content>

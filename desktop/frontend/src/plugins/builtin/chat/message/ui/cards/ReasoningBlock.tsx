@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MarkdownMessage } from "../markdown/MarkdownMessage";
@@ -5,6 +6,13 @@ import { Icon, Loader } from "@/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../../chatStyles";
+import { messageStyles as ms } from "../messageStyles";
+
+const rb = stylex.create({
+  note: { marginTop: space.s1 },
+});
 
 interface Props {
   text: string;
@@ -97,13 +105,10 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
             showTopFade ? "opacity-100" : "opacity-0",
           )}
         />
-        <div
-          ref={contentRef}
-          className="whitespace-pre-wrap text-ui-sm leading-prose text-fg-muted"
-        >
+        <div ref={contentRef} className={stylex.props(ms.quote, typeStep.uiSm).className}>
           <MarkdownMessage text={text} streaming={streaming} reveal="smooth" />
           {status === "incomplete" && (
-            <div className="mt-1 font-mono text-ui-sm text-fg-faint">
+            <div {...stylex.props(rb.note, ct.mono, ct.faint, typeStep.uiSm)}>
               <Icon name="x" size="xs" /> {t("reasoning.interrupted")}
             </div>
           )}

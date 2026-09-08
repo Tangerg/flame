@@ -147,6 +147,9 @@ test("question settlement uses the exact interrupt identity", async ({ page }) =
   await settled.click();
   await expect(page.getByText("What should this gate protect?", { exact: true })).toBeVisible();
   await expect(page.getByText("Runtime boundaries and cancellation paths.")).toBeVisible();
+  // A settled answer is shown verbatim — an answer typed over three lines reads as three.
+  // The jsdom test for this read `whitespace-pre-wrap` back off a class attribute.
+  await expect(page.locator("[data-settled-answer]").first()).toHaveCSS("white-space", "pre-wrap");
   await expect(settled.locator("xpath=../..")).toHaveScreenshot(
     "question-settled-expanded-light.png",
   );

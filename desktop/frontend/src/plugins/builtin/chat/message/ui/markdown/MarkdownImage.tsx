@@ -1,8 +1,36 @@
+import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { Icon, Pressable } from "@/ui";
 import { ImagePreviewGallery } from "../ImagePreviewGallery";
+import { color, radius, space, surface } from "@/styles/tokens.stylex";
+
+const mi = stylex.create({
+  image: {
+    display: "block",
+    maxHeight: "calc(var(--spacing) * 50)",
+    maxWidth: "100%",
+    borderRadius: radius.card,
+    objectFit: "contain",
+    boxShadow: "var(--shadow-md)",
+  },
+  // An image that will not load still holds a box, so the paragraph around it does not reflow.
+  missing: {
+    marginBlock: space.s3,
+    display: "inline-flex",
+    minHeight: space.s24,
+    minWidth: space.s24,
+    cursor: "default",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.card,
+    borderWidth: 0,
+    backgroundColor: surface.sunken,
+    padding: 0,
+    color: color.fgFaint,
+  },
+});
 
 const INLINE_IMAGE = /^data:image\/(?:avif|gif|jpeg|jpg|png|svg\+xml|webp)(?:;[^,]*)?,/i;
 
@@ -29,7 +57,7 @@ export function MarkdownImage({ src = "", alt = "", title, allowWide = false }: 
         disabled
         aria-label={alt || t("message.image.unavailable")}
         title={title}
-        className="my-3 inline-flex min-h-24 min-w-24 cursor-default items-center justify-center rounded-md border-0 bg-sunken p-0 text-fg-faint"
+        className={stylex.props(mi.missing).className}
       >
         <Icon name="image" size="md" />
       </Pressable>
@@ -57,7 +85,7 @@ export function MarkdownImage({ src = "", alt = "", title, allowWide = false }: 
             title={title}
             loading="lazy"
             onError={() => setFailedSource(src)}
-            className="block max-h-50 max-w-full rounded-md object-contain shadow-md media-edge"
+            className={cn("media-edge", stylex.props(mi.image).className)}
           />
         </Pressable>
       )}

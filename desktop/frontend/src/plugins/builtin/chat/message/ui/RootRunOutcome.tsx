@@ -1,9 +1,24 @@
+import * as stylex from "@stylexjs/stylex";
 import type { IconName } from "@/ui";
 import type { AgentRunOutcome } from "@/plugins/sdk/types/agentSessionView";
 import { isAgentRunFailure } from "@/plugins/builtin/agent/public/viewState";
 import { Icon } from "@/ui";
 import { useT } from "@/lib/i18n";
 import type { CurrentRootMaterial } from "@/plugins/builtin/agent/public/run";
+import { color, space, type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
+
+const ro = stylex.create({
+  // A one-line receipt between turns: it owns the gap on both sides, like a banner.
+  line: {
+    marginBlock: space.s2,
+    display: "flex",
+    minWidth: 0,
+    alignItems: "center",
+    gap: space.s2,
+    color: color.fgFaint,
+  },
+});
 
 export function RootRunOutcome({ material }: { material: CurrentRootMaterial }) {
   const t = useT();
@@ -14,10 +29,10 @@ export function RootRunOutcome({ material }: { material: CurrentRootMaterial }) 
   const detail = outcome.detail;
 
   return (
-    <div className="my-2 flex min-w-0 items-center gap-2 text-ui-sm text-fg-faint">
-      <Icon name={face.icon} size="xs" className="shrink-0" />
-      <span className="shrink-0">{t(face.labelKey)}</span>
-      {detail && <span className="min-w-0 truncate">· {detail}</span>}
+    <div {...stylex.props(ro.line, typeStep.uiSm)}>
+      <Icon name={face.icon} size="xs" className={stylex.props(ct.hold).className} />
+      <span {...stylex.props(ct.hold)}>{t(face.labelKey)}</span>
+      {detail && <span {...stylex.props(ct.min, ct.truncate)}>· {detail}</span>}
     </div>
   );
 }

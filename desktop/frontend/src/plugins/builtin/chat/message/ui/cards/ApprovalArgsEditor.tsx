@@ -1,5 +1,14 @@
+import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import { SectionLabel, TextArea, TextButton, Well } from "@/ui";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../../chatStyles";
+
+const ae = stylex.create({
+  head: { marginBottom: space.s1, display: "flex", alignItems: "center", gap: space.s2 },
+  label: { paddingInline: 0, paddingBlock: 0 },
+  error: { marginTop: space.s1 },
+});
 
 export function ApprovalArgsEditor({
   editing,
@@ -17,8 +26,10 @@ export function ApprovalArgsEditor({
   const t = useT();
   return (
     <div>
-      <div className="mb-1 flex items-center gap-2">
-        <SectionLabel className="px-0 py-0">{t("approval.args.label")}</SectionLabel>
+      <div {...stylex.props(ae.head)}>
+        <SectionLabel className={stylex.props(ae.label).className}>
+          {t("approval.args.label")}
+        </SectionLabel>
         {!editing && (
           <TextButton
             type="button"
@@ -26,7 +37,7 @@ export function ApprovalArgsEditor({
             tone="accent"
             size="xs"
             onClick={() => onEditToggle(true)}
-            className="font-semibold"
+            className={stylex.props(ct.strong).className}
           >
             {t("approval.args.edit")}
           </TextButton>
@@ -46,7 +57,7 @@ export function ApprovalArgsEditor({
             variant="well"
           />
           {invalid && (
-            <div className="mt-1 font-mono text-ui-xs text-negative">
+            <div {...stylex.props(ae.error, ct.mono, ct.negative, typeStep.uiXs)}>
               {t("approval.args.invalid")}
             </div>
           )}

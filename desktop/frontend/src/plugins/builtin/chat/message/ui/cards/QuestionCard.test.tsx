@@ -213,8 +213,10 @@ describe("QuestionCard choice semantics", () => {
 
     expect(trigger.getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByText("Describe the constraints for this change.")).toBeTruthy();
+    // The newline reaching the DOM is what jsdom can prove; that it is DRAWN as a break is a
+    // rendering claim, checked where CSS exists.
     const answer = screen.getByText(/First constraint\s+Second constraint/);
-    expect(answer.className).toContain("whitespace-pre-wrap");
+    expect(answer.dataset.settledAnswer).toBe("");
   });
 
   it("presents multiple questions one at a time and advances without losing the draft", () => {

@@ -1,8 +1,14 @@
+import * as stylex from "@stylexjs/stylex";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { copyRichText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { IconButton, LightboxDialog } from "@/ui";
+import { space } from "@/styles/tokens.stylex";
+
+const mt = stylex.create({
+  close: { position: "absolute", top: space.s2, right: space.s2 },
+});
 
 interface Props {
   markdownSource: string;
@@ -55,7 +61,7 @@ export function MarkdownTable({ markdownSource, children }: Props) {
             quiet
             onClick={() => setPreviewOpen(false)}
             title={t("message.table.closePreview")}
-            className="absolute top-2 right-2"
+            className={stylex.props(mt.close).className}
           />
           <div className="md md-table-preview">
             <table dir="auto">{children}</table>

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import type { ReactElement, ReactNode } from "react";
 import { ContextMenu, Icon } from "@/ui";
@@ -13,6 +14,13 @@ import { messageContextMenuModel } from "@/plugins/builtin/chat/message-actions/
 import { writeToClipboard } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
+import { space } from "@/styles/tokens.stylex";
+import { chatStyles as ct } from "../../chatStyles";
+
+const mc = stylex.create({
+  submenu: { paddingInline: space.s2 },
+  chevron: { rotate: "-90deg" },
+});
 
 interface Props {
   msg: Message;
@@ -74,10 +82,14 @@ export function MessageContextMenu({ msg, children }: Props) {
             )}
             {menu.user.restore && (
               <ContextMenu.SubmenuRoot>
-                <ContextMenu.SubmenuTrigger className="grid-cols-[14px_minmax(0,1fr)_12px]">
+                <ContextMenu.SubmenuTrigger layout="pick">
                   <Icon name="history" size="xs" />
-                  <span className="truncate">{t("msgActions.restore")}</span>
-                  <Icon name="chevron-down" size="xs" className="-rotate-90 text-fg-faint" />
+                  <span {...stylex.props(ct.truncate)}>{t("msgActions.restore")}</span>
+                  <Icon
+                    name="chevron-down"
+                    size="xs"
+                    className={stylex.props(mc.chevron, ct.faint).className}
+                  />
                 </ContextMenu.SubmenuTrigger>
                 <ContextMenu.Content side="right" align="start" sideOffset={2} alignOffset={-4}>
                   <ContextMenu.IconItem
