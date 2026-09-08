@@ -21,10 +21,7 @@ func (r *Connection) UpdateGoal(ctx context.Context, update protocol.UpdateGoalR
 	if err := protocol.ValidateWireTree(update); err != nil {
 		return protocol.Goal{}, fmt.Errorf("update goal: %w", err)
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return protocol.Goal{}, err
-	}
+	options := r.commandOptions()
 	result, err := r.goals.UpdateGoal(ctx, update, options)
 	updated, err := goalResult("update goal", update.SessionID, result, err)
 	if err != nil {
@@ -45,10 +42,7 @@ func (r *Connection) ClearGoal(ctx context.Context, sessionID string) error {
 	if err != nil {
 		return err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return err
-	}
+	options := r.commandOptions()
 	if err := r.goals.ClearGoal(ctx, request, options); err != nil {
 		return classifyError(err)
 	}
@@ -75,10 +69,7 @@ func (r *Connection) StartGoal(ctx context.Context, start protocol.StartGoalRequ
 	if err := protocol.ValidateWireTree(start); err != nil {
 		return protocol.Goal{}, fmt.Errorf("start goal: %w", err)
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return protocol.Goal{}, err
-	}
+	options := r.commandOptions()
 	result, err := r.goals.StartGoal(ctx, start, options)
 	started, err := goalResult("start goal", start.SessionID, result, err)
 	if err != nil {
@@ -138,10 +129,7 @@ func (r *Connection) changeGoal(
 	if err != nil {
 		return protocol.Goal{}, err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return protocol.Goal{}, err
-	}
+	options := r.commandOptions()
 	result, err := change(ctx, request, options)
 	return goalResult(operation, sessionID, result, err)
 }

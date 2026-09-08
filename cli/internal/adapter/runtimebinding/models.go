@@ -56,10 +56,7 @@ func (r *Connection) SetRole(ctx context.Context, role models.Role) (models.Role
 	if err := role.Validate(); err != nil {
 		return models.Role{}, err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return models.Role{}, err
-	}
+	options := r.commandOptions()
 	provider, model, _ := role.ProviderModel()
 	var projected models.Role
 	switch role.Kind() {
@@ -148,10 +145,7 @@ func (r *Connection) UpdateProvider(ctx context.Context, update models.UpdatePro
 	if err := update.Validate(); err != nil {
 		return models.Provider{}, err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return models.Provider{}, err
-	}
+	options := r.commandOptions()
 	request := protocol.UpdateProviderRequest{Provider: update.Provider}
 	request.BaseURL = projectProviderChange(update.BaseURL)
 	request.APIKey = projectProviderChange(update.APIKey)

@@ -114,10 +114,7 @@ func (r *Connection) CreateSession(ctx context.Context, input agent.CreateSessio
 	if err := input.Validate(); err != nil {
 		return agent.Session{}, err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return agent.Session{}, err
-	}
+	options := r.commandOptions()
 	validated := input
 	if input.Workspace != "" {
 		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: input.Workspace})
@@ -150,10 +147,7 @@ func (r *Connection) UpdateSession(ctx context.Context, input agent.UpdateSessio
 			return agent.Session{}, err
 		}
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return agent.Session{}, err
-	}
+	options := r.commandOptions()
 	validated := input
 	if input.Workspace != nil {
 		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: *input.Workspace})
@@ -188,10 +182,7 @@ func (r *Connection) ForkSession(ctx context.Context, input agent.ForkSession) (
 	if err := input.Validate(); err != nil {
 		return agent.Session{}, err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return agent.Session{}, err
-	}
+	options := r.commandOptions()
 	forked, err := r.sessionCatalog.ForkSession(ctx, protocol.ForkSessionRequest{
 		SessionID: input.SessionID, FromRunID: input.FromRunID, Title: input.Title,
 	}, options)

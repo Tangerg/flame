@@ -160,10 +160,7 @@ func (r *Connection) ImportSession(ctx context.Context, request session.ImportRe
 	if err != nil {
 		return agent.Session{}, fmt.Errorf("import session workspace: %w", err)
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return agent.Session{}, err
-	}
+	options := r.commandOptions()
 	response, err := r.sessions.ImportSession(ctx, protocol.ImportSessionRequest{Artifact: artifact}, options)
 	if err != nil {
 		return agent.Session{}, classifyError(err)

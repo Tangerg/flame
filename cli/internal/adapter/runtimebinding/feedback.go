@@ -18,9 +18,6 @@ func (f *Feedback) Record(ctx context.Context, request protocol.FeedbackRequest)
 	if err := request.ValidateWire(); err != nil {
 		return err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return err
-	}
+	options := r.commandOptions()
 	return classifyError(r.feedback.CreateFeedback(ctx, request, options))
 }

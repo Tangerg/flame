@@ -174,20 +174,17 @@ func (r *Connection) callOptions() flameruntime.CallOptions {
 	return flameruntime.CallOptions{RequestMeta: r.meta}
 }
 
-func (r *Connection) commandOptions() (flameruntime.CommandOptions, error) {
-	key, err := newIdempotencyKey()
-	if err != nil {
-		return flameruntime.CommandOptions{}, err
-	}
+func (r *Connection) commandOptions() flameruntime.CommandOptions {
+	key := newIdempotencyKey()
 	return flameruntime.CommandOptions{
 		RequestMeta: r.meta, IdempotencyKey: key,
 		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
-	}, nil
+	}
 }
 
 func (r *Connection) commandOptionsFor(commandID agent.CommandID) (flameruntime.CommandOptions, error) {
 	if commandID == "" {
-		return r.commandOptions()
+		return r.commandOptions(), nil
 	}
 	if err := commandID.Validate(); err != nil {
 		return flameruntime.CommandOptions{}, err
@@ -198,20 +195,17 @@ func (r *Connection) commandOptionsFor(commandID agent.CommandID) (flameruntime.
 	}, nil
 }
 
-func (r *Connection) runCommandOptions() (flameruntime.RunCommandOptions, error) {
-	key, err := newIdempotencyKey()
-	if err != nil {
-		return flameruntime.RunCommandOptions{}, err
-	}
+func (r *Connection) runCommandOptions() flameruntime.RunCommandOptions {
+	key := newIdempotencyKey()
 	return flameruntime.RunCommandOptions{
 		RequestMeta: r.meta, IdempotencyKey: key,
 		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
-	}, nil
+	}
 }
 
 func (r *Connection) runCommandOptionsFor(commandID agent.CommandID) (flameruntime.RunCommandOptions, error) {
 	if commandID == "" {
-		return r.runCommandOptions()
+		return r.runCommandOptions(), nil
 	}
 	if err := commandID.Validate(); err != nil {
 		return flameruntime.RunCommandOptions{}, err
@@ -244,12 +238,10 @@ func (r *Connection) changeSubscriptionOptions() flameruntime.SubscriptionOption
 	return flameruntime.SubscriptionOptions{RequestMeta: r.meta}
 }
 
-func newIdempotencyKey() (string, error) {
+func newIdempotencyKey() string {
 	var entropy [16]byte
-	if _, err := rand.Read(entropy[:]); err != nil {
-		return "", fmt.Errorf("generate runtime idempotency key: %w", err)
-	}
-	return "cli_" + hex.EncodeToString(entropy[:]), nil
+	rand.Read(entropy[:])
+	return "cli_" + hex.EncodeToString(entropy[:])
 }
 
 func validateDiscovery(discovery *protocol.DiscoverResponse) error {

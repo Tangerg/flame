@@ -109,10 +109,7 @@ func (r *Connection) SetApprovalMode(ctx context.Context, mode protocol.Approval
 	if err := protocol.ValidateWireTree(request); err != nil {
 		return "", err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return "", err
-	}
+	options := r.commandOptions()
 	result, err := r.approvals.SetApprovalMode(ctx, request, options)
 	if err != nil {
 		return "", classifyError(err)
@@ -153,9 +150,6 @@ func (r *Connection) DeleteApprovalRule(ctx context.Context, id string) error {
 	if id == "" {
 		return errors.New("delete approval rule: id is empty")
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return err
-	}
+	options := r.commandOptions()
 	return classifyError(r.approvals.ForgetApprovalRule(ctx, protocol.ForgetApprovalRuleRequest{ID: id}, options))
 }

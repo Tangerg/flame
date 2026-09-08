@@ -136,10 +136,7 @@ func (r *Connection) changeSkillLifecycle(
 	if name == "" {
 		return fmt.Errorf("%s: skill name is empty", operation)
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return err
-	}
+	options := r.commandOptions()
 	return classifyError(change(ctx, protocol.SkillNameRequest{Name: name}, options))
 }
 
@@ -160,10 +157,7 @@ func (r *Connection) decideSkillProposal(
 	if err := reference.Validate(); err != nil {
 		return err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return err
-	}
+	options := r.commandOptions()
 	request := protocol.SkillProposalRef{
 		Workspace: protocol.WorkspaceRef{Path: reference.Workspace},
 		Name:      reference.Name, Revision: reference.Revision, Scope: reference.Scope,

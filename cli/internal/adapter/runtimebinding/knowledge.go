@@ -75,10 +75,7 @@ func (k *Knowledge) Save(ctx context.Context, update workspace.KnowledgeUpdate) 
 	if err := update.Validate(); err != nil {
 		return workspace.KnowledgeEntry{}, err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return workspace.KnowledgeEntry{}, err
-	}
+	options := r.commandOptions()
 	target := update.Target
 	request := protocol.UpdateKnowledgeRequest{
 		Scope: target.Scope, ExpectedRevision: update.ExpectedRevision, Content: update.Content,

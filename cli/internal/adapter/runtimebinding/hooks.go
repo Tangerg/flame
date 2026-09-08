@@ -68,10 +68,7 @@ func (h *Hooks) SetProjectTrust(ctx context.Context, projectRoot string, trusted
 	if projectRoot == "" {
 		return errors.New("set hook trust: project root is empty")
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return err
-	}
+	options := r.commandOptions()
 	return classifyError(r.hooks.SetHookTrust(ctx, protocol.SetHookTrustRequest{
 		ProjectRoot: projectRoot, Trusted: trusted,
 	}, options))

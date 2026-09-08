@@ -97,10 +97,7 @@ func (a *AgentMemory) Review(ctx context.Context, id string, decision protocol.A
 	if err := request.ValidateWire(); err != nil {
 		return err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return err
-	}
+	options := r.commandOptions()
 	return classifyError(r.agentMemory.ReviewAgentMemory(ctx, request, options))
 }
 
@@ -110,10 +107,7 @@ func (a *AgentMemory) Update(ctx context.Context, request protocol.AgentMemoryUp
 	if err != nil {
 		return protocol.AgentMemoryItem{}, err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return protocol.AgentMemoryItem{}, err
-	}
+	options := r.commandOptions()
 	result, err := r.agentMemory.UpdateAgentMemory(ctx, validated, options)
 	item, err := agentMemoryResult("update agent memory", validated.ID, "", result, err)
 	if err != nil {
@@ -158,10 +152,7 @@ func (a *AgentMemory) Delete(ctx context.Context, id string) error {
 	if err := request.ValidateWire(); err != nil {
 		return err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return err
-	}
+	options := r.commandOptions()
 	return classifyError(r.agentMemory.DeleteAgentMemory(ctx, request, options))
 }
 
@@ -175,10 +166,7 @@ func (a *AgentMemory) Add(ctx context.Context, target agent.MemoryTarget, conten
 	if content == "" {
 		return protocol.AgentMemoryItem{}, errors.New("add agent memory: content is empty")
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return protocol.AgentMemoryItem{}, err
-	}
+	options := r.commandOptions()
 	request := protocol.AgentMemoryAddRequest{Scope: validated.Scope, Content: content}
 	if validated.Scope == protocol.AgentMemoryScopeProject {
 		request.Workspace = &protocol.WorkspaceRef{Path: validated.Workspace}

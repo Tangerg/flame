@@ -77,10 +77,7 @@ func (r *Connection) Create(ctx context.Context, request protocol.CreateSchedule
 	if err := protocol.ValidateWireTree(request); err != nil {
 		return protocol.Schedule{}, fmt.Errorf("create schedule: %w", err)
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return protocol.Schedule{}, err
-	}
+	options := r.commandOptions()
 	if request.Workspace != nil {
 		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: request.Workspace.Path})
 		if resolveErr != nil {
@@ -103,10 +100,7 @@ func (r *Connection) Update(ctx context.Context, request protocol.UpdateSchedule
 	if err := protocol.ValidateWireTree(request); err != nil {
 		return protocol.Schedule{}, fmt.Errorf("update schedule: %w", err)
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return protocol.Schedule{}, err
-	}
+	options := r.commandOptions()
 	if request.Workspace != nil {
 		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: request.Workspace.Path})
 		if resolveErr != nil {
@@ -130,10 +124,7 @@ func (r *Connection) Delete(ctx context.Context, id string) error {
 	if err := protocol.ValidateWireTree(request); err != nil {
 		return fmt.Errorf("delete schedule: %w", err)
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return err
-	}
+	options := r.commandOptions()
 	return classifyError(r.schedules.DeleteSchedule(ctx, request, options))
 }
 
@@ -142,10 +133,7 @@ func (r *Connection) RunNow(ctx context.Context, id string) (protocol.RunSchedul
 	if err := protocol.ValidateWireTree(request); err != nil {
 		return protocol.RunScheduleNowResponse{}, fmt.Errorf("run schedule now: %w", err)
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return protocol.RunScheduleNowResponse{}, err
-	}
+	options := r.commandOptions()
 	result, err := r.schedules.RunScheduleNow(ctx, request, options)
 	if err != nil {
 		return protocol.RunScheduleNowResponse{}, classifyError(err)

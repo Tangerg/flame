@@ -62,10 +62,7 @@ func (r *Connection) CreateServer(ctx context.Context, candidate mcp.Candidate) 
 	if err != nil {
 		return protocol.MCPServer{}, err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return protocol.MCPServer{}, err
-	}
+	options := r.commandOptions()
 	result, err := r.mcp.CreateMCPServer(ctx, request, options)
 	if err != nil {
 		return protocol.MCPServer{}, classifyError(err)
@@ -83,10 +80,7 @@ func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) 
 	if err := update.Validate(); err != nil {
 		return protocol.MCPServer{}, err
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return protocol.MCPServer{}, err
-	}
+	options := r.commandOptions()
 	request := protocol.UpdateMCPServerRequest{
 		Server: update.Server, Enabled: update.Enabled, Description: update.Description,
 		DisabledTools: update.DisabledTools, AutoApproveTools: update.AutoApproveTools,
@@ -132,10 +126,7 @@ func (r *Connection) mutateMCPServer(
 	if err := request.ValidateWire(); err != nil {
 		return fmt.Errorf("%s: %w", operation, err)
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return err
-	}
+	options := r.commandOptions()
 	return classifyError(mutate(ctx, request, options))
 }
 
@@ -202,10 +193,7 @@ func (r *Connection) StartAuthorization(ctx context.Context, server string) (pro
 	if err := request.ValidateWire(); err != nil {
 		return protocol.MCPAuthorizationAttempt{}, fmt.Errorf("start MCP authorization: %w", err)
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return protocol.MCPAuthorizationAttempt{}, err
-	}
+	options := r.commandOptions()
 	result, err := r.mcp.CreateMCPAuthorizationAttempt(ctx, request, options)
 	return projectMCPAuthorizationResult("start MCP authorization", mcpAuthorizationIdentity{server: request.Server}, result, err)
 }

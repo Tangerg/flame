@@ -75,10 +75,7 @@ func (d *DiagnosticTools) Invoke(ctx context.Context, invocation workspace.Diagn
 	if err := json.Unmarshal(invocation.Arguments, &arguments); err != nil {
 		return workspace.DiagnosticToolResult{}, fmt.Errorf("decode diagnostic tool arguments: %w", err)
 	}
-	options, err := r.commandOptions()
-	if err != nil {
-		return workspace.DiagnosticToolResult{}, err
-	}
+	options := r.commandOptions()
 	value, err := r.diagnosticTools.InvokeTool(ctx, protocol.InvokeToolRequest{
 		Name: strings.TrimSpace(invocation.Tool.Name), Arguments: arguments,
 		Workspace: &protocol.WorkspaceRef{Path: strings.TrimSpace(invocation.Workspace)},
