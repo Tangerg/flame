@@ -31,12 +31,18 @@ function McpToolList({ server }: { server: string }) {
   const { data: tools, isLoading } = useMCPServerToolConfigs(server);
   if (isLoading)
     return (
-      <p className="m-0 px-4 pb-3 pl-[68px] text-ui-sm text-fg-faint">{t("tools.loadingTools")}</p>
+      <p className="m-0 px-[var(--density-column-gutter-wide)] pb-3 pl-[68px] text-ui-sm text-fg-faint">
+        {t("tools.loadingTools")}
+      </p>
     );
   if (!tools?.length)
-    return <p className="m-0 px-4 pb-3 pl-[68px] text-ui-sm text-fg-faint">{t("tools.noTools")}</p>;
+    return (
+      <p className="m-0 px-[var(--density-column-gutter-wide)] pb-3 pl-[68px] text-ui-sm text-fg-faint">
+        {t("tools.noTools")}
+      </p>
+    );
   return (
-    <ul className="m-0 list-none px-4 pb-3 pl-[68px]">
+    <ul className="m-0 list-none px-[var(--density-column-gutter-wide)] pb-3 pl-[68px]">
       {tools.map((tool) => (
         <li key={tool.name} className="flex items-baseline gap-2 py-0.5">
           <Tag size="sm" ink="strong">
@@ -57,7 +63,7 @@ function McpAuthGuide({ server }: { server: string }) {
     openWorkspaceSettingsPane(MCP_SERVERS_PANE);
   };
   return (
-    <div className="flex items-center gap-2 px-4 pb-3 pl-[68px]">
+    <div className="flex items-center gap-2 px-[var(--density-column-gutter-wide)] pb-3 pl-[68px]">
       <TextButton onClick={openConfig}>
         <Icon name="settings" size="sm" />
         {t("tools.auth.configure", { server })}
@@ -93,7 +99,7 @@ export function McpRow({ server }: { server: MCPServerSettings }) {
 
   return (
     <div>
-      <div className="group grid grid-cols-[40px_1fr_auto_auto_auto] items-center gap-3 px-4 py-3 hover:bg-hover transition-colors">
+      <div className="group grid grid-cols-[40px_1fr_auto_auto_auto] items-center gap-3 px-[var(--density-column-gutter-wide)] py-3 hover:bg-hover transition-colors">
         <div className="grid h-10 w-10 place-items-center rounded-lg bg-surface-2 text-fg-muted group-hover:bg-surface-3 group-hover:text-fg transition-colors">
           <Icon name={knownIconName(server.icon) ?? "tool"} size="md" />
         </div>

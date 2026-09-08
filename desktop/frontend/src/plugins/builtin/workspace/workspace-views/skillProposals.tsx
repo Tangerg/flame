@@ -89,7 +89,7 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
   };
 
   return (
-    <div className="px-4 py-2.5">
+    <div className="px-[var(--density-column-gutter-wide)] py-2.5">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">

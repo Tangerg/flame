@@ -32,7 +32,7 @@ export function SearchTab() {
       sub={workspaceSearchSubtext(t, view) ?? t("search.noMatches")}
       scrollClassName="py-1"
     >
-      <div className="px-4 pt-1 pb-2">
+      <div className="px-[var(--density-column-gutter-wide)] pt-1 pb-2">
         <SearchField
           font="mono"
           value={input}
@@ -59,7 +59,7 @@ export function SearchTab() {
           {(groups) => (
             <div className="flex flex-col pb-2">
               {groups.map((group) => (
-                <div key={group.path} className="px-4 py-1.5">
+                <div key={group.path} className="px-[var(--density-column-gutter-wide)] py-1.5">
                   <div className="truncate font-mono text-ui-sm font-semibold text-fg">
                     {group.path}
                     <span className="ml-1.5 font-normal text-fg-faint">{group.matchCount}</span>
@@ -83,7 +83,7 @@ export function SearchTab() {
                 </div>
               ))}
               {view.overflowCount > 0 && (
-                <div className="px-4 py-2 text-ui-sm text-fg-faint">
+                <div className="px-[var(--density-column-gutter-wide)] py-2 text-ui-sm text-fg-faint">
                   … {t("search.overflow", { count: view.overflowCount })}
                 </div>
               )}

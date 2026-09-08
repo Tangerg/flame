@@ -986,7 +986,11 @@ html.theme-dark {
   flex-shrink: 0;
   align-items: center;
   gap: 8px;
-  padding-inline: 12px;
+  /* The two literals here were exactly these variables' comfortable values, breakpoint and
+     all — the density vocabulary was written for this strip and the strip spelled it out
+     instead, so the shell chrome was the one part of the window that never answered the
+     Appearance density setting. */
+  padding-inline: var(--density-column-gutter);
   background-color: var(--app-header-surface);
   -webkit-app-region: drag;
   --wails-draggable: drag;
@@ -999,7 +1003,7 @@ html.theme-dark {
 }
 @media (min-width: 640px) {
   .agent-surface-header {
-    padding-inline: 20px;
+    padding-inline: var(--density-column-gutter-wide);
   }
 }
 

@@ -34,7 +34,7 @@ function Section({
   const t = useT();
   if (count === 0) return null;
   return (
-    <div className="px-4 py-3">
+    <div className="px-[var(--density-column-gutter-wide)] py-3">
       <div className="mb-1.5 flex items-baseline gap-2">
         <span className="text-ui-md font-semibold text-fg">{t(title)}</span>
         <span className="font-mono text-ui-sm text-fg-faint">{count}</span>
@@ -84,7 +84,7 @@ export function RunSummaryTab() {
         />
       }
     >
-      <div className="px-4 pb-2 pt-1">
+      <div className="px-[var(--density-column-gutter-wide)] pb-2 pt-1">
         <Badge tone={view.statusBadge.tone} face="mono" className="font-semibold">
           {t(view.statusBadge.labelKey)}
         </Badge>

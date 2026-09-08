@@ -38,7 +38,7 @@ export function AgentDocsTab() {
             {rows.map((d) => (
               <div
                 key={d.id}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2 px-4 py-2"
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2 px-[var(--density-column-gutter-wide)] py-2"
               >
                 <div className="min-w-0">
                   <div className="truncate text-ui-md font-semibold text-fg">{d.title}</div>

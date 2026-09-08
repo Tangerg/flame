@@ -45,7 +45,7 @@ function PendingRow({ item }: { item: AgentMemoryEntry }) {
     source: "knowledge",
   });
   return (
-    <div className="flex items-start gap-3 px-4 py-2.5">
+    <div className="flex items-start gap-3 px-[var(--density-column-gutter-wide)] py-2.5">
       <div className="min-w-0 flex-1">
         <div className="text-ui-md leading-body text-fg">{item.content}</div>
         <div className="mt-1 flex items-center gap-2">
@@ -99,7 +99,7 @@ function ActiveRow({ item }: { item: AgentMemoryEntry }) {
   };
 
   return (
-    <div className="flex flex-col px-4 py-2.5">
+    <div className="flex flex-col px-[var(--density-column-gutter-wide)] py-2.5">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           {editing ? (
@@ -189,7 +189,7 @@ function AddMemory({ scope, cwd }: { scope: Scope; cwd?: string }) {
 
   if (!open) {
     return (
-      <div className="px-4 pb-1">
+      <div className="px-[var(--density-column-gutter-wide)] pb-1">
         <PillButton size="sm" variant="outlined" onClick={() => setOpen(true)}>
           <Icon name="plus" size="xs" />
           {t("agentMemory.add")}
@@ -208,7 +208,7 @@ function AddMemory({ scope, cwd }: { scope: Scope; cwd?: string }) {
   };
 
   return (
-    <div className="flex flex-col gap-2 px-4 pb-2">
+    <div className="flex flex-col gap-2 px-[var(--density-column-gutter-wide)] pb-2">
       <TextArea
         aria-label={t("agentMemory.add")}
         value={draft}
@@ -241,7 +241,7 @@ function ScopeToggle({ scope, onChange }: { scope: Scope; onChange: (s: Scope) =
   const t = useT();
   const scopes: Scope[] = ["project", "user"];
   return (
-    <div className="flex items-center gap-1 px-4 pt-1 pb-2">
+    <div className="flex items-center gap-1 px-[var(--density-column-gutter-wide)] pt-1 pb-2">
       {scopes.map((s) => (
         <PillButton
           key={s}
@@ -311,7 +311,7 @@ export function AgentMemoryTab() {
           <div className="flex flex-col gap-4">
             {pending.length > 0 && (
               <div className="flex flex-col">
-                <div className="px-4 pb-1">
+                <div className="px-[var(--density-column-gutter-wide)] pb-1">
                   <SectionLabel className="px-2 py-2">
                     {t("agentMemory.section.pending")}
                   </SectionLabel>
@@ -323,7 +323,7 @@ export function AgentMemoryTab() {
             )}
             {active.length > 0 && (
               <div className="flex flex-col">
-                <div className="px-4 pb-1">
+                <div className="px-[var(--density-column-gutter-wide)] pb-1">
                   <SectionLabel className="px-2 py-2">
                     {t("agentMemory.section.active")}
                   </SectionLabel>

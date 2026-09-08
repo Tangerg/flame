@@ -58,7 +58,7 @@ export function SkillLibraryTab() {
 function SkillSection({ label, skills }: { label: string; skills: ManagedSkill[] }) {
   return (
     <div className="flex flex-col">
-      <div className="px-4 pb-1">
+      <div className="px-[var(--density-column-gutter-wide)] pb-1">
         <SectionLabel className="px-2 py-2">{label}</SectionLabel>
       </div>
       {skills.map((skill) => (
@@ -92,7 +92,7 @@ function SkillRow({ skill }: { skill: ManagedSkill }) {
   }, [archived, skill.name, t]);
 
   return (
-    <div className="flex items-start gap-3 px-4 py-2">
+    <div className="flex items-start gap-3 px-[var(--density-column-gutter-wide)] py-2">
       <div className="min-w-0 flex-1">
         <div className="truncate text-ui-md font-semibold text-fg">{skill.name}</div>
         {skill.description && (
