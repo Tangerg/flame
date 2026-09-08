@@ -1,12 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { Badge, DiffStat, EmptyState, FilePath, Icon, IconButton } from "@/ui";
+import { Badge, DiffStat, EmptyState, FilePath, Icon, IconButton, toneInk } from "@/ui";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { buildPlaintext } from "@/plugins/builtin/agent/public/runDigest";
 import { useT } from "@/lib/i18n";
 import { type as typeStep } from "@/styles/tokens.stylex";
-import { inkByTone, viewStyles as vs } from "./views/viewStyles";
+import { viewStyles as vs } from "./views/viewStyles";
 import { useLatestRunDigest } from "@/plugins/builtin/workspace/presentation/runSummaryView";
 import {
   runSummaryApprovalBadge,
@@ -115,7 +115,7 @@ export function RunSummaryTab() {
         {view.commands.items.map((c, i) => (
           <div key={`${c.cmd}:${i}`} {...stylex.props(vs.entry, typeStep.uiMd)}>
             <Icon name="terminal" size="xs" className={stylex.props(vs.caption).className} />
-            <span {...stylex.props(vs.truncate, inkByTone[runSummaryCommandTone(c.status)])}>
+            <span {...stylex.props(vs.truncate, toneInk[runSummaryCommandTone(c.status)])}>
               {c.cmd}
             </span>
           </div>
@@ -132,7 +132,7 @@ export function RunSummaryTab() {
                 {a.command || t("runSummary.approval.noCommand")}
               </span>
               <span
-                {...stylex.props(vs.pushEnd, vs.semibold, inkByTone[approval.tone], typeStep.uiXs)}
+                {...stylex.props(vs.pushEnd, vs.semibold, toneInk[approval.tone], typeStep.uiXs)}
               >
                 {t(approval.labelKey)}
               </span>

@@ -1,6 +1,4 @@
 import * as stylex from "@stylexjs/stylex";
-import type { StyleXStyles } from "@stylexjs/stylex";
-import type { Tone } from "@/lib/tone";
 import { color, leading, radius, space, surface, weight } from "@/styles/tokens.stylex";
 
 /**
@@ -156,19 +154,6 @@ export const viewStyles = stylex.create({
   /** The panel indents past the chevron so its content lines up with the name above it. */
   editorInset: { paddingBottom: space.s3, paddingLeft: space.s10 },
 });
-
-/**
- * A run digest speaks in `Tone`, which is the domain's word, and this is the only place that
- * turns one into ink. `TasksPill` still carries a two-entry copy of the same map.
- */
-export const inkByTone: Record<Tone, StyleXStyles> = {
-  neutral: viewStyles.muted,
-  accent: viewStyles.accent,
-  success: viewStyles.success,
-  warning: viewStyles.warning,
-  negative: viewStyles.negative,
-  info: viewStyles.info,
-} as const;
 
 /**
  * The timeline is the one view whose rows nest: a delegated run is drawn inside its parent.

@@ -1327,6 +1327,13 @@ html.theme-dark {
   opacity: 0.8;
 }
 
+/* The pill reports a run in flight, and the thing that should pulse is the glyph inside the
+   button rather than the button's own box. Same reason as the rule above: a descendant, which
+   no atomic class can express. */
+[data-pulse] svg {
+  animation: var(--animate-pulse-dot);
+}
+
 /* A vendor's mark fills the box the icon ladder gave it. Here rather than on the component for
    the same reason as the rule above: it is a CHILD rule, and the mark is a third-party glyph
    whose own sizing prop we deliberately do not use — `size={0}` so the box decides. */

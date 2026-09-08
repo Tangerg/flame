@@ -1,10 +1,12 @@
+import * as stylex from "@stylexjs/stylex";
+import type { Tone } from "@/lib/tone";
 import type { ReactNode } from "react";
 import type { SpanRow } from "@/lib/observability/stores";
 import { useTelemetryStore } from "@/lib/observability/stores";
 import { Fragment, useCallback, useId, useMemo, useState } from "react";
 import { useT } from "@/lib/i18n";
-import { Icon, Pressable, Well } from "@/ui";
-import { cn } from "@/lib/classNames";
+import { color, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { Icon, Pressable, Well, toneInk } from "@/ui";
 import { Cell, Empty, Row, VirtualList } from "./primitives";
 
 export function TracesPanel() {
@@ -29,11 +31,11 @@ export function TracesPanel() {
       rowHeight={32}
       header={
         <Row head>
-          <Cell className="w-4" />
-          <Cell className="grow">span</Cell>
-          <Cell className="w-16 text-right">dur</Cell>
-          <Cell className="w-16">status</Cell>
-          <Cell className="w-28">trace</Cell>
+          <Cell styles={spanColumns.chevron} />
+          <Cell styles={spanColumns.name}>span</Cell>
+          <Cell styles={spanColumns.duration}>dur</Cell>
+          <Cell styles={spanColumns.status}>status</Cell>
+          <Cell styles={spanColumns.trace}>trace</Cell>
         </Row>
       }
       renderRow={(i) => {
@@ -44,14 +46,60 @@ export function TracesPanel() {
   );
 }
 
-const STATUS_TONE: Record<SpanRow["status"], string> = {
-  error: "text-negative",
-  ok: "text-success",
-  unset: "text-fg-faint",
+// This panel's columns, declared beside the header that names them.
+const spanColumns = stylex.create({
+  chevron: { width: space.s4 },
+  name: { flexGrow: 1, minWidth: 0 },
+  duration: { width: space.s16 },
+  status: { width: space.s16 },
+  trace: { width: "calc(var(--spacing) * 28)" },
+});
+
+const tr = stylex.create({
+  spanRow: {
+    display: "flex",
+    minHeight: space.s8,
+    width: "100%",
+    alignItems: "center",
+    gap: space.s3,
+    backgroundColor: { default: "transparent", ":hover": surface.hover },
+    paddingInline: space.s1,
+    fontFamily: "var(--font-mono)",
+    color: color.fg,
+    transitionProperty: "background-color",
+  },
+  chevronBox: { display: "flex", flexShrink: 0, justifyContent: "center" },
+  chevron: { color: color.fgFaint, transitionProperty: "rotate" },
+  chevronShut: { rotate: "-90deg" },
+  truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  start: { textAlign: "left" },
+  hold: { flexShrink: 0 },
+  numeric: { textAlign: "right", fontVariantNumeric: "tabular-nums" },
+  faint: { color: color.fgFaint },
+  error: { color: color.negative },
+  detail: { marginInline: space.s1, marginBottom: space.s1_5, display: "grid", gap: space.s2 },
+  field: { display: "grid", gap: space.s0_5 },
+  attrGrid: {
+    display: "grid",
+    gridTemplateColumns: "auto minmax(0, 1fr)",
+    columnGap: space.s3,
+    rowGap: space.s0_5,
+  },
+  attrValue: { wordBreak: "break-all", color: color.fgMuted },
+  wrapText: { whiteSpace: "pre-wrap", overflowWrap: "break-word" },
+  // A trace id or an error message is something the reader copies out, so it opts back in to
+  // selection that the shell turns off everywhere else.
+  selectable: { userSelect: "text" },
+});
+
+const STATUS_TONE: Record<SpanRow["status"], Tone> = {
+  error: "negative",
+  ok: "success",
+  unset: "neutral",
 };
 
 function StatusTag({ status }: { status: SpanRow["status"] }) {
-  return <span className={STATUS_TONE[status]}>{status}</span>;
+  return <span {...stylex.props(toneInk[STATUS_TONE[status]])}>{status}</span>;
 }
 
 function SpanRowItem({
@@ -71,23 +119,23 @@ function SpanRowItem({
         onClick={onToggle}
         aria-expanded={open}
         aria-controls={panelId}
-        className="flex min-h-8 w-full items-center gap-3 bg-transparent px-1 font-mono text-ui-md text-fg transition-colors hover:bg-hover"
+        className={stylex.props(tr.spanRow, typeStep.uiMd).className}
       >
-        <span className="flex w-4 shrink-0 justify-center">
+        <span {...stylex.props(spanColumns.chevron, tr.chevronBox)}>
           <Icon
             name="chevron-down"
             size="xs"
-            className={cn("text-fg-faint transition-transform", !open && "-rotate-90")}
+            className={stylex.props(tr.chevron, !open && tr.chevronShut).className}
           />
         </span>
-        <span className="grow min-w-0 truncate text-left">{span.name}</span>
-        <span className="w-16 shrink-0 text-right tabular-nums">
+        <span {...stylex.props(spanColumns.name, tr.truncate, tr.start)}>{span.name}</span>
+        <span {...stylex.props(spanColumns.duration, tr.hold, tr.numeric)}>
           {span.durationMillis.toFixed(1)}ms
         </span>
-        <span className="w-16 shrink-0 text-left">
+        <span {...stylex.props(spanColumns.status, tr.hold, tr.start)}>
           <StatusTag status={span.status} />
         </span>
-        <span className="w-28 shrink-0 truncate text-left text-fg-faint">
+        <span {...stylex.props(spanColumns.trace, tr.hold, tr.truncate, tr.start, tr.faint)}>
           {span.traceId.slice(0, 12)}
         </span>
       </Pressable>
@@ -111,12 +159,10 @@ function SpanDetail({ span }: { span: SpanRow }) {
   ];
   const attrs = Object.entries(span.attrs);
   return (
-    <Well as="div" className="mx-1 mb-1.5 grid gap-2">
+    <Well as="div" className={stylex.props(tr.detail).className}>
       {span.statusMessage && (
         <Field label="error">
-          <span className="whitespace-pre-wrap break-words text-negative select-text">
-            {span.statusMessage}
-          </span>
+          <span {...stylex.props(tr.wrapText, tr.error, tr.selectable)}>{span.statusMessage}</span>
         </Field>
       )}
       <KeyValues rows={meta} />
@@ -131,8 +177,8 @@ function SpanDetail({ span }: { span: SpanRow }) {
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="grid gap-0.5">
-      <div className="text-ui-xs text-fg-faint">{label}</div>
+    <div {...stylex.props(tr.field)}>
+      <div {...stylex.props(tr.faint, typeStep.uiXs)}>{label}</div>
       {children}
     </div>
   );
@@ -140,11 +186,11 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 function KeyValues({ rows }: { rows: [string, string][] }) {
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5">
+    <div {...stylex.props(tr.attrGrid)}>
       {rows.map(([k, v]) => (
         <Fragment key={k}>
-          <div className="text-fg-faint">{k}</div>
-          <div className="break-all text-fg-muted select-text">{v}</div>
+          <div {...stylex.props(tr.faint)}>{k}</div>
+          <div {...stylex.props(tr.attrValue, tr.selectable)}>{v}</div>
         </Fragment>
       ))}
     </div>

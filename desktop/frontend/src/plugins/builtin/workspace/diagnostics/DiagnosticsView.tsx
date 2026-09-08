@@ -1,10 +1,13 @@
+import * as stylex from "@stylexjs/stylex";
+import type { Tone } from "@/lib/tone";
 import type { MetricRow } from "@/lib/observability/stores";
 import { useTelemetryStore } from "@/lib/observability/stores";
 import { useMemo, useState } from "react";
-import { Button, Segmented } from "@/ui";
+import { Button, Segmented, toneInk } from "@/ui";
 import { Cell, Empty, Row, VirtualList } from "./primitives";
 import { TracesPanel } from "./TracesPanel";
 import { useT } from "@/lib/i18n";
+import { color, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
 
 type Signal = "traces" | "metrics" | "logs";
 
@@ -14,19 +17,71 @@ const SIGNALS = [
   { value: "logs" as const, label: "diagnostics.signal.logs" },
 ];
 
+// The panel's own table: two columns that hold a measure and one that takes what is left.
+// The widths belong here, beside the header that names them, rather than at each `Cell`.
+const logColumns = stylex.create({
+  level: { width: space.s12 },
+  message: { flexGrow: 1 },
+  span: { width: "calc(var(--spacing) * 24)" },
+});
+
+const d = stylex.create({
+  page: {
+    display: "flex",
+    height: "100%",
+    flexDirection: "column",
+    gap: space.s3,
+    padding: space.s6,
+  },
+  masthead: { display: "flex", alignItems: "center", justifyContent: "space-between" },
+  title: { color: color.fg, fontWeight: weight.semibold, fontSize: "var(--text-display-sm)" },
+  subtitle: { marginTop: space.s0_5, color: color.fgMuted },
+  controls: { display: "flex", alignItems: "center", gap: space.s2 },
+  logRow: { minHeight: "calc(var(--spacing) * 7)" },
+  truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  faint: { color: color.fgFaint },
+  muted: { color: color.fgMuted },
+  mono: { fontFamily: "var(--font-mono)" },
+  metricsScroller: {
+    display: "grid",
+    flex: 1,
+    minHeight: 0,
+    alignContent: "start",
+    gap: space.s4,
+    overflowY: "auto",
+  },
+  section: { display: "grid", gap: space.s1_5 },
+  instrument: { fontFamily: "var(--font-mono)", fontWeight: weight.semibold, color: color.fg },
+  kind: { marginInlineStart: space.s2, color: color.fgFaint },
+  headCell: {
+    paddingBlock: space.s1,
+    paddingRight: space.s3,
+    textAlign: "left",
+    fontWeight: weight.medium,
+  },
+  cell: { paddingBlock: space.s0_5, paddingRight: space.s3 },
+  // Columns of numbers read down, so they align on the right and hold one glyph width.
+  figures: { textAlign: "right" },
+  numeric: { textAlign: "right", fontVariantNumeric: "tabular-nums", color: color.fg },
+  metricRow: {
+    transitionProperty: "background-color",
+    backgroundColor: { default: null, ":hover": surface.hover },
+  },
+});
+
 export function DiagnosticsView() {
   const [signal, setSignal] = useState<Signal>("traces");
   const t = useT();
   const clear = useTelemetryStore((s) => s.clear);
 
   return (
-    <div className="flex h-full flex-col gap-3 p-6">
-      <div className="flex items-center justify-between">
+    <div {...stylex.props(d.page)}>
+      <div {...stylex.props(d.masthead)}>
         <div>
-          <div className="text-display-sm font-semibold text-fg">{t("diagnostics.title")}</div>
-          <div className="mt-0.5 text-ui-md text-fg-muted">{t("diagnostics.description")}</div>
+          <div {...stylex.props(d.title)}>{t("diagnostics.title")}</div>
+          <div {...stylex.props(d.subtitle, typeStep.uiMd)}>{t("diagnostics.description")}</div>
         </div>
-        <div className="flex items-center gap-2">
+        <div {...stylex.props(d.controls)}>
           <Segmented
             value={signal}
             options={SIGNALS}
@@ -59,23 +114,23 @@ function LogsPanel() {
       rowHeight={28}
       header={
         <Row head>
-          <Cell className="w-12">lvl</Cell>
-          <Cell className="grow">message</Cell>
-          <Cell className="w-24">span</Cell>
+          <Cell styles={logColumns.level}>lvl</Cell>
+          <Cell styles={logColumns.message}>message</Cell>
+          <Cell styles={logColumns.span}>span</Cell>
         </Row>
       }
       renderRow={(i) => {
         const l = ordered[i]!;
         return (
-          <Row className="min-h-7">
-            <Cell className="w-12">
-              <span className={severityTone(l.severity)}>{l.severity}</span>
+          <Row styles={d.logRow}>
+            <Cell styles={logColumns.level}>
+              <span {...stylex.props(toneInk[severityTone(l.severity)])}>{l.severity}</span>
             </Cell>
-            <Cell className="grow">
-              <span className="truncate">{l.body}</span>
+            <Cell styles={logColumns.message}>
+              <span {...stylex.props(d.truncate)}>{l.body}</span>
             </Cell>
-            <Cell className="w-24">
-              <span className="text-fg-faint">{l.spanId ? l.spanId.slice(0, 8) : "—"}</span>
+            <Cell styles={logColumns.span}>
+              <span {...stylex.props(d.faint)}>{l.spanId ? l.spanId.slice(0, 8) : "—"}</span>
             </Cell>
           </Row>
         );
@@ -86,14 +141,14 @@ function LogsPanel() {
 
 // Map, not object: keyed off the telemetry stream, where `constructor` would answer with an
 // inherited member instead of the fallback tone.
-const SEVERITY_TONE = new Map([
-  ["ERROR", "text-negative"],
-  ["WARN", "text-warning"],
-  ["DEBUG", "text-fg-faint"],
+const SEVERITY_TONE = new Map<string, Tone>([
+  ["ERROR", "negative"],
+  ["WARN", "warning"],
+  ["DEBUG", "neutral"],
 ]);
 
-function severityTone(sev: string): string {
-  return SEVERITY_TONE.get(sev) ?? "text-fg-muted";
+function severityTone(sev: string): Tone {
+  return SEVERITY_TONE.get(sev) ?? "neutral";
 }
 
 function MetricsPanel() {
@@ -104,7 +159,7 @@ function MetricsPanel() {
   if (grouped.length === 0) return <Empty hint={t("diagnostics.empty.metrics")} />;
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto grid gap-4 content-start">
+    <div {...stylex.props(d.metricsScroller)}>
       {grouped.map((g) => (
         <InstrumentSection key={g.name} group={g} />
       ))}
@@ -143,54 +198,46 @@ function groupByName(rows: MetricRow[]): NameGroup[] {
 
 function InstrumentSection({ group }: { group: NameGroup }) {
   return (
-    <section className="grid gap-1.5">
+    <section {...stylex.props(d.section)}>
       <header>
-        <div className="font-mono text-ui-md font-semibold text-fg">
+        <div {...stylex.props(d.instrument, typeStep.uiMd)}>
           {group.name}
-          <span className="ml-2 text-fg-faint">[{group.kind}]</span>
+          <span {...stylex.props(d.kind)}>[{group.kind}]</span>
         </div>
         {group.description && (
-          <div className="mt-0.5 text-ui-sm text-fg-muted">{group.description}</div>
+          <div {...stylex.props(d.subtitle, typeStep.uiSm)}>{group.description}</div>
         )}
       </header>
-      <table className="text-ui-md">
-        <thead className="text-ui-xs text-fg-faint">
+      <table {...stylex.props(typeStep.uiMd)}>
+        <thead {...stylex.props(d.faint, typeStep.uiXs)}>
           <tr>
-            <th className="py-1 pr-3 text-left font-medium">attrs</th>
-            <th className="py-1 pr-3 text-right font-medium">count</th>
+            <th {...stylex.props(d.headCell)}>attrs</th>
+            <th {...stylex.props(d.headCell, d.figures)}>count</th>
             {group.kind === "histogram" && (
               <>
-                <th className="py-1 pr-3 text-right font-medium">p50</th>
-                <th className="py-1 pr-3 text-right font-medium">p95</th>
-                <th className="py-1 pr-3 text-right font-medium">avg</th>
+                <th {...stylex.props(d.headCell, d.figures)}>p50</th>
+                <th {...stylex.props(d.headCell, d.figures)}>p95</th>
+                <th {...stylex.props(d.headCell, d.figures)}>avg</th>
               </>
             )}
-            <th className="py-1 pr-3 text-right font-medium">
+            <th {...stylex.props(d.headCell, d.figures)}>
               {group.kind === "histogram" ? "sum" : "value"}
             </th>
           </tr>
         </thead>
-        <tbody className="font-mono">
+        <tbody {...stylex.props(d.mono)}>
           {group.rows.map((r) => (
-            <tr key={r.id} className="transition-colors hover:bg-hover">
-              <td className="py-0.5 pr-3 text-fg-muted">{formatAttrs(r.attrs)}</td>
-              <td className="py-0.5 pr-3 text-right tabular-nums text-fg">{r.count}</td>
+            <tr key={r.id} {...stylex.props(d.metricRow)}>
+              <td {...stylex.props(d.cell, d.muted)}>{formatAttrs(r.attrs)}</td>
+              <td {...stylex.props(d.cell, d.numeric)}>{r.count}</td>
               {group.kind === "histogram" && (
                 <>
-                  <td className="py-0.5 pr-3 text-right tabular-nums text-fg">
-                    {fmt(r.p50, group.unit)}
-                  </td>
-                  <td className="py-0.5 pr-3 text-right tabular-nums text-fg">
-                    {fmt(r.p95, group.unit)}
-                  </td>
-                  <td className="py-0.5 pr-3 text-right tabular-nums text-fg">
-                    {fmt(r.avg, group.unit)}
-                  </td>
+                  <td {...stylex.props(d.cell, d.numeric)}>{fmt(r.p50, group.unit)}</td>
+                  <td {...stylex.props(d.cell, d.numeric)}>{fmt(r.p95, group.unit)}</td>
+                  <td {...stylex.props(d.cell, d.numeric)}>{fmt(r.avg, group.unit)}</td>
                 </>
               )}
-              <td className="py-0.5 pr-3 text-right tabular-nums text-fg">
-                {fmt(r.sum, group.unit)}
-              </td>
+              <td {...stylex.props(d.cell, d.numeric)}>{fmt(r.sum, group.unit)}</td>
             </tr>
           ))}
         </tbody>

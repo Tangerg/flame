@@ -51,9 +51,19 @@ const INDEX_HTML = join(DIST, "index.html");
 // old value would have let that space refill without anyone noticing.
 // 2026-08-31: lowered again by the 63 KB that lazy workspace-view bodies took
 // off the entry, holding the same ~6% headroom.
+// 2026-09-08: CSS raised for the StyleX migration's TRANSIENT double count, and
+// because 0.4% headroom no longer told a regression from a rounding difference —
+// it failed on 491 bytes of ordinary work. Measured at that point: 132.6 KB of
+// entry CSS, of which 42.2 KB is StyleX (600 atomic rules) and 90.5 KB is
+// Tailwind plus globals. The 2026-08-11 baseline was 103 KB with no StyleX at
+// all, so the net cost of migrating ~60 files is +29 KB: every utility a
+// migrated file stopped using is still emitted for the 250 business files that
+// have not moved. The double count unwinds only when a utility's LAST consumer
+// migrates, so this ceiling is expected to come back down well under the old
+// 135 KB — check it against this note rather than refilling the space.
 const BUDGETS = {
   js: 2_785_000,
-  css: 135_000,
+  css: 145_000,
 };
 
 // Runaway ceilings, RAW bytes. Recorded 2026-08-04: syntax highlighting

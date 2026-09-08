@@ -2,14 +2,14 @@ import * as stylex from "@stylexjs/stylex";
 import type { Tone } from "@/lib/tone";
 import type { IconName } from "@/ui";
 import type { TimelineEntry, TimelineEntryKind } from "@/plugins/sdk/types/agentSessionView";
-import { Badge, EmptyState, Icon, IconButton } from "@/ui";
+import { Badge, EmptyState, Icon, IconButton, toneInk } from "@/ui";
 import { useT, type Translate } from "@/lib/i18n";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { toolIntent } from "@/plugins/builtin/agent/public/messagePresentation";
 import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { type as typeStep } from "@/styles/tokens.stylex";
-import { indent, inkByTone, timelineStyles as ts, viewStyles as vs } from "./views/viewStyles";
+import { indent, timelineStyles as ts, viewStyles as vs } from "./views/viewStyles";
 import {
   cancelSessionRun,
   useActiveSessionRunTree,
@@ -113,7 +113,7 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
         <span
           role="img"
           aria-label={entry.status}
-          {...stylex.props(ts.mark, inkByTone[STATUS_MARK[entry.status].tone])}
+          {...stylex.props(ts.mark, toneInk[STATUS_MARK[entry.status].tone])}
         >
           <Icon name={STATUS_MARK[entry.status].icon} size="xs" />
         </span>

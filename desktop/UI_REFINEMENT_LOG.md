@@ -8674,3 +8674,75 @@ editorial 档按它们**在默认档已有的比值**进入阶梯：
 | 单测 | workspace 299 通过 |
 
 `workspace-views` 全族 className 归零（23 个文件，227 处）。
+
+---
+
+## Round 144 —— 批量迁移：diagnostics 与 TasksPill；顺带量清 StyleX 的真实代价
+
+`DiagnosticsView` `TracesPanel` `primitives` `TasksPill` —— 4 个文件，className 归零。
+
+### 五张表把领域词映射成了 class 名
+
+`STATUS_TONE`（TracesPanel）、`SEVERITY_TONE`（DiagnosticsView）、
+`TONE_INK`（TasksPill）、以及上一轮收进 `viewStyles` 的那两张 —— 五处各自写着
+`Record<…, "text-negative">`。
+
+`Badge` 的 tone 映射是**盘**（填充 + 墨），这些调用点要的是**裸墨色** ——
+两件不同的事，而裸墨色有五个消费者。按"缺档就往库里加一档"，
+它归设计系统：`ui/atoms/tone-ink.ts` 的 `toneInk: Record<Tone, StyleXStyles>`。
+上一轮那个 `inkByTone` 一并删除。
+
+**领域词从此不再在视图里变成字符串**：`severityTone` 返回 `Tone`，
+`STATUS_TONE` 存 `Tone`，只有 `toneInk` 一处把它变成墨色。
+
+### `Cell({ className: string })` —— 列宽由调用方拼字符串
+
+诊断面板的 `Cell` 要求**必须**传一个 class 当宽度。两个面板于是把自己的列模型
+写成了 11 个字符串（`w-12` `grow` `w-24` `w-4` `w-16` `w-28`）。
+**列宽是表的决定**，所以改成 `styles?: StyleXStyles`，每个面板在自己的表头旁边
+声明一次列（`logColumns` / `spanColumns`）。
+
+### 一条后代规则回到它该在的层
+
+`[&_svg]:animate-pulse-dot` —— StyleX 表达不了后代选择器。
+（我先写了个无意义的 `::part(x)` 占位，随即改对。）
+按第 129 轮的先例：这类规则进 `globals.css`，由 `data-pulse` 触发。
+
+### 门禁抓到了迁移的真实代价
+
+`check:bundle` 失败：入口 CSS 打满预算。**先归因再动预算** ——
+
+| 提交 | 入口 CSS | |
+| --- | --- | --- |
+| Round 140 | 135,342 | |
+| Round 141 | 135,389 | |
+| Round 142（迁 9 个文件） | 133,381 | **−2,008** |
+| Round 143（迁 6 个） | 134,516 | +1,135 |
+| 本批（迁 4 个） | 135,007 | +491，超线 7 字节 |
+
+（第一次量的时候忘了 `git stash -u`，新建的未跟踪文件混进了三次构建 ——
+四个数字都被同一个量污染。重量才有了上表。）
+
+拆开这 132.6 KB：
+
+| | 字节 | 占比 |
+| --- | --- | --- |
+| StyleX 原子（**600 条规则**） | 42,164 | 32% |
+| Tailwind + `globals.css` | 90,462 | 68% |
+
+预算 135,000 是 2026-08-11 记的，那时入口 CSS **103 KB、完全没有 StyleX**，
+余量 31%。所以：**Tailwind 侧只降了 13 KB，StyleX 加了 42 KB，净 +29 KB。**
+这就是迁移期的双份计费 —— 一个工具类要等它**最后一个**消费者迁完才会消失，
+而业务层还有 250 个文件在用 `flex` / `gap-2` / `text-fg-muted`。
+
+余量降到 **0.4%** 时，它已经分不清"回归"和"491 字节的日常改动"了。
+按门禁自己的要求把 CSS 预算提到 145,000，并把上面这些数字写进它的注释 ——
+连同一句：**迁移做完后这条线要降回 135 KB 以下，拿这段注释来对账，不要让空间被填满。**
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **652 / 652**（workspace 109 + closure 350 + 其余 193），零位移零重录 |
+| 守卫 | 17 项全绿（CSS 预算已按实测调整并写明理由） |
+| 单测 | workspace + `src/ui` 349 通过 |

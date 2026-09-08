@@ -1,6 +1,7 @@
+import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
-import { Icon, IconButton, Popover, ProgressBar, SectionLabel } from "@/ui";
-import { cn } from "@/lib/classNames";
+import { color, radius, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { Icon, IconButton, Popover, ProgressBar, SectionLabel, toneInk } from "@/ui";
 import type { TaskReadoutStatus, TaskReadoutTask } from "../application/ports/taskReadoutPort";
 import { taskProgressPercent, useTaskReadout } from "../application/taskReadout";
 
@@ -16,10 +17,31 @@ const STATUS_ICON: Record<
   failed: { name: "x", tone: "negative" },
 };
 
-// The row's glyph is a bare `Icon`, which has no tone of its own, so the same vocabulary is
-// projected into a class there. One table still decides; this only spells its answer for a
-// consumer that cannot read it.
-const TONE_INK = { accent: "text-accent", negative: "text-negative" } as const;
+// The task list's glyph column is 18px wide — the icon plus its gap — so a message under a
+// label starts where the label does rather than under the glyph.
+const GLYPH_COLUMN = "18px";
+
+const p = stylex.create({
+  panel: { width: "calc(var(--spacing) * 80)", borderRadius: radius.xl },
+  header: { paddingInline: space.s3, paddingTop: space.s2, paddingBottom: space.s1 },
+  scroller: { maxHeight: "min(280px, var(--available-height))", overflowY: "auto" },
+  row: { paddingInline: space.s3, paddingBlock: space.s2 },
+  line: { display: "flex", alignItems: "center", gap: space.s2 },
+  ink: { color: color.fg },
+  label: {
+    flex: 1,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    color: color.fg,
+    fontWeight: weight.semibold,
+  },
+  percent: { fontFamily: "var(--font-mono)", color: color.fgFaint },
+  detail: { marginTop: space.s0_5, paddingLeft: GLYPH_COLUMN, color: color.fgMuted },
+  error: { color: color.negative },
+  meter: { marginTop: space.s1_5, marginLeft: GLYPH_COLUMN },
+  pulse: { animation: "var(--animate-pulse-dot)" },
+});
 
 export function TasksPill() {
   const readout = useTaskReadout();
@@ -38,13 +60,20 @@ export function TasksPill() {
             tone={tone}
             badge={readout.runningCount}
             aria-label={readout.label}
-            className={cn(readout.head.status === "running" && "[&_svg]:animate-pulse-dot")}
+            data-pulse={readout.head.status === "running" ? "" : undefined}
           />
         }
       />
-      <Popover.Content side="top" align="start" sideOffset={6} className="w-[320px] rounded-xl">
-        <SectionLabel className="px-3 pb-1 pt-2">{t("tasks.header")}</SectionLabel>
-        <div className="max-h-[280px] overflow-y-auto">
+      <Popover.Content
+        side="top"
+        align="start"
+        sideOffset={6}
+        className={stylex.props(p.panel).className}
+      >
+        <SectionLabel className={stylex.props(p.header).className}>
+          {t("tasks.header")}
+        </SectionLabel>
+        <div {...stylex.props(p.scroller)}>
           {readout.tasks.map((task) => (
             <TaskRow key={task.id} task={task} />
           ))}
@@ -59,25 +88,29 @@ function TaskRow({ task }: { task: TaskReadoutTask }) {
   const percent = taskProgressPercent(task);
 
   return (
-    <div className="px-3 py-2">
-      <div className="flex items-center gap-2">
+    <div {...stylex.props(p.row)}>
+      <div {...stylex.props(p.line)}>
         <Icon
           name={name}
           size="xs"
-          className={cn(
-            tone ? TONE_INK[tone] : "text-fg",
-            task.status === "running" && "animate-pulse-dot",
-          )}
+          className={
+            stylex.props(
+              tone === undefined ? p.ink : toneInk[tone],
+              task.status === "running" && p.pulse,
+            ).className
+          }
         />
-        <span className="flex-1 truncate text-ui-md font-semibold text-fg">{task.label}</span>
-        {percent !== null && <span className="font-mono text-ui-sm text-fg-faint">{percent}%</span>}
+        <span {...stylex.props(p.label, typeStep.uiMd)}>{task.label}</span>
+        {percent !== null && <span {...stylex.props(p.percent, typeStep.uiSm)}>{percent}%</span>}
       </div>
-      {task.message && (
-        <div className="mt-0.5 pl-[18px] text-ui-sm text-fg-muted">{task.message}</div>
-      )}
-      {task.error && <div className="mt-0.5 pl-[18px] text-ui-sm text-negative">{task.error}</div>}
+      {task.message && <div {...stylex.props(p.detail, typeStep.uiSm)}>{task.message}</div>}
+      {task.error && <div {...stylex.props(p.detail, p.error, typeStep.uiSm)}>{task.error}</div>}
       {percent !== null && (
-        <ProgressBar value={percent} label={task.label} className="mt-1.5 ml-[18px]" />
+        <ProgressBar
+          value={percent}
+          label={task.label}
+          className={stylex.props(p.meter).className}
+        />
       )}
     </div>
   );
