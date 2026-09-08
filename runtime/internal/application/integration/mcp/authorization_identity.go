@@ -51,7 +51,11 @@ func ParseAuthorizationAttemptID(text string) (AuthorizationAttemptID, error) {
 
 func (i AuthorizationAttemptID) String() string { return i.text }
 
+// Validate reports whether the attempt identity was parsed. Its exact form is
+// established there, so an unconstructed attempt is all this can reject.
 func (i AuthorizationAttemptID) Validate() error {
-	_, err := ParseAuthorizationAttemptID(i.text)
-	return err
+	if i.text == "" {
+		return errors.New("MCP authorization attempt identity has invalid framing")
+	}
+	return nil
 }

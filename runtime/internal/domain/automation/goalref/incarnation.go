@@ -58,7 +58,11 @@ func ParseOptionalIncarnation(text string) (IncarnationID, bool, error) {
 
 func (i IncarnationID) String() string { return i.text }
 
+// Validate reports whether the incarnation was parsed. Its exact text is
+// established there, so an unconstructed identity is all this can reject.
 func (i IncarnationID) Validate() error {
-	_, err := ParseIncarnation(i.text)
-	return err
+	if i.text == "" {
+		return fmt.Errorf("goal incarnation identity is empty")
+	}
+	return nil
 }

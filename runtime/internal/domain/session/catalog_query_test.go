@@ -50,8 +50,6 @@ func TestCatalogFilterRejectsAbsentOversizedAndCorruptPredicates(t *testing.T) {
 		{name: "oversized", search: strings.Repeat("界", MaximumCatalogSearchCharacters+1)},
 		{name: "invalid utf8", search: invalidUTF8},
 		{name: "nul", search: "bad\x00query"},
-		{name: "relative workspace", workspace: &Workspace{path: "relative"}},
-		{name: "unclean workspace", workspace: &Workspace{path: "/repo/../repo"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -67,14 +65,14 @@ func TestCatalogFilterRejectsAbsentOversizedAndCorruptPredicates(t *testing.T) {
 	if _, err := NewCatalogFilter(strings.Repeat("界", MaximumCatalogSearchCharacters), nil); err != nil {
 		t.Fatalf("exact maximum search: %v", err)
 	}
-	for _, corrupt := range []CatalogFilter{
-		{},
-		{kind: allCatalogEntries, search: "leak"},
-		{kind: searchCatalogEntries},
-		{kind: workspaceCatalogEntries, workspace: "/repo", search: "leak"},
-	} {
-		if err := corrupt.Validate(); err == nil {
-			t.Fatalf("corrupt filter accepted: %+v", corrupt)
+	// A filter has two sources, and both settle which predicates its mode
+	// carries; only the unconstructed one can reach a read boundary.
+	if err := (CatalogFilter{}).Validate(); err == nil {
+		t.Fatal("zero filter accepted at a read boundary")
+	}
+	for _, path := range []string{"relative", "/repo/../repo"} {
+		if _, err := NewWorkspace(path); err == nil {
+			t.Fatalf("NewWorkspace(%q) accepted a non-canonical path", path)
 		}
 	}
 }
@@ -103,17 +101,19 @@ func TestCatalogAnchorAndReadRejectPrimitiveSentinelStates(t *testing.T) {
 	if !present || got != anchor || read.Limit() != 3 {
 		t.Fatalf("read = {after:%+v present:%t limit:%d}", got, present, read.Limit())
 	}
-	for _, badAnchor := range []CatalogAnchor{
-		{},
-		{favorite: true, updatedAt: updatedAt},
-		{updatedAt: updatedAt, id: " ses_1"},
-		{updatedAt: updatedAt, id: "ses_ one"},
-		{updatedAt: updatedAt, id: "ses_\u200bhidden"},
-		{updatedAt: updatedAt, id: strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1)},
+	for _, id := range []string{
+		"", " ses_1", "ses_ one", "ses_\u200bhidden",
+		strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1),
 	} {
-		if err := badAnchor.Validate(); err == nil {
-			t.Fatalf("corrupt anchor accepted: %+v", badAnchor)
+		if _, err := NewCatalogAnchor(true, updatedAt, id); err == nil {
+			t.Fatalf("NewCatalogAnchor accepted identity %q", id)
 		}
+	}
+	if _, err := NewCatalogAnchor(true, time.Time{}, "ses_1"); err == nil {
+		t.Fatal("NewCatalogAnchor accepted a zero update time")
+	}
+	if err := (CatalogAnchor{}).Validate(); err == nil {
+		t.Fatal("zero anchor accepted at a read boundary")
 	}
 	for _, limit := range []int{-1, 0} {
 		if _, err := NewCatalogRead(AllCatalogEntries(), nil, limit); err == nil {

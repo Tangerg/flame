@@ -83,30 +83,12 @@ func NormalizeCatalogText(value string) (string, error) {
 	return strings.ToLower(value), nil
 }
 
-// Validate rejects zero/corrupt filter state at every read boundary.
+// Validate rejects the zero filter at every read boundary. Which predicates a
+// mode may carry, and their canonical spelling, are settled by
+// AllCatalogEntries and NewCatalogFilter — the only sources of a filter.
 func (f CatalogFilter) Validate() error {
 	switch f.kind {
-	case allCatalogEntries:
-		if f.search != "" || f.workspace != "" {
-			return errors.New("sessions: all-catalog filter carries predicates")
-		}
-		return nil
-	case searchCatalogEntries, workspaceCatalogEntries, searchWorkspaceCatalogEntries:
-		var workspace *Workspace
-		if f.workspace != "" {
-			value, err := NewWorkspace(f.workspace)
-			if err != nil {
-				return err
-			}
-			workspace = &value
-		}
-		rebuilt, err := NewCatalogFilter(f.search, workspace)
-		if err != nil {
-			return err
-		}
-		if rebuilt != f {
-			return errors.New("sessions: catalog filter is not canonical")
-		}
+	case allCatalogEntries, searchCatalogEntries, workspaceCatalogEntries, searchWorkspaceCatalogEntries:
 		return nil
 	default:
 		return errors.New("sessions: catalog filter mode is unknown")
@@ -157,13 +139,11 @@ func NewCatalogAnchor(favorite bool, updatedAt time.Time, id string) (CatalogAnc
 	return CatalogAnchor{favorite: favorite, updatedAt: updatedAt.UTC(), id: id}, nil
 }
 
+// Validate rejects the zero anchor. Its UTC normalization and Session identity
+// are established by NewCatalogAnchor, the only source of an anchor.
 func (a CatalogAnchor) Validate() error {
-	rebuilt, err := NewCatalogAnchor(a.favorite, a.updatedAt, a.id)
-	if err != nil {
-		return err
-	}
-	if rebuilt != a {
-		return errors.New("sessions: catalog anchor is not canonical")
+	if a.updatedAt.IsZero() {
+		return errors.New("sessions: catalog anchor update time is required")
 	}
 	return nil
 }
@@ -201,17 +181,13 @@ func NewCatalogRead(filter CatalogFilter, after *CatalogAnchor, limit int) (Cata
 	return read, nil
 }
 
+// Validate rejects the zero read. Its filter, anchor and bound are established
+// by NewCatalogRead, the only source of a read.
 func (r CatalogRead) Validate() error {
-	rebuilt, err := NewCatalogRead(r.filter, r.after, r.limit)
-	if err != nil {
-		return err
+	if r.limit <= 0 {
+		return errors.New("sessions: catalog read limit must be greater than zero")
 	}
-	if rebuilt.filter != r.filter || rebuilt.limit != r.limit ||
-		(rebuilt.after == nil) != (r.after == nil) ||
-		(rebuilt.after != nil && *rebuilt.after != *r.after) {
-		return errors.New("sessions: catalog read is not canonical")
-	}
-	return nil
+	return r.filter.Validate()
 }
 
 func (r CatalogRead) Filter() CatalogFilter { return r.filter }

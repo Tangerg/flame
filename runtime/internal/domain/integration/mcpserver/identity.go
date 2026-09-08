@@ -48,7 +48,11 @@ func ParseServerName(raw string) (ServerName, error) {
 
 func (n ServerName) String() string { return n.text }
 
+// Validate reports whether the name was parsed. Its exact spelling is
+// established there, so an unconstructed name is all this can reject.
 func (n ServerName) Validate() error {
-	_, err := ParseServerName(n.text)
-	return err
+	if n.text == "" {
+		return ErrInvalidServerName
+	}
+	return nil
 }

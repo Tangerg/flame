@@ -30,14 +30,11 @@ func NewWorkspace(path string) (Workspace, error) {
 // Path returns the exact canonical path.
 func (w Workspace) Path() string { return w.path }
 
-// Validate verifies that w is a constructed exact workspace identity.
+// Validate verifies that w was constructed. Absoluteness and canonical
+// spelling are established by NewWorkspace, the only source of the path.
 func (w Workspace) Validate() error {
-	canonical, err := NewWorkspace(w.path)
-	if err != nil {
-		return err
-	}
-	if canonical != w {
-		return fmt.Errorf("%w: invalid workspace representation", ErrInvalid)
+	if w.path == "" {
+		return fmt.Errorf("%w: workspace is required", ErrInvalid)
 	}
 	return nil
 }

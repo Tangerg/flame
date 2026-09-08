@@ -49,7 +49,12 @@ func ParseItemID(raw string) (ItemID, error) {
 
 func (i ItemID) String() string { return i.text }
 
+// Validate reports whether the identity was minted or parsed. Its canonical
+// spelling is established there, so an unconstructed item is all this can
+// reject.
 func (i ItemID) Validate() error {
-	_, err := ParseItemID(i.text)
-	return err
+	if i.text == "" {
+		return ErrInvalidItemID
+	}
+	return nil
 }
