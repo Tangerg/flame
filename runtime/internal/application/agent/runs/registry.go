@@ -25,7 +25,8 @@ type Record struct {
 
 // liveSegment is the coordinator's process-local state for a currently active
 // run. The registry only ever manages Run-tree owners, so making it generic would
-// hide its actual lifecycle ownership.
+// hide its actual lifecycle ownership. A live segment always has its owner:
+// admission opens the entry from a startup that already built one.
 type liveSegment struct {
 	record Record
 	owner  *runTreeOwner

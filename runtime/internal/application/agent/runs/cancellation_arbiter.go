@@ -29,9 +29,6 @@ func (r *runTreeOwner) beginChildCancellation(
 	plan cancellationPlan,
 	reason string,
 ) (*childCancellation, error) {
-	if r == nil {
-		return nil, errors.New("runs: child cancellation requires a live Run-tree owner")
-	}
 	if !plan.target.run.Lineage().IsChild() {
 		return nil, fmt.Errorf("runs: cancellation target %q is not a child Run", plan.target.run.ID())
 	}
@@ -93,7 +90,7 @@ func (r *runTreeOwner) beginChildCancellation(
 }
 
 func (r *runTreeOwner) abortChildCancellation(attempt *childCancellation, err error) {
-	if r == nil || attempt == nil {
+	if attempt == nil {
 		return
 	}
 	r.mu.Lock()
@@ -121,9 +118,6 @@ func (r *runTreeOwner) classifyChildCancellationTool(
 	itemID string,
 	event ToolCallFinished,
 ) ToolCallFinished {
-	if r == nil {
-		return event
-	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	attempt := r.childCancel
@@ -142,9 +136,6 @@ func (r *runTreeOwner) classifyChildCancellationTool(
 }
 
 func (r *runTreeOwner) recordChildCancellationItem(parentRunID string, item transcript.Item) {
-	if r == nil {
-		return
-	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	attempt := r.childCancel
@@ -176,7 +167,7 @@ func (r *runTreeOwner) waitChildCancellation(
 	ctx context.Context,
 	attempt *childCancellation,
 ) (rundomain.Run, rundomain.Run, error) {
-	if r == nil || attempt == nil {
+	if attempt == nil {
 		return rundomain.Run{}, rundomain.Run{}, errors.New("runs: missing child cancellation attempt")
 	}
 	select {
@@ -213,9 +204,6 @@ func (r *runTreeOwner) waitChildCancellation(
 // cancellation arms its parent-result classification only after the target's
 // canceled terminal is durable.
 func (r *runTreeOwner) recordTerminalRun(run rundomain.Run) {
-	if r == nil {
-		return
-	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.terminalRuns == nil {
@@ -273,9 +261,6 @@ func (r *runTreeOwner) requestCancel(
 	reason string,
 	requestExecutor func(context.Context) error,
 ) (interruptCommitted bool, err error) {
-	if r == nil {
-		return false, nil
-	}
 	for {
 		r.mu.Lock()
 		if r.childCancel != nil {
@@ -355,9 +340,6 @@ func (r *runTreeOwner) abortRootCancellation(reason string) {
 // cancellation. committed=false means cancellation won before the reservation
 // or the commit failed.
 func (r *runTreeOwner) commitInterrupt(ctx context.Context, commit func(context.Context) error) (committed bool, err error) {
-	if r == nil {
-		return false, errors.New("runs: missing live Run-tree owner")
-	}
 	commitCtx, cancelCommit := context.WithTimeout(ctx, runCleanupTimeout)
 	r.mu.Lock()
 	if r.cancelRequested {
@@ -392,9 +374,6 @@ func (r *runTreeOwner) commitInterrupt(ctx context.Context, commit func(context.
 // CancelReason returns the recorded human cancel reason. It is late-bound on
 // purpose because cancellation can arrive after the segment starts.
 func (r *runTreeOwner) CancelReason() string {
-	if r == nil {
-		return ""
-	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.cancelReason
@@ -404,9 +383,6 @@ func (r *runTreeOwner) CancelReason() string {
 // plan. A child operation applies its reason only to the target subtree; the
 // root reason remains independent for a later whole-tree cancellation.
 func (r *runTreeOwner) CancelReasonFor(runID string) string {
-	if r == nil {
-		return ""
-	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.childCancel != nil {

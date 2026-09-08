@@ -646,7 +646,7 @@ func (s *segmentPump) tearDownExecutor() {
 func (s *segmentPump) finishBoundary() {
 	releaseMaintenance, maintenanceHeld := s.coordinator.admission.BeginMaintenance(s.spec.RunID)
 	entry, tracked := s.coordinator.registry.Get(s.spec.RunID)
-	if tracked && !s.rootParked && entry.owner != nil {
+	if tracked && !s.rootParked {
 		entry.owner.stop()
 	}
 	if s.rootFinished {

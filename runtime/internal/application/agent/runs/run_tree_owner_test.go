@@ -15,7 +15,7 @@ func TestRunTreeOwnerCancelLinearizesAfterInterruptCommit(t *testing.T) {
 	commitStarted := make(chan struct{})
 	releaseCommit := make(chan struct{})
 	requested := make(chan struct{})
-	treeOwner := &runTreeOwner{}
+	treeOwner := testRunTreeOwner(t, nil)
 
 	commitDone := make(chan struct{})
 	go func() {
@@ -80,7 +80,7 @@ func TestRunTreeOwnerCancelLinearizesAfterInterruptCommit(t *testing.T) {
 
 func TestRunTreeOwnerCancelInterruptsBlockedCommit(t *testing.T) {
 	commitStarted := make(chan struct{})
-	treeOwner := &runTreeOwner{}
+	treeOwner := testRunTreeOwner(t, nil)
 	commitResult := make(chan error, 1)
 	go func() {
 		committed, err := treeOwner.commitInterrupt(t.Context(), func(ctx context.Context) error {
@@ -119,9 +119,7 @@ func TestRunTreeOwnerCancelWaitsForSegmentActivation(t *testing.T) {
 	activationStarted := make(chan struct{})
 	releaseActivation := make(chan struct{})
 	cancelRequested := make(chan struct{})
-	treeOwner := &runTreeOwner{
-		activation: segmentActivation{done: make(chan struct{})},
-	}
+	treeOwner := testRunTreeOwner(t, nil)
 
 	activationDone := make(chan error, 1)
 	go func() {
@@ -163,9 +161,7 @@ func TestRunTreeOwnerCancelWaitsForSegmentActivation(t *testing.T) {
 }
 
 func TestRunTreeOwnerCancelBeforeActivationSuppressesExecutorBegin(t *testing.T) {
-	treeOwner := &runTreeOwner{
-		activation: segmentActivation{done: make(chan struct{})},
-	}
+	treeOwner := testRunTreeOwner(t, nil)
 	if _, err := treeOwner.requestCancel(t.Context(), "stop", acceptRootCancel); err != nil {
 		t.Fatalf("request cancel: %v", err)
 	}
@@ -186,9 +182,7 @@ func TestRunTreeOwnerCancelBeforeActivationSuppressesExecutorBegin(t *testing.T)
 }
 
 func TestRunTreeOwnerCancelClassifiesActivationFailureAsFinished(t *testing.T) {
-	treeOwner := &runTreeOwner{
-		activation: segmentActivation{done: make(chan struct{})},
-	}
+	treeOwner := testRunTreeOwner(t, nil)
 	if _, err := treeOwner.beginExecution(t.Context(), func(context.Context) error {
 		return errors.New("activation failed")
 	}); err == nil {
@@ -200,7 +194,7 @@ func TestRunTreeOwnerCancelClassifiesActivationFailureAsFinished(t *testing.T) {
 }
 
 func TestRunTreeOwnerRetainsCommittedInterruptOutcomeAfterCommitReturns(t *testing.T) {
-	treeOwner := &runTreeOwner{}
+	treeOwner := testRunTreeOwner(t, nil)
 	committed, err := treeOwner.commitInterrupt(t.Context(), func(context.Context) error {
 		return nil
 	})
@@ -217,7 +211,7 @@ func TestRunTreeOwnerRetainsCommittedInterruptOutcomeAfterCommitReturns(t *testi
 func TestRunTreeOwnerCancelWaitIsContextBounded(t *testing.T) {
 	commitStarted := make(chan struct{})
 	releaseCommit := make(chan struct{})
-	treeOwner := &runTreeOwner{}
+	treeOwner := testRunTreeOwner(t, nil)
 	commitDone := make(chan struct{})
 	go func() {
 		defer close(commitDone)
@@ -243,9 +237,9 @@ func TestRunTreeOwnerCleanupContextDetachesFinishedTask(t *testing.T) {
 	type contextKey struct{}
 	owner, cancelOwner := context.WithCancel(context.WithValue(t.Context(), contextKey{}, "trace"))
 	cancelOwner()
-	treeOwner := &runTreeOwner{taskContext: owner}
+	treeOwner := newRunTreeOwner(cancelOwner, owner, nil)
 
-	cleanup, cancelCleanup := treeOwner.cleanupContext(context.Background())
+	cleanup, cancelCleanup := treeOwner.cleanupContext()
 	defer cancelCleanup()
 	if cleanup.Err() != nil {
 		t.Fatalf("cleanup inherited finished owner cancellation: %v", cleanup.Err())
@@ -260,9 +254,9 @@ func TestRunTreeOwnerCleanupContextDetachesFinishedTask(t *testing.T) {
 
 func TestRunTreeOwnerWaitReturnsCompletedOutcomeAfterCallerCancellation(t *testing.T) {
 	want := errors.New("run cleanup failed")
-	done := make(chan struct{})
-	close(done)
-	treeOwner := &runTreeOwner{done: done, completionErr: want}
+	treeOwner := testRunTreeOwner(t, nil)
+	treeOwner.completionErr = want
+	close(treeOwner.done)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
@@ -276,7 +270,7 @@ func TestRunTreeOwnerCancellationArbiterAllowsOnlyOneTreeOwner(t *testing.T) {
 
 	t.Run("child wins", func(t *testing.T) {
 		canceled := false
-		treeOwner := &runTreeOwner{cancel: func() { canceled = true }}
+		treeOwner := newRunTreeOwner(func() { canceled = true }, t.Context(), nil)
 		attempt, err := treeOwner.beginChildCancellation(plan, "stop child")
 		if err != nil {
 			t.Fatalf("begin child cancellation: %v", err)
@@ -296,7 +290,7 @@ func TestRunTreeOwnerCancellationArbiterAllowsOnlyOneTreeOwner(t *testing.T) {
 	})
 
 	t.Run("root wins", func(t *testing.T) {
-		treeOwner := &runTreeOwner{}
+		treeOwner := testRunTreeOwner(t, nil)
 		if _, err := treeOwner.requestCancel(t.Context(), "stop root", acceptRootCancel); err != nil {
 			t.Fatalf("request root cancellation: %v", err)
 		}
@@ -309,3 +303,12 @@ func TestRunTreeOwnerCancellationArbiterAllowsOnlyOneTreeOwner(t *testing.T) {
 }
 
 func acceptRootCancel(context.Context) error { return nil }
+
+// testRunTreeOwner builds a complete owner the way production does, so a test
+// never exercises a half-built one.
+func testRunTreeOwner(t *testing.T, hub *journal) *runTreeOwner {
+	t.Helper()
+	taskContext, cancel := context.WithCancel(t.Context())
+	t.Cleanup(cancel)
+	return newRunTreeOwner(cancel, taskContext, hub)
+}

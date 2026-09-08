@@ -11,7 +11,7 @@ import (
 func TestRegistryRemovesCompletedRun(t *testing.T) {
 	var r registry
 	started := time.Unix(42, 0).UTC()
-	owner := &runTreeOwner{}
+	owner := testRunTreeOwner(t, nil)
 	r.Open(Record{ID: "run_1", SessionID: "ses_1", CWD: "/repo", CreatedAt: started}, owner)
 
 	e, ok := r.Get("run_1")
@@ -30,8 +30,8 @@ func TestRegistryRemovesCompletedRun(t *testing.T) {
 
 func TestRegistryOldSegmentCannotRemoveItsReplacement(t *testing.T) {
 	var reg registry
-	oldOwner := &runTreeOwner{}
-	newOwner := &runTreeOwner{}
+	oldOwner := testRunTreeOwner(t, nil)
+	newOwner := testRunTreeOwner(t, nil)
 	reg.Open(Record{ID: "run_1", SegmentID: "segment_old"}, oldOwner)
 	reg.Open(Record{ID: "run_1", SegmentID: "segment_new"}, newOwner)
 

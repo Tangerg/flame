@@ -341,7 +341,7 @@ func TestLiveChildCancellationAndNaturalTerminalHaveOneTreeOwner(t *testing.T) {
 	}
 
 	t.Run("child cancellation commits first", func(t *testing.T) {
-		owner := &runTreeOwner{done: make(chan struct{})}
+		owner := testRunTreeOwner(t, nil)
 		attempt, err := owner.beginChildCancellation(plan, "stop child")
 		if err != nil {
 			t.Fatalf("begin child cancellation: %v", err)
@@ -375,7 +375,7 @@ func TestLiveChildCancellationAndNaturalTerminalHaveOneTreeOwner(t *testing.T) {
 	})
 
 	t.Run("natural terminal commits after child claim", func(t *testing.T) {
-		owner := &runTreeOwner{done: make(chan struct{})}
+		owner := testRunTreeOwner(t, nil)
 		attempt, err := owner.beginChildCancellation(plan, "stop child")
 		if err != nil {
 			t.Fatalf("begin child cancellation: %v", err)
@@ -396,7 +396,7 @@ func TestLiveChildCancellationAndNaturalTerminalHaveOneTreeOwner(t *testing.T) {
 	})
 
 	t.Run("natural terminal precedes child claim", func(t *testing.T) {
-		owner := &runTreeOwner{}
+		owner := testRunTreeOwner(t, nil)
 		owner.recordTerminalRun(completed)
 		if _, err := owner.beginChildCancellation(plan, "stop child"); !errors.Is(err, ErrRunFinished) {
 			t.Fatalf("child cancellation error = %v, want ErrRunFinished", err)
@@ -408,17 +408,24 @@ func TestLiveChildCancellationAndNaturalTerminalHaveOneTreeOwner(t *testing.T) {
 }
 
 func runningChildCancellationPlan() cancellationPlan {
-	child := testsupport.MustRestoreRun(run.Snapshot{ID: "run_child",
+	child := testsupport.MustRestoreRun(run.Snapshot{
+		ID:        "run_child",
 		SessionID: "session",
 
-		State: run.Running, Lineage: run.Lineage{SpawnedByItemID: "item_spawn",
-			ParentRunID: "run_root",
-			RootRunID:   "run_root"}})
+		State: run.Running, Lineage: run.Lineage{
+			SpawnedByItemID: "item_spawn",
+			ParentRunID:     "run_root",
+			RootRunID:       "run_root",
+		},
+	})
 
 	return cancellationPlan{
-		root: cancellationRun{run: testsupport.MustRestoreRun(run.Snapshot{ID: "run_root",
-			SessionID: "session",
-			State:     run.Running}),
+		root: cancellationRun{
+			run: testsupport.MustRestoreRun(run.Snapshot{
+				ID:        "run_root",
+				SessionID: "session",
+				State:     run.Running,
+			}),
 		},
 		target: cancellationRun{
 			run:       child,

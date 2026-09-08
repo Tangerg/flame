@@ -323,13 +323,7 @@ func (c *Coordinator) prepareSegmentStartup(
 	if err != nil {
 		return nil, startup.abort(err)
 	}
-	startup.treeOwner = &runTreeOwner{
-		cancel:      cancelRun,
-		taskContext: taskContext,
-		hub:         startup.journal,
-		done:        make(chan struct{}),
-		activation:  segmentActivation{done: make(chan struct{})},
-	}
+	startup.treeOwner = newRunTreeOwner(cancelRun, taskContext, startup.journal)
 	startup.routes, err = c.openingRoutes(spec, startup.treeOwner.CancelReasonFor)
 	if err != nil {
 		return nil, startup.abort(err)
@@ -635,7 +629,7 @@ func (c *Coordinator) addressLiveSegment(ctx context.Context, runID, segmentID s
 		return liveSegment{}, fmt.Errorf("%w: run %q is executing %q", ErrStaleSegment, runID, run.ActiveSegmentID())
 	}
 	live, ok := c.registry.Get(runID)
-	if !ok || live.owner == nil || live.owner.hub == nil {
+	if !ok {
 		// A Running record whose segment this process does not own. Restart recovery
 		// terminalizes orphans before the runtime serves, so this is a broken
 		// invariant rather than a state a client can act on — reporting it as one

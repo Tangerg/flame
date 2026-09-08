@@ -80,7 +80,7 @@ func liveCoordinator(t *testing.T, record run.Run) (*Coordinator, *journal) {
 	})
 	hub := mustNewJournal(t, testStreamScope(c.epoch, testRunID, testSegmentID), c.retention)
 	c.registry.Open(Record{ID: testRunID, SegmentID: testSegmentID, SessionID: "ses_1", ExecutorID: "turn_1"},
-		&runTreeOwner{hub: hub})
+		testRunTreeOwner(t, hub))
 	return c, hub
 }
 
@@ -151,12 +151,12 @@ func TestSubscribeDoesNotRetargetAnOldSegmentToARacingResume(t *testing.T) {
 	newHub := mustNewJournal(t, testStreamScope(coordinator.epoch, testRunID, "segment_new"), coordinator.retention)
 	coordinator.registry.Open(
 		Record{ID: testRunID, SegmentID: "segment_old", SessionID: "ses_1", ExecutorID: "executor_old"},
-		&runTreeOwner{hub: oldHub},
+		testRunTreeOwner(t, oldHub),
 	)
 	projection.beforeReturn = func() {
 		coordinator.registry.Open(
 			Record{ID: testRunID, SegmentID: "segment_new", SessionID: "ses_1", ExecutorID: "executor_new"},
-			&runTreeOwner{hub: newHub},
+			testRunTreeOwner(t, newHub),
 		)
 	}
 
@@ -318,7 +318,7 @@ func TestSubscribeRefusesACallerThatCouldNotFollowTheRun(t *testing.T) {
 	hub := mustNewJournal(t, testStreamScope(c.epoch, testRunID, testSegmentID), c.retention)
 	c.registry.Open(Record{
 		ID: testRunID, SegmentID: testSegmentID, SessionID: "ses_1", Capabilities: capabilities,
-	}, &runTreeOwner{hub: hub})
+	}, testRunTreeOwner(t, hub))
 
 	_, err := c.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
 	if _, ok := errors.AsType[*run.InsufficientCapabilitiesError](err); !ok {

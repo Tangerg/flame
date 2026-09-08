@@ -28,7 +28,7 @@ func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResu
 	if plan.target.run.Lineage().IsChild() {
 		switch plan.treeState {
 		case rundomain.Running:
-			if !live || entry.owner == nil {
+			if !live {
 				return CancelResult{}, fmt.Errorf(
 					"runs: running child Run %q has no live root owner",
 					cmd.RunID,
@@ -48,13 +48,7 @@ func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResu
 	if !live {
 		return c.cancelWithoutLiveSegment(ctx, cmd, plan.root.run)
 	}
-	if entry.owner == nil {
-		return CancelResult{}, fmt.Errorf(
-			"runs: root Run %q has a live registry entry without a Run-tree owner",
-			plan.root.run.ID(),
-		)
-	}
-	cleanupCtx, cancel := entry.owner.cleanupContext(ctx)
+	cleanupCtx, cancel := entry.owner.cleanupContext()
 	defer cancel()
 	interruptCommitted, requestErr := entry.owner.requestCancel(
 		cleanupCtx,
@@ -119,7 +113,7 @@ func (c *Coordinator) cancelLiveChild(
 	if err != nil {
 		return CancelResult{}, err
 	}
-	cleanupCtx, cancel := owner.cleanupContext(ctx)
+	cleanupCtx, cancel := owner.cleanupContext()
 	defer cancel()
 	if cancelRunningSubtreeErr := c.runningSubtreeCanceler.CancelRunningSubtree(
 		cleanupCtx,
@@ -194,7 +188,7 @@ func (c *Coordinator) cancelWaitingChild(
 	}
 	defer runAdmission.Release()
 
-	cleanupCtx, cancelCleanup := (*runTreeOwner)(nil).cleanupContext(ctx)
+	cleanupCtx, cancelCleanup := runCleanupContext(ctx)
 	defer cancelCleanup()
 
 	plan, err := c.resolveClaimedWaitingChildCancellation(cleanupCtx, cmd)
@@ -590,7 +584,7 @@ func (c *Coordinator) publishWaitingChildCancellation(
 // never run_not_found.
 func (c *Coordinator) cancelWithoutLiveSegment(ctx context.Context, cmd CancelCommand, value rundomain.Run) (CancelResult, error) {
 	if value.State() == rundomain.Waiting {
-		cleanupCtx, cancel := (*runTreeOwner)(nil).cleanupContext(ctx)
+		cleanupCtx, cancel := runCleanupContext(ctx)
 		defer cancel()
 		return c.cancelParkedRun(cleanupCtx, cmd, value)
 	}
@@ -603,7 +597,7 @@ func (c *Coordinator) cancelWithoutLiveSegment(ctx context.Context, cmd CancelCo
 	case refreshed.State().IsTerminal():
 		return CancelResult{}, fmt.Errorf("%w: %q completed as %s", ErrRunFinished, cmd.RunID, refreshed.State())
 	case refreshed.State() == rundomain.Waiting:
-		cleanupCtx, cancel := (*runTreeOwner)(nil).cleanupContext(ctx)
+		cleanupCtx, cancel := runCleanupContext(ctx)
 		defer cancel()
 		return c.cancelParkedRun(cleanupCtx, cmd, refreshed)
 	case refreshed.State() == rundomain.Running:
