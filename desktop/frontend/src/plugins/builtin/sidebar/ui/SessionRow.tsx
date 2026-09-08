@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { AgentRow } from "@/ui/agent";
-import { ConfirmDialog, ContextMenu, Icon, TextField } from "@/ui";
+import { ConfirmDialog, ContextMenu, Icon, TextField, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import type { WorkSession } from "@/plugins/builtin/navigation/public/workIndex";
@@ -10,7 +10,6 @@ import { color, corner, space, type as typeStep } from "@/styles/tokens.stylex";
 const sr = stylex.create({
   // The rename field's own box; the row is the containing block for it.
   host: { position: "relative", userSelect: "none" },
-  grow: { flex: 1 },
   trailing: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1_5 },
   favorite: { color: color.accent },
   mark: { height: space.s1_5, width: space.s1_5, flexShrink: 0 },
@@ -76,7 +75,7 @@ function SessionTitleField({
         if (e.key === "Enter") commit(e.currentTarget.value);
       }}
       onBlur={(e) => commit(e.currentTarget.value)}
-      className={stylex.props(sr.grow).className}
+      className={stylex.props(vocab.grow).className}
     />
   );
 }

@@ -1,13 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { TextButton } from "@/ui";
+import { TextButton, vocab } from "@/ui";
 import { SessionRow } from "./SessionRow";
 import { useT } from "@/lib/i18n";
 import type { WorkIndexActions, WorkSession } from "@/plugins/builtin/navigation/public/workIndex";
 import { space } from "@/styles/tokens.stylex";
 
 const sl = stylex.create({
-  column: { display: "flex", flexDirection: "column" },
   more: { paddingInline: space.s2, paddingBlock: space.s1 },
   // Lines up with the nested rows above it: their inset plus the glyph they leave room for.
   moreNested: { paddingLeft: "calc(0.5rem + var(--icon-sm) + var(--density-row-gap))" },
@@ -34,7 +33,7 @@ export function SessionList({
   const hidden = sessions.length - visible.length;
 
   return (
-    <div {...stylex.props(sl.column)}>
+    <div {...stylex.props(vocab.column)}>
       {visible.map((session) => (
         <SessionRow
           key={session.id}

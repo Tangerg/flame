@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import { color, radius, space, type as typeStep, weight } from "@/styles/tokens.stylex";
-import { Icon, IconButton, Popover, ProgressBar, SectionLabel, toneInk } from "@/ui";
+import { Icon, IconButton, Popover, ProgressBar, SectionLabel, toneInk, vocab } from "@/ui";
 import type { TaskReadoutStatus, TaskReadoutTask } from "../application/ports/taskReadoutPort";
 import { taskProgressPercent, useTaskReadout } from "../application/taskReadout";
 
@@ -26,8 +26,6 @@ const p = stylex.create({
   header: { paddingInline: space.s3, paddingTop: space.s2, paddingBottom: space.s1 },
   scroller: { maxHeight: "min(280px, var(--available-height))", overflowY: "auto" },
   row: { paddingInline: space.s3, paddingBlock: space.s2 },
-  line: { display: "flex", alignItems: "center", gap: space.s2 },
-  ink: { color: color.fg },
   label: {
     flex: 1,
     overflow: "hidden",
@@ -89,13 +87,13 @@ function TaskRow({ task }: { task: TaskReadoutTask }) {
 
   return (
     <div {...stylex.props(p.row)}>
-      <div {...stylex.props(p.line)}>
+      <div {...stylex.props(vocab.line)}>
         <Icon
           name={name}
           size="xs"
           className={
             stylex.props(
-              tone === undefined ? p.ink : toneInk[tone],
+              tone === undefined ? vocab.ink : toneInk[tone],
               task.status === "running" && p.pulse,
             ).className
           }

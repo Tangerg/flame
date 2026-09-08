@@ -7,6 +7,7 @@ import { Icon, type IconName } from "@/ui/icons";
 import { dress } from "./button";
 import { Popover } from "./popover";
 import { Pressable } from "./pressable";
+import { vocab } from "./vocabulary";
 
 export const styles = stylex.create({
   // The search box sits INSIDE the popup, so it wears the field's edge rather than the popup's.
@@ -74,7 +75,6 @@ export const styles = stylex.create({
   rowGlyph: { color: color.fgMuted },
   rowText: { minWidth: 0 },
   rowLine: { display: "flex", minWidth: 0, alignItems: "baseline", gap: space.s1_5 },
-  truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   caption: { flexShrink: 0, color: color.fgFaint },
   mark: { color: color.accent },
 
@@ -258,7 +258,7 @@ function CatalogRow(item: CatalogPickerItem, groupLabel?: string) {
       )}
       <span {...stylex.props(styles.rowText)}>
         <span {...stylex.props(styles.rowLine)}>
-          <span {...stylex.props(styles.truncate)}>{item.label}</span>
+          <span {...stylex.props(vocab.truncate)}>{item.label}</span>
           {showCaption && item.caption && (
             <span {...stylex.props(styles.caption, type.uiXs)}>{item.caption}</span>
           )}

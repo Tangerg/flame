@@ -16,7 +16,6 @@ import { color, face, space, type as typeStep, weight } from "@/styles/tokens.st
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const u = stylex.create({
-  ink: { color: color.fg },
   // A money column reads down, so it holds one measure and aligns on the right.
   cost: { width: space.s16, textAlign: "right", color: color.fg },
   totalLine: {
@@ -59,7 +58,7 @@ function BreakdownSection({
           <div key={b.key} {...stylex.props(ss.nameGrid, ss.hoverRow, ss.hoverRowTight)}>
             <div {...stylex.props(vocab.line, vocab.min)}>
               {icon?.(b.key)}
-              <span {...stylex.props(vocab.truncate, u.ink, typeStep.uiMd)}>{b.key}</span>
+              <span {...stylex.props(vocab.truncate, vocab.ink, typeStep.uiMd)}>{b.key}</span>
             </div>
             <div {...stylex.props(ss.lineWide, typeStep.uiMd, face.mono)}>
               <span {...stylex.props(vocab.muted)}>{fmtTokens(usageTokens(b))}</span>

@@ -9332,3 +9332,103 @@ utility 的字符串」重新数：**33 个文件里还有 122 条 class 串、4
 第三类是真正该治的：`tone-ink.ts`、`button.tsx` 的 tone 表、`ansi-text.tsx` 的 tone 表
 **各自重新声明了一遍墨色阶梯**（`color.negative` 写了四遍）。投影该留着，
 声明只该有一份 —— `toneInk` 应该指向 `vocab.negative`，而不是自己再写一次那个值。
+
+## Round 155 — 墨色阶梯只声明一次；以及「换个拼法」和「多说一层」的分界
+
+### 根因
+
+`vocab` 建好之后，可以反过来量整个 `src/`：**38 个文件里 86 处把某个 vocab 档的值又写了一遍。**
+但这 86 处不是一类东西，混在一起治会把好代码改坏。分界线是：
+
+> **本地名说出了 `vocab` 说不出的东西吗？**
+
+说得出 → 不是重复，是命名。`navigation-row:trailing` 说的是「它坐在行尾」，
+`text-field:glyph` 说的是「它是个字形」，换成 `vocab.hold` 只是把「哪里」换成「怎么做」。
+说不出 → 就是重复。`TracesPanel:truncate`、`sidebar/projects:column` —— 本地名跟共享名
+一个字都不差，那它存在的唯一理由就是「当时手边没有共享的那个」。
+
+### 做了三件
+
+**一、墨色阶梯的四份声明收成一份。** `color.negative` 在四个地方各声明了一遍：
+
+| 位置 | 是什么 | 处理 |
+| --- | --- | --- |
+| `tone-ink.ts` | `Record<Tone, …>`，自称「一个 tone 变成 token 的唯一地方」 | 改成**投影**：指向 `vocab`，不再自己声明 |
+| `button.tsx` | `toneNegative/Warning/Accent/Success` + `TONE` 表 | 删掉，直接 `toneInk[tone]` |
+| `activity-disclosure.tsx` | `markNeutral/Warning/Negative` + `MARK_TONE` 表 | 删掉，直接 `toneInk[tone]` |
+| `ansi-text.tsx` | 也自称「唯一的地方」（两个文件同时自称唯一） | 六档里五档指向 `toneInk`；`muted` 留下，因为它**不是** `Tone.neutral` |
+
+`ansi-text` 那一档是这轮唯一需要判断的地方：ANSI 的 dim 是「比周围的字更淡」，
+比 `muted` 还低一阶，所以它读 `vocab.faint` —— 名字一样、事实不同，不能合。
+
+`toneInk` 的类型也从 `Record<Tone, StyleXStyles>` 改成 `as const satisfies` ——
+前者把每一档都放宽成 `StyleXStyles`，调用处就丢了具体类型；后者既保留精确类型、
+又照样检查对 `Tone` 的穷尽。
+
+**二、顺出一个死分支。** `activity-disclosure` 里：
+
+```
+line && tone === "neutral" ? styles.markNeutral : MARK_TONE[tone]
+```
+
+两个分支是**同一个值**。查 `git log -L` 查出了来历：最早是
+`shell === "line" && tone === "neutral" ? "text-fg-faint" : TONE_CLASS[tone]` ——
+一行里的中性字形比卡片里的更淡，这个区分是真的。后来 `75aea47d` 认为
+「最淡的那档把字形的辨识度花在了没有意义的地方」，把 `fg-faint` 提到 `fg-muted`，
+于是它跟默认值相等了，分支就此变成空转，而**没人删它**。
+决定是对的、注释是对的，只有那个分支是残留。注释搬到 `toneInk.neutral` 旁边 ——
+它现在是那个决定真正落地的地方，也是防止有人「好心」把它改回 faint 的地方。
+
+**三、17 个文件里的同名重复改指 `vocab`**（`truncate` ×4、`ink` ×3、`faint` ×2、
+`column` ×3、`hold`/`grow`/`pretty`/`line`/`muted`/`wrapText`/`info` 各一），
+并且 `viewStyles.info` 消失后，`vocab.info` 补回来了 —— 我上一轮按 YAGNI 把它删了，
+这一轮 `toneInk` 和 `ansi-text` 都要它，证据反过来了。
+
+### TypeScript 抓到我一个错
+
+机械替换把 `divider.tsx` / `tag.tsx` / `well.tsx` 里的 `accent` / `muted` / `soft` 也删了 ——
+但那三个不是「换个拼法」，它们是 **union 索引表里的键**：`styles[variant]`，
+`variant: "accent" | "neutral"`。名字在那里不是对机制的重述，**就是那个 prop 的值**。
+删掉一个成员，索引就断了，TS 立刻报 TS7053。已还原。
+
+**这补上了判据的第三种情况**：本地名如果是「一个 union 用来索引的键」，
+它既不是重复也不是命名 —— 它是**契约的一半**。
+
+### 顺带发现一个潜在缺口（未改，零实例）
+
+`TextButton` 的 `TONE` 表里，`muted`/`faint`/`negative` 三档都回应 hover
+（前两个提亮到 `fg`，第三个降到 opacity 0.8），**`accent` 什么都不回应**。
+原因在文档注释里其实写了：`link` 形状「mono、accent、hover 时下划线」——
+回应 hover 的是**形状**，不是 tone。三个 `tone="accent"` 调用处全都是 `shape="link"`，
+所以缺口是潜在的、零实例。指向 `vocab.accent` 之后这个不对称至少看得见了；
+没有为它编一个 hover 值 —— 那会是在猜。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **656 / 656，0 unexpected，0 flaky —— 零像素位移** |
+| 守卫 | 17 项全绿 |
+| 单测 | 1781 项通过 |
+| CSS raw | 135 KB → **134.3 KB**（预算 142.6 KB） |
+
+### 最值得记的一件事：这两轮的重复，字节上几乎不花钱
+
+481 处引用收敛到一个 owner，CSS 只掉了 **~0.7 KB**。
+
+原因是 StyleX 的原子是**按内容寻址**的 —— `{ color: var(--color-negative) }`
+无论在几个文件里声明，编译出来都是同一个类、同一条规则。所以那四份墨色阶梯副本、
+那 21 个 × 四份的档名，**在产物里本来就只有一份**。
+
+这件事的含义比省下的字节重要得多：**这个缺陷对仓库现有的每一种自动测量都是隐形的** ——
+体积预算看不见它（字节一样）、17 个守卫看不见它（四份副本各自合法）、
+1781 个单测看不见它（行为一样）、656 张 golden 看不见它（像素一样）。
+它只对**读代码的人**可见：下一个人要在四个地方找「失败是什么颜色」，
+并且有四次机会给出第四个答案。
+
+所以这类缺陷只能靠**为它专门写的扫描器**找出来，而不是靠已有的门禁跑绿。
+两轮各写了一个（同名不同值的碰撞扫描、vocab 档的重拼扫描），都在 `/tmp` 里跑完就扔了 ——
+下一轮该判断的是：它们中哪一个值得变成第 18 个 `check:*`。
+判据是它会不会误伤 —— 而这两轮已经量出误伤面有多大：
+私有 `styles` 块里 112 个「同名不同值」几乎全是合法的局部命名，
+所以能进守卫的只可能是**导出的共享词汇模块之间**的碰撞，不是全局同名检查。

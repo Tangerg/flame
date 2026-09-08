@@ -7,14 +7,13 @@ import { useRuntimeServiceStatus } from "@/plugins/builtin/runtime/public/servic
 import { CONNECTION_PANE } from "@/plugins/builtin/settings/kit/panes";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
 import { Slot } from "@/plugins/host/Slot";
-import { SystemMessage } from "@/ui";
+import { SystemMessage, vocab } from "@/ui";
 import { JumpToBottomButton } from "./JumpToBottomButton";
 import { space } from "@/styles/tokens.stylex";
 import { readingColumn as rc } from "./readingColumn";
 
 const fc = stylex.create({
   notice: { marginBottom: space.s2 },
-  pretty: { textWrap: "pretty" },
   // The tray's own top pixel appears only when something is IN it — a `:has()` on itself,
   // which is a condition on this element and so does have a StyleX form.
   tray: {
@@ -52,7 +51,7 @@ export function RuntimeConnectionNotice() {
             icon={unavailable ? "alert" : "loop"}
             role={unavailable ? "alert" : "status"}
             aria-live={unavailable ? "assertive" : "polite"}
-            className={stylex.props(fc.pretty).className}
+            className={stylex.props(vocab.pretty).className}
             action={
               unavailable
                 ? {

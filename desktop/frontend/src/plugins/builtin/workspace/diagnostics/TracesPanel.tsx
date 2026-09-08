@@ -6,7 +6,7 @@ import { useTelemetryStore } from "@/lib/observability/stores";
 import { Fragment, useCallback, useId, useMemo, useState } from "react";
 import { useT } from "@/lib/i18n";
 import { color, space, surface, type as typeStep } from "@/styles/tokens.stylex";
-import { Icon, Pressable, Well, toneInk } from "@/ui";
+import { Icon, Pressable, toneInk, vocab, Well } from "@/ui";
 import { Cell, Empty, Row, VirtualList } from "./primitives";
 
 export function TracesPanel() {
@@ -71,11 +71,8 @@ const tr = stylex.create({
   chevronBox: { display: "flex", flexShrink: 0, justifyContent: "center" },
   chevron: { color: color.fgFaint, transitionProperty: "rotate" },
   chevronShut: { rotate: "-90deg" },
-  truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   start: { textAlign: "left" },
-  hold: { flexShrink: 0 },
   numeric: { textAlign: "right", fontVariantNumeric: "tabular-nums" },
-  faint: { color: color.fgFaint },
   error: { color: color.negative },
   detail: { marginInline: space.s1, marginBottom: space.s1_5, display: "grid", gap: space.s2 },
   field: { display: "grid", gap: space.s0_5 },
@@ -86,7 +83,6 @@ const tr = stylex.create({
     rowGap: space.s0_5,
   },
   attrValue: { wordBreak: "break-all", color: color.fgMuted },
-  wrapText: { whiteSpace: "pre-wrap", overflowWrap: "break-word" },
   // A trace id or an error message is something the reader copies out, so it opts back in to
   // selection that the shell turns off everywhere else.
   selectable: { userSelect: "text" },
@@ -128,14 +124,16 @@ function SpanRowItem({
             className={stylex.props(tr.chevron, !open && tr.chevronShut).className}
           />
         </span>
-        <span {...stylex.props(spanColumns.name, tr.truncate, tr.start)}>{span.name}</span>
-        <span {...stylex.props(spanColumns.duration, tr.hold, tr.numeric)}>
+        <span {...stylex.props(spanColumns.name, vocab.truncate, tr.start)}>{span.name}</span>
+        <span {...stylex.props(spanColumns.duration, vocab.hold, tr.numeric)}>
           {span.durationMillis.toFixed(1)}ms
         </span>
-        <span {...stylex.props(spanColumns.status, tr.hold, tr.start)}>
+        <span {...stylex.props(spanColumns.status, vocab.hold, tr.start)}>
           <StatusTag status={span.status} />
         </span>
-        <span {...stylex.props(spanColumns.trace, tr.hold, tr.truncate, tr.start, tr.faint)}>
+        <span
+          {...stylex.props(spanColumns.trace, vocab.hold, vocab.truncate, tr.start, vocab.faint)}
+        >
           {span.traceId.slice(0, 12)}
         </span>
       </Pressable>
@@ -162,7 +160,9 @@ function SpanDetail({ span }: { span: SpanRow }) {
     <Well as="div" className={stylex.props(tr.detail).className}>
       {span.statusMessage && (
         <Field label="error">
-          <span {...stylex.props(tr.wrapText, tr.error, tr.selectable)}>{span.statusMessage}</span>
+          <span {...stylex.props(vocab.wrapText, tr.error, tr.selectable)}>
+            {span.statusMessage}
+          </span>
         </Field>
       )}
       <KeyValues rows={meta} />
@@ -178,7 +178,7 @@ function SpanDetail({ span }: { span: SpanRow }) {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div {...stylex.props(tr.field)}>
-      <div {...stylex.props(tr.faint, typeStep.uiXs)}>{label}</div>
+      <div {...stylex.props(vocab.faint, typeStep.uiXs)}>{label}</div>
       {children}
     </div>
   );
@@ -189,7 +189,7 @@ function KeyValues({ rows }: { rows: [string, string][] }) {
     <div {...stylex.props(tr.attrGrid)}>
       {rows.map(([k, v]) => (
         <Fragment key={k}>
-          <div {...stylex.props(tr.faint)}>{k}</div>
+          <div {...stylex.props(vocab.faint)}>{k}</div>
           <div {...stylex.props(tr.attrValue, tr.selectable)}>{v}</div>
         </Fragment>
       ))}

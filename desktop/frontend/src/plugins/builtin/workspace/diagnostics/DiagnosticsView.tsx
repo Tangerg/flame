@@ -3,7 +3,7 @@ import type { Tone } from "@/lib/tone";
 import type { MetricRow } from "@/lib/observability/stores";
 import { useTelemetryStore } from "@/lib/observability/stores";
 import { useMemo, useState } from "react";
-import { Button, Segmented, toneInk } from "@/ui";
+import { Button, Segmented, toneInk, vocab } from "@/ui";
 import { Cell, Empty, Row, VirtualList } from "./primitives";
 import { TracesPanel } from "./TracesPanel";
 import { useT } from "@/lib/i18n";
@@ -38,9 +38,6 @@ const d = stylex.create({
   subtitle: { marginTop: space.s0_5, color: color.fgMuted },
   controls: { display: "flex", alignItems: "center", gap: space.s2 },
   logRow: { minHeight: "calc(var(--spacing) * 7)" },
-  truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  faint: { color: color.fgFaint },
-  muted: { color: color.fgMuted },
   mono: { fontFamily: "var(--font-mono)" },
   metricsScroller: {
     display: "grid",
@@ -127,10 +124,10 @@ function LogsPanel() {
               <span {...stylex.props(toneInk[severityTone(l.severity)])}>{l.severity}</span>
             </Cell>
             <Cell styles={logColumns.message}>
-              <span {...stylex.props(d.truncate)}>{l.body}</span>
+              <span {...stylex.props(vocab.truncate)}>{l.body}</span>
             </Cell>
             <Cell styles={logColumns.span}>
-              <span {...stylex.props(d.faint)}>{l.spanId ? l.spanId.slice(0, 8) : "—"}</span>
+              <span {...stylex.props(vocab.faint)}>{l.spanId ? l.spanId.slice(0, 8) : "—"}</span>
             </Cell>
           </Row>
         );
@@ -209,7 +206,7 @@ function InstrumentSection({ group }: { group: NameGroup }) {
         )}
       </header>
       <table {...stylex.props(typeStep.uiMd)}>
-        <thead {...stylex.props(d.faint, typeStep.uiXs)}>
+        <thead {...stylex.props(vocab.faint, typeStep.uiXs)}>
           <tr>
             <th {...stylex.props(d.headCell)}>attrs</th>
             <th {...stylex.props(d.headCell, d.figures)}>count</th>
@@ -228,7 +225,7 @@ function InstrumentSection({ group }: { group: NameGroup }) {
         <tbody {...stylex.props(d.mono)}>
           {group.rows.map((r) => (
             <tr key={r.id} {...stylex.props(d.metricRow)}>
-              <td {...stylex.props(d.cell, d.muted)}>{formatAttrs(r.attrs)}</td>
+              <td {...stylex.props(d.cell, vocab.muted)}>{formatAttrs(r.attrs)}</td>
               <td {...stylex.props(d.cell, d.numeric)}>{r.count}</td>
               {group.kind === "histogram" && (
                 <>

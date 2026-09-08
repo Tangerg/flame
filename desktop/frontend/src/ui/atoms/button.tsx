@@ -15,6 +15,7 @@ import {
   weight,
 } from "@/styles/tokens.stylex";
 import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
+import { toneInk } from "./tone-ink";
 
 /**
  * The product's one button, in the shapes and inks its call sites proved it needed.
@@ -72,11 +73,6 @@ const styles = stylex.create({
     transitionDuration: motion.fast,
     transitionTimingFunction: "var(--ease-out)",
   },
-
-  toneNegative: { color: color.negative },
-  toneWarning: { color: color.warning },
-  toneAccent: { color: color.accent },
-  toneSuccess: { color: color.success },
 
   xs: { height: "var(--control-height-xs)", borderRadius: radius.button, paddingInline: "7px" },
   sm: { height: "var(--control-height-sm)", borderRadius: radius.button, paddingInline: "9px" },
@@ -313,13 +309,6 @@ const VARIANT = {
   link: [styles.bare, styles.link],
 } as const;
 
-const TONE = {
-  negative: styles.toneNegative,
-  warning: styles.toneWarning,
-  accent: styles.toneAccent,
-  success: styles.toneSuccess,
-} as const;
-
 const TONAL = { negative: styles.tonalNegative, warning: styles.tonalWarning } as const;
 const WASH = { negative: styles.washNegative, warning: styles.washWarning } as const;
 
@@ -390,7 +379,7 @@ export function dress({
   const pressStep = press ?? pressFor({ variant, chip, shape, round });
   return [
     styles.base,
-    tone && TONE[tone],
+    tone && toneInk[tone],
     SIZE[size],
     pressStep === "scale" && styles.press,
     pressStep === "nudge" && styles.nudge,

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/classNames";
 import { color, motion, radius, space, surface, type } from "@/styles/tokens.stylex";
 import { ButtonPrimitive, type ButtonPrimitiveProps } from "@/ui/primitives";
+import { vocab } from "./vocabulary";
 
 /**
  * Text that acts, in the three shapes the product actually uses.
@@ -32,7 +33,6 @@ const styles = stylex.create({
   },
   muted: { color: { default: color.fgMuted, ":hover": color.fg } },
   faint: { color: { default: color.fgFaint, ":hover": color.fg } },
-  accent: { color: color.accent },
   negative: { color: color.negative, opacity: { default: null, ":hover": 0.8 } },
   inline: {},
   row: {
@@ -51,7 +51,7 @@ const styles = stylex.create({
 const TONE = {
   muted: styles.muted,
   faint: styles.faint,
-  accent: styles.accent,
+  accent: vocab.accent,
   negative: styles.negative,
 } as const;
 

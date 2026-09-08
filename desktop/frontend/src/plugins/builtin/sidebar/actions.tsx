@@ -6,7 +6,7 @@ import {
   openSessionSearch,
 } from "@/plugins/builtin/command/session-search/public/actions";
 import { AgentRow } from "@/ui/agent";
-import { Kbd } from "@/ui";
+import { Kbd, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import {
   contributeWorkIndexItem,
@@ -18,7 +18,6 @@ import { space } from "@/styles/tokens.stylex";
 
 const sb = stylex.create({
   stack: { display: "flex", flexDirection: "column", gap: space.s2 },
-  column: { display: "flex", flexDirection: "column" },
 });
 
 export function SidebarActions() {
@@ -40,7 +39,7 @@ export function SidebarActions() {
       >
         {t("sessionSearch.placeholder")}
       </AgentRow>
-      <div {...stylex.props(sb.column)}>
+      <div {...stylex.props(vocab.column)}>
         <AgentRow icon="edit" disabled={!actions.canCreateSession} onClick={actions.createSession}>
           {t("sidebar.action.newSession")}
         </AgentRow>

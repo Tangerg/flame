@@ -43,4 +43,5 @@ export const vocab = stylex.create({
   success: { color: color.success },
   warning: { color: color.warning },
   negative: { color: color.negative },
+  info: { color: color.info },
 });

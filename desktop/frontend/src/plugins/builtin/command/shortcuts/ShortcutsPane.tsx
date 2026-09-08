@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useMemo, useState } from "react";
-import { Kbd, SearchField } from "@/ui";
+import { Kbd, SearchField, vocab } from "@/ui";
 import { useKeymap } from "@/plugins/host/keymap";
 import { useT } from "@/lib/i18n";
 import { splitCombo } from "@/lib/combo";
@@ -37,7 +37,6 @@ const sc = stylex.create({
   // A fixed measure: the key column must not widen because one shortcut has three chords.
   keyColumn: { width: "160px", textAlign: "right" },
   right: { textAlign: "right" },
-  ink: { color: color.fg },
   row: {
     backgroundColor: { default: null, ":hover": surface.hover },
     transitionProperty: "background-color",
@@ -84,7 +83,7 @@ export function ShortcutsPane() {
             <tbody>
               {filtered.map((s) => (
                 <tr key={s.key} {...stylex.props(sc.row)}>
-                  <td {...stylex.props(sc.cell, sc.ink)}>{s.label}</td>
+                  <td {...stylex.props(sc.cell, vocab.ink)}>{s.label}</td>
                   <td {...stylex.props(sc.cell, sc.right)}>
                     <span {...stylex.props(sc.keys)}>
                       {splitCombo(s.key).map((part, i) => (

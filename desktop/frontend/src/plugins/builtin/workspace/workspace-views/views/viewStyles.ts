@@ -86,7 +86,6 @@ export const viewStyles = stylex.create({
   /** The interpunct between two facts in a header: a glyph-only box, so no leading. */
   dotSep: { lineHeight: 1, color: color.fgFaint },
   subCaptionMuted: { marginTop: space.s0_5, color: color.fgMuted },
-  info: { color: color.info },
 
   /** A section's heading line, and the rhythm between it and the entries under it. */
   sectionHead: { marginBottom: space.s1_5, display: "flex", alignItems: "baseline", gap: space.s2 },

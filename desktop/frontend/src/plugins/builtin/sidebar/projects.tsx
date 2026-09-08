@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
-import { DataView, IconButton, SectionLabel } from "@/ui";
+import { DataView, IconButton, SectionLabel, vocab } from "@/ui";
 import { AgentWorkIndexGroupList } from "@/ui/agent";
 import { ProjectRow } from "./ui/ProjectRow";
 import { SessionList } from "./ui/SessionList";
@@ -19,7 +19,6 @@ import { definePlugin } from "@/plugins/sdk";
 import { space } from "@/styles/tokens.stylex";
 
 const pj = stylex.create({
-  column: { display: "flex", flexDirection: "column" },
   label: { paddingInline: space.s2, paddingTop: 0, paddingBottom: space.s2 },
 });
 
@@ -39,7 +38,7 @@ function ProjectGroupNode({
   const [open, setOpen] = useState(true);
 
   return (
-    <div {...stylex.props(pj.column)}>
+    <div {...stylex.props(vocab.column)}>
       <ProjectRow
         project={group.project}
         active={group.project.id === activeCwd && !open}

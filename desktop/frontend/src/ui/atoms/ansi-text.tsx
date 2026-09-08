@@ -1,31 +1,30 @@
 import * as stylex from "@stylexjs/stylex";
+import type { StyleXStyles } from "@stylexjs/stylex";
 import { type AnsiSpan, type AnsiTone, parseAnsi } from "@/lib/ansi";
-import { color } from "@/styles/tokens.stylex";
+import { toneInk } from "./tone-ink";
+import { vocab } from "./vocabulary";
 
-/** What an SGR colour means HERE. The parser answers in tones so this stays the one place a
- *  tone becomes a token — two surfaces render command output, and a second copy of this map is
- *  a second answer to "what colour is a failure". */
 const styles = stylex.create({
-  negative: { color: color.negative },
-  success: { color: color.success },
-  warning: { color: color.warning },
-  info: { color: color.info },
-  accent: { color: color.accent },
-  muted: { color: color.fgFaint },
   bold: { fontWeight: 600 },
   dim: { opacity: 0.7 },
   underline: { textDecorationLine: "underline" },
 });
 
-/** Exhaustive against the tone union: a tone added to the parser and not answered here is a
- *  compile error, not a span that quietly renders in the surrounding ink. */
-const TONE: Record<AnsiTone, (typeof styles)[keyof typeof styles]> = {
-  negative: styles.negative,
-  success: styles.success,
-  warning: styles.warning,
-  info: styles.info,
-  accent: styles.accent,
-  muted: styles.muted,
+/**
+ * What an SGR colour means HERE. Exhaustive against the tone union: a tone added to the parser
+ * and not answered here is a compile error, not a span that quietly renders in the ink around it.
+ *
+ * Five of the six are the product's own tones, so they point at `toneInk` rather than restating
+ * it. `muted` is the exception and is NOT `Tone.neutral`: ANSI's dim is "below the text around
+ * me", a step under muted, which is why it reads from `vocab` directly.
+ */
+const TONE: Record<AnsiTone, StyleXStyles> = {
+  negative: toneInk.negative,
+  success: toneInk.success,
+  warning: toneInk.warning,
+  info: toneInk.info,
+  accent: toneInk.accent,
+  muted: vocab.faint,
 };
 
 function spanStyle(span: AnsiSpan) {

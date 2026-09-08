@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { AgentRow } from "@/ui/agent";
-import { Icon, IconButton } from "@/ui";
+import { Icon, IconButton, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import type { WorkProject } from "@/plugins/builtin/navigation/public/workIndex";
 import { color, space, type as typeStep } from "@/styles/tokens.stylex";
@@ -8,7 +8,6 @@ import { color, space, type as typeStep } from "@/styles/tokens.stylex";
 const pr = stylex.create({
   count: { fontFamily: "var(--font-mono)", lineHeight: 1, color: color.fgFaint },
   line: { display: "inline-flex", minWidth: 0, alignItems: "center", gap: space.s1_5 },
-  truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   warn: { flexShrink: 0, color: color.warning },
 });
 
@@ -51,7 +50,7 @@ export function ProjectRow({
       }
     >
       <span {...stylex.props(pr.line)}>
-        <span {...stylex.props(pr.truncate)}>{project.name}</span>
+        <span {...stylex.props(vocab.truncate)}>{project.name}</span>
         {project.cwdMissing && (
           <Icon
             name="alert"

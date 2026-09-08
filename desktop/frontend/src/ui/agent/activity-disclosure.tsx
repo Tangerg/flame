@@ -8,6 +8,7 @@ import { Collapsible } from "@/ui/atoms/collapsible";
 import { Pressable } from "@/ui/atoms/pressable";
 import { ProgressBar } from "@/ui/atoms/progress-bar";
 import { Icon, type IconName } from "@/ui/icons";
+import { toneInk } from "@/ui/atoms/tone-ink";
 
 type ActivityTone = "neutral" | "warning" | "negative";
 
@@ -59,9 +60,6 @@ const styles = stylex.create({
   markCard: { width: space.s5 },
   // A framed mark is a plate the glyph sits on, so it is taller and takes a corner and a wash.
   markFramed: { height: space.s5, borderRadius: radius.sm },
-  markNeutral: { color: color.fgMuted },
-  markWarning: { color: color.warning },
-  markNegative: { color: color.negative },
   trayNeutral: { backgroundColor: surface.surface2 },
   trayWarning: { backgroundColor: surface.warningBadge },
   trayNegative: { backgroundColor: surface.negativeBadge },
@@ -144,12 +142,6 @@ const styles = stylex.create({
   bodyLine: { paddingRight: 0 },
   bodyCard: { paddingInline: space.s3 },
 });
-
-const MARK_TONE = {
-  neutral: styles.markNeutral,
-  warning: styles.markWarning,
-  negative: styles.markNegative,
-} as const;
 
 const TRAY_TONE = {
   neutral: styles.trayNeutral,
@@ -255,9 +247,7 @@ export function AgentActivityDisclosure({
               styles.mark,
               line ? styles.markLine : styles.markCard,
               framed && [styles.markFramed, TRAY_TONE[tone]],
-              // Identity, not decoration: one glyph per tool is the fastest read on the row,
-              // and the faintest tone spends that distinction on nothing.
-              line && tone === "neutral" ? styles.markNeutral : MARK_TONE[tone],
+              toneInk[tone],
             )}
           >
             {leading ?? (icon ? <Icon name={icon} size="xs" /> : null)}
