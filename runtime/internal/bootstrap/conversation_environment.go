@@ -1,7 +1,7 @@
 package bootstrap
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
@@ -12,14 +12,12 @@ type conversationEnvironment struct {
 }
 
 func buildConversationEnvironment(store runs.ConversationStore, compactions runs.ConversationCompactionStore) (conversationEnvironment, error) {
-	if store == nil {
-		return conversationEnvironment{}, errors.New("runtime: ConversationStore is required")
-	}
-	if compactions == nil {
-		return conversationEnvironment{}, errors.New("runtime: ConversationCompactions is required")
+	history, err := runs.NewConversationHistory(store, compactions)
+	if err != nil {
+		return conversationEnvironment{}, fmt.Errorf("runtime: build conversation history: %w", err)
 	}
 	return conversationEnvironment{
 		store:    store,
-		messages: runs.NewConversationHistory(store, compactions),
+		messages: history,
 	}, nil
 }

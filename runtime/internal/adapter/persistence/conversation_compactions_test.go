@@ -33,7 +33,10 @@ func newCompactionFixture(t *testing.T) (*sql.DB, *sqlite.MessageStore, *sqlite.
 			return sqlite.RunInTx(ctx, db, fn)
 		},
 	)
-	service := runsapp.NewConversationHistory(messages, compactions)
+	service, err := runsapp.NewConversationHistory(messages, compactions)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ses := testsupport.MustRestoreSession(session.Snapshot{ID: "ses_long", Title: "long", Workspace: testsupport.MustWorkspace("/work")})
 	if err := sqlite.NewSessionStore(db).Insert(t.Context(), ses); err != nil {
 		t.Fatal(err)

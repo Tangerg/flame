@@ -192,13 +192,21 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 	ints := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
 	plan := sqlite.NewPlanStore(db)
 	approvals := sqlite.NewApprovalRuleStore(db)
+	messages := sqlite.NewMessageStore(db)
+	compactions := persistence.NewConversationCompactions(messages, runs, func(ctx context.Context, fn func(context.Context) error) error {
+		return sqlite.RunInTx(ctx, db, fn)
+	})
+	history, err := runsapp.NewConversationHistory(messages, compactions)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ss := sessionStores{
 		sessions:    sqlite.NewSessionStore(db),
 		transcript:  sqlite.NewTranscriptStore(db),
 		interrupts:  ints,
 		runs:        runs,
 		checkpoints: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
-		history:     runsapp.NewConversationHistory(sqlite.NewMessageStore(db), nil),
+		history:     history,
 		plan:        plan,
 		approvals:   approvals,
 		modes:       sqlite.NewPermissionModeStore(db),
