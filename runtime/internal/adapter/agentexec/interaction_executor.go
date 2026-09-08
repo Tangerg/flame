@@ -215,9 +215,6 @@ func (i *InteractionExecutor) StageRoot(
 	ctx context.Context,
 	start runs.RootExecutionStart,
 ) (runs.ExecutorRef, error) {
-	if i == nil {
-		return runs.ExecutorRef{}, errors.New("agentexec: Interaction executor is nil")
-	}
 	start = start.Clone()
 	if _, err := resourceid.ParseSession(start.SessionID); err != nil {
 		return runs.ExecutorRef{}, fmt.Errorf("agentexec: Interaction: %w", err)
@@ -371,9 +368,6 @@ func (i *InteractionExecutor) interactionConfiguration(
 // only shrink; resource release is joined by AwaitShutdown under its caller's
 // deadline so an interrupted close remains retryable.
 func (i *InteractionExecutor) BeginShutdown() {
-	if i == nil {
-		return
-	}
 	i.sessions.closeAdmission()
 }
 
@@ -383,9 +377,6 @@ func (i *InteractionExecutor) BeginShutdown() {
 func (i *InteractionExecutor) AwaitShutdown(ctx context.Context) error {
 	if ctx == nil {
 		return errors.New("agentexec: Interaction shutdown context is required")
-	}
-	if i == nil {
-		return nil
 	}
 	i.BeginShutdown()
 	targets := i.sessions.snapshot()

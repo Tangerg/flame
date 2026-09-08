@@ -133,9 +133,6 @@ type Scope struct {
 // OnDispose binds a plugin-owned side effect to rollback, unload, and reload.
 // Cleanups run in reverse registration order.
 func (s *Scope) OnDispose(cleanup func() error) error {
-	if s == nil || s.registry == nil {
-		return errors.New("extensions: plugin scope is required")
-	}
 	if cleanup == nil {
 		return errors.New("extensions: cleanup is required")
 	}
@@ -197,9 +194,6 @@ func disposeSafely(disposable Disposable) (err error) {
 			err = fmt.Errorf("plugin cleanup panicked: %v", recovered)
 		}
 	}()
-	if disposable == nil {
-		return nil
-	}
 	return disposable.Dispose()
 }
 

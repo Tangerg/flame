@@ -71,6 +71,8 @@ Oolong owns terminal mode, input decoding, cell measurement, and low-level editi
 
 Long-lived terminal features own their cancellation and settlement locally. The application root coordinates them but does not mirror every feature field or become a general service bag.
 
+Optional terminal state is asked about once, where the choice is made. A dialog, a draft writer or a pane that has not been opened is absent from the application state, and the code that reads it says so; the type itself assumes it exists rather than returning a zero answer that reads the same as "open, but empty". A presentation block that cannot render fails where it renders instead of drawing nothing.
+
 ## Local authoring
 
 Workbench persistence contains only CLI-authored facts. The workbench aggregate owns record names, the strict current shape, and recovery semantics; its narrow persistence port carries opaque bytes while the filesystem adapter owns rooted paths, regular-file checks, and atomic replacement. Records fail closed on unknown, malformed, oversized, truncated, or trailing content. Queue and replay are CLI aggregates with explicit identities and legal transitions; terminal code commands them instead of mutating slices and flags independently.

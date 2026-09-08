@@ -2,7 +2,6 @@ package agentexec
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -18,9 +17,6 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	ctx context.Context,
 	continuation runs.WaitingContinuation,
 ) (bool, error) {
-	if i == nil {
-		return false, errors.New("agentexec: Interaction executor is nil")
-	}
 	continuation = continuation.Clone()
 	if err := continuation.Validate(); err != nil {
 		return false, nil
