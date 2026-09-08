@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { AnimatePresence, motion } from "motion/react";
 import { glyphSwapTransition } from "@/lib/motion";
 import { AgentRow, AgentWorkIndexFooter } from "@/ui/agent";
@@ -8,6 +9,12 @@ import { isLightTheme, toggleThemeScheme } from "@/plugins/builtin/theme/public/
 import { Slot } from "@/plugins/host/Slot";
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
 import { useAppearance } from "@/plugins/builtin/theme/public/appearance";
+import { space } from "@/styles/tokens.stylex";
+
+const sf = stylex.create({
+  centre: { display: "grid", placeItems: "center" },
+  statusLine: { display: "flex", alignItems: "center", gap: space.s0_5 },
+});
 
 function ThemeToggle() {
   const t = useT();
@@ -24,7 +31,7 @@ function ThemeToggle() {
       <AnimatePresence initial={false} mode="popLayout">
         <motion.span
           key={isLight ? "moon" : "sun"}
-          className="grid place-items-center"
+          className={stylex.props(sf.centre).className}
           initial={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
           animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
           exit={{ opacity: 0, scale: 0.25, filter: "blur(4px)" }}
@@ -46,7 +53,7 @@ function SidebarFooter() {
       <AgentRow icon="settings" flex="fill" onClick={actions.openSettings}>
         {t("sidebar.action.settings")}
       </AgentRow>
-      <Slot name="sidebar.footer.status" className="flex items-center gap-0.5" />
+      <Slot name="sidebar.footer.status" className={stylex.props(sf.statusLine).className} />
       <ThemeToggle />
     </AgentWorkIndexFooter>
   );

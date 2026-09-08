@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type {
   FileChangeRowViewModel,
   FileChangesViewModel,
@@ -8,6 +9,13 @@ import { AgentRow } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import { splitFilePath } from "@/lib/path";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./viewStyles";
+
+const fc = stylex.create({
+  pad: { paddingInline: space.s1_5 },
+  label: { paddingInline: space.s2, paddingBlock: space.s2 },
+});
 
 interface Props {
   view: FileChangesViewModel;
@@ -18,9 +26,9 @@ export const FilesChanged = memo(function FilesChanged({ view, onSelect }: Props
   const t = useT();
 
   return (
-    <div className="px-1.5">
+    <div {...stylex.props(fc.pad)}>
       <SectionLabel
-        className="px-2 py-2"
+        className={stylex.props(fc.label).className}
         trailing={<DiffStat added={view.totalAdded} removed={view.totalRemoved} />}
       >
         {t("files.changed", { count: view.fileCount })}
@@ -50,7 +58,7 @@ const FileRow = memo(function FileRow({
       onClick={() => onSelect(row.path)}
       detail={directory || undefined}
       trailing={
-        <span className="flex items-center gap-2 text-ui-xs">
+        <span {...stylex.props(vs.line, typeStep.uiXs)}>
           <span className={cn("text-ui-2xs font-semibold", row.tag.className)}>
             {row.tag.letter}
           </span>
@@ -61,7 +69,7 @@ const FileRow = memo(function FileRow({
           )}
         </span>
       }
-      className="font-mono"
+      className={stylex.props(vs.mono).className}
     >
       {name}
     </AgentRow>

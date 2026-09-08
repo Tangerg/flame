@@ -1,9 +1,25 @@
+import * as stylex from "@stylexjs/stylex";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { useT } from "@/lib/i18n";
 import { EmptyState, Icon, SearchOverlay } from "@/ui";
 import { selectAgentSession, useAgentSessions } from "@/plugins/builtin/agent/public/session";
 import { matchSessions } from "../application/sessionMatches";
 import { useSessionSearchStore } from "../application/sessionSearchState";
+import { color, space, type as typeStep } from "@/styles/tokens.stylex";
+
+const cmd = stylex.create({
+  glyph: { flexShrink: 0, color: color.fgMuted },
+  glyphSlot: { height: "var(--icon-sm)", width: "var(--icon-sm)", flexShrink: 0 },
+  label: {
+    minWidth: 0,
+    flex: 1,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  keys: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1 },
+  stamp: { flexShrink: 0, color: color.fgFaint },
+});
 
 export function SessionSearch() {
   const t = useT();
@@ -34,9 +50,9 @@ export function SessionSearch() {
           },
           children: (
             <>
-              <Icon name="chat" size="sm" className="shrink-0 text-fg-muted" />
-              <span className="min-w-0 flex-1 truncate">{session.title}</span>
-              <span className="shrink-0 text-ui-sm text-fg-faint">
+              <Icon name="chat" size="sm" className={stylex.props(cmd.glyph).className} />
+              <span {...stylex.props(cmd.label)}>{session.title}</span>
+              <span {...stylex.props(cmd.stamp, typeStep.uiSm)}>
                 {formatRelative(session.time)}
               </span>
             </>

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useEffect, useId, useRef, useState } from "react";
 import { DataView, DiffStat, FilePath, Icon, Pressable, ScrollArea, Segmented } from "@/ui";
 import { AgentViewNavigatorToggle, AgentViewSplit, AgentWorkspaceView } from "@/ui/agent";
@@ -15,6 +16,18 @@ import {
   workspaceDiffFileHeader,
   useWorkspaceDiffView,
 } from "@/plugins/builtin/workspace/application/diffViewModel";
+import { color, space, type as typeStep } from "@/styles/tokens.stylex";
+import { codeStyles as cs, viewStyles as vs } from "./views/viewStyles";
+const df = stylex.create({
+  pathLine: { display: "flex", minWidth: 0, flex: 1, alignItems: "baseline", gap: space.s1_5 },
+  // The old path yields first and by a wide margin: what matters is where the file IS now.
+  oldPath: { flexShrink: 100, color: color.fgFaint },
+  newPath: { flexShrink: 1 },
+  glyph: { opacity: "var(--glyph-step)" },
+  sep: { marginInline: space.s2 },
+  scroller: { minWidth: 0, paddingInline: space.s2, paddingBottom: space.s2 },
+});
+
 const FILE_ANCHOR = "data-diff-file";
 
 function FileCard({
@@ -32,10 +45,7 @@ function FileCard({
   const panelId = useId();
   const header = workspaceDiffFileHeader(file);
   return (
-    <section
-      {...{ [FILE_ANCHOR]: file.path }}
-      className="mb-2 overflow-hidden rounded-md border-[0.5px] border-field first:mt-2 last:mb-0"
-    >
+    <section {...{ [FILE_ANCHOR]: file.path }} {...stylex.props(cs.fileCard)}>
       <Pressable
         type="button"
         data-chrome-focus=""
@@ -47,14 +57,18 @@ function FileCard({
           "text-left font-mono text-ui-sm text-fg-muted transition-colors hover:text-fg",
         )}
       >
-        <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
+        <span {...stylex.props(df.pathLine)}>
           {header.previousPath && (
             <>
-              <FilePath path={header.previousPath} className="shrink-[100] text-fg-faint" />
-              <Icon name="arrow-right" size="xs" className="shrink-0 opacity-[var(--glyph-step)]" />
+              <FilePath path={header.previousPath} className={stylex.props(df.oldPath).className} />
+              <Icon
+                name="arrow-right"
+                size="xs"
+                className={stylex.props(vs.hold, df.glyph).className}
+              />
             </>
           )}
-          <FilePath path={header.path} className="shrink" />
+          <FilePath path={header.path} className={stylex.props(df.newPath).className} />
         </span>
         <DiffStat added={header.added ?? 0} removed={header.removed ?? 0} />
         <Icon
@@ -69,7 +83,7 @@ function FileCard({
       {!collapsed && (
         <div id={panelId}>
           {file.binary ? (
-            <p className="m-0 px-3 py-2 font-mono text-ui-sm text-fg-faint">{t("diff.binary")}</p>
+            <p {...stylex.props(cs.note, typeStep.uiSm)}>{t("diff.binary")}</p>
           ) : (
             <DiffView rows={file.rows} layout={layout} path={file.path} />
           )}
@@ -115,7 +129,7 @@ export function DiffWorkspaceSurface() {
   const sub = view.subtext ? (
     <>
       <DiffStat added={view.subtext.added} removed={view.subtext.removed} />
-      <span className="mx-2">·</span>
+      <span {...stylex.props(df.sep)}>·</span>
       <span>{t("diff.fileCount", { count: view.subtext.fileCount })}</span>
     </>
   ) : undefined;
@@ -128,7 +142,7 @@ export function DiffWorkspaceSurface() {
         titleStrong
         sub={sub}
         actions={
-          <div className="flex items-center gap-2">
+          <div {...stylex.props(vs.line)}>
             <Segmented
               ariaLabel={t("diff.layoutAria")}
               value={layout}
@@ -170,7 +184,7 @@ export function DiffWorkspaceSurface() {
           ) : undefined
         }
       >
-        <ScrollArea ref={scrollRef} className="min-w-0 px-2 pb-2">
+        <ScrollArea ref={scrollRef} className={stylex.props(df.scroller).className}>
           <DataView
             items={gitEnabled ? files : []}
             isLoading={isLoading}
@@ -205,9 +219,7 @@ export function DiffWorkspaceSurface() {
                   />
                 ))}
                 {view.truncated && (
-                  <p className="m-0 px-3 py-2 font-mono text-ui-sm text-fg-faint">
-                    {t("diff.truncated")}
-                  </p>
+                  <p {...stylex.props(cs.note, typeStep.uiSm)}>{t("diff.truncated")}</p>
                 )}
               </>
             )}

@@ -1,7 +1,16 @@
+import * as stylex from "@stylexjs/stylex";
 import { AgentRow } from "@/ui/agent";
 import { Icon, IconButton } from "@/ui";
 import { useT } from "@/lib/i18n";
 import type { WorkProject } from "@/plugins/builtin/navigation/public/workIndex";
+import { color, space, type as typeStep } from "@/styles/tokens.stylex";
+
+const pr = stylex.create({
+  count: { fontFamily: "var(--font-mono)", lineHeight: 1, color: color.fgFaint },
+  line: { display: "inline-flex", minWidth: 0, alignItems: "center", gap: space.s1_5 },
+  truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  warn: { flexShrink: 0, color: color.warning },
+});
 
 export function ProjectRow({
   project,
@@ -28,7 +37,7 @@ export function ProjectRow({
       onClick={() => onToggle()}
       title={project.id}
       aria-expanded={open}
-      trailing={<span className="font-mono text-ui-sm leading-none text-fg-faint">{count}</span>}
+      trailing={<span {...stylex.props(pr.count, typeStep.uiSm)}>{count}</span>}
       action={
         <IconButton
           icon="plus"
@@ -41,13 +50,13 @@ export function ProjectRow({
         />
       }
     >
-      <span className="inline-flex min-w-0 items-center gap-1.5">
-        <span className="truncate">{project.name}</span>
+      <span {...stylex.props(pr.line)}>
+        <span {...stylex.props(pr.truncate)}>{project.name}</span>
         {project.cwdMissing && (
           <Icon
             name="alert"
             size="xs"
-            className="shrink-0 text-warning"
+            className={stylex.props(pr.warn).className}
             aria-label={t("project.row.missing")}
           />
         )}

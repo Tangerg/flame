@@ -1,15 +1,24 @@
+import * as stylex from "@stylexjs/stylex";
 import { AgentSurfaceHeader, AgentWorkIndexBody, AgentWorkIndexSection } from "@/ui/agent";
 import { useWorkIndexItems } from "@/plugins/builtin/navigation/public/workIndex";
 import { PluginBoundary } from "@/plugins/host/PluginBoundary";
 import { Slot } from "@/plugins/host/Slot";
+import { space } from "@/styles/tokens.stylex";
+
+const sp = stylex.create({
+  panel: { display: "flex", minHeight: 0, minWidth: 0, flex: 1, flexDirection: "column" },
+  // Takes the bar's spare width so the title beside it truncates rather than pushing.
+  spacer: { minWidth: space.s2, flex: 1 },
+  foot: { marginTop: "auto", flexShrink: 0 },
+});
 
 export function SidebarPanel() {
   const items = useWorkIndexItems();
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <div {...stylex.props(sp.panel)}>
       <AgentSurfaceHeader divider={false} corner="drawer">
-        <span className="min-w-2 flex-1" />
+        <span {...stylex.props(sp.spacer)} />
       </AgentSurfaceHeader>
 
       <AgentWorkIndexBody>
@@ -25,7 +34,7 @@ export function SidebarPanel() {
         })}
       </AgentWorkIndexBody>
 
-      <div className="mt-auto shrink-0">
+      <div {...stylex.props(sp.foot)}>
         <Slot name="sidebar.footer" />
       </div>
     </div>

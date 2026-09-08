@@ -1,9 +1,12 @@
+import * as stylex from "@stylexjs/stylex";
 import { memo } from "react";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import { hasAnsi } from "@/lib/ansi";
 import { AnsiText } from "@/ui";
 import type { WorkspaceCommandActivity } from "@/plugins/builtin/workspace/application/toolActivity";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { codeStyles as cs, viewStyles as vs } from "./viewStyles";
 
 export const CommandLog = memo(function CommandLog({
   commands,
@@ -14,7 +17,7 @@ export const CommandLog = memo(function CommandLog({
 }) {
   const t = useT();
   return (
-    <div className="flex flex-col gap-2.5 px-3 py-3 font-mono text-code leading-relaxed">
+    <div {...stylex.props(cs.sheet, cs.sheetInset, typeStep.code)}>
       {commands.map((c) => {
         const selected = c.id === selectedCommandId;
         return (
@@ -27,19 +30,19 @@ export const CommandLog = memo(function CommandLog({
               selected ? "bg-selected" : "bg-sunken",
             )}
           >
-            <div className="flex items-baseline gap-2">
-              <span className="shrink-0 text-fg-faint">$</span>
-              <span className="min-w-0 truncate text-fg" title={c.command}>
+            <div {...stylex.props(vs.entryPlain)}>
+              <span {...stylex.props(cs.prompt)}>$</span>
+              <span {...stylex.props(vs.min, vs.truncate, vs.ink)} title={c.command}>
                 {c.command}
               </span>
               {c.status === "running" && (
-                <span className="shrink-0 text-accent">{t("commandLog.running")}</span>
+                <span {...stylex.props(cs.running)}>{t("commandLog.running")}</span>
               )}
               {c.status === "failed" && (
-                <span className="shrink-0 text-negative">{t("commandLog.failed")}</span>
+                <span {...stylex.props(cs.failed)}>{t("commandLog.failed")}</span>
               )}
               {c.exitCode !== undefined && c.exitCode !== 0 && (
-                <span className="shrink-0 text-negative">
+                <span {...stylex.props(cs.failed)}>
                   {t("commandLog.exit", { code: c.exitCode })}
                 </span>
               )}
@@ -49,7 +52,7 @@ export const CommandLog = memo(function CommandLog({
                 and the failure they were marking is the hardest to find. Read as tone, which
                 the transcript's own output panel has always done. */}
             {c.output ? (
-              <pre className="mt-1.5 whitespace-pre-wrap break-words text-fg-muted">
+              <pre {...stylex.props(cs.output)}>
                 {hasAnsi(c.output) ? <AnsiText text={c.output} /> : c.output}
               </pre>
             ) : null}

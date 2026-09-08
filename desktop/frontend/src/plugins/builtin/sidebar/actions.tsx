@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { ariaKeyShortcuts, comboGlyph } from "@/lib/combo";
 import { MCP_SERVERS_PANE, SCHEDULES_PANE } from "@/plugins/builtin/settings/kit/panes";
 import {
@@ -13,6 +14,12 @@ import {
 } from "@/plugins/builtin/navigation/public/workIndex";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
 import { COMMAND, definePlugin, useExtensionByKey } from "@/plugins/sdk";
+import { space } from "@/styles/tokens.stylex";
+
+const sb = stylex.create({
+  stack: { display: "flex", flexDirection: "column", gap: space.s2 },
+  column: { display: "flex", flexDirection: "column" },
+});
 
 export function SidebarActions() {
   const t = useT();
@@ -22,7 +29,7 @@ export function SidebarActions() {
   const combo = useExtensionByKey(COMMAND, SESSION_SEARCH_COMMAND)?.combo;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div {...stylex.props(sb.stack)}>
       <AgentRow
         icon="search"
         onClick={openSessionSearch}
@@ -33,7 +40,7 @@ export function SidebarActions() {
       >
         {t("sessionSearch.placeholder")}
       </AgentRow>
-      <div className="flex flex-col">
+      <div {...stylex.props(sb.column)}>
         <AgentRow icon="edit" disabled={!actions.canCreateSession} onClick={actions.createSession}>
           {t("sidebar.action.newSession")}
         </AgentRow>

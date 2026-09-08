@@ -1,10 +1,31 @@
+import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { AgentRow } from "@/ui/agent";
 import { ConfirmDialog, ContextMenu, Icon, TextField } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { formatRelative } from "@/lib/i18n/relativeTime";
-import { cn } from "@/lib/classNames";
 import type { WorkSession } from "@/plugins/builtin/navigation/public/workIndex";
+import { color, corner, space, type as typeStep } from "@/styles/tokens.stylex";
+
+const sr = stylex.create({
+  // The rename field's own box; the row is the containing block for it.
+  host: { position: "relative", userSelect: "none" },
+  grow: { flex: 1 },
+  trailing: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1_5 },
+  favorite: { color: color.accent },
+  mark: { height: space.s1_5, width: space.s1_5, flexShrink: 0 },
+  // Shape, not only hue: hollow reads as "under way", solid as "your turn". The pulse is the
+  // running mark's other channel and reduced motion takes it away, which would otherwise leave
+  // two 6px dots told apart by colour alone — and the accent is the user's to pick.
+  markRunning: {
+    borderWidth: "1px",
+    borderStyle: "solid",
+    borderColor: color.accent,
+    animation: "var(--animate-pulse-dot)",
+  },
+  markWaiting: { backgroundColor: color.warning },
+  stamp: { lineHeight: 1, color: color.fgFaint, fontVariantNumeric: "tabular-nums" },
+});
 
 interface Props {
   session: WorkSession;
@@ -55,7 +76,7 @@ function SessionTitleField({
         if (e.key === "Enter") commit(e.currentTarget.value);
       }}
       onBlur={(e) => commit(e.currentTarget.value)}
-      className="flex-1"
+      className={stylex.props(sr.grow).className}
     />
   );
 }
@@ -85,7 +106,7 @@ export function SessionRow({
   const title = session.title.trim() || t("session.untitled");
 
   const row = (
-    <div className="relative select-none">
+    <div {...stylex.props(sr.host)}>
       <AgentRow
         onClick={() => onSelect(session.id)}
         data-chrome-focus=""
@@ -97,8 +118,10 @@ export function SessionRow({
         look="quiet"
         trailing={
           renaming ? undefined : (
-            <span className="flex shrink-0 items-center gap-1.5">
-              {session.favorite && <Icon name="star" size="xs" className="text-accent" />}
+            <span {...stylex.props(sr.trailing)}>
+              {session.favorite && (
+                <Icon name="star" size="xs" className={stylex.props(sr.favorite).className} />
+              )}
               {session.attention !== "none" ? (
                 // Shape, not only hue. The pulse is the running mark's other channel and
                 // `prefers-reduced-motion` takes it away, which would leave two 6px dots telling
@@ -107,20 +130,15 @@ export function SessionRow({
                 // way", solid as "your turn", which is also the right weight for the one that
                 // wants an answer.
                 <span
-                  className={cn(
-                    "h-1.5 w-1.5 shrink-0 rounded-full",
-                    session.attention === "running"
-                      ? "border border-accent animate-pulse-dot"
-                      : "bg-warning",
+                  {...stylex.props(
+                    sr.mark,
+                    corner.pill,
+                    session.attention === "running" ? sr.markRunning : sr.markWaiting,
                   )}
                   title={accessibleStatus}
                 />
               ) : (
-                showTime && (
-                  <span className="text-ui-2xs leading-none text-fg-faint tabular-nums">
-                    {when}
-                  </span>
-                )
+                showTime && <span {...stylex.props(sr.stamp, typeStep.ui2xs)}>{when}</span>
               )}
             </span>
           )

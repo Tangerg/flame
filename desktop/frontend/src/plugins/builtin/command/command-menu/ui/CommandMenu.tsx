@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import { splitCombo } from "@/lib/combo";
 import { EmptyState, Icon, Kbd, SearchOverlay } from "@/ui";
@@ -11,6 +12,21 @@ import {
 } from "@/plugins/builtin/workspace/public/navigation";
 import { matchCommands, type CommandChoice } from "../application/commandMatches";
 import { useCommandMenuStore } from "../application/commandMenuState";
+import { color, space } from "@/styles/tokens.stylex";
+
+const cmd = stylex.create({
+  glyph: { flexShrink: 0, color: color.fgMuted },
+  glyphSlot: { height: "var(--icon-sm)", width: "var(--icon-sm)", flexShrink: 0 },
+  label: {
+    minWidth: 0,
+    flex: 1,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  keys: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1 },
+  stamp: { flexShrink: 0, color: color.fgFaint },
+});
 
 export function CommandMenu() {
   const t = useT();
@@ -78,14 +94,14 @@ export function CommandMenu() {
                 <Icon
                   name={knownIconName(choice.icon)!}
                   size="sm"
-                  className="shrink-0 text-fg-muted"
+                  className={stylex.props(cmd.glyph).className}
                 />
               ) : (
-                <span aria-hidden className="size-[var(--icon-sm)] shrink-0" />
+                <span aria-hidden {...stylex.props(cmd.glyphSlot)} />
               )}
-              <span className="min-w-0 flex-1 truncate">{choice.label}</span>
+              <span {...stylex.props(cmd.label)}>{choice.label}</span>
               {choice.combo && (
-                <span className="flex shrink-0 items-center gap-1">
+                <span {...stylex.props(cmd.keys)}>
                   {splitCombo(choice.combo).map((part, index) => (
                     <Kbd key={index}>{part}</Kbd>
                   ))}

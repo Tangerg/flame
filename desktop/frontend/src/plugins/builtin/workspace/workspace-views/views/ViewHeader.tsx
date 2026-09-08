@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import type { IconName } from "@/ui";
 import { AgentSurfaceHeader } from "@/ui/agent";
@@ -5,6 +6,8 @@ import { Icon, IconButton } from "@/ui";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { useViewPlacement } from "@/plugins/builtin/workspace/public/viewPlacement";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./viewStyles";
 
 export interface ViewHeaderProps {
   icon: IconName;
@@ -40,10 +43,10 @@ function DockViewBar({
   if (identity === undefined && sub === undefined && actions === undefined) return null;
   return (
     <AgentSurfaceHeader>
-      <div className="flex min-w-0 flex-1 items-center gap-2 font-mono text-ui-md text-fg-muted">
-        {identity !== undefined && <span className="min-w-0 flex-1">{identity}</span>}
+      <div {...stylex.props(vs.line, vs.fill, vs.mono, vs.muted, typeStep.uiMd)}>
+        {identity !== undefined && <span {...stylex.props(vs.fill)}>{identity}</span>}
         {identity !== undefined && sub !== undefined && (
-          <span aria-hidden className="shrink-0 leading-none text-fg-faint">
+          <span aria-hidden {...stylex.props(vs.hold, vs.dotSep)}>
             ·
           </span>
         )}
@@ -53,7 +56,7 @@ function DockViewBar({
           </span>
         )}
       </div>
-      {actions !== undefined && <div className="flex shrink-0 items-center gap-1">{actions}</div>}
+      {actions !== undefined && <div {...stylex.props(vs.actionsTight)}>{actions}</div>}
     </AgentSurfaceHeader>
   );
 }
@@ -64,8 +67,8 @@ function FullViewBar({ icon, title, sub, actions, titleStrong }: ViewHeaderProps
 
   return (
     <AgentSurfaceHeader corner="window">
-      <Icon name={icon} size="md" className="shrink-0 text-fg-muted" />
-      <div className="flex min-w-0 flex-1 items-center gap-2">
+      <Icon name={icon} size="md" className={stylex.props(vs.hold, vs.muted).className} />
+      <div {...stylex.props(vs.line, vs.fill)}>
         <span
           className={cn(
             "min-w-0 truncate text-ui-md font-medium text-fg",
@@ -76,14 +79,16 @@ function FullViewBar({ icon, title, sub, actions, titleStrong }: ViewHeaderProps
         </span>
         {sub !== undefined && (
           <>
-            <span aria-hidden="true" className="shrink-0 text-ui-md leading-none text-fg-faint">
+            <span aria-hidden="true" {...stylex.props(vs.hold, vs.dotSep, typeStep.uiMd)}>
               ·
             </span>
-            <span className="min-w-0 truncate font-mono text-ui-md text-fg-muted">{sub}</span>
+            <span {...stylex.props(vs.min, vs.truncate, vs.mono, vs.muted, typeStep.uiMd)}>
+              {sub}
+            </span>
           </>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-1">
+      <div {...stylex.props(vs.actionsTight)}>
         {actions}
         {placement?.splittable && (
           <IconButton

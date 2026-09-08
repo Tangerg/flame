@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { MCP_SERVERS_PANE } from "@/plugins/builtin/settings/kit/panes";
 import { useId, useRef, useState } from "react";
@@ -13,6 +14,8 @@ import {
   reconnectMCPServer,
 } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
 import { useMCPServerToolConfigs } from "@/plugins/builtin/workspace/application/toolCatalog";
+import { color, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./viewStyles";
 
 // The status is this view's business; how a tone is painted is the Badge's. Before, this
 // table carried its own palette (`-wash` fills, coloured ink) beside the one every other
@@ -26,29 +29,78 @@ const STATUS_BADGE: Record<MCPServerSettings["status"], { key: string; tone: Ton
   needsAuth: { key: "tools.status.login", tone: "warning" },
 };
 
+// The tool list hangs under the server's NAME, past the 40px plate and its gap, so a tool
+// reads as belonging to the row above rather than starting a column of its own.
+const TOOL_INSET = "68px";
+
+const mr = stylex.create({
+  // The row publishes what its plate should look like, because the plate brightens when the
+  // POINTER IS ON THE ROW rather than on the plate — `group-hover/` with no ancestor selector.
+  row: {
+    "--plate-fill": { default: surface.surface2, ":hover": surface.surface3 },
+    "--plate-ink": { default: color.fgMuted, ":hover": color.fg },
+    display: "grid",
+    gridTemplateColumns: "calc(var(--spacing) * 10) 1fr auto auto auto",
+    alignItems: "center",
+    gap: space.s3,
+    paddingBlock: space.s3,
+  },
+  plate: {
+    display: "grid",
+    height: space.s10,
+    width: space.s10,
+    placeItems: "center",
+    borderRadius: radius.lg,
+    backgroundColor: "var(--plate-fill)",
+    color: "var(--plate-ink)",
+    transitionProperty: "background-color, color",
+  },
+  name: {
+    minWidth: 0,
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    padding: 0,
+    textAlign: "left",
+  },
+  desc: { marginTop: space.s0_5, color: color.fgFaint },
+  toolNote: {
+    margin: 0,
+    paddingInline: "var(--density-column-gutter-wide)",
+    paddingBottom: space.s3,
+    paddingLeft: TOOL_INSET,
+  },
+  toolList: {
+    margin: 0,
+    listStyle: "none",
+    paddingInline: "var(--density-column-gutter-wide)",
+    paddingBottom: space.s3,
+    paddingLeft: TOOL_INSET,
+  },
+  toolItem: { paddingBlock: space.s0_5 },
+  toolFoot: {
+    paddingInline: "var(--density-column-gutter-wide)",
+    paddingBottom: space.s3,
+    paddingLeft: TOOL_INSET,
+  },
+});
+
 function McpToolList({ server }: { server: string }) {
   const t = useT();
   const { data: tools, isLoading } = useMCPServerToolConfigs(server);
   if (isLoading)
     return (
-      <p className="m-0 px-[var(--density-column-gutter-wide)] pb-3 pl-[68px] text-ui-sm text-fg-faint">
-        {t("tools.loadingTools")}
-      </p>
+      <p {...stylex.props(mr.toolNote, vs.caption, typeStep.uiSm)}>{t("tools.loadingTools")}</p>
     );
   if (!tools?.length)
-    return (
-      <p className="m-0 px-[var(--density-column-gutter-wide)] pb-3 pl-[68px] text-ui-sm text-fg-faint">
-        {t("tools.noTools")}
-      </p>
-    );
+    return <p {...stylex.props(mr.toolNote, vs.caption, typeStep.uiSm)}>{t("tools.noTools")}</p>;
   return (
-    <ul className="m-0 list-none px-[var(--density-column-gutter-wide)] pb-3 pl-[68px]">
+    <ul {...stylex.props(mr.toolList)}>
       {tools.map((tool) => (
-        <li key={tool.name} className="flex items-baseline gap-2 py-0.5">
+        <li key={tool.name} {...stylex.props(vs.entryPlain, mr.toolItem)}>
           <Tag size="sm" ink="strong">
             {tool.name}
           </Tag>
-          <span className="truncate text-ui-sm text-fg-faint" title={tool.description}>
+          <span {...stylex.props(vs.truncate, vs.caption, typeStep.uiSm)} title={tool.description}>
             {tool.description}
           </span>
         </li>
@@ -63,7 +115,7 @@ function McpAuthGuide({ server }: { server: string }) {
     openWorkspaceSettingsPane(MCP_SERVERS_PANE);
   };
   return (
-    <div className="flex items-center gap-2 px-[var(--density-column-gutter-wide)] pb-3 pl-[68px]">
+    <div {...stylex.props(vs.line, mr.toolFoot)}>
       <TextButton onClick={openConfig}>
         <Icon name="settings" size="sm" />
         {t("tools.auth.configure", { server })}
@@ -99,8 +151,8 @@ export function McpRow({ server }: { server: MCPServerSettings }) {
 
   return (
     <div>
-      <div className="group grid grid-cols-[40px_1fr_auto_auto_auto] items-center gap-3 px-[var(--density-column-gutter-wide)] py-3 hover:bg-hover transition-colors">
-        <div className="grid h-10 w-10 place-items-center rounded-lg bg-surface-2 text-fg-muted group-hover:bg-surface-3 group-hover:text-fg transition-colors">
+      <div {...stylex.props(mr.row, vs.gutter, vs.wash)}>
+        <div {...stylex.props(mr.plate)}>
           <Icon name={knownIconName(server.icon) ?? "tool"} size="md" />
         </div>
         <Pressable
@@ -108,10 +160,10 @@ export function McpRow({ server }: { server: MCPServerSettings }) {
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => setOpen((v) => !v)}
-          className="min-w-0 border-0 bg-transparent p-0 text-left"
+          className={stylex.props(mr.name).className}
         >
-          <div className="text-ui-md font-semibold text-fg truncate">{server.name}</div>
-          <div className="mt-0.5 text-ui-md text-fg-faint truncate">{server.desc}</div>
+          <div {...stylex.props(vs.title, vs.truncate, typeStep.uiMd)}>{server.name}</div>
+          <div {...stylex.props(mr.desc, vs.truncate, typeStep.uiMd)}>{server.desc}</div>
         </Pressable>
         <Badge size="md">{t("mcp.toolCount", { count: server.tools })}</Badge>
         <Badge

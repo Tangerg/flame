@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { Icon, Pressable } from "@/ui";
 import { cn } from "@/lib/classNames";
@@ -5,6 +6,8 @@ import {
   type WorkspaceFileEntry,
   useWorkspaceListFiles,
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./viewStyles";
 
 interface NodeProps {
   entry: WorkspaceFileEntry;
@@ -13,6 +16,13 @@ interface NodeProps {
   selectedPath?: string;
   onSelectFile: (path: string) => void;
 }
+
+const ft = stylex.create({
+  // One indent step per level, drawn as an empty cell so the glyph column stays aligned.
+  indent: { width: space.s3, flexShrink: 0 },
+  note: { paddingBlock: space.s1 },
+  pad: { paddingInline: space.s2, paddingBlock: space.s1_5 },
+});
 
 function TreeNode({ entry, cwd, depth, selectedPath, onSelectFile }: NodeProps) {
   const [expanded, setExpanded] = useState(false);
@@ -40,16 +50,20 @@ function TreeNode({ entry, cwd, depth, selectedPath, onSelectFile }: NodeProps) 
             className={cn("shrink-0 transition-transform", !expanded && "-rotate-90")}
           />
         ) : (
-          <span className="w-3 shrink-0" />
+          <span {...stylex.props(ft.indent)} />
         )}
-        <Icon name={isDir ? "folder" : "file"} size="sm" className="shrink-0" />
-        <span className="truncate">{entry.name}</span>
+        <Icon
+          name={isDir ? "folder" : "file"}
+          size="sm"
+          className={stylex.props(vs.hold).className}
+        />
+        <span {...stylex.props(vs.truncate)}>{entry.name}</span>
       </Pressable>
       {isDir && expanded && (
         <div>
           {isLoading && (
             <div
-              className="py-1 text-ui-md text-fg-faint"
+              className={stylex.props(ft.note, vs.caption, typeStep.uiMd).className}
               style={{ paddingLeft: `${(depth + 1) * 12 + 6}px` }}
             >
               …
@@ -83,7 +97,7 @@ export function FileTree({
   onSelectFile: (path: string) => void;
 }) {
   return (
-    <div className="px-2 py-1.5">
+    <div {...stylex.props(ft.pad)}>
       {entries.map((e) => (
         <TreeNode
           key={e.path}

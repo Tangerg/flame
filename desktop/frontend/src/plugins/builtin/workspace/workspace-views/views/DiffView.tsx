@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { Highlighter } from "shiki";
 import type { WorkspaceDiffRow } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { useMemo } from "react";
@@ -5,6 +6,8 @@ import { intraLineDiff } from "../intraLineDiff";
 import { stripCodeWrapper, useCodeHighlighter } from "@/lib/highlight/useCodeHighlight";
 import { langFromPath, resolveLang } from "@/lib/highlight/shiki";
 import { cn } from "@/lib/classNames";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { codeStyles as cs } from "./viewStyles";
 
 export type DiffLayout = "unified" | "split";
 
@@ -115,7 +118,7 @@ export function DiffView({
   }
 
   return (
-    <div className="py-2 font-mono text-code leading-relaxed">
+    <div {...stylex.props(cs.sheet, typeStep.code)}>
       {rows.map((row, i) => {
         const k = keyFor(row, i);
         if (row.type === "hunk") return <HunkRow key={k} text={row.text} />;
@@ -142,11 +145,7 @@ export function DiffView({
 }
 
 function HunkRow({ text }: { text: string }) {
-  return (
-    <div className="mx-0 mt-2.5 mb-0 border-0 bg-sunken px-3 py-1 text-ui-sm text-fg-faint">
-      {text}
-    </div>
-  );
+  return <div {...stylex.props(cs.hunk, typeStep.uiSm)}>{text}</div>;
 }
 
 type Half = Extract<WorkspaceDiffRow, { type: "context" | "deleted" | "added" }> | null;
@@ -191,11 +190,11 @@ function SplitDiff({
 }) {
   const split = useMemo(() => toSplitRows(rows), [rows]);
   return (
-    <div className="py-2 font-mono text-code leading-relaxed">
+    <div {...stylex.props(cs.sheet, typeStep.code)}>
       {split.map((row, i) => {
         if ("hunk" in row) return <HunkRow key={`h:${i}`} text={row.hunk} />;
         return (
-          <div key={`s:${i}`} className="grid grid-cols-2">
+          <div key={`s:${i}`} {...stylex.props(cs.split)}>
             <DiffSide row={row.left} side="left" highlighted={highlighted} />
             <DiffSide row={row.right} side="right" highlighted={highlighted} />
           </div>
@@ -214,7 +213,7 @@ function DiffSide({
   side: "left" | "right";
   highlighted: Map<WorkspaceDiffRow, string> | null;
 }) {
-  if (!row) return <div className="bg-sunken" />;
+  if (!row) return <div {...stylex.props(cs.blank)} />;
   const style = ROW_STYLE[row.type];
   const lnum =
     row.type === "deleted"

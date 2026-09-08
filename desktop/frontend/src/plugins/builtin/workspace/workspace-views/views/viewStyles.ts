@@ -94,6 +94,8 @@ export const viewStyles = stylex.create({
   /** A caption directly under a title, which owns the gap between them. */
   subCaption: { marginTop: space.s0_5, color: color.fgFaint },
   min: { minWidth: 0 },
+  /** The interpunct between two facts in a header: a glyph-only box, so no leading. */
+  dotSep: { lineHeight: 1, color: color.fgFaint },
   subCaptionMuted: { marginTop: space.s0_5, color: color.fgMuted },
   warning: { color: color.warning },
   wrapText: { whiteSpace: "pre-wrap", overflowWrap: "break-word" },
@@ -242,4 +244,65 @@ export const toolStyles = stylex.create({
   fieldLabel: { color: color.fgMuted, fontWeight: weight.medium },
   afterLabel: { marginTop: space.s1 },
   footer: { paddingTop: space.s3_5, paddingBottom: "18px", lineHeight: leading.body },
+});
+
+/**
+ * The code surfaces: a command log, a file, a diff.
+ *
+ * Their inset is NOT the dock gutter — it sits beside a line-number column and belongs to the
+ * code, which is why `px-3` here was left alone when the panels moved to the density gutter.
+ */
+export const codeStyles = stylex.create({
+  sheet: { paddingBlock: space.s2, fontFamily: "var(--font-mono)", lineHeight: leading.relaxed },
+  /** A log rather than a file: it stacks entries, so it brings a gap and its own inset. Its
+   *  block inset differs from `sheet`'s, which is why it is composed AFTER it, never before. */
+  sheetInset: {
+    display: "flex",
+    flexDirection: "column",
+    gap: space.s2_5,
+    paddingInline: space.s3,
+    paddingBlock: space.s3,
+  },
+  /** A gutter number is not read, it is counted against — so it never takes the selection. */
+  gutter: { textAlign: "right", color: color.fgFaint, userSelect: "none" },
+  /** Machine output wraps rather than scrolling: a long line is still one line of meaning. */
+  wrap: { minWidth: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
+  soft: { color: color.fgSoft },
+  hunk: {
+    marginTop: space.s2_5,
+    borderWidth: 0,
+    backgroundColor: surface.sunken,
+    paddingInline: space.s3,
+    paddingBlock: space.s1,
+    color: color.fgFaint,
+  },
+  split: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" },
+  blank: { backgroundColor: surface.sunken },
+  prompt: { flexShrink: 0, color: color.fgFaint },
+  running: { flexShrink: 0, color: color.accent },
+  failed: { flexShrink: 0, color: color.negative },
+  output: {
+    marginTop: space.s1_5,
+    whiteSpace: "pre-wrap",
+    overflowWrap: "break-word",
+    color: color.fgMuted,
+  },
+  /** One file's diff, boxed: the border is the seam between two files' worth of lines. */
+  fileCard: {
+    marginBottom: space.s2,
+    marginTop: { default: null, ":first-child": space.s2 },
+    overflow: "hidden",
+    borderRadius: radius.card,
+    borderWidth: "0.5px",
+    borderStyle: "solid",
+    borderColor: surface.field,
+  },
+  fileCardLast: { marginBottom: 0 },
+  note: {
+    margin: 0,
+    paddingInline: space.s3,
+    paddingBlock: space.s2,
+    fontFamily: "var(--font-mono)",
+    color: color.fgFaint,
+  },
 });

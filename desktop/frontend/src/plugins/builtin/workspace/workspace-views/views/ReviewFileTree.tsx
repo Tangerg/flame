@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { DiffStat, FilePath, Icon, IconButton, Pressable, ScrollArea, TextField } from "@/ui";
@@ -10,6 +11,14 @@ import {
   buildReviewFileTree,
   filterReviewFiles,
 } from "@/plugins/builtin/workspace/application/reviewFileTree";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./viewStyles";
+
+const rf = stylex.create({
+  glyph: { opacity: "var(--glyph-step)" },
+  pad: { paddingInline: space.s1, paddingBlock: space.s1 },
+  note: { margin: 0, paddingInline: space.s2, paddingBlock: space.s2 },
+});
 
 function indentStyle(depth: number) {
   return { paddingLeft: `${0.5 + depth * 0.75}rem` };
@@ -41,7 +50,9 @@ function TreeRows({
           key={`file:${node.path}`}
           depth={depth}
           selected={node.path === selectedPath}
-          leading={<Icon name="file" size="sm" className="shrink-0 opacity-[var(--glyph-step)]" />}
+          leading={
+            <Icon name="file" size="sm" className={stylex.props(vs.hold, rf.glyph).className} />
+          }
           label={node.name}
           title={node.name}
           trailing={
@@ -68,7 +79,7 @@ function TreeRows({
               className={cn("shrink-0 transition-transform", !open && "-rotate-90")}
             />
           }
-          label={<FilePath path={node.name} className="text-fg-muted" />}
+          label={<FilePath path={node.name} className={stylex.props(vs.muted).className} />}
           title={node.name}
           expanded={open}
           trailing={
@@ -131,7 +142,7 @@ function TreeRow({
       title={title}
     >
       {leading}
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span {...stylex.props(vs.fill, vs.truncate)}>{label}</span>
       {trailing}
     </Pressable>
   );
@@ -190,9 +201,9 @@ export function ReviewFileTree({
         </>
       }
     >
-      <ScrollArea className="px-1 py-1">
+      <ScrollArea className={stylex.props(rf.pad).className}>
         {nodes.length === 0 ? (
-          <p className="m-0 px-2 py-2 text-ui-xs text-fg-faint">
+          <p {...stylex.props(rf.note, vs.caption, typeStep.uiXs)}>
             {filtering ? t("diff.files.noMatch") : t("diff.files.none")}
           </p>
         ) : (

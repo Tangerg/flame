@@ -1,8 +1,11 @@
+import * as stylex from "@stylexjs/stylex";
 import type { Highlighter } from "shiki";
 import { useEffect, useMemo, useRef } from "react";
 import { stripCodeWrapper, useCodeHighlighter } from "@/lib/highlight/useCodeHighlight";
 import { langFromPath, resolveLang } from "@/lib/highlight/shiki";
 import { cn } from "@/lib/classNames";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { codeStyles as cs } from "./viewStyles";
 
 function highlightLines(h: Highlighter, code: string, theme: string, path: string): string[] {
   const lang = resolveLang(h, langFromPath(path));
@@ -34,7 +37,7 @@ export function FileView({
   }, [content, path, targetLine]);
 
   return (
-    <div className="py-2 font-mono text-code leading-relaxed">
+    <div {...stylex.props(cs.sheet, typeStep.code)}>
       {plain.map((line, i) => {
         const n = startLine + i;
         const isTarget = n === targetLine;
@@ -48,16 +51,11 @@ export function FileView({
               isTarget && "bg-accent-wash",
             )}
           >
-            <span className="text-right text-ui-sm text-fg-faint select-none">{n}</span>
+            <span {...stylex.props(cs.gutter, typeStep.uiSm)}>{n}</span>
             {html !== undefined ? (
-              <span
-                className="min-w-0 whitespace-pre-wrap wrap-anywhere"
-                dangerouslySetInnerHTML={{ __html: html }}
-              />
+              <span {...stylex.props(cs.wrap)} dangerouslySetInnerHTML={{ __html: html }} />
             ) : (
-              <span className="min-w-0 whitespace-pre-wrap wrap-anywhere text-fg-soft">
-                {line || " "}
-              </span>
+              <span {...stylex.props(cs.wrap, cs.soft)}>{line || " "}</span>
             )}
           </div>
         );

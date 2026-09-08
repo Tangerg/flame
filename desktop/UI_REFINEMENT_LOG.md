@@ -8888,3 +8888,42 @@ editorial 档按它们**在默认档已有的比值**进入阶梯：
 
 顺带一条观察：同一处 0.7→0.8 的改动在浅色下越过了 golden 阈值、在深色下没有 ——
 深色下图标墨色更亮，差异像素更少，落在 `maxDiffPixels: 40` 以内。**阈值又一次决定了"看不看得见"。**
+
+---
+
+## Round 148 —— 三个目录一次清完：workspace 残余 / sidebar / command
+
+`workspace`（9 个文件）+ `sidebar`（7 个）+ `command`（3 个）—— 三族 className 全部归零。
+业务层剩下 `chat/`（250）与 `shell/`（74）。
+
+### 代码面的内距不是面板栏距
+
+`viewStyles` 新增 `codeStyles`：命令日志、文件、差异这三个面共享一套词汇
+（`sheet` / `gutter` / `wrap` / `hunk` / `split`）。第 140 轮刻意没把它们的 `px-3`
+换成密度栏距 —— 那个内距挨着行号槽、属于代码，这一轮把这句话写进了它的注释里。
+
+### 又一次"注释在说代码没做的事"
+
+`McpRow` 的字形底板原本靠 `group-hover:bg-surface-3 group-hover:text-fg` 随行提亮。
+我先写了注释说"行会发布 `--reveal`"，**但没有实现那个通道** —— 底板只剩一条
+`transitionProperty`，hover 时什么都不会变。发现后按第 123/135 轮的模式补上：
+行发布 `--plate-fill` / `--plate-ink`，底板读它们。
+
+**注释先于实现写下来，就会变成一句谎。**
+
+### 又一次顺序陷阱，9889 像素
+
+`CommandLog` 我写成 `stylex.props(cs.sheetInset, cs.sheet, …)` ——
+两个档**都声明 `paddingBlock`**，后者赢，`py-3` 就变成了 `py-2`。
+
+治本不是记住顺序，而是**让那一档自己说清它必须在后面**：
+`sheetInset` 的注释现在写着"它的 block 内距与 `sheet` 不同，所以必须composed 在其后"。
+（第 126 轮 `chip` 声明在 `variant` 前是同一个坑 —— 那次也是 98 张 golden。）
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **652 / 652**，零位移零重录 |
+| 守卫 | 17 项全绿 |
+| 单测 | workspace + sidebar + command + `src/ui` 373 通过 |
