@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { Icon, Pressable } from "@/ui";
 import { setApprovalMode } from "@/plugins/builtin/agent/public/approvalPolicy";
@@ -5,13 +6,50 @@ import { APPROVAL_MODES, type ApprovalMode } from "../application/approvalConfig
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/classNames";
 import { useState } from "react";
+import {
+  color,
+  leading,
+  radius,
+  space,
+  surface,
+  type as typeStep,
+  weight,
+} from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
 
 type ApprovalModeIntent = {
   mode: ApprovalMode;
   settlement: "pending" | "accepted-awaiting-projection";
 } | null;
+
+const m = stylex.create({
+  // Holds the list's measure while the modes load, so the pane does not jump when they land.
+  placeholder: {
+    marginTop: space.s3,
+    height: "184px",
+    borderRadius: radius.lg,
+    backgroundColor: surface.sunken,
+  },
+  list: { marginTop: space.s3, display: "flex", flexDirection: "column", gap: space.s0_5 },
+  option: {
+    display: "flex",
+    alignItems: "center",
+    gap: space.s3,
+    borderRadius: radius.card,
+    paddingInline: space.s3,
+    paddingBlock: space.s3,
+    textAlign: "left",
+    transitionProperty: "background-color",
+  },
+  // The chosen mode keeps its wash whether or not the pointer is on it; the others borrow one.
+  optionOn: { backgroundColor: surface.accentWash },
+  optionOff: { backgroundColor: { default: null, ":hover": surface.hover } },
+  nameOn: { color: color.accent, fontWeight: weight.medium },
+  nameOff: { color: color.fg },
+  desc: { marginTop: space.s0_5, color: color.fgMuted, lineHeight: leading.body },
+  spin: { animation: "var(--animate-spin)" },
+});
 
 export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
   const t = useT();
@@ -37,12 +75,12 @@ export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
   };
   return (
     <div>
-      <div className="text-ui-md font-medium text-fg">{t("approvals.mode")}</div>
-      <div className="mt-1 text-ui-md leading-body text-fg-muted">{t("approvals.mode.sub")}</div>
+      <div {...stylex.props(ss.label, typeStep.uiMd)}>{t("approvals.mode")}</div>
+      <div {...stylex.props(ss.hintSpaced, typeStep.uiMd)}>{t("approvals.mode.sub")}</div>
       {mode === undefined ? (
-        <div className="mt-3 h-[184px] rounded-lg bg-sunken" aria-hidden />
+        <div {...stylex.props(m.placeholder)} aria-hidden />
       ) : (
-        <div className="mt-3 flex flex-col gap-0.5">
+        <div {...stylex.props(m.list)}>
           {APPROVAL_MODES.map((o) => {
             const selected = o.value === (activeIntent?.mode ?? mode);
             const saving = o.value === activeIntent?.mode;
@@ -55,23 +93,28 @@ export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
                 aria-busy={saving || undefined}
                 disabled={activeIntent !== null}
                 onClick={() => void onChange(o.value)}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-3 text-left transition-colors",
-                  selected ? "bg-accent-wash" : "hover:bg-hover",
-                )}
+                className={stylex.props(m.option, selected ? m.optionOn : m.optionOff).className}
               >
-                <div className="min-w-0 flex-1">
-                  <div
-                    className={cn("text-ui-md", selected ? "font-medium text-accent" : "text-fg")}
-                  >
+                <div {...stylex.props(ss.fill)}>
+                  <div {...stylex.props(selected ? m.nameOn : m.nameOff, typeStep.uiMd)}>
                     {t(o.labelKey)}
                   </div>
-                  <div className="mt-0.5 text-ui-md leading-body text-fg-muted">{t(o.descKey)}</div>
+                  <div {...stylex.props(m.desc, typeStep.uiMd)}>{t(o.descKey)}</div>
                 </div>
                 {saving ? (
-                  <Icon name="loop" size="sm" className="shrink-0 animate-spin text-accent" />
+                  <Icon
+                    name="loop"
+                    size="sm"
+                    className={stylex.props(ss.hold, m.spin, ss.accent).className}
+                  />
                 ) : (
-                  selected && <Icon name="check" size="md" className="shrink-0 text-accent" />
+                  selected && (
+                    <Icon
+                      name="check"
+                      size="md"
+                      className={stylex.props(ss.hold, ss.accent).className}
+                    />
+                  )
                 )}
               </Pressable>
             );

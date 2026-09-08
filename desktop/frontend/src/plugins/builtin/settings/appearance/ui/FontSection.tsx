@@ -1,11 +1,13 @@
+import * as stylex from "@stylexjs/stylex";
 import type { SegmentedOption } from "@/ui";
 import { Checkbox, DropdownMenu, Icon, Segmented, SelectTrigger } from "@/ui";
 import { UI_FONT_SIZE_MAX_PX, UI_FONT_SIZE_MIN_PX } from "@/lib/typography";
 import { useT } from "@/lib/i18n";
 import { useSystemFonts } from "../application/systemFonts";
-import { cn } from "@/lib/classNames";
 import { useFontPreferences } from "../application/appearancePreferences";
 import { SettingRow } from "../../kit";
+import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface FontPickerProps {
   label: string;
@@ -15,6 +17,28 @@ interface FontPickerProps {
   defaultLabel: string;
 }
 
+const fsx = stylex.create({
+  // One measure for the three field labels so the controls beside them start on one line.
+  pickerRow: {
+    display: "grid",
+    gridTemplateColumns: "60px auto 1fr",
+    alignItems: "center",
+    gap: space.s2,
+  },
+  sizeRow: {
+    display: "grid",
+    gridTemplateColumns: "60px 1fr",
+    alignItems: "center",
+    gap: space.s2,
+  },
+  legend: { color: color.fgFaint, fontWeight: weight.semibold },
+  trigger: { maxWidth: "280px" },
+  pickRow: { gridTemplateColumns: "minmax(0, 1fr) 12px" },
+  toEdge: { justifySelf: "end" },
+  fields: { display: "grid", gap: space.s2 },
+  afterFields: { marginTop: space.s1 },
+});
+
 function FontPicker({ label, mono, value, onChange, defaultLabel }: FontPickerProps) {
   const t = useT();
   const fonts = useSystemFonts(mono);
@@ -22,8 +46,8 @@ function FontPicker({ label, mono, value, onChange, defaultLabel }: FontPickerPr
   const triggerLabel = customEnabled ? value : defaultLabel;
 
   return (
-    <div className="grid grid-cols-[60px_auto_1fr] items-center gap-2">
-      <span className="text-ui-md font-semibold text-fg-faint">{label}</span>
+    <div {...stylex.props(fsx.pickerRow)}>
+      <span {...stylex.props(fsx.legend, typeStep.uiMd)}>{label}</span>
       <Checkbox
         checked={customEnabled}
         onCheckedChange={(c) => onChange(c ? (fonts[0] ?? "") : "")}
@@ -36,7 +60,7 @@ function FontPicker({ label, mono, value, onChange, defaultLabel }: FontPickerPr
               label={triggerLabel}
               disabled={!customEnabled}
               style={customEnabled ? { fontFamily: `"${value}"` } : undefined}
-              className={cn("max-w-[280px]", mono && customEnabled && "font-mono")}
+              className={stylex.props(fsx.trigger, mono && customEnabled && ss.mono).className}
             />
           }
         />
@@ -46,11 +70,11 @@ function FontPicker({ label, mono, value, onChange, defaultLabel }: FontPickerPr
               key={f}
               onClick={() => onChange(f)}
               style={{ fontFamily: `"${f}"` }}
-              className="grid-cols-[minmax(0,1fr)_12px]"
+              className={stylex.props(fsx.pickRow).className}
             >
-              <span className="truncate">{f}</span>
+              <span {...stylex.props(ss.truncate)}>{f}</span>
               {value === f ? (
-                <Icon name="check" size="xs" className="text-accent" />
+                <Icon name="check" size="xs" className={stylex.props(ss.accent).className} />
               ) : (
                 <span aria-hidden />
               )}
@@ -89,13 +113,13 @@ function FontSizeField({
     ...SIZE_VALUES.map((px) => ({ value: String(px), label: String(px) })),
   ];
   return (
-    <div className="grid grid-cols-[60px_1fr] items-center gap-2">
-      <span className="text-ui-md font-semibold text-fg-faint">{label}</span>
+    <div {...stylex.props(fsx.sizeRow)}>
+      <span {...stylex.props(fsx.legend, typeStep.uiMd)}>{label}</span>
       {/* The pane hangs every control off the card's inner edge — `SettingRow` does it for the
           rows this one nests inside. A content-width control left in its cell stops short of
           that edge and reads as the one row that missed the line. */}
       <Segmented
-        className="justify-self-end"
+        className={stylex.props(fsx.toEdge).className}
         value={value === null ? SIZE_RESET : String(value)}
         options={options}
         onChange={(v) => onChange(v === SIZE_RESET ? null : Number(v))}
@@ -120,7 +144,7 @@ export function FontSection() {
 
   return (
     <SettingRow label={t("settings.font")} sub={t("settings.font.sub")} align="start">
-      <div className="grid gap-2">
+      <div {...stylex.props(fsx.fields)}>
         <FontPicker
           label={t("settings.font.ui")}
           mono={false}
@@ -145,7 +169,7 @@ export function FontSection() {
           checked={fontSmoothing}
           onCheckedChange={setFontSmoothing}
           label={t("settings.font.smoothing")}
-          className="mt-1"
+          className={stylex.props(fsx.afterFields).className}
         />
       </div>
     </SettingRow>

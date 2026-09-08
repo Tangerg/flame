@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
 import { ConfirmDialog, IconButton, Switch, Tag, type IconName } from "@/ui";
@@ -10,8 +11,17 @@ import {
 import { useCommandAction } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { formatDateTime } from "@/lib/i18n/relativeTime";
-import { cn } from "@/lib/classNames";
 import { ScheduleForm } from "./ScheduleForm";
+import {
+  color,
+  leading,
+  radius,
+  space,
+  surface,
+  type as typeStep,
+  weight,
+} from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
 
 function ScheduleActionButton({
   icon,
@@ -47,6 +57,31 @@ function ScheduleActionButton({
   );
 }
 
+const sr = stylex.create({
+  row: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    alignItems: "flex-start",
+    gap: space.s3,
+    borderRadius: radius.card,
+    backgroundColor: { default: null, ":hover": surface.hover },
+    paddingInline: space.s3,
+    paddingBlock: space.s2_5,
+    transitionProperty: "background-color",
+  },
+  title: { fontWeight: weight.medium },
+  titleOn: { color: color.fg },
+  cron: { marginTop: space.s0_5, color: color.fgMuted, lineHeight: leading.body },
+  stamps: {
+    marginTop: space.s1,
+    display: "flex",
+    flexWrap: "wrap",
+    columnGap: space.s3,
+    color: color.fgFaint,
+  },
+  editor: { marginTop: space.s2_5 },
+});
+
 export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
   const t = useT();
   const [editing, setEditing] = useState(false);
@@ -59,7 +94,7 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
 
   return (
     <div>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-hover">
+      <div {...stylex.props(sr.row)}>
         {/* Only what the row SAYS steps back, never what it offers. `opacity-60` on the whole
             row put its run, edit and delete controls BELOW the opacity the app draws a
             genuinely disabled control at, and measured on the rendered pixels it took the
@@ -67,12 +102,14 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
             inactive by making itself unreadable. A step down the token ladder is the same
             signal with contrast the design system owns rather than a multiplier landing
             wherever the two colours happen to leave it. */}
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
+        <div {...stylex.props(ss.min)}>
+          <div {...stylex.props(ss.line)}>
             <span
-              className={cn(
-                "truncate text-ui-md font-medium",
-                schedule.enabled ? "text-fg" : "text-fg-muted",
+              {...stylex.props(
+                ss.truncate,
+                sr.title,
+                schedule.enabled ? sr.titleOn : ss.muted,
+                typeStep.uiMd,
               )}
             >
               {schedule.title || t("schedules.untitled")}
@@ -80,12 +117,12 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
             <Tag size="sm">{schedule.cron}</Tag>
           </div>
           <div
-            className="mt-0.5 truncate font-mono text-ui-md leading-body text-fg-muted"
+            {...stylex.props(sr.cron, ss.truncate, ss.mono, typeStep.uiMd)}
             title={schedule.instructions}
           >
             {schedule.instructions}
           </div>
-          <div className="mt-1 flex flex-wrap gap-x-3 text-ui-sm text-fg-faint">
+          <div {...stylex.props(sr.stamps, typeStep.uiSm)}>
             {schedule.enabled && schedule.nextRunAt && (
               <span>{t("schedules.next", { time: formatDateTime(schedule.nextRunAt) })}</span>
             )}
@@ -94,7 +131,7 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div {...stylex.props(ss.lineTight)}>
           <Switch
             checked={schedule.enabled}
             disabled={busy}
@@ -127,7 +164,7 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
       </div>
 
       {editing && (
-        <div className="mt-2.5">
+        <div {...stylex.props(sr.editor)}>
           <ScheduleForm
             schedule={schedule}
             onDone={() => setEditing(false)}

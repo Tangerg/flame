@@ -60,6 +60,7 @@ export const surface = stylex.defineVars({
   ctaHover: "var(--color-cta-hover)",
   mediaScrim: "var(--color-media-scrim)",
   /** A row's wash: 10% of the hue, enough to tint without becoming a plate. */
+  accentWash: "var(--color-accent-wash)",
   negativeWash: "var(--color-negative-wash)",
   infoWash: "var(--color-info-wash)",
   successWash: "var(--color-success-wash)",

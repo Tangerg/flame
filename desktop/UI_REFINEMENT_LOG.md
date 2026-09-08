@@ -8746,3 +8746,48 @@ editorial 档按它们**在默认档已有的比值**进入阶梯：
 | 视觉 | **652 / 652**（workspace 109 + closure 350 + 其余 193），零位移零重录 |
 | 守卫 | 17 项全绿（CSS 预算已按实测调整并写明理由） |
 | 单测 | workspace + `src/ui` 349 通过 |
+
+---
+
+## Round 145 —— 批量迁移：settings 的 kit 与三个目录（13 个文件）
+
+`kit/SettingRow` `kit/SettingsGroup` + `appearance/`（9 个文件全清）
++ `approvals/`（3 个）+ `schedules/`（3 个）。settings 从 243 处降到 176。
+
+### 这一批的产物
+
+`kit/settingStyles.ts` —— **一个设置面板由哪些形状组成**。
+29 个文件在渲染同一小把东西，各自拼写：标签 8 次、提示 7 次（两种写法）、
+栈 11 次（两种间距）。类型步同样不进这个文件（与 dock 的 `viewStyles` 同一条分工）。
+
+`SettingRow` 顺带把 `first:border-t-0` 变成了条件值 —— 行之间的接缝由**下面那一行**画，
+组自己的上边缘保持干净。
+
+### 撞出的两件事
+
+**1. `surface` 的 wash 家族漏了 accent 这一档。**
+`ModeRow` 的选中项用 `bg-accent-wash`，迁移时发现 `tokens.stylex.ts` 里
+只有 `negativeWash` / `warningWash` / `successWash` / `infoWash` —— 而 `globals.css`
+五个都有。这次是真的漏档（不像上一轮的 `radius.md`，那是名字属于另一个面），已补。
+
+**2. `group/accent` 是这一批唯一的祖先态。**
+`group-hover/accent:scale-105` —— 强调色色板悬停时内圈放大 1.05。
+按第 123/135 轮的通道模式：靶区发布 `--accent-lift`，内圈读它。
+这样也把归属说清楚了：**靶区拥有"指针在我身上"，内圈拥有"那看起来是什么样"。**
+
+### 两处自找的麻烦
+
+- 样式对象取名 `f` / `r` / `a`，撞上了 `fonts.map((f) =>` / `rows.map((r) =>` /
+  `accents.map((a) =>` 的循环变量。TS 直接报错，但**这类改名要连带改完循环体里
+  每一处引用** —— 我漏了一个 `forgetApprovalRule(r.id)`，靠 TS 抓住。
+- 批量插 import 时用了"最后一条 `import ` 开头的行"作为锚点，
+  遇到 `import {` 换行的多行 import 就插进了它的中间，直接语法错。
+  TS 立刻报错所以没有漏出去，但这个启发式对多行 import 是错的。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **652 / 652**（workspace 109 + closure 350 + 其余 193），零位移零重录 |
+| 守卫 | 17 项全绿 |
+| 单测 | settings + `src/ui` 182 通过 |

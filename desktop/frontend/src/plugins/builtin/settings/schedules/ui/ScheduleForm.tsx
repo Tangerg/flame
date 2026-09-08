@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
 import { PillButton, Pressable, Surface, TextArea, TextField } from "@/ui";
@@ -8,7 +9,6 @@ import {
 } from "../application/scheduleCommands";
 import { useCommandAction } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/classNames";
 import {
   CRON_PRESETS,
   type ScheduleDraft,
@@ -16,6 +16,8 @@ import {
   initialScheduleDraft,
   scheduleInputFromDraft,
 } from "../application/scheduleDraft";
+import { color, corner, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface ScheduleFormProps {
   schedule?: ScheduleConfig;
@@ -23,6 +25,23 @@ interface ScheduleFormProps {
   onDone: () => void;
   onCancel: () => void;
 }
+
+const sf = stylex.create({
+  preset: {
+    borderWidth: "1px",
+    borderStyle: "solid",
+    paddingInline: space.s2_5,
+    paddingBlock: space.s1,
+    fontWeight: weight.medium,
+    transitionProperty: "background-color, border-color, color",
+  },
+  presetOn: { borderColor: color.accent, backgroundColor: surface.selected, color: color.fg },
+  presetOff: {
+    borderColor: "transparent",
+    backgroundColor: { default: null, ":hover": surface.hover },
+    color: { default: color.fgMuted, ":hover": color.fg },
+  },
+});
 
 export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: ScheduleFormProps) {
   const t = useT();
@@ -55,7 +74,7 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
     });
 
   return (
-    <Surface className="flex flex-col gap-3">
+    <Surface className={stylex.props(ss.stack).className}>
       <TextField
         font="sans"
         value={draft.title}
@@ -72,7 +91,7 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
         placeholder={t("schedules.form.instructions")}
         aria-label={t("schedules.form.instructions")}
       />
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div {...stylex.props(ss.lineWrap)}>
         {/* A one-of group, so each option states whether it is the one. The fill was the only
             answer, which a reader that cannot see fill does not get — and the app says this
             with `aria-pressed` in nine other places, including the accent swatches, which are
@@ -88,12 +107,14 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
             // the group erased which option it had answered. Accent TEXT would separate them
             // too, and fails: measured on the rendered pixels it is 2.85:1 in dark, where this
             // size needs 4.5. An outlined pill is what the form's own Cancel button already is.
-            className={cn(
-              "rounded-pill border px-2.5 py-1 text-ui-sm font-medium transition-colors",
-              draft.cron === preset.cron
-                ? "border-accent bg-selected text-fg"
-                : "border-transparent text-fg-muted hover:bg-hover hover:text-fg",
-            )}
+            className={
+              stylex.props(
+                sf.preset,
+                corner.pill,
+                draft.cron === preset.cron ? sf.presetOn : sf.presetOff,
+                typeStep.uiSm,
+              ).className
+            }
           >
             {t(preset.key)}
           </Pressable>
@@ -113,7 +134,7 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
         placeholder={t("schedules.form.cwd")}
         aria-label={t("schedules.form.cwd")}
       />
-      <div className="flex items-center gap-2">
+      <div {...stylex.props(ss.line)}>
         <PillButton
           variant="accent"
           size="sm"

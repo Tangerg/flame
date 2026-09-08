@@ -1,7 +1,27 @@
+import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import { useCustomThemePreference } from "../application/appearancePreferences";
 import { SettingRow } from "../../kit";
 import { ColorPickerInput } from "@/ui";
+import { color, corner, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
+
+const a = stylex.create({
+  swatchLine: { position: "relative", display: "inline-flex", alignItems: "center", gap: space.s2 },
+  hex: { fontFamily: "var(--font-mono)", textTransform: "uppercase", color: color.fg },
+  // `bg-clip-padding` keeps the fill out from under the hairline, so a light colour does not
+  // bleed through the border it is meant to sit inside.
+  chip: {
+    // A round chip, so the corner comes from the bundle that carries the shape with it.
+    height: "calc(var(--spacing) * 4.5)",
+    width: "calc(var(--spacing) * 4.5)",
+    borderWidth: "0.5px",
+    borderStyle: "solid",
+    borderColor: surface.field,
+    backgroundClip: "padding-box",
+  },
+  colorGrid: { display: "grid", maxWidth: "300px", gap: space.s2 },
+});
 
 function ColorRow({
   label,
@@ -13,12 +33,12 @@ function ColorRow({
   onChange: (hex: string) => void;
 }) {
   return (
-    <label className="flex items-center justify-between gap-3 rounded-md bg-sunken px-3 py-1.5 transition-colors hover:bg-hover">
-      <span className="text-ui-md text-fg-muted">{label}</span>
-      <span className="relative inline-flex items-center gap-2">
-        <span className="font-mono text-ui-md uppercase text-fg">{value}</span>
+    <label {...stylex.props(ss.sunkenRow)}>
+      <span {...stylex.props(ss.muted, typeStep.uiMd)}>{label}</span>
+      <span {...stylex.props(a.swatchLine)}>
+        <span {...stylex.props(a.hex, typeStep.uiMd)}>{value}</span>
         <span
-          className="h-4.5 w-4.5 rounded-full border-[0.5px] border-field bg-clip-padding"
+          className={stylex.props(a.chip, corner.pill).className}
           style={{ background: value }}
         />
         <ColorPickerInput
@@ -43,7 +63,7 @@ export function CustomThemeColors() {
       sub={t("settings.customColors.sub")}
       align="start"
     >
-      <div className="grid max-w-[300px] gap-2">
+      <div {...stylex.props(a.colorGrid)}>
         <ColorRow
           label={t("settings.color.bg")}
           value={customTheme.bg}

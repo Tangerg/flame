@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { DataView, EmptyState, Icon, PillButton } from "@/ui";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
@@ -6,6 +7,8 @@ import { useT } from "@/lib/i18n";
 import { useScheduleConfigs } from "../application/scheduleCommands";
 import { ScheduleForm } from "./ScheduleForm";
 import { ScheduleRow } from "./ScheduleRow";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
 
 export function SchedulesPane() {
   const enabled = useRuntimeCapability("schedules");
@@ -30,8 +33,8 @@ function EnabledSchedulesPane() {
   const [adding, setAdding] = useState(false);
 
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-ui-md leading-body text-fg-muted">{t("schedules.intro")}</p>
+    <div {...stylex.props(ss.stack)}>
+      <p {...stylex.props(ss.intro, typeStep.uiMd)}>{t("schedules.intro")}</p>
 
       {adding ? (
         <ScheduleForm
@@ -40,7 +43,7 @@ function EnabledSchedulesPane() {
           onCancel={() => setAdding(false)}
         />
       ) : (
-        <div className="flex justify-end">
+        <div {...stylex.props(ss.end)}>
           <PillButton
             variant="outlined"
             size="sm"
@@ -62,7 +65,7 @@ function EnabledSchedulesPane() {
         empty={{ icon: "command", title: t("schedules.empty"), sub: t("schedules.empty.sub") }}
       >
         {(rows) => (
-          <div className="flex flex-col gap-2">
+          <div {...stylex.props(ss.stackTight)}>
             {rows.map((schedule) => (
               <ScheduleRow key={schedule.id} schedule={schedule} />
             ))}

@@ -1,3 +1,4 @@
+export { settingStyles } from "./settingStyles";
 export { SettingRow } from "./SettingRow";
 export { SettingsGroup } from "./SettingsGroup";
 export { registerSettingsPane } from "./registerSettingsPane";

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import type { Scheme } from "@/lib/appearance";
 import type { ColorThemeSpec } from "@/plugins/sdk";
@@ -6,6 +7,8 @@ import { useT } from "@/lib/i18n";
 import { COLOR_THEME, useExtensionPoint } from "@/plugins/sdk";
 import { SettingRow } from "../../kit";
 import { useThemePreference } from "../application/appearancePreferences";
+import { color, corner, radius, space, type as typeStep } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
 
 const FALLBACK_TOKENS: Record<Scheme, { bg: string; surface: string; accent: string }> = {
   dark: { bg: "#0c0d0f", surface: "#16181b", accent: "#6c97ff" },
@@ -21,33 +24,62 @@ function previewTokens(spec: ColorThemeSpec): { bg: string; surface: string; acc
   };
 }
 
+// A theme's swatch is a miniature of the window: the canvas, the surface inside it, and the
+// accent in the corner. `media-edge` stays a utility because it is a mechanism `globals.css`
+// owns — an inset outline the scheme picks — and the swatch only asks for it.
+const th = stylex.create({
+  swatch: {
+    position: "relative",
+    display: "block",
+    height: space.s4,
+    width: space.s6,
+    flexShrink: 0,
+    overflow: "hidden",
+    borderRadius: radius.step2xs,
+    outline: "1px solid var(--color-media-edge)",
+    outlineOffset: "-1px",
+  },
+  // The inner pane's corner is the outer one less its own inset, floored at zero, so the two
+  // stay concentric at every radius scale.
+  swatchPane: {
+    position: "absolute",
+    insetInline: "3px",
+    top: "3px",
+    bottom: "2px",
+    borderRadius: "max(0px, calc(var(--shape-2xs) - 3px))",
+  },
+  swatchDot: {
+    position: "absolute",
+    bottom: "2px",
+    right: "2px",
+    height: space.s1,
+    width: space.s1,
+  },
+  half: { position: "absolute", insetBlock: 0, width: "50%" },
+  halfStart: { left: 0 },
+  halfEnd: { right: 0 },
+  themeRow: { gridTemplateColumns: "24px minmax(0, 1fr) 14px" },
+  name: { color: color.fg },
+});
+
 function ThemeSwatch({ bg, surface, accent }: { bg: string; surface: string; accent: string }) {
   return (
-    <span
-      className="relative block h-4 w-6 shrink-0 overflow-hidden rounded-2xs media-edge"
-      style={{ background: bg }}
-    >
-      <span
-        className="absolute inset-x-[3px] top-[3px] bottom-[2px] rounded-[max(0px,calc(var(--shape-2xs)-3px))]"
-        style={{ background: surface }}
-      />
-      <span
-        className="absolute bottom-[2px] right-[2px] h-1 w-1 rounded-full"
-        style={{ background: accent }}
-      />
+    <span {...stylex.props(th.swatch)} style={{ background: bg }}>
+      <span {...stylex.props(th.swatchPane)} style={{ background: surface }} />
+      <span {...stylex.props(th.swatchDot, corner.pill)} style={{ background: accent }} />
     </span>
   );
 }
 
 function SystemSwatch() {
   return (
-    <span className="relative block h-4 w-6 shrink-0 overflow-hidden rounded-2xs media-edge">
+    <span {...stylex.props(th.swatch)}>
       <span
-        className="absolute inset-y-0 left-0 w-1/2"
+        {...stylex.props(th.half, th.halfStart)}
         style={{ background: FALLBACK_TOKENS.dark.bg }}
       />
       <span
-        className="absolute inset-y-0 right-0 w-1/2"
+        {...stylex.props(th.half, th.halfEnd)}
         style={{ background: FALLBACK_TOKENS.light.bg }}
       />
     </span>
@@ -66,10 +98,14 @@ function ThemeItem({
   onSelect: () => void;
 }) {
   return (
-    <DropdownMenu.Item className="grid-cols-[24px_minmax(0,1fr)_14px]" onClick={onSelect}>
+    <DropdownMenu.Item className={stylex.props(th.themeRow).className} onClick={onSelect}>
       {swatch}
-      <span className="truncate text-ui-md text-fg">{label}</span>
-      {active ? <Icon name="check" size="sm" className="text-accent" /> : <span aria-hidden />}
+      <span {...stylex.props(th.name, ss.truncate, typeStep.uiMd)}>{label}</span>
+      {active ? (
+        <Icon name="check" size="sm" className={stylex.props(ss.accent).className} />
+      ) : (
+        <span aria-hidden />
+      )}
     </DropdownMenu.Item>
   );
 }

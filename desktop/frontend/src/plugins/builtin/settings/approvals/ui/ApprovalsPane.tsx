@@ -1,8 +1,10 @@
+import * as stylex from "@stylexjs/stylex";
 import { EmptyState } from "@/ui";
 import { useApprovalModeConfig } from "../application/approvalConfig";
 import { useT } from "@/lib/i18n";
 import { ModeRow } from "./ModeRow";
 import { RulesRow } from "./RulesRow";
+import { settingStyles as ss } from "../../kit/settingStyles";
 
 export function ApprovalsPane() {
   const t = useT();
@@ -17,7 +19,7 @@ export function ApprovalsPane() {
     );
   }
   return (
-    <div className="flex flex-col gap-6">
+    <div {...stylex.props(ss.pane)}>
       <ModeRow mode={mode} />
       <RulesRow />
     </div>

@@ -1,5 +1,26 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/classNames";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { color, space, surface } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "./settingStyles";
+
+const styles = stylex.create({
+  // The seam between two rows, drawn by the row BELOW so the group's own top edge stays clean.
+  row: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    gap: space.s6,
+    borderTopWidth: { default: "var(--control-edge-width)", ":first-child": 0 },
+    borderTopStyle: "solid",
+    borderTopColor: surface.field,
+    paddingInline: space.s4,
+    paddingBlock: space.s3,
+  },
+  top: { alignItems: "flex-start" },
+  centre: { alignItems: "center" },
+  name: { color: color.fg },
+  control: { justifySelf: "end" },
+});
 
 export function SettingRow({
   label,
@@ -13,17 +34,12 @@ export function SettingRow({
   children: ReactNode;
 }) {
   return (
-    <div
-      className={cn(
-        "grid grid-cols-[minmax(0,1fr)_auto] gap-6 border-t-[length:var(--control-edge-width)] border-field px-4 py-3 first:border-t-0",
-        align === "start" ? "items-start" : "items-center",
-      )}
-    >
+    <div {...stylex.props(styles.row, align === "start" ? styles.top : styles.centre)}>
       <div>
-        <div className="text-ui-md text-fg">{label}</div>
-        <div className="mt-1 text-ui-md leading-body text-fg-muted">{sub}</div>
+        <div {...stylex.props(styles.name, typeStep.uiMd)}>{label}</div>
+        <div {...stylex.props(ss.hintSpaced, typeStep.uiMd)}>{sub}</div>
       </div>
-      <div className="justify-self-end">{children}</div>
+      <div {...stylex.props(styles.control)}>{children}</div>
     </div>
   );
 }
