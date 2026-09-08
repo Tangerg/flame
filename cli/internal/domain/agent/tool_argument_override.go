@@ -38,16 +38,14 @@ func ParseToolArgumentOverride(encoded []byte) (*ToolArgumentOverride, error) {
 	return &ToolArgumentOverride{encoded: normalized}, nil
 }
 
+// Validate reports whether this optional override was constructed. Single JSON
+// value, distinct keys, object shape, non-empty arguments and normalized
+// encoding are established once — by [ParseToolArgumentOverride], which
+// [ToolArgumentOverride.UnmarshalJSON] also goes through — so the only value
+// that can reach here without them is an unconstructed one.
 func (t *ToolArgumentOverride) Validate() error {
-	if t == nil {
-		return errors.New("tool argument override is nil")
-	}
-	validated, err := ParseToolArgumentOverride(t.encoded)
-	if err != nil {
-		return err
-	}
-	if !bytes.Equal(validated.encoded, t.encoded) {
-		return errors.New("tool argument override is not normalized")
+	if t == nil || len(t.encoded) == 0 {
+		return errors.New("tool argument override is not constructed")
 	}
 	return nil
 }

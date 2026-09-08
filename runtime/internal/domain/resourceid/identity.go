@@ -3,7 +3,11 @@
 // trims, case-folds, normalizes, or otherwise repairs caller material.
 package resourceid
 
-import runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+import (
+	"fmt"
+
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+)
 
 type value struct {
 	text string
@@ -16,6 +20,16 @@ func parse(kind, text string, maximumCharacters int) (value, error) {
 	return value{text: text}, nil
 }
 
+// requireConstructed reports whether an identity came from [parse]. Exact text,
+// length and character rules are established there, so the only identity that
+// can reach a caller without them is the zero one.
+func requireConstructed(kind, text string) error {
+	if text == "" {
+		return fmt.Errorf("%s identity is empty", kind)
+	}
+	return nil
+}
+
 // SessionID is one exact durable Session identity.
 type SessionID struct{ value }
 
@@ -24,11 +38,8 @@ func ParseSession(text string) (SessionID, error) {
 	return SessionID{value: parsed}, err
 }
 
-func (i SessionID) String() string { return i.text }
-func (i SessionID) Validate() error {
-	_, err := ParseSession(i.text)
-	return err
-}
+func (i SessionID) String() string  { return i.text }
+func (i SessionID) Validate() error { return requireConstructed("session", i.text) }
 
 // RunID is one exact logical Run identity.
 type RunID struct{ value }
@@ -38,11 +49,8 @@ func ParseRun(text string) (RunID, error) {
 	return RunID{value: parsed}, err
 }
 
-func (i RunID) String() string { return i.text }
-func (i RunID) Validate() error {
-	_, err := ParseRun(i.text)
-	return err
-}
+func (i RunID) String() string  { return i.text }
+func (i RunID) Validate() error { return requireConstructed("run", i.text) }
 
 // SegmentID is one exact execution-generation identity.
 type SegmentID struct{ value }
@@ -52,11 +60,8 @@ func ParseSegment(text string) (SegmentID, error) {
 	return SegmentID{value: parsed}, err
 }
 
-func (i SegmentID) String() string { return i.text }
-func (i SegmentID) Validate() error {
-	_, err := ParseSegment(i.text)
-	return err
-}
+func (i SegmentID) String() string  { return i.text }
+func (i SegmentID) Validate() error { return requireConstructed("segment", i.text) }
 
 // ItemID is one exact transcript or interrupt identity owned by a Run.
 type ItemID struct{ value }
@@ -66,11 +71,8 @@ func ParseItem(text string) (ItemID, error) {
 	return ItemID{value: parsed}, err
 }
 
-func (i ItemID) String() string { return i.text }
-func (i ItemID) Validate() error {
-	_, err := ParseItem(i.text)
-	return err
-}
+func (i ItemID) String() string  { return i.text }
+func (i ItemID) Validate() error { return requireConstructed("item", i.text) }
 
 // ScheduleID is one exact durable scheduled-work identity.
 type ScheduleID struct{ value }
@@ -80,11 +82,8 @@ func ParseSchedule(text string) (ScheduleID, error) {
 	return ScheduleID{value: parsed}, err
 }
 
-func (i ScheduleID) String() string { return i.text }
-func (i ScheduleID) Validate() error {
-	_, err := ParseSchedule(i.text)
-	return err
-}
+func (i ScheduleID) String() string  { return i.text }
+func (i ScheduleID) Validate() error { return requireConstructed("schedule", i.text) }
 
 // EventID is one exact replay identity. Its envelope is cursor-sized because
 // the opaque token may carry a complete resumable journal position.
@@ -95,8 +94,5 @@ func ParseEvent(text string) (EventID, error) {
 	return EventID{value: parsed}, err
 }
 
-func (i EventID) String() string { return i.text }
-func (i EventID) Validate() error {
-	_, err := ParseEvent(i.text)
-	return err
-}
+func (i EventID) String() string  { return i.text }
+func (i EventID) Validate() error { return requireConstructed("event", i.text) }

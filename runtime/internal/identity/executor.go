@@ -26,6 +26,16 @@ func parse(kind, text string) (value, error) {
 	return value{text: text}, nil
 }
 
+// requireConstructed reports whether an identity came from [parse]. Its exact
+// byte envelope is established there, so the only identity that can reach a
+// caller without it is the zero one.
+func requireConstructed(kind, text string) error {
+	if text == "" {
+		return fmt.Errorf("%s must contain 1 to %d URI-safe ASCII bytes", kind, MaximumExecutorIdentityBytes)
+	}
+	return nil
+}
+
 // ExecutorID identifies one Flame-owned executor instance across Run segments.
 type ExecutorID struct{ value }
 
@@ -34,11 +44,8 @@ func ParseExecutor(text string) (ExecutorID, error) {
 	return ExecutorID{value: parsed}, err
 }
 
-func (i ExecutorID) String() string { return i.text }
-func (i ExecutorID) Validate() error {
-	_, err := ParseExecutor(i.text)
-	return err
-}
+func (i ExecutorID) String() string  { return i.text }
+func (i ExecutorID) Validate() error { return requireConstructed("executor identity", i.text) }
 
 // MemberID identifies one executor-owned process in a root/child tree.
 type MemberID struct{ value }
@@ -56,11 +63,8 @@ func ParseOptionalMember(text string) (MemberID, bool, error) {
 	return parsed, err == nil, err
 }
 
-func (i MemberID) String() string { return i.text }
-func (i MemberID) Validate() error {
-	_, err := ParseMember(i.text)
-	return err
-}
+func (i MemberID) String() string  { return i.text }
+func (i MemberID) Validate() error { return requireConstructed("executor member identity", i.text) }
 
 // RequestID identifies one executor-owned external wait request.
 type RequestID struct{ value }
@@ -70,11 +74,8 @@ func ParseRequest(text string) (RequestID, error) {
 	return RequestID{value: parsed}, err
 }
 
-func (i RequestID) String() string { return i.text }
-func (i RequestID) Validate() error {
-	_, err := ParseRequest(i.text)
-	return err
-}
+func (i RequestID) String() string  { return i.text }
+func (i RequestID) Validate() error { return requireConstructed("executor request identity", i.text) }
 
 // EffectID identifies one executor-owned model or Tool effect.
 type EffectID struct{ value }
@@ -92,8 +93,5 @@ func ParseOptionalEffect(text string) (EffectID, bool, error) {
 	return parsed, err == nil, err
 }
 
-func (i EffectID) String() string { return i.text }
-func (i EffectID) Validate() error {
-	_, err := ParseEffect(i.text)
-	return err
-}
+func (i EffectID) String() string  { return i.text }
+func (i EffectID) Validate() error { return requireConstructed("executor effect identity", i.text) }

@@ -35,11 +35,14 @@ func ParseCommit(raw string) (CommitID, error) {
 	return CommitID{value: raw}, nil
 }
 
-// Validate proves that i is a constructed, canonical commit identity. The zero
-// value is reserved for projections that do not own a top-level write-set.
+// Validate proves that i is a constructed commit identity. The canonical form
+// is established by [NewCommit] and [ParseCommit]; the zero value is reserved
+// for projections that do not own a top-level write-set.
 func (i CommitID) Validate() error {
-	_, err := ParseCommit(i.value)
-	return err
+	if i.IsZero() {
+		return ErrInvalidCommit
+	}
+	return nil
 }
 
 // IsZero reports whether no commit identity is present.

@@ -44,7 +44,11 @@ func ParseRuntimeInstance(text string) (RuntimeInstanceID, error) {
 func (i RuntimeInstanceID) String() string { return i.text }
 
 // Validate reports whether this value is a constructed Runtime identity.
+// Validate proves that i was minted or parsed. The canonical UUID spelling is
+// established there, so an unconstructed identity is all this can reject.
 func (i RuntimeInstanceID) Validate() error {
-	_, err := ParseRuntimeInstance(i.text)
-	return err
+	if i.text == "" {
+		return errors.New("runtime instance identity must use the canonical runtime UUID form")
+	}
+	return nil
 }

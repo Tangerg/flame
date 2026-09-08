@@ -44,7 +44,11 @@ func ParseOptionalIdempotencyNamespace(text string) (IdempotencyNamespace, bool,
 
 func (i IdempotencyNamespace) String() string { return i.text }
 
+// Validate proves that i was parsed. The canonical lowercase-hex spelling is
+// established there, so an unconstructed namespace is all this can reject.
 func (i IdempotencyNamespace) Validate() error {
-	_, err := ParseIdempotencyNamespace(i.text)
-	return err
+	if i.text == "" {
+		return errors.New("idempotency namespace must use the canonical idp lowercase-hex form")
+	}
+	return nil
 }
