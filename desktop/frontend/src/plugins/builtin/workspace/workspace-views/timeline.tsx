@@ -219,7 +219,6 @@ export function TimelineTab() {
   return (
     <WorkspaceViewLayout
       icon="history"
-      titleStrong
       title="timeline.title"
       sub={timelineSubtext(t, view)}
       scrollClassName="py-1"

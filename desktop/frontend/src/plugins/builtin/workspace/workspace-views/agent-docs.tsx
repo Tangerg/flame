@@ -19,7 +19,6 @@ export function AgentDocsTab() {
   return (
     <WorkspaceViewLayout
       icon="book"
-      titleStrong
       title="agentDocs.title"
       sub={t("agentDocs.found", { count: view.count })}
       scrollClassName="py-1"

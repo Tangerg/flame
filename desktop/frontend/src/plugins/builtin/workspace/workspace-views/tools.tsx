@@ -297,7 +297,6 @@ export function ToolsTab() {
   return (
     <WorkspaceViewLayout
       icon="tool"
-      titleStrong
       title="tools.title"
       sub={toolCatalogSubtext(t, view)}
       scrollClassName="py-1"

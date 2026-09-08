@@ -228,6 +228,15 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     ).toBeVisible();
     return;
   }
+  if (state === "full-view") {
+    // A view at full placement draws a DIFFERENT header from the same component: an icon, the
+    // view's own name, and a separator before the sub. Ready is that name being on screen —
+    // in the main region, not the dock, which is what distinguishes the two bars.
+    await expect(
+      page.getByRole("main").getByText(en["search.title"]!, { exact: true }),
+    ).toBeVisible();
+    return;
+  }
   if (state === "settings") {
     // The heading is owned by the settings host and renders before the lazy pane, so it
     // says nothing about whether the chunk resolved. The Suspense fallback marks itself

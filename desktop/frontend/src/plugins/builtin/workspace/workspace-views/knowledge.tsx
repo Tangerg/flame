@@ -161,7 +161,6 @@ export function KnowledgeTab() {
   return (
     <WorkspaceViewLayout
       icon="filetext"
-      titleStrong
       title="knowledge.title"
       sub={view.enabled ? t("knowledge.scopes", { count: view.count }) : t("knowledge.off")}
       scrollClassName="py-1"

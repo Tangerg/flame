@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import type { IconName } from "@/ui";
 import { AgentSurfaceHeader } from "@/ui/agent";
 import { Icon, IconButton, vocab } from "@/ui";
-import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { useViewPlacement } from "@/plugins/builtin/workspace/public/viewPlacement";
 import { face, type as typeStep } from "@/styles/tokens.stylex";
@@ -15,7 +14,14 @@ export interface ViewHeaderProps {
   dockIdentity?: ReactNode;
   sub?: ReactNode;
   actions?: ReactNode;
-  titleStrong?: boolean;
+  /**
+   * What the title IS. Prose is a view's name; `mono` is machine text — a path, a command.
+   *
+   * It was `?: boolean`, defaulting to mono: a name that said WEIGHT and switched
+   * FACE, with nineteen of twenty-one call sites passing the flag to opt out of the default.
+   * A default that all but two callers override is not a default.
+   */
+  titleFace?: "prose" | "mono";
 }
 
 export function ViewHeader({
@@ -24,14 +30,14 @@ export function ViewHeader({
   dockIdentity,
   sub,
   actions,
-  titleStrong,
+  titleFace,
 }: ViewHeaderProps) {
   const placement = useViewPlacement();
   if (placement?.placement === "dock") {
     return <DockViewBar identity={dockIdentity} sub={sub} actions={actions} />;
   }
   return (
-    <FullViewBar icon={icon} title={title} sub={sub} actions={actions} titleStrong={titleStrong} />
+    <FullViewBar icon={icon} title={title} sub={sub} actions={actions} titleFace={titleFace} />
   );
 }
 
@@ -51,7 +57,7 @@ function DockViewBar({
           </span>
         )}
         {sub !== undefined && (
-          <span className={cn("truncate", identity === undefined ? "min-w-0 flex-1" : "shrink-0")}>
+          <span {...stylex.props(vocab.truncate, identity === undefined ? vocab.fill : vocab.hold)}>
             {sub}
           </span>
         )}
@@ -61,7 +67,7 @@ function DockViewBar({
   );
 }
 
-function FullViewBar({ icon, title, sub, actions, titleStrong }: ViewHeaderProps) {
+function FullViewBar({ icon, title, sub, actions, titleFace = "prose" }: ViewHeaderProps) {
   const placement = useViewPlacement();
   const t = useT();
 
@@ -70,9 +76,12 @@ function FullViewBar({ icon, title, sub, actions, titleStrong }: ViewHeaderProps
       <Icon name={icon} size="md" className={stylex.props(vocab.hold, vocab.muted).className} />
       <div {...stylex.props(vocab.line, vocab.fill)}>
         <span
-          className={cn(
-            "min-w-0 truncate text-ui-md font-medium text-fg",
-            titleStrong ? "font-sans" : "font-mono",
+          {...stylex.props(
+            vocab.min,
+            vocab.truncate,
+            vs.titleMedium,
+            typeStep.uiMd,
+            titleFace === "mono" && face.mono,
           )}
         >
           {typeof title === "string" ? t(title) : title}

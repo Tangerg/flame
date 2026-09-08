@@ -22,7 +22,6 @@ export function SkillLibraryTab() {
   return (
     <WorkspaceViewLayout
       icon="sparkle"
-      titleStrong
       title="skillLibrary.title"
       sub={t("skillLibrary.sub", { active: activeCount, archived: skills.length - activeCount })}
       scrollClassName="py-1"

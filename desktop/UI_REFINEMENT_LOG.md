@@ -9825,3 +9825,113 @@ CSS 那个属性自己的枚举里没有这种值。
 
 零位移在这一轮有一层额外含义：那张 `STATUS_VIEW` 三列表**逐像素复现**了原来两串三元的输出。
 如果我把 `running` 的 ink 或 shell 抄错一格，659 张里必然有几张会动。
+
+## Round 162 — 一个默认值，21 个调用处里 19 个不同意
+
+### `titleStrong`：名字说的是字重，做的是字体
+
+`ViewHeader` 的 `titleStrong?: boolean`：
+
+```
+titleStrong ? "font-sans" : "font-mono"
+```
+
+**名字说 weight，实际切 face。** 而它真正编码的事实是：
+**这个标题是「读的散文」还是「机器文本」**（一个路径、一条命令）。
+
+数了一遍：**21 个 `WorkspaceViewLayout` 调用处里 19 个都传了这个 flag** ——
+也就是说 19 个都在退出那个默认值。而剩下 2 个恰好就是标题真的是机器文本的两个：
+
+| 文件 | 标题 | 该不该 mono |
+| --- | --- | --- |
+| `file.tsx` | `viewer?.path` | 是 —— 它就是一个路径 |
+| `terminal.tsx` | `"terminal.title"`（一个词） | **可疑** —— 见下 |
+
+按前几轮立的判据（「三分之一调用处不同意的默认值不是默认值」），这里是 **19/21 不同意**。
+改成 `titleFace?: "prose" | "mono"`，默认 `prose`：19 个调用处**直接删掉这个 prop**，
+2 个写明 `titleFace="mono"`。名字现在说的就是它做的事。
+
+**预期会动 golden**：`face.mono` 是 round 153 定的**捆绑档**（字体 + `letterSpacing: 0`），
+而原来那个裸 `font-mono` 会继承 `--tracking-ui` —— 也就是等宽字承担了给比例字体设计的字距，
+正是 round 153 量出来「40 个字符漂 5.7px」的那个缺陷。所以 `dock-file` / `dock-terminal`
+这两组 golden 应该动，而且**这是修好了**，不是回归。
+
+**报告不改**：`terminal.tsx` 的标题是一个词（不是路径）却渲染成等宽。
+可能是有意的（跟终端一致），也可能是当年顺手写的。它有 golden 拍着，
+所以现值就是被接受的现状 —— 这是设计问题，不是迁移问题。
+
+### dock 的代码视图家族：三个「行号槽 + 代码」的网格
+
+| | 模板 | gap |
+| --- | --- | --- |
+| `FileView` | `44px minmax(0,1fr)` | 2 |
+| `DiffView` 统一视图 | `36px 36px minmax(0,1fr)` | 1.5 |
+| `DiffView` 分栏视图 | `34px 16px minmax(0,1fr)` | 1.5 |
+
+槽宽不同是**真的**（一个文件一列行号、统一 diff 两列、分栏是行号 + 符号），
+所以收成一个共有的 `lineRow`（`display:grid` + `align-items` + `px-3`）
+加三档 `gutterOne` / `gutterPair` / `gutterSign`。
+
+**槽宽保持绝对像素**，并在注释里写明为什么：一列数字的宽度由「要塞进几个数字」决定，
+那不是间距节奏的一个档位。（顺带记下一处不一致：`codeStyles.matchRow` 把同样的 44px
+写成 `calc(var(--spacing) * 11)` —— 那个是异类拼法，但动它会白白挪一张 golden。）
+
+### `ROW_STYLE`：一张表里三种语言
+
+```ts
+added:   { tone: "bg-[var(--color-diff-added-tint)]", meta: "text-[var(--color-diff-added-meta)]" }
+context: { tone: "",                                  meta: "text-fg-faint" }
+```
+
+任意值 Tailwind、令牌 class、**空字符串**各一份。空字符串那个尤其糟 ——
+它把「不着色」表达成「一个什么都不做的 class 名」。现在三档都是 StyleX 档，
+context 的 tone 是 `null`，注释说明为什么：**未改动的行是另外两种被读出来的底**。
+
+### 我预测会动的 golden 没动 —— 追下去发现了更大的缺口
+
+我预判 `dock-file` / `dock-terminal` 会动（`face.mono` 带 `letterSpacing: 0`，
+而原来的裸 `font-mono` 继承 `--tracking-ui`）。**它们一张都没动。**
+
+不接受一个解释不了的绿，追下去，根因是：
+
+```
+if (placement?.placement === "dock") return <DockViewBar … />;   // ← 24 个 golden 全走这条
+return <FullViewBar … titleFace={titleFace} />;                  // ← 一张 golden 都没有
+```
+
+`titleFace` **只在 full placement 用得到**，而 `VISUAL_WORKSPACE_STATES` 里
+**24 个状态全是 `dock-*` 加一个 `settings`**。也就是说 `ViewHeader` 有**一半**
+（图标、标题、字体切换、间隔点、sub）从来没被拍过。
+
+又是同一个模式：**没有覆盖的那一半，就是缺陷藏身的地方。**
+
+`navigator().go({ view })` 本来就是「主视图」那个参数（`settings` 走的就是它），
+所以补一个状态只要六行：加 `"full-view"` 到状态表 + 让 installer 把 `view` 指向一个视图 id。
+选 `search`（散文标题 + 有 sub），因为那正是 19/21 个调用处走的默认路径。
+
+spec 里有一道**穷尽门禁**（「an added state must declare its own ready boundary」）
+立刻把我拦了下来 —— 这条设计是对的，新状态必须自己说清楚「什么时候算就绪」。
+
+### 三张 unexpected，两种归因
+
+| | 隔离重跑 | 结论 |
+| --- | --- | --- |
+| `agent light tool-search` | **通过** | flake，不动 |
+| `workspace light/dark dock-error` | **两次都红** | 真变化 |
+
+`dock-error` 的 diff 图看得很清楚：动的**只有 fixture 自己的状态选择侧栏** ——
+列表多了一行「Full view」，而 `dock-error` 在列表最底部附近，
+滚动落点就跟着变了。产品区域（转录、dock、错误面板）一个像素没动。已重录。
+
+**顺带记一处脆弱**：fixture 的脚手架侧栏进了 golden，所以**每加一个状态都会挪到别的 golden**。
+fixture 自己的注释早就警告过同一类事。这不是这一轮该改的，但值得记着。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **667 / 667**（659 + 8 条新增），0 unexpected，0 flaky |
+| 守卫 | 17 项全绿 |
+| 单测 | 1783 项通过 |
+| 重录 | 2 张（`dock-error` 两个主题）—— 只因 fixture 侧栏多了一行 |
+| 新增 golden | 2 张（`full-view` 两个主题）—— `FullViewBar` 第一次被拍到 |

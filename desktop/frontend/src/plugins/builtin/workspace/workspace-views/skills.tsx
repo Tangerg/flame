@@ -21,7 +21,6 @@ export function SkillsTab() {
   return (
     <WorkspaceViewLayout
       icon="sparkle"
-      titleStrong
       title="skills.title"
       sub={view.enabled ? t("skills.available", { count: view.count }) : t("skills.off")}
       scrollClassName="py-1"

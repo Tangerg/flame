@@ -44,12 +44,7 @@ export function RunSummaryTab() {
 
   if (!digest) {
     return (
-      <WorkspaceViewLayout
-        icon="check"
-        titleStrong
-        title="runSummary.title"
-        sub={t("runSummary.noRuns")}
-      >
+      <WorkspaceViewLayout icon="check" title="runSummary.title" sub={t("runSummary.noRuns")}>
         <EmptyState
           icon="check"
           title={t("runSummary.empty.title")}
@@ -64,7 +59,6 @@ export function RunSummaryTab() {
   return (
     <WorkspaceViewLayout
       icon="check"
-      titleStrong
       title="runSummary.title"
       sub={view.subtext}
       actions={

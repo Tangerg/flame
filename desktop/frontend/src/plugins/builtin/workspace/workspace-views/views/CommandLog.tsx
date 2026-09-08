@@ -1,7 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { memo } from "react";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/classNames";
 import { hasAnsi } from "@/lib/ansi";
 import { AnsiText, vocab } from "@/ui";
 import type { WorkspaceCommandActivity } from "@/plugins/builtin/workspace/application/toolActivity";
@@ -25,10 +24,7 @@ export const CommandLog = memo(function CommandLog({
             key={c.id}
             data-command-id={c.id}
             data-command-selected={selected ? "" : undefined}
-            className={cn(
-              "rounded-md px-3 py-2.5 transition-colors duration-[var(--dur-color)]",
-              selected ? "bg-selected" : "bg-sunken",
-            )}
+            {...stylex.props(cs.commandPlate, selected ? cs.commandSelected : cs.commandResting)}
           >
             <div {...stylex.props(vs.entryPlain)}>
               <span {...stylex.props(cs.prompt)}>$</span>

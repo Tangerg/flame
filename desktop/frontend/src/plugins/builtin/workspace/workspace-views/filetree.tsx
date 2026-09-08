@@ -24,7 +24,7 @@ export function ExplorerView() {
   } = useWorkspaceListFiles(workspace.status === "ready" ? { cwd } : undefined);
 
   return (
-    <WorkspaceViewLayout icon="folder" titleStrong title="filetree.title">
+    <WorkspaceViewLayout icon="folder" title="filetree.title">
       <DataView
         items={roots}
         isLoading={isLoading || workspace.status === "resolving"}

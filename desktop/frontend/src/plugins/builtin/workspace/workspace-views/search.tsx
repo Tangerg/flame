@@ -30,7 +30,6 @@ export function SearchTab() {
   return (
     <WorkspaceViewLayout
       icon="search"
-      titleStrong
       title="search.title"
       sub={workspaceSearchSubtext(t, view) ?? t("search.noMatches")}
       scrollClassName="py-1"

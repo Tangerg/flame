@@ -279,7 +279,7 @@ export function AgentMemoryTab() {
 
   if (!available) {
     return (
-      <WorkspaceViewLayout icon="book" titleStrong title="agentMemory.title" scrollClassName="py-1">
+      <WorkspaceViewLayout icon="book" title="agentMemory.title" scrollClassName="py-1">
         <EmptyState
           icon="book"
           title={t("agentMemory.unavailable.title")}
@@ -292,7 +292,6 @@ export function AgentMemoryTab() {
   return (
     <WorkspaceViewLayout
       icon="book"
-      titleStrong
       title="agentMemory.title"
       sub={t("agentMemory.sub", { pending: pending.length, active: active.length })}
       scrollClassName="py-1"

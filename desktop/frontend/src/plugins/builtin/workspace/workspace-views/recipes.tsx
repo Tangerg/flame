@@ -19,7 +19,6 @@ export function RecipesTab() {
   return (
     <WorkspaceViewLayout
       icon="command"
-      titleStrong
       title="recipes.title"
       sub={t("recipes.available", { count: view.count })}
       scrollClassName="py-1"

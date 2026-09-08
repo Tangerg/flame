@@ -37,6 +37,7 @@ const STATE_LABELS: Record<VisualWorkspaceState, string> = {
   "dock-catalog": "Dock catalogue",
   "dock-loading": "Diff · loading",
   "dock-error": "Diff · error",
+  "full-view": "Full view",
   settings: "Settings",
 };
 

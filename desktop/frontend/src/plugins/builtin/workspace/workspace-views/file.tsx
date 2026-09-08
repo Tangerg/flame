@@ -38,6 +38,7 @@ export function FileViewTab() {
 
   return (
     <WorkspaceViewLayout
+      titleFace="mono"
       icon="filetext"
       title={viewer?.path || t("file.empty.title")}
       dockIdentity={viewer ? <FilePath path={viewer.path} /> : undefined}

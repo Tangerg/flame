@@ -17,7 +17,6 @@ export function ToolStatsTab() {
   return (
     <WorkspaceViewLayout
       icon="chart"
-      titleStrong
       title="toolStats.title"
       sub={
         summary.calls > 0

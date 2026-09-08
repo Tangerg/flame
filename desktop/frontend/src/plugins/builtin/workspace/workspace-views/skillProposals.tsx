@@ -28,7 +28,6 @@ export function SkillProposalsTab() {
   return (
     <WorkspaceViewLayout
       icon="sparkle"
-      titleStrong
       title="skillProposals.title"
       sub={t("skillProposals.sub", { count: proposals.length })}
       scrollClassName="py-1"

@@ -82,6 +82,10 @@ export const VISUAL_WORKSPACE_STATES = [
   "dock-catalog",
   "dock-loading",
   "dock-error",
+  // A view at FULL placement, not in the dock. `ViewHeader` renders an entirely different bar
+  // for the two — icon, title, face, separator — and every state above is a dock state, so
+  // half of that component had no golden at all.
+  "full-view",
   "settings",
 ] as const;
 

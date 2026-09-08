@@ -9,7 +9,7 @@ export function PlanTab() {
   const view = usePlanView();
 
   return (
-    <WorkspaceViewLayout icon="list" titleStrong title="plan.title" sub={planSubtext(t, view)}>
+    <WorkspaceViewLayout icon="list" title="plan.title" sub={planSubtext(t, view)}>
       {view.state === "unavailable" ? (
         <EmptyState
           icon="list"

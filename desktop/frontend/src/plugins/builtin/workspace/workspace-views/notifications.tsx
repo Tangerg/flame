@@ -22,7 +22,6 @@ export function NotificationsTab() {
   return (
     <WorkspaceViewLayout
       icon="chat"
-      titleStrong
       title="notifications.title"
       sub={notificationsSubtext(t, view)}
       scrollClassName="py-1"

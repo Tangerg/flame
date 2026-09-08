@@ -47,6 +47,7 @@ export function TerminalWorkspaceSurface() {
 
   return (
     <WorkspaceViewLayout
+      titleFace="mono"
       icon="terminal"
       title="terminal.title"
       sub={terminalSubtext(t, view)}

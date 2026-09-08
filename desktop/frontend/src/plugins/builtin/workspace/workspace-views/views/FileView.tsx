@@ -3,7 +3,6 @@ import type { Highlighter } from "shiki";
 import { useEffect, useMemo, useRef } from "react";
 import { stripCodeWrapper, useCodeHighlighter } from "@/lib/highlight/useCodeHighlight";
 import { langFromPath, resolveLang } from "@/lib/highlight/shiki";
-import { cn } from "@/lib/classNames";
 import { type as typeStep } from "@/styles/tokens.stylex";
 import { codeStyles as cs } from "./viewStyles";
 import { vocab } from "@/ui";
@@ -47,10 +46,7 @@ export function FileView({
           <div
             key={i}
             ref={isTarget ? targetRef : undefined}
-            className={cn(
-              "grid grid-cols-[44px_minmax(0,1fr)] items-start gap-2 px-3",
-              isTarget && "bg-accent-wash",
-            )}
+            {...stylex.props(cs.lineRow, cs.gutterOne, isTarget && cs.targetLine)}
           >
             <span {...stylex.props(cs.gutter, typeStep.uiSm)}>{n}</span>
             {html !== undefined ? (

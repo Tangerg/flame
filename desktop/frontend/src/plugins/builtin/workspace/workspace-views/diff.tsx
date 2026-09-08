@@ -139,7 +139,6 @@ export function DiffWorkspaceSurface() {
       <ViewHeader
         icon="diff"
         title={mode === "base" ? "diff.branchCompare" : "diff.workingTree"}
-        titleStrong
         sub={sub}
         actions={
           <div {...stylex.props(vocab.line, vocab.min)}>

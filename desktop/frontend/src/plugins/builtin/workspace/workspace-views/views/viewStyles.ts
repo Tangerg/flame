@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, radius, space, surface, weight } from "@/styles/tokens.stylex";
+import { color, leading, motion, radius, space, surface, weight } from "@/styles/tokens.stylex";
 
 /**
  * The shapes a dock view is made of.
@@ -77,6 +77,8 @@ export const viewStyles = stylex.create({
   pushEnd: { marginInlineStart: "auto" },
 
   title: { color: color.fg, fontWeight: weight.semibold },
+  /** A view's own name in its header: one weight below a row's title. */
+  titleMedium: { color: color.fg, fontWeight: weight.medium },
   /** The line under a title. `leading.body` because it wraps and a title's leading does not. */
   description: { marginTop: space.s0_5, color: color.fgMuted, lineHeight: leading.body },
   /** A caption directly under a title, which owns the gap between them. */
@@ -253,6 +255,42 @@ export const codeStyles = stylex.create({
    *  a flex row. */
   sideBySide: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" },
   blank: { backgroundColor: surface.sunken },
+
+  // A code line: a gutter of digits, then the code. The gutter widths below are absolute on
+  // purpose — a digit column is sized by how many digits must fit, which is not a rung of the
+  // spacing rhythm. (`matchRow` above says the same 44px as `--spacing * 11`; that one is the
+  // odd spelling, kept because moving it would move a golden for no reason.)
+  lineRow: { display: "grid", alignItems: "flex-start", paddingInline: space.s3 },
+  /** One gutter: a file, read on its own. */
+  gutterOne: { gridTemplateColumns: "44px minmax(0, 1fr)", gap: space.s2 },
+  /** Two gutters: a unified diff, where a row has a line number on each side. */
+  gutterPair: { gridTemplateColumns: "36px 36px minmax(0, 1fr)", gap: space.s1_5 },
+  /** A gutter and a sign: one side of a split diff. */
+  gutterSign: { gridTemplateColumns: "34px 16px minmax(0, 1fr)", gap: space.s1_5 },
+  /** A number or a +/− beside code: counted against, never read, so never selected. */
+  lineMeta: { textAlign: "right", userSelect: "none" },
+  signMeta: { textAlign: "center", userSelect: "none" },
+  /** The line the reader was sent to. */
+  targetLine: { backgroundColor: surface.accentWash },
+
+  // What a diff row type looks like. `tone` had been an arbitrary-value Tailwind class, `meta`
+  // a mix of one of those and a token class, and context's tone an empty string.
+  rowAdded: { backgroundColor: "var(--color-diff-added-tint)" },
+  rowDeleted: { backgroundColor: "var(--color-diff-deleted-tint)" },
+  metaAdded: { color: "var(--color-diff-added-meta)" },
+  metaDeleted: { color: "var(--color-diff-deleted-meta)" },
+  metaContext: { color: color.fgFaint },
+
+  /** A command in the log: a plate that says whether it is the one being read. */
+  commandPlate: {
+    borderRadius: radius.card,
+    paddingInline: space.s3,
+    paddingBlock: space.s2_5,
+    transitionProperty: "background-color",
+    transitionDuration: motion.color,
+  },
+  commandSelected: { backgroundColor: surface.selected },
+  commandResting: { backgroundColor: surface.sunken },
   prompt: { flexShrink: 0, color: color.fgFaint },
   running: { flexShrink: 0, color: color.accent },
   failed: { flexShrink: 0, color: color.negative },

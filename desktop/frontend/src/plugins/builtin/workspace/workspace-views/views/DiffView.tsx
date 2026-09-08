@@ -5,7 +5,6 @@ import { useMemo } from "react";
 import { intraLineDiff } from "../intraLineDiff";
 import { stripCodeWrapper, useCodeHighlighter } from "@/lib/highlight/useCodeHighlight";
 import { langFromPath, resolveLang } from "@/lib/highlight/shiki";
-import { cn } from "@/lib/classNames";
 import { type as typeStep } from "@/styles/tokens.stylex";
 import { codeStyles as cs } from "./viewStyles";
 
@@ -18,22 +17,18 @@ function keyFor(row: WorkspaceDiffRow, i: number): string {
   return `=:${row.leftLine}-${row.rightLine}`;
 }
 
-const ROW_STYLE: Record<
+/** What a diff row type looks like, and what it reads as. Context has no tint: an unchanged
+ *  line is the ground the other two are read against. */
+const ROW_STYLE = {
+  added: { tone: cs.rowAdded, meta: cs.metaAdded, sign: "+" },
+  deleted: { tone: cs.rowDeleted, meta: cs.metaDeleted, sign: "−" },
+  context: { tone: null, meta: cs.metaContext, sign: " " },
+  // The keys are the contract; `unknown` for the styles because `satisfies` checks excess
+  // properties, and what StyleX hands back is not worth restating here.
+} as const satisfies Record<
   "added" | "deleted" | "context",
-  { tone: string; meta: string; sign: string }
-> = {
-  added: {
-    tone: "bg-[var(--color-diff-added-tint)]",
-    meta: "text-[var(--color-diff-added-meta)]",
-    sign: "+",
-  },
-  deleted: {
-    tone: "bg-[var(--color-diff-deleted-tint)]",
-    meta: "text-[var(--color-diff-deleted-meta)]",
-    sign: "−",
-  },
-  context: { tone: "", meta: "text-fg-faint", sign: " " },
-};
+  { sign: string; tone: unknown; meta: unknown }
+>;
 
 const wordMark = (ink: string) =>
   `text-decoration-line:underline;text-decoration-color:${ink};text-decoration-thickness:2px;text-underline-offset:2px;text-decoration-skip-ink:none`;
@@ -125,17 +120,9 @@ export function DiffView({
         const style = ROW_STYLE[row.type];
         const lnum = row.type === "deleted" ? row.leftLine : row.rightLine;
         return (
-          <div
-            key={k}
-            className={cn(
-              "grid grid-cols-[36px_36px_minmax(0,1fr)] items-start gap-1.5 px-3",
-              style.tone,
-            )}
-          >
-            <span className={cn("text-right text-ui-sm select-none", style.meta)}>{lnum}</span>
-            <span className={cn("text-center text-ui-sm select-none", style.meta)}>
-              {style.sign}
-            </span>
+          <div key={k} {...stylex.props(cs.lineRow, cs.gutterPair, style.tone)}>
+            <span {...stylex.props(cs.lineMeta, style.meta, typeStep.uiSm)}>{lnum}</span>
+            <span {...stylex.props(cs.signMeta, style.meta, typeStep.uiSm)}>{style.sign}</span>
             <CodeCell code={row.code} html={highlighted?.get(row)} />
           </div>
         );
@@ -225,14 +212,9 @@ function DiffSide({
           : row.rightLine;
   const sign = row.type === "context" ? "" : style.sign;
   return (
-    <div
-      className={cn(
-        "grid grid-cols-[34px_16px_minmax(0,1fr)] items-start gap-1.5 px-3",
-        style.tone,
-      )}
-    >
-      <span className={cn("text-right text-ui-sm select-none", style.meta)}>{lnum}</span>
-      <span className={cn("text-center text-ui-sm select-none", style.meta)}>{sign}</span>
+    <div {...stylex.props(cs.lineRow, cs.gutterSign, style.tone)}>
+      <span {...stylex.props(cs.lineMeta, style.meta, typeStep.uiSm)}>{lnum}</span>
+      <span {...stylex.props(cs.signMeta, style.meta, typeStep.uiSm)}>{sign}</span>
       <CodeCell code={row.code} html={highlighted?.get(row)} />
     </div>
   );

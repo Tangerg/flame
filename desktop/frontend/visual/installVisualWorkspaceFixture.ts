@@ -637,6 +637,10 @@ const OPENED_BY_ITS_OWN_STATE = new Set([
   "notifications",
 ]);
 
+/** Which view the full-placement state opens. `search` has a prose title and a sub, which is
+ *  the path nineteen of the twenty-one `WorkspaceViewLayout` call sites take. */
+const FULL_VIEW_ID = "search";
+
 const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-light": "plan",
   "dock-inbox": "inbox",
@@ -729,7 +733,7 @@ export async function installVisualWorkspaceFixture(
   navigator().go({
     session: VISUAL_SESSION_ID,
     dock: dockViewId,
-    view: state === "settings" ? "settings" : null,
+    view: state === "settings" ? "settings" : state === "full-view" ? FULL_VIEW_ID : null,
     settings: state === "settings" ? pane : null,
   });
   useAppearanceStore.setState({ theme, visualStyle: "flame", motionScale: 0 });
