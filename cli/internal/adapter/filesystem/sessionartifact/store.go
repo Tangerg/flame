@@ -229,7 +229,7 @@ func stage(root string, body []byte) (path string, err error) {
 			err = fmt.Errorf("close session document staging file: %w", closeErr)
 		}
 		if err != nil {
-			_ = os.Remove(path)
+			_ = os.Remove(temporary.Name())
 		}
 	}()
 	if _, err = temporary.Write(body); err != nil {
