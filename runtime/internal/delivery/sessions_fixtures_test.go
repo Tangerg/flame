@@ -19,6 +19,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -452,6 +453,7 @@ func (s stubRuntime) MessageCount(_ context.Context, id string) (int, error) {
 func (s stubRuntime) RunInTx(ctx context.Context, fn func(context.Context) error) error {
 	return fn(ctx)
 }
+
 func (s stubRuntime) TruncateMessages(_ context.Context, id string, keepN int) error {
 	msgs := s.history[id]
 	if keepN <= 0 {
@@ -480,6 +482,7 @@ func (executionStub) BeginRoot(context.Context, runs.ExecutorRef) error { return
 func (executionStub) StageContinuation(_ context.Context, continuation runs.WaitingContinuation) (runs.ExecutorRef, error) {
 	return runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, nil
 }
+
 func (executionStub) BeginContinuation(context.Context, runs.ExecutorRef, []runs.InterruptAnswer, *runs.CommittedUserInput, []interrupt.Kind) error {
 	return nil
 }
@@ -487,12 +490,14 @@ func (executionStub) Release(context.Context, runs.ExecutorRef) error { return n
 func (executionStub) CancelRunningSubtree(context.Context, runs.ExecutorRef, string, string) error {
 	return nil
 }
+
 func (executionStub) PrepareWaitingSubtreeCancellation(
 	context.Context,
 	runs.WaitingSubtreeCancellationRequest,
 ) (runs.PreparedWaitingSubtreeCancellation, error) {
 	return runs.PreparedWaitingSubtreeCancellation{}, errors.New("test execution: waiting subtree cancellation is unavailable")
 }
+
 func (executionStub) SubmitSteer(context.Context, runs.ExecutorRef, []transcript.ContentBlock) error {
 	return nil
 }
@@ -887,6 +892,7 @@ type stubMessageCounter struct{ rt stubRuntime }
 func (s stubMessageCounter) Count(ctx context.Context, id string) (int, error) {
 	return s.rt.MessageCount(ctx, id)
 }
+
 func (s stubMessageCounter) Write(ctx context.Context, id string, messages ...chat.Message) error {
 	return s.rt.SeedHistory(ctx, id, messages)
 }
@@ -1003,6 +1009,7 @@ func (inertRuntimeStores) List(context.Context) ([]session.Session, error) { ret
 func (inertRuntimeStores) ListPage(context.Context, session.CatalogRead) ([]session.Session, error) {
 	return nil, nil
 }
+
 func (inertRuntimeStores) Get(context.Context, string) (session.Session, error) {
 	return session.Session{}, session.ErrNotFound
 }
@@ -1022,6 +1029,7 @@ func (inertRuntimeStores) Delete(context.Context, string, string) error { return
 func (inertRuntimeStores) GetInterrupt(context.Context, string) (runs.Pending, bool, error) {
 	return runs.Pending{}, false, nil
 }
+
 func (inertRuntimeStores) ClaimResume(
 	context.Context,
 	string,
@@ -1036,31 +1044,41 @@ func (inertRuntimeStores) AppendItem(context.Context, transcript.Item) error    
 func (inertRuntimeStores) Item(context.Context, string) (transcript.Item, bool, error) {
 	return transcript.Item{}, false, nil
 }
+
 func (inertRuntimeStores) ReplaceItem(context.Context, transcript.Replacement) error {
 	return nil
 }
+
 func (inertRuntimeStores) StartModelInvocation(context.Context, string, string, string, string, time.Time) error {
 	return nil
 }
+
 func (inertRuntimeStores) CompleteModelInvocation(context.Context, string, string, string, string, time.Time, time.Time) error {
 	return nil
 }
+
 func (inertRuntimeStores) FailModelInvocation(context.Context, string, string, string, string, time.Time, time.Time) error {
 	return nil
 }
+
 func (inertRuntimeStores) MarkModelInvocationUnknown(context.Context, string, string, string, string, time.Time, time.Time) error {
 	return nil
 }
+
 func (inertRuntimeStores) StartToolInvocation(context.Context, string, string, string, string, string, time.Time) error {
 	return nil
 }
+
 func (inertRuntimeStores) CompleteToolInvocation(context.Context, string, string, string, string, string, time.Time, time.Time) error {
 	return nil
 }
+
 func (inertRuntimeStores) MarkToolInvocationIncomplete(context.Context, string, string, string, string, string, time.Time, time.Time) error {
 	return nil
 }
+
 func (inertRuntimeStores) SaveCheckpoint(context.Context, runs.ExecutorCheckpoint) error { return nil }
+
 func (inertRuntimeStores) LoadCheckpoint(context.Context, string) (runs.ExecutorCheckpoint, error) {
 	return runs.ExecutorCheckpoint{}, runs.ErrExecutorCheckpointNotFound
 }
@@ -1068,6 +1086,7 @@ func (inertRuntimeStores) DeleteCheckpoints(context.Context, string, []string) e
 func (inertRuntimeStores) Reserve(context.Context, sqlite.ChildRunStartReservationRecord) error {
 	return nil
 }
+
 func (inertRuntimeStores) Conclude(
 	context.Context,
 	sqlite.ChildRunStartReservationRecord,
@@ -1082,6 +1101,7 @@ type inertSessionInterrupts struct{ inertRuntimeStores }
 func (inertSessionInterrupts) List(context.Context, string) ([]runs.Pending, error) {
 	return nil, nil
 }
+
 func (inertSessionInterrupts) Get(context.Context, string) (runs.Pending, bool, error) {
 	return runs.Pending{}, false, nil
 }
@@ -1097,18 +1117,23 @@ type inertQueryStores struct{}
 func (inertQueryStores) PageSessionItems(context.Context, string, transcript.SequenceOrder, int64, int) ([]transcript.SequencedItem, error) {
 	return nil, nil
 }
+
 func (inertQueryStores) PageRunItems(context.Context, string, transcript.SequenceOrder, int64, int) ([]transcript.SequencedItem, error) {
 	return nil, nil
 }
+
 func (inertQueryStores) PageRunTreeItems(context.Context, string, transcript.SequenceOrder, int64, int) ([]transcript.SequencedItem, error) {
 	return nil, nil
 }
+
 func (inertQueryStores) Run(context.Context, string) (run.Run, bool, error) {
 	return run.Run{}, false, nil
 }
+
 func (inertQueryStores) RunsWithAncestors(context.Context, []string) ([]run.Run, error) {
 	return nil, nil
 }
+
 func (inertQueryStores) PageRuns(context.Context, string, []run.Status, bool, int64, string, int) ([]run.Run, error) {
 	return nil, nil
 }
@@ -1235,6 +1260,9 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 		RunProgress:         runProgressFor(state),
 		ExecutorCheckpoints: stores,
 		ChildRunStarts:      stores,
+		Schedules:           inertSegmentSchedules{},
+		GoalRuns:            inertSegmentGoalRuns{},
+		ToolResults:         inertSegmentToolResults{},
 		Tx:                  s.RunInTx,
 	}
 	if s.toolResults != nil {
@@ -1271,27 +1299,35 @@ func (stubRunState) Resume(
 ) error {
 	return nil
 }
+
 func (stubRunState) RequireActiveSegment(context.Context, string, string, string) error {
 	return nil
 }
+
 func (stubRunState) Suspend(context.Context, run.Run, string, runtimeidentity.CommitID) error {
 	return nil
 }
+
 func (stubRunState) Terminalize(context.Context, run.Replacement) error {
 	return nil
 }
+
 func (stubRunState) TerminalizeEvent(context.Context, run.Run, string, runtimeidentity.CommitID) error {
 	return nil
 }
+
 func (stubRunState) RecordRunCommit(context.Context, string, string, string, runtimeidentity.CommitID) error {
 	return nil
 }
+
 func (stubRunState) RecordWaitingRunCommit(context.Context, string, string, runtimeidentity.CommitID) error {
 	return nil
 }
+
 func (stubRunState) RunCommitCommitted(context.Context, string, string, string, runtimeidentity.CommitID) (bool, error) {
 	return false, nil
 }
+
 func (stubRunState) UpdateProgress(context.Context, string, string, string, run.Metrics, int64, time.Time) error {
 	return nil
 }
@@ -1305,10 +1341,12 @@ func (s *stubRuntime) QuiesceSession(sessionID string) error {
 	s.stoppedSessions = append(s.stoppedSessions, sessionID)
 	return s.stopSessionErr
 }
+
 func (s *stubRuntime) QuiesceWorkspace(root string) error {
 	s.stoppedTrees = append(s.stoppedTrees, root)
 	return s.stopTreeErr
 }
+
 func (s *stubRuntime) ForgetWorkspace(root string) {
 	s.forgotTrees = append(s.forgotTrees, root)
 }
@@ -1321,6 +1359,7 @@ func (s *stubRuntime) Discard(sessionID string) error {
 func (s stubRuntime) ReadHistory(_ context.Context, id string) ([]chat.Message, error) {
 	return s.history[id], nil
 }
+
 func (s stubRuntime) SeedHistory(_ context.Context, id string, msgs []chat.Message) error {
 	if s.history != nil {
 		s.history[id] = append(s.history[id], msgs...)
@@ -1358,7 +1397,9 @@ func (inertQueryStores) Save(context.Context, string, plan.Replacement) error { 
 type inertWorkspaceMutations struct{}
 
 func (inertWorkspaceMutations) Record(context.Context, sessions.WorkspaceMutation) error { return nil }
-func (inertWorkspaceMutations) Complete(context.Context, string) error                   { return nil }
+
+func (inertWorkspaceMutations) Complete(context.Context, string) error { return nil }
+
 func (inertWorkspaceMutations) ListPending(context.Context) ([]sessions.WorkspaceMutation, error) {
 	return nil, nil
 }
@@ -1404,4 +1445,23 @@ func newModelCoordinator(cfg models.Config) *models.Coordinator {
 type inertEmbeddingRoles struct{}
 
 func (inertEmbeddingRoles) ValidateEmbeddingModel(context.Context, string, string) error { return nil }
-func (inertEmbeddingRoles) SaveEmbeddingRole(context.Context, modelref.Role) error       { return nil }
+
+func (inertEmbeddingRoles) SaveEmbeddingRole(context.Context, modelref.Role) error { return nil }
+
+// The segment write-sets require every store; delivery fixtures that do not
+// exercise a capability supply an inert one rather than an absent one.
+type inertSegmentSchedules struct{}
+
+func (inertSegmentSchedules) Accept(context.Context, schedule.Acceptance) error   { return nil }
+func (inertSegmentSchedules) RecordRun(context.Context, schedule.RunRecord) error { return nil }
+
+type inertSegmentGoalRuns struct{}
+
+func (inertSegmentGoalRuns) RecordRun(context.Context, goal.RunRecord) error { return nil }
+
+type inertSegmentToolResults struct{}
+
+func (inertSegmentToolResults) Bind(context.Context, string, string, string, toolresult.Ref) error {
+	return nil
+}
+func (inertSegmentToolResults) Discard(context.Context, string, toolresult.Ref) error { return nil }

@@ -277,9 +277,9 @@ var (
 
 const runsegmentTracerName = "scope/flame/segment"
 
-// New returns the durable Run-segment effects. Every dependency needed by the
-// supported write-sets is validated here; optional product capabilities remain
-// explicit through Schedules, GoalRuns, and ToolResults.
+// New returns the durable Run-segment effects. Every dependency is required: a
+// segment commit is one transaction, and a missing store would either fail it
+// halfway or drop the schedule, Goal-budget or Tool-result work it owns.
 func New(cfg Config) (*Effects, error) {
 	required := []struct {
 		name  string
@@ -298,24 +298,14 @@ func New(cfg Config) (*Effects, error) {
 		{"run progress writer", cfg.RunProgress},
 		{"executor checkpoint store", cfg.ExecutorCheckpoints},
 		{"child run start store", cfg.ChildRunStarts},
+		{"schedule store", cfg.Schedules},
+		{"goal run recorder", cfg.GoalRuns},
+		{"tool result store", cfg.ToolResults},
 		{"transactor", cfg.Tx},
 	}
 	for _, dependency := range required {
 		if nilDependency(dependency.value) {
 			return nil, fmt.Errorf("segment: %s is required", dependency.name)
-		}
-	}
-	optional := []struct {
-		name  string
-		value any
-	}{
-		{"schedule store", cfg.Schedules},
-		{"goal run recorder", cfg.GoalRuns},
-		{"tool result store", cfg.ToolResults},
-	}
-	for _, dependency := range optional {
-		if dependency.value != nil && nilDependency(dependency.value) {
-			return nil, fmt.Errorf("segment: optional %s must not be typed nil", dependency.name)
 		}
 	}
 	return &Effects{

@@ -455,9 +455,6 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 	if scheduleFiring == "" && !manual {
 		return nil
 	}
-	if e.schedules == nil {
-		return errors.New("segment: schedule persistence is unavailable")
-	}
 	if manual {
 		if err := e.schedules.RecordRun(ctx, manualScheduleRun); err != nil {
 			return fmt.Errorf("segment: record manual schedule Run: %w", err)
@@ -622,9 +619,6 @@ const stagedToolResultCleanupTimeout = 5 * time.Second
 // event. Cleanup is request-detached because cancellation is one of the failure
 // paths; Discard's unbound predicate makes an ambiguous successful commit safe.
 func (e *Effects) compensateFailedCommit(ctx context.Context, commit runs.EventCommit, commitErr error) error {
-	if e.toolResults == nil {
-		return commitErr
-	}
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), stagedToolResultCleanupTimeout)
 	defer cancel()
 	var cleanupErrs []error
@@ -667,9 +661,6 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 		return err
 	}
 	if commit.GoalRun != nil {
-		if e.goalRuns == nil {
-			return errors.New("segment: Goal Run persistence is unavailable")
-		}
 		if err := e.goalRuns.RecordRun(ctx, *commit.GoalRun); err != nil {
 			return fmt.Errorf("segment: record Goal Run: %w", err)
 		}
@@ -813,9 +804,6 @@ func (e *Effects) appendItem(ctx context.Context, item transcript.Item) error {
 	preview, ok := invocation.Result.String()
 	if !ok {
 		return errors.New("segment: offloaded tool result has no preview string")
-	}
-	if e.toolResults == nil {
-		return errors.New("segment: tool-result persistence is unavailable")
 	}
 	if err := e.toolResults.Bind(ctx, item.SessionID(), item.ID(), preview, *invocation.Offload); err != nil {
 		return fmt.Errorf("segment: bind offloaded tool result: %w", err)

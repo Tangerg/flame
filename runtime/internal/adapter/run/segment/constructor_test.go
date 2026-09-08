@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -36,13 +39,13 @@ func TestNewFinalizerRejectsPartialTitleMaintenance(t *testing.T) {
 
 func mustNewEffects(cfg Config) *Effects {
 	if nilDependency(cfg.Schedules) {
-		cfg.Schedules = nil
+		cfg.Schedules = inertSchedules{}
 	}
 	if nilDependency(cfg.GoalRuns) {
-		cfg.GoalRuns = nil
+		cfg.GoalRuns = inertGoalRuns{}
 	}
 	if nilDependency(cfg.ToolResults) {
-		cfg.ToolResults = nil
+		cfg.ToolResults = inertToolResults{}
 	}
 	interrupts := &fakeInterrupts{}
 	if nilDependency(cfg.Interrupts) {
@@ -134,12 +137,15 @@ type inertModelInvocations struct{}
 func (inertModelInvocations) StartModelInvocation(context.Context, string, string, string, string, time.Time) error {
 	return nil
 }
+
 func (inertModelInvocations) CompleteModelInvocation(context.Context, string, string, string, string, time.Time, time.Time) error {
 	return nil
 }
+
 func (inertModelInvocations) FailModelInvocation(context.Context, string, string, string, string, time.Time, time.Time) error {
 	return nil
 }
+
 func (inertModelInvocations) MarkModelInvocationUnknown(context.Context, string, string, string, string, time.Time, time.Time) error {
 	return nil
 }
@@ -149,9 +155,29 @@ type inertToolInvocations struct{}
 func (inertToolInvocations) StartToolInvocation(context.Context, string, string, string, string, string, time.Time) error {
 	return nil
 }
+
 func (inertToolInvocations) CompleteToolInvocation(context.Context, string, string, string, string, string, time.Time, time.Time) error {
 	return nil
 }
+
 func (inertToolInvocations) MarkToolInvocationIncomplete(context.Context, string, string, string, string, string, time.Time, time.Time) error {
 	return nil
 }
+
+// The segment write-sets require every store; a test that does not exercise a
+// capability supplies an inert one rather than an absent one.
+type inertSchedules struct{}
+
+func (inertSchedules) Accept(context.Context, schedule.Acceptance) error   { return nil }
+func (inertSchedules) RecordRun(context.Context, schedule.RunRecord) error { return nil }
+
+type inertGoalRuns struct{}
+
+func (inertGoalRuns) RecordRun(context.Context, goal.RunRecord) error { return nil }
+
+type inertToolResults struct{}
+
+func (inertToolResults) Bind(context.Context, string, string, string, toolresult.Ref) error {
+	return nil
+}
+func (inertToolResults) Discard(context.Context, string, toolresult.Ref) error { return nil }
