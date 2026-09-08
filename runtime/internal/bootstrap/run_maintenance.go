@@ -45,30 +45,30 @@ func buildRunMaintenance(
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: build memory consolidator: %w", err)
 	}
-	var skillMiner *maintenance.SkillProposalMiner
-	var skillArchiver *maintenance.IdleSkillArchiver
-	if skillMaintenance != nil {
-		skillRepository, repositoryErr := skillspec.NewDirectoryRepository(
-			cfg.SkillsUserDir,
-			skillspec.RepositoryConfig{},
-		)
-		if repositoryErr != nil {
-			return nil, nil, fmt.Errorf("runtime: open user skill repository: %w", repositoryErr)
-		}
-		skillMiner, err = maintenance.NewSkillProposalMiner(
-			conversationServices.store,
-			skills,
-			skillRepository,
-			resolveUtility,
-			maintenance.SkillMiningPolicyValues{},
-		)
-		if err != nil {
-			return nil, nil, fmt.Errorf("runtime: build skill proposal miner: %w", err)
-		}
-		skillArchiver, err = maintenance.NewIdleSkillArchiver(skillMaintenance, maintenance.SkillArchivePolicyValues{})
-		if err != nil {
-			return nil, nil, fmt.Errorf("runtime: build idle skill archiver: %w", err)
-		}
+	skillRepository, repositoryErr := skillspec.NewDirectoryRepository(
+		cfg.SkillsUserDir,
+		skillspec.RepositoryConfig{},
+	)
+	if repositoryErr != nil {
+		return nil, nil, fmt.Errorf("runtime: open user skill repository: %w", repositoryErr)
 	}
-	return maintenance.NewPipeline(consolidator, skillMiner, skillArchiver), compactor, nil
+	skillMiner, err := maintenance.NewSkillProposalMiner(
+		conversationServices.store,
+		skills,
+		skillRepository,
+		resolveUtility,
+		maintenance.SkillMiningPolicyValues{},
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("runtime: build skill proposal miner: %w", err)
+	}
+	skillArchiver, err := maintenance.NewIdleSkillArchiver(skillMaintenance, maintenance.SkillArchivePolicyValues{})
+	if err != nil {
+		return nil, nil, fmt.Errorf("runtime: build idle skill archiver: %w", err)
+	}
+	pipeline, err := maintenance.NewPipeline(consolidator, skillMiner, skillArchiver)
+	if err != nil {
+		return nil, nil, fmt.Errorf("runtime: build maintenance pipeline: %w", err)
+	}
+	return pipeline, compactor, nil
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -131,6 +132,9 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 	}
 	if cfg.Skills == nil {
 		cfg.Skills = fakeSkillCatalog{}
+	}
+	if cfg.Curator == nil {
+		cfg.Curator = emptySkillCurator{}
 	}
 	if cfg.Proposals == nil {
 		cfg.Proposals = &stubSkillProposals{}
@@ -658,4 +662,14 @@ func TestListAgentDocsRejectsUnavailableCWD(t *testing.T) {
 	if !errors.Is(err, protocol.ErrWorkspaceUnavailable) {
 		t.Fatalf("listAgentDocs err = %v, want ErrWorkspaceUnavailable", err)
 	}
+}
+
+type emptySkillCurator struct{}
+
+func (emptySkillCurator) List(context.Context) ([]skills.Entry, error) { return nil, nil }
+func (emptySkillCurator) Archive(context.Context, string) ([]string, error) {
+	return nil, skills.ErrNotFound
+}
+func (emptySkillCurator) Restore(context.Context, string) ([]string, error) {
+	return nil, skills.ErrNotFound
 }

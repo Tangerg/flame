@@ -42,12 +42,11 @@ func presentWorkspaceSkillScope(scope workspace.SkillScope) (protocol.SkillScope
 // ListManagedSkills returns the user self-authored Skill library — active then
 // archived, ordered by name within each lifecycle and tagged with its lifecycle
 // (skills.library.list). The library is small, so it comes back in one page
-// (same as skills.discovered.list). capability_not_negotiated when the library
-// curator is disabled.
+// (same as skills.discovered.list).
 func (s *Handler) ListManagedSkills(ctx context.Context) (*protocol.Page[protocol.ManagedSkill], error) {
 	entries, err := s.workspaceSkills.Managed(ctx)
 	if err != nil {
-		return nil, mapSkillLibraryErr(err, "skills.library.list")
+		return nil, err
 	}
 	out := make([]protocol.ManagedSkill, 0, len(entries))
 	for _, e := range entries {
@@ -79,20 +78,14 @@ func presentSkillLifecycle(lifecycle skills.Lifecycle) (protocol.SkillLifecycle,
 // (skills.library.archive). The application use case publishes the refresh
 // nudge after its durable mutation commits.
 func (s *Handler) ArchiveSkill(ctx context.Context, in protocol.SkillNameRequest) error {
-	if err := s.workspaceSkills.Archive(ctx, in.Name); err != nil {
-		return mapSkillLibraryErr(err, "skills.library.archive")
-	}
-	return nil
+	return s.workspaceSkills.Archive(ctx, in.Name)
 }
 
 // RestoreSkill returns an archived skill to active use
 // (skills.library.restore). The application use case publishes the refresh
 // nudge after its durable mutation commits.
 func (s *Handler) RestoreSkill(ctx context.Context, in protocol.SkillNameRequest) error {
-	if err := s.workspaceSkills.Restore(ctx, in.Name); err != nil {
-		return mapSkillLibraryErr(err, "skills.library.restore")
-	}
-	return nil
+	return s.workspaceSkills.Restore(ctx, in.Name)
 }
 
 // ListSkillProposals returns the one current proposal per scoped Skill name,
@@ -204,11 +197,4 @@ func mapSkillProposalErr(err error) error {
 	default:
 		return wireWorkspaceError(err)
 	}
-}
-
-func mapSkillLibraryErr(err error, method string) error {
-	if errors.Is(err, workspace.ErrSkillLibraryUnavailable) {
-		return capabilityNotNegotiated(method)
-	}
-	return err
 }

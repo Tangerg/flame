@@ -3,16 +3,12 @@ package workspace
 import (
 	"cmp"
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
-
-// ErrSkillLibraryUnavailable reports that user Skill-library curation is disabled.
-var ErrSkillLibraryUnavailable = errors.New("workspace: skill library unavailable")
 
 // SkillCatalog enumerates skills visible from a working directory. List
 // transfers ownership of the returned summaries to the caller.
@@ -53,8 +49,6 @@ type Skills struct {
 }
 
 // NewSkills builds interactive Skill discovery, curation, and review use cases.
-// A nil curator disables user-library curation; project discovery and proposal
-// review remain available.
 func NewSkills(scope *Scope, catalog SkillCatalog, curator SkillCurator, proposals SkillProposals, observations *AuthoredWatch, invalidations invalidation.Publish) (*Skills, error) {
 	for _, dependency := range []struct {
 		name  string
@@ -62,14 +56,12 @@ func NewSkills(scope *Scope, catalog SkillCatalog, curator SkillCurator, proposa
 	}{
 		{name: "scope", value: scope},
 		{name: "catalog", value: catalog},
+		{name: "curator", value: curator},
 		{name: "proposal store", value: proposals},
 	} {
 		if missingDependency(dependency.value) {
 			return nil, fmt.Errorf("workspace: skills %s is required", dependency.name)
 		}
-	}
-	if curator != nil && missingDependency(curator) {
-		return nil, errors.New("workspace: skill curator must be non-nil when provided")
 	}
 	return &Skills{
 		scope: scope, catalog: catalog, curator: curator, proposals: proposals,
@@ -110,9 +102,6 @@ func (s *Skills) List(ctx context.Context, cwd string) ([]SkillSummary, error) {
 // Managed returns active and archived user-authored Skills, active first and
 // then ordered by name within each lifecycle.
 func (s *Skills) Managed(ctx context.Context) ([]skills.Entry, error) {
-	if s.curator == nil {
-		return nil, ErrSkillLibraryUnavailable
-	}
 	entries, err := s.curator.List(ctx)
 	if err != nil {
 		return nil, err
@@ -143,9 +132,6 @@ func (s *Skills) Managed(ctx context.Context) ([]skills.Entry, error) {
 
 // Archive removes a Skill from active use without deleting it.
 func (s *Skills) Archive(ctx context.Context, name string) error {
-	if s.curator == nil {
-		return ErrSkillLibraryUnavailable
-	}
 	identities, err := s.curator.Archive(ctx, name)
 	s.publishSkillMutation(identities)
 	return err
@@ -153,9 +139,6 @@ func (s *Skills) Archive(ctx context.Context, name string) error {
 
 // Restore returns an archived Skill to active use.
 func (s *Skills) Restore(ctx context.Context, name string) error {
-	if s.curator == nil {
-		return ErrSkillLibraryUnavailable
-	}
 	identities, err := s.curator.Restore(ctx, name)
 	s.publishSkillMutation(identities)
 	return err

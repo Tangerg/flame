@@ -137,11 +137,16 @@ func validateAssemblyConfig(c Config) error {
 	if !filepath.IsAbs(c.DefaultWorkspacePath) {
 		return errors.New("runtime: DefaultWorkspacePath must be absolute")
 	}
+	if c.SkillsUserDir == "" {
+		return errors.New("runtime: SkillsUserDir is required")
+	}
+	if !filepath.IsAbs(c.SkillsUserDir) {
+		return errors.New("runtime: SkillsUserDir must be absolute")
+	}
 	for _, configuredPath := range []struct {
 		name  string
 		value string
 	}{
-		{name: "SkillsUserDir", value: c.SkillsUserDir},
 		{name: "SandboxDir", value: c.SandboxDir},
 		{name: "RecipesGlobalDir", value: c.RecipesGlobalDir},
 		{name: "CheckpointDir", value: c.CheckpointDir},

@@ -18,8 +18,11 @@ type SkillLibraries struct {
 	projects sync.Map
 }
 
-func NewSkillLibraries(user *skillauthoring.Store) *SkillLibraries {
-	return &SkillLibraries{user: user}
+func NewSkillLibraries(user *skillauthoring.Store) (*SkillLibraries, error) {
+	if user == nil {
+		return nil, errors.New("workspace: user skill library is required")
+	}
+	return &SkillLibraries{user: user}, nil
 }
 
 func (l *SkillLibraries) SubmitProposal(ctx context.Context, projectRoot string, proposal skills.Proposal) (skills.ProposalRef, []string, error) {
@@ -38,9 +41,6 @@ func (l *SkillLibraries) ListProposals(ctx context.Context, projectRoot string) 
 	projectProposals, err := project.ListProposals(ctx)
 	if err != nil {
 		return nil, err
-	}
-	if l.user == nil {
-		return projectProposals, nil
 	}
 	userProposals, err := l.user.ListProposals(ctx)
 	if err != nil {
@@ -68,9 +68,6 @@ func (l *SkillLibraries) RejectProposal(ctx context.Context, projectRoot string,
 func (l *SkillLibraries) store(scope skills.Scope, projectRoot string) (*skillauthoring.Store, error) {
 	switch scope {
 	case skills.ScopeUser:
-		if l.user == nil {
-			return nil, errors.New("workspace Skill libraries: user library is unavailable")
-		}
 		return l.user, nil
 	case skills.ScopeProject:
 		if strings.TrimSpace(projectRoot) == "" {

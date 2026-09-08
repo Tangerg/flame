@@ -83,9 +83,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		SandboxShell:         cfg.SandboxShell,
 		SandboxReadOnlyPaths: cfg.SandboxReadOnlyPaths,
 	}
-	if deps.skillStore != nil {
-		buildConfig.SkillUsage = deps.skillStore
-	}
+	buildConfig.SkillUsage = deps.skillStore
 	buildConfig.PlanMode = deps.approvalPolicy
 	buildConfig.Schedules = deps.schedules
 	buildConfig.ToolResults = cfg.Stores.ToolResults

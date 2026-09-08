@@ -64,11 +64,16 @@ func TestNewRequiresRuntimeDependencies(t *testing.T) {
 			want: "runtime: DefaultWorkspacePath must be absolute",
 		},
 		{
+			name: "missing skills user directory",
+			edit: func(cfg *Config) { cfg.SkillsUserDir = "" },
+			want: "runtime: SkillsUserDir is required",
+		},
+		{
 			name: "relative skills user directory",
 			edit: func(cfg *Config) {
 				cfg.SkillsUserDir = "relative-skills"
 			},
-			want: "runtime: SkillsUserDir must be absolute when set",
+			want: "runtime: SkillsUserDir must be absolute",
 		},
 		{
 			name: "relative sandbox directory",
@@ -327,6 +332,7 @@ func runtimeConfigWithRequiredDeps(t *testing.T) Config {
 		Provider: "anthropic", Model: "claude-test",
 		ApprovalMode: approval.ModeSafe,
 		UserHome:     t.TempDir(), DefaultWorkspacePath: workspace,
+		SkillsUserDir:    t.TempDir(),
 		ChatResolver:     testChatResolver(client),
 		BuildID:          "sha256:0000000000000000000000000000000000000000000000000000000000000000",
 		ProviderRegistry: stores.Providers,

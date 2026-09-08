@@ -1,7 +1,6 @@
 package workspace_test
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,22 +12,27 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
 
-func TestProjectSkillsRemainAvailableWithoutUserLibrary(t *testing.T) {
+func TestProjectSkillsWithEmptyUserLibrary(t *testing.T) {
 	projectRoot := t.TempDir()
 	scope, err := workspaceapp.NewScope(projectRoot, "", workspaceadapter.Resolver{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	libraries := workspaceadapter.NewSkillLibraries(nil)
-	useCases, err := workspaceapp.NewSkills(scope, promptsource.NewWorkspaceSkills(""), nil, libraries, nil, nil)
+	userRoot := t.TempDir()
+	store, err := skillauthoring.NewStore(userRoot, skills.ScopeUser)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := useCases.Managed(t.Context()); !errors.Is(err, workspaceapp.ErrSkillLibraryUnavailable) {
-		t.Fatalf("Managed = %v, want user-library curation disabled", err)
+	libraries, err := workspaceadapter.NewSkillLibraries(store)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := useCases.SubmitProposal(t.Context(), projectRoot, proposal(skills.ScopeUser, "personal-check")); err == nil {
-		t.Fatal("user proposal was accepted without a user library")
+	useCases, err := workspaceapp.NewSkills(scope, promptsource.NewWorkspaceSkills(userRoot), store, libraries, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if managed, err := useCases.Managed(t.Context()); err != nil || len(managed) != 0 {
+		t.Fatalf("Managed = (%v, %v), want empty user library", managed, err)
 	}
 	ref, err := useCases.SubmitProposal(t.Context(), projectRoot, proposal(skills.ScopeProject, "project-check"))
 	if err != nil {
@@ -54,7 +58,10 @@ func TestSkillLibrariesRouteProposalsByScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	libraries := workspaceadapter.NewSkillLibraries(store)
+	libraries, err := workspaceadapter.NewSkillLibraries(store)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	projectProposal := proposal(skills.ScopeProject, "project-check")
 	projectRef, _, err := libraries.SubmitProposal(t.Context(), projectRoot, projectProposal)
@@ -92,7 +99,10 @@ func TestSkillLibrariesRejectProposalFromItsScopedStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	libraries := workspaceadapter.NewSkillLibraries(store)
+	libraries, err := workspaceadapter.NewSkillLibraries(store)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ref, _, err := libraries.SubmitProposal(t.Context(), projectRoot, proposal(skills.ScopeProject, "throwaway"))
 	if err != nil {
 		t.Fatal(err)
@@ -123,5 +133,11 @@ func assertFile(t *testing.T, path string) {
 	t.Helper()
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("stat %s: %v", path, err)
+	}
+}
+
+func TestSkillLibrariesRequireUserStore(t *testing.T) {
+	if libraries, err := workspaceadapter.NewSkillLibraries(nil); err == nil || libraries != nil {
+		t.Fatalf("NewSkillLibraries = (%v, %v), want incomplete construction rejected", libraries, err)
 	}
 }

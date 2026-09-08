@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
 
-func TestNewSkillsRequiresCompleteDiscoveryAndReview(t *testing.T) {
+func TestNewSkillsRequiresCompleteDiscoveryCurationAndReview(t *testing.T) {
 	scope := newScope(t, "", "", testPaths{})
 	for _, test := range []struct {
 		name      string
@@ -19,11 +19,12 @@ func TestNewSkillsRequiresCompleteDiscoveryAndReview(t *testing.T) {
 		curator   SkillCurator
 		proposals SkillProposals
 	}{
-		{name: "scope", catalog: &fakeSkillCatalog{}, proposals: &fakeSkillProposals{}},
-		{name: "catalog", scope: scope, proposals: &fakeSkillProposals{}},
-		{name: "typed nil catalog", scope: scope, catalog: (*fakeSkillCatalog)(nil), proposals: &fakeSkillProposals{}},
-		{name: "proposals", scope: scope, catalog: &fakeSkillCatalog{}},
-		{name: "typed nil proposals", scope: scope, catalog: &fakeSkillCatalog{}, proposals: (*fakeSkillProposals)(nil)},
+		{curator: &fakeSkillCurator{}, name: "scope", catalog: &fakeSkillCatalog{}, proposals: &fakeSkillProposals{}},
+		{curator: &fakeSkillCurator{}, name: "catalog", scope: scope, proposals: &fakeSkillProposals{}},
+		{curator: &fakeSkillCurator{}, name: "typed nil catalog", scope: scope, catalog: (*fakeSkillCatalog)(nil), proposals: &fakeSkillProposals{}},
+		{curator: &fakeSkillCurator{}, name: "proposals", scope: scope, catalog: &fakeSkillCatalog{}},
+		{curator: &fakeSkillCurator{}, name: "typed nil proposals", scope: scope, catalog: &fakeSkillCatalog{}, proposals: (*fakeSkillProposals)(nil)},
+		{name: "curator", scope: scope, catalog: &fakeSkillCatalog{}, proposals: &fakeSkillProposals{}},
 		{name: "typed nil curator", scope: scope, catalog: &fakeSkillCatalog{}, proposals: &fakeSkillProposals{}, curator: (*fakeSkillCurator)(nil)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -36,6 +37,9 @@ func TestNewSkillsRequiresCompleteDiscoveryAndReview(t *testing.T) {
 
 func newSkills(t *testing.T, scope *Scope, catalog SkillCatalog, curator SkillCurator, proposals SkillProposals, observations *AuthoredWatch, publish invalidation.Publish) *Skills {
 	t.Helper()
+	if curator == nil {
+		curator = &fakeSkillCurator{}
+	}
 	useCases, err := NewSkills(scope, catalog, curator, proposals, observations, publish)
 	if err != nil {
 		t.Fatal(err)
@@ -124,19 +128,6 @@ func TestListPreservesCatalogFailure(t *testing.T) {
 	c := newSkills(t, newScope(t, "", "", testPaths{}), &fakeSkillCatalog{err: cause}, nil, &fakeSkillProposals{}, nil, nil)
 	if _, err := c.List(t.Context(), "/repo"); !errors.Is(err, cause) {
 		t.Fatalf("List error = %v, want catalog failure", err)
-	}
-}
-
-func TestManagedSkillsWithoutCuratorReportUnavailable(t *testing.T) {
-	c := newSkills(t, newScope(t, "", "", testPaths{}), &fakeSkillCatalog{}, nil, &fakeSkillProposals{}, nil, nil)
-	if _, err := c.Managed(context.Background()); !errors.Is(err, ErrSkillLibraryUnavailable) {
-		t.Fatalf("Managed err = %v, want ErrSkillLibraryUnavailable", err)
-	}
-	if err := c.Archive(context.Background(), "lint"); !errors.Is(err, ErrSkillLibraryUnavailable) {
-		t.Fatalf("Archive err = %v, want ErrSkillLibraryUnavailable", err)
-	}
-	if err := c.Restore(context.Background(), "lint"); !errors.Is(err, ErrSkillLibraryUnavailable) {
-		t.Fatalf("Restore err = %v, want ErrSkillLibraryUnavailable", err)
 	}
 }
 

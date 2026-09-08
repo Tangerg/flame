@@ -149,25 +149,23 @@ func buildWorkspaceComposition(
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build knowledge: %w", err)
 	}
-	var skillStore *skillauthoring.Store
-	var skillCurator workspace.SkillCurator
-	var skillMaintenance *workspace.SkillMaintenance
-	if cfg.SkillsUserDir != "" {
-		skillStore, err = skillauthoring.NewStore(cfg.SkillsUserDir, skills.ScopeUser)
-		if err != nil {
-			return workspaceComposition{}, fmt.Errorf("runtime: build user skill store: %w", err)
-		}
-		skillCurator = skillStore
-		skillMaintenance, err = workspace.NewSkillMaintenance(skillStore, authoredWatch, publish)
-		if err != nil {
-			return workspaceComposition{}, fmt.Errorf("runtime: build skill maintenance: %w", err)
-		}
+	skillStore, err := skillauthoring.NewStore(cfg.SkillsUserDir, skills.ScopeUser)
+	if err != nil {
+		return workspaceComposition{}, fmt.Errorf("runtime: build user skill store: %w", err)
+	}
+	skillMaintenance, err := workspace.NewSkillMaintenance(skillStore, authoredWatch, publish)
+	if err != nil {
+		return workspaceComposition{}, fmt.Errorf("runtime: build skill maintenance: %w", err)
+	}
+	skillLibraries, err := workspaceadapter.NewSkillLibraries(skillStore)
+	if err != nil {
+		return workspaceComposition{}, fmt.Errorf("runtime: build skill libraries: %w", err)
 	}
 	workspaceSkills, err := workspace.NewSkills(
 		scope,
 		promptsource.NewWorkspaceSkills(cfg.SkillsUserDir),
-		skillCurator,
-		workspaceadapter.NewSkillLibraries(skillStore),
+		skillStore,
+		skillLibraries,
 		authoredWatch,
 		publish,
 	)
