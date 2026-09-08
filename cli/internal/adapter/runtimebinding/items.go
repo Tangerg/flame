@@ -186,15 +186,14 @@ func projectTool(projection toolProjection) (agent.ToolCall, error) {
 	if err != nil {
 		return agent.ToolCall{}, fmt.Errorf("encode tool arguments: %w", err)
 	}
-	arguments := decodeToolArgumentsMaterial(argumentsJSON)
 	tool := agent.ToolCall{
-		Kind: kindForTool(value.Name), Name: value.Name, Summary: arguments.summary(value.Name),
+		Kind: kindForTool(value.Name), Name: value.Name, Summary: toolSummary(value.Name, value.Arguments),
 		Safety:    projection.safety,
 		StartedAt: projection.startedAt, FinishedAt: projection.finishedAt,
-		Command: arguments.command(),
-		Path:    arguments.path(),
-		Query:   arguments.query(),
-		URL:     arguments.url(),
+		Command: toolText(value.Arguments, "command"),
+		Path:    toolText(value.Arguments, "path", "file", "filename"),
+		Query:   toolText(value.Arguments, "query", "pattern", "search"),
+		URL:     toolText(value.Arguments, "url", "uri"),
 	}
 	tool.ArgumentsJSON = argumentsJSON
 	if value.Result != nil {
@@ -203,7 +202,7 @@ func projectTool(projection toolProjection) (agent.ToolCall, error) {
 			return agent.ToolCall{}, fmt.Errorf("encode tool result: %w", err)
 		}
 		tool.ResultJSON = resultJSON
-		projectToolResult(&tool, resultJSON)
+		projectToolResult(&tool, value.Result)
 	}
 	if projection.problem != nil {
 		tool.Problem = failure.Clone(projection.problem)
@@ -304,39 +303,4 @@ func truncateRunes(value string, limit int) string {
 	}
 	runes := []rune(value)
 	return string(runes[:limit-1]) + "…"
-}
-
-func projectToolResult(tool *agent.ToolCall, encoded []byte) {
-	material := decodeToolResultMaterial(encoded)
-	tool.Output = material.output()
-	if exitCode, ok := material.exitCode(); ok {
-		tool.ExitCode = &exitCode
-	}
-	paths := material.changedPaths()
-	if tool.Path == "" && len(paths) != 0 {
-		tool.Path = paths[0]
-	}
-	if tool.Output == "" && len(paths) != 0 {
-		tool.Output = strings.Join(paths, "\n")
-	}
-	if tool.Output == "" {
-		tool.Output = formattedJSON(encoded)
-	}
-}
-
-func integerValue(value any) (int, bool) {
-	switch number := value.(type) {
-	case int:
-		return number, true
-	case int64:
-		return int(number), int64(int(number)) == number
-	case float64:
-		converted := int(number)
-		return converted, float64(converted) == number
-	case json.Number:
-		parsed, err := number.Int64()
-		return int(parsed), err == nil && int64(int(parsed)) == parsed
-	default:
-		return 0, false
-	}
 }

@@ -5,120 +5,69 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"strings"
+
+	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
-// toolArgumentsMaterial is the small presentation projection understood by
-// the CLI. The complete open-ended argument object remains in ArgumentsJSON;
-// this type prevents wire maps and their member names leaking into consumers.
-type toolArgumentsMaterial struct {
-	Description json.RawMessage `json:"description"`
-	Summary     json.RawMessage `json:"summary"`
-	Query       json.RawMessage `json:"query"`
-	Pattern     json.RawMessage `json:"pattern"`
-	Search      json.RawMessage `json:"search"`
-	Path        json.RawMessage `json:"path"`
-	File        json.RawMessage `json:"file"`
-	Filename    json.RawMessage `json:"filename"`
-	URL         json.RawMessage `json:"url"`
-	URI         json.RawMessage `json:"uri"`
-	Command     json.RawMessage `json:"command"`
-}
-
-func decodeToolArgumentsMaterial(encoded []byte) toolArgumentsMaterial {
-	var material toolArgumentsMaterial
-	_ = json.Unmarshal(encoded, &material)
-	return material
-}
-
-func (m toolArgumentsMaterial) command() string { return decodedString(m.Command) }
-
-func (m toolArgumentsMaterial) path() string {
-	return firstDecodedString(m.Path, m.File, m.Filename)
-}
-
-func (m toolArgumentsMaterial) query() string {
-	return firstDecodedString(m.Query, m.Pattern, m.Search)
-}
-
-func (m toolArgumentsMaterial) url() string {
-	return firstDecodedString(m.URL, m.URI)
-}
-
-func (m toolArgumentsMaterial) summary(toolName string) string {
-	for _, value := range []json.RawMessage{
-		m.Description, m.Summary, m.Query, m.Pattern, m.Path, m.URL, m.Command,
-	} {
-		if text := decodedString(value); text != "" {
-			return truncateRunes(text, toolSummaryRuneLimit)
-		}
-	}
-	return truncateRunes(toolName, toolSummaryRuneLimit)
-}
-
-type toolResultMaterial struct {
-	Output   json.RawMessage `json:"output"`
-	ExitCode json.RawMessage `json:"exitCode"`
-	Changes  json.RawMessage `json:"changes"`
-}
-
-type toolChangeMaterial struct {
-	Path json.RawMessage `json:"path"`
-}
-
-func decodeToolResultMaterial(encoded []byte) toolResultMaterial {
-	var material toolResultMaterial
-	_ = json.Unmarshal(encoded, &material)
-	return material
-}
-
-func (m toolResultMaterial) output() string { return decodedString(m.Output) }
-
-func (m toolResultMaterial) exitCode() (int, bool) {
-	if len(m.ExitCode) == 0 {
-		return 0, false
-	}
-	decoder := json.NewDecoder(bytes.NewReader(m.ExitCode))
-	decoder.UseNumber()
-	var value any
-	if err := decoder.Decode(&value); err != nil {
-		return 0, false
-	}
-	return integerValue(value)
-}
-
-func (m toolResultMaterial) changedPaths() []string {
-	var changes []json.RawMessage
-	if err := json.Unmarshal(m.Changes, &changes); err != nil {
-		return nil
-	}
-	paths := make([]string, 0, len(changes))
-	for _, encoded := range changes {
-		var change toolChangeMaterial
-		if err := json.Unmarshal(encoded, &change); err != nil {
-			continue
-		}
-		if path := decodedString(change.Path); path != "" {
-			paths = append(paths, filepath.ToSlash(path))
-		}
-	}
-	return paths
-}
-
-func decodedString(encoded json.RawMessage) string {
-	var value string
-	if err := json.Unmarshal(encoded, &value); err != nil {
-		return ""
-	}
-	return value
-}
-
-func firstDecodedString(values ...json.RawMessage) string {
-	for _, value := range values {
-		if decoded := decodedString(value); decoded != "" {
-			return decoded
+// toolText borrows Runtime's decoded JSON object. Unknown tools may use these
+// names for other values, so only string fields contribute to presentation.
+func toolText(object map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if text, ok := object[key].(string); ok && text != "" {
+			return text
 		}
 	}
 	return ""
+}
+
+func toolSummary(name string, arguments map[string]any) string {
+	text := toolText(arguments, "description", "summary", "query", "pattern", "path", "url", "command")
+	if text == "" {
+		text = name
+	}
+	return truncateRunes(text, toolSummaryRuneLimit)
+}
+
+func projectToolResult(tool *agent.ToolCall, value any) {
+	object, _ := value.(map[string]any)
+	tool.Output = toolText(object, "output")
+	if exitCode, ok := toolExitCode(object["exitCode"]); ok {
+		tool.ExitCode = &exitCode
+	}
+	changes, _ := object["changes"].([]any)
+	var paths []string
+	for _, value := range changes {
+		change, _ := value.(map[string]any)
+		if path := toolText(change, "path"); path != "" {
+			paths = append(paths, filepath.ToSlash(path))
+		}
+	}
+	if tool.Path == "" && len(paths) != 0 {
+		tool.Path = paths[0]
+	}
+	if tool.Output == "" && len(paths) != 0 {
+		tool.Output = strings.Join(paths, "\n")
+	}
+	if tool.Output == "" {
+		tool.Output = formattedJSON(tool.ResultJSON)
+	}
+}
+
+func toolExitCode(value any) (int, bool) {
+	switch number := value.(type) {
+	case int:
+		return number, true
+	case int64:
+		return int(number), int64(int(number)) == number
+	case float64:
+		converted := int(number)
+		return converted, float64(converted) == number
+	case json.Number:
+		parsed, err := number.Int64()
+		return int(parsed), err == nil && int64(int(parsed)) == parsed
+	default:
+		return 0, false
+	}
 }
 
 func formattedJSON(encoded []byte) string {

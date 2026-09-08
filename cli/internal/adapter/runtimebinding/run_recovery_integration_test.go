@@ -66,7 +66,8 @@ func TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot(t *testing.T) {
 	}
 	if !slices.ContainsFunc(snapshot.Transcript, func(block agent.Block) bool {
 		return block.RunID != root.ID && block.Tool != nil && block.Tool.Name == "shell" &&
-			block.Tool.Status == agent.ToolOK && strings.Contains(block.Tool.Output, "approved")
+			block.Tool.Status == agent.ToolOK && strings.Contains(block.Tool.Output, "approved") &&
+			block.Tool.ExitCode != nil && *block.Tool.ExitCode == 0
 	}) {
 		t.Fatalf("approved child tool did not complete: %+v", snapshot.Transcript)
 	}

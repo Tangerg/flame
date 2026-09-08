@@ -81,6 +81,31 @@ func TestProjectToolMaterialIsolatesMalformedOptionalFields(t *testing.T) {
 	}
 }
 
+func TestProjectToolRetainsDisplayAfterSourceReuse(t *testing.T) {
+	arguments := map[string]any{"command": "printf approved"}
+	change := map[string]any{"path": "result.txt"}
+	result := map[string]any{
+		"output": "approved", "exitCode": json.Number("0"),
+		"changes": []any{change}, "recordId": json.Number("9007199254740993"),
+	}
+	tool, err := projectTool(toolProjection{invocation: &protocol.ToolInvocation{
+		Name: "shell", Arguments: arguments, Result: result,
+	}, status: protocol.ItemStatusCompleted})
+	if err != nil {
+		t.Fatal(err)
+	}
+	arguments["command"] = "reused"
+	result["output"], result["exitCode"], result["recordId"] = "reused", 7, 0
+	change["path"] = "reused"
+	if tool.Command != "printf approved" || tool.Output != "approved" || tool.Path != "result.txt" ||
+		tool.ExitCode == nil || *tool.ExitCode != 0 ||
+		!bytes.Contains(tool.ArgumentsJSON, []byte(`"command":"printf approved"`)) ||
+		!bytes.Contains(tool.ResultJSON, []byte(`"recordId":9007199254740993`)) ||
+		bytes.Contains(tool.ResultJSON, []byte("reused")) {
+		t.Fatalf("tool changed with reused source: %+v", tool)
+	}
+}
+
 func TestToolKindUsesOnlyCurrentRuntimeVocabulary(t *testing.T) {
 	tests := []struct {
 		name     string
