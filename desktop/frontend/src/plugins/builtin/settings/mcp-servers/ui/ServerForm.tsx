@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
 import { Icon, PillButton, Segmented, Surface, Switch, TextField } from "@/ui";
@@ -15,12 +16,18 @@ import { LinesField } from "./ServerFormFields";
 import { MCPServerEdit, type MCPServerFields } from "../application/mcpServerDraft";
 import { ToolControls } from "./ToolControls";
 import { useAsyncFeedback } from "../../kit";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface Props {
   server?: MCPServerSettings;
   onDone: () => void;
   onCancel: () => void;
 }
+
+const sf = stylex.create({
+  actions: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: space.s2 },
+});
 
 export function ServerForm({ server, onDone, onCancel }: Props) {
   const t = useT();
@@ -85,8 +92,8 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
   };
 
   return (
-    <Surface className="flex flex-col gap-3">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+    <Surface className={stylex.props(ss.stack).className}>
+      <div {...stylex.props(ss.nameGrid)}>
         <TextField
           type="text"
           aria-label={t("mcp.form.name.aria")}
@@ -130,7 +137,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             }
           />
           {hasEnvironmentStored && (
-            <label className="flex items-center justify-between gap-3 text-ui-md text-fg-muted">
+            <label {...stylex.props(ss.split, ss.muted, typeStep.uiMd)}>
               <span>{t("mcp.form.env.clear")}</span>
               <Switch
                 checked={draft.environment.disposition === "clear"}
@@ -142,7 +149,9 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             </label>
           )}
           {needsEnvironmentDisposition && (
-            <span className="text-ui-md text-warning">{t("mcp.form.env.targetChanged")}</span>
+            <span {...stylex.props(ss.warning, typeStep.uiMd)}>
+              {t("mcp.form.env.targetChanged")}
+            </span>
           )}
           <TextField
             type="text"
@@ -171,7 +180,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             placeholder={hasAuthStored ? t("mcp.form.auth.keep") : t("mcp.form.auth.placeholder")}
           />
           {hasAuthStored && (
-            <label className="flex items-center justify-between gap-3 text-ui-md text-fg-muted">
+            <label {...stylex.props(ss.split, ss.muted, typeStep.uiMd)}>
               <span>{t("mcp.form.auth.clear")}</span>
               <Switch
                 checked={draft.authorization.disposition === "clear"}
@@ -183,7 +192,9 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             </label>
           )}
           {needsAuthorizationDisposition && (
-            <span className="text-ui-md text-warning">{t("mcp.form.auth.originChanged")}</span>
+            <span {...stylex.props(ss.warning, typeStep.uiMd)}>
+              {t("mcp.form.auth.originChanged")}
+            </span>
           )}
           <LinesField
             label={t("mcp.form.headers")}
@@ -194,7 +205,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             }
           />
           {hasHeadersStored && (
-            <label className="flex items-center justify-between gap-3 text-ui-md text-fg-muted">
+            <label {...stylex.props(ss.split, ss.muted, typeStep.uiMd)}>
               <span>{t("mcp.form.headers.clear")}</span>
               <Switch
                 checked={draft.headers.disposition === "clear"}
@@ -204,13 +215,15 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
             </label>
           )}
           {needsHeadersDisposition && (
-            <span className="text-ui-md text-warning">{t("mcp.form.headers.originChanged")}</span>
+            <span {...stylex.props(ss.warning, typeStep.uiMd)}>
+              {t("mcp.form.headers.originChanged")}
+            </span>
           )}
         </>
       )}
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-ui-md font-medium text-fg">{t("mcp.form.timeout")}</span>
+      <label {...stylex.props(ss.stackTightest)}>
+        <span {...stylex.props(ss.label, typeStep.uiMd)}>{t("mcp.form.timeout")}</span>
         <TextField
           type="number"
           min={0}
@@ -231,8 +244,8 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
       />
 
       {server && (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-ui-md font-medium text-fg">{t("mcp.tools.manage")}</span>
+        <div {...stylex.props(ss.stackTightest)}>
+          <span {...stylex.props(ss.label, typeStep.uiMd)}>{t("mcp.tools.manage")}</span>
           <ToolControls
             server={server.name}
             disabledTools={draft.disabledTools}
@@ -242,7 +255,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div {...stylex.props(sf.actions)}>
         <PillButton
           variant="accent"
           size="sm"
@@ -269,14 +282,14 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
         )}
 
         {feedback.state === "ok" && (
-          <span className="inline-flex items-center gap-1 text-ui-md text-success">
+          <span {...stylex.props(ss.inline, ss.success, typeStep.uiMd)}>
             <Icon name="check" size="sm" /> {t("mcp.connectionOk")}
           </span>
         )}
         {feedback.state === "error" && (
-          <span className="inline-flex min-w-0 items-center gap-1 text-ui-md text-negative">
+          <span {...stylex.props(ss.inline, ss.min, ss.negative, typeStep.uiMd)}>
             <Icon name="alert" size="sm" />
-            <span className="truncate" title={feedback.reason}>
+            <span {...stylex.props(ss.truncate)} title={feedback.reason}>
               {feedback.reason}
             </span>
           </span>

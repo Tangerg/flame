@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import type { ReactNode } from "react";
 import { Button, DropdownMenu, Icon, ProviderIcon, Surface } from "@/ui";
@@ -11,8 +12,15 @@ import {
 } from "../application/providerConfig";
 import { useT } from "@/lib/i18n";
 import { useAsyncFeedback } from "../../kit";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
 
-const itemClass = "grid-cols-[16px_minmax(0,1fr)_14px] px-2";
+const rs = stylex.create({
+  title: { display: "flex", minWidth: 0, flexDirection: "column", gap: space.s1 },
+  // A model id is long and the trigger is not: it truncates rather than widening the row.
+  model: { maxWidth: "160px" },
+  pickRow: { gridTemplateColumns: "16px minmax(0, 1fr) 14px", paddingInline: space.s2 },
+});
 
 function RoleSectionShell({
   title,
@@ -28,16 +36,16 @@ function RoleSectionShell({
   children: ReactNode;
 }) {
   return (
-    <Surface className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="text-ui-md font-medium text-fg">{title}</span>
-          <span className="text-ui-md leading-snug text-fg-muted">{description}</span>
+    <Surface className={stylex.props(ss.stack).className}>
+      <div {...stylex.props(ss.split)}>
+        <div {...stylex.props(rs.title)}>
+          <span {...stylex.props(ss.label, typeStep.uiMd)}>{title}</span>
+          <span {...stylex.props(ss.hint, typeStep.uiMd)}>{description}</span>
         </div>
         {children}
       </div>
       {note}
-      {error && <p className="text-ui-md leading-snug text-negative">{error}</p>}
+      {error && <p {...stylex.props(ss.hint, ss.negative, typeStep.uiMd)}>{error}</p>}
     </Surface>
   );
 }
@@ -61,7 +69,7 @@ export function UtilityModelSection() {
       }
       note={
         isSet && !isAvailable ? (
-          <p className="text-ui-md leading-snug text-fg-muted">{t("providers.notConfigured")}</p>
+          <p {...stylex.props(ss.hint, typeStep.uiMd)}>{t("providers.notConfigured")}</p>
         ) : null
       }
     >
@@ -78,39 +86,50 @@ export function UtilityModelSection() {
             >
               {busy ? (
                 <>
-                  <Icon name="loop" size="xs" className="animate-spin text-fg-muted" />
-                  <span className="text-fg-muted">{t("providers.saving")}</span>
+                  <Icon
+                    name="loop"
+                    size="xs"
+                    className={stylex.props(ss.spin, ss.muted).className}
+                  />
+                  <span {...stylex.props(ss.muted)}>{t("providers.saving")}</span>
                 </>
               ) : isSet && role?.provider ? (
                 <>
                   <ProviderIcon provider={role.provider} size="sm" />
-                  <span className="max-w-[160px] truncate font-mono text-ui-sm">
+                  <span {...stylex.props(rs.model, ss.truncate, ss.mono, typeStep.uiSm)}>
                     {selected?.label ?? role.model}
                   </span>
                 </>
               ) : (
-                <span className="text-fg-muted">{t("providers.utility.main")}</span>
+                <span {...stylex.props(ss.muted)}>{t("providers.utility.main")}</span>
               )}
-              {!busy && <Icon name="chevron-down" size="xs" className="text-fg-muted" />}
+              {!busy && (
+                <Icon name="chevron-down" size="xs" className={stylex.props(ss.muted).className} />
+              )}
             </Button>
           }
         />
         <DropdownMenu.Content align="end" sideOffset={6}>
-          <DropdownMenu.Item onClick={() => void pick(null)} className={itemClass}>
+          <DropdownMenu.Item
+            onClick={() => void pick(null)}
+            className={stylex.props(rs.pickRow).className}
+          >
             <span />
-            <span className="truncate">{t("providers.utility.main")}</span>
-            {!isSet && <Icon name="check" size="xs" className="text-accent" />}
+            <span {...stylex.props(ss.truncate)}>{t("providers.utility.main")}</span>
+            {!isSet && (
+              <Icon name="check" size="xs" className={stylex.props(ss.accent).className} />
+            )}
           </DropdownMenu.Item>
           {modelOptions.map((m) => (
             <DropdownMenu.Item
               key={`${m.provider}:${m.id}`}
               onClick={() => void pick({ provider: m.provider, model: m.id })}
-              className={itemClass}
+              className={stylex.props(rs.pickRow).className}
             >
               <ProviderIcon provider={m.provider} size="md" />
-              <span className="truncate">{m.label}</span>
+              <span {...stylex.props(ss.truncate)}>{m.label}</span>
               {role?.provider === m.provider && role?.model === m.id && (
-                <Icon name="check" size="xs" className="text-accent" />
+                <Icon name="check" size="xs" className={stylex.props(ss.accent).className} />
               )}
             </DropdownMenu.Item>
           ))}
@@ -140,9 +159,9 @@ export function EmbeddingModelSection() {
       error={feedback.state === "error" ? feedback.reason : null}
       note={
         isSet && !isAvailable ? (
-          <p className="text-ui-md leading-snug text-fg-muted">{t("providers.notConfigured")}</p>
+          <p {...stylex.props(ss.hint, typeStep.uiMd)}>{t("providers.notConfigured")}</p>
         ) : capableProviders.length === 0 ? (
-          <p className="text-ui-md leading-snug text-fg-muted">{t("providers.embedding.none")}</p>
+          <p {...stylex.props(ss.hint, typeStep.uiMd)}>{t("providers.embedding.none")}</p>
         ) : null
       }
     >
@@ -159,35 +178,54 @@ export function EmbeddingModelSection() {
             >
               {busy ? (
                 <>
-                  <Icon name="loop" size="xs" className="animate-spin text-fg-muted" />
-                  <span className="text-fg-muted">{t("providers.saving")}</span>
+                  <Icon
+                    name="loop"
+                    size="xs"
+                    className={stylex.props(ss.spin, ss.muted).className}
+                  />
+                  <span {...stylex.props(ss.muted)}>{t("providers.saving")}</span>
                 </>
               ) : isSet && role?.provider ? (
                 <>
                   <ProviderIcon provider={role.provider} size="sm" />
-                  <span className="max-w-[160px] truncate font-mono text-ui-sm">{role.model}</span>
+                  <span {...stylex.props(rs.model, ss.truncate, ss.mono, typeStep.uiSm)}>
+                    {role.model}
+                  </span>
                 </>
               ) : (
-                <span className="text-fg-muted">{t("providers.embedding.off")}</span>
+                <span {...stylex.props(ss.muted)}>{t("providers.embedding.off")}</span>
               )}
-              {!busy && <Icon name="chevron-down" size="xs" className="text-fg-muted" />}
+              {!busy && (
+                <Icon name="chevron-down" size="xs" className={stylex.props(ss.muted).className} />
+              )}
             </Button>
           }
         />
         <DropdownMenu.Content align="end" sideOffset={6}>
-          <DropdownMenu.Item onClick={() => void pick(null)} className={itemClass}>
+          <DropdownMenu.Item
+            onClick={() => void pick(null)}
+            className={stylex.props(rs.pickRow).className}
+          >
             <span />
-            <span className="truncate">{t("providers.embedding.off")}</span>
-            {!isSet && <Icon name="check" size="xs" className="text-accent" />}
+            <span {...stylex.props(ss.truncate)}>{t("providers.embedding.off")}</span>
+            {!isSet && (
+              <Icon name="check" size="xs" className={stylex.props(ss.accent).className} />
+            )}
           </DropdownMenu.Item>
           {capableProviders.map((p) => (
-            <DropdownMenu.Item key={p.id} onClick={() => void pick(p)} className={itemClass}>
+            <DropdownMenu.Item
+              key={p.id}
+              onClick={() => void pick(p)}
+              className={stylex.props(rs.pickRow).className}
+            >
               <ProviderIcon provider={p.id} size="md" />
-              <span className="truncate">
+              <span {...stylex.props(ss.truncate)}>
                 {p.id}
                 {p.defaultEmbeddingModel ? ` · ${p.defaultEmbeddingModel}` : ""}
               </span>
-              {role?.provider === p.id && <Icon name="check" size="xs" className="text-accent" />}
+              {role?.provider === p.id && (
+                <Icon name="check" size="xs" className={stylex.props(ss.accent).className} />
+              )}
             </DropdownMenu.Item>
           ))}
         </DropdownMenu.Content>

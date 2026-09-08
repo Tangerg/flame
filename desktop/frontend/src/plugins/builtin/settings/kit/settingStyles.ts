@@ -43,6 +43,52 @@ export const settingStyles = stylex.create({
   warning: { color: color.warning },
   negative: { color: color.negative },
 
+  /** A row the pointer can act on inside a pane: the shape eight panes had each written out. */
+  hoverRow: {
+    borderRadius: radius.card,
+    backgroundColor: { default: null, ":hover": surface.hover },
+    paddingInline: space.s3,
+    paddingBlock: space.s2_5,
+    transitionProperty: "background-color",
+  },
+  hoverRowTall: { paddingBlock: space.s3 },
+  hoverRowTight: { paddingInline: space.s2, paddingBlock: space.s2 },
+  /** A name that gives up its width, beside a control that keeps its own. */
+  nameGrid: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    alignItems: "center",
+    gap: space.s3,
+  },
+  /** A machine name: a server, a tool, a model id. */
+  monoName: {
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    fontFamily: "var(--font-mono)",
+    color: color.fg,
+  },
+  /** A group's own caption, above the rows rather than beside one. */
+  caption: { marginBottom: space.s1_5, color: color.fgMuted, fontWeight: weight.medium },
+  inline: { display: "inline-flex", alignItems: "center", gap: space.s1 },
+  column: { display: "flex", flexDirection: "column" },
+  grow: { flex: 1 },
+  grid2: { display: "grid", gap: space.s2 },
+  selfEnd: { alignSelf: "flex-end" },
+  /** A caption on the same line as what it labels, rather than above a group. */
+  captionInline: { color: color.fgMuted, fontWeight: weight.medium },
+  figures: { fontVariantNumeric: "tabular-nums" },
+  success: { color: color.success },
+  spin: { animation: "var(--animate-spin)" },
+  wrapText: { whiteSpace: "pre-wrap", overflowWrap: "break-word" },
+  stackWide: { display: "flex", flexDirection: "column", gap: space.s4 },
+  stackTightest: { display: "flex", flexDirection: "column", gap: space.s1_5 },
+  stackHairline: { display: "flex", flexDirection: "column", gap: space.s0_5 },
+  stackRows: { display: "flex", flexDirection: "column", gap: space.s1 },
+  fieldLabel: { display: "flex", flexDirection: "column", gap: space.s1_5 },
+  afterRow: { marginTop: space.s2_5 },
+  afterLine: { marginTop: space.s1_5 },
+
   /** A row the pointer can act on, inside a group that is already a card. */
   sunkenRow: {
     display: "flex",

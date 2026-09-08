@@ -1,6 +1,9 @@
+import * as stylex from "@stylexjs/stylex";
 import { DataView, Switch } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useMCPTools } from "../application/mcpServerQueries";
+import { color, radius, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface Props {
   server: string;
@@ -8,6 +11,33 @@ interface Props {
   autoApproveTools: string[];
   onChange: (next: { disabledTools: string[]; autoApproveTools: string[] }) => void;
 }
+
+const tc = stylex.create({
+  panel: { borderRadius: radius.card, backgroundColor: surface.sunken, padding: space.s2_5 },
+  // Header and rows share the template, so the two switch columns line up under their names.
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto auto",
+    alignItems: "center",
+    columnGap: space.s4,
+  },
+  head: {
+    rowGap: space.s1,
+    paddingInline: space.s1_5,
+    paddingBottom: space.s1_5,
+    color: color.fgMuted,
+    fontWeight: weight.medium,
+  },
+  row: {
+    borderRadius: radius.card,
+    backgroundColor: { default: null, ":hover": surface.hover },
+    paddingInline: space.s1_5,
+    paddingBlock: space.s1_5,
+    transitionProperty: "background-color",
+  },
+  switchCol: { width: space.s12, textAlign: "center" },
+  switchCell: { display: "flex", width: space.s12, justifyContent: "center" },
+});
 
 export function ToolControls({ server, disabledTools, autoApproveTools, onChange }: Props) {
   const t = useT();
@@ -39,11 +69,11 @@ export function ToolControls({ server, disabledTools, autoApproveTools, onChange
   };
 
   return (
-    <div className="rounded-md bg-sunken p-2.5">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-4 gap-y-1 px-1.5 pb-1.5 text-ui-sm font-medium text-fg-muted">
+    <div {...stylex.props(tc.panel)}>
+      <div {...stylex.props(tc.grid, tc.head, typeStep.uiSm)}>
         <span>{t("mcp.tools.tool")}</span>
-        <span className="w-12 text-center">{t("mcp.tools.enabled")}</span>
-        <span className="w-12 text-center">{t("mcp.tools.autoApprove")}</span>
+        <span {...stylex.props(tc.switchCol)}>{t("mcp.tools.enabled")}</span>
+        <span {...stylex.props(tc.switchCol)}>{t("mcp.tools.autoApprove")}</span>
       </div>
       <DataView
         items={data}
@@ -54,28 +84,25 @@ export function ToolControls({ server, disabledTools, autoApproveTools, onChange
         empty={{ icon: "tool", title: t("mcp.tools.empty") }}
       >
         {(tools) => (
-          <div className="flex flex-col">
+          <div {...stylex.props(ss.column)}>
             {tools.map((tool) => {
               const isDisabled = disabled.has(tool.name);
               return (
-                <div
-                  key={tool.name}
-                  className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-4 rounded-md px-1.5 py-1.5 transition-colors hover:bg-hover"
-                >
+                <div key={tool.name} {...stylex.props(tc.grid, tc.row)}>
                   <code
-                    className="truncate font-mono text-ui-md text-fg"
+                    {...stylex.props(ss.monoName, typeStep.uiMd)}
                     title={tool.description || tool.name}
                   >
                     {tool.name}
                   </code>
-                  <div className="flex w-12 justify-center">
+                  <div {...stylex.props(tc.switchCell)}>
                     <Switch
                       checked={!isDisabled}
                       onCheckedChange={(on) => setDisabled(tool.name, !on)}
                       ariaLabel={t("mcp.tools.enable.aria", { tool: tool.name })}
                     />
                   </div>
-                  <div className="flex w-12 justify-center">
+                  <div {...stylex.props(tc.switchCell)}>
                     <Switch
                       checked={autoApprove.has(tool.name)}
                       disabled={isDisabled}

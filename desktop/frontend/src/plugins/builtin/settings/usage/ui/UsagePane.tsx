@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { EmptyState, ProviderIcon, Segmented, Surface } from "@/ui";
@@ -11,6 +12,35 @@ import {
   useUsageReport,
 } from "../application/usageConfig";
 import type { UsageAmount, UsageBucket } from "../application/ports/usageGateway";
+import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
+
+const u = stylex.create({
+  ink: { color: color.fg },
+  // A money column reads down, so it holds one measure and aligns on the right.
+  cost: { width: space.s16, textAlign: "right", color: color.fg },
+  totalLine: {
+    display: "flex",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: space.s3,
+  },
+  total: {
+    fontFamily: "var(--font-mono)",
+    fontWeight: weight.semibold,
+    color: color.fg,
+    fontSize: "var(--text-display-md)",
+  },
+  breakdown: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    columnGap: space.s3,
+    rowGap: space.s1,
+    fontFamily: "var(--font-mono)",
+    color: color.fgMuted,
+  },
+});
 
 function BreakdownSection({
   title,
@@ -24,21 +54,18 @@ function BreakdownSection({
   if (buckets.length === 0) return null;
   return (
     <Surface>
-      <div className="mb-1.5 text-ui-md font-medium text-fg-muted">{title}</div>
-      <div className="flex flex-col">
+      <div {...stylex.props(ss.caption, typeStep.uiMd)}>{title}</div>
+      <div {...stylex.props(ss.column)}>
         {buckets.map((b) => (
-          <div
-            key={b.key}
-            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-hover"
-          >
-            <div className="flex min-w-0 items-center gap-2">
+          <div key={b.key} {...stylex.props(ss.nameGrid, ss.hoverRow, ss.hoverRowTight)}>
+            <div {...stylex.props(ss.line, ss.min)}>
               {icon?.(b.key)}
-              <span className="truncate text-ui-md text-fg">{b.key}</span>
+              <span {...stylex.props(ss.truncate, u.ink, typeStep.uiMd)}>{b.key}</span>
             </div>
-            <div className="flex items-center gap-3 font-mono text-ui-md">
-              <span className="text-fg-muted">{fmtTokens(usageTokens(b))}</span>
+            <div {...stylex.props(ss.lineWide, ss.mono, typeStep.uiMd)}>
+              <span {...stylex.props(ss.muted)}>{fmtTokens(usageTokens(b))}</span>
               {b.costUsd !== undefined && (
-                <span className="w-16 text-right text-fg">{fmtCost(b.costUsd)}</span>
+                <span {...stylex.props(u.cost, ss.figures)}>{fmtCost(b.costUsd)}</span>
               )}
             </div>
           </div>
@@ -62,32 +89,32 @@ function UsageTotals({
 }) {
   const t = useT();
   return (
-    <Surface className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-ui-md font-medium text-fg-muted">{t("usage.total")}</span>
-        <span className="font-mono text-display-md font-semibold text-fg">
+    <Surface className={stylex.props(ss.stackTight).className}>
+      <div {...stylex.props(u.totalLine)}>
+        <span {...stylex.props(ss.captionInline, typeStep.uiMd)}>{t("usage.total")}</span>
+        <span {...stylex.props(u.total, ss.figures)}>
           {total.costUsd !== undefined ? fmtCost(total.costUsd) : "—"}
         </span>
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-ui-md text-fg-muted">
+      <div {...stylex.props(u.breakdown, typeStep.uiMd)}>
         <span>↑{fmtTokens(total.inputTokens ?? 0)}</span>
         <span>↓{fmtTokens(total.outputTokens ?? 0)}</span>
         {(total.cacheReadTokens ?? 0) > 0 && (
-          <span className="text-fg-faint">
+          <span {...stylex.props(ss.faint)}>
             {t("usage.cache")} {fmtTokens(total.cacheReadTokens ?? 0)}
           </span>
         )}
         {(total.cacheWriteTokens ?? 0) > 0 && (
-          <span className="text-fg-faint">
+          <span {...stylex.props(ss.faint)}>
             {t("usage.cacheWrite")} {fmtTokens(total.cacheWriteTokens ?? 0)}
           </span>
         )}
         {(total.reasoningTokens ?? 0) > 0 && (
-          <span className="text-fg-faint">
+          <span {...stylex.props(ss.faint)}>
             {t("usage.reasoning")} {fmtTokens(total.reasoningTokens ?? 0)}
           </span>
         )}
-        <span className="text-fg-faint">
+        <span {...stylex.props(ss.faint)}>
           · {t("usage.sessions", { count: sessions })} · {t("usage.runs", { count: runs })}
         </span>
       </div>
@@ -105,8 +132,8 @@ export function UsagePane() {
   const hasSpend = totalTokens > 0 || (total?.costUsd ?? 0) > 0;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="self-end">
+    <div {...stylex.props(ss.stackWide)}>
+      <div {...stylex.props(ss.selfEnd)}>
         <Segmented
           value={range}
           options={USAGE_RANGES.map((item) => ({ value: item.value, label: t(item.label) }))}
@@ -115,8 +142,8 @@ export function UsagePane() {
         />
       </div>
 
-      {isLoading && <div className="text-ui-md text-fg-muted">{t("usage.loading")}</div>}
-      {isError && <div className="text-ui-md text-negative">{t("usage.error")}</div>}
+      {isLoading && <div {...stylex.props(ss.muted, typeStep.uiMd)}>{t("usage.loading")}</div>}
+      {isError && <div {...stylex.props(ss.negative, typeStep.uiMd)}>{t("usage.error")}</div>}
 
       {data && !hasSpend && (
         <EmptyState icon="chart" title={t("usage.empty")} sub={t("usage.empty.sub")} />

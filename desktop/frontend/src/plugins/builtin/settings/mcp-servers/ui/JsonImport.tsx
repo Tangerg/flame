@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
 import { Icon, PillButton, Surface, TextArea, TextButton } from "@/ui";
@@ -5,6 +6,12 @@ import { useCreateMCPServer } from "../application/mcpServerConfig";
 import { notifyInfo } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { parseMcpImport } from "../application/mcpImport";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
+
+const ji = stylex.create({
+  form: { display: "flex", flexDirection: "column", gap: space.s2_5 },
+});
 
 export function JsonImport() {
   const t = useT();
@@ -48,8 +55,8 @@ export function JsonImport() {
     );
   }
   return (
-    <Surface className="flex flex-col gap-2.5">
-      <span className="text-ui-md text-fg-muted">{t("mcp.import.hint")}</span>
+    <Surface className={stylex.props(ji.form).className}>
+      <span {...stylex.props(ss.muted, typeStep.uiMd)}>{t("mcp.import.hint")}</span>
       <TextArea
         size="sm"
         invalid={error !== undefined}
@@ -63,14 +70,14 @@ export function JsonImport() {
         }
       />
       {error && (
-        <span className="inline-flex items-center gap-1 text-ui-md text-negative">
+        <span {...stylex.props(ss.inline, ss.negative, typeStep.uiMd)}>
           <Icon name="alert" size="sm" />
-          <span className="truncate" title={error}>
+          <span {...stylex.props(ss.truncate)} title={error}>
             {error}
           </span>
         </span>
       )}
-      <div className="flex items-center gap-2">
+      <div {...stylex.props(ss.line)}>
         <PillButton
           variant="accent"
           size="sm"

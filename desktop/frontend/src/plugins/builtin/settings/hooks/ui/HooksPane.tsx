@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { Badge, DataView, EmptyState, Icon, Surface, Switch, Tag } from "@/ui";
 import { isUnsupportedMethod, rpcErrorText } from "@/lib/rpcErrors";
@@ -7,31 +8,49 @@ import { setHookTrust } from "../application/hookTrust";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/classNames";
 import { useRef, useState } from "react";
+import { color, leading, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
+
+const hp = stylex.create({
+  row: {
+    display: "grid",
+    gridTemplateColumns: "auto minmax(0, 1fr) auto",
+    alignItems: "center",
+    gap: space.s3,
+  },
+  // A hook the trust gate has not admitted. It is not disabled — the pane is telling you it
+  // exists and is being ignored — so it steps back without joining the disabled step.
+  inactive: { opacity: 0.55 },
+  injected: { fontStyle: "italic" },
+  scope: { color: color.fgFaint, fontWeight: weight.medium },
+  sub: { marginTop: space.s0_5, color: color.fgMuted, lineHeight: leading.body },
+});
 
 function HookRow({ h }: { h: HookReadModel }) {
   const t = useT();
   return (
-    <div
-      className={cn(
-        "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-hover",
-        !h.active && "opacity-55",
-      )}
-    >
-      <Icon name={h.scope === "global" ? "globe" : "folder"} size="sm" className="text-fg-faint" />
-      <div className="flex min-w-0 items-center gap-2">
+    <div {...stylex.props(hp.row, ss.hoverRow, !h.active && hp.inactive)}>
+      <Icon
+        name={h.scope === "global" ? "globe" : "folder"}
+        size="sm"
+        className={stylex.props(ss.faint).className}
+      />
+      <div {...stylex.props(ss.line, ss.min)}>
         <Tag>{h.event}</Tag>
         {h.matcher && (
-          <span className="shrink-0 font-mono text-ui-sm text-accent" title={t("hooks.matcher")}>
+          <span
+            {...stylex.props(ss.hold, ss.mono, ss.accent, typeStep.uiSm)}
+            title={t("hooks.matcher")}
+          >
             {h.matcher}
           </span>
         )}
         <span
-          className="min-w-0 flex-1 truncate font-mono text-ui-md text-fg"
+          {...stylex.props(ss.fill, ss.monoName, typeStep.uiMd)}
           title={h.command || h.inject || h.source}
         >
-          {h.command ? h.command : <span className="text-fg-muted italic">{h.inject}</span>}
+          {h.command ? h.command : <span {...stylex.props(ss.muted, hp.injected)}>{h.inject}</span>}
         </span>
       </div>
       {!h.active ? (
@@ -39,9 +58,7 @@ function HookRow({ h }: { h: HookReadModel }) {
           {t("hooks.inactive")}
         </Badge>
       ) : h.inject ? (
-        <span className="shrink-0 text-ui-xs font-medium text-fg-faint">
-          {t("hooks.kind.inject")}
-        </span>
+        <span {...stylex.props(ss.hold, hp.scope, typeStep.uiXs)}>{t("hooks.kind.inject")}</span>
       ) : null}
     </div>
   );
@@ -84,17 +101,18 @@ export function HooksPane() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <p className="text-ui-md leading-body text-fg-muted">{t("hooks.intro")}</p>
+    <div {...stylex.props(ss.stackWide)}>
+      <p {...stylex.props(ss.intro, typeStep.uiMd)}>{t("hooks.intro")}</p>
 
       {projectRoot && data?.hasProjectHooks && (
-        <Surface className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-ui-md font-medium text-fg">{t("hooks.trust")}</div>
-            <div className="mt-0.5 text-ui-md leading-body text-fg-muted">
-              {t("hooks.trust.sub")}
-            </div>
-            <div className="mt-1.5 truncate font-mono text-ui-sm text-fg-faint" title={projectRoot}>
+        <Surface className={stylex.props(ss.split).className}>
+          <div {...stylex.props(ss.min)}>
+            <div {...stylex.props(ss.label, typeStep.uiMd)}>{t("hooks.trust")}</div>
+            <div {...stylex.props(hp.sub, typeStep.uiMd)}>{t("hooks.trust.sub")}</div>
+            <div
+              {...stylex.props(ss.afterLine, ss.truncate, ss.mono, ss.faint, typeStep.uiSm)}
+              title={projectRoot}
+            >
               {projectRoot}
             </div>
           </div>
@@ -116,7 +134,7 @@ export function HooksPane() {
         empty={{ icon: "lightning", title: t("hooks.empty"), sub: t("hooks.empty.sub") }}
       >
         {(rows) => (
-          <div className="flex flex-col gap-0.5">
+          <div {...stylex.props(ss.stackHairline)}>
             {rows.map((h, i) => (
               <HookRow key={`${h.source}:${h.event}:${i}`} h={h} />
             ))}

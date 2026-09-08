@@ -1,4 +1,7 @@
+import * as stylex from "@stylexjs/stylex";
 import { TextArea } from "@/ui";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface LinesFieldProps {
   label: string;
@@ -9,8 +12,8 @@ interface LinesFieldProps {
 
 export function LinesField({ label, value, onChange, placeholder }: LinesFieldProps) {
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-ui-md font-medium text-fg">{label}</span>
+    <label {...stylex.props(ss.stackTightest)}>
+      <span {...stylex.props(ss.label, typeStep.uiMd)}>{label}</span>
       <TextArea
         size="sm"
         value={value}

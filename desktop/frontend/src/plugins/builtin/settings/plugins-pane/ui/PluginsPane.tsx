@@ -1,11 +1,60 @@
+import * as stylex from "@stylexjs/stylex";
 import type { PluginError, PluginErrorSource } from "@/plugins/sdk";
 import { formatClock } from "@/lib/i18n/relativeTime";
 import { useState } from "react";
 import { Badge, Icon, IconButton, PillButton, TextButton } from "@/ui";
 import { copyText } from "@/lib/clipboard";
-import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { useInstalledPlugins, usePluginErrorStore } from "@/plugins/sdk";
+import { color, leading, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
+
+const pp = stylex.create({
+  plugin: {
+    borderRadius: radius.card,
+    backgroundColor: { default: null, ":hover": surface.hover },
+    transitionProperty: "background-color",
+  },
+  // A plugin that failed to load keeps its wash whether or not the pointer is on it.
+  faulted: { backgroundColor: surface.negativeWash },
+  head: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    gap: space.s2_5,
+    paddingInline: space.s3,
+    paddingBlock: space.s2_5,
+  },
+  errors: {
+    display: "flex",
+    flexDirection: "column",
+    gap: space.s1_5,
+    paddingInline: space.s3,
+    paddingBottom: space.s3,
+  },
+  errorCard: {
+    borderRadius: radius.card,
+    backgroundColor: surface.sunken,
+    paddingInline: space.s2_5,
+    paddingBlock: space.s2,
+  },
+  errorHead: {
+    display: "grid",
+    gridTemplateColumns: "auto minmax(0, 1fr) auto",
+    alignItems: "center",
+    gap: space.s2,
+  },
+  // A trace scrolls rather than growing the pane: it is evidence, not the point of the row.
+  stack: {
+    marginTop: space.s1_5,
+    maxHeight: "calc(var(--spacing) * 56)",
+    overflow: "auto",
+    whiteSpace: "pre-wrap",
+    overflowWrap: "break-word",
+    fontFamily: "var(--font-mono)",
+    lineHeight: leading.body,
+    color: color.fgMuted,
+  },
+});
 
 export function PluginsPane() {
   const t = useT();
@@ -37,28 +86,22 @@ export function PluginsPane() {
 
   return (
     <div>
-      <div className="flex flex-col gap-2">
+      <div {...stylex.props(ss.stackTight)}>
         {rows.map((name) => {
           const errors = errorsByPlugin.get(name) ?? [];
           const errCount = errors.length;
           const open = expanded.has(name);
           return (
-            <div
-              key={name}
-              className={cn(
-                "rounded-md transition-colors hover:bg-hover",
-                errCount > 0 && "bg-negative-wash",
-              )}
-            >
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2.5 px-3 py-2.5">
+            <div key={name} {...stylex.props(pp.plugin, errCount > 0 && pp.faulted)}>
+              <div {...stylex.props(pp.head)}>
                 <div>
-                  <div className="text-ui-md font-medium text-fg">{name}</div>
+                  <div {...stylex.props(ss.label, typeStep.uiMd)}>{name}</div>
                   {errCount > 0 && (
                     <TextButton
                       tone="negative"
                       onClick={() => toggle(name)}
                       title={open ? t("plugins.errorDetail.hide") : t("plugins.errorDetail.show")}
-                      className="mt-1.5"
+                      {...stylex.props(ss.afterLine)}
                     >
                       <Icon name="bug" size="xs" />
                       {t("plugins.errors", { count: errCount })}
@@ -66,7 +109,7 @@ export function PluginsPane() {
                     </TextButton>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div {...stylex.props(ss.lineTight)}>
                   {errCount > 0 && (
                     <PillButton variant="outlined" size="sm" onClick={() => clearFor(name)}>
                       {t("plugins.clear")}
@@ -75,7 +118,7 @@ export function PluginsPane() {
                 </div>
               </div>
               {open && errCount > 0 && (
-                <div className="flex flex-col gap-1.5 px-3 pb-3">
+                <div {...stylex.props(pp.errors)}>
                   {errors.map((err) => (
                     <ErrorEntry key={err.id} err={err} />
                   ))}
@@ -106,24 +149,20 @@ function ErrorEntry({ err }: { err: PluginError }) {
   const copy = () =>
     void copyText(`[${source}] ${err.message}${err.detail ? `\n\n${err.detail}` : ""}`);
   return (
-    <div className="rounded-md bg-sunken px-2.5 py-2">
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+    <div {...stylex.props(pp.errorCard)}>
+      <div {...stylex.props(pp.errorHead)}>
         <Badge tone="negative" face="mono">
           {source}
         </Badge>
-        <span className="truncate font-medium text-ui-md text-fg" title={err.message}>
+        <span {...stylex.props(ss.truncate, ss.label, typeStep.uiMd)} title={err.message}>
           {err.message}
         </span>
-        <div className="flex items-center gap-1.5">
-          <span className="font-mono text-ui-xs text-fg-faint">{time}</span>
+        <div {...stylex.props(ss.lineTight)}>
+          <span {...stylex.props(ss.mono, ss.faint, typeStep.uiXs)}>{time}</span>
           <IconButton icon="copy" iconSize="xs" title={t("plugins.copyError")} onClick={copy} />
         </div>
       </div>
-      {err.detail && (
-        <pre className="mt-1.5 max-h-56 overflow-auto whitespace-pre-wrap break-words font-mono text-ui-sm leading-body text-fg-muted">
-          {err.detail}
-        </pre>
-      )}
+      {err.detail && <pre {...stylex.props(pp.stack, typeStep.uiSm)}>{err.detail}</pre>}
     </div>
   );
 }

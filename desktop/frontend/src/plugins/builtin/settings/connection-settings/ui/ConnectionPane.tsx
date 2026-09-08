@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { Button, StatusDot, TextField } from "@/ui";
 import { useT, type Translate } from "@/lib/i18n";
@@ -14,6 +15,34 @@ import {
   type RuntimeServicePhase,
 } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { SettingRow, SettingsGroup } from "../../kit";
+import { color, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
+
+const cp = stylex.create({
+  status: {
+    marginTop: space.s1,
+    borderRadius: radius.card,
+    backgroundColor: surface.sunken,
+    paddingInline: space.s3,
+    paddingBlock: space.s2_5,
+  },
+  facts: {
+    marginTop: space.s2,
+    display: "grid",
+    gridTemplateColumns: "auto minmax(0, 1fr)",
+    columnGap: space.s3,
+    rowGap: space.s1,
+  },
+  checks: {
+    display: "flex",
+    minWidth: 0,
+    flexWrap: "wrap",
+    columnGap: space.s2,
+    fontFamily: "var(--font-mono)",
+    color: color.warning,
+  },
+  detail: { marginTop: space.s2, overflowWrap: "break-word", color: color.negative },
+});
 
 const STATUS_TONE: Record<RuntimeServicePhase, "ok" | "running" | "waiting" | "err"> = {
   checking: "running",
@@ -94,11 +123,11 @@ export function ConnectionPane() {
         sub={t("settings.connection.sub")}
         align="start"
       >
-        <div className="grid gap-2">
-          <label htmlFor="runtime-base-url" className="text-ui-md font-medium text-fg-muted">
+        <div {...stylex.props(ss.grid2)}>
+          <label htmlFor="runtime-base-url" {...stylex.props(ss.captionInline, typeStep.uiMd)}>
             {t("settings.connection.url")}
           </label>
-          <div className="flex items-center gap-2">
+          <div {...stylex.props(ss.line)}>
             <TextField
               id="runtime-base-url"
               type="text"
@@ -115,7 +144,7 @@ export function ConnectionPane() {
                 }
               }}
               placeholder={DEFAULT_RUNTIME_ENDPOINT}
-              className="flex-1"
+              {...stylex.props(ss.grow)}
               spellCheck={false}
             />
             {/* Both stay mounted and go disabled instead of appearing. The field beside them is
@@ -127,23 +156,29 @@ export function ConnectionPane() {
               size="lg"
               disabled={isDefault}
               onClick={reset}
-              className="shrink-0"
+              className={stylex.props(ss.hold).className}
             >
               {t("settings.connection.reset")}
             </Button>
-            <Button type="button" size="lg" disabled={!dirty} onClick={apply} className="shrink-0">
+            <Button
+              type="button"
+              size="lg"
+              disabled={!dirty}
+              onClick={apply}
+              className={stylex.props(ss.hold).className}
+            >
               {t("settings.connection.apply")}
             </Button>
           </div>
           {error ? (
-            <div className="flex items-center gap-1.5 text-ui-sm text-negative">
+            <div {...stylex.props(ss.lineTight, ss.negative, typeStep.uiSm)}>
               <StatusDot tone="err" />
               <span>{error}</span>
             </div>
           ) : null}
-          <div className="mt-1 rounded-md bg-sunken px-3 py-2.5">
-            <div className="flex items-center justify-between gap-3" aria-live="polite">
-              <div className="flex min-w-0 items-center gap-2 text-ui-md text-fg-muted">
+          <div {...stylex.props(cp.status)}>
+            <div {...stylex.props(ss.split)} aria-live="polite">
+              <div {...stylex.props(ss.line, ss.min, ss.muted, typeStep.uiMd)}>
                 <StatusDot tone={STATUS_TONE[service.phase]} />
                 <span>{t(STATUS_KEY[service.phase])}</span>
               </div>
@@ -160,22 +195,22 @@ export function ConnectionPane() {
               </Button>
             </div>
             {service.observation ? (
-              <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-ui-sm">
-                <dt className="text-fg-faint">{t("settings.connection.status.server")}</dt>
-                <dd className="truncate font-mono text-fg-muted">
+              <dl {...stylex.props(cp.facts, typeStep.uiSm)}>
+                <dt {...stylex.props(ss.faint)}>{t("settings.connection.status.server")}</dt>
+                <dd {...stylex.props(ss.truncate, ss.mono, ss.muted)}>
                   {service.observation.server.name} {service.observation.server.version}
                 </dd>
-                <dt className="text-fg-faint">{t("settings.connection.status.protocol")}</dt>
-                <dd className="truncate font-mono text-fg-muted">
+                <dt {...stylex.props(ss.faint)}>{t("settings.connection.status.protocol")}</dt>
+                <dd {...stylex.props(ss.truncate, ss.mono, ss.muted)}>
                   {service.observation.protocolVersion}
                 </dd>
                 {unhealthyChecks.length > 0 ? (
                   <>
-                    <dt className="text-fg-faint">{t("settings.connection.status.checks")}</dt>
-                    <dd className="flex min-w-0 flex-wrap gap-x-2 font-mono text-warning">
+                    <dt {...stylex.props(ss.faint)}>{t("settings.connection.status.checks")}</dt>
+                    <dd {...stylex.props(cp.checks)}>
                       {unhealthyChecks.map(([name, health]) => (
                         <span key={name}>
-                          {name} <span className="text-fg-faint">{t(STATUS_KEY[health])}</span>
+                          {name} <span {...stylex.props(ss.faint)}>{t(STATUS_KEY[health])}</span>
                         </span>
                       ))}
                     </dd>
@@ -184,7 +219,7 @@ export function ConnectionPane() {
               </dl>
             ) : null}
             {service.failure ? (
-              <p className="mt-2 break-words text-ui-sm text-negative">
+              <p {...stylex.props(cp.detail, typeStep.uiSm)}>
                 {service.failure.reason === "timeout"
                   ? t("settings.connection.status.timeout")
                   : service.failure.detail}

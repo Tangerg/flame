@@ -8791,3 +8791,47 @@ editorial 档按它们**在默认档已有的比值**进入阶梯：
 | 视觉 | **652 / 652**（workspace 109 + closure 350 + 其余 193），零位移零重录 |
 | 守卫 | 17 项全绿 |
 | 单测 | settings + `src/ui` 182 通过 |
+
+---
+
+## Round 146 —— settings 全族清零（15 个文件）
+
+`providers/` `mcp-servers/` `usage/` `connection-settings/` `hooks/`
+`plugins-pane/` `icon-gallery/` —— **settings 243 处 className 全部归零**（29 个文件）。
+
+### 做法：先把共享形状抽出来，再批量套
+
+`settingStyles` 扩到 40 档（`hoverRow` / `nameGrid` / `monoName` / `caption` / 各档 stack）
+之后，15 个文件里大约七成的 class 是一次机械替换就能落地的 ——
+剩下三成是每个面板自己的网格模板与尺度，各自在本文件里 `stylex.create` 一次。
+
+两个 icon-gallery 文件互为近重复（同一个图标卡片网格，120/44px 与 96/34px 两套尺寸），
+抽成 `galleryStyles`：**卡片是同一张卡片，只有尺度不同，所以两个档只带尺度。**
+
+### 一次被 golden 抓住的手误
+
+`ProvidersPane` 的 `flex flex-col gap-1` 我换成了 `stackHairline`（`gap-0.5`）——
+**4px 变成 2px**，`workspace golden settings pane providers` 差 4668 像素。
+
+我的替换表里有 `gap-0.5` / `gap-1.5` / `gap-2` / `gap-3`，**独缺 `gap-1`**，
+于是手工挑了"看起来最近的那一档"。补上 `stackRows`（`gap-1`）后归零。
+**批量迁移里，机械替换比手工判断更可靠 —— 手工那一下就是在赌"差不多"。**
+
+### 顺带
+
+- `space` 阶梯缺 `s11`（图标底板 44px），已补。
+- `HooksPane` 的"未获信任"用 `opacity-0.55` —— 这是**第四个**"变淡"的理由
+  （禁用 0.64、`off="faded"` 0.25、通知已忽略 0.5、hook 未获信任 0.55）。
+  四个不同的意思共用一种手段，各自挑了一个数。**这已经到了该收敛成一组命名档的门槛**，
+  下一轮单独做，因为它会动到四处不同语义的观感。
+- 批量替换把 `className="…"` 换成 `{...stylex.props(…)}` 时，
+  对**组件**（大写标签）是错的 —— 组件要 `className={…}`。
+  写了个正则把 5 个文件里的这类改回来。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **652 / 652**（workspace 109 + closure 350 + 其余 193），零重录 |
+| 守卫 | 17 项全绿 |
+| 单测 | settings + `src/ui` 182 通过 |

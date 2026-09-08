@@ -1,7 +1,11 @@
+import * as stylex from "@stylexjs/stylex";
 import { useMemo, useState } from "react";
 import { ScrollArea, SearchField } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { IconMap, rawToc } from "./iconMap";
+import { color, corner, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
+import { gallerySpread, galleryStyles as g } from "./galleryStyles";
 
 // The three groups `@lobehub/icons` sorts its catalogue into.
 type GroupKey = "model" | "provider" | "application";
@@ -11,6 +15,40 @@ const GROUP_TITLE_KEYS: Record<GroupKey, string> = {
   provider: "iconGallery.group.provider",
   application: "iconGallery.group.application",
 };
+
+const ig = stylex.create({
+  page: { display: "flex", height: "100%", minHeight: 0, flexDirection: "column" },
+  masthead: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: space.s4,
+    paddingInline: space.s5,
+    paddingBlock: space.s4,
+  },
+  title: { color: color.fg, fontWeight: weight.medium, fontSize: "var(--text-display-sm)" },
+  sub: { marginTop: space.s1, color: color.fgMuted },
+  search: { width: "calc(var(--spacing) * 60)" },
+  section: {
+    paddingInline: space.s5,
+    paddingTop: "calc(var(--spacing) * 4.5)",
+    paddingBottom: space.s3,
+  },
+  sectionPad: { paddingBottom: space.s2_5 },
+  empty: {
+    paddingInline: space.s5,
+    paddingBlock: space.s16,
+    textAlign: "center",
+    color: color.fgFaint,
+  },
+  dot: {
+    height: space.s2,
+    width: space.s2,
+    borderWidth: "0.5px",
+    borderStyle: "solid",
+    borderColor: surface.field,
+  },
+});
 
 export function IconGallery() {
   const t = useT();
@@ -40,11 +78,11 @@ export function IconGallery() {
   }, [items]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between gap-4 px-5 py-4">
+    <div {...stylex.props(ig.page)}>
+      <div {...stylex.props(ig.masthead)}>
         <div>
-          <div className="text-display-sm font-medium text-fg">@lobehub/icons</div>
-          <div className="mt-1 text-ui-md text-fg-muted">
+          <div {...stylex.props(ig.title)}>@lobehub/icons</div>
+          <div {...stylex.props(ig.sub, typeStep.uiMd)}>
             {t("iconGallery.subtitle", { count: rawToc.length })}
           </div>
         </div>
@@ -55,21 +93,21 @@ export function IconGallery() {
           placeholder={t("iconGallery.filterPlaceholder")}
           onClear={() => setQuery("")}
           clearLabel={t("iconGallery.clear")}
-          className="w-60"
+          className={stylex.props(ig.search).className}
         />
       </div>
 
       <ScrollArea>
-        {(Object.keys(grouped) as GroupKey[]).map((g) => {
-          const list = grouped[g];
+        {(Object.keys(grouped) as GroupKey[]).map((key) => {
+          const list = grouped[key];
           if (list.length === 0) return null;
           return (
-            <section key={g} className="px-5 pt-4.5 pb-3">
-              <header className="flex items-baseline justify-between pb-2.5 font-mono text-ui-sm font-medium tracking-normal text-fg-muted">
-                <span>{t(GROUP_TITLE_KEYS[g])}</span>
-                <span className="font-mono text-fg-faint">{list.length}</span>
+            <section key={key} {...stylex.props(ig.section)}>
+              <header {...stylex.props(g.sectionHead, ig.sectionPad, typeStep.uiSm)}>
+                <span>{t(GROUP_TITLE_KEYS[key])}</span>
+                <span {...stylex.props(g.count)}>{list.length}</span>
               </header>
-              <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(120px,1fr))]">
+              <div {...stylex.props(gallerySpread.large)}>
                 {list.map((entry) => (
                   <IconCard key={entry.id} entry={entry} />
                 ))}
@@ -78,7 +116,7 @@ export function IconGallery() {
           );
         })}
         {items.length === 0 && (
-          <div className="px-5 py-16 text-center text-ui-md text-fg-faint">
+          <div {...stylex.props(ig.empty, typeStep.uiMd)}>
             {t("iconGallery.empty", { q: query })}
           </div>
         )}
@@ -90,23 +128,18 @@ export function IconGallery() {
 function IconCard({ entry }: { entry: (typeof rawToc)[number] }) {
   const Component = IconMap[entry.id];
   return (
-    <div
-      title={`${entry.fullTitle} — ${entry.id}`}
-      className="flex cursor-default flex-col items-center gap-1.5 rounded-md bg-card px-2.5 pb-2.5 pt-3.5 transition-colors duration-[var(--dur-fast)] hover:bg-hover"
-    >
-      <div className="grid h-11 w-11 place-items-center rounded-md bg-surface-2 text-fg">
-        {Component ? <Component size={28} /> : <span className="font-mono text-fg-faint">?</span>}
+    <div title={`${entry.fullTitle} — ${entry.id}`} {...stylex.props(g.card, g.cardLarge)}>
+      <div {...stylex.props(g.plate, g.plateLarge)}>
+        {Component ? <Component size={28} /> : <span {...stylex.props(g.missing)}>?</span>}
       </div>
-      <div className="max-w-full truncate text-center text-ui-sm font-medium text-fg">
-        {entry.fullTitle}
-      </div>
-      <div className="flex items-center gap-1.5 text-ui-xs">
+      <div {...stylex.props(g.name, typeStep.uiSm)}>{entry.fullTitle}</div>
+      <div {...stylex.props(ss.lineTight, typeStep.uiXs)}>
         <span
           title={entry.color}
-          className="h-2 w-2 rounded-full border-[0.5px] border-field"
+          className={stylex.props(ig.dot, corner.pill).className}
           style={{ background: entry.color }}
         />
-        <code className="font-mono text-ui-xs text-fg-muted">{entry.id}</code>
+        <code {...stylex.props(ss.mono, ss.muted, typeStep.uiXs)}>{entry.id}</code>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useEffect, useId, useRef, useState } from "react";
 import { IconButton, PillButton, StatusDot, Switch, Tag } from "@/ui";
@@ -11,6 +12,8 @@ import { notifyError } from "@/plugins/sdk";
 import type { DotTone } from "@/lib/tone";
 import { useT } from "@/lib/i18n";
 import { ServerForm } from "./ServerForm";
+import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
 
 const STATUS_TONE: Record<MCPServerSettings["status"], DotTone> = {
   disabled: "idle",
@@ -24,6 +27,16 @@ const STATUS_TONE: Record<MCPServerSettings["status"], DotTone> = {
 function TransportBadge({ transport }: { transport: MCPTransport }) {
   return <Tag size="sm">{transport}</Tag>;
 }
+
+const sr = stylex.create({
+  head: {
+    display: "grid",
+    gridTemplateColumns: "auto minmax(0, 1fr) auto",
+    alignItems: "center",
+    gap: space.s3,
+  },
+  actions: { display: "flex", alignItems: "center", gap: space.s2_5 },
+});
 
 export function ServerRow({ server }: { server: MCPServerSettings }) {
   const t = useT();
@@ -74,23 +87,26 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
   const active = server.status === "connected";
 
   return (
-    <div className="rounded-md px-3 py-2.5 transition-colors hover:bg-hover">
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+    <div {...stylex.props(ss.hoverRow)}>
+      <div {...stylex.props(sr.head)}>
         <StatusDot tone={tone} />
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-ui-md font-medium text-fg" title={server.name}>
+        <div {...stylex.props(ss.line, ss.min)}>
+          <span {...stylex.props(ss.truncate, ss.label, typeStep.uiMd)} title={server.name}>
             {server.name}
           </span>
           <TransportBadge transport={server.type} />
           {server.status === "failed" && server.errorDetail && (
-            <span className="truncate text-ui-md text-negative" title={server.errorDetail}>
+            <span
+              {...stylex.props(ss.truncate, ss.negative, typeStep.uiMd)}
+              title={server.errorDetail}
+            >
               {server.errorDetail}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2.5">
+        <div {...stylex.props(sr.actions)}>
           {active && (
-            <span className="font-mono text-ui-md text-fg-muted">
+            <span {...stylex.props(ss.mono, ss.muted, typeStep.uiMd)}>
               {t("mcp.toolCount", { count: server.toolCount ?? 0 })}
             </span>
           )}
@@ -123,7 +139,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
       </div>
 
       {editing && (
-        <div id={panelId} className="mt-2.5">
+        <div id={panelId} {...stylex.props(ss.afterRow)}>
           <ServerForm
             server={server}
             onDone={() => setEditing(false)}

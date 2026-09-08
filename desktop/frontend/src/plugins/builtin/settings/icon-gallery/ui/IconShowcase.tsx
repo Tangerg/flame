@@ -1,9 +1,13 @@
+import * as stylex from "@stylexjs/stylex";
 import { comboGlyph } from "@/lib/combo";
 import { Trans, useT } from "@/lib/i18n";
 import { IconMap, TocById } from "./iconMap";
 import { Tag } from "@/ui";
 import { COMMAND, useExtensionByKey } from "@/plugins/sdk";
 import { COMMAND_MENU_COMMAND } from "@/plugins/builtin/command/command-menu/public/commandMenu";
+import { color, leading, space, type as typeStep } from "@/styles/tokens.stylex";
+import { settingStyles as ss } from "../../kit/settingStyles";
+import { gallerySpread, galleryStyles as g } from "./galleryStyles";
 
 interface Section {
   titleKey: string;
@@ -102,31 +106,38 @@ const SECTIONS: Section[] = [
   },
 ];
 
+const sh = stylex.create({
+  page: { display: "flex", flexDirection: "column", gap: "calc(var(--spacing) * 4.5)" },
+  intro: { margin: 0, marginBottom: space.s1, color: color.fgMuted, lineHeight: leading.body },
+  // The prose marks a term rather than stressing it, so it takes the ink and not the slant.
+  em: { fontStyle: "normal", color: color.fg },
+});
+
 export function IconShowcase() {
   const t = useT();
   const combo = useExtensionByKey(COMMAND, COMMAND_MENU_COMMAND)?.combo;
   const total = SECTIONS.reduce((n, s) => n + s.ids.length, 0);
 
   return (
-    <div className="flex flex-col gap-4.5">
-      <p className="m-0 mb-1 text-ui-md leading-body text-fg-muted">
+    <div {...stylex.props(sh.page)}>
+      <p {...stylex.props(sh.intro, typeStep.uiMd)}>
         <Trans
           i18nKey="iconGallery.showcase"
           values={{ count: total, pkg: "@lobehub/icons", combo: comboGlyph(combo ?? "") }}
           components={{
             code: <Tag size="md" ink="strong" />,
-            em: <em className="not-italic text-fg" />,
+            em: <em className={stylex.props(sh.em).className} />,
           }}
         />
       </p>
 
       {SECTIONS.map((sec) => (
-        <section key={sec.titleKey} className="flex flex-col gap-2">
-          <header className="flex items-baseline justify-between font-mono text-ui-sm font-medium tracking-normal text-fg-muted">
+        <section key={sec.titleKey} {...stylex.props(ss.stackTight)}>
+          <header {...stylex.props(g.sectionHead, typeStep.uiSm)}>
             <span>{t(sec.titleKey)}</span>
-            <span className="font-mono text-fg-faint">{sec.ids.length}</span>
+            <span {...stylex.props(g.count)}>{sec.ids.length}</span>
           </header>
-          <div className="grid gap-1.5 [grid-template-columns:repeat(auto-fill,minmax(96px,1fr))]">
+          <div {...stylex.props(gallerySpread.small)}>
             {sec.ids.map((id) => (
               <ShowcaseCard key={id} id={id} />
             ))}
@@ -142,14 +153,11 @@ function ShowcaseCard({ id }: { id: string }) {
   const meta = TocById[id];
   const title = meta?.fullTitle ?? id;
   return (
-    <div
-      title={`${title} — ${id}`}
-      className="flex cursor-default flex-col items-center gap-1.5 rounded-md bg-card px-2 pb-2 pt-2.5 transition-colors duration-[var(--dur-fast)] hover:bg-hover"
-    >
-      <div className="grid h-8.5 w-8.5 place-items-center rounded-sm bg-surface-2 text-fg">
-        {Glyph ? <Glyph size={22} /> : <span className="font-mono text-fg-faint">?</span>}
+    <div title={`${title} — ${id}`} {...stylex.props(g.card, g.cardSmall)}>
+      <div {...stylex.props(g.plate, g.plateSmall)}>
+        {Glyph ? <Glyph size={22} /> : <span {...stylex.props(g.missing)}>?</span>}
       </div>
-      <div className="max-w-full truncate text-center text-ui-sm font-medium text-fg">{title}</div>
+      <div {...stylex.props(g.name, typeStep.uiSm)}>{title}</div>
     </div>
   );
 }

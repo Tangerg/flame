@@ -1,11 +1,14 @@
+import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { DataView, Icon, PillButton } from "@/ui";
-import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { useMCPServers } from "../application/mcpServerQueries";
 import { JsonImport } from "./JsonImport";
 import { ServerForm } from "./ServerForm";
 import { ServerRow } from "./ServerRow";
+import { settingStyles as ss } from "../../kit/settingStyles";
+
+const mp = stylex.create({ splitTop: { alignItems: "flex-start" } });
 
 export function McpServersPane() {
   const t = useT();
@@ -13,10 +16,10 @@ export function McpServersPane() {
   const [adding, setAdding] = useState(false);
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className={cn("flex items-center justify-between gap-3", adding && "items-start")}>
+    <div {...stylex.props(ss.stack)}>
+      <div {...stylex.props(ss.split, adding && mp.splitTop)}>
         {adding ? (
-          <div className="flex-1">
+          <div {...stylex.props(ss.grow)}>
             <ServerForm onDone={() => setAdding(false)} onCancel={() => setAdding(false)} />
           </div>
         ) : (
@@ -43,7 +46,7 @@ export function McpServersPane() {
         }}
       >
         {(rows) => (
-          <div className="flex flex-col gap-2">
+          <div {...stylex.props(ss.stackTight)}>
             {rows.map((s) => (
               <ServerRow key={s.name} server={s} />
             ))}
