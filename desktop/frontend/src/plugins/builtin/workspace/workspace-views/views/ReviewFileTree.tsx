@@ -13,7 +13,6 @@ import {
   vocab,
 } from "@/ui";
 import { AgentViewNavigator } from "@/ui/agent";
-import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import type { WorkspaceFileDiff } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import {
@@ -22,6 +21,7 @@ import {
   filterReviewFiles,
 } from "@/plugins/builtin/workspace/application/reviewFileTree";
 import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./viewStyles";
 
 const rf = stylex.create({
   glyph: { opacity: "var(--glyph-step)" },
@@ -143,11 +143,10 @@ function TreeRow({
       aria-current={selected ? "true" : undefined}
       onClick={onClick}
       style={indentStyle(depth)}
-      className={cn(
-        "flex h-7 w-full min-w-0 items-center gap-1.5 rounded-md border-0 bg-transparent pr-2",
-        "text-left text-ui-xs text-fg transition-colors hover:bg-hover focus-visible:bg-hover",
-        selected && "bg-selected",
-      )}
+      className={
+        stylex.props(vs.treeRow, vs.treeRowTall, typeStep.uiXs, selected && vs.treeRowSelected)
+          .className
+      }
       title={title}
     >
       {leading}

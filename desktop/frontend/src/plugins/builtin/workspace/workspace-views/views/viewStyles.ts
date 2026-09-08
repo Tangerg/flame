@@ -25,6 +25,52 @@ export const viewStyles = stylex.create({
   planPad: { paddingBlock: space.s3_5 },
   planHeading: { paddingInline: 0, paddingTop: 0, paddingBottom: space.s2 },
 
+  /**
+   * A row in a file tree: full width, a hover wash, and the selected state as a fill.
+   *
+   * Two trees had each written this out and disagreed on nothing that matters — one stated a
+   * 28px height and a trailing inset, the other a symmetric one — so the shape is here and the
+   * height, the inset and the type step stay with each tree.
+   */
+  treeRow: {
+    display: "flex",
+    width: "100%",
+    minWidth: 0,
+    alignItems: "center",
+    gap: space.s1_5,
+    borderRadius: radius.card,
+    borderWidth: 0,
+    backgroundColor: {
+      default: "transparent",
+      ":hover": surface.hover,
+      ":focus-visible": surface.hover,
+    },
+    textAlign: "left",
+    color: color.fg,
+    transitionProperty: "background-color",
+    transitionDuration: motion.color,
+  },
+  treeRowSelected: { backgroundColor: surface.selected },
+  treeRowTall: { height: "calc(var(--spacing) * 7)", paddingRight: space.s2 },
+  treeRowInset: { paddingInline: space.s1_5, paddingBlock: space.s1 },
+
+  /** The header a file's diff folds under: a sunken strip whose ink brightens on hover. */
+  diffFileHeader: {
+    display: "flex",
+    height: space.s8,
+    width: "100%",
+    minWidth: 0,
+    alignItems: "center",
+    gap: space.s2,
+    borderWidth: 0,
+    backgroundColor: surface.sunken,
+    paddingInline: space.s3,
+    textAlign: "left",
+    color: { default: color.fgMuted, ":hover": color.fg },
+    transitionProperty: "color",
+    transitionDuration: motion.color,
+  },
+
   /** A row whose whole body is the button. `wash` is the row state the design system gives it. */
   pressRow: {
     display: "flex",

@@ -1,13 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { DiffStat, Icon, Pressable, vocab } from "@/ui";
-import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { headlineToolMetaItem, toolCardModel } from "../application/toolCardModel";
 import { toolCallIconFor } from "../public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "./ToolText";
-import { face, space, type as typeStep } from "@/styles/tokens.stylex";
+import { color, face, space, type as typeStep } from "@/styles/tokens.stylex";
+import { toolMetaInk } from "./toolMetaInk";
 
 interface Props {
   tool: ToolCall;
@@ -19,6 +19,22 @@ const gm = stylex.create({
   body: { paddingBlock: space.s1_5 },
   // The member takes the row's ink, which the row itself decides from its state.
   inherit: { color: "inherit" },
+  // Baseline and not centre: the glyph, the verb and the trailing meta are all text, and a
+  // row of text aligns on the line it is read along.
+  row: {
+    display: "flex",
+    width: "100%",
+    minWidth: 0,
+    alignItems: "baseline",
+    gap: space.s1_5,
+    paddingBlock: space.s0_5,
+    textAlign: "left",
+    // The row's own ink, which everything in it inherits. Expanded holds what hover offers,
+    // because a row you have opened is the one you are reading.
+    color: { default: color.fgMuted, ":hover": color.fg },
+  },
+  rowExpanded: { color: color.fg },
+  meta: { flexShrink: 0 },
 });
 
 export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
@@ -33,11 +49,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
         type="button"
         aria-expanded={expanded}
         onClick={onToggleExpand}
-        className={cn(
-          "flex w-full min-w-0 items-baseline gap-1.5 py-0.5 text-left text-fg-muted",
-          "hover:text-fg",
-          expanded && "text-fg",
-        )}
+        className={stylex.props(gm.row, expanded && gm.rowExpanded).className}
       >
         <Icon
           name={toolCallIconFor(tool)}
@@ -59,10 +71,11 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
         )}
         {headline && (
           <span
-            className={cn(
-              "shrink-0 font-mono text-ui-2xs",
-              headline.tone === "negative" ? "text-negative" : "text-fg-faint",
-            )}
+            // The tone is the decision and the ink is its rendering. A test that reads the ink
+            // back through a class name breaks when the ink moves and says nothing when the
+            // DECISION regresses, which is the failure this row has actually had.
+            data-tone={headline.tone}
+            {...stylex.props(gm.meta, toolMetaInk.member[headline.tone], typeStep.ui2xs, face.mono)}
           >
             {headline.label}
           </span>

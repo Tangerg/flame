@@ -1334,6 +1334,21 @@ html.theme-dark {
   opacity: var(--glyph-step);
 }
 
+/* Mermaid emits an SVG carrying the width and height IT decided, which is never the reading
+   column's. Both surfaces override them, and differently: inline the drawing scales down to
+   the column, and in the lightbox it keeps its own size and centres. Descendant rules, which
+   no atomic class can express — the same reason as the glyph step above. */
+[data-slot="mermaid-stage"] svg {
+  height: auto;
+  max-width: 100%;
+}
+
+[data-slot="mermaid-full"] svg {
+  display: block;
+  margin-inline: auto;
+  max-width: none;
+}
+
 /* The pill reports a run in flight, and the thing that should pulse is the glyph inside the
    button rather than the button's own box. Same reason as the rule above: a descendant, which
    no atomic class can express. */
@@ -1358,8 +1373,12 @@ html.theme-dark {
     corner-shape: superellipse(1.5);
   }
 
-  .rounded-full,
-  .rounded-pill,
+  /* A superellipse at pill radius is a rounded square, not a circle, so the pill opts back
+     out. Two Tailwind class names used to be listed here beside this one — `corner.pill` in
+     `tokens.stylex.ts` carries that opt-out now, bundled with the radius, because a StyleX
+     component never wears a utility name and setting the radius alone made every circle in
+     the product a squircle. The caret keeps its rule: it is markdown's, added by a rehype
+     pass, and has no component to carry a bundle. */
   .type-caret {
     corner-shape: round;
   }

@@ -7,6 +7,19 @@ import { ImagePreviewGallery } from "../ImagePreviewGallery";
 import { color, radius, space, surface } from "@/styles/tokens.stylex";
 
 const mi = stylex.create({
+  /** The image is the button. `zoom-in` because the press opens it, it does not navigate. */
+  trigger: {
+    marginBlock: space.s3,
+    display: "inline-block",
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    padding: 0,
+    verticalAlign: "top",
+    cursor: "zoom-in",
+  },
+  /** A wide image may take the column. Everything else stops at the reading measure. */
+  wide: { maxWidth: "100%" },
+  measured: { maxWidth: "min(100%, 44rem)" },
   image: {
     display: "block",
     maxHeight: "calc(var(--spacing) * 50)",
@@ -74,10 +87,7 @@ export function MarkdownImage({ src = "", alt = "", title, allowWide = false }: 
           type="button"
           aria-label={previewLabel}
           {...previewProps}
-          className={cn(
-            "my-3 inline-block cursor-zoom-in border-0 bg-transparent p-0 align-top",
-            allowWide ? "max-w-full" : "max-w-[min(100%,44rem)]",
-          )}
+          className={stylex.props(mi.trigger, allowWide ? mi.wide : mi.measured).className}
         >
           <img
             src={src}

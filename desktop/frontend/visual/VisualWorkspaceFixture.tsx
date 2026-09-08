@@ -9,6 +9,9 @@ import {
 import { useDockWidth } from "@/plugins/builtin/workspace/public/sidebarDrawer";
 import { AgentAppShell, AgentRow, AgentSurfaceHeader } from "@/ui/agent";
 import type { VisualWorkspaceState } from "./workspaceFixtureStates";
+import * as stylex from "@stylexjs/stylex";
+import { fx } from "./fixtureStyles";
+import { type as typeStep } from "@/styles/tokens.stylex";
 
 const STATE_LABELS: Record<VisualWorkspaceState, string> = {
   "dock-light": "Plan workspace",
@@ -69,7 +72,7 @@ function WorkspaceStateSidebar({ state }: { state: VisualWorkspaceState }) {
     return () => observer.disconnect();
   }, [state]);
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div {...stylex.props(fx.pane)}>
       {/* Empty, the way the product's drawer header is: the sidebar control is placed at
           the window-controls gutter and the header content box starts at the same edge, so
           anything written here is painted under the control. This caption is scaffolding
@@ -77,8 +80,8 @@ function WorkspaceStateSidebar({ state }: { state: VisualWorkspaceState }) {
       <AgentSurfaceHeader corner="drawer" divider={false} />
       {/* The scrollport, because this list only grows: every view a round opens adds a row, and
           a state below the fold of a 720px window is a state whose golden cannot be taken. */}
-      <div ref={listRef} className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2 pt-2">
-        <span className="px-2 pb-1 text-ui-md font-semibold text-fg">Workspace states</span>
+      <div ref={listRef} {...stylex.props(fx.scroller)}>
+        <span {...stylex.props(fx.listHead, typeStep.uiMd)}>Workspace states</span>
         {(Object.keys(STATE_LABELS) as VisualWorkspaceState[]).map((candidate) => (
           <AgentRow
             key={candidate}
@@ -96,8 +99,8 @@ function WorkspaceStateSidebar({ state }: { state: VisualWorkspaceState }) {
         ))}
       </div>
       {/* The list takes the free height now; this is the gap above the caption, not a spring. */}
-      <div className="min-h-4" />
-      <div className="px-4 pb-3 text-ui-xs leading-body text-fg-faint">
+      <div {...stylex.props(fx.footGap)} />
+      <div {...stylex.props(fx.listFoot, typeStep.uiXs)}>
         Production views · deterministic providers
       </div>
     </div>
@@ -148,7 +151,7 @@ export function VisualWorkspaceFixture({ state }: { state: VisualWorkspaceState 
       sidebarCollapseLabel="Collapse the workspace fixture sidebar"
       sidebar={settingsOpen ? undefined : <WorkspaceStateSidebar state={state} />}
       main={
-        <div className="contents" data-testid="workspace-state" data-state={state}>
+        <div {...stylex.props(fx.contents)} data-testid="workspace-state" data-state={state}>
           <ChatPanel onSend={() => true} />
         </div>
       }

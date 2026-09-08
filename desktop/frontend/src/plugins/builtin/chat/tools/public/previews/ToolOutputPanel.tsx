@@ -112,7 +112,7 @@ export function ToolOutputPanel({
           size="xs"
           title={t(copied ? "tools.output.copied" : "tools.output.copy")}
           onClick={() => void copy()}
-          className={cn("absolute right-1 top-1", stylex.props(reveal.shown).className)}
+          className={cn(undefined, stylex.props(reveal.shown).className)}
         />
       </div>
       {hidden > 0 && (

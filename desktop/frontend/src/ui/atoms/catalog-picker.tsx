@@ -10,6 +10,10 @@ import { Pressable } from "./pressable";
 import { vocab } from "./vocabulary";
 
 export const styles = stylex.create({
+  // `data-empty:` was Tailwind's variant syntax over a data attribute; StyleX says the same
+  // thing natively, and says it at a specificity no utility can undo.
+  emptyFlush: { padding: { default: null, ":is([data-empty])": 0 } },
+  hideWhenEmpty: { display: { default: null, ":is([data-empty])": "none" } },
   // The search box sits INSIDE the popup, so it wears the field's edge rather than the popup's.
   searchBox: {
     marginBottom: space.s1,
@@ -326,7 +330,10 @@ export function CatalogPicker({
             {emptyLabel}
           </ComboboxPrimitive.Empty>
           <ComboboxPrimitive.List
-            className={cn("data-empty:p-0", stylex.props(styles.list).className)}
+            className={cn(
+              stylex.props(styles.emptyFlush).className,
+              stylex.props(styles.list).className,
+            )}
           >
             {(group: CatalogPickerGroup) => (
               <ComboboxPrimitive.Group
@@ -500,7 +507,7 @@ export function RailCatalogPicker({
             <ComboboxPrimitive.List
               ref={listRef}
               className={cn(
-                "data-empty:hidden",
+                stylex.props(styles.hideWhenEmpty).className,
                 stylex.props(styles.list, styles.listInset).className,
               )}
             >

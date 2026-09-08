@@ -3,7 +3,6 @@ import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { DiffStat, IconButton, knownIconName, reveal, StatusDot, vocab } from "@/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { type ToolMetaItem } from "@/plugins/builtin/agent/public/messagePresentation";
-import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import {
   lookupToolActionOwner,
@@ -17,7 +16,8 @@ import { toolCardActions, toolCardModel, toolCardViewOpener } from "../applicati
 import { toolCallIconFor } from "../public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "./ToolText";
-import { face, space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { toolMetaInk } from "./toolMetaInk";
 
 interface Props {
   tool: ToolCall;
@@ -29,6 +29,7 @@ const tc = stylex.create({
   full: { width: "100%" },
   sans: { fontFamily: "var(--font-sans)" },
   // The status only appears once the card is wide enough for it beside the label.
+  meta: { fontWeight: weight.medium },
   status: {
     display: { default: "none", "@container (min-width: 24rem)": "flex" },
     flexShrink: 0,
@@ -119,15 +120,12 @@ function ToolMeta({ items }: { items: ToolMetaItem[] }) {
       {items.map((item) => (
         <span
           key={item.id}
-          className={cn("font-mono text-ui-xs font-medium", toolMetaToneClass(item.tone))}
+          data-tone={item.tone}
+          {...stylex.props(tc.meta, toolMetaInk.card[item.tone], typeStep.uiXs, face.mono)}
         >
           {item.label}
         </span>
       ))}
     </span>
   );
-}
-
-function toolMetaToneClass(tone: ToolMetaItem["tone"]): string {
-  return tone === "negative" ? "text-negative" : "text-fg-muted";
 }

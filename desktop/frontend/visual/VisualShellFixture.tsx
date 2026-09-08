@@ -8,6 +8,10 @@ import {
 import { Icon } from "@/ui";
 import { AgentAppShell, AgentContentCard, AgentStatusPill, AgentSurfaceHeader } from "@/ui/agent";
 import type { VisualWorkIndexState } from "./shellFixtureStates";
+import * as stylex from "@stylexjs/stylex";
+import { corner, fx } from "./fixtureStyles";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { cn } from "@/lib/classNames";
 
 const STATE_COPY: Record<VisualWorkIndexState, { title: string; body: string }> = {
   populated: {
@@ -48,22 +52,20 @@ export function VisualShellFixture({ state }: { state: VisualWorkIndexState }) {
       main={
         <AgentContentCard label="Shell and Work Index visual fixture">
           <AgentSurfaceHeader corner="window">
-            <span className="font-mono text-ui-md text-fg-faint">scope</span>
-            <span className="text-ui-md text-fg-faint">/</span>
-            <span className="truncate text-ui-md font-semibold text-fg">Work Index</span>
-            <AgentStatusPill tone={state === "error" ? "waiting" : "idle"}>
-              {state}
-            </AgentStatusPill>
+            <span {...stylex.props(typeStep.uiMd, fx.mono, fx.faint)}>scope</span>
+            <span {...stylex.props(fx.faint, typeStep.uiMd)}>/</span>
+            <span {...stylex.props(fx.truncate, fx.semibold, fx.ink, typeStep.uiMd)}>
+              Work Index
+            </span>
+            <AgentStatusPill tone={state === "error" ? "waiting" : "idle"}>{state}</AgentStatusPill>
           </AgentSurfaceHeader>
-          <div className="panel-scroll flex min-h-0 flex-1">
-            <div className="m-auto flex max-w-[520px] flex-col items-center px-8 text-center">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-surface-2 text-fg-muted">
+          <div className={cn("panel-scroll", stylex.props(fx.paneRow).className)}>
+            <div {...stylex.props(fx.emptyBox)}>
+              <span {...stylex.props(fx.emptyGlyph, corner.pill)}>
                 <Icon name="spark" size="md" />
               </span>
-              <h1 className="mt-4 text-display-lg font-semibold leading-tight text-fg">
-                {copy.title}
-              </h1>
-              <p className="mt-2 text-ui-md leading-relaxed text-fg-muted">{copy.body}</p>
+              <h1 {...stylex.props(fx.headingLoose, typeStep.displayLg)}>{copy.title}</h1>
+              <p {...stylex.props(fx.afterHeading, typeStep.uiMd)}>{copy.body}</p>
             </div>
           </div>
         </AgentContentCard>

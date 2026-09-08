@@ -14,7 +14,12 @@ import { stylexBabelConfig } from "./stylex.babel.mjs";
 export default {
   plugins: [
     stylexPostcss({
-      include: ["src/**/*.{ts,tsx}"],
+      // The SAME scope Babel's pass has, which is every `.ts(x)` in the project. They had
+      // drifted: Babel rewrote `stylex.create` everywhere while this pass only read `src`, so a
+      // style defined under `visual/` got a class name and no rule — the fixtures rendered
+      // naked, which is why they were still written in utilities. That is the exact divergence
+      // `stylex.babel.mjs` warns about, in the pair it warns about.
+      include: ["src/**/*.{ts,tsx}", "visual/**/*.{ts,tsx}"],
       babelConfig: stylexBabelConfig,
       // NOT layers. An unlayered rule beats every layer regardless of specificity, and this
       // sheet is full of them — the first migrated component came out `display: block`

@@ -1,17 +1,26 @@
 import * as stylex from "@stylexjs/stylex";
 import type { CSSProperties } from "react";
 import { useState } from "react";
-import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { formatClock } from "@/lib/i18n/relativeTime";
 import { useActiveConversationMessages } from "@/plugins/builtin/agent/public/conversation";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { Pressable, RichTooltip, vocab } from "@/ui";
 import { foldExchanges, scrollToTurn, useTranscriptMap } from "../adapters/transcriptAnchors";
-import { space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { color, corner, motion, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../chatStyles";
 
 const tr = stylex.create({
+  /** The mark itself: 2px of rule whose width says how far the turn got. */
+  tickBar: {
+    height: "2px",
+    transitionProperty: "background-color, width",
+    transitionDuration: motion.fast,
+  },
+  tickLead: { backgroundColor: color.fg },
+  // The turns behind the one being read recede rather than disappear: the rail is a map, and a
+  // map with only your own position on it says nothing about the distance.
+  tickRest: { backgroundColor: "color-mix(in oklab, var(--color-fg-faint) 55%, transparent)" },
   // The rail hangs beside the transcript and is only as wide as its ticks.
   rail: {
     display: "flex",
@@ -93,10 +102,7 @@ export function TurnRail() {
                 style={{ width: `${TRACK}px` } as CSSProperties}
               >
                 <span
-                  className={cn(
-                    "h-[2px] rounded-pill transition-[background-color,width] duration-[var(--dur-fast)]",
-                    lead ? "bg-fg" : "bg-fg-faint/55",
-                  )}
+                  {...stylex.props(tr.tickBar, corner.pill, lead ? tr.tickLead : tr.tickRest)}
                   style={
                     {
                       width: `${FLOOR + Math.round(shareOf(turn.id) * SHARE + swell(index) * MAGNIFY)}px`,

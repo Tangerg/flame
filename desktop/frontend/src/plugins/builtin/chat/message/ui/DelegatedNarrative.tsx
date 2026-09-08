@@ -17,6 +17,8 @@ import { MESSAGE_CONTENT_CLASS } from "./messageContent";
 import { cn } from "@/lib/classNames";
 import type { BlockCtx } from "./blockContext";
 import { space } from "@/styles/tokens.stylex";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { messageStyles as ms } from "./messageStyles";
 
 const dn = stylex.create({
   stack: { display: "grid", gap: space.s2 },
@@ -89,8 +91,11 @@ function DelegatedMessage({
       <div
         className={cn(
           MESSAGE_CONTENT_CLASS,
-          "min-w-0 text-pretty text-prose leading-prose text-fg-soft",
-          message.role === "user" && "rounded-md bg-sunken px-3 py-2 text-fg",
+          stylex.props(
+            ms.delegatedBody,
+            typeStep.prose,
+            message.role === "user" && ms.delegatedBubble,
+          ).className,
         )}
       >
         {renderMessageBlocks({ message, facts }, blockCtx)}

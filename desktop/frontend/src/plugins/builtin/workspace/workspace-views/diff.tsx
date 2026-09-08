@@ -17,7 +17,6 @@ import type { DiffLayout } from "./views/DiffView";
 import { DiffView } from "./views/DiffView";
 import { ReviewFileTree } from "./views/ReviewFileTree";
 import { ViewHeader } from "./views/ViewHeader";
-import { cn } from "@/lib/classNames";
 import { gitOffEmpty, notARepoEmpty } from "./views/vcsGate";
 import { focusWorkspaceFile } from "@/plugins/builtin/workspace/application/navigation";
 import {
@@ -26,8 +25,8 @@ import {
   workspaceDiffFileHeader,
   useWorkspaceDiffView,
 } from "@/plugins/builtin/workspace/application/diffViewModel";
-import { color, space, type as typeStep } from "@/styles/tokens.stylex";
-import { codeStyles as cs } from "./views/viewStyles";
+import { color, face, space, type as typeStep } from "@/styles/tokens.stylex";
+import { codeStyles as cs, viewStyles as vs } from "./views/viewStyles";
 const df = stylex.create({
   pathLine: { display: "flex", minWidth: 0, flex: 1, alignItems: "baseline", gap: space.s1_5 },
   // The old path yields first and by a wide margin: what matters is where the file IS now.
@@ -63,10 +62,7 @@ function FileCard({
         aria-expanded={!collapsed}
         aria-controls={panelId}
         onClick={onToggle}
-        className={cn(
-          "flex h-8 w-full min-w-0 items-center gap-2 border-0 bg-sunken px-3",
-          "text-left font-mono text-ui-sm text-fg-muted transition-colors hover:text-fg",
-        )}
+        {...stylex.props(vs.diffFileHeader, typeStep.uiSm, face.mono)}
       >
         <span {...stylex.props(df.pathLine)}>
           {header.previousPath && (

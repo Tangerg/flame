@@ -10205,3 +10205,184 @@ COMPARE {"before":{"overlayOffset":0,"maskStart":"0"},
 | **真 Tailwind** | **37** | 15 个文件，还要迁 |
 | `globals.css` 机制键 | 28 | 后代规则 / 接缝 / 遮罩 / shiki —— StyleX 表达不了，**设计上的终态** |
 | 根本不是 class | 6 | 枚举值、prop 值，被扫描器扫进来的 |
+
+## Round 166 — 目标改了：不是迁完，是把 Tailwind 拿掉
+
+用户把目标说清楚了。移除 Tailwind 不只是 class 串，是**六层**：
+
+| 层 | 现状 | 移除要做什么 |
+| --- | --- | --- |
+| ① utility class | **本轮清零** | 迁完 |
+| ② `@theme inline`（115 行） | 几乎全是 `--color-x: var(--color-x)` 这种**别名**，只为把令牌塞进 Tailwind 命名空间 | 让 `tokens.stylex.ts` 直接指底层名，整层删 |
+| ③ `@utility` / `@custom-variant` | 2 个 utility、2 处变体（TSX 里 0 处） | 改普通 CSS |
+| ④ **Tailwind 自己的 theme 默认值** | 设计在**静默消费**它们 | 见下 |
+| ⑤ `tailwind-merge`（`cn` 里） | 只认 Tailwind 类名，utility 清零后是空转 | `cn` 变纯拼接 |
+| ⑥ Vite 插件 + devDep | — | 最后拆 |
+
+### 第 ④ 层：量出来只有 6 个，但其中一个是 89 处
+
+扫「被读到但我们从没定义过」的自定义属性，32 个里大部分是运行时写入的
+（`--reveal` / `--fade-top` / `--sidebar-width`）或 Base UI 的（`--available-height` / `--anchor-width`）。
+真正由 Tailwind 提供的只有 6 个：
+
+| 属性 | 读取处 | 影响 |
+| --- | --- | --- |
+| **`--spacing`** | **89** | `space.*` **每一档**都是 `calc(var(--spacing) * N)` |
+| `--tracking-normal` | 3 | |
+| `--animate-spin` / `--animate-pulse` | 3 | |
+| `--shadow-md` | 1 | 之前报过：`MarkdownImage` 用的是 Tailwind 默认阴影而非设计的深度模型 |
+| `--leading-normal` | 1 | |
+
+（我一开始怀疑 `--ease-out` 也是 Tailwind 的 —— **查了，它是我们自己定义的**，虚惊。）
+
+### 这次扫描顺带抓到一个静默失效
+
+`ImagePreviewGallery` 的浮动控件条写着 `boxShadow: "var(--shadow-floating)"` ——
+而 **`--shadow-floating` 在整个仓库里没有定义**。`var()` 没有 fallback 会让这条声明
+在计算值阶段失效，所以那条控件条一直是 `box-shadow: none` ——
+**全产品唯一一个从来没解析成功的阴影名**。改成 `--shadow-overlay`（搜索浮标用的那一档，
+同样是「浮在内容上的一条」）。
+
+### ① 层清零的路上，最后一处重复
+
+两棵文件树（`FileTree` / `ReviewFileTree`）各自写了一遍同一个行 ——
+全宽、hover wash、选中填充 —— 只在高度和内缩上不同。收成 `viewStyles.treeRow`
+加两档（`treeRowTall` / `treeRowInset`），字号留给各自。
+
+`catalog-picker` 的 `data-empty:p-0` / `data-empty:hidden` 是 Tailwind 的
+**data 属性变体语法**，StyleX 原生就能说：`{ ":is([data-empty])": 0 }` ——
+而且说在一个工具类压不过的特异性上。
+
+### 守卫抓到一条我造出来的死规则
+
+`TurnRail` 改用 `corner.pill` 之后，`globals.css` 里那条
+`.rounded-full, .rounded-pill, .type-caret { corner-shape: round }` 的前两个选择器
+**再也匹配不到任何元素** —— `check:styles` 直接报了出来。
+
+这条规则的来历 `tokens.stylex.ts` 里写着：superellipse 在 pill 半径下是圆角方而不是圆，
+所以 pill 要опт出来，而那个 opt-out **当年是挂在 Tailwind 的类名上的**。
+现在 `corner.pill` 把它和半径捆在一起了，两个 Tailwind 选择器删掉，
+`.type-caret` 留下 —— 它是 markdown 的，由 rehype 加上，没有组件可以捆。
+
+### 「① 层清零」是错的 —— 我的扫描器只读 `src`
+
+守卫报 `.rounded-pill` 死规则，我删掉它和 `.rounded-full` 之后视觉套件红了 12 张，
+集中在 shell 与 Retina hairline。看 diff 图，动的是那个 **40px 空态图标** ——
+正是 `tokens.stylex.ts` 里那段注释点名的「唯一一个大到 golden 能看出来的圆」。
+
+浏览器里量：
+
+```
+ROUNDED {"count":1,"samples":[{"cls":"grid h-10 w-10 place-items-center rounded-full …",
+                               "shape":"superellipse(1.5)"}]}
+```
+
+**还有一个元素在戴 `rounded-full`**，而它在 `visual/VisualShellFixture.tsx` 里 ——
+**我的扫描器从头到尾只读 `src`**。fixture 里还有 **68 条** class 串。
+
+`check-dead-styles` 有**同一个盲区**：一条只被 fixture 用着的规则，它报成死规则。
+所以那不是守卫误报，是守卫和我共享同一个错误的作用域假设。
+
+fixture 是脚手架不是产品 —— 但它走同一条 Vite 管线，
+**只要它还说 Tailwind，Tailwind 就拆不掉**。所以这一波把 fixture 一起迁了：
+`visual/fixtureStyles.ts` 一个模块管四个文件（fixture 的职责是「稳住」，不是长词汇）。
+
+空态图标那一档特意留了注释：它是产品里唯一一个 golden 能看出角形状的元素，
+所以它必须用 `corner.pill` 从 `superellipse(1.5)` 里退出来。
+
+**`src` + `visual` 现在都是 0 条。**
+
+### 迁 fixture 时撞出一个存在已久的管线缺陷
+
+fixture 迁完之后视觉套件 **117 张红**。看 diff：动的只有 fixture 自己的状态侧栏，
+每行整体偏移 16px；产品区域一个像素没动。
+
+一步步量下去：
+
+| 量到的 | 说明 |
+| --- | --- |
+| 侧栏所有样式（字号/内缩/gap/行高）**逐项相同** | 样式没变 |
+| 滚动落点差 **16px** | 变的是列表高度 |
+| 那个 16px 的间隔 `div`：`min-height: auto`、高 0 | `fx.footGap` **没生效** |
+| 它有 StyleX 类名 `xyz5y6m` | Babel 那一遍**跑了** |
+| 递归搜遍所有样式表：**该类名没有任何规则** | PostCSS 那一遍**没跑** |
+
+根因在 `postcss.config.mjs`：
+
+```
+include: ["src/**/*.{ts,tsx}"]        ← PostCSS 只读 src
+include: /\.tsx?$/                    ← Babel 读每个文件
+```
+
+**两遍的作用域不一致。** 而 `stylex.babel.mjs` 的注释一字不差地警告过这件事：
+
+> Configure them separately and they diverge silently — the build succeeds, the JS carries
+> class names, and **no rule ever defines them, so the component renders naked**.
+
+写着这条警告的那一对，自己就是分叉的。
+
+**这不是我引入的**：`visual/` 下任何 StyleX 定义**从来就不生效**。
+换句话说，fixture 一直全是 Tailwind **不是选择，是 StyleX 在那里根本不能用**。
+把 `visual/**/*.{ts,tsx}` 加进 PostCSS 的 include，两遍就一致了。
+
+### 117 → 12 → 0，四类失败，四种归因
+
+修好管线后还剩 12 张。全部隔离重跑，**12 张都能复现，没有一张是 flake**。逐类查清：
+
+| 失败 | 根因 | 判定 |
+| --- | --- | --- |
+| foundation ×4 | 大写标签与等宽文字的字距 | **我自己犯的 round 148 那个错**，见下 |
+| dock-review ×2 | diff 文件头是等宽文字 | round 153 的规则到达新地方，**是修好了** |
+| tool-shells ×2 | `ToolCard` 的 meta 是等宽 | 同上 |
+| Markdown lightbox ×2 | 控件条**第一次有了阴影** | `--shadow-floating` 那个修复的证据 |
+| Retina closure ×2 | 随上面几处一起 | — |
+
+#### 我在 fixture 映射里又犯了一次「顺序是唯一的裁判」
+
+我把 `typeStep.*` 放在了自己那些档**后面**：
+
+```
+fx.specimenLabel, typeStep.uiXs      ← tracking-wide 被 typeStep 的字距覆盖
+fx.mono, fx.faint, typeStep.uiSm     ← face.mono 的 letterSpacing: 0 被覆盖
+```
+
+**类型档也声明 `letter-spacing`**，composed 在后面就把前面那个换掉了 ——
+大写标签失去宽字距、等宽文字背上比例字体的字距。产品代码里的约定正好相反
+（`..., typeStep.X, face.mono`），我照抄产品的顺序就对了。已在 `fx.mono` 旁写明为什么。
+
+#### 而「等宽字距」这一类改动是**对的**
+
+`--text-ui-xs--letter-spacing` 就是 `--tracking-ui`。所以
+`font-mono text-ui-xs`（diff 文件头、`ToolCard` 的 meta）一直让等宽文字
+背着为比例字体设计的字距 —— 正是 round 153 量出「40 字符漂 5.7px」的那个缺陷。
+换成 `face.mono` 之后归零。这几张该重录。
+
+### fixture 里那个 78px 内缩，从来没生效过
+
+foundation 的 logo 位移 58px，查出来是：
+
+```
+.agent-surface-header { padding-inline: var(--density-column-gutter) }   ← 无图层
+pl-[78px]                                                                ← @layer utilities
+```
+
+**无图层规则压过任何图层。** 所以 fixture 那句 `pl-[78px]` 一直是死的，
+而我把它迁成 StyleX（也是无图层、且带 `:not(#\#)`）会让一条死覆盖**活过来**。
+
+这跟 tray 那次是同一个机制，也是这次「拆 Tailwind」最大的系统性风险：
+**每一条曾经静默输给无图层 `globals.css` 规则的 utility，迁成 StyleX 之后都会反过来赢。**
+golden 记录的是它输的那个样子，所以正确的处理是**删掉这条覆盖**，不是让它赢。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **669 / 669**，0 unexpected，0 flaky |
+| 守卫 | 17 项全绿 |
+| 单测 | 1783 项通过 |
+| **utility class（`src` + `visual`）** | **0** |
+| 重录 | 24 张，四类全部有归因 |
+
+Tailwind 拆除的第 ① 层完成。剩下 ②–⑥ 层：`@theme inline` 的 115 行别名、
+`@utility` / `@custom-variant`、Tailwind 自己的 6 个 theme 默认值（`--spacing` 占 89 处）、
+`cn` 里的 `tailwind-merge`、Vite 插件与 devDep。

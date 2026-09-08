@@ -8,6 +8,10 @@ import {
   AgentSurfaceHeader,
 } from "@/ui/agent";
 import { Button, IconButton } from "@/ui";
+import * as stylex from "@stylexjs/stylex";
+import { fx } from "./fixtureStyles";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { cn } from "@/lib/classNames";
 
 interface VisualFoundationFixtureProps {
   sidebarOpen: boolean;
@@ -21,21 +25,24 @@ const SESSION_ROWS = [
 
 function WorkIndexFixture() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <AgentSurfaceHeader divider={false} className="pl-[78px]">
-        <span className="text-ui-md font-semibold text-fg">Flame</span>
-        <span className="min-w-2 flex-1" />
+    <div {...stylex.props(fx.pane)}>
+      {/* No inset of its own. `pl-[78px]` sat here and never applied: `.agent-surface-header`
+          owns `padding-inline` from the density vocabulary and is UNLAYERED, so it outranked a
+          utility in `@layer utilities`. Migrating it to StyleX — also unlayered, and at a
+          specificity nothing outranks — would have made a dead override live and moved the
+          wordmark 78px. What the goldens have always shown is the header's own inset. */}
+      <AgentSurfaceHeader divider={false}>
+        <span {...stylex.props(fx.semibold, fx.ink, typeStep.uiMd)}>Flame</span>
+        <span {...stylex.props(fx.minRail)} />
         <IconButton icon="search" size="sm" aria-label="Search" />
         <IconButton icon="edit" size="sm" aria-label="New session" />
       </AgentSurfaceHeader>
-      <div className="panel-scroll flex min-h-0 flex-1 flex-col px-2 pt-2">
-        <div className="px-2 pb-1 text-ui-xs font-medium tracking-wide text-fg-faint uppercase">
-          Work index
-        </div>
-        <AgentRow icon="folder" trailing={<span className="tabular-nums">3</span>}>
+      <div className={cn("panel-scroll", stylex.props(fx.pane, fx.listPad).className)}>
+        <div {...stylex.props(typeStep.uiXs, fx.specimenLabel)}>Work index</div>
+        <AgentRow icon="folder" trailing={<span {...stylex.props(fx.figures)}>3</span>}>
           scope
         </AgentRow>
-        <div className="flex flex-col gap-0.5">
+        <div {...stylex.props(fx.columnTight)}>
           {SESSION_ROWS.map((session) => (
             <AgentRow
               key={session.id}
@@ -43,7 +50,7 @@ function WorkIndexFixture() {
               indent="nested"
               active={session.active}
               trailing={
-                <span className="font-mono text-ui-xs text-fg-faint tabular-nums">
+                <span {...stylex.props(typeStep.uiXs, fx.mono, fx.faint, fx.figures)}>
                   {session.meta}
                 </span>
               }
@@ -53,9 +60,9 @@ function WorkIndexFixture() {
           ))}
         </div>
       </div>
-      <div className="flex items-center gap-1 px-2 pb-2">
+      <div {...stylex.props(fx.captionRow)}>
         <IconButton icon="settings" size="sm" aria-label="Settings" />
-        <span className="text-ui-sm text-fg-muted">Visual fixture</span>
+        <span {...stylex.props(fx.muted, typeStep.uiSm)}>Visual fixture</span>
       </div>
     </div>
   );
@@ -63,18 +70,18 @@ function WorkIndexFixture() {
 
 function ComposerFixture() {
   return (
-    <AgentComposerSurface data-testid="composer" className="relative">
-      <div className="min-h-20 px-[var(--density-composer-editor-start)] pt-[var(--density-composer-editor-top)] pb-[var(--density-composer-editor-bottom)] text-ui-md leading-relaxed text-fg">
+    <AgentComposerSurface data-testid="composer" {...stylex.props(fx.relative)}>
+      <div {...stylex.props(fx.editorBox, typeStep.uiMd)}>
         Ask Flame to inspect, change, or explain this workspace…
       </div>
-      <div className="flex items-center gap-1 px-[var(--density-composer-footer)] pb-[var(--density-composer-footer)] pl-[var(--density-composer-footer)]">
+      <div {...stylex.props(fx.footerBox)}>
         <Button variant="ghost" size="xs">
           Agent
         </Button>
         <Button variant="ghost" size="xs">
           Auto
         </Button>
-        <span className="min-w-2 flex-1" />
+        <span {...stylex.props(fx.minRail)} />
         <IconButton icon="arrow-up" size="md" aria-label="Send" variant="primary" />
       </div>
     </AgentComposerSurface>
@@ -86,20 +93,22 @@ function FoundationSurface({ sidebarOpen }: { sidebarOpen: boolean }) {
     <AgentContentCard label="Visual foundation" data-testid="content-card">
       <AgentSurfaceHeader corner="window">
         <IconButton icon="panel-l" size="sm" aria-label="Toggle work index" />
-        <span className="font-mono text-ui-sm text-fg-faint">scope</span>
-        <span className="text-ui-md text-fg-faint">/</span>
-        <span className="truncate text-ui-md font-semibold text-fg">Visual foundation</span>
+        <span {...stylex.props(typeStep.uiSm, fx.mono, fx.faint)}>scope</span>
+        <span {...stylex.props(fx.faint, typeStep.uiMd)}>/</span>
+        <span {...stylex.props(fx.truncate, fx.semibold, fx.ink, typeStep.uiMd)}>
+          Visual foundation
+        </span>
         <AgentStatusPill tone="idle">Ready</AgentStatusPill>
-        <span className="min-w-2 flex-1" />
+        <span {...stylex.props(fx.minRail)} />
         <IconButton icon="panel-r" size="sm" aria-label="Open context dock" />
       </AgentSurfaceHeader>
 
-      <div className="panel-scroll flex min-h-0 flex-1 flex-col">
-        <div className="mx-auto flex w-full max-w-[var(--content-max)] flex-1 flex-col px-[var(--density-column-gutter)] pt-10 sm:px-[var(--density-column-gutter-wide)]">
-          <div className="text-ui-xs font-medium tracking-wide text-fg-faint uppercase">
+      <div className={cn("panel-scroll", stylex.props(fx.pane).className)}>
+        <div {...stylex.props(fx.measure)}>
+          <div {...stylex.props(typeStep.uiXs, fx.specimenLabelFlush)}>
             Deterministic visual fixture
           </div>
-          <h1 className="mt-2 text-display-lg font-semibold leading-tight text-fg">
+          <h1 {...stylex.props(fx.heading, typeStep.displayLg)}>
             One visual language, one source of truth.
           </h1>
           {/* Two lines with room to spare on the second, on purpose. `text-wrap: pretty` — which
@@ -108,25 +117,25 @@ function FoundationSurface({ sidebarOpen }: { sidebarOpen: boolean }) {
               therefore wrapped one way when the suite ran alone and another when it ran with
               everything else, and the golden could not be photographed twice the same. One line
               is the only width at which no algorithm gets a vote. */}
-          <p className="mt-3 max-w-[62ch] text-ui-md leading-relaxed text-fg-soft">
+          <p {...stylex.props(fx.lede, typeStep.uiMd)}>
             Production primitives, with viewport, locale and appearance held still.
           </p>
 
-          <div className="mt-8 grid grid-cols-2 gap-4">
-            <section className="rounded-lg border border-field bg-surface p-4">
-              <div className="text-ui-sm font-medium text-fg-faint">TYPE LADDER</div>
-              <div className="mt-3 flex items-end gap-3 text-fg">
-                <span className="text-ui-2xs">9</span>
-                <span className="text-ui-xs">10</span>
-                <span className="text-ui-sm">11</span>
-                <span className="text-ui-md">12</span>
-                <span className="text-ui-md">13</span>
-                <code className="font-mono text-code">code 11</code>
+          <div {...stylex.props(fx.cardGrid)}>
+            <section {...stylex.props(fx.card)}>
+              <div {...stylex.props(fx.medium, fx.faint, typeStep.uiSm)}>TYPE LADDER</div>
+              <div {...stylex.props(fx.rowBaseline)}>
+                <span {...stylex.props(typeStep.ui2xs)}>9</span>
+                <span {...stylex.props(typeStep.uiXs)}>10</span>
+                <span {...stylex.props(typeStep.uiSm)}>11</span>
+                <span {...stylex.props(typeStep.uiMd)}>12</span>
+                <span {...stylex.props(typeStep.uiMd)}>13</span>
+                <code {...stylex.props(typeStep.code, fx.mono)}>code 11</code>
               </div>
             </section>
-            <section className="rounded-lg border border-field bg-surface p-4">
-              <div className="text-ui-sm font-medium text-fg-faint">SURFACE ROLES</div>
-              <div className="mt-3 flex items-center gap-2">
+            <section {...stylex.props(fx.card)}>
+              <div {...stylex.props(fx.medium, fx.faint, typeStep.uiSm)}>SURFACE ROLES</div>
+              <div {...stylex.props(fx.row)}>
                 <Button variant="primary" size="sm">
                   Continue
                 </Button>
@@ -138,9 +147,9 @@ function FoundationSurface({ sidebarOpen }: { sidebarOpen: boolean }) {
             </section>
           </div>
 
-          <div className="min-h-8 flex-1" />
+          <div {...stylex.props(fx.minField)} />
           <ComposerFixture />
-          <div className="h-4 shrink-0" />
+          <div {...stylex.props(fx.hairline)} />
         </div>
       </div>
       <output className="sr-only" data-testid="sidebar-state">

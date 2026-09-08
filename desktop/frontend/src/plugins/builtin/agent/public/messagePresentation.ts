@@ -7,7 +7,12 @@ export {
   toolIntent,
   toolMetaItems,
 } from "../presentation/toolPresentation";
-export type { ToolDetail, ToolIntent, ToolMetaItem } from "../presentation/toolPresentation";
+export type {
+  ToolDetail,
+  ToolIntent,
+  ToolMetaItem,
+  ToolMetaTone,
+} from "../presentation/toolPresentation";
 export { approvalSettledDecision, canSubmitApproval } from "../presentation/approvalPresentation";
 export {
   canSubmitQuestion,

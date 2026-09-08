@@ -32,7 +32,9 @@ describe("ToolGroupMember", () => {
   it("shows a non-zero exit as a failure rather than as one more grey figure", () => {
     const { container } = member({ name: "shell", fn: "go test ./...", exitCode: 1 });
 
-    const chip = container.querySelector(".text-negative");
+    // The tone, not the ink: `.text-negative` was the ink's old spelling, and what this test
+    // is named for is that the exit is not swept into the quiet default.
+    const chip = container.querySelector('[data-tone="negative"]');
     expect(chip?.textContent).toContain("1");
   });
 

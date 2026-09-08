@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, motion, space, weight } from "@/styles/tokens.stylex";
+import { color, leading, motion, radius, space, surface, weight } from "@/styles/tokens.stylex";
 
 /**
  * A card in the transcript: an approval, a question, a compaction notice.
@@ -81,6 +81,23 @@ export const messageStyles = stylex.create({
     backgroundColor: "var(--color-user-message)",
     paddingInline: space.s3,
     paddingBlock: space.s2,
+  },
+  // A delegated run's narration, one step quieter than a top-level message on both counts:
+  // the body is `fgSoft` where a message is `fg`, and the reader's own line takes the sunken
+  // plate and a card corner rather than the user-message fill and the bubble corner. It is
+  // narration inside somebody else's card, not the conversation itself.
+  delegatedBody: {
+    minWidth: 0,
+    textWrap: "pretty",
+    lineHeight: leading.prose,
+    color: color.fgSoft,
+  },
+  delegatedBubble: {
+    borderRadius: radius.card,
+    backgroundColor: surface.sunken,
+    paddingInline: space.s3,
+    paddingBlock: space.s2,
+    color: color.fg,
   },
   column: {
     position: "relative",

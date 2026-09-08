@@ -8,7 +8,6 @@ import { useT } from "@/lib/i18n";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { notifyError } from "@/plugins/sdk";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
-import { cn } from "@/lib/classNames";
 import {
   type MCPServerSettings,
   reconnectMCPServer,
@@ -34,6 +33,11 @@ const STATUS_BADGE: Record<MCPServerSettings["status"], { key: string; tone: Ton
 const TOOL_INSET = "68px";
 
 const mr = stylex.create({
+  // Both animations are Tailwind's own (`--animate-pulse`, `--animate-spin`) rather than this
+  // design's `--animate-pulse-dot`; they are named here so the variables are the only thing
+  // left to own when Tailwind goes.
+  pulsing: { animation: "var(--animate-pulse)" },
+  spinning: { animation: "var(--animate-spin)" },
   // The row publishes what its plate should look like, because the plate brightens when the
   // POINTER IS ON THE ROW rather than on the plate — `group-hover/` with no ancestor selector.
   row: {
@@ -172,7 +176,7 @@ export function McpRow({ server }: { server: MCPServerSettings }) {
         <Badge
           size="md"
           tone={status.tone}
-          className={cn(server.status === "connecting" && "animate-pulse")}
+          className={stylex.props(server.status === "connecting" && mr.pulsing).className}
           title={server.status === "failed" ? server.errorDetail : undefined}
         >
           {t(status.key)}
@@ -183,7 +187,7 @@ export function McpRow({ server }: { server: MCPServerSettings }) {
           title={t("tools.reconnect")}
           disabled={connecting || server.status === "disabled"}
           onClick={() => void reconnect()}
-          className={cn(connecting && "animate-spin")}
+          className={stylex.props(connecting && mr.spinning).className}
         />
       </div>
       {open && (

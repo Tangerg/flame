@@ -54,7 +54,11 @@ const ig = stylex.create({
     objectFit: "contain",
   },
   tray: {
-    boxShadow: "var(--shadow-floating)",
+    // `--shadow-floating` is defined NOWHERE. A `var()` with no fallback makes the declaration
+    // invalid at computed-value time, so this tray has been carrying `box-shadow: none` — the
+    // one shadow name in the product that never resolved. `--shadow-overlay` is the depth this
+    // design gives a strip floating over content, which is what the search pill wears.
+    boxShadow: "var(--shadow-overlay)",
     position: "absolute",
     bottom: space.s3,
     left: "50%",

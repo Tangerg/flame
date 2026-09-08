@@ -10,6 +10,33 @@ import { cn } from "@/lib/classNames";
 import { radius, space, surface } from "@/styles/tokens.stylex";
 
 const mb = stylex.create({
+  // The rendered diagram's frame. The `loading` step below is the same frame at a fixed height,
+  // and the two agree on everything but that — which is the point: the placeholder holds the
+  // shape the diagram will take, so the transcript does not jump when it resolves.
+  frame: {
+    position: "relative",
+    isolation: "isolate",
+    marginBlock: "calc(var(--spacing) * 3.5)",
+    minHeight: "calc(var(--spacing) * 25)",
+    width: "100%",
+    borderRadius: radius.lg,
+    borderWidth: "0.5px",
+    borderStyle: "solid",
+    borderColor: surface.fieldStrong,
+    backgroundColor: surface.surface,
+  },
+  /** The controls tuck into the frame's own corner, over the drawing. */
+  tools: {
+    position: "absolute",
+    top: space.s1,
+    right: space.s1,
+    zIndex: 1,
+    display: "flex",
+    gap: space.s1,
+    transitionProperty: "opacity",
+  },
+  /** Machine text kept for the copy action and for a reader who cannot see the drawing. */
+  sourceText: { whiteSpace: "pre-wrap" },
   // Holds the diagram's eventual measure so the transcript does not jump when it resolves.
   loading: {
     position: "relative",
@@ -137,10 +164,7 @@ export function MermaidBlock({ code }: Props) {
     const svg = rendered.svg!;
     return (
       <div
-        className={cn(
-          stylex.props(reveal.host).className,
-          "relative isolate my-3.5 min-h-25 w-full rounded-lg border-[0.5px] border-field-strong bg-surface",
-        )}
+        {...stylex.props(reveal.host, mb.frame)}
         data-markdown-copy="code-block"
         data-markdown-copy-text={fencedCode}
       >
@@ -149,15 +173,16 @@ export function MermaidBlock({ code }: Props) {
           aria-label={t("markdown.diagram")}
           tabIndex={-1}
           dir="ltr"
-          className={cn("[&_svg]:h-auto [&_svg]:max-w-full", stylex.props(mb.stage).className)}
+          // `mermaid-stage` is the mechanism `globals.css` owns: Mermaid emits an SVG carrying
+          // its own width and height, and overriding them is a DESCENDANT rule, which no atomic
+          // class can express.
+          data-slot="mermaid-stage"
+          className={stylex.props(mb.stage).className}
           dangerouslySetInnerHTML={{ __html: svg }}
         />
         <div
           data-reveal="hover"
-          className={cn(
-            "absolute top-1 right-1 z-1 flex gap-1 transition-opacity",
-            stylex.props(reveal.shown).className,
-          )}
+          {...stylex.props(mb.tools, reveal.shown)}
           data-markdown-copy="exclude"
         >
           <LightboxDialog
@@ -174,10 +199,7 @@ export function MermaidBlock({ code }: Props) {
               />
             }
           >
-            <div
-              className="[&_svg]:mx-auto [&_svg]:block [&_svg]:max-w-none"
-              dangerouslySetInnerHTML={{ __html: svg }}
-            />
+            <div data-slot="mermaid-full" dangerouslySetInnerHTML={{ __html: svg }} />
           </LightboxDialog>
           <IconButton
             icon={copied ? "check" : "copy"}
@@ -189,7 +211,7 @@ export function MermaidBlock({ code }: Props) {
           />
         </div>
         <span className="sr-only">{t("message.mermaid.source")}</span>
-        <pre className="sr-only whitespace-pre-wrap">{code}</pre>
+        <pre className={cn("sr-only", stylex.props(mb.sourceText).className)}>{code}</pre>
       </div>
     );
   }

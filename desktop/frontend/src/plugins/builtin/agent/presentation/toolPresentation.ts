@@ -16,7 +16,7 @@ export interface ToolIntent {
 
 // Two values because two are produced. A third that nothing emits invites a renderer to
 // handle it and drop one that matters, which is exactly what happened to "negative".
-type ToolMetaTone = "muted" | "negative";
+export type ToolMetaTone = "muted" | "negative";
 
 export interface ToolMetaItem {
   id: string;

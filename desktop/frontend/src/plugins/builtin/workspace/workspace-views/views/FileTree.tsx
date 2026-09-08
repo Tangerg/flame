@@ -1,12 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { useState } from "react";
 import { Icon, Pressable, chevron, vocab } from "@/ui";
-import { cn } from "@/lib/classNames";
 import {
   type WorkspaceFileEntry,
   useWorkspaceListFiles,
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./viewStyles";
 
 interface NodeProps {
   entry: WorkspaceFileEntry;
@@ -35,10 +35,14 @@ function TreeNode({ entry, cwd, depth, selectedPath, onSelectFile }: NodeProps) 
     <div>
       <Pressable
         type="button"
-        className={cn(
-          "flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-ui-md text-fg transition-colors hover:bg-hover",
-          selectedPath === entry.path && !isDir && "bg-selected",
-        )}
+        className={
+          stylex.props(
+            vs.treeRow,
+            vs.treeRowInset,
+            typeStep.uiMd,
+            selectedPath === entry.path && !isDir && vs.treeRowSelected,
+          ).className
+        }
         style={indent}
         onClick={() => (isDir ? setExpanded((v) => !v) : onSelectFile(entry.path))}
       >

@@ -6,6 +6,9 @@ import { useSendComposerInput } from "@/plugins/builtin/chat/composer/public/sen
 import { ChatPanel } from "@/plugins/builtin/shell/kernel/panel/ChatPanel";
 import { AgentAppShell, AgentRow, AgentSurfaceHeader } from "@/ui/agent";
 import type { VisualAgentState } from "./agentSessionSnapshots";
+import * as stylex from "@stylexjs/stylex";
+import { fx } from "./fixtureStyles";
+import { type as typeStep } from "@/styles/tokens.stylex";
 
 const STATE_LABELS: Record<VisualAgentState, string> = {
   empty: "Empty",
@@ -61,7 +64,7 @@ function StateSidebar({ state }: { state: VisualAgentState }) {
     return () => observer.disconnect();
   }, [state]);
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div {...stylex.props(fx.pane)}>
       {/* Empty, the way the product's drawer header is: the sidebar control is placed at
           the window-controls gutter and the header content box starts at the same edge, so
           anything written here is painted under the control. This caption is scaffolding
@@ -69,8 +72,8 @@ function StateSidebar({ state }: { state: VisualAgentState }) {
       <AgentSurfaceHeader corner="drawer" divider={false} />
       {/* The scrollport, because this list only grows: every view a round opens adds a row, and
           a state below the fold of a 720px window is a state whose golden cannot be taken. */}
-      <div ref={listRef} className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2 pt-2">
-        <span className="px-2 pb-1 text-ui-md font-semibold text-fg">Agent states</span>
+      <div ref={listRef} {...stylex.props(fx.scroller)}>
+        <span {...stylex.props(fx.listHead, typeStep.uiMd)}>Agent states</span>
         {(Object.keys(STATE_LABELS) as VisualAgentState[]).map((candidate) => (
           <AgentRow
             key={candidate}
@@ -82,8 +85,8 @@ function StateSidebar({ state }: { state: VisualAgentState }) {
         ))}
       </div>
       {/* The list takes the free height now; this is the gap above the caption, not a spring. */}
-      <div className="min-h-4" />
-      <div className="px-4 pb-3 text-ui-xs leading-body text-fg-faint">
+      <div {...stylex.props(fx.footGap)} />
+      <div {...stylex.props(fx.listFoot, typeStep.uiXs)}>
         Canonical snapshot → production projection
       </div>
     </div>
@@ -115,7 +118,7 @@ export function VisualAgentStateFixture({
       sidebar={<StateSidebar state={state} />}
       main={
         <div
-          className="contents"
+          {...stylex.props(fx.contents)}
           data-testid="agent-state"
           data-state={state}
           data-attention={attention.status}

@@ -58,7 +58,9 @@ const FileRow = memo(function FileRow({
       detail={directory || undefined}
       trailing={
         <span {...stylex.props(vocab.line, vocab.min, typeStep.uiXs)}>
-          <span className={cn("text-ui-2xs font-semibold", row.tag.className)}>
+          <span
+            className={cn(stylex.props(vocab.strong, typeStep.ui2xs).className, row.tag.className)}
+          >
             {row.tag.letter}
           </span>
           {row.lineStats.kind === "binary" ? (

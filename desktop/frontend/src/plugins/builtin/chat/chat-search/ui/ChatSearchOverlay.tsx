@@ -11,11 +11,30 @@ import {
 } from "../adapters/searchHighlights";
 import { setChatSearchOpener } from "../application/openChatSearch";
 import { findMessageRanges } from "../adapters/messageRanges";
-import { face, space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 
 const cs = stylex.create({
   field: { height: space.s7, width: "calc(var(--spacing) * 56)", paddingInline: space.s2 },
   count: { paddingInline: space.s1_5 },
+  /** A count that floats in the window's own corner while a search is running. */
+  pill: {
+    position: "fixed",
+    top: space.s3,
+    right: space.s4,
+    zIndex: "var(--layer-floating)",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: space.s1,
+    borderRadius: radius.lg,
+    backgroundColor: surface.card,
+    paddingInline: space.s2,
+    paddingBlock: space.s1_5,
+    boxShadow: "var(--shadow-overlay)",
+  },
+  // It sits in the window's drag region, so it has to opt out or the pill cannot be clicked —
+  // dragging the window would win. Two names for one thing: Wails reads its own property and
+  // the platform reads the standard one.
+  undraggable: { "-webkit-app-region": "no-drag", "--wails-draggable": "no-drag" },
 });
 
 export function ChatSearchOverlay() {
@@ -91,10 +110,7 @@ function SessionChatSearchOverlay() {
   return (
     <div
       role="search"
-      className={cn(
-        "fixed top-3 right-4 z-[var(--layer-floating)] inline-flex items-center gap-1 rounded-lg bg-card px-2 py-1.5 shadow-[var(--shadow-overlay)]",
-        "[-webkit-app-region:no-drag] [--wails-draggable:no-drag]",
-      )}
+      className={cn(stylex.props(cs.pill).className, stylex.props(cs.undraggable).className)}
     >
       <TextField
         ref={inputRef}
