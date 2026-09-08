@@ -1,9 +1,12 @@
+import * as stylex from "@stylexjs/stylex";
 import type { PendingWorkItem } from "@/plugins/builtin/agent/public/hitl";
 import { usePendingWork } from "@/plugins/builtin/agent/public/hitl";
 import { selectAgentSession, useAgentSessions } from "@/plugins/builtin/agent/public/session";
 import { Badge, DataView, Icon, Pressable } from "@/ui";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { useT } from "@/lib/i18n";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./views/viewStyles";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 
 export function InboxTab() {
@@ -61,24 +64,26 @@ function PendingRow({
       type="button"
       data-chrome-focus=""
       onClick={onOpen}
-      className="flex w-full min-w-0 items-start gap-2.5 px-[var(--density-column-gutter-wide)] py-2 text-left transition-colors hover:bg-hover"
+      className={stylex.props(vs.pressRow, vs.gutter, vs.rowPad, vs.wash).className}
     >
       <Icon
         name={item.kind === "question" ? "question" : "shield"}
         size="sm"
-        className="mt-0.5 shrink-0 text-warning"
+        className={stylex.props(vs.glyphTop, vs.hold, vs.warning).className}
       />
-      <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-baseline gap-2">
-          <span className="min-w-0 flex-1 truncate text-ui-md text-fg">{sessionTitle}</span>
-          <span className="shrink-0 text-ui-sm text-fg-muted">
+      <div {...stylex.props(vs.fill)}>
+        <div {...stylex.props(vs.lineBaseline)}>
+          <span {...stylex.props(vs.fill, vs.truncate, typeStep.uiMd)}>{sessionTitle}</span>
+          <span {...stylex.props(vs.hold, vs.muted, typeStep.uiSm)}>
             {formatRelative(item.waitingSince)}
           </span>
         </div>
-        <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-          <span className="text-ui-sm text-fg-muted">{ask}</span>
+        <div {...stylex.props(vs.subLine)}>
+          <span {...stylex.props(vs.muted, typeStep.uiSm)}>{ask}</span>
           {item.subject && (
-            <span className="min-w-0 flex-1 truncate text-ui-sm text-fg-soft">{item.subject}</span>
+            <span {...stylex.props(vs.fill, vs.truncate, vs.soft, typeStep.uiSm)}>
+              {item.subject}
+            </span>
           )}
           {item.more > 0 && <Badge tone="neutral">{`+${item.more}`}</Badge>}
         </div>

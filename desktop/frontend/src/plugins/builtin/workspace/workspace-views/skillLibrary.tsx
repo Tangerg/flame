@@ -1,7 +1,10 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useCallback, useRef, useState } from "react";
 import { DataView, PillButton, SectionLabel } from "@/ui";
 import { useT } from "@/lib/i18n";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./views/viewStyles";
 import { notifyError } from "@/plugins/sdk";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import {
@@ -40,7 +43,7 @@ export function SkillLibraryTab() {
           const active = rows.filter((s) => s.lifecycle === "active");
           const archived = rows.filter((s) => s.lifecycle === "archived");
           return (
-            <div className="flex flex-col gap-4 py-1">
+            <div {...stylex.props(vs.stack, vs.stackGap, vs.padBlockSm)}>
               {active.length > 0 && (
                 <SkillSection label={t("skillLibrary.section.active")} skills={active} />
               )}
@@ -57,9 +60,9 @@ export function SkillLibraryTab() {
 
 function SkillSection({ label, skills }: { label: string; skills: ManagedSkill[] }) {
   return (
-    <div className="flex flex-col">
-      <div className="px-[var(--density-column-gutter-wide)] pb-1">
-        <SectionLabel className="px-2 py-2">{label}</SectionLabel>
+    <div {...stylex.props(vs.stack)}>
+      <div {...stylex.props(vs.gutter, vs.sectionPad)}>
+        <SectionLabel className={stylex.props(vs.sectionLabel).className}>{label}</SectionLabel>
       </div>
       {skills.map((skill) => (
         <SkillRow key={skill.name} skill={skill} />
@@ -92,11 +95,11 @@ function SkillRow({ skill }: { skill: ManagedSkill }) {
   }, [archived, skill.name, t]);
 
   return (
-    <div className="flex items-start gap-3 px-[var(--density-column-gutter-wide)] py-2">
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-ui-md font-semibold text-fg">{skill.name}</div>
+    <div {...stylex.props(vs.lineTop, vs.gutter, vs.rowPad)}>
+      <div {...stylex.props(vs.fill)}>
+        <div {...stylex.props(vs.title, vs.truncate, typeStep.uiMd)}>{skill.name}</div>
         {skill.description && (
-          <div className="mt-0.5 text-ui-sm leading-body text-fg-muted">{skill.description}</div>
+          <div {...stylex.props(vs.description, typeStep.uiSm)}>{skill.description}</div>
         )}
       </div>
       <PillButton

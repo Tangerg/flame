@@ -1,4 +1,7 @@
+import * as stylex from "@stylexjs/stylex";
 import { DataView, Tag } from "@/ui";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./views/viewStyles";
 import { useT } from "@/lib/i18n";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useWorkspaceSkills } from "@/plugins/builtin/workspace/application/workspaceQueries";
@@ -44,17 +47,15 @@ export function SkillsTab() {
         }
       >
         {(rows) => (
-          <div className="flex flex-col">
+          <div {...stylex.props(vs.stack)}>
             {rows.map((s) => (
-              <div key={s.id} className="px-[var(--density-column-gutter-wide)] py-2">
-                <div className="flex items-center gap-2">
-                  <div className="text-ui-md font-semibold text-fg truncate">{s.name}</div>
+              <div key={s.id} {...stylex.props(vs.gutter, vs.rowPad)}>
+                <div {...stylex.props(vs.line)}>
+                  <div {...stylex.props(vs.title, vs.truncate, typeStep.uiMd)}>{s.name}</div>
                   {s.scope && <Tag>{s.scope}</Tag>}
                 </div>
                 {s.description && (
-                  <div className="mt-0.5 text-ui-sm leading-body text-fg-muted">
-                    {s.description}
-                  </div>
+                  <div {...stylex.props(vs.description, typeStep.uiSm)}>{s.description}</div>
                 )}
               </div>
             ))}

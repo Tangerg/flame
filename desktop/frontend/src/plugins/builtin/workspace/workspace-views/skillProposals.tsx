@@ -1,7 +1,10 @@
+import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useCallback, useRef, useState } from "react";
 import { Badge, Collapsible, DataView, PillButton, Tag, TextButton, Well } from "@/ui";
 import { useT } from "@/lib/i18n";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./views/viewStyles";
 import { notifyError } from "@/plugins/sdk";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import {
@@ -43,7 +46,7 @@ export function SkillProposalsTab() {
         }}
       >
         {(rows) => (
-          <div className="flex flex-col py-1">
+          <div {...stylex.props(vs.stack, vs.padBlockSm)}>
             {rows.map((proposal) => (
               <SkillProposalRow key={`${proposal.name} ${proposal.revision}`} proposal={proposal} />
             ))}
@@ -89,28 +92,28 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
   };
 
   return (
-    <div className="px-[var(--density-column-gutter-wide)] py-2.5">
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <div className="truncate text-ui-md font-semibold text-fg">{proposal.name}</div>
-            <Tag className="tabular-nums">{proposal.revision.slice(0, 8)}</Tag>
+    <div {...stylex.props(vs.gutter, vs.rowPadTall)}>
+      <div {...stylex.props(vs.lineTop)}>
+        <div {...stylex.props(vs.fill)}>
+          <div {...stylex.props(vs.line)}>
+            <div {...stylex.props(vs.title, vs.truncate, typeStep.uiMd)}>{proposal.name}</div>
+            <Tag className={stylex.props(vs.figures).className}>
+              {proposal.revision.slice(0, 8)}
+            </Tag>
             <Badge>{t(`skillProposals.scope.${proposal.scope}`)}</Badge>
             {proposal.revises && <Badge tone="warning">{t("skillProposals.revises")}</Badge>}
           </div>
           {proposal.description && (
-            <div className="mt-0.5 text-ui-sm leading-body text-fg-muted">
-              {proposal.description}
-            </div>
+            <div {...stylex.props(vs.description, typeStep.uiSm)}>{proposal.description}</div>
           )}
           <div
-            className="mt-1 truncate text-ui-sm text-fg-faint"
+            {...stylex.props(vs.origin, vs.truncate, typeStep.uiSm)}
             title={proposal.sourceSession || undefined}
           >
             {t(`skillProposals.origin.${proposal.origin}`)}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div {...stylex.props(vs.actions)}>
           <PillButton
             size="sm"
             variant="danger"
@@ -133,14 +136,14 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
         <>
           <TextButton
             size="sm"
-            className="mt-1.5"
+            className={stylex.props(vs.afterRow).className}
             aria-expanded={reading}
             onClick={() => setReading((open) => !open)}
           >
             {reading ? t("skillProposals.hideBody") : t("skillProposals.readBody")}
           </TextButton>
           <Collapsible open={reading}>
-            <Well className="mt-1.5">{proposal.instructions}</Well>
+            <Well className={stylex.props(vs.afterRow).className}>{proposal.instructions}</Well>
           </Collapsible>
         </>
       )}

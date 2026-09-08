@@ -1,9 +1,11 @@
+import * as stylex from "@stylexjs/stylex";
 import { EmptyState, IconButton, StatusDot } from "@/ui";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { formatRelative } from "@/lib/i18n/relativeTime";
-import { cn } from "@/lib/classNames";
 import { useNotificationStore } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./views/viewStyles";
 import {
   notificationDotTone,
   notificationsSubtext,
@@ -62,16 +64,11 @@ interface RowProps {
 function NotificationRow({ level, message, plugin, timestamp, dismissed, onDismiss }: RowProps) {
   const t = useT();
   return (
-    <div
-      className={cn(
-        "flex items-start gap-2.5 px-[var(--density-column-gutter-wide)] py-2",
-        dismissed && "opacity-50",
-      )}
-    >
-      <StatusDot tone={notificationDotTone(level)} className="mt-1.5" />
-      <div className="min-w-0 flex-1">
-        <div className="whitespace-pre-wrap break-words text-ui-md text-fg-soft">{message}</div>
-        <div className="mt-0.5 text-ui-sm text-fg-muted">
+    <div {...stylex.props(vs.rowTop, vs.gutter, vs.rowPad, dismissed && vs.dismissed)}>
+      <StatusDot tone={notificationDotTone(level)} className={stylex.props(vs.dotTop).className} />
+      <div {...stylex.props(vs.fill)}>
+        <div {...stylex.props(vs.wrapText, vs.soft, typeStep.uiMd)}>{message}</div>
+        <div {...stylex.props(vs.subCaptionMuted, typeStep.uiSm)}>
           {plugin} · {formatRelative(timestamp)}
         </div>
       </div>

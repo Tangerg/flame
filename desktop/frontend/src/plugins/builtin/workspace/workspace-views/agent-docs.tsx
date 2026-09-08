@@ -1,6 +1,9 @@
+import * as stylex from "@stylexjs/stylex";
 import { Badge, DataView } from "@/ui";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useT } from "@/lib/i18n";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./views/viewStyles";
 import { useWorkspaceAgentDocs } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { workspaceAgentDocsViewModel } from "@/plugins/builtin/workspace/application/workspaceCatalogViewModel";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
@@ -34,15 +37,14 @@ export function AgentDocsTab() {
         }}
       >
         {(rows) => (
-          <div className="flex flex-col">
+          <div {...stylex.props(vs.stack)}>
             {rows.map((d) => (
-              <div
-                key={d.id}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-2 px-[var(--density-column-gutter-wide)] py-2"
-              >
-                <div className="min-w-0">
-                  <div className="truncate text-ui-md font-semibold text-fg">{d.title}</div>
-                  <div className="mt-0.5 truncate font-mono text-ui-sm text-fg-faint">{d.path}</div>
+              <div key={d.id} {...stylex.props(vs.splitLine, vs.gutter, vs.rowPad)}>
+                <div {...stylex.props(vs.min)}>
+                  <div {...stylex.props(vs.title, vs.truncate, typeStep.uiMd)}>{d.title}</div>
+                  <div {...stylex.props(vs.subCaption, vs.mono, vs.truncate, typeStep.uiSm)}>
+                    {d.path}
+                  </div>
                 </div>
                 <Badge>{t(d.scopeLabelKey)}</Badge>
               </div>

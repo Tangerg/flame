@@ -8584,3 +8584,48 @@ editorial 档按它们**在默认档已有的比值**进入阶梯：
 
 重录的 4 张全部是 font-18 的截图；同一批测试里的**横向溢出断言本身通过了** ——
 标题变大没有撑破版面，变的只是它该有的大小。
+
+---
+
+## Round 142 —— 批量迁移：workspace 视图（第一批 9 个文件）
+
+按用户要求改为**按批推进**：一批吃掉一族文件，只在批末集中验证一次。
+
+### 这一批的真信号
+
+23 个 dock 视图在渲染**同一个形状** —— 一列带栏距的行，每行有标题行、
+描述行、说明。那些重复的 class 串就是这个形状被拼写了 23 遍：
+
+```
+36  px-[var(--density-column-gutter-wide)]     ← dock 栏距
+19  行容器（gutter + py-*）
+ 4  mt-0.5 text-ui-sm leading-body text-fg-muted   ← 描述行
+ 3  truncate text-ui-md font-semibold text-fg      ← 标题
+```
+
+所以这一批的产物不是"把 class 翻译成 StyleX"，而是
+`views/viewStyles.ts` —— **一个 dock 视图由哪些形状组成**，命名一次。
+类型步不进这个文件：尺寸是设计系统的词汇，这里只管排布。
+
+### 已迁
+
+`skills` `recipes` `skillLibrary` `skillProposals` `agent-docs`
+`notifications` `inbox` `toolStats` `views/PlanList` —— 9 个文件，className 归零。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **652 / 652**（workspace 109 + closure 350 + 其余 302），**零位移、零重录** |
+| 守卫 | 17 项 `check:*` 全绿 |
+| 单测 | workspace 299 通过 |
+
+零位移是这一批的验收标准：**迁移应当复现，而不是顺手调整。**
+（closure 第一次跑出 1 项失败，复跑 350 全过 —— 又一次负载 flake。）
+
+### 顺带记下的一处
+
+`notifications` 的"已忽略"用 `opacity-0.5`。它不是禁用
+（禁用是 `--control-disabled-opacity` = 0.64，"退到背景"是 `off="faded"` = 0.25）——
+已处理过的通知仍然要能读。三者是三件事，暂各自保留；
+如果之后出现第四个"变淡"的理由，就该收敛成一组命名档。

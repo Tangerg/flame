@@ -1,9 +1,12 @@
+import * as stylex from "@stylexjs/stylex";
 import type { ToolStat, ToolStatsSummary } from "../application/toolStats";
 import { toolStats, toolTimeShare } from "../application/toolStats";
 import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
 import { Badge, EmptyState, Icon, ProgressBar, Sparkline, knownIconName } from "@/ui";
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { viewStyles as vs } from "./views/viewStyles";
 import { lookupExtensionByKey, TOOL_ICON } from "@/plugins/sdk";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 
@@ -44,33 +47,33 @@ function ToolStatRow({ row, summary }: { row: ToolStat; summary: ToolStatsSummar
   const icon = knownIconName(lookupExtensionByKey(TOOL_ICON, row.name)) ?? "lightning";
 
   return (
-    <div className="px-[var(--density-column-gutter-wide)] py-2">
-      <div className="flex min-w-0 items-baseline gap-2">
-        <Icon name={icon} size="sm" className="shrink-0 self-center text-fg-muted" />
-        <span className="min-w-0 flex-1 truncate text-ui-md text-fg">{row.name}</span>
+    <div {...stylex.props(vs.gutter, vs.rowPad)}>
+      <div {...stylex.props(vs.lineBaseline)}>
+        <Icon name={icon} size="sm" className={stylex.props(vs.glyphInline).className} />
+        <span {...stylex.props(vs.fill, vs.truncate, typeStep.uiMd)}>{row.name}</span>
         {row.failed > 0 && (
           <Badge tone="negative">{t("toolStats.failed", { n: row.failed })}</Badge>
         )}
         {row.denied > 0 && <Badge tone="warning">{t("toolStats.denied", { n: row.denied })}</Badge>}
-        <span className="shrink-0 font-mono text-ui-xs text-fg-muted">
+        <span {...stylex.props(vs.hold, vs.mono, vs.muted, typeStep.uiXs)}>
           {row.timed > 0 ? fmtDuration(row.totalMs) : "—"}
         </span>
       </div>
-      <div className="mt-1 flex items-center gap-2.5">
+      <div {...stylex.props(vs.meterLine)}>
         <ProgressBar
           value={toolTimeShare(row, summary) * 100}
           label={t("toolStats.share", { name: row.name })}
           weight="row"
-          className="flex-1"
+          className={stylex.props(vs.grow).className}
         />
         {row.durations.length > 1 && (
           <Sparkline
             data={row.durations}
             label={t("toolStats.trend", { name: row.name })}
-            className="shrink-0 text-fg-faint"
+            className={stylex.props(vs.hold, vs.caption).className}
           />
         )}
-        <span className="shrink-0 text-ui-sm text-fg-faint">
+        <span {...stylex.props(vs.hold, vs.caption, typeStep.uiSm)}>
           {t("toolStats.calls", { n: row.calls })}
           {row.timed > 0 &&
             ` · ${t("toolStats.slowest", { duration: fmtDuration(row.slowestMs) })}`}
