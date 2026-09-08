@@ -199,11 +199,14 @@ func (s *SkillProposalMiner) mineRevision(ctx context.Context, name string, mess
 		return nil
 	}
 	current, err := s.source.Load(ctx, name)
-	if errors.Is(err, fs.ErrNotExist) || current == nil {
-		return nil // no such skill (or one the library doesn't manage) — drop, don't revise
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, skillspec.ErrInvalidSkill) {
+		return nil // only a readable, valid skill can be revised
 	}
 	if err != nil {
 		return fmt.Errorf("skill mining: load skill %q for revision: %w", name, err)
+	}
+	if current == nil {
+		return fmt.Errorf("skill mining: load skill %q for revision: %w", name, skillspec.ErrNilSkill)
 	}
 	document, err := s.askForRevision(ctx, current, messages)
 	if err != nil {

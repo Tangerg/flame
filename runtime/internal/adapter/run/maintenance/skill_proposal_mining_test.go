@@ -2,6 +2,7 @@ package maintenance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"strings"
@@ -17,9 +18,13 @@ import (
 
 type fakeSkillSource struct {
 	skills map[string]*skillspec.Skill
+	err    error
 }
 
 func (f fakeSkillSource) Load(_ context.Context, name string) (*skillspec.Skill, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
 	if s, ok := f.skills[name]; ok {
 		return s, nil
 	}
@@ -259,5 +264,29 @@ func TestSkillMinerRevisionUnknownSkillSkipsWithoutPhaseTwo(t *testing.T) {
 	}
 	if len(proposals.proposals) != 0 {
 		t.Fatalf("revised a non-existent Skill: %d proposals", len(proposals.proposals))
+	}
+}
+
+func TestSkillMinerRevisionPreservesSourceFailures(t *testing.T) {
+	for _, cause := range []error{fs.ErrPermission, context.Canceled, errors.New("storage disconnected")} {
+		t.Run(cause.Error(), func(t *testing.T) {
+			miner, proposals := skillRevisionMinerFixture(t, fakeSkillSource{err: cause}, scriptedReply{text: "REVISE: run-tests"})
+			if err := miner.MineIfDue(t.Context(), "ses_1", "/repo", 3); !errors.Is(err, cause) {
+				t.Fatalf("MineIfDue = %v, want source failure %v", err, cause)
+			}
+			if len(proposals.proposals) != 0 {
+				t.Fatal("submitted a revision after source failure")
+			}
+		})
+	}
+}
+
+func TestSkillMinerRevisionSkipsInvalidSourceDocument(t *testing.T) {
+	miner, proposals := skillRevisionMinerFixture(t, fakeSkillSource{err: fmt.Errorf("parse skill: %w", skillspec.ErrInvalidSkill)}, scriptedReply{text: "REVISE: run-tests"})
+	if err := miner.MineIfDue(t.Context(), "ses_1", "/repo", 3); err != nil {
+		t.Fatal(err)
+	}
+	if len(proposals.proposals) != 0 {
+		t.Fatal("submitted a revision of an invalid skill")
 	}
 }
