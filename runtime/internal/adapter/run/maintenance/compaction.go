@@ -12,6 +12,8 @@ import (
 // compactionStore is the worker's narrow conversation use-case view. The
 // implementation owns the cross-aggregate transaction that replaces history
 // and rebases Run watermarks; this model worker only decides summary content.
+// Read transfers decoded messages to the caller. RewriteForCompaction borrows
+// messages synchronously and must copy any values it retains.
 type compactionStore interface {
 	Read(ctx context.Context, sessionID string) ([]chat.Message, error)
 	RewriteForCompaction(

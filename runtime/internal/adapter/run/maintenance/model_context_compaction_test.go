@@ -85,6 +85,17 @@ func TestModelContextCompactionRewritesDurableHistoryAndPreservesPendingInput(t 
 	if !reflect.DeepEqual(contextState.sessions, []string{sessionID}) {
 		t.Fatalf("forgot Session contexts = %v, want [%s]", contextState.sessions, sessionID)
 	}
+
+	effective[0].Parts[0].Text = "caller changed summary"
+	effective[len(effective)-1].Parts[0].Text = "caller changed pending input"
+	next := result.Messages()
+	if !strings.Contains(next[0].Text(), "MID-RUN SUMMARY") || next[len(next)-1].Text() != pending.Text() {
+		t.Fatal("caller reuse changed the frozen compaction result")
+	}
+	afterReuse, err := store.Read(t.Context(), sessionID)
+	if err != nil || !reflect.DeepEqual(afterReuse, stored) {
+		t.Fatalf("caller reuse changed durable history: (%#v, %v)", afterReuse, err)
+	}
 }
 
 func TestModelContextCompactionChecksEveryCallButRewritesOnlyAtThreshold(t *testing.T) {

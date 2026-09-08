@@ -69,7 +69,7 @@ func (c *Compactor) CompactModelContext(
 			)
 		}
 		history = stored
-		ephemeral = cloneMessages(candidate[candidatePrefix:])
+		ephemeral = candidate[candidatePrefix:]
 	}
 
 	limits, _, err := modeladapter.LookupTokenLimits(request.ModelSelection())
@@ -123,7 +123,7 @@ func (c *Compactor) CompactModelContext(
 	if overBudget {
 		return agentexec.ModelContextCompactionResult{}, ErrModelContextCannotFit
 	}
-	effective := append(cloneMessages(replacement), ephemeral...)
+	effective := slices.Concat(replacement, ephemeral)
 	result, err := agentexec.NewModelContextCompactionResult(
 		effective,
 		true,
@@ -195,7 +195,7 @@ func (c *Compactor) materializeModelContextPlan(
 ) {
 	switch plan.action {
 	case trimCompaction:
-		return cloneMessages(plan.trimmed), "", 0, 0, nil
+		return plan.trimmed, "", 0, 0, nil
 	case summarizeCompaction:
 		summary, err := c.summarize(ctx, plan.older)
 		if err != nil {
@@ -208,7 +208,7 @@ func (c *Compactor) materializeModelContextPlan(
 				replacement = append(replacement, reminder)
 			}
 		}
-		replacement = append(replacement, cloneMessages(plan.recent)...)
+		replacement = append(replacement, plan.recent...)
 		return replacement, summary, plan.cutoff, len(replacement) - len(plan.recent), nil
 	default:
 		return nil, "", 0, 0, errors.New("maintenance: unsupported model-context compaction plan")
