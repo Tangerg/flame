@@ -2,13 +2,13 @@ import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
-import { IconButton, StatusDot, vocab } from "@/ui";
+import { IconButton, StatusDot, toneInk, vocab } from "@/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
-import { cn } from "@/lib/classNames";
 import { delegatedRunCardModel } from "../application/delegatedRunCardModel";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { face, type as typeStep } from "@/styles/tokens.stylex";
+import { messageStyles } from "./messageStyles";
 
 interface Props {
   run: AgentRunView;
@@ -50,18 +50,7 @@ export function DelegatedRunDisclosure({
       }
       trailing={
         <>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 text-ui-xs font-medium",
-              model.status === "running"
-                ? "text-info"
-                : model.status === "waiting" || model.status === "limit"
-                  ? "text-warning"
-                  : model.status === "error"
-                    ? "text-negative"
-                    : "text-fg-muted",
-            )}
-          >
+          <span {...stylex.props(messageStyles.statusWord, toneInk[model.ink], typeStep.uiXs)}>
             <StatusDot tone={model.dotTone} />
             {model.statusLabel}
           </span>
@@ -91,13 +80,7 @@ export function DelegatedRunDisclosure({
       }
       open={expanded}
       onToggle={() => setPinnedExpanded(!expanded)}
-      tone={
-        model.status === "error"
-          ? "negative"
-          : model.status === "waiting" || model.status === "limit"
-            ? "warning"
-            : "neutral"
-      }
+      tone={model.shell}
     >
       {hasMaterial ? (
         children

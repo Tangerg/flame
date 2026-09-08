@@ -1,4 +1,4 @@
-import type { DotTone } from "@/lib/tone";
+import type { DotTone, Tone } from "@/lib/tone";
 import type { Translate } from "@/lib/i18n";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import {
@@ -13,19 +13,66 @@ export interface DelegatedRunCardModel {
   status: AgentRunPresentationState;
   statusLabel: string;
   dotTone: DotTone;
+  /** The status WORD's ink. */
+  ink: Tone;
+  /** Whether the card frames itself, and in what. A narrower vocabulary than `ink` on purpose:
+   *  a card draws an edge around itself only for something somebody has to act on. */
+  shell: Extract<Tone, "neutral" | "warning" | "negative">;
   detail: string | null;
   stepsLabel: string;
   autoExpanded: boolean;
   cancelable: boolean;
 }
 
-const STATUS_VIEW: Record<AgentRunPresentationState, { labelKey: string; dotTone: DotTone }> = {
-  running: { labelKey: "agent.runTree.status.running", dotTone: "running" },
-  waiting: { labelKey: "agent.runTree.status.waiting", dotTone: "waiting" },
-  finished: { labelKey: "agent.runTree.status.finished", dotTone: "ok" },
-  error: { labelKey: "agent.runTree.status.error", dotTone: "err" },
-  canceled: { labelKey: "agent.runTree.status.canceled", dotTone: "idle" },
-  limit: { labelKey: "agent.runTree.status.limit", dotTone: "waiting" },
+/**
+ * What a status LOOKS like, in one table.
+ *
+ * The dot's tone lived here while the status word's ink and the card's own framing were two
+ * more ternaries over the same `status` in the JSX — three derivations of one fact, and the
+ * kind that drift apart one branch at a time. `ink` and `shell` disagree in exactly one place,
+ * which is the distinction worth keeping: a running delegate says "running" in the info ink,
+ * and does NOT frame itself, because a run in flight is not a thing to act on.
+ */
+const STATUS_VIEW: Record<
+  AgentRunPresentationState,
+  { labelKey: string; dotTone: DotTone; ink: Tone; shell: DelegatedRunCardModel["shell"] }
+> = {
+  running: {
+    labelKey: "agent.runTree.status.running",
+    dotTone: "running",
+    ink: "info",
+    shell: "neutral",
+  },
+  waiting: {
+    labelKey: "agent.runTree.status.waiting",
+    dotTone: "waiting",
+    ink: "warning",
+    shell: "warning",
+  },
+  finished: {
+    labelKey: "agent.runTree.status.finished",
+    dotTone: "ok",
+    ink: "neutral",
+    shell: "neutral",
+  },
+  error: {
+    labelKey: "agent.runTree.status.error",
+    dotTone: "err",
+    ink: "negative",
+    shell: "negative",
+  },
+  canceled: {
+    labelKey: "agent.runTree.status.canceled",
+    dotTone: "idle",
+    ink: "neutral",
+    shell: "neutral",
+  },
+  limit: {
+    labelKey: "agent.runTree.status.limit",
+    dotTone: "waiting",
+    ink: "warning",
+    shell: "warning",
+  },
 };
 
 export function delegatedRunCardModel(
@@ -44,6 +91,8 @@ export function delegatedRunCardModel(
     status,
     statusLabel: t(statusView.labelKey),
     dotTone: statusView.dotTone,
+    ink: statusView.ink,
+    shell: statusView.shell,
     detail: agentRunDetail(run),
     stepsLabel: t("agent.steps", { count: agentRunStepCount(run) }),
     // Exempt from the answer-supersedes-work rule on purpose: a delegated run that is

@@ -334,10 +334,10 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
       tabIndex={-1}
       data-slot="question-request-surface"
       data-chrome-focus
-      className={stylex.props(ms.clip, qc.noRing).className}
+      className={stylex.props(ms.cardClip, qc.noRing).className}
     >
-      <div {...stylex.props(ms.headTight)}>
-        <h3 id={promptId} className={stylex.props(ms.promptFlush, typeStep.uiMd).className}>
+      <div {...stylex.props(ms.cardHeadTight)}>
+        <h3 id={promptId} className={stylex.props(ms.cardPromptFlush, typeStep.uiMd).className}>
           {activeQuestion.prompt}
         </h3>
         {questions.length > 1 && (

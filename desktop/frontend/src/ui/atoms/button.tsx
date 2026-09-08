@@ -49,7 +49,7 @@ type ButtonVariant =
   | "bare"
   | "link";
 
-type ButtonTone = "negative" | "warning" | "accent" | "success";
+export type ButtonTone = "negative" | "warning" | "accent" | "success";
 
 const styles = stylex.create({
   base: {

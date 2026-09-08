@@ -9752,3 +9752,76 @@ chip 行什么都不显示，读者得不到任何「文件已附上」的确认
 零像素位移是**应该**的、也是有解释的：新加了边的那颗 chip、改用 `pickPlain` 的那两行菜单，
 **都没有任何 golden 拍到**（这正是它们能分叉的原因）；而审批 pill 的图标
 从 `opacity-100` 换成 `data-glyph="full"` 之后，算出来的透明度还是 1 —— 同一个值，两种说法。
+
+## Round 161 — 消息家族：一个状态被推导了三遍，一个事实被说了三种语言
+
+### 缺陷一：`model.status` 在一个文件里被推导了三次
+
+`DelegatedRunDisclosure` 里，同一个 `status`：
+
+| 推导 | 在哪 | 说什么 |
+| --- | --- | --- |
+| `dotTone` | 模型的 `STATUS_VIEW` 表里 | 圆点的 tone |
+| 状态词的墨色 | JSX 里一串**四层嵌套三元** | `text-info` / `text-warning` / `text-negative` / `text-fg-muted` |
+| 卡片自己的框 | JSX 里**另一串三元** | `negative` / `warning` / `neutral` |
+
+`STATUS_VIEW` 本来就是「一个状态长什么样」的唯一 owner —— 它只是没拿到后两列。
+现在三列都在表里，穷尽覆盖那个 union，JSX 一个三元都没有了。
+
+`ink` 和 `shell` **只在一处不同**（`running`：墨色是 info、框是 neutral），
+而这一处正是值得保留的区分：**在跑的委派用 info 说「running」，但它不给自己画框 ——
+因为一个正在跑的 run 不是一件要你去处理的事。**
+
+### 缺陷二：一个事实，三种语言
+
+```ts
+const ACTIONS_VISIBILITY: Record<…, string> = {
+  hidden: "invisible opacity-0",                  // Tailwind
+  hover: stylex.props(reveal.shown).className ?? "", // StyleX，被读成字符串
+  pinned: "opacity-100",                          // Tailwind
+};
+```
+
+「操作栏有多可见」是一个事实，三档各用一种写法回答。
+最坏的后果是**没人能看出 `opacity-100` 是在压过 reveal 通道、还是只是跟它一致**。
+现在三档都是 StyleX 档，`hover` 直接指向设计系统的 `reveal.shown`。
+
+`satisfies Record<…, unknown>` 而不是 `StyleXStyles` —— 检查的是「每个状态都有答案」，
+而 `StyleXStyles` **表达不了 `reveal.shown`**：它的 `pointer-events` 是个自定义属性，
+CSS 那个属性自己的枚举里没有这种值。
+
+### TypeScript 第三次抓到我造同名冲突
+
+我给 `messageStyles` 加 `body` 和 `actions` 时，TS1117 报了重名 ——
+那两个名字**已经存在**，指的是**卡片**的三条带（`head` / `body` / `actions`，各带 `px-4`）。
+
+我差点在自己猎了七轮的缺陷上再添两例。修法是让卡片家族说出自己是卡片
+（`cardHead` / `cardBody` / `cardActions` / `cardClip` / `cardPrompt`…）——
+在一个叫 `messageStyles` 的模块里，光秃秃的 `body` 最自然的意思就是消息正文，
+而它现在确实是了。
+
+### 两个「保留原值、只报告不改」的发现
+
+- **`MessageActionButton` 的圆角**：`round={role === "user"}` 与
+  `className={cn(role !== "user" && "rounded-md")}` 是同一个决定的两半。
+  而 `--button-radius` 是 `--shape-sm`、`rounded-md` 是 `--shape-md` —— **值不同**，
+  所以那个 class 是真覆盖：助手的操作按钮是全产品**唯一**一个戴 `--shape-md` 的控件。
+  另外 `radius` 令牌是**按角色命名**的（card / field / row / button），
+  这个调用处没有角色可命名 —— 所以我原值保留、不借 `radius.card` 给它安个「卡片」的名分，
+  注释里写明这是设计问题不是迁移问题。
+- **反馈按钮的 tone**：`className={… ? "text-success" : undefined}` 改成 `tone="success"` ——
+  按钮本来就收 tone。顺带把 `ButtonTone` 导出了：一个调用方必须会说的词汇不导出，
+  每个包装组件就只能重抄那个 union 或者放宽成 `string`。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **659 / 659**，0 unexpected，0 flaky |
+| 守卫 | 17 项全绿 |
+| 单测 | 1783 项通过 |
+| 存量 | 136 → **113** 条（39 → 35 个文件；无 StyleX 的 14 → 10） |
+| CSS raw | 133.8 KB（预算 142.6 KB） |
+
+零位移在这一轮有一层额外含义：那张 `STATUS_VIEW` 三列表**逐像素复现**了原来两串三元的输出。
+如果我把 `running` 的 ink 或 shell 抄错一格，659 张里必然有几张会动。

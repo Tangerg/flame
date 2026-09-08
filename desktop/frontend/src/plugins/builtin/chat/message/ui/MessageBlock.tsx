@@ -23,6 +23,8 @@ import {
   useVisibleActionMaterialization,
 } from "./messageVisibleMaterial";
 import { reveal } from "@/ui";
+import { type as typeStep } from "@/styles/tokens.stylex";
+import { messageStyles } from "./messageStyles";
 
 function MessageBlockInner({
   row,
@@ -92,8 +94,7 @@ function MessageBlockInner({
       data-user-message-bubble={isUser ? "" : undefined}
       className={cn(
         MESSAGE_CONTENT_CLASS,
-        "min-w-0 text-pretty leading-prose text-prose text-fg",
-        isUser && "max-w-[70%] rounded-bubble bg-user-message px-3 py-2",
+        stylex.props(messageStyles.body, typeStep.prose, isUser && messageStyles.bubble).className,
       )}
     >
       {content}
@@ -107,13 +108,13 @@ function MessageBlockInner({
         generation={visibleMaterialGeneration}
       >
         <div
-          className={cn(
-            stylex.props(reveal.host).className,
-            "relative flex min-w-0 flex-col gap-2",
-            isUser && "items-end",
-          )}
+          {...stylex.props(reveal.host, messageStyles.column, isUser && messageStyles.columnUser)}
         >
-          <h2 className="sr-only select-none">{roleLabel}</h2>
+          {/* `sr-only` is the mechanism `globals.css` owns. `select-none` is not decoration:
+              the heading IS in the DOM, so without it the role name lands in copied text. */}
+          <h2 className={cn("sr-only", stylex.props(messageStyles.unselectable).className)}>
+            {roleLabel}
+          </h2>
           {msg.phase === "commentary" ? (
             messageContent
           ) : (
@@ -122,12 +123,10 @@ function MessageBlockInner({
           {actionsVisibility !== "absent" && (
             <div
               data-reveal={actionsVisibility === "hover" ? "hover" : undefined}
-              className={cn(
-                "flex shrink-0 transition-[opacity,visibility] duration-[var(--dur-fast)]",
+              {...stylex.props(
+                messageStyles.actions,
                 ACTIONS_VISIBILITY[actionsVisibility],
-                isUser
-                  ? "-mr-[calc((var(--control-height-sm)-var(--icon-sm))/2)]"
-                  : "-ml-[calc((var(--control-height-sm)-var(--icon-sm))/2)]",
+                isUser ? messageStyles.actionsOutdentEnd : messageStyles.actionsOutdentStart,
               )}
             >
               <Slot name="message.actions" />
@@ -142,8 +141,14 @@ function MessageBlockInner({
 
 export const MessageBlock = memo(MessageBlockInner);
 
-const ACTIONS_VISIBILITY: Record<Exclude<MessageActionsVisibility, "absent">, string> = {
-  hidden: "invisible opacity-0",
-  hover: stylex.props(reveal.shown).className ?? "",
-  pinned: "opacity-100",
-};
+// One fact — how visible the action bar is — in one language. It had been three: a Tailwind
+// pair, a StyleX class read out of `stylex.props`, and another Tailwind class, so nothing
+// could tell whether `opacity-100` was overriding the reveal channel or agreeing with it.
+const ACTIONS_VISIBILITY = {
+  hidden: messageStyles.actionsHidden,
+  hover: reveal.shown,
+  pinned: messageStyles.actionsPinned,
+  // `unknown` for the value on purpose: what is checked here is that every state has an
+  // answer, and `StyleXStyles` cannot type `reveal.shown` — its `pointer-events` is a custom
+  // property, which CSS's own enum for that property does not admit.
+} as const satisfies Record<Exclude<MessageActionsVisibility, "absent">, unknown>;

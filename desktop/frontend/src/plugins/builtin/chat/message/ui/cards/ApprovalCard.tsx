@@ -81,9 +81,9 @@ export function ApprovalCard({
       variant="request"
       inset="none"
       data-slot="approval-surface"
-      className={stylex.props(ms.clip).className}
+      className={stylex.props(ms.cardClip).className}
     >
-      <div {...stylex.props(ms.head)}>
+      <div {...stylex.props(ms.cardHead)}>
         <div {...stylex.props(ms.identity, typeStep.uiSm)}>
           <Icon
             name={identity.icon}
@@ -92,11 +92,11 @@ export function ApprovalCard({
           />
           <span {...stylex.props(vocab.truncate)}>{identity.label}</span>
         </div>
-        <div {...stylex.props(ms.prompt, typeStep.uiMd)}>{title}</div>
+        <div {...stylex.props(ms.cardPrompt, typeStep.uiMd)}>{title}</div>
       </div>
 
       {(cmd.trim() || hasArgs) && (
-        <div {...stylex.props(ms.body)}>
+        <div {...stylex.props(ms.cardBody)}>
           {cmd.trim() && (
             <Well as="code" ink="strong" cap="lg">
               {cmd}
@@ -114,7 +114,7 @@ export function ApprovalCard({
         </div>
       )}
 
-      <div {...stylex.props(ms.actions)}>
+      <div {...stylex.props(ms.cardActions)}>
         <Button variant="outline" size="sm" disabled={disabled} onClick={decline}>
           {t("approval.action.deny")}
         </Button>
