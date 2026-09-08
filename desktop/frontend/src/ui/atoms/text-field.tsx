@@ -67,7 +67,10 @@ const styles = stylex.create({
   inputMd: { height: "var(--field-height-md)", paddingInline: space.s2_5 },
   inputLg: { height: "var(--field-height-lg)", paddingInline: space.s3 },
   area: { resize: "vertical", lineHeight: leading.body },
-  areaProse: { lineHeight: leading.prose },
+  // The prose step brings prose tracking, which is right for what is typed and wrong for the
+  // placeholder: a placeholder is UI text, not prose. The composer had reset this at the call
+  // site, where the next prose textarea would have had to rediscover it.
+  areaProse: { lineHeight: leading.prose, "::placeholder": { letterSpacing: "normal" } },
   areaSm: { paddingInline: space.s2_5, paddingBlock: space.s1_5 },
   areaMd: { paddingInline: space.s3, paddingBlock: space.s2 },
   autosize: { fieldSizing: "content", resize: "none" },

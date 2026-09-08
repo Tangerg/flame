@@ -8,12 +8,16 @@ import {
 } from "@/plugins/builtin/chat/composer/application/fileMentions";
 import { AgentComposerFooter, AgentComposerSurface } from "@/ui/agent";
 import { FileMentionPopup } from "./FileMentionPopup";
+import { SlashSuggestions } from "./SlashSuggestions";
+import { composerStyles } from "./composerStyles";
 import { useT } from "@/lib/i18n";
 import { Slot } from "@/plugins/host/Slot";
 import { ComposerAttachments } from "./ComposerAttachments";
 import { ComposerImageDrop } from "./ComposerImageDrop";
 import { useComposerInputController } from "./useComposerInputController";
 import { useToolbarLabels } from "./useToolbarLabels";
+import { useRef } from "react";
+import * as stylex from "@stylexjs/stylex";
 
 interface Props {
   onSend: (input: AgentInput) => boolean;
@@ -43,6 +47,9 @@ export function Composer({
   acceptsImages,
 }: Props) {
   const t = useT();
+  // What both suggestion panels are anchored to. They portal, so this ref is the only thing
+  // tying them to the composer's position — there is no positioned ancestor to inherit.
+  const surfaceRef = useRef<HTMLDivElement>(null);
   const { ref: toolbarRef, labelled: toolbarLabelled } = useToolbarLabels();
   const recordHistory = useRecordComposerHistory();
   const {
@@ -71,17 +78,19 @@ export function Composer({
     acceptsImages,
   });
   return (
-    <AgentComposerSurface className="relative" data-slot="composer-root">
+    <AgentComposerSurface ref={surfaceRef} data-slot="composer-root">
       <ComposerImageDrop enabled={acceptsImages} onDropImages={handleDrop} />
-      {mentions.active && (
-        <FileMentionPopup
-          items={mentions.items}
-          index={mentions.index}
-          onPick={mentions.accept}
-          onHover={mentions.setIndex}
-        />
-      )}
-      <div className="pt-[var(--density-composer-editor-top)] pr-[var(--density-composer-editor-end)] pb-[var(--density-composer-editor-bottom)] pl-[var(--density-composer-editor-start)]">
+      <FileMentionPopup
+        open={mentions.active}
+        items={mentions.items}
+        index={mentions.index}
+        onPick={mentions.accept}
+        onHover={mentions.setIndex}
+        onDismiss={mentions.dismiss}
+        anchor={surfaceRef}
+      />
+      <SlashSuggestions value={value} onPick={onChange} anchor={surfaceRef} />
+      <div {...stylex.props(composerStyles.editorInset)}>
         <ComposerAttachments
           images={images}
           pastes={pastes}
@@ -112,12 +121,12 @@ export function Composer({
           onPointerUp={clearCompositionCommit}
           rows={1}
           autosize
-          className="max-h-[6lh] min-h-[1.5lh] p-0 placeholder:tracking-normal"
+          className={stylex.props(composerStyles.editor).className}
         />
       </div>
       <AgentComposerFooter ref={toolbarRef} labelled={toolbarLabelled}>
         <Slot name="composer.toolbar.start" />
-        <div className="flex-1 min-w-2" />
+        <div {...stylex.props(composerStyles.toolbarSpacer)} />
         <Slot name="composer.toolbar.end" />
       </AgentComposerFooter>
     </AgentComposerSurface>

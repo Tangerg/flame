@@ -1,6 +1,4 @@
 import * as stylex from "@stylexjs/stylex";
-import type { ComponentProps } from "react";
-import { cn } from "@/lib/classNames";
 import { color, motion, radius, surface } from "@/styles/tokens.stylex";
 
 /**
@@ -11,9 +9,11 @@ import { color, motion, radius, surface } from "@/styles/tokens.stylex";
  * wrapped in components because the primitives that need them are Base UI parts: a `Popup` takes
  * a class, not a surface.
  *
- * A consumer that is still Tailwind reads these through `stylex.props()`, which yields a class
- * list like any other. That is deliberate — the owner moves first and the seven consumers follow
- * at their own pace, rather than nine files having to move in one commit.
+ * These are style exports and not a component on purpose. A component here once rendered a bare
+ * `<div>` wearing this material, which promised the name and delivered none of it: no portal, so
+ * an `overflow: hidden` ancestor clipped it away, and no positioner, so each call site invented
+ * its own coordinates. Leaving the flow is the Popover's and the Menu's job — Base UI's Portal
+ * and Positioner — and this file only says what the thing that left is made of.
  */
 const styles = stylex.create({
   // The blur lives on a pseudo-element behind the fill rather than on the surface itself: a
@@ -118,11 +118,3 @@ export const modalPanel = (place: "centred" | "top" = "centred") => [
   place === "top" ? styles.modalTop : styles.modalCentred,
   styles.motion,
 ];
-
-export function FloatingSurface({
-  className,
-  ...props
-}: ComponentProps<"div"> & { className?: string }) {
-  const styled = stylex.props(styles.face, styles.rise, styles.panel);
-  return <div {...props} {...styled} className={cn(styled.className, className)} />;
-}

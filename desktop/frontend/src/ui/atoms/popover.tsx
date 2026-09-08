@@ -50,8 +50,77 @@ function PopoverContent({
   );
 }
 
+const styles = stylex.create({
+  // The panel is as wide as what it is anchored to, less the inset its own edges want. Two call
+  // sites had spelled this `left-2 right-2` against a hand-picked positioned ancestor.
+  matchAnchor: {
+    width: "calc(var(--anchor-width) - calc(var(--spacing) * 4))",
+    maxHeight: "min(320px, var(--available-height))",
+    overflowY: "auto",
+    overscrollBehavior: "contain",
+  },
+});
+
+interface AnchoredPanelProps {
+  open: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** What to sit above. A ref, because the anchor mounts after the panel's first render. */
+  anchor: PositionerProps["anchor"];
+  children: ReactNode;
+  className?: string;
+  id?: string;
+  role?: string;
+  "aria-label"?: string;
+}
+
+/**
+ * A panel the caller opens, over an element it owns no trigger for.
+ *
+ * The composer's suggestion lists are this shape: typing opens them, and focus must stay in the
+ * textarea because what drives the selection is `aria-activedescendant` on the input, not focus
+ * in the list. Hence `initialFocus={false}`.
+ *
+ * It portals because it has to. Rendered as a child of the composer surface — which clips to its
+ * own corner with `overflow: hidden` — a panel placed above that surface paints nothing at all,
+ * which is exactly what the file-mention popup did.
+ */
+function AnchoredPanel({
+  open,
+  onOpenChange,
+  anchor,
+  children,
+  className,
+  ...aria
+}: AnchoredPanelProps) {
+  const panel = stylex.props(FLOATING_PANEL, styles.matchAnchor);
+  return (
+    <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Positioner
+          anchor={anchor}
+          side="top"
+          align="center"
+          sideOffset={8}
+          {...stylex.props(FLOATING_LAYER)}
+        >
+          <PopoverPrimitive.Popup
+            {...aria}
+            initialFocus={false}
+            finalFocus={false}
+            {...panel}
+            className={cn(panel.className, className)}
+          >
+            {children}
+          </PopoverPrimitive.Popup>
+        </PopoverPrimitive.Positioner>
+      </PopoverPrimitive.Portal>
+    </PopoverPrimitive.Root>
+  );
+}
+
 export const Popover = {
   Root: PopoverPrimitive.Root,
   Trigger: PopoverPrimitive.Trigger,
   Content: PopoverContent,
+  Anchored: AnchoredPanel,
 } as const;

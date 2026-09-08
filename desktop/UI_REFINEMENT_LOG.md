@@ -9487,3 +9487,137 @@ line && tone === "neutral" ? styles.markNeutral : MARK_TONE[tone]
 | 单测 | 1781 项通过 |
 | 档名减少 | 13 个「各说一个数字」的名字 → 8 档 `gap` 阶梯 |
 | 同名不同值 | 9 → **0** |
+
+## Round 157 — 先把「还剩多少」量准，再动手
+
+### 我报过三个不同的错数字
+
+| 报过 | 怎么数的 | 错在哪 |
+| --- | --- | --- |
+| 业务层 **902 → 0** | `grep 'className="[a-z]'` | 只认 `className="…"` 这一种字面形态 |
+| 还剩 **122** 条 | 加上 `cn(`，但用正则猜表达式的结尾（`\}` 或 `\);`） | 多行 `cn(…)` 在第一个 `}` 就被截断 |
+| 还剩 **429** 条 | 改成扫全文的字符串、剔掉 `stylex.create` 区块 | `"data-slot"` `"aria-hidden"` `"agent-state"` 全被当成 class |
+
+第三次错得最有教育意义：**单个带连字符的词，脱离 `className` 上下文就无法判定。**
+`font-mono` 是 class，`data-slot` 是属性名，`tool-call` 是测试 id —— 形状完全一样。
+
+所以唯一可靠的做法是**按上下文取，而不是按形状猜**：
+找到 `className=` 或 `cn(`，然后用**配平括号**读出整个表达式（跨行、跨嵌套），
+只在那段里面找字符串字面量。抽完抽样核对过，11/11 全是真 class 串。
+
+### 真实存量（已核对）
+
+| | 文件 | class 串 | utility |
+| --- | --- | --- | --- |
+| `plugins/` | 33 | 238 | 707 |
+| `ui/` | 15 | 63 | 91 |
+| **合计** | **48** | **301** | **798** |
+
+其中 **22 个文件一行 StyleX 都没有** —— 整个 `chat/composer/` 目录（7 个文件）就是这样，
+迁移从来没走到过那里。我之前说「业务层迁完了」，对这个子树是完全不成立的。
+
+**教训不是「我数错了」，是「我用形状猜了三次」。** 现在这个抽取器留在
+`/tmp/truth3.mjs`，判据是配平括号 + 上下文，不是正则猜边界 ——
+它该不该变成守卫，等存量清零那天再说；现在它的用途是让每一轮的「还剩多少」可信。
+
+## Round 158 — 一个承诺「离开文档流」的组件，从来没离开过
+
+### 实测出来的缺陷
+
+审计 composer 时用浏览器量的（不是读代码猜的）：
+
+```
+surfaceOverflow: "hidden"       ← AgentComposerSurface 自己的
+probeSitsAboveSurface: true     ← 弹层在 surface 上方（bottom-full）
+probeVisibleAtItsCentre: false  ← 它自己中心点画出来的不是它
+whatIsPaintedThere: "div panel-scroll msg-scroll-viewport …"  ← 是它后面的消息滚动区
+```
+
+**`FileMentionPopup`（`@` 文件提示）被完全裁掉，一个像素都看不见。**
+
+### 根因
+
+`FloatingSurface` 的文档注释写着：「everything that **leaves the document flow** is made of」——
+但它渲染的是一个**裸 `<div>`**，没有 portal、没有 positioner。所以它从来没离开过文档流。
+
+它只有两个调用处，两处各自坏法不同：
+
+| | 住在哪 | 结果 |
+| --- | --- | --- |
+| `FileMentionPopup` | `AgentComposerSurface` 里面（`overflow: hidden`） | `absolute bottom-full` → **被裁掉，不可见** |
+| `SlashSuggestions` | `Composer` 的兄弟节点 | 在常规流里，**把 composer 往下推**，不是浮在内容上 |
+
+第二处「能看见」不是因为设计对，而是因为它被放到了裁剪盒外面 —— 一个巧合。
+而它俩本该是同一个东西：composer 上方的建议列表。
+
+**这两处都没有任何测试、任何 golden。** 这就是裁剪能活到今天的原因。
+
+### 治本
+
+`ui/primitives/popover.ts` 已经导出 Base UI 的 Popover，`ui/atoms/popover.tsx` 已经有
+Portal + Positioner + `FLOATING_PANEL` 的完整路径。缺的两块 Base UI 都有：
+
+- `Positioner.anchor` —— 对任意元素定位，**不需要 Trigger**（这两个面板不是点开的，是打字打开的）
+- `Popup.initialFocus={false}` —— 不抢焦点（焦点必须留在 textarea 上，
+  因为驱动选中的是 textarea 的 `aria-activedescendant`）
+
+所以：**删掉 `FloatingSurface`**，两处改成锚定 + portal 的浮层。
+`FLOATING_PANEL` / `FLOATING_LAYER` 这些**材质**导出保留 —— 它们是对的，
+menu / popover / tooltip 都在用；错的只是那个自己渲染 div 的组件。
+
+顺带三件一起对：hand-written 的 `absolute bottom-full left-2 right-2` 坐标不再需要
+（定位归 positioner）；`SlashSuggestions` 真正浮起来而不再顶开 composer；
+两个面板从此住在同一个地方（`Composer` 里），而不是一个在里一个在外。
+
+**Base UI 的豁免不动**：`fileMentions.ts` 顶部已经写明为什么查询逻辑要手写
+（Combobox 把输入框的 VALUE 当查询，而这里的查询是自由文本里的一个 `@token`）——
+那个理由是对的，这轮只换**外壳**，不碰查询与键盘逻辑。
+
+### 验收
+
+要新增覆盖 —— 这轮的重点之一就是「它没有测试」：
+closure 套件里加两条，断言两个建议面板**在自己中心点画的是自己**（不是被裁掉后面的东西）。
+
+### 验证「这条新测试真的抓得住」
+
+一条改前改后都绿的回归测试什么也没证明。所以我把旧的摆法在同一个 fixture 里复现了一遍，
+用同一句断言量它：
+
+```
+OLD-WAY {"paintsItself":false,"height":100}
+```
+
+元素在、有高度、`getBoundingClientRect()` 一切正常 —— 但**它自己那块地方画出来的不是它**。
+这就是为什么断言不能写成「元素存在吗」（它一直存在），必须写成
+**「元素所在的位置，画出来的是不是它自己」**。
+
+### 一个仍然盖不住的缺口（已记，未修）
+
+`@` 文件提示面板**在 fixture 里打不开**：`active = open && items.length > 0`，
+而 agent fixture 没有接工作区文件的 data provider，所以 `items` 永远是空的。
+实测：
+
+```
+MENTION {"found":false,"textareaValue":"@","ariaControls":null}
+```
+
+也就是说 —— **这个 bug 之所以能活下来，正是因为触发它的那个面板在测试里无法到达。**
+
+这一轮之后两个面板走的是**同一个实现**（`Popover.Anchored`），所以 portal 与锚定
+对两者都被覆盖了；查询逻辑本身有单测（`fileMentions.test.ts` mock 掉了 query）。
+真正还缺的是「文件提示面板 + 真实 DOM」这一格，它要给 agent fixture 接一个
+文件列表 provider —— 那是 fixture 的管线活，不是这一轮的题目，留作下一轮。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **657 / 657**（656 + 新增那条），0 unexpected，0 flaky |
+| 守卫 | 17 项全绿 |
+| 单测 | 1781 项通过 |
+| 删掉的组件 | `FloatingSurface`（材质导出保留） |
+| Tailwind 存量 | 301 → **287** 条（48 → 45 个文件；无 StyleX 的文件 22 → 19） |
+
+删组件、两个面板改走 portal、composer 编辑区改成命名档 —— **一张 golden 都没动**。
+说明这些改动确实只换了实现，没换外观（唯一预期会变的是 slash 面板从「顶开 composer」
+变成「浮在上面」，而它本来就没有任何 golden 拍到过）。

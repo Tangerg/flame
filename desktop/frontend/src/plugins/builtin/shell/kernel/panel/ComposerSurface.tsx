@@ -1,6 +1,6 @@
 import { memo } from "react";
 import type { AgentInput } from "@/plugins/builtin/agent/public/input";
-import { Composer, SlashSuggestions } from "@/plugins/builtin/chat/composer/public/ui";
+import { Composer } from "@/plugins/builtin/chat/composer/public/ui";
 import { useSelectedModel } from "@/plugins/builtin/chat/composer/public/selectedModel";
 import {
   useAddComposerImageFiles,
@@ -33,21 +33,18 @@ export const ComposerSurface = memo(function ComposerSurface({
   const acceptsImages = useSelectedModel()?.acceptsInput("image") ?? false;
 
   return (
-    <>
-      <SlashSuggestions value={value} onPick={setValue} />
-      <Composer
-        value={value}
-        onChange={setValue}
-        onClear={clear}
-        onSend={onSend}
-        images={images}
-        onRemoveImage={removeImage}
-        onAddImages={addImageFiles}
-        pastes={pastes}
-        onRemovePaste={removePaste}
-        onAddPaste={addPaste}
-        acceptsImages={acceptsImages}
-      />
-    </>
+    <Composer
+      value={value}
+      onChange={setValue}
+      onClear={clear}
+      onSend={onSend}
+      images={images}
+      onRemoveImage={removeImage}
+      onAddImages={addImageFiles}
+      pastes={pastes}
+      onRemovePaste={removePaste}
+      onAddPaste={addPaste}
+      acceptsImages={acceptsImages}
+    />
   );
 });

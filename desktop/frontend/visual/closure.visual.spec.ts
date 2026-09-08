@@ -1292,3 +1292,41 @@ for (const state of ["narrative", "long-content", "tool-shells"] as const) {
     expect(geometry!.fadesOutAt).toBeCloseTo(geometry!.overlay, 0);
   });
 }
+
+// The composer's suggestion panels had no test and no golden of any kind, which is how the
+// file-mention popup came to render nothing at all: it sat inside the composer surface, whose
+// `overflow: hidden` clips to the corner, and asked to be drawn ABOVE that surface. The assertion
+// that catches it is not "does the element exist" — it did — but "is the element what gets painted
+// where the element is".
+test("a suggestion panel above the composer is not clipped away by it", async ({ page }) => {
+  await openFixture(page, { fixture: "agent", state: "idle" });
+
+  const input = page.getByRole("textbox", { name: en["composer.input.label"]! });
+  await input.click();
+  await input.fill("/");
+
+  const panel = page.getByRole("dialog").filter({ hasText: en["composer.slash.heading"]! });
+  await expect(panel).toBeVisible();
+
+  const painted = await page.evaluate((heading) => {
+    const panels = [...document.querySelectorAll('[role="dialog"]')];
+    const el = panels.find((p) => p.textContent?.includes(heading));
+    if (!el) return { found: false };
+    const b = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(b.left + b.width / 2, b.top + 8);
+    const composer = document.querySelector("[data-slot=composer-root]")!.getBoundingClientRect();
+    return {
+      found: true,
+      // The panel's own top strip is painted by the panel, not by whatever it was clipped over.
+      paintsItself: el.contains(hit) || el === hit,
+      // It sits above the composer, and it is no wider.
+      abovecomposer: Math.round(b.bottom) <= Math.round(composer.top),
+      withinComposerWidth: b.width <= composer.width,
+    };
+  }, en["composer.slash.heading"]!);
+
+  expect(painted.found).toBe(true);
+  expect(painted.paintsItself).toBe(true);
+  expect(painted.abovecomposer).toBe(true);
+  expect(painted.withinComposerWidth).toBe(true);
+});

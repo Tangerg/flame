@@ -1,27 +1,49 @@
-import { FloatingSurface, Icon, OptionRow, SectionLabel } from "@/ui";
+import * as stylex from "@stylexjs/stylex";
+import type { RefObject } from "react";
+import { Icon, OptionRow, Popover, SectionLabel, vocab } from "@/ui";
 import {
   MENTION_LISTBOX_ID,
   mentionOptionId,
 } from "@/plugins/builtin/chat/composer/application/fileMentions";
+import { face } from "@/styles/tokens.stylex";
 import { useT } from "@/lib/i18n";
+import { suggestionStyles } from "./suggestionStyles";
 
 interface Props {
+  open: boolean;
   items: string[];
   index: number;
   onPick: (path: string) => void;
   onHover: (i: number) => void;
+  onDismiss: () => void;
+  anchor: RefObject<HTMLElement | null>;
 }
 
-export function FileMentionPopup({ items, index, onPick, onHover }: Props) {
+export function FileMentionPopup({
+  open,
+  items,
+  index,
+  onPick,
+  onHover,
+  onDismiss,
+  anchor,
+}: Props) {
   const t = useT();
   return (
-    <FloatingSurface
+    <Popover.Anchored
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onDismiss();
+      }}
+      anchor={anchor}
       id={MENTION_LISTBOX_ID}
       role="listbox"
       aria-label={t("composer.mention.heading")}
-      className="absolute bottom-full left-2 right-2 z-1 mb-2 p-1"
+      {...stylex.props(suggestionStyles.panel)}
     >
-      <SectionLabel className="px-2.5 pb-1 pt-1.5">{t("composer.mention.heading")}</SectionLabel>
+      <SectionLabel {...stylex.props(suggestionStyles.heading)}>
+        {t("composer.mention.heading")}
+      </SectionLabel>
       {items.map((path, i) => {
         const slash = path.lastIndexOf("/");
         const dir = slash >= 0 ? path.slice(0, slash + 1) : "";
@@ -39,14 +61,18 @@ export function FileMentionPopup({ items, index, onPick, onHover }: Props) {
               onPick(path);
             }}
           >
-            <Icon name="filetext" size="sm" className="shrink-0 text-fg-muted" />
-            <span className="truncate font-mono">
-              <span className="text-fg-faint">{dir}</span>
-              <span className="font-medium text-fg">{name}</span>
+            <Icon
+              name="filetext"
+              size="sm"
+              className={stylex.props(vocab.hold, vocab.muted).className}
+            />
+            <span {...stylex.props(vocab.truncate, face.mono)}>
+              <span {...stylex.props(suggestionStyles.directory)}>{dir}</span>
+              <span {...stylex.props(suggestionStyles.name)}>{name}</span>
             </span>
           </OptionRow>
         );
       })}
-    </FloatingSurface>
+    </Popover.Anchored>
   );
 }

@@ -15,7 +15,6 @@ export { FilePath } from "./file-path";
 export { Divider } from "./divider";
 export { EmptyState } from "./empty-state";
 export { ExternalLink } from "./external-link";
-export { FloatingSurface } from "./floating-surface";
 export { reveal } from "./reveal";
 export { GlyphSwap } from "./glyph-swap";
 export { IconButton } from "./icon-button";

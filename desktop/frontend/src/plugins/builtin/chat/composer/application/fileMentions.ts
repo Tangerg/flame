@@ -50,6 +50,9 @@ export interface FileMentions {
   index: number;
   setIndex: (i: number) => void;
   accept: (path: string) => void;
+  /** Give up on the current `@token` without accepting anything — Escape, or a press outside
+   *  the panel. The token stays in the text; only the picker stops offering answers for it. */
+  dismiss: () => void;
   /** True when the picker consumed the key; the caller must then preventDefault. */
   handleKeyDown: (e: { key: string; shiftKey: boolean }) => boolean;
 }
@@ -108,6 +111,10 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
     [mention, value, apply],
   );
 
+  const dismiss = useCallback(() => {
+    if (mention) setDismissedStart(mention.start);
+  }, [mention]);
+
   const handleKeyDown = useCallback(
     (e: { key: string; shiftKey: boolean }): boolean => {
       if (!active) return false;
@@ -126,14 +133,14 @@ export function useFileMentions({ value, caret, cwd, apply }: Args): FileMention
           accept(items[index] ?? items[0]!);
           return true;
         case "Escape":
-          if (mention) setDismissedStart(mention.start);
+          dismiss();
           return true;
         default:
           return false;
       }
     },
-    [active, items, index, setIndex, accept, mention],
+    [active, items, index, setIndex, accept, dismiss],
   );
 
-  return { active, items, index, setIndex, accept, handleKeyDown };
+  return { active, items, index, setIndex, accept, dismiss, handleKeyDown };
 }
