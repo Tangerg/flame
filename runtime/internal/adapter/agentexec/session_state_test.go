@@ -15,8 +15,8 @@ func TestTransientSessionStateRequiresEveryCleanupOwner(t *testing.T) {
 		shells   *exec.Shells
 	}{
 		{name: "working context", tools: new(toolset.Resolver), shells: new(exec.Shells)},
-		{name: "tools", contexts: NewWorkingContextComposer(WorkingContextConfig{}), shells: new(exec.Shells)},
-		{name: "shells", contexts: NewWorkingContextComposer(WorkingContextConfig{}), tools: new(toolset.Resolver)},
+		{name: "tools", contexts: newTestWorkingContextComposer(t, WorkingContextConfig{}), shells: new(exec.Shells)},
+		{name: "shells", contexts: newTestWorkingContextComposer(t, WorkingContextConfig{}), tools: new(toolset.Resolver)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if state, err := NewTransientSessionState(test.contexts, test.tools, test.shells); err == nil || state != nil {

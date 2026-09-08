@@ -16,7 +16,7 @@ import (
 
 func TestWorkingContextLifecycleHooksPreserveResolutionFailure(t *testing.T) {
 	resolveErr := errors.New("hook configuration unavailable")
-	composer := NewWorkingContextComposer(WorkingContextConfig{
+	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
 		Hooks: failingLifecycleHookResolver{err: resolveErr},
 	})
 	allowed, err := composer.BeforeCompaction(t.Context(), "session:one", "/workspace")
@@ -39,7 +39,7 @@ func TestInteractionExecutorReportsBestEffortFailuresWithoutChangingCompletion(t
 	}{
 		{
 			name: "terminal notification",
-			config: InteractionExecutorConfig{LifecycleHooks: NewWorkingContextComposer(WorkingContextConfig{
+			config: InteractionExecutorConfig{LifecycleHooks: newTestWorkingContextComposer(t, WorkingContextConfig{
 				Hooks: failingLifecycleHookResolver{err: wantErr},
 			})},
 		},

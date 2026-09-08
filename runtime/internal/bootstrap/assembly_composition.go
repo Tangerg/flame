@@ -266,7 +266,7 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, err
 	}
-	workingContexts := agentexec.NewWorkingContextComposer(agentexec.WorkingContextConfig{
+	workingContexts, err := agentexec.NewWorkingContextComposer(agentexec.WorkingContextConfig{
 		UserHome:          cfg.UserHome,
 		Knowledge:         workspaceServices.knowledge,
 		AgentMemory:       modelServices.agentMemoryRead,
@@ -275,6 +275,9 @@ func buildExecutionComposition(
 		Goal:              policy.goalReader,
 		Hooks:             workspaceServices.hookResolver,
 	})
+	if err != nil {
+		return executionComposition{}, fmt.Errorf("runtime: build working context: %w", err)
+	}
 	transientSessions, err := agentexec.NewTransientSessionState(
 		workingContexts,
 		toolRuntime.tools.Resolver,

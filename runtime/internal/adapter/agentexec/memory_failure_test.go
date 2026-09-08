@@ -29,7 +29,7 @@ func TestPinnedMemoryFailurePreservesHealthyPartitionAndDiagnostics(t *testing.T
 			previous := slog.Default()
 			slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
 			t.Cleanup(func() { slog.SetDefault(previous) })
-			composer := NewWorkingContextComposer(WorkingContextConfig{AgentMemory: failingMemoryPartition{scope: scope}})
+			composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemory: failingMemoryPartition{scope: scope}})
 			message, err := composer.composeSystemMessage(t.Context(), t.TempDir())
 			if err != nil || !strings.Contains(message.Text(), "healthy partition fact") {
 				t.Fatalf("healthy memory lost: message=%q error=%v", message.Text(), err)
@@ -46,7 +46,7 @@ func TestRecallFailureRemainsNonBlockingAndDiagnostic(t *testing.T) {
 	previous := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
 	t.Cleanup(func() { slog.SetDefault(previous) })
-	composer := NewWorkingContextComposer(WorkingContextConfig{
+	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
 		AgentMemorySearch: &fakeAgentMemorySearcher{err: errors.New("memory search unavailable")},
 	})
 	_, found, err := composer.recallMessage(t.Context(), "/repo", "private query")

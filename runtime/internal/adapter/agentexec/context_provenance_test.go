@@ -35,7 +35,7 @@ func TestSystemPromptProvenanceMatchesVisibleComposition(t *testing.T) {
 	memory := provenanceMemoryReader{items: []agentmemory.Item{{
 		ID: pinnedMemoryID, Content: "remember this", Pinned: true,
 	}}}
-	composer := NewWorkingContextComposer(WorkingContextConfig{
+	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
 		Knowledge:   knowledge,
 		AgentMemory: memory,
 		Plan:        provenancePlanReader{},
@@ -98,7 +98,7 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 		{Event: domainhooks.UserPromptSubmit, Inject: "turn context"},
 	}
 	recalledMemoryID := testAgentMemoryItemID(t, '2')
-	composer := NewWorkingContextComposer(WorkingContextConfig{
+	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
 		Hooks: provenanceHookResolver{bound: apphooks.NewBound(hooks, apphooks.NewRunner(nil, nil))},
 		AgentMemorySearch: &fakeAgentMemorySearcher{
 			items: []agentmemory.Item{{ID: recalledMemoryID, Content: "recalled fact"}},
@@ -172,7 +172,7 @@ func TestInteractionInstructionContextStopsBeforeDurableSummary(t *testing.T) {
 }
 
 func TestInteractionInstructionContextStopsBeforeReplaceableSessionPlan(t *testing.T) {
-	composer := NewWorkingContextComposer(WorkingContextConfig{Plan: provenancePlanReader{}})
+	composer := newTestWorkingContextComposer(t, WorkingContextConfig{Plan: provenancePlanReader{}})
 	instructions, err := composer.composeSystemMessage(t.Context(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)

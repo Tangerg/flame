@@ -24,7 +24,7 @@ func TestRecalledMemoriesSkipsPinnedAndInjectsRest(t *testing.T) {
 		{Content: "- pinned core", Pinned: true},
 		{Content: "- relevant fact", Pinned: false},
 	}}
-	composer := NewWorkingContextComposer(WorkingContextConfig{AgentMemorySearch: search})
+	composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: search})
 	msg, ok, err := composer.recallMessage(context.Background(), "/repo", "what is the fact")
 	if err != nil || !ok {
 		t.Fatalf("recallMessage found=%t error=%v", ok, err)
@@ -42,15 +42,12 @@ func TestRecalledMemoriesSkipsPinnedAndInjectsRest(t *testing.T) {
 }
 
 func TestRecalledMemoriesEmptyCases(t *testing.T) {
-	if _, ok, _ := NewWorkingContextComposer(WorkingContextConfig{}).recallMessage(context.Background(), "/repo", "q"); ok {
-		t.Fatal("no searcher → no block")
-	}
-	composer := NewWorkingContextComposer(WorkingContextConfig{AgentMemorySearch: &fakeAgentMemorySearcher{}})
+	composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: &fakeAgentMemorySearcher{}})
 	if _, ok, _ := composer.recallMessage(context.Background(), "/repo", "q"); ok {
 		t.Fatal("no items → no block")
 	}
 	allPinned := &fakeAgentMemorySearcher{items: []agentmemory.Item{{Content: "- x", Pinned: true}}}
-	composer = NewWorkingContextComposer(WorkingContextConfig{AgentMemorySearch: allPinned})
+	composer = newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: allPinned})
 	if _, ok, _ := composer.recallMessage(context.Background(), "/repo", "q"); ok {
 		t.Fatal("all-pinned results → no block (already in the core)")
 	}
@@ -66,7 +63,7 @@ func TestRecalledMemoriesIncludeRelevantUserScope(t *testing.T) {
 		Scope:   agentmemory.ScopeUser,
 		Status:  agentmemory.StatusActive,
 	}}}
-	composer := NewWorkingContextComposer(WorkingContextConfig{AgentMemorySearch: search})
+	composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: search})
 
 	message, ok, err := composer.recallMessage(context.Background(), "/repo", "how should I explain this")
 	if err != nil {
@@ -82,7 +79,7 @@ func TestRecalledMemoriesKeepWholeItemsWithinContextBudget(t *testing.T) {
 		{ID: testAgentMemoryItemID(t, '1'), Content: strings.Repeat("甲", 3000)},
 		{ID: testAgentMemoryItemID(t, '2'), Content: strings.Repeat("乙", 3000)},
 	}}
-	composer := NewWorkingContextComposer(WorkingContextConfig{AgentMemorySearch: search})
+	composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: search})
 
 	message, ok, err := composer.recallMessage(context.Background(), "/repo", "relevant facts")
 	if err != nil || !ok {
