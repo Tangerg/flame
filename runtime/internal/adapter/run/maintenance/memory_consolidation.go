@@ -133,7 +133,7 @@ func NewMemoryConsolidator(store messageReader, memory agentMemory, client model
 // is due. Short conversations skip extraction but still fold pending ledger
 // entries, so a previous provider failure can recover on a later Run.
 func (m *MemoryConsolidator) Consolidate(ctx context.Context, sessionID, cwd string) error {
-	if m == nil || sessionID == "" || cwd == "" {
+	if sessionID == "" || cwd == "" {
 		return nil
 	}
 	if _, err := resourceid.ParseSession(sessionID); err != nil {

@@ -65,7 +65,7 @@ func skillProposalMinerFixture(t *testing.T, reply string, config SkillMiningPol
 		t.Fatal(err)
 	}
 	proposals := &fakeProposalSubmitter{}
-	skillMiner, err := NewSkillProposalMiner(messages, proposals, nil, constClient(client), config)
+	skillMiner, err := NewSkillProposalMiner(messages, proposals, fakeSkillSource{}, constClient(client), config)
 	if err != nil {
 		t.Fatal(err)
 	}

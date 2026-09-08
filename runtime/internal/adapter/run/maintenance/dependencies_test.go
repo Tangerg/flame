@@ -59,19 +59,23 @@ func TestMaintenanceConstructorsRejectMissingDependencies(t *testing.T) {
 			return err
 		},
 		"skill conversation reader": func() error {
-			_, err := NewSkillProposalMiner(nil, proposals, nil, unexpectedClient, SkillMiningPolicyValues{})
+			_, err := NewSkillProposalMiner(nil, proposals, fakeSkillSource{}, unexpectedClient, SkillMiningPolicyValues{})
 			return err
 		},
 		"skill proposal submitter": func() error {
-			_, err := NewSkillProposalMiner(history, nil, nil, unexpectedClient, SkillMiningPolicyValues{})
+			_, err := NewSkillProposalMiner(history, nil, fakeSkillSource{}, unexpectedClient, SkillMiningPolicyValues{})
 			return err
 		},
-		"skill typed-nil optional source": func() error {
+		"skill source": func() error {
+			_, err := NewSkillProposalMiner(history, proposals, nil, unexpectedClient, SkillMiningPolicyValues{})
+			return err
+		},
+		"skill typed-nil source": func() error {
 			_, err := NewSkillProposalMiner(history, proposals, typedNilSource, unexpectedClient, SkillMiningPolicyValues{})
 			return err
 		},
 		"skill utility model resolver": func() error {
-			_, err := NewSkillProposalMiner(history, proposals, nil, nil, SkillMiningPolicyValues{})
+			_, err := NewSkillProposalMiner(history, proposals, fakeSkillSource{}, nil, SkillMiningPolicyValues{})
 			return err
 		},
 		"skill archive curator": func() error {

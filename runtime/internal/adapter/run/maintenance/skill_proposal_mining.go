@@ -103,9 +103,8 @@ type SkillProposalMiner struct {
 	complexRuns map[string]int
 }
 
-// NewSkillProposalMiner builds the Run-boundary skill skillMiner over the conversation
-// history reader, the proposal use case, the optional active-Skill source (for the
-// read-before-write refinement guard), and the utility-model client resolver.
+// NewSkillProposalMiner requires the conversation reader, proposal use case,
+// active-Skill source for revision reads, and utility-model client resolver.
 func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, source skillSource, client modeladapter.AuxiliaryResolver, values SkillMiningPolicyValues) (*SkillProposalMiner, error) {
 	if nilDependency(history) {
 		return nil, errors.New("skill proposal miner: conversation reader is required")
@@ -113,8 +112,8 @@ func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, s
 	if nilDependency(proposals) {
 		return nil, errors.New("skill proposal miner: proposal submitter is required")
 	}
-	if source != nil && nilDependency(source) {
-		return nil, errors.New("skill proposal miner: skill source is nil")
+	if nilDependency(source) {
+		return nil, errors.New("skill proposal miner: skill source is required")
 	}
 	if client == nil {
 		return nil, errors.New("skill proposal miner: utility model resolver is required")
@@ -140,7 +139,7 @@ func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, s
 // or invalid document, or an obviously-dangerous one is dropped silently
 // (return nil) — only a real read/save/LLM failure surfaces as an error.
 func (s *SkillProposalMiner) MineIfDue(ctx context.Context, sessionID, cwd string, toolCalls int) error {
-	if s == nil || sessionID == "" || cwd == "" {
+	if sessionID == "" || cwd == "" {
 		return nil
 	}
 	if _, err := resourceid.ParseSession(sessionID); err != nil {
@@ -195,9 +194,6 @@ func (s *SkillProposalMiner) mineNew(ctx context.Context, document, sessionID, c
 // skipped. The proposal keeps the target name and is marked as a revision so
 // approval replaces the active Skill.
 func (s *SkillProposalMiner) mineRevision(ctx context.Context, name string, messages []chat.Message, sessionID, cwd string) error {
-	if s.source == nil {
-		return nil
-	}
 	current, err := s.source.Load(ctx, name)
 	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, skillspec.ErrInvalidSkill) {
 		return nil // only a readable, valid skill can be revised

@@ -80,9 +80,6 @@ func NewIdleSkillArchiver(skills idleSkillArchiver, values SkillArchivePolicyVal
 // within CheckInterval. The rate-limit window advances even when nothing is
 // archived, so a busy Session does not evaluate the library after every Run.
 func (i *IdleSkillArchiver) ArchiveIfDue(ctx context.Context) error {
-	if i == nil {
-		return nil
-	}
 	now := i.now()
 	i.mu.Lock()
 	if !i.lastCheck.IsZero() && now.Sub(i.lastCheck) < i.policy.checkInterval {

@@ -79,13 +79,6 @@ func TestIdleSkillArchiverRateLimitsChecks(t *testing.T) {
 	}
 }
 
-func TestIdleSkillArchiverNilIsNoOp(t *testing.T) {
-	var skillArchiver *IdleSkillArchiver
-	if err := skillArchiver.ArchiveIfDue(context.Background()); err != nil {
-		t.Fatalf("nil skillArchiver ArchiveIfDue = %v", err)
-	}
-}
-
 func TestIdleSkillArchiverAdmitsOneConcurrentSweepPerWindow(t *testing.T) {
 	skills := &countingIdleSkillArchiver{}
 	archiver := mustNewIdleSkillArchiver(t, skills, SkillArchivePolicyValues{CheckInterval: durationPointer(time.Hour)})
