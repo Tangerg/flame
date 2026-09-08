@@ -12,7 +12,7 @@ import { notifyError } from "@/plugins/sdk";
 import type { DotTone } from "@/lib/tone";
 import { useT } from "@/lib/i18n";
 import { ServerForm } from "./ServerForm";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const STATUS_TONE: Record<MCPServerSettings["status"], DotTone> = {
@@ -106,7 +106,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
         </div>
         <div {...stylex.props(sr.actions)}>
           {active && (
-            <span {...stylex.props(ss.mono, ss.muted, typeStep.uiMd)}>
+            <span {...stylex.props(ss.muted, typeStep.uiMd, face.mono)}>
               {t("mcp.toolCount", { count: server.toolCount ?? 0 })}
             </span>
           )}

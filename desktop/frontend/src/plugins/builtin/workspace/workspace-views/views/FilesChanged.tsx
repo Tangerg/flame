@@ -9,7 +9,7 @@ import { AgentRow } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import { splitFilePath } from "@/lib/path";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./viewStyles";
 
 const fc = stylex.create({
@@ -69,7 +69,7 @@ const FileRow = memo(function FileRow({
           )}
         </span>
       }
-      className={stylex.props(vs.mono).className}
+      className={stylex.props(face.mono).className}
     >
       {name}
     </AgentRow>

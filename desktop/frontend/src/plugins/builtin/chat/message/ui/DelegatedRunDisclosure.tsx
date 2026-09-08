@@ -8,7 +8,7 @@ import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
 import { delegatedRunCardModel } from "../application/delegatedRunCardModel";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../chatStyles";
 
 interface Props {
@@ -66,7 +66,7 @@ export function DelegatedRunDisclosure({
             <StatusDot tone={model.dotTone} />
             {model.statusLabel}
           </span>
-          <span {...stylex.props(ct.mono, ct.faint, typeStep.uiXs)}>{model.stepsLabel}</span>
+          <span {...stylex.props(ct.faint, typeStep.uiXs, face.mono)}>{model.stepsLabel}</span>
         </>
       }
       actions={

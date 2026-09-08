@@ -9,7 +9,7 @@ import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/sessio
 import { notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { useRef, useState } from "react";
-import { color, leading, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, face, leading, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const hp = stylex.create({
@@ -40,7 +40,7 @@ function HookRow({ h }: { h: HookReadModel }) {
         <Tag>{h.event}</Tag>
         {h.matcher && (
           <span
-            {...stylex.props(ss.hold, ss.mono, ss.accent, typeStep.uiSm)}
+            {...stylex.props(ss.hold, ss.accent, typeStep.uiSm, face.mono)}
             title={t("hooks.matcher")}
           >
             {h.matcher}
@@ -110,7 +110,7 @@ export function HooksPane() {
             <div {...stylex.props(ss.label, typeStep.uiMd)}>{t("hooks.trust")}</div>
             <div {...stylex.props(hp.sub, typeStep.uiMd)}>{t("hooks.trust.sub")}</div>
             <div
-              {...stylex.props(ss.afterLine, ss.truncate, ss.mono, ss.faint, typeStep.uiSm)}
+              {...stylex.props(ss.afterLine, ss.truncate, ss.faint, typeStep.uiSm, face.mono)}
               title={projectRoot}
             >
               {projectRoot}

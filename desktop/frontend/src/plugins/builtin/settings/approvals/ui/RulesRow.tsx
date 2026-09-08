@@ -12,7 +12,15 @@ import { isUnsupportedMethod } from "@/lib/rpcErrors";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { useCommandAction } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
-import { color, radius, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
+import {
+  color,
+  face,
+  radius,
+  space,
+  surface,
+  type as typeStep,
+  weight,
+} from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 // What the scope MEANS. `Tone`'s own contract says the application layer emits the
@@ -97,7 +105,7 @@ export function RulesRow() {
                   >
                     {rule.decision === "deny" ? t("approvals.deny") : t("approvals.allow")}
                   </span>
-                  <span {...stylex.props(ss.fill, ss.truncate, ss.mono, r.tool, typeStep.uiMd)}>
+                  <span {...stylex.props(ss.fill, ss.truncate, r.tool, typeStep.uiMd, face.mono)}>
                     {rule.tool}
                     {rule.subject ? (
                       <span {...stylex.props(ss.muted)}> · {rule.subject}</span>

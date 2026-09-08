@@ -14,6 +14,7 @@ import { formatDateTime } from "@/lib/i18n/relativeTime";
 import { ScheduleForm } from "./ScheduleForm";
 import {
   color,
+  face,
   leading,
   radius,
   space,
@@ -117,7 +118,7 @@ export function ScheduleRow({ schedule }: { schedule: ScheduleConfig }) {
             <Tag size="sm">{schedule.cron}</Tag>
           </div>
           <div
-            {...stylex.props(sr.cron, ss.truncate, ss.mono, typeStep.uiMd)}
+            {...stylex.props(sr.cron, ss.truncate, typeStep.uiMd, face.mono)}
             title={schedule.instructions}
           >
             {schedule.instructions}

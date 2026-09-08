@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import { SectionLabel, TextArea, TextButton, Well } from "@/ui";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../../chatStyles";
 
 const ae = stylex.create({
@@ -57,7 +57,7 @@ export function ApprovalArgsEditor({
             variant="well"
           />
           {invalid && (
-            <div {...stylex.props(ae.error, ct.mono, ct.negative, typeStep.uiXs)}>
+            <div {...stylex.props(ae.error, ct.negative, typeStep.uiXs, face.mono)}>
               {t("approval.args.invalid")}
             </div>
           )}

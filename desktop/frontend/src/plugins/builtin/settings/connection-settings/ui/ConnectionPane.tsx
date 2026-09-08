@@ -15,7 +15,7 @@ import {
   type RuntimeServicePhase,
 } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { SettingRow, SettingsGroup } from "../../kit";
-import { color, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { color, face, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const cp = stylex.create({
@@ -197,11 +197,11 @@ export function ConnectionPane() {
             {service.observation ? (
               <dl {...stylex.props(cp.facts, typeStep.uiSm)}>
                 <dt {...stylex.props(ss.faint)}>{t("settings.connection.status.server")}</dt>
-                <dd {...stylex.props(ss.truncate, ss.mono, ss.muted)}>
+                <dd {...stylex.props(ss.truncate, ss.muted, face.mono)}>
                   {service.observation.server.name} {service.observation.server.version}
                 </dd>
                 <dt {...stylex.props(ss.faint)}>{t("settings.connection.status.protocol")}</dt>
-                <dd {...stylex.props(ss.truncate, ss.mono, ss.muted)}>
+                <dd {...stylex.props(ss.truncate, ss.muted, face.mono)}>
                   {service.observation.protocolVersion}
                 </dd>
                 {unhealthyChecks.length > 0 ? (

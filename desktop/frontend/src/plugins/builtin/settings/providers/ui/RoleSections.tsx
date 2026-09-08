@@ -12,7 +12,7 @@ import {
 } from "../application/providerConfig";
 import { useT } from "@/lib/i18n";
 import { useAsyncFeedback } from "../../kit";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const rs = stylex.create({
@@ -96,7 +96,7 @@ export function UtilityModelSection() {
               ) : isSet && role?.provider ? (
                 <>
                   <ProviderIcon provider={role.provider} size="sm" />
-                  <span {...stylex.props(rs.model, ss.truncate, ss.mono, typeStep.uiSm)}>
+                  <span {...stylex.props(rs.model, ss.truncate, typeStep.uiSm, face.mono)}>
                     {selected?.label ?? role.model}
                   </span>
                 </>
@@ -190,7 +190,7 @@ export function EmbeddingModelSection() {
               ) : isSet && role?.provider ? (
                 <>
                   <ProviderIcon provider={role.provider} size="sm" />
-                  <span {...stylex.props(rs.model, ss.truncate, ss.mono, typeStep.uiSm)}>
+                  <span {...stylex.props(rs.model, ss.truncate, typeStep.uiSm, face.mono)}>
                     {role.model}
                   </span>
                 </>

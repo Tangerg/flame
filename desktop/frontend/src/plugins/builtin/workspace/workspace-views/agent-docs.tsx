@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { Badge, DataView } from "@/ui";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useT } from "@/lib/i18n";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./views/viewStyles";
 import { useWorkspaceAgentDocs } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { workspaceAgentDocsViewModel } from "@/plugins/builtin/workspace/application/workspaceCatalogViewModel";
@@ -42,7 +42,7 @@ export function AgentDocsTab() {
               <div key={d.id} {...stylex.props(vs.splitLine, vs.gutter, vs.rowPad)}>
                 <div {...stylex.props(vs.min)}>
                   <div {...stylex.props(vs.title, vs.truncate, typeStep.uiMd)}>{d.title}</div>
-                  <div {...stylex.props(vs.subCaption, vs.mono, vs.truncate, typeStep.uiSm)}>
+                  <div {...stylex.props(vs.subCaption, vs.truncate, typeStep.uiSm, face.mono)}>
                     {d.path}
                   </div>
                 </div>

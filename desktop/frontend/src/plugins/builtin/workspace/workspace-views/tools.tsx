@@ -20,7 +20,7 @@ import { McpRow } from "./views/McpRow";
 import { useT } from "@/lib/i18n";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { toolStyles as os, viewStyles as vs } from "./views/viewStyles";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
@@ -44,7 +44,7 @@ function SectionHead({ children, count }: { children: React.ReactNode; count?: n
   return (
     <SectionLabel
       className={stylex.props(vs.gutter, os.headPad).className}
-      trailing={count === undefined ? undefined : <span {...stylex.props(vs.mono)}>{count}</span>}
+      trailing={count === undefined ? undefined : <span {...stylex.props(face.mono)}>{count}</span>}
     >
       {children}
     </SectionLabel>
@@ -139,7 +139,9 @@ function DiagnosticToolRowPresentation({
         />
         <span {...stylex.props(vs.min)}>
           <span {...stylex.props(vs.lineBaseline)}>
-            <span {...stylex.props(vs.ink, vs.mono, vs.truncate, typeStep.uiSm)}>{tool.name}</span>
+            <span {...stylex.props(vs.ink, vs.truncate, typeStep.uiSm, face.mono)}>
+              {tool.name}
+            </span>
             {tool.safety && (
               <Badge tone={tool.safety.tone} face="mono">
                 {tool.safety.label}

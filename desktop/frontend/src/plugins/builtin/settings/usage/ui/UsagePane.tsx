@@ -12,7 +12,7 @@ import {
   useUsageReport,
 } from "../application/usageConfig";
 import type { UsageAmount, UsageBucket } from "../application/ports/usageGateway";
-import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, face, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const u = stylex.create({
@@ -61,7 +61,7 @@ function BreakdownSection({
               {icon?.(b.key)}
               <span {...stylex.props(ss.truncate, u.ink, typeStep.uiMd)}>{b.key}</span>
             </div>
-            <div {...stylex.props(ss.lineWide, ss.mono, typeStep.uiMd)}>
+            <div {...stylex.props(ss.lineWide, typeStep.uiMd, face.mono)}>
               <span {...stylex.props(ss.muted)}>{fmtTokens(usageTokens(b))}</span>
               {b.costUsd !== undefined && (
                 <span {...stylex.props(u.cost, ss.figures)}>{fmtCost(b.costUsd)}</span>

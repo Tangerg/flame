@@ -51,19 +51,36 @@ const INDEX_HTML = join(DIST, "index.html");
 // old value would have let that space refill without anyone noticing.
 // 2026-08-31: lowered again by the 63 KB that lazy workspace-view bodies took
 // off the entry, holding the same ~6% headroom.
-// 2026-09-08: CSS raised for the StyleX migration's TRANSIENT double count, and
-// because 0.4% headroom no longer told a regression from a rounding difference —
-// it failed on 491 bytes of ordinary work. Measured at that point: 132.6 KB of
-// entry CSS, of which 42.2 KB is StyleX (600 atomic rules) and 90.5 KB is
-// Tailwind plus globals. The 2026-08-11 baseline was 103 KB with no StyleX at
-// all, so the net cost of migrating ~60 files is +29 KB: every utility a
-// migrated file stopped using is still emitted for the 250 business files that
-// have not moved. The double count unwinds only when a utility's LAST consumer
-// migrates, so this ceiling is expected to come back down well under the old
-// 135 KB — check it against this note rather than refilling the space.
+// 2026-09-08: CSS raised for the StyleX migration's double count, and because
+// 0.4% headroom no longer told a regression from a rounding difference — it
+// failed on 491 bytes of ordinary work.
+//
+// That note called the double count TRANSIENT and predicted the ceiling would
+// come back "well under the old 135 KB" once every file had migrated. The
+// migration is now complete and the prediction was WRONG. Measured with the
+// business layer empty of class attributes:
+//
+//   @layer utilities (Tailwind)   24.4 KB   18%
+//   StyleX (unlayered)            57.4 KB   42%   821 atomic rules
+//   @layer theme + base            9.5 KB    7%
+//   globals/markdown, unlayered   ~43.8 KB   33%   :root vars, .md, keyframes
+//                                 ────────
+//                                  135.1 KB  (+ 2.4 KB markdown chunk)
+//
+// So ~49 KB of Tailwind utilities became 24 KB of them plus 57 KB of StyleX.
+// The reason is measurable and structural: 23.7 KB — 41% of StyleX's output,
+// 29 bytes per rule across 2630 occurrences — is the `:not(#\#)` specificity
+// padding. That padding is not waste; it is the property that made the whole
+// migration worth doing, because it is why no utility can silently outrank a
+// design decision. It gzips to almost nothing (135 KB → 27 KB) but this ships
+// in a desktop webview that reads the file locally, so the raw bytes are what
+// gets parsed at every launch, which is what this budget measures.
+//
+// The ceiling therefore stays where the migration left it, with ~6% headroom
+// over the real post-migration number rather than over a hoped-for one.
 const BUDGETS = {
   js: 2_785_000,
-  css: 145_000,
+  css: 146_000,
 };
 
 // Runaway ceilings, RAW bytes. Recorded 2026-08-04: syntax highlighting

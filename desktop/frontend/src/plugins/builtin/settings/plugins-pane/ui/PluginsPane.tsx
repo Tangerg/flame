@@ -6,7 +6,15 @@ import { Badge, Icon, IconButton, PillButton, TextButton } from "@/ui";
 import { copyText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
 import { useInstalledPlugins, usePluginErrorStore } from "@/plugins/sdk";
-import { color, leading, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import {
+  color,
+  face,
+  leading,
+  radius,
+  space,
+  surface,
+  type as typeStep,
+} from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 const pp = stylex.create({
@@ -158,7 +166,7 @@ function ErrorEntry({ err }: { err: PluginError }) {
           {err.message}
         </span>
         <div {...stylex.props(ss.lineTight)}>
-          <span {...stylex.props(ss.mono, ss.faint, typeStep.uiXs)}>{time}</span>
+          <span {...stylex.props(ss.faint, typeStep.uiXs, face.mono)}>{time}</span>
           <IconButton icon="copy" iconSize="xs" title={t("plugins.copyError")} onClick={copy} />
         </div>
       </div>

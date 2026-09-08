@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { DataView, Pressable, SearchField } from "@/ui";
 import { useT } from "@/lib/i18n";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./views/viewStyles";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
@@ -63,7 +63,7 @@ export function SearchTab() {
             <div {...stylex.props(vs.stack, vs.padBottom)}>
               {groups.map((group) => (
                 <div key={group.path} {...stylex.props(vs.gutter, vs.groupPad)}>
-                  <div {...stylex.props(vs.title, vs.mono, vs.truncate, typeStep.uiSm)}>
+                  <div {...stylex.props(vs.title, vs.truncate, typeStep.uiSm, face.mono)}>
                     {group.path}
                     <span {...stylex.props(vs.matchCount)}>{group.matchCount}</span>
                   </div>

@@ -6,7 +6,7 @@ import { Icon, Loader } from "@/ui";
 import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/classNames";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../../chatStyles";
 import { messageStyles as ms } from "../messageStyles";
 
@@ -108,7 +108,7 @@ export function ReasoningBlock({ text, status, superseded = false }: Props) {
         <div ref={contentRef} className={stylex.props(ms.quote, typeStep.uiSm).className}>
           <MarkdownMessage text={text} streaming={streaming} reveal="smooth" />
           {status === "incomplete" && (
-            <div {...stylex.props(rb.note, ct.mono, ct.faint, typeStep.uiSm)}>
+            <div {...stylex.props(rb.note, ct.faint, typeStep.uiSm, face.mono)}>
               <Icon name="x" size="xs" /> {t("reasoning.interrupted")}
             </div>
           )}

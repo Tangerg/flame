@@ -24,7 +24,7 @@ import {
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 import { shellStyles as sh } from "../shellStyles";
-import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, face, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 
 const reb = stylex.create({
   plain: { fontWeight: weight.regular },
@@ -104,7 +104,7 @@ export function RunErrorBanner() {
                 {t("runError.title")}
               </span>
               {error.code && (
-                <span {...stylex.props(sh.mono, sh.faint, sh.selectable, typeStep.uiXs)}>
+                <span {...stylex.props(sh.faint, sh.selectable, typeStep.uiXs, face.mono)}>
                   {error.code}
                 </span>
               )}

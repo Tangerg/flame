@@ -6,7 +6,7 @@ import { BannerAction } from "./BannerAction";
 import { useT } from "@/lib/i18n";
 import { useRuntimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { shellStyles as sh } from "../shellStyles";
-import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, face, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 
 const cw = stylex.create({
   title: { marginBottom: space.s0_5, color: color.warning, fontWeight: weight.semibold },
@@ -47,7 +47,7 @@ export function CwdMissingBanner() {
       <div {...stylex.props(sh.min)}>
         <div {...stylex.props(cw.title, typeStep.uiMd)}>{t("cwdMissing.title")}</div>
         <div {...stylex.props(cw.body, typeStep.uiMd)}>
-          <code {...stylex.props(sh.mono, typeStep.uiMd)}>{session.workspace.path}</code> ·{" "}
+          <code {...stylex.props(typeStep.uiMd, face.mono)}>{session.workspace.path}</code> ·{" "}
           {t("cwdMissing.body")}
         </div>
         {relocateEnabled && (

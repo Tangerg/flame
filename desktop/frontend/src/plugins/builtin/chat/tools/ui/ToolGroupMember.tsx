@@ -7,7 +7,7 @@ import { headlineToolMetaItem, toolCardModel } from "../application/toolCardMode
 import { toolCallIconFor } from "../public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "./ToolText";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../chatStyles";
 
 interface Props {
@@ -52,7 +52,7 @@ export function ToolGroupMember({ tool, expanded, onToggleExpand }: Props) {
         {model.detail && (
           <ToolText
             value={model.detail}
-            className={stylex.props(ct.fill, ct.mono, ct.faint, typeStep.uiSm).className}
+            className={stylex.props(ct.fill, ct.faint, typeStep.uiSm, face.mono).className}
           />
         )}
         {model.diffStat && (

@@ -5,7 +5,7 @@ import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { buildPlaintext } from "@/plugins/builtin/agent/public/runDigest";
 import { useT } from "@/lib/i18n";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./views/viewStyles";
 import { useLatestRunDigest } from "@/plugins/builtin/workspace/presentation/runSummaryView";
 import {
@@ -29,7 +29,7 @@ function Section({
     <div {...stylex.props(vs.gutter, vs.sectionOuterPad)}>
       <div {...stylex.props(vs.sectionHead)}>
         <span {...stylex.props(vs.title, typeStep.uiMd)}>{t(title)}</span>
-        <span {...stylex.props(vs.caption, vs.mono, typeStep.uiSm)}>{count}</span>
+        <span {...stylex.props(vs.caption, typeStep.uiSm, face.mono)}>{count}</span>
       </div>
       <div {...stylex.props(vs.sectionBody)}>{children}</div>
     </div>

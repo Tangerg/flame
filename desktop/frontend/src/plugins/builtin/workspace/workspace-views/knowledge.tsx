@@ -4,7 +4,7 @@ import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatDateTime } from "@/lib/i18n/relativeTime";
 import { Badge, Collapsible, DataView, Icon, PillButton, Pressable, TextArea } from "@/ui";
 import { useT } from "@/lib/i18n";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./views/viewStyles";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
@@ -98,7 +98,7 @@ function KnowledgeRow({ row, cwd }: { row: WorkspaceKnowledgeRowViewModel; cwd?:
           size="xs"
           className={stylex.props(vs.chevron, !open && vs.chevronShut).className}
         />
-        <span {...stylex.props(vs.ink, vs.mono, vs.truncate, typeStep.uiMd)}>{row.path}</span>
+        <span {...stylex.props(vs.ink, vs.truncate, typeStep.uiMd, face.mono)}>{row.path}</span>
         <Badge>{t(row.scopeLabelKey)}</Badge>
       </Pressable>
       <Collapsible open={open}>

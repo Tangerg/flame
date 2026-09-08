@@ -6,7 +6,7 @@ import { AgentActivityDisclosure } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
 import { toolGroupModel, type ToolGroupPinnedState } from "../application/toolGroupModel";
 import { ToolGroupMember } from "./ToolGroupMember";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../chatStyles";
 
 interface Props {
@@ -33,7 +33,7 @@ export function ToolGroup({ tools, onSelectTool, expandedIds, onToggleExpand, su
       contentClassName="py-1.5"
       label={model.summary}
       trailing={
-        <span {...stylex.props(ct.mono, ct.medium, ct.muted, typeStep.uiXs)}>
+        <span {...stylex.props(ct.medium, ct.muted, typeStep.uiXs, face.mono)}>
           {t("tools.group.calls", { count: model.count })}
         </span>
       }

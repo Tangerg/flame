@@ -3,7 +3,15 @@ import { useMemo, useState } from "react";
 import { ScrollArea, SearchField } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { IconMap, rawToc } from "./iconMap";
-import { color, corner, space, surface, type as typeStep, weight } from "@/styles/tokens.stylex";
+import {
+  color,
+  corner,
+  face,
+  space,
+  surface,
+  type as typeStep,
+  weight,
+} from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 import { gallerySpread, galleryStyles as g } from "./galleryStyles";
 
@@ -139,7 +147,7 @@ function IconCard({ entry }: { entry: (typeof rawToc)[number] }) {
           className={stylex.props(ig.dot, corner.pill).className}
           style={{ background: entry.color }}
         />
-        <code {...stylex.props(ss.mono, ss.muted, typeStep.uiXs)}>{entry.id}</code>
+        <code {...stylex.props(ss.muted, typeStep.uiXs, face.mono)}>{entry.id}</code>
       </div>
     </div>
   );

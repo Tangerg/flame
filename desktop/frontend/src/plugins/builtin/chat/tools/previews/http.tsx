@@ -14,7 +14,7 @@ import {
 } from "@/plugins/builtin/chat/tools/application/specialisedPreviewProjections";
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { TEXT_PREVIEW } from "./previewChrome";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../chatStyles";
 import { previewStyles as pv } from "./previewStyles";
 
@@ -53,7 +53,7 @@ function HttpRequestPreview({ tool, onOpenView }: ToolPreviewProps) {
           {response.status}
         </Badge>
         {response.duration && (
-          <span {...stylex.props(ct.mono, ct.faint, typeStep.uiXs)}>{response.duration}</span>
+          <span {...stylex.props(ct.faint, typeStep.uiXs, face.mono)}>{response.duration}</span>
         )}
         {response.headers.length > 0 && (
           <span {...stylex.props(ct.faint, typeStep.uiSm)}>

@@ -6,7 +6,7 @@ import { Icon, IconButton } from "@/ui";
 import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { useViewPlacement } from "@/plugins/builtin/workspace/public/viewPlacement";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./viewStyles";
 
 export interface ViewHeaderProps {
@@ -43,7 +43,7 @@ function DockViewBar({
   if (identity === undefined && sub === undefined && actions === undefined) return null;
   return (
     <AgentSurfaceHeader>
-      <div {...stylex.props(vs.line, vs.fill, vs.mono, vs.muted, typeStep.uiMd)}>
+      <div {...stylex.props(vs.line, vs.fill, vs.muted, typeStep.uiMd, face.mono)}>
         {identity !== undefined && <span {...stylex.props(vs.fill)}>{identity}</span>}
         {identity !== undefined && sub !== undefined && (
           <span aria-hidden {...stylex.props(vs.hold, vs.dotSep)}>
@@ -82,7 +82,7 @@ function FullViewBar({ icon, title, sub, actions, titleStrong }: ViewHeaderProps
             <span aria-hidden="true" {...stylex.props(vs.hold, vs.dotSep, typeStep.uiMd)}>
               ·
             </span>
-            <span {...stylex.props(vs.min, vs.truncate, vs.mono, vs.muted, typeStep.uiMd)}>
+            <span {...stylex.props(vs.min, vs.truncate, vs.muted, typeStep.uiMd, face.mono)}>
               {sub}
             </span>
           </>

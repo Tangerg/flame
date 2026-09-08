@@ -8,7 +8,7 @@ import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { toolIntent } from "@/plugins/builtin/agent/public/messagePresentation";
 import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { indent, timelineStyles as ts, viewStyles as vs } from "./views/viewStyles";
 import {
   cancelSessionRun,
@@ -99,7 +99,7 @@ function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | u
             <span
               data-timeline-subject=""
               title={subject}
-              {...stylex.props(vs.truncate, vs.mono, vs.muted, typeStep.uiSm)}
+              {...stylex.props(vs.truncate, vs.muted, typeStep.uiSm, face.mono)}
             >
               {subject}
             </span>
@@ -134,7 +134,7 @@ function TimelineRunHeader({
   const run = group.run;
   if (!run) {
     return group.runId ? (
-      <div {...stylex.props(vs.gutter, vs.sectionPad, vs.mono, vs.caption, typeStep.uiXs)}>
+      <div {...stylex.props(vs.gutter, vs.sectionPad, vs.caption, typeStep.uiXs, face.mono)}>
         {t("timeline.unknownRun", { id: group.runId })}
       </div>
     ) : null;
@@ -156,7 +156,7 @@ function TimelineRunHeader({
           <span {...stylex.props(vs.hold, vs.title, typeStep.uiSm)}>
             {t(child ? "timeline.delegatedRun" : "timeline.rootRun")}
           </span>
-          <span title={run.id} {...stylex.props(vs.truncate, vs.mono, vs.caption, typeStep.uiXs)}>
+          <span title={run.id} {...stylex.props(vs.truncate, vs.caption, typeStep.uiXs, face.mono)}>
             {run.id}
           </span>
           <Badge tone={status.tone}>{t(status.labelKey)}</Badge>
@@ -168,11 +168,11 @@ function TimelineRunHeader({
             </span>
           )}
           {child && (
-            <span title={parentRunId} {...stylex.props(vs.truncate, vs.mono, vs.caption)}>
+            <span title={parentRunId} {...stylex.props(vs.truncate, vs.caption, face.mono)}>
               {t("timeline.parentRun", { id: parentRunId })}
             </span>
           )}
-          <span {...stylex.props(vs.pushEnd, vs.hold, vs.mono)}>
+          <span {...stylex.props(vs.pushEnd, vs.hold, face.mono)}>
             {t("agent.steps", { count: status.stepCount })}
           </span>
         </div>

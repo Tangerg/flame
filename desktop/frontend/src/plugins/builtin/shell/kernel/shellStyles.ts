@@ -33,7 +33,6 @@ export const shellStyles = stylex.create({
   min: { minWidth: 0 },
   hold: { flexShrink: 0 },
   truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  mono: { fontFamily: "var(--font-mono)" },
   muted: { color: color.fgMuted },
   faint: { color: color.fgFaint },
   soft: { color: color.fgSoft },

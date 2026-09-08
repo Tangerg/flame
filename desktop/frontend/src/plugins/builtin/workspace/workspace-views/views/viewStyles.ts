@@ -101,7 +101,6 @@ export const viewStyles = stylex.create({
   wrapText: { whiteSpace: "pre-wrap", overflowWrap: "break-word" },
   soft: { color: color.fgSoft },
   muted: { color: color.fgMuted },
-  mono: { fontFamily: "var(--font-mono)" },
   negative: { color: color.negative },
   accent: { color: color.accent },
   success: { color: color.success },

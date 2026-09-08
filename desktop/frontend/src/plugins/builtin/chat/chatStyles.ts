@@ -27,7 +27,6 @@ export const chatStyles = stylex.create({
   faint: { color: color.fgFaint },
   accent: { color: color.accent },
   negative: { color: color.negative },
-  mono: { fontFamily: "var(--font-mono)" },
   figures: { fontVariantNumeric: "tabular-nums" },
   medium: { fontWeight: weight.medium },
   strong: { fontWeight: weight.semibold },

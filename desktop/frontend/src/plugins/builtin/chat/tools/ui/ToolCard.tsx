@@ -17,7 +17,7 @@ import { toolCardActions, toolCardModel, toolCardViewOpener } from "../applicati
 import { toolCallIconFor } from "../public/toolIcon";
 import { ToolPreview } from "./ToolPreview";
 import { ToolText } from "./ToolText";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../chatStyles";
 
 interface Props {
@@ -68,7 +68,7 @@ export function ToolCard({ tool, expanded, onToggleExpand }: Props) {
       label={<ToolText value={model.intent.label} className={stylex.props(tc.full).className} />}
       detail={
         model.detail ? (
-          <ToolText value={model.detail} className={stylex.props(tc.full, ct.mono).className} />
+          <ToolText value={model.detail} className={stylex.props(tc.full, face.mono).className} />
         ) : undefined
       }
       trailing={

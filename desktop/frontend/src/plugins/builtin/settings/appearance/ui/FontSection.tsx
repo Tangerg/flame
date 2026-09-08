@@ -6,7 +6,7 @@ import { useT } from "@/lib/i18n";
 import { useSystemFonts } from "../application/systemFonts";
 import { useFontPreferences } from "../application/appearancePreferences";
 import { SettingRow } from "../../kit";
-import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
+import { color, face, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface FontPickerProps {
@@ -59,7 +59,7 @@ function FontPicker({ label, mono, value, onChange, defaultLabel }: FontPickerPr
               label={triggerLabel}
               disabled={!customEnabled}
               style={customEnabled ? { fontFamily: `"${value}"` } : undefined}
-              className={stylex.props(fsx.trigger, mono && customEnabled && ss.mono).className}
+              className={stylex.props(fsx.trigger, mono && customEnabled && face.mono).className}
             />
           }
         />

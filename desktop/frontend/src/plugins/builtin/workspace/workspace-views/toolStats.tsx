@@ -5,7 +5,7 @@ import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
 import { Badge, EmptyState, Icon, ProgressBar, Sparkline, knownIconName } from "@/ui";
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./views/viewStyles";
 import { lookupExtensionByKey, TOOL_ICON } from "@/plugins/sdk";
 import { WorkspaceViewLayout } from "./views/WorkspaceViewLayout";
@@ -55,7 +55,7 @@ function ToolStatRow({ row, summary }: { row: ToolStat; summary: ToolStatsSummar
           <Badge tone="negative">{t("toolStats.failed", { n: row.failed })}</Badge>
         )}
         {row.denied > 0 && <Badge tone="warning">{t("toolStats.denied", { n: row.denied })}</Badge>}
-        <span {...stylex.props(vs.hold, vs.mono, vs.muted, typeStep.uiXs)}>
+        <span {...stylex.props(vs.hold, vs.muted, typeStep.uiXs, face.mono)}>
           {row.timed > 0 ? fmtDuration(row.totalMs) : "—"}
         </span>
       </div>

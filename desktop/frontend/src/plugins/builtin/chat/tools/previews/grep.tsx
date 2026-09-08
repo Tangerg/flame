@@ -9,7 +9,7 @@ import { useGrepToolPreview } from "@/plugins/builtin/chat/tools/application/too
 import { toolPreviews } from "@/plugins/builtin/chat/tools/application/toolPreviewContributions";
 import { toolShapeKey } from "@/plugins/builtin/chat/tools/public/toolIcon";
 
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../chatStyles";
 import { previewStyles as pv } from "./previewStyles";
 import { TEXT_PREVIEW } from "./previewChrome";
@@ -42,19 +42,19 @@ function GrepPreview({ tool, onOpenView }: ToolPreviewProps) {
         {groupByFile(shown).map((group) => (
           <div key={group.file}>
             <div {...stylex.props(gp.head)}>
-              <span {...stylex.props(ct.fill, ct.truncate, ct.mono, ct.soft, typeStep.uiSm)}>
+              <span {...stylex.props(ct.fill, ct.truncate, ct.soft, typeStep.uiSm, face.mono)}>
                 <LinkedText text={group.file} />
               </span>
               {group.matches.length > 1 && (
-                <span {...stylex.props(ct.hold, ct.mono, ct.faint, typeStep.ui2xs)}>
+                <span {...stylex.props(ct.hold, ct.faint, typeStep.ui2xs, face.mono)}>
                   {t("tools.grep.matchCount", { count: group.matches.length })}
                 </span>
               )}
             </div>
             {group.matches.map((match, index) => (
               <div key={index} {...stylex.props(pv.numbered, pv.numberedWide, pv.row)}>
-                <span {...stylex.props(pv.gutter, ct.mono, typeStep.ui2xs)}>{match.line}</span>
-                <span {...stylex.props(pv.wrap, ct.mono, ct.muted, typeStep.uiSm)}>
+                <span {...stylex.props(pv.gutter, typeStep.ui2xs, face.mono)}>{match.line}</span>
+                <span {...stylex.props(pv.wrap, ct.muted, typeStep.uiSm, face.mono)}>
                   {match.text}
                 </span>
               </div>

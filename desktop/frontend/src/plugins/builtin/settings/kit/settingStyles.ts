@@ -36,7 +36,6 @@ export const settingStyles = stylex.create({
   hold: { flexShrink: 0 },
   min: { minWidth: 0 },
   truncate: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  mono: { fontFamily: "var(--font-mono)" },
   muted: { color: color.fgMuted },
   faint: { color: color.fgFaint },
   accent: { color: color.accent },

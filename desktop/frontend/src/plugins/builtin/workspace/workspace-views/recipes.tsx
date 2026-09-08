@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { DataView, Tag } from "@/ui";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./views/viewStyles";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
 import { useT } from "@/lib/i18n";
@@ -41,11 +41,11 @@ export function RecipesTab() {
                       measured 3.4:1 on this surface in dark — an emphasis that costs the
                       reader the thing being emphasised. Mono and semibold already say
                       "something you can run". */}
-                  <span {...stylex.props(vs.title, vs.mono, vs.truncate, typeStep.uiMd)}>
+                  <span {...stylex.props(vs.title, vs.truncate, typeStep.uiMd, face.mono)}>
                     {r.command}
                   </span>
                   {r.argumentHint && (
-                    <span {...stylex.props(vs.caption, vs.mono, vs.truncate, typeStep.uiSm)}>
+                    <span {...stylex.props(vs.caption, vs.truncate, typeStep.uiSm, face.mono)}>
                       {r.argumentHint}
                     </span>
                   )}

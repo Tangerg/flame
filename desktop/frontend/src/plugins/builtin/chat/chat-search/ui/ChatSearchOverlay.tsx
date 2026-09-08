@@ -11,7 +11,7 @@ import {
 } from "../adapters/searchHighlights";
 import { setChatSearchOpener } from "../application/openChatSearch";
 import { findMessageRanges } from "../adapters/messageRanges";
-import { space, type as typeStep } from "@/styles/tokens.stylex";
+import { face, space, type as typeStep } from "@/styles/tokens.stylex";
 import { chatStyles as ct } from "../../chatStyles";
 
 const cs = stylex.create({
@@ -118,7 +118,7 @@ function SessionChatSearchOverlay() {
           }
         }}
       />
-      <span {...stylex.props(cs.count, ct.mono, ct.faint, typeStep.uiSm)}>
+      <span {...stylex.props(cs.count, ct.faint, typeStep.uiSm, face.mono)}>
         {total > 0 ? `${activeIndex + 1} / ${total}` : query ? "0 / 0" : ""}
       </span>
       <IconButton
