@@ -306,3 +306,60 @@ func gitCommand(t *testing.T, dir string, args ...string) {
 		t.Fatalf("git %v: %v: %s", args, err, output)
 	}
 }
+
+func TestGitWatcherRejectsUnreadableInitialIndex(t *testing.T) {
+	if !GitAvailable() {
+		t.Skip("git not on PATH")
+	}
+	root := t.TempDir()
+	gitCommand(t, root, "init", "-b", "main")
+	if err := os.WriteFile(filepath.Join(root, ".git", "index"), []byte("invalid index"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	watcher, err := NewGitWatcher(t.Context()).Watch([]string{root}, func() {})
+	if watcher != nil {
+		_ = watcher.Close()
+		t.Error("unreadable index produced a watcher")
+	}
+	if err == nil {
+		t.Fatal("unreadable initial index became successful registration")
+	}
+}
+
+func TestGitObservationFailurePreservesLastSuccessfulState(t *testing.T) {
+	if !GitAvailable() {
+		t.Skip("git not on PATH")
+	}
+	root := t.TempDir()
+	gitCommand(t, root, "init", "-b", "main")
+	repositories, err := watchedRepositories(t.Context(), []string{root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	watcher := gitWatch{lifetime: t.Context(), repositories: repositories}
+	indexPath := filepath.Join(root, ".git", "index")
+	if err := os.WriteFile(indexPath, []byte("invalid index"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if changed, err := watcher.semanticStateChanged(); changed || err == nil {
+			t.Fatalf("failed observation = (%t, %v), want unchanged with cause", changed, err)
+		}
+	}
+	if err := os.Remove(indexPath); err != nil {
+		t.Fatal(err)
+	}
+	if changed, err := watcher.semanticStateChanged(); changed || err != nil {
+		t.Fatalf("recovered identical state = (%t, %v)", changed, err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "new.txt"), []byte("new"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitCommand(t, root, "add", "new.txt")
+	if changed, err := watcher.semanticStateChanged(); !changed || err != nil {
+		t.Fatalf("new staged state = (%t, %v)", changed, err)
+	}
+	if changed, err := watcher.semanticStateChanged(); changed || err != nil {
+		t.Fatalf("repeated staged state = (%t, %v)", changed, err)
+	}
+}

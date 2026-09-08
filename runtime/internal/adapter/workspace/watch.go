@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -91,7 +92,6 @@ type watchedRepository struct {
 	gitDir      string
 	commonDir   string
 	fingerprint [sha256.Size]byte
-	valid       bool
 }
 
 func watchedRepositories(lifetime context.Context, roots []string) ([]watchedRepository, error) {
@@ -117,10 +117,13 @@ func watchedRepositories(lifetime context.Context, roots []string) ([]watchedRep
 			continue
 		}
 		seen[identity] = struct{}{}
-		fingerprint, valid := semanticGitFingerprint(lifetime, root)
+		fingerprint, err := semanticGitFingerprint(lifetime, root)
+		if err != nil {
+			return nil, fmt.Errorf("read initial git state for %q: %w", root, err)
+		}
 		repositories = append(repositories, watchedRepository{
 			root: root, gitDir: gitDir, commonDir: commonDir,
-			fingerprint: fingerprint, valid: valid,
+			fingerprint: fingerprint,
 		})
 	}
 	return repositories, nil
@@ -209,15 +212,23 @@ func (g *gitWatch) run() {
 				timer.Reset(gitWatchDebounce)
 				armed = true
 			}
-		case _, ok := <-g.fsw.Errors:
+		case err, ok := <-g.fsw.Errors:
 			if !ok {
 				return
 			}
-			// A transient overflow or removed ref directory does not invalidate the
-			// subscription. The client will re-fetch on the next resync.
+			slog.ErrorContext(g.lifetime, "workspace: git watcher notification failed", "error", err)
+			// An overflow can lose the event that would have armed a resync.
+			if !armed {
+				timer.Reset(gitWatchDebounce)
+				armed = true
+			}
 		case <-timer.C:
 			armed = false
-			if g.semanticStateChanged() && g.notify != nil {
+			changed, err := g.semanticStateChanged()
+			if err != nil && g.lifetime.Err() == nil {
+				slog.ErrorContext(g.lifetime, "workspace: read watched git state failed", "error", err)
+			}
+			if changed && g.notify != nil {
 				g.notify()
 			}
 		}
@@ -229,39 +240,43 @@ func (g *gitWatch) run() {
 // HEAD and every staged entry are identical. Publishing that replacement as a
 // change lets a diff refetch wake its own watcher forever. The watcher therefore
 // compares the committed HEAD and stage entries that clients can actually read.
-func (g *gitWatch) semanticStateChanged() bool {
+func (g *gitWatch) semanticStateChanged() (bool, error) {
 	changed := false
+	var failures []error
 	for index := range g.repositories {
 		repository := &g.repositories[index]
-		next, valid := semanticGitFingerprint(g.lifetime, repository.root)
-		if !valid || !repository.valid || next != repository.fingerprint {
+		next, err := semanticGitFingerprint(g.lifetime, repository.root)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("read git state for %q: %w", repository.root, err))
+			continue
+		}
+		if next != repository.fingerprint {
 			changed = true
 		}
 		repository.fingerprint = next
-		repository.valid = valid
 	}
-	return changed
+	return changed, errors.Join(failures...)
 }
 
-func semanticGitFingerprint(lifetime context.Context, root string) ([sha256.Size]byte, bool) {
+func semanticGitFingerprint(lifetime context.Context, root string) ([sha256.Size]byte, error) {
 	head, err := gitObservation(lifetime, root, "rev-parse", "--verify", "HEAD")
 	if err != nil {
 		// An unborn repository has no commit yet. Its symbolic ref still matters:
 		// changing the branch name is a semantic move even before the first commit.
 		head, err = gitObservation(lifetime, root, "symbolic-ref", "--quiet", "HEAD")
 		if err != nil {
-			return [sha256.Size]byte{}, false
+			return [sha256.Size]byte{}, err
 		}
 	}
 	index, err := gitObservation(lifetime, root, "ls-files", "--stage", "-z")
 	if err != nil {
-		return [sha256.Size]byte{}, false
+		return [sha256.Size]byte{}, err
 	}
 	state := make([]byte, 0, len(head)+len(index)+2)
 	state = append(state, head...)
 	state = append(state, 0)
 	state = append(state, index...)
-	return sha256.Sum256(state), true
+	return sha256.Sum256(state), nil
 }
 
 func gitObservation(lifetime context.Context, root string, args ...string) ([]byte, error) {
