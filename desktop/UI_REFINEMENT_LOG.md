@@ -10754,3 +10754,62 @@ Tailwind 一走，一个全是 Tailwind class 的字符串**一个 token 都解�
 | ④ preflight + Tailwind 自带主题默认值 | 已转写并逐条比对 |
 | ⑤ `cn()` 里的 `tailwind-merge` | 已删 |
 | ⑥ Vite 插件 + devDeps | 已删 |
+
+## Round 169 — 守卫的洞，和洞里坐着的 toast
+
+上一轮的 `check-authored-classes` 只看**位置**：`className=` / `*ClassName` / `cn(` / 大写常量。
+写完当轮我就发现，这一轮最糟的那个 bug **恰好不在任何位置里** ——
+`transcriptTurnContentVisibility()` 是从函数**返回**一个 class 串。守卫抓不到它。
+
+### 补第二条规则：看形状
+
+| 规则 | 命中 | 误报 |
+| --- | --- | --- |
+| A：只有 Tailwind 才有的语法（`[...]`、变体前缀） | 68 | **67** —— 日志前缀 `[agent] …:`、CSS 选择器 `[data-turn-id]`、时间 `14:29`。弃用 |
+| B：**≥2 个 token，每个都长得像 utility，且都不是我们定义的 class** | 2 | **0** |
+
+规则 B 精确的原因很朴素：图标名（`text-search`）、i18n key、日志前缀都是**单 token**；
+多 token 的（`npm run check:api-consumers`）里总有一个 token 过不了 `every`。
+
+验证过它抓得住两个藏身处（函数返回、第三方 prop），也放得过两个像但不是的。
+
+### 规则 B 的两条命中，是同一个文件
+
+```tsx
+// toaster/index.tsx —— sonner 的 classNames，键叫 toast / title / description
+toast: "rounded-xl bg-canvas text-fg shadow-[var(--shadow-overlay)]",
+title: "text-ui-md font-medium",
+description: "text-ui-md text-fg-muted",
+```
+
+**产品里每一个 toast 现在都是裸的** —— 没有圆角、没有底板、没有阴影、没有字号、没有墨色。
+键不叫 `className`，所以任何扫 `className` 的办法都找不到它。
+
+### 它为什么没被 golden 抓到
+
+`plugin notifications use the production toast and dismiss automatically` 这条测试
+断言了**文案**、**类型**、**自动消失** —— 三条全绿，而 toast 什么都没穿。
+
+toast 是一个**面**。给面拍照。这条测试现在多一张 `toast-error.png`。
+
+### 材质不从 `FLOATING_PANEL` 拿，理由写在代码里
+
+共享材质是三片：`face`（填充 + 投射 + 伪元素上的模糊）、`motion`、`panel`（圆角）。
+这个宿主只能收两片 —— **sonner 自己拥有 toast 的进入、退出、堆叠和滑动**，
+`motion` 会往一个别的库正在动画的元素上加 `transition-property`。
+
+`face` 那片也收不了：它的填充 `--app-floating-surface` 是 90% 不透明，
+只有配上 `face` 挂在伪元素上的模糊才读得对 —— 而模糊正是收不了的那片。
+
+所以 toast 自己说三件事，用的是设计自己的令牌：`radius.floatingPanel`、
+`surface.card`（不透明）、`--shadow-overlay`（另外两个浮在最上层的东西已经在用的深度）。
+不是把 `rounded-xl bg-canvas` 这套 Tailwind 时代的自创值原样搬进 StyleX。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **670 / 670**，0 unexpected，0 flaky |
+| 新增 golden | 1 张（`toast-error`）—— 覆盖一个此前零覆盖的面 |
+| 守卫 | 17 项全绿；`check:classes` 现在有位置 + 形状两条规则 |
+| 重录 | 0 |

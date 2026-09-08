@@ -699,6 +699,13 @@ test("plugin notifications use the production toast and dismiss automatically", 
   const toast = page.locator("[data-sonner-toast]");
   await expect(toast).toContainText("Provider credentials were rejected");
   await expect(toast).toHaveAttribute("data-type", "error");
+
+  // Text, type and dismissal were all this asserted, and all three kept passing while the
+  // toast wore nothing at all: its corner, plate, depth and both type steps were four
+  // Tailwind classes on `sonner`'s own `classNames` prop, which no sweep for a `className`
+  // was ever going to find. The toast is a surface; photograph the surface.
+  await expect(toast).toHaveScreenshot("toast-error.png");
+
   await expect.poll(() => toast.count(), { timeout: 6_000 }).toBe(0);
 });
 

@@ -45,6 +45,25 @@ const uncomment = (text) => text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[
 /** A class-name position: the prop, any `*ClassName` prop, or the class joiner itself. */
 const POSITION = /(?:[A-Za-z]*[cC]lassName\s*[=:]\s*\{?|\bcn\(|\bclsx\()\s*(["'`])([^"'`\n]*)\1/g;
 const NAMED = /[A-Za-z]*[cC]lassName\s*[=:]\s*\{?\s*([A-Z][A-Z0-9_]*)\b/g;
+const ANY_STRING = /(["'`])([^"'`\n]{2,200})\1/g;
+
+/**
+ * Position is not enough, because a class list does not have to be in one.
+ *
+ * The two worst instances of this were a function RETURNING the string and a third-party
+ * component taking one under its own prop name (`sonner`'s `classNames.toast`), and neither
+ * is anywhere near a `className`. So a second rule reads SHAPE: a string of two or more
+ * tokens that all look like utilities and none of which we define. Measured against the whole
+ * tree it fires on nothing else — a hyphenated icon name, an i18n key or a log prefix is one
+ * token, and the ones that are not don't survive `every`.
+ */
+const UTILITY =
+  /^-?[a-z][a-z0-9]*(?:-[a-z0-9./]+)+$|^[\w@&>.-]*\[[^\]\s]*\][\w./-]*$|^[\w@&>.-]+:\S+$/;
+const BARE = new Set(
+  "absolute relative fixed sticky static flex grid hidden block inline contents truncate italic underline uppercase lowercase capitalize invisible visible isolate container".split(
+    " ",
+  ),
+);
 
 const violations = [];
 let examined = 0;
@@ -72,6 +91,12 @@ for (const path of [join(ROOT, "src"), join(ROOT, "visual")].flatMap(walk)) {
   for (const match of text.matchAll(NAMED)) {
     const decl = new RegExp(`const\\s+${match[1]}\\s*(?::[^=]*)?=\\s*\\n?\\s*"([^"]*)"`).exec(text);
     if (decl) report(decl[1], match.index);
+  }
+  for (const match of text.matchAll(ANY_STRING)) {
+    const tokens = match[2].split(/\s+/).filter(Boolean);
+    if (tokens.length < 2) continue;
+    if (tokens.every((token) => (UTILITY.test(token) || BARE.has(token)) && !defined.has(token)))
+      report(match[2], match.index);
   }
 }
 
