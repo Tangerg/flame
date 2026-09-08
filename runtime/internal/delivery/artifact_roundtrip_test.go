@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"maps"
@@ -550,7 +551,7 @@ func seedOffloadedToolResult(t *testing.T, rt *stubRuntime, sessionID string) {
 	t.Helper()
 	ctx := t.Context()
 	body := strings.Repeat("offloaded-", 200)
-	id := toolresult.NewID()
+	id := toolresult.ID(rand.Text())
 	if err := rt.toolResults.Stage(ctx, toolresult.Stage{
 		ID: id, SessionID: sessionID, ToolName: "vendor_tool", Body: body,
 	}); err != nil {

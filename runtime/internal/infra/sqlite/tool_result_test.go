@@ -1,6 +1,7 @@
 package sqlite_test
 
 import (
+	"crypto/rand"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -22,7 +23,7 @@ func newToolResultStore(t *testing.T) *sqlite.ToolResultStore {
 
 func stageShellResult(t *testing.T, store *sqlite.ToolResultStore, sessionID, body string) toolresult.ID {
 	t.Helper()
-	id := toolresult.NewID()
+	id := toolresult.ID(rand.Text())
 	if err := store.Stage(t.Context(), toolresult.Stage{
 		ID: id, SessionID: sessionID, ToolName: "shell", Body: body,
 	}); err != nil {
@@ -115,7 +116,7 @@ func TestToolResultDiscardAndStartupPurgeOnlyRemoveUnboundBlobs(t *testing.T) {
 
 func TestToolResultStoreRejectsIncompleteIdentity(t *testing.T) {
 	store := newToolResultStore(t)
-	valid := toolresult.Stage{ID: toolresult.NewID(), SessionID: "ses_1", ToolName: "shell", Body: "body"}
+	valid := toolresult.Stage{ID: toolresult.ID("BLOB234"), SessionID: "ses_1", ToolName: "shell", Body: "body"}
 	missingSession := valid
 	missingSession.SessionID = ""
 	if err := store.Stage(t.Context(), missingSession); err == nil {

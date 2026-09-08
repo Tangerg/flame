@@ -144,7 +144,7 @@ func TestSessionExportImportCarriesOffloadedToolResultsAcrossDatabases(t *testin
 	}
 	putRun(t, sourceRuntime, ses.ID(), "run_offload", 1, 1)
 	body := strings.Repeat("portable-result-", 100)
-	id := resultoffload.NewID()
+	id := resultoffload.ID("BLOB234")
 	if stageErr := sourceRuntime.toolResults.Stage(ctx, resultoffload.Stage{
 		ID: id, SessionID: ses.ID(), ToolName: "vendor_tool", Body: body,
 	}); stageErr != nil {

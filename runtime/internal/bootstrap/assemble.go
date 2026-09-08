@@ -25,7 +25,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 )
 
 // assemble transfers acquired resources directly to the Runtime lifecycle.
@@ -147,7 +146,7 @@ func buildAssemblyCore(
 		NewID:                 newSessionID,
 		NewRunID:              newRunID,
 		NewItemID:             newItemID,
-		NewToolResultID:       toolresult.NewID,
+		NewToolResultID:       newToolResultID,
 	}
 	sessionDependencies.Plan = sessions.PlanServices{
 		Boundaries: cfg.Stores.Plan, Replacements: policy.plans,

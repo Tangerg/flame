@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"iter"
@@ -940,7 +941,7 @@ func (s *stubRuntime) sessionsCoordinatorWithRestorer(checkpoints sessions.Works
 		NewItemID: func() string {
 			return runs.NewItemID(fmt.Sprintf("fixture_%d", sessionFixtureSequence.Add(1)))
 		},
-		NewToolResultID: toolresult.NewID,
+		NewToolResultID: func() toolresult.ID { return toolresult.ID(rand.Text()) },
 	}
 	if s.plan != nil {
 		deps.Plan = sessions.PlanServices{

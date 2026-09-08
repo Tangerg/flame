@@ -3,7 +3,6 @@
 package toolresult
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"strings"
@@ -29,9 +28,6 @@ var (
 // later result reads and portable session exports.
 type ID string
 
-// NewID returns a new unguessable tool-result identity.
-func NewID() ID { return ID(rand.Text()) }
-
 // ParseID validates raw before admitting it as an offloaded-result identity.
 func ParseID(raw string) (ID, error) {
 	id := ID(raw)
@@ -43,8 +39,8 @@ func ParseID(raw string) (ID, error) {
 
 func (i ID) String() string { return string(i) }
 
-// Validate accepts the uppercase unpadded base32 alphabet produced by
-// crypto/rand.Text and bounds imported or model-supplied identifiers.
+// Validate accepts uppercase unpadded base32 and bounds imported or
+// model-supplied identifiers.
 func (i ID) Validate() error {
 	raw := string(i)
 	if len(raw) < minIDLength || len(raw) > maxIDLength {

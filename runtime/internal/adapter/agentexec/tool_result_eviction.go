@@ -2,6 +2,7 @@ package agentexec
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"strings"
 
@@ -75,7 +76,7 @@ func evictToolResult(
 		toolName == policy.readerName || sessionID == "" {
 		return output, nil
 	}
-	id := toolresult.NewID()
+	id := toolresult.ID(rand.Text())
 	preview := renderToolResultPreview(
 		output,
 		string(id),

@@ -2,7 +2,6 @@ package toolresult
 
 import (
 	"errors"
-	"regexp"
 	"testing"
 	"time"
 )
@@ -16,23 +15,6 @@ func TestParseID(t *testing.T) {
 		if _, err := ParseID(raw); !errors.Is(err, ErrInvalidID) {
 			t.Fatalf("ParseID(%q) error = %v, want ErrInvalidID", raw, err)
 		}
-	}
-}
-
-func TestNewIDReturnsDistinctValidIdentities(t *testing.T) {
-	first := NewID()
-	second := NewID()
-	if err := first.Validate(); err != nil {
-		t.Fatalf("first ID: %v", err)
-	}
-	if err := second.Validate(); err != nil {
-		t.Fatalf("second ID: %v", err)
-	}
-	if first == second {
-		t.Fatalf("NewID returned duplicate identity %q", first)
-	}
-	if pattern := regexp.MustCompile(IDPattern); !pattern.MatchString(first.String()) || !pattern.MatchString(second.String()) {
-		t.Fatalf("generated identities %q and %q do not match the public wire grammar", first, second)
 	}
 }
 

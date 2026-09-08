@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"strings"
@@ -241,7 +242,7 @@ func testDependencies(stores testStores, deps Dependencies) Dependencies {
 		}
 	}
 	if deps.NewToolResultID == nil {
-		deps.NewToolResultID = toolresult.NewID
+		deps.NewToolResultID = func() toolresult.ID { return toolresult.ID(rand.Text()) }
 	}
 	if !deps.DefaultModelSelection.Configured() {
 		deps.DefaultModelSelection, _ = modelref.New("test-provider", "test-model")
@@ -319,7 +320,7 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 		deps.NewItemID = func() string { return "item_test" }
 	}
 	if deps.NewToolResultID == nil {
-		deps.NewToolResultID = toolresult.NewID
+		deps.NewToolResultID = func() toolresult.ID { return toolresult.ID(rand.Text()) }
 	}
 	if !deps.DefaultModelSelection.Configured() {
 		deps.DefaultModelSelection, _ = modelref.New("test-provider", "test-model")
