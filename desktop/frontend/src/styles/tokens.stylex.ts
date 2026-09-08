@@ -42,6 +42,8 @@ export const motion = stylex.defineVars({
   shimmer: "var(--animate-shimmer)",
   sweep: "var(--animate-sweep)",
   pulseDot: "var(--animate-pulse-dot)",
+  spin: "var(--animate-spin)",
+  breathe: "var(--animate-breathe)",
 });
 
 /** Surfaces and edges, by role. A name says what a plane IS, never how light it is. */
@@ -163,7 +165,6 @@ export const leading = stylex.defineVars({
   relaxed: "var(--leading-relaxed)",
   prose: "var(--leading-prose)",
   snug: "var(--leading-snug)",
-  normal: "var(--leading-normal)",
   tight: "var(--leading-tight)",
 });
 

@@ -45,7 +45,7 @@ const styles = stylex.create({
   // line of interface, and the negative tracking crowds it. Applied AFTER the type step, which
   // brings its own — under Tailwind the `--tw-tracking` indirection made order not matter, and
   // here it is the only thing that decides.
-  tracking: { letterSpacing: "var(--tracking-normal)" },
+  tracking: { letterSpacing: "var(--tracking-none)" },
   sm: { height: "calc(var(--spacing) * 6.5)", paddingInline: space.s3 },
   md: { height: space.s8, paddingInline: space.s3_5 },
 });

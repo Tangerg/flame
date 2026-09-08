@@ -27,7 +27,7 @@ const styles = stylex.create({
     paddingInline: space.s2,
     paddingBottom: space.s1,
     fontWeight: weight.medium,
-    letterSpacing: "var(--tracking-normal)",
+    letterSpacing: "var(--tracking-none)",
     color: color.fgFaint,
   },
 });

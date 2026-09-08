@@ -10870,3 +10870,66 @@ component's rather than losing to it, which is exactly what a `className` cannot
 | StyleX 属性竞态 | 4 → **0**，全部状态覆盖 |
 | 重录 | 2 张（dock-files 两主题）—— 原因：等宽字体本该生效 |
 | 逃生口 | `Badge` 已换成 `styles`；其余 32 个组件**证据不足，不动** |
+
+## Round 171 — `:root` 里最后六个 Tailwind 的名字
+
+上一轮结束时 `globals.css` 顶上还留着一块「Tailwind 主题供过的六个值」。
+逐个查消费方之后，**只有一个是这个设计没有名字的东西**。
+
+| 变量 | 消费方 | 判定 |
+| --- | --- | --- |
+| `--spacing` | `space` 的每一档 | **留** —— 没它整个产品一起丢掉节奏 |
+| `--shadow-md` | `MarkdownImage` 一处 | 删。那张图**已经戴着 `.media-edge`** —— 设计自己的图片描边。外框 + 阴影正是 DESIGN.md 禁止的「同一个面两条边」，而同族的 `ImageBlock` / 附件缩略图 / 预览图都只有描边 |
+| `--leading-normal` | `system-message` 一处 | 删。1.5 卡在设计自己的 `snug 1.35` 和 `body 1.55` 中间 —— 一个梯子上不存在的档。系统消息是正文嗓音，改用 `leading.body` |
+| `--tracking-normal` | 3 处 | 改名 `--tracking-none`，并挪进 `--tracking-ui` 旁边。值没变，说的是「退出 UI 字距」，那是一个决定，该用这个设计的词 |
+| `--tracking-wide` | **产品 0 处**，只有 visual fixture 的大写标签 | 从产品 `:root` 拿掉，值落到 fixture 自己身上 |
+| `--animate-spin` / `--animate-pulse` | 5 处 | 见下 |
+
+### 两个动画是产品里唯一够不着「减少动态」的
+
+设计自己的四个动画全都把时长包在 `calc(… * var(--motion-scale))` 里，
+而 `--motion-scale` 在「减少动态」下是 **0**。
+
+Tailwind 那两个是平的 `1s` / `2s` —— 所以用户要了减少动态之后，
+**重连的转圈和连接中的呼吸照转不误**。这是可访问性缺陷，不是命名问题。
+
+改成 `flame-spin` / `flame-breathe`，时长进 `--motion-scale`，
+并且从原始 `var()` 提升成 `motion.spin` / `motion.breathe` 令牌。
+
+`--animate-pulse` 也不再和 `--animate-pulse-dot` 撞名 —— 它们本来就不是一回事：
+一个是透明度呼吸，一个是圆点的缩放心跳。
+
+`McpRow` 里那条注释自己写着：
+
+> they are named here so the variables are the only thing left to own when Tailwind goes.
+
+这一轮就是来还它的。
+
+### 顺手：一条新的守卫
+
+`--shadow-floating` 曾经是一个**任何样式表都没定义过**的名字，
+被图片托盘读着，于是那个托盘根本没有阴影 —— 直到有人拿它跟设计对了一遍才发现。
+
+`check-css-variables`：**没有兜底的 `var()` 必须解析得到定义**。
+带兜底的排除在外 —— `var(--composer-overlay, 0px)` 自己写明了没人设置时的答案。
+
+运行时注入的 7 个走一张显式白名单，**值是设置它的文件**，
+守卫会检查那个文件还提着这个名字 —— 白名单不会烂成一堆借口。
+另一半反着查：列进白名单却没人读的，也报。
+
+两半都验证过会失败（重放 `--shadow-floating`；伪造一个没人读的条目）。
+
+### 重录 2 张，原因说得出来
+
+`agent cwd-missing` 两个主题：横幅的行高从 1.5 走到 1.55，横幅变高，
+底部对齐的整列上移 3px。**逐带做纵向相关，残差为 0** —— 纯平移，只有横幅的高度变了。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **672 / 672** |
+| `:root` 里的 Tailwind 名字 | 6 → **1**（`--spacing`）|
+| 够不着减少动态的动画 | 2 → **0** |
+| 守卫 | 18 项（新增 `check:variables`）|
+| 重录 | 2 张（cwd-missing 两主题）—— 原因：行高回到设计自己的档 |

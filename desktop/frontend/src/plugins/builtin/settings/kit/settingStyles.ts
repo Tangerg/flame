@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { color, leading, radius, space, surface, weight } from "@/styles/tokens.stylex";
+import { color, leading, motion, radius, space, surface, weight } from "@/styles/tokens.stylex";
 
 /**
  * The shapes a settings pane is made of.
@@ -59,7 +59,7 @@ export const settingStyles = stylex.create({
   selfEnd: { alignSelf: "flex-end" },
   /** A caption on the same line as what it labels, rather than above a group. */
   captionInline: { color: color.fgMuted, fontWeight: weight.medium },
-  spin: { animation: "var(--animate-spin)" },
+  spin: { animation: motion.spin },
   afterRow: { marginTop: space.s2_5 },
 
   /** A row the pointer can act on, inside a group that is already a card. */

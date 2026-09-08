@@ -35,7 +35,7 @@ const styles = stylex.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: space.s2_5,
-    lineHeight: leading.normal,
+    lineHeight: leading.body,
   },
   // One line-box tall and centred in it, so the glyph rides the first line of the copy rather
   // than the middle of a paragraph.

@@ -10,6 +10,7 @@ import { useState } from "react";
 import {
   color,
   leading,
+  motion,
   radius,
   space,
   surface,
@@ -48,7 +49,7 @@ const m = stylex.create({
   nameOn: { color: color.accent, fontWeight: weight.medium },
   nameOff: { color: color.fg },
   desc: { marginTop: space.s0_5, color: color.fgMuted, lineHeight: leading.body },
-  spin: { animation: "var(--animate-spin)" },
+  spin: { animation: motion.spin },
 });
 
 export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {

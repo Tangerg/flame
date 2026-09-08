@@ -175,34 +175,16 @@
 }
 
 /*
- * The six values Tailwind's own theme supplied, now stated here.
+ * The one value Tailwind's own theme supplied that this design never had a name for.
  *
- * `--spacing` is the one that matters: every step in `space` is a multiple of it, so without
- * this line the whole product loses its rhythm at once. The rest were read once or twice each
- * — the animations by a reconnect glyph and a connecting badge, `--shadow-md` by a markdown
- * image, and `--tracking-normal` and `--tracking-wide` by a placeholder that opts out of UI
- * tracking and by the fixture's uppercase specimen labels.
+ * Every step in `space` is a multiple of it, so without this line the whole product loses its
+ * rhythm at once. The other five that were carried over with it are gone: each one was a
+ * SECOND answer to a question this design already answers — a shadow beside `.media-edge`, a
+ * 1.5 leading between `snug` and `body`, a zero tracking with no name of its own, and two
+ * animations whose durations were the only ones in the product that ignored `--motion-scale`.
  */
 :root {
   --spacing: 0.25rem;
-  --tracking-normal: 0em;
-  --tracking-wide: 0.025em;
-  --leading-normal: 1.5;
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --animate-spin: spin 1s linear infinite;
-  --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes pulse {
-  50% {
-    opacity: 0.5;
-  }
 }
 
 @font-face {
@@ -286,6 +268,9 @@
   --animate-shimmer: flame-shimmer calc(4000ms * var(--motion-scale)) linear infinite;
   --animate-pulse-dot: flame-pulse calc(1600ms * var(--motion-scale)) ease-in-out infinite;
   --animate-rise-in: flame-rise-in calc(140ms * var(--motion-scale)) cubic-bezier(0.3, 0, 0, 1);
+  --animate-spin: flame-spin calc(1000ms * var(--motion-scale)) linear infinite;
+  --animate-breathe: flame-breathe calc(2000ms * var(--motion-scale)) cubic-bezier(0.4, 0, 0.6, 1)
+    infinite;
 }
 
 /* A CADENCE, not a loop: the sweep takes the first quarter and the text rests muted for the
@@ -318,6 +303,18 @@
   50% {
     opacity: 0.6;
     transform: scale(0.9);
+  }
+}
+/* A whole turn, and a fade. Both arrived from Tailwind at a flat duration, which made them the
+   only two animations in the product that a reduced-motion setting could not reach. */
+@keyframes flame-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes flame-breathe {
+  50% {
+    opacity: 0.5;
   }
 }
 @keyframes flame-rise-in {
@@ -480,6 +477,9 @@
   --leading-relaxed: 1.65;
   --leading-prose: calc(1em + 8px);
 
+  /* The absence of tracking, which is a decision where `--tracking-ui` is the default: mono
+     glyphs and a placeholder are already spaced by something other than this ladder. */
+  --tracking-none: 0em;
   --tracking-ui: -0.011em;
   --tracking-display: -0.02em;
 

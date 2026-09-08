@@ -7,7 +7,7 @@ import { useT } from "@/lib/i18n";
 import { useTokenRevision } from "@/lib/appearance";
 import { useCopyFeedback } from "@/lib/useCopyFeedback";
 import { cn } from "@/lib/classNames";
-import { radius, space, surface } from "@/styles/tokens.stylex";
+import { motion, radius, space, surface } from "@/styles/tokens.stylex";
 
 const mb = stylex.create({
   // The rendered diagram's frame. The `loading` step below is the same frame at a fixed height,
@@ -61,7 +61,7 @@ const mb = stylex.create({
     width: space.s8,
     borderRadius: radius.card,
     backgroundColor: surface.surface3,
-    animation: "var(--animate-pulse)",
+    animation: motion.breathe,
   },
 });
 

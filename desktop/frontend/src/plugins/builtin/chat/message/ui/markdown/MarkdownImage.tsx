@@ -26,7 +26,6 @@ const mi = stylex.create({
     maxWidth: "100%",
     borderRadius: radius.card,
     objectFit: "contain",
-    boxShadow: "var(--shadow-md)",
   },
   // An image that will not load still holds a box, so the paragraph around it does not reflow.
   missing: {

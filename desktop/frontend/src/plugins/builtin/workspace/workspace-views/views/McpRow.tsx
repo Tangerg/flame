@@ -13,7 +13,7 @@ import {
   reconnectMCPServer,
 } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
 import { useMCPServerToolConfigs } from "@/plugins/builtin/workspace/application/toolCatalog";
-import { color, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
+import { color, motion, radius, space, surface, type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "./viewStyles";
 
 // The status is this view's business; how a tone is painted is the Badge's. Before, this
@@ -33,11 +33,11 @@ const STATUS_BADGE: Record<MCPServerSettings["status"], { key: string; tone: Ton
 const TOOL_INSET = "68px";
 
 const mr = stylex.create({
-  // Both animations are Tailwind's own (`--animate-pulse`, `--animate-spin`) rather than this
-  // design's `--animate-pulse-dot`; they are named here so the variables are the only thing
-  // left to own when Tailwind goes.
-  pulsing: { animation: "var(--animate-pulse)" },
-  spinning: { animation: "var(--animate-spin)" },
+  // A connecting server breathes and a reconnecting one turns. Two indeterminate states, so
+  // neither can say how far along it is — what they can say is which one is waiting on the
+  // network and which is waiting on itself.
+  pulsing: { animation: motion.breathe },
+  spinning: { animation: motion.spin },
   // The row publishes what its plate should look like, because the plate brightens when the
   // POINTER IS ON THE ROW rather than on the plate — `group-hover/` with no ancestor selector.
   row: {

@@ -67,7 +67,7 @@ const styles = stylex.create({
   },
   lang: { flexShrink: 0, color: color.fgMuted, fontFamily: "var(--font-sans)" },
   langPlain: {
-    letterSpacing: "var(--tracking-normal)",
+    letterSpacing: "var(--tracking-none)",
     textTransform: "none",
     fontWeight: weight.regular,
   },
