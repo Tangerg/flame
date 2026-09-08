@@ -49,14 +49,14 @@ func restoreInteractionReview(items []agent.Interaction, responses []agent.Inter
 }
 
 func (i *interactionReview) Current() (agent.Interaction, bool) {
-	if i == nil || i.current < 0 || i.current >= len(i.items) {
+	if i.current < 0 || i.current >= len(i.items) {
 		return nil, false
 	}
 	return agent.CloneInteraction(i.items[i.current]), true
 }
 
 func (i *interactionReview) CurrentAnswer() agent.Answer {
-	if i == nil || i.current < 0 || i.current >= len(i.answers) {
+	if i.current < 0 || i.current >= len(i.answers) {
 		return nil
 	}
 	return agent.CloneAnswer(i.answers[i.current])
@@ -75,7 +75,7 @@ func (i *interactionReview) Record(answer agent.Answer) error {
 }
 
 func (i *interactionReview) Advance() bool {
-	if i == nil || i.current >= len(i.items) || i.answers[i.current] == nil {
+	if i.current >= len(i.items) || i.answers[i.current] == nil {
 		return false
 	}
 	i.current++
@@ -83,7 +83,7 @@ func (i *interactionReview) Advance() bool {
 }
 
 func (i *interactionReview) Back() bool {
-	if i == nil || i.current <= 0 {
+	if i.current <= 0 {
 		return false
 	}
 	if i.current >= len(i.items) {
@@ -99,16 +99,13 @@ func (i *interactionReview) completed() bool {
 }
 
 func (i *interactionReview) ReportSubmissionFailure(err error) {
-	if i == nil || err == nil {
+	if err == nil {
 		return
 	}
 	i.submissionFailure = err.Error()
 }
 
 func (i *interactionReview) SubmissionFailure() string {
-	if i == nil {
-		return ""
-	}
 	return i.submissionFailure
 }
 
@@ -117,14 +114,11 @@ func (i *interactionReview) Reviewing() bool {
 }
 
 func (i *interactionReview) Position() (current, total int) {
-	if i == nil {
-		return 0, 0
-	}
 	return min(i.current+1, len(i.items)), len(i.items)
 }
 
 func (i *interactionReview) Responses() ([]agent.InterruptAnswer, error) {
-	if i == nil || len(i.items) == 0 {
+	if len(i.items) == 0 {
 		return nil, errors.New("interaction review is empty")
 	}
 	responses := make([]agent.InterruptAnswer, len(i.items))
@@ -141,16 +135,10 @@ func (i *interactionReview) Responses() ([]agent.InterruptAnswer, error) {
 }
 
 func (i *interactionReview) Items() []agent.Interaction {
-	if i == nil {
-		return nil
-	}
 	return agent.CloneInteractions(i.items)
 }
 
 func (i *interactionReview) Answers() []agent.Answer {
-	if i == nil {
-		return nil
-	}
 	answers := slices.Clone(i.answers)
 	for index := range answers {
 		answers[index] = agent.CloneAnswer(answers[index])

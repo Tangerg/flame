@@ -327,9 +327,6 @@ func (r *readerPane) copy() {
 }
 
 func (r *readerPane) CloseDocument() {
-	if r == nil {
-		return
-	}
 	r.interruptSelectionGesture()
 	release := r.releaseSource
 	r.releaseSource = nil
@@ -357,16 +354,10 @@ func newReaderSectionBlock(theme kit.Theme, title string, content headless.Block
 }
 
 func (r *readerSectionBlock) Measure(width int) int {
-	if r == nil || r.content == nil {
-		return 0
-	}
 	return layout.Sum(r.headingRows(), r.content.Measure(width), 1)
 }
 
 func (r *readerSectionBlock) Draw(view grid.View) {
-	if r == nil || r.content == nil {
-		return
-	}
 	width, height := view.Size()
 	if width <= 0 || height <= 0 {
 		return
@@ -379,9 +370,6 @@ func (r *readerSectionBlock) Draw(view grid.View) {
 }
 
 func (r *readerSectionBlock) Rows(width int) []text.Row {
-	if r == nil || r.content == nil {
-		return nil
-	}
 	rows := make([]text.Row, 0, r.Measure(width))
 	if r.title != "" {
 		rows = append(rows, text.Row{Text: r.title})

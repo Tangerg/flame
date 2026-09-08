@@ -94,14 +94,14 @@ func (q *questionResponse) restore(values []string) {
 }
 
 func (q *questionnaire) Current() (int, agent.QuestionField, bool) {
-	if q == nil || q.current < 0 || q.current >= len(q.question.Fields) {
+	if q.current < 0 || q.current >= len(q.question.Fields) {
 		return 0, agent.QuestionField{}, false
 	}
 	return q.current, q.question.Fields[q.current], true
 }
 
 func (q *questionnaire) Advance() bool {
-	if q == nil || q.current+1 >= len(q.question.Fields) {
+	if q.current+1 >= len(q.question.Fields) {
 		return false
 	}
 	q.current++
@@ -109,7 +109,7 @@ func (q *questionnaire) Advance() bool {
 }
 
 func (q *questionnaire) Back() bool {
-	if q == nil || q.current == 0 {
+	if q.current == 0 {
 		return false
 	}
 	q.current--
@@ -117,17 +117,14 @@ func (q *questionnaire) Back() bool {
 }
 
 func (q *questionnaire) Title() string {
-	if q == nil || len(q.question.Fields) <= 1 {
-		if q == nil {
-			return ""
-		}
+	if len(q.question.Fields) <= 1 {
 		return q.question.Title
 	}
 	return fmt.Sprintf("%s · %d/%d", q.question.Title, q.current+1, len(q.question.Fields))
 }
 
 func (q *questionnaire) response(index int) *questionResponse {
-	if q == nil || index < 0 || index >= len(q.responses) {
+	if index < 0 || index >= len(q.responses) {
 		return nil
 	}
 	return &q.responses[index]
