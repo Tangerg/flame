@@ -58,6 +58,7 @@ func NewSkills(scope *Scope, catalog SkillCatalog, curator SkillCurator, proposa
 		{name: "catalog", value: catalog},
 		{name: "curator", value: curator},
 		{name: "proposal store", value: proposals},
+		{name: "authored observation", value: observations},
 	} {
 		if missingDependency(dependency.value) {
 			return nil, fmt.Errorf("workspace: skills %s is required", dependency.name)
@@ -247,8 +248,6 @@ func (s *Skills) publishSkillMutation(identities []string) {
 	if len(identities) == 0 {
 		return
 	}
-	if s.observations != nil {
-		s.observations.Accept(AuthoredChange{Resource: AuthoredSkills, Identities: identities})
-	}
+	s.observations.Accept(AuthoredChange{Resource: AuthoredSkills, Identities: identities})
 	s.invalidations.Notify(invalidation.Notice{Resource: invalidation.Skills})
 }

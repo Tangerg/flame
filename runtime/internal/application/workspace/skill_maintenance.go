@@ -28,6 +28,9 @@ func NewSkillMaintenance(sweeper IdleSkillSweeper, observations *AuthoredWatch, 
 	if missingDependency(sweeper) {
 		return nil, errors.New("workspace: idle skill sweeper is required")
 	}
+	if missingDependency(observations) {
+		return nil, errors.New("workspace: idle skill authored observation is required")
+	}
 	return &SkillMaintenance{sweeper: sweeper, observations: observations, invalidations: invalidations}, nil
 }
 
@@ -37,9 +40,7 @@ func NewSkillMaintenance(sweeper IdleSkillSweeper, observations *AuthoredWatch, 
 func (s *SkillMaintenance) ArchiveIdle(ctx context.Context, now time.Time, archiveAfter time.Duration) ([]string, error) {
 	archived, identities, err := s.sweeper.SweepIdle(ctx, now, archiveAfter)
 	if len(identities) > 0 {
-		if s.observations != nil {
-			s.observations.Accept(AuthoredChange{Resource: AuthoredSkills, Identities: identities})
-		}
+		s.observations.Accept(AuthoredChange{Resource: AuthoredSkills, Identities: identities})
 		s.invalidations.Notify(invalidation.Notice{Resource: invalidation.Skills})
 	}
 	return archived, err

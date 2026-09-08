@@ -27,7 +27,15 @@ func TestProjectSkillsWithEmptyUserLibrary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	useCases, err := workspaceapp.NewSkills(scope, promptsource.NewWorkspaceSkills(userRoot), store, libraries, nil, nil)
+	watcher, err := workspaceadapter.NewAuthoredWatcher(t.TempDir(), userRoot, filepath.Join(userRoot, "skills"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	observations, err := workspaceapp.NewAuthoredWatch(scope, workspaceadapter.Resolver{}, watcher)
+	if err != nil {
+		t.Fatal(err)
+	}
+	useCases, err := workspaceapp.NewSkills(scope, promptsource.NewWorkspaceSkills(userRoot), store, libraries, observations, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

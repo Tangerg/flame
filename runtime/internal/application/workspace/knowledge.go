@@ -46,6 +46,7 @@ func NewKnowledge(
 		{name: "scope", value: scope},
 		{name: "workspace inspector", value: workspaces},
 		{name: "store", value: store},
+		{name: "authored observation", value: observations},
 	} {
 		if missingDependency(dependency.value) {
 			return nil, fmt.Errorf("workspace: knowledge %s is required", dependency.name)
@@ -140,11 +141,9 @@ func (k *Knowledge) update(ctx context.Context, root string, replacement knowled
 	if entry.Content != replacement.Content() {
 		return knowledge.Entry{}, fmt.Errorf("workspace: knowledge update did not acknowledge its content")
 	}
-	if k.observations != nil {
-		k.observations.Accept(AuthoredChange{
-			Resource: AuthoredKnowledge, Identities: []string{entry.Path},
-		})
-	}
+	k.observations.Accept(AuthoredChange{
+		Resource: AuthoredKnowledge, Identities: []string{entry.Path},
+	})
 	k.invalidations.Notify(invalidation.Notice{Resource: invalidation.Knowledge})
 	return entry, nil
 }

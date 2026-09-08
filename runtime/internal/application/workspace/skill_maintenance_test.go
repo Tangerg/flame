@@ -28,7 +28,7 @@ func TestIdleSkillArchiveNotifiesEveryCommittedPartialSweep(t *testing.T) {
 	wantErr := errors.New("usage metadata unavailable")
 	sweeper := &fakeIdleSkillSweeper{archived: []string{"old-skill"}, err: wantErr}
 	var notices []invalidation.Notice
-	maintenance, err := NewSkillMaintenance(sweeper, nil, func(notice invalidation.Notice) {
+	maintenance, err := NewSkillMaintenance(sweeper, defaultAuthoredWatch(t), func(notice invalidation.Notice) {
 		notices = append(notices, notice)
 	})
 	if err != nil {

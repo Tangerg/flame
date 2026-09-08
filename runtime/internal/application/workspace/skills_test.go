@@ -40,6 +40,9 @@ func newSkills(t *testing.T, scope *Scope, catalog SkillCatalog, curator SkillCu
 	if curator == nil {
 		curator = &fakeSkillCurator{}
 	}
+	if observations == nil {
+		observations = defaultAuthoredWatch(t)
+	}
 	useCases, err := NewSkills(scope, catalog, curator, proposals, observations, publish)
 	if err != nil {
 		t.Fatal(err)
@@ -214,12 +217,14 @@ type fakeSkillCurator struct {
 func (f *fakeSkillCurator) List(context.Context) ([]skills.Entry, error) {
 	return slices.Clone(f.entries), nil
 }
+
 func (f *fakeSkillCurator) Archive(context.Context, string) ([]string, error) {
 	if f.archiveErr != nil {
 		return f.archiveIdentities, f.archiveErr
 	}
 	return []string{"/skills/lint/SKILL.md"}, nil
 }
+
 func (f *fakeSkillCurator) Restore(context.Context, string) ([]string, error) {
 	return []string{"/skills/lint/SKILL.md"}, nil
 }

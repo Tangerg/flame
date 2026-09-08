@@ -196,3 +196,10 @@ func TestAuthoredWatchRejectsInvalidWorkspaceInspection(t *testing.T) {
 type staticWorkspaceInspector struct{ resolved Resolved }
 
 func (s staticWorkspaceInspector) Inspect(string) (Resolved, error) { return s.resolved, nil }
+
+// defaultAuthoredWatch is the observation every use case now requires. A test
+// that does not assert on authored notifications still supplies a real one.
+func defaultAuthoredWatch(t *testing.T) *AuthoredWatch {
+	t.Helper()
+	return newAuthoredWatch(t, newScope(t, "", "", testPaths{}), staticWorkspaceInspector{}, &recordingAuthoredWatcher{})
+}

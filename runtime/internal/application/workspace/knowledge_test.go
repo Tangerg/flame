@@ -36,6 +36,9 @@ func TestNewKnowledgeRequiresCompleteDependencies(t *testing.T) {
 
 func newKnowledge(t *testing.T, scope *Scope, inspector KnowledgeWorkspaceInspector, store KnowledgeStore, observations *AuthoredWatch, publish invalidation.Publish) *Knowledge {
 	t.Helper()
+	if observations == nil {
+		observations = defaultAuthoredWatch(t)
+	}
 	knowledge, err := NewKnowledge(scope, inspector, store, observations, publish)
 	if err != nil {
 		t.Fatal(err)
@@ -59,7 +62,7 @@ func TestRuntimeKnowledgePorts(t *testing.T) {
 	c := newKnowledge(t,
 		newScope(t, "", "", testPaths{}),
 		knowledgeInspector{resolved: Resolved{Path: "/repo/work", ProjectRoot: "/repo"}},
-		store, nil, func(notice invalidation.Notice) { notices = append(notices, notice) },
+		store, defaultAuthoredWatch(t), func(notice invalidation.Notice) { notices = append(notices, notice) },
 	)
 
 	entries, err := c.Entries(ctx, "/repo/work")
@@ -97,7 +100,7 @@ func TestRuntimeKnowledgePorts(t *testing.T) {
 
 func TestRuntimeKnowledgeRejectsUnknownScopeBeforeDispatch(t *testing.T) {
 	store := &fakeKnowledgeStore{}
-	c := newKnowledge(t, newScope(t, "", "", testPaths{}), knowledgeInspector{}, store, nil, nil)
+	c := newKnowledge(t, newScope(t, "", "", testPaths{}), knowledgeInspector{}, store, defaultAuthoredWatch(t), nil)
 	unknown := knowledge.Scope("workspace")
 
 	if _, err := c.Read(t.Context(), unknown, "/repo"); err == nil {
@@ -118,7 +121,7 @@ func TestRuntimeKnowledgeRejectsOversizedContentBeforeStore(t *testing.T) {
 		newScope(t, "", "", testPaths{}),
 		knowledgeInspector{},
 		store,
-		nil,
+		defaultAuthoredWatch(t),
 		func(notice invalidation.Notice) { notices = append(notices, notice) },
 	)
 
@@ -146,7 +149,7 @@ func TestRuntimeKnowledgeRejectsInvalidDurableMaterial(t *testing.T) {
 	curation := newKnowledge(t,
 		newScope(t, "", "", testPaths{}),
 		knowledgeInspector{resolved: Resolved{Path: "/repo/work", ProjectRoot: "/repo"}},
-		store, nil, func(notice invalidation.Notice) { notices = append(notices, notice) },
+		store, defaultAuthoredWatch(t), func(notice invalidation.Notice) { notices = append(notices, notice) },
 	)
 
 	if _, err := curation.Entries(t.Context(), "/repo/work"); err == nil {
@@ -175,7 +178,7 @@ func TestRuntimeKnowledgeMapsInfraContainmentWithoutLeakingFilesystemMechanics(t
 	c := newKnowledge(t,
 		newScope(t, "", "", testPaths{}),
 		knowledgeInspector{resolved: Resolved{Path: "/repo", ProjectRoot: "/repo"}},
-		store, nil, nil,
+		store, defaultAuthoredWatch(t), nil,
 	)
 
 	if _, err := c.Entries(t.Context(), "/repo"); !errors.Is(err, ErrPathOutsideRoot) {
