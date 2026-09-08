@@ -149,7 +149,7 @@ func (c *Compactor) CompactModelContext(
 			)
 		}
 	}
-	c.forgetSessionContext(request.SessionID())
+	c.contextState.ForgetSessionContext(request.SessionID())
 	return result, nil
 }
 

@@ -27,8 +27,7 @@ type compactionStore interface {
 }
 
 // SessionContextInvalidator retires process-local authority derived from model
-// context that a successful compaction replaced. It is optional when no such
-// authority is composed.
+// context that a successful compaction replaced.
 type SessionContextInvalidator interface {
 	ForgetSessionContext(sessionID string)
 }
@@ -62,9 +61,8 @@ type compactionPlan struct {
 // NewCompactor requires a chat history store and per-call chat-client resolver.
 // liveState (nil to disable) snapshots a
 // session's still-active process state so an LLM summary rung can remind the
-// model of running shells the summary cannot reconstruct. contextState may be
-// nil when the Runtime has no process-local authority derived from model
-// context.
+// model of running shells the summary cannot reconstruct. contextState is
+// required to retire read-before-write authority after history changes.
 func NewCompactor(
 	store compactionStore,
 	client modeladapter.AuxiliaryResolver,
@@ -78,23 +76,17 @@ func NewCompactor(
 	if client == nil {
 		return nil, errors.New("compactor: utility model resolver is required")
 	}
+	if nilDependency(contextState) {
+		return nil, errors.New("compactor: session context invalidator is required")
+	}
 	policy, err := newCompactionPolicy(values)
 	if err != nil {
 		return nil, err
-	}
-	if nilDependency(contextState) {
-		contextState = nil
 	}
 	return &Compactor{
 		store: store, client: client, liveState: liveState,
 		contextState: contextState, policy: policy,
 	}, nil
-}
-
-func (c *Compactor) forgetSessionContext(sessionID string) {
-	if c.contextState != nil {
-		c.contextState.ForgetSessionContext(sessionID)
-	}
 }
 
 func (c *Compactor) planCompactionWithProtectedTail(

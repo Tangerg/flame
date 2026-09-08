@@ -39,11 +39,19 @@ func TestMaintenanceConstructorsRejectMissingDependencies(t *testing.T) {
 
 	tests := map[string]func() error{
 		"compactor typed-nil conversation store": func() error {
-			_, err := NewCompactor(typedNilHistory, unexpectedClient, nil, CompactionPolicyValues{}, nil)
+			_, err := NewCompactor(typedNilHistory, unexpectedClient, nil, CompactionPolicyValues{}, new(recordingSessionContextInvalidator))
 			return err
 		},
 		"compactor utility model resolver": func() error {
-			_, err := NewCompactor(history, nil, nil, CompactionPolicyValues{}, nil)
+			_, err := NewCompactor(history, nil, nil, CompactionPolicyValues{}, new(recordingSessionContextInvalidator))
+			return err
+		},
+		"compactor context invalidator": func() error {
+			_, err := NewCompactor(history, unexpectedClient, nil, CompactionPolicyValues{}, nil)
+			return err
+		},
+		"compactor typed-nil context invalidator": func() error {
+			_, err := NewCompactor(history, unexpectedClient, nil, CompactionPolicyValues{}, (*recordingSessionContextInvalidator)(nil))
 			return err
 		},
 		"memory conversation reader": func() error {

@@ -967,3 +967,41 @@ func contextTokenEstimate(t *testing.T, candidate []chat.Message) int {
 		chat.Options{},
 	)
 }
+
+func TestFailedCompactionCommitPreservesSessionContextAuthority(t *testing.T) {
+	cause := errors.New("compaction commit failed")
+	store := failedCompactionStore{compactionTestStore: newCompactionTestStore(), cause: cause}
+	const sessionID = "session:failed-compaction-commit"
+	history := completeContextTurns()
+	if err := store.Write(t.Context(), sessionID, history...); err != nil {
+		t.Fatal(err)
+	}
+	model := newTextStubModel("COMPACTION SUMMARY")
+	client, err := chatclient.New(model, chatclient.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalidator := new(recordingSessionContextInvalidator)
+	compactor := mustNewCompactor(t, store, constClient(client), nil,
+		CompactionPolicyValues{MaxTokens: intPointer(contextTokenEstimate(t, history))}, invalidator)
+	request := durableContextRequest(t, sessionID, history, 0, nil)
+	if _, err := compactor.CompactModelContext(t.Context(), request); !errors.Is(err, cause) {
+		t.Fatalf("CompactModelContext = %v, want commit failure", err)
+	}
+	if len(invalidator.sessions) != 0 {
+		t.Fatal("failed commit retired unchanged context authority")
+	}
+	after, err := store.Read(t.Context(), sessionID)
+	if err != nil || !reflect.DeepEqual(after, history) {
+		t.Fatalf("history after failed commit = (%v, %v)", after, err)
+	}
+}
+
+type failedCompactionStore struct {
+	*compactionTestStore
+	cause error
+}
+
+func (s failedCompactionStore) RewriteForCompaction(context.Context, string, int, int, int, ...chat.Message) error {
+	return s.cause
+}

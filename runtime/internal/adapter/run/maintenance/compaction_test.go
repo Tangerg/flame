@@ -57,7 +57,7 @@ func mustNewCompactor(
 	if len(contextStates) > 1 {
 		t.Fatal("mustNewCompactor accepts at most one context invalidator")
 	}
-	var contextState SessionContextInvalidator
+	var contextState SessionContextInvalidator = new(recordingSessionContextInvalidator)
 	if len(contextStates) == 1 {
 		contextState = contextStates[0]
 	}

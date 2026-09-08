@@ -275,11 +275,14 @@ func buildExecutionComposition(
 		Goal:              policy.goalReader,
 		Hooks:             workspaceServices.hookResolver,
 	})
-	transientSessions := agentexec.NewTransientSessionState(
+	transientSessions, err := agentexec.NewTransientSessionState(
 		workingContexts,
 		toolRuntime.tools.Resolver,
 		toolRuntime.tools.Shells,
 	)
+	if err != nil {
+		return executionComposition{}, fmt.Errorf("runtime: build transient Session state: %w", err)
+	}
 	toolAuthorizer, err := agentexec.NewToolAuthorizer(policy.approvals)
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: Tool authorizer: %w", err)
