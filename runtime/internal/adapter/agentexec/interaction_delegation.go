@@ -185,16 +185,10 @@ func runtimeContractSchema[T any]() (agent.Schema, error) {
 }
 
 func (d *delegatedInteractionDefinition) Descriptor() agent.Descriptor {
-	if d == nil {
-		return agent.Descriptor{}
-	}
 	return d.descriptor
 }
 
 func (d *delegatedInteractionDefinition) Start(input agent.Input) (agent.Execution, error) {
-	if d == nil || d.inner == nil || !d.descriptor.Valid() {
-		return nil, errors.New("agentexec: delegated Interaction definition is invalid")
-	}
 	task, err := input.Decode[delegateInput]()
 	if err != nil {
 		return nil, fmt.Errorf("agentexec: decode delegated task: %w", err)
@@ -218,9 +212,6 @@ func (d *delegatedInteractionDefinition) Start(input agent.Input) (agent.Executi
 func (d *delegatedInteractionDefinition) Restore(
 	state agent.ExecutionState,
 ) (agent.Execution, error) {
-	if d == nil || d.inner == nil || !d.descriptor.Valid() {
-		return nil, errors.New("agentexec: delegated Interaction definition is invalid")
-	}
 	execution, err := d.inner.Restore(state)
 	if err != nil {
 		return nil, err

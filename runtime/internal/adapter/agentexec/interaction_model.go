@@ -178,13 +178,16 @@ func (o *observedInteractionModel) begin(
 		return interaction.ModelInvocation{}, nil, "", nil, err
 	}
 	callID = callIdentity.String()
-	allowanceTurn, err = o.acquireAllowance(ctx)
+	// The turn is held in a local: a failure below returns a nil allowanceTurn
+	// result, and a cleanup that read the named result would release nothing and
+	// wedge the next model call on a finite Run.
+	turn, err := o.acquireAllowance(ctx)
 	if err != nil {
 		return interaction.ModelInvocation{}, nil, "", nil, err
 	}
 	defer func() {
 		if err != nil {
-			allowanceTurn.release()
+			turn.release()
 		}
 	}()
 	member := o.session.executorMember(invocation.Relation())
@@ -198,7 +201,7 @@ func (o *observedInteractionModel) begin(
 			fmt.Errorf("agentexec: commit model call start: %w", err),
 		)
 	}
-	return invocation, attempt, callID, allowanceTurn, nil
+	return invocation, attempt, callID, turn, nil
 }
 
 func (o *observedInteractionModel) acquireAllowance(ctx context.Context) (*interactionAllowanceTurn, error) {

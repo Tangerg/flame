@@ -75,9 +75,6 @@ func newInteractionAllowance(
 // so another Process cannot make an admission decision from the same stale
 // tree-wide accounting fact. Unlimited Runs retain framework concurrency.
 func (a *interactionAllowance) acquire(ctx context.Context) (*interactionAllowanceTurn, error) {
-	if a == nil {
-		return nil, errors.New("agentexec: Run allowance is unavailable")
-	}
 	if a.turn == nil {
 		return &interactionAllowanceTurn{}, nil
 	}
@@ -101,17 +98,17 @@ type interactionAllowanceTurn struct {
 	once      sync.Once
 }
 
+// release returns the serialized turn. An unlimited Run holds no turn, so its
+// zero handle releases nothing; a caller that lost the handle is a cleanup bug
+// this must not absorb.
 func (t *interactionAllowanceTurn) release() {
-	if t == nil || t.allowance == nil {
+	if t.allowance == nil {
 		return
 	}
 	t.once.Do(func() { t.allowance.turn <- struct{}{} })
 }
 
 func (a *interactionAllowance) admit(snapshot accounting.Snapshot) error {
-	if a == nil {
-		return errors.New("agentexec: Run allowance is unavailable")
-	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.stop != interactionAllowanceOpen {
@@ -173,9 +170,6 @@ func costAllowanceStop(limits run.Limits, total accounting.ModelUsage) interacti
 }
 
 func (a *interactionAllowance) terminal() interactionAllowanceStop {
-	if a == nil {
-		return interactionAllowanceOpen
-	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.stop
