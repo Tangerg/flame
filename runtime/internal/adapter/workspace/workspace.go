@@ -73,14 +73,15 @@ func NewCheckpoints(checkpointDir string) *Checkpoints {
 }
 
 // CheckpointsEnabled reports whether file checkpoints are available — backs
-// the features.checkpoints flag. Nil-safe.
+// the features.checkpoints flag. An unconfigured checkpoint directory is a
+// user-disabled feature, not a missing collaborator.
 func (c *Checkpoints) CheckpointsEnabled() bool {
-	return c != nil && c.store != nil
+	return c.store != nil
 }
 
 // Snapshot anchors sessionID's working tree (at cwd) under runID so a later
 // Restore can revert to it. Best-effort: a disabled store is a silent no-op,
-// so the caller never fails a run on snapshot trouble. Nil-safe.
+// so the caller never fails a run on snapshot trouble.
 func (c *Checkpoints) Snapshot(ctx context.Context, sessionID, cwd, runID string) error {
 	if !c.CheckpointsEnabled() {
 		return nil
@@ -110,7 +111,7 @@ func (c *Checkpoints) Snapshot(ctx context.Context, sessionID, cwd, runID string
 // Restore resets sessionID's working tree (at cwd) to the runID snapshot. A
 // disabled store or missing snapshot surfaces as [ErrCheckpointUnavailable]; a
 // failed reset that may have changed part of the tree surfaces as
-// [ErrCheckpointRestoreIncomplete]. Nil-safe.
+// [ErrCheckpointRestoreIncomplete].
 func (c *Checkpoints) Restore(ctx context.Context, sessionID, cwd, runID string) error {
 	if !c.CheckpointsEnabled() {
 		return ErrCheckpointUnavailable
@@ -119,7 +120,7 @@ func (c *Checkpoints) Restore(ctx context.Context, sessionID, cwd, runID string)
 }
 
 // DropSession removes a session's shadow repo (on session delete).
-// Best-effort, nil-safe no-op when checkpoints are disabled.
+// Best-effort no-op when checkpoints are disabled.
 func (c *Checkpoints) DropSession(sessionID string) error {
 	if !c.CheckpointsEnabled() {
 		return nil

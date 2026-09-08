@@ -51,9 +51,6 @@ func PrepareDataDirectory(ctx context.Context, directory string) (*DataDirectory
 
 // Release ends the setup window. It is retryable and idempotent.
 func (d *DataDirectorySetup) Release() error {
-	if d == nil {
-		return nil
-	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.released {

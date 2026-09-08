@@ -96,9 +96,6 @@ func newWorkspace(ctx context.Context, config Config, source string, runner comm
 
 // Path returns the process-local workspace path while the backend exists.
 func (w *Workspace) Path() (string, error) {
-	if w == nil {
-		return "", ErrShutdown
-	}
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 	if w.state == workspaceShutdown {
@@ -110,9 +107,6 @@ func (w *Workspace) Path() (string, error) {
 // Run executes one command in the isolated workspace. Holding the read lock
 // for the command lifetime makes Shutdown wait for all in-flight work.
 func (w *Workspace) Run(ctx context.Context, input toolshell.Input) (toolshell.Output, error) {
-	if w == nil {
-		return toolshell.Output{}, ErrShutdown
-	}
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 	if w.state == workspaceShutdown {
@@ -124,9 +118,6 @@ func (w *Workspace) Run(ctx context.Context, input toolshell.Input) (toolshell.O
 // Shutdown destroys the process-local backend. A failed removal leaves the
 // state retryable.
 func (w *Workspace) Shutdown() error {
-	if w == nil {
-		return nil
-	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.state == workspaceShutdown {

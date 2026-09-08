@@ -278,9 +278,6 @@ func validateDiscovery(discovery *protocol.DiscoverResponse) error {
 // Close completes the in-process Runtime teardown. Call it again when it returns
 // an error; flameruntime.Runtime.Close resumes incomplete teardown.
 func (r *Connection) Close() error {
-	if r == nil || r.lifecycle == nil {
-		return nil
-	}
 	return classifyError(r.lifecycle.Close())
 }
 

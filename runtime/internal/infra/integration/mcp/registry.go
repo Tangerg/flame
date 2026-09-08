@@ -21,11 +21,8 @@ type toolListTarget struct {
 }
 
 // Statuses returns one cached entry per server attached to the live projection
-// (connected and failed alike), in dial order. Nil-safe.
+// (connected and failed alike), in dial order.
 func (c *Connections) Statuses() []mcpserver.ConnectionStatus {
-	if c == nil {
-		return nil
-	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	out := make([]mcpserver.ConnectionStatus, 0, len(c.servers))
@@ -42,11 +39,8 @@ func (c *Connections) Statuses() []mcpserver.ConnectionStatus {
 // Tools lists the tools advertised by the connected servers, scoped to server
 // when non-empty. It queries each session's tools/list live and preserves
 // connection and upstream encounter order; Application owns public catalog
-// order. Nil-safe.
+// order.
 func (c *Connections) Tools(ctx context.Context, serverName *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
-	if c == nil {
-		return nil, nil
-	}
 	targets := c.toolListTargets(serverName)
 	var out []mcpserver.AdvertisedTool
 	for _, target := range targets {
@@ -151,9 +145,6 @@ func decodeAdvertisedTool(
 // session. Session teardown remains owned by Connections and is joined by
 // Shutdown; it never delays the application control-plane mutation.
 func (c *Connections) Detach(name mcpserver.ServerName) error {
-	if c == nil {
-		return ErrConnectionsUnavailable
-	}
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
@@ -223,9 +214,6 @@ func (c *Connections) publishTools() {
 // its transport closer even when it returns an error, so that diagnostic is
 // terminal and the session leaves the ledger after the attempt completes.
 func (c *Connections) Shutdown(ctx context.Context) error {
-	if c == nil {
-		return nil
-	}
 	if ctx == nil {
 		return errors.New("mcp: shutdown context is required")
 	}

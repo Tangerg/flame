@@ -85,9 +85,6 @@ func (p *pathLocker) releaseRef(path string, l *pathLock) {
 // canonical physical identity used by the lock. This makes model-order
 // scheduling agree with execution for relative, absolute, and symlink aliases.
 func withPathLock(inner toolcontract.Tool, locker *pathLocker, cwd string) toolcontract.Tool {
-	if locker == nil {
-		return inner
-	}
 	return &pathLocked{inner: inner, locker: locker, cwd: cwd}
 }
 

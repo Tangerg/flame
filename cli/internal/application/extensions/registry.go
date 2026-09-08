@@ -113,9 +113,6 @@ type disposal struct {
 }
 
 func (d *disposal) Dispose() error {
-	if d == nil {
-		return nil
-	}
 	d.once.Do(func() { d.err = d.do() })
 	return d.err
 }
@@ -182,9 +179,6 @@ type Loaded struct {
 // Dispose unloads a plugin. Every cleanup runs even when another returns an
 // error or panics; the joined result is stable across repeated calls.
 func (l *Loaded) Dispose() error {
-	if l == nil {
-		return nil
-	}
 	l.once.Do(func() {
 		var failures []error
 		for _, disposable := range slices.Backward(l.disposables) {

@@ -367,12 +367,3 @@ func advertisedFeatures(enabled map[string]bool) map[string]protocol.FeatureCapa
 	}
 	return out
 }
-
-// ─── helpers ────────────────────────────────────────────────────────
-
-// capabilityNotNegotiated marks a protocol method that exists in the contract
-// but isn't backed on this build. Maps to capability_not_negotiated
-// — consistent with the feature flag advertised through discovery.
-func capabilityNotNegotiated(method string) error {
-	return fmt.Errorf("%w: %s", protocol.ErrCapabilityNotNeg, method)
-}

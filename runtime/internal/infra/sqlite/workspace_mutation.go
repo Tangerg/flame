@@ -39,9 +39,6 @@ func NewWorkspaceMutationStore(db *sql.DB) *WorkspaceMutationStore {
 // (the mutation slot admits one in-flight rollback per session, so this is
 // effectively an insert). created_at is stamped by the DB default.
 func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutationRecord) error {
-	if w == nil {
-		return nil
-	}
 	if err := validateSessionResource("record workspace mutation", m.SessionID); err != nil {
 		return err
 	}
@@ -75,9 +72,6 @@ func (w *WorkspaceMutationStore) Record(ctx context.Context, m WorkspaceMutation
 // requested, durable truncation have committed. Idempotent: deleting an absent
 // row is not an error, so re-completion is a no-op.
 func (w *WorkspaceMutationStore) Complete(ctx context.Context, sessionID string) error {
-	if w == nil {
-		return nil
-	}
 	if err := validateSessionResource("complete workspace mutation", sessionID); err != nil {
 		return err
 	}
@@ -92,9 +86,6 @@ func (w *WorkspaceMutationStore) Complete(ctx context.Context, sessionID string)
 // ListPending returns every rollback a crash left unfinished, oldest first, for
 // boot recovery to re-drive.
 func (w *WorkspaceMutationStore) ListPending(ctx context.Context) ([]WorkspaceMutationRecord, error) {
-	if w == nil {
-		return nil, nil
-	}
 	rows, err := w.db.QueryContext(ctx,
 		`SELECT session_id, cwd, to_run_id, restore_history FROM pending_workspace_mutations ORDER BY created_at`)
 	if err != nil {

@@ -16,10 +16,6 @@ var ErrUnknownServer = errors.New("mcp: unknown server")
 // new registry instead of reviving sessions behind the component owner's back.
 var ErrConnectionsClosed = errors.New("mcp: connections closed")
 
-// ErrConnectionsUnavailable reports a missing live connection pool. Mutating a
-// nil pool is a composition error, never a successful no-op.
-var ErrConnectionsUnavailable = errors.New("mcp: connections unavailable")
-
 type dialErrorKind uint8
 
 const dialErrorNeedsAuth dialErrorKind = iota + 1

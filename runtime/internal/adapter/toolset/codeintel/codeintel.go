@@ -81,30 +81,19 @@ func serverSpecsFromLSP(servers []lsp.ServerSpec) []ServerSpec {
 	return out
 }
 
-// Close shuts down every launched language server. Safe on a nil receiver
-// / nil server set (a no-op).
+// Close shuts down every launched language server.
 func (a *Analyzer) Close() error {
-	if a == nil || a.servers == nil {
-		return nil
-	}
 	return a.servers.Close()
 }
 
-// Supported reports whether a configured language server handles file's
-// type. False on a nil receiver.
+// Supported reports whether a configured language server handles file's type.
 func (a *Analyzer) Supported(file string) bool {
-	if a == nil || a.servers == nil {
-		return false
-	}
 	return a.servers.Supported(file)
 }
 
 // Definition returns the declaration location(s) of the symbol at the
 // 1-based (line, column) in file, as root-relative file:line:col lines.
 func (a *Analyzer) Definition(ctx context.Context, root, file string, line, column int) (string, error) {
-	if a == nil {
-		return noServerMsg, nil
-	}
 	locs, err := a.servers.Definition(ctx, root, file, toPosition(line, column))
 	if msg, handled := foldNoServer(err); handled {
 		return msg, nil
@@ -118,9 +107,6 @@ func (a *Analyzer) Definition(ctx context.Context, root, file string, line, colu
 // References returns every reference (including the declaration) to the
 // symbol at the 1-based (line, column) in file, as root-relative locations.
 func (a *Analyzer) References(ctx context.Context, root, file string, line, column int) (string, error) {
-	if a == nil {
-		return noServerMsg, nil
-	}
 	locs, err := a.servers.References(ctx, root, file, toPosition(line, column))
 	if msg, handled := foldNoServer(err); handled {
 		return msg, nil
@@ -135,9 +121,6 @@ func (a *Analyzer) References(ctx context.Context, root, file string, line, colu
 // or abstract method at the 1-based (line, column) in file — e.g. every type
 // that implements the interface method under the cursor.
 func (a *Analyzer) Implementation(ctx context.Context, root, file string, line, column int) (string, error) {
-	if a == nil {
-		return noServerMsg, nil
-	}
 	locs, err := a.servers.Implementation(ctx, root, file, toPosition(line, column))
 	if msg, handled := foldNoServer(err); handled {
 		return msg, nil
@@ -151,9 +134,6 @@ func (a *Analyzer) Implementation(ctx context.Context, root, file string, line, 
 // IncomingCalls lists the callers of the function/method at the 1-based
 // (line, column) in file (who calls it). OutgoingCalls lists its callees.
 func (a *Analyzer) IncomingCalls(ctx context.Context, root, file string, line, column int) (string, error) {
-	if a == nil {
-		return noServerMsg, nil
-	}
 	syms, err := a.servers.IncomingCalls(ctx, root, file, toPosition(line, column))
 	if msg, handled := foldNoServer(err); handled {
 		return msg, nil
@@ -165,9 +145,6 @@ func (a *Analyzer) IncomingCalls(ctx context.Context, root, file string, line, c
 }
 
 func (a *Analyzer) OutgoingCalls(ctx context.Context, root, file string, line, column int) (string, error) {
-	if a == nil {
-		return noServerMsg, nil
-	}
 	syms, err := a.servers.OutgoingCalls(ctx, root, file, toPosition(line, column))
 	if msg, handled := foldNoServer(err); handled {
 		return msg, nil
@@ -181,9 +158,6 @@ func (a *Analyzer) OutgoingCalls(ctx context.Context, root, file string, line, c
 // Hover returns the hover text (type signature, documentation) for the
 // symbol at the 1-based (line, column) in file.
 func (a *Analyzer) Hover(ctx context.Context, root, file string, line, column int) (string, error) {
-	if a == nil {
-		return noServerMsg, nil
-	}
 	text, err := a.servers.Hover(ctx, root, file, toPosition(line, column))
 	if msg, handled := foldNoServer(err); handled {
 		return msg, nil
@@ -199,9 +173,6 @@ func (a *Analyzer) Hover(ctx context.Context, root, file string, line, column in
 
 // DocumentSymbols lists the symbols declared in file (root-relative).
 func (a *Analyzer) DocumentSymbols(ctx context.Context, root, file string) (string, error) {
-	if a == nil {
-		return noServerMsg, nil
-	}
 	syms, err := a.servers.DocumentSymbols(ctx, root, file)
 	if msg, handled := foldNoServer(err); handled {
 		return msg, nil
@@ -214,9 +185,6 @@ func (a *Analyzer) DocumentSymbols(ctx context.Context, root, file string) (stri
 
 // WorkspaceSymbols searches the whole workspace for symbols matching query.
 func (a *Analyzer) WorkspaceSymbols(ctx context.Context, root, query string) (string, error) {
-	if a == nil {
-		return noServerMsg, nil
-	}
 	syms, err := a.servers.WorkspaceSymbols(ctx, root, query)
 	if msg, handled := foldNoServer(err); handled {
 		return msg, nil
@@ -229,9 +197,6 @@ func (a *Analyzer) WorkspaceSymbols(ctx context.Context, root, query string) (st
 
 // Diagnostics returns the language server's current problems for file.
 func (a *Analyzer) Diagnostics(ctx context.Context, root, file string) (string, error) {
-	if a == nil {
-		return noServerMsg, nil
-	}
 	diags, err := a.servers.Diagnostics(ctx, root, file)
 	if msg, handled := foldNoServer(err); handled {
 		return msg, nil

@@ -51,9 +51,7 @@ func (c *Connections) Reconnect(ctx context.Context, name mcpserver.ServerName) 
 // config, then refreshes the model-facing tool set so the model immediately
 // sees the (re)connected server. It is the runtime-mutable counterpart to the
 // boot-time [Dial]: mcp.servers.create/update and re-enabling a server route here.
-// Serialized with [Reconnect] (both dial + swap a session). Nil-safe only on a
-// nil receiver is NOT supported — Configure mutates and a nil here is a wiring
-// bug, so callers hold a real *Connections.
+// Serialized with [Reconnect]: both dial and swap a session.
 func (c *Connections) Configure(ctx context.Context, cfg ServerConfig) error {
 	cfg = cfg.Clone()
 	if err := cfg.Validate(); err != nil {

@@ -111,13 +111,6 @@ func TestDialRequiresStartupAndProcessLifetimes(t *testing.T) {
 	}
 }
 
-func TestNilConnectionsRejectRemoval(t *testing.T) {
-	var connections *Connections
-	if err := connections.Detach(testMCPServerName("server")); !errors.Is(err, ErrConnectionsUnavailable) {
-		t.Fatalf("Detach on nil pool = %v, want ErrConnectionsUnavailable", err)
-	}
-}
-
 func TestConnectionsShutdownCancelsAndJoinsAttempts(t *testing.T) {
 	c := &Connections{lifetime: t.Context()}
 	target := &server{config: ServerConfig{Name: testMCPServerName("server")}}
@@ -156,7 +149,8 @@ func TestConnectionsShutdownSettlesTerminalSessionCloseError(t *testing.T) {
 			return closeErr
 		}),
 	}
-	c := &Connections{lifetime: t.Context(),
+	c := &Connections{
+		lifetime: t.Context(),
 		closed:   true,
 		sessions: map[*sdkmcp.ClientSession]*ownedSession{session: owned},
 	}

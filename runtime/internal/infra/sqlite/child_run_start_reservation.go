@@ -98,9 +98,6 @@ func (c *ChildRunStartReservationStore) Reserve(
 	ctx context.Context,
 	record ChildRunStartReservationRecord,
 ) error {
-	if c == nil || c.db == nil {
-		return errors.New("sqlite: child Run start reservation store is unavailable")
-	}
 	if err := record.validate(); err != nil {
 		return err
 	}
@@ -140,9 +137,6 @@ func (c *ChildRunStartReservationStore) Conclude(
 	record ChildRunStartReservationRecord,
 	conclusion ChildRunStartConclusion,
 ) (bool, error) {
-	if c == nil || c.db == nil {
-		return false, errors.New("sqlite: child Run start reservation store is unavailable")
-	}
 	if err := record.validate(); err != nil {
 		return false, err
 	}
@@ -193,9 +187,6 @@ func (c *ChildRunStartReservationStore) DeleteSession(
 	ctx context.Context,
 	sessionID string,
 ) error {
-	if c == nil || c.db == nil {
-		return errors.New("sqlite: child Run start reservation store is unavailable")
-	}
 	if _, err := resourceid.ParseSession(sessionID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidChildRunStartReservation, err)
 	}
@@ -212,9 +203,6 @@ func (c *ChildRunStartReservationStore) DeleteSession(
 // when the corresponding public Run is a coherent parked tree preserved for
 // later restore.
 func (c *ChildRunStartReservationStore) DeleteAll(ctx context.Context) error {
-	if c == nil || c.db == nil {
-		return errors.New("sqlite: child Run start reservation store is unavailable")
-	}
 	if _, err := conn(ctx, c.db).ExecContext(ctx,
 		`DELETE FROM child_run_start_reservations`,
 	); err != nil {

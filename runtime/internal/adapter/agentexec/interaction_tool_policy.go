@@ -40,9 +40,6 @@ func (t *ToolAuthorizer) AuthorizeTool(
 	ctx context.Context,
 	request ToolAuthorizationRequest,
 ) (ToolAuthorizationDecision, error) {
-	if t == nil || t.policy == nil {
-		return ToolAuthorizationDecision{}, errors.New("agentexec: Tool authorizer is unavailable")
-	}
 	if err := validateToolAuthorizationRequest(request); err != nil {
 		return ToolAuthorizationDecision{}, err
 	}
@@ -103,9 +100,6 @@ func (t *ToolAuthorizer) ResolveToolApproval(
 	prompt runs.ApprovalPrompt,
 	resolution interrupt.Resolution,
 ) (ToolAuthorizationDecision, error) {
-	if t == nil || t.policy == nil {
-		return ToolAuthorizationDecision{}, errors.New("agentexec: Tool authorizer is unavailable")
-	}
 	if err := validateToolAuthorizationRequest(request); err != nil {
 		return ToolAuthorizationDecision{}, err
 	}

@@ -52,38 +52,23 @@ func Open(
 }
 
 func (p *Pool) Statuses() []mcpserver.ConnectionStatus {
-	if p == nil || p.inner == nil {
-		return nil
-	}
 	return p.inner.Statuses()
 }
 
 func (p *Pool) Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
-	if p == nil || p.inner == nil {
-		return nil, nil
-	}
 	items, err := p.inner.Tools(ctx, server)
 	return items, mapError(err)
 }
 
 func (p *Pool) Reconnect(ctx context.Context, name mcpserver.ServerName) error {
-	if p == nil || p.inner == nil {
-		return mcpserver.ErrUnknownServer
-	}
 	return mapError(p.inner.Reconnect(ctx, name))
 }
 
 func (p *Pool) Authorize(ctx context.Context, name mcpserver.ServerName) error {
-	if p == nil || p.inner == nil {
-		return mcpserver.ErrUnknownServer
-	}
 	return mapError(p.inner.Authorize(ctx, name))
 }
 
 func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
-	if p == nil || p.inner == nil {
-		return mcpserver.ErrUnknownServer
-	}
 	cfg, err := configFromServer(server)
 	if err != nil {
 		return err
@@ -92,9 +77,6 @@ func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
 }
 
 func (p *Pool) Configure(ctx context.Context, server mcpserver.Server) error {
-	if p == nil || p.inner == nil {
-		return mcpserver.ErrUnknownServer
-	}
 	cfg, err := configFromServer(server)
 	if err != nil {
 		return err
@@ -103,26 +85,17 @@ func (p *Pool) Configure(ctx context.Context, server mcpserver.Server) error {
 }
 
 func (p *Pool) Detach(name mcpserver.ServerName) error {
-	if p == nil || p.inner == nil {
-		return mcp.ErrConnectionsUnavailable
-	}
 	return mapError(p.inner.Detach(name))
 }
 
 // SetToolSink wires live connection changes to the resolver's atomically
 // replaceable MCP tool catalog.
 func (p *Pool) SetToolSink(sink func([]toolcontract.Tool)) {
-	if p == nil || p.inner == nil {
-		return
-	}
 	p.inner.SetToolSink(sink)
 }
 
 // Shutdown releases every live connection under the caller's shutdown budget.
 func (p *Pool) Shutdown(ctx context.Context) error {
-	if p == nil || p.inner == nil {
-		return nil
-	}
 	return p.inner.Shutdown(ctx)
 }
 

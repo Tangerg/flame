@@ -245,9 +245,6 @@ func (f fingerprintContextReader) Read(buffer []byte) (int, error) {
 // closure and resolved workspace root. It is a filesystem decorator, not an LSP
 // query tool, so it lives here rather than in package lsp.
 func withMutationDiagnostics(inner toolcontract.Tool, ci *codeintel.Analyzer, root string) toolcontract.Tool {
-	if ci == nil {
-		return inner
-	}
 	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
 		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
