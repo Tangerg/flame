@@ -33,7 +33,7 @@ func Delete(
 	runtime deletionRuntime,
 	authoring *workbench.Store,
 	sessionID string,
-	policy commandreplay.Policy,
+	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 ) (DeletionResult, error) {
 	if authoring == nil {
@@ -83,7 +83,7 @@ func settleDeletion(
 	runtime deletionRuntime,
 	request agent.DeleteSession,
 	replay commandreplay.Guard,
-	policy commandreplay.Policy,
+	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 	fresh bool,
 ) (mutation.Outcome, error) {
@@ -142,7 +142,7 @@ func RecoverDeletions(
 	ctx context.Context,
 	runtime deletionRuntime,
 	authoring *workbench.Store,
-	policy commandreplay.Policy,
+	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 ) error {
 	for _, pending := range authoring.PendingSessionDeletions() {
@@ -193,7 +193,7 @@ func resolveExpired(
 	runtime deletionRuntime,
 	sessionID string,
 	replay commandreplay.Guard,
-	policy commandreplay.Policy,
+	policy mutation.ReplayPolicy,
 ) (mutation.Outcome, error) {
 	if !policy.SameStore(replay) {
 		return mutation.Unknown, errors.New("session deletion belongs to another runtime")

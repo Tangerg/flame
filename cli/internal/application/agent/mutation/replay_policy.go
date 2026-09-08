@@ -1,8 +1,10 @@
-package commandreplay
+package mutation
 
 import (
 	"errors"
 	"time"
+
+	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
 
 type policyKind uint8
@@ -12,39 +14,39 @@ const (
 	policyAdvertised
 )
 
-// Policy joins the currently connected Runtime replay capability with the
+// ReplayPolicy joins the currently connected Runtime replay capability with the
 // clock used to evaluate it. Unavailable is explicit and never reconstructed
 // from empty capability fields.
-type Policy struct {
+type ReplayPolicy struct {
 	kind       policyKind
-	capability Capability
+	capability commandreplay.Capability
 	now        func() time.Time
 }
 
-func NewPolicyWithClock(capability Capability, now func() time.Time) (Policy, error) {
+func NewReplayPolicy(capability commandreplay.Capability, now func() time.Time) (ReplayPolicy, error) {
 	if err := capability.Validate(); err != nil {
-		return Policy{}, err
+		return ReplayPolicy{}, err
 	}
 	if now == nil {
-		return Policy{}, errors.New("command replay policy clock is nil")
+		return ReplayPolicy{}, errors.New("command replay policy clock is nil")
 	}
-	return Policy{kind: policyAdvertised, capability: capability, now: now}, nil
+	return ReplayPolicy{kind: policyAdvertised, capability: capability, now: now}, nil
 }
 
-func UnavailablePolicyWithClock(now func() time.Time) (Policy, error) {
+func UnavailableReplayPolicy(now func() time.Time) (ReplayPolicy, error) {
 	if now == nil {
-		return Policy{}, errors.New("command replay policy clock is nil")
+		return ReplayPolicy{}, errors.New("command replay policy clock is nil")
 	}
-	return Policy{kind: policyUnavailable, now: now}, nil
+	return ReplayPolicy{kind: policyUnavailable, now: now}, nil
 }
 
-func (p Policy) Validate() error {
+func (p ReplayPolicy) Validate() error {
 	if p.now == nil {
 		return errors.New("command replay policy clock is nil")
 	}
 	switch p.kind {
 	case policyUnavailable:
-		if p.capability != (Capability{}) {
+		if p.capability != (commandreplay.Capability{}) {
 			return errors.New("unavailable command replay policy carries a capability")
 		}
 		return nil
@@ -55,29 +57,29 @@ func (p Policy) Validate() error {
 	}
 }
 
-func (p Policy) Available() bool { return p.kind == policyAdvertised }
+func (p ReplayPolicy) Available() bool { return p.kind == policyAdvertised }
 
-func (p Policy) Now() time.Time { return p.now().UTC() }
+func (p ReplayPolicy) Now() time.Time { return p.now().UTC() }
 
-func (p Policy) NewGuard() (Guard, error) {
+func (p ReplayPolicy) NewGuard() (commandreplay.Guard, error) {
 	return p.NewGuardAt(p.Now())
 }
 
-func (p Policy) NewGuardAt(stagedAt time.Time) (Guard, error) {
+func (p ReplayPolicy) NewGuardAt(stagedAt time.Time) (commandreplay.Guard, error) {
 	if err := p.Validate(); err != nil {
-		return Guard{}, err
+		return commandreplay.Guard{}, err
 	}
 	if p.kind == policyUnavailable {
-		return UnprotectedGuard(), nil
+		return commandreplay.UnprotectedGuard(), nil
 	}
 	until, err := p.capability.Deadline(stagedAt)
 	if err != nil {
-		return Guard{}, err
+		return commandreplay.Guard{}, err
 	}
-	return NewProtectedGuard(p.capability.Namespace(), until)
+	return commandreplay.NewProtectedGuard(p.capability.Namespace(), until)
 }
 
-func (p Policy) SameStore(guard Guard) bool {
+func (p ReplayPolicy) SameStore(guard commandreplay.Guard) bool {
 	if p.Validate() != nil || guard.Validate() != nil {
 		return false
 	}
@@ -85,14 +87,14 @@ func (p Policy) SameStore(guard Guard) bool {
 		guard.Namespace() == p.capability.Namespace()
 }
 
-func (p Policy) Replayable(guard Guard) bool {
+func (p ReplayPolicy) Replayable(guard commandreplay.Guard) bool {
 	return p.SameStore(guard) && p.Now().Before(guard.Until())
 }
 
 // CanStart reports whether a command identity which has never crossed the I/O
 // boundary may make its first attempt. An unavailable Runtime can start one
 // unprotected identity, but can never prove that identity safe to replay.
-func (p Policy) CanStart(guard Guard) bool {
+func (p ReplayPolicy) CanStart(guard commandreplay.Guard) bool {
 	if p.Validate() != nil || guard.Validate() != nil {
 		return false
 	}

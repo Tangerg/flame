@@ -295,10 +295,10 @@ func openPreparedSession(
 	}, nil
 }
 
-func commandReplayPolicy(profile *runtimebinding.Profile) commandreplay.Policy {
+func commandReplayPolicy(profile *runtimebinding.Profile) mutation.ReplayPolicy {
 	policy, err := runtimebinding.CommandReplayPolicy(profile)
 	if err != nil {
-		return commandreplay.Policy{}
+		return mutation.ReplayPolicy{}
 	}
 	return policy
 }
@@ -338,7 +338,7 @@ func commandReplayAdmission(
 	guard commandreplay.Guard,
 	profile *runtimebinding.Profile,
 ) mutation.Admission {
-	return mutation.FreshDynamicReplayAdmission(func() commandreplay.Policy {
+	return mutation.FreshDynamicReplayAdmission(func() mutation.ReplayPolicy {
 		return commandReplayPolicy(profile)
 	}, guard)
 }

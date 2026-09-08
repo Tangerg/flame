@@ -1,8 +1,10 @@
-package commandreplay
+package mutation
 
 import (
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
 
 func TestPolicyCreatesAndEvaluatesOneStoreBoundDeadline(t *testing.T) {
@@ -10,11 +12,11 @@ func TestPolicyCreatesAndEvaluatesOneStoreBoundDeadline(t *testing.T) {
 
 	stagedAt := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
 	now := stagedAt
-	capability, err := NewCapability("runtime-a", 10*time.Minute)
+	capability, err := commandreplay.NewCapability("runtime-a", 10*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy, err := NewPolicyWithClock(capability, func() time.Time { return now })
+	policy, err := NewReplayPolicy(capability, func() time.Time { return now })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +27,7 @@ func TestPolicyCreatesAndEvaluatesOneStoreBoundDeadline(t *testing.T) {
 	if !policy.Available() || !policy.CanStart(guard) || !policy.SameStore(guard) || !policy.Replayable(guard) {
 		t.Fatalf("fresh advertised guard was not replayable: %+v", guard)
 	}
-	other, err := NewProtectedGuard("runtime-b", guard.Until())
+	other, err := commandreplay.NewProtectedGuard("runtime-b", guard.Until())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +43,7 @@ func TestPolicyCreatesAndEvaluatesOneStoreBoundDeadline(t *testing.T) {
 func TestUnavailablePolicyIsExplicitAndOwnsOnlyUnprotectedGuards(t *testing.T) {
 	t.Parallel()
 
-	policy, err := UnavailablePolicyWithClock(time.Now)
+	policy, err := UnavailableReplayPolicy(time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +57,7 @@ func TestUnavailablePolicyIsExplicitAndOwnsOnlyUnprotectedGuards(t *testing.T) {
 	if policy.Available() || guard.Protected() || !policy.CanStart(guard) || policy.SameStore(guard) || policy.Replayable(guard) {
 		t.Fatalf("unavailable policy projection = policy %+v, guard %+v", policy, guard)
 	}
-	if err := (Policy{}).Validate(); err == nil {
-		t.Fatal("zero Policy was valid")
+	if err := (ReplayPolicy{}).Validate(); err == nil {
+		t.Fatal("zero ReplayPolicy was valid")
 	}
 }

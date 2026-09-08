@@ -16,9 +16,9 @@ func confirm[T any](ctx context.Context, backoff retry.Backoff, attempt func(con
 	return ConfirmAdmitted(ctx, backoff, nil, attempt)
 }
 
-func unavailableReplayPolicy(t testing.TB) commandreplay.Policy {
+func unavailableReplayPolicy(t testing.TB) ReplayPolicy {
 	t.Helper()
-	policy, err := commandreplay.UnavailablePolicyWithClock(time.Now)
+	policy, err := UnavailableReplayPolicy(time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestReplayAdmissionExpiresAtItsDeadline(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, offset := range []time.Duration{-time.Nanosecond, 0, time.Nanosecond} {
-		policy, policyErr := commandreplay.NewPolicyWithClock(capability, func() time.Time { return deadline.Add(offset) })
+		policy, policyErr := NewReplayPolicy(capability, func() time.Time { return deadline.Add(offset) })
 		if policyErr != nil {
 			t.Fatal(policyErr)
 		}

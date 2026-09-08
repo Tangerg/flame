@@ -18,9 +18,9 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func unavailableReplayPolicy(t testing.TB) commandreplay.Policy {
+func unavailableReplayPolicy(t testing.TB) mutation.ReplayPolicy {
 	t.Helper()
-	policy, err := commandreplay.UnavailablePolicyWithClock(time.Now)
+	policy, err := mutation.UnavailableReplayPolicy(time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,13 +221,13 @@ func (r *recordingRenderer) Reconcile(snapshot agent.SessionSnapshot) error {
 
 func (*recordingRenderer) Close() error { return nil }
 
-func advertisedReplayPolicy(t *testing.T) commandreplay.Policy {
+func advertisedReplayPolicy(t *testing.T) mutation.ReplayPolicy {
 	t.Helper()
 	capability, err := commandreplay.NewCapability("runtime-test", time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy, err := commandreplay.NewPolicyWithClock(capability, time.Now)
+	policy, err := mutation.NewReplayPolicy(capability, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}

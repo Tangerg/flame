@@ -61,20 +61,20 @@ type Admission func() error
 
 // ReplayAdmission admits a durable command only while the currently connected
 // Runtime still owns the exact store and deadline recorded by its guard.
-func ReplayAdmission(policy commandreplay.Policy, guard commandreplay.Guard) Admission {
-	return DynamicReplayAdmission(func() commandreplay.Policy { return policy }, guard)
+func ReplayAdmission(policy ReplayPolicy, guard commandreplay.Guard) Admission {
+	return DynamicReplayAdmission(func() ReplayPolicy { return policy }, guard)
 }
 
 // FreshReplayAdmission admits one never-attempted command even when the
 // Runtime does not advertise replay, then fences any uncertain retry.
-func FreshReplayAdmission(policy commandreplay.Policy, guard commandreplay.Guard) Admission {
-	return FreshDynamicReplayAdmission(func() commandreplay.Policy { return policy }, guard)
+func FreshReplayAdmission(policy ReplayPolicy, guard commandreplay.Guard) Admission {
+	return FreshDynamicReplayAdmission(func() ReplayPolicy { return policy }, guard)
 }
 
 // DynamicReplayAdmission re-reads the connected Runtime policy before every
 // attempt. Long-running interactive clients use it because reconnecting can
 // replace the Runtime store while one command acknowledgement is uncertain.
-func DynamicReplayAdmission(current func() commandreplay.Policy, guard commandreplay.Guard) Admission {
+func DynamicReplayAdmission(current func() ReplayPolicy, guard commandreplay.Guard) Admission {
 	return func() error {
 		if current == nil || !current().Replayable(guard) {
 			return ErrReplayGuaranteeUnavailable
@@ -86,7 +86,7 @@ func DynamicReplayAdmission(current func() commandreplay.Policy, guard commandre
 // FreshDynamicReplayAdmission is the reconnect-aware form of
 // FreshReplayAdmission. The first successful admission consumes the command's
 // one unprotected attempt; all later calls require a current replay promise.
-func FreshDynamicReplayAdmission(current func() commandreplay.Policy, guard commandreplay.Guard) Admission {
+func FreshDynamicReplayAdmission(current func() ReplayPolicy, guard commandreplay.Guard) Admission {
 	first := true
 	return func() error {
 		if current == nil {

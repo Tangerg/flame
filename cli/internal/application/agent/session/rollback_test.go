@@ -40,22 +40,22 @@ func advertisedRollbackPolicy(
 	namespace string,
 	retention time.Duration,
 	now func() time.Time,
-) commandreplay.Policy {
+) mutation.ReplayPolicy {
 	t.Helper()
 	capability, err := commandreplay.NewCapability(namespace, retention)
 	if err != nil {
 		t.Fatal(err)
 	}
-	policy, err := commandreplay.NewPolicyWithClock(capability, now)
+	policy, err := mutation.NewReplayPolicy(capability, now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return policy
 }
 
-func unavailableRollbackPolicy(t *testing.T, now func() time.Time) commandreplay.Policy {
+func unavailableRollbackPolicy(t *testing.T, now func() time.Time) mutation.ReplayPolicy {
 	t.Helper()
-	policy, err := commandreplay.UnavailablePolicyWithClock(now)
+	policy, err := mutation.UnavailableReplayPolicy(now)
 	if err != nil {
 		t.Fatal(err)
 	}

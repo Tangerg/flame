@@ -144,7 +144,7 @@ func Rollback(
 	runtime rollbackRuntime,
 	authoring *workbench.Store,
 	preview RollbackPreview,
-	policy commandreplay.Policy,
+	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 ) (RollbackResult, error) {
 	if authoring == nil {
@@ -183,7 +183,7 @@ func settleRollback(
 	ctx context.Context,
 	runtime rollbackRuntime,
 	pending workbench.PendingSessionRollback,
-	policy commandreplay.Policy,
+	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 	fresh bool,
 ) (RollbackResult, error) {
@@ -231,7 +231,7 @@ func executeRollback(
 	ctx context.Context,
 	runtime rollbackRuntime,
 	pending workbench.PendingSessionRollback,
-	policy commandreplay.Policy,
+	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 	fresh bool,
 ) (agent.RollbackResult, error) {
@@ -373,7 +373,7 @@ func RecoverRollbacks(
 	ctx context.Context,
 	runtime rollbackRuntime,
 	authoring *workbench.Store,
-	policy commandreplay.Policy,
+	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 ) error {
 	for _, pending := range authoring.PendingSessionRollbacks() {

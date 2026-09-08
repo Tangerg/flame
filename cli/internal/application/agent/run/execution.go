@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -45,7 +44,7 @@ type Invocation struct {
 	Start             agent.StartRun
 	ApproveAll        bool
 	ReconnectAttempts int
-	ReplayPolicy      commandreplay.Policy
+	ReplayPolicy      mutation.ReplayPolicy
 }
 
 // Execute drives one stable Run across as many Segments as its interrupts
@@ -143,7 +142,7 @@ func watchCancellation(
 	ctx context.Context,
 	runtime RunLifecycle,
 	runID string,
-	replayPolicy commandreplay.Policy,
+	replayPolicy mutation.ReplayPolicy,
 ) *cancellationWatcher {
 	watcher := &cancellationWatcher{exit: make(chan bool, 1), result: make(chan error, 1)}
 	go func() {
@@ -170,7 +169,7 @@ func cancelAbandonedRun(
 	ctx context.Context,
 	runtime RunLifecycle,
 	runID string,
-	replayPolicy commandreplay.Policy,
+	replayPolicy mutation.ReplayPolicy,
 ) error {
 	commandID := mutation.NewCommandID()
 	cancelCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cancellationTimeout)

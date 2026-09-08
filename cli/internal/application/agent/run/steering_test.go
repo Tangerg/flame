@@ -215,9 +215,9 @@ type steerFixture struct {
 	now        time.Time
 }
 
-func (f *steerFixture) policy(t *testing.T) commandreplay.Policy {
+func (f *steerFixture) policy(t *testing.T) mutation.ReplayPolicy {
 	t.Helper()
-	policy, err := commandreplay.NewPolicyWithClock(f.capability, func() time.Time { return f.now })
+	policy, err := mutation.NewReplayPolicy(f.capability, func() time.Time { return f.now })
 	if err != nil {
 		t.Fatal(err)
 	}

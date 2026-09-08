@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
 
 type steerRuntime interface {
@@ -29,7 +28,7 @@ func StageSteer(
 	sessionID string,
 	request agent.SteerRun,
 	sourceDraft agent.Message,
-	policy commandreplay.Policy,
+	policy mutation.ReplayPolicy,
 ) (workbench.PendingSteer, error) {
 	if authoring == nil {
 		return workbench.PendingSteer{}, errors.New("CLI workbench is unavailable")
@@ -71,7 +70,7 @@ func DeliverSteer(
 	ctx context.Context,
 	runtime steerRuntime,
 	pending workbench.PendingSteer,
-	policy commandreplay.Policy,
+	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 ) (SteerResult, error) {
 	result := SteerResult{Pending: pending}
@@ -106,7 +105,7 @@ func RecoverSteers(
 	ctx context.Context,
 	runtime steerRuntime,
 	authoring *workbench.Store,
-	policy commandreplay.Policy,
+	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 ) error {
 	if authoring == nil {

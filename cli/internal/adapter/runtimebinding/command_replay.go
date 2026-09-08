@@ -3,13 +3,14 @@ package runtimebinding
 import (
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
 
 // CommandReplayPolicy projects an optional discovered Runtime profile into
 // one explicit replay policy. A missing profile is unavailable; a present but
 // invalid advertised capability is an error and never degrades to unavailable.
-func CommandReplayPolicy(profile *Profile) (commandreplay.Policy, error) {
+func CommandReplayPolicy(profile *Profile) (mutation.ReplayPolicy, error) {
 	return CommandReplayPolicyWithClock(profile, time.Now)
 }
 
@@ -18,17 +19,17 @@ func CommandReplayPolicy(profile *Profile) (commandreplay.Policy, error) {
 func CommandReplayPolicyWithClock(
 	profile *Profile,
 	now func() time.Time,
-) (commandreplay.Policy, error) {
+) (mutation.ReplayPolicy, error) {
 	if profile == nil {
-		return commandreplay.UnavailablePolicyWithClock(now)
+		return mutation.UnavailableReplayPolicy(now)
 	}
 	if err := profile.Validate(); err != nil {
-		return commandreplay.Policy{}, err
+		return mutation.ReplayPolicy{}, err
 	}
 	limits := profile.discovery.Capabilities.Limits.Idempotency
 	capability, err := commandreplay.NewCapability(limits.Namespace, time.Duration(limits.RetentionSeconds)*time.Second)
 	if err != nil {
-		return commandreplay.Policy{}, err
+		return mutation.ReplayPolicy{}, err
 	}
-	return commandreplay.NewPolicyWithClock(capability, now)
+	return mutation.NewReplayPolicy(capability, now)
 }
