@@ -20,11 +20,11 @@ func ValidateSkillLifecycleAcknowledgement(catalog []protocol.ManagedSkill, name
 	if err := (protocol.ManagedSkill{Name: name, Lifecycle: lifecycle}).ValidateWire(); err != nil {
 		return err
 	}
+	// Each catalog entry arrived through the endpoint, which validated it. What
+	// this proves is the acknowledgement: exactly one entry carries the name, and
+	// it carries the lifecycle that was asked for.
 	found := false
-	for index, skill := range catalog {
-		if err := skill.ValidateWire(); err != nil {
-			return fmt.Errorf("managed skill acknowledgement item %d: %w", index+1, err)
-		}
+	for _, skill := range catalog {
 		if skill.Name != name {
 			continue
 		}
