@@ -14,6 +14,7 @@ import (
 
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
 )
 
 const (
@@ -67,11 +68,11 @@ func (Shell) RunHookCommand(ctx context.Context, req apphooks.CommandRequest) ap
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	cmd.WaitDelay = hookProcessWaitDelay
-	prepareHookProcessGroup(cmd)
-	cmd.Cancel = func() error { return stopHookProcessGroup(cmd) }
+	procgroup.Prepare(cmd)
+	cmd.Cancel = func() error { return procgroup.Stop(cmd) }
 
 	runErr := cmd.Run()
-	cleanupErr := stopHookProcessGroup(cmd)
+	cleanupErr := procgroup.Stop(cmd)
 	if errors.Is(cleanupErr, os.ErrProcessDone) {
 		cleanupErr = nil
 	}

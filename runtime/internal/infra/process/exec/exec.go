@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
 )
 
@@ -463,7 +464,7 @@ type shellProcessOwner struct {
 }
 
 func newShellProcessOwner(command *exec.Cmd) *shellProcessOwner {
-	configureShellProcess(command)
+	procgroup.Prepare(command)
 	owner := &shellProcessOwner{command: command}
 	command.Cancel = owner.stop
 	return owner
@@ -471,7 +472,7 @@ func newShellProcessOwner(command *exec.Cmd) *shellProcessOwner {
 
 func (s *shellProcessOwner) stop() error {
 	s.once.Do(func() {
-		s.err = stopShellProcess(s.command)
+		s.err = procgroup.Stop(s.command)
 		if errors.Is(s.err, os.ErrProcessDone) {
 			s.err = nil
 		}

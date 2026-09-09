@@ -20,6 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/httporigin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpresponse"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
 )
 
 // Transport is the wire mode of an MCP server connection. The zero value is
@@ -193,7 +194,8 @@ func dial(
 			if cfg.Dir != "" {
 				cmd.Dir = cfg.Dir
 			}
-			prepareStdioProcess(cmd)
+			procgroup.Prepare(cmd)
+			cmd.Cancel = func() error { return procgroup.Stop(cmd) }
 			command = cmd
 			return client.Connect(sessionCtx, &sdkmcp.CommandTransport{Command: cmd}, nil)
 		default:
@@ -208,7 +210,7 @@ func dial(
 		if command == nil {
 			return nil
 		}
-		stopStdioProcessErr := stopStdioProcess(command)
+		stopStdioProcessErr := procgroup.Stop(command)
 		if errors.Is(stopStdioProcessErr, os.ErrProcessDone) {
 			return nil
 		}
