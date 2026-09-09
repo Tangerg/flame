@@ -34,15 +34,14 @@ func (t *TranscriptStore) AppendItem(ctx context.Context, item transcript.Item) 
 	searchText, searchable := transcript.SearchableText(item)
 	// The history write and its full-text index maintenance are one atomic
 	// write-set (RunInTx joins any outer cross-store transaction), so the search
-	// index never drifts from the transcript it mirrors.
+	// index never drifts from the transcript it mirrors. This is an upsert, so
+	// the index follows in both directions: an item that stops being searchable
+	// loses its row rather than keeping text the transcript no longer contains.
 	return RunInTx(ctx, t.db, func(ctx context.Context) error {
 		if err := t.appendItemRecord(ctx, item, payload, offloadID); err != nil {
 			return err
 		}
-		if searchable {
-			return t.indexForSearch(ctx, item, searchText)
-		}
-		return nil
+		return t.syncSearchIndex(ctx, item, searchText, searchable)
 	})
 }
 
@@ -253,7 +252,12 @@ func materializeTranscriptItem(
 // grows (a streamed agent message re-appends with the full text). FTS5 has no
 // rowid upsert, so it is delete-then-insert. Must run inside AppendItem's
 // transaction, after the history_items row exists.
-func (t *TranscriptStore) indexForSearch(ctx context.Context, item transcript.Item, text string) error {
+func (t *TranscriptStore) syncSearchIndex(
+	ctx context.Context,
+	item transcript.Item,
+	text string,
+	searchable bool,
+) error {
 	q := conn(ctx, t.db)
 	var seq int64
 	if err := q.QueryRowContext(ctx, `SELECT seq FROM history_items WHERE item_id = ?`, item.ID()).Scan(&seq); err != nil {
@@ -261,6 +265,9 @@ func (t *TranscriptStore) indexForSearch(ctx context.Context, item transcript.It
 	}
 	if _, err := q.ExecContext(ctx, `DELETE FROM transcript_search WHERE rowid = ?`, seq); err != nil {
 		return fmt.Errorf("sqlite: clear search index row: %w", err)
+	}
+	if !searchable {
+		return nil
 	}
 	if _, err := q.ExecContext(ctx,
 		`INSERT INTO transcript_search(rowid, text, session_id, run_id, item_id, kind, created_at)
