@@ -198,19 +198,6 @@ func (c *ChildRunStartReservationStore) DeleteSession(
 	return nil
 }
 
-// DeleteAll retires the callback ledger of the previous Runtime process during
-// boot reconciliation. No executor callback survives a process boundary, even
-// when the corresponding public Run is a coherent parked tree preserved for
-// later restore.
-func (c *ChildRunStartReservationStore) DeleteAll(ctx context.Context) error {
-	if _, err := conn(ctx, c.db).ExecContext(ctx,
-		`DELETE FROM child_run_start_reservations`,
-	); err != nil {
-		return fmt.Errorf("sqlite: delete child Run start reservations: %w", err)
-	}
-	return nil
-}
-
 func (c *ChildRunStartReservationStore) load(
 	ctx context.Context,
 	memberID string,

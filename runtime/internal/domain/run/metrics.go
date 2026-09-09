@@ -3,7 +3,6 @@ package run
 import (
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -91,17 +90,3 @@ func (m Metrics) Steps() int { return m.steps }
 
 // ActiveDuration returns the cumulative time spent executing.
 func (m Metrics) ActiveDuration() time.Duration { return m.activeDuration }
-
-// AddActiveDuration returns m with an additional completed Segment
-// duration. It rejects negative durations and overflow.
-func (m Metrics) AddActiveDuration(duration time.Duration) (Metrics, error) {
-	if duration < 0 {
-		return Metrics{}, errors.New("run: active duration increment must not be negative")
-	}
-	if duration > 0 && m.activeDuration > time.Duration(math.MaxInt64)-duration {
-		return Metrics{}, errors.New("run: active duration overflows")
-	}
-	next := m
-	next.activeDuration += duration
-	return next, nil
-}

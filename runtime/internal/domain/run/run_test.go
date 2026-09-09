@@ -302,12 +302,17 @@ func TestRunAndMetricsCopyOwnership(t *testing.T) {
 	}
 }
 
+// TestMetricsRejectsDurationOverflow covers the accumulation the reducer
+// actually performs: it adds a segment's duration to the running total with
+// ordinary arithmetic, so an overflow arrives here as a wrapped negative value
+// and NewMetrics is what must refuse it.
 func TestMetricsRejectsDurationOverflow(t *testing.T) {
-	metrics, err := NewMetrics(nil, 0, time.Duration(math.MaxInt64))
-	if err != nil {
-		t.Fatalf("NewMetrics: %v", err)
+	total := time.Duration(math.MaxInt64)
+	wrapped := total + time.Duration(1)
+	if wrapped >= 0 {
+		t.Fatalf("fixture did not wrap: %d", wrapped)
 	}
-	if _, err := metrics.AddActiveDuration(time.Nanosecond); err == nil {
-		t.Fatal("AddActiveDuration accepted overflow")
+	if _, err := NewMetrics(nil, 0, wrapped); err == nil {
+		t.Fatal("NewMetrics accepted an overflowed active duration")
 	}
 }

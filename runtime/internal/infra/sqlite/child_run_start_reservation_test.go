@@ -121,16 +121,4 @@ func TestChildRunStartReservationCleanupIsOwnerScopedAndBootWide(t *testing.T) {
 	if sessionA != 0 || sessionB != 1 {
 		t.Fatalf("owner cleanup = session-a:%d session-b:%d, want 0/1", sessionA, sessionB)
 	}
-	if err := store.DeleteAll(t.Context()); err != nil {
-		t.Fatalf("DeleteAll: %v", err)
-	}
-	var remaining int
-	if err := db.QueryRowContext(t.Context(),
-		`SELECT count(*) FROM child_run_start_reservations`,
-	).Scan(&remaining); err != nil {
-		t.Fatalf("count remaining: %v", err)
-	}
-	if remaining != 0 {
-		t.Fatalf("reservations after DeleteAll = %d, want 0", remaining)
-	}
 }
