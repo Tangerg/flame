@@ -11095,3 +11095,67 @@ sidebar === "expanded" ? await declaredCardRadius(page) : "0px"
 | 永真的断言 | 4 张 golden 的三元 → 3 条能失败的断言 |
 | 守卫 | `check:variables` 现在覆盖样式表 + spec 探针（351 + 17 个无兜底读取）|
 | 重录 | 0 |
+
+## Round 175 — 等宽跟着标题走，不跟着视图走；以及一个终于修到根的 flake
+
+### `titleFace` 是常量的两个调用点
+
+`ViewHeader` 的 `titleFace` 文档写着「prose 是视图的名字，mono 是机器文本 —— 路径、命令」。
+两个调用点把它当成**视图的属性**而不是**标题的属性**传了常量：
+
+- `terminal.tsx`：`titleFace="mono"`，而它的 title 是 `t("terminal.title")` = 翻译过的单词 **“Terminal”**。
+  它的 `sub` 也是翻译句（“N commands”）。整个头部没有一个字是机器文本。
+- `file.tsx`：无条件 `mono`，而 title 在没开文件时回落成翻译句 `t("file.empty.title")`。
+
+**等宽排出来的句子，读起来像是一段让读者照着敲的字面量。**
+
+改完之后 `titleFace` 只剩一个调用点，而且它问的是「有没有打开文件」。
+
+### 为什么没有一张 golden 动
+
+因为**没有一张 golden 拍到过它**：
+
+- dock 里 `DockViewBar` 根本不渲染 title（也完全忽略 `titleFace`）；
+- full placement 的 golden 只有一个状态，而 `FULL_VIEW_ID = "search"` ——
+  **十几个视图，只有一个的完整头部被拍过。**
+
+这条留给下一批：给 fixture 加 `?full-view=<id>`，才谈得上覆盖。
+
+### 那条 flake，两次之后修到根
+
+`code blocks stay readable and expose the wrap control` 在六次全量里红了两次。
+它的注释早就写明了竞态：
+
+> `hover()` reads the box, then moves the pointer — the transcript eases its own scroll,
+> so under load the artifact has slid on by the time the pointer arrives.
+
+上一次的处理是先 `expectStableBox` 再 hover —— **不够**，两次红都是在这之后发生的。
+原因是：`expect.poll` 只重读 opacity，**永远不会重新瞄准**。
+指针一旦落空，轮询到超时也还是落空。
+
+治本是把 **hover 放进重试里**：
+
+```ts
+await expect(async () => {
+  await target.hover();
+  expect(await revealed.evaluate((n) => getComputedStyle(n).opacity)).toBe("1");
+}).toPass();
+```
+
+不是把超时调长 —— 调长的是等一个已经站错位置的指针。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **673 / 673** |
+| `titleFace` 常量调用点 | 2 → **0**（唯一剩下的一个是条件的）|
+| flake | hover 进重试；此后全量绿 |
+| 重录 | 0 |
+
+### 报告，不擅自决定
+
+- **dock 头部整行强制 mono**（`DockViewBar` 对 identity 和 sub 一视同仁），
+  full view 的 `sub` 也是无条件 mono —— 而 sub 常常是翻译句（“N commands”、“3 files changed”）。
+  这是「紧凑标识条用等宽表示机器语境」的风格选择，还是和上面同一个错误？**需要你定。**
+- **full placement 只拍了 `search` 一个视图**，其余十几个视图的完整头部零覆盖。

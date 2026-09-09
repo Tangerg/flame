@@ -750,6 +750,23 @@ async function expectStableBox(locator: Locator): Promise<void> {
     .toBe(true);
 }
 
+/**
+ * Hover, and keep hovering until the reveal arrives.
+ *
+ * Settling the box first is not enough and this failed twice under full parallel load with
+ * the settle already in place: `hover()` reads a box and then moves the pointer, so anything
+ * that moves in between leaves the pointer on nothing — and a poll that only re-reads opacity
+ * never re-aims. Retrying the assertion alone would wait forever on a pointer that is already
+ * in the wrong place. The hover belongs INSIDE the retry.
+ */
+async function expectRevealOnHover(target: Locator, revealed: Locator): Promise<void> {
+  await expectStableBox(target);
+  await expect(async () => {
+    await target.hover();
+    expect(await revealed.evaluate((node) => getComputedStyle(node).opacity)).toBe("1");
+  }).toPass();
+}
+
 test("code blocks stay readable and expose the wrap control", async ({ context, page }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"], {
     origin: "http://127.0.0.1:4174",
@@ -804,12 +821,7 @@ test("code blocks stay readable and expose the wrap control", async ({ context, 
   // earlier wrap click. Move it away so this measures the true resting state.
   await page.mouse.move(0, 0);
   await expect.poll(() => svgCopy.evaluate((button) => getComputedStyle(button).opacity)).toBe("0");
-  // And settle where it is before aiming at it. `hover()` reads the box, then moves the
-  // pointer — the transcript eases its own scroll, so under load the artifact has slid on by
-  // the time the pointer arrives and the hover lands on nothing.
-  await expectStableBox(svgArtifact);
-  await svgArtifact.hover();
-  await expect.poll(() => svgCopy.evaluate((button) => getComputedStyle(button).opacity)).toBe("1");
+  await expectRevealOnHover(svgArtifact, svgCopy);
   await expect(svgArtifact.locator('[data-slot="shiki-preview-body"]')).toHaveAttribute(
     "tabindex",
     "0",

@@ -39,7 +39,10 @@ export function FileViewTab() {
   return (
     <WorkspaceViewLayout
       scrollInset="flush"
-      titleFace="mono"
+      // Mono says "this is a path", so it follows the title rather than the view: with no
+      // file open the title is a translated sentence, and a sentence set in mono reads as a
+      // literal the reader is meant to type.
+      titleFace={viewer ? "mono" : undefined}
       icon="filetext"
       title={viewer?.path || t("file.empty.title")}
       dockIdentity={viewer ? <FilePath path={viewer.path} /> : undefined}
