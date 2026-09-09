@@ -12931,3 +12931,74 @@ rootRef.current
 
 `?.focus()` 打在空值上不报错，正是这个缺陷能一直活着的原因 ——
 可选链把"没有目标"和"已经处理好了"写成了同一个样子。
+
+## Round 205 —— 同一个静默模式：`?.` 把"没找到"和"做完了"写成一个样子
+
+上一轮的根因不是 dock 特有的，是 `?.focus()` 这个形状：
+**可选链让"没有目标"和"已经处理好了"在代码里长得一模一样。**
+所以把这个形状在仓库里搜了一遍 —— DOM 查询的结果被可选链消费掉的地方，四处。
+
+| 站点 | 判定 |
+| --- | --- |
+| `context-dock.tsx:183` `querySelectorAll(...).forEach` | ✓ 空集合就是空操作，语义正确 |
+| `search-overlay.tsx:124` `?.scrollIntoView` | ✓ 没有 `[aria-selected]` 就是没有东西要滚 |
+| `catalog-picker.tsx:411` `?.scrollIntoView` | ✓ 已经包在 `requestAnimationFrame` 里 —— 下一条缺的那一帧，它算进去了 |
+| **`navigationStatePort.ts:158`** | **缺陷** |
+
+### 那个说谎的布尔值
+
+```ts
+function focusConversationTool(itemId: string): boolean {
+  const anchor = document.getElementById(itemId);
+  if (!anchor) return false;
+  anchor.scrollIntoView?.({ block: "center" });
+  anchor.querySelector<HTMLElement>("button")?.focus({ preventScroll: true });
+  return true;                      // ← 只要 anchor 在，就报成功
+}
+```
+
+调用方是这样用它的：
+
+```ts
+if (!focusConversationTool(id) && typeof requestAnimationFrame === "function") {
+  requestAnimationFrame(() => focusConversationTool(id));    // 重试
+}
+```
+
+**这个重试的存在，正是因为一个工具的 anchor 和它的按钮不必在同一帧提交。**
+而这个函数只要 anchor 在就返回 `true` —— 于是"anchor 已提交、按钮还没有"这一帧
+**报告成功，把专为这一帧写的重试取消掉了**。用户看到的是：滚到了那个工具，键盘留在原地。
+
+治本：让这个布尔值说它的调用方在问的那件事 —— **焦点到底落下了没有**。
+
+### 那个 `?.scrollIntoView` 不是噪音，别删
+
+它看起来像多余的防御（`getElementById` 已经收窄成 `HTMLElement`）。
+但 jsdom **没有** `scrollIntoView` —— `context-dock.test.tsx` 专门把它从原型上删掉再跑。
+所以它是真防御，加了注释说明，没删。**"看起来没用"和"没用"是两件事**，这一条差点被我按上一轮的手法清掉。
+
+### 新测试补的是重试那条分支
+
+已有的测试建的 anchor **自带按钮**，只走了 happy path，重试分支一直没人测 ——
+而缺陷正好在那条分支上。新测试建一个**没有按钮**的 anchor，
+调用之后确认焦点还在 `<body>`，然后把按钮挂上、放过一帧，确认焦点落到了按钮上。
+
+**验证过会失败**：把契约改回旧的 →
+`AssertionError: expected <body> to be <button>`。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 说谎的布尔契约 | 1 → **0** |
+| 覆盖重试分支的测试 | 无 → **1 条，已见过它失败** |
+| 误删的防御 | **0**（`?.scrollIntoView` 查清了才留下）|
+| 单测 | **351 全通过**（workspace + `src/ui` 分片，+1）|
+| 视觉套件 | **679 全通过**（10.8m，零失败）|
+| typecheck / lint / prettier / knip / 11 个守卫 | 全绿 |
+
+### 一句话
+
+上一轮修的是一个缺陷，这一轮搜的是**那个形状**。
+四处里三处是对的 —— 而"搜一遍"的价值恰恰在这里：
+它同时告诉你哪一处该改，和哪三处不该动。

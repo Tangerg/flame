@@ -151,10 +151,21 @@ export function installWorkspaceNavigationPort(): () => void {
   });
 }
 
+/**
+ * Whether focus LANDED, which is what the caller retries on.
+ *
+ * It used to report success as soon as the anchor existed, and `?.focus()` on a control that
+ * is not there yet is silent — so the frame where a tool's anchor has committed and its button
+ * has not answered "done" and cancelled the retry that exists for exactly that frame.
+ */
 function focusConversationTool(itemId: string): boolean {
   const anchor = document.getElementById(itemId);
   if (!anchor) return false;
+  // jsdom has no `scrollIntoView`, which `context-dock.test.tsx` deletes from the prototype
+  // on purpose to prove this survives without it.
   anchor.scrollIntoView?.({ block: "center" });
-  anchor.querySelector<HTMLElement>("button")?.focus({ preventScroll: true });
+  const control = anchor.querySelector<HTMLElement>("button");
+  if (!control) return false;
+  control.focus({ preventScroll: true });
   return true;
 }

@@ -198,6 +198,25 @@ describe("workspace navigation port", () => {
     expect(document.activeElement).toBe(button);
   });
 
+  // The retry beside this call exists because a tool's anchor and its control do not have to
+  // commit in the same frame. Reporting success on the anchor alone cancelled it, so a locate
+  // that arrived one frame early scrolled to the tool and left the keyboard behind.
+  it("keeps looking when the anchor is mounted before its control", async () => {
+    const anchor = document.createElement("div");
+    anchor.id = "late-item";
+    anchor.scrollIntoView = () => {};
+    document.body.append(anchor);
+
+    locateWorkspaceTool("late-item");
+    expect(document.activeElement).toBe(document.body);
+
+    const button = document.createElement("button");
+    anchor.append(button);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(document.activeElement).toBe(button);
+  });
+
   it("reconciles a stale tool selection to the latest surviving item", () => {
     useContextDockStore.setState({ selectedToolId: "tool-gone" });
 
