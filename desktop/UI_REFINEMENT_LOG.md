@@ -12283,3 +12283,70 @@ hover 污染的，设置面板的 segmented tab 和开关其实一直是好的�
   所以**不是 21 个缺陷** —— 是要按这条规则一个个判。已知一处明确对不上：
   同一条 dock tabstrip 里，`Plan`（active，吃到上一轮的组合 key）有反应，
   `Explorer` / `File preview` / `Timeline` 没有。一个组件里的兄弟控件答案不一致，这条规则不背书。
+
+## Round 196 —— 17 个"点不到的控件"，全部是我的测量错
+
+上一轮把那 17 个"指针到不了"的控件单独报了出来，说要判定是 fixture 状态如此、还是产品真点不着。
+**答案是第三种：都不是。17 个全部是测量错误，而且是三个各自不同的错。**
+
+| 类别 | 证据 | 是谁 |
+| --- | --- | --- |
+| 本来就没显示 | `pointer-events: none` + `opacity: 0` | `Jump to bottom` ×3（滚到底部时它就该不在）|
+| 被祖先 hover 揭示的 | 静止态 `visibility: hidden`，遮挡物**是它的祖先** | `Copy` / `Edit message` |
+| **在 scroller 里滚出了可视区** | 自己可见、可命中，而那一点上画的是别的节点 | 其余 13 个 |
+
+第三类是最有意思的：**一个控件自己 rect 的中心，不一定是它被画出来的地方。**
+在 scroller 里滚出去之后，它的 viewport rect 仍然落在窗口里，
+于是指针去的那一点上显示的是完全别的东西 —— `Timeline` 那点上是个关闭图标的 `svg`。
+`focusRing.visual.spec.ts` 早就为它自己写过这条经验（"scrolled out of its own container
+reports a 1000px cut and is not a defect"），这一条只是没有传过来。
+
+### 三处修正
+
+| | 之前 | 之后 |
+| --- | --- | --- |
+| 瞄哪一点 | 控件自己 rect 的中心 | **rect 与每一个会裁剪的祖先求交**之后的中心 |
+| 没显示的控件 | 算进"对指针没反应" | `pointer-events: none` / `opacity: 0` / `input[type=range]` 直接跳过 |
+| 揭示型控件 | 报成"到不了" | 移动之后再**补一个 1px 的微移** —— 到达和被 hover 不是一回事：`visibility: hidden` 的控件不可命中，移动把它揭示出来了，但它自己的 `:hover` 要等下一个指针事件才重算 |
+| "有没有显示"什么时候判 | 移动之前 | **移动之后** —— 对揭示型控件来说，"有没有显示"正是这次移动决定的事。移动前问，分不出「dock tab 的 × 只是还没被揭示」和「消息操作在一棵 hidden 子树里」|
+
+`input[type=range]` 的排除写在**这个 spec 里**，不写进共享的 `CONTROL` ——
+那份清单还有两个审计在读，对它们来说滑块的 input 是个实打实的控件。
+（Base UI 的 `Slider.Root` 把 input 当无障碍表面，指针面是 `Track` / `Thumb`。）
+
+### 结果
+
+| | Round 194 | Round 195 | **Round 196** |
+| --- | --- | --- | --- |
+| 声称 hover 到的控件 | > 100（错配的对） | 140（已验证到达） | **156** |
+| 指针"到不了"的 | 混在沉默里 | 17 | **0** |
+
+### 四个方向都验证过会失败
+
+| 制造的破坏 | 报什么 |
+| --- | --- |
+| 凹陷行换回中性 wash | 替换了底色 |
+| 删掉 selected 的组合 key | 替换了底色 |
+| **两次移动都瞄偏 4000px** | `hovered 0, never arrived 156` → 撞到达下限 |
+
+**第三条我第一次又做错了**：只把第一次移动瞄偏，忘了后面那个 1px 微移会把指针**移回目标上**，
+于是 walk 照样到达、测试照样通过。两次都瞄偏才真的报错。
+（这一轮里我自己的验证错了两次 —— 上一轮是 `:not(#nope)` 反而提高特异度。
+**验证守卫这件事本身也需要被验证。**）
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉套件 | **677 全通过**（10.5m，零失败）|
+| typecheck / lint / prettier / knip | 全绿 |
+| 生产代码改动 | **零** —— 连续第二轮只修测量 |
+
+### 仍然欠着
+
+现在这份"对指针没反应"的名单终于可信了，可以拿 `DESKTOP_UI_POLISH.md` 的规则去判：
+*"Hover is reserved for dense lists, sidebar rows, **icon buttons**, and controls where it
+improves scanability"*，而"给每个按钮都加 hover 背景"是它明确的反面清单。
+所以这不是"改 N 个缺陷"，是一条条对规则。已知一处明确对不上：
+同一条 dock tabstrip 里 `Plan`（active）有反应，`Explorer` / `File preview` / `Timeline` 没有 ——
+**一个组件里的兄弟控件答案不一致，这条规则不背书任何读法。**
