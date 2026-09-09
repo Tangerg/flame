@@ -43,6 +43,7 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
   test.setTimeout(ROUTES.length * CONTROLS_PER_ROUTE * STEP_BUDGET_MS + 20_000);
   const answers = new Map<string, string>();
   const replaced: string[] = [];
+  const unreachable: string[] = [];
   let hovered = 0;
 
   for (const route of ROUTES) {
@@ -61,11 +62,29 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
       return value;
     });
 
-    const controls = await page.locator(CONTROL).evaluateAll((nodes) =>
-      nodes.map((node) => {
+    // Identity first, and it has to be an attribute rather than an index. Hovering MOUNTS and
+    // UNMOUNTS controls — a message reveals its action row — so `locator(CONTROL).nth(i)` after
+    // the move can resolve to a different element than the one measured at rest, and the pair
+    // being compared is then two different controls. Measured while auditing this: for most of
+    // a silent list, `elementFromPoint` at the sampled centre returned an unrelated node.
+    const total = await page.locator(CONTROL).evaluateAll((nodes) => {
+      nodes.forEach((node, index) => node.setAttribute("data-hover-probe", String(index)));
+      return nodes.length;
+    });
+
+    for (let index = 0; index < total; index += 1) {
+      const control = page.locator(`[data-hover-probe="${index}"]`);
+      // Park before every reading: sampling a resting state with the pointer still on the
+      // previous control reads that one's hover as this one's rest.
+      await page.mouse.move(1119, 719);
+      await page.waitForTimeout(50);
+      const before = await control.evaluate((node) => {
         const box = node.getBoundingClientRect();
         return {
           rest: getComputedStyle(node).backgroundColor,
+          // Measured with the pointer parked, so this is the RESTING box — the one the centre
+          // has to be taken from. Sampling every box up front and then moving many times reads
+          // coordinates from a layout that earlier hovers have already changed.
           x: box.x + box.width / 2,
           y: box.y + box.height / 2,
           width: box.width,
@@ -78,35 +97,44 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
             .slice(0, 30),
           tag: node.tagName.toLowerCase(),
         };
-      }),
-    );
+      });
+      if (before.width < 2 || before.height < 2 || before.disabled) continue;
+      if (before.x < 0 || before.y < 0 || before.x > 1120 || before.y > 720) continue;
 
-    for (const [index, control] of controls.entries()) {
-      if (control.width < 2 || control.height < 2 || control.disabled) continue;
-      if (control.x < 0 || control.y < 0 || control.x > 1120 || control.y > 720) continue;
-      hovered += 1;
-
-      await page.mouse.move(control.x, control.y);
+      // Not `locator.hover()`: it waits for the element to be able to receive pointer events,
+      // and a control something else covers never becomes actionable, so the walk hangs on it
+      // rather than reporting it.
+      await page.mouse.move(before.x, before.y);
       await page.waitForTimeout(70);
-      const after = await page
-        .locator(CONTROL)
-        .nth(index)
-        .evaluate((node) => getComputedStyle(node).backgroundColor);
-      if (after === control.rest) continue;
+      const after = await control.evaluate((node) => ({
+        fill: getComputedStyle(node).backgroundColor,
+        // Proof the pointer arrived. Without it a control the layout moved out from under the
+        // cursor reports "no change" and reads as a control that ignores the pointer.
+        reached: node.matches(":hover"),
+      }));
+      if (!after.reached) {
+        unreachable.push(`${route} <${before.tag}> "${before.label}"`);
+        continue;
+      }
+      hovered += 1;
+      if (after.fill === before.rest) continue;
 
-      answers.set(`${control.rest} -> ${after}`, `${route} <${control.tag}> "${control.label}"`);
+      answers.set(`${before.rest} -> ${after.fill}`, `${route} <${before.tag}> "${before.label}"`);
       // `rgba(0, 0, 0, 0)` is the computed spelling of no fill at all: ink over nothing is the
       // wash doing exactly its job. Anything else had a fill for the ink to sit on.
-      if (control.rest !== "rgba(0, 0, 0, 0)" && after === neutralWash) {
-        replaced.push(`${route} <${control.tag}> "${control.label}"  ${control.rest} -> ${after}`);
+      if (before.rest !== "rgba(0, 0, 0, 0)" && after.fill === neutralWash) {
+        replaced.push(
+          `${route} <${before.tag}> "${before.label}"  ${before.rest} -> ${after.fill}`,
+        );
       }
     }
 
-    // Park the pointer so the next route does not open with something already hovered.
     await page.mouse.move(1119, 719);
   }
 
-  // A sweep that hovered nothing agrees with everything.
+  // A sweep that hovered nothing agrees with everything. Counted on ARRIVAL — `:hover` on the
+  // element itself — so a walk that aimed at stale coordinates cannot clear this floor.
+  console.log(`hovered ${hovered}, pointer never arrived on ${unreachable.length}`);
   expect(hovered, "the sweep has to reach real controls").toBeGreaterThan(100);
   expect(
     [...new Set(replaced)],
