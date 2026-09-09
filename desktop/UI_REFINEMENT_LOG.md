@@ -11750,3 +11750,61 @@ Round 179 加了「英文标题用 sentence case」的规则，修了三条 Titl
 
 所以这些不是缺陷，是竞争下的边缘 golden。**不追它们**，如实记下来 ——
 `tool-tail` 那条我追到了根（fixture 的滚动落点带记忆），这几条没有对应的证据。
+
+## Round 188 — 「存进去的能不能拿回来」，三个持久化 store 都没人问过
+
+机器被别的会话占着（视觉套件从 9.7 分钟涨到 16.2 分钟），所以这轮挑不需要反复跑视觉的活。
+
+八个 `persist` store 都有 `version` —— 但**没有任何东西检查「形状变了要 bump」**，
+而这条规则在桌面端是真会疼的：用户是原地升级的。
+
+### 一个事实，两个所有者
+
+三个 store 用了 `partialize`，每一个都配着一个手工维护的解析器：
+
+```ts
+// agentSessionStore.ts
+// Mirrors `partialize` below.        ← 注释自己承认了
+const sessionPersistSchema = z.object({ ... });
+```
+
+**Zod 的 object 默认会剥掉未知键。** 所以往 `partialize` 里加一个字段、忘了加进 schema，
+那个字段**会被写进 localStorage，然后在下一次启动时被静默丢掉** ——
+设置不生效，重启就没了，哪里都不报错。
+
+而现有的持久化测试**全都是手写 payload 再 rehydrate**，
+所以它们会一路绿着穿过这个洞。
+
+### 治法：往返，而且一个字段名都不提
+
+```ts
+const written = JSON.parse(localStorage.getItem(key)).state;   // store 自己写的
+// …清空、把 payload 放回去、rehydrate…
+expect(JSON.parse(JSON.stringify(partialize(store())))).toEqual(written);
+```
+
+拿 store 自己的选择跟它自己比。**不点任何字段名**，所以形状改了不用改测试，
+也没法用「读回一个子集」糊过去。
+
+写的时候踩到一个真实的坑：**清空 store 会把清空后的状态也持久化掉** ——
+所以要先把 payload 存下来、清空之后再放回去，否则读回的是清空写进去的那份，
+测试会以「空对空」的方式通过。
+
+**三个都验证过会失败**：往 `partialize` 加一个不成对的字段 / 让解析器拒绝一切 —— 立刻红。
+
+### 第三个 store 一个测试都没有，而它存的是用户没发出去的字
+
+`composerStore` 持久化草稿 —— **整个文件没有测试**。
+「打了一半的字，重启还在」是桌面端最该守住的承诺之一。
+
+补了两条：草稿往返，以及**图片不许进 storage**
+（`partialize` 的注释说了「Text-only: images are transient」——
+一张截图的 data URL 进 localStorage 就是一次配额爆掉，现在这条被守住了）。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 单测（排除 `src/rpc`）| 349 文件 / **1974 全通过**（+4）|
+| 持久化往返覆盖 | 0 / 3 → **3 / 3**，每条都验证过能失败 |
+| 视觉套件 | **未跑** —— 本轮只加测试，没改一行生产代码 |

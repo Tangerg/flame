@@ -65,6 +65,48 @@ describe("storage written by an older version", () => {
   });
 });
 
+/**
+ * What the store writes, it must read back — stated without naming a field.
+ *
+ * `partialize` decides what is written and a Zod schema decides what is accepted, and they
+ * are two hand-maintained lists: the comment above the schema says "Mirrors `partialize`
+ * below", which is a fact with two owners. A Zod object STRIPS unknown keys, so a field added
+ * to one and not the other is written to storage and silently dropped on the next boot — the
+ * state simply does not survive a restart, with no error anywhere.
+ *
+ * Every other test here writes the payload BY HAND, so all of them would pass through that.
+ * This one lets the store write its own, and compares the store's choice against itself, so
+ * it cannot be satisfied by a subset and does not have to be edited when the shape changes.
+ */
+describe("the round trip", () => {
+  it("gets back everything it chose to persist", async () => {
+    store().holdOpen("s1");
+    store().holdOpen("s2");
+    store().rememberSession("s2");
+    store().markDraft("s2");
+
+    const key = useAgentSessionStore.persist.getOptions().name!;
+    const payload = localStorage.getItem(key) ?? "null";
+    const written = (JSON.parse(payload) as { state: unknown }).state;
+    expect(written).toBeTruthy();
+
+    // Emptying the store PERSISTS the empty state, so the payload has to go back before the
+    // rehydrate — otherwise this reads back what the clearing wrote and passes on nothing.
+    useAgentSessionStore.setState({
+      openSessionIds: [],
+      lastSessionId: "",
+      draftSessionIds: new Set(),
+      freshDraftSessionIds: new Set(),
+    });
+    localStorage.setItem(key, payload);
+    await useAgentSessionStore.persist.rehydrate();
+
+    const partialize = useAgentSessionStore.persist.getOptions().partialize!;
+    const readBack = JSON.parse(JSON.stringify(partialize(store() as never)));
+    expect(readBack).toEqual(written);
+  });
+});
+
 describe("drafts", () => {
   it("marks and graduates a draft", () => {
     store().markDraft("s1");
