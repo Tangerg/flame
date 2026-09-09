@@ -19,13 +19,17 @@ type interactionSummaryPane struct {
 	form     *kit.Form
 }
 
+// interactionReviewCancellationReason is the reason a cancel decision carries,
+// not a fourth decision. It stays out of the block below: a spelled-out value
+// there reads as a member, and dropping the value would silently make it one.
+const interactionReviewCancellationReason = "interactions canceled during terminal review"
+
 type interactionReviewDecision uint8
 
 const (
 	interactionReviewSubmit interactionReviewDecision = iota + 1
 	interactionReviewBack
 	interactionReviewCancel
-	interactionReviewCancellationReason = "interactions canceled during terminal review"
 )
 
 func (d interactionReviewDecision) Validate() error {
