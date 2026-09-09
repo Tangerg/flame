@@ -11194,3 +11194,62 @@ computed 值是规范化过的 —— 两个字符串直接比，是一条永远
 | full placement 可拍的视图 | 1 → **任意一个**（`?full-view=`）|
 | 标题字面规则 | 0 条断言 → 1 条，覆盖代表用例和例外用例各一 |
 | 重录 | 0 |
+
+## Round 177 — 我自己写的那条守卫，漏掉了它被写来找的那个东西
+
+Round 170 的竞态断言里有一行：
+
+```ts
+if (!(rule instanceof CSSStyleRule) || rule.style.length !== 1) continue;
+```
+
+「StyleX 的每条规则是一个类名 + **一条**声明」—— 这句话对源码成立，
+对**读回来的 CSSOM 不成立**：Chromium 会把简写展开成分写，
+`border-radius` 的 `style.length` 是 **4**，于是每一条简写规则都被跳过了。
+
+一个「找同一属性两条规则」的检查，跳过了**所有简写** ——
+包括消息操作按钮那个：按钮自己的 `radius.button` 和调用方通过 `className` 塞进来的
+`--shape-md`，同一个元素上两条 `border-radius`，谁赢看打包顺序。
+那正是这条断言被写出来要找的东西。
+
+### 两次读，缺一不可
+
+| 读法 | 抓得到 | 抓不到 |
+| --- | --- | --- |
+| 展开后的分写 | `padding` vs `padding-top` | 值是 `var()` 的简写（引擎展不开，分写读回来是空） |
+| `cssText` 里作者写的那条 | `border-radius: var(--a)` vs `var(--shape-md)` | 简写 vs 它自己的分写 |
+
+两条都上之后，找到 **5 处**：
+
+| 位置 | 冲突 | 治法 |
+| --- | --- | --- |
+| `ReasoningBlock` | `overflow: hidden` vs `overflowY: auto` | 两个 **key**，`stylex.props` 只能在同一个 key 上定优先级。改成两个分写 |
+| `timeline` 的 detail | `text-wrap-mode: nowrap` vs `initial` | `vocab.truncate` 和 `vocab.pretty` 同时用 —— 一行截断的字**没有 rag 可以平衡**，两者本身就矛盾 |
+| `SettingsPage.blurb` | `margin: 0` 和 `marginTop` **在同一个对象里** | 删掉简写（reset 已经清零了每个 margin） |
+| `MessageActionButton` | `border-radius` 两条 | 走 `styles` 接缝而不是 `className` |
+
+### 顺着这个形状静态扫了一遍：还有三处
+
+`padding` 后面跟 `paddingTop` 读起来像「然后覆盖顶部」——
+**CSS 懂这句话，StyleX 不懂**：两个 key，两个类，谁赢看打包顺序。
+
+`ImagePreviewGallery.pan`、`lightbox-dialog.document`、`IconShowcase.intro` 各一处。
+四处里有三处把简写写在前面 —— 正是那个读起来最自然的写法。
+
+新守卫 `check-shorthand-longhand`：1283 个文件，任何 style 对象都不许同时出现
+一个简写和它自己的分写。**验证过会失败。**
+
+### 值得记的一件事
+
+这七处改完，**674 张 golden 一张没动**。
+也就是说打包顺序一直碰巧站在正确的那边 —— 那是运气，不是设计。
+歧义消掉之后，它不再需要运气。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **674 / 674**，重录 **0** |
+| StyleX 属性竞态（含简写） | 5 → **0** |
+| 简写 + 自己的分写 | 4 → **0** |
+| 守卫 | 19 项（新增 `check:shorthand`）|

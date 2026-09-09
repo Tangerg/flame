@@ -40,7 +40,8 @@ const styles = stylex.create({
     borderWidth: "1px",
     borderStyle: "solid",
     borderColor: surface.field,
-    padding: space.s8,
+    paddingInline: space.s8,
+    paddingBottom: space.s8,
     paddingTop: space.s12,
   },
   media: {

@@ -107,7 +107,7 @@ const SECTIONS: Section[] = [
 
 const sh = stylex.create({
   page: { display: "flex", flexDirection: "column", gap: "calc(var(--spacing) * 4.5)" },
-  intro: { margin: 0, marginBottom: space.s1, color: color.fgMuted, lineHeight: leading.body },
+  intro: { marginBottom: space.s1, color: color.fgMuted, lineHeight: leading.body },
   // The prose marks a term rather than stressing it, so it takes the ink and not the slant.
   em: { fontStyle: "normal", color: color.fg },
 });

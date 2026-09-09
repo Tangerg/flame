@@ -272,19 +272,38 @@ for (const fixture of ["agent", "workspace"] as const) {
   });
 }
 
-/** Every StyleX rule is one class and one declaration at one specificity, so the sheet is a
- *  class -> declaration table and a duplicated property on an element is readable from it. */
+/**
+ * Every StyleX rule is one class at one specificity, so the sheet is a class -> declaration
+ * table and a duplicated property on an element is readable from it.
+ *
+ * Read as LONGHANDS. This asked for rules declaring exactly one property, which silently
+ * excused every shorthand: Chromium expands `border-radius` into four, so a rule declaring it
+ * has `style.length === 4` and was skipped — and a button carrying both its own corner and a
+ * caller's was invisible to the very check written to find that.
+ */
 async function stylexCollisions(page: Page): Promise<string[]> {
   return page.evaluate(() => {
-    const decls = new Map<string, { prop: string; value: string }>();
+    const decls = new Map<string, { prop: string; value: string }[]>();
     const visit = (list: CSSRuleList) => {
       for (const rule of list) {
         if (rule instanceof CSSGroupingRule) visit(rule.cssRules);
-        if (!(rule instanceof CSSStyleRule) || rule.style.length !== 1) continue;
+        if (!(rule instanceof CSSStyleRule)) continue;
         const named = /^\.([A-Za-z0-9_-]+)(?::not\(#\\#\))+$/.exec(rule.selectorText);
         if (!named) continue;
-        const prop = rule.style[0]!;
-        decls.set(named[1]!, { prop, value: rule.style.getPropertyValue(prop) });
+        // Two readings, because neither alone sees every clash. The EXPANDED longhands catch
+        // a shorthand against one of its own parts (`padding` against `padding-top`). They go
+        // empty for a shorthand whose value is a `var()`, which the engine cannot expand — and
+        // that is the common case here, since every value in this design is a token. So the
+        // AUTHORED declaration is read from `cssText` too, which catches two rules writing the
+        // same property with different tokens.
+        const authored = [
+          ...(/\{([^}]*)\}/.exec(rule.cssText)?.[1] ?? "").matchAll(/([-a-z]+)\s*:\s*([^;]+)/g),
+        ].map((decl) => ({ prop: decl[1]!, value: decl[2]!.trim() }));
+        const expanded = [...rule.style]
+          .map((prop) => ({ prop, value: rule.style.getPropertyValue(prop) }))
+          .filter((decl) => decl.value !== "");
+        const written = expanded.length > 0 ? expanded : authored;
+        if (written.length > 0) decls.set(named[1]!, written);
       }
     };
     for (const sheet of document.styleSheets) {
@@ -297,16 +316,17 @@ async function stylexCollisions(page: Page): Promise<string[]> {
     const out: string[] = [];
     for (const node of document.querySelectorAll<HTMLElement>("*")) {
       const seen = new Map<string, string>();
-      for (const cls of node.classList) {
-        const decl = decls.get(cls);
-        if (!decl) continue;
-        const prior = seen.get(decl.prop);
-        if (prior !== undefined && prior !== decl.value) {
-          const slot = node.dataset.slot ? `[${node.dataset.slot}]` : "";
-          out.push(`${node.tagName.toLowerCase()}${slot} ${decl.prop}: ${prior} vs ${decl.value}`);
+      for (const cls of node.classList)
+        for (const decl of decls.get(cls) ?? []) {
+          const prior = seen.get(decl.prop);
+          if (prior !== undefined && prior !== decl.value) {
+            const slot = node.dataset.slot ? `[${node.dataset.slot}]` : "";
+            out.push(
+              `${node.tagName.toLowerCase()}${slot} ${decl.prop}: ${prior} vs ${decl.value}`,
+            );
+          }
+          seen.set(decl.prop, decl.value);
         }
-        seen.set(decl.prop, decl.value);
-      }
     }
     return [...new Set(out)];
   });

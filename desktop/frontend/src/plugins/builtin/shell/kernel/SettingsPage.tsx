@@ -14,10 +14,14 @@ import { useSettingsPanes } from "@/plugins/sdk";
 import { color, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 
 const sp = stylex.create({
-  title: { margin: 0, color: color.fg, fontWeight: weight.semibold },
+  title: { color: color.fg, fontWeight: weight.semibold },
   // A reading measure for the blurb: 60 characters, which the pane's width does not decide.
+  //
+  // No `margin: 0` beside the `marginTop`. They are two KEYS, so StyleX emits a class for each
+  // and cannot merge them the way it merges two styles naming one key — the blurb's top margin
+  // was whichever rule the bundler wrote second. The reset already zeroes every margin, so the
+  // shorthand was saying nothing that needed saying and outranking something that did.
   blurb: {
-    margin: 0,
     marginTop: space.s1_5,
     maxWidth: "60ch",
     lineHeight: "1.5rem",

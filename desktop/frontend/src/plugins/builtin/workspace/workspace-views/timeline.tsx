@@ -166,9 +166,12 @@ function TimelineRunHeader({
           </span>
           <Badge tone={status.tone}>{t(status.labelKey)}</Badge>
         </div>
+        {/* The detail truncates, so there is no rag left for `vocab.pretty` to balance — and
+            the two are a second answer to `text-wrap-mode` on one element, settled by
+            whichever rule the bundler wrote last. */}
         <div {...stylex.props(ts.runDetail, typeStep.uiXs)}>
           {status.detail && (
-            <span title={status.detail} {...stylex.props(vocab.truncate, vocab.pretty)}>
+            <span title={status.detail} {...stylex.props(vocab.truncate)}>
               {status.detail}
             </span>
           )}

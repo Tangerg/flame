@@ -1,5 +1,4 @@
 import * as stylex from "@stylexjs/stylex";
-import { cn } from "@/lib/classNames";
 import { IconButton, type IconName, type ButtonTone } from "@/ui";
 
 // REPORTED, not decided here. `radius` names its steps by ROLE — card, field, row, button —
@@ -7,6 +6,11 @@ import { IconButton, type IconName, type ButtonTone } from "@/ui";
 // replaces made the assistant's action the only control in the product at `--shape-md`. The
 // value is preserved exactly rather than quietly normalised to the button's own corner, and
 // left undressed rather than borrowed from `radius.card`, which would name it a card.
+//
+// It travels as `styles` and not as a class. Through `className` it was a SECOND
+// `border-radius` on the same button — the button's own step and this one, at equal
+// specificity, settled by sheet order. Composed into the button's own `stylex.props()` it
+// replaces the step, which is what "this control has a different corner" has to mean.
 const styles = stylex.create({
   assistantCorner: { borderRadius: "var(--shape-md)" },
 });
@@ -32,7 +36,8 @@ export function MessageActionButton({ role, className, ...props }: MessageAction
       size="sm"
       quiet
       round={isUser}
-      className={cn(!isUser && stylex.props(styles.assistantCorner).className, className)}
+      styles={[!isUser && styles.assistantCorner]}
+      className={className}
     />
   );
 }

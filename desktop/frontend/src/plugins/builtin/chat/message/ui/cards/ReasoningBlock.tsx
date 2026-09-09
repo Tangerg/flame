@@ -22,7 +22,16 @@ const rb = stylex.create({
     paddingBottom: space.s1_5,
     paddingLeft: space.s6,
   },
-  scroller: { position: "relative", overflow: "hidden", paddingRight: space.s2 },
+  // Both axes as LONGHANDS, because `windowed` below reopens one of them. `stylex.props()`
+  // resolves precedence between styles that name the same KEY; `overflow` and `overflowY` are
+  // two keys, so it emits both and the winner becomes whichever rule the bundler wrote second
+  // — which is not a decision this file gets to make by argument order.
+  scroller: {
+    position: "relative",
+    overflowX: "hidden",
+    overflowY: "hidden",
+    paddingRight: space.s2,
+  },
   /** While it streams, the reasoning is a window onto a growing text rather than the whole of it. */
   windowed: { maxHeight: "calc(var(--spacing) * 48)", overflowY: "auto" },
   /**

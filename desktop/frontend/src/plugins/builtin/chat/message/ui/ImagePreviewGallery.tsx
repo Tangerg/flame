@@ -41,7 +41,7 @@ const ig = stylex.create({
     minHeight: 0,
     flex: 1,
     overflow: "auto",
-    padding: space.s4,
+    paddingInline: space.s4,
     paddingTop: space.s12,
     paddingBottom: space.s16,
   },
