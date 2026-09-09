@@ -95,7 +95,6 @@ type SkillProposalMiner struct {
 	source    skillSource
 	client    modeladapter.AuxiliaryResolver
 	policy    skillMiningPolicy
-	minMsgs   int
 
 	// mu guards complexRuns, the per-session count of complex Runs since the
 	// last mining attempt. In-memory and reset on restart: it bounds cost, not a
@@ -129,7 +128,6 @@ func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, s
 		source:      source,
 		client:      client,
 		policy:      policy,
-		minMsgs:     skillMiningMinMessages,
 		complexRuns: map[string]int{},
 	}, nil
 }
@@ -156,7 +154,7 @@ func (s *SkillProposalMiner) MineIfDue(ctx context.Context, sessionID, cwd strin
 	if err != nil {
 		return fmt.Errorf("skill mining: read session %q: %w", sessionID, err)
 	}
-	if len(messages) < s.minMsgs {
+	if len(messages) < skillMiningMinMessages {
 		return nil
 	}
 	verdict, err := s.askForSkill(ctx, messages)

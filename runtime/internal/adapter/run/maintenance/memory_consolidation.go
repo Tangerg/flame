@@ -18,6 +18,11 @@ import (
 )
 
 const (
+	// defaultConsolidationMinMessages skips extracting facts from a conversation
+	// too short to hold any. It is unrelated to the skill miner's own floor,
+	// which asks a different question of a different conversation.
+	defaultConsolidationMinMessages = 4
+
 	defaultMemoryCurationMinPending = 8
 	defaultMemoryCurationMaxPending = agentmemory.MaxLedgerFoldFacts
 	defaultMemoryCurationMaxTokens  = 2_048
@@ -99,6 +104,7 @@ type MemoryConsolidator struct {
 	memory  agentMemory
 	client  modeladapter.AuxiliaryResolver
 	policy  memoryCurationPolicy
+	// minMsgs is the extraction floor; a test lowers it to reach the gate below.
 	minMsgs int
 	now     func() time.Time
 }
@@ -124,7 +130,7 @@ func NewMemoryConsolidator(store messageReader, memory agentMemory, client model
 		memory:  memory,
 		client:  client,
 		policy:  policy,
-		minMsgs: 4,
+		minMsgs: defaultConsolidationMinMessages,
 		now:     time.Now,
 	}, nil
 }
