@@ -30,8 +30,13 @@ const ROUTES = [
 
 // Hovering is a walk with a settle after every step, so the budget comes from its own work
 // rather than Playwright's default — the same reason the chrome-focus walk sets its own.
-const STEP_BUDGET_MS = 400;
-const CONTROLS_PER_ROUTE = 60;
+//
+// And the work is not what an idle machine measures. The visual config starts a fresh dev
+// server per run, so the first pass over a route pays for its transforms: measured 43s warm and
+// 141s cold, which the previous 140s ceiling failed by a second. Round 198 took that same cold
+// cache out of the COVERAGE and left it in the clock. A ceiling is for when something is
+// wrong, so it is set from the cold figure with room over it, not from the warm one.
+const ROUTE_BUDGET_MS = 90_000;
 
 // One gesture, a small closed set of answers: ink over nothing, ink over a resting fill, a
 // filled control stepping its own fill. A ceiling rather than an exact list, because a new tone
@@ -73,7 +78,7 @@ const wholeBox = `(node, read) => {
 const ARGS = { visible: VISIBLE_STATE, box: wholeBox, allowed: MAY_ANSWER_NOTHING };
 
 test("hover always adds ink, and never replaces the fill it lands on", async ({ page }) => {
-  test.setTimeout(ROUTES.length * CONTROLS_PER_ROUTE * STEP_BUDGET_MS + 20_000);
+  test.setTimeout(ROUTES.length * ROUTE_BUDGET_MS + 20_000);
   const answers = new Map<string, string>();
   const replaced: string[] = [];
   const unreachable: string[] = [];

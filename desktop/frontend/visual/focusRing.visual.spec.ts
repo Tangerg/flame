@@ -1,5 +1,6 @@
 import { expect, test } from "./test";
 import { FOCUSABLE } from "./controls";
+import { eachTabStop } from "./tabWalk";
 
 // One rule draws every focus ring: 1.5px at `outline-offset: 1px`, so it reaches 2.5px past the
 // border box. `[data-focus-inset]` is the compensation for a control flush against something
@@ -118,11 +119,13 @@ test("no focus ring is cut off by something that clips", async ({ page }) => {
 //
 // Real Tab, not `element.focus()` — programmatic focus does not run the roving-tabindex
 // activation a dock tab uses, for the reasons `chromeFocus.visual.spec.ts` sets out.
-const TAB_STEPS = 45;
-const STEP_BUDGET_MS = 220;
+// The walk runs a route's whole tab order, not a prefix of it: at forty-five presses this
+// missed the second pane resizer by three stops, and that one carried the same dead
+// `outline: none` its twin did.
+const ROUTE_BUDGET_MS = 120_000;
 
 test("the ring the design promises is the ring that paints", async ({ page }) => {
-  test.setTimeout(ROUTES.length * TAB_STEPS * STEP_BUDGET_MS + 20_000);
+  test.setTimeout(ROUTES.length * ROUTE_BUDGET_MS + 20_000);
   const silent: string[] = [];
   const strangers: string[] = [];
   let reached = 0;
@@ -131,14 +134,10 @@ test("the ring the design promises is the ring that paints", async ({ page }) =>
     await page.goto(`/visual/?${route}&theme=light`);
     await page.waitForSelector("html[data-visual-ready]");
     await page.waitForTimeout(200);
-    const seen = new Set<string>();
 
-    for (let step = 0; step < TAB_STEPS; step += 1) {
-      await page.keyboard.press("Tab");
-      await page.waitForTimeout(40);
+    await eachTabStop(page, async () => {
       const meta = await page.evaluate(() => {
-        const active = document.activeElement as HTMLElement | null;
-        if (!active || active === document.body) return null;
+        const active = document.activeElement as HTMLElement;
         const tag = active.tagName.toLowerCase();
         // The three exclusions the global rule itself carries: an opt-out promising a row
         // state instead (`chromeFocus.visual.spec.ts` holds that promise), and text inputs,
@@ -180,7 +179,6 @@ test("the ring the design promises is the ring that paints", async ({ page }) =>
           walk(rules);
         }
         return {
-          key: `${active.getAttribute("class") ?? ""}|${(active.textContent ?? "").trim().slice(0, 24)}`,
           tag,
           painters,
           drawn: style.outlineStyle !== "none",
@@ -190,12 +188,11 @@ test("the ring the design promises is the ring that paints", async ({ page }) =>
             .slice(0, 34),
         };
       });
-      if (!meta || seen.has(meta.key)) continue;
-      seen.add(meta.key);
+      if (!meta) return;
       reached += 1;
       if (!meta.drawn) {
         silent.push(`${route}  <${meta.tag}> "${meta.label}"`);
-        continue;
+        return;
       }
       // The global pair is the only thing allowed to paint one: both halves gate on the
       // modality attribute and on `:focus-visible`, which nothing else in the sheet does.
@@ -207,7 +204,7 @@ test("the ring the design promises is the ring that paints", async ({ page }) =>
           `${route} <${meta.tag}> "${meta.label}"  ${foreign.length > 0 ? foreign.join(" ; ") : "no author rule paints it, so this is the browser's own"}`,
         );
       }
-    }
+    });
   }
 
   // A walk that reached nothing keeps no promise and reports no failure.

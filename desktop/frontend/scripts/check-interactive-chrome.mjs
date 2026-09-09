@@ -84,10 +84,17 @@ const RULES = [
     //
     // A real outline VALUE is a different statement and stays legal — a bare field borrows one
     // to mark itself invalid, and `input` is excluded from the ring rule by selector.
-    pattern: /\boutline(?:Style|Width)?: *(?:"none"|0\b)|\boutline[A-Za-z]*: *\{[^}]*"none"/g,
+    pattern: /\boutline(?:Style|Width)?: *(?:"none"|0\b|none;)|\boutline[A-Za-z]*: *\{[^}]*"none"/g,
     message:
       "the ring's suppression belongs in globals.css — a StyleX `outline` outranks it; use `data-chrome-focus` if a row state stands in",
-    appliesTo: (_line, rel) => rel !== "styles/globals.css",
+    // globals.css is exempt for the rules that ARE the focus model, not for the whole file.
+    // Exempting the file let two per-component suppressions sit beside them: both pane
+    // resizers carried `outline: none` at (0,1,0) against the global rule's (0,4,3), so
+    // neither ever suppressed anything, on elements whose own comment says a keyboard user
+    // needs to see their ring. One was found by a runtime walk that happened to reach it; its
+    // twin was three tab stops past where that walk stopped.
+    appliesTo: (_line, rel, selector) =>
+      rel !== "styles/globals.css" || !/:focus-visible|\[data-pointer\]/.test(selector),
   },
   {
     // Opacity as a hover answer, in either of its two forms. A REVEAL — transparent at rest,
@@ -158,12 +165,31 @@ for (const path of walk(SRC)) {
   examined += 1;
   const rel = relative(SRC, path);
   const lines = readFileSync(path, "utf8").split("\n");
+  // Which rule a CSS declaration belongs to, so an exemption can name a rule instead of a
+  // file. Only the line carrying the brace is needed: a selector prettier has wrapped keeps
+  // its most specific part there.
+  let selector = "";
+  let inBlockComment = false;
   lines.forEach((line, index) => {
+    // A `/* */` block's CONTINUATION lines open with prose, not with a comment marker, so the
+    // single-line skip below does not cover them — and two of these rules document themselves
+    // by spelling out the pattern they forbid. The rule that reads globals.css was reporting
+    // the paragraph explaining why it exists.
+    const wasInComment = inBlockComment;
+    for (const marker of line.match(/\/\*|\*\//g) ?? []) {
+      inBlockComment = marker === "/*";
+    }
+    if (wasInComment || /\/\*/.test(line)) return;
+    if (extname(path) === ".css") {
+      const opens = /^([^{}]*)\{\s*$/.exec(line);
+      if (opens) selector = opens[1].trim();
+      else if (line.trim() === "}") selector = "";
+    }
     // A line that opens as a comment styles nothing, and two of these rules are documented by
     // spelling out the pattern they forbid — so a guard reading prose flags its own warning.
     if (/^\s*(?:\/\/|\*|\/\*)/.test(line)) return;
     for (const { pattern, message, appliesTo } of RULES) {
-      if (!appliesTo(line, rel)) continue;
+      if (!appliesTo(line, rel, selector)) continue;
       for (const match of line.matchAll(pattern)) {
         violations.push(`${rel}:${index + 1}  ${match[0]}  — ${message}`);
       }

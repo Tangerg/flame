@@ -1131,10 +1131,6 @@ html.theme-dark {
   transform: translateX(5px);
   cursor: col-resize;
   touch-action: none;
-  background: transparent;
-  border: 0;
-  padding: 0;
-  outline: none;
 }
 
 .agent-pane-resizer:is(:hover, :focus-visible, :active) + .pane-split {
