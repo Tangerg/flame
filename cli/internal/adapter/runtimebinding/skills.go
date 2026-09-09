@@ -155,7 +155,7 @@ func (r *Connection) decideSkillProposal(
 	decide func(context.Context, protocol.SkillProposalRef, flameruntime.CommandOptions) error,
 ) error {
 	if err := reference.Validate(); err != nil {
-		return err
+		return fmt.Errorf("%s: %w", operation, err)
 	}
 	options := r.commandOptions()
 	request := protocol.SkillProposalRef{
@@ -163,7 +163,7 @@ func (r *Connection) decideSkillProposal(
 		Name:      reference.Name, Revision: reference.Revision, Scope: reference.Scope,
 	}
 	if err := decide(ctx, request, options); err != nil {
-		return classifyError(err)
+		return fmt.Errorf("%s: %w", operation, classifyError(err))
 	}
 	return nil
 }

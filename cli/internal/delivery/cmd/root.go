@@ -86,7 +86,7 @@ func (r runtimeProvider) Open(cmd *cobra.Command) (Runtime, *runtimebinding.Prof
 func NewRoot(dependencies Dependencies) *cobra.Command {
 	provider := runtimeProvider{open: dependencies.OpenRuntime}
 	v := viper.New()
-	root := newRootCommand(v, provider, dependencies.StartTerminal, dependencies.StateDirectory)
+	root := newRootCommand(v, dependencies.StartTerminal, dependencies.StateDirectory)
 	configureRoot(v, root)
 	root.Flags().StringP("session", "s", "", "Open an existing session instead of a new one")
 	root.PersistentFlags().StringP("cwd", "C", "", "Workspace directory for a new session (default: current directory)")
@@ -101,7 +101,6 @@ func NewRoot(dependencies Dependencies) *cobra.Command {
 
 func newRootCommand(
 	v *viper.Viper,
-	provider runtimeProvider,
 	startTerminal func(context.Context, TerminalRequest) error,
 	stateDirectory string,
 ) *cobra.Command {
