@@ -237,9 +237,14 @@ func (i *interactionSession) finish() {
 	})
 }
 
+// projectDelta forwards the preview text a client renders before the durable
+// Item exists. Every reason a delta cannot be forwarded leaves the same hole in
+// that preview, so every reason reports it: a payload this Runtime cannot parse
+// is a framework boundary defect, not a quiet no-op.
 func (i *interactionSession) projectDelta(ctx context.Context, delta agent.Delta) {
 	parsed, err := interaction.ParseModelResponseDelta(delta.Payload())
 	if err != nil {
+		i.reportDroppedDelta(ctx, delta, err)
 		return
 	}
 	response := parsed.ResponseDelta()
@@ -257,10 +262,25 @@ func (i *interactionSession) projectDelta(ctx context.Context, delta agent.Delta
 		if found && i.lifetime.offer(runs.ExecutorEvent{Member: member, Payload: payload}) {
 			continue
 		}
-		trace.SpanFromContext(ctx).AddEvent(
-			"agentexec.delta.dropped",
-			trace.WithAttributes(attribute.String("process.id", delta.ProcessID().String())),
-		)
+		i.reportDroppedDelta(ctx, delta, errUnroutableDelta)
+	}
+}
+
+// errUnroutableDelta names the drop that is not a defect: the process has no
+// installed executor route, or the run tree stopped accepting events.
+var errUnroutableDelta = errors.New("agentexec: delta has no accepting executor route")
+
+func (i *interactionSession) reportDroppedDelta(ctx context.Context, delta agent.Delta, cause error) {
+	span := trace.SpanFromContext(ctx)
+	span.AddEvent(
+		"agentexec.delta.dropped",
+		trace.WithAttributes(
+			attribute.String("process.id", delta.ProcessID().String()),
+			attribute.String("drop.cause", cause.Error()),
+		),
+	)
+	if !errors.Is(cause, errUnroutableDelta) {
+		span.RecordError(cause)
 	}
 }
 
