@@ -205,7 +205,7 @@ func TestToolDetailsPreserveStructuredProblems(t *testing.T) {
 	presentation := presentUnknownTool(agent.ToolCall{
 		Kind: agent.ToolUnknown, Name: "provider_tool", Status: agent.ToolError,
 		Problem: &protocol.ProblemData{
-			Type: protocol.ProblemToolFailed,
+			Type:   protocol.ProblemToolFailed,
 			DocURL: "https://docs.example/errors/rate-limit",
 		},
 	})
