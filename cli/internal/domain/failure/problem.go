@@ -4,25 +4,12 @@
 package failure
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
 
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
-
-// Validate delegates to the generated Runtime Protocol contract so the CLI
-// cannot accept a problem shape the Runtime forbids.
-func Validate(problem *runtimeprotocol.ProblemData) error {
-	if problem == nil {
-		return errors.New("problem is nil")
-	}
-	if err := runtimeprotocol.ValidateWireTree(*problem); err != nil {
-		return fmt.Errorf("problem: %w", err)
-	}
-	return nil
-}
 
 // Clone returns an independently owned problem. It is safe on nil.
 func Clone(problem *runtimeprotocol.ProblemData) *runtimeprotocol.ProblemData {

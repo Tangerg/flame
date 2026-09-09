@@ -35,7 +35,10 @@ func TestTargetOwnsScopeWorkspaceInvariant(t *testing.T) {
 	}
 }
 
-func TestItemRejectsBrokenReviewProjection(t *testing.T) {
+// TestMemoryItemRejectsReversedTimestamps covers the one fact the Runtime wire
+// contract cannot state about an item: two independent timestamps in the wrong
+// order. Origin, status, scope and their agreement are the endpoint's answer.
+func TestMemoryItemRejectsReversedTimestamps(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
 	valid := protocol.AgentMemoryItem{ID: testMemoryID, Scope: protocol.AgentMemoryScopeProject, Content: "fact", Origin: protocol.AgentMemoryOriginAuto, Status: protocol.AgentMemoryStatusPending, CreatedAt: now, UpdatedAt: now}
@@ -43,11 +46,6 @@ func TestItemRejectsBrokenReviewProjection(t *testing.T) {
 		t.Fatal(err)
 	}
 	invalid := valid
-	invalid.Origin = protocol.AgentMemoryOriginUser
-	if err := ValidateMemoryItem(invalid); err == nil || !strings.Contains(err.Error(), "status") {
-		t.Fatalf("Validate() = %v", err)
-	}
-	invalid = valid
 	invalid.UpdatedAt = now.Add(-time.Second)
 	if err := ValidateMemoryItem(invalid); err == nil || !strings.Contains(err.Error(), "before creation") {
 		t.Fatalf("ValidateMemoryItem() = %v", err)

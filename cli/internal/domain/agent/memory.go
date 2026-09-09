@@ -47,11 +47,9 @@ func (t MemoryTarget) Validate() error {
 }
 
 // ValidateMemoryItem checks the temporal relationship that Runtime's field-level
-// wire contract cannot express.
+// wire contract cannot express. Every field-level rule is the endpoint's answer,
+// already given before this item reached the CLI.
 func ValidateMemoryItem(item protocol.AgentMemoryItem) error {
-	if err := item.ValidateWire(); err != nil {
-		return err
-	}
 	if item.UpdatedAt.Before(item.CreatedAt) {
 		return fmt.Errorf("agent memory item %s was updated before creation", item.ID)
 	}

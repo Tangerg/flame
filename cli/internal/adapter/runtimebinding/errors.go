@@ -101,13 +101,10 @@ func classifyError(err error) error {
 	var problem *protocol.ProblemData
 	if source, ok := errors.AsType[protocol.ProblemError](err); ok {
 		data := source.Problem()
+		// The Runtime validates a problem before projecting it and falls back to
+		// an internal failure when it cannot; a second pass here would be the same
+		// generated validator one call frame later.
 		problem = failure.Clone(&data)
-		if validationErr := failure.Validate(problem); validationErr != nil {
-			return errors.Join(
-				runtimeContractViolation("runtime problem is invalid: %v", validationErr),
-				err,
-			)
-		}
 	}
 	if kind == nil && problem == nil {
 		return err

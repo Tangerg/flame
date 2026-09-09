@@ -112,16 +112,3 @@ func TestClassifyErrorProjectsUnmappedRuntimeProblem(t *testing.T) {
 		}
 	}
 }
-
-func TestClassifyErrorRejectsMalformedRuntimeProblem(t *testing.T) {
-	t.Parallel()
-	source := runtimeProblemError{
-		cause: errors.New("malformed provider cause"),
-		data:  protocol.ProblemData{Type: protocol.ProblemRateLimited, RetryAfterSeconds: -1},
-	}
-	err := classifyError(source)
-	requireRuntimeContractViolation(t, err)
-	if !errors.Is(err, source.cause) {
-		t.Fatalf("contract violation lost the runtime cause: %v", err)
-	}
-}

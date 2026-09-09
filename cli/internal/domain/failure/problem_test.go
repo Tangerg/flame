@@ -30,9 +30,6 @@ func TestProblemOwnsAndPresentsRecoveryMetadata(t *testing.T) {
 	}
 	var rendered []string
 	for _, problem := range problems {
-		if err := Validate(problem); err != nil {
-			t.Fatal(err)
-		}
 		rendered = append(rendered, String(problem))
 	}
 	presentation := strings.Join(rendered, " ")
@@ -54,25 +51,5 @@ func TestProblemOwnsAndPresentsRecoveryMetadata(t *testing.T) {
 	}
 	if !Equal(problems[0], Clone(problems[0])) || Clone(nil) != nil || !Equal(nil, nil) {
 		t.Fatal("problem clone/equality identity is broken")
-	}
-}
-
-func TestProblemRejectsMalformedStructuredLeaves(t *testing.T) {
-	t.Parallel()
-
-	tests := []protocol.ProblemData{
-		{},
-		{Type: "rate_limited", RetryAfterSeconds: -1},
-		{Type: "capability_not_negotiated", RequiredCapabilities: []protocol.CapabilityRequirement{{Type: "unknown", Name: "x"}}},
-		{Type: "capability_not_negotiated", RequiredCapabilities: []protocol.CapabilityRequirement{{Type: protocol.RequirementFeature}}},
-		{Type: "capability_not_negotiated", RetryAfterSeconds: 2, RequiredCapabilities: []protocol.CapabilityRequirement{{Type: protocol.RequirementFeature, Name: "subagents"}}},
-		{Type: "session_has_active_run", ActiveRun: &protocol.ActiveRunRef{Status: protocol.RunStatusRunning}},
-		{Type: "session_has_active_run", ActiveRun: &protocol.ActiveRunRef{RunID: "run_1", Status: "queued"}},
-		{Type: "invalid_params", Errors: []protocol.FieldError{{Field: "provider"}}},
-	}
-	for _, problem := range tests {
-		if err := Validate(&problem); err == nil {
-			t.Fatalf("Validate accepted malformed problem: %+v", problem)
-		}
 	}
 }
