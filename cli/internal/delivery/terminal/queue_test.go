@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
@@ -200,6 +201,21 @@ func drawQueueDrawer(t *testing.T, drawer *queueDrawer, width, height int) (*hea
 	surface := grid.NewSurface(width, height)
 	root.Draw(surface.View())
 	return root, surface, strings.Join(surface.Rows(), "\n")
+}
+
+// drawnTextOrigin finds a cell a click can be aimed at. A pointer test aims at
+// what the user sees, so it reads the drawn screen instead of asking the drawer
+// to publish a rectangle whose one consumer would be this assertion.
+func drawnTextOrigin(t *testing.T, surface *grid.Surface, drawn string) image.Point {
+	t.Helper()
+	rows := surface.Rows()
+	for y, row := range rows {
+		if index := strings.Index(row, drawn); index >= 0 {
+			return image.Pt(utf8.RuneCountInString(row[:index]), y)
+		}
+	}
+	t.Fatalf("%q was not drawn:\n%s", drawn, strings.Join(rows, "\n"))
+	return image.Point{}
 }
 
 func queueDrawerHit(t *testing.T, drawer *queueDrawer, target queueTarget) queueHit {
@@ -404,16 +420,13 @@ func TestQueueDrawerEditorOwnsPointerPlacement(t *testing.T) {
 	drawer, _ := testQueueDrawer(t, agent.Message{Text: "move this cursor"})
 	drawer.Focus(true)
 	drawer.Handle(input.Key{Code: input.Enter})
-	root, _, _ := drawQueueDrawer(t, drawer, 72, 8)
-	area := drawer.presentation.Value().editorArea
-	if area.Empty() {
-		t.Fatal("queue editor did not publish its pointer area")
-	}
+	root, surface, _ := drawQueueDrawer(t, drawer, 72, 8)
+	first := drawnTextOrigin(t, surface, "move this cursor")
 	_, before := drawer.editor.Editor().Cursor()
 	if before == 0 {
 		t.Fatal("queue editor cursor did not start at the end")
 	}
-	if !root.Handle(input.Mouse{Pos: image.Pt(area.Min.X+2, area.Min.Y), Action: input.MouseDown, Button: input.ButtonLeft}) {
+	if !root.Handle(input.Mouse{Pos: first, Action: input.MouseDown, Button: input.ButtonLeft}) {
 		t.Fatal("queue editor click was not routed")
 	}
 	line, column := drawer.editor.Editor().Cursor()

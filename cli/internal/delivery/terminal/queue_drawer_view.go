@@ -46,8 +46,8 @@ func (q *queueDrawer) Draw(frame headless.Frame) {
 	inner := box.InnerRect(frame.Bounds().Size())
 	box.Draw(frame.View)
 	if q.Editing() {
-		editorArea := q.drawEditor(frame, inner)
-		q.presentation.Stage(frame, queuePresentation{editorArea: editorArea})
+		q.drawEditor(frame, inner)
+		q.presentation.Stage(frame, queuePresentation{})
 		return
 	}
 	q.editorRegion.Stage(frame, image.Rectangle{}, nil)
@@ -72,10 +72,10 @@ func (q *queueDrawer) footer() string {
 	return "j/k move · enter edit · x remove · J/K reorder · s send now · esc close"
 }
 
-func (q *queueDrawer) drawEditor(frame headless.Frame, inner image.Rectangle) image.Rectangle {
+func (q *queueDrawer) drawEditor(frame headless.Frame, inner image.Rectangle) {
 	if !q.Editing() || inner.Empty() {
 		q.editorRegion.Stage(frame, image.Rectangle{}, nil)
-		return image.Rectangle{}
+		return
 	}
 	entry := *q.editingEntry
 	rows := (layout.Flow{Axis: layout.Down}).Rects(inner.Size(), []layout.Slot{
@@ -90,7 +90,6 @@ func (q *queueDrawer) drawEditor(frame headless.Frame, inner image.Rectangle) im
 	frame.Text(header.Min.X, header.Min.Y, text.Truncate(label, header.Dx(), q.glyphs.Ellipsis), q.theme.Heading)
 	q.editorRegion.Stage(frame, field, &q.editor)
 	q.editor.Draw(frame.Sub(field))
-	return field
 }
 
 func (q *queueDrawer) drawEntries(view grid.View) ([]queueHit, int) {

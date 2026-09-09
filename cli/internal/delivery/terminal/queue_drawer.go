@@ -37,9 +37,8 @@ type queueHit struct {
 }
 
 type queuePresentation struct {
-	hits       []queueHit
-	rowRows    int
-	editorArea image.Rectangle
+	hits    []queueHit
+	rowRows int
 }
 
 type queuePointerGesture struct {
