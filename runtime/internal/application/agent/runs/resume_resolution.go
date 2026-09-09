@@ -3,7 +3,6 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -117,7 +116,7 @@ func resolveQuestionResponse(request transcript.Interrupt, response ResumeRespon
 	if request.Question == nil || len(request.Question.Fields) == 0 {
 		return interrupt.Resolution{}, errors.New("open question has no fields")
 	}
-	resolution := interrupt.Resolution{Approved: true, Answers: cloneAnswers(response.Question.Answers)}
+	resolution := interrupt.Resolution{Approved: true, Answers: transcript.CloneAnswers(response.Question.Answers)}
 	answer := InterruptAnswer{InterruptItemID: response.ItemID, Resolution: resolution}
 	if err := answer.validateResolution(request); err != nil {
 		return interrupt.Resolution{}, err
@@ -201,15 +200,4 @@ func (a InterruptAnswer) validateQuestionResolution(request *transcript.Question
 		}
 	}
 	return nil
-}
-
-func cloneAnswers(answers [][]string) [][]string {
-	if answers == nil {
-		return nil
-	}
-	cloned := make([][]string, len(answers))
-	for index, values := range answers {
-		cloned[index] = slices.Clone(values)
-	}
-	return cloned
 }

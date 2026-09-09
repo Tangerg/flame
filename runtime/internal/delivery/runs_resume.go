@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -150,18 +151,7 @@ func decodeQuestionResponse(wire protocol.InterruptResponseValue) (*runs.Questio
 	}
 	// The ordered answer list is the complete question resolution. The
 	// application later validates it against the stored question's field schema.
-	return &runs.QuestionResponse{Answers: cloneWireAnswers(wire.Answers)}, nil
-}
-
-func cloneWireAnswers(in [][]string) [][]string {
-	if in == nil {
-		return nil
-	}
-	out := make([][]string, len(in))
-	for index, values := range in {
-		out[index] = append([]string(nil), values...)
-	}
-	return out
+	return &runs.QuestionResponse{Answers: transcript.CloneAnswers(wire.Answers)}, nil
 }
 
 func questionAnswerParamsError(

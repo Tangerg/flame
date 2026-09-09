@@ -431,7 +431,7 @@ func portableQuestionFromArtifact(path string, artifact protocol.ArtifactQuestio
 			Options: options, Multiple: field.Multiple, AllowCustom: field.AllowCustom,
 		}
 	}
-	return transcript.Question{Fields: fields, Answers: cloneAnswers(artifact.Answers)}, nil
+	return transcript.Question{Fields: fields, Answers: transcript.CloneAnswers(artifact.Answers)}, nil
 }
 
 func portableQuestionFieldKind(path string, value protocol.QuestionFieldType) (transcript.QuestionFieldKind, error) {

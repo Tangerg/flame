@@ -47,7 +47,7 @@ func cloneInterruptAnswers(answers []InterruptAnswer) []InterruptAnswer {
 	owned := make([]InterruptAnswer, len(answers))
 	for index, answer := range answers {
 		owned[index] = answer
-		owned[index].Resolution.Answers = cloneAnswers(answer.Resolution.Answers)
+		owned[index].Resolution.Answers = transcript.CloneAnswers(answer.Resolution.Answers)
 	}
 	return owned
 }

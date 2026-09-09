@@ -507,7 +507,7 @@ func cloneQuestion(question *Question) *Question {
 	}
 	copy := Question{
 		Fields:  make([]QuestionField, len(question.Fields)),
-		Answers: cloneQuestionAnswers(question.Answers),
+		Answers: CloneAnswers(question.Answers),
 	}
 	for index, field := range question.Fields {
 		copy.Fields[index] = field
@@ -516,7 +516,13 @@ func cloneQuestion(question *Question) *Question {
 	return &copy
 }
 
-func cloneQuestionAnswers(answers [][]string) [][]string {
+// CloneAnswers copies one question's answers away from their producer.
+//
+// A row is appended onto a nil slice rather than cloned, so an answered-but-empty
+// field arrives as nil and encodes as JSON null. That is the published shape for
+// a skipped field: slices.Clone would preserve the empty slice and publish [],
+// changing the wire for every consumer that reads a skipped answer back.
+func CloneAnswers(answers [][]string) [][]string {
 	if answers == nil {
 		return nil
 	}
@@ -572,7 +578,7 @@ func (i Item) AnswerQuestion(answers [][]string) (Item, error) {
 		return Item{}, errors.New("transcript: Question is already answered")
 	}
 	i.question = cloneQuestion(i.question)
-	i.question.Answers = cloneQuestionAnswers(answers)
+	i.question.Answers = CloneAnswers(answers)
 	if err := i.validate(); err != nil {
 		return Item{}, err
 	}

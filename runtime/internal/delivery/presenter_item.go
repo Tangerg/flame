@@ -150,18 +150,7 @@ func presentQuestion(question transcript.Question) protocol.Question {
 			Options: options, Multiple: field.Multiple, AllowCustom: field.AllowCustom,
 		}
 	}
-	return protocol.Question{Fields: fields, Answers: cloneAnswers(question.Answers)}
-}
-
-func cloneAnswers(answers [][]string) [][]string {
-	if answers == nil {
-		return nil
-	}
-	cloned := make([][]string, len(answers))
-	for index, values := range answers {
-		cloned[index] = append([]string(nil), values...)
-	}
-	return cloned
+	return protocol.Question{Fields: fields, Answers: transcript.CloneAnswers(question.Answers)}
 }
 
 func presentTool(tool transcript.ToolInvocation) protocol.ToolInvocation {

@@ -333,3 +333,35 @@ func TestToolCallFailureAndAbandonmentHaveOneWayTransitions(t *testing.T) {
 		t.Fatalf("classified abandoned ToolCall = failure %+v/%t, finished %v", gotFailure, present, classified.FinishedAt())
 	}
 }
+
+// TestCloneAnswersPublishesASkippedFieldAsNull pins the shape a skipped answer
+// reaches the wire as. slices.Clone would keep an empty row non-nil and encode
+// it as [] instead, which is why the copy is an append onto nil.
+func TestCloneAnswersPublishesASkippedFieldAsNull(t *testing.T) {
+	t.Parallel()
+
+	cloned := transcript.CloneAnswers([][]string{{}, {"yes"}})
+	if len(cloned) != 2 {
+		t.Fatalf("CloneAnswers returned %d rows, want 2", len(cloned))
+	}
+	if cloned[0] != nil {
+		t.Fatalf("a skipped field cloned to %#v, want nil so it encodes as null", cloned[0])
+	}
+	if len(cloned[1]) != 1 || cloned[1][0] != "yes" {
+		t.Fatalf("an answered field cloned to %#v", cloned[1])
+	}
+	if transcript.CloneAnswers(nil) != nil {
+		t.Fatal("transcript.CloneAnswers(nil) must stay nil")
+	}
+}
+
+func TestCloneAnswersOwnsItsRows(t *testing.T) {
+	t.Parallel()
+
+	source := [][]string{{"first"}}
+	cloned := transcript.CloneAnswers(source)
+	source[0][0] = "mutated"
+	if cloned[0][0] != "first" {
+		t.Fatalf("clone shares a row with its producer: %q", cloned[0][0])
+	}
+}

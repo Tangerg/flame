@@ -161,7 +161,7 @@ func clonePendingInterrupt(value transcript.Interrupt) transcript.Interrupt {
 		for index := range question.Fields {
 			question.Fields[index].Options = slices.Clone(question.Fields[index].Options)
 		}
-		question.Answers = cloneAnswers(question.Answers)
+		question.Answers = transcript.CloneAnswers(question.Answers)
 		value.Question = &question
 	}
 	return value

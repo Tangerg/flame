@@ -230,7 +230,7 @@ func decodeContentPayload(payload contentPayload) (transcript.ContentBlock, erro
 func encodeQuestionPayload(question transcript.Question) (questionPayload, error) {
 	encoded := questionPayload{
 		Fields:  make([]questionFieldPayload, len(question.Fields)),
-		Answers: cloneStringMatrix(question.Answers),
+		Answers: transcript.CloneAnswers(question.Answers),
 	}
 	for index, field := range question.Fields {
 		if !field.Kind.Valid() {
@@ -256,7 +256,7 @@ func encodeQuestionPayload(question transcript.Question) (questionPayload, error
 func decodeQuestionPayload(payload questionPayload) (transcript.Question, error) {
 	question := transcript.Question{
 		Fields:  make([]transcript.QuestionField, len(payload.Fields)),
-		Answers: cloneStringMatrix(payload.Answers),
+		Answers: transcript.CloneAnswers(payload.Answers),
 	}
 	for index, field := range payload.Fields {
 		if !field.Kind.Valid() {
@@ -277,17 +277,6 @@ func decodeQuestionPayload(payload questionPayload) (transcript.Question, error)
 		question.Fields[index] = decoded
 	}
 	return question, nil
-}
-
-func cloneStringMatrix(values [][]string) [][]string {
-	if values == nil {
-		return nil
-	}
-	cloned := make([][]string, len(values))
-	for index, row := range values {
-		cloned[index] = append([]string(nil), row...)
-	}
-	return cloned
 }
 
 func encodeToolInvocationPayload(invocation transcript.ToolInvocation) toolInvocationPayload {
