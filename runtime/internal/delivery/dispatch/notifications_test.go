@@ -3,24 +3,12 @@ package dispatch
 import (
 	"context"
 	"encoding/json"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
-
-func TestEncodeRuntimeEventRejectsAnInvalidOutputShape(t *testing.T) {
-	t.Parallel()
-
-	_, err := EncodeRuntimeEvent(protocol.RuntimeEvent{
-		Type: protocol.RuntimeResync, Sequence: 1,
-	})
-	if err == nil || !strings.Contains(err.Error(), "RuntimeEvent.topics") {
-		t.Fatalf("EncodeRuntimeEvent error = %v, want shape-qualified topics violation", err)
-	}
-}
 
 func TestDispatchNotificationSuppressesMetadataErrors(t *testing.T) {
 	router := &Router{}

@@ -362,3 +362,38 @@ func TestEndpointShutdownWaitsForStartedStreamSourceToReturn(t *testing.T) {
 		t.Fatalf("AwaitShutdown after source return: %v", err)
 	}
 }
+
+// invalidEventService publishes a RuntimeEvent no Application can build: a
+// resync naming no affected scope. It exists to prove the endpoint refuses it,
+// which is why nothing downstream has to.
+type invalidEventService struct{}
+
+func (invalidEventService) SubscribeRuntime(context.Context, protocol.RuntimeSubscribeRequest) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error) {
+	return &protocol.RuntimeSubscribeResponse{}, func(yield func(protocol.RuntimeEvent, error) bool) {
+		yield(protocol.RuntimeEvent{Type: protocol.RuntimeResync, Sequence: 1}, nil)
+	}, nil
+}
+
+// TestEndpointRefusesAnEventItCannotPublish fixes where an unpublishable event
+// is answered. The endpoint validates every event against the same generated
+// validators as the response, so the transport encoders below it consume a
+// checked value instead of re-deriving the verdict — and a caller learns the
+// Runtime failed rather than watching a stream end early.
+func TestEndpointRefusesAnEventItCannotPublish(t *testing.T) {
+	t.Parallel()
+
+	endpoint := mustNewEndpoint(t, invalidEventService{}, EndpointConfig{Lifetime: t.Context()})
+	result := endpoint.Invoke(t.Context(), "runtime.subscribe", protocol.RuntimeSubscribeRequest{
+		Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
+	}, Options{})
+	if result.Failure != nil || result.Events == nil {
+		t.Fatalf("subscribe result = %+v", result)
+	}
+	for event, err := range result.Events {
+		if !errors.Is(err, protocol.ErrInternalError) {
+			t.Fatalf("event %+v, err = %v; want an internal error", event, err)
+		}
+		return
+	}
+	t.Fatal("the stream ended cleanly instead of reporting the event it could not publish")
+}
