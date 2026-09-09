@@ -605,6 +605,66 @@ for (const path of sourceFiles(SRC_DIR)) {
   }
 }
 
+// Rule 9 — an English `.title` is sentence case.
+//
+// Seventeen view titles read `Tool stats`, `Run summary`, `Working tree`, `Agent docs`; three
+// read `Skill Library`, `Skill Proposals`, `Agent Memory`. `Agent docs` and `Agent Memory` sat
+// two panes apart in the same dock. Only English drifted — every other catalog follows its own
+// language's rule, which is why this asks English alone.
+//
+// An all-caps later word is an acronym and passes: `Agent SDK` is not Title Case.
+{
+  for (const [key, value] of enValues) {
+    if (!key.endsWith(".title")) continue;
+    const words = value.split(/\s+/);
+    if (words.length < 2) continue;
+    const later = words.slice(1);
+    if (!later.every((word) => /^[A-Z]/.test(word))) continue;
+    if (later.every((word) => word === word.toUpperCase())) continue;
+    failures.push(`en: "${key}" is Title Case — "${value}". Titles here are sentence case.`);
+  }
+}
+
+// Rule 10 — a workspace view is called one thing.
+//
+// Every view's name is written TWICE: `workspace.view.title.<x>` for its dock tab and the
+// catalog, and `<x>.title` for the header it draws at full placement. Twenty views, eight
+// locales — 320 strings for 160 facts, and drift is what a second copy is for. Three English
+// pairs had already parted (`Skill Library` in the tab, `Skill library` in the header) while
+// every other locale still agreed, which is the shape of a copy nobody compares.
+//
+// Two pairs disagree on the NAME rather than its case, and that is a product decision this
+// guard is not entitled to make — so they are named here, with the question, instead of
+// diverging quietly.
+{
+  const UNDECIDED = new Map([
+    ["files", 'tab "Changed files" vs header "Working tree" — which is the view called?'],
+    ["timeline", 'tab "Timeline" vs header "Run timeline" — is the short one for the strip?'],
+  ]);
+  const views = readFileSync(
+    join(SRC_DIR, "plugins/builtin/workspace/workspace-views/index.ts"),
+    "utf8",
+  );
+  for (const match of views.matchAll(/id:\s*"([^"]+)",\s*\n\s*title:\s*"([^"]+)"/g)) {
+    const [, id, tabKey] = match;
+    const headerKey = `${id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())}.title`;
+    for (const file of files) {
+      const locale = file.replace(/\.ts$/, "");
+      const values = valuesOf(file);
+      const tab = values.get(tabKey);
+      const header = values.get(headerKey);
+      if (header === undefined || tab === undefined || tab === header) continue;
+      if (UNDECIDED.has(id)) continue;
+      failures.push(
+        `${locale}: view "${id}" is called two things — tab "${tab}", header "${header}"`,
+      );
+    }
+  }
+  for (const id of UNDECIDED.keys())
+    if (!views.includes(`id: "${id}"`))
+      failures.push(`the undecided view name "${id}" no longer exists — drop it from Rule 10`);
+}
+
 // Rule 9 — every key is named somewhere in the tree.
 {
   const named = [];

@@ -355,7 +355,7 @@ export const es: Record<string, string> = {
   "contextDock.group.session": "Sesión",
   "workspace.view.title.filetree": "Explorador",
   "workspace.view.title.plan": "Plan",
-  "workspace.view.title.agentDocs": "Documentos del agent",
+  "workspace.view.title.agentDocs": "Docs del agent",
   "workspace.view.title.runSummary": "Resumen de ejecución",
   "workspace.view.title.notifications": "Notificaciones",
   "workspace.view.title.inbox": "Bandeja",

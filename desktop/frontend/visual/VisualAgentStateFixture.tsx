@@ -47,16 +47,18 @@ function StateSidebar({ state }: { state: VisualAgentState }) {
   useLayoutEffect(() => {
     const list = listRef.current;
     if (!list) return;
+    // From a fixed base every time, and this is the whole point rather than a tidy-up. Landing
+    // only when the row is OUT of view makes the result depend on where the list already was:
+    // the first land chose an offset against one set of row heights, the fonts arrived, the
+    // observer re-landed — and found the row already in view, so it changed nothing and the
+    // stale offset stayed. Two outcomes eleven pixels apart, roughly one run in six, which
+    // reads as an unstable golden rather than as a landing that remembers.
     const land = () => {
       const active = list.querySelector<HTMLElement>("[data-active]");
       if (!active) return;
-      const top = active.offsetTop;
-      const bottom = top + active.offsetHeight;
-      if (top < list.scrollTop) list.scrollTop = top;
-      else if (bottom > list.scrollTop + list.clientHeight) {
-        list.scrollTop = bottom - list.clientHeight;
-      }
-      list.scrollTop = Math.floor(list.scrollTop);
+      list.scrollTop = 0;
+      const bottom = active.offsetTop + active.offsetHeight;
+      if (bottom > list.clientHeight) list.scrollTop = Math.floor(bottom - list.clientHeight);
     };
     land();
     const observer = new ResizeObserver(land);

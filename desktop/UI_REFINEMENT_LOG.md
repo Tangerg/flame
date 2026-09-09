@@ -11293,3 +11293,79 @@ if (!(rule instanceof CSSStyleRule) || rule.style.length !== 1) continue;
 | 视觉 | **674 / 674**，重录 **0** |
 | `cn(两串生成的类名)` | 4 → **0** |
 | `className` 逃生口 | 仍是 82 处，**零竞态，不动** |
+
+## Round 179 — 一个视图有两个名字；以及那条 flake 的根因是「记得上一次」
+
+### 从大小写漂移，挖到重复本身
+
+把每个视图在 full placement 打开一遍（上一轮加的 `?full-view=`），扫出来一件小事：
+二十个标题里十七个是 sentence case（`Tool stats` / `Run summary` / `Working tree` / `Agent docs`），
+三个是 Title Case（`Skill Library` / `Skill Proposals` / `Agent Memory`）。
+`Agent docs` 和 `Agent Memory` 在同一个 dock 里隔着两个面板。
+
+改完英文标题之后，**674 张 golden 一张没动** —— 这本身就是线索：
+一个用户看得见的字符串改了，没有任何一张照片记录它。
+
+追下去发现每个视图的名字**写了两遍**：
+
+| | 键 | 用在 |
+| --- | --- | --- |
+| tab | `workspace.view.title.<x>` | dock 标签、catalog |
+| header | `<x>.title` | full placement 的头部 |
+
+二十个视图 × 八种语言 = **320 个字符串，承载 160 个事实**。而第二份拷贝的用途就是漂移：
+
+| 视图 | tab | header |
+| --- | --- | --- |
+| skill-library | Skill Library | Skill library |
+| skill-proposals | Skill Proposals | Skill proposals |
+| agent-memory | Agent Memory | Agent memory |
+| files | **Changed files** | **Working tree** |
+| timeline | **Timeline** | **Run timeline** |
+
+前三个是我上一步的**半个修复**：只改了 header，tab 还留在 Title Case ——
+改之前两边一致（都是 Title Case），改完反而不一致了。补齐 tab。
+
+守卫 `Rule 10` 加上之后，立刻又抓到**第六处我没看见的**：
+西班牙语 `agent-docs` tab `"Documentos del agent"` vs header `"Docs del agent"`。
+英文两边一致，只有西语漂了。按英文的短名形式统一到 header 那个。
+
+后两个（`files` / `timeline`）是**名字本身不同**，不是大小写 —— 那是产品决定，
+守卫不该替你做，所以它们连同问题一起写进白名单，而不是悄悄分岔。
+
+### 那条 flake：`land()` 记得上一次
+
+`agent golden tool-tail` 第三次出现（Round 170 dark、这轮 light）。
+这次单独跑也复现了 —— 6 次里 1 次，**7255 像素**，不是阈值噪声。
+
+裁图看：fixture 自己那条状态栏整体上移 11px，底部多露出一行 "Waves"。
+
+根因在 fixture 的 `StateSidebar.land()`：它**只在 active 行不可见时**才滚。
+于是第一次 land 按一套行高选了一个 offset，字体到位后 `ResizeObserver` 再 land，
+发现行已经在视野里 —— **什么都不做**，把上一次的 offset 留下了。
+两个相差 11px 的结果，取决于第一次跑在什么时候。
+
+治法是让落点**不带记忆**：每次从 0 开始重算。
+不是加超时、不是加重试 —— 那些是等一个已经错了的状态。
+
+证据：改前约 1/6 失败；改后 tool-tail 连续 **36 次**观察全绿
+（(5/6)^36 ≈ 0.14%），且 44 张 agent golden 两轮全过 —— 落点没有位移。
+
+### 一次我自己造成的污染，记下来
+
+中间有一轮全量红了 14 张，其中 6 张（`layoutShift` ×3、`zh`/`zh-TW`/`de`）根本不该动。
+原因是我为了量 bundle **在套件运行期间改了 `MarkdownMessage.tsx`** ——
+dev server 热更新，套件后半程拍的是打了桩的 markdown。同一轮还并发跑了两次 `vite build`，
+耗时从 9.5 分钟涨到 23.4 分钟。
+
+**运行期间不碰源码**这条我自己写过，又自己犯了。重跑干净之后只剩 8 张预期内的 + tool-tail。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **674 / 674** |
+| 重录 | 8 张（三个改名的 tab + catalog × 双主题）—— 原因：文案统一到 sentence case |
+| 视图名分岔 | 6 → **0 处未声明**（2 处产品决定已列出并附问题）|
+| `tool-tail` flake | ~1/6 → **36 次观察全绿** |
+| 守卫 | `check:locales` 新增两条规则（标题大小写、一个视图一个名字），**都验证过会失败** |
