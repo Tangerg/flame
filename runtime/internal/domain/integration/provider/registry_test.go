@@ -139,41 +139,18 @@ func TestProviderValuesRejectInvalidPrimitiveStates(t *testing.T) {
 			t.Errorf("NewBaseURL(%q) error = %v", value, err)
 		}
 	}
+	// A base URL is canonicalized on the way in, so a stored value round-trips
+	// through NewBaseURL unchanged and no reader has to re-canonicalize it.
+	canonical, err := NewBaseURL("https://EXAMPLE.test/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again, err := NewBaseURL(canonical.String()); err != nil || again.String() != canonical.String() {
+		t.Fatalf("NewBaseURL(%q) = (%q, %v), want a fixed point", canonical, again, err)
+	}
+
 	entry, _ := New("openai")
 	if _, err := entry.Apply(Patch{APIKey: Set(APIKey{})}); !errors.Is(err, ErrChangeCorrupted) {
 		t.Fatalf("Apply zero API key error = %v", err)
-	}
-}
-
-func TestProviderValidateRejectsCorruptedAggregateStates(t *testing.T) {
-	valid, err := New("openai")
-	if err != nil {
-		t.Fatal(err)
-	}
-	key, err := NewAPIKey("sk-valid")
-	if err != nil {
-		t.Fatal(err)
-	}
-	valid, err = valid.Apply(Patch{APIKey: Set(key)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := valid.Validate(); err != nil {
-		t.Fatalf("valid Provider rejected: %v", err)
-	}
-
-	for name, value := range map[string]Provider{
-		"zero identity":         {},
-		"invalid key":           {id: valid.id, credential: Credential{key: APIKey{value: " bad"}, source: KeyStored}},
-		"invalid source":        {id: valid.id, credential: Credential{key: key, source: "vault"}},
-		"orphan source":         {id: valid.id, credential: Credential{source: KeyStored}},
-		"invalid base URL":      {id: valid.id, baseURL: BaseURL{value: "file:///tmp/socket"}},
-		"noncanonical base URL": {id: valid.id, baseURL: BaseURL{value: "https://EXAMPLE.test/"}},
-	} {
-		t.Run(name, func(t *testing.T) {
-			if err := value.Validate(); !errors.Is(err, ErrInvalid) {
-				t.Fatalf("Validate error = %v, want ErrInvalid", err)
-			}
-		})
 	}
 }

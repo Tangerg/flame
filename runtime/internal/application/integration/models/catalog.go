@@ -129,16 +129,6 @@ func NewProviderMetadata(id string, authentication ProviderAuthenticationPolicy,
 
 func (p ProviderMetadata) ID() string { return p.id.String() }
 
-// Validate rejects metadata the catalog port never built. Its private fields
-// have one source, so an unidentified provider is the only value that can reach
-// a use case without NewProviderMetadata's checks.
-func (p ProviderMetadata) Validate() error {
-	if p.id.String() == "" {
-		return fmt.Errorf("models: provider metadata is not constructed")
-	}
-	return nil
-}
-
 func (p ProviderMetadata) RequiresAPIKey() bool {
 	return p.authentication == ProviderAPIKeyRequired
 }

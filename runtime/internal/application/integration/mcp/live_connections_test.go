@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"context"
 	"errors"
-	"fmt"
 	"slices"
 	"sync"
 	"testing"
@@ -85,94 +84,20 @@ func TestToolsOwnCatalogOrder(t *testing.T) {
 	}
 }
 
-func TestToolsRejectsBrokenOrOutOfScopeCatalogs(t *testing.T) {
-	files := testMCPServerName("files")
-	read := mcpserver.AdvertisedTool{Server: files, Name: testRemoteToolName("read")}
-	for name, tools := range map[string][]mcpserver.AdvertisedTool{
-		"invalid descriptor": {{}},
-		"duplicate identity": {read, read},
-		"foreign scope":      {{Server: testMCPServerName("other"), Name: testRemoteToolName("read")}},
-	} {
-		t.Run(name, func(t *testing.T) {
-			c := testCoordinator(t, Config{ToolCatalog: &fakePorts{tools: tools}})
-			if result, err := c.Tools(t.Context(), &files); err == nil || result != nil {
-				t.Fatalf("Tools = (%+v, %v), want nil/error", result, err)
-			}
-		})
-	}
-
-	overCapacity := make([]mcpserver.AdvertisedTool, mcpserver.MaxRemoteToolsPerServer+1)
-	for index := range overCapacity {
-		overCapacity[index] = mcpserver.AdvertisedTool{
-			Server: files, Name: testRemoteToolName(fmt.Sprintf("tool-%04d", index)),
-		}
-	}
-	c := testCoordinator(t, Config{ToolCatalog: &fakePorts{tools: overCapacity}})
-	if result, err := c.Tools(t.Context(), &files); err == nil || result != nil {
-		t.Fatalf("over-capacity Tools = (%d rows, %v), want nil/error", len(result), err)
-	}
-
+// TestToolsRejectInvalidScopeBeforeReachingTheCatalog covers the one tool-catalog
+// fact the Coordinator owns: the caller-supplied server scope. The descriptors
+// themselves belong to the connection adapter that parsed them off the wire.
+func TestToolsRejectInvalidScopeBeforeReachingTheCatalog(t *testing.T) {
+	read := mcpserver.AdvertisedTool{Server: testMCPServerName("files"), Name: testRemoteToolName("read")}
 	invalidScope := mcpserver.ServerName{}
 	ports := &fakePorts{tools: []mcpserver.AdvertisedTool{read}}
-	c = testCoordinator(t, Config{ToolCatalog: ports})
+	c := testCoordinator(t, Config{ToolCatalog: ports})
+
 	if result, err := c.Tools(t.Context(), &invalidScope); err == nil || result != nil {
 		t.Fatalf("invalid-scope Tools = (%+v, %v), want nil/error", result, err)
 	}
 	if ports.toolsCalls != 0 {
 		t.Fatalf("invalid scope reached tool catalog %d times", ports.toolsCalls)
-	}
-}
-
-func TestServersRejectsBrokenRegistryCatalog(t *testing.T) {
-	server := mcpserver.Server{
-		Name: testMCPServerName("files"), Enabled: true,
-		Transport: mcpserver.TransportStdio, Command: "mcp-files",
-	}
-	for name, listed := range map[string][]mcpserver.Server{
-		"invalid server":     {{}},
-		"duplicate identity": {server, server},
-	} {
-		t.Run(name, func(t *testing.T) {
-			c := testCoordinator(t, Config{Registry: &testRegistry{listed: listed}})
-			if servers, err := c.Servers(t.Context()); err == nil || servers != nil {
-				t.Fatalf("Servers = (%+v, %v), want nil/error", servers, err)
-			}
-		})
-	}
-}
-
-func TestServersRejectsBrokenLiveStatusCatalog(t *testing.T) {
-	name := testMCPServerName("files")
-	server := mcpserver.Server{
-		Name: name, Enabled: true,
-		Transport: mcpserver.TransportStdio, Command: "mcp-files",
-	}
-	valid := mcpserver.ConnectionStatus{Name: name, State: mcpserver.ConnectionConnected, ToolCount: 1}
-	for caseName, statuses := range map[string][]mcpserver.ConnectionStatus{
-		"invalid status":     {{}},
-		"duplicate identity": {valid, valid},
-		"discarded count":    {{Name: name, State: mcpserver.ConnectionFailed, ToolCount: 1}},
-	} {
-		t.Run(caseName, func(t *testing.T) {
-			ports := &fakePorts{statuses: statuses}
-			c := testCoordinator(t, Config{
-				Registry:     &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{name: server}},
-				StatusReader: ports,
-			})
-			if servers, err := c.Servers(t.Context()); err == nil || servers != nil {
-				t.Fatalf("Servers = (%+v, %v), want nil/error", servers, err)
-			}
-		})
-	}
-}
-
-func TestServerStatusRejectsCorruptApplicationOverride(t *testing.T) {
-	name := testMCPServerName("files")
-	c := testCoordinator(t, Config{})
-	c.statusOverrides[name] = ServerStatus{Name: name, Known: true, State: mcpserver.ConnectionConnected}
-
-	if status, err := c.ServerStatus(t.Context(), name); err == nil || status != (ServerStatus{}) {
-		t.Fatalf("ServerStatus = (%+v, %v), want zero/error", status, err)
 	}
 }
 
@@ -183,58 +108,21 @@ func TestServerStatusRejectsInvalidRequestedIdentity(t *testing.T) {
 	}
 }
 
-func TestMCPRegistryReadsRejectMismatchedIdentity(t *testing.T) {
-	requested := testMCPServerName("requested")
-	foreign := mcpserver.Server{
-		Name: testMCPServerName("foreign"), Enabled: true,
-		Transport: mcpserver.TransportStdio, Command: "mcp-foreign",
-	}
-	registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{requested: foreign}}
-	ports := &fakePorts{}
-	c := testCoordinator(t, Config{
-		Registry: registry, StatusReader: ports, ConnectionControl: ports,
-		ConnectionLifecycle: ports,
-	})
-
-	if server, err := c.Server(t.Context(), requested); err == nil || server.Name.String() != "" {
-		t.Fatalf("Server = (%+v, %v), want zero/error", server, err)
-	}
-	if err := c.ReconnectServer(t.Context(), requested); err == nil {
-		t.Fatal("ReconnectServer accepted a mismatched registry row")
-	}
-	candidate := mcpserver.Server{
-		Name: requested, Enabled: true,
-		Transport: mcpserver.TransportStdio, Command: "mcp-requested",
-	}
-	if server, err := c.CreateServer(t.Context(), input(candidate)); err == nil || server.Name.String() != "" {
-		t.Fatalf("CreateServer = (%+v, %v), want zero/error", server, err)
-	}
-	if result, err := c.TestServer(t.Context(), input(candidate)); err == nil || result != (TestResult{}) {
-		t.Fatalf("TestServer = (%+v, %v), want zero/error", result, err)
-	}
-	enabled := false
-	if server, err := c.UpdateServer(t.Context(), requested, ServerPatch{Enabled: &enabled}); err == nil || server.Name.String() != "" {
-		t.Fatalf("UpdateServer = (%+v, %v), want zero/error", server, err)
-	}
-	if err := c.DeleteServer(t.Context(), requested); err == nil {
-		t.Fatal("DeleteServer accepted a mismatched registry row")
-	}
-}
-
-func TestBrokenRegistryCatalogCannotReplaceToolPolicy(t *testing.T) {
+func TestFailedRegistryReadCannotReplaceToolPolicy(t *testing.T) {
 	server := mcpserver.Server{
 		Name: testMCPServerName("files"), Enabled: true,
 		Transport: mcpserver.TransportStdio, Command: "mcp-files",
 	}
 	policy := NewToolPolicyState(mcpserver.NewToolPolicy([]mcpserver.Server{server}))
 	ref := mcpserver.ToolRef{Server: server.Name, Tool: testRemoteToolName("read")}
-	c := testCoordinator(t, Config{Registry: &testRegistry{listed: []mcpserver.Server{{}}}, Policy: policy})
+	listErr := errors.New("registry unavailable")
+	c := testCoordinator(t, Config{Registry: &testRegistry{listErr: listErr}, Policy: policy})
 
 	if policy.ToolDisabled(ref) {
 		t.Fatal("initial policy unexpectedly disabled configured server")
 	}
-	if err := c.refreshToolPolicy(t.Context()); err == nil {
-		t.Fatal("refreshToolPolicy accepted a broken registry catalog")
+	if err := c.refreshToolPolicy(t.Context()); !errors.Is(err, listErr) {
+		t.Fatalf("refreshToolPolicy = %v, want the registry failure", err)
 	}
 	if policy.ToolDisabled(ref) {
 		t.Fatal("failed refresh replaced the last valid tool policy")
@@ -768,7 +656,8 @@ func configWithPorts(ports interface {
 	ToolCatalog
 	ConnectionControl
 	ConnectionLifecycle
-}) Config {
+},
+) Config {
 	registry := &testRegistry{servers: make(map[mcpserver.ServerName]mcpserver.Server)}
 	for _, status := range ports.Statuses() {
 		registry.servers[status.Name] = mcpserver.Server{
@@ -810,6 +699,7 @@ type testRegistry struct {
 	mu              sync.Mutex
 	servers         map[mcpserver.ServerName]mcpserver.Server
 	listed          []mcpserver.Server
+	listErr         error
 	saveCommitted   chan struct{}
 	releaseSave     chan struct{}
 	removeCommitted chan struct{}
@@ -819,6 +709,9 @@ type testRegistry struct {
 func (t *testRegistry) List(context.Context) ([]mcpserver.Server, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if t.listErr != nil {
+		return nil, t.listErr
+	}
 	if t.listed != nil {
 		servers := make([]mcpserver.Server, len(t.listed))
 		for index, server := range t.listed {

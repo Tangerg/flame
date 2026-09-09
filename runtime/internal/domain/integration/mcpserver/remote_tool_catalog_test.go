@@ -50,25 +50,3 @@ func TestRemoteToolInputSchemaEnvelope(t *testing.T) {
 		t.Fatalf("oversized normalized schema error = %v, want ErrInvalidInputSchema", err)
 	}
 }
-
-// TestAdvertisedToolValidatesItsCompleteDescriptor covers the descriptor fields
-// the catalog assembles. The schema is not among them: ParseInputSchema is its
-// only source and owns its object shape and canonical spelling.
-func TestAdvertisedToolValidatesItsCompleteDescriptor(t *testing.T) {
-	valid := AdvertisedTool{Server: testMCPServerName("files"), Name: testRemoteToolName("read")}
-	if err := valid.Validate(); err != nil {
-		t.Fatalf("valid tool rejected: %v", err)
-	}
-
-	for name, tool := range map[string]AdvertisedTool{
-		"missing server": {Name: valid.Name},
-		"missing tool":   {Server: valid.Server},
-		"invalid UTF-8":  {Server: valid.Server, Name: valid.Name, Description: string([]byte{utf8.RuneSelf})},
-	} {
-		t.Run(name, func(t *testing.T) {
-			if err := tool.Validate(); !errors.Is(err, ErrInvalidRemoteToolCatalog) {
-				t.Fatalf("Validate error = %v, want ErrInvalidRemoteToolCatalog", err)
-			}
-		})
-	}
-}

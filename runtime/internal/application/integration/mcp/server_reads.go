@@ -18,16 +18,10 @@ func (c *Coordinator) Servers(ctx context.Context) ([]Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := validateRegistryCatalog(servers); err != nil {
-		return nil, err
-	}
 	slices.SortFunc(servers, func(first, second mcpserver.Server) int {
 		return cmp.Compare(first.Name.String(), second.Name.String())
 	})
-	statuses, err := c.statusesByName()
-	if err != nil {
-		return nil, err
-	}
+	statuses := c.statusesByName()
 	out := make([]Server, 0, len(servers))
 	for _, server := range servers {
 		status, ok := statuses[server.Name]
@@ -49,13 +43,7 @@ func (c *Coordinator) Server(ctx context.Context, name mcpserver.ServerName) (Se
 	if !found {
 		return Server{}, ErrUnknownServer
 	}
-	if err := validateRegistryServer("get", name, server); err != nil {
-		return Server{}, err
-	}
-	statuses, err := c.statusesByName()
-	if err != nil {
-		return Server{}, err
-	}
+	statuses := c.statusesByName()
 	status, ok := statuses[name]
 	if ok {
 		return serverView(server, &status), nil
@@ -63,44 +51,11 @@ func (c *Coordinator) Server(ctx context.Context, name mcpserver.ServerName) (Se
 	return serverView(server, nil), nil
 }
 
-func validateRegistryCatalog(servers []mcpserver.Server) error {
-	seen := make(map[mcpserver.ServerName]struct{}, len(servers))
-	for index, server := range servers {
-		if err := server.Validate(); err != nil {
-			return fmt.Errorf("mcp: registry row %d is invalid: %w", index+1, err)
-		}
-		if _, duplicate := seen[server.Name]; duplicate {
-			return fmt.Errorf("mcp: registry repeats server %q", server.Name)
-		}
-		seen[server.Name] = struct{}{}
-	}
-	return nil
-}
-
-func validateRegistryServer(operation string, expected mcpserver.ServerName, server mcpserver.Server) error {
-	if err := server.Validate(); err != nil {
-		return fmt.Errorf("mcp: registry %s for %q returned an invalid server: %w", operation, expected, err)
-	}
-	if server.Name != expected {
-		return fmt.Errorf("mcp: registry %s for %q returned %q", operation, expected, server.Name)
-	}
-	return nil
-}
-
-func (c *Coordinator) statusesByName() (map[mcpserver.ServerName]ServerStatus, error) {
-	statuses, err := c.liveStatusesByName()
-	if err != nil {
-		return nil, err
-	}
+func (c *Coordinator) statusesByName() map[mcpserver.ServerName]ServerStatus {
+	statuses := c.liveStatusesByName()
 	c.statusMu.Lock()
 	defer c.statusMu.Unlock()
 	for name, status := range c.statusOverrides {
-		if err := status.Validate(); err != nil {
-			return nil, fmt.Errorf("mcp: status override for %q is invalid: %w", name, err)
-		}
-		if status.Name != name {
-			return nil, fmt.Errorf("mcp: status override for %q belongs to %q", name, status.Name)
-		}
 		if !status.Known {
 			if _, staleLiveEntry := statuses[name]; !staleLiveEntry {
 				// The live port has caught up with disable/delete. Absence already
@@ -111,37 +66,27 @@ func (c *Coordinator) statusesByName() (map[mcpserver.ServerName]ServerStatus, e
 		}
 		statuses[name] = cloneServerStatus(status)
 	}
-	return statuses, nil
+	return statuses
 }
 
 // liveStatusesByName reads the status-port projection without the application's
 // transition overlay. Connection settlement must use this source: reading the
 // public model there would merely observe the synthetic connecting state that
 // the same operation published before dialing.
-func (c *Coordinator) liveStatusesByName() (map[mcpserver.ServerName]ServerStatus, error) {
+func (c *Coordinator) liveStatusesByName() map[mcpserver.ServerName]ServerStatus {
 	statuses := make(map[mcpserver.ServerName]ServerStatus)
-	for index, status := range c.statusReader.Statuses() {
-		view, err := statusView(status)
-		if err != nil {
-			return nil, fmt.Errorf("mcp: live status row %d is invalid: %w", index+1, err)
-		}
-		if _, duplicate := statuses[view.Name]; duplicate {
-			return nil, fmt.Errorf("mcp: live status catalog repeats server %q", view.Name)
-		}
+	for _, status := range c.statusReader.Statuses() {
+		view := statusView(status)
 		statuses[view.Name] = view
 	}
-	return statuses, nil
+	return statuses
 }
 
 func (c *Coordinator) liveStatus(name mcpserver.ServerName) (ServerStatus, error) {
 	if err := name.Validate(); err != nil {
 		return ServerStatus{}, fmt.Errorf("mcp: live status server: %w", err)
 	}
-	statuses, err := c.liveStatusesByName()
-	if err != nil {
-		return ServerStatus{}, err
-	}
-	if status, ok := statuses[name]; ok {
+	if status, ok := c.liveStatusesByName()[name]; ok {
 		return status, nil
 	}
 	return ServerStatus{Name: name}, nil
@@ -152,11 +97,7 @@ func (c *Coordinator) ServerStatus(_ context.Context, name mcpserver.ServerName)
 	if err := name.Validate(); err != nil {
 		return ServerStatus{}, fmt.Errorf("mcp: server status: %w", err)
 	}
-	statuses, err := c.statusesByName()
-	if err != nil {
-		return ServerStatus{}, err
-	}
-	if status, ok := statuses[name]; ok {
+	if status, ok := c.statusesByName()[name]; ok {
 		return status, nil
 	}
 	return ServerStatus{Name: name}, nil

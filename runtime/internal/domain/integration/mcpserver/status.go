@@ -1,9 +1,6 @@
 package mcpserver
 
-import (
-	"errors"
-	"fmt"
-)
+import "errors"
 
 // ConnectionState is the lifecycle state of a configured MCP connection.
 // Keeping this vocabulary canonical prevents subtly different values for the
@@ -20,68 +17,27 @@ const (
 // ConnectionStatus is the safe, per-server live projection exposed by the MCP
 // control plane. Connection failures stay in the operation and observability
 // paths; a status is deliberately not an error transport.
+//
+// The connection pool owns this projection's invariants: it clears the tool set
+// on every transition away from [ConnectionConnected], so a tool count outside
+// that state is unrepresentable at the source rather than rejected downstream.
 type ConnectionStatus struct {
 	Name      ServerName
 	State     ConnectionState
 	ToolCount int
 }
 
-var (
-	// ErrUnknownServer is returned when a live MCP operation addresses a server
-	// that was never configured.
-	ErrUnknownServer = errors.New("mcp: unknown server")
-	// ErrInvalidConnectionStatus reports a contradictory live status projection.
-	ErrInvalidConnectionStatus = errors.New("mcp: invalid connection status")
-)
+// ErrUnknownServer is returned when a live MCP operation addresses a server
+// that was never configured.
+var ErrUnknownServer = errors.New("mcp: unknown server")
 
-func (s ConnectionState) Validate() error {
-	switch s {
-	case ConnectionConnecting, ConnectionConnected, ConnectionFailed, ConnectionNeedsAuth:
-		return nil
-	default:
-		return fmt.Errorf("%w: unknown state %q", ErrInvalidConnectionStatus, s)
-	}
-}
-
-// Validate protects the complete live projection. ToolCount belongs only to a
-// connected server and shares the remote catalog's per-server ceiling.
-func (s ConnectionStatus) Validate() error {
-	if err := s.Name.Validate(); err != nil {
-		return fmt.Errorf("%w: server identity: %w", ErrInvalidConnectionStatus, err)
-	}
-	if err := s.State.Validate(); err != nil {
-		return err
-	}
-	if err := ValidateRemoteToolCount(s.ToolCount); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidConnectionStatus, err)
-	}
-	if s.State != ConnectionConnected && s.ToolCount != 0 {
-		return fmt.Errorf("%w: state %q carries tool count %d", ErrInvalidConnectionStatus, s.State, s.ToolCount)
-	}
-	return nil
-}
-
-// AdvertisedTool is one tool advertised by a connected MCP server.
+// AdvertisedTool is one tool advertised by a connected MCP server. The
+// connection adapter is the only producer: it parses each descriptor out of the
+// remote server's reply and owns identity, description, and schema limits at
+// that boundary.
 type AdvertisedTool struct {
 	Server      ServerName
 	Name        RemoteToolName
 	Description string
 	InputSchema InputSchema
-}
-
-// Validate rechecks one complete live tool descriptor after it crosses the
-// catalog port. The connection adapter validates at discovery time; the
-// Application boundary independently protects alternate implementations and
-// retained projections before exposing them to management or execution.
-func (a AdvertisedTool) Validate() error {
-	if err := a.Server.Validate(); err != nil {
-		return fmt.Errorf("%w: server identity: %w", ErrInvalidRemoteToolCatalog, err)
-	}
-	if err := a.Name.Validate(); err != nil {
-		return fmt.Errorf("%w: tool identity: %w", ErrInvalidRemoteToolCatalog, err)
-	}
-	if err := ValidateRemoteToolDescription(a.Description); err != nil {
-		return err
-	}
-	return nil
 }

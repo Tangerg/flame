@@ -53,12 +53,9 @@ func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Serv
 		return Server{}, err
 	}
 	defer write.close()
-	if existing, found, getErr := c.registry.Get(write.requestCtx, input.Name); getErr != nil {
+	if _, found, getErr := c.registry.Get(write.requestCtx, input.Name); getErr != nil {
 		return Server{}, getErr
 	} else if found {
-		if err := validateRegistryServer("get", input.Name, existing); err != nil {
-			return Server{}, err
-		}
 		return Server{}, ErrServerAlreadyExists
 	}
 	srv, err := serverCandidate(input, nil)
@@ -85,9 +82,6 @@ func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ServerNam
 	}
 	if !found {
 		return Server{}, ErrUnknownServer
-	}
-	if err := validateRegistryServer("get", name, current); err != nil {
-		return Server{}, err
 	}
 	updated, err := applyServerPatch(current, patch)
 	if err != nil {
@@ -146,11 +140,7 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 	if redialErr != nil {
 		return Server{}, redialErr
 	}
-	statuses, err := c.statusesByName()
-	if err != nil {
-		return Server{}, err
-	}
-	status, ok := statuses[srv.Name]
+	status, ok := c.statusesByName()[srv.Name]
 	if ok {
 		return serverView(srv, &status), nil
 	}
@@ -165,12 +155,10 @@ func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ServerNam
 		return err
 	}
 	defer write.close()
-	if existing, found, err := c.registry.Get(write.requestCtx, name); err != nil {
+	if _, found, err := c.registry.Get(write.requestCtx, name); err != nil {
 		return err
 	} else if !found {
 		return ErrUnknownServer
-	} else if err := validateRegistryServer("get", name, existing); err != nil {
-		return err
 	}
 	if err := c.registry.Remove(write.requestCtx, name); err != nil {
 		return err
@@ -309,9 +297,6 @@ func (c *Coordinator) validatedServer(ctx context.Context, input ServerInput) (m
 			return mcpserver.Server{}, err
 		}
 		if found {
-			if err := validateRegistryServer("get", input.Name, stored); err != nil {
-				return mcpserver.Server{}, err
-			}
 			current = &stored
 		}
 	}
@@ -571,9 +556,6 @@ func (c *Coordinator) Tools(ctx context.Context, server *mcpserver.ServerName) (
 	if err != nil {
 		return nil, err
 	}
-	if err := validateToolCatalog(server, tools); err != nil {
-		return nil, err
-	}
 	slices.SortFunc(tools, func(first, second mcpserver.AdvertisedTool) int {
 		return cmp.Or(
 			cmp.Compare(first.Server.String(), second.Server.String()),
@@ -583,37 +565,11 @@ func (c *Coordinator) Tools(ctx context.Context, server *mcpserver.ServerName) (
 	return tools, nil
 }
 
-func validateToolCatalog(server *mcpserver.ServerName, tools []mcpserver.AdvertisedTool) error {
-	seen := make(map[mcpserver.ToolRef]struct{}, len(tools))
-	counts := make(map[mcpserver.ServerName]int)
-	for index, tool := range tools {
-		if err := tool.Validate(); err != nil {
-			return fmt.Errorf("mcp: tool catalog row %d is invalid: %w", index+1, err)
-		}
-		if server != nil && tool.Server != *server {
-			return fmt.Errorf("mcp: tool catalog for %q contains a tool from %q", server, tool.Server)
-		}
-		ref := mcpserver.ToolRef{Server: tool.Server, Tool: tool.Name}
-		if _, duplicate := seen[ref]; duplicate {
-			return fmt.Errorf("mcp: tool catalog repeats %q/%q", tool.Server, tool.Name)
-		}
-		seen[ref] = struct{}{}
-		counts[tool.Server]++
-		if err := mcpserver.ValidateRemoteToolCount(counts[tool.Server]); err != nil {
-			return fmt.Errorf("mcp: tool catalog for %q: %w", tool.Server, err)
-		}
-	}
-	return nil
-}
-
 // refreshToolPolicy atomically publishes the policy derived from the
 // just-mutated registry for the next tool resolution and approval decision.
 func (c *Coordinator) refreshToolPolicy(ctx context.Context) error {
 	servers, err := c.registry.List(ctx)
 	if err != nil {
-		return err
-	}
-	if err := validateRegistryCatalog(servers); err != nil {
 		return err
 	}
 	policy := mcpserver.NewToolPolicy(servers)

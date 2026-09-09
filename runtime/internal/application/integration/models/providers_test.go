@@ -12,12 +12,11 @@ import (
 )
 
 type testProviderRegistry struct {
-	entries      map[string]provider.Provider
-	listed       []provider.Provider
-	updateResult *provider.Provider
-	updates      []provider.Patch
-	getErr       error
-	updateErr    error
+	entries   map[string]provider.Provider
+	listed    []provider.Provider
+	updates   []provider.Patch
+	getErr    error
+	updateErr error
 }
 
 func (t *testProviderRegistry) List(context.Context) ([]provider.Provider, error) {
@@ -44,9 +43,6 @@ func (t *testProviderRegistry) Update(_ context.Context, id string, patch provid
 		return provider.Provider{}, t.updateErr
 	}
 	t.updates = append(t.updates, patch)
-	if t.updateResult != nil {
-		return *t.updateResult, nil
-	}
 	if t.entries == nil {
 		t.entries = map[string]provider.Provider{}
 	}
@@ -95,18 +91,13 @@ func modelProvider(t *testing.T, id, rawKey, rawBaseURL string) provider.Provide
 }
 
 type testCatalog struct {
-	metadata     []ProviderMetadata
-	metadataByID map[string]ProviderMetadata
-	models       map[string][]Model
+	metadata []ProviderMetadata
+	models   map[string][]Model
 }
 
 func (t testCatalog) Supported() []ProviderMetadata { return slices.Clone(t.metadata) }
 
 func (t testCatalog) Metadata(id string) (ProviderMetadata, bool) {
-	if t.metadataByID != nil {
-		metadata, found := t.metadataByID[id]
-		return metadata, found
-	}
 	for _, metadata := range t.metadata {
 		if metadata.ID() == id {
 			return metadata, true
@@ -161,41 +152,6 @@ func TestListProvidersOwnsCatalogOrder(t *testing.T) {
 	}
 	if len(providers) != 2 || providers[0].ID != "alpha" || providers[1].ID != "zeta" {
 		t.Fatalf("providers = %+v, want alpha then zeta", providers)
-	}
-}
-
-func TestListProvidersRejectsBrokenRegistryCatalog(t *testing.T) {
-	alpha := modelProvider(t, "alpha", "", "")
-	for name, listed := range map[string][]provider.Provider{
-		"invalid aggregate":  {{}},
-		"duplicate identity": {alpha, alpha},
-	} {
-		t.Run(name, func(t *testing.T) {
-			c := newTestCoordinator(Config{
-				Providers: &testProviderRegistry{listed: listed},
-				Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(
-					t, "alpha", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability(),
-				)}},
-			})
-			if providers, err := c.ListProviders(t.Context()); err == nil || providers != nil {
-				t.Fatalf("ListProviders = (%+v, %v), want nil/error", providers, err)
-			}
-		})
-	}
-}
-
-func TestListProvidersRejectsBrokenSupportedCatalog(t *testing.T) {
-	alpha := providerMetadataFixture(t, "alpha", ProviderEndpointOptional, ProviderModelsBundled, NoEmbeddingCapability())
-	for name, metadata := range map[string][]ProviderMetadata{
-		"invalid metadata":   {{}},
-		"duplicate identity": {alpha, alpha},
-	} {
-		t.Run(name, func(t *testing.T) {
-			c := newTestCoordinator(Config{Providers: &testProviderRegistry{}, Catalog: testCatalog{metadata: metadata}})
-			if providers, err := c.ListProviders(t.Context()); err == nil || providers != nil {
-				t.Fatalf("ListProviders = (%+v, %v), want nil/error", providers, err)
-			}
-		})
 	}
 }
 
@@ -482,34 +438,6 @@ func TestListModelsRejectsUnsupportedProvider(t *testing.T) {
 	}
 }
 
-func TestProviderReadsRejectMismatchedCatalogAndRegistryIdentities(t *testing.T) {
-	requested := optionalAPIKeyProviderMetadataFixture(t, "requested", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability())
-	foreignMetadata := optionalAPIKeyProviderMetadataFixture(t, "foreign", ProviderEndpointOptional, ProviderModelsEndpoint, NoEmbeddingCapability())
-	foreignProvider := modelProvider(t, "foreign", "key", "https://example.test")
-
-	t.Run("metadata lookup", func(t *testing.T) {
-		c := newTestCoordinator(Config{Catalog: testCatalog{metadataByID: map[string]ProviderMetadata{"requested": foreignMetadata}}})
-		if models, err := c.ListModels(t.Context(), "requested"); err == nil || models != nil {
-			t.Fatalf("ListModels = (%+v, %v), want nil/error", models, err)
-		}
-	})
-
-	t.Run("provider lookup", func(t *testing.T) {
-		prober := &fakeProber{}
-		c := newTestCoordinator(Config{
-			Providers: &testProviderRegistry{entries: map[string]provider.Provider{"requested": foreignProvider}},
-			Catalog:   testCatalog{metadata: []ProviderMetadata{requested}},
-			Prober:    prober,
-		})
-		if outcome, err := c.TestProvider(t.Context(), "requested"); err == nil || outcome != "" {
-			t.Fatalf("TestProvider = (%q, %v), want empty/error", outcome, err)
-		}
-		if prober.got.ID() != "" {
-			t.Fatalf("mismatched provider reached prober: %q", prober.got.ID())
-		}
-	})
-}
-
 func TestUpdateProviderOwnsSupportAndBaseURLPolicy(t *testing.T) {
 	registry := &testProviderRegistry{}
 	c := newTestCoordinator(Config{
@@ -606,33 +534,5 @@ func TestFailedProviderUpdateDoesNotPublishInvalidation(t *testing.T) {
 	}
 	if len(notices) != 0 {
 		t.Fatalf("failed update published %+v", notices)
-	}
-}
-
-func TestProviderUpdateRejectsInvalidRegistryAcknowledgement(t *testing.T) {
-	baseURL, _ := provider.NewBaseURL("https://example.test")
-	foreign := modelProvider(t, "foreign", "", "https://example.test")
-	for name, result := range map[string]provider.Provider{
-		"invalid aggregate": {},
-		"foreign identity":  foreign,
-	} {
-		t.Run(name, func(t *testing.T) {
-			var notices []invalidation.Notice
-			c := newTestCoordinator(Config{
-				Providers: &testProviderRegistry{updateResult: &result},
-				Catalog: testCatalog{metadata: []ProviderMetadata{providerMetadataFixture(
-					t, "compat", ProviderEndpointRequired, ProviderModelsEndpoint, NoEmbeddingCapability(),
-				)}},
-				Invalidations: func(notice invalidation.Notice) { notices = append(notices, notice) },
-			})
-			if summary, err := c.UpdateProvider(t.Context(), UpdateProviderCommand{
-				ID: "compat", BaseURL: provider.Set(baseURL),
-			}); err == nil || summary != (ProviderSummary{}) {
-				t.Fatalf("UpdateProvider = (%+v, %v), want zero/error", summary, err)
-			}
-			if len(notices) != 0 {
-				t.Fatalf("invalid acknowledgement published %+v", notices)
-			}
-		})
 	}
 }
