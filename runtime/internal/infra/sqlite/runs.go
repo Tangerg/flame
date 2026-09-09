@@ -286,9 +286,6 @@ func (r *RunStore) Suspend(
 			return err
 		}
 	}
-	if err := value.Validate(); err != nil {
-		return fmt.Errorf("sqlite: suspend run %q: %w", value.ID(), err)
-	}
 	if value.State() != rundomain.Waiting {
 		return fmt.Errorf("sqlite: suspend run %q: state is %s, want waiting", value.ID(), value.State())
 	}
@@ -616,9 +613,6 @@ func (r *RunStore) finish(
 	marker *runCommitMarker,
 	transition func(rundomain.Run) (rundomain.Run, error),
 ) error {
-	if err := value.Validate(); err != nil {
-		return fmt.Errorf("sqlite: %s run %q: %w", op, value.ID(), err)
-	}
 	metrics, err := runMetricsRow(value.Metrics())
 	if err != nil {
 		return fmt.Errorf("sqlite: %s run %q: %w", op, value.ID(), err)
@@ -713,9 +707,6 @@ func (r *RunStore) finish(
 // state machine. A non-terminal Run is refused — restoring one would hand the
 // session's admission slot to an executor that is not running.
 func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
-	if err := value.Validate(); err != nil {
-		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
-	}
 	if !value.State().IsTerminal() {
 		return fmt.Errorf("sqlite: restore run %q: state is %s, want terminal", value.ID(), value.State())
 	}

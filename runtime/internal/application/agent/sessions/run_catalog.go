@@ -32,14 +32,14 @@ func listSessionRuns(
 func validateRunCatalog(values []run.Run, sessionID string) error {
 	seen := make(map[string]struct{}, len(values))
 	for index, value := range values {
-		var err error
-		if sessionID == "" {
-			err = value.Validate()
-		} else {
-			err = value.ValidateForSession(sessionID)
+		if value.ID() == "" {
+			return fmt.Errorf("sessions: Run store row %d was never constructed", index+1)
 		}
-		if err != nil {
-			return fmt.Errorf("sessions: Run store row %d is invalid: %w", index+1, err)
+		if sessionID != "" && value.SessionID() != sessionID {
+			return fmt.Errorf(
+				"sessions: Run store row %d belongs to Session %q, want %q",
+				index+1, value.SessionID(), sessionID,
+			)
 		}
 		if _, duplicate := seen[value.ID()]; duplicate {
 			return fmt.Errorf("sessions: Run store repeats %q", value.ID())

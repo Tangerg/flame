@@ -379,9 +379,6 @@ func (c *Coordinator) resumeAfterWaitingChildCancellation(
 		return CancelResult{}, errors.New("runs: waiting child cancellation continuation has no root Run")
 	}
 	segmentID := c.newSegmentID()
-	if segmentID == "" {
-		return CancelResult{}, errors.New("runs: waiting child cancellation generated an empty root segment id")
-	}
 	var committed WaitingSubtreeCancellationResult
 	events, err := c.openSegment(ctx, segmentSpec{
 		RunID:             plan.root.run.ID(),

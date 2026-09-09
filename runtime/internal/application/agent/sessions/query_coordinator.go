@@ -293,8 +293,8 @@ func sequenceFollows(sequence, previous int64, order transcript.SequenceOrder) b
 func validateItemRunClosure(scope ItemScope, items []transcript.Item, values []run.Run) error {
 	runsByID := make(map[string]run.Run, len(values))
 	for index, value := range values {
-		if err := value.Validate(); err != nil {
-			return fmt.Errorf("sessions: Item page Run[%d] is invalid: %w", index, err)
+		if value.ID() == "" {
+			return fmt.Errorf("sessions: Item page Run[%d] was never constructed", index)
 		}
 		if _, duplicate := runsByID[value.ID()]; duplicate {
 			return fmt.Errorf("sessions: Item page repeats Run %q", value.ID())

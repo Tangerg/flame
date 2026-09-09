@@ -446,20 +446,9 @@ func (e EventCommit) validateLifecycle() error {
 	if e.Run.ID() != e.RunID || e.Run.SessionID() != e.SessionID {
 		return errors.New("runs: event commit Run ownership differs from its envelope")
 	}
-	validatedRun := *e.Run
-	if e.State == StateTerminalize && validatedRun.MessageMark() == run.UnknownMessageMark {
-		// The reducer cannot know the final conversation watermark. The terminal
-		// transaction resolves it while committing this Run; every other terminal
-		// fact must already satisfy the domain invariant.
-		var err error
-		validatedRun, err = validatedRun.WithMessageMark(0)
-		if err != nil {
-			return fmt.Errorf("runs: resolve provisional message watermark: %w", err)
-		}
-	}
-	if err := validatedRun.Validate(); err != nil {
-		return fmt.Errorf("runs: event commit Run: %w", err)
-	}
+	// A terminalize commit may still carry an unresolved conversation watermark:
+	// the reducer cannot know the final count, and the terminal transaction
+	// resolves it while committing. Every other terminal fact is the Run's own.
 	if e.State == StateSuspend {
 		return nil
 	}

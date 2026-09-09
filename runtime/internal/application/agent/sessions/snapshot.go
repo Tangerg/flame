@@ -90,9 +90,6 @@ func (s Snapshot) validateRuns() (map[string]struct{}, error) {
 		if !run.State().IsTerminal() {
 			return nil, fmt.Errorf("sessions: snapshot run %q is %s, want terminal", run.ID(), run.State())
 		}
-		if err := run.Validate(); err != nil {
-			return nil, fmt.Errorf("sessions: snapshot run %q: %w", run.ID(), err)
-		}
 		if run.MessageMark() > len(s.Messages) {
 			return nil, fmt.Errorf("sessions: snapshot run %q has invalid message watermark %d", run.ID(), run.MessageMark())
 		}

@@ -93,9 +93,6 @@ func newMaterialSnapshotValidator(snapshot MaterialSnapshot) (*materialSnapshotV
 
 func (validator *materialSnapshotValidator) indexRuns() error {
 	for _, record := range validator.snapshot.Runs {
-		if err := record.Validate(); err != nil {
-			return fmt.Errorf("sessions: material snapshot Run %q: %w", record.ID(), err)
-		}
 		if record.SessionID() != validator.sessionID {
 			return fmt.Errorf("sessions: material snapshot Run %q belongs to Session %q, want %q", record.ID(), record.SessionID(), validator.sessionID)
 		}

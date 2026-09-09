@@ -206,13 +206,7 @@ func (r *resumedRouteBuilder) segmentIDFor(runID string) (string, error) {
 	if runID == r.continuation.rootRunID {
 		return r.spec.SegmentID, nil
 	}
-	if r.newSegmentID == nil {
-		return "", errors.New("runs: resumed child routes require a segment identity generator")
-	}
 	segmentID := r.newSegmentID()
-	if segmentID == "" {
-		return "", fmt.Errorf("runs: resumed child Run %q generated an empty segment id", runID)
-	}
 	if _, duplicate := r.segmentIDs[segmentID]; duplicate {
 		return "", fmt.Errorf("runs: resumed tree generated duplicate segment %q", segmentID)
 	}
@@ -636,13 +630,7 @@ func (c *Coordinator) prepareChildStart(
 		)
 	}
 	childRunID := c.newRunID()
-	if childRunID == "" {
-		return nil, errors.New("runs: child opening generated an empty run id")
-	}
 	childSegmentID := c.newSegmentID()
-	if childSegmentID == "" {
-		return nil, errors.New("runs: child opening generated an empty segment id")
-	}
 	lineage := rundomain.Lineage{
 		SpawnedByItemID: spawningItem.ID(),
 		ParentRunID:     parent.runID,

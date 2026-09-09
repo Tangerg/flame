@@ -98,7 +98,7 @@ func Restore(snapshot Snapshot) (Run, error) {
 		createdAt: snapshot.CreatedAt.UTC(), finishedAt: snapshot.FinishedAt.UTC(),
 		updatedAt: snapshot.UpdatedAt.UTC(), messageMark: snapshot.MessageMark,
 	}
-	if err := run.Validate(); err != nil {
+	if err := run.validate(); err != nil {
 		return Run{}, err
 	}
 	return run, nil
@@ -183,7 +183,7 @@ func cloneFailure(failure *Failure) *Failure {
 
 // Validate reports whether all lifecycle, identity, accounting, and terminal
 // facts agree.
-func (r Run) Validate() error {
+func (r Run) validate() error {
 	if _, err := resourceid.ParseRun(r.id); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
@@ -234,23 +234,6 @@ func (r Run) Validate() error {
 		return r.validateTerminal()
 	}
 	return r.validateOpen()
-}
-
-// ValidateForSession verifies the complete aggregate and its exact expected
-// Session identity. Session-scoped catalogs use it before stored Run state can
-// influence a use case.
-func (r Run) ValidateForSession(expectedSessionID string) error {
-	if err := r.Validate(); err != nil {
-		return err
-	}
-	if r.sessionID != expectedSessionID {
-		return fmt.Errorf(
-			"run: Session %q does not match requested identity %q",
-			r.sessionID,
-			expectedSessionID,
-		)
-	}
-	return nil
 }
 
 func (r Run) validateOpen() error {
@@ -424,7 +407,7 @@ func (r Run) finish(state State, termination Termination) (Run, error) {
 	r.detail, r.failure = termination.Detail, cloneFailure(termination.Failure)
 	r.finishedAt, r.updatedAt = termination.FinishedAt.UTC(), termination.FinishedAt.UTC()
 	r.messageMark = termination.MessageMark
-	if err := r.Validate(); err != nil {
+	if err := r.validate(); err != nil {
 		return Run{}, err
 	}
 	return r, nil
@@ -442,7 +425,7 @@ func (r Run) WithMessageMark(messageMark int) (Run, error) {
 		return Run{}, errors.New("run: message watermark must not be negative")
 	}
 	r.messageMark = messageMark
-	if err := r.Validate(); err != nil {
+	if err := r.validate(); err != nil {
 		return Run{}, err
 	}
 	return r, nil

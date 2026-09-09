@@ -110,9 +110,6 @@ func (ItemCompleted) runEvent()     {}
 func (PlanSnapshot) runEvent()      {}
 
 func (s SegmentStarted) validate() error {
-	if err := s.Run.Validate(); err != nil {
-		return fmt.Errorf("runs: started Segment Run: %w", err)
-	}
 	if s.Run.State() != run.Running {
 		return fmt.Errorf("runs: started Segment carries %s Run", s.Run.State())
 	}
@@ -122,8 +119,10 @@ func (s SegmentStarted) validate() error {
 func (s SegmentProgressed) validate() error { return s.Progress.validate() }
 
 func (s SegmentFinished) validate() error {
-	if err := s.Run.Validate(); err != nil {
-		return fmt.Errorf("runs: finished Segment Run: %w", err)
+	// Unlike a started Segment, no state comparison below rejects a Run that was
+	// never attached: the zero value is simply "not running".
+	if s.Run.ID() == "" {
+		return errors.New("runs: finished Segment carries no Run")
 	}
 	if s.Run.State() == run.Running {
 		return errors.New("runs: finished Segment carries a running Run")

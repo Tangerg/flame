@@ -1,9 +1,6 @@
 package run
 
-import (
-	"errors"
-	"fmt"
-)
+import "errors"
 
 // Replacement binds an already-decided Run state to the exact aggregate it
 // was derived from. Application write-sets use it when persistence must reject
@@ -22,13 +19,12 @@ func NewReplacement(expected, state Run) (Replacement, error) {
 	return replacement, nil
 }
 
-// Validate proves both aggregates are valid and retain one Run identity.
+// Validate proves both aggregates were constructed and retain one Run
+// identity. Their legality is settled by the constructors and transitions that
+// produced them; only the zero value can reach here unbuilt.
 func (r Replacement) Validate() error {
-	if err := r.expected.Validate(); err != nil {
-		return fmt.Errorf("run: replacement expected state: %w", err)
-	}
-	if err := r.state.Validate(); err != nil {
-		return fmt.Errorf("run: replacement state: %w", err)
+	if r.expected.ID() == "" {
+		return errors.New("run: replacement carries no Run")
 	}
 	if r.expected.ID() != r.state.ID() || r.expected.SessionID() != r.state.SessionID() {
 		return errors.New("run: replacement changes Run identity")
