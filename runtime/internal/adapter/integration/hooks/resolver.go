@@ -2,8 +2,10 @@ package hooks
 
 import (
 	"context"
+	"fmt"
 
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
 )
 
 // Resolver binds the hooks.json cascade to a working directory: it loads the
@@ -34,9 +36,11 @@ func (r *Resolver) For(ctx context.Context, cwd string) (*apphooks.Bound, error)
 	if r == nil || cwd == "" {
 		return nil, nil
 	}
-	root := ProjectRoot(cwd)
+	root, err := project.Root(cwd)
+	if err != nil {
+		return nil, fmt.Errorf("hooks: locate project root for %q: %w", cwd, err)
+	}
 	projectTrusted := false
-	var err error
 	if r.trusted != nil {
 		projectTrusted, err = r.trusted(ctx, root)
 		if err != nil {
@@ -56,7 +60,10 @@ func (r *Resolver) Inspect(ctx context.Context, cwd string) (apphooks.Inspection
 	if r == nil || cwd == "" {
 		return apphooks.Inspection{}, nil
 	}
-	root := ProjectRoot(cwd)
+	root, err := project.Root(cwd)
+	if err != nil {
+		return apphooks.Inspection{}, fmt.Errorf("hooks: locate project root for %q: %w", cwd, err)
+	}
 	all, err := Load(ctx, cwd, r.home)
 	if err != nil {
 		return apphooks.Inspection{}, err

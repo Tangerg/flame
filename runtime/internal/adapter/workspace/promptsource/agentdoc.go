@@ -11,10 +11,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
 )
 
 // DiscoverAgentDocs walks the project tree + user-level locations and returns
@@ -102,8 +102,11 @@ func (a *agentDocScan) discoverHome(ctx context.Context, home string) error {
 // discoverProjectTree walks root to leaf so the most specific files remain at
 // the end of the cascade consumed by prompt assembly.
 func (a *agentDocScan) discoverProjectTree(ctx context.Context, cwd string) error {
-	root := findProjectRoot(cwd)
-	for _, dir := range dirsRootToLeaf(cwd, root) {
+	root, err := project.Root(cwd)
+	if err != nil {
+		return fmt.Errorf("promptsource: locate project root for %q: %w", cwd, err)
+	}
+	for _, dir := range project.Chain(cwd, root) {
 		scope := workspaceapp.AgentDocScopeProjectRoot
 		if dir == cwd {
 			scope = workspaceapp.AgentDocScopeCWD
@@ -212,42 +215,4 @@ func readIfNonEmpty(ctx context.Context, path string) (string, int, bool, error)
 		return "", len(data), false, nil
 	}
 	return content, len(data), true, nil
-}
-
-// findProjectRoot walks up from cwd looking for a `.git` entry (dir OR file —
-// submodules use `.git` files pointing to the real gitdir). Returns cwd unchanged
-// if no .git is found anywhere on the way up (single-dir scan).
-func findProjectRoot(cwd string) string {
-	current := cwd
-	for {
-		if _, err := os.Stat(filepath.Join(current, ".git")); err == nil {
-			return current
-		}
-		parent := filepath.Dir(current)
-		if parent == current {
-			return cwd
-		}
-		current = parent
-	}
-}
-
-// dirsRootToLeaf returns the chain [root, ..., cwd] (inclusive at both ends).
-// When root == cwd the slice has one element.
-func dirsRootToLeaf(cwd, root string) []string {
-	if cwd == root {
-		return []string{cwd}
-	}
-	var chain []string
-	current := cwd
-	for current != root {
-		chain = append(chain, current)
-		parent := filepath.Dir(current)
-		if parent == current {
-			break
-		}
-		current = parent
-	}
-	chain = append(chain, root)
-	slices.Reverse(chain)
-	return chain
 }

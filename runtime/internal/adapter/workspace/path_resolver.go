@@ -8,6 +8,7 @@ import (
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
 )
 
 // ErrNotDirectory reports that a path exists but is not a directory.
@@ -122,26 +123,10 @@ func (Resolver) Inspect(path string) (workspaceapp.Resolved, error) {
 		return identity, nil
 	}
 
-	root, err := nearestProjectRoot(cwd)
+	root, err := project.Root(cwd)
 	if err != nil {
 		return workspaceapp.Resolved{}, err
 	}
 	identity.ProjectRoot = root
 	return identity, nil
-}
-
-func nearestProjectRoot(cwd string) (string, error) {
-	for dir := cwd; ; dir = filepath.Dir(dir) {
-		_, err := os.Stat(filepath.Join(dir, ".git"))
-		switch {
-		case err == nil:
-			return dir, nil
-		case !errors.Is(err, os.ErrNotExist):
-			return "", err
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return cwd, nil
-		}
-	}
 }

@@ -11,11 +11,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"unicode/utf8"
 
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
 )
 
 // hooksRelPath is the cascade filename. Global lives at ~/.flame/hooks.json; a
@@ -80,7 +80,11 @@ func load(ctx context.Context, cwd, home string, includeProject bool) ([]domainh
 		}
 	}
 	if includeProject {
-		for _, dir := range dirsRootToLeaf(cwd, ProjectRoot(cwd)) {
+		root, err := project.Root(cwd)
+		if err != nil {
+			return nil, fmt.Errorf("hooks: locate project root for %q: %w", cwd, err)
+		}
+		for _, dir := range project.Chain(cwd, root) {
 			if err := add(filepath.Join(dir, hooksRelPath), domainhooks.ScopeProject); err != nil {
 				return nil, err
 			}
@@ -188,39 +192,4 @@ func (h hooksContextReader) Read(buffer []byte) (int, error) {
 		return read, cause
 	}
 	return read, err
-}
-
-// ProjectRoot returns cwd's project root, the nearest ancestor with a `.git`
-// entry, or cwd when none is found. This is the project hook trust key.
-func ProjectRoot(cwd string) string {
-	current := filepath.Clean(cwd)
-	for {
-		if _, err := os.Stat(filepath.Join(current, ".git")); err == nil {
-			return current
-		}
-		parent := filepath.Dir(current)
-		if parent == current {
-			return filepath.Clean(cwd)
-		}
-		current = parent
-	}
-}
-
-func dirsRootToLeaf(cwd, root string) []string {
-	if cwd == root {
-		return []string{cwd}
-	}
-	var chain []string
-	current := cwd
-	for current != root {
-		chain = append(chain, current)
-		parent := filepath.Dir(current)
-		if parent == current {
-			break
-		}
-		current = parent
-	}
-	chain = append(chain, root)
-	slices.Reverse(chain)
-	return chain
 }

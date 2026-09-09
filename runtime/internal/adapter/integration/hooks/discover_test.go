@@ -201,20 +201,6 @@ func TestLoadRejectsUnboundedHookFilesAndCascades(t *testing.T) {
 	})
 }
 
-func TestProjectRoot_FindsGitAncestor(t *testing.T) {
-	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	sub := filepath.Join(root, "a", "b")
-	if err := os.MkdirAll(sub, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if got := ProjectRoot(sub); got != root {
-		t.Errorf("ProjectRoot(%q) = %q, want %q", sub, got, root)
-	}
-}
-
 func TestLoadRequiresAbsoluteCompositionPaths(t *testing.T) {
 	if _, err := Load(t.Context(), "relative-workspace", ""); err == nil {
 		t.Fatal("Load accepted a relative cwd")
