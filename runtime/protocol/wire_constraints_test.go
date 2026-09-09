@@ -1726,6 +1726,41 @@ func TestRunSummaryRequiresExecutionAttribution(t *testing.T) {
 	}
 }
 
+// TestRunSummaryCarriesEveryChildEdgeOrNone fixes the rule a consumer relies on
+// to tell a root run from a child: the three edges travel together, so seeing
+// one is enough and no reader has to ask whether the rest arrived with it.
+func TestRunSummaryCarriesEveryChildEdgeOrNone(t *testing.T) {
+	t.Parallel()
+
+	root := RunSummary{
+		ID: "run_1", SessionID: "ses_1", Provider: "provider", Model: "model",
+		Status: RunStatusRunning, CreatedAt: time.Unix(1, 0).UTC(),
+	}
+	if err := root.ValidateWire(); err != nil {
+		t.Fatalf("a run with no child edges is a root: %v", err)
+	}
+	child := root
+	child.SpawnedByItemID, child.ParentRunID, child.RootRunID = "item_spawn", "run_root", "run_root"
+	if err := child.ValidateWire(); err != nil {
+		t.Fatalf("a run with every child edge: %v", err)
+	}
+	for _, test := range []struct {
+		name    string
+		missing string
+		mutate  func(*RunSummary)
+	}{
+		{name: "only spawn", missing: "parentRunId", mutate: func(r *RunSummary) { r.SpawnedByItemID = "item_spawn" }},
+		{name: "only parent", missing: "spawnedByItemId", mutate: func(r *RunSummary) { r.ParentRunID = "run_root" }},
+		{name: "only root", missing: "parentRunId", mutate: func(r *RunSummary) { r.RootRunID = "run_root" }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			partial := root
+			test.mutate(&partial)
+			assertConstraintField(t, partial.ValidateWire(), "RunSummary", test.missing)
+		})
+	}
+}
+
 func TestIntegerBoundsCompareWithoutFloat64Rounding(t *testing.T) {
 	t.Parallel()
 
