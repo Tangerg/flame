@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
@@ -19,13 +18,12 @@ func newRuntimeOwnerAt(flameHome string) (*runtimebinding.Owner, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolve runtime home: %w", err)
 	}
-	runtimeDirectory := filepath.Join(filepath.Clean(flameHome), "runtime")
-	configDirectories, err := runtimeConfigDirectories(runtimeDirectory)
+	configDirectories, err := runtimeConfigDirectories()
 	if err != nil {
 		return nil, err
 	}
 	return runtimebinding.NewOwner(runtimebinding.Config{
-		DataDirectory: runtimeDirectory, UserHomePath: userHome,
+		ProductRoot: flameHome, UserHomePath: userHome,
 		ConfigDirectories: configDirectories, ClientVersion: cmd.Version(),
 	}), nil
 }

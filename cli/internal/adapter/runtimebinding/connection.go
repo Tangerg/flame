@@ -15,6 +15,7 @@ import (
 	"sync"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
+	"github.com/Tangerg/flame/runtime/localruntime"
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
@@ -57,7 +58,10 @@ func requiredRunEventTypes() []protocol.StreamEventType {
 // Config contains the process-owned paths and build identity needed to open one
 // in-process Runtime. Paths retain the semantics documented by flameruntime.Config.
 type Config struct {
-	DataDirectory        string
+	// ProductRoot is FLAME_HOME. Runtime's durability lives at a segment beneath
+	// it that localruntime owns and publishes for every local surface, so this
+	// boundary resolves it rather than accepting a composed path.
+	ProductRoot          string
 	DefaultWorkspacePath string
 	UserHomePath         string
 	ConfigDirectories    []string
@@ -106,11 +110,19 @@ type Connection struct {
 var _ changefeed.Source = (*Connection)(nil)
 
 func openConnection(ctx context.Context, cfg Config) (*Connection, error) {
+	dataDirectory, err := localruntime.DataDirectoryUnder(cfg.ProductRoot)
+	if err != nil {
+		return nil, fmt.Errorf("resolve runtime data directory: %w", err)
+	}
+	configDirectories := cfg.ConfigDirectories
+	if len(configDirectories) == 0 {
+		configDirectories = []string{dataDirectory.Path()}
+	}
 	binding, err := flameruntime.Open(ctx, flameruntime.Config{
-		DataDirectory:        cfg.DataDirectory,
+		DataDirectory:        dataDirectory.Path(),
 		DefaultWorkspacePath: cfg.DefaultWorkspacePath,
 		UserHomePath:         cfg.UserHomePath,
-		ConfigDirectories:    cfg.ConfigDirectories,
+		ConfigDirectories:    configDirectories,
 	})
 	if err != nil {
 		return nil, classifyError(err)

@@ -7,11 +7,10 @@ import (
 )
 
 func TestRuntimeConfigDirectoriesUseOnlyExplicitSource(t *testing.T) {
-	runtimeDirectory := filepath.Join(t.TempDir(), "runtime")
 	explicitDirectory := t.TempDir()
 	t.Setenv(runtimeConfigDirectoryEnvironment, explicitDirectory)
 
-	directories, err := runtimeConfigDirectories(runtimeDirectory)
+	directories, err := runtimeConfigDirectories()
 	if err != nil {
 		t.Fatalf("runtimeConfigDirectories: %v", err)
 	}
@@ -23,7 +22,7 @@ func TestRuntimeConfigDirectoriesUseOnlyExplicitSource(t *testing.T) {
 
 func TestRuntimeConfigDirectoriesRejectRelativeExplicitSource(t *testing.T) {
 	t.Setenv(runtimeConfigDirectoryEnvironment, "relative/config")
-	if _, err := runtimeConfigDirectories(filepath.Join(t.TempDir(), "runtime")); err == nil {
+	if _, err := runtimeConfigDirectories(); err == nil {
 		t.Fatal("relative runtime config directory was accepted")
 	}
 }
@@ -49,13 +48,11 @@ func TestRuntimeConfigDirectoriesIgnoreWorkingDirectoryConfig(t *testing.T) {
 	}
 	t.Chdir(cliDirectory)
 
-	runtimeDirectory := filepath.Join(t.TempDir(), "runtime")
-	directories, err := runtimeConfigDirectories(runtimeDirectory)
+	directories, err := runtimeConfigDirectories()
 	if err != nil {
 		t.Fatalf("runtimeConfigDirectories: %v", err)
 	}
-	want := []string{runtimeDirectory}
-	if len(directories) != len(want) || directories[0] != want[0] {
-		t.Fatalf("directories = %v, want %v", directories, want)
+	if len(directories) != 0 {
+		t.Fatalf("directories = %v; a checkout beside the process must name nothing", directories)
 	}
 }

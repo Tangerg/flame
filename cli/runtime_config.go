@@ -9,15 +9,17 @@ import (
 
 const runtimeConfigDirectoryEnvironment = "FLAME_RUNTIME_CONFIG_DIR"
 
-// runtimeConfigDirectories returns the sole process-owned Runtime config source.
-// An explicit directory replaces the durable-data default; process cwd is never
-// an ambient configuration source.
-func runtimeConfigDirectories(runtimeDirectory string) ([]string, error) {
-	if configured := strings.TrimSpace(os.Getenv(runtimeConfigDirectoryEnvironment)); configured != "" {
-		if !filepath.IsAbs(configured) {
-			return nil, fmt.Errorf("%s must be an absolute path", runtimeConfigDirectoryEnvironment)
-		}
-		return []string{filepath.Clean(configured)}, nil
+// runtimeConfigDirectories returns the explicitly configured Runtime config
+// source, or nothing when the process did not name one. Empty leaves the
+// default to the Runtime data directory, which this package does not resolve;
+// process cwd is never an ambient configuration source either way.
+func runtimeConfigDirectories() ([]string, error) {
+	configured := strings.TrimSpace(os.Getenv(runtimeConfigDirectoryEnvironment))
+	if configured == "" {
+		return nil, nil
 	}
-	return []string{filepath.Clean(runtimeDirectory)}, nil
+	if !filepath.IsAbs(configured) {
+		return nil, fmt.Errorf("%s must be an absolute path", runtimeConfigDirectoryEnvironment)
+	}
+	return []string{filepath.Clean(configured)}, nil
 }

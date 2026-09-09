@@ -472,7 +472,7 @@ func requireProviderMutationLifecycle(t *testing.T, runtime *Connection) {
 func openIntegrationRuntime(t *testing.T, workspace string) *Connection {
 	t.Helper()
 	owner := NewOwner(Config{
-		DataDirectory: t.TempDir(), DefaultWorkspacePath: workspace,
+		ProductRoot: t.TempDir(), DefaultWorkspacePath: workspace,
 		UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()}, ClientVersion: "test",
 	})
 	runtime, err := owner.Connection(t.Context())
@@ -868,7 +868,7 @@ func TestOwnerOpensOnceAndRefusesReopenAfterClose(t *testing.T) {
 	configureIntegrationRuntime(t)
 
 	owner := NewOwner(Config{
-		DataDirectory: t.TempDir(), DefaultWorkspacePath: t.TempDir(),
+		ProductRoot: t.TempDir(), DefaultWorkspacePath: t.TempDir(),
 		UserHomePath: t.TempDir(), ConfigDirectories: []string{t.TempDir()}, ClientVersion: "test",
 	})
 	first, err := owner.Connection(t.Context())
