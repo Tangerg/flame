@@ -202,12 +202,11 @@ func TestDependencyRule(t *testing.T) {
 // the protocol implementation or leaking its import across every transport.
 func TestTransparentAliasesStayAtTheTransportBoundary(t *testing.T) {
 	root := moduleRoot(t)
+	// The boundary is the package, not a file in it: splitting or renaming a file
+	// inside delivery/transport does not change which ring owns the alias.
+	const aliasBoundary = "delivery/transport"
 	allowed := map[string]struct{}{
-		filepath.Join("delivery", "transport", "transport.go:Message"):  {},
-		filepath.Join("delivery", "transport", "transport.go:Request"):  {},
-		filepath.Join("delivery", "transport", "transport.go:Response"): {},
-		filepath.Join("delivery", "transport", "transport.go:ID"):       {},
-		filepath.Join("delivery", "transport", "transport.go:Error"):    {},
+		"Message": {}, "Request": {}, "Response": {}, "ID": {}, "Error": {},
 	}
 	internal := filepath.Join(root, "internal")
 	err := filepath.WalkDir(internal, func(path string, entry fs.DirEntry, err error) error {
@@ -235,8 +234,8 @@ func TestTransparentAliasesStayAtTheTransportBoundary(t *testing.T) {
 				if !typeSpec.Assign.IsValid() {
 					continue
 				}
-				key := rel + ":" + typeSpec.Name.Name
-				if _, ok := allowed[key]; !ok {
+				_, named := allowed[typeSpec.Name.Name]
+				if filepath.ToSlash(filepath.Dir(rel)) != aliasBoundary || !named {
 					t.Errorf("%s declares transparent alias %s; use the owning type directly or define a semantic boundary type", rel, typeSpec.Name.Name)
 				}
 			}
