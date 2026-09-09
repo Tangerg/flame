@@ -51,6 +51,16 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
     await page.waitForSelector("html[data-visual-ready]");
     await page.waitForTimeout(250);
 
+    // Coverage must not depend on how warm the dev server's transform cache is. The visual
+    // config starts a fresh server per run, so on a cold one the first route has mounted less
+    // by the time `data-visual-ready` fires — measured: 131 controls audited instead of 156,
+    // clearing the floor and saying nothing. Wait for the count to stop moving instead.
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const count = await page.locator(CONTROL).count();
+      await page.waitForTimeout(150);
+      if (count > 0 && count === (await page.locator(CONTROL).count())) break;
+    }
+
     // The neutral wash as the browser resolves it, so the comparison is against the token
     // rather than against a colour written down here that the theme could move.
     const neutralWash = await page.evaluate(() => {
@@ -219,6 +229,14 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
       (unreachable.length > 0 ? `\n  ${unreachable.join("\n  ")}` : ""),
   );
   expect(hovered, "the sweep has to reach real controls").toBeGreaterThan(100);
+  // Every control the sweep decided to test, the pointer reached. This started as a diagnostic
+  // and became the assertion, because the interesting number is not how many were hovered but
+  // whether any were missed: a control the pointer cannot land on is a control nobody can
+  // click, and three rounds of this audit were spent on readings that were really misses.
+  expect(
+    [...new Set(unreachable)],
+    "the pointer never landed on these — the aim is wrong, or something covers them",
+  ).toEqual([]);
   expect(
     [...new Set(replaced)],
     "hover replaced a resting fill with the neutral wash — lay the ink over that fill instead",
