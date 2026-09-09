@@ -142,12 +142,9 @@ func (s *Store) Read(name string, maximumBytes int64) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !info.Mode().IsRegular() {
-		return nil, fmt.Errorf("state file %q is not regular", name)
-	}
-	if info.Size() > maximumBytes {
-		return nil, fmt.Errorf("state file %q exceeds %d bytes", name, maximumBytes)
-	}
+	// OpenAtExpected is given this same observation and applies the regular-file
+	// and size rules to it before opening, then again to what it opened, so the
+	// switch below already carries both answers.
 	file, opened, err := fileinput.OpenAtExpected(directory, base, info, maximumBytes)
 	if err != nil {
 		switch {
