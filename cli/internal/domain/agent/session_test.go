@@ -300,14 +300,14 @@ func TestSessionSnapshotRestoresLatestFinishedRun(t *testing.T) {
 		Session: Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 		Runs: []Run{testRootRun(Run{
 			ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished,
-			Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 12, OutputTokens: 3},
+			Outcome: Outcome{Status: protocol.OutcomeCompleted}, Usage: Usage{InputTokens: 12, OutputTokens: 3},
 		})},
 	}
 	conversation := NewConversation()
 	if err := conversation.RestoreSnapshot(snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if conversation.Phase() != ConversationIdle || conversation.RunID() != "run_1" || conversation.Outcome().Status != OutcomeCompleted || conversation.Usage().InputTokens != 12 {
+	if conversation.Phase() != ConversationIdle || conversation.RunID() != "run_1" || conversation.Outcome().Status != protocol.OutcomeCompleted || conversation.Usage().InputTokens != 12 {
 		t.Fatalf("restored finished conversation = phase %v, run %q, outcome %+v, usage %+v", conversation.Phase(), conversation.RunID(), conversation.Outcome(), conversation.Usage())
 	}
 }
@@ -332,7 +332,7 @@ func TestSessionSnapshotRejectsLifecycleDrift(t *testing.T) {
 				Session: Session{ID: "ses_1", Status: protocol.SessionStatusRunning, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 				Runs: []Run{
 					testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_1"}),
-					testRootRun(Run{ID: "run_2", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: Outcome{Status: OutcomeCompleted}}),
+					testRootRun(Run{ID: "run_2", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: Outcome{Status: protocol.OutcomeCompleted}}),
 				},
 			},
 		},
@@ -469,7 +469,7 @@ func TestConversationMatchesColdSnapshotSemantics(t *testing.T) {
 		}},
 		Runs: []Run{testRootRun(Run{
 			ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished,
-			Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 5},
+			Outcome: Outcome{Status: protocol.OutcomeCompleted}, Usage: Usage{InputTokens: 5},
 		})},
 		Plan: testPlan(t, 2, []protocol.PlanStep{{Description: "inspect", Status: protocol.PlanStatusCompleted}}),
 	}
@@ -494,7 +494,7 @@ func TestConversationMatchesColdSnapshotSemantics(t *testing.T) {
 			value.Plan = testPlan(t, value.Plan.State.Revision, steps)
 		}},
 		{name: "usage", mutate: func(value *SessionSnapshot) { value.Runs[0].Usage.InputTokens++ }},
-		{name: "outcome", mutate: func(value *SessionSnapshot) { value.Runs[0].Outcome.Status = OutcomeCanceled }},
+		{name: "outcome", mutate: func(value *SessionSnapshot) { value.Runs[0].Outcome.Status = protocol.OutcomeCanceled }},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestAttentionCenterRetainsTheMostImportantUnreadSignalUntilUserInput(t *testing.T) {
@@ -117,7 +118,7 @@ func TestUnfocusedApprovalRequestsAttention(t *testing.T) {
 				},
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}

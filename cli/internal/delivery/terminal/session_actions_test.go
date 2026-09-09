@@ -779,7 +779,7 @@ func TestSteerTargetsTheObservedSegmentAndRestoresAttachmentsOnRefusal(t *testin
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &steeringRuntime{Runtime: base, err: agent.ErrStaleSegment}
@@ -815,7 +815,7 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &blockedSteeringRuntime{
@@ -875,7 +875,7 @@ func TestSteerConfirmsATimedOutAcknowledgementWithOneIdentity(t *testing.T) {
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &uncertainSteeringRuntime{Runtime: base}
@@ -901,7 +901,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	runtime := &committedThenCanceledSteeringRuntime{
@@ -914,7 +914,8 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 		t.Fatal(err)
 	}
 	profile := steerReplayTestProfile(t, workspace)
-	host, stop := runUIFromConfig(t, Config{Runtime: runtime, RuntimeProfile: &profile, Workspace: workspace,
+	host, stop := runUIFromConfig(t, Config{
+		Runtime: runtime, RuntimeProfile: &profile, Workspace: workspace,
 		StateDirectory: stateDirectory,
 	})
 	host.Shows(t, "Ask flame")
@@ -939,7 +940,8 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	stop()
 
 	replay := &cachedSteeringRuntime{Runtime: base, accepted: accepted}
-	restarted, stopRestarted := runUIFromConfig(t, Config{Runtime: replay, RuntimeProfile: &profile, Workspace: workspace,
+	restarted, stopRestarted := runUIFromConfig(t, Config{
+		Runtime: replay, RuntimeProfile: &profile, Workspace: workspace,
 		SessionID: sessionID, StateDirectory: stateDirectory,
 	})
 	restarted.Shows(t, "focus on parsing")

@@ -341,7 +341,7 @@ func (r *Runtime) CancelRun(ctx context.Context, in agent.CancelRun) (agent.RunC
 	if run.status == protocol.RunStatusFinished {
 		return agent.RunCancellation{}, fmt.Errorf("%w: %s", agent.ErrRunFinished, run.id)
 	}
-	if err := r.finishLocked(run, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCanceled, Detail: strings.TrimSpace(in.Reason)}}); err != nil {
+	if err := r.finishLocked(run, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCanceled, Detail: strings.TrimSpace(in.Reason)}}); err != nil {
 		return agent.RunCancellation{}, err
 	}
 	run.cancelOnce.Do(func() { close(run.cancel) })

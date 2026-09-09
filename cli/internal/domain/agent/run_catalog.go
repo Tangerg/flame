@@ -73,7 +73,7 @@ func (r RunCancellation) Validate() error {
 	if err := r.Root.Validate(); err != nil {
 		problems = append(problems, fmt.Errorf("root: %w", err))
 	}
-	if r.Canceled.Status != runtimeprotocol.RunStatusFinished || r.Canceled.Outcome.Status != OutcomeCanceled {
+	if r.Canceled.Status != runtimeprotocol.RunStatusFinished || r.Canceled.Outcome.Status != runtimeprotocol.OutcomeCanceled {
 		problems = append(problems, errors.New("addressed run is not finished as canceled"))
 	}
 	if !r.Root.Lineage.IsRoot() {

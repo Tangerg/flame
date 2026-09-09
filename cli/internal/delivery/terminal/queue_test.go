@@ -768,12 +768,12 @@ func TestRunningTurnQueuesFollowUpsAndDrainsThemInFIFOOrder(t *testing.T) {
 	base.Script = func(prompt string) runtimefixture.Script {
 		if prompt == "PRIMARY_RUN" {
 			return runtimefixture.Script{Prelude: []runtimefixture.Step{
-				{Delay: 500 * time.Millisecond, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+				{Delay: 500 * time.Millisecond, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 			}}
 		}
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer-" + prompt, Kind: agent.BlockAssistant, Text: "RAN_" + prompt}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &recordingRuntime{Runtime: base}
@@ -815,7 +815,7 @@ func TestAcceptedStartRetainsTheFIFOBoundaryUntilDurableSettlementRecovers(t *te
 			{Event: agent.BlockCompleted{Block: agent.Block{
 				ID: "answer-" + prompt, Kind: agent.BlockAssistant, Text: prompt + "_RAN",
 			}}},
-			{Delay: finishDelay, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: finishDelay, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	gate := &blockingFirstStartRuntime{
@@ -902,7 +902,7 @@ func TestAcceptedStartSettlementRecoveryRestoresTheTerminalStatusWithoutAFollowU
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "ONLY_SETTLEMENT_RAN"}}},
-			{Delay: time.Second, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Second, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	gate := &blockingFirstStartRuntime{
@@ -954,12 +954,12 @@ func TestCancelingARunDrainsItsQueuedFollowUpAfterCancellationSettles(t *testing
 	base.Script = func(prompt string) runtimefixture.Script {
 		if prompt == "CANCEL_PRIMARY" {
 			return runtimefixture.Script{Prelude: []runtimefixture.Step{
-				{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+				{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 			}}
 		}
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "after-cancel", Kind: agent.BlockAssistant, Text: "QUEUED_AFTER_CANCEL_RAN"}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &recordingRuntime{Runtime: base}
@@ -987,12 +987,12 @@ func TestQueueDrawerSendsTheSelectedFollowUpBeforeTheRestAndPreservesTheDraft(t 
 	base.Script = func(prompt string) runtimefixture.Script {
 		if prompt == "INTERRUPTED_PRIMARY" {
 			return runtimefixture.Script{Prelude: []runtimefixture.Step{
-				{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+				{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 			}}
 		}
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer-" + prompt, Kind: agent.BlockAssistant, Text: "RAN_" + prompt}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &recordingRuntime{Runtime: base}
@@ -1033,12 +1033,12 @@ func TestQueueDrawerReordersAndRemovesFollowUpsBeforeDispatch(t *testing.T) {
 	base.Script = func(prompt string) runtimefixture.Script {
 		if prompt == "PRIMARY_FOR_QUEUE_MUTATION" {
 			return runtimefixture.Script{Prelude: []runtimefixture.Step{
-				{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+				{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 			}}
 		}
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer-" + prompt, Kind: agent.BlockAssistant, Text: "RAN_" + prompt}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &recordingRuntime{Runtime: base}
@@ -1084,12 +1084,12 @@ func TestEmptyEnterPromotesTheNextQueuedFollowUp(t *testing.T) {
 	base.Script = func(prompt string) runtimefixture.Script {
 		if prompt == "PRIMARY_FOR_EMPTY_ENTER" {
 			return runtimefixture.Script{Prelude: []runtimefixture.Step{
-				{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+				{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 			}}
 		}
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "empty-enter-answer", Kind: agent.BlockAssistant, Text: "EMPTY_ENTER_SENT_NEXT"}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &recordingRuntime{Runtime: base}
@@ -1115,7 +1115,7 @@ func TestQueueDrawerRemainsUsableOnAConstrainedTerminal(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	host, stop := runUIWith(t, base)
@@ -1145,12 +1145,12 @@ func TestEditingTheFrontPromptHoldsAutomaticDispatchUntilSave(t *testing.T) {
 		if prompt == "PRIMARY_BEFORE_QUEUE_EDIT" {
 			return runtimefixture.Script{Prelude: []runtimefixture.Step{
 				{Delay: 2 * time.Second, Event: agent.BlockCompleted{Block: agent.Block{ID: "primary-finished-marker", Kind: agent.BlockAssistant, Text: "PRIMARY_FINISHED_WHILE_EDITING"}}},
-				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 			}}
 		}
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockCompleted{Block: agent.Block{ID: "edited-queue-answer", Kind: agent.BlockAssistant, Text: "RAN_" + prompt}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &finishObservingRuntime{
@@ -1209,7 +1209,7 @@ func TestQueuedFollowUpKeepsItsAttachmentIdentityUntilDispatch(t *testing.T) {
 			delay = 800 * time.Millisecond
 		}
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Delay: delay, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: delay, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &recordingRuntime{Runtime: base}

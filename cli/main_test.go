@@ -490,7 +490,7 @@ func TestCancelReentryPTYRuntime(t *testing.T) {
 			{Event: agent.BlockCompleted{Block: agent.Block{
 				ID: "reentry", Kind: agent.BlockNotice, Text: "PTY cancellation reentry accepted",
 			}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	if err := terminal.Run(t.Context(), terminal.Config{
@@ -508,7 +508,7 @@ func cancelReentryPTYScript() runtimefixture.Script {
 				{Event: agent.BlockCompleted{Block: agent.Block{
 					ID: "violation", Kind: agent.BlockError, Text: "PTY cancellation contract violated",
 				}}},
-				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeFailed}}},
+				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeFailed}}},
 			}
 		},
 	}
@@ -524,7 +524,7 @@ func mixedInteractionPTYScript() runtimefixture.Script {
 			}
 			return []runtimefixture.Step{
 				{Event: agent.BlockCompleted{Block: agent.Block{ID: "result", Kind: agent.BlockNotice, Text: result}}},
-				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 			}
 		},
 	}

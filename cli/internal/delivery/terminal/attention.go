@@ -3,6 +3,7 @@ package terminal
 import (
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
@@ -123,10 +124,10 @@ func outcomeAttention(outcome agent.Outcome) attentionSignal {
 	}
 	priority, marker := attentionInformational, "run complete"
 	switch outcome.Status {
-	case agent.OutcomeFailed, agent.OutcomeLost:
+	case protocol.OutcomeFailed, protocol.OutcomeLost:
 		priority, marker = attentionFailure, "run failed"
-	case agent.OutcomeCompleted:
-	case agent.OutcomeCanceled:
+	case protocol.OutcomeCompleted:
+	case protocol.OutcomeCanceled:
 		marker = "run canceled"
 	default:
 		marker = "run stopped"

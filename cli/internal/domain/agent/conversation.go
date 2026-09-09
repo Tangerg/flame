@@ -183,7 +183,7 @@ func (c *Conversation) CancelStarting() error {
 	c.phase = ConversationIdle
 	c.reconciling = false
 	c.coldTail = false
-	c.outcome = Outcome{Status: OutcomeCanceled}
+	c.outcome = Outcome{Status: protocol.OutcomeCanceled}
 	return nil
 }
 
@@ -208,7 +208,7 @@ func (c *Conversation) SettleRun(run Run) error {
 		}
 	}
 	toolStatus := ToolError
-	if run.Outcome.Status == OutcomeCanceled {
+	if run.Outcome.Status == protocol.OutcomeCanceled {
 		toolStatus = ToolCanceled
 	}
 	c.settleOpenBlocks(toolStatus)

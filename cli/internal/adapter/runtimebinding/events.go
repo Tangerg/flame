@@ -156,7 +156,13 @@ func (r runEventProjection) segmentFinished() (projectedRunEvent, error) {
 		return includeRunEvent(agent.RunSuspended{Usage: usage, ContextTokens: contextTokens}), nil
 	default:
 		return includeRunEvent(agent.RunFinished{
-			Outcome:       projectOutcome(stream.Outcome.Type, stream.Outcome.Error, stream.Outcome.Detail),
+			// Every segment terminal that reaches here is a run terminal: the two
+			// segment-only tags are answered by the cases above.
+			Outcome: projectOutcome(
+				protocol.RunOutcomeType(stream.Outcome.Type),
+				stream.Outcome.Error,
+				stream.Outcome.Detail,
+			),
 			Usage:         usage,
 			ContextTokens: contextTokens,
 		}), nil

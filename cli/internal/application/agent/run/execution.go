@@ -405,7 +405,7 @@ func (o *outcomeError) Error() string {
 }
 
 func errorForOutcome(outcome agent.Outcome) error {
-	if outcome.Status == agent.OutcomeCompleted {
+	if outcome.Status == protocol.OutcomeCompleted {
 		return nil
 	}
 	return &outcomeError{outcome: outcome}

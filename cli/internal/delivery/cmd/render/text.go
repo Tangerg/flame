@@ -498,7 +498,7 @@ func (t *Text) interrupted(interaction agent.Interaction) {
 
 func (t *Text) finished(e agent.RunFinished) {
 	t.blank()
-	if e.Outcome.Status != agent.OutcomeCompleted {
+	if e.Outcome.Status != protocol.OutcomeCompleted {
 		msg := string(e.Outcome.Status)
 		if detail := e.Outcome.Explanation(); detail != "" {
 			msg += ": " + detail

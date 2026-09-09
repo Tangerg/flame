@@ -175,7 +175,7 @@ func TestRunsCancelRequiresConfirmationAndReturnsRootSnapshot(t *testing.T) {
 	runtime.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour,
-			Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	opened, err := runtime.StartRun(t.Context(), agent.StartRun{
@@ -260,7 +260,7 @@ func TestRunsCancelPreservesSurvivingRootStateForAChild(t *testing.T) {
 	child := agent.Run{
 		ID: "run_child", SessionID: "ses_1",
 		Lineage: lineage,
-		Status:  protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCanceled},
+		Status:  protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: protocol.OutcomeCanceled},
 	}
 	root := agent.Run{ID: "run_root", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusWaiting, Limits: agent.UnlimitedRunLimits()}
 	runtime := childCancellationRuntime{
@@ -281,7 +281,7 @@ func TestRunsCancelConfirmsTimeoutWithOneMutationIdentity(t *testing.T) {
 	base.Instant = false
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	opened, err := base.StartRun(t.Context(), agent.StartRun{

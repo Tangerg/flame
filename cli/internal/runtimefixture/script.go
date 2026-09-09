@@ -346,7 +346,7 @@ func (d defaultScenario) approved() []Step {
 		agent.ToolOK, "ok  \tgithub.com/example/store\t2.104s", "", 2*time.Second+104*time.Millisecond)
 	approved = append(approved, stream("msg_2", agent.BlockAssistant, d.summary)...)
 	approved = append(approved, eventStep(beat, agent.RunFinished{
-		Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+		Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		Usage: agent.Usage{
 			InputTokens: 18422, OutputTokens: 1163, CacheReadTokens: 12800,
 			CostUSD: new(0.0412), Duration: 21 * time.Second,
@@ -362,7 +362,7 @@ func (d defaultScenario) denied() []Step {
 	}}))
 	denied = append(denied, stream("msg_3", agent.BlockAssistant, d.declined)...)
 	denied = append(denied, eventStep(beat, agent.RunFinished{
-		Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+		Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		Usage: agent.Usage{
 			InputTokens: 14180, OutputTokens: 742, CacheReadTokens: 12800,
 			CostUSD: new(0.0291), Duration: 14 * time.Second,

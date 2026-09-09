@@ -344,22 +344,9 @@ func (t ToolCall) Validate() error {
 	return nil
 }
 
-// OutcomeStatus is how a run ended.
-type OutcomeStatus string
-
-const (
-	OutcomeCompleted OutcomeStatus = "completed"
-	OutcomeTimedOut  OutcomeStatus = "timedOut"
-	OutcomeMaxSteps  OutcomeStatus = "maxSteps"
-	OutcomeMaxBudget OutcomeStatus = "maxBudget"
-	OutcomeCanceled  OutcomeStatus = "canceled"
-	OutcomeFailed    OutcomeStatus = "failed"
-	OutcomeLost      OutcomeStatus = "lost"
-)
-
 // Outcome is a finished run's verdict.
 type Outcome struct {
-	Status OutcomeStatus
+	Status protocol.RunOutcomeType
 	// Problem is the single source of failure classification, display text, and
 	// recovery metadata for failed, timed-out, and lost outcomes.
 	Problem *protocol.ProblemData

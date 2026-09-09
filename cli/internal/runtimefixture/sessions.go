@@ -423,7 +423,7 @@ func (r *Runtime) seedHistory() {
 		id: "run_demo_history", sessionID: state.meta.ID, provider: "mock", model: "balanced",
 		lineage: agent.RootRunLineage(),
 		limits:  agent.UnlimitedRunLimits(), status: protocol.RunStatusFinished, segments: make(map[string]*segmentState),
-		outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+		outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		usage:   agent.Usage{InputTokens: 820, OutputTokens: 94, CacheReadTokens: 512, Duration: 3 * time.Second},
 	}
 	r.runs[run.id] = run

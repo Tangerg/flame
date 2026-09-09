@@ -415,10 +415,10 @@ func (c *Conversation) applyFinished(runID string, event RunFinished) error {
 	if !exists {
 		return fmt.Errorf("%w: cannot finish unknown run %s", ErrInvalidTransition, runID)
 	}
-	if run.Status == protocol.RunStatusWaiting && event.Outcome.Status != OutcomeCanceled {
+	if run.Status == protocol.RunStatusWaiting && event.Outcome.Status != protocol.OutcomeCanceled {
 		return fmt.Errorf("%w: a waiting run can only finish by cancellation", ErrInvalidTransition)
 	}
-	if event.Outcome.Status == OutcomeCompleted && c.hasOpenBlocksForRun(runID) {
+	if event.Outcome.Status == protocol.OutcomeCompleted && c.hasOpenBlocksForRun(runID) {
 		return fmt.Errorf("%w: completed run %s still has open blocks", ErrInvalidTransition, runID)
 	}
 	if err := validateUsageProgress(run.Usage, event.Usage); err != nil {
@@ -432,7 +432,7 @@ func (c *Conversation) applyFinished(runID string, event RunFinished) error {
 		}
 	}
 	toolStatus := ToolError
-	if event.Outcome.Status == OutcomeCanceled {
+	if event.Outcome.Status == protocol.OutcomeCanceled {
 		toolStatus = ToolCanceled
 	}
 	c.settleOpenBlocksForRun(runID, toolStatus)

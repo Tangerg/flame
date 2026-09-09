@@ -77,9 +77,9 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	}}})
 	finalContext := int64(4_096)
 	apply(t, conversation, RunEvent{EventID: "different-space:done", RunID: "run_1", SegmentID: "seg_2", Event: RunFinished{
-		Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 14, OutputTokens: 4}, ContextTokens: finalContext,
+		Outcome: Outcome{Status: protocol.OutcomeCompleted}, Usage: Usage{InputTokens: 14, OutputTokens: 4}, ContextTokens: finalContext,
 	}})
-	if conversation.Phase() != ConversationIdle || conversation.Outcome().Status != OutcomeCompleted {
+	if conversation.Phase() != ConversationIdle || conversation.Outcome().Status != protocol.OutcomeCompleted {
 		t.Fatalf("terminal projection = phase %v, outcome %+v", conversation.Phase(), conversation.Outcome())
 	}
 	if blocks := conversation.Blocks(); len(blocks) != 3 || blocks[0].Text != "final" {
@@ -253,7 +253,7 @@ func TestConversationFoldsAChildRunWithoutEndingTheRootStream(t *testing.T) {
 	apply(t, conversation, treeEvent("child-answer-delta", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, BlockDelta{BlockID: childAnswer.ID, Text: "inspection"}))
 	childAnswer.Status, childAnswer.Text = BlockStatusCompleted, "inspection complete"
 	apply(t, conversation, treeEvent("child-answer-done", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, BlockCompleted{Block: childAnswer}))
-	apply(t, conversation, treeEvent("child-done", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 4}}))
+	apply(t, conversation, treeEvent("child-done", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: protocol.OutcomeCompleted}, Usage: Usage{InputTokens: 4}}))
 	if got := conversation.RunningDescendants(); got != 0 {
 		t.Fatalf("running descendants after child finish = %d, want 0", got)
 	}
@@ -264,8 +264,8 @@ func TestConversationFoldsAChildRunWithoutEndingTheRootStream(t *testing.T) {
 	delegate.Status = BlockStatusCompleted
 	delegate.Tool.Status = ToolOK
 	apply(t, conversation, treeEvent("delegate-done", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, BlockCompleted{Block: delegate}))
-	apply(t, conversation, treeEvent("root-done", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 8}}))
-	if conversation.Phase() != ConversationIdle || conversation.Outcome().Status != OutcomeCompleted {
+	apply(t, conversation, treeEvent("root-done", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: protocol.OutcomeCompleted}, Usage: Usage{InputTokens: 8}}))
+	if conversation.Phase() != ConversationIdle || conversation.Outcome().Status != protocol.OutcomeCompleted {
 		t.Fatalf("root terminal projection = phase %v outcome %+v", conversation.Phase(), conversation.Outcome())
 	}
 	if blocks := conversation.Blocks(); len(blocks) != 2 || blocks[1].RunID != child.ID || blocks[1].Text != "inspection complete" {
@@ -312,10 +312,10 @@ func TestConversationResumesATreeInterruptedByAChild(t *testing.T) {
 	apply(t, conversation, treeEvent("approval-done", child.ID, resumedChild.ActiveSegmentID, resumedRoot.ActiveSegmentID, BlockCompleted{Block: Block{
 		ID: approval.ItemID, RunID: child.ID, Status: BlockStatusCompleted, Kind: BlockTool, Tool: &completedApproval,
 	}}))
-	apply(t, conversation, treeEvent("child-done", child.ID, resumedChild.ActiveSegmentID, resumedRoot.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 4}}))
+	apply(t, conversation, treeEvent("child-done", child.ID, resumedChild.ActiveSegmentID, resumedRoot.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: protocol.OutcomeCompleted}, Usage: Usage{InputTokens: 4}}))
 	delegate.Status, delegate.Tool.Status = BlockStatusCompleted, ToolOK
 	apply(t, conversation, treeEvent("delegate-done", root.ID, resumedRoot.ActiveSegmentID, resumedRoot.ActiveSegmentID, BlockCompleted{Block: delegate}))
-	apply(t, conversation, treeEvent("root-done", root.ID, resumedRoot.ActiveSegmentID, resumedRoot.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: OutcomeCompleted}, Usage: Usage{InputTokens: 9}}))
+	apply(t, conversation, treeEvent("root-done", root.ID, resumedRoot.ActiveSegmentID, resumedRoot.ActiveSegmentID, RunFinished{Outcome: Outcome{Status: protocol.OutcomeCompleted}, Usage: Usage{InputTokens: 9}}))
 	if conversation.Phase() != ConversationIdle || conversation.SegmentID() != resumedRoot.ActiveSegmentID {
 		t.Fatalf("resumed tree = phase %v segment %s", conversation.Phase(), conversation.SegmentID())
 	}
@@ -350,7 +350,7 @@ func TestConversationRejectsCrossSegmentAndInvalidTransitions(t *testing.T) {
 	if !errors.Is(err, ErrInvalidTransition) && err == nil {
 		t.Fatal("cross-segment event was accepted")
 	}
-	_, err = conversation.ApplyRunEvent(RunEvent{EventID: "finish", RunID: "run_1", SegmentID: "seg_1", Event: RunFinished{Outcome: Outcome{Status: OutcomeCompleted}}})
+	_, err = conversation.ApplyRunEvent(RunEvent{EventID: "finish", RunID: "run_1", SegmentID: "seg_1", Event: RunFinished{Outcome: Outcome{Status: protocol.OutcomeCompleted}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,7 +367,7 @@ func TestConversationStartingWindow(t *testing.T) {
 	if err := conversation.CancelStarting(); err != nil {
 		t.Fatal(err)
 	}
-	if conversation.Outcome().Status != OutcomeCanceled {
+	if conversation.Outcome().Status != protocol.OutcomeCanceled {
 		t.Fatalf("outcome = %+v", conversation.Outcome())
 	}
 }
@@ -379,7 +379,7 @@ func TestConversationSettlesRunningItemsWithOutOfBandCancellation(t *testing.T) 
 		ID: "tool_1", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool,
 		Tool: &ToolCall{Kind: ToolShell, Name: "shell", Status: ToolRunning},
 	}}})
-	if err := conversation.SettleRun(testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: Outcome{Status: OutcomeCanceled}})); err != nil {
+	if err := conversation.SettleRun(testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: Outcome{Status: protocol.OutcomeCanceled}})); err != nil {
 		t.Fatal(err)
 	}
 	block := conversation.Blocks()[0]
@@ -491,7 +491,7 @@ func attachedReconciliationSnapshot(t testing.TB) SessionSnapshot {
 			{ID: "live", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: ToolShell, Name: "shell", Status: ToolRunning}},
 		},
 		Runs: []Run{
-			testRootRun(Run{ID: "run_old", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: Outcome{Status: OutcomeCompleted}}),
+			testRootRun(Run{ID: "run_old", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: Outcome{Status: protocol.OutcomeCompleted}}),
 			testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_1"}),
 		},
 		Plan: testPlan(t, 2, []protocol.PlanStep{{Description: "inspect", Status: protocol.PlanStatusInProgress}}),

@@ -127,7 +127,7 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 	if _, ok := events[0].Event.(agent.SegmentStarted); !ok {
 		t.Fatalf("first event = %T", events[0].Event)
 	}
-	if finished, ok := events[1].Event.(agent.RunFinished); !ok || finished.Outcome.Status != agent.OutcomeCompleted || finished.ContextTokens != 12_345 {
+	if finished, ok := events[1].Event.(agent.RunFinished); !ok || finished.Outcome.Status != protocol.OutcomeCompleted || finished.ContextTokens != 12_345 {
 		t.Fatalf("second event = %+v", events[1].Event)
 	}
 }
@@ -441,7 +441,7 @@ func TestResumeAndCancelMapControlContracts(t *testing.T) {
 		t.Fatalf("CancelRun: %v", err)
 	}
 	if !canceled.Canceled.Equal(canceled.Root) || canceled.Canceled.Status != protocol.RunStatusFinished ||
-		canceled.Canceled.Outcome.Status != agent.OutcomeCanceled || canceled.Canceled.Outcome.Detail != "stop" {
+		canceled.Canceled.Outcome.Status != protocol.OutcomeCanceled || canceled.Canceled.Outcome.Detail != "stop" {
 		t.Fatalf("canceled = %+v", canceled)
 	}
 }

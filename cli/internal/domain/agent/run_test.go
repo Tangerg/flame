@@ -139,7 +139,7 @@ func testChildRunLineage(t *testing.T, runID, spawn, parent, root string) RunLin
 }
 
 func TestOutcomeProblemIsValueOwned(t *testing.T) {
-	original := Outcome{Status: OutcomeTimedOut, Problem: &runtimeprotocol.ProblemData{
+	original := Outcome{Status: runtimeprotocol.OutcomeTimedOut, Problem: &runtimeprotocol.ProblemData{
 		Type: "rate_limited", Detail: "deadline exceeded", RetryAfterSeconds: 2,
 	}}
 	cloned := original.Clone()
@@ -150,7 +150,7 @@ func TestOutcomeProblemIsValueOwned(t *testing.T) {
 }
 
 func TestOutcomeExplanationIncludesRecoveryMetadata(t *testing.T) {
-	outcome := Outcome{Status: OutcomeFailed, Problem: &runtimeprotocol.ProblemData{
+	outcome := Outcome{Status: runtimeprotocol.OutcomeFailed, Problem: &runtimeprotocol.ProblemData{
 		Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
 	}}
 	if got := outcome.Description(); got != "quota exhausted" {

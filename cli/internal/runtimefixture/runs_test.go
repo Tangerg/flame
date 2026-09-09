@@ -12,7 +12,7 @@ import (
 func TestRunCatalogReadsFiltersAndPaginatesNewestFirst(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", "active"))
 	if err != nil {
@@ -52,7 +52,7 @@ func TestRunCatalogRetainsLatestProgressFootprint(t *testing.T) {
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{
 			eventStep(0, agent.RunProgress{ContextTokens: &contextTokens, Usage: &agent.Usage{InputTokens: 40}}),
-			eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+			eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", "progress"))
@@ -82,7 +82,7 @@ func TestRunStreamFinishesWithLatestProgressFootprint(t *testing.T) {
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{
 			eventStep(0, agent.RunProgress{ContextTokens: &contextTokens}),
-			eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+			eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", "progress"))

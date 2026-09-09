@@ -22,7 +22,7 @@ func (r *Runtime) playSteps(run *runState, steps []Step) bool {
 	for _, step := range steps {
 		if err := r.pause(run, step.Delay); err != nil {
 			if errors.Is(err, errCanceled) {
-				r.finish(run, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCanceled}})
+				r.finish(run, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCanceled}})
 			}
 			return false
 		}
@@ -55,7 +55,7 @@ func (r *Runtime) park(run *runState) {
 	interactionEvents, err := r.interruptItemEventsLocked(run)
 	if err != nil {
 		r.mu.Unlock()
-		r.finish(run, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
+		r.finish(run, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
 		return
 	}
 	resolved, pending := r.resolveRememberedLocked(run, run.script.Interactions)
@@ -104,7 +104,7 @@ func (r *Runtime) park(run *runState) {
 			steps, err = continueSafely(run.script, answers)
 		}
 		if err != nil {
-			r.finish(run, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
+			r.finish(run, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
 			return
 		}
 		r.mu.Lock()
@@ -423,7 +423,7 @@ func (r *Runtime) runningItemSettlementsLocked(run *runState, outcome agent.Outc
 			block.Status = agent.BlockStatusIncomplete
 			if block.Tool != nil {
 				block.Tool.Status = agent.ToolError
-				if outcome.Status == agent.OutcomeCanceled {
+				if outcome.Status == protocol.OutcomeCanceled {
 					block.Tool.Status = agent.ToolCanceled
 				}
 			}

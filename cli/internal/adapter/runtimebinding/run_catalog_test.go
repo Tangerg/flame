@@ -61,7 +61,7 @@ func TestRunCatalogMapsQueriesAndProjectsPages(t *testing.T) {
 		}),
 	}
 	got, err := runtime.GetRun(t.Context(), "run_1")
-	if err != nil || got.ID != "run_1" || got.Outcome.Status != agent.OutcomeCompleted {
+	if err != nil || got.ID != "run_1" || got.Outcome.Status != protocol.OutcomeCompleted {
 		t.Fatalf("GetRun = %+v, %v", got, err)
 	}
 	page, err := runtime.ListRuns(t.Context(), agent.RunQuery{
@@ -190,8 +190,10 @@ func TestRunCatalogRejectsIncompleteBindingResults(t *testing.T) {
 func TestRunCatalogRejectsResponsesOutsideTheRequestedScope(t *testing.T) {
 	t.Parallel()
 	base := protocol.RunRef{
-		RunSummary: protocol.RunSummary{ID: "run_1", SessionID: "ses_other", Status: protocol.RunStatusFinished,
-			Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted}},
+		RunSummary: protocol.RunSummary{
+			ID: "run_1", SessionID: "ses_other", Status: protocol.RunStatusFinished,
+			Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted},
+		},
 		ProtocolProfile: protocol.RunProtocolProfile{RequiredFeatures: []protocol.RunProtocolFeature{}, InterruptTypes: []protocol.InterruptType{}},
 	}
 	wrongIdentity := base

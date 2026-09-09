@@ -38,7 +38,7 @@ func TestTextRendersRunRecoveryMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := renderer.Render(testEvent("failed", agent.RunFinished{Outcome: agent.Outcome{
-		Status: agent.OutcomeFailed,
+		Status: protocol.OutcomeFailed,
 		Problem: &protocol.ProblemData{
 			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
 		},
@@ -310,7 +310,7 @@ func TestRunJSONPreservesLifecycleTimestamps(t *testing.T) {
 		ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished,
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
 		ContextTokens: 32_768,
-		CreatedAt:     created, FinishedAt: finished, Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+		CreatedAt:     created, FinishedAt: finished, Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 	})
 	if frame.ReasoningEffort != "xhigh" || frame.ContextTokens != 32_768 ||
 		!frame.CreatedAt.Equal(created) || !frame.FinishedAt.Equal(finished) {
@@ -320,7 +320,7 @@ func TestRunJSONPreservesLifecycleTimestamps(t *testing.T) {
 
 func TestOutcomeJSONPreservesStructuredProblem(t *testing.T) {
 	encoded, err := json.Marshal(encodeOutcome(agent.Outcome{
-		Status: agent.OutcomeFailed,
+		Status: protocol.OutcomeFailed,
 		Problem: &protocol.ProblemData{
 			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 2,
 		},
@@ -365,7 +365,7 @@ func TestResultJSONUsesAuthoritativeAssistantCompletionAfterDeltas(t *testing.T)
 		testEvent("first", agent.BlockDelta{BlockID: "answer", Text: "provisional first"}),
 		testEvent("second", agent.BlockDelta{BlockID: "answer", Text: " provisional second"}),
 		testEvent("complete", agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "authoritative"}}),
-		testEvent("finished", agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+		testEvent("finished", agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 	} {
 		if err := renderer.Render(event); err != nil {
 			t.Fatal(err)
@@ -416,7 +416,7 @@ func TestResultJSONDoesNotRetainProvisionalTextForEmptyCompletion(t *testing.T) 
 		testEvent("start", agent.BlockStarted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant}}),
 		testEvent("delta", agent.BlockDelta{BlockID: "answer", Text: "provisional"}),
 		testEvent("complete", agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant}}),
-		testEvent("finished", agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+		testEvent("finished", agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 	} {
 		if err := renderer.Render(event); err != nil {
 			t.Fatal(err)
@@ -660,9 +660,9 @@ func reconciliationSnapshot(t testing.TB) agent.SessionSnapshot {
 			{ID: "new", RunID: "run_new", Status: agent.BlockStatusCompleted, Kind: agent.BlockAssistant, Text: "newer answer"},
 		},
 		Runs: []agent.Run{
-			{ID: "run_old", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
-			{ID: "run_1", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
-			{ID: "run_new", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			{ID: "run_old", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+			{ID: "run_1", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+			{ID: "run_new", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Limits: agent.UnlimitedRunLimits(), Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		},
 		Plan: &plan,
 	}
@@ -785,7 +785,7 @@ func testEvents() []agent.RunEvent {
 			Command: "go test ./...", Output: "PASS", ExitCode: &code,
 		}}}),
 		testEvent("evt_done", agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 			Usage:   agent.Usage{InputTokens: 1_200, OutputTokens: 80, CacheReadTokens: 600, CostUSD: new(0.01), Duration: time.Second},
 		}),
 	}
@@ -819,11 +819,11 @@ func runTreeEvents(t *testing.T) []agent.RunEvent {
 		event("child-block-started", child.ID, child.ActiveSegmentID, agent.BlockStarted{Block: block(child.ID, "", agent.BlockStatusRunning)}),
 		event("child-delta", child.ID, child.ActiveSegmentID, agent.BlockDelta{BlockID: "answer", Text: "child answer"}),
 		event("child-block-completed", child.ID, child.ActiveSegmentID, agent.BlockCompleted{Block: block(child.ID, "child answer", agent.BlockStatusCompleted)}),
-		event("child-finished", child.ID, child.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+		event("child-finished", child.ID, child.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		event("root-block-started", root.ID, root.ActiveSegmentID, agent.BlockStarted{Block: block(root.ID, "", agent.BlockStatusRunning)}),
 		event("root-delta", root.ID, root.ActiveSegmentID, agent.BlockDelta{BlockID: "answer", Text: "root answer"}),
 		event("root-block-completed", root.ID, root.ActiveSegmentID, agent.BlockCompleted{Block: block(root.ID, "root answer", agent.BlockStatusCompleted)}),
-		event("root-finished", root.ID, root.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+		event("root-finished", root.ID, root.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 	}
 }
 

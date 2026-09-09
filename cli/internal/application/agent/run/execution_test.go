@@ -366,7 +366,7 @@ func TestExecuteLeavesQuestionsParked(t *testing.T) {
 				Fields: []agent.QuestionField{{Prompt: "Target", Kind: agent.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -392,7 +392,7 @@ func TestExecuteReconnectsOnlyTheCurrentSegment(t *testing.T) {
 	runtime.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Delay: 30 * time.Millisecond, Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "done"}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
@@ -435,11 +435,11 @@ func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testin
 		event("event_root_started", root.ID, root.ActiveSegmentID, agent.SegmentStarted{Run: root}),
 		event("event_child_started", child.ID, child.ActiveSegmentID, agent.SegmentStarted{Run: child}),
 		event("event_child_finished", child.ID, child.ActiveSegmentID, agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeMaxSteps, Detail: "child limit"},
+			Outcome: agent.Outcome{Status: protocol.OutcomeMaxSteps, Detail: "child limit"},
 		}),
 	}
 	rootFinished := event("event_root_finished", root.ID, root.ActiveSegmentID, agent.RunFinished{
-		Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+		Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 	})
 	stream := func(events []agent.RunEvent, terminal error) agent.EventStream {
 		return func(yield func(agent.RunEvent, error) bool) {
@@ -531,11 +531,11 @@ func TestExecuteResumesTheCompleteTreeAfterItsRootSuspends(t *testing.T) {
 				continued = append(continued,
 					event("event_child_resumed_"+suffix, child, resumedRoot.ActiveSegmentID, agent.SegmentStarted{Run: child}),
 					event("event_approval_completed_"+suffix, child, resumedRoot.ActiveSegmentID, agent.BlockCompleted{Block: block}),
-					event("event_child_finished_"+suffix, child, resumedRoot.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+					event("event_child_finished_"+suffix, child, resumedRoot.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 				)
 			}
 			rootSuspended := event("event_root_suspended", root, root.ActiveSegmentID, agent.RunSuspended{})
-			continued = append(continued, event("event_root_finished", resumedRoot, resumedRoot.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}))
+			continued = append(continued, event("event_root_finished", resumedRoot, resumedRoot.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}))
 			stream := func(events []agent.RunEvent, terminal error) agent.EventStream {
 				return func(yield func(agent.RunEvent, error) bool) {
 					for _, item := range events {
@@ -601,7 +601,7 @@ func TestExecuteReportsAbandonedRunCancellationFailure(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	cleanupFailure := errors.New("cancellation refused")
@@ -636,7 +636,7 @@ func TestExecuteConfirmsTimedOutCleanupWithoutChangingIdentity(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &uncertainAcknowledgementRuntime{Runtime: base}
@@ -664,7 +664,7 @@ func TestExecuteRejectsAMisdirectedAbandonedRunCancellation(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	session, err := base.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
@@ -686,7 +686,7 @@ func TestExecuteRejectsAMisdirectedAbandonedRunCancellation(t *testing.T) {
 func TestExecuteCancelsARunWhoseOpeningStreamIsInvalid(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	session, _ := base.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
 	err := Execute(t.Context(), Invocation{
@@ -702,7 +702,7 @@ func TestExecuteCancelsARunWhoseOpeningStreamIsInvalid(t *testing.T) {
 		t.Fatal(snapshotErr)
 	}
 	latest, ok := snapshot.LatestRun()
-	if !ok || latest.Status != protocol.RunStatusFinished || latest.Outcome.Status != agent.OutcomeCanceled {
+	if !ok || latest.Status != protocol.RunStatusFinished || latest.Outcome.Status != protocol.OutcomeCanceled {
 		t.Fatalf("invalid opening left run active: %+v", snapshot.Runs)
 	}
 }

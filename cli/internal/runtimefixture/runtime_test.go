@@ -132,7 +132,7 @@ func TestMockBackgroundEventRevisionExhaustionTerminatesTheSegmentWithoutPartial
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{
 			eventStep(0, agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "must not commit"}}),
-			eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+			eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
@@ -166,7 +166,7 @@ func TestMockParkRevisionExhaustionDoesNotPublishAPartialWaitingSet(t *testing.T
 		return Script{
 			Interactions: []agent.Interaction{approvalFixture("approval", "approve")},
 			Continue: func([]agent.InterruptAnswer) []Step {
-				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}
+				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -196,7 +196,7 @@ func TestMockParkRevisionExhaustionDoesNotPublishAPartialWaitingSet(t *testing.T
 func TestMockFinishRevisionExhaustionLeavesTheRunExecutingAndReportsTheStreamFailure(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
 	if err != nil {
@@ -223,7 +223,7 @@ func TestMockFinishRevisionExhaustionLeavesTheRunExecutingAndReportsTheStreamFai
 func TestMockCancelRevisionExhaustionIsAtomic(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
 	if err != nil {
@@ -277,7 +277,7 @@ func TestRuntimePreservesAuthoredMessageTextAcrossRunMutations(t *testing.T) {
 		return Script{
 			Interactions: []agent.Interaction{approvalFixture("approval", "Continue")},
 			Continue: func([]agent.InterruptAnswer) []Step {
-				return []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}
+				return []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -359,7 +359,7 @@ func TestMockResumeRevisionExhaustionIsAtomic(t *testing.T) {
 		return Script{
 			Interactions: []agent.Interaction{approvalFixture("approval", "approve")},
 			Continue: func([]agent.InterruptAnswer) []Step {
-				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}
+				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -513,7 +513,7 @@ func resumeApprovedRun(t *testing.T, runtime *Runtime, opened agent.SegmentStrea
 		t.Fatal("resume reused the first segment")
 	}
 	drain(t, continued, conversation)
-	if conversation.Outcome().Status != agent.OutcomeCompleted {
+	if conversation.Outcome().Status != protocol.OutcomeCompleted {
 		t.Fatalf("outcome = %+v", conversation.Outcome())
 	}
 }
@@ -552,7 +552,7 @@ func TestRuntimeReconnectUsesOpaqueReplayCheckpoint(t *testing.T) {
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{
 			eventStep(30*time.Millisecond, agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "done"}}),
-			eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+			eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
@@ -585,7 +585,7 @@ func TestRuntimeReconnectUsesOpaqueReplayCheckpoint(t *testing.T) {
 		t.Fatal(err)
 	}
 	drain(t, rebound, conversation)
-	if conversation.Outcome().Status != agent.OutcomeCompleted {
+	if conversation.Outcome().Status != protocol.OutcomeCompleted {
 		t.Fatalf("outcome = %+v", conversation.Outcome())
 	}
 }
@@ -593,7 +593,7 @@ func TestRuntimeReconnectUsesOpaqueReplayCheckpoint(t *testing.T) {
 func TestRuntimeSubscribeWithoutCheckpointAttachesAtHead(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(time.Second, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{eventStep(time.Second, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	session, _ := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
 	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun(session.ID, "hello"))
@@ -663,7 +663,7 @@ func TestRuntimeRollbackRestoresTheEarliestDroppedOpeningInput(t *testing.T) {
 func TestRuntimeForkExcludesAnActiveTail(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	opened, err := runtime.StartRun(t.Context(), unlimitedStartRun("ses_demo_1", "active tail"))
 	if err != nil {
@@ -696,7 +696,7 @@ func TestRuntimeForkCopiesThePlanAtItsRunBoundary(t *testing.T) {
 		}
 		return Script{Prelude: []Step{
 			replacePlanStep(0, plan),
-			eventStep(delay, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+			eventStep(delay, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
@@ -743,7 +743,7 @@ func TestRuntimeColdReadTracksAndSettlesRunningItems(t *testing.T) {
 		return Script{Prelude: []Step{
 			eventStep(0, agent.BlockStarted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant}}),
 			eventStep(0, agent.BlockStarted{Block: agent.Block{ID: "tool", Kind: agent.BlockTool, Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Status: agent.ToolRunning}}}),
-			eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}),
+			eventStep(time.Hour, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: "/tmp/mock"})
@@ -797,7 +797,7 @@ func TestScriptContinuationReceivesFixtureLocalItemIDs(t *testing.T) {
 			Interactions: []agent.Interaction{approvalFixture("approval", "approve")},
 			Continue: func(answers []agent.InterruptAnswer) []Step {
 				received = answers[0].ItemID
-				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}
+				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -834,7 +834,7 @@ func TestApprovalArgumentOverrideBecomesTheCompletedToolProjection(t *testing.T)
 				},
 			}},
 			Continue: func([]agent.InterruptAnswer) []Step {
-				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}
+				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -911,7 +911,7 @@ func TestRememberedRulesRemoveOnlyMatchedApprovalsFromThePendingSet(t *testing.T
 			},
 			Continue: func(answers []agent.InterruptAnswer) []Step {
 				continuedWith = cloneAnswers(answers)
-				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}})}
+				return []Step{eventStep(0, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}

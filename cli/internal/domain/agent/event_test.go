@@ -146,7 +146,7 @@ func TestEphemeralEventsCloneOwnedValues(t *testing.T) {
 
 func TestFinishedEventCloneOwnsOutcomeProblem(t *testing.T) {
 	event := RunFinished{Outcome: Outcome{
-		Status:  OutcomeFailed,
+		Status:  protocol.OutcomeFailed,
 		Problem: &protocol.ProblemData{Type: "rate_limited", Detail: "rate limited", RetryAfterSeconds: 2},
 	}}
 	clone := CloneEvent(event).(RunFinished)

@@ -339,12 +339,12 @@ func (s *statusView) Draw(view grid.View) {
 	switch {
 	case s.danger:
 		style = s.theme.Danger
-	case s.outcome.Status == agent.OutcomeCompleted:
+	case s.outcome.Status == protocol.OutcomeCompleted:
 		style = s.theme.Success
-	case s.outcome.Status == agent.OutcomeCanceled || s.outcome.Status == agent.OutcomeTimedOut ||
-		s.outcome.Status == agent.OutcomeMaxSteps || s.outcome.Status == agent.OutcomeMaxBudget:
+	case s.outcome.Status == protocol.OutcomeCanceled || s.outcome.Status == protocol.OutcomeTimedOut ||
+		s.outcome.Status == protocol.OutcomeMaxSteps || s.outcome.Status == protocol.OutcomeMaxBudget:
 		style = s.theme.Warning
-	case s.outcome.Status == agent.OutcomeFailed || s.outcome.Status == agent.OutcomeLost:
+	case s.outcome.Status == protocol.OutcomeFailed || s.outcome.Status == protocol.OutcomeLost:
 		style = s.theme.Danger
 	}
 	left := statusLineText(s.doing)
@@ -457,19 +457,19 @@ func (s *statusView) settled(run agent.Run) {
 	s.danger = false
 	s.runningDescendants = 0
 	switch run.Outcome.Status {
-	case agent.OutcomeCompleted:
+	case protocol.OutcomeCompleted:
 		s.doing = "complete"
-	case agent.OutcomeCanceled:
+	case protocol.OutcomeCanceled:
 		s.doing = "canceled"
-	case agent.OutcomeTimedOut:
+	case protocol.OutcomeTimedOut:
 		s.doing = "timed out"
-	case agent.OutcomeMaxSteps:
+	case protocol.OutcomeMaxSteps:
 		s.doing = "max steps"
-	case agent.OutcomeMaxBudget:
+	case protocol.OutcomeMaxBudget:
 		s.doing = "max budget"
-	case agent.OutcomeFailed:
+	case protocol.OutcomeFailed:
 		s.doing = "failed: " + run.Outcome.Explanation()
-	case agent.OutcomeLost:
+	case protocol.OutcomeLost:
 		s.doing = "lost: " + run.Outcome.Explanation()
 	default:
 		s.doing = "ready"

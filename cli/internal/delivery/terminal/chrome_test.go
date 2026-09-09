@@ -98,7 +98,7 @@ func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 	}
 	status.settled(agent.Run{
 		ContextTokens: contextTokens,
-		Outcome:       agent.Outcome{Status: agent.OutcomeCompleted},
+		Outcome:       agent.Outcome{Status: protocol.OutcomeCompleted},
 		Usage:         agent.Usage{InputTokens: 20, OutputTokens: 4},
 	})
 	if got := drawStatic(t, status, 72, 1); !strings.Contains(got, "complete") ||
@@ -114,7 +114,7 @@ func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 func TestSettledStatusIncludesRunRecoveryMetadata(t *testing.T) {
 	status := newStatusView(kit.Dark(), kit.Unicode())
 	status.settled(agent.Run{Outcome: agent.Outcome{
-		Status: agent.OutcomeFailed,
+		Status: protocol.OutcomeFailed,
 		Problem: &protocol.ProblemData{
 			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
 		},

@@ -208,11 +208,11 @@ func TestProjectRunUsagePreservesStepsAndPerModelAttribution(t *testing.T) {
 }
 
 func TestProjectOutcomePreservesStructuredProblem(t *testing.T) {
-	outcome := projectOutcome(protocol.SegmentFailed, &protocol.ProblemData{
+	outcome := projectOutcome(protocol.OutcomeFailed, &protocol.ProblemData{
 		Type: protocol.ProblemRateLimited, Detail: "quota exhausted",
 		DocURL: "https://docs.example/rate-limit", RetryAfterSeconds: 2,
 	}, "")
-	if outcome.Status != agent.OutcomeFailed || outcome.Description() != "quota exhausted" || outcome.Problem == nil ||
+	if outcome.Status != protocol.OutcomeFailed || outcome.Description() != "quota exhausted" || outcome.Problem == nil ||
 		outcome.Problem.RetryAfterSeconds != 2 || outcome.Problem.DocURL != "https://docs.example/rate-limit" {
 		t.Fatalf("outcome = %+v", outcome)
 	}

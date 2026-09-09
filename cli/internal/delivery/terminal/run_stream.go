@@ -365,13 +365,13 @@ func (a *app) finishFollowing() {
 
 func outcomeNotification(outcome agent.Outcome) string {
 	switch outcome.Status {
-	case agent.OutcomeCompleted:
+	case runtimeprotocol.OutcomeCompleted:
 		return "flame run completed"
-	case agent.OutcomeCanceled:
+	case runtimeprotocol.OutcomeCanceled:
 		return "flame run canceled"
-	case agent.OutcomeTimedOut, agent.OutcomeMaxSteps, agent.OutcomeMaxBudget:
+	case runtimeprotocol.OutcomeTimedOut, runtimeprotocol.OutcomeMaxSteps, runtimeprotocol.OutcomeMaxBudget:
 		return "flame run stopped: " + string(outcome.Status)
-	case agent.OutcomeFailed, agent.OutcomeLost:
+	case runtimeprotocol.OutcomeFailed, runtimeprotocol.OutcomeLost:
 		return "flame run failed"
 	default:
 		return ""

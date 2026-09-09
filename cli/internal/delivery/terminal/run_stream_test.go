@@ -309,7 +309,7 @@ func TestRecoveredSessionRetriesATransientAttachRead(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	_, err := base.StartRun(t.Context(), testUnlimitedStartRun("ses_demo_1", "recover attach"))
@@ -351,7 +351,7 @@ func TestRunStatusRetainsRuntimeContextFootprintAfterSettlement(t *testing.T) {
 			{Delay: 10 * time.Millisecond, Event: agent.BlockCompleted{Block: agent.Block{
 				ID: "answer", Kind: agent.BlockAssistant, Text: "context-aware answer",
 			}}},
-			{Delay: 10 * time.Millisecond, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: 10 * time.Millisecond, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	host, stop := runUIWith(t, backend)
@@ -445,7 +445,7 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	releaseCancellation := make(chan struct{})
@@ -500,7 +500,7 @@ func TestInvalidAcceptedStartReceiptSettlesTheMemoryOnlyQueue(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	releaseCancellation := make(chan struct{})
@@ -527,7 +527,7 @@ func TestInvalidAcceptedStartBlocksTheNextRunUntilColdRecoverySucceeds(t *testin
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &invalidAcceptedStartRuntime{
@@ -552,7 +552,7 @@ func TestRetryingInvalidAcceptedStartCleanupRecoversAuthoritativeProjection(t *t
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &invalidAcceptedStartRuntime{Runtime: base, refuseFirst: true}
@@ -617,7 +617,7 @@ func TestLaunchReplaysADispatchingRunFromTheDurableOutbox(t *testing.T) {
 func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	command := agent.StartRun{
 		CommandID: agent.CommandID("cli_abcdef0123456789abcdef0123456789"),
@@ -655,7 +655,7 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	active := testUnlimitedStartRun("ses_demo_1", "already active")
@@ -705,7 +705,7 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	command := agent.StartRun{
@@ -761,7 +761,7 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	command := agent.StartRun{
@@ -835,7 +835,7 @@ func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: agent.OutcomeCompleted},
+			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	command := agent.StartRun{
@@ -986,7 +986,8 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 			runtime := &recordingRuntime{Runtime: base}
 			profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 			profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
-			host, stop := runUIFromConfig(t, Config{Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
+			host, stop := runUIFromConfig(t, Config{
+				Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
 				Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory,
 			})
 			host.Shows(t, test.want)

@@ -320,7 +320,6 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		host.Hides(t, "confirm release steps")
 		stop()
 	})
-
 }
 
 func TestApprovalRuleDeletionResolvesAUniquePrefixAndSurvivesResize(t *testing.T) {
@@ -1109,7 +1108,7 @@ func TestRuntimeInvalidationDefersColdReplacementUntilTheStreamSettles(t *testin
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &snapshotCountingRuntime{Runtime: base, readSignal: make(chan struct{}, 16)}
@@ -1168,7 +1167,7 @@ func TestRuntimeInvalidationFencesRunAdmissionUntilRefreshApplies(t *testing.T) 
 	base.Script = func(prompt string) runtimefixture.Script {
 		runStarted <- prompt
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}},
+			Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	backend := &blockingSnapshotRuntime{
@@ -1612,7 +1611,8 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 		applied: make(chan changefeed.Event, 1),
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{Runtime: base, Changes: source, SessionID: "ses_demo_1",
+	host, stop := runUIFromConfig(t, Config{
+		Runtime: base, Changes: source, SessionID: "ses_demo_1",
 		StateDirectory: stateDirectory,
 	})
 	host.Shows(t, "Ask flame")
@@ -1650,7 +1650,7 @@ func TestDeletedSessionReplacementClosesItsQueueEditor(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &snapshotCountingRuntime{Runtime: base, readSignal: make(chan struct{}, 8)}
@@ -1716,7 +1716,7 @@ func TestMatchingInterruptInvalidationPreservesTheOpenApproval(t *testing.T) {
 			}},
 			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -1769,7 +1769,7 @@ func TestAdvancedInterruptInvalidationClosesTheApprovalArgumentEditor(t *testing
 				},
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -1823,7 +1823,7 @@ func TestInterruptInvalidationWinsARejectedStaleResume(t *testing.T) {
 				Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning},
 			}},
 			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: agent.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
