@@ -27,7 +27,7 @@ func (s *Server) authGate(next http.Handler) http.Handler {
 		if !validBearer(r.Header.Get(headerAuthorization), s.localToken) {
 			// RFC 9110 §15.5.2 requires a 401 challenge. The gate uses Bearer.
 			w.Header().Set("WWW-Authenticate", "Bearer")
-			writeProblem(w, http.StatusUnauthorized, "unauthorized", "a valid local bearer token is required", true)
+			writeProblem(w, http.StatusUnauthorized, problemUnauthorized, "a valid local bearer token is required", true)
 			return
 		}
 		next.ServeHTTP(w, r)

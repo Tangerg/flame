@@ -107,6 +107,8 @@ A stream carries its own failure. An operation's event source reports a delivery
 
 Per-call metadata rides HTTP headers rather than the JSON-RPC body. `Idempotency-Key` and `Idempotency-Namespace` carry the replay identity, `Last-Event-Id` carries the resume cursor a reconnecting client returns, `Authorization` carries the local-token gate, and W3C `traceparent`, `tracestate`, and `baggage` extend the caller's trace into the backend. Every response names its request and server through `Request-Id` and `X-Server`; a streaming response adds `X-Method`. The transport owns that request set in one place, because a header its handlers read but its CORS allowlist omits fails a browser client's preflight before any handler runs. The generated contract describes methods and shapes, so this envelope is the transport's own to state.
 
+A failure the transport answers itself is not an operation's failure, and says so. It arrives as `application/problem+json` with an HTTP status and a `type` under `urn:flame:transport:`, naming one of `unsupported_media_type`, `request_too_large`, `invalid_request`, `unauthorized`, `response_encoding_failed`, or `internal_error`. Matching that namespace tells a client the request never reached an operation, or that its response never left, which is why the prefix exists even where a suffix shares a word with a Problem type: the two vocabularies are independent and neither renames the other.
+
 The Go binding does not serialize through HTTP, but it does not bypass product semantics. Protocol changes publish one current shape without aliases, fallback decoding, dual methods, or dual events.
 
 ## Composition and lifecycle

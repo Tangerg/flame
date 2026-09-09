@@ -27,11 +27,11 @@ func (s *Server) serveRPC(w http.ResponseWriter, r *http.Request) {
 	// effort decoding. Content-Type is only enforced when present (a
 	// minimal client may omit it); when set it must be application/json.
 	if ct := strings.TrimSpace(r.Header.Get(headerContentType)); ct != "" && !isJSONMediaType(ct) {
-		writeProblem(w, http.StatusUnsupportedMediaType, "unsupported_media_type", "content-type must be application/json", false)
+		writeProblem(w, http.StatusUnsupportedMediaType, problemUnsupportedMediaType, "content-type must be application/json", false)
 		return
 	}
 	if r.ContentLength > maxRPCBodyBytes {
-		writeProblem(w, http.StatusRequestEntityTooLarge, "request_too_large", "request body exceeds limit", false)
+		writeProblem(w, http.StatusRequestEntityTooLarge, problemRequestTooLarge, "request body exceeds limit", false)
 		return
 	}
 
@@ -40,22 +40,22 @@ func (s *Server) serveRPC(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(io.LimitReader(r.Body, maxRPCBodyBytes+1))
 	if err != nil {
 		recordError(r.Context(), "rpc.read-request", err)
-		writeProblem(w, http.StatusBadRequest, "invalid_request", "request body could not be read", false)
+		writeProblem(w, http.StatusBadRequest, problemInvalidRequest, "request body could not be read", false)
 		return
 	}
 	if len(body) > maxRPCBodyBytes {
-		writeProblem(w, http.StatusRequestEntityTooLarge, "request_too_large", "request body exceeds limit", false)
+		writeProblem(w, http.StatusRequestEntityTooLarge, problemRequestTooLarge, "request body exceeds limit", false)
 		return
 	}
 
 	message, err := transport.DecodeMessage(body)
 	if err != nil {
-		writeProblem(w, http.StatusBadRequest, "invalid_request", "invalid JSON-RPC message: "+err.Error(), false)
+		writeProblem(w, http.StatusBadRequest, problemInvalidRequest, "invalid JSON-RPC message: "+err.Error(), false)
 		return
 	}
 	request, ok := message.(*transport.Request)
 	if !ok {
-		writeProblem(w, http.StatusBadRequest, "invalid_request", "POST /v2/rpc accepts only JSON-RPC requests and notifications", false)
+		writeProblem(w, http.StatusBadRequest, problemInvalidRequest, "POST /v2/rpc accepts only JSON-RPC requests and notifications", false)
 		return
 	}
 
@@ -97,7 +97,7 @@ func (s *Server) serveRPC(w http.ResponseWriter, r *http.Request) {
 		recordError(r.Context(), "rpc.encode-response", err,
 			attribute.String("rpc.method", methodLabel),
 		)
-		writeProblem(w, http.StatusInternalServerError, "response_encoding_failed", "the transport could not encode the RPC response", false)
+		writeProblem(w, http.StatusInternalServerError, problemResponseEncodingFailed, "the transport could not encode the RPC response", false)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -120,6 +120,22 @@ type transportProblem struct {
 	RequestID string `json:"requestId,omitempty"`
 }
 
+// transportProblemNamespace separates an envelope failure from an operation's.
+// A client matches the prefix to know the request never reached an operation,
+// or that its response never left, so the two vocabularies stay independent
+// even where they share a word.
+const transportProblemNamespace = "urn:flame:transport:"
+
+// The closed set of problems the transport answers with itself.
+const (
+	problemUnsupportedMediaType   = "unsupported_media_type"
+	problemRequestTooLarge        = "request_too_large"
+	problemInvalidRequest         = "invalid_request"
+	problemUnauthorized           = "unauthorized"
+	problemResponseEncodingFailed = "response_encoding_failed"
+	problemInternalError          = "internal_error"
+)
+
 func writeProblem(w http.ResponseWriter, status int, typ, detail string, noCache bool) {
 	w.Header().Set("Content-Type", "application/problem+json; charset=utf-8")
 	if noCache {
@@ -127,7 +143,7 @@ func writeProblem(w http.ResponseWriter, status int, typ, detail string, noCache
 	}
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(transportProblem{
-		Type:      "urn:flame:transport:" + typ,
+		Type:      transportProblemNamespace + typ,
 		Title:     http.StatusText(status),
 		Status:    status,
 		Detail:    detail,
