@@ -19,7 +19,6 @@ type modelEnvironment struct {
 	utilityClient      modeladapter.AuxiliaryResolver
 	embeddingRoleState *models.RoleState
 	embeddingResolver  *modeladapter.EmbeddingResolver
-	liveEmbedder       *modeladapter.RoleEmbedder
 	agentMemoryRead    *agentmemoryapp.ReadModel
 }
 
@@ -56,7 +55,6 @@ func buildModelEnvironment(ctx context.Context, cfg Config, defaultSelection mod
 		utilityClient:      utilityClient,
 		embeddingRoleState: embeddingRoleState,
 		embeddingResolver:  embeddingResolver,
-		liveEmbedder:       liveEmbedder,
 	}
 	environment.agentMemoryRead, err = agentmemoryapp.NewReadModel(cfg.Stores.AgentMemory, liveEmbedder.ResolveMemory)
 	if err != nil {

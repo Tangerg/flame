@@ -141,7 +141,6 @@ func (s *Shells) command(cwd, command string, isolated bool) (name string, args,
 // [Shell.Status] / [Shell.Outcome]; the [Shells] set owns its lifecycle.
 type Shell struct {
 	cancel    context.CancelFunc
-	cmd       *exec.Cmd
 	process   *shellProcessOwner
 	started   time.Time
 	id        shellID       // the owner-map key, mirrored here for RunningForSession
@@ -204,7 +203,7 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 	cmd.WaitDelay = processWaitDelay
 	process := newShellProcessOwner(cmd)
 	sh := &Shell{
-		cancel: cancel, cmd: cmd, process: process, started: time.Now(),
+		cancel: cancel, process: process, started: time.Now(),
 		sessionID: sessionID, cwd: cwd, command: command, done: make(chan struct{}),
 	}
 	cmd.Stdout = sh
