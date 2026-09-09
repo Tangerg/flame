@@ -490,6 +490,10 @@
           "signature": "func(path string) (DataDirectory, error)"
         },
         {
+          "name": "DataDirectoryUnder",
+          "signature": "func(productRoot string) (DataDirectory, error)"
+        },
+        {
           "name": "DefaultDataDirectory",
           "signature": "func(userHome string) (DataDirectory, error)"
         },
