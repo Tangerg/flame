@@ -118,10 +118,10 @@ func (c ChildRunReservationRequest) validate() error {
 
 func (c ChildRunReservationRequest) claim() bool { return c.exchange.claim() }
 
+// complete hands the reservation's outcome to the waiting child. The receipt is
+// the exchange's own question: claim already refused a request without one, and
+// the exchange asks again for a caller that skipped it.
 func (c ChildRunReservationRequest) complete(binding ChildRunBinding, err error) error {
-	if c.exchange == nil {
-		return errors.New("runs: complete child Run reservation without a receipt")
-	}
 	if err == nil {
 		if validationErr := binding.Validate(); validationErr != nil {
 			err = validationErr
@@ -217,9 +217,6 @@ func (c ChildRunStartOutcomeRequest) validate() error {
 func (c ChildRunStartOutcomeRequest) claim() bool { return c.exchange.claim() }
 
 func (c ChildRunStartOutcomeRequest) complete(err error) error {
-	if c.exchange == nil {
-		return errors.New("runs: complete child Run start outcome without a receipt")
-	}
 	return c.exchange.complete(struct{}{}, err)
 }
 
