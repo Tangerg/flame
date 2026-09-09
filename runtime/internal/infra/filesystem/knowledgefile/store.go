@@ -210,9 +210,6 @@ func initialDirectoryMode(scope knowledge.Scope) os.FileMode {
 }
 
 func (s *Store) Update(ctx context.Context, dir string, replacement knowledge.Replacement) (knowledge.Entry, error) {
-	if err := replacement.Validate(); err != nil {
-		return knowledge.Entry{}, err
-	}
 	scope := replacement.Scope()
 	expectedRevision := replacement.ExpectedRevision()
 	content := replacement.Content()

@@ -13,16 +13,16 @@ type Replacement struct {
 // NewReplacement constructs one exact Item aggregate replacement.
 func NewReplacement(expected, state Item) (Replacement, error) {
 	replacement := Replacement{expected: expected, state: state}
-	if err := replacement.Validate(); err != nil {
+	if err := replacement.validate(); err != nil {
 		return Replacement{}, err
 	}
 	return replacement, nil
 }
 
-// Validate proves the two aggregates were constructed and retain one Item
+// validate proves the two aggregates were constructed and retain one Item
 // identity. Their legality is settled by the constructors that produced them;
 // only the zero value can reach here unbuilt.
-func (r Replacement) Validate() error {
+func (r Replacement) validate() error {
 	if r.expected.ID() == "" {
 		return fmt.Errorf("%w: replacement carries no Item", ErrIdentityConflict)
 	}

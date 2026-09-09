@@ -14,7 +14,7 @@ func NewReplacement(scope Scope, expectedRevision, content string) (Replacement,
 	replacement := Replacement{
 		scope: scope, expectedRevision: expectedRevision, content: content,
 	}
-	if err := replacement.Validate(); err != nil {
+	if err := replacement.validate(); err != nil {
 		return Replacement{}, err
 	}
 	return replacement, nil
@@ -29,8 +29,8 @@ func (r Replacement) ExpectedRevision() string { return r.expectedRevision }
 // Content returns the complete replacement document.
 func (r Replacement) Content() string { return r.content }
 
-// Validate protects the complete CAS command at persistence boundaries.
-func (r Replacement) Validate() error {
+// validate protects the complete CAS command once, where it is constructed.
+func (r Replacement) validate() error {
 	if err := r.scope.Validate(); err != nil {
 		return err
 	}

@@ -509,9 +509,6 @@ func (r *RunStore) UpdateProgress(
 // Terminalize ends the exact non-terminal Run snapshot that replacement names,
 // recording the outcome the application reached and the result that explains it.
 func (r *RunStore) Terminalize(ctx context.Context, replacement rundomain.Replacement) error {
-	if err := replacement.Validate(); err != nil {
-		return fmt.Errorf("sqlite: terminalize Run replacement: %w", err)
-	}
 	expected := replacement.Expected()
 	return r.terminalize(ctx, &expected, replacement.State(), nil)
 }
@@ -559,9 +556,6 @@ func (r *RunStore) terminalize(
 // one terminal Run. Compaction does not change when the Run happened or any of
 // its lifecycle facts, so updated_at deliberately remains untouched.
 func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Replacement) error {
-	if err := change.Validate(); err != nil {
-		return fmt.Errorf("sqlite: rebase Run message watermark: %w", err)
-	}
 	expected := change.Expected()
 	replacement := change.State()
 	if !expected.State().IsTerminal() || !replacement.State().IsTerminal() {
@@ -597,9 +591,6 @@ func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Repla
 // from either Running or Waiting, because it describes a Run nobody is driving
 // rather than one the executor finished.
 func (r *RunStore) RecoverLost(ctx context.Context, replacement rundomain.Replacement) error {
-	if err := replacement.Validate(); err != nil {
-		return fmt.Errorf("sqlite: recover lost Run replacement: %w", err)
-	}
 	expected := replacement.Expected()
 	value := replacement.State()
 	return r.finish(ctx, "recover lost", &expected, value, nil, func(current rundomain.Run) (rundomain.Run, error) {

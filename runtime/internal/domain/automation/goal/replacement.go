@@ -13,7 +13,7 @@ type Replacement struct {
 // NewReplacement constructs one exact Goal version advance.
 func NewReplacement(expected Version, state Goal) (Replacement, error) {
 	replacement := Replacement{expected: expected, state: state.Clone()}
-	if err := replacement.Validate(); err != nil {
+	if err := replacement.validate(); err != nil {
 		return Replacement{}, err
 	}
 	return replacement, nil
@@ -25,8 +25,8 @@ func (r Replacement) ExpectedVersion() Version { return r.expected }
 // State returns an owned copy of the already-decided replacement state.
 func (r Replacement) State() Goal { return r.state.Clone() }
 
-// Validate proves that the state advances its expected version exactly once.
-func (r Replacement) Validate() error {
+// validate proves that the state advances its expected version exactly once.
+func (r Replacement) validate() error {
 	if err := r.expected.AdvancesTo(r.state); err != nil {
 		return fmt.Errorf("goal: invalid replacement: %w", err)
 	}

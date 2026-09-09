@@ -18,7 +18,7 @@ type Replacement struct {
 // NewReplacement constructs one exact Schedule management replacement.
 func NewReplacement(expected, state Schedule) (Replacement, error) {
 	replacement := Replacement{expected: expected, state: state}
-	if err := replacement.Validate(); err != nil {
+	if err := replacement.validate(); err != nil {
 		return Replacement{}, err
 	}
 	return replacement, nil
@@ -30,9 +30,9 @@ func (r Replacement) ExpectedRevision() uint64 { return r.expected.Revision() }
 // State returns the already-decided replacement Schedule.
 func (r Replacement) State() Schedule { return r.state }
 
-// Validate proves that a management edit preserves identity and operational
+// validate proves that a management edit preserves identity and operational
 // lifecycle facts while advancing exactly one revision.
-func (r Replacement) Validate() error {
+func (r Replacement) validate() error {
 	if err := r.expected.Validate(); err != nil {
 		return fmt.Errorf("schedule: replacement expected state: %w", err)
 	}

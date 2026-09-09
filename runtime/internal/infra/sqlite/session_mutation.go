@@ -32,9 +32,6 @@ func (s *SessionStore) Save(
 	ctx context.Context,
 	change session.Replacement,
 ) error {
-	if err := change.Validate(); err != nil {
-		return fmt.Errorf("sqlite: validate Session replacement: %w", err)
-	}
 	expectedRevision := change.ExpectedRevision()
 	replacement := change.State()
 	if expectedRevision == 0 {

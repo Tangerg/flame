@@ -76,9 +76,6 @@ func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Current, er
 // INSERT-if-absent (not INSERT OR REPLACE) is deliberate — a stale writer whose
 // row was cleared must not resurrect it.
 func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (bool, error) {
-	if err := replacement.Validate(); err != nil {
-		return false, fmt.Errorf("sqlite: validate goal replacement: %w", err)
-	}
 	record := replacement.State()
 	expected := replacement.ExpectedVersion()
 	snapshot := record.Snapshot()

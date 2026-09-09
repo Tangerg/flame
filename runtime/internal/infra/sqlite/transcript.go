@@ -150,9 +150,6 @@ func (t *TranscriptStore) ReplaceItem(
 	ctx context.Context,
 	change transcript.Replacement,
 ) error {
-	if err := change.Validate(); err != nil {
-		return fmt.Errorf("sqlite: replace history Item: %w", err)
-	}
 	expected := change.Expected()
 	replacement := change.State()
 	expectedTool, expectedHasTool := expected.ToolInvocation()

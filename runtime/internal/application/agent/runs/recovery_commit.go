@@ -185,9 +185,6 @@ func (r RecoveryCommit) Validate() error {
 
 	replacedItems := make(map[string]transcript.Replacement, len(state.ItemReplacements))
 	for index, replacement := range state.ItemReplacements {
-		if err := replacement.Validate(); err != nil {
-			return fmt.Errorf("runs: recovery commit Item replacement[%d]: %w", index, err)
-		}
 		expected := replacement.Expected()
 		owner, found := lostByID[expected.RunID()]
 		if !found || expected.SessionID() != owner.State().SessionID() {

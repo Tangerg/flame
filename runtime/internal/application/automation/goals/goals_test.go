@@ -205,9 +205,6 @@ func (m *memStore) Save(ctx context.Context, replacement goal.Replacement) (bool
 			return false, err
 		}
 	}
-	if err := replacement.Validate(); err != nil {
-		return false, err
-	}
 	cur, ok := m.goals[g.SessionID()]
 	switch {
 	case expected.IsUnwritten():

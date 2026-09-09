@@ -44,9 +44,6 @@ func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule)
 }
 
 func (s *ScheduleStore) Update(ctx context.Context, replacement schedule.Replacement) error {
-	if err := replacement.Validate(); err != nil {
-		return fmt.Errorf("sqlite: validate schedule replacement: %w", err)
-	}
 	expectedRevision := replacement.ExpectedRevision()
 	sc := replacement.State()
 	snapshot := sc.Snapshot()

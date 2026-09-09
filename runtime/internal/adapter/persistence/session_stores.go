@@ -392,9 +392,6 @@ func (s *SessionStores) savePlanReplacement(ctx context.Context, sessionID strin
 	if replacement == nil {
 		return nil
 	}
-	if err := replacement.Validate(); err != nil {
-		return fmt.Errorf("persistence: invalid Plan replacement: %w", err)
-	}
 	return s.plan.Save(ctx, sessionID, *replacement)
 }
 
