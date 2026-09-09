@@ -60,7 +60,7 @@ Flame is an agent client — a desktop application (Wails / React) that streams 
 Light and dark are **equal first-class themes**; the default follows the OS (`prefers-color-scheme`) and tracks it live. Neither scheme is second-class.
 
 **Reference** — the direction is the JetBrains tool-window language: an editor you
-are *inside*, framed by opaque panels, with the technical layer set in mono.
+are _inside_, framed by opaque panels, with the technical layer set in mono.
 
 - **Region model**: three materials, each seam a half-pixel hairline over a value
   step. The reading plane is the one surface that is not chrome.
@@ -69,6 +69,7 @@ are *inside*, framed by opaque panels, with the technical layer set in mono.
   decorative, because most of what an agent transcript reports IS data.
 
 **Explicitly rejected** (both prior passes):
+
 - Region hairlines and seam rings (regions separate by value + cast now)
 - Cards-on-canvas gutters, panel drop shadows, and glass blur outside floating panels
 - An inverting ink CTA that kept the accent unused (the accent IS the CTA)
@@ -87,13 +88,13 @@ Values live in `themes/flame-*.ts` and are restated for first paint in
 `globals.css`. This table says what each anchor is FOR; it deliberately does not
 repeat the hexes, which is how the previous version of it went stale.
 
-| Token | Role |
-|---|---|
-| `canvas` (`--color-bg`) | The reading plane — transcript, view bodies. Darkest surface on dark, brightest on light. |
-| `surface` | Region chrome — the drawer, the dock, the bars that frame the plane. |
-| `card` (`--app-card-surface` → `--color-elevated`) | An object placed on a region: a message, a tool card, the composer. |
-| `sunken` (`--color-sunken`) | A well cut into a surface: code bodies, terminals, diff hunks, text fields, progress tracks, and inline code in prose. |
-| `surface-2` / `-3` / `-4` | Derived chip rungs above `surface` — badges, kbd, selected rows, resting control fills. Mixed out of the CHROME grey, so they belong on chrome; on the plane they read as grime. |
+| Token                                              | Role                                                                                                                                                                             |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `canvas` (`--color-bg`)                            | The reading plane — transcript, view bodies. Darkest surface on dark, brightest on light.                                                                                        |
+| `surface`                                          | Region chrome — the drawer, the dock, the bars that frame the plane.                                                                                                             |
+| `card` (`--app-card-surface` → `--color-elevated`) | An object placed on a region: a message, a tool card, the composer.                                                                                                              |
+| `sunken` (`--color-sunken`)                        | A well cut into a surface: code bodies, terminals, diff hunks, text fields, progress tracks, and inline code in prose.                                                           |
+| `surface-2` / `-3` / `-4`                          | Derived chip rungs above `surface` — badges, kbd, selected rows, resting control fills. Mixed out of the CHROME grey, so they belong on chrome; on the plane they read as grime. |
 
 **Why four anchors and not one ladder.** The reading plane is the extreme of its
 scheme — pure white on light, near-black on dark — and an object on it steps IN,
@@ -148,7 +149,7 @@ meaning rather than on affordance. The three-step ramp
 (`border` / `border-soft` / `divider`) uses literal hex per theme, because a
 semi-transparent border shifts across surface lifts and reads as approximate.
 
-**Ink, by contrast, may derive.** Unlike hairlines, the ink ramp (`text-soft` / `text-muted` / `text-faint`) *should* adapt to the surface behind it — that's the Apple label model. A theme can ship just `text` + `text-bright` and let the soft/muted/faint steps derive as `text` at ~82% / ~56% / ~38% alpha over transparent (so they composite against whatever surface they sit on). Palette themes (Solarized, Catppuccin, Tokyo Night, One Dark) instead pin explicit ink hues — their ramp is part of the palette identity, not a single hue at falling opacity. The first-party Flame themes keep explicit values too; the derivation is the low-friction default for third-party themes.
+**Ink, by contrast, may derive.** Unlike hairlines, the ink ramp (`text-soft` / `text-muted` / `text-faint`) _should_ adapt to the surface behind it — that's the Apple label model. A theme can ship just `text` + `text-bright` and let the soft/muted/faint steps derive as `text` at ~82% / ~56% / ~38% alpha over transparent (so they composite against whatever surface they sit on). Palette themes (Solarized, Catppuccin, Tokyo Night, One Dark) instead pin explicit ink hues — their ramp is part of the palette identity, not a single hue at falling opacity. The first-party Flame themes keep explicit values too; the derivation is the low-friction default for third-party themes.
 
 ### Accent policy
 
@@ -163,18 +164,18 @@ green / pink / orange as alternates) is reserved for **exactly four surfaces**:
 Forbidden surfaces for accent: section background, card fill, avatar background, decorative borders, status icons that are not "live". And **no bright accent ring on input focus or click** — inputs/composer strengthen their border quietly instead (the loud halo read as cheap).
 
 "Card fill" here means the accent as a **colour**. The surface anchors sitting on
-the accent's *hue* at C ≤ 0.016 is the neutral algorithm above, not accent usage:
+the accent's _hue_ at C ≤ 0.016 is the neutral algorithm above, not accent usage:
 at that chroma nothing reads as blue, and the alternative is not a purer neutral
 but an unchosen one.
 
 ### Semantic palette
 
-| Token | Use |
-|---|---|
-| `--color-success` | Run finished cleanly, action confirmed. Allowed in: run pill (idle/done), tab dot after success. |
-| `--color-warning` | User attention required. Allowed in: the approval card, the waiting tab dot. |
-| `--color-negative` | Error. Allowed in: the run error banner, a tool call's failed status. |
-| `--color-info` | Information / link. Allowed in: inline links, info badges. |
+| Token              | Use                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------ |
+| `--color-success`  | Run finished cleanly, action confirmed. Allowed in: run pill (idle/done), tab dot after success. |
+| `--color-warning`  | User attention required. Allowed in: the approval card, the waiting tab dot.                     |
+| `--color-negative` | Error. Allowed in: the run error banner, a tool call's failed status.                            |
+| `--color-info`     | Information / link. Allowed in: inline links, info badges.                                       |
 
 **Each semantic is two colours, and only one of them is pinned.** The theme
 spells the INK — the tone a status word, an icon or a 6px dot is drawn in, whose
@@ -317,7 +318,8 @@ all. Banners and composer take the same gutters, so the three stay on one axis.
 
 ### Spacing rhythm
 
-Flame is a **product UI**, not a marketing site. Spacing comes from the Tailwind scale and the `--density-*` tokens, but:
+Flame is a **product UI**, not a marketing site. Spacing comes from the `space` steps in
+`tokens.stylex.ts` — every one a multiple of `--spacing` — and the `--density-*` tokens, but:
 
 - Section breaks inside a panel: 16px to 24px.
 - Card interior padding: 16px, 24px where the card is the point of the view.
@@ -339,13 +341,13 @@ carries a border. The only elements with a real drop shadow are **truly-floating
 overlays** (menus, popovers, tooltips, command palette, lightbox), which have no
 value delta to lean on because they can land over anything.
 
-| Level | Treatment | Use |
-|---|---|---|
-| 0 | Region fill only | The reading plane, prose, a message body |
-| 1 | `bg-card` | Message card, tool card, composer, plan card, table |
-| 2 | `bg-sunken` | Code body, terminal, diff hunk, text field, progress track |
-| 3 | `surface-2` / `-3` | Chips, badges, kbd, selected rows — on chrome, not on the plane |
-| 4 | `--shadow-raised` / `-overlay` / `-popover` / `-modal` | Floating overlays only — one ladder, each rung `--shadow-ring` plus more depth |
+| Level | Treatment                                              | Use                                                                            |
+| ----- | ------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| 0     | Region fill only                                       | The reading plane, prose, a message body                                       |
+| 1     | `bg-card`                                              | Message card, tool card, composer, plan card, table                            |
+| 2     | `bg-sunken`                                            | Code body, terminal, diff hunk, text field, progress track                     |
+| 3     | `surface-2` / `-3`                                     | Chips, badges, kbd, selected rows — on chrome, not on the plane                |
+| 4     | `--shadow-raised` / `-overlay` / `-popover` / `-modal` | Floating overlays only — one ladder, each rung `--shadow-ring` plus more depth |
 
 Each role owns exactly ONE edge mechanism. A border and a shadow ring on the same
 surface is a double edge; two 1px semi-transparent lines sharing a pixel double
@@ -370,18 +372,18 @@ and the 2026-07 seam-ring pass that gave every boundary a hairline.)
 The visual style owns the ladder (`style-shape-*`); the user's radius preference
 multiplies through.
 
-| Token | Value | Use |
-|---|---|---|
-| `none` | 0px | Full-bleed bars |
-| `2xs` | 2px | Small marks inside a control — key caps, checkboxes, swatches |
-| `xs` | 4px | Anything that is really a tag — badges, inline code |
-| `sm` | 6px | Controls: buttons, chips, index rows, dock tabs |
-| `md` | 8px | Cards, text fields, segmented tracks |
-| `lg` | 10px | Blocks inside the conversation: code, diagrams, images, banners |
-| `xl` | 12px | Every floating panel and modal, through `--floating-panel-radius` |
-| `bubble` | 16px | The user's own message, and the cards that answer it |
-| `composer` | 20px | The composer and the surfaces that echo it |
-| `pill` | 9999px | Circles and lozenges: dots, tracks and thumbs, the status pill, circular icon wells, the count badge, a selected choice row |
+| Token      | Value  | Use                                                                                                                         |
+| ---------- | ------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `none`     | 0px    | Full-bleed bars                                                                                                             |
+| `2xs`      | 2px    | Small marks inside a control — key caps, checkboxes, swatches                                                               |
+| `xs`       | 4px    | Anything that is really a tag — badges, inline code                                                                         |
+| `sm`       | 6px    | Controls: buttons, chips, index rows, dock tabs                                                                             |
+| `md`       | 8px    | Cards, text fields, segmented tracks                                                                                        |
+| `lg`       | 10px   | Blocks inside the conversation: code, diagrams, images, banners                                                             |
+| `xl`       | 12px   | Every floating panel and modal, through `--floating-panel-radius`                                                           |
+| `bubble`   | 16px   | The user's own message, and the cards that answer it                                                                        |
+| `composer` | 20px   | The composer and the surfaces that echo it                                                                                  |
+| `pill`     | 9999px | Circles and lozenges: dots, tracks and thumbs, the status pill, circular icon wells, the count badge, a selected choice row |
 
 ### Corner curve
 
@@ -478,6 +480,7 @@ Accent (`--color-accent`, user-selectable) appears in:
    switch that is on, a progress indicator, an active step marker
 
 That's the entire list. Accent does **not** appear in:
+
 - Avatar backgrounds (use `surface-2/3` + `ink-muted`)
 - Section headers (use `ink`)
 - Active-state list rows (use `surface-2/3` + `ink`)

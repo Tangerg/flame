@@ -22,13 +22,13 @@
 | 层       | 选型                                                              |
 | -------- | ----------------------------------------------------------------- |
 | UI       | React 19 + TypeScript                                             |
-| 样式     | Tailwind 4 + `cva` + `clsx` + `tailwind-merge`（`cn()`）          |
+| 样式     | StyleX（编译期原子 CSS）+ `globals.css` 的令牌与机制类            |
 | Headless | Base UI primitives first（Dialog / Popover / Menu / Tooltip / …） |
 | 特定件   | `cmdk`（命令面板）/ `sonner`（Toast）/ `lucide-react`（图标）     |
 | 状态     | Zustand（多 store，无 context 链）                                |
 | 路由     | TanStack Router（route tree 动态构建）                            |
 | 数据     | TanStack React Query                                              |
-| 协议     | 自研 Flame Runtime Protocol v2（JSON-RPC 2.0，`src/rpc/`）         |
+| 协议     | 自研 Flame Runtime Protocol v2（JSON-RPC 2.0，`src/rpc/`）        |
 | 动画     | motion/react                                                      |
 | 桌面壳   | Wails v3 beta（Go 后端 + WebView 前端，版本钉死）                 |
 | 测试     | Vitest 4 + Testing Library + happy-dom                            |
@@ -148,8 +148,9 @@ src/
 │   ├── container.ts      按 active endpoint/token 缓存 FlameClient；测试 setContainer 注入
 │   └── config.ts         local desktop shell URL / desktop client identity
 │
-├── styles/               globals.css（Tailwind base + @theme token + keyframes，唯一主样式）
-│                         + tool/markdown/overlays/layout.css（只承载无法用 utility 表达的 chrome）
+├── styles/               globals.css（reset + 令牌 + keyframes + 机制类，唯一主样式；入口最后加载）
+│                         + markdown/overlays.css（只承载 StyleX 表达不了的后代规则）
+│                         + stylex.css（编译产物注入点，源文件是空表）
 └── test/                 测试 setup
 ```
 
@@ -516,19 +517,19 @@ application port 重读完整 durable projection；不能把旧 Running 留给 U
 
 ### 5.3 状态分层（除 agent 外的 UI 状态）
 
-| Store                    | 内容                                                                | 持久化         |
-| ------------------------ | ------------------------------------------------------------------- | -------------- |
-| `agentStore`             | 每 Session 的 `AgentSessionView`、refresh revision 与已绑定 actions | ❌ ephemeral   |
-| `agentSessionStore`      | active/open/draft Session、selection epoch 与 welcome pending input | ✅（部分字段） |
-| `appearanceStore`        | theme / accent / tint / 字号 / 密度 / motion / visual style         | ✅             |
-| `shellLayoutStore`       | 抽屉折叠与宽度、右栏宽度比                                          | ✅             |
-| Runtime capability store | 握手协商能力（由 runtime context 私有持有）                         | ❌ ephemeral   |
-| `tasksStore`             | host.tasks 的后台任务                                               | ❌             |
-| `composerStore`          | 撰写区文本 / 模式 / 附件 / provider+model                           | ✅（仅草稿文本）|
-| `contextDockStore`       | 按 Session 隔离的 file/tool/dock material                           | ✅（仅 session scope）|
-| `recentModels`           | 模型选择器的最近列表                                                | ✅             |
-| `streamReveal` / `completionSound` | 两个各自独立的偏好（逐字显示、完成提示音）                | ✅             |
-| `useConfigStore`         | 插件可读写的全局 config（如 `runtime.endpoint`）                    | ✅             |
+| Store                              | 内容                                                                | 持久化                 |
+| ---------------------------------- | ------------------------------------------------------------------- | ---------------------- |
+| `agentStore`                       | 每 Session 的 `AgentSessionView`、refresh revision 与已绑定 actions | ❌ ephemeral           |
+| `agentSessionStore`                | active/open/draft Session、selection epoch 与 welcome pending input | ✅（部分字段）         |
+| `appearanceStore`                  | theme / accent / tint / 字号 / 密度 / motion / visual style         | ✅                     |
+| `shellLayoutStore`                 | 抽屉折叠与宽度、右栏宽度比                                          | ✅                     |
+| Runtime capability store           | 握手协商能力（由 runtime context 私有持有）                         | ❌ ephemeral           |
+| `tasksStore`                       | host.tasks 的后台任务                                               | ❌                     |
+| `composerStore`                    | 撰写区文本 / 模式 / 附件 / provider+model                           | ✅（仅草稿文本）       |
+| `contextDockStore`                 | 按 Session 隔离的 file/tool/dock material                           | ✅（仅 session scope） |
+| `recentModels`                     | 模型选择器的最近列表                                                | ✅                     |
+| `streamReveal` / `completionSound` | 两个各自独立的偏好（逐字显示、完成提示音）                          | ✅                     |
+| `useConfigStore`                   | 插件可读写的全局 config（如 `runtime.endpoint`）                    | ✅                     |
 
 「我此刻在哪」不在任何 store 里：session / 主视图 / dock 目标 / settings 面板四个标量住在
 路由 search param（`lib/navigation` 的 Navigator port），所以前进后退成立。曾经的
@@ -590,19 +591,19 @@ return specs.map(spec => (
 贡献面塌进单一 `extensions` 底座之后，**没有 per-point 的 hook**：任一贡献面都用同一对泛型
 读法，只有真正需要额外投影的才另立函数。
 
-| Hook / 函数                                                              | 用途                                    |
-| ------------------------------------------------------------------------ | --------------------------------------- |
-| `useExtensionPoint(POINT)` / `useExtensionByKey(POINT, key)`             | 任一贡献面的通用读法                    |
-| `useExtensionEntries(POINT)`                                             | 带 owner 的条目（错误归因）             |
-| `lookupExtensionPoint` / `lookupExtensionByKey` / `lookupExtensionOwner` | 同上的非 React 读法                     |
-| `createPointSubIndex(POINT, …)`                                          | 按 key 建子索引，避免每次线性扫          |
+| Hook / 函数                                                              | 用途                                       |
+| ------------------------------------------------------------------------ | ------------------------------------------ |
+| `useExtensionPoint(POINT)` / `useExtensionByKey(POINT, key)`             | 任一贡献面的通用读法                       |
+| `useExtensionEntries(POINT)`                                             | 带 owner 的条目（错误归因）                |
+| `lookupExtensionPoint` / `lookupExtensionByKey` / `lookupExtensionOwner` | 同上的非 React 读法                        |
+| `createPointSubIndex(POINT, …)`                                          | 按 key 建子索引，避免每次线性扫            |
 | `useWorkspaceViews()` / `useSettingsPanes()` / `useLayoutSlot(slot)`     | 主区 workspace view / 设置左栏 / 命名 slot |
-| `useWorkIndexItems()` / `useContextDockDestinations()`                   | 侧栏工作索引 / dock 目的地              |
-| `executeCommand()` / `useSlashCommands()` / `lookupSlashCommandOwner()`  | 命令调用 / composer slash 提示          |
-| `lookupToolActionOwner()` / `lookupToolViewOpenerOwner()`                | 工具动作 / 视图打开器的归属             |
-| `lookupDataProvider(key)`                                                | `DATA_PROVIDER` 的读路径                |
-| `pickAgentSource()` / `resolveAgentRunStartOptions()`                    | agent source 选择 / run 启动参数        |
-| `lookupStreamHandlers(type)`                                             | reducer 内部用，非 React 选择器         |
+| `useWorkIndexItems()` / `useContextDockDestinations()`                   | 侧栏工作索引 / dock 目的地                 |
+| `executeCommand()` / `useSlashCommands()` / `lookupSlashCommandOwner()`  | 命令调用 / composer slash 提示             |
+| `lookupToolActionOwner()` / `lookupToolViewOpenerOwner()`                | 工具动作 / 视图打开器的归属                |
+| `lookupDataProvider(key)`                                                | `DATA_PROVIDER` 的读路径                   |
+| `pickAgentSource()` / `resolveAgentRunStartOptions()`                    | agent source 选择 / run 启动参数           |
+| `lookupStreamHandlers(type)`                                             | reducer 内部用，非 React 选择器            |
 
 ---
 
