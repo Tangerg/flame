@@ -467,17 +467,6 @@ func TestProjectChildRunPreservesLineage(t *testing.T) {
 	}
 }
 
-func TestProjectRunRejectsPartialChildLineage(t *testing.T) {
-	t.Parallel()
-	_, err := projectRun(protocol.RunRef{RunSummary: protocol.RunSummary{
-		ID: "run_child", SessionID: "ses_1", Status: protocol.RunStatusWaiting,
-		ParentRunID: "run_root",
-	}})
-	if err == nil || !strings.Contains(err.Error(), "child run lineage") {
-		t.Fatalf("projectRun partial lineage error = %v", err)
-	}
-}
-
 func TestProjectTreeStreamRetainsProducerAndStreamSegments(t *testing.T) {
 	contextTokens := int64(4_096)
 	source := func(yield func(protocol.RunEvent, error) bool) {

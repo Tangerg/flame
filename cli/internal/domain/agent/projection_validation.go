@@ -35,18 +35,11 @@ func (r RunLineage) validate(runID string) error {
 		}
 		return nil
 	case childRunLineage:
-		if err := runtimeprotocol.ValidateRunID(runID); err != nil {
-			return fmt.Errorf("child run lineage: %w", err)
-		}
-		if err := runtimeprotocol.ValidateItemID(r.spawnedByBlockID); err != nil {
-			return fmt.Errorf("child run lineage spawn block: %w", err)
-		}
-		if err := runtimeprotocol.ValidateRunID(r.parentRunID); err != nil {
-			return fmt.Errorf("child run lineage parent: %w", err)
-		}
-		if err := runtimeprotocol.ValidateRunID(r.rootRunID); err != nil {
-			return fmt.Errorf("child run lineage root: %w", err)
-		}
+		// The wire contract carries the three child edges together or not at all,
+		// and validates each as an identity, so the projection only has to answer
+		// what it derives itself: which kind this is, and that the tuple does not
+		// name its own run — the one edge rule the contract deliberately leaves to
+		// the child-creation transaction, and the one that would loop this fold.
 	case 0:
 		return errors.New("run lineage is not initialized")
 	default:

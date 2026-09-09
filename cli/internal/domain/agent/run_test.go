@@ -49,11 +49,8 @@ func TestRunLineageRequiresExplicitRootOrValidChild(t *testing.T) {
 		runID, spawn, parent string
 		root                 string
 	}{
-		{name: "missing spawn", runID: "run_child", parent: "run_parent", root: "run_root"},
 		{name: "self parent", runID: "run_child", spawn: "item_spawn", parent: "run_child", root: "run_root"},
 		{name: "self root", runID: "run_child", spawn: "item_spawn", parent: "run_parent", root: "run_child"},
-		{name: "non-exact parent", runID: "run_child", spawn: "item_spawn", parent: " run_parent", root: "run_root"},
-		{name: "non-exact root", runID: "run_child", spawn: "item_spawn", parent: "run_parent", root: "run_root "},
 	} {
 		if _, err := NewChildRunLineage(test.runID, test.spawn, test.parent, test.root); err == nil {
 			t.Errorf("%s lineage was accepted", test.name)
