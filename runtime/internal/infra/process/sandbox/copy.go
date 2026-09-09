@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
@@ -263,7 +264,7 @@ func (t *treeCopier) copyFile(
 		return fmt.Errorf("create destination file %q: %w", portableName, errors.Join(err, source.Close()))
 	}
 
-	reader := io.LimitReader(contextReader{ctx: ctx, reader: source}, size+1)
+	reader := io.LimitReader(cancelread.Reader(ctx, source), size+1)
 	written, copyErr := io.CopyBuffer(writeOnly{writer: destination}, reader, t.buffer)
 	verifyErr := fileinput.VerifyAtVersion(source, openedInfo, t.source, localName)
 	closeErr := errors.Join(destination.Close(), source.Close())
@@ -278,18 +279,6 @@ func (t *treeCopier) copyFile(
 		return fmt.Errorf("source file %q changed during copy: copied %d bytes, expected %d", portableName, written, size)
 	}
 	return nil
-}
-
-type contextReader struct {
-	ctx    context.Context
-	reader io.Reader
-}
-
-func (c contextReader) Read(buffer []byte) (int, error) {
-	if err := c.ctx.Err(); err != nil {
-		return 0, err
-	}
-	return c.reader.Read(buffer)
 }
 
 type writeOnly struct{ writer io.Writer }

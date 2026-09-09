@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 	"github.com/Tangerg/flame/runtime/internal/infra/advisorylock"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
@@ -169,7 +170,7 @@ func readDocumentAt(ctx context.Context, root *os.Root, doc document) (knowledge
 		return knowledge.Entry{}, 0, fmt.Errorf("knowledge store: inspect %q: %w", doc.path, sizeErr)
 	}
 	data, err := io.ReadAll(io.LimitReader(
-		knowledgeContextReader{ctx: ctx, reader: file},
+		cancelread.Reader(ctx, file),
 		knowledge.MaxDocumentBytes+1,
 	))
 	if err != nil {
@@ -288,22 +289,6 @@ func (s *Store) Update(ctx context.Context, dir string, replacement knowledge.Re
 	// never turn a successful mutation into an apparent failure that a client
 	// might retry with an obsolete revision.
 	return committed, nil
-}
-
-type knowledgeContextReader struct {
-	ctx    context.Context
-	reader io.Reader
-}
-
-func (k knowledgeContextReader) Read(buffer []byte) (int, error) {
-	if cause := context.Cause(k.ctx); cause != nil {
-		return 0, cause
-	}
-	read, err := k.reader.Read(buffer)
-	if cause := context.Cause(k.ctx); cause != nil {
-		return read, cause
-	}
-	return read, err
 }
 
 func createTemporary(root *os.Root, target string) (*os.File, string, error) {

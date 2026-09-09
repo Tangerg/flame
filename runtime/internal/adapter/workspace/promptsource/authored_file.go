@@ -7,6 +7,7 @@ import (
 	"io"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
@@ -31,7 +32,7 @@ func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
 		return nil, fmt.Errorf("open %q: %w", path, err)
 	}
 	document, readErr := io.ReadAll(io.LimitReader(
-		promptContextReader{ctx: ctx, reader: file},
+		cancelread.Reader(ctx, file),
 		workspaceapp.MaxAuthoredPromptDocumentBytes+1,
 	))
 	verifyErr := fileinput.VerifyPathVersion(file, opened, path)
@@ -52,20 +53,4 @@ func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
 		return nil, fmt.Errorf("read %q: %w", path, verifyErr)
 	}
 	return document, nil
-}
-
-type promptContextReader struct {
-	ctx    context.Context
-	reader io.Reader
-}
-
-func (p promptContextReader) Read(buffer []byte) (int, error) {
-	if cause := context.Cause(p.ctx); cause != nil {
-		return 0, cause
-	}
-	read, err := p.reader.Read(buffer)
-	if cause := context.Cause(p.ctx); cause != nil {
-		return read, cause
-	}
-	return read, err
 }

@@ -13,6 +13,7 @@ import (
 	sdk "github.com/Tangerg/scope/skills"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
@@ -174,7 +175,7 @@ func (r *runtimeSkillSource) openSkillDocument(name string) (*openedSkillDocumen
 
 func readSkillDocument(ctx context.Context, name string, source *openedSkillDocument) ([]byte, error) {
 	content, readErr := io.ReadAll(io.LimitReader(
-		skillSourceContextReader{ctx: ctx, reader: source.file},
+		cancelread.Reader(ctx, source.file),
 		domainskills.MaxAuthoredSkillDocumentBytes+1,
 	))
 	verifyErr := fileinput.VerifyAtVersion(source.file, source.info, source.root, source.path)
@@ -291,22 +292,6 @@ func skillSourceContextError(ctx context.Context, operation string) error {
 		return fmt.Errorf("runtime skill source: %s: %w", operation, cause)
 	}
 	return nil
-}
-
-type skillSourceContextReader struct {
-	ctx    context.Context
-	reader io.Reader
-}
-
-func (s skillSourceContextReader) Read(buffer []byte) (int, error) {
-	if cause := context.Cause(s.ctx); cause != nil {
-		return 0, cause
-	}
-	read, err := s.reader.Read(buffer)
-	if cause := context.Cause(s.ctx); cause != nil {
-		return read, cause
-	}
-	return read, err
 }
 
 type boundedSkillResource struct {

@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
+	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
@@ -185,7 +186,7 @@ func readAutoFormatFile(ctx context.Context, path string) (_ autoFormatSource, e
 		err = errors.Join(err, file.Close())
 	}()
 	content, err := io.ReadAll(io.LimitReader(
-		autoFormatContextReader{ctx: ctx, reader: file},
+		cancelread.Reader(ctx, file),
 		maxAutoFormatFileBytes+1,
 	))
 	if err != nil {
@@ -208,22 +209,6 @@ func validateAutoFormatSource(info os.FileInfo) error {
 		return fmt.Errorf("%w: file uses %d bytes", errAutoFormatFileTooLarge, info.Size())
 	}
 	return nil
-}
-
-type autoFormatContextReader struct {
-	ctx    context.Context
-	reader io.Reader
-}
-
-func (a autoFormatContextReader) Read(buffer []byte) (int, error) {
-	if cause := context.Cause(a.ctx); cause != nil {
-		return 0, cause
-	}
-	read, err := a.reader.Read(buffer)
-	if cause := context.Cause(a.ctx); cause != nil {
-		return read, cause
-	}
-	return read, err
 }
 
 type formatOutputBuffer struct {

@@ -12,6 +12,7 @@ import (
 
 	skillspec "github.com/Tangerg/scope/skills"
 
+	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
@@ -201,7 +202,7 @@ func readUsage(ctx context.Context, root *os.Root) (map[string]usageRecord, erro
 		return nil, fmt.Errorf("skillauthoring: open usage: %w", err)
 	}
 	data, readErr := io.ReadAll(io.LimitReader(
-		skillUsageContextReader{ctx: ctx, reader: file},
+		cancelread.Reader(ctx, file),
 		maxUsageMetadataBytes+1,
 	))
 	verifyErr := fileinput.VerifyAtVersion(file, opened, root, usageFile)
@@ -277,20 +278,4 @@ func writeUsage(ctx context.Context, root *os.Root, usage map[string]usageRecord
 		return fmt.Errorf("skillauthoring: commit usage: %w", err)
 	}
 	return nil
-}
-
-type skillUsageContextReader struct {
-	ctx    context.Context
-	reader io.Reader
-}
-
-func (s skillUsageContextReader) Read(buffer []byte) (int, error) {
-	if cause := context.Cause(s.ctx); cause != nil {
-		return 0, cause
-	}
-	read, err := s.reader.Read(buffer)
-	if cause := context.Cause(s.ctx); cause != nil {
-		return read, cause
-	}
-	return read, err
 }

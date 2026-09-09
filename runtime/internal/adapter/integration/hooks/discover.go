@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
@@ -132,7 +133,7 @@ func readHooksFile(ctx context.Context, path string) (hooksFile, bool, error) {
 	}
 	defer func() { _ = handle.Close() }()
 	data, err := io.ReadAll(io.LimitReader(
-		hooksContextReader{ctx: ctx, reader: handle},
+		cancelread.Reader(ctx, handle),
 		domainhooks.MaxConfigurationFileBytes+1,
 	))
 	if err != nil {
@@ -176,20 +177,4 @@ func readHooksFile(ctx context.Context, path string) (hooksFile, bool, error) {
 		}
 	}
 	return file, true, nil
-}
-
-type hooksContextReader struct {
-	ctx    context.Context
-	reader io.Reader
-}
-
-func (h hooksContextReader) Read(buffer []byte) (int, error) {
-	if cause := context.Cause(h.ctx); cause != nil {
-		return 0, cause
-	}
-	read, err := h.reader.Read(buffer)
-	if cause := context.Cause(h.ctx); cause != nil {
-		return read, cause
-	}
-	return read, err
 }

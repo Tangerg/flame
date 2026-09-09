@@ -13,6 +13,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
+	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
 	"github.com/Tangerg/scope/tools/fs"
@@ -181,7 +182,7 @@ func observeFingerprintExistingFile(ctx context.Context, path string, maxBytes i
 	}()
 	hash := sha256.New()
 	buffer := make([]byte, 64<<10)
-	var source io.Reader = fingerprintContextReader{ctx: ctx, reader: file}
+	var source io.Reader = cancelread.Reader(ctx, file)
 	if maxBytes > 0 {
 		source = io.LimitReader(source, maxBytes+1)
 	}
@@ -221,22 +222,6 @@ func fingerprintFile(ctx context.Context, path string, maxBytes int64) (contentF
 
 func sameFingerprintObservation(left, right fingerprintObservation) bool {
 	return left.fingerprint == right.fingerprint && fileinput.SameVersion(left.info, right.info)
-}
-
-type fingerprintContextReader struct {
-	ctx    context.Context
-	reader io.Reader
-}
-
-func (f fingerprintContextReader) Read(buffer []byte) (int, error) {
-	if cause := context.Cause(f.ctx); cause != nil {
-		return 0, cause
-	}
-	read, err := f.reader.Read(buffer)
-	if cause := context.Cause(f.ctx); cause != nil {
-		return read, cause
-	}
-	return read, err
 }
 
 // withMutationDiagnostics wraps a file-mutating tool so a successful change is

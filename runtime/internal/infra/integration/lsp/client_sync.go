@@ -9,6 +9,7 @@ import (
 	"io"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
@@ -88,7 +89,7 @@ func readDocument(ctx context.Context, path string) (_ []byte, err error) {
 	defer func() {
 		err = errors.Join(err, file.Close())
 	}()
-	content, err := io.ReadAll(io.LimitReader(contextReader{ctx: ctx, reader: file}, maxDocumentBytes+1))
+	content, err := io.ReadAll(io.LimitReader(cancelread.Reader(ctx, file), maxDocumentBytes+1))
 	if err != nil {
 		return nil, err
 	}
@@ -105,20 +106,4 @@ func readDocument(ctx context.Context, path string) (_ []byte, err error) {
 		return nil, ErrUnsupportedDocument
 	}
 	return content, nil
-}
-
-type contextReader struct {
-	ctx    context.Context
-	reader io.Reader
-}
-
-func (c contextReader) Read(buffer []byte) (int, error) {
-	if cause := context.Cause(c.ctx); cause != nil {
-		return 0, cause
-	}
-	read, err := c.reader.Read(buffer)
-	if cause := context.Cause(c.ctx); cause != nil {
-		return read, cause
-	}
-	return read, err
 }
