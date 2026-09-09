@@ -11,9 +11,19 @@ func TestDefaultCapabilitiesHaveOneTypedWireShape(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal default capabilities: %v", err)
 	}
-	const want = `{"textDocument":{"synchronization":{"dynamicRegistration":false,"didSave":false},"definition":{},"references":{},"implementation":{},"hover":{"contentFormat":["markdown","plaintext"]},"documentSymbol":{"hierarchicalDocumentSymbolSupport":false},"callHierarchy":{},"publishDiagnostics":{}},"workspace":{"symbol":{},"configuration":true,"workspaceFolders":true}}`
+	const want = `{"textDocument":{"synchronization":{"dynamicRegistration":false,"didSave":true},"definition":{},"references":{},"implementation":{},"hover":{"contentFormat":["markdown","plaintext"]},"documentSymbol":{"hierarchicalDocumentSymbolSupport":false},"callHierarchy":{},"publishDiagnostics":{}},"workspace":{"symbol":{},"configuration":true,"workspaceFolders":true}}`
 	if string(encoded) != want {
 		t.Fatalf("default capabilities = %s", encoded)
+	}
+}
+
+// TestAdvertisedSynchronizationCoversWhatTheClientSends names the pairing the
+// shape above cannot state. diagnostics nudges servers that only publish on
+// save with textDocument/didSave, so the capability set has to claim it: the
+// servers that notification exists for are the ones that read the claim.
+func TestAdvertisedSynchronizationCoversWhatTheClientSends(t *testing.T) {
+	if !defaultCapabilities().TextDocument.Synchronization.DidSave {
+		t.Error("the client sends textDocument/didSave but advertises didSave: false")
 	}
 }
 

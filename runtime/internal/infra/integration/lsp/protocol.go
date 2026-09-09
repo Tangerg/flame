@@ -346,9 +346,13 @@ type workspaceClientCapabilities struct {
 // defaultCapabilities is the exact minimal capability set Flame advertises.
 // HierarchicalDocumentSymbolSupport stays false so documentSymbol comes back
 // as flat SymbolInformation carrying the Location consumed by the tool layer.
+// DidSave is true because diagnostics sends textDocument/didSave; a server that
+// registers handlers from client capabilities drops a notification the client
+// never claimed to send.
 func defaultCapabilities() clientCapabilities {
 	return clientCapabilities{
 		TextDocument: textDocumentClientCapabilities{
+			Synchronization: synchronizationClientCapabilities{DidSave: true},
 			Hover: hoverClientCapabilities{
 				ContentFormat: []markupKind{markupMarkdown, markupPlaintext},
 			},
