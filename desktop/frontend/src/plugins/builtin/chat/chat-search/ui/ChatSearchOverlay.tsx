@@ -1,7 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useEffect, useRef, useState } from "react";
 import { IconButton, TextField, vocab } from "@/ui";
-import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import {
@@ -108,10 +107,7 @@ function SessionChatSearchOverlay() {
   const total = matches.length;
 
   return (
-    <div
-      role="search"
-      className={cn(stylex.props(cs.pill).className, stylex.props(cs.undraggable).className)}
-    >
+    <div role="search" {...stylex.props(cs.pill, cs.undraggable)}>
       <TextField
         ref={inputRef}
         variant="bare"

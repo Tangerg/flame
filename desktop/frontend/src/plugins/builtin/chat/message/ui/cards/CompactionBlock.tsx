@@ -48,7 +48,7 @@ export function CompactionBlock({ summary }: { summary: string }) {
         aria-label={label}
         aria-expanded={open}
         aria-controls={panelId}
-        className={cn(stylex.props(reveal.host).className, stylex.props(cb.trigger).className)}
+        className={stylex.props(reveal.host, cb.trigger).className}
       >
         <Icon
           name="minimize"

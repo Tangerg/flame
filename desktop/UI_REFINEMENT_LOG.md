@@ -11253,3 +11253,43 @@ if (!(rule instanceof CSSStyleRule) || rule.style.length !== 1) continue;
 | StyleX 属性竞态（含简写） | 5 → **0** |
 | 简写 + 自己的分写 | 4 → **0** |
 | 守卫 | 19 项（新增 `check:shorthand`）|
+
+## Round 178 — 把两串生成好的类名并排放，最后四处
+
+上一轮的守卫报 0 竞态，所以我**没有**去动那 82 处 `cn(生成的类名, 调用方的类名)` ——
+那是逃生口，改它要有证据。但另有一种形状不需要证据就知道是错的：
+
+**同一个元素上，两次 `stylex.props(...)` 的结果被 `cn` 并排放。**
+
+一次调用内 StyleX 能定优先级（后者胜，败者不生成）；两次调用之间它做不到。
+而这四处的两次调用**都在同一个文件、同一个组件里** —— 没有任何理由不合成一次。
+
+| 位置 | 改法 |
+| --- | --- |
+| `ChatSearchOverlay` | `cn(props(pill), props(undraggable))` → `stylex.props(cs.pill, cs.undraggable)` |
+| `CompactionBlock` | 同上，合成一次调用 |
+| `navigation-row` ×3 | 常量从**类名串**改成**样式数组** |
+
+`navigation-row` 那三个是模块级常量 `ROW_GROUP` / `RESTING_GLYPH` / `HOVER_ACTION`。
+提取到模块级是对的 —— 注释说明了 `RESTING_GLYPH` 和 `HOVER_ACTION` 必须保持同一个决定。
+错的是提取出来的**东西**：提 `stylex.props(...).className`（一串已经定型的类名）
+只能并排；提 `[reveal.host]`（样式本身）就能在每个元素自己的 props 调用里参与排序。
+
+顺带一个类型上的收获：`action && RESTING_GLYPH` 里 `action` 是 `ReactNode`，
+`&&` 可能产出 `""` 或 `0` —— `cn` 会默默吞掉，样式数组不接受。
+改成三元。**`cn` 的宽容正是它掩盖问题的方式。**
+
+### 关于 TextButton，一次收回
+
+我一度给 `TextButton` 加了 `styles` 接缝好让 `CompactionBlock` 用。
+类型立刻拒绝了：`reveal.host` 只声明自定义属性，StyleX 给它的类型和 `StyleXStyles` 不同。
+而且没有第二个调用方需要这个接缝 —— 收回，改成调用点合成一次 props。
+**为一个调用方加一个 API，是 YAGNI 的标准形状。**
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **674 / 674**，重录 **0** |
+| `cn(两串生成的类名)` | 4 → **0** |
+| `className` 逃生口 | 仍是 82 处，**零竞态，不动** |

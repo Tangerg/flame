@@ -65,21 +65,24 @@ const rowStyles = stylex.create({
   search: { backgroundColor: { default: surface.sunken, ":hover": surface.hover } },
 });
 
-const ROW_GROUP = stylex.props(reveal.host).className;
+// Styles rather than class strings, so each one composes INTO the props call at its element
+// instead of being concatenated beside it. Hoisted for the same reason they were before: the
+// pair below has to stay one decision, and a name is how it stays one.
+const ROW_GROUP = [reveal.host] as const;
 
 // The SAME conditions as `HOVER_ACTION` below, and it has to be the same: one is what the
 // other displaces, so a state that reveals the action without retiring this leaves the row
 // showing both — which happened whenever focus landed on the action itself, because this end
 // used to watch the TRIGGER's `:focus-visible` while the other watched the row's
 // `:focus-within`. Nobody chose that asymmetry; the two ends were simply written apart.
-const RESTING_GLYPH = stylex.props(reveal.displaced, rowStyles.fade).className;
+const RESTING_GLYPH = [reveal.displaced, rowStyles.fade] as const;
 
 // The action is the caller's node in a sibling span, so only the SPAN can react to it
 // having focus — and `:has(:focus-visible)` is not a working way to say that (Chromium
 // matches it but does not invalidate on the focus change). `:focus-within` therefore
 // stays here: it reveals the action a moment longer than it should after a click, which
 // is the lesser of the two, because the alternative hides it from the keyboard.
-const HOVER_ACTION = stylex.props(reveal.shown, rowStyles.fade).className;
+const HOVER_ACTION = [reveal.shown, rowStyles.fade] as const;
 
 interface AgentRowProps extends Omit<ButtonProps, "children" | "variant" | "size" | "press"> {
   active?: boolean;
@@ -161,7 +164,7 @@ export function AgentRow({
           {trailing && (
             <span
               data-reveal={action ? "rest" : undefined}
-              className={cn(stylex.props(rowStyles.trailing).className, action && RESTING_GLYPH)}
+              className={stylex.props(rowStyles.trailing, action ? RESTING_GLYPH : null).className}
             >
               {trailing}
             </span>
@@ -185,11 +188,11 @@ export function AgentRow({
 
   if (!action) return row;
   return (
-    <div className={cn(stylex.props(rowStyles.host).className, ROW_GROUP)}>
+    <div className={stylex.props(rowStyles.host, ROW_GROUP).className}>
       {row}
       <span
         data-reveal="hover"
-        className={cn(stylex.props(rowStyles.actionSlot).className, HOVER_ACTION)}
+        className={stylex.props(rowStyles.actionSlot, HOVER_ACTION).className}
       >
         {action}
       </span>
