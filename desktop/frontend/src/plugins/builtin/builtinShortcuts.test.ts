@@ -1,9 +1,29 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { builtinPlugins } from "./index";
 import { COMMAND, SHORTCUT } from "@/plugins/sdk/kernelPoints";
 import { lookupExtensionPoint } from "@/plugins/sdk/selectors/extensions";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import { dispatchBinding } from "@/lib/combo";
+
+/**
+ * No socket. Loading every built-in starts the plugins that talk to the Runtime, and they
+ * reach for the default endpoint — so without this the suite's result depends on whether
+ * something happens to be listening on 17171, which on a developer's machine it often is.
+ */
+beforeEach(() => {
+  vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")));
+  vi.stubGlobal(
+    "EventSource",
+    class {
+      close() {}
+      addEventListener() {}
+    },
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 /**
  * Two registrations on one key is a command nobody can reach.
