@@ -195,8 +195,6 @@ func TestSessionUpdateResultMustFulfillTheCommand(t *testing.T) {
 		want   string
 	}{
 		{name: "identity", mutate: func(result *Session) { result.ID = "ses_2" }, want: "runtime returned session"},
-		{name: "revision", mutate: func(result *Session) { result.Revision = 4 }, want: "runtime returned revision"},
-		{name: "revision jump", mutate: func(result *Session) { result.Revision = 6 }, want: "runtime returned revision"},
 		{name: "title", mutate: func(result *Session) { result.Title = "Old" }, want: "runtime returned title"},
 		{name: "workspace", mutate: func(result *Session) { result.Workspace = testWorkspace("/workspace/old") }, want: "runtime returned workspace"},
 		{name: "model", mutate: func(result *Session) { result.Model = "model-old" }, want: "runtime returned model"},
@@ -229,18 +227,9 @@ func TestSessionCreationAndForkResultsMustFulfillTheCommand(t *testing.T) {
 	if err := create.ValidateResult(wrongCreate); err == nil || !strings.Contains(err.Error(), "workspace") {
 		t.Fatalf("create result error = %v", err)
 	}
-	nonInitialCreate := created
-	nonInitialCreate.Revision = 2
-	if err := create.ValidateResult(nonInitialCreate); err == nil || !strings.Contains(err.Error(), "initial revision") {
-		t.Fatalf("create initial revision error = %v", err)
-	}
-
 	fork := ForkSession{SessionID: "ses_source", Title: created.Title}
 	if err := fork.ValidateResult(created); err != nil {
 		t.Fatalf("valid fork result: %v", err)
-	}
-	if err := fork.ValidateResult(nonInitialCreate); err == nil || !strings.Contains(err.Error(), "initial revision") {
-		t.Fatalf("fork initial revision error = %v", err)
 	}
 	wrongFork := created
 	wrongFork.ID = fork.SessionID

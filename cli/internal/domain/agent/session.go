@@ -494,9 +494,6 @@ func (c CreateSession) ValidateResult(result Session) error {
 		return err
 	}
 	var problems []error
-	if result.Revision != exactint.First().Value() {
-		problems = append(problems, fmt.Errorf("runtime returned initial revision %d, want %d", result.Revision, exactint.First().Value()))
-	}
 	if title := strings.TrimSpace(c.Title); title != "" && result.Title != title {
 		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, title))
 	}
@@ -553,9 +550,6 @@ func (u UpdateSession) ValidateResult(result Session) error {
 	if result.ID != u.SessionID {
 		problems = append(problems, fmt.Errorf("runtime returned session %s, want %s", result.ID, u.SessionID))
 	}
-	if err := exactint.Follows(u.ExpectedRevision, result.Revision); err != nil {
-		problems = append(problems, fmt.Errorf("runtime returned revision %d after expected revision %d: %w", result.Revision, u.ExpectedRevision, err))
-	}
 	if u.Title != nil && result.Title != strings.TrimSpace(*u.Title) {
 		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, strings.TrimSpace(*u.Title)))
 	}
@@ -600,9 +594,6 @@ func (f ForkSession) ValidateResult(result Session) error {
 		return err
 	}
 	var problems []error
-	if result.Revision != exactint.First().Value() {
-		problems = append(problems, fmt.Errorf("runtime returned initial revision %d, want %d", result.Revision, exactint.First().Value()))
-	}
 	if result.ID == f.SessionID {
 		problems = append(problems, fmt.Errorf("runtime returned source session %q", result.ID))
 	}

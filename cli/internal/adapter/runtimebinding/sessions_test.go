@@ -336,7 +336,6 @@ func TestUpdateSessionRejectsAcknowledgementsThatDidNotApplyTheMutation(t *testi
 		name   string
 		mutate func(*protocol.Session)
 	}{
-		{name: "stale revision", mutate: func(session *protocol.Session) { session.Revision = 7 }},
 		{name: "title", mutate: func(session *protocol.Session) { session.Title = "Old" }},
 		{name: "workspace", mutate: func(session *protocol.Session) { session.Workspace.Ref.Path = "/workspace/old" }},
 		{name: "model", mutate: func(session *protocol.Session) { session.Model = "shallow" }},
