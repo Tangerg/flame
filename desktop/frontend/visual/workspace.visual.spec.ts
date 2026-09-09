@@ -792,7 +792,12 @@ for (const theme of ["light", "dark"] as const) {
 // Two panes beyond the one the settings state used to hard-code: the densest list and the
 // most form-heavy, which between them carry the row, field and empty-state vocabulary every
 // other pane is assembled from.
-for (const pane of ["plugins", "providers"] as const) {
+//
+// `brand-icons` is the third for a different reason: it is the only pane whose subject is
+// IMAGES. It had a WCAG audit and no photograph, and rendered 321 question marks — every
+// glyph missing, because the module glob that loads them pointed at a `node_modules` three
+// directories above the one that exists. An audit reads names; only a picture sees a blank.
+for (const pane of ["plugins", "providers", "brand-icons"] as const) {
   test(`workspace golden settings pane ${pane}`, async ({ page }) => {
     await openWorkspace(page, { state: "settings", pane });
     await waitForWorkspaceState(page, "settings");

@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 import { toc as rawToc } from "@lobehub/icons/es/toc";
 
 const monoModules = import.meta.glob<{ default: ComponentType<{ size?: number }> }>(
-  "../../../node_modules/@lobehub/icons/es/*/components/Mono.js",
+  "../../../../../../node_modules/@lobehub/icons/es/*/components/Mono.js",
   { eager: true },
 );
 

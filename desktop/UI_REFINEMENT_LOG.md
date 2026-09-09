@@ -11524,3 +11524,53 @@ it("uses the typewriter pipeline without layering word fades over it", () => {
 | 单测 | **2407 通过 / 4 失败** —— 全部在 `src/rpc`，runtime contract 由用户改动中，不在范围内 |
 | 新增断言 | 3 条，**每条都验证过能失败** |
 | `.type-caret` 覆盖 | 0 → 1 |
+
+## Round 183 — 321 个问号：一个从第一次提交起就没工作过的功能
+
+不再靠猜哪里没覆盖，改用**真实的覆盖率**：用 CDP 的 JS coverage 走完 70 条路由，
+dev server 把每个源文件当作独立 URL 提供，所以拿到的是**逐文件**的执行图。
+
+277 个组件，**270 个**在某个 fixture 里渲染过。剩下 7 个里 6 个是 fixture 本来就要替换掉的
+生产组合根（`App` / `main` / `router` / `PluginProvider` / devtools）。
+
+第 7 个是 **`IconGallery.tsx`** —— 一个用户可以从 dock catalog 打开的工作区视图。
+它不在 `DOCK_VIEW_BY_STATE` 里，所以任何 fixture 都没渲染过它。
+用上一轮加的 `?full-view=` 打开它：
+
+**321 张卡片，321 个 `?`。一个图标都没有。**
+
+### 根因：一个匹配不到任何东西的 glob
+
+```ts
+// src/plugins/builtin/settings/icon-gallery/ui/iconMap.ts
+import.meta.glob("../../../node_modules/@lobehub/icons/es/*/components/Mono.js")
+```
+
+从 `…/icon-gallery/ui/` 往上三层是 `src/plugins/builtin/` —— 那底下没有 `node_modules`。
+正确的深度是**六层**。
+
+`import.meta.glob` 匹配不到任何东西时返回 `{}` —— **不报错、不警告、构建照过**。
+于是 `IconMap` 是空的，每张卡片都走 `?` 兜底。`git log -S` 查过：这个路径从**初始提交**就是错的。
+
+而且它不只坏了图库：**Settings → Brand icons 用的是同一张表**，同样 59 个问号。
+那个面板**有 WCAG 审计** —— 审计读名字，看不见一张缺失的图。
+
+### 修完之后，让它不能再悄悄坏
+
+| 补的东西 | 抓的是什么 |
+| --- | --- |
+| `iconMap.test.ts` | glob 解析出的组件数 > 100；目录里 90% 以上的条目要有组件 |
+| `workspace golden settings pane brand-icons` | 那是唯一一个**主题就是图片**的面板 —— 只有照片看得见空白 |
+
+**两个方向都验证过**：把路径改回三层，两条单测立刻红。
+
+图标数：38 → **359**（渲染出的 `svg`/`img`）。入口体积没变 —— 图标本来就在懒加载 chunk 里。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **675 / 675**（674 + 新增 1）|
+| 组件覆盖 | 277 个中 270 个被渲染过；未覆盖的 7 个已逐个解释 |
+| 修复 | 一个从初始提交起就没工作过的功能 |
+| 重录 | 0 |
