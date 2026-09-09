@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -937,7 +938,8 @@ func runACancellationPlan(
 	members := make(map[string]string, len(pending.Continuations))
 	for index := range pending.Continuations {
 		continuation := &pending.Continuations[index]
-		runsByID[continuation.RunID] = testsupport.MustRestoreRun(run.Snapshot{ID: continuation.RunID,
+		runsByID[continuation.RunID] = testsupport.MustRestoreRun(run.Snapshot{
+			ID:        continuation.RunID,
 			SessionID: pending.SessionID,
 
 			State:          run.Waiting,
@@ -945,9 +947,12 @@ func runACancellationPlan(
 			UpdatedAt:      pending.CreatedAt,
 			ModelSelection: continuation.ModelSelection,
 			Capabilities:   pending.Capabilities,
-			MessageMark:    run.UnknownMessageMark, Lineage: run.Lineage{SpawnedByItemID: continuation.Lineage.SpawnedByItemID,
-				ParentRunID: continuation.Lineage.ParentRunID,
-				RootRunID:   continuation.Lineage.RootRunID}})
+			MessageMark:    run.UnknownMessageMark, Lineage: run.Lineage{
+				SpawnedByItemID: continuation.Lineage.SpawnedByItemID,
+				ParentRunID:     continuation.Lineage.ParentRunID,
+				RootRunID:       continuation.Lineage.RootRunID,
+			},
+		})
 
 		members[continuation.RunID] = continuation.MemberID
 	}
@@ -1130,5 +1135,43 @@ func waitingQuestionPrompt() Interrupt {
 			Arguments: "{}",
 			Fields:    []QuestionFieldSpec{{Prompt: "Continue?", Header: "Continue"}},
 		},
+	}
+}
+
+// TestCancelWaitingChildRefusesACommitThatDoesNotShowTheCancellation covers the
+// committer's second return path. After a failed transaction the adapter
+// reconciles by reading both Runs back by id and returns them on nothing more
+// than presence and Session scope, so a target a concurrent recovery settled
+// some other way arrives here looking like a completed cancellation. This is
+// where that is refused; the transactional path is already proved by the
+// write-set's own validation.
+func TestCancelWaitingChildRefusesACommitThatDoesNotShowTheCancellation(t *testing.T) {
+	plan := runACancellationPlan(t, false)
+	prepared := &fakePreparedWaitingCancellation{
+		canceled: []string{"member_a", "member_grandchild"},
+		interruptions: []MemberInterruption{{
+			MemberID:  "member_b",
+			RequestID: "request_b",
+			Interrupt: waitingQuestionPrompt(),
+		}},
+	}
+	effects := &fakeEffects{
+		waitingResult: WaitingSubtreeCancellationResult{
+			TargetRun: plan.target.run,
+			RootRun:   plan.root.run,
+		},
+	}
+	coordinator, _ := waitingCancellationCoordinator(t, plan, prepared, effects, &fakeExecutor{})
+
+	_, err := coordinator.Cancel(t.Context(), CancelCommand{
+		RunID:         plan.target.run.ID(),
+		Reason:        "stop delegated branch",
+		AllowChildRun: true,
+	})
+	if err == nil {
+		t.Fatal("an uncanceled target was reported as a completed cancellation")
+	}
+	if !strings.Contains(err.Error(), "invalid target snapshot") {
+		t.Fatalf("Cancel error = %v, want a refused target snapshot", err)
 	}
 }

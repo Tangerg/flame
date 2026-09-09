@@ -512,6 +512,14 @@ func (c *Coordinator) failCommittedWaitingCancellationRecovery(
 	)
 }
 
+// validateWaitingChildCancellationResult reads as a duplicate of the write-set's
+// own validation and is not one. The committer has two return paths: the
+// transaction, whose snapshots the commit already proved and whose root only
+// moves through a guarded Run transition, and reconciliation after a failed
+// commit, which reads both Runs back by id and proves nothing beyond presence
+// and Session scope. On that second path this is the only place that answers
+// whether the cancellation is what actually landed — a target a concurrent
+// recovery marked lost would otherwise be reported as canceled.
 func validateWaitingChildCancellationResult(
 	plan cancellationPlan,
 	result WaitingSubtreeCancellationResult,
