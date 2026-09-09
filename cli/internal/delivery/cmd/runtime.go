@@ -28,7 +28,6 @@ type Runtime interface {
 	CreateSession(context.Context, agent.CreateSession) (agent.Session, error)
 	UpdateSession(context.Context, agent.UpdateSession) (agent.Session, error)
 	ForkSession(context.Context, agent.ForkSession) (agent.Session, error)
-	RollbackSession(context.Context, agent.RollbackSession) (agent.RollbackResult, error)
 	DeleteSession(context.Context, agent.DeleteSession) error
 	GetRun(context.Context, string) (agent.Run, error)
 	ListRuns(context.Context, agent.RunQuery) (agent.RunPage, error)
@@ -37,9 +36,6 @@ type Runtime interface {
 	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
 	SteerRun(context.Context, agent.SteerRun) error
 	CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error)
-	ListModels(context.Context) ([]protocol.Model, error)
-	GetApprovalMode(context.Context) (protocol.ApprovalMode, error)
-	SetApprovalMode(context.Context, protocol.ApprovalMode) (protocol.ApprovalMode, error)
 	ListApprovalRules(context.Context, string) ([]protocol.ApprovalRule, error)
 	DeleteApprovalRule(context.Context, string) error
 }

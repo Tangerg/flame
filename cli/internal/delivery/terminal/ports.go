@@ -23,7 +23,6 @@ type Runtime interface {
 	RollbackSession(context.Context, agent.RollbackSession) (agent.RollbackResult, error)
 	DeleteSession(context.Context, agent.DeleteSession) error
 	GetRun(context.Context, string) (agent.Run, error)
-	ListRuns(context.Context, agent.RunQuery) (agent.RunPage, error)
 	StartRun(context.Context, agent.StartRun) (agent.SegmentStream, error)
 	ResumeRun(context.Context, agent.ResumeRun) (agent.SegmentStream, error)
 	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
