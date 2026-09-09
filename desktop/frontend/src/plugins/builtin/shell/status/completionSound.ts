@@ -5,6 +5,7 @@ import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
+import type { Paired } from "@/lib/persistedStore";
 
 const STORAGE_KEY = "flame.completion-sound";
 
@@ -14,6 +15,10 @@ interface CompletionSoundState {
 }
 
 const persistSchema = z.object({ completionSound: z.boolean() });
+
+/** Held equal at compile time — see `Paired`. */
+const _paired: Paired<CompletionSoundState, z.infer<typeof persistSchema>> = true;
+void _paired;
 
 export const useCompletionSoundStore = create<CompletionSoundState>()(
   persist(

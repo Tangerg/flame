@@ -11808,3 +11808,57 @@ expect(JSON.parse(JSON.stringify(partialize(store())))).toEqual(written);
 | 单测（排除 `src/rpc`）| 349 文件 / **1974 全通过**（+4）|
 | 持久化往返覆盖 | 0 / 3 → **3 / 3**，每条都验证过能失败 |
 | 视觉套件 | **未跑** —— 本轮只加测试，没改一行生产代码 |
+
+## Round 189 — 把「存进去的能不能拿回来」交给编译器
+
+上一轮给三个用 `partialize` 的 store 补了运行时往返。
+剩下五个不用 `partialize`（持久化整个数据状态），它们的配对**可以在编译期查**，那比测试更好。
+
+### 只有一个方向是静默的，而那正是要补的那个
+
+`rehydrateOrDefault` 的签名约束 `State extends Restored`，所以：
+
+| 情况 | 现状 |
+| --- | --- |
+| schema **比** state **宽**（多一个键）| **已经会报错** —— 那个约束不满足 |
+| schema **比** state **窄**（少一个键）| **编译通过** —— state 当然 extends 一个子集 |
+
+而窄的那个方向正是会丢东西的：Zod 的 object 剥掉未名键，
+所以少写一个字段 = 写进 localStorage、下次启动被丢掉 = **用户设了、重启就没了，哪里都不报**。
+
+### 一条规则，五个 store
+
+`Paired<State, Persisted>` 放在 `lib/persistedStore.ts` —— 也就是 `rehydrateOrDefault` 所在的地方，
+共享的解析策略本来就该在同一个所有者名下。它按「键的值是不是函数」过滤，
+所以既能服务把 state 和 actions 分开声明的 store，也能服务写在一起的。
+
+不解析成 `false`，而是解析成**出问题的那些键**：
+
+```
+stateHasWhatTheSchemaWillStrip: "cursorStyle"
+```
+
+类型错误直接说出是哪一个。
+
+**五个都验证过**：往 state 加一个 schema 没有的字段 —— `streamReveal` / `completionSound` /
+`shellLayoutStore` / `appearance` 全部立刻在编译期报 `stateHasWhatTheSchemaWillStrip`。
+反方向也验过（往 schema 加一个 state 没有的键），确认是被 `rehydrateOrDefault` 的约束先拦下的 ——
+所以注释改成了这个事实，而不是笼统地说「两个方向都是本规则的功劳」。
+
+### 一个操作失误，记下来
+
+验证的时候我用 `git checkout --` 撤销故意制造的破坏 ——
+**那会把同一个文件里我刚加的断言一起撤掉**。事后逐个文件核过 `_paired` 还在。
+撤销要按改动撤，不能按文件撤。
+
+（另外全量 `vitest run` 这次被 OOM 杀掉了 —— 机器上还有别的会话在跑。
+改成分片跑：61 + 117 个文件，1184 条断言全过。）
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 编译期配对 | 0 / 5 → **5 / 5**，每个都验证过会失败 |
+| 单测（分片） | 178 文件 / **1184 全通过** |
+| 守卫 | `check:styles` / `check:classes` / `check:shorthand` 全绿 |
+| 视觉套件 | **未跑** —— 只加了类型断言，没改任何运行时行为 |

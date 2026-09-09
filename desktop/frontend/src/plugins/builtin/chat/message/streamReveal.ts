@@ -5,6 +5,7 @@ import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
+import type { Paired } from "@/lib/persistedStore";
 
 const STREAM_REVEALS = ["smooth", "typewriter"] as const;
 export type StreamReveal = (typeof STREAM_REVEALS)[number];
@@ -17,6 +18,10 @@ interface StreamRevealState {
 const STORAGE_KEY = "flame.stream-reveal";
 
 const persistSchema = z.object({ streamReveal: z.enum(STREAM_REVEALS) });
+
+/** Held equal at compile time — see `Paired`. */
+const _paired: Paired<StreamRevealState, z.infer<typeof persistSchema>> = true;
+void _paired;
 
 export const useStreamRevealStore = create<StreamRevealState>()(
   persist(

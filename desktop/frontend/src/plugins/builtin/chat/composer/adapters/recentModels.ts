@@ -2,6 +2,7 @@ import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
+import type { Paired } from "@/lib/persistedStore";
 
 /** A model the reader has actually chosen, most recent first. Identity is the pair, because
  *  two providers may serve the same id. */
@@ -18,6 +19,10 @@ const STORAGE_KEY = "flame.composer.recent-models";
 const persistSchema = z.object({
   recent: z.array(z.object({ provider: z.string(), id: z.string() })).max(KEEP),
 });
+
+/** Held equal at compile time — see `Paired`. */
+const _paired: Paired<RecentModelsState, z.infer<typeof persistSchema>> = true;
+void _paired;
 
 interface RecentModelsState {
   recent: RecentModel[];

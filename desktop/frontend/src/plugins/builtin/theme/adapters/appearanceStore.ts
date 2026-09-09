@@ -2,6 +2,7 @@ import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
+import type { Paired } from "@/lib/persistedStore";
 import {
   ACCENT_TINTS,
   DEFAULT_ACCENT_TINT,
@@ -33,6 +34,10 @@ const appearancePersistSchema = z.object({
   radiusScale: z.number(),
   motionScale: z.number(),
 });
+
+/** Held equal at compile time — see `Paired`. */
+const _paired: Paired<AppearancePreference, z.infer<typeof appearancePersistSchema>> = true;
+void _paired;
 
 export const useAppearanceStore = create<AppearancePreference & AppearanceEdit>()(
   persist(

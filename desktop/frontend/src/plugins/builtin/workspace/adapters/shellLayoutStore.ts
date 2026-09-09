@@ -5,6 +5,7 @@ import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
+import type { Paired } from "@/lib/persistedStore";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 
 const STORAGE_KEY = "flame.shell-layout";
@@ -20,6 +21,10 @@ const shellLayoutPersistSchema = z.object({
   sidebarWidth: z.number(),
   dockWidthRatio: z.number().min(0).max(1).nullable(),
 });
+
+/** Held equal at compile time — see `Paired`. */
+const _paired: Paired<ShellLayoutState, z.infer<typeof shellLayoutPersistSchema>> = true;
+void _paired;
 
 interface ShellLayoutActions {
   toggleSidebar: () => void;
