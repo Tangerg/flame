@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"log/slog"
 	"time"
 )
@@ -37,13 +38,13 @@ type RecoveryCoordinator struct {
 // NewRecovery constructs the ordered recovery use case with both reconcilers and
 // the ownership backend required by every Runtime.
 func NewRecovery(runs RunRecovery, goals GoalRecovery, ownership RecoveryBackend) (*RecoveryCoordinator, error) {
-	if nilDependency(runs) {
+	if dependency.Missing(runs) {
 		return nil, errors.New("ownership recovery: Run reconciler is required")
 	}
-	if nilDependency(goals) {
+	if dependency.Missing(goals) {
 		return nil, errors.New("ownership recovery: Goal reconciler is required")
 	}
-	if nilDependency(ownership) {
+	if dependency.Missing(ownership) {
 		return nil, errors.New("ownership recovery: ownership backend is required")
 	}
 	return &RecoveryCoordinator{runs: runs, goals: goals, ownership: ownership}, nil

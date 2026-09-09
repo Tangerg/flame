@@ -12,6 +12,7 @@ import (
 	skillspec "github.com/Tangerg/scope/skills"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
@@ -106,13 +107,13 @@ type SkillProposalMiner struct {
 // NewSkillProposalMiner requires the conversation reader, proposal use case,
 // active-Skill source for revision reads, and utility-model client resolver.
 func NewSkillProposalMiner(history messageReader, proposals proposalSubmitter, source skillSource, client modeladapter.AuxiliaryResolver, values SkillMiningPolicyValues) (*SkillProposalMiner, error) {
-	if nilDependency(history) {
+	if dependency.Missing(history) {
 		return nil, errors.New("skill proposal miner: conversation reader is required")
 	}
-	if nilDependency(proposals) {
+	if dependency.Missing(proposals) {
 		return nil, errors.New("skill proposal miner: proposal submitter is required")
 	}
-	if nilDependency(source) {
+	if dependency.Missing(source) {
 		return nil, errors.New("skill proposal miner: skill source is required")
 	}
 	if client == nil {

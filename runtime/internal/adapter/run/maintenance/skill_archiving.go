@@ -3,6 +3,7 @@ package maintenance
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"sync"
 	"time"
 )
@@ -62,7 +63,7 @@ type IdleSkillArchiver struct {
 // NewIdleSkillArchiver builds a Run-boundary scheduler over the required
 // Application Skill-curation capability.
 func NewIdleSkillArchiver(skills idleSkillArchiver, values SkillArchivePolicyValues) (*IdleSkillArchiver, error) {
-	if nilDependency(skills) {
+	if dependency.Missing(skills) {
 		return nil, errors.New("idle skill archiver: skill curator is required")
 	}
 	policy, err := newSkillArchivePolicy(values)

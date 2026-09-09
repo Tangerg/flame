@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	domain "github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
 
@@ -51,10 +52,10 @@ type Coordinator struct {
 
 // New constructs the complete review use case before it can accept requests.
 func New(cfg Config) (*Coordinator, error) {
-	if nilDependency(cfg.Store) {
+	if dependency.Missing(cfg.Store) {
 		return nil, errors.New("agentmemory: review store is required")
 	}
-	if nilDependency(cfg.Roots) {
+	if dependency.Missing(cfg.Roots) {
 		return nil, errors.New("agentmemory: workspace resolver is required")
 	}
 	now := cfg.Now

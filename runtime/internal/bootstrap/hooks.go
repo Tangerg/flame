@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"reflect"
 
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 // HookTrust reports whether a project root may run user lifecycle hooks.
@@ -17,15 +17,8 @@ type HookTrust interface {
 // NewHookResolver builds the runtime hook resolver from the composition root's
 // user-home snapshot and the durable project trust policy.
 func NewHookResolver(userHome string, trust HookTrust) (*adapterhooks.Resolver, error) {
-	value := reflect.ValueOf(trust)
-	if !value.IsValid() {
+	if dependency.Missing(trust) {
 		return nil, fmt.Errorf("hooks: trust store is required")
-	}
-	switch value.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		if value.IsNil() {
-			return nil, fmt.Errorf("hooks: trust store is required")
-		}
 	}
 	return adapterhooks.NewResolver(userHome,
 		func(ctx context.Context, projectRoot string) (bool, error) {

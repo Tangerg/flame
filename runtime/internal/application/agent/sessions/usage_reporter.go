@@ -9,6 +9,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -67,10 +68,10 @@ type UsageReporter struct {
 
 // NewUsageReporter constructs a complete usage reporter over the supplied projections.
 func NewUsageReporter(deps UsageDependencies) (*UsageReporter, error) {
-	if nilDependency(deps.Runs) {
+	if dependency.Missing(deps.Runs) {
 		return nil, errors.New("sessions: usage Run reader is required")
 	}
-	if nilDependency(deps.Sessions) {
+	if dependency.Missing(deps.Sessions) {
 		return nil, errors.New("sessions: usage session lister is required")
 	}
 	now := deps.Now

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
@@ -38,73 +39,73 @@ func TestNewFinalizerRejectsPartialTitleMaintenance(t *testing.T) {
 }
 
 func mustNewEffects(cfg Config) *Effects {
-	if nilDependency(cfg.Schedules) {
+	if dependency.Missing(cfg.Schedules) {
 		cfg.Schedules = inertSchedules{}
 	}
-	if nilDependency(cfg.GoalRuns) {
+	if dependency.Missing(cfg.GoalRuns) {
 		cfg.GoalRuns = inertGoalRuns{}
 	}
-	if nilDependency(cfg.ToolResults) {
+	if dependency.Missing(cfg.ToolResults) {
 		cfg.ToolResults = inertToolResults{}
 	}
 	interrupts := &fakeInterrupts{}
-	if nilDependency(cfg.Interrupts) {
+	if dependency.Missing(cfg.Interrupts) {
 		cfg.Interrupts = interrupts
 	}
-	if nilDependency(cfg.ResumeClaims) {
+	if dependency.Missing(cfg.ResumeClaims) {
 		if claims, ok := cfg.Interrupts.(ResumeClaimStore); ok {
 			cfg.ResumeClaims = claims
 		} else {
 			cfg.ResumeClaims = interrupts
 		}
 	}
-	if nilDependency(cfg.Sessions) {
+	if dependency.Missing(cfg.Sessions) {
 		cfg.Sessions = &fakeSession{}
 	}
-	if nilDependency(cfg.Transcript) {
+	if dependency.Missing(cfg.Transcript) {
 		cfg.Transcript = &fakeTranscript{}
 	}
 	items := inertItems{}
-	if nilDependency(cfg.ItemReplacer) {
+	if dependency.Missing(cfg.ItemReplacer) {
 		if replacer, ok := cfg.Transcript.(ItemReplacer); ok {
 			cfg.ItemReplacer = replacer
 		} else {
 			cfg.ItemReplacer = items
 		}
 	}
-	if nilDependency(cfg.ToolApprovals) {
+	if dependency.Missing(cfg.ToolApprovals) {
 		if approvals, ok := cfg.Transcript.(ToolApprovalStore); ok {
 			cfg.ToolApprovals = approvals
 		} else {
 			cfg.ToolApprovals = items
 		}
 	}
-	if nilDependency(cfg.ModelInvocations) {
+	if dependency.Missing(cfg.ModelInvocations) {
 		cfg.ModelInvocations = inertModelInvocations{}
 	}
-	if nilDependency(cfg.ToolInvocations) {
+	if dependency.Missing(cfg.ToolInvocations) {
 		cfg.ToolInvocations = inertToolInvocations{}
 	}
-	if nilDependency(cfg.Conversation) {
+	if dependency.Missing(cfg.Conversation) {
 		cfg.Conversation = &fakeStores{}
 	}
-	if nilDependency(cfg.State) {
+	if dependency.Missing(cfg.State) {
 		cfg.State = &fakeRunState{}
 	}
-	if nilDependency(cfg.RunProgress) {
+	if dependency.Missing(cfg.RunProgress) {
 		if progress, ok := cfg.State.(RunProgressWriter); ok {
 			cfg.RunProgress = progress
 		} else {
 			cfg.RunProgress = &fakeRunState{}
 		}
 	}
-	if nilDependency(cfg.ExecutorCheckpoints) {
+	if dependency.Missing(cfg.ExecutorCheckpoints) {
 		cfg.ExecutorCheckpoints = &recordingExecutorCheckpointStore{}
 	}
-	if nilDependency(cfg.ChildRunStarts) {
+	if dependency.Missing(cfg.ChildRunStarts) {
 		cfg.ChildRunStarts = &fakeChildRunStarts{}
 	}
-	if nilDependency(cfg.Tx) {
+	if dependency.Missing(cfg.Tx) {
 		cfg.Tx = func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }
 	}
 	effects, err := New(cfg)

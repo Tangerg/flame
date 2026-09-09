@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	domain "github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
 
@@ -38,7 +39,7 @@ type Curation struct {
 
 // NewCuration builds the automatic memory-maintenance use case.
 func NewCuration(cfg CurationConfig) (*Curation, error) {
-	if nilDependency(cfg.Store) {
+	if dependency.Missing(cfg.Store) {
 		return nil, errors.New("agentmemory: curation store is required")
 	}
 	return &Curation{store: cfg.Store, invalidations: cfg.Invalidations}, nil

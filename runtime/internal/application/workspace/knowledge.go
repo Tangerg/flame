@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/knowledge"
 )
 
@@ -39,7 +40,7 @@ func NewKnowledge(
 	observations *AuthoredWatch,
 	invalidations invalidation.Publish,
 ) (*Knowledge, error) {
-	for _, dependency := range []struct {
+	for _, required := range []struct {
 		name  string
 		value any
 	}{
@@ -48,8 +49,8 @@ func NewKnowledge(
 		{name: "store", value: store},
 		{name: "authored observation", value: observations},
 	} {
-		if missingDependency(dependency.value) {
-			return nil, fmt.Errorf("workspace: knowledge %s is required", dependency.name)
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("workspace: knowledge %s is required", required.name)
 		}
 	}
 	return &Knowledge{

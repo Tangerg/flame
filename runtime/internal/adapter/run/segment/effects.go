@@ -13,10 +13,10 @@ package segment
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -303,9 +303,9 @@ func New(cfg Config) (*Effects, error) {
 		{"tool result store", cfg.ToolResults},
 		{"transactor", cfg.Tx},
 	}
-	for _, dependency := range required {
-		if nilDependency(dependency.value) {
-			return nil, fmt.Errorf("segment: %s is required", dependency.name)
+	for _, required := range required {
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("segment: %s is required", required.name)
 		}
 	}
 	return &Effects{
@@ -327,16 +327,6 @@ func New(cfg Config) (*Effects, error) {
 		childRunStarts:      cfg.ChildRunStarts,
 		tx:                  cfg.Tx,
 	}, nil
-}
-
-func nilDependency(value any) bool {
-	if value == nil {
-		return true
-	}
-	kind := reflect.ValueOf(value).Kind()
-	return (kind == reflect.Chan || kind == reflect.Func || kind == reflect.Interface ||
-		kind == reflect.Map || kind == reflect.Pointer || kind == reflect.Slice) &&
-		reflect.ValueOf(value).IsNil()
 }
 
 // ReadWaitingCheckpoint returns the exact opaque recovery point selected by

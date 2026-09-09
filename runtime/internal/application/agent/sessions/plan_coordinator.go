@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
@@ -36,7 +37,7 @@ type PlanDependencies struct {
 
 // NewPlanCoordinator constructs the Plan use cases over a required store.
 func NewPlanCoordinator(deps PlanDependencies) (*PlanCoordinator, error) {
-	if nilDependency(deps.Store) {
+	if dependency.Missing(deps.Store) {
 		return nil, errors.New("sessions: Plan store is required")
 	}
 	if deps.Now == nil {

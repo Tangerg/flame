@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	toolsvc "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
@@ -41,15 +42,15 @@ type DiagnosticTools struct {
 // NewDiagnosticTools returns diagnostic tool use cases over the direct registry and workspace-root
 // admission boundary.
 func NewDiagnosticTools(registry DiagnosticToolRegistry, roots DiagnosticToolRoots) (*DiagnosticTools, error) {
-	for _, dependency := range []struct {
+	for _, required := range []struct {
 		name  string
 		value any
 	}{
 		{name: "registry", value: registry},
 		{name: "roots", value: roots},
 	} {
-		if missingDependency(dependency.value) {
-			return nil, fmt.Errorf("workspace: diagnostic tool %s is required", dependency.name)
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("workspace: diagnostic tool %s is required", required.name)
 		}
 	}
 	return &DiagnosticTools{registry: registry, roots: roots}, nil

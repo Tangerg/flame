@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	feedbackdomain "github.com/Tangerg/flame/runtime/internal/domain/session/feedback"
 )
 
@@ -29,7 +30,7 @@ type FeedbackRecorder struct {
 
 // NewFeedbackRecorder wires the complete durable receiver for feedback records.
 func NewFeedbackRecorder(store FeedbackStore) (*FeedbackRecorder, error) {
-	if nilDependency(store) {
+	if dependency.Missing(store) {
 		return nil, errors.New("sessions: feedback store is required")
 	}
 	return &FeedbackRecorder{store: store}, nil

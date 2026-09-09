@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"reflect"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	domain "github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
 
@@ -39,7 +39,7 @@ type ReadModel struct {
 // NewReadModel constructs model-context reads over a required store. A nil
 // resolver selects keyword-only search.
 func NewReadModel(store ReadStore, resolveEmbedder func(context.Context) (Embedder, error)) (*ReadModel, error) {
-	if nilDependency(store) {
+	if dependency.Missing(store) {
 		return nil, errors.New("agentmemory: read store is required")
 	}
 	return &ReadModel{store: store, resolveEmbedder: resolveEmbedder}, nil
@@ -100,7 +100,7 @@ func (r *ReadModel) resolveSemanticQuery(ctx context.Context, query string) (sem
 		slog.WarnContext(ctx, "agentmemory: resolve embedding model", "error", err)
 		return semanticQuery{}, false
 	}
-	if nilDependency(embedder) {
+	if dependency.Missing(embedder) {
 		return semanticQuery{}, false
 	}
 	space := embedder.ID()
@@ -120,19 +120,6 @@ func (r *ReadModel) resolveSemanticQuery(ctx context.Context, query string) (sem
 		space:       space,
 		queryVector: slices.Clone(queryVectors[0]),
 	}, true
-}
-
-func nilDependency(value any) bool {
-	if value == nil {
-		return true
-	}
-	reflected := reflect.ValueOf(value)
-	switch reflected.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		return reflected.IsNil()
-	default:
-		return false
-	}
 }
 
 func (r *ReadModel) refreshEmbeddings(ctx context.Context, semantic semanticQuery, items []domain.Item) {

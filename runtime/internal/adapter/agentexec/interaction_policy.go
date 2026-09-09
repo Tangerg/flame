@@ -2,6 +2,7 @@ package agentexec
 
 import (
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"time"
 )
 
@@ -53,7 +54,7 @@ func newInteractionExecutionPolicy(config InteractionExecutorConfig) (interactio
 	if err != nil {
 		return interactionExecutionPolicy{}, err
 	}
-	if toolResultOffload.enabled && isNilInteractionCapability(config.ToolResultStore) {
+	if toolResultOffload.enabled && dependency.Missing(config.ToolResultStore) {
 		return interactionExecutionPolicy{}, fmt.Errorf("agentexec: enabled Tool-result offload requires a store")
 	}
 	return interactionExecutionPolicy{

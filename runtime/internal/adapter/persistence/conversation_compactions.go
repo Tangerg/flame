@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -35,7 +36,7 @@ func NewConversationCompactions(
 	runs conversationRuns,
 	tx Transactor,
 ) (*ConversationCompactions, error) {
-	for _, dependency := range []struct {
+	for _, required := range []struct {
 		name  string
 		value any
 	}{
@@ -43,8 +44,8 @@ func NewConversationCompactions(
 		{name: "Run store", value: runs},
 		{name: "transactor", value: tx},
 	} {
-		if missingSessionStore(dependency.value) {
-			return nil, fmt.Errorf("persistence: conversation compaction %s is required", dependency.name)
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("persistence: conversation compaction %s is required", required.name)
 		}
 	}
 	return &ConversationCompactions{history: history, runs: runs, tx: tx}, nil

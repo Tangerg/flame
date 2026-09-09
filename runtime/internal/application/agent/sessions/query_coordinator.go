@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -111,9 +112,9 @@ func NewQueryCoordinator(deps QueryDependencies) (*QueryCoordinator, error) {
 		{"session reader", deps.Sessions},
 		{"Plan reader", deps.Plan},
 	}
-	for _, dependency := range required {
-		if nilDependency(dependency.value) {
-			return nil, fmt.Errorf("sessions: query %s is required", dependency.name)
+	for _, required := range required {
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("sessions: query %s is required", required.name)
 		}
 	}
 	return &QueryCoordinator{

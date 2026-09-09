@@ -23,6 +23,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -172,19 +173,19 @@ func NewDriver(
 	ownership DriveOwnership,
 	instructions RunInstructionBuilder,
 ) (*Driver, error) {
-	if missingDependency(store) {
+	if dependency.Missing(store) {
 		return nil, errors.New("goals: store is required")
 	}
-	if missingDependency(autonomousRuns) {
+	if dependency.Missing(autonomousRuns) {
 		return nil, errors.New("goals: autonomous runs are required")
 	}
-	if missingDependency(sessions) {
+	if dependency.Missing(sessions) {
 		return nil, errors.New("goals: session policy reader is required")
 	}
 	if mutations == nil {
 		return nil, errors.New("goals: shared session mutations are required")
 	}
-	if missingDependency(ownership) {
+	if dependency.Missing(ownership) {
 		return nil, errors.New("goals: drive ownership is required")
 	}
 	if instructions == nil {

@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 // SessionTitles is the Application capability for best-effort initial title
@@ -66,20 +67,20 @@ type Finalizer struct {
 var _ runs.SegmentFinalizer = (*Finalizer)(nil)
 
 func NewFinalizer(cfg FinalizerConfig) (*Finalizer, error) {
-	if cfg.Checkpoints != nil && nilDependency(cfg.Checkpoints) {
+	if cfg.Checkpoints != nil && dependency.Missing(cfg.Checkpoints) {
 		return nil, errors.New("segment: optional checkpoints must not be typed nil")
 	}
 	finalizer := &Finalizer{checkpoints: cfg.Checkpoints}
 	if cfg.Titles == nil {
 		return finalizer, nil
 	}
-	if nilDependency(cfg.Titles.Sessions) {
+	if dependency.Missing(cfg.Titles.Sessions) {
 		return nil, errors.New("segment: session titles are required when title maintenance is enabled")
 	}
-	if nilDependency(cfg.Titles.Generator) {
+	if dependency.Missing(cfg.Titles.Generator) {
 		return nil, errors.New("segment: title generator is required when title maintenance is enabled")
 	}
-	if nilDependency(cfg.Titles.Tasks) {
+	if dependency.Missing(cfg.Titles.Tasks) {
 		return nil, errors.New("segment: task launcher is required when title maintenance is enabled")
 	}
 	finalizer.sessionTitles = cfg.Titles.Sessions

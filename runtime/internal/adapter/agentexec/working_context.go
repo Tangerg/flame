@@ -13,6 +13,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -58,7 +59,7 @@ func NewWorkingContextComposer(config WorkingContextConfig) (*WorkingContextComp
 	if !filepath.IsAbs(config.UserHome) {
 		return nil, errors.New("agentexec: working context requires an absolute user home")
 	}
-	for _, dependency := range []struct {
+	for _, required := range []struct {
 		name  string
 		value any
 	}{
@@ -69,8 +70,8 @@ func NewWorkingContextComposer(config WorkingContextConfig) (*WorkingContextComp
 		{"goal reader", config.Goal},
 		{"hook resolver", config.Hooks},
 	} {
-		if isNilInteractionCapability(dependency.value) {
-			return nil, fmt.Errorf("agentexec: working context %s is required", dependency.name)
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("agentexec: working context %s is required", required.name)
 		}
 	}
 	return &WorkingContextComposer{

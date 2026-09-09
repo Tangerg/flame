@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
@@ -42,10 +43,10 @@ type ConversationHistory struct {
 
 // NewConversationHistory returns the conversation use cases backed by store.
 func NewConversationHistory(store ConversationStore, compactions ConversationCompactionStore) (*ConversationHistory, error) {
-	if nilDependency(store) {
+	if dependency.Missing(store) {
 		return nil, errors.New("runs: conversation store is required")
 	}
-	if nilDependency(compactions) {
+	if dependency.Missing(compactions) {
 		return nil, errors.New("runs: conversation compaction store is required")
 	}
 	return &ConversationHistory{store: store, compactions: compactions}, nil

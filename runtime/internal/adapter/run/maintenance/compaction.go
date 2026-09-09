@@ -7,6 +7,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 // compactionStore is the worker's narrow conversation use-case view. The
@@ -70,13 +71,13 @@ func NewCompactor(
 	values CompactionPolicyValues,
 	contextState SessionContextInvalidator,
 ) (*Compactor, error) {
-	if nilDependency(store) {
+	if dependency.Missing(store) {
 		return nil, errors.New("compactor: conversation store is required")
 	}
 	if client == nil {
 		return nil, errors.New("compactor: utility model resolver is required")
 	}
-	if nilDependency(contextState) {
+	if dependency.Missing(contextState) {
 		return nil, errors.New("compactor: session context invalidator is required")
 	}
 	policy, err := newCompactionPolicy(values)

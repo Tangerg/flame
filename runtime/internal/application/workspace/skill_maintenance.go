@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 // IdleSkillSweeper is the persistence port for automatic archival policy. The
@@ -25,10 +26,10 @@ type SkillMaintenance struct {
 
 // NewSkillMaintenance builds the automatic Skill-library curation use case.
 func NewSkillMaintenance(sweeper IdleSkillSweeper, observations *AuthoredWatch, invalidations invalidation.Publish) (*SkillMaintenance, error) {
-	if missingDependency(sweeper) {
+	if dependency.Missing(sweeper) {
 		return nil, errors.New("workspace: idle skill sweeper is required")
 	}
-	if missingDependency(observations) {
+	if dependency.Missing(observations) {
 		return nil, errors.New("workspace: idle skill authored observation is required")
 	}
 	return &SkillMaintenance{sweeper: sweeper, observations: observations, invalidations: invalidations}, nil

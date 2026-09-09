@@ -7,6 +7,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -254,7 +255,7 @@ func newModelContextCompaction(
 	if err := calibration.Validate(); err != nil {
 		return ModelContextCompaction{}, err
 	}
-	if counter != nil && isNilInteractionCapability(counter) {
+	if counter != nil && dependency.Missing(counter) {
 		return ModelContextCompaction{}, fmt.Errorf(
 			"%w: input token counter is nil",
 			errInvalidModelContextCompaction,

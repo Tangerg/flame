@@ -18,6 +18,7 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -110,11 +111,11 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	if config.Lifetime == nil {
 		return nil, errors.New("agentexec: Interaction lifetime is required")
 	}
-	if isNilInteractionCapability(config.ChatResolver) {
+	if dependency.Missing(config.ChatResolver) {
 		return nil, errors.New("agentexec: Interaction requires a chat resolver")
 	}
-	if isNilInteractionCapability(config.ModelContextCompactor) !=
-		isNilInteractionCapability(config.ModelContextState) {
+	if dependency.Missing(config.ModelContextCompactor) !=
+		dependency.Missing(config.ModelContextState) {
 		return nil, errors.New("agentexec: model-context compactor and state source must be configured together")
 	}
 	for _, capability := range []struct {
@@ -134,7 +135,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 		{name: "lifecycle hooks", value: config.LifecycleHooks},
 		{name: "Tool-result store", value: config.ToolResultStore},
 	} {
-		if capability.value != nil && isNilInteractionCapability(capability.value) {
+		if capability.value != nil && dependency.Missing(capability.value) {
 			return nil, fmt.Errorf("agentexec: Interaction %s is typed nil", capability.name)
 		}
 	}

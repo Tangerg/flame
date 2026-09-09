@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"io"
 )
 
@@ -22,7 +23,7 @@ func NewGitWatch(scope *Scope, watcher GitStateWatcher) (*GitWatch, error) {
 	if scope == nil {
 		return nil, errors.New("workspace: git watch scope is required")
 	}
-	if missingDependency(watcher) {
+	if dependency.Missing(watcher) {
 		return nil, errors.New("workspace: git state watcher is required")
 	}
 	return &GitWatch{scope: scope, watcher: watcher}, nil

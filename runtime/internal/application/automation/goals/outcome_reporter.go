@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 )
@@ -45,7 +46,7 @@ type OutcomeReporter struct {
 
 // NewOutcomeReporter constructs terminal outcome reporting over the required store.
 func NewOutcomeReporter(store Store) (*OutcomeReporter, error) {
-	if missingDependency(store) {
+	if dependency.Missing(store) {
 		return nil, errors.New("goals: outcome store is required")
 	}
 	return &OutcomeReporter{goals: store, now: time.Now}, nil

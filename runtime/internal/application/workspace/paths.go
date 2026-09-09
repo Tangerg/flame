@@ -5,6 +5,7 @@ package workspace
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 // Workspace input failures are stable application errors.
@@ -40,7 +41,7 @@ type Scope struct {
 
 // NewScope constructs the shared workspace root scope.
 func NewScope(defaultWorkspacePath, userHome string, paths Paths) (*Scope, error) {
-	if missingDependency(paths) {
+	if dependency.Missing(paths) {
 		return nil, errors.New("workspace: path resolver is required")
 	}
 	return &Scope{defaultWorkspacePath: defaultWorkspacePath, userHome: userHome, paths: paths}, nil

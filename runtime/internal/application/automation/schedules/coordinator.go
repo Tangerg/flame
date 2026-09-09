@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
@@ -105,7 +106,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{name: "model admitter", value: deps.Models},
 		{name: "schedule identity factory", value: deps.NewScheduleID},
 	} {
-		if dependencyMissing(required.value) {
+		if dependency.Missing(required.value) {
 			return nil, fmt.Errorf("schedules: %s is required", required.name)
 		}
 	}

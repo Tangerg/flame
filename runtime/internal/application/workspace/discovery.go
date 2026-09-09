@@ -10,6 +10,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
@@ -29,7 +30,7 @@ type Discovery struct {
 }
 
 func NewDiscovery(scope *Scope, workspaces Catalog, agentDocs AgentDocFinder, recipes RecipeLister) (*Discovery, error) {
-	for _, dependency := range []struct {
+	for _, required := range []struct {
 		name  string
 		value any
 	}{
@@ -38,8 +39,8 @@ func NewDiscovery(scope *Scope, workspaces Catalog, agentDocs AgentDocFinder, re
 		{name: "agent document finder", value: agentDocs},
 		{name: "recipe lister", value: recipes},
 	} {
-		if missingDependency(dependency.value) {
-			return nil, fmt.Errorf("workspace: discovery %s is required", dependency.name)
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("workspace: discovery %s is required", required.name)
 		}
 	}
 	return &Discovery{scope: scope, workspaces: workspaces, agentDocs: agentDocs, recipes: recipes}, nil

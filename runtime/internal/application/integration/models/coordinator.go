@@ -9,11 +9,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"sync"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
@@ -130,7 +130,7 @@ type Config struct {
 
 // New returns a models Coordinator over cfg.
 func New(cfg Config) (*Coordinator, error) {
-	for _, dependency := range []struct {
+	for _, required := range []struct {
 		name  string
 		value any
 	}{
@@ -145,9 +145,8 @@ func New(cfg Config) (*Coordinator, error) {
 		{"embedding validator", cfg.EmbeddingValidator},
 		{"embedding store", cfg.EmbeddingStore},
 	} {
-		value := reflect.ValueOf(dependency.value)
-		if !value.IsValid() || ((value.Kind() == reflect.Pointer || value.Kind() == reflect.Func || value.Kind() == reflect.Map || value.Kind() == reflect.Slice || value.Kind() == reflect.Chan || value.Kind() == reflect.Interface) && value.IsNil()) {
-			return nil, fmt.Errorf("models: %s is required", dependency.name)
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("models: %s is required", required.name)
 		}
 	}
 	if cfg.ProbeTimeout <= 0 {

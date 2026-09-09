@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
@@ -185,13 +186,13 @@ func NewRecovery(
 	admissions RecoveryAdmissions,
 	invalidations invalidation.Publish,
 ) (*Recovery, error) {
-	if nilDependency(store) {
+	if dependency.Missing(store) {
 		return nil, errors.New("runs: recovery store is required")
 	}
-	if nilDependency(resumability) {
+	if dependency.Missing(resumability) {
 		return nil, errors.New("runs: waiting execution resumability is required")
 	}
-	if nilDependency(admissions) {
+	if dependency.Missing(admissions) {
 		return nil, errors.New("runs: recovery admissions are required")
 	}
 	return &Recovery{

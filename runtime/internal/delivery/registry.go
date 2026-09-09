@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/contractshape"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 // Registry is the single catalog of Runtime operations. It owns both the
@@ -237,16 +238,7 @@ func (r *Registry) registerStream[Capability, Params, Ack, Event any](
 }
 
 func capabilityAvailable(capability any) bool {
-	if capability == nil {
-		return false
-	}
-	value := reflect.ValueOf(capability)
-	switch value.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		return !value.IsNil()
-	default:
-		return true
-	}
+	return !dependency.Missing(capability)
 }
 
 func eraseEventType[Event any](events iter.Seq2[Event, error]) iter.Seq2[any, error] {

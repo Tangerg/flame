@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/scope/core/embeddingclient"
 
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
@@ -23,7 +24,7 @@ type EmbeddingResolver struct {
 
 // NewEmbeddingResolver returns a complete resolver over the provider credential lookup.
 func NewEmbeddingResolver(providers CredentialLookup) (*EmbeddingResolver, error) {
-	if missingDependency(providers) {
+	if dependency.Missing(providers) {
 		return nil, errors.New("model: embedding provider credential lookup is required")
 	}
 	return &EmbeddingResolver{providers: providers}, nil
@@ -31,7 +32,7 @@ func NewEmbeddingResolver(providers CredentialLookup) (*EmbeddingResolver, error
 
 // Resolve builds an embedder for the current selection and registry snapshot.
 func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelref.Selection) (agentmemoryapp.Embedder, error) {
-	if e == nil || missingDependency(e.providers) {
+	if e == nil || dependency.Missing(e.providers) {
 		return nil, errors.New("model: embedding resolver is not configured")
 	}
 	if err := selection.ValidateExact(); err != nil {

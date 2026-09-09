@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -32,7 +33,7 @@ func NewResolvedChat(client *chatclient.Client, counter InputTokenCounter) (Reso
 	if client == nil {
 		return ResolvedChat{}, errors.New("model: resolved chat client is nil")
 	}
-	if counter != nil && missingDependency(counter) {
+	if counter != nil && dependency.Missing(counter) {
 		return ResolvedChat{}, errors.New("model: resolved chat input token counter is nil")
 	}
 	return ResolvedChat{client: client, inputTokenCounter: counter}, nil
@@ -64,7 +65,7 @@ type ChatResolver struct {
 
 // NewChatResolver returns a complete resolver over the provider configuration lookup.
 func NewChatResolver(providers CredentialLookup) (*ChatResolver, error) {
-	if missingDependency(providers) {
+	if dependency.Missing(providers) {
 		return nil, errors.New("model: chat provider credential lookup is required")
 	}
 	return &ChatResolver{providers: providers}, nil
@@ -75,7 +76,7 @@ func NewChatResolver(providers CredentialLookup) (*ChatResolver, error) {
 // authentication fails as invalid credentials; optional-key providers may
 // resolve without a registry row.
 func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelref.Selection) (ResolvedChat, error) {
-	if c == nil || missingDependency(c.providers) {
+	if c == nil || dependency.Missing(c.providers) {
 		return ResolvedChat{}, errors.New("model: chat resolver is not configured")
 	}
 	spec, err := c.resolveClientSpec(ctx, selection)

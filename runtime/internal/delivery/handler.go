@@ -129,7 +129,7 @@ func NewHandler(cfg HandlerConfig) (*Handler, error) {
 }
 
 func (c HandlerConfig) validate() error {
-	for _, dependency := range []struct {
+	for _, required := range []struct {
 		name  string
 		value any
 	}{
@@ -155,8 +155,8 @@ func (c HandlerConfig) validate() error {
 		{name: "WorkspaceWatch", value: c.WorkspaceWatch},
 		{name: "WorkspaceAuthoredWatch", value: c.WorkspaceAuthoredWatch},
 	} {
-		if !capabilityAvailable(dependency.value) {
-			return fmt.Errorf("delivery: %s is required", dependency.name)
+		if !capabilityAvailable(required.value) {
+			return fmt.Errorf("delivery: %s is required", required.name)
 		}
 	}
 	if _, err := runtimeidentity.ParseRuntimeInstance(c.ServerInfo.InstanceID); err != nil {

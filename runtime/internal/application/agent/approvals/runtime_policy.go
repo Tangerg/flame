@@ -3,11 +3,11 @@ package approvals
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sync"
 	"sync/atomic"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 )
@@ -24,15 +24,14 @@ func NewRuntimePolicy(
 	if !mode.ValidDefault() {
 		return nil, fmt.Errorf("%w: %q", approval.ErrInvalidMode, mode)
 	}
-	for _, dependency := range []struct {
+	for _, required := range []struct {
 		name  string
 		value any
 	}{
 		{"rule store", store}, {"session mode store", modeStore},
 	} {
-		value := reflect.ValueOf(dependency.value)
-		if !value.IsValid() || ((value.Kind() == reflect.Pointer || value.Kind() == reflect.Map || value.Kind() == reflect.Func) && value.IsNil()) {
-			return nil, fmt.Errorf("approvals: %s is required", dependency.name)
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("approvals: %s is required", required.name)
 		}
 	}
 	p := &RuntimePolicy{store: store, modeStore: modeStore, invalidations: invalidations}

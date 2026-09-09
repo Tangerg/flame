@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
@@ -33,7 +34,7 @@ type AdmissionBackend interface {
 // NewGate constructs a Gate whose single-writer and working-tree invariants span
 // every Runtime process sharing the required ownership backend.
 func NewGate(ownership AdmissionBackend) (*Gate, error) {
-	if nilDependency(ownership) {
+	if dependency.Missing(ownership) {
 		return nil, errors.New("session admission: ownership backend is required")
 	}
 	return &Gate{

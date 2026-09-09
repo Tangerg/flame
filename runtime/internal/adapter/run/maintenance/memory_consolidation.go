@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
@@ -105,10 +106,10 @@ type MemoryConsolidator struct {
 // NewMemoryConsolidator builds a Run-boundary worker from its required history,
 // memory, and utility-model collaborators.
 func NewMemoryConsolidator(store messageReader, memory agentMemory, client modeladapter.AuxiliaryResolver, values MemoryCurationPolicyValues) (*MemoryConsolidator, error) {
-	if nilDependency(store) {
+	if dependency.Missing(store) {
 		return nil, errors.New("memory consolidator: conversation reader is required")
 	}
-	if nilDependency(memory) {
+	if dependency.Missing(memory) {
 		return nil, errors.New("memory consolidator: memory store is required")
 	}
 	if client == nil {

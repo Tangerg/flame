@@ -6,6 +6,7 @@ import (
 
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 )
 
@@ -41,7 +42,7 @@ type ResolvedHook struct {
 }
 
 func NewHooks(scope *Scope, inspector HookInspector, trust HookTrustStore, invalidations invalidation.Publish) (*Hooks, error) {
-	for _, dependency := range []struct {
+	for _, required := range []struct {
 		name  string
 		value any
 	}{
@@ -49,8 +50,8 @@ func NewHooks(scope *Scope, inspector HookInspector, trust HookTrustStore, inval
 		{name: "inspector", value: inspector},
 		{name: "trust store", value: trust},
 	} {
-		if missingDependency(dependency.value) {
-			return nil, fmt.Errorf("workspace: hooks %s is required", dependency.name)
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("workspace: hooks %s is required", required.name)
 		}
 	}
 	return &Hooks{scope: scope, inspector: inspector, trust: trust, invalidations: invalidations}, nil

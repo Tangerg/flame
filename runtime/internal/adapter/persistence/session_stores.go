@@ -3,12 +3,12 @@ package persistence
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/Tangerg/scope/core/chat"
 
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
@@ -94,7 +94,7 @@ type goalStore interface {
 // one complete mutation, and a missing collaborator would silently narrow it
 // rather than fail.
 func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
-	for _, dependency := range []struct {
+	for _, required := range []struct {
 		name  string
 		value any
 	}{
@@ -112,8 +112,8 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 		{name: "Goal store", value: cfg.Goals},
 		{name: "transactor", value: cfg.Tx},
 	} {
-		if missingSessionStore(dependency.value) {
-			return nil, fmt.Errorf("persistence: session %s is required", dependency.name)
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("persistence: session %s is required", required.name)
 		}
 	}
 	return &SessionStores{
@@ -131,19 +131,6 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 		goals:               cfg.Goals,
 		tx:                  cfg.Tx,
 	}, nil
-}
-
-func missingSessionStore(value any) bool {
-	if value == nil {
-		return true
-	}
-	reflected := reflect.ValueOf(value)
-	switch reflected.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		return reflected.IsNil()
-	default:
-		return false
-	}
 }
 
 var (

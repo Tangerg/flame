@@ -6,13 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"reflect"
 	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec/interactioninput"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -623,7 +623,7 @@ func validateToolManifest(manifest toolset.Manifest) error {
 	}{{name: "visible", values: manifest.Visible}, {name: "deferred", values: manifest.Deferred}} {
 		name, values := group.name, group.values
 		for index, executable := range values {
-			if isNilInteractionCapability(executable) {
+			if dependency.Missing(executable) {
 				return fmt.Errorf("agentexec: %s Interaction Tool[%d] is nil", name, index)
 			}
 			toolName := executable.Definition().Name
@@ -642,17 +642,4 @@ func validateToolManifest(manifest toolset.Manifest) error {
 		}
 	}
 	return nil
-}
-
-func isNilInteractionCapability(value any) bool {
-	if value == nil {
-		return true
-	}
-	reflected := reflect.ValueOf(value)
-	switch reflected.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		return reflected.IsNil()
-	default:
-		return false
-	}
 }

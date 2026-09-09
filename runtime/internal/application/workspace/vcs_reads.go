@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"slices"
 )
 
@@ -25,7 +26,7 @@ func NewVCS(scope *Scope, git GitReader) (*VCS, error) {
 	if scope == nil {
 		return nil, errors.New("workspace: vcs scope is required")
 	}
-	if missingDependency(git) {
+	if dependency.Missing(git) {
 		return nil, errors.New("workspace: git reader is required")
 	}
 	return &VCS{scope: scope, git: git}, nil

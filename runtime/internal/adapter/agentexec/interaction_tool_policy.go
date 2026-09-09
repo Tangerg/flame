@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -30,7 +31,7 @@ type ToolAuthorizer struct{ policy InteractionApprovalPolicy }
 
 // NewToolAuthorizer binds the product approval policy.
 func NewToolAuthorizer(policy InteractionApprovalPolicy) (*ToolAuthorizer, error) {
-	if policy == nil || isNilInteractionCapability(policy) {
+	if policy == nil || dependency.Missing(policy) {
 		return nil, errors.New("agentexec: Tool approval policy is required")
 	}
 	return &ToolAuthorizer{policy: policy}, nil

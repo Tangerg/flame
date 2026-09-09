@@ -13,13 +13,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
@@ -344,9 +344,9 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{"item id generator", deps.NewItemID},
 		{"tool result id generator", deps.NewToolResultID},
 	}
-	for _, dependency := range required {
-		if nilDependency(dependency.value) {
-			return nil, fmt.Errorf("sessions: %s is required", dependency.name)
+	for _, required := range required {
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("sessions: %s is required", required.name)
 		}
 	}
 	optional := []struct {
@@ -356,9 +356,9 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{"workspace checkpoints", deps.Checkpoints},
 		{"sandbox discarder", deps.Sandbox},
 	}
-	for _, dependency := range optional {
-		if dependency.value != nil && nilDependency(dependency.value) {
-			return nil, fmt.Errorf("sessions: optional %s must not be typed nil", dependency.name)
+	for _, required := range optional {
+		if required.value != nil && dependency.Missing(required.value) {
+			return nil, fmt.Errorf("sessions: optional %s must not be typed nil", required.name)
 		}
 	}
 	if err := deps.DefaultModelSelection.ValidateExact(); err != nil {
@@ -393,16 +393,6 @@ func New(deps Dependencies) (*Coordinator, error) {
 		newItemID:             deps.NewItemID,
 		newToolResultID:       deps.NewToolResultID,
 	}, nil
-}
-
-func nilDependency(value any) bool {
-	if value == nil {
-		return true
-	}
-	kind := reflect.ValueOf(value).Kind()
-	return (kind == reflect.Chan || kind == reflect.Func || kind == reflect.Interface ||
-		kind == reflect.Map || kind == reflect.Pointer || kind == reflect.Slice) &&
-		reflect.ValueOf(value).IsNil()
 }
 
 // ClaimWorkingTreeMutation reserves exclusive access to cwd's working tree for a

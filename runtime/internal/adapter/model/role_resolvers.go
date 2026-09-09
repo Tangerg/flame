@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/scope/core/chatclient"
 
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
@@ -32,13 +33,13 @@ func LiveUtilityClient(
 	mainSelection modelref.Selection,
 	roles RoleSource,
 ) (AuxiliaryResolver, error) {
-	if missingDependency(resolver) {
+	if dependency.Missing(resolver) {
 		return nil, errors.New("model: utility chat resolver is required")
 	}
 	if err := mainSelection.ValidateExact(); err != nil {
 		return nil, fmt.Errorf("model: utility main selection: %w", err)
 	}
-	if missingDependency(roles) {
+	if dependency.Missing(roles) {
 		return nil, errors.New("model: utility role source is required")
 	}
 	return func(ctx context.Context) (*chatclient.Client, error) {
@@ -73,7 +74,7 @@ func NewRoleEmbedder(resolver *EmbeddingResolver, roles RoleSource) (*RoleEmbedd
 	if resolver == nil {
 		return nil, errors.New("model: embedding resolver is required")
 	}
-	if missingDependency(roles) {
+	if dependency.Missing(roles) {
 		return nil, errors.New("model: embedding role source is required")
 	}
 	return &RoleEmbedder{resolver: resolver, roles: roles}, nil
@@ -82,7 +83,7 @@ func NewRoleEmbedder(resolver *EmbeddingResolver, roles RoleSource) (*RoleEmbedd
 // ResolveMemory returns the optional embedder configured for agent-memory
 // ranking. An absent role is a normal keyword-only configuration.
 func (r *RoleEmbedder) ResolveMemory(ctx context.Context) (agentmemoryapp.Embedder, error) {
-	if r == nil || r.resolver == nil || missingDependency(r.roles) {
+	if r == nil || r.resolver == nil || dependency.Missing(r.roles) {
 		return nil, errors.New("model: embedding role resolver is not configured")
 	}
 	role := r.roles.Role()

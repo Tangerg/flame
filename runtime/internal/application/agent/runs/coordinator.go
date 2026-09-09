@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"reflect"
 	"time"
 
 	"go.opentelemetry.io/otel/trace"
@@ -13,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -160,12 +160,12 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		{"run id generator", deps.NewRunID},
 		{"segment id generator", deps.NewSegmentID},
 	}
-	for _, dependency := range required {
-		if nilDependency(dependency.value) {
-			return nil, fmt.Errorf("runs: %s is required", dependency.name)
+	for _, required := range required {
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("runs: %s is required", required.name)
 		}
 	}
-	if deps.Isolation != nil && nilDependency(deps.Isolation) {
+	if deps.Isolation != nil && dependency.Missing(deps.Isolation) {
 		return nil, errors.New("runs: isolation provider must not be typed nil")
 	}
 	return &Coordinator{
@@ -205,16 +205,6 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 			deps.Now,
 		),
 	}, nil
-}
-
-func nilDependency(value any) bool {
-	if value == nil {
-		return true
-	}
-	kind := reflect.ValueOf(value).Kind()
-	return (kind == reflect.Chan || kind == reflect.Func || kind == reflect.Interface ||
-		kind == reflect.Map || kind == reflect.Pointer || kind == reflect.Slice) &&
-		reflect.ValueOf(value).IsNil()
 }
 
 // ReplayRetention is the window this Coordinator enforces. Discovery publishes

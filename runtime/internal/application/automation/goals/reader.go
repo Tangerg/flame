@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 )
 
@@ -14,7 +15,7 @@ type Reader struct {
 
 // NewReader constructs the read boundary over the required Goal store.
 func NewReader(store Store) (*Reader, error) {
-	if missingDependency(store) {
+	if dependency.Missing(store) {
 		return nil, errors.New("goals: reader store is required")
 	}
 	return &Reader{goals: store}, nil

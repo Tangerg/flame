@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 // Files owns root-scoped file browser operations.
@@ -26,7 +27,7 @@ func NewFiles(scope *Scope, files FileBrowser) (*Files, error) {
 	if scope == nil {
 		return nil, errors.New("workspace: file scope is required")
 	}
-	if missingDependency(files) {
+	if dependency.Missing(files) {
 		return nil, errors.New("workspace: file browser is required")
 	}
 	return &Files{scope: scope, files: files}, nil

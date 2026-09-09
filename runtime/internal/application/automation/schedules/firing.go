@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 )
 
@@ -56,7 +57,7 @@ func NewFiring(deps FiringDependencies) (*Firing, error) {
 		{name: "occurrence Session identity factory", value: deps.NewSessionID},
 		{name: "occurrence Run identity factory", value: deps.NewRunID},
 	} {
-		if dependencyMissing(required.value) {
+		if dependency.Missing(required.value) {
 			return nil, fmt.Errorf("schedules: firing %s is required", required.name)
 		}
 	}

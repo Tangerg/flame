@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 // AuthoredResource is the closed set of file-backed product resources whose
@@ -76,7 +77,7 @@ type AuthoredWatch struct {
 }
 
 func NewAuthoredWatch(scope *Scope, workspaces KnowledgeWorkspaceInspector, watcher AuthoredResourceWatcher) (*AuthoredWatch, error) {
-	for _, dependency := range []struct {
+	for _, required := range []struct {
 		name  string
 		value any
 	}{
@@ -84,8 +85,8 @@ func NewAuthoredWatch(scope *Scope, workspaces KnowledgeWorkspaceInspector, watc
 		{name: "workspace inspector", value: workspaces},
 		{name: "resource watcher", value: watcher},
 	} {
-		if missingDependency(dependency.value) {
-			return nil, fmt.Errorf("workspace: authored watch %s is required", dependency.name)
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("workspace: authored watch %s is required", required.name)
 		}
 	}
 	return &AuthoredWatch{
