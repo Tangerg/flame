@@ -124,10 +124,21 @@ func runServer(ctx context.Context, errw io.Writer, httpServer runtimeHTTPServer
 	errs := make(chan error, 1)
 	go func() {
 		_, _ = fmt.Fprintf(errw, "%s http listening on %s\n", runtimeLogPrefix, addr)
-		_, _ = fmt.Fprintf(errw, "%s   POST /v2/rpc              JSON-RPC (streaming methods -> text/event-stream)\n", runtimeLogPrefix)
-		_, _ = fmt.Fprintf(errw, "%s   GET  /v2/info             metadata (no auth)\n", runtimeLogPrefix)
-		_, _ = fmt.Fprintf(errw, "%s   GET  /v2/health/live      liveness\n", runtimeLogPrefix)
-		_, _ = fmt.Fprintf(errw, "%s   GET  /v2/health/ready     dependency readiness\n", runtimeLogPrefix)
+		// Printed from the transport's own registry: the routes an operator is
+		// told about are the routes that were registered, and which of them are
+		// ungated is a fact the registry already holds.
+		for _, endpoint := range flamehttp.Contract().Endpoints {
+			gate := "token-gated"
+			if endpoint.Authentication == flamehttp.EndpointAuthenticationNone {
+				gate = "no auth"
+			}
+			detail := ""
+			if endpoint.Kind == flamehttp.EndpointKindRPC {
+				detail = "  (streaming methods -> text/event-stream)"
+			}
+			_, _ = fmt.Fprintf(errw, "%s   %-4s %-20s %-9s %s%s\n",
+				runtimeLogPrefix, endpoint.Method, endpoint.Path, endpoint.Name, gate, detail)
+		}
 		if token != nil {
 			_, _ = fmt.Fprintf(errw, "%s local-token gate active; token at %s\n", runtimeLogPrefix, token.Path())
 		} else {
