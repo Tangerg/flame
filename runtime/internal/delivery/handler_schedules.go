@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
-	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -112,8 +111,11 @@ func mapScheduleErr(err error, method, id string) error {
 	if errors.Is(err, schedule.ErrNotFound) {
 		return fmt.Errorf("%w: schedule %q not found", protocol.ErrInvalidParams, id)
 	}
-	if errors.Is(err, workspaceapp.ErrCWDUnavailable) {
-		return fmt.Errorf("%w: %w", protocol.ErrWorkspaceUnavailable, err)
+	// Workspace failures have one translation. A schedule's cwd can produce any
+	// of them, not just an unavailable one, and wireWorkspaceError returns
+	// anything outside that vocabulary unchanged.
+	if wired := wireWorkspaceError(err); wired != err {
+		return wired
 	}
 	if errors.Is(err, schedule.ErrRevisionConflict) {
 		return fmt.Errorf("%w: schedule %q changed after it was read", protocol.ErrRevisionConflict, id)
