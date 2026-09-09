@@ -25,9 +25,10 @@ func requireCompletePage[T any](operation string, page *protocol.Page[T]) ([]T, 
 	return page.Data, nil
 }
 
-// requireUniqueIdentities checks catalog rows that need no CLI projection. A
-// repeated identity would silently collapse two Runtime rows into one CLI row,
-// which no wire constraint can observe.
+// requireUniqueIdentities owns the identity contract for every catalog the CLI
+// reads from Runtime. A repeated identity would silently collapse two Runtime
+// rows into one CLI row, and a missing one is unusable as the key every later
+// operation names that row by; neither is observable to a wire constraint.
 func requireUniqueIdentities[Value any](
 	operation string,
 	values []Value,
@@ -36,6 +37,9 @@ func requireUniqueIdentities[Value any](
 	seen := make(map[string]struct{}, len(values))
 	for _, value := range values {
 		key := identity(value)
+		if key == "" {
+			return runtimeContractViolation("%s returned a row without an identity", operation)
+		}
 		if _, duplicate := seen[key]; duplicate {
 			return runtimeContractViolation("%s repeats %q", operation, key)
 		}
@@ -67,18 +71,15 @@ func projectUniqueValuesFallible[Source any, Target any](
 	identity func(Target) string,
 ) ([]Target, error) {
 	projected := make([]Target, 0, len(values))
-	seen := make(map[string]struct{}, len(values))
 	for index, value := range values {
 		row, err := project(value)
 		if err != nil {
 			return nil, runtimeContractViolation("%s item %d cannot be projected: %v", operation, index+1, err)
 		}
-		key := identity(row)
-		if _, duplicate := seen[key]; duplicate {
-			return nil, runtimeContractViolation("%s repeats %q", operation, key)
-		}
-		seen[key] = struct{}{}
 		projected = append(projected, row)
+	}
+	if err := requireUniqueIdentities(operation, projected, identity); err != nil {
+		return nil, err
 	}
 	return projected, nil
 }

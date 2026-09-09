@@ -204,6 +204,12 @@ func projectSessionResult(operation, expectedID string, result *protocol.Session
 		return agent.Session{}, runtimeContractViolation("%s returned nil", operation)
 	}
 	projected := projectSession(*result)
+	// create and fork mint the identity and so pass no expectation. They are the
+	// two operations whose whole purpose is to obtain a Session ID, and the only
+	// two for which this is the sole check that one arrived.
+	if projected.ID == "" {
+		return agent.Session{}, runtimeContractViolation("%s returned a session without an id", operation)
+	}
 	if expectedID != "" && projected.ID != expectedID {
 		return agent.Session{}, runtimeContractViolation("%s returned id %q for %q", operation, projected.ID, expectedID)
 	}

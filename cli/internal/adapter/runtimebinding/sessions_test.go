@@ -229,6 +229,33 @@ func TestCreateAndForkSessionRejectAcknowledgementDrift(t *testing.T) {
 			},
 		},
 		{
+			// create and fork name no expected ID, so the acknowledgement checks
+			// that compare one cannot answer here. An accepted empty ID reaches
+			// the terminal as a session no later operation can name.
+			name: "create identity",
+			binding: sessionCatalogStub{create: func(protocol.CreateSessionRequest) (*protocol.Session, error) {
+				result := base
+				result.ID = ""
+				return &result, nil
+			}},
+			invoke: func(runtime *Connection) error {
+				_, err := runtime.CreateSession(t.Context(), agent.CreateSession{Title: base.Title, Workspace: "/workspace"})
+				return err
+			},
+		},
+		{
+			name: "fork identity",
+			binding: sessionCatalogStub{fork: func(protocol.ForkSessionRequest) (*protocol.Session, error) {
+				result := base
+				result.ID = ""
+				return &result, nil
+			}},
+			invoke: func(runtime *Connection) error {
+				_, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: "ses_source", Title: base.Title})
+				return err
+			},
+		},
+		{
 			name: "fork source identity",
 			binding: sessionCatalogStub{fork: func(request protocol.ForkSessionRequest) (*protocol.Session, error) {
 				result := base

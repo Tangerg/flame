@@ -67,6 +67,14 @@ func TestProjectUniqueValuesOwnsCatalogIdentity(t *testing.T) {
 		t.Fatalf("projectUniqueValues error = %v, want a repeated identity", err)
 	}
 	requireRuntimeContractViolation(t, err)
+
+	// An empty identity is the one key no later operation can name the row by,
+	// and two of them would otherwise read as an ordinary repeat.
+	_, err = projectUniqueValues("list values", []string{""}, project, identity)
+	if err == nil || !strings.Contains(err.Error(), "list values returned a row without an identity") {
+		t.Fatalf("projectUniqueValues error = %v, want a missing identity", err)
+	}
+	requireRuntimeContractViolation(t, err)
 }
 
 func TestCursorTraversalRejectsDirectAndMultiStepCycles(t *testing.T) {
