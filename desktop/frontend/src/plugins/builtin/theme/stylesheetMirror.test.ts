@@ -5,6 +5,8 @@ import { COLOR_THEME, VISUAL_STYLE } from "@/plugins/sdk/kernelPoints";
 import { lookupExtensionByKey } from "@/plugins/sdk/selectors/extensions";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { declaredInBlock, driftAgainstBlock } from "@/test/stylesheet";
+import { DEFAULT_UI_DENSITY } from "./kit/appearance";
+import { densityCssVariables } from "./kit/density";
 import { depthStep } from "./kit/tokens";
 import { visualStyleMotionTokens } from "./visualStyles/tokens";
 
@@ -101,5 +103,36 @@ describe("the stylesheet defaults and the scalars the painter writes alone", () 
     const { radiusScale, motionScale } = useAppearanceStore.getState();
     expect(declaredInBlock(":root", "--radius-scale")).toBe(String(radiusScale));
     expect(declaredInBlock(":root", "--motion-scale")).toBe(String(motionScale));
+  });
+});
+
+/**
+ * The density ladder is the third mirror, and it was not in this file.
+ *
+ * Same shape as the two above: `globals.css` states the comfortable values as literals
+ * because they are what the first paint reads, and `documentAppearance` overwrites all
+ * thirteen from `densityCssVariables` the moment it installs. Two copies of one list, and a
+ * drift is a cold start that lays out at the old row height and then jumps.
+ *
+ * Unlike the palette, EVERY variable is required rather than only the ones the block happens
+ * to declare. A palette token the dark block omits inherits the light one on purpose; a
+ * density variable the sheet omits has no fallback at all, which is an unstyled first frame
+ * rather than a stale one.
+ */
+describe("the density ladder and the stylesheet fallbacks it overwrites", () => {
+  it("agree on every variable at the comfortable default", () => {
+    const written = Object.fromEntries(
+      Object.entries(densityCssVariables(DEFAULT_UI_DENSITY)).map(([name, value]) => [
+        name.replace(/^--/, ""),
+        value,
+      ]),
+    );
+    expect(Object.keys(written).length).toBeGreaterThan(10);
+
+    const { compared, disagreed } = driftAgainstBlock(":root", written);
+    expect(compared, "a density variable the stylesheet never declares").toBe(
+      Object.keys(written).length,
+    );
+    expect(disagreed).toEqual([]);
   });
 });

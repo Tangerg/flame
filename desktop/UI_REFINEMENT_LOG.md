@@ -11862,3 +11862,47 @@ stateHasWhatTheSchemaWillStrip: "cursorStyle"
 | 单测（分片） | 178 文件 / **1184 全通过** |
 | 守卫 | `check:styles` / `check:classes` / `check:shorthand` 全绿 |
 | 视觉套件 | **未跑** —— 只加了类型断言，没改任何运行时行为 |
+
+## Round 190 — 第三面镜子，不在那个专门放镜子的文件里
+
+`stylesheetMirror.test.ts` 开头就把原则写清楚了：
+
+> the stylesheet is what the first paint reads, and it cannot call a function — so what needs
+> guarding is that they still say the same thing.
+> A drift here never fails loudly; it is a frame of the old design on a cold start, which
+> reads as the app settling.
+
+它守着两面镜子：调色板、visual style 的令牌。
+**第三面不在里面** —— 密度阶梯。
+
+`density.ts` 的 `BASE_PX` 有 13 个 comfortable 值，`globals.css` 的 `:root` 把同样 13 个
+写成字面量（因为首帧读的是它，而它不能调用函数）。**一份清单，两个所有者。**
+改了一边忘了另一边 = 每次冷启动先按旧行高排版、然后跳一下。
+
+今天 13 个全对。补上守卫，并且和调色板那两面有一处**故意的不同**：
+
+| | 调色板 | 密度 |
+| --- | --- | --- |
+| 要求 | 只比**块里声明过的**那些 | **13 个全都必须声明** |
+| 理由 | dark 块省略一个令牌是**故意继承** light 的 | 密度变量省略了就**没有任何兜底** —— 那是没有样式的首帧，不是过时的首帧 |
+
+所以断言是 `compared === 13`，而不是「比过的都一致」。
+**两个方向都验证过**：改一个值 → 报 `css=34px spec=36px`；
+从 `globals.css` 删掉一个声明 → 报 `a density variable the stylesheet never declares`。
+
+（`density.ts` 之前一个测试都没有。`--density-row-height` 在 Round 172 拿到了一条视觉断言，
+其余 12 个到现在为止没有任何东西看着。）
+
+### 上一轮那个失误，这轮避开了
+
+又要用 `git checkout --` 撤销故意制造的破坏。这次先确认 `density.ts` 和 `globals.css`
+**本轮没有我的其他改动**，再撤 —— 所以没有连带损失。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 单测 | 32 文件 / **213 全通过**（+1）|
+| 首帧镜子 | 2 面 → **3 面** |
+| 密度变量守卫 | 1 / 13（视觉）→ **13 / 13**（编译期读 CSS 文本）|
+| 视觉套件 | **未跑** —— 只加了一条单测 |
