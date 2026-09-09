@@ -8,11 +8,12 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// TestScheduleErrorsUseTheWorkspaceTranslation covers the ownership, not one
-// error: a schedule carries a cwd, so any workspace failure can surface from
-// these methods and all of them must reach the JSON-RPC vocabulary through the
-// single translation rather than leaking as an internal error.
-func TestScheduleErrorsUseTheWorkspaceTranslation(t *testing.T) {
+// TestHandlersUseTheOneWorkspaceTranslation covers the ownership, not one
+// error. A schedule carries a cwd and a Session carries a workspace, so any
+// workspace failure can surface from either handler, and all of them must reach
+// the JSON-RPC vocabulary through the single translation rather than leaking as
+// an internal error.
+func TestHandlersUseTheOneWorkspaceTranslation(t *testing.T) {
 	for _, test := range []struct {
 		source error
 		want   error
@@ -24,6 +25,9 @@ func TestScheduleErrorsUseTheWorkspaceTranslation(t *testing.T) {
 	} {
 		if got := mapScheduleErr(test.source, "schedules.update", "sch_1"); !errors.Is(got, test.want) {
 			t.Errorf("mapScheduleErr(%v) = %v, want %v", test.source, got, test.want)
+		}
+		if got := wireSessionErr(test.source); !errors.Is(got, test.want) {
+			t.Errorf("wireSessionErr(%v) = %v, want %v", test.source, got, test.want)
 		}
 	}
 }

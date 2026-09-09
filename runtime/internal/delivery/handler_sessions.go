@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
-	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -21,8 +20,11 @@ func wireSessionErr(err error) error {
 	if errors.Is(err, session.ErrTitleRequired) {
 		return fmt.Errorf("%w: title must not be empty", protocol.ErrInvalidParams)
 	}
-	if errors.Is(err, workspaceapp.ErrCWDUnavailable) {
-		return fmt.Errorf("%w: %w", protocol.ErrWorkspaceUnavailable, err)
+	// A Session carries a workspace, so any workspace failure can surface here.
+	// wireWorkspaceError owns that whole vocabulary and returns anything outside
+	// it unchanged, which leaves the Session cases below intact.
+	if wired := wireWorkspaceError(err); wired != err {
+		return wired
 	}
 	if errors.Is(err, session.ErrRevisionConflict) {
 		return fmt.Errorf("%w: the session changed after it was read", protocol.ErrRevisionConflict)
