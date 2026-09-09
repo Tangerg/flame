@@ -39,11 +39,45 @@ const CONTROLS_PER_ROUTE = 60;
 // growth.
 const MAX_DISTINCT_ANSWERS = 8;
 
+// Silence is allowed. The desktop-feel rules reserve hover for dense lists, sidebar rows, icon
+// buttons and scanability, and name "hover backgrounds on every button" as the anti-pattern, so
+// the rule here is not "everything must answer". It is: a control that answers NOTHING has to
+// be one whose feedback is something else — a text field, where the caret says where the
+// keyboard is, or a toggle, whose thumb slides on click and is its own answer.
+//
+// Every other control that went quiet turned out to be a defect: the selected row, the selected
+// segmented tab, the active dock tab, and the goal bar's widest control standing beside three
+// siblings that all answered.
+const MAY_ANSWER_NOTHING = 'input, textarea, [role="switch"], [role="checkbox"]';
+
+// Answering is not confined to the control. A segmented tab answers through a CHILD chip and a
+// dock tab through a PARENT wrapper, so reading the control alone called both of them silent.
+// Serialised as a string because it has to run inside the page.
+const VISIBLE_STATE = `(el) => {
+  const s = getComputedStyle(el);
+  return [s.backgroundColor, s.color, s.opacity, s.borderColor, s.boxShadow,
+          s.textDecorationColor, s.scale, s.translate, s.visibility].join("|");
+}`;
+
+const wholeBox = `(node, read) => {
+  const parts = [read(node)];
+  for (const kid of [...node.querySelectorAll("*")].slice(0, 12)) parts.push(read(kid));
+  for (let p = node.parentElement, d = 0; p && d < 6; p = p.parentElement, d += 1) {
+    parts.push(read(p));
+    const ps = getComputedStyle(p);
+    if (ps.overflowY === "auto" || ps.overflowY === "scroll") break;
+  }
+  return parts.join("~");
+}`;
+
+const ARGS = { visible: VISIBLE_STATE, box: wholeBox, allowed: MAY_ANSWER_NOTHING };
+
 test("hover always adds ink, and never replaces the fill it lands on", async ({ page }) => {
   test.setTimeout(ROUTES.length * CONTROLS_PER_ROUTE * STEP_BUDGET_MS + 20_000);
   const answers = new Map<string, string>();
   const replaced: string[] = [];
   const unreachable: string[] = [];
+  const silent: string[] = [];
   let hovered = 0;
 
   for (const route of ROUTES) {
@@ -88,7 +122,9 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
       // previous control reads that one's hover as this one's rest.
       await page.mouse.move(1119, 719);
       await page.waitForTimeout(50);
-      const before = await control.evaluate((node) => {
+      const before = await control.evaluate((node, args) => {
+        const read = new Function("return " + args.visible)();
+        const readBox = new Function("return " + args.box)();
         const style = getComputedStyle(node);
         // The centre of a control's own rect is not where it is painted. Inside a scroller a
         // control can be scrolled out of view and still report a rect that lands inside the
@@ -128,6 +164,8 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
         }
         return {
           rest: style.backgroundColor,
+          state: readBox(node, read) as string,
+          mayBeSilent: node.matches(args.allowed),
           chain,
           x: (visible.left + visible.right) / 2,
           y: (visible.top + visible.bottom) / 2,
@@ -152,7 +190,7 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
             .slice(0, 30),
           tag: node.tagName.toLowerCase(),
         };
-      });
+      }, ARGS);
       if (before.width < 2 || before.height < 2 || before.skip) continue;
       if (before.x < 0 || before.y < 0 || before.x > 1120 || before.y > 720) continue;
 
@@ -166,7 +204,9 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
       // this the message actions read as ignoring the pointer that had just revealed them.
       await page.mouse.move(before.x + 1, before.y);
       await page.waitForTimeout(70);
-      const after = await control.evaluate((node) => {
+      const after = await control.evaluate((node, args) => {
+        const read = new Function("return " + args.visible)();
+        const readBox = new Function("return " + args.box)();
         const style = getComputedStyle(node);
         const chain: string[] = [];
         for (
@@ -180,6 +220,7 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
         }
         return {
           fill: style.backgroundColor,
+          state: readBox(node, read) as string,
           chain,
           // Proof the pointer arrived. Without it a control the layout moved out from under
           // the cursor reports "no change" and reads as a control that ignores the pointer.
@@ -191,7 +232,7 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
           // is hovered. Asking before the move cannot tell those two apart.
           shown: style.visibility !== "hidden" && style.opacity !== "0",
         };
-      });
+      }, ARGS);
       if (!after.reached) {
         if (after.shown) unreachable.push(`${route} <${before.tag}> "${before.label}"`);
         continue;
@@ -206,6 +247,10 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
         if (link.fill === "rgba(0, 0, 0, 0)" || now !== neutralWash) return;
         replaced.push(`${route} <${link.what}> above "${before.label}"  ${link.fill} -> ${now}`);
       });
+
+      if (after.state === before.state && !before.mayBeSilent) {
+        silent.push(`${route} <${before.tag}> "${before.label}"`);
+      }
 
       if (after.fill === before.rest) continue;
 
@@ -236,6 +281,10 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
   expect(
     [...new Set(unreachable)],
     "the pointer never landed on these — the aim is wrong, or something covers them",
+  ).toEqual([]);
+  expect(
+    [...new Set(silent)],
+    `controls that answer the pointer with nothing — allowed only for ${MAY_ANSWER_NOTHING}`,
   ).toEqual([]);
   expect(
     [...new Set(replaced)],

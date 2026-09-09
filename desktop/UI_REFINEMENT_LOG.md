@@ -12478,3 +12478,93 @@ chip: backgroundColor: `var(--segment-chip-fill, ${surface.canvas})`
 它写的是 hover 只保留给 dense lists、sidebar rows、icon buttons 和"有助于扫读"的控件，
 并且把"给每个按钮都加 hover 背景"列为反面清单。**所以判断结果可能是"就该沉默"**，
 那也要写下来，而不是默认它是缺陷。
+
+## Round 199 —— 把判断本身写进守卫，而不是留在日志里
+
+前几轮一直在往日志里记"这些控件对指针没反应，要拿规则判"。这轮把判断做完，
+并且**判断结果本身变成断言** —— 留在日志里的判断，下一个人不会读。
+
+### 先把"回应"的定义修对
+
+之前只读控件自己。但 segmented 选中项是通过**子元素** chip 回应的，
+dock tab 是通过**父元素** wrapper 回应的 —— 只读控件自己，这两个都会被算成沉默。
+定义改成：**控件自己 + 最多 12 个子孙 + 最多 6 层祖先**里，
+任何一个可见属性变了，就算回应了。
+
+按这个定义重量，沉默名单从 15 缩到 **8**，而且**工具汇总展开按钮掉出了名单** ——
+它其实一直在通过自己的 chevron 回应。（我在 Round 197/198 报过它，那是窄定义下的误判。）
+
+### 剩下 8 个的判定
+
+| | 判定 | 理由 |
+| --- | --- | --- |
+| 4 个文本框（3 个 composer + 设置搜索） | **就该沉默** | 插入符就是"键盘在这里" |
+| 3 个开关（`span[role=checkbox]`） | **就该沉默** | 点下去拨杆会滑，那就是它的反馈；而且 `DESKTOP_UI_POLISH.md` 把"给每个按钮都加 hover 背景"列为反面清单 |
+| 1 个 goal 摘要按钮 | **缺陷** | 见下 |
+
+### goal 那条 bar 上，四个控件里三个回应、最宽的那个不回应
+
+```
+"Pursuing goal · Get the desktop suite"   answers=false
+"Clear goal"                              answers=true
+"Pause goal"                              answers=true
+"Edit goal"                               answers=true
+```
+
+**一个面里兄弟控件答案不一致，那条规则不背书任何读法。**
+
+根因：它用 `variant="bare"`，而 `bare` 明确写着 `":hover": "transparent"` ——
+"No box at all: the button IS its text"。这个选择对：这一行读起来是**内容**
+（它自己的注释就说 "The objective is CONTENT"），给它一个 wash 等于给它一个不该有的盘子。
+换 `ghost` 会带上 padding 和圆角，那是布局改动。
+
+所以用 Round 193 给 `TextButton` 定下的那个机制：**下划线**
+（`textDecorationColor` transparent → currentColor），而且只在 `:is(:enabled)` 时 ——
+因为"不能编辑时它保留自己的墨色和光标"正是这一行被要求遵守的规则。静止态像素不变。
+
+**顺带露出一个既有缺陷**：`Button.base` 的 `transitionProperty` 里**没有 `text-decoration-color`**，
+所以 `variant="link"` 自己的下划线一直是硬切的（而 `TextButton` 的会渐变）。
+那个列表是"一条声明就是整份清单，callsite 只能替换不能追加"，
+所以补在 `base` 上 —— 一个所有者，`link` 和 goal 摘要一起修好。
+
+### 新断言：沉默是允许的，但名单是封闭的
+
+```
+MAY_ANSWER_NOTHING = 'input, textarea, [role="switch"], [role="checkbox"]'
+```
+
+这**不是**"所有控件都必须回应" —— 那正好是 `DESKTOP_UI_POLISH.md` 的反面清单。
+它是：**一个什么都不回应的控件，必须是那种"反馈在别处"的控件**。
+其余每一个安静下来的，最后都被证明是缺陷：选中行、选中的 segmented tab、
+active dock tab、以及这条 goal bar 上最宽的那个。
+
+**两个方向都验证过**：
+
+| 制造的破坏 | 报什么 |
+| --- | --- |
+| 撤掉 goal 摘要的下划线 | 精确点名 `<button> "Pursuing goalGet the desktop s"` |
+| 从白名单里去掉 `[role=checkbox]` | 3 个开关被抓出来 —— 证明是**白名单**在允许它们，不是测量恰好看不见 |
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 对指针无反应且无正当理由的控件 | 1 → **0** |
+| "回应"的判定范围 | 只有控件自己 → **自己 + 子孙 + 祖先** |
+| 这条策略住在哪 | 日志里的一段话 → **一条断言 + 一份写明理由的白名单** |
+| `Button variant="link"` 的下划线 | 硬切 → **跟着 `--dur-*` 渐变** |
+| 单测 | **542 全通过**（`src/ui` + chat 分片）|
+| 视觉套件 | **677 全通过**（10.0m，零失败）|
+| typecheck / lint / prettier / knip / 8 个守卫 | 全绿 |
+
+### 这一段（Round 194–199）的收尾
+
+从"量一下 hover"开始，六轮里改对的东西：
+
+| | |
+| --- | --- |
+| 真缺陷 | 选中行被 hover 变淡、凹陷行丢掉凹陷、active dock tab 丢掉抬起、选中 segmented tab 毫无反应、goal 摘要毫无反应、`link` 下划线硬切 |
+| **我自己的测量错误** | 索引不稳定（比了两个不同元素）、坐标陈旧、没验证指针到达、把 scroller 裁剪当成沉默、把揭示型控件当成沉默、覆盖率取决于编译缓存热不热、"回应"只看控件自己 |
+
+**测量错误比真缺陷还多一个。** 每一轮的教训是同一句：
+一个守卫说"没问题"之前，先证明它会说"有问题"。

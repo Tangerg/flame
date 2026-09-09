@@ -68,7 +68,8 @@ const styles = stylex.create({
     // One list, and it names every property a button animates: a press scales it, a reveal
     // fades it, a floating one slides in. A transition-property declaration is the whole list,
     // so a call site cannot add to it — it can only replace it.
-    transitionProperty: "background-color, border-color, color, opacity, scale, translate",
+    transitionProperty:
+      "background-color, border-color, color, opacity, scale, translate, text-decoration-color",
     transitionDuration: motion.fast,
     transitionTimingFunction: "var(--ease-out)",
   },

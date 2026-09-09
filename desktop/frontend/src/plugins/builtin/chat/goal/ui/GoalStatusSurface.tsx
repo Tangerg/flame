@@ -57,7 +57,18 @@ const gs = stylex.create({
   bigGlyph: { height: "var(--icon-lg)", width: "var(--icon-lg)" },
   // The objective is CONTENT, so when it cannot be edited it keeps its ink and its cursor:
   // the row is telling you what the goal is, not offering a control that is switched off.
-  summary: { minHeight: space.s6, cursor: { ":disabled": "default" }, opacity: { ":disabled": 1 } },
+  // Three of the four controls on this bar answered the pointer and this one — the widest, and
+  // the one that opens the editor — answered nothing. `bare` is right for it: the row reads as
+  // content, so it takes no plate and a wash would give it one. What it can say is the same
+  // thing `TextButton` says for interactive text, and only while it IS editable, because the
+  // comment below is the rule this row is held to.
+  summary: {
+    minHeight: space.s6,
+    textDecorationLine: "underline",
+    textDecorationColor: { default: "transparent", ":is(:enabled):hover": "currentColor" },
+    cursor: { ":disabled": "default" },
+    opacity: { ":disabled": 1 },
+  },
   objective: { marginInlineStart: space.s1 },
   actions: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s2 },
 });
