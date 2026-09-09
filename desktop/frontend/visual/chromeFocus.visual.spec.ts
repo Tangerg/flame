@@ -1,4 +1,5 @@
 import { expect, test } from "./test";
+import { eachTabStop } from "./tabWalk";
 
 // `data-chrome-focus` turns the focus ring off on a promise: that a row state shows focus
 // instead. `menu.tsx` states it — a popup takes focus so the keyboard can drive it, and the
@@ -13,7 +14,9 @@ import { expect, test } from "./test";
 // Real Tab, not `element.focus()`. Programmatic focus does not run the roving-tabindex
 // activation a dock tab uses, so it reported six controls as silent that a keyboard shows
 // plainly — and it lands on the first tabbable before the walk starts, which reads as "no
-// change" for whatever that happens to be.
+// change" for whatever that happens to be. Focus IS restored programmatically after each
+// photograph, which is a different thing: the visual state has already been captured, and all
+// that is needed back is the position for the next press.
 
 const ROUTES = [
   "fixture=agent&state=question",
@@ -23,34 +26,36 @@ const ROUTES = [
 ];
 
 const SETTLE_MS = 500;
+/** Two full passes of a route's order, from the cold figure — the dev server is fresh per run. */
+const ROUTE_BUDGET_MS = 120_000;
 
-// Four routes, forty tabs each, and a settle wait after every one: the walk alone is the
-// budget. At Playwright's default it finished in 30.2s against a 30s limit, so it passed on
-// an idle machine and timed out under any load — a guard that only holds when nothing else
-// is running is not one. Budgeted from its own work, the way the layout-shift walk is.
-const TAB_STEPS = 40;
-const STEP_BUDGET_MS = 300;
+// The walk itself is `tabWalk.ts`, shared with the two ring audits. This file used to press
+// Tab forty times per route and, after each finding, blur and count its way back with
+// step-plus-one presses — quadratic, and short: the dock route's order does not close until
+// fifty. Both of those made it cover less while reporting the same.
 
 test("a control that turns off the ring shows focus some other way", async ({ page }) => {
-  test.setTimeout(ROUTES.length * TAB_STEPS * STEP_BUDGET_MS + 20_000);
+  test.setTimeout(ROUTES.length * ROUTE_BUDGET_MS + 20_000);
   const silent: string[] = [];
+  let optOuts = 0;
 
   for (const route of ROUTES) {
     await page.goto(`/visual/?${route}&theme=light`);
     await page.waitForSelector("html[data-visual-ready]");
-    const seen = new Set<string>();
 
-    for (let step = 0; step < TAB_STEPS; step += 1) {
-      await page.keyboard.press("Tab");
-      await page.waitForTimeout(110);
+    await eachTabStop(page, async () => {
       const meta = await page.evaluate(() => {
-        const active = document.activeElement;
-        if (!active || active === document.body) return null;
+        const active = document.activeElement as HTMLElement;
+        if (!active.hasAttribute("data-chrome-focus")) return null;
+        if (!active.matches(":focus-visible")) return null;
         const box = active.getBoundingClientRect();
+        // The comparison is two photographs of one region, so the region has to be on screen
+        // and whole in both of them.
+        if (box.width === 0 || box.y < 0 || box.y + box.height > 720) return null;
+        if (box.x + box.width > 1120) return null;
+        // Marked so focus can be returned to this exact element, rather than counted back to.
+        active.dataset.chromeFocusProbe = "";
         return {
-          optOut: active.hasAttribute("data-chrome-focus"),
-          focusVisible: active.matches(":focus-visible"),
-          key: `${active.getAttribute("class") ?? ""}|${(active.textContent ?? "").trim().slice(0, 24)}`,
           label: (
             active.getAttribute("aria-label") ??
             active.getAttribute("title") ??
@@ -61,37 +66,39 @@ test("a control that turns off the ring shows focus some other way", async ({ pa
             .replace(/\s+/g, " ")
             .slice(0, 30),
           tag: active.tagName.toLowerCase(),
-          x: box.x,
-          y: box.y,
-          width: box.width,
-          height: box.height,
+          clip: {
+            x: Math.max(0, box.x - 3),
+            y: Math.max(0, box.y - 3),
+            width: box.width + 6,
+            height: box.height + 6,
+          },
         };
       });
-      if (!meta || !meta.optOut || !meta.focusVisible || seen.has(meta.key)) continue;
-      seen.add(meta.key);
-      if (meta.width === 0 || meta.y < 0 || meta.y + meta.height > 720) continue;
-      if (meta.x + meta.width > 1120) continue;
+      if (!meta) return;
+      optOuts += 1;
 
-      const clip = {
-        x: Math.max(0, meta.x - 3),
-        y: Math.max(0, meta.y - 3),
-        width: meta.width + 6,
-        height: meta.height + 6,
-      };
-      const focused = await page.screenshot({ clip });
+      const focused = await page.screenshot({ clip: meta.clip });
       await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
       await page.waitForTimeout(SETTLE_MS);
-      const blurred = await page.screenshot({ clip });
+      const blurred = await page.screenshot({ clip: meta.clip });
       if (Buffer.compare(focused, blurred) === 0) {
         silent.push(`${route}  <${meta.tag}> "${meta.label}"`);
       }
 
-      // The walk restarts from the top, because blurring dropped the position in the order.
-      await page.evaluate(() => document.body.focus());
-      for (let back = 0; back <= step; back += 1) await page.keyboard.press("Tab");
-    }
+      // Focus goes back to the element it was on, so the walk carries on from where it was.
+      // It used to blur and then press Tab step-plus-one times to count its way back, which
+      // made the walk quadratic and assumed a press from nowhere lands at the top of the order
+      // — and it does not.
+      await page.evaluate(() => {
+        const probe = document.querySelector<HTMLElement>("[data-chrome-focus-probe]");
+        probe?.focus();
+        probe?.removeAttribute("data-chrome-focus-probe");
+      });
+    });
   }
 
+  // A walk that met no opt-out holds no promise and reports nothing.
+  expect(optOuts, "the walk has to reach controls that opted out").toBeGreaterThan(8);
   expect(
     [...new Set(silent)],
     "controls with `data-chrome-focus` that show nothing when a keyboard reaches them",
