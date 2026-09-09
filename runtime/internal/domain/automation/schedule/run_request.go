@@ -30,9 +30,6 @@ type RunRequest struct {
 // RecordRun forms the manual execution fact owned by the Run opening without
 // changing the cron cursor. The store advances it from the current revision.
 func (s Schedule) RecordRun(ranAt time.Time) (RunRecord, error) {
-	if err := s.Validate(); err != nil {
-		return RunRecord{}, err
-	}
 	value := RunRecord{scheduleID: s.id, ranAt: canonicalTime(ranAt)}
 	if err := value.Validate(); err != nil {
 		return RunRecord{}, err

@@ -278,9 +278,6 @@ func (s *ScheduleStore) Accept(ctx context.Context, acceptance schedule.Acceptan
 // RecordRun moves only last_run_at; next_run_at is left as-is so a manual
 // run-now never rewinds the cron cursor.
 func (s *ScheduleStore) RecordRun(ctx context.Context, record schedule.RunRecord) error {
-	if err := record.Validate(); err != nil {
-		return fmt.Errorf("sqlite: invalid schedule run record: %w", err)
-	}
 	return RunInTx(ctx, s.db, func(ctx context.Context) error {
 		return s.advanceScheduleRunFact(ctx, record.ScheduleID(), toMillis(record.RanAt()))
 	})

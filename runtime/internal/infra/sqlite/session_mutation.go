@@ -12,9 +12,6 @@ import (
 // Insert persists one already-decided initial Session. Identity, timestamps,
 // lineage, editable values, and revision all belong to the aggregate.
 func (s *SessionStore) Insert(ctx context.Context, value session.Session) error {
-	if err := value.Validate(); err != nil {
-		return fmt.Errorf("sqlite: validate initial Session: %w", err)
-	}
 	firstRevision := exactint.First().Value()
 	if value.Revision() != firstRevision {
 		return fmt.Errorf("sqlite: initial Session revision is %d, want %d: %w", value.Revision(), firstRevision, session.ErrInvalid)

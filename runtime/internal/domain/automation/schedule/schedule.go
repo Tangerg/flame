@@ -157,7 +157,7 @@ func Restore(snapshot Snapshot) (Schedule, error) {
 // cursor from after, and advances its exact revision once. No caller can observe
 // a replacement whose enabled state and cursor disagree.
 func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Schedule, error) {
-	if err := s.Validate(); err != nil {
+	if err := s.id.Validate(); err != nil {
 		return Schedule{}, err
 	}
 	if expectedRevision == 0 {
@@ -240,7 +240,7 @@ func validateInstructions(instructions string) error {
 // current revision. Persistence paths that mutate operational fields use this
 // behavior instead of spelling arithmetic in SQL.
 func (s Schedule) NextRevision() (uint64, error) {
-	if err := s.Validate(); err != nil {
+	if err := s.id.Validate(); err != nil {
 		return 0, err
 	}
 	next, err := s.revision.Next()

@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -79,8 +80,10 @@ type materialSnapshotValidator struct {
 }
 
 func newMaterialSnapshotValidator(snapshot MaterialSnapshot) (*materialSnapshotValidator, error) {
-	if err := snapshot.Session.Validate(); err != nil {
-		return nil, fmt.Errorf("sessions: material snapshot Session: %w", err)
+	// The Session anchors every ownership comparison below, so an unbuilt one
+	// would make an all-zero snapshot self-consistent.
+	if snapshot.Session.ID() == "" {
+		return nil, errors.New("sessions: material snapshot carries no Session")
 	}
 	return &materialSnapshotValidator{
 		snapshot:         snapshot,

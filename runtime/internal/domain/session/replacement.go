@@ -45,10 +45,11 @@ func (r Replacement) ExpectedRevision() uint64 {
 func (r Replacement) State() Session { return r.state }
 
 // Validate proves that r is either one initial aggregate or one exact
-// same-identity monotonic replacement.
+// same-identity monotonic replacement. Each Session's own legality is settled
+// by the constructor or transition that produced it.
 func (r Replacement) Validate() error {
-	if err := r.state.Validate(); err != nil {
-		return fmt.Errorf("%w: replacement state: %v", ErrInvalid, err)
+	if r.state.ID() == "" {
+		return fmt.Errorf("%w: replacement carries no Session", ErrInvalid)
 	}
 	if r.initial {
 		firstRevision := exactint.First().Value()
@@ -64,9 +65,6 @@ func (r Replacement) Validate() error {
 			)
 		}
 		return nil
-	}
-	if err := r.expected.Validate(); err != nil {
-		return fmt.Errorf("%w: replacement expected Session: %v", ErrInvalid, err)
 	}
 	if r.expected.ID() != r.state.ID() {
 		return fmt.Errorf(

@@ -123,9 +123,6 @@ func (o OpeningCommit) validateAdmission() error {
 		return errors.New("runs: child opening carries root admission facts")
 	}
 	if o.initialSession != nil {
-		if err := o.initialSession.Validate(); err != nil {
-			return fmt.Errorf("runs: opening initial Session: %w", err)
-		}
 		if o.initialSession.ID() != o.admit.SessionID || o.initialSession.Revision() != 1 {
 			return errors.New("runs: opening initial Session differs from admitted Run")
 		}

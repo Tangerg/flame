@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -53,8 +54,10 @@ func (c *Coordinator) ExportSession(ctx context.Context, sessionID string) (Expo
 // Validate checks the complete Session and the snapshot's referential integrity
 // before the coordinator hands it out.
 func (s Snapshot) Validate() error {
-	if err := s.Session.Validate(); err != nil {
-		return fmt.Errorf("sessions: snapshot session: %w", err)
+	// The Session anchors every ownership comparison below, so an unbuilt one
+	// would make an all-zero snapshot self-consistent.
+	if s.Session.ID() == "" {
+		return errors.New("sessions: snapshot carries no Session")
 	}
 	if _, err := conversation.New(s.Messages); err != nil {
 		return fmt.Errorf("sessions: snapshot conversation: %w", err)

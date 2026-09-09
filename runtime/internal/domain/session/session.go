@@ -119,7 +119,7 @@ func Restore(snapshot Snapshot) (Session, error) {
 		favorite:  snapshot.Favorite, isolated: snapshot.Isolated,
 		revision: revision,
 	}
-	if err := value.Validate(); err != nil {
+	if err := value.validate(); err != nil {
 		return Session{}, err
 	}
 	return value, nil
@@ -130,8 +130,8 @@ func Restore(snapshot Snapshot) (Session, error) {
 // command and then bypass its aggregate checks. A semantic no-op returns s and
 // changed=false without advancing revision or time.
 func (s Session) Apply(patch Patch, updatedAt time.Time) (next Session, changed bool, err error) {
-	if err := s.Validate(); err != nil {
-		return Session{}, false, fmt.Errorf("%w: current state: %v", ErrInvalid, err)
+	if s.id == "" {
+		return Session{}, false, fmt.Errorf("%w: current state was never constructed", ErrInvalid)
 	}
 	if patch.ExpectedRevision != 0 && patch.ExpectedRevision != s.revision.Value() {
 		return Session{}, false, ErrRevisionConflict
@@ -187,8 +187,8 @@ func (s Session) NameIfUntitled(title string, updatedAt time.Time) (Session, boo
 // no favorite flag, and records immutable lineage back to s. An empty title uses
 // the parent's human-readable fork title.
 func (s Session) Fork(id, title string, startedAt time.Time) (Session, error) {
-	if err := s.Validate(); err != nil {
-		return Session{}, fmt.Errorf("%w: parent: %v", ErrInvalid, err)
+	if s.id == "" {
+		return Session{}, fmt.Errorf("%w: parent was never constructed", ErrInvalid)
 	}
 	title = strings.TrimSpace(title)
 	if title == "" {
@@ -210,14 +210,14 @@ func (s Session) Fork(id, title string, startedAt time.Time) (Session, error) {
 // canonical identity admitted before reconstruction. It is not an
 // edit: revision and timestamps remain the archive's facts.
 func (s Session) InstallRestoredWorkspace(workspace Workspace) (Session, error) {
-	if err := s.Validate(); err != nil {
-		return Session{}, err
+	if s.id == "" {
+		return Session{}, fmt.Errorf("%w: value was never constructed", ErrInvalid)
 	}
 	if err := workspace.Validate(); err != nil {
 		return Session{}, err
 	}
 	s.workspace = workspace
-	return s, s.Validate()
+	return s, s.validate()
 }
 
 // ReplaceWithRestore returns a replacement aggregate for an archive restored
@@ -225,11 +225,8 @@ func (s Session) InstallRestoredWorkspace(workspace Workspace) (Session, error) 
 // values and immutable origin facts; the target aggregate owns the next
 // revision and the caller supplies when the replacement occurred.
 func (s Session) ReplaceWithRestore(restored Session, updatedAt time.Time) (Session, error) {
-	if err := s.Validate(); err != nil {
-		return Session{}, fmt.Errorf("%w: current state: %v", ErrInvalid, err)
-	}
-	if err := restored.Validate(); err != nil {
-		return Session{}, fmt.Errorf("%w: restored state: %v", ErrInvalid, err)
+	if s.id == "" || restored.id == "" {
+		return Session{}, fmt.Errorf("%w: replacement needs a constructed current and restored Session", ErrInvalid)
 	}
 	if s.id != restored.id {
 		return Session{}, fmt.Errorf("%w: restored identity %q differs from current identity %q", ErrInvalid, restored.id, s.id)
@@ -255,11 +252,13 @@ func (s *Session) advance(previous Session, updatedAt time.Time) error {
 	}
 	s.revision = revision
 	s.updatedAt = updatedAt
-	return s.Validate()
+	return s.validate()
 }
 
-// Validate verifies identity, lineage, admitted values, time, and revision.
-func (s Session) Validate() error {
+// validate verifies identity, lineage, admitted values, time, and revision.
+// Every constructor and every transition closes here, so a Session that exists
+// is already legal and no reader has to ask again.
+func (s Session) validate() error {
 	if _, err := resourceid.ParseSession(s.id); err != nil {
 		return fmt.Errorf("%w: id: %v", ErrInvalid, err)
 	}
@@ -292,11 +291,13 @@ func (s Session) Validate() error {
 	return nil
 }
 
-// ValidateFor verifies the complete aggregate and its exact expected identity.
-// Point reads use it before a stored Session can influence another use case.
+// ValidateFor proves this Session was constructed and carries the exact
+// identity asked for. Point reads use it before a stored Session can influence
+// another use case; the aggregate's own legality is settled by the constructor
+// or transition that produced it.
 func (s Session) ValidateFor(expectedID string) error {
-	if err := s.Validate(); err != nil {
-		return err
+	if s.id == "" {
+		return fmt.Errorf("%w: value was never constructed", ErrInvalid)
 	}
 	if s.id != expectedID {
 		return fmt.Errorf("%w: id %q does not match requested identity %q", ErrInvalid, s.id, expectedID)
