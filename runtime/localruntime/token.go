@@ -30,21 +30,14 @@ type Token struct {
 	path  string
 }
 
-// Value returns the canonical bearer value.
-func (t *Token) Value() string {
-	if t == nil {
-		return ""
-	}
-	return t.value
-}
+// Value returns the canonical bearer value. Whether a deployment publishes a
+// token at all is the caller's question, asked where the gate is configured; a
+// method that answered it with an empty string would hand back "no credential",
+// which is the value that disables the gate.
+func (t *Token) Value() string { return t.value }
 
 // Path returns the absolute durable credential path.
-func (t *Token) Path() string {
-	if t == nil {
-		return ""
-	}
-	return t.path
-}
+func (t *Token) Path() string { return t.path }
 
 // OpenToken loads the credential owned by path, creating and atomically
 // publishing one when it does not exist. Concurrent Runtime generations converge
@@ -129,9 +122,6 @@ func readTokenFile(path string, pathInfo os.FileInfo) (*Token, error) {
 }
 
 func readOpenedTokenFile(path string, file *os.File, pathInfo os.FileInfo) (*Token, error) {
-	if file == nil {
-		return nil, invalidToken("opened file is required")
-	}
 	openedInfo, err := file.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("local Runtime token: inspect opened file: %w", err)
