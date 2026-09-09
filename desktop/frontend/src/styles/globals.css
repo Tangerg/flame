@@ -519,6 +519,11 @@
   --floating-panel-radius: var(--shape-xl);
   --floating-tip-radius: var(--shape-sm);
   --dock-tab-radius: var(--shape-lg);
+  /* ONE ladder. A text field used to have a second one two pixels shorter at `md` and `lg`,
+     with no comment and no commit behind it — while the button's `lg` step says in so many
+     words that it exists so a button standing beside a field matches its height. In the one
+     place they stand together, Settings → Connection, they did not: a 32px url field between
+     two 34px buttons. A step is a step for every control that takes one. */
   --control-height-xs: 22px;
   --control-height-sm: 26px;
   --control-height-md: 30px;
@@ -526,9 +531,6 @@
   /* One step past the chrome ladder, for a control laid over an image: it is read at arm's
      length against a photograph rather than inside a dense row. */
   --control-height-xl: 40px;
-  --field-height-sm: 26px;
-  --field-height-md: 28px;
-  --field-height-lg: 32px;
   --menu-row-height: 30px;
   /* A settings select is a form FIELD, not a menu, and its floor answers a different
      question: how wide the control sits in the row whether or not it is open. Three of them

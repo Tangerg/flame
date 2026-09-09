@@ -61,9 +61,11 @@ describe("the stylesheet defaults and the visual style that replaces them", () =
 
     // A floor just under what the sheet mirrors today, not a token gesture: the previous
     // one was low enough that a lookup reading only the FIRST `:root` block still cleared
-    // it, so the whole motion ladder was skipped and the test passed anyway.
+    // it, so the whole motion ladder was skipped and the test passed anyway. It moved down
+    // three when `--field-height-*` collapsed into the control ladder — a floor that only
+    // ever rises would make deleting a token indistinguishable from failing to read one.
     const { compared, disagreed } = driftAgainstBlock(":root", written);
-    expect(compared, ":root mirrors far less of the style than it did").toBeGreaterThan(70);
+    expect(compared, ":root mirrors far less of the style than it did").toBeGreaterThan(67);
     expect(disagreed).toEqual([]);
   });
 

@@ -14,7 +14,7 @@ const styles = stylex.create({
     // already named for it: a select is wide enough for the values it has to hold, whichever
     // one is showing. That is the control's measure, not each pane's.
     minWidth: "var(--select-min-width)",
-    minHeight: "var(--field-height-md)",
+    minHeight: "var(--control-height-md)",
     alignItems: "center",
     justifyContent: "space-between",
     gap: space.s2,

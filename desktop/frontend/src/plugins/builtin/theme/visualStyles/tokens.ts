@@ -22,9 +22,6 @@ type VisualStyleTokenName =
   | "control-height-sm"
   | "control-height-md"
   | "control-height-lg"
-  | "field-height-sm"
-  | "field-height-md"
-  | "field-height-lg"
   | "menu-row-height"
   | "dock-tab-height"
   | "surface-header-height"
@@ -91,9 +88,6 @@ const WORKBENCH_TOKENS: VisualStyleTokens = {
   "control-height-sm": "26px",
   "control-height-md": "30px",
   "control-height-lg": "34px",
-  "field-height-sm": "26px",
-  "field-height-md": "28px",
-  "field-height-lg": "32px",
   "menu-row-height": "30px",
   "dock-tab-height": "28px",
   "surface-header-height": "46px",

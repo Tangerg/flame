@@ -63,9 +63,9 @@ const styles = stylex.create({
   numeric: { fontVariantNumeric: "tabular-nums" },
   faceMono: { fontFamily: "var(--font-mono)" },
   faceSans: { fontFamily: "var(--font-sans)" },
-  inputSm: { height: "var(--field-height-sm)", paddingInline: space.s2 },
-  inputMd: { height: "var(--field-height-md)", paddingInline: space.s2_5 },
-  inputLg: { height: "var(--field-height-lg)", paddingInline: space.s3 },
+  inputSm: { height: "var(--control-height-sm)", paddingInline: space.s2 },
+  inputMd: { height: "var(--control-height-md)", paddingInline: space.s2_5 },
+  inputLg: { height: "var(--control-height-lg)", paddingInline: space.s3 },
   area: { resize: "vertical", lineHeight: leading.body },
   // The prose step brings prose tracking, which is right for what is typed and wrong for the
   // placeholder: a placeholder is UI text, not prose. The composer had reset this at the call
@@ -80,9 +80,9 @@ const styles = stylex.create({
     color: { default: color.fgMuted, ":focus-within": color.fg },
     borderColor: { default: surface.field, ":focus-within": surface.fieldStrong },
   },
-  searchSm: { height: "var(--field-height-sm)", gap: space.s1_5, paddingInline: space.s2 },
-  searchMd: { height: "var(--field-height-md)", gap: space.s1_5, paddingInline: space.s2_5 },
-  searchLg: { height: "var(--field-height-lg)", gap: space.s2, paddingInline: space.s3 },
+  searchSm: { height: "var(--control-height-sm)", gap: space.s1_5, paddingInline: space.s2 },
+  searchMd: { height: "var(--control-height-md)", gap: space.s1_5, paddingInline: space.s2_5 },
+  searchLg: { height: "var(--control-height-lg)", gap: space.s2, paddingInline: space.s3 },
   glyph: { flexShrink: 0 },
   clear: { marginRight: "calc(var(--spacing) * -1)", flexShrink: 0 },
 });

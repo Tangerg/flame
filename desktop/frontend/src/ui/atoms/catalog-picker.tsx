@@ -22,7 +22,7 @@ const styles = stylex.create({
   searchBox: {
     marginBottom: space.s1,
     display: "flex",
-    height: "var(--field-height-md)",
+    height: "var(--control-height-md)",
     flexShrink: 0,
     alignItems: "center",
     gap: space.s2,
