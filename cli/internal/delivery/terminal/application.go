@@ -107,7 +107,7 @@ type app struct {
 	drafts          *draftPersistence
 	draftState      draftObservation
 	stopDraftSave   func()
-	editor          promptEditor
+	editor          *draftEditor
 
 	attachments        *attachment.Resolver
 	attachmentElements map[uint64]agent.Attachment
@@ -158,7 +158,7 @@ type appConfig struct {
 	keyBindings      keyBindings
 	queue            *promptqueue.Queue
 	workbench        *workbench.Store
-	editor           promptEditor
+	editor           *draftEditor
 }
 
 type terminalAppearance struct {

@@ -19,10 +19,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
-type promptEditor interface {
-	Edit(context.Context, program.Session, string, string) (string, error)
-}
-
 type draftEditor struct {
 	command []string
 }
