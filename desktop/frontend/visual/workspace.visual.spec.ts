@@ -24,6 +24,7 @@ interface WorkspaceRoute {
   state: VisualWorkspaceState;
   theme?: VisualWorkspaceTheme;
   pane?: VisualSettingsPane;
+  fullView?: string;
 }
 
 async function openWorkspace(page: Page, route: WorkspaceRoute): Promise<void> {
@@ -34,10 +35,48 @@ async function openWorkspace(page: Page, route: WorkspaceRoute): Promise<void> {
     state: route.state,
   });
   if (route.pane) query.set("pane", route.pane);
+  if (route.fullView) query.set("full-view", route.fullView);
   await page.goto(`/visual/?${query}`);
   await page.locator("html[data-visual-ready]").waitFor();
   await expect(page.getByTestId("workspace-state")).toHaveAttribute("data-state", route.state);
 }
+
+/**
+ * The face a full view sets its title in, and the rule it follows.
+ *
+ * `titleFace` is what the TITLE is — prose for a view's name, mono for machine text — and two
+ * callers had passed it as a constant, making it a property of the view instead. Nothing
+ * caught it because nothing photographed it: the dock bar renders no title at all, and the
+ * full-placement fixture opened `search` and only `search`. `search` is the shape nineteen of
+ * the twenty-one views share, which is exactly why the two that differ went unseen.
+ */
+test("a full view sets its title in mono only when the title is a path", async ({ page }) => {
+  // Compared on the FIRST family, because the declaration and the computed value are the same
+  // stack written two ways — the custom property keeps the author's line breaks, the computed
+  // one is normalised — and a string match between them is a test that always says no.
+  const readTitle = () =>
+    page.evaluate(() => {
+      const head = (stack: string) =>
+        stack
+          .split(",")[0]!
+          .trim()
+          .replace(/^["']|["']$/g, "");
+      const title = document.querySelector("main .agent-surface-header span");
+      const mono = head(getComputedStyle(document.documentElement).getPropertyValue("--font-mono"));
+      const family = title ? getComputedStyle(title).fontFamily : "";
+      return { text: title?.textContent?.trim() ?? "", isMono: head(family) === mono, family };
+    });
+
+  await openWorkspace(page, { state: "full-view" });
+  const prose = await readTitle();
+  expect(prose.text).toBe(en["search.title"]);
+  expect(prose.isMono, `a view's NAME is prose, got ${prose.family}`).toBe(false);
+
+  await openWorkspace(page, { state: "full-view", fullView: "file" });
+  const path = await readTitle();
+  expect(path.text).toBe(ACTIVE_FILE_PATH);
+  expect(path.isMono, `a PATH is mono, got ${path.family}`).toBe(true);
+});
 
 /**
  * The flank folds on the ROW, and the row is what the drawer leaves behind. At the

@@ -637,8 +637,10 @@ const OPENED_BY_ITS_OWN_STATE = new Set([
   "notifications",
 ]);
 
-/** Which view the full-placement state opens. `search` has a prose title and a sub, which is
- *  the path nineteen of the twenty-one `WorkspaceViewLayout` call sites take. */
+/** Which view the full-placement state opens by default. `search` has a prose title and a
+ *  sub, which is the path nineteen of the twenty-one `WorkspaceViewLayout` call sites take —
+ *  and therefore the two that do NOT take it, the ones whose title is a path, were the two no
+ *  golden and no assertion ever reached. A spec asks for those by id. */
 const FULL_VIEW_ID = "search";
 
 const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
@@ -670,6 +672,7 @@ export async function installVisualWorkspaceFixture(
   state: VisualWorkspaceState,
   theme: VisualWorkspaceTheme,
   pane: VisualSettingsPane = "appearance",
+  fullViewId: string = FULL_VIEW_ID,
 ): Promise<void> {
   // Tool stats needs a session that actually ran tools; every other state wants
   // the quiet one. `tool-shells` is the state with a read, a command, a patch, a
@@ -733,7 +736,7 @@ export async function installVisualWorkspaceFixture(
   navigator().go({
     session: VISUAL_SESSION_ID,
     dock: dockViewId,
-    view: state === "settings" ? "settings" : state === "full-view" ? FULL_VIEW_ID : null,
+    view: state === "settings" ? "settings" : state === "full-view" ? fullViewId : null,
     settings: state === "settings" ? pane : null,
   });
   useAppearanceStore.setState({ theme, visualStyle: "flame", motionScale: 0 });

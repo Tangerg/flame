@@ -11159,3 +11159,38 @@ await expect(async () => {
   full view 的 `sub` 也是无条件 mono —— 而 sub 常常是翻译句（“N commands”、“3 files changed”）。
   这是「紧凑标识条用等宽表示机器语境」的风格选择，还是和上面同一个错误？**需要你定。**
 - **full placement 只拍了 `search` 一个视图**，其余十几个视图的完整头部零覆盖。
+
+## Round 176 — 让 fixture 能打开「不具代表性」的那两个视图
+
+上一轮报了两条：`titleFace` 的两个常量调用点已修，但**没有一张 golden 拍到过它**。
+原因写在 fixture 自己的注释里：
+
+> Which view the full-placement state opens. `search` has a prose title and a sub,
+> which is the path **nineteen of the twenty-one** `WorkspaceViewLayout` call sites take.
+
+选 `search` 作代表是有道理的 —— 但**恰恰因为它是代表，那两个不一样的视图从来没被看过**，
+而 bug 就住在那两个里（标题是路径的那两个）。
+
+### 加一个能力，不是加二十四张 golden
+
+fixture 现在收 `?full-view=<id>`，默认仍是 `search`。
+新测试断言的是**规则**而不是像素：
+
+- `search` 在 full placement：标题是视图的名字 → **不是** mono；
+- `file` 在 full placement（fixture 本来就带着 `fileViewer`）：标题是路径 → **是** mono。
+
+比较的是字体栈的**第一个 family**：自定义属性保留作者写的换行，
+computed 值是规范化过的 —— 两个字符串直接比，是一条永远说「不」的测试。
+（我第一版就是这么写的，它立刻假红了一次。）
+
+**验证过它会失败**：把 `file.tsx` 的 `titleFace` 改回无条件 `undefined`，
+测试立刻报「a PATH is mono, got Geist, -apple-system, …」。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **674 / 674**（673 + 新增 1）|
+| full placement 可拍的视图 | 1 → **任意一个**（`?full-view=`）|
+| 标题字面规则 | 0 条断言 → 1 条，覆盖代表用例和例外用例各一 |
+| 重录 | 0 |

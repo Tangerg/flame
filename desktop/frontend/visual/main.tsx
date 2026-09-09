@@ -90,6 +90,9 @@ const requestedFontSize = query.get("font-size");
 // the pipeline overwrites all thirteen, so a spec can only see the setting by asking for it.
 const requestedDensity = query.get("density");
 const density = UI_DENSITY_MODES.find((mode) => mode === requestedDensity);
+// Which view a full-placement state opens. The default covers the shape nineteen of the
+// twenty-one views share; a spec names one of the other two.
+const requestedFullView = query.get("full-view") ?? undefined;
 const requestedLocale = query.get("locale") ?? "en";
 
 rootElement.classList.remove("theme-light", "theme-dark");
@@ -140,7 +143,7 @@ async function fixtureNode(): Promise<ReactNode> {
       import("./VisualWorkspaceFixture"),
       import("./installVisualWorkspaceFixture"),
     ]);
-    await installVisualWorkspaceFixture(workspaceState, theme, settingsPane);
+    await installVisualWorkspaceFixture(workspaceState, theme, settingsPane, requestedFullView);
     return <VisualWorkspaceFixture state={workspaceState} />;
   }
   if (fixture === "shell") {
