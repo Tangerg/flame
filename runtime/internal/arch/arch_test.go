@@ -1187,11 +1187,10 @@ func TestWorkspaceChangeNoticeBelongsToWorkspace(t *testing.T) {
 // the one materialization into the executor-facing turn request.
 func TestStartCommandHasOneInputRepresentation(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "application", "agent", "runs", "commands.go")
+	runs := filepath.Join(root, "internal", "application", "agent", "runs")
 	for _, field := range []string{"Message", "Media", "OpeningUserText"} {
-		if got := namedStructFieldTypeOptional(t, path, "StartCommand", field); got != "" {
-			rel, _ := filepath.Rel(root, path)
-			t.Errorf("%s: StartCommand.%s = %s duplicates ContentBlock input", rel, field, got)
+		if got := namedStructFieldTypeOptional(t, runs, "StartCommand", field); got != "" {
+			t.Errorf("runs.StartCommand.%s = %s duplicates ContentBlock input", field, got)
 		}
 	}
 }
@@ -1202,11 +1201,11 @@ func TestStartCommandHasOneInputRepresentation(t *testing.T) {
 // call a ToolCall start a creation time.
 func TestTranscriptItemUsesOneNeutralDomainTimestamp(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "domain", "run", "transcript", "item.go")
-	if got := namedStructFieldTypeOptional(t, path, "ItemIdentity", "OccurredAt"); got != "time.Time" {
+	transcript := filepath.Join(root, "internal", "domain", "run", "transcript")
+	if got := namedStructFieldTypeOptional(t, transcript, "ItemIdentity", "OccurredAt"); got != "time.Time" {
 		t.Errorf("transcript.ItemIdentity.OccurredAt = %q, want time.Time", got)
 	}
-	if got := namedStructFieldTypeOptional(t, path, "ItemIdentity", "CreatedAt"); got != "" {
+	if got := namedStructFieldTypeOptional(t, transcript, "ItemIdentity", "CreatedAt"); got != "" {
 		t.Errorf("transcript.ItemIdentity.CreatedAt = %q; variant-specific time belongs to Delivery", got)
 	}
 }
@@ -1296,7 +1295,7 @@ func TestTranscriptItemSnapshotStaysAtTechnicalBoundaries(t *testing.T) {
 // record through the query port instead.
 func TestDeliveryReadsRunsFromDurableProjection(t *testing.T) {
 	root := moduleRoot(t)
-	forbidInterfaceMethods(t, filepath.Join(root, "internal", "delivery", "application_ports.go"),
+	forbidInterfaceMethods(t, filepath.Join(root, "internal", "delivery"),
 		map[string]map[string]string{
 			"runUseCases": {
 				"List": "the set of Runs is a durable projection, not this process's live registry",
@@ -1308,7 +1307,14 @@ func TestDeliveryReadsRunsFromDurableProjection(t *testing.T) {
 // It guards consumer-port width: which use cases a ring is allowed to drive is a
 // dependency decision, and an extra method is how one ring quietly starts owning
 // another's read model.
-func forbidInterfaceMethods(t *testing.T, path string, banned map[string]map[string]string) {
+func forbidInterfaceMethods(t *testing.T, directory string, banned map[string]map[string]string) {
+	t.Helper()
+	for _, path := range packageGoFiles(t, directory) {
+		forbidInterfaceMethodsIn(t, path, banned)
+	}
+}
+
+func forbidInterfaceMethodsIn(t *testing.T, path string, banned map[string]map[string]string) {
 	t.Helper()
 	f, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 	if err != nil {
@@ -1428,8 +1434,8 @@ func TestRememberScopeUsesApprovalDomainType(t *testing.T) {
 		path       string
 		structName string
 	}{
-		{filepath.Join(root, "internal", "application", "agent", "runs", "commands.go"), "ApprovalResponse"},
-		{filepath.Join(root, "internal", "domain", "run", "interrupt", "resolution.go"), "Resolution"},
+		{filepath.Join(root, "internal", "application", "agent", "runs"), "ApprovalResponse"},
+		{filepath.Join(root, "internal", "domain", "run", "interrupt"), "Resolution"},
 	}
 	for _, check := range checks {
 		if got := namedStructFieldType(t, check.path, check.structName, "RememberScope"); got != "approval.Scope" {
@@ -1726,7 +1732,21 @@ func forbidQualifiedCalls(t *testing.T, dir string, banned map[string]string) {
 // namedStructFieldType returns one named struct field's rendered type. It keeps
 // value-object vocabulary assertions AST-based instead of depending on source
 // formatting or comments.
-func namedStructFieldType(t *testing.T, path, structName, fieldName string) string {
+func namedStructFieldType(t *testing.T, directory, structName, fieldName string) string {
+	t.Helper()
+	for _, path := range packageGoFiles(t, directory) {
+		if value, found := structFieldTypeIn(t, path, structName, fieldName); found {
+			return value
+		}
+	}
+	t.Fatalf("%s: type %s not found", directory, structName)
+	return ""
+}
+
+// structFieldTypeIn reports the field type and whether the struct was declared
+// in this file. A declared struct without the field is a rule violation, so it
+// fails here rather than being reported as "not in this file".
+func structFieldTypeIn(t *testing.T, path, structName, fieldName string) (string, bool) {
 	t.Helper()
 	f, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 	if err != nil {
@@ -1749,21 +1769,32 @@ func namedStructFieldType(t *testing.T, path, structName, fieldName string) stri
 			for _, field := range value.Fields.List {
 				for _, name := range field.Names {
 					if name.Name == fieldName {
-						return exprString(field.Type)
+						return exprString(field.Type), true
 					}
 				}
 			}
 			t.Fatalf("%s: %s.%s not found", path, structName, fieldName)
 		}
 	}
-	t.Fatalf("%s: type %s not found", path, structName)
-	return ""
+	return "", false
 }
 
 // namedStructFieldTypeOptional is namedStructFieldType for an intentionally
-// absent field; it returns an empty string when the named struct or field is not
-// present, while still failing on an unreadable source file.
-func namedStructFieldTypeOptional(t *testing.T, path, structName, fieldName string) string {
+// absent field: it returns an empty string when the struct declares no such
+// field. A struct the package does not declare at all still fails, because a
+// rule about a type cannot be satisfied by that type disappearing.
+func namedStructFieldTypeOptional(t *testing.T, directory, structName, fieldName string) string {
+	t.Helper()
+	for _, path := range packageGoFiles(t, directory) {
+		if value, found := optionalStructFieldTypeIn(t, path, structName, fieldName); found {
+			return value
+		}
+	}
+	t.Fatalf("%s: type %s not found", directory, structName)
+	return ""
+}
+
+func optionalStructFieldTypeIn(t *testing.T, path, structName, fieldName string) (string, bool) {
 	t.Helper()
 	f, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 	if err != nil {
@@ -1786,35 +1817,45 @@ func namedStructFieldTypeOptional(t *testing.T, path, structName, fieldName stri
 			for _, field := range value.Fields.List {
 				for _, name := range field.Names {
 					if name.Name == fieldName {
-						return exprString(field.Type)
+						return exprString(field.Type), true
 					}
 				}
 			}
-			return ""
+			return "", true
 		}
 	}
-	t.Fatalf("%s: type %s not found", path, structName)
-	return ""
+	return "", false
 }
 
 // namedStructExportedFields returns the exported fields declared directly on a
 // named struct. Embedded exported fields count because they expose the same
 // external mutation surface.
-// namedStructExportedFields finds structName anywhere in the package rooted at
-// directory. The subject of every rule using it is the type, so splitting or
-// renaming the file that currently holds it is not a violation of anything.
-func namedStructExportedFields(t *testing.T, directory, structName string) []string {
+// packageGoFiles lists the production sources of the package rooted at
+// directory. Rules below name a type or an interface; which file currently
+// declares it is not part of any of them.
+func packageGoFiles(t *testing.T, directory string) []string {
 	t.Helper()
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		t.Fatalf("read %s: %v", directory, err)
 	}
+	var paths []string
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") ||
 			strings.HasSuffix(entry.Name(), "_test.go") {
 			continue
 		}
-		path := filepath.Join(directory, entry.Name())
+		paths = append(paths, filepath.Join(directory, entry.Name()))
+	}
+	return paths
+}
+
+// namedStructExportedFields finds structName anywhere in the package rooted at
+// directory. The subject of every rule using it is the type, so splitting or
+// renaming the file that currently holds it is not a violation of anything.
+func namedStructExportedFields(t *testing.T, directory, structName string) []string {
+	t.Helper()
+	for _, path := range packageGoFiles(t, directory) {
 		if fields, found := exportedFieldsIn(t, path, structName); found {
 			return fields
 		}
