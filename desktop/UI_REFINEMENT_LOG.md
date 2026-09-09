@@ -11052,3 +11052,46 @@ visual style 的令牌表里那三个 `field-height-*` 也一起删了 —— �
 | 控件高度梯子 | 2 把尺子 → **1 把** |
 | 死令牌 | visual style 表里 3 个 `field-height-*` 删除 |
 | 重录 | 10 张，全部是带输入框的面 |
+
+## Round 174 — 一个探针，读了一个仓库史上从未定义过的名字
+
+`foundation.visual.spec.ts` 里有个辅助函数，靠「往一次性元素上写这个变量、再读回计算值」
+来解析 `--app-content-card-radius`，然后断言内容卡的左上角：
+
+```ts
+sidebar === "expanded" ? await declaredCardRadius(page) : "0px"
+```
+
+`git log --all -S "--app-content-card-radius:"` —— **空的**。
+这个名字在这个仓库的**任何一次提交里都没有被定义过**。
+
+所以 `declaredCardRadius()` 一直返回 `0px`，那条三元一直在拿 `0px` 和 `0px` 比。
+四张 golden 从第一天起就在断言一件永真的事，
+而它的注释写着「corner 是当前 visual style 该声明的，写死数字会拿一个风格去量所有风格」。
+
+**读了一个没有主人的名字的探针，不会失败。不会失败的测试，没有在覆盖它命名的那件事。**
+
+`.agent-content-card` 自己写着 `border-radius: 0`，从初始提交至今 —— 卡片本来就是方的。
+所以断言改成直说这件事，并补上两条真正没人断言过的：
+**它的接缝是 shadow 不是 border**（整个边界模型赖以成立的「一条边，不是两条」）。
+
+### 守卫补上这半边
+
+`check-css-variables` 上一轮读的是**构建产物**。组件里的 `var()` 会被 StyleX 编译进去，
+所以已经覆盖了；**spec 里的探针不会**。这正是这个 bug 藏了整个仓库历史的地方。
+
+现在它也扫 `visual/**` 的 `var(--x)`（去注释后），对照定义集 ∪ 运行时白名单。
+**在未改动的 HEAD 上验证过它会失败**，指着 `foundation.visual.spec.ts:10`。
+
+顺手扫了 `src` + `visual` 全部 `var()` 读取：10 处命中，9 处是已知的运行时注入
+（Base UI 的定位器三个、`--dock-measure`），第 10 处是注释里引用 Codex 自己的令牌名。
+**真实缺陷只有这一个，已修。**
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **673 / 673** |
+| 永真的断言 | 4 张 golden 的三元 → 3 条能失败的断言 |
+| 守卫 | `check:variables` 现在覆盖样式表 + spec 探针（351 + 17 个无兜底读取）|
+| 重录 | 0 |

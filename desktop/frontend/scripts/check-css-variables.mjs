@@ -11,8 +11,8 @@
 // Reads that carry a fallback are excluded on purpose: `var(--composer-overlay, 0px)` states
 // its own answer for the case where nothing set it, which is the whole point of the fallback.
 
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { extname, join, relative } from "node:path";
 
 const ROOT = new URL("../", import.meta.url).pathname;
 const DIST = join(ROOT, "dist", "assets");
@@ -52,6 +52,36 @@ const bare = new Set();
 for (const match of css.matchAll(/var\(\s*(--[A-Za-z0-9_-]+)\s*([,)])/g))
   if (match[2] === ")") bare.add(match[1]);
 
+/**
+ * A spec's probe reads a variable too, and is the one reader the built sheet cannot see.
+ *
+ * `foundation.visual.spec.ts` measured `--app-content-card-radius` by setting it on a
+ * throwaway element and comparing the result — a name this repository has never defined in
+ * any commit. It resolved to `0px`, so the assertion compared `0px` against `0px` and could
+ * not fail, under a comment describing a corner the shell declares per visual style. A
+ * component's `var()` is compiled into the sheet above and already covered; a spec's is not.
+ */
+function walk(dir) {
+  const out = [];
+  for (const entry of readdirSync(dir)) {
+    const path = join(dir, entry);
+    if (statSync(path).isDirectory()) out.push(...walk(path));
+    else out.push(path);
+  }
+  return out;
+}
+const probes = new Map();
+for (const path of walk(join(ROOT, "visual"))) {
+  if (![".ts", ".tsx"].includes(extname(path))) continue;
+  const text = readFileSync(path, "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+  for (const match of text.matchAll(/var\(\s*(--[A-Za-z0-9_-]+)\s*\)/g)) {
+    const line = text.slice(0, match.index).split("\n").length;
+    if (!probes.has(match[1])) probes.set(match[1], `${relative(ROOT, path)}:${line}`);
+  }
+}
+
 const violations = [];
 for (const name of [...bare].sort()) {
   if (defined.has(name)) continue;
@@ -64,8 +94,11 @@ for (const name of [...bare].sort()) {
   if (!readFileSync(join(ROOT, setter), "utf8").includes(name))
     violations.push(`\`${name}\` is listed as set by ${setter}, which no longer names it`);
 }
+for (const [name, where] of probes)
+  if (!defined.has(name) && !RUNTIME_SET.has(name))
+    violations.push(`\`${name}\` is read by ${where} and nothing defines it`);
 for (const [name, setter] of RUNTIME_SET)
-  if (!bare.has(name) && !defined.has(name))
+  if (!bare.has(name) && !defined.has(name) && !probes.has(name))
     violations.push(
       `\`${name}\` is listed as runtime-set${setter === BASE_UI ? "" : ` by ${setter}`} but nothing reads it`,
     );
@@ -80,5 +113,5 @@ if (violations.length > 0) {
 }
 
 console.log(
-  `check-css-variables: ${defined.size} defined, ${bare.size} read without a fallback; every one resolves`,
+  `check-css-variables: ${defined.size} defined, ${bare.size} read without a fallback in the sheet and ${probes.size} in a spec; every one resolves`,
 );
