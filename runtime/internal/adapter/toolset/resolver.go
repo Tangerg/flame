@@ -32,8 +32,6 @@ import (
 // each running its tools in its own project directory — without a
 // per-session engine.
 type Resolver struct {
-	lateMu sync.RWMutex
-
 	defaultCWD    string
 	skillsUserDir string                     // user-scope skills dir; merged under each Run's project skills
 	skillUsage    builtin.SkillUsageRecorder // records skill loads for the idle-lifecycle curator; nil → off
@@ -44,8 +42,14 @@ type Resolver struct {
 	readTracker   *readTracker               // backs the read-before-patch and stale-read guards
 	pathLocker    *pathLocker                // serializes same-path fs calls across every concurrent Run resolution
 	shell         []toolcontract.Tool        // shell tools (shell / read_shell_output / stop_shell) over the exec.Shells; cwd read per-call
-	createGoal    toolcontract.Tool          // root-only Goal entry tool; nil until the Goal Driver exists
 	staticSpecs   []staticSpec               // built-once capabilities with one group/placement policy for Run manifests
+
+	// createGoal is the root-only Goal entry tool, installed by
+	// UseCreateGoalTool once the Goal Driver exists over Runs. It is the only
+	// field written after construction, so lateMu guards it and nothing else —
+	// every field above is fixed by the constructor and read without locking.
+	lateMu     sync.RWMutex
+	createGoal toolcontract.Tool
 
 	// mcp is the working-directory-independent MCP tool set, held behind an
 	// atomic pointer so a reconnect (B3b-2) can hot-swap the live set without
