@@ -9,7 +9,10 @@ Runtime is not another agent framework. Scope owns process execution, strategies
 - The module-root `runtime.Runtime` is the concrete in-process binding.
 - `protocol` contains binding-neutral requests, responses, events, errors, and validation.
 - `contract` contains generated machine-readable protocol artifacts and the generated API reference.
-- `localruntime` contains the strict local credential-file handoff used by Runtime hosts.
+- `localruntime` owns the local deployment layout and the strict credential-file handoff.
+  It resolves the data directory beneath a product root and names the database and local
+  token inside it, so the Runtime process and a trusted desktop client read one layout
+  rather than each composing a path.
 
 All Runtime operations enter one delivery endpoint. The Go binding avoids JSON and HTTP encoding but uses the same admission, capability, idempotency, Application, error, and event semantics as the HTTP binding.
 
