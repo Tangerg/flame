@@ -949,7 +949,7 @@ export const en: Record<string, string> = {
   "iconGallery.clear": "Clear",
 
   // ── Workspace view: Icon gallery ──
-  "workspace.view.title.iconGallery": "Icon Gallery",
+  "workspace.view.title.iconGallery": "Icon gallery",
 
   // ── Settings pane: Brand icons ──
   "settings.pane.brandIcons": "Brand icons",

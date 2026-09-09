@@ -614,8 +614,12 @@ for (const path of sourceFiles(SRC_DIR)) {
 //
 // An all-caps later word is an acronym and passes: `Agent SDK` is not Title Case.
 {
+  // A view's name is a title too, and its key does not END in `.title` — it ends in the view's
+  // own camel id, under `workspace.view.title.`. That suffix test let `Icon Gallery` sit beside
+  // twenty-one sentence-case siblings through the round that fixed three others.
+  const isTitle = (key) => key.endsWith(".title") || key.startsWith("workspace.view.title.");
   for (const [key, value] of enValues) {
-    if (!key.endsWith(".title")) continue;
+    if (!isTitle(key)) continue;
     const words = value.split(/\s+/);
     if (words.length < 2) continue;
     const later = words.slice(1);

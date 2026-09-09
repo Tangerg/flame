@@ -11699,3 +11699,54 @@ suite 里冒出 8 次 `ECONNREFUSED`。
 | 被遮蔽的内置贡献 | 0，且有断言守着 25 个点 |
 | 测试里的网络连接 | 8 → **0** |
 | 视觉套件 | **未跑** —— 本轮只改了两个测试文件，没有一行生产代码 |
+
+## Round 187 — 我自己那条守卫的洞，就在它修好的东西旁边
+
+Round 179 加了「英文标题用 sentence case」的规则，修了三条 Title Case。
+这一轮渲染每一个注册过的工作区视图时，看见了第 22 条：
+
+```
+"workspace.view.title.iconGallery": "Icon Gallery"
+```
+
+二十二个视图标题，二十一个是 sentence case（`Agent docs` / `File preview` /
+`Run summary` / `Changed files` / 上一轮改的 `Skill library`），只有它是 Title Case。
+
+**我的规则看不见它**：判据写的是「key 以 `.title` 结尾」，
+而视图标题的 key 结尾是视图自己的 camel id —— `workspace.view.title.iconGallery`。
+一条按后缀判断的规则，漏掉了整整一族标题，而且就在它刚修好的三条旁边。
+
+判据改成「以 `.title` 结尾**或**在 `workspace.view.title.` 之下」。
+**验证过会失败**：把 `Icon Gallery` 放回去，立刻点名。
+
+（其他七种语言这条都按自己的规范译好了，只有英文漂了 —— 和上一轮一样。）
+
+### 顺带把每一个注册视图都渲染了一遍
+
+用 `?full-view=` 逐个打开 24 个：
+
+- 21 个正常渲染；
+- `tool-inspector` / `traces` / `diagnostics` 显示 **"View unavailable"** ——
+  它们是诊断插件，fixture 不装载，兜底文案是对的；
+- `plan` 在全屏下是空态，而 dock 里有内容 —— 查过：**是 fixture 的两个会话不同**
+  （dock 那条的标签上有 `1/3` 徽章，全屏那条没有），不是缺陷。
+
+### 一个报告，不是修复
+
+`IconGallery` 是 20 个视图里**唯一不用 `WorkspaceViewLayout` 的**（19 个用）。
+它自己画标题（`@lobehub/icons`），所以在全屏下没有标准头栏，
+而它注册的名字（`Icon gallery`）在自己的正文里从不出现。
+按硬约定「业务层不自己拼交互件」，这是那个形状；
+但给它加头栏是可见的设计改动 —— **留给你定**。
+
+### 关于这几轮的红：是机器，不是代码
+
+最近几次全量出现了**轮换的单张 golden 失败**（`closing tabs` / `dock-timeline` /
+`Retina closure`），每一张单独跑都 2–3 次全绿。
+
+对上时长就清楚了：**9.7m → 11.5m → 13.5m → 16.2m**。
+查过进程：**没有我漏掉的 dev server**，但机器上有 7 个 `claude` 进程、
+其中一个占 29% CPU、几个跑了一天以上。
+
+所以这些不是缺陷，是竞争下的边缘 golden。**不追它们**，如实记下来 ——
+`tool-tail` 那条我追到了根（fixture 的滚动落点带记忆），这几条没有对应的证据。
