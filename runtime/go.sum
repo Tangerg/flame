@@ -7,8 +7,6 @@ cloud.google.com/go/compute/metadata v0.9.0/go.mod h1:E0bWwX5wTnLPedCKqk3pJmVgCB
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260908185457-e50229fcb487 h1:itikYpRZHbU8/YRFnMY/ZrBlNHuUXeS5xG+MKswNUes=
-github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260908185457-e50229fcb487/go.mod h1:XqeITG7pzIeQNDNRQQ3Jg63RVvKlXYmURgLHPPrIZ5g=
 github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260909142823-f8165e162cd0 h1:jPofInw4WlRDJKU4MbAdJTV+fiaqqa8Q4oKj5qlYuoY=
 github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260909142823-f8165e162cd0/go.mod h1:XqeITG7pzIeQNDNRQQ3Jg63RVvKlXYmURgLHPPrIZ5g=
 github.com/Tangerg/scope/a2a v0.14.0 h1:DdggcVhndsNggV+RU4f2UHaef6Si2oXXGrPYhh+AykY=
