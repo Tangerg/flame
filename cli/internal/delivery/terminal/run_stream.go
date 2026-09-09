@@ -110,9 +110,6 @@ func (a *app) prepareRunStart(input agent.StartRun) (commandreplay.Guard, bool) 
 		return commandreplay.Guard{}, false
 	}
 	replay := commandReplayGuard(a.runtimeProfile)
-	if a.workbench == nil {
-		return replay, true
-	}
 	if err := a.workbench.MarkPendingRunDispatching(input.SessionID, input.CommandID, replay); err != nil {
 		rollbackErr := a.execution.conversation.CancelStarting()
 		a.message("run start blocked: save dispatching run: " + err.Error())
@@ -142,9 +139,6 @@ func (a *app) presentRunStart(status string) {
 
 func (a *app) acceptStartedRun(input agent.StartRun, opened agent.SegmentStream) {
 	a.execution.openingRunID = opened.RunID
-	if a.workbench == nil {
-		return
-	}
 	pending := a.workbench.PendingRuns(input.SessionID)
 	if len(pending) == 0 || pending[0].Command.CommandID != input.CommandID {
 		return

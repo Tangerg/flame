@@ -224,9 +224,6 @@ func (a *app) settleQueuedDispatch() bool {
 }
 
 func (a *app) queuedDispatchCanceling() bool {
-	if a.workbench == nil {
-		return false
-	}
 	entry, ok := a.queue.Dispatching(a.session.current.ID)
 	if !ok {
 		return false
@@ -245,9 +242,6 @@ func (a *app) reportQueuedDispatchSettlementFailure(err error) {
 }
 
 func (a *app) retryQueuedDispatchSettlement() {
-	if a.workbench == nil {
-		return
-	}
 	runID := a.execution.openingRunID
 	a.retryAuthoringSettlement(
 		pendingRunSettlementOperation,
@@ -347,9 +341,6 @@ func (a *app) syncQueue() promptqueue.Snapshot {
 }
 
 func (a *app) persistQueuedRuns() error {
-	if a.workbench == nil {
-		return nil
-	}
 	state := a.queue.State(a.session.current.ID)
 	entries := state.Entries
 	persisted := a.workbench.PendingRuns(a.session.current.ID)

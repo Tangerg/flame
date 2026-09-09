@@ -224,18 +224,14 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		applicationKeys:    cfg.keyBindings.application,
 		globalKeys:         cfg.keyBindings.global,
 	}
-	// A terminal without a workbench keeps no durable drafts. That is the one
-	// place the choice is made; the writer itself is always complete.
-	if cfg.workbench != nil {
-		a.drafts = newDraftPersistence(cfg.workbench, func(result draftPersistenceResult) {
-			loop.Dispatcher().Post(func() {
-				if a.closed || !a.drafts.Current(result.revision) {
-					return
-				}
-				a.reportWorkbenchIssue(workbenchDraft, result.err)
-			})
+	a.drafts = newDraftPersistence(cfg.workbench, func(result draftPersistenceResult) {
+		loop.Dispatcher().Post(func() {
+			if a.closed || !a.drafts.Current(result.revision) {
+				return
+			}
+			a.reportWorkbenchIssue(workbenchDraft, result.err)
 		})
-	}
+	})
 	a.transcript.images = newTerminalImagePresenter(loop.Images())
 	a.configureComposer(appearance, cfg.keyBindings.editor, cfg.initialDraft)
 	a.configureCompletion(appearance)
@@ -385,9 +381,7 @@ func (a *app) Close(ctx context.Context) error {
 	// Flush is a serialization barrier: any autosave already in the filesystem
 	// finishes first, then the last visible composer state is written last.
 	closeErr = errors.Join(closeErr, a.persistDraft())
-	if a.drafts != nil {
-		closeErr = errors.Join(closeErr, a.drafts.Close())
-	}
+	closeErr = errors.Join(closeErr, a.drafts.Close())
 	if cancelRuntime {
 		if err := a.cancelRuntimeNow(ctx, target, cancelReplay); err == nil {
 			closeErr = errors.Join(closeErr, a.retireCanceledRuntimeOwnership(target.RunID, openingCommandID))

@@ -73,6 +73,8 @@ Long-lived terminal features own their cancellation and settlement locally. The 
 
 Whether the connected Runtime offers an optional surface is the composition root's question, answered once against the negotiated `Profile` and expressed by leaving that consumer port unset. A binding accessor therefore returns a usable value and never reports absence with a nil pointer: assigned into a consumer's interface-typed port, a nil pointer arrives as a non-nil interface, so the consumer's own "is this wired?" check cannot fire and its first call dereferences nil. Absence is the absent field, not a present value that fails on use.
 
+A mode the composition root never produces is not a mode. The terminal always opens a workbench — an in-memory one when no state directory is configured — so there is no draft-less, outbox-less terminal to guard against, and code that asked anyway had to invent an answer per call site: two refused, eight silently succeeded, and one reported a run as durably dispatched without writing it.
+
 Optional terminal state is asked about once, where the choice is made. A dialog, a draft writer or a pane that has not been opened is absent from the application state, and the code that reads it says so; the type itself assumes it exists rather than returning a zero answer that reads the same as "open, but empty". A presentation block that cannot render fails where it renders instead of drawing nothing.
 
 ## Local authoring

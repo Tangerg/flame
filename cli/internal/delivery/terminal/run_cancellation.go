@@ -68,9 +68,6 @@ func (a *app) stageOpeningCancellation() (workbench.PendingRun, bool, error) {
 	if entry.CommandID == "" {
 		return workbench.PendingRun{}, false, errors.New("dispatching queue entry is no longer available")
 	}
-	if a.workbench == nil {
-		return workbench.PendingRun{}, false, errors.New("CLI workbench is unavailable")
-	}
 	if _, err := a.workbench.MarkPendingRunCanceling(
 		a.session.current.ID, entry.CommandID, commandReplayGuard(a.runtimeProfile),
 	); err != nil {

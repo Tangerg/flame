@@ -355,7 +355,7 @@ func (a *app) persistDraft() error {
 // message is captured only after the input burst settles, so editing a long
 // prompt does not rebuild and clone its entire value after every key.
 func (a *app) scheduleDraftPersistence() {
-	if a.drafts == nil || a.session.current.ID == "" || a.closed {
+	if a.session.current.ID == "" || a.closed {
 		return
 	}
 	a.cancelScheduledDraftSave()
@@ -381,7 +381,7 @@ func (a *app) cancelScheduledDraftSave() {
 }
 
 func (a *app) saveDraft(message agent.Message) error {
-	if a.drafts == nil || a.session.current.ID == "" {
+	if a.session.current.ID == "" {
 		return nil
 	}
 	a.cancelScheduledDraftSave()

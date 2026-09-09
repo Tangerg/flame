@@ -441,9 +441,6 @@ func (a *app) settleAcknowledgedResume(commandID agent.CommandID) {
 }
 
 func (a *app) retireAcknowledgedResume(commandID agent.CommandID) error {
-	if a.workbench == nil {
-		return nil
-	}
 	pending, ok := a.workbench.PendingResume(a.session.current.ID)
 	if !ok {
 		return nil

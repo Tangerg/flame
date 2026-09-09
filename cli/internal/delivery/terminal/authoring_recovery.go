@@ -19,9 +19,6 @@ func (a *app) restoreSessionOutbox() {
 }
 
 func (a *app) restorePendingRuns() {
-	if a.workbench == nil {
-		return
-	}
 	pending := a.workbench.PendingRuns(a.session.current.ID)
 	if len(pending) == 0 {
 		return
@@ -59,9 +56,6 @@ func (a *app) restorePendingRuns() {
 }
 
 func (a *app) restorePendingResume() {
-	if a.workbench == nil {
-		return
-	}
 	pending, ok := a.workbench.PendingResume(a.session.current.ID)
 	if !ok {
 		return

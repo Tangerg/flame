@@ -12,9 +12,6 @@ import (
 )
 
 func (a *app) stashPrompt() error {
-	if a.workbench == nil {
-		return errors.New("prompt stashes are unavailable")
-	}
 	message, present, err := a.currentDraft()
 	if err != nil {
 		return err
