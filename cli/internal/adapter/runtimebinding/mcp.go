@@ -277,13 +277,8 @@ func projectMCPAuthorizationResult(
 			err,
 		)
 	}
-	if expected.attemptID != "" && attempt.ID != expected.attemptID {
-		return protocol.MCPAuthorizationAttempt{}, runtimeContractViolation(
-			"%s returned attempt %q for %q",
-			operation,
-			attempt.ID,
-			expected.attemptID,
-		)
+	if err := requireIdentity(operation, attempt.ID, expected.attemptID); err != nil {
+		return protocol.MCPAuthorizationAttempt{}, err
 	}
 	if attempt.Server != expected.server {
 		return protocol.MCPAuthorizationAttempt{}, runtimeContractViolation(

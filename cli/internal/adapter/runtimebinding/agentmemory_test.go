@@ -327,6 +327,8 @@ func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 		Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive,
 		CreatedAt: now, UpdatedAt: now,
 	}
+	unidentifiedAdd := wrongAdd
+	unidentifiedAdd.ID, unidentifiedAdd.Content = "", "authored"
 	tests := []struct {
 		name   string
 		stub   *agentMemoryBindingStub
@@ -347,6 +349,20 @@ func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 			invoke: func(adapter *AgentMemory) error {
 				content, pinned := "edited", true
 				_, err := adapter.Update(t.Context(), protocol.AgentMemoryUpdateRequest{ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned})
+				return err
+			},
+		},
+		{
+			// add mints the item ID, so no acknowledgement check compares one
+			// and the presence of an identity is the whole contract.
+			name: "add identity",
+			stub: &agentMemoryBindingStub{addResult: &unidentifiedAdd},
+			invoke: func(adapter *AgentMemory) error {
+				target, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
+				if err != nil {
+					return err
+				}
+				_, err = adapter.Add(t.Context(), target, "authored")
 				return err
 			},
 		},

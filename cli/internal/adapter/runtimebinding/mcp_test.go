@@ -27,6 +27,7 @@ type mcpBindingStub struct {
 	updatedEnabled       *bool
 	updatedDescription   *string
 	authErr              error
+	authStart            *protocol.MCPAuthorizationAttempt
 	authGet              *protocol.MCPAuthorizationAttempt
 	now                  time.Time
 	servers              []protocol.MCPServer
@@ -120,6 +121,11 @@ func (m *mcpBindingStub) ReconnectMCPServer(_ context.Context, request protocol.
 
 func (m *mcpBindingStub) CreateMCPAuthorizationAttempt(_ context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options flameruntime.CommandOptions) (*protocol.MCPAuthorizationAttempt, error) {
 	m.assertCommand("authorize:"+request.Server, options)
+	if m.authStart != nil {
+		attempt := *m.authStart
+		attempt.Server = request.Server
+		return &attempt, nil
+	}
 	return &protocol.MCPAuthorizationAttempt{
 		ID: adapterMCPAuthorizationAttemptID, Server: request.Server,
 		Status:    protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptPending},
@@ -328,6 +334,16 @@ func TestMCPAuthorizationAdapterPreservesAbsenceAndEnforcesReferenceIdentity(t *
 	stub.authGet.Server = "other"
 	if _, err := runtime.GetAuthorization(t.Context(), reference); !errors.Is(err, agent.ErrIncompatibleRuntime) {
 		t.Fatalf("mismatched authorization server = %v, want ErrIncompatibleRuntime", err)
+	}
+
+	// Starting an attempt mints its ID and so names none to compare, which
+	// leaves the presence of an identity as the whole contract.
+	stub.authStart = &protocol.MCPAuthorizationAttempt{
+		Status:    protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptPending},
+		CreatedAt: stub.now,
+	}
+	if _, err := runtime.StartAuthorization(t.Context(), "docs"); err == nil || !strings.Contains(err.Error(), "without an id") {
+		t.Fatalf("unidentified authorization attempt = %v, want a missing identity", err)
 	}
 }
 

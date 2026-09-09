@@ -25,29 +25,6 @@ func requireCompletePage[T any](operation string, page *protocol.Page[T]) ([]T, 
 	return page.Data, nil
 }
 
-// requireUniqueIdentities owns the identity contract for every catalog the CLI
-// reads from Runtime. A repeated identity would silently collapse two Runtime
-// rows into one CLI row, and a missing one is unusable as the key every later
-// operation names that row by; neither is observable to a wire constraint.
-func requireUniqueIdentities[Value any](
-	operation string,
-	values []Value,
-	identity func(Value) string,
-) error {
-	seen := make(map[string]struct{}, len(values))
-	for _, value := range values {
-		key := identity(value)
-		if key == "" {
-			return runtimeContractViolation("%s returned a row without an identity", operation)
-		}
-		if _, duplicate := seen[key]; duplicate {
-			return runtimeContractViolation("%s repeats %q", operation, key)
-		}
-		seen[key] = struct{}{}
-	}
-	return nil
-}
-
 // projectUniqueValues projects and identity-checks one complete catalog. The
 // operation returns no partial list: an unprojectable or repeated row makes the
 // whole Runtime response a contract violation.

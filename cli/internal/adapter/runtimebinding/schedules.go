@@ -151,8 +151,8 @@ func scheduleResult(operation, expectedID string, result *protocol.Schedule, err
 	if result == nil {
 		return protocol.Schedule{}, runtimeContractViolation("%s returned nil", operation)
 	}
-	if expectedID != "" && result.ID != expectedID {
-		return protocol.Schedule{}, runtimeContractViolation("%s returned id %q for %q", operation, result.ID, expectedID)
+	if err := requireIdentity(operation, result.ID, expectedID); err != nil {
+		return protocol.Schedule{}, err
 	}
 	return *result, nil
 }

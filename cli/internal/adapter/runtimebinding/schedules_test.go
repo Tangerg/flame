@@ -2,6 +2,7 @@ package runtimebinding
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -293,6 +294,21 @@ func TestScheduleAdapterRejectsMismatchedMutationAcknowledgements(t *testing.T) 
 		result.Instructions, result.Cron = request.Instructions, request.Cron
 		stub := &scheduleBindingStub{t: t, now: now, keys: make(map[string]struct{}), createResult: &result}
 		_, err := newRuntime(stub).Create(t.Context(), request)
+		requireRuntimeContractViolation(t, err)
+	})
+
+	// create names no expected ID, so every other acknowledgement check passes
+	// and the presence of an identity is the whole contract.
+	t.Run("create identity", func(t *testing.T) {
+		request := protocol.CreateScheduleRequest{
+			Title: "Review", Instructions: "review the repository", Cron: "0 * * * *",
+		}
+		result := wireSchedule(now, "")
+		stub := &scheduleBindingStub{t: t, now: now, keys: make(map[string]struct{}), createResult: &result}
+		_, err := newRuntime(stub).Create(t.Context(), request)
+		if err == nil || !strings.Contains(err.Error(), "without an id") {
+			t.Fatalf("create error = %v, want a missing identity", err)
+		}
 		requireRuntimeContractViolation(t, err)
 	})
 

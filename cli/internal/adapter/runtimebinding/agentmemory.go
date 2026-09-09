@@ -215,8 +215,8 @@ func agentMemoryResult(
 	if err := agent.ValidateMemoryItem(item); err != nil {
 		return protocol.AgentMemoryItem{}, runtimeContractViolation("%s returned an invalid item: %v", operation, err)
 	}
-	if expectedID != "" && item.ID != expectedID {
-		return protocol.AgentMemoryItem{}, runtimeContractViolation("%s returned id %q for %q", operation, item.ID, expectedID)
+	if err := requireIdentity(operation, item.ID, expectedID); err != nil {
+		return protocol.AgentMemoryItem{}, err
 	}
 	if expectedScope != "" && item.Scope != expectedScope {
 		return protocol.AgentMemoryItem{}, runtimeContractViolation("%s returned %s scope, want %s", operation, item.Scope, expectedScope)
