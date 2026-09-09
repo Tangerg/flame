@@ -1476,10 +1476,13 @@ html.theme-dark {
   max-width: 100%;
 }
 
+/* An enlarged diagram narrower than the dialog sits in the middle of it. The dialog's width is
+   `fit-content` with a `min-width` floor, so a small graph leaves room on both sides and would
+   otherwise hug the start edge — which is the whole rule. It used to also say `display: block`,
+   which the reset already gives every `svg`, and `max-width: none`, which undoes a constraint
+   that is only ever placed on `img` and `video`. Both were verified inert by deleting them. */
 [data-slot="mermaid-full"] svg {
-  display: block;
   margin-inline: auto;
-  max-width: none;
 }
 
 /* The pill reports a run in flight, and the thing that should pulse is the glyph inside the

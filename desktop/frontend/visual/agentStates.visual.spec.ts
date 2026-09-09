@@ -919,7 +919,15 @@ for (const theme of ["light", "dark"] as const) {
       .toBe("```mermaid\ngraph LR\n  Runtime --> Desktop\n  Desktop --> Frontend\n```");
 
     await artifact.getByRole("button", { name: "Enlarge diagram" }).click();
-    await expect(page.getByRole("dialog", { name: "Diagram" })).toBeVisible();
+    const enlarged = page.getByRole("dialog", { name: "Diagram" });
+    await expect(enlarged).toBeVisible();
+    // Photographed, not merely asserted present. `globals.css` owns what the enlarged diagram
+    // is — `[data-slot="mermaid-full"] svg` centres it and lifts the `max-width` the inline
+    // stage imposes — and a descendant rule is exactly the kind nothing else here can check.
+    // Being visible says nothing about being the right size.
+    await expect(enlarged).toHaveScreenshot(`markdown-mermaid-full-${theme}.png`, {
+      maxDiffPixels: 400,
+    });
     await page.keyboard.press("Escape");
   });
 
