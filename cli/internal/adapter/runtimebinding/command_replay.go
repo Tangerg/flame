@@ -26,7 +26,7 @@ func CommandReplayPolicyWithClock(
 	if err := profile.Validate(); err != nil {
 		return mutation.ReplayPolicy{}, err
 	}
-	limits := profile.discovery.Capabilities.Limits.Idempotency
+	limits := profile.IdempotencyLimits()
 	capability, err := commandreplay.NewCapability(limits.Namespace, time.Duration(limits.RetentionSeconds)*time.Second)
 	if err != nil {
 		return mutation.ReplayPolicy{}, err

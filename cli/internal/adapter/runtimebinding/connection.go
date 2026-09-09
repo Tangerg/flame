@@ -189,7 +189,7 @@ func (r *Connection) commandOptions() flameruntime.CommandOptions {
 	key := string(mutation.NewCommandID())
 	return flameruntime.CommandOptions{
 		RequestMeta: r.meta, IdempotencyKey: key,
-		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
+		IdempotencyNamespace: r.profile.IdempotencyLimits().Namespace,
 	}
 }
 
@@ -202,7 +202,7 @@ func (r *Connection) commandOptionsFor(commandID agent.CommandID) (flameruntime.
 	}
 	return flameruntime.CommandOptions{
 		RequestMeta: r.meta, IdempotencyKey: string(commandID),
-		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
+		IdempotencyNamespace: r.profile.IdempotencyLimits().Namespace,
 	}, nil
 }
 
@@ -210,7 +210,7 @@ func (r *Connection) runCommandOptions() flameruntime.RunCommandOptions {
 	key := string(mutation.NewCommandID())
 	return flameruntime.RunCommandOptions{
 		RequestMeta: r.meta, IdempotencyKey: key,
-		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
+		IdempotencyNamespace: r.profile.IdempotencyLimits().Namespace,
 	}
 }
 
@@ -223,7 +223,7 @@ func (r *Connection) runCommandOptionsFor(commandID agent.CommandID) (flamerunti
 	}
 	return flameruntime.RunCommandOptions{
 		RequestMeta: r.meta, IdempotencyKey: string(commandID),
-		IdempotencyNamespace: r.profile.discovery.Capabilities.Limits.Idempotency.Namespace,
+		IdempotencyNamespace: r.profile.IdempotencyLimits().Namespace,
 	}, nil
 }
 

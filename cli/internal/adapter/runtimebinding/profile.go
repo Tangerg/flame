@@ -45,6 +45,14 @@ func (p Profile) ClientCapabilities() *protocol.ClientCapabilities {
 	return cloneClientCapabilities(p.client)
 }
 
+// IdempotencyLimits answers what the connected Runtime promises about replayed
+// commands: the store identity a key belongs to, and how long its first
+// response stays available. Callers ask rather than walk the discovery
+// response, so a limit moving inside the wire shape moves in one place.
+func (p Profile) IdempotencyLimits() protocol.IdempotencyLimits {
+	return p.discovery.Capabilities.Limits.Idempotency
+}
+
 func (p Profile) Supports(feature string) bool {
 	return len(protocol.MissingFeatureRequirements(p.discovery.Capabilities.Features, p.client, feature)) == 0
 }
