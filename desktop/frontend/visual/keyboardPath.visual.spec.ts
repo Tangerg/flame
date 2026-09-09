@@ -28,9 +28,15 @@ const ROUTES = [
   "fixture=workspace&state=dock-light",
   "fixture=workspace&state=settings",
   "fixture=agent&state=narrative",
+  "fixture=agent&state=tool-shells",
 ];
 
-const FORWARD_STEPS = 45;
+// The walk ends when focus returns to where it started, so it covers a route rather than
+// sampling it. It was a flat 45 presses, which was a number chosen without measuring: the dock
+// route closes its cycle at 50 and the narrative route at 56, so the goal bar's actions were
+// never reached and the guard was quietly auditing a prefix. The cap is only a way out if the
+// cycle never closes.
+const MAX_PRESSES = 200;
 const STEP_BUDGET_MS = 320;
 
 /** A control taller than this spans bands rather than sitting in one, so its top says nothing. */
@@ -60,8 +66,9 @@ interface Box {
 }
 
 test("the keyboard walks in reading order", async ({ page }) => {
-  test.setTimeout(ROUTES.length * FORWARD_STEPS * STEP_BUDGET_MS + 20_000);
+  test.setTimeout(ROUTES.length * MAX_PRESSES * STEP_BUDGET_MS + 20_000);
   const jumps: string[] = [];
+  const stopsPerRoute: string[] = [];
   let stops = 0;
 
   for (const route of ROUTES) {
@@ -69,15 +76,35 @@ test("the keyboard walks in reading order", async ({ page }) => {
     await page.waitForSelector("html[data-visual-ready]");
     await page.waitForTimeout(400);
 
-    const seen = new Set<string>();
     const walk: (Box & { label: string; height: number; scroller: string })[] = [];
 
-    for (let step = 0; step < FORWARD_STEPS; step += 1) {
+    // Start at the top of the order, not where Chromium's sequential-focus starting point
+    // happens to be. `document.activeElement === document.body` after a load does NOT mean the
+    // top: the starting point is separate state, and in the dock route Tab from there visited
+    // the LAST two controls, left the document, and only then re-entered at the first. So the
+    // rewind presses Tab until leaving the document is what a press produced — the next press
+    // enters at the true first stop. Without it the walk straddled that boundary and read a
+    // 984px leftward jump between the window-chrome buttons at either end of the order.
+    const atBody = () => page.evaluate(() => document.activeElement === document.body);
+    for (let press = 0; press < MAX_PRESSES; press += 1) {
+      await page.keyboard.press("Tab");
+      await page.waitForTimeout(40);
+      if (await atBody()) break;
+    }
+
+    for (let step = 0; step < MAX_PRESSES; step += 1) {
       await page.keyboard.press("Tab");
       await page.waitForTimeout(60);
+      // "Have I been here" is asked of the ELEMENT, by marking it. A key built from tag, class
+      // prefix and text collides: it ended the walk after one stop in the dock route, and the
+      // goal bar's three icon buttons all carry an empty label, so two of the three were
+      // dropped as duplicates — which is exactly the group a reordering would show up in.
       const at = await page.evaluate(() => {
         const active = document.activeElement as HTMLElement | null;
-        if (!active || active === document.body) return null;
+        // Back out of the document: the order has been walked end to end.
+        if (!active || active === document.body) return "closed" as const;
+        if (active.dataset.keyboardSeen !== undefined) return null;
+        active.dataset.keyboardSeen = "";
         const box = active.getBoundingClientRect();
 
         // Position inside the nearest scrolling ancestor's content, which does not move when
@@ -103,7 +130,6 @@ test("the keyboard walks in reading order", async ({ page }) => {
           break;
         }
         return {
-          key: `${active.tagName}|${(active.getAttribute("class") ?? "").slice(0, 20)}|${(active.textContent ?? "").trim().slice(0, 16)}`,
           label: (
             active.getAttribute("aria-label") ??
             active.getAttribute("title") ??
@@ -120,7 +146,7 @@ test("the keyboard walks in reading order", async ({ page }) => {
           width: box.width,
           height: box.height,
           scroller,
-        };
+        } as const;
 
         // A stable id per scroller, so two stops can be told to share one.
         function walkId() {
@@ -131,12 +157,12 @@ test("the keyboard walks in reading order", async ({ page }) => {
           return next;
         }
       });
-      // A repeat means the walk has wrapped, and a zero-size stop is not somewhere a person
-      // can see they are.
-      if (!at || seen.has(at.key) || at.width < 1 || at.height < 1) continue;
-      seen.add(at.key);
+      if (at === "closed") break;
+      // A zero-size stop is not somewhere a person can see they are.
+      if (!at || at.width < 1 || at.height < 1) continue;
       walk.push(at);
     }
+    stopsPerRoute.push(`${route} → ${walk.length}`);
 
     stops += walk.length;
     for (let i = 1; i < walk.length; i += 1) {
@@ -156,7 +182,9 @@ test("the keyboard walks in reading order", async ({ page }) => {
     }
   }
 
-  // A walk that stopped nowhere is in reading order trivially.
+  // A walk that stopped nowhere is in reading order trivially. Printed per route as well,
+  // because a route that quietly stops covering its surface is the failure this walk had.
+  console.log(`tab stops per route:\n  ${stopsPerRoute.join("\n  ")}`);
   expect(stops, "the walk has to reach real controls").toBeGreaterThan(80);
   expect(jumps, "Tab went backwards against reading order").toEqual([]);
 });

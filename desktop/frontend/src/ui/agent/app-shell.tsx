@@ -70,7 +70,11 @@ export function AgentAppShell({
       className="agent-shell"
       data-sidebar={hasSidebar && sidebarOpen ? "expanded" : "collapsed"}
     >
-      {hasSidebar && <AgentSidebar label={sidebarLabel}>{sidebar}</AgentSidebar>}
+      {/* Before the sidebar, because this sits at the TOP of the window and the keyboard walks
+          the DOM: rendered after it, the control that collapses the sidebar was the last stop
+          in the whole shell, reached only after every session row. Its box is absolute with an
+          explicit `--layer-chrome-control`, so neither the layout nor the paint order depends
+          on where it sits among its siblings — only the tab order did. */}
       {hasSidebar && (
         <div className="agent-window-sidebar-control">
           <AgentDrawerToggle
@@ -81,6 +85,7 @@ export function AgentAppShell({
           />
         </div>
       )}
+      {hasSidebar && <AgentSidebar label={sidebarLabel}>{sidebar}</AgentSidebar>}
       <div {...stylex.props(styles.content)}>
         {hasSidebar && sidebarOpen && (
           <AgentSeamRail label={sidebarResizeLabel} width={sidebarWidth} onCommit={onResize} />

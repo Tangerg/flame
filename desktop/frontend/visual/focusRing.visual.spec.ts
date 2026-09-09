@@ -124,7 +124,7 @@ const STEP_BUDGET_MS = 220;
 test("the ring the design promises is the ring that paints", async ({ page }) => {
   test.setTimeout(ROUTES.length * TAB_STEPS * STEP_BUDGET_MS + 20_000);
   const silent: string[] = [];
-  const fingerprints = new Map<string, string>();
+  const strangers: string[] = [];
   let reached = 0;
 
   for (const route of ROUTES) {
@@ -147,10 +147,42 @@ test("the ring the design promises is the ring that paints", async ({ page }) =>
         if (tag === "input" || tag === "textarea" || active.isContentEditable) return null;
         if (!active.matches(":focus-visible")) return null;
         const style = getComputedStyle(active);
+
+        // Which RULE is painting, not what the pixels came out as. This was a fingerprint of
+        // the computed `outline-style outline-width outline-color` and it was flaky: Chromium
+        // reports the design's `1.5px` as `1px` at one device ratio, and some transient state
+        // reported `solid 3px currentcolor` on roughly one run in three — so an assertion that
+        // there is exactly one fingerprint was passing on luck. Asking which author rules
+        // match says the same thing literally, and says it about the design rather than about
+        // pixel rounding.
+        const painters: string[] = [];
+        for (const sheet of document.styleSheets) {
+          let rules: CSSRuleList;
+          try {
+            rules = sheet.cssRules;
+          } catch {
+            continue;
+          }
+          const walk = (list: CSSRuleList) => {
+            for (const rule of list) {
+              if (rule instanceof CSSGroupingRule) walk(rule.cssRules);
+              if (!(rule instanceof CSSStyleRule)) continue;
+              if (!/outline/.test(rule.style.cssText)) continue;
+              let hit = false;
+              try {
+                hit = active.matches(rule.selectorText);
+              } catch {
+                hit = false;
+              }
+              if (hit) painters.push(rule.selectorText.replace(/\s+/g, " "));
+            }
+          };
+          walk(rules);
+        }
         return {
           key: `${active.getAttribute("class") ?? ""}|${(active.textContent ?? "").trim().slice(0, 24)}`,
           tag,
-          ring: `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`,
+          painters,
           drawn: style.outlineStyle !== "none",
           label: (active.getAttribute("aria-label") ?? active.textContent ?? "")
             .trim()
@@ -161,8 +193,20 @@ test("the ring the design promises is the ring that paints", async ({ page }) =>
       if (!meta || seen.has(meta.key)) continue;
       seen.add(meta.key);
       reached += 1;
-      if (meta.drawn) fingerprints.set(meta.ring, `${route} <${meta.tag}> "${meta.label}"`);
-      else silent.push(`${route}  <${meta.tag}> "${meta.label}"`);
+      if (!meta.drawn) {
+        silent.push(`${route}  <${meta.tag}> "${meta.label}"`);
+        continue;
+      }
+      // The global pair is the only thing allowed to paint one: both halves gate on the
+      // modality attribute and on `:focus-visible`, which nothing else in the sheet does.
+      const foreign = meta.painters.filter(
+        (selector) => !(selector.includes("data-pointer") && selector.includes(":focus-visible")),
+      );
+      if (foreign.length > 0 || meta.painters.length === 0) {
+        strangers.push(
+          `${route} <${meta.tag}> "${meta.label}"  ${foreign.length > 0 ? foreign.join(" ; ") : "no author rule paints it, so this is the browser's own"}`,
+        );
+      }
     }
   }
 
@@ -173,7 +217,7 @@ test("the ring the design promises is the ring that paints", async ({ page }) =>
     "controls the design promises a ring and that show none — a call site is out-specifying globals.css",
   ).toEqual([]);
   expect(
-    [...fingerprints].map(([ring, where]) => `${ring}  first at ${where}`),
-    "one rule draws every focus ring, so there is one ring",
-  ).toHaveLength(1);
+    [...new Set(strangers)],
+    "one rule draws every focus ring, so nothing else may paint one",
+  ).toEqual([]);
 });
