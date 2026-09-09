@@ -318,9 +318,12 @@ func (i *InteractionExecutor) validateInteractionTools(manifest toolset.Manifest
 	return nil
 }
 
+// The Deployment's configuration digest names what makes two executions
+// interchangeable, so only deployment-shaping values enter it. Per-run state —
+// cwd, limits, the working context — deliberately does not: a digest that moved
+// with the conversation would declare every checkpoint incompatible.
 func (i *InteractionExecutor) interactionConfiguration(
 	session *interactionSession,
-	start runs.RootExecutionStart,
 	maxModelCalls uint32,
 	manifest toolset.Manifest,
 	group domaintool.Group,

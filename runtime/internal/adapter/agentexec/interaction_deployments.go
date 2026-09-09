@@ -196,7 +196,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 		delegateRef = next.DeploymentRef()
 	}
 	configuration, err := i.executor.interactionConfiguration(
-		i.session, i.start, i.maxModelCalls, manifest, group, uint32(depth), delegateRef,
+		i.session, i.maxModelCalls, manifest, group, uint32(depth), delegateRef,
 		delegateBudget, i.instructions,
 	)
 	if err != nil {
