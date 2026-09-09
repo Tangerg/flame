@@ -40,7 +40,7 @@ func BuildLSP(ci *codeintel.Analyzer, defaultCWD string) ([]toolcontract.Tool, e
 // and parsed value cannot drift. Only `operation` is structurally required —
 // which operand each operation needs is validated per-operation in the handler.
 type lspInput struct {
-	Operation lspOperation `json:"operation" jsonschema:"enum=definition,enum=references,enum=implementation,enum=hover,enum=incoming_calls,enum=outgoing_calls,enum=document_symbols,enum=workspace_symbols,enum=diagnostics" jsonschema_description:"Language-server query to run."`
+	Operation LSPOperation `json:"operation" jsonschema:"enum=definition,enum=references,enum=implementation,enum=hover,enum=incoming_calls,enum=outgoing_calls,enum=document_symbols,enum=workspace_symbols,enum=diagnostics" jsonschema_description:"Language-server query to run."`
 	Path      string       `json:"path,omitempty" jsonschema_description:"File path, absolute or relative to the workspace root. Required except for workspace_symbols."`
 	Line      *int         `json:"line,omitempty" jsonschema:"minimum=1" jsonschema_description:"1-based line of the symbol. Required for position operations and omitted otherwise."`
 	Character *int         `json:"character,omitempty" jsonschema:"minimum=1" jsonschema_description:"1-based character (column) of the symbol. Required for position operations and omitted otherwise."`
@@ -56,24 +56,24 @@ type lspPosition struct {
 }
 
 type lspQuery struct {
-	operation   lspOperation
+	operation   LSPOperation
 	path        string
 	position    lspPosition
 	symbolQuery string
 }
 
-type lspOperation string
+type LSPOperation string
 
 const (
-	lspDefinition       lspOperation = "definition"
-	lspReferences       lspOperation = "references"
-	lspImplementation   lspOperation = "implementation"
-	lspHover            lspOperation = "hover"
-	lspIncomingCalls    lspOperation = "incoming_calls"
-	lspOutgoingCalls    lspOperation = "outgoing_calls"
-	lspDocumentSymbols  lspOperation = "document_symbols"
-	lspWorkspaceSymbols lspOperation = "workspace_symbols"
-	lspDiagnostics      lspOperation = "diagnostics"
+	LSPDefinition       LSPOperation = "definition"
+	LSPReferences       LSPOperation = "references"
+	LSPImplementation   LSPOperation = "implementation"
+	LSPHover            LSPOperation = "hover"
+	LSPIncomingCalls    LSPOperation = "incoming_calls"
+	LSPOutgoingCalls    LSPOperation = "outgoing_calls"
+	LSPDocumentSymbols  LSPOperation = "document_symbols"
+	LSPWorkspaceSymbols LSPOperation = "workspace_symbols"
+	LSPDiagnostics      LSPOperation = "diagnostics"
 )
 
 func (l lspInput) normalize() (lspQuery, error) {
@@ -88,8 +88,8 @@ func (l lspInput) normalize() (lspQuery, error) {
 		symbolQuery: l.Query,
 	}
 	switch l.Operation {
-	case lspDefinition, lspReferences, lspImplementation, lspHover,
-		lspIncomingCalls, lspOutgoingCalls:
+	case LSPDefinition, LSPReferences, LSPImplementation, LSPHover,
+		LSPIncomingCalls, LSPOutgoingCalls:
 		if strings.TrimSpace(l.Path) == "" {
 			return lspQuery{}, fmt.Errorf("lsp %s: path is required", l.Operation)
 		}
@@ -99,14 +99,14 @@ func (l lspInput) normalize() (lspQuery, error) {
 		if strings.TrimSpace(l.Query) != "" {
 			return lspQuery{}, fmt.Errorf("lsp %s: query is not used for position operations", l.Operation)
 		}
-	case lspDocumentSymbols, lspDiagnostics:
+	case LSPDocumentSymbols, LSPDiagnostics:
 		if strings.TrimSpace(l.Path) == "" {
 			return lspQuery{}, fmt.Errorf("lsp %s: path is required", l.Operation)
 		}
 		if hasPosition || strings.TrimSpace(l.Query) != "" {
 			return lspQuery{}, fmt.Errorf("lsp %s: only path is accepted", l.Operation)
 		}
-	case lspWorkspaceSymbols:
+	case LSPWorkspaceSymbols:
 		if strings.TrimSpace(l.Query) == "" {
 			return lspQuery{}, errors.New("lsp workspace_symbols: query is required")
 		}
@@ -157,23 +157,23 @@ func (l *lspRunner) query(ctx context.Context, in lspInput) (string, error) {
 	}
 	root := executionctx.CWD(ctx, l.defaultCWD)
 	switch query.operation {
-	case lspDefinition:
+	case LSPDefinition:
 		return l.analyzer.Definition(ctx, root, query.path, query.position.line, query.position.character)
-	case lspReferences:
+	case LSPReferences:
 		return l.analyzer.References(ctx, root, query.path, query.position.line, query.position.character)
-	case lspImplementation:
+	case LSPImplementation:
 		return l.analyzer.Implementation(ctx, root, query.path, query.position.line, query.position.character)
-	case lspHover:
+	case LSPHover:
 		return l.analyzer.Hover(ctx, root, query.path, query.position.line, query.position.character)
-	case lspIncomingCalls:
+	case LSPIncomingCalls:
 		return l.analyzer.IncomingCalls(ctx, root, query.path, query.position.line, query.position.character)
-	case lspOutgoingCalls:
+	case LSPOutgoingCalls:
 		return l.analyzer.OutgoingCalls(ctx, root, query.path, query.position.line, query.position.character)
-	case lspDocumentSymbols:
+	case LSPDocumentSymbols:
 		return l.analyzer.DocumentSymbols(ctx, root, query.path)
-	case lspDiagnostics:
+	case LSPDiagnostics:
 		return l.analyzer.Diagnostics(ctx, root, query.path)
-	case lspWorkspaceSymbols:
+	case LSPWorkspaceSymbols:
 		return l.analyzer.WorkspaceSymbols(ctx, root, query.symbolQuery)
 	default:
 		return "", fmt.Errorf("lsp: unknown operation %q", query.operation)

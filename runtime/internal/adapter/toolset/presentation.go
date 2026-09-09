@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
@@ -141,25 +142,29 @@ func isConciseActivityText(value string, maxRunes int) bool {
 	return value != "" && value == strings.TrimSpace(value) && utf8.RuneCountInString(value) <= maxRunes
 }
 
+// lspOperationActivity phrases the operation the tool declares. The vocabulary
+// belongs to the tool, so name its values rather than respelling them: a
+// renamed operation must break here rather than silently fall through to the
+// generic label.
 func lspOperationActivity(operation string) string {
-	switch operation {
-	case "definition":
+	switch builtin.LSPOperation(operation) {
+	case builtin.LSPDefinition:
 		return "Finding a symbol definition"
-	case "references":
+	case builtin.LSPReferences:
 		return "Finding symbol references"
-	case "implementation":
+	case builtin.LSPImplementation:
 		return "Finding symbol implementations"
-	case "hover":
+	case builtin.LSPHover:
 		return "Inspecting a symbol"
-	case "incoming_calls":
+	case builtin.LSPIncomingCalls:
 		return "Finding incoming calls"
-	case "outgoing_calls":
+	case builtin.LSPOutgoingCalls:
 		return "Finding outgoing calls"
-	case "document_symbols":
+	case builtin.LSPDocumentSymbols:
 		return "Listing document symbols"
-	case "workspace_symbols":
+	case builtin.LSPWorkspaceSymbols:
 		return "Searching workspace symbols"
-	case "diagnostics":
+	case builtin.LSPDiagnostics:
 		return "Checking file diagnostics"
 	default:
 		return ""
