@@ -23,7 +23,7 @@ const sr = stylex.create({
     flexDirection: "column",
     gap: space.s1_5,
     borderRadius: radius.card,
-    backgroundColor: { default: surface.sunken, ":hover": surface.hover },
+    backgroundColor: { default: surface.sunken, ":hover": surface.sunkenHover },
     paddingInline: space.s3_5,
     paddingBlock: space.s3,
     textDecoration: "none",

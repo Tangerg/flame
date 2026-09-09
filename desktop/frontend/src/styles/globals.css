@@ -393,6 +393,25 @@
   --wash-hover: color-mix(in srgb, var(--color-text) calc(var(--depth-step) * 0.75), transparent);
   --wash-selected: color-mix(in srgb, var(--color-text) var(--depth-step), transparent);
 
+  /* An ink wash is ink laid OVER what is there, and `background-color` holds one value — so a
+     wash written into it REPLACES the resting fill rather than compositing with it. Measured
+     by hovering every control in the fixtures: a selected row dropped from 4% ink to 3%, so
+     the pointer made the selection fainter, and a sunken row lost its recess entirely and
+     read as if it had popped out of the surface. These are the same ink over the two resting
+     fills that take a hover, computed once here instead of at each call site — the way
+     `--app-dock-tabstrip-surface` below already lays it over the tabstrip. 1.75 is what the
+     two washes composite to, not a chosen strength. */
+  --wash-selected-hover: color-mix(
+    in srgb,
+    var(--color-text) calc(var(--depth-step) * 1.75),
+    transparent
+  );
+  --color-sunken-hover: color-mix(
+    in oklab,
+    var(--color-text) calc(var(--depth-step) * 0.75),
+    var(--color-sunken)
+  );
+
   --shadow-cast: rgb(0 0 0 / 0.2);
 
   --color-text: #1e1f22;

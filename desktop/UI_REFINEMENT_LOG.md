@@ -12120,3 +12120,98 @@ delay，但守卫不是靠"今天没有"活着的 —— 加进去并验证会�
   fixture 从不触发。这轮改的正是它的 hover。
 - 静态守卫读的是**源码**里的 hover 拼法；**屏幕上**的 hover 没有任何东西看着 ——
   focus 环这一轮刚证明这两件事可以完全不一致。下一轮做 hover 的运行时扫描。
+
+## Round 194 —— 一个不是 wash 的 "ink wash"
+
+上一轮的结论：静态守卫读的是**源码**里的 hover 拼法，屏幕上的 hover 没有任何东西看着 ——
+而 focus 环刚证明这两件事可以完全对不上。所以这轮把每个控件都 hover 一遍，diff 计算后的样式。
+
+**184 个控件，34 个毫无反应，14 种不同的答案。** 其中两种是真缺陷：
+
+| 量到的 | 意思 |
+| --- | --- |
+| `5x  背景 4% → 3%` | **hover 一个已选中的行，把它变淡了** |
+| `1x  背景 #eaf0fb → 3% 半透明` | **hover 一个凹陷的行，它丢掉了整个凹陷**，读起来像从表面弹出来了 |
+
+（另外 `41x color` 和 `41x textDecorationColor` 是同一次颜色变化的影子 —— 未设置时它跟随
+`currentColor`。`18x borderColor` 同理。不是三种答案，是一种。）
+
+### 根因：机制和它自己的模型矛盾
+
+`CLAUDE.md` 把这两个状态称作 **ink wash** —— 墨水**盖在**已有的东西上。
+但它们被写进了 `background-color`，而 `background-color` 只能装一个值 ——
+**所以这个 wash 是替换，不是覆盖。一个会替换的 wash 不是 wash。**
+
+这不是写错了顺序。三处站点都把 selected 的 key 写在 `:hover` **后面**，量到的却是 hover 赢：
+
+| 规则 | 特异度 |
+| --- | --- |
+| `.x…:hover:not(#\#)×3` | (3,2,0) |
+| `.x…:is([data-active]):not(#\#)×3` | **(3,2,0)** |
+
+**特异度相同**，于是表里的顺序决定胜负，而 StyleX 把 `:hover` 排在属性条件之后。
+在同一个对象里调换书写顺序**改不动它**。
+
+### 治本：把墨水盖在真正在那儿的东西上
+
+产品里只有两种"有底色还要接 hover"的静止态，所以只要两个值，不是组合爆炸：
+
+| 新 token | 构造 | 为什么是这个数 |
+| --- | --- | --- |
+| `--wash-selected-hover` | `depth-step * 1.75`，透明底 | 两层 wash 叠起来正好是这个 alpha（1-(1-.03)(1-.04)≈.069），**不是挑的** |
+| `--color-sunken-hover` | `depth-step * 0.75` 盖在 `--color-sunken` 上 | 就是"hover 的那层墨水，盖在凹陷上" |
+
+两个都用 `--depth-step` 推导，所以每个主题、每个 visual style 自动跟着走。
+**这个写法是这张表自己的成语** —— `--app-dock-tabstrip-surface` 早就在把同一层墨水盖在
+tabstrip 上（`color-mix(text at depth-step*0.75, over --app-dock-surface)`）。
+
+selected 的那三处用组合 key `":is([data-active]):hover"` —— 特异度 (3,3,0)，**同时压过两者**，
+不依赖表里的顺序。凹陷的三处直接换 `":hover": surface.sunkenHover`，两个不同的 key 之间没有争议。
+
+改完重量：
+
+| | 之前 | 之后 |
+| --- | --- | --- |
+| 不同的背景答案 | 14（含 2 种缺陷） | **5，每一种都是加墨水** |
+| 选中行 hover | 4% → **3%** | 4% → **7%** |
+| 凹陷行 hover | 凹陷 → 3% 中性 wash | 凹陷 **+ 一层墨水** |
+| 透明行 hover（123 个） | 3% wash ✓ | 不变 |
+| 填充控件 hover | accent → 深 accent ✓ / surface2 → surface3 ✓ | 不变 |
+
+### 新守卫：`hoverAnswers.visual.spec.ts`
+
+两条断言，一条是缺陷的**精确形状**，一条是答案的**整体形状**：
+
+1. 有底色的控件，hover 后**不能落在那个中性 wash 上** —— 落在那儿就说明 wash 把底色替换掉了。
+   （中性 wash 的值是运行时从 `var(--wash-hover)` 探出来的，不是写死在测试里 —— 写死的话主题一动它就说谎。）
+2. 不同答案的**数量有上限**（8）。一个手势应该有一小把答案，不是一个站点一个。
+   这正是那个"值守卫"存在的理由、也正是它看不见的东西。
+
+**两个方向都验证过会失败**：把凹陷那处换回中性 wash → 报出来；把选中的组合 key 删掉 → 报出来。
+
+### 两个自己的失误
+
+| | |
+| --- | --- |
+| Python 的 `str.replace("", x)` **是前插** | 验证守卫时用 `''` 当"删掉这行"的替换值，还原时 `replace('', line)` 把那行插到了文件**开头** —— `vertical-tabs.tsx` 被我写坏。typecheck 立刻报出来，随即修好；此后 swap 两侧都要求非空 |
+| 第一次验证 A 方向"通过"了 | 我改的是 `SearchResults.tsx`，而它**不在这 5 条路线里** —— 不是守卫的问题，是我选的站点没有覆盖。换成侧栏搜索行（真的被扫到）后立刻报错 |
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| hover 的缺陷答案 | 2 种 / 6 个控件 → **0** |
+| 不同 hover 答案 | 14 → **5**（上限 8）|
+| 屏幕上的 hover 守卫 | 无 → **1 条 spec、2 条断言、各自见过失败** |
+| 单测 | **121 全通过** |
+| 视觉套件 | **677 全通过**（11.3m，零失败；+1 就是新守卫）|
+| typecheck / lint / prettier / knip / 守卫 / | 全绿 |
+
+### 仍然欠着
+
+- **34 / 184 个控件 hover 毫无反应** —— 包括 "Jump to bottom"、"Copy message"、"Tool search"
+  和几个工具 chip。textarea 不算（插入符就是反馈）。一个 `<button>` 不回应指针，
+  是它不承认自己被指着。这批要一个个看：有的可能确实该静默，有的是
+  `Button` 的 `active`（写在 variants 之后，"outranks whichever fill they gave"）把 hover 一起盖掉了。
+- 第三处凹陷站点 `SearchResults.tsx` 修了，但**这 5 条路线到不了它** —— 和上一轮那个
+  `TextButton tone="negative"` 一样，是改了却没被拍到的东西。

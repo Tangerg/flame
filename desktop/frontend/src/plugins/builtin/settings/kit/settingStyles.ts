@@ -69,7 +69,7 @@ export const settingStyles = stylex.create({
     justifyContent: "space-between",
     gap: space.s3,
     borderRadius: radius.card,
-    backgroundColor: { default: surface.sunken, ":hover": surface.hover },
+    backgroundColor: { default: surface.sunken, ":hover": surface.sunkenHover },
     paddingInline: space.s3,
     paddingBlock: space.s1_5,
     transitionProperty: "background-color",

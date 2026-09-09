@@ -49,6 +49,7 @@ export const motion = stylex.defineVars({
 /** Surfaces and edges, by role. A name says what a plane IS, never how light it is. */
 export const surface = stylex.defineVars({
   sunken: "var(--color-sunken)",
+  sunkenHover: "var(--color-sunken-hover)",
   surface2: "var(--color-surface-2)",
   divider: "var(--color-divider)",
   surface3: "var(--color-surface-3)",
@@ -69,6 +70,7 @@ export const surface = stylex.defineVars({
   warningWash: "var(--color-warning-wash)",
   joinSeam: "var(--button-join-seam)",
   selected: "var(--wash-selected)",
+  selectedHover: "var(--wash-selected-hover)",
   lineSoft: "var(--color-line-soft)",
   mediaField: "var(--color-media-preview)",
   /** The app's card plane, and the hairline a fill-less surface uses instead of it. */

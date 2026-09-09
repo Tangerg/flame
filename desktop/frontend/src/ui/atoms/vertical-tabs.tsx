@@ -71,6 +71,7 @@ const styles = stylex.create({
       default: "transparent",
       ":hover": surface.hover,
       ":is([data-active])": surface.selected,
+      ":is([data-active]):hover": surface.selectedHover,
     },
     paddingInline: space.s2,
     textAlign: "left",

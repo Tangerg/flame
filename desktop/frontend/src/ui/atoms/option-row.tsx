@@ -28,6 +28,7 @@ export const floatingRowStyles = stylex.create({
       default: "transparent",
       ":hover": surface.hover,
       ':is([aria-selected="true"])': surface.selected,
+      ':is([aria-selected="true"]):is(:hover, [data-highlighted])': surface.selectedHover,
       ":is([data-highlighted])": surface.hover,
     },
     paddingInline: space.s2,

@@ -20,6 +20,7 @@ const rowStyles = stylex.create({
       ":hover": surface.hover,
       ":focus-visible": surface.hover,
       ":is([data-active])": surface.selected,
+      ":is([data-active]):is(:hover, :focus-visible)": surface.selectedHover,
     },
     transitionProperty: "background-color, color",
     transitionDuration: "var(--dur-color)",
@@ -62,7 +63,7 @@ const rowStyles = stylex.create({
     color: { default: color.fgMuted, ":hover": color.fg, ":is([data-active])": color.fg },
   },
   // The same, on the recessed plane a search field sits on.
-  search: { backgroundColor: { default: surface.sunken, ":hover": surface.hover } },
+  search: { backgroundColor: { default: surface.sunken, ":hover": surface.sunkenHover } },
 });
 
 // Styles rather than class strings, so each one composes INTO the props call at its element
