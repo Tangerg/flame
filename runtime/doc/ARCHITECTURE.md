@@ -105,6 +105,8 @@ That endpoint is the single authority for the wire contract. It validates every 
 
 A stream carries its own failure. An operation's event source reports a delivery-side defect as the stream's error rather than closing cleanly, so a consumer can distinguish a Run that stopped producing events from a Runtime that could not describe one. The JSON-RPC transport has no error frame, so it ends the stream at the first event it cannot publish and lets the client resume from its last event id; it never skips a frame and continues.
 
+Per-call metadata rides HTTP headers rather than the JSON-RPC body. `Idempotency-Key` and `Idempotency-Namespace` carry the replay identity, `Last-Event-Id` carries the resume cursor a reconnecting client returns, `Authorization` carries the local-token gate, and W3C `traceparent`, `tracestate`, and `baggage` extend the caller's trace into the backend. Every response names its request and server through `Request-Id` and `X-Server`; a streaming response adds `X-Method`. The transport owns that request set in one place, because a header its handlers read but its CORS allowlist omits fails a browser client's preflight before any handler runs. The generated contract describes methods and shapes, so this envelope is the transport's own to state.
+
 The Go binding does not serialize through HTTP, but it does not bypass product semantics. Protocol changes publish one current shape without aliases, fallback decoding, dual methods, or dual events.
 
 ## Composition and lifecycle
