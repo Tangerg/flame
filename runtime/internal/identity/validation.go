@@ -3,6 +3,7 @@ package identity
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 )
@@ -31,6 +32,19 @@ func ValidateResource(kind, value string, maximumCharacters int) error {
 		if unicode.IsSpace(character) || !unicode.IsPrint(character) {
 			return fmt.Errorf("%s identity contains whitespace or a non-printing character", kind)
 		}
+	}
+	return nil
+}
+
+// ValidateEventIdentity owns the whole replay-cursor identity: the EventPrefix a
+// transport frames an application cursor with, inside the envelope
+// MaximumEventCharacters sizes for exactly that framed shape.
+func ValidateEventIdentity(value string) error {
+	if err := ValidateResource("event", value, MaximumEventCharacters); err != nil {
+		return err
+	}
+	if !strings.HasPrefix(value, EventPrefix) {
+		return fmt.Errorf("event identity is not framed with %q", EventPrefix)
 	}
 	return nil
 }

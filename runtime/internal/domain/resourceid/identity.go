@@ -84,15 +84,3 @@ func ParseSchedule(text string) (ScheduleID, error) {
 
 func (i ScheduleID) String() string  { return i.text }
 func (i ScheduleID) Validate() error { return requireConstructed("schedule", i.text) }
-
-// EventID is one exact replay identity. Its envelope is cursor-sized because
-// the opaque token may carry a complete resumable journal position.
-type EventID struct{ value }
-
-func ParseEvent(text string) (EventID, error) {
-	parsed, err := parse("event", text, runtimeidentity.MaximumEventCharacters)
-	return EventID{value: parsed}, err
-}
-
-func (i EventID) String() string  { return i.text }
-func (i EventID) Validate() error { return requireConstructed("event", i.text) }

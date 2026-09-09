@@ -101,23 +101,28 @@ func TestEndpointRejectsMissingMethodCapability(t *testing.T) {
 }
 
 func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *testing.T) {
+	// A client can act on every rejection here, so each names which rule it
+	// broke rather than only that the metadata was refused.
 	tests := []struct {
 		name       string
 		method     Name
 		parameters any
 		options    Options
+		detail     string
 	}{
 		{
 			name:       "query idempotency key",
 			method:     RuntimeDiscover,
 			parameters: struct{}{},
 			options:    Options{IdempotencyKey: "query-key"},
+			detail:     "does not accept an idempotency key",
 		},
 		{
 			name:       "namespace without key",
 			method:     RuntimeDiscover,
 			parameters: struct{}{},
 			options:    Options{IdempotencyNamespace: testsupport.IdempotencyNamespace},
+			detail:     "requires an idempotency key",
 		},
 		{
 			name:       "non-canonical namespace",
@@ -126,6 +131,7 @@ func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *t
 			options: Options{
 				IdempotencyKey: "cancel-once", IdempotencyNamespace: " " + testsupport.IdempotencyNamespace,
 			},
+			detail: "canonical idp lowercase-hex form",
 		},
 		{
 			name:   "runtime subscription run cursor",
@@ -134,30 +140,35 @@ func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *t
 				Topics: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
 			},
 			options: Options{AfterEventID: "evt_cursor"},
+			detail:  "does not accept a run replay cursor",
 		},
 		{
 			name:       "run command cursor without replay key",
 			method:     RunsStart,
 			parameters: protocol.StartRunRequest{},
 			options:    Options{AfterEventID: "evt_cursor"},
+			detail:     "requires an idempotency key",
 		},
 		{
 			name:       "run replay cursor without event framing",
 			method:     RunsSubscribe,
 			parameters: protocol.SubscribeRunRequest{},
 			options:    Options{AfterEventID: "opaque"},
+			detail:     `not framed with "evt_"`,
 		},
 		{
 			name:       "run replay cursor with interior whitespace",
 			method:     RunsSubscribe,
 			parameters: protocol.SubscribeRunRequest{},
 			options:    Options{AfterEventID: "evt_bad cursor"},
+			detail:     "whitespace or a non-printing character",
 		},
 		{
 			name:       "run replay cursor with non-printing character",
 			method:     RunsSubscribe,
 			parameters: protocol.SubscribeRunRequest{},
 			options:    Options{AfterEventID: "evt_bad\u200bhidden"},
+			detail:     "whitespace or a non-printing character",
 		},
 		{
 			name:       "oversized run replay cursor",
@@ -166,6 +177,7 @@ func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *t
 			options: Options{AfterEventID: protocol.IDPrefixEvent + strings.Repeat(
 				"x", protocol.MaximumRunEventIDCharacters,
 			)},
+			detail: "maximum is",
 		},
 	}
 	for _, test := range tests {
@@ -179,7 +191,24 @@ func TestEndpointRejectsMethodIncompatibleMetadataBeforeCapabilityAdmission(t *t
 			if !errors.Is(result.Failure, protocol.ErrInvalidParams) {
 				t.Fatalf("failure = %v, want invalid_params", result.Failure)
 			}
+			if !strings.Contains(result.Failure.Error(), test.detail) {
+				t.Fatalf("failure = %q, want it to name %q", result.Failure, test.detail)
+			}
 		})
+	}
+}
+
+// TestEndpointAcceptsAWellFramedReplayCursor pins the other side of the replay
+// identity rule. Every cursor case above asserts a rejection, so a rule that
+// refused every cursor would pass all of them.
+func TestEndpointAcceptsAWellFramedReplayCursor(t *testing.T) {
+	t.Parallel()
+	failure := validateOptions(
+		MethodMeta{Operation: OperationSubscription, ReplayCursor: ReplayCursorRun},
+		Options{AfterEventID: protocol.IDPrefixEvent + "opaque-resume-position"},
+	)
+	if failure != nil {
+		t.Fatalf("validateOptions = %v, want a well-framed replay cursor to be accepted", failure)
 	}
 }
 

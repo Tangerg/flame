@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"iter"
 	"reflect"
-	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -231,7 +229,7 @@ func validateOptions(method MethodMeta, options Options) *Failure {
 	}
 	if options.IdempotencyNamespace != "" {
 		if _, err := runtimeidentity.ParseIdempotencyNamespace(options.IdempotencyNamespace); err != nil {
-			return NewFailure(protocol.ErrInvalidParams, "idempotency namespace is not an exact durable store identity")
+			return NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("idempotency namespace: %v", err))
 		}
 	}
 	if options.AfterEventID != "" {
@@ -241,11 +239,8 @@ func validateOptions(method MethodMeta, options Options) *Failure {
 		if method.Operation == OperationCommand && options.IdempotencyKey == "" {
 			return NewFailure(protocol.ErrInvalidParams, "a run command replay cursor requires an idempotency key")
 		}
-		if _, err := resourceid.ParseEvent(options.AfterEventID); err != nil {
-			return NewFailure(protocol.ErrInvalidParams, "run replay cursor is not an exact bounded event identity")
-		}
-		if !strings.HasPrefix(options.AfterEventID, protocol.IDPrefixEvent) {
-			return NewFailure(protocol.ErrInvalidParams, "run replay cursor has an invalid event-id framing")
+		if err := runtimeidentity.ValidateEventIdentity(options.AfterEventID); err != nil {
+			return NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("run replay cursor: %v", err))
 		}
 	}
 	return nil
