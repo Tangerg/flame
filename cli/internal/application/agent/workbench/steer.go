@@ -200,20 +200,8 @@ func (s *Store) AcknowledgePendingSteer(sessionID string, commandID agent.Comman
 		return errors.New("pending steer command identity changed")
 	}
 
-	message := pending.command.Message.Clone()
-	nextHistory := cloneHistory(s.history)
-	historyIndex := slices.IndexFunc(nextHistory, func(entry historyEntry) bool {
-		return entry.CommandID == commandID
-	})
-	if historyIndex >= 0 && !nextHistory[historyIndex].Equal(message) {
-		return errors.New("prompt history command identity already owns another message")
-	}
-	if historyIndex < 0 {
-		nextHistory = s.trimHistory(append(nextHistory, historyEntry{Message: message, CommandID: commandID}))
-		if err := s.save("history.json", nextHistory); err != nil {
-			return err
-		}
-		s.history = nextHistory
+	if err := s.recordPromptHistoryLocked(commandID, pending.command.Message.Clone()); err != nil {
+		return err
 	}
 	if err := s.saveSessionStateRecord(
 		sessionID, s.drafts[sessionID], s.pendingRuns[sessionID],

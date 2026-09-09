@@ -325,23 +325,8 @@ func (s *Store) AcknowledgePendingRun(sessionID string, commandID agent.CommandI
 	if err := commands[index].acknowledgeable(); err != nil {
 		return err
 	}
-	message := commands[index].Command.Message.Clone()
-	nextHistory := cloneHistory(s.history)
-	historyIndex := slices.IndexFunc(nextHistory, func(entry historyEntry) bool {
-		return entry.CommandID == commandID
-	})
-	if historyIndex >= 0 && !nextHistory[historyIndex].Equal(message) {
-		return errors.New("prompt history command identity already owns another message")
-	}
-	if historyIndex < 0 {
-		nextHistory = s.trimHistory(append(nextHistory, historyEntry{Message: message, CommandID: commandID}))
-		if err := s.save("history.json", nextHistory); err != nil {
-			return err
-		}
-		// History and the session outbox are separate durable aggregates. Publish
-		// the completed first half immediately so a failed outbox replacement can
-		// retry by command identity without appending the prompt a second time.
-		s.history = nextHistory
+	if err := s.recordPromptHistoryLocked(commandID, commands[index].Command.Message.Clone()); err != nil {
+		return err
 	}
 	next := clonePendingRuns(s.pendingRuns)
 	next[sessionID] = slices.Delete(next[sessionID], index, index+1)

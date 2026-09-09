@@ -541,6 +541,33 @@ func validateWorkspaces(workspaces []Workspace) error {
 	return nil
 }
 
+// recordPromptHistoryLocked files message in prompt history under commandID,
+// exactly once. A repeated call for the same identity is the retry of a
+// half-completed command and must not append the prompt again; the same
+// identity carrying a different message is a caller defect.
+//
+// History and the session aggregate are separate durable records, so this half
+// is published as soon as it is saved: a failed session replacement can then
+// retry by command identity without a second entry.
+func (s *Store) recordPromptHistoryLocked(commandID agent.CommandID, message agent.Message) error {
+	next := cloneHistory(s.history)
+	index := slices.IndexFunc(next, func(entry historyEntry) bool {
+		return entry.CommandID == commandID
+	})
+	if index >= 0 {
+		if !next[index].Equal(message) {
+			return errors.New("prompt history command identity already owns another message")
+		}
+		return nil
+	}
+	next = s.trimHistory(append(next, historyEntry{Message: message, CommandID: commandID}))
+	if err := s.save("history.json", next); err != nil {
+		return err
+	}
+	s.history = next
+	return nil
+}
+
 func (s *Store) trimHistory(history []historyEntry) []historyEntry {
 	if len(history) <= s.historyCapacity {
 		return cloneHistory(history)
