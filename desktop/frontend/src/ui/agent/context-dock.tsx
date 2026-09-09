@@ -199,16 +199,27 @@ export function AgentDockTabs({ tabs, ariaLabel, onReorder }: AgentDockTabsProps
     >
       <TabsPrimitive.List aria-label={ariaLabel} {...stylex.props(styles.contents)} activateOnFocus>
         {tabs.map((tab, index) => {
-          const restoreFocus = () => {
-            requestAnimationFrame(() => {
-              rootRef.current
-                ?.querySelector<HTMLElement>('[role="tab"][data-active]')
-                ?.focus({ preventScroll: true });
-            });
-          };
           const close = () => {
+            // Where focus goes has to be decided BEFORE the tab carrying it is removed. Moving
+            // to the newly active tab is the ARIA answer while one remains — but closing the
+            // LAST panel leaves no tab, and `?.focus()` on nothing is silent, so focus fell to
+            // `<body>` and the next Tab restarted at the top of the document. The header
+            // survives an empty dock and holds the control that opens a panel again, which is
+            // both adjacent in the order and the thing a person wants next.
+            const header = rootRef.current?.parentElement ?? null;
+            const reopen =
+              header
+                ?.querySelectorAll<HTMLElement>('button, [tabindex]:not([tabindex="-1"])')
+                .values()
+                .find((candidate) => !candidate.closest('[role="tablist"]')) ?? null;
             tab.onClose?.();
-            restoreFocus();
+            requestAnimationFrame(() => {
+              const remaining =
+                rootRef.current?.querySelector<HTMLElement>('[role="tab"][data-active]') ??
+                rootRef.current?.querySelector<HTMLElement>('[role="tab"]') ??
+                null;
+              (remaining ?? reopen)?.focus({ preventScroll: true });
+            });
           };
           const row = (
             <div

@@ -163,3 +163,60 @@ test("the keyboard walks in reading order", async ({ page }) => {
   expect(stops, "the walk has to reach real controls").toBeGreaterThan(80);
   expect(jumps, "Tab went backwards against reading order").toEqual([]);
 });
+
+// Where focus goes when the thing holding it is removed.
+//
+// Closing a dock tab from the keyboard is Delete on the focused tab, the ARIA practice for a
+// closable tab, and the dock moves focus to the newly active one. That is right until the LAST
+// panel closes: there is no tab left, `?.focus()` on nothing is silent, and focus fell to
+// `<body>`. A keyboard user does not get a message — their next Tab starts over at the top of
+// the document, which is the most complete way to lose someone's place.
+//
+// Asserted over every close rather than only the last, because the interesting one is whichever
+// close happens to empty the dock, and the fixture's tab count is not this test's business.
+test("focus survives closing the panel that holds it", async ({ page }) => {
+  test.setTimeout(ROUTE_BUDGET_MS);
+  await page.goto(`/visual/?fixture=workspace&state=dock-light&theme=light`);
+  await page.waitForSelector("html[data-visual-ready]");
+  await page.waitForTimeout(400);
+
+  const focused = () =>
+    page.evaluate(() => {
+      const active = document.activeElement as HTMLElement | null;
+      if (!active || active === document.body) return null;
+      return (
+        active.getAttribute("aria-label") ??
+        active.getAttribute("title") ??
+        active.textContent ??
+        active.tagName
+      )
+        .trim()
+        .replace(/\s+/g, " ")
+        .slice(0, 26);
+    });
+
+  const onTab = () => page.evaluate(() => document.activeElement?.getAttribute("role") === "tab");
+
+  for (let press = 0; press < 60; press += 1) {
+    await page.keyboard.press("Tab");
+    await page.waitForTimeout(40);
+    if (await onTab()) break;
+  }
+  expect(await onTab(), "the walk never reached a dock tab").toBe(true);
+
+  const lost: string[] = [];
+  let closed = 0;
+  while (closed < 12 && (await onTab())) {
+    const before = await focused();
+    await page.keyboard.press("Delete");
+    await page.waitForTimeout(400);
+    closed += 1;
+    const after = await focused();
+    if (after === null) lost.push(`closing "${before}" left focus on <body>`);
+  }
+
+  // A run that closed nothing proves nothing, and the last close is the one that matters.
+  expect(closed, "no tab was closed").toBeGreaterThan(3);
+  expect(await page.locator('[role="tab"]').count(), "the dock never emptied").toBe(0);
+  expect(lost, "focus fell out of the document when its tab was removed").toEqual([]);
+});
