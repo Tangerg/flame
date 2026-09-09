@@ -12051,3 +12051,72 @@ style / width / color 的指纹集合大小必须是 1，否则"一条规则画�
 
 `check:chrome` 还有 **7 条规则是 Tailwind 形状、认不出 StyleX**。今天量过它们实质干净，
 但守卫不是靠"今天干净"活着的。下一轮把它们按 StyleX 形状重写，每条都验证会失败。
+
+## Round 193 —— 把瞎掉的七条规则重新装上眼睛
+
+上一轮欠着的：`check-interactive-chrome` 九条规则里，除了 focus 那条（上轮重写）和
+`<Icon aria-label>`，剩下**七条全是 Tailwind class 正则**。Tailwind 走了之后它们一个都匹配不到，
+而守卫照旧读 1258 个文件、打印同一句自信的话。
+
+### 七条按 StyleX / CSS 形状重写
+
+| 规则 | Tailwind 时代的形状 | 现在读什么 |
+| --- | --- | --- |
+| 手挑的状态色 | `hover:bg-fg/[0.04]` | 状态 key 下的**颜色字面量**（`rgba(` / `color-mix(` / `#…`）|
+| surface 台阶当 hover | `hover:bg-surface-3` + `bg-transparent` | `":hover": surface.surfaceN` 且 rest 是 `transparent` / `null` |
+| 手写按下量 | `active:scale-95` | `:active": 0.96`（`1` 是 disabled 的取消值，放过）|
+| hover 用 opacity 回答 | `hover:opacity-100` | `opacity: { … ":hover" … }` |
+| `:has(:focus-visible)` | `has-[:focus-visible]` | `:has(:focus-visible)` |
+| 全属性 transition | `transition-all` | `transitionProperty: "all"` / CSS `transition: all` |
+| 手写时长 | `duration-150` | `transitionDuration` / `transitionDelay` / CSS 同名的 `\d+ms` |
+
+**七条全部验证过会失败**：种下 7 个违规 → 命中 10 次（`transition: all 200ms`
+同时踩时长和属性两条），4 个合法写法全部放过 —— 包括 `default: surface.surface2 → surface3`
+这种"本来就有底色、可以升一档"的 soft，和 `":is(:disabled):active": 1`。
+
+### 实质上只有一处真违规
+
+按新形状重量了整棵树：按下量全是 `var(--press-scale)`，时长全是 `motion.*`，
+reveal 早就收进 `reveal.ts` 的 `--reveal` 变量，`:has(:focus-visible)` 只出现在**警告它的注释里**。
+唯一的真违规：
+
+`TextButton` 的 `negative`：`opacity: { ":hover": 0.8 }` —— 全树唯一一个用 opacity 回答 hover 的，
+而且是**同一个组件内的第三种拼法**（`muted` / `faint` 用颜色台阶，`row` 用 ink wash）。
+
+根因不是粗心：`muted` / `faint` 的 hover 是"往 `fg` 提亮"，而 `negative` 本来就在满强度上，
+**没有更亮的地方可去** —— 所以有人伸手拿了 opacity。但把警示色调淡，正好削弱它唯一在传达的东西。
+改用这个文件里 `link` 已经在用的机制：下划线（`textDecorationColor` transparent → currentColor），
+不需要新 token，静止态像素完全不变（`base` 的 `transitionProperty` 本来就含 `text-decoration-color`）。
+
+### 顺手修掉三处"读着像在做事、其实不做事"
+
+| | 问题 |
+| --- | --- |
+| 注释行 | 两条规则在注释里**拼出了自己禁止的写法**，于是守卫报了自己的文档（2 处误报）。改成：以注释开头的行一律跳过 —— 注释不给任何东西上样式 |
+| rule 4 的 `appliesTo` | 还在测两个 Tailwind 拼法，**都已不可能出现**，所以它永远返回 true。删掉，写明它现在管两种形状（reveal 和 dim）|
+| 我自己刚留下的重复注释 | 插入新句时没删旧句，同一件事写了两遍 |
+| 守卫头部 | 还在讲 focus 环的**上一个**故事（16 处各画一个），极性和现在正好相反。改成两次都讲，并写明八条规则是怎么一起瞎掉的 |
+
+### 时长规则顺带补了 delay
+
+`transitionDelay` 和 CSS `transition-delay` 是同一类值，原规则读不到。树里今天没有字面量
+delay，但守卫不是靠"今天没有"活着的 —— 加进去并验证会失败。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| `check:chrome` 活着的规则 | 2 / 9 → **9 / 9**，每条都见过它失败 |
+| 真违规 | 1 处（唯一的 opacity hover）→ **0** |
+| 一个组件内 hover 的拼法 | 3 种 → **2 种**（颜色台阶 / ink wash；下划线是文本态的同一族）|
+| 单测 | **235 全通过**（`src/ui` + settings 分片）|
+| 视觉套件 | **676 全通过**（10.0m，零失败）|
+| typecheck / lint / prettier / knip / 守卫 | 全绿 |
+
+### 仍然欠着
+
+- **`TextButton tone="negative"` 只有一个消费方，而它从没进过任何截图**：
+  它只在插件有 `errCount > 0` 时渲染，而 error 来自 `reportPluginError`（渲染边界的捕获），
+  fixture 从不触发。这轮改的正是它的 hover。
+- 静态守卫读的是**源码**里的 hover 拼法；**屏幕上**的 hover 没有任何东西看着 ——
+  focus 环这一轮刚证明这两件事可以完全不一致。下一轮做 hover 的运行时扫描。

@@ -33,7 +33,16 @@ const styles = stylex.create({
   },
   muted: { color: { default: color.fgMuted, ":hover": color.fg } },
   faint: { color: { default: color.fgFaint, ":hover": color.fg } },
-  negative: { color: color.negative, opacity: { default: null, ":hover": 0.8 } },
+  // The neutral tones say hover by brightening toward `fg`. `negative` is already at full
+  // strength with nowhere to brighten to, which is why this had reached for a hand-picked 0.8
+  // dim — the only opacity hover in the tree, and a third spelling of the gesture inside one
+  // component. The underline is the mechanism `link` below already uses for interactive text,
+  // and unlike a dim it does not weaken the one colour carrying the warning.
+  negative: {
+    color: color.negative,
+    textDecorationLine: "underline",
+    textDecorationColor: { default: "transparent", ":hover": "currentColor" },
+  },
   inline: {},
   row: {
     width: "100%",

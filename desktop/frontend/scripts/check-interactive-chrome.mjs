@@ -11,18 +11,22 @@
 // feel before you can name it, and one that no amount of care at the callsite
 // can fix, because the callsite is the wrong place to hold the value.
 //
-// The focus ring had gone the same way, and worse: globals.css has drawn one
-// global keyboard ring all along (modality-gated, quiet, `[data-chrome-focus]` to
-// opt a row out), and sixteen callsites had drawn a second, louder one over it in
-// seven spellings — an outline at three offsets, a two-layer shadow halo, and
-// three hand-rolled box-shadow rings at 1.5px and 2px, inset and outset. Those
-// fired on mouse clicks too, which the global rule deliberately avoids.
+// The focus ring went the same way twice, in opposite directions. First sixteen
+// callsites drew a second, louder ring over the global one, in seven spellings and
+// ungated by pointer modality. Then, once those were gone, twenty callsites turned
+// the remaining one OFF — see the focus rule below for why that inverted when
+// Tailwind left, and for what it cost.
 //
-// They now live in one place each: `--color-hover`, `--color-selected`,
+// They live in one place each now: `--color-hover`, `--color-selected`,
 // `--press-scale`, the `--dur-*` ladder and the global focus rule in globals.css.
-// A state-prefixed ink wash, a surface swap over a transparent rest state, a
-// literal press amount or duration, `transition-all`, or a hand-drawn focus ring
-// is that decision leaking back out to the callsite.
+// A hand-picked state colour, a surface swap over a transparent rest state, a
+// literal press amount or duration, an all-property transition, a hover answered
+// with opacity, or a focus ring drawn or suppressed at a callsite is that decision
+// leaking back out.
+//
+// Every pattern here reads StyleX and CSS. They were Tailwind class regexes, and
+// when Tailwind was removed eight of the nine went blind at once while the guard
+// went on reading 1258 files and printing the same confident line.
 //
 // Escape hatch: none by design. A state fill the two tokens cannot express is a
 // signal that the interaction model needs a third state, not that this callsite
@@ -35,27 +39,32 @@ const SRC = new URL("../src/", import.meta.url).pathname;
 
 const RULES = [
   {
-    // `hover:bg-fg/[0.04]`, `data-[active]:bg-fg/[0.06]`, `aria-selected:…` —
-    // a state fill with a hand-picked alpha.
-    pattern:
-      /\b(?:hover|focus|focus-visible|focus-within|active|group-hover|group-focus-within|aria-selected|data-\[[a-z-]+\]):bg-fg\/\[[\d.]+\]/g,
-    message: "hand-picked state fill — use `bg-hover` or `bg-selected`",
-    appliesTo: () => true,
+    // A state fill with a hand-picked colour. Under Tailwind this read `hover:bg-fg/[0.04]`
+    // and the alpha was the tell; in StyleX the value sits under a state KEY, so the tell is
+    // a colour literal where a token belongs.
+    pattern: /: *"(?:rgba?\(|hsla?\(|oklch\(|oklab\(|color-mix\(|#[0-9a-fA-F]{3})/g,
+    message: "hand-picked state colour — use the `surface.hover` / `surface.selected` tokens",
+    appliesTo: (line, rel) =>
+      rel !== "styles/globals.css" &&
+      /":(?:hover|active|focus|focus-visible|focus-within)"|":is\(\[(?:data|aria)-[a-z-]+/.test(
+        line,
+      ),
   },
   {
     // A surface step as a hover over something with no resting fill: it paints a
     // slab where there was none, and reads heavier in one theme than the other.
     // (A control that already HAS a surface fill may step up — that is `soft`.)
-    pattern: /\bhover:bg-surface(?:-\d)?\b/g,
-    message: "surface swap as a hover — use `bg-hover` (an ink wash) on a transparent rest state",
-    appliesTo: (line) => line.includes("bg-transparent"),
+    pattern: /":hover": surface\.surface\d/g,
+    message:
+      "surface swap as a hover — use `surface.hover` (an ink wash) on a transparent rest state",
+    appliesTo: (line) => line.includes('default: "transparent"') || line.includes("default: null"),
   },
   {
     // A swatch and a splitter are not Buttons and should not have to become one
-    // to press — but there is only one press amount in the app. `scale-100` is
-    // the identity, used to cancel the press on a disabled control, not a value.
-    pattern: /\bactive:scale-(?:\[(?!var\(--press-scale\)|1\])[\d.]+\]|(?!100\b)\d+)/g,
-    message: "literal press amount — use `active:scale-[var(--press-scale)]`",
+    // to press — but there is only one press amount in the app. `1` is the identity,
+    // used to cancel the press on a disabled control, not a value.
+    pattern: /:active(?:\)[^"]*)?": *"?0*\.\d+/g,
+    message: 'literal press amount — use `":active": "var(--press-scale)"`',
     appliesTo: () => true,
   },
   {
@@ -81,22 +90,20 @@ const RULES = [
     appliesTo: (_line, rel) => rel !== "styles/globals.css",
   },
   {
-    // A control revealed by hover and by nothing else. Transparency stops the pointer
-    // and not the keyboard, so the control stays a tab stop that paints nothing: the
-    // composer's remove-attachment button was one. Four other reveals in the tree pair
-    // the hover with a focus variant; this makes the pair the rule, and it has to be on
-    // the same line so a reader can see both at once.
-    pattern: /\b(?:group-)?hover(?:\/[a-z-]+)?:opacity-100\b/g,
-    message: "hover-only reveal — pair it with `focus-within:` / `focus-visible:opacity-100`",
-    // …unless the thing is hidden with `visibility`, which the keyboard cannot reach at all:
-    // pairing a focus variant onto one of those writes a rule that can never fire, and the
-    // dock's close control carried exactly such a line. `visibility: hidden` is the right
-    // way to say "pointer-only affordance" when the action has its own key elsewhere — that
-    // one closes its tab on Delete, because a focusable sibling inside a `tablist` is an
-    // unallowed child. No regex can check that the key exists, so a test holds it instead.
-    appliesTo: (line) =>
-      !/(?:group-)?focus(?:-within|-visible)?(?:\/[a-z-]+)?:opacity-100/.test(line) &&
-      !/\binvisible\b/.test(line),
+    // Opacity as a hover answer, in either of its two forms. A REVEAL — transparent at rest,
+    // shown on hover — leaves a tab stop that paints nothing, because transparency stops the
+    // pointer and not the keyboard; the composer's remove-attachment button was one. Reveals
+    // now belong to `reveal.ts`, whose `--reveal` variables answer hover and focus together,
+    // so a hand-rolled one at a call site is also answering only half the question.
+    //
+    // A DIM — full strength at rest, faded on hover — is not a reveal and still wrong: it is
+    // a fourth spelling of "the pointer is over this" beside the ink wash, the surface step
+    // and the colour step. `TextButton`'s negative tone carried one at 0.8, three variants
+    // away from two siblings that say the same thing as a colour.
+    pattern: /opacity: \{[^}]*":hover"/g,
+    message:
+      "hover as an opacity — a reveal belongs to `reveal.ts`'s `--reveal` variables, which answer the keyboard too; a hover STATE is `surface.hover`",
+    appliesTo: () => true,
   },
   {
     // `:has(:focus-visible)` says the right thing and does not do it. Chromium matches the
@@ -105,7 +112,7 @@ const RULES = [
     // changes inside `:has()`, so the reveal only lands when some unrelated recalculation
     // happens to follow. Measured: reattaching the node flipped it from 0 to 1 with nothing
     // else changed. An affordance that appears at random is worse than one that lingers.
-    pattern: /\b(?:group-)?has-\[:focus-visible\]/g,
+    pattern: /:has\(:focus-visible\)/g,
     message:
       "`:has(:focus-visible)` matches but never invalidates in Chromium — key the reveal on the focusable element's own `focus-visible:`, or keep `focus-within:`",
     appliesTo: () => true,
@@ -120,14 +127,18 @@ const RULES = [
     appliesTo: () => true,
   },
   {
-    pattern: /\btransition-all\b/g,
+    pattern: /transition(?:Property|-property)?: *"?[^";]*\ball\b/g,
     message:
       "`transition-all` couples unrelated properties — enumerate only the properties that move",
     appliesTo: () => true,
   },
   {
-    pattern: /\bduration-(?:\d+\b|\[[\d.]+ms\])/g,
-    message: "literal interaction duration — use the semantic `--dur-*` ladder",
+    // Transitions only. An `animation` is a cycle, not interaction feedback — the caret's blink
+    // and the scrim's fade are longer than every rung on the ladder and mean something else;
+    // both already wrap their literal in `calc(… * var(--motion-scale))`, which is the part
+    // that has to be true.
+    pattern: /transition(?:Duration|Delay|-duration|-delay)?: *"?[^";]*\b\d+m?s\b/g,
+    message: "literal transition duration — use the semantic `--dur-*` ladder",
     appliesTo: (_line, rel) => rel !== "styles/globals.css",
   },
 ];
@@ -148,6 +159,9 @@ for (const path of walk(SRC)) {
   const rel = relative(SRC, path);
   const lines = readFileSync(path, "utf8").split("\n");
   lines.forEach((line, index) => {
+    // A line that opens as a comment styles nothing, and two of these rules are documented by
+    // spelling out the pattern they forbid — so a guard reading prose flags its own warning.
+    if (/^\s*(?:\/\/|\*|\/\*)/.test(line)) return;
     for (const { pattern, message, appliesTo } of RULES) {
       if (!appliesTo(line, rel)) continue;
       for (const match of line.matchAll(pattern)) {
