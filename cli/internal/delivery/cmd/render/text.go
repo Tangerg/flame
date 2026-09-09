@@ -55,7 +55,6 @@ type plainTextStream struct {
 }
 
 type pendingTextBlock struct {
-	kind agent.BlockKind
 	body strings.Builder
 }
 
@@ -157,7 +156,7 @@ func (t *Text) begin(b agent.Block) {
 		t.streaming[key] = stream
 		t.write(b.Text)
 	case agent.BlockReasoning, agent.BlockTool, agent.BlockUser, agent.BlockQuestion, agent.BlockNotice, agent.BlockError:
-		pending := &pendingTextBlock{kind: b.Kind}
+		pending := &pendingTextBlock{}
 		pending.body.WriteString(b.Text)
 		t.pending[key] = pending
 	}
