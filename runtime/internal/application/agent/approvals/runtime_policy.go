@@ -43,10 +43,13 @@ func NewRuntimePolicy(
 // ModeStore persists explicit per-session permission state. Missing means use
 // the runtime default. Implementations must return found=false for a missing
 // session row and validate ownership at their persistence boundary.
+//
+// Retiring a deleted Session's state is not here: the session write-set owns
+// that, transactionally with everything else the delete removes, through its
+// own cleaner port.
 type ModeStore interface {
 	LookupMode(ctx context.Context, sessionID string) (state approval.SessionMode, found bool, err error)
 	PutMode(ctx context.Context, sessionID string, state approval.SessionMode) error
-	DeleteSession(ctx context.Context, sessionID string) error
 }
 
 // RuntimePolicy combines two policy facts consumed together at the tool-call
