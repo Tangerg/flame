@@ -98,7 +98,7 @@ func (t *treeContinuation) validate() error {
 	if _, _, err := goalref.ParseOptionalIncarnation(t.goalIncarnationID); err != nil {
 		return fmt.Errorf("runs: tree continuation: %w", err)
 	}
-	if _, err := runtimeidentity.ParseExecutor(t.executorID); err != nil {
+	if err := runtimeidentity.ValidateExecutor(t.executorID); err != nil {
 		return fmt.Errorf("runs: tree continuation: %w", err)
 	}
 	switch {

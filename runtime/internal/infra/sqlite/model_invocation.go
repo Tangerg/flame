@@ -190,7 +190,7 @@ func validateModelInvocationIdentity(sessionID, runID, segmentID, callID string)
 	if err := validateRunCoordinates("model invocation", sessionID, runID, segmentID); err != nil {
 		return err
 	}
-	if _, err := runtimeidentity.ParseEffect(callID); err != nil {
+	if err := runtimeidentity.ValidateEffect(callID); err != nil {
 		return fmt.Errorf("sqlite: model invocation: %w", err)
 	}
 	return nil

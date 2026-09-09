@@ -18,7 +18,7 @@ func (r *runTreeOwner) bindExecutorMember(runID, memberID string) error {
 	if err := resourceid.ValidateRun(runID); err != nil {
 		return fmt.Errorf("runs: bind executor member: %w", err)
 	}
-	if _, err := runtimeidentity.ParseMember(memberID); err != nil {
+	if err := runtimeidentity.ValidateMember(memberID); err != nil {
 		return fmt.Errorf("runs: bind Run %q: %w", runID, err)
 	}
 

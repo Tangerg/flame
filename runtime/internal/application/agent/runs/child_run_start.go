@@ -57,7 +57,7 @@ func (c ChildRunStartReservation) validateIdentity() error {
 	if err := resourceid.ValidateSession(c.SessionID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if _, err := runtimeidentity.ParseExecutor(c.ExecutorID); err != nil {
+	if err := runtimeidentity.ValidateExecutor(c.ExecutorID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
 	if err := resourceid.ValidateSegment(c.SegmentID); err != nil {

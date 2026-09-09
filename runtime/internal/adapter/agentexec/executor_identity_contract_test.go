@@ -21,17 +21,17 @@ func TestRuntimeExecutorIdentityPolicyMatchesAgentFrameworkPort(t *testing.T) {
 		strings.Repeat("x", runtimeidentity.MaximumExecutorIdentityBytes+1),
 	}
 	for _, value := range values {
-		_, runtimeErr := runtimeidentity.ParseMember(value)
+		runtimeErr := runtimeidentity.ValidateMember(value)
 		_, frameworkErr := agent.ParseProcessID(value)
 		if (runtimeErr == nil) != (frameworkErr == nil) {
 			t.Errorf("member policy differs for %q: Runtime=%v Agent Framework=%v", value, runtimeErr, frameworkErr)
 		}
-		_, runtimeErr = runtimeidentity.ParseRequest(value)
+		runtimeErr = runtimeidentity.ValidateRequest(value)
 		_, frameworkErr = agent.ParseWaitID(value)
 		if (runtimeErr == nil) != (frameworkErr == nil) {
 			t.Errorf("request policy differs for %q: Runtime=%v Agent Framework=%v", value, runtimeErr, frameworkErr)
 		}
-		_, runtimeErr = runtimeidentity.ParseEffect(value)
+		runtimeErr = runtimeidentity.ValidateEffect(value)
 		_, frameworkErr = agent.ParseEffectID(value)
 		if (runtimeErr == nil) != (frameworkErr == nil) {
 			t.Errorf("effect policy differs for %q: Runtime=%v Agent Framework=%v", value, runtimeErr, frameworkErr)

@@ -73,7 +73,7 @@ func (w WaitingSubtreeCancellationRequest) Validate() error {
 	if err := w.continuation.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting subtree continuation: %w", err)
 	}
-	if _, err := runtimeidentity.ParseMember(w.targetMemberID); err != nil {
+	if err := runtimeidentity.ValidateMember(w.targetMemberID); err != nil {
 		return fmt.Errorf("runs: waiting subtree target: %w", err)
 	}
 	if strings.TrimSpace(w.reason) == "" || w.reason != strings.TrimSpace(w.reason) {
@@ -131,7 +131,7 @@ func (w WaitingMember) Validate() error {
 	if err := resourceid.ValidateRun(w.RunID); err != nil {
 		return fmt.Errorf("runs: waiting member: %w", err)
 	}
-	if _, err := runtimeidentity.ParseMember(w.MemberID); err != nil {
+	if err := runtimeidentity.ValidateMember(w.MemberID); err != nil {
 		return fmt.Errorf("runs: waiting member: %w", err)
 	}
 	if (w.ParentRunID == "") != (w.SpawnedByItemID == "") {
@@ -183,7 +183,7 @@ func validateWaitingContinuationEnvelope(continuation WaitingContinuation) error
 	if err := resourceid.ValidateSession(continuation.SessionID); err != nil {
 		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
-	if _, err := runtimeidentity.ParseExecutor(continuation.ExecutorID); err != nil {
+	if err := runtimeidentity.ValidateExecutor(continuation.ExecutorID); err != nil {
 		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
 	if err := resourceid.ValidateRun(continuation.RootRunID); err != nil {

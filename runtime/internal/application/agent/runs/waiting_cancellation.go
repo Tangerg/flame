@@ -103,7 +103,7 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 	canceledMembers := make(map[string]struct{}, len(p.canceledMemberIDs))
 	seenMembers := make(map[string]struct{}, len(p.canceledMemberIDs)+len(p.pausedMemberIDs))
 	for _, memberID := range p.canceledMemberIDs {
-		if _, err := runtimeidentity.ParseMember(memberID); err != nil {
+		if err := runtimeidentity.ValidateMember(memberID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree cancellation: %w", err)
 		}
 		if _, duplicate := seenMembers[memberID]; duplicate {
@@ -113,7 +113,7 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 		seenMembers[memberID] = struct{}{}
 	}
 	for _, memberID := range p.pausedMemberIDs {
-		if _, err := runtimeidentity.ParseMember(memberID); err != nil {
+		if err := runtimeidentity.ValidateMember(memberID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree cancellation: %w", err)
 		}
 		if _, duplicate := seenMembers[memberID]; duplicate {
@@ -123,10 +123,10 @@ func (p PreparedWaitingSubtreeCancellation) Validate() error {
 	}
 	requests := make(map[inputRequestKey]struct{}, len(p.pendingInterruptions))
 	for index, interruption := range p.pendingInterruptions {
-		if _, err := runtimeidentity.ParseMember(interruption.MemberID); err != nil {
+		if err := runtimeidentity.ValidateMember(interruption.MemberID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree interruption[%d]: %w", index, err)
 		}
-		if _, err := runtimeidentity.ParseRequest(interruption.RequestID); err != nil {
+		if err := runtimeidentity.ValidateRequest(interruption.RequestID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree interruption[%d]: %w", index, err)
 		}
 		if _, canceled := canceledMembers[interruption.MemberID]; canceled {

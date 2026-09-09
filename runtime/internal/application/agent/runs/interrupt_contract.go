@@ -126,7 +126,7 @@ func (i Interrupt) Validate() error {
 }
 
 func (a ApprovalPrompt) validate() error {
-	if _, err := runtimeidentity.ParseEffect(a.CallID); err != nil {
+	if err := runtimeidentity.ValidateEffect(a.CallID); err != nil {
 		return fmt.Errorf("runs: approval: %w", err)
 	}
 	if strings.TrimSpace(a.ToolName) == "" {

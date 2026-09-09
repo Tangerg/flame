@@ -98,7 +98,7 @@ func (e ExecutorCheckpoint) Clone() ExecutorCheckpoint {
 // Validate verifies the host-owned metadata without interpreting the
 // executor payload.
 func (e ExecutorCheckpoint) Validate() error {
-	if _, err := runtimeidentity.ParseMember(e.RootMemberID); err != nil {
+	if err := runtimeidentity.ValidateMember(e.RootMemberID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	if len(e.Payload) == 0 {
@@ -133,7 +133,7 @@ func (e ExecutorCheckpoint) ValidateOwnership(rootMemberID, sessionID string) er
 	if err := e.Validate(); err != nil {
 		return err
 	}
-	if _, err := runtimeidentity.ParseMember(rootMemberID); err != nil {
+	if err := runtimeidentity.ValidateMember(rootMemberID); err != nil {
 		return fmt.Errorf("%w: expected %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	if err := resourceid.ValidateSession(sessionID); err != nil {

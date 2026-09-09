@@ -178,7 +178,7 @@ func validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID 
 	if err := validateItemResource("Tool invocation", itemID); err != nil {
 		return err
 	}
-	if _, err := runtimeidentity.ParseEffect(callID); err != nil {
+	if err := runtimeidentity.ValidateEffect(callID); err != nil {
 		return fmt.Errorf("sqlite: Tool invocation: %w", err)
 	}
 	return nil

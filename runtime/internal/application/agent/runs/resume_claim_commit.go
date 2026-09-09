@@ -76,7 +76,7 @@ func (t ToolApprovalResolution) Validate() error {
 	if err := t.Identity.Validate(); err != nil {
 		return err
 	}
-	if _, err := runtimeidentity.ParseEffect(t.CallID); err != nil {
+	if err := runtimeidentity.ValidateEffect(t.CallID); err != nil {
 		return fmt.Errorf("runs: approval Tool call: %w", err)
 	}
 	if err := t.Invocation.Validate(true); err != nil {

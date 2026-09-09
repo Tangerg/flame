@@ -317,7 +317,7 @@ func (r *reducer) completeMessageContent(
 }
 
 func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
-	if _, err := runtimeidentity.ParseEffect(e.CallID); err != nil {
+	if err := runtimeidentity.ValidateEffect(e.CallID); err != nil {
 		return nil, err
 	}
 	if strings.TrimSpace(e.ToolName) == "" || e.ToolName != strings.TrimSpace(e.ToolName) {
@@ -463,7 +463,7 @@ func (r *reducer) spawningItem(sourceCallID string) (transcript.Item, error) {
 }
 
 func (r *reducer) toolEnd(e ToolCallFinished) ([]ProjectionEvent, []ToolInvocationCommit, []corechat.Message, error) {
-	if _, err := runtimeidentity.ParseEffect(e.CallID); err != nil {
+	if err := runtimeidentity.ValidateEffect(e.CallID); err != nil {
 		return nil, nil, nil, err
 	}
 	ref, ok := r.tools.get(e.CallID)

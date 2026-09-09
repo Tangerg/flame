@@ -108,7 +108,7 @@ type ToolInvocationCommit struct {
 }
 
 func (t ToolInvocationCommit) validate() error {
-	if _, err := runtimeidentity.ParseEffect(t.CallID); err != nil {
+	if err := runtimeidentity.ValidateEffect(t.CallID); err != nil {
 		return fmt.Errorf("runs: Tool invocation: %w", err)
 	}
 	if err := resourceid.ValidateItem(t.ItemID); err != nil {
@@ -139,7 +139,7 @@ func (t ToolInvocationCommit) validate() error {
 }
 
 func (m ModelInvocationCommit) validate() error {
-	if _, err := runtimeidentity.ParseEffect(m.CallID); err != nil {
+	if err := runtimeidentity.ValidateEffect(m.CallID); err != nil {
 		return fmt.Errorf("runs: model invocation: %w", err)
 	}
 	if err := resourceid.ValidateSegment(m.SegmentID); err != nil {
@@ -305,7 +305,7 @@ func (e EventCommit) validateEnvelope() error {
 	if err := resourceid.ValidateSegment(e.SegmentID); err != nil {
 		return fmt.Errorf("runs: event commit: %w", err)
 	}
-	if _, _, err := runtimeidentity.ParseOptionalMember(e.ObsoleteCheckpointRootID); err != nil {
+	if err := runtimeidentity.ValidateOptionalMember(e.ObsoleteCheckpointRootID); err != nil {
 		return fmt.Errorf("runs: event commit checkpoint root: %w", err)
 	}
 	if !e.CommitID.IsZero() {

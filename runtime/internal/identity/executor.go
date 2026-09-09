@@ -9,9 +9,9 @@ type value struct {
 	text string
 }
 
-func parse(kind, text string) (value, error) {
+func validate(kind, text string) error {
 	if len(text) == 0 || len(text) > MaximumExecutorIdentityBytes {
-		return value{}, fmt.Errorf("%s must contain 1 to %d URI-safe ASCII bytes", kind, MaximumExecutorIdentityBytes)
+		return fmt.Errorf("%s must contain 1 to %d URI-safe ASCII bytes", kind, MaximumExecutorIdentityBytes)
 	}
 	for index := range len(text) {
 		character := text[index]
@@ -21,7 +21,14 @@ func parse(kind, text string) (value, error) {
 			character == '-' || character == '_' || character == '.' || character == ':' {
 			continue
 		}
-		return value{}, fmt.Errorf("%s must contain 1 to %d URI-safe ASCII bytes", kind, MaximumExecutorIdentityBytes)
+		return fmt.Errorf("%s must contain 1 to %d URI-safe ASCII bytes", kind, MaximumExecutorIdentityBytes)
+	}
+	return nil
+}
+
+func parse(kind, text string) (value, error) {
+	if err := validate(kind, text); err != nil {
+		return value{}, err
 	}
 	return value{text: text}, nil
 }
@@ -36,16 +43,33 @@ func requireConstructed(kind, text string) error {
 	return nil
 }
 
-// ExecutorID identifies one Flame-owned executor instance across Run segments.
-type ExecutorID struct{ value }
+// Executor identities travel as fields of the Run facts, checkpoints and
+// bindings that carry them, so most callers need the rule rather than a value.
+// The Parse constructors below exist for the two that hold the identity itself.
+func ValidateExecutor(text string) error { return validate("executor identity", text) }
 
-func ParseExecutor(text string) (ExecutorID, error) {
-	parsed, err := parse("executor identity", text)
-	return ExecutorID{value: parsed}, err
+func ValidateMember(text string) error { return validate("executor member identity", text) }
+
+func ValidateRequest(text string) error { return validate("executor request identity", text) }
+
+func ValidateEffect(text string) error { return validate("executor effect identity", text) }
+
+// ValidateOptionalMember and ValidateOptionalEffect accept an absent identity.
+// A caller that must tell absent from malformed compares against "" itself; no
+// caller has ever needed the distinction returned to it.
+func ValidateOptionalMember(text string) error {
+	if text == "" {
+		return nil
+	}
+	return ValidateMember(text)
 }
 
-func (i ExecutorID) String() string  { return i.text }
-func (i ExecutorID) Validate() error { return requireConstructed("executor identity", i.text) }
+func ValidateOptionalEffect(text string) error {
+	if text == "" {
+		return nil
+	}
+	return ValidateEffect(text)
+}
 
 // MemberID identifies one executor-owned process in a root/child tree.
 type MemberID struct{ value }
@@ -55,27 +79,8 @@ func ParseMember(text string) (MemberID, error) {
 	return MemberID{value: parsed}, err
 }
 
-func ParseOptionalMember(text string) (MemberID, bool, error) {
-	if text == "" {
-		return MemberID{}, false, nil
-	}
-	parsed, err := ParseMember(text)
-	return parsed, err == nil, err
-}
-
 func (i MemberID) String() string  { return i.text }
 func (i MemberID) Validate() error { return requireConstructed("executor member identity", i.text) }
-
-// RequestID identifies one executor-owned external wait request.
-type RequestID struct{ value }
-
-func ParseRequest(text string) (RequestID, error) {
-	parsed, err := parse("executor request identity", text)
-	return RequestID{value: parsed}, err
-}
-
-func (i RequestID) String() string  { return i.text }
-func (i RequestID) Validate() error { return requireConstructed("executor request identity", i.text) }
 
 // EffectID identifies one executor-owned model or Tool effect.
 type EffectID struct{ value }
@@ -83,14 +88,6 @@ type EffectID struct{ value }
 func ParseEffect(text string) (EffectID, error) {
 	parsed, err := parse("executor effect identity", text)
 	return EffectID{value: parsed}, err
-}
-
-func ParseOptionalEffect(text string) (EffectID, bool, error) {
-	if text == "" {
-		return EffectID{}, false, nil
-	}
-	parsed, err := ParseEffect(text)
-	return parsed, err == nil, err
 }
 
 func (i EffectID) String() string  { return i.text }

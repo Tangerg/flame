@@ -68,7 +68,7 @@ type ChildRunStartReservationRecord struct {
 }
 
 func (c ChildRunStartReservationRecord) validate() error {
-	if _, err := runtimeidentity.ParseMember(c.MemberID); err != nil {
+	if err := runtimeidentity.ValidateMember(c.MemberID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidChildRunStartReservation, err)
 	}
 	if err := resourceid.ValidateSession(c.SessionID); err != nil {

@@ -49,7 +49,7 @@ type ExecutorCheckpointRecord struct {
 }
 
 func (e ExecutorCheckpointRecord) validate() error {
-	if _, err := runtimeidentity.ParseMember(e.RootMemberID); err != nil {
+	if err := runtimeidentity.ValidateMember(e.RootMemberID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpointRecord, err)
 	}
 	if len(e.Payload) == 0 {
@@ -260,7 +260,7 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 
 // LoadCheckpoint returns one complete opaque executor checkpoint.
 func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMemberID string) (ExecutorCheckpointRecord, error) {
-	if _, err := runtimeidentity.ParseMember(rootMemberID); err != nil {
+	if err := runtimeidentity.ValidateMember(rootMemberID); err != nil {
 		return ExecutorCheckpointRecord{}, fmt.Errorf("sqlite: load executor checkpoint: %w", err)
 	}
 	var buildID, policyData, usageData string
@@ -478,7 +478,7 @@ func (e *ExecutorCheckpointStore) DeleteCheckpoints(ctx context.Context, session
 	}
 	seen := make(map[string]struct{}, len(rootIDs))
 	for _, rootID := range rootIDs {
-		if _, err := runtimeidentity.ParseMember(rootID); err != nil {
+		if err := runtimeidentity.ValidateMember(rootID); err != nil {
 			return fmt.Errorf("sqlite: delete executor checkpoints: %w", err)
 		}
 		if _, duplicate := seen[rootID]; duplicate {
@@ -526,7 +526,7 @@ func (e *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, 
 func (e *ExecutorCheckpointStore) DeleteUnownedCheckpoints(ctx context.Context, keepRootIDs []string) error {
 	keep := make(map[string]struct{}, len(keepRootIDs))
 	for _, rootID := range keepRootIDs {
-		if _, err := runtimeidentity.ParseMember(rootID); err != nil {
+		if err := runtimeidentity.ValidateMember(rootID); err != nil {
 			return fmt.Errorf("sqlite: delete unowned executor checkpoints: %w", err)
 		}
 		if _, duplicate := keep[rootID]; duplicate {

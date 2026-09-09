@@ -232,7 +232,7 @@ func (p Pending) validateEnvelope() error {
 	if _, _, err := goalref.ParseOptionalIncarnation(p.GoalIncarnationID); err != nil {
 		return fmt.Errorf("interrupts: pending: %w", err)
 	}
-	if _, err := runtimeidentity.ParseExecutor(p.ExecutorID); err != nil {
+	if err := runtimeidentity.ValidateExecutor(p.ExecutorID); err != nil {
 		return fmt.Errorf("interrupts: pending: %w", err)
 	}
 	switch {
@@ -378,10 +378,10 @@ func (b InterruptBinding) validateIdentities() error {
 	if err := resourceid.ValidateItem(b.InterruptItemID); err != nil {
 		return fmt.Errorf("interrupt item: %w", err)
 	}
-	if _, err := runtimeidentity.ParseMember(b.MemberID); err != nil {
+	if err := runtimeidentity.ValidateMember(b.MemberID); err != nil {
 		return err
 	}
-	if _, err := runtimeidentity.ParseRequest(b.RequestID); err != nil {
+	if err := runtimeidentity.ValidateRequest(b.RequestID); err != nil {
 		return err
 	}
 	return nil
@@ -417,7 +417,7 @@ func (v *pendingBindingValidator) validateInterruptTool(
 ) error {
 	switch request.Kind {
 	case interrupt.Approval:
-		if _, err := runtimeidentity.ParseEffect(binding.ToolCallID); err != nil {
+		if err := runtimeidentity.ValidateEffect(binding.ToolCallID); err != nil {
 			return fmt.Errorf("interrupts: input-request binding[%d]: %w", index, err)
 		}
 		key := memberToolCallIdentity{memberID: binding.MemberID, toolCallID: binding.ToolCallID}
@@ -508,7 +508,7 @@ func (c Continuation) validateRun() error {
 	if err := resourceid.ValidateRun(c.RunID); err != nil {
 		return err
 	}
-	if _, err := runtimeidentity.ParseMember(c.MemberID); err != nil {
+	if err := runtimeidentity.ValidateMember(c.MemberID); err != nil {
 		return err
 	}
 	if c.RunCreatedAt.IsZero() {
@@ -568,7 +568,7 @@ func validateToolIdentity(itemID, callID, name, arguments string) error {
 	if err := resourceid.ValidateItem(itemID); err != nil {
 		return err
 	}
-	if _, err := runtimeidentity.ParseEffect(callID); err != nil {
+	if err := runtimeidentity.ValidateEffect(callID); err != nil {
 		return err
 	}
 	if strings.TrimSpace(name) == "" || name != strings.TrimSpace(name) {

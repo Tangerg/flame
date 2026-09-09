@@ -33,13 +33,13 @@ func (e ExecutorMember) Child() bool { return e.ParentID != "" }
 // empty member is reserved for a root execution that failed before the executor
 // created its member.
 func (e ExecutorMember) Validate() error {
-	if _, _, err := runtimeidentity.ParseOptionalMember(e.MemberID); err != nil {
+	if err := runtimeidentity.ValidateOptionalMember(e.MemberID); err != nil {
 		return fmt.Errorf("runs: %w", err)
 	}
-	if _, _, err := runtimeidentity.ParseOptionalMember(e.ParentID); err != nil {
+	if err := runtimeidentity.ValidateOptionalMember(e.ParentID); err != nil {
 		return fmt.Errorf("runs: executor parent: %w", err)
 	}
-	if _, _, err := runtimeidentity.ParseOptionalEffect(e.SpawnCallID); err != nil {
+	if err := runtimeidentity.ValidateOptionalEffect(e.SpawnCallID); err != nil {
 		return fmt.Errorf("runs: executor spawn call: %w", err)
 	}
 	if e.MemberID == "" {
@@ -295,10 +295,10 @@ func (t TreeInterrupted) validate() error {
 	}
 	seen := make(map[inputRequestKey]struct{}, len(t.interruptions))
 	for index, request := range t.interruptions {
-		if _, err := runtimeidentity.ParseMember(request.MemberID); err != nil {
+		if err := runtimeidentity.ValidateMember(request.MemberID); err != nil {
 			return fmt.Errorf("runs: tree interrupt request[%d] member: %w", index, err)
 		}
-		if _, err := runtimeidentity.ParseRequest(request.RequestID); err != nil {
+		if err := runtimeidentity.ValidateRequest(request.RequestID); err != nil {
 			return fmt.Errorf("runs: tree interrupt request[%d]: %w", index, err)
 		}
 		if err := request.Interrupt.Validate(); err != nil {

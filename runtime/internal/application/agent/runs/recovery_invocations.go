@@ -37,7 +37,7 @@ func validateOpenInvocation(sessionID, runID, segmentID, callID string, startedA
 	if err := resourceid.ValidateSegment(segmentID); err != nil {
 		return err
 	}
-	if _, err := runtimeidentity.ParseEffect(callID); err != nil {
+	if err := runtimeidentity.ValidateEffect(callID); err != nil {
 		return err
 	}
 	if startedAt.IsZero() || startedAt.Location() != time.UTC {

@@ -28,7 +28,7 @@ func (e ExecutorRef) ValidateFor(sessionID string) error {
 	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return fmt.Errorf("%w: admitted %v", ErrInvalidExecutorRef, err)
 	}
-	if _, err := runtimeidentity.ParseExecutor(e.ExecutorID); err != nil {
+	if err := runtimeidentity.ValidateExecutor(e.ExecutorID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorRef, err)
 	}
 	if e.SessionID != sessionID {

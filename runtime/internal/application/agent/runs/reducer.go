@@ -356,7 +356,7 @@ func (r *reducer) reduceAssistantMessage(completed AssistantMessageCompleted) (f
 }
 
 func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error) {
-	if _, err := runtimeidentity.ParseEffect(started.CallID); err != nil {
+	if err := runtimeidentity.ValidateEffect(started.CallID); err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call start: %v", errExecutorContract, err)
 	}
 	if _, duplicate := r.modelCalls[started.CallID]; duplicate {
@@ -375,7 +375,7 @@ func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error
 }
 
 func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction, error) {
-	if _, err := runtimeidentity.ParseEffect(completed.CallID); err != nil {
+	if err := runtimeidentity.ValidateEffect(completed.CallID); err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call completion: %v", errExecutorContract, err)
 	}
 	startedAt, started := r.modelCalls[completed.CallID]
@@ -448,7 +448,7 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 }
 
 func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
-	if _, err := runtimeidentity.ParseEffect(failed.CallID); err != nil {
+	if err := runtimeidentity.ValidateEffect(failed.CallID); err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call failure: %v", errExecutorContract, err)
 	}
 	startedAt, started := r.modelCalls[failed.CallID]
