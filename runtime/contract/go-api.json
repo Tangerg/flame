@@ -1124,29 +1124,9 @@
           "value": "\"evt_\""
         },
         {
-          "name": "IDPrefixItem",
-          "type": "untyped string",
-          "value": "\"item_\""
-        },
-        {
-          "name": "IDPrefixRun",
-          "type": "untyped string",
-          "value": "\"run_\""
-        },
-        {
           "name": "IDPrefixSchedule",
           "type": "untyped string",
           "value": "\"sch_\""
-        },
-        {
-          "name": "IDPrefixSegment",
-          "type": "untyped string",
-          "value": "\"seg_\""
-        },
-        {
-          "name": "IDPrefixSession",
-          "type": "untyped string",
-          "value": "\"ses_\""
         },
         {
           "name": "InterruptApproval",

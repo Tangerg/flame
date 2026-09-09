@@ -4,12 +4,11 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
-// Server-generated resource ID prefixes.
+// The two resource ID prefixes a client may rely on. A Schedule identity is
+// constrained to IDPrefixSchedule on the wire, and IDPrefixEvent frames the
+// opaque replay cursor. Every other prefix is a server generation convention:
+// publishing it would invite exactly the parsing the identities below forbid.
 const (
-	IDPrefixSession  = runtimeidentity.SessionPrefix
-	IDPrefixRun      = runtimeidentity.RunPrefix
-	IDPrefixSegment  = runtimeidentity.SegmentPrefix
-	IDPrefixItem     = runtimeidentity.ItemPrefix
 	IDPrefixSchedule = runtimeidentity.SchedulePrefix
 	IDPrefixEvent    = runtimeidentity.EventPrefix
 )
