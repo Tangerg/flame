@@ -80,12 +80,26 @@ func TestTargetHasNoCompatibilityPackages(t *testing.T) {
 // being split again by processing stage. Endpoint, catalog, Handler, and
 // presenters share one semantic owner; only dispatch and transport have an
 // independent mechanism that justifies a child package.
+//
+// The rule is the closed set, not two names a past split happened to use: a
+// stage carved out as "phases" or "handlers" is the same mistake, and naming
+// the survivors also states what the delivery ring is allowed to contain.
 func TestDeliveryPhasePackagesStayCollapsed(t *testing.T) {
 	root := moduleRoot(t)
-	for _, name := range []string{"operation", "server"} {
-		path := filepath.Join(root, "internal", "delivery", name)
-		if _, err := os.Stat(path); !os.IsNotExist(err) {
-			t.Errorf("delivery processing-stage package is forbidden: %s (stat error %v)", path, err)
+	allowed := map[string]struct{}{"dispatch": {}, "transport": {}}
+	entries, err := os.ReadDir(filepath.Join(root, "internal", "delivery"))
+	if err != nil {
+		t.Fatalf("read delivery ring: %v", err)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		if _, ok := allowed[entry.Name()]; !ok {
+			t.Errorf(
+				"delivery child package %q is forbidden; endpoint, catalog, Handler and presenters share one owner",
+				entry.Name(),
+			)
 		}
 	}
 }

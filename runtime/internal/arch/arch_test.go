@@ -1217,8 +1217,8 @@ func TestTranscriptItemUsesOneNeutralDomainTimestamp(t *testing.T) {
 // semantic constructor or ToolCall behavior.
 func TestTranscriptItemHasNoExternalMutationSurface(t *testing.T) {
 	root := moduleRoot(t)
-	path := filepath.Join(root, "internal", "domain", "run", "transcript", "item.go")
-	if fields := namedStructExportedFields(t, path, "Item"); len(fields) != 0 {
+	transcript := filepath.Join(root, "internal", "domain", "run", "transcript")
+	if fields := namedStructExportedFields(t, transcript, "Item"); len(fields) != 0 {
 		t.Errorf("transcript.Item exports mutable fields %v; use semantic behavior and accessors", fields)
 	}
 }
@@ -1800,7 +1800,30 @@ func namedStructFieldTypeOptional(t *testing.T, path, structName, fieldName stri
 // namedStructExportedFields returns the exported fields declared directly on a
 // named struct. Embedded exported fields count because they expose the same
 // external mutation surface.
-func namedStructExportedFields(t *testing.T, path, structName string) []string {
+// namedStructExportedFields finds structName anywhere in the package rooted at
+// directory. The subject of every rule using it is the type, so splitting or
+// renaming the file that currently holds it is not a violation of anything.
+func namedStructExportedFields(t *testing.T, directory, structName string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		t.Fatalf("read %s: %v", directory, err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") ||
+			strings.HasSuffix(entry.Name(), "_test.go") {
+			continue
+		}
+		path := filepath.Join(directory, entry.Name())
+		if fields, found := exportedFieldsIn(t, path, structName); found {
+			return fields
+		}
+	}
+	t.Fatalf("%s: type %s not found", directory, structName)
+	return nil
+}
+
+func exportedFieldsIn(t *testing.T, path, structName string) ([]string, bool) {
 	t.Helper()
 	file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 	if err != nil {
@@ -1835,11 +1858,10 @@ func namedStructExportedFields(t *testing.T, path, structName string) []string {
 					}
 				}
 			}
-			return exported
+			return exported, true
 		}
 	}
-	t.Fatalf("%s: type %s not found", path, structName)
-	return nil
+	return nil, false
 }
 
 const (
