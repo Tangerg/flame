@@ -333,10 +333,33 @@ describe("markdownMessage", () => {
     expect(container.textContent ?? "").toContain("Hello world");
   });
 
-  it("uses the typewriter pipeline without layering word fades over it", () => {
-    const { container } = render(<MarkdownMessage text="Hello world" reveal="typewriter" />);
+  // `streaming` is what selects the pipeline, not `reveal`: without it `MarkdownBlock` takes
+  // the settled branch, so this asserted the absence of a fade in a tree that was never going
+  // to carry one and said nothing at all about the typewriter. The caret is the only thing
+  // that mode renders differently, and it had no test anywhere.
+  it("uses the typewriter pipeline, which is the one that carries a caret", async () => {
+    const { container } = render(
+      <MarkdownMessage text="Hello world" reveal="typewriter" streaming />,
+    );
+    // Same reason as the smooth case above: the reveal hands text over a character at a time,
+    // so the caret only exists once there is something for it to trail.
+    await waitFor(() => {
+      expect(container.querySelectorAll("span.type-caret").length).toBeGreaterThan(0);
+    });
     expect(container.querySelectorAll("span.fade-in")).toHaveLength(0);
-    expect(container.textContent ?? "").toContain("Hello world");
+    // A typewriter hands over ONE CHARACTER at a time, so what is on screen at any moment is a
+    // prefix — asserting the whole word here is asserting that the mode does not do its job.
+    const shown = (container.textContent ?? "").replace(/\u200b/g, "").trim();
+    expect("Hello world".startsWith(shown)).toBe(true);
+    expect(shown.length).toBeGreaterThan(0);
+  });
+
+  it("gives the smooth reveal word fades and no caret", async () => {
+    const { container } = render(<MarkdownMessage text="Hello world" reveal="smooth" streaming />);
+    await waitFor(() => {
+      expect(container.querySelectorAll("span.fade-in").length).toBeGreaterThan(0);
+    });
+    expect(container.querySelectorAll("span.type-caret")).toHaveLength(0);
   });
 
   it("renders model placeholders as literal text instead of unknown React elements", () => {

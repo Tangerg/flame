@@ -11474,3 +11474,53 @@ dev server 热更新，套件后半程拍的是打了桩的 markdown。同一轮
 | 新增 golden | 2 张（放大图，双主题）—— 覆盖一条此前只有 `toBeVisible()` 的后代规则 |
 | 删掉的死声明 | 2 条，**各自单独验证过是死的** |
 | 重录 | 0 |
+
+## Round 182 — 两条名字比内容大的测试
+
+顺着「哪些面没被渲染过」往下，两处命中，都是同一个形状：
+**测试的名字承诺了一件事，断言的是另一件更小的事。**
+
+### 一、打字机模式的测试，从来没走进打字机模式
+
+```tsx
+it("uses the typewriter pipeline without layering word fades over it", () => {
+  render(<MarkdownMessage text="Hello world" reveal="typewriter" />);
+```
+
+选管线的是 **`streaming`，不是 `reveal`**。没有它，`MarkdownBlock` 走的是已定型那条分支
+（`[rehypeRaw, rehypeFileRefs, rehypeKatex]`）—— 里面根本没有 `rehypeStreamCaret`。
+
+所以这条测试断言的是「一棵本来就不会有淡入的树里没有淡入」，
+对打字机**一个字都没说**。而光标（`.type-caret`）是那个模式**唯一**渲染得不一样的东西，
+它在整个仓库里没有任何测试 —— `overlays.css` 里那条 blink 动画和 `globals.css` 里
+给它的 `corner-shape` 豁免，都没人验证过。
+
+补上之后还踩到一个真实的性质：**打字机是一个字符一个字符给的**，
+所以断言 `toContain("Hello")` 本身就是在断言这个模式没在工作 ——
+第一次跑到光标出现时，屏幕上只有 `H`。改成断言**已显示的是源文本的前缀**。
+
+配一条对照：smooth 模式有淡入、没有光标。
+**验证过会失败**：把 `rehypeStreamCaret` 从那条分支拿掉，测试立刻红。
+
+### 二、报错面板说了「哪个插件坏了」，没说「坏在哪」
+
+`PluginBoundary` 的兜底 UI 有三条单测：渲染子节点、显示兜底、上报到 error store。
+三条全绿 —— 而我把 `<code>{this.state.error.message}</code>` **整行删掉，三条还是全绿**。
+
+那行是唯一告诉用户**发生了什么**的东西。补上断言，并且断言它落在 `<code>` 里 ——
+`overlays.css` 里有 6 条声明专门给这个元素上妆。
+
+### 顺带核过、没有问题的
+
+- `overlays.css` 一共 4 个类：`.plugin-boundary-error`（本轮补）、
+  `.plugin-boundary-error code`（本轮补）、`.fade-in`（已有测试）、`.type-caret`（本轮补）。
+- 130 条后代 / 属性选择器里，其余大多是 `.md ...`，markdown golden 覆盖着。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 视觉 | **674 / 674** |
+| 单测 | **2407 通过 / 4 失败** —— 全部在 `src/rpc`，runtime contract 由用户改动中，不在范围内 |
+| 新增断言 | 3 条，**每条都验证过能失败** |
+| `.type-caret` 覆盖 | 0 → 1 |

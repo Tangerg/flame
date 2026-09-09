@@ -28,6 +28,10 @@ describe("pluginBoundary", () => {
     );
     expect(screen.getByText("Bad Plugin")).toBeTruthy();
     expect(screen.getByText(/failed to render/i)).toBeTruthy();
+    // The message, and in the element the stylesheet dresses. Which plugin broke is half the
+    // answer; WHAT broke is the other half, and deleting the `<code>` that carries it left all
+    // three of these tests green — a fallback that names a failure without describing it.
+    expect(screen.getByText("kaboom").tagName).toBe("CODE");
     spy.mockRestore();
   });
 
