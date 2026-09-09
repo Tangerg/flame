@@ -79,6 +79,9 @@ func (c *PlanCoordinator) Replace(ctx context.Context, sessionID string, steps [
 // aggregate use cases use this to include the exact Plan transition in their
 // own atomic write set. Steps are borrowed until the synchronous call returns;
 // the decided State owns its snapshot.
+//
+// Persistence receives the decided replacement and may only apply its CAS; it
+// never assigns a revision or update time itself.
 func (c *PlanCoordinator) PrepareReplacement(ctx context.Context, sessionID string, steps []plan.Step) (plan.Replacement, error) {
 	current, err := c.State(ctx, sessionID)
 	if err != nil {

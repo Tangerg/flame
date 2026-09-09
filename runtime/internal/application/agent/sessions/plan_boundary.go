@@ -12,7 +12,7 @@ import (
 // PlanServices supplies boundary reads and aggregate replacement decisions.
 type PlanServices struct {
 	Boundaries   PlanBoundaries
-	Replacements PlanReplacements
+	Replacements *PlanCoordinator
 }
 
 // PlanBoundary is a Plan recovered from a Run boundary: the value, and

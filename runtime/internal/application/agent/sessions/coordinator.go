@@ -74,14 +74,6 @@ type PlanBoundaries interface {
 	Boundary(ctx context.Context, runID string) ([]plan.Step, bool, error)
 }
 
-// PlanReplacements decides Plan aggregate transitions for cross-aggregate
-// session write sets. Persistence receives the decided replacement and may only
-// apply its CAS; it never assigns a revision or update time itself.
-type PlanReplacements interface {
-	PrepareReplacement(ctx context.Context, sessionID string, steps []plan.Step) (plan.Replacement, error)
-	PrepareInitial(steps []plan.Step) (plan.Replacement, error)
-}
-
 // RunStore is the lifecycle coordinator's read view of a session's Runs. Every
 // boundary it computes — a rollback target, a fork point, an abandoned park — is
 // derived from the Run timeline, so it reads the Runs themselves rather than

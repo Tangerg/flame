@@ -46,20 +46,3 @@ func validateGoalCatalog(values []goal.Goal) error {
 	}
 	return nil
 }
-
-// RunRecorder records one terminal goal-owned Run exactly once. It joins the
-// terminal Run transaction, rather than asking the drive to reconstruct durable
-// accounting after it has observed a streamed terminal event.
-type RunRecorder interface {
-	RecordRun(ctx context.Context, record goal.RunRecord) error
-}
-
-// DurableStore is the complete persistence surface required by a Run
-// terminalizer. The Driver, Reader, and OutcomeReporter consume Store.
-type DurableStore interface {
-	Store
-	RunRecorder
-	// Clear is reserved for the session aggregate's atomic delete write-set.
-	// Goal lifecycle and boot recovery use versioned ClearIf instead.
-	Clear(ctx context.Context, sessionID string) error
-}
