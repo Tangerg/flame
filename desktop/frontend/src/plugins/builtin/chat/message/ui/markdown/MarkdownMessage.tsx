@@ -9,7 +9,7 @@ import remarkGfm from "remark-gfm";
 import remarkAlert from "remark-github-blockquote-alert";
 import remarkMath from "remark-math";
 import remend from "remend";
-import { parseMarkdownIntoBlocks } from "streamdown";
+import { splitStreamingBlocks } from "./splitStreamingBlocks";
 import { createMarkdownComponents } from "./markdownComponents";
 import { isInlineMarkdownImage } from "./MarkdownImage";
 import { handleMarkdownCopy } from "./markdownSelectionCopy";
@@ -83,7 +83,7 @@ export function MarkdownMessage(props: Props) {
     return remend(normalized);
   }, [instant, normalized]);
 
-  const blocks = useMemo(() => parseMarkdownIntoBlocks(repaired), [repaired]);
+  const blocks = useMemo(() => splitStreamingBlocks(repaired), [repaired]);
   const lastIdx = blocks.length - 1;
 
   useEffect(() => {
