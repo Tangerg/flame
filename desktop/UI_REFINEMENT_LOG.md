@@ -11906,3 +11906,53 @@ stateHasWhatTheSchemaWillStrip: "cursorStyle"
 | 首帧镜子 | 2 面 → **3 面** |
 | 密度变量守卫 | 1 / 13（视觉）→ **13 / 13**（编译期读 CSS 文本）|
 | 视觉套件 | **未跑** —— 只加了一条单测 |
+
+## Round 191 —— 第四面镜子：字号阶梯
+
+上一轮补完密度阶梯之后，我没有停在"这面补上了"，而是把**同一个形状**在仓库里搜干净：
+哪些 TypeScript 模块会写一个 `globals.css` 也用字面量声明过的 CSS 变量？
+
+| 写者 | 变量数 | 状态 |
+| --- | --- | --- |
+| `theme/kit/palette.ts` | 调色板 | Round 168 已守 |
+| `theme/kit/visualStyle.ts` | style 令牌 | Round 168 已守 |
+| `theme/kit/density.ts` | 13 | Round 190 已守 |
+| **`theme/kit/typeLadder.ts`** | **11 (`--fs-*`)** | **没有任何东西看着** |
+| `chat/ui/ChatSearchOverlay.tsx` | 1 (`--wails-draggable`) | 不是镜子（运行时开关，CSS 侧没有对应字面量清单）|
+
+所以是 **4 面**，不是 3 面 —— 而且第四面的赌注比前三面都大：
+调色板漂移是首帧颜色不对，密度漂移是首帧行高不对，**字号漂移会把每一段文字重排**。
+11 个值今天全对（`--fs-ui-2xs=11px` … `--fs-display-lg=24px`）。
+
+### 没有写第二个近似副本
+
+`density` 和 `typeLadder` 的守卫逻辑逐字相同：算出 writer 的输出 → 去掉 `--` → 和 `:root`
+块里声明的字面量逐个比 → 要求**每一个都被声明过**（不是"比过的都一致"）。
+两份 30 行的近似代码，是下一次只改一份的由来。折成一张 `describe.each` 表：
+
+| | 之前 | 之后 |
+| --- | --- | --- |
+| 守卫的镜子 | 3 面 | **4 面** |
+| `stylesheetMirror.test.ts` 里的密度/字号代码 | 1 份 | **1 份**（表驱动，加第五面 = 加一行）|
+
+### 三个方向都验证过
+
+`compared === written.length` 和 `> 10` 的下限各自挡的是不同的错，分开验：
+
+| 故意制造的破坏 | 报什么 |
+| --- | --- |
+| `globals.css` 的 `--fs-ui-md: 14px` → `15px` | 值不一致 |
+| writer 里删掉 `--fs-code` | 撞下限（样式表声明了没人覆盖的变量）|
+| writer 里加一个 `--fs-caption`（CSS 里没有） | `a variable the stylesheet never declares` |
+
+破坏前都先确认那两个文件**本轮没有我的其他改动**，再 `git checkout --` 撤 —— 这是 Round 189 交的学费。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 单测 | 32 文件 / **214 全通过**（+1）|
+| 首帧镜子 | 3 面 → **4 面** |
+| 字号变量守卫 | 0 / 11 → **11 / 11** |
+| typecheck / prettier | 全绿 |
+| 视觉套件 | **未跑** —— 本轮零生产代码改动 |

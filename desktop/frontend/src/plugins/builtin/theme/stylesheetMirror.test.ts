@@ -7,6 +7,7 @@ import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { declaredInBlock, driftAgainstBlock } from "@/test/stylesheet";
 import { DEFAULT_UI_DENSITY } from "./kit/appearance";
 import { densityCssVariables } from "./kit/density";
+import { uiTypeLadderCssVariables } from "./kit/typeLadder";
 import { depthStep } from "./kit/tokens";
 import { visualStyleMotionTokens } from "./visualStyles/tokens";
 
@@ -119,20 +120,18 @@ describe("the stylesheet defaults and the scalars the painter writes alone", () 
  * density variable the sheet omits has no fallback at all, which is an unstyled first frame
  * rather than a stale one.
  */
-describe("the density ladder and the stylesheet fallbacks it overwrites", () => {
-  it("agree on every variable at the comfortable default", () => {
+describe.each([
+  ["the density ladder", () => densityCssVariables(DEFAULT_UI_DENSITY)],
+  ["the type ladder", () => uiTypeLadderCssVariables(null)],
+])("%s and the stylesheet fallbacks it overwrites", (_label, compute) => {
+  it("agree on every variable it writes, at the default", () => {
     const written = Object.fromEntries(
-      Object.entries(densityCssVariables(DEFAULT_UI_DENSITY)).map(([name, value]) => [
-        name.replace(/^--/, ""),
-        value,
-      ]),
+      Object.entries(compute()).map(([name, value]) => [name.replace(/^--/, ""), value]),
     );
     expect(Object.keys(written).length).toBeGreaterThan(10);
 
     const { compared, disagreed } = driftAgainstBlock(":root", written);
-    expect(compared, "a density variable the stylesheet never declares").toBe(
-      Object.keys(written).length,
-    );
+    expect(compared, "a variable the stylesheet never declares").toBe(Object.keys(written).length);
     expect(disagreed).toEqual([]);
   });
 });
