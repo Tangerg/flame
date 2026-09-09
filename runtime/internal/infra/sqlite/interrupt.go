@@ -575,8 +575,8 @@ func scanPending(row scanRow) (InterruptRecord, error) {
 }
 
 // decodeInterrupts reads the stored open-interrupt set. It is the one reader of
-// that encoding: the Run table joins the same column to answer what a parked Run
-// is waiting on, and a second decoder there could disagree about the format.
+// that encoding: the Run read joins the same column to prove a parked Run's set
+// is intact, and a second decoder there could disagree about the format.
 func decodeInterrupts(payload string) ([]transcript.Interrupt, error) {
 	if payload == "" {
 		return nil, nil

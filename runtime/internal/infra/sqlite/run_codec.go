@@ -433,20 +433,20 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 		snapshot.State = rundomain.Running
 	case runStateWaiting:
 		snapshot.State = rundomain.Waiting
-		// Every suspended Run must join its root-owned pending set. Only interrupts
-		// raised by this Run are projected onto it; an empty filtered result means
-		// the Run was suspended by another source in the tree.
+		// Every suspended Run must join its root-owned pending set. A Run carries
+		// no interrupts of its own, so the joined column is read only to prove the
+		// set is intact: a waiting Run whose pending payload cannot be decoded is
+		// unusable, and saying so here names the Run instead of failing later
+		// wherever that set is finally read.
 		if !interruptsSuspended.Valid {
 			if pendingPolicy == requirePendingSet {
 				return rundomain.Run{}, fmt.Errorf("run %q is waiting with no root-owned Pending set", id)
 			}
 			break
 		}
-		treeInterrupts, decodeErr := decodeInterrupts(interruptsSuspended.String)
-		if decodeErr != nil {
+		if _, decodeErr := decodeInterrupts(interruptsSuspended.String); decodeErr != nil {
 			return rundomain.Run{}, fmt.Errorf("decode run %q interrupts: %w", id, decodeErr)
 		}
-		_ = treeInterrupts
 	case runStateTerminal:
 		reason, ok := rundomain.ParseOutcome(outcome)
 		if !ok {
