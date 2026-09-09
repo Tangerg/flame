@@ -175,7 +175,7 @@ func (r *Resolver) appendStatic(
 	into *manifestBuilder,
 	at placement,
 	group domaintool.Group,
-) error {
+) {
 	for _, spec := range r.staticSpecs {
 		if spec.tool == nil || spec.placement != at || !spec.audience.includes(group) {
 			continue
@@ -191,7 +191,6 @@ func (r *Resolver) appendStatic(
 			into.direct(spec.tool)
 		}
 	}
-	return nil
 }
 
 // UseCreateGoalTool installs the root-only autonomous Goal entry tool after
@@ -337,15 +336,11 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (manifes
 	tools.deferTools(skillTools...)
 	// Built-once, session-keyed helpers (plan/result/memory/transcript search)
 	// are projected from the resolver's group and placement policy.
-	if appendStaticErr := r.appendStatic(ctx, &tools, afterSkill, group); appendStaticErr != nil {
-		return manifestBuilder{}, appendStaticErr
-	}
+	r.appendStatic(ctx, &tools, afterSkill, group)
 	// Both groups can ask the user; Plan-mode controls in this placement remain
 	// root-only. A child question waits at the same durable tree boundary as a
 	// child approval.
-	if appendStaticErr := r.appendStatic(ctx, &tools, interactionTail, group); appendStaticErr != nil {
-		return manifestBuilder{}, appendStaticErr
-	}
+	r.appendStatic(ctx, &tools, interactionTail, group)
 	if group == domaintool.GroupRoot {
 		// Goal lifecycle entry is late-bound because its application Driver owns
 		// Runs, while the resolver itself was needed to build the Agent executor.
@@ -356,9 +351,7 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (manifes
 		}
 		// The remaining schedule and Goal state capabilities are
 		// product-root operations rather than generic child execution tools.
-		if appendStaticErr := r.appendStatic(ctx, &tools, rootTail, group); appendStaticErr != nil {
-			return manifestBuilder{}, appendStaticErr
-		}
+		r.appendStatic(ctx, &tools, rootTail, group)
 	}
 	// search_tools is the sole model-facing entry to every capability withheld
 	// from the initial manifest. The tools themselves remain in the same Run
