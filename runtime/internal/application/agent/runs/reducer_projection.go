@@ -6,7 +6,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
@@ -301,18 +300,10 @@ func (r *reducer) goalTurn(run run.Run) (*goal.RunRecord, error) {
 		record.CompletedAt = r.now()
 	}
 	record.Steps = run.Metrics().Steps()
-	cost, err := costFromRunMetrics(run.Metrics())
+	cost, err := run.Metrics().Cost()
 	if err != nil {
 		return nil, fmt.Errorf("runs: project Goal Run cost: %w", err)
 	}
 	record.Cost = cost
 	return record, nil
-}
-
-func costFromRunMetrics(metrics run.Metrics) (accounting.Cost, error) {
-	usage, reported := metrics.Usage()
-	if !reported {
-		return accounting.Cost{}, nil
-	}
-	return accounting.CostFromOptional(usage.Total.CostUSD)
 }

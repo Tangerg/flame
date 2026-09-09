@@ -701,7 +701,7 @@ func recoveredGoalRun(rootRunID string, lostRuns []rundomain.Replacement) (goal.
 		Steps:         lostRoot.Metrics().Steps(),
 		CompletedAt:   lostRoot.FinishedAt(),
 	}
-	cost, err := costFromRunMetrics(lostRoot.Metrics())
+	cost, err := lostRoot.Metrics().Cost()
 	if err != nil {
 		return goal.RunRecord{}, fmt.Errorf("runs: recover Goal Run cost: %w", err)
 	}

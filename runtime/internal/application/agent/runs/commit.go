@@ -471,7 +471,7 @@ func validateTerminalGoalRun(value run.Run, record *goal.RunRecord) error {
 	if err := record.Validate(); err != nil {
 		return fmt.Errorf("runs: terminal Goal Run: %w", err)
 	}
-	cost, err := costFromRunMetrics(value.Metrics())
+	cost, err := value.Metrics().Cost()
 	if err != nil {
 		return fmt.Errorf("runs: terminal Goal Run cost: %w", err)
 	}

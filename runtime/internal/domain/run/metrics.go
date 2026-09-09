@@ -85,6 +85,16 @@ func (m Metrics) Usage() (accounting.Usage, bool) {
 	return m.usage.Clone(), true
 }
 
+// Cost answers what this Run has spent. An unreported usage is a Run that has
+// not accounted yet, which is a zero cost rather than a failure — the same
+// answer every caller needs, asked of the value that holds it.
+func (m Metrics) Cost() (accounting.Cost, error) {
+	if m.usage == nil {
+		return accounting.Cost{}, nil
+	}
+	return accounting.CostFromOptional(m.usage.Total.CostUSD)
+}
+
 // Steps returns the cumulative model-call count.
 func (m Metrics) Steps() int { return m.steps }
 
