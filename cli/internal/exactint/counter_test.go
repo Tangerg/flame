@@ -23,9 +23,6 @@ func TestCounterOwnsTheExactRangeAndCheckedAdvance(t *testing.T) {
 	if _, err := last.Next(); !errors.Is(err, ErrExhausted) {
 		t.Fatalf("last.Next() error = %v", err)
 	}
-	if _, err := first.Advance(Maximum); !errors.Is(err, ErrExhausted) {
-		t.Fatalf("first.Advance(Maximum) error = %v", err)
-	}
 	if _, err := Restore(Maximum + 1); !errors.Is(err, ErrOutOfRange) {
 		t.Fatalf("Restore(Maximum+1) error = %v", err)
 	}

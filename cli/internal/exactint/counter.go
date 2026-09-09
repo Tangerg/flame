@@ -42,17 +42,14 @@ func (c Counter) Value() uint64 { return c.value }
 func (c Counter) IsZero() bool { return c.value == 0 }
 
 // Next returns the next exact value without wrapping.
-func (c Counter) Next() (Counter, error) { return c.Advance(1) }
-
-// Advance reserves a fixed number of monotonic changes without iterating.
-func (c Counter) Advance(changes uint64) (Counter, error) {
+func (c Counter) Next() (Counter, error) {
 	if c.value > Maximum {
 		return Counter{}, ErrOutOfRange
 	}
-	if changes > Maximum-c.value {
+	if c.value == Maximum {
 		return Counter{}, ErrExhausted
 	}
-	return Counter{value: c.value + changes}, nil
+	return Counter{value: c.value + 1}, nil
 }
 
 // Follows verifies that next is the exact successor of previous.

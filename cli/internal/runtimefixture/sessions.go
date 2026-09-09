@@ -51,8 +51,10 @@ func (s *sessionState) requireRevisionCapacity(changes sessionRevisionChanges) e
 	if err != nil {
 		return fmt.Errorf("mock: session revision: %w", err)
 	}
-	_, err = current.Advance(uint64(changes))
-	return classifySessionRevisionAdvance(err)
+	if uint64(changes) > exactint.Maximum-current.Value() {
+		return errSessionRevisionExhausted
+	}
+	return nil
 }
 
 func (s *sessionState) commitMeta(candidate agent.Session) error {
