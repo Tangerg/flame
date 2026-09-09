@@ -26,7 +26,7 @@ func (s *Server) serveRPC(w http.ResponseWriter, r *http.Request) {
 	// type ⇒ 415, oversized body ⇒ 413 — both rejected before we spend
 	// effort decoding. Content-Type is only enforced when present (a
 	// minimal client may omit it); when set it must be application/json.
-	if ct := strings.TrimSpace(r.Header.Get("Content-Type")); ct != "" && !isJSONMediaType(ct) {
+	if ct := strings.TrimSpace(r.Header.Get(headerContentType)); ct != "" && !isJSONMediaType(ct) {
 		writeProblem(w, http.StatusUnsupportedMediaType, "unsupported_media_type", "content-type must be application/json", false)
 		return
 	}
@@ -63,9 +63,9 @@ func (s *Server) serveRPC(w http.ResponseWriter, r *http.Request) {
 	// the ctx so runs.subscribe replays a run's retained replay window from that
 	// point rather than re-sending it whole. Harmless for
 	// non-streaming methods (they don't read it).
-	ctx := transport.WithLastEventID(r.Context(), r.Header.Get("Last-Event-Id"))
-	ctx = transport.WithIdempotencyKey(ctx, r.Header.Get("Idempotency-Key"))
-	ctx = transport.WithIdempotencyNamespace(ctx, r.Header.Get("Idempotency-Namespace"))
+	ctx := transport.WithLastEventID(r.Context(), r.Header.Get(headerLastEventID))
+	ctx = transport.WithIdempotencyKey(ctx, r.Header.Get(headerIdempotencyKey))
+	ctx = transport.WithIdempotencyNamespace(ctx, r.Header.Get(headerIdempotencyNamespace))
 	result := s.router.Dispatch(ctx, message)
 
 	// Surface the request method for the X-Method header.

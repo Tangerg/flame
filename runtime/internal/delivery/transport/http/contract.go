@@ -8,6 +8,30 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// Request headers a client may send to this transport. The reader and the CORS
+// allowlist below take the same names: a header read by a handler but missing
+// from the allowlist fails a browser client's preflight, and the failure is a
+// rejected request rather than anything the handler can report.
+const (
+	headerAuthorization        = "Authorization"
+	headerContentType          = "Content-Type"
+	headerIdempotencyKey       = "Idempotency-Key"
+	headerIdempotencyNamespace = "Idempotency-Namespace"
+	headerLastEventID          = "Last-Event-Id"
+)
+
+// requestHeaders is every header this transport reads, in one list so the
+// allowlist cannot fall behind the readers.
+func requestHeaders() []string {
+	return []string{
+		headerAuthorization,
+		headerContentType,
+		headerIdempotencyKey,
+		headerIdempotencyNamespace,
+		headerLastEventID,
+	}
+}
+
 // EndpointKind separates the JSON-RPC binding from typed operational sidecars.
 // It is a transport fact: neither Application nor the protocol method registry
 // needs to know which HTTP path carries an operation.
