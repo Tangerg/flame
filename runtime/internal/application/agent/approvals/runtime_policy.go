@@ -101,7 +101,7 @@ func (r *RuntimePolicy) Mode(ctx context.Context, sessionID string) (approval.Mo
 	if sessionID == "" {
 		return fallback, nil
 	}
-	if _, err := resourceid.ParseSession(sessionID); err != nil {
+	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return "", fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, err)
 	}
 	state, found, err := r.modeStore.LookupMode(ctx, sessionID)
@@ -120,7 +120,7 @@ func (r *RuntimePolicy) Mode(ctx context.Context, sessionID string) (approval.Mo
 // EnterPlanMode narrows one session to read-only and records the permission mode
 // it must regain on exit. It returns changed=false when already active.
 func (r *RuntimePolicy) EnterPlanMode(ctx context.Context, sessionID string) (changed bool, err error) {
-	if _, parseErr := resourceid.ParseSession(sessionID); parseErr != nil {
+	if parseErr := resourceid.ValidateSession(sessionID); parseErr != nil {
 		return false, fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, parseErr)
 	}
 	r.modeMu.Lock()
@@ -143,7 +143,7 @@ func (r *RuntimePolicy) EnterPlanMode(ctx context.Context, sessionID string) (ch
 // ExitPlanMode restores the exact mode captured by EnterPlanMode. It returns
 // changed=false when the session is not in Plan mode.
 func (r *RuntimePolicy) ExitPlanMode(ctx context.Context, sessionID string) (restored approval.Mode, changed bool, err error) {
-	if _, parseErr := resourceid.ParseSession(sessionID); parseErr != nil {
+	if parseErr := resourceid.ValidateSession(sessionID); parseErr != nil {
 		return "", false, fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, parseErr)
 	}
 	r.modeMu.Lock()

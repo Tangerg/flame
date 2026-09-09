@@ -15,7 +15,7 @@ func TestSegmentItemIdentitiesBoundMaximumForeignSegment(t *testing.T) {
 		"s",
 		runtimeidentity.MaximumResourceCharacters-len(runtimeidentity.SegmentPrefix),
 	)
-	if _, err := resourceid.ParseSegment(segmentID); err != nil {
+	if err := resourceid.ValidateSegment(segmentID); err != nil {
 		t.Fatalf("maximum Segment fixture: %v", err)
 	}
 
@@ -24,12 +24,12 @@ func TestSegmentItemIdentitiesBoundMaximumForeignSegment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first Item identity: %v", err)
 	}
-	if _, err := resourceid.ParseItem(first); err != nil {
+	if err := resourceid.ValidateItem(first); err != nil {
 		t.Fatalf("Item identity derived from maximum Segment = %q: %v", first, err)
 	}
 	if user := userMessageItemID(segmentID); user == first {
 		t.Fatalf("user Item identity aliases sequenced identity %q", user)
-	} else if _, err := resourceid.ParseItem(user); err != nil {
+	} else if err := resourceid.ValidateItem(user); err != nil {
 		t.Fatalf("user Item identity derived from maximum Segment = %q: %v", user, err)
 	}
 }
@@ -41,7 +41,7 @@ func TestSegmentItemIdentitiesDoNotWrap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("last Item identity: %v", err)
 	}
-	if _, err := resourceid.ParseItem(last); err != nil {
+	if err := resourceid.ValidateItem(last); err != nil {
 		t.Fatalf("last Item identity = %q: %v", last, err)
 	}
 	if next, err := identities.Next(); next != "" || !errors.Is(err, errItemIdentitySequenceExhausted) {

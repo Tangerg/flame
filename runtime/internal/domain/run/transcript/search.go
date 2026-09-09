@@ -23,13 +23,13 @@ type SearchHit struct {
 // Validate rejects corrupt search-index provenance before a hit is exposed as
 // a usable transcript reference.
 func (h SearchHit) Validate() error {
-	if _, err := resourceid.ParseSession(h.SessionID); err != nil {
+	if err := resourceid.ValidateSession(h.SessionID); err != nil {
 		return fmt.Errorf("transcript search hit: %w", err)
 	}
-	if _, err := resourceid.ParseRun(h.RunID); err != nil {
+	if err := resourceid.ValidateRun(h.RunID); err != nil {
 		return fmt.Errorf("transcript search hit: %w", err)
 	}
-	if _, err := resourceid.ParseItem(h.ItemID); err != nil {
+	if err := resourceid.ValidateItem(h.ItemID); err != nil {
 		return fmt.Errorf("transcript search hit: %w", err)
 	}
 	if !h.Kind.Valid() {

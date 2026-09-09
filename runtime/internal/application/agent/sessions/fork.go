@@ -42,7 +42,7 @@ type ForkBoundary struct {
 // latest terminal run.
 func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID string) (ForkBoundary, error) {
 	if fromRunID != "" {
-		if _, err := resourceid.ParseRun(fromRunID); err != nil {
+		if err := resourceid.ValidateRun(fromRunID); err != nil {
 			return ForkBoundary{}, fmt.Errorf("sessions: fork boundary: %w", err)
 		}
 	}
@@ -67,7 +67,7 @@ func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID string) 
 // The application resolves the boundary and commits the branch through
 // its persistence port.
 func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec) (session.Session, error) {
-	if _, err := resourceid.ParseSession(spec.ParentID); err != nil {
+	if err := resourceid.ValidateSession(spec.ParentID); err != nil {
 		return session.Session{}, fmt.Errorf("sessions: fork: %w", err)
 	}
 	snapshot, err := c.snapshots.ReadSnapshot(ctx, spec.ParentID)

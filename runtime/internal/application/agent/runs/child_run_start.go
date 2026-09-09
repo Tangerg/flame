@@ -54,19 +54,19 @@ func (c ChildRunStartReservation) Validate() error {
 }
 
 func (c ChildRunStartReservation) validateIdentity() error {
-	if _, err := resourceid.ParseSession(c.SessionID); err != nil {
+	if err := resourceid.ValidateSession(c.SessionID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
 	if _, err := runtimeidentity.ParseExecutor(c.ExecutorID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if _, err := resourceid.ParseSegment(c.SegmentID); err != nil {
+	if err := resourceid.ValidateSegment(c.SegmentID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if _, err := resourceid.ParseItem(c.SpawnedByItemID); err != nil {
+	if err := resourceid.ValidateItem(c.SpawnedByItemID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if _, err := resourceid.ParseRun(c.RootRunID); err != nil {
+	if err := resourceid.ValidateRun(c.RootRunID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
 	return nil

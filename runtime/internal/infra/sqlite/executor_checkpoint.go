@@ -77,7 +77,7 @@ func (e ExecutorCheckpointRecord) validate() error {
 }
 
 func (e ExecutorScopeRecord) validate() error {
-	if _, err := resourceid.ParseSession(e.SessionID); err != nil {
+	if err := resourceid.ValidateSession(e.SessionID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpointRecord, err)
 	}
 	if e.CWD != strings.TrimSpace(e.CWD) {

@@ -22,10 +22,10 @@ type ExecutorRef struct {
 // ValidateFor checks that the executor returned a complete identity bound to
 // the admitted session.
 func (e ExecutorRef) ValidateFor(sessionID string) error {
-	if _, err := resourceid.ParseSession(e.SessionID); err != nil {
+	if err := resourceid.ValidateSession(e.SessionID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorRef, err)
 	}
-	if _, err := resourceid.ParseSession(sessionID); err != nil {
+	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return fmt.Errorf("%w: admitted %v", ErrInvalidExecutorRef, err)
 	}
 	if _, err := runtimeidentity.ParseExecutor(e.ExecutorID); err != nil {

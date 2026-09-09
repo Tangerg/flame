@@ -71,7 +71,7 @@ func (c ChildRunStartReservationRecord) validate() error {
 	if _, err := runtimeidentity.ParseMember(c.MemberID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidChildRunStartReservation, err)
 	}
-	if _, err := resourceid.ParseSession(c.SessionID); err != nil {
+	if err := resourceid.ValidateSession(c.SessionID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidChildRunStartReservation, err)
 	}
 	if len(c.Payload) == 0 {
@@ -187,7 +187,7 @@ func (c *ChildRunStartReservationStore) DeleteSession(
 	ctx context.Context,
 	sessionID string,
 ) error {
-	if _, err := resourceid.ParseSession(sessionID); err != nil {
+	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidChildRunStartReservation, err)
 	}
 	if _, err := conn(ctx, c.db).ExecContext(ctx,

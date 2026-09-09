@@ -260,13 +260,13 @@ func validateWaitingCancellationBoundary(c waitingSubtreeCancellationState) erro
 	if err := c.CommitID.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting cancellation: %w", err)
 	}
-	if _, err := resourceid.ParseRun(c.RootRunID); err != nil {
+	if err := resourceid.ValidateRun(c.RootRunID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation root: %w", err)
 	}
-	if _, err := resourceid.ParseRun(c.TargetRunID); err != nil {
+	if err := resourceid.ValidateRun(c.TargetRunID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation target: %w", err)
 	}
-	if _, err := resourceid.ParseSession(c.SessionID); err != nil {
+	if err := resourceid.ValidateSession(c.SessionID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation: %w", err)
 	}
 	if c.RootRun.ID() != c.RootRunID || c.RootRun.SessionID() != c.SessionID ||

@@ -533,7 +533,7 @@ func validateSessionIdentity(value string) error {
 	if value == "" {
 		return errSessionRequired
 	}
-	if _, err := resourceid.ParseSession(value); err != nil {
+	if err := resourceid.ValidateSession(value); err != nil {
 		return fmt.Errorf("%w: session ID: %v", ErrInvalid, err)
 	}
 	return nil

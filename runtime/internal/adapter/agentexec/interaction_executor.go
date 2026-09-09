@@ -217,7 +217,7 @@ func (i *InteractionExecutor) StageRoot(
 	start runs.RootExecutionStart,
 ) (runs.ExecutorRef, error) {
 	start = start.Clone()
-	if _, err := resourceid.ParseSession(start.SessionID); err != nil {
+	if err := resourceid.ValidateSession(start.SessionID); err != nil {
 		return runs.ExecutorRef{}, fmt.Errorf("agentexec: Interaction: %w", err)
 	}
 	if err := i.ValidateRootStart(start); err != nil {

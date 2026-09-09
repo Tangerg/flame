@@ -30,6 +30,31 @@ func requireConstructed(kind, text string) error {
 	return nil
 }
 
+// Most callers keep an identity as a field of a data value and need the rule
+// rather than the identity type. Validate answers them directly; the Parse
+// constructors below exist for the callers that carry the identity itself.
+func ValidateSession(text string) error {
+	return runtimeidentity.ValidateResource("session", text, runtimeidentity.MaximumResourceCharacters)
+}
+
+func ValidateRun(text string) error {
+	return runtimeidentity.ValidateResource("run", text, runtimeidentity.MaximumResourceCharacters)
+}
+
+func ValidateSegment(text string) error {
+	return runtimeidentity.ValidateResource("segment", text, runtimeidentity.MaximumResourceCharacters)
+}
+
+// ValidateItem has no Parse counterpart: a transcript or interrupt identity is
+// only ever a field of the Item, Lineage or commit it belongs to.
+func ValidateItem(text string) error {
+	return runtimeidentity.ValidateResource("item", text, runtimeidentity.MaximumResourceCharacters)
+}
+
+func ValidateSchedule(text string) error {
+	return runtimeidentity.ValidateResource("schedule", text, runtimeidentity.MaximumResourceCharacters)
+}
+
 // SessionID is one exact durable Session identity.
 type SessionID struct{ value }
 
@@ -62,17 +87,6 @@ func ParseSegment(text string) (SegmentID, error) {
 
 func (i SegmentID) String() string  { return i.text }
 func (i SegmentID) Validate() error { return requireConstructed("segment", i.text) }
-
-// ItemID is one exact transcript or interrupt identity owned by a Run.
-type ItemID struct{ value }
-
-func ParseItem(text string) (ItemID, error) {
-	parsed, err := parse("item", text, runtimeidentity.MaximumResourceCharacters)
-	return ItemID{value: parsed}, err
-}
-
-func (i ItemID) String() string  { return i.text }
-func (i ItemID) Validate() error { return requireConstructed("item", i.text) }
 
 // ScheduleID is one exact durable scheduled-work identity.
 type ScheduleID struct{ value }

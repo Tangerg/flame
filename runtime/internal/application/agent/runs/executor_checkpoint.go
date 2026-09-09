@@ -36,7 +36,7 @@ type ExecutionScope struct {
 // Validate rejects ambiguous host identities before they cross a durable
 // continuation boundary.
 func (e ExecutionScope) Validate() error {
-	if _, err := resourceid.ParseSession(e.SessionID); err != nil {
+	if err := resourceid.ValidateSession(e.SessionID); err != nil {
 		return fmt.Errorf("execution: scope: %w", err)
 	}
 	for _, field := range []struct {
@@ -136,7 +136,7 @@ func (e ExecutorCheckpoint) ValidateOwnership(rootMemberID, sessionID string) er
 	if _, err := runtimeidentity.ParseMember(rootMemberID); err != nil {
 		return fmt.Errorf("%w: expected %v", ErrInvalidExecutorCheckpoint, err)
 	}
-	if _, err := resourceid.ParseSession(sessionID); err != nil {
+	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return fmt.Errorf("%w: expected %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	if e.RootMemberID != rootMemberID {

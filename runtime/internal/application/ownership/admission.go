@@ -86,7 +86,7 @@ func (r RunAdmission) Admit(runID string) bool {
 	if r.lease == nil {
 		return false
 	}
-	if _, err := resourceid.ParseRun(runID); err != nil {
+	if err := resourceid.ValidateRun(runID); err != nil {
 		return false
 	}
 	admitted := false

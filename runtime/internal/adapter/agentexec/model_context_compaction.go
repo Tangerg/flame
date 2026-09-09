@@ -173,7 +173,7 @@ func newModelContextCompaction(
 	if persistence != modelContextDurable && persistence != modelContextTransient {
 		return ModelContextCompaction{}, errInvalidModelContextCompaction
 	}
-	if _, err := resourceid.ParseSession(sessionID); err != nil {
+	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return ModelContextCompaction{}, fmt.Errorf(
 			"%w: owning %v",
 			errInvalidModelContextCompaction,

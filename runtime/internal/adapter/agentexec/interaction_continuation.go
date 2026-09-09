@@ -188,7 +188,7 @@ func (i *interactionSession) prepareCommittedContinuationInput(
 	if input == nil {
 		return nil, nil
 	}
-	if _, err := resourceid.ParseItem(input.ItemID); err != nil {
+	if err := resourceid.ValidateItem(input.ItemID); err != nil {
 		return nil, fmt.Errorf("agentexec: committed continuation input: %w", err)
 	}
 	if _, err := runs.MaterializeUserMessage(input.Content); err != nil {

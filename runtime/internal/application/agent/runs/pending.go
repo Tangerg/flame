@@ -223,10 +223,10 @@ func (p Pending) ValidateForSession(expectedSessionID string) error {
 }
 
 func (p Pending) validateEnvelope() error {
-	if _, err := resourceid.ParseRun(p.RootRunID); err != nil {
+	if err := resourceid.ValidateRun(p.RootRunID); err != nil {
 		return fmt.Errorf("interrupts: pending root: %w", err)
 	}
-	if _, err := resourceid.ParseSession(p.SessionID); err != nil {
+	if err := resourceid.ValidateSession(p.SessionID); err != nil {
 		return fmt.Errorf("interrupts: pending: %w", err)
 	}
 	if _, _, err := goalref.ParseOptionalIncarnation(p.GoalIncarnationID); err != nil {
@@ -375,7 +375,7 @@ func (v *pendingBindingValidator) validate(index int, binding InterruptBinding) 
 }
 
 func (b InterruptBinding) validateIdentities() error {
-	if _, err := resourceid.ParseItem(b.InterruptItemID); err != nil {
+	if err := resourceid.ValidateItem(b.InterruptItemID); err != nil {
 		return fmt.Errorf("interrupt item: %w", err)
 	}
 	if _, err := runtimeidentity.ParseMember(b.MemberID); err != nil {
@@ -505,7 +505,7 @@ func (c Continuation) Validate() error {
 }
 
 func (c Continuation) validateRun() error {
-	if _, err := resourceid.ParseRun(c.RunID); err != nil {
+	if err := resourceid.ValidateRun(c.RunID); err != nil {
 		return err
 	}
 	if _, err := runtimeidentity.ParseMember(c.MemberID); err != nil {
@@ -565,7 +565,7 @@ func (d DrainedTool) validate() error {
 }
 
 func validateToolIdentity(itemID, callID, name, arguments string) error {
-	if _, err := resourceid.ParseItem(itemID); err != nil {
+	if err := resourceid.ValidateItem(itemID); err != nil {
 		return err
 	}
 	if _, err := runtimeidentity.ParseEffect(callID); err != nil {
@@ -581,13 +581,13 @@ func validateToolIdentity(itemID, callID, name, arguments string) error {
 }
 
 func validateInterrupt(request transcript.Interrupt) error {
-	if _, err := resourceid.ParseItem(request.ItemID); err != nil {
+	if err := resourceid.ValidateItem(request.ItemID); err != nil {
 		return fmt.Errorf("pending interrupt: %w", err)
 	}
 	if request.ItemOccurredAt.IsZero() {
 		return errors.New("item occurrence time is required")
 	}
-	if _, err := resourceid.ParseRun(request.RunID); err != nil {
+	if err := resourceid.ValidateRun(request.RunID); err != nil {
 		return fmt.Errorf("pending interrupt: %w", err)
 	}
 	switch request.Kind {

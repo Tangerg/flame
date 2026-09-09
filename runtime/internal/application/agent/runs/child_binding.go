@@ -23,10 +23,10 @@ func (c ChildRunBinding) Validate() error {
 	if _, err := runtimeidentity.ParseMember(c.MemberID); err != nil {
 		return fmt.Errorf("runs: child Run binding: %w", err)
 	}
-	if _, err := resourceid.ParseRun(c.RunID); err != nil {
+	if err := resourceid.ValidateRun(c.RunID); err != nil {
 		return fmt.Errorf("runs: child Run binding: %w", err)
 	}
-	if _, err := resourceid.ParseRun(c.ParentRunID); err != nil {
+	if err := resourceid.ValidateRun(c.ParentRunID); err != nil {
 		return fmt.Errorf("runs: child Run binding parent: %w", err)
 	}
 	if c.RunID == c.ParentRunID {

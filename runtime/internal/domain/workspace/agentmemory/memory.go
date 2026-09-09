@@ -499,7 +499,7 @@ func (i Item) Validate() error {
 		return err
 	}
 	if i.SessionID != "" {
-		if _, err := resourceid.ParseSession(i.SessionID); err != nil {
+		if err := resourceid.ValidateSession(i.SessionID); err != nil {
 			return fmt.Errorf("agentmemory: item provenance: %w", err)
 		}
 	}
@@ -571,7 +571,7 @@ func (f FactBatch) Normalize() (FactBatch, error) {
 	if f.Project == "" {
 		return FactBatch{}, errors.New("agentmemory: fact batch project is required")
 	}
-	if _, err := resourceid.ParseSession(f.SessionID); err != nil {
+	if err := resourceid.ValidateSession(f.SessionID); err != nil {
 		return FactBatch{}, fmt.Errorf("agentmemory: fact batch: %w", err)
 	}
 	day, err := time.Parse(time.DateOnly, f.Day)

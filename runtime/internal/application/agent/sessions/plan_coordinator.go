@@ -48,7 +48,7 @@ func NewPlanCoordinator(deps PlanDependencies) (*PlanCoordinator, error) {
 
 // State returns the canonical optional Plan aggregate for one session.
 func (c *PlanCoordinator) State(ctx context.Context, sessionID string) (plan.Current, error) {
-	if _, err := resourceid.ParseSession(sessionID); err != nil {
+	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return plan.Current{}, fmt.Errorf("sessions: Plan: %w", err)
 	}
 	state, err := c.store.State(ctx, sessionID)

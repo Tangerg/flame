@@ -363,7 +363,7 @@ func validateItemRunTrees(values map[string]run.Run) error {
 // with no committed replacement returns an explicit unwritten Current; only an
 // unknown Session is [session.ErrNotFound].
 func (c *QueryCoordinator) PlanState(ctx context.Context, sessionID string) (plan.Current, error) {
-	if _, parseErr := resourceid.ParseSession(sessionID); parseErr != nil {
+	if parseErr := resourceid.ValidateSession(sessionID); parseErr != nil {
 		return plan.Current{}, fmt.Errorf("sessions: query Plan: %w", parseErr)
 	}
 	found, err := c.sessions.Exists(ctx, sessionID)
@@ -422,12 +422,12 @@ func (c *QueryCoordinator) readScope(ctx context.Context, scope ItemScope, order
 func (i ItemScope) cursorFilters(order transcript.SequenceOrder) ([]string, error) {
 	switch i.kind {
 	case sessionItemScope:
-		if _, err := resourceid.ParseSession(i.subjectID); err != nil {
+		if err := resourceid.ValidateSession(i.subjectID); err != nil {
 			return nil, fmt.Errorf("%w: %v", errInvalidItemScope, err)
 		}
 		return []string{i.subjectID, "", strconv.FormatBool(false), order.String()}, nil
 	case runItemScope:
-		if _, err := resourceid.ParseRun(i.subjectID); err != nil {
+		if err := resourceid.ValidateRun(i.subjectID); err != nil {
 			return nil, fmt.Errorf("%w: %v", errInvalidItemScope, err)
 		}
 		return []string{"", i.subjectID, strconv.FormatBool(i.includeDescendants), order.String()}, nil
@@ -469,7 +469,7 @@ func (c *QueryCoordinator) Run(ctx context.Context, runID string) (run.Run, bool
 	if runID == "" {
 		return run.Run{}, false, nil
 	}
-	if _, err := resourceid.ParseRun(runID); err != nil {
+	if err := resourceid.ValidateRun(runID); err != nil {
 		return run.Run{}, false, fmt.Errorf("sessions: query Run: %w", err)
 	}
 	return c.runs.Run(ctx, runID)
@@ -537,7 +537,7 @@ func (c *QueryCoordinator) ListRunPage(ctx context.Context, filter RunPageFilter
 
 func (f RunPageFilter) validate() error {
 	if f.SessionID != "" {
-		if _, err := resourceid.ParseSession(f.SessionID); err != nil {
+		if err := resourceid.ValidateSession(f.SessionID); err != nil {
 			return fmt.Errorf("sessions: query Runs page: %w", err)
 		}
 	}
@@ -626,12 +626,12 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 		return pagination.Page[runs.Pending]{}, fmt.Errorf("sessions: query interrupts page caller capabilities: %w", err)
 	}
 	if sessionID != "" {
-		if _, err := resourceid.ParseSession(sessionID); err != nil {
+		if err := resourceid.ValidateSession(sessionID); err != nil {
 			return pagination.Page[runs.Pending]{}, fmt.Errorf("sessions: query interrupts page: %w", err)
 		}
 	}
 	if rootRunID != "" {
-		if _, err := resourceid.ParseRun(rootRunID); err != nil {
+		if err := resourceid.ValidateRun(rootRunID); err != nil {
 			return pagination.Page[runs.Pending]{}, fmt.Errorf("sessions: query interrupts page: %w", err)
 		}
 	}
@@ -702,7 +702,7 @@ func (c *QueryCoordinator) requireRoot(ctx context.Context, runID string) error 
 	if runID == "" {
 		return nil
 	}
-	if _, err := resourceid.ParseRun(runID); err != nil {
+	if err := resourceid.ValidateRun(runID); err != nil {
 		return fmt.Errorf("sessions: query root Run: %w", err)
 	}
 	run, found, err := c.runs.Run(ctx, runID)
@@ -735,7 +735,7 @@ func timeAndRunIDAnchor(cursor, method string, filters []string) (int64, string,
 	if err != nil {
 		return 0, "", pagination.ErrInvalidCursor
 	}
-	if _, err := resourceid.ParseRun(anchor[1]); err != nil {
+	if err := resourceid.ValidateRun(anchor[1]); err != nil {
 		return 0, "", pagination.ErrInvalidCursor
 	}
 	return stamp, anchor[1], nil

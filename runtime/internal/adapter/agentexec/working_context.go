@@ -88,7 +88,7 @@ func (w *WorkingContextComposer) ComposeWorkingContext(
 	ctx context.Context,
 	input runs.WorkingContextInput,
 ) ([]corechat.Message, error) {
-	if _, err := resourceid.ParseSession(input.SessionID); err != nil {
+	if err := resourceid.ValidateSession(input.SessionID); err != nil {
 		return nil, fmt.Errorf("agentexec: working context: %w", err)
 	}
 	if strings.TrimSpace(input.CWD) == "" || input.CWD != strings.TrimSpace(input.CWD) {

@@ -119,7 +119,7 @@ func (t *TranscriptStore) explainItemAppendError(
 // Item resolves one durable transcript Item by its globally unique identity.
 // The returned value is the same fully hydrated projection as List/Page reads.
 func (t *TranscriptStore) Item(ctx context.Context, itemID string) (transcript.Item, bool, error) {
-	if _, err := resourceid.ParseItem(itemID); err != nil {
+	if err := resourceid.ValidateItem(itemID); err != nil {
 		return transcript.Item{}, false, fmt.Errorf("sqlite: history item: %w", err)
 	}
 	row := conn(ctx, t.db).QueryRowContext(ctx,

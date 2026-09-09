@@ -96,10 +96,10 @@ func (o Occurrence) Validate() error {
 	if o.sessionID == "" || o.runID == "" {
 		return errors.New("schedule: occurrence identities are required")
 	}
-	if _, err := resourceid.ParseSession(o.sessionID); err != nil {
+	if err := resourceid.ValidateSession(o.sessionID); err != nil {
 		return fmt.Errorf("schedule: occurrence: %w", err)
 	}
-	if _, err := resourceid.ParseRun(o.runID); err != nil {
+	if err := resourceid.ValidateRun(o.runID); err != nil {
 		return fmt.Errorf("schedule: occurrence: %w", err)
 	}
 	if err := o.execution.Validate(); err != nil {
@@ -203,7 +203,7 @@ func (a Acceptance) Validate() error {
 	if a.runID == "" {
 		return errors.New("schedule: acceptance identities are required")
 	}
-	if _, err := resourceid.ParseRun(a.runID); err != nil {
+	if err := resourceid.ValidateRun(a.runID); err != nil {
 		return fmt.Errorf("schedule: acceptance: %w", err)
 	}
 	return nil

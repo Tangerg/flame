@@ -184,10 +184,10 @@ func cloneFailure(failure *Failure) *Failure {
 // Validate reports whether all lifecycle, identity, accounting, and terminal
 // facts agree.
 func (r Run) validate() error {
-	if _, err := resourceid.ParseRun(r.id); err != nil {
+	if err := resourceid.ValidateRun(r.id); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
-	if _, err := resourceid.ParseSession(r.sessionID); err != nil {
+	if err := resourceid.ValidateSession(r.sessionID); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
 	switch {
@@ -211,7 +211,7 @@ func (r Run) validate() error {
 		return errors.New("run: child carries a root Goal incarnation")
 	}
 	if r.activeSegmentID != "" {
-		if _, err := resourceid.ParseSegment(r.activeSegmentID); err != nil {
+		if err := resourceid.ValidateSegment(r.activeSegmentID); err != nil {
 			return fmt.Errorf("run: active %w", err)
 		}
 	}
@@ -350,7 +350,7 @@ func (r Run) Resume(segmentID string, resumedAt time.Time) (Run, error) {
 	if !ok {
 		return Run{}, fmt.Errorf("run: cannot resume %s Run", r.state)
 	}
-	if _, err := resourceid.ParseSegment(segmentID); err != nil {
+	if err := resourceid.ValidateSegment(segmentID); err != nil {
 		return Run{}, fmt.Errorf("run: continuation %w", err)
 	}
 	if err := r.validateTransitionTime(resumedAt); err != nil {

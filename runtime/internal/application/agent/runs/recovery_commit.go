@@ -305,7 +305,7 @@ func validateRecoveryToolInvocations(
 		); err != nil {
 			return fmt.Errorf("runs: recovery commit Tool invocation[%d]: %w", index, err)
 		}
-		if _, err := resourceid.ParseItem(invocation.ItemID); err != nil {
+		if err := resourceid.ValidateItem(invocation.ItemID); err != nil {
 			return fmt.Errorf("runs: recovery commit Tool invocation[%d]: %w", index, err)
 		}
 		if _, lost := lostByID[invocation.RunID]; lost {
@@ -349,16 +349,16 @@ func validateRecoveryInvocation(
 	lostByID map[string]rundomain.Replacement,
 	recoveredSessions map[string]struct{},
 ) error {
-	if _, err := resourceid.ParseSession(sessionID); err != nil {
+	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return err
 	}
 	if _, recovered := recoveredSessions[sessionID]; !recovered {
 		return fmt.Errorf("invocation Session %q is outside this recovery ownership", sessionID)
 	}
-	if _, err := resourceid.ParseRun(runID); err != nil {
+	if err := resourceid.ValidateRun(runID); err != nil {
 		return err
 	}
-	if _, err := resourceid.ParseSegment(segmentID); err != nil {
+	if err := resourceid.ValidateSegment(segmentID); err != nil {
 		return err
 	}
 	if _, err := runtimeidentity.ParseEffect(callID); err != nil {
@@ -428,7 +428,7 @@ func validateRecoveryConversationTransition(
 			rootID,
 		)
 	}
-	if _, err := resourceid.ParseSession(transition.SessionID); err != nil {
+	if err := resourceid.ValidateSession(transition.SessionID); err != nil {
 		return fmt.Errorf("runs: recovery commit conversation transition[%d]: %w", index, err)
 	}
 	if err := validateRecoveryClosureMessages(rootID, transition.Messages); err != nil {
@@ -579,10 +579,10 @@ func validateRecoveryInterruptDeletions(
 	}
 	seen := make(map[recoveryInterruptOwnerKey]struct{}, len(values))
 	for index, value := range values {
-		if _, err := resourceid.ParseSession(value.SessionID); err != nil {
+		if err := resourceid.ValidateSession(value.SessionID); err != nil {
 			return fmt.Errorf("runs: recovery commit interrupt deletion[%d]: %w", index, err)
 		}
-		if _, err := resourceid.ParseRun(value.RootRunID); err != nil {
+		if err := resourceid.ValidateRun(value.RootRunID); err != nil {
 			return fmt.Errorf("runs: recovery commit interrupt deletion[%d]: %w", index, err)
 		}
 		key := recoveryInterruptOwnerKey{sessionID: value.SessionID, rootRunID: value.RootRunID}
@@ -631,7 +631,7 @@ func validateRecoveryCheckpointDeletions(
 
 func validateCanonicalSessionIdentities(name string, values []string) error {
 	for index, value := range values {
-		if _, err := resourceid.ParseSession(value); err != nil {
+		if err := resourceid.ValidateSession(value); err != nil {
 			return fmt.Errorf("runs: recovery commit %s[%d]: %w", name, index, err)
 		}
 		if index > 0 && values[index-1] >= value {

@@ -146,7 +146,7 @@ func (t Timeline) PortableBoundaryAt(runID string) (PortableBoundary, error) {
 		return PortableBoundary{}, err
 	}
 	if runID != "" {
-		if _, err := resourceid.ParseRun(runID); err != nil {
+		if err := resourceid.ValidateRun(runID); err != nil {
 			return PortableBoundary{}, fmt.Errorf("timeline portable boundary: %w", err)
 		}
 	}
@@ -207,14 +207,14 @@ func (t Timeline) PortableBoundaryAt(runID string) (PortableBoundary, error) {
 func (t Timeline) ordered() ([]RunNode, error) {
 	nodes := slices.Clone([]RunNode(t))
 	for index, node := range nodes {
-		if _, err := resourceid.ParseRun(node.ID); err != nil {
+		if err := resourceid.ValidateRun(node.ID); err != nil {
 			return nil, fmt.Errorf("timeline Run[%d]: %w", index, err)
 		}
 		if node.SpawnedByItemID != "" {
-			if _, err := resourceid.ParseItem(node.SpawnedByItemID); err != nil {
+			if err := resourceid.ValidateItem(node.SpawnedByItemID); err != nil {
 				return nil, fmt.Errorf("timeline Run[%d] lineage: %w", index, err)
 			}
-			if _, err := resourceid.ParseRun(node.RootRunID); err != nil {
+			if err := resourceid.ValidateRun(node.RootRunID); err != nil {
 				return nil, fmt.Errorf("timeline Run[%d] root lineage: %w", index, err)
 			}
 		} else if node.RootRunID != "" {
@@ -229,7 +229,7 @@ func boundaryAtOrdered(nodes []RunNode, runID string, requireRoot bool) (Boundar
 	if runID == "" {
 		return Boundary{Dropped: nodes}, nil
 	}
-	if _, err := resourceid.ParseRun(runID); err != nil {
+	if err := resourceid.ValidateRun(runID); err != nil {
 		return Boundary{}, fmt.Errorf("timeline boundary: %w", err)
 	}
 	idx := slices.IndexFunc(nodes, func(n RunNode) bool { return n.ID == runID })

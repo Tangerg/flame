@@ -199,7 +199,7 @@ func (m *ConversationHistory) Clear(ctx context.Context, sessionID string) error
 }
 
 func validateConversationSessionIdentity(sessionID string) error {
-	if _, err := resourceid.ParseSession(sessionID); err != nil {
+	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return fmt.Errorf("%w: %v", errConversationSessionIDRequired, err)
 	}
 	return nil

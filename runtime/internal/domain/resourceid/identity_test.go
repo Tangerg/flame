@@ -8,22 +8,22 @@ import (
 )
 
 func TestOperationalIdentitiesAreExactBoundedAndDistinct(t *testing.T) {
-	for _, parse := range []struct {
+	for _, rule := range []struct {
 		name string
 		call func(string) error
 	}{
-		{name: "session", call: func(value string) error { _, err := ParseSession(value); return err }},
-		{name: "run", call: func(value string) error { _, err := ParseRun(value); return err }},
-		{name: "segment", call: func(value string) error { _, err := ParseSegment(value); return err }},
-		{name: "item", call: func(value string) error { _, err := ParseItem(value); return err }},
-		{name: "schedule", call: func(value string) error { _, err := ParseSchedule(value); return err }},
+		{name: "session", call: ValidateSession},
+		{name: "run", call: ValidateRun},
+		{name: "segment", call: ValidateSegment},
+		{name: "item", call: ValidateItem},
+		{name: "schedule", call: ValidateSchedule},
 	} {
-		t.Run(parse.name, func(t *testing.T) {
+		t.Run(rule.name, func(t *testing.T) {
 			for _, invalid := range []string{
 				"", " value", "value ", "val\nue", "value\x00", string([]byte{0xff}),
 				strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1),
 			} {
-				if err := parse.call(invalid); err == nil {
+				if err := rule.call(invalid); err == nil {
 					t.Errorf("accepted %q", invalid)
 				}
 			}

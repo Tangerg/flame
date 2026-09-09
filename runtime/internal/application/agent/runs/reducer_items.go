@@ -695,7 +695,7 @@ func (r *reducer) steerMessagesApplied(e SteerMessagesApplied) ([]ProjectionEven
 			}
 		}
 		if applied.ProjectedItemID != "" {
-			if _, err := resourceid.ParseItem(applied.ProjectedItemID); err != nil {
+			if err := resourceid.ValidateItem(applied.ProjectedItemID); err != nil {
 				return nil, fmt.Errorf("applied steer message %d projected Item: %w", messageIndex, err)
 			}
 			continue

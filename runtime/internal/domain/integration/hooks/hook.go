@@ -341,16 +341,16 @@ func (i Input) ValidateCommandMaterial() error {
 		)
 	}
 	if i.SessionID != "" {
-		if _, err := resourceid.ParseSession(i.SessionID); err != nil {
+		if err := resourceid.ValidateSession(i.SessionID); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidCommandInput, err)
 		}
 	}
 	if i.Subagent != nil {
-		if _, err := resourceid.ParseRun(i.Subagent.RunID); err != nil {
+		if err := resourceid.ValidateRun(i.Subagent.RunID); err != nil {
 			return fmt.Errorf("%w: subagent: %v", ErrInvalidCommandInput, err)
 		}
 		if i.Subagent.ParentRunID != "" {
-			if _, err := resourceid.ParseRun(i.Subagent.ParentRunID); err != nil {
+			if err := resourceid.ValidateRun(i.Subagent.ParentRunID); err != nil {
 				return fmt.Errorf("%w: subagent parent: %v", ErrInvalidCommandInput, err)
 			}
 		}

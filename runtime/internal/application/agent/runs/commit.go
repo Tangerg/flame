@@ -111,10 +111,10 @@ func (t ToolInvocationCommit) validate() error {
 	if _, err := runtimeidentity.ParseEffect(t.CallID); err != nil {
 		return fmt.Errorf("runs: Tool invocation: %w", err)
 	}
-	if _, err := resourceid.ParseItem(t.ItemID); err != nil {
+	if err := resourceid.ValidateItem(t.ItemID); err != nil {
 		return fmt.Errorf("runs: Tool invocation: %w", err)
 	}
-	if _, err := resourceid.ParseSegment(t.SegmentID); err != nil {
+	if err := resourceid.ValidateSegment(t.SegmentID); err != nil {
 		return fmt.Errorf("runs: Tool invocation: %w", err)
 	}
 	if t.StartedAt.IsZero() {
@@ -142,7 +142,7 @@ func (m ModelInvocationCommit) validate() error {
 	if _, err := runtimeidentity.ParseEffect(m.CallID); err != nil {
 		return fmt.Errorf("runs: model invocation: %w", err)
 	}
-	if _, err := resourceid.ParseSegment(m.SegmentID); err != nil {
+	if err := resourceid.ValidateSegment(m.SegmentID); err != nil {
 		return fmt.Errorf("runs: model invocation: %w", err)
 	}
 	if m.StartedAt.IsZero() {
@@ -178,7 +178,7 @@ type ProgressCommit struct {
 }
 
 func (r ProgressCommit) validate() error {
-	if _, err := resourceid.ParseSegment(r.SegmentID); err != nil {
+	if err := resourceid.ValidateSegment(r.SegmentID); err != nil {
 		return fmt.Errorf("runs: progress: %w", err)
 	}
 	if r.UpdatedAt.IsZero() {
@@ -296,13 +296,13 @@ func (e EventCommit) validateConversationMessages() error {
 }
 
 func (e EventCommit) validateEnvelope() error {
-	if _, err := resourceid.ParseRun(e.RunID); err != nil {
+	if err := resourceid.ValidateRun(e.RunID); err != nil {
 		return fmt.Errorf("runs: event commit: %w", err)
 	}
-	if _, err := resourceid.ParseSession(e.SessionID); err != nil {
+	if err := resourceid.ValidateSession(e.SessionID); err != nil {
 		return fmt.Errorf("runs: event commit: %w", err)
 	}
-	if _, err := resourceid.ParseSegment(e.SegmentID); err != nil {
+	if err := resourceid.ValidateSegment(e.SegmentID); err != nil {
 		return fmt.Errorf("runs: event commit: %w", err)
 	}
 	if _, _, err := runtimeidentity.ParseOptionalMember(e.ObsoleteCheckpointRootID); err != nil {

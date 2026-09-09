@@ -76,7 +76,7 @@ func (s Stage) Validate() error {
 	if err := s.ID.Validate(); err != nil {
 		errs = append(errs, err)
 	}
-	if _, err := resourceid.ParseSession(s.SessionID); err != nil {
+	if err := resourceid.ValidateSession(s.SessionID); err != nil {
 		errs = append(errs, fmt.Errorf("toolresult: %w", err))
 	}
 	if strings.TrimSpace(s.ToolName) == "" {
@@ -105,10 +105,10 @@ func (b Blob) Validate() error {
 	if err := b.ID.Validate(); err != nil {
 		errs = append(errs, err)
 	}
-	if _, err := resourceid.ParseSession(b.SessionID); err != nil {
+	if err := resourceid.ValidateSession(b.SessionID); err != nil {
 		errs = append(errs, fmt.Errorf("toolresult: %w", err))
 	}
-	if _, err := resourceid.ParseItem(b.ItemID); err != nil {
+	if err := resourceid.ValidateItem(b.ItemID); err != nil {
 		errs = append(errs, fmt.Errorf("toolresult: %w", err))
 	}
 	if strings.TrimSpace(b.ToolName) == "" {

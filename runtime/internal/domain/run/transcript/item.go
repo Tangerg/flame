@@ -23,13 +23,13 @@ type ItemIdentity struct {
 
 // Validate reports whether the identity is complete and canonical.
 func (i ItemIdentity) Validate() error {
-	if _, err := resourceid.ParseSession(i.SessionID); err != nil {
+	if err := resourceid.ValidateSession(i.SessionID); err != nil {
 		return fmt.Errorf("transcript: %w", err)
 	}
-	if _, err := resourceid.ParseRun(i.RunID); err != nil {
+	if err := resourceid.ValidateRun(i.RunID); err != nil {
 		return fmt.Errorf("transcript: %w", err)
 	}
-	if _, err := resourceid.ParseItem(i.ItemID); err != nil {
+	if err := resourceid.ValidateItem(i.ItemID); err != nil {
 		return fmt.Errorf("transcript: %w", err)
 	}
 	if i.OccurredAt.IsZero() {

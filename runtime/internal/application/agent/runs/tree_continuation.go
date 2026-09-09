@@ -89,10 +89,10 @@ func treeContinuationFromPending(pending Pending) (*treeContinuation, error) {
 // all is the caller's question, asked where a fresh Run and a resumed tree
 // diverge; every path here holds a value newTreeContinuation returned.
 func (t *treeContinuation) validate() error {
-	if _, err := resourceid.ParseRun(t.rootRunID); err != nil {
+	if err := resourceid.ValidateRun(t.rootRunID); err != nil {
 		return fmt.Errorf("runs: tree continuation root: %w", err)
 	}
-	if _, err := resourceid.ParseSession(t.sessionID); err != nil {
+	if err := resourceid.ValidateSession(t.sessionID); err != nil {
 		return fmt.Errorf("runs: tree continuation: %w", err)
 	}
 	if _, _, err := goalref.ParseOptionalIncarnation(t.goalIncarnationID); err != nil {

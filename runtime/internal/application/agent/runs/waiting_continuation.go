@@ -128,7 +128,7 @@ func waitingMembersFromPending(pending Pending) []WaitingMember {
 // Validate verifies one surviving product member without interpreting executor
 // topology or checkpoint payload.
 func (w WaitingMember) Validate() error {
-	if _, err := resourceid.ParseRun(w.RunID); err != nil {
+	if err := resourceid.ValidateRun(w.RunID); err != nil {
 		return fmt.Errorf("runs: waiting member: %w", err)
 	}
 	if _, err := runtimeidentity.ParseMember(w.MemberID); err != nil {
@@ -138,10 +138,10 @@ func (w WaitingMember) Validate() error {
 		return errors.New("runs: waiting member child lineage is incomplete")
 	}
 	if w.ParentRunID != "" {
-		if _, err := resourceid.ParseRun(w.ParentRunID); err != nil {
+		if err := resourceid.ValidateRun(w.ParentRunID); err != nil {
 			return fmt.Errorf("runs: waiting member parent: %w", err)
 		}
-		if _, err := resourceid.ParseItem(w.SpawnedByItemID); err != nil {
+		if err := resourceid.ValidateItem(w.SpawnedByItemID); err != nil {
 			return fmt.Errorf("runs: waiting member spawned-by: %w", err)
 		}
 	}
@@ -180,13 +180,13 @@ func (w WaitingContinuation) Validate() error {
 }
 
 func validateWaitingContinuationEnvelope(continuation WaitingContinuation) error {
-	if _, err := resourceid.ParseSession(continuation.SessionID); err != nil {
+	if err := resourceid.ValidateSession(continuation.SessionID); err != nil {
 		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
 	if _, err := runtimeidentity.ParseExecutor(continuation.ExecutorID); err != nil {
 		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
-	if _, err := resourceid.ParseRun(continuation.RootRunID); err != nil {
+	if err := resourceid.ValidateRun(continuation.RootRunID); err != nil {
 		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
 	if len(continuation.Members) == 0 {

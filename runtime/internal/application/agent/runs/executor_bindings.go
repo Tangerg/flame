@@ -15,7 +15,7 @@ import (
 // closing the otherwise observable gap in which the Run row exists but
 // cancellation cannot address its member.
 func (r *runTreeOwner) bindExecutorMember(runID, memberID string) error {
-	if _, err := resourceid.ParseRun(runID); err != nil {
+	if err := resourceid.ValidateRun(runID); err != nil {
 		return fmt.Errorf("runs: bind executor member: %w", err)
 	}
 	if _, err := runtimeidentity.ParseMember(memberID); err != nil {

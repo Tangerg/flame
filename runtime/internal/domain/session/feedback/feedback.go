@@ -67,17 +67,17 @@ func NewEntry(sessionID, runID, itemID string, rating Rating, text string, creat
 // write would carry no product information.
 func (e Entry) Validate() error {
 	if e.SessionID != "" {
-		if _, err := resourceid.ParseSession(e.SessionID); err != nil {
+		if err := resourceid.ValidateSession(e.SessionID); err != nil {
 			return fmt.Errorf("%w: Session reference: %v", ErrInvalid, err)
 		}
 	}
 	if e.RunID != "" {
-		if _, err := resourceid.ParseRun(e.RunID); err != nil {
+		if err := resourceid.ValidateRun(e.RunID); err != nil {
 			return fmt.Errorf("%w: Run reference: %v", ErrInvalid, err)
 		}
 	}
 	if e.ItemID != "" {
-		if _, err := resourceid.ParseItem(e.ItemID); err != nil {
+		if err := resourceid.ValidateItem(e.ItemID); err != nil {
 			return fmt.Errorf("%w: Item reference: %v", ErrInvalid, err)
 		}
 	}

@@ -142,7 +142,7 @@ func (s StartCommand) clone() StartCommand {
 // schedule ownership with an unrelated Session or partial retry identities.
 func (s StartCommand) ValidateScheduledIdentity() error {
 	if s.SessionID != "" {
-		if _, err := resourceid.ParseSession(s.SessionID); err != nil {
+		if err := resourceid.ValidateSession(s.SessionID); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
 		}
 	}
@@ -157,10 +157,10 @@ func (s StartCommand) ValidateScheduledIdentity() error {
 		if s.RunID == "" || s.NewSessionID == "" {
 			return fmt.Errorf("%w: run ID and new session ID are required for a manual schedule run", ErrInvalidScheduledStart)
 		}
-		if _, err := resourceid.ParseRun(s.RunID); err != nil {
+		if err := resourceid.ValidateRun(s.RunID); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
 		}
-		if _, err := resourceid.ParseSession(s.NewSessionID); err != nil {
+		if err := resourceid.ValidateSession(s.NewSessionID); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
 		}
 		return nil
@@ -174,10 +174,10 @@ func (s StartCommand) ValidateScheduledIdentity() error {
 	if s.SessionID != "" {
 		return fmt.Errorf("%w: scheduled start cannot also select an existing session", ErrInvalidScheduledStart)
 	}
-	if _, err := resourceid.ParseRun(s.RunID); err != nil {
+	if err := resourceid.ValidateRun(s.RunID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
 	}
-	if _, err := resourceid.ParseSession(s.NewSessionID); err != nil {
+	if err := resourceid.ValidateSession(s.NewSessionID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
 	}
 	if err := schedule.ValidateOccurrenceID(s.ScheduleFiring); err != nil {

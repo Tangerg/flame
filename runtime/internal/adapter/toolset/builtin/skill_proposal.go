@@ -68,7 +68,7 @@ func (p *proposer) run(ctx context.Context, input proposalArgs) (proposalResult,
 	if sessionID == "" {
 		return proposalResult{}, errors.New("propose_skill: no active session")
 	}
-	if _, err := resourceid.ParseSession(sessionID); err != nil {
+	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return proposalResult{}, fmt.Errorf("propose_skill: active %w", err)
 	}
 	cwd := strings.TrimSpace(executionctx.WorkspaceCWD(ctx, p.defaultWorkspacePath))

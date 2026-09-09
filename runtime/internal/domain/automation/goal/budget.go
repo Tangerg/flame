@@ -186,7 +186,7 @@ func (r RunRecord) Validate() error {
 	if _, err := goalref.ParseIncarnation(r.IncarnationID); err != nil {
 		return fmt.Errorf("%w: Run: %v", ErrInvalid, err)
 	}
-	if _, err := resourceid.ParseRun(r.RunID); err != nil {
+	if err := resourceid.ValidateRun(r.RunID); err != nil {
 		return fmt.Errorf("%w: Run ID: %v", ErrInvalid, err)
 	}
 	if _, ok := run.ParseOutcome(r.Outcome.String()); !ok {

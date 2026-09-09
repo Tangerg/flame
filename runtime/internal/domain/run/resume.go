@@ -37,10 +37,10 @@ type TreeResumeDraft struct {
 // additionally proves that its root has a durable answer claim before
 // reopening any Run.
 func (t TreeResumeDraft) Validate() error {
-	if _, err := resourceid.ParseRun(t.RootRunID); err != nil {
+	if err := resourceid.ValidateRun(t.RootRunID); err != nil {
 		return fmt.Errorf("run: tree resume root %w", err)
 	}
-	if _, err := resourceid.ParseSession(t.SessionID); err != nil {
+	if err := resourceid.ValidateSession(t.SessionID); err != nil {
 		return fmt.Errorf("run: tree resume %w", err)
 	}
 	switch {
@@ -51,10 +51,10 @@ func (t TreeResumeDraft) Validate() error {
 	}
 	seen := make(map[string]struct{}, len(t.Runs))
 	for index, run := range t.Runs {
-		if _, err := resourceid.ParseRun(run.RunID); err != nil {
+		if err := resourceid.ValidateRun(run.RunID); err != nil {
 			return fmt.Errorf("run: tree resume Run[%d]: %w", index, err)
 		}
-		if _, err := resourceid.ParseSegment(run.SegmentID); err != nil {
+		if err := resourceid.ValidateSegment(run.SegmentID); err != nil {
 			return fmt.Errorf("run: tree resume Run[%d]: %w", index, err)
 		}
 		if _, duplicate := seen[run.RunID]; duplicate {

@@ -26,7 +26,7 @@ type Lineage struct {
 
 // Validate reports whether l is exactly a root or child shape.
 func (l Lineage) Validate(runID string) error {
-	if _, err := resourceid.ParseRun(runID); err != nil {
+	if err := resourceid.ValidateRun(runID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidLineage, err)
 	}
 	present := 0
@@ -49,13 +49,13 @@ func (l Lineage) Validate(runID string) error {
 			runID,
 		)
 	}
-	if _, err := resourceid.ParseItem(l.SpawnedByItemID); err != nil {
+	if err := resourceid.ValidateItem(l.SpawnedByItemID); err != nil {
 		return fmt.Errorf("%w: spawned-by %v", ErrInvalidLineage, err)
 	}
-	if _, err := resourceid.ParseRun(l.ParentRunID); err != nil {
+	if err := resourceid.ValidateRun(l.ParentRunID); err != nil {
 		return fmt.Errorf("%w: parent %v", ErrInvalidLineage, err)
 	}
-	if _, err := resourceid.ParseRun(l.RootRunID); err != nil {
+	if err := resourceid.ValidateRun(l.RootRunID); err != nil {
 		return fmt.Errorf("%w: root %v", ErrInvalidLineage, err)
 	}
 	switch {

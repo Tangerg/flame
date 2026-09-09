@@ -78,7 +78,7 @@ type PlanSnapshot struct {
 // Plan state is useful to a cold query, but it is not a change and therefore is
 // never a plan.updated event.
 func (p PlanSnapshot) validate() error {
-	if _, err := resourceid.ParseSession(p.SessionID); err != nil {
+	if err := resourceid.ValidateSession(p.SessionID); err != nil {
 		return fmt.Errorf("runs: Plan snapshot: %w", err)
 	}
 	if p.Revision == 0 {
@@ -291,7 +291,7 @@ func (d ToolArgumentsItemDelta) Text() string { return d.text }
 func (d ToolOutputItemDelta) Text() string    { return d.text }
 
 func (i ItemChanged) validate() error {
-	if _, err := resourceid.ParseItem(i.ItemID); err != nil {
+	if err := resourceid.ValidateItem(i.ItemID); err != nil {
 		return fmt.Errorf("runs: changed Item: %w", err)
 	}
 	if i.Delta == nil {

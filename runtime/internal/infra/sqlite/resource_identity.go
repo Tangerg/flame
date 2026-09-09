@@ -11,7 +11,7 @@ import (
 // different durable key. These helpers retain the Domain's exact, bounded
 // resource policy without normalizing the caller's value.
 func validateSessionResource(operation, value string) error {
-	if _, err := resourceid.ParseSession(value); err != nil {
+	if err := resourceid.ValidateSession(value); err != nil {
 		return fmt.Errorf("sqlite: %s: %w", operation, err)
 	}
 	return nil
@@ -25,7 +25,7 @@ func validateOptionalSessionResource(operation, value string) error {
 }
 
 func validateRunResource(operation, value string) error {
-	if _, err := resourceid.ParseRun(value); err != nil {
+	if err := resourceid.ValidateRun(value); err != nil {
 		return fmt.Errorf("sqlite: %s: %w", operation, err)
 	}
 	return nil
@@ -39,14 +39,14 @@ func validateOptionalRunResource(operation, value string) error {
 }
 
 func validateSegmentResource(operation, value string) error {
-	if _, err := resourceid.ParseSegment(value); err != nil {
+	if err := resourceid.ValidateSegment(value); err != nil {
 		return fmt.Errorf("sqlite: %s: %w", operation, err)
 	}
 	return nil
 }
 
 func validateItemResource(operation, value string) error {
-	if _, err := resourceid.ParseItem(value); err != nil {
+	if err := resourceid.ValidateItem(value); err != nil {
 		return fmt.Errorf("sqlite: %s: %w", operation, err)
 	}
 	return nil

@@ -259,7 +259,7 @@ func (s *Session) advance(previous Session, updatedAt time.Time) error {
 // Every constructor and every transition closes here, so a Session that exists
 // is already legal and no reader has to ask again.
 func (s Session) validate() error {
-	if _, err := resourceid.ParseSession(s.id); err != nil {
+	if err := resourceid.ValidateSession(s.id); err != nil {
 		return fmt.Errorf("%w: id: %v", ErrInvalid, err)
 	}
 	if err := s.workspace.Validate(); err != nil {
@@ -272,7 +272,7 @@ func (s Session) validate() error {
 		return fmt.Errorf("%w: %v", ErrInvalid, err)
 	}
 	if s.parentID != "" {
-		if _, err := resourceid.ParseSession(s.parentID); err != nil {
+		if err := resourceid.ValidateSession(s.parentID); err != nil {
 			return fmt.Errorf("%w: parent id: %v", ErrInvalid, err)
 		}
 	}

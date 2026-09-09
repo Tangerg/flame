@@ -237,7 +237,7 @@ func encodeInteractionPendingContinuation(
 	if !pending.processID.Valid() || pending.processID != rootID {
 		return nil, errors.New("pending continuation does not name the root member")
 	}
-	if _, err := resourceid.ParseItem(pending.itemID); err != nil {
+	if err := resourceid.ValidateItem(pending.itemID); err != nil {
 		return nil, fmt.Errorf("pending continuation Item: %w", err)
 	}
 	if len(pending.content) == 0 {
@@ -495,7 +495,7 @@ func decodeInteractionPendingContinuation(
 	if err != nil || processID != rootID {
 		return nil, errors.New("pending continuation does not name the root member")
 	}
-	if _, err := resourceid.ParseItem(wire.ItemID); err != nil {
+	if err := resourceid.ValidateItem(wire.ItemID); err != nil {
 		return nil, fmt.Errorf("pending continuation Item: %w", err)
 	}
 	if len(wire.Content) == 0 {

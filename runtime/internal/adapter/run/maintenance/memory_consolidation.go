@@ -137,7 +137,7 @@ func (m *MemoryConsolidator) Consolidate(ctx context.Context, sessionID, cwd str
 	if sessionID == "" || cwd == "" {
 		return nil
 	}
-	if _, err := resourceid.ParseSession(sessionID); err != nil {
+	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return fmt.Errorf("memory extraction: %w", err)
 	}
 	project := filepath.Clean(cwd)

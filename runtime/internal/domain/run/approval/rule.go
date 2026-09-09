@@ -32,7 +32,7 @@ func ValidateVisibleRules(rules []Rule, sessionID, projectDir string) error {
 		)
 	}
 	if sessionID != "" {
-		if _, err := resourceid.ParseSession(sessionID); err != nil {
+		if err := resourceid.ValidateSession(sessionID); err != nil {
 			return fmt.Errorf("%w: session: %v", ErrInvalidRule, err)
 		}
 	}
@@ -80,7 +80,7 @@ func (r Rule) Validate() error {
 	}
 	switch r.Scope {
 	case ScopeSession:
-		if _, err := resourceid.ParseSession(r.ScopeKey); err != nil {
+		if err := resourceid.ValidateSession(r.ScopeKey); err != nil {
 			return fmt.Errorf("%w: session scope: %v", ErrInvalidRule, err)
 		}
 	case ScopeProject:
@@ -154,7 +154,7 @@ func (r Rule) specificity() int {
 // Validate verifies the complete identity of one tool-call policy query.
 func (q Query) Validate() error {
 	if q.SessionID != "" {
-		if _, err := resourceid.ParseSession(q.SessionID); err != nil {
+		if err := resourceid.ValidateSession(q.SessionID); err != nil {
 			return fmt.Errorf("%w: session: %v", ErrInvalidQuery, err)
 		}
 	}
@@ -213,7 +213,7 @@ func (s Scope) key(sessionID, projectDir string) (string, bool) {
 // Rule derives and validates the durable rule represented by r.
 func (r RememberRequest) Rule() (Rule, error) {
 	if r.SessionID != "" {
-		if _, err := resourceid.ParseSession(r.SessionID); err != nil {
+		if err := resourceid.ValidateSession(r.SessionID); err != nil {
 			return Rule{}, fmt.Errorf("%w: session: %v", ErrInvalidRule, err)
 		}
 	}

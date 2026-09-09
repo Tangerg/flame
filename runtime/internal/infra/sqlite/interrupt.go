@@ -92,10 +92,10 @@ func (i InterruptRecord) rootContinuation() (ContinuationRecord, bool) {
 }
 
 func (i InterruptRecord) validateStorageShape() error {
-	if _, err := resourceid.ParseRun(i.RootRunID); err != nil {
+	if err := resourceid.ValidateRun(i.RootRunID); err != nil {
 		return err
 	}
-	if _, err := resourceid.ParseSession(i.SessionID); err != nil {
+	if err := resourceid.ValidateSession(i.SessionID); err != nil {
 		return err
 	}
 	if _, _, err := goalref.ParseOptionalIncarnation(i.GoalIncarnationID); err != nil {
@@ -495,10 +495,10 @@ func (i *InterruptStore) DeleteResumeClaim(
 }
 
 func validatePendingOwner(sessionID, rootRunID string) error {
-	if _, err := resourceid.ParseSession(sessionID); err != nil {
+	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return err
 	}
-	if _, err := resourceid.ParseRun(rootRunID); err != nil {
+	if err := resourceid.ValidateRun(rootRunID); err != nil {
 		return err
 	}
 	return nil

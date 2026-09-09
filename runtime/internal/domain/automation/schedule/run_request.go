@@ -100,10 +100,10 @@ func (r RunRequest) Validate() error {
 		if r.sessionID == "" || r.runID == "" {
 			return errors.New("schedule: manual run request identities are required")
 		}
-		if _, err := resourceid.ParseSession(r.sessionID); err != nil {
+		if err := resourceid.ValidateSession(r.sessionID); err != nil {
 			return fmt.Errorf("schedule: run request: %w", err)
 		}
-		if _, err := resourceid.ParseRun(r.runID); err != nil {
+		if err := resourceid.ValidateRun(r.runID); err != nil {
 			return fmt.Errorf("schedule: run request: %w", err)
 		}
 		return nil
@@ -126,10 +126,10 @@ func (r RunRequest) Validate() error {
 	if r.occurrenceID.scheduleID != r.scheduleID {
 		return errors.New("schedule: run request occurrence belongs to another Schedule")
 	}
-	if _, err := resourceid.ParseSession(r.sessionID); err != nil {
+	if err := resourceid.ValidateSession(r.sessionID); err != nil {
 		return fmt.Errorf("schedule: run request: %w", err)
 	}
-	if _, err := resourceid.ParseRun(r.runID); err != nil {
+	if err := resourceid.ValidateRun(r.runID); err != nil {
 		return fmt.Errorf("schedule: run request: %w", err)
 	}
 	return nil

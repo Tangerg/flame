@@ -21,20 +21,20 @@ func (o OpenToolInvocation) Validate() error {
 	if err := validateOpenInvocation(o.SessionID, o.RunID, o.SegmentID, o.CallID, o.StartedAt); err != nil {
 		return err
 	}
-	if _, err := resourceid.ParseItem(o.ItemID); err != nil {
+	if err := resourceid.ValidateItem(o.ItemID); err != nil {
 		return err
 	}
 	return nil
 }
 
 func validateOpenInvocation(sessionID, runID, segmentID, callID string, startedAt time.Time) error {
-	if _, err := resourceid.ParseSession(sessionID); err != nil {
+	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return err
 	}
-	if _, err := resourceid.ParseRun(runID); err != nil {
+	if err := resourceid.ValidateRun(runID); err != nil {
 		return err
 	}
-	if _, err := resourceid.ParseSegment(segmentID); err != nil {
+	if err := resourceid.ValidateSegment(segmentID); err != nil {
 		return err
 	}
 	if _, err := runtimeidentity.ParseEffect(callID); err != nil {

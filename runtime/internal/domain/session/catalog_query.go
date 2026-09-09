@@ -133,7 +133,7 @@ func NewCatalogAnchor(favorite bool, updatedAt time.Time, id string) (CatalogAnc
 	if updatedAt.IsZero() {
 		return CatalogAnchor{}, errors.New("sessions: catalog anchor update time is required")
 	}
-	if _, err := resourceid.ParseSession(id); err != nil {
+	if err := resourceid.ValidateSession(id); err != nil {
 		return CatalogAnchor{}, fmt.Errorf("sessions: catalog anchor: %w", err)
 	}
 	return CatalogAnchor{favorite: favorite, updatedAt: updatedAt.UTC(), id: id}, nil

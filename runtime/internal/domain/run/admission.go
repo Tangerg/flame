@@ -50,13 +50,13 @@ type Draft struct {
 
 // Validate checks the complete fresh Run value before it enters the lifecycle.
 func (d Draft) Validate() error {
-	if _, err := resourceid.ParseRun(d.RunID); err != nil {
+	if err := resourceid.ValidateRun(d.RunID); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
-	if _, err := resourceid.ParseSession(d.SessionID); err != nil {
+	if err := resourceid.ValidateSession(d.SessionID); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
-	if _, err := resourceid.ParseSegment(d.SegmentID); err != nil {
+	if err := resourceid.ValidateSegment(d.SegmentID); err != nil {
 		return fmt.Errorf("run: opening %w", err)
 	}
 	if _, _, err := goalref.ParseOptionalIncarnation(d.GoalIncarnationID); err != nil {

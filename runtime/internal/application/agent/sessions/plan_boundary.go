@@ -34,7 +34,7 @@ func (c *Coordinator) planBoundary(ctx context.Context, runID string) (PlanBound
 	if runID == "" {
 		return newPlanBoundary(nil, true)
 	}
-	if _, err := resourceid.ParseRun(runID); err != nil {
+	if err := resourceid.ValidateRun(runID); err != nil {
 		return PlanBoundary{}, fmt.Errorf("sessions: Plan boundary: %w", err)
 	}
 	steps, recorded, err := c.plan.Boundaries.Boundary(ctx, runID)

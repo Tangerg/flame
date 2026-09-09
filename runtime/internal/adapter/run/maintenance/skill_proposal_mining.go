@@ -143,7 +143,7 @@ func (s *SkillProposalMiner) MineIfDue(ctx context.Context, sessionID, cwd strin
 	if sessionID == "" || cwd == "" {
 		return nil
 	}
-	if _, err := resourceid.ParseSession(sessionID); err != nil {
+	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return fmt.Errorf("skill mining: %w", err)
 	}
 	if toolCalls < s.policy.complexityThreshold {

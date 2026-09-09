@@ -52,7 +52,7 @@ type Tree struct {
 // present exactly once, every child must name the same root and an existing
 // parent, and no disconnected component or cycle is accepted.
 func NewTree(rootRunID string, members []TreeMember) (Tree, error) {
-	if _, err := resourceid.ParseRun(rootRunID); err != nil {
+	if err := resourceid.ValidateRun(rootRunID); err != nil {
 		return Tree{}, fmt.Errorf("%w: root %v", ErrInvalidTree, err)
 	}
 	if len(members) == 0 {
