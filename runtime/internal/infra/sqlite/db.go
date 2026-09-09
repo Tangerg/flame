@@ -186,7 +186,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// history_items and runs. Terminal rows remain only while their Run is alive,
 		// acting as idempotency tombstones against stale start-event replay. Run
 		// terminalization and deletion prune the complete operational journal.
-		`CREATE TABLE IF NOT EXISTS model_invocations (
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS model_invocations (
 			call_id     TEXT    PRIMARY KEY,
 			session_id  TEXT    NOT NULL,
 			run_id      TEXT    NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
@@ -194,20 +194,25 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			state       TEXT    NOT NULL,
 			started_at  INTEGER NOT NULL,
 			finished_at INTEGER NOT NULL DEFAULT 0,
-			CHECK (state IN ('started', 'completed', 'failed', 'unknown')),
+			CHECK (state IN ('%[1]s', '%[2]s', '%[3]s', '%[4]s')),
 			CHECK (
-				(state = 'started' AND finished_at = 0) OR
-				(state != 'started' AND finished_at >= started_at)
+				(state = '%[1]s' AND finished_at = 0) OR
+				(state != '%[1]s' AND finished_at >= started_at)
 			)
 		)`,
+			modelInvocationStarted.databaseValue(),
+			modelInvocationCompleted.databaseValue(),
+			modelInvocationFailed.databaseValue(),
+			modelInvocationUnknown.databaseValue(),
+		),
 		`CREATE INDEX IF NOT EXISTS idx_model_invocations_run
 			ON model_invocations(run_id, segment_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_model_invocations_open
-			ON model_invocations(state) WHERE state = 'started'`,
+		fmt.Sprintf(`CREATE INDEX IF NOT EXISTS idx_model_invocations_open
+			ON model_invocations(state) WHERE state = '%s'`, modelInvocationStarted.databaseValue()),
 		// tool_invocations has the same Run-bounded tombstone lifecycle. Its
 		// independent row lets concurrent calls start in scheduler order while
 		// history_items receives only final semantic Items in declared order.
-		`CREATE TABLE IF NOT EXISTS tool_invocations (
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS tool_invocations (
 			call_id     TEXT    NOT NULL,
 			item_id     TEXT    NOT NULL,
 			session_id  TEXT    NOT NULL,
@@ -216,18 +221,22 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			state       TEXT    NOT NULL,
 			started_at  INTEGER NOT NULL,
 			finished_at INTEGER NOT NULL DEFAULT 0,
-			CHECK (state IN ('started', 'completed', 'incomplete')),
+			CHECK (state IN ('%[1]s', '%[2]s', '%[3]s')),
 			CHECK (
-				(state = 'started' AND finished_at = 0) OR
-				(state != 'started' AND finished_at >= started_at)
+				(state = '%[1]s' AND finished_at = 0) OR
+				(state != '%[1]s' AND finished_at >= started_at)
 			),
 			PRIMARY KEY (call_id, segment_id),
 			UNIQUE (item_id, segment_id)
 		)`,
+			toolInvocationStarted.databaseValue(),
+			toolInvocationCompleted.databaseValue(),
+			toolInvocationIncomplete.databaseValue(),
+		),
 		`CREATE INDEX IF NOT EXISTS idx_tool_invocations_run
 			ON tool_invocations(run_id, segment_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_tool_invocations_open
-			ON tool_invocations(state) WHERE state = 'started'`,
+		fmt.Sprintf(`CREATE INDEX IF NOT EXISTS idx_tool_invocations_open
+			ON tool_invocations(state) WHERE state = '%s'`, toolInvocationStarted.databaseValue()),
 		// A terminal Run owns no external attempt. This trigger is a storage-level
 		// lifecycle backstop for every normal, recovery, and cancellation path; the
 		// ordinary settlement path has already made observed attempts terminal before
@@ -247,14 +256,18 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// Session lifecycle write-sets delete that Session's rows, while boot
 		// recovery retires the prior process's complete callback ledger. Only
 		// started rows have a corresponding public Run.
-		`CREATE TABLE IF NOT EXISTS child_run_start_reservations (
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS child_run_start_reservations (
 			member_id  TEXT PRIMARY KEY,
 			session_id TEXT NOT NULL,
 			payload    BLOB NOT NULL,
 			created_at INTEGER NOT NULL,
-			state      TEXT NOT NULL DEFAULT 'reserved'
-			           CHECK (state IN ('reserved', 'started', 'aborted'))
+			state      TEXT NOT NULL DEFAULT '%[1]s'
+			           CHECK (state IN ('%[1]s', '%[2]s', '%[3]s'))
 		)`,
+			childRunStartStateReserved.String(),
+			childRunStartStateStarted.String(),
+			childRunStartStateAborted.String(),
+		),
 		`CREATE INDEX IF NOT EXISTS idx_child_run_start_reservations_session
 			ON child_run_start_reservations(session_id)`,
 		// One root-owned row per parked Run tree. payload is the client-facing
@@ -263,7 +276,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// application/executor hand-off. All three are closed JSON values. Answer
 		// claim changes the row to resuming; the next barrier replaces it and a
 		// terminal/recovery write-set deletes it.
-		`CREATE TABLE IF NOT EXISTS interrupts (
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS interrupts (
 			root_run_id        TEXT    PRIMARY KEY,
 			session_id         TEXT    NOT NULL,
 			executor_id        TEXT    NOT NULL,
@@ -278,15 +291,18 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			interrupt_bindings TEXT   NOT NULL,
 			capabilities       TEXT    NOT NULL DEFAULT '',
 			created_at         INTEGER NOT NULL,
-			state              TEXT    NOT NULL DEFAULT 'open',
+			state              TEXT    NOT NULL DEFAULT '%[1]s',
 			answers            TEXT    NOT NULL DEFAULT '',
 			claimed_at         INTEGER NOT NULL DEFAULT 0,
-			CHECK (state IN ('open', 'resuming')),
+			CHECK (state IN ('%[1]s', '%[2]s')),
 			CHECK (
-				(state = 'open' AND answers = '' AND claimed_at = 0) OR
-				(state = 'resuming' AND answers != '' AND claimed_at > 0)
+				(state = '%[1]s' AND answers = '' AND claimed_at = 0) OR
+				(state = '%[2]s' AND answers != '' AND claimed_at > 0)
 			)
 		)`,
+			interruptStateOpen.databaseValue(),
+			interruptStateResuming.databaseValue(),
+		),
 		`CREATE INDEX IF NOT EXISTS idx_interrupts_session
 			ON interrupts(session_id, state)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_interrupts_root_member
@@ -654,19 +670,19 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// auto-pruned. session_id/day carry provenance.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS agent_memory_items (
 			id         TEXT    PRIMARY KEY CHECK (
-				length(id) = %d AND
-				substr(id, 1, length('%s')) = '%s' AND
-				substr(id, length('%s') + 1) NOT GLOB '*[^0-9a-f]*'
+				length(id) = %[1]d AND
+				substr(id, 1, length('%[2]s')) = '%[2]s' AND
+				substr(id, length('%[2]s') + 1) NOT GLOB '*[^0-9a-f]*'
 			),
-			scope      TEXT    NOT NULL CHECK (scope IN ('project', 'user')),
+			scope      TEXT    NOT NULL CHECK (scope IN ('%[4]s', '%[5]s')),
 			project    TEXT    NOT NULL DEFAULT '',
-			content    TEXT    NOT NULL CHECK (length(content) BETWEEN 1 AND %d),
+			content    TEXT    NOT NULL CHECK (length(content) BETWEEN 1 AND %[3]d),
 			digest     TEXT    NOT NULL,
-			origin     TEXT    NOT NULL CHECK (origin IN ('auto', 'user')),
-			-- HITL review lifecycle: 'active' (approved/injected/searched),
-			-- 'pending' (proposed, awaiting review), 'rejected' (tombstone that
-			-- blocks the same fact from being re-proposed).
-			status     TEXT    NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'pending', 'rejected')),
+			origin     TEXT    NOT NULL CHECK (origin IN ('%[6]s', '%[7]s')),
+			-- HITL review lifecycle: active (approved/injected/searched), pending
+			-- (proposed, awaiting review), rejected (tombstone that blocks the same
+			-- fact from being re-proposed).
+			status     TEXT    NOT NULL DEFAULT '%[8]s' CHECK (status IN ('%[8]s', '%[9]s', '%[10]s')),
 			pinned     INTEGER NOT NULL DEFAULT 0 CHECK (pinned IN (0, 1)),
 			session_id TEXT    NOT NULL DEFAULT '',
 			day        TEXT    NOT NULL DEFAULT '',
@@ -677,17 +693,22 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			-- until a configured embedder lazily fills them.
 			embedding_space TEXT NOT NULL DEFAULT '',
 			embedding       BLOB NOT NULL DEFAULT x'',
-			CHECK ((scope = 'project' AND project <> '') OR (scope = 'user' AND project = '')),
-			CHECK (origin <> 'user' OR status = 'active'),
+			CHECK ((scope = '%[4]s' AND project <> '') OR (scope = '%[5]s' AND project = '')),
+			CHECK (origin <> '%[7]s' OR status = '%[8]s'),
 			CHECK ((embedding_space = '' AND length(embedding) = 0) OR
 			       (embedding_space <> '' AND length(embedding) > 0 AND length(embedding) %% 4 = 0)),
 			UNIQUE(scope, project, digest)
 		)`,
 			agentmemory.MaximumItemIDCharacters,
 			agentmemory.ItemIDPrefix,
-			agentmemory.ItemIDPrefix,
-			agentmemory.ItemIDPrefix,
 			agentmemory.MaxContentCharacters,
+			agentmemory.ScopeProject,
+			agentmemory.ScopeUser,
+			agentmemory.OriginAuto,
+			agentmemory.OriginUser,
+			agentmemory.StatusActive,
+			agentmemory.StatusPending,
+			agentmemory.StatusRejected,
 		),
 		`CREATE INDEX IF NOT EXISTS idx_agent_memory_items_scope
 			ON agent_memory_items(scope, project)`,

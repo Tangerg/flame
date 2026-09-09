@@ -20,6 +20,15 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
+type interruptState string
+
+const (
+	interruptStateOpen     interruptState = "open"
+	interruptStateResuming interruptState = "resuming"
+)
+
+func (i interruptState) databaseValue() string { return string(i) }
+
 // InterruptStore is the SQLite-backed registry of root-owned pending interrupt
 // sets. The typed domain values are encoded through explicit adapter rows;
 // protocol payloads and Go field names never define this storage shape.
@@ -209,8 +218,8 @@ func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 		   interrupt_bindings = excluded.interrupt_bindings,
 		   capabilities = excluded.capabilities,
 		   created_at = excluded.created_at,
-		   state = 'open', answers = '', claimed_at = 0
-		 WHERE interrupts.state = 'resuming'
+		   state = ?, answers = '', claimed_at = 0
+		 WHERE interrupts.state = ?
 		   AND interrupts.session_id = excluded.session_id
 		   AND interrupts.executor_id = excluded.executor_id
 		   AND interrupts.root_member_id = excluded.root_member_id`,
@@ -224,6 +233,8 @@ func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 		string(bindings),
 		capabilities,
 		p.CreatedAt.UnixNano(),
+		interruptStateOpen.databaseValue(),
+		interruptStateResuming.databaseValue(),
 	)
 	if isUniqueViolation(err) {
 		return fmt.Errorf(
@@ -270,8 +281,8 @@ func (i *InterruptStore) list(ctx context.Context, sessionID, rootRunID string, 
 		return nil, err
 	}
 	query := `SELECT ` + interruptColumns + ` FROM interrupts`
-	args := []any{}
-	conditions := []string{`state = 'open'`}
+	args := []any{interruptStateOpen.databaseValue()}
+	conditions := []string{`state = ?`}
 	if sessionID != "" {
 		conditions = append(conditions, `session_id = ?`)
 		args = append(args, sessionID)
@@ -318,7 +329,8 @@ func (i *InterruptStore) Get(ctx context.Context, runID string) (InterruptRecord
 		return InterruptRecord{}, false, err
 	}
 	row := conn(ctx, i.db).QueryRowContext(ctx,
-		`SELECT `+interruptColumns+` FROM interrupts WHERE root_run_id = ? AND state = 'open'`, runID)
+		`SELECT `+interruptColumns+` FROM interrupts WHERE root_run_id = ? AND state = ?`,
+		runID, interruptStateOpen.databaseValue())
 	p, err := scanPending(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return InterruptRecord{}, false, nil
@@ -339,9 +351,9 @@ func (i *InterruptStore) Consume(ctx context.Context, sessionID, runID string) (
 		return InterruptRecord{}, false, fmt.Errorf("sqlite: consume interrupt: %w", err)
 	}
 	row := conn(ctx, i.db).QueryRowContext(ctx,
-		`DELETE FROM interrupts WHERE session_id = ? AND root_run_id = ? AND state = 'open'
+		`DELETE FROM interrupts WHERE session_id = ? AND root_run_id = ? AND state = ?
 		 RETURNING `+interruptColumns,
-		sessionID, runID)
+		sessionID, runID, interruptStateOpen.databaseValue())
 	p, err := scanPending(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		if rejectForeignPendingOwnerErr := i.rejectForeignPendingOwner(ctx, sessionID, runID); rejectForeignPendingOwnerErr != nil {
@@ -376,10 +388,12 @@ func (i *InterruptStore) ClaimResume(
 	}
 	row := conn(ctx, i.db).QueryRowContext(ctx,
 		`UPDATE interrupts
-		    SET state = 'resuming', answers = ?, claimed_at = ?
-		  WHERE session_id = ? AND root_run_id = ? AND state = 'open'
+		    SET state = ?, answers = ?, claimed_at = ?
+		  WHERE session_id = ? AND root_run_id = ? AND state = ?
 		  RETURNING `+interruptColumns,
+		interruptStateResuming.databaseValue(),
 		string(answers), claimedAt.UTC().UnixNano(), sessionID, runID,
+		interruptStateOpen.databaseValue(),
 	)
 	record, err := scanPending(row)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -400,7 +414,8 @@ func (i *InterruptStore) RequireResumeClaim(ctx context.Context, sessionID, runI
 	if err := validatePendingOwner(sessionID, runID); err != nil {
 		return fmt.Errorf("sqlite: require resume claim: %w", err)
 	}
-	var owner, state string
+	var owner string
+	var state interruptState
 	err := conn(ctx, i.db).QueryRowContext(ctx,
 		`SELECT session_id, state FROM interrupts WHERE root_run_id = ?`, runID,
 	).Scan(&owner, &state)
@@ -419,8 +434,8 @@ func (i *InterruptStore) RequireResumeClaim(ctx context.Context, sessionID, runI
 			sessionID,
 		)
 	}
-	if state != "resuming" {
-		return fmt.Errorf("sqlite: interrupt for root Run %q is %q, not resuming", runID, state)
+	if state != interruptStateResuming {
+		return fmt.Errorf("sqlite: interrupt for root Run %q is %q, not %s", runID, state, interruptStateResuming)
 	}
 	return nil
 }
@@ -460,8 +475,8 @@ func (i *InterruptStore) DeleteResumeClaim(
 	}
 	result, err := conn(ctx, i.db).ExecContext(ctx,
 		`DELETE FROM interrupts
-		  WHERE session_id = ? AND root_run_id = ? AND root_member_id = ? AND state = 'resuming'`,
-		sessionID, runID, rootMemberID,
+		  WHERE session_id = ? AND root_run_id = ? AND root_member_id = ? AND state = ?`,
+		sessionID, runID, rootMemberID, interruptStateResuming.databaseValue(),
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: delete Resume claim: %w", err)
