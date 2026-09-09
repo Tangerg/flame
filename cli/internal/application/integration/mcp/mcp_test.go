@@ -34,26 +34,12 @@ func TestConnectionInputsKeepTransportAndSecretScopesClosed(t *testing.T) {
 	}
 }
 
-func TestServerAndAuthorizationStatesRejectContradictoryData(t *testing.T) {
-	count := 2
-	server := protocol.MCPServer{
-		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
-		Name:             "docs", Connection: protocol.MCPConnection{Type: protocol.MCPTransportStdio, Command: "docs-server"},
-		Status: protocol.MCPServerState{Type: protocol.MCPServerConnected, ToolCount: &count},
-	}
-	if err := ValidateServer(server); err != nil {
-		t.Fatal(err)
-	}
-	server.Status.Error = &protocol.ProblemData{Type: "mcp_dial_failed"}
-	if err := ValidateServer(server); err == nil {
-		t.Fatal("connected state carrying a problem was accepted")
-	}
-	server.Status.Error = nil
-	server.DisabledTools = []string{"write"}
-	server.AutoApproveTools = []string{"write"}
-	if err := ValidateServer(server); err == nil {
-		t.Fatal("server accepted contradictory tool policy")
-	}
+// TestAuthorizationAttemptRejectsReversedTimestamps covers the one fact the
+// Runtime wire contract cannot state about an attempt. Field presence, closed
+// status values, and identity syntax are the endpoint's answer, given with the
+// same generated validators before the value reached the CLI; restating them
+// here would be a second implementation that is free to drift.
+func TestAuthorizationAttemptRejectsReversedTimestamps(t *testing.T) {
 	now := time.Now()
 	attempt := protocol.MCPAuthorizationAttempt{
 		ID: "mcpauth_AAAAAAAAAAAAAAAAAAAAAAAAAA", Server: "docs",
@@ -62,14 +48,10 @@ func TestServerAndAuthorizationStatesRejectContradictoryData(t *testing.T) {
 	if err := ValidateAuthorizationAttempt(attempt); err != nil {
 		t.Fatal(err)
 	}
-	attempt.CreatedAt = time.Time{}
+	finished := now.Add(-time.Second)
+	attempt.FinishedAt = &finished
 	if err := ValidateAuthorizationAttempt(attempt); err == nil {
-		t.Fatal("authorization without creation time was accepted")
-	}
-	attempt.CreatedAt = now
-	attempt.Status.Type = protocol.MCPAuthorizationAttemptFailed
-	if err := ValidateAuthorizationAttempt(attempt); err == nil {
-		t.Fatal("failed authorization without terminal data was accepted")
+		t.Fatal("authorization finishing before it started was accepted")
 	}
 }
 

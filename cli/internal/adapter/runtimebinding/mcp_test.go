@@ -329,11 +329,6 @@ func TestMCPAuthorizationAdapterPreservesAbsenceAndEnforcesReferenceIdentity(t *
 	if _, err := runtime.GetAuthorization(t.Context(), reference); !errors.Is(err, agent.ErrIncompatibleRuntime) {
 		t.Fatalf("mismatched authorization server = %v, want ErrIncompatibleRuntime", err)
 	}
-	stub.authGet.ID = "auth_1"
-	stub.authGet.Server = reference.Server
-	if _, err := runtime.GetAuthorization(t.Context(), reference); !errors.Is(err, agent.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "id") {
-		t.Fatalf("invalid Runtime authorization identity = %v, want contract violation for id", err)
-	}
 }
 
 func TestMCPAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
@@ -503,15 +498,13 @@ func TestMCPAdapterRejectsInvalidServerIdentityBeforeDispatch(t *testing.T) {
 	}
 }
 
-func TestMCPAdapterRejectsMalformedReadResults(t *testing.T) {
+// TestMCPToolsRejectAForeignServer covers the scope agreement the CLI owns: a
+// page it asked one server for must not answer with another's tools. Whether a
+// server name is well formed is the endpoint's answer, already given.
+func TestMCPToolsRejectAForeignServer(t *testing.T) {
 	t.Parallel()
-	server := wireMCPServer()
-	server.Name = "Docs"
-	stub := &mcpBindingStub{t: t, servers: []protocol.MCPServer{server}}
+	stub := &mcpBindingStub{t: t}
 	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
-	if values, err := runtime.Servers(t.Context()); values != nil || !errors.Is(err, agent.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "name") {
-		t.Fatalf("Servers = (%v, %v), want no values and a name contract violation", values, err)
-	}
 	stub.tools = []protocol.MCPTool{{Server: "other", Name: "read"}}
 	if values, err := runtime.Tools(t.Context(), "docs"); values != nil || !errors.Is(err, agent.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "other") {
 		t.Fatalf("Tools = (%v, %v), want no values and a server contract violation", values, err)

@@ -188,10 +188,10 @@ func (s SessionSnapshot) Validate() error {
 	if err := s.validateReferences(transcript, runs); err != nil {
 		return err
 	}
+	// The endpoint validated every Plan and Goal field before this snapshot
+	// reached the CLI. What it cannot answer is whether the two independently
+	// read projections belong to the Session this snapshot is about.
 	if s.Plan != nil {
-		if err := runtimeprotocol.ValidateWireTree(*s.Plan); err != nil {
-			return fmt.Errorf("session snapshot: %w", err)
-		}
 		if _, err := committedPlanState(s.Plan); err != nil {
 			return fmt.Errorf("session snapshot: %w", err)
 		}
@@ -200,9 +200,6 @@ func (s SessionSnapshot) Validate() error {
 		}
 	}
 	if s.Goal != nil {
-		if err := runtimeprotocol.ValidateWireTree(*s.Goal); err != nil {
-			return fmt.Errorf("session snapshot: %w", err)
-		}
 		if s.Goal.SessionID != s.Session.ID {
 			return fmt.Errorf(
 				"session snapshot: goal belongs to session %q, want %q",

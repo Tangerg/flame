@@ -34,9 +34,6 @@ func (r *Connection) Servers(ctx context.Context) ([]protocol.MCPServer, error) 
 		return nil, err
 	}
 	for index, server := range values {
-		if err := mcp.ValidateServer(server); err != nil {
-			return nil, runtimeContractViolation("list MCP servers item %d is invalid: %v", index+1, err)
-		}
 		if index == 0 {
 			continue
 		}

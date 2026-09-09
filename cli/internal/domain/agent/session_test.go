@@ -381,21 +381,22 @@ func TestSessionSnapshotRejectsRunningItemsWithoutAnActiveRun(t *testing.T) {
 	}
 }
 
-func TestSessionSnapshotRejectsInvalidNestedGoalState(t *testing.T) {
+// TestSessionSnapshotRejectsAForeignGoal covers what the snapshot owns. Its
+// Session, Plan and Goal are three independent Runtime reads, each already
+// validated at the endpoint; only the assembly can be incoherent, by binding a
+// projection that belongs to another Session.
+func TestSessionSnapshotRejectsAForeignGoal(t *testing.T) {
 	snapshot := SessionSnapshot{
 		Session: Session{
 			ID: "ses_1", Status: protocol.SessionStatusIdle,
 			Provider: testSessionProvider, Model: testSessionModel,
 			Workspace: testWorkspace("/tmp/demo"), Revision: 1,
 		},
-		Goal: &protocol.Goal{
-			SessionID: "ses_1", Status: protocol.GoalActive,
-			Used: protocol.GoalUsage{Runs: -1},
-		},
+		Goal: &protocol.Goal{SessionID: "ses_2", Status: protocol.GoalActive},
 	}
 	err := snapshot.Validate()
-	if err == nil || !strings.Contains(err.Error(), "runs") {
-		t.Fatalf("snapshot error = %v, want invalid Goal usage", err)
+	if err == nil || !strings.Contains(err.Error(), "ses_2") {
+		t.Fatalf("snapshot error = %v, want a foreign-Goal refusal", err)
 	}
 }
 

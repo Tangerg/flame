@@ -64,28 +64,6 @@ func (h HandshakeTimeout) String() string {
 	return "unbounded"
 }
 
-// ValidateServer checks the Runtime shape and the catalog relationships that
-// span independent wire fields.
-func ValidateServer(server protocol.MCPServer) error {
-	if err := protocol.ValidateWireTree(server); err != nil {
-		return err
-	}
-	connection := server.Connection
-	if connection.Type == protocol.MCPTransportStreamableHTTP && strings.TrimSpace(connection.URL) == "" {
-		return errors.New("HTTP MCP connection URL is empty")
-	}
-	if connection.Type == protocol.MCPTransportStdio && strings.TrimSpace(connection.Command) == "" {
-		return errors.New("stdio MCP connection command is empty")
-	}
-	if err := validateStringMap("masked MCP headers", connection.HeadersMasked); err != nil {
-		return err
-	}
-	if err := validateStringMap("masked MCP environment", connection.EnvMasked); err != nil {
-		return err
-	}
-	return validateCanonicalToolPolicy(server.DisabledTools, server.AutoApproveTools)
-}
-
 type AuthorizationChange struct {
 	Kind  protocol.MCPSecretChangeType
 	Value string
@@ -242,9 +220,6 @@ func (c Candidate) ValidateResult(result protocol.MCPServer) error {
 		return err
 	}
 	var problems []error
-	if err := ValidateServer(result); err != nil {
-		problems = append(problems, fmt.Errorf("runtime result: %w", err))
-	}
 	if result.Name != c.Name {
 		problems = append(problems, fmt.Errorf("runtime returned server %q, want %q", result.Name, c.Name))
 	}
@@ -323,9 +298,6 @@ func (s ServerUpdate) ValidateResult(result protocol.MCPServer) error {
 		return err
 	}
 	var problems []error
-	if err := ValidateServer(result); err != nil {
-		problems = append(problems, fmt.Errorf("runtime result: %w", err))
-	}
 	if result.Name != s.Server {
 		problems = append(problems, fmt.Errorf("runtime returned server %q, want %q", result.Name, s.Server))
 	}
@@ -498,12 +470,11 @@ func (a AuthorizationReference) Validate() error {
 	return nil
 }
 
-// ValidateAuthorizationAttempt composes the Runtime wire contract with the
-// observer's cross-timestamp chronological requirement.
+// ValidateAuthorizationAttempt covers the one thing the Runtime wire contract
+// cannot state about an attempt: two independent timestamps in the wrong order.
+// Field presence, closed status values, and identity syntax are the endpoint's
+// answer, already given before this value reached the CLI.
 func ValidateAuthorizationAttempt(attempt protocol.MCPAuthorizationAttempt) error {
-	if err := protocol.ValidateWireTree(attempt); err != nil {
-		return fmt.Errorf("MCP authorization attempt: %w", err)
-	}
 	if attempt.FinishedAt != nil && attempt.FinishedAt.Before(attempt.CreatedAt) {
 		return errors.New("MCP authorization finished before it started")
 	}
@@ -573,16 +544,6 @@ func validateToolPolicy(disabled, autoApproved []string) error {
 		if _, contradictory := disabledSet[tool]; contradictory {
 			return fmt.Errorf("MCP tool %q is both disabled and auto-approved", tool)
 		}
-	}
-	return nil
-}
-
-func validateCanonicalToolPolicy(disabled, autoApproved []string) error {
-	if err := validateToolPolicy(disabled, autoApproved); err != nil {
-		return err
-	}
-	if !slices.IsSorted(disabled) || !slices.IsSorted(autoApproved) {
-		return errors.New("MCP tool policy is not in canonical order")
 	}
 	return nil
 }
