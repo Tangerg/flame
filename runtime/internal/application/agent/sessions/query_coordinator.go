@@ -250,9 +250,6 @@ func validateItemRows(rows []transcript.SequencedItem, scope ItemScope, order tr
 		if entry.Sequence <= 0 {
 			return fmt.Errorf("sessions: transcript store row %d has invalid sequence %d", index+1, entry.Sequence)
 		}
-		if err := entry.Item.Validate(); err != nil {
-			return fmt.Errorf("sessions: transcript store row %d is invalid: %w", index+1, err)
-		}
 		if err := scope.validateDirectItem(entry.Item); err != nil {
 			return err
 		}

@@ -148,7 +148,7 @@ func RestoreItem(snapshot ItemSnapshot) (Item, error) {
 		failure:          cloneToolFailure(snapshot.Failure), summary: snapshot.Summary,
 		droppedMessages: snapshot.DroppedMessages,
 	}
-	if err := item.Validate(); err != nil {
+	if err := item.validate(); err != nil {
 		return Item{}, err
 	}
 	return item, nil
@@ -245,7 +245,7 @@ func (i Item) ClassifyAbandonedToolCall(failure tool.Failure) (Item, error) {
 		return Item{}, errors.New("transcript: incomplete ToolCall already has a failure")
 	}
 	i.failure = cloneToolFailure(&failure)
-	if err := i.Validate(); err != nil {
+	if err := i.validate(); err != nil {
 		return Item{}, err
 	}
 	return i, nil
@@ -266,7 +266,7 @@ func (i Item) ResolveToolApproval(decision approval.Decision) (Item, error) {
 		return Item{}, errors.New("transcript: ToolCall approval is already resolved")
 	}
 	i.approvalDecision = decision
-	if err := i.Validate(); err != nil {
+	if err := i.validate(); err != nil {
 		return Item{}, err
 	}
 	return i, nil
@@ -301,14 +301,16 @@ func (i Item) settleToolCall(
 	i.status, i.finishedAt = status, finishedAt.UTC()
 	i.executionDuration = executionDuration
 	i.tool, i.failure = cloneToolInvocation(&invocation), cloneToolFailure(failure)
-	if err := i.Validate(); err != nil {
+	if err := i.validate(); err != nil {
 		return Item{}, err
 	}
 	return i, nil
 }
 
-// Validate reports whether the Item is one legal variant.
-func (i Item) Validate() error {
+// validate reports whether the Item is one legal variant. Every constructor
+// and transition ends here, so an Item that exists is already legal and no
+// reader has to ask again.
+func (i Item) validate() error {
 	if err := i.identity.Validate(); err != nil {
 		return err
 	}
@@ -571,7 +573,7 @@ func (i Item) AnswerQuestion(answers [][]string) (Item, error) {
 	}
 	i.question = cloneQuestion(i.question)
 	i.question.Answers = cloneQuestionAnswers(answers)
-	if err := i.Validate(); err != nil {
+	if err := i.validate(); err != nil {
 		return Item{}, err
 	}
 	return i, nil

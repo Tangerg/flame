@@ -210,9 +210,6 @@ func (t TerminalPlan) Validate() error {
 			return fmt.Errorf("sessions: terminal plan repeats Item %q", item.ID())
 		}
 		seenItems[item.ID()] = struct{}{}
-		if err := item.Validate(); err != nil {
-			return fmt.Errorf("sessions: terminal plan Item %q: %w", item.ID(), err)
-		}
 	}
 	for index, message := range t.messages {
 		if err := message.Validate(); err != nil {

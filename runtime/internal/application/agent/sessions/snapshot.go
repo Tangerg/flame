@@ -124,9 +124,6 @@ func (s Snapshot) validateItems(runs map[string]struct{}) (map[string]transcript
 		if _, failed := item.Failure(); failed && (item.Kind() != transcript.ToolCall || item.Status() != transcript.ItemIncomplete) {
 			return nil, fmt.Errorf("sessions: snapshot item %q has an invalid tool failure", item.ID())
 		}
-		if err := item.Validate(); err != nil {
-			return nil, fmt.Errorf("sessions: snapshot item %q: %w", item.ID(), err)
-		}
 	}
 	return items, nil
 }

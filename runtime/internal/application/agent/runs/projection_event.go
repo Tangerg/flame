@@ -146,9 +146,13 @@ func (s SegmentFinished) validate() error {
 
 func (i ItemStarted) validate() error { return i.Item.validate() }
 
+// A completed Item is legal by construction — the transcript constructors and
+// transitions close that question. What the event still owns is whether an Item
+// was attached at all: a private-field aggregate cannot be built invalid, but
+// its zero value is writable anywhere.
 func (i ItemCompleted) validate() error {
-	if err := i.Item.Validate(); err != nil {
-		return fmt.Errorf("runs: completed Item: %w", err)
+	if i.Item.ID() == "" {
+		return errors.New("runs: completed Item event carries no Item")
 	}
 	return nil
 }
@@ -357,5 +361,5 @@ func (i ItemStart) validate() error {
 		item.SafetyClass() != i.SafetyClass {
 		return errors.New("runs: ToolCall start differs from its durable invocation")
 	}
-	return item.Validate()
+	return nil
 }

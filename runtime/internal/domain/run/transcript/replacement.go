@@ -19,13 +19,12 @@ func NewReplacement(expected, state Item) (Replacement, error) {
 	return replacement, nil
 }
 
-// Validate proves both aggregates are valid and retain one Item identity.
+// Validate proves the two aggregates were constructed and retain one Item
+// identity. Their legality is settled by the constructors that produced them;
+// only the zero value can reach here unbuilt.
 func (r Replacement) Validate() error {
-	if err := r.expected.Validate(); err != nil {
-		return fmt.Errorf("transcript: replacement expected Item: %w", err)
-	}
-	if err := r.state.Validate(); err != nil {
-		return fmt.Errorf("transcript: replacement state Item: %w", err)
+	if r.expected.ID() == "" {
+		return fmt.Errorf("%w: replacement carries no Item", ErrIdentityConflict)
 	}
 	if r.expected.ID() != r.state.ID() ||
 		r.expected.SessionID() != r.state.SessionID() ||

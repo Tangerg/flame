@@ -326,9 +326,6 @@ func (e EventCommit) validateItems() error {
 			return fmt.Errorf("runs: event commit repeats Item %q", item.ID())
 		}
 		seenItems[item.ID()] = struct{}{}
-		if err := item.Validate(); err != nil {
-			return fmt.Errorf("runs: event commit Item %q: %w", item.ID(), err)
-		}
 	}
 	return nil
 }

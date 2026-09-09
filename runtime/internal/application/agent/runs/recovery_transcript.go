@@ -10,9 +10,6 @@ func validateRecoveryTranscript(tree recoveryRunTree, items []transcript.Item) e
 	sessionID := tree.root.SessionID()
 	seen := make(map[string]int, len(items))
 	for index, item := range items {
-		if err := item.Validate(); err != nil {
-			return fmt.Errorf("runs: validate recovery transcript Item[%d] %q: %w", index, item.ID(), err)
-		}
 		if item.SessionID() != sessionID {
 			return fmt.Errorf(
 				"runs: recovery transcript Item[%d] %q belongs to Session %q, want %q",

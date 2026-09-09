@@ -23,9 +23,6 @@ type TranscriptStore struct{ db *sql.DB }
 func NewTranscriptStore(db *sql.DB) *TranscriptStore { return &TranscriptStore{db: db} }
 
 func (t *TranscriptStore) AppendItem(ctx context.Context, item transcript.Item) error {
-	if err := item.Validate(); err != nil {
-		return fmt.Errorf("sqlite: history item %q: %w", item.ID(), err)
-	}
 	offloadID, err := transcriptOffloadID(item)
 	if err != nil {
 		return err
