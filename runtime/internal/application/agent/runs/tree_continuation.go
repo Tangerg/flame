@@ -32,9 +32,6 @@ type treeContinuation struct {
 func (t *treeContinuation) bindToolApprovalResolutions(
 	resolutions []ToolApprovalResolution,
 ) error {
-	if t == nil {
-		return errors.New("runs: tree continuation is required")
-	}
 	if len(resolutions) == 0 {
 		return nil
 	}
@@ -88,10 +85,10 @@ func treeContinuationFromPending(pending Pending) (*treeContinuation, error) {
 	return continuation, nil
 }
 
+// validate proves one constructed continuation. Whether a Segment has one at
+// all is the caller's question, asked where a fresh Run and a resumed tree
+// diverge; every path here holds a value newTreeContinuation returned.
 func (t *treeContinuation) validate() error {
-	if t == nil {
-		return errors.New("runs: tree continuation is required")
-	}
 	if _, err := resourceid.ParseRun(t.rootRunID); err != nil {
 		return fmt.Errorf("runs: tree continuation root: %w", err)
 	}
@@ -165,9 +162,6 @@ func (t *treeContinuation) validate() error {
 }
 
 func (t *treeContinuation) root() (Continuation, bool) {
-	if t == nil {
-		return Continuation{}, false
-	}
 	for _, member := range t.continuations {
 		if member.RunID == t.rootRunID {
 			return member, true
@@ -177,9 +171,6 @@ func (t *treeContinuation) root() (Continuation, bool) {
 }
 
 func (t *treeContinuation) forRun(runID string) (Continuation, bool) {
-	if t == nil {
-		return Continuation{}, false
-	}
 	for _, member := range t.continuations {
 		if member.RunID == runID {
 			return member, true
