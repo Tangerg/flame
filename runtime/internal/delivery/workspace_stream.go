@@ -446,9 +446,15 @@ func (w *workspaceSubscription) flushStalledLocked() bool {
 // let a caller reuse one while a transport is still encoding the event, and sharing
 // between subscriptions would let one in-process consumer corrupt another's frame.
 //
-// Every field is now a slice of ids — a change signal carries no payload — so this is
-// a clone of lists and nothing deeper.
+// Every reference-typed field is copied, pointers included.
+// TestRuntimeEventCloneOwnsEveryReferenceField fails when a new one is added
+// without a copy here, because a comment describing the shape of this struct is
+// exactly the thing that goes stale when the struct grows.
 func cloneRuntimeEvent(event protocol.RuntimeEvent) protocol.RuntimeEvent {
+	if event.Workspace != nil {
+		workspace := *event.Workspace
+		event.Workspace = &workspace
+	}
 	event.Paths = slices.Clone(event.Paths)
 	event.Names = slices.Clone(event.Names)
 	event.ServerIDs = slices.Clone(event.ServerIDs)
