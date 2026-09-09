@@ -75,38 +75,6 @@ func validateSearchCatalog(items []domain.Item, project string) error {
 	return nil
 }
 
-func validateUpdatedItem(item domain.Item, expectedID domain.ItemID, content *string, pinned *bool) error {
-	if err := item.Validate(); err != nil {
-		return fmt.Errorf("agentmemory: management item %q is invalid: %w", expectedID, err)
-	}
-	if item.ID != expectedID {
-		return fmt.Errorf("agentmemory: management item %q returned item %q", expectedID, item.ID)
-	}
-	if !managementStatus(item.Status) {
-		return fmt.Errorf("agentmemory: management item %q has hidden status %q", item.ID, item.Status)
-	}
-	if content != nil && item.Content != *content {
-		return fmt.Errorf("agentmemory: management item %q did not acknowledge content", item.ID)
-	}
-	if pinned != nil && item.Pinned != *pinned {
-		return fmt.Errorf("agentmemory: management item %q did not acknowledge pinned state", item.ID)
-	}
-	return nil
-}
-
-func validateAddedItem(item domain.Item, scope domain.Scope, project, content string) error {
-	if err := item.ValidateFor(scope, project); err != nil {
-		return fmt.Errorf("agentmemory: added item is invalid: %w", err)
-	}
-	if !activeStatus(item.Status) {
-		return fmt.Errorf("agentmemory: added item %q is not active", item.ID)
-	}
-	if item.Content != content {
-		return fmt.Errorf("agentmemory: added item %q did not acknowledge content", item.ID)
-	}
-	return nil
-}
-
 func activeStatus(status domain.Status) bool {
 	return status == domain.StatusActive
 }

@@ -138,9 +138,6 @@ func (c *Coordinator) Update(ctx context.Context, id string, content *string, pi
 	if err != nil {
 		return domain.Item{}, err
 	}
-	if err := validateUpdatedItem(item, itemID, content, pinned); err != nil {
-		return domain.Item{}, err
-	}
 	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.AgentMemory})
 	return item, nil
 }
@@ -170,9 +167,6 @@ func (c *Coordinator) Add(ctx context.Context, scope domain.Scope, cwd, content 
 	}
 	item, changed, err := c.store.Add(ctx, scope, project, content, c.now())
 	if err != nil {
-		return domain.Item{}, err
-	}
-	if err := validateAddedItem(item, scope, project, content); err != nil {
 		return domain.Item{}, err
 	}
 	if changed {
