@@ -44,8 +44,8 @@ func newRunsListCommand(provider runtimeProvider) *cobra.Command {
 		},
 	}
 	flags.register(command)
-	_ = command.RegisterFlagCompletionFunc("session", completeSessionIDs(provider))
-	_ = command.RegisterFlagCompletionFunc("status", completeRunStatus)
+	completeFlag(command, "session", completeSessionIDs(provider))
+	completeFlag(command, "status", completeRunStatus)
 	return command
 }
 

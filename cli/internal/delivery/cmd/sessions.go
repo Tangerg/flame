@@ -94,7 +94,7 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 	cmd.Flags().StringVar(&model, "model", "", "Set the session model in provider/model form")
 	cmd.Flags().BoolVar(&favorite, "favorite", false, "Set whether the session is a favorite")
 	cmd.Flags().Uint64Var(&revision, "revision", 0, "Revision previously read from sessions ls/show")
-	_ = cmd.MarkFlagRequired("revision")
+	requireFlag(cmd, "revision")
 	cmd.ValidArgsFunction = completeFirstSessionArgument(provider)
 	return cmd
 }
@@ -236,7 +236,7 @@ func newSessionsRenameCommand(provider runtimeProvider) *cobra.Command {
 		},
 	}
 	cmd.Flags().Uint64Var(&revision, "revision", 0, "Revision previously read from sessions ls/show")
-	_ = cmd.MarkFlagRequired("revision")
+	requireFlag(cmd, "revision")
 	cmd.ValidArgsFunction = completeFirstSessionArgument(provider)
 	return cmd
 }

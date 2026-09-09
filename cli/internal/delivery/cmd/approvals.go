@@ -27,7 +27,7 @@ func newApprovalsCommand(provider runtimeProvider) *cobra.Command {
 	}
 	list.Flags().StringVarP(&listSession, "session", "s", "", "Session whose visible rules should be listed")
 	list.Flags().BoolVar(&asJSON, "json", false, "Write approval rules as JSON")
-	_ = list.MarkFlagRequired("session")
+	requireFlag(list, "session")
 	command.AddCommand(list)
 
 	var yes bool

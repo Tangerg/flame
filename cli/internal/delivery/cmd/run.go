@@ -39,8 +39,8 @@ func newRunCommand(provider runtimeProvider, v *viper.Viper) *cobra.Command {
 		},
 	}
 	flags.register(cmd)
-	_ = cmd.RegisterFlagCompletionFunc("file", completeRunFile(provider))
-	_ = cmd.RegisterFlagCompletionFunc("output-format", completeOutputFormat)
+	completeFlag(cmd, "file", completeRunFile(provider))
+	completeFlag(cmd, "output-format", completeOutputFormat)
 	return cmd
 }
 
