@@ -19,11 +19,11 @@ import (
 func (s *Handler) ListSchedules(ctx context.Context, query protocol.PageQuery) (*protocol.Page[protocol.Schedule], error) {
 	limit, err := requestedPageLimit(query.Limit)
 	if err != nil {
-		return nil, mapScheduleErr(wirePageError(err), "schedules.list", "")
+		return nil, mapScheduleErr(wirePageError(err), "")
 	}
 	page, err := s.schedules.ListPage(ctx, query.Cursor, limit)
 	if err != nil {
-		return nil, mapScheduleErr(wirePageError(err), "schedules.list", "")
+		return nil, mapScheduleErr(wirePageError(err), "")
 	}
 	out := make([]protocol.Schedule, 0, len(page.Rows))
 	for _, scheduled := range page.Rows {
@@ -37,7 +37,7 @@ func (s *Handler) ListSchedules(ctx context.Context, query protocol.PageQuery) (
 func (s *Handler) CreateSchedule(ctx context.Context, in protocol.CreateScheduleRequest) (*protocol.Schedule, error) {
 	selection, err := modelref.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
-		return nil, mapScheduleErr(err, "schedules.create", "")
+		return nil, mapScheduleErr(err, "")
 	}
 	created, err := s.schedules.Create(ctx, scheduleapp.CreateCommand{
 		Title:          in.Title,
@@ -48,7 +48,7 @@ func (s *Handler) CreateSchedule(ctx context.Context, in protocol.CreateSchedule
 		Enabled:        true,
 	})
 	if err != nil {
-		return nil, mapScheduleErr(err, "schedules.create", "")
+		return nil, mapScheduleErr(err, "")
 	}
 	wire := presentSchedule(created)
 	return &wire, nil
@@ -72,7 +72,7 @@ func (s *Handler) UpdateSchedule(ctx context.Context, in protocol.UpdateSchedule
 		},
 	})
 	if err != nil {
-		return nil, mapScheduleErr(err, "schedules.update", in.ID)
+		return nil, mapScheduleErr(err, in.ID)
 	}
 	wire := presentSchedule(updated)
 	return &wire, nil
@@ -80,7 +80,7 @@ func (s *Handler) UpdateSchedule(ctx context.Context, in protocol.UpdateSchedule
 
 // DeleteSchedule removes a schedule (schedules.delete). Idempotent.
 func (s *Handler) DeleteSchedule(ctx context.Context, in protocol.DeleteScheduleRequest) error {
-	return mapScheduleErr(s.schedules.Delete(ctx, in.ID), "schedules.delete", in.ID)
+	return mapScheduleErr(s.schedules.Delete(ctx, in.ID), in.ID)
 }
 
 // RunScheduleNow fires a schedule immediately (schedules.runNow) — a manual
@@ -89,7 +89,7 @@ func (s *Handler) DeleteSchedule(ctx context.Context, in protocol.DeleteSchedule
 func (s *Handler) RunScheduleNow(ctx context.Context, in protocol.RunScheduleNowRequest) (*protocol.RunScheduleNowResponse, error) {
 	handle, err := s.scheduleFiring.RunNow(ctx, in.ID)
 	if err != nil {
-		return nil, mapScheduleErr(err, "schedules.runNow", in.ID)
+		return nil, mapScheduleErr(err, in.ID)
 	}
 	return &protocol.RunScheduleNowResponse{SessionID: handle.SessionID, RunID: handle.RunID}, nil
 }
@@ -104,7 +104,7 @@ func scheduleWorkspacePathPatch(ref *protocol.WorkspaceRef, mode protocol.Schedu
 
 // mapScheduleErr surfaces an unknown-id as invalid_params (the supplied id
 // doesn't resolve), passing every other error through unchanged.
-func mapScheduleErr(err error, method, id string) error {
+func mapScheduleErr(err error, id string) error {
 	if err == nil {
 		return nil
 	}

@@ -23,7 +23,7 @@ func TestHandlersUseTheOneWorkspaceTranslation(t *testing.T) {
 		{workspaceapp.ErrVCSUnavailable, protocol.ErrVcsUnavailable},
 		{workspaceapp.ErrPageCursor, protocol.ErrInvalidParams},
 	} {
-		if got := mapScheduleErr(test.source, "schedules.update", "sch_1"); !errors.Is(got, test.want) {
+		if got := mapScheduleErr(test.source, "sch_1"); !errors.Is(got, test.want) {
 			t.Errorf("mapScheduleErr(%v) = %v, want %v", test.source, got, test.want)
 		}
 		if got := wireSessionErr(test.source); !errors.Is(got, test.want) {
