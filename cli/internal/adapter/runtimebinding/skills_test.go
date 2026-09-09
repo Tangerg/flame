@@ -270,24 +270,28 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 	}
 }
 
-func TestConnectionProfileControlsOptionalAdapterAvailability(t *testing.T) {
+// TestProfileAnswersOptionalAdapterAvailability fixes where the "does this
+// Runtime offer the surface" question is answered. It is the Profile, read once
+// by the composition root. An accessor must not answer it by returning a nil
+// pointer: assigned into a consumer's interface field that arrives as a non-nil
+// interface wrapping nil, so the consumer's own "is this wired?" check cannot
+// fire and its first call dereferences nil.
+func TestProfileAnswersOptionalAdapterAvailability(t *testing.T) {
 	runtime := &Connection{profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
 		protocol.FeatureSkills: {Enabled: true}, protocol.FeatureMCP: {Enabled: true},
-		protocol.FeatureSchedules: {Enabled: true}, protocol.FeatureAgentMemory: {Enabled: true},
-		protocol.FeatureKnowledge: {Enabled: true}, protocol.FeatureSessionExport: {Enabled: true},
+		protocol.FeatureSchedules: {Enabled: true}, protocol.FeatureSessionExport: {Enabled: true},
 	})}
 	profile := runtime.Profile()
 	if !profile.Supports(protocol.FeatureSkills) || !profile.Supports(protocol.FeatureMCP) ||
 		!profile.Supports(protocol.FeatureSchedules) || profile.Supports(protocol.FeatureGoals) {
 		t.Fatalf("profile features = %+v", profile.Discovery().Capabilities.Features)
 	}
-	if runtime.AgentMemory() == nil || runtime.Knowledge() == nil {
-		t.Fatal("advertised context adapters were not exposed")
+	if profile.Supports(protocol.FeatureAgentMemory) || profile.Supports(protocol.FeatureKnowledge) {
+		t.Fatal("fixture advertises the context features this case must not")
 	}
-	discovery := runtime.profile.Discovery()
-	discovery.Capabilities.Features[protocol.FeatureAgentMemory] = protocol.FeatureCapability{}
-	runtime.profile = requireProfile(t, &discovery, nil)
-	if runtime.AgentMemory() != nil {
-		t.Fatal("unadvertised agent memory exposed an adapter")
+
+	// Unadvertised is exactly the state that used to hand back a nil pointer.
+	if runtime.AgentMemory() == nil || runtime.Knowledge() == nil {
+		t.Fatal("context adapter accessor returned a nil pointer a consumer cannot detect")
 	}
 }

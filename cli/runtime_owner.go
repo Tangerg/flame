@@ -59,8 +59,7 @@ func startTerminal(ctx context.Context, connection *runtimebinding.Connection, r
 		Workspaces: connection, Changes: connection, Usage: connection, ModelConfig: connection,
 		DiagnosticTools:  connection.DiagnosticTools(),
 		AuthoringContext: connection.AuthoringContext(), Hooks: connection.Hooks(),
-		Feedback: connection.Feedback(), AgentMemory: connection.AgentMemory(),
-		Knowledge:     connection.Knowledge(),
+		Feedback:      connection.Feedback(),
 		ClientVersion: cmd.Version(), SessionID: request.SessionID, Workspace: request.Workspace,
 		InitialPrompt: request.InitialPrompt, Settings: &configured,
 		PluginSources:  []extensions.Source{sideload.New(configured.Plugins.Directories)},
@@ -80,6 +79,12 @@ func startTerminal(ctx context.Context, connection *runtimebinding.Connection, r
 	}
 	if profile.Supports(protocol.FeatureSessionExport) {
 		cfg.Transfers = connection
+	}
+	if profile.Supports(protocol.FeatureAgentMemory) {
+		cfg.AgentMemory = connection.AgentMemory()
+	}
+	if profile.Supports(protocol.FeatureKnowledge) {
+		cfg.Knowledge = connection.Knowledge()
 	}
 	return terminal.Run(ctx, cfg)
 }

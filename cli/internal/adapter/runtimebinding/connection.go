@@ -332,17 +332,16 @@ func (o *Owner) rejectOpen(opened *Connection, openErr error) error {
 // Profile returns the immutable discovery projection for this connection.
 func (r *Connection) Profile() Profile { return r.profile }
 
+// AgentMemory, Knowledge, and the accessors below hand out a usable binding for
+// their surface. Whether the connected Runtime offers that surface is the
+// composition root's question, asked once against the Profile: an accessor that
+// answered it by returning a nil pointer would arrive at a consumer's interface
+// field as a non-nil interface, and defeat the very check that asks.
 func (r *Connection) AgentMemory() *AgentMemory {
-	if !r.supportsFeature(protocol.FeatureAgentMemory) {
-		return nil
-	}
 	return &AgentMemory{runtime: r}
 }
 
 func (r *Connection) Knowledge() *Knowledge {
-	if !r.supportsFeature(protocol.FeatureKnowledge) {
-		return nil
-	}
 	return &Knowledge{runtime: r}
 }
 
