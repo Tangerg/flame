@@ -98,8 +98,27 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
             right: Math.min(visible.right, clip.right),
           };
         }
+        // The fill that answers the pointer is often not on the control. A dock tab's own
+        // element is a label inside a wrapper, and the wrapper carries the raise that says the
+        // tab is open — so the wrapper is where that raise was being replaced by the neutral
+        // wash, on an element no audit reading a control list ever looks at. The walk stops at
+        // the first scroller: past that is page furniture, not the control's own box.
+        const chain: { fill: string; what: string }[] = [];
+        for (
+          let parent = node.parentElement;
+          parent && chain.length < 6;
+          parent = parent.parentElement
+        ) {
+          const parentStyle = getComputedStyle(parent);
+          chain.push({
+            fill: parentStyle.backgroundColor,
+            what: `${parent.tagName.toLowerCase()}${parent.hasAttribute("data-active") ? "[data-active]" : ""}`,
+          });
+          if (parentStyle.overflowY === "auto" || parentStyle.overflowY === "scroll") break;
+        }
         return {
           rest: style.backgroundColor,
+          chain,
           x: (visible.left + visible.right) / 2,
           y: (visible.top + visible.bottom) / 2,
           width: visible.right - visible.left,
@@ -139,8 +158,19 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
       await page.waitForTimeout(70);
       const after = await control.evaluate((node) => {
         const style = getComputedStyle(node);
+        const chain: string[] = [];
+        for (
+          let parent = node.parentElement;
+          parent && chain.length < 6;
+          parent = parent.parentElement
+        ) {
+          const parentStyle = getComputedStyle(parent);
+          chain.push(parentStyle.backgroundColor);
+          if (parentStyle.overflowY === "auto" || parentStyle.overflowY === "scroll") break;
+        }
         return {
           fill: style.backgroundColor,
+          chain,
           // Proof the pointer arrived. Without it a control the layout moved out from under
           // the cursor reports "no change" and reads as a control that ignores the pointer.
           reached: node.matches(":hover"),
@@ -157,6 +187,16 @@ test("hover always adds ink, and never replaces the fill it lands on", async ({ 
         continue;
       }
       hovered += 1;
+
+      // Before the control's own early exit: a dock tab's label does not change at all, and
+      // returning on that is what kept the wrapper's replaced fill out of sight.
+      before.chain.forEach((link, depth) => {
+        const now = after.chain[depth];
+        if (now === undefined || now === link.fill) return;
+        if (link.fill === "rgba(0, 0, 0, 0)" || now !== neutralWash) return;
+        replaced.push(`${route} <${link.what}> above "${before.label}"  ${link.fill} -> ${now}`);
+      });
+
       if (after.fill === before.rest) continue;
 
       answers.set(`${before.rest} -> ${after.fill}`, `${route} <${before.tag}> "${before.label}"`);

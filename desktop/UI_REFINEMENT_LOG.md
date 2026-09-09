@@ -12350,3 +12350,70 @@ improves scanability"*，而"给每个按钮都加 hover 背景"是它明确的�
 所以这不是"改 N 个缺陷"，是一条条对规则。已知一处明确对不上：
 同一条 dock tabstrip 里 `Plan`（active）有反应，`Explorer` / `File preview` / `Timeline` 没有 ——
 **一个组件里的兄弟控件答案不一致，这条规则不背书任何读法。**
+
+## Round 197 —— 那个还没人看的元素：真正上色的那一个
+
+名单可信之后（Round 196），拿 `DESKTOP_UI_POLISH.md` 的规则去判。**先纠正我上一轮的说法：**
+`Explorer` / `File preview` / `Timeline` / `Copy message` / `Jump to bottom` **都是有反应的** ——
+它们进名单是 scroller 裁剪和揭示型控件那两个测量错造成的。所以"同一条 tabstrip 里三个 tab 没反应"
+这个说法是错的，我上一轮报错了。
+
+把每个 tab 单独量一遍，真实的形状是**全产品一致的一条**：
+
+| 分组 | 未选中 | **选中的那个** |
+| --- | --- | --- |
+| 设置侧栏（`vertical-tabs`）| 透明 → 3% ✓ | 4% → **7% ✓**（Round 194 修的）|
+| segmented ×5 组 | `fgMuted → fg` ✓ | **什么都不变** |
+| dock tabstrip | `fgMuted → fg` ✓ | **什么都不变** |
+
+**一个分组里被选中的那个，是全产品唯一对指针毫无反应的控件。** 原因统一：
+选中态是把文字挪到 `color.fg`，而 hover 去的也正是 `fg` —— 选中的那个**已经没地方可去了**。
+设置侧栏之所以逃掉，只因为 Round 194 给它在**背景**通道上补了 selected+hover 的合成值。
+
+### 但 dock tab 是个更严重的东西，而且我的守卫看不见它
+
+`role="tab"` 的元素是一个内层 label，背景在**外层 wrapper** 上。量 wrapper 才看到真相：
+
+```
+ACTIVE "Plan1/3"   oklab(0.979564 …)  ->  color(srgb … / 0.03)
+```
+
+**选中的 dock tab 一被指到就丢掉它那层"抬起来"的填充，掉回中性 wash** ——
+和 Round 194 修的是同一个缺陷、同一个根因（`:hover` 与 `:is([data-active])` 特异度相同、
+hover 排在后面）。它躲过了上一轮的守卫，因为**守卫只量匹配 `CONTROL` 的元素，
+而真正上色的是一个 wrapper**。
+
+治本同上：一个从 `--dock-tab-active-surface` 推导出来的合成值，
+`color-mix(text at depth-step*0.75, over 它自己的填充)` —— 和
+`--app-dock-tabstrip-surface`、`--color-sunken-hover` 同一个构造。加组合 key `":is([data-active]):hover"`。
+
+改完：`oklab(0.9796) → oklab(0.9574)`（它自己的填充，压上那层墨水），不再掉到 wash。
+
+### 守卫的洞：往上走
+
+"替换了底色"这条断言现在**从控件往上走祖先链**（最多 6 层，遇到第一个 scroller 停 ——
+再往上是页面家具，不是这个控件的盒子）。而且这段检查放在**控件自己那个提前 return 之前** ——
+dock tab 的 label 根本不变，`if (after.fill === before.rest) continue;` 正是把下面那个 wrapper
+藏起来的东西。
+
+**验证过**：把 dock tab 的组合 key 撤掉 → 守卫报错（之前它一声不出）。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 选中态被 hover 替换掉的填充 | 1 处（dock tab wrapper）→ **0** |
+| 守卫看的元素 | 只有控件本身 → **控件 + 6 层祖先** |
+| 单测 | **121 全通过** |
+| 视觉套件 | **677 全通过**（10.3m，零失败）|
+| typecheck / lint / prettier / knip / 8 个守卫 | 全绿 |
+
+### 仍然欠着
+
+- **5 个 segmented 分组里被选中的那个仍然对指针没反应**。它和别的不一样：选中态是一个
+  `motion/react` 驱动的、会在 tab 之间移动的 **chip**（`position: absolute; inset: 0`，
+  不透明 `surface.canvas`，是**选中那个 tab 的子元素**）。所以给 tab 自己的背景上墨水会被 chip 盖住 ——
+  墨水得上在 **chip** 上。`reveal.ts` 已经有这个成语（宿主发布自定义属性、目标读它），
+  因为 StyleX 没有后代选择器。这是一个可见控件的设计改动，单独一轮做。
+- 剩下的沉默项按那条规则还要一个个判：3 个开关（`span[checkbox]`）、
+  2 个工具汇总展开按钮、1 个 goal 按钮。文本输入框（4 个）不算 —— 插入符就是反馈。

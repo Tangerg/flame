@@ -665,6 +665,15 @@
     var(--app-dock-surface)
   );
   --dock-tab-active-surface: var(--app-dock-surface);
+  /* The active tab's own fill with the hover ink over it. Without this the tab reverts to the
+     plain wash under the pointer and loses the raise that says it is the open one — the same
+     defect as the selected row, on a wrapper rather than on the control, which is why the
+     hover audit did not see it. */
+  --dock-tab-active-hover-surface: color-mix(
+    in oklab,
+    var(--color-text) calc(var(--depth-step) * 0.75),
+    var(--dock-tab-active-surface)
+  );
   --app-card-surface: var(--color-elevated);
   --app-user-message-surface: color-mix(in srgb, var(--color-text) 5%, transparent);
   --app-composer-surface: color-mix(in oklab, var(--app-content-surface) 86%, transparent);

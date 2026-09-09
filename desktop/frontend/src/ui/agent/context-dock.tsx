@@ -57,6 +57,7 @@ const styles = stylex.create({
       default: null,
       ":hover": surface.hover,
       ":is([data-active])": "var(--dock-tab-active-surface)",
+      ":is([data-active]):hover": "var(--dock-tab-active-hover-surface)",
     },
     // A tab being dragged steps back so the gap it will leave is legible.
     opacity: { default: null, ":is([data-dragging])": 0.5 },
