@@ -565,9 +565,6 @@ func (u UpdateSession) ValidateResult(result Session) error {
 	if u.Model != nil && (result.Provider != u.Model.Provider || result.Model != u.Model.Model) {
 		problems = append(problems, fmt.Errorf("runtime returned model %q, want %q", (ModelRef{Provider: result.Provider, Model: result.Model}).String(), u.Model.String()))
 	}
-	if u.Model != nil && result.ReasoningEffort != "" {
-		problems = append(problems, fmt.Errorf("runtime retained reasoning effort %q after changing model", result.ReasoningEffort))
-	}
 	if u.Favorite != nil && result.Favorite != *u.Favorite {
 		problems = append(problems, fmt.Errorf("runtime returned favorite %t, want %t", result.Favorite, *u.Favorite))
 	}
