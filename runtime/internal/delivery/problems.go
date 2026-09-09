@@ -156,6 +156,17 @@ func InvalidParameters(err error) *Failure {
 	return failure
 }
 
+// runtimeProduced reports a failure in the Runtime's own output. The wire keeps
+// only the unclassified detail, because a client can neither cause nor act on
+// it, but the reason is the sole thing that identifies the Runtime bug and is
+// known exactly here. Retain it as the cause so it reaches the in-process
+// binding and the span instead of being dropped at the point it is discovered.
+func runtimeProduced(detail string, cause error) *Failure {
+	failure := NewFailure(protocol.ErrInternalError, "the runtime produced "+detail)
+	failure.cause = errors.Join(failure.cause, cause)
+	return failure
+}
+
 func newFailure(spec problemSpec, cause error, detail string) *Failure {
 	return &Failure{
 		cause: cause,

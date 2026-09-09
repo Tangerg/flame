@@ -159,7 +159,7 @@ func (e *Endpoint) execute(ctx context.Context, method *Method, parameters any) 
 		return failed(ProjectError(raw.err))
 	}
 	if err := protocol.ValidateWireTree(raw.value); err != nil {
-		return failed(NewFailure(protocol.ErrInternalError, "the runtime produced an invalid response"))
+		return failed(runtimeProduced("an invalid response", err))
 	}
 	return Result{Value: raw.value, Events: validateEvents(ctx, method.Meta.Event, raw.events)}
 }
@@ -174,12 +174,15 @@ func validateEvents(ctx context.Context, eventType reflect.Type, events iter.Seq
 				yield(nil, ProjectError(err))
 				return
 			}
-			if reflect.TypeOf(event) != eventType {
-				yield(nil, NewFailure(protocol.ErrInternalError, "the runtime produced an event with an invalid type"))
+			if actual := reflect.TypeOf(event); actual != eventType {
+				yield(nil, runtimeProduced(
+					"an event with an invalid type",
+					fmt.Errorf("event has type %s, want %s", actual, eventType),
+				))
 				return
 			}
 			if err := protocol.ValidateWireTree(event); err != nil {
-				yield(nil, NewFailure(protocol.ErrInternalError, "the runtime produced an invalid event"))
+				yield(nil, runtimeProduced("an invalid event", err))
 				return
 			}
 			if !allowsEvent(ctx, event) {
@@ -264,7 +267,10 @@ func (e *Endpoint) Call[Params, Response any](
 	}
 	value, ok := result.Value.(Response)
 	if !ok {
-		return zero, NewFailure(protocol.ErrInternalError, "the runtime produced a response with an invalid type")
+		return zero, runtimeProduced(
+			"a response with an invalid type",
+			fmt.Errorf("response has type %T, want %T", result.Value, zero),
+		)
 	}
 	return value, nil
 }
@@ -284,7 +290,10 @@ func (e *Endpoint) CallStream[Params, Ack, Event any](
 	}
 	ack, ok := result.Value.(Ack)
 	if !ok {
-		return zero, nil, NewFailure(protocol.ErrInternalError, "the runtime produced an acknowledgement with an invalid type")
+		return zero, nil, runtimeProduced(
+			"an acknowledgement with an invalid type",
+			fmt.Errorf("acknowledgement has type %T, want %T", result.Value, zero),
+		)
 	}
 	return ack, restoreEventType[Event](result.Events), nil
 }
@@ -303,7 +312,10 @@ func restoreEventType[Event any](events iter.Seq2[any, error]) iter.Seq2[Event, 
 			event, ok := value.(Event)
 			if !ok {
 				var zero Event
-				yield(zero, NewFailure(protocol.ErrInternalError, "the runtime produced an event with an invalid type"))
+				yield(zero, runtimeProduced(
+					"an event with an invalid type",
+					fmt.Errorf("event has type %T, want %T", value, zero),
+				))
 				return
 			}
 			if !yield(event, nil) {

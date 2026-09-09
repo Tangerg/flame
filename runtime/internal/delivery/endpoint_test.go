@@ -393,6 +393,20 @@ func TestEndpointRefusesAnEventItCannotPublish(t *testing.T) {
 		if !errors.Is(err, protocol.ErrInternalError) {
 			t.Fatalf("event %+v, err = %v; want an internal error", event, err)
 		}
+		// A client can neither cause nor act on this, so the wire keeps the
+		// unclassified detail. The reason is the only thing that identifies the
+		// Runtime bug, and nothing downstream can recompute it.
+		var failure *Failure
+		if !errors.As(err, &failure) {
+			t.Fatalf("err = %v; want a *Failure", err)
+		}
+		if detail := failure.Problem().Detail; detail != "the runtime produced an invalid event" {
+			t.Fatalf("wire detail = %q; want the unclassified message", detail)
+		}
+		var constraint *protocol.ConstraintError
+		if !errors.As(err, &constraint) {
+			t.Fatalf("err = %v; want the wire-constraint reason to stay reachable", err)
+		}
 		return
 	}
 	t.Fatal("the stream ended cleanly instead of reporting the event it could not publish")
