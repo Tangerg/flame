@@ -59,20 +59,25 @@ const RULES = [
     appliesTo: () => true,
   },
   {
-    // A focus ring drawn at the callsite: an accent outline, or a box-shadow ring
-    // in accent. The global rule already draws one for every focusable element —
-    // mark `data-focus-inset` if it would land outside the box, or
-    // `data-chrome-focus` if the control is a row that fills instead.
-    // `focus-visible:outline-none` stays legal — that suppresses the browser
-    // default on a wrapper that isn't the focus target.
-    // `ring-*` belongs here too: three call sites drew `focus-visible:ring-2` and it was
-    // invisible in review because the accompanying `ring-focus` named a colour the theme
-    // never defined, so the second ring came out in currentColor — and, unlike the global
-    // rule, ungated by pointer modality, so it also fired on a click.
-    pattern:
-      /\bfocus(?:-visible|-within)?:(?:outline-(?:accent|offset-[[\]\d.px-]+)|ring(?:-[a-z0-9]+)?\b|shadow-\[[^\]]*--color-accent[^\]]*\])/g,
+    // The ring is one rule in globals.css; whether a control gets one is decided THERE, by two
+    // attributes it reads — `data-focus-inset` when the ring would land outside a box that
+    // clips, `data-chrome-focus` when a row state stands in for it.
+    //
+    // A call site cannot participate in that decision, only overrule it. Under Tailwind
+    // `focus-visible:outline-none` was a `@layer utilities` rule that the unlayered global one
+    // beat, so suppressing the browser default at a call site was harmless and this guard said
+    // so in as many words. StyleX inverted it: every declaration carries three `:not(#\#)`, so
+    // `outline: "none"` in a style object outranks the global rule at (3,n,0) against (0,4,3)
+    // and takes the design's ring down with the browser's. Twenty call sites said it, most of
+    // them on `Button` — 109 of 121 keyboard-reachable controls that had NOT opted out showed
+    // nothing at all, and the two audits either side of this both looked past it: one checks
+    // the ring has room to draw, the other checks the opt-outs keep their promise.
+    //
+    // A real outline VALUE is a different statement and stays legal — a bare field borrows one
+    // to mark itself invalid, and `input` is excluded from the ring rule by selector.
+    pattern: /\boutline(?:Style|Width)?: *(?:"none"|0\b)|\boutline[A-Za-z]*: *\{[^}]*"none"/g,
     message:
-      "hand-drawn focus ring — the global rule draws it; mark `data-focus-inset` if it would clip",
+      "the ring's suppression belongs in globals.css — a StyleX `outline` outranks it; use `data-chrome-focus` if a row state stands in",
     appliesTo: (_line, rel) => rel !== "styles/globals.css",
   },
   {

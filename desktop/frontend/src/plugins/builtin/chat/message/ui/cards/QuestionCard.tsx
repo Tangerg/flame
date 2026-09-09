@@ -75,7 +75,6 @@ const qc = stylex.create({
   },
   // The card takes focus so the keyboard can answer it, and the highlighted OPTION is the
   // indicator — the same reason a menu popup opts out of the ring.
-  noRing: { outline: "none" },
   pager: {
     display: "flex",
     flexShrink: 0,
@@ -336,7 +335,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
       tabIndex={-1}
       data-slot="question-request-surface"
       data-chrome-focus
-      className={stylex.props(ms.cardClip, qc.noRing).className}
+      className={stylex.props(ms.cardClip).className}
     >
       <div {...stylex.props(ms.cardHeadTight)}>
         <h3 id={promptId} className={stylex.props(ms.cardPromptFlush, typeStep.uiMd).className}>

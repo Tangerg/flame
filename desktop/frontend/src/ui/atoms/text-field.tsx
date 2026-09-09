@@ -30,7 +30,6 @@ const styles = stylex.create({
   base: {
     width: "100%",
     minWidth: 0,
-    outline: "none",
     transitionProperty: "color, background-color, border-color, outline-color",
     transitionDuration: motion.color,
     transitionTimingFunction: "var(--ease-out)",

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Boot-contract guard — the pre-module bootstrap must agree with the app it boots.
 //
-// `index.html` runs two inline scripts before any module loads, because both jobs
-// have to happen before the first paint: pick the scheme class + canvas colour,
-// and mark the input modality. Neither can import anything — that's the point of
-// being inline — so each one restates something another file owns:
+// Two jobs run before any module loads, because both have to happen before the
+// first paint: pick the scheme class + canvas colour, and mark the input modality.
+// Neither can import anything — that's the point of running pre-module — so each
+// one restates something another file owns:
 //
 //   - the localStorage key the preference store persists under,
 //   - the class names the theme painter writes,
@@ -30,7 +30,11 @@ import { readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url).pathname, "utf8");
 
+const MODALITY_FILE = "focus-modality.js";
+
 const html = read("../index.html");
+const visualHtml = read("../visual/index.html");
+const modality = read(`../public/${MODALITY_FILE}`);
 const css = read("../src/styles/globals.css");
 const store = read("../src/plugins/builtin/theme/adapters/appearanceStore.ts");
 const painter = read("../src/plugins/builtin/theme/adapters/documentAppearance.ts");
@@ -91,11 +95,32 @@ expect(
 );
 
 // ── 4. The input-modality attribute ───────────────────────────────────────────
-const modalityAttr = html.match(/setAttribute\("(data-[a-z-]+)",\s*""\)/)?.[1];
+// Both halves of the focus rule read this: the ring gates on `:not([attr])`, the suppression
+// of the browser's own outline on `[attr]`. Either one missing is a ring that never shows or
+// one that fires on every click.
+const modalityAttr = modality.match(/setAttribute\("(data-[a-z-]+)",\s*""\)/)?.[1];
 expect(
-  modalityAttr !== undefined && css.includes(`html:not([${modalityAttr}])`),
-  `index.html marks [${modalityAttr}] but no globals.css rule gates on it`,
+  modalityAttr !== undefined &&
+    css.includes(`html:not([${modalityAttr}])`) &&
+    css.includes(`html[${modalityAttr}]`),
+  `the bootstrap marks [${modalityAttr}] but globals.css does not gate both the ring and its suppression on it`,
 );
+
+// The harness is the only thing that ever photographs this app, and it has its own entry. It
+// carried no bootstrap at all, so `data-pointer` was never set, `html:not([data-pointer])`
+// matched forever, and every fixture ran an app with no modality gate — while a call-site
+// `outline: "none"` stood in for the gate in both the fixtures and the product. The test that
+// asserts a mouse-opened menu draws no ring named the gate in its comment and had never once
+// exercised it. Which is why the modality bootstrap is a file: one owner, both entries.
+for (const [name, entry] of [
+  ["index.html", html],
+  ["visual/index.html", visualHtml],
+]) {
+  expect(
+    entry.includes(`src="/${MODALITY_FILE}"`),
+    `${name} does not load /${MODALITY_FILE} — its focus modality is whatever happens by default`,
+  );
+}
 
 // ── 5. The native window colour ───────────────────────────────────────────────
 // The window opens before the WebView paints, so its colour has to be the canvas the app

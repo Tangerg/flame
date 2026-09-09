@@ -31,7 +31,6 @@ const menuStyles = stylex.create({
     // So the keyboard's highlighted row does not arrive flush against the scroller's edge.
     scrollPaddingBlock: space.s1,
     padding: space.s1,
-    outline: { default: null, ":focus-visible": "none" },
   },
   label: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
 });

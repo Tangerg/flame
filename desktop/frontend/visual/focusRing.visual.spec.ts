@@ -8,7 +8,9 @@ import { FOCUSABLE } from "./controls";
 // container showed a keyboard user no ring at all.
 //
 // Geometry, not painting: the ring is suppressed unless the last input device was a key
-// (`html:not([data-pointer])`), so what is checked is whether it would have anywhere to go.
+// (`html:not([data-pointer])`), so what THIS test checks is whether it would have anywhere to
+// go. The test below it walks the same tree and asks whether it goes there — the question this
+// file did not ask, and the answer was no for 109 of 121 controls (see that test's note).
 //
 // Two refinements this needed before it said anything true, both about scrolling. An element
 // scrolled out of its own container reports a 1000px "cut" and is not a defect, so only a ring
@@ -99,4 +101,79 @@ test("no focus ring is cut off by something that clips", async ({ page }) => {
     [...new Set(cut)],
     "focus rings with nowhere to draw — mark the control `data-focus-inset`",
   ).toEqual([]);
+});
+
+// Whether a control shows a ring is decided in globals.css, by two attributes it reads. The
+// question this file never asked is whether the decision reaches the screen — and it did not.
+// A StyleX declaration carries three `:not(#\#)`, so `outline: "none"` in a style object beats
+// the global rule at (3,n,0) against (0,4,3). Twenty call sites had written it, most by way of
+// `Button`, and 109 of 121 keyboard-reachable controls that had NOT opted out showed nothing at
+// all. Under Tailwind the same line was a `@layer utilities` rule the global one beat, so it
+// was genuinely harmless there and the chrome guard blessed it in writing; the migration
+// inverted it silently, because a focus ring is invisible until someone reaches for the keyboard.
+//
+// Two assertions, because "a ring appeared" is the weaker claim. Every ring in the product also
+// has to be the SAME ring: one fingerprint of style, width and colour across every control, or
+// the one-rule-draws-it-all design is already gone whatever the pixels say.
+//
+// Real Tab, not `element.focus()` — programmatic focus does not run the roving-tabindex
+// activation a dock tab uses, for the reasons `chromeFocus.visual.spec.ts` sets out.
+const TAB_STEPS = 45;
+const STEP_BUDGET_MS = 220;
+
+test("the ring the design promises is the ring that paints", async ({ page }) => {
+  test.setTimeout(ROUTES.length * TAB_STEPS * STEP_BUDGET_MS + 20_000);
+  const silent: string[] = [];
+  const fingerprints = new Map<string, string>();
+  let reached = 0;
+
+  for (const route of ROUTES) {
+    await page.goto(`/visual/?${route}&theme=light`);
+    await page.waitForSelector("html[data-visual-ready]");
+    await page.waitForTimeout(200);
+    const seen = new Set<string>();
+
+    for (let step = 0; step < TAB_STEPS; step += 1) {
+      await page.keyboard.press("Tab");
+      await page.waitForTimeout(40);
+      const meta = await page.evaluate(() => {
+        const active = document.activeElement as HTMLElement | null;
+        if (!active || active === document.body) return null;
+        const tag = active.tagName.toLowerCase();
+        // The three exclusions the global rule itself carries: an opt-out promising a row
+        // state instead (`chromeFocus.visual.spec.ts` holds that promise), and text inputs,
+        // which say where the keyboard is with a caret.
+        if (active.hasAttribute("data-chrome-focus")) return null;
+        if (tag === "input" || tag === "textarea" || active.isContentEditable) return null;
+        if (!active.matches(":focus-visible")) return null;
+        const style = getComputedStyle(active);
+        return {
+          key: `${active.getAttribute("class") ?? ""}|${(active.textContent ?? "").trim().slice(0, 24)}`,
+          tag,
+          ring: `${style.outlineStyle} ${style.outlineWidth} ${style.outlineColor}`,
+          drawn: style.outlineStyle !== "none",
+          label: (active.getAttribute("aria-label") ?? active.textContent ?? "")
+            .trim()
+            .replace(/\s+/g, " ")
+            .slice(0, 34),
+        };
+      });
+      if (!meta || seen.has(meta.key)) continue;
+      seen.add(meta.key);
+      reached += 1;
+      if (meta.drawn) fingerprints.set(meta.ring, `${route} <${meta.tag}> "${meta.label}"`);
+      else silent.push(`${route}  <${meta.tag}> "${meta.label}"`);
+    }
+  }
+
+  // A walk that reached nothing keeps no promise and reports no failure.
+  expect(reached, "the walk has to arrive at real controls").toBeGreaterThan(60);
+  expect(
+    [...new Set(silent)],
+    "controls the design promises a ring and that show none — a call site is out-specifying globals.css",
+  ).toEqual([]);
+  expect(
+    [...fingerprints].map(([ring, where]) => `${ring}  first at ${where}`),
+    "one rule draws every focus ring, so there is one ring",
+  ).toHaveLength(1);
 });

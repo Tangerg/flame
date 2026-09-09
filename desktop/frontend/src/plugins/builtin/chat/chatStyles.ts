@@ -35,6 +35,5 @@ export const chatStyles = stylex.create({
     backgroundColor: { default: null, ":is([data-highlighted])": surface.surface2 },
     paddingInline: space.s2_5,
     paddingBlock: space.s1_5,
-    outline: "none",
   },
 });

@@ -81,7 +81,6 @@ const styles = stylex.create({
     transitionProperty: "background-color",
     transitionDuration: motion.color,
     transitionTimingFunction: "var(--ease-out)",
-    outline: { default: null, ":focus-visible": "none" },
   },
   glyph: { flexShrink: 0 },
   label: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
@@ -92,7 +91,6 @@ const styles = stylex.create({
     paddingInline: space.s6,
     paddingBlock: space.s8,
   },
-  panel: { outline: "none" },
   heading: { paddingInline: space.s2, paddingBottom: space.s1, paddingTop: space.s4 },
 });
 
@@ -144,7 +142,7 @@ export function VerticalTabs({
       <div {...stylex.props(styles.page)}>
         <div {...stylex.props(styles.measure)}>
           {items.map((item) => (
-            <TabsPrimitive.Panel key={item.id} value={item.id} {...stylex.props(styles.panel)}>
+            <TabsPrimitive.Panel key={item.id} value={item.id}>
               {item.content}
             </TabsPrimitive.Panel>
           ))}

@@ -30,7 +30,6 @@ const styles = stylex.create({
     paddingInline: space.s2,
     paddingBlock: space.s1_5,
     textAlign: "left",
-    outline: "none",
     transitionProperty: "color, background-color, border-color",
     transitionDuration: motion.fast,
     cursor: { default: null, ":disabled": "not-allowed" },

@@ -52,7 +52,6 @@ const styles = stylex.create({
       ":hover": color.fg,
       ":is([data-active])": color.fg,
     },
-    outline: { default: null, ":focus-visible": "none" },
   },
   // The moving chip is a sibling behind the label rather than the tab's own background, so one
   // element can travel between tabs — a background cannot animate from one box to another.

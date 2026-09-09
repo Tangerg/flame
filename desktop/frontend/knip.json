@@ -4,7 +4,8 @@
     "visual/main.tsx",
     "visual/**/*.visual.spec.ts",
     "src/plugins/sdk/index.ts",
-    "postcss.config.mjs"
+    "postcss.config.mjs",
+    "public/focus-modality.js"
   ],
   "ignoreExportsUsedInFile": false,
   "ignoreDependencies": ["husky", "lint-staged", "@commitlint/cli"]

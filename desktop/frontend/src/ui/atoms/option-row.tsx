@@ -33,7 +33,6 @@ export const floatingRowStyles = stylex.create({
     paddingInline: space.s2,
     textAlign: "left",
     color: color.fg,
-    outline: "none",
     transitionProperty: "color, background-color",
     transitionDuration: motion.color,
     transitionTimingFunction: "var(--ease-out)",

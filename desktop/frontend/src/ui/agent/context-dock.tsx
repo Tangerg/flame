@@ -79,7 +79,6 @@ const styles = stylex.create({
     paddingBlock: 0,
     fontWeight: weight.regular,
     color: "inherit",
-    outline: { default: null, ":focus-visible": "none" },
   },
   labelClosable: { paddingLeft: space.s2, paddingRight: space.s1 },
   labelPlain: { paddingInline: space.s2 },

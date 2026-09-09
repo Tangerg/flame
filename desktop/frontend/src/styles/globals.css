@@ -742,10 +742,6 @@ body {
     text-align: left;
   }
 
-  [data-control="button"]:focus-visible {
-    outline: none;
-  }
-
   [data-control="button"]:disabled {
     cursor: not-allowed;
     opacity: var(--control-disabled-opacity);
@@ -776,11 +772,20 @@ body {
 }
 
 /* The WebView reports :focus-visible for a plain mouse click too, so the ring is gated on the
-   last input device index.html tracks — see the marker's script there. */
+   last input device index.html tracks — see the marker's script there.
+
+   Suppressing the browser's own outline in POINTER modality is the other half of that gate, and
+   it has to live here beside it. It was being said at each call site instead — twenty times, as
+   `outline: "none"` in a StyleX object — and a StyleX declaration carries three `:not(#\#)`, so
+   it outranks BOTH rules here and took the design's ring down with the browser's. Measured: 109
+   of 121 keyboard-reachable controls that had not opted out showed nothing at all. */
 html:not([data-pointer])
   :focus-visible:not([data-chrome-focus]):not(input):not(textarea):not([contenteditable]) {
   outline: 1.5px solid var(--color-focus-ring);
   outline-offset: 1px;
+}
+html[data-pointer] :focus-visible {
+  outline: none;
 }
 html:not([data-pointer])
   [data-focus-inset]:focus-visible:not([data-chrome-focus]):not(input):not(textarea):not(

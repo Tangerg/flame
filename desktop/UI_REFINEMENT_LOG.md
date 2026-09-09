@@ -11956,3 +11956,98 @@ stateHasWhatTheSchemaWillStrip: "cursorStyle"
 | 字号变量守卫 | 0 / 11 → **11 / 11** |
 | typecheck / prettier | 全绿 |
 | 视觉套件 | **未跑** —— 本轮零生产代码改动 |
+
+## Round 192 —— 那道谁都看不见的 focus 环
+
+`CLAUDE.md` 写着：键盘 focus 环由 `globals.css` 里**唯一一条全局规则**画。环的周围已经有三个审计
+—— 几何（有没有地方画得下）、opt-out（说了"用行状态代替"的有没有兑现）、静态守卫（别在 callsite
+自己画一个）。**没有一个问"它到底画出来了吗"。**
+
+于是量了：Tab 走完 10 条 fixture 路线，对每个**没有** opt-out 的控件读 `outline-style` ——
+
+**121 个里 109 个什么都不显示。** 整个键盘可达性指示，全product 范围内没有。
+
+### 根因一：环有一个所有者，"不画环"有二十个
+
+环只说一遍；"鼠标点击时别画环"在 callsite 说了二十遍，形式是 StyleX 里的 `outline: "none"`。
+
+| 规则 | 特异度 | 说什么 |
+| --- | --- | --- |
+| `globals.css` | (0,4,3) | `outline: 1.5px solid var(--color-focus-ring)` |
+| StyleX 原子类 | **(2,2,0)** | `outline: none` |
+
+Tailwind 时代同一句话编译进 `@layer utilities`，被无 layer 的全局规则压住 —— 所以它**当时真的无害**，
+`check-interactive-chrome` 还专门用文字祝福过它：*"`focus-visible:outline-none` stays legal"*。
+StyleX 把这个关系倒过来了：每条声明带三个 `:not(#\#)`，于是它连着浏览器默认环一起，
+把设计自己的环也压掉了。二十处里大部分来自 `Button`，所以它是全局的。
+
+**一道 focus 环在有人去碰键盘之前是不可见的**，所以什么都没有响。
+
+### 根因二：那个守卫的九条规则里八条在 Tailwind 走的时候瞎了
+
+`check-interactive-chrome` 每条 pattern 都是 Tailwind class 正则（`hover:bg-fg/[0.04]`、
+`active:scale-96`、`ring-2`、`duration-150`）。它读 1258 个文件、过自己 500 的下限、然后打印
+**"hover + selected + press + focus + motion each hold one value"** —— 一句它已经无法核实的话。
+只有 `<Icon aria-label>` 那条还在开火。
+
+按 StyleX 形状重新量了另外七条：实质上都是干净的（`":hover": surface.hover` 正是它想要的 ink wash），
+所以**瞎掉的这段时间里，只有 focus 这一条真的被违反了 —— 而它被违反得彻底**。
+
+### 根因三：改完才露出来的 —— 视觉台架从来没有过这个 gate
+
+删掉二十处之后，6 个视觉测试红了。不是机器争抢：**`visual/index.html` 没有任何 pre-module bootstrap**。
+`data-pointer` 从不设置 → `html:not([data-pointer])` 永远成立 → 每一张截图拍的都是一个
+**没有 modality gate 的 app**。而那个名叫
+「a mouse-opened menu shows its highlighted item, not a ring around itself」的测试，
+自己的注释就写着这个 gate *"was written by nobody"* ——
+它一直靠我刚删掉的 callsite `outline: none` 通过，**从没有一次真的走过它点名的那条 gate**。
+`vite.visual.config.ts` 的文档串写的是 fixtures "exercise the same visual implementation"。
+
+### 治本
+
+| | 之前 | 之后 |
+| --- | --- | --- |
+| 画环 | `globals.css` 一条 | 不变 |
+| **不画环** | 20 处 callsite（且压过上面那条） | **`globals.css` 一条** `html[data-pointer] :focus-visible` |
+| `@layer base` 的 `[data-control="button"]:focus-visible{outline:none}` | 只覆盖 button 这一半 | 删掉（新规则覆盖全部）|
+| modality 脚本 | `index.html` 内联，台架没有 | **`public/focus-modality.js`，两个入口都 load** |
+| callsite 的 `outline` | 20 处压制 + 1 处真值 | **只剩那 1 处真值**（bare field 标 invalid，`input` 本就被环规则排除）|
+
+有真实理由不要环的（menu popup、question card、modal），理由的正确表达是
+`data-chrome-focus` —— 那个有文档、被 `chromeFocus.visual.spec.ts` 守着的 opt-out。它们本来就带着它，
+所以 `outline: none` 是纯冗余。
+
+### 三个守卫，每个都验证过会失败
+
+| 守卫 | 挡什么 | 制造的破坏 → 报什么 |
+| --- | --- | --- |
+| `check:chrome`（新规则，替掉瞎掉的那条） | callsite 压制环 | 四种形状（`outline:"none"` / `:focus-visible` 键 / `outlineStyle` / `outlineWidth: 0`）**全部命中**；真 outline 值和 `outlineOffset` 放过 |
+| `focusRing.visual.spec.ts`（新测试，加在已经拥有这道环的文件里） | 环没画出来 | 恢复 `button.tsx` 一行 → **193 个控件静默** |
+| `check:bootstrap`（扩了两条） | 台架丢 bootstrap；CSS 少一半 gate | 各自精确报出 |
+
+新测试有**两个**断言，因为"有环"是弱的那个：全 product 的环还必须是**同一个环** ——
+style / width / color 的指纹集合大小必须是 1，否则"一条规则画所有环"这个设计已经没了，无论像素长什么样。
+
+### 又踩了 Round 189 那个坑，这次是真的踩进去了
+
+验证守卫要先制造破坏，再 `git checkout --` 撤。`button.tsx` **本轮有我的改动**（就是那行删除），
+我却先跑了 `git diff --stat`、看到 "1 deletion"、然后照样 checkout —— 把自己的修复一起撤了。
+被随后的 grep 和守卫立刻抓到。此后改用定点 `replace`，不用 checkout。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 有环的控件（不含 opt-out） | **12 / 121 → 121 / 121** |
+| 环的指纹种类 | 未测 → **1** |
+| callsite 的环压制 | 20 → **0** |
+| pre-module bootstrap 的所有者 | `index.html` 内联（台架没有）→ **1 个文件，2 个入口** |
+| `check:chrome` 活着的规则 | 1 / 9 → **2 / 9**（其余 7 条见下）|
+| 单测 | **1463 全通过**（21+45+144+55+4 文件分片跑）|
+| 视觉套件 | **676 全通过**（9.9m，零失败）|
+| typecheck / lint / prettier / knip / 18 个守卫 / build | 全绿 |
+
+### 仍然欠着
+
+`check:chrome` 还有 **7 条规则是 Tailwind 形状、认不出 StyleX**。今天量过它们实质干净，
+但守卫不是靠"今天干净"活着的。下一轮把它们按 StyleX 形状重写，每条都验证会失败。

@@ -55,7 +55,7 @@ const mb = stylex.create({
   },
   // The diagram is an SVG the renderer produces, so its own sizing is a DESCENDANT rule that
   // stays a utility — everything about the frame around it is here.
-  stage: { overflowX: "auto", padding: space.s4, textAlign: "center", outline: "none" },
+  stage: { overflowX: "auto", padding: space.s4, textAlign: "center" },
   pulse: {
     height: space.s8,
     width: space.s8,
