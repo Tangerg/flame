@@ -392,9 +392,6 @@ func (r Run) RecoverLost(failure Failure, finishedAt time.Time, messageMark int)
 	if !ok {
 		return Run{}, fmt.Errorf("run: cannot recover terminal %s Run as lost", r.state)
 	}
-	if failure.Kind != FailureLost {
-		return Run{}, errors.New("run: lost recovery requires a lost failure")
-	}
 	return r.finish(next, Termination{Outcome: OutcomeLost, Failure: &failure, FinishedAt: finishedAt, MessageMark: messageMark})
 }
 

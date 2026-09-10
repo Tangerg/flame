@@ -221,6 +221,69 @@ func TestForkReidentifiesTerminalHistoryAndClearsGoalAttribution(t *testing.T) {
 	}
 }
 
+func TestForkKeepsTheLineageKindItWasDerivedFrom(t *testing.T) {
+	createdAt := time.Unix(1, 0).UTC()
+	root, err := Admit(Draft{
+		RunID: "run_root", SessionID: "session_source", SegmentID: "segment_root",
+		ModelSelection: mustRunSelection(t), CreatedAt: createdAt,
+	})
+	if err != nil {
+		t.Fatalf("Admit root: %v", err)
+	}
+	root, err = root.Terminate(Termination{
+		Outcome: OutcomeCompleted, FinishedAt: createdAt.Add(time.Second), MessageMark: 1,
+	})
+	if err != nil {
+		t.Fatalf("Terminate root: %v", err)
+	}
+	// Lineage.Validate proves a lineage is well formed, not that it names the
+	// same kind of Run. Only Fork can refuse to turn a root into a child.
+	childLineage := Lineage{SpawnedByItemID: "item_spawn", ParentRunID: "run_parent", RootRunID: "run_parent"}
+	if err := childLineage.Validate("run_child_copy"); err != nil {
+		t.Fatalf("child lineage is not well formed: %v", err)
+	}
+	if _, err := root.Fork("session_child", "run_child_copy", childLineage); err == nil {
+		t.Fatal("Fork turned a root Run into a child")
+	}
+}
+
+func TestProgressRefusesANegativePromptFootprintInsteadOfIgnoringIt(t *testing.T) {
+	createdAt := time.Unix(3, 0).UTC()
+	value, err := Admit(Draft{
+		RunID: "run_footprint", SessionID: "session_footprint", SegmentID: "segment_footprint",
+		ModelSelection: mustRunSelection(t), CreatedAt: createdAt,
+	})
+	if err != nil {
+		t.Fatalf("Admit: %v", err)
+	}
+	// AdvanceProgress stores a footprint only when it is positive, so a negative
+	// one would otherwise be dropped and reported as a committed boundary.
+	if _, err := value.AdvanceProgress(value.Metrics(), -1, createdAt.Add(time.Second)); err == nil {
+		t.Fatal("AdvanceProgress accepted a negative prompt footprint")
+	}
+}
+
+func TestCancelWaitingRefusesARunThatIsNotWaiting(t *testing.T) {
+	createdAt := time.Unix(4, 0).UTC()
+	value, err := Admit(Draft{
+		RunID: "run_waiting", SessionID: "session_waiting", SegmentID: "segment_waiting",
+		ModelSelection: mustRunSelection(t), CreatedAt: createdAt,
+	})
+	if err != nil {
+		t.Fatalf("Admit: %v", err)
+	}
+	if _, err := value.CancelWaiting("", createdAt.Add(time.Second), 0); err == nil {
+		t.Fatal("CancelWaiting canceled a Running Run")
+	}
+	suspended, err := value.Suspend(createdAt.Add(time.Second))
+	if err != nil {
+		t.Fatalf("Suspend: %v", err)
+	}
+	if _, err := suspended.CancelWaiting("", createdAt.Add(2*time.Second), 0); err != nil {
+		t.Fatalf("CancelWaiting refused a Waiting Run: %v", err)
+	}
+}
+
 func TestRunRejectsIllegalTransitionsAndRegressingFacts(t *testing.T) {
 	createdAt := time.Unix(2, 0).UTC()
 	value, err := Admit(Draft{
