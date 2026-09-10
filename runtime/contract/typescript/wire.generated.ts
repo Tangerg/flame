@@ -183,7 +183,7 @@ export type ArtifactItem =
   | { type: "userMessage"; content: ContentBlock[]; createdAt: string; id: string; runId: string; status: "completed" }
   | { type: "agentMessage"; content: ContentBlock[]; createdAt: string; id: string; phase: MessagePhase; runId: string; status: "completed" }
   | { type: "reasoning"; createdAt: string; id: string; redacted?: boolean; runId: string; status: "completed"; text: string }
-  | { type: "question"; createdAt: string; id: string; question: ArtifactQuestion; runId: string; status: "completed" }
+  | { type: "question"; createdAt: string; id: string; question: Question; runId: string; status: "completed" }
   | { type: "toolCall"; approvalDecision?: ApprovalDecision; durationMillis?: number; error?: { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: "internalError" | "deniedByUser" | "toolFailed" | "childRunCanceled" | "toolCanceled" }; finishedAt?: string; id: string; runId: string; safetyClass?: SafetyClass; startedAt: string; status: "completed" | "incomplete"; tool: ToolInvocation }
   | { type: "compaction"; createdAt: string; droppedMessages?: number; id: string; runId: string; status: "completed"; summary: string };
 
@@ -207,15 +207,6 @@ export interface ArtifactProblem {
 
 export type ArtifactProblemType = "internalError" | "runLost" | "agentStuck" | "rateLimited" | "invalidApiKey" | "timeout" | "providerUnavailable" | "providerRejected" | "deniedByUser" | "toolFailed" | "childRunCanceled" | "toolCanceled";
 
-export interface ArtifactQuestion {
-  answers?: string[][];
-  fields: ArtifactQuestionField[];
-}
-
-export type ArtifactQuestionField =
-  | { type: "text"; header?: string; prompt: string }
-  | { type: "choice"; allowCustom?: boolean; header?: string; multiple?: boolean; options: QuestionOption[]; prompt: string };
-
 export interface ArtifactRun {
   contextTokens?: number;
   createdAt: string;
@@ -223,7 +214,7 @@ export interface ArtifactRun {
   id: string;
   limits?: RunLimits;
   messageMark: number;
-  metrics: ArtifactRunMetrics;
+  metrics: RunMetrics;
   model: string;
   outcome: ArtifactOutcome;
   parentRunId?: string;
@@ -234,12 +225,6 @@ export interface ArtifactRun {
   sessionId: string;
   spawnedByItemId?: string;
   updatedAt: string;
-}
-
-export interface ArtifactRunMetrics {
-  activeDurationMillis: number;
-  steps: number;
-  usage?: ArtifactUsage;
 }
 
 export interface ArtifactSession {
@@ -261,16 +246,6 @@ export interface ArtifactToolResult {
   itemId: string;
   preview: string;
   toolName: string;
-}
-
-export interface ArtifactUsage {
-  byModel?: Record<string, ModelUsage>;
-  cacheReadTokens?: number;
-  cacheWriteTokens?: number;
-  costUsd?: number;
-  inputTokens?: number;
-  outputTokens?: number;
-  reasoningTokens?: number;
 }
 
 export interface CancelRunRequest {

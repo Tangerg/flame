@@ -240,9 +240,9 @@ type ArtifactRun struct {
 	// Limits and Metrics split the same way the live wire does. The archive has
 	// to move with it: leaving the old combined shape here would keep a second,
 	// older account of what a run cost alive inside the export format.
-	Limits        *RunLimits         `json:"limits,omitempty"`
-	Metrics       ArtifactRunMetrics `json:"metrics"`
-	ContextTokens int64              `json:"contextTokens,omitempty"`
+	Limits        *RunLimits `json:"limits,omitempty"`
+	Metrics       RunMetrics `json:"metrics"`
+	ContextTokens int64      `json:"contextTokens,omitempty"`
 	// ProtocolProfile is the contract the run published under, required on a root
 	// and absent on a child. An import that dropped it would restore a run claiming
 	// the Minimal Profile, which is a different run. Import and export must
@@ -255,13 +255,6 @@ type ArtifactRun struct {
 	FinishedAt      time.Time           `json:"finishedAt,omitzero"`
 	UpdatedAt       time.Time           `json:"updatedAt,omitzero"`
 	MessageMark     int                 `json:"messageMark"`
-}
-
-// ArtifactRunMetrics is what a portable run consumed.
-type ArtifactRunMetrics struct {
-	Usage                *ArtifactUsage `json:"usage,omitempty"`
-	Steps                int            `json:"steps"`
-	ActiveDurationMillis int64          `json:"activeDurationMillis"`
 }
 
 // ArtifactOutcome is a non-interrupt terminal fact. Its string discriminator
@@ -286,16 +279,6 @@ const (
 	ArtifactOutcomeLost      ArtifactOutcomeType = "lost"
 )
 
-type ArtifactUsage struct {
-	InputTokens      int64                 `json:"inputTokens,omitempty"`
-	OutputTokens     int64                 `json:"outputTokens,omitempty"`
-	CacheReadTokens  int64                 `json:"cacheReadTokens,omitempty"`
-	CacheWriteTokens int64                 `json:"cacheWriteTokens,omitempty"`
-	ReasoningTokens  int64                 `json:"reasoningTokens,omitempty"`
-	CostUSD          *float64              `json:"costUsd,omitempty"`
-	ByModel          map[string]ModelUsage `json:"byModel,omitempty"`
-}
-
 // ArtifactItem is the durable transcript representation. It is not the live
 // Item response DTO: archive tool results remain canonical rather than being
 // transformed for a particular client presentation. Portable snapshots contain
@@ -314,31 +297,17 @@ type ArtifactItem struct {
 	FinishedAt     time.Time `json:"finishedAt,omitzero"`
 	DurationMillis *int64    `json:"durationMillis,omitempty"`
 
-	Content          []ContentBlock    `json:"content,omitempty"`
-	Phase            MessagePhase      `json:"phase,omitempty"`
-	Text             string            `json:"text,omitempty"`
-	Redacted         bool              `json:"redacted,omitempty"`
-	Question         *ArtifactQuestion `json:"question,omitempty"`
-	Tool             *ToolInvocation   `json:"tool,omitempty"`
-	SafetyClass      SafetyClass       `json:"safetyClass,omitempty"`
-	ApprovalDecision ApprovalDecision  `json:"approvalDecision,omitempty"`
-	Error            *ArtifactProblem  `json:"error,omitempty"`
-	Summary          string            `json:"summary,omitempty"`
-	DroppedMessages  int               `json:"droppedMessages,omitempty"`
-}
-
-type ArtifactQuestion struct {
-	Fields  []ArtifactQuestionField `json:"fields"`
-	Answers [][]string              `json:"answers,omitempty"`
-}
-
-type ArtifactQuestionField struct {
-	Prompt      string            `json:"prompt"`
-	Header      string            `json:"header,omitempty"`
-	Type        QuestionFieldType `json:"type"`
-	Options     []QuestionOption  `json:"options,omitempty"`
-	Multiple    bool              `json:"multiple,omitempty"`
-	AllowCustom bool              `json:"allowCustom,omitempty"`
+	Content          []ContentBlock   `json:"content,omitempty"`
+	Phase            MessagePhase     `json:"phase,omitempty"`
+	Text             string           `json:"text,omitempty"`
+	Redacted         bool             `json:"redacted,omitempty"`
+	Question         *Question        `json:"question,omitempty"`
+	Tool             *ToolInvocation  `json:"tool,omitempty"`
+	SafetyClass      SafetyClass      `json:"safetyClass,omitempty"`
+	ApprovalDecision ApprovalDecision `json:"approvalDecision,omitempty"`
+	Error            *ArtifactProblem `json:"error,omitempty"`
+	Summary          string           `json:"summary,omitempty"`
+	DroppedMessages  int              `json:"droppedMessages,omitempty"`
 }
 
 type ArtifactProblem struct {

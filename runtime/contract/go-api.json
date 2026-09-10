@@ -2641,7 +2641,7 @@
             },
             {
               "name": "Question",
-              "type": "*ArtifactQuestion",
+              "type": "*Question",
               "tag": "json:\"question,omitempty\""
             },
             {
@@ -2752,70 +2752,6 @@
           "underlying": "string"
         },
         {
-          "name": "ArtifactQuestion",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Fields",
-              "type": "[]ArtifactQuestionField",
-              "tag": "json:\"fields\""
-            },
-            {
-              "name": "Answers",
-              "type": "[][]string",
-              "tag": "json:\"answers,omitempty\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "ArtifactQuestionField",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Prompt",
-              "type": "string",
-              "tag": "json:\"prompt\""
-            },
-            {
-              "name": "Header",
-              "type": "string",
-              "tag": "json:\"header,omitempty\""
-            },
-            {
-              "name": "Type",
-              "type": "QuestionFieldType",
-              "tag": "json:\"type\""
-            },
-            {
-              "name": "Options",
-              "type": "[]QuestionOption",
-              "tag": "json:\"options,omitempty\""
-            },
-            {
-              "name": "Multiple",
-              "type": "bool",
-              "tag": "json:\"multiple,omitempty\""
-            },
-            {
-              "name": "AllowCustom",
-              "type": "bool",
-              "tag": "json:\"allowCustom,omitempty\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
           "name": "ArtifactRun",
           "kind": "struct",
           "fields": [
@@ -2866,7 +2802,7 @@
             },
             {
               "name": "Metrics",
-              "type": "ArtifactRunMetrics",
+              "type": "RunMetrics",
               "tag": "json:\"metrics\""
             },
             {
@@ -2903,33 +2839,6 @@
               "name": "MessageMark",
               "type": "int",
               "tag": "json:\"messageMark\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "ArtifactRunMetrics",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Usage",
-              "type": "*ArtifactUsage",
-              "tag": "json:\"usage,omitempty\""
-            },
-            {
-              "name": "Steps",
-              "type": "int",
-              "tag": "json:\"steps\""
-            },
-            {
-              "name": "ActiveDurationMillis",
-              "type": "int64",
-              "tag": "json:\"activeDurationMillis\""
             }
           ],
           "methods": [
@@ -3029,53 +2938,6 @@
               "name": "CreatedAt",
               "type": "time.Time",
               "tag": "json:\"createdAt,omitzero\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "ArtifactUsage",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "InputTokens",
-              "type": "int64",
-              "tag": "json:\"inputTokens,omitempty\""
-            },
-            {
-              "name": "OutputTokens",
-              "type": "int64",
-              "tag": "json:\"outputTokens,omitempty\""
-            },
-            {
-              "name": "CacheReadTokens",
-              "type": "int64",
-              "tag": "json:\"cacheReadTokens,omitempty\""
-            },
-            {
-              "name": "CacheWriteTokens",
-              "type": "int64",
-              "tag": "json:\"cacheWriteTokens,omitempty\""
-            },
-            {
-              "name": "ReasoningTokens",
-              "type": "int64",
-              "tag": "json:\"reasoningTokens,omitempty\""
-            },
-            {
-              "name": "CostUSD",
-              "type": "*float64",
-              "tag": "json:\"costUsd,omitempty\""
-            },
-            {
-              "name": "ByModel",
-              "type": "map[string]ModelUsage",
-              "tag": "json:\"byModel,omitempty\""
             }
           ],
           "methods": [

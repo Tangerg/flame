@@ -125,24 +125,24 @@ func artifactOutcomeType(outcome run.Outcome) (protocol.ArtifactOutcomeType, err
 	}
 }
 
-func artifactMetricsFromDomain(metrics run.Metrics) protocol.ArtifactRunMetrics {
+func artifactMetricsFromDomain(metrics run.Metrics) protocol.RunMetrics {
 	usage, reported := metrics.Usage()
 	var usageRef *accounting.Usage
 	if reported {
 		usageRef = &usage
 	}
-	return protocol.ArtifactRunMetrics{
+	return protocol.RunMetrics{
 		Usage:                artifactUsageFromDomain(usageRef),
 		Steps:                metrics.Steps(),
 		ActiveDurationMillis: metrics.ActiveDuration().Milliseconds(),
 	}
 }
 
-func artifactUsageFromDomain(usage *accounting.Usage) *protocol.ArtifactUsage {
+func artifactUsageFromDomain(usage *accounting.Usage) *protocol.Usage {
 	if usage == nil {
 		return nil
 	}
-	out := &protocol.ArtifactUsage{
+	out := &protocol.Usage{
 		InputTokens: usage.Total.InputTokens, OutputTokens: usage.Total.OutputTokens,
 		CacheReadTokens: usage.Total.CacheReadTokens, CacheWriteTokens: usage.Total.CacheWriteTokens,
 		ReasoningTokens: usage.Total.ReasoningTokens, CostUSD: usage.Total.CostUSD,
@@ -303,8 +303,8 @@ func artifactItemType(kind transcript.ItemKind) (protocol.ItemType, error) {
 	return protocol.ItemType(kind), nil
 }
 
-func artifactQuestionFromDomain(question transcript.Question) (*protocol.ArtifactQuestion, error) {
-	fields := make([]protocol.ArtifactQuestionField, len(question.Fields))
+func artifactQuestionFromDomain(question transcript.Question) (*protocol.Question, error) {
+	fields := make([]protocol.QuestionField, len(question.Fields))
 	for index, field := range question.Fields {
 		var options []protocol.QuestionOption
 		if len(field.Options) > 0 {
@@ -322,12 +322,12 @@ func artifactQuestionFromDomain(question transcript.Question) (*protocol.Artifac
 		default:
 			return nil, fmt.Errorf("field %d has unknown type %q", index, field.Kind)
 		}
-		fields[index] = protocol.ArtifactQuestionField{
+		fields[index] = protocol.QuestionField{
 			Prompt: field.Prompt, Header: field.Header, Type: fieldType,
 			Options: options, Multiple: field.Multiple, AllowCustom: field.AllowCustom,
 		}
 	}
-	return &protocol.ArtifactQuestion{Fields: fields, Answers: transcript.CloneAnswers(question.Answers)}, nil
+	return &protocol.Question{Fields: fields, Answers: transcript.CloneAnswers(question.Answers)}, nil
 }
 
 func artifactSafetyClass(class tool.SafetyClass) (protocol.SafetyClass, error) {

@@ -44,7 +44,7 @@ func TestPortableArtifactDecoderRejectsUnknownDiscriminators(t *testing.T) {
 		{"question field", func(a *protocol.SessionArtifact) {
 			a.Items[0].Type = "question"
 			a.Items[0].Content = nil
-			a.Items[0].Question = &protocol.ArtifactQuestion{Fields: []protocol.ArtifactQuestionField{{Type: "legacy"}}}
+			a.Items[0].Question = &protocol.Question{Fields: []protocol.QuestionField{{Type: "legacy"}}}
 		}},
 		{"problem type", func(a *protocol.SessionArtifact) {
 			a.Runs[0].Outcome.Type = "error"
@@ -276,7 +276,7 @@ func TestPortableArtifactDecoderPreservesUnknownToolExecutionDuration(t *testing
 }
 
 func TestArtifactV17RejectsSyntheticLifecyclesForCompleteFacts(t *testing.T) {
-	question := &protocol.ArtifactQuestion{Fields: []protocol.ArtifactQuestionField{{
+	question := &protocol.Question{Fields: []protocol.QuestionField{{
 		Type: protocol.QuestionFieldText, Prompt: "Continue?",
 	}}}
 	tests := []struct {

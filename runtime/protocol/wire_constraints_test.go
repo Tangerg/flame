@@ -1610,8 +1610,8 @@ func TestModelIdentitiesAreBoundedCanonicalWireValues(t *testing.T) {
 			value: Usage{ByModel: map[string]ModelUsage{"bad model": {}}},
 		},
 		{
-			name: "artifact model key too long", shape: "ArtifactUsage", field: "byModel[\"" + strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1) + "\"]",
-			value: ArtifactUsage{ByModel: map[string]ModelUsage{
+			name: "artifact model key too long", shape: "Usage", field: "byModel[\"" + strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1) + "\"]",
+			value: Usage{ByModel: map[string]ModelUsage{
 				strings.Repeat("m", modelref.MaximumModelIdentityCharacters+1): {},
 			}},
 		},
@@ -2069,11 +2069,11 @@ func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
 		{shape: "ArtifactRun", field: "messageMark", value: ArtifactRun{
 			ID: "run_1", SessionID: "ses_1", Provider: "provider", Model: "model", MessageMark: -1,
 		}},
-		{shape: "ArtifactRunMetrics", field: "steps", value: ArtifactRunMetrics{Steps: -1}},
-		{shape: "ArtifactRunMetrics", field: "activeDurationMillis", value: ArtifactRunMetrics{ActiveDurationMillis: -1}},
-		{shape: "ArtifactRunMetrics", field: "activeDurationMillis", value: ArtifactRunMetrics{ActiveDurationMillis: tooLongDuration}},
-		{shape: "ArtifactUsage", field: "inputTokens", value: ArtifactUsage{InputTokens: -1}},
-		{shape: "ArtifactUsage", field: "costUsd", value: ArtifactUsage{CostUSD: &cost}},
+		{shape: "RunMetrics", field: "steps", value: RunMetrics{Steps: -1}},
+		{shape: "RunMetrics", field: "activeDurationMillis", value: RunMetrics{ActiveDurationMillis: -1}},
+		{shape: "RunMetrics", field: "activeDurationMillis", value: RunMetrics{ActiveDurationMillis: tooLongDuration}},
+		{shape: "Usage", field: "inputTokens", value: Usage{InputTokens: -1}},
+		{shape: "Usage", field: "costUsd", value: Usage{CostUSD: &cost}},
 		{shape: "ModelUsage", field: "reasoningTokens", value: ModelUsage{ReasoningTokens: -1}},
 		{shape: "ArtifactItem", field: "droppedMessages", value: ArtifactItem{DroppedMessages: -1}},
 		{shape: "ArtifactItem", field: "durationMillis", value: ArtifactItem{DurationMillis: &tooLongDuration}},

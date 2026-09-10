@@ -2911,33 +2911,6 @@
       ]
     },
     {
-      "type": "ArtifactQuestionField",
-      "discriminator": "type",
-      "variants": [
-        {
-          "tag": "text",
-          "required": [
-            "prompt"
-          ],
-          "optional": [
-            "header"
-          ]
-        },
-        {
-          "tag": "choice",
-          "required": [
-            "prompt",
-            "options"
-          ],
-          "optional": [
-            "header",
-            "multiple",
-            "allowCustom"
-          ]
-        }
-      ]
-    },
-    {
       "type": "ProviderConfigChange",
       "discriminator": "type",
       "variants": [
@@ -5911,60 +5884,6 @@
       ]
     },
     {
-      "type": "ArtifactRunMetrics",
-      "rules": [
-        {
-          "field": "steps",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "activeDurationMillis",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "activeDurationMillis",
-          "constraint": "maximum(9223372036854)"
-        }
-      ]
-    },
-    {
-      "type": "ArtifactUsage",
-      "rules": [
-        {
-          "field": "inputTokens",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "outputTokens",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "cacheReadTokens",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "cacheWriteTokens",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "reasoningTokens",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "costUsd",
-          "constraint": "nonNegative"
-        },
-        {
-          "field": "byModel",
-          "constraint": "identityPropertyNames"
-        },
-        {
-          "field": "byModel",
-          "constraint": "maxPropertyNameLength(256)"
-        }
-      ]
-    },
-    {
       "type": "ArtifactProblem",
       "rules": [
         {
@@ -6473,41 +6392,7 @@
       ]
     },
     {
-      "type": "ArtifactQuestion",
-      "rules": [
-        {
-          "field": "fields",
-          "constraint": "nonEmptyItems"
-        },
-        {
-          "field": "fields",
-          "constraint": "maxItems(4)"
-        }
-      ]
-    },
-    {
       "type": "QuestionField",
-      "rules": [
-        {
-          "field": "prompt",
-          "constraint": "pattern(\"\\\\S\")"
-        },
-        {
-          "field": "header",
-          "constraint": "maxLength(12)"
-        },
-        {
-          "field": "options",
-          "constraint": "minItems(2)"
-        },
-        {
-          "field": "options",
-          "constraint": "maxItems(4)"
-        }
-      ]
-    },
-    {
-      "type": "ArtifactQuestionField",
       "rules": [
         {
           "field": "prompt",

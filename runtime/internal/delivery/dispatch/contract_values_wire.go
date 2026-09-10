@@ -235,25 +235,6 @@ func registerArtifactValues(s *Shapes) {
 		},
 	})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.ArtifactRunMetrics](),
-		Constraints: []FieldConstraint{
-			{Field: "steps", Kind: ConstraintNonNegative},
-			{Field: "activeDurationMillis", Kind: ConstraintNonNegative},
-			{Field: "activeDurationMillis", Kind: ConstraintMaximum, Limit: protocol.MaximumDurationMilliseconds},
-		},
-	})
-	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.ArtifactUsage](),
-		Constraints: append([]FieldConstraint{
-			{Field: "inputTokens", Kind: ConstraintNonNegative},
-			{Field: "outputTokens", Kind: ConstraintNonNegative},
-			{Field: "cacheReadTokens", Kind: ConstraintNonNegative},
-			{Field: "cacheWriteTokens", Kind: ConstraintNonNegative},
-			{Field: "reasoningTokens", Kind: ConstraintNonNegative},
-			{Field: "costUsd", Kind: ConstraintNonNegative},
-		}, modelUsageMapIdentities("byModel")...),
-	})
-	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.ArtifactProblem](),
 		Constraints: []FieldConstraint{
 			{Field: "retryAfterSeconds", Kind: ConstraintPositive},
@@ -378,32 +359,22 @@ func registerRunValues(s *Shapes) {
 				{Field: "input", Kind: ConstraintNonEmptyItems},
 			}...),
 	})
-	for _, questionType := range []reflect.Type{
-		typeOf[protocol.Question](),
-		typeOf[protocol.ArtifactQuestion](),
-	} {
-		s.valueConstraint(FieldConstraintSpec{
-			GoType: questionType,
-			Constraints: []FieldConstraint{
-				{Field: "fields", Kind: ConstraintNonEmptyItems},
-				{Field: "fields", Kind: ConstraintMaxItems, Limit: transcript.MaximumQuestionFields},
-			},
-		})
-	}
-	for _, fieldType := range []reflect.Type{
-		typeOf[protocol.QuestionField](),
-		typeOf[protocol.ArtifactQuestionField](),
-	} {
-		s.valueConstraint(FieldConstraintSpec{
-			GoType: fieldType,
-			Constraints: []FieldConstraint{
-				{Field: "prompt", Kind: ConstraintPattern, Value: `\S`},
-				{Field: "header", Kind: ConstraintMaxLength, Limit: transcript.MaximumQuestionHeaderCharacters},
-				{Field: "options", Kind: ConstraintMinItems, Limit: 2},
-				{Field: "options", Kind: ConstraintMaxItems, Limit: transcript.MaximumQuestionOptions},
-			},
-		})
-	}
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.Question](),
+		Constraints: []FieldConstraint{
+			{Field: "fields", Kind: ConstraintNonEmptyItems},
+			{Field: "fields", Kind: ConstraintMaxItems, Limit: transcript.MaximumQuestionFields},
+		},
+	})
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.QuestionField](),
+		Constraints: []FieldConstraint{
+			{Field: "prompt", Kind: ConstraintPattern, Value: `\S`},
+			{Field: "header", Kind: ConstraintMaxLength, Limit: transcript.MaximumQuestionHeaderCharacters},
+			{Field: "options", Kind: ConstraintMinItems, Limit: 2},
+			{Field: "options", Kind: ConstraintMaxItems, Limit: transcript.MaximumQuestionOptions},
+		},
+	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.QuestionOption](),
 		Constraints: []FieldConstraint{

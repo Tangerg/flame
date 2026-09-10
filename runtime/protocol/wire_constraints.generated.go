@@ -1034,22 +1034,6 @@ func (q QuestionField) ValidateWire() error {
 	)
 }
 
-func (a ArtifactQuestionField) ValidateWire() error {
-	return collectWireViolations("ArtifactQuestionField",
-		requiredTextPattern("prompt", a.Prompt, "\\S"),
-		maxLength("header", a.Header, 12),
-		optionalMinItems("options", a.Options, 2),
-		maxItems("options", a.Options, 4),
-		closedEnum("type", string(a.Type), []string{"text", "choice"}, false),
-		requiredWhen(wireFieldEquals(a, "type", "text"), "prompt", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "text"), "options", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "text"), "multiple", a),
-		forbiddenWhen(wireFieldEquals(a, "type", "text"), "allowCustom", a),
-		requiredWhen(wireFieldEquals(a, "type", "choice"), "prompt", a),
-		requiredWhen(wireFieldEquals(a, "type", "choice"), "options", a),
-	)
-}
-
 func (p ProviderConfigChange) ValidateWire() error {
 	return collectWireViolations("ProviderConfigChange",
 		optionalText("value", p.Value),
@@ -2082,27 +2066,6 @@ func (s SessionArtifact) ValidateWire() error {
 	)
 }
 
-func (a ArtifactRunMetrics) ValidateWire() error {
-	return collectWireViolations("ArtifactRunMetrics",
-		nonNegativeNumber("steps", a.Steps),
-		nonNegativeNumber("activeDurationMillis", a.ActiveDurationMillis),
-		maximumNumber("activeDurationMillis", a.ActiveDurationMillis, 9223372036854),
-	)
-}
-
-func (a ArtifactUsage) ValidateWire() error {
-	return collectWireViolations("ArtifactUsage",
-		nonNegativeNumber("inputTokens", a.InputTokens),
-		nonNegativeNumber("outputTokens", a.OutputTokens),
-		nonNegativeNumber("cacheReadTokens", a.CacheReadTokens),
-		nonNegativeNumber("cacheWriteTokens", a.CacheWriteTokens),
-		nonNegativeNumber("reasoningTokens", a.ReasoningTokens),
-		optionalNonNegativeNumber("costUsd", a.CostUSD),
-		identityPropertyNames("byModel", a.ByModel),
-		maxPropertyNameLength("byModel", a.ByModel, 256),
-	)
-}
-
 func (t ToolInvocation) ValidateWire() error {
 	return collectWireViolations("ToolInvocation",
 		requiredTextPattern("name", t.Name, "\\S"),
@@ -2188,13 +2151,6 @@ func (q Question) ValidateWire() error {
 	return collectWireViolations("Question",
 		requiredItems("fields", q.Fields),
 		maxItems("fields", q.Fields, 4),
-	)
-}
-
-func (a ArtifactQuestion) ValidateWire() error {
-	return collectWireViolations("ArtifactQuestion",
-		requiredItems("fields", a.Fields),
-		maxItems("fields", a.Fields, 4),
 	)
 }
 

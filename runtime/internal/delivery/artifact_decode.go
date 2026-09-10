@@ -247,7 +247,7 @@ func portableOutcomeFromArtifact(path string, value protocol.ArtifactOutcomeType
 	}
 }
 
-func portableMetricsFromArtifact(path string, artifact protocol.ArtifactRunMetrics) (run.Metrics, error) {
+func portableMetricsFromArtifact(path string, artifact protocol.RunMetrics) (run.Metrics, error) {
 	metrics, err := run.NewMetrics(
 		portableUsageFromArtifact(artifact.Usage),
 		artifact.Steps,
@@ -259,7 +259,7 @@ func portableMetricsFromArtifact(path string, artifact protocol.ArtifactRunMetri
 	return metrics, nil
 }
 
-func portableUsageFromArtifact(artifact *protocol.ArtifactUsage) *accounting.Usage {
+func portableUsageFromArtifact(artifact *protocol.Usage) *accounting.Usage {
 	if artifact == nil {
 		return nil
 	}
@@ -403,7 +403,7 @@ func portableContentFromArtifact(path string, artifact protocol.ContentBlock) (t
 	return decoded, nil
 }
 
-func portableQuestionFromArtifact(path string, artifact protocol.ArtifactQuestion) (transcript.Question, error) {
+func portableQuestionFromArtifact(path string, artifact protocol.Question) (transcript.Question, error) {
 	fields := make([]transcript.QuestionField, len(artifact.Fields))
 	for index, field := range artifact.Fields {
 		kind, err := portableQuestionFieldKind(fmt.Sprintf("%s.fields[%d].type", path, index), field.Type)

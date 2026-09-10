@@ -43,13 +43,9 @@ export type WireTypeName =
   | "ArtifactOutcomeType"
   | "ArtifactProblem"
   | "ArtifactProblemType"
-  | "ArtifactQuestion"
-  | "ArtifactQuestionField"
   | "ArtifactRun"
-  | "ArtifactRunMetrics"
   | "ArtifactSession"
   | "ArtifactToolResult"
-  | "ArtifactUsage"
   | "CancelRunRequest"
   | "CancelRunResponse"
   | "CancelRunResponseType"
@@ -462,7 +458,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       finishedAt: text(),
       id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       phase: ref(() => CHECKS.MessagePhase),
-      question: ref(() => CHECKS.ArtifactQuestion),
+      question: ref(() => CHECKS.Question),
       redacted: flag(),
       runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       safetyClass: ref(() => CHECKS.SafetyClass),
@@ -718,31 +714,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     ),
   ]),
   ArtifactProblemType: enumOf(["internalError", "runLost", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected", "deniedByUser", "toolFailed", "childRunCanceled", "toolCanceled"]),
-  ArtifactQuestion: object({
-    answers: array(array(text())),
-    fields: allOf([array(ref(() => CHECKS.ArtifactQuestionField)), minItems(1), maxItems(4)]),
-  }, ["fields"]),
-  ArtifactQuestionField: allOf([
-    object({
-      allowCustom: flag(),
-      header: allOf([text(), maxLength(12)]),
-      multiple: flag(),
-      options: allOf([array(ref(() => CHECKS.QuestionOption)), minItems(2), maxItems(4)]),
-      prompt: allOf([text(), pattern("\\S")]),
-      type: ref(() => CHECKS.QuestionFieldType),
-    }, []),
-    oneOf([
-      fields({
-        allowCustom: absent(),
-        multiple: absent(),
-        options: absent(),
-        type: literal("text"),
-      }, ["prompt", "type"]),
-      fields({
-        type: literal("choice"),
-      }, ["options", "prompt", "type"]),
-    ]),
-  ]),
   ArtifactRun: allOf([
     object({
       contextTokens: allOf([integer(), minimum(0)]),
@@ -751,7 +722,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       limits: ref(() => CHECKS.RunLimits),
       messageMark: allOf([integer(), minimum(0)]),
-      metrics: ref(() => CHECKS.ArtifactRunMetrics),
+      metrics: ref(() => CHECKS.RunMetrics),
       model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       outcome: ref(() => CHECKS.ArtifactOutcome),
       parentRunId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -782,11 +753,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       fields({}, ["parentRunId", "spawnedByItemId"]),
     ),
   ]),
-  ArtifactRunMetrics: object({
-    activeDurationMillis: allOf([integer(), minimum(0), maximum(9223372036854)]),
-    steps: allOf([integer(), minimum(0)]),
-    usage: ref(() => CHECKS.ArtifactUsage),
-  }, ["activeDurationMillis", "steps"]),
   ArtifactSession: object({
     createdAt: text(),
     favorite: flag(),
@@ -806,15 +772,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     preview: allOf([text(), minLength(1)]),
     toolName: allOf([text(), pattern("\\S")]),
   }, ["body", "createdAt", "id", "itemId", "preview", "toolName"]),
-  ArtifactUsage: object({
-    byModel: allOf([record(ref(() => CHECKS.ModelUsage)), propertyNames(allOf([maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]))]),
-    cacheReadTokens: allOf([integer(), minimum(0)]),
-    cacheWriteTokens: allOf([integer(), minimum(0)]),
-    costUsd: allOf([numeric(), minimum(0)]),
-    inputTokens: allOf([integer(), minimum(0)]),
-    outputTokens: allOf([integer(), minimum(0)]),
-    reasoningTokens: allOf([integer(), minimum(0)]),
-  }, []),
   CancelRunRequest: object({
     reason: allOf([text(), maxLength(1024)]),
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),

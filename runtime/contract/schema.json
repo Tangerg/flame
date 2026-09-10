@@ -530,7 +530,7 @@
           "$ref": "#/$defs/MessagePhase"
         },
         "question": {
-          "$ref": "#/$defs/ArtifactQuestion"
+          "$ref": "#/$defs/Question"
         },
         "redacted": {
           "type": "boolean"
@@ -1156,89 +1156,6 @@
         "toolCanceled"
       ]
     },
-    "ArtifactQuestion": {
-      "type": "object",
-      "properties": {
-        "answers": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "fields": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 4,
-          "items": {
-            "$ref": "#/$defs/ArtifactQuestionField"
-          }
-        }
-      },
-      "required": [
-        "fields"
-      ]
-    },
-    "ArtifactQuestionField": {
-      "type": "object",
-      "properties": {
-        "allowCustom": {
-          "type": "boolean"
-        },
-        "header": {
-          "type": "string",
-          "maxLength": 12
-        },
-        "multiple": {
-          "type": "boolean"
-        },
-        "options": {
-          "type": "array",
-          "minItems": 2,
-          "maxItems": 4,
-          "items": {
-            "$ref": "#/$defs/QuestionOption"
-          }
-        },
-        "prompt": {
-          "type": "string",
-          "pattern": "\\S"
-        },
-        "type": {
-          "$ref": "#/$defs/QuestionFieldType"
-        }
-      },
-      "oneOf": [
-        {
-          "properties": {
-            "allowCustom": false,
-            "multiple": false,
-            "options": false,
-            "type": {
-              "const": "text"
-            }
-          },
-          "required": [
-            "prompt",
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "type": {
-              "const": "choice"
-            }
-          },
-          "required": [
-            "options",
-            "prompt",
-            "type"
-          ]
-        }
-      ]
-    },
     "ArtifactRun": {
       "type": "object",
       "properties": {
@@ -1268,7 +1185,7 @@
           "minimum": 0
         },
         "metrics": {
-          "$ref": "#/$defs/ArtifactRunMetrics"
+          "$ref": "#/$defs/RunMetrics"
         },
         "model": {
           "type": "string",
@@ -1385,27 +1302,6 @@
         }
       ]
     },
-    "ArtifactRunMetrics": {
-      "type": "object",
-      "properties": {
-        "activeDurationMillis": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9223372036854
-        },
-        "steps": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "usage": {
-          "$ref": "#/$defs/ArtifactUsage"
-        }
-      },
-      "required": [
-        "activeDurationMillis",
-        "steps"
-      ]
-    },
     "ArtifactSession": {
       "type": "object",
       "properties": {
@@ -1498,45 +1394,6 @@
         "preview",
         "toolName"
       ]
-    },
-    "ArtifactUsage": {
-      "type": "object",
-      "properties": {
-        "byModel": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/$defs/ModelUsage"
-          },
-          "propertyNames": {
-            "maxLength": 256,
-            "pattern": "^[^\\p{C}\\p{Z}]*$"
-          }
-        },
-        "cacheReadTokens": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "cacheWriteTokens": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "costUsd": {
-          "type": "number",
-          "minimum": 0
-        },
-        "inputTokens": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "outputTokens": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "reasoningTokens": {
-          "type": "integer",
-          "minimum": 0
-        }
-      }
     },
     "CancelRunRequest": {
       "type": "object",

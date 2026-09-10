@@ -275,13 +275,6 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `text` | `prompt` | `header` |
 | `choice` | `prompt`, `options` | `header`, `multiple`, `allowCustom` |
 
-### `ArtifactQuestionField`
-
-| tag | required | optional |
-| --- | --- | --- |
-| `text` | `prompt` | `header` |
-| `choice` | `prompt`, `options` | `header`, `multiple`, `allowCustom` |
-
 ### `ProviderConfigChange`
 
 | tag | required | optional |
@@ -541,17 +534,6 @@ TypeScript validator from this single registry projection.
 | `ArtifactToolResult` | `itemId` | `maxLength(256)` |
 | `SessionArtifact` | `version` | `minimum(27)` |
 | `SessionArtifact` | `version` | `maximum(27)` |
-| `ArtifactRunMetrics` | `steps` | `nonNegative` |
-| `ArtifactRunMetrics` | `activeDurationMillis` | `nonNegative` |
-| `ArtifactRunMetrics` | `activeDurationMillis` | `maximum(9223372036854)` |
-| `ArtifactUsage` | `inputTokens` | `nonNegative` |
-| `ArtifactUsage` | `outputTokens` | `nonNegative` |
-| `ArtifactUsage` | `cacheReadTokens` | `nonNegative` |
-| `ArtifactUsage` | `cacheWriteTokens` | `nonNegative` |
-| `ArtifactUsage` | `reasoningTokens` | `nonNegative` |
-| `ArtifactUsage` | `costUsd` | `nonNegative` |
-| `ArtifactUsage` | `byModel` | `identityPropertyNames` |
-| `ArtifactUsage` | `byModel` | `maxPropertyNameLength(256)` |
 | `ArtifactProblem` | `retryAfterSeconds` | `positive` |
 | `ArtifactProblem` | `retryAfterSeconds` | `maximum(9223372036)` |
 | `ContentBlock` | `text` | `pattern("\\S")` |
@@ -654,16 +636,10 @@ TypeScript validator from this single registry projection.
 | `ResumeRunRequest` | `input` | `nonEmptyItems` |
 | `Question` | `fields` | `nonEmptyItems` |
 | `Question` | `fields` | `maxItems(4)` |
-| `ArtifactQuestion` | `fields` | `nonEmptyItems` |
-| `ArtifactQuestion` | `fields` | `maxItems(4)` |
 | `QuestionField` | `prompt` | `pattern("\\S")` |
 | `QuestionField` | `header` | `maxLength(12)` |
 | `QuestionField` | `options` | `minItems(2)` |
 | `QuestionField` | `options` | `maxItems(4)` |
-| `ArtifactQuestionField` | `prompt` | `pattern("\\S")` |
-| `ArtifactQuestionField` | `header` | `maxLength(12)` |
-| `ArtifactQuestionField` | `options` | `minItems(2)` |
-| `ArtifactQuestionField` | `options` | `maxItems(4)` |
 | `QuestionOption` | `label` | `pattern("\\S")` |
 | `InterruptResponseValue` | `answers` | `nonEmptyItems` |
 | `StartRunResponse` | `runId` | `nonEmpty` |
