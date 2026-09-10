@@ -97,12 +97,12 @@ func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 		return true, nil
 	case BlockDelta:
 		key := blockIdentity(envelope.RunID, item.BlockID)
-		_, exists := c.index[key]
-		return !exists || !c.open[key], nil
+		at, exists := c.index[key]
+		return !exists || c.blocks[at].Status != BlockStatusRunning, nil
 	case BlockCompleted:
 		key := blockIdentity(item.Block.RunID, item.Block.ID)
 		at, exists := c.index[key]
-		if !exists || c.open[key] {
+		if !exists || c.blocks[at].Status == BlockStatusRunning {
 			return false, nil
 		}
 		if !c.blocks[at].Equal(item.Block) {
@@ -250,7 +250,7 @@ func (c *Conversation) applyBlockDelta(runID string, event BlockDelta) error {
 	if !ok {
 		return fmt.Errorf("%w: %s", ErrUnknownBlock, event.BlockID)
 	}
-	if !c.open[key] {
+	if c.blocks[at].Status != BlockStatusRunning {
 		return fmt.Errorf("%w: block %s is already complete", ErrInvalidTransition, event.BlockID)
 	}
 	block := &c.blocks[at]
@@ -280,7 +280,7 @@ func (c *Conversation) applyToolArgumentsDelta(runID string, event ToolArguments
 		return fmt.Errorf("%w: %s", ErrUnknownBlock, event.BlockID)
 	}
 	block := c.blocks[at]
-	if !c.open[key] || block.Kind != BlockTool {
+	if block.Status != BlockStatusRunning || block.Kind != BlockTool {
 		return fmt.Errorf("%w: block %s cannot stream tool arguments", ErrInvalidTransition, event.BlockID)
 	}
 	return nil

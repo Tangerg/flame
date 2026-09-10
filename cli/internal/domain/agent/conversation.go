@@ -44,7 +44,6 @@ type Conversation struct {
 	runs        map[string]Run
 	runOrder    []string
 	index       map[string]int
-	open        map[string]bool
 	textStreams map[string]StreamedText
 	reconciling bool
 	coldTail    bool
@@ -63,7 +62,6 @@ func NewConversation() *Conversation {
 		seen:        make(map[string]RunEvent),
 		runs:        make(map[string]Run),
 		index:       make(map[string]int),
-		open:        make(map[string]bool),
 		textStreams: make(map[string]StreamedText),
 	}
 }
@@ -239,7 +237,6 @@ func (c *Conversation) ClearPresentation() {
 	c.usage = Usage{}
 	c.outcome = Outcome{}
 	c.index = make(map[string]int)
-	c.open = make(map[string]bool)
 	c.textStreams = make(map[string]StreamedText)
 }
 
@@ -250,20 +247,18 @@ func (c *Conversation) put(block Block, completed bool) error {
 		if !completed {
 			return fmt.Errorf("%w: block %s started twice", ErrInvalidTransition, block.ID)
 		}
-		if !c.open[key] {
+		if c.blocks[at].Status != BlockStatusRunning {
 			return fmt.Errorf("%w: block %s completed twice", ErrInvalidTransition, block.ID)
 		}
 		if err := validateBlockIdentity(c.blocks[at], block); err != nil {
 			return err
 		}
 		c.blocks[at] = block.Clone()
-		c.open[key] = block.Status == BlockStatusRunning
 		delete(c.textStreams, key)
 		return nil
 	}
 	c.index[key] = len(c.blocks)
 	c.blocks = append(c.blocks, block.Clone())
-	c.open[key] = !completed
 	if !completed && (block.Kind == BlockAssistant || block.Kind == BlockReasoning) {
 		c.textStreams[key] = NewStreamedText(block.Text)
 	}
@@ -296,9 +291,6 @@ func (c *Conversation) ensureStorage() {
 	if c.runs == nil {
 		c.runs = make(map[string]Run)
 	}
-	if c.open == nil {
-		c.open = make(map[string]bool)
-	}
 	if c.textStreams == nil {
 		c.textStreams = make(map[string]StreamedText)
 	}
@@ -313,12 +305,10 @@ func (c *Conversation) rememberRun(run Run) {
 
 func (c *Conversation) rebuildBlockIndex() {
 	c.index = make(map[string]int, len(c.blocks))
-	c.open = make(map[string]bool, len(c.blocks))
 	c.textStreams = make(map[string]StreamedText)
 	for i, block := range c.blocks {
 		key := blockIdentity(block.RunID, block.ID)
 		c.index[key] = i
-		c.open[key] = block.Status == BlockStatusRunning
 		if block.Status == BlockStatusRunning && (block.Kind == BlockAssistant || block.Kind == BlockReasoning) {
 			c.textStreams[key] = NewStreamedText(block.Text)
 		}
@@ -326,8 +316,8 @@ func (c *Conversation) rebuildBlockIndex() {
 }
 
 func (c *Conversation) hasOpenBlocksForRun(runID string) bool {
-	for key, open := range c.open {
-		if open && c.blocks[c.index[key]].RunID == runID {
+	for _, block := range c.blocks {
+		if block.Status == BlockStatusRunning && block.RunID == runID {
 			return true
 		}
 	}
@@ -335,35 +325,30 @@ func (c *Conversation) hasOpenBlocksForRun(runID string) bool {
 }
 
 func (c *Conversation) settleOpenBlocks(toolStatus ToolStatus) {
-	for key, open := range c.open {
-		if !open {
+	for index := range c.blocks {
+		block := &c.blocks[index]
+		if block.Status != BlockStatusRunning {
 			continue
 		}
-		block := &c.blocks[c.index[key]]
 		if block.Kind == BlockTool && block.Tool != nil {
 			block.Tool.Status = toolStatus
 		}
 		block.Status = BlockStatusIncomplete
-		c.open[key] = false
-		delete(c.textStreams, key)
+		delete(c.textStreams, blockIdentity(block.RunID, block.ID))
 	}
 }
 
 func (c *Conversation) settleOpenBlocksForRun(runID string, toolStatus ToolStatus) {
-	for key, open := range c.open {
-		if !open {
-			continue
-		}
-		block := &c.blocks[c.index[key]]
-		if block.RunID != runID {
+	for index := range c.blocks {
+		block := &c.blocks[index]
+		if block.Status != BlockStatusRunning || block.RunID != runID {
 			continue
 		}
 		if block.Kind == BlockTool && block.Tool != nil {
 			block.Tool.Status = toolStatus
 		}
 		block.Status = BlockStatusIncomplete
-		c.open[key] = false
-		delete(c.textStreams, key)
+		delete(c.textStreams, blockIdentity(block.RunID, block.ID))
 	}
 }
 
