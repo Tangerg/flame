@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
+
+	"github.com/Tangerg/flame/cli/internal/strictjson"
 )
 
 type runLimitsKind string
@@ -115,14 +116,14 @@ func (r RunLimits) MarshalJSON() ([]byte, error) {
 }
 
 func (r *RunLimits) UnmarshalJSON(encoded []byte) error {
+	if err := strictjson.ValidateUniqueMembers(encoded); err != nil {
+		return fmt.Errorf("run limits: %w", err)
+	}
 	decoder := json.NewDecoder(bytes.NewReader(encoded))
 	decoder.DisallowUnknownFields()
 	var wire runLimitsJSON
 	if err := decoder.Decode(&wire); err != nil {
 		return fmt.Errorf("run limits: decode: %w", err)
-	}
-	if err := rejectRunLimitsTrailingJSON(decoder); err != nil {
-		return err
 	}
 	var parsed RunLimits
 	switch wire.Kind {
@@ -146,14 +147,4 @@ func (r *RunLimits) UnmarshalJSON(encoded []byte) error {
 	}
 	*r = parsed
 	return nil
-}
-
-func rejectRunLimitsTrailingJSON(decoder *json.Decoder) error {
-	var trailing any
-	if err := decoder.Decode(&trailing); errors.Is(err, io.EOF) {
-		return nil
-	} else if err != nil {
-		return fmt.Errorf("run limits: trailing JSON: %w", err)
-	}
-	return errors.New("run limits: trailing JSON value")
 }

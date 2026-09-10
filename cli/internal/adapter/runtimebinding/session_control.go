@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -15,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/cli/internal/strictjson"
 )
 
 type sessionBinding interface {
@@ -145,13 +145,13 @@ func (r *Connection) ImportSession(ctx context.Context, request session.ImportRe
 		return agent.Session{}, err
 	}
 	var artifact protocol.SessionArtifact
+	if err := strictjson.ValidateUniqueMembers(request.Artifact.Bytes()); err != nil {
+		return agent.Session{}, fmt.Errorf("import session: artifact: %w", err)
+	}
 	decoder := json.NewDecoder(bytes.NewReader(request.Artifact.Bytes()))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&artifact); err != nil {
 		return agent.Session{}, fmt.Errorf("import session: decode artifact: %w", err)
-	}
-	if err := requireJSONEnd(decoder); err != nil {
-		return agent.Session{}, fmt.Errorf("import session: %w", err)
 	}
 	if err := protocol.ValidateWireTree(artifact); err != nil {
 		return agent.Session{}, fmt.Errorf("import session: %w", err)
@@ -214,16 +214,4 @@ func validateImportedSession(archived protocol.ArtifactSession, resolvedWorkspac
 		problems = append(problems, fmt.Errorf("runtime returned status %q, want %q", result.Status, protocol.SessionStatusIdle))
 	}
 	return errors.Join(problems...)
-}
-
-func requireJSONEnd(decoder *json.Decoder) error {
-	var trailing any
-	err := decoder.Decode(&trailing)
-	if errors.Is(err, io.EOF) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("decode artifact trailer: %w", err)
-	}
-	return errors.New("artifact contains more than one JSON value")
 }

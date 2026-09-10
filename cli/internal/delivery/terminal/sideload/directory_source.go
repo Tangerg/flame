@@ -22,6 +22,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
+	"github.com/Tangerg/flame/cli/internal/strictjson"
 )
 
 const (
@@ -281,13 +282,13 @@ func readPlugin(directory string) (extensions.Plugin, bool, error) {
 		return extensions.Plugin{}, false, fmt.Errorf("verify plugin manifest %q after reading: %w", path, err)
 	}
 	var declared pluginManifest
+	if validateErr := strictjson.ValidateUniqueMembers(encoded); validateErr != nil {
+		return extensions.Plugin{}, false, fmt.Errorf("decode plugin manifest %q: %w", path, validateErr)
+	}
 	decoder := json.NewDecoder(bytes.NewReader(encoded))
 	decoder.DisallowUnknownFields()
 	if decodeErr := decoder.Decode(&declared); decodeErr != nil {
 		return extensions.Plugin{}, false, fmt.Errorf("decode plugin manifest %q: %w", path, decodeErr)
-	}
-	if rejectTrailingJSONErr := rejectTrailingJSON(decoder); rejectTrailingJSONErr != nil {
-		return extensions.Plugin{}, false, fmt.Errorf("decode plugin manifest %q: %w", path, rejectTrailingJSONErr)
 	}
 	plugin, err := compilePlugin(directory, declared)
 	if err != nil {
@@ -304,16 +305,6 @@ func validateManifestSource(path string, info os.FileInfo) error {
 		return fmt.Errorf("plugin manifest %q exceeds %d bytes", path, maxManifestBytes)
 	}
 	return nil
-}
-
-func rejectTrailingJSON(decoder *json.Decoder) error {
-	var extra any
-	if err := decoder.Decode(&extra); errors.Is(err, io.EOF) {
-		return nil
-	} else if err != nil {
-		return err
-	}
-	return errors.New("input contains multiple JSON values")
 }
 
 func compilePlugin(directory string, declared pluginManifest) (extensions.Plugin, error) {

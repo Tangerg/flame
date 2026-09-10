@@ -168,7 +168,7 @@ func ringOf(relative string) ring {
 		return ringComposition
 	case packageWithin(relative, "internal/arch"):
 		return ringComposition
-	case packageWithin(relative, "internal/exactint"):
+	case packageWithin(relative, "internal/exactint"), packageWithin(relative, "internal/strictjson"):
 		return ringMechanism
 	case packageWithin(relative, "internal/domain"):
 		return ringDomain

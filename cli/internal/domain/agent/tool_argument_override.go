@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	"github.com/Tangerg/flame/cli/internal/strictjson"
 )
 
 // ToolArgumentOverride is a validated, immutable replacement for one pending
@@ -103,69 +103,14 @@ func (t *ToolArgumentOverride) UnmarshalJSON(encoded []byte) error {
 }
 
 func decodeToolArgumentJSON(encoded []byte) (any, error) {
-	decoder := json.NewDecoder(bytes.NewReader(encoded))
-	decoder.UseNumber()
-	value, err := decodeDistinctJSONValue(decoder, "arguments")
-	if err != nil {
+	if err := strictjson.ValidateUniqueMembers(encoded); err != nil {
 		return nil, fmt.Errorf("tool argument override: %w", err)
 	}
-	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return nil, errors.New("tool argument override contains more than one JSON value")
-		}
+	decoder := json.NewDecoder(bytes.NewReader(encoded))
+	decoder.UseNumber()
+	var value any
+	if err := decoder.Decode(&value); err != nil {
 		return nil, fmt.Errorf("tool argument override: %w", err)
 	}
 	return value, nil
-}
-
-func decodeDistinctJSONValue(decoder *json.Decoder, path string) (any, error) {
-	token, err := decoder.Token()
-	if err != nil {
-		return nil, err
-	}
-	delimiter, compound := token.(json.Delim)
-	if !compound {
-		return token, nil
-	}
-	switch delimiter {
-	case '{':
-		object := make(map[string]any)
-		for decoder.More() {
-			keyToken, err := decoder.Token()
-			if err != nil {
-				return nil, err
-			}
-			key, ok := keyToken.(string)
-			if !ok {
-				return nil, fmt.Errorf("%s has a non-string object key", path)
-			}
-			if _, duplicate := object[key]; duplicate {
-				return nil, fmt.Errorf("%s repeats key %q", path, key)
-			}
-			value, err := decodeDistinctJSONValue(decoder, path+"."+key)
-			if err != nil {
-				return nil, err
-			}
-			object[key] = value
-		}
-		if _, err := decoder.Token(); err != nil {
-			return nil, err
-		}
-		return object, nil
-	case '[':
-		values := make([]any, 0)
-		for index := 0; decoder.More(); index++ {
-			value, err := decodeDistinctJSONValue(decoder, fmt.Sprintf("%s[%d]", path, index))
-			if err != nil {
-				return nil, err
-			}
-			values = append(values, value)
-		}
-		if _, err := decoder.Token(); err != nil {
-			return nil, err
-		}
-		return values, nil
-	default:
-		return nil, fmt.Errorf("%s starts with unexpected delimiter %q", path, delimiter)
-	}
 }

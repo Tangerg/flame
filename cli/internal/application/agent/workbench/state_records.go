@@ -7,12 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"path/filepath"
 	"slices"
 
 	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/strictjson"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -122,18 +122,12 @@ func (s *Store) load(name string, value any) error {
 }
 
 func decodeStateJSON(encoded []byte, value any) error {
+	if err := strictjson.ValidateUniqueMembers(encoded); err != nil {
+		return err
+	}
 	decoder := json.NewDecoder(bytes.NewReader(encoded))
 	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(value); err != nil {
-		return err
-	}
-	if err := decoder.Decode(new(json.RawMessage)); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return errors.New("unexpected trailing JSON value")
-		}
-		return err
-	}
-	return nil
+	return decoder.Decode(value)
 }
 
 func (s *Store) loadOptional(name string, value any) error {

@@ -16,6 +16,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
+	"github.com/Tangerg/flame/cli/internal/strictjson"
 )
 
 const (
@@ -155,13 +156,13 @@ func commandEnvironment(pluginID, command string) []string {
 }
 
 func decodeCommandResponse(pluginID, command string, output []byte) (terminal.CommandResult, error) {
+	if err := strictjson.ValidateUniqueMembers(output); err != nil {
+		return terminal.CommandResult{}, fmt.Errorf("decode plugin %s command /%s response: %w", pluginID, command, err)
+	}
 	decoder := json.NewDecoder(bytes.NewReader(output))
 	decoder.DisallowUnknownFields()
 	var response commandResponse
 	if err := decoder.Decode(&response); err != nil {
-		return terminal.CommandResult{}, fmt.Errorf("decode plugin %s command /%s response: %w", pluginID, command, err)
-	}
-	if err := rejectTrailingJSON(decoder); err != nil {
 		return terminal.CommandResult{}, fmt.Errorf("decode plugin %s command /%s response: %w", pluginID, command, err)
 	}
 	if response.Protocol != commandProtocolVersion {

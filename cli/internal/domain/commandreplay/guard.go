@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/cli/internal/strictjson"
 )
 
 type GuardKind string
@@ -87,18 +88,14 @@ func (g Guard) MarshalJSON() ([]byte, error) {
 }
 
 func (g *Guard) UnmarshalJSON(data []byte) error {
+	if err := strictjson.ValidateUniqueMembers(data); err != nil {
+		return fmt.Errorf("decode command replay guard: %w", err)
+	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	var wire guardJSON
 	if err := decoder.Decode(&wire); err != nil {
 		return fmt.Errorf("decode command replay guard: %w", err)
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return errors.New("decode command replay guard: trailing JSON value")
-		}
-		return fmt.Errorf("decode command replay guard trailing data: %w", err)
 	}
 	switch wire.Type {
 	case GuardUnprotected:
