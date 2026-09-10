@@ -1698,6 +1698,16 @@ func TestValidateReductionBatchRejectsMalformedBoundaries(t *testing.T) {
 		{name: "park commit does not suspend", batch: reductionBatch{
 			events: []reduction{{Event: SegmentFinished{}}}, parkCommit: new(EventCommit),
 		}},
+		{name: "park commit terminalizes instead", batch: reductionBatch{
+			events: []reduction{{Event: SegmentFinished{}}}, parkCommit: terminalCommit(),
+		}},
+		{name: "park commit disowns its Run", batch: reductionBatch{
+			events: []reduction{{Event: SegmentFinished{}}}, parkCommit: func() *EventCommit {
+				commit := parkCommit()
+				commit.RunID = "run_elsewhere"
+				return commit
+			}(),
+		}},
 	}
 
 	for _, test := range tests {

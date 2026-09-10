@@ -1,10 +1,6 @@
 package runs
 
-import (
-	"fmt"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
-)
+import "fmt"
 
 // validateReductionBatch checks the complete pump-facing persistence and
 // publication boundary before either side becomes observable.
@@ -25,9 +21,6 @@ func validateReductionBatch(batch reductionBatch) error {
 	}
 	if terminalAt < 0 {
 		return nil
-	}
-	if err := validateTerminalReduction(batch.events[terminalAt]); err != nil {
-		return err
 	}
 	combined, err := combineTerminalEventCommit(batch)
 	if err != nil {
@@ -95,38 +88,14 @@ func validateParkReductionBatch(batch reductionBatch, terminalAt int) error {
 		}
 	}
 	commit := batch.parkCommit
-	switch {
-	case commit == nil:
-		return fmt.Errorf("%w: park batch has no projection commit", errReducerInvariant)
-	case commit.State != StateSuspend:
+	if commit.State != StateSuspend {
 		return fmt.Errorf("%w: park batch commit does not suspend the run", errReducerInvariant)
-	case commit.Run == nil || commit.Run.State() != run.Waiting:
-		return fmt.Errorf("%w: park batch commit has no waiting Run", errReducerInvariant)
-	case terminalAt != len(batch.events)-1:
+	}
+	if err := commit.Validate(); err != nil {
+		return fmt.Errorf("%w: %w", errReducerInvariant, err)
+	}
+	if terminalAt != len(batch.events)-1 {
 		return fmt.Errorf("%w: park batch has no terminal boundary event", errReducerInvariant)
-	}
-	return nil
-}
-
-func validateTerminalReduction(reduced reduction) error {
-	commit := reduced.Commit
-	switch {
-	case commit == nil:
-		return fmt.Errorf("%w: terminal event has no projection commit", errReducerInvariant)
-	case commit.State != StateTerminalize:
-		return fmt.Errorf("%w: terminal event commit does not terminalize the run", errReducerInvariant)
-	case commit.Run == nil || !commit.Run.State().IsTerminal():
-		return fmt.Errorf("%w: terminal event commit has no terminal run", errReducerInvariant)
-	case commit.GoalRun != nil && (commit.GoalRun.RunID != commit.RunID || commit.GoalRun.SessionID != commit.SessionID || commit.GoalRun.Outcome != commit.Outcome):
-		return fmt.Errorf("%w: terminal event commit has an inconsistent Goal Run", errReducerInvariant)
-	}
-	wantState, ok := run.Running.Terminate(commit.Outcome)
-	committedOutcome, terminal := commit.Run.Outcome()
-	if !terminal || committedOutcome != commit.Outcome {
-		return fmt.Errorf("%w: terminal event commit has an inconsistent outcome", errReducerInvariant)
-	}
-	if !ok || commit.Run.State() != wantState {
-		return fmt.Errorf("%w: terminal event commit has an invalid lifecycle transition", errReducerInvariant)
 	}
 	return nil
 }
