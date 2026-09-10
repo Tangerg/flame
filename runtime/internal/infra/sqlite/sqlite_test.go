@@ -353,8 +353,7 @@ func TestTranscriptStoreReplaceItemUsesExactOptimisticSnapshot(t *testing.T) {
 		RunID:      "run_1",
 		ID:         "item_child",
 		OccurredAt: now,
-		FinishedAt: now,
-		Status:     transcript.ItemIncomplete,
+		Status:     transcript.ItemRunning,
 		Kind:       transcript.ToolCall,
 		Tool:       &transcript.ToolInvocation{Name: "delegate_task", Arguments: tool.Arguments{}},
 	})
@@ -365,9 +364,9 @@ func TestTranscriptStoreReplaceItemUsesExactOptimisticSnapshot(t *testing.T) {
 		Kind:   tool.FailureChildRunCanceled,
 		Detail: "stop delegated branch",
 	}
-	replacement, err := original.ClassifyAbandonedToolCall(failure)
+	replacement, err := original.AbandonToolCall(&failure, now)
 	if err != nil {
-		t.Fatalf("classify Item: %v", err)
+		t.Fatalf("abandon Item: %v", err)
 	}
 	if replaceItemErr := store.ReplaceItem(
 		t.Context(),
@@ -388,9 +387,9 @@ func TestTranscriptStoreReplaceItemUsesExactOptimisticSnapshot(t *testing.T) {
 		Kind:   tool.FailureChildRunCanceled,
 		Detail: "overwrite newer result",
 	}
-	staleReplacement, err := original.ClassifyAbandonedToolCall(staleFailure)
+	staleReplacement, err := original.AbandonToolCall(&staleFailure, now)
 	if err != nil {
-		t.Fatalf("classify stale Item: %v", err)
+		t.Fatalf("abandon stale Item: %v", err)
 	}
 	err = store.ReplaceItem(
 		t.Context(),

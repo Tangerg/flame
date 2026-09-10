@@ -234,23 +234,6 @@ func (i Item) AbandonStartedToolCall(
 	return i.settleToolCall(*i.tool, failure, ItemIncomplete, executionStartedAt, finishedAt)
 }
 
-// ClassifyAbandonedToolCall attaches the causal failure that became known after
-// an already-incomplete ToolCall was recorded. It is intentionally narrower
-// than settlement: identity, invocation, status, and timing remain unchanged.
-func (i Item) ClassifyAbandonedToolCall(failure tool.Failure) (Item, error) {
-	if i.kind != ToolCall || i.status != ItemIncomplete {
-		return Item{}, errors.New("transcript: only an incomplete ToolCall can be classified")
-	}
-	if i.failure != nil {
-		return Item{}, errors.New("transcript: incomplete ToolCall already has a failure")
-	}
-	i.failure = cloneToolFailure(&failure)
-	if err := i.validate(); err != nil {
-		return Item{}, err
-	}
-	return i, nil
-}
-
 // ResolveToolApproval records the exact human verdict accepted for a running
 // ToolCall. The decision is a durable semantic fact on the invocation rather
 // than a property of the current policy or its eventual execution outcome.
