@@ -938,6 +938,18 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 	if err := missingToolReplacement.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted a lost-Run Tool journal without its Item replacement")
 	}
+	unbuiltReplacement := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
+		state.ItemReplacements[0] = transcript.Replacement{}
+	})
+	if err := unbuiltReplacement.Validate(); err == nil {
+		t.Fatal("RecoveryCommit.Validate accepted an Item replacement that was never constructed")
+	}
+	unmovedReplacement := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
+		state.ItemReplacements[0] = testsupport.MustItemReplacement(toolItem, toolItem)
+	})
+	if err := unmovedReplacement.Validate(); err == nil {
+		t.Fatal("RecoveryCommit.Validate accepted an Item replacement that is not the recovery transition")
+	}
 	wrongInvocationSegment := invalidRecoveryCommit(store.commit, func(state *recoveryCommitState) {
 		for index := range state.ModelInvocations {
 			if state.ModelInvocations[index].RunID == root.ID() {

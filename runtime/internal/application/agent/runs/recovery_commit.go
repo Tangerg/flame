@@ -512,13 +512,6 @@ func validateRecoveryClosureMessages(rootID string, messages []corechat.Message)
 
 func validateRecoveryItemReplacement(replacement transcript.Replacement, finishedAt time.Time) error {
 	expected := replacement.Expected()
-	actual := replacement.State()
-	if expected.ID() == "" || expected.SessionID() == "" || expected.RunID() == "" {
-		return errors.New("expected Item identity is incomplete")
-	}
-	if expected.Status() != transcript.ItemRunning || actual.Status() != transcript.ItemIncomplete {
-		return errors.New("replacement must move a Running Item to Incomplete")
-	}
 	failure := tool.Failure{
 		Kind:   tool.FailureExecution,
 		Detail: "tool call interrupted because the run was lost on restart",
@@ -527,7 +520,7 @@ func validateRecoveryItemReplacement(replacement transcript.Replacement, finishe
 	if err != nil {
 		return fmt.Errorf("expected recovery transition: %w", err)
 	}
-	if !reflect.DeepEqual(actual.Snapshot(), want.Snapshot()) {
+	if !reflect.DeepEqual(replacement.State().Snapshot(), want.Snapshot()) {
 		return fmt.Errorf("replacement rewrites facts other than recovery status for Item %q", expected.ID())
 	}
 	return nil
