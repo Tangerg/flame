@@ -293,21 +293,21 @@ func TestAdvanceFingerprintOwnsAcceptancePolicy(t *testing.T) {
 	previous := fingerprint{1}
 	observed := fingerprint{2}
 	for _, test := range []struct {
-		name            string
-		initial         bool
-		accepting       bool
-		matchesAccepted bool
-		want            fingerprint
-		wantChanged     bool
+		name        string
+		initial     bool
+		match       acceptanceMatch
+		want        fingerprint
+		wantChanged bool
 	}{
-		{name: "initial", initial: true, want: observed},
-		{name: "accepted identity", accepting: true, matchesAccepted: true, want: observed},
-		{name: "unrelated during acceptance", accepting: true, want: previous},
-		{name: "ordinary external change", want: observed, wantChanged: true},
+		{name: "initial", initial: true, match: noAcceptedWrite, want: observed},
+		{name: "initial during acceptance", initial: true, match: acceptedWriteElsewhere, want: observed},
+		{name: "accepted identity", match: acceptedWriteHere, want: observed},
+		{name: "unrelated during acceptance", match: acceptedWriteElsewhere, want: previous},
+		{name: "ordinary external change", match: noAcceptedWrite, want: observed, wantChanged: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			got, changed := advanceFingerprint(
-				test.initial, test.accepting, test.matchesAccepted, previous, observed,
+				test.initial, test.match, previous, observed,
 			)
 			if got != test.want || changed != test.wantChanged {
 				t.Fatalf("advance = (%x, %v), want (%x, %v)", got, changed, test.want, test.wantChanged)
@@ -325,5 +325,45 @@ func assertObservedKey(t *testing.T, events <-chan []string, want string) {
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatalf("no %s observation", want)
+	}
+}
+
+// TestAcceptedWriteStaysAcceptedOnTheNextPass pins that accepting a write
+// adopts that target's fingerprint rather than holding the one before it.
+// Holding it suppresses the callback only until something else moves, and then
+// reports the write the caller already knows about.
+func TestAcceptedWriteStaysAcceptedOnTheNextPass(t *testing.T) {
+	root := t.TempDir()
+	accepted := filepath.Join(root, "accepted.md")
+	other := filepath.Join(root, "other.md")
+	for _, path := range []string{accepted, other} {
+		if err := os.WriteFile(path, []byte("initial"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	events := make(chan []string, 4)
+	watcher, err := Watch([]Target{
+		{Key: "accepted", Path: accepted, Boundary: root, MaxBytes: testMaxBytes},
+		{Key: "other", Path: other, Boundary: root, MaxBytes: testMaxBytes},
+	}, func(keys []string) { events <- keys }, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = watcher.Close() }()
+
+	if err := os.WriteFile(accepted, []byte("written through the api"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := watcher.Accept([]string{"accepted"}, []string{accepted}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(other, []byte("written outside"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assertObservedKey(t, events, "other")
+	select {
+	case keys := <-events:
+		t.Fatalf("the accepted write was reported on a later pass: %v", keys)
+	case <-time.After(300 * time.Millisecond):
 	}
 }

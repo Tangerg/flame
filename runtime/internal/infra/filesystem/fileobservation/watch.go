@@ -193,10 +193,17 @@ func (w *watch) reconcile(initial bool, accepted acceptance) error {
 			w.stateMu.Unlock()
 			return err
 		}
-		matchesAccepted := accepting && accepted.matches(candidate, physical)
+		match := noAcceptedWrite
+		switch {
+		case !accepting:
+		case accepted.matches(candidate, physical):
+			match = acceptedWriteHere
+		default:
+			match = acceptedWriteElsewhere
+		}
 		var changed bool
 		next[index], changed = advanceFingerprint(
-			initial, accepting, matchesAccepted, w.fingerprints[index], observed,
+			initial, match, w.fingerprints[index], observed,
 		)
 		if changed && !slices.Contains(changedKeys, candidate.key) {
 			changedKeys = append(changedKeys, candidate.key)
@@ -222,17 +229,33 @@ func (w *watch) reconcile(initial bool, accepted acceptance) error {
 // explicitly accepted identities advance immediately. During any acceptance
 // batch, unrelated targets retain their prior baseline so the next ordinary
 // resample still publishes their independently observed change.
+// acceptanceMatch says how one target relates to a write the watcher accepted:
+// nothing was accepted, something was and this target is not it, or this target
+// is exactly it. A target can only be the accepted write when there is one, so
+// the pair of booleans that used to say this could name a state that never
+// happens.
+type acceptanceMatch uint8
+
+const (
+	noAcceptedWrite acceptanceMatch = iota + 1
+	acceptedWriteElsewhere
+	acceptedWriteHere
+)
+
+// advanceFingerprint decides what one target's next fingerprint is and whether
+// the difference is worth reporting. A first pass and the write we accepted are
+// both adopted silently; while an accepted write is settling, every other
+// target holds what it had.
 func advanceFingerprint(
 	initial bool,
-	accepting bool,
-	matchesAccepted bool,
+	match acceptanceMatch,
 	previous fingerprint,
 	observed fingerprint,
 ) (fingerprint, bool) {
 	switch {
-	case initial || matchesAccepted:
+	case initial || match == acceptedWriteHere:
 		return observed, false
-	case accepting:
+	case match == acceptedWriteElsewhere:
 		return previous, false
 	default:
 		return observed, observed != previous
