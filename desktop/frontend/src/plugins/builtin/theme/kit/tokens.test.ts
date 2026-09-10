@@ -95,7 +95,6 @@ describe("buildTokenMap", () => {
     expect(tokens["color-surface"]).toBe("#1a1a1a");
     expect(tokens).not.toHaveProperty("color-surface-2");
     expect(tokens).not.toHaveProperty("color-surface-3");
-    expect(tokens).not.toHaveProperty("color-surface-4");
   });
 
   it("never emits visual-style tokens", () => {

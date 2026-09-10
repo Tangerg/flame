@@ -247,7 +247,6 @@
  * a component names a decision. What is gone is the second COPY of each value.
  */
 :root {
-  --color-line: transparent;
   --color-line-soft: transparent;
   --color-negative-wash: color-mix(in srgb, var(--tone-negative) 10%, transparent);
   --color-warning-wash: color-mix(in srgb, var(--tone-warning) 10%, transparent);
@@ -382,11 +381,6 @@
   --color-surface-3: color-mix(
     in oklab,
     var(--color-text) calc(var(--depth-step) * 2),
-    var(--color-surface)
-  );
-  --color-surface-4: color-mix(
-    in oklab,
-    var(--color-text) calc(var(--depth-step) * 3),
     var(--color-surface)
   );
 
@@ -959,7 +953,6 @@ html.theme-dark {
   --color-media-edge: rgb(0 0 0 / 0.1);
   --color-media-scrim: rgb(0 0 0 / 0.55);
   --color-media-preview: rgb(0 0 0 / 0.9);
-  --color-media-canvas: #ffffff;
   --color-on-media: #ffffff;
   /* The floor a coarse pointer puts under every control. Named because the two spans below
      have to grow with it: each reserves room for ONE chrome control, and a span sized for the

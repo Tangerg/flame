@@ -13776,3 +13776,78 @@ StyleX it does not"），属于"防好心改回去"的 why 注释，**故意不�
 **但有一个审计还站在 Tailwind 的位置上看，因此什么都看不见。**
 移除一个框架的成本不止在改代码，还在那些**按它写的守卫**：
 它们不会报错，只会开始报告一切正常。
+
+## Round 215 —— 三个没人读的 token，和一个找不到它们的守卫
+
+### 审计范围
+
+用户要求把 CSS/样式相关的收尾，不要再一轮一轮打转。于是这轮不做窄审计，
+直接对**整个 token 面**做一次完整清算：270 个自定义属性，逐个问"谁读它"。
+
+### 结果：3 个死 token
+
+| token | 定义处 | 证据 |
+| --- | --- | --- |
+| `--color-line` | globals.css | 零 `var()` 引用（`--color-line-soft` 是另一个 token，有人用） |
+| `--color-surface-4` | globals.css | 零引用；`tokens.stylex.ts` 只暴露 surface2/3；且 `tokens.test.ts` 断言它**不该**出现在主题 token 里 |
+| `--color-media-canvas` | globals.css | 零引用 |
+
+`globals.css` 自己开头就记着同类残留："Twelve more were read by nothing at all:
+they were there so a utility could be generated from them." —— **这是同一批残留没清完。**
+
+顺带修掉 DESIGN.md 的自相矛盾：第 97 行写 `surface-2 / -3 / -4`，
+第 349 行写 `surface-2 / -3`。**两张表互相打脸，349 行是对的。**
+
+### 但真正的产出是：为什么会攒下这三个
+
+`check-dead-styles` 从迁移起就在管**类名**的死代码，**没有任何东西管自定义属性**。
+所以新增守卫 `scripts/check-dead-tokens.mjs`，已接入 `npm run check`。
+
+它必须活过两类"看起来死其实活着"的消费者 —— 这两类我都先踩了一遍：
+
+| 陷阱 | 如果不处理会怎样 |
+| --- | --- |
+| **名字在运行时拼出来**：`icon.tsx` 读 `var(--icon-stroke-${size})` | 会删掉 5 个 `--icon-stroke-*`，**改变产品里每一个图标的描边粗细** |
+| **消费者在依赖里**：`markdown.css` 设的 11 个 Primer 名，只有 `remark-github-blockquote-alert/alert.css` 读 | 会删掉 GFM alert（`> [!NOTE]`）的全部配色 |
+
+### 我在写这个守卫时犯的四个错，全部被自己的破坏验证抓出来
+
+1. **`--` 成了通配符**：`documentAppearance` 用 `` `--${name}` `` 写 visual style 的
+   token map，我的前缀正则捕获到空前缀 `--` → **270 个 token 全被判为"活的"**，
+   守卫自信地报绿却什么都没查。改成必须是带尾横线的具名前缀。
+2. **把"写"当成了"读"**：`iconScale.ts` 也用 `` `--icon-stroke-${size}` `` 写这些 rung。
+   我把写入方也算作"活前缀"，于是**删掉唯一的读取方之后守卫依然报绿** ——
+   而"没人读"才是死的定义。改成只有 `var()` 里的模板才算引用。
+3. **前缀吞掉了子阶梯**：`var(--icon-${size})` 让 `--icon-` 成为活前缀，而
+   `--icon-stroke-xs`.startsWith(`--icon-`) 为真 → 整个 stroke 阶梯被顺带豁免。
+   模板只插一个标识符，所以只能命名**多一段**的名字；改成要求前缀之后不含横线。
+4. **`ls` 的假否定**（上一轮同类）：`ls tailwind.config.* postcss.config.*`
+   第一个 glob 不匹配就让 zsh 放弃整条命令，于是报了"none"。
+
+### 破坏验证（5 项，全部符合预期）
+
+| 场景 | 期望 | 结果 |
+| --- | --- | --- |
+| 现状 | 绿 | 绿（267 declared / 287 referenced） |
+| 加一个谁都不读的 token | 红 | 红，精确报出该名字 |
+| 运行时拼名的 rung 有读取方 | 绿 | 绿 |
+| 删掉 `icon.tsx` 里那个读取方 | 报出 5 个 stroke rung | 精确报出 5 个，且 `--icon-xs..xl` 仍判活 |
+| 删掉 `alert.css` 的 import | 报出 11 个 Primer 名 | 精确报出 11 个 |
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 删除的死 token | **3** |
+| 修正的文档矛盾 | 1（DESIGN.md 两张 surface 表） |
+| 新守卫 | 1（`check:dead-tokens`，已进 `npm run check`），5 项破坏验证 |
+| typecheck / lint / prettier / knip / 8 个样式守卫 | 全绿 |
+| 单测 | 2437 通过 |
+| 视觉套件 | **736 全通过**（15.3m，零失败）—— 无人读取的 token，删除后**零 golden 移动** |
+| **阻塞（未变）** | `src/rpc` 4 个测试：runtime 发布的 `segment.finished.json` 缺 `contextTokens`。`<scope>` 禁止改 runtime。 |
+
+### 一句话
+
+三个死 token 只是症状。根因是**类名有守卫、自定义属性没有** ——
+而我为它写守卫的过程本身证明了为什么它一直没有：
+这个检查有四种"报绿却什么都没查"的写法，我把四种都写了一遍。

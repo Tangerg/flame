@@ -33,7 +33,7 @@
     "check:locales": "node scripts/check-locales.mjs",
     "check:lookup-tables": "node scripts/check-lookup-tables.mjs",
     "check:bundle": "vite build && node scripts/check-css-variables.mjs && node scripts/check-bundle-size.mjs",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run knip && npm run check:circular && npm run check:contexts && npm run check:published-boundaries && npm run check:layers && npm run check:port-surface && npm run check:api-consumers && npm run check:style-invalidation && npm run check:hmr && npm run check:design-system && npm run check:tokens && npm run check:styles && npm run check:classes && npm run check:shorthand && npm run check:chrome && npm run check:locales && npm run check:lookup-tables && npm run check:bootstrap && npm run check:bundle",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run knip && npm run check:circular && npm run check:contexts && npm run check:published-boundaries && npm run check:layers && npm run check:port-surface && npm run check:api-consumers && npm run check:style-invalidation && npm run check:hmr && npm run check:design-system && npm run check:tokens && npm run check:styles && npm run check:dead-tokens && npm run check:classes && npm run check:shorthand && npm run check:chrome && npm run check:locales && npm run check:lookup-tables && npm run check:bootstrap && npm run check:bundle",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "cd ../.. && desktop/frontend/node_modules/.bin/husky desktop/.husky",
@@ -42,6 +42,7 @@
     "check:classes": "node scripts/check-authored-classes.mjs",
     "check:variables": "node scripts/check-css-variables.mjs",
     "check:shorthand": "node scripts/check-shorthand-longhand.mjs",
+    "check:dead-tokens": "node scripts/check-dead-tokens.mjs",
     "check:styles": "node scripts/check-dead-styles.mjs"
   },
   "lint-staged": {

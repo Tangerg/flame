@@ -94,7 +94,7 @@ repeat the hexes, which is how the previous version of it went stale.
 | `surface`                                          | Region chrome — the drawer, the dock, the bars that frame the plane.                                                                                                             |
 | `card` (`--app-card-surface` → `--color-elevated`) | An object placed on a region: a message, a tool card, the composer.                                                                                                              |
 | `sunken` (`--color-sunken`)                        | A well cut into a surface: code bodies, terminals, diff hunks, text fields, progress tracks, and inline code in prose.                                                           |
-| `surface-2` / `-3` / `-4`                          | Derived chip rungs above `surface` — badges, kbd, selected rows, resting control fills. Mixed out of the CHROME grey, so they belong on chrome; on the plane they read as grime. |
+| `surface-2` / `-3`                                 | Derived chip rungs above `surface` — badges, kbd, selected rows, resting control fills. Mixed out of the CHROME grey, so they belong on chrome; on the plane they read as grime. |
 
 **Why four anchors and not one ladder.** The reading plane is the extreme of its
 scheme — pure white on light, near-black on dark — and an object on it steps IN,
