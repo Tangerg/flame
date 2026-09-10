@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 const (
@@ -36,13 +38,12 @@ func NewItemID(entropy [ItemIDEntropyBytes]byte) ItemID {
 
 // ParseItemID admits only the canonical spelling emitted by [NewItemID].
 func ParseItemID(raw string) (ItemID, error) {
-	if len(raw) != MaximumItemIDCharacters || !strings.HasPrefix(raw, ItemIDPrefix) {
-		return ItemID{}, fmt.Errorf("%w: expected %s followed by %d lowercase hexadecimal characters", ErrInvalidItemID, ItemIDPrefix, itemIDHexCharacters)
+	digest, ok := strings.CutPrefix(raw, ItemIDPrefix)
+	if !ok {
+		return ItemID{}, fmt.Errorf("%w: identity is not framed with %q", ErrInvalidItemID, ItemIDPrefix)
 	}
-	for _, character := range raw[len(ItemIDPrefix):] {
-		if (character < '0' || character > '9') && (character < 'a' || character > 'f') {
-			return ItemID{}, fmt.Errorf("%w: identity is not canonical lowercase hexadecimal", ErrInvalidItemID)
-		}
+	if err := runtimeidentity.ValidateLowercaseHex(digest, itemIDHexCharacters); err != nil {
+		return ItemID{}, fmt.Errorf("%w: identity %w", ErrInvalidItemID, err)
 	}
 	return ItemID{text: raw}, nil
 }

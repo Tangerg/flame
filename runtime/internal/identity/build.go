@@ -23,10 +23,10 @@ type BuildID struct {
 // ParseBuild proves that raw is the canonical lowercase SHA-256 representation.
 func ParseBuild(raw string) (BuildID, error) {
 	digest, ok := strings.CutPrefix(raw, BuildPrefix)
-	if !ok || len(digest) != hex.EncodedLen(sha256.Size) || digest != strings.ToLower(digest) {
+	if !ok {
 		return BuildID{}, ErrInvalidBuild
 	}
-	if _, err := hex.DecodeString(digest); err != nil {
+	if err := ValidateLowercaseHex(digest, hex.EncodedLen(sha256.Size)); err != nil {
 		return BuildID{}, ErrInvalidBuild
 	}
 	return BuildID{value: raw}, nil

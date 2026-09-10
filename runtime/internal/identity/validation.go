@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -68,6 +69,19 @@ func ValidateURISafeASCII(value string, maximumBytes int) error {
 		return envelope
 	}
 	return nil
+}
+
+// ValidateLowercaseHex is the canonical spelling every hex-encoded identity
+// shares: exactly this many lowercase hexadecimal digits. hex.DecodeString
+// admits uppercase, so the case rule cannot be left to it. Like ValidateText it
+// reports the defect as a phrase the caller names its kind with.
+func ValidateLowercaseHex(value string, characters int) error {
+	if len(value) == characters && value == strings.ToLower(value) {
+		if _, err := hex.DecodeString(value); err == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("must contain exactly %d lowercase hexadecimal characters", characters)
 }
 
 // ValidateEventIdentity owns the whole replay-cursor identity: the EventPrefix a
