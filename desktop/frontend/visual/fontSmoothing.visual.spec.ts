@@ -25,7 +25,12 @@ import { expect, test } from "./test";
 // browser the audit runs in. The desktop app ships in a WKWebView, whose font rendering is its
 // own; the same limitation DESIGN.md records for `corner-shape` applies here. What is portable
 // is the wiring and the direction, and those are what this holds.
-const REGION = "aside";
+// Named, and checked to be the one thing it names. `aside` alone is positional: it happens to
+// match only the product's drawer today, and the agent fixture already carries a scaffold
+// sidebar of its own — so the day the shell fixture grows one, this would photograph the
+// harness twice and still pass, because it only compares the region against itself. The
+// count assertion below is what turns that into a red test instead of a quiet one.
+const REGION = "aside.agent-drawer";
 
 /** How much of the region differs, and how much ink each setting lays down. */
 async function compare(page: import("@playwright/test").Page, route: string) {
@@ -34,7 +39,11 @@ async function compare(page: import("@playwright/test").Page, route: string) {
     await page.goto(`/visual/?${route}&theme=light&smoothing=${setting}`);
     await page.locator("html[data-visual-ready]").waitFor();
     await page.waitForTimeout(400);
-    shots[setting] = (await page.locator(REGION).first().screenshot()).toString("base64");
+    await expect(
+      page.locator(REGION),
+      "the region has to be the product's drawer, and only it",
+    ).toHaveCount(1);
+    shots[setting] = (await page.locator(REGION).screenshot()).toString("base64");
   }
 
   // Decoded in the page, because a PNG buffer in Node has nothing to decode it with and the
