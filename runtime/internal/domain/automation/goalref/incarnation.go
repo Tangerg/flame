@@ -6,9 +6,9 @@
 package goalref
 
 import (
-	"fmt"
-	"unicode"
-	"unicode/utf8"
+	"errors"
+
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // MaximumIncarnationCharacters bounds every durable Goal-incarnation key.
@@ -24,25 +24,8 @@ type IncarnationID struct {
 // ParseIncarnation validates and preserves text exactly. It never trims,
 // normalizes, case-folds, or otherwise repairs caller input.
 func ParseIncarnation(text string) (IncarnationID, error) {
-	if text == "" {
-		return IncarnationID{}, fmt.Errorf("goal incarnation identity is empty")
-	}
-	if !utf8.ValidString(text) {
-		return IncarnationID{}, fmt.Errorf("goal incarnation identity is not valid UTF-8")
-	}
-	if characters := utf8.RuneCountInString(text); characters > MaximumIncarnationCharacters {
-		return IncarnationID{}, fmt.Errorf(
-			"goal incarnation identity has %d characters, maximum is %d",
-			characters,
-			MaximumIncarnationCharacters,
-		)
-	}
-	for _, character := range text {
-		if unicode.IsSpace(character) || !unicode.IsPrint(character) {
-			return IncarnationID{}, fmt.Errorf(
-				"goal incarnation identity contains whitespace or a non-printing character",
-			)
-		}
+	if err := runtimeidentity.ValidateResource("goal incarnation", text, MaximumIncarnationCharacters); err != nil {
+		return IncarnationID{}, err
 	}
 	return IncarnationID{text: text}, nil
 }
@@ -62,7 +45,7 @@ func (i IncarnationID) String() string { return i.text }
 // established there, so an unconstructed identity is all this can reject.
 func (i IncarnationID) Validate() error {
 	if i.text == "" {
-		return fmt.Errorf("goal incarnation identity is empty")
+		return errors.New("goal incarnation identity is empty")
 	}
 	return nil
 }

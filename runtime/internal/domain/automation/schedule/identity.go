@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -66,25 +65,8 @@ func newOccurrenceIdentity(scheduleID resourceid.ScheduleID, dueAt time.Time) (o
 }
 
 func parseOccurrenceIdentity(text string) (occurrenceIdentity, error) {
-	if text == "" {
-		return occurrenceIdentity{}, errors.New("schedule: occurrence identity is empty")
-	}
-	if !utf8.ValidString(text) {
-		return occurrenceIdentity{}, errors.New("schedule: occurrence identity is not valid UTF-8")
-	}
-	if characters := utf8.RuneCountInString(text); characters > MaximumOccurrenceIDCharacters {
-		return occurrenceIdentity{}, fmt.Errorf(
-			"schedule: occurrence identity has %d characters, maximum is %d",
-			characters,
-			MaximumOccurrenceIDCharacters,
-		)
-	}
-	for _, character := range text {
-		if unicode.IsSpace(character) || !unicode.IsPrint(character) {
-			return occurrenceIdentity{}, errors.New(
-				"schedule: occurrence identity contains whitespace or a non-printing character",
-			)
-		}
+	if err := runtimeidentity.ValidateResource("schedule: occurrence", text, MaximumOccurrenceIDCharacters); err != nil {
+		return occurrenceIdentity{}, err
 	}
 	separator := strings.LastIndex(text, occurrenceIDSeparator)
 	if separator <= 0 || separator == len(text)-len(occurrenceIDSeparator) {
