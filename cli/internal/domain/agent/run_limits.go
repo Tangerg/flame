@@ -115,9 +115,6 @@ func (r RunLimits) MarshalJSON() ([]byte, error) {
 }
 
 func (r *RunLimits) UnmarshalJSON(encoded []byte) error {
-	if r == nil {
-		return errors.New("run limits: nil JSON target")
-	}
 	decoder := json.NewDecoder(bytes.NewReader(encoded))
 	decoder.DisallowUnknownFields()
 	var wire runLimitsJSON

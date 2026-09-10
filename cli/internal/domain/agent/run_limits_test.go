@@ -40,6 +40,32 @@ func TestRunLimitsUsePresenceInsteadOfNumericSentinels(t *testing.T) {
 	}
 }
 
+// TestJSONAllocatesAnOptionalTargetBeforeDecoding pins why no UnmarshalJSON in
+// this repository guards against a nil receiver: encoding/json allocates the
+// pointer it is about to decode into, so the guard could never run.
+func TestJSONAllocatesAnOptionalTargetBeforeDecoding(t *testing.T) {
+	steps := 7
+	limited, err := NewRunLimits(RunLimitValues{MaxSteps: &steps})
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(struct {
+		Limits RunLimits `json:"limits"`
+	}{Limits: limited})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var holder struct {
+		Limits *RunLimits `json:"limits"`
+	}
+	if err := json.Unmarshal(encoded, &holder); err != nil {
+		t.Fatalf("Unmarshal into an absent target: %v", err)
+	}
+	if holder.Limits == nil || *holder.Limits != limited {
+		t.Fatalf("decoded optional limits = %+v, want %+v", holder.Limits, limited)
+	}
+}
+
 func TestRunLimitsJSONPreservesStrictPolicyIdentity(t *testing.T) {
 	steps := 7
 	limited, err := NewRunLimits(RunLimitValues{MaxSteps: &steps})

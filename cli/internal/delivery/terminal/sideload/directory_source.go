@@ -214,9 +214,6 @@ func (d commandTimeoutDeclaration) MarshalJSON() ([]byte, error) {
 }
 
 func (d *commandTimeoutDeclaration) UnmarshalJSON(encoded []byte) error {
-	if d == nil {
-		return errors.New("plugin command timeout destination is nil")
-	}
 	if string(encoded) == "null" {
 		return errors.New("plugin command timeout must be an integer")
 	}

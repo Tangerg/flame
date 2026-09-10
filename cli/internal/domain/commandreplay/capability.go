@@ -72,9 +72,6 @@ func (c Capability) MarshalJSON() ([]byte, error) {
 }
 
 func (c *Capability) UnmarshalJSON(data []byte) error {
-	if c == nil {
-		return errors.New("decode command replay capability into nil receiver")
-	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	var wire capabilityJSON

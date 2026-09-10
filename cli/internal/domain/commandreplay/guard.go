@@ -87,9 +87,6 @@ func (g Guard) MarshalJSON() ([]byte, error) {
 }
 
 func (g *Guard) UnmarshalJSON(data []byte) error {
-	if g == nil {
-		return errors.New("decode command replay guard into nil receiver")
-	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	var wire guardJSON
