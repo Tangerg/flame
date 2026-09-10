@@ -604,7 +604,7 @@ func TestDurableQueueKeepsTheOpeningCommandAheadOfPriorityEdits(t *testing.T) {
 	if len(pending) != 1 || pending[0].Command.CommandID != commands[1].CommandID || pending[0].State != workbench.PendingRunQueued {
 		t.Fatalf("post-acknowledgement queue = %+v", pending)
 	}
-	if removed, err := queue.CommitDispatch("session"); err != nil || removed.CommandID != commands[0].CommandID {
+	if removed, err := queue.RetireCommand("session", commands[0].CommandID); err != nil || removed.CommandID != commands[0].CommandID {
 		t.Fatalf("committed opening command = %+v, %v", removed, err)
 	}
 }

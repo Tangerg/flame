@@ -326,7 +326,7 @@ func TestDispatchReservationProtectsRuntimeIdentityFromPriorityEdits(t *testing.
 		t.Fatalf("move across dispatch boundary returned %v", err)
 	}
 
-	removed, err := queue.CommitDispatch("session")
+	removed, err := queue.RetireCommand("session", first.CommandID)
 	if err != nil || removed.ID != first.ID {
 		t.Fatalf("committed dispatch = %+v, %v", removed, err)
 	}
