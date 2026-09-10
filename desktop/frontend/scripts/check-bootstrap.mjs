@@ -154,6 +154,14 @@ expect(
 // it, so the shell cannot read the value; what it can do is stop stating it twice unwatched.
 const shellEndpoint = host.match(/localRuntimeEndpoint\s*=\s*"([^"]+)"/)?.[1];
 const appEndpoint = endpoint.match(/DEFAULT_RUNTIME_ENDPOINT\s*=\s*"([^"]+)"/)?.[1];
+// Said separately, the way the five extractions above say it. Without this the failure still
+// happens — `shellEndpoint === undefined` is false — but it reads as a DRIFT, "hands over
+// http://… where the app defaults to undefined", when what actually happened is that this
+// check stopped being able to find the constant.
+expect(
+  appEndpoint !== undefined,
+  "the app no longer declares DEFAULT_RUNTIME_ENDPOINT — this check reads nothing",
+);
 expect(
   shellEndpoint !== undefined && shellEndpoint === appEndpoint,
   `desktop_host.go hands over ${shellEndpoint} where the app defaults to ${appEndpoint}`,

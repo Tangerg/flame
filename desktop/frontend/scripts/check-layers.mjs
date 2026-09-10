@@ -351,4 +351,9 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log("[check-layers] OK — no layer-boundary violations.");
+// The counts are on the success line for the same reason every other guard here puts them
+// there: "no violations" reads identically whether the walk covered the tree or nothing at
+// all. The floors above already refuse an empty walk; this makes a shrinking one visible.
+console.log(
+  `[check-layers] OK — no layer-boundary violations across ${moduleCount} modules, ${graphEdgeCount} edges.`,
+);
