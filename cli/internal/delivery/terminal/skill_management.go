@@ -151,9 +151,6 @@ func (a *app) changeSkillLifecycle(
 	lifecycle protocol.SkillLifecycle,
 	change func(context.Context, string) error,
 ) error {
-	if a.skills == nil {
-		return errors.New("this runtime composition has no skill service")
-	}
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return errors.New("a skill name is required")

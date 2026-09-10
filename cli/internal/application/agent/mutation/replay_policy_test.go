@@ -40,6 +40,26 @@ func TestPolicyCreatesAndEvaluatesOneStoreBoundDeadline(t *testing.T) {
 	}
 }
 
+func TestPolicyRefusesEitherShapeWithoutAClock(t *testing.T) {
+	t.Parallel()
+
+	capability, err := commandreplay.NewCapability("runtime-a", 10*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Every evaluation reads Now, and both constructors admit through Validate,
+	// so this is the one place either shape can be refused a clock.
+	if _, err := NewReplayPolicy(capability, nil); err == nil {
+		t.Fatal("advertised policy was built without a clock")
+	}
+	if _, err := UnavailableReplayPolicy(nil); err == nil {
+		t.Fatal("unavailable policy was built without a clock")
+	}
+	if err := (ReplayPolicy{}).Validate(); err == nil {
+		t.Fatal("the zero policy was valid")
+	}
+}
+
 func TestUnavailablePolicyIsExplicitAndOwnsOnlyUnprotectedGuards(t *testing.T) {
 	t.Parallel()
 

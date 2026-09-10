@@ -24,20 +24,20 @@ type ReplayPolicy struct {
 }
 
 func NewReplayPolicy(capability commandreplay.Capability, now func() time.Time) (ReplayPolicy, error) {
-	if err := capability.Validate(); err != nil {
-		return ReplayPolicy{}, err
-	}
-	if now == nil {
-		return ReplayPolicy{}, errors.New("command replay policy clock is nil")
-	}
-	return ReplayPolicy{kind: policyAdvertised, capability: capability, now: now}, nil
+	return newReplayPolicy(ReplayPolicy{kind: policyAdvertised, capability: capability, now: now})
 }
 
 func UnavailableReplayPolicy(now func() time.Time) (ReplayPolicy, error) {
-	if now == nil {
-		return ReplayPolicy{}, errors.New("command replay policy clock is nil")
+	return newReplayPolicy(ReplayPolicy{kind: policyUnavailable, now: now})
+}
+
+// newReplayPolicy admits a built policy through the rule the value already
+// carries, so a constructor cannot accept something Validate would refuse.
+func newReplayPolicy(policy ReplayPolicy) (ReplayPolicy, error) {
+	if err := policy.Validate(); err != nil {
+		return ReplayPolicy{}, err
 	}
-	return ReplayPolicy{kind: policyUnavailable, now: now}, nil
+	return policy, nil
 }
 
 func (p ReplayPolicy) Validate() error {
