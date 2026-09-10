@@ -61,7 +61,7 @@ func newInteractionAccounting(
 func (i *interactionAccounting) modelContextCalibration(
 	invocation interaction.ModelInvocation,
 ) ModelContextTokenCalibration {
-	if i == nil || !invocation.Valid() {
+	if !invocation.Valid() {
 		return ModelContextTokenCalibration{}
 	}
 	i.mu.Lock()
@@ -73,7 +73,7 @@ func (i *interactionAccounting) prepareModelContext(
 	invocation interaction.ModelInvocation,
 	estimated int,
 ) error {
-	if i == nil || !invocation.Valid() || estimated <= 0 {
+	if !invocation.Valid() || estimated <= 0 {
 		return errors.New("agentexec: prepare model context requires valid attribution and estimate")
 	}
 	processID := invocation.Relation().ProcessID()
@@ -92,7 +92,7 @@ func (i *interactionAccounting) prepareModelContext(
 // when that exact invocation exits without successful accounting. Identity is
 // matched under the lock so a stale exit cannot discard a later call's slot.
 func (i *interactionAccounting) discardPreparedModelContext(invocation interaction.ModelInvocation) {
-	if i == nil || !invocation.Valid() {
+	if !invocation.Valid() {
 		return
 	}
 	processID := invocation.Relation().ProcessID()

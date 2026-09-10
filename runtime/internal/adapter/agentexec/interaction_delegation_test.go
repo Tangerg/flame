@@ -68,6 +68,25 @@ func TestInteractionDelegationPolicyPreservesOptionalPresence(t *testing.T) {
 	}
 }
 
+// TestPositiveOrDefaultRefusesAnUnusableDefault covers the arm no policy value
+// can reach: the fallback is a composition-root constant, so only the rule
+// itself can refuse one that admits nothing.
+func TestPositiveOrDefaultRefusesAnUnusableDefault(t *testing.T) {
+	if _, err := positiveOrDefault[int](nil, 0, "step budget"); err == nil {
+		t.Fatal("a zero signed default was accepted")
+	}
+	if _, err := positiveOrDefault[time.Duration](nil, 0, "poll interval"); err == nil {
+		t.Fatal("a zero duration default was accepted")
+	}
+	if _, err := positiveOrDefault[uint64](nil, 0, "child effects"); err == nil {
+		t.Fatal("a zero unsigned default was accepted")
+	}
+	value, err := positiveOrDefault[uint32](nil, 3, "child depth")
+	if err != nil || value != 3 {
+		t.Fatalf("positiveOrDefault(absent, 3) = (%d, %v)", value, err)
+	}
+}
+
 func TestDelegateSubtreeBudgetReservesEveryRemainingProcessLevel(t *testing.T) {
 	base := agent.Budget{Steps: 2, Effects: 3, Signals: 5}
 	budget, err := delegateSubtreeBudget(base, 4)

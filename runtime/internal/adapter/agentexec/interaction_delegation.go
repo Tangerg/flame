@@ -46,31 +46,31 @@ type effectiveInteractionDelegation struct {
 }
 
 func effectiveDelegation(values InteractionDelegationPolicyValues) (effectiveInteractionDelegation, error) {
-	maxDepth, err := positiveUint32OrDefault(values.MaxDepth, defaultDelegateDepth, "maximum depth")
+	maxDepth, err := positiveOrDefault(values.MaxDepth, defaultDelegateDepth, "maximum depth")
 	if err != nil {
 		return effectiveInteractionDelegation{}, err
 	}
-	maxChildren, err := positiveUint32OrDefault(values.MaxChildren, defaultDelegateChildren, "maximum children")
+	maxChildren, err := positiveOrDefault(values.MaxChildren, defaultDelegateChildren, "maximum children")
 	if err != nil {
 		return effectiveInteractionDelegation{}, err
 	}
-	maxActiveChildren, err := positiveUint32OrDefault(values.MaxActiveChildren, defaultActiveDelegateChildren, "maximum active children")
+	maxActiveChildren, err := positiveOrDefault(values.MaxActiveChildren, defaultActiveDelegateChildren, "maximum active children")
 	if err != nil {
 		return effectiveInteractionDelegation{}, err
 	}
-	maxTreeProcesses, err := positiveUint32OrDefault(values.MaxTreeProcesses, defaultDelegateTreeProcesses, "maximum tree processes")
+	maxTreeProcesses, err := positiveOrDefault(values.MaxTreeProcesses, defaultDelegateTreeProcesses, "maximum tree processes")
 	if err != nil {
 		return effectiveInteractionDelegation{}, err
 	}
-	childSteps, err := positiveUint64OrDefault(values.ChildSteps, defaultDelegateSteps, "child steps")
+	childSteps, err := positiveOrDefault(values.ChildSteps, defaultDelegateSteps, "child steps")
 	if err != nil {
 		return effectiveInteractionDelegation{}, err
 	}
-	childEffects, err := positiveUint64OrDefault(values.ChildEffects, defaultDelegateEffects, "child effects")
+	childEffects, err := positiveOrDefault(values.ChildEffects, defaultDelegateEffects, "child effects")
 	if err != nil {
 		return effectiveInteractionDelegation{}, err
 	}
-	childSignals, err := positiveUint64OrDefault(values.ChildSignals, defaultDelegateSignals, "child signals")
+	childSignals, err := positiveOrDefault(values.ChildSignals, defaultDelegateSignals, "child signals")
 	if err != nil {
 		return effectiveInteractionDelegation{}, err
 	}
@@ -88,32 +88,6 @@ func effectiveDelegation(values InteractionDelegationPolicyValues) (effectiveInt
 		return effectiveInteractionDelegation{}, fmt.Errorf("agentexec: Interaction delegation budget: %w", err)
 	}
 	return effectiveInteractionDelegation{treeLimits: treeLimits, processBudget: budget}, nil
-}
-
-func positiveUint32OrDefault(value *uint32, fallback uint32, field string) (uint32, error) {
-	if fallback == 0 {
-		return 0, fmt.Errorf("%s default must be positive", field)
-	}
-	if value == nil {
-		return fallback, nil
-	}
-	if *value == 0 {
-		return 0, fmt.Errorf("%s must be positive", field)
-	}
-	return *value, nil
-}
-
-func positiveUint64OrDefault(value *uint64, fallback uint64, field string) (uint64, error) {
-	if fallback == 0 {
-		return 0, fmt.Errorf("%s default must be positive", field)
-	}
-	if value == nil {
-		return fallback, nil
-	}
-	if *value == 0 {
-		return 0, fmt.Errorf("%s must be positive", field)
-	}
-	return *value, nil
 }
 
 func delegateSubtreeBudget(base agent.Budget, processLevels uint32) (agent.Budget, error) {
