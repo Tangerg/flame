@@ -815,14 +815,13 @@ func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit) error
 	if commit.State == runs.StateUnchanged {
 		return nil
 	}
+	// EventCommit.Validate settles which states carry a Run record and what
+	// state that record must be in, so both arms below read one it admitted.
 	switch commit.State {
 	case runs.StateSuspend:
-		if commit.Run == nil {
-			return errors.New("segment: park commit carries no run record")
-		}
 		return e.runState.Suspend(ctx, *commit.Run, commit.SegmentID, commit.CommitID)
 	case runs.StateTerminalize:
-		run, err := e.finishedRun(ctx, commit)
+		run, err := e.finishedRun(ctx, *commit.Run)
 		if err != nil {
 			return err
 		}
@@ -837,11 +836,7 @@ func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit) error
 // transaction so it is consistent with the state it terminalizes (the message log
 // is in its terminal post-compaction shape by the time a terminal event arrives),
 // and the row's touch time.
-func (e *Effects) finishedRun(ctx context.Context, commit runs.EventCommit) (run.Run, error) {
-	if commit.Run == nil {
-		return run.Run{}, errors.New("segment: terminal commit carries no run record")
-	}
-	record := *commit.Run
+func (e *Effects) finishedRun(ctx context.Context, record run.Run) (run.Run, error) {
 	if record.MessageMark() < 0 {
 		mark, err := e.conversation.Count(ctx, record.SessionID())
 		if err != nil {

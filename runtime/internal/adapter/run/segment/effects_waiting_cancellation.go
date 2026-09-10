@@ -139,13 +139,7 @@ func (e *Effects) terminalizeWaitingCancellationRuns(
 	terminalByID := make(map[string]run.Run, len(planned))
 	for _, replacement := range planned {
 		runRecord := replacement.State()
-		finalized, err := e.finishedRun(ctx, runs.EventCommit{
-			RunID:     runRecord.ID(),
-			SessionID: runRecord.SessionID(),
-			State:     runs.StateTerminalize,
-			Outcome:   run.OutcomeCanceled,
-			Run:       &runRecord,
-		})
+		finalized, err := e.finishedRun(ctx, runRecord)
 		if err != nil {
 			return nil, fmt.Errorf("segment: finalize canceled Run %q: %w", runRecord.ID(), err)
 		}
@@ -262,33 +256,27 @@ func (e *Effects) reconcileWaitingCancellation(
 	if !settled {
 		return false, runs.WaitingSubtreeCancellationResult{}, nil
 	}
-	target, found, err := e.runState.Run(reconcileCtx, commit.TargetRunID())
+	target, err := e.reconciledRun(reconcileCtx, "target", commit.TargetRunID(), commit.SessionID())
 	if err != nil {
-		return false, runs.WaitingSubtreeCancellationResult{}, fmt.Errorf(
-			"segment: read reconciled target Run %q: %w",
-			commit.TargetRunID(),
-			err,
-		)
+		return false, runs.WaitingSubtreeCancellationResult{}, err
 	}
-	if !found || target.SessionID() != commit.SessionID() {
-		return false, runs.WaitingSubtreeCancellationResult{}, fmt.Errorf(
-			"segment: reconciled target Run %q is unavailable",
-			commit.TargetRunID(),
-		)
-	}
-	root, found, err := e.runState.Run(reconcileCtx, commit.RootRunID())
+	root, err := e.reconciledRun(reconcileCtx, "root", commit.RootRunID(), commit.SessionID())
 	if err != nil {
-		return false, runs.WaitingSubtreeCancellationResult{}, fmt.Errorf(
-			"segment: read reconciled root Run %q: %w",
-			commit.RootRunID(),
-			err,
-		)
-	}
-	if !found || root.SessionID() != commit.SessionID() {
-		return false, runs.WaitingSubtreeCancellationResult{}, fmt.Errorf(
-			"segment: reconciled root Run %q is unavailable",
-			commit.RootRunID(),
-		)
+		return false, runs.WaitingSubtreeCancellationResult{}, err
 	}
 	return true, runs.WaitingSubtreeCancellationResult{TargetRun: target, RootRun: root}, nil
+}
+
+// reconciledRun reads back one Run a settled cancellation commit named. A Run
+// that is gone and a Run that belongs to another Session are the same answer
+// here: the commit this reconciles did not produce it.
+func (e *Effects) reconciledRun(ctx context.Context, kind, runID, sessionID string) (run.Run, error) {
+	value, found, err := e.runState.Run(ctx, runID)
+	if err != nil {
+		return run.Run{}, fmt.Errorf("segment: read reconciled %s Run %q: %w", kind, runID, err)
+	}
+	if !found || value.SessionID() != sessionID {
+		return run.Run{}, fmt.Errorf("segment: reconciled %s Run %q is unavailable", kind, runID)
+	}
+	return value, nil
 }

@@ -32,6 +32,20 @@ func TestEventCommitUsesCompleteRunStateInvariant(t *testing.T) {
 	if err := withOutcome.Validate(); err == nil {
 		t.Fatal("suspend commit accepted a terminal outcome")
 	}
+	// Effects dereferences Run for both states that change one, so this is the
+	// only place that can refuse a state change carrying no record at all.
+	withoutRun := valid
+	withoutRun.Run = nil
+	if err := withoutRun.Validate(); err == nil {
+		t.Fatal("suspend commit accepted no run record")
+	}
+	terminalWithoutRun := EventCommit{
+		RunID: waiting.ID(), SessionID: waiting.SessionID(), SegmentID: "segment_1",
+		State: StateTerminalize, Outcome: run.OutcomeCanceled,
+	}
+	if err := terminalWithoutRun.Validate(); err == nil {
+		t.Fatal("terminalize commit accepted no run record")
+	}
 	unchangedWithOutcome := EventCommit{
 		RunID: "run_1", SessionID: "session", SegmentID: "segment_1",
 		Outcome: run.OutcomeCanceled,
