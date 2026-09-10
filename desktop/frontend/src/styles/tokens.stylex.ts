@@ -92,6 +92,9 @@ export const radius = stylex.defineVars({
   xs: "var(--shape-xs)",
   /** Corners named for the plane they belong to: a card and a transcript bubble differ. */
   card: "var(--surface-card-radius)",
+  /** The transcript column's corner. Shared by everything that sits in it — the reader's own
+   *  message and the cards the agent puts beside it — because they are the same width apart
+   *  from the same edge. What is NOT shared is the shape: see `corner.bubble`. */
   bubble: "var(--shape-bubble)",
   sm: "var(--shape-sm)",
   lg: "var(--shape-lg)",
@@ -187,6 +190,17 @@ export const leading = stylex.defineVars({
  */
 export const corner = stylex.create({
   pill: { borderRadius: "var(--shape-pill)", "corner-shape": "round" },
+  /**
+   * SPEECH, and a bundle for the same reason the pill is one: a squircle is the shape of
+   * chrome, so a block someone typed drawn with one reads as another panel.
+   *
+   * Only the reader's own message. An approval or a question card sits in the same column and
+   * takes the same RADIUS (`radius.bubble`), but it carries controls and is answered rather
+   * than read — it is chrome that arrived in the transcript, and it keeps the squircle. The
+   * reference client splits it the same way: its two message-bubble components each override
+   * the squircle back to round, while the cards in its thread keep it.
+   */
+  bubble: { borderRadius: "var(--shape-bubble)", "corner-shape": "round" },
 });
 
 export const type = stylex.create({

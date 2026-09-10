@@ -92,7 +92,6 @@ export const messageStyles = stylex.create({
   body: { minWidth: 0, textWrap: "pretty", lineHeight: leading.prose, color: color.fg },
   bubble: {
     maxWidth: "70%",
-    borderRadius: "var(--shape-bubble)",
     backgroundColor: "var(--app-user-message-surface)",
     paddingInline: space.s3,
     paddingBlock: space.s2,

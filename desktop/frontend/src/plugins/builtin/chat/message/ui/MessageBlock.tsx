@@ -23,7 +23,7 @@ import {
   useVisibleActionMaterialization,
 } from "./messageVisibleMaterial";
 import { reveal } from "@/ui";
-import { type as typeStep } from "@/styles/tokens.stylex";
+import { corner, type as typeStep } from "@/styles/tokens.stylex";
 import { messageStyles } from "./messageStyles";
 
 function MessageBlockInner({
@@ -123,7 +123,12 @@ function MessageBlockInner({
       data-user-message-bubble={isUser ? "" : undefined}
       className={cn(
         MESSAGE_CONTENT_CLASS,
-        stylex.props(messageStyles.body, typeStep.prose, isUser && messageStyles.bubble).className,
+        stylex.props(
+          messageStyles.body,
+          typeStep.prose,
+          isUser && messageStyles.bubble,
+          isUser && corner.bubble,
+        ).className,
       )}
     >
       {content}

@@ -14996,3 +14996,154 @@ Round 231 已经量过，committed 规格里的 `.first()` 绝大多数是属性
 上一轮我提的方案，**动手前一问"它能抓住已经发生的事故吗"就否掉了** ——
 换成去查守卫自己会不会读不到东西还报绿，答案是不会，
 而顺手补上的两处，一处是**报错报得像另一件事**。
+
+## Round 234 —— 改用 Codex 做第一参考，然后发现大部分东西早就一样了
+
+### 零、参考基准换了
+
+用户指示：对照桌面的 `study/chatgpt` 做像素级对比，重点是**布局与交互**（工具调用渲染、
+流式输出、composer、goal/plan、dock 栏）；并且**文档不作真理，以 Codex 为第一参考**。
+
+提取出来的那个应用本身就是 Codex —— 满屏 `--codex-*`、`data-codex-window-type`、
+`--codex-sidebar-preferred-width`。它比消费级 ChatGPT 更贴近 Flame 的产品形态。
+令牌表在 `extracted/webview/assets/app-initial-*.css`（812 个自定义属性，183 条字面声明）。
+
+### 一、先量，结果大半已经一致
+
+| 维度 | Codex | Flame | |
+| --- | --- | --- | --- |
+| 圆角阶梯 xs…3xl | 4/6/8/10/12/16/20px | 4/6/8/10/12/16/20px | **逐档相同** |
+| 间距基数 | `.25rem` | `0.25rem` | 同值 |
+| 阴影几何 | `0 1px 2px -1px` / `0 4px 8px -2px` / `0 8px 16px -4px` / `0 16px 32px -8px` | 同 | **完全相同** |
+| 角形 | `superellipse(1.5)` + scale `1.25` | `superellipse(1.5)` + `--corner-scale: 1.25` | **完全相同** |
+| 正文字号 | `--codex-chat-font-size: 16px` | `--fs-prose: 16px` | 同 |
+| 附件圆角推导 | `max(0, composer半径 − inset)` | `max(0, --shape-composer − editor-start)` | **同一个公式** |
+| 旋转指示 | `1s linear infinite` | `1000ms linear infinite` | 同 |
+
+这不是我挑出来的巧合 —— 是逐项比对后剩下的。**没什么可改的**这件事本身是结论。
+
+### 二、三次差点改错，全部靠"再量一次"拦住
+
+**1）composer 圆角。** Codex 的 composer 圆角是状态驱动三档：单行且控件同排 →
+`--radius-full`（纯胶囊）；单行但控件另起一行（`rows=stacked`）→ `--radius-3xl` = 20px；
+多行 → 20px。看到"胶囊"我差点去改 Flame 恒定的 20px。
+
+去读 `composerStyles.ts` 的注释：**"the send control sits in the footer, not beside the text"**
+—— Flame 就是 `rows=stacked`。**Codex 的规则给 Flame 这个形态算出来的答案正好是 20px。**
+不改。
+
+**2）时长阶梯。** Codex 全产品只有两档：`--transition-duration-basic: .15s` /
+`relaxed: .3s`。Flame 有六档，看着像漂移。
+
+数消费者（注意：CSS 变量的直接 grep 被 StyleX 令牌层挡住，要数 `motion.*`）：
+`color` 16 处、`fast` 17 处、`med` 2 处、`instant` 2 处、`drawer` 13 处、`slow` 1 处。
+`switch.tsx` 同时用了 `color` 和 `fast` —— 打开一看：
+`color` 管 `color, background-color, border-color`，`fast` 管 `translate`。
+**色变与位移分开，比 Codex 的两档更细且有据。** 不改。
+
+**3）（记一笔）zsh 又把 `--include=*.ts` 当 glob 吃掉了**，六个档位全读成 0。
+同一个坑第二次。这次因为把 stderr 一起打出来了才当场发现是假读数。
+
+### 三、唯一的真缺陷：说话的方框被画成了机器
+
+Codex 把超椭圆**逐组件**施加（`.sidebar-item`、composer、卡片、cell、toggle 都显式写
+`corner-shape: var(--codex-corner-shape)`），并且**两个消息气泡组件都显式退回圆角** ——
+一个写 `round`，一个写 `superellipse(1)`。同一个仓库里两处独立的 opt-out 是决定，不是疏忽。
+
+Flame 是反过来的：`:where(*, *::before, *::after)` 给**所有元素**上超椭圆，只有 pill 退出。
+所以气泡也是超椭圆。
+
+**根因不在气泡，在令牌的形状。** `corner.pill` 早就把"半径 + 形状"打包成一个不可拆的
+bundle，注释写着"两半从来不是两个决定"。`radius.bubble` 只有半径、没有形状 ——
+而它有三个消费者（`surface.tsx` 的 `request` / `prompt`，加 `messageStyles.ts`），
+全是 transcript 里的块（`surface.tsx` 的注释自己写着"那里每个块都是气泡"）。
+其中 `messageStyles.ts` 还**绕过令牌手写了 `var(--shape-bubble)`**。
+
+按 `corner.pill` 的先例做：`corner.bubble` 成为 bundle（半径 + 圆角），`MessageBlock` 取用。
+
+**但我第一版把它施加给了全部三个消费者，这是错的 —— 而且是 golden 图告诉我的。**
+
+跑 golden 挂了 5 条（全是暗色）。看 diff 图：高亮的四个角是**审批卡**的，不是气泡的。
+`request` = `ApprovalCard`、`prompt` = `QuestionCard`，都是带 Deny/Allow、带选项的**交互面**。
+回去看 Codex：它 thread 里的卡片（`_borderedCardSandbox`、`_cell`）拿的都是**超椭圆**，
+只有两个消息气泡组件退回圆角。**按它的分法，审批卡是"到了对话里的 chrome"，不是言语。**
+
+所以分界不在 transcript，在**言语**：
+- `radius.bubble`（defineVars）—— transcript 列的**半径**，气泡和两张卡共享（同列同宽）
+- `corner.bubble`（create）—— **言语**的捆绑，半径 + 圆角，只有用户消息一个消费者
+
+`surface.tsx` 完全还原，一行没动。
+
+### 三点五、那么这个改动看得见吗？—— 不。而且我不打算说成看得见
+
+还原卡片后回跑，23 条 golden 全过 —— 也就是说**气泡形状的改变产生了零像素差异**。
+
+追下去，探针量到原因：
+
+| | 填充 | 背后 |
+| --- | --- | --- |
+| 用户气泡 | `color(srgb .118 .122 .133 / 0.05)` —— **正文色 5% alpha** | `rgb(255,255,255)` |
+| 审批卡 | `rgb(247,250,255)` —— 实色 | `rgb(255,255,255)` |
+
+气泡是一层 5% 的淡洗，四个角上那几个像素的差异不足一个色阶；卡片是实色，所以差了 51–98 像素。
+**再加上 WKWebView 根本没有 `corner-shape`，这个改动在桌面应用里当前完全惰性。**
+
+它仍然该做（规则变成真的了，而且被守卫钉住了），但它不是视觉改进，我不把它写成视觉改进。
+
+### 三点六、顺手量了气泡的其余三项，结果全部一致
+
+既然量到了 5% alpha，就把 Codex 的对应值取出来比：
+
+| | Codex | Flame |
+| --- | --- | --- |
+| 用户消息底色 | `color-mix(in oklab, var(--color-text) 5%, transparent)` | 正文色 5% alpha |
+| 最大宽度 | `--user-chat-width: 70%` | `maxWidth: "70%"` |
+| 半径 | `--radius-2xl`（16 base × 1.25） = 20px | 20px |
+| 角形 | `superellipse(1)` = 圆 | 圆（本轮改） |
+
+**四项全中。** 消息渲染这一块本来就已经是对齐的，本轮只是补上了第四项。
+
+### 四、新守卫，以及它自己的取样缺陷
+
+`visual/cornerLanguage.visual.spec.ts`：说话是圆的，chrome 是超椭圆的。
+
+三个坑都踩了：
+
+1. **会假绿。** 引擎不支持 `corner-shape` 时所有盒子都读到空串，各组自然"一致"。
+   而 WKWebView（桌面应用真正跑的地方）**正是这种引擎**。所以先断言
+   `CSS.supports("corner-shape", "superellipse(1.5)")`，不支持就红。
+2. **取样被污染。** 第一次跑报了两个按钮"掉出角语言" —— 它们是**图标按钮，本来就是胶囊**，
+   合法地读 `round`。改成按几何识别胶囊（半径已经到达短边的一半）后排除。
+3. **只测了一半，于是漏掉了我自己的过度施加。** 第一版只问"言语是圆的吗、控件是超椭圆吗"，
+   对**卡片**一个字没问 —— 所以我把圆角施加给审批卡时，它照样报绿，
+   真正抓住的是 golden 图（而 golden 报的是像素数，不是理由）。
+   补上第三组（按 `data-slot` 取审批卡与问题卡）后，两个方向都破坏验证过：
+
+   | 破坏 | 报出 |
+   | --- | --- |
+   | 去掉 `corner.bubble` 的圆角 | `speech drawn as chrome` —— 三个气泡读到 `superellipse(1.5)` ✓ |
+   | 给审批卡加上圆角 | `chrome that fell off the corner language: card approval-surface` ✓ |
+
+   第一条同时是改动前的实况证据：**每一条用户消息本来都是超椭圆。**
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 逐项比对的维度 | 令牌 7 项 + 消息渲染 4 项 + 布局/交互 3 项 |
+| 量完确认已一致、不动的 | **11 项** |
+| 差点改错、靠再量拦住的 | **3 处**（composer 圆角 / 时长阶梯 / zsh 假读数） |
+| 改错了又改回来的 | **1 处**（把圆角施加给审批卡，golden 抓住） |
+| 真缺陷 | **1**（气泡角形），根因在令牌未打包 |
+| 该缺陷的可见性 | **零像素** —— 5% alpha 淡洗，且 WKWebView 无 `corner-shape` |
+| 新守卫 | 1（floor + 引擎断言 + 三组取样，双向破坏验证） |
+| 自己守卫的缺陷 | 2（胶囊污染、缺卡片组），均已修 |
+| typecheck / lint / prettier / knip / 守卫 / 单测 | 全绿（2449 通过），余 5 条 `src/rpc` 为越界既有阻塞 |
+| golden | 697 条全过 |
+
+### 一句话
+
+换了参考基准之后**最大的产出是"不用改"** —— 十一项逐项相同，包括用户气泡的填充公式、
+最大宽度和半径；唯一的真缺陷是气泡的**角形**，而它值零像素。
+真正的教训在守卫上：**我第一版守卫只问了这条规则的一半，于是我自己越过那一半时它报了绿**，
+抓住我的是 golden 的像素数 —— 一个能告诉你"变了"、但不能告诉你"为什么不该变"的东西。
