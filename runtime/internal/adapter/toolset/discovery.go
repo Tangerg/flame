@@ -72,9 +72,8 @@ func WithToolAdvertiser(ctx context.Context, advertiser ToolAdvertiser) context.
 // built per Run from the resolver's complete deferred set, so its advertised
 // catalog and promotable definitions never drift.
 type Discovery struct {
-	entries []discoverableTool
+	entries []discoverableTool // in stable source-then-name order
 	byName  map[string]discoverableTool
-	names   []string // deferred tool names, in stable source-then-name order
 	inner   toolcontract.Tool
 }
 
@@ -107,10 +106,6 @@ func NewDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
 		}
 		return strings.Compare(a.definition.Name, b.definition.Name)
 	})
-	t.names = make([]string, len(t.entries))
-	for i, e := range t.entries {
-		t.names[i] = e.definition.Name
-	}
 	inner, err := toolcontract.NewFunc(
 		toolcontract.FuncConfig{
 			Name:        tool.SearchTools,
@@ -131,7 +126,11 @@ func (d *Discovery) DeferredToolNames() []string {
 	if d == nil {
 		return nil
 	}
-	return slices.Clone(d.names)
+	names := make([]string, len(d.entries))
+	for index, entry := range d.entries {
+		names[index] = entry.definition.Name
+	}
+	return names
 }
 
 func (d *Discovery) Definition() chat.ToolDefinition {
