@@ -463,9 +463,6 @@ func (s *Store) DeleteStash(id string) (bool, error) {
 // RememberWorkspace moves a workspace to the front of the recent list.
 func (s *Store) RememberWorkspace(path string) error {
 	path = filepath.Clean(strings.TrimSpace(path))
-	if path == "." || !filepath.IsAbs(path) {
-		return errors.New("workspace path must be absolute")
-	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	workspace := Workspace{Path: path, LastOpened: s.now().UTC()}
@@ -564,10 +561,10 @@ func (s *Store) recordPromptHistoryLocked(commandID agent.CommandID, message age
 	return nil
 }
 
+// trimHistory keeps every prompt an unsettled command still owns, plus the most
+// recent unpinned ones up to capacity. A history already within capacity needs
+// no special case: every entry is either pinned or among the last capacity many.
 func (s *Store) trimHistory(history []historyEntry) []historyEntry {
-	if len(history) <= s.historyCapacity {
-		return cloneHistory(history)
-	}
 	pinned := make(map[agent.CommandID]struct{})
 	for _, commands := range s.pendingRuns {
 		for _, pending := range commands {
