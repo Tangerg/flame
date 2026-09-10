@@ -236,7 +236,9 @@ in `globals.css`; `check:tokens` fails the build on a per-callsite pixel value.
 
 4. **Sentence-case headlines.** Never ALL-CAPS. Welcome screen, settings sections, view headers — all sentence-case. Optional period termination is allowed (Vercel signature) but not required.
 
-5. **Tabular numerals everywhere numeric.** `font-feature-settings: "tnum"` on caption-mono and code by default. Numbers don't jitter when counters update.
+5. **Tabular numerals everywhere numeric.** `font-feature-settings: "tnum"` is set on `body`, so it inherits everywhere rather than being asked for per call site, and the reset re-inherits it for `button`/`input`/`textarea` because the `font` shorthand resets it. Measured on the bundled face: swapping every digit in a numeric run changes no width anywhere (26 runs across five routes; with the feature forced off, 17 of them move by up to 10.7px).
+
+   **This holds for the face the product ships, not for every face it offers.** A font can only do tabular figures if it has them, and the UI-font picker offers one that does not: on a ten-digit run at 32px, `Arial` moves 21.4px while `Helvetica Neue` is exact. Asking through `font-variant-numeric: tabular-nums` or `lining-nums tabular-nums` instead changes that number by nothing — there is no CSS answer, only the font's own glyph widths. Every code candidate measured is exact, which monospace guarantees by construction. (Only families installed on the measuring machine can be judged; the rest of the curated list is unverified rather than known good.) The promise above is therefore a property of the default and of any chosen family that provides the feature.
 
 6. **CJK safety.** Letter-spacing > 0.02em should be scoped to `:lang(en)` — CJK characters are pulled visually apart by positive tracking.
 

@@ -14103,3 +14103,79 @@ activate 一次，断言焦点不落在 `body`。**前置条件就是这个审�
 
 一个报告"13 个缺陷"的审计，和一个什么都没测的审计，长得一模一样 ——
 区别只在于**它有没有先确认自己真的把焦点放上去了**。
+
+## Round 219 —— 两个干净的否定，一个字体做不到的承诺，和我自己的一次过度声称
+
+### 一、浮层不溢出视口（`ui_rules` 12）—— 干净
+
+在 Go 侧真实下限 **1120×720**（`MinWidth`/`MinHeight`）上，跨 6 条路线打开
+29 个 popup 触发器，量到 **22 个可见浮层元素，0 个越出视口**。
+
+**没有保留这个守卫**：碰撞检测归 Base UI 所有，为一个库的既有能力花 3.8 分钟
+套件时间不值当；而产品自画的两个浮层（composer 上方的建议面板、文件 mention
+picker）在 `closure.visual.spec.ts` 里已经各有一条用例。
+
+### 二、tabular 数字（`ui_rules` 10 / DESIGN.md §0）—— 默认字体上干净
+
+量法：把一段文本里**每个数字换成 0、再换成 1**，宽度不变才叫 tabular。
+
+| | 结果 |
+| --- | --- |
+| 五条路线上的数字串 | **26 段，0 段抖动** |
+| 把 tabular 强制关掉（证明探针不是瞎的） | **17 段抖动，最大 10.7px** |
+
+`globals.css` 在 `body` 上设 `font-feature-settings: "tnum" 1` 让它继承，
+reset 又为 `button`/`input`/`textarea` 重新继承一次（因为 `font` 简写会重置它）——
+这两处都在起作用。
+
+### 三、真发现：picker 提供的字体里有一个做不到
+
+字体没有 tabular 字形时，**CSS 无解**。在 10 位数字、32px 上量：
+
+| 字体 | 抖动 | 说明 |
+| --- | --- | --- |
+| `Helvetica Neue` | **0.00px** | picker 候选，本机已装 |
+| `Arial` | **21.38px** | picker 候选，本机已装 |
+| 全部 code 候选（Menlo / JetBrains Mono / Fira Code） | 0.00px | 等宽字体天然保证 |
+
+换成 `font-variant-numeric: tabular-nums` 或 `lining-nums tabular-nums` 去要 ——
+**三种问法的数字一模一样**。这不是 CSS 能修的，是字体自己的字宽。
+
+已把 DESIGN.md §0 第 5 条从无条件断言改成实测事实（并注明只能判断本机已装的字体）。
+
+### 四、我的过度声称（自查掉）
+
+第一版我拿 **Round 212 的字体列表**（Helvetica / Georgia / Times New Roman /
+Futura / Verdana / Optima / Avenir Next / Menlo）去量，报出"picker 九个字体里
+四个做不到"，还写进了 DESIGN.md。
+
+**那个列表不是 picker 的列表** —— 它是 Round 212 为压测控件高度**故意挑的
+metric 差异大的字体**。picker 真正的候选是
+`SF Pro Text / SF Pro Display / Inter / Helvetica Neue / Segoe UI / Roboto /
+Ubuntu / Cantarell / Arial`，Georgia 和 Futura **根本不在里面**。
+
+去查真列表之后重量，才得到上面那张表。同时发现另一个陷阱：未安装的字体
+一律读到 10.55px —— 那是**回落字体在量自己**，不能算作那些字体的读数。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 干净的否定 | 2（浮层越界 0/22；默认字体 tabular 26/26） |
+| 真发现 | 1（`Arial` 无 tabular 字形，CSS 无解） |
+| 修正的文档断言 | 1（DESIGN.md §0 第 5 条） |
+| 自查掉的过度声称 | 1（拿错字体列表，已重量并改正） |
+| 生产代码改动 | **零** |
+| lint / prettier / dead-tokens | 全绿 |
+
+### 待用户决定（产品决策，不由我替你定）
+
+`Arial` 在候选里而它做不到 tabular。三个选项都站得住：
+① 用容量探针过滤候选（`fontAvailability` port 的注释本来就说"探针是浏览器的"，
+seam 已存在；但会**默默拿掉用户的一个选择**）；② 在 picker 里标注该字体不支持
+（保留选择，但要加新 UI）；③ 就这样，文档已经写明依赖。
+
+### 一句话
+
+"数字不抖"这条承诺在默认字体上是真的 —— 而我第一次去验证"换字体还真不真"时，
+**量的是一份根本不在 picker 里的字体列表。**
