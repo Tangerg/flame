@@ -290,3 +290,49 @@ func TestSkillMinerRevisionSkipsInvalidSourceDocument(t *testing.T) {
 		t.Fatal("submitted a revision of an invalid skill")
 	}
 }
+
+// TestMiningPromptsAskForTheSentinelTheMinerReads pins the agreement the two
+// literals used to keep by coincidence: whatever a prompt tells the model to
+// answer when it has nothing, mineDocument has to recognise. Spelling one of
+// them differently would turn every refusal into a skill document named after
+// the refusal.
+func TestMiningPromptsAskForTheSentinelTheMinerReads(t *testing.T) {
+	for name, prompt := range map[string]string{
+		"mine":   skillMinerPrompt,
+		"revise": skillRevisePrompt,
+	} {
+		if !strings.Contains(prompt, noSkillSentinel) {
+			t.Errorf("the %s prompt never names %q", name, noSkillSentinel)
+		}
+	}
+}
+
+// TestMineDocumentReadsTheSentinelNotTheDocument covers the two answers a
+// distillation prompt can give directly, because the pipeline cannot tell them
+// apart: a document that fails to parse is dropped just as quietly as one that
+// was never mined.
+func TestMineDocumentReadsTheSentinelNotTheDocument(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		reply string
+		want  string
+	}{
+		{name: "sentinel", reply: noSkillSentinel, want: ""},
+		{name: "padded sentinel", reply: "  " + noSkillSentinel + "\n", want: ""},
+		{name: "lowercase sentinel", reply: "no_skill", want: ""},
+		{name: "document", reply: "  name: thing\n", want: "name: thing"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			skillMiner, _, _ := skillProposalMinerFixture(t, test.reply, SkillMiningPolicyValues{
+				ComplexityThreshold: intPointer(1), Cadence: intPointer(1),
+			})
+			got, err := skillMiner.mineDocument(t.Context(), skillMinerPrompt, "conversation")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != test.want {
+				t.Fatalf("mineDocument(%q) = %q, want %q", test.reply, got, test.want)
+			}
+		})
+	}
+}

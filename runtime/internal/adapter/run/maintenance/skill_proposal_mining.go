@@ -301,16 +301,27 @@ description: <what the skill does and WHEN to use it, one or two sentences>
 // outside conversation middleware. It returns "" for NO_SKILL, a "REVISE: <name>"
 // directive, or a new-skill SKILL.md; the caller interprets which.
 func (s *SkillProposalMiner) askForSkill(ctx context.Context, messages []chat.Message) (string, error) {
-	transcript := renderTranscript(messages)
+	return s.mineDocument(ctx, skillMinerPrompt, renderTranscript(messages))
+}
+
+// noSkillSentinel is the exact answer both mining prompts ask for when the
+// conversation yields nothing. The prompts state it and mineDocument reads it,
+// so a sentinel spelled two ways would turn every refusal into a skill document
+// named after the refusal.
+const noSkillSentinel = "NO_SKILL"
+
+// mineDocument runs one distillation prompt on the utility model and reads its
+// answer: the sentinel means nothing was mined, anything else is the document.
+func (s *SkillProposalMiner) mineDocument(ctx context.Context, system, user string) (string, error) {
 	text, err := s.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
-		SystemPrompt: skillMinerPrompt, UserPrompt: transcript,
+		SystemPrompt: system, UserPrompt: user,
 		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: skillMiningOutputTokens,
 	})
 	if err != nil {
 		return "", err
 	}
 	trimmed := strings.TrimSpace(text)
-	if strings.EqualFold(trimmed, "NO_SKILL") {
+	if strings.EqualFold(trimmed, noSkillSentinel) {
 		return "", nil
 	}
 	return trimmed, nil
@@ -344,18 +355,7 @@ func (s *SkillProposalMiner) askForRevision(ctx context.Context, current *skills
 	input.WriteString(current.Instructions)
 	input.WriteString("\n\nCONVERSATION\n---\n")
 	input.WriteString(renderTranscript(messages))
-	text, err := s.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
-		SystemPrompt: skillRevisePrompt, UserPrompt: input.String(),
-		MaxInputBytes: maintenanceModelInputBytes, MaxOutputTokens: skillMiningOutputTokens,
-	})
-	if err != nil {
-		return "", err
-	}
-	trimmed := strings.TrimSpace(text)
-	if strings.EqualFold(trimmed, "NO_SKILL") {
-		return "", nil
-	}
-	return trimmed, nil
+	return s.mineDocument(ctx, skillRevisePrompt, input.String())
 }
 
 // unfence strips a single wrapping Markdown code fence when the model wrapped
