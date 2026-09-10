@@ -230,23 +230,14 @@ func (r RecoveryCommit) Validate() error {
 }
 
 func validateLostRunReplacement(recovery rundomain.Replacement) error {
-	if err := recovery.Validate(); err != nil {
-		return err
-	}
-	expected := recovery.Expected()
 	lost := recovery.State()
 	failure, failed := lost.Failure()
 	if !failed {
 		return errors.New("lost Run replacement has no failure")
 	}
-	derived, err := expected.RecoverLost(failure, lost.FinishedAt(), lost.MessageMark())
-	if err != nil {
-		return fmt.Errorf("lost Run replacement transition: %w", err)
-	}
-	if !derived.Equal(lost) {
-		return fmt.Errorf("lost Run replacement rewrites facts outside Run %q recovery", expected.ID())
-	}
-	return nil
+	return recovery.ValidateDerivedBy(func(expected rundomain.Run) (rundomain.Run, error) {
+		return expected.RecoverLost(failure, lost.FinishedAt(), lost.MessageMark())
+	})
 }
 
 func validateRecoveryModelInvocations(

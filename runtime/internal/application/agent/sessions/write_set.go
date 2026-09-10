@@ -237,43 +237,25 @@ func terminalGoalRun(root rundomain.Run) (goal.RunRecord, error) {
 }
 
 func validateTerminalRunReplacement(replacement rundomain.Replacement) error {
-	if err := replacement.Validate(); err != nil {
-		return err
-	}
-	expected := replacement.Expected()
 	state := replacement.State()
 	outcome, terminal := state.Outcome()
 	if !terminal {
 		return errors.New("terminal Run replacement has no outcome")
 	}
-	current, err := expected.AdvanceProgress(
-		state.Metrics(),
-		state.ContextTokens(),
-		state.FinishedAt(),
-	)
-	if err != nil {
-		return fmt.Errorf("terminal Run replacement progress: %w", err)
-	}
-	var derived rundomain.Run
-	switch outcome {
-	case rundomain.OutcomeCanceled:
-		derived, err = current.CancelWaiting(state.Detail(), state.FinishedAt(), state.MessageMark())
-	case rundomain.OutcomeLost:
-		failure, failed := state.Failure()
-		if !failed {
-			return errors.New("lost Run replacement has no failure")
+	return replacement.ValidateDerivedBy(func(expected rundomain.Run) (rundomain.Run, error) {
+		switch outcome {
+		case rundomain.OutcomeCanceled:
+			return expected.CancelWaiting(state.Detail(), state.FinishedAt(), state.MessageMark())
+		case rundomain.OutcomeLost:
+			failure, failed := state.Failure()
+			if !failed {
+				return rundomain.Run{}, errors.New("lost Run replacement has no failure")
+			}
+			return expected.RecoverLost(failure, state.FinishedAt(), state.MessageMark())
+		default:
+			return rundomain.Run{}, fmt.Errorf("terminal Run replacement has unsupported outcome %s", outcome)
 		}
-		derived, err = current.RecoverLost(failure, state.FinishedAt(), state.MessageMark())
-	default:
-		return fmt.Errorf("terminal Run replacement has unsupported outcome %s", outcome)
-	}
-	if err != nil {
-		return fmt.Errorf("terminal Run replacement transition: %w", err)
-	}
-	if !derived.Equal(state) {
-		return fmt.Errorf("terminal Run replacement rewrites facts outside Run %q transition", expected.ID())
-	}
-	return nil
+	})
 }
 
 func validateTerminalGoalRun(run rundomain.Run, record *goal.RunRecord) error {
