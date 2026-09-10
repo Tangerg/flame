@@ -56,6 +56,26 @@ func TestValidateSnapshotRejectsInconsistentPortableState(t *testing.T) {
 		{"non-tool spawning item", func(s *Snapshot) {
 			appendRootedSnapshotRun(s, "run_2", "run_1", "item_1")
 		}},
+		{"child named as a root", func(s *Snapshot) {
+			// run_2 is a child of run_1, and run_3 names run_2 as its root. Both
+			// spawning Items are the calls their parents really made, so only the
+			// topology can refuse this.
+			appendRootedSnapshotRun(s, "run_2", "run_1", "item_2")
+			child := s.Runs[0].Snapshot()
+			child.ID = "run_3"
+			child.Lineage = run.Lineage{SpawnedByItemID: "item_3", ParentRunID: "run_2", RootRunID: "run_2"}
+			s.Runs = append(s.Runs, testsupport.MustRestoreRun(child))
+			s.Items = append(s.Items,
+				testsupport.MustRestoreItem(testsupport.ItemInput{
+					SessionID: "ses_1", ID: "item_2", RunID: "run_1",
+					Status: transcript.ItemCompleted, Kind: transcript.ToolCall,
+				}),
+				testsupport.MustRestoreItem(testsupport.ItemInput{
+					SessionID: "ses_1", ID: "item_3", RunID: "run_2",
+					Status: transcript.ItemCompleted, Kind: transcript.ToolCall,
+				}),
+			)
+		}},
 		{"run tree cycle", func(s *Snapshot) {
 			appendRootedSnapshotRun(s, "run_2", "run_3", "item_2")
 			appendRootedSnapshotRun(s, "run_3", "run_2", "item_3")

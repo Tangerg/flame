@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
@@ -128,54 +130,46 @@ func (s Snapshot) validateItems(runs map[string]struct{}) (map[string]transcript
 	return items, nil
 }
 
+// validateSnapshotRunTree proves every Run in the archive belongs to one
+// complete topology. Reachability, cycles, duplicates and the root each child
+// names are run.Tree's rules; a snapshot only adds what its Items say about the
+// call that spawned each child.
 func validateSnapshotRunTree(runs []run.Run, items map[string]transcript.Item) error {
-	tree, err := newSnapshotRunTree(runs, items)
-	if err != nil {
-		return err
+	index := &snapshotRunTree{runByID: make(map[string]run.Run, len(runs))}
+	for _, value := range runs {
+		index.runByID[value.ID()] = value
 	}
-	return tree.validateRootLineage(runs)
+	membersByRoot := make(map[string][]run.TreeMember, len(runs))
+	for _, value := range runs {
+		lineage := value.Lineage()
+		rootRunID := value.ID()
+		if lineage.IsChild() {
+			if err := index.validateChildSpawn(value, items); err != nil {
+				return err
+			}
+			rootRunID = lineage.RootRunID
+		}
+		membersByRoot[rootRunID] = append(
+			membersByRoot[rootRunID],
+			run.TreeMember{RunID: value.ID(), Lineage: lineage},
+		)
+	}
+	for _, rootRunID := range slices.Sorted(maps.Keys(membersByRoot)) {
+		if _, err := run.NewTree(rootRunID, membersByRoot[rootRunID]); err != nil {
+			return fmt.Errorf("sessions: snapshot run tree: %w", err)
+		}
+	}
+	return nil
 }
 
 type snapshotRunTree struct {
-	runByID             map[string]run.Run
-	parentByRunID       map[string]string
-	visitStateByRunID   map[string]snapshotRunVisitState
-	resolvedRootByRunID map[string]string
+	runByID map[string]run.Run
 }
 
-type snapshotRunVisitState uint8
-
-const (
-	snapshotRunUnvisited snapshotRunVisitState = iota
-	snapshotRunVisiting
-	snapshotRunVisited
-)
-
-func newSnapshotRunTree(
-	runs []run.Run,
-	items map[string]transcript.Item,
-) (*snapshotRunTree, error) {
-	tree := &snapshotRunTree{
-		runByID:             make(map[string]run.Run, len(runs)),
-		parentByRunID:       make(map[string]string, len(runs)),
-		visitStateByRunID:   make(map[string]snapshotRunVisitState, len(runs)),
-		resolvedRootByRunID: make(map[string]string, len(runs)),
-	}
-	for _, run := range runs {
-		tree.runByID[run.ID()] = run
-	}
-	for _, run := range runs {
-		if run.Lineage().IsRoot() {
-			continue
-		}
-		if err := tree.indexChild(run, items); err != nil {
-			return nil, err
-		}
-	}
-	return tree, nil
-}
-
-func (s *snapshotRunTree) indexChild(
+// validateChildSpawn proves the Item a child names is the Tool call its parent
+// actually made. run.Tree settles the identities; only the transcript can say
+// whether the call that produced this child exists in it.
+func (s *snapshotRunTree) validateChildSpawn(
 	child run.Run,
 	items map[string]transcript.Item,
 ) error {
@@ -187,9 +181,6 @@ func (s *snapshotRunTree) indexChild(
 	root, rootFound := s.runByID[lineage.RootRunID]
 	if !rootFound {
 		return fmt.Errorf("sessions: snapshot child run %q references unknown root %q", child.ID(), lineage.RootRunID)
-	}
-	if !root.Lineage().IsRoot() {
-		return fmt.Errorf("sessions: snapshot child run %q names child %q as its root", child.ID(), lineage.RootRunID)
 	}
 	if !root.Capabilities().ChildRuns {
 		return fmt.Errorf(
@@ -214,46 +205,5 @@ func (s *snapshotRunTree) indexChild(
 			parent.ID(),
 		)
 	}
-	s.parentByRunID[child.ID()] = parent.ID()
 	return nil
-}
-
-func (s *snapshotRunTree) validateRootLineage(runs []run.Run) error {
-	for _, run := range runs {
-		rootRunID, err := s.resolveRootRunID(run.ID())
-		if err != nil {
-			return err
-		}
-		if run.Lineage().IsChild() && rootRunID != run.Lineage().RootRunID {
-			return fmt.Errorf(
-				"sessions: snapshot child run %q reaches root %q through parents, want %q",
-				run.ID(),
-				rootRunID,
-				run.Lineage().RootRunID,
-			)
-		}
-	}
-	return nil
-}
-
-func (s *snapshotRunTree) resolveRootRunID(runID string) (string, error) {
-	switch s.visitStateByRunID[runID] {
-	case snapshotRunVisiting:
-		return "", fmt.Errorf("sessions: snapshot run tree contains a cycle at %q", runID)
-	case snapshotRunVisited:
-		return s.resolvedRootByRunID[runID], nil
-	case snapshotRunUnvisited:
-	}
-	s.visitStateByRunID[runID] = snapshotRunVisiting
-	rootRunID := runID
-	if parentRunID := s.parentByRunID[runID]; parentRunID != "" {
-		var err error
-		rootRunID, err = s.resolveRootRunID(parentRunID)
-		if err != nil {
-			return "", err
-		}
-	}
-	s.visitStateByRunID[runID] = snapshotRunVisited
-	s.resolvedRootByRunID[runID] = rootRunID
-	return rootRunID, nil
 }
