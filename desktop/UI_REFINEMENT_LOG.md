@@ -14635,3 +14635,38 @@ Mermaid 用自己那套不完全可重复的字形排版决定 SVG 尺寸，面�
 
 套件 738 全绿的同时，产品正在抛一个未处理错误 ——
 **因为守卫只听两条通道，而它走的是第三条。**
+
+## Round 227 —— 新开的那条通道是干净的
+
+Round 226 给守卫加了 `unhandledrejection` 通道，但**产品从没被这条通道测过**。
+fixture 里没有 runtime，每个运行时调用都会失败 —— 正是找未捕获拒绝的最佳条件。
+
+跨 6 条路线（connection / mcp-servers / agent-memory / tools / narrative / question）
+用键盘激活 **150 个控件**：
+
+| | 结果 |
+| --- | --- |
+| 未捕获的 promise 拒绝 | **0** |
+| `window` error | **0** |
+
+### 一个我先怀疑、查完否掉的点
+
+日志里 `[feedback] create failed: RpcConnectionError` 看着像是**页面加载时**就在写
+feedback（未经用户动作的写入会是真缺陷）。去读代码：`rate()` 只从 `onClick` 进来 ——
+那些警告是**我自己的探针激活了赞/踩按钮**产生的，`[WebServer]` 的中继日志顺序让它
+看起来像在加载时。不是缺陷，而且处理是有意的：捕获后先问 `wasGenerationRetired`，
+不是那种情况才 warn。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 找到的缺陷 | **0** |
+| 查完否掉的怀疑 | 1（feedback 并非加载时写入） |
+| 现在被守卫覆盖的通道 | `console` + `pageerror` + `window.error` + `unhandledrejection` |
+| 生产代码改动 | **零** |
+
+### 一句话
+
+刚开的通道是干净的 —— 但它现在**被监听着**，所以下一次有人漏掉一个 `.catch()`，
+套件会红，而不是像上一轮那样在 738 个绿灯里躺着。
