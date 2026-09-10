@@ -106,29 +106,23 @@ func (i *Isolator) Workspace(ctx context.Context, sessionID, projectRoot string)
 		return "", err
 	}
 	i.mu.Lock()
+	defer i.mu.Unlock()
 	if i.closed {
-		i.mu.Unlock()
 		return "", errors.Join(sandbox.ErrShutdown, fresh.Shutdown())
 	}
 	if existing := i.workspaces[sessionID]; existing != nil {
 		if err := fresh.Shutdown(); err != nil {
-			i.mu.Unlock()
 			return "", fmt.Errorf("isolation: discard redundant workspace: %w", err)
 		}
 		if existing.retiring {
-			i.mu.Unlock()
 			return "", errWorkspaceRetiring
 		}
 		if existing.source != projectRoot {
-			i.mu.Unlock()
 			return "", errWorkspaceChanged
 		}
-		path, err := existing.workspace.Path()
-		i.mu.Unlock()
-		return path, err
+		return existing.workspace.Path()
 	}
 	i.workspaces[sessionID] = &ownedWorkspace{workspace: fresh, source: projectRoot}
-	i.mu.Unlock()
 	return fresh.Path()
 }
 
