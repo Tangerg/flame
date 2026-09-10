@@ -90,6 +90,33 @@ type ServerConfig struct {
 	OAuthHandler auth.OAuthHandler
 }
 
+// Format keeps the credential-bearing fields behind a redaction boundary for
+// every fmt verb, as mcpserver.Server does for the same fields upstream. This
+// is the connection adapter the domain type's comment defers the raw values to,
+// so it is the last place a diagnostic or a failing test could print them.
+func (s ServerConfig) Format(state fmt.State, _ rune) {
+	timeout := "unbounded"
+	if s.HandshakeTimeout != nil {
+		timeout = s.HandshakeTimeout.String()
+	}
+	_, _ = fmt.Fprintf(
+		state,
+		"ServerConfig{Name:%q, Transport:%q, Endpoint:%s, Command:%q, Args:%q, Env:%s, Dir:%q, "+
+			"Authorization:%s, Headers:%s, HandshakeTimeout:%s, OAuthHandler:%s}",
+		s.Name,
+		s.Transport,
+		mcpserver.SecretPresence(s.Endpoint != ""),
+		s.Command,
+		s.Args,
+		mcpserver.SecretPresence(len(s.Env) > 0),
+		s.Dir,
+		mcpserver.SecretPresence(s.Authorization != ""),
+		mcpserver.SecretPresence(len(s.Headers) > 0),
+		timeout,
+		mcpserver.SecretPresence(s.OAuthHandler != nil),
+	)
+}
+
 // Clone returns an independently owned configuration snapshot. Live handler
 // values are intentionally shared; only mutable collection storage is copied.
 func (s ServerConfig) Clone() ServerConfig {

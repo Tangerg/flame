@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -254,5 +255,30 @@ func TestHeaderRoundTripperRejectsUnboundTarget(t *testing.T) {
 	_, err = client.Do(req)
 	if !errors.Is(err, errCrossOrigin) {
 		t.Fatalf("Do error = %v, want errCrossOrigin", err)
+	}
+}
+
+// TestServerConfigFormattingRedactsCredentials mirrors the domain server's own
+// redaction test. This is the adapter the domain type defers raw credentials
+// to, so it is the last boundary before a diagnostic or a failing test prints
+// one.
+func TestServerConfigFormattingRedactsCredentials(t *testing.T) {
+	config := ServerConfig{
+		Name:          testMCPServerName("private"),
+		Transport:     TransportHTTP,
+		Endpoint:      "https://url-user:url-secret@example.com/mcp",
+		Authorization: "Bearer authorization-secret",
+		Headers:       map[string]string{"X-Key": "header-secret"},
+		Env:           []string{"TOKEN=environment-secret"},
+	}
+
+	formatted := fmt.Sprintf("%+v", config)
+	for _, secret := range []string{"url-user", "url-secret", "authorization-secret", "header-secret", "environment-secret"} {
+		if strings.Contains(formatted, secret) {
+			t.Fatalf("formatted config exposed %q: %s", secret, formatted)
+		}
+	}
+	if got := strings.Count(formatted, "[REDACTED]"); got != 4 {
+		t.Fatalf("formatted config redactions = %d, want 4: %s", got, formatted)
 	}
 }

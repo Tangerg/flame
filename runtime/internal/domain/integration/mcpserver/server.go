@@ -98,19 +98,22 @@ func (s Server) Format(state fmt.State, _ rune) {
 		s.Transport,
 		s.Enabled,
 		s.Description,
-		secretPresence(s.URL != ""),
-		secretPresence(s.Authorization != ""),
-		secretPresence(len(s.Headers) > 0),
+		SecretPresence(s.URL != ""),
+		SecretPresence(s.Authorization != ""),
+		SecretPresence(len(s.Headers) > 0),
 		s.Command,
 		s.Args,
-		secretPresence(len(s.Env) > 0),
+		SecretPresence(len(s.Env) > 0),
 		s.Dir,
 		timeout,
 		len(s.ToolPolicy.Rules()),
 	)
 }
 
-func secretPresence(present bool) string {
+// SecretPresence spells how a credential-bearing field appears in diagnostics.
+// The connection adapter carries the same fields and reports them the same way,
+// so a reader compares two renderings of one server rather than two vocabularies.
+func SecretPresence(present bool) string {
 	if present {
 		return "[REDACTED]"
 	}

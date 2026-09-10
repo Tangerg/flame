@@ -100,9 +100,17 @@ func TestOAuthSessionRoundTripOwnsSlices(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decodeOAuthSession: %v", err)
 	}
-	if gotConfig.Scopes[0] != "tools.read" || gotToken.AccessToken != token.AccessToken ||
-		gotToken.RefreshToken != token.RefreshToken || !gotToken.Expiry.Equal(token.Expiry) {
-		t.Fatalf("decoded session = config %+v token %+v", gotConfig, gotToken)
+	// oauth2.Config and oauth2.Token are third-party structs with no redaction
+	// boundary, so %+v of either prints a client secret and both tokens. Name
+	// the field that disagreed instead.
+	if gotConfig.Scopes[0] != "tools.read" {
+		t.Fatalf("decoded scope = %q, want the unmutated fixture scope", gotConfig.Scopes[0])
+	}
+	if gotToken.AccessToken != token.AccessToken || gotToken.RefreshToken != token.RefreshToken {
+		t.Fatal("decoded session did not round-trip its token material")
+	}
+	if !gotToken.Expiry.Equal(token.Expiry) {
+		t.Fatalf("decoded expiry = %s, want %s", gotToken.Expiry, token.Expiry)
 	}
 }
 
