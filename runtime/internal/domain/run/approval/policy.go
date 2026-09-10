@@ -69,14 +69,6 @@ func (m Mode) Valid() bool {
 	}
 }
 
-// String returns the stable permission-mode name.
-func (m Mode) String() string {
-	if !m.Valid() {
-		return "unknown"
-	}
-	return string(m)
-}
-
 // ValidDefault reports whether m may be configured as the runtime fallback.
 // Plan is session-scoped and therefore excluded.
 func (m Mode) ValidDefault() bool {

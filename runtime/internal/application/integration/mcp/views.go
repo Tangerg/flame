@@ -19,14 +19,6 @@ const (
 // Valid reports whether kind names one exact secret mutation.
 func (s SecretChangeKind) Valid() bool { return s == SecretSet || s == SecretClear }
 
-// String returns the stable secret-mutation name.
-func (s SecretChangeKind) String() string {
-	if !s.Valid() {
-		return "unknown"
-	}
-	return string(s)
-}
-
 // AuthorizationChange is a write-only bearer-token mutation.
 type AuthorizationChange struct {
 	Kind  SecretChangeKind
@@ -138,14 +130,6 @@ func (s ServerStateType) Valid() bool {
 	default:
 		return false
 	}
-}
-
-// String returns the stable server-state name.
-func (s ServerStateType) String() string {
-	if !s.Valid() {
-		return "unknown"
-	}
-	return string(s)
 }
 
 // ServerStatus is the application status notification read model. Known is

@@ -2,6 +2,7 @@ package run
 
 import (
 	"math"
+	"strings"
 	"testing"
 	"time"
 )
@@ -24,6 +25,16 @@ func TestFailureRetryAfterSecondsNeverShortensProviderHint(t *testing.T) {
 				t.Fatalf("RetryAfterSeconds() = %d, want %d", got, test.want)
 			}
 		})
+	}
+}
+
+func TestValidateNamesTheFailureKindItRejected(t *testing.T) {
+	// A String() that renders an invalid kind as a fixed word is invisible at the
+	// call site: %q and %s prefer it, so the diagnostic loses the only value it
+	// was written to report.
+	err := Failure{Kind: FailureKind("teapot")}.Validate()
+	if err == nil || !strings.Contains(err.Error(), "teapot") {
+		t.Fatalf("Validate() = %v, want the rejected kind named", err)
 	}
 }
 

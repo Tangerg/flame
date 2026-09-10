@@ -327,7 +327,7 @@ func TestRecordRunOwnsAccountingAndDerivedLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if paused.Status() != StatusPaused || paused.Reason().Code() != ReasonRunNotCompleted || paused.Reason().Detail() != run.OutcomeFailed.String() {
+	if paused.Status() != StatusPaused || paused.Reason().Code() != ReasonRunNotCompleted || paused.Reason().Detail() != string(run.OutcomeFailed) {
 		t.Fatalf("failed Run state = %+v", paused.Snapshot())
 	}
 }

@@ -48,10 +48,3 @@ func (s State) Status() Status {
 func (s Status) Valid() bool {
 	return s == StatusRunning || s == StatusWaiting || s == StatusFinished
 }
-
-func (s Status) String() string {
-	if !s.Valid() {
-		return "unknown"
-	}
-	return string(s)
-}

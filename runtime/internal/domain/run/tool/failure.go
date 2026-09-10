@@ -26,14 +26,6 @@ func (f FailureKind) Valid() bool {
 	}
 }
 
-// String returns the stable durable name of f.
-func (f FailureKind) String() string {
-	if !f.Valid() {
-		return "unknown"
-	}
-	return string(f)
-}
-
 // Failure is the durable explanation attached to an incomplete ToolCall.
 type Failure struct {
 	Kind   FailureKind

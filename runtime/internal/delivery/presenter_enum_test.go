@@ -41,7 +41,7 @@ func TestRunOutcomeProjectionIsExhaustive(t *testing.T) {
 		{run.OutcomeLost, protocol.OutcomeLost, protocol.ArtifactOutcomeLost},
 	}
 	for _, test := range tests {
-		t.Run(test.domain.String(), func(t *testing.T) {
+		t.Run(string(test.domain), func(t *testing.T) {
 			outcome := test.domain
 			if got := presentOutcome(testsupport.MustRestoreRun(run.Snapshot{Outcome: &outcome})); got.Type != test.wire {
 				t.Fatalf("presentOutcome type = %q, want %q", got.Type, test.wire)

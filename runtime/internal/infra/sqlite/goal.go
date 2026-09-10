@@ -149,7 +149,7 @@ func (g *GoalStore) RecordRun(ctx context.Context, record goal.RunRecord) error 
 			 ON CONFLICT(run_id) DO NOTHING`,
 			costUSD,
 			record.RunID, record.SessionID, runStateTerminal.databaseValue(),
-			record.IncarnationID, record.Outcome.String(), record.Steps,
+			record.IncarnationID, string(record.Outcome), record.Steps,
 			record.CompletedAt.UTC().UnixNano())
 		if err != nil {
 			return fmt.Errorf("sqlite: record Goal Run: %w", err)
@@ -223,7 +223,7 @@ func (g *GoalStore) validateExistingRun(ctx context.Context, record goal.RunReco
 		return fmt.Errorf("sqlite: decode existing Goal Run %q cost: %w", record.RunID, err)
 	}
 	if sessionID == record.SessionID && incarnationID == record.IncarnationID &&
-		outcome == record.Outcome.String() && storedCost.Equal(record.Cost) &&
+		outcome == string(record.Outcome) && storedCost.Equal(record.Cost) &&
 		steps == record.Steps && completedAt == record.CompletedAt.UTC().UnixNano() {
 		return nil
 	}

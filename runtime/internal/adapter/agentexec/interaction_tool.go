@@ -397,7 +397,7 @@ func (o *observedInteractionTool) requestToolApproval(
 	}
 	resolution, err := interactioninput.Require(
 		ctx,
-		interrupt.Key(interrupt.Approval.String(), request.ToolName, request.Arguments.Canonical()),
+		interrupt.Key(string(interrupt.Approval), request.ToolName, request.Arguments.Canonical()),
 		pending,
 	)
 	if err != nil {

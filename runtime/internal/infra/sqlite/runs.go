@@ -667,7 +667,7 @@ func (r *RunStore) finish(
 			 WHERE session_id = ? AND run_id = ? AND state = ?`
 		args := []any{
 			coarseState(next.State()).databaseValue(), commitSegmentID, commitID,
-			outcome.String(), value.Detail(), metrics.steps, metrics.durationNs,
+			string(outcome), value.Detail(), metrics.steps, metrics.durationNs,
 			metrics.usage, next.ContextTokens(), encodedFailure,
 			value.MessageMark(), value.FinishedAt().UTC().UnixNano(),
 			value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID(), coarseState(current.State()).databaseValue(),
@@ -755,7 +755,7 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		value.ID(), value.SessionID(),
 		lineage.SpawnedByItemID, lineage.ParentRunID, lineage.RootRunID,
-		coarseState(value.State()).databaseValue(), outcome.String(),
+		coarseState(value.State()).databaseValue(), string(outcome),
 		selection.Provider(), selection.Model(), selection.ReasoningEffort(),
 		value.GoalIncarnationID(),
 		value.Detail(), metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedFailure,

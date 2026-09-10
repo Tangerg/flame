@@ -160,7 +160,7 @@ func TestOutcomeTerminalState(t *testing.T) {
 
 func TestOutcomeStringRoundTrip(t *testing.T) {
 	for _, outcome := range allOutcomes {
-		parsed, ok := ParseOutcome(outcome.String())
+		parsed, ok := ParseOutcome(string(outcome))
 		if !ok || parsed != outcome {
 			t.Errorf("ParseOutcome(%q) = (%s, %v), want (%s, true)", outcome, parsed, ok, outcome)
 		}
@@ -187,28 +187,22 @@ func TestNoTransitionFromTerminal(t *testing.T) {
 	}
 }
 
-// TestStringsAreDistinct guards the String() maps against a copy-paste collision
-// (two states or two outcomes sharing a label) and the "unknown" fallthrough.
+// TestStringsAreDistinct guards the taxonomies against a copy-paste collision:
+// two states or two outcomes sharing one durable spelling.
 func TestStringsAreDistinct(t *testing.T) {
 	seen := map[string]bool{}
 	for _, s := range allStates {
-		if s.String() == "unknown" {
-			t.Errorf("state %q stringifies as unknown", s)
+		if seen[string(s)] {
+			t.Errorf("duplicate state label %q", s)
 		}
-		if seen[s.String()] {
-			t.Errorf("duplicate state label %q", s.String())
-		}
-		seen[s.String()] = true
+		seen[string(s)] = true
 	}
 	seen = map[string]bool{}
 	for _, o := range allOutcomes {
-		if o.String() == "unknown" {
-			t.Errorf("outcome %q stringifies as unknown", o)
+		if seen[string(o)] {
+			t.Errorf("duplicate outcome label %q", o)
 		}
-		if seen[o.String()] {
-			t.Errorf("duplicate outcome label %q", o.String())
-		}
-		seen[o.String()] = true
+		seen[string(o)] = true
 	}
 }
 

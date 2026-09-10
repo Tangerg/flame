@@ -94,13 +94,6 @@ func (s State) RecoverLost() (State, bool) {
 	return s, false
 }
 
-func (s State) String() string {
-	if !s.Valid() {
-		return "unknown"
-	}
-	return string(s)
-}
-
 // Outcome is why a Run reached a terminal state. Persistence and presentation
 // both project from this single terminal-reason taxonomy.
 //
@@ -169,11 +162,4 @@ func ParseOutcome(s string) (Outcome, bool) {
 		return "", false
 	}
 	return outcome, true
-}
-
-func (o Outcome) String() string {
-	if !o.valid() {
-		return "unknown"
-	}
-	return string(o)
 }

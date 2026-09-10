@@ -318,7 +318,7 @@ func encodeExecutorPolicy(checkpoint ExecutorCheckpointRecord) ([]byte, error) {
 		interruptKinds = make([]string, len(checkpoint.Capabilities.InterruptKinds))
 	}
 	for index, kind := range checkpoint.Capabilities.InterruptKinds {
-		interruptKinds[index] = kind.String()
+		interruptKinds[index] = string(kind)
 	}
 	limits := runLimitsRowOf(checkpoint.Limits)
 	return json.Marshal(executorPolicyWire{

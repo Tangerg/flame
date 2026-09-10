@@ -38,16 +38,6 @@ func (f FailureKind) Valid() bool {
 	}
 }
 
-// String names the kind for diagnostics — parity with the package's other
-// enums (State / Outcome), so a FailureError without an error chain reports a
-// legible name instead of a raw integer.
-func (f FailureKind) String() string {
-	if !f.Valid() {
-		return "unknown"
-	}
-	return string(f)
-}
-
 // AllowsRetryAfter reports whether waiting can plausibly clear this failure.
 // Other kinds require a different recovery action and cannot carry a delay.
 func (f FailureKind) AllowsRetryAfter() bool {
@@ -127,7 +117,7 @@ func (f *FailureError) Error() string {
 	if f.Err != nil {
 		return f.Err.Error()
 	}
-	return "run failure: " + f.Kind.String()
+	return "run failure: " + string(f.Kind)
 }
 
 func (f *FailureError) Unwrap() error { return f.Err }

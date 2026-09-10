@@ -43,10 +43,3 @@ func ParseKind(s string) (Kind, bool) {
 	}
 	return kind, true
 }
-
-func (k Kind) String() string {
-	if !k.Valid() {
-		return "unknown"
-	}
-	return string(k)
-}

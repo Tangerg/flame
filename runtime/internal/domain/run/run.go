@@ -258,7 +258,7 @@ func (r Run) validateTerminal() error {
 	}
 	expected, ok := Running.Terminate(*r.outcome)
 	if !ok || expected != r.state {
-		return fmt.Errorf("run: state %s does not match outcome %s", r.state, r.outcome)
+		return fmt.Errorf("run: state %s does not match outcome %s", r.state, *r.outcome)
 	}
 	switch *r.outcome {
 	case OutcomeFailed:
@@ -278,7 +278,7 @@ func (r Run) validateTerminal() error {
 		}
 	default:
 		if r.failure != nil {
-			return fmt.Errorf("run: outcome %s carries a failure", r.outcome)
+			return fmt.Errorf("run: outcome %s carries a failure", *r.outcome)
 		}
 	}
 	if r.failure != nil {
@@ -290,7 +290,7 @@ func (r Run) validateTerminal() error {
 		switch *r.outcome {
 		case OutcomeMaxSteps, OutcomeMaxBudget, OutcomeCanceled:
 		default:
-			return fmt.Errorf("run: outcome %s cannot carry terminal detail", r.outcome)
+			return fmt.Errorf("run: outcome %s cannot carry terminal detail", *r.outcome)
 		}
 	}
 	switch {

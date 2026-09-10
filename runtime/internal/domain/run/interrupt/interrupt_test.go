@@ -4,9 +4,9 @@ import "testing"
 
 func TestKindStringRoundTrip(t *testing.T) {
 	for _, kind := range []Kind{Approval, Question} {
-		parsed, ok := ParseKind(kind.String())
+		parsed, ok := ParseKind(string(kind))
 		if !ok || parsed != kind || !parsed.Valid() {
-			t.Fatalf("ParseKind(%q) = %v, %t; want %v, true", kind.String(), parsed, ok, kind)
+			t.Fatalf("ParseKind(%q) = %v, %t; want %v, true", string(kind), parsed, ok, kind)
 		}
 	}
 	if parsed, ok := ParseKind("unknown"); ok || parsed.Valid() {

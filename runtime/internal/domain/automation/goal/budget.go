@@ -189,7 +189,7 @@ func (r RunRecord) Validate() error {
 	if err := resourceid.ValidateRun(r.RunID); err != nil {
 		return fmt.Errorf("%w: Run ID: %v", ErrInvalid, err)
 	}
-	if _, ok := run.ParseOutcome(r.Outcome.String()); !ok {
+	if _, ok := run.ParseOutcome(string(r.Outcome)); !ok {
 		return fmt.Errorf("goal: Run has unknown outcome %q", r.Outcome)
 	}
 	if err := r.Cost.Validate(); err != nil {
@@ -248,7 +248,7 @@ func (g Goal) RecordRun(record RunRecord) (Goal, error) {
 	if g.status == StatusActive {
 		if record.Outcome != run.OutcomeCompleted {
 			next.status = StatusPaused
-			next.reason, err = newReason(StatusPaused, ReasonRunNotCompleted, record.Outcome.String())
+			next.reason, err = newReason(StatusPaused, ReasonRunNotCompleted, string(record.Outcome))
 		} else if limit, exhausted := g.budget.exceeded(next.used); exhausted {
 			next.status = StatusBlocked
 			next.reason, err = newReason(StatusBlocked, reasonForBudgetLimit(limit), "")

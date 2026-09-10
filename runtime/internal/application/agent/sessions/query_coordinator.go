@@ -597,7 +597,7 @@ func normalizeStatuses(statuses []run.Status) []run.Status {
 func statusFilter(statuses []run.Status) string {
 	names := make([]string, 0, len(statuses))
 	for _, status := range statuses {
-		names = append(names, status.String())
+		names = append(names, string(status))
 	}
 	return strings.Join(names, ",")
 }

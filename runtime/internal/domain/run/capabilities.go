@@ -114,7 +114,7 @@ func (c Capabilities) String() string {
 		parts = append(parts, "child runs")
 	}
 	for _, kind := range c.InterruptKinds {
-		parts = append(parts, kind.String()+" interrupts")
+		parts = append(parts, string(kind)+" interrupts")
 	}
 	if len(parts) == 0 {
 		return "no optional capabilities"

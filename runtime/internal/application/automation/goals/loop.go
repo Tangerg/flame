@@ -307,7 +307,7 @@ func recordTerminalRunAttributes(span trace.Span, finished *run.Run) {
 		return
 	}
 	attributes := []attribute.KeyValue{
-		attribute.String("run.outcome", outcome.String()),
+		attribute.String("run.outcome", string(outcome)),
 		attribute.Int("goal.steps", runSteps(finished)),
 	}
 	if cost, available := runCost(finished); available {

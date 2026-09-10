@@ -104,7 +104,7 @@ func (a *asker) ask(ctx context.Context, args askUserArgs) (string, error) {
 	// First pass interrupts (bubbles up, parks); resume returns the human's
 	// structured answers at this same call site.
 	res, err := a.interrupt(ctx,
-		interrupt.Key(interrupt.Question.String(), tool.AskUser, arguments),
+		interrupt.Key(string(interrupt.Question), tool.AskUser, arguments),
 		pending,
 	)
 	if err != nil {

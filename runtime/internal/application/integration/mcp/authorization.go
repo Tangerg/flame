@@ -31,14 +31,6 @@ func (a AuthorizationAttemptStatus) Valid() bool {
 		a == AuthorizationAttemptFailed || a == AuthorizationAttemptCanceled
 }
 
-// String returns the stable authorization-attempt status name.
-func (a AuthorizationAttemptStatus) String() string {
-	if !a.Valid() {
-		return "unknown"
-	}
-	return string(a)
-}
-
 // AuthorizationAttempt is the application read model for one interactive
 // OAuth flow. Failure details remain in telemetry; callers receive only the
 // stable status.

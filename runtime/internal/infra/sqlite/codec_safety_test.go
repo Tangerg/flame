@@ -20,7 +20,7 @@ func TestItemKindRejectsUnknownPersistentIdentity(t *testing.T) {
 }
 
 func TestToolCancellationFailureKindRoundTrips(t *testing.T) {
-	encoded := tool.FailureCanceled.String()
+	encoded := string(tool.FailureCanceled)
 	if encoded != "tool_canceled" {
 		t.Fatalf("encoded canceled Tool failure = %q", encoded)
 	}

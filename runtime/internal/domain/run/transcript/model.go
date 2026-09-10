@@ -31,13 +31,6 @@ func (i ItemStatus) Valid() bool {
 	return i == ItemRunning || i == ItemCompleted || i == ItemIncomplete
 }
 
-func (i ItemStatus) String() string {
-	if !i.Valid() {
-		return "unknown"
-	}
-	return string(i)
-}
-
 type ItemKind string
 
 const (
@@ -52,13 +45,6 @@ const (
 func (i ItemKind) Valid() bool {
 	return i == UserMessage || i == AgentMessage || i == Reasoning ||
 		i == QuestionItem || i == ToolCall || i == Compaction
-}
-
-func (i ItemKind) String() string {
-	if !i.Valid() {
-		return "unknown"
-	}
-	return string(i)
 }
 
 // MessagePhase names the semantic role of one AgentMessage in a model turn.
@@ -76,13 +62,6 @@ const (
 // Valid reports whether m is one of the two authored AgentMessage roles.
 func (m MessagePhase) Valid() bool {
 	return m == MessageCommentary || m == MessageFinalAnswer
-}
-
-func (m MessagePhase) String() string {
-	if !m.Valid() {
-		return "unknown"
-	}
-	return string(m)
 }
 
 // SequencedItem pairs a history Item with its position in the session's durable
@@ -139,14 +118,6 @@ const (
 
 // Valid reports whether kind names a supported content representation.
 func (c ContentKind) Valid() bool { return c == TextContent || c == ImageContent }
-
-// String returns the stable content representation name.
-func (c ContentKind) String() string {
-	if !c.Valid() {
-		return "unknown"
-	}
-	return string(c)
-}
 
 type ContentBlock struct {
 	Kind      ContentKind
@@ -208,14 +179,6 @@ const (
 
 // Valid reports whether kind names a supported question field shape.
 func (q QuestionFieldKind) Valid() bool { return q == QuestionText || q == QuestionChoice }
-
-// String returns the stable question field shape name.
-func (q QuestionFieldKind) String() string {
-	if !q.Valid() {
-		return "unknown"
-	}
-	return string(q)
-}
 
 type QuestionOption struct {
 	Label       string
