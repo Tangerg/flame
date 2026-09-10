@@ -316,3 +316,73 @@ func TestMetricsRejectsDurationOverflow(t *testing.T) {
 		t.Fatal("NewMetrics accepted an overflowed active duration")
 	}
 }
+
+// TestRestoreRejectsSnapshotsThatBreakRunInvariants covers the decode path
+// rather than the transitions. Terminate derives the terminal state from the
+// outcome, so it cannot produce a mismatched pair; a durable row can. These are
+// the invariants outer layers rely on instead of re-checking a restored Run.
+func TestRestoreRejectsSnapshotsThatBreakRunInvariants(t *testing.T) {
+	completed := OutcomeCompleted
+	lost := OutcomeLost
+	failed := OutcomeFailed
+	createdAt := time.Unix(1, 0).UTC()
+	finishedAt := time.Unix(2, 0).UTC()
+	valid := func() Snapshot {
+		return Snapshot{
+			SessionID: "session_1", ID: "run_1", ModelSelection: mustRunSelection(t),
+			State: Completed, Outcome: &completed,
+			CreatedAt: createdAt, FinishedAt: finishedAt, UpdatedAt: finishedAt,
+		}
+	}
+	for _, test := range []struct {
+		name   string
+		break_ func(*Snapshot)
+	}{
+		{name: "state does not match outcome", break_: func(s *Snapshot) { s.State = Failed }},
+		{name: "terminal without an outcome", break_: func(s *Snapshot) { s.Outcome = nil }},
+		{name: "terminal without a finish time", break_: func(s *Snapshot) { s.FinishedAt = time.Time{} }},
+		{name: "terminal carries an active segment", break_: func(s *Snapshot) { s.ActiveSegmentID = "segment_1" }},
+		{name: "running without an active segment", break_: func(s *Snapshot) {
+			*s = Snapshot{
+				SessionID: s.SessionID, ID: s.ID, ModelSelection: s.ModelSelection,
+				State: Running, CreatedAt: createdAt, UpdatedAt: createdAt,
+				MessageMark: UnknownMessageMark,
+			}
+		}},
+		{name: "lost without a lost failure", break_: func(s *Snapshot) {
+			s.State, s.Outcome = Failed, &lost
+		}},
+		{name: "completed carries a failure", break_: func(s *Snapshot) {
+			s.Failure = &Failure{Kind: FailureInternal}
+		}},
+		{name: "negative prompt footprint", break_: func(s *Snapshot) { s.ContextTokens = -1 }},
+		{name: "malformed active segment", break_: func(s *Snapshot) {
+			*s = Snapshot{
+				SessionID: s.SessionID, ID: s.ID, ModelSelection: s.ModelSelection,
+				State: Running, ActiveSegmentID: " segment_1", CreatedAt: createdAt,
+				UpdatedAt: createdAt, MessageMark: UnknownMessageMark,
+			}
+		}},
+		{name: "failure the Failure value rejects", break_: func(s *Snapshot) {
+			s.State, s.Outcome = Failed, &failed
+			s.Failure = &Failure{Kind: FailureProviderRejected, RetryAfter: -1}
+		}},
+		{name: "child carries a Goal incarnation", break_: func(s *Snapshot) {
+			s.Lineage = Lineage{
+				SpawnedByItemID: "item_parent", ParentRunID: "run_parent", RootRunID: "run_root",
+			}
+			s.GoalIncarnationID = "incarnation_1"
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			snapshot := valid()
+			test.break_(&snapshot)
+			if restored, err := Restore(snapshot); err == nil {
+				t.Fatalf("Restore accepted an incoherent snapshot: %+v", restored.Snapshot())
+			}
+		})
+	}
+	if _, err := Restore(valid()); err != nil {
+		t.Fatalf("Restore rejected a coherent snapshot: %v", err)
+	}
+}
