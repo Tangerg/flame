@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"strings"
 	"time"
 
@@ -140,7 +141,7 @@ type usageView struct {
 // starting a Goal consumes the Run coordinator that is built later than the
 // static tool environment.
 func NewCreate(starter GoalStarter) (toolcontract.Tool, error) {
-	if starter == nil {
+	if dependency.Missing(starter) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[createArgs, goalResult](
@@ -151,7 +152,7 @@ func NewCreate(starter GoalStarter) (toolcontract.Tool, error) {
 
 // NewGet builds get_goal over the read-only side of Goal state.
 func NewGet(reader GoalReader) (toolcontract.Tool, error) {
-	if reader == nil {
+	if dependency.Missing(reader) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[getArgs, goalResult](
@@ -162,7 +163,7 @@ func NewGet(reader GoalReader) (toolcontract.Tool, error) {
 
 // NewReport builds report_goal_outcome, the active Goal loop's terminal signal.
 func NewReport(reporter GoalOutcomeReporter) (toolcontract.Tool, error) {
-	if reporter == nil {
+	if dependency.Missing(reporter) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[reportArgs, string](

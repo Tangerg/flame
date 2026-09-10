@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"path/filepath"
 	"strings"
 
@@ -52,7 +53,7 @@ type agentMemorySearcher struct {
 // yields a nil tool (the feature is simply omitted), mirroring the other
 // optional tools.
 func NewAgentMemorySearch(search AgentMemorySearch) (toolcontract.Tool, error) {
-	if search == nil {
+	if dependency.Missing(search) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[agentMemorySearchRequest, string](agentMemorySearchDefinition(), (&agentMemorySearcher{search: search}).run)

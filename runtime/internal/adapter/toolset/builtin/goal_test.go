@@ -380,3 +380,23 @@ func TestGoalToolContractsUseOnePreciseVocabulary(t *testing.T) {
 		}
 	}
 }
+
+// typedNilGoalReader is a reader that is nil. A builtin tool is offered to the
+// model exactly when its service is present, so a service that only looks
+// present would advertise a tool that panics the first time it is called.
+type typedNilGoalReader struct{}
+
+func (*typedNilGoalReader) Current(context.Context, string) (goalstate.Goal, bool, error) {
+	panic("builtin: a typed-nil Goal reader was called")
+}
+
+func TestGoalToolsTreatATypedNilServiceAsAbsent(t *testing.T) {
+	var absent *typedNilGoalReader
+	built, err := NewGet(absent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if built != nil {
+		t.Fatal("get_goal was offered to the model with a service that is nil")
+	}
+}

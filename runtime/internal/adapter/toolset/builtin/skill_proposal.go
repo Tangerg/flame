@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"strings"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -54,7 +55,7 @@ type proposer struct {
 
 // NewProposal builds propose_skill. A nil submitter omits the capability.
 func NewProposal(proposals SkillProposalSubmitter, defaultWorkspacePath string) (toolcontract.Tool, error) {
-	if proposals == nil {
+	if dependency.Missing(proposals) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[proposalArgs, proposalResult](

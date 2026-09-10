@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"slices"
 	"sync"
 
@@ -37,7 +38,7 @@ type executionFactCommitState struct {
 // one-consumer receipt. The fact remains an Application-owned closed value;
 // executor implementations receive no persistence handle or transaction capability.
 func NewExecutionFactCommit(fact ExecutionFact) (ExecutionFactCommit, ExecutionFactReceipt, error) {
-	if fact == nil {
+	if dependency.Missing(fact) {
 		return ExecutionFactCommit{}, ExecutionFactReceipt{}, errors.New("runs: execution fact commit requires a fact")
 	}
 	owned, supported := cloneExecutionFact(fact)

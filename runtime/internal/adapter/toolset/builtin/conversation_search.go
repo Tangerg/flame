@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"strings"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -49,7 +50,7 @@ type conversationSearcher struct {
 // yields a nil tool (the feature is simply omitted), mirroring the other
 // optional tools.
 func NewConversationSearch(search ConversationSearch) (toolcontract.Tool, error) {
-	if search == nil {
+	if dependency.Missing(search) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[conversationSearchRequest, string](conversationSearchDefinition(), (&conversationSearcher{search: search}).run)

@@ -12,6 +12,7 @@ package builtin
 import (
 	"context"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"unicode/utf8"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -61,7 +62,7 @@ type toolResultReader struct {
 // per-call off the Run's blackboard ([executionctx.SessionID]), scoping every read
 // to the calling session, so one tool instance serves every session.
 func NewToolResultReader(store ToolResultStore) (toolcontract.Tool, error) {
-	if store == nil {
+	if dependency.Missing(store) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[toolResultReadArgs, string](
