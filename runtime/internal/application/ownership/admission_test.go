@@ -120,6 +120,36 @@ func TestGateExcludesWorkingTreeRunAdmissionsAndMutations(t *testing.T) {
 	}
 }
 
+func TestLiveRunHoldsItsSessionAgainstEveryWriter(t *testing.T) {
+	gate := newTestGate(t)
+	opening, ok, _ := gate.AcquireRun("ses_1", "/repo")
+	if !ok || !opening.Admit("run_1") {
+		t.Fatal("admit run")
+	}
+
+	// A different working tree so only the single-writer rule can refuse.
+	if _, ok, _ := gate.AcquireRun("ses_1", "/elsewhere"); ok {
+		t.Fatal("run admission crossed a live run on the same session")
+	}
+	if _, ok, _ := gate.AcquireSession("ses_1"); ok {
+		t.Fatal("session admission crossed a live run")
+	}
+	if !gate.ActiveSessions()["ses_1"] {
+		t.Fatal("a live run left its session idle")
+	}
+
+	releaseMaintenance, ok := gate.BeginMaintenance("run_1")
+	if !ok {
+		t.Fatal("begin maintenance")
+	}
+	releaseMaintenance()
+	admission, ok, _ := gate.AcquireRun("ses_1", "/repo")
+	if !ok {
+		t.Fatal("a finished run left its session busy")
+	}
+	admission.Release()
+}
+
 func TestWaitRunStartableIncludesTerminalMaintenance(t *testing.T) {
 	gate := newTestGate(t)
 	opening, ok, _ := gate.AcquireRun("ses_1", "/repo")

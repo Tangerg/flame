@@ -243,16 +243,32 @@ func (g *Gate) ActiveSessions() map[string]bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	set := make(map[string]bool, len(g.runs)+len(g.pending)+len(g.claims))
-	for id := range g.claims {
+	for id := range g.activeSessionsLocked {
 		set[id] = true
 	}
+	return set
+}
+
+// activeSessionsLocked yields every session holding a session-only admission, a
+// pending reservation, or a live Run. Admission asks whether one session is
+// active and observers ask which ones are; both read this, so a session cannot
+// be busy for one question and idle for the other.
+func (g *Gate) activeSessionsLocked(yield func(string) bool) {
+	for id := range g.claims {
+		if !yield(id) {
+			return
+		}
+	}
 	for _, pending := range g.pending {
-		set[pending.sessionID] = true
+		if !yield(pending.sessionID) {
+			return
+		}
 	}
 	for _, run := range g.runs {
-		set[run.sessionID] = true
+		if !yield(run.sessionID) {
+			return
+		}
 	}
-	return set
 }
 
 // WaitRunStartable blocks until sessionID has no pending, live, maintenance, or
@@ -283,16 +299,8 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 }
 
 func (g *Gate) activeSessionLocked(sessionID string) bool {
-	if len(g.claims[sessionID]) > 0 {
-		return true
-	}
-	for _, pending := range g.pending {
-		if pending.sessionID == sessionID {
-			return true
-		}
-	}
-	for _, run := range g.runs {
-		if run.sessionID == sessionID {
+	for id := range g.activeSessionsLocked {
+		if id == sessionID {
 			return true
 		}
 	}
