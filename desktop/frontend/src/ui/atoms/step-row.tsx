@@ -7,7 +7,15 @@ import { Icon } from "@/ui/icons";
 export type StepState = "done" | "active" | "pending";
 
 const styles = stylex.create({
-  mark: { display: "grid", height: space.s4, width: space.s4, flexShrink: 0, placeItems: "center" },
+  // One LINE tall, not one mark tall. A step that wraps aligns to the start so its mark stays
+  // with the sentence it belongs to, and a box of `1lh` then centres the glyph on that line
+  // without a magic offset, following the reader's type size and leading for free.
+  //
+  // THE CONSTRAINT THIS PUTS ON CALLERS: `1lh` resolves against the mark's OWN inherited
+  // leading, so a row must set its leading on the row and not on the text beside the mark —
+  // otherwise the two disagree about how tall a line is and the mark sizes itself to the wrong
+  // one. `ActivePlan` had it on the text, and this measured 3px too tall in its plan pill.
+  mark: { display: "grid", height: "1lh", width: space.s4, flexShrink: 0, placeItems: "center" },
   ring: {
     position: "relative",
     height: space.s3,
@@ -26,7 +34,11 @@ const styles = stylex.create({
     animation: motion.pulseDot,
   },
   done: { color: color.success },
-  row: { display: "flex", alignItems: "center", gap: space.s2, paddingBlock: space.s0_5 },
+  // `flex-start`, because a step that needs two lines is still one step: centring put the mark
+  // half a line below the sentence it marks — measured at 10.1px on a two-line step, which is
+  // exactly half the leading. The plan's other surface had already reached this answer on its
+  // own, so the same step read differently depending on which pane showed it.
+  row: { display: "flex", alignItems: "flex-start", gap: space.s2, paddingBlock: space.s0_5 },
   inkDone: { color: color.fgFaint },
   inkActive: { fontWeight: weight.medium, color: color.fg },
   inkPending: { color: color.fgMuted },

@@ -47,12 +47,17 @@ const ap = stylex.create({
     overflowY: "auto",
   },
   steps: { display: "flex", flexDirection: "column", gap: space.s2 },
+  // The leading belongs to the ROW, not to the text in it. `StepMark` sizes itself to one line
+  // so it can sit on the first one of a step that wraps, which only works while the mark and
+  // the sentence beside it agree on how tall a line is — and they cannot agree if only one of
+  // them is told.
   step: {
     display: "flex",
     maxWidth: "calc(var(--spacing) * 80)",
     minWidth: 0,
     alignItems: "flex-start",
     gap: space.s2,
+    lineHeight: "1rem",
   },
   // A step wraps rather than truncating: half a step is not a step. Its ink comes from the
   // tooltip's own vocabulary — `text-on-fg` is the INVERTED ink, for a plate filled with the
@@ -61,7 +66,6 @@ const ap = stylex.create({
     minWidth: 0,
     maxWidth: "calc(var(--spacing) * 72)",
     overflowWrap: "break-word",
-    lineHeight: "1rem",
   },
 });
 

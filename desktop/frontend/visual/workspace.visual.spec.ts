@@ -83,10 +83,35 @@ test("a full view sets its title in mono only when the title is a path", async (
  * shell's minimum window the drawer has to be at its widest before the row is narrow
  * enough to make the fold observable.
  */
+/**
+ * Widens the fixture sidebar to its limit, leaving the row too narrow to keep the dock.
+ *
+ * Both callers change the viewport immediately before this, and the rail's own maximum is
+ * derived from the row's width — so pressing End before that resize has been laid out moves the
+ * sidebar to the PREVIOUS maximum, the relayout clamps it back down, and the row ends up not
+ * starved at all. Measured: the assertion after it read `dock-open === "true"` on roughly half
+ * of runs, on unchanged product code; the same sequence with a wait between the two steps was
+ * right five times out of five.
+ *
+ * So this guarantees its postcondition rather than firing a key and hoping. It also asserts that
+ * focus LANDED, because `focus()` on a rail that is not there yet is a silent no-op and pressing
+ * a key afterwards proves nothing — the lesson `activationFocus.visual.spec.ts` is built on.
+ */
 async function starveTheRow(page: Page): Promise<void> {
   const rail = page.getByRole("separator", { name: "Resize the workspace fixture sidebar" });
-  await rail.focus();
-  await rail.press("End");
+  await expect
+    .poll(async () => {
+      const landed = await rail.evaluate((node) => {
+        (node as HTMLElement).focus();
+        return document.activeElement === node;
+      });
+      if (!landed) return "the rail never took focus";
+      await page.keyboard.press("End");
+      const now = await rail.getAttribute("aria-valuenow");
+      const max = await rail.getAttribute("aria-valuemax");
+      return now === max ? "at its maximum" : `at ${now} of ${max}`;
+    })
+    .toBe("at its maximum");
 }
 
 async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): Promise<void> {

@@ -1374,9 +1374,26 @@ html.theme-dark {
   transform: translateX(0);
 }
 
+/* The fade follows the direction of travel, and swaps rather than leaving.
+
+   At rest the text runs off the RIGHT, so that is the edge that gets softened. Once the track
+   is moving, the end that is actively passing an edge is the HEAD, on the left — and the tail
+   is arriving at the right edge, where `fill: forwards` parks it flush. So a right fade would
+   permanently dim the last characters of every label the moment the reveal finished, which is
+   why this used to say `none`.
+
+   `none` is not the answer either: the label is `overflow: hidden`, so removing the mask does
+   not reveal anything — it replaces a soft edge with a hard cut, at exactly the moment text is
+   moving through it. Measured on the work index: three overflowing labels, all hard-clipped on
+   both sides for the whole animation.
+
+   The reference client fades both edges because its marquee LOOPS, so nothing ever comes to
+   rest against an edge. This one reveals once and stops, so it gets the other half of that
+   idea: soften the edge the text is leaving, keep the edge it lands on crisp. The spelling is
+   the dock tabstrip's own left-fade, below. */
 .agent-row:is(:hover, :focus-visible) .agent-overflow-label[data-overflowing] {
-  -webkit-mask-image: none;
-  mask-image: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 16px);
+  mask-image: linear-gradient(to right, transparent, #000 16px);
 }
 
 .agent-row:is(:hover, :focus-visible) .agent-overflow-track[data-overflowing] {

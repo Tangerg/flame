@@ -15017,6 +15017,12 @@ Round 231 已经量过，committed 规格里的 `.first()` 绝大多数是属性
 | 阴影几何 | `0 1px 2px -1px` / `0 4px 8px -2px` / `0 8px 16px -4px` / `0 16px 32px -8px` | 同 | **完全相同** |
 | 角形 | `superellipse(1.5)` + scale `1.25` | `superellipse(1.5)` + `--corner-scale: 1.25` | **完全相同** |
 | 正文字号 | `--codex-chat-font-size: 16px` | `--fs-prose: 16px` | 同 |
+
+**Round 235 更正**：本轮我还记过"字号 xs 11 vs 12 ✗"，那是**按名字比而不是按角色比**得出的错结论。
+Flame 有 `--fs-ui-2xs: 11px`，12 个消费者。角色也对得上 ——
+dimagent 的弹层分组标题是 `text-[11px]`，Flame 的 `dock-catalog` 分组标题是 `type.ui2xs` = 11px。
+Flame 的小号阶梯 11/12/13/14 是 Codex 11/12/14 的**超集**。
+真正剩下的差异只在**标题端**（Codex 28/36 vs Flame 18/20/24），而那是工具窗口与消费级应用的密度取向差异。
 | 附件圆角推导 | `max(0, composer半径 − inset)` | `max(0, --shape-composer − editor-start)` | **同一个公式** |
 | 旋转指示 | `1s linear infinite` | `1000ms linear infinite` | 同 |
 
@@ -15147,3 +15153,191 @@ bundle，注释写着"两半从来不是两个决定"。`radius.bubble` 只有�
 最大宽度和半径；唯一的真缺陷是气泡的**角形**，而它值零像素。
 真正的教训在守卫上：**我第一版守卫只问了这条规则的一半，于是我自己越过那一半时它报了绿**，
 抓住我的是 golden 的像素数 —— 一个能告诉你"变了"、但不能告诉你"为什么不该变"的东西。
+
+## Round 235 —— 计划步骤的标记，和一个"把行盒高度放错层"的自伤
+
+### 一、继续按 Codex 对，dock 和工具行也都对上了
+
+| | Codex | Flame | |
+| --- | --- | --- | --- |
+| 行圆角 | `--radius-token-row: 10px` × 1.25 | `calc(10px * 1 * 1.25)` | **12.5px 相同** |
+| 行内边距 x | `--padding-row-x: 8px` | 实测 8px | 相同 |
+| 前置图标 | `--icon-leading-size: 16px` | `--icon-md: 16px` | 相同 |
+| 侧栏最小宽 | `clamp(240px, …)` | `--dock-navigator-width: 240px` | 相同 |
+| 侧栏项圆角 | `.sidebar-item` = `--radius-lg` × 1.25 | `--dock-tab-radius: var(--shape-lg)` | **12.5px 相同** |
+| 行高 | 36px（紧凑 30），公式值 33 | 34px | 落在两档之间，距公式 1px |
+
+**Flame 更细的一处**：dock tabstrip 的溢出渐隐是**方向感知**的三态
+（`data-overflow-start` / `end` / 两者），Codex 的侧栏是静态底部渐隐。不动。
+
+### 二、真缺陷：计划步骤的标记会飘到两行中间
+
+`ui/atoms/step-row.tsx` 的行是 `alignItems: "center"`。步骤只有一行时看不出来；
+**换到两行，16px 的标记就落在两行的中缝**。
+
+不靠推理，量出来的：给真实组件塞长文本 → **drift 10.1px，正好半个行高（20.15/2）**。
+
+而 `ActivePlan`（同一批步骤在计划药丸里的另一套渲染）**早就用了 `flex-start`**。
+所以产品自相矛盾：同一个步骤，在 dock 里和在药丸里排得不一样。
+Codex 的答案与药丸一致（`._TaskListItem>:first-child{margin-top:var(--markdown-space)}`
+——标记跟第一行走）。
+
+修法不用魔数：行改 `flex-start`，标记盒设成 **`1lh`** 高、内容居中 ——
+标记永远落在第一行中心，且随读者的字号与行距自适应。
+
+### 三、然后我把它改坏了，golden 抓住
+
+全套视觉 740 条，挂 1 条：**计划药丸的 tooltip 从 76px 长到 85px**（三个步骤各 +3px）。
+
+`ActivePlan` 也用 `StepMark`。而 **`1lh` 解析的是标记自己继承的行距**，
+`ActivePlan` 只把 `lineHeight: "1rem"` 设在**文字**上 —— 于是同一行的两个子元素
+对"一行有多高"的认识不一致，标记按错的那个把自己撑高了。
+
+根因是我把行盒高度放错了层。**行距属于行，不属于行里的文字。**
+把 `lineHeight: "1rem"` 从 `stepText` 移到 `step`，两个子元素读同一个值，药丸恢复 76px。
+这条约束写进了 `StepMark` 的注释，因为下一个调用点会再踩。
+
+### 四、把这个缺陷推广成扫描：5 处同类，但**全部是潜在的**
+
+写了一个扫描：找所有「固定尺寸前置标记 + 可换行文字 + `align-items: center`」的行，
+逐行塞长文本、量漂移、再还原（排除 nowrap / 截断的）。
+
+找到 5 处：QuestionCard 的选项行 2 处（drift 10.8），settings 的开关行 3 处（10.8–32.5）。
+
+**然后用真实内容重量一遍：4 条路由 × 4 种宽度，漂移全部为零。**
+选项行的标题和描述在同一行上，现有文案不会换行。
+
+所以这 5 处是**潜在**，不是正在发生的。我不把它们写成 bug。
+
+### 五、`ChoiceOption` 为什么这一轮不改
+
+它的内容是**模型生成的**、长度无界，所以潜在风险是真的。但它不是一行改动：
+
+标记是 20px 的**有边框控件**，不能像 `StepMark` 那样把自己设成 `1lh`（会改变绘制尺寸）。
+要给它算偏移就得用 `1lh`，而 `1lh` 按标记**自己的字号**（`uiXs` 12px）解析，
+不是标签的 21.7px —— 正是我上面刚写下的那条约束。
+要修就得让 `ChoiceOption` 的行拥有一个**绝对行距**，那会改动标签的排版，是设计改动。
+
+**一小时前正是"靠推理直接改"把药丸弄坏的。** 现存发生次数为零，证据齐全，
+留给下一轮有意识地做，而不是顺手推一把。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 继续对上的维度 | 6（行圆角 / 行内边距 / 图标 / 侧栏宽 / 侧栏项圆角 / 行高在档内） |
+| 真缺陷 | **1**（计划步骤标记），实测 drift 10.1px |
+| 自己引入又修掉的回归 | **1**（药丸 +9px，golden 抓住） |
+| 推广扫描找到的同类 | 5 处，**真实内容下全部零漂移**（潜在） |
+| 明确不改并写明理由的 | 1（`ChoiceOption`，需要行拥有绝对行距） |
+| 新守卫 | 1（自己制造换行条件，破坏验证过：改回 center → 三行全部 drift 10.1） |
+| typecheck / lint / 守卫 / 视觉 | 全绿，余 5 条 `src/rpc` 为越界既有阻塞 |
+
+### 一句话
+
+修一个"只在换行时才错"的对齐，**代价是我把同一个错误换个层次又犯了一遍** ——
+`1lh` 让标记自己决定一行有多高，而行距根本不归它管；
+真正的收获是那个推广扫描：它找到 5 处同类，
+**又在真实内容下把这 5 处全部证伪成潜在** —— 前者防漏，后者防我把潜在当缺陷去改。
+
+## Round 236 —— 参考基准补上 dimagent；一条 50% 的 flaky；渐隐跟着行进方向走
+
+### 零、基准更正
+
+用户指出：**工具调用渲染参考的是 `study/dimagent`**，不是 Codex。
+`study/` 下实际有 7 个参考：`chatgpt`（内含 Codex webview）、`codex`、`codex-server`、
+`dimagent`、`zcode`、`minimax`、`tools`。前几轮我只用了 `chatgpt` 一个。
+
+dimagent 是 Electron + **Vue** + Tailwind，17 个 CSS、1411 个 JS，组件名可读。
+
+### 一、先抓一条 50% 的 flaky —— 它比任何新功能都优先
+
+跑 golden 时 `workspace.visual.spec.ts` 的
+「window clamping does not overwrite the dock preference」挂了。
+**同一份代码复跑：1 通过 1 失败。** 既有 flaky，不是本轮引入的。
+
+一条 50% 失败的守卫会让整套测试失去权威，所以先修它。
+
+插桩 5 次，全部正确（focus 落了、rail 275→520、dock 关闭）。
+差别在**我加了等待**，而真实测试在 `setViewportSize` 之后**立刻**按键。
+
+**根因**：rail 的最大值由行宽推导。resize 尚未布局就按 `End`，
+侧栏被移到**旧的**最大值，随后重排把它夹回去 —— 行就不再被饿到，dock 保持打开。
+
+修在 helper 上：`starveTheRow` 现在**保证自己的后置条件** ——
+poll 到 `aria-valuenow === aria-valuemax` 为止，并断言 focus 落了
+（`focus()` 静默失败是本仓库已经学过一次的教训）。
+
+复跑 6 次：**6/6 通过**（原先 50%）。整个 workspace 规格 114/114。
+
+### 二、跑马灯：Flame 的速度常数和 dimagent 完全一致
+
+dimagent 的 `MarqueeText` 比简单跑马灯讲究：
+
+- 重复一段文本（`aria-hidden` + `inert`）+ `translate(-50%)` **无缝循环**，间隙 `1.15em`
+- **双侧渐隐**，仅 `data-overflowing=true` 时施加；clip 向左扩宽一个 fade 量，静止时不吃字
+- **128 点采样生成的 `linear()` 缓动**：0.35s 前停 + 滚动 + 1.85s 后停
+- **滚动速度恒定 2em/s，与文本长度无关**
+- 只在 `(hover:hover) and (pointer:fine)`，reduced-motion 关闭
+- 共享一个全局 ResizeObserver + WeakMap 回调
+
+Flame 的 `overflow-label.tsx`：`duration = distance / (fontSize * 2)` ——
+**正好也是 2em/s。** 印证了它确实照着 dimagent 做的。
+
+### 三、真缺陷：滚动时两端从柔边变成硬裁切
+
+Flame 是**单向** reveal（`fill: forwards`），不是循环。而 hover 规则写的是：
+
+```css
+.agent-row:is(:hover, :focus-visible) .agent-overflow-label[data-overflowing] {
+  mask-image: none;
+}
+```
+
+标签是 `overflow: hidden`。**移除遮罩什么也没露出来 —— 只是把柔边换成了硬裁切**，
+而且正好发生在文字穿过那条边的时刻。实测（work index，1120px 宽）：
+8 个溢出标签、3 个正在溢出，静止时右侧 16px 渐隐，hover 后 `mask: none`，两端全硬。
+
+**但 `none` 是有理由的，不能照抄 dimagent。** dimagent 是循环，没有"停在边缘"这个状态；
+Flame 是 `fill: forwards`，动画结束时尾部**正好贴在右缘** ——
+保留右渐隐就会把每个标签的最后几个字永久压暗。
+
+所以答案是取那个想法的另一半：**渐隐跟着行进方向走。**
+
+| | 静止 | 滚动中 |
+| --- | --- | --- |
+| 溢出在哪一端 | 右 | 头部正在左缘离开 |
+| 该软化哪条边 | 右 | **左** |
+| 该保持清晰的 | — | 右（尾部要停在这里） |
+
+改成左渐隐，写法直接沿用 dock tabstrip 已有的 `data-overflow-start` 那条。
+
+### 四、新守卫
+
+`visual/overflowFade.visual.spec.ts`：断言的是**哪一端透明**（按计算值里色标的顺序），
+不是渐变的字面 —— 渐隐距离可以改，换边不行。同时断言前提 `overflow: hidden`
+（若它哪天不裁切了，这条审计该重写而不是继续通过）。
+
+破坏验证：改回 `none` → 三个标签全部报
+`while revealing fades neither, want left (mask removed — the box still clips)` ✓
+报的是**原因**，不是像素数。
+
+### 验收
+
+| | 结果 |
+| --- | --- |
+| 修掉的 flaky | **1**（50% → 6/6，根因：resize 未布局就按键） |
+| 与 dimagent 逐项对上的 | 滚动速度常数 2em/s、状态点 6px |
+| 真缺陷 | **1**（滚动时硬裁切），且**没有照抄**参考的解法 |
+| 新守卫 | 1（破坏验证过） |
+| 更正的既往结论 | 1（Round 234 的"字号 xs 11 vs 12"是按名字比出来的错） |
+| 视觉 | **741 / 741 全过** |
+| lint / prettier / 6 个守卫 / 单测 | 全绿（2449），余 5 条 `src/rpc` 越界既有阻塞 |
+
+### 一句话
+
+这一轮最值钱的不是修好的那条渐隐，是**没有照抄**：
+dimagent 双侧渐隐是因为它的跑马灯**循环**，而 Flame 单向 reveal 会让文字**停在右缘** ——
+同一个问题、不同的收尾，答案就得是另一半。
+顺带修掉一条 50% 的 flaky，根因是**在 resize 还没布局时就按键**，
+而它伪装成了一个产品缺陷。
