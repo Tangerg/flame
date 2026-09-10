@@ -39,17 +39,11 @@ func WatchChildFiles(targets []ChildFileTarget, notify func([]string), report fu
 	if len(canonical) == 0 {
 		return nopWatch{}, nil
 	}
-	boundaries := make([]string, len(canonical))
-	for index, candidate := range canonical {
-		boundaries[index] = candidate.physicalBoundary
-	}
-	roots, err := openObservationRoots(boundaries)
+	roots, lifecycle, err := openObservation("observe child files", canonical, func(candidate childFileTarget) string {
+		return candidate.physicalBoundary
+	}, report)
 	if err != nil {
-		return nil, fmt.Errorf("observe child files: %w", err)
-	}
-	lifecycle, err := newObserverLifecycle("observe child files", report)
-	if err != nil {
-		return nil, errors.Join(err, roots.Close())
+		return nil, err
 	}
 	w := &childFileWatch{
 		observerLifecycle: lifecycle,
@@ -77,20 +71,7 @@ type childFileTarget struct {
 }
 
 func canonicalChildFileTargets(targets []ChildFileTarget) ([]childFileTarget, error) {
-	out := make([]childFileTarget, 0, len(targets))
-	seen := make(map[childFileTarget]struct{}, len(targets))
-	for index, candidate := range targets {
-		canonical, err := canonicalChildFileTarget(index, candidate)
-		if err != nil {
-			return nil, err
-		}
-		if _, duplicate := seen[canonical]; duplicate {
-			continue
-		}
-		seen[canonical] = struct{}{}
-		out = append(out, canonical)
-	}
-	return out, nil
+	return canonicalTargetSet(targets, canonicalChildFileTarget)
 }
 
 func canonicalChildFileTarget(index int, candidate ChildFileTarget) (childFileTarget, error) {

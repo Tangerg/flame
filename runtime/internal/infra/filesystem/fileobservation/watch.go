@@ -49,17 +49,11 @@ func Watch(targets []Target, notify func([]string), report func(error)) (Observa
 	if len(canonical) == 0 {
 		return nopWatch{}, nil
 	}
-	boundaries := make([]string, len(canonical))
-	for index, candidate := range canonical {
-		boundaries[index] = candidate.physicalBoundary
-	}
-	roots, err := openObservationRoots(boundaries)
+	roots, lifecycle, err := openObservation("observe files", canonical, func(candidate target) string {
+		return candidate.physicalBoundary
+	}, report)
 	if err != nil {
-		return nil, fmt.Errorf("observe files: %w", err)
-	}
-	lifecycle, err := newObserverLifecycle("observe files", report)
-	if err != nil {
-		return nil, errors.Join(err, roots.Close())
+		return nil, err
 	}
 	w := &watch{
 		observerLifecycle: lifecycle,
@@ -84,11 +78,39 @@ type target struct {
 	maxBytes         int64
 }
 
-func canonicalTargets(targets []Target) ([]target, error) {
-	out := make([]target, 0, len(targets))
-	seen := make(map[target]struct{}, len(targets))
+// openObservation opens the roots a canonical target set needs and the
+// lifecycle that will drive it. Both watchers assemble this way, and both must
+// close the roots when the lifecycle refuses to start — the one failure path
+// that leaks a descriptor if it is written twice and one copy forgets.
+func openObservation[T any](
+	label string,
+	canonical []T,
+	boundary func(T) string,
+	report func(error),
+) (*observationRoots, *observerLifecycle, error) {
+	boundaries := make([]string, len(canonical))
+	for index, candidate := range canonical {
+		boundaries[index] = boundary(candidate)
+	}
+	roots, err := openObservationRoots(boundaries)
+	if err != nil {
+		return nil, nil, fmt.Errorf("%s: %w", label, err)
+	}
+	lifecycle, err := newObserverLifecycle(label, report)
+	if err != nil {
+		return nil, nil, errors.Join(err, roots.Close())
+	}
+	return roots, lifecycle, nil
+}
+
+// canonicalTargetSet maps each candidate through one, dropping repeats while
+// keeping first-seen order. Both watchers canonicalize this way; only what a
+// target is differs.
+func canonicalTargetSet[In any, Out comparable](targets []In, one func(int, In) (Out, error)) ([]Out, error) {
+	out := make([]Out, 0, len(targets))
+	seen := make(map[Out]struct{}, len(targets))
 	for index, candidate := range targets {
-		canonical, err := canonicalTarget(index, candidate)
+		canonical, err := one(index, candidate)
 		if err != nil {
 			return nil, err
 		}
@@ -99,6 +121,10 @@ func canonicalTargets(targets []Target) ([]target, error) {
 		out = append(out, canonical)
 	}
 	return out, nil
+}
+
+func canonicalTargets(targets []Target) ([]target, error) {
+	return canonicalTargetSet(targets, canonicalTarget)
 }
 
 func canonicalTarget(index int, candidate Target) (target, error) {
