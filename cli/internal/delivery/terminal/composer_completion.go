@@ -65,8 +65,8 @@ func (a *app) refreshCompletion() {
 	for _, match := range found {
 		availability := a.commands.availability(match.Command.Name, a)
 		detail := match.Command.Title
-		if !availability.Enabled {
-			detail = "unavailable: " + availability.Reason
+		if !availability.Enabled() {
+			detail = "unavailable: " + availability.Reason()
 		}
 		candidates = append(candidates, headless.Candidate{
 			Text: match.Command.Name, Label: match.Command.Name,

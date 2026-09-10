@@ -149,145 +149,145 @@ func builtinCommands() []localCommand {
 
 func availableWithWorkspaceService(a *app) CommandAvailability {
 	if a.workspaces == nil {
-		return CommandAvailability{Reason: "this runtime composition has no workspace service"}
+		return CommandUnavailable("this runtime composition has no workspace service")
 	}
-	return CommandAvailability{Enabled: true}
+	return CommandAvailable()
 }
 
 func availableWithGitWorkspaceService(a *app) CommandAvailability {
-	if unavailable := availableWithWorkspaceService(a); !unavailable.Enabled {
+	if unavailable := availableWithWorkspaceService(a); !unavailable.Enabled() {
 		return unavailable
 	}
 	return availableWithRuntimeFeature(a, protocol.FeatureGit)
 }
 
 func availableWithSessionTransfer(a *app) CommandAvailability {
-	if unavailable := availableWithoutActiveRun(a); !unavailable.Enabled {
+	if unavailable := availableWithoutActiveRun(a); !unavailable.Enabled() {
 		return unavailable
 	}
 	if a.transfers == nil {
-		return CommandAvailability{Reason: "this runtime composition has no session transfer service"}
+		return CommandUnavailable("this runtime composition has no session transfer service")
 	}
 	return availableWithRuntimeFeature(a, protocol.FeatureSessionExport)
 }
 
 func availableWithUsage(a *app) CommandAvailability {
 	if a.usage == nil {
-		return CommandAvailability{Reason: "this runtime composition has no usage service"}
+		return CommandUnavailable("this runtime composition has no usage service")
 	}
-	return CommandAvailability{Enabled: true}
+	return CommandAvailable()
 }
 
 func availableWithModelConfiguration(a *app) CommandAvailability {
 	if a.modelConfig == nil {
-		return CommandAvailability{Reason: "this runtime composition has no model configuration service"}
+		return CommandUnavailable("this runtime composition has no model configuration service")
 	}
-	return CommandAvailability{Enabled: true}
+	return CommandAvailable()
 }
 
 func availableWithGoals(a *app) CommandAvailability {
 	if a.goals == nil {
-		return CommandAvailability{Reason: "this runtime composition has no goal service"}
+		return CommandUnavailable("this runtime composition has no goal service")
 	}
 	return availableWithRuntimeFeature(a, protocol.FeatureGoals)
 }
 
 func availableWithSkills(a *app) CommandAvailability {
 	if a.skills == nil {
-		return CommandAvailability{Reason: "this runtime composition has no skill service"}
+		return CommandUnavailable("this runtime composition has no skill service")
 	}
 	return availableWithRuntimeFeature(a, protocol.FeatureSkills)
 }
 
 func availableWithMCP(a *app) CommandAvailability {
 	if a.mcp == nil {
-		return CommandAvailability{Reason: "this runtime composition has no MCP service"}
+		return CommandUnavailable("this runtime composition has no MCP service")
 	}
 	return availableWithRuntimeFeature(a, protocol.FeatureMCP)
 }
 
 func availableWithSchedules(a *app) CommandAvailability {
 	if a.schedules == nil {
-		return CommandAvailability{Reason: "this runtime composition has no schedule service"}
+		return CommandUnavailable("this runtime composition has no schedule service")
 	}
 	return availableWithRuntimeFeature(a, protocol.FeatureSchedules)
 }
 
 func availableWithAgentMemory(a *app) CommandAvailability {
 	if a.agentMemory == nil {
-		return CommandAvailability{Reason: "this runtime composition has no agent memory service"}
+		return CommandUnavailable("this runtime composition has no agent memory service")
 	}
 	return availableWithRuntimeFeature(a, protocol.FeatureAgentMemory)
 }
 
 func availableWithKnowledge(a *app) CommandAvailability {
 	if a.knowledge == nil {
-		return CommandAvailability{Reason: "this runtime composition has no knowledge service"}
+		return CommandUnavailable("this runtime composition has no knowledge service")
 	}
 	return availableWithRuntimeFeature(a, protocol.FeatureKnowledge)
 }
 
 func availableWithDiagnosticTools(a *app) CommandAvailability {
 	if a.diagnosticTools == nil {
-		return CommandAvailability{Reason: "this runtime composition has no diagnostic tool service"}
+		return CommandUnavailable("this runtime composition has no diagnostic tool service")
 	}
-	return CommandAvailability{Enabled: true}
+	return CommandAvailable()
 }
 
 func availableWithAuthoringContext(a *app) CommandAvailability {
 	if a.authoringContext == nil {
-		return CommandAvailability{Reason: "this runtime composition has no authoring context service"}
+		return CommandUnavailable("this runtime composition has no authoring context service")
 	}
-	return CommandAvailability{Enabled: true}
+	return CommandAvailable()
 }
 
 func availableWithHooks(a *app) CommandAvailability {
 	if a.hooks == nil {
-		return CommandAvailability{Reason: "this runtime composition has no hook service"}
+		return CommandUnavailable("this runtime composition has no hook service")
 	}
-	return CommandAvailability{Enabled: true}
+	return CommandAvailable()
 }
 
 func availableWithFeedback(a *app) CommandAvailability {
 	if a.feedback == nil {
-		return CommandAvailability{Reason: "this runtime composition has no feedback service"}
+		return CommandUnavailable("this runtime composition has no feedback service")
 	}
-	return CommandAvailability{Enabled: true}
+	return CommandAvailable()
 }
 
 func availableForGoalStart(a *app) CommandAvailability {
-	if unavailable := availableWithoutActiveRun(a); !unavailable.Enabled {
+	if unavailable := availableWithoutActiveRun(a); !unavailable.Enabled() {
 		return unavailable
 	}
 	return availableWithGoals(a)
 }
 
 func availableForRelocation(a *app) CommandAvailability {
-	if unavailable := availableWithoutActiveRun(a); !unavailable.Enabled {
+	if unavailable := availableWithoutActiveRun(a); !unavailable.Enabled() {
 		return unavailable
 	}
 	return availableWithRuntimeFeature(a, protocol.FeatureRelocate)
 }
 
 func availableForRollback(a *app) CommandAvailability {
-	if unavailable := availableWithoutActiveRun(a); !unavailable.Enabled {
+	if unavailable := availableWithoutActiveRun(a); !unavailable.Enabled() {
 		return unavailable
 	}
 	_, present, err := a.currentDraft()
 	if err != nil {
-		return CommandAvailability{Reason: err.Error()}
+		return CommandUnavailable(err.Error())
 	}
 	if present {
-		return CommandAvailability{Reason: "stash or detach the current draft before rolling back"}
+		return CommandUnavailable("stash or detach the current draft before rolling back")
 	}
-	return CommandAvailability{Enabled: true}
+	return CommandAvailable()
 }
 
 func availableWithRunningSegment(a *app) CommandAvailability {
 	if a.execution.conversation.Phase() != agent.ConversationRunning || a.execution.conversation.RunID() == "" || a.execution.conversation.SegmentID() == "" {
-		return CommandAvailability{Reason: "no observed run segment is executing"}
+		return CommandUnavailable("no observed run segment is executing")
 	}
-	return CommandAvailability{Enabled: true}
+	return CommandAvailable()
 }
 
 func commandGroup(category string, commands ...localCommand) []localCommand {
@@ -299,38 +299,38 @@ func commandGroup(category string, commands ...localCommand) []localCommand {
 
 func availableWithoutActiveRun(a *app) CommandAvailability {
 	if a.execution.blocksAdmission() {
-		return CommandAvailability{Reason: "an active run owns this session"}
+		return CommandUnavailable("an active run owns this session")
 	}
-	return CommandAvailability{Enabled: true}
+	return CommandAvailable()
 }
 
 func availableWithReadableSelection(a *app) CommandAvailability {
 	if _, readable := a.transcript.readerTargetForSelected(); !readable {
-		return CommandAvailability{Reason: "select a readable transcript entry first"}
+		return CommandUnavailable("select a readable transcript entry first")
 	}
-	return CommandAvailability{Enabled: true}
+	return CommandAvailable()
 }
 
 func availableWithDraft(a *app) CommandAvailability {
 	_, present, err := a.currentDraft()
 	if err != nil {
-		return CommandAvailability{Reason: err.Error()}
+		return CommandUnavailable(err.Error())
 	}
 	if !present {
-		return CommandAvailability{Reason: "the composer is empty"}
+		return CommandUnavailable("the composer is empty")
 	}
-	return CommandAvailability{Enabled: true}
+	return CommandAvailable()
 }
 
 func availableWithEmptyDraft(a *app) CommandAvailability {
 	_, present, err := a.currentDraft()
 	if err != nil {
-		return CommandAvailability{Reason: err.Error()}
+		return CommandUnavailable(err.Error())
 	}
 	if present {
-		return CommandAvailability{Reason: "stash or clear the current draft first"}
+		return CommandUnavailable("stash or clear the current draft first")
 	}
-	return CommandAvailability{Enabled: true}
+	return CommandAvailable()
 }
 
 func (a *app) Clear() {

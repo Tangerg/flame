@@ -150,10 +150,30 @@ func (c CommandDescriptor) identities() []string {
 
 // CommandAvailability is the shared discovery and execution gate for a slash
 // command. Disabled commands stay visible with their reason.
+// CommandAvailability answers whether a command can run right now. Unavailable
+// is the reason it is unavailable: neither can be spelled without the other, so
+// whoever asked is always told something.
 type CommandAvailability struct {
-	Enabled bool
-	Reason  string
+	reason string
 }
+
+// CommandAvailable reports a command the operator may run now.
+func CommandAvailable() CommandAvailability { return CommandAvailability{} }
+
+// CommandUnavailable reports why a command cannot run.
+func CommandUnavailable(reason string) CommandAvailability {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		reason = "not available in the current context"
+	}
+	return CommandAvailability{reason: reason}
+}
+
+// Enabled reports whether the command can run.
+func (a CommandAvailability) Enabled() bool { return a.reason == "" }
+
+// Reason states why the command cannot run, and is empty when it can.
+func (a CommandAvailability) Reason() string { return a.reason }
 
 // CommandRequest is the bounded product context given to an out-of-process
 // slash command.

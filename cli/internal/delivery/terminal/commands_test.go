@@ -149,15 +149,15 @@ func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 		"relocate": availableForRelocation(application),
 		"export":   availableWithSessionTransfer(application),
 	} {
-		if availability.Enabled || !strings.Contains(availability.Reason, "was not negotiated") {
+		if availability.Enabled() || !strings.Contains(availability.Reason(), "was not negotiated") {
 			t.Errorf("%s availability = %+v", name, availability)
 		}
 	}
 
 	application.runtimeProfile = nil
-	if !availableWithGitWorkspaceService(application).Enabled ||
-		!availableForRelocation(application).Enabled ||
-		!availableWithSessionTransfer(application).Enabled {
+	if !availableWithGitWorkspaceService(application).Enabled() ||
+		!availableForRelocation(application).Enabled() ||
+		!availableWithSessionTransfer(application).Enabled() {
 		t.Fatal("backend without discovery lost its service-based fallback")
 	}
 }
@@ -192,21 +192,21 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		protocol.FeatureKnowledge:   availableWithKnowledge,
 	}
 	for feature, check := range checks {
-		if availability := check(application); availability.Enabled || !strings.Contains(availability.Reason, "was not negotiated") {
+		if availability := check(application); availability.Enabled() || !strings.Contains(availability.Reason(), "was not negotiated") {
 			t.Errorf("disabled %s availability = %+v", feature, availability)
 		}
 		capability := features[feature]
 		capability.Enabled = true
 		features[feature] = capability
 		profile = terminalProfileWithFeatures(t, features)
-		if availability := check(application); !availability.Enabled {
+		if availability := check(application); !availability.Enabled() {
 			t.Errorf("enabled %s availability = %+v", feature, availability)
 		}
 	}
 
 	application.runtimeProfile = nil
 	for feature, check := range checks {
-		if availability := check(application); !availability.Enabled {
+		if availability := check(application); !availability.Enabled() {
 			t.Errorf("undiscovered %s availability = %+v", feature, availability)
 		}
 	}
@@ -331,5 +331,25 @@ func TestCommandCatalogRanksAnExactAliasAheadOfFuzzyNames(t *testing.T) {
 	found := catalog.find("resume")
 	if len(found) == 0 || found[0].Command.Name != "sessions" {
 		t.Fatalf("find exact alias = %v, want sessions first", found)
+	}
+}
+
+// TestCommandAvailabilityCannotSayOneThingAndMeanAnother pins the pairing the
+// two-field shape used to allow: an enabled command carrying a reason it is
+// not, and a disabled one carrying nothing to show the operator.
+func TestCommandAvailabilityCannotSayOneThingAndMeanAnother(t *testing.T) {
+	available := CommandAvailable()
+	if !available.Enabled() || available.Reason() != "" {
+		t.Fatalf("available = (%v, %q)", available.Enabled(), available.Reason())
+	}
+	for _, reason := range []string{"", "   ", "\n\t"} {
+		blank := CommandUnavailable(reason)
+		if blank.Enabled() || blank.Reason() != "not available in the current context" {
+			t.Fatalf("CommandUnavailable(%q) = (%v, %q)", reason, blank.Enabled(), blank.Reason())
+		}
+	}
+	stated := CommandUnavailable("  an active run owns this session  ")
+	if stated.Enabled() || stated.Reason() != "an active run owns this session" {
+		t.Fatalf("stated = (%v, %q)", stated.Enabled(), stated.Reason())
 	}
 }

@@ -19,19 +19,14 @@ type registeredCommand struct {
 
 func (r registeredCommand) availability(host *app) (availability CommandAvailability) {
 	if r.evaluate == nil {
-		return CommandAvailability{Enabled: true}
+		return CommandAvailable()
 	}
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			availability = CommandAvailability{Reason: fmt.Sprintf("availability check panicked: %v", recovered)}
+			availability = CommandUnavailable(fmt.Sprintf("availability check panicked: %v", recovered))
 		}
 	}()
-	availability = r.evaluate(host)
-	availability.Reason = strings.TrimSpace(availability.Reason)
-	if !availability.Enabled && availability.Reason == "" {
-		availability.Reason = "not available in the current context"
-	}
-	return availability
+	return r.evaluate(host)
 }
 
 type commandCatalog struct {
@@ -108,7 +103,7 @@ func (c *commandCatalog) arguments(name string) ArgumentMode {
 func (c *commandCatalog) availability(name string, host *app) CommandAvailability {
 	_, command, found := c.index.Lookup(name)
 	if !found {
-		return CommandAvailability{Enabled: true}
+		return CommandAvailable()
 	}
 	return command.availability(host)
 }
@@ -292,8 +287,8 @@ func (a *app) runCommand(name, argument string) {
 		a.message("unknown command: /" + name)
 		return
 	}
-	if availability := registration.availability(a); !availability.Enabled {
-		a.message("/" + command.Name + " unavailable: " + availability.Reason)
+	if availability := registration.availability(a); !availability.Enabled() {
+		a.message("/" + command.Name + " unavailable: " + availability.Reason())
 		return
 	}
 	argument = strings.TrimSpace(argument)

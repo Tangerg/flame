@@ -21,8 +21,8 @@ func (a *app) buildCommandPalette(theme kit.Theme, glyphs kit.Glyphs) {
 		func(item commandPaletteItem) string { return "/" + item.command.Name },
 		func(item commandPaletteItem) string {
 			detail := item.category + " · " + item.command.Title
-			if !item.availability.Enabled {
-				detail = item.category + " · unavailable: " + item.availability.Reason
+			if !item.availability.Enabled() {
+				detail = item.category + " · unavailable: " + item.availability.Reason()
 			}
 			return detail
 		},
@@ -32,8 +32,8 @@ func (a *app) buildCommandPalette(theme kit.Theme, glyphs kit.Glyphs) {
 			}
 			command := item.command
 			a.dialogs.commandDialog.Dismiss()
-			if !item.availability.Enabled {
-				a.message("/" + command.Name + " unavailable: " + item.availability.Reason)
+			if !item.availability.Enabled() {
+				a.message("/" + command.Name + " unavailable: " + item.availability.Reason())
 				return
 			}
 			if a.commands.arguments(command.Name).TakesInput() {

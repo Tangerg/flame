@@ -33,7 +33,7 @@ func (a *app) validateMessageCapabilities(message agent.Message) error {
 
 func availableWithRuntimeFeature(a *app, feature string) CommandAvailability {
 	if err := a.requireRuntimeFeature(feature); err != nil {
-		return CommandAvailability{Reason: err.Error()}
+		return CommandUnavailable(err.Error())
 	}
-	return CommandAvailability{Enabled: true}
+	return CommandAvailable()
 }
