@@ -140,12 +140,14 @@ func TestCurationValidatesDurableMaterial(t *testing.T) {
 		t.Fatal("unrequested append acknowledgement was accepted")
 	}
 
+	// A State the domain accepts, so only the ordering rule can refuse this read.
+	curated := domain.State{Watermark: 1, UpdatedAt: time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC)}
 	store.pending = []domain.LedgerFact{validLedgerFact(3, "three"), validLedgerFact(2, "two")}
-	if _, err := curation.PendingLedger(t.Context(), "/repo", 1, 2); err == nil {
+	if _, err := curation.PendingLedger(t.Context(), "/repo", curated, 2); err == nil {
 		t.Fatal("out-of-order pending ledger was accepted")
 	}
 	store.pending = nil
-	if _, err := curation.PendingLedger(t.Context(), "/repo", -1, 2); err == nil {
+	if _, err := curation.PendingLedger(t.Context(), "/repo", domain.State{Watermark: -1}, 2); err == nil {
 		t.Fatal("negative pending watermark was accepted")
 	}
 

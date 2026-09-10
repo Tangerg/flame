@@ -13,7 +13,7 @@ func (dependencyMemory) AppendLedger(context.Context, agentmemory.FactBatch) ([]
 	return nil, nil
 }
 
-func (dependencyMemory) PendingLedger(context.Context, string, int64, int) ([]agentmemory.LedgerFact, error) {
+func (dependencyMemory) PendingLedger(context.Context, string, agentmemory.State, int) ([]agentmemory.LedgerFact, error) {
 	return nil, nil
 }
 

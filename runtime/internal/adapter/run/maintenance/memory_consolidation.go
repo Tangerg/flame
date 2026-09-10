@@ -85,7 +85,7 @@ func newMemoryCurationPolicy(values MemoryCurationPolicyValues) (memoryCurationP
 
 type agentMemory interface {
 	AppendLedger(ctx context.Context, batch agentmemory.FactBatch) ([]agentmemory.LedgerFact, error)
-	PendingLedger(ctx context.Context, project string, watermark int64, limit int) ([]agentmemory.LedgerFact, error)
+	PendingLedger(ctx context.Context, project string, state agentmemory.State, limit int) ([]agentmemory.LedgerFact, error)
 	State(ctx context.Context, project string) (agentmemory.State, error)
 	PublishGeneration(ctx context.Context, publication agentmemory.Publication) (bool, error)
 	Items(ctx context.Context, scope agentmemory.Scope, project string) ([]agentmemory.Item, error)
@@ -179,7 +179,7 @@ func (m *MemoryConsolidator) maybeCurate(ctx context.Context, project string, no
 	if err != nil {
 		return fmt.Errorf("memory curation: load watermark: %w", err)
 	}
-	pending, err := m.memory.PendingLedger(ctx, project, state.Watermark, m.policy.maxPendingFacts)
+	pending, err := m.memory.PendingLedger(ctx, project, state, m.policy.maxPendingFacts)
 	if err != nil {
 		return fmt.Errorf("memory curation: read ledger after watermark %d: %w", state.Watermark, err)
 	}

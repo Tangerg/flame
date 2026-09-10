@@ -66,15 +66,17 @@ func (c *Curation) AppendLedger(ctx context.Context, batch domain.FactBatch) ([]
 }
 
 // PendingLedger returns facts not yet incorporated into the curated generation.
-func (c *Curation) PendingLedger(ctx context.Context, project string, watermark int64, limit int) ([]domain.LedgerFact, error) {
-	if err := validatePendingRead(project, watermark, limit); err != nil {
+// It reads from a curation State rather than a bare sequence so the position it
+// resumes at is the one State already proves coherent.
+func (c *Curation) PendingLedger(ctx context.Context, project string, state domain.State, limit int) ([]domain.LedgerFact, error) {
+	if err := validatePendingRead(project, state, limit); err != nil {
 		return nil, err
 	}
-	facts, err := c.store.PendingLedger(ctx, project, watermark, limit)
+	facts, err := c.store.PendingLedger(ctx, project, state.Watermark, limit)
 	if err != nil {
 		return nil, err
 	}
-	if err := validatePendingFacts(facts, watermark, limit); err != nil {
+	if err := validatePendingFacts(facts, state.Watermark, limit); err != nil {
 		return nil, err
 	}
 	return facts, nil
@@ -156,12 +158,12 @@ func validateAppendedFacts(facts []domain.LedgerFact, batch domain.FactBatch) er
 	return nil
 }
 
-func validatePendingRead(project string, watermark int64, limit int) error {
+func validatePendingRead(project string, state domain.State, limit int) error {
 	if err := domain.ValidateTarget(domain.ScopeProject, project); err != nil {
 		return err
 	}
-	if watermark < 0 {
-		return fmt.Errorf("agentmemory: curation watermark must not be negative")
+	if err := state.Validate(); err != nil {
+		return err
 	}
 	if limit <= 0 || limit > domain.MaxLedgerFoldFacts {
 		return fmt.Errorf("agentmemory: pending ledger limit must be between 1 and %d", domain.MaxLedgerFoldFacts)
