@@ -115,6 +115,9 @@ const hex = (name: string) => {
   const value = query.get(name);
   return value !== null && /^#[\da-f]{6}$/i.test(value) ? value : undefined;
 };
+// The one free input that changes SIZE rather than colour: a family whose metrics differ from
+// the bundled one makes every fixed-height control a question.
+const requestedUiFont = query.get("ui-font") ?? undefined;
 const customBase = hex("custom-bg");
 const customInk = hex("custom-fg");
 const customTheme =
@@ -230,6 +233,7 @@ useAppearanceStore.setState({
   ...(contrast !== undefined ? { contrast } : {}),
   ...(accent !== undefined ? { accent } : {}),
   ...(customTheme ? { theme: "custom" as const, customTheme } : {}),
+  ...(requestedUiFont ? { uiFont: requestedUiFont } : {}),
 });
 // Both halves of what `appearancePainter` installs: the pane and the sidebar footer read
 // the preference through this port, so painting without binding it renders a broken
