@@ -32,17 +32,11 @@ func (c *Compactor) CompactModelContext(
 	ctx context.Context,
 	request agentexec.ModelContextCompaction,
 ) (agentexec.ModelContextCompactionResult, error) {
-	if c == nil {
-		return agentexec.ModelContextCompactionResult{}, errors.New("maintenance: model-context compactor is nil")
-	}
 	candidate := request.Candidate()
 	history := candidate
 	protectedTail := request.ProtectedTail()
 	var ephemeral []chat.Message
 	if request.Durable() {
-		if c.store == nil {
-			return agentexec.ModelContextCompactionResult{}, errors.New("maintenance: durable compaction store is unavailable")
-		}
 		stored, err := c.store.Read(ctx, request.SessionID())
 		if err != nil {
 			return agentexec.ModelContextCompactionResult{}, fmt.Errorf("maintenance: read model context: %w", err)

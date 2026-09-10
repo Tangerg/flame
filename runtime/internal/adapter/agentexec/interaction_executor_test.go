@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -684,4 +685,44 @@ func assertOneRootMember(t *testing.T, events []runs.ExecutorEvent) {
 func interactionTextResponse(text string) *chat.Response {
 	message := chat.NewAssistantMessage(chat.NewTextPart(text))
 	return &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}}
+}
+
+// typedNilToolPresenter exists to be nil. An optional capability supplied as a
+// typed nil reads as present at every use site, so the constructor is the only
+// place that can tell the difference.
+type typedNilToolPresenter struct{}
+
+func (*typedNilToolPresenter) Activity(string, tool.Arguments) string {
+	panic("agentexec: a typed-nil presenter was asked for an activity")
+}
+
+func (*typedNilToolPresenter) Present(string, tool.Arguments, tool.Result) (tool.Result, string) {
+	panic("agentexec: a typed-nil presenter was asked to present")
+}
+
+// TestInteractionExecutorRefusesATypedNilCapability pins what every use site
+// relies on: an optional capability is absent or real. A typed nil satisfies
+// "!= nil" everywhere downstream, so admitting one here would make each of
+// those checks answer the wrong question.
+func TestInteractionExecutorRefusesATypedNilCapability(t *testing.T) {
+	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		return interactionTextResponse("unused"), nil
+	})
+	client, err := chatclient.New(model, chatclient.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var absent *typedNilToolPresenter
+	_, err = NewInteractionExecutor(InteractionExecutorConfig{
+		Lifetime:               t.Context(),
+		ChatResolver:           staticInteractionChatResolver(client),
+		ImplementationIdentity: "interaction-typed-nil-build",
+		ConfigurationIdentity:  "interaction-typed-nil-config",
+		DefaultMaxModelCalls:   uint32Pointer(4),
+		BuildID:                interactionTestBuildID,
+		ToolPresenter:          absent,
+	})
+	if err == nil || !strings.Contains(err.Error(), "typed nil") {
+		t.Fatalf("NewInteractionExecutor accepted a typed-nil capability: %v", err)
+	}
 }
